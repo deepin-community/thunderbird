@@ -22,13 +22,16 @@ WarpBuilderShared::WarpBuilderShared(WarpSnapshot& snapshot,
 
 bool WarpBuilderShared::resumeAfter(MInstruction* ins, BytecodeLocation loc) {
   // resumeAfter should only be used with effectful instructions. The only
-  // exception is MInt64ToBigInt, it's used to convert the result of a call into
-  // Wasm code so we attach the resume point to that instead of to the call.
-  MOZ_ASSERT(ins->isEffectful() || ins->isInt64ToBigInt());
+  // exceptions are:
+  // 1. MInt64ToBigInt, which is used to convert the result of a call into Wasm
+  //    code so we attach the resume point to that instead of to the call.
+  // 2. MPostIntPtrConversion which is used after conversion from IntPtr.
+  MOZ_ASSERT(ins->isEffectful() || ins->isInt64ToBigInt() ||
+             ins->isPostIntPtrConversion());
   MOZ_ASSERT(!ins->isMovable());
 
   MResumePoint* resumePoint = MResumePoint::New(
-      alloc(), ins->block(), loc.toRawBytecode(), MResumePoint::ResumeAfter);
+      alloc(), ins->block(), loc.toRawBytecode(), ResumeMode::ResumeAfter);
   if (!resumePoint) {
     return false;
   }
@@ -38,7 +41,7 @@ bool WarpBuilderShared::resumeAfter(MInstruction* ins, BytecodeLocation loc) {
 }
 
 MConstant* WarpBuilderShared::constant(const Value& v) {
-  MOZ_ASSERT_IF(v.isString(), v.toString()->isAtom());
+  MOZ_ASSERT_IF(v.isString(), v.toString()->isLinear());
   MOZ_ASSERT_IF(v.isGCThing(), !IsInsideNursery(v.toGCThing()));
 
   MConstant* cst = MConstant::New(alloc(), v);
@@ -49,6 +52,30 @@ MConstant* WarpBuilderShared::constant(const Value& v) {
 void WarpBuilderShared::pushConstant(const Value& v) {
   MConstant* cst = constant(v);
   current->push(cst);
+}
+
+MDefinition* WarpBuilderShared::unboxObjectInfallible(MDefinition* def,
+                                                      IsMovable movable) {
+  if (def->type() == MIRType::Object) {
+    return def;
+  }
+
+  if (def->type() != MIRType::Value) {
+    // Corner case: if the MIR node has a type other than Object or Value, this
+    // code isn't actually reachable and we expect an earlier guard to fail.
+    // Just insert a Box to satisfy MIR invariants.
+    MOZ_ASSERT(movable == IsMovable::No);
+    auto* box = MBox::New(alloc(), def);
+    current->add(box);
+    def = box;
+  }
+
+  auto* unbox = MUnbox::New(alloc(), def, MIRType::Object, MUnbox::Infallible);
+  if (movable == IsMovable::No) {
+    unbox->setNotMovable();
+  }
+  current->add(unbox);
+  return unbox;
 }
 
 MCall* WarpBuilderShared::makeCall(CallInfo& callInfo, bool needsThisCheck,
@@ -62,14 +89,29 @@ MCall* WarpBuilderShared::makeCall(CallInfo& callInfo, bool needsThisCheck,
 }
 
 MInstruction* WarpBuilderShared::makeSpreadCall(CallInfo& callInfo,
+                                                bool needsThisCheck,
                                                 bool isSameRealm,
                                                 WrappedFunction* target) {
-  // TODO: support SpreadNew and SpreadSuperCall
-  MOZ_ASSERT(!callInfo.constructing());
+  MOZ_ASSERT(callInfo.argFormat() == CallInfo::ArgFormat::Array);
+  MOZ_ASSERT_IF(needsThisCheck, !target);
 
   // Load dense elements of the argument array.
   MElements* elements = MElements::New(alloc(), callInfo.arrayArg());
   current->add(elements);
+
+  if (callInfo.constructing()) {
+    auto* newTarget = unboxObjectInfallible(callInfo.getNewTarget());
+    auto* construct =
+        MConstructArray::New(alloc(), target, callInfo.callee(), elements,
+                             callInfo.thisArg(), newTarget);
+    if (isSameRealm) {
+      construct->setNotCrossRealm();
+    }
+    if (needsThisCheck) {
+      construct->setNeedsThisCheck();
+    }
+    return construct;
+  }
 
   auto* apply = MApplyArray::New(alloc(), target, callInfo.callee(), elements,
                                  callInfo.thisArg());
@@ -80,5 +122,6 @@ MInstruction* WarpBuilderShared::makeSpreadCall(CallInfo& callInfo,
   if (isSameRealm) {
     apply->setNotCrossRealm();
   }
+  MOZ_ASSERT(!needsThisCheck);
   return apply;
 }

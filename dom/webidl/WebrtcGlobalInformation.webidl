@@ -6,32 +6,42 @@
 
 dictionary WebrtcGlobalStatisticsReport {
   sequence<RTCStatsReportInternal> reports = [];
+  sequence<RTCSdpHistoryInternal> sdpHistories = [];
 };
 
-callback WebrtcGlobalStatisticsCallback = void (WebrtcGlobalStatisticsReport reports);
-callback WebrtcGlobalLoggingCallback = void (sequence<DOMString> logMessages);
+dictionary WebrtcGlobalMediaContext {
+  required boolean hasH264Hardware;
+};
+
+callback WebrtcGlobalStatisticsCallback = undefined (WebrtcGlobalStatisticsReport reports);
+callback WebrtcGlobalStatisticsHistoryPcIdsCallback = undefined (sequence<DOMString> pcIds);
+callback WebrtcGlobalStatisticsHistoryCallback = undefined (WebrtcGlobalStatisticsReport reports);
+callback WebrtcGlobalLoggingCallback = undefined (sequence<DOMString> logMessages);
 
 [ChromeOnly, Exposed=Window]
 namespace WebrtcGlobalInformation {
 
   [Throws]
-  void getAllStats(WebrtcGlobalStatisticsCallback callback,
-                   optional DOMString pcIdFilter);
-
-  void clearAllStats();
+  undefined getAllStats(WebrtcGlobalStatisticsCallback callback,
+                        optional DOMString pcIdFilter);
 
   [Throws]
-  void getLogging(DOMString pattern, WebrtcGlobalLoggingCallback callback);
+  undefined getStatsHistoryPcIds(WebrtcGlobalStatisticsHistoryPcIdsCallback callback);
 
-  void clearLogging();
+  [Throws]
+  undefined getStatsHistorySince(WebrtcGlobalStatisticsHistoryCallback callback,
+                                 DOMString pcIdFilter,
+                                 optional DOMHighResTimeStamp after,
+                                 optional DOMHighResTimeStamp sdpAfter);
 
-  // NSPR WebRTC Trace debug level (0 - 65535)
-  //
-  // Notes:
-  // - Setting a non-zero debug level turns on gathering of log for file output.
-  // - Subsequently setting a zero debug level writes that log to disk.
+  WebrtcGlobalMediaContext getMediaContext();
 
-  attribute long debugLevel;
+  undefined clearAllStats();
+
+  [Throws]
+  undefined getLogging(DOMString pattern, WebrtcGlobalLoggingCallback callback);
+
+  undefined clearLogging();
 
   // WebRTC AEC debugging enable
   attribute boolean aecDebug;

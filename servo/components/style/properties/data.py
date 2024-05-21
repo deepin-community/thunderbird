@@ -5,14 +5,16 @@
 import re
 from counted_unknown_properties import COUNTED_UNKNOWN_PROPERTIES
 
+# It is important that the order of these physical / logical variants matches
+# the order of the enum variants in logical_geometry.rs
 PHYSICAL_SIDES = ["top", "right", "bottom", "left"]
-LOGICAL_SIDES = ["block-start", "block-end", "inline-start", "inline-end"]
-PHYSICAL_SIZES = ["width", "height"]
-LOGICAL_SIZES = ["block-size", "inline-size"]
 PHYSICAL_CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"]
+PHYSICAL_AXES = ["y", "x"]
+PHYSICAL_SIZES = ["height", "width"]
+LOGICAL_SIDES = ["block-start", "block-end", "inline-start", "inline-end"]
 LOGICAL_CORNERS = ["start-start", "start-end", "end-start", "end-end"]
-PHYSICAL_AXES = ["x", "y"]
-LOGICAL_AXES = ["inline", "block"]
+LOGICAL_SIZES = ["block-size", "inline-size"]
+LOGICAL_AXES = ["block", "inline"]
 
 # bool is True when logical
 ALL_SIDES = [(side, False) for side in PHYSICAL_SIDES] + [
@@ -29,13 +31,71 @@ ALL_AXES = [(axis, False) for axis in PHYSICAL_AXES] + [
 ]
 
 SYSTEM_FONT_LONGHANDS = """font_family font_size font_style
-                           font_variant_caps font_stretch font_kerning
-                           font_variant_position font_weight
-                           font_size_adjust font_variant_alternates
-                           font_variant_ligatures font_variant_east_asian
-                           font_variant_numeric font_language_override
-                           font_feature_settings font_variation_settings
-                           font_optical_sizing""".split()
+                           font_stretch font_weight""".split()
+
+PRIORITARY_PROPERTIES = set(
+    [
+        # The writing-mode group has the most priority of all property groups, as
+        # sizes like font-size can depend on it.
+        "writing-mode",
+        "direction",
+        "text-orientation",
+        # The fonts and colors group has the second priority, as all other lengths
+        # and colors depend on them.
+        #
+        # There are some interdependencies between these, but we fix them up in
+        # Cascade::fixup_font_stuff.
+        # Needed to properly compute the zoomed font-size.
+        "-x-text-scale",
+        # Needed to do font-size computation in a language-dependent way.
+        "-x-lang",
+        # Needed for ruby to respect language-dependent min-font-size
+        # preferences properly, see bug 1165538.
+        "-moz-min-font-size-ratio",
+        # font-size depends on math-depth's computed value.
+        "math-depth",
+        # Needed to compute the first available font and its used size,
+        # in order to compute font-relative units correctly.
+        "font-size",
+        "font-size-adjust",
+        "font-weight",
+        "font-stretch",
+        "font-style",
+        "font-family",
+        # color-scheme affects how system colors resolve.
+        "color-scheme",
+        # forced-color-adjust affects whether colors are adjusted.
+        "forced-color-adjust",
+        # Zoom affects all absolute lengths.
+        "zoom",
+        # Line height lengths depend on this.
+        "line-height",
+    ]
+)
+
+VISITED_DEPENDENT_PROPERTIES = set(
+    [
+        "column-rule-color",
+        "text-emphasis-color",
+        "-webkit-text-fill-color",
+        "-webkit-text-stroke-color",
+        "text-decoration-color",
+        "fill",
+        "stroke",
+        "caret-color",
+        "background-color",
+        "border-top-color",
+        "border-right-color",
+        "border-bottom-color",
+        "border-left-color",
+        "border-block-start-color",
+        "border-inline-end-color",
+        "border-block-end-color",
+        "border-inline-start-color",
+        "outline-color",
+        "color",
+    ]
+)
 
 # Bitfield values for all rule types which can have property declarations.
 STYLE_RULE = 1 << 0
@@ -285,6 +345,12 @@ class Property(object):
     def enabled_in_content(self):
         return self.enabled_in == "content"
 
+    def is_visited_dependent(self):
+        return self.name in VISITED_DEPENDENT_PROPERTIES
+
+    def is_prioritary(self):
+        return self.name in PRIORITARY_PROPERTIES
+
     def nscsspropertyid(self):
         return "nsCSSPropertyID::eCSSProperty_" + self.ident
 
@@ -318,6 +384,7 @@ class Longhand(Property):
         simple_vector_bindings=False,
         vector=False,
         servo_restyle_damage="repaint",
+        affects=None,
     ):
         Property.__init__(
             self,
@@ -332,6 +399,9 @@ class Longhand(Property):
             extra_prefixes=extra_prefixes,
             flags=flags,
         )
+
+        self.affects = affects
+        self.flags += self.affects_flags()
 
         self.keyword = keyword
         self.predefined_type = predefined_type
@@ -372,9 +442,6 @@ class Longhand(Property):
         self.animation_value_type = animation_value_type
 
         self.animatable = animation_value_type != "none"
-        self.transitionable = (
-            animation_value_type != "none" and animation_value_type != "discrete"
-        )
         self.is_animatable_with_computed_value = (
             animation_value_type == "ComputedValue"
             or animation_value_type == "discrete"
@@ -383,34 +450,69 @@ class Longhand(Property):
         # See compute_damage for the various values this can take
         self.servo_restyle_damage = servo_restyle_damage
 
+    def affects_flags(self):
+        # Layout is the stronger hint. This property animation affects layout
+        # or frame construction. `display` or `width` are examples that should
+        # use this.
+        if self.affects == "layout":
+            return ["AFFECTS_LAYOUT"]
+        # This property doesn't affect layout, but affects overflow.
+        # `transform` and co. are examples of this.
+        if self.affects == "overflow":
+            return ["AFFECTS_OVERFLOW"]
+        # This property affects the rendered output but doesn't affect layout.
+        # `opacity`, `color`, or `z-index` are examples of this.
+        if self.affects == "paint":
+            return ["AFFECTS_PAINT"]
+        # This property doesn't affect rendering in any way.
+        # `user-select` is an example of this.
+        assert self.affects == "", (
+            "Property "
+            + self.name
+            + ': affects must be specified and be one of ["layout", "overflow", "paint", ""], see Longhand.affects_flags for documentation'
+        )
+        return []
+
     @staticmethod
     def type():
         return "longhand"
+
+    # For a given logical property, return the kind of mapping we need to
+    # perform, and which logical value we represent, in a tuple.
+    def logical_mapping_data(self, data):
+        if not self.logical:
+            return []
+        # Sizes and axes are basically the same for mapping, we just need
+        # slightly different replacements (block-size -> height, etc rather
+        # than -x/-y) below.
+        for [ty, logical_items, physical_items] in [
+            ["Side", LOGICAL_SIDES, PHYSICAL_SIDES],
+            ["Corner", LOGICAL_CORNERS, PHYSICAL_CORNERS],
+            ["Axis", LOGICAL_SIZES, PHYSICAL_SIZES],
+            ["Axis", LOGICAL_AXES, PHYSICAL_AXES],
+        ]:
+            candidate = [s for s in logical_items if s in self.name]
+            if candidate:
+                assert len(candidate) == 1
+                return [ty, candidate[0], logical_items, physical_items]
+        assert False, "Don't know how to deal with " + self.name
+
+    def logical_mapping_kind(self, data):
+        assert self.logical
+        [kind, item, _, _] = self.logical_mapping_data(data)
+        return "LogicalMappingKind::{}(Logical{}::{})".format(
+            kind, kind, to_camel_case(item.replace("-size", ""))
+        )
 
     # For a given logical property return all the physical property names
     # corresponding to it.
     def all_physical_mapped_properties(self, data):
         if not self.logical:
             return []
-
-        candidates = [
-            s for s in LOGICAL_SIDES + LOGICAL_SIZES + LOGICAL_CORNERS if s in self.name
-        ] + [s for s in LOGICAL_AXES if self.name.endswith(s)]
-        assert len(candidates) == 1
-        logical_side = candidates[0]
-
-        physical = (
-            PHYSICAL_SIDES
-            if logical_side in LOGICAL_SIDES
-            else PHYSICAL_SIZES
-            if logical_side in LOGICAL_SIZES
-            else PHYSICAL_AXES
-            if logical_side in LOGICAL_AXES
-            else LOGICAL_CORNERS
-        )
+        [_, logical_side, _, physical_items] = self.logical_mapping_data(data)
         return [
             data.longhands_by_name[to_phys(self.name, logical_side, physical_side)]
-            for physical_side in physical
+            for physical_side in physical_items
         ]
 
     def may_be_disabled_in(self, shorthand, engine):
@@ -452,7 +554,12 @@ class Longhand(Property):
                 "AlignItems",
                 "AlignSelf",
                 "Appearance",
+                "AnimationComposition",
+                "AnimationDirection",
+                "AnimationFillMode",
+                "AnimationPlayState",
                 "AspectRatio",
+                "BaselineSource",
                 "BreakBetween",
                 "BreakWithin",
                 "BackgroundRepeat",
@@ -462,13 +569,15 @@ class Longhand(Property):
                 "Clear",
                 "ColumnCount",
                 "Contain",
+                "ContentVisibility",
+                "ContainerType",
                 "Display",
                 "FillRule",
                 "Float",
+                "FontLanguageOverride",
                 "FontSizeAdjust",
                 "FontStretch",
                 "FontStyle",
-                "FontStyleAdjust",
                 "FontSynthesis",
                 "FontVariantEastAsian",
                 "FontVariantLigatures",
@@ -476,19 +585,22 @@ class Longhand(Property):
                 "FontWeight",
                 "GreaterThanOrEqualToOneNumber",
                 "GridAutoFlow",
+                "ImageRendering",
                 "InitialLetter",
                 "Integer",
                 "JustifyContent",
                 "JustifyItems",
                 "JustifySelf",
                 "LineBreak",
+                "LineClamp",
                 "MasonryAutoFlow",
-                "MozForceBrokenImageIcon",
+                "ui::MozTheme",
+                "BoolInteger",
                 "text::MozControlCharacterVisibility",
-                "MozListReversed",
                 "MathDepth",
                 "MozScriptMinSize",
                 "MozScriptSizeMultiplier",
+                "TransformBox",
                 "TextDecorationSkipInk",
                 "NonNegativeNumber",
                 "OffsetRotate",
@@ -499,14 +611,18 @@ class Longhand(Property):
                 "OverflowClipBox",
                 "OverflowWrap",
                 "OverscrollBehavior",
+                "PageOrientation",
                 "Percentage",
-                "PositiveIntegerOrNone",
+                "PrintColorAdjust",
+                "ForcedColorAdjust",
                 "Resize",
                 "RubyPosition",
                 "SVGOpacity",
                 "SVGPaintOrder",
+                "ScrollbarGutter",
                 "ScrollSnapAlign",
                 "ScrollSnapAxis",
+                "ScrollSnapStop",
                 "ScrollSnapStrictness",
                 "ScrollSnapType",
                 "TextAlign",
@@ -521,8 +637,9 @@ class Longhand(Property):
                 "UserSelect",
                 "WordBreak",
                 "XSpan",
-                "XTextZoom",
+                "XTextScale",
                 "ZIndex",
+                "Zoom",
             }
         if self.name == "overflow-y":
             return True
@@ -572,16 +689,7 @@ class Shorthand(Property):
                 return True
         return False
 
-    def get_transitionable(self):
-        transitionable = False
-        for sub in self.sub_properties:
-            if sub.transitionable:
-                transitionable = True
-                break
-        return transitionable
-
     animatable = property(get_animatable)
-    transitionable = property(get_transitionable)
 
     @staticmethod
     def type():
@@ -599,8 +707,8 @@ class Alias(object):
         self.servo_2013_pref = original.servo_2013_pref
         self.servo_2020_pref = original.servo_2020_pref
         self.gecko_pref = gecko_pref
-        self.transitionable = original.transitionable
         self.rule_types_allowed = original.rule_types_allowed
+        self.flags = original.flags
 
     @staticmethod
     def type():
@@ -670,6 +778,7 @@ class StyleStruct(object):
         self.gecko_name = gecko_name or name
         self.gecko_ffi_name = "nsStyle" + self.gecko_name
         self.additional_methods = additional_methods or []
+        self.document_dependent = self.gecko_name in ["Font", "Visibility", "Text"]
 
 
 class PropertiesData(object):
@@ -700,7 +809,7 @@ class PropertiesData(object):
         # FIXME Servo's DOM architecture doesn't support vendor-prefixed properties.
         #       See servo/servo#14941.
         if self.engine == "gecko":
-            for (prefix, pref) in property.extra_prefixes:
+            for prefix, pref in property.extra_prefixes:
                 property.aliases.append(("-%s-%s" % (prefix, property.name), pref))
 
     def declare_longhand(self, name, engines=None, **kwargs):
@@ -771,7 +880,9 @@ def _remove_common_first_line_and_first_letter_properties(props, engine):
     props.remove("overflow-wrap")
     props.remove("text-align")
     props.remove("text-justify")
-    props.remove("white-space")
+    props.remove("white-space-collapse")
+    props.remove("text-wrap-mode")
+    props.remove("text-wrap-style")
     props.remove("word-break")
     props.remove("text-indent")
 
@@ -791,6 +902,41 @@ class PropertyRestrictions:
     def spec(data, spec_path):
         return [p.name for p in data.longhands if spec_path in p.spec]
 
+    # https://svgwg.org/svg2-draft/propidx.html
+    @staticmethod
+    def svg_text_properties():
+        props = set(
+            [
+                "fill",
+                "fill-opacity",
+                "fill-rule",
+                "paint-order",
+                "stroke",
+                "stroke-dasharray",
+                "stroke-dashoffset",
+                "stroke-linecap",
+                "stroke-linejoin",
+                "stroke-miterlimit",
+                "stroke-opacity",
+                "stroke-width",
+                "text-rendering",
+                "vector-effect",
+            ]
+        )
+        return props
+
+    @staticmethod
+    def webkit_text_properties():
+        props = set(
+            [
+                # Kinda like css-text?
+                "-webkit-text-stroke-width",
+                "-webkit-text-fill-color",
+                "-webkit-text-stroke-color",
+            ]
+        )
+        return props
+
     # https://drafts.csswg.org/css-pseudo/#first-letter-styling
     @staticmethod
     def first_letter(data):
@@ -802,11 +948,9 @@ class PropertyRestrictions:
                 "initial-letter",
                 # Kinda like css-fonts?
                 "-moz-osx-font-smoothing",
-                # Kinda like css-text?
-                "-webkit-text-stroke-width",
-                "-webkit-text-fill-color",
-                "-webkit-text-stroke-color",
                 "vertical-align",
+                # Will become shorthand of vertical-align (Bug 1830771)
+                "baseline-source",
                 "line-height",
                 # Kinda like css-backgrounds?
                 "background-blend-mode",
@@ -819,6 +963,8 @@ class PropertyRestrictions:
             + PropertyRestrictions.spec(data, "css-shapes")
             + PropertyRestrictions.spec(data, "css-text-decor")
         )
+        props = props.union(PropertyRestrictions.svg_text_properties())
+        props = props.union(PropertyRestrictions.webkit_text_properties())
 
         _add_logical_props(data, props)
 
@@ -835,11 +981,9 @@ class PropertyRestrictions:
                 "opacity",
                 # Kinda like css-fonts?
                 "-moz-osx-font-smoothing",
-                # Kinda like css-text?
-                "-webkit-text-stroke-width",
-                "-webkit-text-fill-color",
-                "-webkit-text-stroke-color",
                 "vertical-align",
+                # Will become shorthand of vertical-align (Bug 1830771)
+                "baseline-source",
                 "line-height",
                 # Kinda like css-backgrounds?
                 "background-blend-mode",
@@ -849,6 +993,8 @@ class PropertyRestrictions:
             + PropertyRestrictions.spec(data, "css-text")
             + PropertyRestrictions.spec(data, "css-text-decor")
         )
+        props = props.union(PropertyRestrictions.svg_text_properties())
+        props = props.union(PropertyRestrictions.webkit_text_properties())
 
         # These are probably Gecko bugs and should be supported per spec.
         for prop in PropertyRestrictions.shorthand(data, "border"):
@@ -869,10 +1015,16 @@ class PropertyRestrictions:
     def placeholder(data):
         props = PropertyRestrictions.first_line(data)
         props.add("opacity")
-        props.add("white-space")
         props.add("text-overflow")
         props.add("text-align")
         props.add("text-justify")
+        for p in PropertyRestrictions.shorthand(data, "text-wrap"):
+            props.add(p)
+        for p in PropertyRestrictions.shorthand(data, "white-space"):
+            props.add(p)
+        # ::placeholder can't be SVG text
+        props -= PropertyRestrictions.svg_text_properties()
+
         return props
 
     # https://drafts.csswg.org/css-pseudo/#marker-pseudo
@@ -880,15 +1032,17 @@ class PropertyRestrictions:
     def marker(data):
         return set(
             [
-                "white-space",
                 "color",
                 "text-combine-upright",
                 "text-transform",
                 "unicode-bidi",
                 "direction",
                 "content",
+                "line-height",
                 "-moz-osx-font-smoothing",
             ]
+            + PropertyRestrictions.shorthand(data, "text-wrap")
+            + PropertyRestrictions.shorthand(data, "white-space")
             + PropertyRestrictions.spec(data, "css-fonts")
             + PropertyRestrictions.spec(data, "css-animations")
             + PropertyRestrictions.spec(data, "css-transitions")
@@ -903,11 +1057,9 @@ class PropertyRestrictions:
                 "opacity",
                 "visibility",
                 "text-shadow",
-                "white-space",
                 "text-combine-upright",
                 "ruby-position",
                 # XXX Should these really apply to cue?
-                "font-synthesis",
                 "-moz-osx-font-smoothing",
                 # FIXME(emilio): background-blend-mode should be part of the
                 # background shorthand, and get reset, per
@@ -915,9 +1067,12 @@ class PropertyRestrictions:
                 "background-blend-mode",
             ]
             + PropertyRestrictions.shorthand(data, "text-decoration")
+            + PropertyRestrictions.shorthand(data, "text-wrap")
+            + PropertyRestrictions.shorthand(data, "white-space")
             + PropertyRestrictions.shorthand(data, "background")
             + PropertyRestrictions.shorthand(data, "outline")
             + PropertyRestrictions.shorthand(data, "font")
+            + PropertyRestrictions.shorthand(data, "font-synthesis")
         )
 
 

@@ -10,9 +10,8 @@
  * multiple sends, the rest of this test is in test_smtpPasswordFailure2.js.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/alertTestUtils.js */
@@ -43,7 +42,8 @@ function alert(aDialogText, aText) {
   dump("Alert Title: " + aDialogText + "\nAlert Text: " + aText + "\n");
 }
 
-function confirmEx(
+function confirmExPS(
+  parent,
   aDialogTitle,
   aText,
   aButtonFlags,
@@ -68,7 +68,7 @@ function confirmEx(
   }
 }
 
-add_task(async function() {
+add_task(async function () {
   function createHandler(d) {
     var handler = new SMTP_RFC2821_handler(d);
     // Username needs to match the login information stored in the signons json
@@ -129,7 +129,7 @@ add_task(async function() {
     Assert.equal(attempt, 2);
 
     // Check that we haven't forgetton the login even though we've retried and cancelled.
-    let logins = Services.logins.findLogins(
+    const logins = Services.logins.findLogins(
       "smtp://localhost",
       null,
       "smtp://localhost"
@@ -143,7 +143,7 @@ add_task(async function() {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

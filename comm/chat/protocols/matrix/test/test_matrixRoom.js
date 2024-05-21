@@ -1,9 +1,11 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-var { EventType, MsgType } = ChromeUtils.import(
-  "resource:///modules/matrix-sdk.jsm"
+const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
+);
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
 
 loadMatrix();
@@ -31,14 +33,15 @@ add_task(async function test_initRoom_withSpace() {
 
 add_task(function test_replaceRoom() {
   const roomStub = {
-    __proto__: matrix.MatrixRoom.prototype,
+    __proto__: MatrixRoom.prototype,
     _resolveInitializer() {
       this.initialized = true;
     },
     _mostRecentEventId: "foo",
+    _joiningLocks: new Set(),
   };
   const newRoom = {};
-  matrix.MatrixRoom.prototype.replaceRoom.call(roomStub, newRoom);
+  MatrixRoom.prototype.replaceRoom.call(roomStub, newRoom);
   strictEqual(roomStub._replacedBy, newRoom);
   ok(roomStub.initialized);
   equal(newRoom._mostRecentEventId, roomStub._mostRecentEventId);
@@ -48,9 +51,7 @@ add_task(async function test_waitForRoom() {
   const roomStub = {
     _initialized: Promise.resolve(),
   };
-  const awaitedRoom = await matrix.MatrixRoom.prototype.waitForRoom.call(
-    roomStub
-  );
+  const awaitedRoom = await MatrixRoom.prototype.waitForRoom.call(roomStub);
   strictEqual(awaitedRoom, roomStub);
 });
 
@@ -61,185 +62,222 @@ add_task(async function test_waitForRoomReplaced() {
       return Promise.resolve("success");
     },
   };
-  matrix.MatrixRoom.prototype.replaceRoom.call(roomStub, newRoom);
-  const awaitedRoom = await matrix.MatrixRoom.prototype.waitForRoom.call(
-    roomStub
-  );
+  MatrixRoom.prototype.replaceRoom.call(roomStub, newRoom);
+  const awaitedRoom = await MatrixRoom.prototype.waitForRoom.call(roomStub);
   equal(awaitedRoom, "success");
   roomStub.forget();
 });
 
 add_task(function test_addEventRedacted() {
-  const event = makeEvent("@user:example.com", {}, true);
-  const roomStub = {};
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event);
-  equal(roomStub._mostRecentEventId, 0);
+  const event = makeEvent({
+    sender: "@user:example.com",
+    redacted: true,
+    redaction: {
+      event_id: 2,
+      type: MatrixSDK.EventType.RoomRedaction,
+    },
+    type: MatrixSDK.EventType.RoomMessage,
+  });
+  let updatedMessage;
+  const roomStub = {
+    _account: {
+      userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com/";
+        },
+      },
+    },
+    updateMessage(sender, message, opts) {
+      updatedMessage = {
+        sender,
+        message,
+        opts,
+      };
+    },
+  };
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
+  equal(roomStub._mostRecentEventId, 2);
+  equal(typeof updatedMessage, "object");
+  ok(!updatedMessage.opts.system);
+  ok(updatedMessage.opts.deleted);
+  equal(typeof updatedMessage.message, "string");
+  equal(updatedMessage.sender, "@user:example.com");
 });
 
 add_task(function test_addEventMessageIncoming() {
-  const event = makeEvent("@user:example.com", {
-    body: "foo",
-    msgtype: MsgType.Text,
+  const event = makeEvent({
+    sender: "@user:example.com",
+    content: {
+      body: "foo",
+      msgtype: MatrixSDK.MsgType.Text,
+    },
+    type: MatrixSDK.EventType.RoomMessage,
   });
   const roomStub = {
     _account: {
       userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com/";
+        },
+      },
     },
+    _eventsWaitingForDecryption: new Set(),
     writeMessage(who, message, options) {
       this.who = who;
       this.message = message;
       this.options = options;
     },
   };
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event);
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
   equal(roomStub.who, "@user:example.com");
   equal(roomStub.message, "foo");
-  ok(roomStub.options.incoming);
-  ok(!roomStub.options.outgoing);
   ok(!roomStub.options.system);
-  equal(roomStub.options.time, Math.floor(event.getDate().getTime() / 1000));
-  equal(roomStub.options._alias, "foo bar");
   ok(!roomStub.options.delayed);
   equal(roomStub._mostRecentEventId, 0);
 });
 
 add_task(function test_addEventMessageOutgoing() {
-  const event = makeEvent("@test:example.com", {
-    body: "foo",
-    msgtype: MsgType.Text,
+  const event = makeEvent({
+    sender: "@test:example.com",
+    content: {
+      body: "foo",
+      msgtype: MatrixSDK.MsgType.Text,
+    },
+    type: MatrixSDK.EventType.RoomMessage,
   });
   const roomStub = {
     _account: {
       userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com";
+        },
+      },
     },
+    _eventsWaitingForDecryption: new Set(),
     writeMessage(who, message, options) {
       this.who = who;
       this.message = message;
       this.options = options;
     },
   };
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event);
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
   equal(roomStub.who, "@test:example.com");
   equal(roomStub.message, "foo");
-  ok(!roomStub.options.incoming);
-  ok(roomStub.options.outgoing);
   ok(!roomStub.options.system);
-  equal(roomStub.options.time, Math.floor(event.getDate().getTime() / 1000));
-  equal(roomStub.options._alias, "foo bar");
   ok(!roomStub.options.delayed);
   equal(roomStub._mostRecentEventId, 0);
 });
 
 add_task(function test_addEventMessageEmote() {
-  const event = makeEvent("@user:example.com", {
-    body: "foo",
-    msgtype: MsgType.Emote,
+  const event = makeEvent({
+    sender: "@user:example.com",
+    content: {
+      body: "foo",
+      msgtype: MatrixSDK.MsgType.Emote,
+    },
+    type: MatrixSDK.EventType.RoomMessage,
   });
   const roomStub = {
     _account: {
       userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com";
+        },
+      },
     },
+    _eventsWaitingForDecryption: new Set(),
     writeMessage(who, message, options) {
       this.who = who;
       this.message = message;
       this.options = options;
     },
   };
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event);
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
   equal(roomStub.who, "@user:example.com");
-  equal(roomStub.message, "/me foo");
-  ok(roomStub.options.incoming);
-  ok(!roomStub.options.outgoing);
+  equal(roomStub.message, "foo");
+  ok(roomStub.options.action);
   ok(!roomStub.options.system);
-  equal(roomStub.options.time, Math.floor(event.getDate().getTime() / 1000));
-  equal(roomStub.options._alias, "foo bar");
   ok(!roomStub.options.delayed);
   equal(roomStub._mostRecentEventId, 0);
 });
 
 add_task(function test_addEventMessageDelayed() {
-  const event = makeEvent("@user:example.com", {
-    body: "foo",
-    msgtype: MsgType.Text,
+  const event = makeEvent({
+    sender: "@user:example.com",
+    content: {
+      body: "foo",
+      msgtype: MatrixSDK.MsgType.Text,
+    },
+    type: MatrixSDK.EventType.RoomMessage,
   });
   const roomStub = {
     _account: {
       userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com";
+        },
+      },
     },
+    _eventsWaitingForDecryption: new Set(),
     writeMessage(who, message, options) {
       this.who = who;
       this.message = message;
       this.options = options;
     },
   };
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event, true);
+  MatrixRoom.prototype.addEvent.call(roomStub, event, true);
   equal(roomStub.who, "@user:example.com");
   equal(roomStub.message, "foo");
-  ok(roomStub.options.incoming);
-  ok(!roomStub.options.outgoing);
   ok(!roomStub.options.system);
-  equal(roomStub.options.time, Math.floor(event.getDate().getTime() / 1000));
-  equal(roomStub.options._alias, "foo bar");
   ok(roomStub.options.delayed);
   equal(roomStub._mostRecentEventId, 0);
 });
 
 add_task(function test_addEventTopic() {
-  const event = {
-    isRedacted() {
-      return false;
+  const event = makeEvent({
+    type: MatrixSDK.EventType.RoomTopic,
+    id: 1,
+    content: {
+      topic: "foo bar",
     },
-    getType() {
-      return EventType.RoomTopic;
-    },
-    getId() {
-      return 1;
-    },
-    getContent() {
-      return {
-        topic: "foo bar",
-      };
-    },
-    getSender() {
-      return "@user:example.com";
-    },
-  };
+    sender: "@user:example.com",
+  });
   const roomStub = {
+    _account: {
+      userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com/";
+        },
+      },
+    },
+    _eventsWaitingForDecryption: new Set(),
     setTopic(topic, who) {
       this.who = who;
       this.topic = topic;
     },
   };
-  matrix.MatrixRoom.prototype.addEvent.call(roomStub, event);
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
   equal(roomStub.who, "@user:example.com");
   equal(roomStub.topic, "foo bar");
   equal(roomStub._mostRecentEventId, 1);
 });
 
 add_task(async function test_addEventTombstone() {
-  const event = {
-    isRedacted() {
-      return false;
+  const event = makeEvent({
+    type: MatrixSDK.EventType.RoomTombstone,
+    id: 1,
+    content: {
+      body: "updated room",
+      replacement_room: "!new_room:example.com",
     },
-    getType() {
-      return EventType.RoomTombstone;
-    },
-    getId() {
-      return 1;
-    },
-    getContent() {
-      return {
-        body: "updated room",
-        replacement_room: "!new_room:example.com",
-      };
-    },
-    getSender() {
-      return "@test:example.com";
-    },
-    getDate() {
-      return new Date();
-    },
-  };
+    sender: "@test:example.com",
+  });
   const conversation = getRoom(true);
   const newText = waitForNotification(conversation, "new-text");
   conversation.addEvent(event);
@@ -254,33 +292,6 @@ add_task(async function test_addEventTombstone() {
   newConversation.forget();
 });
 
-function makeEvent(sender, content = {}, redacted = false) {
-  const time = new Date();
-  return {
-    isRedacted() {
-      return redacted;
-    },
-    getType() {
-      return EventType.RoomMessage;
-    },
-    getSender() {
-      return sender;
-    },
-    getContent() {
-      return content;
-    },
-    getDate() {
-      return time;
-    },
-    sender: {
-      name: "foo bar",
-    },
-    getId() {
-      return 0;
-    },
-  };
-}
-
 add_task(function test_forgetWith_close() {
   const roomList = new Map();
   const roomStub = {
@@ -294,13 +305,17 @@ add_task(function test_forgetWith_close() {
     // stubs for jsProtoHelper implementations
     addObserver() {},
     unInit() {},
+    _releaseJoiningLock(lock) {
+      this.releasedLock = lock;
+    },
   };
   roomList.set(roomStub._roomId, roomStub);
-  Services.conversations.addConversation(roomStub);
+  IMServices.conversations.addConversation(roomStub);
 
-  matrix.MatrixRoom.prototype.forget.call(roomStub);
+  MatrixRoom.prototype.forget.call(roomStub);
   ok(!roomList.has(roomStub._roomId));
   ok(roomStub.closeCalled);
+  equal(roomStub.releasedLock, "roomInit", "Released roomInit lock");
 });
 
 add_task(function test_forgetWithout_close() {
@@ -314,18 +329,25 @@ add_task(function test_forgetWithout_close() {
     // stubs for jsProtoHelper implementations
     addObserver() {},
     unInit() {},
+    _releaseJoiningLock(lock) {
+      this.releasedLock = lock;
+    },
   };
   roomList.set(roomStub._roomId, roomStub);
-  Services.conversations.addConversation(roomStub);
+  IMServices.conversations.addConversation(roomStub);
 
-  matrix.MatrixRoom.prototype.forget.call(roomStub);
+  MatrixRoom.prototype.forget.call(roomStub);
   ok(!roomList.has(roomStub._roomId));
+  equal(roomStub.releasedLock, "roomInit", "Released roomInit lock");
 });
 
 add_task(function test_close() {
   const roomStub = {
     forget() {
       this.forgetCalled = true;
+    },
+    cleanUpOutgoingVerificationRequests() {
+      this.cleanUpCalled = true;
     },
     _roomId: "foo",
     _account: {
@@ -337,101 +359,103 @@ add_task(function test_close() {
     },
   };
 
-  matrix.MatrixRoom.prototype.close.call(roomStub);
+  MatrixRoom.prototype.close.call(roomStub);
   equal(roomStub.leftRoom, roomStub._roomId);
   ok(roomStub.forgetCalled);
+  ok(roomStub.cleanUpCalled);
 });
 
 add_task(function test_setTypingState() {
+  const roomStub = getRoom(true, "foo", {
+    sendTyping(roomId, isTyping) {
+      roomStub.typingRoomId = roomId;
+      roomStub.typing = isTyping;
+      return Promise.resolve();
+    },
+  });
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(roomStub.typing);
+
+  roomStub.setTypingState(Ci.prplIConvIM.NOT_TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(!roomStub.typing);
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(roomStub.typing);
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPED);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(!roomStub.typing);
+
+  roomStub.forget();
+  roomStub.unInit();
+});
+
+add_task(function test_setTypingStateDebounce() {
+  const roomStub = getRoom(true, "foo", {
+    sendTyping(roomId, isTyping) {
+      roomStub.typingRoomId = roomId;
+      roomStub.typing = isTyping;
+      return Promise.resolve();
+    },
+  });
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(roomStub.typing);
+  ok(roomStub._typingDebounce);
+
+  roomStub.typing = false;
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(!roomStub.typing);
+  ok(roomStub._typingDebounce);
+
+  clearTimeout(roomStub._typingDebounce);
+  roomStub._typingDebounce = null;
+
+  roomStub.setTypingState(Ci.prplIConvIM.TYPING);
+  equal(roomStub.typingRoomId, roomStub._roomId);
+  ok(roomStub.typing);
+
+  roomStub.forget();
+  roomStub.unInit();
+});
+
+add_task(function test_cleanUpTimers() {
+  const roomStub = getRoom(true);
+  roomStub._typingDebounce = setTimeout(() => {}, 1000); // eslint-disable-line mozilla/no-arbitrary-setTimeout
+  roomStub._cleanUpTimers();
+  ok(!roomStub._typingDebounce);
+  roomStub.forget();
+});
+
+add_task(function test_finishedComposing() {
+  let typingState = true;
   const roomStub = {
-    _typingState: true,
+    __proto__: MatrixRoom.prototype,
+    supportTypingNotifications: false,
     _roomId: "foo",
     _account: {
       _client: {
-        sendTyping(roomId, isTyping) {
-          roomStub.typingRoomId = roomId;
-          roomStub.typing = isTyping;
+        sendTyping(roomId, state) {
+          typingState = state;
+          return Promise.resolve();
         },
       },
     },
   };
 
-  matrix.MatrixRoom.prototype._setTypingState.call(roomStub, true);
-  ok(!roomStub.typingRoomId);
-  ok(!roomStub.typing);
-  ok(roomStub._typingState);
+  MatrixRoom.prototype.finishedComposing.call(roomStub);
+  ok(typingState);
 
-  matrix.MatrixRoom.prototype._setTypingState.call(roomStub, false);
-  equal(roomStub.typingRoomId, roomStub._roomId);
-  ok(!roomStub.typing);
-  ok(!roomStub._typingState);
-
-  matrix.MatrixRoom.prototype._setTypingState.call(roomStub, true);
-  equal(roomStub.typingRoomId, roomStub._roomId);
-  ok(roomStub.typing);
-  ok(roomStub._typingState);
-});
-
-add_task(function test_cancelTypingTimer() {
-  const roomStub = {
-    _typingTimer: setTimeout(() => {}, 10000), // eslint-disable-line mozilla/no-arbitrary-setTimeout
-  };
-  matrix.MatrixRoom.prototype._cancelTypingTimer.call(roomStub);
-  ok(!roomStub._typingTimer);
-});
-
-add_task(function test_finishedComposing() {
-  const roomStub = {
-    __proto__: matrix.MatrixRoom.prototype,
-    _typingState: true,
-    shouldSendTypingNotifications: false,
-    _roomId: "foo",
-    _account: {
-      _client: {
-        sendTyping() {},
-      },
-    },
-  };
-
-  matrix.MatrixRoom.prototype.finishedComposing.call(roomStub);
-  ok(roomStub._typingState);
-
-  roomStub.shouldSendTypingNotifications = true;
-  matrix.MatrixRoom.prototype.finishedComposing.call(roomStub);
-  ok(!roomStub._typingState);
-});
-
-add_task(function test_sendTyping() {
-  const roomStub = {
-    __proto__: matrix.MatrixRoom.prototype,
-    _typingState: false,
-    shouldSendTypingNotifications: false,
-    _roomId: "foo",
-    _account: {
-      _client: {
-        sendTyping() {},
-      },
-    },
-  };
-
-  let result = matrix.MatrixRoom.prototype.sendTyping.call(
-    roomStub,
-    "lorem ipsum"
-  );
-  ok(!roomStub._typingState);
-  ok(!roomStub._typingTimer);
-  equal(result, Ci.prplIConversation.NO_TYPING_LIMIT);
-
-  roomStub.shouldSendTypingNotifications = true;
-  result = matrix.MatrixRoom.prototype.sendTyping.call(roomStub, "lorem ipsum");
-  ok(roomStub._typingState);
-  ok(roomStub._typingTimer);
-  equal(result, Ci.prplIConversation.NO_TYPING_LIMIT);
-
-  result = matrix.MatrixRoom.prototype.sendTyping.call(roomStub, "");
-  ok(!roomStub._typingState);
-  ok(!roomStub._typingTimer);
-  equal(result, Ci.prplIConversation.NO_TYPING_LIMIT);
+  roomStub.supportTypingNotifications = true;
+  MatrixRoom.prototype.finishedComposing.call(roomStub);
+  ok(!typingState);
 });
 
 add_task(function test_setInitialized() {
@@ -439,16 +463,454 @@ add_task(function test_setInitialized() {
     _resolveInitializer() {
       this.calledResolve = true;
     },
-    joining: true,
+    _releaseJoiningLock(lock) {
+      this.releasedLock = lock;
+    },
   };
-  matrix.MatrixRoom.prototype._setInitialized.call(roomStub);
+  MatrixRoom.prototype._setInitialized.call(roomStub);
   ok(roomStub.calledResolve);
-  ok(!roomStub.joining);
+  equal(roomStub.releasedLock, "roomInit", "Released roomInit lock");
+});
+
+add_task(function test_addEventSticker() {
+  const date = new Date();
+  const event = makeEvent({
+    time: date,
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.Sticker,
+    content: {
+      body: "foo",
+      url: "mxc://example.com/sticker.png",
+    },
+  });
+  const roomStub = {
+    _account: {
+      userId: "@test:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com";
+        },
+      },
+    },
+    _eventsWaitingForDecryption: new Set(),
+    writeMessage(who, message, options) {
+      this.who = who;
+      this.message = message;
+      this.options = options;
+    },
+  };
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
+  equal(roomStub.who, "@user:example.com");
+  equal(
+    roomStub.message,
+    "https://example.com/_matrix/media/v3/download/example.com/sticker.png"
+  );
+  ok(!roomStub.options.system);
+  ok(!roomStub.options.delayed);
+  equal(roomStub._mostRecentEventId, 0);
+});
+
+add_task(function test_sendMsg() {
+  let isTyping = true;
+  let message;
+  const roomStub = getRoom(true, "#test:example.com", {
+    sendTyping(roomId, typing) {
+      equal(roomId, roomStub._roomId);
+      isTyping = typing;
+      return Promise.resolve();
+    },
+    sendTextMessage(roomId, threadId, msg) {
+      equal(roomId, roomStub._roomId);
+      equal(threadId, null);
+      message = msg;
+      return Promise.resolve();
+    },
+  });
+  roomStub.dispatchMessage("foo bar");
+  ok(!isTyping);
+  equal(message, "foo bar");
+  roomStub._cleanUpTimers();
+  roomStub.forget();
+});
+
+add_task(function test_sendMsg_emote() {
+  let isTyping = true;
+  let message;
+  const roomStub = getRoom(true, "#test:example.com", {
+    sendTyping(roomId, typing) {
+      equal(roomId, roomStub._roomId);
+      isTyping = typing;
+      return Promise.resolve();
+    },
+    sendEmoteMessage(roomId, threadId, msg) {
+      equal(roomId, roomStub._roomId);
+      equal(threadId, null);
+      message = msg;
+      return Promise.resolve();
+    },
+  });
+  roomStub.dispatchMessage("foo bar", true);
+  ok(!isTyping);
+  equal(message, "foo bar");
+  roomStub._cleanUpTimers();
+  roomStub.forget();
+});
+
+add_task(function test_createMessage() {
+  const time = Date.now();
+  const event = makeEvent({
+    type: MatrixSDK.EventType.RoomMessage,
+    time,
+    sender: "@foo:example.com",
+  });
+  const roomStub = getRoom(true, "#test:example.com", {
+    getPushActionsForEvent(eventToProcess) {
+      equal(eventToProcess, event);
+      return {
+        tweaks: {
+          highlight: true,
+        },
+      };
+    },
+  });
+  const message = roomStub.createMessage("@foo:example.com", "bar", {
+    event,
+  });
+  equal(message.message, "bar");
+  equal(message.who, "@foo:example.com");
+  equal(message.conversation, roomStub);
+  ok(!message.outgoing);
+  ok(message.incoming);
+  equal(message.alias, "foo bar");
+  ok(!message.isEncrypted);
+  ok(message.containsNick);
+  equal(message.time, Math.floor(time / 1000));
+  equal(message.iconURL, "https://example.com/avatar");
+  equal(message.remoteId, 0);
+  roomStub.forget();
+});
+
+add_task(async function test_addEventWaitingForDecryption() {
+  const event = makeEvent({
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.RoomMessageEncrypted,
+    shouldDecrypt: true,
+  });
+  const roomStub = getRoom(true, "#test:example.com");
+  const writePromise = waitForNotification(roomStub, "new-text");
+  roomStub.addEvent(event);
+  const { subject: result } = await writePromise;
+  ok(!result.error, "Waiting for decryption message is not an error");
+  ok(!result.system, "Waiting for decryption message is not system");
+  roomStub.forget();
+});
+
+add_task(async function test_addEventReplaceDecryptedEvent() {
+  //TODO need to emit event on event?
+  const spec = {
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.RoomMessage,
+    isEncrypted: true,
+    shouldDecrypt: true,
+    content: {
+      msgtype: MatrixSDK.MsgType.Text,
+      body: "foo",
+    },
+  };
+  const event = makeEvent(spec);
+  const roomStub = getRoom(true, "#test:example.com");
+  const writePromise = waitForNotification(roomStub, "new-text");
+  roomStub.addEvent(event);
+  const { subject: initialEvent } = await writePromise;
+  ok(!initialEvent.error, "Pending event is not an error");
+  ok(!initialEvent.system, "Pending event is not a system message");
+  equal(
+    initialEvent.who,
+    "@user:example.com",
+    "Pending message has correct sender"
+  );
+  const updatePromise = waitForNotification(roomStub, "update-text");
+  spec.shouldDecrypt = false;
+  event._listeners[MatrixSDK.MatrixEventEvent.Decrypted](event);
+  const { subject: result } = await updatePromise;
+  equal(result.who, "@user:example.com", "Correct message sender");
+  equal(result.message, "foo", "Message contents displayed");
+  roomStub.forget();
+});
+
+add_task(async function test_addEventDecryptionError() {
+  const event = makeEvent({
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.RoomMessageEncrypted,
+    content: {
+      msgtype: "m.bad.encrypted",
+    },
+  });
+  const roomStub = getRoom(true, "#test:example.com");
+  const writePromise = waitForNotification(roomStub, "new-text");
+  roomStub.addEvent(event);
+  const { subject: result } = await writePromise;
+  ok(result.error, "Message is an error");
+  ok(!result.system, "Not displayed as system event");
+  roomStub.forget();
+});
+
+add_task(async function test_addEventPendingDecryption() {
+  const event = makeEvent({
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.RoomMessageEncrypted,
+    decrypting: true,
+  });
+  const roomStub = getRoom(true, "#test:example.com");
+  const writePromise = waitForNotification(roomStub, "new-text");
+  roomStub.addEvent(event);
+  const { subject: result } = await writePromise;
+  ok(!result.error, "Not marked as error");
+  ok(!result.system, "Not displayed as system event");
+  roomStub.forget();
+});
+
+add_task(async function test_addEventRedaction() {
+  const event = makeEvent({
+    sender: "@user:example.com",
+    id: 1443,
+    type: MatrixSDK.EventType.RoomRedaction,
+  });
+  const roomStub = {
+    writeMessage() {
+      ok(false, "called writeMessage");
+    },
+    updateMessage() {
+      ok(false, "called updateMessage");
+    },
+  };
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
+  equal(roomStub._mostRecentEventId, undefined);
+});
+
+add_task(function test_encryptionStateUnavailable() {
+  const room = getRoom(true, "#test:example.com");
+  equal(
+    room.encryptionState,
+    Ci.prplIConversation.ENCRYPTION_NOT_SUPPORTED,
+    "Encryption state is encryption not supported with crypto disabled"
+  );
+  room.forget();
+});
+
+add_task(function test_encryptionStateCanEncrypt() {
+  const room = getRoom(true, "#test:example.com", {
+    isCryptoEnabled() {
+      return true;
+    },
+  });
+  let maySendStateEvent = false;
+  room.room.currentState = {
+    mayClientSendStateEvent(eventType, client) {
+      equal(
+        eventType,
+        MatrixSDK.EventType.RoomEncryption,
+        "mayClientSendStateEvent called for room encryption"
+      );
+      equal(
+        client,
+        room._account._client,
+        "mayClientSendStateEvent got the expected client"
+      );
+      return maySendStateEvent;
+    },
+  };
+  equal(
+    room.encryptionState,
+    Ci.prplIConversation.ENCRYPTION_NOT_SUPPORTED,
+    "Encryption state is encryption not supported when state event can't be sent"
+  );
+  maySendStateEvent = true;
+  equal(
+    room.encryptionState,
+    Ci.prplIConversation.ENCRYPTION_AVAILABLE,
+    "Encryption state is available"
+  );
+  room.forget();
+});
+
+add_task(async function test_encryptionStateOn() {
+  const room = getRoom(true, "#test:example.com", {
+    isCryptoEnabled() {
+      return true;
+    },
+    isRoomEncrypted(roomId) {
+      return true;
+    },
+  });
+  room.room.currentState = {
+    mayClientSendStateEvent(eventType, client) {
+      equal(
+        eventType,
+        MatrixSDK.EventType.RoomEncryption,
+        "mayClientSendStateEvent called for room encryption"
+      );
+      equal(
+        client,
+        room._account._client,
+        "mayClientSendStateEvent got the expected client"
+      );
+      return false;
+    },
+  };
+  equal(
+    room.encryptionState,
+    Ci.prplIConversation.ENCRYPTION_ENABLED,
+    "Encryption state is enabled"
+  );
+  room._hasUnverifiedDevices = false;
+  equal(
+    room.encryptionState,
+    Ci.prplIConversation.ENCRYPTION_TRUSTED,
+    "Encryption state is trusted"
+  );
+  await Promise.resolve();
+  room.forget();
+});
+
+add_task(async function test_addEventReaction() {
+  const event = makeEvent({
+    sender: "@user:example.com",
+    type: MatrixSDK.EventType.Reaction,
+    content: {
+      ["m.relates_to"]: {
+        rel_type: MatrixSDK.RelationType.Annotation,
+        event_id: "!event:example.com",
+        key: "🐦",
+      },
+    },
+  });
+  let wroteMessage = false;
+  const roomStub = {
+    _account: {
+      userId: "@user:example.com",
+      _client: {
+        getHomeserverUrl() {
+          return "https://example.com/";
+        },
+      },
+    },
+    room: {
+      findEventById(id) {
+        equal(id, "!event:example.com", "Reading expected annotated event");
+        return {
+          getSender() {
+            return "@foo:example.com";
+          },
+        };
+      },
+    },
+    writeMessage(who, message, options) {
+      equal(who, "@user:example.com", "Correct sender for reaction");
+      ok(message.includes("🐦"), "Message contains reaction content");
+      ok(options.system, "reaction is a system message");
+      wroteMessage = true;
+    },
+  };
+  MatrixRoom.prototype.addEvent.call(roomStub, event);
+  ok(wroteMessage, "Wrote reaction to conversation");
+});
+
+add_task(async function test_removeParticipant() {
+  const roomMembers = [
+    {
+      userId: "@foo:example.com",
+    },
+    {
+      userId: "@bar:example.com",
+    },
+  ];
+  const room = getRoom(true, "#test:example.com", {
+    getJoinedMembers() {
+      return roomMembers;
+    },
+  });
+  for (const member of roomMembers) {
+    room.addParticipant(member);
+  }
+  equal(room._participants.size, 2, "Room has two participants");
+
+  const participantRemoved = waitForNotification(room, "chat-buddy-remove");
+  room.removeParticipant(roomMembers.splice(1, 1)[0].userId);
+  const { subject } = await participantRemoved;
+  const participantsArray = Array.from(
+    subject.QueryInterface(Ci.nsISimpleEnumerator)
+  );
+  equal(participantsArray.length, 1, "One participant is being removed");
+  equal(
+    participantsArray[0].QueryInterface(Ci.nsISupportsString).data,
+    "@bar:example.com",
+    "The participant is being removed by its user ID"
+  );
+  equal(room._participants.size, 1, "One participant is left");
+  room.forget();
+});
+
+add_task(function test_highlightForNotifications() {
+  const time = Date.now();
+  const event = makeEvent({
+    type: MatrixSDK.EventType.RoomMessage,
+    time,
+    sender: "@foo:example.com",
+  });
+  const roomStub = getRoom(true, "#test:example.com", {
+    getPushActionsForEvent(eventToProcess) {
+      equal(eventToProcess, event);
+      return {
+        notify: true,
+      };
+    },
+  });
+  const message = roomStub.createMessage("@foo:example.com", "bar", {
+    event,
+  });
+  equal(message.message, "bar");
+  equal(message.who, "@foo:example.com");
+  equal(message.conversation, roomStub);
+  ok(!message.outgoing);
+  ok(message.incoming);
+  equal(message.alias, "foo bar");
+  ok(message.containsNick);
+  roomStub.forget();
+});
+
+add_task(async function test_prepareForDisplayingFormattedHTML() {
+  const time = Date.now();
+  const event = makeEvent({
+    type: MatrixSDK.EventType.RoomMessage,
+    time,
+    sender: "@foo:example.com",
+    content: {
+      msgtype: MatrixSDK.MsgType.Text,
+      format: "org.matrix.custom.html",
+      formatted_body: "<foo>bar</foo>",
+      body: "bar",
+    },
+  });
+  const roomStub = getRoom(true, "#test:example.com");
+
+  const newTextNotification = TestUtils.topicObserved("new-text");
+  roomStub.addEvent(event);
+
+  const [message] = await newTextNotification;
+
+  equal(
+    message.displayMessage,
+    event.getContent().formatted_body,
+    "Formatted body used for display"
+  );
+
+  roomStub.forget();
 });
 
 function waitForNotification(target, expectedTopic) {
-  let promise = new Promise(resolve => {
-    let observer = {
+  const promise = new Promise(resolve => {
+    const observer = {
       observe(subject, topic, data) {
         if (topic === expectedTopic) {
           resolve({ subject, data });

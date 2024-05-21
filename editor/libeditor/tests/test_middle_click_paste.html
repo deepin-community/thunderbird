@@ -224,7 +224,7 @@ async function doTextareaTests(aTextarea) {
   aTextarea.value = "";
 
   let pasteEventCount = 0;
-  function pasteEventLogger(event) {
+  function pasteEventLogger() {
     pasteEventCount++;
   }
   aTextarea.addEventListener("paste", pasteEventLogger);
@@ -381,7 +381,7 @@ async function doContenteditableTests(aEditableDiv) {
   aEditableDiv.innerHTML = "";
 
   let pasteEventCount = 0;
-  function pasteEventLogger(event) {
+  function pasteEventLogger() {
     pasteEventCount++;
   }
   aEditableDiv.addEventListener("paste", pasteEventLogger);
@@ -660,8 +660,7 @@ async function doNotStartAutoscrollInContentEditable(aEditableDiv) {
 async function doTests() {
   await SpecialPowers.pushPrefEnv({"set": [["middlemouse.paste", true],
                                            ["middlemouse.contentLoadURL", false],
-                                           ["dom.event.clipboardevents.enabled", true],
-                                           ["dom.input_events.beforeinput.enabled", true]]});
+                                           ["dom.event.clipboardevents.enabled", true]]});
   let container = document.getElementById("container");
   container.innerHTML = "<textarea id=\"editor\"></textarea>";
   await doTextareaTests(document.getElementById("editor"));

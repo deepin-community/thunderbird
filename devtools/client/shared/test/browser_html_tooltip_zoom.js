@@ -13,7 +13,7 @@ const TEST_URI = CHROME_URL_ROOT + "doc_html_tooltip.xhtml";
 
 const {
   HTMLTooltip,
-} = require("devtools/client/shared/widgets/tooltip/HTMLTooltip");
+} = require("resource://devtools/client/shared/widgets/tooltip/HTMLTooltip.js");
 
 function getTooltipContent(doc) {
   const div = doc.createElementNS(HTML_NS, "div");
@@ -24,7 +24,7 @@ function getTooltipContent(doc) {
   return div;
 }
 
-add_task(async function() {
+add_task(async function () {
   const { host, doc } = await createHost("window", TEST_URI);
 
   // Creating a window host is not correctly waiting when DevTools run in content frame
@@ -50,7 +50,7 @@ add_task(async function() {
   await onShown;
 
   const menuRect = doc
-    .querySelector(".tooltip-xul-wrapper")
+    .querySelector(".tooltip-xul-wrapper > .tooltip-container")
     .getBoxQuads({ relativeTo: doc })[0]
     .getBounds();
   const anchorRect = doc
@@ -60,10 +60,8 @@ add_task(async function() {
   const xDelta = Math.abs(menuRect.left - anchorRect.left);
   const yDelta = Math.abs(menuRect.top - anchorRect.bottom);
 
-  // This test allow the rounded error and platform's offset.
-  // For detail, see the devtools/client/framework/test/browser_toolbox_zoom_popup.js
-  ok(xDelta < 2, "xDelta is lower than 2: " + xDelta + ".");
-  ok(yDelta < 6, "yDelta is lower than 6: " + yDelta + ".");
+  Assert.less(xDelta, 1, "xDelta: " + xDelta + ".");
+  Assert.less(yDelta, 1, "yDelta: " + yDelta + ".");
 
   info("Hide the tooltip and check the expected events are fired.");
 

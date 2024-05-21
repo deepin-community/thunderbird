@@ -3,11 +3,13 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 function ok(a, msg) {
   postMessage({ type: "status", status: !!a, msg });
 }
 
-onmessage = function(event) {
+onmessage = function (event) {
   function getResponse(url) {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, false);
@@ -22,7 +24,7 @@ onmessage = function(event) {
 
   var response_count = 0;
   var xhr = new XMLHttpRequest();
-  xhr.onreadystatechange = function() {
+  xhr.onreadystatechange = function () {
     if (xhr.readyState == xhr.DONE && xhr.status == 200) {
       response_count++;
       switch (response_count) {
@@ -41,7 +43,7 @@ onmessage = function(event) {
       }
     }
   };
-  xhr.onerror = function(e) {
+  xhr.onerror = function (e) {
     ok(false, "Got an error event: " + e);
     postMessage({ type: "finish" });
   };

@@ -13,6 +13,7 @@
 #include "nsString.h"
 #include "nsTArray.h"
 #include "nsIPrincipal.h"
+#include "nsIReferrerInfo.h"
 #include "prio.h"
 #include "mozilla/Maybe.h"
 
@@ -32,6 +33,7 @@ struct DataStruct {
   const nsCString& GetFlavor() const { return mFlavor; }
   void SetData(nsISupports* aData, bool aIsPrivateData);
   void GetData(nsISupports** aData);
+  void ClearData();
   bool IsDataAvailable() const { return mData || mCacheFD; }
 
  protected:
@@ -81,6 +83,7 @@ class nsTransferable : public nsITransferable {
   nsCOMPtr<nsIPrincipal> mRequestingPrincipal;
   nsContentPolicyType mContentPolicyType;
   nsCOMPtr<nsICookieJarSettings> mCookieJarSettings;
+  nsCOMPtr<nsIReferrerInfo> mReferrerInfo;
 #if DEBUG
   bool mInitialized;
 #endif

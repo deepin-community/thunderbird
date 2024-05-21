@@ -23,18 +23,39 @@ var gInboxListener; // database listener object
 var gHeader; // the current message db header
 var gInboxCount; // the previous number of messages in the Inbox
 var gSubfolderCount; // the previous number of messages in the subfolder
-var gMessage = "draft1"; // message file used as the test message
+var gMessage = "image-attach-test"; // message file used as the test message
 
 // subject of the test message
-var gMessageSubject = "Hello, did you receive my bugmail?";
+var gMessageSubject = "image attach test";
 
 // a string in the body of the test message
-var gMessageInBody = "an HTML message";
+var gMessageInBody = "01234567890test";
 
 // various object references
 var gDbService = Cc["@mozilla.org/msgDatabase/msgDBService;1"].getService(
   Ci.nsIMsgDBService
 );
+
+var gSmtpServerD = setupSmtpServerDaemon();
+
+function setupSmtpServer() {
+  gSmtpServerD.start();
+  var gSmtpServer = localAccountUtils.create_outgoing_server(
+    gSmtpServerD.port,
+    "user",
+    "password",
+    "localhost"
+  );
+  MailServices.accounts.defaultAccount.defaultIdentity.email =
+    "from@tinderbox.invalid";
+  MailServices.accounts.defaultAccount.defaultIdentity.smtpServerKey =
+    gSmtpServer.key;
+
+  registerCleanupFunction(() => {
+    gSmtpServerD.stop();
+    Services.prefs.clearUserPref("mail.forward_message_mode");
+  });
+}
 
 // Definition of tests. The test function name is the filter action
 // being tested, with "Body" appended to tests that use delayed
@@ -43,8 +64,9 @@ var gTestArray = [
   setupIMAPPump,
   // optionally set server parameters, here enabling debug messages
   // function serverParms() {
-  //   IMAPPump.server.setDebugLevel(fsDebugAll);
+  //   IMAPPump.server.setDebugLevel(nsMailServer.debugAll);
   // },
+  setupSmtpServer,
   setupFilters,
   // The initial tests do not result in new messages added.
   async function MoveToFolder() {
@@ -117,7 +139,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
 
     testCounts(false, 0, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Ignored);
   },
   async function KillThreadBody() {
@@ -125,7 +147,7 @@ var gTestArray = [
     await setupTest(gBodyFilter, gAction);
 
     testCounts(false, 0, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Ignored);
   },
   async function KillSubthread() {
@@ -196,7 +218,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
 
     testCounts(true, 1, 1, 1);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Watched);
   },
   async function WatchThreadBody() {
@@ -204,7 +226,7 @@ var gTestArray = [
     await setupTest(gBodyFilter, gAction);
 
     testCounts(true, 1, 1, 1);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Watched);
   },
   async function MarkFlagged() {
@@ -236,22 +258,6 @@ var gTestArray = [
 
     testCounts(true, 1, 1, 1);
     Assert.equal(Ci.nsMsgPriority.highest, gHeader.priority);
-  },
-  async function Label() {
-    gAction.type = Ci.nsMsgFilterAction.Label;
-    gAction.label = 2;
-    await setupTest(gFilter, gAction);
-
-    testCounts(true, 1, 1, 1);
-    Assert.equal(2, gHeader.label);
-  },
-  async function LabelBody() {
-    gAction.type = Ci.nsMsgFilterAction.Label;
-    gAction.label = 3;
-    await setupTest(gBodyFilter, gAction);
-
-    testCounts(true, 1, 1, 1);
-    Assert.equal(3, gHeader.label);
   },
   async function AddTag() {
     gAction.type = Ci.nsMsgFilterAction.AddTag;
@@ -311,6 +317,12 @@ var gTestArray = [
     Assert.equal(gInboxCount + 1, folderCount(IMAPPump.inbox));
     Assert.equal(gSubfolderCount + 1, folderCount(gSubfolder));
   },
+  async function ForwardInline() {
+    return testForward(2);
+  },
+  async function ForwardAsAttachment() {
+    return testForward(0);
+  },
   /**/
   endTest,
 ];
@@ -323,7 +335,7 @@ function run_test() {
 
 function setupFilters() {
   // Create a non-body filter.
-  let filterList = IMAPPump.incomingServer.getFilterList(null);
+  const filterList = IMAPPump.incomingServer.getFilterList(null);
   gFilter = filterList.createFilter("subject");
   let searchTerm = gFilter.createTerm();
   searchTerm.attrib = Subject;
@@ -374,7 +386,7 @@ function setupFilters() {
 
 // basic preparation done for each test
 async function setupTest(aFilter, aAction) {
-  let filterList = IMAPPump.incomingServer.getFilterList(null);
+  const filterList = IMAPPump.incomingServer.getFilterList(null);
   while (filterList.filterCount) {
     filterList.removeFilterAt(0);
   }
@@ -394,9 +406,9 @@ async function setupTest(aFilter, aAction) {
   gInboxListener = new DBListener();
   gDbService.registerPendingListener(IMAPPump.inbox, gInboxListener);
   IMAPPump.mailbox.addMessage(
-    new imapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
   );
-  let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+  const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
   await promiseUrlListener.promise;
   await PromiseTestUtils.promiseDelay(200);
@@ -419,7 +431,7 @@ function endTest() {
 
 // nsIFolderListener implementation
 var FolderListener = {
-  OnItemEvent(aEventFolder, aEvent) {
+  onFolderEvent(aEventFolder, aEvent) {
     dump(
       "received folder event " + aEvent + " folder " + aEventFolder.name + "\n"
     );
@@ -432,7 +444,7 @@ var FolderListener = {
 // in javascript).
 function DBListener() {
   this.counts = {};
-  let counts = this.counts;
+  const counts = this.counts;
   counts.onHdrFlagsChanged = 0;
   counts.onHdrDeleted = 0;
   counts.onHdrAdded = 0;
@@ -465,7 +477,7 @@ DBListener.prototype = {
   onAnnouncerGoingAway(instigator) {
     if (gInboxListener) {
       try {
-        IMAPPump.inbox.msgDatabase.RemoveListener(gInboxListener);
+        IMAPPump.inbox.msgDatabase.removeListener(gInboxListener);
       } catch (e) {
         dump(" listener not found\n");
       }
@@ -498,10 +510,10 @@ DBListener.prototype = {
 // folder counts match the database counts)
 function folderCount(folder) {
   // count using the database
-  let dbCount = [...folder.msgDatabase.EnumerateMessages()].length;
+  const dbCount = [...folder.msgDatabase.enumerateMessages()].length;
 
   // count using the folder
-  let count = folder.getTotalMessages(false);
+  const count = folder.getTotalMessages(false);
 
   // compare the two
   Assert.equal(dbCount, count);
@@ -510,8 +522,8 @@ function folderCount(folder) {
 
 // given a test file, return the file uri spec
 function specForFileName(aFileName) {
-  let file = do_get_file("../../../data/" + aFileName);
-  let msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
+  const file = do_get_file("../../../data/" + aFileName);
+  const msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
   return msgfileuri.spec;
 }
 
@@ -532,11 +544,11 @@ var gPreviousUnread = 0;
 //
 function testCounts(aHasNew, aUnreadDelta, aFolderNewDelta, aDbNewDelta) {
   try {
-    let folderNew = IMAPPump.inbox.getNumNewMessages(false);
-    let hasNew = IMAPPump.inbox.hasNewMessages;
-    let unread = IMAPPump.inbox.getNumUnread(false);
-    let arrayOut = db().getNewList();
-    let dbNew = arrayOut.length;
+    const folderNew = IMAPPump.inbox.getNumNewMessages(false);
+    const hasNew = IMAPPump.inbox.hasNewMessages;
+    const unread = IMAPPump.inbox.getNumUnread(false);
+    const arrayOut = db().getNewList();
+    const dbNew = arrayOut.length;
     dump(
       " hasNew: " +
         hasNew +
@@ -565,4 +577,21 @@ function testCounts(aHasNew, aUnreadDelta, aFolderNewDelta, aDbNewDelta) {
   } catch (e) {
     dump(e);
   }
+}
+
+/**
+ * Test that Ci.nsMsgFilterAction.Forward works.
+ *
+ * @param {number} mode - 0 means forward as attachment, 2 means forward inline.
+ */
+async function testForward(mode) {
+  Services.prefs.setIntPref("mail.forward_message_mode", mode);
+
+  gSmtpServerD.resetTest();
+  gAction.type = Ci.nsMsgFilterAction.Forward;
+  gAction.strValue = "to@local";
+  await setupTest(gFilter, gAction);
+  const msgData = gSmtpServerD._daemon.post;
+  Assert.ok(msgData.includes(`Subject: Fwd: ${gMessageSubject}`));
+  Assert.ok(msgData.includes(`${gMessageInBody}`));
 }

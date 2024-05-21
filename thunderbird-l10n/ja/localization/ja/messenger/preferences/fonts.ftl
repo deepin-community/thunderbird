@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+fonts-dialog-title = フォント
 fonts-window-close =
     .key = w
 # Variables:
@@ -10,8 +11,6 @@ fonts-label-default =
     .label = 既定 ({ $name })
 fonts-label-default-unnamed =
     .label = 既定
-fonts-encoding-dialog-title =
-    .title = フォントと文字エンコーディング
 fonts-language-legend =
     .value = 対象言語:
     .accesskey = t

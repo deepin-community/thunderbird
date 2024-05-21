@@ -1,3 +1,5 @@
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 const RANGE_1 = 1;
 const RANGE_2 = 2;
 
@@ -76,7 +78,7 @@ function testBlob(file, contents, testName) {
       .then(() => {
         return new Promise(resolve => {
           let xhr = new XMLHttpRequest();
-          xhr.onload = function(event) {
+          xhr.onload = function (event) {
             checkMPSubmission(JSON.parse(event.target.responseText), [
               { name: "hello", value: "world" },
               {
@@ -104,7 +106,7 @@ function testBlob(file, contents, testName) {
           let xhr = new XMLHttpRequest();
           xhr.open("POST", "../../../dom/xhr/tests/file_XHRSendData.sjs");
 
-          xhr.onload = function(event) {
+          xhr.onload = function (event) {
             is(
               event.target.getResponseHeader("Result-Content-Type"),
               file.type ? file.type : null,
@@ -206,7 +208,7 @@ function testSlice(file, size, type, contents, fileType, range) {
   }
 
   function runNextTest() {
-    if (indexes.length == 0) {
+    if (!indexes.length) {
       return Promise.resolve(true);
     }
 

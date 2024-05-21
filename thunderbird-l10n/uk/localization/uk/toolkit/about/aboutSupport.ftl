@@ -18,6 +18,10 @@ support-addons-type = Тип
 support-addons-enabled = Увімкнено
 support-addons-version = Версія
 support-addons-id = ID
+legacy-user-stylesheets-title = Застарілі користувацькі таблиці стилів
+legacy-user-stylesheets-enabled = Активні
+legacy-user-stylesheets-stylesheet-types = Таблиці стилів
+legacy-user-stylesheets-no-stylesheets-found = Таблиці стилів не знайдено
 security-software-title = Програмне забезпечення для захисту
 security-software-type = Тип
 security-software-name = Назва
@@ -61,7 +65,7 @@ app-basics-os-theme = Тема ОС
 # Rosetta is Apple's translation process to run apps containing x86_64
 # instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Перекладено Rosetta
-app-basics-memory-use = Використання пам’яті
+app-basics-memory-use = Використання пам'яті
 app-basics-performance = Швидкодія
 app-basics-service-workers = Зареєстровані Service Workers
 app-basics-third-party = Сторонні модулі
@@ -75,6 +79,13 @@ app-basics-location-service-key-google = Ключ служби Google Location
 app-basics-safebrowsing-key-google = Ключ Google Safebrowsing
 app-basics-key-mozilla = Ключ Служби визначення розташування від Mozilla
 app-basics-safe-mode = Безпечний режим
+app-basics-memory-size = Обсяг пам'яті (RAM)
+app-basics-disk-available = Доступний простір на диску
+app-basics-pointing-devices = Вказівні пристрої
+# Variables:
+#   $value (number) - Amount of data being stored
+#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Показати у Finder
@@ -104,11 +115,21 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Журнал рішень
 graphics-crash-guards-title = Можливості, вимкнені захистом від збоїв
 graphics-workarounds-title = Способи обходу
+graphics-device-pixel-ratios = Піксельне співвідношення вікна пристрою
 # Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Віконний протокол
 # Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Середовище робочого столу
 place-database-title = База даних Places
+place-database-stats = Статистика
+place-database-stats-show = Показати статистику
+place-database-stats-hide = Приховати статистику
+place-database-stats-entity = Об'єкт
+place-database-stats-count = Кількість
+place-database-stats-size-kib = Розмір (КіБ)
+place-database-stats-size-perc = Розмір (%)
+place-database-stats-efficiency-perc = Ефективність (%)
+place-database-stats-sequentiality-perc = Послідовність (%)
 place-database-integrity = Цілісність
 place-database-verify-integrity = Перевірити цілісність
 a11y-title = Доступність
@@ -155,8 +176,36 @@ media-device-channels = Канали
 media-device-rate = Частота
 media-device-latency = Затримка
 media-capabilities-title = Медіа-можливості
+media-codec-support-info = Інформація про підтримку кодеків
 # List all the entries of the database.
 media-capabilities-enumerate = Перерахувати базу даних
+
+## Codec support table
+
+media-codec-support-sw-decoding = Програмне декодування
+media-codec-support-hw-decoding = Апаратне декодування
+media-codec-support-codec-name = Назва кодека
+media-codec-support-supported = Підтримується
+media-codec-support-unsupported = Не підтримується
+media-codec-support-error = Інформація про підтримку кодеків недоступна. Повторіть спробу після відтворення медіафайлу.
+media-codec-support-lack-of-extension = Встановити розширення
+
+## Media Content Decryption Modules (CDM)
+## See EME Spec for more explanation for following technical terms
+## https://w3c.github.io/encrypted-media/
+
+media-content-decryption-modules-title = Інформація про модулі дешифрування вмісту
+media-key-system-name = Назва ключової системи
+media-video-robustness = Надійність відео
+media-audio-robustness = Надійність аудіо
+media-cdm-capabilities = Можливості
+# Clear Lead isn't defined in the spec, which means the the first few seconds
+# are not encrypted. It allows playback to start without having to wait for
+# license response, improving video start time and user experience.
+media-cdm-clear-lead = Чистий початок
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = Сумісність з HDCP 2.2
 
 ##
 
@@ -179,7 +228,7 @@ intl-regional-prefs = Регіональні налаштування
 ##
 ## See also https://firefox-source-docs.mozilla.org/remote/
 
-remote-debugging-title = Віддалене зневадження (Протокол Chromium)
+remote-debugging-title = Віддалене налагодження (Протокол Chromium)
 remote-debugging-accepting-connections = Вхідні з'єднання
 remote-debugging-url = URL
 
@@ -231,7 +280,7 @@ text-copied = Текст скопійовано в буфер
 ## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
 
 blocked-driver = Заблоковано для вашої версії графічного драйвера.
-blocked-gfx-card = Заблоковано для вашої відеоплати через нерозв’язані проблеми з драйвером.
+blocked-gfx-card = Заблоковано для вашого графічного процесора через нерозв'язані проблеми з драйвером.
 blocked-os-version = Заблоковано для вашої версії операційної системи.
 blocked-mismatched-version = Заблоковано через невідповідність версії вашого графічного драйвера в реєстрі та DLL.
 # Variables
@@ -241,6 +290,7 @@ try-newer-driver = Заблоковано для вашого графічног
 # there are no good translations, these are only used in about:support
 clear-type-parameters = Параметри ClearType
 compositing = Композиція
+support-font-determination = Інформація про налагодження видимості шрифту
 hardware-h264 = Апаратне декодування H264
 main-thread-no-omtc = головний потік, не OMTC
 yes = Так
@@ -276,6 +326,8 @@ webgl2-renderer = Засіб візуалізації WebGL2
 webgl2-version = WebGL 2 - Версія драйвера
 webgl2-driver-extensions = WebGL 2 - Розширення драйвера
 webgl2-extensions = WebGL 2 - Розширення
+webgpu-default-adapter = Стандартний адаптер WebGPU
+webgpu-fallback-adapter = Запасний адаптер WebGPU
 # Variables
 #   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Заблоковано, у зв'язку з відомими проблемами: <a data-l10n-name="bug-link">звіт { $bugNumber }</a>
@@ -305,6 +357,7 @@ can-sandbox-media = Пісочниця для плагіна медіа
 content-sandbox-level = Рівень пісочниці процесів вмісту
 effective-content-sandbox-level = Ефективний рівень ізоляції процесу вмісту
 content-win32k-lockdown-state = Стан блокування Win32k для процесу вмісту
+support-sandbox-gpu-level = Рівень пісочниці процесів ГП
 sandbox-proc-type-content = вміст
 sandbox-proc-type-file = вміст файлу
 sandbox-proc-type-media-plugin = медіаплагін
@@ -330,7 +383,7 @@ fission-status-experiment-control = Вимкнено експериментом
 fission-status-experiment-treatment = Увімкнено експериментом
 fission-status-disabled-by-e10s-env = Вимкнено середовищем
 fission-status-enabled-by-env = Увімкнено середовищем
-fission-status-disabled-by-safe-mode = Вимкнено безпечним режимом
+fission-status-disabled-by-env = Вимкнено середовищем
 fission-status-enabled-by-default = Увімкнено типово
 fission-status-disabled-by-default = Вимкнено типово
 fission-status-enabled-by-user-pref = Увімкнено користувачем
@@ -376,3 +429,22 @@ support-remote-experiments-see-about-studies = Перегляньте <a data-l1
 support-remote-features-title = Віддалені функції
 support-remote-features-name = Назва
 support-remote-features-status = Стан
+
+## Pointing devices
+
+pointing-device-mouse = Миша
+pointing-device-touchscreen = Сенсорний екран
+pointing-device-pen-digitizer = Цифрові ручки
+pointing-device-none = Немає вказівних пристроїв
+
+## Content Analysis (DLP)
+
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = Аналіз вмісту (DLP)
+content-analysis-active = Активний
+content-analysis-connected-to-agent = Під'єднано до агента
+content-analysis-agent-path = Шлях до агента
+content-analysis-agent-failed-signature-verification = Агент не пройшов перевірку підпису
+content-analysis-request-count = Кількість запитів

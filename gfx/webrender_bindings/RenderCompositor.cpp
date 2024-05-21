@@ -20,9 +20,10 @@
 
 #ifdef XP_WIN
 #  include "mozilla/webrender/RenderCompositorANGLE.h"
+#  include "mozilla/widget/WinCompositorWidget.h"
 #endif
 
-#if defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WAYLAND) || defined(MOZ_X11)
+#if defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WIDGET_GTK)
 #  include "mozilla/webrender/RenderCompositorEGL.h"
 #endif
 
@@ -30,7 +31,7 @@
 #  include "mozilla/webrender/RenderCompositorNative.h"
 #endif
 
-#ifdef XP_MACOSX
+#ifdef XP_DARWIN
 #  include "mozilla/webrender/RenderCompositorNative.h"
 #endif
 
@@ -69,6 +70,13 @@ void wr_compositor_create_external_surface(void* aCompositor,
                                            bool aIsOpaque) {
   RenderCompositor* compositor = static_cast<RenderCompositor*>(aCompositor);
   compositor->CreateExternalSurface(aId, aIsOpaque);
+}
+
+void wr_compositor_create_backdrop_surface(void* aCompositor,
+                                           wr::NativeSurfaceId aId,
+                                           wr::ColorF aColor) {
+  RenderCompositor* compositor = static_cast<RenderCompositor*>(aCompositor);
+  compositor->CreateBackdropSurface(aId, aColor);
 }
 
 void wr_compositor_create_tile(void* aCompositor, wr::NativeSurfaceId aId,
@@ -121,6 +129,12 @@ void wr_compositor_get_capabilities(void* aCompositor,
   compositor->GetCompositorCapabilities(aCaps);
 }
 
+void wr_compositor_get_window_visibility(void* aCompositor,
+                                         WindowVisibility* aVisibility) {
+  RenderCompositor* compositor = static_cast<RenderCompositor*>(aCompositor);
+  compositor->GetWindowVisibility(aVisibility);
+}
+
 void wr_compositor_unbind(void* aCompositor) {
   RenderCompositor* compositor = static_cast<RenderCompositor*>(aCompositor);
   compositor->Unbind();
@@ -154,7 +168,7 @@ void wr_partial_present_compositor_set_buffer_damage_region(
 UniquePtr<RenderCompositor> RenderCompositor::Create(
     const RefPtr<widget::CompositorWidget>& aWidget, nsACString& aError) {
   if (aWidget->GetCompositorOptions().UseSoftwareWebRender()) {
-#ifdef XP_MACOSX
+#ifdef XP_DARWIN
     // Mac uses NativeLayerCA
     if (!gfxPlatform::IsHeadless()) {
       return RenderCompositorNativeSWGL::Create(aWidget, aError);
@@ -191,7 +205,7 @@ UniquePtr<RenderCompositor> RenderCompositor::Create(
   }
 #endif
 
-#if defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WAYLAND) || defined(MOZ_X11)
+#if defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WIDGET_GTK)
   UniquePtr<RenderCompositor> eglCompositor =
       RenderCompositorEGL::Create(aWidget, aError);
   if (eglCompositor) {
@@ -202,7 +216,7 @@ UniquePtr<RenderCompositor> RenderCompositor::Create(
 #if defined(MOZ_WIDGET_ANDROID)
   // RenderCompositorOGL is not used on android
   return nullptr;
-#elif defined(XP_MACOSX)
+#elif defined(XP_DARWIN)
   // Mac uses NativeLayerCA
   return RenderCompositorNativeOGL::Create(aWidget, aError);
 #else
@@ -225,6 +239,17 @@ void RenderCompositor::GetCompositorCapabilities(
   } else {
     aCaps->max_update_rects = 0;
   }
+}
+
+void RenderCompositor::GetWindowVisibility(WindowVisibility* aVisibility) {
+#ifdef XP_WIN
+  auto* widget = mWidget->AsWindows();
+  if (!widget) {
+    return;
+  }
+  aVisibility->size_mode = ToWrWindowSizeMode(widget->GetWindowSizeMode());
+  aVisibility->is_fully_occluded = widget->GetWindowIsFullyOccluded();
+#endif
 }
 
 GLenum RenderCompositor::IsContextLost(bool aForce) {

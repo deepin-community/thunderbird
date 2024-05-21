@@ -2,39 +2,55 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { mailTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MailTestUtils.jsm"
+var { mailTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MailTestUtils.sys.mjs"
 );
-var { MessageGenerator } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MessageGenerator.jsm"
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
 );
-var { fsDebugAll, gThreadManager, nsMailServer } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Maild.jsm"
+var { nsMailServer } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Maild.sys.mjs"
 );
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+// Persistent Listener test functionality
+var { assertPersistentListeners } = ExtensionTestUtils.testAssertions;
 
 ExtensionTestUtils.init(this);
 
 var IS_IMAP = false;
 var IS_NNTP = false;
 
+function formatVCard(strings, ...values) {
+  const arr = [];
+  for (const str of strings) {
+    arr.push(str);
+    arr.push(values.shift());
+  }
+  const lines = arr.join("").split("\n");
+  const indent = lines[1].length - lines[1].trimLeft().length;
+  const outLines = [];
+  for (const line of lines) {
+    if (line.length > 0) {
+      outLines.push(line.substring(indent) + "\r\n");
+    }
+  }
+  return outLines.join("");
+}
+
 function createAccount(type = "none") {
   let account;
 
   if (type == "local") {
-    MailServices.accounts.createLocalMailAccount();
-    account = MailServices.accounts.FindAccountForServer(
-      MailServices.accounts.localFoldersServer
-    );
+    account = MailServices.accounts.createLocalMailAccount();
   } else {
     account = MailServices.accounts.createAccount();
     account.incomingServer = MailServices.accounts.createIncomingServer(
@@ -60,16 +76,29 @@ function createAccount(type = "none") {
 }
 
 function cleanUpAccount(account) {
-  info(`Cleaning up account ${account.toString()}`);
+  const serverKey = account.incomingServer.key;
+  const serverType = account.incomingServer.type;
+  info(
+    `Cleaning up ${serverType} account ${account.key} and server ${serverKey}`
+  );
   MailServices.accounts.removeAccount(account, true);
+
+  try {
+    const server = MailServices.accounts.getIncomingServer(serverKey);
+    if (server) {
+      info(`Cleaning up leftover ${serverType} server ${serverKey}`);
+      MailServices.accounts.removeIncomingServer(server, false);
+    }
+  } catch (e) {}
 }
 
 registerCleanupFunction(() => {
   MailServices.accounts.accounts.forEach(cleanUpAccount);
+  Services.prefs.setStringPref("extensions.webextensions.uuids", "");
 });
 
 function addIdentity(account, email = "xpcshell@localhost") {
-  let identity = MailServices.accounts.createIdentity();
+  const identity = MailServices.accounts.createIdentity();
   identity.email = email;
   account.addIdentity(identity);
   if (!account.defaultIdentity) {
@@ -82,12 +111,12 @@ function addIdentity(account, email = "xpcshell@localhost") {
 async function createSubfolder(parent, name) {
   if (parent.server.type == "nntp") {
     createNewsgroup(name);
-    let account = MailServices.accounts.FindAccountForServer(parent.server);
+    const account = MailServices.accounts.findAccountForServer(parent.server);
     subscribeNewsgroup(account, name);
     return parent.getChildNamed(name);
   }
 
-  let promiseAdded = PromiseTestUtils.promiseFolderAdded(name);
+  const promiseAdded = PromiseTestUtils.promiseFolderAdded(name);
   parent.createSubfolder(name, null);
   await promiseAdded;
   return parent.getChildNamed(name);
@@ -101,7 +130,8 @@ function createMessages(folder, makeMessagesArg) {
     createMessages.messageGenerator = new MessageGenerator();
   }
 
-  let messages = createMessages.messageGenerator.makeMessages(makeMessagesArg);
+  const messages =
+    createMessages.messageGenerator.makeMessages(makeMessagesArg);
   return addGeneratedMessages(folder, messages);
 }
 
@@ -112,20 +142,10 @@ class FakeGeneratedMessage {
   toMessageString() {
     return this.msg;
   }
-  toMboxString() {
-    // A cheap hack. It works for existing uses but may not work for future uses.
-    let fromAddress = this.msg.match(/From: .* <(.*@.*)>/)[0];
-    let mBoxString = `From ${fromAddress}\r\n${this.msg}`;
-    // Ensure a trailing empty line.
-    if (!mBoxString.endsWith("\r\n")) {
-      mBoxString = mBoxString + "\r\n";
-    }
-    return mBoxString;
-  }
 }
 
 async function createMessageFromFile(folder, path) {
-  let message = await IOUtils.readUTF8(path);
+  const message = await IOUtils.readUTF8(path);
   return addGeneratedMessages(folder, [new FakeGeneratedMessage(message)]);
 }
 
@@ -141,7 +161,7 @@ async function addGeneratedMessages(folder, messages) {
     return NNTPServer.addMessages(folder, messages);
   }
 
-  let messageStrings = messages.map(message => message.toMboxString());
+  const messageStrings = messages.map(message => message.toMessageString());
   folder.QueryInterface(Ci.nsIMsgLocalMailFolder);
   folder.addMessageBatch(messageStrings);
   folder.callFilterPlugins(null);
@@ -154,12 +174,13 @@ async function getUtilsJS() {
 
 var IMAPServer = {
   open() {
-    let { imapDaemon, imapMessage, IMAP_RFC3501_handler } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Imapd.jsm"
-    );
-    IMAPServer.imapMessage = imapMessage;
+    const { ImapDaemon, ImapMessage, IMAP_RFC3501_handler } =
+      ChromeUtils.importESModule(
+        "resource://testing-common/mailnews/Imapd.sys.mjs"
+      );
+    IMAPServer.ImapMessage = ImapMessage;
 
-    this.daemon = new imapDaemon();
+    this.daemon = new ImapDaemon();
     this.server = new nsMailServer(
       daemon => new IMAP_RFC3501_handler(daemon),
       this.daemon
@@ -176,15 +197,15 @@ var IMAPServer = {
   },
 
   addMessages(folder, messages) {
-    let fakeFolder = IMAPServer.daemon.getMailbox(folder.name);
+    const fakeFolder = IMAPServer.daemon.getMailbox(folder.name);
     messages.forEach(message => {
       if (typeof message != "string") {
         message = message.toMessageString();
       }
-      let msgURI = Services.io.newURI(
+      const msgURI = Services.io.newURI(
         "data:text/plain;base64," + btoa(message)
       );
-      let imapMsg = new IMAPServer.imapMessage(
+      const imapMsg = new IMAPServer.ImapMessage(
         msgURI.spec,
         fakeFolder.uidnext++,
         []
@@ -212,11 +233,11 @@ function createNewsgroup(group) {
 
 var NNTPServer = {
   open() {
-    let { NNTP_RFC977_handler, nntpDaemon } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Nntpd.jsm"
+    const { NNTP_RFC977_handler, NntpDaemon } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Nntpd.sys.mjs"
     );
 
-    this.daemon = new nntpDaemon();
+    this.daemon = new NntpDaemon();
     this.server = new nsMailServer(
       daemon => new NNTP_RFC977_handler(daemon),
       this.daemon
@@ -242,11 +263,11 @@ var NNTPServer = {
   },
 
   addMessages(folder, messages) {
-    let { newsArticle } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Nntpd.jsm"
+    const { NewsArticle } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Nntpd.sys.mjs"
     );
 
-    let group = folder.name;
+    const group = folder.name;
     messages.forEach(message => {
       if (typeof message != "string") {
         message = message.toMessageString();
@@ -255,7 +276,7 @@ var NNTPServer = {
       if (!message.endsWith("\r\n")) {
         message = message + "\r\n";
       }
-      let article = new newsArticle(message);
+      const article = new NewsArticle(message);
       article.groups = [group];
       this.daemon.addArticle(article);
     });

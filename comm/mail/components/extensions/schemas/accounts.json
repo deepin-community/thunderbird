@@ -7,9 +7,7 @@
         "choices": [
           {
             "type": "string",
-            "enum": [
-              "accountsRead"
-            ]
+            "enum": ["accountsRead"]
           }
         ]
       }
@@ -17,9 +15,7 @@
   },
   {
     "namespace": "accounts",
-    "permissions": [
-      "accountsRead"
-    ],
+    "permissions": ["accountsRead"],
     "types": [
       {
         "id": "MailAccount",
@@ -27,7 +23,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
+            "$ref": "MailAccountId",
             "description": "A unique identifier for this account."
           },
           "name": {
@@ -36,15 +32,21 @@
           },
           "type": {
             "type": "string",
-            "description": "What sort of account this is, e.g. ``imap``, ``nntp``, or ``pop3``."
+            "description": "What sort of account this is, e.g. <value>imap</value>, <value>nntp</value>, or <value>pop3</value>."
           },
           "folders": {
+            "max_manifest_version": 2,
             "type": "array",
             "optional": true,
             "description": "The folders for this account are only included if requested.",
             "items": {
               "$ref": "folders.MailFolder"
             }
+          },
+          "rootFolder": {
+            "$ref": "folders.MailFolder",
+            "optional": true,
+            "description": "The root folder associated with this account."
           },
           "identities": {
             "type": "array",
@@ -54,18 +56,23 @@
             }
           }
         }
+      },
+      {
+        "id": "MailAccountId",
+        "type": "string",
+        "description": "A unique id representing a :ref:`accounts.MailAccount`."
       }
     ],
     "functions": [
       {
         "name": "list",
         "type": "function",
-        "description": "Returns all mail accounts.",
+        "description": "Returns all mail accounts. They will be returned in the same order as used in Thunderbird's folder pane.",
         "async": "callback",
         "parameters": [
           {
             "name": "includeFolders",
-            "description": "Specifies whether the returned :ref:`accounts.MailAccount` objects should included their account's folders. Defaults to ``true``.",
+            "description": "Specifies whether the returned :ref:`accounts.MailAccount` objects should included their account's folders. Defaults to <value>true</value>.",
             "optional": true,
             "default": true,
             "type": "boolean"
@@ -88,16 +95,16 @@
       {
         "name": "get",
         "type": "function",
-        "description": "Returns details of the requested account, or null if it doesn't exist.",
+        "description": "Returns details of the requested account, or <value>null</value> if it doesn't exist.",
         "async": "callback",
         "parameters": [
           {
             "name": "accountId",
-            "type": "string"
+            "$ref": "MailAccountId"
           },
           {
             "name": "includeFolders",
-            "description": "Specifies whether the returned :ref:`accounts.MailAccount` object should included the account's folders. Defaults to ``true``.",
+            "description": "Specifies whether the returned :ref:`accounts.MailAccount` object should included the account's folders. Defaults to <value>true</value>.",
             "optional": true,
             "default": true,
             "type": "boolean"
@@ -118,12 +125,12 @@
       {
         "name": "getDefault",
         "type": "function",
-        "description": "Returns the default account, or null if it is not defined.",
+        "description": "Returns the default account, or <value>null</value> if it is not defined.",
         "async": "callback",
         "parameters": [
           {
             "name": "includeFolders",
-            "description": "Specifies whether the returned :ref:`accounts.MailAccount` object should included the account's folders. Defaults to ``true``.",
+            "description": "Specifies whether the returned :ref:`accounts.MailAccount` object should included the account's folders. Defaults to <value>true</value>.",
             "optional": true,
             "default": true,
             "type": "boolean"
@@ -146,11 +153,12 @@
         "type": "function",
         "description": "Sets the default identity for an account.",
         "async": true,
-        "deprecated": "This will be removed. Use :ref:`identities.setDefault` instead.",
+        "max_manifest_version": 2,
+        "deprecated": "Deprecated since Thunderbird 91 and removed in Manifest V3: accounts.setDefaultIdentity() is now available as identities.setDefault.",
         "parameters": [
           {
             "name": "accountId",
-            "type": "string"
+            "$ref": "MailAccountId"
           },
           {
             "name": "identityId",
@@ -161,13 +169,14 @@
       {
         "name": "getDefaultIdentity",
         "type": "function",
-        "description": "Returns the default identity for an account, or null if it is not defined.",
+        "description": "Returns the default identity for an account, or <value>null</value> if it is not defined.",
         "async": "callback",
-        "deprecated": "This will be removed. Use :ref:`identities.getDefault` instead.",
+        "max_manifest_version": 2,
+        "deprecated": "Deprecated since Thunderbird 91 and removed in Manifest V3: accounts.getDefaultIdentity() is now available as identities.getDefault.",
         "parameters": [
           {
             "name": "accountId",
-            "type": "string"
+            "$ref": "MailAccountId"
           },
           {
             "type": "function",
@@ -178,6 +187,59 @@
                 "$ref": "identities.MailIdentity"
               }
             ]
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "name": "onCreated",
+        "type": "function",
+        "description": "Fired when a new account has been created.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "$ref": "MailAccountId"
+          },
+          {
+            "name": "account",
+            "$ref": "MailAccount"
+          }
+        ]
+      },
+      {
+        "name": "onDeleted",
+        "type": "function",
+        "description": "Fired when an account has been removed.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "$ref": "MailAccountId"
+          }
+        ]
+      },
+      {
+        "name": "onUpdated",
+        "type": "function",
+        "description": "Fired when a property of an account has been modified. Folders and identities of accounts are not monitored by this event, use the dedicated folder and identity events instead. A changed ``defaultIdentity`` is reported only after a different identity has been assigned as default identity, but not after a property of the default identity has been changed.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "$ref": "MailAccountId"
+          },
+          {
+            "name": "changedValues",
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The human-friendly name of this account."
+              },
+              "defaultIdentity": {
+                "$ref": "identities.MailIdentity",
+                "description": "The default identity of this account."
+              }
+            }
           }
         ]
       }

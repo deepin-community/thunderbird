@@ -8,16 +8,10 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Downloads",
-  "resource://gre/modules/Downloads.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "DownloadUtils",
-  "resource://gre/modules/DownloadUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  Downloads: "resource://gre/modules/Downloads.sys.mjs",
+  DownloadUtils: "resource://gre/modules/DownloadUtils.sys.mjs",
+});
 
 window.addEventListener("load", event => {
   DownloadsView.init();
@@ -32,18 +26,18 @@ var DownloadsView = {
 
     Downloads.getList(Downloads.ALL)
       .then(list => list.addView(this))
-      .then(null, Cu.reportError);
+      .catch(console.error);
 
     window.addEventListener("unload", aEvent => {
       Downloads.getList(Downloads.ALL)
         .then(list => list.removeView(this))
-        .then(null, Cu.reportError);
+        .catch(console.error);
       window.controllers.removeController(this);
     });
   },
 
   insertOrMoveItem(aItem) {
-    let compare = (a, b) => {
+    const compare = (a, b) => {
       // active downloads always before stopped downloads
       if (a.stopped != b.stopped) {
         return b.stopped ? -1 : 1;
@@ -60,11 +54,11 @@ var DownloadsView = {
   },
 
   onDownloadAdded(aDownload) {
-    let isPurgedFromDisk = download => {
+    const isPurgedFromDisk = download => {
       if (!download.succeeded) {
         return false;
       }
-      let targetFile = Cc["@mozilla.org/file/local;1"].createInstance(
+      const targetFile = Cc["@mozilla.org/file/local;1"].createInstance(
         Ci.nsIFile
       );
       targetFile.initWithPath(download.target.path);
@@ -75,15 +69,15 @@ var DownloadsView = {
       return;
     }
 
-    let item = new DownloadItem(aDownload);
+    const item = new DownloadItem(aDownload);
     this.items.set(aDownload, item);
     this.insertOrMoveItem(item);
   },
 
   onDownloadChanged(aDownload) {
-    let item = this.items.get(aDownload);
+    const item = this.items.get(aDownload);
     if (!item) {
-      Cu.reportError("No DownloadItem found for download");
+      console.error("No DownloadItem found for download");
       return;
     }
 
@@ -95,9 +89,9 @@ var DownloadsView = {
   },
 
   onDownloadRemoved(aDownload) {
-    let item = this.items.get(aDownload);
+    const item = this.items.get(aDownload);
     if (!item) {
-      Cu.reportError("No DownloadItem found for download");
+      console.error("No DownloadItem found for download");
       return;
     }
 
@@ -112,13 +106,15 @@ var DownloadsView = {
   clearDownloads() {
     Downloads.getList(Downloads.ALL)
       .then(list => list.removeFinished())
-      .then(null, Cu.reportError);
+      .catch(console.error);
   },
 
   searchDownloads() {
-    let searchString = document.getElementById("searchBox").value.toLowerCase();
+    const searchString = document
+      .getElementById("searchBox")
+      .value.toLowerCase();
     for (let i = 0; i < this.listElement.itemCount; i++) {
-      let downloadElem = this.listElement.getItemAtIndex(i);
+      const downloadElem = this.listElement.getItemAtIndex(i);
       downloadElem.collapsed = !downloadElem.downloadItem.fileName
         .toLowerCase()
         .includes(searchString);
@@ -142,7 +138,7 @@ var DownloadsView = {
         return true;
     }
 
-    let element = this.listElement.selectedItem;
+    const element = this.listElement.selectedItem;
     if (element) {
       return element.downloadItem.isCommandEnabled(aCommand);
     }
@@ -164,7 +160,7 @@ var DownloadsView = {
       return;
     }
 
-    for (let element of this.listElement.selectedItems) {
+    for (const element of this.listElement.selectedItems) {
       element.downloadItem.doCommand(aCommand);
     }
   },
@@ -219,13 +215,13 @@ DownloadItem.prototype = {
 
   _updateFromDownload() {
     this._state = {};
-    for (let name of kDownloadStatePropertyNames) {
+    for (const name of kDownloadStatePropertyNames) {
       this._state[name] = this._download[name];
     }
   },
 
   get stateChanged() {
-    for (let name of kDownloadStatePropertyNames) {
+    for (const name of kDownloadStatePropertyNames) {
       if (this._state[name] != this._download[name]) {
         return true;
       }
@@ -246,32 +242,33 @@ DownloadItem.prototype = {
   },
 
   createXULElement() {
-    let element = document.createXULElement("richlistitem");
+    const element = document.createXULElement("richlistitem");
     element.classList.add("download");
     element.setAttribute("align", "center");
 
-    let image = document.createXULElement("image");
-    image.setAttribute("validate", "always");
-    image.classList.add("fileTypeIcon");
+    const image = document.createElement("img");
+    image.setAttribute("alt", "");
+    // Allow the given src to be invalid.
+    image.classList.add("fileTypeIcon", "invisible-on-broken");
 
-    let vbox = document.createXULElement("vbox");
+    const vbox = document.createXULElement("vbox");
     vbox.setAttribute("pack", "center");
     vbox.setAttribute("flex", "1");
 
-    let hbox = document.createXULElement("hbox");
-    let hbox2 = document.createXULElement("hbox");
+    const hbox = document.createXULElement("hbox");
+    const hbox2 = document.createXULElement("hbox");
 
-    let sender = document.createXULElement("description");
+    const sender = document.createXULElement("description");
     sender.classList.add("sender");
 
-    let fileName = document.createXULElement("description");
+    const fileName = document.createXULElement("description");
     fileName.setAttribute("crop", "center");
     fileName.classList.add("fileName");
 
-    let size = document.createXULElement("description");
+    const size = document.createXULElement("description");
     size.classList.add("size");
 
-    let startDate = document.createXULElement("description");
+    const startDate = document.createXULElement("description");
     startDate.setAttribute("crop", "end");
     startDate.classList.add("startDate");
 
@@ -283,9 +280,9 @@ DownloadItem.prototype = {
     vbox.appendChild(hbox);
     vbox.appendChild(hbox2);
 
-    let vbox2 = document.createXULElement("vbox");
+    const vbox2 = document.createXULElement("vbox");
 
-    let downloadButton = document.createXULElement("button");
+    const downloadButton = document.createXULElement("button");
     downloadButton.classList.add("downloadButton", "downloadIconShow");
 
     vbox2.appendChild(downloadButton);
@@ -310,29 +307,29 @@ DownloadItem.prototype = {
   },
 
   updateElement(element) {
-    let fileTypeIcon = element.querySelector(".fileTypeIcon");
+    const fileTypeIcon = element.querySelector(".fileTypeIcon");
     fileTypeIcon.setAttribute("src", this.iconUrl);
 
-    let size = element.querySelector(".size");
+    const size = element.querySelector(".size");
     size.setAttribute("value", this.size);
     size.setAttribute("tooltiptext", this.size);
 
-    let fileName = element.querySelector(".fileName");
+    const fileName = element.querySelector(".fileName");
     fileName.setAttribute("value", this.fileName);
     fileName.setAttribute("tooltiptext", this.fileName);
 
-    let sender = element.querySelector(".sender");
+    const sender = element.querySelector(".sender");
     sender.setAttribute("value", this.sender);
     sender.setAttribute("tooltiptext", this.sender);
 
-    let startDate = element.querySelector(".startDate");
+    const startDate = element.querySelector(".startDate");
     startDate.setAttribute("value", this.startDate);
     startDate.setAttribute("tooltiptext", this.startDate);
   },
 
   launch() {
     if (this.download.succeeded) {
-      this.download.launch().then(null, Cu.reportError);
+      this.download.launch().catch(console.error);
     }
   },
 
@@ -340,12 +337,12 @@ DownloadItem.prototype = {
     Downloads.getList(Downloads.ALL)
       .then(list => list.remove(this.download))
       .then(() => this.download.finalize(true))
-      .then(null, Cu.reportError);
+      .catch(console.error);
   },
 
   show() {
     if (this.download.succeeded) {
-      let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+      const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
       file.initWithPath(this._filePath);
       file.reveal();
     }

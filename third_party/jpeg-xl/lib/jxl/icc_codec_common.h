@@ -8,50 +8,51 @@
 
 // Compressed representation of ICC profiles.
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
-#include "lib/jxl/base/padded_bytes.h"
+#include "lib/jxl/base/span.h"
 #include "lib/jxl/base/status.h"
 
 namespace jxl {
+
+class PaddedBytes;
 
 static constexpr size_t kICCHeaderSize = 128;
 
 typedef std::array<uint8_t, 4> Tag;
 
-static const Tag kAcspTag = {'a', 'c', 's', 'p'};
-static const Tag kBkptTag = {'b', 'k', 'p', 't'};
-static const Tag kBtrcTag = {'b', 'T', 'R', 'C'};
-static const Tag kBxyzTag = {'b', 'X', 'Y', 'Z'};
-static const Tag kChadTag = {'c', 'h', 'a', 'd'};
-static const Tag kChrmTag = {'c', 'h', 'r', 'm'};
-static const Tag kCprtTag = {'c', 'p', 'r', 't'};
-static const Tag kCurvTag = {'c', 'u', 'r', 'v'};
-static const Tag kDescTag = {'d', 'e', 's', 'c'};
-static const Tag kDmddTag = {'d', 'm', 'd', 'd'};
-static const Tag kDmndTag = {'d', 'm', 'n', 'd'};
-static const Tag kGbd_Tag = {'g', 'b', 'd', ' '};
-static const Tag kGtrcTag = {'g', 'T', 'R', 'C'};
-static const Tag kGxyzTag = {'g', 'X', 'Y', 'Z'};
-static const Tag kKtrcTag = {'k', 'T', 'R', 'C'};
-static const Tag kKxyzTag = {'k', 'X', 'Y', 'Z'};
-static const Tag kLumiTag = {'l', 'u', 'm', 'i'};
-static const Tag kMab_Tag = {'m', 'A', 'B', ' '};
-static const Tag kMba_Tag = {'m', 'B', 'A', ' '};
-static const Tag kMlucTag = {'m', 'l', 'u', 'c'};
-static const Tag kMntrTag = {'m', 'n', 't', 'r'};
-static const Tag kParaTag = {'p', 'a', 'r', 'a'};
-static const Tag kRgb_Tag = {'R', 'G', 'B', ' '};
-static const Tag kRtrcTag = {'r', 'T', 'R', 'C'};
-static const Tag kRxyzTag = {'r', 'X', 'Y', 'Z'};
-static const Tag kSf32Tag = {'s', 'f', '3', '2'};
-static const Tag kTextTag = {'t', 'e', 'x', 't'};
-static const Tag kVcgtTag = {'v', 'c', 'g', 't'};
-static const Tag kWtptTag = {'w', 't', 'p', 't'};
-static const Tag kXyz_Tag = {'X', 'Y', 'Z', ' '};
+static const Tag kAcspTag = {{'a', 'c', 's', 'p'}};
+static const Tag kBkptTag = {{'b', 'k', 'p', 't'}};
+static const Tag kBtrcTag = {{'b', 'T', 'R', 'C'}};
+static const Tag kBxyzTag = {{'b', 'X', 'Y', 'Z'}};
+static const Tag kChadTag = {{'c', 'h', 'a', 'd'}};
+static const Tag kChrmTag = {{'c', 'h', 'r', 'm'}};
+static const Tag kCprtTag = {{'c', 'p', 'r', 't'}};
+static const Tag kCurvTag = {{'c', 'u', 'r', 'v'}};
+static const Tag kDescTag = {{'d', 'e', 's', 'c'}};
+static const Tag kDmddTag = {{'d', 'm', 'd', 'd'}};
+static const Tag kDmndTag = {{'d', 'm', 'n', 'd'}};
+static const Tag kGbd_Tag = {{'g', 'b', 'd', ' '}};
+static const Tag kGtrcTag = {{'g', 'T', 'R', 'C'}};
+static const Tag kGxyzTag = {{'g', 'X', 'Y', 'Z'}};
+static const Tag kKtrcTag = {{'k', 'T', 'R', 'C'}};
+static const Tag kKxyzTag = {{'k', 'X', 'Y', 'Z'}};
+static const Tag kLumiTag = {{'l', 'u', 'm', 'i'}};
+static const Tag kMab_Tag = {{'m', 'A', 'B', ' '}};
+static const Tag kMba_Tag = {{'m', 'B', 'A', ' '}};
+static const Tag kMlucTag = {{'m', 'l', 'u', 'c'}};
+static const Tag kMntrTag = {{'m', 'n', 't', 'r'}};
+static const Tag kParaTag = {{'p', 'a', 'r', 'a'}};
+static const Tag kRgb_Tag = {{'R', 'G', 'B', ' '}};
+static const Tag kRtrcTag = {{'r', 'T', 'R', 'C'}};
+static const Tag kRxyzTag = {{'r', 'X', 'Y', 'Z'}};
+static const Tag kSf32Tag = {{'s', 'f', '3', '2'}};
+static const Tag kTextTag = {{'t', 'e', 'x', 't'}};
+static const Tag kVcgtTag = {{'v', 'c', 'g', 't'}};
+static const Tag kWtptTag = {{'w', 't', 'p', 't'}};
+static const Tag kXyz_Tag = {{'X', 'Y', 'Z', ' '}};
 
 // Tag names focused on RGB and GRAY monitor profiles
 static constexpr size_t kNumTagStrings = 17;
@@ -91,10 +92,10 @@ void EncodeKeyword(const Tag& keyword, uint8_t* data, size_t size, size_t pos);
 void AppendKeyword(const Tag& keyword, PaddedBytes* data);
 
 // Checks if a + b > size, taking possible integer overflow into account.
-Status CheckOutOfBounds(size_t a, size_t b, size_t size);
+Status CheckOutOfBounds(uint64_t a, uint64_t b, uint64_t size);
 Status CheckIs32Bit(uint64_t v);
 
-PaddedBytes ICCInitialHeaderPrediction();
+Span<const uint8_t> ICCInitialHeaderPrediction();
 void ICCPredictHeader(const uint8_t* icc, size_t size, uint8_t* header,
                       size_t pos);
 uint8_t LinearPredictICCValue(const uint8_t* data, size_t start, size_t i,

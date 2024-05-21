@@ -8,29 +8,27 @@
 
 #include "mozilla/BinarySearch.h"
 #include "mozilla/CheckedInt.h"
-#include "mozilla/IntegerPrintfMacros.h"
-#include "mozilla/ScopeExit.h"
 
 #include <utility>
 
 #include "jit/BaselineIC.h"
+#include "jit/BaselineJIT.h"
 #include "jit/BytecodeAnalysis.h"
 #include "jit/IonScript.h"
 #include "jit/JitFrames.h"
+#include "jit/JitSpewer.h"
 #include "jit/ScriptFromCalleeToken.h"
-#include "util/Memory.h"
-#include "vm/BytecodeIterator.h"
-#include "vm/BytecodeLocation.h"
+#include "jit/TrialInlining.h"
+#include "js/ColumnNumber.h"  // JS::LimitedColumnNumberOneOrigin
 #include "vm/BytecodeUtil.h"
+#include "vm/Compartment.h"
 #include "vm/FrameIter.h"  // js::OnlyJSJitFrameIter
+#include "vm/JitActivation.h"
 #include "vm/JSScript.h"
-#include "vm/Stack.h"
-#include "wasm/WasmInstance.h"
 
-#include "gc/FreeOp-inl.h"
+#include "gc/GCContext-inl.h"
 #include "jit/JSJitFrameIter-inl.h"
-#include "vm/BytecodeIterator-inl.h"
-#include "vm/BytecodeLocation-inl.h"
+#include "vm/JSContext-inl.h"
 #include "vm/JSScript-inl.h"
 
 using namespace js;
@@ -41,11 +39,12 @@ using mozilla::CheckedInt;
 JitScript::JitScript(JSScript* script, Offset fallbackStubsOffset,
                      Offset endOffset, const char* profileString)
     : profileString_(profileString),
+      owningScript_(script),
       endOffset_(endOffset),
       icScript_(script->getWarmUpCount(),
                 fallbackStubsOffset - offsetOfICScript(),
                 endOffset - offsetOfICScript(),
-                /*depth=*/0) {
+                /*depth=*/0, script->length()) {
   // Ensure the baselineScript_ and ionScript_ fields match the BaselineDisabled
   // and IonDisabled script flags.
   if (!script->canBaselineCompile()) {
@@ -55,6 +54,24 @@ JitScript::JitScript(JSScript* script, Offset fallbackStubsOffset,
     setIonScriptImpl(script, IonDisabledScriptPtr);
   }
 }
+
+ICScript::~ICScript() {
+  // The contents of the AllocSite LifoAlloc are removed and freed separately
+  // after the next minor GC. See prepareForDestruction.
+  MOZ_ASSERT(allocSitesSpace_.isEmpty());
+}
+
+#ifdef DEBUG
+JitScript::~JitScript() {
+  // BaselineScript and IonScript must have been destroyed at this point.
+  MOZ_ASSERT(!hasBaselineScript());
+  MOZ_ASSERT(!hasIonScript());
+
+  MOZ_ASSERT(!isInList());
+}
+#else
+JitScript::~JitScript() = default;
+#endif
 
 bool JSScript::createJitScript(JSContext* cx) {
   MOZ_ASSERT(!hasJitScript());
@@ -109,6 +126,8 @@ bool JSScript::createJitScript(JSContext* cx) {
 
   jitScript->icScript()->initICEntries(cx, this);
 
+  cx->zone()->jitZone()->registerJitScript(jitScript.get());
+
   warmUpData_.initJitScript(jitScript.release());
   AddCellMemory(this, allocSize.value(), MemoryUse::JitScript);
 
@@ -119,50 +138,48 @@ bool JSScript::createJitScript(JSContext* cx) {
   return true;
 }
 
-void JSScript::maybeReleaseJitScript(JSFreeOp* fop) {
+void JSScript::maybeReleaseJitScript(JS::GCContext* gcx) {
   MOZ_ASSERT(hasJitScript());
 
   if (zone()->jitZone()->keepJitScripts() || jitScript()->hasBaselineScript() ||
-      jitScript()->active()) {
+      jitScript()->icScript()->active()) {
     return;
   }
 
-  releaseJitScript(fop);
+  releaseJitScript(gcx);
 }
 
-void JSScript::releaseJitScript(JSFreeOp* fop) {
+void JSScript::releaseJitScript(JS::GCContext* gcx) {
   MOZ_ASSERT(hasJitScript());
   MOZ_ASSERT(!hasBaselineScript());
   MOZ_ASSERT(!hasIonScript());
 
-  fop->removeCellMemory(this, jitScript()->allocBytes(), MemoryUse::JitScript);
+  gcx->removeCellMemory(this, jitScript()->allocBytes(), MemoryUse::JitScript);
 
   JitScript::Destroy(zone(), jitScript());
   warmUpData_.clearJitScript();
-  updateJitCodeRaw(fop->runtime());
+  updateJitCodeRaw(gcx->runtime());
 }
 
-void JSScript::releaseJitScriptOnFinalize(JSFreeOp* fop) {
+void JSScript::releaseJitScriptOnFinalize(JS::GCContext* gcx) {
   MOZ_ASSERT(hasJitScript());
 
   if (hasIonScript()) {
-    IonScript* ion = jitScript()->clearIonScript(fop, this);
-    jit::IonScript::Destroy(fop, ion);
+    IonScript* ion = jitScript()->clearIonScript(gcx, this);
+    jit::IonScript::Destroy(gcx, ion);
   }
 
   if (hasBaselineScript()) {
-    BaselineScript* baseline = jitScript()->clearBaselineScript(fop, this);
-    jit::BaselineScript::Destroy(fop, baseline);
+    BaselineScript* baseline = jitScript()->clearBaselineScript(gcx, this);
+    jit::BaselineScript::Destroy(gcx, baseline);
   }
 
-  releaseJitScript(fop);
-}
-
-void JitScript::CachedIonData::trace(JSTracer* trc) {
-  TraceNullableEdge(trc, &templateEnv, "jitscript-iondata-template-env");
+  releaseJitScript(gcx);
 }
 
 void JitScript::trace(JSTracer* trc) {
+  TraceEdge(trc, &owningScript_, "JitScript::owningScript_");
+
   icScript_.trace(trc);
 
   if (hasBaselineScript()) {
@@ -173,12 +190,28 @@ void JitScript::trace(JSTracer* trc) {
     ionScript()->trace(trc);
   }
 
-  if (hasCachedIonData()) {
-    cachedIonData().trace(trc);
+  if (templateEnv_.isSome()) {
+    TraceNullableEdge(trc, templateEnv_.ptr(), "jitscript-template-env");
   }
 
   if (hasInliningRoot()) {
     inliningRoot()->trace(trc);
+  }
+}
+
+void JitScript::traceWeak(JSTracer* trc) {
+  if (!icScript_.traceWeak(trc)) {
+    notePurgedStubs();
+  }
+
+  if (hasInliningRoot()) {
+    if (!inliningRoot()->traceWeak(trc)) {
+      notePurgedStubs();
+    }
+  }
+
+  if (hasIonScript()) {
+    ionScript()->traceWeak(trc);
   }
 }
 
@@ -188,6 +221,23 @@ void ICScript::trace(JSTracer* trc) {
     ICEntry& ent = icEntry(i);
     ent.trace(trc);
   }
+
+  for (gc::AllocSite* site : allocSites_) {
+    site->trace(trc);
+  }
+}
+
+bool ICScript::traceWeak(JSTracer* trc) {
+  // Mark all IC stub codes hanging off the IC stub entries.
+  bool allSurvived = true;
+  for (size_t i = 0; i < numICEntries(); i++) {
+    ICEntry& ent = icEntry(i);
+    if (!ent.traceWeak(trc)) {
+      allSurvived = false;
+    }
+  }
+
+  return allSurvived;
 }
 
 bool ICScript::addInlinedChild(JSContext* cx, UniquePtr<ICScript> child,
@@ -242,11 +292,44 @@ bool ICScript::hasInlinedChild(uint32_t pcOffset) {
   return false;
 }
 
-void JitScript::resetWarmUpCount(uint32_t count) {
-  icScript_.resetWarmUpCount(count);
-  if (hasInliningRoot()) {
-    inliningRoot()->resetWarmUpCounts(count);
+void ICScript::purgeInactiveICScripts() {
+  MOZ_ASSERT(inliningRoot());
+
+  if (!inlinedChildren_) {
+    return;
   }
+
+  inlinedChildren_->eraseIf(
+      [](const CallSite& callsite) { return !callsite.callee_->active(); });
+
+  if (inlinedChildren_->empty()) {
+    inlinedChildren_.reset();
+    return;
+  }
+
+  // We have an active callee ICScript. This means the current ICScript must be
+  // active too.
+  MOZ_ASSERT(active());
+}
+
+void JitScript::resetWarmUpCount(uint32_t count) {
+  forEachICScript([&](ICScript* script) { script->resetWarmUpCount(count); });
+}
+
+#ifdef DEBUG
+bool JitScript::hasActiveICScript() const {
+  bool hasActive = false;
+  forEachICScript([&](const ICScript* script) {
+    if (script->active()) {
+      hasActive = true;
+    }
+  });
+  return hasActive;
+}
+#endif
+
+void JitScript::resetAllActiveFlags() {
+  forEachICScript([](ICScript* script) { script->resetActive(); });
 }
 
 void JitScript::ensureProfileString(JSContext* cx, JSScript* script) {
@@ -267,7 +350,46 @@ void JitScript::ensureProfileString(JSContext* cx, JSScript* script) {
 void JitScript::Destroy(Zone* zone, JitScript* script) {
   script->prepareForDestruction(zone);
 
+  // Remove from JitZone's linked list of JitScripts.
+  script->remove();
+
   js_delete(script);
+}
+
+template <typename F>
+void JitScript::forEachICScript(const F& f) {
+  f(&icScript_);
+  if (hasInliningRoot()) {
+    inliningRoot()->forEachInlinedScript(f);
+  }
+}
+
+template <typename F>
+void JitScript::forEachICScript(const F& f) const {
+  f(&icScript_);
+  if (hasInliningRoot()) {
+    inliningRoot()->forEachInlinedScript(f);
+  }
+}
+
+void ICScript::prepareForDestruction(Zone* zone) {
+  // Defer freeing AllocSite memory until after the next minor GC, because the
+  // nursery can point to these alloc sites.
+  JSRuntime* rt = zone->runtimeFromMainThread();
+  rt->gc.queueAllLifoBlocksForFreeAfterMinorGC(&allocSitesSpace_);
+
+  // Trigger write barriers.
+  PreWriteBarrier(zone, this);
+}
+
+void JitScript::prepareForDestruction(Zone* zone) {
+  forEachICScript(
+      [&](ICScript* script) { script->prepareForDestruction(zone); });
+
+  // Trigger write barriers.
+  owningScript_ = nullptr;
+  baselineScript_.set(zone, nullptr);
+  ionScript_.set(zone, nullptr);
 }
 
 struct FallbackStubs {
@@ -299,7 +421,15 @@ static bool ComputeBinarySearchMid(FallbackStubs stubs, uint32_t pcOffset,
 
 ICEntry& ICScript::icEntryFromPCOffset(uint32_t pcOffset) {
   size_t mid;
-  MOZ_ALWAYS_TRUE(ComputeBinarySearchMid(FallbackStubs(this), pcOffset, &mid));
+  bool success = ComputeBinarySearchMid(FallbackStubs(this), pcOffset, &mid);
+#ifdef MOZ_DIAGNOSTIC_ASSERT_ENABLED
+  if (!success) {
+    MOZ_CRASH_UNSAFE_PRINTF("Missing icEntry for offset %d (max offset: %d)",
+                            int(pcOffset),
+                            int(fallbackStub(numICEntries() - 1)->pcOffset()));
+  }
+#endif
+  MOZ_ALWAYS_TRUE(success);
 
   MOZ_ASSERT(mid < numICEntries());
 
@@ -332,11 +462,29 @@ ICEntry* ICScript::interpreterICEntryFromPCOffset(uint32_t pcOffset) {
   return nullptr;
 }
 
-void JitScript::purgeOptimizedStubs(JSScript* script) {
+void JitScript::purgeInactiveICScripts() {
+  if (!hasInliningRoot()) {
+    return;
+  }
+
+  forEachICScript([](ICScript* script) { script->purgeInactiveICScripts(); });
+
+  inliningRoot()->purgeInactiveICScripts();
+  if (inliningRoot()->numInlinedScripts() == 0) {
+    inliningRoot_.reset();
+    icScript()->inliningRoot_ = nullptr;
+  } else {
+    // If a callee script is active on the stack, the root script must be active
+    // too.
+    MOZ_ASSERT(icScript()->active());
+  }
+}
+
+void JitScript::purgeStubs(JSScript* script, ICStubSpace& newStubSpace) {
   MOZ_ASSERT(script->jitScript() == this);
 
   Zone* zone = script->zone();
-  if (IsAboutToBeFinalizedUnbarriered(&script)) {
+  if (IsAboutToBeFinalizedUnbarriered(script)) {
     // We're sweeping and the script is dead. Don't purge optimized stubs
     // because (1) accessing CacheIRStubInfo pointers in ICStubs is invalid
     // because we may have swept them already when we started (incremental)
@@ -347,149 +495,158 @@ void JitScript::purgeOptimizedStubs(JSScript* script) {
 
   JitSpew(JitSpew_BaselineIC, "Purging optimized stubs");
 
-  icScript()->purgeOptimizedStubs(zone);
-  if (hasInliningRoot()) {
-    inliningRoot()->purgeOptimizedStubs(zone);
-  }
-#ifdef DEBUG
-  failedICHash_.reset();
-  hasPurgedStubs_ = true;
-#endif
+  forEachICScript(
+      [&](ICScript* script) { script->purgeStubs(zone, newStubSpace); });
+
+  notePurgedStubs();
 }
 
-void ICScript::purgeOptimizedStubs(Zone* zone) {
+void ICScript::purgeStubs(Zone* zone, ICStubSpace& newStubSpace) {
   for (size_t i = 0; i < numICEntries(); i++) {
     ICEntry& entry = icEntry(i);
-    ICStub* lastStub = entry.firstStub();
-    while (!lastStub->isFallback()) {
-      lastStub = lastStub->toCacheIRStub()->next();
-    }
+    ICFallbackStub* fallback = fallbackStub(i);
 
-    // Unlink all stubs allocated in the optimized space.
-    ICStub* stub = entry.firstStub();
-    ICCacheIRStub* prev = nullptr;
+    // If this is a trial inlining call site and the callee's ICScript hasn't
+    // been discarded, clone the IC chain instead of purging stubs. In this case
+    // both the current ICScript and the callee's inlined ICScript must be
+    // active on the stack.
+    //
+    // We can't purge the IC stubs in this case because it'd confuse trial
+    // inlining if we try to inline again later and we already have an ICScript
+    // for this call site.
+    if (fallback->trialInliningState() == TrialInliningState::Inlined &&
+        hasInlinedChild(fallback->pcOffset())) {
+      MOZ_ASSERT(active());
+#ifdef DEBUG
+      // The callee script must be active. Also assert its bytecode size field
+      // is valid, because this helps catch memory safety issues (bug 1871947).
+      ICScript* callee = findInlinedChild(fallback->pcOffset());
+      MOZ_ASSERT(callee->active());
+      MOZ_ASSERT(callee->bytecodeSize() < inliningRoot()->totalBytecodeSize());
+#endif
 
-    while (stub != lastStub) {
-      if (!stub->toCacheIRStub()->allocatedInFallbackSpace()) {
-        lastStub->toFallbackStub()->unlinkStub(zone, &entry, prev,
-                                               stub->toCacheIRStub());
-        stub = stub->toCacheIRStub()->next();
-        continue;
+      JSRuntime* rt = zone->runtimeFromMainThread();
+      ICCacheIRStub* prev = nullptr;
+      ICStub* stub = entry.firstStub();
+      while (stub != fallback) {
+        ICCacheIRStub* clone = stub->toCacheIRStub()->clone(rt, newStubSpace);
+        if (prev) {
+          prev->setNext(clone);
+        } else {
+          entry.setFirstStub(clone);
+        }
+        MOZ_ASSERT(stub->toCacheIRStub()->next() == clone->next());
+        prev = clone;
+        stub = clone->next();
       }
-
-      prev = stub->toCacheIRStub();
-      stub = stub->toCacheIRStub()->next();
+      continue;
     }
-  }
 
-#ifdef DEBUG
-  // All remaining stubs must be allocated in the fallback space.
-  for (size_t i = 0; i < numICEntries(); i++) {
-    ICEntry& entry = icEntry(i);
-    ICStub* stub = entry.firstStub();
-    while (!stub->isFallback()) {
-      MOZ_ASSERT(stub->toCacheIRStub()->allocatedInFallbackSpace());
-      stub = stub->toCacheIRStub()->next();
-    }
+    MOZ_ASSERT(!hasInlinedChild(fallback->pcOffset()));
+
+    fallback->discardStubs(zone, &entry);
+    fallback->state().reset();
   }
-#endif
 }
 
-JitScript::CachedIonData::CachedIonData(EnvironmentObject* templateEnv,
-                                        IonBytecodeInfo bytecodeInfo)
-    : templateEnv(templateEnv), bytecodeInfo(bytecodeInfo) {}
+bool JitScript::ensureHasCachedBaselineJitData(JSContext* cx,
+                                               HandleScript script) {
+  if (templateEnv_.isSome()) {
+    return true;
+  }
 
-bool JitScript::ensureHasCachedIonData(JSContext* cx, HandleScript script) {
-  MOZ_ASSERT(script->jitScript() == this);
-
-  if (hasCachedIonData()) {
+  if (!script->function() ||
+      !script->function()->needsFunctionEnvironmentObjects()) {
+    templateEnv_.emplace();
     return true;
   }
 
   Rooted<EnvironmentObject*> templateEnv(cx);
-  if (script->function()) {
-    RootedFunction fun(cx, script->function());
+  Rooted<JSFunction*> fun(cx, script->function());
 
-    if (fun->needsNamedLambdaEnvironment()) {
-      templateEnv =
-          NamedLambdaObject::createTemplateObject(cx, fun, gc::TenuredHeap);
-      if (!templateEnv) {
-        return false;
-      }
-    }
-
-    if (fun->needsCallObject()) {
-      templateEnv = CallObject::createTemplateObject(cx, script, templateEnv,
-                                                     gc::TenuredHeap);
-      if (!templateEnv) {
-        return false;
-      }
+  if (fun->needsNamedLambdaEnvironment()) {
+    templateEnv = NamedLambdaObject::createTemplateObject(cx, fun);
+    if (!templateEnv) {
+      return false;
     }
   }
 
-  IonBytecodeInfo bytecodeInfo = AnalyzeBytecodeForIon(cx, script);
+  if (fun->needsCallObject()) {
+    templateEnv = CallObject::createTemplateObject(cx, script, templateEnv);
+    if (!templateEnv) {
+      return false;
+    }
+  }
 
-  UniquePtr<CachedIonData> data =
-      cx->make_unique<CachedIonData>(templateEnv, bytecodeInfo);
-  if (!data) {
+  templateEnv_.emplace(templateEnv);
+  return true;
+}
+
+bool JitScript::ensureHasCachedIonData(JSContext* cx, HandleScript script) {
+  MOZ_ASSERT(script->jitScript() == this);
+
+  if (usesEnvironmentChain_.isSome()) {
+    return true;
+  }
+
+  if (!ensureHasCachedBaselineJitData(cx, script)) {
     return false;
   }
 
-  cachedIonData_ = std::move(data);
+  usesEnvironmentChain_.emplace(ScriptUsesEnvironmentChain(script));
   return true;
 }
 
 void JitScript::setBaselineScriptImpl(JSScript* script,
                                       BaselineScript* baselineScript) {
   JSRuntime* rt = script->runtimeFromMainThread();
-  setBaselineScriptImpl(rt->defaultFreeOp(), script, baselineScript);
+  setBaselineScriptImpl(rt->gcContext(), script, baselineScript);
 }
 
-void JitScript::setBaselineScriptImpl(JSFreeOp* fop, JSScript* script,
+void JitScript::setBaselineScriptImpl(JS::GCContext* gcx, JSScript* script,
                                       BaselineScript* baselineScript) {
   if (hasBaselineScript()) {
-    BaselineScript::preWriteBarrier(script->zone(), baselineScript_);
-    fop->removeCellMemory(script, baselineScript_->allocBytes(),
+    gcx->removeCellMemory(script, baselineScript_->allocBytes(),
                           MemoryUse::BaselineScript);
-    baselineScript_ = nullptr;
+    baselineScript_.set(script->zone(), nullptr);
   }
 
   MOZ_ASSERT(ionScript_ == nullptr || ionScript_ == IonDisabledScriptPtr);
 
-  baselineScript_ = baselineScript;
+  baselineScript_.set(script->zone(), baselineScript);
   if (hasBaselineScript()) {
     AddCellMemory(script, baselineScript_->allocBytes(),
                   MemoryUse::BaselineScript);
   }
 
   script->resetWarmUpResetCounter();
-  script->updateJitCodeRaw(fop->runtime());
+  script->updateJitCodeRaw(gcx->runtime());
 }
 
 void JitScript::setIonScriptImpl(JSScript* script, IonScript* ionScript) {
   JSRuntime* rt = script->runtimeFromMainThread();
-  setIonScriptImpl(rt->defaultFreeOp(), script, ionScript);
+  setIonScriptImpl(rt->gcContext(), script, ionScript);
 }
 
-void JitScript::setIonScriptImpl(JSFreeOp* fop, JSScript* script,
+void JitScript::setIonScriptImpl(JS::GCContext* gcx, JSScript* script,
                                  IonScript* ionScript) {
   MOZ_ASSERT_IF(ionScript != IonDisabledScriptPtr,
                 !baselineScript()->hasPendingIonCompileTask());
 
+  JS::Zone* zone = script->zone();
   if (hasIonScript()) {
-    IonScript::preWriteBarrier(script->zone(), ionScript_);
-    fop->removeCellMemory(script, ionScript_->allocBytes(),
+    gcx->removeCellMemory(script, ionScript_->allocBytes(),
                           MemoryUse::IonScript);
-    ionScript_ = nullptr;
+    ionScript_.set(zone, nullptr);
   }
 
-  ionScript_ = ionScript;
+  ionScript_.set(zone, ionScript);
   MOZ_ASSERT_IF(hasIonScript(), hasBaselineScript());
   if (hasIonScript()) {
     AddCellMemory(script, ionScript_->allocBytes(), MemoryUse::IonScript);
   }
 
-  script->updateJitCodeRaw(fop->runtime());
+  script->updateJitCodeRaw(gcx->runtime());
 }
 
 #ifdef JS_STRUCTURED_SPEW
@@ -522,14 +679,14 @@ void jit::JitSpewBaselineICStats(JSScript* script, const char* dumpReason) {
     uint32_t pcOffset = fallback->pcOffset();
     jsbytecode* pc = script->offsetToPC(pcOffset);
 
-    unsigned column;
+    JS::LimitedColumnNumberOneOrigin column;
     unsigned int line = PCToLineNumber(script, pc, &column);
 
     spew->beginObject();
     spew->property("op", CodeName(JSOp(*pc)));
     spew->property("pc", pcOffset);
     spew->property("line", line);
-    spew->property("column", column);
+    spew->property("column", column.oneOriginValue());
 
     spew->beginListProperty("counts");
     ICStub* stub = entry.firstStub();
@@ -546,32 +703,63 @@ void jit::JitSpewBaselineICStats(JSScript* script, const char* dumpReason) {
 }
 #endif
 
-static void MarkActiveJitScripts(JSContext* cx,
-                                 const JitActivationIterator& activation) {
+static void MarkActiveICScriptsAndCopyStubs(
+    JSContext* cx, const JitActivationIterator& activation,
+    ICStubSpace& newStubSpace) {
   for (OnlyJSJitFrameIter iter(activation); !iter.done(); ++iter) {
     const JSJitFrameIter& frame = iter.frame();
     switch (frame.type()) {
       case FrameType::BaselineJS:
-        frame.script()->jitScript()->setActive();
+        frame.script()->jitScript()->icScript()->setActive();
+        // If the frame is using a trial-inlining ICScript, we have to preserve
+        // it too.
+        if (frame.baselineFrame()->icScript()->isInlined()) {
+          frame.baselineFrame()->icScript()->setActive();
+        }
         break;
+      case FrameType::BaselineStub: {
+        auto* layout = reinterpret_cast<BaselineStubFrameLayout*>(frame.fp());
+        if (layout->maybeStubPtr() && !layout->maybeStubPtr()->isFallback()) {
+          ICCacheIRStub* stub = layout->maybeStubPtr()->toCacheIRStub();
+          ICCacheIRStub* newStub = stub->clone(cx->runtime(), newStubSpace);
+          layout->setStubPtr(newStub);
+
+          // If this is a trial-inlining call site, also preserve the callee
+          // ICScript. Inlined constructor calls invoke CreateThisFromIC (which
+          // can trigger GC) before using the inlined ICScript.
+          JSJitFrameIter parentFrame(frame);
+          ++parentFrame;
+          BaselineFrame* blFrame = parentFrame.baselineFrame();
+          jsbytecode* pc;
+          parentFrame.baselineScriptAndPc(nullptr, &pc);
+          uint32_t pcOffset = blFrame->script()->pcToOffset(pc);
+          if (blFrame->icScript()->hasInlinedChild(pcOffset)) {
+            blFrame->icScript()->findInlinedChild(pcOffset)->setActive();
+          }
+        }
+        break;
+      }
       case FrameType::Exit:
         if (frame.exitFrame()->is<LazyLinkExitFrameLayout>()) {
           LazyLinkExitFrameLayout* ll =
               frame.exitFrame()->as<LazyLinkExitFrameLayout>();
           JSScript* script =
               ScriptFromCalleeToken(ll->jsFrame()->calleeToken());
-          script->jitScript()->setActive();
+          script->jitScript()->icScript()->setActive();
         }
         break;
       case FrameType::Bailout:
       case FrameType::IonJS: {
         // Keep the JitScript and BaselineScript around, since bailouts from
         // the ion jitcode need to re-enter into the Baseline code.
-        frame.script()->jitScript()->setActive();
+        frame.script()->jitScript()->icScript()->setActive();
         for (InlineFrameIterator inlineIter(cx, &frame); inlineIter.more();
              ++inlineIter) {
-          inlineIter.script()->jitScript()->setActive();
+          inlineIter.script()->jitScript()->icScript()->setActive();
         }
+        // Because we're purging ICScripts, the bailout machinery should use
+        // the generic ICScript for inlined callees.
+        frame.ionScript()->notePurgedICScripts();
         break;
       }
       default:;
@@ -579,14 +767,15 @@ static void MarkActiveJitScripts(JSContext* cx,
   }
 }
 
-void jit::MarkActiveJitScripts(Zone* zone) {
+void jit::MarkActiveICScriptsAndCopyStubs(Zone* zone,
+                                          ICStubSpace& newStubSpace) {
   if (zone->isAtomsZone()) {
     return;
   }
   JSContext* cx = TlsContext.get();
   for (JitActivationIterator iter(cx); !iter.done(); ++iter) {
     if (iter->compartment()->zone() == zone) {
-      MarkActiveJitScripts(cx, iter);
+      MarkActiveICScriptsAndCopyStubs(cx, iter, newStubSpace);
     }
   }
 }
@@ -604,28 +793,40 @@ InliningRoot* JitScript::getOrCreateInliningRoot(JSContext* cx,
   return inliningRoot_.get();
 }
 
-gc::AllocSite* JitScript::createAllocSite(JSScript* script) {
-  MOZ_ASSERT(script->jitScript() == this);
+gc::AllocSite* ICScript::getOrCreateAllocSite(JSScript* outerScript,
+                                              uint32_t pcOffset) {
+  // The script must be the outer script.
+  MOZ_ASSERT(outerScript->jitScript()->icScript() == this ||
+             (inliningRoot() && inliningRoot()->owningScript() == outerScript));
 
-  Nursery& nursery = script->runtimeFromMainThread()->gc.nursery();
+  // The pcOffset must be for this (maybe inlined) script.
+  MOZ_ASSERT(pcOffset < bytecodeSize());
+
+  for (gc::AllocSite* site : allocSites_) {
+    if (site->pcOffset() == pcOffset) {
+      MOZ_ASSERT(site->isNormal());
+      MOZ_ASSERT(site->script() == outerScript);
+      MOZ_ASSERT(site->traceKind() == JS::TraceKind::Object);
+      return site;
+    }
+  }
+
+  Nursery& nursery = outerScript->runtimeFromMainThread()->gc.nursery();
   if (!nursery.canCreateAllocSite()) {
     // Don't block attaching an optimized stub, but don't process allocations
     // for this site.
-    return script->zone()->unknownAllocSite();
+    return outerScript->zone()->unknownAllocSite(JS::TraceKind::Object);
   }
 
   if (!allocSites_.reserve(allocSites_.length() + 1)) {
     return nullptr;
   }
 
-  ICStubSpace* stubSpace = jitScriptStubSpace();
-  auto* site =
-      static_cast<gc::AllocSite*>(stubSpace->alloc(sizeof(gc::AllocSite)));
+  auto* site = allocSitesSpace_.new_<gc::AllocSite>(
+      outerScript->zone(), outerScript, pcOffset, JS::TraceKind::Object);
   if (!site) {
     return nullptr;
   }
-
-  new (site) gc::AllocSite(script->zone(), script);
 
   allocSites_.infallibleAppend(site);
 
@@ -640,23 +841,36 @@ bool JitScript::resetAllocSites(bool resetNurserySites,
 
   bool anyReset = false;
 
-  for (gc::AllocSite* site : allocSites_) {
-    if ((resetNurserySites && site->initialHeap() == gc::DefaultHeap) ||
-        (resetPretenuredSites && site->initialHeap() == gc::TenuredHeap)) {
-      if (site->maybeResetState()) {
-        anyReset = true;
+  forEachICScript([&](ICScript* script) {
+    for (gc::AllocSite* site : script->allocSites_) {
+      if ((resetNurserySites && site->initialHeap() == gc::Heap::Default) ||
+          (resetPretenuredSites && site->initialHeap() == gc::Heap::Tenured)) {
+        if (site->maybeResetState()) {
+          anyReset = true;
+        }
       }
     }
-  }
+  });
 
   return anyReset;
 }
 
-JitScriptICStubSpace* ICScript::jitScriptStubSpace() {
-  if (isInlined()) {
-    return inliningRoot_->jitScriptStubSpace();
-  }
-  return outerJitScript()->jitScriptStubSpace();
+void JitScript::addSizeOfIncludingThis(mozilla::MallocSizeOf mallocSizeOf,
+                                       size_t* data, size_t* allocSites) const {
+  *data += mallocSizeOf(this);
+
+  forEachICScript([=](const ICScript* script) {
+    // |data| already includes the outer ICScript because it's part of the
+    // JitScript.
+    if (script != &icScript_) {
+      *data += mallocSizeOf(script);
+    }
+
+    // |data| already includes the LifoAlloc and Vector, so use
+    // sizeOfExcludingThis.
+    *allocSites += script->allocSitesSpace_.sizeOfExcludingThis(mallocSizeOf);
+    *allocSites += script->allocSites_.sizeOfExcludingThis(mallocSizeOf);
+  });
 }
 
 JitScript* ICScript::outerJitScript() {
@@ -678,7 +892,8 @@ JitScript* ICScript::outerJitScript() {
 //    other than the first changes from 0.
 // 3. The hash will change if the entered count of the fallback stub
 //    changes from 0.
-//
+// 4. The hash will change if the failure count of the fallback stub
+//    changes from 0.
 HashNumber ICScript::hash() {
   HashNumber h = 0;
   for (size_t i = 0; i < numICEntries(); i++) {
@@ -696,16 +911,12 @@ HashNumber ICScript::hash() {
       }
     }
 
-    // Hash whether the fallback has entry count 0.
+    // Hash whether the fallback has entry count 0 and failure count 0.
     MOZ_ASSERT(stub->isFallback());
     h = mozilla::AddToHash(h, stub->enteredCount() == 0);
+    h = mozilla::AddToHash(h, stub->toFallbackStub()->state().hasFailures());
   }
 
-  if (inlinedChildren_) {
-    for (auto& callsite : *inlinedChildren_) {
-      h = mozilla::AddToHash(h, callsite.callee_->hash());
-    }
-  }
   return h;
 }
 #endif

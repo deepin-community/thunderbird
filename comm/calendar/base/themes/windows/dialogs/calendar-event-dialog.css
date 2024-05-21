@@ -4,21 +4,11 @@
 
 #item-calendar > menupopup > menuitem .menu-iconic-left,
 #calendar-ics-file-dialog-calendar-menu > menupopup > menuitem .menu-iconic-left {
-  appearance: none;
-  min-width: 0;
-}
-
-#item-calendar > menupopup > menuitem .menu-iconic-left {
-  margin-inline: 0 5px;
-}
-
-#calendar-ics-file-dialog-calendar-menu > menupopup > menuitem .menu-iconic-left {
-  margin-inline: 0 4px;
+  margin-inline-end: 6px;
 }
 
 #item-categories > menupopup > menuitem .menu-iconic-icon {
   display: inline;
-  margin-inline: 4px 0;
 }
 
 /*--------------------------------------------------------------------
@@ -37,16 +27,7 @@
   padding: 2px;
 }
 
-@media not (-moz-windows-non-native-menus) {
-  #smileyPopup > menuitem > .menu-text,
-  #paragraphPopup > menuitem > .menu-text {
-    margin-inline-start: -1.45em !important;
-  }
-}
-
-@media (-moz-windows-non-native-menus) {
-  #smileyPopup > menuitem,
-  #paragraphPopup > menuitem {
-    padding-inline-start: 14px;
-  }
+#smileyPopup > menuitem,
+#paragraphPopup > menuitem {
+  padding-inline-start: 14px;
 }

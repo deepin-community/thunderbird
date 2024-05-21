@@ -2,10 +2,12 @@
 
 /* exported Schemas, LocalAPIImplementation, SchemaAPIInterface, getContextWrapper */
 
-const { Schemas } = ChromeUtils.import("resource://gre/modules/Schemas.jsm");
+const { Schemas } = ChromeUtils.importESModule(
+  "resource://gre/modules/Schemas.sys.mjs"
+);
 
-const { ExtensionCommon } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionCommon.jsm"
+const { ExtensionCommon } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionCommon.sys.mjs"
 );
 
 let { LocalAPIImplementation, SchemaAPIInterface } = ExtensionCommon;
@@ -100,7 +102,7 @@ function getContextWrapper(manifestVersion = 2) {
     },
 
     preprocessors: {
-      localize(value, context) {
+      localize(value) {
         return value.replace(
           /__MSG_(.*?)__/g,
           (m0, m1) => `${m1.toUpperCase()}`
@@ -116,7 +118,7 @@ function getContextWrapper(manifestVersion = 2) {
       return this.permissions.has(permission);
     },
 
-    shouldInject(ns, name, allowedContexts) {
+    shouldInject(ns, name) {
       return name != "do-not-inject";
     },
 

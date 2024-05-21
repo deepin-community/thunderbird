@@ -5,26 +5,19 @@
 # This module contains code for managing WebIDL files and bindings for
 # the build system.
 
-from __future__ import print_function, unicode_literals
-
 import errno
 import hashlib
 import io
 import json
 import logging
 import os
-import six
-
 from copy import deepcopy
 
+import mozpack.path as mozpath
 from mach.mixin.logging import LoggingMixin
-
-from mozbuild.base import MozbuildObject
 from mozbuild.makeutil import Makefile
 from mozbuild.pythonutil import iter_modules_in_path
 from mozbuild.util import FileAvoidWrite
-
-import mozpack.path as mozpath
 
 # There are various imports in this file in functions to avoid adding
 # dependencies to config.status. See bug 949875.
@@ -151,14 +144,15 @@ class WebIDLCodegenManager(LoggingMixin):
 
     # Global parser derived declaration files.
     GLOBAL_DECLARE_FILES = {
+        "BindingNames.h",
         "GeneratedAtomList.h",
         "GeneratedEventList.h",
         "PrototypeList.h",
         "RegisterBindings.h",
+        "RegisterShadowRealmBindings.h",
         "RegisterWorkerBindings.h",
         "RegisterWorkerDebuggerBindings.h",
         "RegisterWorkletBindings.h",
-        "UnionConversions.h",
         "UnionTypes.h",
         "WebIDLPrefs.h",
         "WebIDLSerializable.h",
@@ -166,7 +160,9 @@ class WebIDLCodegenManager(LoggingMixin):
 
     # Global parser derived definition files.
     GLOBAL_DEFINE_FILES = {
+        "BindingNames.cpp",
         "RegisterBindings.cpp",
+        "RegisterShadowRealmBindings.cpp",
         "RegisterWorkerBindings.cpp",
         "RegisterWorkerDebuggerBindings.cpp",
         "RegisterWorkletBindings.cpp",
@@ -342,10 +338,8 @@ class WebIDLCodegenManager(LoggingMixin):
         if self._make_deps_path:
             mk = Makefile()
             codegen_rule = mk.create_rule([self._make_deps_target])
-            codegen_rule.add_dependencies(
-                six.ensure_text(s) for s in global_hashes.keys()
-            )
-            codegen_rule.add_dependencies(six.ensure_text(p) for p in self._input_paths)
+            codegen_rule.add_dependencies(global_hashes.keys())
+            codegen_rule.add_dependencies(self._input_paths)
 
             with FileAvoidWrite(self._make_deps_path) as fh:
                 mk.dump(fh)
@@ -362,7 +356,12 @@ class WebIDLCodegenManager(LoggingMixin):
 
         example_paths = self._example_paths(interface)
         for path in example_paths:
-            print("Generating {}".format(path))
+            self.log(
+                logging.INFO,
+                "webidl_generate_example_files",
+                {"filename": path},
+                "Generating WebIDL example files derived from {filename}",
+            )
 
         return self._maybe_write_codegen(root, *example_paths)
 
@@ -378,12 +377,12 @@ class WebIDLCodegenManager(LoggingMixin):
         )
 
         hashes = {}
-        parser = WebIDL.Parser(self._cache_dir)
+        parser = WebIDL.Parser(self._cache_dir, lexer=None)
 
         for path in sorted(self._input_paths):
             with io.open(path, "r", encoding="utf-8") as fh:
                 data = fh.read()
-                hashes[path] = hashlib.sha1(six.ensure_binary(data)).hexdigest()
+                hashes[path] = hashlib.sha1(data.encode()).hexdigest()
                 parser.parse(data, path)
 
         # Only these directories may contain WebIDL files with interfaces
@@ -497,7 +496,7 @@ class WebIDLCodegenManager(LoggingMixin):
         for name in changedDictionaryNames:
             d = self._config.getDictionaryIfExists(name)
             if d:
-                changed_inputs.add(d.filename())
+                changed_inputs.add(d.filename)
 
         # Only use paths that are known to our current state.
         # This filters out files that were deleted or changed type (e.g. from
@@ -562,10 +561,7 @@ class WebIDLCodegenManager(LoggingMixin):
         return paths
 
     def _generate_build_files_for_webidl(self, filename):
-        from Codegen import (
-            CGBindingRoot,
-            CGEventRoot,
-        )
+        from Codegen import CGBindingRoot, CGEventRoot
 
         self.log(
             logging.INFO,
@@ -642,8 +638,16 @@ class WebIDLCodegenManager(LoggingMixin):
             result[2].add(path)
 
 
-def create_build_system_manager(topsrcdir, topobjdir, dist_dir):
+def create_build_system_manager(topsrcdir=None, topobjdir=None, dist_dir=None):
     """Create a WebIDLCodegenManager for use by the build system."""
+    if topsrcdir is None:
+        assert topobjdir is None and dist_dir is None
+        import buildconfig
+
+        topsrcdir = buildconfig.topsrcdir
+        topobjdir = buildconfig.topobjdir
+        dist_dir = buildconfig.substs["DIST"]
+
     src_dir = os.path.join(topsrcdir, "dom", "bindings")
     obj_dir = os.path.join(topobjdir, "dom", "bindings")
     webidl_root = os.path.join(topsrcdir, "dom", "webidl")
@@ -677,14 +681,3 @@ def create_build_system_manager(topsrcdir, topobjdir, dist_dir):
         make_deps_path=os.path.join(obj_dir, "codegen.pp"),
         make_deps_target="webidl.stub",
     )
-
-
-class BuildSystemWebIDL(MozbuildObject):
-    @property
-    def manager(self):
-        if not hasattr(self, "_webidl_manager"):
-            self._webidl_manager = create_build_system_manager(
-                self.topsrcdir, self.topobjdir, self.distdir
-            )
-
-        return self._webidl_manager

@@ -12,7 +12,9 @@
 #include "nsIPrincipal.h"
 #include "nsIURI.h"
 #include "nsJSUtils.h"
+#include "xpcpublic.h"
 
+#include "mozilla/BasePrincipal.h"
 #include "mozilla/StaticPrefs_dom.h"
 
 /* static */
@@ -34,9 +36,10 @@ void DOMSecurityMonitor::AuditParsingOfHTMLXMLFragments(
   // originating from JS code.
   nsAutoString filename;
   uint32_t lineNum = 0;
-  uint32_t columnNum = 0;
+  uint32_t columnNum = 1;
   JSContext* cx = nsContentUtils::GetCurrentJSContext();
-  if (!nsJSUtils::GetCallingLocation(cx, filename, &lineNum, &columnNum)) {
+  if (!cx ||
+      !nsJSUtils::GetCallingLocation(cx, filename, &lineNum, &columnNum)) {
     return;
   }
 
@@ -48,17 +51,14 @@ void DOMSecurityMonitor::AuditParsingOfHTMLXMLFragments(
 
   /*
    * WARNING: Do not add any new entries to the htmlFragmentAllowlist
-   * withiout proper review from a dom:security peer!
+   * without proper review from a dom:security peer!
    */
   static nsLiteralCString htmlFragmentAllowlist[] = {
       "chrome://global/content/elements/marquee.js"_ns,
       nsLiteralCString(
           "chrome://pocket/content/panels/js/vendor/jquery-2.1.1.min.js"),
-      "chrome://browser/content/certerror/aboutNetError.js"_ns,
       nsLiteralCString("chrome://devtools/content/shared/sourceeditor/"
                        "codemirror/codemirror.bundle.js"),
-      nsLiteralCString(
-          "chrome://devtools-startup/content/aboutdevtools/aboutdevtools.js"),
       nsLiteralCString(
           "resource://activity-stream/data/content/activity-stream.bundle.js"),
       nsLiteralCString("resource://devtools/client/debugger/src/components/"
@@ -75,11 +75,12 @@ void DOMSecurityMonitor::AuditParsingOfHTMLXMLFragments(
       nsLiteralCString("resource://devtools/client/shared/widgets/tooltip/"
                        "inactive-css-tooltip-helper.js"),
       "resource://devtools/client/shared/widgets/Spectrum.js"_ns,
-      "resource://gre/modules/narrate/VoiceSelect.jsm"_ns,
+      "resource://gre/modules/narrate/VoiceSelect.sys.mjs"_ns,
       "resource://normandy-vendor/ReactDOM.js"_ns,
       // ------------------------------------------------------------------
       // test pages
       // ------------------------------------------------------------------
+      "chrome://mochikit/content/browser-harness.xhtml"_ns,
       "chrome://mochikit/content/harness.xhtml"_ns,
       "chrome://mochikit/content/tests/"_ns,
       "chrome://mochitests/content/"_ns,
@@ -105,6 +106,8 @@ void DOMSecurityMonitor::AuditParsingOfHTMLXMLFragments(
           "(fragment: %s)",
           uriSpec.get(), NS_ConvertUTF16toUTF8(filename).get(), lineNum,
           columnNum, NS_ConvertUTF16toUTF8(aFragment).get());
+
+  xpc_DumpJSStack(true, true, false);
   MOZ_ASSERT(false);
 }
 

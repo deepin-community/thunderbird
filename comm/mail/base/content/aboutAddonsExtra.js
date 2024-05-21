@@ -7,16 +7,17 @@
 const THUNDERBIRD_THEME_PREVIEWS = new Map([
   [
     "thunderbird-compact-light@mozilla.org",
-    "chrome://mozapps/content/extensions/firefox-compact-light.svg",
+    "resource://builtin-themes/light/preview.svg",
   ],
   [
     "thunderbird-compact-dark@mozilla.org",
-    "chrome://mozapps/content/extensions/firefox-compact-dark.svg",
+    "resource://builtin-themes/dark/preview.svg",
   ],
 ]);
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  ExtensionData: "resource://gre/modules/Extension.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  ExtensionData: "resource://gre/modules/Extension.sys.mjs",
+  UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
 });
 
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -25,39 +26,44 @@ XPCOMUtils.defineLazyPreferenceGetter(
   "extensions.alternativeAddonSearch.url"
 );
 
-(async function() {
+(async function () {
+  window.MozXULElement.insertFTLIfNeeded("branding/brand.ftl");
+  window.MozXULElement.insertFTLIfNeeded("toolkit/about/aboutAddons.ftl");
   window.MozXULElement.insertFTLIfNeeded("messenger/aboutAddonsExtra.ftl");
+  // Needed for webext-perms-description-experiment.
+  window.MozXULElement.insertFTLIfNeeded("messenger/extensionPermissions.ftl");
+  UIFontSize.registerWindow(window);
+
+  // Consume clicks on a-tags and let openTrustedLinkIn() decide how to open them.
+  window.addEventListener("click", event => {
+    if (event.target.matches("a[href]") && event.target.href) {
+      const uri = Services.io.newURI(event.target.href);
+      if (uri.scheme == "http" || uri.scheme == "https") {
+        event.preventDefault();
+        event.stopPropagation();
+        windowRoot.ownerGlobal.openTrustedLinkIn(event.target.href, "tab");
+      }
+    }
+  });
 
   // Fix the "Search on addons.mozilla.org" placeholder text in the searchbox.
-  let textbox = document.querySelector("search-addons > search-textbox");
+  const textbox = document.querySelector("search-addons > search-textbox");
   document.l10n.setAttributes(textbox, "atn-addons-heading-search-input");
 
-  // Change the "Settings" button to "Preferences".
-  let prefsButton = document.querySelector(
-    "#preferencesButton > .sidebar-footer-label"
-  );
-  document.l10n.setAttributes(prefsButton, "sidebar-preferences-button-title");
-
   // Add our stylesheet.
-  let contentStylesheet = document.createProcessingInstruction(
-    "xml-stylesheet",
-    'href="chrome://messenger/content/aboutAddonsExtra.css" type="text/css"'
-  );
-  document.insertBefore(contentStylesheet, document.documentElement);
+  const contentStylesheet = document.createElement("link");
+  contentStylesheet.rel = "stylesheet";
+  contentStylesheet.href = "chrome://messenger/skin/aboutAddonsExtra.css";
+  document.head.appendChild(contentStylesheet);
 
   // Override logic for detecting unsigned add-ons.
-  window.isCorrectlySigned = function() {
+  window.isCorrectlySigned = function () {
     return true;
   };
-  // Load our permissions strings.
-  delete window.browserBundle;
-  window.browserBundle = Services.strings.createBundle(
-    "chrome://messenger/locale/addons.properties"
-  );
 
   // Load our theme screenshots.
-  let _getScreenshotUrlForAddon = getScreenshotUrlForAddon;
-  getScreenshotUrlForAddon = function(addon) {
+  const _getScreenshotUrlForAddon = getScreenshotUrlForAddon;
+  getScreenshotUrlForAddon = function (addon) {
     if (THUNDERBIRD_THEME_PREVIEWS.has(addon.id)) {
       return THUNDERBIRD_THEME_PREVIEWS.get(addon.id);
     }
@@ -65,24 +71,19 @@ XPCOMUtils.defineLazyPreferenceGetter(
   };
 
   // Add logic to detect add-ons using the unsupported legacy API.
-  let getMozillaAddonMessageInfo = window.getAddonMessageInfo;
-  window.getAddonMessageInfo = async function(addon) {
+  const getMozillaAddonMessageInfo = window.getAddonMessageInfo;
+  window.getAddonMessageInfo = async function (addon) {
     const { name } = addon;
-    const appName = brandBundle.GetStringFromName("brandShortName");
     const { STATE_SOFTBLOCKED } = Ci.nsIBlocklistService;
-    const formatString = (name, args) =>
-      extBundle.formatStringFromName(
-        `details.notification.${name}`,
-        args,
-        args.length
-      );
-    let data = new ExtensionData(addon.getResourceURI());
+
+    const data = new ExtensionData(addon.getResourceURI());
     await data.loadManifest();
     if (
-      data.manifest.legacy ||
-      (!addon.isCompatible &&
-        (AddonManager.checkCompatibility ||
-          addon.blocklistState !== STATE_SOFTBLOCKED))
+      addon.type == "extension" &&
+      (data.manifest.legacy ||
+        (!addon.isCompatible &&
+          (AddonManager.checkCompatibility ||
+            addon.blocklistState !== STATE_SOFTBLOCKED)))
     ) {
       return {
         linkText: await document.l10n.formatValue(
@@ -91,11 +92,8 @@ XPCOMUtils.defineLazyPreferenceGetter(
         linkUrl: `${alternativeAddonSearchUrl}?id=${encodeURIComponent(
           addon.id
         )}&q=${encodeURIComponent(name)}`,
-        message: formatString("incompatible", [
-          name,
-          appName,
-          Services.appinfo.version,
-        ]),
+        messageId: "details-notification-incompatible2",
+        messageArgs: { name, version: Services.appinfo.version },
         type: "warning",
       };
     }
@@ -106,42 +104,33 @@ XPCOMUtils.defineLazyPreferenceGetter(
   // Override parts of the addon-card customElement to be able
   // to add a dedicated button for extension preferences.
   await customElements.whenDefined("addon-card");
-  AddonCard.prototype.addOptionsButton = async function() {
-    let { addon, optionsButton } = this;
+  AddonCard.prototype.addOptionsButton = async function () {
+    const { addon, optionsButton } = this;
     if (addon.type != "extension") {
       return;
     }
 
     let addonOptionsButton = this.querySelector(".extension-options-button");
-    if (addon.isActive) {
-      if (!addon.optionsType) {
-        // Upon fresh install the manifest has not been parsed and optionsType
-        // is not known, manually trigger parsing.
-        let data = new ExtensionData(addon.getResourceURI());
-        await data.loadManifest();
-      }
-
-      if (addon.optionsType) {
-        if (!addonOptionsButton) {
-          addonOptionsButton = document.createElement("button");
-          addonOptionsButton.classList.add("extension-options-button");
-          addonOptionsButton.setAttribute("action", "preferences");
-          addonOptionsButton.setAttribute(
-            "data-l10n-id",
-            "add-on-options-button"
-          );
-          optionsButton.parentNode.insertBefore(
-            addonOptionsButton,
-            optionsButton
-          );
-        }
-      }
-    } else if (addonOptionsButton) {
-      addonOptionsButton.remove();
+    if (!addonOptionsButton) {
+      addonOptionsButton = document.createElement("button");
+      addonOptionsButton.classList.add("extension-options-button");
+      addonOptionsButton.setAttribute("action", "preferences");
+      document.l10n.setAttributes(addonOptionsButton, "add-on-options-button");
+      addonOptionsButton.disabled = true;
+      optionsButton.parentNode.insertBefore(addonOptionsButton, optionsButton);
     }
+
+    // Upon fresh install the manifest has not been parsed and optionsType
+    // is not known, manually trigger parsing.
+    if (addon.isActive && !addon.optionsType) {
+      const data = new ExtensionData(addon.getResourceURI());
+      await data.loadManifest();
+    }
+
+    addonOptionsButton.disabled = !(addon.isActive && addon.optionsType);
   };
   AddonCard.prototype._update = AddonCard.prototype.update;
-  AddonCard.prototype.update = function() {
+  AddonCard.prototype.update = function () {
     this._update();
     this.addOptionsButton();
   };
@@ -149,31 +138,25 @@ XPCOMUtils.defineLazyPreferenceGetter(
   // Override parts of the addon-permission-list customElement to be able
   // to show the usage of Experiments in the permission list.
   await customElements.whenDefined("addon-permissions-list");
-  AddonPermissionsList.prototype.renderExperimentOnly = function() {
-    let appName = brandBundle.GetStringFromName("brandShortName");
-
+  AddonPermissionsList.prototype.renderExperimentOnly = function () {
     this.textContent = "";
-    let frag = importTemplate("addon-permissions-list");
-    let section = frag.querySelector(".addon-permissions-required");
+    const frag = importTemplate("addon-permissions-list");
+    const section = frag.querySelector(".addon-permissions-required");
     section.hidden = false;
-    let list = section.querySelector(".addon-permissions-list");
+    const list = section.querySelector(".addon-permissions-list");
 
-    let msg = browserBundle.formatStringFromName(
-      "webextPerms.description.experiment",
-      [appName]
-    );
-    let item = document.createElement("li");
+    const item = document.createElement("li");
+    document.l10n.setAttributes(item, "webext-perms-description-experiment");
     item.classList.add("permission-info", "permission-checked");
-    item.appendChild(document.createTextNode(msg));
     list.appendChild(item);
 
     this.appendChild(frag);
   };
   // We change this function from sync to async, which does not matter.
   // It calls this.render() which is async without awaiting it anyway.
-  AddonPermissionsList.prototype.setAddon = async function(addon) {
+  AddonPermissionsList.prototype.setAddon = async function (addon) {
     this.addon = addon;
-    let data = new ExtensionData(addon.getResourceURI());
+    const data = new ExtensionData(addon.getResourceURI());
     await data.loadManifest();
     if (data.manifest.experiment_apis) {
       this.renderExperimentOnly();
@@ -185,7 +168,7 @@ XPCOMUtils.defineLazyPreferenceGetter(
   await customElements.whenDefined("recommended-addon-card");
   RecommendedAddonCard.prototype._setCardContent =
     RecommendedAddonCard.prototype.setCardContent;
-  RecommendedAddonCard.prototype.setCardContent = function(card, addon) {
+  RecommendedAddonCard.prototype.setCardContent = function (card, addon) {
     this._setCardContent(card, addon);
     card.addEventListener("click", event => {
       if (event.target.matches("a[href]") || event.target.matches("button")) {
@@ -195,6 +178,36 @@ XPCOMUtils.defineLazyPreferenceGetter(
         card.querySelector(".disco-addon-author a").href,
         "tab"
       );
+    });
+  };
+
+  await customElements.whenDefined("search-addons");
+  SearchAddons.prototype.searchAddons = function (query) {
+    if (query.length === 0) {
+      return;
+    }
+
+    const url = new URL(
+      formatUTMParams(
+        "addons-manager-search",
+        AddonRepository.getSearchURL(query)
+      )
+    );
+
+    // Limit search to themes, if the themes section is currently active.
+    if (
+      document.getElementById("page-header").getAttribute("type") == "theme"
+    ) {
+      url.searchParams.set("cat", "themes");
+    }
+
+    const browser = getBrowserElement();
+    const chromewin = browser.ownerGlobal;
+    chromewin.openLinkIn(url.href, "tab", {
+      fromChrome: true,
+      triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal(
+        {}
+      ),
     });
   };
 })();

@@ -6,227 +6,232 @@
   == Styles shared throughout the Messenger application.
   ======================================================================= */
 
-@import url("chrome://global/skin/global.css");
-@import url("chrome://messenger/content/messenger.css");
 @import url("chrome://messenger/skin/shared/messenger.css");
 
-:root {
-  --tabline-color: -moz-accent-color;
-  --toolbar-non-lwt-bgcolor: -moz-dialog;
-  --toolbar-non-lwt-textcolor: -moz-dialogtext;
-  --toolbar-non-lwt-bgimage: linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15));
-  --chrome-content-separator-color: ThreeDShadow;
-  --noselect-folder-color: GrayText;
-  --new-folder-color: -moz-hyperlinktext;
-  --row-grouped-header-bg-color: -moz-dialog;
-  --row-grouped-header-bg-color-selected: Highlight;
-  --panel-separator-color: ThreeDShadow;
-  --splitter-color: ThreeDShadow;
-  --autocomplete-popup-url-color: -moz-nativehyperlinktext;
-  --select-focus-text-color: HighlightText;
+/* Special rules for dark system theme and default TB theme */
+
+:root[lwt-tree-brighttext]:not([lwt-tree]) {
+  --sidebar-background-color: var(--color-gray-80);
+  --sidebar-text-color: var(--color-gray-10);
+
+  & treechildren::-moz-tree-row(current, focus) {
+    --sidebar-highlight-background-color: var(--selected-item-color);
+    --sidebar-highlight-text-color: var(--selected-item-text-color);
+  }
 }
 
+/* Override toolkit */
 :root:-moz-lwtheme {
-  --panel-separator-color: hsla(210, 4%, 10%, .14);
-}
-
-:root[lwt-popup-brighttext] {
-  --panel-separator-color: rgba(249, 249, 250, .1);
-}
-
-:root[lwt-tree] {
-  --splitter-color: var(--sidebar-border-color);
-  --row-grouped-header-bg-color: hsla(0, 0%, 50%, .15);
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color,
-                                              hsla(0, 0%, 80%, .6));
-}
-
-:root[lwt-tree-brighttext] {
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color,
-                                              rgba(249, 249, 250, .3));
+  toolbar {
+    color-scheme: light dark;
+    background-color: transparent;
+  }
 }
 
 #tabs-toolbar {
-  --toolbarbutton-hover-background: var(--lwt-toolbarbutton-hover-background,
-                                        hsla(240, 5%, 5%, .1));
-  --toolbarbutton-hover-bordercolor: var(--lwt-toolbarbutton-hover-background,
-                                         hsla(240, 5%, 5%, .1));
-  --toolbarbutton-active-background: var(--lwt-toolbarbutton-active-background,
-                                         hsla(240, 5%, 5%, .15));
-  --toolbarbutton-active-bordercolor: var(--lwt-toolbarbutton-active-background,
-                                          hsla(240, 5%, 5%, .15));
+  --toolbarbutton-hover-background: light-dark(var(--lwt-toolbarbutton-hover-background,
+                                               hsla(240, 5%, 5%, .1)),
+                                               var(--lwt-toolbarbutton-hover-background,
+                                               hsla(0, 0%, 70%, .4)));
+  --toolbarbutton-hover-bordercolor: light-dark(var(--lwt-toolbarbutton-hover-background,
+                                                hsla(240, 5%, 5%, .1)),
+                                                var(--lwt-toolbarbutton-hover-background,
+                                                hsla(0, 0%, 70%, .4)));
+  --toolbarbutton-active-background: light-dark(var(--lwt-toolbarbutton-active-background,
+                                                hsla(240, 5%, 5%, .15)),
+                                                var(--lwt-toolbarbutton-active-background,
+                                                hsla(0, 0%, 70%, .6)));
+  --toolbarbutton-active-bordercolor: light-dark(var(--lwt-toolbarbutton-active-background,
+                                                 hsla(240, 5%, 5%, .15)),
+                                                 var(--lwt-toolbarbutton-active-background,
+                                                 hsla(0, 0%, 70%, .6)));
 }
 
-#tabs-toolbar[brighttext] {
-  --toolbarbutton-hover-background: var(--lwt-toolbarbutton-hover-background,
-                                        hsla(0, 0%, 70%, .4));
-  --toolbarbutton-hover-bordercolor: var(--lwt-toolbarbutton-hover-background,
-                                         hsla(0, 0%, 70%, .4));
-  --toolbarbutton-active-background: var(--lwt-toolbarbutton-active-background,
-                                         hsla(0, 0%, 70%, .6));
-  --toolbarbutton-active-bordercolor: var(--lwt-toolbarbutton-active-background,
-                                          hsla(0, 0%, 70%, .6));
+#navigation-toolbox {
+  background-color: transparent;
+  border-top: none;
+
+  &:not(:-moz-lwtheme) {
+    background-color: -moz-headerbar;
+    color: -moz-headerbartext;
+
+    &:-moz-window-inactive {
+      background-color: -moz-headerbarinactive;
+      color: -moz-headerbarinactivetext;
+    }
+  }
 }
 
-/* Hide the titlebar explicitly on versions of GTK+ where
- * it's rendered by window manager. */
-@media (-moz-gtk-csd-available: 0) {
-  #titlebar {
+/**
+ * Titlebar drawing:
+ *
+ * GTK windows have both a window radius (exposed via the
+ * `-moz-gtk-csd-titlebar-radius`) environment variable, and a window shadow
+ * (which we can't read back from GTK). Note that the -moz-window-decorations
+ * (in X11) or the compositor (in Wayland) does draw the shadow corners
+ * already.
+ */
+:root[tabsintitlebar] {
+  background-color: transparent;
+
+  #navigation-toolbox:not(:-moz-lwtheme) {
+    background-color: ActiveCaption;
+    color: CaptionText;
+
+    &:-moz-window-inactive {
+      background-color: InactiveCaption;
+      color: InactiveCaptionText;
+    }
+  }
+
+  /* Make #tabs-toolbar transparent as we style underlying #navigation-toolbox
+   * with -moz-window-titlebar (Gtk+ theme). */
+  #tabs-toolbar,
+  #toolbar-menubar {
+    appearance: none;
+    color: inherit;
+    background-color: transparent;
+  }
+
+  #mail-menubar {
+    color: inherit;
+  }
+}
+
+:root[tabsintitlebar][sizemode="normal"]:not([gtktiledwindow="true"]) {
+  /* This takes care of drawing our window decorations on X11 */
+  -moz-default-appearance: -moz-window-decorations;
+  appearance: auto;
+
+  #navigation-toolbox,
+  ::backdrop {
+    border-top-left-radius: env(-moz-gtk-csd-titlebar-radius);
+    border-top-right-radius: env(-moz-gtk-csd-titlebar-radius);
+  }
+
+  /* stylelint-disable-next-line media-query-no-invalid */
+  @media (-moz-bool-pref: "widget.gtk.rounded-bottom-corners.enabled") {
+    body {
+      border-bottom-left-radius: env(-moz-gtk-csd-titlebar-radius);
+      border-bottom-right-radius: env(-moz-gtk-csd-titlebar-radius);
+    }
+  }
+}
+
+.titlebar-buttonbox-container {
+  margin-inline-end: 3px;
+}
+
+/* The button box must appear on top of the navigation-toolbox in order for
+ * click and hover mouse events to work properly for the button in the restored
+ * window state. Otherwise, elements in the navigation-toolbox, like the menubar,
+ * can swallow those events. */
+.titlebar-buttonbox {
+  position: relative;
+  z-index: 1;
+  align-items: stretch;
+}
+
+.titlebar-button {
+  appearance: none;
+  align-items: center;
+  padding: 0;
+  padding-inline: calc(env(-moz-gtk-csd-titlebar-button-spacing) / 2);
+
+  > .toolbarbutton-icon {
+    appearance: auto;
+  }
+
+  /* When using lightweight themes, use our own buttons since native ones might
+   * assume a native background in order to be visible. */
+  &:-moz-lwtheme {
+    padding-inline: 3px;
+
+    > .toolbarbutton-icon {
+      appearance: none;
+      border-radius: 100%;
+      background-position: center center;
+      background-repeat: no-repeat;
+      -moz-context-properties: stroke;
+      stroke: currentColor;
+      /* Roughly the Adwaita size */
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  &:hover > .toolbarbutton-icon {
+    background-color: color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  &:hover:active > .toolbarbutton-icon {
+    background-color: color-mix(in srgb, currentColor 28%, transparent);
+  }
+
+  &:focus-visible > .toolbarbutton-icon {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-inset);
+  }
+}
+
+.titlebar-min {
+  order: env(-moz-gtk-csd-minimize-button-position);
+
+  > .toolbarbutton-icon {
+    -moz-default-appearance: -moz-window-button-minimize;
+    background-image: url(chrome://messenger/skin/window-controls/minimize.svg);
+  }
+
+  @media not (-moz-gtk-csd-minimize-button) {
     display: none;
   }
 }
 
-/* We draw to titlebar when Gkt+ CSD is available */
-@media (-moz-gtk-csd-available) {
-  /* Some Gtk+ themes use non-rectangular toplevel windows. To fully support
-   * such themes we need to make toplevel window transparent.
-   * It may cause performanance issues so let's put it under a preference
-   * and enable it for desktop environment which do that by default.
-   * See nsWindow::TopLevelWindowUseARGBVisual() for details. */
-  @media (-moz-gtk-csd-transparent-background) {
-    :root[tabsintitlebar]:not(:-moz-lwtheme) {
-      background-color: transparent;
-      background-image: linear-gradient(transparent 25px, -moz-dialog 25px);
-      appearance: none;
-    }
-  }
+.titlebar-max {
+  order: env(-moz-gtk-csd-maximize-button-position);
 
-  :root[tabsintitlebar] #titlebar:-moz-lwtheme {
-    visibility: hidden;
-  }
-
-  :root[tabsintitlebar] #titlebar-content:-moz-lwtheme {
-    visibility: visible;
-  }
-
-  :root[tabsintitlebar] #titlebar {
-    appearance: auto;
-    -moz-default-appearance: -moz-window-titlebar-maximized;
-    color: -moz-gtk-titlebar-text;
-  }
-
-  :root[tabsintitlebar] #navigation-toolbox {
-    color: -moz-gtk-titlebar-text;
-  }
-
-  :root[tabsintitlebar] #titlebar:-moz-window-inactive,
-  :root[tabsintitlebar] #navigation-toolbox:-moz-window-inactive {
-    color: -moz-gtk-titlebar-inactive-text;
-  }
-
-  :root[tabsintitlebar] #titlebar:-moz-lwtheme,
-  :root[tabsintitlebar] #navigation-toolbox:-moz-lwtheme {
-    color: inherit;
-  }
-
-  :root[tabsintitlebar][sizemode="normal"]:not([gtktiledwindow="true"]) #titlebar {
-    appearance: auto;
-    -moz-default-appearance: -moz-window-titlebar;
-  }
-
-  /* Add extra space to titlebar for dragging */
-  :root[sizemode="normal"] #mail-toolbar-menubar2[autohide="true"][inactive] ~ #tabs-toolbar {
-    padding-top: var(--space-above-tabbar);
-  }
-
-  /* Make #TabsToolbar transparent as we style underlying #titlebar with
-      * -moz-window-titlebar (Gtk+ theme).
-      */
-  :root[tabsintitlebar] #tabs-toolbar,
-  :root[tabsintitlebar] #mail-toolbar-menubar2 {
-    appearance: none;
-    color: inherit;
-  }
-
-  :root[tabsintitlebar] #mail-menubar {
-    color: inherit;
-  }
-
-  /* The button box must appear on top of the navigator-toolbox in order for
-   * click and hover mouse events to work properly for the button in the restored
-   * window state. Otherwise, elements in the navigator-toolbox, like the menubar,
-   * can swallow those events.
-   */
-  #titlebar-buttonbox {
-    position: relative;
-    z-index: 1;
-    -moz-box-align: center;
-  }
-
-  /* Render titlebar command buttons according to system config.
-   * Use full scale icons here as the Gtk+ does.
-   */
-  @media (-moz-gtk-csd-minimize-button) {
-    #titlebar-min {
-      appearance: auto;
-      -moz-default-appearance: -moz-window-button-minimize;
-    }
-  }
-  @media (-moz-gtk-csd-minimize-button: 0) {
-    #titlebar-min {
-      display: none;
-    }
-  }
-
-  @media (-moz-gtk-csd-maximize-button) {
-    #titlebar-max {
-      appearance: auto;
-      -moz-default-appearance: -moz-window-button-maximize;
-    }
-    :root[sizemode="maximized"] #titlebar-max {
-      appearance: auto;
-      -moz-default-appearance: -moz-window-button-restore;
-    }
-  }
-  @media (-moz-gtk-csd-maximize-button: 0) {
-    #titlebar-max {
-      display: none;
-    }
-  }
-
-  @media (-moz-gtk-csd-close-button) {
-    #titlebar-close {
-      appearance: auto;
-      -moz-default-appearance: -moz-window-button-close;
-    }
-  }
-  @media (-moz-gtk-csd-close-button: 0) {
-    #titlebar-close {
-      display: none;
-    }
-  }
-
-  @media (-moz-gtk-csd-reversed-placement: 0) {
-    .titlebar-placeholder[type="caption-buttons"] {
-      -moz-box-ordinal-group: 1000;
-    }
-
-    :root[tabsintitlebar] .titlebar-placeholder[type="caption-buttons"] {
-      margin-inline-start: 10px;
-    }
-  }
-
-  @media (-moz-gtk-csd-reversed-placement) {
-    #titlebar-buttonbox-container,
-    #titlebar-close,
-    .titlebar-placeholder[type="caption-buttons"] {
-      -moz-box-ordinal-group: 0;
-    }
-
-    :root[tabsintitlebar] .titlebar-placeholder[type="caption-buttons"] {
-      margin-inline-end: 10px;
-    }
+  > .toolbarbutton-icon {
+    -moz-default-appearance: -moz-window-button-maximize;
+    background-image: url(chrome://messenger/skin/window-controls/maximize.svg);
   }
 }
 
-#tabbar-toolbar {
-  color: inherit;
+.titlebar-restore {
+  order: env(-moz-gtk-csd-maximize-button-position);
+
+  > .toolbarbutton-icon {
+    -moz-default-appearance: -moz-window-button-restore;
+    background-image: url(chrome://messenger/skin/window-controls/restore.svg);
+  }
 }
 
-toolbar:not(.inline-toolbar,.contentTabToolbar,:-moz-lwtheme) {
-  appearance: auto;
-  -moz-default-appearance: menubar;
-  color: -moz-menubartext;
+@media not (-moz-gtk-csd-maximize-button) {
+  .titlebar-max,
+  .titlebar-restore {
+    display: none;
+  }
+}
+
+.titlebar-close {
+  order: env(-moz-gtk-csd-close-button-position);
+
+  > .toolbarbutton-icon {
+    -moz-default-appearance: -moz-window-button-close;
+    background-image: url(chrome://messenger/skin/window-controls/close.svg);
+  }
+
+  &:hover > .toolbarbutton-icon {
+    background-color: #d70022;
+    color: white;
+  }
+
+  &:hover:active > .toolbarbutton-icon {
+    background-color: #ff0039;
+  }
+
+  @media not (-moz-gtk-csd-close-button) {
+    display: none;
+  }
 }
 
 .inline-toolbar,
@@ -236,12 +241,8 @@ toolbar:not(.inline-toolbar,.contentTabToolbar,:-moz-lwtheme) {
   padding: 0;
 }
 
-.inline-toolbar toolbarseparator {
+.inline-toolbar > toolbarseparator {
   height: 28px;
-}
-
-.inline-toolbar toolbarspacer {
-  height: 23px;
 }
 
 menulist {
@@ -260,7 +261,7 @@ menulist > menupopup >
 menulist > menupopup >
   menu:is(.menuitem-iconic,[type="radio"],[type="checkbox"]) >
   .menu-iconic-left {
-  display: -moz-box;
+  display: flex;
 }
 
 /* ::::: Toolbar customization ::::: */
@@ -271,11 +272,11 @@ toolbarpaletteitem[place="toolbar"] > toolbarspacer {
 
 /* ::::: toolbarbutton menu-button ::::: */
 
-toolbarbutton[type="menu-button"] {
-  -moz-box-align: stretch;
+toolbarbutton[is="toolbarbutton-menu-button"] {
+  align-items: stretch;
   appearance: auto;
   -moz-default-appearance: dualbutton;
-  -moz-box-orient: horizontal !important;
+  flex-direction: row !important;
   padding: 0 !important;
 }
 
@@ -285,14 +286,13 @@ toolbarbutton[type="menu-button"] {
   appearance: auto;
   -moz-default-appearance: toolbarbutton-dropdown !important;
   list-style-image: none;
-  -moz-image-region: auto;
 }
 
 /* ::::: toolbarbutton ::::: */
 
 .toolbarbutton-1,
 .toolbarbutton-menubutton-button,
-.toolbarbutton-1[type="menu-button"],
+.toolbarbutton-1[is="toolbarbutton-menu-button"],
 .toolbarbutton-1 .toolbarbutton-menu-dropmarker,
 .toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker {
   appearance: none;
@@ -318,7 +318,7 @@ toolbar[mode="text"] .toolbarbutton-text {
   display: none;
 }
 
-button[type="menu-button"] > .button-box > button {
+button[is="toolbarbutton-menu-button"] > .button-box > button {
   margin-block: -5px;
 }
 
@@ -328,56 +328,33 @@ button[type="menu-button"] > .button-box > button {
   appearance: none;
   -moz-context-properties: fill;
   fill: currentColor;
+
+  treecol[sortDirection="ascending"]:not([hideheader="true"]) > & {
+    list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");
+  }
+
+  treecol[sortDirection="descending"]:not([hideheader="true"]) > & {
+    list-style-image: url("chrome://global/skin/icons/arrow-up-12.svg");
+  }
 }
 
-treecol[sortDirection="ascending"]:not([hideheader="true"]) > .treecol-sortdirection {
-  list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");
-}
+:root[lwt-tree] {
+  & treecol:not([hideheader="true"]),
+  & .tree-columnpicker-button:not([hideheader="true"]) {
+    padding-inline: 7px 6px;
+  }
 
-treecol[sortDirection="descending"]:not([hideheader="true"]) > .treecol-sortdirection {
-  list-style-image: url("chrome://global/skin/icons/arrow-up-12.svg");
-}
+  & treechildren::-moz-tree-row(odd) {
+    background-color: transparent;
+  }
 
-:root[lwt-tree] treecol:not([hideheader="true"]),
-:root[lwt-tree] treecolpicker:not([hideheader="true"]) {
-  padding-inline-start: 7px;
-  padding-inline-end: 6px;
-}
-
-:root[lwt-tree] treechildren::-moz-tree-row(odd) {
-  background-color: transparent;
-}
-
-:root[lwt-tree] treechildren::-moz-tree-row(hover) {
-  background-color: hsla(0, 0%, 50%, 0.15);
+  & treechildren::-moz-tree-row(hover) {
+    background-color: hsla(0, 0%, 50%, 0.15);
+  }
 }
 
 treechildren::-moz-tree-cell-text {
   padding-inline-start: 5px;
-}
-
-/* Status bar */
-
-.statusbar {
-  appearance: auto;
-  -moz-default-appearance: statusbar;
-  min-height: 22px;
-}
-
-.statusbar:-moz-lwtheme {
-  appearance: none;
-}
-
-.statusbar:-moz-lwtheme-brighttext {
-  --tabs-border-color: hsla(0,0%,60%,.4);
-}
-
-.statusbarpanel {
-  appearance: none;
-}
-
-.statusbarpanel-iconic {
-  padding: 0 1px;
 }
 
 /* Status panel */
@@ -390,45 +367,45 @@ treechildren::-moz-tree-cell-text {
   border-top-style: solid;
   color: -moz-dialogText;
   text-shadow: none;
-}
 
-.statuspanel-label:-moz-locale-dir(ltr):not([mirror]),
-.statuspanel-label:-moz-locale-dir(rtl)[mirror] {
-  border-right-style: solid;
-  border-top-right-radius: .3em;
-  margin-right: 1em;
-}
+  &:-moz-locale-dir(ltr):not([mirror]),
+  &:-moz-locale-dir(rtl)[mirror] {
+    border-right-style: solid;
+    border-top-right-radius: .3em;
+    margin-right: 1em;
+  }
 
-.statuspanel-label:-moz-locale-dir(rtl):not([mirror]),
-.statuspanel-label:-moz-locale-dir(ltr)[mirror] {
-  border-left-style: solid;
-  border-top-left-radius: .3em;
-  margin-left: 1em;
+  &:-moz-locale-dir(rtl):not([mirror]),
+  &:-moz-locale-dir(ltr)[mirror] {
+    border-left-style: solid;
+    border-top-left-radius: .3em;
+    margin-left: 1em;
+  }
 }
 
 .contentTabInstance {
   background-color: -moz-dialog;
-}
 
-.contentTabInstance:-moz-lwtheme {
-  background-color: transparent;
-  background-image: linear-gradient(transparent 40px, -moz-dialog 40px);
+  &:-moz-lwtheme {
+    background-color: transparent;
+    background-image: linear-gradient(transparent 40px, -moz-dialog 40px);
+  }
 }
 
 fieldset {
   margin: 5px;
   padding: 5px;
   border: none;
+
+  & > hbox,
+  & > vbox,
+  & > radiogroup {
+    width: -moz-available;
+  }
 }
 
 legend {
   font-weight: bold;
-}
-
-fieldset > hbox,
-fieldset > vbox,
-fieldset > radiogroup {
-  width: -moz-available;
 }
 
 /* UI Density customization */
@@ -443,4 +420,15 @@ treechildren::-moz-tree-row {
 
 :root[uidensity="touch"] treechildren::-moz-tree-row {
   min-height: 2.4rem;
+}
+
+/* Infobar styles */
+
+toolbarbutton.notification-button[is="toolbarbutton-menu-button"] {
+  appearance: none;
+  padding-inline: 6px 12px !important;
+}
+
+#reminderBarPopup {
+  margin-top: -4px;
 }

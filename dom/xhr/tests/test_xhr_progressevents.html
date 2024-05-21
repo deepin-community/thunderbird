@@ -12,7 +12,7 @@ SimpleTest.waitForExplicitFinish();
 
 var gen = runTests();
 
-function log(s) {
+function log() {
   // Uncomment these to get debugging information
   /*
   document.getElementById("l").textContent += s + "\n";
@@ -71,7 +71,7 @@ function updateProgress(e, data, testName) {
     newData = response.substr(data.receivedResult.length);
 
     if (!data.encoded) {
-      ok(newData.length > 0, "sanity check for progress" + test);
+      ok(newData.length, "sanity check for progress" + test);
     }
     ok(startsWith(data.pendingResult, newData), "new data matches expected" + test);
   }

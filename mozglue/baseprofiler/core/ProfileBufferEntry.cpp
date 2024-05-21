@@ -63,6 +63,14 @@ ProfileBufferEntry::ProfileBufferEntry(Kind aKind, uint64_t aUint64)
   memcpy(mStorage, &aUint64, sizeof(aUint64));
 }
 
+ProfileBufferEntry::ProfileBufferEntry(Kind aKind,
+                                       BaseProfilerThreadId aThreadId)
+    : mKind(aKind) {
+  static_assert(std::is_trivially_copyable_v<BaseProfilerThreadId>);
+  static_assert(sizeof(aThreadId) <= sizeof(mStorage));
+  memcpy(mStorage, &aThreadId, sizeof(aThreadId));
+}
+
 const char* ProfileBufferEntry::GetString() const {
   const char* result;
   memcpy(&result, mStorage, sizeof(result));
@@ -95,6 +103,13 @@ int64_t ProfileBufferEntry::GetInt64() const {
 
 uint64_t ProfileBufferEntry::GetUint64() const {
   uint64_t result;
+  memcpy(&result, mStorage, sizeof(result));
+  return result;
+}
+
+BaseProfilerThreadId ProfileBufferEntry::GetThreadId() const {
+  BaseProfilerThreadId result;
+  static_assert(std::is_trivially_copyable_v<BaseProfilerThreadId>);
   memcpy(&result, mStorage, sizeof(result));
   return result;
 }
@@ -139,7 +154,7 @@ class MOZ_RAII AutoArraySchemaWriter {
  public:
   explicit AutoArraySchemaWriter(SpliceableJSONWriter& aWriter)
       : mJSONWriter(aWriter), mNextFreeIndex(0) {
-    mJSONWriter.StartArrayElement(SpliceableJSONWriter::SingleLineStyle);
+    mJSONWriter.StartArrayElement();
   }
 
   ~AutoArraySchemaWriter() { mJSONWriter.EndArray(); }
@@ -155,6 +170,11 @@ class MOZ_RAII AutoArraySchemaWriter {
   void DoubleElement(uint32_t aIndex, double aValue) {
     FillUpTo(aIndex);
     mJSONWriter.DoubleElement(aValue);
+  }
+
+  void TimeMsElement(uint32_t aIndex, double aTime_ms) {
+    FillUpTo(aIndex);
+    mJSONWriter.TimeDoubleMsElement(aTime_ms);
   }
 
   void BoolElement(uint32_t aIndex, bool aValue) {
@@ -211,7 +231,11 @@ bool UniqueStacks::FrameKey::NormalFrameData::operator==(
          mColumn == aOther.mColumn && mCategoryPair == aOther.mCategoryPair;
 }
 
-UniqueStacks::UniqueStacks() : mUniqueStrings(MakeUnique<UniqueJSONStrings>()) {
+UniqueStacks::UniqueStacks()
+    : mUniqueStrings(MakeUnique<UniqueJSONStrings>(
+          FailureLatchInfallibleSource::Singleton())),
+      mFrameTableWriter(FailureLatchInfallibleSource::Singleton()),
+      mStackTableWriter(FailureLatchInfallibleSource::Singleton()) {
   mFrameTableWriter.StartBareList();
   mStackTableWriter.StartBareList();
 }
@@ -270,11 +294,10 @@ void UniqueStacks::StreamNonJITFrame(const FrameKey& aFrame) {
     RELEVANT_FOR_JS = 1,
     INNER_WINDOW_ID = 2,
     IMPLEMENTATION = 3,
-    OPTIMIZATIONS = 4,
-    LINE = 5,
-    COLUMN = 6,
-    CATEGORY = 7,
-    SUBCATEGORY = 8
+    LINE = 4,
+    COLUMN = 5,
+    CATEGORY = 6,
+    SUBCATEGORY = 7
   };
 
   AutoArraySchemaWithStringsWriter writer(mFrameTableWriter, *mUniqueStrings);
@@ -301,15 +324,6 @@ void UniqueStacks::StreamNonJITFrame(const FrameKey& aFrame) {
   }
 }
 
-struct CStringWriteFunc : public JSONWriteFunc {
-  std::string& mBuffer;  // The struct must not outlive this buffer
-  explicit CStringWriteFunc(std::string& aBuffer) : mBuffer(aBuffer) {}
-
-  void Write(const Span<const char>& aStr) override {
-    mBuffer.append(aStr.data(), aStr.size());
-  }
-};
-
 struct ProfileSample {
   uint32_t mStack;
   double mTime;
@@ -328,7 +342,7 @@ static void WriteSample(SpliceableJSONWriter& aWriter,
 
   writer.IntElement(STACK, aSample.mStack);
 
-  writer.DoubleElement(TIME, aSample.mTime);
+  writer.TimeMsElement(TIME, aSample.mTime);
 
   if (aSample.mResponsiveness.isSome()) {
     writer.DoubleElement(EVENT_DELAY, *aSample.mResponsiveness);
@@ -541,9 +555,9 @@ class EntryGetter {
     continue;                                              \
   }
 
-int ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter,
-                                       int aThreadId, double aSinceTime,
-                                       UniqueStacks& aUniqueStacks) const {
+BaseProfilerThreadId ProfileBuffer::StreamSamplesToJSON(
+    SpliceableJSONWriter& aWriter, BaseProfilerThreadId aThreadId,
+    double aSinceTime, UniqueStacks& aUniqueStacks) const {
   UniquePtr<char[]> dynStrBuf = MakeUnique<char[]>(kMaxFrameKeyLength);
 
   return mEntries.Read([&](ProfileChunkedBuffer::Reader* aReader) {
@@ -551,7 +565,7 @@ int ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter,
                "ProfileChunkedBuffer cannot be out-of-session when sampler is "
                "running");
 
-    int processedThreadId = 0;
+    BaseProfilerThreadId processedThreadId;
 
     EntryGetter e(*aReader);
 
@@ -582,16 +596,17 @@ int ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter,
       // must be a ThreadId entry.
       MOZ_ASSERT(e.Get().IsThreadId());
 
-      int threadId = e.Get().GetInt();
+      BaseProfilerThreadId threadId = e.Get().GetThreadId();
       e.Next();
 
       // Ignore samples that are for the wrong thread.
-      if (threadId != aThreadId && aThreadId != 0) {
+      if (threadId != aThreadId && aThreadId.IsSpecified()) {
         continue;
       }
 
-      MOZ_ASSERT(aThreadId != 0 || processedThreadId == 0,
-                 "aThreadId==0 should only be used with 1-sample buffer");
+      MOZ_ASSERT(
+          aThreadId.IsSpecified() || !processedThreadId.IsSpecified(),
+          "Unspecified aThreadId should only be used with 1-sample buffer");
 
       ProfileSample sample;
 
@@ -776,7 +791,7 @@ int ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter,
 }
 
 void ProfileBuffer::StreamMarkersToJSON(SpliceableJSONWriter& aWriter,
-                                        int aThreadId,
+                                        BaseProfilerThreadId aThreadId,
                                         const TimeStamp& aProcessStartTime,
                                         double aSinceTime,
                                         UniqueStacks& aUniqueStacks) const {
@@ -786,22 +801,24 @@ void ProfileBuffer::StreamMarkersToJSON(SpliceableJSONWriter& aWriter,
     MOZ_ASSERT(static_cast<ProfileBufferEntry::KindUnderlyingType>(type) <
                static_cast<ProfileBufferEntry::KindUnderlyingType>(
                    ProfileBufferEntry::Kind::MODERN_LIMIT));
-    bool entryWasFullyRead = false;
-
     if (type == ProfileBufferEntry::Kind::Marker) {
-      entryWasFullyRead = ::mozilla::base_profiler_markers_detail::
-          DeserializeAfterKindAndStream(
-              aER, aWriter, aThreadId,
-              [&](ProfileChunkedBuffer& aChunkedBuffer) {
-                ProfilerBacktrace backtrace("", &aChunkedBuffer);
-                backtrace.StreamJSON(aWriter, TimeStamp::ProcessCreation(),
-                                     aUniqueStacks);
-              });
-    }
-
-    if (!entryWasFullyRead) {
-      // Not a marker, or marker for another thread.
-      // We probably didn't read the whole entry, so we need to skip to the end.
+      ::mozilla::base_profiler_markers_detail::DeserializeAfterKindAndStream(
+          aER,
+          [&](const BaseProfilerThreadId& aMarkerThreadId) {
+            return (aMarkerThreadId == aThreadId) ? &aWriter : nullptr;
+          },
+          [&](ProfileChunkedBuffer& aChunkedBuffer) {
+            ProfilerBacktrace backtrace("", &aChunkedBuffer);
+            backtrace.StreamJSON(aWriter, TimeStamp::ProcessCreation(),
+                                 aUniqueStacks);
+          },
+          // We don't have Rust markers in the mozglue.
+          [&](mozilla::base_profiler_markers_detail::Streaming::
+                  DeserializerTag) {
+            MOZ_ASSERT_UNREACHABLE("No Rust markers in mozglue.");
+          });
+    } else {
+      // The entry was not a marker, we need to skip to the end.
       aER.SetRemainingBytes(0);
     }
   });
@@ -893,7 +910,7 @@ void ProfileBuffer::StreamProfilerOverheadToJSON(
           threads.Count(thread);
 
           AutoArraySchemaWriter writer(aWriter);
-          writer.DoubleElement(TIME, time);
+          writer.TimeMsElement(TIME, time);
           writer.DoubleElement(LOCKING, locking);
           writer.DoubleElement(MARKER_CLEANING, cleaning);
           writer.DoubleElement(COUNTERS, counter);
@@ -931,15 +948,13 @@ void ProfileBuffer::StreamProfilerOverheadToJSON(
   });
 }
 
-struct CounterKeyedSample {
+struct CounterSample {
   double mTime;
   uint64_t mNumber;
   int64_t mCount;
 };
 
-using CounterKeyedSamples = Vector<CounterKeyedSample>;
-
-using CounterMap = HashMap<uint64_t, CounterKeyedSamples>;
+using CounterSamples = Vector<CounterSample>;
 
 // HashMap lookup, if not found, a default value is inserted.
 // Returns reference to (existing or new) value inside the HashMap.
@@ -968,7 +983,7 @@ void ProfileBuffer::StreamCountersToJSON(SpliceableJSONWriter& aWriter,
 
     EntryGetter e(*aReader);
 
-    enum Schema : uint32_t { TIME = 0, NUMBER = 1, COUNT = 2 };
+    enum Schema : uint32_t { TIME = 0, COUNT = 1, NUMBER = 2 };
 
     // Stream all counters. We skip other entries, because we process them in
     // StreamSamplesToJSON()/etc.
@@ -976,81 +991,79 @@ void ProfileBuffer::StreamCountersToJSON(SpliceableJSONWriter& aWriter,
     // Valid sequence in the buffer:
     // CounterID
     // Time
-    // ( CounterKey Count Number? )*
+    // ( Count Number? )*
     //
     // And the JSON (example):
     // "counters": {
     //  "name": "malloc",
     //  "category": "Memory",
     //  "description": "Amount of allocated memory",
-    //  "sample_groups": {
-    //   "id": 0,
-    //   "samples": {
-    //    "schema": {"time": 0, "number": 1, "count": 2},
-    //    "data": [
-    //     [
-    //      16117.033968000002,
-    //      2446216,
-    //      6801320
-    //     ],
-    //     [
-    //      16118.037638,
-    //      2446216,
-    //      6801320
-    //     ],
+    //  "samples": {
+    //   "schema": {"time": 0, "count": 1, "number": 2},
+    //   "data": [
+    //    [
+    //     16117.033968000002,
+    //     2446216,
+    //     6801320
     //    ],
-    //   }
-    //  }
-    // },
+    //    [
+    //     16118.037638,
+    //     2446216,
+    //     6801320
+    //    ],
+    //   ],
+    //  },
+    // }
 
     // Build the map of counters and populate it
-    HashMap<void*, CounterMap> counters;
+    HashMap<void*, CounterSamples> counters;
 
     while (e.Has()) {
       // skip all non-Counters, including if we start in the middle of a counter
       if (e.Get().IsCounterId()) {
         void* id = e.Get().GetPtr();
-        CounterMap& counter = LookupOrAdd(counters, id);
+        CounterSamples& data = LookupOrAdd(counters, id);
         e.Next();
         if (!e.Has() || !e.Get().IsTime()) {
           ERROR_AND_CONTINUE("expected a Time entry");
         }
         double time = e.Get().GetDouble();
+        e.Next();
         if (time >= aSinceTime) {
-          e.Next();
-          while (e.Has() && e.Get().IsCounterKey()) {
-            uint64_t key = e.Get().GetUint64();
-            CounterKeyedSamples& data = LookupOrAdd(counter, key);
-            e.Next();
-            if (!e.Has() || !e.Get().IsCount()) {
-              ERROR_AND_CONTINUE("expected a Count entry");
-            }
-            int64_t count = e.Get().GetUint64();
-            e.Next();
-            uint64_t number;
-            if (!e.Has() || !e.Get().IsNumber()) {
-              number = 0;
-            } else {
-              number = e.Get().GetInt64();
-            }
-            CounterKeyedSample sample = {time, number, count};
-            MOZ_RELEASE_ASSERT(data.append(sample));
+          if (!e.Has() || !e.Get().IsCount()) {
+            ERROR_AND_CONTINUE("expected a Count entry");
           }
+          int64_t count = e.Get().GetUint64();
+          e.Next();
+          uint64_t number;
+          if (!e.Has() || !e.Get().IsNumber()) {
+            number = 0;
+          } else {
+            number = e.Get().GetInt64();
+            e.Next();
+          }
+          CounterSample sample = {time, number, count};
+          MOZ_RELEASE_ASSERT(data.append(sample));
         } else {
           // skip counter sample - only need to skip the initial counter
           // id, then let the loop at the top skip the rest
         }
+      } else {
+        e.Next();
       }
-      e.Next();
     }
-    // we have a map of a map of counter entries; dump them to JSON
+    // we have a map of counter entries; dump them to JSON
     if (counters.count() == 0) {
       return;
     }
 
     aWriter.StartArrayProperty("counters");
     for (auto iter = counters.iter(); !iter.done(); iter.next()) {
-      CounterMap& counter = iter.get().value();
+      CounterSamples& samples = iter.get().value();
+      size_t size = samples.length();
+      if (size == 0) {
+        continue;
+      }
       const BaseProfilerCount* base_counter =
           static_cast<const BaseProfilerCount*>(iter.get().key());
 
@@ -1061,59 +1074,51 @@ void ProfileBuffer::StreamCountersToJSON(SpliceableJSONWriter& aWriter,
       aWriter.StringProperty("description",
                              MakeStringSpan(base_counter->mDescription));
 
-      aWriter.StartArrayProperty("sample_groups");
-      for (auto counter_iter = counter.iter(); !counter_iter.done();
-           counter_iter.next()) {
-        CounterKeyedSamples& samples = counter_iter.get().value();
-        uint64_t key = counter_iter.get().key();
-
-        size_t size = samples.length();
-        if (size == 0) {
-          continue;
+      bool hasNumber = false;
+      for (size_t i = 0; i < size; i++) {
+        if (samples[i].mNumber != 0) {
+          hasNumber = true;
+          break;
         }
-
-        aWriter.StartObjectElement();
-        {
-          aWriter.IntProperty("id", static_cast<int64_t>(key));
-          aWriter.StartObjectProperty("samples");
-          {
-            // XXX Can we assume a missing count means 0?
-            JSONSchemaWriter schema(aWriter);
-            schema.WriteField("time");
-            schema.WriteField("number");
-            schema.WriteField("count");
-          }
-
-          aWriter.StartArrayProperty("data");
-          uint64_t previousNumber = 0;
-          int64_t previousCount = 0;
-          for (size_t i = 0; i < size; i++) {
-            // Encode as deltas, and only encode if different than the last
-            // sample
-            if (i == 0 || samples[i].mNumber != previousNumber ||
-                samples[i].mCount != previousCount) {
-              MOZ_ASSERT(i == 0 || samples[i].mTime >= samples[i - 1].mTime);
-              MOZ_ASSERT(samples[i].mNumber >= previousNumber);
-              MOZ_ASSERT(samples[i].mNumber - previousNumber <=
-                         uint64_t(std::numeric_limits<int64_t>::max()));
-
-              AutoArraySchemaWriter writer(aWriter);
-              writer.DoubleElement(TIME, samples[i].mTime);
-              writer.IntElement(
-                  NUMBER,
-                  static_cast<int64_t>(samples[i].mNumber - previousNumber));
-              writer.IntElement(COUNT, samples[i].mCount - previousCount);
-              previousNumber = samples[i].mNumber;
-              previousCount = samples[i].mCount;
-            }
-          }
-          aWriter.EndArray();   // data
-          aWriter.EndObject();  // samples
-        }
-        aWriter.EndObject();  // sample_groups item
       }
-      aWriter.EndArray();  // sample groups
-      aWriter.End();       // for each counter
+
+      aWriter.StartObjectProperty("samples");
+      {
+        JSONSchemaWriter schema(aWriter);
+        schema.WriteField("time");
+        schema.WriteField("count");
+        if (hasNumber) {
+          schema.WriteField("number");
+        }
+      }
+
+      aWriter.StartArrayProperty("data");
+      uint64_t previousNumber = 0;
+      int64_t previousCount = 0;
+      for (size_t i = 0; i < size; i++) {
+        // Encode as deltas, and only encode if different than the last
+        // sample
+        if (i == 0 || samples[i].mNumber != previousNumber ||
+            samples[i].mCount != previousCount) {
+          MOZ_ASSERT(i == 0 || samples[i].mTime >= samples[i - 1].mTime);
+          MOZ_ASSERT(samples[i].mNumber >= previousNumber);
+          MOZ_ASSERT(samples[i].mNumber - previousNumber <=
+                     uint64_t(std::numeric_limits<int64_t>::max()));
+
+          AutoArraySchemaWriter writer(aWriter);
+          writer.TimeMsElement(TIME, samples[i].mTime);
+          writer.IntElement(COUNT, samples[i].mCount - previousCount);
+          if (hasNumber) {
+            writer.IntElement(NUMBER, static_cast<int64_t>(samples[i].mNumber -
+                                                           previousNumber));
+          }
+          previousNumber = samples[i].mNumber;
+          previousCount = samples[i].mCount;
+        }
+      }
+      aWriter.EndArray();   // data
+      aWriter.EndObject();  // samples
+      aWriter.End();        // for each counter
     }
     aWriter.EndArray();  // counters
   });
@@ -1126,12 +1131,12 @@ static void AddPausedRange(SpliceableJSONWriter& aWriter, const char* aReason,
                            const Maybe<double>& aEndTime) {
   aWriter.Start();
   if (aStartTime) {
-    aWriter.DoubleProperty("startTime", *aStartTime);
+    aWriter.TimeDoubleMsProperty("startTime", *aStartTime);
   } else {
     aWriter.NullProperty("startTime");
   }
   if (aEndTime) {
-    aWriter.DoubleProperty("endTime", *aEndTime);
+    aWriter.TimeDoubleMsProperty("endTime", *aEndTime);
   } else {
     aWriter.NullProperty("endTime");
   }
@@ -1179,7 +1184,7 @@ void ProfileBuffer::StreamPausedRangesToJSON(SpliceableJSONWriter& aWriter,
   });
 }
 
-bool ProfileBuffer::DuplicateLastSample(int aThreadId,
+bool ProfileBuffer::DuplicateLastSample(BaseProfilerThreadId aThreadId,
                                         const TimeStamp& aProcessStartTime,
                                         Maybe<uint64_t>& aLastSample) {
   if (!aLastSample) {
@@ -1187,10 +1192,10 @@ bool ProfileBuffer::DuplicateLastSample(int aThreadId,
   }
 
   ProfileChunkedBuffer tempBuffer(
-      ProfileChunkedBuffer::ThreadSafety::WithoutMutex, mWorkerChunkManager);
+      ProfileChunkedBuffer::ThreadSafety::WithoutMutex, WorkerChunkManager());
 
   auto retrieveWorkerChunk = MakeScopeExit(
-      [&]() { mWorkerChunkManager.Reset(tempBuffer.GetAllChunks()); });
+      [&]() { WorkerChunkManager().Reset(tempBuffer.GetAllChunks()); });
 
   const bool ok = mEntries.Read([&](ProfileChunkedBuffer::Reader* aReader) {
     MOZ_ASSERT(aReader,
@@ -1207,7 +1212,7 @@ bool ProfileBuffer::DuplicateLastSample(int aThreadId,
     }
 
     MOZ_RELEASE_ASSERT(e.Has() && e.Get().IsThreadId() &&
-                       e.Get().GetInt() == aThreadId);
+                       e.Get().GetThreadId() == aThreadId);
 
     e.Next();
 
@@ -1226,12 +1231,11 @@ bool ProfileBuffer::DuplicateLastSample(int aThreadId,
           return true;
         case ProfileBufferEntry::Kind::Time:
           // Copy with new time
-          AddEntry(tempBuffer,
-                   ProfileBufferEntry::Time(
-                       (TimeStamp::NowUnfuzzed() - aProcessStartTime)
-                           .ToMilliseconds()));
+          AddEntry(
+              tempBuffer,
+              ProfileBufferEntry::Time(
+                  (TimeStamp::Now() - aProcessStartTime).ToMilliseconds()));
           break;
-        case ProfileBufferEntry::Kind::CounterKey:
         case ProfileBufferEntry::Kind::Number:
         case ProfileBufferEntry::Kind::Count:
         case ProfileBufferEntry::Kind::Responsiveness:

@@ -17,32 +17,30 @@
 
 # use/use not packaged software instead of preshipped
 ac_add_options --without-system-jpeg   # Debian version causes issues on mips*
-ac_add_options --with-system-bz2
 ac_add_options --without-system-icu
 ac_add_options --with-system-nspr
 ac_add_options --with-system-nss
 ac_add_options --with-system-zlib
 
 # other packaged software
-ac_add_options --with-system-botan
-ac_add_options --with-system-jsonc
 ac_add_options --with-system-libevent
 ac_add_options --with-system-libvpx
 
 # disabled features
-ac_add_options --disable-av1
+ac_add_options --disable-bootstrap
 ac_add_options --disable-install-strip
 ac_add_options --disable-strip
 ac_add_options --disable-tests
 ac_add_options --disable-updater
 ac_add_options --disable-webrtc
+ac_add_options --without-system-librnp
+ac_add_options --without-wasm-sandboxed-libraries
 
 # enabled features
 ac_add_options --allow-addon-sideload
-ac_add_options --enable-default-toolkit=cairo-gtk3
-ac_add_options --enable-extensions=default
+ac_add_options --enable-av1
+ac_add_options --enable-default-toolkit=cairo-gtk3-wayland
 ac_add_options --enable-official-branding # use the official artwork
-ac_add_options --enable-openpgp
 ac_add_options --enable-optimize
 ac_add_options --enable-system-ffi
 ac_add_options --with-unsigned-addon-scopes=app,system
@@ -118,6 +116,9 @@ case `dpkg --print-architecture` in
     ;;
   ppc64el)
     ac_add_options --with-intl-api
+    ;;
+  riscv64)
+    ac_add_options --disable-debug-symbols
     ;;
   sh4)
     ac_add_options --disable-pie

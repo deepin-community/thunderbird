@@ -14,20 +14,22 @@ const {
   censusDisplays,
   censusState,
   viewState,
-} = require("devtools/client/memory/constants");
+} = require("resource://devtools/client/memory/constants.js");
 const {
   setCensusDisplayAndRefresh,
-} = require("devtools/client/memory/actions/census-display");
+} = require("resource://devtools/client/memory/actions/census-display.js");
 const {
   takeSnapshotAndCensus,
   selectSnapshotAndRefresh,
-} = require("devtools/client/memory/actions/snapshot");
-const { changeView } = require("devtools/client/memory/actions/view");
+} = require("resource://devtools/client/memory/actions/snapshot.js");
+const {
+  changeView,
+} = require("resource://devtools/client/memory/actions/view.js");
 
 // We test setting an invalid display, which triggers an assertion failure.
 EXPECTED_DTU_ASSERT_FAILURE_COUNT = 1;
 
-add_task(async function() {
+add_task(async function () {
   const front = new StubbedMemoryFront();
   const heapWorker = new HeapAnalysesClient();
   await front.attach();
@@ -52,7 +54,11 @@ add_task(async function() {
   );
 
   // Test invalid displays
-  ok(getState().errors.length === 0, "No error actions in the queue.");
+  Assert.strictEqual(
+    getState().errors.length,
+    0,
+    "No error actions in the queue."
+  );
   dispatch(setCensusDisplayAndRefresh(heapWorker, {}));
   await waitUntilState(store, () => getState().errors.length === 1);
   ok(true, "Emits an error action when passing in an invalid display object");

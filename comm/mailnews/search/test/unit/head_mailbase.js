@@ -1,15 +1,14 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { mailTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MailTestUtils.jsm"
+var { mailTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MailTestUtils.sys.mjs"
 );
-var { localAccountUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/LocalAccountUtils.jsm"
+var { localAccountUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/LocalAccountUtils.sys.mjs"
 );
 
 var CC = Components.Constructor;
@@ -19,6 +18,6 @@ do_get_profile();
 
 var gDEPTH = "../../../../";
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load(gDEPTH + "mailnews/resources/mailShutdown.js");
 });

@@ -15,15 +15,14 @@
     constructor() {
       super();
 
-      this.addEventListener("focus", event => {
+      this.addEventListener("focus", () => {
         this._cachedInsertionPoint = undefined;
-
         // See select handler. We need the sidebar's places commandset to be
         // updated as well
         document.commandDispatcher.updateCommands("focus");
       });
 
-      this.addEventListener("select", event => {
+      this.addEventListener("select", () => {
         this._cachedInsertionPoint = undefined;
 
         // This additional complexity is here for the sidebars
@@ -67,6 +66,10 @@
             break;
           }
         }
+
+        // Indicate to drag and drop listeners
+        // whether or not this was the start of the drag
+        this._isDragSource = true;
 
         this._controller.setDataTransfer(event);
         event.stopPropagation();
@@ -122,7 +125,8 @@
         event.stopPropagation();
       });
 
-      this.addEventListener("dragend", event => {
+      this.addEventListener("dragend", () => {
+        this._isDragSource = false;
         PlacesControllerDragHelper.currentDropTarget = null;
       });
     }
@@ -141,6 +145,8 @@
         // eslint-disable-next-line no-self-assign
         this.place = this.place;
       }
+
+      window.addEventListener("unload", this.disconnectedCallback);
     }
 
     get controller() {
@@ -160,7 +166,9 @@
     }
     /**
      * overriding
-     * @param {object} val
+     *
+     * @param {PlacesTreeView} val
+     *   The parent view
      */
     set view(val) {
       // We save the view so that we can avoid expensive get calls when
@@ -217,8 +225,12 @@
       return this.getAttribute("place");
     }
 
+    get selectedCount() {
+      return this.view?.selection?.count || 0;
+    }
+
     get hasSelection() {
-      return this.view && this.view.selection.count >= 1;
+      return this.selectedCount >= 1;
     }
 
     get selectedNodes() {
@@ -302,12 +314,11 @@
     }
 
     get selectedNode() {
-      var view = this.view;
-      if (!view || view.selection.count != 1) {
+      if (this.selectedCount != 1) {
         return null;
       }
 
-      var selection = view.selection;
+      var selection = this.view.selection;
       var min = {},
         max = {};
       selection.getRangeAt(0, min, max);
@@ -390,6 +401,10 @@
       return this._cachedInsertionPoint;
     }
 
+    get isDragSource() {
+      return this._isDragSource;
+    }
+
     get ownerWindow() {
       return window;
     }
@@ -466,6 +481,7 @@
      * will be opened, so that the node is visible.
      *
      * @param {string} placeURI
+     *   The URI that should be selected
      */
     selectPlaceURI(placeURI) {
       // Do nothing if a node matching the given uri is already selected
@@ -534,6 +550,7 @@
      * node is visible.
      *
      * @param {object} node
+     *   The node that should be selected
      */
     selectNode(node) {
       var view = this.view;
@@ -650,7 +667,6 @@
         : null;
 
       return new PlacesInsertionPoint({
-        parentId: PlacesUtils.getConcreteItemId(container),
         parentGuid: PlacesUtils.getConcreteItemGuid(container),
         index,
         orientation,
@@ -668,7 +684,7 @@
      * each given item guid. It will open any folder nodes that it needs
      * to in order to show the selected items.
      *
-     * @param {array} aGuids
+     * @param {Array} aGuids
      *   Guids to select.
      * @param {boolean} aOpenContainers
      *   Whether or not to open containers.
@@ -708,6 +724,7 @@
        * in its subtree.
        *
        * @param {object} node
+       *   The node to search.
        * @returns {boolean}
        *   Returns true if at least one item was found.
        */
@@ -800,14 +817,23 @@
       for (let i = 0; i < nodesToOpen.length; i++) {
         nodesToOpen[i].containerOpen = true;
       }
+      let firstValidTreeIndex = -1;
       for (let i = 0; i < nodes.length; i++) {
         var index = resultview.treeIndexForNode(nodes[i]);
         if (index == -1) {
           continue;
         }
+        if (firstValidTreeIndex < 0 && index >= 0) {
+          firstValidTreeIndex = index;
+        }
         selection.rangedSelect(index, index, true);
       }
       selection.selectEventsSuppressed = false;
+
+      // Bring the first valid node into view if necessary
+      if (firstValidTreeIndex >= 0) {
+        this.ensureRowIsVisible(firstValidTreeIndex);
+      }
     }
 
     buildContextMenu(aPopup) {
@@ -815,8 +841,10 @@
       return this.controller.buildContextMenu(aPopup);
     }
 
-    destroyContextMenu(aPopup) {}
+    destroyContextMenu() {}
+
     disconnectedCallback() {
+      window.removeEventListener("unload", this.disconnectedCallback);
       // Unregister the controller before unlinking the view, otherwise it
       // may still try to update commands on a view with a null result.
       if (this._controller) {
@@ -826,11 +854,8 @@
 
       if (this.view) {
         this.view.uninit();
+        this.view = null;
       }
-      // view.setTree(null) will be called upon unsetting the view, which
-      // breaks the reference cycle between the PlacesTreeView and result.
-      // See the "setTree" method of PlacesTreeView in treeView.js.
-      this.view = null;
     }
   }
 

@@ -2,15 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* globals TodayPane, switchToView, gLastShownCalendarView */
+/* import-globals-from calendar-unifinder.js */
+
 /* exported calSwitchToCalendarMode, calSwitchToMode, calSwitchToTaskMode,
  *          changeMode
  */
 
-/* import-globals-from calendar-unifinder.js */
-/* import-globals-from calendar-views-utils.js */
-/* import-globals-from today-pane.js */
-
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 /**
  * The current mode defining the current mode we're in. Allowed values are:
@@ -21,12 +20,14 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
  *  - 'calendarEvent'
  *  - 'calendarTask'
  *  - 'special' - For special tabs like preferences, add-ons manager, about:xyz, etc.
+ *
  * @global
  */
 var gCurrentMode = "mail";
 
 /**
  * Changes the mode (gCurrentMode) and adapts the UI to the new mode.
+ *
  * @param {string} [mode="mail"] - the new mode: 'mail', 'calendar', 'task', etc.
  */
 function changeMode(mode = "mail") {
@@ -46,16 +47,13 @@ function changeMode(mode = "mail") {
   });
 
   TodayPane.onModeModified();
-  if (gCurrentMode != "calendar") {
-    timeIndicator.cancel();
-  }
 }
 
 /**
  * For switching to modes like "mail", "chat", "calendarEvent", "calendarTask", or "special".
  * (For "calendar" and "task" modes use calSwitchToCalendarMode and calSwitchToTaskMode.)
  *
- * @param {string} mode  The mode to switch to.
+ * @param {string} mode - The mode to switch to.
  */
 function calSwitchToMode(mode) {
   if (!["mail", "chat", "calendarEvent", "calendarTask", "special"].includes(mode)) {
@@ -83,6 +81,8 @@ function calSwitchToCalendarMode() {
     // display the calendar panel on the display deck
     document.getElementById("calendar-view-box").collapsed = false;
     document.getElementById("calendar-task-box").collapsed = true;
+    document.getElementById("sidePanelNewEvent").hidden = false;
+    document.getElementById("sidePanelNewTask").hidden = true;
 
     // show the last displayed type of calendar view
     switchToView(gLastShownCalendarView.get());
@@ -94,8 +94,9 @@ function calSwitchToCalendarMode() {
     // make sure the view is sized correctly
     window.dispatchEvent(new CustomEvent("viewresize"));
 
-    // Load the unifinder if it isn't already loaded.
-    ensureUnifinderLoaded();
+    // Activate the unifinder, if it's visible. If it's not visible,
+    // `getUnifinderView` will return a falsy value.
+    getUnifinderView()?.activate();
   }
 }
 
@@ -109,8 +110,16 @@ function calSwitchToTaskMode() {
     // display the task panel on the display deck
     document.getElementById("calendar-view-box").collapsed = true;
     document.getElementById("calendar-task-box").collapsed = false;
+    document.getElementById("sidePanelNewEvent").hidden = true;
+    document.getElementById("sidePanelNewTask").hidden = false;
 
     document.getElementById("calMinimonth").setAttribute("freebusy", "true");
+
+    const tree = document.getElementById("calendar-task-tree");
+    if (!tree.hasBeenVisible) {
+      tree.hasBeenVisible = true;
+      tree.refresh();
+    }
 
     document.commandDispatcher.updateCommands("calendar_commands");
     window.setCursor("auto");

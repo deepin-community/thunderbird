@@ -1,13 +1,10 @@
-let { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+let { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
 let authPromptModalType = Services.prefs.getIntPref(
   "prompts.modalType.httpAuth"
 );
-
-let commonDialogEnabled =
-  authPromptModalType === Services.prompt.MODAL_TYPE_WINDOW ||
-  (authPromptModalType === Services.prompt.MODAL_TYPE_TAB &&
-    Services.prefs.getBoolPref("prompts.tabChromePromptSubDialog"));
 
 let server = new HttpServer();
 server.registerPathHandler("/file.html", fileHandler);
@@ -36,23 +33,15 @@ function fileHandler(metadata, response) {
 }
 
 function onCommonDialogLoaded(subject) {
-  let dialog;
-  if (commonDialogEnabled) {
-    dialog = subject.Dialog;
-  } else {
-    let promptBox =
-      subject.ownerGlobal.gBrowser.selectedBrowser.tabModalPromptBox;
-    dialog = promptBox.getPrompt(subject).Dialog;
-  }
+  let dialog = subject.Dialog;
+
   // Submit random account and password
   dialog.ui.loginTextbox.setAttribute("value", Math.random());
   dialog.ui.password1Textbox.setAttribute("value", Math.random());
   dialog.ui.button0.click();
 }
 
-let authPromptTopic = commonDialogEnabled
-  ? "common-dialog-loaded"
-  : "tabmodal-dialog-loaded";
+let authPromptTopic = "common-dialog-loaded";
 Services.obs.addObserver(onCommonDialogLoaded, authPromptTopic);
 
 registerCleanupFunction(() => {

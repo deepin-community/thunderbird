@@ -5,6 +5,7 @@ module.exports = {
     // These are defined in the WebExtension script scopes by ExtensionCommon.jsm.
     // From toolkit/components/extensions/.eslintrc.js.
     ExtensionAPI: true,
+    ExtensionAPIPersistent: true,
     ExtensionCommon: true,
     ExtensionUtils: true,
     extensions: true,
@@ -25,6 +26,8 @@ module.exports = {
     WindowManagerBase: true,
     WindowTrackerBase: true,
     getContainerForCookieStoreId: true,
+    getUserContextIdForCookieStoreId: true,
+    getCookieStoreIdForOriginAttributes: true,
     getCookieStoreIdForContainer: true,
     getCookieStoreIdForTab: true,
     isContainerCookieStoreId: true,
@@ -35,6 +38,7 @@ module.exports = {
     // These are defined in ext-mail.js.
     ADDRESS_BOOK_WINDOW_URI: true,
     COMPOSE_WINDOW_URI: true,
+    MAIN_WINDOW_URI: true,
     MESSAGE_WINDOW_URI: true,
     MESSAGE_PROTOCOLS: true,
     NOTIFICATION_COLLAPSE_TIME: true,
@@ -43,26 +47,27 @@ module.exports = {
     TabmailTab: true,
     Window: true,
     TabmailWindow: true,
-    MsgHdrToRawMessage: true,
     clickModifiersFromEvent: true,
-    convertFolder: true,
-    convertAccount: true,
-    traverseSubfolders: true,
-    convertMailIdentity: true,
-    convertMessage: true,
-    folderPathToURI: true,
-    folderURIToPath: true,
+    getNormalWindowReady: true,
+    getRealFileForFile: true,
     getTabBrowser: true,
     getTabTabmail: true,
     getTabWindow: true,
-    makeWidgetId: true,
     messageListTracker: true,
     messageTracker: true,
-    tabGetSender: true,
+    spaceTracker: true,
     tabTracker: true,
+    waitForMailTabReady: true,
     windowTracker: true,
 
     // ext-browserAction.js
     browserActionFor: true,
+  },
+  rules: {
+    // From toolkit/components/extensions/.eslintrc.js.
+    // Disable reject-importGlobalProperties because we don't want to include
+    // these in the sandbox directly as that would potentially mean the
+    // imported properties would be instantiated up-front rather than lazily.
+    "mozilla/reject-importGlobalProperties": "off",
   },
 };

@@ -6,7 +6,7 @@
 /* import-globals-from ../../mochitest/role.js */
 loadScripts({ name: "role.js", dir: MOCHITESTS_DIR });
 
-// Verify we recieve hide and show notifications when the chrome
+// Verify we receive hide and show notifications when the chrome
 // XUL alert is closed or opened. Mac expects both notifications to
 // properly communicate live region changes.
 async function runTests(browser) {

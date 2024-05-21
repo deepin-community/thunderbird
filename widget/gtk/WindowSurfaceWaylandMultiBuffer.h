@@ -13,7 +13,7 @@
 #include "nsTArray.h"
 #include "nsWaylandDisplay.h"
 #include "nsWindow.h"
-#include "WaylandShmBuffer.h"
+#include "WaylandBuffer.h"
 #include "WindowSurface.h"
 
 namespace mozilla::widget {
@@ -24,7 +24,8 @@ using gfx::DrawTarget;
 // and related management
 class WindowSurfaceWaylandMB : public WindowSurface {
  public:
-  explicit WindowSurfaceWaylandMB(nsWindow* aWindow);
+  WindowSurfaceWaylandMB(RefPtr<nsWindow> aWindow,
+                         GtkCompositorWidget* aCompositorWidget);
   ~WindowSurfaceWaylandMB() = default;
 
   // Lock() / Commit() are called by gecko when Firefox
@@ -38,38 +39,44 @@ class WindowSurfaceWaylandMB : public WindowSurface {
   // and we send it to wayland compositor in FrameCallbackHandler()/
   // FlushPendingCommits().
   already_AddRefed<DrawTarget> Lock(
-      const LayoutDeviceIntRegion& aRegion) override;
+      const LayoutDeviceIntRegion& aInvalidRegion) override;
   void Commit(const LayoutDeviceIntRegion& aInvalidRegion) final;
-  RefPtr<nsWaylandDisplay> GetWaylandDisplay() { return mWaylandDisplay; };
-
-  static void BufferReleaseCallbackHandler(void* aData, wl_buffer* aBuffer);
 
  private:
-  RefPtr<WaylandShmBuffer> GetWaylandBuffer();
-  RefPtr<WaylandShmBuffer> ObtainBufferFromPool(
-      const LayoutDeviceIntSize& aSize);
-  void ReturnBufferToPool(const RefPtr<WaylandShmBuffer>& aBuffer);
-  void EnforcePoolSizeLimit(const MutexAutoLock& aLock);
-  void PrepareBufferForFrame(const MutexAutoLock& aLock);
-  void HandlePartialUpdate(const MutexAutoLock& aLock,
+  void Commit(const MutexAutoLock& aProofOfLock,
+              const LayoutDeviceIntRegion& aInvalidRegion);
+  RefPtr<WaylandBufferSHM> ObtainBufferFromPool(
+      const MutexAutoLock& aProofOfLock, const LayoutDeviceIntSize& aSize);
+  void ReturnBufferToPool(const MutexAutoLock& aProofOfLock,
+                          const RefPtr<WaylandBufferSHM>& aBuffer);
+  void EnforcePoolSizeLimit(const MutexAutoLock& aProofOfLock);
+  void CollectPendingSurfaces(const MutexAutoLock& aProofOfLock);
+  void HandlePartialUpdate(const MutexAutoLock& aProofOfLock,
                            const LayoutDeviceIntRegion& aInvalidRegion);
-  void IncrementBufferAge();
-  void BufferReleaseCallbackHandler(wl_buffer* aBuffer);
+  void IncrementBufferAge(const MutexAutoLock& aProofOfLock);
+  // Return true if window size was updated.
+  bool MaybeUpdateWindowSize();
 
-  mozilla::Mutex mSurfaceLock;
+  mozilla::Mutex mSurfaceLock MOZ_UNANNOTATED;
 
-  nsWindow* mWindow;
-  RefPtr<nsWaylandDisplay> mWaylandDisplay;
-  RefPtr<WaylandShmBuffer> mWaylandBuffer;
-  LayoutDeviceIntSize mMozContainerSize;
+  RefPtr<nsWindow> mWindow;
+  // WindowSurfaceWaylandMB is owned by GtkCompositorWidget so we can't
+  // reference it.
+  GtkCompositorWidget* mCompositorWidget;
+  LayoutDeviceIntSize mWindowSize;
 
-  // partial damage
-  RefPtr<WaylandShmBuffer> mPreviousWaylandBuffer;
-  LayoutDeviceIntRegion mPreviousInvalidRegion;
+  RefPtr<WaylandBufferSHM> mInProgressBuffer;
+  RefPtr<WaylandBufferSHM> mFrontBuffer;
+  LayoutDeviceIntRegion mFrontBufferInvalidRegion;
 
   // buffer pool
-  nsTArray<RefPtr<WaylandShmBuffer>> mInUseBuffers;
-  nsTArray<RefPtr<WaylandShmBuffer>> mAvailableBuffers;
+  nsTArray<RefPtr<WaylandBufferSHM>> mInUseBuffers;
+  nsTArray<RefPtr<WaylandBufferSHM>> mPendingBuffers;
+  nsTArray<RefPtr<WaylandBufferSHM>> mAvailableBuffers;
+
+  // delayed commits
+  bool mFrameInProcess;
+  bool mCallbackRequested;
 };
 
 }  // namespace mozilla::widget

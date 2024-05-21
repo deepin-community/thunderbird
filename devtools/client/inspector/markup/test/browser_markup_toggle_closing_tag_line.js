@@ -11,7 +11,7 @@ const TEST_URL = `data:text/html;charset=utf8,
 <div class="outer-div"><span>test</span></div>
 <iframe src="data:text/html;charset=utf8,<div>test</div>"></iframe>`;
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URL);
 
   info("Getting the container for .outer-div parent element");
@@ -38,8 +38,9 @@ add_task(async function() {
   const iframe = await getNodeFront("iframe", inspector);
   const { nodes } = await inspector.walker.children(iframe);
   const documentFront = nodes[0];
-  ok(
-    documentFront.displayName === "#document",
+  Assert.strictEqual(
+    documentFront.displayName,
+    "#document",
     "First child of IFRAME is #document"
   );
 

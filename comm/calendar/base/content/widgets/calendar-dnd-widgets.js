@@ -8,7 +8,7 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+  var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
   /**
    * An abstract class to handle drag on drop for calendar.
@@ -23,6 +23,7 @@
       this.addEventListener("dragenter", this.onDragEnter);
       this.addEventListener("drop", this.onDrop);
       this.addEventListener("dragend", this.onDragEnd);
+      this.mCalendarView = null;
     }
 
     connectedCallback() {
@@ -30,8 +31,6 @@
         return;
       }
       this.hasConnected = true;
-
-      this.mCalendarView = null;
     }
 
     /**
@@ -59,12 +58,12 @@
      * The dropshadows are added at the first position of the children.
      */
     addDropShadows() {
-      let offset = this.calendarView.mShadowOffset;
-      let shadowStartDate = this.date.clone();
+      const offset = this.calendarView.mShadowOffset;
+      const shadowStartDate = this.date.clone();
       shadowStartDate.addDuration(offset);
       this.calendarView.mDropShadows = [];
       for (let i = 0; i < this.calendarView.mDropShadowsLength; i++) {
-        let box = this.calendarView.findDayBoxForDate(shadowStartDate);
+        const box = this.calendarView.findDayBoxForDate(shadowStartDate);
         if (box) {
           box.setDropShadow(true);
           this.calendarView.mDropShadows.push(box);
@@ -80,7 +79,7 @@
     removeDropShadows() {
       // method that may be overwritten by derived bindings...
       if (this.calendarView.mDropShadows) {
-        for (let box of this.calendarView.mDropShadows) {
+        for (const box of this.calendarView.mDropShadows) {
           box.setDropShadow(false);
         }
       }
@@ -93,7 +92,7 @@
      */
     setAttribute(aAttr, aVal) {
       if (aAttr == "dropbox") {
-        let session = cal.getDragService().getCurrentSession();
+        const session = cal.dragService.getCurrentSession();
         if (session) {
           session.canDrop = true;
           // no shadows when dragging in the initial position
@@ -108,38 +107,32 @@
     }
 
     onDragStart(event) {
-      let draggedDOMNode = document.monthDragEvent || event.target;
-      if (
-        !draggedDOMNode ||
-        !draggedDOMNode.parentNode ||
-        !draggedDOMNode.occurrence ||
-        (draggedDOMNode.parentNode != this &&
-          !draggedDOMNode.parentNode.classList.contains("calendar-month-day-box-list-item"))
-      ) {
+      const draggedDOMNode = document.monthDragEvent || event.target;
+      if (!draggedDOMNode?.occurrence || !this.contains(draggedDOMNode)) {
         return;
       }
-      let item = draggedDOMNode.occurrence.clone();
-      let beginMoveDate = draggedDOMNode.mParentBox.date;
-      let itemStartDate = (item.startDate || item.entryDate || item.dueDate).getInTimezone(
+      const item = draggedDOMNode.occurrence.clone();
+      const beginMoveDate = draggedDOMNode.mParentBox.date;
+      const itemStartDate = (item.startDate || item.entryDate || item.dueDate).getInTimezone(
         this.calendarView.mTimezone
       );
-      let itemEndDate = (item.endDate || item.dueDate || item.entryDate).getInTimezone(
+      const itemEndDate = (item.endDate || item.dueDate || item.entryDate).getInTimezone(
         this.calendarView.mTimezone
       );
-      let oneMoreDay = itemEndDate.hour > 0 || itemEndDate.minute > 0;
+      const oneMoreDay = itemEndDate.hour > 0 || itemEndDate.minute > 0;
       itemStartDate.isDate = true;
       itemEndDate.isDate = true;
-      let offsetDuration = itemStartDate.subtractDate(beginMoveDate);
-      let lenDuration = itemEndDate.subtractDate(itemStartDate);
-      let len = lenDuration.weeks * 7 + lenDuration.days;
+      const offsetDuration = itemStartDate.subtractDate(beginMoveDate);
+      const lenDuration = itemEndDate.subtractDate(itemStartDate);
+      const len = lenDuration.weeks * 7 + lenDuration.days;
 
       this.calendarView.mShadowOffset = offsetDuration;
       this.calendarView.mDropShadowsLength = oneMoreDay ? len + 1 : len;
     }
 
     onDragOver(event) {
-      let session = cal.getDragService().getCurrentSession();
-      if (!session || !session.sourceNode || !session.sourceNode.sourceObject) {
+      const session = cal.dragService.getCurrentSession();
+      if (!session?.sourceNode?.sourceObject) {
         // No source item? Then this is not for us.
         return;
       }
@@ -149,55 +142,39 @@
     }
 
     onDragEnter(event) {
-      // FIXME: Why are we restricting showing the drop shadow to only these two
-      // cases? This excludes when we are dragged over a month day box item,
-      // despite ending the drag would successfully drop into this box.
-      // Also, the classList check uses sub-class specific knowledge, which
-      // should be handled by the subclass itself.
-      if (
-        event.target.localName == this.localName ||
-        // classList is undefined if the target is a text node.
-        event.target.classList?.contains("calendar-month-day-box-list") ||
-        event.target.classList?.contains("calendar-month-day-box-list-item")
-      ) {
-        let session = cal.getDragService().getCurrentSession();
-        if (session) {
-          if (!session.sourceNode || !session.sourceNode.sourceObject) {
-            // No source item? Then this is not for us.
-            return;
-          }
-
-          // We can drop now, tell the drag service.
-          event.preventDefault();
-
-          if (!this.hasAttribute("dropbox") || this.getAttribute("dropbox") == "false") {
-            // As it turned out it was not possible to remove the remaining dropshadows
-            // at the "dragleave" or "dragexit" event, majorly because it was not reliably
-            // fired. As the dragndropcontainer may be anonymous it is further on not
-            // possible to remove the dropshadows by something like
-            // "document.getElementsByAttribute('dropbox').removeDropShadows();";
-            // So we have to remove them at the currentView(). The restriction of course is
-            // that these containers so far may not be used for drag and drop from/to e.g.
-            // the today-pane.
-            currentView().removeDropShadows();
-          }
-          this.setAttribute("dropbox", "true");
-        }
+      const session = cal.dragService.getCurrentSession();
+      if (!session?.sourceNode?.sourceObject) {
+        // No source item? Then this is not for us.
+        return;
       }
+
+      // We can drop now, tell the drag service.
+      event.preventDefault();
+
+      if (!this.hasAttribute("dropbox") || this.getAttribute("dropbox") == "false") {
+        // As it turned out it was not possible to remove the remaining dropshadows
+        // at the "dragleave" event, majorly because it was not reliably
+        // fired.
+        // So we have to remove them at the currentView(). The restriction of course is
+        // that these containers so far may not be used for drag and drop from/to e.g.
+        // the today-pane.
+        currentView().removeDropShadows();
+      }
+      this.setAttribute("dropbox", "true");
     }
 
     onDrop(event) {
-      let session = cal.getDragService().getCurrentSession();
-      if (!session || !session.sourceNode || !session.sourceNode.sourceObject) {
+      const session = cal.dragService.getCurrentSession();
+      const item = session?.sourceNode?.sourceObject;
+      if (!item) {
         // No source node? Not our drag.
         return;
       }
       this.setAttribute("dropbox", "false");
-      let item = session.sourceNode.sourceObject;
-      let newItem = this.onDropItem(item).clone();
-      let newStart = newItem.startDate || newItem.entryDate || newItem.dueDate;
-      let newEnd = newItem.endDate || newItem.dueDate || newItem.entryDate;
-      let offset = this.calendarView.mShadowOffset;
+      const newItem = this.onDropItem(item).clone();
+      const newStart = newItem.startDate || newItem.entryDate || newItem.dueDate;
+      const newEnd = newItem.endDate || newItem.dueDate || newItem.entryDate;
+      const offset = this.calendarView.mShadowOffset;
       newStart.addDuration(offset);
       newEnd.addDuration(offset);
       this.calendarView.controller.modifyOccurrence(item, newStart, newEnd);

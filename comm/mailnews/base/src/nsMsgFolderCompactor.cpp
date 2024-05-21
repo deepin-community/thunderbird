@@ -12,52 +12,161 @@
 #include "nsIChannel.h"
 #include "nsIStreamListener.h"
 #include "nsIMsgMessageService.h"
-#include "nsMsgDBCID.h"
 #include "nsMsgUtils.h"
 #include "nsISeekableStream.h"
 #include "nsIDBFolderInfo.h"
-#include "nsIDocShell.h"
 #include "nsIPrompt.h"
-#include "nsIInterfaceRequestorUtils.h"
 #include "nsIMsgLocalMailFolder.h"
 #include "nsIMsgImapMailFolder.h"
 #include "nsMailHeaders.h"
-#include "nsMsgI18N.h"
-#include "prprf.h"
 #include "nsMsgLocalFolderHdrs.h"
 #include "nsIMsgDatabase.h"
 #include "nsMsgMessageFlags.h"
+#include "nsMsgFolderFlags.h"
 #include "nsIMsgStatusFeedback.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgFolderNotificationService.h"
-#include "nsIMsgPluggableStore.h"
 #include "nsMsgFolderCompactor.h"
 #include "nsIOutputStream.h"
 #include "nsIInputStream.h"
 #include "nsPrintfCString.h"
+#include "nsIStringBundle.h"
+#include "nsICopyMessageStreamListener.h"
+#include "nsIMsgWindow.h"
+#include "nsIMsgPluggableStore.h"
+#include "mozilla/Buffer.h"
+#include "HeaderReader.h"
+#include "LineReader.h"
+#include "MboxMsgOutputStream.h"
+#include "mozilla/Components.h"
 
-//////////////////////////////////////////////////////////////////////////////
-// nsFolderCompactState
-//////////////////////////////////////////////////////////////////////////////
+static nsresult GetBaseStringBundle(nsIStringBundle** aBundle) {
+  NS_ENSURE_ARG_POINTER(aBundle);
+  nsCOMPtr<nsIStringBundleService> bundleService =
+      mozilla::components::StringBundle::Service();
+  NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
+  nsCOMPtr<nsIStringBundle> bundle;
+  return bundleService->CreateBundle(
+      "chrome://messenger/locale/messenger.properties", aBundle);
+}
 
-NS_IMPL_ISUPPORTS(nsFolderCompactState, nsIMsgFolderCompactor,
-                  nsIRequestObserver, nsIStreamListener,
+#define COMPACTOR_READ_BUFF_SIZE 16384
+
+/**
+ * nsFolderCompactState is a helper class for nsFolderCompactor, which
+ * handles compacting the mbox for a single local folder.
+ *
+ * This class also patches X-Mozilla-* headers where required. Usually
+ * these headers are edited in-place without changing the overall size,
+ * but sometimes there's not enough room. So as compaction involves
+ * rewriting the whole file anyway, we take the opportunity to make some
+ * more space and correct those headers.
+ *
+ * NOTE (for future cleanups):
+ *
+ * This base class calls nsIMsgMessageService.copyMessages() to iterate
+ * through messages, passing itself in as a listener. Callbacks from
+ * both nsICopyMessageStreamListener and nsIStreamListener are invoked.
+ *
+ * nsOfflineStoreCompactState uses a different mechanism - see separate
+ * notes below.
+ *
+ * The way the service invokes the listener callbacks is pretty quirky
+ * and probably needs a good sorting out, but for now I'll just document what
+ * I've observed here:
+ *
+ * - The service calls OnStartRequest() at the start of the first message.
+ * - StartMessage() is called at the start of subsequent messages.
+ * - EndCopy() is called at the end of every message except the last one,
+ *   where OnStopRequest() is invoked instead.
+ * - OnDataAvailable() is called to pass the message body of each message
+ *   (in multiple calls if the message is big enough).
+ * - EndCopy() doesn't ever seem to be passed a failing error code from
+ *   what I can see, and its own return code is ignored by upstream code.
+ */
+class nsFolderCompactState : public nsIStreamListener,
+                             public nsICopyMessageStreamListener,
+                             public nsIUrlListener {
+ public:
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIREQUESTOBSERVER
+  NS_DECL_NSISTREAMLISTENER
+  NS_DECL_NSICOPYMESSAGESTREAMLISTENER
+  NS_DECL_NSIURLLISTENER
+
+  nsFolderCompactState(void);
+
+  nsresult Compact(nsIMsgFolder* folder,
+                   std::function<void(nsresult, uint64_t)> completionFn,
+                   nsIMsgWindow* msgWindow);
+
+ protected:
+  virtual ~nsFolderCompactState(void);
+
+  virtual nsresult InitDB(nsIMsgDatabase* db);
+  virtual nsresult StartCompacting();
+  virtual nsresult FinishCompact();
+  void CloseOutputStream();
+  void CleanupTempFilesAfterError();
+  nsresult FlushBuffer();
+
+  nsresult Init(nsIMsgFolder* aFolder, const char* aBaseMsgUri,
+                nsIMsgDatabase* aDb, nsIFile* aPath, nsIMsgWindow* aMsgWindow);
+  nsresult BuildMessageURI(const char* baseURI, nsMsgKey key, nsCString& uri);
+  nsresult ShowStatusMsg(const nsString& aMsg);
+  nsresult ReleaseFolderLock();
+  void ShowCompactingStatusMsg();
+  nsresult BeginMsgWrite();
+
+  nsCString m_baseMessageUri;       // base message uri
+  nsCString m_messageUri;           // current message uri being copy
+  nsCOMPtr<nsIMsgFolder> m_folder;  // current folder being compact
+  nsCOMPtr<nsIMsgDatabase> m_db;    // new database for the compact folder
+  nsCOMPtr<nsIFile> m_file;         // new mailbox for the compact folder
+  // The underlying temporary mbox file we're writing to.
+  nsCOMPtr<nsIOutputStream> m_fileStream;
+  // The output stream for the current message.
+  RefPtr<MboxMsgOutputStream> m_msgOut;
+  // All message keys that need to be copied over.
+  nsTArray<nsMsgKey> m_keys;
+
+  // Sum of the sizes of the messages, accumulated as we visit each msg.
+  uint64_t m_totalMsgSize{0};
+  // Number of bytes that can be expunged while compacting.
+  uint64_t m_totalExpungedBytes{0};
+  // Index of the current copied message key in key array.
+  uint32_t m_curIndex{0};
+  // Offset of the current message within the mbox.
+  uint64_t m_startOfNewMsg{0};
+
+  // Number of bytes written so far into the message.
+  uint64_t m_msgSize{0};
+
+  mozilla::Buffer<char> m_buffer{COMPACTOR_READ_BUFF_SIZE};
+  uint32_t m_bufferCount{0};
+
+  // We'll use this if we need to output any EOLs - we try to preserve the
+  // convention found in the input data.
+  nsCString m_eolSeq{MSG_LINEBREAK};
+
+  // The status of the copying operation.
+  nsresult m_status{NS_OK};
+  nsCOMPtr<nsIMsgMessageService> m_messageService;  // message service for
+                                                    // copying
+  nsCOMPtr<nsIMsgWindow> m_window;
+  nsCOMPtr<nsIMsgDBHdr> m_curSrcHdr;
+  // Flag set when we're waiting for local folder to complete parsing.
+  bool m_parsingFolder;
+
+  // Function which will be run when the folder compaction completes.
+  // Takes a result code and the number of bytes which were expunged.
+  std::function<void(nsresult, uint64_t)> m_completionFn;
+  bool m_alreadyWarnedDiskSpace{false};
+};
+
+NS_IMPL_ISUPPORTS(nsFolderCompactState, nsIRequestObserver, nsIStreamListener,
                   nsICopyMessageStreamListener, nsIUrlListener)
 
-nsFolderCompactState::nsFolderCompactState() {
-  m_fileStream = nullptr;
-  m_curIndex = 0;
-  m_status = NS_OK;
-  m_compactAll = false;
-  m_compactOfflineAlso = false;
-  m_compactingOfflineFolders = false;
-  m_parsingFolder = false;
-  m_folderIndex = 0;
-  m_startOfMsg = true;
-  m_needStatusLine = false;
-  m_totalExpungedBytes = 0;
-  m_alreadyWarnedDiskSpace = false;
-}
+nsFolderCompactState::nsFolderCompactState() { m_parsingFolder = false; }
 
 nsFolderCompactState::~nsFolderCompactState() {
   CloseOutputStream();
@@ -65,16 +174,6 @@ nsFolderCompactState::~nsFolderCompactState() {
     CleanupTempFilesAfterError();
     // if for some reason we failed remove the temp folder and database
   }
-}
-
-nsresult GetBaseStringBundle(nsIStringBundle** aBundle) {
-  NS_ENSURE_ARG_POINTER(aBundle);
-  nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
-  NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
-  nsCOMPtr<nsIStringBundle> bundle;
-  return bundleService->CreateBundle(
-      "chrome://messenger/locale/messenger.properties", aBundle);
 }
 
 void nsFolderCompactState::CloseOutputStream() {
@@ -108,7 +207,7 @@ nsresult nsFolderCompactState::InitDB(nsIMsgDatabase* db) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   rv = msgDBService->OpenMailDBFromFile(m_file, m_folder, true, false,
                                         getter_AddRefs(m_db));
@@ -121,49 +220,12 @@ nsresult nsFolderCompactState::InitDB(nsIMsgDatabase* db) {
   return rv;
 }
 
-NS_IMETHODIMP nsFolderCompactState::CompactFolders(
-    const nsTArray<RefPtr<nsIMsgFolder>>& aArrayOfFoldersToCompact,
-    const nsTArray<RefPtr<nsIMsgFolder>>& aOfflineFolderArray,
-    nsIUrlListener* aUrlListener, nsIMsgWindow* aMsgWindow) {
-  m_window = aMsgWindow;
-  m_listener = aUrlListener;
-  if (!aArrayOfFoldersToCompact.IsEmpty()) {
-    m_folderArray = aArrayOfFoldersToCompact.Clone();
-    if (!aOfflineFolderArray.IsEmpty()) {
-      // Also compacting offline folders.
-      m_compactOfflineAlso = true;
-      m_offlineFolderArray = aOfflineFolderArray.Clone();
-    }
-  } else if (!aOfflineFolderArray.IsEmpty()) {
-    // Only compacting offline folders.
-    m_folderArray = aOfflineFolderArray.Clone();
-    m_compactingOfflineFolders = true;
-  } else {
-    // Nothing to compact.
-    return NS_OK;
-  }
-
-  m_compactAll = true;
-
-  m_folderIndex = 0;
-  nsCOMPtr<nsIMsgFolder> firstFolder(m_folderArray[m_folderIndex]);
-  // Make a start on the first folder.
-  return Compact(firstFolder, m_compactingOfflineFolders, aUrlListener,
-                 aMsgWindow);
-}
-
-NS_IMETHODIMP
-nsFolderCompactState::Compact(nsIMsgFolder* folder, bool aOfflineStore,
-                              nsIUrlListener* aListener,
-                              nsIMsgWindow* aMsgWindow) {
+nsresult nsFolderCompactState::Compact(
+    nsIMsgFolder* folder, std::function<void(nsresult, uint64_t)> completionFn,
+    nsIMsgWindow* msgWindow) {
   NS_ENSURE_ARG_POINTER(folder);
-  m_listener = aListener;
-  if (!m_compactingOfflineFolders && !aOfflineStore) {
-    nsCOMPtr<nsIMsgImapMailFolder> imapFolder = do_QueryInterface(folder);
-    if (imapFolder) return imapFolder->Expunge(this, aMsgWindow);
-  }
-
-  m_window = aMsgWindow;
+  m_completionFn = completionFn;
+  m_window = msgWindow;
   nsresult rv;
   nsCOMPtr<nsIMsgDatabase> db;
   nsCOMPtr<nsIFile> path;
@@ -186,10 +248,11 @@ nsFolderCompactState::Compact(nsIMsgFolder* folder, bool aOfflineStore,
       if (!valid)  // we are probably parsing the folder because we selected it.
       {
         folder->NotifyCompactCompleted();
-        if (m_compactAll)
-          return CompactNextFolder();
-        else
-          return NS_OK;
+        if (m_completionFn) {
+          m_completionFn(NS_OK, m_totalExpungedBytes);
+          m_completionFn = nullptr;
+        }
+        return NS_OK;
       }
     }
   } else {
@@ -271,19 +334,21 @@ nsFolderCompactState::Compact(nsIMsgFolder* folder, bool aOfflineStore,
     }
 
     // If we got here start the real compacting.
-    nsCOMPtr<nsISupports> supports =
-        do_QueryInterface(static_cast<nsIMsgFolderCompactor*>(this));
+    nsCOMPtr<nsISupports> supports;
+    QueryInterface(NS_GET_IID(nsISupports), getter_AddRefs(supports));
     m_folder->AcquireSemaphore(supports);
     m_totalExpungedBytes += expunged;
     return StartCompacting();
 
   } while (false);  // block for easy skipping the compaction using 'break'
 
+  // Skipped folder, for whatever reason.
   folder->NotifyCompactCompleted();
-  if (m_compactAll)
-    return CompactNextFolder();
-  else
-    return NS_OK;
+  if (m_completionFn) {
+    m_completionFn(NS_OK, m_totalExpungedBytes);
+    m_completionFn = nullptr;
+  }
+  return NS_OK;
 }
 
 nsresult nsFolderCompactState::ShowStatusMsg(const nsString& aMsg) {
@@ -364,42 +429,42 @@ NS_IMETHODIMP nsFolderCompactState::OnStartRunningUrl(nsIURI* url) {
   return NS_OK;
 }
 
+// If we had to kick off a folder parse, this will be called when it
+// completes.
 NS_IMETHODIMP nsFolderCompactState::OnStopRunningUrl(nsIURI* url,
                                                      nsresult status) {
   if (m_parsingFolder) {
     m_parsingFolder = false;
     if (NS_SUCCEEDED(status)) {
-      status =
-          Compact(m_folder, m_compactingOfflineFolders, m_listener, m_window);
-    } else if (m_compactAll) {
-      CompactNextFolder();
+      // Folder reparse succeeded. Start compacting it.
+      status = Compact(m_folder, m_completionFn, m_window);
+      if (NS_SUCCEEDED(status)) {
+        return NS_OK;
+      }
     }
-  } else if (m_compactAll) {
-    // this should be the imap case only
-    if (m_folderIndex < m_folderArray.Length()) {
-      m_folderArray[m_folderIndex]->SetMsgDatabase(nullptr);
-    }
-    CompactNextFolder();
-  } else if (m_listener) {
-    CompactCompleted(status);
+  }
+
+  // This is from bug 249754. The aim is to close the DB file to avoid
+  // running out of filehandles when large numbers of folders are compacted.
+  // But it seems like filehandle management would be better off being
+  // handled by the DB class itself (it might be already, but it's hard to
+  // tell)...
+  m_folder->SetMsgDatabase(nullptr);
+
+  if (m_completionFn) {
+    m_completionFn(status, m_totalExpungedBytes);
+    m_completionFn = nullptr;
   }
   return NS_OK;
 }
 
 nsresult nsFolderCompactState::StartCompacting() {
-  nsCOMPtr<nsIMsgPluggableStore> msgStore;
-  nsCOMPtr<nsIMsgIncomingServer> server;
-
-  nsresult rv = m_folder->GetServer(getter_AddRefs(server));
-  NS_ENSURE_SUCCESS(rv, rv);
-  rv = server->GetMsgStore(getter_AddRefs(msgStore));
-  NS_ENSURE_SUCCESS(rv, rv);
-
+  nsresult rv = NS_OK;
   // Notify that compaction is beginning.  We do this even if there are no
   // messages to be copied because the summary database still gets blown away
   // which is still pretty interesting.  (And we like consistency.)
   nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-      do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+      do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
   if (notifier) {
     notifier->NotifyFolderCompactStart(m_folder);
   }
@@ -430,6 +495,7 @@ nsresult nsFolderCompactState::FinishCompact() {
 
   // get leaf name and database name of the folder
   nsresult rv = m_folder->GetFilePath(getter_AddRefs(path));
+  NS_ENSURE_SUCCESS(rv, rv);
   nsCOMPtr<nsIFile> folderPath =
       do_CreateInstance(NS_LOCAL_FILE_CONTRACTID, &rv);
   NS_ENSURE_SUCCESS(rv, rv);
@@ -469,11 +535,14 @@ nsresult nsFolderCompactState::FinishCompact() {
   // close down database of the original folder
   m_folder->ForceDBClosed();
 
+  // Sanity check - mbox size should always be larger than the messages
+  // written to it (because of "From " lines, escaping, and a blank line
+  // at the end of each message).
   nsCOMPtr<nsIFile> cloneFile;
   int64_t fileSize = 0;
   rv = m_file->Clone(getter_AddRefs(cloneFile));
   if (NS_SUCCEEDED(rv)) rv = cloneFile->GetFileSize(&fileSize);
-  bool tempFileRightSize = ((uint64_t)fileSize == m_totalMsgSize);
+  bool tempFileRightSize = ((uint64_t)fileSize > m_totalMsgSize);
   NS_WARNING_ASSERTION(tempFileRightSize,
                        "temp file not of expected size in compact");
 
@@ -491,8 +560,9 @@ nsresult nsFolderCompactState::FinishCompact() {
     if (NS_SUCCEEDED(rv))
       rv = tempSummaryFile->GetNativeLeafName(tempSummaryFileName);
 
-    if (NS_SUCCEEDED(rv))
+    if (NS_SUCCEEDED(rv)) {
       rv = oldSummaryFile->MoveToNative((nsIFile*)nullptr, tempSummaryFileName);
+    }
 
     NS_WARNING_ASSERTION(NS_SUCCEEDED(rv),
                          "error moving compacted folder's db out of the way");
@@ -550,7 +620,7 @@ nsresult nsFolderCompactState::FinishCompact() {
   if (msfRenameSucceeded) {
     // Transfer local db information from transferInfo
     nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     rv = msgDBService->OpenFolderDB(m_folder, true, getter_AddRefs(m_db));
     NS_ENSURE_TRUE(m_db, NS_FAILED(rv) ? rv : NS_ERROR_FAILURE);
@@ -560,7 +630,7 @@ nsresult nsFolderCompactState::FinishCompact() {
              ? NS_OK
              : rv;
     m_db->SetSummaryValid(true);
-    m_folder->SetDBTransferInfo(transferInfo);
+    if (transferInfo) m_folder->SetDBTransferInfo(transferInfo);
 
     // since we're transferring info from the old db, we need to reset the
     // expunged bytes
@@ -573,85 +643,51 @@ nsresult nsFolderCompactState::FinishCompact() {
 
   // Notify that compaction of the folder is completed.
   nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-      do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+      do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
   if (notifier) {
     notifier->NotifyFolderCompactFinish(m_folder);
   }
+
   m_folder->NotifyCompactCompleted();
+  if (m_completionFn) {
+    m_completionFn(rv, m_totalExpungedBytes);
+    m_completionFn = nullptr;
+  }
 
-  if (m_compactAll)
-    rv = CompactNextFolder();
-  else
-    CompactCompleted(rv);
-
-  return rv;
-}
-
-void nsFolderCompactState::CompactCompleted(nsresult exitCode) {
-  NS_WARNING_ASSERTION(NS_SUCCEEDED(exitCode),
-                       "nsFolderCompactState::CompactCompleted failed");
-  if (m_listener) m_listener->OnStopRunningUrl(nullptr, exitCode);
-  ShowDoneStatus();
+  return NS_OK;
 }
 
 nsresult nsFolderCompactState::ReleaseFolderLock() {
   nsresult result = NS_OK;
   if (!m_folder) return result;
   bool haveSemaphore;
-  nsCOMPtr<nsISupports> supports =
-      do_QueryInterface(static_cast<nsIMsgFolderCompactor*>(this));
+  nsCOMPtr<nsISupports> supports;
+  QueryInterface(NS_GET_IID(nsISupports), getter_AddRefs(supports));
   result = m_folder->TestSemaphore(supports, &haveSemaphore);
   if (NS_SUCCEEDED(result) && haveSemaphore)
     result = m_folder->ReleaseSemaphore(supports);
   return result;
 }
 
-void nsFolderCompactState::ShowDoneStatus() {
-  if (m_folder) {
-    nsString statusString;
-    nsCOMPtr<nsIStringBundle> bundle;
-    nsresult rv = GetBaseStringBundle(getter_AddRefs(bundle));
-    NS_ENSURE_SUCCESS_VOID(rv);
-    nsAutoString expungedAmount;
-    FormatFileSize(m_totalExpungedBytes, true, expungedAmount);
-    AutoTArray<nsString, 1> params = {expungedAmount};
-    rv = bundle->FormatStringFromName("compactingDone", params, statusString);
-
-    if (!statusString.IsEmpty() && NS_SUCCEEDED(rv))
-      ShowStatusMsg(statusString);
-  }
-}
-
-nsresult nsFolderCompactState::CompactNextFolder() {
-  m_folderIndex++;
-  // m_folderIndex might be > m_folderArray len if we compact offline stores,
-  // and get back here from OnStopRunningUrl.
-  if (m_folderIndex >= m_folderArray.Length()) {
-    if (!m_compactOfflineAlso || m_compactingOfflineFolders) {
-      CompactCompleted(NS_OK);
-      return NS_OK;
-    }
-    m_compactingOfflineFolders = true;
-    nsCOMPtr<nsIMsgFolder> folder(m_folderArray[m_folderIndex - 1]);
-    return folder->CompactAllOfflineStores(this, m_window,
-                                           m_offlineFolderArray);
-  }
-  nsCOMPtr<nsIMsgFolder> folder(m_folderArray[m_folderIndex]);
-  return Compact(folder, m_compactingOfflineFolders, m_listener, m_window);
-}
-
-nsresult nsFolderCompactState::GetMessage(nsIMsgDBHdr** message) {
-  return GetMsgDBHdrFromURI(m_messageUri.get(), message);
-}
-
 NS_IMETHODIMP
 nsFolderCompactState::OnStartRequest(nsIRequest* request) {
-  return StartMessage();
+  // Still some confusion with nsICopyMessageStreamListener -
+  // OnStartRequest() and StartMessage() may both be called.
+  // So handle the possibility we've already called BeginMsgWrite().
+  if (m_msgOut) {
+    return NS_OK;
+  }
+  return BeginMsgWrite();
 }
 
 NS_IMETHODIMP
 nsFolderCompactState::OnStopRequest(nsIRequest* request, nsresult status) {
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
+  nsresult rv = EndCopy(nullptr, status);
+  if (NS_FAILED(rv) && NS_SUCCEEDED(status)) {
+    status = rv;
+  }
+
   if (NS_FAILED(status)) {
     // Set m_status to status so the destructor can remove the temp folder and
     // database.
@@ -662,7 +698,6 @@ nsFolderCompactState::OnStopRequest(nsIRequest* request, nsresult status) {
     m_folder->ThrowAlertMsg("compactFolderWriteFailed", m_window);
   } else {
     // XXX TODO: Error checking and handling missing here.
-    EndCopy(nullptr, status);
     if (m_curIndex >= m_keys.Length()) {
       msgHdr = nullptr;
       // no more to copy finish it up
@@ -679,230 +714,201 @@ nsFolderCompactState::OnStopRequest(nsIRequest* request, nsresult status) {
   return status;
 }
 
+// Handle the message data.
+// (NOTE: nsOfflineStoreCompactState overrides this)
 NS_IMETHODIMP
 nsFolderCompactState::OnDataAvailable(nsIRequest* request,
                                       nsIInputStream* inStr,
                                       uint64_t sourceOffset, uint32_t count) {
-  if (!m_fileStream || !inStr) return NS_ERROR_FAILURE;
+  MOZ_ASSERT(m_fileStream);
+  MOZ_ASSERT(inStr);
 
   nsresult rv = NS_OK;
-  uint32_t msgFlags;
-  bool checkForKeyword = m_startOfMsg;
-  bool addKeywordHdr = false;
-  uint32_t needToGrowKeywords = 0;
-  uint32_t statusOffset;
-  nsCString msgHdrKeywords;
 
-  if (m_startOfMsg) {
-    m_statusOffset = 0;
-    m_addedHeaderSize = 0;
-    m_messageUri.Truncate();  // clear the previous message uri
-    if (NS_SUCCEEDED(BuildMessageURI(m_baseMessageUri.get(), m_keys[m_curIndex],
-                                     m_messageUri))) {
-      rv = GetMessage(getter_AddRefs(m_curSrcHdr));
+  while (count > 0) {
+    uint32_t maxReadCount =
+        std::min((uint32_t)m_buffer.Length() - m_bufferCount, count);
+    uint32_t readCount;
+    rv = inStr->Read(m_buffer.Elements() + m_bufferCount, maxReadCount,
+                     &readCount);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    count -= readCount;
+    m_bufferCount += readCount;
+    if (m_bufferCount == m_buffer.Length()) {
+      rv = FlushBuffer();
       NS_ENSURE_SUCCESS(rv, rv);
-      if (m_curSrcHdr) {
-        (void)m_curSrcHdr->GetFlags(&msgFlags);
-        (void)m_curSrcHdr->GetStatusOffset(&statusOffset);
-
-        if (statusOffset == 0) m_needStatusLine = true;
-        // x-mozilla-status lines should be at the start of the headers, and the
-        // code below assumes everything will fit in m_dataBuffer - if there's
-        // not room, skip the keyword stuff.
-        if (statusOffset > sizeof(m_dataBuffer) - 1024) {
-          checkForKeyword = false;
-          NS_ASSERTION(false, "status offset past end of read buffer size");
-        }
-      }
-    }
-    m_startOfMsg = false;
-  }
-  uint32_t maxReadCount, readCount, writeCount;
-  uint32_t bytesWritten;
-
-  while (NS_SUCCEEDED(rv) && (int32_t)count > 0) {
-    maxReadCount =
-        count > sizeof(m_dataBuffer) - 1 ? sizeof(m_dataBuffer) - 1 : count;
-    writeCount = 0;
-    rv = inStr->Read(m_dataBuffer, maxReadCount, &readCount);
-
-    // if status offset is past the number of bytes we read, it's probably
-    // bogus, and we shouldn't do any of the keyword stuff.
-    if (statusOffset + X_MOZILLA_STATUS_LEN > readCount)
-      checkForKeyword = false;
-
-    if (NS_SUCCEEDED(rv)) {
-      if (checkForKeyword) {
-        // make sure that status offset really points to x-mozilla-status line
-        if (!strncmp(m_dataBuffer + statusOffset, X_MOZILLA_STATUS,
-                     X_MOZILLA_STATUS_LEN)) {
-          const char* keywordHdr =
-              PL_strnrstr(m_dataBuffer, HEADER_X_MOZILLA_KEYWORDS, readCount);
-          if (keywordHdr)
-            m_curSrcHdr->GetUint32Property("growKeywords", &needToGrowKeywords);
-          else
-            addKeywordHdr = true;
-          m_curSrcHdr->GetStringProperty("keywords",
-                                         getter_Copies(msgHdrKeywords));
-        }
-        checkForKeyword = false;
-      }
-      uint32_t blockOffset = 0;
-      if (m_needStatusLine) {
-        m_needStatusLine = false;
-        // we need to parse out the "From " header, write it out, then
-        // write out the x-mozilla-status headers, and set the
-        // status offset of the dest hdr for later use
-        // in OnEndCopy).
-        if (!strncmp(m_dataBuffer, "From ", 5)) {
-          blockOffset = 5;
-          // skip from line
-          MsgAdvanceToNextLine(m_dataBuffer, blockOffset, readCount);
-          char statusLine[50];
-          m_fileStream->Write(m_dataBuffer, blockOffset, &writeCount);
-          m_statusOffset = blockOffset;
-          PR_snprintf(statusLine, sizeof(statusLine),
-                      X_MOZILLA_STATUS_FORMAT MSG_LINEBREAK, msgFlags & 0xFFFF);
-          m_fileStream->Write(statusLine, strlen(statusLine),
-                              &m_addedHeaderSize);
-          PR_snprintf(statusLine, sizeof(statusLine),
-                      X_MOZILLA_STATUS2_FORMAT MSG_LINEBREAK,
-                      msgFlags & 0xFFFF0000);
-          m_fileStream->Write(statusLine, strlen(statusLine), &bytesWritten);
-          m_addedHeaderSize += bytesWritten;
-        } else {
-          NS_ASSERTION(false, "not an envelope");
-          // try to mark the db as invalid so it will be reparsed.
-          nsCOMPtr<nsIMsgDatabase> srcDB;
-          m_folder->GetMsgDatabase(getter_AddRefs(srcDB));
-          if (srcDB) {
-            srcDB->SetSummaryValid(false);
-            srcDB->ForceClosed();
-          }
-        }
-      }
-// clang-format off
-#define EXTRA_KEYWORD_HDR                                                             \
-  "                                                                                 " \
-  MSG_LINEBREAK
-      // clang-format on
-
-      // if status offset isn't in the first block, this code won't work.
-      // There's no good reason
-      // for the status offset not to be at the beginning of the message anyway.
-      if (addKeywordHdr) {
-        // if blockOffset is set, we added x-mozilla-status headers so
-        // file pointer is already past them.
-        if (!blockOffset) {
-          blockOffset = statusOffset;
-          // skip x-mozilla-status and status2 lines.
-          MsgAdvanceToNextLine(m_dataBuffer, blockOffset, readCount);
-          MsgAdvanceToNextLine(m_dataBuffer, blockOffset, readCount);
-          // need to rewrite the headers up to and including the
-          // x-mozilla-status2 header
-          m_fileStream->Write(m_dataBuffer, blockOffset, &writeCount);
-        }
-        // we should write out the existing keywords from the msg hdr, if any.
-        if (msgHdrKeywords.IsEmpty()) {  // no keywords, so write blank header
-          m_fileStream->Write(X_MOZILLA_KEYWORDS,
-                              sizeof(X_MOZILLA_KEYWORDS) - 1, &bytesWritten);
-          m_addedHeaderSize += bytesWritten;
-        } else {
-          if (msgHdrKeywords.Length() < sizeof(X_MOZILLA_KEYWORDS) -
-                                            sizeof(HEADER_X_MOZILLA_KEYWORDS) +
-                                            10 /* allow some slop */) {
-            // Keywords fit in normal blank header, so replace blanks in
-            // keyword hdr with keywords.
-            nsAutoCString keywordsHdr(X_MOZILLA_KEYWORDS);
-            keywordsHdr.Replace(sizeof(HEADER_X_MOZILLA_KEYWORDS) + 1,
-                                msgHdrKeywords.Length(), msgHdrKeywords);
-            m_fileStream->Write(keywordsHdr.get(), keywordsHdr.Length(),
-                                &bytesWritten);
-            m_addedHeaderSize += bytesWritten;
-          } else {
-            // Keywords don't fit, so write out keywords on one line and
-            // an extra blank line.
-            nsCString newKeywordHeader(HEADER_X_MOZILLA_KEYWORDS ": ");
-            newKeywordHeader.Append(msgHdrKeywords);
-            newKeywordHeader.Append(MSG_LINEBREAK EXTRA_KEYWORD_HDR);
-            m_fileStream->Write(newKeywordHeader.get(),
-                                newKeywordHeader.Length(), &bytesWritten);
-            m_addedHeaderSize += bytesWritten;
-          }
-        }
-        addKeywordHdr = false;
-      } else if (needToGrowKeywords) {
-        blockOffset = statusOffset;
-        if (!strncmp(m_dataBuffer + blockOffset, X_MOZILLA_STATUS,
-                     X_MOZILLA_STATUS_LEN))
-          MsgAdvanceToNextLine(m_dataBuffer, blockOffset,
-                               readCount);  // skip x-mozilla-status hdr
-        if (!strncmp(m_dataBuffer + blockOffset, X_MOZILLA_STATUS2,
-                     X_MOZILLA_STATUS2_LEN))
-          MsgAdvanceToNextLine(m_dataBuffer, blockOffset,
-                               readCount);  // skip x-mozilla-status2 hdr
-        uint32_t preKeywordBlockOffset = blockOffset;
-        if (!strncmp(m_dataBuffer + blockOffset, HEADER_X_MOZILLA_KEYWORDS,
-                     sizeof(HEADER_X_MOZILLA_KEYWORDS) - 1)) {
-          do {
-            // skip x-mozilla-keywords hdr and any existing continuation headers
-            MsgAdvanceToNextLine(m_dataBuffer, blockOffset, readCount);
-          } while (m_dataBuffer[blockOffset] == ' ');
-        }
-        int32_t oldKeywordSize = blockOffset - preKeywordBlockOffset;
-
-        // rewrite the headers up to and including the x-mozilla-status2 header
-        m_fileStream->Write(m_dataBuffer, preKeywordBlockOffset, &writeCount);
-        // let's just rewrite all the keywords on several lines and add a blank
-        // line, instead of worrying about which are missing.
-        bool done = false;
-        nsAutoCString keywordHdr(HEADER_X_MOZILLA_KEYWORDS ": ");
-        int32_t nextBlankOffset = 0;
-        int32_t curHdrLineStart = 0;
-        int32_t newKeywordSize = 0;
-        while (!done) {
-          nextBlankOffset = msgHdrKeywords.FindChar(' ', nextBlankOffset);
-          if (nextBlankOffset == kNotFound) {
-            nextBlankOffset = msgHdrKeywords.Length();
-            done = true;
-          }
-          if (nextBlankOffset - curHdrLineStart > 90 || done) {
-            keywordHdr.Append(nsDependentCSubstring(
-                msgHdrKeywords, curHdrLineStart,
-                msgHdrKeywords.Length() - curHdrLineStart));
-            keywordHdr.Append(MSG_LINEBREAK);
-            m_fileStream->Write(keywordHdr.get(), keywordHdr.Length(),
-                                &bytesWritten);
-            newKeywordSize += bytesWritten;
-            curHdrLineStart = nextBlankOffset;
-            keywordHdr.Assign(' ');
-          }
-          nextBlankOffset++;
-        }
-        m_fileStream->Write(EXTRA_KEYWORD_HDR, sizeof(EXTRA_KEYWORD_HDR) - 1,
-                            &bytesWritten);
-        newKeywordSize += bytesWritten;
-        m_addedHeaderSize += newKeywordSize - oldKeywordSize;
-        m_curSrcHdr->SetUint32Property("growKeywords", 0);
-        needToGrowKeywords = false;
-        writeCount += blockOffset - preKeywordBlockOffset;  // fudge writeCount
-      }
-      if (readCount <= blockOffset) {
-        NS_ASSERTION(false, "bad block offset");
-        // not sure what to do to handle this.
-      }
-      m_fileStream->Write(m_dataBuffer + blockOffset, readCount - blockOffset,
-                          &bytesWritten);
-      writeCount += bytesWritten;
-      count -= readCount;
-      if (writeCount != readCount) return NS_MSG_ERROR_WRITING_MAIL_FOLDER;
     }
   }
-  return rv;
+  if (m_bufferCount > 0) {
+    rv = FlushBuffer();
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
+  return NS_OK;
 }
 
-nsOfflineStoreCompactState::nsOfflineStoreCompactState()
-    : m_offlineMsgSize(0) {}
+// Helper to write data to an outputstream, until complete or error.
+static nsresult WriteSpan(nsIOutputStream* writeable,
+                          mozilla::Span<const char> data) {
+  while (!data.IsEmpty()) {
+    uint32_t n;
+    nsresult rv = writeable->Write(data.Elements(), data.Length(), &n);
+    NS_ENSURE_SUCCESS(rv, rv);
+    data = data.Last(data.Length() - n);
+  }
+  return NS_OK;
+}
+
+// Flush contents of m_buffer to the output file.
+// (NOTE: not used by nsOfflineStoreCompactState)
+// More complicated than it should be because we need to fiddle with
+// some of the X-Mozilla-* headers on the fly.
+nsresult nsFolderCompactState::FlushBuffer() {
+  MOZ_ASSERT(m_msgOut);
+  nsresult rv;
+  auto buf = m_buffer.AsSpan().First(m_bufferCount);
+  // Only do header twiddling for the first chunk.
+  if (m_msgSize > 0) {
+    // Not the first chunk - just copy data verbatim.
+    rv = WriteSpan(m_msgOut, buf);
+    NS_ENSURE_SUCCESS(rv, rv);
+    m_msgSize += buf.Length();
+    m_bufferCount = 0;
+    return NS_OK;
+  }
+
+  // This is the first chunk of a new message. We'll update the
+  // X-Mozilla-(Status|Status2|Keys) headers as we go.
+
+  // Sniff the data to see if we can spot any CRs.
+  // If so, we'll use CRLFs instead of platform-native EOLs.
+  auto sniffChunk = buf.First(std::min<size_t>(buf.Length(), 512));
+  auto cr = std::find(sniffChunk.cbegin(), sniffChunk.cend(), '\r');
+  if (cr != sniffChunk.cend()) {
+    m_eolSeq.Assign("\r\n"_ns);
+  }
+
+  // Read as many headers as we can. We might not have the complete header
+  // block our in buffer, but that's OK - the X-Mozilla-* ones should be
+  // right at the start).
+  nsTArray<HeaderReader::Hdr> headers;
+  HeaderReader rdr;
+  auto leftover = rdr.Parse(buf, [&](auto const& hdr) -> bool {
+    auto const& name = hdr.Name(buf);
+    if (!name.EqualsLiteral(HEADER_X_MOZILLA_STATUS) &&
+        !name.EqualsLiteral(HEADER_X_MOZILLA_STATUS2) &&
+        !name.EqualsLiteral(HEADER_X_MOZILLA_KEYWORDS)) {
+      headers.AppendElement(hdr);
+    }
+    return true;
+  });
+
+  // Write out X-Mozilla-* headers first - we'll create these from scratch.
+  uint32_t msgFlags = 0;
+  nsAutoCString keywords;
+  if (m_curSrcHdr) {
+    m_curSrcHdr->GetFlags(&msgFlags);
+    m_curSrcHdr->GetStringProperty("keywords", keywords);
+    // growKeywords is set if msgStore didn't have enough room to edit
+    // X-Mozilla-* headers in situ. We'll rewrite all those headers
+    // regardless but we still want to clear it.
+    uint32_t grow;
+    m_curSrcHdr->GetUint32Property("growKeywords", &grow);
+    if (grow) {
+      m_curSrcHdr->SetUint32Property("growKeywords", 0);
+    }
+  }
+
+  auto out =
+      nsPrintfCString(HEADER_X_MOZILLA_STATUS ": %4.4x", msgFlags & 0xFFFF);
+  out.Append(m_eolSeq);
+  rv = WriteSpan(m_msgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  m_msgSize += out.Length();
+
+  out = nsPrintfCString(HEADER_X_MOZILLA_STATUS2 ": %8.8x",
+                        msgFlags & 0xFFFF0000);
+  out.Append(m_eolSeq);
+  rv = WriteSpan(m_msgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  m_msgSize += out.Length();
+
+  // Try to leave room for future in-place keyword edits.
+  while (keywords.Length() < X_MOZILLA_KEYWORDS_BLANK_LEN) {
+    keywords.Append(' ');
+  }
+  out = nsPrintfCString(HEADER_X_MOZILLA_KEYWORDS ": %s", keywords.get());
+  out.Append(m_eolSeq);
+  rv = WriteSpan(m_msgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  m_msgSize += out.Length();
+
+  // Write out the rest of the headers.
+  for (auto const& hdr : headers) {
+    auto h = buf.Subspan(hdr.pos, hdr.len);
+    rv = WriteSpan(m_msgOut, h);
+    NS_ENSURE_SUCCESS(rv, rv);
+    m_msgSize += h.Length();
+  }
+
+  // The header parser consumes the blank line, If we've completed parsing
+  // we need to output it now.
+  // If we haven't parsed all the headers yet then the blank line will be
+  // safely copied verbatim as part of the remaining data.
+  if (rdr.IsComplete()) {
+    rv = WriteSpan(m_msgOut, m_eolSeq);
+    NS_ENSURE_SUCCESS(rv, rv);
+    m_msgSize += m_eolSeq.Length();
+  }
+
+  // Write out everything else in the buffer verbatim.
+  if (leftover.Length() > 0) {
+    rv = WriteSpan(m_msgOut, leftover);
+    NS_ENSURE_SUCCESS(rv, rv);
+    m_msgSize += leftover.Length();
+  }
+  m_bufferCount = 0;
+  return NS_OK;
+}
+
+/**
+ * nsOfflineStoreCompactState is a helper class for nsFolderCompactor which
+ * handles compacting the mbox for a single offline IMAP folder.
+ *
+ * nsOfflineStoreCompactState does *not* do any special X-Mozilla-* header
+ * handling, unlike the base class.
+ *
+ * NOTE (for future cleanups):
+ * This class uses a different mechanism to iterate through messages. It uses
+ * nsIMsgMessageService.streamMessage() to stream each message in turn,
+ * passing itself in as an nsIStreamListener. The nsICopyMessageStreamListener
+ * callbacks implemented in the base class are _not_ used here.
+ * For each message, the standard OnStartRequest(), OnDataAvailable()...,
+ * OnStopRequest() sequence is seen.
+ * Nothing too fancy, but it's not always clear where code from the base class
+ * is being used and when it is not, so it can be complicated to pick through.
+ *
+ */
+class nsOfflineStoreCompactState : public nsFolderCompactState {
+ public:
+  nsOfflineStoreCompactState(void);
+  virtual ~nsOfflineStoreCompactState(void);
+  NS_IMETHOD OnStopRequest(nsIRequest* request, nsresult status) override;
+  NS_IMETHOD OnStartRequest(nsIRequest* request) override;
+  NS_IMETHOD OnDataAvailable(nsIRequest* request, nsIInputStream* inStr,
+                             uint64_t sourceOffset, uint32_t count) override;
+
+ protected:
+  nsresult CopyNextMessage(bool& done);
+  virtual nsresult InitDB(nsIMsgDatabase* db) override;
+  virtual nsresult StartCompacting() override;
+  virtual nsresult FinishCompact() override;
+
+  char m_dataBuffer[COMPACTOR_READ_BUFF_SIZE + 1];  // temp data buffer for
+                                                    // copying message
+};
+
+nsOfflineStoreCompactState::nsOfflineStoreCompactState() {}
 
 nsOfflineStoreCompactState::~nsOfflineStoreCompactState() {}
 
@@ -923,11 +929,11 @@ nsresult nsOfflineStoreCompactState::CopyNextMessage(bool& done) {
   while (m_curIndex < m_keys.Length()) {
     // Filter out msgs that have the "pendingRemoval" attribute set.
     nsCOMPtr<nsIMsgDBHdr> hdr;
-    nsString pendingRemoval;
+    nsCString pendingRemoval;
     nsresult rv =
         m_db->GetMsgHdrForKey(m_keys[m_curIndex], getter_AddRefs(hdr));
     NS_ENSURE_SUCCESS(rv, rv);
-    hdr->GetProperty("pendingRemoval", pendingRemoval);
+    hdr->GetStringProperty("pendingRemoval", pendingRemoval);
     if (!pendingRemoval.IsEmpty()) {
       m_curIndex++;
       // Turn off offline flag for message, since after the compact is
@@ -936,24 +942,23 @@ nsresult nsOfflineStoreCompactState::CopyNextMessage(bool& done) {
       hdr->AndFlags(~nsMsgMessageFlags::Offline, &resultFlags);
       // We need to clear this in case the user changes the offline retention
       // settings.
-      hdr->SetStringProperty("pendingRemoval", "");
+      hdr->SetStringProperty("pendingRemoval", ""_ns);
       continue;
     }
     m_messageUri.Truncate();  // clear the previous message uri
     rv = BuildMessageURI(m_baseMessageUri.get(), m_keys[m_curIndex],
                          m_messageUri);
     NS_ENSURE_SUCCESS(rv, rv);
-    m_startOfMsg = true;
     nsCOMPtr<nsISupports> thisSupports;
     QueryInterface(NS_GET_IID(nsISupports), getter_AddRefs(thisSupports));
     nsCOMPtr<nsIURI> dummyNull;
-    rv = m_messageService->StreamMessage(
-        m_messageUri.get(), thisSupports, m_window, nullptr, false,
-        EmptyCString(), true, getter_AddRefs(dummyNull));
+    rv = m_messageService->StreamMessage(m_messageUri, thisSupports, m_window,
+                                         nullptr, false, EmptyCString(), true,
+                                         getter_AddRefs(dummyNull));
     // if copy fails, we clear the offline flag on the source message.
     if (NS_FAILED(rv)) {
       nsCOMPtr<nsIMsgDBHdr> hdr;
-      GetMessage(getter_AddRefs(hdr));
+      m_messageService->MessageURIToMsgHdr(m_messageUri, getter_AddRefs(hdr));
       if (hdr) {
         uint32_t resultFlags;
         hdr->AndFlags(~nsMsgMessageFlags::Offline, &resultFlags);
@@ -970,14 +975,35 @@ nsresult nsOfflineStoreCompactState::CopyNextMessage(bool& done) {
 }
 
 NS_IMETHODIMP
+nsOfflineStoreCompactState::OnStartRequest(nsIRequest* request) {
+  return BeginMsgWrite();
+}
+
+NS_IMETHODIMP
 nsOfflineStoreCompactState::OnStopRequest(nsIRequest* request,
                                           nsresult status) {
-  nsresult rv = status;
   nsCOMPtr<nsIURI> uri;
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
   nsCOMPtr<nsIMsgStatusFeedback> statusFeedback;
   nsCOMPtr<nsIChannel> channel;
   bool done = false;
+  nsresult rv = status;
+  if (!m_msgOut) {
+    goto done;
+  }
+
+  // Wrap up the current message
+  if (NS_FAILED(rv)) {
+    // Uh-oh... something went wrong. Close() will try and roll back
+    // the borked message.
+    m_msgOut->Close();
+    m_msgOut = nullptr;
+    goto done;
+  }
+
+  // All good - commit the message.
+  rv = m_msgOut->Finish();
+  m_msgOut = nullptr;
 
   // The NS_MSG_ERROR_MSG_NOT_OFFLINE error should allow us to continue, so we
   // check for it specifically and don't terminate the compaction.
@@ -991,7 +1017,8 @@ nsOfflineStoreCompactState::OnStopRequest(nsIRequest* request,
   if (NS_FAILED(rv)) goto done;
   rv = channel->GetURI(getter_AddRefs(uri));
   if (NS_FAILED(rv)) goto done;
-  rv = GetMessage(getter_AddRefs(msgHdr));
+  rv = m_messageService->MessageURIToMsgHdr(m_messageUri,
+                                            getter_AddRefs(msgHdr));
   if (NS_FAILED(rv)) goto done;
 
   // This is however an unexpected condition, so let's print a warning.
@@ -1006,10 +1033,9 @@ nsOfflineStoreCompactState::OnStopRequest(nsIRequest* request,
   if (msgHdr) {
     if (NS_SUCCEEDED(status)) {
       msgHdr->SetMessageOffset(m_startOfNewMsg);
-      char storeToken[100];
-      PR_snprintf(storeToken, sizeof(storeToken), "%lld", m_startOfNewMsg);
+      nsCString storeToken = nsPrintfCString("%" PRIu64, m_startOfNewMsg);
       msgHdr->SetStringProperty("storeToken", storeToken);
-      msgHdr->SetOfflineMessageSize(m_offlineMsgSize);
+      msgHdr->SetOfflineMessageSize(m_msgSize);
     } else {
       uint32_t resultFlags;
       msgHdr->AndFlags(~nsMsgMessageFlags::Offline, &resultFlags);
@@ -1039,6 +1065,10 @@ done:
                     // temp folder and database
     ReleaseFolderLock();
     NS_RELEASE_THIS();  // kill self
+
+    if (m_completionFn) {
+      m_completionFn(m_status, m_totalExpungedBytes);
+    }
     return rv;
   }
   return rv;
@@ -1052,6 +1082,7 @@ nsresult nsOfflineStoreCompactState::FinishCompact() {
   // get leaf name and database name of the folder
   m_folder->GetFlags(&flags);
   nsresult rv = m_folder->GetFilePath(getter_AddRefs(path));
+  NS_ENSURE_SUCCESS(rv, rv);
 
   nsCString leafName;
   path->GetNativeLeafName(leafName);
@@ -1082,61 +1113,98 @@ nsresult nsOfflineStoreCompactState::FinishCompact() {
 
   ShowStatusMsg(EmptyString());
   m_folder->NotifyCompactCompleted();
-  if (m_compactAll) rv = CompactNextFolder();
+  if (m_completionFn) {
+    m_completionFn(NS_OK, m_totalExpungedBytes);
+  }
   return rv;
 }
 
 NS_IMETHODIMP
-nsFolderCompactState::Init(nsIMsgFolder* srcFolder,
-                           nsICopyMessageListener* destination,
-                           nsISupports* listenerData) {
+nsFolderCompactState::Init(nsICopyMessageListener* destination) {
   return NS_OK;
 }
 
+// This is called at the start of each message by both nsFolderCompactState and
+// nsOfflineStoreCompactState.
 NS_IMETHODIMP
 nsFolderCompactState::StartMessage() {
-  nsresult rv = NS_ERROR_FAILURE;
-  NS_ASSERTION(m_fileStream, "Fatal, null m_fileStream...");
-  if (m_fileStream) {
-    nsCOMPtr<nsISeekableStream> seekableStream =
-        do_QueryInterface(m_fileStream, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
-    // this will force an internal flush, but not a sync. Tell should really do
-    // an internal flush, but it doesn't, and I'm afraid to change that
-    // nsIFileStream.cpp code anymore.
-    seekableStream->Seek(nsISeekableStream::NS_SEEK_CUR, 0);
-    // record the new message key for the message
-    int64_t curStreamPos;
-    seekableStream->Tell(&curStreamPos);
-    m_startOfNewMsg = curStreamPos;
-    rv = NS_OK;
+  // Still some confusion with nsICopyMessageStreamListener -
+  // OnStartRequest() and StartMessage() may both be called.
+  // So handle the possibility we've already called BeginMsgWrite().
+  if (m_msgOut) {
+    return NS_OK;
   }
-  return rv;
+  return BeginMsgWrite();
+}
+
+// Set up the state for writing a single message.
+nsresult nsFolderCompactState::BeginMsgWrite() {
+  NS_ASSERTION(m_fileStream, "Fatal, null m_fileStream...");
+  nsresult rv;
+  nsCOMPtr<nsISeekableStream> seekableStream =
+      do_QueryInterface(m_fileStream, &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+  // This will force an internal flush, but not a sync. Tell should really do
+  // an internal flush, but it doesn't, and I'm afraid to change that
+  // nsIFileStream.cpp code anymore.
+  seekableStream->Seek(nsISeekableStream::NS_SEEK_CUR, 0);
+  // Record the start position of the message.
+  int64_t curStreamPos;
+  rv = seekableStream->Tell(&curStreamPos);
+  NS_ENSURE_SUCCESS(rv, rv);
+  m_startOfNewMsg = curStreamPos;
+  m_msgSize = 0;
+
+  // Open m_msgOut to write a single message.
+  MOZ_ASSERT(m_fileStream);
+  MOZ_ASSERT(!m_msgOut);
+  m_msgOut = new MboxMsgOutputStream(m_fileStream);
+
+  // Get URI and msgDBHdr for the message.
+  m_messageUri.Truncate();
+  rv =
+      BuildMessageURI(m_baseMessageUri.get(), m_keys[m_curIndex], m_messageUri);
+  NS_ENSURE_SUCCESS(rv, rv);
+  rv = m_messageService->MessageURIToMsgHdr(m_messageUri,
+                                            getter_AddRefs(m_curSrcHdr));
+  NS_ENSURE_SUCCESS(rv, rv);
+  return NS_OK;
 }
 
 NS_IMETHODIMP
 nsFolderCompactState::EndMessage(nsMsgKey key) { return NS_OK; }
 
-// XXX TODO: This function is sadly lacking all status checking, it always
-// returns NS_OK and moves onto the next message.
 NS_IMETHODIMP
-nsFolderCompactState::EndCopy(nsISupports* url, nsresult aStatus) {
+nsFolderCompactState::EndCopy(nsIURI* uri, nsresult status) {
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
   nsCOMPtr<nsIMsgDBHdr> newMsgHdr;
 
   if (m_curIndex >= m_keys.Length()) {
-    NS_ASSERTION(false, "m_curIndex out of bounds");
+    NS_WARNING("m_curIndex out of bounds");
+    return NS_ERROR_UNEXPECTED;
+  }
+
+  // Close/flush the current message.
+  NS_ENSURE_STATE(m_msgOut);
+
+  nsresult rv;
+  if (NS_SUCCEEDED(status)) {
+    rv = m_msgOut->Finish();  // Commit.
+  } else {
+    rv = m_msgOut->Close();  // Roll back.
+  }
+  m_msgOut = nullptr;
+  if (NS_FAILED(rv)) {
+    return rv;
+  }
+
+  if (NS_FAILED(status)) {
+    // EndCopy() succeeded - it handled the failure.
     return NS_OK;
   }
 
-  /* Messages need to have trailing blank lines */
-  uint32_t bytesWritten;
-  (void)m_fileStream->Write(MSG_LINEBREAK, MSG_LINEBREAK_LEN, &bytesWritten);
-
-  /**
-   * Done with the current message; copying the existing message header
-   * to the new database.
-   */
+  // Done with the current message; copying the existing message header
+  // to the new database.
   if (m_curSrcHdr) {
     nsMsgKey key;
     m_curSrcHdr->GetMessageKey(&key);
@@ -1145,27 +1213,18 @@ nsFolderCompactState::EndCopy(nsISupports* url, nsresult aStatus) {
   }
   m_curSrcHdr = nullptr;
   if (newMsgHdr) {
-    if (m_statusOffset != 0) newMsgHdr->SetStatusOffset(m_statusOffset);
-
-    char storeToken[100];
-    PR_snprintf(storeToken, sizeof(storeToken), "%lld", m_startOfNewMsg);
+    nsCString storeToken = nsPrintfCString("%" PRIu64, m_startOfNewMsg);
     newMsgHdr->SetStringProperty("storeToken", storeToken);
     newMsgHdr->SetMessageOffset(m_startOfNewMsg);
+    newMsgHdr->SetMessageSize(m_msgSize);
 
-    uint32_t msgSize;
-    (void)newMsgHdr->GetMessageSize(&msgSize);
-    if (m_addedHeaderSize) {
-      msgSize += m_addedHeaderSize;
-      newMsgHdr->SetMessageSize(msgSize);
-    }
-    m_totalMsgSize += msgSize + MSG_LINEBREAK_LEN;
+    m_totalMsgSize += m_msgSize;
   }
 
   //  m_db->Commit(nsMsgDBCommitType::kLargeCommit);  // no sense committing
   //  until the end
   // advance to next message
   m_curIndex++;
-  m_startOfMsg = true;
   nsCOMPtr<nsIMsgStatusFeedback> statusFeedback;
   if (m_window) {
     m_window->GetStatusFeedback(getter_AddRefs(statusFeedback));
@@ -1178,7 +1237,7 @@ nsFolderCompactState::EndCopy(nsISupports* url, nsresult aStatus) {
 nsresult nsOfflineStoreCompactState::StartCompacting() {
   nsresult rv = NS_OK;
   if (m_keys.Length() > 0 && m_curIndex == 0) {
-    NS_ADDREF_THIS();  // we own ourselves, until we're done, anyway.
+    NS_ADDREF_THIS();  // We own ourselves, until we're done, anyway.
     ShowCompactingStatusMsg();
     bool done = false;
     rv = CopyNextMessage(done);
@@ -1198,16 +1257,6 @@ nsOfflineStoreCompactState::OnDataAvailable(nsIRequest* request,
 
   nsresult rv = NS_OK;
 
-  if (m_startOfMsg) {
-    m_statusOffset = 0;
-    m_offlineMsgSize = 0;
-    m_messageUri.Truncate();  // clear the previous message uri
-    if (NS_SUCCEEDED(BuildMessageURI(m_baseMessageUri.get(), m_keys[m_curIndex],
-                                     m_messageUri))) {
-      rv = GetMessage(getter_AddRefs(m_curSrcHdr));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
-  }
   uint32_t maxReadCount, readCount, writeCount;
   uint32_t bytesWritten;
 
@@ -1218,16 +1267,8 @@ nsOfflineStoreCompactState::OnDataAvailable(nsIRequest* request,
     rv = inStr->Read(m_dataBuffer, maxReadCount, &readCount);
 
     if (NS_SUCCEEDED(rv)) {
-      if (m_startOfMsg) {
-        m_startOfMsg = false;
-        // check if there's an envelope header; if not, write one.
-        if (strncmp(m_dataBuffer, "From ", 5)) {
-          m_fileStream->Write("From " CRLF, 7, &bytesWritten);
-          m_offlineMsgSize += bytesWritten;
-        }
-      }
-      m_fileStream->Write(m_dataBuffer, readCount, &bytesWritten);
-      m_offlineMsgSize += bytesWritten;
+      m_msgOut->Write(m_dataBuffer, readCount, &bytesWritten);
+      m_msgSize += bytesWritten;
       writeCount += bytesWritten;
       count -= readCount;
       if (writeCount != readCount) {
@@ -1237,4 +1278,141 @@ nsOfflineStoreCompactState::OnDataAvailable(nsIRequest* request,
     }
   }
   return rv;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// nsMsgFolderCompactor implementation
+//////////////////////////////////////////////////////////////////////////////
+
+NS_IMPL_ISUPPORTS(nsMsgFolderCompactor, nsIMsgFolderCompactor)
+
+nsMsgFolderCompactor::nsMsgFolderCompactor() {}
+
+nsMsgFolderCompactor::~nsMsgFolderCompactor() {}
+
+NS_IMETHODIMP nsMsgFolderCompactor::CompactFolders(
+    const nsTArray<RefPtr<nsIMsgFolder>>& folders, nsIUrlListener* listener,
+    nsIMsgWindow* window) {
+  MOZ_ASSERT(mQueue.IsEmpty());
+  mWindow = window;
+  mListener = listener;
+  mTotalBytesGained = 0;
+  mQueue = folders.Clone();
+  mQueue.Reverse();
+
+  // Can't guarantee that anyone will keep us in scope until we're done, so...
+  MOZ_ASSERT(!mKungFuDeathGrip);
+  mKungFuDeathGrip = this;
+
+  // nsIMsgFolderCompactor idl states this isn't called...
+  // but maybe it should be?
+  //  if (mListener) {
+  //    mListener->OnStartRunningUrl(nullptr);
+  //  }
+
+  NextFolder();
+
+  return NS_OK;
+}
+
+void nsMsgFolderCompactor::NextFolder() {
+  while (!mQueue.IsEmpty()) {
+    // Should only ever have one compactor running.
+    MOZ_ASSERT(mCompactor == nullptr);
+
+    nsCOMPtr<nsIMsgFolder> folder = mQueue.PopLastElement();
+
+    // Sanity check - should we be compacting this folder?
+    nsCOMPtr<nsIMsgPluggableStore> msgStore;
+    nsresult rv = folder->GetMsgStore(getter_AddRefs(msgStore));
+    if (NS_FAILED(rv)) {
+      NS_WARNING("Skipping folder with no msgStore");
+      continue;
+    }
+    bool storeSupportsCompaction;
+    msgStore->GetSupportsCompaction(&storeSupportsCompaction);
+    if (!storeSupportsCompaction) {
+      NS_WARNING("Trying to compact a non-mbox folder");
+      continue;  // just skip it.
+    }
+
+    nsCOMPtr<nsIMsgImapMailFolder> imapFolder(do_QueryInterface(folder));
+    if (imapFolder) {
+      uint32_t flags;
+      folder->GetFlags(&flags);
+      if (flags & nsMsgFolderFlags::Offline) {
+        mCompactor = new nsOfflineStoreCompactState();
+      }
+    } else {
+      mCompactor = new nsFolderCompactState();
+    }
+    if (!mCompactor) {
+      NS_WARNING("skipping compact of non-offline folder");
+      continue;
+    }
+
+    // Callback for when a folder compaction completes.
+    auto completionFn = [self = RefPtr<nsMsgFolderCompactor>(this),
+                         compactState = mCompactor](nsresult status,
+                                                    uint64_t expungedBytes) {
+      if (NS_SUCCEEDED(status)) {
+        self->mTotalBytesGained += expungedBytes;
+      } else {
+        // Failed. We want to keep going with the next folder, but make sure
+        // we return a failing code upon overall completion.
+        self->mOverallStatus = status;
+        NS_WARNING("folder compact failed.");
+      }
+
+      // Release our lock on the compactor - it's done.
+      self->mCompactor = nullptr;
+      self->NextFolder();
+    };
+
+    rv = mCompactor->Compact(folder, completionFn, mWindow);
+    if (NS_SUCCEEDED(rv)) {
+      // Now wait for the compactor to let us know it's finished,
+      // via the completion callback fn.
+      return;
+    }
+    mOverallStatus = rv;
+    mCompactor = nullptr;
+    NS_WARNING("folder compact failed - skipping folder");
+  }
+
+  // Done. No more folders to compact.
+
+  if (mListener) {
+    // If there were multiple failures, this will communicate only the
+    // last one, but that's OK. Main thing is to indicate that _something_
+    // went wrong.
+    mListener->OnStopRunningUrl(nullptr, mOverallStatus);
+  }
+  ShowDoneStatus();
+
+  // We're not needed any more.
+  mKungFuDeathGrip = nullptr;
+  mListener = nullptr;
+  return;
+}
+
+void nsMsgFolderCompactor::ShowDoneStatus() {
+  if (!mWindow) {
+    return;
+  }
+  nsCOMPtr<nsIStringBundle> bundle;
+  nsresult rv = GetBaseStringBundle(getter_AddRefs(bundle));
+  NS_ENSURE_SUCCESS_VOID(rv);
+  nsAutoString expungedAmount;
+  FormatFileSize(mTotalBytesGained, true, expungedAmount);
+  AutoTArray<nsString, 1> params = {expungedAmount};
+  nsString msg;
+  rv = bundle->FormatStringFromName("compactingDone", params, msg);
+  NS_ENSURE_SUCCESS_VOID(rv);
+
+  nsCOMPtr<nsIMsgStatusFeedback> statusFeedback;
+  mWindow->GetStatusFeedback(getter_AddRefs(statusFeedback));
+  if (statusFeedback) {
+    statusFeedback->SetStatusString(msg);
+  }
 }

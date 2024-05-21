@@ -1,7 +1,9 @@
-(function() {
+/* eslint-env mozilla/frame-script */
+
+(function () {
   addEventListener(
     "load",
-    loadevt => {
+    () => {
       if (!content.location.pathname.endsWith("target.html")) {
         return;
       }
@@ -60,7 +62,7 @@
 
   addEventListener(
     "TabPaint:Ping",
-    e => {
+    () => {
       let evt = new content.CustomEvent("TabPaint:Pong", { bubbles: true });
       content.dispatchEvent(evt);
     },
@@ -77,7 +79,7 @@
     true
   );
 
-  addMessageListener("TabPaint:OpenFromContent", msg => {
+  addMessageListener("TabPaint:OpenFromContent", () => {
     let evt = new content.CustomEvent("TabPaint:OpenFromContent", {
       bubbles: true,
     });

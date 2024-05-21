@@ -15,8 +15,8 @@
 #include <stdarg.h>
 
 #include "jit/JSONSpewer.h"
+#include "js/Printer.h"
 #include "js/TypeDecls.h"
-#include "vm/Printer.h"
 
 enum JSValueType : uint8_t;
 
@@ -61,10 +61,14 @@ namespace jit {
   _(Profiling)                             \
   /* Debug info about the I$ */            \
   _(CacheFlush)                            \
+  /* Info about redundant shape guards */  \
+  _(RedundantShapeGuards)                  \
+  /* Info about redundant GC barriers */   \
+  _(RedundantGCBarriers)                   \
+  /* Info about loads used as keys */      \
+  _(MarkLoadsUsedAsPropertyKeys)           \
   /* Output a list of MIR expressions */   \
   _(MIRExpressions)                        \
-  /* Spew Tracelogger summary stats */     \
-  _(ScriptStats)                           \
                                            \
   /* BASELINE COMPILER SPEW */             \
                                            \

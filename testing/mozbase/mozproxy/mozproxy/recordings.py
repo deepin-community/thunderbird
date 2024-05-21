@@ -1,8 +1,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from __future__ import absolute_import
-
 import json
 import os
 import shutil
@@ -58,7 +56,9 @@ class RecordingFile:
             with open(self._metadata_path) as json_file:
                 self._metadata = json.load(json_file)
             self.validate_recording()
-
+            LOG.info(
+                "Loaded recoording generated on %s" % self.metadata("recording_date")
+            )
         else:
             LOG.info("Recording file does not exists!!! Generating base structure")
             self._metadata = {"content": [], "recording_date": str(datetime.now())}

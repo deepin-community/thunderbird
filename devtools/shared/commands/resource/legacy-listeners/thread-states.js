@@ -4,11 +4,11 @@
 
 "use strict";
 
-const ResourceCommand = require("devtools/shared/commands/resource/resource-command");
+const ResourceCommand = require("resource://devtools/shared/commands/resource/resource-command.js");
 
-module.exports = async function({ targetCommand, targetFront, onAvailable }) {
+module.exports = async function ({ targetCommand, targetFront, onAvailable }) {
   const isBrowserToolbox =
-    targetCommand.descriptorFront.isParentProcessDescriptor;
+    targetCommand.descriptorFront.isBrowserProcessDescriptor;
   const isNonTopLevelFrameTarget =
     !targetFront.isTopLevel &&
     targetFront.targetType === targetCommand.TYPES.FRAME;
@@ -56,7 +56,7 @@ module.exports = async function({ targetCommand, targetFront, onAvailable }) {
   };
   threadFront.on("paused", onPausedPacket);
 
-  threadFront.on("resumed", packet => {
+  threadFront.on("resumed", () => {
     // NOTE: the client suppresses resumed events while interrupted
     // to prevent unintentional behavior.
     // see [client docs](devtools/client/debugger/src/client/README.md#interrupted) for more information.

@@ -121,17 +121,18 @@ int nr_ice_ctx_set_stun_servers(nr_ice_ctx *ctx,nr_ice_stun_server *servers,int 
   {
     int _status;
 
-    if(ctx->stun_servers){
-      RFREE(ctx->stun_servers);
-      ctx->stun_server_ct=0;
+    if(ctx->stun_servers_cfg){
+      RFREE(ctx->stun_servers_cfg);
+      ctx->stun_servers_cfg=NULL;
+      ctx->stun_server_ct_cfg=0;
     }
 
     if (ct) {
-      if(!(ctx->stun_servers=RCALLOC(sizeof(nr_ice_stun_server)*ct)))
+      if(!(ctx->stun_servers_cfg=RCALLOC(sizeof(nr_ice_stun_server)*ct)))
         ABORT(R_NO_MEMORY);
 
-      memcpy(ctx->stun_servers,servers,sizeof(nr_ice_stun_server)*ct);
-      ctx->stun_server_ct = ct;
+      memcpy(ctx->stun_servers_cfg,servers,sizeof(nr_ice_stun_server)*ct);
+      ctx->stun_server_ct_cfg = ct;
     }
 
     _status=0;
@@ -143,17 +144,22 @@ int nr_ice_ctx_set_turn_servers(nr_ice_ctx *ctx,nr_ice_turn_server *servers,int 
   {
     int _status;
 
-    if(ctx->turn_servers){
-      RFREE(ctx->turn_servers);
-      ctx->turn_server_ct=0;
+    if(ctx->turn_servers_cfg){
+      for (int i = 0; i < ctx->turn_server_ct_cfg; i++) {
+        RFREE(ctx->turn_servers_cfg[i].username);
+        r_data_destroy(&ctx->turn_servers_cfg[i].password);
+      }
+      RFREE(ctx->turn_servers_cfg);
+      ctx->turn_servers_cfg=NULL;
+      ctx->turn_server_ct_cfg=0;
     }
 
     if(ct) {
-      if(!(ctx->turn_servers=RCALLOC(sizeof(nr_ice_turn_server)*ct)))
+      if(!(ctx->turn_servers_cfg=RCALLOC(sizeof(nr_ice_turn_server)*ct)))
         ABORT(R_NO_MEMORY);
 
-      memcpy(ctx->turn_servers,servers,sizeof(nr_ice_turn_server)*ct);
-      ctx->turn_server_ct = ct;
+      memcpy(ctx->turn_servers_cfg,servers,sizeof(nr_ice_turn_server)*ct);
+      ctx->turn_server_ct_cfg = ct;
     }
 
     _status=0;
@@ -171,10 +177,10 @@ int nr_ice_ctx_copy_turn_servers(nr_ice_ctx *ctx, nr_ice_turn_server *servers, i
 
     // make copies of the username and password so they aren't freed twice
     for (i = 0; i < ct; ++i) {
-      if (!(ctx->turn_servers[i].username = r_strdup(servers[i].username))) {
+      if (!(ctx->turn_servers_cfg[i].username = r_strdup(servers[i].username))) {
         ABORT(R_NO_MEMORY);
       }
-      if (r = r_data_create(&ctx->turn_servers[i].password,
+      if (r = r_data_create(&ctx->turn_servers_cfg[i].password,
                             servers[i].password->data,
                             servers[i].password->len)) {
         ABORT(r);
@@ -319,8 +325,9 @@ int nr_ice_fetch_turn_servers(int ct, nr_ice_turn_server **out)
 #endif /* USE_TURN */
 
 #define MAXADDRS 100 /* Ridiculously high */
-int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp)
-  {
+  int nr_ice_ctx_create(char* label, UINT4 flags,
+                        nr_ice_gather_handler* gather_handler,
+                        nr_ice_ctx** ctxp) {
     nr_ice_ctx *ctx=0;
     int r,_status;
 
@@ -335,23 +342,25 @@ int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp)
     if(!(ctx->label=r_strdup(label)))
       ABORT(R_NO_MEMORY);
 
+    ctx->gather_handler = gather_handler;
+
     /* Get the STUN servers */
     if(r=NR_reg_get_child_count(NR_ICE_REG_STUN_SRV_PRFX,
-      (unsigned int *)&ctx->stun_server_ct)||ctx->stun_server_ct==0) {
+      (unsigned int *)&ctx->stun_server_ct_cfg)||ctx->stun_server_ct_cfg==0) {
       r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): No STUN servers specified in nICEr registry", ctx->label);
-      ctx->stun_server_ct=0;
+      ctx->stun_server_ct_cfg=0;
     }
 
     /* 31 is the max for our priority algorithm */
-    if(ctx->stun_server_ct>31){
+    if(ctx->stun_server_ct_cfg>31){
       r_log(LOG_ICE,LOG_WARNING,"ICE(%s): Too many STUN servers specified: max=31", ctx->label);
-      ctx->stun_server_ct=31;
+      ctx->stun_server_ct_cfg=31;
     }
 
-    if(ctx->stun_server_ct>0){
-      if(r=nr_ice_fetch_stun_servers(ctx->stun_server_ct,&ctx->stun_servers)){
+    if(ctx->stun_server_ct_cfg>0){
+      if(r=nr_ice_fetch_stun_servers(ctx->stun_server_ct_cfg,&ctx->stun_servers_cfg)){
         r_log(LOG_ICE,LOG_ERR,"ICE(%s): Couldn't load STUN servers from registry", ctx->label);
-        ctx->stun_server_ct=0;
+        ctx->stun_server_ct_cfg=0;
         ABORT(r);
       }
     }
@@ -359,27 +368,27 @@ int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp)
 #ifdef USE_TURN
     /* Get the TURN servers */
     if(r=NR_reg_get_child_count(NR_ICE_REG_TURN_SRV_PRFX,
-      (unsigned int *)&ctx->turn_server_ct)||ctx->turn_server_ct==0) {
+      (unsigned int *)&ctx->turn_server_ct_cfg)||ctx->turn_server_ct_cfg==0) {
       r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): No TURN servers specified in nICEr registry", ctx->label);
-      ctx->turn_server_ct=0;
+      ctx->turn_server_ct_cfg=0;
     }
 #else
-    ctx->turn_server_ct=0;
+    ctx->turn_server_ct_cfg=0;
 #endif /* USE_TURN */
 
     ctx->local_addrs=0;
     ctx->local_addr_ct=0;
 
     /* 31 is the max for our priority algorithm */
-    if((ctx->stun_server_ct+ctx->turn_server_ct)>31){
+    if((ctx->stun_server_ct_cfg+ctx->turn_server_ct_cfg)>31){
       r_log(LOG_ICE,LOG_WARNING,"ICE(%s): Too many STUN/TURN servers specified: max=31", ctx->label);
-      ctx->turn_server_ct=31-ctx->stun_server_ct;
+      ctx->turn_server_ct_cfg=31-ctx->stun_server_ct_cfg;
     }
 
 #ifdef USE_TURN
-    if(ctx->turn_server_ct>0){
-      if(r=nr_ice_fetch_turn_servers(ctx->turn_server_ct,&ctx->turn_servers)){
-        ctx->turn_server_ct=0;
+    if(ctx->turn_server_ct_cfg>0){
+      if(r=nr_ice_fetch_turn_servers(ctx->turn_server_ct_cfg,&ctx->turn_servers_cfg)){
+        ctx->turn_server_ct_cfg=0;
         r_log(LOG_ICE,LOG_ERR,"ICE(%s): Couldn't load TURN servers from registry", ctx->label);
         ABORT(r);
       }
@@ -436,7 +445,7 @@ int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp)
     int i;
     nr_ice_stun_id *id1,*id2;
 
-    ctx->done_cb = 0;
+    ctx->gather_done_cb = 0;
     ctx->trickle_cb = 0;
 
     STAILQ_FOREACH_SAFE(s1, &ctx->streams, entry, s2){
@@ -446,17 +455,19 @@ int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp)
 
     RFREE(ctx->label);
 
-    RFREE(ctx->stun_servers);
+    ctx->gather_handler = 0;
+
+    RFREE(ctx->stun_servers_cfg);
 
     RFREE(ctx->local_addrs);
 
     RFREE(ctx->target_for_default_local_address_lookup);
 
-    for (i = 0; i < ctx->turn_server_ct; i++) {
-        RFREE(ctx->turn_servers[i].username);
-        r_data_destroy(&ctx->turn_servers[i].password);
+    for (i = 0; i < ctx->turn_server_ct_cfg; i++) {
+        RFREE(ctx->turn_servers_cfg[i].username);
+        r_data_destroy(&ctx->turn_servers_cfg[i].password);
     }
-    RFREE(ctx->turn_servers);
+    RFREE(ctx->turn_servers_cfg);
 
     f1=STAILQ_FIRST(&ctx->foundations);
     while(f1){
@@ -533,20 +544,26 @@ void nr_ice_gather_finished_cb(NR_SOCKET s, int h, void *cb_arg)
       }
     }
 
-    if (nr_ice_media_stream_is_done_gathering(stream) &&
-        ctx->trickle_cb) {
-      ctx->trickle_cb(ctx->trickle_cb_arg, ctx, stream, component_id, NULL);
+    if (nr_ice_media_stream_is_done_gathering(stream)) {
+      if (ctx->gather_handler && ctx->gather_handler->vtbl->stream_gathered) {
+        ctx->gather_handler->vtbl->stream_gathered(ctx->gather_handler->obj,
+                                                   stream);
+      }
+      if (ctx->trickle_cb) {
+        ctx->trickle_cb(ctx->trickle_cb_arg, ctx, stream, component_id, NULL);
+      }
     }
 
     if(ctx->uninitialized_candidates==0){
+      assert(nr_ice_media_stream_is_done_gathering(stream));
       r_log(LOG_ICE, LOG_INFO, "ICE(%s): All candidates initialized",
             ctx->label);
-      if (ctx->done_cb) {
-        ctx->done_cb(0,0,ctx->cb_arg);
-      }
-      else {
+      if (ctx->gather_done_cb) {
+        ctx->gather_done_cb(0, 0, ctx->cb_arg);
+      } else {
         r_log(LOG_ICE, LOG_INFO,
-              "ICE(%s): No done_cb. We were probably destroyed.", ctx->label);
+              "ICE(%s): No gather_done_cb. We were probably destroyed.",
+              ctx->label);
       }
     }
     else {
@@ -844,8 +861,7 @@ int nr_ice_set_target_for_default_local_address_lookup(nr_ice_ctx *ctx, const ch
     return(_status);
   }
 
-int nr_ice_gather(nr_ice_ctx *ctx, NR_async_cb done_cb, void *cb_arg)
-  {
+  int nr_ice_gather(nr_ice_ctx* ctx, NR_async_cb gather_done_cb, void* cb_arg) {
     int r,_status;
     nr_ice_media_stream *stream;
     nr_local_addr stun_addrs[MAXADDRS];
@@ -866,7 +882,7 @@ int nr_ice_gather(nr_ice_ctx *ctx, NR_async_cb done_cb, void *cb_arg)
     }
 
     r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): Initializing candidates",ctx->label);
-    ctx->done_cb=done_cb;
+    ctx->gather_done_cb = gather_done_cb;
     ctx->cb_arg=cb_arg;
 
     /* Initialize all the media stream/component pairs */
@@ -874,7 +890,7 @@ int nr_ice_gather(nr_ice_ctx *ctx, NR_async_cb done_cb, void *cb_arg)
     while(stream){
       if(!stream->obsolete) {
         if(r=nr_ice_media_stream_initialize(ctx,stream)) {
-          ABORT(r);
+          r_log(LOG_ICE,LOG_ERR,"ICE(%s): Failed to initialize a stream; this might not be an unrecoverable error, if this stream will be marked obsolete soon due to an ICE restart.",ctx->label);
         }
       }
 
@@ -1068,7 +1084,7 @@ int nr_ice_ctx_hide_candidate(nr_ice_ctx *ctx, nr_ice_candidate *cand)
       return 1;
     }
 
-    if (ctx->flags & NR_ICE_CTX_FLAGS_HIDE_HOST_CANDIDATES) {
+    if (ctx->flags & NR_ICE_CTX_FLAGS_DISABLE_HOST_CANDIDATES) {
       if (cand->type == HOST)
         return 1;
     }

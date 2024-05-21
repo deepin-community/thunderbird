@@ -3,7 +3,7 @@
 
 "use strict";
 
-add_task(async function() {
+add_task(async function () {
   // Prevent the URL Bar to steal the focus.
   const preventUrlBarFocus = e => {
     e.preventDefault();
@@ -13,13 +13,14 @@ add_task(async function() {
     window.gURLBar.removeEventListener("beforefocus", preventUrlBarFocus);
   });
 
-  const AutocompletePopup = require("devtools/client/shared/autocomplete-popup");
+  const AutocompletePopup = require("resource://devtools/client/shared/autocomplete-popup.js");
 
   info("Create an autocompletion popup and an input that will be bound to it");
   const { doc } = await createHost();
 
   const input = doc.createElement("input");
-  doc.body.append(input, doc.createElement("input"));
+  const prevInput = doc.createElement("input");
+  doc.body.append(prevInput, input, doc.createElement("input"));
 
   const onSelectCalled = [];
   const onClickCalled = [];
@@ -189,7 +190,9 @@ add_task(async function() {
   );
   EventUtils.synthesizeKey("KEY_Tab", { shiftKey: true });
   is(onClickCalled.length, 3, "onClick wasn't called");
+
   is(hasFocus(input), false, "input does not have the focus anymore");
+  is(hasFocus(prevInput), true, "Shift+Tab moves the focus to prevInput");
 
   const onPopupClose = popup.once("popup-closed");
   popup.hidePopup();

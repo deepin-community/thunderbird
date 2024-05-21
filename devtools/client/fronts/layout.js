@@ -5,15 +5,18 @@
 "use strict";
 
 const {
+  safeAsyncMethod,
+} = require("resource://devtools/shared/async-utils.js");
+const {
   FrontClassWithSpec,
   registerFront,
-} = require("devtools/shared/protocol");
+} = require("resource://devtools/shared/protocol.js");
 const {
   flexboxSpec,
   flexItemSpec,
   gridSpec,
   layoutSpec,
-} = require("devtools/shared/specs/layout");
+} = require("resource://devtools/shared/specs/layout.js");
 
 class FlexboxFront extends FrontClassWithSpec(flexboxSpec) {
   form(form) {
@@ -147,6 +150,15 @@ class GridFront extends FrontClassWithSpec(gridSpec) {
 }
 
 class LayoutFront extends FrontClassWithSpec(layoutSpec) {
+  constructor(client, targetFront, parentFront) {
+    super(client, targetFront, parentFront);
+
+    this.getAllGrids = safeAsyncMethod(
+      this.getAllGrids.bind(this),
+      () => this.isDestroyed(),
+      []
+    );
+  }
   /**
    * Get the WalkerFront instance that owns this LayoutFront.
    */
@@ -155,6 +167,9 @@ class LayoutFront extends FrontClassWithSpec(layoutSpec) {
   }
 
   getAllGrids() {
+    if (!this.walkerFront.rootNode) {
+      return [];
+    }
     return this.getGrids(this.walkerFront.rootNode);
   }
 }

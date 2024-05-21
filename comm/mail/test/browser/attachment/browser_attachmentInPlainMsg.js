@@ -4,17 +4,9 @@
 
 "use strict";
 
-var { wait_for_element_visible } = ChromeUtils.import(
-  "resource://testing-common/mozmill/DOMHelpers.jsm"
+var { get_about_message, open_message_from_file } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { open_message_from_file } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { close_window } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * Bug 1358565
@@ -24,17 +16,24 @@ var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 add_task(async function test_attachment_not_empty() {
   Services.prefs.setBoolPref("mailnews.display.prefer_plaintext", true);
 
-  let file = new FileUtils.File(getTestFilePath("data/bug1358565.eml"));
+  const file = new FileUtils.File(getTestFilePath("data/bug1358565.eml"));
 
-  let msgc = await open_message_from_file(file);
+  const msgc = await open_message_from_file(file);
+  const aboutMessage = get_about_message(msgc);
 
-  wait_for_element_visible(msgc, "attachmentToggle");
-  msgc.click(msgc.e("attachmentToggle"));
+  EventUtils.synthesizeMouseAtCenter(
+    aboutMessage.document.getElementById("attachmentToggle"),
+    {},
+    aboutMessage
+  );
+  Assert.equal(
+    aboutMessage.document.getElementById("attachmentList").itemCount,
+    1
+  );
 
-  wait_for_element_visible(msgc, "attachmentList");
-  Assert.equal(msgc.e("attachmentList").itemCount, 1);
-
-  let attachmentElem = msgc.e("attachmentList").getItemAtIndex(0);
+  const attachmentElem = aboutMessage.document
+    .getElementById("attachmentList")
+    .getItemAtIndex(0);
   Assert.equal(attachmentElem.attachment.contentType, "image/jpeg");
   Assert.equal(attachmentElem.attachment.name, "bug.png");
   Assert.ok(attachmentElem.attachment.hasFile);
@@ -43,7 +42,7 @@ add_task(async function test_attachment_not_empty() {
     "Attachment incorrectly determined empty"
   );
 
-  close_window(msgc);
+  await BrowserTestUtils.closeWindow(msgc);
 
   Services.prefs.clearUserPref("mailnews.display.prefer_plaintext");
 });

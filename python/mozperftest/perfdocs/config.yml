@@ -27,14 +27,23 @@ suites:
             Politico Link: ""
             BBC Link: ""
             JSConf (cold): ""
-            VIEW: ""
-            main: ""
             Facebook: ""
             YouTube Link: ""
             pageload: ""
             JSConf (warm): ""
             perfstats: ""
+            webpagetest-firefox: ""
+            webpagetest-chrome: ""
+            android-startup: ""
+
     browser/base/content/test:
         description: "Performance tests from the 'browser/base/content/test' folder."
         tests:
             Dom-size: ""
+
+    dom/serviceworkers/test/performance:
+        description: "Performance tests running through Mochitest for Service Workers"
+        tests:
+            "Service Worker Caching": ""
+            "Service Worker Fetch": ""
+            "Service Worker Registration": ""

@@ -4,14 +4,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/EventSource.h"
-
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Components.h"
 #include "mozilla/DataMutex.h"
 #include "mozilla/DebugOnly.h"
 #include "mozilla/LoadInfo.h"
 #include "mozilla/DOMEventTargetHelper.h"
+#include "mozilla/dom/EventSource.h"
 #include "mozilla/dom/EventSourceBinding.h"
 #include "mozilla/dom/MessageEvent.h"
 #include "mozilla/dom/MessageEventBinding.h"
@@ -22,6 +21,7 @@
 #include "mozilla/dom/WorkerScope.h"
 #include "mozilla/dom/EventSourceEventService.h"
 #include "mozilla/ScopeExit.h"
+#include "mozilla/Try.h"
 #include "mozilla/UniquePtrExtensions.h"
 #include "nsComponentManagerUtils.h"
 #include "nsIThreadRetargetableStreamListener.h"
@@ -56,7 +56,9 @@
 
 namespace mozilla::dom {
 
+#ifdef DEBUG
 static LazyLogModule gEventSourceLog("EventSource");
+#endif
 
 #define SPACE_CHAR (char16_t)0x0020
 #define CR_CHAR (char16_t)0x000D
@@ -71,12 +73,12 @@ static LazyLogModule gEventSourceLog("EventSource");
   PR_IntervalToMilliseconds(DELAY_INTERVAL_LIMIT)
 
 class EventSourceImpl final : public nsIObserver,
-                              public nsIStreamListener,
                               public nsIChannelEventSink,
                               public nsIInterfaceRequestor,
                               public nsSupportsWeakReference,
-                              public nsIEventTarget,
+                              public nsISerialEventTarget,
                               public nsITimerCallback,
+                              public nsINamed,
                               public nsIThreadRetargetableStreamListener {
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
@@ -87,6 +89,7 @@ class EventSourceImpl final : public nsIObserver,
   NS_DECL_NSIINTERFACEREQUESTOR
   NS_DECL_NSIEVENTTARGET_FULL
   NS_DECL_NSITIMERCALLBACK
+  NS_DECL_NSINAMED
   NS_DECL_NSITHREADRETARGETABLESTREAMLISTENER
 
   EventSourceImpl(EventSource* aEventSource,
@@ -361,8 +364,9 @@ class EventSourceImpl final : public nsIObserver,
 NS_IMPL_ISUPPORTS(EventSourceImpl, nsIObserver, nsIStreamListener,
                   nsIRequestObserver, nsIChannelEventSink,
                   nsIInterfaceRequestor, nsISupportsWeakReference,
-                  nsIEventTarget, nsIThreadRetargetableStreamListener,
-                  nsITimerCallback)
+                  nsISerialEventTarget, nsIEventTarget,
+                  nsIThreadRetargetableStreamListener, nsITimerCallback,
+                  nsINamed)
 
 EventSourceImpl::EventSourceImpl(EventSource* aEventSource,
                                  nsICookieJarSettings* aCookieJarSettings)
@@ -374,7 +378,7 @@ EventSourceImpl::EventSourceImpl(EventSource* aEventSource,
       mIsShutDown(false),
       mSharedData(SharedData{aEventSource}, "EventSourceImpl::mSharedData"),
       mScriptLine(0),
-      mScriptColumn(0),
+      mScriptColumn(1),
       mInnerWindowID(0),
       mCookieJarSettings(aCookieJarSettings),
       mTargetThread(NS_GetCurrentThread()) {
@@ -568,7 +572,7 @@ nsresult EventSourceImpl::ParseURL(const nsAString& aURL) {
   NS_ENSURE_SUCCESS(rv, NS_ERROR_DOM_SYNTAX_ERR);
 
   nsAutoString origin;
-  rv = nsContentUtils::GetUTFOrigin(srcURI, origin);
+  rv = nsContentUtils::GetWebExposedOriginSerialization(srcURI, origin);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsAutoCString spec;
@@ -708,8 +712,8 @@ EventSourceImpl::OnStartRequest(nsIRequest* aRequest) {
 
   if (NS_FAILED(status)) {
     // EventSource::OnStopRequest will evaluate if it shall either reestablish
-    // or fail the connection
-    return NS_ERROR_ABORT;
+    // or fail the connection, based on the status.
+    return status;
   }
 
   uint32_t httpStatus;
@@ -789,10 +793,8 @@ void EventSourceImpl::ParseSegment(const char* aBuffer, uint32_t aLength) {
     uint32_t result;
     size_t read;
     size_t written;
-    bool hadErrors;
-    Tie(result, read, written, hadErrors) =
+    std::tie(result, read, written, std::ignore) =
         mUnicodeDecoder->DecodeToUTF16(src, dst, false);
-    Unused << hadErrors;
     for (auto c : dst.To(written)) {
       nsresult rv = ParseCharacter(c);
       NS_ENSURE_SUCCESS_VOID(rv);
@@ -837,13 +839,18 @@ EventSourceImpl::OnStopRequest(nsIRequest* aRequest, nsresult aStatusCode) {
   //  (...) the cancelation of the fetch algorithm by the user agent (e.g. in
   //  response to window.stop() or the user canceling the network connection
   //  manually) must cause the user agent to fail the connection.
-
+  // There could be additional network errors that are not covered in the above
+  // checks
+  //  See Bug 1808511
   if (NS_FAILED(aStatusCode) && aStatusCode != NS_ERROR_CONNECTION_REFUSED &&
       aStatusCode != NS_ERROR_NET_TIMEOUT &&
       aStatusCode != NS_ERROR_NET_RESET &&
       aStatusCode != NS_ERROR_NET_INTERRUPT &&
+      aStatusCode != NS_ERROR_NET_PARTIAL_TRANSFER &&
+      aStatusCode != NS_ERROR_NET_TIMEOUT_EXTERNAL &&
       aStatusCode != NS_ERROR_PROXY_CONNECTION_REFUSED &&
-      aStatusCode != NS_ERROR_DNS_LOOKUP_QUEUE_FULL) {
+      aStatusCode != NS_ERROR_DNS_LOOKUP_QUEUE_FULL &&
+      aStatusCode != NS_ERROR_INVALID_CONTENT_ENCODING) {
     DispatchFailConnection();
     return NS_ERROR_ABORT;
   }
@@ -1051,16 +1058,15 @@ nsresult EventSourceImpl::InitChannelAndRequestEventSource(
 
   MOZ_ASSERT_IF(mIsMainThread, aEventTargetAccessAllowed);
 
-  nsresult rv = aEventTargetAccessAllowed
-                    ? [this]() {
-                        // We can't call GetEventSource() because we're not
-                        // allowed to touch the refcount off the worker thread
-                        // due to an assertion, event if it would have otherwise
-                        // been safe.
-                        auto lock = mSharedData.Lock();
-                        return lock->mEventSource->CheckCurrentGlobalCorrectness();
-                      }()
-                    : NS_OK;
+  nsresult rv = aEventTargetAccessAllowed ? [this]() {
+    // We can't call GetEventSource() because we're not
+    // allowed to touch the refcount off the worker thread
+    // due to an assertion, event if it would have otherwise
+    // been safe.
+    auto lock = mSharedData.Lock();
+    return lock->mEventSource->CheckCurrentGlobalCorrectness();
+  }()
+                                          : NS_OK;
   if (NS_FAILED(rv) || !isValidScheme) {
     DispatchFailConnection();
     return NS_ERROR_DOM_SECURITY_ERR;
@@ -1401,6 +1407,11 @@ NS_IMETHODIMP EventSourceImpl::Notify(nsITimer* aTimer) {
       NS_WARNING("InitChannelAndRequestEventSource() failed");
     }
   }
+  return NS_OK;
+}
+
+NS_IMETHODIMP EventSourceImpl::GetName(nsACString& aName) {
+  aName.AssignLiteral("EventSourceImpl");
   return NS_OK;
 }
 
@@ -1815,7 +1826,7 @@ class WorkerRunnableDispatcher final : public WorkerRunnable {
   WorkerRunnableDispatcher(RefPtr<EventSourceImpl>&& aImpl,
                            WorkerPrivate* aWorkerPrivate,
                            already_AddRefed<nsIRunnable> aEvent)
-      : WorkerRunnable(aWorkerPrivate, WorkerThreadUnchangedBusyCount),
+      : WorkerRunnable(aWorkerPrivate, "WorkerRunnableDispatcher"),
         mEventSourceImpl(std::move(aImpl)),
         mEvent(std::move(aEvent)) {}
 
@@ -1921,6 +1932,16 @@ EventSourceImpl::DelayedDispatch(already_AddRefed<nsIRunnable> aEvent,
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
+NS_IMETHODIMP
+EventSourceImpl::RegisterShutdownTask(nsITargetShutdownTask*) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
+EventSourceImpl::UnregisterShutdownTask(nsITargetShutdownTask*) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
 //-----------------------------------------------------------------------------
 // EventSourceImpl::nsIThreadRetargetableStreamListener
 //-----------------------------------------------------------------------------
@@ -1929,6 +1950,10 @@ EventSourceImpl::CheckListenerChain() {
   MOZ_ASSERT(NS_IsMainThread(), "Should be on the main thread!");
   return NS_OK;
 }
+
+NS_IMETHODIMP
+EventSourceImpl::OnDataFinished(nsresult) { return NS_OK; }
+
 ////////////////////////////////////////////////////////////////////////////////
 // EventSource
 ////////////////////////////////////////////////////////////////////////////////
@@ -1979,7 +2004,11 @@ already_AddRefed<EventSource> EventSource::Constructor(
   } else {
     // Worker side.
     WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
-    MOZ_ASSERT(workerPrivate);
+    if (!workerPrivate) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+
     cookieJarSettings = workerPrivate->CookieJarSettings();
   }
 
@@ -2032,15 +2061,20 @@ already_AddRefed<EventSource> EventSource::Constructor(
 
     // In workers we have to keep the worker alive using a WorkerRef in order
     // to dispatch messages correctly.
-    if (!eventSource->mESImpl->CreateWorkerRef(workerPrivate)) {
+    // Note, initRunnable->Dispatch may have cleared mESImpl.
+    if (!eventSource->mESImpl ||
+        !eventSource->mESImpl->CreateWorkerRef(workerPrivate)) {
       // The worker is already shutting down. Let's return an already closed
       // object, but marked as Connecting.
-      // mESImpl is nulled by this call such that EventSourceImpl is
-      // released before returning the object, otherwise
-      // it will set EventSource to a CLOSED state in its DTOR..
-      eventSource->mESImpl->Close();
+      if (eventSource->mESImpl) {
+        // mESImpl is nulled by this call such that EventSourceImpl is
+        // released before returning the object, otherwise
+        // it will set EventSource to a CLOSED state in its DTOR..
+        eventSource->mESImpl->Close();
+      }
       eventSource->mReadyState = EventSourceImpl::CONNECTING;
 
+      guardESImpl.release();
       return eventSource.forget();
     }
 

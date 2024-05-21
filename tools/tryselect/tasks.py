@@ -9,17 +9,14 @@ import re
 import sys
 from collections import defaultdict
 
-from mozboot.util import get_state_dir
+import mozpack.path as mozpath
+import taskgraph
+from mach.util import get_state_dir
 from mozbuild.base import MozbuildObject
 from mozpack.files import FileFinder
-from moztest.resolve import TestResolver, TestManifestLoader, get_suite_definition
-
-import taskgraph
+from moztest.resolve import TestManifestLoader, TestResolver, get_suite_definition
 from taskgraph.generator import TaskGraphGenerator
-from taskgraph.parameters import (
-    ParameterMismatch,
-    parameters_loader,
-)
+from taskgraph.parameters import ParameterMismatch, parameters_loader
 from taskgraph.taskgraph import TaskGraph
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -85,14 +82,37 @@ def generate_tasks(params=None, full=False, disable_target_task_filter=False):
     taskgraph.fast = True
     generator = TaskGraphGenerator(root_dir=root, parameters=params)
 
-    cache_dir = os.path.join(get_state_dir(srcdir=True), "cache", "taskgraph")
+    def add_chunk_patterns(tg):
+        for task_name, task in tg.tasks.items():
+            chunk_index = -1
+            if task_name.endswith("-cf"):
+                chunk_index = -2
+
+            chunks = task.task.get("extra", {}).get("chunks", {})
+            if isinstance(chunks, int):
+                task.chunk_pattern = "{}-*/{}".format(
+                    "-".join(task_name.split("-")[:chunk_index]), chunks
+                )
+            else:
+                assert isinstance(chunks, dict)
+                if chunks.get("total", 1) == 1:
+                    task.chunk_pattern = task_name
+                else:
+                    task.chunk_pattern = "{}-*".format(
+                        "-".join(task_name.split("-")[:chunk_index])
+                    )
+        return tg
+
+    cache_dir = os.path.join(
+        get_state_dir(specific_to_topsrcdir=True), "cache", "taskgraph"
+    )
     key = cache_key(attr, generator.parameters, disable_target_task_filter)
     cache = os.path.join(cache_dir, key)
 
     invalidate(cache)
     if os.path.isfile(cache):
         with open(cache) as fh:
-            return TaskGraph.from_json(json.load(fh))[1]
+            return add_chunk_patterns(TaskGraph.from_json(json.load(fh))[1])
 
     if not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)
@@ -113,7 +133,7 @@ def generate_tasks(params=None, full=False, disable_target_task_filter=False):
         key = cache_key(attr, generator.parameters, disable_target_task_filter)
         with open(os.path.join(cache_dir, key), "w") as fh:
             json.dump(tg.to_json(), fh)
-        return tg
+        return add_chunk_patterns(tg)
 
     # Cache both full_task_set and target_task_set regardless of whether or not
     # --full was requested. Caching is cheap and can potentially save a lot of
@@ -130,6 +150,17 @@ def generate_tasks(params=None, full=False, disable_target_task_filter=False):
     if full:
         return tg_full
     return tg_target
+
+
+def filter_tasks_by_worker_type(tasks, params):
+    worker_types = params.get("try_task_config", {}).get("worker-types", [])
+    if worker_types:
+        retVal = {}
+        for t in tasks:
+            if tasks[t].task["workerType"] in worker_types:
+                retVal[t] = tasks[t]
+        return retVal
+    return tasks
 
 
 def filter_tasks_by_paths(tasks, paths):
@@ -153,7 +184,9 @@ def filter_tasks_by_paths(tasks, paths):
     def match_task(task):
         return any(re.search(pattern, task) for pattern in task_regexes)
 
-    return filter(match_task, tasks)
+    return {
+        task_name: task for task_name, task in tasks.items() if match_task(task_name)
+    }
 
 
 def resolve_tests_by_suite(paths):
@@ -173,8 +206,11 @@ def resolve_tests_by_suite(paths):
         if test_path is None:
             continue
         found_path = None
+        manifest_relpath = None
+        if "manifest_relpath" in test:
+            manifest_relpath = mozpath.normpath(test["manifest_relpath"])
         for path in remaining_paths_by_suite[key]:
-            if test_path.startswith(path) or test.get("manifest_relpath") == path:
+            if test_path.startswith(path) or manifest_relpath == path:
                 found_path = path
                 break
         if found_path:

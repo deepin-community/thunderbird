@@ -4,10 +4,9 @@
 
 const path = require("path");
 const webpack = require("webpack");
+const { ResourceUriPlugin } = require("./tools/resourceUriPlugin");
 
 const absolute = relPath => path.join(__dirname, relPath);
-
-const resourcePathRegEx = /^resource:\/\/activity-stream\//;
 
 module.exports = (env = {}) => ({
   mode: "none",
@@ -20,6 +19,16 @@ module.exports = (env = {}) => ({
   // TODO: switch to eval-source-map for faster builds. Requires CSP changes
   devtool: env.development ? "inline-source-map" : false,
   plugins: [
+    // The ResourceUriPlugin handles translating resource URIs in import
+    // statements in .mjs files to paths on the filesystem.
+    new ResourceUriPlugin({
+      resourcePathRegExes: [
+        [
+          new RegExp("^resource://activity-stream/"),
+          path.join(__dirname, "./"),
+        ],
+      ],
+    }),
     new webpack.BannerPlugin(
       `THIS FILE IS AUTO-GENERATED: ${path.basename(__filename)}`
     ),
@@ -29,34 +38,15 @@ module.exports = (env = {}) => ({
     rules: [
       {
         test: /\.jsx?$/,
-        exclude: /node_modules\/(?!(fluent|fluent-react)\/).*/,
+        exclude: /node_modules\/(?!@fluent\/).*/,
         loader: "babel-loader",
         options: {
           presets: ["@babel/preset-react"],
-          plugins: ["@babel/plugin-proposal-optional-chaining"],
-        },
-      },
-      {
-        test: /\.jsm$/,
-        exclude: /node_modules/,
-        loader: "babel-loader",
-        // Converts .jsm files into common-js modules
-        options: {
-          plugins: [
-            [
-              "jsm-to-esmodules",
-              {
-                basePath: resourcePathRegEx,
-                removeOtherImports: true,
-                replace: true,
-              },
-            ],
-          ],
         },
       },
     ],
   },
-  // This resolve config allows us to import with paths relative to the root directory, e.g. "lib/ActivityStream.jsm"
+  // This resolve config allows us to import with paths relative to the root directory, e.g. "lib/ActivityStream.sys.mjs"
   resolve: {
     extensions: [".js", ".jsx"],
     modules: ["node_modules", "."],

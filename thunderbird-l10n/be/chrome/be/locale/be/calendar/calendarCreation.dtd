@@ -2,11 +2,11 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<!ENTITY wizard.title             "Новы календар" >
-<!ENTITY wizard.label             "Стварыць новы календар" >
-<!ENTITY wizard.description       "Размясціце свой календар" >
+<!ENTITY wizard.title             "Новы каляндар" >
+<!ENTITY wizard.label             "Стварыць новы каляндар" >
+<!ENTITY wizard.description       "Размясціце ваш каляндар" >
 
-<!ENTITY initialpage.description    "Вы можаце захаваць каляндар на камп'ютары або на серверы, каб мець да яго аддалены доступ ці падзяліцца ім са сваімі сябрамі або калегамі." >
+<!ENTITY initialpage.description    "Вы можаце трымаць ваш каляндар на вашым камп'ютары або на серверы, каб мець да яго аддалены доступ ці падзяліцца ім са сваімі сябрамі або калегамі." >
 <!ENTITY initialpage.computer.label  "На камп'ютары">
 <!ENTITY initialpage.network.label  "У сетцы">
 
@@ -15,38 +15,38 @@
 <!ENTITY locationpage.username.label      "Імя карыстальніка:" >
 <!ENTITY locationpage.password.label      "Пароль:" >
 
-<!ENTITY custompage.shortdescription  "Уладкуйце свой каляндар" >
+<!ENTITY custompage.shortdescription  "Персаналізуйце ваш каляндар" >
 
+<!ENTITY finishpage.shortdescription  "Каляндар створаны" >
+<!ENTITY finishpage.longdescription   "Вы стварылі каляндар." >
 
 <!-- Below are new strings for the revised new calendar dialog. The above strings should be
     removed/renamed later on -->
 
+<!ENTITY sourcetabs.other.label  "Іншае">
 
+<!ENTITY buttons.create.label "Стварыць каляндар">
 
+<!ENTITY buttons.find.label "Знайсці календары">
 
+<!ENTITY buttons.back.label "Назад">
 
+<!ENTITY buttons.subscribe.label "Падпісацца">
 
+<!ENTITY calendartype.label "Тып календара:">
+<!ENTITY location.label "Размяшчэнне:">
+<!ENTITY location.placeholder "URL або імя хоста сервера календара">
 
+<!ENTITY network.nocredentials.label "Для гэтага размяшчэння не патрабуюцца ўліковыя даныя">
+<!ENTITY network.loading.description "Калі ласка, дачакайцеся, пакуль знойдуцца вашы календары.">
+<!ENTITY network.notfound.description "Не атрымалася знайсці календары ў гэтым размяшчэнні. Калі ласка, праверце свае налады.">
+<!ENTITY network.authfail.description "Уліковыя даныя, якія вы ўвялі, не былі прыняты. Калі ласка, праверце вашы налады.">
 
+<!ENTITY network.subscribe.single.description "Калі ласка, выберыце календары, на якія жадаеце падпісацца.">
 
 <!ENTITY custompage.longdescription   "You can give your calendar a nickname and colorize the events from this calendar." >
-<!ENTITY finishpage.shortdescription  "Calendar Created" >
-<!ENTITY finishpage.longdescription   "Your calendar has been created." >
-<!ENTITY sourcetabs.other.label  "Other">
-<!ENTITY buttons.create.label "Create Calendar">
 <!ENTITY buttons.create.accesskey "r">
-<!ENTITY buttons.find.label "Find Calendars">
 <!ENTITY buttons.find.accesskey "F">
-<!ENTITY buttons.back.label "Back">
 <!ENTITY buttons.back.accesskey "B">
-<!ENTITY buttons.subscribe.label "Subscribe">
 <!ENTITY buttons.subscribe.accesskey "S">
-<!ENTITY calendartype.label "Calendar Type:">
-<!ENTITY location.label "Location:">
-<!ENTITY location.placeholder "URL or host name of the calendar server">
-<!ENTITY network.nocredentials.label "This location doesn't require credentials">
-<!ENTITY network.loading.description "Please wait while your calendars are being discovered.">
-<!ENTITY network.notfound.description "Could not find calendars at this location. Please check your settings.">
-<!ENTITY network.authfail.description "The credentials you have entered were not accepted. Please check your settings.">
-<!ENTITY network.subscribe.single.description "Please select the calendars you would like to subscribe to.">
 <!ENTITY network.subscribe.multiple.description "Multiple calendar types are available for this location. Please select the calendar type, then mark the calendars you would like to subscribe to.">

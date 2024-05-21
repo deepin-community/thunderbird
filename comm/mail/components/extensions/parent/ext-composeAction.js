@@ -6,13 +6,16 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "ToolbarButtonAPI",
-  "resource:///modules/ExtensionToolbarButtons.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  ToolbarButtonAPI: "resource:///modules/ExtensionToolbarButtons.sys.mjs",
+});
 
 const composeActionMap = new WeakMap();
+
+var { ExtensionCommon } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionCommon.sys.mjs"
+);
+var { makeWidgetId } = ExtensionCommon;
 
 this.composeAction = class extends ToolbarButtonAPI {
   static for(extension) {
@@ -33,54 +36,58 @@ this.composeAction = class extends ToolbarButtonAPI {
     super(extension, global);
     this.manifest_name = "compose_action";
     this.manifestName = "composeAction";
+    this.manifest = extension.manifest[this.manifest_name];
+    this.moduleName = this.manifestName;
+
     this.windowURLs = [
       "chrome://messenger/content/messengercompose/messengercompose.xhtml",
     ];
-
-    let isFormatToolbar =
+    const isFormatToolbar =
       extension.manifest.compose_action.default_area == "formattoolbar";
     this.toolboxId = isFormatToolbar ? "FormatToolbox" : "compose-toolbox";
     this.toolbarId = isFormatToolbar ? "FormatToolbar" : "composeToolbar2";
-
-    if (isFormatToolbar) {
-      this.paint = this.paintFormatToolbar;
-    }
   }
 
   static onUninstall(extensionId) {
-    let widgetId = makeWidgetId(extensionId);
-    let id = `${widgetId}-composeAction-toolbarbutton`;
-    let windowURL =
+    const widgetId = makeWidgetId(extensionId);
+    const id = `${widgetId}-composeAction-toolbarbutton`;
+    const windowURL =
       "chrome://messenger/content/messengercompose/messengercompose.xhtml";
 
     // Check all possible toolbars and remove the toolbarbutton if found.
     // Sadly we have to hardcode these values here, as the add-on is already
     // shutdown when onUninstall is called.
-    let toolbars = ["composeToolbar2", "FormatToolbar"];
-    for (let toolbar of toolbars) {
-      let currentSet = Services.xulStore
-        .getValue(windowURL, toolbar, "currentset")
-        .split(",");
-
-      let newSet = currentSet.filter(e => e != id);
-      if (newSet.length < currentSet.length) {
-        Services.xulStore.setValue(
-          windowURL,
-          toolbar,
-          "currentset",
-          newSet.join(",")
-        );
+    const toolbars = ["composeToolbar2", "FormatToolbar"];
+    for (const toolbar of toolbars) {
+      for (const setName of ["currentset", "extensionset"]) {
+        const set = Services.xulStore
+          .getValue(windowURL, toolbar, setName)
+          .split(",");
+        const newSet = set.filter(e => e != id);
+        if (newSet.length < set.length) {
+          Services.xulStore.setValue(
+            windowURL,
+            toolbar,
+            setName,
+            newSet.join(",")
+          );
+        }
       }
     }
   }
 
   handleEvent(event) {
     super.handleEvent(event);
-    let window = event.target.ownerGlobal;
+    const window = event.target.ownerGlobal;
 
     switch (event.type) {
-      case "popupshowing":
+      case "popupshowing": {
         const menu = event.target;
+        // Exit early, if this is not a menupopup (for example a tooltip).
+        if (menu.tagName != "menupopup") {
+          return;
+        }
+
         const trigger = menu.triggerNode;
         const node = window.document.getElementById(this.id);
         const contexts = [
@@ -88,7 +95,6 @@ this.composeAction = class extends ToolbarButtonAPI {
           "toolbar-context-menu",
           "customizationPanelItemContextMenu",
         ];
-
         if (contexts.includes(menu.id) && node && node.contains(trigger)) {
           global.actionContextMenu({
             tab: window,
@@ -98,12 +104,26 @@ this.composeAction = class extends ToolbarButtonAPI {
             menu,
           });
         }
+
+        if (
+          menu.dataset.actionMenu == "composeAction" &&
+          this.extension.id == menu.dataset.extensionId
+        ) {
+          global.actionContextMenu({
+            tab: window,
+            pageUrl: window.browser.currentURI.spec,
+            extension: this.extension,
+            inComposeActionMenu: true,
+            menu,
+          });
+        }
         break;
+      }
     }
   }
 
   makeButton(window) {
-    let button = super.makeButton(window);
+    const button = super.makeButton(window);
     if (this.toolbarId == "FormatToolbar") {
       button.classList.add("formatting-button");
       // The format toolbar has no associated context menu. Add one directly to
@@ -113,23 +133,21 @@ this.composeAction = class extends ToolbarButtonAPI {
     return button;
   }
 
-  paintFormatToolbar(window) {
-    let { document } = window;
-    if (document.getElementById(this.id)) {
-      return;
-    }
-
-    let toolbar = document.getElementById(this.toolbarId);
-    let button = this.makeButton(window);
+  /**
+   * Returns an element in the toolbar, which is to be used as default insertion
+   * point for new toolbar buttons in non-customizable toolbars.
+   *
+   * May return null to append new buttons to the end of the toolbar.
+   *
+   * @param {DOMElement} toolbar - a toolbar node
+   * @returns {DOMElement} a node which is to be used as insertion point, or null
+   */
+  getNonCustomizableToolbarInsertionPoint(toolbar) {
     let before = toolbar.lastElementChild;
     while (before.localName == "spacer") {
       before = before.previousElementSibling;
     }
-    toolbar.insertBefore(button, before.nextElementSibling);
-
-    if (this.extension.hasPermission("menus")) {
-      document.addEventListener("popupshowing", this);
-    }
+    return before.nextElementSibling;
   }
 };
 

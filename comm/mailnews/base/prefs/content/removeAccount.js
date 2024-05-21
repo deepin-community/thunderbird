@@ -1,15 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var gServer;
 var gDialog;
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 document.addEventListener("dialogdisclosure", showInfo);
 document.addEventListener("dialogaccept", onAccept);
@@ -22,19 +22,19 @@ function onLoad(event) {
   gServer = window.arguments[0].account.incomingServer;
   gDialog = document.querySelector("dialog");
 
-  let bundle = document.getElementById("bundle_removeAccount");
-  let removeQuestion = bundle.getFormattedString("removeQuestion", [
+  const bundle = document.getElementById("bundle_removeAccount");
+  const removeQuestion = bundle.getFormattedString("removeQuestion", [
     gServer.prettyName,
   ]);
   document.getElementById("accountName").textContent = removeQuestion;
 
   // Allow to remove account data if it has a local storage.
-  let localDirectory = gServer.localPath;
+  const localDirectory = gServer.localPath;
   if (localDirectory && localDirectory.exists()) {
     localDirectory.normalize();
 
     // Do not allow removal if localPath is outside of profile folder.
-    let profilePath = Services.dirsvc.get("ProfD", Ci.nsIFile);
+    const profilePath = Services.dirsvc.get("ProfD", Ci.nsIFile);
     profilePath.normalize();
 
     // TODO: bug 77652, decide what to do for deferred accounts.
@@ -52,13 +52,12 @@ function onLoad(event) {
   }
 
   if (gServer.type == "im") {
-    let dataCheckbox = document.getElementById("removeData");
+    const dataCheckbox = document.getElementById("removeData");
     dataCheckbox.label = dataCheckbox.getAttribute("labelChat");
     dataCheckbox.accessKey = dataCheckbox.getAttribute("accesskeyChat");
   }
 
   enableRemove();
-  window.sizeToContent();
 }
 
 function enableRemove() {
@@ -71,12 +70,12 @@ function enableRemove() {
  * Show the local directory.
  */
 function openLocalDirectory() {
-  let nsLocalFile = Components.Constructor(
+  const nsLocalFile = Components.Constructor(
     "@mozilla.org/file/local;1",
     "nsIFile",
     "initWithPath"
   );
-  let localDir = gServer.localPath.path;
+  const localDir = gServer.localPath.path;
   try {
     new nsLocalFile(localDir).reveal();
   } catch (e) {
@@ -87,8 +86,8 @@ function openLocalDirectory() {
 }
 
 function showInfo() {
-  let descs = document.querySelectorAll("vbox.indent");
-  for (let desc of descs) {
+  const descs = document.querySelectorAll("vbox.indent");
+  for (const desc of descs) {
     desc.collapsed = false;
   }
 
@@ -107,8 +106,8 @@ function showInfo() {
 }
 
 function removeAccount() {
-  let removeAccount = document.getElementById("removeAccount").checked;
-  let removeData = document.getElementById("removeData").checked;
+  const removeAccount = document.getElementById("removeAccount").checked;
+  const removeData = document.getElementById("removeData").checked;
   let account = window.arguments[0].account;
   try {
     // Remove the requested account data.
@@ -134,7 +133,7 @@ function removeAccount() {
     document.getElementById("success").hidden = false;
   } catch (ex) {
     document.getElementById("failure").hidden = false;
-    Cu.reportError("Failure to remove account: " + ex);
+    console.error("Failure to remove account: " + ex);
     window.arguments[0].result = false;
   }
   document.getElementById("progress").hidden = true;

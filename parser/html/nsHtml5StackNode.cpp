@@ -28,27 +28,10 @@
 
 #define nsHtml5StackNode_cpp__
 
-#include "nsAtom.h"
-#include "nsHtml5AtomTable.h"
-#include "nsHtml5String.h"
-#include "nsNameSpaceManager.h"
-#include "nsIContent.h"
-#include "nsTraceRefcnt.h"
-#include "jArray.h"
-#include "nsHtml5ArrayCopy.h"
-#include "nsAHtml5TreeBuilderState.h"
-#include "nsGkAtoms.h"
-#include "nsHtml5ByteReadable.h"
-#include "nsHtml5Macros.h"
-#include "nsIContentHandle.h"
-#include "nsHtml5Portability.h"
-#include "nsHtml5ContentCreatorFunction.h"
-
 #include "nsHtml5AttributeName.h"
 #include "nsHtml5ElementName.h"
 #include "nsHtml5Tokenizer.h"
 #include "nsHtml5TreeBuilder.h"
-#include "nsHtml5MetaScanner.h"
 #include "nsHtml5UTF16Buffer.h"
 #include "nsHtml5StateSnapshot.h"
 #include "nsHtml5Portability.h"

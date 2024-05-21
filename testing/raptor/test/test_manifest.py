@@ -1,11 +1,9 @@
-from __future__ import absolute_import, unicode_literals
+import os
+import sys
 
 import mozinfo
 import mozunit
-import os
 import pytest
-import sys
-
 from six.moves.urllib.parse import parse_qs, urlsplit
 
 # need this so raptor imports work both from /raptor and via mach
@@ -18,10 +16,10 @@ from manifest import (
     add_test_url_params,
     get_browser_test_list,
     get_raptor_test_list,
-    validate_test_ini,
+    validate_test_toml,
 )
 
-# some test details (test INIs)
+# some test details (test TOMLs)
 VALID_MANIFESTS = [
     {
         # page load test with local playback
@@ -34,7 +32,6 @@ VALID_MANIFESTS = [
         "page_cycles": 25,
         "playback": "mitmproxy",
         "playback_pageset_manifest": "pageset.manifest",
-        "playback_recordings": "recorded_site.mp",
         "test_url": "http://www.test-url/goes/here",
         "type": "pageload",
         "unit": "ms",
@@ -102,7 +99,6 @@ INVALID_MANIFESTS = [
         "page_cycles": 25,
         "playback": "mitmproxy",
         "playback_pageset_manifest": "pageset.manifest",
-        "playback_recordings": "recorded_site.mp",
         "test_url": "http://www.test-url/goes/here",
         "type": "pageload",
         "unit": "ms",
@@ -141,7 +137,6 @@ INVALID_MANIFESTS = [
         "page_cycles": 25,
         "playback": "mitmproxy",
         "playback_pageset_manifest": "pageset.manifest",
-        "playback_recordings": "recorded_site.mp",
         "test_url": "http://www.test-url/goes/here",
         "type": "pageload",
         "unit": "ms",
@@ -158,13 +153,13 @@ def test_get_browser_test_list(app):
 
 
 @pytest.mark.parametrize("test_details", VALID_MANIFESTS)
-def test_validate_test_ini_valid(test_details):
-    assert validate_test_ini(test_details)
+def test_validate_test_toml_valid(test_details):
+    assert validate_test_toml(test_details)
 
 
 @pytest.mark.parametrize("test_details", INVALID_MANIFESTS)
-def test_validate_test_ini_invalid(test_details):
-    assert not (validate_test_ini(test_details))
+def test_validate_test_toml_invalid(test_details):
+    assert not (validate_test_toml(test_details))
 
 
 def test_get_raptor_test_list_firefox(create_args):
@@ -173,12 +168,7 @@ def test_get_raptor_test_list_firefox(create_args):
     test_list = get_raptor_test_list(args, mozinfo.os)
     assert len(test_list) == 4
 
-    subtests = [
-        "raptor-tp6-unittest-google-firefox",
-        "raptor-tp6-unittest-amazon-firefox",
-        "raptor-tp6-unittest-facebook-firefox",
-        "raptor-tp6-unittest-youtube-firefox",
-    ]
+    subtests = ["test-page-1", "test-page-2", "test-page-3", "test-page-4"]
 
     for next_subtest in test_list:
         assert next_subtest["name"] in subtests
@@ -207,7 +197,6 @@ def test_get_raptor_test_list_gecko_profiling_enabled(create_args):
     assert len(test_list) == 1
     assert test_list[0]["name"] == "amazon"
     assert test_list[0]["gecko_profile"] is True
-    assert test_list[0].get("gecko_profile_entries") == "14000000"
     assert test_list[0].get("gecko_profile_interval") == "1"
     assert test_list[0].get("gecko_profile_threads") is None
     assert test_list[0].get("gecko_profile_features") is None
@@ -296,6 +285,44 @@ def test_get_raptor_test_list_gecko_profiling_disabled_args_override(create_args
     assert test_list[0].get("gecko_profile_features") is None
 
 
+def test_get_raptor_test_list_extra_profiler_run_enabled(create_args):
+    args = create_args(test="amazon", extra_profiler_run=True, browser_cycles=1)
+
+    test_list = get_raptor_test_list(args, mozinfo.os)
+    assert len(test_list) == 1
+    assert test_list[0]["name"] == "amazon"
+    assert test_list[0]["extra_profiler_run"] is True
+
+
+def test_get_raptor_test_list_extra_profiler_run_disabled(create_args):
+    args = create_args(test="amazon", browser_cycles=1)
+
+    test_list = get_raptor_test_list(args, mozinfo.os)
+    assert len(test_list) == 1
+    assert test_list[0]["name"] == "amazon"
+    assert test_list[0].get("extra_profiler_run") is None
+
+
+def test_get_raptor_test_list_extra_profiler_run_enabled_chrome(create_args):
+    args = create_args(
+        app="chrome", test="amazon", extra_profiler_run=True, browser_cycles=1
+    )
+
+    test_list = get_raptor_test_list(args, mozinfo.os)
+    assert len(test_list) == 1
+    assert test_list[0]["name"] == "amazon"
+    assert test_list[0]["extra_profiler_run"] is True
+
+
+def test_get_raptor_test_list_extra_profiler_run_disabled_chrome(create_args):
+    args = create_args(app="chrome", test="amazon", browser_cycles=1)
+
+    test_list = get_raptor_test_list(args, mozinfo.os)
+    assert len(test_list) == 1
+    assert test_list[0]["name"] == "amazon"
+    assert test_list[0].get("extra_profiler_run") is None
+
+
 def test_get_raptor_test_list_debug_mode(create_args):
     args = create_args(test="amazon", debug_mode=True, browser_cycles=1)
 
@@ -314,6 +341,15 @@ def test_get_raptor_test_list_using_live_sites(create_args):
     assert test_list[0]["name"] == "amazon"
     assert test_list[0]["use_live_sites"] == "true"
     assert test_list[0]["playback"] is None
+
+
+def test_get_raptor_test_list_using_collect_perfstats(create_args):
+    args = create_args(test="amazon", collect_perfstats=True, browser_cycles=1)
+
+    test_list = get_raptor_test_list(args, mozinfo.os)
+    assert len(test_list) == 1
+    assert test_list[0]["name"] == "amazon"
+    assert test_list[0]["perfstats"] == "true"
 
 
 def test_get_raptor_test_list_override_page_cycles(create_args):

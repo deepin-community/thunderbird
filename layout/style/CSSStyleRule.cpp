@@ -10,22 +10,21 @@
 #include "mozilla/DeclarationBlock.h"
 #include "mozilla/PseudoStyleType.h"
 #include "mozilla/ServoBindings.h"
-#include "mozilla/dom/CSSStyleRuleBinding.h"
+#include "mozilla/dom/ShadowRoot.h"
 #include "nsCSSPseudoElements.h"
 
 #include "mozAutoDocUpdate.h"
 #include "nsISupports.h"
 
-using namespace mozilla::dom;
-
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 // -- CSSStyleRuleDeclaration ---------------------------------------
 
 CSSStyleRuleDeclaration::CSSStyleRuleDeclaration(
-    already_AddRefed<RawServoDeclarationBlock> aDecls)
-    : mDecls(new DeclarationBlock(std::move(aDecls))) {}
+    already_AddRefed<StyleLockedDeclarationBlock> aDecls)
+    : mDecls(new DeclarationBlock(std::move(aDecls))) {
+  mDecls->SetOwningRule(Rule());
+}
 
 CSSStyleRuleDeclaration::~CSSStyleRuleDeclaration() {
   mDecls->SetOwningRule(nullptr);
@@ -59,18 +58,37 @@ nsISupports* CSSStyleRuleDeclaration::GetParentObject() const {
 
 DeclarationBlock* CSSStyleRuleDeclaration::GetOrCreateCSSDeclaration(
     Operation aOperation, DeclarationBlock** aCreated) {
+  if (aOperation != Operation::Read) {
+    if (StyleSheet* sheet = Rule()->GetStyleSheet()) {
+      sheet->WillDirty();
+    }
+  }
   return mDecls;
+}
+
+void CSSStyleRule::SetRawAfterClone(RefPtr<StyleLockedStyleRule> aRaw) {
+  mRawRule = std::move(aRaw);
+  mDecls.SetRawAfterClone(Servo_StyleRule_GetStyle(mRawRule).Consume());
+  GroupRule::DidSetRawAfterClone();
+}
+
+already_AddRefed<StyleLockedCssRules> CSSStyleRule::GetOrCreateRawRules() {
+  return Servo_StyleRule_EnsureRules(mRawRule, IsReadOnly()).Consume();
+}
+
+void CSSStyleRuleDeclaration::SetRawAfterClone(
+    RefPtr<StyleLockedDeclarationBlock> aRaw) {
+  RefPtr<DeclarationBlock> block = new DeclarationBlock(aRaw.forget());
+  mDecls->SetOwningRule(nullptr);
+  mDecls = std::move(block);
+  mDecls->SetOwningRule(Rule());
 }
 
 nsresult CSSStyleRuleDeclaration::SetCSSDeclaration(
     DeclarationBlock* aDecl, MutationClosureData* aClosureData) {
   CSSStyleRule* rule = Rule();
 
-  if (rule->IsReadOnly()) {
-    return NS_OK;
-  }
-
-  if (RefPtr<StyleSheet> sheet = rule->GetStyleSheet()) {
+  if (StyleSheet* sheet = rule->GetStyleSheet()) {
     if (aDecl != mDecls) {
       mDecls->SetOwningRule(nullptr);
       RefPtr<DeclarationBlock> decls = aDecl;
@@ -88,23 +106,23 @@ Document* CSSStyleRuleDeclaration::DocToUpdate() { return nullptr; }
 nsDOMCSSDeclaration::ParsingEnvironment
 CSSStyleRuleDeclaration::GetParsingEnvironment(
     nsIPrincipal* aSubjectPrincipal) const {
-  return GetParsingEnvironmentForRule(Rule(), CSSRule_Binding::STYLE_RULE);
+  return GetParsingEnvironmentForRule(Rule(), StyleCssRuleType::Style);
 }
 
 // -- CSSStyleRule --------------------------------------------------
 
-CSSStyleRule::CSSStyleRule(already_AddRefed<RawServoStyleRule> aRawRule,
+CSSStyleRule::CSSStyleRule(already_AddRefed<StyleLockedStyleRule> aRawRule,
                            StyleSheet* aSheet, css::Rule* aParentRule,
                            uint32_t aLine, uint32_t aColumn)
-    : BindingStyleRule(aSheet, aParentRule, aLine, aColumn),
+    : GroupRule(aSheet, aParentRule, aLine, aColumn),
       mRawRule(aRawRule),
       mDecls(Servo_StyleRule_GetStyle(mRawRule).Consume()) {}
 
-NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(CSSStyleRule, css::Rule)
+NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(CSSStyleRule, GroupRule)
 
 NS_IMPL_CYCLE_COLLECTION_CLASS(CSSStyleRule)
 
-NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN_INHERITED(CSSStyleRule, css::Rule)
+NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN_INHERITED(CSSStyleRule, GroupRule)
   // Keep this in sync with IsCCLeaf.
 
   // Trace the wrapper for our declaration.  This just expands out
@@ -121,17 +139,16 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(CSSStyleRule)
   // Note that this has to happen before unlinking css::Rule.
   tmp->UnlinkDeclarationWrapper(tmp->mDecls);
   NS_IMPL_CYCLE_COLLECTION_UNLINK_WEAK_PTR
-NS_IMPL_CYCLE_COLLECTION_UNLINK_END_INHERITED(css::Rule)
+NS_IMPL_CYCLE_COLLECTION_UNLINK_END_INHERITED(GroupRule)
 
-NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(CSSStyleRule, css::Rule)
+NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(CSSStyleRule, GroupRule)
   // Keep this in sync with IsCCLeaf.
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 bool CSSStyleRule::IsCCLeaf() const {
-  if (!Rule::IsCCLeaf()) {
+  if (!GroupRule::IsCCLeaf()) {
     return false;
   }
-
   return !mDecls.PreservingWrapper();
 }
 
@@ -159,6 +176,8 @@ void CSSStyleRule::List(FILE* out, int32_t aIndent) const {
 
 /* CSSRule implementation */
 
+StyleCssRuleType CSSStyleRule::Type() const { return StyleCssRuleType::Style; }
+
 void CSSStyleRule::GetCssText(nsACString& aCssText) const {
   Servo_StyleRule_GetCssText(mRawRule, &aCssText);
 }
@@ -176,65 +195,129 @@ void CSSStyleRule::SetSelectorText(const nsACString& aSelectorText) {
     return;
   }
 
-  if (RefPtr<StyleSheet> sheet = GetStyleSheet()) {
-    // StyleRule lives inside of the Inner, it is unsafe to call WillDirty
-    // if sheet does not already have a unique Inner.
-    sheet->AssertHasUniqueInner();
+  if (StyleSheet* sheet = GetStyleSheet()) {
     sheet->WillDirty();
 
     // TODO(emilio): May actually be more efficient to handle this as rule
     // removal + addition, from the point of view of invalidation...
-    const RawServoStyleSheetContents* contents = sheet->RawContents();
+    const StyleStylesheetContents* contents = sheet->RawContents();
     if (Servo_StyleRule_SetSelectorText(contents, mRawRule, &aSelectorText)) {
       sheet->RuleChanged(this, StyleRuleChangeKind::Generic);
     }
   }
 }
 
-uint32_t CSSStyleRule::GetSelectorCount() {
-  uint32_t aCount;
-  Servo_StyleRule_GetSelectorCount(mRawRule, &aCount);
-  return aCount;
+uint32_t CSSStyleRule::SelectorCount() const {
+  return Servo_StyleRule_GetSelectorCount(mRawRule);
 }
 
-nsresult CSSStyleRule::GetSelectorText(uint32_t aSelectorIndex,
-                                       nsACString& aText) {
-  Servo_StyleRule_GetSelectorTextAtIndex(mRawRule, aSelectorIndex, &aText);
-  return NS_OK;
-}
-
-nsresult CSSStyleRule::GetSpecificity(uint32_t aSelectorIndex,
-                                      uint64_t* aSpecificity) {
-  Servo_StyleRule_GetSpecificityAtIndex(mRawRule, aSelectorIndex, aSpecificity);
-  return NS_OK;
-}
-
-nsresult CSSStyleRule::SelectorMatchesElement(Element* aElement,
-                                              uint32_t aSelectorIndex,
-                                              const nsAString& aPseudo,
-                                              bool aRelevantLinkVisited,
-                                              bool* aMatches) {
-  PseudoStyleType pseudoType = PseudoStyleType::NotPseudo;
-  if (!aPseudo.IsEmpty()) {
-    RefPtr<nsAtom> pseudoElt = NS_Atomize(aPseudo);
-    pseudoType = nsCSSPseudoElements::GetPseudoType(
-        pseudoElt, CSSEnabledState::IgnoreEnabledState);
-
-    if (pseudoType == PseudoStyleType::NotPseudo) {
-      *aMatches = false;
-      return NS_OK;
+static void CollectStyleRules(CSSStyleRule& aDeepestRule, bool aDesugared,
+                              nsTArray<const StyleLockedStyleRule*>& aResult) {
+  aResult.AppendElement(aDeepestRule.Raw());
+  if (aDesugared) {
+    for (auto* rule = aDeepestRule.GetParentRule(); rule;
+         rule = rule->GetParentRule()) {
+      if (rule->Type() == StyleCssRuleType::Style) {
+        aResult.AppendElement(static_cast<CSSStyleRule*>(rule)->Raw());
+      }
     }
   }
+}
 
-  *aMatches = Servo_StyleRule_SelectorMatchesElement(
-      mRawRule, aElement, aSelectorIndex, pseudoType, aRelevantLinkVisited);
+void CSSStyleRule::GetSelectorDataAtIndex(uint32_t aSelectorIndex,
+                                          bool aDesugared, nsACString* aText,
+                                          uint64_t* aSpecificity) {
+  AutoTArray<const StyleLockedStyleRule*, 8> rules;
+  CollectStyleRules(*this, aDesugared, rules);
+  Servo_StyleRule_GetSelectorDataAtIndex(&rules, aSelectorIndex, aText,
+                                         aSpecificity);
+}
 
-  return NS_OK;
+void CSSStyleRule::SelectorTextAt(uint32_t aSelectorIndex, bool aDesugared,
+                                  nsACString& aText) {
+  GetSelectorDataAtIndex(aSelectorIndex, aDesugared, &aText, nullptr);
+}
+
+uint64_t CSSStyleRule::SelectorSpecificityAt(uint32_t aSelectorIndex,
+                                             bool aDesugared) {
+  uint64_t s = 0;
+  GetSelectorDataAtIndex(aSelectorIndex, aDesugared, nullptr, &s);
+  return s;
+}
+
+bool CSSStyleRule::SelectorMatchesElement(uint32_t aSelectorIndex,
+                                          Element& aElement,
+                                          const nsAString& aPseudo,
+                                          bool aRelevantLinkVisited) {
+  Maybe<PseudoStyleType> pseudoType = nsCSSPseudoElements::GetPseudoType(
+      aPseudo, CSSEnabledState::IgnoreEnabledState);
+  if (!pseudoType) {
+    return false;
+  }
+
+  auto* host = [&]() -> Element* {
+    auto* sheet = GetStyleSheet();
+    if (!sheet) {
+      return nullptr;
+    }
+    if (auto* owner = sheet->GetAssociatedDocumentOrShadowRoot()) {
+      if (auto* shadow = ShadowRoot::FromNode(owner->AsNode())) {
+        return shadow->Host();
+      }
+    }
+    for (auto* adopter : sheet->SelfOrAncestorAdopters()) {
+      // Try to guess. This is not fully correct but it's the best we can do
+      // with the info at hand...
+      auto* shadow = ShadowRoot::FromNode(adopter->AsNode());
+      if (!shadow) {
+        continue;
+      }
+      if (shadow->Host() == &aElement ||
+          shadow == aElement.GetContainingShadow()) {
+        return shadow->Host();
+      }
+    }
+    return nullptr;
+  }();
+
+  AutoTArray<const StyleLockedStyleRule*, 8> rules;
+  CollectStyleRules(*this, /* aDesugared = */ true, rules);
+
+  return Servo_StyleRule_SelectorMatchesElement(
+      &rules, &aElement, aSelectorIndex, host, *pseudoType,
+      aRelevantLinkVisited);
 }
 
 NotNull<DeclarationBlock*> CSSStyleRule::GetDeclarationBlock() const {
   return WrapNotNull(mDecls.mDecls);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+SelectorWarningKind ToWebIDLSelectorWarningKind(
+    StyleSelectorWarningKind aKind) {
+  switch (aKind) {
+    case StyleSelectorWarningKind::UnconstraintedRelativeSelector:
+      return SelectorWarningKind::UnconstrainedHas;
+  }
+  MOZ_ASSERT_UNREACHABLE("Unhandled selector warning kind");
+  // Return something for assert-disabled builds.
+  return SelectorWarningKind::UnconstrainedHas;
+}
+
+void CSSStyleRule::GetSelectorWarnings(
+    nsTArray<SelectorWarning>& aResult) const {
+  nsTArray<StyleSelectorWarningData> result;
+  Servo_GetSelectorWarnings(mRawRule, &result);
+  for (const auto& warning : result) {
+    auto& entry = *aResult.AppendElement();
+    entry.mIndex = warning.index;
+    entry.mKind = ToWebIDLSelectorWarningKind(warning.kind);
+  }
+}
+
+/* virtual */
+JSObject* CSSStyleRule::WrapObject(JSContext* aCx,
+                                   JS::Handle<JSObject*> aGivenProto) {
+  return CSSStyleRule_Binding::Wrap(aCx, this, aGivenProto);
+}
+
+}  // namespace mozilla::dom

@@ -8,17 +8,20 @@ with Files("**"):
     BUG_COMPONENT = ("Core", "Storage: IndexedDB")
 
 MOCHITEST_MANIFESTS += [
-    "test/mochitest-intl-api.ini",
-    "test/mochitest.ini",
+    "test/mochitest-intl-api.toml",
+    "test/mochitest-private.toml",
+    "test/mochitest-regular.toml",
 ]
 
-BROWSER_CHROME_MANIFESTS += ["test/browser.ini"]
+BROWSER_CHROME_MANIFESTS += ["test/browser.toml"]
 
-MOCHITEST_CHROME_MANIFESTS += ["test/chrome.ini"]
+MOCHITEST_CHROME_MANIFESTS += ["test/chrome.toml"]
+
+MARIONETTE_MANIFESTS += ["test/marionette/manifest.toml"]
 
 XPCSHELL_TESTS_MANIFESTS += [
-    "test/unit/xpcshell-child-process.ini",
-    "test/unit/xpcshell-parent-process.ini",
+    "test/unit/xpcshell-child-process.toml",
+    "test/unit/xpcshell-parent-process.toml",
 ]
 
 TEST_DIRS += ["test/gtest"]
@@ -31,11 +34,8 @@ EXPORTS.mozilla.dom += [
     "IDBDatabase.h",
     "IDBEvents.h",
     "IDBFactory.h",
-    "IDBFileHandle.h",
-    "IDBFileRequest.h",
     "IDBIndex.h",
     "IDBKeyRange.h",
-    "IDBMutableFile.h",
     "IDBObjectStore.h",
     "IDBRequest.h",
     "IDBTransaction.h",
@@ -50,7 +50,6 @@ EXPORTS.mozilla.dom.indexedDB += [
     "IDBResult.h",
     "Key.h",
     "KeyPath.h",
-    "PermissionRequestBase.h",
     "SerializationHelpers.h",
     "ThreadLocal.h",
 ]
@@ -65,11 +64,8 @@ UNIFIED_SOURCES += [
     "IDBDatabase.cpp",
     "IDBEvents.cpp",
     "IDBFactory.cpp",
-    "IDBFileHandle.cpp",
-    "IDBFileRequest.cpp",
     "IDBIndex.cpp",
     "IDBKeyRange.cpp",
-    "IDBMutableFile.cpp",
     "IDBObjectStore.cpp",
     "IDBRequest.cpp",
     "IDBTransaction.cpp",
@@ -77,7 +73,6 @@ UNIFIED_SOURCES += [
     "IndexedDatabaseManager.cpp",
     "IndexedDBCommon.cpp",
     "KeyPath.cpp",
-    "PermissionRequestBase.cpp",
     "ProfilerHelpers.cpp",
     "ReportInternalError.cpp",
     "SchemaUpgrades.cpp",
@@ -93,7 +88,6 @@ IPDL_SOURCES += [
     "PBackgroundIDBCursor.ipdl",
     "PBackgroundIDBDatabase.ipdl",
     "PBackgroundIDBDatabaseFile.ipdl",
-    "PBackgroundIDBDatabaseRequest.ipdl",
     "PBackgroundIDBFactory.ipdl",
     "PBackgroundIDBFactoryRequest.ipdl",
     "PBackgroundIDBRequest.ipdl",
@@ -111,7 +105,6 @@ if CONFIG["CC_TYPE"] in ("clang", "gcc"):
     # Suppress gcc warning about a comparison being always false due to the
     # range of the data type
     SOURCES["Key.cpp"].flags += ["-Wno-error=type-limits"]
-    CXXFLAGS += ["-Wno-error=shadow"]
 
 LOCAL_INCLUDES += [
     "/dom/base",

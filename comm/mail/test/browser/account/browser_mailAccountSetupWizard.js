@@ -4,43 +4,23 @@
 
 "use strict";
 
-var { openAccountSetup, wait_for_account_tree_load } = ChromeUtils.import(
-  "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
+var { openAccountSetup } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
 );
-var { mc } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { input_value, delete_all_existing } = ChromeUtils.import(
-  "resource://testing-common/mozmill/KeyboardHelpers.jsm"
-);
-var { gMockPromptService } = ChromeUtils.import(
-  "resource://testing-common/mozmill/PromptHelpers.jsm"
+var { input_value, delete_all_existing } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/KeyboardHelpers.sys.mjs"
 );
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { DNS } = ChromeUtils.import("resource:///modules/DNS.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { cal } = ChromeUtils.importESModule(
+  "resource:///modules/calendar/calUtils.sys.mjs"
+);
+var { DNS } = ChromeUtils.importESModule("resource:///modules/DNS.sys.mjs");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-let { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
-var { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
-);
-var { nsMailServer } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Maild.jsm"
-);
-
-var originalAlertsServiceCID;
-// We need a mock alerts service to capture notification events when loading the
-// UI after a successful account configuration in order to catch the alert
-// triggered when trying to connect to the fake IMAP server.
-class MockAlertsService {
-  QueryInterface = ChromeUtils.generateQI(["nsIAlertsService"]);
-  showAlert() {}
-}
 
 var user = {
   name: "Yamato Nadeshiko",
@@ -62,20 +42,22 @@ var imapUser = {
 var IMAPServer = {
   open() {
     const {
-      imapDaemon,
-      imapMessage,
+      ImapDaemon,
+      ImapMessage,
       IMAP_RFC2195_extension,
       IMAP_RFC3501_handler,
       mixinExtension,
-    } = ChromeUtils.import("resource://testing-common/mailnews/Imapd.jsm");
-    const { nsMailServer } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Maild.jsm"
+    } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Imapd.sys.mjs"
     );
-    IMAPServer.imapMessage = imapMessage;
+    const { nsMailServer } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Maild.sys.mjs"
+    );
+    IMAPServer.ImapMessage = ImapMessage;
 
-    this.daemon = new imapDaemon();
+    this.daemon = new ImapDaemon();
     this.server = new nsMailServer(daemon => {
-      let handler = new IMAP_RFC3501_handler(daemon);
+      const handler = new IMAP_RFC3501_handler(daemon);
       mixinExtension(handler, IMAP_RFC2195_extension);
 
       handler.kUsername = "john.doe@example-imap.com";
@@ -99,16 +81,16 @@ var IMAPServer = {
 
 var SMTPServer = {
   open() {
-    const { smtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Smtpd.jsm"
+    const { SmtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Smtpd.sys.mjs"
     );
-    const { nsMailServer } = ChromeUtils.import(
-      "resource://testing-common/mailnews/Maild.jsm"
+    const { nsMailServer } = ChromeUtils.importESModule(
+      "resource://testing-common/mailnews/Maild.sys.mjs"
     );
 
-    this.daemon = new smtpDaemon();
+    this.daemon = new SmtpDaemon();
     this.server = new nsMailServer(daemon => {
-      let handler = new SMTP_RFC2821_handler(daemon);
+      const handler = new SMTP_RFC2821_handler(daemon);
       handler.kUsername = "john.doe@example-imap.com";
       handler.kPassword = "abc12345";
       handler.kAuthRequired = true;
@@ -130,24 +112,42 @@ var SMTPServer = {
 
 var _srv = DNS.srv;
 var _txt = DNS.txt;
-DNS.srv = function(name) {
+DNS.srv = function (name) {
   if (["_caldavs._tcp.localhost", "_carddavs._tcp.localhost"].includes(name)) {
     return [{ prio: 0, weight: 0, host: "example.org", port: 443 }];
   }
-  throw new Error("Unexpected DNS SRV lookup.");
+  if (
+    [
+      "_caldavs._tcp.example-imap.com",
+      "_carddavs._tcp.example-imap.com",
+    ].includes(name)
+  ) {
+    return [{ prio: 0, weight: 0, host: "example.org", port: 443 }];
+  }
+  throw new Error(`Unexpected DNS SRV lookup: ${name}`);
 };
-DNS.txt = function(name) {
+DNS.txt = function (name) {
   if (name == "_caldavs._tcp.localhost") {
     return [{ data: "path=/browser/comm/calendar/test/browser/data/dns.sjs" }];
-  } else if (name == "_carddavs._tcp.localhost") {
+  }
+  if (name == "_carddavs._tcp.localhost") {
     return [
       {
-        data:
-          "path=/browser/comm/mail/components/addrbook/test/browser/new/data/dns.sjs",
+        data: "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
       },
     ];
   }
-  throw new Error("Unexpected DNS TXT lookup.");
+  if (name == "_caldavs._tcp.example-imap.com") {
+    return [{ data: "path=/browser/comm/calendar/test/browser/data/dns.sjs" }];
+  }
+  if (name == "_carddavs._tcp.example-imap.com") {
+    return [
+      {
+        data: "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+      },
+    ];
+  }
+  throw new Error(`Unexpected DNS TXT lookup: ${name}`);
 };
 
 const PREF_NAME = "mailnews.auto_config_url";
@@ -155,10 +155,10 @@ const PREF_VALUE = Services.prefs.getCharPref(PREF_NAME);
 
 // Remove an account in the Account Manager, but not via the UI.
 function remove_account_internal(tab, account, outgoing) {
-  let win = tab.browser.contentWindow;
+  const win = tab.browser.contentWindow;
 
   // Remove the account and incoming server
-  let serverId = account.incomingServer.serverURI;
+  const serverId = account.incomingServer.serverURI;
   MailServices.accounts.removeAccount(account);
   account = null;
   if (serverId in win.accountArray) {
@@ -167,24 +167,23 @@ function remove_account_internal(tab, account, outgoing) {
   win.selectServer(null, null);
 
   // Remove the outgoing server
-  let smtpKey = outgoing.key;
+  const smtpKey = outgoing.key;
   MailServices.smtp.deleteServer(outgoing);
   win.replaceWithDefaultSmtpServer(smtpKey);
 }
 
 add_task(async function test_mail_account_setup() {
-  originalAlertsServiceCID = MockRegistrar.register(
-    "@mozilla.org/alerts-service;1",
-    MockAlertsService
-  );
-
   // Set the pref to load a local autoconfig file.
-  let url =
+  const url =
     "http://mochi.test:8888/browser/comm/mail/test/browser/account/xml/";
   Services.prefs.setCharPref(PREF_NAME, url);
 
-  let tab = await openAccountSetup();
-  let tabDocument = tab.browser.contentWindow.document;
+  // This test will cause a connection failure alert. Prevent it to avoid
+  // test failure messages.
+  Services.prefs.setBoolPref("mail.suppressAlertsForTests", true);
+
+  const tab = await openAccountSetup();
+  const tabDocument = tab.browser.contentWindow.document;
 
   // Input user's account information
   EventUtils.synthesizeMouseAtCenter(
@@ -195,24 +194,25 @@ add_task(async function test_mail_account_setup() {
 
   if (tabDocument.getElementById("realname").value) {
     // If any realname is already filled, clear it out, we have our own.
-    delete_all_existing(mc, tabDocument.getElementById("realname"));
+    delete_all_existing(window, tabDocument.getElementById("realname"));
   }
-  input_value(mc, user.name);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, user.email);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, user.password);
+  input_value(window, user.name);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, user.email);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, user.password);
 
-  let notificationBox = tab.browser.contentWindow.gAccountSetup.notificationBox;
+  const notificationBox =
+    tab.browser.contentWindow.gAccountSetup.notificationBox;
 
-  let notificationShowed = BrowserTestUtils.waitForCondition(
+  const notificationShowed = BrowserTestUtils.waitForCondition(
     () =>
       notificationBox.getNotificationWithValue("accountSetupSuccess") != null,
     "Timeout waiting for error notification to be showed"
   );
 
-  let popOption = tabDocument.getElementById("resultsOption-pop3");
-  let protocolPOPSelected = BrowserTestUtils.waitForCondition(
+  const popOption = tabDocument.getElementById("resultsOption-pop3");
+  const protocolPOPSelected = BrowserTestUtils.waitForCondition(
     () => !popOption.hidden && popOption.classList.contains("selected"),
     "Timeout waiting for the POP3 option to be visible and selected"
   );
@@ -235,10 +235,6 @@ add_task(async function test_mail_account_setup() {
   Assert.ok(tabDocument.getElementById("resultsOption-imap").hidden);
   Assert.ok(tabDocument.getElementById("resultsOption-exchange").hidden);
 
-  // Register the prompt service to handle the confirm() dialog
-  gMockPromptService.register();
-  gMockPromptService.returnValue = true;
-
   // Open the advanced settings (Account Manager) to create the account
   // immediately. We use an invalid email/password so the setup will fail
   // anyway.
@@ -253,41 +249,41 @@ add_task(async function test_mail_account_setup() {
     "Timeout waiting for the manual edit area to become visible"
   );
 
-  let tabChanged = BrowserTestUtils.waitForCondition(
-    () => mc.tabmail.selectedTab != tab,
+  const tabmail = document.getElementById("tabmail");
+  const tabChanged = BrowserTestUtils.waitForCondition(
+    () => tabmail.selectedTab != tab,
     "Timeout waiting for the currently active tab to change"
   );
 
-  let advancedSetupButton = tabDocument.getElementById("advancedSetupButton");
+  const advancedSetupButton = tabDocument.getElementById("advancedSetupButton");
   advancedSetupButton.scrollIntoView();
 
+  // Handle the confirmation dialog.
+  const dialogPromise = BrowserTestUtils.promiseAlertDialog("accept");
   EventUtils.synthesizeMouseAtCenter(
     advancedSetupButton,
     {},
     tab.browser.contentWindow
   );
+  await dialogPromise;
 
   // Wait for the current Account Setup tab to be closed and the Account
   // Settings tab to open before running other sub tests.
   await tabChanged;
 
-  await subtest_verify_account(mc.tabmail.selectedTab, user);
+  await subtest_verify_account(tabmail.selectedTab, user);
 
   // Close the Account Settings tab.
-  mc.tabmail.closeTab(mc.tabmail.currentTabInfo);
+  tabmail.closeTab(tabmail.currentTabInfo);
 
   // Confirm that we properly updated the folderPaneVisible attribute for the
   // tabmail when we created the account in the background.
-  Assert.ok(mc.folderDisplay.folderPaneVisible);
+  Assert.ok(tabmail.currentTabInfo.folderPaneVisible);
 
   // Confirm that the folder pane is visible.
-  Assert.ok(!mc.e("folderPaneBox").collapsed);
-
-  let promptState = gMockPromptService.promptState;
-  Assert.equal("confirm", promptState.method);
+  Assert.ok(BrowserTestUtils.isVisible(tabmail.currentAbout3Pane.folderTree));
 
   // Clean up
-  gMockPromptService.unregister();
   Services.prefs.setCharPref(PREF_NAME, PREF_VALUE);
 });
 
@@ -297,12 +293,12 @@ async function subtest_verify_account(tab, user) {
     "Timeout waiting for current account to become non-null"
   );
 
-  let account = tab.browser.contentWindow.currentAccount;
-  let identity = account.defaultIdentity;
-  let incoming = account.incomingServer;
-  let outgoing = MailServices.smtp.getServerByKey(identity.smtpServerKey);
+  const account = tab.browser.contentWindow.currentAccount;
+  const identity = account.defaultIdentity;
+  const incoming = account.incomingServer;
+  const outgoing = MailServices.smtp.getServerByKey(identity.smtpServerKey);
 
-  let config = {
+  const config = {
     "incoming server username": {
       actual: incoming.username,
       expected: user.email.split("@")[0],
@@ -332,7 +328,7 @@ async function subtest_verify_account(tab, user) {
   };
 
   try {
-    for (let i in config) {
+    for (const i in config) {
       Assert.equal(
         config[i].actual,
         config[i].expected,
@@ -352,14 +348,14 @@ add_task(async function test_bad_password_uses_old_settings() {
   // Set the pref to load a local autoconfig file, that will fetch the
   // ../account/xml/example.com which contains the settings for the
   // @example.com email account (see the 'user' object).
-  let url =
+  const url =
     "http://mochi.test:8888/browser/comm/mail/test/browser/account/xml/";
   Services.prefs.setCharPref(PREF_NAME, url);
 
   Services.telemetry.clearScalars();
 
-  let tab = await openAccountSetup();
-  let tabDocument = tab.browser.contentWindow.document;
+  const tab = await openAccountSetup();
+  const tabDocument = tab.browser.contentWindow.document;
 
   // Input user's account information
   EventUtils.synthesizeMouseAtCenter(
@@ -370,13 +366,13 @@ add_task(async function test_bad_password_uses_old_settings() {
 
   if (tabDocument.getElementById("realname").value) {
     // If any realname is already filled, clear it out, we have our own.
-    delete_all_existing(mc, tabDocument.getElementById("realname"));
+    delete_all_existing(window, tabDocument.getElementById("realname"));
   }
-  input_value(mc, user.name);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, user.email);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, user.password);
+  input_value(window, user.name);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, user.email);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, user.password);
 
   // Load the autoconfig file from http://localhost:433**/autoconfig/example.com
   EventUtils.synthesizeMouseAtCenter(
@@ -385,15 +381,16 @@ add_task(async function test_bad_password_uses_old_settings() {
     tab.browser.contentWindow
   );
 
-  let createButton = tabDocument.getElementById("createButton");
+  const createButton = tabDocument.getElementById("createButton");
   await BrowserTestUtils.waitForCondition(
     () => !createButton.hidden && !createButton.disabled,
     "Timeout waiting for create button to become visible and active"
   );
 
-  let notificationBox = tab.browser.contentWindow.gAccountSetup.notificationBox;
+  const notificationBox =
+    tab.browser.contentWindow.gAccountSetup.notificationBox;
 
-  let notificationShowed = BrowserTestUtils.waitForCondition(
+  const notificationShowed = BrowserTestUtils.waitForCondition(
     () => notificationBox.getNotificationWithValue("accountSetupError") != null,
     "Timeout waiting for error notification to be showed"
   );
@@ -412,7 +409,7 @@ add_task(async function test_bad_password_uses_old_settings() {
     "Timeout waiting for create button to become active"
   );
 
-  let manualConfigButton = tabDocument.getElementById("manualConfigButton");
+  const manualConfigButton = tabDocument.getElementById("manualConfigButton");
   manualConfigButton.scrollIntoView();
 
   EventUtils.synthesizeMouseAtCenter(
@@ -426,50 +423,54 @@ add_task(async function test_bad_password_uses_old_settings() {
     "Timeout waiting for the manual edit area to become visible"
   );
 
-  let outgoingAuthSelect = tabDocument.getElementById("outgoingAuthMethod");
+  const outgoingAuthSelect = tabDocument.getElementById("outgoingAuthMethod");
   // Make sure the select field is inside the viewport.
   outgoingAuthSelect.scrollIntoView();
+  outgoingAuthSelect.focus();
 
-  let noAuthOption = outgoingAuthSelect.querySelector(`option[id="outNoAuth"]`);
-  let outgoingOptions = outgoingAuthSelect.getElementsByTagName("option");
-
-  // Change the outgoing authentication method to "No Authentication".
-  EventUtils.synthesizeMouseAtCenter(
-    outgoingAuthSelect,
-    { type: "mousedown" },
-    tab.browser.contentWindow
+  let popupOpened = BrowserTestUtils.waitForEvent(
+    document.getElementById("ContentSelectDropdown"),
+    "popupshown"
   );
-  EventUtils.synthesizeMouseAtCenter(
-    noAuthOption,
-    { type: "mouseup" },
-    tab.browser.contentWindow
-  );
+  EventUtils.sendKey("space", tab.browser.contentWindow);
+  await popupOpened;
 
-  // Confirm that the outgoing username field is disabled.
-  await BrowserTestUtils.waitForCondition(
+  // The default value should be on "Normal password", which is after
+  // "No authentication", so we need to go up. We do this on purpose so we can
+  // properly test and track the order of options.
+  EventUtils.sendKey("up", tab.browser.contentWindow);
+
+  const userNameDisabled = BrowserTestUtils.waitForCondition(
     () => tabDocument.getElementById("outgoingUsername").disabled,
     "Timeout waiting for the outgoing username field to be disabled"
   );
+  EventUtils.sendKey("return", tab.browser.contentWindow);
+
+  // Confirm that the outgoing username field is disabled.
+  await userNameDisabled;
 
   // Revert the outgoing authentication method to "Normal Password".
-  EventUtils.synthesizeMouseAtCenter(
-    outgoingAuthSelect,
-    { type: "mousedown" },
-    tab.browser.contentWindow
+  outgoingAuthSelect.focus();
+  popupOpened = BrowserTestUtils.waitForEvent(
+    document.getElementById("ContentSelectDropdown"),
+    "popupshown"
   );
-  EventUtils.synthesizeMouseAtCenter(
-    outgoingOptions[2],
-    { type: "mouseup" },
-    tab.browser.contentWindow
-  );
+  // Change the outgoing authentication method to "No Authentication".
+  EventUtils.sendKey("space", tab.browser.contentWindow);
+  await popupOpened;
 
-  // Confirm that the outgoing username field is enabled.
-  await BrowserTestUtils.waitForCondition(
+  EventUtils.sendKey("down", tab.browser.contentWindow);
+
+  const usernameEnabled = BrowserTestUtils.waitForCondition(
     () => !tabDocument.getElementById("outgoingUsername").disabled,
     "Timeout waiting for the outgoing username field to be enabled"
   );
+  EventUtils.sendKey("return", tab.browser.contentWindow);
 
-  let notificationRemoved = BrowserTestUtils.waitForCondition(
+  // Confirm that the outgoing username field is enabled.
+  await usernameEnabled;
+
+  const notificationRemoved = BrowserTestUtils.waitForCondition(
     () => notificationBox.getNotificationWithValue("accountSetupError") == null,
     "Timeout waiting for error notification to be removed"
   );
@@ -502,7 +503,7 @@ add_task(async function test_bad_password_uses_old_settings() {
     "Timeout waiting for error notification to be showed"
   );
 
-  let scalars = TelemetryTestUtils.getProcessScalars("parent", true);
+  const scalars = TelemetryTestUtils.getProcessScalars("parent", true);
   Assert.equal(
     scalars["tb.account.failed_email_account_setup"]["xml-from-db"],
     1,
@@ -517,7 +518,7 @@ add_task(async function test_bad_password_uses_old_settings() {
   // Clean up
   Services.prefs.setCharPref(PREF_NAME, PREF_VALUE);
 
-  let closeButton = tabDocument.getElementById("cancelButton");
+  const closeButton = tabDocument.getElementById("cancelButton");
   closeButton.scrollIntoView();
 
   EventUtils.synthesizeMouseAtCenter(
@@ -540,27 +541,54 @@ add_task(async function test_remember_password() {
  */
 async function remember_password_test(aPrefValue) {
   // Save the pref for backup purpose.
-  let rememberSignons_pref_save = Services.prefs.getBoolPref(
+  const rememberSignons_pref_save = Services.prefs.getBoolPref(
     "signon.rememberSignons",
     true
   );
 
   Services.prefs.setBoolPref("signon.rememberSignons", aPrefValue);
 
-  let tab = await openAccountSetup();
-  let tabDocument = tab.browser.contentWindow.document;
-  let password = tabDocument.getElementById("password");
+  const tab = await openAccountSetup();
+  const tabDocument = tab.browser.contentWindow.document;
+  const password = tabDocument.getElementById("password");
+  const passwordToggle = tabDocument.getElementById("passwordToggleButton");
+
+  // The password field is empty, so confirm that the toggle button is hidden.
+  Assert.ok(passwordToggle.hidden);
 
   // Type something in the password field.
   password.focus();
-  input_value(mc, "testing");
+  input_value(window, "testing");
 
-  let rememberPassword = tabDocument.getElementById("rememberPassword");
+  // The password toggle button should be visible now.
+  Assert.ok(!passwordToggle.hidden);
+
+  // Click on the password toggle button.
+  EventUtils.synthesizeMouseAtCenter(
+    passwordToggle,
+    {},
+    tab.browser.contentWindow
+  );
+
+  // The password field should have being turned into clear text.
+  Assert.equal(password.type, "text");
+
+  // Click on the password toggle button again.
+  EventUtils.synthesizeMouseAtCenter(
+    passwordToggle,
+    {},
+    tab.browser.contentWindow
+  );
+
+  // The password field should have being turned back into a password type.
+  Assert.equal(password.type, "password");
+
+  const rememberPassword = tabDocument.getElementById("rememberPassword");
   Assert.ok(rememberPassword.disabled != aPrefValue);
   Assert.equal(rememberPassword.checked, aPrefValue);
 
   // Empty the password field.
-  delete_all_existing(mc, password);
+  delete_all_existing(window, password);
 
   // Restore the saved signon.rememberSignons value.
   Services.prefs.setBoolPref(
@@ -568,7 +596,7 @@ async function remember_password_test(aPrefValue) {
     rememberSignons_pref_save
   );
 
-  let closeButton = tabDocument.getElementById("cancelButton");
+  const closeButton = tabDocument.getElementById("cancelButton");
   closeButton.scrollIntoView();
 
   // Close the wizard.
@@ -589,36 +617,40 @@ add_task(async function test_full_account_setup() {
   SMTPServer.open();
 
   // Set the pref to load a local autoconfig file.
-  let url =
+  const url =
     "http://mochi.test:8888/browser/comm/mail/test/browser/account/xml/";
   Services.prefs.setCharPref(PREF_NAME, url);
 
-  let tab = await openAccountSetup();
-  let tabDocument = tab.browser.contentWindow.document;
+  const tab = await openAccountSetup();
+  const tabDocument = tab.browser.contentWindow.document;
+
+  // If any realname is already filled, clear it out, we have our own.
+  tabDocument.getElementById("realname").value = "";
 
   // The focus should be on the "realname" input by default, so let's fill it.
-  input_value(mc, imapUser.name);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, imapUser.email);
-  EventUtils.synthesizeKey("VK_TAB", {}, mc.window);
-  input_value(mc, imapUser.password);
+  input_value(window, imapUser.name);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, imapUser.email);
+  EventUtils.synthesizeKey("VK_TAB", {}, window);
+  input_value(window, imapUser.password);
 
-  let notificationBox = tab.browser.contentWindow.gAccountSetup.notificationBox;
+  const notificationBox =
+    tab.browser.contentWindow.gAccountSetup.notificationBox;
 
-  let notificationShowed = BrowserTestUtils.waitForCondition(
+  const notificationShowed = BrowserTestUtils.waitForCondition(
     () =>
       notificationBox.getNotificationWithValue("accountSetupSuccess") != null,
     "Timeout waiting for error notification to be showed"
   );
 
-  let imapOption = tabDocument.getElementById("resultsOption-imap");
-  let protocolIMAPSelected = BrowserTestUtils.waitForCondition(
+  const imapOption = tabDocument.getElementById("resultsOption-imap");
+  const protocolIMAPSelected = BrowserTestUtils.waitForCondition(
     () => !imapOption.hidden && imapOption.classList.contains("selected"),
     "Timeout waiting for the IMAP option to be visible and selected"
   );
 
   // Since we're focused inside a form, pressing "Enter" should submit it.
-  EventUtils.synthesizeKey("VK_RETURN", {}, mc.window);
+  EventUtils.synthesizeKey("VK_RETURN", {}, window);
 
   // Wait for the successful notification to show up.
   await notificationShowed;
@@ -626,25 +658,26 @@ add_task(async function test_full_account_setup() {
   // Confirm the IMAP protocol is visible and selected.
   await protocolIMAPSelected;
 
-  let finalViewShowed = BrowserTestUtils.waitForCondition(
+  const finalViewShowed = BrowserTestUtils.waitForCondition(
     () => !tabDocument.getElementById("successView").hidden,
     "Timeout waiting for the final page to be visible"
   );
 
-  let insecureDialogShowed = BrowserTestUtils.waitForCondition(
+  const insecureDialogShowed = BrowserTestUtils.waitForCondition(
     () => tabDocument.getElementById("insecureDialog").open,
     "Timeout waiting for the #insecureDialog to be visible"
   );
 
   // Press "Enter" again to proceed with the account creation.
-  EventUtils.synthesizeKey("VK_RETURN", {}, mc.window);
+  tabDocument.getElementById("createButton").focus();
+  EventUtils.synthesizeKey("VK_RETURN", {}, window);
 
   // Since we're using plain authentication in the mock IMAP server, the
   // insecure warning dialog should appear. Let's wait for it.
   await insecureDialogShowed;
 
   // Click the acknowledge checkbox and confirm the insecure dialog.
-  let acknowledgeCheckbox = tabDocument.getElementById("acknowledgeWarning");
+  const acknowledgeCheckbox = tabDocument.getElementById("acknowledgeWarning");
   acknowledgeCheckbox.scrollIntoView();
 
   EventUtils.synthesizeMouseAtCenter(
@@ -654,19 +687,19 @@ add_task(async function test_full_account_setup() {
   );
 
   // Prepare to handle the linked services notification.
-  let syncingBox = tab.browser.contentWindow.gAccountSetup.syncingBox;
+  const syncingBox = tab.browser.contentWindow.gAccountSetup.syncingBox;
 
-  let syncingNotificationShowed = BrowserTestUtils.waitForCondition(
+  const syncingNotificationShowed = BrowserTestUtils.waitForCondition(
     () => syncingBox.getNotificationWithValue("accountSetupLoading") != null,
     "Timeout waiting for the syncing notification to be removed"
   );
 
-  let syncingNotificationRemoved = BrowserTestUtils.waitForCondition(
+  const syncingNotificationRemoved = BrowserTestUtils.waitForCondition(
     () => !syncingBox.getNotificationWithValue("accountSetupLoading"),
     "Timeout waiting for the syncing notification to be removed"
   );
 
-  let confirmButton = tabDocument.getElementById("insecureConfirmButton");
+  const confirmButton = tabDocument.getElementById("insecureConfirmButton");
   confirmButton.scrollIntoView();
 
   // Close the insecure dialog.
@@ -679,8 +712,10 @@ add_task(async function test_full_account_setup() {
   // The final page should be visible.
   await finalViewShowed;
 
+  const tabmail = document.getElementById("tabmail");
+
   // The tab shouldn't change even if we created a new account.
-  Assert.equal(tab, mc.tabmail.selectedTab);
+  Assert.equal(tab, tabmail.selectedTab, "Tab should should still be the same");
 
   // Assert the UI is properly filled with the new account info.
   Assert.equal(
@@ -703,22 +738,18 @@ add_task(async function test_full_account_setup() {
   await syncingNotificationRemoved;
 
   // Wait for the linked address book section to be visible.
-  await BrowserTestUtils.waitForCondition(() =>
-    BrowserTestUtils.is_visible(
-      tabDocument.getElementById("linkedAddressBooks")
-    )
+  const addressBookSection = tabDocument.getElementById("linkedAddressBooks");
+  await TestUtils.waitForCondition(
+    () => BrowserTestUtils.isVisible(addressBookSection),
+    "linked address book section visible",
+    250
   );
 
-  // Expand the section.
-  EventUtils.synthesizeMouseAtCenter(
-    tabDocument.querySelector("#linkedAddressBooks .linked-services-button"),
-    {},
-    tab.browser.contentWindow
-  );
-  let abList = tabDocument.querySelector(
+  // The section should be expanded already.
+  const abList = tabDocument.querySelector(
     "#addressBooksSetup .linked-services-list"
   );
-  Assert.ok(BrowserTestUtils.is_visible(abList));
+  Assert.ok(BrowserTestUtils.isVisible(abList), "address book list visible");
 
   // Check the linked address book was found.
   Assert.equal(abList.childElementCount, 1);
@@ -732,38 +763,38 @@ add_task(async function test_full_account_setup() {
   );
 
   // Connect the linked address book.
-  let abDirectoryPromise = TestUtils.topicObserved("addrbook-directory-synced");
+  const abDirectoryPromise = TestUtils.topicObserved(
+    "addrbook-directory-synced"
+  );
   EventUtils.synthesizeMouseAtCenter(
-    abList.querySelector("li > button.small"),
+    abList.querySelector("li > button.small-button"),
     {},
     tab.browser.contentWindow
   );
-  let [abDirectory] = await abDirectoryPromise;
+  const [abDirectory] = await abDirectoryPromise;
   Assert.equal(abDirectory.dirName, "You found me!");
   Assert.equal(abDirectory.dirType, Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE);
   Assert.equal(
     abDirectory.getStringValue("carddav.url", ""),
-    "https://example.org/browser/comm/mail/components/addrbook/test/browser/new/data/addressbook.sjs"
+    "https://example.org/browser/comm/mail/components/addrbook/test/browser/data/addressbook.sjs"
   );
 
   // Wait for the linked calendar section to be visible.
-  await BrowserTestUtils.waitForCondition(() =>
-    BrowserTestUtils.is_visible(tabDocument.getElementById("linkedCalendars"))
+  const calendarSection = tabDocument.getElementById("linkedCalendars");
+  await TestUtils.waitForCondition(
+    () => BrowserTestUtils.isVisible(calendarSection),
+    "linked calendar section visible",
+    250
   );
 
-  // Expand the section.
-  EventUtils.synthesizeMouseAtCenter(
-    tabDocument.querySelector("#linkedCalendars .linked-services-button"),
-    {},
-    tab.browser.contentWindow
-  );
-  let calendarList = tabDocument.querySelector(
+  // The section should be expanded already.
+  const calendarList = tabDocument.querySelector(
     "#calendarsSetup .linked-services-list"
   );
-  Assert.ok(BrowserTestUtils.is_visible(abList));
+  Assert.ok(BrowserTestUtils.isVisible(calendarList), "calendar list visible");
 
   // Check the linked calendar was found.
-  Assert.equal(calendarList.childElementCount, 1);
+  Assert.equal(calendarList.childElementCount, 2);
   Assert.equal(
     calendarList.querySelector("li > span.protocol-type").textContent,
     "CalDAV"
@@ -772,27 +803,36 @@ add_task(async function test_full_account_setup() {
     calendarList.querySelector("li > span.list-item-name").textContent,
     "You found me!"
   );
+  Assert.equal(
+    calendarList.querySelector("li:nth-child(2) > span.protocol-type")
+      .textContent,
+    "CalDAV"
+  );
+  Assert.equal(
+    calendarList.querySelector("li:nth-child(2) > span.list-item-name")
+      .textContent,
+    "Röda dagar"
+  );
 
   // Connect the linked calendar.
-  let calendarManager = cal.getCalendarManager();
-  let calendarPromise = new Promise(resolve => {
-    let observer = {
+  const calendarPromise = new Promise(resolve => {
+    const observer = {
       onCalendarRegistered(calendar) {
-        calendarManager.removeObserver(this);
+        cal.manager.removeObserver(this);
         resolve(calendar);
       },
       onCalendarUnregistering() {},
       onCalendarDeleting() {},
     };
-    calendarManager.addObserver(observer);
+    cal.manager.addObserver(observer);
   });
 
-  let calendarDialogShowed = BrowserTestUtils.waitForCondition(
+  const calendarDialogShowed = BrowserTestUtils.waitForCondition(
     () => tabDocument.getElementById("calendarDialog").open,
     "Timeout waiting for the #calendarDialog to be visible"
   );
   EventUtils.synthesizeMouseAtCenter(
-    calendarList.querySelector("li > button.small"),
+    calendarList.querySelector("li > button.small-button"),
     {},
     tab.browser.contentWindow
   );
@@ -803,7 +843,7 @@ add_task(async function test_full_account_setup() {
     tab.browser.contentWindow
   );
 
-  let calendar = await calendarPromise;
+  const calendar = await calendarPromise;
   Assert.equal(calendar.name, "You found me!");
   Assert.equal(calendar.type, "caldav");
   // This address doesn't need to actually exist for the test to pass.
@@ -812,7 +852,7 @@ add_task(async function test_full_account_setup() {
     "https://example.org/browser/comm/calendar/test/browser/data/calendar.sjs"
   );
 
-  let logins = Services.logins.findLogins("https://example.org", null, "");
+  const logins = Services.logins.findLogins("https://example.org", null, "");
   Assert.equal(logins.length, 1);
   Assert.equal(
     logins[0].username,
@@ -825,12 +865,12 @@ add_task(async function test_full_account_setup() {
     "password was saved for linked address book/calendar"
   );
 
-  let tabChanged = BrowserTestUtils.waitForCondition(
-    () => mc.tabmail.selectedTab != tab,
+  const tabChanged = BrowserTestUtils.waitForCondition(
+    () => tabmail.selectedTab != tab,
     "Timeout waiting for the currently active tab to change"
   );
 
-  let finishButton = tabDocument.getElementById("finishButton");
+  const finishButton = tabDocument.getElementById("finishButton");
   finishButton.focus();
   finishButton.scrollIntoView();
 
@@ -845,14 +885,14 @@ add_task(async function test_full_account_setup() {
 
   // Confirm the mail 3 pane is the currently selected tab.
   Assert.equal(
-    mc.tabmail.selectedTab.mode.type,
-    "folder",
+    tabmail.selectedTab.mode.name,
+    "mail3PaneTab",
     "The currently selected tab is the primary Mail tab"
   );
 
   // Remove the address book and calendar.
   MailServices.ab.deleteAddressBook(abDirectory.URI);
-  calendarManager.removeCalendar(calendar);
+  cal.manager.removeCalendar(calendar);
 
   // Restore the original pref.
   Services.prefs.setCharPref(PREF_NAME, PREF_VALUE);
@@ -866,8 +906,8 @@ add_task(async function test_full_account_setup() {
   Services.logins.removeAllLogins();
 });
 
-registerCleanupFunction(function teardownModule(module) {
-  MockRegistrar.unregister(originalAlertsServiceCID);
+registerCleanupFunction(function () {
   DNS.srv = _srv;
   DNS.txt = _txt;
+  Services.prefs.clearUserPref("mail.suppressAlertsForTests");
 });

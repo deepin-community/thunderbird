@@ -209,13 +209,26 @@ add_task(async function setSetsCurrentDate() {
   let end = now + MINUTE;
   await set("a.com", "foo", 1);
   let timestamp = await getDate("a.com", "foo");
-  ok(
-    start <= timestamp,
+  Assert.lessOrEqual(
+    start,
+    timestamp,
     "Timestamp is not too early (" + start + "<=" + timestamp + ")."
   );
-  ok(
-    timestamp <= end,
+  Assert.lessOrEqual(
+    timestamp,
+    end,
     "Timestamp is not too late (" + timestamp + "<=" + end + ")."
   );
   await reset();
+});
+
+add_task(async function maxLength() {
+  const MAX_LENGTH = Ci.nsIContentPrefService2.GROUP_NAME_MAX_LENGTH;
+  const LONG_DATA_URL = `data:,${new Array(MAX_LENGTH).fill("x").join("")}`;
+  await set(LONG_DATA_URL, "foo", 1);
+  await getOK(
+    [LONG_DATA_URL, "foo"],
+    1,
+    LONG_DATA_URL.substring(0, MAX_LENGTH - 1)
+  );
 });

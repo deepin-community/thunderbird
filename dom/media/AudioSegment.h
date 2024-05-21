@@ -7,12 +7,12 @@
 #define MOZILLA_AUDIOSEGMENT_H_
 
 #include <speex/speex_resampler.h>
-#include "MediaTrackGraph.h"
 #include "MediaSegment.h"
 #include "AudioSampleFormat.h"
 #include "AudioChannelFormat.h"
 #include "SharedBuffer.h"
 #include "WebAudioUtils.h"
+#include "mozilla/ScopeExit.h"
 #include "nsAutoRef.h"
 #ifdef MOZILLA_INTERNAL_API
 #  include "mozilla/TimeStamp.h"
@@ -79,7 +79,8 @@ static void InterleaveAndConvertBuffer(const SrcT* const* aSourceChannels,
   DestT* output = aOutput;
   for (size_t i = 0; i < aLength; ++i) {
     for (size_t channel = 0; channel < aChannels; ++channel) {
-      float v = AudioSampleToFloat(aSourceChannels[channel][i]) * aVolume;
+      float v =
+          ConvertAudioSample<float>(aSourceChannels[channel][i]) * aVolume;
       *output = FloatToAudioSample<DestT>(v);
       ++output;
     }
@@ -93,7 +94,8 @@ static void DeinterleaveAndConvertBuffer(const SrcT* aSourceBuffer,
   for (size_t i = 0; i < aChannels; i++) {
     size_t interleavedIndex = i;
     for (size_t j = 0; j < aFrames; j++) {
-      ConvertAudioSample(aSourceBuffer[interleavedIndex], aOutput[i][j]);
+      aOutput[i][j] =
+          ConvertAudioSample<DestT>(aSourceBuffer[interleavedIndex]);
       interleavedIndex += aChannels;
     }
   }
@@ -116,7 +118,7 @@ class SilentChannel {
  * interleaved samples will be copied to a channel buffer in aOutput.
  */
 template <typename SrcT, typename DestT>
-void DownmixAndInterleave(const nsTArray<const SrcT*>& aChannelData,
+void DownmixAndInterleave(Span<const SrcT* const> aChannelData,
                           int32_t aDuration, float aVolume,
                           uint32_t aOutputChannels, DestT* aOutput) {
   if (aChannelData.Length() == aOutputChannels) {
@@ -132,8 +134,8 @@ void DownmixAndInterleave(const nsTArray<const SrcT*>& aChannelData,
     for (uint32_t i = 0; i < aOutputChannels; i++) {
       outputChannelData[i] = outputBuffers.Elements() + aDuration * i;
     }
-    AudioChannelsDownMix(aChannelData, outputChannelData.Elements(),
-                         aOutputChannels, aDuration);
+    AudioChannelsDownMix<SrcT, SrcT>(aChannelData, outputChannelData,
+                                     aDuration);
     InterleaveAndConvertBuffer(outputChannelData.Elements(), aDuration, aVolume,
                                aOutputChannels, aOutput);
   }
@@ -148,12 +150,30 @@ void DownmixAndInterleave(const nsTArray<const SrcT*>& aChannelData,
  * separate pointers to each channel's buffer.
  */
 struct AudioChunk {
-  typedef mozilla::AudioSampleFormat SampleFormat;
+  using SampleFormat = mozilla::AudioSampleFormat;
+
+  AudioChunk() = default;
+
+  template <typename T>
+  AudioChunk(already_AddRefed<ThreadSharedObject> aBuffer,
+             const nsTArray<const T*>& aChannelData, TrackTime aDuration,
+             PrincipalHandle aPrincipalHandle)
+      : mDuration(aDuration),
+        mBuffer(aBuffer),
+        mBufferFormat(AudioSampleTypeToFormat<T>::Format),
+        mPrincipalHandle(std::move(aPrincipalHandle)) {
+    MOZ_ASSERT(!mBuffer == aChannelData.IsEmpty(), "Appending invalid data ?");
+    for (const T* data : aChannelData) {
+      mChannelData.AppendElement(data);
+    }
+  }
 
   // Generic methods
   void SliceTo(TrackTime aStart, TrackTime aEnd) {
-    MOZ_ASSERT(aStart >= 0 && aStart < aEnd && aEnd <= mDuration,
-               "Slice out of bounds");
+    MOZ_ASSERT(aStart >= 0, "Slice out of bounds: invalid start");
+    MOZ_ASSERT(aStart < aEnd, "Slice out of bounds: invalid range");
+    MOZ_ASSERT(aEnd <= mDuration, "Slice out of bounds: invalid end");
+
     if (mBuffer) {
       MOZ_ASSERT(aStart < INT32_MAX,
                  "Can't slice beyond 32-bit sample lengths");
@@ -228,10 +248,10 @@ struct AudioChunk {
   }
 
   template <typename T>
-  const nsTArray<const T*>& ChannelData() const {
+  Span<const T* const> ChannelData() const {
     MOZ_ASSERT(AudioSampleTypeToFormat<T>::Format == mBufferFormat);
-    return *reinterpret_cast<const AutoTArray<const T*, GUESS_AUDIO_CHANNELS>*>(
-        &mChannelData);
+    return Span(reinterpret_cast<const T* const*>(mChannelData.Elements()),
+                mChannelData.Length());
   }
 
   /**
@@ -245,7 +265,43 @@ struct AudioChunk {
     return static_cast<T*>(const_cast<void*>(mChannelData[aChannel]));
   }
 
+  template <typename T>
+  static AudioChunk FromInterleavedBuffer(
+      const T* aBuffer, size_t aFrames, uint32_t aChannels,
+      const PrincipalHandle& aPrincipalHandle) {
+    CheckedInt<size_t> bufferSize(sizeof(T));
+    bufferSize *= aFrames;
+    bufferSize *= aChannels;
+    RefPtr<SharedBuffer> buffer = SharedBuffer::Create(bufferSize);
+
+    AutoTArray<T*, 8> deinterleaved;
+    if (aChannels == 1) {
+      PodCopy(static_cast<T*>(buffer->Data()), aBuffer, aFrames);
+      deinterleaved.AppendElement(static_cast<T*>(buffer->Data()));
+    } else {
+      deinterleaved.SetLength(aChannels);
+      T* samples = static_cast<T*>(buffer->Data());
+
+      size_t offset = 0;
+      for (uint32_t i = 0; i < aChannels; ++i) {
+        deinterleaved[i] = samples + offset;
+        offset += aFrames;
+      }
+
+      DeinterleaveAndConvertBuffer(aBuffer, static_cast<uint32_t>(aFrames),
+                                   aChannels, deinterleaved.Elements());
+    }
+
+    AutoTArray<const T*, GUESS_AUDIO_CHANNELS> channelData;
+    channelData.AppendElements(deinterleaved);
+    return AudioChunk(buffer.forget(), channelData,
+                      static_cast<TrackTime>(aFrames), aPrincipalHandle);
+  }
+
   const PrincipalHandle& GetPrincipalHandle() const { return mPrincipalHandle; }
+
+  // aOutputChannels must contain pointers to channel data of length mDuration.
+  void DownMixTo(Span<AudioDataValue* const> aOutputChannels) const;
 
   TrackTime mDuration = 0;             // in frames within the buffer
   RefPtr<ThreadSharedObject> mBuffer;  // the buffer object whose lifetime is
@@ -264,7 +320,7 @@ struct AudioChunk {
  * A list of audio samples consisting of a sequence of slices of SharedBuffers.
  * The audio rate is determined by the track, not stored in this class.
  */
-class AudioSegment : public MediaSegmentBase<AudioSegment, AudioChunk> {
+class AudioSegment final : public MediaSegmentBase<AudioSegment, AudioChunk> {
   // The channel count that MaxChannelCount() returned last time it was called.
   uint32_t mMemoizedMaxChannelCount = 0;
 
@@ -285,100 +341,18 @@ class AudioSegment : public MediaSegmentBase<AudioSegment, AudioChunk> {
   // function finds a chunk with more channels, `aResampler` is destroyed and a
   // new resampler is created, and `aResamplerChannelCount` is updated with the
   // new channel count value.
-  template <typename T>
-  void Resample(nsAutoRef<SpeexResamplerState>& aResampler,
-                uint32_t* aResamplerChannelCount, uint32_t aInRate,
-                uint32_t aOutRate) {
-    mDuration = 0;
-
-    for (ChunkIterator ci(*this); !ci.IsEnded(); ci.Next()) {
-      AutoTArray<nsTArray<T>, GUESS_AUDIO_CHANNELS> output;
-      AutoTArray<const T*, GUESS_AUDIO_CHANNELS> bufferPtrs;
-      AudioChunk& c = *ci;
-      // If this chunk is null, don't bother resampling, just alter its duration
-      if (c.IsNull()) {
-        c.mDuration = (c.mDuration * aOutRate) / aInRate;
-        mDuration += c.mDuration;
-        continue;
-      }
-      uint32_t channels = c.mChannelData.Length();
-      // This might introduce a discontinuity, but a channel count change in the
-      // middle of a stream is not that common. This also initializes the
-      // resampler as late as possible.
-      if (channels != *aResamplerChannelCount) {
-        SpeexResamplerState* state =
-            speex_resampler_init(channels, aInRate, aOutRate,
-                                 SPEEX_RESAMPLER_QUALITY_DEFAULT, nullptr);
-        MOZ_ASSERT(state);
-        aResampler.own(state);
-        *aResamplerChannelCount = channels;
-      }
-      output.SetLength(channels);
-      bufferPtrs.SetLength(channels);
-      uint32_t inFrames = c.mDuration;
-      // Round up to allocate; the last frame may not be used.
-      NS_ASSERTION((UINT32_MAX - aInRate + 1) / c.mDuration >= aOutRate,
-                   "Dropping samples");
-      uint32_t outSize = (c.mDuration * aOutRate + aInRate - 1) / aInRate;
-      for (uint32_t i = 0; i < channels; i++) {
-        T* out = output[i].AppendElements(outSize);
-        uint32_t outFrames = outSize;
-
-        const T* in = static_cast<const T*>(c.mChannelData[i]);
-        dom::WebAudioUtils::SpeexResamplerProcess(aResampler.get(), i, in,
-                                                  &inFrames, out, &outFrames);
-        MOZ_ASSERT(inFrames == c.mDuration);
-
-        bufferPtrs[i] = out;
-        output[i].SetLength(outFrames);
-      }
-      MOZ_ASSERT(channels > 0);
-      c.mDuration = output[0].Length();
-      c.mBuffer = new mozilla::SharedChannelArrayBuffer<T>(std::move(output));
-      for (uint32_t i = 0; i < channels; i++) {
-        c.mChannelData[i] = bufferPtrs[i];
-      }
-      mDuration += c.mDuration;
-    }
-  }
-
   void ResampleChunks(nsAutoRef<SpeexResamplerState>& aResampler,
                       uint32_t* aResamplerChannelCount, uint32_t aInRate,
                       uint32_t aOutRate);
+
+  template <typename T>
   void AppendFrames(already_AddRefed<ThreadSharedObject> aBuffer,
-                    const nsTArray<const float*>& aChannelData,
-                    int32_t aDuration,
+                    const nsTArray<const T*>& aChannelData, TrackTime aDuration,
                     const PrincipalHandle& aPrincipalHandle) {
-    AudioChunk* chunk = AppendChunk(aDuration);
-    chunk->mBuffer = aBuffer;
-
-    MOZ_ASSERT(chunk->mBuffer || aChannelData.IsEmpty(),
-               "Appending invalid data ?");
-
-    for (uint32_t channel = 0; channel < aChannelData.Length(); ++channel) {
-      chunk->mChannelData.AppendElement(aChannelData[channel]);
-    }
-    chunk->mBufferFormat = AUDIO_FORMAT_FLOAT32;
-    chunk->mPrincipalHandle = aPrincipalHandle;
+    AppendAndConsumeChunk(AudioChunk(std::move(aBuffer), aChannelData,
+                                     aDuration, aPrincipalHandle));
   }
-  void AppendFrames(already_AddRefed<ThreadSharedObject> aBuffer,
-                    const nsTArray<const int16_t*>& aChannelData,
-                    int32_t aDuration,
-                    const PrincipalHandle& aPrincipalHandle) {
-    AudioChunk* chunk = AppendChunk(aDuration);
-    chunk->mBuffer = aBuffer;
-
-    MOZ_ASSERT(chunk->mBuffer || aChannelData.IsEmpty(),
-               "Appending invalid data ?");
-
-    for (uint32_t channel = 0; channel < aChannelData.Length(); ++channel) {
-      chunk->mChannelData.AppendElement(aChannelData[channel]);
-    }
-    chunk->mBufferFormat = AUDIO_FORMAT_S16;
-    chunk->mPrincipalHandle = aPrincipalHandle;
-  }
-  void AppendSegment(const AudioSegment* aSegment,
-                     const PrincipalHandle& aPrincipalHandle) {
+  void AppendSegment(const AudioSegment* aSegment) {
     MOZ_ASSERT(aSegment);
 
     for (const AudioChunk& c : aSegment->mChunks) {
@@ -386,63 +360,55 @@ class AudioSegment : public MediaSegmentBase<AudioSegment, AudioChunk> {
       chunk->mBuffer = c.mBuffer;
       chunk->mChannelData = c.mChannelData;
       chunk->mBufferFormat = c.mBufferFormat;
-      chunk->mPrincipalHandle = aPrincipalHandle;
+      chunk->mPrincipalHandle = c.mPrincipalHandle;
     }
   }
   template <typename T>
   void AppendFromInterleavedBuffer(const T* aBuffer, size_t aFrames,
                                    uint32_t aChannels,
                                    const PrincipalHandle& aPrincipalHandle) {
-    MOZ_ASSERT(aChannels >= 1 && aChannels <= 8, "Support up to 8 channels");
+    AppendAndConsumeChunk(AudioChunk::FromInterleavedBuffer<T>(
+        aBuffer, aFrames, aChannels, aPrincipalHandle));
+  }
+  // Write the segement data into an interleaved buffer. Do mixing if the
+  // AudioChunk's channel count in the segment is different from aChannels.
+  // Returns sample count of the converted audio data. The converted data will
+  // be stored into aBuffer.
+  size_t WriteToInterleavedBuffer(nsTArray<AudioDataValue>& aBuffer,
+                                  uint32_t aChannels) const;
+  // Consumes aChunk, and append it to the segment if its duration is not zero.
+  void AppendAndConsumeChunk(AudioChunk&& aChunk) {
+    AudioChunk unused;
+    AudioChunk* chunk = &unused;
 
-    CheckedInt<size_t> bufferSize(sizeof(T));
-    bufferSize *= aFrames;
-    bufferSize *= aChannels;
-    RefPtr<SharedBuffer> buffer = SharedBuffer::Create(bufferSize);
-    AutoTArray<const T*, 8> channels;
-    if (aChannels == 1) {
-      PodCopy(static_cast<T*>(buffer->Data()), aBuffer, aFrames);
-      channels.AppendElement(static_cast<T*>(buffer->Data()));
-    } else {
-      channels.SetLength(aChannels);
-      AutoTArray<T*, 8> writeChannels;
-      writeChannels.SetLength(aChannels);
-      T* samples = static_cast<T*>(buffer->Data());
+    // Always consume aChunk. The chunk's mBuffer can be non-null even if its
+    // duration is 0.
+    auto consume = MakeScopeExit([&] {
+      chunk->mBuffer = std::move(aChunk.mBuffer);
+      chunk->mChannelData = std::move(aChunk.mChannelData);
 
-      size_t offset = 0;
-      for (uint32_t i = 0; i < aChannels; ++i) {
-        channels[i] = writeChannels[i] = samples + offset;
-        offset += aFrames;
-      }
+      MOZ_ASSERT(chunk->mBuffer || chunk->mChannelData.IsEmpty(),
+                 "Appending invalid data ?");
 
-      DeinterleaveAndConvertBuffer(aBuffer, aFrames, aChannels,
-                                   writeChannels.Elements());
+      chunk->mVolume = aChunk.mVolume;
+      chunk->mBufferFormat = aChunk.mBufferFormat;
+      chunk->mPrincipalHandle = std::move(aChunk.mPrincipalHandle);
+    });
+
+    if (aChunk.GetDuration() == 0) {
+      return;
     }
 
-    MOZ_ASSERT(aChannels == channels.Length());
-    AppendFrames(buffer.forget(), channels, aFrames, aPrincipalHandle);
-  }
-  // Consumes aChunk, and returns a pointer to the persistent copy of aChunk
-  // in the segment.
-  AudioChunk* AppendAndConsumeChunk(AudioChunk&& aChunk) {
-    AudioChunk* chunk = AppendChunk(aChunk.mDuration);
-    chunk->mBuffer = std::move(aChunk.mBuffer);
-    chunk->mChannelData = std::move(aChunk.mChannelData);
+    if (!mChunks.IsEmpty() &&
+        mChunks.LastElement().CanCombineWithFollowing(aChunk)) {
+      mChunks.LastElement().mDuration += aChunk.GetDuration();
+      mDuration += aChunk.GetDuration();
+      return;
+    }
 
-    MOZ_ASSERT(chunk->mBuffer || aChunk.mChannelData.IsEmpty(),
-               "Appending invalid data ?");
-
-    chunk->mVolume = aChunk.mVolume;
-    chunk->mBufferFormat = aChunk.mBufferFormat;
-    chunk->mPrincipalHandle = aChunk.mPrincipalHandle;
-    return chunk;
+    chunk = AppendChunk(aChunk.mDuration);
   }
   void ApplyVolume(float aVolume);
-  // Mix the segment into a mixer, interleaved. This is useful to output a
-  // segment to a system audio callback. It up or down mixes to aChannelCount
-  // channels.
-  void WriteTo(AudioMixer& aMixer, uint32_t aChannelCount,
-               uint32_t aSampleRate);
   // Mix the segment into a mixer, keeping it planar, up or down mixing to
   // aChannelCount channels.
   void Mix(AudioMixer& aMixer, uint32_t aChannelCount, uint32_t aSampleRate);
@@ -483,14 +449,19 @@ class AudioSegment : public MediaSegmentBase<AudioSegment, AudioChunk> {
       }
     }
   }
+
+ private:
+  template <typename T>
+  void Resample(nsAutoRef<SpeexResamplerState>& aResampler,
+                uint32_t* aResamplerChannelCount, uint32_t aInRate,
+                uint32_t aOutRate);
 };
 
 template <typename SrcT>
-void WriteChunk(AudioChunk& aChunk, uint32_t aOutputChannels, float aVolume,
-                AudioDataValue* aOutputBuffer) {
-  AutoTArray<const SrcT*, GUESS_AUDIO_CHANNELS> channelData;
-
-  channelData = aChunk.ChannelData<SrcT>().Clone();
+void WriteChunk(const AudioChunk& aChunk, uint32_t aOutputChannels,
+                float aVolume, AudioDataValue* aOutputBuffer) {
+  CopyableAutoTArray<const SrcT*, GUESS_AUDIO_CHANNELS> channelData;
+  channelData.AppendElements(aChunk.ChannelData<SrcT>());
 
   if (channelData.Length() < aOutputChannels) {
     // Up-mix. Note that this might actually make channelData have more
@@ -500,8 +471,8 @@ void WriteChunk(AudioChunk& aChunk, uint32_t aOutputChannels, float aVolume,
   }
   if (channelData.Length() > aOutputChannels) {
     // Down-mix.
-    DownmixAndInterleave(channelData, aChunk.mDuration, aVolume,
-                         aOutputChannels, aOutputBuffer);
+    DownmixAndInterleave<SrcT>(channelData, aChunk.mDuration, aVolume,
+                               aOutputChannels, aOutputBuffer);
   } else {
     InterleaveAndConvertBuffer(channelData.Elements(), aChunk.mDuration,
                                aVolume, aOutputChannels, aOutputBuffer);

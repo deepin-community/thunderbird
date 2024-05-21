@@ -17,7 +17,7 @@ add_task(async function switch_print_preview_browsers() {
       let [headerText, headingText] = await SpecialPowers.spawn(
         sourcePreviewBrowser,
         [],
-        async function() {
+        async function () {
           return [
             content.document.querySelector("header").textContent,
             content.document.querySelector("h1").textContent,
@@ -32,7 +32,7 @@ add_task(async function switch_print_preview_browsers() {
     await helper.openMoreSettings();
     let simplifyRadio = helper.get("source-version-simplified-radio");
     ok(!simplifyRadio.checked, "Simplify page is not checked");
-    ok(BrowserTestUtils.is_visible(simplifyRadio), "Simplify is shown");
+    ok(BrowserTestUtils.isVisible(simplifyRadio), "Simplify is shown");
 
     await helper.waitForPreview(() => helper.click(simplifyRadio));
     let simplifiedPreviewBrowser = helper.currentPrintPreviewBrowser;
@@ -47,7 +47,7 @@ add_task(async function switch_print_preview_browsers() {
       "Simplified browser is selected"
     );
     ok(
-      BrowserTestUtils.is_visible(simplifiedPreviewBrowser),
+      BrowserTestUtils.isVisible(simplifiedPreviewBrowser),
       "Simplified browser is visible"
     );
     ok(simplifyRadio.checked, "Simplify page is checked");
@@ -57,7 +57,7 @@ add_task(async function switch_print_preview_browsers() {
       let [hasHeader, headingText] = await SpecialPowers.spawn(
         simplifiedPreviewBrowser,
         [],
-        async function() {
+        async function () {
           return [
             !!content.document.querySelector("header"),
             content.document.querySelector("h1").textContent,
@@ -88,7 +88,7 @@ add_task(async function switch_print_preview_browsers() {
       "Source browser is selected"
     );
     ok(
-      BrowserTestUtils.is_visible(sourcePreviewBrowser),
+      BrowserTestUtils.isVisible(sourcePreviewBrowser),
       "Source browser is visible"
     );
     ok(sourceRadio.checked, "Source version is checked");
@@ -98,7 +98,7 @@ add_task(async function switch_print_preview_browsers() {
       let headerText = await SpecialPowers.spawn(
         sourcePreviewBrowser,
         [],
-        async function() {
+        async function () {
           return content.document.querySelector("header").textContent;
         }
       );
@@ -144,7 +144,7 @@ add_task(async function testPrintBackgroundsDisabledSimplified() {
 
     let simplifyRadio = helper.get("source-version-simplified-radio");
     ok(!simplifyRadio.checked, "Simplify page is not checked");
-    ok(BrowserTestUtils.is_visible(simplifyRadio), "Simplify is shown");
+    ok(BrowserTestUtils.isVisible(simplifyRadio), "Simplify is shown");
 
     // Switch to simplified mode.
     await helper.waitForPreview(() => helper.click(simplifyRadio));
@@ -160,7 +160,7 @@ add_task(async function testPrintBackgroundsDisabledSimplified() {
     // Switch back to source, printBackgrounds is remembered.
     let sourceRadio = helper.get("source-version-source-radio");
     ok(!sourceRadio.checked, "Source is not checked");
-    ok(BrowserTestUtils.is_visible(sourceRadio), "Source is shown");
+    ok(BrowserTestUtils.isVisible(sourceRadio), "Source is shown");
 
     await helper.waitForPreview(() => helper.click(sourceRadio));
 
@@ -181,7 +181,7 @@ add_task(async function testSimplifyHiddenNonArticle() {
     await helper.openMoreSettings();
     let sourceVersionSection = helper.get("source-version-section");
     ok(
-      BrowserTestUtils.is_hidden(sourceVersionSection),
+      BrowserTestUtils.isHidden(sourceVersionSection),
       "Source version is hidden"
     );
     await helper.closeDialog();
@@ -237,4 +237,26 @@ add_task(async function testSimplifyNonArticleTabModal() {
 
     await helper.closeDialog();
   }, "simplifyNonArticleSample.html");
+});
+
+add_task(async function testSimplifyHiddenReaderMode() {
+  await PrintHelper.withTestPage(async helper => {
+    let tab = gBrowser.selectedTab;
+
+    // Trigger reader mode for the tab
+    let readerButton = document.getElementById("reader-mode-button");
+    await TestUtils.waitForCondition(() => !readerButton.hidden);
+    readerButton.click();
+    await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
+
+    // Print from reader mode
+    await helper.startPrint();
+    await helper.openMoreSettings();
+    let sourceVersionSection = helper.get("source-version-section");
+    ok(
+      BrowserTestUtils.isHidden(sourceVersionSection),
+      "Source version is hidden in reader mode"
+    );
+    await helper.closeDialog();
+  }, "simplifyArticleSample.html");
 });

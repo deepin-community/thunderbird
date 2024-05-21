@@ -42,7 +42,7 @@ newsgroups-label = Berri-taldeak
 newsgroups-description = { -brand-short-name } nahi duzun berri-taldeetara konektatzen zaitu.
 
 import-title = Inportatu beste programa batetik…
-import-paragraph = { -brand-short-name } posta-mezuak, helbide-liburu sarrerak, jario harpidetzak, ezarpenak edota iragazkiak inportatzen dizu beste posta programa batetik eta ohiko helbide-liburu formatuetatik.
+import-paragraph2 = { -brand-short-name } posta-mezuak, helbide-liburu sarrerak, jario harpidetzak, ezarpenak edota iragazkiak inportatzen dizu beste posta programa batetik eta ohiko helbide-liburu formatuetatik.
 
 import-label = Inportatu
     .aria-label = Inportatu datuak beste programa batzuetatik
@@ -62,4 +62,4 @@ search = Bilatu mezuak
 filter = Kudeatu mezu-iragazkiak
 nntp-subscription = Kudeatu berri-taldeetako harpidetzak
 rss-subscription = Kudeatu jario harpidetzak
-e2e = Muturretik muturrerako enkriptatzea
+e2e = Muturretik muturrerako zifratzea

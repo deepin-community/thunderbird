@@ -24,10 +24,12 @@ class ErrorResult;
 
 namespace dom {
 
+struct MediaKeySystemAccessRequest;
+
 class MediaKeySystemAccess final : public nsISupports, public nsWrapperCache {
  public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(MediaKeySystemAccess)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(MediaKeySystemAccess)
 
  public:
   explicit MediaKeySystemAccess(nsPIDOMWindowInner* aParent,
@@ -50,11 +52,8 @@ class MediaKeySystemAccess final : public nsISupports, public nsWrapperCache {
   already_AddRefed<Promise> CreateMediaKeys(ErrorResult& aRv);
 
   static MediaKeySystemStatus GetKeySystemStatus(
-      const nsAString& aKeySystem, nsACString& aOutExceptionMessage);
-
-  static bool IsSupported(const nsAString& aKeySystem,
-                          const Sequence<MediaKeySystemConfiguration>& aConfigs,
-                          DecoderDoctorDiagnostics* aDiagnostics);
+      const MediaKeySystemAccessRequest& aRequest,
+      nsACString& aOutExceptionMessage);
 
   static void NotifyObservers(nsPIDOMWindowInner* aWindow,
                               const nsAString& aKeySystem,
@@ -68,7 +67,8 @@ class MediaKeySystemAccess final : public nsISupports, public nsWrapperCache {
       const std::function<void(const char*)>& aDeprecationLogFn);
 
   static bool KeySystemSupportsInitDataType(const nsAString& aKeySystem,
-                                            const nsAString& aInitDataType);
+                                            const nsAString& aInitDataType,
+                                            bool aIsHardwareDecryption);
 
   static nsCString ToCString(
       const Sequence<MediaKeySystemConfiguration>& aConfig);

@@ -16,6 +16,20 @@ function runUAStyleTests(props) {
    const testStyle = getComputedStyle(testEl);
    const refStyle = getComputedStyle(refEl);
    for (const prop of props) {
+     // Don't test display for some elements.
+     // TODO(zcorpan): https://github.com/whatwg/html/issues/4093
+     // TODO(zcorpan): https://github.com/whatwg/html/issues/5063
+     if (prop === 'display' &&
+         (testEl.localName === 'optgroup' ||
+          testEl.localName === 'option' ||
+          testEl.localName === 'marquee')
+      ) {
+      continue;
+     }
+     if (prop === 'overflow' && testEl.localName === 'select') {
+      // TODO: https://github.com/whatwg/html/issues/10031
+      continue;
+     }
      test(() => {
        assert_equals(testStyle.getPropertyValue(prop), refStyle.getPropertyValue(prop));
      }, `${testNameContext(testEl)} - ${prop}`);

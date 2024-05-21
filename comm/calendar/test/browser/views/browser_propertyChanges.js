@@ -4,127 +4,148 @@
 
 /** Tests that changes in a calendar's properties are reflected in the current view. */
 
-const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { CalendarTestUtils } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarTestUtils.jsm"
-);
-const { CalEvent } = ChromeUtils.import("resource:///modules/CalEvent.jsm");
+const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+const { CalEvent } = ChromeUtils.importESModule("resource:///modules/CalEvent.sys.mjs");
 
-const { closeCalendarTab, dedent, setCalendarView } = CalendarTestUtils;
-
-let manager = cal.getCalendarManager();
-let composite = cal.view.getCompositeCalendar(window);
+const composite = cal.view.getCompositeCalendar(window);
 
 // This is the calendar we're going to change the properties of.
-let thisCalendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-thisCalendar.name = `This Calendar`;
+const thisCalendar = CalendarTestUtils.createCalendar("This Calendar", "memory");
 thisCalendar.setProperty("color", "#ffee22");
-manager.registerCalendar(thisCalendar);
 
 // This calendar isn't going to change, and we'll check it doesn't.
-let notThisCalendar = manager.createCalendar(
-  "memory",
-  Services.io.newURI("moz-memory-calendar://")
-);
-notThisCalendar.name = `Not This Calendar`;
+const notThisCalendar = CalendarTestUtils.createCalendar("Not This Calendar", "memory");
 notThisCalendar.setProperty("color", "#dd3333");
-manager.registerCalendar(notThisCalendar);
 
-add_task(async function setUp() {
-  let asyncThisCalendar = cal.async.promisifyCalendar(thisCalendar);
-  await asyncThisCalendar.addItem(
+add_setup(async function () {
+  const { dedent } = CalendarTestUtils;
+  await thisCalendar.addItem(
     new CalEvent(dedent`
     BEGIN:VEVENT
     SUMMARY:This Event 1
-    DTSTART;VALUE=DATE:20160201
-    DTEND;VALUE=DATE:20160202
+    DTSTART;VALUE=DATE:20160205
+    DTEND;VALUE=DATE:20160206
     END:VEVENT
   `)
   );
-  await asyncThisCalendar.addItem(
+  await thisCalendar.addItem(
     new CalEvent(dedent`
     BEGIN:VEVENT
     SUMMARY:This Event 2
-    DTSTART:20160201T130000Z
-    DTEND:20160201T150000Z
+    DTSTART:20160205T130000Z
+    DTEND:20160205T150000Z
     END:VEVENT
   `)
   );
-  await asyncThisCalendar.addItem(
+  await thisCalendar.addItem(
     new CalEvent(dedent`
     BEGIN:VEVENT
     SUMMARY:This Event 3
-    DTSTART;VALUE=DATE:20160204
-    DTEND;VALUE=DATE:20160205
+    DTSTART;VALUE=DATE:20160208
+    DTEND;VALUE=DATE:20160209
     RRULE:FREQ=DAILY;INTERVAL=2;COUNT=3
     END:VEVENT
   `)
   );
 
-  let asyncNotThisCalendar = cal.async.promisifyCalendar(notThisCalendar);
-  await asyncNotThisCalendar.addItem(
+  await notThisCalendar.addItem(
     new CalEvent(dedent`
     BEGIN:VEVENT
     SUMMARY:Not This Event 1
-    DTSTART;VALUE=DATE:20160201
-    DTEND;VALUE=DATE:20160203
+    DTSTART;VALUE=DATE:20160205
+    DTEND;VALUE=DATE:20160207
     END:VEVENT
   `)
   );
-  await asyncNotThisCalendar.addItem(
+  await notThisCalendar.addItem(
     new CalEvent(dedent`
     BEGIN:VEVENT
     SUMMARY:Not This Event 2
-    DTSTART:20160201T140000Z
-    DTEND:20160201T170000Z
+    DTSTART:20160205T140000Z
+    DTEND:20160205T170000Z
     END:VEVENT
   `)
   );
 });
 
+/**
+ * Assert whether the given event box is draggable (editable).
+ *
+ * @param {MozCalendarEventBox} eventBox - The event box to test.
+ * @param {boolean} draggable - Whether we expect it to be draggable.
+ * @param {string} message - A message for assertions.
+ */
+async function assertCanDrag(eventBox, draggable, message) {
+  // Hover to see if the drag gripbars appear.
+  const enterPromise = BrowserTestUtils.waitForEvent(eventBox, "mouseenter");
+  EventUtils.synthesizeMouseAtCenter(eventBox, { type: "mouseover" }, window);
+  await enterPromise;
+  Assert.equal(
+    BrowserTestUtils.isVisible(eventBox.startGripbar),
+    draggable,
+    `Start gripbar should be ${draggable ? "visible" : "hidden"} on hover: ${message}`
+  );
+  Assert.equal(
+    BrowserTestUtils.isVisible(eventBox.endGripbar),
+    draggable,
+    `End gripbar should be ${draggable ? "visible" : "hidden"} on hover: ${message}`
+  );
+}
+
+/**
+ * Assert whether the given event element is editable.
+ *
+ * @param {Element} eventElement - The event element to test.
+ * @param {boolean} editable - Whether we expect it to be editable.
+ * @param {string} message - A message for assertions.
+ */
+async function assertEditable(eventElement, editable, message) {
+  // FIXME: Have more ways to test if an event is editable (e.g. test the
+  // context menu)
+  if (eventElement.matches("calendar-event-box")) {
+    await CalendarTestUtils.assertEventBoxDraggable(eventElement, editable, editable, message);
+  }
+}
+
 async function subTest(viewName, boxSelector, thisBoxCount, notThisBoxCount) {
   async function makeChangeWithReload(changeFunction) {
-    let loadedPromise = BrowserTestUtils.waitForEvent(view, "viewloaded");
     await changeFunction();
-    await loadedPromise;
-    // 5ms delay in MozCalendarEventColumn.addEvent.
-    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-    await new Promise(r => setTimeout(r, 5));
+    await CalendarTestUtils.ensureViewLoaded(window);
   }
 
-  function checkBoxItems(expectedCount, checkFunction) {
-    let boxItems = view.querySelectorAll(boxSelector);
-    Assert.equal(boxItems.length, expectedCount, "correct number of boxes displayed");
+  async function checkBoxItems(expectedCount, checkFunction) {
+    await TestUtils.waitForCondition(
+      () => view.querySelectorAll(boxSelector).length == expectedCount,
+      "waiting for the correct number of boxes to be displayed"
+    );
+    const boxItems = view.querySelectorAll(boxSelector);
 
     if (!checkFunction) {
       return;
     }
 
-    for (let boxItem of boxItems) {
+    for (const boxItem of boxItems) {
       // TODO: why is it named `item` in some places and `occurrence` elsewhere?
-      let isThisCalendar =
+      const isThisCalendar =
         (boxItem.item && boxItem.item.calendar == thisCalendar) ||
         boxItem.occurrence.calendar == thisCalendar;
-      checkFunction(boxItem, isThisCalendar);
+      await checkFunction(boxItem, isThisCalendar);
     }
   }
 
-  let view = document.getElementById(`${viewName}-view`);
+  const view = document.getElementById(`${viewName}-view`);
 
-  window.goToDate(cal.createDateTime("20150201T000000Z"));
-  await setCalendarView(window, viewName);
-  await makeChangeWithReload(() => {
-    window.goToDate(cal.createDateTime("20160201T000000Z"));
-  });
+  await CalendarTestUtils.setCalendarView(window, viewName);
+  await CalendarTestUtils.goToDate(window, 2016, 2, 5);
 
   info("Check initial state.");
 
-  checkBoxItems(thisBoxCount + notThisBoxCount, (boxItem, isThisCalendar) => {
-    let style = getComputedStyle(boxItem);
+  await checkBoxItems(thisBoxCount + notThisBoxCount, async (boxItem, isThisCalendar) => {
+    const style = getComputedStyle(boxItem);
 
     if (isThisCalendar) {
       Assert.equal(style.backgroundColor, "rgb(255, 238, 34)", "item background correct");
-      Assert.equal(style.color, "rgb(0, 0, 0)", "item foreground correct");
+      Assert.equal(style.color, "rgb(34, 34, 34)", "item foreground correct");
     } else {
       Assert.equal(
         style.backgroundColor,
@@ -137,14 +158,14 @@ async function subTest(viewName, boxSelector, thisBoxCount, notThisBoxCount) {
         "item foreground correct (not target calendar)"
       );
     }
-    Assert.ok(!boxItem.hasAttribute("readonly"), "item is not marked read-only");
+    await assertEditable(boxItem, true, "Initial event");
   });
 
   info("Change color.");
 
   thisCalendar.setProperty("color", "#16a765");
-  checkBoxItems(thisBoxCount + notThisBoxCount, (boxItem, isThisCalendar) => {
-    let style = getComputedStyle(boxItem);
+  await checkBoxItems(thisBoxCount + notThisBoxCount, async (boxItem, isThisCalendar) => {
+    const style = getComputedStyle(boxItem);
 
     if (isThisCalendar) {
       Assert.equal(style.backgroundColor, "rgb(22, 167, 101)", "item background correct");
@@ -169,47 +190,40 @@ async function subTest(viewName, boxSelector, thisBoxCount, notThisBoxCount) {
   info("Disable.");
 
   thisCalendar.setProperty("disabled", true);
-  checkBoxItems(notThisBoxCount);
+  await checkBoxItems(notThisBoxCount);
 
   info("Enable.");
 
   await makeChangeWithReload(() => thisCalendar.setProperty("disabled", false));
-  checkBoxItems(thisBoxCount + notThisBoxCount);
+  await checkBoxItems(thisBoxCount + notThisBoxCount);
 
   info("Hide.");
 
   composite.removeCalendar(thisCalendar);
-  checkBoxItems(notThisBoxCount);
+  await checkBoxItems(notThisBoxCount);
 
   info("Show.");
 
   await makeChangeWithReload(() => composite.addCalendar(thisCalendar));
-  checkBoxItems(thisBoxCount + notThisBoxCount);
+  await checkBoxItems(thisBoxCount + notThisBoxCount);
 
   info("Set read-only.");
 
   await makeChangeWithReload(() => thisCalendar.setProperty("readOnly", true));
-  checkBoxItems(thisBoxCount + notThisBoxCount, (boxItem, isThisCalendar) => {
+  await checkBoxItems(thisBoxCount + notThisBoxCount, async (boxItem, isThisCalendar) => {
     if (isThisCalendar) {
-      Assert.ok(boxItem.hasAttribute("readonly"), "item is marked read-only");
+      await assertEditable(boxItem, false, "In readonly calendar");
     } else {
-      Assert.ok(
-        !boxItem.hasAttribute("readonly"),
-        "item is marked read-only (not target calendar)"
-      );
+      await assertEditable(boxItem, true, "In non-readonly calendar");
     }
   });
 
   info("Clear read-only.");
 
   await makeChangeWithReload(() => thisCalendar.setProperty("readOnly", false));
-  checkBoxItems(thisBoxCount + notThisBoxCount, boxItem => {
-    Assert.ok(!boxItem.hasAttribute("readonly"), "item is not marked read-only");
+  await checkBoxItems(thisBoxCount + notThisBoxCount, async boxItem => {
+    await assertEditable(boxItem, true, "In non-readonly calendar after clearing");
   });
-
-  info("Reset.");
-
-  await closeCalendarTab(window);
 }
 
 add_task(async function testMonthView() {
@@ -221,17 +235,14 @@ add_task(async function testMultiWeekView() {
 });
 
 add_task(async function testWeekView() {
-  // TODO: why are there hidden items?
-  await subTest("week", "calendar-editable-item, calendar-event-box:not([hidden])", 4, 3);
+  await subTest("week", "calendar-editable-item, .multiday-events-list calendar-event-box", 4, 3);
 });
 
 add_task(async function testDayView() {
-  // TODO: why are there hidden items?
-  await subTest("day", "calendar-editable-item, calendar-event-box:not([hidden])", 2, 2);
+  await subTest("day", "calendar-editable-item, .multiday-events-list calendar-event-box", 2, 2);
 });
 
 registerCleanupFunction(async () => {
-  await closeCalendarTab(window);
-  manager.unregisterCalendar(thisCalendar);
-  manager.unregisterCalendar(notThisCalendar);
+  CalendarTestUtils.removeCalendar(thisCalendar);
+  CalendarTestUtils.removeCalendar(notThisCalendar);
 });

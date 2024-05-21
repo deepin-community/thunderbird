@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-add_task(async function() {
-  let calendar = createCalendar("storage", "moz-storage-calendar://");
+add_task(async function () {
+  const calendar = createCalendar("storage", "moz-storage-calendar://");
 
   info("creating the item");
   calendarObserver._batchRequired = false;

@@ -8,21 +8,15 @@ connection-dns-over-https-url-resolver = Χρήση παρόχου
 #   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Προεπιλογή)
-    .tooltiptext = Χρήση προεπιλεγμένου URL για επίλυση DNS over HTTPS
+    .tooltiptext = Χρήση του προεπιλεγμένου URL για ανάλυση DNS μέσω HTTPS
 connection-dns-over-https-url-custom =
     .label = Προσαρμοσμένο
     .accesskey = Π
     .tooltiptext = Εισαγάγετε το προτιμώμενο URL σας για επίλυση DNS over HTTPS
 connection-dns-over-https-custom-label = Προσαρμοσμένο
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Ρυθμίσεις σύνδεσης
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Απενεργοποίηση επέκτασης
+connection-dialog-title = Ρυθμίσεις σύνδεσης
 disable-extension-button = Απενεργοποίηση επέκτασης
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.
@@ -81,9 +75,9 @@ no-proxy-label =
     .accesskey = Χ
 no-proxy-example = Για παράδειγμα: .mozilla.org, .net.nz, 192.168.1.0/24
 # Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
-connection-proxy-noproxy-localhost-desc-2 = Οι συνδέσεις στο localhost, 127.0.0.1/8 και ::1, δεν γίνονται ποτέ μέσω διακομιστή μεσολάβησης.
+connection-proxy-noproxy-localhost-desc-2 = Οι συνδέσεις στα localhost, 127.0.0.1/8 και ::1 δεν γίνονται ποτέ μέσω διακομιστή μεσολάβησης.
 proxy-password-prompt =
-    .label = Να μην ζητείται ταυτοποίηση αν είναι αποθηκευμένος ο κωδικός πρόσβασης
+    .label = Να μη ζητείται ταυτοποίηση αν είναι αποθηκευμένος ο κωδικός πρόσβασης
     .accesskey = μ
     .tooltiptext = Αυτή η επιλογή ελέγχει κρυφά την ταυτότητά σας σε διακομιστές μεσολάβησης όταν έχετε αποθηκεύσει τα διαπιστευτήριά τους. Θα ειδοποιηθείτε αν αποτύχει η ταυτοποίηση.
 proxy-remote-dns =

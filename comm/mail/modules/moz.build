@@ -4,44 +4,50 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 EXTRA_JS_MODULES += [
-    "AttachmentChecker.jsm",
-    "DBViewWrapper.jsm",
-    "DisplayNameUtils.jsm",
-    "DNS.jsm",
-    "ExtensionsUI.jsm",
-    "ExtensionSupport.jsm",
-    "GlobalPopupNotifications.jsm",
-    "MailConsts.jsm",
-    "MailE10SUtils.jsm",
-    "MailMigrator.jsm",
-    "MailUtils.jsm",
-    "MailViewManager.jsm",
-    "MessageArchiver.jsm",
-    "MsgHdrSyntheticView.jsm",
-    "QuickFilterManager.jsm",
-    "SearchSpec.jsm",
-    "SessionStoreManager.jsm",
-    "SummaryFrameManager.jsm",
-    "TagUtils.jsm",
-    "TBDistCustomizer.jsm",
-    "ThemeVariableMap.jsm",
+    "AttachmentChecker.worker.js",
+    "AttachmentInfo.sys.mjs",
+    "BrowserWindowTracker.sys.mjs",
+    "CommandController.mjs",
+    "ConversationOpener.sys.mjs",
+    "DBViewWrapper.sys.mjs",
+    "DisplayNameUtils.sys.mjs",
+    "DNS.sys.mjs",
+    "dnsWorker.js",
+    "ExtensionsUI.sys.mjs",
+    "ExtensionSupport.sys.mjs",
+    "FolderPaneUtils.sys.mjs",
+    "FolderTreeProperties.sys.mjs",
+    "GlobalPopupNotifications.sys.mjs",
+    "LinkHelper.sys.mjs",
+    "MailConsts.sys.mjs",
+    "MailE10SUtils.sys.mjs",
+    "MailMigrator.sys.mjs",
+    "MailUsageTelemetry.sys.mjs",
+    "MailUtils.sys.mjs",
+    "MailViewManager.sys.mjs",
+    "MessageArchiver.sys.mjs",
+    "MsgHdrSyntheticView.sys.mjs",
+    "PhishingDetector.sys.mjs",
+    "PluralForm.sys.mjs",
+    "QuickFilterManager.sys.mjs",
+    "SearchSpec.sys.mjs",
+    "SessionStoreManager.sys.mjs",
+    "ShortcutsManager.sys.mjs",
+    "SmartServerUtils.sys.mjs",
+    "SummaryFrameManager.sys.mjs",
+    "TagUtils.sys.mjs",
+    "TBDistCustomizer.sys.mjs",
+    "UIDensity.sys.mjs",
+    "UIFontSize.sys.mjs",
+    "XULStoreUtils.sys.mjs",
 ]
 
 EXTRA_JS_MODULES.sessionstore += [
-    "SessionStore.jsm",
+    "SessionStore.sys.mjs",
+    "TabStateFlusher.sys.mjs",
 ]
-
-EXTRA_PP_JS_MODULES += [
-    "MailConstants.jsm",
-]
-
-if CONFIG["MOZ_UPDATER"]:
-    EXTRA_JS_MODULES += [
-        "AppUpdateUI.jsm",
-    ]
 
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
     EXTRA_JS_MODULES += [
-        "Windows8WindowFrameColor.jsm",
-        "WindowsJumpLists.jsm",
+        "WindowsJumpLists.sys.mjs",
     ]

@@ -27,15 +27,16 @@ LOCAL_INCLUDES += [
     "/js/xpconnect/src",
 ]
 
+TEST_DIRS += [
+    "gtest",
+]
+
 include("/ipc/chromium/chromium-config.mozbuild")
 
 FINAL_LIBRARY = "xul"
 
-MOCHITEST_MANIFESTS += ["tests/mochitest.ini"]
+MOCHITEST_MANIFESTS += ["tests/mochitest.toml"]
 
-MOCHITEST_CHROME_MANIFESTS += ["tests/chrome.ini"]
+MOCHITEST_CHROME_MANIFESTS += ["tests/chrome.toml"]
 
-XPCSHELL_TESTS_MANIFESTS += ["tests/unit/xpcshell.ini"]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
+XPCSHELL_TESTS_MANIFESTS += ["tests/unit/xpcshell.toml"]

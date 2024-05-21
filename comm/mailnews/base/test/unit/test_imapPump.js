@@ -8,27 +8,21 @@
 
 // async support
 /* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/alertTestUtils.js */
 load("../../../resources/logHelper.js");
-load("../../../resources/alertTestUtils.js");
-const { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 // IMAP pump
-var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.import(
-  "resource://testing-common/mailnews/IMAPpump.jsm"
+var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/IMAPpump.sys.mjs"
 );
-var { imapMessage } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Imapd.jsm"
+var { ImapMessage } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Imapd.sys.mjs"
 );
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { fsDebugAll } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Maild.jsm"
+var { nsMailServer } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Maild.sys.mjs"
 );
-
-// Globals
 
 // Messages to load must have CRLF line endings, that is Windows style
 var gMessage = "bugmail10"; // message file used as the test message
@@ -43,23 +37,20 @@ var gTestArray = [
 
   // optionally set server parameters, here enabling debug messages
   function serverParms() {
-    IMAPPump.server.setDebugLevel(fsDebugAll);
+    IMAPPump.server.setDebugLevel(nsMailServer.debugAll);
   },
 
   // the main test
   async function loadImapMessage() {
     IMAPPump.mailbox.addMessage(
-      new imapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
+      new ImapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
     );
-    let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
-    IMAPPump.inbox.updateFolderWithListener(
-      gDummyMsgWindow,
-      promiseUrlListener
-    );
+    const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+    IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
     await promiseUrlListener.promise;
 
     Assert.equal(1, IMAPPump.inbox.getTotalMessages(false));
-    let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+    const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
     Assert.ok(msgHdr instanceof Ci.nsIMsgDBHdr);
   },
 
@@ -67,14 +58,13 @@ var gTestArray = [
   teardownIMAPPump,
 ];
 
-function run_test() {
+add_setup(() => {
   Services.prefs.setBoolPref(
     "mail.server.default.autosync_offline_stores",
     false
   );
   gTestArray.forEach(x => add_task(x));
-  run_next_test();
-}
+});
 
 /*
  * helper functions
@@ -82,7 +72,7 @@ function run_test() {
 
 // given a test file, return the file uri spec
 function specForFileName(aFileName) {
-  let file = do_get_file(gDEPTH + "mailnews/data/" + aFileName);
-  let msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
+  const file = do_get_file(gDEPTH + "mailnews/data/" + aFileName);
+  const msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
   return msgfileuri.spec;
 }

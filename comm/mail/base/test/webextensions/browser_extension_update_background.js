@@ -1,12 +1,13 @@
-const { AddonManagerPrivate } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManagerPrivate } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+var { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
+AddonTestUtils.hookAMTelemetryEvents();
 
 const ID = "update2@tests.mozilla.org";
 const ID_ICON = "update_icon2@tests.mozilla.org";
@@ -17,7 +18,7 @@ const FAKE_INSTALL_TELEMETRY_SOURCE = "fake-install-source";
 requestLongerTimeout(2);
 
 function promiseViewLoaded(tab, viewid) {
-  let win = tab.linkedBrowser.contentWindow;
+  const win = tab.linkedBrowser.contentWindow;
   if (
     win.gViewController &&
     !win.gViewController.isLoading &&
@@ -30,15 +31,15 @@ function promiseViewLoaded(tab, viewid) {
 }
 
 function getBadgeStatus() {
-  let menuButton = document.getElementById("button-appmenu");
+  const menuButton = document.getElementById("button-appmenu");
   return menuButton.getAttribute("badge-status");
 }
 
 function promiseBadgeChange() {
   return new Promise(resolve => {
-    let menuButton = document.getElementById("button-appmenu");
+    const menuButton = document.getElementById("button-appmenu");
     new MutationObserver((mutationsList, observer) => {
-      for (let mutation of mutationsList) {
+      for (const mutation of mutationsList) {
         if (mutation.attributeName == "badge-status") {
           observer.disconnect();
           resolve();
@@ -52,7 +53,7 @@ function promiseBadgeChange() {
 }
 
 // Set some prefs that apply to all the tests in this file
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       // We don't have pre-pinned certificates for the local mochitest server
@@ -61,9 +62,6 @@ add_task(async function setup() {
     ],
   });
 });
-
-hookExtensionsTelemetry();
-AddonTestUtils.hookAMTelemetryEvents();
 
 // Helper function to test background updates.
 async function backgroundUpdateTest(url, id, checkIconFn) {
@@ -84,7 +82,7 @@ async function backgroundUpdateTest(url, id, checkIconFn) {
   let addon = await promiseInstallAddon(url, {
     source: FAKE_INSTALL_TELEMETRY_SOURCE,
   });
-  let addonId = addon.id;
+  const addonId = addon.id;
 
   ok(addon, "Addon was installed");
   is(getBadgeStatus(), "", "Should not start out with an addon alert badge");
@@ -110,7 +108,11 @@ async function backgroundUpdateTest(url, id, checkIconFn) {
   addons.children[0].click();
 
   // The click should hide the main menu. This is currently synchronous.
-  ok(PanelUI.panel.state != "open", "Main menu is closed or closing.");
+  Assert.notEqual(
+    PanelUI.panel.state,
+    "open",
+    "Main menu is closed or closing."
+  );
 
   // Wait for the permission prompt, check the contents
   let panel = await popupPromise;
@@ -119,7 +121,7 @@ async function backgroundUpdateTest(url, id, checkIconFn) {
   // The original extension has 1 promptable permission and the new one
   // has 2 (history and <all_urls>) plus 1 non-promptable permission (cookies).
   // So we should only see the 1 new promptable permission in the notification.
-  let singlePermissionEl = document.getElementById(
+  const singlePermissionEl = document.getElementById(
     "addon-webext-perm-single-entry"
   );
   ok(!singlePermissionEl.hidden, "Single permission entry is not hidden");
@@ -166,9 +168,6 @@ async function backgroundUpdateTest(url, id, checkIconFn) {
   is(addon.version, "2.0", "Should have upgraded to the new version");
 
   is(getBadgeStatus(), "", "Addon alert badge should be gone");
-
-  // Should have recorded 1 canceled followed by 1 accepted update.
-  expectTelemetry(["updateRejected", "updateAccepted"]);
 
   await addon.uninstall();
   await SpecialPowers.popPrefEnv();
@@ -235,7 +234,7 @@ function checkDefaultIcon(icon) {
 
 add_task(() =>
   backgroundUpdateTest(
-    `${BASE}/browser_webext_update1.xpi`,
+    `${BASE}/addons/browser_webext_update1.xpi`,
     ID,
     checkDefaultIcon
   )
@@ -251,7 +250,7 @@ function checkNonDefaultIcon(icon) {
 
 add_task(() =>
   backgroundUpdateTest(
-    `${BASE}/browser_webext_update_icon1.xpi`,
+    `${BASE}/addons/browser_webext_update_icon1.xpi`,
     ID_ICON,
     checkNonDefaultIcon
   )
@@ -261,7 +260,7 @@ add_task(() =>
 // upgraded to an Experiment prompts for the permission update.
 add_task(() =>
   backgroundUpdateTest(
-    `${BASE}/browser_webext_experiment_update1.xpi`,
+    `${BASE}/addons/browser_webext_experiment_update1.xpi`,
     ID_EXPERIMENT,
     checkDefaultIcon
   )

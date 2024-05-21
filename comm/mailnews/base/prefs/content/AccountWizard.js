@@ -1,66 +1,40 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: JavaScript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from accountUtils.js */
 /* import-globals-from amUtils.js */
-/* import-globals-from aw-accounttype.js */
 /* import-globals-from aw-identity.js */
 /* import-globals-from aw-incoming.js */
-/* import-globals-from aw-outgoing.js */
 /* import-globals-from aw-accname.js */
 /* import-globals-from aw-done.js */
 
-/* the okCallback is used for sending a callback for the parent window */
-var okCallback = null;
-/* The account wizard creates new accounts */
+/* NOTE: This Account Wizard is *only* for Newsgroup accounts.
+ * Historically, it was a generic Account Wizard, hence the generic naming.
+ */
 
 /*
   data flow into the account wizard like this:
 
   For new accounts:
-  * pageData -> Array -> createAccount -> finishAccount
-
-  For accounts coming from the ISP setup:
-  * RDF  -> Array -> pageData -> Array -> createAccount -> finishAccount
+  * pageData -> accountData -> createAccount -> finishAccount
 
   for "unfinished accounts"
-  * account -> Array -> pageData -> Array -> finishAccount
-
-  Where:
-  pageData - the actual pages coming out of the Widget State Manager
-  RDF      - the ISP datasource
-  Array    - associative array of attributes, that very closely
-             resembles the nsIMsgAccount/nsIMsgIncomingServer/nsIMsgIdentity
-             structure
-  createAccount() - creates an account from the above Array
-  finishAccount() - fills an existing account with data from the above Array
-
+  * account -> accountData -> pageData -> accountData -> finishAccount
 */
 
-/*
-   the account wizard path is something like:
-
-   accounttype -> identity -> server -> login -> accname -> done
-                             \-> newsserver ----/
-
-   where the accounttype determines which path to take
-   (server vs. newsserver)
-*/
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+var { NntpUtils } = ChromeUtils.importESModule(
+  "resource:///modules/NntpUtils.sys.mjs"
 );
 
 var contentWindow;
 
 var gPageData;
 
-var nsIMsgIdentity = Ci.nsIMsgIdentity;
-var nsIMsgIncomingServer = Ci.nsIMsgIncomingServer;
 var gPrefsBundle, gMessengerBundle;
 
 // the current nsIMsgAccount
@@ -84,39 +58,23 @@ function onAccountWizardLoad() {
   document
     .querySelector("wizard")
     .addEventListener("wizardfinish", FinishAccount);
-  let accounttypePage = document.getElementById("accounttype");
-  accounttypePage.addEventListener("pageshow", () => {
-    document.querySelector("wizard").canAdvance = true;
-  });
-  accounttypePage.addEventListener("pageadvanced", acctTypePageUnload);
-  let identityPage = document.getElementById("identitypage");
+  const identityPage = document.getElementById("identitypage");
   identityPage.addEventListener("pageshow", identityPageInit);
   identityPage.addEventListener("pageadvanced", identityPageUnload);
-  let incomingPage = document.getElementById("incomingpage");
-  incomingPage.addEventListener("pageshow", incomingPageInit);
-  incomingPage.addEventListener("pageadvanced", incomingPageUnload);
-  let outgoingPage = document.getElementById("outgoingpage");
-  outgoingPage.addEventListener("pageshow", outgoingPageInit);
-  outgoingPage.addEventListener("pageadvanced", outgoingPageUnload);
-  let newsserverPage = document.getElementById("newsserver");
+  identityPage.next = "newsserver";
+  const newsserverPage = document.getElementById("newsserver");
   newsserverPage.addEventListener("pageshow", incomingPageInit);
   newsserverPage.addEventListener("pageadvanced", incomingPageUnload);
-  let accnamePage = document.getElementById("accnamepage");
+  newsserverPage.next = "accnamepage";
+  const accnamePage = document.getElementById("accnamepage");
   accnamePage.addEventListener("pageshow", acctNamePageInit);
   accnamePage.addEventListener("pageadvanced", acctNamePageUnload);
-  let donePage = document.getElementById("done");
+  accnamePage.next = "done";
+  const donePage = document.getElementById("done");
   donePage.addEventListener("pageshow", donePageInit);
 
   gPrefsBundle = document.getElementById("bundle_prefs");
   gMessengerBundle = document.getElementById("bundle_messenger");
-
-  /* We are checking here for the callback argument */
-  if (window.arguments && window.arguments[0]) {
-    if (window.arguments[0].okCallback) {
-      // dump("There is okCallback");
-      top.okCallback = window.arguments[0].okCallback;
-    }
-  }
 
   checkForInvalidAccounts();
 
@@ -124,19 +82,16 @@ function onAccountWizardLoad() {
   // time you launch mail on a new profile.
   gDefaultAccount = MailServices.accounts.defaultAccount;
 
-  // Set default value for global inbox checkbox
-  var checkGlobalInbox = document.getElementById("deferStorage");
-  checkGlobalInbox.checked = Services.prefs.getBoolPref(
-    "mail.accountwizard.deferstorage",
-    false
-  );
+  identityPageInit();
 }
 
 function onCancel() {
   if ("ActivationOnCancel" in this && this.ActivationOnCancel()) {
     return false;
   }
-  var firstInvalidAccount = getFirstInvalidAccount();
+  var firstInvalidAccount = getInvalidAccounts(
+    MailServices.accounts.accounts
+  ).find(account => account.incomingServer.type == "nntp");
   var closeWizard = true;
 
   // if the user cancels the the wizard when it pops up because of
@@ -146,48 +101,42 @@ function onCancel() {
   if (firstInvalidAccount) {
     var pageData = GetPageData();
     // set the fullName if it doesn't exist
-    if (!pageData.identity.fullName || !pageData.identity.fullName.value) {
-      setPageData(pageData, "identity", "fullName", "");
+    if (!pageData.fullName) {
+      pageData.fullName = "";
     }
 
     // set the email if it doesn't exist
-    if (!pageData.identity.email || !pageData.identity.email.value) {
-      setPageData(pageData, "identity", "email", "user@domain.invalid");
+    if (!pageData.email) {
+      pageData.email = "user@domain.invalid";
     }
 
     // call FinishAccount() and not onFinish(), since the "finish"
     // button may be disabled
     FinishAccount();
-  } else {
+  } else if (!MailServices.accounts.accounts.length) {
     // since this is not an invalid account
     // really cancel if the user hits the "cancel" button
     // if the length of the account list is less than 1, there are no accounts
-    if (MailServices.accounts.accounts.length < 1) {
-      let confirmMsg = gPrefsBundle.getString("cancelWizard");
-      let confirmTitle = gPrefsBundle.getString("accountWizard");
-      let result = Services.prompt.confirmEx(
-        window,
-        confirmTitle,
-        confirmMsg,
-        Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0 +
-          Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_1,
-        gPrefsBundle.getString("WizardExit"),
-        gPrefsBundle.getString("WizardContinue"),
-        null,
-        null,
-        { value: 0 }
-      );
+    const confirmMsg = gPrefsBundle.getString("cancelWizard");
+    const confirmTitle = gPrefsBundle.getString("accountWizard");
+    const result = Services.prompt.confirmEx(
+      window,
+      confirmTitle,
+      confirmMsg,
+      Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0 +
+        Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_1,
+      gPrefsBundle.getString("WizardExit"),
+      gPrefsBundle.getString("WizardContinue"),
+      null,
+      null,
+      { value: 0 }
+    );
 
-      if (result == 1) {
-        closeWizard = false;
-      }
-    }
-
-    if (top.okCallback && closeWizard) {
-      var state = false;
-      top.okCallback(state);
+    if (result == 1) {
+      closeWizard = false;
     }
   }
+
   return closeWizard;
 }
 
@@ -207,8 +156,6 @@ function FinishAccount() {
 
     PageDataToAccountData(pageData, accountData);
 
-    FixupAccountDataForIsp(accountData);
-
     // we might be simply finishing another account
     if (!gCurrentAccount) {
       gCurrentAccount = createAccount(accountData);
@@ -217,22 +164,10 @@ function FinishAccount() {
     // transfer all attributes from the accountdata
     finishAccount(gCurrentAccount, accountData);
 
-    setupCopiesAndFoldersServer(
-      gCurrentAccount,
-      getCurrentServerIsDeferred(pageData),
-      accountData
-    );
+    setupCopiesAndFoldersServer(gCurrentAccount, accountData);
 
     if (gCurrentAccount.incomingServer.canBeDefaultServer) {
       EnableCheckMailAtStartUpIfNeeded(gCurrentAccount);
-    }
-
-    if (!document.getElementById("downloadMsgs").hidden) {
-      // skip the default biff, we will load messages manually if needed
-      window.opener.gLoadStartFolder = false;
-      if (document.getElementById("downloadMsgs").checked) {
-        window.opener.gNewAccountToLoad = gCurrentAccount; // load messages for new POP account
-      }
     }
 
     // in case we crash, force us a save of the prefs file NOW
@@ -241,12 +176,17 @@ function FinishAccount() {
     } catch (ex) {
       dump("Error saving account info: " + ex + "\n");
     }
-    window.close();
-    if (top.okCallback) {
-      var state = true;
-      // dump("finish callback");
-      top.okCallback(state);
+    const openerWindow = window.opener.top;
+    // The following block is the same as in feedAccountWizard.js.
+    if ("selectServer" in openerWindow) {
+      // Opened from Account Settings.
+      openerWindow.selectServer(gCurrentAccount.incomingServer);
     }
+
+    // Post a message to the main window on successful account setup.
+    openerWindow.postMessage("account-created", "*");
+
+    window.close();
   } catch (ex) {
     dump("FinishAccount failed, " + ex + "\n");
   }
@@ -255,46 +195,9 @@ function FinishAccount() {
 // prepopulate pageData with stuff from accountData
 // use: to prepopulate the wizard with account information
 function AccountDataToPageData(accountData, pageData) {
-  if (!accountData) {
-    dump("null account data! clearing..\n");
-    // handle null accountData as if it were an empty object
-    // so that we clear-out any old pagedata from a
-    // previous accountdata. The trick is that
-    // with an empty object, accountData.identity.slot is undefined,
-    // so this will clear out the prefill data in setPageData
-
-    accountData = {};
-    accountData.incomingServer = {};
-    accountData.identity = {};
-    accountData.smtp = {};
-  }
-
   var server = accountData.incomingServer;
-
-  if (server.type == undefined) {
-    // clear out the old server data
-    // setPageData(pageData, "accounttype", "mailaccount", undefined);
-    // setPageData(pageData, "accounttype", "newsaccount", undefined);
-    setPageData(pageData, "server", "servertype", undefined);
-    setPageData(pageData, "server", "hostname", undefined);
-  } else {
-    if (server.type == "nntp") {
-      setPageData(pageData, "accounttype", "newsaccount", true);
-      setPageData(pageData, "accounttype", "mailaccount", false);
-      setPageData(pageData, "newsserver", "hostname", server.hostName);
-    } else {
-      setPageData(pageData, "accounttype", "mailaccount", true);
-      setPageData(pageData, "accounttype", "newsaccount", false);
-      setPageData(pageData, "server", "servertype", server.type);
-      setPageData(pageData, "server", "hostname", server.hostName);
-    }
-    setPageData(pageData, "accounttype", "otheraccount", false);
-  }
-
-  setPageData(pageData, "login", "username", server.username || "");
-  setPageData(pageData, "login", "password", server.password || "");
-  setPageData(pageData, "accname", "prettyName", server.prettyName || "");
-  setPageData(pageData, "accname", "userset", false);
+  pageData.hostname = server.hostName;
+  pageData.prettyName = server.prettyName || "";
 
   var identity;
 
@@ -306,16 +209,8 @@ function AccountDataToPageData(accountData, pageData) {
     dump("this is an account, id= " + identity + "\n");
   }
 
-  setPageData(pageData, "identity", "email", identity.email || "");
-  setPageData(pageData, "identity", "fullName", identity.fullName || "");
-
-  var smtp;
-
-  if (accountData.smtp) {
-    smtp = accountData.smtp;
-    setPageData(pageData, "server", "smtphostname", smtp.hostname);
-    setPageData(pageData, "login", "smtpusername", smtp.username);
-  }
+  pageData.email = identity.email || "";
+  pageData.fullName = identity.fullName || "";
 }
 
 // take data from each page of pageData and dump it into accountData
@@ -327,146 +222,51 @@ function PageDataToAccountData(pageData, accountData) {
   if (!accountData.incomingServer) {
     accountData.incomingServer = {};
   }
-  if (!accountData.smtp) {
-    accountData.smtp = {};
-  }
-  if (!accountData.pop3) {
-    accountData.pop3 = {};
-  }
-  if (!accountData.imap) {
-    accountData.imap = {};
-  }
 
   var identity = accountData.identity;
   var server = accountData.incomingServer;
-  var smtp = accountData.smtp;
-  var pop3 = accountData.pop3;
-  var imap = accountData.imap;
 
-  if (pageData.identity.email) {
-    identity.email = pageData.identity.email.value;
+  if (pageData.email) {
+    identity.email = pageData.email;
   }
-  if (pageData.identity.fullName) {
-    identity.fullName = pageData.identity.fullName.value;
+  if (pageData.fullName) {
+    identity.fullName = pageData.fullName;
   }
 
-  server.type = getCurrentServerType(pageData);
-  server.hostName = getCurrentHostname(pageData);
-  if (getCurrentServerIsDeferred(pageData)) {
-    try {
-      let localFoldersServer = MailServices.accounts.localFoldersServer;
-      let localFoldersAccount = MailServices.accounts.FindAccountForServer(
-        localFoldersServer
-      );
-      pop3.deferredToAccount = localFoldersAccount.key;
-      pop3.deferGetNewMail = true;
-      server["ServerType-pop3"] = pop3;
-    } catch (ex) {
-      dump("exception setting up deferred account" + ex);
-    }
-  }
-  if (serverIsNntp(pageData)) {
-    // this stuff probably not relevant
-    dump("not setting username/password/etc\n");
-  } else {
-    if (pageData.login) {
-      if (pageData.login.username) {
-        server.username = pageData.login.username.value;
-      }
-      if (pageData.login.password) {
-        server.password = pageData.login.password.value;
-      }
-      if (pageData.login.smtpusername) {
-        smtp.username = pageData.login.smtpusername.value;
-      }
-    }
-
-    dump("pageData.server = " + pageData.server + "\n");
-    if (pageData.server) {
-      dump(
-        "pageData.server.smtphostname.value = " +
-          pageData.server.smtphostname +
-          "\n"
-      );
-      if (pageData.server.smtphostname && pageData.server.smtphostname.value) {
-        smtp.hostname = pageData.server.smtphostname.value;
-      }
-    }
-    if (pageData.identity && pageData.identity.smtpServerKey) {
-      identity.smtpServerKey = pageData.identity.smtpServerKey.value;
-    }
-
-    if (pageData.server.port && pageData.server.port.value) {
-      if (server.type == "imap") {
-        imap.port = pageData.server.port.value;
-        server["ServerType-imap"] = imap;
-      } else if (server.type == "pop3") {
-        pop3.port = pageData.server.port.value;
-        server["ServerType-pop3"] = pop3;
-      }
-    }
-
-    if (
-      pageData.server.leaveMessagesOnServer &&
-      pageData.server.leaveMessagesOnServer.value
-    ) {
-      pop3.leaveMessagesOnServer = pageData.server.leaveMessagesOnServer.value;
-      server["ServerType-pop3"] = pop3;
-    }
-  }
-
-  if (pageData.accname) {
-    if (pageData.accname.prettyName) {
-      server.prettyName = pageData.accname.prettyName.value;
-    }
+  server.hostName = pageData.hostname;
+  if (pageData.prettyName) {
+    server.prettyName = pageData.prettyName;
   }
 }
 
 // given an accountData structure, create an account
 // (but don't fill in any fields, that's for finishAccount()
 function createAccount(accountData) {
-  // Retrieve the server (data) from the account data.
-  var server = accountData.incomingServer;
+  const hostName = accountData.incomingServer.hostName;
+  // If we're here, the server must not be associated with any account, so reuse
+  // it.
+  let server = NntpUtils.findServer(hostName);
 
-  // Use createRssAccount for Feed accounts.
-  if (server.type == "rss") {
-    return FeedUtils.createRssAccount(server.prettyName);
+  if (!server) {
+    dump(`MailServices.accounts.createIncomingServer(${hostName})\n`);
+    // Create a (actual) server.
+    server = MailServices.accounts.createIncomingServer(null, hostName, "nntp");
   }
-
-  // for news, username is always null
-  var username = server.type == "nntp" ? null : server.username;
-  dump(
-    "MailServices.accounts.createIncomingServer(" +
-      username +
-      ", " +
-      server.hostName +
-      ", " +
-      server.type +
-      ")\n"
-  );
-  // Create a (actual) server.
-  server = MailServices.accounts.createIncomingServer(
-    username,
-    server.hostName,
-    server.type
-  );
 
   dump("MailServices.accounts.createAccount()\n");
   // Create an account.
-  let account = MailServices.accounts.createAccount();
+  const account = MailServices.accounts.createAccount();
 
   // only create an identity for this account if we really have one
   // (use the email address as a check)
   if (accountData.identity && accountData.identity.email) {
     dump("MailServices.accounts.createIdentity()\n");
     // Create an identity.
-    let identity = MailServices.accounts.createIdentity();
+    const identity = MailServices.accounts.createIdentity();
 
     // New nntp identities should use plain text by default;
     // we want that GNKSA (The Good Net-Keeping Seal of Approval).
-    if (server.type == "nntp") {
-      identity.composeHtml = false;
-    }
+    identity.composeHtml = false;
 
     account.addIdentity(identity);
   }
@@ -493,7 +293,7 @@ function finishAccount(account, accountData) {
     // If so, we use the type to get the IID, QueryInterface
     // as appropriate, then copy the data over.
     const typeProperty = "ServerType-" + srcServer.type;
-    let serverAttrs =
+    const serverAttrs =
       typeProperty in srcServer ? srcServer[typeProperty] : null;
     dump(`srcServer.${typeProperty} = ${serverAttrs}\n`);
     if (serverAttrs) {
@@ -502,12 +302,12 @@ function finishAccount(account, accountData) {
       try {
         IID = destServer.protocolInfo.serverIID;
       } catch (ex) {
-        Cu.reportError("Could not get IID for " + srcServer.type + ": " + ex);
+        console.error("Could not get IID for " + srcServer.type + ": " + ex);
       }
 
       if (IID) {
-        let destProtocolServer = destServer.QueryInterface(IID);
-        let srcProtocolServer = srcServer["ServerType-" + srcServer.type];
+        const destProtocolServer = destServer.QueryInterface(IID);
+        const srcProtocolServer = srcServer["ServerType-" + srcServer.type];
 
         dump("Copying over " + srcServer.type + "-specific data\n");
         copyObjectToInterface(destProtocolServer, srcProtocolServer, false);
@@ -526,7 +326,7 @@ function finishAccount(account, accountData) {
     // does this account have an identity?
     if (accountData.identity && accountData.identity.email) {
       // fixup the email address if we have a default domain
-      let emailArray = accountData.identity.email.split("@");
+      const emailArray = accountData.identity.email.split("@");
       if (emailArray.length < 2 && accountData.domain) {
         accountData.identity.email += "@" + accountData.domain;
       }
@@ -544,26 +344,9 @@ function finishAccount(account, accountData) {
      */
     if (destIdentity.attachSignature) {
       var sigFileName = accountData.signatureFileName;
-      let sigFile = MailServices.mailSession.getDataFilesDir("messenger");
+      const sigFile = MailServices.mailSession.getDataFilesDir("messenger");
       sigFile.append(sigFileName);
       destIdentity.signature = sigFile;
-    }
-
-    if (accountData.smtp.hostname && !destIdentity.smtpServerKey) {
-      // hostname + no key => create a new SMTP server.
-
-      let smtpServer = MailServices.smtp.createServer();
-      var isDefaultSmtpServer;
-      if (!MailServices.smtp.defaultServer.hostname) {
-        MailServices.smtp.defaultServer = smtpServer;
-        isDefaultSmtpServer = true;
-      }
-
-      copyObjectToInterface(smtpServer, accountData.smtp, false);
-
-      // If it's the default server we created, make the identity use
-      // "Use Default" by default.
-      destIdentity.smtpServerKey = isDefaultSmtpServer ? "" : smtpServer.key;
     }
   } // if the account has an identity...
 
@@ -656,20 +439,19 @@ function verifyLocalFoldersAccount() {
   }
 }
 
-function setupCopiesAndFoldersServer(account, accountIsDeferred, accountData) {
+function setupCopiesAndFoldersServer(account, accountData) {
   try {
     var server = account.incomingServer;
 
-    // This function sets up the default send preferences. The send preferences
-    // go on identities, so there is no need to continue without any identities.
-    if (server.type == "rss" || account.identities.length == 0) {
+    if (!account.identities.length) {
       return false;
     }
-    let identity = account.identities[0];
+
+    const identity = account.identities[0];
     // For this server, do we default the folder prefs to this server, or to the "Local Folders" server
     // If it's deferred, we use the local folders account.
     var defaultCopiesAndFoldersPrefsToServer =
-      !accountIsDeferred && server.defaultCopiesAndFoldersPrefsToServer;
+      server.defaultCopiesAndFoldersPrefsToServer;
 
     var copiesAndFoldersServer = null;
     if (defaultCopiesAndFoldersPrefsToServer) {
@@ -766,26 +548,10 @@ function setDefaultCopiesAndFoldersPrefs(identity, server, accountData) {
       : gDefaultSpecialFolderPickerMode;
 }
 
-function AccountExists(userName, hostName, serverType) {
-  return MailServices.accounts.findRealServer(
-    userName,
-    hostName,
-    serverType,
-    0
-  );
-}
-
-function getFirstInvalidAccount() {
-  let invalidAccounts = getInvalidAccounts(MailServices.accounts.accounts);
-
-  if (invalidAccounts.length > 0) {
-    return invalidAccounts[0];
-  }
-  return null;
-}
-
 function checkForInvalidAccounts() {
-  var firstInvalidAccount = getFirstInvalidAccount();
+  var firstInvalidAccount = getInvalidAccounts(
+    MailServices.accounts.accounts
+  ).find(account => account.incomingServer.type == "nntp");
 
   if (firstInvalidAccount) {
     var pageData = GetPageData();
@@ -799,94 +565,14 @@ function checkForInvalidAccounts() {
     var accountData = {};
     accountData.incomingServer = firstInvalidAccount.incomingServer;
     accountData.identity = firstInvalidAccount.identities[0];
-    accountData.smtp = MailServices.smtp.defaultServer;
     AccountDataToPageData(accountData, pageData);
 
     gCurrentAccountData = accountData;
-
-    setupWizardPanels();
-    // Set the page index to identity page.
-    document.querySelector("wizard").pageIndex = 1;
   }
 }
 
-// sets the page data, automatically creating the arrays as necessary
-function setPageData(pageData, tag, slot, value) {
-  if (!pageData[tag]) {
-    pageData[tag] = [];
-  }
-
-  if (value == undefined) {
-    // clear out this slot
-    if (pageData[tag][slot]) {
-      delete pageData[tag][slot];
-    }
-  } else {
-    // pre-fill this slot
-    if (!pageData[tag][slot]) {
-      pageData[tag][slot] = [];
-    }
-    pageData[tag][slot].id = slot;
-    pageData[tag][slot].value = value;
-  }
-}
-
-// value of checkbox on the first page
-function serverIsNntp(pageData) {
-  if (pageData.accounttype.newsaccount) {
-    return pageData.accounttype.newsaccount.value;
-  }
-  return false;
-}
-
-function getUsernameFromEmail(aEmail) {
-  var username = aEmail.substr(0, aEmail.indexOf("@"));
-  return username;
-}
-
-function getCurrentUserName(pageData) {
-  var userName = "";
-
-  if (pageData.login) {
-    if (pageData.login.username) {
-      userName = pageData.login.username.value;
-    }
-  }
-  if (userName == "") {
-    var email = pageData.identity.email.value;
-    userName = getUsernameFromEmail(email);
-  }
-  return userName;
-}
-
-function getCurrentServerType(pageData) {
-  var servertype = "pop3"; // hopefully don't resort to default!
-  if (serverIsNntp(pageData)) {
-    servertype = "nntp";
-  } else if (pageData.server && pageData.server.servertype) {
-    servertype = pageData.server.servertype.value;
-  }
-  return servertype;
-}
-
-function getCurrentServerIsDeferred(pageData) {
-  var serverDeferred = false;
-  if (
-    getCurrentServerType(pageData) == "pop3" &&
-    pageData.server &&
-    pageData.server.deferStorage
-  ) {
-    serverDeferred = pageData.server.deferStorage.value;
-  }
-
-  return serverDeferred;
-}
-
-function getCurrentHostname(pageData) {
-  if (serverIsNntp(pageData)) {
-    return pageData.newsserver.hostname.value;
-  }
-  return pageData.server.hostname.value;
+function getUsernameFromEmail(email) {
+  return email && email.substr(0, email.indexOf("@"));
 }
 
 function GetPageData() {
@@ -895,42 +581,6 @@ function GetPageData() {
   }
 
   return gPageData;
-}
-
-// does any cleanup work for the the account data
-// - sets the username from the email address if it's not already set
-// - anything else?
-function FixupAccountDataForIsp(accountData) {
-  // no fixup for news
-  // setting the username does bad things
-  // see bugs #42105 and #154213
-  if (accountData.incomingServer.type == "nntp") {
-    return;
-  }
-
-  var email = accountData.identity.email;
-
-  // The identity might not have an email address, which is what the rest of
-  // this function is looking for.
-  if (!email) {
-    return;
-  }
-
-  // fix up the username
-  if (!accountData.incomingServer.username) {
-    accountData.incomingServer.username = getUsernameFromEmail(email);
-  }
-
-  if (!accountData.smtp.username) {
-    // fix for bug #107953
-    // if incoming hostname is same as smtp hostname
-    // use the server username (instead of the email username)
-    if (accountData.smtp.hostname == accountData.incomingServer.hostName) {
-      accountData.smtp.username = accountData.incomingServer.username;
-    } else {
-      accountData.smtp.username = getUsernameFromEmail(email);
-    }
-  }
 }
 
 // flush the XUL cache - just for debugging purposes - not called
@@ -952,9 +602,4 @@ function EnableCheckMailAtStartUpIfNeeded(newAccount) {
     newAccount.incomingServer.loginAtStartUp = true;
     newAccount.incomingServer.downloadOnBiff = true;
   }
-}
-
-function setNextPage(currentPageId, nextPageId) {
-  var currentPage = document.getElementById(currentPageId);
-  currentPage.next = nextPageId;
 }

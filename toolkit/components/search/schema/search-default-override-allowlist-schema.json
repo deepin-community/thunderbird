@@ -1,22 +1,23 @@
 {
   "type": "object",
-  "required": [
-    "thirdPartyId",
-    "overridesId",
-    "urls"
-  ],
+  "required": ["thirdPartyId", "overridesId", "urls"],
   "properties": {
     "thirdPartyId": {
       "type": "string",
       "title": "Third-party Add-on Id",
-      "description": "The identifier of the third party add-on which will override the app provided one. Should be of the format example@foo",
+      "description": "The identifier of the third party add-on which will override the app provided one. Should be of the format example@foo. If the third party engine is an OpenSearch engine, then this must be opensearch@search.mozilla.org",
       "pattern": "^[a-zA-Z0-9-._]*@[a-zA-Z0-9-._]*$"
     },
     "overridesId": {
       "type": "string",
       "title": "Add-on Id to Override",
-      "description": "The identifier of the app-provided add-on to be overriden. Should be of the format example@search.mozilla.org",
+      "description": "The identifier of the app-provided add-on to be overridden. Should be of the format example@search.mozilla.org",
       "pattern": "^[a-zA-Z0-9-._]*@search.mozilla.org$"
+    },
+    "engineName": {
+      "type": "string",
+      "title": "Engine Name",
+      "description": "The name of the search engine to be overridden, only applies to OpenSearch engines"
     },
     "urls": {
       "type": "array",
@@ -24,9 +25,7 @@
       "description": "An array of URL sets which must be matched (with the add-on's manifest settings) to allow the override",
       "items": {
         "type": "object",
-        "required": [
-          "search_url"
-        ],
+        "required": ["search_url"],
         "properties": {
           "search_url": {
             "type": "string",

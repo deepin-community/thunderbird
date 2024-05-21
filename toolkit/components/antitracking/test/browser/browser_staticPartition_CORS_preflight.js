@@ -11,10 +11,8 @@ const TEST_PREFLIGHT_IFRAME_PAGE =
 const TEST_PREFLIGHT_PAGE =
   "http://example.net/browser/toolkit/components/antitracking/test/browser/browser_staticPartition_CORS_preflight.sjs";
 
-add_task(async function() {
-  let uuidGenerator = Cc["@mozilla.org/uuid-generator;1"].getService(
-    Ci.nsIUUIDGenerator
-  );
+add_task(async function () {
+  let uuidGenerator = Services.uuid;
 
   for (let networkIsolation of [true, false]) {
     for (let partitionPerSite of [true, false]) {
@@ -91,7 +89,10 @@ add_task(async function() {
       // the preflight cache is partitioned. The fetch will also be performed in
       // the iframe with the same origin as above to ensure we use the same
       // loading principal.
-      BrowserTestUtils.loadURI(tab.linkedBrowser, TEST_ANOTHER_PAGE);
+      BrowserTestUtils.startLoadingURIString(
+        tab.linkedBrowser,
+        TEST_ANOTHER_PAGE
+      );
       await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
 
       await SpecialPowers.spawn(

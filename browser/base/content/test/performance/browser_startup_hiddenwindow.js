@@ -3,7 +3,7 @@
 
 "use strict";
 
-add_task(async function() {
+add_task(async function () {
   if (
     !AppConstants.NIGHTLY_BUILD &&
     !AppConstants.MOZ_DEV_EDITION &&
@@ -17,8 +17,8 @@ add_task(async function() {
     return;
   }
 
-  let startupRecorder = Cc["@mozilla.org/test/startuprecorder;1"].getService()
-    .wrappedJSObject;
+  let startupRecorder =
+    Cc["@mozilla.org/test/startuprecorder;1"].getService().wrappedJSObject;
   await startupRecorder.done;
 
   let extras = Cu.cloneInto(startupRecorder.data.extras, {});
@@ -26,10 +26,7 @@ add_task(async function() {
   let phasesExpectations = {
     "before profile selection": false,
     "before opening first browser window": false,
-    "before first paint": !Services.prefs.getBoolPref(
-      "toolkit.lazyHiddenWindow"
-    ),
-
+    "before first paint": AppConstants.platform === "macosx",
     // Bug 1531854
     "before handling user events": true,
     "before becoming idle": true,

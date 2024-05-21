@@ -16,27 +16,27 @@ const {
   SELECT_ACTION_BAR_TAB,
   TOGGLE_SEARCH_CASE_SENSITIVE_SEARCH,
   PANELS,
-} = require("devtools/client/netmonitor/src/constants");
+} = require("resource://devtools/client/netmonitor/src/constants.js");
 
 const {
   getDisplayedRequests,
   getOngoingSearch,
   getSearchStatus,
   getRequestById,
-} = require("devtools/client/netmonitor/src/selectors/index");
+} = require("resource://devtools/client/netmonitor/src/selectors/index.js");
 
 const {
   selectRequest,
-} = require("devtools/client/netmonitor/src/actions/selection");
+} = require("resource://devtools/client/netmonitor/src/actions/selection.js");
 const {
   selectDetailsPanelTab,
-} = require("devtools/client/netmonitor/src/actions/ui");
+} = require("resource://devtools/client/netmonitor/src/actions/ui.js");
 const {
   fetchNetworkUpdatePacket,
-} = require("devtools/client/netmonitor/src/utils/request-utils");
+} = require("resource://devtools/client/netmonitor/src/utils/request-utils.js");
 const {
   searchInResource,
-} = require("devtools/client/netmonitor/src/workers/search/index");
+} = require("resource://devtools/client/netmonitor/src/workers/search/index.js");
 
 /**
  * Search through all resources. This is the main action exported
@@ -176,7 +176,7 @@ function clearSearchResults() {
  * @returns {Function}
  */
 function clearSearchResultAndCancel() {
-  return ({ dispatch, getState }) => {
+  return ({ dispatch }) => {
     dispatch(stopOngoingSearch());
     dispatch(clearSearchResults());
   };
@@ -196,7 +196,7 @@ function updateSearchStatus(status) {
  * Close the entire search panel.
  */
 function closeSearch() {
-  return ({ dispatch, getState }) => {
+  return ({ dispatch }) => {
     dispatch(stopOngoingSearch());
     dispatch({ type: OPEN_ACTION_BAR, open: false });
   };
@@ -207,8 +207,13 @@ function closeSearch() {
  * @returns {Function}
  */
 function openSearch() {
-  return ({ dispatch, getState }) => {
+  return ({ dispatch }) => {
     dispatch({ type: OPEN_ACTION_BAR, open: true });
+
+    dispatch({
+      type: SELECT_ACTION_BAR_TAB,
+      id: PANELS.SEARCH,
+    });
   };
 }
 
@@ -217,7 +222,7 @@ function openSearch() {
  * @returns {Function}
  */
 function toggleCaseSensitiveSearch() {
-  return ({ dispatch, getState }) => {
+  return ({ dispatch }) => {
     dispatch({ type: TOGGLE_SEARCH_CASE_SENSITIVE_SEARCH });
   };
 }
@@ -275,7 +280,7 @@ function stopOngoingSearch() {
  * clicked search result.
  */
 function navigate(searchResult) {
-  return ({ dispatch, getState }) => {
+  return ({ dispatch }) => {
     // Store target search result in Search reducer. It's used
     // for search result navigation within the side panels.
     dispatch(setTargetSearchResult(searchResult));

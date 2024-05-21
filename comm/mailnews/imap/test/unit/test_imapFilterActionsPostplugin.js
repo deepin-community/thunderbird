@@ -5,8 +5,8 @@
  * adapted from test_imapFilterActions.js
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var Is = Ci.nsMsgSearchOp.Is;
@@ -73,7 +73,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     // In non-postplugin, count here is 0 and not 1.  Need to investigate.
     testCounts(false, 1, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Ignored);
   },
   async function WatchThread() {
@@ -81,7 +81,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     // In non-postplugin, count here is 0 and not 1.  Need to investigate.
     testCounts(false, 1, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    const thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Watched);
   },
   async function KillSubthread() {
@@ -119,13 +119,6 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     testCounts(true, 1, 1, 1);
     Assert.equal(Ci.nsMsgPriority.highest, gHeader.priority);
-  },
-  async function Label() {
-    gAction.type = Ci.nsMsgFilterAction.Label;
-    gAction.label = 2;
-    await setupTest(gFilter, gAction);
-    testCounts(true, 1, 1, 1);
-    Assert.equal(2, gHeader.label);
   },
   async function AddTag() {
     gAction.type = Ci.nsMsgFilterAction.AddTag;
@@ -176,9 +169,9 @@ function run_test() {
 
 function setupFilters() {
   // Create a non-body filter.
-  let filterList = IMAPPump.incomingServer.getFilterList(null);
+  const filterList = IMAPPump.incomingServer.getFilterList(null);
   gFilter = filterList.createFilter("subject");
-  let searchTerm = gFilter.createTerm();
+  const searchTerm = gFilter.createTerm();
   searchTerm.attrib = Subject;
   searchTerm.op = Is;
   var value = searchTerm.value;
@@ -208,7 +201,7 @@ function setupFilters() {
 
 // basic preparation done for each test
 async function setupTest(aFilter, aAction) {
-  let filterList = IMAPPump.incomingServer.getFilterList(null);
+  const filterList = IMAPPump.incomingServer.getFilterList(null);
   while (filterList.filterCount) {
     filterList.removeFilterAt(0);
   }
@@ -226,9 +219,9 @@ async function setupTest(aFilter, aAction) {
   gInboxListener = new DBListener();
   gDbService.registerPendingListener(IMAPPump.inbox, gInboxListener);
   IMAPPump.mailbox.addMessage(
-    new imapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
   );
-  let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+  const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
   await promiseUrlListener.promise;
   await PromiseTestUtils.promiseDelay(200);
@@ -251,7 +244,7 @@ function endTest() {
 
 // nsIFolderListener implementation
 var FolderListener = {
-  OnItemEvent(aEventFolder, aEvent) {
+  onFolderEvent(aEventFolder, aEvent) {
     dump(
       "received folder event " + aEvent + " folder " + aEventFolder.name + "\n"
     );
@@ -264,7 +257,7 @@ var FolderListener = {
 // in javascript).
 function DBListener() {
   this.counts = {};
-  let counts = this.counts;
+  const counts = this.counts;
   counts.onHdrFlagsChanged = 0;
   counts.onHdrDeleted = 0;
   counts.onHdrAdded = 0;
@@ -297,7 +290,7 @@ DBListener.prototype = {
   onAnnouncerGoingAway(instigator) {
     if (gInboxListener) {
       try {
-        IMAPPump.inbox.msgDatabase.RemoveListener(gInboxListener);
+        IMAPPump.inbox.msgDatabase.removeListener(gInboxListener);
       } catch (e) {
         dump(" listener not found\n");
       }
@@ -330,10 +323,10 @@ DBListener.prototype = {
 // folder counts match the database counts)
 function folderCount(folder) {
   // count using the database
-  let dbCount = [...folder.msgDatabase.EnumerateMessages()].length;
+  const dbCount = [...folder.msgDatabase.enumerateMessages()].length;
 
   // count using the folder
-  let count = folder.getTotalMessages(false);
+  const count = folder.getTotalMessages(false);
 
   // compare the two
   Assert.equal(dbCount, count);
@@ -342,8 +335,8 @@ function folderCount(folder) {
 
 // given a test file, return the file uri spec
 function specForFileName(aFileName) {
-  let file = do_get_file("../../../data/" + aFileName);
-  let msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
+  const file = do_get_file("../../../data/" + aFileName);
+  const msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
   return msgfileuri.spec;
 }
 
@@ -364,11 +357,11 @@ var gPreviousUnread;
 //
 function testCounts(aHasNew, aUnreadDelta, aFolderNewDelta, aDbNewDelta) {
   try {
-    let folderNew = IMAPPump.inbox.getNumNewMessages(false);
-    let hasNew = IMAPPump.inbox.hasNewMessages;
-    let unread = IMAPPump.inbox.getNumUnread(false);
-    let arrayOut = db().getNewList();
-    let dbNew = arrayOut.length;
+    const folderNew = IMAPPump.inbox.getNumNewMessages(false);
+    const hasNew = IMAPPump.inbox.hasNewMessages;
+    const unread = IMAPPump.inbox.getNumUnread(false);
+    const arrayOut = db().getNewList();
+    const dbNew = arrayOut.length;
     dump(
       " hasNew: " +
         hasNew +
@@ -405,8 +398,8 @@ var actionTestOffline = {
   id: "mailnews@mozilla.org#testOffline",
   name: "test if offline",
   applyAction(aMsgHdrs, aActionValue, aListener, aType, aMsgWindow) {
-    for (let msgHdr of aMsgHdrs) {
-      let isOffline = !!(msgHdr.flags & Ci.nsMsgMessageFlags.Offline);
+    for (const msgHdr of aMsgHdrs) {
+      const isOffline = !!(msgHdr.flags & Ci.nsMsgMessageFlags.Offline);
       dump(
         "in actionTestOffline, flags are " +
           msgHdr.flags +

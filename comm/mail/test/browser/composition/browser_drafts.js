@@ -11,89 +11,103 @@
 
 var {
   close_compose_window,
+  compose_window_ready,
   get_compose_body,
   get_msg_source,
   open_compose_new_mail,
+  save_compose_message,
   setup_msg_contents,
-  wait_for_compose_window,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+);
 var {
   be_in_folder,
+  get_about_message,
   get_special_folder,
-  make_new_sets_in_folder,
-  mc,
+  make_message_sets_in_folders,
   press_delete,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { wait_for_notification_to_show, get_notification } = ChromeUtils.import(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
-);
-var { plan_for_new_window, wait_for_window_focused } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
+var { get_notification, wait_for_notification_to_show } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+  );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { click_menus_in_sequence, close_popup_sequence, promise_new_window } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  );
+
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
+const aboutMessage = get_about_message();
+
 var kBoxId = "mail-notification-top";
 var draftsFolder;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   requestLongerTimeout(2);
-  draftsFolder = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+  draftsFolder = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 /**
  * Bug 349547.
  * Tests that we only open one compose window for one instance of a draft.
  */
-add_task(function test_open_draft_again() {
-  make_new_sets_in_folder(draftsFolder, [{ count: 1 }]);
-  be_in_folder(draftsFolder);
-  select_click_row(0);
+add_task(async function test_open_draft_again() {
+  await make_message_sets_in_folders([draftsFolder], [{ count: 1 }]);
+  await be_in_folder(draftsFolder);
+  await select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, kBoxId, "draftMsgContent");
-  let box = get_notification(mc, kBoxId, "draftMsgContent");
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+  const box = get_notification(aboutMessage, kBoxId, "draftMsgContent");
 
-  plan_for_new_window("msgcompose");
+  const composePromise = promise_new_window("msgcompose");
   // Click on the "Edit" button in the draft notification.
-  EventUtils.synthesizeMouseAtCenter(box.buttonContainer.firstElementChild, {});
-  let cwc = wait_for_compose_window();
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
+  const cwc = await compose_window_ready(composePromise);
 
-  let cwins = [...Services.wm.getEnumerator("msgcompose")].length;
+  const cwins = [...Services.wm.getEnumerator("msgcompose")].length;
 
   // click edit in main win again
-  EventUtils.synthesizeMouseAtCenter(box.buttonContainer.firstElementChild, {});
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
 
-  mc.sleep(1000); // wait a sec to see if it caused a new window
+  // Wait a sec to see if it caused a new window.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   Assert.ok(
-    Services.ww.activeWindow == cwc.window,
+    Services.ww.activeWindow == cwc,
     "the original draft composition window should have got focus (again)"
   );
 
-  let cwins2 = [...Services.wm.getEnumerator("msgcompose")].length;
+  const cwins2 = [...Services.wm.getEnumerator("msgcompose")].length;
 
   Assert.ok(cwins2 > 0, "No compose window open!");
   Assert.equal(cwins, cwins2, "The number of compose windows changed!");
 
   // Type something and save, then check that we only have one draft.
-  cwc.type(cwc.e("content-frame"), "Hello!");
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    cwc.window
-  );
-  waitForSaveOperation(cwc);
-  close_compose_window(cwc);
+  cwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hello!", cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
   Assert.equal(draftsFolder.getTotalMessages(false), 1);
 
-  press_delete(mc); // clean up after ourselves
+  await select_click_row(0);
+  await press_delete(window); // clean up after ourselves
 });
 
 /**
@@ -101,9 +115,9 @@ add_task(function test_open_draft_again() {
  * Test that the user set delivery format is preserved in a draft message.
  */
 async function internal_check_delivery_format(editDraft) {
-  let cwc = open_compose_new_mail();
+  let cwc = await open_compose_new_mail();
 
-  setup_msg_contents(
+  await setup_msg_contents(
     cwc,
     "test@example.invalid",
     "Testing storing of the composition properties in the draft!",
@@ -111,22 +125,15 @@ async function internal_check_delivery_format(editDraft) {
   );
 
   // Select our wanted format.
-  if (["linux", "win"].includes(AppConstants.platform)) {
-    cwc.click(cwc.e("optionsMenu"));
-    await cwc.click_menus_in_sequence(cwc.e("optionsMenuPopup"), [
-      { id: "outputFormatMenu" },
-      { id: "format_both" },
-    ]);
-  } else {
-    // On OS X the main menu seems not accessible for clicking from tests.
-    Assert.ok(
-      cwc
-        .e("outputFormatMenu")
-        .getAttribute("oncommand")
-        .startsWith("OutputFormatMenuSelect(")
-    );
-    cwc.window.OutputFormatMenuSelect(cwc.e("format_both"));
-  }
+  EventUtils.synthesizeMouseAtCenter(
+    cwc.document.getElementById("optionsMenu"),
+    {},
+    cwc.document.getElementById("optionsMenu").ownerGlobal
+  );
+  await click_menus_in_sequence(
+    cwc.document.getElementById("optionsMenuPopup"),
+    [{ id: "outputFormatMenu" }, { id: "format_both" }]
+  );
 
   /**
    * Check if the right format is selected in the menu.
@@ -135,133 +142,206 @@ async function internal_check_delivery_format(editDraft) {
    * @param aValue       A value of nsIMsgCompSendFormat constants of the expected selected format.
    */
   async function assert_format_value(aMenuItemId, aValue) {
-    if (["linux", "win"].includes(AppConstants.platform)) {
-      cwc.click(cwc.e("optionsMenu"));
-      let formatMenu = await cwc.click_menus_in_sequence(
-        cwc.e("optionsMenuPopup"),
-        [{ id: "outputFormatMenu" }],
-        true
-      );
-      let formatItem = cwc
-        .e("outputFormatMenuPopup")
-        .querySelector("[name=output_format][checked=true]");
-      Assert.equal(formatItem.id, aMenuItemId);
-      cwc.close_popup_sequence(formatMenu);
-    } else {
-      Assert.equal(cwc.window.gSendFormat, aValue);
-    }
+    EventUtils.synthesizeMouseAtCenter(
+      cwc.document.getElementById("optionsMenu"),
+      {},
+      cwc.document.getElementById("optionsMenu").ownerGlobal
+    );
+    const formatMenu = await click_menus_in_sequence(
+      cwc.document.getElementById("optionsMenuPopup"),
+      [{ id: "outputFormatMenu" }],
+      true
+    );
+    const formatItem = cwc.document
+      .getElementById("outputFormatMenuPopup")
+      .querySelector("[name=output_format][checked=true]");
+    Assert.equal(formatItem.id, aMenuItemId);
+    close_popup_sequence(formatMenu);
   }
 
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
-  wait_for_window_focused(cwc.window);
-
-  close_compose_window(cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
 
   // Open a new composition see if the menu is again at default value, not the one
   // chosen above.
-  cwc = open_compose_new_mail();
+  cwc = await open_compose_new_mail();
 
-  await assert_format_value("format_auto", Ci.nsIMsgCompSendFormat.AskUser);
+  await assert_format_value("format_auto", Ci.nsIMsgCompSendFormat.Auto);
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
-  be_in_folder(draftsFolder);
-  select_click_row(0);
+  await be_in_folder(draftsFolder);
+  await select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, kBoxId, "draftMsgContent");
-  let box = get_notification(mc, kBoxId, "draftMsgContent");
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+  const box = get_notification(aboutMessage, kBoxId, "draftMsgContent");
 
-  plan_for_new_window("msgcompose");
+  const composePromise = promise_new_window("msgcompose");
   if (editDraft) {
     // Trigger "edit draft".
     EventUtils.synthesizeMouseAtCenter(
       box.buttonContainer.firstElementChild,
-      {}
+      {},
+      aboutMessage
     );
   } else {
     // Trigger "edit as new" resulting in template processing.
-    EventUtils.synthesizeKey(
-      "e",
-      { shiftKey: false, accelKey: true },
-      mc.window
-    );
+    EventUtils.synthesizeKey("e", { shiftKey: false, accelKey: true }, window);
   }
-  cwc = wait_for_compose_window();
+  cwc = await compose_window_ready(composePromise);
 
   // Check if format value was restored.
   await assert_format_value("format_both", Ci.nsIMsgCompSendFormat.Both);
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
-  press_delete(mc); // clean up the created draft
+  await press_delete(window); // clean up the created draft
 }
 
 add_task(async function test_save_delivery_format_with_edit_draft() {
   await internal_check_delivery_format(true);
-});
+}).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
 
 add_task(async function test_save_delivery_format_with_edit_template() {
   await internal_check_delivery_format(false);
-});
+}).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
 
 /**
  * Tests that 'Edit as New' leaves the original message in drafts folder.
  */
-add_task(function test_edit_as_new_in_draft() {
-  make_new_sets_in_folder(draftsFolder, [{ count: 1 }]);
-  be_in_folder(draftsFolder);
+add_task(async function test_edit_as_new_in_draft() {
+  await make_message_sets_in_folders([draftsFolder], [{ count: 1 }]);
+  await be_in_folder(draftsFolder);
 
   Assert.equal(draftsFolder.getTotalMessages(false), 1);
 
-  select_click_row(0);
+  await select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, kBoxId, "draftMsgContent");
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
 
-  plan_for_new_window("msgcompose");
+  const composePromise = promise_new_window("msgcompose");
   EventUtils.synthesizeKey("e", { shiftKey: false, accelKey: true });
-  let cwc = wait_for_compose_window();
+  const cwc = await compose_window_ready(composePromise);
 
-  cwc.type(cwc.e("content-frame"), "Hello!");
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    cwc.window
+  cwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hello!", cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
+
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 2,
+    "message saved to drafts folder"
   );
-  waitForSaveOperation(cwc);
-
-  close_compose_window(cwc);
-  Assert.equal(draftsFolder.getTotalMessages(false), 2);
 
   // Clean up the created drafts and count again.
-  press_delete(mc);
-  press_delete(mc);
+  await press_delete(window);
+  await select_click_row(0);
+  await press_delete(window);
   Assert.equal(draftsFolder.getTotalMessages(false), 0);
+});
+
+/**
+ * Tests that editing a draft works as it should also when the identity
+ * name has properties that require mime encoding when sent out.
+ */
+add_task(async function test_edit_draft_mime_from() {
+  const identity = MailServices.accounts.createIdentity();
+  identity.email = "skinner@example.com";
+  identity.fullName = "SKINNER, Seymore";
+  const accounts = MailServices.accounts.accounts.at(-1); // Local Folders
+  accounts.addIdentity(identity);
+  registerCleanupFunction(() => {
+    accounts.removeIdentity(identity);
+  });
+
+  draftsFolder
+    .QueryInterface(Ci.nsIMsgLocalMailFolder)
+    .addMessage(
+      "From - Sun Oct 01 01:02:03 2023\n" +
+        "X-Mozilla-Status: 0000\n" +
+        "X-Mozilla-Status2: 00000000\n" +
+        "X-Mozilla-Keys:\n" +
+        `X-Account-Key: ${accounts.key}\n` +
+        `From: "SKINNER, Seymore <skinner@example.com>\n` +
+        "To: nobody@example.invalid\n" +
+        "Subject: test_edit_draft_mime_from!\n" +
+        `Message-ID: <${Date.now()}@example.invalid>\n` +
+        "Date: Sun, 1 Oct 2017 01:02:03 +0100\n" +
+        "X-Mozilla-Draft-Info: internal/draft; vcard=0; receipt=0; DSN=0; uuencode=0;\n" +
+        " attachmentreminder=0; deliveryformat=4\n" +
+        "MIME-Version: 1.0\n" +
+        "Content-Type: text/plain; charset=utf-8\n" +
+        "Content-Transfer-Encoding: 8bit\n" +
+        "\n" +
+        "Identitiy names should not show quotes!.\n"
+    );
+  await be_in_folder(draftsFolder);
+
+  Assert.equal(
+    draftsFolder.getTotalMessages(false),
+    1,
+    "should have one draft"
+  );
+
+  await select_click_row(0);
+
+  // Wait for the notification with the Edit button.
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+
+  const composePromise = promise_new_window("msgcompose");
+  EventUtils.synthesizeKey("e", { shiftKey: false, accelKey: true });
+  const cwc = await compose_window_ready(composePromise);
+
+  const msgIdentity = cwc.document.getElementById("msgIdentity");
+  // Should show no quotes in the address.
+  Assert.equal(
+    msgIdentity.value,
+    "SKINNER, Seymore <skinner@example.com>",
+    "should show human readable version of identity"
+  );
+  // Should not be editable - which it would be if no identity matched.
+  Assert.equal(
+    msgIdentity.getAttribute("editable"),
+    "",
+    "msgIdentity should not be editable since a draft identity email matches"
+  );
+
+  await close_compose_window(cwc);
+  // Clean up the created draft and count again.
+  await press_delete(window);
+  Assert.equal(
+    draftsFolder.getTotalMessages(false),
+    0,
+    "should have no drafts after deleting"
+  );
 });
 
 /**
  * Tests Content-Language header.
  */
-add_task(function test_content_language_header() {
-  let cwc = open_compose_new_mail();
+add_task(async function test_content_language_header() {
+  const cwc = await open_compose_new_mail();
 
-  setup_msg_contents(
+  await setup_msg_contents(
     cwc,
     "test@example.invalid",
     "Testing Content-Language header",
     "Hello, we speak en-US"
   );
 
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
-  wait_for_window_focused(cwc.window);
-  close_compose_window(cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
 
-  be_in_folder(draftsFolder);
-  let draftMsg = select_click_row(0);
-  let draftMsgContent = get_msg_source(draftMsg);
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 1,
+    "message saved to drafts folder"
+  );
+
+  await be_in_folder(draftsFolder);
+  const draftMsg = await select_click_row(0);
+  const draftMsgContent = await get_msg_source(draftMsg);
 
   // Check for a single line that contains our header.
   if (
@@ -273,33 +353,38 @@ add_task(function test_content_language_header() {
   }
 
   // Clean up the created draft.
-  press_delete(mc);
+  await press_delete(window);
 });
 
 /**
  * Tests Content-Language header suppression.
  */
-add_task(function test_content_language_header_suppression() {
-  let statusQuo = Services.prefs.getBoolPref("mail.suppress_content_language");
+add_task(async function test_content_language_header_suppression() {
+  const statusQuo = Services.prefs.getBoolPref(
+    "mail.suppress_content_language"
+  );
   Services.prefs.setBoolPref("mail.suppress_content_language", true);
 
-  let cwc = open_compose_new_mail();
+  const cwc = await open_compose_new_mail();
 
-  setup_msg_contents(
+  await setup_msg_contents(
     cwc,
     "test@example.invalid",
     "Testing Content-Language header suppression",
     "Hello, we speak blank"
   );
 
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
-  wait_for_window_focused(cwc.window);
-  close_compose_window(cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
 
-  be_in_folder(draftsFolder);
-  let draftMsg = select_click_row(0);
-  let draftMsgContent = get_msg_source(draftMsg);
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 1,
+    "message saved to drafts folder"
+  );
+
+  await be_in_folder(draftsFolder);
+  const draftMsg = await select_click_row(0);
+  const draftMsgContent = await get_msg_source(draftMsg);
 
   // Check no line contains our Content-Language.
   Assert.ok(
@@ -308,7 +393,7 @@ add_task(function test_content_language_header_suppression() {
   );
 
   // Clean up the created draft.
-  press_delete(mc);
+  await press_delete(window);
 
   Services.prefs.setBoolPref("mail.suppress_content_language", statusQuo);
 });
@@ -316,52 +401,55 @@ add_task(function test_content_language_header_suppression() {
 /**
  * Tests space stuffing of plaintext message.
  */
-add_task(function test_remove_space_stuffing_format_flowed() {
+add_task(async function test_remove_space_stuffing_format_flowed() {
   // Prepare for plaintext email.
-  let oldHtmlPref = Services.prefs.getBoolPref(
+  const oldHtmlPref = Services.prefs.getBoolPref(
     "mail.identity.default.compose_html"
   );
   Services.prefs.setBoolPref("mail.identity.default.compose_html", false);
 
-  let cwc = open_compose_new_mail();
+  let cwc = await open_compose_new_mail();
 
-  setup_msg_contents(
+  await setup_msg_contents(
     cwc,
     "test@example.invalid",
     "Testing space stuffing in plain text email",
     "NoSpace\n OneSpace\n  TwoSpaces"
   );
 
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
-  wait_for_window_focused(cwc.window);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
 
-  close_compose_window(cwc);
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 1,
+    "message saved to drafts folder"
+  );
 
-  be_in_folder(draftsFolder);
+  await be_in_folder(draftsFolder);
 
-  select_click_row(0);
+  await select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, kBoxId, "draftMsgContent");
-  let box = get_notification(mc, kBoxId, "draftMsgContent");
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+  const box = get_notification(aboutMessage, kBoxId, "draftMsgContent");
 
-  plan_for_new_window("msgcompose");
+  const composePromise = promise_new_window("msgcompose");
   // Click on the "Edit" button in the draft notification.
-  EventUtils.synthesizeMouseAtCenter(box.buttonContainer.firstElementChild, {});
-  cwc = wait_for_compose_window();
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
+  cwc = await compose_window_ready(composePromise);
 
-  let bodyText = get_compose_body(cwc).innerHTML;
+  const bodyText = get_compose_body(cwc).innerHTML;
   if (!bodyText.includes("NoSpace<br> OneSpace<br>  TwoSpaces")) {
     Assert.ok(false, "Something went wrong with space stuffing");
   }
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   // Clean up the created draft.
-  press_delete(mc);
+  await press_delete(window);
 
   Services.prefs.setBoolPref("mail.identity.default.compose_html", oldHtmlPref);
-
-  // Work around this test timing out at completion because of focus weirdness.
-  window.gFolderDisplay.tree.focus();
 });

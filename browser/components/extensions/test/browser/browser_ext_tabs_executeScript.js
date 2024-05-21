@@ -3,8 +3,8 @@
 "use strict";
 
 add_task(async function testExecuteScript() {
-  let { MessageChannel } = ChromeUtils.import(
-    "resource://gre/modules/MessageChannel.jsm"
+  let { MessageChannel } = ChromeUtils.importESModule(
+    "resource://testing-common/MessageChannel.sys.mjs"
   );
 
   function countMM(messageManagerMap) {
@@ -77,7 +77,7 @@ add_task(async function testExecuteScript() {
             code: "42",
           })
           .then(
-            result => {
+            () => {
               browser.test.fail(
                 "Expected not to be able to execute a script with both file and code"
               );
@@ -208,7 +208,7 @@ add_task(async function testExecuteScript() {
             code: "window",
           })
           .then(
-            result => {
+            () => {
               browser.test.fail(
                 "Expected error when returning non-structured-clonable object"
               );
@@ -232,7 +232,7 @@ add_task(async function testExecuteScript() {
             code: "Promise.resolve(window)",
           })
           .then(
-            result => {
+            () => {
               browser.test.fail(
                 "Expected error when returning non-structured-clonable object"
               );
@@ -256,13 +256,14 @@ add_task(async function testExecuteScript() {
             file: "script3.js",
           })
           .then(
-            result => {
+            () => {
               browser.test.fail(
                 "Expected error when returning non-structured-clonable object"
               );
             },
             error => {
-              const expected = /Script '.*script3.js' result is non-structured-clonable data/;
+              const expected =
+                /Script '.*script3.js' result is non-structured-clonable data/;
               browser.test.assertTrue(
                 expected.test(error.message),
                 "Got expected error"
@@ -280,14 +281,14 @@ add_task(async function testExecuteScript() {
             code: "42",
           })
           .then(
-            result => {
+            () => {
               browser.test.fail(
                 "Expected error when specifying invalid frame ID"
               );
             },
             error => {
               browser.test.assertEq(
-                `Frame not found, or missing host permission`,
+                `Invalid frame IDs: [${Number.MAX_SAFE_INTEGER}].`,
                 error.message,
                 "Got expected error"
               );
@@ -302,7 +303,7 @@ add_task(async function testExecuteScript() {
                 code: "42",
               })
               .then(
-                result => {
+                () => {
                   browser.test.fail(
                     "Expected error when trying to execute on invalid domain"
                   );
@@ -423,7 +424,7 @@ add_task(async function testExecuteScript() {
     background,
 
     files: {
-      "script.js": function() {
+      "script.js": function () {
         browser.runtime.sendMessage("script ran");
       },
 

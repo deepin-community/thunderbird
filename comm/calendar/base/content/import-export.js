@@ -4,10 +4,9 @@
 
 /* import-globals-from item-editing/calendar-item-editing.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
-/* exported loadEventsFromFile, exportEntireCalendar */
+/* exported getItemsFromIcsFile, putItemsIntoCal, exportEntireCalendar */
 
 // File constants copied from file-utils.js
 var MODE_RDONLY = 0x01;
@@ -16,105 +15,15 @@ var MODE_CREATE = 0x08;
 var MODE_TRUNCATE = 0x20;
 
 /**
- * Loads events from a file into a calendar. If called without a file argument,
- * the user is asked to pick a file.
- *
- * @param {nsIFile} [fileArg] - Optional, a file to load events from.
- * @return {Promise<boolean>} True if the import dialog was opened, false if
- *                              not (e.g. on cancel of file picker dialog).
- */
-async function loadEventsFromFile(fileArg) {
-  let file = fileArg;
-  if (!file) {
-    file = await pickFileToImport();
-    if (!file) {
-      // Probably the user clicked "cancel" (no file and the promise was not
-      // rejected in pickFileToImport).
-      return false;
-    }
-  }
-
-  Services.ww.openWindow(
-    null,
-    "chrome://calendar/content/calendar-ics-file-dialog.xhtml",
-    "_blank",
-    "chrome,titlebar,modal,centerscreen",
-    file
-  );
-  return true;
-}
-
-/**
- * Show a file picker dialog and return the file.
- *
- * @return {Promise<nsIFile | undefined>} The picked file or undefined if the
- *                                        user cancels the dialog.
- */
-function pickFileToImport() {
-  return new Promise(resolve => {
-    let picker = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
-    picker.init(window, cal.l10n.getCalString("filepickerTitleImport"), Ci.nsIFilePicker.modeOpen);
-    picker.defaultExtension = "ics";
-
-    let currentListLength = 0;
-    for (let { data } of Services.catMan.enumerateCategory("cal-importers")) {
-      let contractId = Services.catMan.getCategoryEntry("cal-importers", data);
-      let importer;
-      try {
-        importer = Cc[contractId].getService(Ci.calIImporter);
-      } catch (e) {
-        cal.WARN("Could not initialize importer: " + contractId + "\nError: " + e);
-        continue;
-      }
-      let types = importer.getFileTypes();
-      for (let type of types) {
-        picker.appendFilter(type.description, type.extensionFilter);
-        if (type.extensionFilter == "*." + picker.defaultExtension) {
-          picker.filterIndex = currentListLength;
-        }
-        currentListLength++;
-      }
-    }
-
-    picker.open(returnValue => {
-      if (returnValue == Ci.nsIFilePicker.returnCancel) {
-        resolve();
-      }
-      resolve(picker.file);
-    });
-  });
-}
-
-/**
- * Given a file, return the contractId for an importer for the file type.
- *
- * @param {nsIFile} file - A file.
- * @return {string} A contract ID.
- */
-function getContractIdForImportingFile(file) {
-  let fileNameLower = file.leafName.toLowerCase();
-  let contractId = "@mozilla.org/calendar/import;1?type=";
-
-  if (fileNameLower.endsWith(".ics")) {
-    return contractId + "ics";
-  } else if (fileNameLower.endsWith(".csv")) {
-    return contractId + "csv";
-  }
-  throw new Error("No importer for this type of file: " + file.leafName);
-}
-
-/**
- * Given a file (e.g. an ICS or CSV file), return an array of calendar items
- * parsed from it.
+ * Given an ICS file, return an array of calendar items parsed from it.
  *
  * @param {nsIFile} file - File to get items from.
- * @return {calIItemBase[]} Array of calendar items.
+ * @returns {calIItemBase[]} Array of calendar items.
  */
-function getItemsFromFile(file) {
-  let contractId = getContractIdForImportingFile(file);
-  let importer = Cc[contractId].getService(Ci.calIImporter);
+function getItemsFromIcsFile(file) {
+  const importer = Cc["@mozilla.org/calendar/import;1?type=ics"].getService(Ci.calIImporter);
 
-  let inputStream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(
+  const inputStream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(
     Ci.nsIFileInputStream
   );
   let items = [];
@@ -153,29 +62,30 @@ function getItemsFromFile(file) {
 
 /**
  * @callback onError
- * @param {calIItemBase} item          The item which failed to import.
- * @param {Number|nsIException} error  The error number from Components.results, or
+ * @param {calIItemBase} item - The item which failed to import.
+ * @param {number | nsIException} error  The error number from Components.results, or
  *                                     the exception which contains the error number.
  */
 
 /**
  * Listener for the stages of putItemsIntoCal().
+ *
  * @typedef PutItemsIntoCalListener
- * @property {function}   onStart
+ * @property {Function}   onStart
  * @property {onError}    onDuplicate
  * @property {onError}    onError
  * @property {onProgress} onProgress
- * @property {function}   onEnd
+ * @property {Function}   onEnd
  */
 
 /**
  * Put items into a certain calendar, catching errors and showing them to the
  * user.
  *
- * @param {calICalendar} destCal    The destination calendar.
- * @param {calIItemBase[]} aItems   An array of items to put into the calendar.
- * @param {string} aFilePath        The original file path, for error messages.
- * @param {PutItemsIntoCalListener} [aListener]  Optional listener.
+ * @param {calICalendar} destCal - The destination calendar.
+ * @param {calIItemBase[]} aItems - An array of items to put into the calendar.
+ * @param {string} aFilePath - The original file path, for error messages.
+ * @param {PutItemsIntoCalListener} [aListener] - Optional listener.
  */
 async function putItemsIntoCal(destCal, aItems, aListener) {
   async function callListener(method, ...args) {
@@ -190,18 +100,16 @@ async function putItemsIntoCal(destCal, aItems, aListener) {
   startBatchTransaction();
 
   let count = 0;
-  let total = aItems.length;
+  const total = aItems.length;
 
-  // Using wrappedJSObject is a hack that is needed to prevent a proxy error.
-  let pcal = cal.async.promisifyCalendar(destCal.wrappedJSObject);
-  for (let item of aItems) {
+  for (const item of aItems) {
     try {
-      await pcal.addItem(item);
+      await destCal.addItem(item);
     } catch (e) {
       if (e == Ci.calIErrors.DUPLICATE_ID) {
         await callListener("onDuplicate", item, e);
       } else {
-        Cu.reportError(e);
+        console.error(e);
         await callListener("onError", item, e);
       }
     }
@@ -219,9 +127,8 @@ async function putItemsIntoCal(destCal, aItems, aListener) {
 /**
  * Save data to a file. Create the file or overwrite an existing file.
  *
- * @param calendarEventArray (required) Array of calendar events that should
- *                                      be saved to file.
- * @param aDefaultFileName   (optional) Initial filename shown in SaveAs dialog.
+ * @param {calIEvent[]} calendarEventArray - Array of calendar events that should be saved to file.
+ * @param {string} [aDefaultFileName] - Initial filename shown in SaveAs dialog.
  */
 function saveEventsToFile(calendarEventArray, aDefaultFileName) {
   if (!calendarEventArray || !calendarEventArray.length) {
@@ -229,26 +136,32 @@ function saveEventsToFile(calendarEventArray, aDefaultFileName) {
   }
 
   // Show the 'Save As' dialog and ask for a filename to save to
-  let picker = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
+  const picker = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
+  picker.init(
+    window.browsingContext,
+    cal.l10n.getCalString("filepickerTitleExport"),
+    Ci.nsIFilePicker.modeSave
+  );
 
-  picker.init(window, cal.l10n.getCalString("filepickerTitleExport"), Ci.nsIFilePicker.modeSave);
-
+  let filename;
   if (aDefaultFileName && aDefaultFileName.length && aDefaultFileName.length > 0) {
-    picker.defaultString = aDefaultFileName;
+    filename = aDefaultFileName;
   } else if (calendarEventArray.length == 1 && calendarEventArray[0].title) {
-    picker.defaultString = calendarEventArray[0].title;
+    filename = calendarEventArray[0].title;
   } else {
-    picker.defaultString = cal.l10n.getCalString("defaultFileName");
+    filename = cal.l10n.getCalString("defaultFileName");
   }
+  // Remove characters usually illegal on the file system.
+  picker.defaultString = filename.replace(/[/\\?%*:|"<>]/g, "-");
 
   picker.defaultExtension = "ics";
 
   // Get a list of exporters
-  let contractids = [];
+  const contractids = [];
   let currentListLength = 0;
   let defaultCIDIndex = 0;
-  for (let { data } of Services.catMan.enumerateCategory("cal-exporters")) {
-    let contractid = Services.catMan.getCategoryEntry("cal-exporters", data);
+  for (const { data } of Services.catMan.enumerateCategory("cal-exporters")) {
+    const contractid = Services.catMan.getCategoryEntry("cal-exporters", data);
     let exporter;
     try {
       exporter = Cc[contractid].getService(Ci.calIExporter);
@@ -256,8 +169,8 @@ function saveEventsToFile(calendarEventArray, aDefaultFileName) {
       cal.WARN("Could not initialize exporter: " + contractid + "\nError: " + e);
       continue;
     }
-    let types = exporter.getFileTypes();
-    for (let type of types) {
+    const types = exporter.getFileTypes();
+    for (const type of types) {
       picker.appendFilter(type.description, type.extensionFilter);
       if (type.extensionFilter == "*." + picker.defaultExtension) {
         picker.filterIndex = currentListLength;
@@ -280,22 +193,18 @@ function saveEventsToFile(calendarEventArray, aDefaultFileName) {
       filterIndex = defaultCIDIndex;
     }
 
-    let exporter = Cc[contractids[filterIndex]].getService(Ci.calIExporter);
+    const exporter = Cc[contractids[filterIndex]].getService(Ci.calIExporter);
 
     let filePath = picker.file.path;
     if (!filePath.includes(".")) {
       filePath += "." + exporter.getFileTypes()[0].defaultExtension;
     }
 
-    const nsIFile = Ci.nsIFile;
-    const nsIFileOutputStream = Ci.nsIFileOutputStream;
-
-    let outputStream;
-    let localFileInstance = Cc["@mozilla.org/file/local;1"].createInstance(nsIFile);
+    const localFileInstance = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
     localFileInstance.initWithPath(filePath);
 
-    outputStream = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(
-      nsIFileOutputStream
+    const outputStream = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(
+      Ci.nsIFileOutputStream
     );
     try {
       outputStream.init(
@@ -322,27 +231,15 @@ function saveEventsToFile(calendarEventArray, aDefaultFileName) {
  * @param aCalendar     (optional) A specific calendar to export
  */
 function exportEntireCalendar(aCalendar) {
-  let itemArray = [];
-  let getListener = {
-    QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-    onOperationComplete(aOpCalendar, aStatus, aOperationType, aId, aDetail) {
-      saveEventsToFile(itemArray, aOpCalendar.name);
-    },
-    onGetResult(aOpCalendar, aStatus, aItemType, aDetail, aItems) {
-      for (let item of aItems) {
-        itemArray.push(item);
-      }
-    },
-  };
-
-  let getItemsFromCal = function(aCal) {
-    aCal.getItems(Ci.calICalendar.ITEM_FILTER_ALL_ITEMS, 0, null, null, getListener);
+  const getItemsFromCal = async function (aCal) {
+    const items = await aCal.getItemsAsArray(Ci.calICalendar.ITEM_FILTER_ALL_ITEMS, 0, null, null);
+    saveEventsToFile(items, aCal.name);
   };
 
   if (aCalendar) {
     getItemsFromCal(aCalendar);
   } else {
-    let calendars = cal.getCalendarManager().getCalendars();
+    const calendars = cal.manager.getCalendars();
 
     if (calendars.length == 1) {
       // There's only one calendar, so it's silly to ask what calendar
@@ -350,7 +247,7 @@ function exportEntireCalendar(aCalendar) {
       getItemsFromCal(calendars[0]);
     } else {
       // Ask what calendar to import into
-      let args = {};
+      const args = {};
       args.onOk = getItemsFromCal;
       args.promptText = cal.l10n.getCalString("exportPrompt");
       openDialog(

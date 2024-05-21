@@ -78,7 +78,7 @@ Interesting things to look for:
     having your classes in the list is *not* ok. That means no one is
     looking at them, and we won't be able to tell if someone introduces
     a leak. (See
-    [below](bloatview.html#how-to-instrument-your-objects-for-bloatview)
+    [below](#how-to-instrument-your-objects-for-bloatview)
     for how to fix this.)
 -   **The Bytes Leaked for your classes should be zero!** - Need I say
     more? If it isn't, you should use the other tools to fix it.
@@ -220,7 +220,7 @@ modify are listed below:
 -   Linux: `unittests/linux_unittest.py`
 -   Mac: `unittests/mac_unittest.py`
 -   Windows: `unittests/win_unittest.py`
--   Android: `android/androidarm_4_3.py`
+-   Android: `android/androidarm.py`
 
 ## How to instrument your objects for BloatView
 

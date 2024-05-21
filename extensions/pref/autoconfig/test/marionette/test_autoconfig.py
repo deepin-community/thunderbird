@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 import shutil
 
@@ -12,12 +10,14 @@ from marionette_harness import MarionetteTestCase
 
 class TestAutoConfig(MarionetteTestCase):
     def tearDown(self):
-        self.marionette.quit(clean=True)
+        self.marionette.quit(in_app=False, clean=True)
 
         if hasattr(self, "pref_file"):
             os.remove(self.pref_file)
         if hasattr(self, "autoconfig_file"):
             os.remove(self.autoconfig_file)
+        if hasattr(self, "pref_file_dir_created"):
+            os.rmdir(self.pref_file_dir)
 
         super(TestAutoConfig, self).tearDown()
 
@@ -50,7 +50,11 @@ class TestAutoConfig(MarionetteTestCase):
         self.marionette.quit()
 
         test_dir = os.path.dirname(__file__)
-        self.pref_file = os.path.join(self.exe_dir, "defaults", "pref", "autoconfig.js")
+        self.pref_file_dir = os.path.join(self.exe_dir, "defaults", "pref")
+        if not os.path.exists(self.pref_file_dir):
+            os.makedirs(self.pref_file_dir, exist_ok=True)
+            self.pref_file_dir_created = True
+        self.pref_file = os.path.join(self.pref_file_dir, "autoconfig.js")
         shutil.copyfile(os.path.join(test_dir, "autoconfig.js"), self.pref_file)
         self.autoconfig_file = os.path.join(self.exe_dir, "autoconfig.cfg")
         shutil.copyfile(os.path.join(test_dir, "autoconfig.cfg"), self.autoconfig_file)

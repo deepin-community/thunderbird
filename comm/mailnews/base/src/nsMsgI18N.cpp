@@ -13,7 +13,6 @@
 #include "nsIMimeConverter.h"
 #include "nsMsgUtils.h"
 #include "nsMsgI18N.h"
-#include "nsMsgMimeCID.h"
 #include "nsILineInputStream.h"
 #include "nsMimeTypes.h"
 #include "nsString.h"
@@ -28,6 +27,9 @@
 #include "../../intl/nsUTF7ToUnicode.h"
 #include "../../intl/nsMUTF7ToUnicode.h"
 #include "../../intl/nsUnicodeToMUTF7.h"
+
+#include <stdlib.h>
+#include <tuple>
 
 //
 // International functions necessary for composition
@@ -50,10 +52,8 @@ nsresult nsMsgI18NConvertFromUnicode(const nsACString& aCharset,
     return NS_ERROR_UCONV_NOCONV;
   }
 
-  const mozilla::Encoding* actualEncoding;
   nsresult rv;
-  mozilla::Tie(rv, actualEncoding) = encoding->Encode(inString, outString);
-  mozilla::Unused << actualEncoding;
+  std::tie(rv, std::ignore) = encoding->Encode(inString, outString);
 
   if (rv == NS_OK_HAD_REPLACEMENTS) {
     rv = aReportUencNoMapping ? NS_ERROR_UENC_NOMAPPING : NS_OK;
@@ -174,23 +174,11 @@ nsresult CopyMUTF7toUTF16(const nsACString& aSrc, nsAString& aDest) {
 // MIME encoder, output string should be freed by PR_FREE
 // XXX : fix callers later to avoid allocation and copy
 char* nsMsgI18NEncodeMimePartIIStr(const char* header, bool structured,
-                                   const char* charset, int32_t fieldnamelen,
-                                   bool usemime) {
-  // No MIME, convert to the outgoing mail charset.
-  if (!usemime) {
-    nsAutoCString convertedStr;
-    if (NS_SUCCEEDED(nsMsgI18NConvertFromUnicode(
-            charset ? nsDependentCString(charset) : EmptyCString(),
-            NS_ConvertUTF8toUTF16(header), convertedStr)))
-      return PL_strdup(convertedStr.get());
-    else
-      return PL_strdup(header);
-  }
-
+                                   const char* charset, int32_t fieldnamelen) {
   nsAutoCString encodedString;
   nsresult res;
   nsCOMPtr<nsIMimeConverter> converter =
-      do_GetService(NS_MIME_CONVERTER_CONTRACTID, &res);
+      do_GetService("@mozilla.org/messenger/mimeconverter;1", &res);
   if (NS_SUCCEEDED(res) && nullptr != converter) {
     res = converter->EncodeMimePartIIStr_UTF8(
         nsDependentCString(header), structured, fieldnamelen,
@@ -241,7 +229,7 @@ bool nsMsgI18Ncheck_data_in_charset_range(const char* charset,
     uint32_t result;
     size_t read;
     size_t written;
-    mozilla::Tie(result, read, written) =
+    std::tie(result, read, written) =
         encoder->EncodeFromUTF16WithoutReplacement(src, dst, false);
     if (result == mozilla::kInputEmpty) {
       // All converted successfully.
@@ -320,7 +308,7 @@ const char* nsMsgI18NParseMetaCharset(nsIFile* file) {
   return charset;
 }
 
-nsresult nsMsgI18NShrinkUTF8Str(const nsCString& inString, uint32_t aMaxLength,
+nsresult nsMsgI18NShrinkUTF8Str(const nsACString& inString, uint32_t aMaxLength,
                                 nsACString& outString) {
   if (inString.IsEmpty()) {
     outString.Truncate();
@@ -331,7 +319,7 @@ nsresult nsMsgI18NShrinkUTF8Str(const nsCString& inString, uint32_t aMaxLength,
     return NS_OK;
   }
   NS_ASSERTION(mozilla::IsUtf8(inString), "Invalid UTF-8 string is inputted");
-  const char* start = inString.get();
+  const char* start = inString.BeginReading();
   const char* end = start + inString.Length();
   const char* last = start + aMaxLength;
   const char* cur = start;
@@ -350,7 +338,7 @@ nsresult nsMsgI18NShrinkUTF8Str(const nsCString& inString, uint32_t aMaxLength,
   return NS_OK;
 }
 
-void nsMsgI18NConvertRawBytesToUTF16(const nsCString& inString,
+void nsMsgI18NConvertRawBytesToUTF16(const nsACString& inString,
                                      const nsACString& charset,
                                      nsAString& outString) {
   if (mozilla::IsUtf8(inString)) {
@@ -373,7 +361,7 @@ void nsMsgI18NConvertRawBytesToUTF16(const nsCString& inString,
   }
 }
 
-void nsMsgI18NConvertRawBytesToUTF8(const nsCString& inString,
+void nsMsgI18NConvertRawBytesToUTF8(const nsACString& inString,
                                     const nsACString& charset,
                                     nsACString& outString) {
   if (mozilla::IsUtf8(inString)) {

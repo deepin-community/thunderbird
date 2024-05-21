@@ -14,8 +14,6 @@
 
 .searchBox,
 .themeableSearchBox {
-  background-color: Field;
-  border: 1px solid ThreeDShadow;
   padding-block: 3px;
   padding-inline: 4px 2px;
   margin: 0 3px;

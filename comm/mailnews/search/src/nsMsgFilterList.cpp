@@ -15,7 +15,6 @@
 #include "nsMsgUtils.h"
 #include "nsMsgSearchTerm.h"
 #include "nsString.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgFilterService.h"
 #include "nsMsgSearchScopeTerm.h"
 #include "nsIStringBundle.h"
@@ -25,7 +24,9 @@
 #include "nsMemory.h"
 #include "prmem.h"
 #include "mozilla/ArrayUtils.h"
+#include "mozilla/Components.h"
 #include "mozilla/Logging.h"
+#include "mozilla/intl/AppDateTimeFormat.h"
 #include <ctype.h>
 
 // Marker for EOF or failure during read
@@ -208,7 +209,7 @@ nsresult nsMsgFilterList::GetLogFile(nsIFile** aFile) {
     rv = (*aFile)->AppendNative("filterlog.html"_ns);
     NS_ENSURE_SUCCESS(rv, rv);
   }
-  return NS_OK;
+  return EnsureLogFile(*aFile);
 }
 
 NS_IMETHODIMP
@@ -292,7 +293,7 @@ nsMsgFilterList::ApplyFiltersToHdr(nsMsgFilterTypeType filterType,
   msgHdr->GetMessageKey(&msgKey);
   nsCString typeName;
   nsCOMPtr<nsIMsgFilterService> filterService =
-      do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
   filterService->FilterTypeName(filterType, typeName);
   MOZ_LOG(FILTERLOGMODULE, LogLevel::Info,
           ("(Auto) Filter run initiated, trigger=%s (%i)", typeName.get(),
@@ -406,7 +407,7 @@ NS_IMETHODIMP
 nsMsgFilterList::SaveToDefaultFile() {
   nsresult rv;
   nsCOMPtr<nsIMsgFilterService> filterService =
-      do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   return filterService->SaveFilterList(this, m_defaultFile);
@@ -667,16 +668,6 @@ nsresult nsMsgFilterList::LoadTextFilters(
               currentFilterAction->SetPriority(outPriority);
             else
               NS_ASSERTION(false, "invalid priority in filter file");
-          } else if (type == nsMsgFilterAction::Label) {
-            // upgrade label to corresponding tag/keyword
-            nsresult res;
-            int32_t labelInt = value.ToInteger(&res);
-            if (NS_SUCCEEDED(res)) {
-              nsAutoCString keyword("$label");
-              keyword.Append('0' + labelInt);
-              currentFilterAction->SetType(nsMsgFilterAction::AddTag);
-              currentFilterAction->SetStrValue(keyword);
-            }
           } else if (type == nsMsgFilterAction::JunkScore) {
             nsresult res;
             int32_t junkScore = value.ToInteger(&res);
@@ -1101,8 +1092,8 @@ nsresult nsMsgFilterList::ComputeArbitraryHeaders() {
       if (!arbitraryHeader.IsEmpty()) {
         if (m_arbitraryHeaders.IsEmpty())
           m_arbitraryHeaders.Assign(arbitraryHeader);
-        else if (m_arbitraryHeaders.Find(arbitraryHeader,
-                                         /* ignoreCase = */ true) == -1) {
+        else if (!FindInReadable(arbitraryHeader, m_arbitraryHeaders,
+                                 nsCaseInsensitiveCStringComparator)) {
           m_arbitraryHeaders.Append(' ');
           m_arbitraryHeaders.Append(arbitraryHeader);
         }
@@ -1148,7 +1139,7 @@ NS_IMETHODIMP nsMsgFilterList::LogFilterMessage(const nsAString& message,
   }
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -1174,9 +1165,10 @@ NS_IMETHODIMP nsMsgFilterList::LogFilterMessage(const nsAString& message,
   PRExplodedTime exploded;
   nsString dateValue;
   PR_ExplodeTime(PR_Now(), PR_LocalTimeParameters, &exploded);
-  mozilla::DateTimeFormat::FormatPRExplodedTime(mozilla::kDateFormatShort,
-                                                mozilla::kTimeFormatLong,
-                                                &exploded, dateValue);
+  mozilla::intl::DateTimeFormat::StyleBag style;
+  style.date = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Short);
+  style.time = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Long);
+  mozilla::intl::AppDateTimeFormat::Format(style, &exploded, dateValue);
 
   // HTML-escape the log for security reasons.
   // We don't want someone to send us a message with a subject with

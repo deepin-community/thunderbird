@@ -13,21 +13,14 @@
 "use strict";
 
 const URL1 =
-  "http://www.example.com/tests/toolkit/components/extensions/test/mochitest/file_tabs_permission_page1.html";
+  "https://www.example.com/tests/toolkit/components/extensions/test/mochitest/file_tabs_permission_page1.html";
 const URL2 =
-  "http://example.net/tests/toolkit/components/extensions/test/mochitest/file_tabs_permission_page2.html";
+  "https://example.net/tests/toolkit/components/extensions/test/mochitest/file_tabs_permission_page2.html";
 
 const helperExtensionDef = {
   manifest: {
-    applications: {
-      gecko: {
-        id: "helper@tests.mozilla.org",
-      },
-    },
     permissions: ["webNavigation", "<all_urls>"],
   },
-
-  useAddonManager: "permanent",
 
   async background() {
     browser.test.onMessage.addListener(async message => {
@@ -76,8 +69,7 @@ const helperExtensionDef = {
               hasTitleChangeInfo = false;
             browser.tabs.onUpdated.addListener(function listener(
               tabId,
-              changeInfo,
-              tab
+              changeInfo
             ) {
               if (changeInfo.url?.endsWith(message.data.urlHash)) {
                 hasURLChangeInfo = true;
@@ -125,15 +117,8 @@ async function test_query(testCases, permissions) {
 
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
-        gecko: {
-          id: "permissions@tests.mozilla.org",
-        },
-      },
       permissions,
     },
-
-    useAddonManager: "permanent",
 
     async background() {
       // wait for start message
@@ -198,7 +183,7 @@ async function test_query(testCases, permissions) {
   await helperExtension.unload();
 }
 
-// http://www.example.com host permission
+// https://www.example.com host permission
 add_task(function query_with_host_permission_url1() {
   return test_query(
     [
@@ -231,7 +216,7 @@ add_task(function query_with_host_permission_url1() {
   );
 });
 
-// http://example.net host permission
+// https://example.net host permission
 add_task(function query_with_host_permission_url2() {
   return test_query(
     [
@@ -409,15 +394,8 @@ async function test_restricted_properties(
 
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
-        gecko: {
-          id: "permissions@tests.mozilla.org",
-        },
-      },
       permissions,
     },
-
-    useAddonManager: "permanent",
 
     async background() {
       // wait for test start signal and data
@@ -434,7 +412,7 @@ async function test_restricted_properties(
 
       let hasURLChangeInfo = false,
         hasTitleChangeInfo = false;
-      function onUpdateListener(tabId, changeInfo, tab) {
+      function onUpdateListener(tabId, changeInfo) {
         if (changeInfo.url?.endsWith(urlHash)) {
           hasURLChangeInfo = true;
         }
@@ -525,11 +503,11 @@ async function test_restricted_properties(
   await helperExtension.unload();
 }
 
-// http://www.example.com host permission
+// https://www.example.com host permission
 add_task(function has_restricted_properties_with_host_permission_url1() {
   return test_restricted_properties(["*://www.example.com/*"], true);
 });
-// http://example.net host permission
+// https://example.net host permission
 add_task(function has_restricted_properties_with_host_permission_url2() {
   return test_restricted_properties(["*://example.net/*"], false);
 });
@@ -566,19 +544,12 @@ async function test_onUpdateFilter(testCases, permissions) {
 
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
-        gecko: {
-          id: "permissions@tests.mozilla.org",
-        },
-      },
       permissions,
     },
 
-    useAddonManager: "permanent",
-
     async background() {
       let listenerGotCalled = false;
-      function onUpdateListener(tabId, changeInfo, tab) {
+      function onUpdateListener() {
         listenerGotCalled = true;
       }
 
@@ -658,7 +629,7 @@ async function test_onUpdateFilter(testCases, permissions) {
   await helperExtension.unload();
 }
 
-// http://mozilla.org host permission
+// https://mozilla.org host permission
 add_task(function onUpdateFilter_with_host_permission_url3() {
   return test_onUpdateFilter(
     [
@@ -687,7 +658,7 @@ add_task(function onUpdateFilter_with_host_permission_url3() {
   );
 });
 
-// http://example.net host permission
+// https://example.net host permission
 add_task(function onUpdateFilter_with_host_permission_url2() {
   return test_onUpdateFilter(
     [

@@ -6,11 +6,11 @@
 
 "use strict";
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AboutNewTab: "resource:///modules/AboutNewTab.jsm",
-  NewTabUtils: "resource://gre/modules/NewTabUtils.jsm",
-  shortURL: "resource://activity-stream/lib/ShortURL.jsm",
-  getSearchProvider: "resource://activity-stream/lib/SearchShortcuts.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  AboutNewTab: "resource:///modules/AboutNewTab.sys.mjs",
+  NewTabUtils: "resource://gre/modules/NewTabUtils.sys.mjs",
+  getSearchProvider: "resource://activity-stream/lib/SearchShortcuts.sys.mjs",
+  shortURL: "resource://activity-stream/lib/ShortURL.sys.mjs",
 });
 
 const SHORTCUTS_PREF =
@@ -19,10 +19,10 @@ const TOPSITES_FEED_PREF =
   "browser.newtabpage.activity-stream.feeds.system.topsites";
 
 this.topSites = class extends ExtensionAPI {
-  getAPI(context) {
+  getAPI() {
     return {
       topSites: {
-        get: async function(options) {
+        get: async function (options) {
           // We fallback to newtab = false behavior if the user disabled their
           // Top Sites feed.
           let getNewtabSites =
@@ -40,11 +40,12 @@ this.topSites = class extends ExtensionAPI {
           if (options.includePinned && !getNewtabSites) {
             let pinnedLinks = NewTabUtils.pinnedLinks.links;
             if (options.includeFavicon) {
-              pinnedLinks = NewTabUtils.activityStreamProvider._faviconBytesToDataURI(
-                await NewTabUtils.activityStreamProvider._addFavicons(
-                  pinnedLinks
-                )
-              );
+              pinnedLinks =
+                NewTabUtils.activityStreamProvider._faviconBytesToDataURI(
+                  await NewTabUtils.activityStreamProvider._addFavicons(
+                    pinnedLinks
+                  )
+                );
             }
             pinnedLinks.forEach((pinnedLink, index) => {
               if (

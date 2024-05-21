@@ -15,38 +15,39 @@ var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
-  make_new_sets_in_folder,
-  mc,
+  get_about_3pane,
+  make_message_sets_in_folders,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var folder;
 var setA;
 
-add_task(function setupModule(module) {
-  folder = create_folder("InvalidMSF");
-  [setA] = make_new_sets_in_folder(folder, [{ count: 3 }]);
+add_setup(async function () {
+  folder = await create_folder("InvalidMSF");
+  [setA] = await make_message_sets_in_folders([folder], [{ count: 3 }]);
 });
 
 /**
  * Check if the db of a folder assumed to be invalid can be restored.
  */
-add_task(function test_load_folder_with_invalidDB() {
+add_task(async function test_load_folder_with_invalidDB() {
   folder.msgDatabase.dBFolderInfo.sortType = Ci.nsMsgViewSortType.bySubject;
   folder.msgDatabase.summaryValid = false;
-  folder.msgDatabase.ForceClosed();
+  folder.msgDatabase.forceClosed();
   folder.msgDatabase = null;
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   assert_messages_in_view(setA);
-  var curMessage = select_click_row(0);
-  assert_selected_and_displayed(curMessage);
+  var curMessage = await select_click_row(0);
+  await assert_selected_and_displayed(curMessage);
 });
 
 add_task(function test_view_sort_maintained() {
-  if (mc.dbView.sortType != Ci.nsMsgViewSortType.bySubject) {
+  const win = get_about_3pane();
+  if (win.gDBView.sortType != Ci.nsMsgViewSortType.bySubject) {
     throw new Error("view sort type not restored from invalid db");
   }
 

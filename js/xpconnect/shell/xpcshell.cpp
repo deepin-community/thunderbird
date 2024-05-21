@@ -11,7 +11,6 @@
 #include "mozilla/Bootstrap.h"
 #include "XREShellData.h"
 
-#include "nsXULAppAPI.h"
 #ifdef XP_MACOSX
 #  include "xpcshellMacUtils.h"
 #endif
@@ -33,9 +32,7 @@
 #  include <gtk/gtk.h>
 #endif
 
-#ifdef MOZ_GECKO_PROFILER
-#  include "BaseProfiler.h"
-#endif
+#include "BaseProfiler.h"
 
 #ifdef LIBFUZZER
 #  include "FuzzerDefs.h"
@@ -61,10 +58,8 @@ int main(int argc, char** argv, char** envp) {
   DllBlocklist_Initialize();
 #endif
 
-#ifdef MOZ_GECKO_PROFILER
   char aLocal;
   mozilla::baseprofiler::profiler_init(&aLocal);
-#endif
 
   XREShellData shellData;
 #if defined(XP_WIN) && defined(MOZ_SANDBOX)
@@ -85,9 +80,7 @@ int main(int argc, char** argv, char** envp) {
 
   int result = bootstrap->XRE_XPCShellMain(argc, argv, envp, &shellData);
 
-#ifdef MOZ_GECKO_PROFILER
   mozilla::baseprofiler::profiler_shutdown();
-#endif
 
 #if defined(DEBUG) && defined(HAS_DLL_BLOCKLIST)
   DllBlocklist_Shutdown();

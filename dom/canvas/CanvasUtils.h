@@ -10,7 +10,8 @@
 #include "mozilla/CheckedInt.h"
 #include "mozilla/dom/ToJSValue.h"
 #include "jsapi.h"
-#include "js/Array.h"  // JS::GetArrayLength
+#include "js/Array.h"               // JS::GetArrayLength
+#include "js/PropertyAndElement.h"  // JS_GetElement
 #include "mozilla/FloatingPoint.h"
 
 class nsIPrincipal;
@@ -20,6 +21,7 @@ namespace mozilla {
 namespace dom {
 class Document;
 class HTMLCanvasElement;
+class OffscreenCanvas;
 }  // namespace dom
 
 namespace CanvasUtils {
@@ -47,12 +49,32 @@ void DoDrawImageSecurityCheck(dom::HTMLCanvasElement* aCanvasElement,
                               nsIPrincipal* aPrincipal, bool forceWriteOnly,
                               bool CORSUsed);
 
+void DoDrawImageSecurityCheck(dom::OffscreenCanvas* aOffscreenCanvas,
+                              nsIPrincipal* aPrincipal, bool forceWriteOnly,
+                              bool CORSUsed);
+
 // Check if the context is chrome or has the permission to drawWindow
 bool HasDrawWindowPrivilege(JSContext* aCx, JSObject* aObj);
+
+// Check if the context has permission to use OffscreenCanvas.
+bool IsOffscreenCanvasEnabled(JSContext* aCx, JSObject* aObj);
 
 // Check site-specific permission and display prompt if appropriate.
 bool IsImageExtractionAllowed(dom::Document* aDocument, JSContext* aCx,
                               nsIPrincipal& aPrincipal);
+
+enum class ImageExtraction {
+  Unrestricted,
+  Placeholder,
+  Randomize,
+};
+
+// Returns whether the result of an image extraction should be replaced
+// by a placeholder or randomized.
+ImageExtraction ImageExtractionResult(dom::HTMLCanvasElement* aCanvasElement,
+                                      JSContext* aCx, nsIPrincipal& aPrincipal);
+ImageExtraction ImageExtractionResult(dom::OffscreenCanvas* aOffscreenCanvas,
+                                      JSContext* aCx, nsIPrincipal& aPrincipal);
 
 // Make a double out of |v|, treating undefined values as 0.0 (for
 // the sake of sparse arrays).  Return true iff coercion
@@ -61,7 +83,7 @@ bool CoerceDouble(const JS::Value& v, double* d);
 
 /* Float validation stuff */
 #define VALIDATE(_f) \
-  if (!IsFinite(_f)) return false
+  if (!std::isfinite(_f)) return false
 
 inline bool FloatValidate(double f1) {
   VALIDATE(f1);

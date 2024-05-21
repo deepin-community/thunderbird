@@ -6,7 +6,7 @@
 
 const {
   CHANGE_NETWORK_THROTTLING,
-} = require("devtools/client/shared/components/throttling/actions");
+} = require("resource://devtools/client/shared/components/throttling/actions.js");
 
 /**
  * Network throttling middleware is responsible for
@@ -14,7 +14,7 @@ const {
  * according to user actions.
  */
 function throttlingMiddleware(connector) {
-  return store => next => action => {
+  return () => next => action => {
     const res = next(action);
     if (action.type === CHANGE_NETWORK_THROTTLING) {
       connector.updateNetworkThrottling(action.enabled, action.profile);

@@ -13,6 +13,8 @@
 #include "StorageUtils.h"
 
 #include "mozilla/BasePrincipal.h"
+#include "nsCOMPtr.h"
+#include "nsICookieNotification.h"
 #include "nsIObserverService.h"
 #include "nsIURI.h"
 #include "nsIPermission.h"
@@ -29,8 +31,7 @@
 #include "mozilla/SpinEventLoopUntil.h"
 #include "nsServiceManagerUtils.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 using namespace StorageUtils;
 
@@ -41,7 +42,8 @@ const char kTestingPref[] = "dom.storage.testing";
 
 constexpr auto kPrivateBrowsingPattern = u"{ \"privateBrowsingId\": 1 }"_ns;
 
-NS_IMPL_ISUPPORTS(StorageObserver, nsIObserver, nsISupportsWeakReference)
+NS_IMPL_ISUPPORTS(StorageObserver, nsIObserver, nsINamed,
+                  nsISupportsWeakReference)
 
 StorageObserver* StorageObserver::sSelf = nullptr;
 
@@ -87,9 +89,13 @@ nsresult StorageObserver::Init() {
 
 // static
 nsresult StorageObserver::Shutdown() {
+  AssertIsOnMainThread();
+
   if (!sSelf) {
-    return NS_ERROR_NOT_INITIALIZED;
+    return NS_ERROR_NOT_INITIALIZED;  // Is this always an error?
   }
+
+  sSelf->mSinks.Clear();
 
   NS_RELEASE(sSelf);
   return NS_OK;
@@ -99,7 +105,7 @@ nsresult StorageObserver::Shutdown() {
 void StorageObserver::TestingPrefChanged(const char* aPrefName,
                                          void* aClosure) {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
-  if (!obs) {
+  if (!obs || !sSelf) {
     return;
   }
 
@@ -121,17 +127,29 @@ void StorageObserver::TestingPrefChanged(const char* aPrefName,
 }
 
 void StorageObserver::AddSink(StorageObserverSink* aObs) {
+  AssertIsOnMainThread();
+
+  MOZ_ASSERT(sSelf);
+
   mSinks.AppendElement(aObs);
 }
 
 void StorageObserver::RemoveSink(StorageObserverSink* aObs) {
+  AssertIsOnMainThread();
+
+  MOZ_ASSERT(sSelf);
+
   mSinks.RemoveElement(aObs);
 }
 
 void StorageObserver::Notify(const char* aTopic,
                              const nsAString& aOriginAttributesPattern,
                              const nsACString& aOriginScope) {
-  for (auto* sink : mSinks.ForwardRange()) {
+  AssertIsOnMainThread();
+
+  MOZ_ASSERT(sSelf);
+
+  for (auto sink : mSinks.ForwardRange()) {
     sink->Observe(aTopic, aOriginAttributesPattern, aOriginScope);
   }
 }
@@ -177,6 +195,10 @@ nsresult StorageObserver::GetOriginScope(const char16_t* aData,
 NS_IMETHODIMP
 StorageObserver::Observe(nsISupports* aSubject, const char* aTopic,
                          const char16_t* aData) {
+  if (NS_WARN_IF(!sSelf)) {  // Shutdown took place
+    return NS_OK;
+  }
+
   nsresult rv;
 
   // Start the thread that opens the database.
@@ -223,7 +245,11 @@ StorageObserver::Observe(nsISupports* aSubject, const char* aTopic,
 
   // Clear everything, caches + database
   if (!strcmp(aTopic, "cookie-changed")) {
-    if (!u"cleared"_ns.Equals(aData)) {
+    nsCOMPtr<nsICookieNotification> notification = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(notification, NS_ERROR_FAILURE);
+
+    if (notification->GetAction() !=
+        nsICookieNotification::ALL_COOKIES_CLEARED) {
       return NS_OK;
     }
 
@@ -448,7 +474,9 @@ StorageObserver::Observe(nsISupports* aSubject, const char* aTopic,
         MOZ_ALWAYS_SUCCEEDS(mBackgroundThread[id]->Dispatch(
             shutdownRunnable, NS_DISPATCH_NORMAL));
 
-        MOZ_ALWAYS_TRUE(SpinEventLoopUntil([&]() { return done; }));
+        MOZ_ALWAYS_TRUE(SpinEventLoopUntil(
+            "StorageObserver::Observe profile-before-change"_ns,
+            [&]() { return done; }));
 
         mBackgroundThread[id] = nullptr;
       }
@@ -501,5 +529,10 @@ StorageObserver::Observe(nsISupports* aSubject, const char* aTopic,
   return NS_ERROR_UNEXPECTED;
 }
 
-}  // namespace dom
-}  // namespace mozilla
+NS_IMETHODIMP
+StorageObserver::GetName(nsACString& aName) {
+  aName.AssignLiteral("StorageObserver");
+  return NS_OK;
+}
+
+}  // namespace mozilla::dom

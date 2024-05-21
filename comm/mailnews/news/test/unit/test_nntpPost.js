@@ -1,42 +1,37 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 // Tests that the news can correctly post messages
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
-function run_test() {
-  var daemon = setupNNTPDaemon();
-  var server = makeServer(NNTP_RFC977_handler, daemon);
+/**
+ * Test dot is stuffed correctly when posting an article.
+ */
+add_task(async function test_nntpPost() {
+  // Setup test server.
+  const daemon = setupNNTPDaemon();
+  const handler = new NNTP_RFC977_handler(daemon);
+  const server = new nsMailServer(() => handler, daemon);
   server.start();
-  var localserver = setupLocalServer(server.port);
-  var listener = {
-    OnStopRunningUrl() {
-      localserver.closeCachedConnections();
-    },
-  };
+  registerCleanupFunction(() => server.stop());
 
-  // Tests bug 484656.
-  localserver.realHostName = localserver.hostName;
-  localserver.hostName = "news.example.com";
+  // Send post3.eml to the server.
+  const localServer = setupLocalServer(server.port);
+  const testFile = do_get_file("postings/post3.eml");
+  const urlListener = new PromiseTestUtils.PromiseUrlListener();
+  MailServices.nntp.postMessage(
+    testFile,
+    "test.empty",
+    localServer.key,
+    urlListener,
+    null
+  );
+  await urlListener.promise;
 
-  try {
-    MailServices.nntp.postMessage(
-      do_get_file("postings/post1.eml"),
-      "test.empty",
-      localserver.key,
-      listener,
-      null
-    );
-    server.performTest();
-    server.stop();
-
-    var thread = gThreadManager.currentThread;
-    while (thread.hasPendingEvents()) {
-      thread.processNextEvent(true);
-    }
-  } catch (e) {
-    server.stop();
-    do_throw(e);
-  }
-}
+  // Because Nntpd.sys.mjs undone the dot-stuffing, handler.post should be the same
+  // as the original post.
+  equal(handler.post, await IOUtils.readUTF8(testFile.path));
+});

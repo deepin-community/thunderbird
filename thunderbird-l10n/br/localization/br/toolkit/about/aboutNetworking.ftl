@@ -6,8 +6,11 @@ about-networking-title = A-zivout ar rouedad
 about-networking-http = HTTP
 about-networking-sockets = Sockets
 about-networking-dns = DNS
+about-networking-dns-trr-url = URL DoH
+about-networking-dns-trr-mode = Mod DoH
+about-networking-dns-suffix = Lostger DNS
 about-networking-websockets = WebSockets
-about-networking-refresh = Azbevaat
+about-networking-refresh = Freskaat
 about-networking-auto-refresh = Azbevaat ent emgefreek pep 3 eilenn
 about-networking-hostname = Anv ostiz
 about-networking-port = Porzh
@@ -16,7 +19,7 @@ about-networking-ssl = SSL
 about-networking-active = Oberiant
 about-networking-idle = Dioberiant
 about-networking-host = Ostiz
-about-networking-tcp = TCP
+about-networking-type = Seurt
 about-networking-sent = Kaset
 about-networking-received = Degemeret
 about-networking-family = Familh
@@ -28,17 +31,11 @@ about-networking-messages-received = Kemennadennoù degemeret
 about-networking-bytes-sent = Eizhbitoù kaset
 about-networking-bytes-received = Eizhbitoù degemeret
 about-networking-logging = Kerzhlevr
-about-networking-log-tutorial = Lennit <a data-l10n-name="logging">Kerzhlevriñ HTTP</a> evit ditouroú war an doare da arverañ an ostilh-mañ.
-about-networking-current-log-file = Restr kerzhlevr bremanel:
-about-networking-current-log-modules = Molladoù kerzhlevr bremanel:
-about-networking-set-log-file = Lakaat ar restr kerzhlevr
-about-networking-set-log-modules = Arventennañ molladoù ar c'herzhlevr
-about-networking-start-logging = Kregiñ da skrivañ er c'herzhlevr
-about-networking-stop-logging = Paouez da skrivañ er c'herzhlevr
 about-networking-dns-lookup = Selladenn DNS
 about-networking-dns-lookup-button = Diskoulmañ
 about-networking-dns-domain = Domani:
 about-networking-dns-lookup-table-column = IPoù
+about-networking-dns-https-rr-lookup-table-column = RR HTTP
 about-networking-rcwn = Stadegoù RCWN
 about-networking-rcwn-status = Satud RCWN
 about-networking-rcwn-cache-won-count = Konter berzhioù ar c'hrubuilh
@@ -54,6 +51,10 @@ about-networking-rcwn-avg-long = Keidenn vras
 about-networking-rcwn-std-dev-long = Forc'had rizh bras
 about-networking-rcwn-cache-slow = Niver a grubuilh gorrek
 about-networking-rcwn-cache-not-slow = Niver a grubuilh prim
+about-networking-networkid = ID ar rouedad
+about-networking-networkid-id = ID ar rouedad
+# Note: do not translate about:logging, as it is a URL.
+about-networking-moved-about-logging = Dilec’hiet eo bet ar bajenn-mañ etrezek <a data-l10n-name="about-logging-url">about:logging</a>.
 
 ## Link is intended as "network link"
 

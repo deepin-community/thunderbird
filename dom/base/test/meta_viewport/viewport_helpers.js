@@ -2,7 +2,6 @@ function scaleRatio(scale) {
   return {
     set: [
       ["layout.css.devPixelsPerPx", "" + scale],
-      ["apz.allow_zooming", true],
       ["dom.meta-viewport.enabled", true],
     ],
   };
@@ -41,5 +40,6 @@ function getViewportInfo(aDisplayWidth, aDisplayHeight) {
 }
 
 function fuzzeq(a, b, msg) {
+  // eslint-disable-next-line mozilla/no-comparison-or-assignment-inside-ok
   ok(Math.abs(a - b) < 1e-6, msg);
 }

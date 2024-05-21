@@ -973,7 +973,6 @@ add_task(async function moreOriginFrecencyStats() {
     title: "A bookmark",
     url: NetUtil.newURI("http://example.com/1"),
   });
-
   await checkDB([
     [
       "http://",
@@ -1006,6 +1005,33 @@ add_task(async function moreOriginFrecencyStats() {
   await cleanUp();
 });
 
+add_task(async function test_cutoff() {
+  // Add first page with visit.
+  await PlacesTestUtils.addVisits([{ uri: "http://example.com/0" }]);
+  // Add a second page last visited before the cutoff, it should be ignored.
+  let visitDate = PlacesUtils.toPRTime(
+    new Date(
+      new Date().setDate(
+        -Services.prefs.getIntPref("places.frecency.originsCutOffDays", 90)
+      )
+    )
+  );
+  await PlacesTestUtils.addVisits([{ uri: "http://example.com/1", visitDate }]);
+  // Add a third page with visit both before and after the cutoff, should count.
+  await PlacesTestUtils.addVisits([
+    { uri: "http://example.com/2" },
+    { uri: "http://example.com/2", visitDate },
+  ]);
+  await checkDB([
+    [
+      "http://",
+      "example.com",
+      ["http://example.com/0", "http://example.com/2"],
+    ],
+  ]);
+  await cleanUp();
+});
+
 /**
  * Returns the expected frecency of the origin of the given URLs, i.e., the sum
  * of their frecencies.  Each URL is expected to have the same origin.
@@ -1014,8 +1040,19 @@ add_task(async function moreOriginFrecencyStats() {
  *         An array of URL strings.
  * @return The expected origin frecency.
  */
-function expectedOriginFrecency(urls) {
-  return urls.reduce((sum, url) => sum + Math.max(frecencyForUrl(url), 0), 0);
+async function expectedOriginFrecency(urls) {
+  let value = 0;
+  for (let url of urls) {
+    let v = Math.max(
+      (await PlacesTestUtils.getDatabaseValue("moz_places", "frecency", {
+        url,
+        last_visit_date: [">", 0],
+      })) ?? 0,
+      0
+    );
+    value += v;
+  }
+  return value || 1.0;
 }
 
 /**
@@ -1030,9 +1067,7 @@ function expectedOriginFrecency(urls) {
  *        this element can be `undefined`.
  */
 async function checkDB(expectedOrigins) {
-  // Frencencies for bookmarks are generated asynchronously but not within the
-  // await cycle for bookmarks.insert() etc, so wait for them to happen.
-  await PlacesTestUtils.promiseAsyncUpdates();
+  await PlacesFrecencyRecalculator.recalculateAnyOutdatedFrecencies();
 
   let db = await PlacesUtils.promiseDBConnection();
   let rows = await db.execute(`
@@ -1049,54 +1084,42 @@ async function checkDB(expectedOrigins) {
     }
     return o;
   });
-  expectedOrigins = expectedOrigins.map(o => {
-    return o
-      .slice(0, 2)
-      .concat(checkFrecencies ? expectedOriginFrecency(o[2]) : []);
-  });
-  Assert.deepEqual(actualOrigins, expectedOrigins);
+  let expected = [];
+  for (let origin of expectedOrigins) {
+    expected.push(
+      origin
+        .slice(0, 2)
+        .concat(checkFrecencies ? await expectedOriginFrecency(origin[2]) : [])
+    );
+  }
+  Assert.deepEqual(actualOrigins, expected);
   if (checkFrecencies) {
-    await checkStats(expectedOrigins.map(o => o[2]).filter(o => o > 0));
+    info("Checking threshold");
+    await PlacesTestUtils.dumpTable({ db, table: "moz_origins" });
+    await checkThreshold(expected.map(o => o[2]));
   }
 }
 
 /**
- * Asserts that the origin frecency stats are correct.
+ * Asserts that the origin frecency threshold is correct.
  *
  * @param expectedOriginFrecencies
  *        An array of expected origin frecencies.
  */
-async function checkStats(expectedOriginFrecencies) {
-  let stats = await promiseStats();
-  Assert.equal(stats.count, expectedOriginFrecencies.length);
-  Assert.equal(
-    stats.sum,
-    expectedOriginFrecencies.reduce((sum, f) => sum + f, 0)
+async function checkThreshold(expectedOriginFrecencies) {
+  const DEFAULT_THRESHOLD = 2.0;
+  let threshold = await PlacesUtils.metadata.get(
+    "origin_frecency_threshold",
+    DEFAULT_THRESHOLD
   );
-  Assert.equal(
-    stats.squares,
-    expectedOriginFrecencies.reduce((squares, f) => squares + f * f, 0)
-  );
-}
 
-/**
- * Returns the origin frecency stats.
- *
- * @return An object: { count, sum, squares }
- */
-async function promiseStats() {
-  let db = await PlacesUtils.promiseDBConnection();
-  let rows = await db.execute(`
-    SELECT
-      IFNULL((SELECT value FROM moz_meta WHERE key = 'origin_frecency_count'), 0),
-      IFNULL((SELECT value FROM moz_meta WHERE key = 'origin_frecency_sum'), 0),
-      IFNULL((SELECT value FROM moz_meta WHERE key = 'origin_frecency_sum_of_squares'), 0)
-  `);
-  return {
-    count: rows[0].getResultByIndex(0),
-    sum: rows[0].getResultByIndex(1),
-    squares: rows[0].getResultByIndex(2),
-  };
+  Assert.equal(
+    threshold,
+    expectedOriginFrecencies.length
+      ? expectedOriginFrecencies.reduce((a, b) => a + b, 0) /
+          expectedOriginFrecencies.length
+      : DEFAULT_THRESHOLD
+  );
 }
 
 async function cleanUp() {

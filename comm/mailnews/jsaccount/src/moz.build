@@ -10,7 +10,6 @@ SOURCES += [
     "JaCompose.cpp",
     "JaIncomingServer.cpp",
     "JaMsgFolder.cpp",
-    "JaSend.cpp",
     "JaUrl.cpp",
 ]
 
@@ -20,9 +19,12 @@ EXPORTS += [
     "JaCompose.h",
     "JaIncomingServer.h",
     "JaMsgFolder.h",
-    "JaSend.h",
     "JaUrl.h",
 ]
 
 Library("JsAccount")
 FINAL_LIBRARY = "mail"
+
+XPCOM_MANIFESTS += [
+    "components.conf",
+]

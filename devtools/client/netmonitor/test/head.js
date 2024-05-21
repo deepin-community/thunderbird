@@ -7,7 +7,6 @@
  * tests without referencing head.js explicitly.
  */
 
-/* import-globals-from ../../shared/test/shared-head.js */
 /* exported Toolbox, restartNetMonitor, teardown, waitForExplicitFinish,
    verifyRequestItemTarget, waitFor, waitForDispatch, testFilterButtons,
    performRequestsInContent, waitForNetworkEvents, selectIndexAndWaitForSourceEditor,
@@ -23,34 +22,36 @@ Services.scriptloader.loadSubScript(
   this
 );
 
-const { LinkHandlerParent } = ChromeUtils.import(
-  "resource:///actors/LinkHandlerParent.jsm"
+const { LinkHandlerParent } = ChromeUtils.importESModule(
+  "resource:///actors/LinkHandlerParent.sys.mjs"
 );
 
 const {
   getFormattedIPAndPort,
   getFormattedTime,
-} = require("devtools/client/netmonitor/src/utils/format-utils");
+} = require("resource://devtools/client/netmonitor/src/utils/format-utils.js");
 
 const {
   getSortedRequests,
   getRequestById,
-} = require("devtools/client/netmonitor/src/selectors/index");
+} = require("resource://devtools/client/netmonitor/src/selectors/index.js");
 
 const {
   getUnicodeUrl,
   getUnicodeHostname,
-} = require("devtools/client/shared/unicode-url");
+} = require("resource://devtools/client/shared/unicode-url.js");
 const {
   getFormattedProtocol,
   getUrlHost,
   getUrlScheme,
-} = require("devtools/client/netmonitor/src/utils/request-utils");
+} = require("resource://devtools/client/netmonitor/src/utils/request-utils.js");
 const {
   EVENTS,
   TEST_EVENTS,
-} = require("devtools/client/netmonitor/src/constants");
-const { L10N } = require("devtools/client/netmonitor/src/utils/l10n");
+} = require("resource://devtools/client/netmonitor/src/constants.js");
+const {
+  L10N,
+} = require("resource://devtools/client/netmonitor/src/utils/l10n.js");
 
 /* eslint-disable no-unused-vars, max-len */
 const EXAMPLE_URL =
@@ -59,6 +60,8 @@ const EXAMPLE_ORG_URL =
   "http://example.org/browser/devtools/client/netmonitor/test/";
 const HTTPS_EXAMPLE_URL =
   "https://example.com/browser/devtools/client/netmonitor/test/";
+const HTTPS_EXAMPLE_ORG_URL =
+  "https://example.org/browser/devtools/client/netmonitor/test/";
 /* Since the test server will proxy `ws://example.com` to websocket server on 9988,
 so we must sepecify the port explicitly */
 const WS_URL = "ws://127.0.0.1:8888/browser/devtools/client/netmonitor/test/";
@@ -70,14 +73,17 @@ const WS_BASE_URL =
 const WS_PAGE_URL = WS_BASE_URL + "html_ws-test-page.html";
 const WS_PAGE_EARLY_CONNECTION_URL =
   WS_BASE_URL + "html_ws-early-connection-page.html";
-const API_CALLS_URL = EXAMPLE_URL + "html_api-calls-test-page.html";
+const API_CALLS_URL = HTTPS_EXAMPLE_URL + "html_api-calls-test-page.html";
 const SIMPLE_URL = EXAMPLE_URL + "html_simple-test-page.html";
+const HTTPS_SIMPLE_URL = HTTPS_EXAMPLE_URL + "html_simple-test-page.html";
 const NAVIGATE_URL = EXAMPLE_URL + "html_navigate-test-page.html";
 const CONTENT_TYPE_WITHOUT_CACHE_URL =
   EXAMPLE_URL + "html_content-type-without-cache-test-page.html";
 const CONTENT_TYPE_WITHOUT_CACHE_REQUESTS = 8;
 const CYRILLIC_URL = EXAMPLE_URL + "html_cyrillic-test-page.html";
 const STATUS_CODES_URL = EXAMPLE_URL + "html_status-codes-test-page.html";
+const HTTPS_STATUS_CODES_URL =
+  HTTPS_EXAMPLE_URL + "html_status-codes-test-page.html";
 const POST_DATA_URL = EXAMPLE_URL + "html_post-data-test-page.html";
 const POST_ARRAY_DATA_URL = EXAMPLE_URL + "html_post-array-data-test-page.html";
 const POST_JSON_URL = EXAMPLE_URL + "html_post-json-test-page.html";
@@ -95,25 +101,34 @@ const JSON_TEXT_MIME_URL = EXAMPLE_URL + "html_json-text-mime-test-page.html";
 const JSON_B64_URL = EXAMPLE_URL + "html_json-b64.html";
 const JSON_BASIC_URL = EXAMPLE_URL + "html_json-basic.html";
 const JSON_EMPTY_URL = EXAMPLE_URL + "html_json-empty.html";
+const JSON_XSSI_PROTECTION_URL = EXAMPLE_URL + "html_json-xssi-protection.html";
 const FONTS_URL = EXAMPLE_URL + "html_fonts-test-page.html";
 const SORTING_URL = EXAMPLE_URL + "html_sorting-test-page.html";
 const FILTERING_URL = EXAMPLE_URL + "html_filter-test-page.html";
+const HTTPS_FILTERING_URL = HTTPS_EXAMPLE_URL + "html_filter-test-page.html";
 const INFINITE_GET_URL = EXAMPLE_URL + "html_infinite-get-page.html";
 const CUSTOM_GET_URL = EXAMPLE_URL + "html_custom-get-page.html";
 const HTTPS_CUSTOM_GET_URL = HTTPS_EXAMPLE_URL + "html_custom-get-page.html";
 const SINGLE_GET_URL = EXAMPLE_URL + "html_single-get-page.html";
+const HTTPS_SINGLE_GET_URL = HTTPS_EXAMPLE_URL + "html_single-get-page.html";
 const STATISTICS_URL = EXAMPLE_URL + "html_statistics-test-page.html";
+const STATISTICS_EDGE_CASE_URL =
+  EXAMPLE_URL + "html_statistics-edge-case-page.html";
 const CURL_URL = EXAMPLE_URL + "html_copy-as-curl.html";
-const CURL_UTILS_URL = EXAMPLE_URL + "html_curl-utils.html";
+const HTTPS_CURL_URL = HTTPS_EXAMPLE_URL + "html_copy-as-curl.html";
+const HTTPS_CURL_UTILS_URL = HTTPS_EXAMPLE_URL + "html_curl-utils.html";
 const SEND_BEACON_URL = EXAMPLE_URL + "html_send-beacon.html";
 const CORS_URL = EXAMPLE_URL + "html_cors-test-page.html";
+const HTTPS_CORS_URL = HTTPS_EXAMPLE_URL + "html_cors-test-page.html";
 const PAUSE_URL = EXAMPLE_URL + "html_pause-test-page.html";
 const OPEN_REQUEST_IN_TAB_URL = EXAMPLE_URL + "html_open-request-in-tab.html";
 const CSP_URL = EXAMPLE_URL + "html_csp-test-page.html";
 const CSP_RESEND_URL = EXAMPLE_URL + "html_csp-resend-test-page.html";
+const IMAGE_CACHE_URL = HTTPS_EXAMPLE_URL + "html_image-cache.html";
 const SLOW_REQUESTS_URL = EXAMPLE_URL + "html_slow-requests-test-page.html";
 
 const SIMPLE_SJS = EXAMPLE_URL + "sjs_simple-test-server.sjs";
+const HTTPS_SIMPLE_SJS = HTTPS_EXAMPLE_URL + "sjs_simple-test-server.sjs";
 const SIMPLE_UNSORTED_COOKIES_SJS =
   EXAMPLE_URL + "sjs_simple-unsorted-cookies-test-server.sjs";
 const CONTENT_TYPE_SJS = EXAMPLE_URL + "sjs_content-type-test-server.sjs";
@@ -130,9 +145,10 @@ const CORS_SJS_PATH =
   "/browser/devtools/client/netmonitor/test/sjs_cors-test-server.sjs";
 const HSTS_SJS = EXAMPLE_URL + "sjs_hsts-test-server.sjs";
 const METHOD_SJS = EXAMPLE_URL + "sjs_method-test-server.sjs";
-const SLOW_SJS = EXAMPLE_URL + "sjs_slow-test-server.sjs";
+const HTTPS_SLOW_SJS = HTTPS_EXAMPLE_URL + "sjs_slow-test-server.sjs";
 const SET_COOKIE_SAME_SITE_SJS = EXAMPLE_URL + "sjs_set-cookie-same-site.sjs";
 const SEARCH_SJS = EXAMPLE_URL + "sjs_search-test-server.sjs";
+const HTTPS_SEARCH_SJS = HTTPS_EXAMPLE_URL + "sjs_search-test-server.sjs";
 
 const HSTS_BASE_URL = EXAMPLE_URL;
 const HSTS_PAGE_URL = CUSTOM_GET_URL;
@@ -199,16 +215,21 @@ registerCleanupFunction(() => {
   Services.cookies.removeAll();
 });
 
-async function toggleCache(toolbox, disabled) {
-  const options = { cacheDisabled: disabled };
-
+async function disableCacheAndReload(toolbox, waitForLoad) {
   // Disable the cache for any toolbox that it is opened from this point on.
-  Services.prefs.setBoolPref("devtools.cache.disabled", disabled);
+  Services.prefs.setBoolPref("devtools.cache.disabled", true);
 
-  await toolbox.commands.targetConfigurationCommand.updateConfiguration(
-    options
-  );
-  await toolbox.commands.targetCommand.reloadTopLevelTarget();
+  await toolbox.commands.targetConfigurationCommand.updateConfiguration({
+    cacheDisabled: true,
+  });
+
+  // If the page which is reloaded is not found, this will likely cause
+  // reloadTopLevelTarget to not return so let not wait for it.
+  if (waitForLoad) {
+    await toolbox.commands.targetCommand.reloadTopLevelTarget();
+  } else {
+    toolbox.commands.targetCommand.reloadTopLevelTarget();
+  }
 }
 
 /**
@@ -273,6 +294,10 @@ function startNetworkEventUpdateObserver(panelWin) {
       finishedQueue[key] = finishedQueue[key] ? finishedQueue[key] - 1 : -1;
     })
   );
+
+  panelWin.api.on("clear-network-resources", () => {
+    finishedQueue = {};
+  });
 }
 
 async function waitForAllNetworkUpdateEvents() {
@@ -291,18 +316,23 @@ async function waitForAllNetworkUpdateEvents() {
 
 function initNetMonitor(
   url,
-  { requestCount, expectedEventTimings, enableCache = false }
+  {
+    requestCount,
+    expectedEventTimings,
+    waitForLoad = true,
+    enableCache = false,
+  }
 ) {
   info("Initializing a network monitor pane.");
 
-  if (!requestCount) {
+  if (!requestCount && !enableCache) {
     ok(
       false,
       "initNetMonitor should be given a number of requests the page will perform"
     );
   }
 
-  return (async function() {
+  return (async function () {
     await SpecialPowers.pushPrefEnv({
       set: [
         // Capture all stacks so that the timing of devtools opening
@@ -311,7 +341,7 @@ function initNetMonitor(
       ],
     });
 
-    const tab = await addTab(url);
+    const tab = await addTab(url, { waitForLoad });
     info("Net tab added successfully: " + url);
 
     const toolbox = await gDevTools.showToolboxForTab(tab, {
@@ -324,22 +354,21 @@ function initNetMonitor(
     startNetworkEventUpdateObserver(monitor.panelWin);
 
     if (!enableCache) {
-      const panel = monitor.panelWin;
-      const { store, windowRequire } = panel;
-      const Actions = windowRequire(
-        "devtools/client/netmonitor/src/actions/index"
-      );
-
       info("Disabling cache and reloading page.");
 
-      const requestsDone = waitForNetworkEvents(monitor, requestCount, {
-        expectedEventTimings,
-      });
-      const markersDone = waitForTimelineMarkers(monitor);
-      await toggleCache(toolbox, true);
-      await Promise.all([requestsDone, markersDone]);
-      info("Clearing requests in the UI.");
-      store.dispatch(Actions.clearRequests());
+      const allComplete = [];
+      allComplete.push(
+        waitForNetworkEvents(monitor, requestCount, {
+          expectedEventTimings,
+        })
+      );
+
+      if (waitForLoad) {
+        allComplete.push(waitForTimelineMarkers(monitor));
+      }
+      await disableCacheAndReload(toolbox, waitForLoad);
+      await Promise.all(allComplete);
+      await clearNetworkEvents(monitor);
     }
 
     return { tab, monitor, toolbox };
@@ -349,8 +378,8 @@ function initNetMonitor(
 function restartNetMonitor(monitor, { requestCount }) {
   info("Restarting the specified network monitor.");
 
-  return (async function() {
-    const tab = monitor.toolbox.target.localTab;
+  return (async function () {
+    const tab = monitor.commands.descriptorFront.localTab;
     const url = tab.linkedBrowser.currentURI.spec;
 
     await waitForAllNetworkUpdateEvents();
@@ -364,11 +393,26 @@ function restartNetMonitor(monitor, { requestCount }) {
   })();
 }
 
+/**
+ * Clears the network requests in the UI
+ * @param {Object} monitor
+ *         The netmonitor instance used for retrieving a context menu element.
+ */
+async function clearNetworkEvents(monitor) {
+  const { store, windowRequire } = monitor.panelWin;
+  const Actions = windowRequire("devtools/client/netmonitor/src/actions/index");
+
+  await waitForAllNetworkUpdateEvents();
+
+  info("Clearing the network requests in the UI");
+  store.dispatch(Actions.clearRequests());
+}
+
 function teardown(monitor) {
   info("Destroying the specified network monitor.");
 
-  return (async function() {
-    const tab = monitor.toolbox.target.localTab;
+  return (async function () {
+    const tab = monitor.commands.descriptorFront.localTab;
 
     await waitForAllNetworkUpdateEvents();
     info("All pending requests finished.");
@@ -414,6 +458,15 @@ function waitForNetworkEvents(monitor, getRequests, options = {}) {
       eventTimings++;
       maybeResolve(EVENTS.RECEIVED_EVENT_TIMINGS, response.from);
     }
+
+    function onClearNetworkResources() {
+      // Reset all counters.
+      networkEvent = 0;
+      nonBlockedNetworkEvent = 0;
+      payloadReady = 0;
+      eventTimings = 0;
+    }
+
     function maybeResolve(event, actor) {
       const { document } = monitor.panelWin;
       // Wait until networkEvent, payloadReady and event timings finish for each request.
@@ -422,9 +475,13 @@ function waitForNetworkEvents(monitor, getRequests, options = {}) {
       // * for any blocked request,
       let expectedEventTimings =
         document.visibilityState == "hidden" ? 0 : nonBlockedNetworkEvent;
+      let expectedPayloadReady = getRequests;
       // Typically ignore this option if it is undefined or null
       if (typeof options?.expectedEventTimings == "number") {
         expectedEventTimings = options.expectedEventTimings;
+      }
+      if (typeof options?.expectedPayloadReady == "number") {
+        expectedPayloadReady = options.expectedPayloadReady;
       }
       info(
         "> Network event progress: " +
@@ -436,7 +493,7 @@ function waitForNetworkEvents(monitor, getRequests, options = {}) {
           "PayloadReady: " +
           payloadReady +
           "/" +
-          getRequests +
+          expectedPayloadReady +
           ", " +
           "EventTimings: " +
           eventTimings +
@@ -451,12 +508,13 @@ function waitForNetworkEvents(monitor, getRequests, options = {}) {
 
       if (
         networkEvent >= getRequests &&
-        payloadReady >= getRequests &&
+        payloadReady >= expectedPayloadReady &&
         eventTimings >= expectedEventTimings
       ) {
         panel.api.off(TEST_EVENTS.NETWORK_EVENT, onNetworkEvent);
         panel.api.off(EVENTS.PAYLOAD_READY, onPayloadReady);
         panel.api.off(EVENTS.RECEIVED_EVENT_TIMINGS, onEventTimings);
+        panel.api.off("clear-network-resources", onClearNetworkResources);
         executeSoon(resolve);
       }
     }
@@ -464,6 +522,7 @@ function waitForNetworkEvents(monitor, getRequests, options = {}) {
     panel.api.on(TEST_EVENTS.NETWORK_EVENT, onNetworkEvent);
     panel.api.on(EVENTS.PAYLOAD_READY, onPayloadReady);
     panel.api.on(EVENTS.RECEIVED_EVENT_TIMINGS, onEventTimings);
+    panel.api.on("clear-network-resources", onClearNetworkResources);
   });
 }
 
@@ -648,8 +707,9 @@ function verifyRequestItemTarget(
     const value = target
       .querySelector(".requests-list-status-code")
       .getAttribute("data-status-code");
-    const codeValue = target.querySelector(".requests-list-status-code")
-      .textContent;
+    const codeValue = target.querySelector(
+      ".requests-list-status-code"
+    ).textContent;
     const tooltip = target
       .querySelector(".requests-list-status-code")
       .getAttribute("title");
@@ -693,8 +753,9 @@ function verifyRequestItemTarget(
     is(tooltip, fullMimeType, "The tooltip type is correct.");
   }
   if (transferred !== undefined) {
-    const value = target.querySelector(".requests-list-transferred")
-      .textContent;
+    const value = target.querySelector(
+      ".requests-list-transferred"
+    ).textContent;
     const tooltip = target
       .querySelector(".requests-list-transferred")
       .getAttribute("title");
@@ -714,15 +775,24 @@ function verifyRequestItemTarget(
     is(tooltip, size, "The tooltip size is correct.");
   }
   if (time !== undefined) {
-    const value = target.querySelector(".requests-list-timings-total")
-      .textContent;
+    const value = target.querySelector(
+      ".requests-list-timings-total"
+    ).textContent;
     const tooltip = target
       .querySelector(".requests-list-timings-total")
       .getAttribute("title");
     info("Displayed time: " + value);
     info("Tooltip time: " + tooltip);
-    ok(~~value.match(/[0-9]+/) >= 0, "The displayed time is correct.");
-    ok(~~tooltip.match(/[0-9]+/) >= 0, "The tooltip time is correct.");
+    Assert.greaterOrEqual(
+      ~~value.match(/[0-9]+/),
+      0,
+      "The displayed time is correct."
+    );
+    Assert.greaterOrEqual(
+      ~~tooltip.match(/[0-9]+/),
+      0,
+      "The tooltip time is correct."
+    );
   }
 
   if (visibleIndex !== -1) {
@@ -754,7 +824,7 @@ function testFilterButtons(monitor, filterType) {
   const buttons = [
     ...doc.querySelectorAll(".requests-list-filter-buttons button"),
   ];
-  ok(buttons.length > 0, "More than zero filter buttons were found");
+  ok(!!buttons.length, "More than zero filter buttons were found");
 
   // Only target should be checked.
   const checkStatus = buttons.map(button => (button == target ? 1 : 0));
@@ -808,7 +878,7 @@ function testFilterButtonsCustom(monitor, isChecked) {
  *
  */
 function promiseXHR(data) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const xhr = new content.XMLHttpRequest();
 
     const method = data.method || "GET";
@@ -821,7 +891,7 @@ function promiseXHR(data) {
 
     xhr.addEventListener(
       "loadend",
-      function(event) {
+      function () {
         resolve({ status: xhr.status, response: xhr.response });
       },
       { once: true }
@@ -855,7 +925,7 @@ function promiseXHR(data) {
  *
  */
 function promiseWS(data) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     let url = data.url;
 
     if (data.nocache) {
@@ -866,7 +936,7 @@ function promiseWS(data) {
     const socket = new content.WebSocket(url);
 
     /* Since we only use HTTP server to mock websocket, so just ignore the error */
-    socket.onclose = e => {
+    socket.onclose = () => {
       socket.close();
       resolve({
         status: 101,
@@ -874,7 +944,7 @@ function promiseWS(data) {
       });
     };
 
-    socket.onerror = e => {
+    socket.onerror = () => {
       socket.close();
       resolve({
         status: 101,
@@ -943,7 +1013,7 @@ async function hideColumn(monitor, column) {
     `#requests-list-${column}-button`,
     0
   );
-  getContextMenuItem(monitor, `request-list-header-${column}-toggle`).click();
+  await selectContextMenuItem(monitor, `request-list-header-${column}-toggle`);
   await onHeaderRemoved;
 
   ok(
@@ -966,7 +1036,7 @@ async function showColumn(monitor, column) {
     `#requests-list-${column}-button`,
     1
   );
-  getContextMenuItem(monitor, `request-list-header-${column}-toggle`).click();
+  await selectContextMenuItem(monitor, `request-list-header-${column}-toggle`);
   await onHeaderAdded;
 
   ok(
@@ -1086,7 +1156,11 @@ function checkTelemetryEvent(expectedEvent, query) {
   is(events.length, 1, "There was only 1 event logged");
 
   const [event] = events;
-  ok(event.session_id > 0, "There is a valid session_id in the logged event");
+  Assert.greater(
+    Number(event.session_id),
+    0,
+    "There is a valid session_id in the logged event"
+  );
 
   const f = e => JSON.stringify(e, null, 2);
   is(
@@ -1113,18 +1187,37 @@ function queryTelemetryEvents(query) {
   // Return the `extra` field (which is event[5]e).
   return filtersChangedEvents.map(event => event[5]);
 }
-
-function validateRequests(requests, monitor) {
+/**
+ * Check that the provided requests match the requests displayed in the netmonitor.
+ *
+ * @param {array} requests
+ *     The expected requests.
+ * @param {object} monitor
+ *     The netmonitor instance.
+ * @param {object=} options
+ * @param {boolean} allowDifferentOrder
+ *     When set to true, requests are allowed to be in a different order in the
+ *     netmonitor than in the expected requests array. Defaults to false.
+ */
+function validateRequests(requests, monitor, options = {}) {
+  const { allowDifferentOrder } = options;
   const { document, store, windowRequire } = monitor.panelWin;
 
   const { getDisplayedRequests } = windowRequire(
     "devtools/client/netmonitor/src/selectors/index"
   );
+  const sortedRequests = getSortedRequests(store.getState());
 
   requests.forEach((spec, i) => {
     const { method, url, causeType, causeUri, stack } = spec;
 
-    const requestItem = getSortedRequests(store.getState())[i];
+    let requestItem;
+    if (allowDifferentOrder) {
+      requestItem = sortedRequests.find(r => r.url === url);
+    } else {
+      requestItem = sortedRequests[i];
+    }
+
     verifyRequestItemTarget(
       document,
       getDisplayedRequests(store.getState()),
@@ -1139,8 +1232,9 @@ function validateRequests(requests, monitor) {
 
     if (stack) {
       ok(stacktrace, `Request #${i} has a stacktrace`);
-      ok(
-        stackLen > 0,
+      Assert.greater(
+        stackLen,
+        0,
         `Request #${i} (${causeType}) has a stacktrace with ${stackLen} items`
       );
 
@@ -1193,10 +1287,48 @@ function validateRequests(requests, monitor) {
 /**
  * Retrieve the context menu element corresponding to the provided id, for the provided
  * netmonitor instance.
+ * @param {Object} monitor
+ *        The network monnitor object
+ * @param {String} id
+ *        The id of the context menu item
  */
 function getContextMenuItem(monitor, id) {
-  const Menu = require("devtools/client/framework/menu");
+  const Menu = require("resource://devtools/client/framework/menu.js");
   return Menu.getMenuElementById(id, monitor.panelWin.document);
+}
+
+async function maybeOpenAncestorMenu(menuItem) {
+  const parentPopup = menuItem.parentNode;
+  if (parentPopup.state == "shown") {
+    return;
+  }
+  const shown = BrowserTestUtils.waitForEvent(parentPopup, "popupshown");
+  if (parentPopup.state == "showing") {
+    await shown;
+    return;
+  }
+  const parentMenu = parentPopup.parentNode;
+  await maybeOpenAncestorMenu(parentMenu);
+  parentMenu.openMenu(true);
+  await shown;
+}
+
+/*
+ * Selects and clicks the context menu item, it should
+ * also wait for the popup to close.
+ * @param {Object} monitor
+ *        The network monnitor object
+ * @param {String} id
+ *        The id of the context menu item
+ */
+async function selectContextMenuItem(monitor, id) {
+  const contextMenuItem = getContextMenuItem(monitor, id);
+
+  const popup = contextMenuItem.parentNode;
+  await maybeOpenAncestorMenu(contextMenuItem);
+  const hidden = BrowserTestUtils.waitForEvent(popup, "popuphidden");
+  popup.activateItem(contextMenuItem);
+  await hidden;
 }
 
 /**
@@ -1231,12 +1363,11 @@ async function waitForDOMIfNeeded(target, selector, expectedLength = 1) {
 async function toggleBlockedUrl(element, monitor, store, action = "block") {
   EventUtils.sendMouseEvent({ type: "contextmenu" }, element);
   const contextMenuId = `request-list-context-${action}-url`;
-  const contextBlockToggle = getContextMenuItem(monitor, contextMenuId);
   const onRequestComplete = waitForDispatch(
     store,
     "REQUEST_BLOCKING_UPDATE_COMPLETE"
   );
-  contextBlockToggle.click();
+  await selectContextMenuItem(monitor, contextMenuId);
 
   info(`Wait for selected request to be ${action}ed`);
   await onRequestComplete;
@@ -1264,7 +1395,7 @@ function clickElement(element, monitor) {
  *        Target browser to observe the favicon load.
  */
 function registerFaviconNotifier(browser) {
-  const listener = async (name, data) => {
+  const listener = async name => {
     if (name == "SetIcon" || name == "SetFailedIcon") {
       await SpecialPowers.spawn(browser, [], async () => {
         content.document
@@ -1316,3 +1447,104 @@ const clickOnSidebarTab = (doc, name) => {
   );
   AccessibilityUtils.resetEnv();
 };
+
+/**
+ * Add a new blocked request URL pattern. The request blocking sidepanel should
+ * already be opened.
+ *
+ * @param {string} pattern
+ *     The URL pattern to add to block requests.
+ * @param {Object} monitor
+ *     The netmonitor instance.
+ */
+async function addBlockedRequest(pattern, monitor) {
+  info("Add a blocked request for the URL pattern " + pattern);
+  const doc = monitor.panelWin.document;
+
+  const addRequestForm = await waitFor(() =>
+    doc.querySelector(
+      "#network-action-bar-blocked-panel .request-blocking-add-form"
+    )
+  );
+  ok(!!addRequestForm, "The request blocking side panel is not available");
+
+  info("Wait for the add input to get focus");
+  await waitFor(() =>
+    addRequestForm.querySelector("input.devtools-searchinput:focus")
+  );
+
+  typeInNetmonitor(pattern, monitor);
+  EventUtils.synthesizeKey("KEY_Enter");
+}
+
+/**
+ * Check if the provided .request-list-item element corresponds to a blocked
+ * request.
+ *
+ * @param {Element}
+ *     The request's DOM element.
+ * @returns {boolean}
+ *     True if the request is displayed as blocked, false otherwise.
+ */
+function checkRequestListItemBlocked(item) {
+  return item.className.includes("blocked");
+}
+
+/**
+ * Type the provided string the netmonitor window. The correct input should be
+ * focused prior to using this helper.
+ *
+ * @param {string} string
+ *     The string to type.
+ * @param {Object} monitor
+ *     The netmonitor instance used to type the string.
+ */
+function typeInNetmonitor(string, monitor) {
+  for (const ch of string) {
+    EventUtils.synthesizeKey(ch, {}, monitor.panelWin);
+  }
+}
+
+/**
+ * Opens/ closes the URL preview in the headers side panel
+ *
+ * @param {Boolean} shouldExpand
+ * @param {NetMonitorPanel} monitor
+ * @returns
+ */
+async function toggleUrlPreview(shouldExpand, monitor) {
+  const { document } = monitor.panelWin;
+  const wait = waitUntil(() => {
+    const rowSize = document.querySelectorAll(
+      "#headers-panel .url-preview tr.treeRow"
+    ).length;
+    return shouldExpand ? rowSize > 1 : rowSize == 1;
+  });
+
+  clickElement(
+    document.querySelector(
+      "#headers-panel .url-preview tr:first-child span.treeIcon.theme-twisty"
+    ),
+    monitor
+  );
+  return wait;
+}
+
+/**
+ * Wait for the eager evaluated result from the split console
+ * @param {Object} hud
+ * @param {String} text - expected evaluation result
+ */
+async function waitForEagerEvaluationResult(hud, text) {
+  await waitUntil(() => {
+    const elem = hud.ui.outputNode.querySelector(".eager-evaluation-result");
+    if (elem) {
+      if (text instanceof RegExp) {
+        return text.test(elem.innerText);
+      }
+      return elem.innerText == text;
+    }
+    return false;
+  });
+  ok(true, `Got eager evaluation result ${text}`);
+}

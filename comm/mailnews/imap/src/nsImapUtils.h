@@ -24,10 +24,11 @@ static const char kDeletedHdrCountPropertyName[] = "numDeletedHeaders";
 extern nsresult nsImapURI2FullName(const char* rootURI, const char* hostname,
                                    const char* uriStr, char** name);
 
-extern nsresult nsParseImapMessageURI(const char* uri, nsCString& folderURI,
-                                      uint32_t* key, char** part);
+extern nsresult nsParseImapMessageURI(const nsACString& uri,
+                                      nsACString& folderURI, nsMsgKey* key,
+                                      nsACString& mimePart);
 
-extern nsresult nsBuildImapMessageURI(const char* baseURI, uint32_t key,
+extern nsresult nsBuildImapMessageURI(const char* baseURI, nsMsgKey key,
                                       nsACString& uri);
 
 extern nsresult nsCreateImapBaseMessageURI(const nsACString& baseURI,

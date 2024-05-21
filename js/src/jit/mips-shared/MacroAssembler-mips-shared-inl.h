@@ -108,6 +108,10 @@ void MacroAssembler::add32(Imm32 imm, Register dest) {
   ma_addu(dest, dest, imm);
 }
 
+void MacroAssembler::add32(Imm32 imm, Register src, Register dest) {
+  ma_addu(dest, src, imm);
+}
+
 void MacroAssembler::add32(Imm32 imm, const Address& dest) {
   load32(dest, SecondScratchReg);
   ma_addu(SecondScratchReg, imm);
@@ -167,6 +171,11 @@ void MacroAssembler::subFloat32(FloatRegister src, FloatRegister dest) {
 
 void MacroAssembler::mul32(Register rhs, Register srcDest) {
   as_mul(srcDest, srcDest, rhs);
+}
+
+void MacroAssembler::mul32(Imm32 imm, Register srcDest) {
+  move32(imm, SecondScratchReg);
+  mul32(SecondScratchReg, srcDest);
 }
 
 void MacroAssembler::mulFloat32(FloatRegister src, FloatRegister dest) {
@@ -380,7 +389,157 @@ void MacroAssembler::popcnt32(Register input, Register output, Register tmp) {
 }
 
 // ===============================================================
+// Condition functions
+
+void MacroAssembler::cmp8Set(Condition cond, Address lhs, Imm32 rhs,
+                             Register dest) {
+  SecondScratchRegisterScope scratch2(*this);
+  MOZ_ASSERT(scratch2 != lhs.base);
+
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      load8ZeroExtend(lhs, scratch2);
+      ma_cmp_set(dest, scratch2, Imm32(uint8_t(rhs.value)), cond);
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      load8SignExtend(lhs, scratch2);
+      ma_cmp_set(dest, scratch2, Imm32(int8_t(rhs.value)), cond);
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+}
+
+void MacroAssembler::cmp16Set(Condition cond, Address lhs, Imm32 rhs,
+                              Register dest) {
+  SecondScratchRegisterScope scratch2(*this);
+  MOZ_ASSERT(scratch2 != lhs.base);
+
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      load16ZeroExtend(lhs, scratch2);
+      ma_cmp_set(dest, scratch2, Imm32(uint16_t(rhs.value)), cond);
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      load16SignExtend(lhs, scratch2);
+      ma_cmp_set(dest, scratch2, Imm32(int16_t(rhs.value)), cond);
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+}
+
+// ===============================================================
 // Branch functions
+
+void MacroAssembler::branch8(Condition cond, const Address& lhs, Imm32 rhs,
+                             Label* label) {
+  SecondScratchRegisterScope scratch2(*this);
+  MOZ_ASSERT(scratch2 != lhs.base);
+
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      load8ZeroExtend(lhs, scratch2);
+      branch32(cond, scratch2, Imm32(uint8_t(rhs.value)), label);
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      load8SignExtend(lhs, scratch2);
+      branch32(cond, scratch2, Imm32(int8_t(rhs.value)), label);
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+}
+
+void MacroAssembler::branch8(Condition cond, const BaseIndex& lhs, Register rhs,
+                             Label* label) {
+  SecondScratchRegisterScope scratch2(*this);
+  MOZ_ASSERT(scratch2 != lhs.base);
+
+  computeScaledAddress(lhs, scratch2);
+
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      load8ZeroExtend(Address(scratch2, lhs.offset), scratch2);
+      branch32(cond, scratch2, rhs, label);
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      load8SignExtend(Address(scratch2, lhs.offset), scratch2);
+      branch32(cond, scratch2, rhs, label);
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+}
+
+void MacroAssembler::branch16(Condition cond, const Address& lhs, Imm32 rhs,
+                              Label* label) {
+  SecondScratchRegisterScope scratch2(*this);
+  MOZ_ASSERT(scratch2 != lhs.base);
+
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      load16ZeroExtend(lhs, scratch2);
+      branch32(cond, scratch2, Imm32(uint16_t(rhs.value)), label);
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      load16SignExtend(lhs, scratch2);
+      branch32(cond, scratch2, Imm32(int16_t(rhs.value)), label);
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+}
 
 template <class L>
 void MacroAssembler::branch32(Condition cond, Register lhs, Register rhs,
@@ -525,11 +684,6 @@ void MacroAssembler::branchTruncateFloat32ToInt32(FloatRegister src,
 void MacroAssembler::branchDouble(DoubleCondition cond, FloatRegister lhs,
                                   FloatRegister rhs, Label* label) {
   ma_bc1d(lhs, rhs, label, cond);
-}
-
-void MacroAssembler::branchTruncateDoubleToInt32(FloatRegister src,
-                                                 Register dest, Label* fail) {
-  convertDoubleToInt32(src, dest, fail, false);
 }
 
 template <typename T>
@@ -931,9 +1085,69 @@ void MacroAssembler::branchTestMagic(Condition cond, const BaseIndex& address,
   branchTestMagic(cond, tag, label);
 }
 
+template <typename T>
+void MacroAssembler::testNumberSet(Condition cond, const T& src,
+                                   Register dest) {
+  MOZ_ASSERT(cond == Equal || cond == NotEqual);
+  SecondScratchRegisterScope scratch2(*this);
+  Register tag = extractTag(src, scratch2);
+  ma_cmp_set(dest, tag, ImmTag(JS::detail::ValueUpperInclNumberTag),
+             cond == Equal ? BelowOrEqual : Above);
+}
+
+template <typename T>
+void MacroAssembler::testBooleanSet(Condition cond, const T& src,
+                                    Register dest) {
+  MOZ_ASSERT(cond == Equal || cond == NotEqual);
+  SecondScratchRegisterScope scratch2(*this);
+  Register tag = extractTag(src, scratch2);
+  ma_cmp_set(dest, tag, ImmTag(JSVAL_TAG_BOOLEAN), cond);
+}
+
+template <typename T>
+void MacroAssembler::testStringSet(Condition cond, const T& src,
+                                   Register dest) {
+  MOZ_ASSERT(cond == Equal || cond == NotEqual);
+  SecondScratchRegisterScope scratch2(*this);
+  Register tag = extractTag(src, scratch2);
+  ma_cmp_set(dest, tag, ImmTag(JSVAL_TAG_STRING), cond);
+}
+
+template <typename T>
+void MacroAssembler::testSymbolSet(Condition cond, const T& src,
+                                   Register dest) {
+  MOZ_ASSERT(cond == Equal || cond == NotEqual);
+  SecondScratchRegisterScope scratch2(*this);
+  Register tag = extractTag(src, scratch2);
+  ma_cmp_set(dest, tag, ImmTag(JSVAL_TAG_SYMBOL), cond);
+}
+
+template <typename T>
+void MacroAssembler::testBigIntSet(Condition cond, const T& src,
+                                   Register dest) {
+  MOZ_ASSERT(cond == Equal || cond == NotEqual);
+  SecondScratchRegisterScope scratch2(*this);
+  Register tag = extractTag(src, scratch2);
+  ma_cmp_set(dest, tag, ImmTag(JSVAL_TAG_BIGINT), cond);
+}
+
 void MacroAssembler::branchToComputedAddress(const BaseIndex& addr) {
   loadPtr(addr, ScratchRegister);
   branch(ScratchRegister);
+}
+
+void MacroAssembler::cmp32Move32(Condition cond, Register lhs, Imm32 rhs,
+                                 Register src, Register dest) {
+  Register scratch = ScratchRegister;
+  MOZ_ASSERT(src != scratch && dest != scratch);
+  cmp32Set(cond, lhs, rhs, scratch);
+#ifdef MIPSR6
+  as_selnez(src, src, scratch);
+  as_seleqz(dest, dest, scratch);
+  as_or(dest, dest, src);
+#else
+  as_movn(dest, src, scratch);
+#endif
 }
 
 void MacroAssembler::cmp32Move32(Condition cond, Register lhs, Register rhs,
@@ -983,6 +1197,14 @@ void MacroAssembler::cmp32Load32(Condition cond, Register lhs,
 }
 
 void MacroAssembler::cmp32Load32(Condition cond, Register lhs, Register rhs,
+                                 const Address& src, Register dest) {
+  Label skip;
+  branch32(Assembler::InvertCondition(cond), lhs, rhs, &skip);
+  load32(src, dest);
+  bind(&skip);
+}
+
+void MacroAssembler::cmp32Load32(Condition cond, Register lhs, Imm32 rhs,
                                  const Address& src, Register dest) {
   Label skip;
   branch32(Assembler::InvertCondition(cond), lhs, rhs, &skip);
@@ -1055,21 +1277,26 @@ void MacroAssembler::spectreZeroRegister(Condition cond, Register scratch,
 // ========================================================================
 // Memory access primitives.
 
-void MacroAssembler::storeUncanonicalizedDouble(FloatRegister src,
-                                                const Address& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedDouble(
+    FloatRegister src, const Address& addr) {
+  // FIXME -- see https://bugzilla.mozilla.org/show_bug.cgi?id=1855960
+  return FaultingCodeOffset();
   ma_sd(src, addr);
 }
-void MacroAssembler::storeUncanonicalizedDouble(FloatRegister src,
-                                                const BaseIndex& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedDouble(
+    FloatRegister src, const BaseIndex& addr) {
+  return FaultingCodeOffset();  // FIXME
   ma_sd(src, addr);
 }
 
-void MacroAssembler::storeUncanonicalizedFloat32(FloatRegister src,
-                                                 const Address& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedFloat32(
+    FloatRegister src, const Address& addr) {
+  return FaultingCodeOffset();  // FIXME
   ma_ss(src, addr);
 }
-void MacroAssembler::storeUncanonicalizedFloat32(FloatRegister src,
-                                                 const BaseIndex& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedFloat32(
+    FloatRegister src, const BaseIndex& addr) {
+  return FaultingCodeOffset();  // FIXME
   ma_ss(src, addr);
 }
 

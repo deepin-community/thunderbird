@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function AppPicker() {}
 
@@ -19,13 +18,13 @@ AppPicker.prototype = {
   appPickerLoad: function appPickerLoad() {
     const nsILocalHandlerApp = Ci.nsILocalHandlerApp;
 
-    document.addEventListener("dialogaccept", function() {
+    document.addEventListener("dialogaccept", function () {
       g_dialog.appPickerOK();
     });
-    document.addEventListener("dialogcancel", function() {
+    document.addEventListener("dialogcancel", function () {
       g_dialog.appPickerCancel();
     });
-    document.addEventListener("dialogextra2", function() {
+    document.addEventListener("dialogextra2", function () {
       g_dialog.appPickerBrowse();
     });
 
@@ -128,7 +127,7 @@ AppPicker.prototype = {
       return "";
     }
 
-    var urlSpec = fph.getURLSpecFromFile(file);
+    var urlSpec = fph.getURLSpecFromActualFile(file);
     return "moz-icon://" + urlSpec + "?size=32";
   },
 
@@ -196,7 +195,11 @@ AppPicker.prototype = {
     var nsIFilePicker = Ci.nsIFilePicker;
     var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
 
-    fp.init(window, this._incomingParams.title, nsIFilePicker.modeOpen);
+    fp.init(
+      window.browsingContext,
+      this._incomingParams.title,
+      nsIFilePicker.modeOpen
+    );
     fp.appendFilters(nsIFilePicker.filterApps);
 
     var startLocation;

@@ -16,23 +16,23 @@
 #include "LayersTypes.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/GfxMessageUtils.h"
-#include "mozilla/layers/LayerAttributes.h"
 #include "mozilla/layers/FocusTarget.h"
+#include "mozilla/layers/ScrollbarData.h"
 #include "mozilla/layers/WebRenderMessageUtils.h"
 #include "mozilla/webrender/WebRenderTypes.h"
 #include "mozilla/HashTable.h"
 #include "mozilla/Maybe.h"
 #include "nsTArrayForwardDeclare.h"
 
-class nsDisplayListBuilder;
-class nsDisplayItem;
-
 namespace mozilla {
 
+class nsDisplayItem;
+class nsDisplayListBuilder;
 struct ActiveScrolledRoot;
 
 namespace layers {
 
+class APZTestAccess;
 class Layer;
 class WebRenderLayerManager;
 class WebRenderScrollData;
@@ -44,13 +44,22 @@ class WebRenderScrollData;
 class WebRenderLayerScrollData final {
  public:
   WebRenderLayerScrollData();  // needed for IPC purposes
+  WebRenderLayerScrollData(WebRenderLayerScrollData&& aOther) = default;
   ~WebRenderLayerScrollData();
+
+  using ViewID = ScrollableLayerGuid::ViewID;
+
+  // Helper function for WebRenderScrollData::Validate().
+  bool ValidateSubtree(const WebRenderScrollData& aParent,
+                       std::vector<size_t>& aVisitCounts,
+                       size_t aCurrentIndex) const;
 
   void InitializeRoot(int32_t aDescendantCount);
   void Initialize(WebRenderScrollData& aOwner, nsDisplayItem* aItem,
                   int32_t aDescendantCount,
                   const ActiveScrolledRoot* aStopAtAsr,
-                  const Maybe<gfx::Matrix4x4>& aAncestorTransform);
+                  const Maybe<gfx::Matrix4x4>& aAncestorTransform,
+                  const ViewID& aAncestorTransformId);
 
   int32_t GetDescendantCount() const;
   size_t GetScrollMetadataCount() const;
@@ -65,6 +74,7 @@ class WebRenderLayerScrollData final {
                                           size_t aIndex) const;
 
   gfx::Matrix4x4 GetAncestorTransform() const { return mAncestorTransform; }
+  ViewID GetAncestorTransformId() const { return mAncestorTransformId; }
   void SetTransform(const gfx::Matrix4x4& aTransform) {
     mTransform = aTransform;
   }
@@ -74,10 +84,7 @@ class WebRenderLayerScrollData final {
     mTransformIsPerspective = aTransformIsPerspective;
   }
   bool GetTransformIsPerspective() const { return mTransformIsPerspective; }
-  void SetResolution(float aResolution) { mResolution = aResolution; }
-  float GetResolution() const { return mResolution; }
 
-  EventRegions GetEventRegions() const { return EventRegions(); }
   void SetEventRegionsOverride(const EventRegionsOverride& aOverride) {
     mEventRegionsOverride = aOverride;
   }
@@ -85,10 +92,8 @@ class WebRenderLayerScrollData final {
     return mEventRegionsOverride;
   }
 
-  void SetVisibleRegion(const LayerIntRegion& aRegion) {
-    mVisibleRegion = aRegion;
-  }
-  const LayerIntRegion& GetVisibleRegion() const { return mVisibleRegion; }
+  void SetVisibleRect(const LayerIntRect& aRect) { mVisibleRect = aRect; }
+  const LayerIntRect& GetVisibleRect() const { return mVisibleRect; }
   void SetRemoteDocumentSize(const LayerIntSize& aRemoteDocumentSize) {
     mRemoteDocumentSize = aRemoteDocumentSize;
   }
@@ -119,17 +124,17 @@ class WebRenderLayerScrollData final {
   }
   SideBits GetFixedPositionSides() const { return mFixedPositionSides; }
 
-  void SetFixedPositionScrollContainerId(ScrollableLayerGuid::ViewID aId) {
+  void SetFixedPositionScrollContainerId(ViewID aId) {
     mFixedPosScrollContainerId = aId;
   }
-  ScrollableLayerGuid::ViewID GetFixedPositionScrollContainerId() const {
+  ViewID GetFixedPositionScrollContainerId() const {
     return mFixedPosScrollContainerId;
   }
 
-  void SetStickyPositionScrollContainerId(ScrollableLayerGuid::ViewID aId) {
+  void SetStickyPositionScrollContainerId(ViewID aId) {
     mStickyPosScrollContainerId = aId;
   }
-  ScrollableLayerGuid::ViewID GetStickyPositionScrollContainerId() const {
+  ViewID GetStickyPositionScrollContainerId() const {
     return mStickyPosScrollContainerId;
   }
 
@@ -157,16 +162,27 @@ class WebRenderLayerScrollData final {
   void SetZoomAnimationId(const uint64_t& aId) { mZoomAnimationId = Some(aId); }
   Maybe<uint64_t> GetZoomAnimationId() const { return mZoomAnimationId; }
 
-  void SetAsyncZoomContainerId(const ScrollableLayerGuid::ViewID aId) {
+  void SetAsyncZoomContainerId(const ViewID& aId) {
     mAsyncZoomContainerId = Some(aId);
   }
-  Maybe<ScrollableLayerGuid::ViewID> GetAsyncZoomContainerId() const {
+  Maybe<ViewID> GetAsyncZoomContainerId() const {
     return mAsyncZoomContainerId;
   }
 
   void Dump(std::ostream& aOut, const WebRenderScrollData& aOwner) const;
 
   friend struct IPC::ParamTraits<WebRenderLayerScrollData>;
+
+ private:
+  // For test use only
+  friend class APZTestAccess;
+
+  // For use by GTests in building WebRenderLayerScrollData trees.
+  // GTests don't have a display list so they can't use Initialize().
+  void InitializeForTest(int32_t aDescendantCount);
+
+  ScrollMetadata& GetScrollMetadataMut(WebRenderScrollData& aOwner,
+                                       size_t aIndex);
 
  private:
   // The number of descendants this layer has (not including the layer itself).
@@ -185,10 +201,10 @@ class WebRenderLayerScrollData final {
   // over IPC, and use on the parent side in APZ.
 
   gfx::Matrix4x4 mAncestorTransform;
+  ViewID mAncestorTransformId;
   gfx::Matrix4x4 mTransform;
   bool mTransformIsPerspective;
-  float mResolution;
-  LayerIntRegion mVisibleRegion;
+  LayerIntRect mVisibleRect;
   // The remote documents only need their size because their origin is always
   // (0, 0).
   LayerIntSize mRemoteDocumentSize;
@@ -198,24 +214,38 @@ class WebRenderLayerScrollData final {
   Maybe<uint64_t> mScrollbarAnimationId;
   Maybe<uint64_t> mFixedPositionAnimationId;
   SideBits mFixedPositionSides;
-  ScrollableLayerGuid::ViewID mFixedPosScrollContainerId;
-  ScrollableLayerGuid::ViewID mStickyPosScrollContainerId;
+  ViewID mFixedPosScrollContainerId;
+  ViewID mStickyPosScrollContainerId;
   LayerRectAbsolute mStickyScrollRangeOuter;
   LayerRectAbsolute mStickyScrollRangeInner;
   Maybe<uint64_t> mStickyPositionAnimationId;
   Maybe<uint64_t> mZoomAnimationId;
-  Maybe<ScrollableLayerGuid::ViewID> mAsyncZoomContainerId;
+  Maybe<ViewID> mAsyncZoomContainerId;
+
+#if defined(DEBUG) || defined(MOZ_DUMP_PAINTING)
+  // The display item for which this layer was built.
+  // This is only set on the content side.
+  nsDisplayItem* mInitializedFrom = nullptr;
+#endif
 };
 
 // Data needed by APZ, for the whole layer tree. One instance of this class
 // is created for each transaction sent over PWebRenderBridge. It is populated
 // with information from the WebRender layer tree on the client side and the
 // information is used by APZ on the parent side.
-class WebRenderScrollData final {
+class WebRenderScrollData {
  public:
   WebRenderScrollData();
   explicit WebRenderScrollData(WebRenderLayerManager* aManager,
                                nsDisplayListBuilder* aBuilder);
+  WebRenderScrollData(WebRenderScrollData&& aOther) = default;
+  WebRenderScrollData& operator=(WebRenderScrollData&& aOther) = default;
+  virtual ~WebRenderScrollData() = default;
+
+  // Validate that the scroll data is well-formed, and particularly that
+  // |mLayerScrollData| encodes a valid tree. This is necessary because
+  // the data can be sent over IPC from a less-trusted content process.
+  bool Validate() const;
 
   WebRenderLayerManager* GetManager() const;
 
@@ -226,13 +256,14 @@ class WebRenderScrollData final {
   size_t AddMetadata(const ScrollMetadata& aMetadata);
   // Add the provided WebRenderLayerScrollData and return the index that can
   // be used to look it up via GetLayerData.
-  size_t AddLayerData(const WebRenderLayerScrollData& aData);
+  size_t AddLayerData(WebRenderLayerScrollData&& aData);
 
   size_t GetLayerCount() const;
 
   // Return a pointer to the scroll data at the given index. Use with caution,
   // as the pointer may be invalidated if this WebRenderScrollData is mutated.
   const WebRenderLayerScrollData* GetLayerData(size_t aIndex) const;
+  WebRenderLayerScrollData* GetLayerData(size_t aIndex);
 
   const ScrollMetadata& GetScrollMetadata(size_t aIndex) const;
   Maybe<size_t> HasMetadataFor(
@@ -245,10 +276,22 @@ class WebRenderScrollData final {
 
   void ApplyUpdates(ScrollUpdatesMap&& aUpdates, uint32_t aPaintSequenceNumber);
 
+  // Prepend the scroll position updates in the previous data to this data so
+  // that we can handle all scroll position updates in the proper order.
+  void PrependUpdates(const WebRenderScrollData& aPreviousData);
+
+  void SetWasUpdateSkipped() { mWasUpdateSkipped = true; }
+  bool GetWasUpdateSkipped() const { return mWasUpdateSkipped; }
+
   friend struct IPC::ParamTraits<WebRenderScrollData>;
 
   friend std::ostream& operator<<(std::ostream& aOut,
                                   const WebRenderScrollData& aData);
+
+ private:
+  // For test use only.
+  friend class WebRenderLayerScrollData;
+  ScrollMetadata& GetScrollMetadataMut(size_t aIndex);
 
  private:
   // This is called by the ParamTraits implementation to rebuild mScrollIdMap
@@ -292,6 +335,12 @@ class WebRenderScrollData final {
 
   bool mIsFirstPaint;
   uint32_t mPaintSequenceNumber;
+
+  // Wether this data was skipped to updated because the parent process hasn't
+  // yet gotten the referent LayersId for this data.
+  //
+  // Note this variable is not copied over IPC.
+  bool mWasUpdateSkipped = false;
 };
 
 }  // namespace layers
@@ -303,20 +352,18 @@ template <>
 struct ParamTraits<mozilla::layers::WebRenderLayerScrollData> {
   typedef mozilla::layers::WebRenderLayerScrollData paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam);
+  static void Write(MessageWriter* aWriter, const paramType& aParam);
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult);
+  static bool Read(MessageReader* aReader, paramType* aResult);
 };
 
 template <>
 struct ParamTraits<mozilla::layers::WebRenderScrollData> {
   typedef mozilla::layers::WebRenderScrollData paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam);
+  static void Write(MessageWriter* aWriter, const paramType& aParam);
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult);
+  static bool Read(MessageReader* aReader, paramType* aResult);
 };
 
 }  // namespace IPC

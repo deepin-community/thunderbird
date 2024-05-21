@@ -4,11 +4,11 @@
 
 DevToolsModules(
     "console-messages.js",
-    "document-events.js",
     "error-messages.js",
     "network-events.js",
     "storage-cache.js",
     "storage-cookie.js",
+    "storage-extension.js",
     "storage-indexed-db.js",
     "storage-local-storage.js",
     "storage-session-storage.js",

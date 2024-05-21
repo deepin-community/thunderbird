@@ -1,7 +1,3 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 [
   {
     "namespace": "manifest",
@@ -25,7 +21,7 @@
               "browser_style": {
                 "type": "boolean",
                 "optional": true,
-                "default": true
+                "description": "Defaults to true in Manifest V2; Deprecated in Manifest V3."
               },
               "default_panel": {
                 "type": "string",
@@ -71,10 +67,7 @@
             "type": "object",
             "properties": {
               "title": {
-                "choices": [
-                  {"type": "string"},
-                  {"type": "null"}
-                ],
+                "choices": [{ "type": "string" }, { "type": "null" }],
                 "description": "The string the sidebar action should display when moused over."
               },
               "tabId": {
@@ -146,7 +139,7 @@
                   { "type": "string" },
                   {
                     "type": "object",
-                    "additionalProperties": {"type": "string"}
+                    "additionalProperties": { "type": "string" }
                   }
                 ],
                 "optional": true,
@@ -190,10 +183,7 @@
                 "description": "Sets the sidebar url for the window specified by windowId."
               },
               "panel": {
-                "choices": [
-                  {"type": "string"},
-                  {"type": "null"}
-                ],
+                "choices": [{ "type": "string" }, { "type": "null" }],
                 "description": "The url to the html file to show in a sidebar.  If set to the empty string (''), no sidebar is shown."
               }
             }

@@ -5,21 +5,43 @@
 // chat/content/imAccountOptionsHelper.js
 /* globals accountOptionsHelper */
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-ChromeUtils.defineModuleGetter(this, "OTRUI", "resource:///modules/OTRUI.jsm");
-ChromeUtils.defineModuleGetter(this, "OTR", "resource:///modules/OTR.jsm");
-const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+const { ChatIcons } = ChromeUtils.importESModule(
+  "resource:///modules/chatIcons.sys.mjs"
+);
+ChromeUtils.defineESModuleGetters(this, {
+  ChatEncryption: "resource:///modules/ChatEncryption.sys.mjs",
+  OTR: "resource:///modules/OTR.sys.mjs",
+  OTRUI: "resource:///modules/OTRUI.sys.mjs",
+});
 
-var autoJoinPref = "autoJoin";
+window.addEventListener("load", event => {
+  parent.onPanelLoaded("am-im.xhtml");
+});
+window.addEventListener("beforeunload", event => {
+  onBeforeUnload();
+});
 
 function onPreInit(aAccount, aAccountValue) {
   account.init(aAccount.incomingServer.wrappedJSObject.imAccount);
 }
 
+function onBeforeUnload() {
+  if (account.encryptionObserver) {
+    Services.obs.removeObserver(
+      account.encryptionObserver,
+      "account-sessions-changed"
+    );
+    Services.obs.removeObserver(
+      account.encryptionObserver,
+      "account-encryption-status-changed"
+    );
+  }
+}
+
 var account = {
   async init(aAccount) {
-    let title = document.querySelector(".dialogheader .dialogheader-title");
-    let defaultTitle = title.getAttribute("defaultTitle");
+    const title = document.querySelector(".dialogheader .dialogheader-title");
+    const defaultTitle = title.getAttribute("defaultTitle");
     let titleValue;
 
     if (aAccount.name) {
@@ -41,8 +63,8 @@ var account = {
       48
     );
 
-    let password = document.getElementById("server.password");
-    let passwordBox = document.getElementById("passwordBox");
+    const password = document.getElementById("server.password");
+    const passwordBox = document.getElementById("passwordBox");
     if (this.proto.noPassword) {
       passwordBox.hidden = true;
       password.removeAttribute("wsm_persist");
@@ -61,34 +83,76 @@ var account = {
 
     document.getElementById("server.alias").value = this.account.alias;
 
-    if (OTRUI.enabled) {
-      document.getElementById("imTabOTR").hidden = false;
-      document.getElementById(
-        "server.otrAllowMsgLog"
-      ).value = this.account.otrAllowMsgLog;
-      document.getElementById(
-        "server.otrVerifyNudge"
-      ).value = this.account.otrVerifyNudge;
-      document.getElementById(
-        "server.otrRequireEncryption"
-      ).value = this.account.otrRequireEncryption;
+    if (ChatEncryption.canConfigureEncryption(this.account.protocol)) {
+      document.getElementById("imTabEncryption").hidden = false;
+      document.querySelector(".otr-settings").hidden = !OTRUI.enabled;
+      document.getElementById("server.otrAllowMsgLog").value =
+        this.account.otrAllowMsgLog;
+      if (OTRUI.enabled) {
+        document.getElementById("server.otrVerifyNudge").value =
+          this.account.otrVerifyNudge;
+        document.getElementById("server.otrRequireEncryption").value =
+          this.account.otrRequireEncryption;
 
-      let fpa = this.account.normalizedName;
-      let fpp = this.account.protocol.normalizedName;
-      let fp = OTR.privateKeyFingerprint(fpa, fpp);
-      if (!fp) {
-        fp = await document.l10n.formatValue("otr-not-yet-available");
+        const fpa = this.account.normalizedName;
+        const fpp = this.account.protocol.normalizedName;
+        let fp = OTR.privateKeyFingerprint(fpa, fpp);
+        if (!fp) {
+          fp = await document.l10n.formatValue("otr-not-yet-available");
+        }
+        document.getElementById("otrFingerprint").value = fp;
       }
-      document.getElementById("otrFingerprint").value = fp;
+      document.querySelector(".chat-encryption-settings").hidden =
+        !this.account.protocol.canEncrypt;
+      if (this.account.protocol.canEncrypt) {
+        document.l10n.setAttributes(
+          document.getElementById("chat-encryption-description"),
+          "chat-encryption-description",
+          {
+            protocol: this.proto.name,
+          }
+        );
+        this.buildEncryptionStatus();
+        this.buildAccountSessionsList();
+        this.encryptionObserver = {
+          observe: (subject, topic) => {
+            if (
+              topic === "account-sessions-changed" &&
+              subject.id === this.account.id
+            ) {
+              this.buildAccountSessionsList();
+            } else if (
+              topic === "account-encryption-status-changed" &&
+              subject.id === this.account.id
+            ) {
+              this.buildEncryptionStatus();
+            }
+          },
+          QueryInterface: ChromeUtils.generateQI([
+            "nsIObserver",
+            "nsISupportsWeakReference",
+          ]),
+        };
+        Services.obs.addObserver(
+          this.encryptionObserver,
+          "account-sessions-changed",
+          true
+        );
+        Services.obs.addObserver(
+          this.encryptionObserver,
+          "account-encryption-status-changed",
+          true
+        );
+      }
     }
 
-    let protoId = this.proto.id;
-    let canAutoJoin =
+    const protoId = this.proto.id;
+    const canAutoJoin =
       protoId == "prpl-irc" ||
       protoId == "prpl-jabber" ||
       protoId == "prpl-gtalk";
     document.getElementById("autojoinBox").hidden = !canAutoJoin;
-    let autojoin = document.getElementById("server.autojoin");
+    const autojoin = document.getElementById("server.autojoin");
     if (canAutoJoin) {
       autojoin.setAttribute("wsm_persist", "true");
     } else {
@@ -101,8 +165,78 @@ var account = {
     this.populateProtoSpecificBox();
   },
 
+  encryptionObserver: null,
+  buildEncryptionStatus() {
+    const encryptionStatus = document.querySelector(".chat-encryption-status");
+    if (this.account.encryptionStatus.length) {
+      encryptionStatus.replaceChildren(
+        ...this.account.encryptionStatus.map(status => {
+          const item = document.createElementNS(
+            "http://www.w3.org/1999/xhtml",
+            "li"
+          );
+          item.textContent = status;
+          return item;
+        })
+      );
+    } else {
+      const placeholder = document.createElementNS(
+        "http://www.w3.org/1999/xhtml",
+        "li"
+      );
+      document.l10n.setAttributes(placeholder, "chat-encryption-placeholder");
+      encryptionStatus.replaceChildren(placeholder);
+    }
+  },
+  buildAccountSessionsList() {
+    const sessions = this.account.getSessions();
+    document.querySelector(".chat-encryption-sessions-container").hidden =
+      sessions.length === 0;
+    const sessionList = document.querySelector(".chat-encryption-sessions");
+    sessionList.replaceChildren(
+      ...sessions.map(session => {
+        const button = document.createElementNS(
+          "http://www.w3.org/1999/xhtml",
+          "button"
+        );
+        document.l10n.setAttributes(
+          button,
+          "chat-encryption-session-" + (session.trusted ? "trusted" : "verify")
+        );
+        button.disabled = session.trusted;
+        if (!button.disabled) {
+          button.addEventListener("click", async () => {
+            try {
+              const sessionInfo = await session.verify();
+              parent.gSubDialog.open(
+                "chrome://messenger/content/chat/verify.xhtml",
+                { features: "resizable=no" },
+                sessionInfo
+              );
+            } catch (error) {
+              // Verification was probably aborted by the other side.
+              this.account.prplAccount.wrappedJSObject.WARN(error);
+            }
+          });
+        }
+        const sessionLabel = document.createElementNS(
+          "http://www.w3.org/1999/xhtml",
+          "span"
+        );
+        sessionLabel.textContent = session.id;
+        const row = document.createElementNS(
+          "http://www.w3.org/1999/xhtml",
+          "li"
+        );
+        row.append(sessionLabel, button);
+        row.classList.toggle("chat-current-session", session.currentSession);
+        return row;
+      })
+    );
+  },
+
   populateProtoSpecificBox() {
-    let attributes = {};
+    const attributes = {};
     attributes[Ci.prplIPref.typeBool] = [
       { name: "wsm_persist", value: "true" },
       { name: "preftype", value: "bool" },
@@ -118,12 +252,12 @@ var account = {
       { name: "preftype", value: "wstring" },
       { name: "genericattr", value: "true" },
     ];
-    let haveOptions = accountOptionsHelper.addOptions(
+    const haveOptions = accountOptionsHelper.addOptions(
       "server.",
       this.proto.getOptions(),
       attributes
     );
-    let advanced = document.getElementById("advanced");
+    const advanced = document.getElementById("advanced");
     if (advanced.hidden && haveOptions) {
       advanced.hidden = false;
       // Force textbox XBL binding attachment by forcing layout,
@@ -133,12 +267,12 @@ var account = {
     } else if (!haveOptions) {
       advanced.hidden = true;
     }
-    let inputElements = document.querySelectorAll(
+    const inputElements = document.querySelectorAll(
       "#protoSpecific :is(checkbox, input, menulist)"
     );
     // Because the elements are added after the document loaded we have to
     // notify the parent document that there are prefs to save.
-    for (let input of inputElements) {
+    for (const input of inputElements) {
       if (input.localName == "input" || input.localName == "textarea") {
         input.addEventListener("change", event => {
           document.dispatchEvent(new CustomEvent("prefchange"));
@@ -152,7 +286,7 @@ var account = {
   },
 
   viewFingerprintKeys() {
-    let otrAccount = { account: this.account };
+    const otrAccount = { account: this.account };
     parent.gSubDialog.open(
       "chrome://chat/content/otr-finger.xhtml",
       undefined,

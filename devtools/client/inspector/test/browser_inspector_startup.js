@@ -12,7 +12,7 @@ const server = createTestHTTPServer();
 server.registerContentType("gif", "image/gif");
 function onPageResourceRequest() {
   return new Promise(done => {
-    server.registerPathHandler("/slow.gif", function(metadata, response) {
+    server.registerPathHandler("/slow.gif", function (metadata, response) {
       info("Image has been requested");
       response.processAsync();
       done(response);
@@ -33,13 +33,7 @@ const TEST_URL =
   "</body>" +
   "</html>";
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
+add_task(async function () {
   const { inspector, tab } = await openInspectorForURL("about:blank");
 
   const domContentLoaded = waitForLinkedBrowserEvent(tab, "DOMContentLoaded");
@@ -84,7 +78,7 @@ function waitForLinkedBrowserEvent(tab, event) {
 }
 
 function contentReadyState(tab) {
-  return SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  return SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     return content.document.readyState;
   });
 }

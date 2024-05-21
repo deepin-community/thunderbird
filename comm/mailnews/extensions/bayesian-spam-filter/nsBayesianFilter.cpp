@@ -18,26 +18,27 @@
 #include "nsDirectoryServiceUtils.h"
 #include "nsIMIMEHeaderParam.h"
 #include "nsNetCID.h"
-#include "nsMsgMimeCID.h"
 #include "nsIMsgMailNewsUrl.h"
-#include "nsIMimeMiscStatus.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsIStringEnumerator.h"
 #include "nsIObserverService.h"
 #include "nsIChannel.h"
+#include "nsIMailChannel.h"
 #include "nsDependentSubstring.h"
 #include "nsMemory.h"
+#include "nsUnicodeProperties.h"
 
 #include "mozilla/ArenaAllocatorExtensions.h"  // for ArenaStrdup
 
 using namespace mozilla;
+using mozilla::intl::Script;
+using mozilla::intl::UnicodeProperties;
 
 // needed to mark attachment flag on the db hdr
 #include "nsIMsgHdr.h"
 
 // needed to strip html out of the body
-#include "nsLayoutCID.h"
 #include "nsIParserUtils.h"
 #include "nsIDocumentEncoder.h"
 
@@ -392,32 +393,31 @@ void Tokenizer::addTokenForHeader(const char* aTokenPrefix, nsACString& aValue,
   }
 }
 
-void Tokenizer::tokenizeAttachment(const char* aContentType,
-                                   const char* aFileName) {
-  nsAutoCString contentType;
-  nsAutoCString fileName;
-  fileName.Assign(aFileName);
-  contentType.Assign(aContentType);
+void Tokenizer::tokenizeAttachments(
+    nsTArray<RefPtr<nsIPropertyBag2>>& attachments) {
+  for (auto attachment : attachments) {
+    nsCString contentType;
+    ToLowerCase(contentType);
+    attachment->GetPropertyAsAUTF8String(u"contentType"_ns, contentType);
+    addTokenForHeader("attachment/content-type", contentType);
 
-  // normalize the content type and the file name
-  ToLowerCase(fileName);
-  ToLowerCase(contentType);
-  addTokenForHeader("attachment/filename", fileName);
-
-  addTokenForHeader("attachment/content-type", contentType);
+    nsCString displayName;
+    attachment->GetPropertyAsAUTF8String(u"displayName"_ns, displayName);
+    ToLowerCase(displayName);
+    addTokenForHeader("attachment/filename", displayName);
+  }
 }
 
-void Tokenizer::tokenizeHeaders(nsIUTF8StringEnumerator* aHeaderNames,
-                                nsIUTF8StringEnumerator* aHeaderValues) {
+void Tokenizer::tokenizeHeaders(nsTArray<nsCString>& aHeaderNames,
+                                nsTArray<nsCString>& aHeaderValues) {
   nsCString headerValue;
   nsAutoCString
       headerName;  // we'll be normalizing all header names to lower case
-  bool hasMore;
 
-  while (NS_SUCCEEDED(aHeaderNames->HasMore(&hasMore)) && hasMore) {
-    aHeaderNames->GetNext(headerName);
+  for (uint32_t i = 0; i < aHeaderNames.Length(); i++) {
+    headerName = aHeaderNames[i];
     ToLowerCase(headerName);
-    aHeaderValues->GetNext(headerValue);
+    headerValue = aHeaderValues[i];
 
     bool headerProcessed = false;
     if (mCustomHeaderTokenization) {
@@ -458,19 +458,19 @@ void Tokenizer::tokenizeHeaders(nsIUTF8StringEnumerator* aHeaderNames,
 
           // extract the charset parameter
           nsCString parameterValue;
-          mimehdrpar->GetParameterInternal(headerValue.get(), "charset",
-                                           nullptr, nullptr,
+          mimehdrpar->GetParameterInternal(headerValue, "charset", nullptr,
+                                           nullptr,
                                            getter_Copies(parameterValue));
           addTokenForHeader("charset", parameterValue);
 
           // create a token containing just the content type
-          mimehdrpar->GetParameterInternal(headerValue.get(), "type", nullptr,
+          mimehdrpar->GetParameterInternal(headerValue, "type", nullptr,
                                            nullptr,
                                            getter_Copies(parameterValue));
           if (!parameterValue.Length())
             mimehdrpar->GetParameterInternal(
-                headerValue.get(), nullptr /* use first unnamed param */,
-                nullptr, nullptr, getter_Copies(parameterValue));
+                headerValue, nullptr /* use first unnamed param */, nullptr,
+                nullptr, getter_Copies(parameterValue));
           addTokenForHeader("content-type/type", parameterValue);
 
           // XXX: should we add a token for the entire content-type header as
@@ -563,6 +563,38 @@ void Tokenizer::tokenize_ascii_word(char* aWord) {
   }
 }
 
+// Copied from mozilla/intl/lwbrk/WordBreaker.cpp
+
+#define ASCII_IS_ALPHA(c) \
+  ((('a' <= (c)) && ((c) <= 'z')) || (('A' <= (c)) && ((c) <= 'Z')))
+#define ASCII_IS_DIGIT(c) (('0' <= (c)) && ((c) <= '9'))
+#define ASCII_IS_SPACE(c) \
+  ((' ' == (c)) || ('\t' == (c)) || ('\r' == (c)) || ('\n' == (c)))
+#define IS_ALPHABETICAL_SCRIPT(c) ((c) < 0x2E80)
+
+// we change the beginning of IS_HAN from 0x4e00 to 0x3400 to relfect
+// Unicode 3.0
+#define IS_HAN(c) \
+  ((0x3400 <= (c)) && ((c) <= 0x9fff)) || ((0xf900 <= (c)) && ((c) <= 0xfaff))
+#define IS_KATAKANA(c) ((0x30A0 <= (c)) && ((c) <= 0x30FF))
+#define IS_HIRAGANA(c) ((0x3040 <= (c)) && ((c) <= 0x309F))
+#define IS_HALFWIDTHKATAKANA(c) ((0xFF60 <= (c)) && ((c) <= 0xFF9F))
+
+// Return true if aChar belongs to a SEAsian script that is written without
+// word spaces, so we need to use the "complex breaker" to find possible word
+// boundaries. (https://en.wikipedia.org/wiki/Scriptio_continua)
+// (How well this works depends on the level of platform support for finding
+// possible line breaks - or possible word boundaries - in the particular
+// script. Thai, at least, works pretty well on the major desktop OSes. If
+// the script is not supported by the platform, we just won't find any useful
+// boundaries.)
+static bool IsScriptioContinua(char16_t aChar) {
+  Script sc = UnicodeProperties::GetScriptCode(aChar);
+  return sc == Script::THAI || sc == Script::MYANMAR || sc == Script::KHMER ||
+         sc == Script::JAVANESE || sc == Script::BALINESE ||
+         sc == Script::SUNDANESE || sc == Script::LAO;
+}
+
 // one subtract and one conditional jump should be faster than two conditional
 // jump on most recent system.
 #define IN_RANGE(x, low, high) ((uint16_t)((x) - (low)) <= (high) - (low))
@@ -616,7 +648,7 @@ static char_class getCharClass(char16_t c) {
 
 static bool isJapanese(const char* word) {
   nsString text = NS_ConvertUTF8toUTF16(word);
-  char16_t* p = (char16_t*)text.get();
+  const char16_t* p = (const char16_t*)text.get();
   char16_t c;
 
   // it is japanese chunk if it contains any hiragana or katakana.
@@ -669,14 +701,67 @@ nsresult Tokenizer::stripHTML(const nsAString& inString, nsAString& outString) {
   return utils->ConvertToPlainText(inString, flags, 80, outString);
 }
 
+// Copied from WorfdBreker.cpp due to changes in bug 1728708.
+enum WordBreakClass : uint8_t {
+  kWbClassSpace = 0,
+  kWbClassAlphaLetter,
+  kWbClassPunct,
+  kWbClassHanLetter,
+  kWbClassKatakanaLetter,
+  kWbClassHiraganaLetter,
+  kWbClassHWKatakanaLetter,
+  kWbClassScriptioContinua
+};
+
+WordBreakClass GetWordBreakClass(char16_t c) {
+  // begin of the hack
+
+  if (IS_ALPHABETICAL_SCRIPT(c)) {
+    if (IS_ASCII(c)) {
+      if (ASCII_IS_SPACE(c)) {
+        return WordBreakClass::kWbClassSpace;
+      }
+      if (ASCII_IS_ALPHA(c) || ASCII_IS_DIGIT(c) || (c == '_')) {
+        return WordBreakClass::kWbClassAlphaLetter;
+      }
+      return WordBreakClass::kWbClassPunct;
+    }
+    if (c == 0x00A0 /*NBSP*/) {
+      return WordBreakClass::kWbClassSpace;
+    }
+    if (mozilla::unicode::GetGenCategory(c) == nsUGenCategory::kPunctuation) {
+      return WordBreakClass::kWbClassPunct;
+    }
+    if (IsScriptioContinua(c)) {
+      return WordBreakClass::kWbClassScriptioContinua;
+    }
+    return WordBreakClass::kWbClassAlphaLetter;
+  }
+  if (IS_HAN(c)) {
+    return WordBreakClass::kWbClassHanLetter;
+  }
+  if (IS_KATAKANA(c)) {
+    return kWbClassKatakanaLetter;
+  }
+  if (IS_HIRAGANA(c)) {
+    return WordBreakClass::kWbClassHiraganaLetter;
+  }
+  if (IS_HALFWIDTHKATAKANA(c)) {
+    return WordBreakClass::kWbClassHWKatakanaLetter;
+  }
+  if (mozilla::unicode::GetGenCategory(c) == nsUGenCategory::kPunctuation) {
+    return WordBreakClass::kWbClassPunct;
+  }
+  if (IsScriptioContinua(c)) {
+    return WordBreakClass::kWbClassScriptioContinua;
+  }
+  return WordBreakClass::kWbClassAlphaLetter;
+}
+
 // Copied from nsSemanticUnitScanner.cpp which was removed in bug 1368418.
 nsresult Tokenizer::ScannerNext(const char16_t* text, int32_t length,
                                 int32_t pos, bool isLastBuffer, int32_t* begin,
                                 int32_t* end, bool* _retval) {
-  if (!mWordBreaker) {
-    mWordBreaker = mozilla::intl::WordBreaker::Create();
-  }
-
   // if we reach the end, just return
   if (pos >= length) {
     *begin = pos;
@@ -685,12 +770,11 @@ nsresult Tokenizer::ScannerNext(const char16_t* text, int32_t length,
     return NS_OK;
   }
 
-  mozilla::intl::WordBreakClass char_class =
-      mozilla::intl::WordBreaker::GetClass(text[pos]);
+  WordBreakClass char_class = GetWordBreakClass(text[pos]);
 
   // If we are in Chinese mode, return one Han letter at a time.
   // We should not do this if we are in Japanese or Korean mode.
-  if (mozilla::intl::kWbClassHanLetter == char_class) {
+  if (WordBreakClass::kWbClassHanLetter == char_class) {
     *begin = pos;
     *end = pos + 1;
     *_retval = true;
@@ -699,7 +783,8 @@ nsresult Tokenizer::ScannerNext(const char16_t* text, int32_t length,
 
   int32_t next;
   // Find the next "word".
-  next = mWordBreaker->NextWord(text, (uint32_t)length, (uint32_t)pos);
+  next =
+      mozilla::intl::WordBreaker::Next(text, (uint32_t)length, (uint32_t)pos);
 
   // If we don't have enough text to make decision, return.
   if (next == NS_WORDBREAKER_NEED_MORE_TEXT) {
@@ -710,8 +795,8 @@ nsresult Tokenizer::ScannerNext(const char16_t* text, int32_t length,
   }
 
   // If what we got is space or punct, look at the next break.
-  if (char_class == mozilla::intl::kWbClassSpace ||
-      char_class == mozilla::intl::kWbClassPunct) {
+  if (char_class == WordBreakClass::kWbClassSpace ||
+      char_class == WordBreakClass::kWbClassPunct) {
     // If the next "word" is not letters,
     // call itself recursively with the new pos.
     return ScannerNext(text, length, next, isLastBuffer, begin, end, _retval);
@@ -867,7 +952,7 @@ class TokenAnalyzer {
     mTokenListener = aTokenListener;
   }
 
-  void setSource(const char* sourceURI) { mTokenSource = sourceURI; }
+  void setSource(const nsACString& sourceURI) { mTokenSource = sourceURI; }
 
   nsCOMPtr<nsIStreamListener> mTokenListener;
   nsCString mTokenSource;
@@ -879,12 +964,11 @@ class TokenAnalyzer {
  * any of the valid token separators would do. This could be a further
  * refinement.
  */
-class TokenStreamListener : public nsIStreamListener, nsIMsgHeaderSink {
+class TokenStreamListener : public nsIStreamListener {
  public:
   NS_DECL_ISUPPORTS
   NS_DECL_NSIREQUESTOBSERVER
   NS_DECL_NSISTREAMLISTENER
-  NS_DECL_NSIMSGHEADERSINK
 
   explicit TokenStreamListener(TokenAnalyzer* analyzer);
 
@@ -912,63 +996,7 @@ TokenStreamListener::~TokenStreamListener() {
   delete mAnalyzer;
 }
 
-NS_IMPL_ISUPPORTS(TokenStreamListener, nsIRequestObserver, nsIStreamListener,
-                  nsIMsgHeaderSink)
-
-NS_IMETHODIMP TokenStreamListener::ProcessHeaders(
-    nsIUTF8StringEnumerator* aHeaderNames,
-    nsIUTF8StringEnumerator* aHeaderValues, bool dontCollectAddress) {
-  mTokenizer.tokenizeHeaders(aHeaderNames, aHeaderValues);
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::HandleAttachment(
-    const char* contentType, const nsACString& url, const char16_t* displayName,
-    const nsACString& uri, bool aIsExternalAttachment) {
-  mTokenizer.tokenizeAttachment(contentType,
-                                NS_ConvertUTF16toUTF8(displayName).get());
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::AddAttachmentField(const char* field,
-                                                      const char* value) {
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::OnEndAllAttachments() { return NS_OK; }
-
-NS_IMETHODIMP TokenStreamListener::OnEndMsgDownload(nsIMsgMailNewsUrl* url) {
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::OnMsgHasRemoteContent(nsIMsgDBHdr* aMsgHdr,
-                                                         nsIURI* aContentURI,
-                                                         bool aCanOverride) {
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::OnEndMsgHeaders(nsIMsgMailNewsUrl* url) {
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::GetSecurityInfo(
-    nsISupports** aSecurityInfo) {
-  return NS_OK;
-}
-NS_IMETHODIMP TokenStreamListener::SetSecurityInfo(nsISupports* aSecurityInfo) {
-  return NS_OK;
-}
-
-NS_IMETHODIMP TokenStreamListener::GetDummyMsgHeader(nsIMsgDBHdr** aMsgDBHdr) {
-  return NS_ERROR_NOT_IMPLEMENTED;
-}
-
-NS_IMETHODIMP TokenStreamListener::ResetProperties() { return NS_OK; }
-
-NS_IMETHODIMP TokenStreamListener::GetProperties(
-    nsIWritablePropertyBag2** aProperties) {
-  return NS_ERROR_NOT_IMPLEMENTED;
-}
+NS_IMPL_ISUPPORTS(TokenStreamListener, nsIRequestObserver, nsIStreamListener)
 
 /* void onStartRequest (in nsIRequest aRequest); */
 NS_IMETHODIMP TokenStreamListener::OnStartRequest(nsIRequest* aRequest) {
@@ -976,18 +1004,6 @@ NS_IMETHODIMP TokenStreamListener::OnStartRequest(nsIRequest* aRequest) {
   if (!mBuffer) {
     mBuffer = new char[mBufferSize];
     NS_ENSURE_TRUE(mBuffer, NS_ERROR_OUT_OF_MEMORY);
-  }
-
-  // get the url for the channel and set our nsIMsgHeaderSink on it so we get
-  // notified about the headers and attachments
-
-  nsCOMPtr<nsIChannel> channel(do_QueryInterface(aRequest));
-  if (channel) {
-    nsCOMPtr<nsIURI> uri;
-    channel->GetURI(getter_AddRefs(uri));
-    nsCOMPtr<nsIMsgMailNewsUrl> mailUrl = do_QueryInterface(uri);
-    if (mailUrl)
-      mailUrl->SetMsgHeaderSink(static_cast<nsIMsgHeaderSink*>(this));
   }
 
   return NS_OK;
@@ -1070,6 +1086,19 @@ NS_IMETHODIMP TokenStreamListener::OnDataAvailable(nsIRequest* aRequest,
 /* void onStopRequest (in nsIRequest aRequest, in nsresult aStatusCode); */
 NS_IMETHODIMP TokenStreamListener::OnStopRequest(nsIRequest* aRequest,
                                                  nsresult aStatusCode) {
+  nsCOMPtr<nsIMailChannel> mailChannel = do_QueryInterface(aRequest);
+  if (mailChannel) {
+    nsTArray<nsCString> headerNames;
+    nsTArray<nsCString> headerValues;
+    mailChannel->GetHeaderNames(headerNames);
+    mailChannel->GetHeaderValues(headerValues);
+    mTokenizer.tokenizeHeaders(headerNames, headerValues);
+
+    nsTArray<RefPtr<nsIPropertyBag2>> attachments;
+    mailChannel->GetAttachments(attachments);
+    mTokenizer.tokenizeAttachments(attachments);
+  }
+
   if (mLeftOverCount) {
     /* assume final buffer is complete. */
     mBuffer[mLeftOverCount] = '\0';
@@ -1130,14 +1159,6 @@ nsBayesianFilter::nsBayesianFilter() : mTrainingDataDirty(false) {
     mMaximumTokenCount = 0;  // which means do not limit token counts
   MOZ_LOG(BayesianFilterLogModule, LogLevel::Warning,
           ("maximum junk tokens: %d", mMaximumTokenCount));
-
-  mTimer = do_CreateInstance(NS_TIMER_CONTRACTID, &rv);
-  NS_ASSERTION(
-      NS_SUCCEEDED(rv),
-      "unable to create a timer; training data will only be written on exit");
-
-  // the timer is not used on object construction, since for
-  // the time being there are no dirying messages
 
   // give a default capacity to the memory structure used to store
   // per-message/per-trait token data
@@ -1224,9 +1245,8 @@ class MessageClassifier : public TokenAnalyzer {
 
   virtual ~MessageClassifier() {}
   virtual void analyzeTokens(Tokenizer& tokenizer) {
-    mFilter->classifyMessage(tokenizer, mTokenSource.get(), mProTraits,
-                             mAntiTraits, mJunkListener, mTraitListener,
-                             mDetailListener);
+    mFilter->classifyMessage(tokenizer, mTokenSource, mProTraits, mAntiTraits,
+                             mJunkListener, mTraitListener, mDetailListener);
     tokenizer.clearTokens();
     classifyNextMessage();
   }
@@ -1236,17 +1256,17 @@ class MessageClassifier : public TokenAnalyzer {
       MOZ_LOG(BayesianFilterLogModule, LogLevel::Warning,
               ("classifyNextMessage(%s)",
                mMessageURIs[mCurMessageToClassify].get()));
-      mFilter->tokenizeMessage(mMessageURIs[mCurMessageToClassify].get(),
-                               mMsgWindow, this);
+      mFilter->tokenizeMessage(mMessageURIs[mCurMessageToClassify], mMsgWindow,
+                               this);
     } else {
       // call all listeners with null parameters to signify end of batch
       if (mJunkListener)
-        mJunkListener->OnMessageClassified(nullptr,
+        mJunkListener->OnMessageClassified(EmptyCString(),
                                            nsIJunkMailPlugin::UNCLASSIFIED, 0);
       if (mTraitListener) {
         nsTArray<uint32_t> nullTraits;
         nsTArray<uint32_t> nullPercents;
-        mTraitListener->OnMessageTraitsClassified(nullptr, nullTraits,
+        mTraitListener->OnMessageTraitsClassified(EmptyCString(), nullTraits,
                                                   nullPercents);
       }
       mTokenListener =
@@ -1268,14 +1288,12 @@ class MessageClassifier : public TokenAnalyzer {
   uint32_t mCurMessageToClassify;  // 0-based index
 };
 
-nsresult nsBayesianFilter::tokenizeMessage(const char* aMessageURI,
+nsresult nsBayesianFilter::tokenizeMessage(const nsACString& aMessageURI,
                                            nsIMsgWindow* aMsgWindow,
                                            TokenAnalyzer* aAnalyzer) {
-  NS_ENSURE_ARG_POINTER(aMessageURI);
-
   nsCOMPtr<nsIMsgMessageService> msgService;
-  nsresult rv = GetMessageServiceFromURI(nsDependentCString(aMessageURI),
-                                         getter_AddRefs(msgService));
+  nsresult rv =
+      GetMessageServiceFromURI(aMessageURI, getter_AddRefs(msgService));
   NS_ENSURE_SUCCESS(rv, rv);
 
   aAnalyzer->setSource(aMessageURI);
@@ -1331,11 +1349,15 @@ static inline double chi2P(double chi2, double nu, int32_t* error) {
 }
 
 void nsBayesianFilter::classifyMessage(
-    Tokenizer& tokenizer, const char* messageURI,
+    Tokenizer& tokenizer, const nsACString& messageURI,
     nsTArray<uint32_t>& aProTraits, nsTArray<uint32_t>& aAntiTraits,
     nsIJunkMailClassificationListener* listener,
     nsIMsgTraitClassificationListener* aTraitListener,
     nsIMsgTraitDetailListener* aDetailListener) {
+  if (aProTraits.Length() != aAntiTraits.Length()) {
+    NS_ERROR("Each Pro trait needs a matching Anti trait");
+    return;
+  }
   Token* tokens = tokenizer.copyTokens();
   uint32_t tokenCount;
   if (!tokens) {
@@ -1345,11 +1367,6 @@ void nsBayesianFilter::classifyMessage(
     // don't return so that we still call the listeners
   } else {
     tokenCount = tokenizer.countTokens();
-  }
-
-  if (aProTraits.Length() != aAntiTraits.Length()) {
-    NS_ERROR("Each Pro trait needs a matching Anti trait");
-    return;
   }
 
   /* this part is similar to the Graham algorithm with some adjustments. */
@@ -1588,7 +1605,7 @@ void nsBayesianFilter::classifyMessage(
       bool isJunk = (prob >= mJunkProbabilityThreshold);
       MOZ_LOG(BayesianFilterLogModule, LogLevel::Info,
               ("%s is junk probability = (%f)  HAM SCORE:%f SPAM SCORE:%f",
-               messageURI, prob, H, S));
+               PromiseFlatCString(messageURI).get(), prob, H, S));
 
       // the algorithm in "A Plan For Spam" assumes that you have a large good
       // corpus and a large junk corpus.
@@ -1635,7 +1652,7 @@ void nsBayesianFilter::classifyMessage(
 }
 
 void nsBayesianFilter::classifyMessage(
-    Tokenizer& tokens, const char* messageURI,
+    Tokenizer& tokens, const nsACString& messageURI,
     nsIJunkMailClassificationListener* aJunkListener) {
   AutoTArray<uint32_t, 1> proTraits;
   AutoTArray<uint32_t, 1> antiTraits;
@@ -1671,9 +1688,9 @@ NS_IMETHODIMP nsBayesianFilter::GetShouldDownloadAllHeaders(
 /* void classifyMessage (in string aMsgURL, in nsIJunkMailClassificationListener
  * aListener); */
 NS_IMETHODIMP nsBayesianFilter::ClassifyMessage(
-    const char* aMessageURL, nsIMsgWindow* aMsgWindow,
+    const nsACString& aMessageURL, nsIMsgWindow* aMsgWindow,
     nsIJunkMailClassificationListener* aListener) {
-  AutoTArray<nsCString, 1> urls = {nsDependentCString(aMessageURL)};
+  AutoTArray<nsCString, 1> urls = {PromiseFlatCString(aMessageURL)};
   MessageClassifier* analyzer =
       new MessageClassifier(this, aListener, aMsgWindow, urls);
   NS_ENSURE_TRUE(analyzer, NS_ERROR_OUT_OF_MEMORY);
@@ -1695,7 +1712,7 @@ NS_IMETHODIMP nsBayesianFilter::ClassifyMessages(
   TokenStreamListener* tokenListener = new TokenStreamListener(analyzer);
   NS_ENSURE_TRUE(tokenListener, NS_ERROR_OUT_OF_MEMORY);
   analyzer->setTokenListener(tokenListener);
-  return tokenizeMessage(aMsgURLs[0].get(), aMsgWindow, analyzer);
+  return tokenizeMessage(aMsgURLs[0], aMsgWindow, analyzer);
 }
 
 nsresult nsBayesianFilter::setAnalysis(Token& token, uint32_t aTraitIndex,
@@ -1778,7 +1795,7 @@ NS_IMETHODIMP nsBayesianFilter::ClassifyTraitsInMessages(
   TokenStreamListener* tokenListener = new TokenStreamListener(analyzer);
 
   analyzer->setTokenListener(tokenListener);
-  return tokenizeMessage(aMsgURIs[0].get(), aMsgWindow, analyzer);
+  return tokenizeMessage(aMsgURIs[0], aMsgWindow, analyzer);
 }
 
 class MessageObserver : public TokenAnalyzer {
@@ -1796,7 +1813,7 @@ class MessageObserver : public TokenAnalyzer {
         mNewClassifications(aNewClassifications.Clone()) {}
 
   virtual void analyzeTokens(Tokenizer& tokenizer) {
-    mFilter->observeMessage(tokenizer, mTokenSource.get(), mOldClassifications,
+    mFilter->observeMessage(tokenizer, mTokenSource, mOldClassifications,
                             mNewClassifications, mJunkListener, mTraitListener);
     // release reference to listener, which will allow us to go away as well.
     mTokenListener = nullptr;
@@ -1812,7 +1829,7 @@ class MessageObserver : public TokenAnalyzer {
 };
 
 NS_IMETHODIMP nsBayesianFilter::SetMsgTraitClassification(
-    const char* aMsgURI, const nsTArray<uint32_t>& aOldTraits,
+    const nsACString& aMsgURI, const nsTArray<uint32_t>& aOldTraits,
     const nsTArray<uint32_t>& aNewTraits,
     nsIMsgTraitClassificationListener* aTraitListener, nsIMsgWindow* aMsgWindow,
     nsIJunkMailClassificationListener* aJunkListener) {
@@ -1829,7 +1846,7 @@ NS_IMETHODIMP nsBayesianFilter::SetMsgTraitClassification(
 
 // set new message classifications for a message
 void nsBayesianFilter::observeMessage(
-    Tokenizer& tokenizer, const char* messageURL,
+    Tokenizer& tokenizer, const nsACString& messageURL,
     nsTArray<uint32_t>& oldClassifications,
     nsTArray<uint32_t>& newClassifications,
     nsIJunkMailClassificationListener* aJunkListener,
@@ -1901,14 +1918,19 @@ void nsBayesianFilter::observeMessage(
     aTraitListener->OnMessageTraitsClassified(messageURL, traits, percents);
   }
 
-  if (mTrainingDataDirty && !trainingDataWasDirty && (mTimer != nullptr)) {
+  if (mTrainingDataDirty && !trainingDataWasDirty) {
     // if training data became dirty just now, schedule flush
     // mMinFlushInterval msec from now
     MOZ_LOG(BayesianFilterLogModule, LogLevel::Debug,
             ("starting training data flush timer %i msec", mMinFlushInterval));
-    mTimer->InitWithNamedFuncCallback(
-        nsBayesianFilter::TimerCallback, this, mMinFlushInterval,
-        nsITimer::TYPE_ONE_SHOT, "nsBayesianFilter::TimerCallback");
+
+    nsresult rv = NS_NewTimerWithFuncCallback(
+        getter_AddRefs(mTimer), nsBayesianFilter::TimerCallback, (void*)this,
+        mMinFlushInterval, nsITimer::TYPE_ONE_SHOT,
+        "nsBayesianFilter::TimerCallback", nullptr);
+    if (NS_FAILED(rv)) {
+      NS_WARNING("Could not start nsBayesianFilter timer");
+    }
   }
 }
 
@@ -1921,7 +1943,7 @@ NS_IMETHODIMP nsBayesianFilter::GetUserHasClassified(bool* aResult) {
 
 // Set message classification (only allows junk and good)
 NS_IMETHODIMP nsBayesianFilter::SetMessageClassification(
-    const char* aMsgURL, nsMsgJunkStatus aOldClassification,
+    const nsACString& aMsgURL, nsMsgJunkStatus aOldClassification,
     nsMsgJunkStatus aNewClassification, nsIMsgWindow* aMsgWindow,
     nsIJunkMailClassificationListener* aListener) {
   AutoTArray<uint32_t, 1> oldClassifications;
@@ -1953,11 +1975,11 @@ NS_IMETHODIMP nsBayesianFilter::ResetTrainingData() {
 }
 
 NS_IMETHODIMP nsBayesianFilter::DetailMessage(
-    const char* aMsgURI, uint32_t aProTrait, uint32_t aAntiTrait,
+    const nsACString& aMsgURI, uint32_t aProTrait, uint32_t aAntiTrait,
     nsIMsgTraitDetailListener* aDetailListener, nsIMsgWindow* aMsgWindow) {
   AutoTArray<uint32_t, 1> proTraits = {aProTrait};
   AutoTArray<uint32_t, 1> antiTraits = {aAntiTrait};
-  AutoTArray<nsCString, 1> uris = {nsDependentCString(aMsgURI)};
+  AutoTArray<nsCString, 1> uris = {PromiseFlatCString(aMsgURI)};
 
   MessageClassifier* analyzer =
       new MessageClassifier(this, nullptr, nullptr, aDetailListener, proTraits,

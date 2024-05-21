@@ -4,9 +4,8 @@
 
 /* import-globals-from editor.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 // Each editor window must include this file
@@ -29,14 +28,14 @@ var kOutputWrap = Ci.nsIDocumentEncoder.OutputWrap;
 var gStringBundle;
 var gFilePickerDirectory;
 
-/** *********** Message dialogs ***************/
+/** *********** Message dialogs */
 
 // Optional: Caller may supply text to substitute for "Ok" and/or "Cancel"
 function ConfirmWithTitle(title, message, okButtonText, cancelButtonText) {
-  let okFlag = okButtonText
+  const okFlag = okButtonText
     ? Services.prompt.BUTTON_TITLE_IS_STRING
     : Services.prompt.BUTTON_TITLE_OK;
-  let cancelFlag = cancelButtonText
+  const cancelFlag = cancelButtonText
     ? Services.prompt.BUTTON_TITLE_IS_STRING
     : Services.prompt.BUTTON_TITLE_CANCEL;
 
@@ -56,7 +55,7 @@ function ConfirmWithTitle(title, message, okButtonText, cancelButtonText) {
   );
 }
 
-/** *********** String Utilities ***************/
+/** *********** String Utilities */
 
 function GetString(name) {
   if (!gStringBundle) {
@@ -167,10 +166,7 @@ function GetSelectionAsText() {
   return "";
 }
 
-/** *********** Get Current Editor and associated interfaces or info ***************/
-const nsIHTMLEditor = Ci.nsIHTMLEditor;
-const nsITableEditor = Ci.nsITableEditor;
-const nsIEditingSession = Ci.nsIEditingSession;
+/** *********** Get Current Editor and associated interfaces or info */
 
 function GetCurrentEditor() {
   // Get the active editor from the <editor> tag
@@ -195,7 +191,7 @@ function GetCurrentEditor() {
 
 function GetCurrentTableEditor() {
   var editor = GetCurrentEditor();
-  return editor && editor instanceof nsITableEditor ? editor : null;
+  return editor && editor instanceof Ci.nsITableEditor ? editor : null;
 }
 
 function GetCurrentEditorElement() {
@@ -203,7 +199,7 @@ function GetCurrentEditorElement() {
 
   do {
     // Get the <editor> element(s)
-    let editorItem = tmpWindow.document.querySelector("editor");
+    const editorItem = tmpWindow.document.querySelector("editor");
 
     // This will change if we support > 1 editor element
     if (editorItem) {
@@ -240,7 +236,7 @@ function GetCurrentEditorType() {
  * Gets the editor's spell checker. Could return null if there are no
  * dictionaries installed.
  *
- * @return {nsIInlineSpellChecker?}
+ * @returns {?nsIInlineSpellChecker}
  */
 function GetCurrentEditorSpellChecker() {
   try {
@@ -320,7 +316,7 @@ function newCommandParams() {
   return null;
 }
 
-/** *********** General editing command utilities ***************/
+/** *********** General editing command utilities */
 
 function GetDocumentTitle() {
   try {
@@ -379,7 +375,7 @@ function EditorRemoveTextProperty(property, attribute) {
   } catch (e) {}
 }
 
-/** *********** Element enbabling/disabling ***************/
+/** *********** Element enbabling/disabling */
 
 // this function takes an elementID and a flag
 // if the element can be found by ID, then it is either enabled (by removing "disabled" attr)
@@ -400,10 +396,10 @@ function SetElementEnabled(element, doEnable) {
   }
 }
 
-/** *********** Services / Prefs ***************/
+/** *********** Services / Prefs */
 
 function GetFileProtocolHandler() {
-  let handler = Services.io.getProtocolHandler("file");
+  const handler = Services.io.getProtocolHandler("file");
   return handler.QueryInterface(Ci.nsIFileProtocolHandler);
 }
 
@@ -420,7 +416,7 @@ function SetFilePickerDirectory(filePicker, fileType) {
       // Save current directory so we can reset it in SaveFilePickerDirectory
       gFilePickerDirectory = filePicker.displayDirectory;
 
-      let location = Services.prefs.getComplexValue(
+      const location = Services.prefs.getComplexValue(
         "editor.lastFileLocation." + fileType,
         Ci.nsIFile
       );
@@ -498,7 +494,7 @@ function GetDefaultBrowserColors() {
   return colors;
 }
 
-/** *********** URL handling ***************/
+/** *********** URL handling */
 
 function TextIsURI(selectedText) {
   return (
@@ -510,172 +506,7 @@ function TextIsURI(selectedText) {
 }
 
 function IsUrlAboutBlank(urlString) {
-  return urlString == "about:blank";
-}
-
-function MakeRelativeUrl(url) {
-  let inputUrl = url.trim();
-  if (!inputUrl) {
-    return inputUrl;
-  }
-
-  // Get the filespec relative to current document's location
-  // NOTE: Can't do this if file isn't saved yet!
-  var docUrl = GetDocumentBaseUrl();
-  var docScheme = GetScheme(docUrl);
-
-  // Can't relativize if no doc scheme (page hasn't been saved)
-  if (!docScheme) {
-    return inputUrl;
-  }
-
-  var urlScheme = GetScheme(inputUrl);
-
-  // Do nothing if not the same scheme or url is already relativized
-  if (docScheme != urlScheme) {
-    return inputUrl;
-  }
-
-  // Host must be the same
-  var docHost = GetHost(docUrl);
-  var urlHost = GetHost(inputUrl);
-  if (docHost != urlHost) {
-    return inputUrl;
-  }
-
-  // Get just the file path part of the urls
-  // XXX Should we use GetCurrentEditor().documentCharacterSet for 2nd param ?
-  let docPath = Services.io.newURI(
-    docUrl,
-    GetCurrentEditor().documentCharacterSet
-  ).pathQueryRef;
-  let urlPath = Services.io.newURI(
-    inputUrl,
-    GetCurrentEditor().documentCharacterSet
-  ).pathQueryRef;
-
-  // We only return "urlPath", so we can convert the entire docPath for
-  // case-insensitive comparisons.
-  var doCaseInsensitive = docScheme == "file" && AppConstants.platform == "win";
-  if (doCaseInsensitive) {
-    docPath = docPath.toLowerCase();
-  }
-
-  // Get document filename before we start chopping up the docPath
-  var docFilename = GetFilename(docPath);
-
-  // Both url and doc paths now begin with "/"
-  // Look for shared dirs starting after that
-  urlPath = urlPath.slice(1);
-  docPath = docPath.slice(1);
-
-  var firstDirTest = true;
-  var nextDocSlash = 0;
-  var done = false;
-
-  // Remove all matching subdirs common to both doc and input urls
-  do {
-    nextDocSlash = docPath.indexOf("/");
-    var nextUrlSlash = urlPath.indexOf("/");
-
-    if (nextUrlSlash == -1) {
-      // We're done matching and all dirs in url
-      // what's left is the filename
-      done = true;
-
-      // Remove filename for named anchors in the same file
-      if (nextDocSlash == -1 && docFilename) {
-        var anchorIndex = urlPath.indexOf("#");
-        if (anchorIndex > 0) {
-          var urlFilename = doCaseInsensitive ? urlPath.toLowerCase() : urlPath;
-
-          if (urlFilename.startsWith(docFilename)) {
-            urlPath = urlPath.slice(anchorIndex);
-          }
-        }
-      }
-    } else if (nextDocSlash >= 0) {
-      // Test for matching subdir
-      var docDir = docPath.slice(0, nextDocSlash);
-      var urlDir = urlPath.slice(0, nextUrlSlash);
-      if (doCaseInsensitive) {
-        urlDir = urlDir.toLowerCase();
-      }
-
-      if (urlDir == docDir) {
-        // Remove matching dir+"/" from each path
-        // and continue to next dir.
-        docPath = docPath.slice(nextDocSlash + 1);
-        urlPath = urlPath.slice(nextUrlSlash + 1);
-      } else {
-        // No match, we're done.
-        done = true;
-
-        // Be sure we are on the same local drive or volume
-        //   (the first "dir" in the path) because we can't
-        //   relativize to different drives/volumes.
-        // UNIX doesn't have volumes, so we must not do this else
-        // the first directory will be misinterpreted as a volume name.
-        if (
-          firstDirTest &&
-          docScheme == "file" &&
-          AppConstants.platform != "unix"
-        ) {
-          return inputUrl;
-        }
-      }
-    } else {
-      // No more doc dirs left, we're done
-      done = true;
-    }
-
-    firstDirTest = false;
-  } while (!done);
-
-  // Add "../" for each dir left in docPath
-  while (nextDocSlash > 0) {
-    urlPath = "../" + urlPath;
-    nextDocSlash = docPath.indexOf("/", nextDocSlash + 1);
-  }
-  return urlPath;
-}
-
-function MakeAbsoluteUrl(url) {
-  let resultUrl = TrimString(url);
-  if (!resultUrl) {
-    return resultUrl;
-  }
-
-  // Check if URL is already absolute, i.e., it has a scheme
-  let urlScheme = GetScheme(resultUrl);
-
-  if (urlScheme) {
-    return resultUrl;
-  }
-
-  let docUrl = GetDocumentBaseUrl();
-  let docScheme = GetScheme(docUrl);
-
-  // Can't relativize if no doc scheme (page hasn't been saved)
-  if (!docScheme) {
-    return resultUrl;
-  }
-
-  // Make a URI object to use its "resolve" method
-  let absoluteUrl = resultUrl;
-  let docUri = Services.io.newURI(
-    docUrl,
-    GetCurrentEditor().documentCharacterSet
-  );
-
-  try {
-    absoluteUrl = docUri.resolve(resultUrl);
-    // This is deprecated and buggy!
-    // If used, we must make it a path for the parent directory (remove filename)
-    // absoluteUrl = IOService.resolveRelativePath(resultUrl, docUrl);
-  } catch (e) {}
-
-  return absoluteUrl;
+  return urlString.startsWith("about:blank");
 }
 
 // Get the HREF of the page's <base> tag or the document location
@@ -685,7 +516,7 @@ function GetDocumentBaseUrl() {
     var docUrl;
 
     // if document supplies a <base> tag, use that URL instead
-    let base = GetCurrentEditor().document.querySelector("base");
+    const base = GetCurrentEditor().document.querySelector("base");
     if (base) {
       docUrl = base.getAttribute("href");
     }
@@ -758,9 +589,9 @@ function GetFilename(urlspec) {
   var filename;
 
   try {
-    let uri = Services.io.newURI(urlspec);
+    const uri = Services.io.newURI(urlspec);
     if (uri) {
-      let url = uri.QueryInterface(Ci.nsIURL);
+      const url = uri.QueryInterface(Ci.nsIURL);
       if (url) {
         filename = url.fileName;
       }
@@ -790,9 +621,9 @@ function StripUsernamePassword(urlspec, usernameObj, passwordObj) {
   var atIndex = urlspec.indexOf("@");
   if (atIndex > 0) {
     try {
-      let uri = Services.io.newURI(urlspec);
-      let username = uri.username;
-      let password = uri.password;
+      const uri = Services.io.newURI(urlspec);
+      const username = uri.username;
+      const password = uri.password;
 
       if (usernameObj && username) {
         usernameObj.value = username;
@@ -801,7 +632,7 @@ function StripUsernamePassword(urlspec, usernameObj, passwordObj) {
         passwordObj.value = password;
       }
       if (username) {
-        let usernameStart = urlspec.indexOf(username);
+        const usernameStart = urlspec.indexOf(username);
         if (usernameStart != -1) {
           return urlspec.slice(0, usernameStart) + urlspec.slice(atIndex + 1);
         }
@@ -825,14 +656,14 @@ function StripPassword(urlspec, passwordObj) {
   var atIndex = urlspec.indexOf("@");
   if (atIndex > 0) {
     try {
-      let password = Services.io.newURI(urlspec).password;
+      const password = Services.io.newURI(urlspec).password;
 
       if (passwordObj && password) {
         passwordObj.value = password;
       }
       if (password) {
         // Find last ":" before "@"
-        let colon = urlspec.lastIndexOf(":", atIndex);
+        const colon = urlspec.lastIndexOf(":", atIndex);
         if (colon != -1) {
           // Include the "@"
           return urlspec.slice(0, colon) + urlspec.slice(atIndex);
@@ -851,7 +682,7 @@ function StripUsernamePasswordFromURI(uri) {
       urlspec = uri.spec;
       var userPass = uri.userPass;
       if (userPass) {
-        let start = urlspec.indexOf(userPass);
+        const start = urlspec.indexOf(userPass);
         urlspec =
           urlspec.slice(0, start) + urlspec.slice(start + userPass.length + 1);
       }
@@ -866,7 +697,7 @@ function InsertUsernameIntoUrl(urlspec, username) {
   }
 
   try {
-    let URI = Services.io.newURI(
+    const URI = Services.io.newURI(
       urlspec,
       GetCurrentEditor().documentCharacterSet
     );
@@ -897,7 +728,7 @@ function ConvertRGBColorIntoHEXColor(color) {
   return color;
 }
 
-/** *********** CSS ***************/
+/** *********** CSS */
 
 function GetHTMLOrCSSStyleValue(element, attrName, cssPropertyName) {
   var value;
@@ -916,7 +747,7 @@ function GetHTMLOrCSSStyleValue(element, attrName, cssPropertyName) {
   return value;
 }
 
-/** *********** Miscellaneous ***************/
+/** *********** Miscellaneous */
 // Clone simple JS objects
 function Clone(obj) {
   var clone = {};
@@ -936,7 +767,8 @@ function Clone(obj) {
 
 /**
  * Is the passed in image URI a shortened data URI?
- * @return {bool}
+ *
+ * @returns {bool}
  */
 function isImageDataShortened(aImageData) {
   return /^data:/i.test(aImageData) && aImageData.includes("…");
@@ -944,18 +776,19 @@ function isImageDataShortened(aImageData) {
 
 /**
  * Event handler for Copy or Cut
+ *
  * @param aEvent  the event
  */
 function onCopyOrCutShortened(aEvent) {
   // Put the original data URI onto the clipboard in case the value
   // is a shortened data URI.
-  let field = aEvent.target;
-  let startPos = field.selectionStart;
+  const field = aEvent.target;
+  const startPos = field.selectionStart;
   if (startPos == undefined) {
     return;
   }
-  let endPos = field.selectionEnd;
-  let selection = field.value.substring(startPos, endPos).trim();
+  const endPos = field.selectionEnd;
+  const selection = field.value.substring(startPos, endPos).trim();
 
   // Test that a) the user selected the whole value,
   //           b) the value is a data URI,
@@ -979,32 +812,31 @@ function onCopyOrCutShortened(aEvent) {
  * @param aImageData    the data: URL of the image to be shortened.
  *                      Note: Original stored in 'aDialogField.fullDataURI'.
  * @param aDialogField  The field of the dialog to contain the data.
- * @return {bool}       URL was shortened?
+ * @returns {bool} URL was shortened?
  */
 function shortenImageData(aImageData, aDialogField) {
   let shortened = false;
-  aDialogField.value = aImageData.replace(/^(data:.+;base64,)(.*)/i, function(
-    match,
-    nonDataPart,
-    dataPart
-  ) {
-    if (dataPart.length <= 35) {
-      return match;
-    }
+  aDialogField.value = aImageData.replace(
+    /^(data:.+;base64,)(.*)/i,
+    function (match, nonDataPart, dataPart) {
+      if (dataPart.length <= 35) {
+        return match;
+      }
 
-    shortened = true;
-    aDialogField.addEventListener("copy", onCopyOrCutShortened);
-    aDialogField.addEventListener("cut", onCopyOrCutShortened);
-    aDialogField.fullDataURI = aImageData;
-    aDialogField.removeAttribute("tooltiptext");
-    aDialogField.setAttribute("tooltip", "shortenedDataURI");
-    return (
-      nonDataPart +
-      dataPart.substring(0, 5) +
-      "…" +
-      dataPart.substring(dataPart.length - 30)
-    );
-  });
+      shortened = true;
+      aDialogField.addEventListener("copy", onCopyOrCutShortened);
+      aDialogField.addEventListener("cut", onCopyOrCutShortened);
+      aDialogField.fullDataURI = aImageData;
+      aDialogField.removeAttribute("tooltiptext");
+      aDialogField.setAttribute("tooltip", "shortenedDataURI");
+      return (
+        nonDataPart +
+        dataPart.substring(0, 5) +
+        "…" +
+        dataPart.substring(dataPart.length - 30)
+      );
+    }
+  );
   return shortened;
 }
 

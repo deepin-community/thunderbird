@@ -21,9 +21,7 @@ languages-customize-add =
     .label = Add
     .accesskey = A
 
-messenger-languages-window =
-    .title = { -brand-short-name } Language Settings
-    .style = width: 40em
+messenger-languages-dialog-title = { -brand-short-name } Language Settings
 
 messenger-languages-description = { -brand-short-name } will display the first language as your default and will display alternate languages if necessary in the order they appear.
 

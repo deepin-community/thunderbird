@@ -10,9 +10,11 @@
  * test_smtpPasswordFailure2.js.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/alertTestUtils.js */
@@ -32,18 +34,7 @@ var kUsername = "testsmtp";
 var kInvalidPassword = "smtptest";
 var kValidPassword = "smtptest1";
 
-/* exported alert, confirmEx, promptPasswordPS */
-// for alertTestUtils.js
-function alert(aDialogText, aText) {
-  // The first few attempts may prompt about the password problem, the last
-  // attempt shouldn't.
-  Assert.ok(attempt < 4);
-
-  // Log the fact we've got an alert, but we don't need to test anything here.
-  dump("Alert Title: " + aDialogText + "\nAlert Text: " + aText + "\n");
-}
-
-function confirmEx(
+function confirmExPS(
   aDialogTitle,
   aText,
   aButtonFlags,
@@ -84,7 +75,7 @@ function promptPasswordPS(
   return false;
 }
 
-add_task(async function() {
+add_task(async function () {
   function createHandler(d) {
     var handler = new SMTP_RFC2821_handler(d);
     // Username needs to match the login information stored in the signons json
@@ -125,13 +116,14 @@ add_task(async function() {
 
     dump("Send\n");
 
+    const urlListener = new PromiseTestUtils.PromiseUrlListener();
     MailServices.smtp.sendMailMessage(
       testFile,
       kTo,
       identity,
       kSender,
       null,
-      null,
+      urlListener,
       null,
       null,
       false,
@@ -140,7 +132,7 @@ add_task(async function() {
       {}
     );
 
-    server.performTest();
+    await urlListener.promise;
 
     dump("End Send\n");
 
@@ -163,7 +155,7 @@ add_task(async function() {
     ]);
 
     // Now check the new one has been saved.
-    let logins = Services.logins.findLogins(
+    const logins = Services.logins.findLogins(
       "smtp://localhost",
       null,
       "smtp://localhost"
@@ -178,7 +170,7 @@ add_task(async function() {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

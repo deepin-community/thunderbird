@@ -7,7 +7,7 @@
 
 <body>
   <h1>IndexedDB storage - with iframe</h1>
-  <iframe src="http://example.net/browser/devtools/client/storage/test/storage-indexeddb-simple.html"></iframe>
+  <iframe src="https://example.net/browser/devtools/client/storage/test/storage-indexeddb-simple.html"></iframe>
 
 <script>
 "use strict";
@@ -17,7 +17,7 @@ const DB_NAME = "db";
 async function setup() { // eslint-disable-line no-unused-vars
   await new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
-    request.onerror = event => reject(Error("Error opening DB"));
+    request.onerror = () => reject(Error("Error opening DB"));
     request.onupgradeneeded = event => {
       const db = event.target.result;
       const store = db.createObjectStore("store", { keyPath: "key" });

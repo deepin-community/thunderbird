@@ -15,16 +15,17 @@
 #include "nsRefPtrHashtable.h"
 #include "nsTArray.h"
 #include "nsWrapperCache.h"
+#include "mozilla/AnimatedPropertyID.h"
+#include "mozilla/AnimatedPropertyIDSet.h"
 #include "mozilla/AnimationPerformanceWarning.h"
 #include "mozilla/AnimationPropertySegment.h"
 #include "mozilla/AnimationTarget.h"
 #include "mozilla/Attributes.h"
-#include "mozilla/ComputedTimingFunction.h"
 #include "mozilla/EffectCompositor.h"
 #include "mozilla/Keyframe.h"
 #include "mozilla/KeyframeEffectParams.h"
 #include "mozilla/PostRestyleMode.h"
-// RawServoDeclarationBlock and associated RefPtrTraits
+// StyleLockedDeclarationBlock and associated RefPtrTraits
 #include "mozilla/ServoBindingTypes.h"
 #include "mozilla/StyleAnimationValue.h"
 #include "mozilla/dom/AnimationEffect.h"
@@ -56,7 +57,7 @@ struct AnimationPropertyDetails;
 }  // namespace dom
 
 struct AnimationProperty {
-  nsCSSPropertyID mProperty = eCSSProperty_UNKNOWN;
+  AnimatedPropertyID mProperty;
 
   // If true, the propery is currently being animated on the compositor.
   //
@@ -75,7 +76,7 @@ struct AnimationProperty {
 
   // The copy constructor/assignment doesn't copy mIsRunningOnCompositor and
   // mPerformanceWarning.
-  AnimationProperty() = default;
+  AnimationProperty() : mProperty(eCSSProperty_UNKNOWN){};
   AnimationProperty(const AnimationProperty& aOther)
       : mProperty(aOther.mProperty), mSegments(aOther.mSegments.Clone()) {}
   AnimationProperty& operator=(const AnimationProperty& aOther) {
@@ -179,7 +180,10 @@ class KeyframeEffect : public AnimationEffect {
       const IterationCompositeOperation& aIterationComposite);
 
   CompositeOperation Composite() const;
-  void SetComposite(const CompositeOperation& aComposite);
+  virtual void SetComposite(const CompositeOperation& aComposite);
+  void SetCompositeFromStyle(const CompositeOperation& aComposite) {
+    KeyframeEffect::SetComposite(aComposite);
+  }
 
   void NotifySpecifiedTimingUpdated();
   void NotifyAnimationTimingUpdated(PostRestyleMode aPostRestyle);
@@ -188,7 +192,8 @@ class KeyframeEffect : public AnimationEffect {
   virtual void SetKeyframes(JSContext* aContext,
                             JS::Handle<JSObject*> aKeyframes, ErrorResult& aRv);
   void SetKeyframes(nsTArray<Keyframe>&& aKeyframes,
-                    const ComputedStyle* aStyle);
+                    const ComputedStyle* aStyle,
+                    const AnimationTimeline* aTimeline);
 
   // Replace the start value of the transition. This is used for updating
   // transitions running on the compositor.
@@ -196,7 +201,7 @@ class KeyframeEffect : public AnimationEffect {
 
   // Returns the set of properties affected by this effect regardless of
   // whether any of these properties is overridden by an !important rule.
-  nsCSSPropertyIDSet GetPropertySet() const;
+  AnimatedPropertyIDSet GetPropertySet() const;
 
   // Returns true if the effect includes a property in |aPropertySet| regardless
   // of whether any property in the set is overridden by an !important rule.
@@ -217,12 +222,12 @@ class KeyframeEffect : public AnimationEffect {
   // properties where an !important rule on another transform property may
   // cause all transform properties to be run on the main thread. That check is
   // performed by GetPropertiesForCompositor.
-  bool HasEffectiveAnimationOfProperty(nsCSSPropertyID aProperty,
+  bool HasEffectiveAnimationOfProperty(const AnimatedPropertyID& aProperty,
                                        const EffectSet& aEffect) const {
     return GetEffectiveAnimationOfProperty(aProperty, aEffect) != nullptr;
   }
   const AnimationProperty* GetEffectiveAnimationOfProperty(
-      nsCSSPropertyID aProperty, const EffectSet& aEffect) const;
+      const AnimatedPropertyID&, const EffectSet&) const;
 
   // Similar to HasEffectiveAnimationOfProperty, above, but for
   // an nsCSSPropertyIDSet. Returns true if this keyframe effect has at least
@@ -255,7 +260,10 @@ class KeyframeEffect : public AnimationEffect {
 
   // Update |mProperties| by recalculating from |mKeyframes| using
   // |aComputedStyle| to resolve specified values.
-  void UpdateProperties(const ComputedStyle* aComputedValues);
+  // Note: we use |aTimeline| to check if we need to ensure the base styles.
+  // If it is nullptr, we use the timeline from |mAnimation|.
+  void UpdateProperties(const ComputedStyle* aStyle,
+                        const AnimationTimeline* aTimeline = nullptr);
 
   // Update various bits of state related to running ComposeStyle().
   // We need to update this outside ComposeStyle() because we should avoid
@@ -266,7 +274,7 @@ class KeyframeEffect : public AnimationEffect {
   // Updates |aComposeResult| with the animation values produced by this
   // AnimationEffect for the current time except any properties contained
   // in |aPropertiesToSkip|.
-  void ComposeStyle(RawServoAnimationValueMap& aComposeResult,
+  void ComposeStyle(StyleAnimationValueMap& aComposeResult,
                     const nsCSSPropertyIDSet& aPropertiesToSkip);
 
   // Returns true if at least one property is being animated on compositor.
@@ -307,7 +315,7 @@ class KeyframeEffect : public AnimationEffect {
 
   // Cumulative change hint on each segment for each property.
   // This is used for deciding the animation is paint-only.
-  void CalculateCumulativeChangeHint(const ComputedStyle* aStyle);
+  void CalculateCumulativeChangesForProperty(const AnimationProperty&);
 
   // Returns true if all of animation properties' change hints
   // can ignore painting if the animation is not visible.
@@ -319,10 +327,10 @@ class KeyframeEffect : public AnimationEffect {
   // |aFrame| is used for calculation of scale values.
   bool ContainsAnimatedScale(const nsIFrame* aFrame) const;
 
-  AnimationValue BaseStyle(nsCSSPropertyID aProperty) const {
+  AnimationValue BaseStyle(const AnimatedPropertyID& aProperty) const {
     AnimationValue result;
     bool hasProperty = false;
-    // We cannot use getters_AddRefs on RawServoAnimationValue because it is
+    // We cannot use getters_AddRefs on StyleAnimationValue because it is
     // an incomplete type, so Get() doesn't work. Instead, use GetWeak, and
     // then assign the raw pointer to a RefPtr.
     result.mServo = mBaseValues.GetWeak(aProperty, &hasProperty);
@@ -356,9 +364,7 @@ class KeyframeEffect : public AnimationEffect {
       const Nullable<double>& aProgressOnLastCompose,
       uint64_t aCurrentIterationOnLastCompose);
 
-  bool HasOpacityChange() const {
-    return mCumulativeChangeHint & nsChangeHint_UpdateOpacityLayer;
-  }
+  bool HasOpacityChange() const { return mCumulativeChanges.mOpacity; }
 
  protected:
   ~KeyframeEffect() override = default;
@@ -400,8 +406,7 @@ class KeyframeEffect : public AnimationEffect {
     Style,
     None,
   };
-  already_AddRefed<ComputedStyle> GetTargetComputedStyle(
-      Flush aFlushType) const;
+  already_AddRefed<const ComputedStyle> GetTargetComputedStyle(Flush) const;
 
   // A wrapper for marking cascade update according to the current
   // target and its effectSet.
@@ -409,11 +414,13 @@ class KeyframeEffect : public AnimationEffect {
 
   void EnsureBaseStyles(const ComputedStyle* aComputedValues,
                         const nsTArray<AnimationProperty>& aProperties,
+                        const AnimationTimeline* aTimeline,
                         bool* aBaseStylesChanged);
   void EnsureBaseStyle(const AnimationProperty& aProperty,
                        nsPresContext* aPresContext,
                        const ComputedStyle* aComputedValues,
-                       RefPtr<ComputedStyle>& aBaseComputedValues);
+                       const AnimationTimeline* aTimeline,
+                       RefPtr<const ComputedStyle>& aBaseComputedValues);
 
   OwningAnimationTarget mTarget;
 
@@ -444,31 +451,43 @@ class KeyframeEffect : public AnimationEffect {
   // EffectSet.
   bool mInEffectSet = false;
 
-  // True if the last time we tried to update the cumulative change hint we
-  // didn't have style data to do so. We set this flag so that the next time
-  // our style context changes we know to update the cumulative change hint even
-  // if our properties haven't changed.
-  bool mNeedsStyleData = false;
-
-  // True if there is any current-color for background color in this keyframes.
-  bool mHasCurrentColor = false;
-
   // The non-animated values for properties in this effect that contain at
   // least one animation value that is composited with the underlying value
   // (i.e. it uses the additive or accumulate composite mode).
   using BaseValuesHashmap =
-      nsRefPtrHashtable<nsUint32HashKey, RawServoAnimationValue>;
+      nsRefPtrHashtable<nsGenericHashKey<AnimatedPropertyID>,
+                        StyleAnimationValue>;
   BaseValuesHashmap mBaseValues;
 
  private:
-  nsChangeHint mCumulativeChangeHint = nsChangeHint{0};
+  // The cumulative changes of all the animation segments.
+  struct CumulativeChanges {
+    // Whether the opacity property is changing.
+    bool mOpacity : 1;
+    // Whether the visibility property is changing.
+    bool mVisibility : 1;
+    // Whether layout is changing.
+    bool mLayout : 1;
+    // Whether overflow is changing.
+    bool mOverflow : 1;
+    // True if there is any current-color for background color.
+    bool mHasBackgroundColorCurrentColor : 1;
 
-  void ComposeStyleRule(RawServoAnimationValueMap& aAnimationValues,
+    CumulativeChanges()
+        : mOpacity(false),
+          mVisibility(false),
+          mLayout(false),
+          mOverflow(false),
+          mHasBackgroundColorCurrentColor(false) {}
+  };
+  CumulativeChanges mCumulativeChanges;
+
+  void ComposeStyleRule(StyleAnimationValueMap& aAnimationValues,
                         const AnimationProperty& aProperty,
                         const AnimationPropertySegment& aSegment,
                         const ComputedTiming& aComputedTiming);
 
-  already_AddRefed<ComputedStyle> CreateComputedStyleForAnimationValue(
+  already_AddRefed<const ComputedStyle> CreateComputedStyleForAnimationValue(
       nsCSSPropertyID aProperty, const AnimationValue& aValue,
       nsPresContext* aPresContext, const ComputedStyle* aBaseComputedStyle);
 
@@ -503,17 +522,12 @@ class KeyframeEffect : public AnimationEffect {
   // This function is used for updating scroll bars or notifying intersection
   // observers reflected by the transform.
   bool HasPropertiesThatMightAffectOverflow() const {
-    return mCumulativeChangeHint &
-           (nsChangeHint_AddOrRemoveTransform | nsChangeHint_UpdateOverflow |
-            nsChangeHint_UpdatePostTransformOverflow |
-            nsChangeHint_UpdateTransformLayer);
+    return mCumulativeChanges.mOverflow;
   }
 
   // Returns true if this effect causes visibility change.
   // (i.e. 'visibility: hidden' -> 'visibility: visible' and vice versa.)
-  bool HasVisibilityChange() const {
-    return mCumulativeChangeHint & nsChangeHint_VisibilityChange;
-  }
+  bool HasVisibilityChange() const { return mCumulativeChanges.mVisibility; }
 };
 
 }  // namespace dom

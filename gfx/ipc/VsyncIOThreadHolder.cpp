@@ -25,14 +25,19 @@ VsyncIOThreadHolder::~VsyncIOThreadHolder() {
   if (NS_IsMainThread()) {
     mThread->AsyncShutdown();
   } else {
-    SchedulerGroup::Dispatch(
-        TaskCategory::Other,
-        NewRunnableMethod("nsIThread::AsyncShutdown", mThread,
-                          &nsIThread::AsyncShutdown));
+    SchedulerGroup::Dispatch(NewRunnableMethod(
+        "nsIThread::AsyncShutdown", mThread, &nsIThread::AsyncShutdown));
   }
 }
 
 bool VsyncIOThreadHolder::Start() {
+  /* "VsyncIOThread" is used as the thread we send/recv IPC messages on.  We
+   * don't use the "WindowsVsyncThread" directly because it isn't servicing an
+   * nsThread event loop which is needed for IPC to return results/notify us
+   * about shutdown etc.
+   *
+   * It would be better if we could notify the IPC IO thread directly to avoid
+   * the extra ping-ponging but that doesn't seem possible. */
   nsresult rv = NS_NewNamedThread("VsyncIOThread", getter_AddRefs(mThread));
   return NS_SUCCEEDED(rv);
 }

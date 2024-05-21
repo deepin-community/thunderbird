@@ -4,10 +4,7 @@
 
 "use strict";
 
-const Services = require("Services");
-
-const FluentReact = require("devtools/client/shared/vendor/fluent-react");
-const { L10nRegistry } = require("resource://gre/modules/L10nRegistry.jsm");
+const FluentReact = require("resource://devtools/client/shared/vendor/fluent-react.js");
 
 /**
  * Wrapper over FluentReact. It encapsulates instantiation of the localization
@@ -30,7 +27,10 @@ class FluentL10n {
     }
 
     const locales = Services.locale.appLocalesAsBCP47;
-    const generator = L10nRegistry.generateBundles(locales, resourceIds);
+    const generator = L10nRegistry.getInstance().generateBundles(
+      locales,
+      resourceIds
+    );
 
     this._bundles = [];
     for await (const bundle of generator) {
@@ -49,13 +49,13 @@ class FluentL10n {
   /**
    * Returns the localized string for the provided id, formatted using args.
    */
-  getString(id, args, fallback) {
+  getString(...args) {
     // Forward arguments via .apply() so that the original method can:
     // - perform asserts based on the number of arguments
     // - add new arguments
     return this._reactLocalization.getString.apply(
       this._reactLocalization,
-      arguments
+      args
     );
   }
 }

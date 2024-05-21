@@ -42,6 +42,19 @@ to accept your pull requests.
 ***NOTE***: Only original source code from you and other people that have signed
 the CLA can be accepted into the main repository.
 
+### License
+
+Contributions are licensed under the project's [LICENSE](LICENSE). Each new
+file must include the following header when possible, with comment style adapted
+to the language as needed:
+
+```
+// Copyright (c) the JPEG XL Project Authors. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+```
+
 ### Code Reviews
 
 All submissions, including submissions by project members, require review. We
@@ -62,7 +75,9 @@ information on using pull requests.
   functionality. Reviewers may ask you to split a Pull Request and it is
   easier to create a smaller change from the beginning.
 
-  * Describe your commits. Add a meaningful description to your commit message, explain what you are changing if it is not trivially obvious, but more importantly explain *why* you are making those changes. For example "Fix
+  * Describe your commits. Add a meaningful description to your commit message,
+  explain what you are changing if it is not trivially obvious, but more
+  importantly explain *why* you are making those changes. For example "Fix
   build" is not a good commit message, describe what build and if it makes sense
   why is this fixing it or why was it failing without this. It is very likely
   that people far in the future without any context you have right now will be
@@ -92,12 +107,15 @@ information on using pull requests.
   Request to see the changes between versions. We use "Rebase and merge" policy
   to keep a linear git history which is easier to reason about.
 
+  * Your change must pass the build and test workflows. There's a `ci.sh` script
+  to help building and testing these configurations. See [building and
+  testing](doc/building_and_testing.md) for more details.
+
 ### Contributing checklist.
 
   * Sign the CLA (only needed once per user, see above).
 
-  * AUTHORS: If this is your first contribution, add your name or your
-  company name to the [AUTHORS](AUTHORS) file for copyright tracking purposes.
+  * AUTHORS: You can add your name to the [AUTHORS](AUTHORS) file.
 
   * Style guide. Check `./ci.sh lint`.
 

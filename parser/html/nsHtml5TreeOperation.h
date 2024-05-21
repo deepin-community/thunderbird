@@ -8,8 +8,10 @@
 #include "nsHtml5DocumentMode.h"
 #include "nsHtml5HtmlAttributes.h"
 #include "mozilla/dom/FromParser.h"
+#include "mozilla/dom/ShadowRootBinding.h"
 #include "mozilla/NotNull.h"
 #include "mozilla/Variant.h"
+#include "nsCharsetSource.h"
 
 class nsIContent;
 class nsHtml5TreeOpExecutor;
@@ -263,6 +265,40 @@ struct opGetDocumentFragmentForTemplate {
   }
 };
 
+struct opSetDocumentFragmentForTemplate {
+  nsIContent** mTemplate;
+  nsIContent** mFragment;
+
+  explicit opSetDocumentFragmentForTemplate(nsIContentHandle* aTemplate,
+                                            nsIContentHandle* aFragment) {
+    mTemplate = static_cast<nsIContent**>(aTemplate);
+    mFragment = static_cast<nsIContent**>(aFragment);
+  }
+};
+
+struct opGetShadowRootFromHost {
+  nsIContent** mHost;
+  nsIContent** mFragHandle;
+  nsIContent** mTemplateNode;
+  mozilla::dom::ShadowRootMode mShadowRootMode;
+  bool mShadowRootIsClonable;
+  bool mShadowRootDelegatesFocus;
+
+  explicit opGetShadowRootFromHost(nsIContentHandle* aHost,
+                                   nsIContentHandle* aFragHandle,
+                                   nsIContentHandle* aTemplateNode,
+                                   mozilla::dom::ShadowRootMode aShadowRootMode,
+                                   bool aShadowRootIsClonable,
+                                   bool aShadowRootDelegatesFocus) {
+    mHost = static_cast<nsIContent**>(aHost);
+    mFragHandle = static_cast<nsIContent**>(aFragHandle);
+    mTemplateNode = static_cast<nsIContent**>(aTemplateNode);
+    mShadowRootMode = aShadowRootMode;
+    mShadowRootIsClonable = aShadowRootIsClonable;
+    mShadowRootDelegatesFocus = aShadowRootDelegatesFocus;
+  }
+};
+
 struct opGetFosterParent {
   nsIContent** mTable;
   nsIContent** mStackParent;
@@ -284,22 +320,23 @@ struct opMarkAsBroken {
   explicit opMarkAsBroken(nsresult aResult) : mResult(aResult){};
 };
 
-struct opRunScript {
+struct opRunScriptThatMayDocumentWriteOrBlock {
   nsIContent** mElement;
   nsAHtml5TreeBuilderState* mBuilderState;
   int32_t mLineNumber;
 
-  explicit opRunScript(nsIContentHandle* aElement,
-                       nsAHtml5TreeBuilderState* aBuilderState)
+  explicit opRunScriptThatMayDocumentWriteOrBlock(
+      nsIContentHandle* aElement, nsAHtml5TreeBuilderState* aBuilderState)
       : mBuilderState(aBuilderState), mLineNumber(0) {
     mElement = static_cast<nsIContent**>(aElement);
   };
 };
 
-struct opRunScriptAsyncDefer {
+struct opRunScriptThatCannotDocumentWriteOrBlock {
   nsIContent** mElement;
 
-  explicit opRunScriptAsyncDefer(nsIContentHandle* aElement) {
+  explicit opRunScriptThatCannotDocumentWriteOrBlock(
+      nsIContentHandle* aElement) {
     mElement = static_cast<nsIContent**>(aElement);
   };
 };
@@ -328,13 +365,11 @@ struct opDoneCreatingElement {
   };
 };
 
-struct opSetDocumentCharset {
-  const mozilla::Encoding* mEncoding;
-  int32_t mCharsetSource;
+struct opUpdateCharsetSource {
+  nsCharsetSource mCharsetSource;
 
-  explicit opSetDocumentCharset(const mozilla::Encoding* aEncoding,
-                                int32_t aCharsetSource)
-      : mEncoding(aEncoding), mCharsetSource(aCharsetSource){};
+  explicit opUpdateCharsetSource(nsCharsetSource aCharsetSource)
+      : mCharsetSource(aCharsetSource){};
 };
 
 struct opCharsetSwitchTo {
@@ -383,13 +418,15 @@ struct opSetStyleLineNumber {
   };
 };
 
-struct opSetScriptLineNumberAndFreeze {
+struct opSetScriptLineAndColumnNumberAndFreeze {
   nsIContent** mContent;
   int32_t mLineNumber;
+  int32_t mColumnNumber;
 
-  explicit opSetScriptLineNumberAndFreeze(nsIContentHandle* aContent,
-                                          int32_t aLineNumber)
-      : mLineNumber(aLineNumber) {
+  explicit opSetScriptLineAndColumnNumberAndFreeze(nsIContentHandle* aContent,
+                                                   int32_t aLineNumber,
+                                                   int32_t aColumnNumber)
+      : mLineNumber(aLineNumber), mColumnNumber(aColumnNumber) {
     mContent = static_cast<nsIContent**>(aContent);
   };
 };
@@ -490,13 +527,15 @@ typedef mozilla::Variant<
     opCreateHTMLElement, opCreateSVGElement, opCreateMathMLElement,
     opSetFormElement, opAppendText, opFosterParentText, opAppendComment,
     opAppendCommentToDocument, opAppendDoctypeToDocument,
-    opGetDocumentFragmentForTemplate, opGetFosterParent,
+    opGetDocumentFragmentForTemplate, opSetDocumentFragmentForTemplate,
+    opGetShadowRootFromHost, opGetFosterParent,
     // Gecko-specific on-pop ops
-    opMarkAsBroken, opRunScript, opRunScriptAsyncDefer,
-    opPreventScriptExecution, opDoneAddingChildren, opDoneCreatingElement,
-    opSetDocumentCharset, opCharsetSwitchTo, opUpdateStyleSheet,
-    opProcessOfflineManifest, opMarkMalformedIfScript, opStreamEnded,
-    opSetStyleLineNumber, opSetScriptLineNumberAndFreeze, opSvgLoad,
+    opMarkAsBroken, opRunScriptThatMayDocumentWriteOrBlock,
+    opRunScriptThatCannotDocumentWriteOrBlock, opPreventScriptExecution,
+    opDoneAddingChildren, opDoneCreatingElement, opUpdateCharsetSource,
+    opCharsetSwitchTo, opUpdateStyleSheet, opProcessOfflineManifest,
+    opMarkMalformedIfScript, opStreamEnded, opSetStyleLineNumber,
+    opSetScriptLineAndColumnNumberAndFreeze, opSvgLoad,
     opMaybeComplainAboutCharset, opMaybeComplainAboutDeepTree, opAddClass,
     opAddViewSourceHref, opAddViewSourceBase, opAddErrorType, opAddLineNumberId,
     opStartLayout, opEnableEncodingMenu>
@@ -584,6 +623,8 @@ class nsHtml5TreeOperation final {
                                           nsHtml5DocumentBuilder* aBuilder);
 
   static nsIContent* GetDocumentFragmentForTemplate(nsIContent* aNode);
+  static void SetDocumentFragmentForTemplate(nsIContent* aNode,
+                                             nsIContent* aDocumentFragment);
 
   static nsIContent* GetFosterParent(nsIContent* aTable,
                                      nsIContent* aStackParent);
@@ -608,16 +649,19 @@ class nsHtml5TreeOperation final {
     mOperation = aOperation;
   }
 
-  inline bool IsRunScript() { return mOperation.is<opRunScript>(); }
+  inline bool IsRunScriptThatMayDocumentWriteOrBlock() {
+    return mOperation.is<opRunScriptThatMayDocumentWriteOrBlock>();
+  }
 
   inline bool IsMarkAsBroken() { return mOperation.is<opMarkAsBroken>(); }
 
   inline void SetSnapshot(nsAHtml5TreeBuilderState* aSnapshot, int32_t aLine) {
-    NS_ASSERTION(
-        IsRunScript(),
+    MOZ_ASSERT(
+        IsRunScriptThatMayDocumentWriteOrBlock(),
         "Setting a snapshot for a tree operation other than eTreeOpRunScript!");
     MOZ_ASSERT(aSnapshot, "Initialized tree op with null snapshot.");
-    opRunScript data = mOperation.as<opRunScript>();
+    opRunScriptThatMayDocumentWriteOrBlock data =
+        mOperation.as<opRunScriptThatMayDocumentWriteOrBlock>();
     data.mBuilderState = aSnapshot;
     data.mLineNumber = aLine;
     mOperation = mozilla::AsVariant(data);

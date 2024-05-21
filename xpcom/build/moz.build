@@ -10,14 +10,13 @@ EXPORTS += [
     "nsXPCOMCIDInternal.h",
     "nsXULAppAPI.h",
     "XREChildData.h",
-    "xrecore.h",
     "XREShellData.h",
 ]
 
 EXPORTS.mozilla += [
+    "!GeckoProcessTypes.h",
     "!Services.h",
     "FileLocation.h",
-    "GeckoProcessTypes.h",
     "IOInterposer.h",
     "LateWriteChecks.h",
     "Omnijar.h",
@@ -41,7 +40,7 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
         "PoisonIOInterposerBase.cpp",
         "PoisonIOInterposerMac.cpp",
     ]
-    if CONFIG["CPU_ARCH"] != "aarch64":
+    if CONFIG["TARGET_CPU"] != "aarch64":
         SOURCES += ["mach_override.c"]
         SOURCES["mach_override.c"].flags += ["-Wno-unused-function"]
 else:
@@ -74,7 +73,11 @@ if CONFIG["OS_ARCH"] != "WINNT":
 
 GeneratedFile("Services.cpp", script="Services.py", entry_point="services_cpp")
 GeneratedFile("Services.h", script="Services.py", entry_point="services_h")
-GeneratedFile("services.rs", script="Services.py", entry_point="services_rs")
+GeneratedFile(
+    "GeckoProcessTypes.h",
+    script="gen_process_types.py",
+    entry_point="main",
+)
 
 include("/ipc/chromium/chromium-config.mozbuild")
 
@@ -101,5 +104,5 @@ if CONFIG["MOZ_VPX"]:
         "/media/libvpx",
     ]
 
-if CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
-    CXXFLAGS += CONFIG["TK_CFLAGS"]
+if CONFIG["MOZ_PHC"]:
+    DEFINES["MOZ_PHC"] = 1

@@ -27,7 +27,6 @@
 #include "nsBeckyUtils.h"
 #include "nsBeckyStringBundle.h"
 
-#define FROM_LINE "From - Mon Jan 1 00:00:00 1965" MSG_LINEBREAK
 #define X_BECKY_STATUS_HEADER "X-Becky-Status"
 #define X_BECKY_INCLUDE_HEADER "X-Becky-Include"
 
@@ -344,8 +343,6 @@ nsresult ImportMessageRunnable::WriteHeaders(nsCString& aHeaders,
   nsresult rv;
   uint32_t writtenBytes = 0;
 
-  rv = aOutputStream->Write(FROM_LINE, strlen(FROM_LINE), &writtenBytes);
-  NS_ENSURE_SUCCESS(rv, rv);
   rv = aOutputStream->Write(aHeaders.get(), aHeaders.Length(), &writtenBytes);
   NS_ENSURE_SUCCESS(rv, rv);
   rv =
@@ -442,11 +439,10 @@ NS_IMETHODIMP ImportMessageRunnable::Run() {
                                                 getter_AddRefs(lineStream));
   NS_ENSURE_SUCCESS(mResult, NS_OK);
 
-  bool reusable;
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
   nsCOMPtr<nsIOutputStream> outputStream;
-  mResult = msgStore->GetNewMsgOutputStream(
-      mFolder, getter_AddRefs(msgHdr), &reusable, getter_AddRefs(outputStream));
+  mResult = msgStore->GetNewMsgOutputStream(mFolder, getter_AddRefs(msgHdr),
+                                            getter_AddRefs(outputStream));
   NS_ENSURE_SUCCESS(mResult, NS_OK);
 
   bool inHeader = true;
@@ -467,9 +463,9 @@ NS_IMETHODIMP ImportMessageRunnable::Run() {
     } else if (IsEndOfMessage(line)) {
       inHeader = true;
       mResult = msgStore->FinishNewMessage(outputStream, msgHdr);
-      if (!reusable) outputStream->Close();
+      // outputStream is closed by FinishNewMessage().
+      outputStream = nullptr;
       mResult = msgStore->GetNewMsgOutputStream(mFolder, getter_AddRefs(msgHdr),
-                                                &reusable,
                                                 getter_AddRefs(outputStream));
     } else if (IsBeckyIncludeLine(line)) {
       mResult = WriteAttachmentFile(mMessageFile, line, outputStream);
@@ -486,8 +482,11 @@ NS_IMETHODIMP ImportMessageRunnable::Run() {
   }
 
   if (outputStream) {
-    if (NS_FAILED(mResult)) msgStore->DiscardNewMessage(outputStream, msgHdr);
-    outputStream->Close();
+    // DiscardNewMessage() closes outputStream.
+    if (NS_FAILED(mResult))
+      msgStore->DiscardNewMessage(outputStream, msgHdr);
+    else
+      outputStream->Close(); /* No check? */
   }
 
   return NS_OK;
@@ -497,7 +496,9 @@ static nsresult ProxyImportMessage(nsIFile* aMessageFile,
                                    nsIMsgFolder* aFolder) {
   RefPtr<ImportMessageRunnable> importMessage =
       new ImportMessageRunnable(aMessageFile, aFolder);
-  nsresult rv = NS_DispatchToMainThread(importMessage, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyImportMessage"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(importMessage));
   NS_ENSURE_SUCCESS(rv, rv);
   return importMessage->mResult;
 }

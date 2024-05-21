@@ -13,6 +13,59 @@
 
 namespace mozilla::dom::quota {
 
+FullOriginMetadataResult::FullOriginMetadataResult(
+    const FullOriginMetadata& aFullOriginMetadata)
+    : mFullOriginMetadata(aFullOriginMetadata) {}
+
+NS_IMPL_ISUPPORTS(FullOriginMetadataResult, nsIQuotaFullOriginMetadataResult)
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetSuffix(nsACString& aSuffix) {
+  aSuffix = mFullOriginMetadata.mSuffix;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetGroup(nsACString& aGroup) {
+  aGroup = mFullOriginMetadata.mGroup;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetOrigin(nsACString& aOrigin) {
+  aOrigin = mFullOriginMetadata.mOrigin;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetStorageOrigin(nsACString& aStorageOrigin) {
+  aStorageOrigin = mFullOriginMetadata.mStorageOrigin;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetPersistenceType(nsACString& aPersistenceType) {
+  aPersistenceType =
+      PersistenceTypeToString(mFullOriginMetadata.mPersistenceType);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetPersisted(bool* aPersisted) {
+  MOZ_ASSERT(aPersisted);
+
+  *aPersisted = mFullOriginMetadata.mPersisted;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FullOriginMetadataResult::GetLastAccessTime(int64_t* aLastAccessTime) {
+  MOZ_ASSERT(aLastAccessTime);
+
+  *aLastAccessTime = mFullOriginMetadata.mLastAccessTime;
+  return NS_OK;
+}
+
 UsageResult::UsageResult(const nsACString& aOrigin, bool aPersisted,
                          uint64_t aUsage, uint64_t aLastAccessed)
     : mOrigin(aOrigin),
@@ -52,16 +105,16 @@ UsageResult::GetLastAccessed(uint64_t* aLastAccessed) {
   return NS_OK;
 }
 
-OriginUsageResult::OriginUsageResult(uint64_t aUsage, uint64_t aFileUsage)
-    : mUsage(aUsage), mFileUsage(aFileUsage) {}
+OriginUsageResult::OriginUsageResult(UsageInfo aUsageInfo)
+    : mUsageInfo(aUsageInfo) {}
 
 NS_IMPL_ISUPPORTS(OriginUsageResult, nsIQuotaOriginUsageResult)
 
 NS_IMETHODIMP
-OriginUsageResult::GetUsage(uint64_t* aUsage) {
-  MOZ_ASSERT(aUsage);
+OriginUsageResult::GetDatabaseUsage(uint64_t* aDatabaseUsage) {
+  MOZ_ASSERT(aDatabaseUsage);
 
-  *aUsage = mUsage;
+  *aDatabaseUsage = mUsageInfo.DatabaseUsage().valueOr(0);
   return NS_OK;
 }
 
@@ -69,9 +122,43 @@ NS_IMETHODIMP
 OriginUsageResult::GetFileUsage(uint64_t* aFileUsage) {
   MOZ_ASSERT(aFileUsage);
 
-  *aFileUsage = mFileUsage;
+  *aFileUsage = mUsageInfo.FileUsage().valueOr(0);
   return NS_OK;
 }
+
+NS_IMETHODIMP
+OriginUsageResult::GetUsage(uint64_t* aUsage) {
+  MOZ_ASSERT(aUsage);
+
+  *aUsage = mUsageInfo.TotalUsage().valueOr(0);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+OriginUsageResult::GetDatabaseUsageIsExplicit(bool* aDatabaseUsageIsExplicit) {
+  MOZ_ASSERT(aDatabaseUsageIsExplicit);
+
+  *aDatabaseUsageIsExplicit = mUsageInfo.DatabaseUsage().isSome();
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+OriginUsageResult::GetFileUsageIsExplicit(bool* aFileUsageIsExplicit) {
+  MOZ_ASSERT(aFileUsageIsExplicit);
+
+  *aFileUsageIsExplicit = mUsageInfo.FileUsage().isSome();
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+OriginUsageResult::GetTotalUsageIsExplicit(bool* aTotalUsageIsExplicit) {
+  MOZ_ASSERT(aTotalUsageIsExplicit);
+
+  *aTotalUsageIsExplicit = mUsageInfo.TotalUsage().isSome();
+  return NS_OK;
+}
+
+UsageInfo& OriginUsageResult::GetUsageInfo() { return mUsageInfo; }
 
 EstimateResult::EstimateResult(uint64_t aUsage, uint64_t aLimit)
     : mUsage(aUsage), mLimit(aLimit) {}

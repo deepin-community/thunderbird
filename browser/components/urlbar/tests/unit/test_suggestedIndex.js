@@ -8,9 +8,6 @@
 const MAX_RESULTS = 10;
 
 add_task(async function suggestedIndex() {
-  // Initialize maxRichResults for sanity.
-  UrlbarPrefs.set("maxRichResults", MAX_RESULTS);
-
   let tests = [
     // no result spans > 1
     {
@@ -259,40 +256,35 @@ add_task(async function suggestedIndex() {
       expected: indexes([0, 4], [5, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1 }, resultCount < max",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1 }, resultCount < max",
       suggestedIndexes: [0, -1],
       spansByIndex: { 5: 2 },
       resultCount: 5,
       expected: indexes([5, 1], [0, 5], [6, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1 }, resultCount < max",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1 }, resultCount < max",
       suggestedIndexes: [1, -1],
       spansByIndex: { 5: 2 },
       resultCount: 5,
       expected: indexes([0, 1], [5, 1], [1, 4], [6, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2 }, resultCount < max",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2 }, resultCount < max",
       suggestedIndexes: [0, -2],
       spansByIndex: { 5: 2 },
       resultCount: 5,
       expected: indexes([5, 1], [0, 4], [6, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
+      desc: "{ suggestedIndex: 0 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
       suggestedIndexes: [0, -1],
       spansByIndex: { 6: 2 },
       resultCount: 5,
       expected: indexes([5, 1], [0, 5], [6, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0 }, { suggestedIndex: -2, resultSpan: 2 }, resultCount < max",
+      desc: "{ suggestedIndex: 0 }, { suggestedIndex: -2, resultSpan: 2 }, resultCount < max",
       suggestedIndexes: [0, -2],
       spansByIndex: { 6: 2 },
       resultCount: 5,
@@ -301,108 +293,93 @@ add_task(async function suggestedIndex() {
 
     // two suggestedIndexes with result span > 1
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }",
       suggestedIndexes: [0, -1],
       spansByIndex: { 10: 2, 11: 2 },
       expected: indexes([10, 1], [0, 6], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 3 }, { suggestedIndex: -1, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 3 }, { suggestedIndex: -1, resultSpan: 2 }",
       suggestedIndexes: [0, -1],
       spansByIndex: { 10: 3, 11: 2 },
       expected: indexes([10, 1], [0, 5], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 3 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 3 }",
       suggestedIndexes: [0, -1],
       spansByIndex: { 10: 2, 11: 3 },
       expected: indexes([10, 1], [0, 5], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }",
       suggestedIndexes: [1, -1],
       spansByIndex: { 10: 2, 11: 2 },
       expected: indexes([0, 1], [10, 1], [1, 5], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 3 }, { suggestedIndex: -1, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 3 }, { suggestedIndex: -1, resultSpan: 2 }",
       suggestedIndexes: [1, -1],
       spansByIndex: { 10: 3, 11: 2 },
       expected: indexes([0, 1], [10, 1], [1, 4], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 3 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 3 }",
       suggestedIndexes: [1, -1],
       spansByIndex: { 10: 2, 11: 3 },
       expected: indexes([0, 1], [10, 1], [1, 4], [11, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }",
       suggestedIndexes: [0, -2],
       spansByIndex: { 10: 2, 11: 2 },
       expected: indexes([10, 1], [0, 5], [11, 1], [5, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 3 }, { suggestedIndex: -2, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 3 }, { suggestedIndex: -2, resultSpan: 2 }",
       suggestedIndexes: [0, -2],
       spansByIndex: { 10: 3, 11: 2 },
       expected: indexes([10, 1], [0, 4], [11, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 3 }",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 3 }",
       suggestedIndexes: [0, -2],
       spansByIndex: { 10: 2, 11: 3 },
       expected: indexes([10, 1], [0, 4], [11, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }",
       suggestedIndexes: [1, -2],
       spansByIndex: { 10: 2, 11: 2 },
       expected: indexes([0, 1], [10, 1], [1, 4], [11, 1], [5, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 3 }, { suggestedIndex: -2, resultSpan: 2 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 3 }, { suggestedIndex: -2, resultSpan: 2 }",
       suggestedIndexes: [1, -2],
       spansByIndex: { 10: 3, 11: 2 },
       expected: indexes([0, 1], [10, 1], [1, 3], [11, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 3 }",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 3 }",
       suggestedIndexes: [1, -2],
       spansByIndex: { 10: 2, 11: 3 },
       expected: indexes([0, 1], [10, 1], [1, 3], [11, 1], [4, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
       suggestedIndexes: [0, -1],
       spansByIndex: { 5: 2, 6: 2 },
       resultCount: 5,
       expected: indexes([5, 1], [0, 5], [6, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
+      desc: "{ suggestedIndex: 1, resultSpan: 2 }, { suggestedIndex: -1, resultSpan: 2 }, resultCount < max",
       suggestedIndexes: [1, -1],
       spansByIndex: { 5: 2, 6: 2 },
       resultCount: 5,
       expected: indexes([0, 1], [5, 1], [1, 4], [6, 1]),
     },
     {
-      desc:
-        "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }, resultCount < max",
+      desc: "{ suggestedIndex: 0, resultSpan: 2 }, { suggestedIndex: -2, resultSpan: 2 }, resultCount < max",
       suggestedIndexes: [0, -2],
       spansByIndex: { 5: 2, 6: 2 },
       resultCount: 5,
@@ -478,6 +455,42 @@ add_task(async function suggestedIndex() {
       spansByIndex: { 8: 2 },
       expected: indexes([0, 8], [10, 1]),
     },
+    {
+      desc: "{ suggestedIndex: 0, maxRichResults: 0 }",
+      maxRichResults: 0,
+      suggestedIndexes: [0],
+      expected: [],
+    },
+    {
+      desc: "{ suggestedIndex: 1, maxRichResults: 0 }",
+      maxRichResults: 0,
+      suggestedIndexes: [1],
+      expected: [],
+    },
+    {
+      desc: "{ suggestedIndex: -1, maxRichResults: 0 }",
+      maxRichResults: 0,
+      suggestedIndexes: [-1],
+      expected: [],
+    },
+    {
+      desc: "{ suggestedIndex: 0, maxRichResults: 1 }",
+      maxRichResults: 1,
+      suggestedIndexes: [0],
+      expected: indexes([10, 1]),
+    },
+    {
+      desc: "{ suggestedIndex: 1, maxRichResults: 1 }",
+      maxRichResults: 1,
+      suggestedIndexes: [1],
+      expected: indexes([10, 1]),
+    },
+    {
+      desc: "{ suggestedIndex: -1, maxRichResults: 1 }",
+      maxRichResults: 1,
+      suggestedIndexes: [-1],
+      expected: indexes([10, 1]),
+    },
   ];
 
   for (let test of tests) {
@@ -490,24 +503,29 @@ add_task(async function suggestedIndex() {
  * Sets up a provider with some results with suggested indexes and result spans,
  * performs a search, and then checks the results.
  *
- * @param {array} suggestedIndexes
+ * @param {object} options
+ *   Options for the test.
+ * @param {Array} options.suggestedIndexes
  *   For each of the indexes in this array, a new result with the given
  *   suggestedIndex will be returned by the provider.
- * @param {array} expected
+ * @param {Array} options.expected
  *   The indexes of the expected results within the array of results returned by
  *   the provider.
- * @param {object} [spansByIndex]
+ * @param {object} [options.spansByIndex]
  *   Maps indexes within the array of results returned by the provider to result
  *   spans to set on those results.
- * @param {number} [resultCount]
+ * @param {number} [options.resultCount]
  *   Aside from the results with suggested indexes, this is the number of
  *   results that the provider will return.
+ * @param {number} [options.maxRichResults]
+ *   The `maxRichResults` pref will be set to this value.
  */
 async function doSuggestedIndexTest({
   suggestedIndexes,
   expected,
   spansByIndex = {},
   resultCount = MAX_RESULTS,
+  maxRichResults = MAX_RESULTS,
 }) {
   // Make resultCount history results.
   let results = [];
@@ -545,6 +563,7 @@ async function doSuggestedIndexTest({
   }
 
   // Set up the provider, etc.
+  UrlbarPrefs.set("maxRichResults", maxRichResults);
   let provider = registerBasicTestProvider(results);
   let context = createContext(undefined, { providers: [provider.name] });
   let controller = UrlbarTestUtils.newMockController();
@@ -565,9 +584,9 @@ async function doSuggestedIndexTest({
  *   indexes([0, 5]) => [0, 1, 2, 3, 4]
  *   indexes([0, 1], [4, 3], [8, 2]) => [0, 4, 5, 6, 8, 9]
  *
- * @param {array} pairs
+ * @param {Array} pairs
  *   [index, length] tuples as described above.
- * @returns {array}
+ * @returns {Array}
  *   An array of indexes.
  */
 function indexes(...pairs) {

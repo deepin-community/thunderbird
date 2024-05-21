@@ -9,6 +9,18 @@
   color: var(--lwt-text-color);
 }
 
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+#imageDlg {
+  overflow: auto;
+  max-width: inherit;
+}
+
 .MinWidth5em {
   min-width: 5em;
 }
@@ -57,25 +69,31 @@
   width: 30px;
   height: 12px;
   border: 1px inset #CCCCCC;
-  margin: 1px 0;
-}
+  margin: auto;
 
-.color-well[default="true"] {
-  border: 1px solid transparent;
-  background-color: inherit;
-}
+  &[default="true"] {
+    border: 1px solid transparent;
+    background-color: inherit;
+  }
 
-.color-well + .button-box {
-  display: none;
+  & + .button-box {
+    display: none;
+  }
 }
 
 .color-button {
   min-width: 0;
   margin: 2px;
+
+  & .button-text {
+    margin-inline: 0;
+  }
 }
 
-button.color-button .button-text {
-  margin-inline: 0;
+#spacingLabel,
+#alignLabel,
+#imagemapLabel {
+  margin-top: 0;
 }
 
 #ColorPickerSwatch {
@@ -91,7 +109,7 @@ button.color-button .button-text {
 }
 
 #LastPickedButton {
-  -moz-box-align: center;
+  align-items: center;
 }
 
 #LastPickedColor {
@@ -100,7 +118,7 @@ button.color-button .button-text {
   border-radius: 50%;
   margin-inline-start: 2px;
   border: 1px solid var(--field-border-color);
-  -moz-box-ordinal-group: 2;
+  order: 2;
 }
 
 /* temporary -- we need a simple box-based list defined in XBL */
@@ -128,8 +146,12 @@ tree.list {
 #NextButton,
 #PreviousButton {
   list-style-image: url("chrome://global/skin/icons/arrow-left-12.svg");
-  -moz-context-properties: fill;
-  fill: currentColor;
+  -moz-context-properties: stroke;
+  stroke: currentColor;
+
+  & > .button-box > .button-icon {
+    margin-inline-end: 2px;
+  }
 }
 
 #PreviousButton[type="row"] {
@@ -138,11 +160,6 @@ tree.list {
 
 #NextButton[type="row"] {
   list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");
-}
-
-#NextButton > .button-box > .button-icon,
-#PreviousButton > .button-box > .button-icon {
-  margin-inline-end: 2px;
 }
 
 #NextButton:not([type="row"]) > .button-box > .button-icon {
@@ -175,10 +192,10 @@ tree.list {
   margin-inline-start: 4px;
   /* For a little extra space between buttons */
   margin-bottom: 2px;
-}
 
-.colorpicker:active {
-  border: 1px inset #CCCCCC;
+  &:active {
+    border: 1px inset #CCCCCC;
+  }
 }
 
 .smallspacer {
@@ -215,28 +232,26 @@ tree.list {
   min-width: 2em;
 }
 
-#alignTypeSelect {
-  height: 34px;
-}
+.align-menu {
+  &[value="top"] {
+    list-style-image:url("chrome://editor/skin/icons/img-align-top.gif");
+  }
 
-.align-menu[value="top"] {
-  list-style-image:url("chrome://editor/skin/icons/img-align-top.gif");
-}
+  &[value="middle"] {
+    list-style-image:url("chrome://editor/skin/icons/img-align-middle.gif");
+  }
 
-.align-menu[value="middle"] {
-  list-style-image:url("chrome://editor/skin/icons/img-align-middle.gif");
-}
+  &[value="bottom"] {
+    list-style-image:url("chrome://editor/skin/icons/img-align-bottom.gif");
+  }
 
-.align-menu[value="bottom"] {
-  list-style-image:url("chrome://editor/skin/icons/img-align-bottom.gif");
-}
+  &[value="right"] {
+    list-style-image:url("chrome://editor/skin/icons/img-align-right.gif");
+  }
 
-.align-menu[value="right"] {
-  list-style-image:url("chrome://editor/skin/icons/img-align-right.gif");
-}
-
-.align-menu[value="left"] {
-  list-style-image:url("chrome://editor/skin/icons/img-align-left.gif");
+  &[value="left"] {
+    list-style-image:url("chrome://editor/skin/icons/img-align-left.gif");
+  }
 }
 
 /* Don't change width/height of these without changing values in
@@ -268,31 +283,21 @@ tree.list {
   min-height: 200px;
 }
 
-#AddJSEAttributeNameList > menupopup > menuseparator,
-#AddHTMLAttributeNameInput > menupopup > menuseparator {
-  appearance: none;
-  margin-block: 3px;
-  padding-block: 0;
-  border-top-color: #d7d7d7;
-}
-
 html|fieldset {
-  margin: 1em 3px 3px 3px;
+  margin: 1em 3px 3px;
   padding: 3px 0 6px;
   border: none;
+
+  & > :is(hbox, vbox, radiogroup, menulist) {
+    width: -moz-available;
+  }
 }
+
 html|legend {
   font-weight: bold;
   margin-top: -1em;
   margin-inline-start: 3px;
   padding-inline: 3px;
-}
-
-html|fieldset > hbox,
-html|fieldset > vbox,
-html|fieldset > radiogroup,
-html|fieldset > menulist {
-  width: -moz-available;
 }
 
 html|table html|th {
@@ -310,4 +315,31 @@ html|table html|th {
 
 #SuggestedList {
   flex-direction: column;
+  max-height: 10em;
+}
+
+#dictionary-list {
+  list-style-type: none;
+  padding: 6px 3px;
+  margin: 0;
+  max-height: 5em;
+  overflow-y: auto;
+}
+
+html|input[type="checkbox"] {
+  -moz-appearance: checkbox;
+}
+
+/* Advanced Edit dialog */
+
+#HTMLAttrCol,
+#CSSPropCol,
+#AttrCol {
+  flex: 35 35;
+}
+
+#HTMLValCol,
+#CSSValCol,
+#HeaderCol {
+  flex: 65 65;
 }

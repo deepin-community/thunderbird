@@ -6,20 +6,12 @@ requestLongerTimeout(2);
  * Tests that scrolling the tab strip via the scroll buttons scrolls the right
  * amount in non-smoothscroll mode.
  */
-add_task(async function() {
+add_task(async function () {
   let arrowScrollbox = gBrowser.tabContainer.arrowScrollbox;
   let scrollbox = arrowScrollbox.scrollbox;
-  let originalSmoothScroll = arrowScrollbox.smoothScroll;
-  let tabMinWidth = parseInt(
-    getComputedStyle(gBrowser.selectedTab, null).minWidth
-  );
 
   let rect = ele => ele.getBoundingClientRect();
   let width = ele => rect(ele).width;
-
-  let tabCountForOverflow = Math.ceil(
-    (width(arrowScrollbox) / tabMinWidth) * 3
-  );
 
   let left = ele => rect(ele).left;
   let right = ele => rect(ele).right;
@@ -29,19 +21,15 @@ add_task(async function() {
   let nextLeftElement = () => elementFromPoint(left(scrollbox) - 1);
   let nextRightElement = () => elementFromPoint(right(scrollbox) + 1);
   let firstScrollable = () => gBrowser.tabs[gBrowser._numPinnedTabs];
-  let waitForNextFrame = async function() {
+  let waitForNextFrame = async function () {
     await new Promise(requestAnimationFrame);
     await new Promise(resolve => Services.tm.dispatchToMainThread(resolve));
   };
 
-  arrowScrollbox.smoothScroll = false;
-  registerCleanupFunction(() => {
-    arrowScrollbox.smoothScroll = originalSmoothScroll;
+  await BrowserTestUtils.overflowTabs(registerCleanupFunction, window, {
+    overflowAtStart: false,
+    overflowTabFactor: 3,
   });
-
-  while (gBrowser.tabs.length < tabCountForOverflow) {
-    BrowserTestUtils.addTab(gBrowser, "about:blank", { skipAnimation: true });
-  }
 
   gBrowser.pinTab(gBrowser.tabs[0]);
 
@@ -59,8 +47,11 @@ add_task(async function() {
   let element;
 
   gBrowser.selectedTab = firstScrollable();
-  ok(
-    left(scrollbox) <= left(firstScrollable()),
+  await TestUtils.waitForTick();
+
+  Assert.lessOrEqual(
+    left(scrollbox),
+    left(firstScrollable()),
     "Selecting the first tab scrolls it into view " +
       "(" +
       left(scrollbox) +
@@ -76,8 +67,9 @@ add_task(async function() {
 
   gBrowser.selectedTab = gBrowser.tabs[gBrowser.tabs.length - 1];
   await waitForNextFrame();
-  ok(
-    right(gBrowser.selectedTab) <= right(scrollbox),
+  Assert.lessOrEqual(
+    right(gBrowser.selectedTab),
+    right(scrollbox),
     "Selecting the last tab scrolls it into view " +
       "(" +
       right(gBrowser.selectedTab) +
@@ -105,8 +97,9 @@ add_task(async function() {
   EventUtils.synthesizeMouseAtCenter(upButton, { clickCount: 3 });
   await waitForNextFrame();
   var firstScrollableLeft = left(firstScrollable());
-  ok(
-    left(scrollbox) <= firstScrollableLeft,
+  Assert.lessOrEqual(
+    left(scrollbox),
+    firstScrollableLeft,
     "Scrolled to the start with a triple click " +
       "(" +
       left(scrollbox) +

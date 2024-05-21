@@ -13,7 +13,7 @@
 /**
  * A few utility functions.
  */
-function log(entry) {}
+function log() {}
 
 function startsWith(s, s2) {
   return s.indexOf(s2) == 0;
@@ -113,11 +113,13 @@ function docToTestOutput(doc) {
  * @param an element
  */
 function createFragmentWalker(elt) {
-  return elt.ownerDocument.createTreeWalker(elt, NodeFilter.SHOW_ALL, function(
-    node
-  ) {
-    return elt == node ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT;
-  });
+  return elt.ownerDocument.createTreeWalker(
+    elt,
+    NodeFilter.SHOW_ALL,
+    function (node) {
+      return elt == node ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT;
+    }
+  );
 }
 
 /**

@@ -1,20 +1,17 @@
 # Any copyright is dedicated to the public domain.
 # http://creativecommons.org/publicdomain/zero/1.0/
 
-from __future__ import absolute_import
-
 import json
 import logging
 import os
 
 import pytest
-from mach.logging import LoggingManager
-from responses import RequestsMock, logger as rsps_logger
-
+from gecko_taskgraph.util.bugbug import BUGBUG_BASE_URL
+from gecko_taskgraph.util.hg import PUSHLOG_PUSHES_TMPL
+from responses import RequestsMock
+from responses import logger as rsps_logger
 from taskgraph.generator import TaskGraphGenerator
 from taskgraph.parameters import parameters_loader
-from taskgraph.util.hg import PUSHLOG_PUSHES_TMPL
-from taskgraph.util.bugbug import BUGBUG_BASE_URL
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -33,11 +30,6 @@ def datadir():
 
 @pytest.fixture(scope="session")
 def create_tgg(responses, datadir):
-
-    # Setup logging.
-    lm = LoggingManager()
-    lm.add_terminal_logging()
-
     def inner(parameters=None, overrides=None):
         params = parameters_loader(parameters, strict=False, overrides=overrides)
         tgg = TaskGraphGenerator(None, params)
@@ -92,6 +84,17 @@ def tgg(request, create_tgg):
 
 
 @pytest.fixture(scope="module")
+def tgg_new_config(request, create_tgg):
+    if not hasattr(request.module, "PARAMS_NEW_CONFIG"):
+        pytest.fail(
+            "'tgg_new_config' fixture requires a module-level 'PARAMS' variable"
+        )
+
+    tgg = create_tgg(overrides=request.module.PARAMS_NEW_CONFIG)
+    return tgg
+
+
+@pytest.fixture(scope="module")
 def params(tgg):
     return tgg.parameters
 
@@ -104,6 +107,16 @@ def full_task_graph(tgg):
 @pytest.fixture(scope="module")
 def optimized_task_graph(full_task_graph, tgg):
     return tgg.optimized_task_graph
+
+
+@pytest.fixture(scope="module")
+def full_task_graph_new_config(tgg_new_config):
+    return tgg_new_config.full_task_graph
+
+
+@pytest.fixture(scope="module")
+def optimized_task_graph_new_config(full_task_graph, tgg_new_config):
+    return tgg_new_config.optimized_task_graph
 
 
 @pytest.fixture(scope="session")

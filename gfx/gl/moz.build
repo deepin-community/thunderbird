@@ -12,11 +12,9 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
     gl_provider = "CGL"
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "uikit":
     gl_provider = "EAGL"
+    DEFINES["GLES_SILENCE_DEPRECATION"] = 1
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
-    if CONFIG["MOZ_EGL_XRENDER_COMPOSITE"]:
-        gl_provider = "EGL"
-    else:
-        gl_provider = "GLX"
+    gl_provider = "Linux"
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
     gl_provider = "EGL"
 
@@ -25,7 +23,8 @@ if CONFIG["MOZ_GL_PROVIDER"]:
 
 EXPORTS += [
     "AndroidSurfaceTexture.h",
-    "DecomposeIntoNoRepeatTriangles.h",
+    "AutoMappable.h",
+    "Colorspaces.h",
     "ForceDiscreteGPUHelperCGL.h",
     "GfxTexturesReporter.h",
     "GLBlitHelper.h",
@@ -106,22 +105,20 @@ elif gl_provider == "EAGL":
         "GLContextEAGL.h",
     ]
 
-elif gl_provider == "GLX":
+elif gl_provider == "Linux":
     # GLContextProviderGLX.cpp needs to be kept out of UNIFIED_SOURCES
     # as it includes X11 headers which cause conflicts.
     SOURCES += [
-        "GLContextProviderGLX.cpp",
-        "GLContextProviderX11.cpp",
-        "SharedSurfaceGLX.cpp",
+        "GLContextProviderLinux.cpp",
+        "SharedSurfaceDMABUF.cpp",
     ]
-    EXPORTS += ["GLContextGLX.h", "GLXLibrary.h", "SharedSurfaceGLX.h"]
-
-if CONFIG["MOZ_WAYLAND"]:
-    SOURCES += ["GLContextProviderWayland.cpp", "SharedSurfaceDMABUF.cpp"]
+    EXPORTS += ["GLContextGLX.h", "GLXLibrary.h"]
+    if CONFIG["MOZ_X11"]:
+        SOURCES += ["GLContextProviderGLX.cpp"]
 
 UNIFIED_SOURCES += [
     "AndroidSurfaceTexture.cpp",
-    "DecomposeIntoNoRepeatTriangles.cpp",
+    "Colorspaces.cpp",
     "GfxTexturesReporter.cpp",
     "GLBlitHelper.cpp",
     "GLContext.cpp",
@@ -143,17 +140,17 @@ SOURCES += [
     "GLScreenBuffer.cpp",
 ]
 
+TEST_DIRS += [
+    "gtest",
+]
+
 include("/ipc/chromium/chromium-config.mozbuild")
 
 FINAL_LIBRARY = "xul"
 
-if CONFIG["MOZ_D3DCOMPILER_VISTA_DLL"]:
-    DEFINES["MOZ_D3DCOMPILER_VISTA_DLL"] = CONFIG["MOZ_D3DCOMPILER_VISTA_DLL"]
-
-CXXFLAGS += CONFIG["MOZ_CAIRO_CFLAGS"]
-CXXFLAGS += CONFIG["TK_CFLAGS"]
-CFLAGS += CONFIG["MOZ_CAIRO_CFLAGS"]
-CFLAGS += CONFIG["TK_CFLAGS"]
+if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
+    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
+    CFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 
 CXXFLAGS += ["-Werror=switch"]
 
@@ -162,6 +159,6 @@ if CONFIG["MOZ_WAYLAND"]:
     CFLAGS += CONFIG["MOZ_WAYLAND_CFLAGS"]
 
 LOCAL_INCLUDES += CONFIG["SKIA_INCLUDES"]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
+LOCAL_INCLUDES += [
+    "/gfx/cairo/cairo/src",
+]

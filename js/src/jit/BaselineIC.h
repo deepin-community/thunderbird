@@ -12,26 +12,16 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <utility>
 
-#include "gc/Barrier.h"
-#include "gc/GC.h"
-#include "gc/Rooting.h"
-#include "jit/BaselineICList.h"
 #include "jit/ICState.h"
-#include "jit/ICStubSpace.h"
 #include "jit/JitCode.h"
-#include "jit/JitOptions.h"
-#include "jit/Registers.h"
-#include "jit/RegisterSets.h"
 #include "jit/shared/Assembler-shared.h"
 #include "jit/TypeData.h"
 #include "js/TypeDecls.h"
-#include "js/Value.h"
-#include "vm/ArrayObject.h"
-#include "vm/JSScript.h"
 
 class JS_PUBLIC_API JSTracer;
+
+enum class JSOp : uint8_t;
 
 namespace js {
 
@@ -42,9 +32,8 @@ namespace jit {
 class BaselineFrame;
 class CacheIRStubInfo;
 class ICScript;
-class MacroAssembler;
+class ICStubSpace;
 
-enum class TailCallVMFunctionId;
 enum class VMFunctionId;
 
 // [SMDOC] JIT Inline Caches (ICs)
@@ -140,6 +129,7 @@ class ICEntry {
   }
 
   void trace(JSTracer* trc);
+  bool traceWeak(JSTracer* trc);
 };
 
 //
@@ -168,7 +158,9 @@ class ICStub {
 
   ICStub(uint8_t* stubCode, bool isFallback)
       : stubCode_(stubCode), isFallback_(isFallback) {
+#ifndef ENABLE_PORTABLE_BASELINE_INTERP
     MOZ_ASSERT(stubCode != nullptr);
+#endif  // !ENABLE_PORTABLE_BASELINE_INTERP
   }
 
  public:
@@ -204,6 +196,7 @@ class ICStub {
     MOZ_ASSERT(!usesTrampolineCode());
     return JitCode::FromExecutable(stubCode_);
   }
+  bool hasJitCode() { return !!stubCode_; }
 
   uint32_t enteredCount() const { return enteredCount_; }
   inline void incrementEnteredCount() { enteredCount_++; }
@@ -238,17 +231,19 @@ class ICFallbackStub final : public ICStub {
   ICState& state() { return state_; }
 
   uint32_t pcOffset() const { return pcOffset_; }
-  jsbytecode* pc(JSScript* script) const {
-    return script->offsetToPC(pcOffset_);
-  }
 
   // Add a new stub to the IC chain terminated by this fallback stub.
   inline void addNewStub(ICEntry* icEntry, ICCacheIRStub* stub);
 
-  void discardStubs(JSContext* cx, ICEntry* icEntry);
+  void discardStubs(Zone* zone, ICEntry* icEntry);
 
   void clearUsedByTranspiler() { state_.clearUsedByTranspiler(); }
   void setUsedByTranspiler() { state_.setUsedByTranspiler(); }
+  bool usedByTranspiler() const { return state_.usedByTranspiler(); }
+
+  void clearMayHaveFoldedStub() { state_.clearMayHaveFoldedStub(); }
+  void setMayHaveFoldedStub() { state_.setMayHaveFoldedStub(); }
+  bool mayHaveFoldedStub() const { return state_.mayHaveFoldedStub(); }
 
   TrialInliningState trialInliningState() const {
     return state_.trialInliningState();
@@ -261,6 +256,8 @@ class ICFallbackStub final : public ICStub {
 
   void unlinkStub(Zone* zone, ICEntry* icEntry, ICCacheIRStub* prev,
                   ICCacheIRStub* stub);
+  void unlinkStubUnbarriered(ICEntry* icEntry, ICCacheIRStub* prev,
+                             ICCacheIRStub* stub);
 };
 
 class ICCacheIRStub final : public ICStub {
@@ -276,23 +273,28 @@ class ICCacheIRStub final : public ICStub {
 
  public:
   ICCacheIRStub(JitCode* stubCode, const CacheIRStubInfo* stubInfo)
-      : ICStub(stubCode->raw(), /* isFallback = */ false),
-        stubInfo_(stubInfo) {}
+      : ICStub(stubCode ? stubCode->raw() : nullptr, /* isFallback = */ false),
+        stubInfo_(stubInfo) {
+    MOZ_ASSERT_IF(!IsPortableBaselineInterpreterEnabled(), stubCode);
+  }
 
   ICStub* next() const { return next_; }
   void setNext(ICStub* stub) { next_ = stub; }
+
+  ICCacheIRStub* nextCacheIR() const {
+    return next_->isFallback() ? nullptr : next_->toCacheIRStub();
+  }
 
   const CacheIRStubInfo* stubInfo() const { return stubInfo_; }
   uint8_t* stubDataStart();
 
   void trace(JSTracer* trc);
+  bool traceWeak(JSTracer* trc);
 
-  // Optimized stubs get purged on GC.  But some stubs can be active on the
-  // stack during GC - specifically the ones that can make calls.  To ensure
-  // that these do not get purged, all stubs that can make calls are allocated
-  // in the fallback stub space.
+  ICCacheIRStub* clone(JSRuntime* rt, ICStubSpace& newSpace);
+
+  // Returns true if this stub can call JS or VM code that can trigger a GC.
   bool makesGCCalls() const;
-  bool allocatedInFallbackSpace() const { return makesGCCalls(); }
 
   static constexpr size_t offsetOfNext() {
     return offsetof(ICCacheIRStub, next_);
@@ -434,6 +436,14 @@ extern bool DoNewObjectFallback(JSContext* cx, BaselineFrame* frame,
 extern bool DoCompareFallback(JSContext* cx, BaselineFrame* frame,
                               ICFallbackStub* stub, HandleValue lhs,
                               HandleValue rhs, MutableHandleValue ret);
+
+extern bool DoCloseIterFallback(JSContext* cx, BaselineFrame* frame,
+                                ICFallbackStub* stub, HandleObject iter);
+
+extern bool DoOptimizeGetIteratorFallback(JSContext* cx, BaselineFrame* frame,
+                                          ICFallbackStub* stub,
+                                          HandleValue value,
+                                          MutableHandleValue res);
 
 }  // namespace jit
 }  // namespace js

@@ -8,6 +8,9 @@ key-wizard-dialog-window =
 key-wizard-button =
     .buttonlabelaccept = Avançar
     .buttonlabelhelp = Voltar
+key-wizard-dialog =
+    .buttonlabelaccept = Avançar
+    .buttonlabelextra1 = Voltar
 key-wizard-warning = <b>Se você já tem uma chave pessoal</b> deste endereço de email, deve importar a chave. Caso contrário, não terá acesso a seu arquivamento de emails criptografados, nem poderá ler emails criptografados recebidos de pessoas que ainda estão usando sua chave.
 key-wizard-learn-more = Saiba mais
 radio-create-key =
@@ -23,6 +26,14 @@ radio-gnupg-key =
 ## Generate key section
 
 openpgp-generate-key-title = Gerar chave OpenPGP
+openpgp-keygen-secret-protection = Proteção de chave secreta
+radio-keygen-no-protection =
+    .label = Desprotegido
+radio-keygen-protect-primary-pass =
+    .label = Proteger com a senha principal
+radio-keygen-passphrase-protection =
+    .label = Proteger com uma senha:
+openpgp-passphrase-repeat = Confirme a senha:
 openpgp-generate-key-info = <b>A geração de chaves pode levar vários minutos para ser concluída.</b> Não saia do aplicativo enquanto a geração de chaves estiver em andamento. Navegar ativamente ou realizar operações com uso intenso de disco durante a geração de chaves reabastece o 'conjunto de aleatoriedade' e acelera o processo. Você recebe um alerta quando a geração de chaves terminar.
 openpgp-keygen-expiry-title = Validade da chave
 openpgp-keygen-expiry-description = Defina a validade de sua chave recém-gerada. Você pode controlar a data mais tarde para estender, se necessário.
@@ -71,7 +82,7 @@ openpgp-keygen-short-expiry = Sua chave precisa ser válida por pelo menos um di
 openpgp-keygen-ongoing = Geração de chaves já em andamento!
 openpgp-keygen-error-core = Não foi possível iniciar o serviço OpenPGP principal
 openpgp-keygen-error-failed = Geração de chaves OpenPGP falhou inesperadamente
-#   $identity (String) - the newly generate OpenPGP Key
+#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Chave OpenPGP criada com sucesso, mas falhou ao obter a revogação da chave { $key }
 openpgp-keygen-abort-title = Interromper geração de chave?
 openpgp-keygen-abort = Geração de chave OpenPGP em andamento. Tem certeza que quer cancelar?
@@ -85,15 +96,17 @@ openpgp-import-key-legend = Selecione um arquivo de backup criado anteriormente.
 openpgp-import-key-description = Você pode importar chaves pessoais criadas com outro software OpenPGP.
 openpgp-import-key-info = Outros softwares podem descrever uma chave pessoal usando termos alternativos, como chave própria, chave secreta, chave privada ou par de chaves.
 #   $count (Number) - the number of keys found in the selected files
-openpgp-import-key-list-amount =
+openpgp-import-key-list-amount-2 =
     { $count ->
-        [one] O Thunderbird encontrou uma chave que pode ser importada.
-       *[other] O Thunderbird encontrou { $count } chaves que podem ser importadas.
+        [one] O { -brand-short-name } encontrou uma chave que pode ser importada.
+       *[other] O { -brand-short-name } encontrou { $count } chaves que podem ser importadas.
     }
 openpgp-import-key-list-description = Confirme quais podem ser tratadas como suas chaves pessoais. Somente chaves que você criou e que mostram sua própria identidade devem ser usadas como chaves pessoais. Você pode alterar esta opção mais tarde no diálogo de propriedades da chave.
 openpgp-import-key-list-caption = Chaves marcadas para ser tratadas como chaves pessoais aparecem na seção de criptografia de ponta a ponta. As outras ficam disponíveis no gerenciador de chaves.
+openpgp-import-keep-passphrases =
+    .label = Manter proteção por senha de chaves secretas importadas
 openpgp-passphrase-prompt-title = A senha é obrigatória
-#   $identity (String) - the id of the key being imported
+#   $key (String) - the id of the key being imported
 openpgp-passphrase-prompt = Digite a senha para desbloquear a seguinte chave: { $key }
 openpgp-import-key-button =
     .label = Selecionar arquivo a importar…

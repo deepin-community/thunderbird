@@ -4,18 +4,19 @@
 
 "use strict";
 
-const Services = require("Services");
-const Telemetry = require("devtools/client/shared/telemetry");
+const Telemetry = require("resource://devtools/client/shared/telemetry.js");
 const {
   FrontClassWithSpec,
   registerFront,
-} = require("devtools/shared/protocol.js");
-const { inspectorSpec } = require("devtools/shared/specs/inspector");
+} = require("resource://devtools/shared/protocol.js");
+const {
+  inspectorSpec,
+} = require("resource://devtools/shared/specs/inspector.js");
 
 loader.lazyRequireGetter(
   this,
   "captureScreenshot",
-  "devtools/client/shared/screenshot",
+  "resource://devtools/client/shared/screenshot.js",
   true
 );
 
@@ -43,6 +44,8 @@ class InspectorFront extends FrontClassWithSpec(inspectorSpec) {
 
     // Map of highlighter types to unsettled promises to create a highlighter of that type
     this._pendingGetHighlighterMap = new Map();
+
+    this.noopStylesheetListener = () => {};
   }
 
   // async initialization
@@ -51,19 +54,19 @@ class InspectorFront extends FrontClassWithSpec(inspectorSpec) {
       return this.initialized;
     }
 
-    // If the server-side support for stylesheet resources is enabled, we need to start
-    // to watch for them before instanciating the pageStyle actor (which does use the
-    // watcher and assume we're already watching for stylesheets).
-    const { resourceCommand } = this.targetFront;
-    if (
-      resourceCommand?.hasResourceCommandSupport(
-        resourceCommand.TYPES.STYLESHEET
-      )
-    ) {
-      await resourceCommand.watchResources([resourceCommand.TYPES.STYLESHEET], {
-        // we simply want to start the watcher, we don't have to do anything with those resources.
-        onAvailable: () => {},
-      });
+    // Watch STYLESHEET resources to fill the ResourceCommand cache.
+    // StyleRule front's `get parentStyleSheet()` will query the cache to
+    // retrieve the resource corresponding to the parent stylesheet of a rule.
+    const { resourceCommand } = this.targetFront.commands;
+    // Backup resourceCommand, targetFront.commands might be null in `destroy`.
+    this.resourceCommand = resourceCommand;
+    await resourceCommand.watchResources([resourceCommand.TYPES.STYLESHEET], {
+      onAvailable: this.noopStylesheetListener,
+    });
+
+    // Bail out if the inspector is closed while watchResources was pending
+    if (this.isDestroyed()) {
+      return null;
     }
 
     this.initialized = await Promise.all([
@@ -105,7 +108,19 @@ class InspectorFront extends FrontClassWithSpec(inspectorSpec) {
   }
 
   destroy() {
+    if (this.isDestroyed()) {
+      return;
+    }
     this._compatibility = null;
+
+    const { resourceCommand } = this;
+    resourceCommand.unwatchResources([resourceCommand.TYPES.STYLESHEET], {
+      onAvailable: this.noopStylesheetListener,
+    });
+    this.resourceCommand = null;
+
+    this.walker = null;
+
     // CustomHighlighter fronts are managed by InspectorFront and so will be
     // automatically destroyed. But we have to clear the `_highlighters`
     // Map as well as explicitly call `finalize` request on all of them.
@@ -240,16 +255,15 @@ class InspectorFront extends FrontClassWithSpec(inspectorSpec) {
 
     // If the contentDomReference has a different browsing context than the current one,
     // we are either in Fission or in the Multiprocess Browser Toolbox, so we need to
-    // retrieve the walker of the BrowsingContextTarget.
+    // retrieve the walker of the WindowGlobalTarget.
     // Get the target for this remote frame element
-    const { descriptorFront } = this.targetFront;
 
     // Tab and Process Descriptors expose a Watcher, which should be used to
     // fetch the node's target.
     let target;
-    if (descriptorFront && descriptorFront.traits.watcher) {
-      const watcherFront = await descriptorFront.getWatcher();
-      target = await watcherFront.getBrowsingContextTarget(browsingContextId);
+    const { watcherFront } = this.targetFront.commands;
+    if (watcherFront) {
+      target = await watcherFront.getWindowGlobalTarget(browsingContextId);
     } else {
       // For descriptors which don't expose a watcher (e.g. WebExtension)
       // we used to call RootActor::getBrowsingContextDescriptor, but it was

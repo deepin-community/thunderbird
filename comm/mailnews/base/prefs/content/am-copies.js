@@ -1,12 +1,13 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from am-prefs.js */
 /* import-globals-from amUtils.js */
 
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
 var gFccRadioElemChoice,
   gDraftsRadioElemChoice,
@@ -201,10 +202,11 @@ function InitFolderDisplay(folder, folderPicker) {
 /**
  * Capture any menulist changes and update the folder property.
  *
- * @param aGroup the prefix for the menulist we're handling (e.g. "drafts")
- * @param aType "Account" for the account picker or "Folder" for the folder
- *        picker
- * @param aEvent the event that we're responding to
+ * @param {string} aGroup - The prefix for the menulist we're handling
+ *   (e.g. "drafts")
+ * @param {"Account"|"Folder"} aType - "Account" for the account picker or
+ *   "Folder" for the folder picker.
+ * @param {Event} aEvent - The event that we're responding to.
  */
 function noteSelectionChange(aGroup, aType, aEvent) {
   var checkedElem = document.getElementById(aGroup + "_select" + aType);
@@ -339,7 +341,7 @@ function SaveFolderSettings(
 
 // Check the Fcc Self item and setup associated picker state
 function setupFccItems() {
-  let checked = document.getElementById("identity.doFcc").checked;
+  const checked = document.getElementById("identity.doFcc").checked;
   document.querySelectorAll(".depends-on-do-fcc").forEach(e => {
     if (checked) {
       e.removeAttribute("disabled");
@@ -380,7 +382,7 @@ function setupFccItems() {
  */
 function setupDoCcBccItems(checkboxId, inputId) {
   // Enable address input according to the status of the checkbox.
-  let input = document.getElementById(inputId);
+  const input = document.getElementById(inputId);
   input.disabled = !document.getElementById(checkboxId).checked;
   // Safeguard against space-padded address list to ensure list visibility.
   input.value = input.value.trim();
@@ -394,15 +396,15 @@ function setupDoCcBccItems(checkboxId, inputId) {
  * @param {Event} event - The command event of the checkbox.
  */
 function identityDoCcBccOnCommand(event) {
-  let checkbox = event.target;
-  let checked = checkbox.checked;
+  const checkbox = event.target;
+  const checked = checkbox.checked;
   // For checkboxes #identity.doCc and #identity.doBcc, get the corresponding
   // inputs: #identity.doCcList and #identity.doBccList.
-  let input = document.getElementById(`${checkbox.id}List`);
+  const input = document.getElementById(`${checkbox.id}List`);
   input.disabled = !checked;
 
   // User toggled checkbox.
-  let identityEmailAddress = document.getElementById("identity.email").value;
+  const identityEmailAddress = document.getElementById("identity.email").value;
   if (checked) {
     // If user checks the checkbox and there's no address, default to identity's
     // email address.
@@ -425,7 +427,7 @@ function identityDoCcBccOnCommand(event) {
  * @param {Event} event - The blur event of the checkbox.
  */
 function identityDoCcBccOnBlur(event) {
-  let input = event.target;
+  const input = event.target;
   // Safeguard against space-padded address list to ensure list visibility.
   input.value = input.value.trim();
 }
@@ -482,10 +484,11 @@ function SetRadioButtons(selectPickerId, unselectPickerId) {
  * currently selected (Gmail IMAP folders should have the button disabled, since
  * changing the archive hierarchy does nothing there.
  *
- * @param archiveFolder the currently-selected folder to store archives in
+ * @param {nsIMsgFolder} archiveFolder - The currently-selected folder to store
+ *   archives in
  */
 function updateArchiveHierarchyButton(archiveFolder) {
-  let isGmailImap =
+  const isGmailImap =
     archiveFolder.server.type == "imap" &&
     archiveFolder.server.QueryInterface(Ci.nsIImapIncomingServer).isGMailServer;
   document.getElementById("archiveHierarchyButton").disabled = isGmailImap;
@@ -495,7 +498,7 @@ function updateArchiveHierarchyButton(archiveFolder) {
  * Enable or disable (as appropriate) the controls for setting archive options
  */
 function setupArchiveItems() {
-  let checked = document.getElementById("identity.archiveEnabled").checked;
+  const checked = document.getElementById("identity.archiveEnabled").checked;
   document.querySelectorAll(".depends-on-archive").forEach(e => {
     if (checked) {
       e.removeAttribute("disabled");
@@ -543,8 +546,9 @@ function setupArchiveItems() {
  * Open a dialog to edit the folder hierarchy used when archiving messages.
  */
 function ChangeArchiveHierarchy() {
-  let identity = parent.gIdentity || parent.getCurrentAccount().defaultIdentity;
-  let arg = { identity };
+  const identity =
+    parent.gIdentity || parent.getCurrentAccount().defaultIdentity;
+  const arg = { identity };
 
   parent.gSubDialog.open(
     "chrome://messenger/content/am-archiveoptions.xhtml",

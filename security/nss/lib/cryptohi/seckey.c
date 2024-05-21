@@ -14,6 +14,7 @@
 #include "secdig.h"
 #include "prtime.h"
 #include "keyi.h"
+#include "nss.h"
 
 SEC_ASN1_MKSUB(SECOID_AlgorithmIDTemplate)
 SEC_ASN1_MKSUB(SEC_IntegerTemplate)
@@ -29,13 +30,12 @@ const SEC_ASN1Template CERT_SubjectPublicKeyInfoTemplate[] = {
     { 0 }
 };
 
-const SEC_ASN1Template CERT_PublicKeyAndChallengeTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(CERTPublicKeyAndChallenge) },
-      { SEC_ASN1_ANY, offsetof(CERTPublicKeyAndChallenge, spki) },
-      { SEC_ASN1_IA5_STRING, offsetof(CERTPublicKeyAndChallenge, challenge) },
-      { 0 }
-    };
+const SEC_ASN1Template CERT_PublicKeyAndChallengeTemplate[] = {
+    { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(CERTPublicKeyAndChallenge) },
+    { SEC_ASN1_ANY, offsetof(CERTPublicKeyAndChallenge, spki) },
+    { SEC_ASN1_IA5_STRING, offsetof(CERTPublicKeyAndChallenge, challenge) },
+    { 0 }
+};
 
 const SEC_ASN1Template SECKEY_RSAPublicKeyTemplate[] = {
     { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(SECKEYPublicKey) },
@@ -50,27 +50,26 @@ static const SEC_ASN1Template seckey_PointerToAlgorithmIDTemplate[] = {
 };
 
 /* Parameters for SEC_OID_PKCS1_RSA_PSS_SIGNATURE */
-const SEC_ASN1Template SECKEY_RSAPSSParamsTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(SECKEYRSAPSSParams) },
-      { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
-            SEC_ASN1_CONTEXT_SPECIFIC | 0,
-        offsetof(SECKEYRSAPSSParams, hashAlg),
-        seckey_PointerToAlgorithmIDTemplate },
-      { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
-            SEC_ASN1_CONTEXT_SPECIFIC | 1,
-        offsetof(SECKEYRSAPSSParams, maskAlg),
-        seckey_PointerToAlgorithmIDTemplate },
-      { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
-            SEC_ASN1_XTRN | SEC_ASN1_CONTEXT_SPECIFIC | 2,
-        offsetof(SECKEYRSAPSSParams, saltLength),
-        SEC_ASN1_SUB(SEC_IntegerTemplate) },
-      { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
-            SEC_ASN1_XTRN | SEC_ASN1_CONTEXT_SPECIFIC | 3,
-        offsetof(SECKEYRSAPSSParams, trailerField),
-        SEC_ASN1_SUB(SEC_IntegerTemplate) },
-      { 0 }
-    };
+const SEC_ASN1Template SECKEY_RSAPSSParamsTemplate[] = {
+    { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(SECKEYRSAPSSParams) },
+    { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
+          SEC_ASN1_CONTEXT_SPECIFIC | 0,
+      offsetof(SECKEYRSAPSSParams, hashAlg),
+      seckey_PointerToAlgorithmIDTemplate },
+    { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
+          SEC_ASN1_CONTEXT_SPECIFIC | 1,
+      offsetof(SECKEYRSAPSSParams, maskAlg),
+      seckey_PointerToAlgorithmIDTemplate },
+    { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
+          SEC_ASN1_XTRN | SEC_ASN1_CONTEXT_SPECIFIC | 2,
+      offsetof(SECKEYRSAPSSParams, saltLength),
+      SEC_ASN1_SUB(SEC_IntegerTemplate) },
+    { SEC_ASN1_OPTIONAL | SEC_ASN1_CONSTRUCTED | SEC_ASN1_EXPLICIT |
+          SEC_ASN1_XTRN | SEC_ASN1_CONTEXT_SPECIFIC | 3,
+      offsetof(SECKEYRSAPSSParams, trailerField),
+      SEC_ASN1_SUB(SEC_IntegerTemplate) },
+    { 0 }
+};
 
 const SEC_ASN1Template SECKEY_DSAPublicKeyTemplate[] = {
     { SEC_ASN1_INTEGER, offsetof(SECKEYPublicKey, u.dsa.publicValue) },
@@ -236,6 +235,33 @@ SECKEY_CreateECPrivateKey(SECKEYECParams *param, SECKEYPublicKey **pubk, void *c
     return (privk);
 }
 
+SECKEYPrivateKey *
+SECKEY_CreateEDPrivateKey(SECKEYECParams *param, SECKEYPublicKey **pubk, void *cx)
+{
+    SECKEYPrivateKey *privk;
+    PK11SlotInfo *slot = PK11_GetBestSlot(CKM_EC_EDWARDS_KEY_PAIR_GEN, cx);
+    if (!slot) {
+        return NULL;
+    }
+
+    privk = PK11_GenerateKeyPairWithOpFlags(slot, CKM_EC_EDWARDS_KEY_PAIR_GEN,
+                                            param, pubk,
+                                            PK11_ATTR_SESSION |
+                                                PK11_ATTR_INSENSITIVE |
+                                                PK11_ATTR_PUBLIC,
+                                            CKF_SIGN, CKF_SIGN, cx);
+    if (!privk)
+        privk = PK11_GenerateKeyPairWithOpFlags(slot, CKM_EC_EDWARDS_KEY_PAIR_GEN,
+                                                param, pubk,
+                                                PK11_ATTR_SESSION |
+                                                    PK11_ATTR_SENSITIVE |
+                                                    PK11_ATTR_PRIVATE,
+                                                CKF_SIGN, CKF_SIGN, cx);
+
+    PK11_FreeSlot(slot);
+    return (privk);
+}
+
 void
 SECKEY_DestroyPrivateKey(SECKEYPrivateKey *privk)
 {
@@ -330,7 +356,7 @@ seckey_UpdateCertPQGChain(CERTCertificate *subjectCert, int count)
          *
          * Question: do we really need to do this for EC keys. They don't have
          * PQG parameters, but they do have parameters. The question is does
-         * the child cert inherit thost parameters for EC from the parent, or
+         * the child cert inherit those parameters for EC from the parent, or
          * do we always include those parameters in each cert.
          */
 
@@ -340,6 +366,7 @@ seckey_UpdateCertPQGChain(CERTCertificate *subjectCert, int count)
             (tag != SEC_OID_NIST_DSA_SIGNATURE_WITH_SHA256_DIGEST) &&
             (tag != SEC_OID_BOGUS_DSA_SIGNATURE_WITH_SHA1_DIGEST) &&
             (tag != SEC_OID_SDN702_DSA_SIGNATURE) &&
+            (tag != SEC_OID_ED25519_PUBLIC_KEY) &&
             (tag != SEC_OID_ANSIX962_EC_PUBLIC_KEY)) {
 
             return SECSuccess;
@@ -384,6 +411,7 @@ seckey_UpdateCertPQGChain(CERTCertificate *subjectCert, int count)
             (tag != SEC_OID_NIST_DSA_SIGNATURE_WITH_SHA256_DIGEST) &&
             (tag != SEC_OID_BOGUS_DSA_SIGNATURE_WITH_SHA1_DIGEST) &&
             (tag != SEC_OID_SDN702_DSA_SIGNATURE) &&
+            (tag != SEC_OID_ED25519_PUBLIC_KEY) &&
             (tag != SEC_OID_ANSIX962_EC_PUBLIC_KEY)) {
             rv = SECFailure;
             goto loser;
@@ -522,6 +550,9 @@ seckey_GetKeyType(SECOidTag tag)
         case SEC_OID_ANSIX962_EC_PUBLIC_KEY:
             keyType = ecKey;
             break;
+        case SEC_OID_ED25519_PUBLIC_KEY:
+            keyType = edKey;
+            break;
         /* accommodate applications that hand us a signature type when they
          * should be handing us a cipher type */
         case SEC_OID_PKCS1_MD5_WITH_RSA_ENCRYPTION:
@@ -638,6 +669,37 @@ seckey_ExtractPublicKey(const CERTSubjectPublicKeyInfo *spki)
                 if (rv == SECSuccess)
                     return pubk;
                 break;
+            case SEC_OID_ED25519_PUBLIC_KEY:
+                /* A basic consistency check on inputs. */
+                if (newOs.len == 0) {
+                    PORT_SetError(SEC_ERROR_INPUT_LEN);
+                    break;
+                }
+
+                /* Currently supporting only (Pure)Ed25519 .*/
+                if (spki->algorithm.parameters.len != 0) {
+                    PORT_SetError(SEC_ERROR_UNSUPPORTED_KEYALG);
+                    break;
+                }
+
+                pubk->keyType = edKey;
+                pubk->u.ec.size = 0;
+
+                SECOidData *oidEd25519 = SECOID_FindOIDByTag(SEC_OID_ED25519_PUBLIC_KEY);
+
+                if (!SECITEM_AllocItem(arena, &pubk->u.ec.DEREncodedParams, oidEd25519->oid.len + 2)) {
+                    rv = SECFailure;
+                    break;
+                }
+                pubk->u.ec.DEREncodedParams.data[0] = SEC_ASN1_OBJECT_ID;
+                pubk->u.ec.DEREncodedParams.data[1] = oidEd25519->oid.len;
+                PORT_Memcpy(pubk->u.ec.DEREncodedParams.data + 2, oidEd25519->oid.data, oidEd25519->oid.len);
+
+                rv = SECITEM_CopyItem(arena, &pubk->u.ec.publicValue, &newOs);
+                if (rv != SECSuccess) {
+                    break;
+                }
+                return pubk;
             case SEC_OID_ANSIX962_EC_PUBLIC_KEY:
                 /* A basic sanity check on inputs. */
                 if (spki->algorithm.parameters.len == 0 || newOs.len == 0) {
@@ -812,6 +874,7 @@ SECKEY_ECParamsToKeySize(const SECItem *encodedParams)
             return 571;
 
         case SEC_OID_CURVE25519:
+        case SEC_OID_ED25519_PUBLIC_KEY:
             return 255;
 
         default:
@@ -962,6 +1025,7 @@ SECKEY_ECParamsToBasePointOrderLen(const SECItem *encodedParams)
             return 570;
 
         case SEC_OID_CURVE25519:
+        case SEC_OID_ED25519_PUBLIC_KEY:
             return 255;
 
         default:
@@ -1033,6 +1097,7 @@ SECKEY_PublicKeyStrengthInBits(const SECKEYPublicKey *pubk)
             bitSize = SECKEY_BigIntegerBitLength(&pubk->u.dh.prime);
             break;
         case ecKey:
+        case edKey:
             bitSize = SECKEY_ECParamsToKeySize(&pubk->u.ec.DEREncodedParams);
             break;
         default:
@@ -1042,21 +1107,79 @@ SECKEY_PublicKeyStrengthInBits(const SECKEYPublicKey *pubk)
     return bitSize;
 }
 
+unsigned
+SECKEY_PrivateKeyStrengthInBits(const SECKEYPrivateKey *privk)
+{
+    unsigned bitSize = 0;
+    SECItem params = { siBuffer, NULL, 0 };
+    SECStatus rv;
+
+    if (!privk) {
+        PORT_SetError(SEC_ERROR_INVALID_KEY);
+        return 0;
+    }
+
+    /* interpret modulus length as key strength */
+    switch (privk->keyType) {
+        case rsaKey:
+        case rsaPssKey:
+        case rsaOaepKey:
+            /* some tokens don't export CKA_MODULUS on the private key,
+             * PK11_SignatureLen works around this if necessary */
+            bitSize = PK11_SignatureLen((SECKEYPrivateKey *)privk) * PR_BITS_PER_BYTE;
+            if (bitSize == -1) {
+                bitSize = 0;
+            }
+            return bitSize;
+        case dsaKey:
+        case fortezzaKey:
+        case dhKey:
+        case keaKey:
+            rv = PK11_ReadAttribute(privk->pkcs11Slot, privk->pkcs11ID,
+                                    CKA_PRIME, NULL, &params);
+            if ((rv != SECSuccess) || (params.data == NULL)) {
+                PORT_SetError(SEC_ERROR_INVALID_KEY);
+                return 0;
+            }
+            bitSize = SECKEY_BigIntegerBitLength(&params);
+            PORT_Free(params.data);
+            return bitSize;
+        case ecKey:
+            rv = PK11_ReadAttribute(privk->pkcs11Slot, privk->pkcs11ID,
+                                    CKA_EC_PARAMS, NULL, &params);
+            if ((rv != SECSuccess) || (params.data == NULL)) {
+                return 0;
+            }
+            bitSize = SECKEY_ECParamsToKeySize(&params);
+            PORT_Free(params.data);
+            return bitSize;
+        default:
+            break;
+    }
+    PORT_SetError(SEC_ERROR_INVALID_KEY);
+    return 0;
+}
+
 /* returns signature length in bytes (not bits) */
 unsigned
 SECKEY_SignatureLen(const SECKEYPublicKey *pubk)
 {
-    unsigned char b0;
     unsigned size;
 
     switch (pubk->keyType) {
         case rsaKey:
         case rsaPssKey:
-            b0 = pubk->u.rsa.modulus.data[0];
-            return b0 ? pubk->u.rsa.modulus.len : pubk->u.rsa.modulus.len - 1;
+            if (pubk->u.rsa.modulus.len == 0) {
+                return 0;
+            }
+            if (pubk->u.rsa.modulus.data[0] == 0) {
+                return pubk->u.rsa.modulus.len - 1;
+            }
+            return pubk->u.rsa.modulus.len;
         case dsaKey:
             return pubk->u.dsa.params.subPrime.len * 2;
         case ecKey:
+        case edKey:
             /* Get the base point order length in bits and adjust */
             size = SECKEY_ECParamsToBasePointOrderLen(
                 &pubk->u.ec.DEREncodedParams);
@@ -1183,6 +1306,7 @@ SECKEY_CopyPublicKey(const SECKEYPublicKey *pubk)
                                   &pubk->u.dh.publicValue);
             break;
         case ecKey:
+        case edKey:
             copyk->u.ec.size = pubk->u.ec.size;
             rv = seckey_HasCurveOID(pubk);
             if (rv != SECSuccess) {
@@ -1199,6 +1323,11 @@ SECKEY_CopyPublicKey(const SECKEYPublicKey *pubk)
             break;
         case nullKey:
             return copyk;
+        case kyberKey:
+            copyk->u.kyber.params = pubk->u.kyber.params;
+            rv = SECITEM_CopyItem(arena, &copyk->u.kyber.publicValue,
+                                  &pubk->u.kyber.publicValue);
+            break;
         default:
             PORT_SetError(SEC_ERROR_INVALID_KEY);
             rv = SECFailure;
@@ -1209,6 +1338,51 @@ SECKEY_CopyPublicKey(const SECKEYPublicKey *pubk)
 
     SECKEY_DestroyPublicKey(copyk);
     return NULL;
+}
+
+/*
+ * Check that a given key meets the policy limits for the given key
+ * size.
+ */
+SECStatus
+seckey_EnforceKeySize(KeyType keyType, unsigned keyLength, SECErrorCodes error)
+{
+    PRInt32 opt = -1;
+    PRInt32 optVal;
+    SECStatus rv;
+
+    switch (keyType) {
+        case rsaKey:
+        case rsaPssKey:
+        case rsaOaepKey:
+            opt = NSS_RSA_MIN_KEY_SIZE;
+            break;
+        case dsaKey:
+        case fortezzaKey:
+            opt = NSS_DSA_MIN_KEY_SIZE;
+            break;
+        case dhKey:
+        case keaKey:
+            opt = NSS_DH_MIN_KEY_SIZE;
+            break;
+        case ecKey:
+            opt = NSS_ECC_MIN_KEY_SIZE;
+            break;
+        case nullKey:
+        default:
+            PORT_SetError(SEC_ERROR_INVALID_KEY);
+            return SECFailure;
+    }
+    PORT_Assert(opt != -1);
+    rv = NSS_OptionGet(opt, &optVal);
+    if (rv != SECSuccess) {
+        return rv;
+    }
+    if (optVal > keyLength) {
+        PORT_SetError(error);
+        return SECFailure;
+    }
+    return SECSuccess;
 }
 
 /*
@@ -1359,6 +1533,28 @@ SECKEY_ConvertToPublicKey(SECKEYPrivateKey *privk)
                  * overwrite  the old value */
                 pubk->u.ec.publicValue = decodedPoint;
             }
+
+            pubk->u.ec.encoding = ECPoint_Undefined;
+            return pubk;
+        case edKey:
+            rv = PK11_ReadAttribute(privk->pkcs11Slot, privk->pkcs11ID,
+                                    CKA_EC_PARAMS, arena, &pubk->u.ec.DEREncodedParams);
+            if (rv != SECSuccess) {
+                break;
+            }
+            rv = PK11_ReadAttribute(privk->pkcs11Slot, privk->pkcs11ID,
+                                    CKA_EC_POINT, arena, &pubk->u.ec.publicValue);
+            if (rv != SECSuccess || pubk->u.ec.publicValue.len == 0) {
+                pubKeyHandle = seckey_FindPublicKeyHandle(privk, pubk);
+                if (pubKeyHandle == CK_INVALID_HANDLE) {
+                    break;
+                }
+                rv = PK11_ReadAttribute(privk->pkcs11Slot, pubKeyHandle,
+                                        CKA_EC_POINT, arena, &pubk->u.ec.publicValue);
+                if (rv != SECSuccess) {
+                    break;
+                }
+            }
             pubk->u.ec.encoding = ECPoint_Undefined;
             return pubk;
         default:
@@ -1377,6 +1573,7 @@ seckey_CreateSubjectPublicKeyInfo_helper(SECKEYPublicKey *pubk)
     CERTSubjectPublicKeyInfo *spki;
     PLArenaPool *arena;
     SECItem params = { siBuffer, NULL, 0 };
+    SECOidTag tag;
 
     arena = PORT_NewArena(DER_DEFAULT_CHUNKSIZE);
     if (arena == NULL) {
@@ -1449,14 +1646,41 @@ seckey_CreateSubjectPublicKeyInfo_helper(SECKEYPublicKey *pubk)
             case ecKey:
                 rv = SECITEM_CopyItem(arena, &params,
                                       &pubk->u.ec.DEREncodedParams);
-                if (rv != SECSuccess)
+                if (rv != SECSuccess) {
                     break;
+                }
 
+                tag = SEC_OID_ANSIX962_EC_PUBLIC_KEY;
                 rv = SECOID_SetAlgorithmID(arena, &spki->algorithm,
-                                           SEC_OID_ANSIX962_EC_PUBLIC_KEY,
+                                           tag,
                                            &params);
-                if (rv != SECSuccess)
+                if (rv != SECSuccess) {
                     break;
+                }
+
+                rv = SECITEM_CopyItem(arena, &spki->subjectPublicKey,
+                                      &pubk->u.ec.publicValue);
+
+                if (rv == SECSuccess) {
+                    /*
+                     * The stored value is supposed to be a BIT_STRING,
+                     * so convert the length.
+                     */
+                    spki->subjectPublicKey.len <<= 3;
+                    /*
+                     * We got a good one; return it.
+                     */
+                    return spki;
+                }
+                break;
+            case edKey:
+                tag = SECKEY_GetECCOid(&pubk->u.ec.DEREncodedParams);
+                rv = SECOID_SetAlgorithmID(arena, &spki->algorithm,
+                                           tag,
+                                           &params);
+                if (rv != SECSuccess) {
+                    break;
+                }
 
                 rv = SECITEM_CopyItem(arena, &spki->subjectPublicKey,
                                       &pubk->u.ec.publicValue);
@@ -1563,8 +1787,9 @@ SECKEY_DecodeDERSubjectPublicKeyInfo(const SECItem *spkider)
             rv = SEC_QuickDERDecodeItem(arena, spki,
                                         CERT_SubjectPublicKeyInfoTemplate, &newSpkider);
         }
-        if (rv == SECSuccess)
+        if (rv == SECSuccess) {
             return spki;
+        }
     } else {
         PORT_SetError(SEC_ERROR_NO_MEMORY);
     }

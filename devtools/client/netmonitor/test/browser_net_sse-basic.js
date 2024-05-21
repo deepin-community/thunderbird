@@ -7,11 +7,7 @@
  * Test basic SSE connection.
  */
 
-add_task(async function() {
-  await SpecialPowers.pushPrefEnv({
-    set: [["devtools.netmonitor.features.serverSentEvents", true]],
-  });
-
+add_task(async function () {
   const { tab, monitor } = await initNetMonitor(
     "http://mochi.test:8888/browser/devtools/client/netmonitor/test/html_sse-test-page.html",
     {
@@ -43,6 +39,25 @@ add_task(async function() {
     "#messages-view .message-list-table .message-list-item",
     1
   );
+
+  // Test that 'Save Response As' is not in the context menu
+  EventUtils.sendMouseEvent({ type: "contextmenu" }, requests[0]);
+
+  ok(
+    !getContextMenuItem(monitor, "request-list-context-save-response-as"),
+    "The 'Save Response As' context menu item should be hidden"
+  );
+
+  // Close context menu.
+  const contextMenu = monitor.toolbox.topDoc.querySelector(
+    'popupset menupopup[menu-api="true"]'
+  );
+  const popupHiddenPromise = BrowserTestUtils.waitForEvent(
+    contextMenu,
+    "popuphidden"
+  );
+  contextMenu.hidePopup();
+  await popupHiddenPromise;
 
   // Click on the "Response" panel
   clickOnSidebarTab(document, "response");

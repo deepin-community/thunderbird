@@ -167,8 +167,9 @@ function background(events) {
 
     let { add, modify, remove } = expected.headers[phase];
     for (let name in add) {
-      let value = headers.find(h => h.name.toLowerCase() === name.toLowerCase())
-        .value;
+      let value = headers.find(
+        h => h.name.toLowerCase() === name.toLowerCase()
+      ).value;
       browser.test.assertEq(
         value,
         add[name],
@@ -177,8 +178,9 @@ function background(events) {
     }
 
     for (let name in modify) {
-      let value = headers.find(h => h.name.toLowerCase() === name.toLowerCase())
-        .value;
+      let value = headers.find(
+        h => h.name.toLowerCase() === name.toLowerCase()
+      ).value;
       browser.test.assertEq(
         value,
         modify[name],
@@ -198,7 +200,7 @@ function background(events) {
   }
 
   let listeners = {
-    onBeforeRequest(expected, details, result) {
+    onBeforeRequest(expected, details) {
       // Save some values to test request consistency in later events.
       browser.test.assertTrue(
         details.tabId !== undefined,
@@ -261,7 +263,7 @@ function background(events) {
       }
     },
     onBeforeRedirect() {},
-    onSendHeaders(expected, details, result) {
+    onSendHeaders(expected, details) {
       if (expected.headers && expected.headers.request) {
         checkHeaders("request", expected, details);
       }
@@ -285,7 +287,7 @@ function background(events) {
     onAuthRequired(expected, details, result) {
       result.authCredentials = expected.authInfo;
     },
-    onCompleted(expected, details, result) {
+    onCompleted(expected, details) {
       // If we have already completed a GET request for this url,
       // and it was found, we expect for the response to come fromCache.
       // expected.cached may be undefined, force boolean.
@@ -320,7 +322,7 @@ function background(events) {
         checkHeaders("response", expected, details);
       }
     },
-    onErrorOccurred(expected, details, result) {
+    onErrorOccurred(expected, details) {
       if (expected.error) {
         if (Array.isArray(expected.error)) {
           browser.test.assertTrue(
@@ -465,10 +467,7 @@ function addScript(file) {
   let script = document.createElement("script");
   script.setAttribute("type", "text/javascript");
   script.setAttribute("src", file);
-  document
-    .getElementsByTagName("head")
-    .item(0)
-    .appendChild(script);
+  document.getElementsByTagName("head").item(0).appendChild(script);
 }
 
 /* exported addFrame */

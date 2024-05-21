@@ -2,19 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* eslint-env mozilla/frame-script */
+/* eslint-env mozilla/remote-page */
 
 import {
   actionCreators as ac,
   actionTypes as at,
   actionUtils as au,
-} from "common/Actions.jsm";
+} from "common/Actions.sys.mjs";
 import { applyMiddleware, combineReducers, createStore } from "redux";
 
 export const MERGE_STORE_ACTION = "NEW_TAB_INITIAL_STATE";
 export const OUTGOING_MESSAGE_NAME = "ActivityStream:ContentToMain";
 export const INCOMING_MESSAGE_NAME = "ActivityStream:MainToContent";
-export const EARLY_QUEUED_ACTIONS = [at.SAVE_SESSION_PERF_DATA];
 
 /**
  * A higher-order function which returns a reducer that, on MERGE_STORE action,
@@ -45,7 +44,7 @@ function mergeStateReducer(mainReducer) {
 /**
  * messageMiddleware - Middleware that looks for SentToMain type actions, and sends them if necessary
  */
-const messageMiddleware = store => next => action => {
+const messageMiddleware = () => next => action => {
   const skipLocal = action.meta && action.meta.skipLocal;
   if (au.isSendToMain(action)) {
     RPMSendAsyncMessage(OUTGOING_MESSAGE_NAME, action);
@@ -108,36 +107,6 @@ export const rehydrationMiddleware = ({ getState }) => {
 };
 
 /**
- * This middleware queues up all the EARLY_QUEUED_ACTIONS until it receives
- * the first action from main. This is useful for those actions for main which
- * require higher reliability, i.e. the action will not be lost in the case
- * that it gets sent before the main is ready to receive it. Conversely, any
- * actions allowed early are accepted to be ignorable or re-sendable.
- */
-export const queueEarlyMessageMiddleware = ({ getState }) => {
-  // NB: The parameter here is MiddlewareAPI which looks like a Store and shares
-  // the same getState, so attached properties are accessible from the store.
-  getState.earlyActionQueue = [];
-  getState.receivedFromMain = false;
-  return next => action => {
-    if (getState.receivedFromMain) {
-      next(action);
-    } else if (au.isFromMain(action)) {
-      next(action);
-      getState.receivedFromMain = true;
-      // Sending out all the early actions as main is ready now
-      getState.earlyActionQueue.forEach(next);
-      getState.earlyActionQueue.length = 0;
-    } else if (EARLY_QUEUED_ACTIONS.includes(action.type)) {
-      getState.earlyActionQueue.push(action);
-    } else {
-      // Let any other type of action go through
-      next(action);
-    }
-  };
-};
-
-/**
  * initStore - Create a store and listen for incoming actions
  *
  * @param  {object} reducers An object containing Redux reducers
@@ -149,11 +118,7 @@ export function initStore(reducers, initialState) {
     mergeStateReducer(combineReducers(reducers)),
     initialState,
     global.RPMAddMessageListener &&
-      applyMiddleware(
-        queueEarlyMessageMiddleware,
-        rehydrationMiddleware,
-        messageMiddleware
-      )
+      applyMiddleware(rehydrationMiddleware, messageMiddleware)
   );
 
   if (global.RPMAddMessageListener) {
@@ -161,7 +126,7 @@ export function initStore(reducers, initialState) {
       try {
         store.dispatch(msg.data);
       } catch (ex) {
-        console.error("Content msg:", msg, "Dispatch error: ", ex); // eslint-disable-line no-console
+        console.error("Content msg:", msg, "Dispatch error: ", ex);
         dump(
           `Content msg: ${JSON.stringify(msg)}\nDispatch error: ${ex}\n${
             ex.stack

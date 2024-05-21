@@ -7,12 +7,12 @@
  * Check that logpoints generate console errors if the logpoint statement is invalid.
  */
 
-const Resources = require("devtools/server/actors/resources/index");
+const Resources = require("resource://devtools/server/actors/resources/index.js");
 
 add_task(
-  threadFrontTest(async ({ threadActor, threadFront, debuggee, client }) => {
+  threadFrontTest(async ({ threadActor, threadFront, debuggee }) => {
     let lastMessage, lastExpression;
-    const targetActor = threadActor._parent;
+    const { targetActor } = threadActor;
     // Only Workers are evaluating through the WebConsoleActor.
     // Tabs will be evaluating directly via the frame object.
     targetActor._consoleActor = {
@@ -59,6 +59,7 @@ add_task(
     if (lastMessage) {
       Assert.equal(lastMessage.level, "logPointError");
       Assert.equal(lastMessage.arguments[0], "c is not defined");
+      Assert.ok(/\d+\.\d+/.test(lastMessage.timeStamp));
     } else {
       Assert.equal(lastExpression.text, "console.log(...[c])");
       Assert.equal(lastExpression.lineNumber, 3);
@@ -70,7 +71,7 @@ function evalCode(debuggee) {
   /* eslint-disable */
   Cu.evalInSandbox(
     "debugger;\n" + // 1
-    "var a = 'three';\n" + // 2
+      "var a = 'three';\n" + // 2
       "var b = 2;\n", // 3
     debuggee,
     "1.8",

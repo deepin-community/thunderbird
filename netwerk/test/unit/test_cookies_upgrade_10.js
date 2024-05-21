@@ -20,7 +20,7 @@ function indexExists(dbfile, indexname) {
   return result;
 }
 
-add_task(async function() {
+add_task(async function () {
   try {
     let testfile = do_get_file("data/cookies_v10.sqlite");
     let profileDir = do_get_profile();
@@ -51,7 +51,7 @@ add_task(async function() {
     );
 
     // check for upgraded schema.
-    Assert.equal(12, getDBVersion(destFile));
+    Assert.equal(13, getDBVersion(destFile));
 
     // Check that the index was deleted
     Assert.ok(!indexExists(destFile, "moz_basedomain"));

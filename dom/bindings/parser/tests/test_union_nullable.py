@@ -1,16 +1,19 @@
+import WebIDL
+
+
 def WebIDLTest(parser, harness):
     threw = False
     try:
         parser.parse(
             """
             interface OneNullableInUnion {
-              void foo((object? or DOMString?) arg);
+              undefined foo((object? or DOMString?) arg);
             };
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Two nullable member types of a union should have thrown.")
@@ -22,13 +25,13 @@ def WebIDLTest(parser, harness):
         parser.parse(
             """
             interface NullableInNullableUnion {
-              void foo((object? or DOMString)? arg);
+              undefined foo((object? or DOMString)? arg);
             };
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(
@@ -45,13 +48,13 @@ def WebIDLTest(parser, harness):
             interface NullableInUnionNullableUnionHelper {
             };
             interface NullableInUnionNullableUnion {
-              void foo(((object? or DOMString) or NullableInUnionNullableUnionHelper)? arg);
+              undefined foo(((object? or DOMString) or NullableInUnionNullableUnionHelper)? arg);
             };
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(

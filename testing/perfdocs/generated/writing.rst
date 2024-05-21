@@ -10,6 +10,7 @@ new ones):
 - **xpcshell** a classical xpcshell test, turned into a performance test
 - **browsertime** a browsertime script, which runs a full browser and controls
   it via a Selenium client.
+- **mochitest** a classical mochitest test, turned into a performance test
 
 In order to qualify as performance tests, both flavors require metadata.
 
@@ -31,9 +32,9 @@ This is the list of fields:
 
 Tests are registered using tests manifests and the **PERFTESTS_MANIFESTS**
 variable in `moz.build` files - it's good practice to name this file
-`perftest.ini`.
+`perftest.toml`.
 
-Example of such a file: https://searchfox.org/mozilla-central/source/testing/performance/perftest.ini
+Example of such a file: https://searchfox.org/mozilla-central/source/testing/performance/perftest.toml
 
 
 xpcshell
@@ -48,7 +49,58 @@ Here's an example of such a metrics call::
 
     # compute some speed metrics
     let speed = 12345;
-    info("perfMetrics", { speed });
+    info("perfMetrics", JSON.stringify({ speed }));
+
+
+Mochitest
+---------
+
+Similar to ``xpcshell`` tests, these are standard ``mochitest`` tests with some extra things:
+
+- the ``perfMetadata`` variable, as described in the previous section
+- calls to ``info("perfMetrics", ...)`` to send metrics to the ``perftest`` framework
+
+Note that the ``perfMetadata`` variable can exist in any ``<script>...</script>`` element in the Mochitest HTML test file. The ``perfMetadata`` variable also needs a couple additional settings in Mochitest tests. These are the ``manifest``, and ``manifest_flavor`` options::
+
+    var perfMetadata = {
+      owner: "Performance Team",
+      name: "Test test",
+      description: "N/A",
+      options: {
+        default: {
+          perfherder: true,
+          perfherder_metrics: [
+            { name: "Registration", unit: "ms" },
+          ],
+          manifest: "perftest.toml",
+          manifest_flavor: "plain",
+          extra_args: [
+            "headless",
+          ]
+        },
+      },
+    };
+
+The ``extra_args`` setting provides an area to provide custom Mochitest command-line arguments for this test.
+
+Here's an example of a call that will produce metrics::
+
+    # compute some speed metrics
+    let speed = 12345;
+    info("perfMetrics", JSON.stringify({ speed }));
+
+Existing Mochitest unit tests can be modified with these to be compatible with mozperftest, but note that some issues exist when doing this:
+
+- unittest issues with mochitest tests running on hardware
+- multiple configurations of a test running in a single manifest
+
+At the top of this document, you can find some information about the recommended approach for adding a new manifest dedicated to running performance tests.
+
+Locally, mozperftest uses ``./mach test`` to run your test. Always ensure that your test works in ``./mach test`` before attempting to run it through ``./mach perftest``. In CI, we use a custom "remote" run that runs Mochitest directly, skipping ``./mach test``.
+
+If everything is setup correctly, running a performance test locally will be as simple as this::
+
+    ./mach perftest <path/to/my/mochitest-test.html>
 
 
 Browsertime
@@ -145,9 +197,9 @@ A Python module can be used to run functions during a run lifecycle. Available h
   change the running environment.
 - **after_runs(env)** runs after the test is done.
 - **on_exception(env, layer, exception)** called on any exception. Provides the
-  layer in which the exception occured, and the exception. If the hook returns `True`
+  layer in which the exception occurred, and the exception. If the hook returns `True`
   the exception is ignored and the test resumes. If the hook returns `False`, the
-  exception is ignored and the test ends immediatly. The hook can also re-raise the
+  exception is ignored and the test ends immediately. The hook can also re-raise the
   exception or raise its own exception.
 
 In the example below, the `before_runs` hook is setting the options on the fly,

@@ -14,7 +14,7 @@ var gContentDoc;
 var detachedWindow;
 
 function test() {
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     gContentDoc = null;
   });
   UITourTest();
@@ -32,7 +32,7 @@ var tests = [
 
     let highlight = document.getElementById("UITourHighlight");
 
-    let browserStartupDeferred = PromiseUtils.defer();
+    let browserStartupDeferred = Promise.withResolvers();
     Services.obs.addObserver(function onBrowserDelayedStartup(aWindow) {
       Services.obs.removeObserver(
         onBrowserDelayedStartup,

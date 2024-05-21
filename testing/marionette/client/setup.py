@@ -2,11 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 import re
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 THIS_DIR = os.path.dirname(os.path.realpath(__name__))
 
@@ -18,7 +17,7 @@ def read(*parts):
 
 def get_version():
     return re.findall(
-        '__version__ = "([\d\.]+)"', read("marionette_driver", "__init__.py"), re.M
+        r'__version__ = "([\d\.]+)"', read("marionette_driver", "__init__.py"), re.M
     )[0]
 
 
@@ -26,10 +25,12 @@ setup(
     name="marionette_driver",
     version=get_version(),
     description="Marionette Driver",
-    long_description="See https://firefox-source-docs.mozilla.org/python/marionette_driver.html",
+    long_description="""Note marionette_driver is no longer supported.
+
+For more information see https://firefox-source-docs.mozilla.org/python/marionette_driver.html""",
     # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 7 - Inactive",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Operating System :: MacOS :: MacOS X",
@@ -43,7 +44,7 @@ setup(
     ],
     keywords="mozilla",
     author="Auto-tools",
-    author_email="tools-marionette@lists.mozilla.org",
+    author_email="dev-webdriver@mozilla.org",
     url="https://wiki.mozilla.org/Auto-tools/Projects/Marionette",
     license="MPL",
     packages=find_packages(),

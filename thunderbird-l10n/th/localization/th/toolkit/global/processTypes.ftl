@@ -17,12 +17,12 @@ process-type-privilegedmozilla = เนื้อหา Mozilla ที่มี�
 process-type-extension = ส่วนขยาย
 # process used to open file:// URLs
 process-type-file = ไฟล์ในเครื่อง
-# process used to isolate webpages that requested special
-# permission to allocate large amounts of memory
-process-type-weblargeallocation = การจัดสรรขนาดใหญ่
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = เนื้อหาเว็บที่ถูกคัดแยก
+# process used to isolate a ServiceWorker to improve
+# performance
+process-type-webserviceworker = Service Worker ที่ถูกคัดแยก
 # process preallocated; may change to other types
 process-type-prealloc = จัดสรรไว้ล่วงหน้า
 
@@ -39,6 +39,15 @@ process-type-gpu = GPU
 process-type-socket = ซ็อกเก็ต
 # process used to decode media
 process-type-rdd = RDD
+# process used to run some IPC actor in their own sandbox
+process-type-utility = Sandboxed IPC Actor
+process-type-utility-actor-audio-decoder-generic = ยูทิลิตี Generic Audio Decoder
+process-type-utility-actor-audio-decoder-applemedia = ยูทิลิตี AppleMedia
+process-type-utility-actor-audio-decoder-wmf = ยูทิลิตี Windows Media Foundation
+process-type-utility-actor-mf-media-engine = ยูทิลิตี Media Foundation Engine
+process-type-utility-actor-js-oracle = ยูทิลิตี JavaScript Oracle
+process-type-utility-actor-windows-utils = ยูทิลิตี Windows Utils
+process-type-utility-actor-windows-file-dialog = ยูทิลิตี Windows File Dialog
 
 ##
 ## Other

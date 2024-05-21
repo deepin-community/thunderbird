@@ -12,7 +12,9 @@
 #include "nsObjCExceptions.h"
 #include "xpcAccessibleMacInterface.h"
 #include "mozilla/Logging.h"
+#include "gfxPlatform.h"
 
+using namespace mozilla;
 using namespace mozilla::a11y;
 
 #undef LOG
@@ -493,10 +495,19 @@ mozilla::LogModule* GetMacAccessibilityLog() {
 }
 
 - (id<mozAccessible>)moxUnignoredParent {
-  id nativeParent = [self moxParent];
+  id<mozAccessible> nativeParent = [self moxParent];
+  if (!nativeParent) {
+    return nil;
+  }
 
   if (![nativeParent isAccessibilityElement]) {
-    return [nativeParent moxUnignoredParent];
+    if ([nativeParent conformsToProtocol:@protocol(MOXAccessible)] &&
+        [nativeParent respondsToSelector:@selector(moxUnignoredParent)]) {
+      // Cast away the protocol so we can cast to another protocol.
+      id bareNativeParent = nativeParent;
+      id<MOXAccessible> moxNativeParent = bareNativeParent;
+      return [moxNativeParent moxUnignoredParent];
+    }
   }
 
   return GetObjectOrRepresentedView(nativeParent);
@@ -555,7 +566,7 @@ mozilla::LogModule* GetMacAccessibilityLog() {
       return element;
     }
 
-    if (stop) {
+    if (stop || ![element respondsToSelector:@selector(moxUnignoredParent)]) {
       break;
     }
   }

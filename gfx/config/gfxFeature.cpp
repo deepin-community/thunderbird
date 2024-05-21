@@ -210,15 +210,15 @@ void FeatureState::ForEachStatusChange(
   aCallback("default", mDefault.mStatus, mDefault.MessageOrNull(),
             mDefault.FailureId());
   if (mUser.IsInitialized()) {
-    aCallback("user", mUser.mStatus, mUser.Message(), mDefault.FailureId());
+    aCallback("user", mUser.mStatus, mUser.Message(), mUser.FailureId());
   }
   if (mEnvironment.IsInitialized()) {
     aCallback("env", mEnvironment.mStatus, mEnvironment.Message(),
-              mDefault.FailureId());
+              mEnvironment.FailureId());
   }
   if (mRuntime.IsInitialized()) {
     aCallback("runtime", mRuntime.mStatus, mRuntime.Message(),
-              mDefault.FailureId());
+              mRuntime.FailureId());
   }
 }
 
@@ -270,6 +270,10 @@ nsCString FeatureState::GetStatusAndFailureIdString() const {
     case FeatureStatus::Blocked:
       status.AppendPrintf("%s:%s", FeatureStatusToString(value),
                           GetFailureId().get());
+      break;
+    case FeatureStatus::Failed:
+      status.AppendPrintf("%s:%s", FeatureStatusToString(value),
+                          GetFailureMessage());
       break;
     default:
       status.Append(FeatureStatusToString(value));

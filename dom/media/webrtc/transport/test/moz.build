@@ -7,7 +7,6 @@
 include("/ipc/chromium/chromium-config.mozbuild")
 
 if CONFIG["OS_TARGET"] != "WINNT":
-
     if CONFIG["OS_TARGET"] != "Android":
         SOURCES += [
             "ice_unittest.cpp",
@@ -102,6 +101,3 @@ LOCAL_INCLUDES += [
 ]
 
 FINAL_LIBRARY = "xul-gtest"
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

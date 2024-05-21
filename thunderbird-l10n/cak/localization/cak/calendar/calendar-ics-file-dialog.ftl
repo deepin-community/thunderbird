@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = Kejik' ri taq Nimaq'ij chuqa' taq Samaj pa Cholb'äl
+calendar-ics-file-window-title = Kejik' ri taq Nimaq'ij chuqa' taq Samaj pa Cholb'äl
 calendar-ics-file-dialog-import-event-button-label = Tijik' Nimaq'ij
 calendar-ics-file-dialog-import-task-button-label = Tijik' Samaj
 calendar-ics-file-dialog-2 =
@@ -31,3 +32,4 @@ calendar-ics-file-dialog-sort-title-descending =
 calendar-ics-file-dialog-progress-message = Nijik…
 calendar-ics-file-import-success = ¡Ütz xjik'!
 calendar-ics-file-import-error = Xk'ulwachitäj jun sachoj chuqa' xsach ri jik'oj.
+calendar-ics-file-import-complete = Xtz'aqät ruk'amik.

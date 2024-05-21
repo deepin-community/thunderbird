@@ -3,20 +3,18 @@
 
 "use strict";
 
-const { ExperimentStore } = ChromeUtils.import(
-  "resource://nimbus/lib/ExperimentStore.jsm"
+const { ExperimentStore } = ChromeUtils.importESModule(
+  "resource://nimbus/lib/ExperimentStore.sys.mjs"
 );
-const { ExperimentFakes } = ChromeUtils.import(
-  "resource://testing-common/NimbusTestUtils.jsm"
+const { ExperimentFakes } = ChromeUtils.importESModule(
+  "resource://testing-common/NimbusTestUtils.sys.mjs"
 );
-const { ExperimentFeatures } = ChromeUtils.import(
-  "resource://nimbus/ExperimentAPI.jsm"
+const { ExperimentFeatures } = ChromeUtils.importESModule(
+  "resource://nimbus/ExperimentAPI.sys.mjs"
 );
-ChromeUtils.defineModuleGetter(
-  this,
-  "JSONFile",
-  "resource://gre/modules/JSONFile.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  JSONFile: "resource://gre/modules/JSONFile.sys.mjs",
+});
 
 function getPath() {
   const profileDir = Services.dirsvc.get("ProfD", Ci.nsIFile).path;
@@ -31,13 +29,25 @@ function getPath() {
 add_task(async function test_loadFromFile() {
   const previousSession = new JSONFile({ path: getPath() });
   await previousSession.load();
-  previousSession.data.test = true;
+  previousSession.data.test = {
+    slug: "test",
+    active: true,
+    lastSeen: Date.now(),
+  };
   previousSession.saveSoon();
   await previousSession.finalize();
 
   // Create a store and expect to load data from previous session
   const store = new ExperimentStore();
+
   await store.init();
+  await store.ready();
+
+  Assert.equal(
+    previousSession.path,
+    store._store.path,
+    "Should have the same path"
+  );
 
   Assert.ok(
     store.get("test"),
@@ -49,8 +59,9 @@ add_task(async function test_load_from_disk_event() {
   const experiment = ExperimentFakes.experiment("foo", {
     branch: {
       slug: "variant",
-      feature: { featureId: "green", enabled: true },
+      features: [{ featureId: "green" }],
     },
+    lastSeen: Date.now(),
   });
   const stub = sinon.stub();
   const previousSession = new JSONFile({ path: getPath() });
@@ -65,6 +76,14 @@ add_task(async function test_load_from_disk_event() {
   store._onFeatureUpdate("green", stub);
 
   await store.init();
+  await store.ready();
+
+  Assert.equal(
+    previousSession.path,
+    store._store.path,
+    "Should have the same path as previousSession."
+  );
+
   await TestUtils.waitForCondition(() => stub.called, "Stub was called");
 
   Assert.ok(stub.firstCall.args[1], "feature-experiment-loaded");

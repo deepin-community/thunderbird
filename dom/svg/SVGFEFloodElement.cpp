@@ -10,13 +10,14 @@
 #include "mozilla/dom/SVGFEFloodElementBinding.h"
 #include "nsColor.h"
 #include "nsIFrame.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/BindContext.h"
 
 NS_IMPL_NS_NEW_SVG_ELEMENT(FEFlood)
 
 using namespace mozilla::gfx;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 JSObject* SVGFEFloodElement::WrapNode(JSContext* aCx,
                                       JS::Handle<JSObject*> aGivenProto) {
@@ -36,8 +37,7 @@ FilterPrimitiveDescription SVGFEFloodElement::GetPrimitiveDescription(
     const nsTArray<bool>& aInputsAreTainted,
     nsTArray<RefPtr<SourceSurface>>& aInputImages) {
   FloodAttributes atts;
-  nsIFrame* frame = GetPrimaryFrame();
-  if (frame) {
+  if (const auto* frame = GetPrimaryFrame()) {
     const nsStyleSVGReset* styleSVGReset = frame->Style()->StyleSVGReset();
     sRGBColor color(
         sRGBColor::FromABGR(styleSVGReset->mFloodColor.CalcColor(frame)));
@@ -49,15 +49,27 @@ FilterPrimitiveDescription SVGFEFloodElement::GetPrimitiveDescription(
   return FilterPrimitiveDescription(AsVariant(std::move(atts)));
 }
 
+bool SVGFEFloodElement::OutputIsTainted(const nsTArray<bool>& aInputsAreTainted,
+                                        nsIPrincipal* aReferencePrincipal) {
+  if (const auto* frame = GetPrimaryFrame()) {
+    if (frame->Style()->StyleSVGReset()->mFloodColor.IsCurrentColor()) {
+      return true;
+    }
+  }
+
+  return SVGFEFloodElementBase::OutputIsTainted(aInputsAreTainted,
+                                                aReferencePrincipal);
+}
+
 //----------------------------------------------------------------------
 // nsIContent methods
 
-NS_IMETHODIMP_(bool)
-SVGFEFloodElement::IsAttributeMapped(const nsAtom* name) const {
-  static const MappedAttributeEntry* const map[] = {sColorMap, sFEFloodMap};
+nsresult SVGFEFloodElement::BindToTree(BindContext& aCtx, nsINode& aParent) {
+  if (aCtx.InComposedDoc()) {
+    aCtx.OwnerDoc().SetUseCounter(eUseCounter_custom_feFlood);
+  }
 
-  return FindAttributeDependence(name, map) ||
-         SVGFEFloodElementBase::IsAttributeMapped(name);
+  return SVGFEFloodElementBase::BindToTree(aCtx, aParent);
 }
 
 //----------------------------------------------------------------------
@@ -68,5 +80,4 @@ SVGElement::StringAttributesInfo SVGFEFloodElement::GetStringInfo() {
                               ArrayLength(sStringInfo));
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

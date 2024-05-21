@@ -53,13 +53,6 @@ class IDecodingTask : public IResumable {
   /// Notify @aImage that @aDecoder has finished.
   void NotifyDecodeComplete(NotNull<RasterImage*> aImage,
                             NotNull<Decoder*> aDecoder);
-
- private:
-  void EnsureHasEventTarget(NotNull<RasterImage*> aImage);
-
-  bool IsOnEventTarget() const;
-
-  nsCOMPtr<nsIEventTarget> mEventTarget;
 };
 
 /**
@@ -86,7 +79,7 @@ class MetadataDecodingTask final : public IDecodingTask {
   virtual ~MetadataDecodingTask() {}
 
   /// Mutex protecting access to mDecoder.
-  Mutex mMutex;
+  Mutex mMutex MOZ_UNANNOTATED;
 
   NotNull<RefPtr<Decoder>> mDecoder;
 };

@@ -7,15 +7,15 @@
 # Write a Mochitest manifest for WebGL conformance test files.
 
 import os
-from pathlib import Path
 import re
 import shutil
+from pathlib import Path
 
 # All paths in this file are based where this file is run.
 WRAPPER_TEMPLATE_FILE = "mochi-wrapper.html.template"
-MANIFEST_TEMPLATE_FILE = "mochitest.ini.template"
-ERRATA_FILE = "mochitest-errata.ini"
-DEST_MANIFEST_PATHSTR = "generated-mochitest.ini"
+MANIFEST_TEMPLATE_FILE = "mochitest.toml.template"
+ERRATA_FILE = "mochitest-errata.toml"
+DEST_MANIFEST_PATHSTR = "generated-mochitest.toml"
 
 BASE_TEST_LIST_PATHSTR = "checkout/00_test_list.txt"
 GENERATED_PATHSTR = "generated"
@@ -36,12 +36,14 @@ ACCEPTABLE_ERRATA_KEYS = set(
     [
         "fail-if",
         "skip-if",
+        "prefs",
     ]
 )
 
 
 def ChooseSubsuite(name):
     # name: generated/test_2_conformance2__vertex_arrays__vertex-array-object.html
+    assert " " not in name, name
 
     split = name.split("__")
 
@@ -136,11 +138,9 @@ def AccumTests(pathStr, listFile, allowWebGL1, allowWebGL2, out_testList):
         for line in fIn:
             lineNum += 1
 
-            line = line.rstrip()
-            if not line:
+            curLine = line.strip()
+            if not curLine:
                 continue
-
-            curLine = line.lstrip()
             if curLine.startswith("//"):
                 continue
             if curLine.startswith("#"):
@@ -148,15 +148,16 @@ def AccumTests(pathStr, listFile, allowWebGL1, allowWebGL2, out_testList):
 
             webgl1 = allowWebGL1
             webgl2 = allowWebGL2
-            while curLine.startswith("--"):  # '--min-version 1.0.2 foo.html'
-                (flag, curLine) = curLine.split(" ", 1)
+            parts = curLine.split()
+            while parts[0].startswith("--"):  # '--min-version 1.0.2 foo.html'
+                flag = parts.pop(0)
                 if flag == "--min-version":
-                    (minVersion, curLine) = curLine.split(" ", 1)
+                    minVersion = parts.pop(0)
                     if not IsVersionLess(minVersion, "2.0.0"):  # >= 2.0.0
                         webgl1 = False
                         break
                 elif flag == "--max-version":
-                    (maxVersion, curLine) = curLine.split(" ", 1)
+                    maxVersion = parts.pop(0)
                     if IsVersionLess(maxVersion, "2.0.0"):
                         webgl2 = False
                         break
@@ -170,20 +171,22 @@ def AccumTests(pathStr, listFile, allowWebGL1, allowWebGL2, out_testList):
                 continue
 
             assert webgl1 or webgl2
+            assert len(parts) == 1, parts
+            testOrManifest = parts[0]
 
-            split = curLine.rsplit(".", 1)
+            split = testOrManifest.rsplit(".", 1)
             assert len(split) == 2, "Bad split for `line`: " + line
             (name, ext) = split
 
             if ext == "html":
-                newTestFilePathStr = pathStr + "/" + curLine
+                newTestFilePathStr = pathStr + "/" + testOrManifest
                 entry = TestEntry(newTestFilePathStr, webgl1, webgl2)
                 out_testList.append(entry)
                 continue
 
             assert ext == "txt", "Bad `ext` on `line`: " + line
 
-            split = curLine.rsplit("/", 1)
+            split = testOrManifest.rsplit("/", 1)
             nextListFile = split[-1]
             nextPathStr = ""
             if len(split) != 1:
@@ -408,20 +411,21 @@ def WriteManifest(wrapperPathStrList, supportPathStrList):
     # SUPPORT_FILES
     supportPathStrList = [ManifestPathStr(x) for x in supportPathStrList]
     supportPathStrList = sorted(supportPathStrList)
-    supportFilesStr = "\n".join(supportPathStrList)
+    supportFilesStr = '",\n  "'.join(supportPathStrList)
+    supportFilesStr = '[\n  "' + supportFilesStr + '",\n]'
 
     # MANIFEST_TESTS
     manifestTestLineList = []
     wrapperPathStrList = sorted(wrapperPathStrList)
     for wrapperPathStr in wrapperPathStrList:
         wrapperManifestPathStr = ManifestPathStr(wrapperPathStr)
-        sectionName = "[" + wrapperManifestPathStr + "]"
+        sectionName = '\n["' + wrapperManifestPathStr + '"]'
         manifestTestLineList.append(sectionName)
 
         errataLines = []
 
         subsuite = ChooseSubsuite(wrapperPathStr)
-        errataLines.append("subsuite = " + subsuite)
+        errataLines.append('subsuite = "' + subsuite + '"')
 
         if wrapperPathStr in errataMap:
             assert subsuite
@@ -455,59 +459,58 @@ def WriteManifest(wrapperPathStrList, supportPathStrList):
 # Internals
 
 
-kManifestHeaderRegex = re.compile(r"[[]([^]]*)[]]")
-
-
-def LoadINI(path):
+def LoadTOML(path):
     curSectionName = None
     curSectionMap = {}
-
     lineNum = 0
-
     ret = {}
     ret[curSectionName] = (lineNum, curSectionMap)
+    multiLineVal = False
+    key = ""
+    val = ""
 
     with open(path, "r") as f:
-        for line in f:
+        for rawLine in f:
             lineNum += 1
-
-            line = line.strip()
-            if not line:
-                continue
-
-            if line[0] in [";", "#"]:
-                continue
-
-            if line[0] == "[":
-                assert line[-1] == "]", "{}:{}".format(path, lineNum)
-
-                curSectionName = line[1:-1]
-                assert (
-                    curSectionName not in ret
-                ), "Line {}: Duplicate section: {}".format(lineNum, line)
-
-                curSectionMap = {}
-                ret[curSectionName] = (lineNum, curSectionMap)
-                continue
-
-            split = line.split("=", 1)
-            key = split[0].strip()
-            val = ""
-            if len(split) == 2:
-                val = split[1].strip()
-
-            curSectionMap[key] = (lineNum, val)
-            continue
+            if multiLineVal:
+                val += "\n" + rawLine.rstrip()
+                if rawLine.find("]") >= 0:
+                    multiLineVal = False
+                    curSectionMap[key] = (lineNum, val)
+            else:
+                line = rawLine.strip()
+                if not line:
+                    continue
+                if line[0] in [";", "#"]:
+                    continue
+                if line[0] == "[":
+                    assert line[-1] == "]", "{}:{}".format(path, lineNum)
+                    curSectionName = line[1:-1].strip('"')
+                    assert (
+                        curSectionName not in ret
+                    ), "Line {}: Duplicate section: {}".format(lineNum, line)
+                    curSectionMap = {}
+                    ret[curSectionName] = (lineNum, curSectionMap)
+                    continue
+                split = line.split("=", 1)
+                key = split[0].strip()
+                val = ""
+                if len(split) == 2:
+                    val = split[1].strip()
+                if val.find("[") >= 0 and val.find("]") < 0:
+                    multiLineVal = True
+                else:
+                    curSectionMap[key] = (lineNum, val)
 
     return ret
 
 
 def LoadErrata():
-    iniMap = LoadINI(ERRATA_FILE)
+    tomlMap = LoadTOML(ERRATA_FILE)
 
     ret = {}
 
-    for (sectionName, (sectionLineNum, sectionMap)) in iniMap.items():
+    for sectionName, (sectionLineNum, sectionMap) in tomlMap.items():
         curLines = []
 
         if sectionName is None:
@@ -518,7 +521,7 @@ def LoadErrata():
                 sectionLineNum, sectionName
             )
 
-        for (key, (lineNum, val)) in sectionMap.items():
+        for key, (lineNum, val) in sectionMap.items():
             assert key in ACCEPTABLE_ERRATA_KEYS, "Line {}: {}".format(lineNum, key)
 
             curLine = "{} = {}".format(key, val)

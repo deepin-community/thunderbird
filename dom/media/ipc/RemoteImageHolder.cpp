@@ -8,6 +8,7 @@
 
 #include "GPUVideoImage.h"
 #include "mozilla/PRemoteDecoderChild.h"
+#include "mozilla/RemoteDecodeUtils.h"
 #include "mozilla/RemoteDecoderManagerChild.h"
 #include "mozilla/layers/ImageDataSerializer.h"
 #include "mozilla/layers/VideoBridgeUtils.h"
@@ -18,16 +19,32 @@ using namespace gfx;
 using namespace layers;
 
 RemoteImageHolder::RemoteImageHolder() = default;
-RemoteImageHolder::RemoteImageHolder(layers::IGPUVideoSurfaceManager* aManager,
-                                     layers::VideoBridgeSource aSource,
-                                     const gfx::IntSize& aSize,
-                                     const layers::SurfaceDescriptor& aSD)
-    : mSource(aSource), mSize(aSize), mSD(Some(aSD)), mManager(aManager) {}
+RemoteImageHolder::RemoteImageHolder(
+    layers::IGPUVideoSurfaceManager* aManager,
+    layers::VideoBridgeSource aSource, const gfx::IntSize& aSize,
+    const gfx::ColorDepth& aColorDepth, const layers::SurfaceDescriptor& aSD,
+    gfx::YUVColorSpace aYUVColorSpace, gfx::ColorSpace2 aColorPrimaries,
+    gfx::TransferFunction aTransferFunction, gfx::ColorRange aColorRange)
+    : mSource(aSource),
+      mSize(aSize),
+      mColorDepth(aColorDepth),
+      mSD(Some(aSD)),
+      mManager(aManager),
+      mYUVColorSpace(aYUVColorSpace),
+      mColorPrimaries(aColorPrimaries),
+      mTransferFunction(aTransferFunction),
+      mColorRange(aColorRange) {}
+
 RemoteImageHolder::RemoteImageHolder(RemoteImageHolder&& aOther)
     : mSource(aOther.mSource),
       mSize(aOther.mSize),
+      mColorDepth(aOther.mColorDepth),
       mSD(std::move(aOther.mSD)),
-      mManager(aOther.mManager) {
+      mManager(aOther.mManager),
+      mYUVColorSpace(aOther.mYUVColorSpace),
+      mColorPrimaries(aOther.mColorPrimaries),
+      mTransferFunction(aOther.mTransferFunction),
+      mColorRange(aOther.mColorRange) {
   aOther.mSD = Nothing();
 }
 
@@ -59,20 +76,16 @@ already_AddRefed<Image> RemoteImageHolder::DeserializeImage(
   }
 
   PlanarYCbCrData pData;
-  pData.mYSize = descriptor.ySize();
   pData.mYStride = descriptor.yStride();
-  pData.mCbCrSize = descriptor.cbCrSize();
   pData.mCbCrStride = descriptor.cbCrStride();
   // default mYSkip, mCbSkip, mCrSkip because not held in YCbCrDescriptor
   pData.mYSkip = pData.mCbSkip = pData.mCrSkip = 0;
-  gfx::IntRect display = descriptor.display();
-  pData.mPicX = display.X();
-  pData.mPicY = display.Y();
-  pData.mPicSize = display.Size();
+  pData.mPictureRect = descriptor.display();
   pData.mStereoMode = descriptor.stereoMode();
   pData.mColorDepth = descriptor.colorDepth();
   pData.mYUVColorSpace = descriptor.yUVColorSpace();
   pData.mColorRange = descriptor.colorRange();
+  pData.mChromaSubsampling = descriptor.chromaSubsampling();
   pData.mYChannel = ImageDataSerializer::GetYChannel(buffer, descriptor);
   pData.mCbChannel = ImageDataSerializer::GetCbChannel(buffer, descriptor);
   pData.mCrChannel = ImageDataSerializer::GetCrChannel(buffer, descriptor);
@@ -80,7 +93,7 @@ already_AddRefed<Image> RemoteImageHolder::DeserializeImage(
   // images coming from AOMDecoder are RecyclingPlanarYCbCrImages.
   RefPtr<RecyclingPlanarYCbCrImage> image =
       new RecyclingPlanarYCbCrImage(aBufferRecycleBin);
-  bool setData = image->CopyData(pData);
+  bool setData = NS_SUCCEEDED(image->CopyData(pData));
   MOZ_ASSERT(setData);
 
   switch (memOrShmem.type()) {
@@ -116,7 +129,9 @@ already_AddRefed<layers::Image> RemoteImageHolder::TransferToImage(
     SurfaceDescriptorRemoteDecoder remoteSD =
         static_cast<const SurfaceDescriptorGPUVideo&>(*mSD);
     remoteSD.source() = Some(mSource);
-    image = new GPUVideoImage(mManager, remoteSD, mSize);
+    image = new GPUVideoImage(mManager, remoteSD, mSize, mColorDepth,
+                              mYUVColorSpace, mColorPrimaries,
+                              mTransferFunction, mColorRange);
   }
   mSD = Nothing();
   mManager = nullptr;
@@ -138,28 +153,38 @@ RemoteImageHolder::~RemoteImageHolder() {
 }
 
 /* static */ void ipc::IPDLParamTraits<RemoteImageHolder>::Write(
-    IPC::Message* aMsg, ipc::IProtocol* aActor, RemoteImageHolder&& aParam) {
-  WriteIPDLParam(aMsg, aActor, aParam.mSource);
-  WriteIPDLParam(aMsg, aActor, aParam.mSize);
-  WriteIPDLParam(aMsg, aActor, aParam.mSD);
+    IPC::MessageWriter* aWriter, ipc::IProtocol* aActor,
+    RemoteImageHolder&& aParam) {
+  WriteIPDLParam(aWriter, aActor, aParam.mSource);
+  WriteIPDLParam(aWriter, aActor, aParam.mSize);
+  WriteIPDLParam(aWriter, aActor, aParam.mColorDepth);
+  WriteIPDLParam(aWriter, aActor, aParam.mSD);
+  WriteIPDLParam(aWriter, aActor, aParam.mYUVColorSpace);
+  WriteIPDLParam(aWriter, aActor, aParam.mColorPrimaries);
+  WriteIPDLParam(aWriter, aActor, aParam.mTransferFunction);
+  WriteIPDLParam(aWriter, aActor, aParam.mColorRange);
   // Empty this holder.
   aParam.mSD = Nothing();
   aParam.mManager = nullptr;
 }
 
 /* static */ bool ipc::IPDLParamTraits<RemoteImageHolder>::Read(
-    const IPC::Message* aMsg, PickleIterator* aIter, ipc::IProtocol* aActor,
+    IPC::MessageReader* aReader, ipc::IProtocol* aActor,
     RemoteImageHolder* aResult) {
-  if (!ReadIPDLParam(aMsg, aIter, aActor, &aResult->mSource) ||
-      !ReadIPDLParam(aMsg, aIter, aActor, &aResult->mSize) ||
-      !ReadIPDLParam(aMsg, aIter, aActor, &aResult->mSD)) {
+  if (!ReadIPDLParam(aReader, aActor, &aResult->mSource) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mSize) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mColorDepth) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mSD) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mYUVColorSpace) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mColorPrimaries) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mTransferFunction) ||
+      !ReadIPDLParam(aReader, aActor, &aResult->mColorRange)) {
     return false;
   }
+
   if (!aResult->IsEmpty()) {
     aResult->mManager = RemoteDecoderManagerChild::GetSingleton(
-        aResult->mSource == VideoBridgeSource::GpuProcess
-            ? RemoteDecodeIn::GpuProcess
-            : RemoteDecodeIn::RddProcess);
+        GetRemoteDecodeInFromVideoBridgeSource(aResult->mSource));
   }
   return true;
 }

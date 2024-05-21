@@ -5,24 +5,34 @@
 <!ENTITY e2eTitle.label "Xifratge d'extrem a extrem">
 <!ENTITY e2eLearnMore.label "Més informació">
 
+<!ENTITY e2eEnc.description "Sense xifratge d'extrem a extrem, el contingut dels missatges queda fàcilment exposat al vostre proveïdor de correu electrònic i a la vigilància de masses.">
 
+<!ENTITY e2eTechPref.description "Tecnologia de xifratge preferida:">
 
-<!ENTITY requireEncryptMessage.label "Requereix xifratge per defecte">
-<!ENTITY requireEncryptMessage.accesskey "u">
-<!ENTITY digitalSign.certificate.button "Seleccioneu…">
+<!ENTITY encryptionCert2.message "Certificat personal per a xifrar:">
+<!ENTITY digitalSign.certificate.button "Selecciona…">
 <!ENTITY digitalSign.certificate.accesskey "S">
-<!ENTITY digitalSign.certificate_clear.button "Neteja">
-<!ENTITY digitalSign.certificate_clear.accesskey "j">
-<!ENTITY encryption.certificate.button "Seleccioneu…">
-<!ENTITY encryption.certificate.accesskey "u">
-<!ENTITY encryption.certificate_clear.button "Neteja">
-<!ENTITY encryption.certificate_clear.accesskey "e">
+<!ENTITY digitalSign.certificate_clear.button "Esborra">
+<!ENTITY digitalSign.certificate_clear.accesskey "b">
+<!ENTITY encryption.certificate.button "Selecciona…">
+<!ENTITY encryption.certificate.accesskey "S">
+<!ENTITY encryption.certificate_clear.button "Esborra">
+<!ENTITY encryption.certificate_clear.accesskey "b">
 <!ENTITY signingGroupTitle.label "Signatura digital">
-<!ENTITY signMessage.accesskey "d">
+<!ENTITY signingCert2.message "Certificat personal per a signar digitalment:">
 
+<!ENTITY sendingDefaults.label "Paràmetres per defecte per a enviar missatges">
 
+<!ENTITY technologyAutomatic.label "Selecciona automàticament en funció de les claus o certificats disponibles">
 
+<!ENTITY certificates2.label "S/MIME">
+<!ENTITY manageCerts3.label "Gestiona els certificats S/MIME">
+<!ENTITY manageCerts3.accesskey "G">
+<!ENTITY manageDevices2.label "Dispositius de seguretat S/MIME">
+<!ENTITY manageDevices2.accesskey "D">
 
+<!ENTITY technologySMIME.label "Prioritza S/MIME">
+<!ENTITY technologyOpenPGP.label "Prioritza OpenPGP">
 
 <!ENTITY openpgpKeys.label "OpenPGP">
 
@@ -31,25 +41,6 @@
 <!ENTITY certPicker.info  "Certificat:">
 <!ENTITY certPicker.detailsLabel "Detalls del certificat seleccionat:">
 
-
-<!ENTITY e2eEnc.description "Without end-to-end encryption the contents of messages are easily exposed to your email provider and to mass surveillance.">
-<!ENTITY e2eeReqWarning.description "If you require encryption, to send a message you must have the public key or certificate of every recipient.">
-<!ENTITY e2eSigning.description "A digital signature allows recipients to verify the message was sent by you, and that the content has not been changed.">
-<!ENTITY e2eTechPref.description "Preferred encryption technology:">
-<!ENTITY doNotEncrypt.label "Do not enable encryption by default">
-<!ENTITY doNotEncrypt.accesskey "N">
-<!ENTITY encryptionCert2.message "Personal certificate for encryption:">
-<!ENTITY signMessage2.label "Add my digital signature by default">
-<!ENTITY signingCert2.message "Personal certificate for digital signing:">
-<!ENTITY sendingDefaults.label "Default settings for sending messages">
-<!ENTITY technologyAutomatic.label "Select automatically based on available keys or certificates">
-<!ENTITY certificates2.label "S/MIME">
-<!ENTITY manageCerts3.label "Manage S/MIME Certificates">
-<!ENTITY manageCerts3.accesskey "M">
-<!ENTITY manageDevices2.label "S/MIME Security Devices">
-<!ENTITY manageDevices2.accesskey "y">
-<!ENTITY technologySMIME.label "Prefer S/MIME">
-<!ENTITY technologyOpenPGP.label "Prefer OpenPGP">
-<!ENTITY openpgpKey.message "Personal key for encryption and digital signing:">
-<!ENTITY openpgpKey.button "Set Personal Key…">
+<!ENTITY openpgpKey.message "Clau personal per a xifrar i per a signar digitalment:">
+<!ENTITY openpgpKey.button "Defineix la clau personal…">
 <!ENTITY openpgpKey.accesskey "o">

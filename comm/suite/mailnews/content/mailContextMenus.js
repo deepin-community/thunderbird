@@ -1,11 +1,10 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const {MailServices} = ChromeUtils.import("resource:///modules/MailServices.jsm");
 const {PluralForm} = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
-const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 
 //NOTE: gMessengerBundle must be defined and set or this Overlay won't work
@@ -147,6 +146,23 @@ function FillMailContextMenu(aTarget, aEvent) {
                inThreadPane || (numSelected > 1));
 
   ShowMenuItem("mailContext-editAsNew", showMailItems && oneOrMore);
+  // Show "Edit Draft Message" menus only in a drafts folder;
+  // otherwise hide them.
+  let showEditDraft = showCommandInSpecialFolder("cmd_editDraftMsg",
+                                                 Ci.nsMsgFolderFlags.Drafts);
+  ShowMenuItem("mailContext-editDraftMsg",
+               showMailItems && oneOrMore && showEditDraft);
+  // Show "New Message from Template" and "Edit Template" menus only in a
+  // templates folder; otherwise hide them.
+  let showTemplates = showCommandInSpecialFolder("cmd_newMsgFromTemplate",
+                                                 Ci.nsMsgFolderFlags.Templates);
+  ShowMenuItem("mailContext-newMsgFromTemplate",
+               showMailItems && oneOrMore && showTemplates);
+  showTemplates = showCommandInSpecialFolder("cmd_editTemplateMsg",
+                                             Ci.nsMsgFolderFlags.Templates);
+  ShowMenuItem("mailContext-editTemplateMsg",
+               showMailItems && oneOrMore && showTemplates);
+
   ShowMenuItem("mailContext-replySender", showMailItems && single);
   ShowMenuItem("mailContext-replyList",
                showMailItems && single && !isNewsgroup && IsListPost());
@@ -275,7 +291,7 @@ function FillFolderPaneContextMenu()
   let isServer = folder.isServer;
   let serverType = folder.server.type;
   let specialFolder = haveAnyVirtualFolders ? "Virtual" :
-                                              getSpecialFolderString(folder);
+                                              FolderUtils.getSpecialFolderString(folder);
 
   function checkCanSubscribeToFolder(folder) {
     if (checkIsVirtualFolder(folder))

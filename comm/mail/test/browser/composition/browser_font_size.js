@@ -6,15 +6,14 @@
  * Test font size in messages.
  */
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  FormatHelper,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, FormatHelper } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 
 add_task(async function test_font_size() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   const NO_SIZE = formatHelper.NO_SIZE;
   const MIN_SIZE = formatHelper.MIN_SIZE;
@@ -32,8 +31,8 @@ add_task(async function test_font_size() {
     "Selector should be enabled with focus"
   );
 
-  let firstText = "no size";
-  let secondText = "with size";
+  const firstText = "no size";
+  const secondText = "with size";
 
   for (let size = MIN_SIZE; size <= MAX_SIZE; size++) {
     if (size === NO_SIZE) {
@@ -59,7 +58,7 @@ add_task(async function test_font_size() {
     );
 
     // Test text selections.
-    for (let [start, end, forward, expect] of [
+    for (const [start, end, forward, expect] of [
       // Make sure we expect changes, so the test does not capture the previous
       // state.
       [0, null, true, NO_SIZE], // At start.
@@ -83,7 +82,7 @@ add_task(async function test_font_size() {
     // await formatHelper.assertShownSize(null, `Mixed selection (${size})`);
 
     // Select through Format menu.
-    let item = formatHelper.getSizeMenuItem(size);
+    const item = formatHelper.getSizeMenuItem(size);
     await formatHelper.selectFromFormatSubMenu(item, formatHelper.sizeMenu);
     await formatHelper.assertShownSize(size, `size ${size} on more`);
     formatHelper.assertMessageParagraph(
@@ -101,22 +100,22 @@ add_task(async function test_font_size() {
     await formatHelper.emptyParagraph();
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_font_size_increment() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   const NO_SIZE = formatHelper.NO_SIZE;
   const MIN_SIZE = formatHelper.MIN_SIZE;
   const MAX_SIZE = formatHelper.MAX_SIZE;
 
   // NOTE: size=3 corresponds to no set size
-  let increaseButton = formatHelper.increaseSizeButton;
-  let decreaseButton = formatHelper.decreaseSizeButton;
-  let increaseItem = formatHelper.increaseSizeMenuItem;
-  let decreaseItem = formatHelper.decreaseSizeMenuItem;
+  const increaseButton = formatHelper.increaseSizeButton;
+  const decreaseButton = formatHelper.decreaseSizeButton;
+  const increaseItem = formatHelper.increaseSizeMenuItem;
+  const decreaseItem = formatHelper.decreaseSizeMenuItem;
 
   Assert.ok(
     increaseButton.disabled,
@@ -210,7 +209,7 @@ add_task(async function test_font_size_increment() {
     );
   }
 
-  let content = [];
+  const content = [];
   let size = NO_SIZE;
 
   let text = "start";
@@ -332,5 +331,5 @@ add_task(async function test_font_size_increment() {
     }
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });

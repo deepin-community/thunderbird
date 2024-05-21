@@ -5,9 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "JaMsgFolder.h"
-#include "nsMsgBaseCID.h"
 #include "nsComponentManagerUtils.h"
-#include "nsMsgDBCID.h"
 
 #define MAILDATABASE_CONTRACTID_BASE "@mozilla.org/nsMsgDatabase/msgDB-"
 
@@ -28,7 +26,7 @@ nsresult JaBaseCppMsgFolder::GetDatabase() {
   nsresult rv = NS_OK;
   if (!mDatabase) {
     nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     // Create the database, keeping it if it is "out of date"
@@ -102,12 +100,6 @@ nsresult JaBaseCppMsgFolder::CreateDummyFile(nsIMsgFolder* aMailFolder) {
     }
   }
   return NS_OK;
-}
-
-// AFAICT this is unused in mailnews code.
-nsresult JaBaseCppMsgFolder::CreateChildFromURI(const nsACString& uri,
-                                                nsIMsgFolder** folder) {
-  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 // Delegator object to bypass JS method override.

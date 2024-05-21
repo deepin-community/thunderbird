@@ -8,6 +8,8 @@
 
 //                           The calendar view class hierarchy.
 //
+//                                 CalendarFilteredViewMixin
+//                                             |
 //                                     CalendarBaseView
 //                                     /               \
 //             CalendarMultidayBaseView                CalendarMonthBaseView
@@ -16,13 +18,12 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-  var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+  var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
   /**
    * The calendar view for viewing a single day.
    *
-   * @extends {MozElements.CalendarMultidayBaseView}
+   * @augments {MozElements.CalendarMultidayBaseView}
    * @implements {calICalendarView}
    */
   class CalendarDayView extends MozElements.CalendarMultidayBaseView {
@@ -36,7 +37,7 @@
 
     goToDay(date) {
       if (!date) {
-        this.refresh();
+        this.relayout();
         return;
       }
       const timezoneDate = date.getInTimezone(this.timezone);
@@ -62,7 +63,7 @@
   /**
    * The calendar view for viewing a single week.
    *
-   * @extends {MozElements.CalendarMultidayBaseView}
+   * @augments {MozElements.CalendarMultidayBaseView}
    * @implements {calICalendarView}
    */
   class CalendarWeekView extends MozElements.CalendarMultidayBaseView {
@@ -74,11 +75,11 @@
       this.displayDaysOff = !this.mWorkdaysOnly;
 
       if (!date) {
-        this.refresh();
+        this.relayout();
         return;
       }
       date = date.getInTimezone(this.timezone);
-      const weekStart = cal.getWeekInfoService().getStartOfWeek(date);
+      const weekStart = cal.weekInfoService.getStartOfWeek(date);
       const weekEnd = weekStart.clone();
       weekEnd.day += 6;
       this.setDateRange(weekStart, weekEnd);
@@ -103,7 +104,7 @@
   /**
    * The calendar view for viewing multiple weeks.
    *
-   * @extends {MozElements.CalendarMonthBaseView}
+   * @augments {MozElements.CalendarMonthBaseView}
    * @implements {calICalendarView}
    */
   class CalendarMultiweekView extends MozElements.CalendarMonthBaseView {
@@ -164,7 +165,7 @@
         // start of the week of the day that we're centering around
         // adjusted for the day the week starts on and the number
         // of previous weeks we're supposed to display.
-        const dayStart = cal.getWeekInfoService().getStartOfWeek(date);
+        const dayStart = cal.weekInfoService.getStartOfWeek(date);
         dayStart.day -= 7 * Services.prefs.getIntPref("calendar.previousweeks.inview", 0);
 
         // The last day we're supposed to show.
@@ -173,7 +174,7 @@
         this.setDateRange(dayStart, dayEnd);
         this.selectedDay = date;
       } else {
-        this.refresh();
+        this.relayout();
       }
     }
 
@@ -203,7 +204,7 @@
   /**
    * The calendar view for viewing a single month.
    *
-   * @extends {MozElements.CalendarMonthBaseView}
+   * @augments {MozElements.CalendarMonthBaseView}
    * @implements {calICalendarView}
    */
   class CalendarMonthView extends MozElements.CalendarMonthBaseView {
@@ -225,6 +226,9 @@
       this.displayDaysOff = !this.mWorkdaysOnly;
 
       this.showDate(date ? date.getInTimezone(this.timezone) : null);
+      if (!date) {
+        this.setDateBoxRelations();
+      }
     }
 
     getRangeDescription() {

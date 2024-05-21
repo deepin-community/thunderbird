@@ -38,16 +38,14 @@ class HTMLAreaElement final : public nsGenericHTMLElement, public Link {
   void GetEventTargetParent(EventChainPreVisitor& aVisitor) override;
   MOZ_CAN_RUN_SCRIPT
   nsresult PostHandleEvent(EventChainPostVisitor& aVisitor) override;
-  virtual bool IsLink(nsIURI** aURI) const override;
-  virtual void GetLinkTarget(nsAString& aTarget) override;
-  virtual already_AddRefed<nsIURI> GetHrefURI() const override;
+
+  void GetLinkTarget(nsAString& aTarget) override;
+  already_AddRefed<nsIURI> GetHrefURI() const override;
 
   virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  virtual void UnbindFromTree(bool aNullParent = true) override;
+  virtual void UnbindFromTree(UnbindContext&) override;
 
   virtual nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
-
-  virtual EventStates IntrinsicState() const override;
 
   // WebIDL
   void GetAlt(DOMString& aValue) { GetHTMLAttr(nsGkAtoms::alt, aValue); }
@@ -157,11 +155,11 @@ class HTMLAreaElement final : public nsGenericHTMLElement, public Link {
   virtual JSObject* WrapNode(JSContext* aCx,
                              JS::Handle<JSObject*> aGivenProto) override;
 
-  virtual nsresult AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aSubjectPrincipal,
-                                bool aNotify) override;
+  virtual void AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
+                            const nsAttrValue* aValue,
+                            const nsAttrValue* aOldValue,
+                            nsIPrincipal* aSubjectPrincipal,
+                            bool aNotify) override;
 
   RefPtr<nsDOMTokenList> mRelList;
 };

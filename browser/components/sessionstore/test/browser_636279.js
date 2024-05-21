@@ -50,7 +50,7 @@ var state = {
 function test() {
   waitForExplicitFinish();
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     TabsProgressListener.uninit();
     ss.setBrowserState(stateBackup);
   });
@@ -59,15 +59,19 @@ function test() {
 
   window.addEventListener(
     "SSWindowStateReady",
-    function() {
+    function () {
       let firstProgress = true;
 
-      TabsProgressListener.setCallback(function(needsRestore, isRestoring) {
+      TabsProgressListener.setCallback(function (needsRestore, isRestoring) {
         if (firstProgress) {
           firstProgress = false;
           is(isRestoring, 3, "restoring 3 tabs concurrently");
         } else {
-          ok(isRestoring <= 3, "restoring max. 2 tabs concurrently");
+          Assert.lessOrEqual(
+            isRestoring,
+            3,
+            "restoring max. 2 tabs concurrently"
+          );
         }
 
         if (0 == needsRestore) {

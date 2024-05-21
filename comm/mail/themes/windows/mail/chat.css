@@ -8,17 +8,25 @@
   padding: 0 7px;
 }
 
-/* Adaptation from #folderTree */
-:root:not([lwt-tree]) #listPaneBox {
-  appearance: none;
-  background-color: Field;
-  color: FieldText;
-}
+#listPaneBox {
 
-#listPaneBox > * {
-  background: transparent !important;
-  appearance: none !important;
-  border: none;
+  & > * {
+    background: transparent !important;
+    appearance: none !important;
+    border: none;
+  }
+  /* Adaptation from #folderTree */
+  :root:not([lwt-tree]) & {
+    appearance: none;
+    background-color: Field;
+    color: FieldText;
+  }
+
+  @media not (prefers-contrast) {
+    :root:not([lwt-tree],:-moz-lwtheme) & {
+      background-color: var(--layout-background-1);
+    }
+  }
 }
 
 #conversationsBox {
@@ -34,11 +42,11 @@
   padding-inline-end: 5px;
   margin-inline-end: 2px;
   margin-bottom: 2px !important; /* override 4px from description */
-}
 
-.conv-counter[value^="-"] {
-  margin-inline-end: 2px;
-  padding-inline-end: 4px;
+  &[value^="-"] {
+    margin-inline-end: 2px;
+    padding-inline-end: 4px;
+  }
 }
 
 .splitter.conv-chat {
@@ -79,7 +87,6 @@
   margin: 0 1px;
   margin-inline-start: -2px;
   padding: 3px 3px 4px;
-  border-radius: 2px;
 }
 
 #listSplitter,
@@ -104,9 +111,9 @@ richlistitem[is="chat-group-richlistitem"] .twisty {
   margin-inline-end: 2px;
 }
 
-@media (-moz-windows-default-theme) {
+@media not (prefers-contrast) {
   .conv-status-container {
-    border-bottom-color: #a9b7c9;
+    border-bottom-color: var(--color-gray-30);
   }
 
   #statusTypeIcon > .toolbarbutton-menu-dropmarker {
@@ -116,56 +123,5 @@ richlistitem[is="chat-group-richlistitem"] .twisty {
   #chat-status-selector > vbox > .statusMessageToolbarItem[editing] {
     appearance: none;
     padding-inline: 2px;
-  }
-
-  #chat-status-selector:not(:-moz-lwtheme):hover > vbox > .statusMessageToolbarItem,
-  .statusMessageToolbarItem:not(:-moz-lwtheme):focus {
-    border-color: hsla(210, 54%, 20%, .25) hsla(210, 54%, 20%, .27)
-                  hsla(210, 54%, 20%, .3);
-  }
-
-  #chat-status-selector:not(:-moz-lwtheme) > vbox > .statusMessageToolbarItem[editing] {
-    border-color: hsla(206, 100%, 60%, .65) hsla(206, 100%, 55%, .65)
-                  hsla(206, 100%, 50%, .65);
-    background-color: Field;
-  }
-
-  #nicklist > richlistitem[selected] > label,
-  #nicklist:focus > richlistitem[inactive][selected] > label {
-    color: -moz-dialogtext !important;
-  }
-}
-
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme) {
-  :root:not([lwt-tree]) #listPaneBox {
-    background-color: rgb(238, 243, 250);
-  }
-
-  #conversationsBox {
-    background-color: rgb(233, 239, 245);
-  }
-
-  .conv-nicklist-header,
-  .conv-logs-header-label {
-    background-color: rgb(233, 239, 245);
-  }
-}
-
-@media (-moz-os-version: windows-win8) and (-moz-windows-default-theme) {
-  :root:not([lwt-tree]) #listPaneBox {
-    background-color: -moz-Dialog;
-  }
-}
-
-@media (-moz-os-version: windows-win10) and (-moz-windows-default-theme) {
-  :root:not([lwt-tree]) #listPaneBox {
-    background-color: #fafafa;
-  }
-}
-
-@media (-moz-os-version: windows-win8) and (-moz-windows-default-theme),
-       (-moz-os-version: windows-win10) and (-moz-windows-default-theme) {
-  .statusMessageToolbarItem {
-    border-radius: 0;
   }
 }

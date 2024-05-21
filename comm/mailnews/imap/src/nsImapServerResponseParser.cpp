@@ -8,7 +8,6 @@
 #include "nsImapCore.h"
 #include "nsImapProtocol.h"
 #include "nsImapServerResponseParser.h"
-#include "nsImapBodyShell.h"
 #include "nsIImapFlagAndUidState.h"
 #include "nsImapNamespace.h"
 #include "nsImapUtils.h"
@@ -27,7 +26,7 @@ nsImapServerResponseParser::nsImapServerResponseParser(
       fCurrentFolderReadOnly(false),
       fCurrentLineContainedFlagInfo(false),
       fServerIsNetscape3xServer(false),
-      fNumberOfUnseenMessages(0),
+      fSeqNumOfFirstUnseenMsg(0),
       fNumberOfExistingMessages(0),
       fNumberOfRecentMessages(0),
       fSizeOfMostRecentMessage(0),
@@ -55,9 +54,9 @@ nsImapServerResponseParser::nsImapServerResponseParser(
   fStatusUnseenMessages = 0;
   fStatusRecentMessages = 0;
   fStatusNextUID = nsMsgKey_None;
+  fNextUID = nsMsgKey_None;
   fStatusExistingMessages = 0;
   fReceivedHeaderOrSizeForUID = nsMsgKey_None;
-  fCondStoreEnabled = false;  // Seems to be unused!
   fUtf8AcceptEnabled = false;
   fStdJunkNotJunkUseOk = false;
 }
@@ -101,6 +100,10 @@ void nsImapServerResponseParser::SetCommandFailed(bool failed) {
   fCurrentCommandFailed = failed;
 }
 
+bool nsImapServerResponseParser::UntaggedResponse() {
+  return fUntaggedResponse;
+}
+
 void nsImapServerResponseParser::SetFlagState(nsIImapFlagAndUidState* state) {
   fFlagState = state;
 }
@@ -122,6 +125,7 @@ void nsImapServerResponseParser::InitializeState() {
   fCurrentCommandFailed = false;
   fNumberOfRecentMessages = 0;
   fReceivedHeaderOrSizeForUID = nsMsgKey_None;
+  fUntaggedResponse = false;
 }
 
 // RFC3501:  response = *(continue-req / response-data) response-done
@@ -170,9 +174,6 @@ void nsImapServerResponseParser::ParseIMAPServerResponse(
     if (commandToken && ContinueParse())
       PreProcessCommandToken(commandToken, aCurrentCommand);
 
-    // For checking expected response to IDLE command below.
-    bool untagged = false;
-
     if (ContinueParse()) {
       ResetLexAnalyzer();
 
@@ -181,6 +182,7 @@ void nsImapServerResponseParser::ParseIMAPServerResponse(
         fCurrentLine = aGreetingWithCapability;
       }
 
+      // When inIdle, only one pass through "do" and "while" below occurs.
       do {
         AdvanceToNextToken();
 
@@ -194,7 +196,9 @@ void nsImapServerResponseParser::ParseIMAPServerResponse(
                      !aGreetingWithCapability)
               AdvanceToNextToken();
           }
-          untagged = true;
+          // For checking expected response to IDLE command below and
+          // for checking if an untagged response occurred by the caller.
+          fUntaggedResponse = true;
         }
 
         // command continuation request [RFC3501, Sec. 7.5]
@@ -234,7 +238,8 @@ void nsImapServerResponseParser::ParseIMAPServerResponse(
       // command will manually set fWaitingForMoreClientInput so we don't lose
       // that information....
       if ((fNextToken && *fNextToken == '+') || inIdle) {
-        if (inIdle && !((fNextToken && *fNextToken == '+') || untagged)) {
+        if (inIdle &&
+            !((fNextToken && *fNextToken == '+') || fUntaggedResponse)) {
           // IDLE "response" + will not be "eaten" as described above since it
           // is not an authentication response. So if IDLE response does not
           // begin with '+' (continuation) or '*' (untagged and probably useful
@@ -394,40 +399,6 @@ void nsImapServerResponseParser::ProcessOkCommand(const char* commandToken) {
       fServerConnection.UpdateFolderQuotaData(kValidateQuota, str, 0, 0);
     }
   }
-  if (GetFillingInShell()) {
-    // There is a BODYSTRUCTURE response.  Now let's generate the stream...
-    // that is, if we're not doing it already
-    if (!m_shell->IsBeingGenerated()) {
-      nsImapProtocol* navCon = &fServerConnection;
-
-      char* imapPart = nullptr;
-
-      fServerConnection.GetCurrentUrl()->GetImapPartToFetch(&imapPart);
-      m_shell->Generate(imapPart);
-      PR_Free(imapPart);
-
-      if ((navCon && navCon->GetPseudoInterrupted()) ||
-          fServerConnection.DeathSignalReceived()) {
-        // we were pseudointerrupted or interrupted
-        // if it's not in the cache, then we were (pseudo)interrupted while
-        // generating for the first time. Release it.
-        if (!m_shell->IsShellCached()) m_shell = nullptr;
-        navCon->PseudoInterrupt(false);
-      } else if (m_shell->GetIsValid()) {
-        // If we have a valid shell that has not already been cached, then cache
-        // it.
-        if (!m_shell->IsShellCached() &&
-            fHostSessionList)  // cache is responsible for destroying it
-        {
-          MOZ_LOG(IMAP, mozilla::LogLevel::Info,
-                  ("BODYSHELL:  Adding shell to cache."));
-          const char* serverKey = fServerConnection.GetImapServerKey();
-          fHostSessionList->AddShellToCacheForHost(serverKey, m_shell);
-        }
-      }
-      m_shell = nullptr;
-    }
-  }
 }
 
 void nsImapServerResponseParser::ProcessBadCommand(const char* commandToken) {
@@ -441,7 +412,6 @@ void nsImapServerResponseParser::ProcessBadCommand(const char* commandToken) {
     fIMAPstate = kAuthenticated;  // nothing selected
   else if (!PL_strcasecmp(commandToken, "CLOSE"))
     fIMAPstate = kAuthenticated;  // nothing selected
-  if (GetFillingInShell() && !m_shell->IsBeingGenerated()) m_shell = nullptr;
 }
 
 // RFC3501:  response-data = "*" SP (resp-cond-state / resp-cond-bye /
@@ -623,8 +593,6 @@ void nsImapServerResponseParser::response_data() {
           xserverinfo_data();
         else if (!PL_strcasecmp(fNextToken, "XMAILBOXINFO"))
           xmailboxinfo_data();
-        else if (!PL_strcasecmp(fNextToken, "XAOL-OPTION"))
-          skip_to_CRLF();
         else if (!PL_strcasecmp(fNextToken, "XLIST"))
           mailbox_data();
         else {
@@ -810,25 +778,26 @@ void nsImapServerResponseParser::mailbox_list(bool discoveredFromLsub) {
 /* mailbox         ::= "INBOX" / astring
  */
 void nsImapServerResponseParser::mailbox(nsImapMailboxSpec* boxSpec) {
-  char* boxname = nullptr;
+  nsCString boxname;
   const char* serverKey = fServerConnection.GetImapServerKey();
   bool xlistInbox = boxSpec->mBoxFlags & kImapInbox;
 
   if (!PL_strcasecmp(fNextToken, "INBOX") || xlistInbox) {
-    boxname = PL_strdup("INBOX");
+    boxname = "INBOX"_ns;
     if (xlistInbox) PR_Free(CreateAstring());
     AdvanceToNextToken();
   } else {
-    boxname = CreateAstring();
+    boxname = nsDependentCString(CreateAstring());
     AdvanceToNextToken();
   }
 
-  if (boxname && fHostSessionList) {
+  if (!boxname.IsEmpty() && fHostSessionList) {
     fHostSessionList->SetNamespaceHierarchyDelimiterFromMailboxForHost(
-        serverKey, boxname, boxSpec->mHierarchySeparator);
+        serverKey, boxname.get(), boxSpec->mHierarchySeparator);
 
     nsImapNamespace* ns = nullptr;
-    fHostSessionList->GetNamespaceForMailboxForHost(serverKey, boxname, ns);
+    fHostSessionList->GetNamespaceForMailboxForHost(serverKey, boxname.get(),
+                                                    ns);
     if (ns) {
       switch (ns->GetType()) {
         case kPersonalNamespace:
@@ -847,12 +816,11 @@ void nsImapServerResponseParser::mailbox(nsImapMailboxSpec* boxSpec) {
     }
   }
 
-  if (!boxname) {
+  if (boxname.IsEmpty()) {
     if (!fServerConnection.DeathSignalReceived()) HandleMemoryFailure();
   } else if (boxSpec->mConnection && boxSpec->mConnection->GetCurrentUrl()) {
     boxSpec->mConnection->GetCurrentUrl()->AllocateCanonicalPath(
-        boxname, boxSpec->mHierarchySeparator,
-        getter_Copies(boxSpec->mAllocatedPathName));
+        boxname, boxSpec->mHierarchySeparator, boxSpec->mAllocatedPathName);
     nsIURI* aURL = nullptr;
     boxSpec->mConnection->GetCurrentUrl()->QueryInterface(NS_GET_IID(nsIURI),
                                                           (void**)&aURL);
@@ -866,8 +834,6 @@ void nsImapServerResponseParser::mailbox(nsImapMailboxSpec* boxSpec) {
     // send more mailboxes their way
     if (NS_FAILED(fServerConnection.GetConnectionStatus())) SetConnected(false);
   }
-
-  if (boxname) PL_strfree(boxname);
 }
 
 /*
@@ -1072,8 +1038,7 @@ void nsImapServerResponseParser::msg_fetch() {
           }
         }
       }
-    } else if (!PL_strcasecmp(fNextToken, "RFC822.SIZE") ||
-               !PL_strcasecmp(fNextToken, "XAOL.SIZE")) {
+    } else if (!PL_strcasecmp(fNextToken, "RFC822.SIZE")) {
       AdvanceToNextToken();
       if (ContinueParse()) {
         bool sendEndMsgDownload =
@@ -1167,18 +1132,9 @@ void nsImapServerResponseParser::msg_fetch() {
     // I only fetch RFC822 so I should never see these BODY responses
     else if (!PL_strcasecmp(fNextToken, "BODY"))
       skip_to_CRLF();  // I never ask for this
-    else if (!PL_strcasecmp(fNextToken, "BODYSTRUCTURE")) {
-      if (fCurrentResponseUID == 0)
-        fFlagState->GetUidOfMessage(fFetchResponseIndex - 1,
-                                    &fCurrentResponseUID);
-      bodystructure_data();
-    } else if (!PL_strncasecmp(fNextToken, "BODY[TEXT", 9)) {
-      mime_data();
-    } else if (!PL_strncasecmp(fNextToken, "BODY[", 5) &&
-               PL_strncasecmp(fNextToken, "BODY[]", 6)) {
-      fDownloadingHeaders = false;
-      // A specific MIME part, or MIME part header
-      mime_data();
+    else if (!PL_strncasecmp(fNextToken, "BODY[TEXT", 9)) {
+      // This parses the "preview" response (first 2048 bytes of body text).
+      mime_part_data();  // Note: TEXT is not an actual mime part.
     } else if (!PL_strcasecmp(fNextToken, "ENVELOPE")) {
       fDownloadingHeaders = true;
       bNeedEndMessageDownload = true;
@@ -1190,11 +1146,6 @@ void nsImapServerResponseParser::msg_fetch() {
       if (!bNeedEndMessageDownload) BeginMessageDownload(MESSAGE_RFC822);
       bNeedEndMessageDownload = true;
       internal_date();
-    } else if (!PL_strcasecmp(fNextToken, "XAOL-ENVELOPE")) {
-      fDownloadingHeaders = true;
-      if (!bNeedEndMessageDownload) BeginMessageDownload(MESSAGE_RFC822);
-      bNeedEndMessageDownload = true;
-      xaolenvelope_data();
     } else {
       nsImapAction imapAction;
       if (!fServerConnection.GetCurrentUrl()) return;
@@ -1322,62 +1273,6 @@ void nsImapServerResponseParser::envelope_data() {
   // Now we should be at the end of the envelope and have *fToken == ')'.
   // Skip this last parenthesis.
   AdvanceToNextToken();
-}
-
-void nsImapServerResponseParser::xaolenvelope_data() {
-  // eat the opening '('
-  fNextToken++;
-
-  if (ContinueParse() && (*fNextToken != ')')) {
-    AdvanceToNextToken();
-    fNextToken++;  // eat '('
-    nsAutoCString subject;
-    subject.Adopt(CreateNilString());
-    nsAutoCString subjectLine("Subject: ");
-    subjectLine += subject;
-    fServerConnection.HandleMessageDownLoadLine(subjectLine.get(), false);
-    fNextToken++;  // eat the next '('
-    if (ContinueParse()) {
-      AdvanceToNextToken();
-      if (ContinueParse()) {
-        nsAutoCString fromLine;
-        if (!strcmp(GetSelectedMailboxName(), "Sent Items")) {
-          // xaol envelope switches the From with the To, so we switch them back
-          // and create a fake from line From: user@aol.com
-          fromLine.AppendLiteral("To: ");
-          nsAutoCString fakeFromLine("From: "_ns);
-          fakeFromLine.Append(fServerConnection.GetImapUserName());
-          fakeFromLine.AppendLiteral("@aol.com");
-          fServerConnection.HandleMessageDownLoadLine(fakeFromLine.get(),
-                                                      false);
-        } else {
-          fromLine.AppendLiteral("From: ");
-        }
-        parse_address(fromLine);
-        fServerConnection.HandleMessageDownLoadLine(fromLine.get(), false);
-        if (ContinueParse()) {
-          AdvanceToNextToken();  // ge attachment size
-          int32_t attachmentSize = atoi(fNextToken);
-          if (attachmentSize != 0) {
-            nsAutoCString attachmentLine("X-attachment-size: ");
-            attachmentLine.AppendInt(attachmentSize);
-            fServerConnection.HandleMessageDownLoadLine(attachmentLine.get(),
-                                                        false);
-          }
-        }
-        if (ContinueParse()) {
-          AdvanceToNextToken();  // skip image size
-          int32_t imageSize = atoi(fNextToken);
-          if (imageSize != 0) {
-            nsAutoCString imageLine("X-image-size: ");
-            imageLine.AppendInt(imageSize);
-            fServerConnection.HandleMessageDownLoadLine(imageLine.get(), false);
-          }
-        }
-        if (ContinueParse()) AdvanceToNextToken();  // skip )
-      }
-    }
-  }
 }
 
 void nsImapServerResponseParser::parse_address(nsAutoCString& addressLine) {
@@ -1596,7 +1491,6 @@ void nsImapServerResponseParser::text_mime2() { skip_to_CRLF(); }
 void nsImapServerResponseParser::text() { skip_to_CRLF(); }
 
 void nsImapServerResponseParser::parse_folder_flags(bool calledForFlags) {
-  uint16_t labelFlags = 0;
   uint16_t junkNotJunkFlags = 0;
 
   do {
@@ -1618,7 +1512,6 @@ void nsImapServerResponseParser::parse_folder_flags(bool calledForFlags) {
       fSupportsUserDefinedFlags |= kImapMsgSupportUserFlag;
       fSupportsUserDefinedFlags |= kImapMsgSupportForwardedFlag;
       fSupportsUserDefinedFlags |= kImapMsgSupportMDNSentFlag;
-      fSupportsUserDefinedFlags |= kImapMsgLabelFlags;
     }
     // Treat special and built-in $LabelX's as user defined and include
     // $Junk/$NotJunk too.
@@ -1626,23 +1519,11 @@ void nsImapServerResponseParser::parse_folder_flags(bool calledForFlags) {
       fSupportsUserDefinedFlags |= kImapMsgSupportMDNSentFlag;
     else if (!PL_strncasecmp(fNextToken, "$Forwarded", 10))
       fSupportsUserDefinedFlags |= kImapMsgSupportForwardedFlag;
-    else if (!PL_strncasecmp(fNextToken, "$Label1", 7))
-      labelFlags |= 1;
-    else if (!PL_strncasecmp(fNextToken, "$Label2", 7))
-      labelFlags |= 2;
-    else if (!PL_strncasecmp(fNextToken, "$Label3", 7))
-      labelFlags |= 4;
-    else if (!PL_strncasecmp(fNextToken, "$Label4", 7))
-      labelFlags |= 8;
-    else if (!PL_strncasecmp(fNextToken, "$Label5", 7))
-      labelFlags |= 16;
     else if (!PL_strncasecmp(fNextToken, "$Junk", 5))
       junkNotJunkFlags |= 1;
     else if (!PL_strncasecmp(fNextToken, "$NotJunk", 8))
       junkNotJunkFlags |= 2;
   } while (!fAtEndOfLine && ContinueParse());
-
-  if (labelFlags == 31) fSupportsUserDefinedFlags |= kImapMsgLabelFlags;
 
   if (fFlagState) fFlagState->OrSupportedUserFlags(fSupportsUserDefinedFlags);
 
@@ -1718,13 +1599,16 @@ void nsImapServerResponseParser::resp_text_code() {
     } else if (!PL_strcasecmp(fNextToken, "UNSEEN")) {
       AdvanceToNextToken();
       if (ContinueParse()) {
-        fNumberOfUnseenMessages = strtoul(fNextToken, nullptr, 10);
+        // Note: As a response code, "UNSEEN" is NOT the number of
+        // unseen/unread messages. It is the lowest sequence number of the first
+        // unseen/unread message in the mailbox.
+        fSeqNumOfFirstUnseenMsg = strtoul(fNextToken, nullptr, 10);
         AdvanceToNextToken();
       }
     } else if (!PL_strcasecmp(fNextToken, "UIDNEXT")) {
       AdvanceToNextToken();
       if (ContinueParse()) {
-        fStatusNextUID = strtoul(fNextToken, nullptr, 10);
+        fNextUID = strtoul(fNextToken, nullptr, 10);
         AdvanceToNextToken();
       }
     } else if (!PL_strcasecmp(fNextToken, "APPENDUID")) {
@@ -1824,13 +1708,7 @@ void nsImapServerResponseParser::resp_cond_bye() {
 }
 
 void nsImapServerResponseParser::msg_fetch_headers(const char* partNum) {
-  if (GetFillingInShell()) {
-    char* headerData = CreateAstring();
-    AdvanceToNextToken();
-    m_shell->AdoptMessageHeaders(headerData, partNum);
-  } else {
-    msg_fetch_content(false, 0, MESSAGE_RFC822);
-  }
+  msg_fetch_content(false, 0, MESSAGE_RFC822);
 }
 
 /* nstring         ::= string / nil
@@ -1841,11 +1719,9 @@ nil             ::= "NIL"
 void nsImapServerResponseParser::msg_fetch_content(bool chunk, int32_t origin,
                                                    const char* content_type) {
   // setup the stream for downloading this message.
-  // Don't do it if we are filling in a shell or downloading a part.
-  // DO do it if we are downloading a whole message as a result of
-  // an invalid shell trying to generate.
-  if ((!chunk || (origin == 0)) && !GetDownloadingHeaders() &&
-      (GetFillingInShell() ? m_shell->GetGeneratingWholeMessage() : true)) {
+  // Note: no longer concerned with body shell issues since now we only fetch
+  // full message.
+  if ((!chunk || (origin == 0)) && !GetDownloadingHeaders()) {
     if (NS_FAILED(BeginMessageDownload(content_type))) return;
   }
 
@@ -1857,8 +1733,7 @@ void nsImapServerResponseParser::msg_fetch_content(bool chunk, int32_t origin,
   } else
     AdvanceToNextToken();  // eat "NIL"
 
-  if (fLastChunk &&
-      (GetFillingInShell() ? m_shell->GetGeneratingWholeMessage() : true)) {
+  if (fLastChunk) {
     // complete the message download
     if (ContinueParse()) {
       if (fReceivedHeaderOrSizeForUID == CurrentResponseUID()) {
@@ -1869,6 +1744,32 @@ void nsImapServerResponseParser::msg_fetch_content(bool chunk, int32_t origin,
     } else
       fServerConnection.AbortMessageDownLoad();
   }
+}
+
+void nsImapServerResponseParser::mime_part_data() {
+  char* checkOriginToken = PL_strdup(fNextToken);
+  if (checkOriginToken) {
+    uint32_t origin = 0;
+    bool originFound = false;
+    char* whereStart = PL_strchr(checkOriginToken, '<');
+    if (whereStart) {
+      char* whereEnd = PL_strchr(whereStart, '>');
+      if (whereEnd) {
+        *whereEnd = 0;
+        whereStart++;
+        origin = atoi(whereStart);
+        originFound = true;
+      }
+    }
+    PR_Free(checkOriginToken);
+    AdvanceToNextToken();
+    msg_fetch_content(originFound, origin,
+                      MESSAGE_RFC822);  // keep content type as message/rfc822,
+                                        // even though the
+    // MIME part might not be, because then libmime will
+    // still handle and decode it.
+  } else
+    HandleMemoryFailure();
 }
 
 /*
@@ -1970,8 +1871,6 @@ void nsImapServerResponseParser::capability_data() {
         fCapabilityFlag |= kUidplusCapability;
       else if (token.Equals("LITERAL+", nsCaseInsensitiveCStringComparator))
         fCapabilityFlag |= kLiteralPlusCapability;
-      else if (token.Equals("XAOL-OPTION", nsCaseInsensitiveCStringComparator))
-        fCapabilityFlag |= kAOLImapCapability;
       else if (token.Equals("X-GM-EXT-1", nsCaseInsensitiveCStringComparator))
         fCapabilityFlag |= kGmailImapCapability;
       else if (token.Equals("QUOTA", nsCaseInsensitiveCStringComparator))
@@ -2061,11 +1960,8 @@ void nsImapServerResponseParser::enable_data() {
   do {
     // eat each enable response;
     AdvanceToNextToken();
-    if (!strcmp("CONDSTORE", fNextToken)) fCondStoreEnabled = true;
     if (!PL_strcasecmp("UTF8=ACCEPT", fNextToken)) fUtf8AcceptEnabled = true;
   } while (fNextToken && !fAtEndOfLine && ContinueParse());
-  // fCondStoreEnabled is not used. Also, an imap extension is not truly enabled
-  // unless there is an untagged response detected here.
 }
 
 void nsImapServerResponseParser::language_data() {
@@ -2127,15 +2023,16 @@ void nsImapServerResponseParser::namespace_data() {
             SetSyntaxError(true);
           }
           if (ContinueParse()) {
-            // add code to parse the TRANSLATE attribute if it is present....
+            // Add code to parse the TRANSLATE attribute if it is present....
             // we'll also need to expand the name space code to take in the
             // translated prefix name.
 
-            nsImapNamespace* newNamespace = new nsImapNamespace(
-                namespaceType, namespacePrefix, namespaceDelimiter, false);
-            // add it to a temporary list in the host
-            if (newNamespace && fHostSessionList)
+            // Add it to a temporary list in the host.
+            if (fHostSessionList) {
+              nsImapNamespace* newNamespace = new nsImapNamespace(
+                  namespaceType, namespacePrefix, namespaceDelimiter, false);
               fHostSessionList->AddNewNamespaceForHost(serverKey, newNamespace);
+            }
 
             skip_to_close_paren();  // Ignore any extension data
 
@@ -2254,325 +2151,6 @@ void nsImapServerResponseParser::acl_data() {
   }
 }
 
-void nsImapServerResponseParser::mime_data() {
-  if (PL_strstr(fNextToken, "MIME"))
-    mime_header_data();
-  else
-    mime_part_data();
-}
-
-// mime_header_data should not be streamed out;  rather, it should be
-// buffered in the nsImapBodyShell.
-// This is because we are still in the process of generating enough
-// information from the server (such as the MIME header's size) so that
-// we can construct the final output stream.
-void nsImapServerResponseParser::mime_header_data() {
-  char* partNumber = PL_strdup(fNextToken);
-  if (partNumber) {
-    char *start = partNumber + 5,
-         *end = partNumber + 5;  // 5 == strlen("BODY[")
-    while (ContinueParse() && end && *end != 'M' && *end != 'm') {
-      end++;
-    }
-    if (end && (*end == 'M' || *end == 'm')) {
-      *(end - 1) = 0;
-      AdvanceToNextToken();
-      char* mimeHeaderData = CreateAstring();  // is it really this simple?
-      AdvanceToNextToken();
-      if (m_shell) {
-        m_shell->AdoptMimeHeader(start, mimeHeaderData);
-      }
-    } else {
-      SetSyntaxError(true);
-    }
-    PR_Free(partNumber);  // partNumber is not adopted by the body shell.
-  } else {
-    HandleMemoryFailure();
-  }
-}
-
-// Actual mime parts are filled in on demand (either from shell generation
-// or from explicit user download), so we need to stream these out.
-void nsImapServerResponseParser::mime_part_data() {
-  char* checkOriginToken = PL_strdup(fNextToken);
-  if (checkOriginToken) {
-    uint32_t origin = 0;
-    bool originFound = false;
-    char* whereStart = PL_strchr(checkOriginToken, '<');
-    if (whereStart) {
-      char* whereEnd = PL_strchr(whereStart, '>');
-      if (whereEnd) {
-        *whereEnd = 0;
-        whereStart++;
-        origin = atoi(whereStart);
-        originFound = true;
-      }
-    }
-    PR_Free(checkOriginToken);
-    AdvanceToNextToken();
-    msg_fetch_content(originFound, origin,
-                      MESSAGE_RFC822);  // keep content type as message/rfc822,
-                                        // even though the
-    // MIME part might not be, because then libmime will
-    // still handle and decode it.
-  } else
-    HandleMemoryFailure();
-}
-
-// parse FETCH BODYSTRUCTURE response, "a parenthesized list that describes
-// the [MIME-IMB] body structure of a message" [RFC 3501].
-void nsImapServerResponseParser::bodystructure_data() {
-  AdvanceToNextToken();
-  if (ContinueParse() && fNextToken &&
-      *fNextToken == '(')  // It has to start with an open paren.
-  {
-    // Turn the BODYSTRUCTURE response into a form that the
-    // nsIMAPBodypartMessage can be constructed from.
-    // FIXME: Follow up on bug 384210 to investigate why the caller has to
-    // duplicate the two in-param strings.
-    nsIMAPBodypartMessage* message = new nsIMAPBodypartMessage(
-        NULL, NULL, true, strdup("message"), strdup("rfc822"), NULL, NULL, NULL,
-        0, fServerConnection.GetPreferPlainText());
-    nsIMAPBodypart* body = bodystructure_part(PL_strdup("1"), message);
-    if (body)
-      message->SetBody(body);
-    else {
-      delete message;
-      message = nullptr;
-    }
-    m_shell =
-        new nsImapBodyShell(&fServerConnection, message, CurrentResponseUID(),
-                            FolderUID(), GetSelectedMailboxName());
-    // ignore syntax errors in parsing the body structure response. If there's
-    // an error we'll just fall back to fetching the whole message.
-    SetSyntaxError(false);
-  } else
-    SetSyntaxError(true);
-}
-
-// RFC3501:  body = "(" (body-type-1part / body-type-mpart) ")"
-nsIMAPBodypart* nsImapServerResponseParser::bodystructure_part(
-    char* partNum, nsIMAPBodypart* parentPart) {
-  // Check to see if this buffer is a leaf or container
-  // (Look at second character - if an open paren, then it is a container)
-  if (*fNextToken != '(') {
-    NS_ASSERTION(false, "bodystructure_part must begin with '('");
-    return NULL;
-  }
-
-  if (fNextToken[1] == '(') return bodystructure_multipart(partNum, parentPart);
-  return bodystructure_leaf(partNum, parentPart);
-}
-
-// RFC3501: body-type-1part = (body-type-basic / body-type-msg / body-type-text)
-//                            [SP body-ext-1part]
-nsIMAPBodypart* nsImapServerResponseParser::bodystructure_leaf(
-    char* partNum, nsIMAPBodypart* parentPart) {
-  // historical note: this code was originally in
-  // nsIMAPBodypartLeaf::ParseIntoObjects()
-  char *bodyType = nullptr, *bodySubType = nullptr, *bodyID = nullptr,
-       *bodyDescription = nullptr, *bodyEncoding = nullptr;
-  int32_t partLength = 0;
-  bool isValid = true;
-
-  // body type  ("application", "text", "image", etc.)
-  if (ContinueParse()) {
-    fNextToken++;  // eat the first '('
-    bodyType = CreateNilString();
-    if (ContinueParse()) AdvanceToNextToken();
-  }
-
-  // body subtype  ("gif", "html", etc.)
-  if (isValid && ContinueParse()) {
-    bodySubType = CreateNilString();
-    if (ContinueParse()) AdvanceToNextToken();
-  }
-
-  // body parameter: parenthesized list
-  if (isValid && ContinueParse()) {
-    if (fNextToken[0] == '(') {
-      fNextToken++;
-      skip_to_close_paren();
-    } else if (!PL_strcasecmp(fNextToken, "NIL"))
-      AdvanceToNextToken();
-  }
-
-  // body id
-  if (isValid && ContinueParse()) {
-    bodyID = CreateNilString();
-    if (ContinueParse()) AdvanceToNextToken();
-  }
-
-  // body description
-  if (isValid && ContinueParse()) {
-    bodyDescription = CreateNilString();
-    if (ContinueParse()) AdvanceToNextToken();
-  }
-
-  // body encoding
-  if (isValid && ContinueParse()) {
-    bodyEncoding = CreateNilString();
-    if (ContinueParse()) AdvanceToNextToken();
-  }
-
-  // body size
-  if (isValid && ContinueParse()) {
-    char* bodySizeString = CreateAtom();
-    if (!bodySizeString)
-      isValid = false;
-    else {
-      partLength = atoi(bodySizeString);
-      PR_Free(bodySizeString);
-      if (ContinueParse()) AdvanceToNextToken();
-    }
-  }
-
-  if (!isValid || !ContinueParse()) {
-    PR_FREEIF(partNum);
-    PR_FREEIF(bodyType);
-    PR_FREEIF(bodySubType);
-    PR_FREEIF(bodyID);
-    PR_FREEIF(bodyDescription);
-    PR_FREEIF(bodyEncoding);
-  } else {
-    if (PL_strcasecmp(bodyType, "message") ||
-        PL_strcasecmp(bodySubType, "rfc822")) {
-      skip_to_close_paren();
-      return new nsIMAPBodypartLeaf(
-          partNum, parentPart, bodyType, bodySubType, bodyID, bodyDescription,
-          bodyEncoding, partLength, fServerConnection.GetPreferPlainText());
-    }
-
-    // This part is of type "message/rfc822"  (probably a forwarded message)
-    nsIMAPBodypartMessage* message = new nsIMAPBodypartMessage(
-        partNum, parentPart, false, bodyType, bodySubType, bodyID,
-        bodyDescription, bodyEncoding, partLength,
-        fServerConnection.GetPreferPlainText());
-
-    // there are three additional fields: envelope structure, bodystructure, and
-    // size in lines historical note: this code was originally in
-    // nsIMAPBodypartMessage::ParseIntoObjects()
-
-    // envelope (ignored)
-    if (*fNextToken == '(') {
-      fNextToken++;
-      skip_to_close_paren();
-    } else
-      isValid = false;
-
-    // bodystructure
-    if (isValid && ContinueParse()) {
-      if (*fNextToken != '(')
-        isValid = false;
-      else {
-        char* bodyPartNum = PR_smprintf("%s.1", partNum);
-        if (bodyPartNum) {
-          nsIMAPBodypart* body = bodystructure_part(bodyPartNum, message);
-          if (body)
-            message->SetBody(body);
-          else
-            isValid = false;
-        }
-      }
-    }
-
-    // ignore "size in text lines"
-
-    if (isValid && ContinueParse()) {
-      skip_to_close_paren();
-      return message;
-    }
-    delete message;
-  }
-
-  // parsing failed, just move to the end of the parentheses group
-  if (ContinueParse()) skip_to_close_paren();
-  return nullptr;
-}
-
-// RFC3501:  body-type-mpart = 1*body SP media-subtype
-//                             [SP body-ext-mpart]
-nsIMAPBodypart* nsImapServerResponseParser::bodystructure_multipart(
-    char* partNum, nsIMAPBodypart* parentPart) {
-  nsIMAPBodypartMultipart* multipart =
-      new nsIMAPBodypartMultipart(partNum, parentPart);
-  bool isValid = multipart->GetIsValid();
-  // historical note: this code was originally in
-  // nsIMAPBodypartMultipart::ParseIntoObjects()
-  if (ContinueParse()) {
-    fNextToken++;  // eat the first '('
-    // Parse list of children
-    int childCount = 0;
-    while (isValid && fNextToken[0] == '(' && ContinueParse()) {
-      childCount++;
-      char* childPartNum = NULL;
-      // note: the multipart constructor does some magic on partNumber
-      if (PL_strcmp(multipart->GetPartNumberString(), "0"))  // not top-level
-        childPartNum =
-            PR_smprintf("%s.%d", multipart->GetPartNumberString(), childCount);
-      else  // top-level
-        childPartNum = PR_smprintf("%d", childCount);
-      if (!childPartNum)
-        isValid = false;
-      else {
-        nsIMAPBodypart* child = bodystructure_part(childPartNum, multipart);
-        if (child)
-          multipart->AppendPart(child);
-        else
-          isValid = false;
-      }
-    }
-
-    // RFC3501:  media-subtype   = string
-    // (multipart subtype: mixed, alternative, etc.)
-    if (isValid && ContinueParse()) {
-      char* bodySubType = CreateNilString();
-      multipart->SetBodySubType(bodySubType);
-      if (ContinueParse()) AdvanceToNextToken();
-    }
-
-    // clang-format off
-    // extension data:
-    // RFC3501:  body-ext-mpart = body-fld-param [SP body-fld-dsp [SP body-fld-lang
-    //                            [SP body-fld-loc *(SP body-extension)]]]
-
-    // body parameter parenthesized list (optional data), includes boundary parameter
-    // RFC3501:  body-fld-param  = "(" string SP string *(SP string SP string) ")" / nil
-    // clang-format on
-    char* boundaryData = nullptr;
-    if (isValid && ContinueParse() && *fNextToken == '(') {
-      fNextToken++;
-      while (ContinueParse() && *fNextToken != ')') {
-        char* attribute = CreateNilString();
-        if (ContinueParse()) AdvanceToNextToken();
-        if (ContinueParse() && !PL_strcasecmp(attribute, "BOUNDARY")) {
-          char* boundary = CreateNilString();
-          if (boundary) boundaryData = PR_smprintf("--%s", boundary);
-          PR_FREEIF(boundary);
-        } else if (ContinueParse()) {
-          char* value = CreateNilString();
-          PR_FREEIF(value);
-        }
-        PR_FREEIF(attribute);
-        if (ContinueParse()) AdvanceToNextToken();
-      }
-      if (ContinueParse()) fNextToken++;  // skip closing ')'
-    }
-    if (boundaryData)
-      multipart->SetBoundaryData(boundaryData);
-    else
-      isValid =
-          false;  // Actually, we should probably generate a boundary here.
-  }
-
-  // always move to closing ')', even if part was not successfully read
-  if (ContinueParse()) skip_to_close_paren();
-
-  if (isValid) return multipart;
-  delete multipart;
-  return nullptr;
-}
-
 // RFC2087:  quotaroot_response = "QUOTAROOT" SP astring *(SP astring)
 //           quota_response = "QUOTA" SP astring SP quota_list
 //           quota_list     = "(" [quota_resource *(SP quota_resource)] ")"
@@ -2644,22 +2222,8 @@ void nsImapServerResponseParser::id_data() {
   skip_to_CRLF();
 }
 
-bool nsImapServerResponseParser::GetFillingInShell() {
-  return (m_shell != nullptr);
-}
-
 bool nsImapServerResponseParser::GetDownloadingHeaders() {
   return fDownloadingHeaders;
-}
-
-// Tells the server state parser to use a previously cached shell.
-void nsImapServerResponseParser::UseCachedShell(nsImapBodyShell* cachedShell) {
-  // We shouldn't already have another shell we're dealing with.
-  if (m_shell && cachedShell) {
-    MOZ_LOG(IMAP, mozilla::LogLevel::Info, ("PARSER: Shell Collision"));
-    NS_ASSERTION(false, "shell collision");
-  }
-  m_shell = cachedShell;
 }
 
 void nsImapServerResponseParser::ResetCapabilityFlag() {}
@@ -2863,10 +2427,6 @@ int32_t nsImapServerResponseParser::NumberOfRecentMessages() {
   return fNumberOfRecentMessages;
 }
 
-int32_t nsImapServerResponseParser::NumberOfUnseenMessages() {
-  return fNumberOfUnseenMessages;
-}
-
 int32_t nsImapServerResponseParser::FolderUID() { return fFolderUIDValidity; }
 
 void nsImapServerResponseParser::SetCurrentResponseUID(uint32_t uid) {
@@ -2896,6 +2456,8 @@ bool nsImapServerResponseParser::IsNumericString(const char* string) {
   return true;
 }
 
+// Capture the mailbox state for folder select/update and for status.
+// If mailboxName is null, we've done imap SELECT; otherwise STATUS.
 already_AddRefed<nsImapMailboxSpec>
 nsImapServerResponseParser::CreateCurrentMailboxSpec(
     const char* mailboxName /* = nullptr */) {
@@ -2912,23 +2474,24 @@ nsImapServerResponseParser::CreateCurrentMailboxSpec(
     returnSpec->mHierarchySeparator = (ns) ? ns->GetDelimiter() : '/';
   }
 
-  returnSpec->mFolderSelected =
-      !mailboxName;  // if mailboxName is null, we're doing a Status
+  returnSpec->mFolderSelected = !mailboxName;
   returnSpec->mFolder_UIDVALIDITY = fFolderUIDValidity;
   returnSpec->mHighestModSeq = fHighestModSeq;
+  // clang-format off
   returnSpec->mNumOfMessages =
       (mailboxName) ? fStatusExistingMessages : fNumberOfExistingMessages;
   returnSpec->mNumOfUnseenMessages =
-      (mailboxName) ? fStatusUnseenMessages : fNumberOfUnseenMessages;
+      (mailboxName) ? fStatusUnseenMessages : -1;
   returnSpec->mNumOfRecentMessages =
       (mailboxName) ? fStatusRecentMessages : fNumberOfRecentMessages;
-  returnSpec->mNextUID = fStatusNextUID;
+  returnSpec->mNextUID =
+      (mailboxName) ? fStatusNextUID : fNextUID;
+  // clang-format on
 
   returnSpec->mSupportedUserFlags = fSupportsUserDefinedFlags;
 
-  returnSpec->mBoxFlags = kNoFlags;  // stub
-  returnSpec->mOnlineVerified =
-      false;  // we're fabricating this.  The flags aren't verified.
+  returnSpec->mBoxFlags = kNoFlags;     // stub
+  returnSpec->mOnlineVerified = false;  // Fabricated. Flags aren't verified.
   returnSpec->mAllocatedPathName.Assign(mailboxNameToConvert);
   returnSpec->mConnection = &fServerConnection;
   if (returnSpec->mConnection) {
@@ -2960,6 +2523,14 @@ bool nsImapServerResponseParser::GetLastFetchChunkReceived() {
 
 void nsImapServerResponseParser::ClearLastFetchChunkReceived() {
   fLastChunk = false;
+}
+
+int32_t nsImapServerResponseParser::GetNumBytesFetched() {
+  return numberOfCharsInThisChunk;
+}
+
+void nsImapServerResponseParser::ClearNumBytesFetched() {
+  numberOfCharsInThisChunk = 0;
 }
 
 void nsImapServerResponseParser::SetHostSessionList(

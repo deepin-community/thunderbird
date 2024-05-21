@@ -7,7 +7,10 @@
 #ifndef MOZILLA_GFX_RENDERD3D11TEXTUREHOST_H
 #define MOZILLA_GFX_RENDERD3D11TEXTUREHOST_H
 
+#include <d3d11.h>
+
 #include "GLTypes.h"
+#include "mozilla/gfx/FileHandleWrapper.h"
 #include "RenderTextureHostSWGL.h"
 
 struct ID3D11Texture2D;
@@ -15,25 +18,30 @@ struct IDXGIKeyedMutex;
 
 namespace mozilla {
 
+namespace layers {
+class FenceD3D11;
+}  // namespace layers
+
 namespace wr {
 
 class RenderDXGITextureHost final : public RenderTextureHostSWGL {
  public:
-  explicit RenderDXGITextureHost(WindowsHandle aHandle,
-                                 gfx::SurfaceFormat aFormat,
-                                 gfx::YUVColorSpace aYUVColorSpace,
-                                 gfx::ColorRange aColorRange,
-                                 gfx::IntSize aSize);
+  RenderDXGITextureHost(
+      RefPtr<gfx::FileHandleWrapper> aHandle,
+      Maybe<layers::GpuProcessTextureId>& aGpuProcessTextureId,
+      uint32_t aArrayIndex, gfx::SurfaceFormat aFormat, gfx::ColorSpace2,
+      gfx::ColorRange aColorRange, gfx::IntSize aSize, bool aHasKeyedMutex,
+      gfx::FenceInfo& aAcquireFenceInfo,
+      Maybe<layers::GpuProcessQueryId>& aGpuProcessQueryId);
 
-  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL,
-                           wr::ImageRendering aRendering) override;
+  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL) override;
   void Unlock() override;
   void ClearCachedResources() override;
 
   gfx::IntSize GetSize(uint8_t aChannelIndex) const;
   GLuint GetGLHandle(uint8_t aChannelIndex) const;
 
-  bool SyncObjectNeeded() override { return true; }
+  bool SyncObjectNeeded() override;
 
   RenderDXGITextureHost* AsRenderDXGITextureHost() override { return this; }
 
@@ -58,7 +66,7 @@ class RenderDXGITextureHost final : public RenderTextureHostSWGL {
                 PlaneInfo& aPlaneInfo) override;
   void UnmapPlanes() override;
   gfx::YUVRangedColorSpace GetYUVColorSpace() const override {
-    return ToYUVRangedColorSpace(mYUVColorSpace, GetColorRange());
+    return ToYUVRangedColorSpace(ToYUVColorSpace(mColorSpace), mColorRange);
   }
 
   bool EnsureD3D11Texture2D(ID3D11Device* aDevice);
@@ -78,18 +86,28 @@ class RenderDXGITextureHost final : public RenderTextureHostSWGL {
     return bytes;
   }
 
+  uint32_t ArrayIndex() const { return mArrayIndex; }
+
+  void SetIsSoftwareDecodedVideo() override { mIsSoftwareDecodedVideo = true; }
+  bool IsSoftwareDecodedVideo() override { return mIsSoftwareDecodedVideo; }
+
+  RefPtr<ID3D11Query> GetQuery();
+
  private:
   virtual ~RenderDXGITextureHost();
 
   bool EnsureD3D11Texture2DWithGL();
-  bool EnsureLockable(wr::ImageRendering aRendering);
+  bool EnsureLockable();
 
   void DeleteTextureHandle();
 
   RefPtr<gl::GLContext> mGL;
 
-  WindowsHandle mHandle;
+  RefPtr<gfx::FileHandleWrapper> mHandle;
+  Maybe<layers::GpuProcessTextureId> mGpuProcessTextureId;
+  Maybe<layers::GpuProcessQueryId> mGpuProcessQueryId;
   RefPtr<ID3D11Texture2D> mTexture;
+  uint32_t mArrayIndex = 0;
   RefPtr<IDXGIKeyedMutex> mKeyedMutex;
 
   // Temporary state between MapPlane and UnmapPlanes.
@@ -104,29 +122,34 @@ class RenderDXGITextureHost final : public RenderTextureHostSWGL {
   // handles for Y and CbCr data.
   GLuint mTextureHandle[2];
 
+  bool mIsSoftwareDecodedVideo = false;
+
+  RefPtr<layers::FenceD3D11> mAcquireFence;
+
+ public:
   const gfx::SurfaceFormat mFormat;
-  const gfx::YUVColorSpace mYUVColorSpace;
+  const gfx::ColorSpace2 mColorSpace;
   const gfx::ColorRange mColorRange;
   const gfx::IntSize mSize;
+  const bool mHasKeyedMutex;
+  const gfx::FenceInfo mAcquireFenceInfo;
 
+ private:
   bool mLocked;
 };
 
 class RenderDXGIYCbCrTextureHost final : public RenderTextureHostSWGL {
  public:
-  explicit RenderDXGIYCbCrTextureHost(WindowsHandle (&aHandles)[3],
-                                      gfx::YUVColorSpace aYUVColorSpace,
-                                      gfx::ColorDepth aColorDepth,
-                                      gfx::ColorRange aColorRange,
-                                      gfx::IntSize aSizeY,
-                                      gfx::IntSize aSizeCbCr);
+  explicit RenderDXGIYCbCrTextureHost(
+      RefPtr<gfx::FileHandleWrapper> (&aHandles)[3],
+      gfx::YUVColorSpace aYUVColorSpace, gfx::ColorDepth aColorDepth,
+      gfx::ColorRange aColorRange, gfx::IntSize aSizeY, gfx::IntSize aSizeCbCr);
 
   RenderDXGIYCbCrTextureHost* AsRenderDXGIYCbCrTextureHost() override {
     return this;
   }
 
-  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL,
-                           wr::ImageRendering aRendering) override;
+  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL) override;
   void Unlock() override;
   void ClearCachedResources() override;
 
@@ -172,13 +195,13 @@ class RenderDXGIYCbCrTextureHost final : public RenderTextureHostSWGL {
  private:
   virtual ~RenderDXGIYCbCrTextureHost();
 
-  bool EnsureLockable(wr::ImageRendering aRendering);
+  bool EnsureLockable();
 
   void DeleteTextureHandle();
 
   RefPtr<gl::GLContext> mGL;
 
-  WindowsHandle mHandles[3];
+  RefPtr<gfx::FileHandleWrapper> mHandles[3];
   RefPtr<ID3D11Texture2D> mTextures[3];
   RefPtr<IDXGIKeyedMutex> mKeyedMutexs[3];
 

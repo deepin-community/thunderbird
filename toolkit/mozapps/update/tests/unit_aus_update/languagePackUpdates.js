@@ -1,18 +1,17 @@
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
-const { getAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+const { getAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
-const { XPIInstall } = ChromeUtils.import(
-  "resource://gre/modules/addons/XPIInstall.jsm"
+const { XPIExports } = ChromeUtils.importESModule(
+  "resource://gre/modules/addons/XPIExports.sys.mjs"
 );
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
 );
-const { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-const { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
 
 AddonTestUtils.init(this);
@@ -46,9 +45,12 @@ async function downloadUpdate() {
  * complete the mocked langpack update.
  */
 function mockLangpackUpdate() {
-  let stagingCall = PromiseUtils.defer();
-  XPIInstall.stageLangpacksForAppUpdate = (appVersion, platformVersion) => {
-    let result = PromiseUtils.defer();
+  let stagingCall = Promise.withResolvers();
+  XPIExports.XPIInstall.stageLangpacksForAppUpdate = (
+    appVersion,
+    platformVersion
+  ) => {
+    let result = Promise.withResolvers();
     stagingCall.resolve({
       appVersion,
       platformVersion,
@@ -62,7 +64,7 @@ function mockLangpackUpdate() {
   return stagingCall.promise;
 }
 
-add_task(async function init() {
+add_setup(async function () {
   // Thunderbird doesn't have one or more of the probes used in this test.
   // Ensure the data is collected anyway.
   Services.prefs.setBoolPref(
@@ -175,9 +177,12 @@ add_task(async function testLangpackStaged() {
   copyTestUpdaterToBinDir();
 
   let greDir = getGREDir();
-  let updateSettingsIni = greDir.clone();
-  updateSettingsIni.append(FILE_UPDATE_SETTINGS_INI);
-  writeFile(updateSettingsIni, UPDATE_SETTINGS_CONTENTS);
+
+  if (AppConstants.platform != "macosx") {
+    let updateSettingsIni = greDir.clone();
+    updateSettingsIni.append(FILE_UPDATE_SETTINGS_INI);
+    writeFile(updateSettingsIni, UPDATE_SETTINGS_CONTENTS);
+  }
 
   await downloadUpdate();
 
@@ -234,16 +239,16 @@ add_task(async function testRedownload() {
   gIncrementalDownloadErrorType = 3;
 
   let stageCount = 0;
-  XPIInstall.stageLangpacksForAppUpdate = () => {
+  XPIExports.XPIInstall.stageLangpacksForAppUpdate = () => {
     stageCount++;
     return Promise.resolve();
   };
 
   let downloadCount = 0;
   let listener = {
-    onStartRequest: aRequest => {},
-    onProgress: (aRequest, aContext, aProgress, aMaxProgress) => {},
-    onStatus: (aRequest, aStatus, aStatusText) => {},
+    onStartRequest: _aRequest => {},
+    onProgress: (_aRequest, _aContext, _aProgress, _aMaxProgress) => {},
+    onStatus: (_aRequest, _aStatus, _aStatusText) => {},
     onStopRequest: (request, status) => {
       Assert.equal(
         status,
@@ -263,7 +268,7 @@ add_task(async function testRedownload() {
   gAUS.addDownloadListener(listener);
 
   let bestUpdate = gAUS.selectUpdate(updates);
-  gAUS.downloadUpdate(bestUpdate, false);
+  await gAUS.downloadUpdate(bestUpdate, false);
 
   await waitForEvent("update-downloaded");
 

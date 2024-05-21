@@ -16,6 +16,7 @@
 #include "nsIRequest.h"
 #include "nsITransportSecurityInfo.h"
 #include "nsIURI.h"
+#include "nsIWebProgressListener.h"
 #include "nsPrintfCString.h"
 #include "secerr.h"
 #include "sslerr.h"
@@ -224,12 +225,18 @@ void nsHTTPSOnlyStreamListener::RecordUpgradeTelemetry(nsIRequest* request,
         typeKey = "xslt"_ns;
         break;
 
+      case ExtContentPolicy::TYPE_PROXIED_WEBRTC_MEDIA:
+        typeKey = "proxied-webrtc"_ns;
+        break;
+
       case ExtContentPolicy::TYPE_INVALID:
       case ExtContentPolicy::TYPE_OTHER:
       case ExtContentPolicy::TYPE_MEDIA:  // already handled above
       case ExtContentPolicy::TYPE_BEACON:
       case ExtContentPolicy::TYPE_SAVEAS_DOWNLOAD:
       case ExtContentPolicy::TYPE_SPECULATIVE:
+      case ExtContentPolicy::TYPE_WEB_TRANSPORT:
+      case ExtContentPolicy::TYPE_WEB_IDENTITY:
         break;
         // Do not add default: so that compilers can catch the missing case.
     }

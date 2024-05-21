@@ -1,11 +1,11 @@
-// |reftest| skip-if(!xulRuntime.shell)
+// |reftest| slow skip-if(!xulRuntime.shell)
 
 // Test that we can access TypedArrays beyond the 4GB mark, if large buffers are
 // supported.
 
 const gb = 1024 * 1024 * 1024;
 
-if (largeArrayBufferEnabled()) {
+if (largeArrayBufferSupported()) {
     for (let TA of typedArrayConstructors) {
         let ta = new TA(6*gb / TA.BYTES_PER_ELEMENT);
 

@@ -8,123 +8,91 @@
  * or bad as expected.
  */
 
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
 );
-var { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
-var { SmimeUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/smimeUtils.jsm"
+var { SmimeUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/SmimeUtils.sys.mjs"
 );
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
+add_setup(function () {
+  const messageInjection = new MessageInjection({ mode: "local" });
+  gInbox = messageInjection.getInboxFolder();
+  SmimeUtils.ensureNSS();
 
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/MessageGenerator.jsm");
-load("../../../resources/messageModifier.js");
-load("../../../resources/messageInjection.js");
-
-let gCertValidityResult = 0;
-
-/**
- * @implements nsICertVerificationCallback
- */
-class CertVerificationResultCallback {
-  constructor(callback) {
-    this.callback = callback;
-  }
-  verifyCertFinished(prErrorCode, verifiedChain, hasEVPolicy) {
-    gCertValidityResult = prErrorCode;
-    this.callback();
-  }
-}
-
-function testCertValidity(cert, date) {
-  let prom = new Promise((resolve, reject) => {
-    const certificateUsageEmailRecipient = 0x0020;
-    let result = new CertVerificationResultCallback(resolve);
-    let flags = Ci.nsIX509CertDB.FLAG_LOCAL_ONLY;
-    const certdb = Cc["@mozilla.org/security/x509certdb;1"].getService(
-      Ci.nsIX509CertDB
-    );
-    certdb.asyncVerifyCertAtTime(
-      cert,
-      certificateUsageEmailRecipient,
-      flags,
-      "Alice@example.com",
-      date,
-      result
-    );
-  });
-  return prom;
-}
+  SmimeUtils.loadPEMCertificate(
+    do_get_file(smimeDataDirectory + "TestCA.pem"),
+    Ci.nsIX509Cert.CA_CERT
+  );
+  SmimeUtils.loadCertificateAndKey(
+    do_get_file(smimeDataDirectory + "Alice.p12"),
+    "nss"
+  );
+  SmimeUtils.loadCertificateAndKey(
+    do_get_file(smimeDataDirectory + "Bob.p12"),
+    "nss"
+  );
+  SmimeUtils.loadCertificateAndKey(
+    do_get_file(smimeDataDirectory + "Dave.p12"),
+    "nss"
+  );
+});
 
 add_task(async function verifyTestCertsStillValid() {
-  let composeSecure = Cc[
+  // implementation of nsIDoneFindCertForEmailCallback
+  var doneFindCertForEmailCallback = {
+    findCertDone(email, cert) {
+      Assert.notEqual(cert, null);
+      if (!cert) {
+        Assert.ok(
+          false,
+          "The S/MIME test certificates are invalid today.\n" +
+            "Please look at the expiration date in file comm/mailnews/test/data/smime/expiration.txt\n" +
+            "If that date is in the past, new certificates need to be generated and committed.\n" +
+            "Follow the instructions in comm/mailnews/test/data/smime/README.md\n" +
+            "If that date is in the future, the test failure is unrelated to expiration and indicates " +
+            "an error in certificate validation."
+        );
+      }
+    },
+
+    QueryInterface: ChromeUtils.generateQI(["nsIDoneFindCertForEmailCallback"]),
+  };
+
+  const composeSecure = Cc[
     "@mozilla.org/messengercompose/composesecure;1"
   ].createInstance(Ci.nsIMsgComposeSecure);
-  let cert = composeSecure.findCertByEmailAddress("Alice@example.com", false);
-  Assert.notEqual(cert, null);
-
-  let now = Date.now() / 1000;
-
-  let prom = testCertValidity(cert, now);
-  await prom;
-
-  if (gCertValidityResult != 0) {
-    // Either certs have expired, or something else is going wrong.
-    // Let's test if they were valid a week ago, for a better guess.
-
-    let oneWeekAgo = now - 7 * 24 * 60 * 60;
-    prom = testCertValidity(cert, oneWeekAgo);
-    await prom;
-
-    if (gCertValidityResult == 0) {
-      Assert.ok(
-        false,
-        "The S/MIME test certificates are invalid today, but were valid one week ago. " +
-          "Most likely they have expired and new certificates need to be generated and committed. " +
-          "Follow the instructions in comm/mailnews/test/data/smime/README.md"
-      );
-    } else {
-      Assert.ok(
-        false,
-        "The S/MIME test certificates are invalid today, but were also invalid one week ago. " +
-          "If this error is first appearing today, the reason might be unrelated to expiration, " +
-          "and could indicate a general error in certificate validation. Nevertheless, if you'd " +
-          "like to attempt a refresh of certificates: " +
-          "Follow the instructions in comm/mailnews/test/data/smime/README.md"
-      );
-    }
-  }
+  composeSecure.asyncFindCertByEmailAddr(
+    "Alice@example.com",
+    doneFindCertForEmailCallback
+  );
 });
 
 var gInbox;
 
 var smimeDataDirectory = "../../../data/smime/";
 
-let smimeHeaderSink = {
+/**
+ * @implements {nsIMsgSMIMESink}
+ */
+const smimeSink = {
   expectResults(maxLen) {
     // dump("Restarting for next test\n");
-    this._deferred = PromiseUtils.defer();
+    this._deferred = Promise.withResolvers();
     this._expectedEvents = maxLen;
     this.countReceived = 0;
     this._results = [];
+    // Ensure checkFinished() only produces results once.
+    this._resultsProduced = false;
     this.haveSignedBad = false;
     this.haveEncryptionBad = false;
     this.resultSig = null;
     this.resultEnc = null;
     this.resultSigFirst = undefined;
     return this._deferred.promise;
-  },
-  maxWantedNesting() {
-    return 2;
   },
   signedStatus(aNestingLevel, aSignedStatus, aSignerCert) {
     console.log("signedStatus " + aSignedStatus + " level " + aNestingLevel);
@@ -171,7 +139,8 @@ let smimeHeaderSink = {
     this.checkFinished();
   },
   checkFinished() {
-    if (this.countReceived == this._expectedEvents) {
+    if (!this._resultsProduced && this.countReceived == this._expectedEvents) {
+      this._resultsProduced = true;
       if (this.resultSigFirst) {
         this._results.push(this.resultSig);
         if (this.resultEnc != null) {
@@ -186,7 +155,7 @@ let smimeHeaderSink = {
       this._deferred.resolve(this._results);
     }
   },
-  QueryInterface: ChromeUtils.generateQI(["nsIMsgSMIMEHeaderSink"]),
+  QueryInterface: ChromeUtils.generateQI(["nsIMsgSMIMESink"]),
 };
 
 /**
@@ -220,7 +189,13 @@ let smimeHeaderSink = {
  */
 
 var gMessages = [
-  { filename: "alice.env.eml", enc: true, sig: false, sig_good: false },
+  {
+    filename: "alice.env.eml",
+    enc: true,
+    sig: false,
+    sig_good: false,
+    check_text: true,
+  },
   {
     filename: "alice.dsig.SHA1.multipart.bad.eml",
     enc: false,
@@ -231,13 +206,15 @@ var gMessages = [
     filename: "alice.dsig.SHA1.multipart.env.eml",
     enc: true,
     sig: true,
-    sig_good: true,
+    sig_good: false,
+    check_text: true,
   },
   {
     filename: "alice.dsig.SHA1.multipart.eml",
     enc: false,
     sig: true,
-    sig_good: true,
+    sig_good: false,
+    check_text: true,
   },
   {
     filename: "alice.dsig.SHA1.multipart.mismatch-econtent.eml",
@@ -256,6 +233,12 @@ var gMessages = [
     enc: false,
     sig: true,
     sig_good: true,
+  },
+  {
+    filename: "alice.future.dsig.SHA256.multipart.eml",
+    enc: false,
+    sig: true,
+    sig_good: false,
   },
   {
     filename: "alice.dsig.SHA256.multipart.env.eml",
@@ -321,13 +304,15 @@ var gMessages = [
     filename: "alice.sig.SHA1.opaque.eml",
     enc: false,
     sig: true,
-    sig_good: true,
+    sig_good: false,
+    check_text: true,
   },
   {
     filename: "alice.sig.SHA1.opaque.env.eml",
     enc: true,
     sig: true,
-    sig_good: true,
+    sig_good: false,
+    check_text: true,
   },
   {
     filename: "alice.sig.SHA256.opaque.eml",
@@ -379,7 +364,6 @@ var gMessages = [
     enc: false,
     sig: true,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA256.opaque.eml",
@@ -562,7 +546,6 @@ var gMessages = [
     sig: true,
     sig_good: false,
     dave: 1,
-    extra: 1,
   },
   {
     filename: "alice.plain.dsig.SHA1.multipart.dave.dsig.SHA1.multipart.eml",
@@ -625,10 +608,10 @@ var gMessages = [
   },
 ];
 
-let gCopyWaiter = PromiseUtils.defer();
+const gCopyWaiter = Promise.withResolvers();
 
 add_task(async function copy_messages() {
-  for (let msg of gMessages) {
+  for (const msg of gMessages) {
     let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
 
     MailServices.copy.copyFileMessage(
@@ -653,7 +636,7 @@ add_task(async function check_smime_message() {
 
   let hdrIndex = 0;
 
-  for (let msg of gMessages) {
+  for (const msg of gMessages) {
     console.log("checking " + msg.filename);
 
     let numExpected = 1;
@@ -666,20 +649,18 @@ add_task(async function check_smime_message() {
       eventsExpected += msg.extra;
     }
 
-    let hdr = mailTestUtils.getMsgHdrN(gInbox, hdrIndex);
-    let uri = hdr.folder.getUriForMsg(hdr);
-    let sinkPromise = smimeHeaderSink.expectResults(eventsExpected);
+    const hdr = mailTestUtils.getMsgHdrN(gInbox, hdrIndex);
+    const uri = hdr.folder.getUriForMsg(hdr);
+    const sinkPromise = smimeSink.expectResults(eventsExpected);
 
-    let conversion = apply_mime_conversion(uri, {
-      securityInfo: smimeHeaderSink,
-    });
+    const conversion = apply_mime_conversion(uri, smimeSink);
     await conversion.promise;
 
-    let contents = conversion._data;
+    const contents = conversion._data;
     // dump("contents: " + contents + "\n");
 
-    if (!msg.sig || msg.sig_good) {
-      let expected = "This is a test message from Alice to Bob.";
+    if (!msg.sig || msg.sig_good || "check_text" in msg) {
+      const expected = "This is a test message from Alice to Bob.";
       Assert.ok(contents.includes(expected));
     }
     // Check that we're also using the display output.
@@ -687,7 +668,7 @@ add_task(async function check_smime_message() {
 
     await sinkPromise;
 
-    let r = smimeHeaderSink._results;
+    const r = smimeSink._results;
     Assert.equal(r.length, numExpected);
 
     let sigIndex = 0;
@@ -700,7 +681,7 @@ add_task(async function check_smime_message() {
     }
     if (msg.sig) {
       Assert.equal(r[sigIndex].type, "signed");
-      let cert = r[sigIndex].certificate;
+      const cert = r[sigIndex].certificate;
       if (msg.sig_good) {
         Assert.notEqual(cert, null);
       }
@@ -721,22 +702,3 @@ add_task(async function check_smime_message() {
     hdrIndex++;
   }
 });
-
-function run_test() {
-  gInbox = configure_message_injection({ mode: "local" });
-  SmimeUtils.ensureNSS();
-
-  SmimeUtils.loadPEMCertificate(
-    do_get_file(smimeDataDirectory + "TestCA.pem"),
-    Ci.nsIX509Cert.CA_CERT
-  );
-  SmimeUtils.loadCertificateAndKey(
-    do_get_file(smimeDataDirectory + "Alice.p12")
-  );
-  SmimeUtils.loadCertificateAndKey(do_get_file(smimeDataDirectory + "Bob.p12"));
-  SmimeUtils.loadCertificateAndKey(
-    do_get_file(smimeDataDirectory + "Dave.p12")
-  );
-
-  run_next_test();
-}

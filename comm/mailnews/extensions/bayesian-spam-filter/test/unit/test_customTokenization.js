@@ -4,8 +4,8 @@
 
 // Tests use of custom tokenization, originally introduced in bug 476389
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 // command functions for test data
@@ -140,13 +140,13 @@ var listener = {
     }
 
     // we should have these tokens
-    for (let value of gTest.tokens) {
+    for (const value of gTest.tokens) {
       print("We should have '" + value + "'? ");
       Assert.ok(aTokenString.includes(value));
     }
 
     // should not have these tokens
-    for (let value of gTest.nottokens) {
+    for (const value of gTest.nottokens) {
       print("We should not have '" + value + "'? ");
       Assert.ok(!aTokenString.includes(value));
     }

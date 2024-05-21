@@ -21,12 +21,18 @@
 
 #include "mozilla/Atomics.h"
 
+#include "wasm/WasmMemory.h"
+
 namespace js {
 namespace wasm {
 
 class Code;
 class CodeRange;
 class CodeSegment;
+class TagType;
+
+extern const TagType* sWrappedJSValueTagType;
+static constexpr uint32_t WrappedJSValueTagType_ValueOffset = 0;
 
 // These methods return the wasm::CodeSegment (resp. wasm::Code) containing
 // the given pc, if any exist in the process. These methods do not take a lock,
@@ -53,9 +59,11 @@ bool RegisterCodeSegment(const CodeSegment* cs);
 
 void UnregisterCodeSegment(const CodeSegment* cs);
 
-// Whether this process is configured to use huge memory or not.
+// Whether this process is configured to use huge memory or not.  Note that this
+// is not precise enough to tell whether a particular memory uses huge memory,
+// there are additional conditions for that.
 
-bool IsHugeMemoryEnabled();
+bool IsHugeMemoryEnabled(IndexType t);
 
 [[nodiscard]] bool DisableHugeMemory();
 

@@ -12,21 +12,28 @@ ChromeUtils.defineModuleGetter(
   "resource:///modules/MailServices.jsm"
 );
 
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { SelectionUtils } = ChromeUtils.import(
-  "resource://gre/modules/SelectionUtils.jsm"
-);
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
+var { ExtensionCommon } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionCommon.sys.mjs"
+);
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
+);
+var { SelectionUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/SelectionUtils.sys.mjs"
+);
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+
+XPCOMUtils.defineLazyGlobalGetters(this, ["fetch", "FileReader"]);
+
+var { makeWidgetId } = ExtensionCommon;
 var { DefaultMap, ExtensionError } = ExtensionUtils;
-
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
-);
-
-var { IconDetails } = ExtensionParent;
+var { IconDetails, StartupCache } = ExtensionParent;
 
 const ACTION_MENU_TOP_LEVEL_LIMIT = 6;
 
@@ -34,6 +41,12 @@ const ACTION_MENU_TOP_LEVEL_LIMIT = 6;
 // Note: we want to enumerate all the menu items so
 // this cannot be a weak map.
 var gMenuMap = new Map();
+
+// Map[Extension -> Map[ID -> MenuCreateProperties]]
+// The map object for each extension is a reference to the same
+// object in StartupCache.menus.  This provides a non-async
+// getter for that object.
+var gStartupCache = new Map();
 
 // Map[Extension -> MenuItem]
 var gRootItems = new Map();
@@ -63,10 +76,10 @@ var gMenuBuilder = {
   // popuphidden fires.
   build(contextData) {
     contextData = this.maybeOverrideContextData(contextData);
-    let xulMenu = contextData.menu;
+    const xulMenu = contextData.menu;
     xulMenu.addEventListener("popuphidden", this);
     this.xulMenu = xulMenu;
-    for (let [, root] of gRootItems) {
+    for (const [, root] of gRootItems) {
       this.createAndInsertTopLevelElements(root, contextData, null);
     }
     this.afterBuildingMenu(contextData);
@@ -82,11 +95,11 @@ var gMenuBuilder = {
   },
 
   maybeOverrideContextData(contextData) {
-    let { webExtContextData } = contextData;
+    const { webExtContextData } = contextData;
     if (!webExtContextData || !webExtContextData.overrideContext) {
       return contextData;
     }
-    let contextDataBase = {
+    const contextDataBase = {
       menu: contextData.menu,
       // eslint-disable-next-line no-use-before-define
       originalViewType: getContextViewType(contextData),
@@ -97,22 +110,30 @@ var gMenuBuilder = {
     };
     if (webExtContextData.overrideContext === "tab") {
       // TODO: Handle invalid tabs more gracefully (instead of throwing).
-      let tab = tabTracker.getTab(webExtContextData.tabId);
+      const tab = tabTracker.getTab(webExtContextData.tabId);
       return {
         ...contextDataBase,
         tab,
-        pageUrl: tab.linkedBrowser.currentURI.spec,
+        pageUrl: tab.linkedBrowser?.currentURI?.spec,
         onTab: true,
       };
     }
-    throw new Error(
+    throw new ExtensionError(
       `Unexpected overrideContext: ${webExtContextData.overrideContext}`
     );
   },
 
   createAndInsertTopLevelElements(root, contextData, nextSibling) {
+    const newWebExtensionGroupSeparator = () => {
+      const element =
+        this.xulMenu.ownerDocument.createXULElement("menuseparator");
+      element.classList.add("webextension-group-separator");
+      return element;
+    };
+
     let rootElements;
     if (
+      contextData.onAction ||
       contextData.onBrowserAction ||
       contextData.onComposeAction ||
       contextData.onMessageDisplayAction
@@ -130,16 +151,26 @@ var gMenuBuilder = {
       // Action menu items are prepended to the menu, followed by a separator.
       nextSibling = nextSibling || this.xulMenu.firstElementChild;
       if (rootElements.length && !this.itemsToCleanUp.has(nextSibling)) {
-        rootElements.push(
-          this.xulMenu.ownerDocument.createXULElement("menuseparator")
-        );
+        rootElements.push(newWebExtensionGroupSeparator());
       }
+    } else if (
+      contextData.inActionMenu ||
+      contextData.inBrowserActionMenu ||
+      contextData.inComposeActionMenu ||
+      contextData.inMessageDisplayActionMenu
+    ) {
+      if (contextData.extension.id !== root.extension.id) {
+        return;
+      }
+      rootElements = this.buildTopLevelElements(
+        root,
+        contextData,
+        Infinity,
+        false
+      );
     } else if (contextData.webExtContextData) {
-      let {
-        extensionId,
-        showDefaults,
-        overrideContext,
-      } = contextData.webExtContextData;
+      const { extensionId, showDefaults, overrideContext } =
+        contextData.webExtContextData;
       if (extensionId === root.extension.id) {
         rootElements = this.buildTopLevelElements(
           root,
@@ -155,9 +186,7 @@ var gMenuBuilder = {
           showDefaults &&
           !this.itemsToCleanUp.has(nextSibling)
         ) {
-          rootElements.push(
-            this.xulMenu.ownerDocument.createXULElement("menuseparator")
-          );
+          rootElements.push(newWebExtensionGroupSeparator());
         }
       } else if (!showDefaults && !overrideContext) {
         // When the default menu items should be hidden, menu items from other
@@ -166,17 +195,17 @@ var gMenuBuilder = {
       }
       // Fall through to show default extension menu items.
     }
+
     if (!rootElements) {
       rootElements = this.buildTopLevelElements(root, contextData, 1, true);
       if (
         rootElements.length &&
-        !this.itemsToCleanUp.has(this.xulMenu.lastElementChild)
+        !this.itemsToCleanUp.has(this.xulMenu.lastElementChild) &&
+        this.xulMenu.firstChild
       ) {
         // All extension menu items are appended at the end.
         // Prepend separator if this is the first extension menu item.
-        rootElements.unshift(
-          this.xulMenu.ownerDocument.createXULElement("menuseparator")
-        );
+        rootElements.unshift(newWebExtensionGroupSeparator());
       }
     }
 
@@ -189,7 +218,7 @@ var gMenuBuilder = {
     } else {
       this.xulMenu.append(...rootElements);
     }
-    for (let item of rootElements) {
+    for (const item of rootElements) {
       this.itemsToCleanUp.add(item);
     }
   },
@@ -205,8 +234,8 @@ var gMenuBuilder = {
 
   buildChildren(item, contextData) {
     let groupName;
-    let children = [];
-    for (let child of item.children) {
+    const children = [];
+    for (const child of item.children) {
       if (child.type == "radio" && !child.groupName) {
         if (!groupName) {
           groupName = `webext-radio-group-${gNextRadioGroupID++}`;
@@ -224,7 +253,7 @@ var gMenuBuilder = {
   },
 
   buildTopLevelElements(root, contextData, maxCount, forceManifestIcons) {
-    let children = this.buildChildren(root, contextData);
+    const children = this.buildChildren(root, contextData);
 
     // TODO: Fix bug 1492969 and remove this whole if block.
     if (
@@ -241,16 +270,19 @@ var gMenuBuilder = {
 
     if (children.length > maxCount) {
       // Move excess items into submenu.
-      let rootElement = this.buildSingleElement(root, contextData);
+      const rootElement = this.buildSingleElement(root, contextData);
       rootElement.setAttribute("ext-type", "top-level-menu");
       rootElement.firstElementChild.append(...children.splice(maxCount - 1));
       children.push(rootElement);
     }
 
     if (forceManifestIcons) {
-      for (let rootElement of children) {
+      for (const rootElement of children) {
         // Display the extension icon on the root element.
-        if (root.extension.manifest.icons) {
+        if (
+          root.extension.manifest.icons &&
+          rootElement.getAttribute("type") !== "checkbox"
+        ) {
           this.setMenuItemIcon(
             rootElement,
             root.extension,
@@ -267,15 +299,15 @@ var gMenuBuilder = {
 
   removeSeparatorIfNoTopLevelItems() {
     // Extension menu items always have have a non-empty ID.
-    let isNonExtensionSeparator = item =>
+    const isNonExtensionSeparator = item =>
       item.nodeName === "menuseparator" && !item.id;
 
     // itemsToCleanUp contains all top-level menu items. A separator should
     // only be kept if it is next to an extension menu item.
-    let isExtensionMenuItemSibling = item =>
+    const isExtensionMenuItemSibling = item =>
       item && this.itemsToCleanUp.has(item) && !isNonExtensionSeparator(item);
 
-    for (let item of this.itemsToCleanUp) {
+    for (const item of this.itemsToCleanUp) {
       if (isNonExtensionSeparator(item)) {
         if (
           !isExtensionMenuItemSibling(item.previousElementSibling) &&
@@ -289,7 +321,7 @@ var gMenuBuilder = {
   },
 
   buildSingleElement(item, contextData) {
-    let doc = contextData.menu.ownerDocument;
+    const doc = contextData.menu.ownerDocument;
     let element;
     if (item.children.length) {
       element = this.createMenuElement(doc, item);
@@ -303,9 +335,9 @@ var gMenuBuilder = {
   },
 
   createMenuElement(doc, item) {
-    let element = doc.createXULElement("menu");
+    const element = doc.createXULElement("menu");
     // Menu elements need to have a menupopup child for its menu items.
-    let menupopup = doc.createXULElement("menupopup");
+    const menupopup = doc.createXULElement("menupopup");
     element.appendChild(menupopup);
     return element;
   },
@@ -337,9 +369,9 @@ var gMenuBuilder = {
 
         let codePointsToRemove = 0;
 
-        let selectionArray = Array.from(selection);
+        const selectionArray = Array.from(selection);
 
-        let completeLabelLength = label.length - 2 + selectionArray.length;
+        const completeLabelLength = label.length - 2 + selectionArray.length;
         if (completeLabelLength > gMaxLabelLength) {
           codePointsToRemove = completeLabelLength - gMaxLabelLength;
         }
@@ -403,7 +435,7 @@ var gMenuBuilder = {
           item.checked = !item.checked;
         } else if (item.type == "radio") {
           // Deselect all radio items in the current radio group.
-          for (let child of item.parent.children) {
+          for (const child of item.parent.children) {
             if (child.type == "radio" && child.groupName == item.groupName) {
               child.checked = false;
             }
@@ -412,7 +444,7 @@ var gMenuBuilder = {
           item.checked = true;
         }
 
-        let { webExtContextData } = contextData;
+        const { webExtContextData } = contextData;
         if (
           contextData.tab &&
           // If the menu context was overridden by the extension, do not grant
@@ -423,19 +455,26 @@ var gMenuBuilder = {
           item.tabManager.addActiveTabPermission(contextData.tab);
         }
 
-        let info = await item.getClickInfo(contextData, wasChecked);
+        const info = await item.getClickInfo(contextData, wasChecked);
         info.modifiers = clickModifiersFromEvent(event);
 
         info.button = button;
+        const _execute_action =
+          item.extension.manifestVersion < 3
+            ? "_execute_browser_action"
+            : "_execute_action";
 
         // Allow menus to open various actions supported in webext prior
         // to notifying onclicked.
-        let actionFor = {
-          _execute_browser_action: global.browserActionFor,
+        const actionFor = {
+          [_execute_action]: global.browserActionFor,
+          _execute_compose_action: global.composeActionFor,
+          _execute_message_display_action: global.messageDisplayActionFor,
         }[item.command];
         if (actionFor) {
-          let win = event.target.ownerGlobal;
+          const win = event.target.ownerGlobal;
           actionFor(item.extension).triggerAction(win);
+          return;
         }
 
         item.extension.emit(
@@ -476,9 +515,9 @@ var gMenuBuilder = {
   },
 
   setMenuItemIcon(element, extension, contextData, icons) {
-    let parentWindow = contextData.menu.ownerGlobal;
+    const parentWindow = contextData.menu.ownerGlobal;
 
-    let { icon } = IconDetails.getPreferredIcon(
+    const { icon } = IconDetails.getPreferredIcon(
       icons,
       extension,
       16 * parentWindow.devicePixelRatio
@@ -487,7 +526,7 @@ var gMenuBuilder = {
     // The extension icons in the manifest are not pre-resolved, since
     // they're sometimes used by the add-on manager when the extension is
     // not enabled, and its URLs are not resolvable.
-    let resolvedURL = extension.baseURI.resolve(icon);
+    const resolvedURL = extension.baseURI.resolve(icon);
 
     if (element.localName == "menu") {
       element.setAttribute("class", "menu-iconic");
@@ -505,7 +544,7 @@ var gMenuBuilder = {
   },
 
   rebuildMenu(extension) {
-    let { contextData } = this;
+    const { contextData } = this;
     if (!contextData) {
       // This happens if the menu is not visible.
       return;
@@ -513,9 +552,9 @@ var gMenuBuilder = {
 
     // Find the group of existing top-level items (usually 0 or 1 items)
     // and remember its position for when the new items are inserted.
-    let elementIdPrefix = `${makeWidgetId(extension.id)}-menuitem-`;
+    const elementIdPrefix = `${makeWidgetId(extension.id)}-menuitem-`;
     let nextSibling = null;
-    for (let item of this.itemsToCleanUp) {
+    for (const item of this.itemsToCleanUp) {
       if (item.id && item.id.startsWith(elementIdPrefix)) {
         nextSibling = item.nextSibling;
         item.remove();
@@ -523,7 +562,7 @@ var gMenuBuilder = {
       }
     }
 
-    let root = gRootItems.get(extension);
+    const root = gRootItems.get(extension);
     if (root) {
       this.createAndInsertTopLevelElements(root, contextData, nextSibling);
     }
@@ -537,11 +576,12 @@ var gMenuBuilder = {
       // extension to be stored in the map even if there are currently no
       // shown menu items. This ensures that the onHidden event can be fired
       // when the menu is closed.
-      let menuIds = gShownMenuItems.get(extension);
+      const menuIds = gShownMenuItems.get(extension);
       extension.emit("webext-menu-shown", menuIds, contextData);
     }
 
     if (
+      contextData.onAction ||
       contextData.onBrowserAction ||
       contextData.onComposeAction ||
       contextData.onMessageDisplayAction
@@ -557,7 +597,7 @@ var gMenuBuilder = {
   },
 
   hideDefaultMenuItems() {
-    for (let item of this.xulMenu.children) {
+    for (const item of this.xulMenu.children) {
       if (!this.itemsToCleanUp.has(item)) {
         item.hidden = true;
       }
@@ -572,13 +612,13 @@ var gMenuBuilder = {
     delete this.xulMenu;
     delete this.contextData;
 
-    let target = event.target;
+    const target = event.target;
     target.removeEventListener("popuphidden", this);
-    for (let item of this.itemsToCleanUp) {
+    for (const item of this.itemsToCleanUp) {
       item.remove();
     }
     this.itemsToCleanUp.clear();
-    for (let extension of gShownMenuItems.keys()) {
+    for (const extension of gShownMenuItems.keys()) {
       extension.emit("webext-menu-hidden");
     }
     gShownMenuItems.clear();
@@ -587,8 +627,8 @@ var gMenuBuilder = {
   itemsToCleanUp: new Set(),
 };
 
-// Called from pageAction or browserAction popup.
-global.actionContextMenu = function(contextData) {
+// Called from different action popups.
+global.actionContextMenu = function (contextData) {
   contextData.originalViewType = "tab";
   gMenuBuilder.build(contextData);
 };
@@ -603,14 +643,23 @@ const contextsMap = {
   isTextSelected: "selection",
   onVideo: "video",
 
+  onAction: "action",
   onBrowserAction: "browser_action",
   onComposeAction: "compose_action",
   onMessageDisplayAction: "message_display_action",
+  inActionMenu: "action_menu",
+  inBrowserActionMenu: "browser_action_menu",
+  inComposeActionMenu: "compose_action_menu",
+  inMessageDisplayActionMenu: "message_display_action_menu",
+
+  onComposeBody: "compose_body",
   onTab: "tab",
   inToolsMenu: "tools_menu",
   selectedMessages: "message_list",
   selectedFolder: "folder_pane",
-  attachments: "compose_attachments",
+  selectedComposeAttachments: "compose_attachments",
+  selectedMessageAttachments: "message_attachments",
+  allMessageAttachments: "all_message_attachments",
 };
 
 const chromeElementsMap = {
@@ -624,7 +673,7 @@ const chromeElementsMap = {
 };
 
 const getMenuContexts = contextData => {
-  let contexts = new Set();
+  const contexts = new Set();
 
   for (const [key, value] of Object.entries(contextsMap)) {
     if (contextData[key]) {
@@ -654,10 +703,49 @@ function getContextViewType(contextData) {
   ) {
     return contextData.webExtBrowserType;
   }
-  if (contextData.tab && contextData.menu.id === "mailContext") {
+  if (contextData.tab && contextData.menu.id === "browserContext") {
     return "tab";
   }
   return undefined;
+}
+
+/**
+ * Fetches a remote resource and returns a data: url.
+ *
+ * @param {string} url
+ * @returns {Promise<string>}
+ */
+async function fetchDataUrl(url) {
+  const data = await fetch(url);
+  const blob = await data.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Takes a menu API createProperties or updateProperties object and replaces any
+ * remote icon urls with data urls.
+ *
+ * @param {createProperties|updateProperties} properties
+ * @see mail/components/extensions/schemas/menus.json
+ */
+async function fetchRemoteIcons(properties) {
+  if (!properties.icons) {
+    return;
+  }
+  if (typeof properties.icons == "string") {
+    properties.icons = { 16: properties.icons };
+  }
+  const re = new RegExp("^https?://", "i");
+  for (const size in properties.icons) {
+    if (re.test(properties.icons[size])) {
+      properties.icons[size] = await fetchDataUrl(properties.icons[size]);
+    }
+  }
 }
 
 async function addMenuEventInfo(
@@ -716,18 +804,18 @@ async function addMenuEventInfo(
     );
   }
   if (extension.hasPermission("accountsRead")) {
-    for (let folderType of ["displayedFolder", "selectedFolder"]) {
+    for (const folderType of ["displayedFolder", "selectedFolder"]) {
       if (contextData[folderType]) {
-        let folder = convertFolder(contextData[folderType]);
+        const folder = extension.folderManager.convert(contextData[folderType]);
         // If the context menu click in the folder pane occurred on a root folder
         // representing an account, do not include a selectedFolder object, but
         // the corresponding selectedAccount object.
         if (folderType == "selectedFolder" && folder.path == "/") {
-          info.selectedAccount = convertAccount(
+          info.selectedAccount = extension.accountManager.convert(
             MailServices.accounts.getAccount(folder.accountId)
           );
         } else {
-          info[folderType] = traverseSubfolders(
+          info[folderType] = extension.folderManager.traverseSubfolders(
             contextData[folderType],
             folder.accountId
           );
@@ -735,49 +823,77 @@ async function addMenuEventInfo(
       }
     }
   }
-  if (contextData.attachments && extension.hasPermission("compose")) {
+  if (
+    (contextData.selectedMessageAttachments ||
+      contextData.allMessageAttachments) &&
+    extension.hasPermission("messagesRead")
+  ) {
+    const attachments =
+      contextData.selectedMessageAttachments ||
+      contextData.allMessageAttachments;
+    info.attachments = attachments.map(attachment => {
+      return {
+        contentType: attachment.contentType,
+        name: attachment.name,
+        size: attachment.size,
+        partName: attachment.partID,
+      };
+    });
+  }
+  if (
+    contextData.selectedComposeAttachments &&
+    extension.hasPermission("compose")
+  ) {
     if (!("composeAttachmentTracker" in global)) {
       extensions.loadModule("compose");
     }
 
-    info.attachments = contextData.attachments.map(a =>
+    info.attachments = contextData.selectedComposeAttachments.map(a =>
       global.composeAttachmentTracker.convert(a, contextData.menu.ownerGlobal)
     );
   }
 }
 
-function MenuItem(extension, createProperties, isRoot = false) {
-  this.extension = extension;
-  this.children = [];
-  this.parent = null;
-  this.tabManager = extension.tabManager;
+class MenuItem {
+  constructor(extension, createProperties, isRoot = false) {
+    this.extension = extension;
+    this.children = [];
+    this.parent = null;
+    this.tabManager = extension.tabManager;
 
-  this.setDefaults();
-  this.setProps(createProperties);
+    this.setDefaults();
+    this.setProps(createProperties);
 
-  if (!this.hasOwnProperty("_id")) {
-    this.id = gNextMenuItemID++;
+    if (!this.hasOwnProperty("_id")) {
+      this.id = gNextMenuItemID++;
+    }
+    // If the item is not the root and has no parent
+    // it must be a child of the root.
+    if (!isRoot && !this.parent) {
+      this.root.addChild(this);
+    }
   }
-  // If the item is not the root and has no parent
-  // it must be a child of the root.
-  if (!isRoot && !this.parent) {
-    this.root.addChild(this);
-  }
-}
 
-MenuItem.prototype = {
-  setProps(createProperties) {
-    for (let propName in createProperties) {
-      if (createProperties[propName] === null) {
+  static mergeProps(obj, properties) {
+    for (const propName in properties) {
+      if (properties[propName] === null) {
         // Omitted optional argument.
         continue;
       }
-      this[propName] = createProperties[propName];
+      obj[propName] = properties[propName];
     }
 
-    if ("icons" in createProperties && createProperties.icons === null) {
-      this.icons = null;
+    if ("icons" in properties) {
+      if (properties.icons === null) {
+        obj.icons = null;
+      } else if (typeof properties.icons == "string") {
+        obj.icons = { 16: properties.icons };
+      }
     }
+  }
+
+  setProps(createProperties) {
+    MenuItem.mergeProps(this, createProperties);
 
     if (createProperties.documentUrlPatterns != null) {
       this.documentUrlMatchPattern = new MatchPatternSet(
@@ -801,7 +917,7 @@ MenuItem.prototype = {
     if (createProperties.parentId && !createProperties.contexts) {
       this.contexts = this.parent.contexts;
     }
-  },
+  }
 
   setDefaults() {
     this.setProps({
@@ -811,22 +927,22 @@ MenuItem.prototype = {
       enabled: true,
       visible: true,
     });
-  },
+  }
 
   set id(id) {
     if (this.hasOwnProperty("_id")) {
       throw new ExtensionError("ID of a MenuItem cannot be changed");
     }
-    let isIdUsed = gMenuMap.get(this.extension).has(id);
+    const isIdUsed = gMenuMap.get(this.extension).has(id);
     if (isIdUsed) {
       throw new ExtensionError(`ID already exists: ${id}`);
     }
     this._id = id;
-  },
+  }
 
   get id() {
     return this._id;
-  },
+  }
 
   get elementId() {
     let id = this.id;
@@ -838,13 +954,13 @@ MenuItem.prototype = {
       id = `_${id}`;
     }
     return `${makeWidgetId(this.extension.id)}-menuitem-${id}`;
-  },
+  }
 
   ensureValidParentId(parentId) {
     if (parentId === undefined) {
       return;
     }
-    let menuMap = gMenuMap.get(this.extension);
+    const menuMap = gMenuMap.get(this.extension);
     if (!menuMap.has(parentId)) {
       throw new ExtensionError(
         `Could not find any MenuItem with id: ${parentId}`
@@ -857,7 +973,25 @@ MenuItem.prototype = {
         );
       }
     }
-  },
+  }
+
+  /**
+   * When updating menu properties we need to ensure parents exist
+   * in the cache map before children.  That allows the menus to be
+   * created in the correct sequence on startup.  This reparents the
+   * tree starting from this instance of MenuItem.
+   */
+  reparentInCache() {
+    const { id, extension } = this;
+    const cachedMap = gStartupCache.get(extension);
+    const createProperties = cachedMap.get(id);
+    cachedMap.delete(id);
+    cachedMap.set(id, createProperties);
+
+    for (const child of this.children) {
+      child.reparentInCache();
+    }
+  }
 
   set parentId(parentId) {
     this.ensureValidParentId(parentId);
@@ -869,36 +1003,38 @@ MenuItem.prototype = {
     if (parentId === undefined) {
       this.root.addChild(this);
     } else {
-      let menuMap = gMenuMap.get(this.extension);
+      const menuMap = gMenuMap.get(this.extension);
       menuMap.get(parentId).addChild(this);
     }
-  },
+  }
 
   get parentId() {
     return this.parent ? this.parent.id : undefined;
-  },
+  }
 
   addChild(child) {
     if (child.parent) {
-      throw new Error("Child MenuItem already has a parent.");
+      throw new ExtensionError("Child MenuItem already has a parent.");
     }
     this.children.push(child);
     child.parent = this;
-  },
+  }
 
   detachChild(child) {
-    let idx = this.children.indexOf(child);
+    const idx = this.children.indexOf(child);
     if (idx < 0) {
-      throw new Error("Child MenuItem not found, it cannot be removed.");
+      throw new ExtensionError(
+        "Child MenuItem not found, it cannot be removed."
+      );
     }
     this.children.splice(idx, 1);
     child.parent = null;
-  },
+  }
 
   get root() {
-    let extension = this.extension;
+    const extension = this.extension;
     if (!gRootItems.has(extension)) {
-      let root = new MenuItem(
+      const root = new MenuItem(
         extension,
         { title: extension.name },
         /* isRoot = */ true
@@ -907,26 +1043,30 @@ MenuItem.prototype = {
     }
 
     return gRootItems.get(extension);
-  },
+  }
 
   remove() {
     if (this.parent) {
       this.parent.detachChild(this);
     }
-    let children = this.children.slice(0);
-    for (let child of children) {
+    const children = this.children.slice(0);
+    for (const child of children) {
       child.remove();
     }
 
-    let menuMap = gMenuMap.get(this.extension);
+    const menuMap = gMenuMap.get(this.extension);
     menuMap.delete(this.id);
+    // Menu items are saved if !extension.persistentBackground.
+    if (gStartupCache.get(this.extension)?.delete(this.id)) {
+      StartupCache.save();
+    }
     if (this.root == this) {
       gRootItems.delete(this.extension);
     }
-  },
+  }
 
   async getClickInfo(contextData, wasChecked) {
-    let info = {
+    const info = {
       menuItemId: this.id,
     };
     if (this.parent) {
@@ -941,13 +1081,13 @@ MenuItem.prototype = {
     }
 
     return info;
-  },
+  }
 
   enabledForContext(contextData) {
     if (!this.visible) {
       return false;
     }
-    let contexts = getMenuContexts(contextData);
+    const contexts = getMenuContexts(contextData);
     if (!this.contexts.some(n => contexts.has(n))) {
       return false;
     }
@@ -982,11 +1122,11 @@ MenuItem.prototype = {
       }
     }
 
-    let targetPattern = this.targetUrlMatchPattern;
+    const targetPattern = this.targetUrlMatchPattern;
     if (targetPattern) {
-      let targetUrls = [];
+      const targetUrls = [];
       if (contextData.onImage || contextData.onAudio || contextData.onVideo) {
-        // TODO: double check if srcUrl is always set when we need it
+        // TODO: Double check if srcUrl is always set when we need it.
         targetUrls.push(contextData.srcUrl);
       }
       if (contextData.onLink) {
@@ -1002,8 +1142,8 @@ MenuItem.prototype = {
     }
 
     return true;
-  },
-};
+  }
+}
 
 // While any extensions are active, this Tracker registers to observe/listen
 // for menu events from both Tools and context menus, both content and chrome.
@@ -1053,7 +1193,7 @@ const menuTracker = {
     const win = menu.ownerGlobal;
     switch (menu.id) {
       case "taskPopup": {
-        let info = { menu, inToolsMenu: true };
+        const info = { menu, inToolsMenu: true };
         if (
           win.document.location.href ==
           "chrome://messenger/content/messenger.xhtml"
@@ -1068,46 +1208,92 @@ const menuTracker = {
         break;
       }
       case "tabContextMenu": {
-        let triggerTab = trigger.closest("tab");
+        const triggerTab = trigger.closest("tab");
         const tab = triggerTab || tabTracker.activeTab;
-        const pageUrl = tab.linkedBrowser.currentURI.spec;
+        const pageUrl = tab.linkedBrowser?.currentURI?.spec;
         gMenuBuilder.build({ menu, tab, pageUrl, onTab: true });
         break;
       }
       case "folderPaneContext": {
-        const tab =
-          trigger.localName === "tab" ? trigger : tabTracker.activeTab;
-        const pageUrl = tab.linkedBrowser.currentURI.spec;
+        const tab = tabTracker.activeTab;
+        const pageUrl = tab.linkedBrowser?.currentURI?.spec;
         gMenuBuilder.build({
           menu,
           tab,
           pageUrl,
-          selectedFolder: trigger.ownerGlobal.gFolderTreeView.getSelectedFolders()[0],
+          selectedFolder: win.folderPaneContextMenu.activeFolder,
+        });
+        break;
+      }
+      case "attachmentListContext": {
+        const attachmentList =
+          menu.ownerGlobal.document.getElementById("attachmentList");
+        const allMessageAttachments = [...attachmentList.children].map(
+          item => item.attachment
+        );
+        gMenuBuilder.build({
+          menu,
+          tab: menu.ownerGlobal,
+          allMessageAttachments,
+        });
+        break;
+      }
+      case "attachmentItemContext": {
+        const attachmentList =
+          menu.ownerGlobal.document.getElementById("attachmentList");
+        const attachmentInfo =
+          menu.ownerGlobal.document.getElementById("attachmentInfo");
+
+        // If we opened the context menu from the attachment info area (the paperclip,
+        // "1 attachment" label, filename, or file size, just grab the first (and
+        // only) attachment as our "selected" attachments.
+        let selectedMessageAttachments;
+        if (
+          menu.triggerNode == attachmentInfo ||
+          menu.triggerNode.parentNode == attachmentInfo
+        ) {
+          selectedMessageAttachments = [
+            attachmentList.getItemAtIndex(0).attachment,
+          ];
+        } else {
+          selectedMessageAttachments = [...attachmentList.selectedItems].map(
+            item => item.attachment
+          );
+        }
+
+        gMenuBuilder.build({
+          menu,
+          tab: menu.ownerGlobal,
+          selectedMessageAttachments,
         });
         break;
       }
       case "msgComposeAttachmentItemContext": {
-        let bucket = menu.ownerDocument.getElementById("attachmentBucket");
-        let attachments = [];
-        for (let item of bucket.itemChildren) {
+        const bucket = menu.ownerDocument.getElementById("attachmentBucket");
+        const selectedComposeAttachments = [];
+        for (const item of bucket.itemChildren) {
           if (item.selected) {
-            attachments.push(item.attachment);
+            selectedComposeAttachments.push(item.attachment);
           }
         }
-        gMenuBuilder.build({ menu, tab: menu.ownerGlobal, attachments });
+        gMenuBuilder.build({
+          menu,
+          tab: menu.ownerGlobal,
+          selectedComposeAttachments,
+        });
         break;
       }
       default:
         // Fall back to the triggerNode. Make sure we are not re-triggered by a
         // sub-menu.
-        if (menu.isAnchored) {
+        if (menu.parentNode.localName == "menu") {
           return;
         }
         if (Object.keys(chromeElementsMap).includes(trigger?.id)) {
-          let selectionInfo = SelectionUtils.getSelectionDetails(win);
-          let isContentSelected = !selectionInfo.docSelectionIsCollapsed;
-          let textSelected = selectionInfo.text;
-          let isTextSelected = !!textSelected.length;
+          const selectionInfo = SelectionUtils.getSelectionDetails(win);
+          const isContentSelected = !selectionInfo.docSelectionIsCollapsed;
+          const textSelected = selectionInfo.text;
+          const isTextSelected = !!textSelected.length;
           gMenuBuilder.build({
             menu,
             tab: win,
@@ -1126,7 +1312,7 @@ const menuTracker = {
   },
 };
 
-this.menus = class extends ExtensionAPI {
+this.menus = class extends ExtensionAPIPersistent {
   constructor(extension) {
     super(extension);
 
@@ -1136,13 +1322,46 @@ this.menus = class extends ExtensionAPI {
     gMenuMap.set(extension, new Map());
   }
 
+  restoreFromCache() {
+    const { extension } = this;
+    // ensure extension has not shutdown
+    if (!this.extension) {
+      return;
+    }
+    for (const createProperties of gStartupCache.get(extension).values()) {
+      // The order of menu creation is significant, see reparentInCache.
+      const menuItem = new MenuItem(extension, createProperties);
+      gMenuMap.get(extension).set(menuItem.id, menuItem);
+    }
+    // Used for testing
+    extension.emit("webext-menus-created", gMenuMap.get(extension));
+  }
+
+  async onStartup() {
+    const { extension } = this;
+    if (extension.persistentBackground) {
+      return;
+    }
+    // Using the map retains insertion order.
+    const cachedMenus = await StartupCache.menus.get(extension.id, () => {
+      return new Map();
+    });
+    gStartupCache.set(extension, cachedMenus);
+    if (!cachedMenus.size) {
+      return;
+    }
+
+    this.restoreFromCache();
+  }
+
   onShutdown() {
-    let { extension } = this;
+    const { extension } = this;
 
     if (gMenuMap.has(extension)) {
       gMenuMap.delete(extension);
       gRootItems.delete(extension);
       gShownMenuItems.delete(extension);
+      gStartupCache.delete(extension);
       gOnShownSubscribers.delete(extension);
       if (!gMenuMap.size) {
         menuTracker.unregister();
@@ -1150,8 +1369,118 @@ this.menus = class extends ExtensionAPI {
     }
   }
 
+  PERSISTENT_EVENTS = {
+    onShown({ fire }) {
+      const { extension } = this;
+      const listener = async (event, menuIds, contextData) => {
+        const info = {
+          menuIds,
+          contexts: Array.from(getMenuContexts(contextData)),
+        };
+
+        const nativeTab = contextData.tab;
+
+        // The menus.onShown event is fired before the user has consciously
+        // interacted with an extension, so we require permissions before
+        // exposing sensitive contextual data.
+        const contextUrl = contextData.inFrame
+          ? contextData.frameUrl
+          : contextData.pageUrl;
+
+        const ownerDocumentUrl = contextData.menu.ownerDocument.location.href;
+
+        let contextScheme;
+        if (contextUrl) {
+          contextScheme = Services.io.newURI(contextUrl).scheme;
+        }
+
+        const includeSensitiveData =
+          (nativeTab &&
+            extension.tabManager.hasActiveTabPermission(nativeTab)) ||
+          (contextUrl && extension.allowedOrigins.matches(contextUrl)) ||
+          (MESSAGE_PROTOCOLS.includes(contextScheme) &&
+            extension.hasPermission("messagesRead")) ||
+          (ownerDocumentUrl ==
+            "chrome://messenger/content/messengercompose/messengercompose.xhtml" &&
+            extension.hasPermission("compose"));
+
+        await addMenuEventInfo(
+          info,
+          contextData,
+          extension,
+          includeSensitiveData
+        );
+
+        const tab = nativeTab && extension.tabManager.convert(nativeTab);
+        fire.sync(info, tab);
+      };
+      gOnShownSubscribers.get(extension).add(listener);
+      extension.on("webext-menu-shown", listener);
+      return {
+        unregister() {
+          const listeners = gOnShownSubscribers.get(extension);
+          listeners.delete(listener);
+          if (listeners.size === 0) {
+            gOnShownSubscribers.delete(extension);
+          }
+          extension.off("webext-menu-shown", listener);
+        },
+        convert(_fire) {
+          fire = _fire;
+        },
+      };
+    },
+    onHidden({ fire }) {
+      const { extension } = this;
+      const listener = () => {
+        fire.sync();
+      };
+      extension.on("webext-menu-hidden", listener);
+      return {
+        unregister() {
+          extension.off("webext-menu-hidden", listener);
+        },
+        convert(_fire) {
+          fire = _fire;
+        },
+      };
+    },
+    onClicked({ context, fire }) {
+      const { extension } = this;
+      const listener = async (event, info, nativeTab) => {
+        const { linkedBrowser } = nativeTab || tabTracker.activeTab;
+        const tab = nativeTab && extension.tabManager.convert(nativeTab);
+        if (fire.wakeup) {
+          // force the wakeup, thus the call to convert to get the context.
+          await fire.wakeup();
+          // If while waiting the tab disappeared we bail out.
+          if (
+            !linkedBrowser.ownerGlobal.gBrowser.getTabForBrowser(linkedBrowser)
+          ) {
+            console.error(
+              `menus.onClicked: target tab closed during background startup.`
+            );
+            return;
+          }
+        }
+        context.withPendingBrowser(linkedBrowser, () => fire.sync(info, tab));
+      };
+
+      extension.on("webext-menu-menuitem-click", listener);
+      return {
+        unregister() {
+          extension.off("webext-menu-menuitem-click", listener);
+        },
+        convert(_fire, _context) {
+          fire = _fire;
+          context = _context;
+        },
+      };
+    },
+  };
+
   getAPI(context) {
-    let { extension } = context;
+    const { extension } = context;
 
     return {
       menus: {
@@ -1161,124 +1490,103 @@ this.menus = class extends ExtensionAPI {
 
         onShown: new EventManager({
           context,
-          name: "menus.onShown",
-          register: fire => {
-            let listener = async (event, menuIds, contextData) => {
-              let info = {
-                menuIds,
-                contexts: Array.from(getMenuContexts(contextData)),
-              };
-
-              let nativeTab = contextData.tab;
-
-              // The menus.onShown event is fired before the user has consciously
-              // interacted with an extension, so we require permissions before
-              // exposing sensitive contextual data.
-              let contextUrl = contextData.inFrame
-                ? contextData.frameUrl
-                : contextData.pageUrl;
-
-              let ownerDocumentUrl =
-                contextData.menu.ownerDocument.location.href;
-
-              let contextScheme;
-              if (contextUrl) {
-                contextScheme = Services.io.newURI(contextUrl).scheme;
-              }
-
-              let includeSensitiveData =
-                (nativeTab &&
-                  extension.tabManager.hasActiveTabPermission(nativeTab)) ||
-                (contextUrl && extension.allowedOrigins.matches(contextUrl)) ||
-                (MESSAGE_PROTOCOLS.includes(contextScheme) &&
-                  extension.hasPermission("messagesRead")) ||
-                (ownerDocumentUrl ==
-                  "chrome://messenger/content/messengercompose/messengercompose.xhtml" &&
-                  extension.hasPermission("compose"));
-
-              await addMenuEventInfo(
-                info,
-                contextData,
-                extension,
-                includeSensitiveData
-              );
-
-              let tab = nativeTab && extension.tabManager.convert(nativeTab);
-              fire.sync(info, tab);
-            };
-            gOnShownSubscribers.get(extension).add(context);
-            extension.on("webext-menu-shown", listener);
-            return () => {
-              const contexts = gOnShownSubscribers.get(extension);
-              contexts.delete(context);
-              if (contexts.size === 0) {
-                gOnShownSubscribers.delete(extension);
-              }
-              extension.off("webext-menu-shown", listener);
-            };
-          },
+          module: "menus",
+          event: "onShown",
+          extensionApi: this,
         }).api(),
         onHidden: new EventManager({
           context,
-          name: "menus.onHidden",
-          register: fire => {
-            let listener = () => {
-              fire.sync();
-            };
-            extension.on("webext-menu-hidden", listener);
-            return () => {
-              extension.off("webext-menu-hidden", listener);
-            };
-          },
+          module: "menus",
+          event: "onHidden",
+          extensionApi: this,
+        }).api(),
+        onClicked: new EventManager({
+          context,
+          module: "menus",
+          event: "onClicked",
+          extensionApi: this,
         }).api(),
 
-        create(createProperties) {
-          // Note that the id is required by the schema. If the addon did not set
-          // it, the implementation of menus.create in the child should
-          // have added it.
-          let menuItem = new MenuItem(extension, createProperties);
-          gMenuMap.get(extension).set(menuItem.id, menuItem);
-        },
+        async create(createProperties) {
+          // event pages require id
+          if (!extension.persistentBackground) {
+            if (!createProperties.id) {
+              throw new ExtensionError(
+                "menus.create requires an id for non-persistent background scripts."
+              );
+            }
+            if (gMenuMap.get(extension).has(createProperties.id)) {
+              throw new ExtensionError(
+                `The menu id ${createProperties.id} already exists in menus.create.`
+              );
+            }
+          }
 
-        update(id, updateProperties) {
-          let menuItem = gMenuMap.get(extension).get(id);
-          if (menuItem) {
-            menuItem.setProps(updateProperties);
+          // Pre-fetch the icon from http(s) and replace it by a data: uri.
+          await fetchRemoteIcons(createProperties);
+
+          // Note that the id is required by the schema. If the addon did not set
+          // it, the implementation of menus.create in the child will add it for
+          // extensions with persistent backgrounds, but not otherwise.
+          const menuItem = new MenuItem(extension, createProperties);
+          gMenuMap.get(extension).set(menuItem.id, menuItem);
+          if (!extension.persistentBackground) {
+            // Only cache properties that are necessary.
+            const cached = {};
+            MenuItem.mergeProps(cached, createProperties);
+            gStartupCache.get(extension).set(menuItem.id, cached);
+            StartupCache.save();
           }
         },
 
+        async update(id, updateProperties) {
+          const menuItem = gMenuMap.get(extension).get(id);
+          if (!menuItem) {
+            return;
+          }
+
+          // Pre-fetch the icon from http(s) and replace it by a data: uri.
+          await fetchRemoteIcons(updateProperties);
+          menuItem.setProps(updateProperties);
+
+          // Update the startup cache for non-persistent extensions.
+          if (extension.persistentBackground) {
+            return;
+          }
+
+          const cached = gStartupCache.get(extension).get(id);
+          const reparent =
+            updateProperties.parentId != null &&
+            cached.parentId != updateProperties.parentId;
+          MenuItem.mergeProps(cached, updateProperties);
+          if (reparent) {
+            // The order of menu creation is significant, see reparentInCache.
+            menuItem.reparentInCache();
+          }
+          StartupCache.save();
+        },
+
         remove(id) {
-          let menuItem = gMenuMap.get(extension).get(id);
+          const menuItem = gMenuMap.get(extension).get(id);
           if (menuItem) {
             menuItem.remove();
           }
         },
 
         removeAll() {
-          let root = gRootItems.get(extension);
+          const root = gRootItems.get(extension);
           if (root) {
             root.remove();
           }
+          // Should be empty, just extra assurance.
+          if (!extension.persistentBackground) {
+            const cached = gStartupCache.get(extension);
+            if (cached.size) {
+              cached.clear();
+              StartupCache.save();
+            }
+          }
         },
-
-        onClicked: new EventManager({
-          context,
-          name: "menus.onClicked",
-          register: fire => {
-            let listener = (event, info, nativeTab) => {
-              let { linkedBrowser } = nativeTab || tabTracker.activeTab;
-              let tab = nativeTab && extension.tabManager.convert(nativeTab);
-              context.withPendingBrowser(linkedBrowser, () =>
-                fire.sync(info, tab)
-              );
-            };
-
-            extension.on("webext-menu-menuitem-click", listener);
-            return () => {
-              extension.off("webext-menu-menuitem-click", listener);
-            };
-          },
-        }).api(),
       },
     };
   }

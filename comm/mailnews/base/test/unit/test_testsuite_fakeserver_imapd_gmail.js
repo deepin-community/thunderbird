@@ -2,35 +2,32 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Test that Imapd.jsm fakeserver correctly emulates GMail server
+// Test that Imapd.sys.mjs fakeserver correctly emulates GMail server
 // That means X-GM-EXT-1 capability and GMail flavor XLIST
 // per https://developers.google.com/google-apps/gmail/imap_extensions
 
-// async support
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/alertTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/alertTestUtils.js");
-
 // IMAP pump
-var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.import(
-  "resource://testing-common/mailnews/IMAPpump.jsm"
+var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/IMAPpump.sys.mjs"
 );
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 setupIMAPPump("GMail");
 // create our own handler so that we can call imapd functions directly
 var handler;
 
-// Definition of tests
-var tests = [setupMailboxes, testXlist, endTest];
+add_setup(function () {
+  Services.prefs.setBoolPref(
+    "mail.server.server1.autosync_offline_stores",
+    false
+  );
+});
 
 // mbox mailboxes cannot contain both child mailboxes and messages, so this will
 // be one test case.
-function* setupMailboxes() {
+add_setup(async function () {
   IMAPPump.mailbox.specialUseFlag = "\\Inbox";
   IMAPPump.daemon.createMailbox("[Gmail]", { flags: ["\\Noselect"] });
   IMAPPump.daemon.createMailbox("[Gmail]/All Mail", {
@@ -48,16 +45,17 @@ function* setupMailboxes() {
   IMAPPump.daemon.createMailbox("test", {});
 
   handler = IMAPPump.server._handlerCreator(IMAPPump.daemon);
-  let response = handler.onError("1", "LOGIN user password");
+  const response = handler.onError("1", "LOGIN user password");
   Assert.ok(response.includes("OK"));
   // wait for imap pump to do its thing or else we get memory leaks
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
 // test that 'XLIST "" "*"' returns the proper responses
-function* testXlist() {
-  let response = handler.onError("2", 'XLIST "" "*"');
+add_task(function testXlist() {
+  const response = handler.onError("2", 'XLIST "" "*"');
 
   Assert.ok(response.includes('* LIST (\\HasNoChildren \\Inbox) "/" "INBOX"'));
   Assert.ok(
@@ -86,19 +84,9 @@ function* testXlist() {
     response.includes('* LIST (\\HasNoChildren \\Trash) "/" "[Gmail]/Trash"')
   );
   Assert.ok(response.includes('* LIST (\\HasNoChildren) "/" "test"'));
-
-  yield true;
-}
+});
 
 // Cleanup at end
-function endTest() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  Services.prefs.setBoolPref(
-    "mail.server.server1.autosync_offline_stores",
-    false
-  );
-  async_run_tests(tests);
-}
+});

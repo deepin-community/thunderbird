@@ -2,33 +2,37 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from item-editing/calendar-item-editing.js */
-/* import-globals-from calendar-management.js */
-/* import-globals-from calendar-ui-utils.js */
+/* globals getMessagePaneBrowser, addMenuItem, getSelectedCalendar
+   createEventWithDialog*/
 
-/* globals getMessagePaneBrowser, gFolderDisplay */
+var { Extractor } = ChromeUtils.importESModule("resource:///modules/calendar/calExtract.sys.mjs");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+var { MailServices } = ChromeUtils.importESModule("resource:///modules/MailServices.sys.mjs");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-var { Extractor } = ChromeUtils.import("resource:///modules/calendar/calExtract.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  CalTodo: "resource:///modules/CalTodo.sys.mjs",
+});
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
-  CalTodo: "resource:///modules/CalTodo.jsm",
+ChromeUtils.defineLazyGetter(this, "extractService", () => {
+  const { CalExtractParserService } = ChromeUtils.importESModule(
+    "resource:///modules/calendar/extract/CalExtractParserService.sys.mjs"
+  );
+  return new CalExtractParserService();
 });
 
 var calendarExtract = {
   onShowLocaleMenu(target) {
-    let localeList = document.getElementById(target.id);
-    let langs = [];
-    let chrome = Cc["@mozilla.org/chrome/chrome-registry;1"]
+    const localeList = document.getElementById(target.id);
+    const langs = [];
+    const chrome = Cc["@mozilla.org/chrome/chrome-registry;1"]
       .getService(Ci.nsIXULChromeRegistry)
       .QueryInterface(Ci.nsIToolkitChromeRegistry);
-    let langRegex = /^(([^-]+)-*(.*))$/;
+    const langRegex = /^(([^-]+)-*(.*))$/;
 
-    for (let locale of chrome.getLocalesForPackage("calendar")) {
-      let localeParts = langRegex.exec(locale);
+    for (const locale of chrome.getLocalesForPackage("calendar")) {
+      const localeParts = langRegex.exec(locale);
       let langName = localeParts[2];
 
       try {
@@ -46,12 +50,12 @@ var calendarExtract = {
     }
 
     // sort
-    let pref = "calendar.patterns.last.used.languages";
-    let lastUsedLangs = Services.prefs.getStringPref(pref, "");
+    const pref = "calendar.patterns.last.used.languages";
+    const lastUsedLangs = Services.prefs.getStringPref(pref, "");
 
     langs.sort((a, b) => {
-      let idx_a = lastUsedLangs.indexOf(a[1]);
-      let idx_b = lastUsedLangs.indexOf(b[1]);
+      const idx_a = lastUsedLangs.indexOf(a[1]);
+      const idx_b = lastUsedLangs.indexOf(b[1]);
 
       if (idx_a == -1 && idx_b == -1) {
         return a[0].localeCompare(b[0]);
@@ -66,83 +70,115 @@ var calendarExtract = {
       localeList.lastChild.remove();
     }
 
-    for (let lang of langs) {
+    for (const lang of langs) {
       addMenuItem(localeList, lang[0], lang[1], null);
     }
   },
 
   extractWithLocale(event, isEvent) {
     event.stopPropagation();
-    let locale = event.target.value;
-    this.extractFromEmail(isEvent, true, locale);
+    const locale = event.target.value;
+    this.extractFromEmail(null, isEvent, true, locale);
   },
 
-  extractFromEmail(isEvent, fixedLang, fixedLocale) {
-    // TODO would be nice to handle multiple selected messages,
-    // though old conversion functionality didn't
-    let message = gFolderDisplay.selectedMessage;
-    let messenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
-    let listener = Cc["@mozilla.org/network/sync-stream-listener;1"].createInstance(
-      Ci.nsISyncStreamListener
-    );
-    let uri = message.folder.getUriForMsg(message);
-    messenger.messageServiceFromURI(uri).streamMessage(uri, listener, null, null, false, "");
-    let folder = message.folder;
-    let title = message.mime2DecodedSubject;
-    let content = folder.getMsgTextFromStream(
-      listener.inputStream,
-      message.Charset,
-      65536,
-      32768,
-      false,
-      true,
-      {}
-    );
+  async extractFromEmail(message, isEvent, fixedLang, fixedLocale) {
+    const folder = message.folder;
+    const title = message.mime2DecodedSubject;
+
+    let content = "";
+    await new Promise((resolve, reject) => {
+      const listener = {
+        QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+        onDataAvailable(request, inputStream, offset, count) {
+          const text = folder.getMsgTextFromStream(
+            inputStream,
+            message.charset,
+            count, // bytesToRead
+            32768, // maxOutputLen
+            false, // compressQuotes
+            true, // stripHTMLTags
+            {} // out contentType
+          );
+          // If we ever got text, we're good. Ignore further chunks.
+          content ||= text;
+        },
+        onStartRequest(request) {},
+        onStopRequest(request, statusCode) {
+          if (!Components.isSuccessCode(statusCode)) {
+            reject(new Error(statusCode));
+          }
+          resolve();
+        },
+      };
+      const uri = message.folder.getUriForMsg(message);
+      MailServices.messageServiceFromURI(uri).streamMessage(uri, listener, null, null, false, "");
+    });
+
     cal.LOG("[calExtract] Original email content: \n" + title + "\r\n" + content);
-    let date = new Date(message.date / 1000);
-    let time = new Date().getTime();
+    const date = new Date(message.date / 1000);
+    const time = new Date().getTime();
 
-    let locale = Services.locale.requestedLocale;
-    let dayStart = Services.prefs.getIntPref("calendar.view.daystarthour", 6);
-    let extractor;
-
-    if (fixedLang) {
-      extractor = new Extractor(fixedLocale, dayStart);
-    } else {
-      extractor = new Extractor(locale, dayStart, false);
-    }
-
-    let item;
-    item = isEvent ? new CalEvent() : new CalTodo();
+    const item = isEvent ? new CalEvent() : new CalTodo();
     item.title = message.mime2DecodedSubject;
     item.calendar = getSelectedCalendar();
     item.setProperty("DESCRIPTION", content);
     item.setProperty("URL", `mid:${message.messageId}`);
     cal.dtz.setDefaultStartEndHour(item);
     cal.alarms.setDefaultValues(item);
-    let sel = getMessagePaneBrowser().contentWindow?.getSelection();
-    // Thunderbird Conversations might be installed
-    if (sel === null) {
+    const tabmail = document.getElementById("tabmail");
+    const messagePaneBrowser =
+      tabmail?.currentTabInfo.chromeBrowser.contentWindow.visibleMessagePaneBrowser?.() ||
+      tabmail?.currentAboutMessage?.getMessagePaneBrowser() ||
+      document.getElementById("messageBrowser")?.contentWindow?.getMessagePaneBrowser();
+    let sel = messagePaneBrowser?.contentWindow?.getSelection();
+    // Check if there's an iframe with a selection (e.g. Thunderbird Conversations)
+    if (sel && sel.type !== "Range") {
       try {
-        sel = document
-          .getElementById("multimessage")
-          .contentDocument.querySelector(".iframe-container iframe")
+        sel = messagePaneBrowser?.contentDocument
+          .querySelector("iframe")
           .contentDocument.getSelection();
       } catch (ex) {
         // If Thunderbird Conversations is not installed that is fine,
-        // we will just have a null selection.
+        // we will just have an empty or null selection.
       }
     }
-    let collected = extractor.extract(title, content, date, sel);
+
+    let guessed;
+    let endGuess;
+    let extractor;
+    let collected = [];
+    let useService = Services.prefs.getBoolPref("calendar.extract.service.enabled");
+    if (useService) {
+      const result = extractService.extract(content, { now: date });
+      if (!result) {
+        useService = false;
+      } else {
+        guessed = result.startTime;
+        endGuess = result.endTime;
+      }
+    }
+
+    if (!useService) {
+      const locale = Services.locale.requestedLocale;
+      const dayStart = Services.prefs.getIntPref("calendar.view.daystarthour", 6);
+      if (fixedLang) {
+        extractor = new Extractor(fixedLocale, dayStart);
+      } else {
+        extractor = new Extractor(locale, dayStart, false);
+      }
+      collected = extractor.extract(title, content, date, sel);
+    }
 
     // if we only have email date then use default start and end
-    if (collected.length == 1) {
+    if (!useService && collected.length <= 1) {
       cal.LOG("[calExtract] Date and time information was not found in email/selection.");
       createEventWithDialog(null, null, null, null, item);
     } else {
-      let guessed = extractor.guessStart(!isEvent);
-      let endGuess = extractor.guessEnd(guessed, !isEvent);
-      let allDay = (guessed.hour == null || guessed.minute == null) && isEvent;
+      if (!useService) {
+        guessed = extractor.guessStart(!isEvent);
+        endGuess = extractor.guessEnd(guessed, !isEvent);
+      }
+      const allDay = (guessed.hour == null || guessed.minute == null) && isEvent;
 
       if (isEvent) {
         if (guessed.year != null) {
@@ -183,8 +219,8 @@ var calendarExtract = {
           item.endDate.minute = endGuess.minute;
         }
       } else {
-        let dtz = cal.dtz.defaultTimezone;
-        let dueDate = new Date();
+        const dtz = cal.dtz.defaultTimezone;
+        const dueDate = new Date();
         // set default
         dueDate.setHours(0);
         dueDate.setMinutes(0);
@@ -220,66 +256,11 @@ var calendarExtract = {
       }
     }
 
-    let timeSpent = new Date().getTime() - time;
+    const timeSpent = new Date().getTime() - time;
     cal.LOG(
       "[calExtract] Total time spent for conversion (including loading of dictionaries): " +
         timeSpent +
         "ms"
     );
   },
-
-  addListeners() {
-    if (window.top.document.location == "chrome://messenger/content/messenger.xhtml") {
-      // covers initial load and folder change
-      let folderTree = document.getElementById("folderTree");
-      folderTree.addEventListener("select", this.setState);
-
-      // covers selection change in a folder
-      let msgTree = window.top.GetThreadTree();
-      msgTree.addEventListener("select", this.setState);
-
-      window.addEventListener("unload", () => {
-        folderTree.removeEventListener("select", this.setState);
-        msgTree.removeEventListener("select", this.setState);
-      });
-    }
-  },
-
-  setState() {
-    let eventButton = document.getElementById("extractEventButton");
-    let taskButton = document.getElementById("extractTaskButton");
-    let contextMenu = document.getElementById("mailContext-calendar-convert-menu");
-    let contextMenuEvent = document.getElementById("mailContext-calendar-convert-event-menuitem");
-    let contextMenuTask = document.getElementById("mailContext-calendar-convert-task-menuitem");
-    let eventDisabled = gFolderDisplay.selectedCount == 0;
-    let taskDisabled = gFolderDisplay.selectedCount == 0;
-    let contextEventDisabled = false;
-    let contextTaskDisabled = false;
-    let newEvent = document.getElementById("calendar_new_event_command");
-    let newTask = document.getElementById("calendar_new_todo_command");
-
-    if (newEvent.getAttribute("disabled") == "true") {
-      eventDisabled = true;
-      contextEventDisabled = true;
-    }
-
-    if (newTask.getAttribute("disabled") == "true") {
-      taskDisabled = true;
-      contextTaskDisabled = true;
-    }
-
-    if (eventButton) {
-      eventButton.disabled = eventDisabled;
-    }
-    if (taskButton) {
-      taskButton.disabled = taskDisabled;
-    }
-
-    contextMenuEvent.disabled = contextEventDisabled;
-    contextMenuTask.disabled = contextTaskDisabled;
-
-    contextMenu.disabled = contextEventDisabled && contextTaskDisabled;
-  },
 };
-
-window.addEventListener("load", calendarExtract.addListeners.bind(calendarExtract));

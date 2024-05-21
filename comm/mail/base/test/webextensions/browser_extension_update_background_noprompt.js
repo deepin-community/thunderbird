@@ -1,15 +1,12 @@
-const { AddonManagerPrivate } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManagerPrivate } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm",
-  {}
+var { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
-
-hookExtensionsTelemetry();
 AddonTestUtils.hookAMTelemetryEvents();
 
 const ID_PERMS = "update_perms@tests.mozilla.org";
@@ -17,12 +14,12 @@ const ID_ORIGINS = "update_origins@tests.mozilla.org";
 const ID_EXPERIMENT = "experiment_test@tests.mozilla.org";
 
 function getBadgeStatus() {
-  let menuButton = document.getElementById("button-appmenu");
+  const menuButton = document.getElementById("button-appmenu");
   return menuButton.getAttribute("badge-status");
 }
 
 // Set some prefs that apply to all the tests in this file
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       // We don't have pre-pinned certificates for the local mochitest server
@@ -62,7 +59,7 @@ async function testNoPrompt(origUrl, id) {
   );
 
   // Trigger an update check and wait for the update to be applied.
-  let updatePromise = waitForUpdate(addon);
+  const updatePromise = waitForUpdate(addon);
   AddonManagerPrivate.backgroundUpdateCheck();
   await updatePromise;
 
@@ -70,7 +67,7 @@ async function testNoPrompt(origUrl, id) {
   is(getBadgeStatus(), "", "Should not have addon alert badge");
 
   await gCUITestUtils.openMainMenu();
-  let addons = PanelUI.addonNotificationContainer;
+  const addons = PanelUI.addonNotificationContainer;
   is(addons.children.length, 0, "Have 0 updates in the PanelUI menu");
   await gCUITestUtils.hideMainMenu();
 
@@ -104,16 +101,16 @@ async function testNoPrompt(origUrl, id) {
 // Test that an update that adds new non-promptable permissions is just
 // applied without showing a notification dialog.
 add_task(() =>
-  testNoPrompt(`${BASE}/browser_webext_update_perms1.xpi`, ID_PERMS)
+  testNoPrompt(`${BASE}/addons/browser_webext_update_perms1.xpi`, ID_PERMS)
 );
 
 // Test that an update that narrows origin permissions is just applied without
 // showing a notification prompt
 add_task(() =>
-  testNoPrompt(`${BASE}/browser_webext_update_origins1.xpi`, ID_ORIGINS)
+  testNoPrompt(`${BASE}/addons/browser_webext_update_origins1.xpi`, ID_ORIGINS)
 );
 
 // Test that an Experiment is not prompting for additional permissions.
 add_task(() =>
-  testNoPrompt(`${BASE}/browser_webext_experiment.xpi`, ID_EXPERIMENT)
+  testNoPrompt(`${BASE}/addons/browser_webext_experiment.xpi`, ID_EXPERIMENT)
 );

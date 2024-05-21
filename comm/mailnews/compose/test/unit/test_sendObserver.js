@@ -5,8 +5,6 @@
  * This is adapted from test_messageHeaders.js
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var CompFields = CC(
   "@mozilla.org/messengercompose/composefields;1",
   Ci.nsIMsgCompFields
@@ -24,8 +22,8 @@ var observer = {
 };
 
 add_task(async function testObserver() {
-  let fields = new CompFields();
-  let identity = getSmtpIdentity(
+  const fields = new CompFields();
+  const identity = getSmtpIdentity(
     "from@tinderbox.invalid",
     getBasicSmtpServer()
   );

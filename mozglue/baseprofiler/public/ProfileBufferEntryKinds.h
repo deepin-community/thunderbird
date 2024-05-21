@@ -7,6 +7,8 @@
 #ifndef ProfileBufferEntryKinds_h
 #define ProfileBufferEntryKinds_h
 
+#include "mozilla/BaseProfilerUtils.h"
+
 #include <cstdint>
 
 namespace mozilla {
@@ -35,11 +37,12 @@ static constexpr size_t ProfileBufferEntryNumChars = 8;
   MACRO(PauseSampling, double, sizeof(double))                    \
   MACRO(ResumeSampling, double, sizeof(double))                   \
   MACRO(Responsiveness, double, sizeof(double))                   \
-  MACRO(ThreadId, int, sizeof(int))                               \
+  MACRO(ThreadId, ::mozilla::baseprofiler::BaseProfilerThreadId,  \
+        sizeof(::mozilla::baseprofiler::BaseProfilerThreadId))    \
   MACRO(Time, double, sizeof(double))                             \
   MACRO(TimeBeforeCompactStack, double, sizeof(double))           \
+  MACRO(TimeBeforeSameSample, double, sizeof(double))             \
   MACRO(CounterId, void*, sizeof(void*))                          \
-  MACRO(CounterKey, uint64_t, sizeof(uint64_t))                   \
   MACRO(Number, uint64_t, sizeof(uint64_t))                       \
   MACRO(Count, int64_t, sizeof(int64_t))                          \
   MACRO(ProfilerOverheadTime, double, sizeof(double))             \
@@ -56,9 +59,7 @@ static constexpr size_t ProfileBufferEntryNumChars = 8;
 // more efficient kinds of entries (e.g., stack frames could be stored in one
 // bigger entry, instead of multiple `ProfileBufferEntry`s); then we could
 // discard `ProfileBufferEntry` and move this enum to a more appropriate spot.
-using ProfileBufferEntryKindUnderlyingType = uint8_t;
-
-enum class ProfileBufferEntryKind : ProfileBufferEntryKindUnderlyingType {
+enum class ProfileBufferEntryKind : uint8_t {
   INVALID = 0,
 #define KIND(KIND, TYPE, SIZE) KIND,
   FOR_EACH_PROFILE_BUFFER_ENTRY_KIND(KIND)
@@ -74,10 +75,10 @@ enum class ProfileBufferEntryKind : ProfileBufferEntryKindUnderlyingType {
   Marker = LEGACY_LIMIT,
 
   // Entry with "running times", such as CPU usage measurements.
-  // Optional between TimeBeforeCompactStack and CompactStack.
+  // Optional between TimeBeforeX and X.
   RunningTimes,
 
-  // Optional between TimeBeforeCompactStack and CompactStack.
+  // Optional between TimeBeforeX and X.
   UnresponsiveDurationMs,
 
   // Collection of legacy stack entries, must follow a ThreadId and
@@ -86,7 +87,16 @@ enum class ProfileBufferEntryKind : ProfileBufferEntryKindUnderlyingType {
   // CompactStack follows shortly afterwards).
   CompactStack,
 
+  // Indicates that this sample is identical to the previous one, must follow a
+  // ThreadId and TimeBeforeSameSample.
+  SameSample,
+
   MODERN_LIMIT
+};
+
+enum class MarkerPayloadType : uint8_t {
+  Cpp,
+  Rust,
 };
 
 }  // namespace mozilla

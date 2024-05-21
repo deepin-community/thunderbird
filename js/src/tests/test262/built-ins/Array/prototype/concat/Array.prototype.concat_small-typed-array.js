@@ -16,13 +16,13 @@ function concatTypedArray(type, elems, modulo) {
     ta_by_len[i] = items[i] = modulo === false ? i : elems % modulo;
   }
   var ta = new type(items);
-  assert(compareArray([].concat(ta, ta), [ta, ta]));
+  assert.compareArray([].concat(ta, ta), [ta, ta]);
   ta[Symbol.isConcatSpreadable] = true;
-  assert(compareArray([].concat(ta), items));
+  assert.compareArray([].concat(ta), items);
 
-  assert(compareArray([].concat(ta_by_len, ta_by_len), [ta_by_len, ta_by_len]));
+  assert.compareArray([].concat(ta_by_len, ta_by_len), [ta_by_len, ta_by_len]);
   ta_by_len[Symbol.isConcatSpreadable] = true;
-  assert(compareArray([].concat(ta_by_len), items));
+  assert.compareArray([].concat(ta_by_len), items);
 
   // TypedArray with fake `length`.
   ta = new type(1);
@@ -34,16 +34,22 @@ function concatTypedArray(type, elems, modulo) {
     value: 4000
   });
   ta[Symbol.isConcatSpreadable] = true;
-  assert(compareArray([].concat(ta), expected));
+  assert.compareArray([].concat(ta), expected);
 }
 var max = [Math.pow(2, 8), Math.pow(2, 16), Math.pow(2, 32), false, false];
-[
+var TAs = [
   Uint8Array,
   Uint16Array,
   Uint32Array,
   Float32Array,
   Float64Array
-].forEach(function(ctor, i) {
+];
+if (typeof Float16Array !== 'undefined') {
+  max.push(false);
+  TAs.push(Float16Array);
+}
+
+TAs.forEach(function(ctor, i) {
   concatTypedArray(ctor, 1, max[i]);
 });
 

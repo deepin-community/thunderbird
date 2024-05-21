@@ -4,8 +4,8 @@
  * FCC switched off.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var server;
@@ -85,7 +85,7 @@ msll.prototype = {
     } finally {
       server.stop();
 
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(true);
       }
@@ -105,7 +105,7 @@ function OnStopCopy(aStatus) {
     // Check this is false before we start sending
     Assert.equal(msgSendLater.sendingMessages, false);
 
-    let folder = msgSendLater.getUnsentMessagesFolder(identity);
+    const folder = msgSendLater.getUnsentMessagesFolder(identity);
 
     // Check we have a message in the unsent message folder
     Assert.equal(folder.getTotalMessages(false), 1);
@@ -132,7 +132,7 @@ function OnStopCopy(aStatus) {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
@@ -168,7 +168,7 @@ function sendMessageLater() {
 
     server.performTest();
 
-    do_timeout(10000, function() {
+    do_timeout(10000, function () {
       if (!finished) {
         do_throw("Notifications of message send/copy not received");
       }
@@ -180,7 +180,7 @@ function sendMessageLater() {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
@@ -197,8 +197,8 @@ add_task(async function run_the_test() {
 
   MailServices.accounts.setSpecialFolders();
 
-  let account = MailServices.accounts.createAccount();
-  let incomingServer = MailServices.accounts.createIncomingServer(
+  const account = MailServices.accounts.createAccount();
+  const incomingServer = MailServices.accounts.createIncomingServer(
     "test",
     "localhost",
     "pop3"

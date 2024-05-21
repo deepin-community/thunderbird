@@ -3,35 +3,30 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * Tests ExtensionSupport.jsm functions.
+ * Tests ExtensionSupport.sys.mjs functions.
  */
 
-/* globals gFolderTreeView */
-
-var {
-  close_address_book_window,
-  open_address_book_window,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AddressBookHelpers.jsm"
-);
-var { close_compose_window, open_compose_new_mail } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ComposeHelpers.jsm"
+var { close_compose_window, open_compose_new_mail } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
+var { promise_new_window } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
-var { ExtensionSupport } = ChromeUtils.import(
-  "resource:///modules/ExtensionSupport.jsm"
+var { ExtensionSupport } = ChromeUtils.importESModule(
+  "resource:///modules/ExtensionSupport.sys.mjs"
 );
 
 /**
  * Bug 1450288
  * Test ExtensionSupport.registerWindowListener and ExtensionSupport.unregisterWindowListener.
  */
-add_task(function test_windowListeners() {
-  gFolderTreeView.selectFolder(gFolderTreeView._enumerateFolders[1]);
+add_task(async function test_windowListeners() {
   // There may be some pre-existing listeners already set up, e.g. mozmill ones.
-  let originalListenerCount = ExtensionSupport.registeredWindowListenerCount;
+  const originalListenerCount = ExtensionSupport.registeredWindowListenerCount;
 
-  let addonRunCount = [];
+  const addonRunCount = [];
   addonRunCount.load = new Map();
   addonRunCount.unload = new Map();
 
@@ -79,7 +74,7 @@ add_task(function test_windowListeners() {
     })
   );
 
-  let cwc = open_compose_new_mail();
+  let cwc = await open_compose_new_mail();
 
   Assert.equal(addonCount("test-addon1", "load"), 3);
   Assert.equal(addonCount("test-addon2", "load"), 1);
@@ -117,34 +112,38 @@ add_task(function test_windowListeners() {
 
   Assert.equal(addonCount("test-addon4", "load"), 1);
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   Assert.equal(addonCount("test-addon1", "unload"), 1);
   Assert.equal(addonCount("test-addon2", "unload"), 1);
   Assert.equal(addonCount("test-addon3", "unload"), 0);
   Assert.equal(addonCount("test-addon4", "unload"), 1);
 
-  cwc = open_compose_new_mail();
+  cwc = await open_compose_new_mail();
 
   Assert.equal(addonCount("test-addon1", "load"), 4);
   // Addon3 didn't listen to the new compose window, addon2 did.
   Assert.equal(addonCount("test-addon2", "load"), 2);
   Assert.equal(addonCount("test-addon3", "load"), 1);
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   Assert.equal(addonCount("test-addon1", "unload"), 2);
   Assert.equal(addonCount("test-addon2", "unload"), 2);
   Assert.equal(addonCount("test-addon3", "unload"), 0);
 
-  let abc = open_address_book_window();
+  const activityManagerPromise = promise_new_window("Activity:Manager");
+  window.openActivityMgr();
+  const amWin = await activityManagerPromise;
+
   // Only Addon1 listens to any window.
   Assert.equal(addonCount("test-addon1", "load"), 5);
   Assert.equal(addonCount("test-addon2", "load"), 2);
   Assert.equal(addonCount("test-addon3", "load"), 1);
   Assert.equal(addonCount("test-addon4", "load"), 1);
 
-  close_address_book_window(abc);
+  await BrowserTestUtils.closeWindow(amWin);
+  await TestUtils.waitForTick();
 
   Assert.equal(addonCount("test-addon1", "unload"), 3);
   Assert.equal(addonCount("test-addon2", "unload"), 2);
@@ -166,11 +165,4 @@ add_task(function test_windowListeners() {
     ExtensionSupport.registeredWindowListenerCount,
     originalListenerCount
   );
-});
-
-registerCleanupFunction(() => {
-  // Some tests that open new windows don't return focus to the main window
-  // in a way that satisfies mochitest, and the test times out.
-  Services.focus.focusedWindow = window;
-  window.gFolderDisplay.tree.focus();
 });

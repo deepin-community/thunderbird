@@ -6,23 +6,21 @@
 
 #include "frontend/ForOfLoopControl.h"
 
-#include "jsapi.h"  // CompletionKind
-
 #include "frontend/BytecodeEmitter.h"  // BytecodeEmitter
-#include "frontend/EmitterScope.h"     // EmitterScope
 #include "frontend/IfEmitter.h"        // InternalIfEmitter
-#include "vm/JSScript.h"               // TryNoteKind::ForOfIterClose
+#include "vm/CompletionKind.h"         // CompletionKind
 #include "vm/Opcodes.h"                // JSOp
 
 using namespace js;
 using namespace js::frontend;
 
 ForOfLoopControl::ForOfLoopControl(BytecodeEmitter* bce, int32_t iterDepth,
-                                   bool allowSelfHosted, IteratorKind iterKind)
+                                   SelfHostedIter selfHostedIter,
+                                   IteratorKind iterKind)
     : LoopControl(bce, StatementKind::ForOfLoop),
       iterDepth_(iterDepth),
       numYieldsAtBeginCodeNeedingIterClose_(UINT32_MAX),
-      allowSelfHosted_(allowSelfHosted),
+      selfHostedIter_(selfHostedIter),
       iterKind_(iterKind) {}
 
 bool ForOfLoopControl::emitBeginCodeNeedingIteratorClose(BytecodeEmitter* bce) {
@@ -40,85 +38,66 @@ bool ForOfLoopControl::emitBeginCodeNeedingIteratorClose(BytecodeEmitter* bce) {
 }
 
 bool ForOfLoopControl::emitEndCodeNeedingIteratorClose(BytecodeEmitter* bce) {
-  if (!tryCatch_->emitCatch()) {
-    //              [stack] ITER ... EXCEPTION
+  if (!tryCatch_->emitCatch(TryEmitter::ExceptionStack::Yes)) {
+    //              [stack] ITER ... EXCEPTION STACK
     return false;
   }
 
   unsigned slotFromTop = bce->bytecodeSection().stackDepth() - iterDepth_;
   if (!bce->emitDupAt(slotFromTop)) {
-    //              [stack] ITER ... EXCEPTION ITER
-    return false;
-  }
-
-  // If ITER is undefined, it means the exception is thrown by
-  // IteratorClose for non-local jump, and we should't perform
-  // IteratorClose again here.
-  if (!bce->emit1(JSOp::Undefined)) {
-    //              [stack] ITER ... EXCEPTION ITER UNDEF
-    return false;
-  }
-  if (!bce->emit1(JSOp::StrictNe)) {
-    //              [stack] ITER ... EXCEPTION NE
-    return false;
-  }
-
-  InternalIfEmitter ifIteratorIsNotClosed(bce);
-  if (!ifIteratorIsNotClosed.emitThen()) {
-    //              [stack] ITER ... EXCEPTION
-    return false;
-  }
-
-  MOZ_ASSERT(slotFromTop ==
-             unsigned(bce->bytecodeSection().stackDepth() - iterDepth_));
-  if (!bce->emitDupAt(slotFromTop)) {
-    //              [stack] ITER ... EXCEPTION ITER
+    //              [stack] ITER ... EXCEPTION STACK ITER
     return false;
   }
   if (!emitIteratorCloseInInnermostScopeWithTryNote(bce,
                                                     CompletionKind::Throw)) {
-    return false;  // ITER ... EXCEPTION
+    return false;  // ITER ... EXCEPTION STACK
   }
 
-  if (!ifIteratorIsNotClosed.emitEnd()) {
-    //              [stack] ITER ... EXCEPTION
-    return false;
-  }
-
-  if (!bce->emit1(JSOp::Throw)) {
+  if (!bce->emit1(JSOp::ThrowWithStack)) {
     //              [stack] ITER ...
     return false;
   }
 
   // If any yields were emitted, then this for-of loop is inside a star
   // generator and must handle the case of Generator.return. Like in
-  // yield*, it is handled with a finally block.
+  // yield*, it is handled with a finally block. If the generator is
+  // closing, then the exception/resumeindex value (third value on
+  // the stack) will be a magic JS_GENERATOR_CLOSING value.
+  // TODO: Refactor this to eliminate the swaps.
   uint32_t numYieldsEmitted = bce->bytecodeSection().numYields();
   if (numYieldsEmitted > numYieldsAtBeginCodeNeedingIterClose_) {
     if (!tryCatch_->emitFinally()) {
       return false;
     }
-
+    //              [stack] ITER ... FVALUE FSTACK FTHROWING
     InternalIfEmitter ifGeneratorClosing(bce);
+    if (!bce->emitPickN(2)) {
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE
+      return false;
+    }
     if (!bce->emit1(JSOp::IsGenClosing)) {
-      //            [stack] ITER ... FTYPE FVALUE CLOSING
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE CLOSING
       return false;
     }
     if (!ifGeneratorClosing.emitThen()) {
-      //            [stack] ITER ... FTYPE FVALUE
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE
       return false;
     }
     if (!bce->emitDupAt(slotFromTop + 1)) {
-      //            [stack] ITER ... FTYPE FVALUE ITER
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE ITER
       return false;
     }
     if (!emitIteratorCloseInInnermostScopeWithTryNote(bce,
                                                       CompletionKind::Normal)) {
-      //            [stack] ITER ... FTYPE FVALUE
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE
       return false;
     }
     if (!ifGeneratorClosing.emitEnd()) {
-      //            [stack] ITER ... FTYPE FVALUE
+      //            [stack] ITER ... FSTACK FTHROWING FVALUE
+      return false;
+    }
+    if (!bce->emitUnpickN(2)) {
+      //            [stack] ITER ... FVALUE FSTACK FTHROWING
       return false;
     }
   }
@@ -149,7 +128,7 @@ bool ForOfLoopControl::emitIteratorCloseInScope(
     BytecodeEmitter* bce, EmitterScope& currentScope,
     CompletionKind completionKind /* = CompletionKind::Normal */) {
   return bce->emitIteratorCloseInScope(currentScope, iterKind_, completionKind,
-                                       allowSelfHosted_);
+                                       selfHostedIter_);
 }
 
 // Since we're in the middle of emitting code that will leave
@@ -183,20 +162,14 @@ bool ForOfLoopControl::emitPrepareForNonLocalJumpFromScope(
     return false;
   }
 
-  // Clear ITER slot on the stack to tell catch block to avoid performing
-  // IteratorClose again.
-  if (!bce->emit1(JSOp::Undefined)) {
-    //              [stack] ITER UNDEF
-    return false;
-  }
-  if (!bce->emit1(JSOp::Swap)) {
-    //              [stack] UNDEF ITER
+  if (!bce->emit1(JSOp::Dup)) {
+    //              [stack] ITER ITER
     return false;
   }
 
   *tryNoteStart = bce->bytecodeSection().offset();
   if (!emitIteratorCloseInScope(bce, currentScope, CompletionKind::Normal)) {
-    //              [stack] UNDEF
+    //              [stack] ITER
     return false;
   }
 
@@ -205,11 +178,11 @@ bool ForOfLoopControl::emitPrepareForNonLocalJumpFromScope(
     // loop that will pop the next method, the iterator, and the
     // value, so push two undefineds to balance the stack.
     if (!bce->emit1(JSOp::Undefined)) {
-      //            [stack] UNDEF UNDEF
+      //            [stack] ITER UNDEF
       return false;
     }
     if (!bce->emit1(JSOp::Undefined)) {
-      //            [stack] UNDEF UNDEF UNDEF
+      //            [stack] ITER UNDEF UNDEF
       return false;
     }
   } else {

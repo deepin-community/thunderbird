@@ -78,6 +78,7 @@ policy-InstallAddonsPermission = לאפשר לאתרים מסוימים להתק
 
 ## Do not translate "SameSite", it's the name of a cookie attribute.
 
+
 ##
 
 policy-LocalFileLinks = לאפשר לאתרים מסויימים לקשר לקבצים מקומיים.

@@ -825,6 +825,43 @@ class ArrayRefBase : public ObjectBase<TypedObject<JNIType>, JNIType> {
     return Base::LocalRef::Adopt(jenv, result);
   }
 
+  static typename Base::LocalRef New(const ElementType* data, size_t length,
+                                     const fallible_t&) {
+    using JNIElemType = typename detail::TypeAdapter<ElementType>::JNIType;
+    static_assert(sizeof(ElementType) == sizeof(JNIElemType),
+                  "Size of native type must match size of JNI type");
+    JNIEnv* const jenv = mozilla::jni::GetEnvForThread();
+    auto result = (jenv->*detail::TypeAdapter<ElementType>::NewArray)(length);
+    if (jenv->ExceptionCheck()) {
+      if (!IsOOMException(jenv)) {
+        // This exception isn't excepted due not to OOM. This is unrecoverable
+        // error.
+        MOZ_CATCH_JNI_EXCEPTION(jenv);
+      }
+#ifdef MOZ_CHECK_JNI
+      jenv->ExceptionDescribe();
+#endif
+      jenv->ExceptionClear();
+      return Base::LocalRef::Adopt(jenv, nullptr);
+    }
+    (jenv->*detail::TypeAdapter<ElementType>::SetArray)(
+        result, jsize(0), length, reinterpret_cast<const JNIElemType*>(data));
+    if (jenv->ExceptionCheck()) {
+      if (!IsOOMException(jenv)) {
+        // This exception isn't excepted due not to OOM. This is unrecoverable
+        // error.
+        MOZ_CATCH_JNI_EXCEPTION(jenv);
+      }
+#ifdef MOZ_CHECK_JNI
+      jenv->ExceptionDescribe();
+#endif
+      jenv->ExceptionClear();
+      jenv->DeleteLocalRef(result);
+      return Base::LocalRef::Adopt(jenv, nullptr);
+    }
+    return Base::LocalRef::Adopt(jenv, result);
+  }
+
   size_t Length() const {
     const size_t ret = Base::Env()->GetArrayLength(Base::Instance());
     MOZ_CATCH_JNI_EXCEPTION(Base::Env());
@@ -937,6 +974,24 @@ class ByteBuffer : public ObjectBase<ByteBuffer, jobject> {
         LocalRef::Adopt(env, env->NewDirectByteBuffer(data, jlong(capacity)));
     MOZ_CATCH_JNI_EXCEPTION(env);
     return ret;
+  }
+
+  static LocalRef New(void* data, size_t capacity, const fallible_t&) {
+    JNIEnv* const env = GetEnvForThread();
+    const jobject result = env->NewDirectByteBuffer(data, jlong(capacity));
+    if (env->ExceptionCheck()) {
+      if (!IsOOMException(env)) {
+        // This exception isn't excepted due not to OOM. This is unrecoverable
+        // error.
+        MOZ_CATCH_JNI_EXCEPTION(env);
+      }
+#ifdef MOZ_CHECK_JNI
+      env->ExceptionDescribe();
+#endif
+      env->ExceptionClear();
+      return LocalRef::Adopt(env, nullptr);
+    }
+    return LocalRef::Adopt(env, result);
   }
 
   void* Address() {

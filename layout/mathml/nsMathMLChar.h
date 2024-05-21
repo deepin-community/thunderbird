@@ -18,15 +18,15 @@
 class gfxContext;
 class nsGlyphTable;
 class nsIFrame;
-class nsDisplayListBuilder;
-class nsDisplayListSet;
 class nsPresContext;
 struct nsBoundingMetrics;
 struct nsFont;
 
 namespace mozilla {
+class nsDisplayListBuilder;
+class nsDisplayListSet;
 class ComputedStyle;
-}
+}  // namespace mozilla
 
 // Hints for Stretch() to indicate criteria for stretching
 enum {
@@ -40,11 +40,10 @@ enum {
   NS_STRETCH_LARGER = 0x08,   // don't stretch less than requested size
   // A largeop in displaystyle
   NS_STRETCH_LARGEOP = 0x10,
-  NS_STRETCH_INTEGRAL = 0x20,
 
   // Intended for internal use:
   // Find the widest metrics that might be returned from a vertical stretch
-  NS_STRETCH_MAXWIDTH = 0x40
+  NS_STRETCH_MAXWIDTH = 0x20
 };
 
 // A single glyph in our internal representation is either
@@ -95,8 +94,8 @@ class nsMathMLChar {
   // not a virtual destructor: this class is not intended to be subclassed
   ~nsMathMLChar();
 
-  void Display(nsDisplayListBuilder* aBuilder, nsIFrame* aForFrame,
-               const nsDisplayListSet& aLists, uint32_t aIndex,
+  void Display(mozilla::nsDisplayListBuilder* aBuilder, nsIFrame* aForFrame,
+               const mozilla::nsDisplayListSet& aLists, uint32_t aIndex,
                const nsRect* aSelectedRect = nullptr);
 
   void PaintForeground(nsIFrame* aForFrame, gfxContext& aRenderingContext,

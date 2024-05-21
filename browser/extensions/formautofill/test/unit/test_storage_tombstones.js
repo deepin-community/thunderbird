@@ -5,9 +5,9 @@
 "use strict";
 
 let FormAutofillStorage;
-add_task(async function setup() {
-  ({ FormAutofillStorage } = ChromeUtils.import(
-    "resource://autofill/FormAutofillStorage.jsm"
+add_setup(async () => {
+  ({ FormAutofillStorage } = ChromeUtils.importESModule(
+    "resource://autofill/FormAutofillStorage.sys.mjs"
   ));
 });
 
@@ -44,7 +44,7 @@ let do_check_tombstone_record = profile => {
 
 // Like add_task, but actually adds 2 - one for addresses and one for cards.
 function add_storage_task(test_function) {
-  add_task(async function() {
+  add_task(async function () {
     let path = getTempFile(TEST_STORE_FILE_NAME).path;
     let profileStorage = new FormAutofillStorage(path);
     let testCC1 = Object.assign({}, TEST_CC_1);
@@ -109,7 +109,7 @@ add_storage_task(async function test_simple_synctombstone(storage, record) {
   do_check_tombstone_record(tombstoneInDisk);
 });
 
-add_storage_task(async function test_add_tombstone(storage, record) {
+add_storage_task(async function test_add_tombstone(storage, _record) {
   info("Should be able to add a new tombstone");
   let guid = await storage.add({ guid: "test-guid-1", deleted: true });
 
@@ -136,7 +136,7 @@ add_storage_task(async function test_add_tombstone(storage, record) {
 
 add_storage_task(async function test_add_tombstone_without_guid(
   storage,
-  record
+  _record
 ) {
   info("Should not be able to add a new tombstone without specifying the guid");
   await Assert.rejects(storage.add({ deleted: true }), /Record missing GUID/);
@@ -164,7 +164,7 @@ add_storage_task(async function test_add_tombstone_existing_guid(
   );
 });
 
-add_storage_task(async function test_update_tombstone(storage, record) {
+add_storage_task(async function test_update_tombstone(storage, _record) {
   info("Updating a tombstone should fail");
   let guid = await storage.add({ guid: "test-guid-1", deleted: true });
   await Assert.rejects(storage.update(guid, {}), /No matching record./);
@@ -172,7 +172,7 @@ add_storage_task(async function test_update_tombstone(storage, record) {
 
 add_storage_task(async function test_remove_existing_tombstone(
   storage,
-  record
+  _record
 ) {
   info("Removing a record that's already a tombstone should be a no-op");
   let guid = await storage.add({

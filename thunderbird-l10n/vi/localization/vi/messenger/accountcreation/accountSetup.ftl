@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Tên của bạn, như được hiển thị cho những người khác
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Vui lòng nhập tên của bạn
 account-setup-email-label = Địa chỉ email
     .accesskey = E
 account-setup-email-input =
@@ -33,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Địa chỉ email hiện tại của bạn
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Địa chỉ email không hợp lệ
 account-setup-password-label = Mật khẩu
     .accesskey = P
     .title = Tùy chọn, sẽ chỉ được sử dụng để xác thực tên người dùng
 account-provisioner-button = Tạo một địa chỉ email mới
     .accesskey = G
-account-setup-password-toggle =
-    .title = Hiển thị/ẩn mật khẩu
 account-setup-password-toggle-show =
     .title = Hiển thị mật khẩu dưới dạng văn bản rõ ràng
 account-setup-password-toggle-hide =
@@ -125,21 +123,14 @@ account-setup-results-area-title =
     { $count ->
        *[other] Các cấu hình có sẵn
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Giữ cho các thư mục và email của bạn được đồng bộ hóa trên máy chủ của bạn
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Giữ các thư mục và email của bạn trên máy tính của bạn
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Sử dụng máy chủ Microsoft Exchange hoặc các dịch vụ đám mây Office365
 account-setup-incoming-title = Hộp thư đến
 account-setup-outgoing-title = Hộp thư đi
 account-setup-username-title = Tên người dùng
 account-setup-exchange-title = Máy chủ
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Không mã hóa
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -156,15 +147,13 @@ account-setup-credentials-incomplete = Quá trình xác thực thất bại. Th�
 account-setup-credentials-wrong = Quá trình xác thực thất bại. Vui lòng kiểm tra tên người dùng và mật khẩu
 account-setup-find-settings-failed = { -brand-short-name } không tìm thấy cài đặt cho tài khoản email của bạn
 account-setup-exchange-config-unverifiable = Không thể xác minh cấu hình. Nếu tên người dùng và mật khẩu của bạn chính xác, có khả năng quản trị viên máy chủ đã vô hiệu hóa cấu hình đã chọn cho tài khoản của bạn. Hãy thử chọn một giao thức khác.
+account-setup-provisioner-error = Đã xảy ra lỗi khi thiết lập tài khoản mới của bạn trong { -brand-short-name }. Vui lòng thử thiết lập tài khoản của bạn theo cách thủ công bằng thông tin đăng nhập của bạn.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Cài đặt máy chủ
 account-setup-incoming-server-legend = Máy chủ nhận thư
 account-setup-protocol-label = Giao thức:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Tên máy chủ:
 account-setup-port-label = Cổng:
     .title = Đặt cổng thành 0 để tự động phát hiện
@@ -177,7 +166,7 @@ account-setup-outgoing-server-legend = Máy chủ gửi thư
 ssl-autodetect-option = Tự động phát hiện
 ssl-no-authentication-option = Không xác thực
 ssl-cleartext-password-option = Mật khẩu bình thường
-ssl-encrypted-password-option = Mật khẩu mã hóa
+ssl-encrypted-password-option = Mật khẩu được mã hóa
 
 ## Incoming/Outgoing SSL options
 
@@ -287,6 +276,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Màu
 account-setup-calendar-refresh-label = Làm mới
 account-setup-calendar-refresh-manual = Thủ công
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
        *[other] Mỗi { $count } phút một lần

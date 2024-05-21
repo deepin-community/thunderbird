@@ -27,7 +27,7 @@ class nsMsgXFVirtualFolderDBView : public nsMsgSearchDBView {
   }
   NS_IMETHOD Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
                   nsMsgViewSortOrderValue sortOrder,
-                  nsMsgViewFlagsTypeValue viewFlags, int32_t* pCount) override;
+                  nsMsgViewFlagsTypeValue viewFlags) override;
   NS_IMETHOD CloneDBView(nsIMessenger* aMessengerInstance,
                          nsIMsgWindow* aMsgWindow,
                          nsIMsgDBViewCommandUpdater* aCmdUpdater,
@@ -40,7 +40,8 @@ class nsMsgXFVirtualFolderDBView : public nsMsgSearchDBView {
   NS_IMETHOD GetViewType(nsMsgViewTypeValue* aViewType) override;
   NS_IMETHOD DoCommand(nsMsgViewCommandTypeValue command) override;
   NS_IMETHOD SetViewFlags(nsMsgViewFlagsTypeValue aViewFlags) override;
-  NS_IMETHOD OnHdrPropertyChanged(nsIMsgDBHdr* aHdrToChange, bool aPreChange,
+  NS_IMETHOD OnHdrPropertyChanged(nsIMsgDBHdr* aHdrToChange,
+                                  const nsACString& property, bool aPreChange,
                                   uint32_t* aStatus,
                                   nsIDBChangeListener* aInstigator) override;
   NS_IMETHOD GetMsgFolder(nsIMsgFolder** aMsgFolder) override;
@@ -55,8 +56,6 @@ class nsMsgXFVirtualFolderDBView : public nsMsgSearchDBView {
  protected:
   virtual nsresult GetMessageEnumerator(nsIMsgEnumerator** enumerator) override;
 
-  // array index of next folder with cached hits to deal with.
-  uint32_t m_cachedFolderArrayIndex;
   nsCOMArray<nsIMsgFolder> m_foldersSearchingOver;
   nsCOMArray<nsIMsgDBHdr> m_hdrHits;
   nsCOMPtr<nsIMsgFolder> m_curFolderGettingHits;

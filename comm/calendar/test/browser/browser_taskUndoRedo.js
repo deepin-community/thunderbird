@@ -2,25 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-"use-strict";
+"use strict";
 
 /**
  * Tests for ensuring the undo/redo options are enabled properly when
  * manipulating tasks.
  */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { mailTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MailTestUtils.sys.mjs"
+);
 
-var { mailTestUtils } = ChromeUtils.import("resource://testing-common/mailnews/MailTestUtils.jsm");
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalTodo: "resource:///modules/CalTodo.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalTodo: "resource:///modules/CalTodo.sys.mjs",
+  CalTransactionManager: "resource:///modules/CalTransactionManager.sys.mjs",
 });
 
-const calendar = CalendarTestUtils.createProxyCalendar("Undo Redo Test", "memory");
-const calTransManager = Cc["@mozilla.org/calendar/transactionmanager;1"].getService(
-  Ci.calITransactionManager
-).wrappedJSObject;
+const calendar = CalendarTestUtils.createCalendar("Undo Redo Test", "memory");
+const calTransManager = CalTransactionManager.getInstance();
 
 /**
  * Checks the value of the "disabled" property for items in either the "Edit"
@@ -32,30 +31,14 @@ const calTransManager = Cc["@mozilla.org/calendar/transactionmanager;1"].getServ
  *                               bar, if "appmenu" then the app menu.
  */
 async function isDisabled(element) {
-  let targetMenu;
-  if (element.id.startsWith("menu")) {
-    targetMenu = document.getElementById("menu_EditPopup");
+  const targetMenu = document.getElementById("menu_EditPopup");
 
-    let shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("menu_Edit"), {});
-    await shownPromise;
-  } else if (element.id.startsWith("appmenu")) {
-    targetMenu = document.getElementById("appMenu-popup");
+  const shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("menu_Edit"), {});
+  await shownPromise;
 
-    let shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("button-appmenu"), {});
-    await shownPromise;
-
-    let viewShownPromise = BrowserTestUtils.waitForEvent(
-      document.getElementById("appMenu-editView"),
-      "ViewShown"
-    );
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("appmenu-edit-button"), {});
-    await viewShownPromise;
-  }
-
-  let hiddenPromise = BrowserTestUtils.waitForEvent(targetMenu, "popuphidden");
-  let status = element.disabled;
+  const hiddenPromise = BrowserTestUtils.waitForEvent(targetMenu, "popuphidden");
+  const status = element.disabled;
   EventUtils.synthesizeKey("VK_ESCAPE");
   await hiddenPromise;
   return status;
@@ -66,8 +49,8 @@ async function isDisabled(element) {
  * tests are unhindered.
  */
 function clearTransactions() {
-  calTransManager.transactionManager.clearUndoStack();
-  calTransManager.batchTransactions = [];
+  calTransManager.undoStack = [];
+  calTransManager.redoStack = [];
 }
 
 /**
@@ -77,22 +60,22 @@ function clearTransactions() {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function taskAddUndoRedoTask(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let newBtn = document.getElementById("task-newtask-button");
-  let windowPromise = CalendarTestUtils.waitForEventDialog("edit");
+  const newBtn = document.getElementById("sidePanelNewTask");
+  const windowPromise = CalendarTestUtils.waitForEventDialog("edit");
   EventUtils.synthesizeMouseAtCenter(newBtn, {});
 
-  let win = await windowPromise;
-  let iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
+  const win = await windowPromise;
+  const iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
   await CalendarTestUtils.items.setData(win, iframeWin, { title: "New Task" });
   await CalendarTestUtils.items.saveAndCloseItemDialog(win);
 
-  let tree = window.document.querySelector("#calendar-task-tree");
-  let refreshPromise = BrowserTestUtils.waitForEvent(tree, "refresh");
+  const tree = document.querySelector("#calendar-task-tree");
+  const refreshPromise = BrowserTestUtils.waitForEvent(tree, "refresh");
   tree.refresh();
   await refreshPromise;
 
@@ -115,7 +98,7 @@ async function taskAddUndoRedoTask(undoId, redoId) {
     `${redoId} did not re-create task in time`
   );
 
-  let task = tree.getTaskAtRow(0);
+  const task = tree.getTaskAtRow(0);
   Assert.equal(task.title, "New Task", `#${redoId} redos task creation`);
   await calendar.deleteItem(task);
   clearTransactions();
@@ -128,26 +111,26 @@ async function taskAddUndoRedoTask(undoId, redoId) {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function testModifyUndoRedoTask(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let task = new CalTodo();
+  const task = new CalTodo();
   task.title = "Modifiable Task";
   task.entryDate = cal.dtz.now();
   await calendar.addItem(task);
 
-  let tree = window.document.querySelector("#calendar-task-tree");
+  const tree = document.querySelector("#calendar-task-tree");
   let refreshPromise = BrowserTestUtils.waitForEvent(tree, "refresh");
   tree.refresh();
   await refreshPromise;
 
-  let windowPromise = CalendarTestUtils.waitForEventDialog("edit");
+  const windowPromise = CalendarTestUtils.waitForEventDialog("edit");
   mailTestUtils.treeClick(EventUtils, window, tree, 0, 1, { clickCount: 2 });
 
-  let win = await windowPromise;
-  let iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
+  const win = await windowPromise;
+  const iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
   await CalendarTestUtils.items.setData(win, iframeWin, { title: "Modified Task" });
   await CalendarTestUtils.items.saveAndCloseItemDialog(win);
 
@@ -184,19 +167,19 @@ async function testModifyUndoRedoTask(undoId, redoId) {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function testDeleteUndoRedoTask(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let task = new CalTodo();
+  const task = new CalTodo();
   task.title = "Deletable Task";
   task.startDate = cal.dtz.now();
   task.entryDate = cal.dtz.now();
   await calendar.addItem(task);
 
-  let tree = window.document.querySelector("#calendar-task-tree");
-  let refreshPromise = BrowserTestUtils.waitForEvent(tree, "refresh");
+  const tree = document.querySelector("#calendar-task-tree");
+  const refreshPromise = BrowserTestUtils.waitForEvent(tree, "refresh");
   tree.refresh();
   await refreshPromise;
   Assert.equal(tree.view.rowCount, 1);
@@ -231,21 +214,14 @@ async function testDeleteUndoRedoTask(undoId, redoId) {
 /**
  * Ensure the menu bar is visible and navigate to the task view.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   registerCleanupFunction(() => {
-    CalendarTestUtils.removeProxyCalendar(calendar);
+    CalendarTestUtils.removeCalendar(calendar);
   });
 
   clearTransactions();
-  document.getElementById("mail-toolbar-menubar2").setAttribute("autohide", null);
+  document.getElementById("toolbar-menubar").setAttribute("autohide", null);
   await openTasksTab();
-});
-
-/**
- * Tests the app menu's undo/redo after adding an event.
- */
-add_task(async function testAppMenuAddTaskUndoRedo() {
-  return taskAddUndoRedoTask("appmenu-editmenu-undo", "appmenu-editmenu-redo");
 });
 
 /**
@@ -256,25 +232,11 @@ add_task(async function testMenuBarAddTaskUndoRedo() {
 }).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
 
 /**
- * Tests the app menu's undo/redo after modifying an event.
- */
-add_task(async function testAppMenuModifyTaskUndoRedo() {
-  return testModifyUndoRedoTask("appmenu-editmenu-undo", "appmenu-editmenu-redo");
-});
-
-/**
  * Tests the menu bar's undo/redo after modifying an event.
  */
 add_task(async function testMenuBarModifyTaskUndoRedo() {
   return testModifyUndoRedoTask("menu_undo", "menu_redo");
 }).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
-
-/**
- * Tests the app menu's undo/redo after deleting an event.
- */
-add_task(async function testAppMenuDeleteTaskUndoRedo() {
-  return testDeleteUndoRedoTask("appmenu-editmenu-undo", "appmenu-editmenu-redo");
-});
 
 /**
  * Tests the menu bar's undo/redo after deleting an event.

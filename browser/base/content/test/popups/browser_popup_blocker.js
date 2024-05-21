@@ -4,7 +4,7 @@
 
 const baseURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 
 function clearAllPermissionsByPrefix(aPrefix) {
@@ -15,7 +15,7 @@ function clearAllPermissionsByPrefix(aPrefix) {
   }
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   // Enable the popup blocker.
   await SpecialPowers.pushPrefEnv({
     set: [["dom.disable_open_during_load", true]],
@@ -34,9 +34,18 @@ add_task(async function test_maximum_reported_blocks() {
   );
 
   // Wait for the popup-blocked notification.
-  let notification = await TestUtils.waitForCondition(() =>
-    gBrowser.getNotificationBox().getNotificationWithValue("popup-blocked")
-  );
+  let notification = await TestUtils.waitForCondition(() => {
+    let tempNotif = gBrowser
+      .getNotificationBox()
+      .getNotificationWithValue("popup-blocked");
+
+    // The textContent in the notification object is contains
+    // blank spaces as placeholder if there is no value in it
+    if (tempNotif?.messageText.textContent.trim().length) {
+      return tempNotif;
+    }
+    return false;
+  });
 
   // Slightly hacky way to ensure we show the correct message in this case.
   ok(
@@ -60,21 +69,42 @@ add_task(async function test_opening_blocked_popups() {
     baseURL + "popup_blocker.html"
   );
 
+  await testPopupBlockingToolbar(tab);
+});
+
+add_task(async function test_opening_blocked_popups_privateWindow() {
+  let win = await BrowserTestUtils.openNewBrowserWindow({
+    private: true,
+  });
+  // Open the test page.
+  let tab = await BrowserTestUtils.openNewForegroundTab(
+    win.gBrowser,
+    baseURL + "popup_blocker.html"
+  );
+  await testPopupBlockingToolbar(tab);
+  await BrowserTestUtils.closeWindow(win);
+});
+
+async function testPopupBlockingToolbar(tab) {
+  let win = tab.ownerGlobal;
   // Wait for the popup-blocked notification.
   let notification;
   await TestUtils.waitForCondition(
     () =>
-      (notification = gBrowser
+      (notification = win.gBrowser
         .getNotificationBox()
         .getNotificationWithValue("popup-blocked"))
   );
 
   // Show the menu.
-  let popupShown = BrowserTestUtils.waitForEvent(window, "popupshown");
-  let popupFilled = waitForBlockedPopups(2);
+  let popupShown = BrowserTestUtils.waitForEvent(win, "popupshown");
+  let popupFilled = waitForBlockedPopups(2, {
+    doc: win.document,
+  });
   EventUtils.synthesizeMouseAtCenter(
     notification.buttonContainer.querySelector("button"),
-    {}
+    {},
+    win
   );
   let popup_event = await popupShown;
   let menu = popup_event.target;
@@ -87,10 +117,10 @@ add_task(async function test_opening_blocked_popups() {
   function onTabOpen(event) {
     popupTabs.push(event.target);
   }
-  gBrowser.tabContainer.addEventListener("TabOpen", onTabOpen);
+  win.gBrowser.tabContainer.addEventListener("TabOpen", onTabOpen);
 
   // Press the button.
-  let allow = document.getElementById("blockedPopupAllowSite");
+  let allow = win.document.getElementById("blockedPopupAllowSite");
   allow.doCommand();
   await TestUtils.waitForCondition(
     () =>
@@ -100,7 +130,7 @@ add_task(async function test_opening_blocked_popups() {
       )
   );
 
-  gBrowser.tabContainer.removeEventListener("TabOpen", onTabOpen);
+  win.gBrowser.tabContainer.removeEventListener("TabOpen", onTabOpen);
 
   ok(
     popupTabs[0].linkedBrowser.currentURI.spec.endsWith("popup_blocker_a.html"),
@@ -111,12 +141,24 @@ add_task(async function test_opening_blocked_popups() {
     "Popup b"
   );
 
+  let popupPerms = Services.perms.getAllByTypeSince("popup", 0);
+  is(popupPerms.length, 1, "One popup permission added");
+  let popupPerm = popupPerms[0];
+  let expectedExpireType = PrivateBrowsingUtils.isWindowPrivate(win)
+    ? Services.perms.EXPIRE_SESSION
+    : Services.perms.EXPIRE_NEVER;
+  is(
+    popupPerm.expireType,
+    expectedExpireType,
+    "Check expireType is appropriate for the window"
+  );
+
   // Clean up.
-  gBrowser.removeTab(tab);
+  win.gBrowser.removeTab(tab);
   for (let popup of popupTabs) {
-    gBrowser.removeTab(popup);
+    win.gBrowser.removeTab(popup);
   }
   clearAllPermissionsByPrefix("popup");
   // Ensure the menu closes.
   menu.hidePopup();
-});
+}

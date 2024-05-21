@@ -24,19 +24,17 @@ class nsIDocShell;
 class nsICachingChannel;
 class nsILoadGroup;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 template <typename T>
 struct Nullable;
 class WindowProxyHolder;
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 class nsHTMLDocument : public mozilla::dom::Document {
  protected:
-  typedef mozilla::dom::ReferrerPolicy ReferrerPolicy;
-  typedef mozilla::dom::Document Document;
-  typedef mozilla::Encoding Encoding;
+  using ReferrerPolicy = mozilla::dom::ReferrerPolicy;
+  using Document = mozilla::dom::Document;
+  using Encoding = mozilla::Encoding;
   template <typename T>
   using NotNull = mozilla::NotNull<T>;
 
@@ -44,7 +42,8 @@ class nsHTMLDocument : public mozilla::dom::Document {
   using Document::SetDocumentURI;
 
   nsHTMLDocument();
-  virtual nsresult Init() override;
+  virtual nsresult Init(nsIPrincipal* aPrincipal,
+                        nsIPrincipal* aPartitionedPrincipal) override;
 
   // Document
   virtual void Reset(nsIChannel* aChannel, nsILoadGroup* aLoadGroup) override;
@@ -56,8 +55,7 @@ class nsHTMLDocument : public mozilla::dom::Document {
                                      nsILoadGroup* aLoadGroup,
                                      nsISupports* aContainer,
                                      nsIStreamListener** aDocListener,
-                                     bool aReset = true,
-                                     nsIContentSink* aSink = nullptr) override;
+                                     bool aReset = true) override;
 
  protected:
   virtual bool UseWidthDeviceWidthFallbackViewport() const override;
@@ -92,7 +90,7 @@ class nsHTMLDocument : public mozilla::dom::Document {
    */
   // XXXbz is this still needed now that we can flush just content,
   // not the rest?
-  int32_t GetNumFormsSynchronous();
+  int32_t GetNumFormsSynchronous() const;
   void SetIsXHTML(bool aXHTML) { mType = (aXHTML ? eXHTML : eHTML); }
 
   virtual nsresult Clone(mozilla::dom::NodeInfo*,
@@ -171,13 +169,16 @@ class nsHTMLDocument : public mozilla::dom::Document {
   /** # of forms in the document, synchronously set */
   int32_t mNumForms;
 
-  static void TryReloadCharset(nsIContentViewer* aCv, int32_t& aCharsetSource,
+  static void TryReloadCharset(nsIDocumentViewer* aViewer,
+                               int32_t& aCharsetSource,
                                NotNull<const Encoding*>& aEncoding);
-  void TryUserForcedCharset(nsIContentViewer* aCv, nsIDocShell* aDocShell,
+  void TryUserForcedCharset(nsIDocumentViewer* aViewer, nsIDocShell* aDocShell,
                             int32_t& aCharsetSource,
-                            NotNull<const Encoding*>& aEncoding);
+                            NotNull<const Encoding*>& aEncoding,
+                            bool& aForceAutoDetection);
   void TryParentCharset(nsIDocShell* aDocShell, int32_t& charsetSource,
-                        NotNull<const Encoding*>& aEncoding);
+                        NotNull<const Encoding*>& aEncoding,
+                        bool& aForceAutoDetection);
 
   // Load flags of the document's channel
   uint32_t mLoadFlags;
@@ -195,8 +196,7 @@ class nsHTMLDocument : public mozilla::dom::Document {
   bool mViewSource;
 };
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 inline nsHTMLDocument* Document::AsHTMLDocument() {
   MOZ_ASSERT(IsHTMLOrXHTML());
@@ -208,7 +208,6 @@ inline const nsHTMLDocument* Document::AsHTMLDocument() const {
   return static_cast<const nsHTMLDocument*>(this);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif /* nsHTMLDocument_h___ */

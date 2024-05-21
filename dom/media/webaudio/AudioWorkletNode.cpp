@@ -10,8 +10,10 @@
 #include "AudioParamMap.h"
 #include "AudioWorkletImpl.h"
 #include "js/Array.h"  // JS::{Get,Set}ArrayLength, JS::NewArrayLength
+#include "js/CallAndConstruct.h"  // JS::Call, JS::IsCallable
 #include "js/Exception.h"
 #include "js/experimental/TypedData.h"  // JS_NewFloat32Array, JS_GetFloat32ArrayData, JS_GetTypedArrayLength, JS_GetArrayBufferViewBuffer
+#include "js/PropertyAndElement.h"  // JS_DefineElement, JS_DefineUCProperty, JS_GetProperty
 #include "mozilla/dom/AudioWorkletNodeBinding.h"
 #include "mozilla/dom/AudioParamMapBinding.h"
 #include "mozilla/dom/AutoEntryScript.h"
@@ -46,7 +48,9 @@ struct NamedAudioParamTimeline {
 
 struct ProcessorErrorDetails {
   ProcessorErrorDetails() : mLineno(0), mColno(0) {}
+  // Line number (1-origin).
   unsigned mLineno;
+  // Column number in UTF-16 code units (1-origin).
   unsigned mColno;
   nsString mFilename;
   nsString mMessage;
@@ -73,9 +77,9 @@ class WorkletNodeEngine final : public AudioNodeEngine {
                           UniqueMessagePortId& aPortIdentifier,
                           AudioNodeTrack* aTrack);
 
-  void RecvTimelineEvent(uint32_t aIndex, AudioTimelineEvent& aEvent) override {
+  void RecvTimelineEvent(uint32_t aIndex, AudioParamEvent& aEvent) override {
     MOZ_ASSERT(mDestination);
-    WebAudioUtils::ConvertAudioTimelineEventToTicks(aEvent, mDestination);
+    aEvent.ConvertToTicks(mDestination);
 
     if (aIndex < mParamTimelines.Length()) {
       mParamTimelines[aIndex].mTimeline.InsertEvent<int64_t>(aEvent);
@@ -89,6 +93,7 @@ class WorkletNodeEngine final : public AudioNodeEngine {
                     bool* aFinished) override {
     MOZ_ASSERT(InputCount() <= 1);
     MOZ_ASSERT(OutputCount() <= 1);
+    TRACE("WorkletNodeEngine::ProcessBlock");
     ProcessBlocksOnPorts(aTrack, aFrom, Span(&aInput, InputCount()),
                          Span(aOutput, OutputCount()), aFinished);
   }
@@ -144,6 +149,7 @@ class WorkletNodeEngine final : public AudioNodeEngine {
     mProcessor.reset();
   }
 
+  nsCString mProcessorName;
   RefPtr<AudioNodeTrack> mDestination;
   nsTArray<uint32_t> mOutputChannelCount;
   nsTArray<NamedAudioParamTimeline> mParamTimelines;
@@ -226,13 +232,14 @@ void WorkletNodeEngine::SendProcessorError(AudioNodeTrack* aTrack,
 
     ProcessorErrorDetails details;
 
-    CopyUTF8toUTF16(mozilla::MakeStringSpan(jsReport.report()->filename),
-                    details.mFilename);
+    CopyUTF8toUTF16(
+        mozilla::MakeStringSpan(jsReport.report()->filename.c_str()),
+        details.mFilename);
 
     xpc::ErrorReport::ErrorReportToMessageString(jsReport.report(),
                                                  details.mMessage);
     details.mLineno = jsReport.report()->lineno;
-    details.mColno = jsReport.report()->column;
+    details.mColno = jsReport.report()->column.oneOriginValue();
     MOZ_ASSERT(!jsReport.report()->isMuted);
 
     SendErrorToMainThread(aTrack, details);
@@ -262,6 +269,7 @@ void WorkletNodeEngine::ConstructProcessor(
     SendProcessorError(aTrack, nullptr);
     return;
   }
+  mProcessorName = NS_ConvertUTF16toUTF8(aName);
   JSContext* cx = api.cx();
   mProcessor.init(cx);
   if (!global->ConstructProcessor(cx, aName, aSerializedOptions,
@@ -417,7 +425,7 @@ static bool PrepareBufferArrays(JSContext* aCx, Span<const AudioBlock> aBlocks,
 // do not run until after ProcessBlocksOnPorts() has returned.
 bool WorkletNodeEngine::CallProcess(AudioNodeTrack* aTrack, JSContext* aCx,
                                     JS::Handle<JS::Value> aCallable) {
-  TRACE();
+  TRACE_COMMENT("AudioWorkletNodeEngine::CallProcess", mProcessorName.get());
 
   JS::RootedVector<JS::Value> argv(aCx);
   if (NS_WARN_IF(!argv.resize(3))) {
@@ -467,7 +475,7 @@ void WorkletNodeEngine::ProcessBlocksOnPorts(AudioNodeTrack* aTrack,
                                              bool* aFinished) {
   MOZ_ASSERT(aInput.Length() == InputCount());
   MOZ_ASSERT(aOutput.Length() == OutputCount());
-  TRACE();
+  TRACE("WorkletNodeEngine::ProcessBlocksOnPorts");
 
   bool isSilent = true;
   if (mProcessor) {
@@ -654,6 +662,8 @@ already_AddRefed<AudioWorkletNode> AudioWorkletNode::Constructor(
     const GlobalObject& aGlobal, AudioContext& aAudioContext,
     const nsAString& aName, const AudioWorkletNodeOptions& aOptions,
     ErrorResult& aRv) {
+  TRACE_COMMENT("AudioWorkletNode::Constructor", "%s",
+                NS_ConvertUTF16toUTF8(aName).get());
   /**
    * 1. If nodeName does not exist as a key in the BaseAudioContext’s node
    *    name to parameter descriptor map, throw a InvalidStateError exception
@@ -858,6 +868,7 @@ AudioParamMap* AudioWorkletNode::GetParameters(ErrorResult& aRv) {
 
 void AudioWorkletNode::DispatchProcessorErrorEvent(
     const ProcessorErrorDetails& aDetails) {
+  TRACE("AudioWorkletNode::DispatchProcessorErrorEvent");
   if (HasListenersFor(nsGkAtoms::onprocessorerror)) {
     RootedDictionary<ErrorEventInit> init(RootingCx());
     init.mMessage = aDetails.mMessage;

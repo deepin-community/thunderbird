@@ -39,7 +39,7 @@ How to get a crash ID with the Mozilla Crash Reporter
 
 1 - Crash and submit a report to the system.
 
-.. image:: img/reporter.jpg
+.. image:: img/crashreporter.png
 
 The Mozilla Crash Reporter window should automatically come up after Firefox crashes.
 If you have any additional information about the crash, such as additional detail on
@@ -117,7 +117,7 @@ macOS
 ~~~~~
 
 Run /Applications/Utilities/Console.app.  Expand "~/Library/Logs" and
-"CrashReporter", then look for logs for "firefox-bin".
+"CrashReporter", then look for logs for "firefox".
 
 
 Linux

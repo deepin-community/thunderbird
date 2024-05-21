@@ -1,13 +1,13 @@
 "use strict";
-define(function(require) {
+define(function (require) {
   var assert = require("assert");
   var headeremitter = require("jsmime").headeremitter;
   var MockDate = require("test/mock_date");
 
   function arrayTest(data, fn) {
-    fn.toString = function() {
+    fn.toString = function () {
       let text = Function.prototype.toString.call(this);
-      text = text.replace(/data\[([0-9]*)\]/g, function(m, p) {
+      text = text.replace(/data\[([0-9]*)\]/g, function (m, p) {
         return JSON.stringify(data[p]);
       });
       return text;
@@ -16,9 +16,9 @@ define(function(require) {
   }
 
   function testHeader(header, tests) {
-    suite(header, function() {
-      tests.forEach(function(data) {
-        arrayTest(data, function() {
+    suite(header, function () {
+      tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.deepEqual(
             headeremitter.emitStructuredHeader(header, data[0], {
               softMargin: 100,
@@ -31,7 +31,7 @@ define(function(require) {
     });
   }
 
-  suite("Structured header emitters", function() {
+  suite("Structured header emitters", function () {
     // Ad-hoc header tests
     // TODO: add structured encoder tests for Content-Type when it is added.
 
@@ -42,7 +42,7 @@ define(function(require) {
     ]);
 
     // Non-ad-hoc header tests
-    let addressing_headers = [
+    const addressing_headers = [
       "From",
       "To",
       "Cc",
@@ -62,7 +62,7 @@ define(function(require) {
       "Mail-Reply-To",
       "Mail-Followup-To",
     ];
-    let address_tests = [
+    const address_tests = [
       [{ name: "", email: "" }, ""],
       [
         { name: "John Doe", email: "john.doe@test.invalid" },
@@ -77,34 +77,34 @@ define(function(require) {
         "undisclosed-recipients: ;",
       ],
     ];
-    addressing_headers.forEach(function(header) {
+    addressing_headers.forEach(function (header) {
       testHeader(header, address_tests);
     });
 
-    let date_headers = [
+    const date_headers = [
       "Date",
       "Expires",
       "Injection-Date",
       "NNTP-Posting-Date",
       "Resent-Date",
     ];
-    let date_tests = [
+    const date_tests = [
       [
         new MockDate("2012-09-06T08:08:21-0700"),
         "Thu, 6 Sep 2012 08:08:21 -0700",
       ],
     ];
-    date_headers.forEach(function(header) {
+    date_headers.forEach(function (header) {
       testHeader(header, date_tests);
     });
 
-    let unstructured_headers = [
+    const unstructured_headers = [
       "Comments",
       "Content-Description",
       "Keywords",
       "Subject",
     ];
-    let unstructured_tests = [
+    const unstructured_tests = [
       ["", ""],
       ["This is a subject", "This is a subject"],
       [
@@ -112,16 +112,16 @@ define(function(require) {
         "=?UTF-8?B?56eB44Gv5Lu25ZCN5Y2I5YmN?=",
       ],
     ];
-    unstructured_headers.forEach(function(header) {
+    unstructured_headers.forEach(function (header) {
       testHeader(header, unstructured_tests);
     });
 
-    test("emitStructuredHeaders", function() {
-      let headers = new Map();
+    test("emitStructuredHeaders", function () {
+      const headers = new Map();
       headers.set("From", [{ name: "", email: "bugzilla-daemon@mozilla.org" }]);
       headers.set("subject", ["[Bug 939557] browsercomps.dll failed to build"]);
       headers.set("x-capitalization-test", ["should capitalize"]);
-      let str = headeremitter.emitStructuredHeaders(headers, {});
+      const str = headeremitter.emitStructuredHeaders(headers, {});
       assert.equal(
         str,
         "From: bugzilla-daemon@mozilla.org\r\n" +

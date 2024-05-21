@@ -8,16 +8,15 @@
 
 "use strict";
 
-const { RNP } = ChromeUtils.import("chrome://openpgp/content/modules/RNP.jsm");
-const { EnigmailConstants } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/constants.jsm"
+const { RNP } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/RNP.sys.mjs"
 );
-const { EnigmailFiles } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/files.jsm"
+const { EnigmailConstants } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/constants.sys.mjs"
 );
 
-const { OpenPGPTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
+const { OpenPGPTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
 );
 
 const keyDir = "../../../../../test/browser/openpgp/data/keys";
@@ -160,7 +159,7 @@ const tests = [
 /**
  * Initialize OpenPGP add testing keys.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();
@@ -181,9 +180,9 @@ add_task(async function setUp() {
  * with various inputs.
  */
 add_task(async function testEncryptAndOrSignResults() {
-  for (let test of tests) {
-    let chunks = test.filename.split("/");
-    let filename = chunks[chunks.length - 1];
+  for (const test of tests) {
+    const chunks = test.filename.split("/");
+    const filename = chunks[chunks.length - 1];
     if (test.skip) {
       info(`Skipped input from: ${filename}`);
       continue;
@@ -191,13 +190,13 @@ add_task(async function testEncryptAndOrSignResults() {
 
     info(`Running test with input from: ${filename}`);
 
-    let buffer = await IOUtils.read(do_get_file(test.filename).path);
+    const buffer = await IOUtils.read(do_get_file(test.filename).path);
     const textDecoder = new TextDecoder(test.encoding || "utf-8");
 
-    let sourceText = textDecoder.decode(buffer);
-    let encryptResult = {};
+    const sourceText = textDecoder.decode(buffer);
+    const encryptResult = {};
 
-    let encryptArgs = {
+    const encryptArgs = {
       aliasKeys: new Map(),
       armor: true,
       bcc: [],
@@ -212,7 +211,7 @@ add_task(async function testEncryptAndOrSignResults() {
       to: ["<alice@openpgp.example>"],
     };
 
-    let encrypted = await RNP.encryptAndOrSign(
+    const encrypted = await RNP.encryptAndOrSign(
       sourceText,
       encryptArgs,
       encryptResult
@@ -223,15 +222,16 @@ add_task(async function testEncryptAndOrSignResults() {
       `${filename}: RNP.encryptAndOrSign() exited ok`
     );
 
-    let decryptOptions = {
+    const decryptOptions = {
       fromAddr: "bob@openpgp.example",
       maxOutputLength: encrypted.length * 100,
       noOutput: false,
       uiFlags: EnigmailConstants.UI_PGP_MIME,
       verifyOnly: false,
+      msgDate: null,
     };
 
-    let { exitCode, decryptedData } = await RNP.decrypt(
+    const { exitCode, decryptedData } = await RNP.decrypt(
       encrypted,
       decryptOptions
     );
@@ -254,18 +254,26 @@ add_task(async function testEncryptAndOrSignResults() {
  * https://openclipart.org/detail/191741/blue-bird
  */
 add_task(async function testDecryptAttachment() {
-  let expected = EnigmailFiles.readFile(do_get_file("data/bluebird50.jpg"));
+  const expected = String.fromCharCode(
+    ...(await IOUtils.read(do_get_file("data/bluebird50.jpg").path))
+  );
 
-  for (let filename of ["data/bluebird50.jpg.asc", "data/bluebird50.jpg.gpg"]) {
-    let encrypted = EnigmailFiles.readFile(do_get_file(filename));
-    let options = {};
+  for (const filename of [
+    "data/bluebird50.jpg.asc",
+    "data/bluebird50.jpg.gpg",
+  ]) {
+    const encrypted = String.fromCharCode(
+      ...(await IOUtils.read(do_get_file(filename).path))
+    );
+    const options = {};
     options.fromAddr = "";
-    let result = await RNP.decrypt(encrypted, options);
+    options.msgDate = null;
+    const result = await RNP.decrypt(encrypted, options);
 
     Assert.ok(!result.exitCode, `${filename}: RNP.decrypt() exited ok`);
 
     // Don't use Assert.equal to avoid logging the raw binary data
-    let isEqual = expected === result.decryptedData;
+    const isEqual = expected === result.decryptedData;
 
     Assert.ok(
       isEqual,

@@ -6,6 +6,7 @@
 
 #include "Request.h"
 
+#include "js/Value.h"
 #include "nsIURI.h"
 #include "nsNetUtil.h"
 #include "nsPIDOMWindow.h"
@@ -19,20 +20,24 @@
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRunnable.h"
 #include "mozilla/dom/WindowContext.h"
+#include "mozilla/ipc/PBackgroundSharedTypes.h"
 #include "mozilla/Unused.h"
+
+#include "mozilla/dom/ReadableStreamDefaultReader.h"
 
 namespace mozilla::dom {
 
 NS_IMPL_ADDREF_INHERITED(Request, FetchBody<Request>)
 NS_IMPL_RELEASE_INHERITED(Request, FetchBody<Request>)
 
-NS_IMPL_CYCLE_COLLECTION_CLASS(Request)
+// Can't use _INHERITED macro here because FetchBody<Request> is abstract.
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(Request)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(Request, FetchBody<Request>)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mOwner)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mHeaders)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mSignal)
-  AbortFollower::Unlink(static_cast<AbortFollower*>(tmp));
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mFetchStreamReader)
   NS_IMPL_CYCLE_COLLECTION_UNLINK_PRESERVED_WRAPPER
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
@@ -40,15 +45,8 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(Request, FetchBody<Request>)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mOwner)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mHeaders)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mSignal)
-  AbortFollower::Traverse(static_cast<AbortFollower*>(tmp), cb);
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mFetchStreamReader)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
-
-NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN_INHERITED(Request, FetchBody<Request>)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mReadableStreamBody)
-  MOZ_DIAGNOSTIC_ASSERT(!tmp->mReadableStreamReader);
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mReadableStreamReader)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_PRESERVED_WRAPPER
-NS_IMPL_CYCLE_COLLECTION_TRACE_END
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Request)
   NS_WRAPPERCACHE_INTERFACE_MAP_ENTRY
@@ -63,7 +61,8 @@ Request::Request(nsIGlobalObject* aOwner, SafeRefPtr<InternalRequest> aRequest,
   if (aSignal) {
     // If we don't have a signal as argument, we will create it when required by
     // content, otherwise the Request's signal must follow what has been passed.
-    mSignal = new AbortSignal(aOwner, aSignal->Aborted());
+    JS::Rooted<JS::Value> reason(RootingCx(), aSignal->RawReason());
+    mSignal = new AbortSignal(aOwner, aSignal->Aborted(), reason);
     if (!mSignal->Aborted()) {
       mSignal->Follow(aSignal);
     }
@@ -277,23 +276,26 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
   SafeRefPtr<InternalRequest> request;
 
   RefPtr<AbortSignal> signal;
+  bool bodyFromInit = false;
 
   if (aInput.IsRequest()) {
     RefPtr<Request> inputReq = &aInput.GetAsRequest();
     nsCOMPtr<nsIInputStream> body;
-    inputReq->GetBody(getter_AddRefs(body));
-    bool used = inputReq->GetBodyUsed(aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return nullptr;
-    }
-    if (used) {
-      aRv.ThrowTypeError<MSG_FETCH_BODY_CONSUMED_ERROR>();
-      return nullptr;
-    }
 
-    // The body will be copied when GetRequestConstructorCopy() is executed.
-    if (body) {
+    if (aInit.mBody.WasPassed() && !aInit.mBody.Value().IsNull()) {
+      bodyFromInit = true;
       hasCopiedBody = true;
+    } else {
+      inputReq->GetBody(getter_AddRefs(body));
+      if (inputReq->BodyUsed()) {
+        aRv.ThrowTypeError<MSG_FETCH_BODY_CONSUMED_ERROR>();
+        return nullptr;
+      }
+
+      // The body will be copied when GetRequestConstructorCopy() is executed.
+      if (body) {
+        hasCopiedBody = true;
+      }
     }
 
     request = inputReq->GetInternalRequest();
@@ -327,27 +329,37 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
-  RequestMode fallbackMode = RequestMode::EndGuard_;
-  RequestCredentials fallbackCredentials = RequestCredentials::EndGuard_;
-  RequestCache fallbackCache = RequestCache::EndGuard_;
+  Maybe<RequestMode> mode;
+  if (aInit.mMode.WasPassed()) {
+    if (aInit.mMode.Value() == RequestMode::Navigate) {
+      aRv.ThrowTypeError<MSG_INVALID_REQUEST_MODE>("navigate");
+      return nullptr;
+    }
+
+    mode.emplace(aInit.mMode.Value());
+  }
+  Maybe<RequestCredentials> credentials;
+  if (aInit.mCredentials.WasPassed()) {
+    credentials.emplace(aInit.mCredentials.Value());
+  }
+  Maybe<RequestCache> cache;
+  if (aInit.mCache.WasPassed()) {
+    cache.emplace(aInit.mCache.Value());
+  }
   if (aInput.IsUSVString()) {
-    fallbackMode = RequestMode::Cors;
-    fallbackCredentials = RequestCredentials::Same_origin;
-    fallbackCache = RequestCache::Default;
+    if (mode.isNothing()) {
+      mode.emplace(RequestMode::Cors);
+    }
+    if (credentials.isNothing()) {
+      credentials.emplace(RequestCredentials::Same_origin);
+    }
+    if (cache.isNothing()) {
+      cache.emplace(RequestCache::Default);
+    }
   }
 
-  RequestMode mode =
-      aInit.mMode.WasPassed() ? aInit.mMode.Value() : fallbackMode;
-  RequestCredentials credentials = aInit.mCredentials.WasPassed()
-                                       ? aInit.mCredentials.Value()
-                                       : fallbackCredentials;
-
-  if (mode == RequestMode::Navigate) {
-    aRv.ThrowTypeError<MSG_INVALID_REQUEST_MODE>("navigate");
-    return nullptr;
-  }
   if (aInit.IsAnyMemberPresent() && request->Mode() == RequestMode::Navigate) {
-    mode = RequestMode::Same_origin;
+    mode = Some(RequestMode::Same_origin);
   }
 
   if (aInit.IsAnyMemberPresent()) {
@@ -428,6 +440,13 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
     signal = aInit.mSignal.Value();
   }
 
+  // https://fetch.spec.whatwg.org/#dom-global-fetch
+  // https://fetch.spec.whatwg.org/#dom-request
+  // The priority of init overrides input's priority.
+  if (aInit.mPriority.WasPassed()) {
+    request->SetPriorityMode(aInit.mPriority.Value());
+  }
+
   UniquePtr<mozilla::ipc::PrincipalInfo> principalInfo;
   nsILoadInfo::CrossOriginEmbedderPolicy coep =
       nsILoadInfo::EMBEDDER_POLICY_NULL;
@@ -471,24 +490,22 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
   request->SetPrincipalInfo(std::move(principalInfo));
   request->SetEmbedderPolicy(coep);
 
-  if (mode != RequestMode::EndGuard_) {
-    request->SetMode(mode);
+  if (mode.isSome()) {
+    request->SetMode(mode.value());
   }
 
-  if (credentials != RequestCredentials::EndGuard_) {
-    request->SetCredentialsMode(credentials);
+  if (credentials.isSome()) {
+    request->SetCredentialsMode(credentials.value());
   }
 
-  RequestCache cache =
-      aInit.mCache.WasPassed() ? aInit.mCache.Value() : fallbackCache;
-  if (cache != RequestCache::EndGuard_) {
-    if (cache == RequestCache::Only_if_cached &&
+  if (cache.isSome()) {
+    if (cache.value() == RequestCache::Only_if_cached &&
         request->Mode() != RequestMode::Same_origin) {
-      nsCString modeString(RequestModeValues::GetString(request->Mode()));
-      aRv.ThrowTypeError<MSG_ONLY_IF_CACHED_WITHOUT_SAME_ORIGIN>(modeString);
+      aRv.ThrowTypeError<MSG_ONLY_IF_CACHED_WITHOUT_SAME_ORIGIN>(
+          GetEnumString(request->Mode()));
       return nullptr;
     }
-    request->SetCacheMode(cache);
+    request->SetCacheMode(cache.value());
   }
 
   if (aInit.mRedirect.WasPassed()) {
@@ -607,7 +624,7 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
   auto domRequest =
       MakeSafeRefPtr<Request>(aGlobal, std::move(request), signal);
 
-  if (aInput.IsRequest()) {
+  if (aInput.IsRequest() && !bodyFromInit) {
     RefPtr<Request> inputReq = &aInput.GetAsRequest();
     nsCOMPtr<nsIInputStream> body;
     inputReq->GetBody(getter_AddRefs(body));
@@ -623,11 +640,7 @@ SafeRefPtr<Request> Request::Constructor(nsIGlobalObject* aGlobal,
 }
 
 SafeRefPtr<Request> Request::Clone(ErrorResult& aRv) {
-  bool used = GetBodyUsed(aRv);
-  if (NS_WARN_IF(aRv.Failed())) {
-    return nullptr;
-  }
-  if (used) {
+  if (BodyUsed()) {
     aRv.ThrowTypeError<MSG_FETCH_BODY_CONSUMED_ERROR>();
     return nullptr;
   }
@@ -651,12 +664,17 @@ Headers* Request::Headers_() {
 
 AbortSignal* Request::GetOrCreateSignal() {
   if (!mSignal) {
-    mSignal = new AbortSignal(mOwner, false);
+    mSignal = new AbortSignal(mOwner, false, JS::UndefinedHandleValue);
   }
 
   return mSignal;
 }
 
 AbortSignalImpl* Request::GetSignalImpl() const { return mSignal; }
+
+AbortSignalImpl* Request::GetSignalImplToConsumeBody() const {
+  // This is a hack, see Response::GetSignalImplToConsumeBody.
+  return nullptr;
+}
 
 }  // namespace mozilla::dom

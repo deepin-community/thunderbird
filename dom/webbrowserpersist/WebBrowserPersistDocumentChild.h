@@ -16,8 +16,9 @@ namespace mozilla {
 class WebBrowserPersistDocumentChild final
     : public PWebBrowserPersistDocumentChild {
  public:
+  NS_INLINE_DECL_REFCOUNTING(WebBrowserPersistDocumentChild, override)
+
   WebBrowserPersistDocumentChild();
-  ~WebBrowserPersistDocumentChild();
 
   // This sends either Attributes or InitFailure and thereby causes
   // the actor to leave the START state.
@@ -34,17 +35,19 @@ class WebBrowserPersistDocumentChild final
 
   PWebBrowserPersistSerializeChild* AllocPWebBrowserPersistSerializeChild(
       const WebBrowserPersistURIMap& aMap,
-      const nsCString& aRequestedContentType, const uint32_t& aEncoderFlags,
+      const nsACString& aRequestedContentType, const uint32_t& aEncoderFlags,
       const uint32_t& aWrapColumn);
   virtual mozilla::ipc::IPCResult RecvPWebBrowserPersistSerializeConstructor(
       PWebBrowserPersistSerializeChild* aActor,
       const WebBrowserPersistURIMap& aMap,
-      const nsCString& aRequestedContentType, const uint32_t& aEncoderFlags,
+      const nsACString& aRequestedContentType, const uint32_t& aEncoderFlags,
       const uint32_t& aWrapColumn) override;
   bool DeallocPWebBrowserPersistSerializeChild(
       PWebBrowserPersistSerializeChild* aActor);
 
  private:
+  ~WebBrowserPersistDocumentChild();
+
   nsCOMPtr<nsIWebBrowserPersistDocument> mDocument;
 };
 

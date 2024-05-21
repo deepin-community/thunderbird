@@ -1,5 +1,7 @@
 "use strict";
 
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 function ok(a, msg) {
   postMessage(JSON.stringify({ type: "status", what: !!a, msg }));
 }
@@ -30,7 +32,7 @@ function magic() {
     "Second message ok."
   );
 
-  setConsoleEventHandler(function(consoleData) {
+  setConsoleEventHandler(function (consoleData) {
     is(consoleData.arguments[0], "Random message.", "Random message ok!");
 
     // The consoleEventHandler can be null.
@@ -40,7 +42,7 @@ function magic() {
   });
 }
 
-this.onmessage = function(event) {
+this.onmessage = function (event) {
   switch (event.data) {
     case "do magic":
       magic();

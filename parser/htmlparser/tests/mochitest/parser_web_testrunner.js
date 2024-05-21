@@ -23,7 +23,7 @@ var functionsToRunAsync = [];
 
 window.addEventListener(
   "message",
-  function(event) {
+  function (event) {
     if (event.source == window && event.data == "async-run") {
       event.stopPropagation();
       var fn = functionsToRunAsync.shift();
@@ -60,8 +60,8 @@ function writeErrorSummary(input, expected, got, isTodo) {
  * event handler returned by makeTestChecker() or the callback returned by
  * makeFragmentTestChecker() until the 'testcases' iterator is spent.
  */
-function makeTestChecker(input, expected, errors) {
-  return function(e) {
+function makeTestChecker(input, expected) {
+  return function (e) {
     var domAsString = docToTestOutput(e.target.contentDocument);
     if (html5Exceptions[input]) {
       todo_is(domAsString, expected, "HTML5 expected success.");
@@ -79,7 +79,7 @@ function makeTestChecker(input, expected, errors) {
 }
 
 function makeFragmentTestChecker(input, expected, errors, fragment, testframe) {
-  return function() {
+  return function () {
     var context;
     if (fragment.startsWith("svg ")) {
       context = document.createElementNS(
@@ -97,7 +97,6 @@ function makeFragmentTestChecker(input, expected, errors, fragment, testframe) {
         fragment
       );
     }
-    // eslint-disable-next-line no-unsanitized/property
     context.innerHTML = input;
     var domAsString = fragmentToTestOutput(context);
     is(domAsString, expected, "HTML5 expected success. " + new Date());
@@ -131,7 +130,7 @@ function loadNextTestFile() {
   var datFile = parserDatFiles.shift();
   if (datFile) {
     var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (this.readyState == 4) {
         testFileContents.push(this.responseText);
         loadNextTestFile();

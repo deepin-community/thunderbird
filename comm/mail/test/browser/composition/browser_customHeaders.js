@@ -9,45 +9,53 @@ var {
   close_compose_window,
   get_msg_source,
   open_compose_new_mail,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var { be_in_folder, select_click_row, get_special_folder } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  save_compose_message,
+  open_compose_from_draft,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { wait_for_window_focused } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
+var { be_in_folder, select_click_row, get_special_folder } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  );
 
 /**
  * Test custom headers are set and encoded correctly.
  */
 add_task(async function test_customHeaders() {
-  let draftsFolder = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+  const draftsFolder = await get_special_folder(
+    Ci.nsMsgFolderFlags.Drafts,
+    true
+  );
 
   // Set other.header so that they will be rendered in compose window.
-  let otherHeaders = Services.prefs.getCharPref("mail.compose.other.header");
+  const otherHeaders = Services.prefs.getCharPref("mail.compose.other.header");
   Services.prefs.setCharPref(
     "mail.compose.other.header",
-    "X-Header1, X-Header2, Approved, Supersedes"
+    "X-Header1, X-Header2, Approved ,Supersedes, References, In-Reply-To"
   );
 
   // Set values to custom headers.
-  let cwc = open_compose_new_mail();
-  let inputs = cwc.window.document.querySelectorAll(
-    ".address-row[data-labeltype=addr_other] input"
-  );
+  let cwc = await open_compose_new_mail();
+  const inputs = cwc.document.querySelectorAll(".address-row-raw input");
   inputs[0].value = "Test äöü";
   inputs[1].value = "Test 😃";
   inputs[2].value = "moderator@tinderbox.com";
   inputs[3].value = "<message-id-1234@tinderbox.com>";
+  inputs[4].value =
+    "<4682279b-0f22-482e-9de2-b3ea45fa8c57@test> <d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>";
+  inputs[5].value = "<d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>";
 
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
-  close_compose_window(cwc);
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 1,
+    "message saved to drafts folder"
+  );
 
-  be_in_folder(draftsFolder);
-  let draftMsg = select_click_row(0);
-  let draftMsgLines = get_msg_source(draftMsg).split("\n");
+  await be_in_folder(draftsFolder);
+  const draftMsg = await select_click_row(0);
+  const draftMsgLines = (await get_msg_source(draftMsg)).split("\n");
 
   // Check header values are set and encoded correctly.
   Assert.ok(
@@ -74,6 +82,50 @@ add_task(async function test_customHeaders() {
     ),
     "Correct Supersedes found"
   );
+  Assert.ok(
+    draftMsgLines
+      .join("\n")
+      .includes(
+        "References: <4682279b-0f22-482e-9de2-b3ea45fa8c57@test>\r\n <d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>"
+      ),
+    "Correct References found"
+  );
+  Assert.ok(
+    draftMsgLines.some(
+      line =>
+        line.trim() ==
+        "In-Reply-To: <d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>"
+    ),
+    "Correct In-Reply-To found"
+  );
+
+  cwc = await open_compose_from_draft();
+  const inputs2 = cwc.document.querySelectorAll(".address-row-raw input");
+
+  Assert.equal(inputs2[0].value, "Test äöü", "should find correct X-Header1");
+  Assert.equal(inputs2[1].value, "Test 😃", "should find correct X-Header2");
+  Assert.equal(
+    inputs2[2].value,
+    "moderator@tinderbox.com",
+    "should find correct Approved"
+  );
+  Assert.equal(
+    inputs2[3].value,
+    "<message-id-1234@tinderbox.com>",
+    "should find correct Supersedes"
+  );
+  Assert.equal(
+    inputs2[4].value,
+    "<4682279b-0f22-482e-9de2-b3ea45fa8c57@test> <d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>",
+    "should find correct References"
+  );
+  Assert.equal(
+    inputs2[5].value,
+    "<d13ea217-0672-4c24-b9a9-4ab3771e25e7@test>",
+    "should find correct In-Reply-To"
+  );
+
+  await close_compose_window(cwc);
 
   // Reset other.header.
   Services.prefs.setCharPref("mail.compose.other.header", otherHeaders);

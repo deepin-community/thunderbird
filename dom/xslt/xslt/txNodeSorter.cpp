@@ -10,12 +10,12 @@
 #include "txNodeSetContext.h"
 #include "txExpr.h"
 #include "txStringUtils.h"
-#include "nsQuickSort.h"
 
 #include "mozilla/CheckedInt.h"
 #include "mozilla/UniquePtrExtensions.h"
 
 using mozilla::CheckedUint32;
+using mozilla::MakeUnique;
 using mozilla::MakeUniqueFallible;
 using mozilla::UniquePtr;
 
@@ -124,12 +124,6 @@ nsresult txNodeSorter::sortNodeSet(txNodeSet* aNodes, txExecutionState* aEs,
   nsresult rv = aEs->recycler()->getNodeSet(getter_AddRefs(sortedNodes));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  txNodeSetContext* evalContext = new txNodeSetContext(aNodes, aEs);
-  NS_ENSURE_TRUE(evalContext, NS_ERROR_OUT_OF_MEMORY);
-
-  rv = aEs->pushEvalContext(evalContext);
-  NS_ENSURE_SUCCESS(rv, rv);
-
   // Create and set up memoryblock for sort-values and indexarray
   CheckedUint32 len = aNodes->size();
   CheckedUint32 numSortValues = len * mNKeys;
@@ -138,26 +132,32 @@ nsresult txNodeSorter::sortNodeSet(txNodeSet* aNodes, txExecutionState* aEs,
     return NS_ERROR_OUT_OF_MEMORY;
   }
 
-  auto indexes = MakeUniqueFallible<uint32_t[]>(len.value());
-  auto sortValues = MakeUniqueFallible<txObject*[]>(numSortValues.value());
-  if (!indexes || !sortValues) {
-    return NS_ERROR_OUT_OF_MEMORY;
-  }
+  nsTArray<uint32_t> indexes(len.value());
+  indexes.SetLengthAndRetainStorage(len.value());
+  nsTArray<txObject*> sortValues(numSortValues.value());
+  sortValues.SetLengthAndRetainStorage(numSortValues.value());
+  // txObject* has no null initializing constructor, so we init manually.
+  memset(sortValues.Elements(), 0, sortValuesSize.value());
 
   uint32_t i;
   for (i = 0; i < len.value(); ++i) {
     indexes[i] = i;
   }
-  memset(sortValues.get(), 0, sortValuesSize.value());
+
+  auto nodeSetContext = MakeUnique<txNodeSetContext>(aNodes, aEs);
 
   // Sort the indexarray
-  SortData sortData;
+  SortData sortData{};
   sortData.mNodeSorter = this;
-  sortData.mContext = evalContext;
-  sortData.mSortValues = sortValues.get();
+  sortData.mContext = nodeSetContext.get();
+  sortData.mSortValues = sortValues.Elements();
   sortData.mRv = NS_OK;
-  NS_QuickSort(indexes.get(), len.value(), sizeof(uint32_t), compareNodes,
-               &sortData);
+
+  aEs->pushEvalContext(nodeSetContext.release());
+
+  indexes.StableSort([&sortData](uint32_t left, uint32_t right) {
+    return compareNodes(left, right, sortData);
+  });
 
   // Delete these here so we don't have to deal with them at every possible
   // failurepoint
@@ -186,32 +186,28 @@ nsresult txNodeSorter::sortNodeSet(txNodeSet* aNodes, txExecutionState* aEs,
   return NS_OK;
 }
 
-// static
-int txNodeSorter::compareNodes(const void* aIndexA, const void* aIndexB,
-                               void* aSortData) {
-  SortData* sortData = static_cast<SortData*>(aSortData);
-  NS_ENSURE_SUCCESS(sortData->mRv, -1);
+int txNodeSorter::compareNodes(uint32_t aIndexA, uint32_t aIndexB,
+                               SortData& aSortData) {
+  NS_ENSURE_SUCCESS(aSortData.mRv, -1);
 
-  txListIterator iter(&sortData->mNodeSorter->mSortKeys);
-  uint32_t indexA = *static_cast<const uint32_t*>(aIndexA);
-  uint32_t indexB = *static_cast<const uint32_t*>(aIndexB);
+  txListIterator iter(&aSortData.mNodeSorter->mSortKeys);
   txObject** sortValuesA =
-      sortData->mSortValues + indexA * sortData->mNodeSorter->mNKeys;
+      aSortData.mSortValues + aIndexA * aSortData.mNodeSorter->mNKeys;
   txObject** sortValuesB =
-      sortData->mSortValues + indexB * sortData->mNodeSorter->mNKeys;
+      aSortData.mSortValues + aIndexB * aSortData.mNodeSorter->mNKeys;
 
   unsigned int i;
   // Step through each key until a difference is found
-  for (i = 0; i < sortData->mNodeSorter->mNKeys; ++i) {
+  for (i = 0; i < aSortData.mNodeSorter->mNKeys; ++i) {
     SortKey* key = (SortKey*)iter.next();
     // Lazy create sort values
     if (!sortValuesA[i] &&
-        !calcSortValue(sortValuesA[i], key, sortData, indexA)) {
+        !calcSortValue(sortValuesA[i], key, &aSortData, aIndexA)) {
       return -1;
     }
     if (!sortValuesB[i] &&
-        !calcSortValue(sortValuesB[i], key, sortData, indexB)) {
-      return -1;
+        !calcSortValue(sortValuesB[i], key, &aSortData, aIndexB)) {
+      return 1;
     }
 
     // Compare node values
@@ -219,9 +215,9 @@ int txNodeSorter::compareNodes(const void* aIndexA, const void* aIndexB,
         key->mComparator->compareValues(sortValuesA[i], sortValuesB[i]);
     if (compRes != 0) return compRes;
   }
-  // All keys have the same value for these nodes
 
-  return indexA - indexB;
+  // All keys have the same value for these nodes.
+  return 0;
 }
 
 // static

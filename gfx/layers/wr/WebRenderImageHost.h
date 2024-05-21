@@ -7,6 +7,7 @@
 #ifndef MOZILLA_GFX_WEBRENDERIMAGEHOST_H
 #define MOZILLA_GFX_WEBRENDERIMAGEHOST_H
 
+#include <deque>
 #include <unordered_map>
 
 #include "CompositableHost.h"               // for CompositableHost
@@ -17,6 +18,7 @@ namespace mozilla {
 namespace layers {
 
 class AsyncImagePipelineManager;
+class TextureWrapperD3D11Allocator;
 class WebRenderBridgeParent;
 class WebRenderBridgeParentRef;
 
@@ -28,46 +30,26 @@ class WebRenderImageHost : public CompositableHost, public ImageComposite {
   explicit WebRenderImageHost(const TextureInfo& aTextureInfo);
   virtual ~WebRenderImageHost();
 
-  CompositableType GetType() override { return mTextureInfo.mCompositableType; }
-
-  void Composite(Compositor* aCompositor, LayerComposite* aLayer,
-                 EffectChain& aEffectChain, float aOpacity,
-                 const gfx::Matrix4x4& aTransform,
-                 const gfx::SamplingFilter aSamplingFilter,
-                 const gfx::IntRect& aClipRect,
-                 const nsIntRegion* aVisibleRegion = nullptr,
-                 const Maybe<gfx::Polygon>& aGeometry = Nothing()) override;
-
   void UseTextureHost(const nsTArray<TimedTexture>& aTextures) override;
-  void UseComponentAlphaTextures(TextureHost* aTextureOnBlack,
-                                 TextureHost* aTextureOnWhite) override;
   void RemoveTextureHost(TextureHost* aTexture) override;
-
-  TextureHost* GetAsTextureHost(gfx::IntRect* aPictureRect = nullptr) override;
-
-  void Attach(Layer* aLayer, TextureSourceProvider* aProvider,
-              AttachFlags aFlags = NO_FLAGS) override;
-
-  void SetTextureSourceProvider(TextureSourceProvider* aProvider) override;
-
-  gfx::IntSize GetImageSize() override;
-
-  void PrintInfo(std::stringstream& aStream, const char* aPrefix) override;
 
   void Dump(std::stringstream& aStream, const char* aPrefix = "",
             bool aDumpHtml = false) override;
 
-  already_AddRefed<gfx::DataSourceSurface> GetAsSurface() override;
-
-  bool Lock() override;
-
-  void Unlock() override;
-
   void CleanupResources() override;
+
+  void OnReleased() override;
 
   uint32_t GetDroppedFrames() override { return GetDroppedFramesAndReset(); }
 
   WebRenderImageHost* AsWebRenderImageHost() override { return this; }
+
+  void PushPendingRemoteTexture(const RemoteTextureId aTextureId,
+                                const RemoteTextureOwnerId aOwnerId,
+                                const base::ProcessId aForPid,
+                                const gfx::IntSize aSize,
+                                const TextureFlags aFlags);
+  void UseRemoteTexture();
 
   TextureHost* GetAsTextureHostForComposite(
       AsyncImagePipelineManager* aAsyncImageManager);
@@ -94,6 +76,14 @@ class WebRenderImageHost : public CompositableHost, public ImageComposite {
   AsyncImagePipelineManager* mCurrentAsyncImageManager;
 
   CompositableTextureHostRef mCurrentTextureHost;
+
+  std::deque<CompositableTextureHostRef> mPendingRemoteTextureWrappers;
+  bool mWaitingReadyCallback = false;
+  bool mWaitForRemoteTextureOwner = true;
+
+#if XP_WIN
+  RefPtr<TextureWrapperD3D11Allocator> mTextureAllocator;
+#endif
 };
 
 }  // namespace layers

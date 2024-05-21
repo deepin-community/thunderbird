@@ -2,7 +2,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
-add_task(async function setup() {
+add_setup(async function () {
   await setupPolicyEngineWithJson({
     policies: {
       "3rdparty": {
@@ -15,7 +15,7 @@ add_task(async function setup() {
     },
   });
 
-  let extensionPolicy = Services.policies.getExtensionPolicy(
+  const extensionPolicy = Services.policies.getExtensionPolicy(
     "3rdparty-policy@mozilla.com"
   );
   deepEqual(extensionPolicy, { string: "value" });

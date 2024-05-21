@@ -6,9 +6,16 @@ addons-page-title = Eklenti Yöneticisi
 search-header =
     .placeholder = addons.mozilla.org’da ara
     .searchbuttonlabel = Ara
-search-header-shortcut =
-    .key = f
+
+## Variables
+##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
+
 list-empty-get-extensions-message = Uzantıları ve temaları <a data-l10n-name="get-extensions">{ $domain }</a> adresinden indirebilirsiniz.
+list-empty-get-dictionaries-message = Sözlükleri <a data-l10n-name="get-extensions">{ $domain }</a> adresinden indirebilirsiniz.
+list-empty-get-language-packs-message = Dil paketlerini <a data-l10n-name="get-extensions">{ $domain }</a> adresinden indirebilirsiniz.
+
+##
+
 list-empty-installed =
     .value = Bu türden kurulmuş bir eklentiniz yok
 list-empty-available-updates =
@@ -18,7 +25,7 @@ list-empty-recent-updates =
 list-empty-find-updates =
     .label = Güncellemeleri denetle
 list-empty-button =
-    .label = Eklentiler hakkında daha fazlasını öğrenin
+    .label = Eklentiler hakkında daha fazla bilgi alın
 help-button = Eklenti Desteği
 sidebar-help-button-title =
     .title = Eklenti Desteği
@@ -33,7 +40,9 @@ detail-version =
     .label = Sürüm
 detail-last-updated =
     .label = Son güncelleme
-detail-contributions-description = Bu eklentinin geliştiricisi, sizden ufak bir katkıda bulunarak süregelen geliştirme faaliyetlerini desteklemenizi istiyor.
+addon-detail-description-expand = Daha fazla göster
+addon-detail-description-collapse = Daha az göster
+detail-contributions-description = Bu eklentinin geliştiricisi, küçük bir bağışta bulunarak gelişimin devamı için katkıda bulunmanızı rica ediyor.
 detail-contributions-button = Katkıda bulunun
     .title = Bu eklentinin geliştirilmesine katkıda bulunun
     .accesskey = K
@@ -92,14 +101,16 @@ detail-show-preferences =
            *[other] Bu eklentinin tercihlerini değiştir
         }
 detail-rating =
-    .value = Beğeni
+    .value = Puan
 addon-restart-now =
     .label = Şimdi yeniden başlat
 disabled-unsigned-heading =
     .value = Bazı eklentiler etkisizleştirildi
-disabled-unsigned-description = Aşağıdaki eklentiler { -brand-short-name } üzerinde kullanılmak üzere doğrulanmamıştır. <label data-l10n-name="find-addons">Yerlerine başkalarını bulabilir</label> veya geliştiriciden eklentilerini doğrulamasını isteyebilirsiniz.
+disabled-unsigned-description =
+    Aşağıdaki eklentiler { -brand-short-name } üzerinde kullanılmak üzere doğrulanmamıştır.
+    <label data-l10n-name="find-addons">Yerlerine başka eklentiler bulabilir</label> veya geliştiriciden eklentilerini doğrulamasını isteyebilirsiniz.
 disabled-unsigned-learn-more = Sizi internette daha güvende tutma çabalarımız hakkında bilgi alın.
-disabled-unsigned-devinfo = Eklentilerini doğrulamak için isteyen geliştiriciler <label data-l10n-name="learn-more">rehberimizi</label> okuyabilir.
+disabled-unsigned-devinfo = Eklentilerini doğrulamak isteyen geliştiriciler <label data-l10n-name="learn-more">rehberimizi</label> okuyabilir.
 plugin-deprecation-description = Bir şeyler mi eksik? Bazı yan uygulamalar artık { -brand-short-name } tarafından desteklenmiyor. <label data-l10n-name="learn-more">Daha fazla bilgi alın.</label>
 legacy-warning-show-legacy = Eski teknoloji uzantıları göster
 legacy-extensions =
@@ -107,7 +118,7 @@ legacy-extensions =
 legacy-extensions-description = Bu uzantılar yeni { -brand-short-name } standartlarını karşılamadığı için etkisiz hale getirilmiştir. <label data-l10n-name="legacy-learn-more">Uzantılarda yaptığımız değişiklikler hakkında bilgi alın</label>
 private-browsing-description2 =
     { -brand-short-name } gizli gezinti modunda uzantıların çalışma şekli değişiyor. Bundan sonra
-    { -brand-short-name } tarayıcınıza ekleceğiniz uzantılar varsayılan olarak gizli pencerelerde çalışmayacak.
+    { -brand-short-name } tarayıcınıza ekleyeceğiniz uzantılar varsayılan olarak gizli pencerelerde çalışmayacak.
     Böylece, siz ayarlara girip özellikle izin vermedikçe uzantılar gizli gezinti sırasında yaptıklarınızı göremeyecekler.
     Bu değişikliği, gizli gezintinizin daha da gizli kalması için yapıyoruz.
     <label data-l10n-name="private-browsing-learn-more">Uzantı ayarlarınızı yönetmeyi öğrenin.</label>
@@ -135,16 +146,32 @@ addon-category-available-updates-title =
 addon-category-recent-updates = Yakın zamandaki güncellemeler
 addon-category-recent-updates-title =
     .title = Yakın zamandaki güncellemeler
+addon-category-sitepermission = Site İzinleri
+addon-category-sitepermission-title =
+    .title = Site İzinleri
+# String displayed in about:addons in the Site Permissions section
+# Variables:
+#  $host (string) - DNS host name for which the webextension enables permissions
+addon-sitepermission-host = { $host } site izinleri
 
 ## These are global warnings
 
-extensions-warning-safe-mode = Tüm uzantılar güvenli kipte devre dışı bırakıldı.
-extensions-warning-check-compatibility = Uzantı uyumluluk denetimi devre dışı. Uyumsuz uzantılarınız olabilir.
+extensions-warning-safe-mode = Güvenli kipte tüm eklentiler devre dışı bırakılmıştır.
+extensions-warning-check-compatibility = Eklenti uyumluluk denetimi devre dışı. Uyumsuz eklentileriniz olabilir.
+extensions-warning-safe-mode2 =
+    .message = Güvenli kipte tüm eklentiler devre dışı bırakılmıştır.
+extensions-warning-check-compatibility2 =
+    .message = Eklenti uyumluluk denetimi devre dışı. Uyumsuz eklentileriniz olabilir.
 extensions-warning-check-compatibility-button = Etkinleştir
     .title = Eklenti uyumluluk denetimini devreye sok
 extensions-warning-update-security = Eklenti güncelleme güvenliği denetimi devre dışı. Güncellemelerle tehlikeye düşebilirsiniz.
+extensions-warning-update-security2 =
+    .message = Eklenti güncelleme güvenliği denetimi devre dışı. Güncellemelerle tehlikeye düşebilirsiniz.
 extensions-warning-update-security-button = Etkinleştir
     .title = Eklenti güncelleme güvenliği denetimini devreye sok
+extensions-warning-imported-addons2 =
+    .message = Lütfen { -brand-short-name } tarayıcınıza aktarılan uzantıların kurulumunu bitirin.
+extensions-warning-imported-addons-button = Uzantıları yükle
 
 ## Strings connected to add-on updates
 
@@ -195,6 +222,9 @@ shortcuts-no-addons = Herhangi bir uzantıyı etkinleştirmediniz.
 shortcuts-no-commands = Aşağıdaki uzantıların kısayolları yok:
 shortcuts-input =
     .placeholder = Bir kısayol girin
+# Accessible name for a trashcan icon button that removes an existent shortcut
+shortcuts-remove-button =
+    .aria-label = Kısayolu kaldır
 shortcuts-browserAction2 = Araç çubuğu düğmesini etkinleştir
 shortcuts-pageAction = Sayfa eylemini etkinleştir
 shortcuts-sidebarAction = Kenar çubuğunu aç/kapat
@@ -209,10 +239,17 @@ shortcuts-duplicate = Yinelenen kısayol
 # Variables:
 #   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message = { $shortcut } birden fazla yerde kısayol olarak kullanılıyor. Yinelenen kısayollar beklenmeyen davranışlara neden olabilir.
+# String displayed when a keyboard shortcut is already assigned to more than one add-on
+# Variables:
+#   $shortcut (string) - Shortcut string for the add-on
+shortcuts-duplicate-warning-message2 =
+    .message = { $shortcut } birden fazla yerde kısayol olarak kullanılıyor. Yinelenen kısayollar beklenmeyen davranışlara neden olabilir.
 # String displayed when a keyboard shortcut is already used by another add-on
 # Variables:
 #   $addon (string) - Name of the add-on
 shortcuts-exists = { $addon } tarafından zaten kullanılıyor
+# Variables:
+#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
         [one] { $numberToShow } tane daha göster
@@ -226,11 +263,16 @@ header-back-button =
 
 # Explanatory introduction to the list of recommended add-ons. The action word
 # ("recommends") in the final sentence is a link to external documentation.
-discopane-intro = Uzantılar ve temalar tarayıcınızın içinde çalışan uygulamalar gibidir. Parolalarınızı saklamanıza, video indirmenize, indirimleri bulmanıza, sinir bozucu reklamları engellemenize, tarayıcınızın görünümü değiştirmenize ve çok daha birçok şey yapmanıza olanak tanırlar. Bu küçük yazılımlar genellikle üçüncü şahıslar tarafından geliştirilir. Ekstra güvenlik, performans ve işlevsellik için { -brand-product-name } tarafından <a data-l10n-name="learn-more-trigger">önerilen</a> uzantı ve temaları aşağıda bulabilirsiniz.
+discopane-intro = Uzantılar ve temalar tarayıcınızın içinde çalışan uygulamalar gibidir. Parolalarınızı saklamanıza, video indirmenize, indirimleri bulmanıza, sinir bozucu reklamları engellemenize, tarayıcınızın görünümü değiştirmenize ve daha birçok şey yapmanıza olanak tanırlar. Bu küçük yazılımlar genellikle üçüncü şahıslar tarafından geliştirilir. Ekstra güvenlik, performans ve işlevsellik için { -brand-product-name } tarafından <a data-l10n-name="learn-more-trigger">önerilen</a> uzantı ve temaları aşağıda bulabilirsiniz.
 # Notice to make user aware that the recommendations are personalized.
 discopane-notice-recommendations =
     Bu önerilerden bazıları size özeldir. Önerilerimiz; yüklediğiniz
     diğer uzantıları, profil tercihlerinizi ve kullanım istatistiklerinizi temel alır.
+# Notice to make user aware that the recommendations are personalized.
+discopane-notice-recommendations2 =
+    .message =
+        Bu önerilerden bazıları size özeldir. Önerilerimiz; yüklediğiniz
+        diğer uzantıları, profil tercihlerinizi ve kullanım istatistiklerinizi temel alır.
 discopane-notice-learn-more = Daha fazla bilgi al
 privacy-policy = Gizlilik İlkeleri
 # Refers to the author of an add-on, shown below the name of the add-on.
@@ -276,15 +318,15 @@ permissions-addon-button = İzinler
 extension-enabled-heading = Etkin
 extension-disabled-heading = Devre dışı
 theme-enabled-heading = Etkin
-theme-disabled-heading = Devre dışı
-theme-monochromatic-heading = Renk kuşakları
-theme-monochromatic-subheading = { -brand-product-name } tarayıcınızdan yepyeni renk kuşakları. Sadece kısıtlı bir süre için.
+theme-disabled-heading2 = Kayıtlı temalar
 plugin-enabled-heading = Etkin
 plugin-disabled-heading = Devre dışı
 dictionary-enabled-heading = Etkin
 dictionary-disabled-heading = Devre dışı
 locale-enabled-heading = Etkin
 locale-disabled-heading = Devre dışı
+sitepermission-enabled-heading = Etkin
+sitepermission-disabled-heading = Devre dışı
 always-activate-button = Her zaman etkinleştir
 never-activate-button = Asla etkinleştirme
 addon-detail-author-label = Geliştiren
@@ -294,6 +336,9 @@ addon-detail-homepage-label = Web sitesi
 addon-detail-rating-label = Puan
 # Message for add-ons with a staged pending update.
 install-postponed-message = { -brand-short-name } yeniden başlatılınca bu uzantı güncellenecek.
+# Message for add-ons with a staged pending update.
+install-postponed-message2 =
+    .message = { -brand-short-name } yeniden başlatılınca bu uzantı güncellenecek.
 install-postponed-button = Şimdi güncelle
 # The average rating that the add-on has received.
 # Variables:
@@ -318,6 +363,10 @@ addon-detail-reviews-link =
 # Variables:
 #   $addon (string) - Name of the add-on
 pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> kaldırıldı.
+# Variables:
+#   $addon (string) - Name of the add-on
+pending-uninstall-description2 =
+    .message = { $addon } kaldırıldı.
 pending-uninstall-undo-button = Geri al
 addon-detail-updates-label = Otomatik güncellemelere izin ver
 addon-detail-updates-radio-default = Varsayılan
@@ -325,6 +374,10 @@ addon-detail-updates-radio-on = Açık
 addon-detail-updates-radio-off = Kapalı
 addon-detail-update-check-label = Güncellemeleri denetle
 install-update-button = Güncelle
+# aria-label associated to the updates row to help screen readers to announce the group
+# of input controls being entered.
+addon-detail-group-label-updates =
+    .aria-label = { addon-detail-updates-label }
 # This is the tooltip text for the private browsing badge in about:addons. The
 # badge is the private browsing icon included next to the extension's name.
 addon-badge-private-browsing-allowed2 =
@@ -333,6 +386,24 @@ addon-badge-private-browsing-allowed2 =
 addon-detail-private-browsing-help = İzin verirseniz bu uzantı, gizli gezinti sırasında çevrimiçi etkinliklerinize erişebilir. <a data-l10n-name="learn-more">Daha fazla bilgi alın</a>
 addon-detail-private-browsing-allow = İzin ver
 addon-detail-private-browsing-disallow = İzin verme
+# aria-label associated to the private browsing row to help screen readers to announce the group
+# of input controls being entered.
+addon-detail-group-label-private-browsing =
+    .aria-label = { detail-private-browsing-label }
+
+## "sites with restrictions" (internally called "quarantined") are special domains
+## where add-ons are normally blocked for security reasons.
+
+# Used as a description for the option to allow or block an add-on on quarantined domains.
+addon-detail-quarantined-domains-label = Kısıtlamalara sahip sitelerde çalıştır
+# Used as help text part of the quarantined domains UI controls row.
+addon-detail-quarantined-domains-help = İzin verirseniz bu uzantı { -vendor-short-name } tarafından kısıtlanan sitelere erişebilecektir. Yalnızca güvendiğiniz uzantılara izin verin.
+# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
+addon-detail-quarantined-domains-allow = İzin ver
+addon-detail-quarantined-domains-disallow = İzin verme
+# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
+addon-detail-group-label-quarantined-domains =
+    .aria-label = { addon-detail-quarantined-domains-label }
 
 ## This is the tooltip text for the recommended badges for an extension in about:addons. The
 ## badge is a small icon displayed next to an extension when it is recommended on AMO.
@@ -361,6 +432,9 @@ addon-permissions-optional = Ek işlevler için isteğe bağlı izinler:
 addon-permissions-learnmore = İzinler hakkında daha fazla bilgi alın
 recommended-extensions-heading = Önerilen uzantılar
 recommended-themes-heading = Önerilen temalar
+# Variables:
+#   $hostname (string) - Host where the permissions are granted
+addon-sitepermissions-required = <span data-l10n-name="hostname">{ $hostname }</span> sitesine aşağıdaki izinleri verir:
 # A recommendation for the Firefox Color theme shown at the bottom of the theme
 # list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Yaratıcı gününüzde misiniz? <a data-l10n-name="link">Firefox Color ile kendi temanızı oluşturun.</a>
@@ -373,6 +447,7 @@ plugin-heading = Yan uygulamalarınızı yönetin
 dictionary-heading = Sözlüklerinizi yönetin
 locale-heading = Dillerinizi yönetin
 updates-heading = Güncellemelerinizi yönetin
+sitepermission-heading = Site izinlerinizi yönetin
 discover-heading = { -brand-short-name } tarayıcınızı kişiselleştirin
 shortcuts-heading = Uzantı kısayollarını yönet
 default-heading-search-label = Daha fazla eklenti bul
@@ -380,3 +455,44 @@ addons-heading-search-input =
     .placeholder = addons.mozilla.org’da ara
 addon-page-options-button =
     .title = Tüm eklentiler için araçlar
+
+## Detail notifications
+## Variables:
+##   $name (string) - Name of the add-on.
+
+# Variables:
+#   $version (string) - Application version.
+details-notification-incompatible = { $name } eklentisi { -brand-short-name } { $version } ile uyumsuz.
+# Variables:
+#   $version (string) - Application version.
+details-notification-incompatible2 =
+    .message = { $name } eklentisi { -brand-short-name } { $version } ile uyumsuz.
+details-notification-incompatible-link = Daha fazla bilgi
+details-notification-unsigned-and-disabled = { $name } { -brand-short-name } üzerinde kullanım için doğrulanamadı ve etkisizleştirildi.
+details-notification-unsigned-and-disabled2 =
+    .message = { $name } { -brand-short-name } üzerinde kullanım için doğrulanamadı ve etkisizleştirildi.
+details-notification-unsigned-and-disabled-link = Daha fazla bilgi
+details-notification-unsigned = { $name } { -brand-short-name } üzerinde kullanım için doğrulanamadı. Lütfen dikkatli olun.
+details-notification-unsigned2 =
+    .message = { $name } { -brand-short-name } üzerinde kullanım için doğrulanamadı. Lütfen dikkatli olun.
+details-notification-unsigned-link = Daha fazla bilgi
+details-notification-blocked = { $name } güvenlik veya kararlılık gerekçesiyle devre dışı bırakıldı.
+details-notification-blocked2 =
+    .message = { $name } güvenlik veya kararlılık gerekçesiyle devre dışı bırakıldı.
+details-notification-blocked-link = Daha fazla bilgi
+details-notification-softblocked = { $name } eklentisinin güvenlik veya kararlılık sorunlarına yol açtığı biliniyor.
+details-notification-softblocked2 =
+    .message = { $name } eklentisinin güvenlik veya kararlılık sorunlarına yol açtığı biliniyor.
+details-notification-softblocked-link = Daha fazla bilgi
+details-notification-gmp-pending = { $name } az sonra yüklenecektir.
+details-notification-gmp-pending2 =
+    .message = { $name } az sonra yüklenecektir.
+
+## Gecko Media Plugins (GMPs)
+
+plugins-gmp-license-info = Lisans bilgileri
+plugins-gmp-privacy-info = Gizlilik bilgileri
+plugins-openh264-name = OpenH264 Video Çözücü (sağlayan: Cisco Systems, Inc.)
+plugins-openh264-description = Bu yan uygulama, WebRTC şartnamesine uyum sağlamak ve H.264 video çözücüye ihtiyaç duyan cihazlarda WebRTC görüşmeleri yapabilmek amacıyla Mozilla tarafından otomatik yüklenir. Çözücünün kaynak kodlarını görmek ve daha fazla bilgi almak için http://www.openh264.org/ adresini ziyaret edin.
+plugins-widevine-name = Widevine İçerik Çözme Modülü (sağlayan: Google Inc.)
+plugins-widevine-description = Bu yan uygulama, Encrypted Media Extensions şartnamesine uygun olarak şifrelenmiş ortamların oynatılmasını sağlar. Şifrelenmiş ortamlar genellikle ücretli içeriklerin kopyalanmasını engellemek isteyen siteler tarafından kullanılır. Encrypted Media Extensions hakkında daha fazla bilgi için https://www.w3.org/TR/encrypted-media/ adresini ziyaret edebilirsiniz.

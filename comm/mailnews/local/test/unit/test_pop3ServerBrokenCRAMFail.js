@@ -16,7 +16,7 @@ var expectedTransaction = [
   "STAT",
 ];
 
-const kStateAuthNeeded = 1; // the same value as in Pop3d.jsm
+const kStateAuthNeeded = 1; // the same value as in Pop3d.sys.mjs
 
 var urlListener = {
   OnStartRunningUrl(url) {},
@@ -30,7 +30,7 @@ var urlListener = {
       do_timeout(0, checkBusy);
     } catch (e) {
       server.stop();
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(true);
       }
@@ -42,11 +42,7 @@ var urlListener = {
 
 function checkBusy() {
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -60,7 +56,7 @@ function endTest() {
   // No more tests, let everything finish
   server.stop();
 
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     thread.processNextEvent(true);
   }
@@ -93,7 +89,7 @@ function run_test() {
     Services.prefs.setBoolPref("mail.biff.show_tray_icon", false);
     Services.prefs.setBoolPref("mail.biff.animate_dock_icon", false);
 
-    daemon = new pop3Daemon();
+    daemon = new Pop3Daemon();
     function createHandler(d) {
       return new CRAMFail_handler(d);
     }
@@ -101,7 +97,7 @@ function run_test() {
     server.start();
 
     incomingServer = createPop3ServerAndLocalFolders(server.port);
-    let msgServer = incomingServer;
+    const msgServer = incomingServer;
     msgServer.QueryInterface(Ci.nsIMsgIncomingServer);
     // Need to allow any auth here, although that's not use in TB really,
     // because we need to fall back to something after CRAM-MD5 and
@@ -120,7 +116,7 @@ function run_test() {
 
     do_throw(e);
   } finally {
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

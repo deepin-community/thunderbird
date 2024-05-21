@@ -13,13 +13,13 @@
 #include "mozilla/Maybe.h"
 
 #include "gc/IteratorUtils.h"
+#include "gc/Marking.h"
 #include "gc/Zone.h"
 #include "vm/Runtime.h"
 
 #include "gc/ArenaList-inl.h"
 
-namespace js {
-namespace gc {
+namespace js::gc {
 
 class AutoAssertEmptyNursery;
 
@@ -37,15 +37,41 @@ class ArenaListIter {
     MOZ_ASSERT(!done());
     arena = arena->next;
   }
+
+  operator Arena*() const { return get(); }
+  Arena* operator->() const { return get(); }
 };
 
-class ArenaIter : public ChainedIterator<ArenaListIter, 4> {
+// Iterate all arenas in a zone of the specified kind, for use by the GC.
+//
+// Since the GC never iterates arenas during foreground sweeping we can skip
+// traversing foreground swept arenas.
+class ArenaIterInGC : public ChainedIterator<ArenaListIter, 2> {
+ public:
+  ArenaIterInGC(JS::Zone* zone, AllocKind kind)
+      : ChainedIterator(zone->arenas.getFirstArena(kind),
+                        zone->arenas.getFirstCollectingArena(kind)) {
+#ifdef DEBUG
+    MOZ_ASSERT(JS::RuntimeHeapIsMajorCollecting());
+    GCRuntime& gc = zone->runtimeFromMainThread()->gc;
+    MOZ_ASSERT(!gc.maybeGetForegroundFinalizedArenas(zone, kind));
+#endif
+  }
+};
+
+// Iterate all arenas in a zone of the specified kind. May be called at any
+// time.
+//
+// Most uses of this happen when we are not in incremental GC but the debugger
+// can iterate scripts at any time.
+class ArenaIter : public AutoGatherSweptArenas,
+                  public ChainedIterator<ArenaListIter, 3> {
  public:
   ArenaIter(JS::Zone* zone, AllocKind kind)
-      : ChainedIterator(zone->arenas.getFirstArena(kind),
-                        zone->arenas.getFirstArenaToSweep(kind),
-                        zone->arenas.getFirstSweptArena(kind),
-                        zone->arenas.getFirstNewArenaInMarkPhase(kind)) {}
+      : AutoGatherSweptArenas(zone, kind),
+        ChainedIterator(zone->arenas.getFirstArena(kind),
+                        zone->arenas.getFirstCollectingArena(kind),
+                        sweptArenas()) {}
 };
 
 class ArenaCellIter {
@@ -232,17 +258,17 @@ template <typename GCType>
 class ZoneAllCellIter : public ZoneAllCellIter<TenuredCell> {
  public:
   // Non-nursery allocated (equivalent to having an entry in
-  // MapTypeToFinalizeKind). The template declaration here is to discard this
-  // constructor overload if MapTypeToFinalizeKind<GCType>::kind does not
-  // exist. Note that there will be no remaining overloads that will work,
-  // which makes sense given that you haven't specified which of the
-  // AllocKinds to use for GCType.
+  // MapTypeToAllocKind). The template declaration here is to discard this
+  // constructor overload if MapTypeToAllocKind<GCType>::kind does not
+  // exist. Note that there will be no remaining overloads that will work, which
+  // makes sense given that you haven't specified which of the AllocKinds to use
+  // for GCType.
   //
-  // If we later add a nursery allocable GCType with a single AllocKind, we
-  // will want to add an overload of this constructor that does the right
-  // thing (ie, it empties the nursery before iterating.)
+  // If we later add a nursery allocable GCType with a single AllocKind, we will
+  // want to add an overload of this constructor that does the right thing (ie,
+  // it empties the nursery before iterating.)
   explicit ZoneAllCellIter(JS::Zone* zone) : ZoneAllCellIter<TenuredCell>() {
-    init(zone, MapTypeToFinalizeKind<GCType>::kind);
+    init(zone, MapTypeToAllocKind<GCType>::kind);
   }
 
   // Non-nursery allocated, nursery is known to be empty: same behavior as
@@ -327,7 +353,7 @@ class ZoneCellIter : protected ZoneAllCellIter<T> {
   void skipDying() {
     while (!ZoneAllCellIter<T>::done()) {
       T* current = ZoneAllCellIter<T>::get();
-      if (!IsAboutToBeFinalizedUnbarriered(&current)) {
+      if (!IsAboutToBeFinalizedUnbarriered(current)) {
         return;
       }
       ZoneAllCellIter<T>::next();
@@ -335,7 +361,6 @@ class ZoneCellIter : protected ZoneAllCellIter<T> {
   }
 };
 
-} /* namespace gc */
-} /* namespace js */
+}  // namespace js::gc
 
 #endif /* gc_GC_inl_h */

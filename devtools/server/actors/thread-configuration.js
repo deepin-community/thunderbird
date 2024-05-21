@@ -4,39 +4,46 @@
 
 "use strict";
 
-const { ActorClassWithSpec, Actor } = require("devtools/shared/protocol");
+const { Actor } = require("resource://devtools/shared/protocol.js");
 const {
   threadConfigurationSpec,
-} = require("devtools/shared/specs/thread-configuration");
+} = require("resource://devtools/shared/specs/thread-configuration.js");
+
 const {
-  WatchedDataHelpers,
-} = require("devtools/server/actors/watcher/WatchedDataHelpers.jsm");
+  SessionDataHelpers,
+} = require("resource://devtools/server/actors/watcher/SessionDataHelpers.jsm");
 const {
   SUPPORTED_DATA: { THREAD_CONFIGURATION },
-} = WatchedDataHelpers;
+} = SessionDataHelpers;
 
 // List of options supported by this thread configuration actor.
+/* eslint sort-keys: "error" */
 const SUPPORTED_OPTIONS = {
-  // Enable pausing on exceptions.
-  pauseOnExceptions: true,
   // Disable pausing on caught exceptions.
   ignoreCaughtExceptions: true,
-  // Shows the pause overlay.
-  shouldShowOverlay: true,
-  // Include previously saved stack frames when paused.
-  shouldIncludeSavedFrames: true,
-  // Include async stack frames when paused.
-  shouldIncludeAsyncLiveFrames: true,
-  // Stop pausing on breakpoints.
-  skipBreakpoints: true,
   // Log the event break points.
   logEventBreakpoints: true,
   // Enable debugging asm & wasm.
   // See https://searchfox.org/mozilla-central/source/js/src/doc/Debugger/Debugger.md#16-26
   observeAsmJS: true,
+  observeWasm: true,
+  // Enable pausing on exceptions.
+  pauseOnExceptions: true,
+  // Boolean to know if we should display the overlay when pausing
+  pauseOverlay: true,
   // Should pause all the workers untill thread has attached.
   pauseWorkersUntilAttach: true,
+  // Include async stack frames when paused.
+  shouldIncludeAsyncLiveFrames: true,
+  // Include previously saved stack frames when paused.
+  shouldIncludeSavedFrames: true,
+  // Controls pausing on debugger statement.
+  // (This is enabled by default if omitted)
+  shouldPauseOnDebuggerStatement: true,
+  // Stop pausing on breakpoints.
+  skipBreakpoints: true,
 };
+/* eslint-disable sort-keys */
 
 /**
  * This actor manages the configuration options which apply to thread actor for all the targets.
@@ -49,11 +56,11 @@ const SUPPORTED_OPTIONS = {
  * @constructor
  *
  */
-const ThreadConfigurationActor = ActorClassWithSpec(threadConfigurationSpec, {
-  initialize(watcherActor) {
+class ThreadConfigurationActor extends Actor {
+  constructor(watcherActor) {
+    super(watcherActor.conn, threadConfigurationSpec);
     this.watcherActor = watcherActor;
-    Actor.prototype.initialize.call(this, this.watcherActor.conn);
-  },
+  }
 
   async updateConfiguration(configuration) {
     const configArray = Object.keys(configuration)
@@ -66,8 +73,12 @@ const ThreadConfigurationActor = ActorClassWithSpec(threadConfigurationSpec, {
       })
       .map(key => ({ key, value: configuration[key] }));
 
-    await this.watcherActor.addDataEntry(THREAD_CONFIGURATION, configArray);
-  },
-});
+    await this.watcherActor.addOrSetDataEntry(
+      THREAD_CONFIGURATION,
+      configArray,
+      "add"
+    );
+  }
+}
 
 exports.ThreadConfigurationActor = ThreadConfigurationActor;

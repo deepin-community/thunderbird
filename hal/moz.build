@@ -11,6 +11,7 @@ EXPORTS.mozilla += [
     "Hal.h",
     "HalBatteryInformation.h",
     "HalImpl.h",
+    "HalIPCUtils.h",
     "HalNetworkInformation.h",
     "HalSandbox.h",
     "HalScreenConfiguration.h",
@@ -18,10 +19,6 @@ EXPORTS.mozilla += [
     "HalTypes.h",
     "HalWakeLock.h",
     "HalWakeLockInformation.h",
-]
-
-EXPORTS.mozilla.fallback += [
-    "fallback/FallbackScreenConfiguration.h",
 ]
 
 UNIFIED_SOURCES += [
@@ -40,6 +37,8 @@ if CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
         "/widget/android",
     ]
     UNIFIED_SOURCES += [
+        "android/AndroidHeterogeneousCpuInfo.cpp",
+        "android/AndroidPerformanceHintManager.cpp",
         "android/AndroidProcessPriority.cpp",
         "android/AndroidSensor.cpp",
     ]
@@ -49,10 +48,11 @@ if CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
     ]
 elif CONFIG["OS_TARGET"] == "Linux":
     UNIFIED_SOURCES += [
-        "fallback/FallbackProcessPriority.cpp",
+        "fallback/FallbackHeterogeneousCpuInfo.cpp",
         "fallback/FallbackScreenConfiguration.cpp",
         "fallback/FallbackSensor.cpp",
         "fallback/FallbackVibration.cpp",
+        "linux/LinuxProcessPriority.cpp",
     ]
     if CONFIG["MOZ_ENABLE_DBUS"]:
         UNIFIED_SOURCES += [
@@ -64,9 +64,10 @@ elif CONFIG["OS_TARGET"] == "Linux":
         ]
 elif CONFIG["OS_TARGET"] == "WINNT":
     UNIFIED_SOURCES += [
-        "fallback/FallbackScreenConfiguration.cpp",
+        "fallback/FallbackHeterogeneousCpuInfo.cpp",
         "fallback/FallbackVibration.cpp",
         "windows/WindowsProcessPriority.cpp",
+        "windows/WindowsScreenConfiguration.cpp",
         "windows/WindowsSensor.cpp",
     ]
     # WindowsBattery.cpp cannot be built in unified mode because it relies on HalImpl.h.
@@ -76,12 +77,14 @@ elif CONFIG["OS_TARGET"] == "WINNT":
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
     UNIFIED_SOURCES += [
         "cocoa/CocoaBattery.cpp",
+        "cocoa/CocoaHeterogeneousCpuInfo.cpp",
         "fallback/FallbackProcessPriority.cpp",
         "fallback/FallbackScreenConfiguration.cpp",
         "fallback/FallbackVibration.cpp",
     ]
 elif CONFIG["OS_TARGET"] in ("OpenBSD", "NetBSD", "FreeBSD", "DragonFly"):
     UNIFIED_SOURCES += [
+        "fallback/FallbackHeterogeneousCpuInfo.cpp",
         "fallback/FallbackProcessPriority.cpp",
         "fallback/FallbackScreenConfiguration.cpp",
         "fallback/FallbackSensor.cpp",
@@ -98,6 +101,7 @@ elif CONFIG["OS_TARGET"] in ("OpenBSD", "NetBSD", "FreeBSD", "DragonFly"):
 else:
     UNIFIED_SOURCES += [
         "fallback/FallbackBattery.cpp",
+        "fallback/FallbackHeterogeneousCpuInfo.cpp",
         "fallback/FallbackProcessPriority.cpp",
         "fallback/FallbackScreenConfiguration.cpp",
         "fallback/FallbackSensor.cpp",
@@ -108,6 +112,7 @@ else:
 if CONFIG["MOZ_WIDGET_TOOLKIT"] != "android":
     UNIFIED_SOURCES += [
         "fallback/FallbackNetwork.cpp",
+        "fallback/FallbackPerformanceHintManager.cpp",
     ]
 
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
@@ -129,6 +134,6 @@ LOCAL_INCLUDES += [
 ]
 
 CFLAGS += CONFIG["GLIB_CFLAGS"]
-CFLAGS += CONFIG["MOZ_DBUS_GLIB_CFLAGS"]
+CFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 CXXFLAGS += CONFIG["GLIB_CFLAGS"]
-CXXFLAGS += CONFIG["MOZ_DBUS_GLIB_CFLAGS"]
+CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]

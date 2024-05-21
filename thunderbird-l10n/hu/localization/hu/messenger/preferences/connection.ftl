@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = E
     .tooltiptext = Adja meg az előnyben részesített URL-t a HTTPS feletti DNS feloldáshoz
 connection-dns-over-https-custom-label = Egyéni
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Kapcsolat beállításai
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Kiegészítő letiltása
+connection-dialog-title = Kapcsolat beállításai
 disable-extension-button = Kiegészítő letiltása
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

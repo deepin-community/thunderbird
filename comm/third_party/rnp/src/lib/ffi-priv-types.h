@@ -30,6 +30,7 @@
 #include "utils.h"
 #include <list>
 #include <crypto/mem.h>
+#include "sec_profile.hpp"
 
 struct rnp_key_handle_st {
     rnp_ffi_t        ffi;
@@ -74,18 +75,32 @@ struct rnp_ffi_st {
     void *                  getkeycb_ctx;
     rnp_password_cb         getpasscb;
     void *                  getpasscb_ctx;
-    rng_t                   rng;
     pgp_key_provider_t      key_provider;
     pgp_password_provider_t pass_provider;
+    rnp::SecurityContext    context;
+
+    rnp_ffi_st(pgp_key_store_format_t pub_fmt, pgp_key_store_format_t sec_fmt);
+    ~rnp_ffi_st();
+
+    rnp::RNG &            rng() noexcept;
+    rnp::SecurityProfile &profile() noexcept;
 };
 
 struct rnp_input_st {
     /* either src or src_directory are valid, not both */
     pgp_source_t        src;
-    char *              src_directory;
+    std::string         src_directory;
     rnp_input_reader_t *reader;
     rnp_input_closer_t *closer;
     void *              app_ctx;
+
+    rnp_input_st();
+    rnp_input_st(const rnp_input_st &) = delete;
+    rnp_input_st(rnp_input_st &&) = delete;
+    ~rnp_input_st();
+
+    rnp_input_st &operator=(const rnp_input_st &) = delete;
+    rnp_input_st &operator=(rnp_input_st &&src);
 };
 
 struct rnp_output_st {
@@ -157,6 +172,9 @@ struct rnp_op_verify_st {
     bool           validated{};
     pgp_aead_alg_t aead{};
     pgp_symm_alg_t salg{};
+    bool           ignore_sigs{};
+    bool           require_all_sigs{};
+    bool           allow_hidden{};
     /* recipient/symenc information */
     rnp_recipient_handle_t recipients{};
     size_t                 recipient_count{};
@@ -177,6 +195,12 @@ struct rnp_op_encrypt_st {
     rnp_op_sign_signatures_t signatures{};
 };
 
+#define RNP_LOCATOR_MAX_SIZE (MAX_ID_LENGTH + 1)
+static_assert(RNP_LOCATOR_MAX_SIZE > PGP_FINGERPRINT_SIZE * 2, "Locator size mismatch.");
+static_assert(RNP_LOCATOR_MAX_SIZE > PGP_KEY_ID_SIZE * 2, "Locator size mismatch.");
+static_assert(RNP_LOCATOR_MAX_SIZE > PGP_KEY_GRIP_SIZE * 2, "Locator size mismatch.");
+static_assert(RNP_LOCATOR_MAX_SIZE > MAX_ID_LENGTH, "Locator size mismatch.");
+
 struct rnp_identifier_iterator_st {
     rnp_ffi_t                       ffi;
     pgp_key_search_type_t           type;
@@ -184,9 +208,16 @@ struct rnp_identifier_iterator_st {
     std::list<pgp_key_t>::iterator *keyp;
     unsigned                        uididx;
     json_object *                   tbl;
-    char
-      buf[1 + MAX(MAX(MAX(PGP_KEY_ID_SIZE * 2, PGP_KEY_GRIP_SIZE), PGP_FINGERPRINT_SIZE * 2),
-                  MAX_ID_LENGTH)];
+    char                            buf[RNP_LOCATOR_MAX_SIZE];
+};
+
+struct rnp_decryption_kp_param_t {
+    rnp_op_verify_t op;
+    bool            has_hidden; /* key provider had hidden keyid request */
+    pgp_key_t *     last;       /* last key, returned in hidden keyid request */
+
+    rnp_decryption_kp_param_t(rnp_op_verify_t opobj)
+        : op(opobj), has_hidden(false), last(NULL){};
 };
 
 /* This is just for readability at the call site and will hopefully reduce mistakes.

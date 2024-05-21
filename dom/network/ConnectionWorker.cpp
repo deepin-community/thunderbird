@@ -10,6 +10,7 @@
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRef.h"
 #include "mozilla/dom/WorkerRunnable.h"
+#include "mozilla/dom/WorkerScope.h"
 
 namespace mozilla::dom::network {
 
@@ -108,7 +109,7 @@ class ShutdownRunnable : public WorkerMainThreadRunnable {
   }
 };
 
-class NotifyRunnable : public WorkerRunnable {
+class NotifyRunnable final : public WorkerRunnable {
  private:
   RefPtr<ConnectionProxy> mProxy;
 
@@ -119,7 +120,7 @@ class NotifyRunnable : public WorkerRunnable {
  public:
   NotifyRunnable(WorkerPrivate* aWorkerPrivate, ConnectionProxy* aProxy,
                  ConnectionType aType, bool aIsWifi, uint32_t aDHCPGateway)
-      : WorkerRunnable(aWorkerPrivate),
+      : WorkerRunnable(aWorkerPrivate, "NotifyRunnable"),
         mProxy(aProxy),
         mConnectionType(aType),
         mIsWifi(aIsWifi),
@@ -140,7 +141,9 @@ class NotifyRunnable : public WorkerRunnable {
 /* static */
 already_AddRefed<ConnectionWorker> ConnectionWorker::Create(
     WorkerPrivate* aWorkerPrivate, ErrorResult& aRv) {
-  RefPtr<ConnectionWorker> c = new ConnectionWorker();
+  bool shouldResistFingerprinting = aWorkerPrivate->ShouldResistFingerprinting(
+      RFPTarget::NavigatorConnection);
+  RefPtr<ConnectionWorker> c = new ConnectionWorker(shouldResistFingerprinting);
   c->mProxy = ConnectionProxy::Create(aWorkerPrivate, c);
   if (!c->mProxy) {
     aRv.ThrowTypeError("The Worker thread is shutting down.");
@@ -161,7 +164,8 @@ already_AddRefed<ConnectionWorker> ConnectionWorker::Create(
   return c.forget();
 }
 
-ConnectionWorker::ConnectionWorker() : Connection(nullptr) {
+ConnectionWorker::ConnectionWorker(bool aShouldResistFingerprinting)
+    : Connection(nullptr, aShouldResistFingerprinting) {
   MOZ_ASSERT(IsCurrentThreadRunningWorker());
 }
 

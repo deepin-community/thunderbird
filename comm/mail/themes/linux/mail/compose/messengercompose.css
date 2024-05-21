@@ -19,6 +19,10 @@
   border-bottom: 1px solid var(--chrome-content-separator-color);
 }
 
+#composeToolbar2:not(:-moz-lwtheme) {
+  appearance: none;
+}
+
 /* ::::: special toolbar colors ::::: */
 
 #subjectLabel {
@@ -29,40 +33,24 @@
 /* ::::: autocomplete icons ::::: */
 
 .autocomplete-richlistitem[type$="-abook"] > .ac-site-icon {
-  display: -moz-box;
+  display: flex;
   margin: 1px 5px;
 }
 
 #composeContentBox {
   background-color: -moz-dialog;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) inset;
-}
 
-#composeContentBox:-moz-window-inactive {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) inset;
-}
-
-#composeContentBox splitter[orient="vertical"] {
-  appearance: none;
-  height: 5px;
-  margin-top: -5px;
-  position: relative;
-  z-index: 10;
-}
-
-#headers-box {
-  background-color: transparent;
+  &:-moz-window-inactive {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) inset;
+  }
 }
 
 #MsgHeadersToolbar {
   appearance: none !important;
   color: WindowText;
   text-shadow: none;
-  padding-top: 3px;
-}
-
-#addresses-box {
-  padding-top: 4px;
+  padding-block-start: 7px;
 }
 
 .address-container {
@@ -84,10 +72,10 @@
 
 .address-pill {
   padding-block: 2px;
-}
 
-.address-pill label {
-  margin-block: 0;
+  & label {
+    margin-block: 0;
+  }
 }
 
 .pill-indicator {
@@ -102,36 +90,32 @@
   margin-block: 2px 0;
   padding-block: 4px;
   padding-inline: 2px 20px;
-}
 
-#msgIdentity::part(label-box) {
-  background: none;
-  padding-inline-end: initial;
-}
+  &::part(label-box) {
+    background: none;
+    padding-inline-end: initial;
+  }
 
-#msgIdentity::part(text-input) {
-  appearance: none;
-  padding-block: 1px 2px;
-  padding-inline: 3px 12px;
-  background-color: transparent;
-  color: inherit;
-}
+  &::part(text-input) {
+    appearance: none;
+    padding-block: 1px 2px;
+    padding-inline: 3px 12px;
+    background-color: transparent;
+    color: inherit;
+  }
 
-#msgIdentity[editable="true"]::part(dropmarker) {
-  margin-inline-end: 0;
-  width: 16px;
-}
+  &[editable="true"]::part(dropmarker) {
+    margin-inline-end: 0;
+    width: 12px;
+  }
 
-#msgIdentity[open="true"] {
-  color: FieldText;
-}
+  &[open="true"] {
+    color: FieldText;
 
-:root[lwt-tree] #msgIdentity[open="true"] {
-  color: var(--lwt-toolbar-field-color);
-}
-
-:root[lwt-tree] #msgIdentityPopup > menuitem {
-  padding-block: 5px;
+    :root[lwt-tree] & {
+      color: inherit;
+    }
+  }
 }
 
 /* ::::: format toolbar ::::: */
@@ -145,58 +129,17 @@
 
 toolbarbutton.formatting-button {
   margin: 1px;
-}
 
-.formatting-button > .toolbarbutton-menu-dropmarker {
-  appearance: none !important;
-  margin-inline-start: 3px;
-}
-
-/* ..... smiley menu ..... */
-
-#smileyPopup > menuitem > .menu-text {
-  margin-inline-start: 1px !important;
-}
-
-/* ..... fg/bg color picker ..... */
-
-.color-button {
-  border: 1px inset ThreeDFace;
-  padding: 0;
-  width: 14px;
-  height: 12px;
-  margin: 2px;
-}
-
-.color-button:hover {
-  border: 1px solid ThreeDDarkShadow;
-}
-
-.color-button[disabled="true"],
-.color-button[disabled="true"]:hover {
-  border: 1px inset ThreeDFace;
-  opacity: 0.5;
+  & > .toolbarbutton-menu-dropmarker {
+    appearance: none !important;
+    margin-inline-start: 3px;
+  }
 }
 
 /* ::::: address book sidebar ::::: */
-.ab-closebutton > .toolbarbutton-icon {
-  margin-inline-end: 0; /* override toolkit's default value */
-}
 
-#sidebar {
+#contactsBrowser {
   background-color: Window;
-}
-
-#sidebar-splitter {
-  appearance: none;
-  border-inline-start: 1px solid ThreeDShadow;
-  /* splitter grip area */
-  width: 5px;
-  /* make only the splitter border visible */
-  margin-inline-end: -5px;
-  /* because of the negative margin needed to make the splitter visible */
-  position: relative;
-  z-index: 10;
 }
 
 menu[command="cmd_attachCloud"] .menu-iconic-left,
@@ -206,21 +149,15 @@ menu[command="cmd_convertCloud"] .menu-iconic-left {
   visibility: visible;
 }
 
-#languageStatusButton {
-  height: 22px;
-}
-
 /* Styles for the default system dark theme */
 
-:root[lwt-tree] #MsgHeadersToolbar {
-  background-image: none;
-}
+:root[lwt-tree] {
+  & #MsgHeadersToolbar {
+    background-image: none;
+  }
 
-:root[lwt-tree] #headers-box {
-  appearance: none;
-}
-
-:root[lwt-tree] #FormatToolbar {
-  color: inherit;
-  background-image: none;
+  & #FormatToolbar {
+    color: inherit;
+    background-image: none;
+  }
 }

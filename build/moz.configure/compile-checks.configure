@@ -37,6 +37,44 @@ def try_compile(
     )
 
 
+# Generates a test program and attempts to link it. In case of failure, the
+# resulting check will return None. If the link succeeds, it will return
+# True
+# - `includes` are the includes (as file names) that will appear at the top of
+#   the generated test program.
+# - `body` is the code that will appear in the main function of the generated
+#   test program. `return 0;` is appended to the function body automatically.
+# - `language` is the language selection, so that the appropriate compiler is
+#   used.
+# - `flags` are the flags to be passed to the compiler.
+# - `check_msg` is the message to be printed to accompany compiling the test
+#   program.
+@template
+def try_link(
+    includes=None,
+    body="",
+    language="C++",
+    flags=None,
+    check_msg=None,
+    when=None,
+    onerror=lambda: None,
+):
+    compiler = {
+        "C": c_compiler,
+        "C++": cxx_compiler,
+    }[language]
+
+    return compiler.try_link(
+        linker_ldflags,
+        includes,
+        body,
+        flags,
+        check_msg,
+        when=when,
+        onerror=onerror,
+    )
+
+
 # Checks for the presence of the given header on the target system by compiling
 # a test program including that header. The return value of the template is a
 # check function returning True if the header is present, and None if it is not.
@@ -95,6 +133,18 @@ def check_headers(*headers, **kwargs):
     return checks
 
 
+@depends(linker_ldflags, target.kernel)
+def check_symbol_flags(linker_ldflags, kernel):
+    if kernel == "WINNT":
+        # The build doesn't use the compiler to link things as of writing,
+        # but some compilation checks do. When using clang-cl, the only
+        # linker we really support is lld.link, but clang-cl defaults to
+        # link.exe (even when cross-compiling). So we force the use of
+        # lld.link for the linkage checks.
+        return ["-fuse-ld=lld"]
+    return linker_ldflags
+
+
 # Checks for the presence of the given symbol on the target system by compiling
 # a test program. The return value of the template is a check function
 # returning True if the symbol can be found, and None if it is not.
@@ -103,9 +153,9 @@ def check_symbol(symbol, language="C", flags=None, when=None, onerror=lambda: No
     if when is None:
         when = always
 
-    compiler = {
-        "C": c_compiler,
-        "C++": cxx_compiler,
+    compiler, extern_c = {
+        "C": (c_compiler, ""),
+        "C++": (cxx_compiler, 'extern "C" '),
     }[language]
 
     # Stolen from autoconf 2.13 ; might be irrelevant now, but it doesn't hurt to
@@ -116,8 +166,21 @@ def check_symbol(symbol, language="C", flags=None, when=None, onerror=lambda: No
         "    builtin and then its argument prototype would still apply.  */",
     ]
 
+    if flags:
+
+        @depends(check_symbol_flags, dependable(flags))
+        def flags(base_flags, extra_flags):
+            if base_flags and extra_flags:
+                return base_flags + list(extra_flags)
+            if extra_flags:
+                return extra_flags
+            return base_flags
+
+    else:
+        flags = check_symbol_flags
+
     return compiler.try_run(
-        header=comment + ["char %s();" % symbol],
+        header=comment + ["%schar %s();" % (extern_c, symbol)],
         body="%s();" % symbol,
         flags=flags,
         check_msg="for %s" % symbol,
@@ -141,12 +204,23 @@ def check_symbol(symbol, language="C", flags=None, when=None, onerror=lambda: No
 #   when the warning flag is wanted.
 # - `check`, when not set, skips checking whether the flag is supported and
 #   adds it to the list of flags unconditionally.
+# - `mode`, can be "compile", "link" or "assemble"
 @template
 def check_and_add_flags(
-    flag, flags_collection, test_flags, compiler=None, when=None, check=True
+    flag,
+    flags_collection,
+    test_flags=(),
+    compiler=None,
+    when=None,
+    check=True,
+    mode="compile",
 ):
+    assert mode in ("compile", "link", "assemble")
+
     if compiler is not None:
         compilers = (compiler,)
+    elif mode in ("link", "assemble"):
+        compilers = (c_compiler,)
     else:
         compilers = (c_compiler, cxx_compiler)
 
@@ -162,32 +236,55 @@ def check_and_add_flags(
 
     for c in compilers:
         assert c in {c_compiler, cxx_compiler, host_c_compiler, host_cxx_compiler}
-        lang, list_of_flags = {
-            c_compiler: ("C", flags_collection.cflags),
-            cxx_compiler: ("C++", flags_collection.cxxflags),
-            host_c_compiler: ("host C", flags_collection.host_cflags),
-            host_cxx_compiler: ("host C++", flags_collection.host_cxxflags),
-        }[c]
+        if mode == "compile":
+            lang, list_of_flags = {
+                c_compiler: ("C", flags_collection.cflags),
+                cxx_compiler: ("C++", flags_collection.cxxflags),
+                host_c_compiler: ("host C", flags_collection.host_cflags),
+                host_cxx_compiler: ("host C++", flags_collection.host_cxxflags),
+            }[c]
+        elif mode == "assemble":
+            lang, list_of_flags = {
+                c_compiler: ("C", flags_collection.asflags),
+                host_c_compiler: ("host C", flags_collection.host_asflags),
+            }[c]
+        elif mode == "link":
+            lang, list_of_flags = {
+                c_compiler: ("C", flags_collection.ldflags),
+                cxx_compiler: ("C++", flags_collection.ldflags),
+                host_c_compiler: ("host C", flags_collection.host_ldflags),
+                host_cxx_compiler: ("host C++", flags_collection.host_ldflags),
+            }[c]
 
-        @depends(c, when)
-        def result(c, when):
-            if when and c.type in ("clang", "gcc"):
-                return True
+        result = when
 
         if check:
 
             @depends(c, dependable(flags))
             def flags(c, flags):
                 # Don't error out just because clang complains about other things.
-                if c.type == "clang":
+                if c.type in ("clang", "clang-cl"):
                     flags += ["-Wno-error=unused-command-line-argument"]
 
                 return flags
 
-            result = c.try_compile(
+            if mode == "link":
+
+                def runner(*args, **kwargs):
+                    if c in (c_compiler, cxx_compiler):
+                        return c.try_link(linker_ldflags, *args, **kwargs)
+                    else:
+                        return c.try_link(host_linker_ldflags, *args, **kwargs)
+
+                tool = "linker"
+            else:
+                runner = c.try_compile
+                tool = "compiler"
+
+            result = runner(
                 flags=flags,
                 when=result,
-                check_msg="whether the %s compiler supports %s" % (lang, flag),
+                check_msg="whether the %s %s supports %s" % (lang, tool, flag),
             )
 
         @depends(result, list_of_flags)
@@ -215,9 +312,9 @@ def warnings_flags():
 #   when the warning flag is wanted.
 # - `check`, when not set, skips checking whether the flag is supported and
 #   adds it to the list of warning flags unconditionally. This is only meant
-#   for add_gcc_warning().
+#   for add_warning().
 @template
-def check_and_add_gcc_warning(warning, compiler=None, when=None, check=True):
+def check_and_add_warning(warning, compiler=None, when=None, check=True):
     # GCC and clang will fail if given an unknown warning option like
     # -Wfoobar. But later versions won't fail if given an unknown negated
     # warning option like -Wno-foobar. So when we are checking for support
@@ -245,8 +342,8 @@ def check_and_add_gcc_warning(warning, compiler=None, when=None, check=True):
 
 
 @template
-def add_gcc_warning(warning, compiler=None, when=None):
-    check_and_add_gcc_warning(warning, compiler, when, check=False)
+def add_warning(warning, compiler=None, when=None):
+    check_and_add_warning(warning, compiler, when, check=False)
 
 
 # Like the warning checks above, but for general compilation flags.
@@ -265,9 +362,9 @@ def compilation_flags():
 #   when the warning flag is wanted.
 # - `check`, when not set, skips checking whether the flag is supported and
 #   adds it to the list of flags unconditionally. This is only meant for
-#   add_gcc_flag().
+#   add_flag().
 @template
-def check_and_add_gcc_flag(flag, compiler=None, when=None, check=True):
+def check_and_add_flag(flag, compiler=None, when=None, check=True):
     flags = ["-Werror", flag]
 
     return check_and_add_flags(
@@ -283,5 +380,84 @@ def check_and_add_gcc_flag(flag, compiler=None, when=None, check=True):
 # - `when` (optional) is a @depends function or option name conditioning
 #   when the flag is wanted.
 @template
-def add_gcc_flag(warning, compiler=None, when=None):
-    check_and_add_gcc_flag(warning, compiler, when, check=False)
+def add_flag(warning, compiler=None, when=None):
+    check_and_add_flag(warning, compiler, when, check=False)
+
+
+# Like the compilation checks above, but for asm flags.
+@dependable
+def asm_flags():
+    return namespace(asflags=[], host_asflags=[])
+
+
+# Tests the given assembler flag is supported; if the flag
+# is supported, add it to the list of compilation flags for the build.
+# - `flag` is the flag to test
+# - `when` (optional) is a @depends function or option name conditioning
+#   when the warning flag is wanted.
+# - `check`, when not set, skips checking whether the flag is supported and
+#   adds it to the list of flags unconditionally. This is only meant for
+#   add_flag().
+@template
+def check_and_add_asm_flag(flag, when=None, check=True):
+    return check_and_add_flags(
+        flag,
+        asm_flags,
+        [flag],
+        when=when,
+        check=check,
+        mode="assemble",
+    )
+
+
+# Like the compilation checks above, but for linker flags.
+@dependable
+def linker_flags():
+    return namespace(ldflags=[], host_ldflags=[])
+
+
+# Tests the given linker flag is supported; if the flag
+# is supported, add it to the list of compilation flags for the build.
+# - `flag` is the flag to test
+# - `when` (optional) is a @depends function or option name conditioning
+#   when the warning flag is wanted.
+# - `check`, when not set, skips checking whether the flag is supported and
+#   adds it to the list of flags unconditionally. This is only meant for
+#   add_flag().
+@template
+def check_and_add_linker_flag(flag, compiler=None, when=None, check=True):
+    return check_and_add_flags(
+        flag,
+        linker_flags,
+        [flag],
+        when=when,
+        check=check,
+        mode="link",
+    )
+
+
+# Like the compilation checks above, but for linker optimization flags.
+@dependable
+def linker_optimize_flags():
+    return namespace(ldflags=[])
+
+
+@template
+def check_and_add_linker_optimize_flag(flag, compiler=None, when=None, check=True):
+    return check_and_add_flags(
+        flag,
+        linker_optimize_flags,
+        [flag],
+        when=when,
+        check=check,
+        mode="link",
+    )
+
+
+# Add the given flag to the list of linker flags for the build.
+# - `flag` is the flag (e.g. -fno-sized-deallocation)
+# - `when` (optional) is a @depends function or option name conditioning
+#   when the flag is wanted.
+@template
+def add_linker_flag(flag, compiler=None, when=None):
+    check_and_add_linker_flag(flag, compiler, when, check=False)

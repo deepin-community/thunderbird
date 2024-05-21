@@ -8,6 +8,8 @@
 #define mozilla_dom_ImageBitmap_h
 
 #include "mozilla/Attributes.h"
+#include "mozilla/SurfaceFromElementResult.h"
+#include "mozilla/dom/ImageBitmapBinding.h"
 #include "mozilla/dom/ImageBitmapSource.h"
 #include "mozilla/dom/TypedArray.h"
 #include "mozilla/gfx/Rect.h"
@@ -45,16 +47,18 @@ class CanvasRenderingContext2D;
 class CreateImageBitmapFromBlob;
 class CreateImageBitmapFromBlobTask;
 class CreateImageBitmapFromBlobWorkerTask;
+class ImageBitmapShutdownObserver;
 class File;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
-class ImageBitmapShutdownObserver;
 class ImageData;
 class ImageUtils;
 class Promise;
 class PostMessageEvent;  // For StructuredClone between windows.
 class SVGImageElement;
+class VideoFrame;
+class SendShutdownToWorkerThread;
 
 struct ImageBitmapCloneData final {
   RefPtr<gfx::DataSourceSurface> mSurface;
@@ -78,7 +82,7 @@ struct ImageBitmapCloneData final {
 class ImageBitmap final : public nsISupports, public nsWrapperCache {
  public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(ImageBitmap)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(ImageBitmap)
 
   nsCOMPtr<nsIGlobalObject> GetParentObject() const { return mParent; }
 
@@ -90,6 +94,8 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
   uint32_t Height() const { return mPictureRect.Height(); }
 
   void Close();
+
+  SurfaceFromElementResult SurfaceFrom(uint32_t aSurfaceFlags);
 
   /*
    * The PrepareForDrawTarget() might return null if the mPictureRect does not
@@ -120,6 +126,7 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
   static already_AddRefed<Promise> Create(nsIGlobalObject* aGlobal,
                                           const ImageBitmapSource& aSrc,
                                           const Maybe<gfx::IntRect>& aCropRect,
+                                          const ImageBitmapOptions& aOptions,
                                           ErrorResult& aRv);
 
   static JSObject* ReadStructuredClone(
@@ -128,14 +135,15 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
       const nsTArray<RefPtr<gfx::DataSourceSurface>>& aClonedSurfaces,
       uint32_t aIndex);
 
-  static bool WriteStructuredClone(
+  static void WriteStructuredClone(
       JSStructuredCloneWriter* aWriter,
       nsTArray<RefPtr<gfx::DataSourceSurface>>& aClonedSurfaces,
-      ImageBitmap* aImageBitmap);
+      ImageBitmap* aImageBitmap, ErrorResult& aRv);
 
   friend CreateImageBitmapFromBlob;
   friend CreateImageBitmapFromBlobTask;
   friend CreateImageBitmapFromBlobWorkerTask;
+  friend ImageBitmapShutdownObserver;
 
   size_t GetAllocatedSize() const;
 
@@ -171,33 +179,56 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
 
   void SetPictureRect(const gfx::IntRect& aRect, ErrorResult& aRv);
 
+  static already_AddRefed<ImageBitmap> CreateImageBitmapInternal(
+      nsIGlobalObject* aGlobal, gfx::SourceSurface* aSurface,
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      const bool aWriteOnly, const bool aAllocatedImageData,
+      const bool aMustCopy, const gfxAlphaType aAlphaType, ErrorResult& aRv);
+
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, HTMLImageElement& aImageEl,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, SVGImageElement& aImageEl,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, HTMLVideoElement& aVideoEl,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, HTMLCanvasElement& aCanvasEl,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
+
+  static already_AddRefed<ImageBitmap> CreateInternal(
+      nsIGlobalObject* aGlobal, OffscreenCanvas& aOffscreenCanvas,
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, ImageData& aImageData,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, CanvasRenderingContext2D& aCanvasCtx,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   static already_AddRefed<ImageBitmap> CreateInternal(
       nsIGlobalObject* aGlobal, ImageBitmap& aImageBitmap,
-      const Maybe<gfx::IntRect>& aCropRect, ErrorResult& aRv);
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
+
+  static already_AddRefed<ImageBitmap> CreateInternal(
+      nsIGlobalObject* aGlobal, VideoFrame& aVideoFrame,
+      const Maybe<gfx::IntRect>& aCropRect, const ImageBitmapOptions& aOptions,
+      ErrorResult& aRv);
 
   nsCOMPtr<nsIGlobalObject> mParent;
 
@@ -219,13 +250,6 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
   RefPtr<gfx::SourceSurface> mSurface;
 
   /*
-   * This is used in the ImageBitmap-Extensions implementation.
-   * ImageUtils is a wrapper to layers::Image, which add some common methods for
-   * accessing the layers::Image's data.
-   */
-  UniquePtr<ImageUtils> mDataWrapper;
-
-  /*
    * The mPictureRect is the size of the source image in default, however, if
    * users specify the cropping area while creating an ImageBitmap, then this
    * mPictureRect is the cropping area.
@@ -240,7 +264,7 @@ class ImageBitmap final : public nsISupports, public nsWrapperCache {
 
   gfxAlphaType mAlphaType;
 
-  RefPtr<ImageBitmapShutdownObserver> mShutdownObserver;
+  RefPtr<SendShutdownToWorkerThread> mShutdownRunnable;
 
   /*
    * Whether this object allocated allocated and owns the image data.

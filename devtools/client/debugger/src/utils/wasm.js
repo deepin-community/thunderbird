@@ -2,13 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-/*       */
-
-import { BinaryReader } from "wasmparser/dist/cjs/WasmParser";
+import { BinaryReader } from "devtools/client/shared/vendor/WasmParser";
 import {
   WasmDisassembler,
   NameSectionReader,
-} from "wasmparser/dist/cjs/WasmDis";
+} from "devtools/client/shared/vendor/WasmDis";
 
 var wasmStates = Object.create(null);
 
@@ -82,7 +80,7 @@ export function getWasmLineNumberFormatter(sourceId) {
     codeOf0,
   ];
   let last0 = 7;
-  return function(number) {
+  return function (number) {
     const offset = lineToWasmOffset(sourceId, number - 1);
     if (offset == undefined) {
       return "";

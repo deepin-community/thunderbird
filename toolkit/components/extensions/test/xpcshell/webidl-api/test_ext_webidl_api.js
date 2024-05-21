@@ -12,23 +12,18 @@ AddonTestUtils.createAppInfo(
 
 add_task(async function setup() {
   await AddonTestUtils.promiseStartupManager();
-  // Ensure that the profile-after-change message has been notified,
-  // so that ServiceWokerRegistrar is going to be initialized.
-  Services.obs.notifyObservers(
-    null,
-    "profile-after-change",
-    "force-serviceworkerrestart-init"
-  );
 });
 
 add_task(async function test_ext_context_does_have_webidl_bindings() {
   await runExtensionAPITest("should have a browser global object", {
     backgroundScript() {
-      const { browser } = self;
+      const { browser, chrome } = self;
 
       return {
         hasExtensionAPI: !!browser,
         hasExtensionMockAPI: !!browser?.mockExtensionAPI,
+        hasChromeCompatGlobal: !!chrome,
+        hasChromeMockAPI: !!chrome?.mockExtensionAPI,
       };
     },
     assertResults({ testResult, testError }) {
@@ -38,6 +33,8 @@ add_task(async function test_ext_context_does_have_webidl_bindings() {
         {
           hasExtensionAPI: true,
           hasExtensionMockAPI: true,
+          hasChromeCompatGlobal: true,
+          hasChromeMockAPI: true,
         },
         "browser and browser.test WebIDL API bindings found"
       );
@@ -58,7 +55,7 @@ add_task(async function test_propagated_extension_error() {
           throw err;
         }
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return {
           type: Ci.mozIExtensionAPIRequestResult.EXTENSION_ERROR,
           value: new Error("Fake Extension Error"),
@@ -79,7 +76,7 @@ add_task(async function test_system_errors_donot_leak() {
     );
   }
 
-  function mockAPIRequestHandler(policy, request) {
+  function mockAPIRequestHandler() {
     throw new Error("Fake handleAPIRequest exception");
   }
 
@@ -186,7 +183,7 @@ add_task(async function test_call_sync_fn_missing_return() {
       backgroundScript() {
         self.browser.mockExtensionAPI.methodSyncWithReturn("arg0");
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return undefined;
       },
       assertResults({ testError }) {
@@ -211,7 +208,7 @@ add_task(async function test_call_async_throw_extension_error() {
           throw err;
         }
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return {
           type: Ci.mozIExtensionAPIRequestResult.EXTENSION_ERROR,
           value: new Error("Fake Param Validation Error"),
@@ -236,7 +233,7 @@ add_task(async function test_call_async_reject_error() {
           throw err;
         }
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return {
           type: Ci.mozIExtensionAPIRequestResult.RETURN_VALUE,
           value: Promise.reject(new Error("Fake API rejected error object")),
@@ -314,7 +311,7 @@ add_task(async function test_call_no_return_throw_extension_error() {
           throw err;
         }
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return {
           type: Ci.mozIExtensionAPIRequestResult.EXTENSION_ERROR,
           value: new Error("Fake Param Validation Error"),
@@ -334,7 +331,7 @@ add_task(async function test_call_no_return_without_errors() {
       backgroundScript() {
         self.browser.mockExtensionAPI.methodNoReturn("arg0");
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return undefined;
       },
       assertResults({ testError }) {
@@ -449,7 +446,7 @@ add_task(async function test_get_property() {
       backgroundScript() {
         return self.browser.mockExtensionAPI.propertyAsString;
       },
-      mockAPIRequestHandler(policy, request) {
+      mockAPIRequestHandler() {
         return {
           type: Ci.mozIExtensionAPIRequestResult.RETURN_VALUE,
           value: "property-value",
@@ -481,7 +478,7 @@ add_task(async function test_get_property() {
           value: ChromeUtils.createError("fake extension error", savedFrame),
         };
       },
-      assertResults({ testError, testResult }) {
+      assertResults({ testError }) {
         Assert.deepEqual(testError, null, "Got no error as expected");
       },
     }

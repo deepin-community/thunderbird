@@ -16,9 +16,11 @@
     f().then(() => ok(false, msg),
              e => is(e.name, reason, msg));
 
-  var removeAllButCodec = (d, codec) =>
-    (d.sdp = d.sdp.replace(/m=video (\w) UDP\/TLS\/RTP\/SAVPF \w.*\r\n/,
-                           "m=video $1 UDP/TLS/RTP/SAVPF " + codec + "\r\n"), d);
+  var removeAllButCodec = (d, codec) => {
+    d.sdp = d.sdp.replace(/m=video (\w) UDP\/TLS\/RTP\/SAVPF \w.*\r\n/,
+                          "m=video $1 UDP/TLS/RTP/SAVPF " + codec + "\r\n");
+    return d;
+  };
 
   var mungeSDP = (d, forceH264) => {
     if (forceH264) {
@@ -35,6 +37,8 @@
     const offer = await pc.createOffer({offerToReceiveVideo: true});
     return offer.sdp.match(/a=rtpmap:[1-9][0-9]* H264/);
   };
+
+  let resolutionAlignment = 1;
 
   function testScale(codec) {
     var v1 = createMediaElement('video', 'v1');
@@ -76,8 +80,12 @@
         if (v2.videoWidth == 0 && v2.videoHeight == 0) {
           info("Skipping test, insufficient time for video to start.");
         } else {
-          is(v2.videoWidth, 160, "sink width should be 160 for " + codec);
-          is(v2.videoHeight, 120, "sink height should be 120 for " + codec);
+          const expectedWidth = 184 - 184 % resolutionAlignment;
+          const expectedHeight = 138 - 138 % resolutionAlignment;
+          is(v2.videoWidth, expectedWidth,
+             `sink width should be ${expectedWidth} for ${codec}`);
+          is(v2.videoHeight, expectedHeight,
+             `sink height should be ${expectedHeight} for ${codec}`);
         }})
       .then(() => {
         stream.getTracks().forEach(track => track.stop());
@@ -88,6 +96,11 @@
   runNetworkTest(async () => {
     await pushPrefs(['media.peerconnection.video.lock_scaling', true]);
     if (await checkForH264Support()) {
+      if (navigator.userAgent.includes("Android")) {
+        // Android only has a hw encoder for h264
+        resolutionAlignment = 16;
+      }
+      await matchPlatformH264CodecPrefs();
       await testScale("H264");
     }
 

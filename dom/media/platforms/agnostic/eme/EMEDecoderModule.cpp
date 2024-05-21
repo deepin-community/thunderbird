@@ -28,7 +28,7 @@
 
 namespace mozilla {
 
-typedef MozPromiseRequestHolder<DecryptPromise> DecryptPromiseRequestHolder;
+using DecryptPromiseRequestHolder = MozPromiseRequestHolder<DecryptPromise>;
 
 DDLoggedTypeDeclNameAndBase(EMEDecryptor, MediaDataDecoder);
 
@@ -45,7 +45,7 @@ class ADTSSampleConverter {
         // doesn't care what is set.
         ,
         mProfile(aInfo.mProfile < 1 || aInfo.mProfile > 4 ? 2 : aInfo.mProfile),
-        mFrequencyIndex(Adts::GetFrequencyIndex(aInfo.mRate)) {
+        mFrequencyIndex(ADTS::GetFrequencyIndex(aInfo.mRate).unwrapOr(255)) {
     EME_LOG("ADTSSampleConvertor(): aInfo.mProfile=%" PRIi8
             " aInfo.mExtendedProfile=%" PRIi8,
             aInfo.mProfile, aInfo.mExtendedProfile);
@@ -56,22 +56,24 @@ class ADTSSampleConverter {
     }
   }
   bool Convert(MediaRawData* aSample) const {
-    return Adts::ConvertSample(mNumChannels, mFrequencyIndex, mProfile,
+    return ADTS::ConvertSample(mNumChannels, mFrequencyIndex, mProfile,
                                aSample);
   }
   bool Revert(MediaRawData* aSample) const {
-    return Adts::RevertSample(aSample);
+    return ADTS::RevertSample(aSample);
   }
 
  private:
   const uint32_t mNumChannels;
   const uint8_t mProfile;
-  const uint8_t mFrequencyIndex;
+  const uint8_t mFrequencyIndex{};
 };
 
-class EMEDecryptor : public MediaDataDecoder,
-                     public DecoderDoctorLifeLogger<EMEDecryptor> {
+class EMEDecryptor final : public MediaDataDecoder,
+                           public DecoderDoctorLifeLogger<EMEDecryptor> {
  public:
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EMEDecryptor, final);
+
   EMEDecryptor(MediaDataDecoder* aDecoder, CDMProxy* aProxy,
                TrackInfo::TrackType aType,
                const std::function<MediaEventProducer<TrackInfo::TrackType>*()>&
@@ -89,7 +91,9 @@ class EMEDecryptor : public MediaDataDecoder,
   RefPtr<InitPromise> Init() override {
     MOZ_ASSERT(!mIsShutdown);
     mThread = GetCurrentSerialEventTarget();
-    mThroughputLimiter.emplace(mThread);
+    uint32_t maxThroughputMs = StaticPrefs::media_eme_max_throughput_ms();
+    EME_LOG("EME max-throughput-ms=%" PRIu32, maxThroughputMs);
+    mThroughputLimiter.emplace(mThread, maxThroughputMs);
 
     return mDecoder->Init();
   }
@@ -120,7 +124,7 @@ class EMEDecryptor : public MediaDataDecoder,
     mThroughputLimiter->Throttle(aSample)
         ->Then(
             mThread, __func__,
-            [self](RefPtr<MediaRawData> aSample) {
+            [self](const RefPtr<MediaRawData>& aSample) {
               self->mThrottleRequest.Complete();
               self->AttemptDecode(aSample);
             },
@@ -219,7 +223,7 @@ class EMEDecryptor : public MediaDataDecoder,
     mDecodePromise.RejectIfExists(NS_ERROR_DOM_MEDIA_CANCELED, __func__);
     mThroughputLimiter->Flush();
     for (auto iter = mDecrypts.Iter(); !iter.Done(); iter.Next()) {
-      auto holder = iter.UserData();
+      auto* holder = iter.UserData();
       holder->DisconnectIfExists();
       iter.Remove();
     }
@@ -236,7 +240,7 @@ class EMEDecryptor : public MediaDataDecoder,
     MOZ_ASSERT(mDecodePromise.IsEmpty() && !mDecodeRequest.Exists(),
                "Must wait for decoding to complete");
     for (auto iter = mDecrypts.Iter(); !iter.Done(); iter.Next()) {
-      auto holder = iter.UserData();
+      auto* holder = iter.UserData();
       holder->DisconnectIfExists();
       iter.Remove();
     }
@@ -255,15 +259,23 @@ class EMEDecryptor : public MediaDataDecoder,
     return decoder->Shutdown();
   }
 
+  nsCString GetProcessName() const override {
+    return mDecoder->GetProcessName();
+  }
+
   nsCString GetDescriptionName() const override {
     return mDecoder->GetDescriptionName();
   }
+
+  nsCString GetCodecName() const override { return mDecoder->GetCodecName(); }
 
   ConversionRequired NeedsConversion() const override {
     return mDecoder->NeedsConversion();
   }
 
  private:
+  ~EMEDecryptor() = default;
+
   RefPtr<MediaDataDecoder> mDecoder;
   nsCOMPtr<nsISerialEventTarget> mThread;
   RefPtr<CDMProxy> mProxy;
@@ -295,7 +307,8 @@ EMEMediaDataDecoderProxy::EMEMediaDataDecoderProxy(
 EMEMediaDataDecoderProxy::EMEMediaDataDecoderProxy(
     const CreateDecoderParams& aParams,
     already_AddRefed<MediaDataDecoder> aProxyDecoder, CDMProxy* aProxy)
-    : MediaDataDecoderProxy(std::move(aProxyDecoder)),
+    : MediaDataDecoderProxy(std::move(aProxyDecoder),
+                            do_AddRef(GetCurrentSerialEventTarget())),
       mThread(GetCurrentSerialEventTarget()),
       mSamplesWaitingForKey(new SamplesWaitingForKey(
           aProxy, aParams.mType, aParams.mOnWaitingForKeyEvent)),
@@ -310,7 +323,7 @@ RefPtr<MediaDataDecoder::DecodePromise> EMEMediaDataDecoderProxy::Decode(
     mSamplesWaitingForKey->WaitIfKeyNotUsable(sample)
         ->Then(
             mThread, __func__,
-            [self, this](RefPtr<MediaRawData> aSample) {
+            [self, this](const RefPtr<MediaRawData>& aSample) {
               mKeyRequest.Complete();
 
               MediaDataDecoderProxy::Decode(aSample)
@@ -392,7 +405,7 @@ EMEDecoderModule::AsyncCreateDecoder(const CreateDecoderParams& aParams) {
                                                                       __func__);
     }
 
-    if (SupportsMimeType(aParams.mConfig.mMimeType, nullptr)) {
+    if (!SupportsMimeType(aParams.mConfig.mMimeType, nullptr).isEmpty()) {
       // GMP decodes. Assume that means it can decrypt too.
       return EMEDecoderModule::CreateDecoderPromise::CreateAndResolve(
           CreateDecoderWrapper(mProxy, aParams), __func__);
@@ -420,7 +433,7 @@ EMEDecoderModule::AsyncCreateDecoder(const CreateDecoderParams& aParams) {
   MOZ_ASSERT(aParams.mConfig.IsAudio());
 
   // We don't support using the GMP to decode audio.
-  MOZ_ASSERT(!SupportsMimeType(aParams.mConfig.mMimeType, nullptr));
+  MOZ_ASSERT(SupportsMimeType(aParams.mConfig.mMimeType, nullptr).isEmpty());
   MOZ_ASSERT(mPDM);
 
   if (StaticPrefs::media_eme_audio_blank()) {
@@ -457,11 +470,12 @@ EMEDecoderModule::AsyncCreateDecoder(const CreateDecoderParams& aParams) {
   return p;
 }
 
-bool EMEDecoderModule::SupportsMimeType(
+media::DecodeSupportSet EMEDecoderModule::SupportsMimeType(
     const nsACString& aMimeType, DecoderDoctorDiagnostics* aDiagnostics) const {
-  Maybe<nsCString> gmp;
-  gmp.emplace(NS_ConvertUTF16toUTF8(mProxy->KeySystem()));
-  return GMPDecoderModule::SupportsMimeType(aMimeType, gmp);
+  Maybe<nsCString> keySystem;
+  keySystem.emplace(NS_ConvertUTF16toUTF8(mProxy->KeySystem()));
+  return GMPDecoderModule::SupportsMimeType(
+      aMimeType, nsLiteralCString(CHROMIUM_CDM_API), keySystem);
 }
 
 }  // namespace mozilla

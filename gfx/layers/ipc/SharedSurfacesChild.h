@@ -13,6 +13,7 @@
 #include "mozilla/RefPtr.h"                    // for already_AddRefed
 #include "mozilla/StaticPtr.h"                 // for StaticRefPtr
 #include "mozilla/gfx/UserData.h"              // for UserDataKey
+#include "mozilla/layers/LayersSurfaces.h"     // for SurfaceDescriptor
 #include "mozilla/webrender/WebRenderTypes.h"  // for wr::ImageKey
 #include "nsTArray.h"                          // for AutoTArray
 #include "nsThreadUtils.h"                     // for Runnable
@@ -44,7 +45,6 @@ class IpcResourceUpdateQueue;
 namespace layers {
 
 class CompositorManagerChild;
-class ImageContainer;
 class RenderRootStateManager;
 
 class SharedSurfacesChild {
@@ -67,6 +67,14 @@ class SharedSurfacesChild {
 
   /**
    * Request that the surface be mapped into the compositor thread's memory
+   * space, and a valid ExternalImageId be generated for it for use with
+   * WebRender. This must be called from the main thread.
+   */
+  static nsresult Share(gfx::SourceSurface* aSurface,
+                        Maybe<SurfaceDescriptor>& aDesc);
+
+  /**
+   * Request that the surface be mapped into the compositor thread's memory
    * space, and a valid ImageKey be generated for it for use with WebRender.
    * This must be called from the main thread.
    */
@@ -86,23 +94,6 @@ class SharedSurfacesChild {
                         wr::ImageKey& aKey);
 
   /**
-   * Request that the first surface in the image container's current images be
-   * mapped into the compositor thread's memory space, and a valid ImageKey be
-   * generated for it for use with WebRender. If a different method should be
-   * used to share the image data for this particular container, it will return
-   * NS_ERROR_NOT_IMPLEMENTED. This must be called from the main thread.
-   */
-  static nsresult Share(ImageContainer* aContainer,
-                        RenderRootStateManager* aManager,
-                        wr::IpcResourceUpdateQueue& aResources,
-                        wr::ImageKey& aKey, ContainerProducerID aProducerId);
-
-  static nsresult ShareBlob(ImageContainer* aContainer,
-                            RenderRootStateManager* aManager,
-                            wr::IpcResourceUpdateQueue& aResources,
-                            wr::BlobImageKey& aKey);
-
-  /**
    * Get the external ID, if any, bound to the shared surface. Used for memory
    * reporting purposes.
    */
@@ -115,10 +106,6 @@ class SharedSurfacesChild {
    */
   static gfx::SourceSurfaceSharedData* AsSourceSurfaceSharedData(
       gfx::SourceSurface* aSurface);
-
-  static nsresult UpdateAnimation(ImageContainer* aContainer,
-                                  gfx::SourceSurface* aSurface,
-                                  const gfx::IntRect& aDirtyRect);
 
   class ImageKeyData {
    public:
@@ -148,7 +135,7 @@ class SharedSurfacesChild {
 
   class SharedUserData final : public Runnable {
    public:
-    explicit SharedUserData(const wr::ExternalImageId& aId);
+    SharedUserData();
     virtual ~SharedUserData();
 
     SharedUserData(const SharedUserData& aOther) = delete;
@@ -163,16 +150,16 @@ class SharedSurfacesChild {
 
     const wr::ExternalImageId& Id() const { return mId; }
 
-    void SetId(const wr::ExternalImageId& aId) {
-      mId = aId;
+    void ClearShared() {
       mKeys.Clear();
       mShared = false;
     }
 
     bool IsShared() const { return mShared; }
 
-    void MarkShared() {
+    void MarkShared(const wr::ExternalImageId& aId) {
       MOZ_ASSERT(!mShared);
+      mId = aId;
       mShared = true;
     }
 

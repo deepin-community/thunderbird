@@ -4,13 +4,13 @@
 
 "use strict";
 
-const { Cc, Ci } = require("chrome");
-
-const { LongStringActor } = require("devtools/server/actors/string");
+const {
+  LongStringActor,
+} = require("resource://devtools/server/actors/string.js");
 
 const {
   TYPES: { WEBSOCKET },
-} = require("devtools/server/actors/resources/index");
+} = require("resource://devtools/server/actors/resources/index.js");
 
 const webSocketEventService = Cc[
   "@mozilla.org/websocketevent/service;1"
@@ -97,7 +97,7 @@ class WebSocketWatcher {
   }
 
   // methods for the nsIWebSocketEventService
-  webSocketCreated(webSocketSerialID, uri, protocols) {}
+  webSocketCreated() {}
 
   webSocketOpened(
     webSocketSerialID,
@@ -117,7 +117,7 @@ class WebSocketWatcher {
     this.onAvailable([resource]);
   }
 
-  webSocketMessageAvailable(webSocketSerialID, data, messageType) {}
+  webSocketMessageAvailable() {}
 
   webSocketClosed(webSocketSerialID, wasClean, code, reason) {
     const httpChannelId = this.connections.get(webSocketSerialID);

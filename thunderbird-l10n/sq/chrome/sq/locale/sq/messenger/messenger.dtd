@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "K">
 <!ENTITY newVirtualFolderCmd.label "Kërkim i Ruajtur…">
 <!ENTITY newVirtualFolderCmd.accesskey "K">
-<!ENTITY newOtherAccountsCmd.label "Tjetër Llogari…">
-<!ENTITY newOtherAccountsCmd.accesskey "T">
 <!ENTITY newCreateEmailAccountCmd.label "Hapni një Llogari të Re Poste…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "H">
 <!ENTITY newExistingEmailAccountCmd.label "Llogari Poste Ekzistuese…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "H">
 <!ENTITY saveAsMenu.label "Ruaje Si">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Kartelë">
-<!ENTITY saveAsFileCmd.accesskey "K">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Gjedhe">
 <!ENTITY saveAsTemplateCmd.accesskey "G">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Fjalosje">
 <!ENTITY goChatCmd.accesskey "F">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Mesazh Me Yllkë">
 <!ENTITY prevStarredMsgCmd.accesskey "Y">
 <!ENTITY folderMenu.label "Dosje">
@@ -462,7 +457,7 @@
 <!ENTITY addressBookCmd.label "Libër Adresash">
 <!ENTITY addressBookCmd.accesskey "L">
 <!ENTITY addressBookCmd.key "B">
-<!ENTITY addonNoPrefs.label "S&apos;u gjetën rregullime shtese.">
+<!ENTITY addonNoPrefs.label "S’u gjetën rregullime shtese.">
 <!ENTITY activitymanager.label "Përgjegjës Veprimtarie">
 <!ENTITY activitymanager.accesskey "P">
 <!ENTITY imAccountsStatus.label "Gjendje fjalosjeje">

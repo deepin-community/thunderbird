@@ -20,6 +20,7 @@ class BrowserChild;
 namespace layers {
 
 class APZChild;
+struct DoubleTapToZoomMetrics;
 
 /**
  * ContentProcessController is a GeckoContentController for a BrowserChild, and
@@ -45,7 +46,8 @@ class ContentProcessController final : public GeckoContentController {
 
   void HandleTap(TapType aType, const LayoutDevicePoint& aPoint,
                  Modifiers aModifiers, const ScrollableLayerGuid& aGuid,
-                 uint64_t aInputBlockId) override;
+                 uint64_t aInputBlockId,
+                 const Maybe<DoubleTapToZoomMetrics>& aMetrics) override;
 
   void NotifyPinchGesture(PinchGestureInput::PinchGestureType aType,
                           const ScrollableLayerGuid& aGuid,
@@ -54,7 +56,8 @@ class ContentProcessController final : public GeckoContentController {
                           Modifiers aModifiers) override;
 
   void NotifyAPZStateChange(const ScrollableLayerGuid& aGuid,
-                            APZStateChange aChange, int aArg) override;
+                            APZStateChange aChange, int aArg,
+                            Maybe<uint64_t> aInputBlockId) override;
 
   void NotifyMozMouseScrollEvent(const ScrollableLayerGuid::ViewID& aScrollId,
                                  const nsString& aEvent) override;
@@ -72,9 +75,14 @@ class ContentProcessController final : public GeckoContentController {
 
   void CancelAutoscroll(const ScrollableLayerGuid& aGuid) override;
 
+  void NotifyScaleGestureComplete(const ScrollableLayerGuid& aGuid,
+                                  float aScale) override;
+
   bool IsRepaintThread() override;
 
   void DispatchToRepaintThread(already_AddRefed<Runnable> aTask) override;
+
+  PresShell* GetTopLevelPresShell() const override;
 
  private:
   RefPtr<dom::BrowserChild> mBrowser;

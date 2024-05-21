@@ -4,7 +4,11 @@
 
 "use strict";
 
-const { generateActorSpec, Arg, types } = require("devtools/shared/protocol");
+const {
+  generateActorSpec,
+  Arg,
+  types,
+} = require("resource://devtools/shared/protocol.js");
 
 types.addDictType("breakpoint-list.breakpoint-options", {
   condition: "nullable:string",
@@ -37,6 +41,11 @@ const breakpointListSpec = generateActorSpec({
       request: {
         path: Arg(0, "string"),
         method: Arg(1, "string"),
+      },
+    },
+    setActiveEventBreakpoints: {
+      request: {
+        ids: Arg(0, "array:string"),
       },
     },
   },

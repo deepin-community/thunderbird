@@ -12,7 +12,8 @@
 #include "transport/dtlsidentity.h"    // For DtlsDigest
 #include "mozilla/dom/RTCPeerConnectionBinding.h"
 #include "mozilla/dom/RTCConfigurationBinding.h"
-#include "transport/nricectx.h"  // Need some enums
+#include "mozilla/dom/RTCIceTransportBinding.h"  // RTCIceTransportState
+#include "transport/nricectx.h"                  // Need some enums
 #include "common/CandidateInfo.h"
 #include "transport/nr_socket_proxy_config.h"
 #include "RTCStatsReport.h"
@@ -48,12 +49,15 @@ class MediaTransportHandler {
   explicit MediaTransportHandler(nsISerialEventTarget* aCallbackThread)
       : mCallbackThread(aCallbackThread) {}
 
+  // Exposed so we can synchronously validate ICE servers from PeerConnection
   static nsresult ConvertIceServers(
       const nsTArray<dom::RTCIceServer>& aIceServers,
       std::vector<NrIceStunServer>* aStunServers,
       std::vector<NrIceTurnServer>* aTurnServers);
 
   typedef MozPromise<dom::Sequence<nsString>, nsresult, true> IceLogPromise;
+
+  virtual void Initialize() {}
 
   // There's a wrinkle here; the ICE logging is not separated out by
   // MediaTransportHandler. These are a little more like static methods, but
@@ -63,8 +67,9 @@ class MediaTransportHandler {
   virtual void EnterPrivateMode() = 0;
   virtual void ExitPrivateMode() = 0;
 
-  virtual nsresult CreateIceCtx(const std::string& aName,
-                                const nsTArray<dom::RTCIceServer>& aIceServers,
+  virtual void CreateIceCtx(const std::string& aName) = 0;
+
+  virtual nsresult SetIceConfig(const nsTArray<dom::RTCIceServer>& aIceServers,
                                 dom::RTCIceTransportPolicy aIcePolicy) = 0;
 
   // We will probably be able to move the proxy lookup stuff into
@@ -74,7 +79,7 @@ class MediaTransportHandler {
   virtual void EnsureProvisionalTransport(const std::string& aTransportId,
                                           const std::string& aLocalUfrag,
                                           const std::string& aLocalPwd,
-                                          size_t aComponentCount) = 0;
+                                          int aComponentCount) = 0;
 
   virtual void SetTargetForDefaultLocalAddressLookup(
       const std::string& aTargetIp, uint16_t aTargetPort) = 0;
@@ -118,8 +123,10 @@ class MediaTransportHandler {
 
   sigslot::signal2<const std::string&, const CandidateInfo&> SignalCandidate;
   sigslot::signal2<const std::string&, bool> SignalAlpnNegotiated;
-  sigslot::signal1<dom::RTCIceGatheringState> SignalGatheringStateChange;
-  sigslot::signal1<dom::RTCIceConnectionState> SignalConnectionStateChange;
+  sigslot::signal2<const std::string&, dom::RTCIceGathererState>
+      SignalGatheringStateChange;
+  sigslot::signal2<const std::string&, dom::RTCIceTransportState>
+      SignalConnectionStateChange;
 
   sigslot::signal2<const std::string&, const MediaPacket&> SignalPacketReceived;
   sigslot::signal2<const std::string&, const MediaPacket&>
@@ -138,8 +145,10 @@ class MediaTransportHandler {
   void OnCandidate(const std::string& aTransportId,
                    const CandidateInfo& aCandidateInfo);
   void OnAlpnNegotiated(const std::string& aAlpn);
-  void OnGatheringStateChange(dom::RTCIceGatheringState aState);
-  void OnConnectionStateChange(dom::RTCIceConnectionState aState);
+  void OnGatheringStateChange(const std::string& aTransportId,
+                              dom::RTCIceGathererState aState);
+  void OnConnectionStateChange(const std::string& aTransportId,
+                               dom::RTCIceTransportState aState);
   void OnPacketReceived(const std::string& aTransportId,
                         const MediaPacket& aPacket);
   void OnEncryptedSending(const std::string& aTransportId,

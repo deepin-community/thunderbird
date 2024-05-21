@@ -6,7 +6,8 @@
 
 #include "nsWindowMemoryReporter.h"
 #include "nsWindowSizes.h"
-#include "nsGlobalWindow.h"
+#include "nsGlobalWindowInner.h"
+#include "nsGlobalWindowOuter.h"
 #include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/ClearOnShutdown.h"
@@ -14,6 +15,7 @@
 #include "mozilla/Services.h"
 #include "mozilla/StaticPtr.h"
 #include "mozilla/Telemetry.h"
+#include "mozilla/Try.h"
 #include "mozilla/ResultExtensions.h"
 #include "nsNetCID.h"
 #include "nsPrintfCString.h"
@@ -21,9 +23,7 @@
 #include "js/MemoryMetrics.h"
 #include "nsQueryObject.h"
 #include "nsServiceManagerUtils.h"
-#ifdef MOZ_XUL
-#  include "nsXULPrototypeCache.h"
-#endif
+#include "nsXULPrototypeCache.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -55,9 +55,9 @@ static nsresult AddNonJSSizeOfWindowAndItsDescendents(
   aWindow->AddSizeOfIncludingThis(windowSizes);
 
   // Measure the inner window, if there is one.
-  nsGlobalWindowInner* inner = aWindow->GetCurrentInnerWindowInternal();
+  nsPIDOMWindowInner* inner = aWindow->GetCurrentInnerWindow();
   if (inner) {
-    inner->AddSizeOfIncludingThis(windowSizes);
+    nsGlobalWindowInner::Cast(inner)->AddSizeOfIncludingThis(windowSizes);
   }
 
   windowSizes.addToTabSizes(aSizes);
@@ -116,7 +116,7 @@ nsWindowMemoryReporter* nsWindowMemoryReporter::Get() {
   return sWindowReporter;
 }
 
-static nsCString GetWindowURISpec(nsGlobalWindowInner* aWindow) {
+static nsCString GetWindowURISpec(nsPIDOMWindowInner* aWindow) {
   NS_ENSURE_TRUE(aWindow, ""_ns);
 
   nsCOMPtr<Document> doc = aWindow->GetExtantDoc();
@@ -145,7 +145,7 @@ static nsCString GetWindowURISpec(nsGlobalWindowInner* aWindow) {
   return spec;
 }
 
-static void AppendWindowURI(nsGlobalWindowInner* aWindow, nsACString& aStr,
+static void AppendWindowURI(nsPIDOMWindowInner* aWindow, nsACString& aStr,
                             bool aAnonymize) {
   nsCString spec = GetWindowURISpec(aWindow);
 
@@ -155,7 +155,7 @@ static void AppendWindowURI(nsGlobalWindowInner* aWindow, nsACString& aStr,
     aStr += "[system]"_ns;
     return;
   }
-  if (aAnonymize && !aWindow->IsChromeWindow()) {
+  if (aAnonymize && !nsGlobalWindowInner::Cast(aWindow)->IsChromeWindow()) {
     aStr.AppendPrintf("<anonymized-%" PRIu64 ">", aWindow->WindowID());
     return;
   }
@@ -169,7 +169,7 @@ static void AppendWindowURI(nsGlobalWindowInner* aWindow, nsACString& aStr,
 MOZ_DEFINE_MALLOC_SIZE_OF(WindowsMallocSizeOf)
 
 // The key is the window ID.
-typedef nsTHashMap<nsUint64HashKey, nsCString> WindowPaths;
+using WindowPaths = nsTHashMap<nsUint64HashKey, nsCString>;
 
 static void ReportAmount(const nsCString& aBasePath, const char* aPathTail,
                          size_t aAmount, const nsCString& aDescription,
@@ -276,8 +276,7 @@ static void CollectWindowReports(nsGlobalWindowInner* aWindow,
 
   if (top) {
     windowPath += "top("_ns;
-    AppendWindowURI(top->GetCurrentInnerWindowInternal(), windowPath,
-                    aAnonymize);
+    AppendWindowURI(top->GetCurrentInnerWindow(), windowPath, aAnonymize);
     windowPath.AppendPrintf(", id=%" PRIu64 ")", top->WindowID());
 
     aTopWindowPaths->InsertOrUpdate(aWindow->WindowID(), windowPath);
@@ -510,7 +509,7 @@ static void CollectWindowReports(nsGlobalWindowInner* aWindow,
 #undef REPORT_COUNT
 }
 
-typedef nsTArray<RefPtr<nsGlobalWindowInner>> WindowArray;
+using WindowArray = nsTArray<RefPtr<nsGlobalWindowInner>>;
 
 NS_IMETHODIMP
 nsWindowMemoryReporter::CollectReports(nsIHandleReportCallback* aHandleReport,
@@ -576,9 +575,7 @@ nsWindowMemoryReporter::CollectReports(nsIHandleReportCallback* aHandleReport,
   xpc::JSReporter::CollectReports(&windowPaths, &topWindowPaths, aHandleReport,
                                   aData, aAnonymize);
 
-#ifdef MOZ_XUL
   nsXULPrototypeCache::CollectMemoryReports(aHandleReport, aData);
-#endif
 
 #define REPORT(_path, _amount, _desc)                                    \
   aHandleReport->Callback(""_ns, nsLiteralCString(_path), KIND_OTHER,    \

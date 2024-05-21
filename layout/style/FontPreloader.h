@@ -9,32 +9,20 @@
 
 #include "mozilla/FetchPreloader.h"
 
-class gfxUserFontEntry;
-struct gfxFontFaceSrc;
-
 namespace mozilla {
 
 class FontPreloader final : public FetchPreloader {
  public:
   FontPreloader();
 
-  // PreloaderBase
-  static void PrioritizeAsPreload(nsIChannel* aChannel);
-  void PrioritizeAsPreload() override;
-
-  static nsresult BuildChannel(
-      nsIChannel** aChannel, nsIURI* aURI, const CORSMode aCORSMode,
-      const dom::ReferrerPolicy& aReferrerPolicy,
-      gfxUserFontEntry* aUserFontEntry, const gfxFontFaceSrc* aFontFaceSrc,
-      dom::Document* aDocument, nsILoadGroup* aLoadGroup,
-      nsIInterfaceRequestor* aCallbacks, bool aIsPreload);
-
  protected:
   nsresult CreateChannel(nsIChannel** aChannel, nsIURI* aURI,
                          const CORSMode aCORSMode,
                          const dom::ReferrerPolicy& aReferrerPolicy,
                          dom::Document* aDocument, nsILoadGroup* aLoadGroup,
-                         nsIInterfaceRequestor* aCallbacks) override;
+                         nsIInterfaceRequestor* aCallbacks,
+                         uint64_t aEarlyHintPreloaderId,
+                         int32_t aSupportsPriorityValue) override;
 };
 
 }  // namespace mozilla

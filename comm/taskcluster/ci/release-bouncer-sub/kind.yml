@@ -2,11 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.transform:loader
+loader: gecko_taskgraph.loader.transform:loader
 
 transforms:
-    - taskgraph.transforms.bouncer_submission:transforms
-    - taskgraph.transforms.task:transforms
+    - comm_taskgraph.transforms.l10n:handle_keyed_by_local
+    - gecko_taskgraph.transforms.bouncer_submission:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 job-defaults:
     description: release bouncer submission job
@@ -23,7 +24,10 @@ job-defaults:
                 - project:comm:thunderbird:releng:bouncer:server:staging
     run-on-projects: []
     shipping-phase: promote
-    locales-file: comm/mail/locales/shipped-locales
+    locales-file:
+        by-release-level:
+            production: comm/mail/locales/shipped-locales
+            staging: comm/mail/locales/onchange-locales
     treeherder:
         symbol: Rel(BncSub)
         kind: test
@@ -32,7 +36,7 @@ job-defaults:
 jobs:
     thunderbird:
         bouncer-platforms: ['linux', 'linux64', 'osx', 'win', 'win64']
-        bouncer-products: ['complete-mar', 'installer', 'installer-ssl', 'partial-mar', 'msi']
+        bouncer-products: ['complete-mar', 'installer', 'installer-ssl', 'partial-mar', 'msi', 'msix']
         shipping-product: thunderbird
         treeherder:
             platform: thunderbird-release/opt

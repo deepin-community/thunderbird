@@ -5,14 +5,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "ia2AccessibleHyperlink.h"
+
 #include "AccessibleHyperlink.h"
 #include "AccessibleHyperlink_i.c"
 
 #include "AccessibleWrap.h"
 #include "IUnknownImpl.h"
+#include "MsaaAccessible.h"
 #include "nsIURI.h"
 
 using namespace mozilla::a11y;
+
+Accessible* ia2AccessibleHyperlink::Acc() {
+  return static_cast<MsaaAccessible*>(this)->Acc();
+}
 
 AccessibleWrap* ia2AccessibleHyperlink::LocalAcc() {
   return static_cast<MsaaAccessible*>(this)->LocalAcc();
@@ -27,9 +34,8 @@ ia2AccessibleHyperlink::QueryInterface(REFIID iid, void** ppv) {
   *ppv = nullptr;
 
   if (IID_IAccessibleHyperlink == iid) {
-    auto accWrap = LocalAcc();
-    if (!accWrap || (accWrap->IsProxy() ? !accWrap->Proxy()->IsLink()
-                                        : !accWrap->IsLink())) {
+    Accessible* acc = Acc();
+    if (!acc || !acc->IsLink()) {
       return E_NOINTERFACE;
     }
 
@@ -49,23 +55,20 @@ ia2AccessibleHyperlink::get_anchor(long aIndex, VARIANT* aAnchor) {
 
   VariantInit(aAnchor);
 
-  LocalAccessible* thisObj = LocalAcc();
+  Accessible* thisObj = Acc();
   if (!thisObj) {
     return CO_E_OBJNOTCONNECTED;
   }
-  MOZ_ASSERT(!thisObj->IsProxy());
 
   if (aIndex < 0 || aIndex >= static_cast<long>(thisObj->AnchorCount()))
     return E_INVALIDARG;
 
   if (!thisObj->IsLink()) return S_FALSE;
 
-  AccessibleWrap* anchor =
-      static_cast<AccessibleWrap*>(thisObj->AnchorAt(aIndex));
+  Accessible* anchor = thisObj->AnchorAt(aIndex);
   if (!anchor) return S_FALSE;
 
-  RefPtr<IAccessible> result;
-  anchor->GetNativeInterface(getter_AddRefs(result));
+  RefPtr<IAccessible> result = MsaaAccessible::GetFrom(anchor);
   result.forget(&aAnchor->punkVal);
   aAnchor->vt = VT_UNKNOWN;
   return S_OK;
@@ -79,12 +82,11 @@ ia2AccessibleHyperlink::get_anchorTarget(long aIndex, VARIANT* aAnchorTarget) {
 
   VariantInit(aAnchorTarget);
 
-  LocalAccessible* thisObj = LocalAcc();
+  Accessible* thisObj = Acc();
   if (!thisObj) {
     return CO_E_OBJNOTCONNECTED;
   }
   nsAutoCString uriStr;
-  MOZ_ASSERT(!thisObj->IsProxy());
 
   if (aIndex < 0 || aIndex >= static_cast<long>(thisObj->AnchorCount())) {
     return E_INVALIDARG;
@@ -119,11 +121,10 @@ ia2AccessibleHyperlink::get_startIndex(long* aIndex) {
 
   *aIndex = 0;
 
-  LocalAccessible* thisObj = LocalAcc();
+  Accessible* thisObj = Acc();
   if (!thisObj) {
     return CO_E_OBJNOTCONNECTED;
   }
-  MOZ_ASSERT(!thisObj->IsProxy());
 
   if (!thisObj->IsLink()) return S_FALSE;
 
@@ -137,11 +138,10 @@ ia2AccessibleHyperlink::get_endIndex(long* aIndex) {
 
   *aIndex = 0;
 
-  LocalAccessible* thisObj = LocalAcc();
+  Accessible* thisObj = Acc();
   if (!thisObj) {
     return CO_E_OBJNOTCONNECTED;
   }
-  MOZ_ASSERT(!thisObj->IsProxy());
 
   if (!thisObj->IsLink()) return S_FALSE;
 
@@ -155,11 +155,10 @@ ia2AccessibleHyperlink::get_valid(boolean* aValid) {
 
   *aValid = false;
 
-  LocalAccessible* thisObj = LocalAcc();
+  Accessible* thisObj = Acc();
   if (!thisObj) {
     return CO_E_OBJNOTCONNECTED;
   }
-  MOZ_ASSERT(!thisObj->IsProxy());
 
   if (!thisObj->IsLink()) return S_FALSE;
 

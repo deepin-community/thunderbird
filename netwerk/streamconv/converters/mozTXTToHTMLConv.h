@@ -12,6 +12,7 @@
 #define _mozTXTToHTMLConv_h__
 
 #include "mozITXTToHTMLConv.h"
+#include "nsIThreadRetargetableStreamListener.h"
 #include "nsString.h"
 #include "nsCOMPtr.h"
 
@@ -30,6 +31,7 @@ class mozTXTToHTMLConv : public mozITXTToHTMLConv {
   NS_DECL_MOZITXTTOHTMLCONV
   NS_DECL_NSIREQUESTOBSERVER
   NS_DECL_NSISTREAMLISTENER
+  NS_DECL_NSITHREADRETARGETABLESTREAMLISTENER
   NS_DECL_NSISTREAMCONVERTER
 
   /**
@@ -248,8 +250,8 @@ class mozTXTToHTMLConv : public mozITXTToHTMLConv {
     @param glyphTextLen (out): see GlyphHit
   */
   bool SmilyHit(const char16_t* aInString, int32_t aLength, bool col0,
-                const char* tagTXT, const char* imageName, nsString& outputHTML,
-                int32_t& glyphTextLen);
+                const char* tagTXT, const nsString& imageName,
+                nsString& outputHTML, int32_t& glyphTextLen);
 
   /**
     Checks, if we can replace some chars at the start of line with prettier HTML

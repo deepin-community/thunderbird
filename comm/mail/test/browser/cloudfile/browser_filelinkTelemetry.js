@@ -5,89 +5,81 @@
  * Test telemetry related to filelink.
  */
 
-let { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
-let { gMockFilePicker, gMockFilePickReg } = ChromeUtils.import(
-  "resource://testing-common/mozmill/AttachmentHelpers.jsm"
+const { gMockCloudfileManager } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/CloudfileHelpers.sys.mjs"
 );
-let { gMockCloudfileManager } = ChromeUtils.import(
-  "resource://testing-common/mozmill/CloudfileHelpers.jsm"
-);
-let {
+const {
   add_attachments,
   add_cloud_attachments,
   close_compose_window,
   open_compose_new_mail,
   setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-let { mc } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
 );
-let {
-  get_notification_button,
-  wait_for_notification_to_stop,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
+const { wait_for_notification_to_stop } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
 );
-let { cloudFileAccounts } = ChromeUtils.import(
-  "resource:///modules/cloudFileAccounts.jsm"
+const { cloudFileAccounts } = ChromeUtils.importESModule(
+  "resource:///modules/cloudFileAccounts.sys.mjs"
 );
+var { MockFilePicker } = SpecialPowers;
 
-let cloudType = "default";
-let kInsertNotificationPref =
+const cloudType = "default";
+const kInsertNotificationPref =
   "mail.compose.big_attachments.insert_notification";
 
-let maxSize =
+const maxSize =
   Services.prefs.getIntPref("mail.compose.big_attachments.threshold_kb") * 1024;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(2);
 
   gMockCloudfileManager.register(cloudType);
-  gMockFilePickReg.register();
+  MockFilePicker.init(window.browsingContext);
 
   Services.prefs.setBoolPref(kInsertNotificationPref, true);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   gMockCloudfileManager.unregister(cloudType);
-  gMockFilePickReg.unregister();
+  MockFilePicker.cleanup();
   Services.prefs.clearUserPref(kInsertNotificationPref);
 });
 
-let kBoxId = "compose-notification-bottom";
-let kNotificationValue = "bigAttachment";
+const kBoxId = "compose-notification-bottom";
 
 /**
  * Check that we're counting file size uploaded.
  */
 add_task(async function test_filelink_uploaded_size() {
   Services.telemetry.clearScalars();
-  let testFile1Size = 495;
-  let testFile2Size = 637;
-  let totalSize = testFile1Size + testFile2Size;
+  const testFile1Size = 495;
+  const testFile2Size = 637;
+  const totalSize = testFile1Size + testFile2Size;
 
-  gMockFilePicker.returnFiles = collectFiles([
-    "./data/testFile1",
-    "./data/testFile2",
-  ]);
+  MockFilePicker.setFiles(
+    collectFiles(["./data/testFile1", "./data/testFile2"])
+  );
 
-  let provider = cloudFileAccounts.getProviderForType(cloudType);
-  let cwc = open_compose_new_mail(mc);
-  let account = cloudFileAccounts.createAccount(cloudType);
+  const provider = cloudFileAccounts.getProviderForType(cloudType);
+  const cwc = await open_compose_new_mail(window);
+  const account = cloudFileAccounts.createAccount(cloudType);
 
-  add_cloud_attachments(cwc, account, false);
+  await add_cloud_attachments(cwc, account, false);
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  await wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
 
-  let scalars = TelemetryTestUtils.getProcessScalars("parent", true);
+  const scalars = TelemetryTestUtils.getProcessScalars("parent", true);
   Assert.equal(
     scalars["tb.filelink.uploaded_size"][provider.displayName],
     totalSize,
     "Count of uploaded size must be correct."
   );
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 });
 
 /**
@@ -96,8 +88,8 @@ add_task(async function test_filelink_uploaded_size() {
 add_task(async function test_filelink_ignored() {
   Services.telemetry.clearScalars();
 
-  let cwc = open_compose_new_mail(mc);
-  setup_msg_contents(
+  const cwc = await open_compose_new_mail(window);
+  await setup_msg_contents(
     cwc,
     "test@example.org",
     "Testing ignoring filelink suggestion",
@@ -105,18 +97,17 @@ add_task(async function test_filelink_ignored() {
   );
 
   // Multiple big attachments should be counted as one ignoring.
-  add_attachments(cwc, "http://www.example.com/1", maxSize);
-  add_attachments(cwc, "http://www.example.com/2", maxSize + 10);
-  add_attachments(cwc, "http://www.example.com/3", maxSize - 1);
-  let aftersend = BrowserTestUtils.waitForEvent(cwc.window, "aftersend");
-  cwc.click(cwc.e("button-send"));
+  await add_attachments(cwc, "https://www.example.com/1", maxSize);
+  await add_attachments(cwc, "https://www.example.com/2", maxSize + 10);
+  await add_attachments(cwc, "https://www.example.com/3", maxSize - 1);
+  const aftersend = BrowserTestUtils.waitForEvent(cwc, "aftersend");
+  // Send Later to avoid uncatchable errors from the SMTP code.
+  cwc.goDoCommand("cmd_sendLater");
   await aftersend;
-  let scalars = TelemetryTestUtils.getProcessScalars("parent");
+  const scalars = TelemetryTestUtils.getProcessScalars("parent");
   Assert.equal(
     scalars["tb.filelink.ignored"],
     1,
     "Count of ignored times must be correct."
   );
-  close_compose_window(cwc, true);
-  close_compose_window(cwc);
 });

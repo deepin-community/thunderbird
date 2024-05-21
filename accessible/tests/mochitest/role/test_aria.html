@@ -56,16 +56,16 @@
       testRole("aria_directory_mixed", ROLE_LIST);
       testRole("aria_document", ROLE_NON_NATIVE_DOCUMENT);
       testRole("aria_document_mixed", ROLE_NON_NATIVE_DOCUMENT);
-      testRole("aria_form", ROLE_FORM);
-      testRole("aria_form_mixed", ROLE_FORM);
+      testRole("aria_form", ROLE_TEXT);
+      testRole("aria_form_mixed", ROLE_TEXT);
       testRole("aria_form_with_label", ROLE_FORM);
       testRole("aria_form_with_label_mixed", ROLE_FORM);
       testRole("aria_feed", ROLE_GROUPING);
       testRole("aria_feed_mixed", ROLE_GROUPING);
       testRole("aria_figure", ROLE_FIGURE);
       testRole("aria_figure_mixed", ROLE_FIGURE);
-      testRole("aria_grid", ROLE_TABLE);
-      testRole("aria_grid_mixed", ROLE_TABLE);
+      testRole("aria_grid", ROLE_GRID);
+      testRole("aria_grid_mixed", ROLE_GRID);
       testRole("aria_gridcell", ROLE_GRID_CELL);
       testRole("aria_gridcell_mixed", ROLE_GRID_CELL);
       testRole("aria_group", ROLE_GROUPING);
@@ -102,6 +102,8 @@
       testRole("aria_menuitemcheckbox_mixed", ROLE_CHECK_MENU_ITEM);
       testRole("aria_menuitemradio", ROLE_RADIO_MENU_ITEM);
       testRole("aria_menuitemradio_mixed", ROLE_RADIO_MENU_ITEM);
+      testRole("aria_meter", ROLE_METER);
+      testRole("aria_meter_mixed", ROLE_METER);
       testRole("aria_note", ROLE_NOTE);
       testRole("aria_note_mixed", ROLE_NOTE);
       testRole("aria_paragraph", ROLE_PARAGRAPH);
@@ -144,8 +146,12 @@
       testRole("aria_spinbutton_mixed", ROLE_SPINBUTTON);
       testRole("aria_status", ROLE_STATUSBAR);
       testRole("aria_status_mixed", ROLE_STATUSBAR);
+      testRole("aria_subscript", ROLE_SUBSCRIPT);
+      testRole("aria_subscript_mixed", ROLE_SUBSCRIPT);
       testRole("aria_suggestion", ROLE_SUGGESTION);
       testRole("aria_suggestion_mixed", ROLE_SUGGESTION);
+      testRole("aria_superscript", ROLE_SUPERSCRIPT);
+      testRole("aria_superscript_mixed", ROLE_SUPERSCRIPT);
       testRole("aria_switch", ROLE_SWITCH);
       testRole("aria_switch_mixed", ROLE_SWITCH);
       testRole("aria_tab", ROLE_PAGETAB);
@@ -178,8 +184,10 @@
 
       testRole("articlemain", ROLE_LANDMARK);
       testRole("articlemain_mixed", ROLE_LANDMARK);
-      testRole("articleform", ROLE_FORM);
-      testRole("articleform_mixed", ROLE_FORM);
+      testRole("articleform", ROLE_ARTICLE);
+      testRole("articleform_mixed", ROLE_ARTICLE);
+      testRole("articleform_label", ROLE_FORM);
+      testRole("articleform_label_mixed", ROLE_FORM);
 
       // Test article exposed as article
       testRole("testArticle", ROLE_ARTICLE);
@@ -198,8 +206,10 @@
       // strong landmark
       testRole("application", ROLE_APPLICATION);
       testRole("application_mixed", ROLE_APPLICATION);
-      testRole("form", ROLE_FORM);
-      testRole("form_mixed", ROLE_FORM);
+      testRole("form", ROLE_SECTION);
+      testRole("form_mixed", ROLE_SECTION);
+      testRole("form_label", ROLE_FORM);
+      testRole("form_label_mixed", ROLE_FORM);
       testRole("application_table", ROLE_APPLICATION);
       testRole("application_table_mixed", ROLE_APPLICATION);
 
@@ -450,6 +460,8 @@
   <span id="aria_menuitemcheckbox_mixed" role="mENUITEMCHECKBOx"></span>
   <span id="aria_menuitemradio" role="menuitemradio"></span>
   <span id="aria_menuitemradio_mixed" role="mENUITEMRADIo"></span>
+  <span id="aria_meter" role="meter"></span>
+  <span id="aria_meter_mixed" role="meTer"></span>
   <span id="aria_note" role="note"></span>
   <span id="aria_note_mixed" role="nOTe"></span>
   <span id="aria_paragraph" role="paragraph"></span>
@@ -492,8 +504,12 @@
   <span id="aria_spinbutton_mixed" role="sPINBUTTOn"></span>
   <span id="aria_status" role="status"></span>
   <span id="aria_status_mixed" role="sTATUs"></span>
+  <span id="aria_subscript" role="subscript"></span>
+  <span id="aria_subscript_mixed" role="sUBSCRIPt"></span>
   <span id="aria_suggestion" role="suggestion"></span>
   <span id="aria_suggestion_mixed" role="sUGGESTIOn"></span>
+  <span id="aria_superscript" role="superscript"></span>
+  <span id="aria_superscript_mixed" role="sUPERSCRIPt"></span>
   <span id="aria_switch" role="switch"></span>
   <span id="aria_switch_mixed" role="sWITCh"></span>
   <span id="aria_tab" role="tab"></span>
@@ -523,6 +539,8 @@
   <article id="articlemain_mixed" role="mAIn">a main area</article>
   <article id="articleform" role="form">a form area</article>
   <article id="articleform_mixed" role="fORm">a form area</article>
+  <article id="articleform_label" aria-label="form" role="form">a form area</article>
+  <article id="articleform_label_mixed" aria-label="form" role="fORm">a form area</article>
 
   <div id="testArticle" role="article" title="Test article">
     <p>This is a paragraph inside the article.</p>
@@ -549,6 +567,8 @@
   <div role="aPPLICATIOn" id="application_mixed">application</div>
   <div role="form" id="form">form</div>
   <div role="fORm" id="form_mixed">form</div>
+  <div role="form" id="form_label" aria-label="form">form</div>
+  <div role="fORm" id="form_label_mixed" aria-label="form">form</div>
 
   <!-- weak landmarks -->
   <div role="banner" id="banner">banner</div>

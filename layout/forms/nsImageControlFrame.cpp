@@ -45,7 +45,7 @@ class nsImageControlFrame final : public nsImageFrame,
   }
 #endif
 
-  Maybe<Cursor> GetCursor(const nsPoint&) final;
+  Cursor GetCursor(const nsPoint&) final;
 
   // nsIFormContromFrame
   void SetFocus(bool aOn, bool aRepaint) final;
@@ -74,8 +74,8 @@ void nsImageControlFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
     return;
   }
 
-  mContent->SetProperty(nsGkAtoms::imageClickedPoint, new nsIntPoint(0, 0),
-                        nsINode::DeleteProperty<nsIntPoint>);
+  mContent->SetProperty(nsGkAtoms::imageClickedPoint, new CSSIntPoint(0, 0),
+                        nsINode::DeleteProperty<CSSIntPoint>);
 }
 
 NS_QUERYFRAME_HEAD(nsImageControlFrame)
@@ -123,13 +123,13 @@ nsresult nsImageControlFrame::HandleEvent(nsPresContext* aPresContext,
       aEvent->AsMouseEvent()->mButton == MouseButton::ePrimary) {
     // Store click point for HTMLInputElement::SubmitNamesValues
     // Do this on MouseUp because the specs don't say and that's what IE does
-    nsIntPoint* lastClickPoint = static_cast<nsIntPoint*>(
+    auto* lastClickedPoint = static_cast<CSSIntPoint*>(
         mContent->GetProperty(nsGkAtoms::imageClickedPoint));
-    if (lastClickPoint) {
+    if (lastClickedPoint) {
       // normally lastClickedPoint is not null, as it's allocated in Init()
       nsPoint pt = nsLayoutUtils::GetEventCoordinatesRelativeTo(
           aEvent, RelativeTo{this});
-      TranslateEventCoords(pt, *lastClickPoint);
+      *lastClickedPoint = TranslateEventCoords(pt);
     }
   }
   return nsImageFrame::HandleEvent(aPresContext, aEvent, aEventStatus);
@@ -137,12 +137,12 @@ nsresult nsImageControlFrame::HandleEvent(nsPresContext* aPresContext,
 
 void nsImageControlFrame::SetFocus(bool aOn, bool aRepaint) {}
 
-Maybe<nsIFrame::Cursor> nsImageControlFrame::GetCursor(const nsPoint&) {
-  StyleCursorKind kind = StyleUI()->mCursor.keyword;
+nsIFrame::Cursor nsImageControlFrame::GetCursor(const nsPoint&) {
+  StyleCursorKind kind = StyleUI()->Cursor().keyword;
   if (kind == StyleCursorKind::Auto) {
     kind = StyleCursorKind::Pointer;
   }
-  return Some(Cursor{kind, AllowCustomCursorImage::Yes});
+  return Cursor{kind, AllowCustomCursorImage::Yes};
 }
 
 nsresult nsImageControlFrame::SetFormProperty(nsAtom* aName,

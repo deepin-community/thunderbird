@@ -4,16 +4,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 TESTING_JS_MODULES += [
-    "CardDAVServer.jsm",
-    "LDAPServer.jsm",
-]
-
-BROWSER_CHROME_MANIFESTS += [
-    "browser/browser.ini",
+    "CardDAVServer.sys.mjs",
+    "LDAPServer.sys.mjs",
 ]
 
 XPCSHELL_TESTS_MANIFESTS += [
-    "unit/xpcshell-jsm.ini",
     "unit/xpcshell.ini",
     "unit/xpcshell_cardDAV.ini",
 ]

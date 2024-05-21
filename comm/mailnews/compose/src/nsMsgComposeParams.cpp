@@ -8,7 +8,8 @@
 nsMsgComposeParams::nsMsgComposeParams()
     : mType(nsIMsgCompType::New),
       mFormat(nsIMsgCompFormat::Default),
-      mBodyIsLink(false) {}
+      mBodyIsLink(false),
+      mAutodetectCharset(false) {}
 
 /* the following macro actually implement addref, release and query interface
  * for our component. */
@@ -41,14 +42,13 @@ NS_IMETHODIMP nsMsgComposeParams::SetFormat(MSG_ComposeFormat aFormat) {
 }
 
 /* attribute string originalMsgURI; */
-NS_IMETHODIMP nsMsgComposeParams::GetOriginalMsgURI(char** aOriginalMsgURI) {
-  NS_ENSURE_ARG_POINTER(aOriginalMsgURI);
-
-  *aOriginalMsgURI = ToNewCString(mOriginalMsgUri);
+NS_IMETHODIMP nsMsgComposeParams::GetOriginalMsgURI(
+    nsACString& aOriginalMsgURI) {
+  aOriginalMsgURI = mOriginalMsgUri;
   return NS_OK;
 }
 NS_IMETHODIMP nsMsgComposeParams::SetOriginalMsgURI(
-    const char* aOriginalMsgURI) {
+    const nsACString& aOriginalMsgURI) {
   mOriginalMsgUri = aOriginalMsgURI;
   return NS_OK;
 }
@@ -73,6 +73,18 @@ NS_IMETHODIMP nsMsgComposeParams::SetOrigMsgHdr(nsIMsgDBHdr* aMsgHdr) {
 NS_IMETHODIMP nsMsgComposeParams::GetOrigMsgHdr(nsIMsgDBHdr** aMsgHdr) {
   NS_ENSURE_ARG_POINTER(aMsgHdr);
   NS_IF_ADDREF(*aMsgHdr = mOrigMsgHdr);
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgComposeParams::GetAutodetectCharset(
+    bool* aAutodetectCharset) {
+  NS_ENSURE_ARG_POINTER(aAutodetectCharset);
+  *aAutodetectCharset = mAutodetectCharset;
+  return NS_OK;
+}
+NS_IMETHODIMP nsMsgComposeParams::SetAutodetectCharset(
+    bool aAutodetectCharset) {
+  mAutodetectCharset = aAutodetectCharset;
   return NS_OK;
 }
 

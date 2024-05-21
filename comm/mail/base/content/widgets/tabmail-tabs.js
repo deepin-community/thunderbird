@@ -8,26 +8,27 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { XPCOMUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/XPCOMUtils.sys.mjs"
   );
 
   /**
    * The MozTabs widget holds all the tabs for the main tab UI.
-   * @extends {MozTabs}
+   *
+   * @augments {MozTabs}
    */
   class MozTabmailTabs extends customElements.get("tabs") {
     constructor() {
       super();
 
       this.addEventListener("dragstart", event => {
-        let draggedTab = this._getDragTargetTab(event);
+        const draggedTab = this._getDragTargetTab(event);
 
         if (!draggedTab) {
           return;
         }
 
-        let tab = this.tabmail.selectedTab;
+        const tab = this.tabmail.selectedTab;
 
         if (!tab || !tab.canClose) {
           return;
@@ -56,19 +57,19 @@
         dt.mozCursor = "default";
 
         // Create Drag Image.
-        let panel = document.getElementById("tabpanelcontainer");
+        const panel = document.getElementById("tabpanelcontainer");
 
-        let thumbnail = document.createElementNS(
+        const thumbnail = document.createElementNS(
           "http://www.w3.org/1999/xhtml",
           "canvas"
         );
         thumbnail.width = Math.ceil(screen.availWidth / 5.75);
         thumbnail.height = Math.round(thumbnail.width * 0.5625);
 
-        let snippetWidth = panel.getBoundingClientRect().width * 0.6;
-        let scale = thumbnail.width / snippetWidth;
+        const snippetWidth = panel.getBoundingClientRect().width * 0.6;
+        const scale = thumbnail.width / snippetWidth;
 
-        let ctx = thumbnail.getContext("2d");
+        const ctx = thumbnail.getContext("2d");
 
         ctx.scale(scale, scale);
 
@@ -88,45 +89,9 @@
       });
 
       this.addEventListener("dragover", event => {
-        let dt = event.dataTransfer;
+        const dt = event.dataTransfer;
 
         if (dt.mozItemCount == 0) {
-          return;
-        }
-
-        if (
-          dt.mozGetDataAt("text/toolbarwrapper-id/messengerWindow", 0) != null
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Dispatch event to the toolbar
-          let evt = document.createEvent("DragEvent");
-          evt.initDragEvent(
-            "dragover",
-            true,
-            true,
-            window,
-            0,
-            0,
-            0,
-            0,
-            0,
-            false,
-            false,
-            false,
-            false,
-            0,
-            null,
-            event.dataTransfer
-          );
-
-          if (this.mToolbar.firstElementChild) {
-            this.mToolbar.firstElementChild.dispatchEvent(evt);
-          } else {
-            this.mToolbar.dispatchEvent(evt);
-          }
-
           return;
         }
 
@@ -137,7 +102,7 @@
           dt.mozTypesAt(0)[0] != "application/x-moz-tabmail-tab" &&
           dt.mozTypesAt(0)[1] != "application/x-moz-tabmail-json"
         ) {
-          let tab = this._getDragTargetTab(event);
+          const tab = this._getDragTargetTab(event);
 
           if (!tab) {
             return;
@@ -168,7 +133,10 @@
         // moved to a different or new window. We should not show
         // a dropmarker in such a case.
         if (!dt.mozGetDataAt("application/x-moz-tabmail-json", 0)) {
-          let draggedTab = dt.mozGetDataAt("application/x-moz-tabmail-tab", 0);
+          const draggedTab = dt.mozGetDataAt(
+            "application/x-moz-tabmail-tab",
+            0
+          );
 
           if (!draggedTab) {
             return;
@@ -184,9 +152,9 @@
         event.preventDefault();
         event.stopPropagation();
 
-        let ltr = window.getComputedStyle(this).direction == "ltr";
-        let ind = this._tabDropIndicator;
-        let arrowScrollbox = this.arrowScrollbox;
+        const ltr = window.getComputedStyle(this).direction == "ltr";
+        const ind = this._tabDropIndicator;
+        const arrowScrollbox = this.arrowScrollbox;
 
         // Let's scroll
         let pixelsToScroll = 0;
@@ -215,14 +183,14 @@
         let newIndex = this._getDropIndex(event);
 
         // Fix the DropIndex in case it points to tab that can't be closed.
-        let tabInfo = this.tabmail.tabInfo;
+        const tabInfo = this.tabmail.tabInfo;
 
         while (newIndex < tabInfo.length && !tabInfo[newIndex].canClose) {
           newIndex++;
         }
 
-        let scrollRect = this.arrowScrollbox.scrollClientRect;
-        let rect = this.getBoundingClientRect();
+        const scrollRect = this.arrowScrollbox.scrollClientRect;
+        const rect = this.getBoundingClientRect();
         let minMargin = scrollRect.left - rect.left;
         let maxMargin = Math.min(
           minMargin + scrollRect.width,
@@ -237,10 +205,10 @@
         }
 
         let newMargin;
-        let tabs = this.allTabs;
+        const tabs = this.allTabs;
 
         if (newIndex == tabs.length) {
-          let tabRect = tabs[newIndex - 1].getBoundingClientRect();
+          const tabRect = tabs[newIndex - 1].getBoundingClientRect();
 
           if (ltr) {
             newMargin = tabRect.right - rect.left;
@@ -248,7 +216,7 @@
             newMargin = rect.right - tabRect.left;
           }
         } else {
-          let tabRect = tabs[newIndex].getBoundingClientRect();
+          const tabRect = tabs[newIndex].getBoundingClientRect();
 
           if (ltr) {
             newMargin = tabRect.left - rect.left;
@@ -265,49 +233,9 @@
       });
 
       this.addEventListener("drop", event => {
-        let dt = event.dataTransfer;
+        const dt = event.dataTransfer;
 
         if (dt.mozItemCount != 1) {
-          return;
-        }
-
-        // If we're dragging a toolbar button, let's prepend the tabs toolbar
-        // with that button, and then bail out.
-        let buttonId = dt.mozGetDataAt(
-          "text/toolbarwrapper-id/messengerWindow",
-          0
-        );
-
-        if (buttonId != null) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          let evt = document.createEvent("DragEvent");
-          evt.initDragEvent(
-            "drop",
-            true,
-            true,
-            window,
-            0,
-            0,
-            0,
-            0,
-            0,
-            false,
-            false,
-            false,
-            false,
-            0,
-            null,
-            event.dataTransfer
-          );
-
-          if (this.mToolbar.firstElementChild) {
-            this.mToolbar.firstElementChild.dispatchEvent(evt);
-          } else {
-            this.mToolbar.dispatchEvent(evt);
-          }
-
           return;
         }
 
@@ -325,7 +253,7 @@
           // It's a tab from an other window, so we have to trigger session
           // restore to get our tab
 
-          let tabmail2 = draggedTab.ownerDocument.getElementById("tabmail");
+          const tabmail2 = draggedTab.ownerDocument.getElementById("tabmail");
           if (!tabmail2) {
             return;
           }
@@ -349,15 +277,16 @@
             return;
           }
 
-          draggedTab = this.tabmail.tabContainer.allTabs[
-            this.tabmail.tabContainer.allTabs.length - 1
-          ];
+          draggedTab =
+            this.tabmail.tabContainer.allTabs[
+              this.tabmail.tabContainer.allTabs.length - 1
+            ];
         }
 
         let idx = this._getDropIndex(event);
 
         // Fix the DropIndex in case it points to tab that can't be closed
-        let tabInfo = this.tabmail.tabInfo;
+        const tabInfo = this.tabmail.tabInfo;
         while (idx < tabInfo.length && !tabInfo[idx].canClose) {
           idx++;
         }
@@ -374,22 +303,23 @@
         // see bug 460801.
 
         // The user pressed ESC to cancel the drag, or the drag succeeded.
-        let dt = event.dataTransfer;
+        const dt = event.dataTransfer;
         if (dt.mozUserCancelled || dt.dropEffect != "none") {
           return;
         }
 
         // Disable detach within the browser toolbox.
-        let eX = event.screenX;
-        let wX = window.screenX;
+        const eX = event.screenX;
+        const wX = window.screenX;
 
         // Check if the drop point is horizontally within the window.
         if (eX > wX && eX < wX + window.outerWidth) {
-          let bo = this.arrowScrollbox;
+          const bo = this.arrowScrollbox;
           // Also avoid detaching if the the tab was dropped too close to
           // the tabbar (half a tab).
-          let endScreenY = bo.screenY + 1.5 * bo.getBoundingClientRect().height;
-          let eY = event.screenY;
+          const endScreenY =
+            bo.screenY + 1.5 * bo.getBoundingClientRect().height;
+          const eY = event.screenY;
 
           if (eY < endScreenY && eY > window.screenY) {
             return;
@@ -401,7 +331,7 @@
           return;
         }
 
-        let draggedTab = dt.mozGetDataAt("application/x-moz-tabmail-tab", 0);
+        const draggedTab = dt.mozGetDataAt("application/x-moz-tabmail-tab", 0);
 
         if (!draggedTab) {
           return;
@@ -410,7 +340,7 @@
         this.tabmail.replaceTabWithWindow(draggedTab);
       });
 
-      this.addEventListener("dragexit", event => {
+      this.addEventListener("dragleave", event => {
         this._dragTime = 0;
 
         this._tabDropIndicator.hidden = true;
@@ -429,8 +359,6 @@
       this.arrowScrollboxWidth = 0;
 
       this.arrowScrollbox = this.querySelector("arrowscrollbox");
-
-      this.mToolbar = document.getElementById(this.getAttribute("tabtoolbar"));
 
       this.mCollapseToolbar = document.getElementById(
         this.getAttribute("collapsetoolbar")
@@ -452,12 +380,6 @@
 
       this._dragTime = 0;
 
-      this.mTabMinWidth = 100;
-
-      this.mTabMaxWidth = 250;
-
-      this.mTabClipWidth = 140;
-
       this._mAutoHide = false;
 
       this.mAllTabsButton = document.getElementById(
@@ -474,66 +396,11 @@
       this._animateDelay = 25;
 
       this._animatePercents = [
-        1.0,
-        0.85,
-        0.8,
-        0.75,
-        0.71,
-        0.68,
-        0.65,
-        0.62,
-        0.59,
-        0.57,
-        0.54,
-        0.52,
-        0.5,
-        0.47,
-        0.45,
-        0.44,
-        0.42,
-        0.4,
-        0.38,
-        0.37,
-        0.35,
-        0.34,
-        0.32,
-        0.31,
-        0.3,
-        0.29,
-        0.28,
-        0.27,
-        0.26,
-        0.25,
-        0.24,
-        0.23,
-        0.23,
-        0.22,
-        0.22,
-        0.21,
-        0.21,
-        0.21,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.19,
-        0.19,
-        0.19,
-        0.18,
-        0.18,
-        0.17,
-        0.17,
-        0.16,
-        0.15,
-        0.14,
-        0.13,
-        0.11,
-        0.09,
-        0.06,
+        1.0, 0.85, 0.8, 0.75, 0.71, 0.68, 0.65, 0.62, 0.59, 0.57, 0.54, 0.52,
+        0.5, 0.47, 0.45, 0.44, 0.42, 0.4, 0.38, 0.37, 0.35, 0.34, 0.32, 0.31,
+        0.3, 0.29, 0.28, 0.27, 0.26, 0.25, 0.24, 0.23, 0.23, 0.22, 0.22, 0.21,
+        0.21, 0.21, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.19, 0.19, 0.19,
+        0.18, 0.18, 0.17, 0.17, 0.16, 0.15, 0.14, 0.13, 0.11, 0.09, 0.06,
       ];
 
       this.mTabMinWidth = Services.prefs.getIntPref("mail.tabs.tabMinWidth");
@@ -543,10 +410,9 @@
 
       if (this.mAutoHide) {
         this.mCollapseToolbar.collapsed = true;
+        document.documentElement.setAttribute("tabbarhidden", "true");
       }
 
-      this.arrowScrollbox.firstElementChild.minWidth = this.mTabMinWidth;
-      this.arrowScrollbox.firstElementChild.maxWidth = this.mTabMaxWidth;
       this._updateCloseButtons();
 
       Services.prefs.addObserver("mail.tabs.", this._prefObserver);
@@ -577,6 +443,27 @@
       this.addEventListener("TabSelect", event => {
         this._handleTabSelect();
       });
+      XPCOMUtils.defineLazyPreferenceGetter(
+        this,
+        "_tabMinWidthPref",
+        "mail.tabs.tabMinWidth",
+        null,
+        (pref, prevValue, newValue) => (this._tabMinWidth = newValue),
+        newValue => {
+          const LIMIT = 50;
+          return Math.max(newValue, LIMIT);
+        }
+      );
+      this._tabMinWidth = this._tabMinWidthPref;
+
+      XPCOMUtils.defineLazyPreferenceGetter(
+        this,
+        "_tabMaxWidthPref",
+        "mail.tabs.tabMaxWidth",
+        null,
+        (pref, prevValue, newValue) => (this._tabMaxWidth = newValue)
+      );
+      this._tabMaxWidth = this._tabMaxWidthPref;
     }
 
     get tabbox() {
@@ -623,8 +510,8 @@
     }
 
     set selectedIndex(val) {
-      let tab = this.getItemAtIndex(val);
-      let alreadySelected = tab && tab.selected;
+      const tab = this.getItemAtIndex(val);
+      const alreadySelected = tab && tab.selected;
 
       this.__proto__.__proto__
         .__lookupSetter__("selectedIndex")
@@ -632,7 +519,7 @@
 
       if (!alreadySelected) {
         // Fire an onselect event for the tabs element.
-        let event = document.createEvent("Events");
+        const event = document.createEvent("Events");
         event.initEvent("select", true, true);
         this.dispatchEvent(event);
       }
@@ -645,8 +532,8 @@
     }
 
     _updateCloseButtons() {
-      let width = this.arrowScrollbox.firstElementChild.getBoundingClientRect()
-        .width;
+      const width =
+        this.arrowScrollbox.firstElementChild.getBoundingClientRect().width;
       // 0 width is an invalid value and indicates
       // an item without display, so ignore.
       if (width > this.mTabClipWidth || width == 0) {
@@ -661,7 +548,7 @@
     }
 
     handleEvent(aEvent) {
-      let alltabsButton = document.getElementById("alltabs-button");
+      const alltabsButton = document.getElementById("alltabs-button");
 
       switch (aEvent.type) {
         case "overflow":
@@ -692,8 +579,8 @@
           this.arrowScrollbox.removeAttribute("overflow");
           alltabsButton.setAttribute("hidden", "true");
           break;
-        case "resize":
-          let width = this.arrowScrollbox.getBoundingClientRect().width;
+        case "resize": {
+          const width = this.arrowScrollbox.getBoundingClientRect().width;
           if (width != this.arrowScrollboxWidth) {
             this._updateCloseButtons();
             // XXX without this line the tab bar won't budge
@@ -702,6 +589,7 @@
             this.arrowScrollboxWidth = width;
           }
           break;
+        }
       }
     }
 
@@ -718,12 +606,12 @@
     }
 
     _notifyBackgroundTab(aTab) {
-      let tsbo = this.arrowScrollbox;
-      let tsboStart = tsbo.screenX;
-      let tsboEnd = tsboStart + tsbo.getBoundingClientRect().width;
+      const tsbo = this.arrowScrollbox;
+      const tsboStart = tsbo.screenX;
+      const tsboEnd = tsboStart + tsbo.getBoundingClientRect().width;
 
-      let ctboStart = aTab.screenX;
-      let ctboEnd = ctboStart + aTab.getBoundingClientRect().width;
+      const ctboStart = aTab.screenX;
+      const ctboEnd = ctboStart + aTab.getBoundingClientRect().width;
 
       // only start the flash timer if the new tab (which was loaded in
       // the background) is not completely visible
@@ -751,7 +639,7 @@
         aTimer.cancel();
       }
 
-      let percent = this._animatePercents[this._animateStep];
+      const percent = this._animatePercents[this._animateStep];
       this.mAllTabsBoxAnimate.style.opacity = percent;
       this.mDownBoxAnimate.style.opacity = percent;
 
@@ -776,7 +664,7 @@
         return tab;
       }
 
-      let tabRect = tab.getBoundingClientRect();
+      const tabRect = tab.getBoundingClientRect();
       if (event.screenX < tab.screenX + tabRect.width * 0.25) {
         return null;
       }
@@ -789,7 +677,7 @@
     }
 
     _getDropIndex(event) {
-      let tabs = this.allTabs;
+      const tabs = this.allTabs;
 
       if (window.getComputedStyle(this).direction == "ltr") {
         for (let i = 0; i < tabs.length; i++) {
@@ -812,6 +700,13 @@
       }
 
       return tabs.length;
+    }
+
+    set _tabMinWidth(val) {
+      this.arrowScrollbox.style.setProperty("--tab-min-width", `${val}px`);
+    }
+    set _tabMaxWidth(val) {
+      this.arrowScrollbox.style.setProperty("--tab-max-width", `${val}px`);
     }
 
     disconnectedCallback() {

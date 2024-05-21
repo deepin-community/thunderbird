@@ -4,9 +4,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-MOCHITEST_MANIFESTS += ["test/mochitest.ini"]
+MOCHITEST_MANIFESTS += ["test/mochitest.toml"]
 
-MOCHITEST_CHROME_MANIFESTS += ["test/chrome.ini"]
+MOCHITEST_CHROME_MANIFESTS += ["test/chrome.toml"]
 
 XPIDL_SOURCES += [
     "nsIEditingSession.idl",
@@ -58,6 +58,3 @@ RESOURCE_FILES += [
     "res/table-remove-row-hover.gif",
     "res/table-remove-row.gif",
 ]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

@@ -19,13 +19,12 @@ class nsIHttpChannel;
 class nsIPrincipal;
 class NS_ConvertUTF8toUTF16;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 class Document;
-}  // namespace dom
-}  // namespace mozilla
+class Element;
+}  // namespace mozilla::dom
 
-typedef std::pair<nsCString, mozilla::Maybe<nsString>> FilenameTypeAndDetails;
+using FilenameTypeAndDetails = std::pair<nsCString, mozilla::Maybe<nsString>>;
 
 class nsContentSecurityUtils {
  public:
@@ -37,14 +36,20 @@ class nsContentSecurityUtils {
   static bool IsConsideredSameOriginForUIR(nsIPrincipal* aTriggeringPrincipal,
                                            nsIPrincipal* aResultPrincipal);
 
-  static FilenameTypeAndDetails FilenameToFilenameType(
-      const nsString& fileName, bool collectAdditionalExtensionData);
   static bool IsEvalAllowed(JSContext* cx, bool aIsSystemPrincipal,
                             const nsAString& aScript);
   static void NotifyEvalUsage(bool aIsSystemPrincipal,
                               NS_ConvertUTF8toUTF16& aFileNameA,
                               uint64_t aWindowID, uint32_t aLineNumber,
                               uint32_t aColumnNumber);
+
+  // Helper function for various checks:
+  // This function detects profiles with userChrome.js or extension signatures
+  // disabled. We can't/won't enforce strong security for people with those
+  // hacks. The function will cache its result.
+  static void DetectJsHacks();
+  // Helper function for detecting custom agent styles
+  static void DetectCssHacks();
 
   // Helper function to query the HTTP Channel of a potential
   // multi-part channel. Mostly used for querying response headers
@@ -57,16 +62,37 @@ class nsContentSecurityUtils {
   // If any of the two disallows framing, the channel will be cancelled.
   static void PerformCSPFrameAncestorAndXFOCheck(nsIChannel* aChannel);
 
+  // Helper function which just checks if the channel violates any:
+  // 1. CSP frame-ancestors properties
+  // 2. x-frame-options
+  static bool CheckCSPFrameAncestorAndXFO(nsIChannel* aChannel);
+
+  // Implements https://w3c.github.io/webappsec-csp/#is-element-nonceable.
+  //
+  // Returns an empty nonce for elements without a nonce OR when a potential
+  // dangling markup attack was detected.
+  static nsString GetIsElementNonceableNonce(
+      const mozilla::dom::Element& aElement);
+
   // Helper function to Check if a Download is allowed;
   static long ClassifyDownload(nsIChannel* aChannel,
                                const nsAutoCString& aMimeTypeGuess);
+
+  // Public only for testing
+  static FilenameTypeAndDetails FilenameToFilenameType(
+      const nsString& fileName, bool collectAdditionalExtensionData);
+  static char* SmartFormatCrashString(const char* str);
+  static char* SmartFormatCrashString(char* str);
+  static nsCString SmartFormatCrashString(const char* part1, const char* part2,
+                                          const char* format_string);
+  static nsCString SmartFormatCrashString(char* part1, char* part2,
+                                          const char* format_string);
 
 #if defined(DEBUG)
   static void AssertAboutPageHasCSP(mozilla::dom::Document* aDocument);
 #endif
 
-  static bool ValidateScriptFilename(const char* aFilename,
-                                     bool aIsSystemRealm);
+  static bool ValidateScriptFilename(JSContext* cx, const char* aFilename);
   // Helper Function to Post a message to the corresponding JS-Console
   static void LogMessageToConsole(nsIHttpChannel* aChannel, const char* aMsg);
 };

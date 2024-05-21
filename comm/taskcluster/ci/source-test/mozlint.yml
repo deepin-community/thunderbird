@@ -4,6 +4,8 @@
 ---
 job-defaults:
     always-target: true
+    attributes:
+        code-review: true
     treeherder:
         kind: test
         tier: 1
@@ -12,46 +14,32 @@ job-defaults:
     worker:
         docker-image: {in-tree: "lint"}
         max-run-time: 1800
+        artifacts:
+            - type: file
+              name: public/code-review/mozlint.json
+              path: /builds/worker/mozlint.json
         env:
             MOZLINT_NO_SUITE: '1'
     run:
         using: mach
         comm-checkout: true
-    optimization:
-        skip-unless-changed-no-suite:
-            # Other misc lint related files.
-            - 'python/mozlint/**'
-            - 'tools/lint/**'
 
 codespell:
-    always-target: false
     description: Checks for misspellings in text files
     treeherder:
         symbol: text(spell)
-    run-on-projects: []
+        # We don't want patches to be backed out because of a typo, a follow-up
+        # bug will be good enough
+        tier: 2
     run:
         mach: >
-            lint -v -l codespell -f treeherder
+            commlint -v -l codespell -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**.js'
-            - 'comm/**.jsm'
-            - 'comm/**.jxs'
-            - 'comm/**.xml'
-            - 'comm/**.html'
-            - 'comm/**.xhtml'
-            - 'comm/**.cpp'
-            - 'comm/**.c'
-            - 'comm/**.h'
-            - 'comm/**.configure'
-            - 'comm/**.py'
-            - 'comm/**.properties'
-            - 'comm/**.rst'
-            - 'comm/**.md'
-            - 'comm/**.ftl'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: codespell.yml
 
 eslint:
     description: JS lint check
@@ -59,82 +47,53 @@ eslint:
         symbol: js(ES)
     run:
         using: run-task
+        cwd: '{checkout}'
         command: >
-            cd /builds/worker/checkouts/gecko/ &&
             cp -r /build/node_modules_eslint node_modules &&
+            cp -r /build/node_modules_eslint-plugin-mozilla/ tools/lint/eslint/eslint-plugin-mozilla/node_modules &&
             ln -s ../tools/lint/eslint/eslint-plugin-mozilla node_modules &&
             ln -s ../tools/lint/eslint/eslint-plugin-spidermonkey-js node_modules &&
-            cd /builds/worker/checkouts/gecko/comm &&
-            ../mach lint -f treeherder -l eslint --quiet -f json:/builds/worker/mozlint.json *
+            ./mach commlint -v -l eslint -f treeherder -f json:/builds/worker/mozlint.json comm/
     optimization:
-        skip-unless-changed-no-suite:
-            # Files that are likely audited.
-            - 'comm/**/*.js'
-            - 'comm/**/*.jsm'
-            - 'comm/**/*.jsx'
-            - 'comm/**/*.html'
-            - 'comm/**/*.xhtml'
-            - 'comm/**/*.xml'
-            # Run when eslint policies change.
-            - '**/.eslintignore'
-            - '**/*eslintrc*'
-            # The plugin implementing custom checks.
-            - 'tools/lint/eslint/eslint-plugin-mozilla/**'
-            - 'tools/lint/eslint/eslint-plugin-spidermonkey-js/**'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: eslint.yml
 
 file-perm:
     description: Check for incorrect permissions on source files
     platform: lint/opt
     treeherder:
         symbol: pedantic(file-perm)
+        # We don't want patches to be backed out because of this, a follow-up
+        # bug will be good enough
+        tier: 2
     run:
         mach: >
-            lint -v -l file-perm -f treeherder
+            commlint -v -l file-perm -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.c'
-            - 'comm/**/*.cc'
-            - 'comm/**/*.cpp'
-            - 'comm/**/*.h'
-            - 'comm/**/*.html'
-            - 'comm/**/*.idl'
-            - 'comm/**/*.js'
-            - 'comm/**/*.jsm'
-            - 'comm/**/*.jsx'
-            - 'comm/**/*.m'
-            - 'comm/**/*.mm'
-            - 'comm/**/*.png'
-            - 'comm/**/*.py'
-            - 'comm/**/*.rs'
-            - 'comm/**/*.sh'
-            - 'comm/**/*.svg'
-            - 'comm/**/*.xhtml'
-            - 'comm/**/*.xml'
-            - 'comm/**/*.xul'
-            - 'comm/**/*.yml'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: file-perm.yml
 
 file-whitespace:
     description: Check for trailing whitespaces and Windows CR
     platform: lint/opt
     treeherder:
         symbol: pedantic(file-whitespace)
+        # We don't want patches to be backed out because of this, a follow-up
+        # bug will be good enough
+        tier: 2
     run:
         mach: >
-            lint -v -l file-whitespace -f treeherder
+            commlint -v -l file-whitespace -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.c'
-            - 'comm/**/*.cc'
-            - 'comm/**/*.cpp'
-            - 'comm/**/*.h'
-            - 'comm/**/*.py'
-            - 'comm/**/*.rs'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: file-whitespace.yml
 
 fluent-lint:
     description: Check for problems with Fluent files.
@@ -142,50 +101,27 @@ fluent-lint:
         symbol: l10n(fluent)
     run:
         mach: >
-            lint -l fluent-lint -f treeherder
-            --config-path=comm/tools/lint
+            commlint -l fluent-lint -f treeherder
+            -f json:/builds/worker/mozlint.json
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.ftl'
-            - 'comm/tools/lint/fluent-lint.yml'
-            - 'comm/tools/lint/fluent-lint/exclusions.yml'
-
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: fluent-lint.yml
 
 license:
-    always-target: false
     description: Check for license blocks in source files.
     treeherder:
         symbol: pedantic(license)
     run:
         mach: >
-            lint -v -l license -f treeherder
+            commlint -v -l license -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.c'
-            - 'comm/**/*.cc'
-            - 'comm/**/*.cpp'
-            - 'comm/**/*.css'
-            - 'comm/**/*.dtd'
-            - 'comm/**/*.ftl'
-            - 'comm/**/*.h'
-            - 'comm/**/*.html'
-            - 'comm/**/*.js'
-            - 'comm/**/*.jsm'
-            - 'comm/**/*.jsx'
-            - 'comm/**/*.m'
-            - 'comm/**/*.mm'
-            - 'comm/**/*.properties'
-            - 'comm/**/*.py'
-            - 'comm/**/*.rs'
-            - 'comm/**/*.svg'
-            - 'comm/**/*.xhtml'
-            - 'comm/**/*.xml'
-            - 'comm/**/*.xul'
-            - 'comm/tools/lint/license.yml'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: license.yml
 
 l10n-conflicts:
     description: l10n tests for strings with errors and conflicts with cross-channel
@@ -195,21 +131,13 @@ l10n-conflicts:
     run-on-projects: []
     run:
         mach: >
-            lint -W -l l10n -f treeherder
-            --config-path=comm/tools/lint
+            commlint -W -l l10n -f treeherder
+            -f json:/builds/worker/mozlint.json
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/calendar/locales/l10n.toml'
-            - 'comm/calendar/locales/en-US/**'
-            - 'comm/chat/locales/en-US/**'
-            - 'comm/mail/extensions/openpgp/content/**/*.ftl'
-            - 'comm/mail/locales/l10n.toml'
-            - 'comm/mail/locales/en-US/**'
-            - 'comm/mail/branding/thunderbird/locales/en-US/**'
-            - 'comm/tools/lint/l10n.yml'
-            - 'third_party/python/compare-locales/**'
-            - 'third_party/python/fluent/**'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: l10n.yml
 
 localization:
     description: l10n tests for strings with errors
@@ -217,23 +145,14 @@ localization:
         symbol: l10n(l1nt)
     run:
         mach: >
-            lint -v -l l10n -f treeherder
-            --config-path=comm/tools/lint
+            commlint -v -l l10n -f treeherder
             comm/*
     attributes:
         code-review: false
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/calendar/locales/l10n.toml'
-            - 'comm/calendar/locales/en-US/**'
-            - 'comm/chat/locales/en-US/**'
-            - 'comm/mail/extensions/openpgp/content/**/*.ftl'
-            - 'comm/mail/locales/l10n.toml'
-            - 'comm/mail/locales/en-US/**'
-            - 'comm/mail/branding/thunderbird/locales/en-US/**'
-            - 'comm/tools/lint/l10n.yml'
-            - 'third_party/python/compare-locales/**'
-            - 'third_party/python/fluent/**'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: l10n.yml
 
 lintpref:
     description: Check for duplicates between all.js and StaticPrefList.yaml.
@@ -241,18 +160,13 @@ lintpref:
         symbol: misc(pref)
     run:
         mach: >
-            lint -v -l lintpref -f treeherder
+            commlint -v -l lintpref -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'modules/libpref/init/all.js'
-            - 'modules/libpref/init/StaticPrefList.yaml'
-            - 'comm/mail/app/profile/all-thunderbird.js'
-            - 'comm/mail/app/profile/channel-prefs.js'
-            - 'comm/mail/branding/nightly/thunderbird-branding.js'
-            - 'comm/mail/branding/thunderbird/thunderbird-branding.js'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: lintpref.yml
 
 mingw-cap:
     description: lint for MinGW Capitalization issues
@@ -260,16 +174,13 @@ mingw-cap:
         symbol: misc(mingw)
     run:
         mach: >
-            lint -v -l mingw-capitalization -f treeherder
+            commlint -v -l mingw-capitalization -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.cpp'
-            - 'comm/**/*.cc'
-            - 'comm/**/*.c'
-            - 'comm/**/*.h'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: mingw-capitalization.yml
 
 py-black:
     description: black run over the gecko codebase
@@ -277,49 +188,90 @@ py-black:
         symbol: py(black)
     run:
         mach: >
-              lint -v -l black -f treeherder
+              commlint -v -l black -f treeherder
               -f json:/builds/worker/mozlint.json
-              --config-path=comm/tools/lint
               comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.configure'
-            - 'comm/**/*.py'
-            - 'comm/**/moz.build'
-            - 'comm/**/*.mozbuild'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: black.yml
 
-py-flake8:
-    description: flake8 run over the thunderbird codebase
+py-ruff:
+    description: Run ruff over the codebase
     treeherder:
-        symbol: py(f8)
+        symbol: py(ruff)
     run:
         mach: >
-            lint -v -l flake8 -f treeherder
+            commlint -v -l ruff -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
-            comm/taskcluster
+            comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - '**/*.py'
-            - '**/.flake8'
-            # moz.configure files are also Python files.
-            - '**/*.configure'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: ruff.yml
+
+rustfmt:
+    description: rustfmt on the Rust code
+    treeherder:
+        symbol: rust(rustfmt)
+    run:
+        mach: >
+            commlint -v -l rustfmt -f treeherder
+            -f json:/builds/worker/mozlint.json comm/
+    fetches:
+        toolchain:
+            - linux64-rust
+    optimization:
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: rustfmt.yml
 
 shellcheck:
-    always-target: false
-    description: shellcheck run over the gecko codebase
+    description: shellcheck run over the Thunderbird codebase
     treeherder:
         symbol: misc(shell)
     run-on-projects: []
     run:
         mach: >
-            lint -v -l shellcheck -f treeherder
+            commlint -v -l shellcheck -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/*
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.sh'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: shellcheck.yml
+
+stylelint:
+    description: CSS lint check
+    treeherder:
+        symbol: stylelint
+    run:
+        using: run-task
+        cwd: '{checkout}'
+        command: >
+            cp -r /build/node_modules_eslint node_modules &&
+            ./mach commlint -v -l stylelint -f treeherder
+            -f json:/builds/worker/mozlint.json
+            comm/*
+    optimization:
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: stylelint.yml
+
+trojan-source:
+    description: Trojan Source attack - CVE-2021-42572
+    platform: lint/opt
+    treeherder:
+        symbol: misc(trojan-source)
+    run:
+        mach: >
+              commlint -v -l trojan-source -f treeherder
+              -f json:/builds/worker/mozlint.json
+              comm/*
+    optimization:
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: trojan-source.yml
 
 yaml:
     description: yamllint run over the taskcluster configuration
@@ -327,14 +279,12 @@ yaml:
         symbol: pedantic(yaml)
     run:
         mach: >
-            lint -v -l yaml -f treeherder
+            commlint -v -l yaml -f treeherder
             -f json:/builds/worker/mozlint.json
-            --config-path=comm/tools/lint
             comm/mail/config
             comm/taskcluster
             comm/.*.yml
     optimization:
-        skip-unless-changed-no-suite:
-            - 'comm/**/*.yml'
-            - 'comm/**/*.yaml'
-            - '**/.ymllint'
+        skip-unless-mozlint:
+            root-path: comm
+            mozlint-config: yaml.yml

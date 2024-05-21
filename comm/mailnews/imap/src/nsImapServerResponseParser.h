@@ -7,15 +7,13 @@
 #define _nsIMAPServerResponseParser_H_
 
 #include "mozilla/Attributes.h"
-#include "nsIImapHostSessionList.h"
+#include "../public/nsIImapHostSessionList.h"
 #include "nsImapSearchResults.h"
 #include "nsString.h"
 #include "MailNewsTypes.h"
 #include "nsTArray.h"
 #include "nsImapUtils.h"
 
-class nsImapBodyShell;
-class nsIMAPBodypart;
 class nsImapSearchResultIterator;
 class nsIImapFlagAndUidState;
 
@@ -40,6 +38,7 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   virtual void InitializeState();
   bool CommandFailed();
   void SetCommandFailed(bool failed);
+  bool UntaggedResponse();
 
   enum eIMAPstate { kNonAuthenticated, kAuthenticated, kFolderSelected };
 
@@ -59,7 +58,6 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   bool CurrentFolderReadOnly();
   int32_t NumberOfMessages();
   int32_t NumberOfRecentMessages();
-  int32_t NumberOfUnseenMessages();
   int32_t FolderUID();
   uint32_t CurrentResponseUID();
   uint32_t HighestRecordedUID();
@@ -102,9 +100,6 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   bool ServerHasServerInfo() {
     return ((fCapabilityFlag & kXServerInfoCapability) != 0);
   }
-  bool ServerIsAOLServer() {
-    return ((fCapabilityFlag & kAOLImapCapability) != 0);
-  }
   void SetFetchingFlags(bool aFetchFlags) { fFetchingAllFlags = aFetchFlags; }
   void ResetCapabilityFlag();
 
@@ -122,16 +117,15 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   // Interrupt a Fetch, without really Interrupting (through netlib)
   bool GetLastFetchChunkReceived();
   void ClearLastFetchChunkReceived();
+  int32_t GetNumBytesFetched();
+  void ClearNumBytesFetched();
   virtual uint16_t SupportsUserFlags() { return fSupportsUserDefinedFlags; }
   virtual uint16_t SettablePermanentFlags() { return fSettablePermanentFlags; }
   void SetFlagState(nsIImapFlagAndUidState* state);
   bool GetDownloadingHeaders();
-  bool GetFillingInShell();
-  void UseCachedShell(nsImapBodyShell* cachedShell);
   void SetHostSessionList(nsIImapHostSessionList* aHostSession);
-  char* fAuthChallenge;    // the challenge returned by the server in
-                           // response to authenticate using CRAM-MD5 or NTLM
-  bool fCondStoreEnabled;  // Not used it seems
+  char* fAuthChallenge;  // the challenge returned by the server in
+                         // response to authenticate using CRAM-MD5 or NTLM
   bool fUtf8AcceptEnabled;
   bool fUseModSeq;  // can use mod seq for currently selected folder
   uint64_t fHighestModSeq;
@@ -139,7 +133,6 @@ class nsImapServerResponseParser : public nsImapGenericParser {
  protected:
   virtual void flags();
   virtual void envelope_data();
-  virtual void xaolenvelope_data();
   virtual void parse_address(nsAutoCString& addressLine);
   virtual void internal_date();
   virtual nsresult BeginMessageDownload(const char* content_type);
@@ -167,14 +160,7 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   virtual void namespace_data();
   virtual void myrights_data(bool unsolicited);
   virtual void acl_data();
-  virtual void bodystructure_data();
-  nsIMAPBodypart* bodystructure_part(char* partNum, nsIMAPBodypart* parentPart);
-  nsIMAPBodypart* bodystructure_leaf(char* partNum, nsIMAPBodypart* parentPart);
-  nsIMAPBodypart* bodystructure_multipart(char* partNum,
-                                          nsIMAPBodypart* parentPart);
-  virtual void mime_data();
   virtual void mime_part_data();
-  virtual void mime_header_data();
   virtual void quota_data();
   virtual void msg_fetch();
   virtual void msg_obsolete();
@@ -200,6 +186,7 @@ class nsImapServerResponseParser : public nsImapGenericParser {
 
  private:
   bool fCurrentCommandFailed;
+  bool fUntaggedResponse;
   bool fReportingErrors;
 
   bool fCurrentFolderReadOnly;
@@ -219,7 +206,7 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   uint16_t fSettablePermanentFlags;
 
   int32_t fFolderUIDValidity;
-  int32_t fNumberOfUnseenMessages;
+  int32_t fSeqNumOfFirstUnseenMsg;
   int32_t fNumberOfExistingMessages;
   int32_t fNumberOfRecentMessages;
   uint32_t fCurrentResponseUID;
@@ -232,7 +219,8 @@ class nsImapServerResponseParser : public nsImapGenericParser {
   int32_t fStatusUnseenMessages;
   int32_t fStatusRecentMessages;
   uint32_t fStatusNextUID;
-  uint32_t fStatusExistingMessages;
+  int32_t fStatusExistingMessages;
+  uint32_t fNextUID;
 
   int fNumberOfTaggedResponsesExpected;
 
@@ -272,9 +260,6 @@ class nsImapServerResponseParser : public nsImapGenericParser {
 
   // Flags split of \r and \n between chunks in msg_fetch_literal().
   bool fNextChunkStartsWithNewline;
-
-  // points to the current body shell, if any
-  RefPtr<nsImapBodyShell> m_shell;
 
   // The connection object
   nsImapProtocol& fServerConnection;

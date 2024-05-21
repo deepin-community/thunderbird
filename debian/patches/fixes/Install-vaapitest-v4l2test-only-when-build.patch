@@ -1,0 +1,25 @@
+From: Christoph Goehre <chris@sigxcpu.org>
+Date: Fri, 24 Nov 2023 21:57:48 +0000
+Subject: Install vaapitest/v4l2test only when build
+
+Forwarded: needed
+---
+ comm/mail/installer/package-manifest.in | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/comm/mail/installer/package-manifest.in b/comm/mail/installer/package-manifest.in
+index 0cc7b8f..04c866a 100644
+--- a/comm/mail/installer/package-manifest.in
++++ b/comm/mail/installer/package-manifest.in
+@@ -123,6 +123,11 @@
+ @BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
+ #ifdef MOZ_WAYLAND
+ @BINPATH@/@DLL_PREFIX@mozwayland@DLL_SUFFIX@
++#endif
++#ifdef MOZ_ENABLE_V4L2
++@BINPATH@/v4l2test
++#endif
++#ifdef MOZ_ENABLE_VAAPI
+ @BINPATH@/vaapitest
+ #endif
+ #endif

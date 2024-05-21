@@ -1,4 +1,7 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /**
  * Complex test for the send message later function - including sending multiple
  * times in the same session.
@@ -12,13 +15,11 @@
  * messages option.
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 var server = null;
@@ -42,84 +43,8 @@ var msgSendLater = Cc["@mozilla.org/messengercompose/sendlater;1"].getService(
   Ci.nsIMsgSendLater
 );
 
-// This listener handles the post-sending of the actual message and checks the
-// sequence and ensures the data is correct.
-function msll() {}
-
-msll.prototype = {
-  checkMessageSend(aCurrentMessage) {
-    do_check_transaction(server.playTransaction(), [
-      "EHLO test",
-      "MAIL FROM:<" +
-        kTestFileSender[gMsgOrder[aCurrentMessage - 1]] +
-        "> BODY=8BITMIME SIZE=" +
-        gMsgFileData[gMsgOrder[aCurrentMessage - 1]].length,
-      "RCPT TO:<" + kTestFileRecipient[gMsgOrder[aCurrentMessage - 1]] + ">",
-      "DATA",
-    ]);
-
-    // Compare data file to what the server received
-    Assert.equal(
-      gMsgFileData[gMsgOrder[aCurrentMessage - 1]],
-      server._daemon.post
-    );
-  },
-
-  // nsIMsgSendLaterListener
-  onStartSending(aTotalMessageCount) {
-    Assert.equal(aTotalMessageCount, gMsgOrder.length);
-    Assert.equal(msgSendLater.sendingMessages, true);
-  },
-  onMessageStartSending(
-    aCurrentMessage,
-    aTotalMessageCount,
-    aMessageHeader,
-    aIdentity
-  ) {
-    if (gLastSentMessage > 0) {
-      this.checkMessageSend(aCurrentMessage);
-    }
-    Assert.equal(gLastSentMessage + 1, aCurrentMessage);
-    gLastSentMessage = aCurrentMessage;
-  },
-  onMessageSendProgress(
-    aCurrentMessage,
-    aTotalMessageCount,
-    aMessageSendPercent,
-    aMessageCopyPercent
-  ) {
-    Assert.equal(aTotalMessageCount, gMsgOrder.length);
-    Assert.equal(gLastSentMessage, aCurrentMessage);
-    Assert.equal(msgSendLater.sendingMessages, true);
-  },
-  onMessageSendError(aCurrentMessage, aMessageHeader, aStatus, aMsg) {
-    do_throw(
-      "onMessageSendError should not have been called, status: " + aStatus
-    );
-  },
-  onStopSending(aStatus, aMsg, aTotalTried, aSuccessful) {
-    try {
-      Assert.equal(aStatus, 0);
-      Assert.equal(aTotalTried, aSuccessful);
-      Assert.equal(msgSendLater.sendingMessages, false);
-
-      // Check that the send later service now thinks we don't have messages to
-      // send.
-      Assert.equal(msgSendLater.hasUnsentMessages(identity), false);
-
-      this.checkMessageSend(gLastSentMessage);
-    } catch (e) {
-      dump(e);
-      do_throw(e);
-    }
-    // The extra timeout here is to work around an issue where sometimes
-    // the sendUnsentMessages is completely synchronous up until onStopSending
-    // and sometimes it isn't. This protects us for the synchronous case to
-    // allow the sendUnsentMessages function to complete and exit before we
-    // call async_driver.
-    do_timeout(0, async_driver);
-  },
-};
+var messageListener;
+var onStopCopyPromise = Promise.withResolvers();
 
 /* exported OnStopCopy */
 // for head_compose.js
@@ -129,21 +54,98 @@ msll.prototype = {
 function OnStopCopy(aStatus) {
   Assert.equal(aStatus, 0);
 
-  // Check this is false before we start sending
+  // Check this is false before we start sending.
   Assert.equal(msgSendLater.sendingMessages, false);
 
   // Check that the send later service thinks we have messages to send.
   Assert.equal(msgSendLater.hasUnsentMessages(identity), true);
 
-  // Check we have a message in the unsent message folder
+  // Check we have a message in the unsent message folder.
   Assert.equal(gSentFolder.getTotalMessages(false), gMsgOrder.length);
 
   // Start the next step after a brief time so that functions can finish
-  // properly
-  async_driver();
+  // properly.
+  onStopCopyPromise.resolve();
 }
 
-function sendMessageLater(aTestFileIndex) {
+add_setup(async function () {
+  // Load in the test files so we have a record of length and their data.
+  for (var i = 0; i < gMsgFile.length; ++i) {
+    gMsgFileData[i] = await IOUtils.readUTF8(gMsgFile[i].path);
+  }
+
+  // Ensure we have a local mail account, an normal account and appropriate
+  // servers and identities.
+  localAccountUtils.loadLocalMailAccount();
+
+  // Check that the send later service thinks we don't have messages to send.
+  Assert.equal(msgSendLater.hasUnsentMessages(identity), false);
+
+  MailServices.accounts.setSpecialFolders();
+
+  const account = MailServices.accounts.createAccount();
+  const incomingServer = MailServices.accounts.createIncomingServer(
+    "test",
+    "localhost",
+    "pop3"
+  );
+
+  smtpServer = getBasicSmtpServer(1);
+  identity = getSmtpIdentity(kIdentityMail, smtpServer);
+
+  account.addIdentity(identity);
+  account.defaultIdentity = identity;
+  account.incomingServer = incomingServer;
+  MailServices.accounts.defaultAccount = account;
+
+  localAccountUtils.rootFolder.createLocalSubfolder("Sent");
+
+  gSentFolder = msgSendLater.getUnsentMessagesFolder(identity);
+
+  // Don't copy messages to sent folder for this test.
+  identity.doFcc = false;
+
+  // Create and add a listener.
+  messageListener = new MsgSendLaterListener();
+
+  msgSendLater.addListener(messageListener);
+
+  // Set up the server.
+  server = setupServerDaemon();
+  server.setDebugLevel(nsMailServer.debugRecv);
+});
+
+add_task(async function test_sendMessageLater2_message1() {
+  // Copy Message from file to folder.
+  await sendMessageLater(0);
+
+  // Send unsent message.
+  await sendUnsentMessages();
+
+  // Check sent folder is now empty.
+  Assert.equal(gSentFolder.getTotalMessages(false), 0);
+
+  // Reset the server.
+  server.stop();
+  server.resetTest();
+
+  // Reset counts.
+  resetCounts();
+});
+
+add_task(async function test_sendMessageLater2_429891_testcase() {
+  // Copy more messages.
+  await sendMessageLater(1);
+
+  // XXX Only do one the second time round, as described at the start of the
+  // file.
+  // await sendMessageLater(0);
+
+  // Test send again.
+  await sendUnsentMessages();
+});
+
+async function sendMessageLater(aTestFileIndex) {
   gMsgOrder.push(aTestFileIndex);
 
   // Prepare to actually "send" the message later, i.e. dump it in the
@@ -177,7 +179,9 @@ function sendMessageLater(aTestFileIndex) {
     null,
     null
   );
-  return false;
+  await onStopCopyPromise.promise;
+  // Reset onStopCopyPromise.
+  onStopCopyPromise = Promise.withResolvers();
 }
 
 function resetCounts() {
@@ -185,106 +189,110 @@ function resetCounts() {
   gLastSentMessage = 0;
 }
 
-// This function does the actual send later
-function sendUnsentMessages() {
+// This function does the actual send later.
+async function sendUnsentMessages() {
   // Handle the server in a try/catch/finally loop so that we always will stop
   // the server if something fails.
   try {
-    // Start the fake SMTP server
+    // Start the fake SMTP server.
     server.start();
     smtpServer.port = server.port;
 
-    // Send the unsent message
+    // Send the unsent message.
     msgSendLater.sendUnsentMessages(identity);
-    server.performTest();
   } catch (e) {
-    do_throw(e);
+    throw new Error(e);
   }
-  return false;
+  await messageListener.promise;
+  messageListener.deferPromise();
 }
 
-function* actually_run_test() {
-  dump("in actually_run_test\n");
-
-  dump("Copy Message from file to folder\n");
-  yield async_run({ func: sendMessageLater, args: [0] });
-
-  dump("Send unsent message\n");
-  yield async_run({ func: sendUnsentMessages });
-
-  // Check sent folder is now empty.
-  Assert.equal(gSentFolder.getTotalMessages(false), 0);
-
-  // Reset the server
-  server.stop();
-  server.resetTest();
-
-  // and reset counts
-  resetCounts();
-
-  dump("Copy more messages\n");
-  yield async_run({ func: sendMessageLater, args: [1] });
-
-  // XXX Only do one the second time round, as described at the start of the
-  // file.
-  // yield async_run({func: sendMessageLater, args: [0]});
-
-  dump("Test send again\n");
-  yield async_run({ func: sendUnsentMessages });
-
-  do_test_finished();
-}
-
-add_task(async function run_the_test() {
-  // Load in the test files so we have a record of length and their data.
-  for (var i = 0; i < gMsgFile.length; ++i) {
-    gMsgFileData[i] = await IOUtils.readUTF8(gMsgFile[i].path);
+// This listener handles the post-sending of the actual message and checks the
+// sequence and ensures the data is correct.
+class MsgSendLaterListener {
+  constructor() {
+    this._deferredPromise = Promise.withResolvers();
   }
 
-  // Ensure we have a local mail account, an normal account and appropriate
-  // servers and identities.
-  localAccountUtils.loadLocalMailAccount();
+  checkMessageSend(aCurrentMessage) {
+    do_check_transaction(server.playTransaction(), [
+      "EHLO test",
+      "MAIL FROM:<" +
+        kTestFileSender[gMsgOrder[aCurrentMessage - 1]] +
+        "> BODY=8BITMIME SIZE=" +
+        gMsgFileData[gMsgOrder[aCurrentMessage - 1]].length,
+      "RCPT TO:<" + kTestFileRecipient[gMsgOrder[aCurrentMessage - 1]] + ">",
+      "DATA",
+    ]);
 
-  // Check that the send later service thinks we don't have messages to send.
-  Assert.equal(msgSendLater.hasUnsentMessages(identity), false);
+    // Compare data file to what the server received.
+    Assert.equal(
+      gMsgFileData[gMsgOrder[aCurrentMessage - 1]],
+      server._daemon.post
+    );
+  }
 
-  MailServices.accounts.setSpecialFolders();
+  // nsIMsgSendLaterListener
+  onStartSending(aTotalMessageCount) {
+    Assert.equal(aTotalMessageCount, gMsgOrder.length);
+    Assert.equal(msgSendLater.sendingMessages, true);
+  }
+  onMessageStartSending(
+    aCurrentMessage,
+    aTotalMessageCount,
+    aMessageHeader,
+    aIdentity
+  ) {
+    if (gLastSentMessage > 0) {
+      this.checkMessageSend(aCurrentMessage);
+    }
+    Assert.equal(gLastSentMessage + 1, aCurrentMessage);
+    gLastSentMessage = aCurrentMessage;
+  }
+  onMessageSendProgress(
+    aCurrentMessage,
+    aTotalMessageCount,
+    aMessageSendPercent,
+    aMessageCopyPercent
+  ) {
+    Assert.equal(aTotalMessageCount, gMsgOrder.length);
+    Assert.equal(gLastSentMessage, aCurrentMessage);
+    Assert.equal(msgSendLater.sendingMessages, true);
+  }
+  onMessageSendError(aCurrentMessage, aMessageHeader, aStatus, aMsg) {
+    throw new Error(
+      "onMessageSendError should not have been called, status: " + aStatus
+    );
+  }
+  onStopSending(aStatus, aMsg, aTotalTried, aSuccessful) {
+    try {
+      Assert.equal(aStatus, 0);
+      Assert.equal(aTotalTried, aSuccessful);
+      Assert.equal(msgSendLater.sendingMessages, false);
 
-  let account = MailServices.accounts.createAccount();
-  let incomingServer = MailServices.accounts.createIncomingServer(
-    "test",
-    "localhost",
-    "pop3"
-  );
+      // Check that the send later service now thinks we don't have messages to
+      // send.
+      Assert.equal(msgSendLater.hasUnsentMessages(identity), false);
 
-  smtpServer = getBasicSmtpServer(1);
-  identity = getSmtpIdentity(kIdentityMail, smtpServer);
+      this.checkMessageSend(gLastSentMessage);
+    } catch (e) {
+      throw new Error(e);
+    }
+    // The extra timeout here is to work around an issue where sometimes
+    // the sendUnsentMessages is completely synchronous up until onStopSending
+    // and sometimes it isn't. This protects us for the synchronous case to
+    // allow the sendUnsentMessages function to complete and exit before we
+    // resolve the promise.
+    PromiseTestUtils.promiseDelay(0).then(resolve => {
+      this._deferredPromise.resolve(true);
+    });
+  }
 
-  account.addIdentity(identity);
-  account.defaultIdentity = identity;
-  account.incomingServer = incomingServer;
-  MailServices.accounts.defaultAccount = account;
+  deferPromise() {
+    this._deferredPromise = Promise.withResolvers();
+  }
 
-  localAccountUtils.rootFolder.createLocalSubfolder("Sent");
-
-  gSentFolder = msgSendLater.getUnsentMessagesFolder(identity);
-
-  // Don't copy messages to sent folder for this test
-  identity.doFcc = false;
-
-  // Create and add a listener
-  var messageListener = new msll();
-
-  msgSendLater.addListener(messageListener);
-
-  // Set up the server
-  server = setupServerDaemon();
-  server.setDebugLevel(fsDebugRecv);
-
-  // "Master" do_test_pending(), paired with a do_test_finished() at the end of
-  // all the operations.
-  do_test_pending();
-
-  // Do the test
-  async_run({ func: actually_run_test });
-});
+  get promise() {
+    return this._deferredPromise.promise;
+  }
+}

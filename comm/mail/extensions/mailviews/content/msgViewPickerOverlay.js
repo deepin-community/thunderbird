@@ -2,13 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../base/content/commandglue.js */
+/* globals OpenOrFocusWindow */ // From mailWindowOverlay.js
+/* globals GetSelectedMsgFolders */ // From messenger.js
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { MailViewConstants } = ChromeUtils.import(
-  "resource:///modules/MailViewManager.jsm"
+var { MailViewConstants } = ChromeUtils.importESModule(
+  "resource:///modules/MailViewManager.sys.mjs"
 );
 
 // these constants are now authoritatively defined in MailViewManager.jsm (above)
@@ -35,15 +36,21 @@ var gMailViewList = null;
 // perform the view/action requested by the aValue string
 // and set the view picker label to the aLabel string
 function ViewChange(aValue) {
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  const viewWrapper = about3Pane.gViewWrapper;
+  if (!viewWrapper) {
+    return;
+  }
+
   if (aValue == kViewItemCustomize || aValue == kViewItemVirtual) {
     // restore to the previous view value, in case they cancel
-    ViewPickerBinding.updateDisplay();
     if (aValue == kViewItemCustomize) {
       LaunchCustomizeDialog();
     } else {
-      gFolderTreeController.newVirtualFolder(
+      about3Pane.folderPane.newVirtualFolder(
         ViewPickerBinding.currentViewLabel,
-        gFolderDisplay.view.search.viewTerms
+        viewWrapper.search.viewTerms,
+        about3Pane.gFolder
       );
     }
     return;
@@ -53,12 +60,11 @@ function ViewChange(aValue) {
   if (isNaN(aValue)) {
     // split off the tag key
     var tagkey = aValue.substr(kViewTagMarker.length);
-    gFolderDisplay.view.setMailView(kViewItemTags, tagkey);
+    viewWrapper.setMailView(kViewItemTags, tagkey);
   } else {
     var numval = Number(aValue);
-    gFolderDisplay.view.setMailView(numval, null);
+    viewWrapper.setMailView(numval, null);
   }
-  ViewPickerBinding.updateDisplay();
 }
 
 function ViewChangeByMenuitem(aMenuitem) {
@@ -72,12 +78,6 @@ function ViewChangeByMenuitem(aMenuitem) {
  *  visible at all times (or ever).  No view picker widget, no binding.
  */
 var ViewPickerBinding = {
-  _init() {
-    window.addEventListener("MailViewChanged", function(aEvent) {
-      ViewPickerBinding.updateDisplay(aEvent);
-    });
-  },
-
   /**
    * Return true if the view picker is visible.  This is used by the
    *  FolderDisplayWidget to know whether or not to actually use mailviews. (The
@@ -86,7 +86,7 @@ var ViewPickerBinding = {
    *  no way to change it.)
    */
   get isVisible() {
-    return document.getElementById("viewPicker") != null;
+    return !!document.querySelector("#unifiedToolbarContent .view-picker");
   },
 
   /**
@@ -95,45 +95,26 @@ var ViewPickerBinding = {
    * everything but tags.  for tags it's the ":"-prefixed tagname.
    */
   get currentViewValue() {
-    if (gFolderDisplay.view.mailViewIndex == kViewItemTags) {
-      return kViewTagMarker + gFolderDisplay.view.mailViewData;
+    const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+    const viewWrapper = about3Pane.gViewWrapper;
+    if (!viewWrapper) {
+      return "";
     }
-    return gFolderDisplay.view.mailViewIndex + "";
+    if (viewWrapper.mailViewIndex == kViewItemTags) {
+      return kViewTagMarker + viewWrapper.mailViewData;
+    }
+    return viewWrapper.mailViewIndex + "";
   },
 
   /**
-   * @return The label for the current mail view value.
+   * @returns The label for the current mail view value.
    */
   get currentViewLabel() {
-    let viewPicker = document.getElementById("viewPicker");
-    return viewPicker.getAttribute("label");
-  },
-
-  /**
-   * The effective view has changed, update the widget.
-   */
-  updateDisplay(event) {
-    let viewPicker = document.getElementById("viewPicker");
-    if (viewPicker) {
-      let value = this.currentViewValue;
-
-      let viewPickerPopup = document.getElementById("viewPickerPopup");
-      let selectedItem = viewPickerPopup.querySelector(
-        '[value="' + value + '"]'
-      );
-      if (!selectedItem) {
-        // We may have a new item, so refresh to make it show up.
-        RefreshAllViewPopups(viewPickerPopup, true);
-        selectedItem = viewPickerPopup.querySelector('[value="' + value + '"]');
-      }
-      viewPicker.setAttribute(
-        "label",
-        selectedItem && selectedItem.getAttribute("label")
-      );
-    }
+    return document.querySelector(
+      `#toolbarViewPickerPopup [value="${this.currentViewValue}"]`
+    )?.label;
   },
 };
-ViewPickerBinding._init();
 
 function LaunchCustomizeDialog() {
   OpenOrFocusWindow(
@@ -148,11 +129,11 @@ function LaunchCustomizeDialog() {
  * instances. For example, the "View... Messages" menu, the view picker menu
  * list in the toolbar, in appmenu/View/Messages, etc.
  *
- * @param {Element} viewPopup  A menu popup element.
+ * @param {Element} viewPopup - A menu popup element.
  */
 function RefreshAllViewPopups(viewPopup) {
   RefreshViewPopup(viewPopup);
-  let menupopups = viewPopup.getElementsByTagName("menupopup");
+  const menupopups = viewPopup.getElementsByTagName("menupopup");
   if (menupopups.length > 1) {
     // When we have menupopups, we assume both tags and custom views are there.
     RefreshTagsPopup(menupopups[0]);
@@ -164,23 +145,25 @@ function RefreshAllViewPopups(viewPopup) {
  * Refresh the view messages popup menu/panel. For example set checked and
  * hidden state on menu items. Used for example for appmenu/View/Messages panel.
  *
- * @param {Element} viewPopup  A menu popup element.
+ * @param {Element} viewPopup - A menu popup element.
  */
 function RefreshViewPopup(viewPopup) {
   // Mark default views if selected.
-  let currentViewValue = ViewPickerBinding.currentViewValue;
+  const currentViewValue = ViewPickerBinding.currentViewValue;
 
-  let viewAll = viewPopup.querySelector('[value="' + kViewItemAll + '"]');
+  const viewAll = viewPopup.querySelector('[value="' + kViewItemAll + '"]');
   viewAll.setAttribute("checked", currentViewValue == kViewItemAll);
 
-  let viewUnread = viewPopup.querySelector('[value="' + kViewItemUnread + '"]');
+  const viewUnread = viewPopup.querySelector(
+    '[value="' + kViewItemUnread + '"]'
+  );
   viewUnread.setAttribute("checked", currentViewValue == kViewItemUnread);
 
-  let viewNotDeleted = viewPopup.querySelector(
+  const viewNotDeleted = viewPopup.querySelector(
     '[value="' + kViewItemNotDeleted + '"]'
   );
 
-  let folderArray = GetSelectedMsgFolders();
+  const folderArray = GetSelectedMsgFolders();
   if (folderArray.length == 0) {
     return;
   }
@@ -191,7 +174,7 @@ function RefreshViewPopup(viewPopup) {
   var msgFolder = folderArray[0];
   var server = msgFolder.server;
   if (server.type == "imap") {
-    let imapServer = server.QueryInterface(Ci.nsIImapIncomingServer);
+    const imapServer = server.QueryInterface(Ci.nsIImapIncomingServer);
 
     if (imapServer.deleteModel == Ci.nsMsgImapDeleteModels.IMAPDelete) {
       viewNotDeleted.setAttribute("hidden", false);
@@ -207,9 +190,9 @@ function RefreshViewPopup(viewPopup) {
  * Refresh the contents of the custom views popup menu/panel.
  * Used for example for appmenu/View/Messages/CustomViews panel.
  *
- * @param {Element} parent        Parent element that will receive the menu items.
- * @param {string} [elementName]  Type of menu items to create (e.g. "menuitem", "toolbarbutton").
- * @param {string} [classes]      Classes to set on the menu items.
+ * @param {Element} parent - Parent element that will receive the menu items.
+ * @param {string} [elementName] - Type of menu items to create (e.g. "menuitem", "toolbarbutton").
+ * @param {string} [classes] - Classes to set on the menu items.
  */
 function RefreshCustomViewsPopup(parent, elementName = "menuitem", classes) {
   if (!gMailViewList) {
@@ -241,6 +224,11 @@ function RefreshCustomViewsPopup(parent, elementName = "menuitem", classes) {
     if (kViewItemFirstCustom + i == currentView) {
       item.setAttribute("checked", true);
     }
+
+    item.addEventListener("command", () =>
+      ViewChange(kViewItemFirstCustom + i)
+    );
+
     parent.appendChild(item);
   }
 }
@@ -249,9 +237,9 @@ function RefreshCustomViewsPopup(parent, elementName = "menuitem", classes) {
  * Refresh the contents of the tags popup menu/panel. For example, used for
  * appmenu/View/Messages/Tags.
  *
- * @param {Element} parent        Parent element that will receive the menu items.
- * @param {string} [elementName]  Type of menu items to create (e.g. "menuitem", "toolbarbutton").
- * @param {string} [classes]      Classes to set on the menu items.
+ * @param {Element} parent - Parent element that will receive the menu items.
+ * @param {string} [elementName] - Type of menu items to create (e.g. "menuitem", "toolbarbutton").
+ * @param {string} [classes] - Classes to set on the menu items.
  */
 function RefreshTagsPopup(parent, elementName = "menuitem", classes) {
   // Remove all pre-existing menu items.
@@ -260,10 +248,13 @@ function RefreshTagsPopup(parent, elementName = "menuitem", classes) {
   }
 
   // Create tag menu items.
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  const viewWrapper = about3Pane.gViewWrapper;
+  if (!viewWrapper) {
+    return;
+  }
   const currentTagKey =
-    gFolderDisplay.view.mailViewIndex == kViewItemTags
-      ? gFolderDisplay.view.mailViewData
-      : "";
+    viewWrapper.mailViewIndex == kViewItemTags ? viewWrapper.mailViewData : "";
 
   const tagArray = MailServices.tags.getAllTags();
 
@@ -283,15 +274,11 @@ function RefreshTagsPopup(parent, elementName = "menuitem", classes) {
     if (classes) {
       item.setAttribute("class", classes);
     }
+
+    item.addEventListener("command", () =>
+      ViewChange(kViewTagMarker + tagInfo.key)
+    );
+
     parent.appendChild(item);
   });
 }
-
-function ViewPickerOnLoad() {
-  var viewPickerPopup = document.getElementById("viewPickerPopup");
-  if (viewPickerPopup) {
-    RefreshAllViewPopups(viewPickerPopup, true);
-  }
-}
-
-window.addEventListener("load", ViewPickerOnLoad);

@@ -1,16 +1,15 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { tagServerTime } = ChromeUtils.import(
-  "resource:///modules/ircServerTime.jsm"
+var { tagServerTime } = ChromeUtils.importESModule(
+  "resource:///modules/ircServerTime.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var irc = {};
-Services.scriptloader.loadSubScript("resource:///modules/irc.jsm", irc);
+var { ircMessage } = ChromeUtils.importESModule(
+  "resource:///modules/ircAccount.sys.mjs"
+);
 
 function getTags(aRawMsg) {
-  const { tags } = irc.ircMessage(aRawMsg, "doesnt@matter");
+  const { tags } = ircMessage(aRawMsg, "does.not@matter");
 
   return tags;
 }
@@ -90,7 +89,7 @@ function specMessages() {
     undefined,
   ];
 
-  for (let m in kMessages) {
+  for (const m in kMessages) {
     const msg = kMessages[m];
     const isZNC = kMessages[m].tags.has("znc.in/server-time-iso");
     const tag = isZNC ? "znc.in/server-time-iso" : "time";
@@ -103,7 +102,7 @@ function specMessages() {
 
     // Ensuring that the expected properties and their values as given in
     // kMessages are still the same after the handler.
-    for (let i in msg) {
+    for (const i in msg) {
       equal(
         tagMessage.message[i],
         msg[i],

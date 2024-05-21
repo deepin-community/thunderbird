@@ -42,14 +42,14 @@ function setupPolicy() {
         return this;
       throw SpecialPowers.Cr.NS_ERROR_NO_INTERFACE;
     },
-    
+
     // nsIFactory implementation
-    createInstance(outer, iid) {
+    createInstance(iid) {
       return this.QueryInterface(iid);
     },
 
     // nsIContentPolicy implementation
-    shouldLoad(contentLocation, loadInfo, mimeTypeGuess) {
+    shouldLoad(contentLocation, loadInfo) {
       // Remember last content type seen for the test url
       let contentType = loadInfo.externalContentPolicyType;
 
@@ -62,7 +62,7 @@ function setupPolicy() {
       return Ci.nsIContentPolicy.ACCEPT;
     },
 
-    shouldProcess(contentLocation, loadInfo, mimeTypeGuess) {
+    shouldProcess(contentLocation, loadInfo) {
       return Ci.nsIContentPolicy.ACCEPT;
     }
   }

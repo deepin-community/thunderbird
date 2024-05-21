@@ -18,6 +18,7 @@
 
 #include "wasm/WasmProcess.h"
 
+#include "mozilla/Attributes.h"
 #include "mozilla/BinarySearch.h"
 #include "mozilla/ScopeExit.h"
 
@@ -25,12 +26,12 @@
 #include "threading/ExclusiveData.h"
 #include "vm/MutexIDs.h"
 #include "vm/Runtime.h"
-#ifdef ENABLE_WASM_CRANELIFT
-#  include "wasm/cranelift/clifapi.h"
-#endif
+#include "wasm/WasmBuiltinModule.h"
 #include "wasm/WasmBuiltins.h"
 #include "wasm/WasmCode.h"
 #include "wasm/WasmInstance.h"
+#include "wasm/WasmModuleTypes.h"
+#include "wasm/WasmStaticTypeDefs.h"
 
 using namespace js;
 using namespace wasm;
@@ -64,7 +65,7 @@ class ProcessCodeSegmentMap {
   // Since writes (insertions or removals) can happen on any background
   // thread at the same time, we need a lock here.
 
-  Mutex mutatorsMutex_;
+  Mutex mutatorsMutex_ MOZ_UNANNOTATED;
 
   CodeSegmentVector segments1_;
   CodeSegmentVector segments2_;
@@ -334,25 +335,53 @@ static const size_t MinVirtualMemoryLimitForHugeMemory =
     size_t(1) << MinAddressBitsForHugeMemory;
 #endif
 
-ExclusiveData<ReadLockFlag> sHugeMemoryEnabled(mutexid::WasmHugeMemoryEnabled);
+ExclusiveData<ReadLockFlag> sHugeMemoryEnabled32(
+    mutexid::WasmHugeMemoryEnabled);
+ExclusiveData<ReadLockFlag> sHugeMemoryEnabled64(
+    mutexid::WasmHugeMemoryEnabled);
 
-static bool IsHugeMemoryEnabledHelper() {
-  auto state = sHugeMemoryEnabled.lock();
+static MOZ_NEVER_INLINE bool IsHugeMemoryEnabledHelper32() {
+  auto state = sHugeMemoryEnabled32.lock();
   return state->get();
 }
 
-bool wasm::IsHugeMemoryEnabled() {
-  static bool enabled = IsHugeMemoryEnabledHelper();
-  return enabled;
+static MOZ_NEVER_INLINE bool IsHugeMemoryEnabledHelper64() {
+  auto state = sHugeMemoryEnabled64.lock();
+  return state->get();
+}
+
+bool wasm::IsHugeMemoryEnabled(wasm::IndexType t) {
+  if (t == IndexType::I32) {
+    static bool enabled32 = IsHugeMemoryEnabledHelper32();
+    return enabled32;
+  }
+  static bool enabled64 = IsHugeMemoryEnabledHelper64();
+  return enabled64;
 }
 
 bool wasm::DisableHugeMemory() {
-  auto state = sHugeMemoryEnabled.lock();
-  return state->set(false);
+  bool ok = true;
+  {
+    auto state = sHugeMemoryEnabled64.lock();
+    ok = ok && state->set(false);
+  }
+  {
+    auto state = sHugeMemoryEnabled32.lock();
+    ok = ok && state->set(false);
+  }
+  return ok;
 }
 
 void ConfigureHugeMemory() {
 #ifdef WASM_SUPPORTS_HUGE_MEMORY
+  bool ok = true;
+
+  {
+    // Currently no huge memory for IndexType::I64, so always set to false.
+    auto state = sHugeMemoryEnabled64.lock();
+    ok = ok && state->set(false);
+  }
+
   if (gc::SystemAddressBits() < MinAddressBitsForHugeMemory) {
     return;
   }
@@ -362,20 +391,48 @@ void ConfigureHugeMemory() {
     return;
   }
 
-  auto state = sHugeMemoryEnabled.lock();
-  bool set = state->set(true);
-  MOZ_RELEASE_ASSERT(set);
+  {
+    auto state = sHugeMemoryEnabled32.lock();
+    ok = ok && state->set(true);
+  }
+
+  MOZ_RELEASE_ASSERT(ok);
 #endif
+}
+
+const TagType* wasm::sWrappedJSValueTagType = nullptr;
+
+static bool InitTagForJSValue() {
+  MutableTagType type = js_new<TagType>();
+  if (!type) {
+    return false;
+  }
+
+  ValTypeVector args;
+  if (!args.append(ValType(RefType::extern_()))) {
+    return false;
+  }
+
+  if (!type->initialize(std::move(args))) {
+    return false;
+  }
+  MOZ_ASSERT(WrappedJSValueTagType_ValueOffset == type->argOffsets()[0]);
+
+  type.forget(&sWrappedJSValueTagType);
+
+  return true;
 }
 
 bool wasm::Init() {
   MOZ_RELEASE_ASSERT(!sProcessCodeSegmentMap);
 
-  ConfigureHugeMemory();
+  // Assert invariants that should universally hold true, but cannot be checked
+  // at compile time.
+  uintptr_t pageSize = gc::SystemPageSize();
+  MOZ_RELEASE_ASSERT(wasm::NullPtrGuardSize <= pageSize);
+  MOZ_RELEASE_ASSERT(intptr_t(nullptr) == AnyRef::NullRefValue);
 
-#ifdef ENABLE_WASM_CRANELIFT
-  cranelift_initialize();
-#endif
+  ConfigureHugeMemory();
 
   AutoEnterOOMUnsafeRegion oomUnsafe;
   ProcessCodeSegmentMap* map = js_new<ProcessCodeSegmentMap>();
@@ -383,7 +440,21 @@ bool wasm::Init() {
     oomUnsafe.crash("js::wasm::Init");
   }
 
+  if (!StaticTypeDefs::init()) {
+    oomUnsafe.crash("js::wasm::Init");
+  }
+
+  // This uses StaticTypeDefs
+  if (!BuiltinModuleFuncs::init()) {
+    oomUnsafe.crash("js::wasm::Init");
+  }
+
   sProcessCodeSegmentMap = map;
+
+  if (!InitTagForJSValue()) {
+    oomUnsafe.crash("js::wasm::Init");
+  }
+
   return true;
 }
 
@@ -393,6 +464,15 @@ void wasm::ShutDown() {
   // there are not live JSRuntimes), don't bother releasing anything here.
   if (JSRuntime::hasLiveRuntimes()) {
     return;
+  }
+
+  BuiltinModuleFuncs::destroy();
+  StaticTypeDefs::destroy();
+  PurgeCanonicalTypes();
+
+  if (sWrappedJSValueTagType) {
+    sWrappedJSValueTagType->Release();
+    sWrappedJSValueTagType = nullptr;
   }
 
   // After signalling shutdown by clearing sProcessCodeSegmentMap, wait for

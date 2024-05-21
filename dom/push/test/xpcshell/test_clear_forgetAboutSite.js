@@ -1,8 +1,7 @@
 "use strict";
 
-const { PushService, PushServiceWebSocket } = serviceExports;
-const { ForgetAboutSite } = ChromeUtils.import(
-  "resource://gre/modules/ForgetAboutSite.jsm"
+const { ForgetAboutSite } = ChromeUtils.importESModule(
+  "resource://gre/modules/ForgetAboutSite.sys.mjs"
 );
 
 var db;
@@ -80,7 +79,7 @@ add_task(async function setup() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",

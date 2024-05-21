@@ -18,14 +18,14 @@
       function openConnection() {
         return new Promise(resolve => {
           const es = new EventSource("sse_backend.sjs");
-          es.onmessage = function (e) {
+          es.onmessage = function () {
             es.close();
             resolve();
           };
         });
       }
     </script>
-    <iframe id="in-process-frame"  src="http://example.com/browser/devtools/shared/commands/resource/tests/sse_frontend_iframe.html"> </iframe>
-    <iframe id="out-process-frame" src="http://example.org/browser/devtools/shared/commands/resource/tests/sse_frontend_iframe.html"></iframe>
+    <iframe id="in-process-frame"  src="https://example.com/browser/devtools/shared/commands/resource/tests/sse_frontend_iframe.html"> </iframe>
+    <iframe id="out-process-frame" src="https://example.org/browser/devtools/shared/commands/resource/tests/sse_frontend_iframe.html"></iframe>
   </body>
 </html>

@@ -6,15 +6,13 @@
 var gTestTab;
 var gContentAPI;
 
-const { TelemetryArchiveTesting } = ChromeUtils.import(
-  "resource://testing-common/TelemetryArchiveTesting.jsm"
-);
-const { ProfileAge } = ChromeUtils.import(
-  "resource://gre/modules/ProfileAge.jsm"
-);
-const { UpdateUtils } = ChromeUtils.import(
-  "resource://gre/modules/UpdateUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  ProfileAge: "resource://gre/modules/ProfileAge.sys.mjs",
+  TelemetryArchiveTesting:
+    "resource://testing-common/TelemetryArchiveTesting.sys.mjs",
+  TelemetryTestUtils: "resource://testing-common/TelemetryTestUtils.sys.mjs",
+  UpdateUtils: "resource://gre/modules/UpdateUtils.sys.mjs",
+});
 
 function test() {
   UITourTest();
@@ -22,7 +20,7 @@ function test() {
 
 var tests = [
   function test_untrusted_host(done) {
-    loadUITourTestPage(function() {
+    loadUITourTestPage(function () {
       CustomizableUI.addWidgetToArea(
         "bookmarks-menu-button",
         CustomizableUI.AREA_NAVBAR,
@@ -59,12 +57,12 @@ var tests = [
       done();
     }
 
-    loadUITourTestPage(function() {
+    loadUITourTestPage(function () {
       gContentAPI.getConfiguration("appinfo", callback);
     }, "https://test2.example.org/");
   },
   function test_unsecure_host(done) {
-    loadUITourTestPage(function() {
+    loadUITourTestPage(function () {
       let bookmarksMenu = document.getElementById("bookmarks-menu-button");
       is(bookmarksMenu.open, false, "Bookmark menu should initially be closed");
 
@@ -80,7 +78,7 @@ var tests = [
   },
   function test_unsecure_host_override(done) {
     Services.prefs.setBoolPref("browser.uitour.requireSecure", false);
-    loadUITourTestPage(function() {
+    loadUITourTestPage(function () {
       let highlight = document.getElementById("UITourHighlight");
       is_element_hidden(highlight, "Highlight should initially be hidden");
 
@@ -260,7 +258,7 @@ var tests = [
             gContentAPI.showHighlight("appMenu");
             waitForElementToBeVisible(
               highlight,
-              function() {
+              function () {
                 isnot(
                   PanelUI.panel.state,
                   "closed",
@@ -275,7 +273,7 @@ var tests = [
           "Highlight should be shown after showHighlight() for fixed panel items"
         );
       })
-      .catch(Cu.reportError);
+      .catch(console.error);
   },
   function test_highlight_effect(done) {
     function waitForHighlightWithEffect(highlightEl, effect, next, error) {
@@ -325,7 +323,7 @@ var tests = [
         () => {
           highlight.addEventListener(
             "animationstart",
-            function(aEvent) {
+            function (aEvent) {
               ok(
                 true,
                 "Animation occurred again even though the effect was the same"
@@ -417,7 +415,7 @@ var tests = [
 
     popup.addEventListener(
       "popupshown",
-      function() {
+      function () {
         is(
           popup.anchorNode,
           document.getElementById("urlbar"),
@@ -434,10 +432,10 @@ var tests = [
 
         popup.addEventListener(
           "popuphidden",
-          function() {
+          function () {
             popup.addEventListener(
               "popupshown",
-              function() {
+              function () {
                 done();
               },
               { once: true }
@@ -500,8 +498,9 @@ var tests = [
   }),
   function test_getConfigurationVersion(done) {
     function callback(result) {
-      ok(
-        typeof result.version !== "undefined",
+      Assert.notStrictEqual(
+        typeof result.version,
+        "undefined",
         "Check version isn't undefined."
       );
       is(
@@ -521,13 +520,19 @@ var tests = [
   },
   function test_getConfigurationDistribution(done) {
     gContentAPI.getConfiguration("appinfo", result => {
-      ok(
-        typeof result.distribution !== "undefined",
+      Assert.notStrictEqual(
+        typeof result.distribution,
+        "undefined",
         "Check distribution isn't undefined."
       );
+      // distribution id defaults to "default" for most builds, and
+      // "mozilla-MSIX" for MSIX builds.
       is(
         result.distribution,
-        "default",
+        AppConstants.platform === "win" &&
+          Services.sysinfo.getProperty("hasWinPackageId")
+          ? "mozilla-MSIX"
+          : "default",
         'Should be "default" without preference set.'
       );
 
@@ -535,8 +540,9 @@ var tests = [
       let testDistributionID = "TestDistribution";
       defaults.setCharPref("id", testDistributionID);
       gContentAPI.getConfiguration("appinfo", result2 => {
-        ok(
-          typeof result2.distribution !== "undefined",
+        Assert.notStrictEqual(
+          typeof result2.distribution,
+          "undefined",
           "Check distribution isn't undefined."
         );
         is(
@@ -551,12 +557,14 @@ var tests = [
   },
   function test_getConfigurationProfileAge(done) {
     gContentAPI.getConfiguration("appinfo", result => {
-      ok(
-        typeof result.profileCreatedWeeksAgo === "number",
+      Assert.strictEqual(
+        typeof result.profileCreatedWeeksAgo,
+        "number",
         "profileCreatedWeeksAgo should be number."
       );
-      ok(
-        result.profileResetWeeksAgo === null,
+      Assert.strictEqual(
+        result.profileResetWeeksAgo,
+        null,
         "profileResetWeeksAgo should be null."
       );
 
@@ -566,8 +574,9 @@ var tests = [
           Date.now() - 15 * 24 * 60 * 60 * 1000
         );
         gContentAPI.getConfiguration("appinfo", result2 => {
-          ok(
-            typeof result2.profileResetWeeksAgo === "number",
+          Assert.strictEqual(
+            typeof result2.profileResetWeeksAgo,
+            "number",
             "profileResetWeeksAgo should be number."
           );
           is(
@@ -591,9 +600,8 @@ var tests = [
       gContentAPI.addNavBarWidget("forget", () => {
         info("addNavBarWidget callback successfully called");
 
-        let updatedPlacement = CustomizableUI.getPlacementOfWidget(
-          "panic-button"
-        );
+        let updatedPlacement =
+          CustomizableUI.getPlacementOfWidget("panic-button");
         is(updatedPlacement.area, CustomizableUI.AREA_NAVBAR);
 
         gContentAPI.getConfiguration("availableTargets", data2 => {
@@ -636,8 +644,12 @@ var tests = [
     )[0];
     someOtherEngineID = someOtherEngineID.replace(/^searchEngine-/, "");
 
+    Services.telemetry.clearEvents();
+    Services.fog.testResetFOG();
+
     await new Promise(resolve => {
-      let observe = function(subject, topic, verb) {
+      let observe = function (subject, topic, verb) {
+        Services.obs.removeObserver(observe, "browser-search-engine-modified");
         info("browser-search-engine-modified: " + verb);
         if (verb == "engine-default") {
           is(
@@ -645,18 +657,65 @@ var tests = [
             someOtherEngineID,
             "correct engine was switched to"
           );
-          done();
+          resolve();
         }
       };
       Services.obs.addObserver(observe, "browser-search-engine-modified");
       registerCleanupFunction(async () => {
-        // Clean up
-        Services.obs.removeObserver(observe, "browser-search-engine-modified");
-        await Services.search.setDefault(defaultEngine);
+        await Services.search.setDefault(
+          defaultEngine,
+          Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+        );
       });
 
       gContentAPI.setDefaultSearchEngine(someOtherEngineID);
     });
+
+    let engine = (await Services.search.getVisibleEngines()).filter(
+      e => e.identifier == someOtherEngineID
+    )[0];
+
+    let submissionUrl = engine
+      .getSubmission("dummy")
+      .uri.spec.replace("dummy", "");
+
+    TelemetryTestUtils.assertEvents(
+      [
+        {
+          object: "change_default",
+          value: "uitour",
+          extra: {
+            prev_id: defaultEngine.telemetryId,
+            new_id: engine.telemetryId,
+            new_name: engine.name,
+            new_load_path: engine.wrappedJSObject._loadPath,
+            // Telemetry has a limit of 80 characters.
+            new_sub_url: submissionUrl.slice(0, 80),
+          },
+        },
+      ],
+      { category: "search", method: "engine" }
+    );
+
+    let snapshot = await Glean.searchEngineDefault.changed.testGetValue();
+    delete snapshot[0].timestamp;
+    Assert.deepEqual(
+      snapshot[0],
+      {
+        category: "search.engine.default",
+        name: "changed",
+        extra: {
+          change_source: "uitour",
+          previous_engine_id: defaultEngine.telemetryId,
+          new_engine_id: engine.telemetryId,
+          new_display_name: engine.name,
+          new_load_path: engine.wrappedJSObject._loadPath,
+          // Glean has a limit of 100 characters.
+          new_submission_url: submissionUrl.slice(0, 100),
+        },
+      },
+      "Should have received the correct event details"
+    );
   }),
   taskify(async function test_treatment_tag() {
     let ac = new TelemetryArchiveTesting.Checker();

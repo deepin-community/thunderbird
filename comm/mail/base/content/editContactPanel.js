@@ -1,9 +1,7 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -84,43 +82,45 @@ var editContactInlineUI = {
   },
 
   get panel() {
+    // The panel is initially stored in a template for performance reasons.
+    // Load it into the DOM now.
     delete this.panel;
-    var element = document.getElementById("editContactPanel");
-    // initially the panel is hidden to avoid impacting startup / new window
-    // performance
-    element.hidden = false;
+    const template = document.getElementById("editContactPanelTemplate");
+    template.replaceWith(template.content);
+    const element = document.getElementById("editContactPanel");
     return (this.panel = element);
   },
 
   showEditContactPanel(aCardDetails, aAnchorElement) {
     this._cardDetails = aCardDetails;
-    let position = "after_start";
+    const position = "after_start";
     this._doShowEditContactPanel(aAnchorElement, position);
   },
 
   _doShowEditContactPanel(aAnchorElement, aPosition) {
     this._blockCommands(); // un-done in the popuphiding handler.
-    var bundle = document.getElementById("bundle_editContact");
+    var bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/editContactOverlay.properties"
+    );
 
     // Is this address book writeable?
     this._writeable = !this._cardDetails.book.readOnly;
     var type = this._writeable ? "edit" : "view";
 
+    // Force the panel to be created from the template, if necessary.
+    this.panel;
+
     // Update the labels accordingly.
-    document.getElementById("editContactPanelTitle").value = bundle.getString(
-      type + "Title"
-    );
-    document.getElementById(
-      "editContactPanelEditDetailsButton"
-    ).label = bundle.getString(type + "DetailsLabel");
-    document.getElementById(
-      "editContactPanelEditDetailsButton"
-    ).accessKey = bundle.getString(type + "DetailsAccessKey");
+    document.getElementById("editContactPanelTitle").textContent =
+      bundle.GetStringFromName(type + "Title");
+    document.getElementById("editContactPanelEditDetailsButton").label =
+      bundle.GetStringFromName(type + "DetailsLabel");
+    document.getElementById("editContactPanelEditDetailsButton").accessKey =
+      bundle.GetStringFromName(type + "DetailsAccessKey");
 
     // We don't need a delete button for a read only card.
-    document.getElementById(
-      "editContactPanelDeleteContactButton"
-    ).hidden = !this._writeable;
+    document.getElementById("editContactPanelDeleteContactButton").hidden =
+      !this._writeable;
 
     var nameElement = document.getElementById("editContactName");
 
@@ -135,25 +135,24 @@ var editContactInlineUI = {
 
     // Fill in the card details
     nameElement.value = this._cardDetails.card.displayName;
-    document.getElementById(
-      "editContactEmail"
-    ).value = aAnchorElement.getAttribute("emailAddress");
+    document.getElementById("editContactEmail").value =
+      aAnchorElement.getAttribute("emailAddress") ||
+      aAnchorElement.emailAddress;
 
-    document.getElementById(
-      "editContactAddressBookList"
-    ).value = this._cardDetails.book.URI;
+    document.getElementById("editContactAddressBookList").value =
+      this._cardDetails.book.URI;
 
     // Is this card contained within mailing lists?
     let inMailList = false;
     if (this._cardDetails.book.supportsMailingLists) {
       // We only have to look in one book here, because cards currently have
       // to be in the address book they belong to.
-      for (let list of this._cardDetails.book.childNodes) {
+      for (const list of this._cardDetails.book.childNodes) {
         if (!list.isMailList) {
           continue;
         }
 
-        for (let card of list.childCards) {
+        for (const card of list.childCards) {
           if (card.primaryEmail == this._cardDetails.card.primaryEmail) {
             inMailList = true;
             break;
@@ -178,13 +177,7 @@ var editContactInlineUI = {
 
   editDetails() {
     this.saveChanges();
-
-    window.openDialog(
-      "chrome://messenger/content/addressbook/abEditCardDialog.xhtml",
-      "",
-      "chrome,modal,resizable=no,centerscreen",
-      { abURI: this._cardDetails.book.URI, card: this._cardDetails.card }
-    );
+    top.toAddressBook(["cmd_editContact", this._cardDetails.card]);
   },
 
   deleteContact() {
@@ -196,12 +189,14 @@ var editContactInlineUI = {
     // Hide before the dialog or the panel takes the first click.
     this.panel.hidePopup();
 
-    var bundle = document.getElementById("bundle_editContact");
+    var bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/editContactOverlay.properties"
+    );
     if (
       !Services.prompt.confirm(
         window,
-        bundle.getString("deleteContactTitle"),
-        bundle.getString("deleteContactMessage")
+        bundle.GetStringFromName("deleteContactTitle"),
+        bundle.GetStringFromName("deleteContactMessage")
       )
     ) {
       // XXX Would be nice to bring the popup back up here.
@@ -220,9 +215,9 @@ var editContactInlineUI = {
       return;
     }
 
-    let originalBook = this._cardDetails.book;
+    const originalBook = this._cardDetails.book;
 
-    let abURI = document.getElementById("editContactAddressBookList").value;
+    const abURI = document.getElementById("editContactAddressBookList").value;
     if (abURI != originalBook.URI) {
       this._cardDetails.book = MailServices.ab.getDirectory(abURI);
     }

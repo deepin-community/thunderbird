@@ -5,7 +5,7 @@
 "use strict";
 
 // Make this available to both AMD and CJS environments
-define(function(require, exports, module) {
+define(function (require, exports, module) {
   // ReactJS
   const {
     button,
@@ -15,7 +15,7 @@ define(function(require, exports, module) {
 
   // Utils
   const {
-    isGrip,
+    appendRTLClassNameIfNeeded,
     wrapRender,
   } = require("devtools/client/shared/components/reps/reps/rep-utils");
   const {
@@ -35,9 +35,10 @@ define(function(require, exports, module) {
 
   ElementNode.propTypes = {
     object: PropTypes.object.isRequired,
-    inspectIconTitle: PropTypes.string,
-    // @TODO Change this to Object.values when supported in Node's version of V8
-    mode: PropTypes.oneOf(Object.keys(MODE).map(key => MODE[key])),
+    // The class should be in reps.css
+    inspectIconTitle: PropTypes.oneOf(["open-inspector", "highlight-node"]),
+    inspectIconClassName: PropTypes.string,
+    mode: PropTypes.oneOf(Object.values(MODE)),
     onDOMNodeClick: PropTypes.func,
     onDOMNodeMouseOver: PropTypes.func,
     onDOMNodeMouseOut: PropTypes.func,
@@ -84,7 +85,7 @@ define(function(require, exports, module) {
       // Regenerate config to include tooltip title
       if (shouldRenderTooltip) {
         // Reduce for plaintext
-        const tooltipString = tinyElements.reduce(function(acc, cur) {
+        const tooltipString = tinyElements.reduce(function (acc, cur) {
           return acc.concat(cur.content);
         }, "");
 
@@ -92,7 +93,7 @@ define(function(require, exports, module) {
       }
 
       // Reduce for React elements
-      const tinyElementsRender = tinyElements.reduce(function(acc, cur) {
+      const tinyElementsRender = tinyElements.reduce(function (acc, cur) {
         acc.push(span(cur.config, cur.content));
         return acc;
       }, []);
@@ -165,7 +166,7 @@ define(function(require, exports, module) {
 
     const nodeNameElement = span(
       {
-        className: "tag-name",
+        className: appendRTLClassNameIfNeeded("tag-name", nodeName),
       },
       nodeName
     );
@@ -179,7 +180,7 @@ define(function(require, exports, module) {
       attributeKeys.splice(attributeKeys.indexOf("id"), 1);
       attributeKeys.unshift("id");
     }
-    const attributeElements = attributeKeys.reduce((arr, name, i, keys) => {
+    const attributeElements = attributeKeys.reduce((arr, name) => {
       const value = attributes[name];
 
       let title = isLongString(value) ? value.initial : value;
@@ -189,7 +190,12 @@ define(function(require, exports, module) {
 
       const attribute = span(
         {},
-        span({ className: "attrName" }, name),
+        span(
+          {
+            className: appendRTLClassNameIfNeeded("attrName", name),
+          },
+          name
+        ),
         span({ className: "attrEqual" }, "="),
         StringRep({
           className: "attrValue",
@@ -216,7 +222,9 @@ define(function(require, exports, module) {
     // Initialize elements array
     const elements = [
       {
-        config: { className: "tag-name" },
+        config: {
+          className: appendRTLClassNameIfNeeded("tag-name", nodeName),
+        },
         content: nodeName,
       },
     ];
@@ -224,7 +232,9 @@ define(function(require, exports, module) {
     // Push ID element
     if (attributes.id) {
       elements.push({
-        config: { className: "attrName" },
+        config: {
+          className: appendRTLClassNameIfNeeded("attrName", attributes.id),
+        },
         content: `#${attributes.id}`,
       });
     }
@@ -237,7 +247,9 @@ define(function(require, exports, module) {
         .map(cls => `.${cls}`)
         .join("");
       elements.push({
-        config: { className: "attrName" },
+        config: {
+          className: appendRTLClassNameIfNeeded("attrName", elementClasses),
+        },
         content: elementClasses,
       });
     }
@@ -274,6 +286,7 @@ define(function(require, exports, module) {
       isInTree,
       onInspectIconClick,
       inspectIconTitle,
+      inspectIconClassName,
       onDOMNodeClick,
     } = opts;
 
@@ -282,7 +295,7 @@ define(function(require, exports, module) {
     }
 
     return button({
-      className: "open-inspector",
+      className: inspectIconClassName || "open-inspector",
       // TODO: Localize this with "openNodeInInspector" when Bug 1317038 lands
       title: inspectIconTitle || "Click to select the node in the inspector",
       onClick: e => {
@@ -296,13 +309,8 @@ define(function(require, exports, module) {
   }
 
   // Registration
-  function supportsObject(object, noGrip = false) {
-    if (noGrip === true || !isGrip(object)) {
-      return false;
-    }
-    return (
-      object.preview && object.preview.nodeType === nodeConstants.ELEMENT_NODE
-    );
+  function supportsObject(object) {
+    return object?.preview?.nodeType === nodeConstants.ELEMENT_NODE;
   }
 
   // Exports from this module

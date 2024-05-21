@@ -11,7 +11,7 @@ loadScripts(
   { name: "role.js", dir: MOCHITESTS_DIR }
 );
 
-async function runTests(browser, accDoc) {
+async function runTests(browser) {
   await SpecialPowers.pushPrefEnv({
     // If Fission is disabled, the pref is no-op.
     set: [["fission.bfcacheInParent", true]],
@@ -26,7 +26,7 @@ async function runTests(browser, accDoc) {
   let url = snippetToURL(`<input id="input" type="button" value="button">`, {
     contentDocBodyAttrs: { id: "buttonInputDoc" },
   });
-  browser.loadURI(url, {
+  browser.loadURI(Services.io.newURI(url), {
     triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
   });
   evt = await onFocus;

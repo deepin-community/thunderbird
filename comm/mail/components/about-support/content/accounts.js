@@ -9,18 +9,23 @@
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Platform-specific includes
 var AboutSupportPlatform;
 if ("@mozilla.org/windows-registry-key;1" in Cc) {
-  let temp = ChromeUtils.import("resource:///modules/AboutSupportWin32.jsm");
+  const temp = ChromeUtils.importESModule(
+    "resource:///modules/AboutSupportWin32.sys.mjs"
+  );
   AboutSupportPlatform = temp.AboutSupportPlatform;
 } else if ("nsILocalFileMac" in Ci) {
-  let temp = ChromeUtils.import("resource:///modules/AboutSupportMac.jsm");
+  const temp = ChromeUtils.importESModule(
+    "resource:///modules/AboutSupportMac.sys.mjs"
+  );
   AboutSupportPlatform = temp.AboutSupportPlatform;
 } else {
-  let temp = ChromeUtils.import("resource:///modules/AboutSupportUnix.jsm");
+  const temp = ChromeUtils.importESModule(
+    "resource:///modules/AboutSupportUnix.sys.mjs"
+  );
   AboutSupportPlatform = temp.AboutSupportPlatform;
 }
 
@@ -29,12 +34,12 @@ var gMessengerBundle = Services.strings.createBundle(
 );
 
 var gSocketTypes = {};
-for (let [str, index] of Object.entries(Ci.nsMsgSocketType)) {
+for (const [str, index] of Object.entries(Ci.nsMsgSocketType)) {
   gSocketTypes[index] = str;
 }
 
 var gAuthMethods = {};
-for (let [str, index] of Object.entries(Ci.nsMsgAuthMethod)) {
+for (const [str, index] of Object.entries(Ci.nsMsgAuthMethod)) {
   gAuthMethods[index] = str;
 }
 
@@ -62,12 +67,15 @@ var AboutSupport = {
    *          about one SMTP server.
    */
   _getSMTPDetails(aAccount) {
-    let defaultIdentity = aAccount.defaultIdentity;
-    let smtpDetails = [];
+    const defaultIdentity = aAccount.defaultIdentity;
+    const smtpDetails = [];
 
-    for (let identity of aAccount.identities) {
-      let isDefault = identity == defaultIdentity;
-      let smtpServer = MailServices.smtp.getServerByIdentity(identity);
+    for (const identity of aAccount.identities) {
+      const isDefault = identity == defaultIdentity;
+      const smtpServer = MailServices.smtp.getServerByIdentity(identity);
+      if (!smtpServer) {
+        continue;
+      }
       smtpDetails.push({
         identityName: identity.identityName,
         name: smtpServer.displayname,
@@ -84,10 +92,10 @@ var AboutSupport = {
    * Returns account details as an array of records.
    */
   getAccountDetails() {
-    let accountDetails = [];
+    const accountDetails = [];
 
-    for (let account of MailServices.accounts.accounts) {
-      let server = account.incomingServer;
+    for (const account of MailServices.accounts.accounts) {
+      const server = account.incomingServer;
       accountDetails.push({
         key: account.key,
         name: server.prettyName,
@@ -95,7 +103,7 @@ var AboutSupport = {
           "(" +
           server.type +
           ") " +
-          server.realHostName +
+          server.hostName +
           (server.port != -1 ? ":" + server.port : ""),
         socketType: server.socketType,
         authMethod: server.authMethod,
@@ -104,19 +112,19 @@ var AboutSupport = {
     }
 
     function idCompare(accountA, accountB) {
-      let regex = /^account([0-9]+)$/;
-      let regexA = regex.exec(accountA.key);
-      let regexB = regex.exec(accountB.key);
+      const regex = /^account([0-9]+)$/;
+      const regexA = regex.exec(accountA.key);
+      const regexB = regex.exec(accountB.key);
       // There's an off chance that the account ID isn't in the standard
       // accountN form. If so, use the standard string compare against a fixed
       // string ("account") to avoid correctness issues.
       if (!regexA || !regexB) {
-        let keyA = regexA ? "account" : accountA.key;
-        let keyB = regexB ? "account" : accountB.key;
+        const keyA = regexA ? "account" : accountA.key;
+        const keyB = regexB ? "account" : accountB.key;
         return keyA.localeCompare(keyB);
       }
-      let idA = parseInt(regexA[1]);
-      let idB = parseInt(regexB[1]);
+      const idA = parseInt(regexA[1]);
+      const idB = parseInt(regexB[1]);
       return idA - idB;
     }
 
@@ -130,7 +138,7 @@ var AboutSupport = {
    * returned as a record with "localized" and "neutral" entries.
    */
   getSocketTypeText(aIndex) {
-    let plainSocketType =
+    const plainSocketType =
       aIndex in gSocketTypes ? gSocketTypes[aIndex] : aIndex;
     let prettySocketType;
     try {
@@ -154,7 +162,7 @@ var AboutSupport = {
    */
   getAuthMethodText(aIndex) {
     let prettyAuthMethod;
-    let plainAuthMethod =
+    const plainAuthMethod =
       aIndex in gAuthMethods ? gAuthMethods[aIndex] : aIndex;
     if (gAuthMethodProperties.has(parseInt(aIndex))) {
       prettyAuthMethod = gMessengerBundle.GetStringFromName(
@@ -168,7 +176,7 @@ var AboutSupport = {
 };
 
 function createParentElement(tagName, childElems) {
-  let elem = document.createElement(tagName);
+  const elem = document.createElement(tagName);
   appendChildren(elem, childElems);
   return elem;
 }
@@ -177,9 +185,9 @@ function createElement(tagName, textContent, opt_attributes, opt_copyData) {
   if (opt_attributes == null) {
     opt_attributes = {};
   }
-  let elem = document.createElement(tagName);
+  const elem = document.createElement(tagName);
   elem.textContent = textContent;
-  for (let key in opt_attributes) {
+  for (const key in opt_attributes) {
     elem.setAttribute(key, "" + opt_attributes[key]);
   }
 
@@ -246,12 +254,12 @@ var gOutgoingDetails = [
 var gAccountDetails = AboutSupport.getAccountDetails();
 
 function populateAccountsSection() {
-  let trAccounts = [];
+  const trAccounts = [];
 
   function createTD(data, rowSpan) {
-    let text = typeof data == "string" ? data : data.localized;
-    let copyData = typeof data == "string" ? null : data.neutral;
-    let attributes = { rowspan: rowSpan };
+    const text = typeof data == "string" ? data : data.localized;
+    const copyData = typeof data == "string" ? null : data.neutral;
+    const attributes = { rowspan: rowSpan };
     if (typeof data == "object" && "isPrivate" in data) {
       attributes.class = data.isPrivate
         ? CLASS_DATA_PRIVATE
@@ -261,16 +269,16 @@ function populateAccountsSection() {
     return createElement("td", text, attributes, copyData);
   }
 
-  for (let account of gAccountDetails) {
+  for (const account of gAccountDetails) {
     // We want a minimum rowspan of 1
-    let rowSpan = account.smtpServers.length || 1;
+    const rowSpan = account.smtpServers.length || 1;
     // incomingTDs is an array of TDs
-    let incomingTDs = gIncomingDetails.map(([prop, fn]) =>
+    const incomingTDs = gIncomingDetails.map(([prop, fn]) =>
       createTD(fn(account[prop]), rowSpan)
     );
     // outgoingTDs is an array of arrays of TDs
     let outgoingTDs = [];
-    for (let smtp of account.smtpServers) {
+    for (const smtp of account.smtpServers) {
       outgoingTDs.push(
         gOutgoingDetails.map(([prop, fn]) => createTD(fn(smtp[prop]), 1))
       );
@@ -282,10 +290,10 @@ function populateAccountsSection() {
     }
 
     // Add the first SMTP server to this tr.
-    let tr = createParentElement("tr", incomingTDs.concat(outgoingTDs[0]));
+    const tr = createParentElement("tr", incomingTDs.concat(outgoingTDs[0]));
     trAccounts.push(tr);
     // Add the remaining SMTP servers as separate trs
-    for (let tds of outgoingTDs.slice(1)) {
+    for (const tds of outgoingTDs.slice(1)) {
       trAccounts.push(createParentElement("tr", tds));
     }
   }
@@ -297,7 +305,7 @@ function populateAccountsSection() {
  * Returns a plaintext representation of the accounts data.
  */
 function getAccountsText(aHidePrivateData, aIndent) {
-  let accumulator = [];
+  const accumulator = [];
 
   // Given a string or object, converts it into a language-neutral form
   function neutralizer(data) {
@@ -310,23 +318,23 @@ function getAccountsText(aHidePrivateData, aIndent) {
     return data.neutral;
   }
 
-  for (let account of gAccountDetails) {
+  for (const account of gAccountDetails) {
     accumulator.push(aIndent + account.key + ":");
     // incomingData is an array of strings
-    let incomingData = gIncomingDetails.map(([prop, fn]) =>
+    const incomingData = gIncomingDetails.map(([prop, fn]) =>
       neutralizer(fn(account[prop]))
     );
     accumulator.push(aIndent + "  INCOMING: " + incomingData.join(", "));
 
     // outgoingData is an array of arrays of strings
-    let outgoingData = [];
-    for (let smtp of account.smtpServers) {
+    const outgoingData = [];
+    for (const smtp of account.smtpServers) {
       outgoingData.push(
         gOutgoingDetails.map(([prop, fn]) => neutralizer(fn(smtp[prop])))
       );
     }
 
-    for (let data of outgoingData) {
+    for (const data of outgoingData) {
       accumulator.push(aIndent + "  OUTGOING: " + data.join(", "));
     }
 

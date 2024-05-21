@@ -10,8 +10,6 @@
 
 #include "gfxUtils.h"
 #include "nsStyleConsts.h"
-#include "nsStyleStruct.h"
-#include "mozilla/WritingModes.h"
 #include "mozilla/gfx/Types.h"
 
 namespace mozilla {
@@ -26,8 +24,10 @@ std::ostream& operator<<(std::ostream& aStream, const FrameMetrics& aMetrics) {
   if (aMetrics.GetVisualScrollUpdateType() != FrameMetrics::eNone) {
     aStream << "] [vd=" << aMetrics.GetVisualDestination();
   }
+  if (aMetrics.IsScrollInfoLayer()) {
+    aStream << "] [scrollinfo";
+  }
   aStream << "] [dp=" << aMetrics.GetDisplayPort()
-          << "] [cdp=" << aMetrics.GetCriticalDisplayPort()
           << "] [rcs=" << aMetrics.GetBoundingCompositionSize()
           << "] [v=" << aMetrics.GetLayoutViewport()
           << nsPrintfCString("] [z=(ld=%.3f r=%.3f",
@@ -36,7 +36,7 @@ std::ostream& operator<<(std::ostream& aStream, const FrameMetrics& aMetrics) {
                  .get()
           << " cr=" << aMetrics.GetCumulativeResolution()
           << " z=" << aMetrics.GetZoom()
-          << " er=" << aMetrics.GetExtraResolution() << " )] [u=("
+          << " t=" << aMetrics.GetTransformToAncestorScale() << " )] [u=("
           << (int)aMetrics.GetVisualScrollUpdateType() << " "
           << aMetrics.GetScrollGeneration()
           << ")] scrollId=" << aMetrics.GetScrollId();
@@ -126,7 +126,7 @@ void FrameMetrics::KeepLayoutViewportEnclosingVisualViewport(
 /* static */
 CSSRect FrameMetrics::CalculateScrollRange(
     const CSSRect& aScrollableRect, const ParentLayerRect& aCompositionBounds,
-    const CSSToParentLayerScale2D& aZoom) {
+    const CSSToParentLayerScale& aZoom) {
   CSSSize scrollPortSize =
       CalculateCompositedSizeInCssPixels(aCompositionBounds, aZoom);
   CSSRect scrollRange = aScrollableRect;
@@ -140,8 +140,8 @@ CSSRect FrameMetrics::CalculateScrollRange(
 /* static */
 CSSSize FrameMetrics::CalculateCompositedSizeInCssPixels(
     const ParentLayerRect& aCompositionBounds,
-    const CSSToParentLayerScale2D& aZoom) {
-  if (aZoom == CSSToParentLayerScale2D(0, 0)) {
+    const CSSToParentLayerScale& aZoom) {
+  if (aZoom == CSSToParentLayerScale(0)) {
     return CSSSize();  // avoid division by zero
   }
   return aCompositionBounds.Size() / aZoom;
@@ -166,7 +166,7 @@ CSSPoint FrameMetrics::ApplyRelativeScrollUpdateFrom(
   MOZ_ASSERT(aUpdate.GetType() == ScrollUpdateType::Relative);
   CSSPoint origin = GetVisualScrollOffset();
   CSSPoint delta = (aUpdate.GetDestination() - aUpdate.GetSource());
-  ClampAndSetVisualScrollOffset(origin + delta);
+  SetVisualScrollOffset(origin + delta);
   return GetVisualScrollOffset() - origin;
 }
 
@@ -194,59 +194,6 @@ void FrameMetrics::UpdatePendingScrollInfo(const ScrollPositionUpdate& aInfo) {
   SetLayoutScrollOffset(aInfo.GetDestination());
   ClampAndSetVisualScrollOffset(aInfo.GetDestination() + relativeOffset);
   mScrollGeneration = aInfo.GetGeneration();
-}
-
-ScrollSnapInfo::ScrollSnapInfo()
-    : mScrollSnapStrictnessX(StyleScrollSnapStrictness::None),
-      mScrollSnapStrictnessY(StyleScrollSnapStrictness::None) {}
-
-bool ScrollSnapInfo::HasScrollSnapping() const {
-  return mScrollSnapStrictnessY != StyleScrollSnapStrictness::None ||
-         mScrollSnapStrictnessX != StyleScrollSnapStrictness::None;
-}
-
-bool ScrollSnapInfo::HasSnapPositions() const {
-  return (!mSnapPositionX.IsEmpty() &&
-          mScrollSnapStrictnessX != StyleScrollSnapStrictness::None) ||
-         (!mSnapPositionY.IsEmpty() &&
-          mScrollSnapStrictnessY != StyleScrollSnapStrictness::None);
-}
-
-void ScrollSnapInfo::InitializeScrollSnapStrictness(
-    WritingMode aWritingMode, const nsStyleDisplay* aDisplay) {
-  if (aDisplay->mScrollSnapType.strictness == StyleScrollSnapStrictness::None) {
-    return;
-  }
-
-  mScrollSnapStrictnessX = StyleScrollSnapStrictness::None;
-  mScrollSnapStrictnessY = StyleScrollSnapStrictness::None;
-
-  switch (aDisplay->mScrollSnapType.axis) {
-    case StyleScrollSnapAxis::X:
-      mScrollSnapStrictnessX = aDisplay->mScrollSnapType.strictness;
-      break;
-    case StyleScrollSnapAxis::Y:
-      mScrollSnapStrictnessY = aDisplay->mScrollSnapType.strictness;
-      break;
-    case StyleScrollSnapAxis::Block:
-      if (aWritingMode.IsVertical()) {
-        mScrollSnapStrictnessX = aDisplay->mScrollSnapType.strictness;
-      } else {
-        mScrollSnapStrictnessY = aDisplay->mScrollSnapType.strictness;
-      }
-      break;
-    case StyleScrollSnapAxis::Inline:
-      if (aWritingMode.IsVertical()) {
-        mScrollSnapStrictnessY = aDisplay->mScrollSnapType.strictness;
-      } else {
-        mScrollSnapStrictnessX = aDisplay->mScrollSnapType.strictness;
-      }
-      break;
-    case StyleScrollSnapAxis::Both:
-      mScrollSnapStrictnessX = aDisplay->mScrollSnapType.strictness;
-      mScrollSnapStrictnessY = aDisplay->mScrollSnapType.strictness;
-      break;
-  }
 }
 
 std::ostream& operator<<(std::ostream& aStream,
@@ -311,26 +258,18 @@ std::ostream& operator<<(std::ostream& aStream,
 
 std::ostream& operator<<(std::ostream& aStream,
                          const ScrollMetadata& aMetadata) {
-  aStream << "{ [metrics=" << aMetadata.GetMetrics()
-          << "] [color=" << aMetadata.GetBackgroundColor();
+  aStream << "{ [description=" << aMetadata.GetContentDescription()
+          << "] [metrics=" << aMetadata.GetMetrics();
   if (aMetadata.GetScrollParentId() != ScrollableLayerGuid::NULL_SCROLL_ID) {
     aStream << "] [scrollParent=" << aMetadata.GetScrollParentId();
   }
-  if (aMetadata.HasScrollClip()) {
-    aStream << "] [clip=" << aMetadata.ScrollClip().GetClipRect();
-  }
-  if (aMetadata.HasMaskLayer()) {
-    aStream << "] [mask=" << aMetadata.ScrollClip().GetMaskLayerIndex().value();
+  if (aMetadata.GetHasScrollgrab()) {
+    aStream << "] [scrollgrab";
   }
   aStream << "] [overscroll=" << aMetadata.GetOverscrollBehavior() << "] ["
           << aMetadata.GetScrollUpdates().Length() << " scrollupdates"
           << "] }";
   return aStream;
-}
-
-void ScrollMetadata::SetBackgroundColor(
-    const gfx::sRGBColor& aBackgroundColor) {
-  mBackgroundColor = gfx::ToDeviceColor(aBackgroundColor);
 }
 
 StaticAutoPtr<const ScrollMetadata> ScrollMetadata::sNullMetadata;

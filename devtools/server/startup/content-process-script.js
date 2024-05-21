@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* eslint-env mozilla/process-script */
+
 "use strict";
 
 /**
@@ -17,8 +19,6 @@
  * in `Services.cpmm.sharedData` object or send a message manager message via `Services.cpmm`.
  * Also, this module is only loaded, on-demand from process-helper if devtools are watching for process targets.
  */
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const SHARED_DATA_KEY_NAME = "DevTools:watchedPerWatcher";
 
@@ -37,7 +37,7 @@ class ContentProcessStartup {
     this.maybeCreateExistingTargetActors();
   }
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     switch (topic) {
       case "xpcom-shutdown": {
         this.destroy();
@@ -46,11 +46,11 @@ class ContentProcessStartup {
     }
   }
 
-  destroy() {
+  destroy(options) {
     this.removeListeners();
 
     for (const [, connectionInfo] of this._connections) {
-      connectionInfo.connection.close();
+      connectionInfo.connection.close(options);
     }
     this._connections.clear();
   }
@@ -67,11 +67,11 @@ class ContentProcessStartup {
       this.receiveMessage
     );
     Services.cpmm.addMessageListener(
-      "debug:add-watcher-data-entry",
+      "debug:add-or-set-session-data-entry",
       this.receiveMessage
     );
     Services.cpmm.addMessageListener(
-      "debug:remove-watcher-data-entry",
+      "debug:remove-session-data-entry",
       this.receiveMessage
     );
     Services.cpmm.addMessageListener(
@@ -92,11 +92,11 @@ class ContentProcessStartup {
       this.receiveMessage
     );
     Services.cpmm.removeMessageListener(
-      "debug:add-watcher-data-entry",
+      "debug:add-or-set-session-data-entry",
       this.receiveMessage
     );
     Services.cpmm.removeMessageListener(
-      "debug:remove-watcher-data-entry",
+      "debug:remove-session-data-entry",
       this.receiveMessage
     );
     Services.cpmm.removeMessageListener(
@@ -111,29 +111,30 @@ class ContentProcessStartup {
         this.createTargetActor(
           msg.data.watcherActorID,
           msg.data.connectionPrefix,
-          msg.data.watchedData,
+          msg.data.sessionData,
           true
         );
         break;
       case "debug:destroy-target":
         this.destroyTarget(msg.data.watcherActorID);
         break;
-      case "debug:add-watcher-data-entry":
-        this.addWatcherDataEntry(
+      case "debug:add-or-set-session-data-entry":
+        this.addOrSetSessionDataEntry(
           msg.data.watcherActorID,
           msg.data.type,
-          msg.data.entries
+          msg.data.entries,
+          msg.data.updateType
         );
         break;
-      case "debug:remove-watcher-data-entry":
-        this.addWatcherDataEntry(
+      case "debug:remove-session-data-entry":
+        this.removeSessionDataEntry(
           msg.data.watcherActorID,
           msg.data.type,
           msg.data.entries
         );
         break;
       case "debug:destroy-process-script":
-        this.destroy();
+        this.destroy(msg.data.options);
         break;
       default:
         throw new Error(`Unsupported message name ${msg.name}`);
@@ -142,7 +143,7 @@ class ContentProcessStartup {
 
   /**
    * Called when the content process just started.
-   * This will start creating ContentProcessTarget actors, but only if DevTools code (WatcherActor / WatcherRegistry.jsm)
+   * This will start creating ContentProcessTarget actors, but only if DevTools code (WatcherActor / WatcherRegistry.sys.mjs)
    * put some data in `sharedData` telling us to do so.
    */
   maybeCreateExistingTargetActors() {
@@ -160,18 +161,18 @@ class ContentProcessStartup {
       return;
     }
 
-    const watchedDataByWatcherActor = sharedData.get(SHARED_DATA_KEY_NAME);
-    if (!watchedDataByWatcherActor) {
+    const sessionDataByWatcherActor = sharedData.get(SHARED_DATA_KEY_NAME);
+    if (!sessionDataByWatcherActor) {
       return;
     }
 
     // Create one Target actor for each prefix/client which listen to process
-    for (const [watcherActorID, watchedData] of watchedDataByWatcherActor) {
-      const { connectionPrefix, targets } = watchedData;
+    for (const [watcherActorID, sessionData] of sessionDataByWatcherActor) {
+      const { connectionPrefix, targets } = sessionData;
       // This is where we only do something significant only if DevTools are opened
       // and requesting to create target actor for content processes
-      if (targets.includes("process")) {
-        this.createTargetActor(watcherActorID, connectionPrefix, watchedData);
+      if (targets?.includes("process")) {
+        this.createTargetActor(watcherActorID, connectionPrefix, sessionData);
       }
     }
   }
@@ -185,7 +186,7 @@ class ContentProcessStartup {
    * @param String parentConnectionPrefix
    *        The prefix of the DevToolsServerConnection of the Watcher Actor.
    *        This is used to compute a unique ID for the target actor.
-   * @param Object initialData
+   * @param Object sessionData
    *        All data managed by the Watcher Actor and WatcherRegistry.jsm, containing
    *        target types, resources types to be listened as well as breakpoints and any
    *        other data meant to be shared across processes and threads.
@@ -196,7 +197,7 @@ class ContentProcessStartup {
   createTargetActor(
     watcherActorID,
     parentConnectionPrefix,
-    initialData,
+    sessionData,
     ignoreAlreadyCreated = false
   ) {
     if (this._connections.get(watcherActorID)) {
@@ -215,8 +216,8 @@ class ContentProcessStartup {
     const prefix =
       parentConnectionPrefix + "contentProcess" + Services.appinfo.processID;
     //TODO: probably merge content-process.jsm with this module
-    const { initContentProcessTarget } = ChromeUtils.import(
-      "resource://devtools/server/startup/content-process.jsm"
+    const { initContentProcessTarget } = ChromeUtils.importESModule(
+      "resource://devtools/server/startup/content-process.sys.mjs"
     );
     const { actor, connection } = initContentProcessTarget({
       target: Services.cpmm,
@@ -224,6 +225,7 @@ class ContentProcessStartup {
         watcherActorID,
         parentConnectionPrefix,
         prefix,
+        sessionContext: sessionData.sessionContext,
       },
     });
     this._connections.set(watcherActorID, {
@@ -232,8 +234,8 @@ class ContentProcessStartup {
     });
 
     // Pass initialization data to the target actor
-    for (const type in initialData) {
-      actor.addWatcherDataEntry(type, initialData[type]);
+    for (const type in sessionData) {
+      actor.addOrSetSessionDataEntry(type, sessionData[type], false, "set");
     }
   }
 
@@ -249,7 +251,7 @@ class ContentProcessStartup {
     this._connections.delete(watcherActorID);
   }
 
-  async addWatcherDataEntry(watcherActorID, type, entries) {
+  async addOrSetSessionDataEntry(watcherActorID, type, entries, updateType) {
     const connectionInfo = this._connections.get(watcherActorID);
     if (!connectionInfo) {
       throw new Error(
@@ -257,19 +259,19 @@ class ContentProcessStartup {
       );
     }
     const { actor } = connectionInfo;
-    await actor.addWatcherDataEntry(type, entries);
-    Services.cpmm.sendAsyncMessage("debug:add-watcher-data-entry-done", {
+    await actor.addOrSetSessionDataEntry(type, entries, false, updateType);
+    Services.cpmm.sendAsyncMessage("debug:add-or-set-session-data-entry-done", {
       watcherActorID,
     });
   }
 
-  removeWatcherDataEntry(watcherActorID, type, entries) {
+  removeSessionDataEntry(watcherActorID, type, entries) {
     const connectionInfo = this._connections.get(watcherActorID);
     if (!connectionInfo) {
       return;
     }
     const { actor } = connectionInfo;
-    actor.removeWatcherDataEntry(type, entries);
+    actor.removeSessionDataEntry(type, entries);
   }
 }
 

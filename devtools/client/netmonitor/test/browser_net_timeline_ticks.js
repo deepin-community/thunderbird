@@ -7,10 +7,12 @@
  * Tests if timeline correctly displays interval divisions.
  */
 
-add_task(async function() {
-  const { L10N } = require("devtools/client/netmonitor/src/utils/l10n");
+add_task(async function () {
+  const {
+    L10N,
+  } = require("resource://devtools/client/netmonitor/src/utils/l10n.js");
 
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+  const { monitor } = await initNetMonitor(HTTPS_SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -31,7 +33,7 @@ add_task(async function() {
     "An timeline label should be displayed when the frontend is opened."
   );
   ok(
-    $all(".requests-list-timings-division").length == 0,
+    !$all(".requests-list-timings-division").length,
     "No tick labels should be displayed when the frontend is opened."
   );
 
@@ -45,7 +47,7 @@ add_task(async function() {
   );
 
   const wait = waitForNetworkEvents(monitor, 1);
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
   await wait;
 
   // Make sure the DOMContentLoaded and load markers don't interfere with
@@ -57,8 +59,9 @@ add_task(async function() {
     !$("#requests-list-waterfall-label"),
     "The timeline label should be hidden after the first request."
   );
-  ok(
-    $all(".requests-list-timings-division").length >= 3,
+  Assert.greaterOrEqual(
+    $all(".requests-list-timings-division").length,
+    3,
     "There should be at least 3 tick labels in the network requests header."
   );
 

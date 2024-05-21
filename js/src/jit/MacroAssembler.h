@@ -13,6 +13,8 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/Variant.h"
 
+#include <utility>
+
 #if defined(JS_CODEGEN_X86)
 #  include "jit/x86/MacroAssembler-x86.h"
 #elif defined(JS_CODEGEN_X64)
@@ -25,24 +27,30 @@
 #  include "jit/mips32/MacroAssembler-mips32.h"
 #elif defined(JS_CODEGEN_MIPS64)
 #  include "jit/mips64/MacroAssembler-mips64.h"
+#elif defined(JS_CODEGEN_LOONG64)
+#  include "jit/loong64/MacroAssembler-loong64.h"
+#elif defined(JS_CODEGEN_RISCV64)
+#  include "jit/riscv64/MacroAssembler-riscv64.h"
+#elif defined(JS_CODEGEN_WASM32)
+#  include "jit/wasm32/MacroAssembler-wasm32.h"
 #elif defined(JS_CODEGEN_NONE)
 #  include "jit/none/MacroAssembler-none.h"
 #else
 #  error "Unknown architecture!"
 #endif
+#include "jit/ABIArgGenerator.h"
 #include "jit/ABIFunctions.h"
 #include "jit/AtomicOp.h"
-#include "jit/AutoJitContextAlloc.h"
 #include "jit/IonTypes.h"
+#include "jit/MoveResolver.h"
 #include "jit/VMFunctions.h"
 #include "js/ScalarType.h"  // js::Scalar::Type
 #include "util/Memory.h"
-#include "vm/BytecodeUtil.h"
 #include "vm/FunctionFlags.h"
-#include "vm/JSObject.h"
-#include "vm/StringType.h"
+#include "vm/Opcodes.h"
+#include "vm/RealmFuses.h"
+#include "wasm/WasmCodegenTypes.h"
 #include "wasm/WasmFrame.h"
-#include "wasm/WasmTypes.h"
 
 // [SMDOC] MacroAssembler multi-platform overview
 //
@@ -92,8 +100,9 @@
 //   }
 //   ////}}} check_macroassembler_style
 
-#define ALL_ARCH mips32, mips64, arm, arm64, x86, x64
-#define ALL_SHARED_ARCH arm, arm64, x86_shared, mips_shared
+#define ALL_ARCH mips32, mips64, arm, arm64, x86, x64, loong64, riscv64, wasm32
+#define ALL_SHARED_ARCH \
+  arm, arm64, loong64, riscv64, x86_shared, mips_shared, wasm32
 
 // * How this macro works:
 //
@@ -139,6 +148,9 @@
 #define DEFINED_ON_mips32
 #define DEFINED_ON_mips64
 #define DEFINED_ON_mips_shared
+#define DEFINED_ON_loong64
+#define DEFINED_ON_riscv64
+#define DEFINED_ON_wasm32
 #define DEFINED_ON_none
 
 // Specialize for each architecture.
@@ -168,6 +180,15 @@
 #  define DEFINED_ON_mips64 define
 #  undef DEFINED_ON_mips_shared
 #  define DEFINED_ON_mips_shared define
+#elif defined(JS_CODEGEN_LOONG64)
+#  undef DEFINED_ON_loong64
+#  define DEFINED_ON_loong64 define
+#elif defined(JS_CODEGEN_RISCV64)
+#  undef DEFINED_ON_riscv64
+#  define DEFINED_ON_riscv64 define
+#elif defined(JS_CODEGEN_WASM32)
+#  undef DEFINED_ON_wasm32
+#  define DEFINED_ON_wasm32 define
 #elif defined(JS_CODEGEN_NONE)
 #  undef DEFINED_ON_none
 #  define DEFINED_ON_none crash
@@ -203,13 +224,7 @@
 #define PER_SHARED_ARCH DEFINED_ON(ALL_SHARED_ARCH)
 #define OOL_IN_HEADER
 
-constexpr int32_t Imm32_16Adj(uint32_t x) {
-#if MOZ_LITTLE_ENDIAN()
-  return x << 16;
-#else
-  return x;
-#endif
-}
+class JSLinearString;
 
 namespace JS {
 struct ExpandoAndGeneration;
@@ -217,7 +232,10 @@ struct ExpandoAndGeneration;
 
 namespace js {
 
-class TypedArrayObject;
+class StaticStrings;
+class FixedLengthTypedArrayObject;
+
+enum class NativeIteratorIndices : uint32_t;
 
 namespace wasm {
 class CalleeDesc;
@@ -265,10 +283,10 @@ static inline DynFn DynamicFunction(Sig fun);
 
 enum class CharEncoding { Latin1, TwoByte };
 
-constexpr uint32_t WasmCallerTLSOffsetBeforeCall =
-    wasm::FrameWithTls::callerTLSOffset() + ShadowStackSpace;
-constexpr uint32_t WasmCalleeTLSOffsetBeforeCall =
-    wasm::FrameWithTls::calleeTLSOffset() + ShadowStackSpace;
+constexpr uint32_t WasmCallerInstanceOffsetBeforeCall =
+    wasm::FrameWithInstances::callerInstanceOffsetWithoutFrame();
+constexpr uint32_t WasmCalleeInstanceOffsetBeforeCall =
+    wasm::FrameWithInstances::calleeInstanceOffsetWithoutFrame();
 
 // Allocation sites may be passed to GC thing allocation methods either via a
 // register (for baseline compilation) or an enum indicating one of the
@@ -281,6 +299,27 @@ struct AllocSiteInput
   explicit AllocSiteInput(Register reg) : Base(reg) {}
 };
 
+#ifdef ENABLE_WASM_TAIL_CALLS
+// Instance slots (including ShadowStackArea) and arguments size information
+// from two neighboring frames.
+// Used in Wasm tail calls to remove frame.
+struct ReturnCallAdjustmentInfo {
+  uint32_t newSlotsAndStackArgBytes;
+  uint32_t oldSlotsAndStackArgBytes;
+
+  ReturnCallAdjustmentInfo(uint32_t newSlotsAndStackArgBytes,
+                           uint32_t oldSlotsAndStackArgBytes)
+      : newSlotsAndStackArgBytes(newSlotsAndStackArgBytes),
+        oldSlotsAndStackArgBytes(oldSlotsAndStackArgBytes) {}
+};
+#endif  // ENABLE_WASM_TAIL_CALLS
+
+struct BranchWasmRefIsSubtypeRegisters {
+  bool needSuperSTV;
+  bool needScratch1;
+  bool needScratch2;
+};
+
 // [SMDOC] Code generation invariants (incomplete)
 //
 // ## 64-bit GPRs carrying 32-bit values
@@ -291,7 +330,8 @@ struct AllocSiteInput
 // accordance with platform-specific rules, as follows.
 //
 // - On x64 and arm64, the upper bits are zero
-// - On mips64 the upper bits are the sign extension of the lower bits
+// - On mips64 and loongarch64 the upper bits are the sign extension of the
+//   lower bits
 // - (On risc-v we have no rule, having no port yet.  Sign extension is the most
 //   likely rule, but "unpredictable" is an option.)
 //
@@ -304,8 +344,8 @@ struct AllocSiteInput
 //   Additionally, the inputs to many 32-bit operations must be properly
 //   sign-extended to avoid "unpredictable" behavior, and our simulators check
 //   that inputs conform.
-// - (32-bit operations on risc-v sign-extend, much as mips, but appear to
-//   ignore the upper bits of the inputs.)
+// - (32-bit operations on risc-v and loongarch64 sign-extend, much as mips, but
+//   appear to ignore the upper bits of the inputs.)
 //
 // The upshot of these invariants is, among other things, that:
 //
@@ -323,31 +363,29 @@ struct AllocSiteInput
 // in platform-specific code.  We may add architectures in the future that do
 // not follow the patterns of the few architectures we already have.
 //
-// Also see MacroAssembler::assertCanonicalInt32().
+// Also see MacroAssembler::debugAssertCanonicalInt32().
 
 // The public entrypoint for emitting assembly. Note that a MacroAssembler can
 // use cx->lifoAlloc, so take care not to interleave masm use with other
 // lifoAlloc use if one will be destroyed before the other.
 class MacroAssembler : public MacroAssemblerSpecific {
- public:
-  mozilla::Maybe<JitContext> jitContext_;
-  mozilla::Maybe<AutoJitContextAlloc> alloc_;
-
  private:
+  // Information about the current JSRuntime. This is nullptr only for Wasm
+  // compilations.
+  CompileRuntime* maybeRuntime_ = nullptr;
+
+  // Information about the current Realm. This is nullptr for Wasm compilations
+  // and when compiling JitRuntime trampolines.
+  CompileRealm* maybeRealm_ = nullptr;
+
   // Labels for handling exceptions and failures.
   NonAssertingLabel failureLabel_;
 
  protected:
-  // Constructors are protected. Use one of the derived classes!
-  MacroAssembler();
-
-  // This constructor should only be used when there is no JitContext active
-  // (for example when generating string and regexp stubs).
-  explicit MacroAssembler(JSContext* cx);
-
-  // wasm compilation handles its own JitContext-pushing
-  struct WasmToken {};
-  explicit MacroAssembler(WasmToken, TempAllocator& alloc);
+  // Constructor is protected. Use one of the derived classes!
+  explicit MacroAssembler(TempAllocator& alloc,
+                          CompileRuntime* maybeRuntime = nullptr,
+                          CompileRealm* maybeRealm = nullptr);
 
  public:
   MoveResolver& moveResolver() {
@@ -361,19 +399,25 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   size_t instructionsSize() const { return size(); }
 
+  CompileRealm* realm() const {
+    MOZ_ASSERT(maybeRealm_);
+    return maybeRealm_;
+  }
+  CompileRuntime* runtime() const {
+    MOZ_ASSERT(maybeRuntime_);
+    return maybeRuntime_;
+  }
+
 #ifdef JS_HAS_HIDDEN_SP
   void Push(RegisterOrSP reg);
 #endif
 
- private:
-  // The value returned by GetMaxOffsetGuardLimit() in WasmTypes.h
-  uint32_t wasmMaxOffsetGuardLimit_;
-
- public:
-  uint32_t wasmMaxOffsetGuardLimit() const { return wasmMaxOffsetGuardLimit_; }
-  void setWasmMaxOffsetGuardLimit(uint32_t limit) {
-    wasmMaxOffsetGuardLimit_ = limit;
-  }
+#ifdef ENABLE_WASM_SIMD
+  // `op` should be a shift operation. Return true if a variable-width shift
+  // operation on this architecture should pre-mask the shift count, and if so,
+  // return the mask in `*mask`.
+  static bool MustMaskShiftCountSimd128(wasm::SimdOp op, int32_t* mask);
+#endif
 
   //{{{ check_macroassembler_decl_style
  public:
@@ -421,6 +465,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   //   FloatRegister::getRegisterDumpOffsetInBytes
   //   (no class) PushRegisterDump
   //   (union) RegisterContent
+  //   JitRuntime::generateInvalidator
+  //   JitRuntime::generateBailoutHandler
+  //   JSJitFrameIter::machineState
   //
   // To be more exact, the invariants are:
   //
@@ -469,25 +516,25 @@ class MacroAssembler : public MacroAssemblerSpecific {
   //   FloatRegister::getRegisterDumpOffsetInBytes must be a correct index
   //   into the abovementioned array.  Given the constraints, the only correct
   //   value is `reg.encoding() * sizeof(RegisterContent)`.
-
-  // Regarding JitRuntime::generateInvalidator and the first two fields of of
-  // class InvalidationBailoutStack (`fpregs_` and `regs_`).  These form their
-  // own layout-equivalence class.  That is, they must be format-consistent.
-  // But they are not part of the equivalence class that PushRegsInMask et al
-  // belong to. JitRuntime::generateInvalidator may use PushRegsInMask to
-  // generate part of the layout, but that's only a happy coincidence; some
-  // targets roll their own save-code instead.
   //
-  // Nevertheless, because some targets *do* call PushRegsInMask from
-  // JitRuntime::generateInvalidator, you should check carefully all of the
-  // ::generateInvalidator methods if you change the PushRegsInMask format.
+  // Note that some of the routines listed above are JS-only, and do not support
+  // SIMD registers. They are otherwise part of the same equivalence class.
+  // Register spilling for e.g. OOL VM calls is implemented using
+  // PushRegsInMask, and recovered on bailout using machineState. This requires
+  // the same layout to be used in machineState, and therefore in all other code
+  // that can spill registers that are recovered on bailout. Implementations of
+  // JitRuntime::generate{Invalidator,BailoutHandler} should either call
+  // PushRegsInMask, or check carefully to be sure that they generate the same
+  // layout.
 
   // The size of the area used by PushRegsInMask.
-  size_t PushRegsInMaskSizeInBytes(LiveRegisterSet set)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+  static size_t PushRegsInMaskSizeInBytes(LiveRegisterSet set)
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   void PushRegsInMask(LiveRegisterSet set)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
   void PushRegsInMask(LiveGeneralRegisterSet set);
 
   // Like PushRegsInMask, but instead of pushing the registers, store them to
@@ -498,12 +545,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // must point to either the lowest address in the save area, or some address
   // below that.
   void storeRegsInMask(LiveRegisterSet set, Address dest, Register scratch)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   void PopRegsInMask(LiveRegisterSet set);
   void PopRegsInMask(LiveGeneralRegisterSet set);
   void PopRegsInMaskIgnore(LiveRegisterSet set, LiveRegisterSet ignore)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   // ===============================================================
   // Stack manipulation functions -- single registers/values.
@@ -536,13 +585,17 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void Pop(FloatRegister t) PER_SHARED_ARCH;
   void Pop(const ValueOperand& val) PER_SHARED_ARCH;
   void PopFlags() DEFINED_ON(x86_shared);
-  void PopStackPtr() DEFINED_ON(arm, mips_shared, x86_shared);
-  void popRooted(VMFunctionData::RootType rootType, Register cellReg,
-                 const ValueOperand& valueReg);
+  void PopStackPtr()
+      DEFINED_ON(arm, mips_shared, x86_shared, loong64, riscv64, wasm32);
 
   // Move the stack pointer based on the requested amount.
   void adjustStack(int amount);
   void freeStack(uint32_t amount);
+
+  // Move the stack pointer to the specified position. It assumes the SP
+  // register is not valid -- it uses FP to set the position.
+  void freeStackTo(uint32_t framePushed)
+      DEFINED_ON(x86_shared, arm, arm64, loong64, mips64, riscv64);
 
   // Warning: This method does not update the framePushed() counter.
   void freeStack(Register amount);
@@ -594,12 +647,17 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void callAndPushReturnAddress(Label* label) DEFINED_ON(x86_shared);
 
   // These do not adjust framePushed().
-  void pushReturnAddress() DEFINED_ON(mips_shared, arm, arm64);
-  void popReturnAddress() DEFINED_ON(mips_shared, arm, arm64);
+  void pushReturnAddress()
+      DEFINED_ON(mips_shared, arm, arm64, loong64, riscv64, wasm32);
+  void popReturnAddress()
+      DEFINED_ON(mips_shared, arm, arm64, loong64, riscv64, wasm32);
 
   // Useful for dealing with two-valued returns.
   void moveRegPair(Register src0, Register src1, Register dst0, Register dst1,
                    MoveOp::Type type = MoveOp::GENERAL);
+
+  void reserveVMFunctionOutParamSpace(const VMFunctionData& f);
+  void loadVMFunctionOutParam(const VMFunctionData& f, const Address& addr);
 
  public:
   // ===============================================================
@@ -625,11 +683,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   //
   // Note: "Near" applies to ARM64 where the target must be within 1 MB (this is
   // release-asserted).
-  CodeOffset moveNearAddressWithPatch(Register dest)
-      DEFINED_ON(x86, x64, arm, arm64, mips_shared);
+  CodeOffset moveNearAddressWithPatch(Register dest) PER_ARCH;
   static void patchNearAddressMove(CodeLocationLabel loc,
                                    CodeLocationLabel target)
-      DEFINED_ON(x86, x64, arm, arm64, mips_shared);
+      DEFINED_ON(x86, x64, arm, arm64, loong64, riscv64, wasm32, mips_shared);
 
  public:
   // ===============================================================
@@ -672,9 +729,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // 3) Passing arguments. Arguments are passed left-to-right.
   //
   //      masm.passABIArg(scratch);
-  //      masm.passABIArg(FloatOp0, MoveOp::Double);
+  //      masm.passABIArg(FloatOp0, ABIType::Float64);
   //
-  //    Note how float register arguments are annotated with MoveOp::Double.
+  //    Note how float register arguments are annotated with ABIType::Float64.
   //
   //    Concerning stack-relative address, see the note on passABIArg.
   //
@@ -687,13 +744,16 @@ class MacroAssembler : public MacroAssemblerSpecific {
   //    indicated to the callWithABI like this:
   //
   //      using Fn = double (*)(int32_t)
-  //      masm.callWithABI<Fn, Callee>(MoveOp::DOUBLE);
+  //      masm.callWithABI<Fn, Callee>(ABIType::Float64);
   //
   //    There are overloads to allow calls to registers and addresses.
   //
-  // 5) Take care of the ReturnReg or ReturnDoubleReg
+  // 5) Take care of the result
   //
-  //      masm.mov(ReturnReg, scratch1);
+  //      masm.storeCallPointerResult(scratch1);
+  //      masm.storeCallBoolResult(scratch1);
+  //      masm.storeCallInt32Result(scratch1);
+  //      masm.storeCallFloatResult(scratch1);
   //
   // 6) Restore the potentially clobbered volatile registers
   //
@@ -716,18 +776,26 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // accordingly.
 
   // Setup a call to C/C++ code, given the assumption that the framePushed
-  // accruately define the state of the stack, and that the top of the stack
+  // accurately defines the state of the stack, and that the top of the stack
   // was properly aligned. Note that this only supports cdecl.
-  void setupAlignedABICall();  // CRASH_ON(arm64)
+  //
+  // As a rule of thumb, this can be used in CodeGenerator but not in CacheIR or
+  // Baseline code (because the stack is not aligned to ABIStackAlignment).
+  void setupAlignedABICall();
 
   // As setupAlignedABICall, but for WebAssembly native ABI calls, which pass
   // through a builtin thunk that uses the wasm ABI. All the wasm ABI calls
   // can be native, since we always know the stack alignment a priori.
-  void setupWasmABICall();  // CRASH_ON(arm64)
+  void setupWasmABICall();
 
   // Setup an ABI call for when the alignment is not known. This may need a
   // scratch register.
   void setupUnalignedABICall(Register scratch) PER_ARCH;
+
+  // Like setupUnalignedABICall, but more efficient because it doesn't push/pop
+  // the unaligned stack pointer. The caller is responsible for restoring SP
+  // after the callWithABI, for example using the frame pointer register.
+  void setupUnalignedABICallDontSaveRestoreSP();
 
   // Arguments must be assigned to a C/C++ call in order. They are moved
   // in parallel immediately before performing the call. This process may
@@ -735,26 +803,26 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // automatically adjusted. It is extremely important that esp-relative
   // addresses are computed *after* setupABICall(). Furthermore, no
   // operations should be emitted while setting arguments.
-  void passABIArg(const MoveOperand& from, MoveOp::Type type);
+  void passABIArg(const MoveOperand& from, ABIType type);
   inline void passABIArg(Register reg);
-  inline void passABIArg(FloatRegister reg, MoveOp::Type type);
+  inline void passABIArg(FloatRegister reg, ABIType type);
 
   inline void callWithABI(
-      DynFn fun, MoveOp::Type result = MoveOp::GENERAL,
+      DynFn fun, ABIType result = ABIType::General,
       CheckUnsafeCallWithABI check = CheckUnsafeCallWithABI::Check);
   template <typename Sig, Sig fun>
   inline void callWithABI(
-      MoveOp::Type result = MoveOp::GENERAL,
+      ABIType result = ABIType::General,
       CheckUnsafeCallWithABI check = CheckUnsafeCallWithABI::Check);
-  inline void callWithABI(Register fun, MoveOp::Type result = MoveOp::GENERAL);
+  inline void callWithABI(Register fun, ABIType result = ABIType::General);
   inline void callWithABI(const Address& fun,
-                          MoveOp::Type result = MoveOp::GENERAL);
+                          ABIType result = ABIType::General);
 
   CodeOffset callWithABI(wasm::BytecodeOffset offset, wasm::SymbolicAddress fun,
-                         mozilla::Maybe<int32_t> tlsOffset,
-                         MoveOp::Type result = MoveOp::GENERAL);
+                         mozilla::Maybe<int32_t> instanceOffset,
+                         ABIType result = ABIType::General);
   void callDebugWithABI(wasm::SymbolicAddress fun,
-                        MoveOp::Type result = MoveOp::GENERAL);
+                        ABIType result = ABIType::General);
 
  private:
   // Reinitialize the variables which have to be cleared before making a call
@@ -771,18 +839,18 @@ class MacroAssembler : public MacroAssemblerSpecific {
                       bool callFromWasm = false) PER_ARCH;
 
   // Emits a call to a C/C++ function, resolving all argument moves.
-  void callWithABINoProfiler(void* fun, MoveOp::Type result,
+  void callWithABINoProfiler(void* fun, ABIType result,
                              CheckUnsafeCallWithABI check);
-  void callWithABINoProfiler(Register fun, MoveOp::Type result) PER_ARCH;
-  void callWithABINoProfiler(const Address& fun, MoveOp::Type result) PER_ARCH;
+  void callWithABINoProfiler(Register fun, ABIType result) PER_ARCH;
+  void callWithABINoProfiler(const Address& fun, ABIType result) PER_ARCH;
 
   // Restore the stack to its state before the setup function call.
-  void callWithABIPost(uint32_t stackAdjust, MoveOp::Type result,
+  void callWithABIPost(uint32_t stackAdjust, ABIType result,
                        bool callFromWasm = false) PER_ARCH;
 
   // Create the signature to be able to decode the arguments of a native
   // function, when calling a function within the simulator.
-  inline void appendSignatureType(MoveOp::Type type);
+  inline void appendSignatureType(ABIType type);
   inline ABIFunctionType signature() const;
 
   // Private variables used to handle moves between registers given as
@@ -832,12 +900,21 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline uint32_t callJit(ImmPtr callee);
 
   // The frame descriptor is the second field of all Jit frames, pushed before
-  // calling the Jit function.  It is a composite value defined in JitFrames.h
-  inline void makeFrameDescriptor(Register frameSizeReg, FrameType type,
-                                  uint32_t headerSize);
+  // calling the Jit function. See CommonFrameLayout::descriptor_.
+  inline void pushFrameDescriptor(FrameType type);
+  inline void PushFrameDescriptor(FrameType type);
 
-  // Push the frame descriptor, based on the statically known framePushed.
-  inline void pushStaticFrameDescriptor(FrameType type, uint32_t headerSize);
+  // For JitFrameLayout, the descriptor also stores the number of arguments
+  // passed by the caller. See MakeFrameDescriptorForJitCall.
+  inline void pushFrameDescriptorForJitCall(FrameType type, uint32_t argc);
+  inline void pushFrameDescriptorForJitCall(FrameType type, Register argc,
+                                            Register scratch);
+  inline void PushFrameDescriptorForJitCall(FrameType type, uint32_t argc);
+  inline void PushFrameDescriptorForJitCall(FrameType type, Register argc,
+                                            Register scratch);
+
+  // Load the number of actual arguments from the frame's JitFrameLayout.
+  inline void loadNumActualArgs(Register framePtr, Register dest);
 
   // Push the callee token of a JSFunction which pointer is stored in the
   // |callee| register. The callee token is packed with a |constructing| flag
@@ -877,11 +954,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // correctly, we have to push additional information, called the Exit frame
   // footer, which is used to identify how the stack is marked.
   //
-  // See JitFrames.h, and MarkJitExitFrame in JitFrames.cpp.
+  // See JitFrames.h, and TraceJitExitFrame in JitFrames.cpp.
 
-  // Push stub code and the VMFunctionData pointer.
-  inline void enterExitFrame(Register cxreg, Register scratch,
-                             const VMFunctionData* f);
+  // Links the exit frame and pushes the ExitFooterFrame.
+  inline void enterExitFrame(Register cxreg, Register scratch, VMFunctionId f);
 
   // Push an exit frame token to identify which fake exit frame this footer
   // corresponds to.
@@ -915,6 +991,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void moveDoubleToGPR64(FloatRegister src, Register64 dest) PER_ARCH;
   inline void moveGPR64ToDouble(Register64 src, FloatRegister dest) PER_ARCH;
 
+  inline void move8ZeroExtend(Register src, Register dest) PER_SHARED_ARCH;
+
   inline void move8SignExtend(Register src, Register dest) PER_SHARED_ARCH;
   inline void move16SignExtend(Register src, Register dest) PER_SHARED_ARCH;
 
@@ -947,6 +1025,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void load32SignExtendToPtr(const Address& src, Register dest) PER_ARCH;
 
   inline void loadAbiReturnAddress(Register dest) PER_SHARED_ARCH;
+
+  // ===============================================================
+  // Copy instructions
+
+  inline void copy64(const Address& src, const Address& dest, Register scratch);
 
  public:
   // ===============================================================
@@ -988,10 +1071,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void xorPtr(Imm32 imm, Register dest) PER_ARCH;
 
   inline void and64(const Operand& src, Register64 dest)
-      DEFINED_ON(x64, mips64);
-  inline void or64(const Operand& src, Register64 dest) DEFINED_ON(x64, mips64);
+      DEFINED_ON(x64, mips64, loong64, riscv64);
+  inline void or64(const Operand& src, Register64 dest)
+      DEFINED_ON(x64, mips64, loong64, riscv64);
   inline void xor64(const Operand& src, Register64 dest)
-      DEFINED_ON(x64, mips64);
+      DEFINED_ON(x64, mips64, loong64, riscv64);
 
   // ===============================================================
   // Swap instructions
@@ -1011,8 +1095,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ===============================================================
   // Arithmetic functions
 
+  // Condition flags aren't guaranteed to be set by these functions, for example
+  // x86 will always set condition flags, but ARM64 won't do it unless
+  // explicitly requested. Instead use branch(Add|Sub|Mul|Neg) to test for
+  // condition flags after performing arithmetic operations.
+
   inline void add32(Register src, Register dest) PER_SHARED_ARCH;
   inline void add32(Imm32 imm, Register dest) PER_SHARED_ARCH;
+  inline void add32(Imm32 imm, Register src, Register dest) PER_SHARED_ARCH;
   inline void add32(Imm32 imm, const Address& dest) PER_SHARED_ARCH;
   inline void add32(Imm32 imm, const AbsoluteAddress& dest)
       DEFINED_ON(x86_shared);
@@ -1025,17 +1115,17 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void addPtr(ImmWord imm, Register dest) PER_ARCH;
   inline void addPtr(ImmPtr imm, Register dest);
   inline void addPtr(Imm32 imm, const Address& dest)
-      DEFINED_ON(mips_shared, arm, arm64, x86, x64);
+      DEFINED_ON(mips_shared, arm, arm64, x86, x64, loong64, riscv64, wasm32);
   inline void addPtr(Imm32 imm, const AbsoluteAddress& dest)
       DEFINED_ON(x86, x64);
   inline void addPtr(const Address& src, Register dest)
-      DEFINED_ON(mips_shared, arm, arm64, x86, x64);
+      DEFINED_ON(mips_shared, arm, arm64, x86, x64, loong64, riscv64, wasm32);
 
   inline void add64(Register64 src, Register64 dest) PER_ARCH;
   inline void add64(Imm32 imm, Register64 dest) PER_ARCH;
   inline void add64(Imm64 imm, Register64 dest) PER_ARCH;
   inline void add64(const Operand& src, Register64 dest)
-      DEFINED_ON(x64, mips64);
+      DEFINED_ON(x64, mips64, loong64, riscv64);
 
   inline void addFloat32(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
 
@@ -1054,34 +1144,40 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void subPtr(Register src, Register dest) PER_ARCH;
   inline void subPtr(Register src, const Address& dest)
-      DEFINED_ON(mips_shared, arm, arm64, x86, x64);
+      DEFINED_ON(mips_shared, arm, arm64, x86, x64, loong64, riscv64, wasm32);
   inline void subPtr(Imm32 imm, Register dest) PER_ARCH;
   inline void subPtr(ImmWord imm, Register dest) DEFINED_ON(x64);
   inline void subPtr(const Address& addr, Register dest)
-      DEFINED_ON(mips_shared, arm, arm64, x86, x64);
+      DEFINED_ON(mips_shared, arm, arm64, x86, x64, loong64, riscv64, wasm32);
 
   inline void sub64(Register64 src, Register64 dest) PER_ARCH;
   inline void sub64(Imm64 imm, Register64 dest) PER_ARCH;
   inline void sub64(const Operand& src, Register64 dest)
-      DEFINED_ON(x64, mips64);
+      DEFINED_ON(x64, mips64, loong64, riscv64);
 
   inline void subFloat32(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
 
   inline void subDouble(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
 
   inline void mul32(Register rhs, Register srcDest) PER_SHARED_ARCH;
+  inline void mul32(Imm32 imm, Register srcDest) PER_SHARED_ARCH;
 
   inline void mul32(Register src1, Register src2, Register dest, Label* onOver)
       DEFINED_ON(arm64);
+
+  // Return the high word of the unsigned multiplication into |dest|.
+  inline void mulHighUnsigned32(Imm32 imm, Register src,
+                                Register dest) PER_ARCH;
 
   inline void mulPtr(Register rhs, Register srcDest) PER_ARCH;
 
   inline void mul64(const Operand& src, const Register64& dest) DEFINED_ON(x64);
   inline void mul64(const Operand& src, const Register64& dest,
-                    const Register temp) DEFINED_ON(x64, mips64);
+                    const Register temp)
+      DEFINED_ON(x64, mips64, loong64, riscv64);
   inline void mul64(Imm64 imm, const Register64& dest) PER_ARCH;
   inline void mul64(Imm64 imm, const Register64& dest, const Register temp)
-      DEFINED_ON(x86, x64, arm, mips32, mips64);
+      DEFINED_ON(x86, x64, arm, mips32, mips64, loong64, riscv64);
   inline void mul64(const Register64& src, const Register64& dest,
                     const Register temp) PER_ARCH;
   inline void mul64(const Register64& src1, const Register64& src2,
@@ -1095,23 +1191,29 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void mulDouble(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
 
   inline void mulDoublePtr(ImmPtr imm, Register temp, FloatRegister dest)
-      DEFINED_ON(mips_shared, arm, arm64, x86, x64);
+      DEFINED_ON(mips_shared, arm, arm64, x86, x64, loong64, riscv64, wasm32);
 
   // Perform an integer division, returning the integer part rounded toward
   // zero. rhs must not be zero, and the division must not overflow.
   //
-  // On x86_shared, srcDest must be eax and edx will be clobbered.
   // On ARM, the chip must have hardware division instructions.
-  inline void quotient32(Register rhs, Register srcDest,
-                         bool isUnsigned) PER_SHARED_ARCH;
+  inline void quotient32(Register rhs, Register srcDest, bool isUnsigned)
+      DEFINED_ON(mips_shared, arm, arm64, loong64, riscv64, wasm32);
+
+  // As above, but srcDest must be eax and tempEdx must be edx.
+  inline void quotient32(Register rhs, Register srcDest, Register tempEdx,
+                         bool isUnsigned) DEFINED_ON(x86_shared);
 
   // Perform an integer division, returning the remainder part.
   // rhs must not be zero, and the division must not overflow.
   //
-  // On x86_shared, srcDest must be eax and edx will be clobbered.
   // On ARM, the chip must have hardware division instructions.
-  inline void remainder32(Register rhs, Register srcDest,
-                          bool isUnsigned) PER_SHARED_ARCH;
+  inline void remainder32(Register rhs, Register srcDest, bool isUnsigned)
+      DEFINED_ON(mips_shared, arm, arm64, loong64, riscv64, wasm32);
+
+  // As above, but srcDest must be eax and tempEdx must be edx.
+  inline void remainder32(Register rhs, Register srcDest, Register tempEdx,
+                          bool isUnsigned) DEFINED_ON(x86_shared);
 
   // Perform an integer division, returning the integer part rounded toward
   // zero. rhs must not be zero, and the division must not overflow.
@@ -1122,7 +1224,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // rhs is preserved, srdDest is clobbered.
   void flexibleRemainder32(Register rhs, Register srcDest, bool isUnsigned,
                            const LiveRegisterSet& volatileLiveRegs)
-      DEFINED_ON(mips_shared, arm, arm64, x86_shared);
+      DEFINED_ON(mips_shared, arm, arm64, x86_shared, loong64, riscv64, wasm32);
 
   // Perform an integer division, returning the integer part rounded toward
   // zero. rhs must not be zero, and the division must not overflow.
@@ -1133,7 +1235,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // rhs is preserved, srdDest is clobbered.
   void flexibleQuotient32(Register rhs, Register srcDest, bool isUnsigned,
                           const LiveRegisterSet& volatileLiveRegs)
-      DEFINED_ON(mips_shared, arm, arm64, x86_shared);
+      DEFINED_ON(mips_shared, arm, arm64, x86_shared, loong64, riscv64);
 
   // Perform an integer division, returning the integer part rounded toward
   // zero. rhs must not be zero, and the division must not overflow. The
@@ -1146,7 +1248,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void flexibleDivMod32(Register rhs, Register srcDest, Register remOutput,
                         bool isUnsigned,
                         const LiveRegisterSet& volatileLiveRegs)
-      DEFINED_ON(mips_shared, arm, arm64, x86_shared);
+      DEFINED_ON(mips_shared, arm, arm64, x86_shared, loong64, riscv64, wasm32);
 
   inline void divFloat32(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
   inline void divDouble(FloatRegister src, FloatRegister dest) PER_SHARED_ARCH;
@@ -1239,9 +1341,19 @@ class MacroAssembler : public MacroAssemblerSpecific {
                        FloatRegister temp, Register dest);
 
   void branchIfNotRegExpPrototypeOptimizable(Register proto, Register temp,
+                                             const GlobalObject* maybeGlobal,
                                              Label* label);
   void branchIfNotRegExpInstanceOptimizable(Register regexp, Register temp,
+                                            const GlobalObject* maybeGlobal,
                                             Label* label);
+
+  void loadRegExpLastIndex(Register regexp, Register string, Register lastIndex,
+                           Label* notFoundZeroLastIndex);
+
+  void loadAndClearRegExpSearcherLastLimit(Register result, Register scratch);
+
+  void loadParsedRegExpShared(Register regexp, Register result,
+                              Label* unparsed);
 
   // ===============================================================
   // Shift functions
@@ -1345,15 +1457,39 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ===============================================================
   // Condition functions
 
+  inline void cmp8Set(Condition cond, Address lhs, Imm32 rhs,
+                      Register dest) PER_SHARED_ARCH;
+
+  inline void cmp16Set(Condition cond, Address lhs, Imm32 rhs,
+                       Register dest) PER_SHARED_ARCH;
+
   template <typename T1, typename T2>
   inline void cmp32Set(Condition cond, T1 lhs, T2 rhs, Register dest)
-      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64);
+      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64, loong64, riscv64,
+                 wasm32);
+
+  // Only the NotEqual and Equal conditions are allowed.
+  inline void cmp64Set(Condition cond, Address lhs, Imm64 rhs,
+                       Register dest) PER_ARCH;
 
   template <typename T1, typename T2>
   inline void cmpPtrSet(Condition cond, T1 lhs, T2 rhs, Register dest) PER_ARCH;
 
   // ===============================================================
   // Branch functions
+
+  inline void branch8(Condition cond, const Address& lhs, Imm32 rhs,
+                      Label* label) PER_SHARED_ARCH;
+
+  // Compares the byte in |lhs| against |rhs| using a 8-bit comparison on
+  // x86/x64 or a 32-bit comparison (all other platforms). The caller should
+  // ensure |rhs| is a zero- resp. sign-extended byte value for cross-platform
+  // compatible code.
+  inline void branch8(Condition cond, const BaseIndex& lhs, Register rhs,
+                      Label* label) PER_SHARED_ARCH;
+
+  inline void branch16(Condition cond, const Address& lhs, Imm32 rhs,
+                       Label* label) PER_SHARED_ARCH;
 
   template <class L>
   inline void branch32(Condition cond, Register lhs, Register rhs,
@@ -1372,10 +1508,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void branch32(Condition cond, const AbsoluteAddress& lhs, Register rhs,
                        Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void branch32(Condition cond, const AbsoluteAddress& lhs, Imm32 rhs,
                        Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   inline void branch32(Condition cond, const BaseIndex& lhs, Register rhs,
                        Label* label) DEFINED_ON(arm, x86_shared);
@@ -1389,7 +1525,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void branch32(Condition cond, wasm::SymbolicAddress lhs, Imm32 rhs,
                        Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   // The supported condition are Equal, NotEqual, LessThan(orEqual),
   // GreaterThan(orEqual), Below(orEqual) and Above(orEqual). When a fail label
@@ -1399,9 +1535,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
                        Label* success, Label* fail = nullptr) PER_ARCH;
   inline void branch64(Condition cond, Register64 lhs, Register64 rhs,
                        Label* success, Label* fail = nullptr) PER_ARCH;
-  // On x86 and x64 NotEqual and Equal conditions are allowed for the branch64
-  // variants with Address as lhs. On others only the NotEqual condition.
+  // Only the NotEqual and Equal conditions are allowed for the branch64
+  // variants with Address as lhs.
   inline void branch64(Condition cond, const Address& lhs, Imm64 val,
+                       Label* label) PER_ARCH;
+  inline void branch64(Condition cond, const Address& lhs, Register64 rhs,
                        Label* label) PER_ARCH;
 
   // Compare the value at |lhs| with the value at |rhs|.  The scratch
@@ -1438,14 +1576,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void branchPtr(Condition cond, const AbsoluteAddress& lhs,
                         Register rhs, Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void branchPtr(Condition cond, const AbsoluteAddress& lhs, ImmWord rhs,
                         Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   inline void branchPtr(Condition cond, wasm::SymbolicAddress lhs, Register rhs,
                         Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   // Given a pointer to a GC Cell, retrieve the StoreBuffer pointer from its
   // chunk header, or nullptr if it is in the tenured heap.
@@ -1453,7 +1591,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void branchPtrInNurseryChunk(Condition cond, Register ptr, Register temp,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   void branchPtrInNurseryChunk(Condition cond, const Address& address,
                                Register temp, Label* label) DEFINED_ON(x86);
   void branchValueIsNurseryCell(Condition cond, const Address& address,
@@ -1475,10 +1613,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // x64 variants will do this only in the int64_t range.
   inline void branchTruncateFloat32MaybeModUint32(FloatRegister src,
                                                   Register dest, Label* fail)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void branchTruncateDoubleMaybeModUint32(FloatRegister src,
                                                  Register dest, Label* fail)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   // Truncate a double/float32 to intptr and when it doesn't fit jump to the
   // failure label.
@@ -1491,10 +1629,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // failure label.
   inline void branchTruncateFloat32ToInt32(FloatRegister src, Register dest,
                                            Label* fail)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void branchTruncateDoubleToInt32(FloatRegister src, Register dest,
-                                          Label* fail)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+                                          Label* fail) PER_ARCH;
 
   inline void branchDouble(DoubleCondition cond, FloatRegister lhs,
                            FloatRegister rhs, Label* label) PER_SHARED_ARCH;
@@ -1524,6 +1661,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void branchNeg32(Condition cond, Register reg,
                           Label* label) PER_SHARED_ARCH;
 
+  inline void branchAdd64(Condition cond, Imm64 imm, Register64 dest,
+                          Label* label) DEFINED_ON(x86, arm, wasm32);
+
   template <typename T>
   inline void branchAddPtr(Condition cond, T src, Register dest,
                            Label* label) PER_SHARED_ARCH;
@@ -1548,7 +1688,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
                            Label* label) PER_SHARED_ARCH;
   inline void branchTest32(Condition cond, const AbsoluteAddress& lhs,
                            Imm32 rhs, Label* label)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   template <class L>
   inline void branchTestPtr(Condition cond, Register lhs, Register rhs,
@@ -1596,16 +1736,21 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void branchIfScriptHasNoJitScript(Register script, Label* label);
   inline void loadJitScript(Register script, Register dest);
 
+  // Loads the function's argument count.
+  inline void loadFunctionArgCount(Register func, Register output);
+
   // Loads the function length. This handles interpreted, native, and bound
   // functions. The caller is responsible for checking that INTERPRETED_LAZY and
   // RESOLVED_LENGTH flags are not set.
-  void loadFunctionLength(Register func, Register funFlags, Register output,
-                          Label* slowPath);
+  void loadFunctionLength(Register func, Register funFlagsAndArgCount,
+                          Register output, Label* slowPath);
 
   // Loads the function name. This handles interpreted, native, and bound
   // functions.
   void loadFunctionName(Register func, Register output, ImmGCPtr emptyString,
                         Label* slowPath);
+
+  void assertFunctionIsExtended(Register func);
 
   inline void branchFunctionKind(Condition cond,
                                  FunctionFlags::FunctionKind kind, Register fun,
@@ -1641,6 +1786,21 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                  Register scratch, Register spectreRegToZero,
                                  Label* label);
 
+ private:
+  inline void branchTestClass(Condition cond, Register clasp,
+                              std::pair<const JSClass*, const JSClass*> classes,
+                              Label* label);
+
+ public:
+  inline void branchTestObjClass(
+      Condition cond, Register obj,
+      std::pair<const JSClass*, const JSClass*> classes, Register scratch,
+      Register spectreRegToZero, Label* label);
+  inline void branchTestObjClassNoSpectreMitigations(
+      Condition cond, Register obj,
+      std::pair<const JSClass*, const JSClass*> classes, Register scratch,
+      Label* label);
+
   inline void branchTestObjShape(Condition cond, Register obj,
                                  const Shape* shape, Register scratch,
                                  Register spectreRegToZero, Label* label);
@@ -1648,6 +1808,21 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                                      Register obj,
                                                      const Shape* shape,
                                                      Label* label);
+
+  void branchTestObjShapeList(Condition cond, Register obj,
+                              Register shapeElements, Register shapeScratch,
+                              Register endScratch, Register spectreScratch,
+                              Label* label);
+
+  inline void branchTestClassIsFunction(Condition cond, Register clasp,
+                                        Label* label);
+  inline void branchTestObjIsFunction(Condition cond, Register obj,
+                                      Register scratch,
+                                      Register spectreRegToZero, Label* label);
+  inline void branchTestObjIsFunctionNoSpectreMitigations(Condition cond,
+                                                          Register obj,
+                                                          Register scratch,
+                                                          Label* label);
 
   inline void branchTestObjShape(Condition cond, Register obj, Register shape,
                                  Register scratch, Register spectreRegToZero,
@@ -1673,6 +1848,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void branchIfObjectNotExtensible(Register obj, Register scratch,
                                    Label* label);
 
+  void branchTestObjectNeedsProxyResultValidation(Condition condition,
+                                                  Register obj,
+                                                  Register scratch,
+                                                  Label* label);
+
   inline void branchTestClassIsProxy(bool proxy, Register clasp, Label* label);
 
   inline void branchTestObjectIsProxy(bool proxy, Register object,
@@ -1694,7 +1874,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void branchTestInt32(Condition cond, Register tag,
                               Label* label) PER_SHARED_ARCH;
   inline void branchTestDouble(Condition cond, Register tag, Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
   inline void branchTestNumber(Condition cond, Register tag,
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestBoolean(Condition cond, Register tag,
@@ -1726,7 +1907,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                   Label* label) PER_SHARED_ARCH;
   inline void branchTestUndefined(Condition cond, const ValueOperand& value,
                                   Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestInt32(Condition cond, const Address& address,
                               Label* label) PER_SHARED_ARCH;
@@ -1734,7 +1916,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                               Label* label) PER_SHARED_ARCH;
   inline void branchTestInt32(Condition cond, const ValueOperand& value,
                               Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestDouble(Condition cond, const Address& address,
                                Label* label) PER_SHARED_ARCH;
@@ -1742,11 +1925,13 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestDouble(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestNumber(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestBoolean(Condition cond, const Address& address,
                                 Label* label) PER_SHARED_ARCH;
@@ -1754,7 +1939,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                 Label* label) PER_SHARED_ARCH;
   inline void branchTestBoolean(Condition cond, const ValueOperand& value,
                                 Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestString(Condition cond, const Address& address,
                                Label* label) PER_SHARED_ARCH;
@@ -1762,7 +1948,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestString(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestSymbol(Condition cond, const Address& address,
                                Label* label) PER_SHARED_ARCH;
@@ -1770,7 +1957,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestSymbol(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestBigInt(Condition cond, const Address& address,
                                Label* label) PER_SHARED_ARCH;
@@ -1778,7 +1966,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestBigInt(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestNull(Condition cond, const Address& address,
                              Label* label) PER_SHARED_ARCH;
@@ -1786,7 +1975,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                              Label* label) PER_SHARED_ARCH;
   inline void branchTestNull(Condition cond, const ValueOperand& value,
                              Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   // Clobbers the ScratchReg on x64.
   inline void branchTestObject(Condition cond, const Address& address,
@@ -1795,7 +1985,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                Label* label) PER_SHARED_ARCH;
   inline void branchTestObject(Condition cond, const ValueOperand& value,
                                Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestGCThing(Condition cond, const Address& address,
                                 Label* label) PER_SHARED_ARCH;
@@ -1806,7 +1997,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void branchTestPrimitive(Condition cond, const ValueOperand& value,
                                   Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestMagic(Condition cond, const Address& address,
                               Label* label) PER_SHARED_ARCH;
@@ -1815,7 +2007,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   template <class L>
   inline void branchTestMagic(Condition cond, const ValueOperand& value,
                               L label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   inline void branchTestMagic(Condition cond, const Address& valaddr,
                               JSWhyMagic why, Label* label) PER_ARCH;
@@ -1833,17 +2026,20 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // The type of the value should match the type of the method.
   inline void branchTestInt32Truthy(bool truthy, const ValueOperand& value,
                                     Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, x86_shared,
+                 wasm32);
   inline void branchTestDoubleTruthy(bool truthy, FloatRegister reg,
                                      Label* label) PER_SHARED_ARCH;
   inline void branchTestBooleanTruthy(bool truthy, const ValueOperand& value,
                                       Label* label) PER_ARCH;
   inline void branchTestStringTruthy(bool truthy, const ValueOperand& value,
                                      Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
   inline void branchTestBigIntTruthy(bool truthy, const ValueOperand& value,
                                      Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, wasm32,
+                 x86_shared);
 
   // Create an unconditional branch to the address given as argument.
   inline void branchToComputedAddress(const BaseIndex& address) PER_ARCH;
@@ -1858,7 +2054,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   template <typename T>
   void branchValueIsNurseryCellImpl(Condition cond, const T& value,
                                     Register temp, Label* label)
-      DEFINED_ON(arm64, x64, mips64);
+      DEFINED_ON(arm64, x64, mips64, loong64, riscv64);
 
   template <typename T>
   inline void branchTestUndefinedImpl(Condition cond, const T& t, Label* label)
@@ -1901,6 +2097,23 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(arm, arm64, x86_shared);
 
  public:
+  template <typename T>
+  inline void testNumberSet(Condition cond, const T& src,
+                            Register dest) PER_SHARED_ARCH;
+  template <typename T>
+  inline void testBooleanSet(Condition cond, const T& src,
+                             Register dest) PER_SHARED_ARCH;
+  template <typename T>
+  inline void testStringSet(Condition cond, const T& src,
+                            Register dest) PER_SHARED_ARCH;
+  template <typename T>
+  inline void testSymbolSet(Condition cond, const T& src,
+                            Register dest) PER_SHARED_ARCH;
+  template <typename T>
+  inline void testBigIntSet(Condition cond, const T& src,
+                            Register dest) PER_SHARED_ARCH;
+
+ public:
   // The fallibleUnbox* methods below combine a Value type check with an unbox.
   // Especially on 64-bit platforms this can be implemented more efficiently
   // than a separate branch + unbox.
@@ -1926,13 +2139,17 @@ class MacroAssembler : public MacroAssemblerSpecific {
   template <typename T>
   inline void fallibleUnboxBigInt(const T& src, Register dest, Label* fail);
 
+  inline void cmp32Move32(Condition cond, Register lhs, Imm32 rhs, Register src,
+                          Register dest)
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86_shared);
+
   inline void cmp32Move32(Condition cond, Register lhs, Register rhs,
                           Register src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86_shared);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86_shared);
 
   inline void cmp32Move32(Condition cond, Register lhs, const Address& rhs,
                           Register src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86_shared);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86_shared);
 
   inline void cmpPtrMovePtr(Condition cond, Register lhs, Register rhs,
                             Register src, Register dest) PER_ARCH;
@@ -1942,36 +2159,40 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void cmp32Load32(Condition cond, Register lhs, const Address& rhs,
                           const Address& src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86_shared);
+      DEFINED_ON(arm, arm64, loong64, riscv64, mips_shared, x86_shared);
 
   inline void cmp32Load32(Condition cond, Register lhs, Register rhs,
                           const Address& src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86_shared);
+      DEFINED_ON(arm, arm64, loong64, riscv64, mips_shared, x86_shared);
+
+  inline void cmp32Load32(Condition cond, Register lhs, Imm32 rhs,
+                          const Address& src, Register dest)
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86_shared);
 
   inline void cmp32LoadPtr(Condition cond, const Address& lhs, Imm32 rhs,
                            const Address& src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86, x64);
 
   inline void cmp32MovePtr(Condition cond, Register lhs, Imm32 rhs,
                            Register src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86, x64);
 
   inline void test32LoadPtr(Condition cond, const Address& addr, Imm32 mask,
                             const Address& src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86, x64);
 
   inline void test32MovePtr(Condition cond, const Address& addr, Imm32 mask,
                             Register src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, loong64, riscv64, wasm32, mips_shared, x86, x64);
 
   // Conditional move for Spectre mitigations.
   inline void spectreMovePtr(Condition cond, Register src, Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   // Zeroes dest if the condition is true.
   inline void spectreZeroRegister(Condition cond, Register scratch,
                                   Register dest)
-      DEFINED_ON(arm, arm64, mips_shared, x86_shared);
+      DEFINED_ON(arm, arm64, mips_shared, x86_shared, loong64, riscv64, wasm32);
 
   // Performs a bounds check and zeroes the index register if out-of-bounds
   // (to mitigate Spectre).
@@ -1983,17 +2204,17 @@ class MacroAssembler : public MacroAssemblerSpecific {
  public:
   inline void spectreBoundsCheck32(Register index, Register length,
                                    Register maybeScratch, Label* failure)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void spectreBoundsCheck32(Register index, const Address& length,
                                    Register maybeScratch, Label* failure)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   inline void spectreBoundsCheckPtr(Register index, Register length,
                                     Register maybeScratch, Label* failure)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
   inline void spectreBoundsCheckPtr(Register index, const Address& length,
                                     Register maybeScratch, Label* failure)
-      DEFINED_ON(arm, arm64, mips_shared, x86, x64);
+      DEFINED_ON(arm, arm64, mips_shared, x86, x64, loong64, riscv64, wasm32);
 
   // ========================================================================
   // Canonicalization primitives.
@@ -2006,38 +2227,44 @@ class MacroAssembler : public MacroAssemblerSpecific {
  public:
   // ========================================================================
   // Memory access primitives.
-  inline void storeUncanonicalizedDouble(FloatRegister src, const Address& dest)
-      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64);
-  inline void storeUncanonicalizedDouble(FloatRegister src,
-                                         const BaseIndex& dest)
-      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64);
-  inline void storeUncanonicalizedDouble(FloatRegister src, const Operand& dest)
+  inline FaultingCodeOffset storeUncanonicalizedDouble(FloatRegister src,
+                                                       const Address& dest)
+      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64, loong64, riscv64,
+                 wasm32);
+  inline FaultingCodeOffset storeUncanonicalizedDouble(FloatRegister src,
+                                                       const BaseIndex& dest)
+      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64, loong64, riscv64,
+                 wasm32);
+  inline FaultingCodeOffset storeUncanonicalizedDouble(FloatRegister src,
+                                                       const Operand& dest)
       DEFINED_ON(x86_shared);
 
   template <class T>
-  inline void storeDouble(FloatRegister src, const T& dest);
+  inline FaultingCodeOffset storeDouble(FloatRegister src, const T& dest);
 
   template <class T>
   inline void boxDouble(FloatRegister src, const T& dest);
 
   using MacroAssemblerSpecific::boxDouble;
 
-  inline void storeUncanonicalizedFloat32(FloatRegister src,
-                                          const Address& dest)
-      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64);
-  inline void storeUncanonicalizedFloat32(FloatRegister src,
-                                          const BaseIndex& dest)
-      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64);
-  inline void storeUncanonicalizedFloat32(FloatRegister src,
-                                          const Operand& dest)
+  inline FaultingCodeOffset storeUncanonicalizedFloat32(FloatRegister src,
+                                                        const Address& dest)
+      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64, loong64, riscv64,
+                 wasm32);
+  inline FaultingCodeOffset storeUncanonicalizedFloat32(FloatRegister src,
+                                                        const BaseIndex& dest)
+      DEFINED_ON(x86_shared, arm, arm64, mips32, mips64, loong64, riscv64,
+                 wasm32);
+  inline FaultingCodeOffset storeUncanonicalizedFloat32(FloatRegister src,
+                                                        const Operand& dest)
       DEFINED_ON(x86_shared);
 
   template <class T>
-  inline void storeFloat32(FloatRegister src, const T& dest);
+  inline FaultingCodeOffset storeFloat32(FloatRegister src, const T& dest);
 
   template <typename T>
   void storeUnboxedValue(const ConstantOrRegister& value, MIRType valueType,
-                         const T& dest, MIRType slotType) PER_ARCH;
+                         const T& dest) PER_ARCH;
 
   inline void memoryBarrier(MemoryBarrierBits barrier) PER_SHARED_ARCH;
 
@@ -2090,8 +2317,6 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   // Constants
-
-  inline void zeroSimd128(FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
   inline void loadConstantSimd128(const SimdConstant& v, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
@@ -2154,25 +2379,46 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Replace lane value
 
+  inline void replaceLaneInt8x16(unsigned lane, FloatRegister lhs, Register rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
+
   inline void replaceLaneInt8x16(unsigned lane, Register rhs,
                                  FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void replaceLaneInt16x8(unsigned lane, FloatRegister lhs, Register rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void replaceLaneInt16x8(unsigned lane, Register rhs,
                                  FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
 
+  inline void replaceLaneInt32x4(unsigned lane, FloatRegister lhs, Register rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
+
   inline void replaceLaneInt32x4(unsigned lane, Register rhs,
                                  FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void replaceLaneInt64x2(unsigned lane, FloatRegister lhs,
+                                 Register64 rhs, FloatRegister dest)
+      DEFINED_ON(x86, x64);
 
   inline void replaceLaneInt64x2(unsigned lane, Register64 rhs,
                                  FloatRegister lhsDest)
       DEFINED_ON(x86, x64, arm64);
 
+  inline void replaceLaneFloat32x4(unsigned lane, FloatRegister lhs,
+                                   FloatRegister rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared);
+
   inline void replaceLaneFloat32x4(unsigned lane, FloatRegister rhs,
                                    FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void replaceLaneFloat64x2(unsigned lane, FloatRegister lhs,
+                                   FloatRegister rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared);
 
   inline void replaceLaneFloat64x2(unsigned lane, FloatRegister rhs,
                                    FloatRegister lhsDest)
@@ -2188,7 +2434,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void shuffleInt8x16(const uint8_t lanes[16], FloatRegister lhs,
                              FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   // Lane values must be 0 (select from lhs) or FF (select from rhs).
   // The behavior is undefined for lane values that are neither 0 nor FF.
@@ -2210,53 +2456,44 @@ class MacroAssembler : public MacroAssemblerSpecific {
                            FloatRegister rhs, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void interleaveHighInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  // Mask lane values must be ~0 or 0. The former selects from lhs and the
+  // latter from rhs.
+  // The implementation works effectively for I8x16, I16x8, I32x4, and I64x2.
+  inline void laneSelectSimd128(FloatRegister mask, FloatRegister lhs,
+                                FloatRegister rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveHighInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveHighInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveHighInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveHighInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveHighInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveHighInt64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveHighInt64x2(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveLowInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveLowInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                   FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveLowInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                   FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveLowInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                   FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveLowInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                   FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveLowInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                   FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void interleaveLowInt64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+                                   FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void interleaveLowInt64x2(FloatRegister lhs, FloatRegister rhs,
-                                   FloatRegister dest) DEFINED_ON(arm64);
+                                   FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Permute - permute with immediate indices.
 
@@ -2281,16 +2518,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
                              FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
   // Funnel shift by immediate count:
-  //   low_16_bytes_of((lhsDest ++ rhs) >> shift*8), shift must be < 32.
-  inline void concatAndRightShiftSimd128(FloatRegister rhs,
-                                         FloatRegister lhsDest, uint32_t shift)
-      DEFINED_ON(x86_shared);
-
-  // Funnel shift by immediate count:
   //   low_16_bytes_of((lhs ++ rhs) >> shift*8), shift must be < 16
   inline void concatAndRightShiftSimd128(FloatRegister lhs, FloatRegister rhs,
                                          FloatRegister dest, uint32_t shift)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   // Rotate right by immediate count:
   //   low_16_bytes_of((src ++ src) >> shift*8), shift must be < 16
@@ -2307,112 +2538,113 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  // Swizzle - permute with variable indices.  `rhs` holds the lanes parameter.
+  // Zero extend int values.
 
-  inline void swizzleInt8x16(FloatRegister rhs, FloatRegister lhsDest)
+  inline void zeroExtend8x16To16x8(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+  inline void zeroExtend8x16To32x4(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+  inline void zeroExtend8x16To64x2(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+  inline void zeroExtend16x8To32x4(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+  inline void zeroExtend16x8To64x2(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+  inline void zeroExtend32x4To64x2(FloatRegister src, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
+  // Reverse bytes in lanes.
+
+  inline void reverseInt16x8(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void reverseInt32x4(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void reverseInt64x2(FloatRegister src, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  // Swizzle - permute with variable indices.  `rhs` holds the lanes parameter.
+
   inline void swizzleInt8x16(FloatRegister lhs, FloatRegister rhs,
-                             FloatRegister dest) DEFINED_ON(arm64);
+                             FloatRegister dest) DEFINED_ON(x86_shared, arm64);
+
+  inline void swizzleInt8x16Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Integer Add
 
-  inline void addInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void addInt8x16(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void addInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void addInt16x8(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void addInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void addInt32x4(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void addInt64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void addInt64x2(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addInt64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void addInt64x2(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Integer Subtract
 
-  inline void subInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void subInt8x16(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void subInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void subInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void subInt16x8(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void subInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
-  inline void subInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
-  inline void subInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void subInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void subInt32x4(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subInt64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
-  inline void subInt64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void subInt64x2(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void subInt64x2(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
   // Integer Multiply
 
-  inline void mulInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void mulInt16x8(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void mulInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void mulInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void mulInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void mulInt32x4(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void mulInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void mulInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   // On x86_shared, it is required lhs == dest
   inline void mulInt64x2(FloatRegister lhs, FloatRegister rhs,
+                         FloatRegister dest, FloatRegister temp)
+      DEFINED_ON(x86_shared);
+
+  inline void mulInt64x2(FloatRegister lhs, const SimdConstant& rhs,
                          FloatRegister dest, FloatRegister temp)
       DEFINED_ON(x86_shared);
 
@@ -2422,86 +2654,57 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Note for the extMul opcodes, the NxM designation is for the input lanes;
   // the output lanes are twice as wide.
-  inline void extMulLowInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void extMulLowInt8x16(FloatRegister lhs, FloatRegister rhs,
-                               FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void extMulHighInt8x16(FloatRegister rhs, FloatRegister lhsDest)
+                               FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void extMulHighInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulLowInt8x16(FloatRegister rhs, FloatRegister lhsDest)
+                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulLowInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                       FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulHighInt8x16(FloatRegister rhs,
-                                        FloatRegister lhsDest)
+                                       FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulHighInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                        FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void extMulLowInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                        FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void extMulLowInt16x8(FloatRegister lhs, FloatRegister rhs,
-                               FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void extMulHighInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                               FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void extMulHighInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulLowInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulLowInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                       FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulHighInt16x8(FloatRegister rhs,
-                                        FloatRegister lhsDest)
+                                       FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulHighInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                        FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void extMulLowInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                                        FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void extMulLowInt32x4(FloatRegister lhs, FloatRegister rhs,
-                               FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void extMulHighInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                               FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void extMulHighInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulLowInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulLowInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                       FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedExtMulHighInt32x4(FloatRegister rhs,
-                                        FloatRegister lhsDest)
+                                       FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedExtMulHighInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                        FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void q15MulrSatInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                        FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void q15MulrSatInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
+                                FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Integer Negate
 
@@ -2519,209 +2722,151 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Saturating integer add
 
-  inline void addSatInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void addSatInt8x16(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addSatInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedAddSatInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addSatInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedAddSatInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedAddSatInt8x16(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void addSatInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                    FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedAddSatInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void addSatInt16x8(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addSatInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedAddSatInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addSatInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedAddSatInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedAddSatInt16x8(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedAddSatInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Saturating integer subtract
 
-  inline void subSatInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void subSatInt8x16(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subSatInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedSubSatInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void subSatInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedSubSatInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedSubSatInt8x16(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void subSatInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                    FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedSubSatInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void subSatInt16x8(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subSatInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedSubSatInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void subSatInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedSubSatInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedSubSatInt16x8(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedSubSatInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Lane-wise integer minimum
 
-  inline void minInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void minInt8x16(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void minInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMinInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void minInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMinInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedMinInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void minInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedMinInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void minInt16x8(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void minInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMinInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void minInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMinInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedMinInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void minInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedMinInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void minInt32x4(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void minInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMinInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void minInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMinInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedMinInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedMinInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Lane-wise integer maximum
 
-  inline void maxInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void maxInt8x16(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void maxInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMaxInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void maxInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMaxInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedMaxInt8x16(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void maxInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedMaxInt8x16(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void maxInt16x8(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void maxInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMaxInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void maxInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMaxInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedMaxInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void maxInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedMaxInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void maxInt32x4(FloatRegister lhs, FloatRegister rhs,
-                         FloatRegister dest) DEFINED_ON(arm64);
+                         FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void maxInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void unsignedMaxInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void maxInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                         FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedMaxInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedMaxInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedMaxInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                                 FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Lane-wise integer rounding average
 
-  inline void unsignedAverageInt8x16(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void unsignedAverageInt8x16(FloatRegister lhs, FloatRegister rhs,
-                                     FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void unsignedAverageInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+                                     FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedAverageInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                     FloatRegister dest) DEFINED_ON(arm64);
+                                     FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Lane-wise integer absolute value
 
@@ -2737,12 +2882,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void absInt64x2(FloatRegister src, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  // Left shift by scalar.  Immediates must have been masked; shifts of zero
-  // will work but may or may not generate code.
+  // Left shift by scalar. Immediates and variable shifts must have been
+  // masked; shifts of zero will work but may or may not generate code.
 
   inline void leftShiftInt8x16(Register rhs, FloatRegister lhsDest,
-                               Register temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+                               FloatRegister temp) DEFINED_ON(x86_shared);
 
   inline void leftShiftInt8x16(FloatRegister lhs, Register rhs,
                                FloatRegister dest) DEFINED_ON(arm64);
@@ -2751,8 +2895,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void leftShiftInt16x8(Register rhs, FloatRegister lhsDest,
-                               Register temp) DEFINED_ON(x86_shared);
+  inline void leftShiftInt16x8(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void leftShiftInt16x8(FloatRegister lhs, Register rhs,
                                FloatRegister dest) DEFINED_ON(arm64);
@@ -2761,8 +2905,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void leftShiftInt32x4(Register rhs, FloatRegister lhsDest,
-                               Register temp) DEFINED_ON(x86_shared);
+  inline void leftShiftInt32x4(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void leftShiftInt32x4(FloatRegister lhs, Register rhs,
                                FloatRegister dest) DEFINED_ON(arm64);
@@ -2771,8 +2915,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void leftShiftInt64x2(Register rhs, FloatRegister lhsDest,
-                               Register temp) DEFINED_ON(x86_shared);
+  inline void leftShiftInt64x2(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void leftShiftInt64x2(FloatRegister lhs, Register rhs,
                                FloatRegister dest) DEFINED_ON(arm64);
@@ -2781,12 +2925,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  // Right shift by scalar.  Immediates must have been masked; shifts of zero
-  // will work but may or may not generate code.
+  // Right shift by scalar. Immediates and variable shifts must have been
+  // masked; shifts of zero will work but may or may not generate code.
 
   inline void rightShiftInt8x16(Register rhs, FloatRegister lhsDest,
-                                Register temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+                                FloatRegister temp) DEFINED_ON(x86_shared);
 
   inline void rightShiftInt8x16(FloatRegister lhs, Register rhs,
                                 FloatRegister dest) DEFINED_ON(arm64);
@@ -2796,7 +2939,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   inline void unsignedRightShiftInt8x16(Register rhs, FloatRegister lhsDest,
-                                        Register temp1, FloatRegister temp2)
+                                        FloatRegister temp)
       DEFINED_ON(x86_shared);
 
   inline void unsignedRightShiftInt8x16(FloatRegister lhs, Register rhs,
@@ -2806,8 +2949,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                         FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void rightShiftInt16x8(Register rhs, FloatRegister lhsDest,
-                                Register temp) DEFINED_ON(x86_shared);
+  inline void rightShiftInt16x8(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void rightShiftInt16x8(FloatRegister lhs, Register rhs,
                                 FloatRegister dest) DEFINED_ON(arm64);
@@ -2816,8 +2959,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedRightShiftInt16x8(Register rhs, FloatRegister lhsDest,
-                                        Register temp) DEFINED_ON(x86_shared);
+  inline void unsignedRightShiftInt16x8(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void unsignedRightShiftInt16x8(FloatRegister lhs, Register rhs,
                                         FloatRegister dest) DEFINED_ON(arm64);
@@ -2826,8 +2969,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                         FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void rightShiftInt32x4(Register rhs, FloatRegister lhsDest,
-                                Register temp) DEFINED_ON(x86_shared);
+  inline void rightShiftInt32x4(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void rightShiftInt32x4(FloatRegister lhs, Register rhs,
                                 FloatRegister dest) DEFINED_ON(arm64);
@@ -2836,8 +2979,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedRightShiftInt32x4(Register rhs, FloatRegister lhsDest,
-                                        Register temp) DEFINED_ON(x86_shared);
+  inline void unsignedRightShiftInt32x4(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void unsignedRightShiftInt32x4(FloatRegister lhs, Register rhs,
                                         FloatRegister dest) DEFINED_ON(arm64);
@@ -2847,8 +2990,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   inline void rightShiftInt64x2(Register rhs, FloatRegister lhsDest,
-                                Register temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+                                FloatRegister temp) DEFINED_ON(x86_shared);
 
   inline void rightShiftInt64x2(Imm32 count, FloatRegister src,
                                 FloatRegister dest)
@@ -2857,8 +2999,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void rightShiftInt64x2(FloatRegister lhs, Register rhs,
                                 FloatRegister dest) DEFINED_ON(arm64);
 
-  inline void unsignedRightShiftInt64x2(Register rhs, FloatRegister lhsDest,
-                                        Register temp) DEFINED_ON(x86_shared);
+  inline void unsignedRightShiftInt64x2(Register rhs, FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   inline void unsignedRightShiftInt64x2(FloatRegister lhs, Register rhs,
                                         FloatRegister dest) DEFINED_ON(arm64);
@@ -2887,28 +3029,31 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   inline void bitwiseAndSimd128(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
+                                FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void bitwiseAndSimd128(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void bitwiseAndSimd128(FloatRegister lhs, const SimdConstant& rhs,
+                                FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void bitwiseOrSimd128(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void bitwiseOrSimd128(FloatRegister lhs, FloatRegister rhs,
-                               FloatRegister dest) DEFINED_ON(arm64);
+                               FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void bitwiseOrSimd128(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void bitwiseOrSimd128(FloatRegister lhs, const SimdConstant& rhs,
+                               FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void bitwiseXorSimd128(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void bitwiseXorSimd128(FloatRegister lhs, FloatRegister rhs,
-                                FloatRegister dest) DEFINED_ON(arm64);
+                                FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
-  inline void bitwiseXorSimd128(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void bitwiseXorSimd128(FloatRegister lhs, const SimdConstant& rhs,
+                                FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void bitwiseNotSimd128(FloatRegister src, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
@@ -2922,6 +3067,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void bitwiseNotAndSimd128(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
+
+  inline void bitwiseNotAndSimd128(FloatRegister lhs, FloatRegister rhs,
+                                   FloatRegister lhsDest)
+      DEFINED_ON(x86_shared);
 
   // Bitwise select
 
@@ -2943,7 +3092,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // Any lane true, ie, any bit set
 
   inline void anyTrueSimd128(FloatRegister src, Register dest)
-      DEFINED_ON(x86, x64, arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   // All lanes true
 
@@ -2992,13 +3141,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   // On x86_shared, limited to !=, ==, <=, >
-  inline void compareInt8x16(Assembler::Condition cond, const SimdConstant& rhs,
-                             FloatRegister lhsDest) DEFINED_ON(x86_shared);
+  inline void compareInt8x16(Assembler::Condition cond, FloatRegister lhs,
+                             const SimdConstant& rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared);
 
   // On arm64, use any integer comparison condition.
   inline void compareInt8x16(Assembler::Condition cond, FloatRegister lhs,
                              FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   inline void compareInt16x8(Assembler::Condition cond, FloatRegister rhs,
                              FloatRegister lhsDest)
@@ -3006,33 +3156,37 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   inline void compareInt16x8(Assembler::Condition cond, FloatRegister lhs,
                              FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   // On x86_shared, limited to !=, ==, <=, >
-  inline void compareInt16x8(Assembler::Condition cond, const SimdConstant& rhs,
-                             FloatRegister lhsDest) DEFINED_ON(x86_shared);
+  inline void compareInt16x8(Assembler::Condition cond, FloatRegister lhs,
+                             const SimdConstant& rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared);
 
   // On x86_shared, limited to !=, ==, <=, >
   inline void compareInt32x4(Assembler::Condition cond, FloatRegister rhs,
                              FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
 
-  // On arm64, use any integer comparison condition.
-  inline void compareInt32x4(Assembler::Condition cond, const SimdConstant& rhs,
-                             FloatRegister lhsDest) DEFINED_ON(x86_shared);
-
   inline void compareInt32x4(Assembler::Condition cond, FloatRegister lhs,
-                             FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
-
-  inline void compareForEqualityInt64x2(Assembler::Condition cond,
-                                        FloatRegister rhs,
-                                        FloatRegister lhsDest)
+                             const SimdConstant& rhs, FloatRegister dest)
       DEFINED_ON(x86_shared);
 
-  inline void compareForOrderingInt64x2(
-      Assembler::Condition cond, FloatRegister rhs, FloatRegister lhsDest,
-      FloatRegister temp1, FloatRegister temp2) DEFINED_ON(x86_shared);
+  // On arm64, use any integer comparison condition.
+  inline void compareInt32x4(Assembler::Condition cond, FloatRegister lhs,
+                             FloatRegister rhs, FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void compareForEqualityInt64x2(Assembler::Condition cond,
+                                        FloatRegister lhs, FloatRegister rhs,
+                                        FloatRegister dest)
+      DEFINED_ON(x86_shared);
+
+  inline void compareForOrderingInt64x2(Assembler::Condition cond,
+                                        FloatRegister lhs, FloatRegister rhs,
+                                        FloatRegister dest, FloatRegister temp1,
+                                        FloatRegister temp2)
+      DEFINED_ON(x86_shared);
 
   inline void compareInt64x2(Assembler::Condition cond, FloatRegister rhs,
                              FloatRegister lhsDest) DEFINED_ON(arm64);
@@ -3046,46 +3200,52 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   // On x86_shared, limited to ==, !=, <, <=
-  inline void compareFloat32x4(Assembler::Condition cond,
-                               const SimdConstant& rhs, FloatRegister lhsDest)
+  inline void compareFloat32x4(Assembler::Condition cond, FloatRegister lhs,
+                               const SimdConstant& rhs, FloatRegister dest)
       DEFINED_ON(x86_shared);
 
+  // On x86_shared, limited to ==, !=, <, <=
   // On arm64, use any float-point comparison condition.
   inline void compareFloat32x4(Assembler::Condition cond, FloatRegister lhs,
                                FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   inline void compareFloat64x2(Assembler::Condition cond, FloatRegister rhs,
                                FloatRegister lhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   // On x86_shared, limited to ==, !=, <, <=
-  inline void compareFloat64x2(Assembler::Condition cond,
-                               const SimdConstant& rhs, FloatRegister lhsDest)
+  inline void compareFloat64x2(Assembler::Condition cond, FloatRegister lhs,
+                               const SimdConstant& rhs, FloatRegister dest)
       DEFINED_ON(x86_shared);
 
+  // On x86_shared, limited to ==, !=, <, <=
   // On arm64, use any float-point comparison condition.
   inline void compareFloat64x2(Assembler::Condition cond, FloatRegister lhs,
                                FloatRegister rhs, FloatRegister dest)
-      DEFINED_ON(arm64);
+      DEFINED_ON(x86_shared, arm64);
 
   // Load
 
   inline void loadUnalignedSimd128(const Operand& src, FloatRegister dest)
       DEFINED_ON(x86_shared);
 
-  inline void loadUnalignedSimd128(const Address& src, FloatRegister dest)
+  inline FaultingCodeOffset loadUnalignedSimd128(const Address& src,
+                                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void loadUnalignedSimd128(const BaseIndex& src, FloatRegister dest)
+  inline FaultingCodeOffset loadUnalignedSimd128(const BaseIndex& src,
+                                                 FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
   // Store
 
-  inline void storeUnalignedSimd128(FloatRegister src, const Address& dest)
+  inline FaultingCodeOffset storeUnalignedSimd128(FloatRegister src,
+                                                  const Address& dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void storeUnalignedSimd128(FloatRegister src, const BaseIndex& dest)
+  inline FaultingCodeOffset storeUnalignedSimd128(FloatRegister src,
+                                                  const BaseIndex& dest)
       DEFINED_ON(x86_shared, arm64);
 
   // Floating point negation
@@ -3106,9 +3266,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // NaN-propagating minimum
 
-  inline void minFloat32x4(FloatRegister rhs, FloatRegister lhsDest,
-                           FloatRegister temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+  inline void minFloat32x4(FloatRegister lhs, FloatRegister rhs,
+                           FloatRegister dest, FloatRegister temp1,
+                           FloatRegister temp2) DEFINED_ON(x86_shared);
 
   inline void minFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(arm64);
@@ -3116,9 +3276,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void minFloat32x4(FloatRegister lhs, FloatRegister rhs,
                            FloatRegister dest) DEFINED_ON(arm64);
 
-  inline void minFloat64x2(FloatRegister rhs, FloatRegister lhsDest,
-                           FloatRegister temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+  inline void minFloat64x2(FloatRegister lhs, FloatRegister rhs,
+                           FloatRegister dest, FloatRegister temp1,
+                           FloatRegister temp2) DEFINED_ON(x86_shared);
 
   inline void minFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(arm64);
@@ -3128,9 +3288,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // NaN-propagating maximum
 
-  inline void maxFloat32x4(FloatRegister rhs, FloatRegister lhsDest,
-                           FloatRegister temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+  inline void maxFloat32x4(FloatRegister lhs, FloatRegister rhs,
+                           FloatRegister dest, FloatRegister temp1,
+                           FloatRegister temp2) DEFINED_ON(x86_shared);
 
   inline void maxFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(arm64);
@@ -3138,9 +3298,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void maxFloat32x4(FloatRegister lhs, FloatRegister rhs,
                            FloatRegister dest) DEFINED_ON(arm64);
 
-  inline void maxFloat64x2(FloatRegister rhs, FloatRegister lhsDest,
-                           FloatRegister temp1, FloatRegister temp2)
-      DEFINED_ON(x86_shared);
+  inline void maxFloat64x2(FloatRegister lhs, FloatRegister rhs,
+                           FloatRegister dest, FloatRegister temp1,
+                           FloatRegister temp2) DEFINED_ON(x86_shared);
 
   inline void maxFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
       DEFINED_ON(arm64);
@@ -3150,83 +3310,59 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Floating add
 
-  inline void addFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void addFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addFloat32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void addFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void addFloat32x4(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void addFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void addFloat64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void addFloat64x2(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Floating subtract
 
-  inline void subFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void subFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subFloat32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void subFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void subFloat32x4(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void subFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void subFloat64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void subFloat64x2(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Floating division
 
-  inline void divFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void divFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void divFloat32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void divFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void divFloat32x4(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void divFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void divFloat64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void divFloat64x2(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Floating Multiply
 
-  inline void mulFloat32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
   inline void mulFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void mulFloat32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
-
-  inline void mulFloat64x2(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
+  inline void mulFloat32x4(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void mulFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                           FloatRegister dest) DEFINED_ON(arm64);
+                           FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void mulFloat64x2(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void mulFloat64x2(FloatRegister lhs, const SimdConstant& rhs,
+                           FloatRegister dest) DEFINED_ON(x86_shared);
 
   // Pairwise add
 
@@ -3291,6 +3427,22 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                                  FloatRegister temp)
       DEFINED_ON(x86_shared, arm64);
 
+  inline void truncFloat32x4ToInt32x4Relaxed(FloatRegister src,
+                                             FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedTruncFloat32x4ToInt32x4Relaxed(FloatRegister src,
+                                                     FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void truncFloat64x2ToInt32x4Relaxed(FloatRegister src,
+                                             FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void unsignedTruncFloat64x2ToInt32x4Relaxed(FloatRegister src,
+                                                     FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
   // Floating point narrowing
 
   inline void convertFloat64x2ToFloat32x4(FloatRegister src, FloatRegister dest)
@@ -3303,43 +3455,31 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Integer to integer narrowing
 
-  inline void narrowInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
-  inline void narrowInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void narrowInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void narrowInt16x8(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedNarrowInt16x8(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
-  inline void unsignedNarrowInt16x8(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedNarrowInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedNarrowInt16x8(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void narrowInt32x4(FloatRegister rhs, FloatRegister lhsDest)
+                                    FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void narrowInt32x4(const SimdConstant& rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void narrowInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                            FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void narrowInt32x4(FloatRegister lhs, FloatRegister rhs,
-                            FloatRegister dest) DEFINED_ON(arm64);
+                            FloatRegister dest) DEFINED_ON(x86_shared, arm64);
 
-  inline void unsignedNarrowInt32x4(FloatRegister rhs, FloatRegister lhsDest)
-      DEFINED_ON(x86_shared, arm64);
-
-  inline void unsignedNarrowInt32x4(const SimdConstant& rhs,
-                                    FloatRegister lhsDest)
-      DEFINED_ON(x86_shared);
+  inline void unsignedNarrowInt32x4(FloatRegister lhs, const SimdConstant& rhs,
+                                    FloatRegister dest) DEFINED_ON(x86_shared);
 
   inline void unsignedNarrowInt32x4(FloatRegister lhs, FloatRegister rhs,
-                                    FloatRegister dest) DEFINED_ON(arm64);
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Integer to integer widening
 
@@ -3392,39 +3532,52 @@ class MacroAssembler : public MacroAssemblerSpecific {
       DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMinFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMinFloat64x2(FloatRegister rhsOrRhsDest,
                                  FloatRegister lhsOrLhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMinFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMaxFloat32x4(FloatRegister rhsOrRhsDest,
                                  FloatRegister lhsOrLhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMaxFloat32x4(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMaxFloat64x2(FloatRegister rhsOrRhsDest,
                                  FloatRegister lhsOrLhsDest)
       DEFINED_ON(x86_shared, arm64);
 
   inline void pseudoMaxFloat64x2(FloatRegister lhs, FloatRegister rhs,
-                                 FloatRegister dest) DEFINED_ON(arm64);
+                                 FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
 
   // Widening/pairwise integer dot product
 
-  inline void widenDotInt16x8(FloatRegister rhs, FloatRegister lhsDest)
+  inline void widenDotInt16x8(FloatRegister lhs, FloatRegister rhs,
+                              FloatRegister dest) DEFINED_ON(x86_shared, arm64);
+
+  inline void widenDotInt16x8(FloatRegister lhs, const SimdConstant& rhs,
+                              FloatRegister dest) DEFINED_ON(x86_shared);
+
+  inline void dotInt8x16Int7x16(FloatRegister lhs, FloatRegister rhs,
+                                FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
-  inline void widenDotInt16x8(FloatRegister lhs, FloatRegister rhs,
-                              FloatRegister dest) DEFINED_ON(arm64);
-
-  inline void widenDotInt16x8(const SimdConstant& rhs, FloatRegister lhsDest)
+  inline void dotInt8x16Int7x16ThenAdd(FloatRegister lhs, FloatRegister rhs,
+                                       FloatRegister dest)
       DEFINED_ON(x86_shared);
+
+  inline void dotInt8x16Int7x16ThenAdd(FloatRegister lhs, FloatRegister rhs,
+                                       FloatRegister dest, FloatRegister temp)
+      DEFINED_ON(arm64);
 
   // Floating point rounding
 
@@ -3452,6 +3605,54 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void nearestFloat64x2(FloatRegister src, FloatRegister dest)
       DEFINED_ON(x86_shared, arm64);
 
+  // Floating multiply-accumulate: srcDest [+-]= src1 * src2
+
+  inline void fmaFloat32x4(FloatRegister src1, FloatRegister src2,
+                           FloatRegister srcDest) DEFINED_ON(x86_shared, arm64);
+
+  inline void fnmaFloat32x4(FloatRegister src1, FloatRegister src2,
+                            FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void fmaFloat64x2(FloatRegister src1, FloatRegister src2,
+                           FloatRegister srcDest) DEFINED_ON(x86_shared, arm64);
+
+  inline void fnmaFloat64x2(FloatRegister src1, FloatRegister src2,
+                            FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void minFloat32x4Relaxed(FloatRegister src, FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void minFloat32x4Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                  FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void maxFloat32x4Relaxed(FloatRegister src, FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void maxFloat32x4Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                  FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void minFloat64x2Relaxed(FloatRegister src, FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void minFloat64x2Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                  FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void maxFloat64x2Relaxed(FloatRegister src, FloatRegister srcDest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void maxFloat64x2Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                  FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
+  inline void q15MulrInt16x8Relaxed(FloatRegister lhs, FloatRegister rhs,
+                                    FloatRegister dest)
+      DEFINED_ON(x86_shared, arm64);
+
  public:
   // ========================================================================
   // Truncate floating point.
@@ -3473,12 +3674,12 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ========================================================================
   // Convert floating point.
 
-  // temp required on x86 and x64; must be undefined on mips64.
+  // temp required on x86 and x64; must be undefined on mips64 and loong64.
   void convertUInt64ToFloat32(Register64 src, FloatRegister dest, Register temp)
-      DEFINED_ON(arm64, mips64, x64, x86);
+      DEFINED_ON(arm64, mips64, loong64, riscv64, wasm32, x64, x86);
 
   void convertInt64ToFloat32(Register64 src, FloatRegister dest)
-      DEFINED_ON(arm64, mips64, x64, x86);
+      DEFINED_ON(arm64, mips64, loong64, riscv64, wasm32, x64, x86);
 
   bool convertUInt64ToDoubleNeedsTemp() PER_ARCH;
 
@@ -3494,13 +3695,15 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ========================================================================
   // wasm support
 
-  CodeOffset wasmTrapInstruction() PER_SHARED_ARCH;
+  FaultingCodeOffset wasmTrapInstruction() PER_SHARED_ARCH;
 
   void wasmTrap(wasm::Trap trap, wasm::BytecodeOffset bytecodeOffset);
-  void wasmInterruptCheck(Register tls, wasm::BytecodeOffset bytecodeOffset);
-#ifdef ENABLE_WASM_EXCEPTIONS
-  size_t wasmStartTry();
-#endif
+
+  // Load all pinned regs via InstanceReg.  If the trapOffset is something,
+  // give the first load a trap descriptor with type IndirectCallToNull, so that
+  // a null instance will cause a trap.
+  void loadWasmPinnedRegsFromInstance(
+      mozilla::Maybe<wasm::BytecodeOffset> trapOffset = mozilla::Nothing());
 
   // Returns a pair: the offset of the undefined (trapping) instruction, and
   // the number of extra bytes of stack allocated prior to the trap
@@ -3508,9 +3711,18 @@ class MacroAssembler : public MacroAssemblerSpecific {
   std::pair<CodeOffset, uint32_t> wasmReserveStackChecked(
       uint32_t amount, wasm::BytecodeOffset trapOffset);
 
-  // Emit a bounds check against the wasm heap limit, jumping to 'label' if
-  // 'cond' holds. If JitOptions.spectreMaskIndex is true, in speculative
-  // executions 'index' is saturated in-place to 'boundsCheckLimit'.
+  // Emit a bounds check against the wasm heap limit, jumping to 'ok' if 'cond'
+  // holds; this can be the label either of the access or of the trap.  The
+  // label should name a code position greater than the position of the bounds
+  // check.
+  //
+  // If JitOptions.spectreMaskIndex is true, a no-op speculation barrier is
+  // emitted in the code stream after the check to prevent an OOB access from
+  // being executed speculatively.  (On current tier-1 platforms the barrier is
+  // a conditional saturation of 'index' to 'boundsCheckLimit', using the same
+  // condition as the check.)  If the condition is such that the bounds check
+  // branches out of line to the trap, the barrier will actually be executed
+  // when the bounds check passes.
   //
   // On 32-bit systems for both wasm and asm.js, and on 64-bit systems for
   // asm.js, heap lengths are limited to 2GB.  On 64-bit systems for wasm,
@@ -3518,20 +3730,22 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // limited to something much larger.
 
   void wasmBoundsCheck32(Condition cond, Register index,
-                         Register boundsCheckLimit, Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+                         Register boundsCheckLimit, Label* ok)
+      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared, loong64, riscv64,
+                 wasm32);
 
   void wasmBoundsCheck32(Condition cond, Register index,
-                         Address boundsCheckLimit, Label* label)
-      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+                         Address boundsCheckLimit, Label* ok)
+      DEFINED_ON(arm, arm64, mips32, mips64, x86_shared, loong64, riscv64,
+                 wasm32);
 
   void wasmBoundsCheck64(Condition cond, Register64 index,
-                         Register64 boundsCheckLimit, Label* label)
-      DEFINED_ON(arm64, mips64, x64);
+                         Register64 boundsCheckLimit, Label* ok)
+      DEFINED_ON(arm64, mips64, x64, x86, arm, loong64, riscv64, wasm32);
 
   void wasmBoundsCheck64(Condition cond, Register64 index,
-                         Address boundsCheckLimit, Label* label)
-      DEFINED_ON(arm64, mips64, x64);
+                         Address boundsCheckLimit, Label* ok)
+      DEFINED_ON(arm64, mips64, x64, x86, arm, loong64, riscv64, wasm32);
 
   // Each wasm load/store instruction appends its own wasm::Trap::OutOfBounds.
   void wasmLoad(const wasm::MemoryAccessDesc& access, Operand srcAddr,
@@ -3543,7 +3757,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void wasmStoreI64(const wasm::MemoryAccessDesc& access, Register64 value,
                     Operand dstAddr) DEFINED_ON(x86);
 
-  // For all the ARM/MIPS wasmLoad and wasmStore functions below, `ptr`
+  // For all the ARM/MIPS/LOONG64 wasmLoad and wasmStore functions below, `ptr`
   // MUST equal `ptrScratch`, and that register will be updated based on
   // conditions listed below (where it is only mentioned as `ptr`).
 
@@ -3551,16 +3765,16 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // Scalar::Int64.
   void wasmLoad(const wasm::MemoryAccessDesc& access, Register memoryBase,
                 Register ptr, Register ptrScratch, AnyRegister output)
-      DEFINED_ON(arm, mips_shared);
+      DEFINED_ON(arm, loong64, riscv64, mips_shared);
   void wasmLoadI64(const wasm::MemoryAccessDesc& access, Register memoryBase,
                    Register ptr, Register ptrScratch, Register64 output)
-      DEFINED_ON(arm, mips32, mips64);
+      DEFINED_ON(arm, mips32, mips64, loong64, riscv64);
   void wasmStore(const wasm::MemoryAccessDesc& access, AnyRegister value,
                  Register memoryBase, Register ptr, Register ptrScratch)
-      DEFINED_ON(arm, mips_shared);
+      DEFINED_ON(arm, loong64, riscv64, mips_shared);
   void wasmStoreI64(const wasm::MemoryAccessDesc& access, Register64 value,
                     Register memoryBase, Register ptr, Register ptrScratch)
-      DEFINED_ON(arm, mips32, mips64);
+      DEFINED_ON(arm, mips32, mips64, loong64, riscv64);
 
   // These accept general memoryBase + ptr + offset (in `access`); the offset is
   // always smaller than the guard region.  They will insert an additional add
@@ -3586,8 +3800,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void wasmUnalignedLoadFP(const wasm::MemoryAccessDesc& access,
                            Register memoryBase, Register ptr,
                            Register ptrScratch, FloatRegister output,
-                           Register tmp1, Register tmp2, Register tmp3)
-      DEFINED_ON(mips32, mips64);
+                           Register tmp1) DEFINED_ON(mips32, mips64);
 
   // `ptr` will always be updated.
   void wasmUnalignedLoadI64(const wasm::MemoryAccessDesc& access,
@@ -3625,7 +3838,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void oolWasmTruncateCheckF64ToI32(FloatRegister input, Register output,
                                     TruncFlags flags, wasm::BytecodeOffset off,
                                     Label* rejoin)
-      DEFINED_ON(arm, arm64, x86_shared, mips_shared);
+      DEFINED_ON(arm, arm64, x86_shared, mips_shared, loong64, riscv64, wasm32);
 
   void wasmTruncateFloat32ToUInt32(FloatRegister input, Register output,
                                    bool isSaturating, Label* oolEntry) PER_ARCH;
@@ -3635,53 +3848,322 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void oolWasmTruncateCheckF32ToI32(FloatRegister input, Register output,
                                     TruncFlags flags, wasm::BytecodeOffset off,
                                     Label* rejoin)
-      DEFINED_ON(arm, arm64, x86_shared, mips_shared);
+      DEFINED_ON(arm, arm64, x86_shared, mips_shared, loong64, riscv64, wasm32);
 
   // The truncate-to-int64 methods will always bind the `oolRejoin` label
   // after the last emitted instruction.
   void wasmTruncateDoubleToInt64(FloatRegister input, Register64 output,
                                  bool isSaturating, Label* oolEntry,
                                  Label* oolRejoin, FloatRegister tempDouble)
-      DEFINED_ON(arm64, x86, x64, mips64);
+      DEFINED_ON(arm64, x86, x64, mips64, loong64, riscv64, wasm32);
   void wasmTruncateDoubleToUInt64(FloatRegister input, Register64 output,
                                   bool isSaturating, Label* oolEntry,
                                   Label* oolRejoin, FloatRegister tempDouble)
-      DEFINED_ON(arm64, x86, x64, mips64);
+      DEFINED_ON(arm64, x86, x64, mips64, loong64, riscv64, wasm32);
   void oolWasmTruncateCheckF64ToI64(FloatRegister input, Register64 output,
                                     TruncFlags flags, wasm::BytecodeOffset off,
                                     Label* rejoin)
-      DEFINED_ON(arm, arm64, x86_shared, mips_shared);
+      DEFINED_ON(arm, arm64, x86_shared, mips_shared, loong64, riscv64, wasm32);
 
   void wasmTruncateFloat32ToInt64(FloatRegister input, Register64 output,
                                   bool isSaturating, Label* oolEntry,
                                   Label* oolRejoin, FloatRegister tempDouble)
-      DEFINED_ON(arm64, x86, x64, mips64);
+      DEFINED_ON(arm64, x86, x64, mips64, loong64, riscv64, wasm32);
   void wasmTruncateFloat32ToUInt64(FloatRegister input, Register64 output,
                                    bool isSaturating, Label* oolEntry,
                                    Label* oolRejoin, FloatRegister tempDouble)
-      DEFINED_ON(arm64, x86, x64, mips64);
+      DEFINED_ON(arm64, x86, x64, mips64, loong64, riscv64, wasm32);
   void oolWasmTruncateCheckF32ToI64(FloatRegister input, Register64 output,
                                     TruncFlags flags, wasm::BytecodeOffset off,
                                     Label* rejoin)
-      DEFINED_ON(arm, arm64, x86_shared, mips_shared);
+      DEFINED_ON(arm, arm64, x86_shared, mips_shared, loong64, riscv64, wasm32);
 
-  // This function takes care of loading the callee's TLS and pinned regs but
-  // it is the caller's responsibility to save/restore TLS or pinned regs.
+  // This function takes care of loading the callee's instance and pinned regs
+  // but it is the caller's responsibility to save/restore instance or pinned
+  // regs.
   CodeOffset wasmCallImport(const wasm::CallSiteDesc& desc,
                             const wasm::CalleeDesc& callee);
 
-  // WasmTableCallIndexReg must contain the index of the indirect call.
-  CodeOffset wasmCallIndirect(const wasm::CallSiteDesc& desc,
+#ifdef ENABLE_WASM_TAIL_CALLS
+  CodeOffset wasmReturnCallImport(const wasm::CallSiteDesc& desc,
+                                  const wasm::CalleeDesc& callee,
+                                  const ReturnCallAdjustmentInfo& retCallInfo);
+
+  CodeOffset wasmReturnCall(const wasm::CallSiteDesc& desc,
+                            uint32_t funcDefIndex,
+                            const ReturnCallAdjustmentInfo& retCallInfo);
+
+  void wasmCollapseFrameSlow(const ReturnCallAdjustmentInfo& retCallInfo,
+                             wasm::CallSiteDesc desc);
+
+  void wasmCollapseFrameFast(const ReturnCallAdjustmentInfo& retCallInfo);
+
+  void wasmCheckSlowCallsite(Register ra, Label* notSlow, Register temp1,
+                             Register temp2)
+      DEFINED_ON(x86, x64, arm, arm64, loong64, mips64, riscv64);
+
+  void wasmMarkSlowCall()
+      DEFINED_ON(x86, x64, arm, arm64, loong64, mips64, riscv64);
+#endif
+
+  // WasmTableCallIndexReg must contain the index of the indirect call.  This is
+  // for wasm calls only.
+  //
+  // Indirect calls use a dual-path mechanism where a run-time test determines
+  // whether a context switch is needed (slow path) or not (fast path).  This
+  // gives rise to two call instructions, both of which need safe points.  As
+  // per normal, the call offsets are the code offsets at the end of the call
+  // instructions (the return points).
+  //
+  // `boundsCheckFailedLabel` is non-null iff a bounds check is required.
+  // `nullCheckFailedLabel` is non-null only on platforms that can't fold the
+  // null check into the rest of the call instructions.
+  void wasmCallIndirect(const wasm::CallSiteDesc& desc,
+                        const wasm::CalleeDesc& callee,
+                        Label* boundsCheckFailedLabel,
+                        Label* nullCheckFailedLabel,
+                        mozilla::Maybe<uint32_t> tableSize,
+                        CodeOffset* fastCallOffset, CodeOffset* slowCallOffset);
+
+#ifdef ENABLE_WASM_TAIL_CALLS
+  // WasmTableCallIndexReg must contain the index of the indirect call.  This is
+  // for wasm calls only.
+  //
+  // `boundsCheckFailedLabel` is non-null iff a bounds check is required.
+  // `nullCheckFailedLabel` is non-null only on platforms that can't fold the
+  // null check into the rest of the call instructions.
+  void wasmReturnCallIndirect(const wasm::CallSiteDesc& desc,
                               const wasm::CalleeDesc& callee,
-                              bool needsBoundsCheck);
+                              Label* boundsCheckFailedLabel,
+                              Label* nullCheckFailedLabel,
+                              mozilla::Maybe<uint32_t> tableSize,
+                              const ReturnCallAdjustmentInfo& retCallInfo);
+#endif  // ENABLE_WASM_TAIL_CALLS
+
+  // This function takes care of loading the callee's instance and address from
+  // pinned reg.
+  void wasmCallRef(const wasm::CallSiteDesc& desc,
+                   const wasm::CalleeDesc& callee, CodeOffset* fastCallOffset,
+                   CodeOffset* slowCallOffset);
+
+#ifdef ENABLE_WASM_TAIL_CALLS
+  void wasmReturnCallRef(const wasm::CallSiteDesc& desc,
+                         const wasm::CalleeDesc& callee,
+                         const ReturnCallAdjustmentInfo& retCallInfo);
+#endif  // ENABLE_WASM_TAIL_CALLS
+
+  // WasmTableCallIndexReg must contain the index of the indirect call.
+  // This is for asm.js calls only.
+  CodeOffset asmCallIndirect(const wasm::CallSiteDesc& desc,
+                             const wasm::CalleeDesc& callee);
 
   // This function takes care of loading the pointer to the current instance
-  // as the implicit first argument. It preserves TLS and pinned registers.
-  // (TLS & pinned regs are non-volatile registers in the system ABI).
+  // as the implicit first argument. It preserves instance and pinned registers.
+  // (instance & pinned regs are non-volatile registers in the system ABI).
   CodeOffset wasmCallBuiltinInstanceMethod(const wasm::CallSiteDesc& desc,
                                            const ABIArg& instanceArg,
                                            wasm::SymbolicAddress builtin,
                                            wasm::FailureMode failureMode);
+
+  // Performs a bounds check for ranged wasm operations like memory.fill or
+  // array.fill. This handles the bizarre edge case in the wasm spec where a
+  // write to index N is valid as long as the length is zero - despite the index
+  // itself being out of bounds.
+  //
+  // `length` and `limit` will be unchanged.
+  void wasmBoundsCheckRange32(Register index, Register length, Register limit,
+                              Register tmp,
+                              wasm::BytecodeOffset bytecodeOffset);
+
+  // Returns information about which registers are necessary for a
+  // branchWasmRefIsSubtype call.
+  static BranchWasmRefIsSubtypeRegisters regsForBranchWasmRefIsSubtype(
+      wasm::RefType type);
+
+  // Perform a subtype check that `ref` is a subtype of `type`, branching to
+  // `label` depending on `onSuccess`.
+  //
+  // Will select one of the other branchWasmRefIsSubtype* functions depending on
+  // destType. See each function for the register allocation requirements, as
+  // well as which registers will be preserved.
+  void branchWasmRefIsSubtype(Register ref, wasm::RefType sourceType,
+                              wasm::RefType destType, Label* label,
+                              bool onSuccess, Register superSTV,
+                              Register scratch1, Register scratch2);
+
+  // Perform a subtype check that `ref` is a subtype of `type`, branching to
+  // `label` depending on `onSuccess`. `type` must be in the `any` hierarchy.
+  //
+  // `superSTV` is required iff the destination type is a concrete
+  // type. `scratch1` is required iff the destination type is eq or lower and
+  // not none. `scratch2` is required iff the destination type is a concrete
+  // type and its `subTypingDepth` is >= wasm::MinSuperTypeVectorLength. See
+  // regsForBranchWasmRefIsSubtype.
+  //
+  // `ref` and `superSTV` are preserved. Scratch registers are
+  // clobbered.
+  void branchWasmRefIsSubtypeAny(Register ref, wasm::RefType sourceType,
+                                 wasm::RefType destType, Label* label,
+                                 bool onSuccess, Register superSTV,
+                                 Register scratch1, Register scratch2);
+
+  // Perform a subtype check that `ref` is a subtype of `type`, branching to
+  // `label` depending on `onSuccess`. `type` must be in the `func` hierarchy.
+  //
+  // `superSTV` and `scratch1` are required iff the destination type
+  // is a concrete type (not func and not nofunc). `scratch2` is required iff
+  // the destination type is a concrete type and its `subTypingDepth` is >=
+  // wasm::MinSuperTypeVectorLength. See regsForBranchWasmRefIsSubtype.
+  //
+  // `ref` and `superSTV` are preserved. Scratch registers are
+  // clobbered.
+  void branchWasmRefIsSubtypeFunc(Register ref, wasm::RefType sourceType,
+                                  wasm::RefType destType, Label* label,
+                                  bool onSuccess, Register superSTV,
+                                  Register scratch1, Register scratch2);
+
+  // Perform a subtype check that `ref` is a subtype of `destType`, branching to
+  // `label` depending on `onSuccess`. `type` must be in the `extern` hierarchy.
+  void branchWasmRefIsSubtypeExtern(Register ref, wasm::RefType sourceType,
+                                    wasm::RefType destType, Label* label,
+                                    bool onSuccess);
+
+  // Perform a subtype check that `ref` is a subtype of `destType`, branching to
+  // `label` depending on `onSuccess`. `type` must be in the `exn` hierarchy.
+  void branchWasmRefIsSubtypeExn(Register ref, wasm::RefType sourceType,
+                                 wasm::RefType destType, Label* label,
+                                 bool onSuccess);
+
+  // Perform a subtype check that `subSTV` is a subtype of `superSTV`, branching
+  // to `label` depending on `onSuccess`. This method is a specialization of the
+  // general `wasm::TypeDef::isSubTypeOf` method for the case where the
+  // `superSTV` is statically known, which is the case for all wasm
+  // instructions.
+  //
+  // `scratch` is required iff the `superDepth` is >=
+  // wasm::MinSuperTypeVectorLength. `subSTV` is clobbered by this method.
+  // `superSTV` is preserved.
+  void branchWasmSTVIsSubtype(Register subSTV, Register superSTV,
+                              Register scratch, uint32_t superDepth,
+                              Label* label, bool onSuccess);
+
+  // Same as branchWasmSTVIsSubtype, but looks up a dynamic position in the
+  // super type vector.
+  //
+  // `scratch` is always required. `subSTV` and `superDepth` are clobbered.
+  // `superSTV` is preserved.
+  void branchWasmSTVIsSubtypeDynamicDepth(Register subSTV, Register superSTV,
+                                          Register superDepth, Register scratch,
+                                          Label* label, bool onSuccess);
+
+  // Branch if the wasm anyref `src` is or is not the null value.
+  void branchWasmAnyRefIsNull(bool isNull, Register src, Label* label);
+  // Branch if the wasm anyref `src` is or is not an I31.
+  void branchWasmAnyRefIsI31(bool isI31, Register src, Label* label);
+  // Branch if the wasm anyref `src` is or is not a JSObject*.
+  void branchWasmAnyRefIsObjectOrNull(bool isObject, Register src,
+                                      Label* label);
+  // Branch if the wasm anyref `src` is or is not a GC thing.
+  void branchWasmAnyRefIsGCThing(bool isGCThing, Register src, Label* label);
+  // Branch if the wasm anyref `src` is or is not pointing to a nursery cell.
+  void branchWasmAnyRefIsNurseryCell(bool isNurseryCell, Register src,
+                                     Register scratch, Label* label);
+
+  // Create a wasm i31ref by truncating the 32-bit integer.
+  void truncate32ToWasmI31Ref(Register src, Register dest);
+  // Convert a wasm i31ref to a signed 32-bit integer.
+  void convertWasmI31RefTo32Signed(Register src, Register dest);
+  // Convert a wasm i31ref to an unsigned 32-bit integer.
+  void convertWasmI31RefTo32Unsigned(Register src, Register dest);
+
+  // Branch if the JS value `src` would need to be boxed out of line to be
+  // converted to a wasm anyref.
+  void branchValueConvertsToWasmAnyRefInline(ValueOperand src,
+                                             Register scratchInt,
+                                             FloatRegister scratchFloat,
+                                             Label* label);
+  // Convert a JS value to a wasm anyref. If the value requires boxing, this
+  // will branch to `oolConvert`.
+  void convertValueToWasmAnyRef(ValueOperand src, Register dest,
+                                FloatRegister scratchFloat, Label* oolConvert);
+  // Convert a JS object to a wasm anyref. This cannot fail.
+  void convertObjectToWasmAnyRef(Register src, Register dest);
+  // Convert a JS string to a wasm anyref. This cannot fail.
+  void convertStringToWasmAnyRef(Register src, Register dest);
+
+  // Convert a wasm anyref to a JS value. This cannot fail.
+  //
+  // Due to spectre mitigations, these methods may clobber src.
+  void convertWasmAnyRefToValue(Register instance, Register src,
+                                ValueOperand dst, Register scratch);
+  void convertWasmAnyRefToValue(Register instance, Register src,
+                                const Address& dst, Register scratch);
+
+  // Branch if the object `src` is or is not a WasmGcObject.
+  void branchObjectIsWasmGcObject(bool isGcObject, Register src,
+                                  Register scratch, Label* label);
+
+  // `typeDefData` will be preserved. `instance` and `result` may be the same
+  // register, in which case `instance` will be clobbered.
+  void wasmNewStructObject(Register instance, Register result,
+                           Register typeDefData, Register temp1, Register temp2,
+                           Label* fail, gc::AllocKind allocKind,
+                           bool zeroFields);
+  // Allocates a wasm array with a dynamic number of elements.
+  //
+  // `numElements` and `typeDefData` will be preserved. `instance` and `result`
+  // may be the same register, in which case `instance` will be clobbered.
+  void wasmNewArrayObject(Register instance, Register result,
+                          Register numElements, Register typeDefData,
+                          Register temp, Label* fail, uint32_t elemSize,
+                          bool zeroFields);
+  // Allocates a wasm array with a fixed number of elements.
+  //
+  // `typeDefData` will be preserved. `instance` and `result` may be the same
+  // register, in which case `instance` will be clobbered.
+  void wasmNewArrayObjectFixed(Register instance, Register result,
+                               Register typeDefData, Register temp1,
+                               Register temp2, Label* fail,
+                               uint32_t numElements, uint32_t storageBytes,
+                               bool zeroFields);
+
+  // This function handles nursery allocations for wasm. For JS, see
+  // MacroAssembler::bumpPointerAllocate.
+  //
+  // `typeDefData` will be preserved. `instance` and `result` may be the same
+  // register, in which case `instance` will be clobbered.
+  //
+  // See also the dynamically-sized version,
+  // MacroAssembler::wasmBumpPointerAllocateDynamic.
+  void wasmBumpPointerAllocate(Register instance, Register result,
+                               Register typeDefData, Register temp1,
+                               Register temp2, Label* fail, uint32_t size);
+  // This function handles nursery allocations for wasm of dynamic size. For
+  // fixed-size allocations, see MacroAssembler::wasmBumpPointerAllocate.
+  //
+  // `typeDefData` and `size` will be preserved. `instance` and `result` may be
+  // the same register, in which case `instance` will be clobbered.
+  void wasmBumpPointerAllocateDynamic(Register instance, Register result,
+                                      Register typeDefData, Register size,
+                                      Register temp1, Label* fail);
+
+  // Compute ptr += (indexTemp32 << shift) where shift can be any value < 32.
+  // May destroy indexTemp32.  The value of indexTemp32 must be positive, and it
+  // is implementation-defined what happens if bits are lost or the value
+  // becomes negative through the shift.  On 64-bit systems, the high 32 bits of
+  // indexTemp32 must be zero, not garbage.
+  void shiftIndex32AndAdd(Register indexTemp32, int shift,
+                          Register pointer) PER_SHARED_ARCH;
+
+  // The System ABI frequently states that the high bits of a 64-bit register
+  // that holds a 32-bit return value are unpredictable, and C++ compilers will
+  // indeed generate code that leaves garbage in the upper bits.
+  //
+  // Adjust the contents of the 64-bit register `r` to conform to our internal
+  // convention, which requires predictable high bits.  In practice, this means
+  // that the 32-bit value will be zero-extended or sign-extended to 64 bits as
+  // appropriate for the platform.
+  void widenInt32(Register r) DEFINED_ON(arm64, x64, mips64, loong64, riscv64);
 
   // As enterFakeExitFrame(), but using register conventions appropriate for
   // wasm stubs.
@@ -3726,76 +4208,76 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // MIPS: `valueTemp`, `offsetTemp` and `maskTemp` must be defined for 8-bit
   // and 16-bit wide operations.
 
-  void compareExchange(Scalar::Type type, const Synchronization& sync,
+  void compareExchange(Scalar::Type type, Synchronization sync,
                        const Address& mem, Register expected,
                        Register replacement, Register output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void compareExchange(Scalar::Type type, const Synchronization& sync,
+  void compareExchange(Scalar::Type type, Synchronization sync,
                        const BaseIndex& mem, Register expected,
                        Register replacement, Register output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void compareExchange(Scalar::Type type, const Synchronization& sync,
+  void compareExchange(Scalar::Type type, Synchronization sync,
                        const Address& mem, Register expected,
                        Register replacement, Register valueTemp,
                        Register offsetTemp, Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void compareExchange(Scalar::Type type, const Synchronization& sync,
+  void compareExchange(Scalar::Type type, Synchronization sync,
                        const BaseIndex& mem, Register expected,
                        Register replacement, Register valueTemp,
                        Register offsetTemp, Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   // x86: `expected` and `output` must be edx:eax; `replacement` is ecx:ebx.
   // x64: `output` must be rax.
   // ARM: Registers must be distinct; `replacement` and `output` must be
   // (even,odd) pairs.
 
-  void compareExchange64(const Synchronization& sync, const Address& mem,
+  void compareExchange64(Synchronization sync, const Address& mem,
                          Register64 expected, Register64 replacement,
                          Register64 output)
-      DEFINED_ON(arm, arm64, x64, x86, mips64);
+      DEFINED_ON(arm, arm64, x64, x86, mips64, loong64, riscv64);
 
-  void compareExchange64(const Synchronization& sync, const BaseIndex& mem,
+  void compareExchange64(Synchronization sync, const BaseIndex& mem,
                          Register64 expected, Register64 replacement,
                          Register64 output)
-      DEFINED_ON(arm, arm64, x64, x86, mips64);
+      DEFINED_ON(arm, arm64, x64, x86, mips64, loong64, riscv64);
 
   // Exchange with memory.  Return the value initially in memory.
   // MIPS: `valueTemp`, `offsetTemp` and `maskTemp` must be defined for 8-bit
   // and 16-bit wide operations.
 
-  void atomicExchange(Scalar::Type type, const Synchronization& sync,
+  void atomicExchange(Scalar::Type type, Synchronization sync,
                       const Address& mem, Register value, Register output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicExchange(Scalar::Type type, const Synchronization& sync,
+  void atomicExchange(Scalar::Type type, Synchronization sync,
                       const BaseIndex& mem, Register value, Register output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicExchange(Scalar::Type type, const Synchronization& sync,
+  void atomicExchange(Scalar::Type type, Synchronization sync,
                       const Address& mem, Register value, Register valueTemp,
                       Register offsetTemp, Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicExchange(Scalar::Type type, const Synchronization& sync,
+  void atomicExchange(Scalar::Type type, Synchronization sync,
                       const BaseIndex& mem, Register value, Register valueTemp,
                       Register offsetTemp, Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   // x86: `value` must be ecx:ebx; `output` must be edx:eax.
   // ARM: `value` and `output` must be distinct and (even,odd) pairs.
   // ARM64: `value` and `output` must be distinct.
 
-  void atomicExchange64(const Synchronization& sync, const Address& mem,
+  void atomicExchange64(Synchronization sync, const Address& mem,
                         Register64 value, Register64 output)
-      DEFINED_ON(arm, arm64, x64, x86, mips64);
+      DEFINED_ON(arm, arm64, x64, x86, mips64, loong64, riscv64);
 
-  void atomicExchange64(const Synchronization& sync, const BaseIndex& mem,
+  void atomicExchange64(Synchronization sync, const BaseIndex& mem,
                         Register64 value, Register64 output)
-      DEFINED_ON(arm, arm64, x64, x86, mips64);
+      DEFINED_ON(arm, arm64, x64, x86, mips64, loong64, riscv64);
 
   // Read-modify-write with memory.  Return the value in memory before the
   // operation.
@@ -3810,33 +4292,31 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // MIPS: `valueTemp`, `offsetTemp` and `maskTemp` must be defined for 8-bit
   // and 16-bit wide operations; `value` and `output` must differ.
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Register value, const Address& mem,
-                     Register temp, Register output)
-      DEFINED_ON(arm, arm64, x86_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Register value, const Address& mem, Register temp,
+                     Register output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Imm32 value, const Address& mem,
-                     Register temp, Register output) DEFINED_ON(x86_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Imm32 value, const Address& mem, Register temp,
+                     Register output) DEFINED_ON(x86_shared);
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Register value, const BaseIndex& mem,
-                     Register temp, Register output)
-      DEFINED_ON(arm, arm64, x86_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Register value, const BaseIndex& mem, Register temp,
+                     Register output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Imm32 value, const BaseIndex& mem,
-                     Register temp, Register output) DEFINED_ON(x86_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Imm32 value, const BaseIndex& mem, Register temp,
+                     Register output) DEFINED_ON(x86_shared);
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Register value, const Address& mem,
-                     Register valueTemp, Register offsetTemp, Register maskTemp,
-                     Register output) DEFINED_ON(mips_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Register value, const Address& mem, Register valueTemp,
+                     Register offsetTemp, Register maskTemp, Register output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicFetchOp(Scalar::Type type, const Synchronization& sync,
-                     AtomicOp op, Register value, const BaseIndex& mem,
-                     Register valueTemp, Register offsetTemp, Register maskTemp,
-                     Register output) DEFINED_ON(mips_shared);
+  void atomicFetchOp(Scalar::Type type, Synchronization sync, AtomicOp op,
+                     Register value, const BaseIndex& mem, Register valueTemp,
+                     Register offsetTemp, Register maskTemp, Register output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   // x86:
   //   `temp` must be ecx:ebx; `output` must be edx:eax.
@@ -3848,21 +4328,21 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ARM64:
   //   Registers `value`, `temp`, and `output` must all differ.
 
-  void atomicFetchOp64(const Synchronization& sync, AtomicOp op,
-                       Register64 value, const Address& mem, Register64 temp,
-                       Register64 output) DEFINED_ON(arm, arm64, x64, mips64);
+  void atomicFetchOp64(Synchronization sync, AtomicOp op, Register64 value,
+                       const Address& mem, Register64 temp, Register64 output)
+      DEFINED_ON(arm, arm64, x64, mips64, loong64, riscv64);
 
-  void atomicFetchOp64(const Synchronization& sync, AtomicOp op,
-                       const Address& value, const Address& mem,
-                       Register64 temp, Register64 output) DEFINED_ON(x86);
+  void atomicFetchOp64(Synchronization sync, AtomicOp op, const Address& value,
+                       const Address& mem, Register64 temp, Register64 output)
+      DEFINED_ON(x86);
 
-  void atomicFetchOp64(const Synchronization& sync, AtomicOp op,
-                       Register64 value, const BaseIndex& mem, Register64 temp,
-                       Register64 output) DEFINED_ON(arm, arm64, x64, mips64);
+  void atomicFetchOp64(Synchronization sync, AtomicOp op, Register64 value,
+                       const BaseIndex& mem, Register64 temp, Register64 output)
+      DEFINED_ON(arm, arm64, x64, mips64, loong64, riscv64);
 
-  void atomicFetchOp64(const Synchronization& sync, AtomicOp op,
-                       const Address& value, const BaseIndex& mem,
-                       Register64 temp, Register64 output) DEFINED_ON(x86);
+  void atomicFetchOp64(Synchronization sync, AtomicOp op, const Address& value,
+                       const BaseIndex& mem, Register64 temp, Register64 output)
+      DEFINED_ON(x86);
 
   // x64:
   //   `value` can be any register.
@@ -3871,19 +4351,19 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // ARM64:
   //   Registers `value` and `temp` must differ.
 
-  void atomicEffectOp64(const Synchronization& sync, AtomicOp op,
-                        Register64 value, const Address& mem) DEFINED_ON(x64);
+  void atomicEffectOp64(Synchronization sync, AtomicOp op, Register64 value,
+                        const Address& mem) DEFINED_ON(x64);
 
-  void atomicEffectOp64(const Synchronization& sync, AtomicOp op,
-                        Register64 value, const Address& mem, Register64 temp)
-      DEFINED_ON(arm, arm64, mips64);
+  void atomicEffectOp64(Synchronization sync, AtomicOp op, Register64 value,
+                        const Address& mem, Register64 temp)
+      DEFINED_ON(arm, arm64, mips64, loong64, riscv64);
 
-  void atomicEffectOp64(const Synchronization& sync, AtomicOp op,
-                        Register64 value, const BaseIndex& mem) DEFINED_ON(x64);
+  void atomicEffectOp64(Synchronization sync, AtomicOp op, Register64 value,
+                        const BaseIndex& mem) DEFINED_ON(x64);
 
-  void atomicEffectOp64(const Synchronization& sync, AtomicOp op,
-                        Register64 value, const BaseIndex& mem, Register64 temp)
-      DEFINED_ON(arm, arm64, mips64);
+  void atomicEffectOp64(Synchronization sync, AtomicOp op, Register64 value,
+                        const BaseIndex& mem, Register64 temp)
+      DEFINED_ON(arm, arm64, mips64, loong64, riscv64);
 
   // 64-bit atomic load. On 64-bit systems, use regular load with
   // Synchronization::Load, not this method.
@@ -3891,16 +4371,16 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // x86: `temp` must be ecx:ebx; `output` must be edx:eax.
   // ARM: `output` must be (even,odd) pair.
 
-  void atomicLoad64(const Synchronization& sync, const Address& mem,
-                    Register64 temp, Register64 output) DEFINED_ON(x86);
+  void atomicLoad64(Synchronization sync, const Address& mem, Register64 temp,
+                    Register64 output) DEFINED_ON(x86);
 
-  void atomicLoad64(const Synchronization& sync, const BaseIndex& mem,
-                    Register64 temp, Register64 output) DEFINED_ON(x86);
+  void atomicLoad64(Synchronization sync, const BaseIndex& mem, Register64 temp,
+                    Register64 output) DEFINED_ON(x86);
 
-  void atomicLoad64(const Synchronization& sync, const Address& mem,
-                    Register64 output) DEFINED_ON(arm);
+  void atomicLoad64(Synchronization sync, const Address& mem, Register64 output)
+      DEFINED_ON(arm);
 
-  void atomicLoad64(const Synchronization& sync, const BaseIndex& mem,
+  void atomicLoad64(Synchronization sync, const BaseIndex& mem,
                     Register64 output) DEFINED_ON(arm);
 
   // 64-bit atomic store. On 64-bit systems, use regular store with
@@ -3909,10 +4389,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // x86: `value` must be ecx:ebx; `temp` must be edx:eax.
   // ARM: `value` and `temp` must be (even,odd) pairs.
 
-  void atomicStore64(const Synchronization& sync, const Address& mem,
-                     Register64 value, Register64 temp) DEFINED_ON(x86, arm);
+  void atomicStore64(Synchronization sync, const Address& mem, Register64 value,
+                     Register64 temp) DEFINED_ON(x86, arm);
 
-  void atomicStore64(const Synchronization& sync, const BaseIndex& mem,
+  void atomicStore64(Synchronization sync, const BaseIndex& mem,
                      Register64 value, Register64 temp) DEFINED_ON(x86, arm);
 
   // ========================================================================
@@ -3935,13 +4415,15 @@ class MacroAssembler : public MacroAssemblerSpecific {
                            const Address& mem, Register expected,
                            Register replacement, Register valueTemp,
                            Register offsetTemp, Register maskTemp,
-                           Register output) DEFINED_ON(mips_shared);
+                           Register output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmCompareExchange(const wasm::MemoryAccessDesc& access,
                            const BaseIndex& mem, Register expected,
                            Register replacement, Register valueTemp,
                            Register offsetTemp, Register maskTemp,
-                           Register output) DEFINED_ON(mips_shared);
+                           Register output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmAtomicExchange(const wasm::MemoryAccessDesc& access,
                           const Address& mem, Register value, Register output)
@@ -3955,13 +4437,13 @@ class MacroAssembler : public MacroAssemblerSpecific {
                           const Address& mem, Register value,
                           Register valueTemp, Register offsetTemp,
                           Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmAtomicExchange(const wasm::MemoryAccessDesc& access,
                           const BaseIndex& mem, Register value,
                           Register valueTemp, Register offsetTemp,
                           Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmAtomicFetchOp(const wasm::MemoryAccessDesc& access, AtomicOp op,
                          Register value, const Address& mem, Register temp,
@@ -3982,13 +4464,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void wasmAtomicFetchOp(const wasm::MemoryAccessDesc& access, AtomicOp op,
                          Register value, const Address& mem, Register valueTemp,
                          Register offsetTemp, Register maskTemp,
-                         Register output) DEFINED_ON(mips_shared);
+                         Register output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmAtomicFetchOp(const wasm::MemoryAccessDesc& access, AtomicOp op,
                          Register value, const BaseIndex& mem,
                          Register valueTemp, Register offsetTemp,
                          Register maskTemp, Register output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   // Read-modify-write with memory.  Return no value.
   //
@@ -4014,12 +4497,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void wasmAtomicEffectOp(const wasm::MemoryAccessDesc& access, AtomicOp op,
                           Register value, const Address& mem,
                           Register valueTemp, Register offsetTemp,
-                          Register maskTemp) DEFINED_ON(mips_shared);
+                          Register maskTemp)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void wasmAtomicEffectOp(const wasm::MemoryAccessDesc& access, AtomicOp op,
                           Register value, const BaseIndex& mem,
                           Register valueTemp, Register offsetTemp,
-                          Register maskTemp) DEFINED_ON(mips_shared);
+                          Register maskTemp)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   // 64-bit wide operations.
 
@@ -4032,11 +4517,11 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void wasmAtomicLoad64(const wasm::MemoryAccessDesc& access,
                         const Address& mem, Register64 temp, Register64 output)
-      DEFINED_ON(arm, mips32, x86);
+      DEFINED_ON(arm, mips32, x86, wasm32);
 
   void wasmAtomicLoad64(const wasm::MemoryAccessDesc& access,
                         const BaseIndex& mem, Register64 temp,
-                        Register64 output) DEFINED_ON(arm, mips32, x86);
+                        Register64 output) DEFINED_ON(arm, mips32, x86, wasm32);
 
   // x86: `expected` must be the same as `output`, and must be edx:eax.
   // x86: `replacement` must be ecx:ebx.
@@ -4079,12 +4564,12 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void wasmAtomicFetchOp64(const wasm::MemoryAccessDesc& access, AtomicOp op,
                            Register64 value, const Address& mem,
                            Register64 temp, Register64 output)
-      DEFINED_ON(arm, arm64, mips32, mips64, x64);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, x64);
 
   void wasmAtomicFetchOp64(const wasm::MemoryAccessDesc& access, AtomicOp op,
                            Register64 value, const BaseIndex& mem,
                            Register64 temp, Register64 output)
-      DEFINED_ON(arm, arm64, mips32, mips64, x64);
+      DEFINED_ON(arm, arm64, mips32, mips64, loong64, riscv64, x64);
 
   void wasmAtomicFetchOp64(const wasm::MemoryAccessDesc& access, AtomicOp op,
                            const Address& value, const Address& mem,
@@ -4122,104 +4607,109 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // For additional register constraints, see the primitive 32-bit operations
   // and/or wasm operations above.
 
-  void compareExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void compareExchangeJS(Scalar::Type arrayType, Synchronization sync,
                          const Address& mem, Register expected,
                          Register replacement, Register temp,
                          AnyRegister output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void compareExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void compareExchangeJS(Scalar::Type arrayType, Synchronization sync,
                          const BaseIndex& mem, Register expected,
                          Register replacement, Register temp,
                          AnyRegister output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void compareExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void compareExchangeJS(Scalar::Type arrayType, Synchronization sync,
                          const Address& mem, Register expected,
                          Register replacement, Register valueTemp,
                          Register offsetTemp, Register maskTemp, Register temp,
-                         AnyRegister output) DEFINED_ON(mips_shared);
+                         AnyRegister output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void compareExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void compareExchangeJS(Scalar::Type arrayType, Synchronization sync,
                          const BaseIndex& mem, Register expected,
                          Register replacement, Register valueTemp,
                          Register offsetTemp, Register maskTemp, Register temp,
-                         AnyRegister output) DEFINED_ON(mips_shared);
+                         AnyRegister output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicExchangeJS(Scalar::Type arrayType, Synchronization sync,
                         const Address& mem, Register value, Register temp,
                         AnyRegister output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicExchangeJS(Scalar::Type arrayType, Synchronization sync,
                         const BaseIndex& mem, Register value, Register temp,
                         AnyRegister output) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicExchangeJS(Scalar::Type arrayType, Synchronization sync,
                         const Address& mem, Register value, Register valueTemp,
                         Register offsetTemp, Register maskTemp, Register temp,
-                        AnyRegister output) DEFINED_ON(mips_shared);
+                        AnyRegister output)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicExchangeJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicExchangeJS(Scalar::Type arrayType, Synchronization sync,
                         const BaseIndex& mem, Register value,
                         Register valueTemp, Register offsetTemp,
                         Register maskTemp, Register temp, AnyRegister output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Register value, const Address& mem,
                        Register temp1, Register temp2, AnyRegister output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Register value, const BaseIndex& mem,
                        Register temp1, Register temp2, AnyRegister output)
       DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Imm32 value, const Address& mem,
                        Register temp1, Register temp2, AnyRegister output)
       DEFINED_ON(x86_shared);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Imm32 value, const BaseIndex& mem,
                        Register temp1, Register temp2, AnyRegister output)
       DEFINED_ON(x86_shared);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Register value, const Address& mem,
                        Register valueTemp, Register offsetTemp,
                        Register maskTemp, Register temp, AnyRegister output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicFetchOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicFetchOpJS(Scalar::Type arrayType, Synchronization sync,
                        AtomicOp op, Register value, const BaseIndex& mem,
                        Register valueTemp, Register offsetTemp,
                        Register maskTemp, Register temp, AnyRegister output)
-      DEFINED_ON(mips_shared);
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Register value, const Address& mem,
                         Register temp) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Register value, const BaseIndex& mem,
                         Register temp) DEFINED_ON(arm, arm64, x86_shared);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Imm32 value, const Address& mem,
                         Register temp) DEFINED_ON(x86_shared);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Imm32 value, const BaseIndex& mem,
                         Register temp) DEFINED_ON(x86_shared);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Register value, const Address& mem,
                         Register valueTemp, Register offsetTemp,
-                        Register maskTemp) DEFINED_ON(mips_shared);
+                        Register maskTemp)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
-  void atomicEffectOpJS(Scalar::Type arrayType, const Synchronization& sync,
+  void atomicEffectOpJS(Scalar::Type arrayType, Synchronization sync,
                         AtomicOp op, Register value, const BaseIndex& mem,
                         Register valueTemp, Register offsetTemp,
-                        Register maskTemp) DEFINED_ON(mips_shared);
+                        Register maskTemp)
+      DEFINED_ON(mips_shared, loong64, riscv64);
 
   void atomicIsLockFreeJS(Register value, Register output);
 
@@ -4257,11 +4747,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
  public:
   // Unsafe here means the caller is responsible for Spectre mitigations if
   // needed. Prefer branchTestObjClass or one of the other masm helpers!
-  void loadObjClassUnsafe(Register obj, Register dest) {
-    loadPtr(Address(obj, JSObject::offsetOfShape()), dest);
-    loadPtr(Address(dest, Shape::offsetOfBaseShape()), dest);
-    loadPtr(Address(dest, BaseShape::offsetOfClasp()), dest);
-  }
+  inline void loadObjClassUnsafe(Register obj, Register dest);
 
   template <typename EmitPreBarrier>
   inline void storeObjShape(Register shape, Register obj,
@@ -4270,22 +4756,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void storeObjShape(Shape* shape, Register obj,
                             EmitPreBarrier emitPreBarrier);
 
-  template <typename T>
-  void storeObjPrivate(T src, const Address& address);
+  inline void loadObjProto(Register obj, Register dest);
 
-  void loadObjPrivate(Register obj, uint32_t nfixed, Register dest) {
-    loadPtr(Address(obj, NativeObject::getPrivateDataOffset(nfixed)), dest);
-  }
-
-  void loadObjProto(Register obj, Register dest) {
-    loadPtr(Address(obj, JSObject::offsetOfShape()), dest);
-    loadPtr(Address(dest, Shape::offsetOfBaseShape()), dest);
-    loadPtr(Address(dest, BaseShape::offsetOfProto()), dest);
-  }
-
-  void loadStringLength(Register str, Register dest) {
-    load32(Address(str, JSString::offsetOfLength()), dest);
-  }
+  inline void loadStringLength(Register str, Register dest);
 
   void loadStringChars(Register str, Register dest, CharEncoding encoding);
 
@@ -4298,10 +4771,70 @@ class MacroAssembler : public MacroAssemblerSpecific {
                              CharEncoding encoding);
   void loadInlineStringCharsForStore(Register str, Register dest);
 
+ private:
+  enum class CharKind { CharCode, CodePoint };
+
+  void branchIfMaybeSplitSurrogatePair(Register leftChild, Register index,
+                                       Register scratch, Label* maybeSplit,
+                                       Label* notSplit);
+
+  void loadRopeChild(CharKind kind, Register str, Register index,
+                     Register output, Register maybeScratch, Label* isLinear,
+                     Label* splitSurrogate);
+
+  void branchIfCanLoadStringChar(CharKind kind, Register str, Register index,
+                                 Register scratch, Register maybeScratch,
+                                 Label* label);
+  void branchIfNotCanLoadStringChar(CharKind kind, Register str, Register index,
+                                    Register scratch, Register maybeScratch,
+                                    Label* label);
+
+  void loadStringChar(CharKind kind, Register str, Register index,
+                      Register output, Register scratch1, Register scratch2,
+                      Label* fail);
+
+ public:
+  void branchIfCanLoadStringChar(Register str, Register index, Register scratch,
+                                 Label* label) {
+    branchIfCanLoadStringChar(CharKind::CharCode, str, index, scratch,
+                              InvalidReg, label);
+  }
+  void branchIfNotCanLoadStringChar(Register str, Register index,
+                                    Register scratch, Label* label) {
+    branchIfNotCanLoadStringChar(CharKind::CharCode, str, index, scratch,
+                                 InvalidReg, label);
+  }
+
+  void branchIfCanLoadStringCodePoint(Register str, Register index,
+                                      Register scratch1, Register scratch2,
+                                      Label* label) {
+    branchIfCanLoadStringChar(CharKind::CodePoint, str, index, scratch1,
+                              scratch2, label);
+  }
+  void branchIfNotCanLoadStringCodePoint(Register str, Register index,
+                                         Register scratch1, Register scratch2,
+                                         Label* label) {
+    branchIfNotCanLoadStringChar(CharKind::CodePoint, str, index, scratch1,
+                                 scratch2, label);
+  }
+
   void loadStringChar(Register str, Register index, Register output,
-                      Register scratch, Label* fail);
+                      Register scratch1, Register scratch2, Label* fail) {
+    loadStringChar(CharKind::CharCode, str, index, output, scratch1, scratch2,
+                   fail);
+  }
+
+  void loadStringChar(Register str, int32_t index, Register output,
+                      Register scratch1, Register scratch2, Label* fail);
+
+  void loadStringCodePoint(Register str, Register index, Register output,
+                           Register scratch1, Register scratch2, Label* fail) {
+    loadStringChar(CharKind::CodePoint, str, index, output, scratch1, scratch2,
+                   fail);
+  }
 
   void loadRopeLeftChild(Register str, Register dest);
+  void loadRopeRightChild(Register str, Register dest);
   void storeRopeChildren(Register left, Register right, Register str);
 
   void loadDependentStringBase(Register str, Register dest);
@@ -4344,6 +4877,95 @@ class MacroAssembler : public MacroAssemblerSpecific {
    * Add |index| to |chars| so that |chars| now points at |chars[index]|.
    */
   void addToCharPtr(Register chars, Register index, CharEncoding encoding);
+
+  /**
+   * Branch if |src| is not a lead surrogate character.
+   */
+  void branchIfNotLeadSurrogate(Register src, Label* label);
+
+ private:
+  enum class SurrogateChar { Lead, Trail };
+  void branchSurrogate(Assembler::Condition cond, Register src,
+                       Register scratch, Label* label,
+                       SurrogateChar surrogateChar);
+
+ public:
+  /**
+   * Branch if |src| is a lead surrogate character.
+   */
+  void branchIfLeadSurrogate(Register src, Register scratch, Label* label) {
+    branchSurrogate(Assembler::Equal, src, scratch, label, SurrogateChar::Lead);
+  }
+
+  /**
+   * Branch if |src| is not a lead surrogate character.
+   */
+  void branchIfNotLeadSurrogate(Register src, Register scratch, Label* label) {
+    branchSurrogate(Assembler::NotEqual, src, scratch, label,
+                    SurrogateChar::Lead);
+  }
+
+  /**
+   * Branch if |src| is not a trail surrogate character.
+   */
+  void branchIfNotTrailSurrogate(Register src, Register scratch, Label* label) {
+    branchSurrogate(Assembler::NotEqual, src, scratch, label,
+                    SurrogateChar::Trail);
+  }
+
+ private:
+  void loadStringFromUnit(Register unit, Register dest,
+                          const StaticStrings& staticStrings);
+  void loadLengthTwoString(Register c1, Register c2, Register dest,
+                           const StaticStrings& staticStrings);
+
+ public:
+  /**
+   * Lookup the length-one string from the static strings cache.
+   */
+  void lookupStaticString(Register ch, Register dest,
+                          const StaticStrings& staticStrings);
+
+  /**
+   * Lookup the length-one string from the static strings cache. Jumps to |fail|
+   * when the string wasn't found in the strings cache.
+   */
+  void lookupStaticString(Register ch, Register dest,
+                          const StaticStrings& staticStrings, Label* fail);
+
+  /**
+   * Lookup the length-two string from the static strings cache. Jumps to |fail|
+   * when the string wasn't found in the strings cache.
+   *
+   * Clobbers |ch1| and |ch2|.
+   */
+  void lookupStaticString(Register ch1, Register ch2, Register dest,
+                          const StaticStrings& staticStrings, Label* fail);
+
+  /**
+   * Lookup the integer string from the static integer strings cache. Jumps to
+   * |fail| when the string wasn't found in the strings cache.
+   */
+  void lookupStaticIntString(Register integer, Register dest, Register scratch,
+                             const StaticStrings& staticStrings, Label* fail);
+  void lookupStaticIntString(Register integer, Register dest,
+                             const StaticStrings& staticStrings, Label* fail) {
+    lookupStaticIntString(integer, dest, dest, staticStrings, fail);
+  }
+
+  /**
+   * Load the string representation of |input| in base |base|. Jumps to |fail|
+   * when the string representation needs to be allocated dynamically.
+   */
+  void loadInt32ToStringWithBase(Register input, Register base, Register dest,
+                                 Register scratch1, Register scratch2,
+                                 const StaticStrings& staticStrings,
+                                 const LiveRegisterSet& volatileRegs,
+                                 bool lowerCase, Label* fail);
+  void loadInt32ToStringWithBase(Register input, int32_t base, Register dest,
+                                 Register scratch1, Register scratch2,
+                                 const StaticStrings& staticStrings,
+                                 bool lowerCase, Label* fail);
 
   /**
    * Load the BigInt digits from |bigInt| into |digits|.
@@ -4411,7 +5033,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
    * digits need to be heap allocated.
    */
   void copyBigIntWithInlineDigits(Register src, Register dest, Register temp,
-                                  Label* fail, bool attemptNursery);
+                                  gc::Heap initialHeap, Label* fail);
 
   /**
    * Compare a BigInt and an Int32 value. Falls through to the false case.
@@ -4420,13 +5042,32 @@ class MacroAssembler : public MacroAssemblerSpecific {
                              Register scratch1, Register scratch2,
                              Label* ifTrue, Label* ifFalse);
 
+  /**
+   * Compare two BigInts for equality. Falls through if both BigInts are equal
+   * to each other.
+   *
+   * - When we jump to |notSameLength|, |temp1| holds the length of the right
+   *   operand.
+   * - When we jump to |notSameDigit|, |temp2| points to the current digit of
+   *   the left operand and |temp4| holds the current digit of the right
+   *   operand.
+   */
+  void equalBigInts(Register left, Register right, Register temp1,
+                    Register temp2, Register temp3, Register temp4,
+                    Label* notSameSign, Label* notSameLength,
+                    Label* notSameDigit);
+
   void loadJSContext(Register dest);
+
+  void loadGlobalObjectData(Register dest);
+
+  void loadRealmFuse(RealmFuses::FuseIndex index, Register dest);
 
   void switchToRealm(Register realm);
   void switchToRealm(const void* realm, Register scratch);
   void switchToObjectRealm(Register obj, Register scratch);
   void switchToBaselineFrameRealm(Register scratch);
-  void switchToWasmTlsRealm(Register scratch1, Register scratch2);
+  void switchToWasmInstanceRealm(Register scratch1, Register scratch2);
   void debugAssertContextRealm(const void* realm, Register scratch);
 
   void loadJitActivation(Register dest);
@@ -4617,11 +5258,16 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void storeToTypedBigIntArray(Scalar::Type arrayType, Register64 value,
                                const Address& dest);
 
-  void memoryBarrierBefore(const Synchronization& sync);
-  void memoryBarrierAfter(const Synchronization& sync);
+  void memoryBarrierBefore(Synchronization sync);
+  void memoryBarrierAfter(Synchronization sync);
 
   void debugAssertIsObject(const ValueOperand& val);
   void debugAssertObjHasFixedSlots(Register obj, Register scratch);
+
+  void debugAssertObjectHasClass(Register obj, Register scratch,
+                                 const JSClass* clasp);
+
+  void debugAssertGCThingIsTenured(Register ptr, Register temp);
 
   void branchArrayIsNotPacked(Register array, Register temp1, Register temp2,
                               Label* label);
@@ -4637,6 +5283,12 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void loadArgumentsObjectElement(Register obj, Register index,
                                   ValueOperand output, Register temp,
                                   Label* fail);
+  void loadArgumentsObjectElementHole(Register obj, Register index,
+                                      ValueOperand output, Register temp,
+                                      Label* fail);
+  void loadArgumentsObjectElementExists(Register obj, Register index,
+                                        Register output, Register temp,
+                                        Label* fail);
 
   void loadArgumentsObjectLength(Register obj, Register output, Label* fail);
 
@@ -4645,16 +5297,169 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                       Label* label);
 
   void typedArrayElementSize(Register obj, Register output);
-  void branchIfClassIsNotTypedArray(Register clasp, Label* notTypedArray);
 
+ private:
+  // Shift |output| by the element shift of the ResizableTypedArray in |obj|.
+  void resizableTypedArrayElementShiftBy(Register obj, Register output,
+                                         Register scratch);
+
+ public:
+  void branchIfClassIsNotTypedArray(Register clasp, Label* notTypedArray);
+  void branchIfClassIsNotFixedLengthTypedArray(Register clasp,
+                                               Label* notTypedArray);
+  void branchIfClassIsNotResizableTypedArray(Register clasp,
+                                             Label* notTypedArray);
+
+ private:
+  enum class BranchIfDetached { No, Yes };
+
+  void branchIfHasDetachedArrayBuffer(BranchIfDetached branchIf, Register obj,
+                                      Register temp, Label* label);
+
+ public:
   void branchIfHasDetachedArrayBuffer(Register obj, Register temp,
-                                      Label* label);
+                                      Label* label) {
+    branchIfHasDetachedArrayBuffer(BranchIfDetached::Yes, obj, temp, label);
+  }
+
+  void branchIfHasAttachedArrayBuffer(Register obj, Register temp,
+                                      Label* label) {
+    branchIfHasDetachedArrayBuffer(BranchIfDetached::No, obj, temp, label);
+  }
+
+  void branchIfResizableArrayBufferViewOutOfBounds(Register obj, Register temp,
+                                                   Label* label);
+
+  void branchIfResizableArrayBufferViewInBounds(Register obj, Register temp,
+                                                Label* label);
 
   void branchIfNativeIteratorNotReusable(Register ni, Label* notReusable);
+  void branchNativeIteratorIndices(Condition cond, Register ni, Register temp,
+                                   NativeIteratorIndices kind, Label* label);
+
+  void maybeLoadIteratorFromShape(Register obj, Register dest, Register temp,
+                                  Register temp2, Register temp3,
+                                  Label* failure);
 
   void iteratorMore(Register obj, ValueOperand output, Register temp);
   void iteratorClose(Register obj, Register temp1, Register temp2,
                      Register temp3);
+  void registerIterator(Register enumeratorsList, Register iter, Register temp);
+
+  void toHashableNonGCThing(ValueOperand value, ValueOperand result,
+                            FloatRegister tempFloat);
+
+  void toHashableValue(ValueOperand value, ValueOperand result,
+                       FloatRegister tempFloat, Label* atomizeString,
+                       Label* tagString);
+
+ private:
+  void scrambleHashCode(Register result);
+
+ public:
+  void prepareHashNonGCThing(ValueOperand value, Register result,
+                             Register temp);
+  void prepareHashString(Register str, Register result, Register temp);
+  void prepareHashSymbol(Register sym, Register result);
+  void prepareHashBigInt(Register bigInt, Register result, Register temp1,
+                         Register temp2, Register temp3);
+  void prepareHashObject(Register setObj, ValueOperand value, Register result,
+                         Register temp1, Register temp2, Register temp3,
+                         Register temp4);
+  void prepareHashValue(Register setObj, ValueOperand value, Register result,
+                        Register temp1, Register temp2, Register temp3,
+                        Register temp4);
+
+ private:
+  enum class IsBigInt { No, Yes, Maybe };
+
+  /**
+   * Search for a value in a OrderedHashTable.
+   *
+   * When we jump to |found|, |entryTemp| holds the found hashtable entry.
+   */
+  template <typename OrderedHashTable>
+  void orderedHashTableLookup(Register setOrMapObj, ValueOperand value,
+                              Register hash, Register entryTemp, Register temp1,
+                              Register temp3, Register temp4, Register temp5,
+                              Label* found, IsBigInt isBigInt);
+
+  void setObjectHas(Register setObj, ValueOperand value, Register hash,
+                    Register result, Register temp1, Register temp2,
+                    Register temp3, Register temp4, IsBigInt isBigInt);
+
+  void mapObjectHas(Register mapObj, ValueOperand value, Register hash,
+                    Register result, Register temp1, Register temp2,
+                    Register temp3, Register temp4, IsBigInt isBigInt);
+
+  void mapObjectGet(Register mapObj, ValueOperand value, Register hash,
+                    ValueOperand result, Register temp1, Register temp2,
+                    Register temp3, Register temp4, Register temp5,
+                    IsBigInt isBigInt);
+
+ public:
+  void setObjectHasNonBigInt(Register setObj, ValueOperand value, Register hash,
+                             Register result, Register temp1, Register temp2) {
+    return setObjectHas(setObj, value, hash, result, temp1, temp2, InvalidReg,
+                        InvalidReg, IsBigInt::No);
+  }
+  void setObjectHasBigInt(Register setObj, ValueOperand value, Register hash,
+                          Register result, Register temp1, Register temp2,
+                          Register temp3, Register temp4) {
+    return setObjectHas(setObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        IsBigInt::Yes);
+  }
+  void setObjectHasValue(Register setObj, ValueOperand value, Register hash,
+                         Register result, Register temp1, Register temp2,
+                         Register temp3, Register temp4) {
+    return setObjectHas(setObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        IsBigInt::Maybe);
+  }
+
+  void mapObjectHasNonBigInt(Register mapObj, ValueOperand value, Register hash,
+                             Register result, Register temp1, Register temp2) {
+    return mapObjectHas(mapObj, value, hash, result, temp1, temp2, InvalidReg,
+                        InvalidReg, IsBigInt::No);
+  }
+  void mapObjectHasBigInt(Register mapObj, ValueOperand value, Register hash,
+                          Register result, Register temp1, Register temp2,
+                          Register temp3, Register temp4) {
+    return mapObjectHas(mapObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        IsBigInt::Yes);
+  }
+  void mapObjectHasValue(Register mapObj, ValueOperand value, Register hash,
+                         Register result, Register temp1, Register temp2,
+                         Register temp3, Register temp4) {
+    return mapObjectHas(mapObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        IsBigInt::Maybe);
+  }
+
+  void mapObjectGetNonBigInt(Register mapObj, ValueOperand value, Register hash,
+                             ValueOperand result, Register temp1,
+                             Register temp2, Register temp3) {
+    return mapObjectGet(mapObj, value, hash, result, temp1, temp2, temp3,
+                        InvalidReg, InvalidReg, IsBigInt::No);
+  }
+  void mapObjectGetBigInt(Register mapObj, ValueOperand value, Register hash,
+                          ValueOperand result, Register temp1, Register temp2,
+                          Register temp3, Register temp4, Register temp5) {
+    return mapObjectGet(mapObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        temp5, IsBigInt::Yes);
+  }
+  void mapObjectGetValue(Register mapObj, ValueOperand value, Register hash,
+                         ValueOperand result, Register temp1, Register temp2,
+                         Register temp3, Register temp4, Register temp5) {
+    return mapObjectGet(mapObj, value, hash, result, temp1, temp2, temp3, temp4,
+                        temp5, IsBigInt::Maybe);
+  }
+
+ private:
+  template <typename OrderedHashTable>
+  void loadOrderedHashTableCount(Register setOrMapObj, Register result);
+
+ public:
+  void loadSetObjectSize(Register setObj, Register result);
+  void loadMapObjectSize(Register mapObj, Register result);
 
   // Inline version of js_TypedArray_uint8_clamp_double.
   // This function clobbers the input register.
@@ -4679,16 +5484,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   // Inline allocation.
  private:
-  void checkAllocatorState(Label* fail);
-  bool shouldNurseryAllocate(gc::AllocKind allocKind,
-                             gc::InitialHeap initialHeap);
+  void checkAllocatorState(Register temp, gc::AllocKind allocKind, Label* fail);
+  bool shouldNurseryAllocate(gc::AllocKind allocKind, gc::Heap initialHeap);
   void nurseryAllocateObject(
       Register result, Register temp, gc::AllocKind allocKind,
       size_t nDynamicSlots, Label* fail,
       const AllocSiteInput& allocSite = AllocSiteInput());
   void bumpPointerAllocate(Register result, Register temp, Label* fail,
-                           CompileZone* zone, void* posAddr,
-                           const void* curEddAddr, JS::TraceKind traceKind,
+                           CompileZone* zone, JS::TraceKind traceKind,
                            uint32_t size,
                            const AllocSiteInput& allocSite = AllocSiteInput());
   void updateAllocSite(Register temp, Register result, CompileZone* zone,
@@ -4697,13 +5500,12 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void freeListAllocate(Register result, Register temp, gc::AllocKind allocKind,
                         Label* fail);
   void allocateObject(Register result, Register temp, gc::AllocKind allocKind,
-                      uint32_t nDynamicSlots, gc::InitialHeap initialHeap,
-                      Label* fail,
+                      uint32_t nDynamicSlots, gc::Heap initialHeap, Label* fail,
                       const AllocSiteInput& allocSite = AllocSiteInput());
   void nurseryAllocateString(Register result, Register temp,
                              gc::AllocKind allocKind, Label* fail);
   void allocateString(Register result, Register temp, gc::AllocKind allocKind,
-                      gc::InitialHeap initialHeap, Label* fail);
+                      gc::Heap initialHeap, Label* fail);
   void nurseryAllocateBigInt(Register result, Register temp, Label* fail);
   void copySlotsFromTemplate(Register obj,
                              const TemplateNativeObject& templateObj,
@@ -4716,25 +5518,28 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                   uint32_t end);
 
   void initGCSlots(Register obj, Register temp,
-                   const TemplateNativeObject& templateObj, bool initContents);
+                   const TemplateNativeObject& templateObj);
 
  public:
   void callFreeStub(Register slots);
   void createGCObject(Register result, Register temp,
-                      const TemplateObject& templateObj,
-                      gc::InitialHeap initialHeap, Label* fail,
-                      bool initContents = true);
+                      const TemplateObject& templateObj, gc::Heap initialHeap,
+                      Label* fail, bool initContents = true);
 
   void createPlainGCObject(Register result, Register shape, Register temp,
                            Register temp2, uint32_t numFixedSlots,
                            uint32_t numDynamicSlots, gc::AllocKind allocKind,
-                           gc::InitialHeap initialHeap, Label* fail,
-                           const AllocSiteInput& allocSite = AllocSiteInput());
+                           gc::Heap initialHeap, Label* fail,
+                           const AllocSiteInput& allocSite,
+                           bool initContents = true);
 
+  // dynamicSlotsTemp is used to initialize the dynamic slots after allocating
+  // the object. If numUsedDynamicSlots == 0, it may be InvalidReg.
   void createArrayWithFixedElements(
-      Register result, Register shape, Register temp, uint32_t arrayLength,
-      uint32_t arrayCapacity, gc::AllocKind allocKind,
-      gc::InitialHeap initialHeap, Label* fail,
+      Register result, Register shape, Register temp, Register dynamicSlotsTemp,
+      uint32_t arrayLength, uint32_t arrayCapacity,
+      uint32_t numUsedDynamicSlots, uint32_t numDynamicSlots,
+      gc::AllocKind allocKind, gc::Heap initialHeap, Label* fail,
       const AllocSiteInput& allocSite = AllocSiteInput());
 
   void initGCThing(Register obj, Register temp,
@@ -4744,16 +5549,34 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void initTypedArraySlots(Register obj, Register temp, Register lengthReg,
                            LiveRegisterSet liveRegs, Label* fail,
-                           TypedArrayObject* templateObj,
+                           FixedLengthTypedArrayObject* templateObj,
                            TypedArrayLength lengthKind);
 
-  void newGCString(Register result, Register temp, Label* fail,
-                   bool attemptNursery);
-  void newGCFatInlineString(Register result, Register temp, Label* fail,
-                            bool attemptNursery);
+  void newGCString(Register result, Register temp, gc::Heap initialHeap,
+                   Label* fail);
+  void newGCFatInlineString(Register result, Register temp,
+                            gc::Heap initialHeap, Label* fail);
 
-  void newGCBigInt(Register result, Register temp, Label* fail,
-                   bool attemptNursery);
+  void newGCBigInt(Register result, Register temp, gc::Heap initialHeap,
+                   Label* fail);
+
+ private:
+  void branchIfNotStringCharsEquals(Register stringChars,
+                                    const JSLinearString* linear, Label* label);
+
+ public:
+  // Returns true if |linear| is a (non-empty) string which can be compared
+  // using |compareStringChars|.
+  static bool canCompareStringCharsInline(const JSLinearString* linear);
+
+  // Load the string characters in preparation for |compareStringChars|.
+  void loadStringCharsForCompare(Register input, const JSLinearString* linear,
+                                 Register stringChars, Label* fail);
+
+  // Compare string characters based on the equality operator. The string
+  // characters must be at least as long as the length of |linear|.
+  void compareStringChars(JSOp op, Register stringChars,
+                          const JSLinearString* linear, Register result);
 
   // Compares two strings for equality based on the JSOP.
   // This checks for identical pointers, atoms and length and fails for
@@ -4777,6 +5600,64 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void setIsDefinitelyTypedArrayConstructor(Register obj, Register output);
 
+  void loadMegamorphicCache(Register dest);
+  void lookupStringInAtomCacheLastLookups(Register str, Register scratch,
+                                          Label* fail);
+  void loadMegamorphicSetPropCache(Register dest);
+
+  void loadAtomOrSymbolAndHash(ValueOperand value, Register outId,
+                               Register outHash, Label* cacheMiss);
+
+  void loadAtomHash(Register id, Register hash, Label* done);
+
+  void emitExtractValueFromMegamorphicCacheEntry(
+      Register obj, Register entry, Register scratch1, Register scratch2,
+      ValueOperand output, Label* cacheHit, Label* cacheMiss);
+
+  template <typename IdOperandType>
+  void emitMegamorphicCacheLookupByValueCommon(
+      IdOperandType id, Register obj, Register scratch1, Register scratch2,
+      Register outEntryPtr, Label* cacheMiss, Label* cacheMissWithEntry);
+
+  void emitMegamorphicCacheLookup(PropertyKey id, Register obj,
+                                  Register scratch1, Register scratch2,
+                                  Register outEntryPtr, ValueOperand output,
+                                  Label* cacheHit);
+
+  // NOTE: |id| must either be a ValueOperand or a Register. If it is a
+  // Register, we assume that it is an atom.
+  template <typename IdOperandType>
+  void emitMegamorphicCacheLookupByValue(IdOperandType id, Register obj,
+                                         Register scratch1, Register scratch2,
+                                         Register outEntryPtr,
+                                         ValueOperand output, Label* cacheHit);
+
+  void emitMegamorphicCacheLookupExists(ValueOperand id, Register obj,
+                                        Register scratch1, Register scratch2,
+                                        Register outEntryPtr, Register output,
+                                        Label* cacheHit, bool hasOwn);
+
+  // Given a PropertyIteratorObject with valid indices, extract the current
+  // PropertyIndex, storing the index in |outIndex| and the kind in |outKind|
+  void extractCurrentIndexAndKindFromIterator(Register iterator,
+                                              Register outIndex,
+                                              Register outKind);
+
+  template <typename IdType>
+#ifdef JS_CODEGEN_X86
+  // See MegamorphicSetElement in LIROps.yaml
+  void emitMegamorphicCachedSetSlot(IdType id, Register obj, Register scratch1,
+                                    ValueOperand value, Label* cacheHit,
+                                    void (*emitPreBarrier)(MacroAssembler&,
+                                                           const Address&,
+                                                           MIRType));
+#else
+  void emitMegamorphicCachedSetSlot(
+      IdType id, Register obj, Register scratch1, Register scratch2,
+      Register scratch3, ValueOperand value, Label* cacheHit,
+      void (*emitPreBarrier)(MacroAssembler&, const Address&, MIRType));
+#endif
+
   void loadDOMExpandoValueGuardGeneration(
       Register obj, ValueOperand output,
       JS::ExpandoAndGeneration* expandoAndGeneration, uint64_t generation,
@@ -4788,6 +5669,35 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void loadArrayBufferViewByteOffsetIntPtr(Register obj, Register output);
   void loadArrayBufferViewLengthIntPtr(Register obj, Register output);
 
+  void loadGrowableSharedArrayBufferByteLengthIntPtr(Synchronization sync,
+                                                     Register obj,
+                                                     Register output);
+
+ private:
+  enum class ResizableArrayBufferView { TypedArray, DataView };
+
+  void loadResizableArrayBufferViewLengthIntPtr(ResizableArrayBufferView view,
+                                                Synchronization sync,
+                                                Register obj, Register output,
+                                                Register scratch);
+
+ public:
+  void loadResizableTypedArrayLengthIntPtr(Synchronization sync, Register obj,
+                                           Register output, Register scratch) {
+    loadResizableArrayBufferViewLengthIntPtr(
+        ResizableArrayBufferView::TypedArray, sync, obj, output, scratch);
+  }
+
+  void loadResizableDataViewByteLengthIntPtr(Synchronization sync, Register obj,
+                                             Register output,
+                                             Register scratch) {
+    loadResizableArrayBufferViewLengthIntPtr(ResizableArrayBufferView::DataView,
+                                             sync, obj, output, scratch);
+  }
+
+  void loadResizableTypedArrayByteOffsetMaybeOutOfBoundsIntPtr(
+      Register obj, Register output, Register scratch);
+
  private:
   void isCallableOrConstructor(bool isCallable, Register obj, Register output,
                                Label* isProxy);
@@ -4795,8 +5705,6 @@ class MacroAssembler : public MacroAssemblerSpecific {
  public:
   // Generates code used to complete a bailout.
   void generateBailoutTail(Register scratch, Register bailoutInfo);
-
-  void assertRectifierFrameParentType(Register frameType);
 
  public:
 #ifndef JS_CODEGEN_ARM64
@@ -4808,7 +5716,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   template <typename T>
   inline void addStackPtrTo(T t);
 
-  void subFromStackPtr(Imm32 imm32) DEFINED_ON(mips32, mips64, arm, x86, x64);
+  void subFromStackPtr(Imm32 imm32)
+      DEFINED_ON(mips32, mips64, loong64, riscv64, wasm32, arm, x86, x64);
   void subFromStackPtr(Register reg);
 
   template <typename T>
@@ -4930,15 +5839,6 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void printf(const char* output);
   void printf(const char* output, Register value);
 
-#ifdef JS_TRACE_LOGGING
-  void loadTraceLogger(Register logger);
-  void tracelogStartId(Register logger, uint32_t textId, bool force = false);
-  void tracelogStartId(Register logger, Register textId);
-  void tracelogStartEvent(Register logger, Register event);
-  void tracelogStopId(Register logger, uint32_t textId, bool force = false);
-  void tracelogStopId(Register logger, Register textId);
-#endif
-
 #define DISPATCH_FLOATING_POINT_OP(method, type, arg1d, arg1f, arg2) \
   MOZ_ASSERT(IsFloatingPointType(type));                             \
   if (type == MIRType::Double)                                       \
@@ -5031,16 +5931,6 @@ class MacroAssembler : public MacroAssemblerSpecific {
                          output, fail);
   }
 
-  // Truncates, i.e. removes any fractional parts, but doesn't wrap around to
-  // the int32 range.
-  void truncateNoWrapValueToInt32(ValueOperand value, FloatRegister temp,
-                                  Register output, Label* truncateDoubleSlow,
-                                  Label* fail) {
-    convertValueToInt(value, nullptr, nullptr, truncateDoubleSlow, InvalidReg,
-                      temp, output, fail,
-                      IntConversionBehavior::TruncateNoWrap);
-  }
-
   // Convenience functions for clamping values to uint8.
   void clampValueToUint8(ValueOperand value, Label* handleStringEntry,
                          Label* handleStringRejoin, Register stringReg,
@@ -5057,7 +5947,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // on the stack, such that the JitFrameLayout would be correctly aligned on
   // the JitStackAlignment.
   void alignJitStackBasedOnNArgs(Register nargs, bool countIncludesThis);
-  void alignJitStackBasedOnNArgs(uint32_t argc);
+  void alignJitStackBasedOnNArgs(uint32_t argc, bool countIncludesThis);
 
   inline void assertStackAlignment(uint32_t alignment, int32_t offset = 0);
 
@@ -5068,7 +5958,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // See comment block "64-bit GPRs carrying 32-bit values" above.  This asserts
   // that the high bits of the register are appropriate for the architecture and
   // the value in the low bits.
-  inline void assertCanonicalInt32(Register r);
+  void debugAssertCanonicalInt32(Register r);
 #endif
 };
 
@@ -5077,8 +5967,7 @@ class MOZ_RAII StackMacroAssembler : public MacroAssembler {
   JS::AutoCheckCannotGC nogc;
 
  public:
-  StackMacroAssembler() : MacroAssembler() {}
-  explicit StackMacroAssembler(JSContext* cx) : MacroAssembler(cx) {}
+  StackMacroAssembler(JSContext* cx, TempAllocator& alloc);
 };
 
 // WasmMacroAssembler does not contain GC pointers, so it doesn't need the no-GC
@@ -5096,9 +5985,7 @@ class MOZ_RAII WasmMacroAssembler : public MacroAssembler {
 // GC cancels off-thread compilations.
 class IonHeapMacroAssembler : public MacroAssembler {
  public:
-  IonHeapMacroAssembler() : MacroAssembler() {
-    MOZ_ASSERT(CurrentThreadIsIonCompiling());
-  }
+  IonHeapMacroAssembler(TempAllocator& alloc, CompileRealm* realm);
 };
 
 //{{{ check_macroassembler_style
@@ -5193,100 +6080,9 @@ static inline size_t StackDecrementForCall(uint32_t alignment,
          ComputeByteAlignment(bytesAlreadyPushed + bytesToPush, alignment);
 }
 
-static inline MIRType ToMIRType(MIRType t) { return t; }
-
-static inline MIRType ToMIRType(ABIArgType argType) {
-  switch (argType) {
-    case ArgType_General:
-      return MIRType::Pointer;
-    case ArgType_Float64:
-      return MIRType::Double;
-    case ArgType_Float32:
-      return MIRType::Float32;
-    case ArgType_Int32:
-      return MIRType::Int32;
-    case ArgType_Int64:
-      return MIRType::Int64;
-    default:
-      break;
-  }
-  MOZ_CRASH("unexpected argType");
-}
-
 // Helper for generatePreBarrier.
 inline DynFn JitPreWriteBarrier(MIRType type);
-
-template <class VecT, class ABIArgGeneratorT>
-class ABIArgIterBase {
-  ABIArgGeneratorT gen_;
-  const VecT& types_;
-  unsigned i_;
-
-  void settle() {
-    if (!done()) gen_.next(ToMIRType(types_[i_]));
-  }
-
- public:
-  explicit ABIArgIterBase(const VecT& types) : types_(types), i_(0) {
-    settle();
-  }
-  void operator++(int) {
-    MOZ_ASSERT(!done());
-    i_++;
-    settle();
-  }
-  bool done() const { return i_ == types_.length(); }
-
-  ABIArg* operator->() {
-    MOZ_ASSERT(!done());
-    return &gen_.current();
-  }
-  ABIArg& operator*() {
-    MOZ_ASSERT(!done());
-    return gen_.current();
-  }
-
-  unsigned index() const {
-    MOZ_ASSERT(!done());
-    return i_;
-  }
-  MIRType mirType() const {
-    MOZ_ASSERT(!done());
-    return ToMIRType(types_[i_]);
-  }
-  uint32_t stackBytesConsumedSoFar() const {
-    return gen_.stackBytesConsumedSoFar();
-  }
-};
-
-// This is not an alias because we want to allow class template argument
-// deduction.
-template <class VecT>
-class ABIArgIter : public ABIArgIterBase<VecT, ABIArgGenerator> {
- public:
-  explicit ABIArgIter(const VecT& types)
-      : ABIArgIterBase<VecT, ABIArgGenerator>(types) {}
-};
-
-class WasmABIArgGenerator : public ABIArgGenerator {
- public:
-  WasmABIArgGenerator() {
-    increaseStackOffset(wasm::FrameWithTls::sizeWithoutFrame());
-  }
-};
-
-template <class VecT>
-class WasmABIArgIter : public ABIArgIterBase<VecT, WasmABIArgGenerator> {
- public:
-  explicit WasmABIArgIter(const VecT& types)
-      : ABIArgIterBase<VecT, WasmABIArgGenerator>(types) {}
-};
 }  // namespace jit
-
-namespace wasm {
-const TlsData* ExtractCalleeTlsFromFrameWithTls(const Frame* fp);
-const TlsData* ExtractCallerTlsFromFrameWithTls(const Frame* fp);
-}  // namespace wasm
 
 }  // namespace js
 

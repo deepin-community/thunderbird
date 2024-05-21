@@ -7,13 +7,12 @@
 
 #include "msgCore.h"
 #include "nsIMsgCompose.h"
-#include "nsMsgCompCID.h"
 #include "nsMsgPrompts.h"
 #include "nsError.h"
 #include "nsComposeStrings.h"
 #include "nsIStringBundle.h"
 #include "nsServiceManagerUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 
 NS_IMPL_ISUPPORTS(nsMsgProcessReport, nsIMsgProcessReport)
 
@@ -201,9 +200,7 @@ NS_IMETHODIMP nsMsgSendReport::GetProcessReport(int32_t process,
   return NS_OK;
 }
 
-/* nsresult displayReport (in nsIPrompt prompt, in boolean showErrorOnly, in
- * boolean dontShowReportTwice); */
-NS_IMETHODIMP nsMsgSendReport::DisplayReport(nsIPrompt* prompt,
+NS_IMETHODIMP nsMsgSendReport::DisplayReport(mozIDOMWindowProxy* window,
                                              bool showErrorOnly,
                                              bool dontShowReportTwice,
                                              nsresult* _retval) {
@@ -225,7 +222,7 @@ NS_IMETHODIMP nsMsgSendReport::DisplayReport(nsIPrompt* prompt,
 
   nsresult rv;  // don't step on currError.
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
   nsCOMPtr<nsIStringBundle> bundle;
   rv = bundleService->CreateBundle(
@@ -332,12 +329,12 @@ NS_IMETHODIMP nsMsgSendReport::DisplayReport(nsIPrompt* prompt,
       bundle->GetStringFromName("returnToComposeWindowQuestion", text1);
       if (!dialogMessage.IsEmpty()) dialogMessage.AppendLiteral("\n");
       dialogMessage.Append(text1);
-      nsMsgAskBooleanQuestionByString(prompt, dialogMessage.get(),
+      nsMsgAskBooleanQuestionByString(window, dialogMessage.get(),
                                       &oopsGiveMeBackTheComposeWindow,
                                       dialogTitle.get());
       if (!oopsGiveMeBackTheComposeWindow) *_retval = NS_OK;
     } else
-      nsMsgDisplayMessageByString(prompt, dialogMessage.get(),
+      nsMsgDisplayMessageByString(window, dialogMessage.get(),
                                   dialogTitle.get());
   } else {
     const char* title;
@@ -380,7 +377,7 @@ NS_IMETHODIMP nsMsgSendReport::DisplayReport(nsIPrompt* prompt,
       if (!dialogMessage.IsEmpty()) dialogMessage.Append(char16_t('\n'));
       dialogMessage.Append(currMessage);
     }
-    nsMsgDisplayMessageByString(prompt, dialogMessage.get(), dialogTitle.get());
+    nsMsgDisplayMessageByString(window, dialogMessage.get(), dialogTitle.get());
   }
 
   mAlreadyDisplayReport = true;

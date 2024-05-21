@@ -30,15 +30,14 @@
 class nsISHEntry;
 class nsISHistory;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class BrowsingContext;
 
 class ChildSHistory : public nsISupports, public nsWrapperCache {
  public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(ChildSHistory)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(ChildSHistory)
   nsISupports* GetParentObject() const;
   JSObject* WrapObject(JSContext* cx,
                        JS::Handle<JSObject*> aGivenProto) override;
@@ -81,7 +80,7 @@ class ChildSHistory : public nsISupports, public nsWrapperCache {
   /**
    * Evicts all content viewers within the current process.
    */
-  void EvictLocalContentViewers();
+  void EvictLocalDocumentViewers();
 
   // GetLegacySHistory and LegacySHistory have been deprecated. Don't
   // use these, but instead handle the interaction with nsISHistory in
@@ -145,7 +144,6 @@ class ChildSHistory : public nsISupports, public nsWrapperCache {
   bool mPendingEpoch = false;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif /* mozilla_dom_ChildSHistory_h */

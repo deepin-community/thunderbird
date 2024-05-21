@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService } = serviceExports;
-
 const userAgentID = "c293fdc5-a75e-4eb1-af88-a203991c0787";
 
 function run_test() {
@@ -26,7 +24,7 @@ add_task(async function test_register_wrong_type() {
     serverURI: "wss://push.example.org/",
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -36,7 +34,7 @@ add_task(async function test_register_wrong_type() {
           );
           helloDone();
         },
-        onRegister(request) {
+        onRegister() {
           registers++;
           this.serverSendMsg(
             JSON.stringify({

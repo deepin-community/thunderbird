@@ -4,19 +4,17 @@
 
 "use strict";
 
-const { EnterprisePolicyTesting, PoliciesPrefTracker } = ChromeUtils.import(
-  "resource://testing-common/EnterprisePolicyTesting.jsm"
-);
-const { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
-);
+const { EnterprisePolicyTesting, PoliciesPrefTracker } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/EnterprisePolicyTesting.sys.mjs"
+  );
 
 PoliciesPrefTracker.start();
 
 async function setupPolicyEngineWithJson(json, customSchema) {
   PoliciesPrefTracker.restoreDefaultValues();
   if (typeof json != "object") {
-    let filePath = getTestFilePath(json ? json : "non-existing-file.json");
+    const filePath = getTestFilePath(json ? json : "non-existing-file.json");
     return EnterprisePolicyTesting.setupPolicyEngineWithJson(
       filePath,
       customSchema
@@ -34,17 +32,17 @@ function checkUnlockedPref(prefName, prefValue) {
 }
 
 async function withNewTab(options, taskFn) {
-  let tab = window.openContentTab(options.url);
+  const tab = window.openContentTab(options.url);
   await BrowserTestUtils.browserLoaded(tab.browser);
 
-  let result = await taskFn(tab.browser);
+  const result = await taskFn(tab.browser);
 
-  let tabmail = document.getElementById("tabmail");
+  const tabmail = document.getElementById("tabmail");
   tabmail.closeTab(tab);
   return Promise.resolve(result);
 }
 
-add_task(async function policies_headjs_startWithCleanSlate() {
+add_setup(async function policies_headjs_startWithCleanSlate() {
   if (Services.policies.status != Ci.nsIEnterprisePolicies.INACTIVE) {
     await setupPolicyEngineWithJson("");
   }
@@ -71,7 +69,7 @@ registerCleanupFunction(async function policies_headjs_finishWithCleanSlate() {
 
 function waitForAddonInstall(addon_id) {
   return new Promise(resolve => {
-    let listener = {
+    const listener = {
       onInstallEnded(install, addon) {
         if (addon.id == addon_id) {
           AddonManager.removeInstallListener(listener);
@@ -93,7 +91,7 @@ function waitForAddonInstall(addon_id) {
 
 function waitForAddonUninstall(addon_id) {
   return new Promise(resolve => {
-    let listener = {};
+    const listener = {};
     listener.onUninstalled = addon => {
       if (addon.id == addon_id) {
         AddonManager.removeAddonListener(listener);

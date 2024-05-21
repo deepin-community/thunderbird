@@ -19,7 +19,6 @@
 #include "mozilla/UniquePtr.h"
 #include "mozilla/UniquePtrExtensions.h"
 #include "mozilla/dom/indexedDB/Key.h"
-#include "mozilla/dom/quota/IPCStreamCipherStrategy.h"
 #include "nscore.h"
 #include "nsISupports.h"
 #include "nsStringFwd.h"
@@ -31,16 +30,13 @@ class mozIStorageConnection;
 class mozIStorageStatement;
 class mozIStorageValueArray;
 
-namespace mozilla {
-namespace dom {
-namespace indexedDB {
+namespace mozilla::dom::indexedDB {
 
 class DatabaseFileManager;
 struct StructuredCloneFileParent;
 struct StructuredCloneReadInfoParent;
 
-using IndexedDBCipherStrategy = quota::IPCStreamCipherStrategy;
-using CipherKey = IndexedDBCipherStrategy::KeyType;
+extern const nsLiteralString kJournalDirectoryName;
 
 // At the moment, the encrypted stream block size is assumed to be unchangeable
 // between encrypting and decrypting blobs. This assumptions holds as long as we
@@ -58,10 +54,10 @@ struct IndexDataValue final {
 
   IndexDataValue();
 
-#ifdef NS_BUILD_REFCNT_LOGGING
-  IndexDataValue(IndexDataValue&& aOther);
-
-  MOZ_COUNTED_DTOR(IndexDataValue)
+#if defined(DEBUG) || defined(NS_BUILD_REFCNT_LOGGING)
+  IndexDataValue(IndexDataValue&& aOther) noexcept;
+#else
+  IndexDataValue(IndexDataValue&& aOther) = default;
 #endif
 
   IndexDataValue(IndexOrObjectStoreId aIndexId, bool aUnique,
@@ -69,6 +65,12 @@ struct IndexDataValue final {
 
   IndexDataValue(IndexOrObjectStoreId aIndexId, bool aUnique,
                  const Key& aPosition, const Key& aLocaleAwarePosition);
+
+#ifdef NS_BUILD_REFCNT_LOGGING
+  MOZ_COUNTED_DTOR(IndexDataValue)
+#endif
+
+  IndexDataValue& operator=(IndexDataValue&& aOther) = default;
 
   bool operator==(const IndexDataValue& aOther) const;
 
@@ -104,14 +106,12 @@ ReadCompressedNumber(Span<const uint8_t> aSpan);
 Result<StructuredCloneReadInfoParent, nsresult>
 GetStructuredCloneReadInfoFromValueArray(
     mozIStorageValueArray* aValues, uint32_t aDataIndex, uint32_t aFileIdsIndex,
-    const DatabaseFileManager& aFileManager, const Maybe<CipherKey>& aMaybeKey);
+    const DatabaseFileManager& aFileManager);
 
 Result<StructuredCloneReadInfoParent, nsresult>
-GetStructuredCloneReadInfoFromStatement(mozIStorageStatement* aStatement,
-                                        uint32_t aDataIndex,
-                                        uint32_t aFileIdsIndex,
-                                        const DatabaseFileManager& aFileManager,
-                                        const Maybe<CipherKey>& aMaybeKey);
+GetStructuredCloneReadInfoFromStatement(
+    mozIStorageStatement* aStatement, uint32_t aDataIndex,
+    uint32_t aFileIdsIndex, const DatabaseFileManager& aFileManager);
 
 Result<nsTArray<StructuredCloneFileParent>, nsresult>
 DeserializeStructuredCloneFiles(const DatabaseFileManager& aFileManager,
@@ -120,8 +120,6 @@ DeserializeStructuredCloneFiles(const DatabaseFileManager& aFileManager,
 nsresult ExecuteSimpleSQLSequence(mozIStorageConnection& aConnection,
                                   Span<const nsLiteralCString> aSQLCommands);
 
-}  // namespace indexedDB
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom::indexedDB
 
 #endif  // mozilla_dom_indexeddb_actorsparent_h__

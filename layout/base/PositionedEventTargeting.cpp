@@ -7,7 +7,6 @@
 #include "PositionedEventTargeting.h"
 
 #include "mozilla/EventListenerManager.h"
-#include "mozilla/EventStates.h"
 #include "mozilla/MouseEvents.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/PresShell.h"
@@ -182,8 +181,7 @@ static bool IsDescendant(nsIFrame* aFrame, nsIContent* aAncestor,
   for (nsIContent* content = aFrame->GetContent(); content;
        content = content->GetFlattenedTreeParent()) {
     if (aLabelTargetId && content->IsHTMLElement(nsGkAtoms::label)) {
-      content->AsElement()->GetAttr(kNameSpaceID_None, nsGkAtoms::_for,
-                                    *aLabelTargetId);
+      content->AsElement()->GetAttr(nsGkAtoms::_for, *aLabelTargetId);
     }
     if (content == aAncestor) {
       return true;
@@ -225,7 +223,7 @@ static nsIContent* GetClickableAncestor(
   // this check to any non-auto cursor. Such a change would also pick up things
   // like contenteditable or input fields, which can then be removed from the
   // loop below, and would have better performance.
-  if (aFrame->StyleUI()->mCursor.keyword == StyleCursorKind::Pointer) {
+  if (aFrame->StyleUI()->Cursor().keyword == StyleCursorKind::Pointer) {
     return aFrame->GetContent();
   }
 
@@ -246,21 +244,8 @@ static nsIContent* GetClickableAncestor(
     }
     if (content->IsHTMLElement(nsGkAtoms::label)) {
       if (aLabelTargetId) {
-        content->AsElement()->GetAttr(kNameSpaceID_None, nsGkAtoms::_for,
-                                      *aLabelTargetId);
+        content->AsElement()->GetAttr(nsGkAtoms::_for, *aLabelTargetId);
       }
-      return content;
-    }
-
-    // Bug 921928: we don't have access to the content of remote iframe.
-    // So fluffing won't go there. We do an optimistic assumption here:
-    // that the content of the remote iframe needs to be a target.
-    if (content->IsHTMLElement(nsGkAtoms::iframe) &&
-        content->AsElement()->AttrValueIs(kNameSpaceID_None,
-                                          nsGkAtoms::mozbrowser,
-                                          nsGkAtoms::_true, eIgnoreCase) &&
-        content->AsElement()->AttrValueIs(kNameSpaceID_None, nsGkAtoms::remote,
-                                          nsGkAtoms::_true, eIgnoreCase)) {
       return content;
     }
 
@@ -275,16 +260,16 @@ static nsIContent* GetClickableAncestor(
 
     static Element::AttrValuesArray clickableRoles[] = {
         nsGkAtoms::button, nsGkAtoms::key, nullptr};
-    if (content->IsElement() && content->AsElement()->FindAttrValueIn(
-                                    kNameSpaceID_None, nsGkAtoms::role,
-                                    clickableRoles, eIgnoreCase) >= 0) {
-      return content;
+    if (auto* element = Element::FromNode(*content)) {
+      if (element->IsLink()) {
+        return content;
+      }
+      if (element->FindAttrValueIn(kNameSpaceID_None, nsGkAtoms::role,
+                                   clickableRoles, eIgnoreCase) >= 0) {
+        return content;
+      }
     }
     if (content->IsEditable()) {
-      return content;
-    }
-    nsCOMPtr<nsIURI> linkURI;
-    if (content->IsLink(getter_AddRefs(linkURI))) {
       return content;
     }
   }
@@ -449,7 +434,7 @@ static nsIFrame* GetClosest(RelativeTo aRoot,
     nsIContent* content = f->GetContent();
     if (content && content->IsElement() &&
         content->AsElement()->State().HasState(
-            EventStates(NS_EVENT_STATE_VISITED))) {
+            ElementState(ElementState::VISITED))) {
       distance *= aPrefs.mVisitedWeight / 100.0f;
     }
     if (distance < bestDistance) {
@@ -519,6 +504,13 @@ nsIFrame* FindFrameTargetedByInputEvent(
     }
     return aRootFrame.mFrame;
   }();
+
+  // Ignore retarget if target is editable.
+  nsIContent* targetContent = target ? target->GetContent() : nullptr;
+  if (targetContent && targetContent->IsEditable()) {
+    PET_LOG("Target %p is editable\n", target);
+    return target;
+  }
 
   // If the target element inside an element with a z-index, restrict the
   // search to other elements inside that z-index. This is a heuristic

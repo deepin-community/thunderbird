@@ -1,8 +1,7 @@
 "use strict";
-/* eslint-env mozilla/frame-script */
 
-const { XPCShellContentUtils } = ChromeUtils.import(
-  "resource://testing-common/XPCShellContentUtils.jsm"
+const { XPCShellContentUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/XPCShellContentUtils.sys.mjs"
 );
 
 XPCShellContentUtils.init(this);
@@ -30,14 +29,15 @@ server.registerPathHandler(childFramePath, (request, response) => {
 });
 
 function childFrameScript() {
+  /* eslint-env mozilla/frame-script */
   "use strict";
 
-  let { MockFilePicker } = ChromeUtils.import(
-    "resource://testing-common/MockFilePicker.jsm"
+  let { MockFilePicker } = ChromeUtils.importESModule(
+    "resource://testing-common/MockFilePicker.sys.mjs"
   );
 
   function parentReady(message) {
-    MockFilePicker.init(content);
+    MockFilePicker.init(content.browsingContext);
     MockFilePicker.setFiles([message.data.file]);
     MockFilePicker.returnValue = MockFilePicker.returnOK;
 
@@ -52,12 +52,13 @@ function childFrameScript() {
     input.click();
   }
 
-  addMessageListener("testBug1086684:parentReady", function(message) {
+  addMessageListener("testBug1086684:parentReady", function (message) {
     parentReady(message);
   });
 }
 
-add_task(async function() {
+add_task(async function () {
+  Services.prefs.setBoolPref("dom.security.https_first", false);
   let page = await XPCShellContentUtils.loadContentPage(childFrameURL, {
     remote: true,
   });
@@ -94,4 +95,5 @@ add_task(async function() {
   });
 
   await page.close();
+  Services.prefs.clearUserPref("dom.security.https_first");
 });

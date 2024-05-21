@@ -2,17 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { FileUtils } = ChromeUtils.import(
-  "resource://gre/modules/FileUtils.jsm"
+const { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
-const { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
-var { convertMailStoreTo } = ChromeUtils.import(
-  "resource:///modules/mailstoreConverter.jsm"
+var { convertMailStoreTo } = ChromeUtils.importESModule(
+  "resource:///modules/mailstoreConverter.sys.mjs"
 );
-const { allAccountsSorted } = ChromeUtils.import(
-  "resource:///modules/folderUtils.jsm"
+const { FolderUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FolderUtils.sys.mjs"
 );
 
 // XXX: merge into test_converter.js
@@ -41,7 +41,7 @@ var gServer;
 
 var copyListenerWrap = {
   SetMessageKey(aKey) {
-    let hdr = gInbox.GetMessageHeader(aKey);
+    const hdr = gInbox.GetMessageHeader(aKey);
     gMsgHdrs.push({ hdr, ID: hdr.messageId });
   },
   OnStopCopy(aStatus) {
@@ -50,8 +50,8 @@ var copyListenerWrap = {
   },
 };
 
-var EventTarget = function() {
-  this.dispatchEvent = function(event) {
+var EventTarget = function () {
+  this.dispatchEvent = function (event) {
     if (event.type == "progress") {
       log.trace("Progress: " + event.detail);
     }
@@ -59,7 +59,7 @@ var EventTarget = function() {
 };
 
 function copyFileMessage(file, destFolder, isDraftOrTemplate) {
-  let listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
+  const listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
   MailServices.copy.copyFileMessage(
     file,
     destFolder,
@@ -75,14 +75,15 @@ function copyFileMessage(file, destFolder, isDraftOrTemplate) {
 
 /**
  * Check that conversion worked for the given source.
- * @param source - mbox source directory
- * @param target - maildir target directory
+ *
+ * @param {nsIFile} source - mbox source directory.
+ * @param {nsIFile} target - maildir target directory.
  */
 function checkConversion(source, target) {
-  for (let sourceContent of source.directoryEntries) {
-    let sourceContentName = sourceContent.leafName;
-    let ext = sourceContentName.substr(-4);
-    let targetFile = FileUtils.File(
+  for (const sourceContent of source.directoryEntries) {
+    const sourceContentName = sourceContent.leafName;
+    const ext = sourceContentName.substr(-4);
+    const targetFile = FileUtils.File(
       PathUtils.join(target.path, sourceContentName)
     );
     log.debug("Checking path: " + targetFile.path);
@@ -93,13 +94,13 @@ function checkConversion(source, target) {
       checkConversion(sourceContent, targetFile);
     } else if (ext != ".msf") {
       Assert.ok(targetFile.exists());
-      let cur = FileUtils.File(PathUtils.join(targetFile.path, "cur"));
+      const cur = FileUtils.File(PathUtils.join(targetFile.path, "cur"));
       Assert.ok(cur.exists());
-      let tmp = FileUtils.File(PathUtils.join(targetFile.path, "tmp"));
+      const tmp = FileUtils.File(PathUtils.join(targetFile.path, "tmp"));
       Assert.ok(tmp.exists());
       if (targetFile.leafName == "Inbox") {
-        let curContents = cur.directoryEntries;
-        let curContentsCount = [...curContents].length;
+        const curContents = cur.directoryEntries;
+        const curContentsCount = [...curContents].length;
         Assert.equal(curContentsCount, 1000);
       }
     }
@@ -137,16 +138,19 @@ function run_test() {
 
   // 'gServer1' should be deferred. Get the path of the root folder to which
   // other accounts are deferred.
-  ok(gServer1.rootFolder.filePath.path != gServer1.rootMsgFolder.filePath.path);
-  let deferredToRootFolder = gServer1.rootMsgFolder.filePath.path;
+  Assert.notEqual(
+    gServer1.rootFolder.filePath.path,
+    gServer1.rootMsgFolder.filePath.path
+  );
+  const deferredToRootFolder = gServer1.rootMsgFolder.filePath.path;
 
   // Account to which other accounts have been deferred.
   let deferredToAccount;
   // String to hold names of accounts to convert.
   let accountsToConvert = "";
 
-  let accounts = allAccountsSorted(true);
-  for (let account of accounts) {
+  const accounts = FolderUtils.allAccountsSorted(true);
+  for (const account of accounts) {
     if (
       account.incomingServer.rootFolder.filePath.path == deferredToRootFolder
     ) {
@@ -170,8 +174,8 @@ function run_test() {
   run_next_test();
 }
 
-add_task(async function setupMessages() {
-  let msgFile = do_get_file("../../../data/bugmail10");
+add_setup(async function () {
+  const msgFile = do_get_file("../../../data/bugmail10");
   // Add 1000 messages to the "Inbox" folder.
   for (let i = 0; i < 1000; i++) {
     await copyFileMessage(msgFile, gInbox, false);
@@ -179,26 +183,26 @@ add_task(async function setupMessages() {
 });
 
 add_task(function testMaildirConversion() {
-  let mailstoreContractId = Services.prefs.getCharPref(
+  const mailstoreContractId = Services.prefs.getCharPref(
     "mail.server." + gServer.key + ".storeContractID"
   );
 
   do_test_pending();
-  let pConverted = convertMailStoreTo(
+  const pConverted = convertMailStoreTo(
     mailstoreContractId,
     gServer,
     new EventTarget()
   );
-  let originalRootFolder = gServer.rootFolder.filePath;
+  const originalRootFolder = gServer.rootFolder.filePath;
 
   pConverted
-    .then(function(val) {
+    .then(function (val) {
       log.debug("Conversion done: " + originalRootFolder.path + " => " + val);
-      let newRootFolder = gServer.rootFolder.filePath;
+      const newRootFolder = gServer.rootFolder.filePath;
       checkConversion(originalRootFolder, newRootFolder);
       do_test_finished();
     })
-    .catch(function(reason) {
+    .catch(function (reason) {
       log.error("Conversion failed: " + reason.error);
       ok(false); // Fail the test!
     });

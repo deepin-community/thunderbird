@@ -7,17 +7,21 @@
 #ifndef vm_GeneratorObject_h
 #define vm_GeneratorObject_h
 
-#include "frontend/ParserAtom.h"  // frontend::TaggedParserAtomIndex
 #include "js/Class.h"
 #include "vm/ArgumentsObject.h"
 #include "vm/ArrayObject.h"
 #include "vm/BytecodeUtil.h"
 #include "vm/GeneratorResumeKind.h"  // GeneratorResumeKind
-#include "vm/JSContext.h"
 #include "vm/JSObject.h"
 #include "vm/Stack.h"
 
 namespace js {
+
+class InterpreterActivation;
+
+namespace frontend {
+class TaggedParserAtomIndex;
+}
 
 extern const JSClass GeneratorFunctionClass;
 
@@ -36,17 +40,6 @@ class AbstractGeneratorObject : public NativeObject {
     RESERVED_SLOTS
   };
 
-  // Maximum number of fixed stack slots in a generator or async function
-  // script. If a script would have more, we instead store some variables in
-  // heap EnvironmentObjects.
-  //
-  // This limit is a performance heuristic. Stack slots reduce allocations,
-  // and `Local` opcodes are a bit faster than `AliasedVar` ones; but at each
-  // `yield` or `await` the stack slots must be memcpy'd into a
-  // GeneratorObject. At some point the memcpy is too much. The limit is
-  // plenty for typical human-authored code.
-  static constexpr uint32_t FixedSlotLimit = 256;
-
  private:
   static JSObject* createModuleGenerator(JSContext* cx, AbstractFramePtr frame);
 
@@ -62,7 +55,7 @@ class AbstractGeneratorObject : public NativeObject {
                      HandleValue resumeKind);
 
   static bool suspend(JSContext* cx, HandleObject obj, AbstractFramePtr frame,
-                      jsbytecode* pc, unsigned nvalues);
+                      const jsbytecode* pc, unsigned nvalues);
 
   static void finalSuspend(HandleObject obj);
 
@@ -134,7 +127,7 @@ class AbstractGeneratorObject : public NativeObject {
     MOZ_ASSERT(isSuspended());
     setFixedSlot(RESUME_INDEX_SLOT, Int32Value(RESUME_INDEX_RUNNING));
   }
-  void setResumeIndex(jsbytecode* pc) {
+  void setResumeIndex(const jsbytecode* pc) {
     MOZ_ASSERT(JSOp(*pc) == JSOp::InitialYield || JSOp(*pc) == JSOp::Yield ||
                JSOp(*pc) == JSOp::Await);
 
@@ -240,7 +233,7 @@ AbstractGeneratorObject* GetGeneratorObjectForEnvironment(JSContext* cx,
                                                           HandleObject env);
 
 GeneratorResumeKind ParserAtomToResumeKind(
-    JSContext* cx, frontend::TaggedParserAtomIndex atom);
+    frontend::TaggedParserAtomIndex atom);
 JSAtom* ResumeKindToAtom(JSContext* cx, GeneratorResumeKind kind);
 
 }  // namespace js

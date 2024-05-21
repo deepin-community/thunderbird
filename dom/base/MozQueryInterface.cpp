@@ -28,14 +28,13 @@ static int CompareIIDs(const nsIID& aA, const nsIID& aB) {
 }
 
 /* static */
-MozQueryInterface* ChromeUtils::GenerateQI(
-    const GlobalObject& aGlobal, const Sequence<JS::Value>& aInterfaces,
-    ErrorResult& aRv) {
+UniquePtr<MozQueryInterface> ChromeUtils::GenerateQI(
+    const GlobalObject& aGlobal, const Sequence<JS::Value>& aInterfaces) {
   JSContext* cx = aGlobal.Context();
 
   nsTArray<nsIID> ifaces;
 
-  JS::RootedValue iface(cx);
+  JS::Rooted<JS::Value> iface(cx);
   for (uint32_t idx = 0; idx < aInterfaces.Length(); ++idx) {
     iface = aInterfaces[idx];
 
@@ -65,7 +64,7 @@ MozQueryInterface* ChromeUtils::GenerateQI(
 
   ifaces.Sort(CompareIIDs);
 
-  return new MozQueryInterface(std::move(ifaces));
+  return MakeUnique<MozQueryInterface>(std::move(ifaces));
 }
 
 bool MozQueryInterface::QueriesTo(const nsIID& aIID) const {

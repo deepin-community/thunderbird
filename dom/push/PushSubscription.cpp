@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/PushSubscription.h"
 
+#include "nsGlobalWindowInner.h"
 #include "nsIPushService.h"
 #include "nsIScriptObjectPrincipal.h"
 #include "nsServiceManagerUtils.h"
@@ -22,8 +23,7 @@
 #include "mozilla/dom/WorkerRunnable.h"
 #include "mozilla/dom/WorkerScope.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 namespace {
 
@@ -59,7 +59,7 @@ class UnsubscribeResultRunnable final : public WorkerRunnable {
   UnsubscribeResultRunnable(WorkerPrivate* aWorkerPrivate,
                             RefPtr<PromiseWorkerProxy>&& aProxy,
                             nsresult aStatus, bool aSuccess)
-      : WorkerRunnable(aWorkerPrivate),
+      : WorkerRunnable(aWorkerPrivate, "UnsubscribeResultRunnable"),
         mProxy(std::move(aProxy)),
         mStatus(aStatus),
         mSuccess(aSuccess) {
@@ -70,7 +70,11 @@ class UnsubscribeResultRunnable final : public WorkerRunnable {
     MOZ_ASSERT(aWorkerPrivate);
     aWorkerPrivate->AssertIsOnWorkerThread();
 
-    RefPtr<Promise> promise = mProxy->WorkerPromise();
+    RefPtr<Promise> promise = mProxy->GetWorkerPromise();
+    // Once Worker had already started shutdown, workerPromise would be nullptr
+    if (!promise) {
+      return true;
+    }
     if (NS_SUCCEEDED(mStatus)) {
       promise->MaybeResolve(mSuccess);
     } else {
@@ -181,11 +185,13 @@ class UnsubscribeRunnable final : public Runnable {
 PushSubscription::PushSubscription(nsIGlobalObject* aGlobal,
                                    const nsAString& aEndpoint,
                                    const nsAString& aScope,
+                                   Nullable<EpochTimeStamp>&& aExpirationTime,
                                    nsTArray<uint8_t>&& aRawP256dhKey,
                                    nsTArray<uint8_t>&& aAuthSecret,
                                    nsTArray<uint8_t>&& aAppServerKey)
     : mEndpoint(aEndpoint),
       mScope(aScope),
+      mExpirationTime(std::move(aExpirationTime)),
       mRawP256dhKey(std::move(aRawP256dhKey)),
       mAuthSecret(std::move(aAuthSecret)) {
   if (NS_IsMainThread()) {
@@ -226,8 +232,7 @@ already_AddRefed<PushSubscription> PushSubscription::Constructor(
   nsTArray<uint8_t> rawKey;
   if (aInitDict.mP256dhKey.WasPassed() &&
       !aInitDict.mP256dhKey.Value().IsNull() &&
-      !PushUtil::CopyArrayBufferToArray(aInitDict.mP256dhKey.Value().Value(),
-                                        rawKey)) {
+      !aInitDict.mP256dhKey.Value().Value().AppendDataTo(rawKey)) {
     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
@@ -235,8 +240,7 @@ already_AddRefed<PushSubscription> PushSubscription::Constructor(
   nsTArray<uint8_t> authSecret;
   if (aInitDict.mAuthSecret.WasPassed() &&
       !aInitDict.mAuthSecret.Value().IsNull() &&
-      !PushUtil::CopyArrayBufferToArray(aInitDict.mAuthSecret.Value().Value(),
-                                        authSecret)) {
+      !aInitDict.mAuthSecret.Value().Value().AppendDataTo(authSecret)) {
     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
@@ -252,9 +256,16 @@ already_AddRefed<PushSubscription> PushSubscription::Constructor(
     }
   }
 
+  Nullable<EpochTimeStamp> expirationTime;
+  if (aInitDict.mExpirationTime.IsNull()) {
+    expirationTime.SetNull();
+  } else {
+    expirationTime.SetValue(aInitDict.mExpirationTime.Value());
+  }
+
   RefPtr<PushSubscription> sub = new PushSubscription(
-      global, aInitDict.mEndpoint, aInitDict.mScope, std::move(rawKey),
-      std::move(authSecret), std::move(appServerKey));
+      global, aInitDict.mEndpoint, aInitDict.mScope, std::move(expirationTime),
+      std::move(rawKey), std::move(authSecret), std::move(appServerKey));
 
   return sub.forget();
 }
@@ -274,8 +285,8 @@ already_AddRefed<Promise> PushSubscription::Unsubscribe(ErrorResult& aRv) {
     return nullptr;
   }
 
-  nsCOMPtr<nsIScriptObjectPrincipal> sop = do_QueryInterface(mGlobal);
-  if (!sop) {
+  nsCOMPtr<nsPIDOMWindowInner> window = do_QueryInterface(mGlobal);
+  if (!window) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
@@ -286,8 +297,9 @@ already_AddRefed<Promise> PushSubscription::Unsubscribe(ErrorResult& aRv) {
   }
 
   RefPtr<UnsubscribeResultCallback> callback = new UnsubscribeResultCallback(p);
-  Unused << NS_WARN_IF(
-      NS_FAILED(service->Unsubscribe(mScope, sop->GetPrincipal(), callback)));
+  Unused << NS_WARN_IF(NS_FAILED(service->Unsubscribe(
+      mScope, nsGlobalWindowInner::Cast(window)->GetClientPrincipal(),
+      callback)));
 
   return p.forget();
 }
@@ -325,6 +337,7 @@ void PushSubscription::ToJSON(PushSubscriptionJSON& aJSON, ErrorResult& aRv) {
     aRv.Throw(rv);
     return;
   }
+  aJSON.mExpirationTime.Construct(mExpirationTime);
 }
 
 already_AddRefed<PushSubscriptionOptions> PushSubscription::Options() {
@@ -356,5 +369,4 @@ already_AddRefed<Promise> PushSubscription::UnsubscribeFromWorker(
   return p.forget();
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

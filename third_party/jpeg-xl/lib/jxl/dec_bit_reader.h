@@ -18,11 +18,10 @@
 #endif
 
 #include "lib/jxl/base/byte_order.h"
+#include "lib/jxl/base/common.h"
 #include "lib/jxl/base/compiler_specific.h"
-#include "lib/jxl/base/profiler.h"
 #include "lib/jxl/base/span.h"
 #include "lib/jxl/base/status.h"
-#include "lib/jxl/common.h"
 
 namespace jxl {
 
@@ -181,8 +180,20 @@ class BitReader {
 
     // Skip whole bytes
     const size_t whole_bytes = skip / kBitsPerByte;
-    next_byte_ += whole_bytes;
     skip %= kBitsPerByte;
+    if (JXL_UNLIKELY(whole_bytes >
+                     static_cast<size_t>(end_minus_8_ + 8 - next_byte_))) {
+      // This is already an overflow condition (skipping past the end of the bit
+      // stream). However if we increase next_byte_ too much we risk overflowing
+      // that value and potentially making it valid again (next_byte_ < end).
+      // This will set next_byte_ to the end of the stream and still consume
+      // some bits in overread_bytes_, however the TotalBitsConsumed() will be
+      // incorrect (still larger than the TotalBytes()).
+      next_byte_ = end_minus_8_ + 8;
+      skip += kBitsPerByte;
+    } else {
+      next_byte_ += whole_bytes;
+    }
 
     Refill();
     Consume(skip);
@@ -216,7 +227,7 @@ class BitReader {
     JXL_ASSERT(TotalBitsConsumed() % kBitsPerByte == 0);
     const size_t offset = TotalBitsConsumed() / kBitsPerByte;  // no remainder
     JXL_ASSERT(offset <= TotalBytes());
-    return Span<const uint8_t>(first_byte_ + offset, TotalBytes() - offset);
+    return Bytes(first_byte_ + offset, TotalBytes() - offset);
   }
 
   // Returns whether all the bits read so far have been within the input bounds.
@@ -252,7 +263,6 @@ class BitReader {
  private:
   // Separate function avoids inlining this relatively cold code into callers.
   JXL_NOINLINE void BoundsCheckedRefill() {
-    PROFILER_FUNC;
     const uint8_t* end = end_minus_8_ + 8;
 
     // Read whole bytes until we have [56, 64) bits (same as LoadLE64)
@@ -320,8 +330,15 @@ class BitReaderScopedCloser {
     JXL_DASSERT(status_ != nullptr);
   }
   ~BitReaderScopedCloser() {
-    Status close_ret = reader_->Close();
-    if (!close_ret) *status_ = close_ret;
+    if (reader_ != nullptr) {
+      Status close_ret = reader_->Close();
+      if (!close_ret) *status_ = close_ret;
+    }
+  }
+  void CloseAndSuppressError() {
+    JXL_ASSERT(reader_ != nullptr);
+    (void)reader_->Close();
+    reader_ = nullptr;
   }
   BitReaderScopedCloser(const BitReaderScopedCloser&) = delete;
 

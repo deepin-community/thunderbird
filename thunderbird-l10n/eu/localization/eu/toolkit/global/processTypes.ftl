@@ -17,12 +17,12 @@ process-type-privilegedmozilla = Pribilegiodun Mozilla edukia
 process-type-extension = Hedapena
 # process used to open file:// URLs
 process-type-file = Fitxategi lokala
-# process used to isolate webpages that requested special
-# permission to allocate large amounts of memory
-process-type-weblargeallocation = Esleipen handia
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = Isolatutako web edukia
+# process used to isolate a ServiceWorker to improve
+# performance
+process-type-webserviceworker = Zerbitzu-langile isolatua
 # process preallocated; may change to other types
 process-type-prealloc = Aurrez esleituta
 
@@ -39,6 +39,15 @@ process-type-gpu = GPU
 process-type-socket = Socketa
 # process used to decode media
 process-type-rdd = RDD
+# process used to run some IPC actor in their own sandbox
+process-type-utility = Isolatutako IPC aktorea
+process-type-utility-actor-audio-decoder-generic = Audio-deskodetzaile arruntaren tresna
+process-type-utility-actor-audio-decoder-applemedia = AppleMedia tresna
+process-type-utility-actor-audio-decoder-wmf = Windows Media Foundation tresna
+process-type-utility-actor-mf-media-engine = Media Foundation Engine tresna
+process-type-utility-actor-js-oracle = JavaScript Oracle tresna
+process-type-utility-actor-windows-utils = Windows Utils tresna
+process-type-utility-actor-windows-file-dialog = Windows File Dialog tresna
 
 ##
 ## Other

@@ -51,60 +51,72 @@ where
     pub fn skip_children(&mut self) {
         self.stack.pop();
     }
-}
 
-fn children_of_rule<'a, C>(
-    rule: &'a CssRule,
-    device: &'a Device,
-    quirks_mode: QuirksMode,
-    guard: &'a SharedRwLockReadGuard<'_>,
-    effective: &mut bool,
-) -> Option<slice::Iter<'a, CssRule>>
-where
-    C: NestedRuleIterationCondition + 'static,
-{
-    *effective = true;
-    match *rule {
-        CssRule::Namespace(_) |
-        CssRule::Style(_) |
-        CssRule::FontFace(_) |
-        CssRule::CounterStyle(_) |
-        CssRule::Viewport(_) |
-        CssRule::Keyframes(_) |
-        CssRule::Page(_) |
-        CssRule::FontFeatureValues(_) => None,
-        CssRule::Import(ref import_rule) => {
-            let import_rule = import_rule.read_with(guard);
-            if !C::process_import(guard, device, quirks_mode, import_rule) {
-                *effective = false;
-                return None;
-            }
-            Some(import_rule.stylesheet.rules(guard).iter())
-        },
-        CssRule::Document(ref doc_rule) => {
-            let doc_rule = doc_rule.read_with(guard);
-            if !C::process_document(guard, device, quirks_mode, doc_rule) {
-                *effective = false;
-                return None;
-            }
-            Some(doc_rule.rules.read_with(guard).0.iter())
-        },
-        CssRule::Media(ref lock) => {
-            let media_rule = lock.read_with(guard);
-            if !C::process_media(guard, device, quirks_mode, media_rule) {
-                *effective = false;
-                return None;
-            }
-            Some(media_rule.rules.read_with(guard).0.iter())
-        },
-        CssRule::Supports(ref lock) => {
-            let supports_rule = lock.read_with(guard);
-            if !C::process_supports(guard, device, quirks_mode, supports_rule) {
-                *effective = false;
-                return None;
-            }
-            Some(supports_rule.rules.read_with(guard).0.iter())
-        },
+    /// Returns the children of `rule`, and whether `rule` is effective.
+    pub fn children(
+        rule: &'a CssRule,
+        device: &'a Device,
+        quirks_mode: QuirksMode,
+        guard: &'a SharedRwLockReadGuard<'_>,
+        effective: &mut bool,
+    ) -> Option<slice::Iter<'a, CssRule>> {
+        *effective = true;
+        match *rule {
+            CssRule::Namespace(_) |
+            CssRule::FontFace(_) |
+            CssRule::CounterStyle(_) |
+            CssRule::Keyframes(_) |
+            CssRule::Margin(_) |
+            CssRule::Property(_) |
+            CssRule::LayerStatement(_) |
+            CssRule::FontFeatureValues(_) |
+            CssRule::FontPaletteValues(_) => None,
+            CssRule::Page(ref page_rule) => {
+                let page_rule = page_rule.read_with(guard);
+                let rules = page_rule.rules.read_with(guard);
+                Some(rules.0.iter())
+            },
+            CssRule::Style(ref style_rule) => {
+                let style_rule = style_rule.read_with(guard);
+                style_rule
+                    .rules
+                    .as_ref()
+                    .map(|r| r.read_with(guard).0.iter())
+            },
+            CssRule::Import(ref import_rule) => {
+                let import_rule = import_rule.read_with(guard);
+                if !C::process_import(guard, device, quirks_mode, import_rule) {
+                    *effective = false;
+                    return None;
+                }
+                Some(import_rule.stylesheet.rules(guard).iter())
+            },
+            CssRule::Document(ref doc_rule) => {
+                if !C::process_document(guard, device, quirks_mode, doc_rule) {
+                    *effective = false;
+                    return None;
+                }
+                Some(doc_rule.rules.read_with(guard).0.iter())
+            },
+            CssRule::Container(ref container_rule) => {
+                Some(container_rule.rules.read_with(guard).0.iter())
+            },
+            CssRule::Media(ref media_rule) => {
+                if !C::process_media(guard, device, quirks_mode, media_rule) {
+                    *effective = false;
+                    return None;
+                }
+                Some(media_rule.rules.read_with(guard).0.iter())
+            },
+            CssRule::Supports(ref supports_rule) => {
+                if !C::process_supports(guard, device, quirks_mode, supports_rule) {
+                    *effective = false;
+                    return None;
+                }
+                Some(supports_rule.rules.read_with(guard).0.iter())
+            },
+            CssRule::LayerBlock(ref layer_rule) => Some(layer_rule.rules.read_with(guard).0.iter()),
+        }
     }
 }
 
@@ -129,7 +141,7 @@ where
             };
 
             let mut effective = true;
-            let children = children_of_rule::<C>(
+            let children = Self::children(
                 rule,
                 self.device,
                 self.quirks_mode,
@@ -206,15 +218,12 @@ impl EffectiveRules {
                 Self::process_import(guard, device, quirks_mode, import_rule)
             },
             CssRule::Document(ref doc_rule) => {
-                let doc_rule = doc_rule.read_with(guard);
                 Self::process_document(guard, device, quirks_mode, doc_rule)
             },
-            CssRule::Media(ref lock) => {
-                let media_rule = lock.read_with(guard);
+            CssRule::Media(ref media_rule) => {
                 Self::process_media(guard, device, quirks_mode, media_rule)
             },
-            CssRule::Supports(ref lock) => {
-                let supports_rule = lock.read_with(guard);
+            CssRule::Supports(ref supports_rule) => {
                 Self::process_supports(guard, device, quirks_mode, supports_rule)
             },
             _ => true,
@@ -315,7 +324,8 @@ impl<'a, 'b> EffectiveRulesIterator<'a, 'b> {
         guard: &'a SharedRwLockReadGuard<'b>,
         rule: &'a CssRule,
     ) -> Self {
-        let children = children_of_rule::<AllRules>(rule, device, quirks_mode, guard, &mut false);
+        let children =
+            RulesIterator::<AllRules>::children(rule, device, quirks_mode, guard, &mut false);
         EffectiveRulesIterator::new(device, quirks_mode, guard, children.unwrap_or([].iter()))
     }
 }

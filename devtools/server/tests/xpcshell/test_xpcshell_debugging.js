@@ -12,7 +12,7 @@
 // eslint-disable-next-line no-undef
 _profileInitialized = true;
 
-add_task(async function() {
+add_task(async function () {
   const testFile = do_get_file("xpcshell_debugging_script.js");
 
   // _setupDevToolsServer is from xpcshell-test's head.js
@@ -62,12 +62,9 @@ add_task(async function() {
     "yay - hit the breakpoint at the first line in our script"
   );
 
-  const onPause2 = waitForPause(threadFront);
   // Resume again - next stop should be our "debugger" statement.
-  threadFront.resume();
-
   info("Wait for second pause event");
-  const packet2 = await onPause2;
+  const packet2 = await resumeAndWaitForPause(threadFront);
   equal(
     packet2.why.type,
     "debuggerStatement",
@@ -77,16 +74,13 @@ add_task(async function() {
   info("Dynamically add a breakpoint after the debugger statement");
   const breakpointsFront = await watcher.getBreakpointListActor();
   await breakpointsFront.setBreakpoint(
-    { sourceUrl: testFile.path, line: 11 },
+    { sourceUrl: testFile.path, line: 11, column: 0 },
     {}
   );
 
-  const onPause3 = waitForPause(threadFront);
   // Resume again - next stop should be the new breakpoint.
-  threadFront.resume();
-
   info("Wait for third pause event");
-  const packet3 = await onPause3;
+  const packet3 = await resumeAndWaitForPause(threadFront);
   equal(
     packet3.why.type,
     "breakpoint",

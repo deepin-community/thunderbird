@@ -52,7 +52,7 @@ static const uint32_t MAX_CENC_INIT_DATA_LENGTH = 64 * 1024;
 MediaKeySession::MediaKeySession(nsPIDOMWindowInner* aParent, MediaKeys* aKeys,
                                  const nsAString& aKeySystem,
                                  MediaKeySessionType aSessionType,
-                                 ErrorResult& aRv)
+                                 bool aHardwareDecryption, ErrorResult& aRv)
     : DOMEventTargetHelper(aParent),
       mKeys(aKeys),
       mKeySystem(aKeySystem),
@@ -61,7 +61,8 @@ MediaKeySession::MediaKeySession(nsPIDOMWindowInner* aParent, MediaKeys* aKeys,
       mIsClosed(false),
       mUninitialized(true),
       mKeyStatusMap(new MediaKeyStatusMap(aParent)),
-      mExpiration(JS::GenericNaN()) {
+      mExpiration(JS::GenericNaN()),
+      mHardwareDecryption(aHardwareDecryption) {
   EME_LOG("MediaKeySession[%p,''] ctor", this);
 
   MOZ_ASSERT(aParent);
@@ -123,9 +124,8 @@ void MediaKeySession::UpdateKeyStatusMap() {
         nsPrintfCString("MediaKeySession[%p,'%s'] key statuses change {", this,
                         NS_ConvertUTF16toUTF8(mSessionId).get()));
     for (const CDMCaps::KeyStatus& status : keyStatuses) {
-      message.Append(nsPrintfCString(
-          " (%s,%s)", ToHexString(status.mId).get(),
-          nsCString(MediaKeyStatusValues::GetString(status.mStatus)).get()));
+      message.AppendPrintf(" (%s,%s)", ToHexString(status.mId).get(),
+                           GetEnumString(status.mStatus).get());
     }
     message.AppendLiteral(" }");
     // Use %s so we aren't exposing random strings to printf interpolation.
@@ -250,8 +250,8 @@ already_AddRefed<Promise> MediaKeySession::GenerateRequest(
   // cdm implementation value does not support initDataType as an
   // Initialization Data Type, return a promise rejected with a
   // NotSupportedError. String comparison is case-sensitive.
-  if (!MediaKeySystemAccess::KeySystemSupportsInitDataType(mKeySystem,
-                                                           aInitDataType)) {
+  if (!MediaKeySystemAccess::KeySystemSupportsInitDataType(
+          mKeySystem, aInitDataType, mHardwareDecryption)) {
     promise->MaybeRejectWithNotSupportedError(
         "Unsupported initDataType passed to MediaKeySession.generateRequest()");
     EME_LOG(
@@ -542,14 +542,13 @@ void MediaKeySession::DispatchKeyMessage(MediaKeyMessageType aMessageType,
     EME_LOG(
         "MediaKeySession[%p,'%s'] DispatchKeyMessage() type=%s message='%s'",
         this, NS_ConvertUTF16toUTF8(mSessionId).get(),
-        nsCString(MediaKeyMessageTypeValues::GetString(aMessageType)).get(),
-        ToHexString(aMessage).get());
+        GetEnumString(aMessageType).get(), ToHexString(aMessage).get());
   }
 
   RefPtr<MediaKeyMessageEvent> event(
       MediaKeyMessageEvent::Constructor(this, aMessageType, aMessage));
   RefPtr<AsyncEventDispatcher> asyncDispatcher =
-      new AsyncEventDispatcher(this, event);
+      new AsyncEventDispatcher(this, event.forget());
   asyncDispatcher->PostDOMEvent();
 }
 
@@ -557,9 +556,9 @@ void MediaKeySession::DispatchKeyError(uint32_t aSystemCode) {
   EME_LOG("MediaKeySession[%p,'%s'] DispatchKeyError() systemCode=%u.", this,
           NS_ConvertUTF16toUTF8(mSessionId).get(), aSystemCode);
 
-  RefPtr<MediaKeyError> event(new MediaKeyError(this, aSystemCode));
+  auto event = MakeRefPtr<MediaKeyError>(this, aSystemCode);
   RefPtr<AsyncEventDispatcher> asyncDispatcher =
-      new AsyncEventDispatcher(this, event);
+      new AsyncEventDispatcher(this, event.forget());
   asyncDispatcher->PostDOMEvent();
 }
 
@@ -611,12 +610,8 @@ void MediaKeySession::SetOnmessage(EventHandlerNonNull* aCallback) {
   SetEventHandler(nsGkAtoms::onmessage, aCallback);
 }
 
-nsCString ToCString(MediaKeySessionType aType) {
-  return nsCString(MediaKeySessionTypeValues::GetString(aType));
-}
-
 nsString ToString(MediaKeySessionType aType) {
-  return NS_ConvertUTF8toUTF16(ToCString(aType));
+  return NS_ConvertUTF8toUTF16(GetEnumString(aType));
 }
 
 }  // namespace mozilla::dom

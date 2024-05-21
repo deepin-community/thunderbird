@@ -4,10 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsUnicharUtils.h"
-#include "nsUTF8Utils.h"
 #include "nsUnicodeProperties.h"
+#include "nsUTF8Utils.h"
 #include "mozilla/Likely.h"
 #include "mozilla/HashFunctions.h"
+#include "mozilla/intl/UnicodeProperties.h"
+#include "mozilla/StaticPrefs_layout.h"
 
 // We map x -> x, except for upper-case letters,
 // which we map to their lower-case equivalents.
@@ -33,7 +35,7 @@ static MOZ_ALWAYS_INLINE uint32_t ToLowerCase_inline(uint32_t aChar) {
     return gASCIIToLower[aChar];
   }
 
-  return mozilla::unicode::GetLowercase(aChar);
+  return mozilla::intl::UnicodeProperties::ToLower(aChar);
 }
 
 static MOZ_ALWAYS_INLINE uint32_t
@@ -99,7 +101,7 @@ char32_t ToUpperCaseASCII(char32_t aChar) {
 
 void ToLowerCase(const nsAString& aSource, nsAString& aDest) {
   const char16_t* in = aSource.BeginReading();
-  uint32_t len = aSource.Length();
+  size_t len = aSource.Length();
 
   aDest.SetLength(len);
   char16_t* out = aDest.BeginWriting();
@@ -109,7 +111,7 @@ void ToLowerCase(const nsAString& aSource, nsAString& aDest) {
 
 void ToLowerCaseASCII(const nsAString& aSource, nsAString& aDest) {
   const char16_t* in = aSource.BeginReading();
-  uint32_t len = aSource.Length();
+  size_t len = aSource.Length();
 
   aDest.SetLength(len);
   char16_t* out = aDest.BeginWriting();
@@ -128,7 +130,7 @@ void ToUpperCase(nsAString& aString) {
 
 void ToUpperCase(const nsAString& aSource, nsAString& aDest) {
   const char16_t* in = aSource.BeginReading();
-  uint32_t len = aSource.Length();
+  size_t len = aSource.Length();
 
   aDest.SetLength(len);
   char16_t* out = aDest.BeginWriting();
@@ -148,7 +150,7 @@ void ToFoldedCase(nsAString& aString) {
   ToFoldedCase(buf, buf, aString.Length());
 }
 
-void ToFoldedCase(const char16_t* aIn, char16_t* aOut, uint32_t aLen) {
+void ToFoldedCase(const char16_t* aIn, char16_t* aOut, size_t aLen) {
   for (uint32_t i = 0; i < aLen; i++) {
     uint32_t ch = aIn[i];
     if (i < aLen - 1 && NS_IS_SURROGATE_PAIR(ch, aIn[i + 1])) {
@@ -194,23 +196,21 @@ void ToNaked(nsAString& aString) {
 }
 
 int32_t nsCaseInsensitiveStringComparator(const char16_t* lhs,
-                                          const char16_t* rhs, uint32_t lLength,
-                                          uint32_t rLength) {
+                                          const char16_t* rhs, size_t lLength,
+                                          size_t rLength) {
   return (lLength == rLength)  ? CaseInsensitiveCompare(lhs, rhs, lLength)
          : (lLength > rLength) ? 1
                                : -1;
 }
 
 int32_t nsCaseInsensitiveUTF8StringComparator(const char* lhs, const char* rhs,
-                                              uint32_t lLength,
-                                              uint32_t rLength) {
+                                              size_t lLength, size_t rLength) {
   return CaseInsensitiveCompare(lhs, rhs, lLength, rLength);
 }
 
 int32_t nsASCIICaseInsensitiveStringComparator(const char16_t* lhs,
                                                const char16_t* rhs,
-                                               uint32_t lLength,
-                                               uint32_t rLength) {
+                                               size_t lLength, size_t rLength) {
   if (lLength != rLength) {
     if (lLength > rLength) return 1;
     return -1;
@@ -240,11 +240,12 @@ int32_t nsASCIICaseInsensitiveStringComparator(const char16_t* lhs,
 
 uint32_t ToLowerCase(uint32_t aChar) { return ToLowerCase_inline(aChar); }
 
-void ToLowerCase(const char16_t* aIn, char16_t* aOut, uint32_t aLen) {
-  for (uint32_t i = 0; i < aLen; i++) {
+void ToLowerCase(const char16_t* aIn, char16_t* aOut, size_t aLen) {
+  for (size_t i = 0; i < aLen; i++) {
     uint32_t ch = aIn[i];
     if (i < aLen - 1 && NS_IS_SURROGATE_PAIR(ch, aIn[i + 1])) {
-      ch = mozilla::unicode::GetLowercase(SURROGATE_TO_UCS4(ch, aIn[i + 1]));
+      ch = mozilla::intl::UnicodeProperties::ToLower(
+          SURROGATE_TO_UCS4(ch, aIn[i + 1]));
       NS_ASSERTION(!IS_IN_BMP(ch), "case mapping crossed BMP/SMP boundary!");
       aOut[i++] = H_SURROGATE(ch);
       aOut[i] = L_SURROGATE(ch);
@@ -254,8 +255,8 @@ void ToLowerCase(const char16_t* aIn, char16_t* aOut, uint32_t aLen) {
   }
 }
 
-void ToLowerCaseASCII(const char16_t* aIn, char16_t* aOut, uint32_t aLen) {
-  for (uint32_t i = 0; i < aLen; i++) {
+void ToLowerCaseASCII(const char16_t* aIn, char16_t* aOut, size_t aLen) {
+  for (size_t i = 0; i < aLen; i++) {
     char16_t ch = aIn[i];
     aOut[i] = IS_ASCII_UPPER(ch) ? (ch + 0x20) : ch;
   }
@@ -269,14 +270,15 @@ uint32_t ToUpperCase(uint32_t aChar) {
     return aChar;
   }
 
-  return mozilla::unicode::GetUppercase(aChar);
+  return mozilla::intl::UnicodeProperties::ToUpper(aChar);
 }
 
-void ToUpperCase(const char16_t* aIn, char16_t* aOut, uint32_t aLen) {
-  for (uint32_t i = 0; i < aLen; i++) {
+void ToUpperCase(const char16_t* aIn, char16_t* aOut, size_t aLen) {
+  for (size_t i = 0; i < aLen; i++) {
     uint32_t ch = aIn[i];
     if (i < aLen - 1 && NS_IS_SURROGATE_PAIR(ch, aIn[i + 1])) {
-      ch = mozilla::unicode::GetUppercase(SURROGATE_TO_UCS4(ch, aIn[i + 1]));
+      ch = mozilla::intl::UnicodeProperties::ToUpper(
+          SURROGATE_TO_UCS4(ch, aIn[i + 1]));
       NS_ASSERTION(!IS_IN_BMP(ch), "case mapping crossed BMP/SMP boundary!");
       aOut[i++] = H_SURROGATE(ch);
       aOut[i] = L_SURROGATE(ch);
@@ -295,7 +297,7 @@ uint32_t ToTitleCase(uint32_t aChar) {
 }
 
 int32_t CaseInsensitiveCompare(const char16_t* a, const char16_t* b,
-                               uint32_t len) {
+                               size_t len) {
   NS_ASSERTION(a && b, "Do not pass in invalid pointers!");
 
   if (len) {
@@ -362,7 +364,7 @@ static MOZ_ALWAYS_INLINE uint32_t GetLowerUTF8Codepoint_inline(
 
     // we don't go through ToLowerCase here, because we know this isn't
     // an ASCII character so the ASCII fast-path there is useless
-    c = mozilla::unicode::GetLowercase(c);
+    c = mozilla::intl::UnicodeProperties::ToLower(c);
 
     *aNext = aStr + 2;
     return c;
@@ -377,7 +379,7 @@ static MOZ_ALWAYS_INLINE uint32_t GetLowerUTF8Codepoint_inline(
     c += (str[1] & 0x3F) << 6;
     c += (str[2] & 0x3F);
 
-    c = mozilla::unicode::GetLowercase(c);
+    c = mozilla::intl::UnicodeProperties::ToLower(c);
 
     *aNext = aStr + 3;
     return c;
@@ -392,7 +394,7 @@ static MOZ_ALWAYS_INLINE uint32_t GetLowerUTF8Codepoint_inline(
     c += (str[2] & 0x3F) << 6;
     c += (str[3] & 0x3F);
 
-    c = mozilla::unicode::GetLowercase(c);
+    c = mozilla::intl::UnicodeProperties::ToLower(c);
 
     *aNext = aStr + 4;
     return c;
@@ -408,7 +410,7 @@ uint32_t GetLowerUTF8Codepoint(const char* aStr, const char* aEnd,
 }
 
 int32_t CaseInsensitiveCompare(const char* aLeft, const char* aRight,
-                               uint32_t aLeftBytes, uint32_t aRightBytes) {
+                               size_t aLeftBytes, size_t aRightBytes) {
   const char* leftEnd = aLeft + aLeftBytes;
   const char* rightEnd = aRight + aRightBytes;
 
@@ -490,7 +492,7 @@ bool CaseInsensitiveUTF8CharsEqual(const char* aLeft, const char* aRight,
 
 namespace mozilla {
 
-uint32_t HashUTF8AsUTF16(const char* aUTF8, uint32_t aLength, bool* aErr) {
+uint32_t HashUTF8AsUTF16(const char* aUTF8, size_t aLength, bool* aErr) {
   uint32_t hash = 0;
   const char* s = aUTF8;
   const char* end = aUTF8 + aLength;
@@ -514,8 +516,33 @@ uint32_t HashUTF8AsUTF16(const char* aUTF8, uint32_t aLength, bool* aErr) {
 }
 
 bool IsSegmentBreakSkipChar(uint32_t u) {
-  return unicode::IsEastAsianWidthFHWexcludingEmoji(u) &&
-         unicode::GetScriptCode(u) != unicode::Script::HANGUL;
+  return intl::UnicodeProperties::IsEastAsianWidthFHWexcludingEmoji(u) &&
+         intl::UnicodeProperties::GetScriptCode(u) != intl::Script::HANGUL;
+}
+
+bool IsPunctuationForWordSelect(char16_t aCh) {
+  const uint8_t cat = unicode::GetGeneralCategory(aCh);
+  switch (cat) {
+    case HB_UNICODE_GENERAL_CATEGORY_CONNECT_PUNCTUATION: /* Pc */
+      if (aCh == '_' && !StaticPrefs::layout_word_select_stop_at_underscore()) {
+        return false;
+      }
+      [[fallthrough]];
+    case HB_UNICODE_GENERAL_CATEGORY_DASH_PUNCTUATION:    /* Pd */
+    case HB_UNICODE_GENERAL_CATEGORY_CLOSE_PUNCTUATION:   /* Pe */
+    case HB_UNICODE_GENERAL_CATEGORY_FINAL_PUNCTUATION:   /* Pf */
+    case HB_UNICODE_GENERAL_CATEGORY_INITIAL_PUNCTUATION: /* Pi */
+    case HB_UNICODE_GENERAL_CATEGORY_OTHER_PUNCTUATION:   /* Po */
+    case HB_UNICODE_GENERAL_CATEGORY_OPEN_PUNCTUATION:    /* Ps */
+    case HB_UNICODE_GENERAL_CATEGORY_CURRENCY_SYMBOL:     /* Sc */
+    // Deliberately omitted:
+    // case HB_UNICODE_GENERAL_CATEGORY_MODIFIER_SYMBOL:     /* Sk */
+    case HB_UNICODE_GENERAL_CATEGORY_MATH_SYMBOL:  /* Sm */
+    case HB_UNICODE_GENERAL_CATEGORY_OTHER_SYMBOL: /* So */
+      return true;
+    default:
+      return false;
+  }
 }
 
 }  // namespace mozilla

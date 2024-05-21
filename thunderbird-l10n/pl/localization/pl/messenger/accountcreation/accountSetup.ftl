@@ -53,9 +53,6 @@ account-setup-password-label = Hasło
 account-provisioner-button = Nowy adres e-mail
     .accesskey = N
 
-account-setup-password-toggle =
-    .title = Widoczne hasło
-
 account-setup-password-toggle-show =
     .title = Pokaż hasło jako tekst
 
@@ -182,18 +179,9 @@ account-setup-results-area-title =
        *[other] Dostępne konfiguracje
     }
 
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
-
 account-setup-result-imap-description = Foldery i poczta synchronizowane na serwerze
 
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
-
 account-setup-result-pop-description = Foldery i poczta na komputerze
-
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Użyj serwera Microsoft Exchange lub usług Office 365
@@ -205,8 +193,6 @@ account-setup-outgoing-title = Serwer poczty wychodzącej
 account-setup-username-title = Nazwa użytkownika
 
 account-setup-exchange-title = Serwer
-
-account-setup-result-smtp = SMTP
 
 account-setup-result-no-encryption = Bez szyfrowania
 
@@ -232,6 +218,8 @@ account-setup-find-settings-failed = { -brand-short-name } nie znalazł ustawie�
 
 account-setup-exchange-config-unverifiable = Konfiguracja nie mogła zostać zweryfikowana. Jeśli nazwa użytkownika i hasło są poprawne, to prawdopodobnie administrator serwera wyłączył wybraną konfigurację dla tego konta. Spróbuj wybrać inny protokół.
 
+account-setup-provisioner-error = Wystąpił błąd podczas konfigurowania nowego konta w programie { -brand-short-name }. Spróbuj ręcznie skonfigurować konto za pomocą danych logowania.
+
 ## Manual configuration area
 
 account-setup-manual-config-title = Konfiguracja serwera
@@ -239,12 +227,6 @@ account-setup-manual-config-title = Konfiguracja serwera
 account-setup-incoming-server-legend = Serwer poczty przychodzącej
 
 account-setup-protocol-label = Protokół:
-
-protocol-imap-option = { account-setup-result-imap }
-
-protocol-pop-option = { account-setup-result-pop }
-
-protocol-exchange-option = { account-setup-result-exchange }
 
 account-setup-hostname-label = Adres serwera:
 

@@ -3,11 +3,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/Mutex.h"
-#include "nsTransportUtils.h"
+#include "nsCOMPtr.h"
 #include "nsITransport.h"
 #include "nsProxyRelease.h"
+#include "nsSocketTransportService2.h"
 #include "nsThreadUtils.h"
-#include "nsCOMPtr.h"
+#include "nsTransportUtils.h"
 
 using namespace mozilla;
 
@@ -23,24 +24,21 @@ class nsTransportEventSinkProxy : public nsITransportEventSink {
   nsTransportEventSinkProxy(nsITransportEventSink* sink, nsIEventTarget* target)
       : mSink(sink),
         mTarget(target),
-        mLock("nsTransportEventSinkProxy.mLock"),
-        mLastEvent(nullptr) {
-    NS_ADDREF(mSink);
-  }
+        mLock("nsTransportEventSinkProxy.mLock") {}
 
  private:
   virtual ~nsTransportEventSinkProxy() {
     // our reference to mSink could be the last, so be sure to release
     // it on the target thread.  otherwise, we could get into trouble.
     NS_ProxyRelease("nsTransportEventSinkProxy::mSink", mTarget,
-                    dont_AddRef(mSink));
+                    mSink.forget());
   }
 
  public:
-  nsITransportEventSink* mSink;
+  nsCOMPtr<nsITransportEventSink> mSink;
   nsCOMPtr<nsIEventTarget> mTarget;
-  Mutex mLock;
-  nsTransportStatusEvent* mLastEvent;
+  Mutex mLock MOZ_UNANNOTATED;
+  RefPtr<nsTransportStatusEvent> mLastEvent;
 };
 
 class nsTransportStatusEvent : public Runnable {
@@ -55,18 +53,27 @@ class nsTransportStatusEvent : public Runnable {
         mProgress(progress),
         mProgressMax(progressMax) {}
 
-  ~nsTransportStatusEvent() = default;
+  ~nsTransportStatusEvent() {
+    auto ReleaseTransport = [transport(std::move(mTransport))]() mutable {};
+    if (!net::OnSocketThread()) {
+      net::gSocketTransportService->Dispatch(NS_NewRunnableFunction(
+          "nsHttpConnection::~nsHttpConnection", std::move(ReleaseTransport)));
+    }
+  }
 
   NS_IMETHOD Run() override {
     // since this event is being handled, we need to clear the proxy's ref.
     // if not coalescing all, then last event may not equal self!
     {
       MutexAutoLock lock(mProxy->mLock);
-      if (mProxy->mLastEvent == this) mProxy->mLastEvent = nullptr;
+      if (mProxy->mLastEvent == this) {
+        mProxy->mLastEvent = nullptr;
+      }
     }
 
     mProxy->mSink->OnTransportStatus(mTransport, mStatus, mProgress,
                                      mProgressMax);
+    mProxy = nullptr;
     return NS_OK;
   }
 

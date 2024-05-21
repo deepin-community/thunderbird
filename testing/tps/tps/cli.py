@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import json
 import optparse
 import os
@@ -127,7 +125,7 @@ def main():
     else:
         if sys.platform == "win32":
             # replace msys-style paths with proper Windows paths
-            m = re.match("^\/\w\/", extensionDir)
+            m = re.match(r"^\/\w\/", extensionDir)
             if m:
                 extensionDir = "%s:/%s" % (m.group(0)[1:2], extensionDir[3:])
                 extensionDir = extensionDir.replace("/", "\\")

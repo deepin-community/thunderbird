@@ -11,6 +11,7 @@
 #ifndef MODULES_VIDEO_CAPTURE_OBJC_RTC_VIDEO_CAPTURE_OBJC_H_
 #define MODULES_VIDEO_CAPTURE_OBJC_RTC_VIDEO_CAPTURE_OBJC_H_
 
+#import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
 #ifdef WEBRTC_IOS
 #  import <UIKit/UIKit.h>
@@ -22,7 +23,8 @@
 // 'StatusBarOrientationDidChange'.
 // This notification must be posted in order for the capturer to reflect the
 // orientation change in video w.r.t. the application orientation.
-@interface RTCVideoCaptureIosObjC : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface RTCVideoCaptureIosObjC
+    : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property webrtc::VideoRotation frameRotation;
 
@@ -31,7 +33,8 @@
 // default init methods have been overridden to return nil.
 - (id)initWithOwner:(webrtc::videocapturemodule::VideoCaptureIos*)owner;
 - (BOOL)setCaptureDeviceByUniqueId:(NSString*)uniqueId;
-- (BOOL)startCaptureWithCapability:(const webrtc::VideoCaptureCapability&)capability;
+- (BOOL)startCaptureWithCapability:
+    (const webrtc::VideoCaptureCapability&)capability;
 - (BOOL)stopCapture;
 
 @end

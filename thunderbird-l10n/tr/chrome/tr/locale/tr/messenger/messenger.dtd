@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "n">
 <!ENTITY newVirtualFolderCmd.label "Kayıtlı arama…">
 <!ENTITY newVirtualFolderCmd.accesskey "y">
-<!ENTITY newOtherAccountsCmd.label "Diğer hesaplar…">
-<!ENTITY newOtherAccountsCmd.accesskey "D">
 <!ENTITY newCreateEmailAccountCmd.label "Yeni e-posta hesabı al…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "Y">
 <!ENTITY newExistingEmailAccountCmd.label "Mevcut e-posta hesabı…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "d">
 <!ENTITY saveAsMenu.label "Farklı kaydet">
 <!ENTITY saveAsMenu.accesskey "F">
-<!ENTITY saveAsFileCmd.label "Dosya">
-<!ENTITY saveAsFileCmd.accesskey "D">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Geçici">
 <!ENTITY saveAsTemplateCmd.accesskey "c">
@@ -91,18 +87,6 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "İletiyi sil">
-<!ENTITY deleteMsgCmd.accesskey "t">
-<!ENTITY undeleteMsgCmd.label "Silinen iletiyi geri al">
-<!ENTITY undeleteMsgCmd.accesskey "i">
-<!ENTITY deleteMsgsCmd.label "Seçilmiş iletileri sil">
-<!ENTITY deleteMsgsCmd.accesskey "S">
-<!ENTITY undeleteMsgsCmd.label "Seçilen silinmiş iletileri geri al">
-<!ENTITY undeleteMsgsCmd.accesskey "a">
-<!ENTITY deleteFolderCmd.label "Dizini sil">
-<!ENTITY deleteFolderCmd.accesskey "i">
-<!ENTITY unsubscribeNewsgroupCmd.label "Abonelikten çık">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "A">
 <!ENTITY selectMenu.label "Seç">
 <!ENTITY selectMenu.accesskey "S">
 <!ENTITY all.label "Tümü">
@@ -114,10 +98,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "l">
 <!ENTITY menuFavoriteFolder.label "Dizini favorilere ekle">
 <!ENTITY menuFavoriteFolder.accesskey "e">
-<!ENTITY folderPropsCmd2.label "Özellikler">
-<!ENTITY folderPropsFolderCmd2.label "Dizin özellikleri">
-<!ENTITY folderPropsNewsgroupCmd2.label "Haber grubu özellikleri">
-<!ENTITY folderPropsCmd.accesskey "u">
 <!ENTITY undoDeleteMsgCmd.label "Silinen iletiyi geri al">
 <!ENTITY redoDeleteMsgCmd.label "İletiyi tekrar sil">
 <!ENTITY undoMoveMsgCmd.label "İleti taşımayı geri al">
@@ -149,8 +129,6 @@
 <!ENTITY messagePaneVertical.accesskey "k">
 <!ENTITY showFolderPaneCmd.label "Dizin bölmesi">
 <!ENTITY showFolderPaneCmd.accesskey "D">
-<!ENTITY showFolderPaneColsCmd.label "Dizin bölmesi sütunları">
-<!ENTITY showFolderPaneColsCmd.accesskey "B">
 <!ENTITY showMessageCmd.label "İleti bölmesi">
 <!ENTITY showMessageCmd.accesskey "B">
 
@@ -198,14 +176,14 @@
 <!ENTITY sortByRecipientCmd.accesskey "c">
 <!ENTITY sortByCorrespondentCmd.label "Yazanlar">
 <!ENTITY sortByCorrespondentCmd.accesskey "n">
-<!ENTITY sortByUnreadCmd.label "Okunmuş">
-<!ENTITY sortByUnreadCmd.accesskey "ş">
+<!ENTITY sortByUnreadCmd.label "Okundu">
+<!ENTITY sortByUnreadCmd.accesskey "O">
 <!ENTITY sortByOrderReceivedCmd.label "Alma sırası">
 <!ENTITY sortByOrderReceivedCmd.accesskey "ı">
 <!ENTITY sortAscending.label "Artarak">
 <!ENTITY sortAscending.accesskey "A">
 <!ENTITY sortDescending.label "Azalarak">
-<!ENTITY sortDescending.accesskey "A">
+<!ENTITY sortDescending.accesskey "z">
 <!ENTITY sortThreaded.label "Dizili">
 <!ENTITY sortThreaded.accesskey "D">
 <!ENTITY sortUnthreaded.label "Dizisiz">
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Sohbet">
 <!ENTITY goChatCmd.accesskey "b">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Yıldızlı ileti">
 <!ENTITY prevStarredMsgCmd.accesskey "d">
 <!ENTITY folderMenu.label "Dizin">
@@ -345,7 +322,7 @@
 <!ENTITY replyMsgCmd.label "Yanıtla">
 <!ENTITY replyMsgCmd.accesskey "Y">
 <!ENTITY replyMsgCmd.key "r">
-<!ENTITY replySenderCmd.label "Sadece göndereni yanıtla">
+<!ENTITY replySenderCmd.label "Yalnızca göndereni yanıtla">
 <!ENTITY replySenderCmd.accesskey "r">
 <!ENTITY replyNewsgroupCmd2.label "Hesap Grubuna Devam İletisi">
 <!ENTITY replyNewsgroupCmd2.accesskey "D">
@@ -383,8 +360,8 @@
 <!ENTITY copyMessageLocation.accesskey "i">
 <!ENTITY copyMsgToMenu.label "Buraya kopyala">
 <!ENTITY copyMsgToMenu.accesskey "k">
-<!ENTITY moveToFolderAgain.label "Tekrar taşı">
-<!ENTITY moveToFolderAgain.accesskey "k">
+<!ENTITY moveToFolderAgain.label "Yeniden taşı">
+<!ENTITY moveToFolderAgain.accesskey "i">
 <!ENTITY moveToFolderAgainCmd.key "m">
 <!ENTITY killThreadMenu.label "Diziyi göz ardı et">
 <!ENTITY killThreadMenu.accesskey "D">
@@ -417,7 +394,7 @@
 <!ENTITY markThreadAsReadCmd.label "Diziyi okundu olarak">
 <!ENTITY markThreadAsReadCmd.accesskey "k">
 <!ENTITY markThreadAsReadCmd.key "r">
-<!ENTITY markReadByDateCmd.label "Tarihe göre okunmuş olarak…">
+<!ENTITY markReadByDateCmd.label "Tarihe göre okundu olarak…">
 <!ENTITY markReadByDateCmd.accesskey "T">
 <!ENTITY markReadByDateCmd.key "c">
 <!ENTITY markAllReadCmd.label "Tümünü okundu olarak">
@@ -464,7 +441,7 @@
 <!ENTITY addressBookCmd.key "B">
 <!ENTITY addonNoPrefs.label "Hiç eklenti ayarı bulunamadı.">
 <!ENTITY activitymanager.label "Etkinlik yöneticisi">
-<!ENTITY activitymanager.accesskey "Y">
+<!ENTITY activitymanager.accesskey "ö">
 <!ENTITY imAccountsStatus.label "Sohbet durumu">
 <!ENTITY imAccountsStatus.accesskey "S">
 <!ENTITY imStatus.available          "Müsait">
@@ -491,6 +468,7 @@
 <!ENTITY importCmd.label "İçe aktar…">
 <!ENTITY importCmd.accesskey "t">
 <!ENTITY exportCmd.label "Dışa aktar…">
+<!ENTITY exportCmd.accesskey "D">
 <!ENTITY clearRecentHistory.label "Yakın geçmişi temizle…">
 <!ENTITY clearRecentHistory.accesskey "t">
 <!ENTITY accountManagerCmd2.label "Hesap ayarları">
@@ -600,10 +578,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Yeni ileti">
 <!ENTITY appmenuNewContactCmd.label "Adres defteri kişisi…">
-<!ENTITY appmenuEditMenu.label "Düzenle">
 <!ENTITY appmenuToolbarLayout.label "Araç çubuğu düzeni…">
-<!ENTITY appmenuSelectThread.label "Diziyi seç">
-<!ENTITY appmenuSelectFlagged.label "Yıldızlı iletileri seç">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Yeni etiket…">
@@ -618,7 +593,7 @@
 <!ENTITY folderSizeColumn.label "Boyut">
 
 <!-- Folder Pane Context Menu -->
-<!ENTITY folderContextGetMessages.label "İletileri İndir">
+<!ENTITY folderContextGetMessages.label "İletileri indir">
 <!ENTITY folderContextGetMessages.accesskey "n">
 <!ENTITY folderContextMarkAllFoldersRead.label "Tüm dizinleri okundu olarak işaretle">
 <!ENTITY folderContextPauseAllUpdates.label "Tüm güncellemeleri duraklat">
@@ -644,7 +619,7 @@
 <!ENTITY folderContextSendUnsentMessages.accesskey "G">
 <!ENTITY folderContextUnsubscribe.label "Abonelikten çık">
 <!ENTITY folderContextUnsubscribe.accesskey "b">
-<!ENTITY folderContextMarkNewsgroupRead.label "Haber grubunu okunmuş olarak işaretle">
+<!ENTITY folderContextMarkNewsgroupRead.label "Haber grubunu okundu olarak işaretle">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "o">
 <!ENTITY folderContextMarkMailFolderRead.label "Dizini okundu olarak işaretle">
 <!ENTITY folderContextMarkMailFolderRead.accesskey "D">
@@ -908,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "y">
 <!ENTITY copyEmailCmd.label "E-posta adresini kopyala">
 <!ENTITY copyEmailCmd.accesskey "E">
-<!ENTITY stopCmd.label "Durdur">
-<!ENTITY stopCmd.accesskey "D">
-<!ENTITY reloadCmd.label "Tazele">
-<!ENTITY reloadCmd.accesskey "T">
 <!ENTITY openInBrowser.label "Tarayıcıda aç">
 <!ENTITY openInBrowser.accesskey "T">
 <!ENTITY openLinkInBrowser.label "Bağlantıyı tarayıcıda aç">

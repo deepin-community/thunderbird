@@ -11,9 +11,12 @@
 #include "mozilla/net/DocumentChannel.h"
 #include "mozilla/net/DocumentLoadListener.h"
 #include "nsIObserver.h"
+#include "nsIAsyncVerifyRedirectCallback.h"
 
 namespace mozilla {
 namespace net {
+
+class EarlyHintConnectArgs;
 
 class ParentProcessDocumentChannel : public DocumentChannel,
                                      public nsIAsyncVerifyRedirectCallback,
@@ -22,7 +25,8 @@ class ParentProcessDocumentChannel : public DocumentChannel,
   ParentProcessDocumentChannel(nsDocShellLoadState* aLoadState,
                                class LoadInfo* aLoadInfo,
                                nsLoadFlags aLoadFlags, uint32_t aCacheKey,
-                               bool aUriModified, bool aIsXFOError);
+                               bool aUriModified,
+                               bool aIsEmbeddingBlockedError);
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_NSIASYNCVERIFYREDIRECTCALLBACK
@@ -30,12 +34,15 @@ class ParentProcessDocumentChannel : public DocumentChannel,
 
   NS_IMETHOD AsyncOpen(nsIStreamListener* aListener) override;
   NS_IMETHOD Cancel(nsresult aStatusCode) override;
+  NS_IMETHOD CancelWithReason(nsresult aStatusCode,
+                              const nsACString& aReason) override;
 
   RefPtr<PDocumentChannelParent::RedirectToRealChannelPromise>
   RedirectToRealChannel(
       nsTArray<ipc::Endpoint<extensions::PStreamFilterParent>>&&
           aStreamFilterEndpoints,
-      uint32_t aRedirectFlags, uint32_t aLoadFlags);
+      uint32_t aRedirectFlags, uint32_t aLoadFlags,
+      const nsTArray<EarlyHintConnectArgs>& aEarlyHints);
 
  private:
   virtual ~ParentProcessDocumentChannel();

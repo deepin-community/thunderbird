@@ -13,17 +13,14 @@ with Files("code-coverage/**"):
 with Files("compare-locales/mach_commands.py"):
     BUG_COMPONENT = ("Localization Infrastructure and Tools", "compare-locales")
 
-with Files("coverity/**"):
-    BUG_COMPONENT = ("Firefox Build System", "Source Code Analysis")
-
 with Files("github-sync/**"):
     BUG_COMPONENT = ("Core", "Graphics")
 
 with Files("lint/**"):
-    BUG_COMPONENT = ("Firefox Build System", "Lint and Formatting")
+    BUG_COMPONENT = ("Developer Infrastructure", "Lint and Formatting")
 
 with Files("moztreedocs/**"):
-    BUG_COMPONENT = ("Firefox Build System", "Generated Documentation")
+    BUG_COMPONENT = ("Developer Infrastructure", "Source Documentation")
     SCHEDULES.exclusive = ["docs"]
 
 with Files("profiler/**"):
@@ -42,7 +39,7 @@ with Files("rewriting/**"):
     BUG_COMPONENT = ("Firefox Build System", "Source Code Analysis")
 
 with Files("tryselect/**"):
-    BUG_COMPONENT = ("Firefox Build System", "Try")
+    BUG_COMPONENT = ("Developer Infrastructure", "Try")
 
 with Files("tryselect/selectors/release.py"):
     BUG_COMPONENT = ("Release Engineering", "General")
@@ -72,10 +69,11 @@ with Files("tryselect/docs/**"):
     SCHEDULES.exclusive = ["docs"]
 
 CRAMTEST_MANIFESTS += [
-    "tryselect/test/cram.ini",
+    "tryselect/test/cram.toml",
 ]
 
 PYTHON_UNITTEST_MANIFESTS += [
-    "lint/test/python.ini",
-    "tryselect/test/python.ini",
+    "fuzzing/smoke/python.toml",
+    "lint/test/python.toml",
+    "tryselect/test/python.toml",
 ]

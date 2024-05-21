@@ -3,12 +3,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from head.js */
-
 "use strict";
 
-const { RemoteSettings } = ChromeUtils.import(
-  "resource://services-settings/remote-settings.js"
+const { RemoteSettings } = ChromeUtils.importESModule(
+  "resource://services-settings/remote-settings.sys.mjs"
 );
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -22,6 +20,11 @@ const TEST_REDIRECT_TOP_PAGE =
   TEST_3RD_PARTY_DOMAIN + TEST_PATH + "redirect.sjs?" + TEST_TOP_PAGE;
 const TEST_REDIRECT_3RD_PARTY_PAGE =
   TEST_DOMAIN + TEST_PATH + "redirect.sjs?" + TEST_3RD_PARTY_PARTITIONED_PAGE;
+const TEST_REDIRECT_ANOTHER_3RD_PARTY_PAGE =
+  TEST_ANOTHER_3RD_PARTY_DOMAIN_HTTPS +
+  TEST_PATH +
+  "redirect.sjs?" +
+  TEST_TOP_PAGE_HTTPS;
 
 const COLLECTION_NAME = "partitioning-exempt-urls";
 const EXCEPTION_LIST_PREF_NAME = "privacy.restrict3rdpartystorage.skip_list";
@@ -29,13 +32,13 @@ const EXCEPTION_LIST_PREF_NAME = "privacy.restrict3rdpartystorage.skip_list";
 async function cleanup() {
   Services.prefs.clearUserPref(EXCEPTION_LIST_PREF_NAME);
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.flushPrefEnv();
   await SpecialPowers.pushPrefEnv({
     set: [
@@ -51,6 +54,8 @@ add_task(async function setup() {
       ["privacy.trackingprotection.enabled", false],
       ["privacy.trackingprotection.pbmode.enabled", false],
       ["privacy.trackingprotection.annotate_channels", true],
+      // Bug 1617611: Fix all the tests broken by "cookies SameSite=lax by default"
+      ["network.cookie.sameSite.laxByDefault", false],
     ],
   });
   registerCleanupFunction(cleanup);
@@ -163,11 +168,14 @@ async function checkData(browser, options) {
   }
 }
 
-add_task(async function testRedirectHeuristic() {
+async function runTestRedirectHeuristic(disableHeuristics) {
   info("Starting Dynamic FPI Redirect Heuristic test...");
 
   await SpecialPowers.pushPrefEnv({
-    set: [["privacy.restrict3rdpartystorage.heuristic.recently_visited", true]],
+    set: [
+      ["privacy.restrict3rdpartystorage.heuristic.recently_visited", true],
+      ["privacy.antitracking.enableWebcompat", !disableHeuristics],
+    ],
   });
 
   // mark third-party as tracker
@@ -238,31 +246,93 @@ add_task(async function testRedirectHeuristic() {
     TEST_TOP_PAGE
   );
 
-  info("third-party page should able to access first-party data");
+  info(
+    `third-party page should ${
+      disableHeuristics ? "not " : ""
+    }be able to access first-party data`
+  );
   await checkData(browser, {
     firstParty: "firstParty",
-    thirdParty: "heuristicFirstParty",
+    thirdParty: disableHeuristics ? "" : "heuristicFirstParty",
   });
 
   info("Removing the tab");
   BrowserTestUtils.removeTab(tab);
 
+  await SpecialPowers.popPrefEnv();
+
   await cleanup();
+}
+
+async function runTestRedirectHeuristicWithSameSite() {
+  info("Starting Dynamic FPI Redirect Between Same Site Heuristic test...");
+
+  info("Creating a new tab");
+  let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE_HTTPS);
+  gBrowser.selectedTab = tab;
+
+  let browser = gBrowser.getBrowserForTab(tab);
+  await BrowserTestUtils.browserLoaded(browser);
+
+  info(
+    `Redirecting from ${TEST_DOMAIN_HTTPS} to ${TEST_ANOTHER_3RD_PARTY_DOMAIN_HTTPS}`
+  );
+
+  await redirectWithUserInteraction(
+    browser,
+    TEST_REDIRECT_ANOTHER_3RD_PARTY_PAGE,
+    TEST_TOP_PAGE_HTTPS
+  );
+
+  info("Checking if a permission was set between the redirect");
+
+  const principal = browser.contentPrincipal;
+
+  is(
+    Services.perms.testPermissionFromPrincipal(
+      principal,
+      `3rdPartyStorage^${TEST_ANOTHER_3RD_PARTY_DOMAIN_HTTPS.slice(0, -1)}`
+    ),
+    Services.perms.UNKNOWN_ACTION,
+    "No permission was set for same-site redirect"
+  );
+
+  info("Removing the tab");
+  BrowserTestUtils.removeTab(tab);
+
+  await cleanup();
+}
+add_task(async function testRedirectHeuristic() {
+  await runTestRedirectHeuristic(false);
+});
+
+add_task(runTestRedirectHeuristicWithSameSite);
+
+add_task(async function testRedirectHeuristicDisabled() {
+  await runTestRedirectHeuristic(true);
 });
 
 class UpdateEvent extends EventTarget {}
 function waitForEvent(element, eventName) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     element.addEventListener(eventName, e => resolve(e.detail), { once: true });
   });
 }
 
-add_task(async function testExceptionListPref() {
+// The test URLs have a trailing / which means they're not valid origins.
+const TEST_ORIGIN = TEST_DOMAIN.substring(0, TEST_DOMAIN.length - 1);
+const TEST_3RD_PARTY_ORIGIN = TEST_3RD_PARTY_DOMAIN.substring(
+  0,
+  TEST_3RD_PARTY_DOMAIN.length - 1
+);
+
+async function runTestExceptionListPref(disableHeuristics) {
   info("Starting Dynamic FPI exception list test pref");
 
   await SpecialPowers.pushPrefEnv({
     set: [
       ["privacy.restrict3rdpartystorage.heuristic.recently_visited", false],
+      ["privacy.antitracking.enableWebcompat", !disableHeuristics],
     ],
   });
 
@@ -307,20 +377,20 @@ add_task(async function testExceptionListPref() {
   info("set exception list pref");
   Services.prefs.setStringPref(
     EXCEPTION_LIST_PREF_NAME,
-    `${TEST_DOMAIN},${TEST_3RD_PARTY_DOMAIN}`
+    `${TEST_ORIGIN},${TEST_3RD_PARTY_ORIGIN}`
   );
 
   info("check data");
   await Promise.all([
     checkData(browserFirstParty, {
       firstParty: "firstParty",
-      thirdParty: "ExceptionListFirstParty",
+      thirdParty: disableHeuristics ? "thirdParty" : "ExceptionListFirstParty",
     }),
     checkData(browserThirdParty, { firstParty: "ExceptionListFirstParty" }),
   ]);
 
   info("set incomplete exception list pref");
-  Services.prefs.setStringPref(EXCEPTION_LIST_PREF_NAME, `${TEST_DOMAIN}`);
+  Services.prefs.setStringPref(EXCEPTION_LIST_PREF_NAME, `${TEST_ORIGIN}`);
 
   info("check data");
   await Promise.all([
@@ -334,14 +404,29 @@ add_task(async function testExceptionListPref() {
   info("set exception list pref, with extra semicolons");
   Services.prefs.setStringPref(
     EXCEPTION_LIST_PREF_NAME,
-    `;${TEST_DOMAIN},${TEST_3RD_PARTY_DOMAIN};;`
+    `;${TEST_ORIGIN},${TEST_3RD_PARTY_ORIGIN};;`
   );
 
   info("check data");
   await Promise.all([
     checkData(browserFirstParty, {
       firstParty: "firstParty",
-      thirdParty: "ExceptionListFirstParty",
+      thirdParty: disableHeuristics ? "thirdParty" : "ExceptionListFirstParty",
+    }),
+    checkData(browserThirdParty, { firstParty: "ExceptionListFirstParty" }),
+  ]);
+
+  info("set exception list pref, with subdomain wildcard");
+  Services.prefs.setStringPref(
+    EXCEPTION_LIST_PREF_NAME,
+    `${TEST_ORIGIN},${TEST_3RD_PARTY_ORIGIN.replace("tracking", "*")}`
+  );
+
+  info("check data");
+  await Promise.all([
+    checkData(browserFirstParty, {
+      firstParty: "firstParty",
+      thirdParty: disableHeuristics ? "thirdParty" : "ExceptionListFirstParty",
     }),
     checkData(browserThirdParty, { firstParty: "ExceptionListFirstParty" }),
   ]);
@@ -350,7 +435,17 @@ add_task(async function testExceptionListPref() {
   BrowserTestUtils.removeTab(tabFirstParty);
   BrowserTestUtils.removeTab(tabThirdParty);
 
+  await SpecialPowers.popPrefEnv();
+
   await cleanup();
+}
+
+add_task(async function testExceptionListPref() {
+  await runTestExceptionListPref(false);
+});
+
+add_task(async function testExceptionListPrefDisabled() {
+  await runTestExceptionListPref(true);
 });
 
 add_task(async function testExceptionListRemoteSettings() {
@@ -367,8 +462,8 @@ add_task(async function testExceptionListRemoteSettings() {
   Services.prefs.setStringPref(EXCEPTION_LIST_PREF_NAME, "");
 
   // Add some initial data
-  let db = await RemoteSettings(COLLECTION_NAME).db;
-  await db.importChanges({}, 42, []);
+  let db = RemoteSettings(COLLECTION_NAME).db;
+  await db.importChanges({}, Date.now(), []);
 
   // make peuSerivce start working by calling
   // registerAndRunExceptionListObserver
@@ -428,9 +523,9 @@ add_task(async function testExceptionListRemoteSettings() {
       current: [
         {
           id: "1",
-          last_modified: 100000000000000000001,
-          firstPartyOrigin: TEST_DOMAIN,
-          thirdPartyOrigin: TEST_3RD_PARTY_DOMAIN,
+          last_modified: 1000000000000001,
+          firstPartyOrigin: TEST_ORIGIN,
+          thirdPartyOrigin: TEST_3RD_PARTY_ORIGIN,
         },
       ],
     },
@@ -439,7 +534,7 @@ add_task(async function testExceptionListRemoteSettings() {
   let list = await promise;
   is(
     list,
-    `${TEST_DOMAIN},${TEST_3RD_PARTY_DOMAIN}`,
+    `${TEST_ORIGIN},${TEST_3RD_PARTY_ORIGIN}`,
     "exception list is correctly set"
   );
 
@@ -518,7 +613,7 @@ add_task(async function testWildcardExceptionListPref() {
   info("set wildcard (1st-party) pref");
   Services.prefs.setStringPref(
     EXCEPTION_LIST_PREF_NAME,
-    `*,${TEST_3RD_PARTY_DOMAIN}`
+    `*,${TEST_3RD_PARTY_ORIGIN}`
   );
 
   info("check wildcard (1st-party) data");
@@ -543,7 +638,7 @@ add_task(async function testWildcardExceptionListPref() {
   ]);
 
   info("set wildcard (3rd-party) pref");
-  Services.prefs.setStringPref(EXCEPTION_LIST_PREF_NAME, `${TEST_DOMAIN},*`);
+  Services.prefs.setStringPref(EXCEPTION_LIST_PREF_NAME, `${TEST_ORIGIN},*`);
 
   info("check wildcard (3rd-party) data");
   await Promise.all([

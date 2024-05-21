@@ -21,10 +21,9 @@ JSObject* CSSTransition::WrapObject(JSContext* aCx,
 }
 
 void CSSTransition::GetTransitionProperty(nsString& aRetVal) const {
-  MOZ_ASSERT(eCSSProperty_UNKNOWN != mTransitionProperty,
+  MOZ_ASSERT(mTransitionProperty.IsValid(),
              "Transition Property should be initialized");
-  aRetVal =
-      NS_ConvertUTF8toUTF16(nsCSSProps::GetStringValue(mTransitionProperty));
+  mTransitionProperty.ToString(aRetVal);
 }
 
 AnimationPlayState CSSTransition::PlayStateFromJS() const {
@@ -116,8 +115,8 @@ void CSSTransition::QueueEvents(const StickyTimeDuration& aActiveTime) {
       // That is to say, whenever elapsedTime goes negative (because an
       // animation restarts, something rewinds the animation, or otherwise)
       // a new random value for the mix-in must be generated.
-      elapsedTime =
-          nsRFPService::ReduceTimePrecisionAsSecsRFPOnly(elapsedTime, 0);
+      elapsedTime = nsRFPService::ReduceTimePrecisionAsSecsRFPOnly(
+          elapsedTime, 0, mRTPCallerType);
     }
     events.AppendElement(AnimationEventInfo(
         TransitionProperty(), mOwningElement.Target(), aMessage, elapsedTime,
@@ -189,13 +188,13 @@ void CSSTransition::QueueEvents(const StickyTimeDuration& aActiveTime) {
   }
 }
 
-void CSSTransition::Tick() {
-  Animation::Tick();
+void CSSTransition::Tick(TickState& aState) {
+  Animation::Tick(aState);
   QueueEvents();
 }
 
-nsCSSPropertyID CSSTransition::TransitionProperty() const {
-  MOZ_ASSERT(eCSSProperty_UNKNOWN != mTransitionProperty,
+const AnimatedPropertyID& CSSTransition::TransitionProperty() const {
+  MOZ_ASSERT(mTransitionProperty.IsValid(),
              "Transition property should be initialized");
   return mTransitionProperty;
 }
@@ -231,8 +230,10 @@ bool CSSTransition::HasLowerCompositeOrderThan(
   }
 
   // 3. (Same transition generation): Sort by transition property
-  return nsCSSProps::GetStringValue(TransitionProperty()) <
-         nsCSSProps::GetStringValue(aOther.TransitionProperty());
+  nsAutoString name, otherName;
+  GetTransitionProperty(name);
+  aOther.GetTransitionProperty(otherName);
+  return name < otherName;
 }
 
 /* static */
@@ -281,22 +282,29 @@ void CSSTransition::UpdateStartValueFromReplacedTransition() {
                      nsCSSPropertyIDSet::CompositorAnimatables()),
              "Should be called for compositor-runnable transitions");
 
-  MOZ_ASSERT(mTimeline,
-             "Should have a timeline if we are replacing transition start "
-             "values");
-
   if (!mReplacedTransition) {
     return;
   }
+
+  // We don't set |mReplacedTransition| if the timeline of this transition is
+  // different from the document timeline. The timeline of Animation may be
+  // null via script, so if it's null, it must be different from the document
+  // timeline (because document timeline is readonly so we cannot change it by
+  // script). Therefore, we check this assertion if mReplacedTransition is
+  // valid.
+  MOZ_ASSERT(mTimeline,
+             "Should have a timeline if we are replacing transition start "
+             "values");
 
   ComputedTiming computedTiming = AnimationEffect::GetComputedTimingAt(
       CSSTransition::GetCurrentTimeAt(*mTimeline, TimeStamp::Now(),
                                       mReplacedTransition->mStartTime,
                                       mReplacedTransition->mPlaybackRate),
-      mReplacedTransition->mTiming, mReplacedTransition->mPlaybackRate);
+      mReplacedTransition->mTiming, mReplacedTransition->mPlaybackRate,
+      Animation::ProgressTimelinePosition::NotBoundary);
 
   if (!computedTiming.mProgress.IsNull()) {
-    double valuePosition = ComputedTimingFunction::GetPortion(
+    double valuePosition = StyleComputedTimingFunction::GetPortion(
         mReplacedTransition->mTimingFunction, computedTiming.mProgress.Value(),
         computedTiming.mBeforeFlag);
 

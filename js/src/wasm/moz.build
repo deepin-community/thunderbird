@@ -12,46 +12,55 @@ LOCAL_INCLUDES += ["!..", ".."]
 include("../js-config.mozbuild")
 include("../js-cxxflags.mozbuild")
 
-if CONFIG["ENABLE_WASM_CRANELIFT"]:
-    UNIFIED_SOURCES += [
-        "WasmCraneliftCompile.cpp",
-    ]
-
 UNIFIED_SOURCES += [
     "AsmJS.cpp",
-    "TypedObject.cpp",
+    "WasmAnyRef.cpp",
     "WasmBaselineCompile.cpp",
+    "WasmBCFrame.cpp",
+    "WasmBCMemory.cpp",
     "WasmBinary.cpp",
+    "WasmBuiltinModule.cpp",
     "WasmBuiltins.cpp",
     "WasmCode.cpp",
+    "WasmCodegenTypes.cpp",
     "WasmCompile.cpp",
-    "WasmContext.cpp",
     "WasmDebug.cpp",
-    "WasmFrame.cpp",
+    "WasmDebugFrame.cpp",
+    "WasmDump.cpp",
+    "WasmFeatures.cpp",
     "WasmFrameIter.cpp",
     "WasmGC.cpp",
+    "WasmGcObject.cpp",
     "WasmGenerator.cpp",
     "WasmInitExpr.cpp",
     "WasmInstance.cpp",
     "WasmIonCompile.cpp",
     "WasmJS.cpp",
+    "WasmLog.cpp",
+    "WasmMemory.cpp",
     "WasmModule.cpp",
+    "WasmModuleTypes.cpp",
     "WasmOpIter.cpp",
     "WasmProcess.cpp",
     "WasmRealm.cpp",
+    "WasmSerialize.cpp",
+    "WasmSignalHandlers.cpp",
+    "WasmStaticTypeDefs.cpp",
     "WasmStubs.cpp",
+    "WasmSummarizeInsn.cpp",
     "WasmTable.cpp",
-    "WasmTlsData.cpp",
     "WasmTypeDef.cpp",
-    "WasmTypes.cpp",
     "WasmValidate.cpp",
     "WasmValType.cpp",
     "WasmValue.cpp",
 ]
 
-# We don't support signals for wasi yet.
-if CONFIG["OS_ARCH"] != "WASI":
-    UNIFIED_SOURCES += ["WasmSignalHandlers.cpp"]
+# Generate wasm/WasmBuiltinModuleGenerated.h from wasm/WasmBuiltinModule.yaml
+GeneratedFile(
+    "WasmBuiltinModuleGenerated.h",
+    script="GenerateBuiltinModules.py",
+    inputs=["WasmBuiltinModule.yaml"],
+)
 
 # Make sure all WebAssembly code is built with libfuzzer
 # coverage instrumentation in FUZZING mode.

@@ -11,24 +11,33 @@
 
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/gfx/Matrix.h"
-#include "mozilla/ServoTypes.h"
 #include "nsColor.h"
 #include "nsCSSPropertyID.h"
 #include "nsDOMCSSDeclaration.h"
 #include "nsStringFwd.h"
 
 struct nsCSSRect;
-struct nsTimingFunction;
-struct RawServoDeclarationBlock;
 template <class T>
 class RefPtr;
 
 namespace mozilla {
 
+struct AnimatedPropertyID;
 class ServoStyleSet;
 struct URLExtraData;
 struct StyleFontFamilyList;
+struct StyleFontStretch;
+struct StyleFontWeight;
+struct StyleFontStyle;
+struct StyleLockedDeclarationBlock;
+struct StyleParsingMode;
 union StyleComputedFontStyleDescriptor;
+
+template <typename Integer, typename Number, typename LinearStops>
+struct StyleTimingFunction;
+struct StylePiecewiseLinearFunction;
+using StyleComputedTimingFunction =
+    StyleTimingFunction<int32_t, float, StylePiecewiseLinearFunction>;
 
 namespace css {
 class Loader;
@@ -71,21 +80,46 @@ class ServoCSSParser {
                            css::Loader* aLoader = nullptr);
 
   /**
+  * Takes a CSS <color> and convert it to another color space.
+  *
+  * @param aStyleSet The style set whose nsPresContext will be used to
+  *   compute system colors and other special color values.
+  * @param aFromColor The CSS <color> we use to convert from.
+  * @param aToColorSpace The CSS <color-space> to convert the color into.
+  * @param aResultColor The resulting converted color value.
+  * @param aResultAdjusted Whether the color was adjusted to fit into the SRGB
+      color space.
+  * @param aLoader The CSS loader for document we're parsing a color for,
+  *   so that parse errors can be reported to the console. If nullptr, errors
+  *   won't be reported to the console.
+  * @return Whether aFromColor and aToColorSpace was successfully parsed and
+  *   aResultColor and aResultAdjusted was set.
+  */
+  static bool ColorTo(const nsACString& aFromColor,
+                      const nsACString& aToColorSpace, nsACString* aResultColor,
+                      nsTArray<float>* aResultComponents, bool* aResultAdjusted,
+                      css::Loader* aLoader = nullptr);
+
+  /**
    * Parse a string representing a CSS property value into a
-   * RawServoDeclarationBlock.
+   * StyleLockedDeclarationBlock.
    *
    * @param aProperty The property to be parsed.
    * @param aValue The specified value.
    * @param aParsingEnvironment All the parsing environment data we need.
-   * @param aParsingMode The paring mode we apply.
-   * @return The parsed value as a RawServoDeclarationBlock. We put the value
+   * @param aParsingMode The parsing mode we apply.
+   * @return The parsed value as a StyleLockedDeclarationBlock. We put the value
    *   in a declaration block since that is how we represent specified values
    *   in Servo.
    */
-  static already_AddRefed<RawServoDeclarationBlock> ParseProperty(
+  static already_AddRefed<StyleLockedDeclarationBlock> ParseProperty(
       nsCSSPropertyID aProperty, const nsACString& aValue,
       const ParsingEnvironment& aParsingEnvironment,
-      ParsingMode aParsingMode = ParsingMode::Default);
+      const StyleParsingMode& aParsingMode);
+  static already_AddRefed<StyleLockedDeclarationBlock> ParseProperty(
+      const AnimatedPropertyID& aProperty, const nsACString& aValue,
+      const ParsingEnvironment& aParsingEnvironment,
+      const StyleParsingMode& aParsingMode);
 
   /**
    * Parse a animation timing function.
@@ -94,7 +128,8 @@ class ServoCSSParser {
    * @param aResult The output timing function. (output)
    * @return Whether the value was successfully parsed.
    */
-  static bool ParseEasing(const nsACString& aValue, nsTimingFunction& aResult);
+  static bool ParseEasing(const nsACString& aValue,
+                          StyleComputedTimingFunction& aResult);
 
   /**
    * Parse a specified transform list into a gfx matrix.
@@ -119,12 +154,15 @@ class ServoCSSParser {
    * @param aStyle The parsed FontStyle. (output)
    * @param aStretch The parsed FontStretch. (output)
    * @param aWeight The parsed FontWeight. (output)
+   * @param aSize If non-null, returns the parsed font size. (output)
+   * @param aSmallCaps If non-null, whether small-caps was specified (output)
    * @return Whether the value was successfully parsed.
    */
   static bool ParseFontShorthandForMatching(
       const nsACString& aValue, URLExtraData* aUrl, StyleFontFamilyList& aList,
-      StyleComputedFontStyleDescriptor& aStyle, float& aStretch,
-      float& aWeight);
+      StyleFontStyle& aStyle, StyleFontStretch& aStretch,
+      StyleFontWeight& aWeight, float* aSize = nullptr,
+      bool* aSmallCaps = nullptr);
 
   /**
    * Get a URLExtraData from a document.

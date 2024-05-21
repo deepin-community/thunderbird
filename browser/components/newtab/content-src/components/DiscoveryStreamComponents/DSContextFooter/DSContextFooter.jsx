@@ -3,12 +3,34 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { cardContextTypes } from "../../Card/types.js";
+import { SponsoredContentHighlight } from "../FeatureHighlight/SponsoredContentHighlight";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { FluentOrText } from "../../FluentOrText/FluentOrText.jsx";
 import React from "react";
 
 // Animation time is mirrored in DSContextFooter.scss
 const ANIMATION_DURATION = 3000;
+
+export const DSMessageLabel = props => {
+  const { context, context_type } = props;
+  const { icon, fluentID } = cardContextTypes[context_type] || {};
+
+  if (!context && context_type) {
+    return (
+      <TransitionGroup component={null}>
+        <CSSTransition
+          key={fluentID}
+          timeout={ANIMATION_DURATION}
+          classNames="story-animate"
+        >
+          <StatusMessage icon={icon} fluentID={fluentID} />
+        </CSSTransition>
+      </TransitionGroup>
+    );
+  }
+
+  return null;
+};
 
 export const StatusMessage = ({ icon, fluentID }) => (
   <div className="status-message">
@@ -20,8 +42,13 @@ export const StatusMessage = ({ icon, fluentID }) => (
   </div>
 );
 
-export const SponsorLabel = ({ sponsored_by_override, sponsor, context }) => {
-  const classList = "story-sponsored-label clamp";
+export const SponsorLabel = ({
+  sponsored_by_override,
+  sponsor,
+  context,
+  newSponsoredLabel,
+}) => {
+  const classList = `story-sponsored-label ${newSponsoredLabel || ""} clamp`;
   // If override is not false or an empty string.
   if (sponsored_by_override) {
     return <p className={classList}>{sponsored_by_override}</p>;
@@ -49,37 +76,79 @@ export const SponsorLabel = ({ sponsored_by_override, sponsor, context }) => {
 
 export class DSContextFooter extends React.PureComponent {
   render() {
-    // display_engagement_labels is based on pref `browser.newtabpage.activity-stream.discoverystream.engagementLabelEnabled`
     const {
       context,
       context_type,
-      engagement,
-      display_engagement_labels,
       sponsor,
       sponsored_by_override,
+      cta_button_variant,
+      source,
+      spocMessageVariant,
+      dispatch,
     } = this.props;
-    const { icon, fluentID } = cardContextTypes[context_type] || {};
 
-    return (
-      <div className="story-footer">
-        {SponsorLabel({ sponsored_by_override, sponsor, context })}
-        <TransitionGroup component={null}>
-          {!context &&
-            (context_type || (display_engagement_labels && engagement)) && (
-              <CSSTransition
-                key={fluentID}
-                timeout={ANIMATION_DURATION}
-                classNames="story-animate"
-              >
-                {engagement && !context_type ? (
-                  <div className="story-view-count">{engagement}</div>
-                ) : (
-                  <StatusMessage icon={icon} fluentID={fluentID} />
-                )}
-              </CSSTransition>
-            )}
-        </TransitionGroup>
-      </div>
-    );
+    const sponsorLabel = SponsorLabel({
+      sponsored_by_override,
+      sponsor,
+      context,
+    });
+    const dsMessageLabel = DSMessageLabel({
+      context,
+      context_type,
+    });
+
+    if (cta_button_variant === "variant-a") {
+      return (
+        <div className="story-footer">
+          {/* this button is decorative only */}
+          <button aria-hidden="true" className="story-cta-button">
+            Shop Now
+          </button>
+          {sponsorLabel}
+        </div>
+      );
+    }
+
+    if (cta_button_variant === "variant-b") {
+      return (
+        <div className="story-footer">
+          {sponsorLabel}
+          <span className="source clamp cta-footer-source">{source}</span>
+        </div>
+      );
+    }
+
+    if (sponsorLabel || dsMessageLabel) {
+      return (
+        <div className="story-footer">
+          {sponsorLabel}
+          {sponsorLabel && spocMessageVariant === "variant-b" && (
+            <SponsoredContentHighlight
+              dispatch={dispatch}
+              position="inset-block-end inset-inline-start"
+            />
+          )}
+          {dsMessageLabel}
+        </div>
+      );
+    }
+
+    return null;
   }
 }
+
+export const DSMessageFooter = props => {
+  const { context, context_type, saveToPocketCard } = props;
+
+  const dsMessageLabel = DSMessageLabel({
+    context,
+    context_type,
+  });
+
+  // This case is specific and already displayed to the user elsewhere.
+  if (!dsMessageLabel || (saveToPocketCard && context_type === "pocket")) {
+    return null;
+  }
+
+  return <div className="story-footer">{dsMessageLabel}</div>;
+};

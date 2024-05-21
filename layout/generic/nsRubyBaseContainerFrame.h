@@ -29,7 +29,6 @@ class nsRubyBaseContainerFrame final : public nsContainerFrame {
   NS_DECL_QUERYFRAME
 
   // nsIFrame overrides
-  virtual bool IsFrameOfType(uint32_t aFlags) const override;
   virtual bool CanContinueTextRun() const override;
   virtual void AddInlineMinISize(gfxContext* aRenderingContext,
                                  InlineMinISizeData* aData) override;
@@ -46,8 +45,9 @@ class nsRubyBaseContainerFrame final : public nsContainerFrame {
                       const ReflowInput& aReflowInput,
                       nsReflowStatus& aStatus) override;
 
-  virtual nscoord GetLogicalBaseline(
-      mozilla::WritingMode aWritingMode) const override;
+  Maybe<nscoord> GetNaturalBaselineBOffset(
+      mozilla::WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+      BaselineExportContext) const override;
 
 #ifdef DEBUG_FRAME_DUMP
   virtual nsresult GetFrameName(nsAString& aResult) const override;

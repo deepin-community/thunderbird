@@ -1,3 +1,4 @@
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
 var gData1 = "TEST_DATA_1:ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 var gData2 = "TEST_DATA_2:1234567890";
 var gPaddingChar = ".";
@@ -49,7 +50,7 @@ self.onmessage = function onmessage(event) {
     var xhr = new XMLHttpRequest({ mozAnon: true, mozSystem: true });
     xhr.open("GET", makeJarURL("data_1.txt"));
     xhr.responseType = "arraybuffer";
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (xhr.readyState !== xhr.DONE) {
         return;
       }
@@ -69,7 +70,7 @@ self.onmessage = function onmessage(event) {
     var xhr = new XMLHttpRequest({ mozAnon: true, mozSystem: true });
     xhr.open("GET", makeJarURL("data_2.txt"));
     xhr.responseType = "arraybuffer";
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (xhr.readyState !== xhr.DONE) {
         return;
       }

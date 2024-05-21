@@ -16,43 +16,34 @@ feature whenever it makes sense (or all the time. Up to you.).
 ## Linking to other documentation
 
 Linking to other external documentation is [easy][reference link].
-Linking to other pieces of documentation in the source docs might not be.
+Linking to other pieces of documentation in the source docs requires a
+link to the source file in the sphinx tree.
 
-To link to another markdown page in FOG's documentation, you can use
+Links can be relative e.g. to link to the [preferences] docs:
+
 ```md
-[link text](page_name.md)
+[preferences](preferences.md)
+```
+
+Or they can be absolute e.g. to link to the [Telemetry] docs:
+```md
+[Telemetry](/toolkit/components/telemetry/index.rst)
 ```
 
 Sphinx will automagically transform that to an
 appropriately-base-url'd url with a `.html` suffix.
 
-Unfortunately, this doesn't work for linking to
-`.rst` files like those in use in [Telemetry]'s documentation.
-(Follow [bug 1621950] for updates).
 
-In those cases you have to link it like it's html.
-For example, to link to [Telemetry] you can use either of
-```md
-[Telemetry](../telemetry)
-[Telemetry](../telemetry/index.html)
-```
+## Use of "Main" versus "Parent" for processes
 
-Both will work. Both will generate warnings.
-For example, the first form will generate this:
-```console
-None:any reference target not found: ../telemetry
-```
-But it will still work because linking to a directory in html links to its
-`index.html` (which is where `index.rst` ends up).
-
-We can suppress this by putting a fake anchor
-(like `#https://`) on the end to fool Sphinx into not checking it.
-But that seems like a hack more unseemly than the warnings,
-so let's not.
-
+When talking about Glean, it is helpeful to distinguish when we are on the main
+process specifically. This is because there is only one main process, and there is only one Glean.
+However, "parent" is a relative term, and it may refer to a process
+that is the parent of another process, but is not itself the main process.
+Prefer use of "main" when it is accurate.
 
 [semantic linefeeds]: https://rhodesmill.org/brandon/2012/one-sentence-per-line/
 [reference link]: https://spec.commonmark.org/0.29/#reference-link
-[Telemetry]: ../telemetry
+[Telemetry]: /toolkit/components/telemetry/index.rst
 [#firefox-source-docs:mozilla.org]: https://chat.mozilla.org/#/room/#firefox-source-docs:mozilla.org
 [bug 1621950]: https://bugzilla.mozilla.org/show_bug.cgi?id=1621950

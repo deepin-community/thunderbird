@@ -5,15 +5,20 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
-#![cfg_attr(feature = "neon", feature(stdsimd))]
-// These are needed for the neon intrinsics implementation
-// and can be removed once the MSRV is high enough (1.48)
-#![cfg_attr(feature = "neon", feature(platform_intrinsics, simd_ffi, link_llvm_intrinsics))]
-#![cfg_attr(feature = "neon", feature(aarch64_target_feature, arm_target_feature, raw_ref_op))]
+// These are needed for the neon SIMD code and can be removed once the MSRV supports the
+// instrinsics we use
+#![cfg_attr(all(stdsimd_split, target_arch = "arm", feature = "neon"), feature(stdarch_arm_neon_intrinsics))]
+#![cfg_attr(all(stdsimd_split, target_arch = "arm", feature = "neon"), feature(stdarch_arm_feature_detection))]
+#![cfg_attr(all(not(stdsimd_split), target_arch = "arm", feature = "neon"), feature(stdsimd))]
+#![cfg_attr(
+    all(target_arch = "arm", feature = "neon"),
+    feature(arm_target_feature, raw_ref_op)
+
+)]
 
 /// These values match the Rendering Intent values from the ICC spec
-#[repr(u32)]
-#[derive(Clone, Copy)]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
 pub enum Intent {
     AbsoluteColorimetric = 3,
     Saturation = 2,

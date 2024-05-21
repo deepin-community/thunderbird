@@ -164,7 +164,7 @@ static void SHA256_Compress_Generic(SHA256Context *ctx);
 static void SHA256_Update_Generic(SHA256Context *ctx, const unsigned char *input,
                                   unsigned int inputLen);
 
-#if !defined(USE_HW_SHA2) || !defined(IS_LITTLE_ENDIAN)
+#if !defined(USE_HW_SHA2)
 void
 SHA256_Compress_Native(SHA256Context *ctx)
 {
@@ -321,7 +321,7 @@ SHA256_Compress_Generic(SHA256Context *ctx)
     const vec_u8 shifthalf = (vec_u8)vec_splats(8 << 3);
     const vec_u8 bswap4 = (vec_u8){
         3, 2, 1, 0, 7, 6, 5, 4, 11,
-        10, 9, 8, 15, 14, 13, 12,
+        10, 9, 8, 15, 14, 13, 12
     };
     unsigned i;
 

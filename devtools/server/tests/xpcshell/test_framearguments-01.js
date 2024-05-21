@@ -32,7 +32,9 @@ add_task(
 function evalCode(debuggee) {
   debuggee.eval(
     "(" +
-      function() {
+      function () {
+        // These arguments are tested.
+        // eslint-disable-next-line no-unused-vars
         function stopMe(number, bool, string, null_, undef, object) {
           debugger;
         }

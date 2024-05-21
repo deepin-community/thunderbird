@@ -11,7 +11,6 @@
 #include "nsString.h"
 #include "nsMsgUtils.h"
 #include "nsIMimeConverter.h"
-#include "nsMsgMimeCID.h"
 #include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsCRT.h"
@@ -177,7 +176,7 @@ nsresult nsMailtoUrl::ParseMailtoUrl(char* searchPart) {
   nsresult rv;
   // Get a global converter
   nsCOMPtr<nsIMimeConverter> mimeConverter =
-      do_GetService(NS_MIME_CONVERTER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/mimeconverter;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Now unescape everything, and mime-decode the things that can be encoded.
@@ -498,26 +497,31 @@ nsMailtoUrl::GetSpecIgnoringRef(nsACString& result) {
 
 NS_IMETHODIMP
 nsMailtoUrl::GetDisplaySpec(nsACString& aUnicodeSpec) {
-  return GetSpec(aUnicodeSpec);
+  return m_baseURL->GetDisplaySpec(aUnicodeSpec);
 }
 
 NS_IMETHODIMP
 nsMailtoUrl::GetDisplayHostPort(nsACString& aUnicodeHostPort) {
-  return GetHostPort(aUnicodeHostPort);
+  return m_baseURL->GetDisplayHostPort(aUnicodeHostPort);
 }
 
 NS_IMETHODIMP
 nsMailtoUrl::GetDisplayHost(nsACString& aUnicodeHost) {
-  return GetHost(aUnicodeHost);
+  return m_baseURL->GetDisplayHost(aUnicodeHost);
 }
 
 NS_IMETHODIMP
 nsMailtoUrl::GetDisplayPrePath(nsACString& aPrePath) {
-  return GetPrePath(aPrePath);
+  return m_baseURL->GetDisplayPrePath(aPrePath);
 }
 
 NS_IMETHODIMP
 nsMailtoUrl::GetHasRef(bool* result) { return m_baseURL->GetHasRef(result); }
+
+NS_IMETHODIMP nsMailtoUrl::GetHasUserPass(bool* aHasUserPass) {
+  *aHasUserPass = false;
+  return NS_OK;
+}
 
 NS_IMETHODIMP
 nsMailtoUrl::GetFilePath(nsACString& aFilePath) {
@@ -559,6 +563,22 @@ nsMailtoUrl::Mutate(nsIURIMutator** aMutator) {
     return rv;
   }
   mutator.forget(aMutator);
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMailtoUrl::GetHasQuery(bool* aHasQuery) {
+  return m_baseURL->GetHasQuery(aHasQuery);
+}
+
+nsresult nsMailtoUrl::NewMailtoURI(const nsACString& aSpec, nsIURI* aBaseURI,
+                                   nsIURI** _retval) {
+  nsresult rv;
+
+  nsCOMPtr<nsIURI> mailtoUrl;
+  rv = NS_MutateURI(new Mutator()).SetSpec(aSpec).Finalize(mailtoUrl);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  mailtoUrl.forget(_retval);
   return NS_OK;
 }
 
@@ -720,4 +740,25 @@ nsSmtpUrl::GetSmtpServer(nsISmtpServer** aSmtpServer) {
   NS_ENSURE_TRUE(m_smtpServer, NS_ERROR_NULL_POINTER);
   NS_ADDREF(*aSmtpServer = m_smtpServer);
   return NS_OK;
+}
+
+nsresult nsSmtpUrl::NewSmtpURI(const nsACString& aSpec, nsIURI* aBaseURI,
+                               nsIURI** _retval) {
+  NS_ENSURE_ARG_POINTER(_retval);
+  *_retval = 0;
+  nsresult rv;
+  nsCOMPtr<nsIMsgMailNewsUrl> aSmtpUri = new nsSmtpUrl();
+  if (aBaseURI) {
+    nsAutoCString newSpec;
+    rv = aBaseURI->Resolve(aSpec, newSpec);
+    NS_ENSURE_SUCCESS(rv, rv);
+    rv = aSmtpUri->SetSpecInternal(newSpec);
+    NS_ENSURE_SUCCESS(rv, rv);
+  } else {
+    rv = aSmtpUri->SetSpecInternal(aSpec);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
+  aSmtpUri.forget(_retval);
+
+  return rv;
 }

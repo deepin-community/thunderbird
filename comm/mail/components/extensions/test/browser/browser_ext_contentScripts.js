@@ -13,10 +13,10 @@ const UNCHANGED_VALUES = {
 
 /** Tests browser.tabs.insertCSS and browser.tabs.removeCSS. */
 add_task(async function testInsertRemoveCSS() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let [tab] = await browser.tabs.query({ active: true });
+        const [tab] = await browser.tabs.query({ active: true });
 
         await browser.tabs.insertCSS(tab.id, {
           code: "body { background-color: lime; }",
@@ -43,8 +43,8 @@ add_task(async function testInsertRemoveCSS() {
     },
   });
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
 
   await extension.startup();
 
@@ -70,10 +70,10 @@ add_task(async function testInsertRemoveCSS() {
 
 /** Tests browser.tabs.insertCSS fails without the host permission. */
 add_task(async function testInsertRemoveCSSNoPermissions() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let [tab] = await browser.tabs.query({ active: true });
+        const [tab] = await browser.tabs.query({ active: true });
 
         await browser.test.assertRejects(
           browser.tabs.insertCSS(tab.id, {
@@ -109,8 +109,8 @@ add_task(async function testInsertRemoveCSSNoPermissions() {
     },
   });
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
 
   await extension.startup();
 
@@ -124,10 +124,10 @@ add_task(async function testInsertRemoveCSSNoPermissions() {
 
 /** Tests browser.tabs.executeScript. */
 add_task(async function testExecuteScript() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let tab = await browser.tabs.query({ active: true });
+        const tab = await browser.tabs.query({ active: true });
 
         await browser.tabs.executeScript(tab.id, {
           code: `document.body.setAttribute("foo", "bar");`,
@@ -148,8 +148,8 @@ add_task(async function testExecuteScript() {
     },
   });
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
 
   await extension.startup();
 
@@ -170,10 +170,10 @@ add_task(async function testExecuteScript() {
 
 /** Tests browser.tabs.executeScript fails without the host permission. */
 add_task(async function testExecuteScriptNoPermissions() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let tab = await browser.tabs.query({ active: true });
+        const tab = await browser.tabs.query({ active: true });
 
         await browser.test.assertRejects(
           browser.tabs.executeScript(tab.id, {
@@ -211,8 +211,8 @@ add_task(async function testExecuteScriptNoPermissions() {
     },
   });
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
 
   await extension.startup();
 
@@ -226,10 +226,10 @@ add_task(async function testExecuteScriptNoPermissions() {
 
 /** Tests the messenger alias is available. */
 add_task(async function testExecuteScriptAlias() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let tab = await browser.tabs.query({ active: true });
+        const tab = await browser.tabs.query({ active: true });
 
         await browser.tabs.executeScript(tab.id, {
           code: `document.body.textContent = messenger.runtime.getManifest().applications.gecko.id;`,
@@ -245,8 +245,8 @@ add_task(async function testExecuteScriptAlias() {
     },
   });
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
 
   await extension.startup();
 
@@ -264,10 +264,10 @@ add_task(async function testExecuteScriptAlias() {
  * `unregister` on the returned object.
  */
 add_task(async function testRegister() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
-        let registeredScript = await browser.contentScripts.register({
+        const registeredScript = await browser.contentScripts.register({
           css: [{ code: "body { color: white }" }, { file: "test.css" }],
           js: [
             { code: `document.body.setAttribute("foo", "bar");` },
@@ -295,12 +295,8 @@ add_task(async function testRegister() {
   });
 
   // Tab 1: loads before the script is registered.
-  let tab1 = window.openContentTab(CONTENT_PAGE + "?tab1");
-  await BrowserTestUtils.browserLoaded(
-    tab1.browser,
-    false,
-    CONTENT_PAGE + "?tab1"
-  );
+  const tab1 = window.openContentTab(CONTENT_PAGE + "?tab1");
+  await awaitBrowserLoaded(tab1.browser, CONTENT_PAGE + "?tab1");
 
   await extension.startup();
 
@@ -308,12 +304,12 @@ add_task(async function testRegister() {
   await checkContent(tab1.browser, UNCHANGED_VALUES);
 
   // Tab 2: loads after the script is registered.
-  let tab2 = window.openContentTab(CONTENT_PAGE + "?tab2");
-  await BrowserTestUtils.browserLoaded(
-    tab2.browser,
-    false,
-    CONTENT_PAGE + "?tab2"
-  );
+  const tab2 = window.openContentTab(CONTENT_PAGE + "?tab2");
+  await awaitBrowserLoaded(tab2.browser, CONTENT_PAGE + "?tab2");
+  // Despite the fact we've just waited for the page to load, sometimes the
+  // content script mechanism gets triggered late. Wait a moment.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(r => setTimeout(r, 1000));
   await checkContent(tab2.browser, {
     backgroundColor: "rgb(0, 128, 0)",
     color: "rgb(255, 255, 255)",
@@ -332,12 +328,8 @@ add_task(async function testRegister() {
   });
 
   // Tab 3: loads after the script is unregistered.
-  let tab3 = window.openContentTab(CONTENT_PAGE + "?tab3");
-  await BrowserTestUtils.browserLoaded(
-    tab3.browser,
-    false,
-    CONTENT_PAGE + "?tab3"
-  );
+  const tab3 = window.openContentTab(CONTENT_PAGE + "?tab3");
+  await awaitBrowserLoaded(tab3.browser, CONTENT_PAGE + "?tab3");
   await checkContent(tab3.browser, UNCHANGED_VALUES);
 
   extension.sendMessage();
@@ -353,13 +345,13 @@ add_task(async function testRegister() {
     textContent: "Hey look, the script ran!",
   });
 
-  let tabmail = document.getElementById("tabmail");
+  const tabmail = document.getElementById("tabmail");
   tabmail.closeOtherTabs(tabmail.tabInfo[0]);
 });
 
 /** Tests content_scripts in the manifest with permission work. */
 add_task(async function testManifest() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "test.css": "body { background-color: lime; }",
       "test.js": () => {
@@ -378,15 +370,10 @@ add_task(async function testManifest() {
   });
 
   // Tab 1: loads before the script is registered.
-  let tab1 = window.openContentTab(CONTENT_PAGE + "?tab1");
-  await BrowserTestUtils.browserLoaded(
-    tab1.browser,
-    false,
-    CONTENT_PAGE + "?tab1"
-  );
-
+  const tab1 = window.openContentTab(CONTENT_PAGE + "?tab1");
+  await awaitBrowserLoaded(tab1.browser, CONTENT_PAGE + "?tab1");
   // Despite the fact we've just waited for the page to load, sometimes the
-  // content script mechanism gets triggered anyway. Wait a moment.
+  // content script mechanism gets triggered late. Wait a moment.
   // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
   await new Promise(r => setTimeout(r, 1000));
 
@@ -395,12 +382,12 @@ add_task(async function testManifest() {
   await checkContent(tab1.browser, UNCHANGED_VALUES);
 
   // Tab 2: loads after the script is registered.
-  let tab2 = window.openContentTab(CONTENT_PAGE + "?tab2");
-  await BrowserTestUtils.browserLoaded(
-    tab2.browser,
-    false,
-    CONTENT_PAGE + "?tab2"
-  );
+  const tab2 = window.openContentTab(CONTENT_PAGE + "?tab2");
+  await awaitBrowserLoaded(tab2.browser, CONTENT_PAGE + "?tab2");
+  // Despite the fact we've just waited for the page to load, sometimes the
+  // content script mechanism gets triggered late. Wait a moment.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(r => setTimeout(r, 1000));
 
   await checkContent(tab2.browser, {
     backgroundColor: "rgb(0, 255, 0)",
@@ -415,13 +402,13 @@ add_task(async function testManifest() {
     textContent: "Hey look, the script ran!",
   });
 
-  let tabmail = document.getElementById("tabmail");
+  const tabmail = document.getElementById("tabmail");
   tabmail.closeOtherTabs(tabmail.tabInfo[0]);
 });
 
 /** Tests content_scripts match patterns in the manifest. */
 add_task(async function testManifestNoPermissions() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "test.css": "body { background-color: red; }",
       "test.js": () => {
@@ -441,8 +428,8 @@ add_task(async function testManifestNoPermissions() {
 
   await extension.startup();
 
-  let tab = window.openContentTab(CONTENT_PAGE);
-  await BrowserTestUtils.browserLoaded(tab.browser, false, CONTENT_PAGE);
+  const tab = window.openContentTab(CONTENT_PAGE);
+  await awaitBrowserLoaded(tab.browser, CONTENT_PAGE);
   await checkContent(tab.browser, UNCHANGED_VALUES);
 
   await extension.unload();

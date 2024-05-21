@@ -23,8 +23,10 @@
 #include "frontend/TypedIndex.h"   // js::frontend::TypedIndex
 
 #include "js/AllocPolicy.h"            // js::SystemAllocPolicy
+#include "js/ColumnNumber.h"           // JS::LimitedColumnNumberOneOrigin
 #include "js/TypeDecls.h"              // JSContext,jsbytecode
 #include "js/UniquePtr.h"              // js::UniquePtr
+#include "js/Vector.h"                 // js::Vector
 #include "util/EnumFlags.h"            // js::EnumFlags
 #include "util/TrailingArray.h"        // js::TrailingArray
 #include "vm/GeneratorAndAsyncKind.h"  // GeneratorKind, FunctionAsyncKind
@@ -35,6 +37,8 @@
 //
 
 namespace js {
+
+class FrontendContext;
 
 namespace frontend {
 class StencilXDR;
@@ -188,7 +192,8 @@ struct SourceExtent {
   SourceExtent() = default;
 
   SourceExtent(uint32_t sourceStart, uint32_t sourceEnd, uint32_t toStringStart,
-               uint32_t toStringEnd, uint32_t lineno, uint32_t column)
+               uint32_t toStringEnd, uint32_t lineno,
+               JS::LimitedColumnNumberOneOrigin column)
       : sourceStart(sourceStart),
         sourceEnd(sourceEnd),
         toStringStart(toStringStart),
@@ -197,13 +202,18 @@ struct SourceExtent {
         column(column) {}
 
   static SourceExtent makeGlobalExtent(uint32_t len) {
-    return SourceExtent(0, len, 0, len, 1, 0);
+    return SourceExtent(0, len, 0, len, 1, JS::LimitedColumnNumberOneOrigin());
   }
 
-  static SourceExtent makeGlobalExtent(uint32_t len, uint32_t lineno,
-                                       uint32_t column) {
+  static SourceExtent makeGlobalExtent(
+      uint32_t len, uint32_t lineno, JS::LimitedColumnNumberOneOrigin column) {
     return SourceExtent(0, len, 0, len, lineno, column);
   }
+
+  // FunctionKey is an encoded position of a function within the source text
+  // that is unique and reproducible.
+  using FunctionKey = uint32_t;
+  static constexpr FunctionKey NullFunctionKey = 0;
 
   uint32_t sourceStart = 0;
   uint32_t sourceEnd = 0;
@@ -211,8 +221,18 @@ struct SourceExtent {
   uint32_t toStringEnd = 0;
 
   // Line and column of |sourceStart_| position.
-  uint32_t lineno = 1;  // 1-indexed.
-  uint32_t column = 0;  // Count of Code Points
+  // Line number (1-origin).
+  uint32_t lineno = 1;
+  // Column number in UTF-16 code units.
+  JS::LimitedColumnNumberOneOrigin column;
+
+  FunctionKey toFunctionKey() const {
+    // In eval("x=>1"), the arrow function will have a sourceStart of 0 which
+    // conflicts with the NullFunctionKey, so shift all keys by 1 instead.
+    auto result = sourceStart + 1;
+    MOZ_ASSERT(result != NullFunctionKey);
+    return result;
+  }
 };
 
 class ImmutableScriptFlags : public EnumFlags<ImmutableScriptFlagsEnum> {
@@ -290,6 +310,8 @@ class MutableScriptFlags : public EnumFlags<MutableScriptFlagsEnum> {
   _(ImmutableFlags, needsArgsObj, NeedsArgsObj)                               \
   _(ImmutableFlags, hasMappedArgsObj, HasMappedArgsObj)                       \
   _(ImmutableFlags, isInlinableLargeFunction, IsInlinableLargeFunction)       \
+  _(ImmutableFlags, functionHasNewTargetBinding, FunctionHasNewTargetBinding) \
+  _(ImmutableFlags, usesArgumentsIntrinsics, UsesArgumentsIntrinsics)         \
                                                                               \
   GeneratorKind generatorKind() const {                                       \
     return isGenerator() ? GeneratorKind::Generator                           \
@@ -338,6 +360,7 @@ class MutableScriptFlags : public EnumFlags<MutableScriptFlagsEnum> {
   _(MutableFlags, baselineDisabled, BaselineDisabled)                   \
   _(MutableFlags, ionDisabled, IonDisabled)                             \
   _(MutableFlags, uninlineable, Uninlineable)                           \
+  _(MutableFlags, noEagerBaselineHint, NoEagerBaselineHint)             \
   _(MutableFlags, failedLexicalCheck, FailedLexicalCheck)               \
   _(MutableFlags, hadSpeculativePhiBailout, HadSpeculativePhiBailout)
 
@@ -380,7 +403,7 @@ class MutableScriptFlags : public EnumFlags<MutableScriptFlagsEnum> {
 //  L3:
 // ----
 //
-// NOTE: The notes() array must have been null-padded such that
+// NOTE: The notes() array must have been padded such that
 //       flags/code/notes together have uint32_t alignment.
 //
 // The labels shown are recorded as byte-offsets relative to 'this'. This is to
@@ -402,7 +425,8 @@ class MutableScriptFlags : public EnumFlags<MutableScriptFlagsEnum> {
 // In general, the length of each array is computed from subtracting the start
 // offset of the array from the start offset of the subsequent array. The
 // notable exception is that bytecode length is stored explicitly.
-class alignas(uint32_t) ImmutableScriptData final : public TrailingArray {
+class alignas(uint32_t) ImmutableScriptData final
+    : public TrailingArray<ImmutableScriptData> {
  private:
   Offset optArrayOffset_ = 0;
 
@@ -428,9 +452,11 @@ class alignas(uint32_t) ImmutableScriptData final : public TrailingArray {
   // ES6 function length.
   uint16_t funLength = 0;
 
+  // Property Count estimate
+  uint16_t propertyCountEstimate = 0;
+
   // NOTE: The raw bytes of this structure are used for hashing so use explicit
-  // padding values as needed for predicatable results across compilers.
-  uint16_t padding = 0;
+  // padding values as needed for predicatable results across compilers
 
  private:
   struct Flags {
@@ -500,22 +526,25 @@ class alignas(uint32_t) ImmutableScriptData final : public TrailingArray {
 
  public:
   static js::UniquePtr<ImmutableScriptData> new_(
-      JSContext* cx, uint32_t mainOffset, uint32_t nfixed, uint32_t nslots,
-      GCThingIndex bodyScopeIndex, uint32_t numICEntries, bool isFunction,
-      uint16_t funLength, mozilla::Span<const jsbytecode> code,
-      mozilla::Span<const SrcNote> notes,
+      FrontendContext* fc, uint32_t mainOffset, uint32_t nfixed,
+      uint32_t nslots, GCThingIndex bodyScopeIndex, uint32_t numICEntries,
+      bool isFunction, uint16_t funLength, uint16_t propertyCountEstimate,
+      mozilla::Span<const jsbytecode> code, mozilla::Span<const SrcNote> notes,
       mozilla::Span<const uint32_t> resumeOffsets,
       mozilla::Span<const ScopeNote> scopeNotes,
       mozilla::Span<const TryNote> tryNotes);
 
   static js::UniquePtr<ImmutableScriptData> new_(
-      JSContext* cx, uint32_t codeLength, uint32_t noteLength,
+      FrontendContext* fc, uint32_t codeLength, uint32_t noteLength,
       uint32_t numResumeOffsets, uint32_t numScopeNotes, uint32_t numTryNotes);
 
-  static js::UniquePtr<ImmutableScriptData> new_(JSContext* cx,
+  static js::UniquePtr<ImmutableScriptData> new_(FrontendContext* fc,
                                                  uint32_t totalSize);
 
-  uint32_t computedSize();
+  // Validate internal offsets of the data structure seems reasonable. This is
+  // for diagnositic purposes only to detect severe corruption. This is not a
+  // security boundary!
+  bool validateLayout(uint32_t expectedSize);
 
  private:
   static mozilla::CheckedInt<uint32_t> sizeFor(uint32_t codeLength,
@@ -526,20 +555,21 @@ class alignas(uint32_t) ImmutableScriptData final : public TrailingArray {
 
  public:
   // The code() and note() arrays together maintain an target alignment by
-  // padding the source notes with null. This allows arrays with stricter
-  // alignment requirements to follow them.
+  // padding the source notes with padding bytes. This allows arrays with
+  // stricter alignment requirements to follow them.
   static constexpr size_t CodeNoteAlign = sizeof(uint32_t);
 
-  // Compute number of null notes to pad out source notes with.
+  // Compute number of padding notes to pad out source notes with.
   static uint32_t ComputeNotePadding(uint32_t codeLength, uint32_t noteLength) {
     uint32_t flagLength = sizeof(Flags);
-    uint32_t nullLength =
+    uint32_t paddingLength =
         CodeNoteAlign - (flagLength + codeLength + noteLength) % CodeNoteAlign;
 
-    // The source notes must have at least one null-terminator.
-    MOZ_ASSERT(nullLength >= 1);
+    if (paddingLength == CodeNoteAlign) {
+      return 0;
+    }
 
-    return nullLength;
+    return paddingLength;
   }
 
   // Span over all raw bytes in this struct and its trailing arrays.
@@ -614,15 +644,16 @@ class alignas(uint32_t) ImmutableScriptData final : public TrailingArray {
 //       entries. This allows for fast finalization by decrementing the
 //       ref-count directly without doing a hash-table lookup.
 class SharedImmutableScriptData {
+  static constexpr uint32_t IsExternalFlag = 0x80000000;
+  static constexpr uint32_t RefCountBits = 0x7FFFFFFF;
+
   // This class is reference counted as follows: each pointer from a JSScript
   // counts as one reference plus there may be one reference from the shared
   // script data table.
-  mozilla::Atomic<uint32_t, mozilla::SequentiallyConsistent> refCount_ = {};
+  mozilla::Atomic<uint32_t, mozilla::SequentiallyConsistent>
+      refCountAndExternalFlags_ = {};
 
- public:
-  bool isExternal = false;
-
- private:
+  mozilla::HashNumber hash_;
   ImmutableScriptData* isd_ = nullptr;
 
   // End of fields.
@@ -636,11 +667,20 @@ class SharedImmutableScriptData {
   ~SharedImmutableScriptData() { reset(); }
 
  private:
+  bool isExternal() const { return refCountAndExternalFlags_ & IsExternalFlag; }
+  void setIsExternal() { refCountAndExternalFlags_ |= IsExternalFlag; }
+  void unsetIsExternal() { refCountAndExternalFlags_ &= RefCountBits; }
+
   void reset() {
-    if (isd_ && !isExternal) {
+    if (isd_ && !isExternal()) {
       js_delete(isd_);
     }
     isd_ = nullptr;
+  }
+
+  mozilla::HashNumber calculateHash() const {
+    mozilla::Span<const uint8_t> immutableData = isd_->immutableData();
+    return mozilla::HashBytes(immutableData.data(), immutableData.size());
   }
 
  public:
@@ -648,11 +688,18 @@ class SharedImmutableScriptData {
   // ImmutableScriptData.
   struct Hasher;
 
-  uint32_t refCount() const { return refCount_; }
-  void AddRef() { refCount_++; }
+  uint32_t refCount() const { return refCountAndExternalFlags_ & RefCountBits; }
+  void AddRef() { refCountAndExternalFlags_++; }
+
+ private:
+  uint32_t decrementRef() {
+    MOZ_ASSERT(refCount() != 0);
+    return --refCountAndExternalFlags_ & RefCountBits;
+  }
+
+ public:
   void Release() {
-    MOZ_ASSERT(refCount_ != 0);
-    uint32_t remain = --refCount_;
+    uint32_t remain = decrementRef();
     if (remain == 0) {
       reset();
       js_free(this);
@@ -664,14 +711,14 @@ class SharedImmutableScriptData {
   }
 
  private:
-  static SharedImmutableScriptData* create(JSContext* cx);
+  static SharedImmutableScriptData* create(FrontendContext* fc);
 
  public:
   static SharedImmutableScriptData* createWith(
-      JSContext* cx, js::UniquePtr<ImmutableScriptData>&& isd);
+      FrontendContext* fc, js::UniquePtr<ImmutableScriptData>&& isd);
 
   size_t sizeOfIncludingThis(mozilla::MallocSizeOf mallocSizeOf) {
-    size_t isdSize = isExternal ? 0 : mallocSizeOf(isd_);
+    size_t isdSize = isExternal() ? 0 : mallocSizeOf(isd_);
     return mallocSizeOf(this) + isdSize;
   }
 
@@ -680,24 +727,48 @@ class SharedImmutableScriptData {
   SharedImmutableScriptData& operator=(const SharedImmutableScriptData&) =
       delete;
 
-  static bool shareScriptData(JSContext* cx,
+  static bool shareScriptData(FrontendContext* fc,
                               RefPtr<SharedImmutableScriptData>& sisd);
 
   size_t immutableDataLength() const { return isd_->immutableData().Length(); }
   uint32_t nfixed() const { return isd_->nfixed; }
 
   ImmutableScriptData* get() { return isd_; }
+  mozilla::HashNumber hash() const { return hash_; }
 
   void setOwn(js::UniquePtr<ImmutableScriptData>&& isd) {
     MOZ_ASSERT(!isd_);
     isd_ = isd.release();
-    isExternal = false;
+    unsetIsExternal();
+
+    hash_ = calculateHash();
+  }
+
+  void setOwn(js::UniquePtr<ImmutableScriptData>&& isd,
+              mozilla::HashNumber hash) {
+    MOZ_ASSERT(!isd_);
+    isd_ = isd.release();
+    unsetIsExternal();
+
+    MOZ_ASSERT(hash == calculateHash());
+    hash_ = hash;
   }
 
   void setExternal(ImmutableScriptData* isd) {
     MOZ_ASSERT(!isd_);
     isd_ = isd;
-    isExternal = true;
+    setIsExternal();
+
+    hash_ = calculateHash();
+  }
+
+  void setExternal(ImmutableScriptData* isd, mozilla::HashNumber hash) {
+    MOZ_ASSERT(!isd_);
+    isd_ = isd;
+    setIsExternal();
+
+    MOZ_ASSERT(hash == calculateHash());
+    hash_ = hash;
   }
 };
 
@@ -706,10 +777,7 @@ class SharedImmutableScriptData {
 struct SharedImmutableScriptData::Hasher {
   using Lookup = RefPtr<SharedImmutableScriptData>;
 
-  static mozilla::HashNumber hash(const Lookup& l) {
-    mozilla::Span<const uint8_t> immutableData = l->isd_->immutableData();
-    return mozilla::HashBytes(immutableData.data(), immutableData.size());
-  }
+  static mozilla::HashNumber hash(const Lookup& l) { return l->hash(); }
 
   static bool match(SharedImmutableScriptData* entry, const Lookup& lookup) {
     return (entry->isd_->immutableData() == lookup->isd_->immutableData());
@@ -721,7 +789,11 @@ using SharedImmutableScriptDataTable =
                      SharedImmutableScriptData::Hasher, SystemAllocPolicy>;
 
 struct MemberInitializers {
+#ifdef ENABLE_DECORATORS
+  static constexpr size_t NumBits = 30;
+#else
   static constexpr size_t NumBits = 31;
+#endif
   static constexpr uint32_t MaxInitializers = BitMask(NumBits);
 
 #ifdef DEBUG
@@ -730,20 +802,37 @@ struct MemberInitializers {
 
   bool hasPrivateBrand : 1;
 
+#ifdef ENABLE_DECORATORS
+  bool hasDecorators : 1;
+#endif
+
   // This struct will eventually have a vector of constant values for optimizing
   // field initializers.
   uint32_t numMemberInitializers : NumBits;
 
-  MemberInitializers(bool hasPrivateBrand, uint32_t numMemberInitializers)
+  MemberInitializers(bool hasPrivateBrand,
+#ifdef ENABLE_DECORATORS
+                     bool hasDecorators,
+#endif
+                     uint32_t numMemberInitializers)
       :
 #ifdef DEBUG
         valid(true),
 #endif
         hasPrivateBrand(hasPrivateBrand),
+#ifdef ENABLE_DECORATORS
+        hasDecorators(hasDecorators),
+#endif
         numMemberInitializers(numMemberInitializers) {
+#ifdef ENABLE_DECORATORS
+    MOZ_ASSERT(
+        this->numMemberInitializers == numMemberInitializers,
+        "numMemberInitializers should easily fit in the 30-bit bitfield");
+#else
     MOZ_ASSERT(
         this->numMemberInitializers == numMemberInitializers,
         "numMemberInitializers should easily fit in the 31-bit bitfield");
+#endif
   }
 
   static MemberInitializers Invalid() { return MemberInitializers(); }
@@ -752,17 +841,33 @@ struct MemberInitializers {
   // fields. This is used when we elide the trivial data but still need a valid
   // set to stop scope walking.
   static const MemberInitializers& Empty() {
-    static const MemberInitializers zeroInitializers(false, 0);
+    static const MemberInitializers zeroInitializers(false,
+#ifdef ENABLE_DECORATORS
+                                                     false,
+#endif
+                                                     0);
     return zeroInitializers;
   }
 
   uint32_t serialize() const {
+#ifdef ENABLE_DECORATORS
+    auto serialised = (hasPrivateBrand << (NumBits + 1)) |
+                      hasDecorators << NumBits | numMemberInitializers;
+    return serialised;
+#else
     return (hasPrivateBrand << NumBits) | numMemberInitializers;
+#endif
   }
 
   static MemberInitializers deserialize(uint32_t bits) {
+#ifdef ENABLE_DECORATORS
+    return MemberInitializers((bits & Bit(NumBits + 1)) != 0,
+                              (bits & Bit(NumBits)) != 0,
+                              bits & BitMask(NumBits));
+#else
     return MemberInitializers((bits & Bit(NumBits)) != 0,
                               bits & BitMask(NumBits));
+#endif
   }
 
  private:
@@ -772,9 +877,18 @@ struct MemberInitializers {
         valid(false),
 #endif
         hasPrivateBrand(false),
+#ifdef ENABLE_DECORATORS
+        hasDecorators(false),
+#endif
         numMemberInitializers(0) {
   }
 };
+
+// See JSOp::Lambda for interepretation of this index.
+using FunctionDeclaration = GCThingIndex;
+// Defined here to avoid #include cycle with Stencil.h.
+using FunctionDeclarationVector =
+    Vector<FunctionDeclaration, 0, js::SystemAllocPolicy>;
 
 }  // namespace js
 

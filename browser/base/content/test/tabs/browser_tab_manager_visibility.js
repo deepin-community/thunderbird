@@ -11,15 +11,15 @@ const DUMMY_PAGE_PATH = "/browser/base/content/test/tabs/dummy_page.html";
 add_task(async function tab_manager_visibility_preference_on() {
   Services.prefs.setBoolPref("browser.tabs.tabmanager.enabled", true);
 
-  let newWindow = await BrowserTestUtils.openNewWindowWithFlushedXULCacheForMozSupports();
+  let newWindow = await BrowserTestUtils.openNewBrowserWindow();
   await BrowserTestUtils.withNewTab(
     {
       gBrowser: newWindow.gBrowser,
       url: TEST_HOSTNAME + DUMMY_PAGE_PATH,
     },
-    async function(browser) {
+    async function (browser) {
       await Assert.ok(
-        BrowserTestUtils.is_visible(
+        BrowserTestUtils.isVisible(
           newWindow.document.getElementById("alltabs-button")
         ),
         "tab manage menu is visible when browser.tabs.tabmanager.enabled preference is set to true"
@@ -33,15 +33,15 @@ add_task(async function tab_manager_visibility_preference_on() {
 add_task(async function tab_manager_visibility_preference_off() {
   Services.prefs.setBoolPref("browser.tabs.tabmanager.enabled", false);
 
-  let newWindow = await BrowserTestUtils.openNewWindowWithFlushedXULCacheForMozSupports();
+  let newWindow = await BrowserTestUtils.openNewBrowserWindow();
   await BrowserTestUtils.withNewTab(
     {
       gBrowser: newWindow.gBrowser,
       url: TEST_HOSTNAME + DUMMY_PAGE_PATH,
     },
-    async function(browser) {
+    async function (browser) {
       await Assert.ok(
-        BrowserTestUtils.is_hidden(
+        BrowserTestUtils.isHidden(
           newWindow.document.getElementById("alltabs-button")
         ),
         "tab manage menu is hidden when browser.tabs.tabmanager.enabled preference is set to true"

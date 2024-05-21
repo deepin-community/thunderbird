@@ -35,8 +35,6 @@
 #   isolation, but don't try to do any order checking between such blocks.
 # ----------------------------------------------------------------------------
 
-from __future__ import absolute_import, print_function
-
 import difflib
 import os
 import re
@@ -65,15 +63,22 @@ included_inclnames_to_ignore = set(
         "frontend/smoosh_generated.h",  # generated in $OBJDIR
         "gc/StatsPhasesGenerated.h",  # generated in $OBJDIR
         "gc/StatsPhasesGenerated.inc",  # generated in $OBJDIR
+        "jit/ABIFunctionTypeGenerated.h",  # generated in $OBJDIR"
+        "jit/AtomicOperationsGenerated.h",  # generated in $OBJDIR
         "jit/CacheIROpsGenerated.h",  # generated in $OBJDIR
-        "jit/LOpcodesGenerated.h",  # generated in $OBJDIR
+        "jit/LIROpsGenerated.h",  # generated in $OBJDIR
         "jit/MIROpsGenerated.h",  # generated in $OBJDIR
+        "js/PrefsGenerated.h",  # generated in $OBJDIR
         "js/ProfilingCategoryList.h",  # comes from mozglue/baseprofiler
+        "mozilla/glue/Debug.h",  # comes from mozglue/misc, shadowed by <mozilla/Debug.h>
         "jscustomallocator.h",  # provided by embedders;  allowed to be missing
         "js-config.h",  # generated in $OBJDIR
         "fdlibm.h",  # fdlibm
         "FuzzerDefs.h",  # included without a path
         "FuzzingInterface.h",  # included without a path
+        "ICU4XGraphemeClusterSegmenter.h",  # ICU4X
+        "ICU4XSentenceSegmenter.h",  # ICU4X
+        "ICU4XWordSegmenter.h",  # ICU4X
         "mozmemory.h",  # included without a path
         "pratom.h",  # NSPR
         "prcvar.h",  # NSPR
@@ -88,47 +93,31 @@ included_inclnames_to_ignore = set(
         "prtypes.h",  # NSPR
         "selfhosted.out.h",  # generated in $OBJDIR
         "shellmoduleloader.out.h",  # generated in $OBJDIR
-        "unicode/basictz.h",  # ICU
         "unicode/locid.h",  # ICU
-        "unicode/plurrule.h",  # ICU
-        "unicode/putil.h",  # ICU
-        "unicode/timezone.h",  # ICU
-        "unicode/ucal.h",  # ICU
         "unicode/uchar.h",  # ICU
-        "unicode/uclean.h",  # ICU
-        "unicode/ucol.h",  # ICU
-        "unicode/ucurr.h",  # ICU
-        "unicode/udat.h",  # ICU
-        "unicode/udata.h",  # ICU
-        "unicode/udateintervalformat.h",  # ICU
-        "unicode/udatpg.h",  # ICU
-        "unicode/udisplaycontext.h",  # ICU
-        "unicode/uenum.h",  # ICU
-        "unicode/ufieldpositer.h",  # ICU
-        "unicode/uformattedvalue.h",  # ICU
-        "unicode/ulistformatter.h",  # ICU
-        "unicode/uldnames.h",  # ICU
-        "unicode/uloc.h",  # ICU
-        "unicode/umachine.h",  # ICU
         "unicode/uniset.h",  # ICU
         "unicode/unistr.h",  # ICU
-        "unicode/unorm2.h",  # ICU
-        "unicode/unum.h",  # ICU
-        "unicode/unumberformatter.h",  # ICU
-        "unicode/unumsys.h",  # ICU
-        "unicode/upluralrules.h",  # ICU
-        "unicode/ureldatefmt.h",  # ICU
-        "unicode/ures.h",  # ICU
-        "unicode/ustring.h",  # ICU
         "unicode/utypes.h",  # ICU
-        "unicode/uversion.h",  # ICU
         "vtune/VTuneWrapper.h",  # VTune
+        "wasm/WasmBuiltinModuleGenerated.h",  # generated in $OBJDIR"
         "zydis/ZydisAPI.h",  # Zydis
     ]
 )
 
 deprecated_inclnames = {
     "mozilla/Unused.h": "Use [[nodiscard]] and (void)expr casts instead.",
+}
+
+# JSAPI functions should be included through headers from js/public instead of
+# using the old, catch-all jsapi.h file.
+deprecated_inclnames_in_header = {
+    "jsapi.h": "Prefer including headers from js/public.",
+}
+
+# Temporary exclusions for files which still need to include jsapi.h.
+deprecated_inclnames_in_header_excludes = {
+    "js/src/vm/Compartment-inl.h",  # for JS::InformalValueTypeName
+    "js/src/jsapi-tests/tests.h",  # for JS_ValueToSource
 }
 
 # These files have additional constraints on where they are #included, so we
@@ -140,10 +129,12 @@ oddly_ordered_inclnames = set(
         "frontend/ReservedWordsGenerated.h",
         "gc/StatsPhasesGenerated.h",  # Included in the body of gc/Statistics.h
         "gc/StatsPhasesGenerated.inc",  # Included in the body of gc/Statistics.cpp
-        "psapi.h",  # Must be included after "util/Windows.h" on Windows
+        "psapi.h",  # Must be included after "util/WindowsWrapper.h" on Windows
         "machine/endian.h",  # Must be included after <sys/types.h> on BSD
+        "process.h",  # Windows-specific
         "winbase.h",  # Must precede other system headers(?)
         "windef.h",  # Must precede other system headers(?)
+        "windows.h",  # Must precede other system headers(?)
     ]
 )
 
@@ -186,6 +177,9 @@ js/src/tests/style/BadIncludesOrder-inl.h:6:7: error:
 js/src/tests/style/BadIncludesOrder-inl.h:7:8: error:
     "js/Value.h" should be included after "ds/LifoAlloc.h"
 
+js/src/tests/style/BadIncludesOrder-inl.h:9: error:
+    "jsapi.h" is deprecated: Prefer including headers from js/public.
+
 js/src/tests/style/BadIncludesOrder-inl.h:8:9: error:
     "ds/LifoAlloc.h" should be included after "jsapi.h"
 
@@ -194,6 +188,9 @@ js/src/tests/style/BadIncludesOrder-inl.h:9:10: error:
 
 js/src/tests/style/BadIncludesOrder-inl.h:10:11: error:
     <stdio.h> should be included after "mozilla/HashFunctions.h"
+
+js/src/tests/style/BadIncludesOrder-inl.h:20: error:
+    "jsapi.h" is deprecated: Prefer including headers from js/public.
 
 js/src/tests/style/BadIncludesOrder-inl.h:28:29: error:
     "vm/JSScript.h" should be included after "vm/JSFunction.h"
@@ -510,7 +507,7 @@ class CppBlock(object):
         self.kids[-1].lines.append(line)
 
     def style_relevant_kids(self):
-        """ Return a list of kids in this block that are style-relevant. """
+        """Return a list of kids in this block that are style-relevant."""
         return [kid for kid in self.kids if kid.is_style_relevant()]
 
     def sorted(self, enclosing_inclname):
@@ -604,7 +601,7 @@ class CppBlock(object):
 
 
 class OrdinaryCode(object):
-    """ A list of lines of code that aren't #include/#if/#else/#endif lines. """
+    """A list of lines of code that aren't #include/#if/#else/#endif lines."""
 
     def __init__(self, lines=None):
         self.lines = lines if lines is not None else []
@@ -710,6 +707,15 @@ def check_file(
                     include.linenum,
                     include.quote() + " is deprecated: " + msg,
                 )
+
+            if file_kind == FileKind.H or file_kind == FileKind.INL_H:
+                msg = deprecated_inclnames_in_header.get(include.inclname)
+                if msg and filename not in deprecated_inclnames_in_header_excludes:
+                    error(
+                        filename,
+                        include.linenum,
+                        include.quote() + " is deprecated: " + msg,
+                    )
 
             if include.inclname not in included_inclnames_to_ignore:
                 included_kind = FileKind.get(include.inclname)

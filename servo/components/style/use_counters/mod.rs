@@ -4,10 +4,7 @@
 
 //! Various stuff for CSS property use counters.
 
-#[cfg(feature = "gecko")]
-use crate::gecko_bindings::sugar::ownership::{HasBoxFFI, HasFFI, HasSimpleFFI};
-use crate::properties::{CountedUnknownProperty, COUNTED_UNKNOWN_PROPERTY_COUNT};
-use crate::properties::{NonCustomPropertyId, NON_CUSTOM_PROPERTY_ID_COUNT};
+use crate::properties::{property_counts, CountedUnknownProperty, NonCustomPropertyId};
 use std::cell::Cell;
 
 #[cfg(target_pointer_width = "64")]
@@ -19,13 +16,14 @@ const BITS_PER_ENTRY: usize = 32;
 /// One bit per each non-custom CSS property.
 #[derive(Default)]
 pub struct CountedUnknownPropertyUseCounters {
-    storage: [Cell<usize>; (COUNTED_UNKNOWN_PROPERTY_COUNT - 1 + BITS_PER_ENTRY) / BITS_PER_ENTRY],
+    storage:
+        [Cell<usize>; (property_counts::COUNTED_UNKNOWN - 1 + BITS_PER_ENTRY) / BITS_PER_ENTRY],
 }
 
 /// One bit per each non-custom CSS property.
 #[derive(Default)]
 pub struct NonCustomPropertyUseCounters {
-    storage: [Cell<usize>; (NON_CUSTOM_PROPERTY_ID_COUNT - 1 + BITS_PER_ENTRY) / BITS_PER_ENTRY],
+    storage: [Cell<usize>; (property_counts::NON_CUSTOM - 1 + BITS_PER_ENTRY) / BITS_PER_ENTRY],
 }
 
 macro_rules! property_use_counters_methods {
@@ -96,14 +94,3 @@ impl UseCounters {
             .merge(&other.counted_unknown_properties);
     }
 }
-
-#[cfg(feature = "gecko")]
-unsafe impl HasFFI for UseCounters {
-    type FFIType = crate::gecko_bindings::structs::StyleUseCounters;
-}
-
-#[cfg(feature = "gecko")]
-unsafe impl HasSimpleFFI for UseCounters {}
-
-#[cfg(feature = "gecko")]
-unsafe impl HasBoxFFI for UseCounters {}

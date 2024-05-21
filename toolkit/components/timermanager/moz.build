@@ -6,14 +6,14 @@
 
 XPIDL_MODULE = "update"
 
-XPCSHELL_TESTS_MANIFESTS += ["tests/unit/xpcshell.ini"]
+XPCSHELL_TESTS_MANIFESTS += ["tests/unit/xpcshell.toml"]
 
 XPIDL_SOURCES += [
     "nsIUpdateTimerManager.idl",
 ]
 
 EXTRA_JS_MODULES += [
-    "UpdateTimerManager.jsm",
+    "UpdateTimerManager.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [

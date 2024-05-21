@@ -168,7 +168,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
 
     final static int DIV_OR_BLOCKQUOTE_OR_CENTER_OR_MENU = 50;
 
-    final static int ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SECTION_OR_SUMMARY = 51;
+    final static int ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY = 51;
 
     final static int RUBY_OR_SPAN_OR_SUB_OR_SUP_OR_VAR = 52;
 
@@ -196,11 +196,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
 
     final static int KEYGEN = 65;
 
-    final static int MENUITEM = 66;
+    final static int TEMPLATE = 66;
 
-    final static int TEMPLATE = 67;
-
-    final static int IMG = 68;
+    final static int IMG = 67;
 
     // start insertion modes
 
@@ -434,7 +432,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
 
     private boolean quirks = false;
 
-    private boolean isSrcdocDocument = false;
+    private boolean forceNoQuirks = false;
+
+    private boolean allowDeclarativeShadowRoots = false;
 
     // [NOCPP[
 
@@ -1241,6 +1241,13 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         }
     }
 
+    /**
+     * @see nu.validator.htmlparser.common.TokenHandler#zeroOrReplacementCharacter()
+     */
+    public void zeroOrReplacementCharacter() throws SAXException {
+        zeroOriginatingReplacementCharacter();
+    }
+
     public final void eof() throws SAXException {
         flushCharacters();
         // Note: Can't attach error messages to EOF in C++ yet
@@ -1351,7 +1358,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                         break eofloop;
                     }
                     if (errorHandler != null) {
-                        errUnclosedElements(eltPos, "template");
+                        errListUnclosedStartTags(0);
                     }
                     while (currentPtr >= eltPos) {
                         pop();
@@ -1453,10 +1460,12 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         flushCharacters();
 
         // [NOCPP[
+        boolean wasSelfClosing = selfClosing;
+        boolean voidElement = false;
         if (errorHandler != null) {
             // ID uniqueness
             @IdType String id = attributes.getId();
-            if (id != null) {
+            if (id != null && !isTemplateContents()) {
                 LocatorImpl oldLoc = idLocations.get(id);
                 if (oldLoc != null) {
                     err("Duplicate ID \u201C" + id + "\u201D.");
@@ -1575,6 +1584,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         case TITLE:
@@ -1587,6 +1599,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         case SCRIPT:
@@ -1773,6 +1788,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                         attributes,
                                         formPointer);
                                 selfClosing = false;
+                                // [NOCPP[
+                                voidElement = true;
+                                // ]NOCPP]
                                 attributes = null; // CPP
                                 break starttagloop;
                             case FORM:
@@ -1933,7 +1951,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                             case P:
                             case DIV_OR_BLOCKQUOTE_OR_CENTER_OR_MENU:
                             case UL_OR_OL_OR_DL:
-                            case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SECTION_OR_SUMMARY:
+                            case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY:
                                 implicitlyCloseP();
                                 appendToCurrentNodeAndPushElementMayFoster(
                                         elementName,
@@ -2114,12 +2132,14 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                 reconstructTheActiveFormattingElements();
                                 // FALL THROUGH to PARAM_OR_SOURCE_OR_TRACK
                                 // CPPONLY: MOZ_FALLTHROUGH;
-                            // CPPONLY: case MENUITEM:
                             case PARAM_OR_SOURCE_OR_TRACK:
                                 appendVoidElementToCurrentMayFoster(
                                         elementName,
                                         attributes);
                                 selfClosing = false;
+                                // [NOCPP[
+                                voidElement = true;
+                                // ]NOCPP]
                                 attributes = null; // CPP
                                 break starttagloop;
                             case HR:
@@ -2128,6 +2148,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                         elementName,
                                         attributes);
                                 selfClosing = false;
+                                // [NOCPP[
+                                voidElement = true;
+                                // ]NOCPP]
                                 attributes = null; // CPP
                                 break starttagloop;
                             case IMAGE:
@@ -2141,6 +2164,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                         elementName, attributes,
                                         formPointer);
                                 selfClosing = false;
+                                // [NOCPP[
+                                voidElement = true;
+                                // ]NOCPP]
                                 attributes = null; // CPP
                                 break starttagloop;
                             case TEXTAREA:
@@ -2320,6 +2346,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                         elementName,
                                         attributes);
                                 selfClosing = false;
+                                // [NOCPP[
+                                voidElement = true;
+                                // ]NOCPP]
                                 attributes = null; // CPP
                                 break starttagloop;
                             case META:
@@ -2387,6 +2416,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         case META:
@@ -2395,6 +2427,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         case STYLE:
@@ -2434,6 +2469,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         case TEMPLATE:
@@ -2537,6 +2575,20 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                             startTagTemplateInHead(elementName, attributes);
                             attributes = null; // CPP
                             break starttagloop;
+                        case HR:
+                            if (isCurrent("option")) {
+                                pop();
+                            }
+                            if (isCurrent("optgroup")) {
+                                pop();
+                            }
+                            appendVoidElementToCurrent(elementName, attributes);
+                            selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
+                            attributes = null; // CPP
+                            break starttagloop;
                         default:
                             errStrayStartTag(name);
                             break starttagloop;
@@ -2568,6 +2620,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             attributes = null; // CPP
                             break starttagloop;
                         default:
@@ -2741,6 +2796,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             pop(); // head
                             attributes = null; // CPP
                             break starttagloop;
@@ -2752,6 +2810,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                                     elementName,
                                     attributes);
                             selfClosing = false;
+                            // [NOCPP[
+                            voidElement = true;
+                            // ]NOCPP]
                             pop(); // head
                             attributes = null; // CPP
                             break starttagloop;
@@ -2840,6 +2901,13 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         }
         if (selfClosing) {
             errSelfClosing();
+        // [NOCPP[
+        } else if (wasSelfClosing && voidElement
+                && tokenizer.getErrorProfile() != null
+                && tokenizer.getErrorProfile().get("html-strict") != null) {
+            warn("Trailing slash on void elements has no effect and interacts"
+                    + " badly with unquoted attribute values.");
+        // ]NOCPP]
         }
         // CPPONLY: if (mBuilder == null && attributes != HtmlAttributes.EMPTY_ATTRIBUTES) {
         // CPPONLY:    Portability.delete(attributes);
@@ -2890,6 +2958,21 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         return ("http://www.w3.org/1999/xhtml" == ns)
                 || (stackNode.isHtmlIntegrationPoint())
                 || (("http://www.w3.org/1998/Math/MathML" == ns) && (stackNode.getGroup() == MI_MO_MN_MS_MTEXT));
+    }
+
+    private T getDeclarativeShadowRoot(T currentNode, T templateNode, HtmlAttributes attributes) {
+        if (!isAllowDeclarativeShadowRoots()) {
+            return null;
+        }
+
+        String shadowRootMode = attributes.getValue(AttributeName.SHADOWROOTMODE);
+        if (shadowRootMode == null) {
+            return null;
+        }
+
+        boolean shadowRootIsClonable = attributes.contains(AttributeName.SHADOWROOTCLONABLE);
+        boolean shadowRootDelegatesFocus = attributes.contains(AttributeName.SHADOWROOTDELEGATESFOCUS);
+        return getShadowRootFromHost(currentNode, templateNode, shadowRootMode, shadowRootIsClonable, shadowRootDelegatesFocus);
     }
 
     /**
@@ -3408,7 +3491,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                         case PRE_OR_LISTING:
                         case FIELDSET:
                         case BUTTON:
-                        case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SECTION_OR_SUMMARY:
+                        case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY:
                             eltPos = findLastInScope(name);
                             if (eltPos == TreeBuilder.NOT_FOUND_ON_STACK) {
                                 errStrayEndTag(name);
@@ -3563,7 +3646,6 @@ public abstract class TreeBuilder<T> implements TokenHandler,
                             break;
                         case AREA_OR_WBR:
                         case KEYGEN: // XXX??
-                        // CPPONLY: case MENUITEM:
                         case PARAM_OR_SOURCE_OR_TRACK:
                         case EMBED:
                         case IMG:
@@ -3884,7 +3966,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
             errStrayEndTag("template");
             return;
         }
-        generateImpliedEndTags();
+        generateImpliedEndTagsThoroughly();
         if (errorHandler != null && !isCurrent("template")) {
             errUnclosedElements(eltPos, "template");
         }
@@ -3898,8 +3980,9 @@ public abstract class TreeBuilder<T> implements TokenHandler,
 
     private int findLastInTableScopeOrRootTemplateTbodyTheadTfoot() {
         for (int i = currentPtr; i > 0; i--) {
-            if (stack[i].getGroup() == TreeBuilder.TBODY_OR_THEAD_OR_TFOOT ||
-                    stack[i].getGroup() == TreeBuilder.TEMPLATE) {
+            if (stack[i].ns == "http://www.w3.org/1999/xhtml"
+                    && (stack[i].getGroup() == TreeBuilder.TBODY_OR_THEAD_OR_TFOOT
+                            || stack[i].getGroup() == TreeBuilder.TEMPLATE)) {
                 return i;
             }
         }
@@ -4025,6 +4108,29 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         }
     }
 
+    private void generateImpliedEndTagsThoroughly() throws SAXException {
+        for (;;) {
+            switch (stack[currentPtr].getGroup()) {
+                case CAPTION:
+                case COLGROUP:
+                case DD_OR_DT:
+                case LI:
+                case OPTGROUP:
+                case OPTION:
+                case P:
+                case RB_OR_RTC:
+                case RT_OR_RP:
+                case TBODY_OR_THEAD_OR_TFOOT:
+                case TD_OR_TH:
+                case TR:
+                    pop();
+                    continue;
+                default:
+                    return;
+            }
+        }
+    }
+
     private boolean isSecondOnStackBody() {
         return currentPtr >= 1 && stack[1].getGroup() == TreeBuilder.BODY;
     }
@@ -4033,7 +4139,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
             String systemIdentifier)
             throws SAXException {
 
-        if (isSrcdocDocument) {
+        if (forceNoQuirks) {
             // Srcdoc documents are always rendered in standards mode.
             quirks = false;
             if (documentModeHandler != null) {
@@ -4667,7 +4773,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
 
     private int findLastOrRoot(int group) {
         for (int i = currentPtr; i > 0; i--) {
-            if (stack[i].getGroup() == group) {
+            if (stack[i].ns == "http://www.w3.org/1999/xhtml" && stack[i].getGroup() == group) {
                 return i;
             }
         }
@@ -5213,9 +5319,17 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         T elt = createElement("http://www.w3.org/1999/xhtml", elementName.getName(), attributes, currentNode
                 // CPPONLY: , htmlCreator(elementName.getHtmlCreator())
                 );
-        appendElement(elt, currentNode);
         if (ElementName.TEMPLATE == elementName) {
-            elt = getDocumentFragmentForTemplate(elt);
+            T root = getDeclarativeShadowRoot(currentNode, elt, attributes);
+            if (root != null) {
+                setDocumentFragmentForTemplate(elt, root);
+                elt = root;
+            } else {
+                appendElement(elt, currentNode);
+                elt = getDocumentFragmentForTemplate(elt);
+            }
+        } else {
+            appendElement(elt, currentNode);
         }
         StackNode<T> node = createStackNode(elementName, elt
                 // [NOCPP[
@@ -5302,6 +5416,14 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         return template;
     }
 
+    void setDocumentFragmentForTemplate(T template, T fragment) {
+    }
+
+    T getShadowRootFromHost(T host, T template, String shadowRootMode,
+            boolean shadowRootIsClonable, boolean shadowRootDelegatesFocus) {
+        return null;
+    }
+
     T getFormPointerForContext(T context) {
         return null;
     }
@@ -5382,6 +5504,25 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         push(node);
     }
 
+    private void appendVoidElementToCurrent(
+            ElementName elementName, HtmlAttributes attributes)
+            throws SAXException {
+        @Local String popName = elementName.getName();
+        // [NOCPP[
+        checkAttributes(attributes, "http://www.w3.org/1999/xhtml");
+        if (!elementName.isInterned()) {
+            popName = checkPopName(popName);
+        }
+        // ]NOCPP]
+        T currentNode = nodeFromStackWithBlinkCompat(currentPtr);
+        T elt = createElement("http://www.w3.org/1999/xhtml", popName, attributes, currentNode
+                // CPPONLY: , htmlCreator(elementName.getHtmlCreator())
+                );
+        appendElement(elt, currentNode);
+        elementPushed("http://www.w3.org/1999/xhtml", popName, elt);
+        elementPopped("http://www.w3.org/1999/xhtml", popName, elt);
+    }
+
     private void appendVoidElementToCurrentMayFoster(
             ElementName elementName, HtmlAttributes attributes, T form) throws SAXException {
         @Local String name = elementName.getName();
@@ -5401,6 +5542,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         } else {
             T currentNode = nodeFromStackWithBlinkCompat(currentPtr);
             elt = createElement("http://www.w3.org/1999/xhtml", name,
+
                     attributes, formOwner, currentNode
                     // CPPONLY: , htmlCreator(elementName.getHtmlCreator())
                     );
@@ -5776,8 +5918,21 @@ public abstract class TreeBuilder<T> implements TokenHandler,
         this.scriptingEnabled = scriptingEnabled;
     }
 
+    public void setForceNoQuirks(boolean forceNoQuirks) {
+        this.forceNoQuirks = forceNoQuirks;
+    }
+
+    // Redundant method retained because previously public.
     public void setIsSrcdocDocument(boolean isSrcdocDocument) {
-        this.isSrcdocDocument = isSrcdocDocument;
+        this.setForceNoQuirks(isSrcdocDocument);
+    }
+
+    public boolean isAllowDeclarativeShadowRoots() {
+        return allowDeclarativeShadowRoots;
+    }
+
+    public void setAllowDeclarativeShadowRoots(boolean allow) {
+        allowDeclarativeShadowRoots = allow;
     }
 
     // [NOCPP[
@@ -5968,7 +6123,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
     @SuppressWarnings("unchecked") public void loadState(
             TreeBuilderState<T> snapshot)
             throws SAXException {
-        // CPPONLY: mCurrentHtmlScriptIsAsyncOrDefer = false;
+        // CPPONLY: mCurrentHtmlScriptCannotDocumentWriteOrBlock = false;
         StackNode<T>[] stackCopy = snapshot.getStack();
         int stackLen = snapshot.getStackLength();
         StackNode<T>[] listCopy = snapshot.getListOfActiveFormattingElements();
@@ -6273,13 +6428,13 @@ public abstract class TreeBuilder<T> implements TokenHandler,
     }
 
     private void errAlmostStandardsDoctype() throws SAXException {
-        if (!isSrcdocDocument) {
+        if (!forceNoQuirks) {
             err("Almost standards mode doctype. Expected \u201C<!DOCTYPE html>\u201D.");
         }
     }
 
     private void errQuirkyDoctype() throws SAXException {
-        if (!isSrcdocDocument) {
+        if (!forceNoQuirks) {
             err("Quirky doctype. Expected \u201C<!DOCTYPE html>\u201D.");
         }
     }
@@ -6316,7 +6471,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
     }
 
     private void errStartTagWithoutDoctype() throws SAXException {
-        if (!isSrcdocDocument) {
+        if (!forceNoQuirks) {
             err("Start tag seen without seeing a doctype first. Expected \u201C<!DOCTYPE html>\u201D.");
         }
     }
@@ -6393,7 +6548,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
     }
 
     private void errEndTagSeenWithoutDoctype() throws SAXException {
-        if (!isSrcdocDocument) {
+        if (!forceNoQuirks) {
             err("End tag seen without seeing a doctype first. Expected \u201C<!DOCTYPE html>\u201D.");
         }
     }

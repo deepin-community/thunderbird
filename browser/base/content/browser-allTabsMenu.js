@@ -5,17 +5,16 @@
 // This file is loaded into the browser window scope.
 /* eslint-env mozilla/browser-window */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "TabsPanel",
-  "resource:///modules/TabsList.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  TabsPanel: "resource:///modules/TabsList.sys.mjs",
+});
 
 var gTabsPanel = {
   kElements: {
     allTabsButton: "alltabs-button",
     allTabsView: "allTabsMenu-allTabsView",
-    allTabsViewTabs: "allTabsMenu-allTabsViewTabs",
+    allTabsViewTabs: "allTabsMenu-allTabsView-tabs",
+    dropIndicator: "allTabsMenu-dropIndicator",
     containerTabsView: "allTabsMenu-containerTabsView",
     hiddenTabsButton: "allTabsMenu-hiddenTabsButton",
     hiddenTabsView: "allTabsMenu-hiddenTabsView",
@@ -48,10 +47,15 @@ var gTabsPanel = {
       insertBefore: document.getElementById("allTabsMenu-tabsSeparator"),
       filterFn: tab => tab.hidden && tab.soundPlaying,
     });
+    let showPinnedTabs = Services.prefs.getBoolPref(
+      "browser.tabs.tabmanager.enabled"
+    );
     this.allTabsPanel = new TabsPanel({
       view: this.allTabsView,
       containerNode: this.allTabsViewTabs,
-      filterFn: tab => !tab.pinned && !tab.hidden,
+      filterFn: tab =>
+        !tab.hidden && (!tab.pinned || (showPinnedTabs && tab.pinned)),
+      dropIndicator: this.dropIndicator,
     });
 
     this.allTabsView.addEventListener("ViewShowing", e => {
@@ -60,29 +64,24 @@ var gTabsPanel = {
       let containersEnabled =
         Services.prefs.getBoolPref("privacy.userContext.enabled") &&
         !PrivateBrowsingUtils.isWindowPrivate(window);
-      document.getElementById(
-        "allTabsMenu-containerTabsButton"
-      ).hidden = !containersEnabled;
+      document.getElementById("allTabsMenu-containerTabsButton").hidden =
+        !containersEnabled;
 
       let hasHiddenTabs = gBrowser.visibleTabs.length < gBrowser.tabs.length;
-      document.getElementById(
-        "allTabsMenu-hiddenTabsButton"
-      ).hidden = !hasHiddenTabs;
-      document.getElementById(
-        "allTabsMenu-hiddenTabsSeparator"
-      ).hidden = !hasHiddenTabs;
+      document.getElementById("allTabsMenu-hiddenTabsButton").hidden =
+        !hasHiddenTabs;
+      document.getElementById("allTabsMenu-hiddenTabsSeparator").hidden =
+        !hasHiddenTabs;
     });
 
-    this.allTabsView.addEventListener("ViewShown", e => {
-      let selectedRow = this.allTabsView.querySelector(
-        ".all-tabs-item[selected]"
-      );
-      selectedRow.scrollIntoView({ block: "center" });
-    });
-
-    let containerTabsMenuSeparator = this.containerTabsView.querySelector(
-      "toolbarseparator"
+    this.allTabsView.addEventListener("ViewShown", e =>
+      this.allTabsView
+        .querySelector(".all-tabs-item[selected]")
+        ?.scrollIntoView({ block: "center" })
     );
+
+    let containerTabsMenuSeparator =
+      this.containerTabsView.querySelector("toolbarseparator");
     this.containerTabsView.addEventListener("ViewShowing", e => {
       let elements = [];
       let frag = document.createDocumentFragment();
@@ -90,10 +89,11 @@ var gTabsPanel = {
       ContextualIdentityService.getPublicIdentities().forEach(identity => {
         let menuitem = document.createXULElement("toolbarbutton");
         menuitem.setAttribute("class", "subviewbutton subviewbutton-iconic");
-        menuitem.setAttribute(
-          "label",
-          ContextualIdentityService.getUserContextLabel(identity.userContextId)
-        );
+        if (identity.name) {
+          menuitem.setAttribute("label", identity.name);
+        } else {
+          document.l10n.setAttributes(menuitem, identity.l10nId);
+        }
         // The styles depend on this.
         menuitem.setAttribute("usercontextid", identity.userContextId);
         // The command handler depends on this.
@@ -135,9 +135,20 @@ var gTabsPanel = {
     return isElementVisible(this.allTabsButton);
   },
 
-  showAllTabsPanel(event) {
+  showAllTabsPanel(event, entrypoint = "unknown") {
+    // Note that event may be null.
+
+    // Only space and enter should open the popup, ignore other keypresses:
+    if (event?.type == "keypress" && event.key != "Enter" && event.key != " ") {
+      return;
+    }
     this.init();
     if (this.canOpen) {
+      Services.telemetry.keyedScalarAdd(
+        "browser.ui.interaction.all_tabs_panel_entrypoint",
+        entrypoint,
+        1
+      );
       PanelUI.showSubView(
         this.kElements.allTabsView,
         this.allTabsButton,
@@ -152,7 +163,7 @@ var gTabsPanel = {
     }
   },
 
-  showHiddenTabsPanel(event) {
+  showHiddenTabsPanel(event, entrypoint = "unknown") {
     this.init();
     if (!this.canOpen) {
       return;
@@ -167,7 +178,7 @@ var gTabsPanel = {
       },
       { once: true }
     );
-    this.showAllTabsPanel(event);
+    this.showAllTabsPanel(event, entrypoint);
   },
 
   searchTabs() {

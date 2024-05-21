@@ -11,6 +11,8 @@
     constructor() {
       super();
 
+      MozXULElement.insertFTLIfNeeded("toolkit/global/textActions.ftl");
+
       this.inputField = document.createElement("input");
 
       const METHODS = [
@@ -53,27 +55,19 @@
     static get inheritedAttributes() {
       return {
         input:
-          "value,maxlength,disabled,size,readonly,placeholder,tabindex,accesskey,mozactionhint,spellcheck",
+          "value,maxlength,disabled,size,readonly,placeholder,tabindex,accesskey,inputmode,spellcheck",
         ".textbox-search-icon": "label=searchbuttonlabel,disabled",
         ".textbox-search-clear": "disabled",
       };
-    }
-
-    static get markup() {
-      // TODO: Bug 1534799 - Convert string to Fluent and use manual DOM construction
-      return `
-      <image class="textbox-search-clear" label="&searchTextBox.clear.label;"/>
-      `;
-    }
-
-    static get entities() {
-      return ["chrome://global/locale/textcontext.dtd"];
     }
 
     connectedCallback() {
       if (this.delayConnectedCallback() || this.connected) {
         return;
       }
+
+      document.l10n.connectRoot(this.shadowRoot);
+
       this.connected = true;
       this.textContent = "";
 
@@ -86,19 +80,23 @@
       textboxSign.part = "search-sign";
 
       const input = this.inputField;
-      input.setAttribute("mozactionhint", "search");
+      input.setAttribute("inputmode", "search");
+      input.autocomplete = "off"; // not applicable in XUL docs and confuses aria.
       input.addEventListener("focus", this);
       input.addEventListener("blur", this);
 
-      const searchBtn = (this._searchButtonIcon = document.createXULElement(
-        "image"
-      ));
+      const searchBtn = (this._searchButtonIcon =
+        document.createXULElement("image"));
       searchBtn.className = "textbox-search-icon";
       searchBtn.addEventListener("click", e => this._iconClick(e));
 
-      let clearBtn = this.constructor.fragment;
-      clearBtn = this._searchClearIcon = clearBtn.querySelector(
-        ".textbox-search-clear"
+      const clearBtn = document.createXULElement("image");
+      clearBtn.className = "textbox-search-clear";
+      clearBtn.part = "clear-icon";
+      clearBtn.setAttribute("role", "button");
+      document.l10n.setAttributes(
+        clearBtn,
+        "text-action-search-text-box-clear"
       );
       clearBtn.addEventListener("click", () => this._clearSearch());
 
@@ -116,6 +114,10 @@
       this.initializeAttributeInheritance();
     }
 
+    disconnectedCallback() {
+      document.l10n.disconnectRoot(this.shadowRoot);
+    }
+
     set timeout(val) {
       this.setAttribute("timeout", val);
     }
@@ -127,11 +129,11 @@
     set searchButton(val) {
       if (val) {
         this.setAttribute("searchbutton", "true");
-        this.removeAttribute("aria-autocomplete");
+        this.inputField.removeAttribute("aria-autocomplete");
         this._searchButtonIcon.setAttribute("role", "button");
       } else {
         this.removeAttribute("searchbutton");
-        this.setAttribute("aria-autocomplete", "list");
+        this.inputField.setAttribute("aria-autocomplete", "list");
         this._searchButtonIcon.setAttribute("role", "none");
       }
     }
@@ -212,7 +214,7 @@
       }
     }
 
-    on_mousedown(event) {
+    on_mousedown() {
       if (!this.hasAttribute("focused")) {
         this.setSelectionRange(0, 0);
         this.focus();

@@ -1,5 +1,5 @@
-var { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+var { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 var gCid;
@@ -28,12 +28,11 @@ MockWindowsRegKey.prototype = {
       throw Components.Exception("", Cr.NS_ERROR_FAILURE);
     }
 
-    let child = new MockWindowsRegKey({});
-    let newKeyPath = this._keyPath + "\\" + aRelPath;
+    const child = new MockWindowsRegKey({});
+    const newKeyPath = this._keyPath + "\\" + aRelPath;
     child._keyPath = newKeyPath;
-    child._registryData[newKeyPath] = this._registryData[this._keyPath][
-      aRelPath
-    ];
+    child._registryData[newKeyPath] =
+      this._registryData[this._keyPath][aRelPath];
     return child;
   },
 
@@ -42,8 +41,8 @@ MockWindowsRegKey.prototype = {
   },
 
   getChildName(aIndex) {
-    let keys = Object.keys(this._registryData[this._keyPath]);
-    let keyAtIndex = keys[aIndex];
+    const keys = Object.keys(this._registryData[this._keyPath]);
+    const keyAtIndex = keys[aIndex];
     if (!keyAtIndex) {
       throw Components.Exception("", Cr.NS_ERROR_FAILURE);
     }

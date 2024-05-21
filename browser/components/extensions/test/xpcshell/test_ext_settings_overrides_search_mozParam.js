@@ -3,12 +3,20 @@
 
 "use strict";
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
-
-const { SearchTestUtils } = ChromeUtils.import(
-  "resource://testing-common/SearchTestUtils.jsm"
+const { SearchTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/SearchTestUtils.sys.mjs"
+);
+const { NimbusFeatures } = ChromeUtils.importESModule(
+  "resource://nimbus/ExperimentAPI.sys.mjs"
+);
+const { sinon } = ChromeUtils.importESModule(
+  "resource://testing-common/Sinon.sys.mjs"
+);
+const { SearchUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/SearchUtils.sys.mjs"
 );
 
 AddonTestUtils.init(this);
@@ -19,9 +27,6 @@ AddonTestUtils.createAppInfo(
   "42",
   "42"
 );
-// Override ExtensionXPCShellUtils.jsm's overriding of the pref as the
-// search service needs it.
-Services.prefs.clearUserPref("services.settings.default_bucket");
 
 let { promiseShutdownManager, promiseStartupManager } = AddonTestUtils;
 
@@ -49,24 +54,123 @@ const params = [
   { name: "prefval", condition: "pref", pref: "code" },
 ];
 
-add_task(async function setup() {
-  await promiseStartupManager();
-  await SearchTestUtils.useTestEngines("data", null, [
-    {
-      webExtension: {
-        id: "test@search.mozilla.org",
-      },
-      appliesTo: [
-        {
-          included: { everywhere: true },
-          default: "yes",
-        },
-      ],
+const CONFIG = [
+  {
+    webExtension: {
+      id: "test@search.mozilla.org",
     },
-  ]);
+    appliesTo: [
+      {
+        included: { everywhere: true },
+        default: "yes",
+      },
+    ],
+  },
+];
+const CONFIG_V2 = [
+  {
+    recordType: "engine",
+    identifier: "test",
+    base: {
+      name: "MozParamsTest",
+      urls: {
+        search: {
+          base: "https://example.com/",
+          params: [
+            {
+              name: "test-0",
+              searchAccessPoint: {
+                contextmenu: "0",
+              },
+            },
+            {
+              name: "test-1",
+              searchAccessPoint: {
+                searchbar: "1",
+              },
+            },
+            {
+              name: "test-2",
+              searchAccessPoint: {
+                homepage: "2",
+              },
+            },
+            {
+              name: "test-3",
+              searchAccessPoint: {
+                addressbar: "3",
+              },
+            },
+            {
+              name: "test-4",
+              searchAccessPoint: {
+                newtab: "4",
+              },
+            },
+            {
+              name: "simple",
+              value: "5",
+            },
+            {
+              name: "term",
+              value: "{searchTerms}",
+            },
+            {
+              name: "lang",
+              value: "{language}",
+            },
+            {
+              name: "locale",
+              value: "{moz:locale}",
+            },
+            {
+              name: "prefval",
+              experimentConfig: "code",
+            },
+            {
+              name: "experimenter-1",
+              experimentConfig: "nimbus-key-1",
+            },
+            {
+              name: "experimenter-2",
+              experimentConfig: "nimbus-key-2",
+            },
+          ],
+          searchTermParamName: "q",
+        },
+      },
+    },
+    variants: [
+      {
+        environment: { allRegionsAndLocales: true },
+      },
+    ],
+  },
+  {
+    recordType: "defaultEngines",
+    globalDefault: "test",
+    specificDefaults: [],
+  },
+  {
+    recordType: "engineOrders",
+    orders: [],
+  },
+];
+
+add_task(async function setup() {
+  let readyStub = sinon.stub(NimbusFeatures.search, "ready").resolves();
+  let updateStub = sinon.stub(NimbusFeatures.search, "onUpdate");
+  await promiseStartupManager();
+  await SearchTestUtils.useTestEngines(
+    "data",
+    null,
+    SearchUtils.newSearchConfigEnabled ? CONFIG_V2 : CONFIG
+  );
   await Services.search.init();
   registerCleanupFunction(async () => {
     await promiseShutdownManager();
+    readyStub.restore();
+    updateStub.restore();
   });
 });
 
@@ -101,10 +205,89 @@ add_task(async function test_extension_setting_moz_params() {
     ).uri.spec;
     equal(
       expectedURL,
-      `https://example.com/?q=test&${p.name}=${p.value}&${paramStr}`,
+      SearchUtils.newSearchConfigEnabled
+        ? `https://example.com/?${p.name}=${p.value}&${paramStr}&q=test`
+        : `https://example.com/?q=test&${p.name}=${p.value}&${paramStr}`,
       "search url is expected"
     );
   }
+
+  defaultBranch.setCharPref("param.code", "");
+});
+
+add_task(async function test_nimbus_params() {
+  let sandbox = sinon.createSandbox();
+  let stub = sandbox.stub(NimbusFeatures.search, "getVariable");
+  // These values should match the nimbusParams below and the data/test/manifest.json
+  // search engine configuration
+  stub.withArgs("extraParams").returns([
+    {
+      key: "nimbus-key-1",
+      value: "nimbus-value-1",
+    },
+    {
+      key: "nimbus-key-2",
+      value: "nimbus-value-2",
+    },
+  ]);
+
+  Assert.ok(
+    NimbusFeatures.search.onUpdate.called,
+    "Called to initialize the cache"
+  );
+
+  // Populate the cache with the `getVariable` mock values
+  NimbusFeatures.search.onUpdate.firstCall.args[0]();
+
+  let engine = Services.search.getEngineByName("MozParamsTest");
+
+  // Note: these lists should be kept in sync with the lists in
+  // browser/components/extensions/test/xpcshell/data/test/manifest.json
+  // These params are conditional based on how search is initiated.
+  const nimbusParams = [
+    { name: "experimenter-1", condition: "pref", pref: "nimbus-key-1" },
+    { name: "experimenter-2", condition: "pref", pref: "nimbus-key-2" },
+  ];
+  const experimentCache = {
+    "nimbus-key-1": "nimbus-value-1",
+    "nimbus-key-2": "nimbus-value-2",
+  };
+
+  let extraParams = [];
+  for (let p of params) {
+    if (p.value == "{searchTerms}") {
+      extraParams.push(`${p.name}=test`);
+    } else if (p.value == "{language}") {
+      extraParams.push(`${p.name}=${Services.locale.requestedLocale || "*"}`);
+    } else if (p.value == "{moz:locale}") {
+      extraParams.push(`${p.name}=${Services.locale.requestedLocale}`);
+    } else if (p.condition !== "pref") {
+      // Ignoring pref parameters
+      extraParams.push(`${p.name}=${p.value}`);
+    }
+  }
+  for (let p of nimbusParams) {
+    if (p.condition == "pref") {
+      extraParams.push(`${p.name}=${experimentCache[p.pref]}`);
+    }
+  }
+  let paramStr = extraParams.join("&");
+  for (let p of mozParams) {
+    let expectedURL = engine.getSubmission(
+      "test",
+      null,
+      p.condition == "purpose" ? p.purpose : null
+    ).uri.spec;
+    equal(
+      expectedURL,
+      SearchUtils.newSearchConfigEnabled
+        ? `https://example.com/?${p.name}=${p.value}&${paramStr}&q=test`
+        : `https://example.com/?q=test&${p.name}=${p.value}&${paramStr}`,
+      "search url is expected"
+    );
+  }
+
+  sandbox.restore();
 });
 
 add_task(async function test_extension_setting_moz_params_fail() {
@@ -118,7 +301,7 @@ add_task(async function test_extension_setting_moz_params_fail() {
 
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: { id: "test1@mochitest" },
       },
       chrome_settings_overrides: {

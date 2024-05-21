@@ -4,9 +4,10 @@
 const MAIN_PREF = "browser.search.suggest.enabled";
 const URLBAR_PREF = "browser.urlbar.suggest.searches";
 const FIRST_PREF = "browser.urlbar.showSearchSuggestionsFirst";
+const SEARCHBAR_PREF = "browser.search.widget.inNavBar";
 const FIRST_CHECKBOX_ID = "showSearchSuggestionsFirstCheckbox";
 
-add_task(async function init() {
+add_setup(async function () {
   // Make sure the main and urlbar suggestion prefs are enabled.
   await SpecialPowers.pushPrefEnv({
     set: [
@@ -121,6 +122,8 @@ add_task(async function superprefInteraction() {
   let checkbox = doc.getElementById(FIRST_CHECKBOX_ID);
   Assert.ok(checkbox.checked, "Checkbox should be checked");
   Assert.ok(!checkbox.disabled, "Checkbox should be enabled");
+
+  Services.prefs.setBoolPref(SEARCHBAR_PREF, true);
 
   // Two superior prefs control the show-suggestion-first pref: URLBAR_PREF and
   // MAIN_PREF.  Toggle each and make sure the show-suggestion-first checkbox
@@ -237,4 +240,5 @@ add_task(async function superprefInteraction() {
   Services.prefs.clearUserPref(FIRST_PREF);
   Services.prefs.clearUserPref(URLBAR_PREF);
   Services.prefs.clearUserPref(MAIN_PREF);
+  Services.prefs.clearUserPref(SEARCHBAR_PREF);
 });

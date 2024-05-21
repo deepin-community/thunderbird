@@ -4,10 +4,14 @@
 
 "use strict";
 
-const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
+const { CookieXPCShellUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/CookieXPCShellUtils.sys.mjs"
+);
 
-const { CookieXPCShellUtils } = ChromeUtils.import(
-  "resource://testing-common/CookieXPCShellUtils.jsm"
+// Small red image.
+const IMG_BYTES = atob(
+  "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12" +
+    "P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
 );
 
 let gHints = 0;
@@ -30,7 +34,7 @@ async function checkCache(originAttributes) {
   const data = await new Promise(resolve => {
     let cacheEntries = [];
     let cacheVisitor = {
-      onCacheStorageInfo(num, consumption) {},
+      onCacheStorageInfo() {},
       onCacheEntryInfo(uri, idEnhance) {
         cacheEntries.push({ uri, idEnhance });
       },
@@ -50,8 +54,9 @@ async function checkCache(originAttributes) {
     "example.org",
     "image.png"
   );
-  ok(
-    foundEntryCount > 0,
+  Assert.greater(
+    foundEntryCount,
+    0,
     `Cache entries expected for image.png and OA=${originAttributes}`
   );
 }
@@ -71,9 +76,7 @@ add_task(async () => {
     response.setHeader("Cache-Control", "max-age=10000", false);
     response.setStatusLine(metadata.httpVersion, 200, "OK");
     response.setHeader("Content-Type", "image/png", false);
-    var body =
-      "iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAEUlEQVQImWP4z8AAQTAamQkAhpcI+DeMzFcAAAAASUVORK5CYII=";
-    response.bodyOutputStream.write(body, body.length);
+    response.write(IMG_BYTES);
   });
 
   server.registerPathHandler("/prefetch", (metadata, response) => {

@@ -5,8 +5,6 @@
 // service class to manipulate the junk training.dat file
 //  code is adapted from Mnehy Thunderbird Extension
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /* exported TrainingData */
 function TrainingData() {
   // local constants
@@ -44,7 +42,7 @@ function TrainingData() {
     if (oFile && oFile.exists()) {
       var oUri = Services.io.newFileURI(oFile);
       // open stream (channel)
-      let channel = Services.io.newChannelFromURI(
+      const channel = Services.io.newChannelFromURI(
         oUri,
         null,
         Services.scriptSecurityManager.getSystemPrincipal(),

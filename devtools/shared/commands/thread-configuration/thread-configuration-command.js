@@ -32,14 +32,15 @@ class ThreadConfigurationCommand {
       // the thread configuration actor.
       const filteredConfiguration = Object.fromEntries(
         Object.entries(configuration).filter(
-          ([key, value]) => !["breakpoints", "eventBreakpoints"].includes(key)
+          ([key]) => !["breakpoints", "eventBreakpoints"].includes(key)
         )
       );
 
       const threadConfigurationFront = await this.getThreadConfigurationFront();
-      const updatedConfiguration = await threadConfigurationFront.updateConfiguration(
-        filteredConfiguration
-      );
+      const updatedConfiguration =
+        await threadConfigurationFront.updateConfiguration(
+          filteredConfiguration
+        );
       this._configuration = updatedConfiguration;
     }
 
@@ -48,27 +49,21 @@ class ThreadConfigurationCommand {
       "thread"
     );
 
-    // @backward-compat { version 91 } Thread configuration actor now supports most thread options
-    // When `supportsThreadConfigurationOptions` is removed, this condition should no longer required.
-    // The code should run unconditionally.
-    if (
-      this._commands.targetCommand.rootFront.traits
-        .supportsThreadConfigurationOptions
-    ) {
-      // Lets always call reconfigure for all the target types that do not
-      // have target watcher support yet. e.g In the browser, even
-      // though `hasTargetWatcherSupport()` is true, only
-      // FRAME and CONTENT PROCESS targets use watcher actors,
-      // WORKER targets are supported via the legacy listerners.
-      threadFronts = threadFronts.filter(
-        threadFront =>
-          !this._commands.targetCommand.hasTargetWatcherSupport(
-            threadFront.targetFront.targetType
-          )
-      );
-    }
+    // Lets always call reconfigure for all the target types that do not
+    // have target watcher support yet. e.g In the browser, even
+    // though `hasTargetWatcherSupport()` is true, only
+    // FRAME and CONTENT PROCESS targets use watcher actors,
+    // WORKER targets are supported via the legacy listerners.
+    threadFronts = threadFronts.filter(
+      threadFront =>
+        !this._commands.targetCommand.hasTargetWatcherSupport(
+          threadFront.targetFront.targetType
+        )
+    );
 
-    await Promise.all(
+    // Ignore threads that fail to be configured.
+    // Some workers may be destroying and `reconfigure` would be rejected.
+    await Promise.allSettled(
       threadFronts.map(threadFront => threadFront.reconfigure(configuration))
     );
   }

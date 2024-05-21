@@ -2,11 +2,9 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "SessionStore",
-  "resource:///modules/sessionstore/SessionStore.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  SessionStore: "resource:///modules/sessionstore/SessionStore.sys.mjs",
+});
 
 /**
  This test checks that after closing an extension made tab it restores correctly.
@@ -18,7 +16,7 @@ ChromeUtils.defineModuleGetter(
 add_task(async function test_restoringModifiedTab() {
   function background() {
     browser.tabs.create({ url: "http://example.com/" });
-    browser.test.onMessage.addListener((msg, filter) => {
+    browser.test.onMessage.addListener(msg => {
       if (msg == "change-tab") {
         browser.tabs.executeScript({ code: 'location.href += "?changedTab";' });
       }
@@ -85,7 +83,7 @@ add_task(async function test_restoringModifiedTab() {
 
 add_task(async function test_restoringClosedTabWithTooLargeIndex() {
   function background() {
-    browser.test.onMessage.addListener(async (msg, filter) => {
+    browser.test.onMessage.addListener(async msg => {
       if (msg != "restoreTab") {
         return;
       }

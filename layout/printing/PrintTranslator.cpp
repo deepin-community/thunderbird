@@ -10,6 +10,7 @@
 #include "nsDeviceContext.h"
 #include "mozilla/gfx/RecordedEvent.h"
 #include "mozilla/gfx/RecordingTypes.h"
+#include "mozilla/ProfilerMarkers.h"
 #include "mozilla/UniquePtr.h"
 #include "InlineTranslator.h"
 
@@ -20,12 +21,15 @@ namespace layout {
 
 PrintTranslator::PrintTranslator(nsDeviceContext* aDeviceContext)
     : mDeviceContext(aDeviceContext) {
-  RefPtr<gfxContext> context =
+  UniquePtr<gfxContext> context =
       mDeviceContext->CreateReferenceRenderingContext();
   mBaseDT = context->GetDrawTarget();
 }
 
 bool PrintTranslator::TranslateRecording(PRFileDescStream& aRecording) {
+  AUTO_PROFILER_MARKER_TEXT("PrintTranslator", LAYOUT_Printing, {},
+                            "PrintTranslator::TranslateRecording"_ns);
+
   uint32_t magicInt;
   ReadElement(aRecording, magicInt);
   if (magicInt != mozilla::gfx::kMagicInt) {
@@ -44,7 +48,7 @@ bool PrintTranslator::TranslateRecording(PRFileDescStream& aRecording) {
     return false;
   }
 
-  int32_t eventType;
+  uint8_t eventType = RecordedEvent::EventType::INVALID;
   ReadElement(aRecording, eventType);
   while (aRecording.good()) {
     bool success = RecordedEvent::DoWithEventFromStream(
@@ -71,7 +75,7 @@ bool PrintTranslator::TranslateRecording(PRFileDescStream& aRecording) {
 already_AddRefed<DrawTarget> PrintTranslator::CreateDrawTarget(
     ReferencePtr aRefPtr, const gfx::IntSize& aSize,
     gfx::SurfaceFormat aFormat) {
-  RefPtr<gfxContext> context = mDeviceContext->CreateRenderingContext();
+  UniquePtr<gfxContext> context = mDeviceContext->CreateRenderingContext();
   if (!context) {
     NS_WARNING("Failed to create rendering context for print.");
     return nullptr;
@@ -80,27 +84,6 @@ already_AddRefed<DrawTarget> PrintTranslator::CreateDrawTarget(
   RefPtr<DrawTarget> drawTarget = context->GetDrawTarget();
   AddDrawTarget(aRefPtr, drawTarget);
   return drawTarget.forget();
-}
-
-already_AddRefed<SourceSurface> PrintTranslator::LookupExternalSurface(
-    uint64_t aKey) {
-  RefPtr<RecordedDependentSurface> surface = mDependentSurfaces.Get(aKey);
-  if (!surface) {
-    return nullptr;
-  }
-
-  RefPtr<DrawTarget> newDT = GetReferenceDrawTarget()->CreateSimilarDrawTarget(
-      surface->mSize, SurfaceFormat::B8G8R8A8);
-
-  InlineTranslator translator(newDT, nullptr);
-  translator.SetDependentSurfaces(&mDependentSurfaces);
-  if (!translator.TranslateRecording((char*)surface->mRecording.mData,
-                                     surface->mRecording.mLen)) {
-    return nullptr;
-  }
-
-  RefPtr<SourceSurface> snapshot = newDT->Snapshot();
-  return snapshot.forget();
 }
 
 }  // namespace layout

@@ -2,9 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Status } = ChromeUtils.import("resource:///modules/imStatusUtils.jsm");
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-var { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+var { Status } = ChromeUtils.importESModule(
+  "resource:///modules/imStatusUtils.sys.mjs"
+);
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
+);
+var { ChatIcons } = ChromeUtils.importESModule(
+  "resource:///modules/chatIcons.sys.mjs"
+);
 
 var statusSelector = {
   observe(aSubject, aTopic, aMsg) {
@@ -18,7 +24,7 @@ var statusSelector = {
   },
 
   displayUserIcon() {
-    let icon = Services.core.globalUserStatus.getUserIcon();
+    const icon = IMServices.core.globalUserStatus.getUserIcon();
     ChatIcons.setUserIconSrc(
       document.getElementById("userIcon"),
       icon?.spec,
@@ -27,13 +33,15 @@ var statusSelector = {
   },
 
   displayUserDisplayName() {
-    let displayName = Services.core.globalUserStatus.displayName;
-    let elt = document.getElementById("displayName");
+    let displayName = IMServices.core.globalUserStatus.displayName;
+    const elt = document.getElementById("displayName");
     if (displayName) {
       elt.removeAttribute("usingDefault");
     } else {
-      let bundle = document.getElementById("chatBundle");
-      displayName = bundle.getString("displayNameEmptyText");
+      const bundle = Services.strings.createBundle(
+        "chrome://messenger/locale/chat.properties"
+      );
+      displayName = bundle.GetStringFromName("displayNameEmptyText");
       elt.setAttribute("usingDefault", displayName);
     }
     elt.setAttribute("value", displayName);
@@ -43,18 +51,18 @@ var statusSelector = {
     document
       .getElementById("statusMessageLabel")
       .setAttribute("statusType", aStatusType);
-    let statusString = Status.toLabel(aStatusType);
-    let statusTypeIcon = document.getElementById("statusTypeIcon");
+    const statusString = Status.toLabel(aStatusType);
+    const statusTypeIcon = document.getElementById("statusTypeIcon");
     statusTypeIcon.setAttribute("status", aStatusType);
     statusTypeIcon.setAttribute("tooltiptext", statusString);
     return statusString;
   },
 
   displayCurrentStatus() {
-    let us = Services.core.globalUserStatus;
-    let status = Status.toAttribute(us.statusType);
+    const us = IMServices.core.globalUserStatus;
+    const status = Status.toAttribute(us.statusType);
     let message = status == "offline" ? "" : us.statusText;
-    let statusMessage = document.getElementById("statusMessageLabel");
+    const statusMessage = document.getElementById("statusMessageLabel");
     if (!statusMessage) {
       // Chat toolbar not in the DOM yet
       return;
@@ -62,7 +70,7 @@ var statusSelector = {
     if (message) {
       statusMessage.removeAttribute("usingDefault");
     } else {
-      let statusString = this.displayStatusType(status);
+      const statusString = this.displayStatusType(status);
       statusMessage.setAttribute("usingDefault", statusString);
       message = statusString;
     }
@@ -71,9 +79,9 @@ var statusSelector = {
   },
 
   editStatus(aEvent) {
-    let status = aEvent.target.getAttribute("status");
+    const status = aEvent.target.getAttribute("status");
     if (status == "offline") {
-      Services.core.globalUserStatus.setStatus(
+      IMServices.core.globalUserStatus.setStatus(
         Ci.imIStatusInfo.STATUS_OFFLINE,
         ""
       );
@@ -83,7 +91,7 @@ var statusSelector = {
   },
 
   startEditStatus(aStatusType) {
-    let currentStatusType = document
+    const currentStatusType = document
       .getElementById("statusTypeIcon")
       .getAttribute("status");
     if (aStatusType != currentStatusType) {
@@ -95,11 +103,11 @@ var statusSelector = {
   },
 
   statusMessageClick() {
-    let statusMessage = document.getElementById("statusMessageLabel");
-    let statusMessageInput = document.getElementById("statusMessageInput");
+    const statusMessage = document.getElementById("statusMessageLabel");
+    const statusMessageInput = document.getElementById("statusMessageInput");
     statusMessage.setAttribute("hidden", "true");
     statusMessageInput.removeAttribute("hidden");
-    let statusType = document
+    const statusType = document
       .getElementById("statusTypeIcon")
       .getAttribute("status");
     if (statusType == "offline" || statusMessage.disabled) {
@@ -118,7 +126,7 @@ var statusSelector = {
         ) {
           statusMessageInput.setAttribute(
             "value",
-            Services.core.globalUserStatus.statusText
+            IMServices.core.globalUserStatus.statusText
           );
         } else {
           statusMessageInput.removeAttribute("value");
@@ -159,7 +167,7 @@ var statusSelector = {
   statusMessageKeyPress(aEvent) {
     if (!this.hasAttribute("editing")) {
       if (aEvent.keyCode == aEvent.DOM_VK_DOWN) {
-        let button = document.getElementById("statusTypeIcon");
+        const button = document.getElementById("statusTypeIcon");
         document.getElementById("setStatusTypeMenupopup").openPopup(button);
       }
       return;
@@ -182,14 +190,14 @@ var statusSelector = {
   finishEditStatusMessage(aSave) {
     clearTimeout(this._stopEditStatusTimeout);
     delete this._stopEditStatusTimeout;
-    let statusMessage = document.getElementById("statusMessageLabel");
-    let statusMessageInput = document.getElementById("statusMessageInput");
+    const statusMessage = document.getElementById("statusMessageLabel");
+    const statusMessageInput = document.getElementById("statusMessageInput");
     statusMessage.removeAttribute("hidden");
     statusMessageInput.toggleAttribute("hidden", "true");
     if (aSave) {
       let newStatus = Ci.imIStatusInfo.STATUS_UNKNOWN;
       if ("_statusTypeEditing" in this) {
-        let statusType = this._statusTypeEditing;
+        const statusType = this._statusTypeEditing;
         if (statusType == "available") {
           newStatus = Ci.imIStatusInfo.STATUS_AVAILABLE;
         } else if (statusType == "unavailable") {
@@ -205,7 +213,7 @@ var statusSelector = {
         newStatus != Ci.imIStatusInfo.STATUS_UNKNOWN ||
         statusMessageInput.value != statusMessageInput.getAttribute("value")
       ) {
-        Services.core.globalUserStatus.setStatus(
+        IMServices.core.globalUserStatus.setStatus(
           newStatus,
           statusMessageInput.value
         );
@@ -237,26 +245,27 @@ var statusSelector = {
   },
 
   userIconClick() {
-    const nsIFilePicker = Ci.nsIFilePicker;
-    let fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
-    let bundle = document.getElementById("chatBundle");
-    fp.init(
-      window,
-      bundle.getString("userIconFilePickerTitle"),
-      nsIFilePicker.modeOpen
+    const fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
+    const bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/chat.properties"
     );
-    fp.appendFilters(nsIFilePicker.filterImages);
+    fp.init(
+      window.browsingContext,
+      bundle.GetStringFromName("userIconFilePickerTitle"),
+      Ci.nsIFilePicker.modeOpen
+    );
+    fp.appendFilters(Ci.nsIFilePicker.filterImages);
     fp.open(rv => {
-      if (rv != nsIFilePicker.returnOK || !fp.file) {
+      if (rv != Ci.nsIFilePicker.returnOK || !fp.file) {
         return;
       }
-      Services.core.globalUserStatus.setUserIcon(fp.file);
+      IMServices.core.globalUserStatus.setUserIcon(fp.file);
     });
   },
 
   displayNameClick() {
-    let displayName = document.getElementById("displayName");
-    let displayNameInput = document.getElementById("displayNameInput");
+    const displayName = document.getElementById("displayName");
+    const displayNameInput = document.getElementById("displayNameInput");
     displayName.setAttribute("hidden", "true");
     displayNameInput.removeAttribute("hidden");
     if (!displayNameInput.hasAttribute("editing")) {
@@ -309,8 +318,8 @@ var statusSelector = {
 
   finishEditDisplayName(aSave) {
     clearTimeout(this._stopEditDisplayNameTimeout);
-    let displayName = document.getElementById("displayName");
-    let displayNameInput = document.getElementById("displayNameInput");
+    const displayName = document.getElementById("displayName");
+    const displayNameInput = document.getElementById("displayNameInput");
     displayName.removeAttribute("hidden");
     displayNameInput.toggleAttribute("hidden", "true");
     // Apply the new display name only if it is different from the current one.
@@ -318,7 +327,7 @@ var statusSelector = {
       aSave &&
       displayNameInput.value != displayNameInput.getAttribute("value")
     ) {
-      Services.core.globalUserStatus.displayName = displayNameInput.value;
+      IMServices.core.globalUserStatus.displayName = displayNameInput.value;
     } else if (displayName.hasAttribute("usingDefault")) {
       displayName.setAttribute(
         "value",
@@ -334,7 +343,7 @@ var statusSelector = {
   },
 
   init() {
-    let events = ["status-changed"];
+    const events = ["status-changed"];
     statusSelector.displayCurrentStatus();
 
     if (document.getElementById("displayName")) {
@@ -347,8 +356,8 @@ var statusSelector = {
       statusSelector.displayUserIcon();
     }
 
-    let statusMessage = document.getElementById("statusMessageLabel");
-    let statusMessageInput = document.getElementById("statusMessageInput");
+    const statusMessage = document.getElementById("statusMessageLabel");
+    const statusMessageInput = document.getElementById("statusMessageInput");
     if (statusMessage && statusMessageInput) {
       statusMessage.addEventListener("keypress", this.statusMessageKeyPress);
       statusMessageInput.addEventListener(
@@ -357,7 +366,7 @@ var statusSelector = {
       );
     }
 
-    for (let event of events) {
+    for (const event of events) {
       Services.obs.addObserver(statusSelector, event);
     }
     statusSelector._events = events;
@@ -366,7 +375,7 @@ var statusSelector = {
   },
 
   unload() {
-    for (let event of statusSelector._events) {
+    for (const event of statusSelector._events) {
       Services.obs.removeObserver(statusSelector, event);
     }
   },

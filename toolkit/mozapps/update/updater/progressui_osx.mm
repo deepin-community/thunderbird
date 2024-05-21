@@ -32,12 +32,14 @@ static const char* sUpdatePath;
   NSWindow* w = [progressBar window];
 
   [w setTitle:[NSString stringWithUTF8String:sLabels.title.get()]];
-  [progressTextField setStringValue:[NSString stringWithUTF8String:sLabels.info.get()]];
+  [progressTextField
+      setStringValue:[NSString stringWithUTF8String:sLabels.info.get()]];
 
   NSRect origTextFrame = [progressTextField frame];
   [progressTextField sizeToFit];
 
-  int widthAdjust = progressTextField.frame.size.width - origTextFrame.size.width;
+  int widthAdjust =
+      progressTextField.frame.size.width - origTextFrame.size.width;
 
   if (widthAdjust > 0) {
     NSRect f;
@@ -96,6 +98,11 @@ int InitProgressUI(int* pargc, char*** pargv) {
 }
 
 int ShowProgressUI(bool indeterminate) {
+  if (!sUpdatePath) {
+    // InitProgressUI was never called.
+    return -1;
+  }
+
   // Only show the Progress UI if the process is taking a significant amount of
   // time where a significant amount of time is defined as .5 seconds after
   // ShowProgressUI is called sProgress is less than 70.
@@ -113,7 +120,9 @@ int ShowProgressUI(bool indeterminate) {
 
   sIndeterminate = indeterminate;
   [NSApplication sharedApplication];
-  [[NSBundle mainBundle] loadNibNamed:@"MainMenu" owner:NSApp topLevelObjects:nil];
+  [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
+                                owner:NSApp
+                      topLevelObjects:nil];
   [NSApp run];
 
   return 0;

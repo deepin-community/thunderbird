@@ -4,15 +4,16 @@
 "use strict";
 
 async function checkNonEmptyFields(url) {
-  await BrowserTestUtils.withNewTab(url, async function(browser) {
-    await SpecialPowers.spawn(browser, [], async function() {
+  await BrowserTestUtils.withNewTab(url, async function (browser) {
+    await SpecialPowers.spawn(browser, [], async function () {
       let certificateSection = await ContentTaskUtils.waitForCondition(() => {
         return content.document.querySelector("certificate-section");
       }, "Certificate section found");
 
-      let tabs = certificateSection.shadowRoot.querySelector(
-        ".certificate-tabs"
-      ).children;
+      let tabs =
+        certificateSection.shadowRoot.querySelector(
+          ".certificate-tabs"
+        ).children;
 
       Assert.ok(tabs, "Tabs were found");
       Assert.greater(tabs.length, 0, "There must at least one tab");
@@ -44,9 +45,8 @@ async function checkNonEmptyFields(url) {
       for (let i = 0; i < tabs.length; i++) {
         clickTabAndCheckSelection(i);
 
-        let infoGroups = certificateSection.shadowRoot.querySelectorAll(
-          "info-group"
-        );
+        let infoGroups =
+          certificateSection.shadowRoot.querySelectorAll("info-group");
         Assert.ok(infoGroups, "infoGroups found");
 
         for (let infoGroup of infoGroups) {
@@ -55,8 +55,12 @@ async function checkNonEmptyFields(url) {
 
           for (let infoItem of infoItems) {
             let item = infoItem.shadowRoot.querySelector(".info");
-            let info = item.textContent;
-            Assert.notEqual(info, "", "Empty strings shouldn't be rendered");
+            if (item.textContent.length === 0) {
+              await ContentTaskUtils.waitForCondition(
+                () => parseInt(item.textContent.length) > 0,
+                "info-item has not been localized."
+              );
+            }
           }
         }
       }
@@ -74,7 +78,5 @@ add_task(async function test() {
 
   let urls = [url1, url2, url3];
 
-  for (let url of urls) {
-    await checkNonEmptyFields(url);
-  }
+  await Promise.all(urls.map(checkNonEmptyFields));
 });

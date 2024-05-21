@@ -4,11 +4,14 @@
 
 function checkNewText(target) {
   if (target.className == "event-row") {
-    let parent = target.closest(".event");
+    const parent = target.closest(".event");
     // We need to start a group with this element if there are at least 4
     // system messages and they aren't already grouped.
-    if (!parent.grouped && parent.querySelector(".event-row:nth-of-type(4)")) {
-      let toggle = document.createElement("div");
+    if (
+      !parent?.grouped &&
+      parent?.querySelector(".event-row:nth-of-type(4)")
+    ) {
+      const toggle = document.createElement("div");
       toggle.className = "eventToggle";
       toggle.addEventListener("click", event => {
         toggle.closest(".event").classList.toggle("hide-children");
@@ -23,9 +26,9 @@ function checkNewText(target) {
   }
 }
 
-new MutationObserver(function(aMutations) {
-  for (let mutation of aMutations) {
-    for (let node of mutation.addedNodes) {
+new MutationObserver(function (aMutations) {
+  for (const mutation of aMutations) {
+    for (const node of mutation.addedNodes) {
       if (node instanceof HTMLElement) {
         checkNewText(node);
       }

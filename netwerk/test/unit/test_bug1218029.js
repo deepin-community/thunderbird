@@ -84,7 +84,7 @@ function execute_test(test) {
       equal(status, test.status);
     },
     onIncrementalData(loader, context, length, data, consumed) {
-      ok(chunkIndex < test.dataChunks.length - 1);
+      Assert.less(chunkIndex, test.dataChunks.length - 1);
       var expectedChunk = test.dataChunks[chunkIndex];
       equal(length, expectedChunk.length);
       equal(String.fromCharCode.apply(null, data), expectedChunk);
@@ -104,7 +104,7 @@ function execute_test(test) {
 
   listener.onStartRequest(channel);
   var offset = 0;
-  test.chunks.forEach(function(chunkLength) {
+  test.chunks.forEach(function (chunkLength) {
     listener.onDataAvailable(channel, stream, offset, chunkLength);
     offset += chunkLength;
   });

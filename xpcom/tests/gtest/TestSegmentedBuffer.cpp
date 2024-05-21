@@ -4,13 +4,14 @@
 
 #include "gtest/gtest.h"
 #include "../../io/nsSegmentedBuffer.h"
+#include "nsIEventTarget.h"
 
 using namespace mozilla;
 
 TEST(SegmentedBuffer, AppendAndDelete)
 {
   auto buf = MakeUnique<nsSegmentedBuffer>();
-  buf->Init(4, 16);
+  buf->Init(4);
   char* seg;
   bool empty;
   seg = buf->AppendNewSegment();

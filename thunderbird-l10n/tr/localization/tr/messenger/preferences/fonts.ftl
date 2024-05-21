@@ -2,23 +2,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+fonts-dialog-title = Yazı tipleri
 fonts-window-close =
     .key = w
-
 # Variables:
 #   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Varsayılan ({ $name })
 fonts-label-default-unnamed =
     .label = Varsayılan
-
-fonts-encoding-dialog-title =
-    .title = Yazıtipleri ve Karakter Kümeleri
-
 fonts-language-legend =
     .value = Dil:
     .accesskey = D
-
 fonts-proportional-label =
     .value = Orantılı:
     .accesskey = O
@@ -65,11 +60,11 @@ font-language-group-ethiopic =
 font-language-group-georgian =
     .label = Gürcüce
 font-language-group-gujarati =
-    .label = Gucaratça
+    .label = Güceratça
 font-language-group-gurmukhi =
     .label = Gurmukhi Dili
 font-language-group-khmer =
-    .label = Khmer
+    .label = Kmerce
 font-language-group-malayalam =
     .label = Malayalam
 font-language-group-math =
@@ -77,7 +72,7 @@ font-language-group-math =
 font-language-group-odia =
     .label = Odia
 font-language-group-telugu =
-    .label = Telugu Dili
+    .label = Teluguca
 font-language-group-kannada =
     .label = Kannada
 font-language-group-sinhala =
@@ -89,45 +84,35 @@ font-language-group-tibetan =
 
 default-font-serif =
     .label = Serif
-
 default-font-sans-serif =
     .label = Sans Serif
-
 font-size-proportional-label =
     .value = Boyut:
     .accesskey = B
-
 font-size-monospace-label =
     .value = Boyut:
     .accesskey = u
-
 font-serif-label =
     .value = Serif:
     .accesskey = S
-
 font-sans-serif-label =
     .value = Sans-serif:
     .accesskey = n
-
 font-monospace-label =
     .value = Monospace:
     .accesskey = M
-
 font-min-size-label =
     .value = En küçük yazı tipi boyutu:
     .accesskey = z
-
 min-size-none =
     .label = Hiçbiri
 
 ## Fonts in message
 
 font-control-legend = Yazı tipi denetimi
-
 use-document-fonts-checkbox =
     .label = İletilerin diğer yazıtiplerini kullanmasına izin ver
     .accesskey = a
-
 use-fixed-width-plain-checkbox =
     .label = Düz metin iletilerde sabit genişlikli yazı tipi kullan
     .accesskey = l
@@ -135,17 +120,13 @@ use-fixed-width-plain-checkbox =
 ## Language settings
 
 text-encoding-legend = Metin Kodlaması
-
 text-encoding-description = E-posta alma ve gönderme için varsayılan metin kodlamasını ayarla
-
 font-outgoing-email-label =
     .value = Giden posta:
     .accesskey = n
-
 font-incoming-email-label =
     .value = Gelen posta:
     .accesskey = G
-
 default-font-reply-checkbox =
     .label = Mümkün olduğunda yanıtlarda varsayılan metin kodlamasını kullan
     .accesskey = k

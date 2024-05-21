@@ -2,26 +2,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { CALENDARNAME, controller, createCalendar, deleteCalendars } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarUtils.jsm"
-);
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
-  CalTodo: "resource:///modules/CalTodo.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.sys.mjs",
+  CalTodo: "resource:///modules/CalTodo.sys.mjs",
 });
 
-var calendarId = createCalendar(controller, CALENDARNAME);
-var calendar = cal.async.promisifyCalendar(cal.getCalendarManager().getCalendarById(calendarId));
+var calendar = CalendarTestUtils.createCalendar();
+registerCleanupFunction(() => {
+  CalendarTestUtils.removeCalendar(calendar);
+});
 
-let tree = document.getElementById("calendar-task-tree");
+const tree = document.getElementById("calendar-task-tree");
 
 add_task(async () => {
   async function createTask(title, attributes = {}) {
-    let task = new CalTodo();
+    const task = new CalTodo();
     task.title = title;
-    for (let [key, value] of Object.entries(attributes)) {
+    for (const [key, value] of Object.entries(attributes)) {
       task[key] = value;
     }
     return calendar.addItem(task);
@@ -33,7 +30,7 @@ add_task(async () => {
 
   async function setFilterGroup(name) {
     info(`Setting filter to ${name}`);
-    let radio = document.getElementById(`opt_${name}_filter`);
+    const radio = document.getElementById(`opt_${name}_filter`);
     EventUtils.synthesizeMouseAtCenter(radio, {});
     await treeRefresh();
     Assert.equal(
@@ -68,11 +65,20 @@ add_task(async () => {
       }
       return task.title;
     }
-    tree.height; // Try and trigger a reflow...
+    tree.getBoundingClientRect(); // Try and trigger a reflow...
     tree.invalidate();
-    await new Promise(r => setTimeout(r));
 
-    let actualTasks = [];
+    // It seems that under certain conditions notifyOperationComplete() is
+    // called in CalStorageCalender.getItems before all the results have been
+    // retrieved. This results in the "refresh" event being fired prematurely in
+    // calendar-task-tree. After some investigation, the cause of this seems to
+    // be related to multiple calls of executeAsync() in CalStorageItemModel.
+    // getAdditionalDataForItemMap() not finishing before notifyOperationComplete()
+    // is called despite being awaited on.
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(r => setTimeout(r, 500));
+
+    const actualTasks = [];
     for (let i = 0; i < tree.view.rowCount; i++) {
       actualTasks.push(tree.getTaskAtRow(i));
     }
@@ -85,7 +91,7 @@ add_task(async () => {
     // Although the order of expectedTasks matches the observed behaviour when
     // this test was written, order is NOT checked here. The order of the list
     // is not well defined (particularly when changing the filter text).
-    for (let aTask of actualTasks) {
+    for (const aTask of actualTasks) {
       Assert.ok(
         expectedTasks.some(eTask => eTask.hasSameIds(aTask)),
         toPrettyString(aTask)
@@ -93,16 +99,16 @@ add_task(async () => {
     }
   }
 
-  let today = cal.dtz.now();
+  const today = cal.dtz.now();
   today.hour = today.minute = today.second = 0;
-  let yesterday = today.clone();
+  const yesterday = today.clone();
   yesterday.addDuration(cal.createDuration("-P1D"));
-  let tomorrow = today.clone();
+  const tomorrow = today.clone();
   tomorrow.addDuration(cal.createDuration("P1D"));
-  let later = today.clone();
+  const later = today.clone();
   later.addDuration(cal.createDuration("P2W"));
 
-  let tasks = {
+  const tasks = {
     incomplete: await createTask("Incomplete"),
     started30: await createTask("30% started", { percentComplete: 30 }),
     started60: await createTask("60% started", { percentComplete: 60 }),
@@ -121,14 +127,14 @@ add_task(async () => {
     cal.createRecurrenceRule("RRULE:FREQ=DAILY;COUNT=3")
   );
 
-  let firstOccurrence = repeatingTask.recurrenceInfo.getOccurrenceFor(yesterday);
+  const firstOccurrence = repeatingTask.recurrenceInfo.getOccurrenceFor(yesterday);
   firstOccurrence.isCompleted = true;
   firstOccurrence.completedDate = yesterday;
   repeatingTask.recurrenceInfo.modifyException(firstOccurrence, true);
 
   repeatingTask = await calendar.addItem(repeatingTask);
 
-  let occurrences = repeatingTask.recurrenceInfo.getOccurrences(yesterday, later, 10);
+  const occurrences = repeatingTask.recurrenceInfo.getOccurrences(yesterday, later, 10);
   Assert.equal(occurrences.length, 3);
 
   await openTasksTab();
@@ -261,12 +267,8 @@ add_task(async () => {
     repeatingTask
   );
 
-  for (let task of Object.values(tasks)) {
+  for (const task of Object.values(tasks)) {
     await calendar.deleteItem(task);
   }
   await setFilterGroup("throughcurrent");
-});
-
-registerCleanupFunction(() => {
-  deleteCalendars(controller, CALENDARNAME);
 });

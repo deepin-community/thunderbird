@@ -8,92 +8,108 @@ var {
   assert_messages_in_view,
   be_in_folder,
   create_folder,
-  make_new_sets_in_folder,
-  mc,
+  make_message_sets_in_folders,
   wait_for_all_messages_to_load,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  get_about_3pane,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { plan_for_modal_dialog, wait_for_modal_dialog } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { promise_modal_dialog } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
-var { MailViewConstants } = ChromeUtils.import(
-  "resource:///modules/MailViewManager.jsm"
+var { MailViewConstants } = ChromeUtils.importESModule(
+  "resource:///modules/MailViewManager.sys.mjs"
+);
+
+const { storeState } = ChromeUtils.importESModule(
+  "resource:///modules/CustomizationState.mjs"
 );
 
 var baseFolder, savedFolder;
-var setUntagged, setTagged;
+var setTagged;
 
-add_task(function setup() {
+add_setup(async function () {
   // Create a folder with some messages that have no tags and some that are
   //  tagged Important ($label1).
-  baseFolder = create_folder("MailViewA");
-  [setUntagged, setTagged] = make_new_sets_in_folder(baseFolder, [{}, {}]);
+  baseFolder = await create_folder("MailViewA");
+  [, setTagged] = await make_message_sets_in_folders([baseFolder], [{}, {}]);
   setTagged.addTag("$label1"); // Important, by default
+  storeState({
+    mail: ["view-picker"],
+  });
+  await BrowserTestUtils.waitForMutationCondition(
+    document.getElementById("unifiedToolbarContent"),
+    {
+      subtree: true,
+      childList: true,
+    },
+    () => document.querySelector("#unifiedToolbarContent .view-picker")
+  );
+
+  registerCleanupFunction(() => {
+    storeState({});
+  });
 });
 
 add_task(function test_put_view_picker_on_toolbar() {
-  let toolbar = mc.e("mail-bar3");
-  toolbar.insertItem("mailviews-container", null);
-  Assert.ok(mc.e("mailviews-container"));
+  Assert.ok(
+    window.ViewPickerBinding.isVisible,
+    "View picker is registered as visible"
+  );
 });
 
 /**
  * https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c97
  */
-add_task(function test_save_view_as_folder() {
+add_task(async function test_save_view_as_folder() {
   // - enter the folder
-  be_in_folder(baseFolder);
+  await be_in_folder(baseFolder);
 
   // - apply the mail view
   // okay, mozmill is just not ready to click on the view picker...
   // just call the ViewChange global.  it's sad, but it has the same effects.
   // at least, it does once we've caused the popups to get refreshed.
-  mc.window.RefreshAllViewPopups(mc.e("viewPickerPopup"));
-  mc.window.ViewChange(":$label1");
-  wait_for_all_messages_to_load();
+  window.RefreshAllViewPopups(
+    document.getElementById("toolbarViewPickerPopup")
+  );
+  window.ViewChange(":$label1");
+  await wait_for_all_messages_to_load();
 
   // - save it
-  plan_for_modal_dialog(
+  const dialogPromise = promise_modal_dialog(
     "mailnews:virtualFolderProperties",
     subtest_save_mail_view
   );
   // we have to use value here because the option mechanism is not sophisticated
   //  enough.
-  mc.window.ViewChange(MailViewConstants.kViewItemVirtual);
-  wait_for_modal_dialog("mailnews:virtualFolderProperties");
+  window.ViewChange(MailViewConstants.kViewItemVirtual);
+  await dialogPromise;
 });
 
 function subtest_save_mail_view(savc) {
   // - make sure the name is right
-  Assert.equal(savc.e("name").value, baseFolder.prettyName + "-Important");
+  Assert.equal(
+    savc.document.getElementById("name").value,
+    baseFolder.prettyName + "-Important"
+  );
 
-  let elem = savc.window.document.getElementById("searchVal0");
+  const selector = savc.document.querySelector("#searchVal0 menulist");
+  Assert.ok(selector, "Should have a tag selector");
 
   // Check the value of the search-value.
-  let activeItem = elem.findActiveItem();
-  Assert.equal(activeItem.value, "$label1");
+  Assert.equal(selector.value, "$label1");
 
   // - save it
-  savc.window.onOK();
+  savc.document.querySelector("dialog").acceptDialog();
 }
 
-add_task(function test_verify_saved_mail_view() {
+add_task(async function test_verify_saved_mail_view() {
   // - make sure the folder got created
   savedFolder = baseFolder.getChildNamed(baseFolder.prettyName + "-Important");
-  if (!savedFolder) {
-    throw new Error("MailViewA-Important was not created!");
-  }
+  Assert.ok(savedFolder, "MailViewA-Important was not created!");
 
   // - go in the folder and make sure the right messages are displayed
-  be_in_folder(savedFolder);
-  assert_messages_in_view(setTagged, mc);
-
-  Assert.report(
-    false,
-    undefined,
-    undefined,
-    "Test ran to completion successfully"
-  );
+  await be_in_folder(savedFolder);
+  assert_messages_in_view(setTagged, window);
 });

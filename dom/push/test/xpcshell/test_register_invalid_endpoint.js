@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "c9a12e81-ea5e-40f9-8bf4-acee34621671";
 const channelID = "c0660af8-b532-4931-81f0-9fd27a12d6ab";
 
@@ -26,7 +24,7 @@ add_task(async function test_register_invalid_endpoint() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -35,7 +33,7 @@ add_task(async function test_register_invalid_endpoint() {
             })
           );
         },
-        onRegister(request) {
+        onRegister() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "register",

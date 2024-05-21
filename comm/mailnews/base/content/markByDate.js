@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -7,6 +6,8 @@
 
 var MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
 var MICROSECONDS_PER_DAY = 1000 * MILLISECONDS_PER_HOUR * 24;
+
+window.addEventListener("load", onLoad);
 
 document.addEventListener("dialogaccept", onAccept);
 
@@ -59,13 +60,13 @@ function onAccept() {
   markInDatabase(prLower, prUpper);
 }
 
-/** marks all headers in the database, whose time is between the two
-  given times, as read.
-  @param lower
-    PRTime for the lower bound - this boundary is inclusive
-  @param upper
-    PRTime for the upper bound - this boundary is exclusive
-*/
+/**
+ * M arks all headers in the database, whose time is between the two given
+ * times, as read.
+ *
+ * @param {integer} lower - PRTime for the lower bound (inclusive).
+ * @param {integer} upper - PRTime for the upper bound (exclusive).
+ */
 function markInDatabase(lower, upper) {
   let messageFolder;
   let messageDatabase;
@@ -80,10 +81,10 @@ function markInDatabase(lower, upper) {
     return;
   }
 
-  let searchSession = Cc[
+  const searchSession = Cc[
     "@mozilla.org/messenger/searchSession;1"
   ].createInstance(Ci.nsIMsgSearchSession);
-  let searchTerms = [];
+  const searchTerms = [];
   searchSession.addScopeTerm(Ci.nsMsgSearchScope.offlineMail, messageFolder);
 
   const nsMsgSearchAttrib = Ci.nsMsgSearchAttrib;
@@ -110,8 +111,8 @@ function markInDatabase(lower, upper) {
     searchTerms.push(searchTerm);
   }
 
-  let msgEnumerator = messageDatabase.getFilterEnumerator(searchTerms);
-  let headers = [...msgEnumerator];
+  const msgEnumerator = messageDatabase.getFilterEnumerator(searchTerms);
+  const headers = [...msgEnumerator];
 
   if (headers.length) {
     messageFolder.markMessagesRead(headers, true);

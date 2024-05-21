@@ -9,34 +9,28 @@
 
 "use strict";
 
-var { close_compose_window, open_compose_with_reply } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ComposeHelpers.jsm"
-);
+var { close_compose_window, open_compose_with_reply } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 var {
   add_message_to_folder,
   assert_selected_and_displayed,
   be_in_folder,
+  empty_folder,
   create_message,
-  mc,
-  press_delete,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var {
-  assert_notification_displayed,
-  wait_for_notification_to_show,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
-);
-
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { assert_notification_displayed, wait_for_notification_to_show } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+  );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-
-var i = 0;
 
 var id1Domain = "example.com";
 var id2Domain = "example.net";
@@ -51,13 +45,12 @@ var identity2;
 var gAccount;
 var gFolder;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(4);
 
   // Now set up an account with some identities.
-  let acctMgr = MailServices.accounts;
-  gAccount = acctMgr.createAccount();
-  gAccount.incomingServer = acctMgr.createIncomingServer(
+  gAccount = MailServices.accounts.createAccount();
+  gAccount.incomingServer = MailServices.accounts.createIncomingServer(
     "nobody",
     "Reply Identity Testing",
     "pop3"
@@ -67,12 +60,12 @@ add_task(function setupModule(module) {
     .QueryInterface(Ci.nsIMsgLocalMailFolder)
     .createLocalSubfolder("Msgs4Reply");
 
-  identity1 = acctMgr.createIdentity();
+  identity1 = MailServices.accounts.createIdentity();
   identity1.email = myIdentityEmail1;
   gAccount.addIdentity(identity1);
   info(`Added identity1; key=${identity1.key}, email=${identity1.email}`);
 
-  identity2 = acctMgr.createIdentity();
+  identity2 = MailServices.accounts.createIdentity();
   identity2.email = myIdentityEmail2;
   gAccount.addIdentity(identity2);
   info(`Added identity2; key=${identity2.key}, email=${identity2.email}`);
@@ -81,8 +74,8 @@ add_task(function setupModule(module) {
 /**
  * Create and select a new message to do a reply with.
  */
-function create_replyMsg(aTo, aEnvelopeTo) {
-  let msg0 = create_message({
+async function create_replyMsg(aTo, aEnvelopeTo) {
+  const msg0 = create_message({
     from: "Tester <test@example.com>",
     to: aTo,
     subject: "test",
@@ -90,18 +83,18 @@ function create_replyMsg(aTo, aEnvelopeTo) {
       "envelope-to": aEnvelopeTo,
     },
   });
-  add_message_to_folder(gFolder, msg0);
+  await add_message_to_folder([gFolder], msg0);
 
-  be_in_folder(gFolder);
-  let msg = select_click_row(i++);
-  assert_selected_and_displayed(mc, msg);
+  await be_in_folder(gFolder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
 }
 
 /**
  * The tests.
  */
-add_task(function test_reply_identity_selection() {
-  let tests = [
+add_task(async function test_reply_identity_selection() {
+  const tests = [
     {
       desc: "No catchAll, 'From' will be set to recipient",
       to: myIdentityEmail2,
@@ -115,8 +108,7 @@ add_task(function test_reply_identity_selection() {
       warning: false,
     },
     {
-      desc:
-        "No catchAll, 'From' will be set to second id's email (without name).",
+      desc: "No catchAll, 'From' will be set to second id's email (without name).",
       to: "Mr.X <" + myIdentityEmail2 + ">",
       envelopeTo: "",
       catchAllId1: false,
@@ -140,8 +132,7 @@ add_task(function test_reply_identity_selection() {
       warning: false,
     },
     {
-      desc:
-        "With catchAll #2, 'From' will be set to senders address (with name).",
+      desc: "With catchAll #2, 'From' will be set to senders address (with name).",
       to: myIdentityEmail2,
       envelopeTo: "Mr.X <" + myIdentityEmail2 + ">",
       catchAllId1: false,
@@ -200,9 +191,9 @@ add_task(function test_reply_identity_selection() {
     },
   ];
 
-  for (let test of tests) {
+  for (const test of tests) {
     info(`Running test: ${test.desc}`);
-    test.replyIndex = create_replyMsg(test.to, test.envelopeTo);
+    test.replyIndex = await create_replyMsg(test.to, test.envelopeTo);
 
     identity1.catchAll = test.catchAllId1;
     identity1.catchAllHint = test.catchAllHintId1;
@@ -216,13 +207,13 @@ add_task(function test_reply_identity_selection() {
       `... identity2.catchAll=${identity2.catchAll}, identity2.catchAllHint=${identity2.catchAllHint}`
     );
 
-    let cwc = open_compose_with_reply();
+    const cwc = await open_compose_with_reply();
 
     info("Checking reply identity: " + JSON.stringify(test, null, 2));
     checkCompIdentity(cwc, test.replyIdKey, test.replyIdFrom);
 
     if (test.warning) {
-      wait_for_notification_to_show(
+      await wait_for_notification_to_show(
         cwc,
         "compose-notification-bottom",
         "identityWarning"
@@ -236,7 +227,7 @@ add_task(function test_reply_identity_selection() {
       );
     }
 
-    close_compose_window(cwc, false);
+    await close_compose_window(cwc, false);
   }
 });
 
@@ -244,30 +235,25 @@ add_task(function test_reply_identity_selection() {
  * Helper to check that a suitable From identity was set up in the given
  * composer window.
  *
- * @param cwc             Compose window controller.
- * @param aIdentityKey    The key of the expected identity.
- * @param aFrom           The expected displayed From address.
+ * @param {Window} cwc - Compose window.
+ * @param {string} aIdentityKey - The key of the expected identity.
+ * @param {string} aFrom - The expected displayed From address.
  */
 function checkCompIdentity(cwc, identityKey, from) {
   Assert.equal(
-    cwc.window.document.getElementById("msgIdentity").value,
+    cwc.document.getElementById("msgIdentity").value,
     from,
     "msgIdentity value should be as expected."
   );
   Assert.equal(
-    cwc.window.getCurrentIdentityKey(),
+    cwc.getCurrentIdentityKey(),
     identityKey,
     "The From identity should be correctly selected."
   );
 }
 
-registerCleanupFunction(function teardownModule(module) {
-  be_in_folder(gFolder);
-  let count;
-  while ((count = gFolder.getTotalMessages(false)) > 0) {
-    press_delete();
-    mc.waitFor(() => gFolder.getTotalMessages(false) < count);
-  }
+registerCleanupFunction(async function () {
+  await empty_folder(gFolder);
 
   gAccount.removeIdentity(identity2);
 

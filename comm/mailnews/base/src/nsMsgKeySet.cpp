@@ -65,7 +65,6 @@
    search from there.  */
 
 nsMsgKeySet::nsMsgKeySet(/* MSG_NewsHost* host*/) {
-  MOZ_COUNT_CTOR(nsMsgKeySet);
   m_cached_value = -1;
   m_cached_value_index = 0;
   m_length = 0;
@@ -76,10 +75,7 @@ nsMsgKeySet::nsMsgKeySet(/* MSG_NewsHost* host*/) {
 #endif
 }
 
-nsMsgKeySet::~nsMsgKeySet() {
-  MOZ_COUNT_DTOR(nsMsgKeySet);
-  PR_FREEIF(m_data);
-}
+nsMsgKeySet::~nsMsgKeySet() { PR_FREEIF(m_data); }
 
 bool nsMsgKeySet::Grow() {
   int32_t new_size;
@@ -94,7 +90,6 @@ bool nsMsgKeySet::Grow() {
 
 nsMsgKeySet::nsMsgKeySet(const char* numbers /* , MSG_NewsHost* host */) {
   int32_t *head, *tail, *end;
-  MOZ_COUNT_CTOR(nsMsgKeySet);
 
 #ifdef NEWSRC_DOES_HOST_STUFF
   m_host = host;

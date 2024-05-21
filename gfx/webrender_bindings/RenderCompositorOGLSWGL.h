@@ -35,6 +35,8 @@ class RenderCompositorOGLSWGL : public RenderCompositorLayersSWGL {
   bool BeginFrame() override;
   RenderedFrameId EndFrame(const nsTArray<DeviceIntRect>& aDirtyRects) override;
 
+  void GetCompositorCapabilities(CompositorCapabilities* aCaps) override;
+
   // Returns true for requesting rendering during readback.
   // RenderCompositorOGLSWGL::MaybeReadback() requests rendering.
   // This value is not used by WebRender, since native compositor API is used
@@ -67,9 +69,14 @@ class RenderCompositorOGLSWGL : public RenderCompositorLayersSWGL {
   void DestroyEGLSurface();
 
   EGLSurface mEGLSurface = EGL_NO_SURFACE;
-  // On android, we must track our own surface size.
-  Maybe<LayoutDeviceIntSize> mEGLSurfaceSize;
   bool mFullRender = false;
+
+#ifdef MOZ_WIDGET_ANDROID
+  // Whether we are in the process of handling a NEW_SURFACE error. On Android
+  // this is used to allow the widget an opportunity to recover from the first
+  // instance, before raising a WebRenderError on subsequent occurences.
+  bool mHandlingNewSurfaceError = false;
+#endif
 
   class TileOGL : public RenderCompositorLayersSWGL::Tile {
    public:

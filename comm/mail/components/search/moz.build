@@ -13,7 +13,11 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
 DIRS += ["public"]
 
 EXTRA_JS_MODULES += [
-    "SearchIntegration.jsm",
+    "SearchIntegration.sys.mjs",
 ]
 
 JAR_MANIFESTS += ["jar.mn"]
+
+XPCOM_MANIFESTS += [
+    "components.conf",
+]

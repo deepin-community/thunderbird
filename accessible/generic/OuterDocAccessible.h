@@ -33,9 +33,6 @@ class OuterDocAccessible final : public AccessibleWrap {
   NS_INLINE_DECL_REFCOUNTING_INHERITED(OuterDocAccessible, AccessibleWrap)
 
   DocAccessibleParent* RemoteChildDoc() const;
-#if defined(XP_WIN)
-  LocalAccessible* RemoteChildDocAccessible() const;
-#endif
 
   /**
    * For iframes in a content process which will be rendered in another content
@@ -46,6 +43,10 @@ class OuterDocAccessible final : public AccessibleWrap {
    * called when either of these is created.
    */
   void SendEmbedderAccessible(dom::BrowserBridgeChild* aBridge);
+
+  Maybe<nsMargin> GetCrossDocOffset() { return mCrossDocOffset; }
+
+  void SetCrossDocOffset(nsMargin aMargin) { mCrossDocOffset = Some(aMargin); }
 
   // LocalAccessible
   virtual void Shutdown() override;
@@ -58,9 +59,6 @@ class OuterDocAccessible final : public AccessibleWrap {
   virtual bool IsAcceptableChild(nsIContent* aEl) const override;
 
   virtual uint32_t ChildCount() const override;
-#if defined(XP_WIN)
-  virtual LocalAccessible* LocalChildAt(uint32_t aIndex) const override;
-#endif  // defined(XP_WIN)
 
   // Accessible
   virtual Accessible* ChildAt(uint32_t aIndex) const override;
@@ -69,6 +67,7 @@ class OuterDocAccessible final : public AccessibleWrap {
 
  protected:
   virtual ~OuterDocAccessible() override;
+  Maybe<nsMargin> mCrossDocOffset;
 };
 
 inline OuterDocAccessible* LocalAccessible::AsOuterDoc() {

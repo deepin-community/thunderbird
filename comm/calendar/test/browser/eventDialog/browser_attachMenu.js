@@ -6,23 +6,25 @@
  * Tests for the attach menu in the event dialog window.
  */
 
-const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { cloudFileAccounts } = ChromeUtils.import("resource:///modules/cloudFileAccounts.jsm");
-const { MockFilePicker } = ChromeUtils.import("resource://specialpowers/MockFilePicker.jsm");
-
-let manager = cal.getCalendarManager();
-let _calendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-_calendar.name = "Attachments";
-manager.registerCalendar(_calendar);
+const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+const { cloudFileAccounts } = ChromeUtils.importESModule(
+  "resource:///modules/cloudFileAccounts.sys.mjs"
+);
+const { MockFilePicker } = ChromeUtils.importESModule(
+  "resource://testing-common/MockFilePicker.sys.mjs"
+);
+var { saveAndCloseItemDialog, setData } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/ItemEditingHelpers.sys.mjs"
+);
 
 // Remove the save prompt observer that head.js added. It's causing trouble here.
 Services.ww.unregisterNotification(savePromptObserver);
 
+const calendar = CalendarTestUtils.createCalendar("Attachments");
 registerCleanupFunction(() => {
-  manager.unregisterCalendar(_calendar);
+  cal.manager.unregisterCalendar(calendar);
+  MockFilePicker.cleanup();
 });
-
-let calendar = cal.async.promisifyCalendar(_calendar);
 
 async function getEventBox(selector) {
   let itemBox;
@@ -37,7 +39,7 @@ async function openEventFromBox(eventBox) {
   if (Services.focus.activeWindow != window) {
     await BrowserTestUtils.waitForEvent(window, "focus");
   }
-  let promise = CalendarTestUtils.waitForEventDialog();
+  const promise = CalendarTestUtils.waitForEventDialog();
   EventUtils.synthesizeMouseAtCenter(eventBox, { clickCount: 2 });
   return promise;
 }
@@ -46,37 +48,29 @@ async function openEventFromBox(eventBox) {
  * Tests using the "Website" menu item attaches a link to the event.
  */
 add_task(async function testAttachWebPage() {
-  let startDate = cal.createDateTime("20200101T000001Z");
+  const startDate = cal.createDateTime("20200101T000001Z");
   await CalendarTestUtils.setCalendarView(window, "month");
   window.goToDate(startDate);
 
-  let getEventWin = CalendarTestUtils.waitForEventDialog("edit");
-  window.goDoCommand("calendar_new_event_command");
+  const { dialogWindow, iframeWindow, dialogDocument, iframeDocument } =
+    await CalendarTestUtils.editNewEvent(window);
 
-  let eventWin = await getEventWin;
-
-  // Give the new event a title.
-  let iframe = eventWin.document.querySelector("#calendar-item-panel-iframe");
-  let titleElement = iframe.contentDocument.querySelector("#item-title");
-  EventUtils.synthesizeMouseAtCenter(titleElement, {}, iframe.contentWindow);
-  EventUtils.sendString("Web Link Event", iframe.contentWindow);
-
-  // Set its date.
-  iframe.contentDocument.querySelector("#event-starttime").value = cal.dtz.dateTimeToJsDate(
-    startDate
-  );
+  await setData(dialogWindow, iframeWindow, {
+    title: "Web Link Event",
+    startDate,
+  });
 
   // Attach the url.
-  let attachButton = eventWin.document.querySelector("#button-url");
+  const attachButton = dialogWindow.document.querySelector("#button-url");
   Assert.ok(attachButton, "attach menu button found");
 
-  let menu = eventWin.document.querySelector("#button-attach-menupopup");
-  let menuShowing = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  EventUtils.synthesizeMouseAtCenter(attachButton, {}, eventWin);
+  const menu = dialogDocument.querySelector("#button-attach-menupopup");
+  const menuShowing = BrowserTestUtils.waitForEvent(menu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(attachButton, {}, dialogWindow);
   await menuShowing;
 
-  let url = "https://thunderbird.net/";
-  let urlPrompt = BrowserTestUtils.promiseAlertDialogOpen(
+  const url = "https://thunderbird.net/";
+  const urlPrompt = BrowserTestUtils.promiseAlertDialogOpen(
     "",
     "chrome://global/content/commonDialog.xhtml",
     {
@@ -87,19 +81,20 @@ add_task(async function testAttachWebPage() {
     }
   );
   EventUtils.synthesizeMouseAtCenter(
-    eventWin.document.querySelector("#button-attach-url"),
+    dialogDocument.querySelector("#button-attach-url"),
     {},
-    eventWin
+    dialogWindow
   );
   await urlPrompt;
 
   // Now check that the url shows in the attachments list.
   EventUtils.synthesizeMouseAtCenter(
-    iframe.contentDocument.querySelector("#event-grid-tab-attachments"),
-    {}
+    iframeDocument.querySelector("#event-grid-tab-attachments"),
+    {},
+    iframeWindow
   );
 
-  let listBox = iframe.contentDocument.querySelector("#attachment-link");
+  const listBox = iframeDocument.querySelector("#attachment-link");
   await BrowserTestUtils.waitForCondition(
     () => listBox.itemChildren.length == 1,
     "attachment list did not show in time"
@@ -108,28 +103,27 @@ add_task(async function testAttachWebPage() {
   Assert.equal(listBox.itemChildren[0].tooltipText, url, "url included in attachments list");
 
   // Save the new event.
-  eventWin.document.querySelector("#button-saveandclose").click();
+  await saveAndCloseItemDialog(dialogWindow);
 
   // Open the event to verify the attachment is shown in the summary dialog.
-  let summaryWin = await openEventFromBox(await getEventBox("calendar-month-day-box-item"));
-  let label = summaryWin.document.querySelector(`label[value="${url}"]`);
+  const summaryWin = await openEventFromBox(await getEventBox("calendar-month-day-box-item"));
+  const label = summaryWin.document.querySelector(`label[value="${url}"]`);
   Assert.ok(label, "attachment label found on calendar summary dialog");
   await BrowserTestUtils.closeWindow(summaryWin);
 
   // Clean up.
-  let eventBox = await getEventBox("calendar-month-day-box-item");
+  const eventBox = await getEventBox("calendar-month-day-box-item");
   eventBox.focus();
   EventUtils.synthesizeKey("VK_DELETE", {});
-  await CalendarTestUtils.closeCalendarTab(window);
 });
 
 /**
  * Tests selecting a provider from the attach menu works.
  */
 add_task(async function testAttachProvider() {
-  let fileUrl = "http://path/to/mock/file.pdf";
-  let iconURL = "chrome://messenger/content/extension.svg";
-  let provider = {
+  const fileUrl = "https://path/to/mock/file.pdf";
+  const iconURL = "chrome://messenger/content/extension.svg";
+  const provider = {
     type: "Mochitest",
     displayName: "Mochitest",
     iconURL,
@@ -146,11 +140,19 @@ add_task(async function testAttachProvider() {
         iconURL,
         configured: true,
         managementURL: "",
-        uploadFile() {
+        uploadFile(window, aFile) {
           return new Promise(resolve =>
             setTimeout(() =>
               resolve({
+                id: 1,
+                path: aFile.path,
+                size: aFile.fileSize,
                 url: fileUrl,
+                // The uploadFile() function should return serviceIcon, serviceName
+                // and serviceUrl - either default or user defined values specified
+                // by the onFileUpload event. The item-edit dialog uses only the
+                // serviceIcon.
+                serviceIcon: "chrome://messenger/skin/icons/globe.svg",
               })
             )
           );
@@ -165,35 +167,27 @@ add_task(async function testAttachProvider() {
     cloudFileAccounts.unregisterProvider("Mochitest");
   });
 
-  let file = new FileUtils.File(getTestFilePath("data/guests.txt"));
-  MockFilePicker.init(window);
+  const file = new FileUtils.File(getTestFilePath("data/guests.txt"));
+  MockFilePicker.init(window.browsingContext);
   MockFilePicker.setFiles([file]);
   MockFilePicker.returnValue = MockFilePicker.returnOk;
 
-  let startDate = cal.createDateTime("20200201T000001Z");
+  const startDate = cal.createDateTime("20200201T000001Z");
   await CalendarTestUtils.setCalendarView(window, "month");
   window.goToDate(startDate);
 
-  let getEventWin = CalendarTestUtils.waitForEventDialog("edit");
-  window.goDoCommand("calendar_new_event_command");
+  const { dialogWindow, iframeWindow, dialogDocument, iframeDocument } =
+    await CalendarTestUtils.editNewEvent(window);
 
-  let eventWin = await getEventWin;
+  await setData(dialogWindow, iframeWindow, {
+    title: "Provider Attachment Event",
+    startDate,
+  });
 
-  // Give the new event a title.
-  let iframe = eventWin.document.querySelector("#calendar-item-panel-iframe");
-  let titleElement = iframe.contentDocument.querySelector("#item-title");
-  EventUtils.synthesizeMouseAtCenter(titleElement, {}, iframe.contentWindow);
-  EventUtils.sendString("Provider Attachment Event", iframe.contentWindow);
-
-  // Set its date.
-  iframe.contentDocument.querySelector("#event-starttime").value = cal.dtz.dateTimeToJsDate(
-    startDate
-  );
-
-  let attachButton = eventWin.document.querySelector("#button-url");
+  const attachButton = dialogDocument.querySelector("#button-url");
   Assert.ok(attachButton, "attach menu button found");
 
-  let menu = eventWin.document.querySelector("#button-attach-menupopup");
+  const menu = dialogDocument.querySelector("#button-attach-menupopup");
   let menuItem;
 
   await BrowserTestUtils.waitForCondition(() => {
@@ -205,13 +199,13 @@ add_task(async function testAttachProvider() {
   Assert.equal(menuItem.image, iconURL, "provider image src is provider image");
 
   // Click on the "Attach" menu.
-  let menuShowing = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  EventUtils.synthesizeMouseAtCenter(attachButton, {}, eventWin);
+  const menuShowing = BrowserTestUtils.waitForEvent(menu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(attachButton, {}, dialogWindow);
   await menuShowing;
 
   // Click on the menuitem to attach a file using our provider.
-  let menuHidden = BrowserTestUtils.waitForEvent(menu, "popuphidden");
-  EventUtils.synthesizeMouseAtCenter(menuItem, {}, eventWin);
+  const menuHidden = BrowserTestUtils.waitForEvent(menu, "popuphidden");
+  EventUtils.synthesizeMouseAtCenter(menuItem, {}, dialogWindow);
   await menuHidden;
 
   // Check if the file dialog was "shown". MockFilePicker.open() is asynchronous
@@ -222,21 +216,20 @@ add_task(async function testAttachProvider() {
   );
 
   // Click on the attachments tab of the event dialog.
-  iframe = eventWin.document.querySelector("#calendar-item-panel-iframe");
   EventUtils.synthesizeMouseAtCenter(
-    iframe.contentDocument.querySelector("#event-grid-tab-attachments"),
+    iframeDocument.querySelector("#event-grid-tab-attachments"),
     {},
-    iframe.contentWindow
+    iframeWindow
   );
 
   // Wait until the file we attached appears.
-  let listBox = iframe.contentDocument.querySelector("#attachment-link");
+  const listBox = iframeDocument.querySelector("#attachment-link");
   await BrowserTestUtils.waitForCondition(
     () => listBox.itemChildren.length == 1,
     "attachment list did not show in time"
   );
 
-  let listItem = listBox.itemChildren[0];
+  const listItem = listBox.itemChildren[0];
 
   // XXX: This property is set after an async operation. Unfortunately, that
   // operation is not awaited on in its surrounding code so the assertion
@@ -248,15 +241,19 @@ add_task(async function testAttachProvider() {
 
   Assert.equal(listItem.attachCloudFileUpload.url, fileUrl, "upload attached to event");
 
-  let listItemImage = listItem.querySelector("img");
-  Assert.equal(listItemImage.src, iconURL, "attachment image is provider image");
+  const listItemImage = listItem.querySelector("img");
+  Assert.equal(
+    listItemImage.src,
+    "chrome://messenger/skin/icons/globe.svg",
+    "attachment image is provider image"
+  );
 
   // Save the new event.
-  eventWin.document.querySelector("#button-saveandclose").click();
+  dialogDocument.querySelector("#button-saveandclose").click();
 
   // Open it and verify the attachment is shown.
-  let summaryWin = await openEventFromBox(await getEventBox("calendar-month-day-box-item"));
-  let label = summaryWin.document.querySelector(`label[value="${fileUrl}"]`);
+  const summaryWin = await openEventFromBox(await getEventBox("calendar-month-day-box-item"));
+  const label = summaryWin.document.querySelector(`label[value="${fileUrl}"]`);
   Assert.ok(label, "attachment label found on calendar summary dialog");
   await BrowserTestUtils.closeWindow(summaryWin);
 
@@ -265,12 +262,7 @@ add_task(async function testAttachProvider() {
   }
 
   // Clean up.
-  let eventBox = await getEventBox("calendar-month-day-box-item");
+  const eventBox = await getEventBox("calendar-month-day-box-item");
   eventBox.focus();
   EventUtils.synthesizeKey("VK_DELETE", {});
-  await CalendarTestUtils.closeCalendarTab(window);
-});
-
-registerCleanupFunction(() => {
-  MockFilePicker.cleanup();
 });

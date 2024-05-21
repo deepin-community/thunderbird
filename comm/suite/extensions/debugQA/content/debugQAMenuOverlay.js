@@ -3,9 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } =
-  ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 // "about:bloat" is available only when
 // (the application is) compiled with |--enable-logrefcnt|.
 if ("@mozilla.org/network/protocol/about;1?what=bloat" in Cc)
@@ -40,4 +37,12 @@ function openQAUrl(aUrl)
                { triggeringPrincipal:
                    Services.scriptSecurityManager.createNullPrincipal({}),
                });
+}
+
+// Flush the memory using minimizeMemoryUsage.
+function flushMemory() {
+  Services.obs.notifyObservers(null, "child-mmu-request");
+  Cc["@mozilla.org/memory-reporter-manager;1"]
+    .getService(Ci.nsIMemoryReporterManager)
+    .minimizeMemoryUsage(() => {});
 }

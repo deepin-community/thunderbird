@@ -6,50 +6,21 @@
 
 /* globals MozElements MozXULElement PanelUI */
 
-// This file implements both `folder-menupopup` custom elements used in
-// traditional menus and `folder-panelview` custom elements used in the appmenu.
+// This file implements `folder-menupopup` custom elements used in traditional
+// menus.
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-  const { MailServices } = ChromeUtils.import(
-    "resource:///modules/MailServices.jsm"
+  const { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
   );
 
-  const LazyModules = {};
-
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "allAccountsSorted",
-    "resource:///modules/folderUtils.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "FeedUtils",
-    "resource:///modules/FeedUtils.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "folderNameCompare",
-    "resource:///modules/folderUtils.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "getMostRecentFolders",
-    "resource:///modules/folderUtils.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "getSpecialFolderString",
-    "resource:///modules/folderUtils.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "MailUtils",
-    "resource:///modules/MailUtils.jsm"
-  );
+  const lazy = {};
+  ChromeUtils.defineESModuleGetters(lazy, {
+    FeedUtils: "resource:///modules/FeedUtils.sys.mjs",
+    FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
+    MailUtils: "resource:///modules/MailUtils.sys.mjs",
+  });
 
   /**
    * Creates an element, sets attributes on it, including always setting the
@@ -57,11 +28,10 @@
    * attribute is used to determine which elements to remove when clearing
    * the menu.
    *
-   * @param {string} tagName    The tag name of the element to generate.
-   * @param {Object} [attributes]  Optional attributes to set on the element.
-   * @param {Object} [isObject]  The optional "is" object to use when creating
-   *                             the element, typically `{is: "folder-menupopup"}`
-   *                             or `{is: "folder-panelview"}`.
+   * @param {string} tagName - The tag name of the element to generate.
+   * @param {object} [attributes] - Optional attributes to set on the element.
+   * @param {object} [isObject] - The optional "is" object to use when creating
+   *                             the element, typically `{is: "folder-menupopup"}`.
    */
   function generateElement(tagName, attributes, isObject) {
     const element = document.createXULElement(tagName, isObject);
@@ -76,46 +46,14 @@
   }
 
   /**
-   * Each time this function is called it generates a unique ID attribute,
-   * e.g. for a `panelview` element. It keeps track of a counter (via a
-   * closure) that increments each time it is called, guaranteeing the IDs it
-   * returns are unique.
+   * A function to add shared code to the classes for the `folder-menupopup`
+   * custom element. Takes a "Base" class, and returns a class that extends
+   * the "Base" class.
    *
-   * @param {string} prefix  Prefix that is combined with a number to make the ID.
-   * @return {string}        The unique ID.
+   * @param {Class} Base - A class to be extended with shared functionality.
+   * @returns {Class} A class that extends the first class.
    */
-  const getUniquePanelViewId = (() => {
-    let counter = 0;
-    return prefix => {
-      counter += 1;
-      return prefix + counter;
-    };
-  })();
-
-  /**
-   * A "mixin" function to add shared code to the classes for the
-   * `folder-menupopup` and `folder-panelview` custom elements. Takes a "Base"
-   * class, and returns a class that extends the "Base" class.
-   *
-   * We use this mixin approach because the `folder-menupopup` class needs to
-   * extend `MozMenuPopup` while the `folder-panelview` class should just extend
-   * `MozXULElement`.
-   *
-   * The shared code in this mixin class works with both `menupopup` and
-   * `panelview` custom elements by using functions and properties from the
-   * "Base" `folder-menupopup` or `folder-panelview` class. Generally the
-   * mixin class determines *what* needs to be built and then defers to the
-   * "Base" custom element class to handle *how* to build it for that menu type.
-   *
-   * Note how this double duty raises some naming challenges. For example,
-   * variables that could be bound to either a `menupopup` or a `panelview`
-   * might be named "submenu". See also `menu`/`menuitem` vs `toolbarbutton`.
-   * (`panelview` and `toolbarbutton` are used in the appmenu.)
-   *
-   * @param {Class} Base  A class to be extended with shared functionality.
-   * @return {Class}      A class that extends the first class.
-   */
-  let FolderMenuMixin = Base =>
+  const FolderMenu = Base =>
     class extends Base {
       constructor() {
         super();
@@ -195,7 +133,7 @@
 
           // Folders that are not in a deferred account.
           notDeferred(folder) {
-            let server = folder.server;
+            const server = folder.server;
             return !(
               server instanceof Ci.nsIPop3IncomingServer &&
               server.deferredToAccount
@@ -265,29 +203,28 @@
             }
           },
 
-          _itemAddedOrRemoved(item) {
-            if (!(item instanceof Ci.nsIMsgFolder)) {
-              return;
-            }
-            if (this._filterFunction && !this._filterFunction(item)) {
+          _folderAddedOrRemoved(folder) {
+            if (this._filterFunction && !this._filterFunction(folder)) {
               return;
             }
             // xxx we can optimize this later
             this._clearMenu(this._menu);
           },
 
-          OnItemAdded(ParentItem, item) {
-            this._itemAddedOrRemoved(item);
+          onFolderAdded(parentFolder, child) {
+            this._folderAddedOrRemoved(child);
           },
-          OnItemRemoved(ParentItem, item) {
-            this._itemAddedOrRemoved(item);
+          onMessageAdded(parentFolder, msg) {},
+          onFolderRemoved(parentFolder, child) {
+            this._folderAddedOrRemoved(child);
           },
+          onMessageRemoved(parentFolder, msg) {},
 
           // xxx I stole this listener list from nsMsgFolderDatasource.cpp, but
           // someone should really document what events are fired when, so that
           // we make sure we're updating at the right times.
-          OnItemPropertyChanged(item, property, old, newItem) {},
-          OnItemIntPropertyChanged(item, property, old, aNew) {
+          onFolderPropertyChanged(item, property, old, newItem) {},
+          onFolderIntPropertyChanged(item, property, old, aNew) {
             if (item instanceof Ci.nsIMsgFolder) {
               if (property == "FolderFlag") {
                 if (
@@ -307,15 +244,15 @@
             }
             this._setCssSelectorsForItem(item);
           },
-          OnItemBoolPropertyChanged(item, property, old, newItem) {
+          onFolderBoolPropertyChanged(item, property, old, newItem) {
             this._setCssSelectorsForItem(item);
           },
-          OnItemUnicharPropertyChanged(item, property, old, newItem) {
+          onFolderUnicharPropertyChanged(item, property, old, newItem) {
             this._setCssSelectorsForItem(item);
           },
-          OnItemPropertyFlagChanged(item, property, old, newItem) {},
+          onFolderPropertyFlagChanged(item, property, old, newItem) {},
 
-          OnItemEvent(folder, eventName) {
+          onFolderEvent(folder, eventName) {
             if (eventName == "MRMTimeChanged") {
               if (
                 this._menu.getAttribute("showRecent") != "true" ||
@@ -326,9 +263,8 @@
               }
 
               const recentMenuItem = this._menu.childWrapper.firstElementChild;
-              const recentSubMenu = this._menu._getSubMenuForMenuItem(
-                recentMenuItem
-              );
+              const recentSubMenu =
+                this._menu._getSubMenuForMenuItem(recentMenuItem);
 
               // If this folder is already in the recent menu, return.
               if (
@@ -354,9 +290,9 @@
            * Helper function to check and see whether we have a menuitem for this
            * particular nsIMsgFolder.
            *
-           * @param {nsIMsgFolder} item  The folder to check.
-           * @param {Element} [menu]     Optional menu to look in, defaults to this._menu.
-           * @returns {Element|null}     The menuitem for that folder, or null if no
+           * @param {nsIMsgFolder} item - The folder to check.
+           * @param {Element} [menu] - Optional menu to look in, defaults to this._menu.
+           * @returns {Element|null} The menuitem for that folder, or null if no
            *                             child for that folder exists.
            */
           _getChildForItem(item, menu = this._menu) {
@@ -367,7 +303,7 @@
             ) {
               return null;
             }
-            for (let child of menu.childWrapper.children) {
+            for (const child of menu.childWrapper.children) {
               if (child._folder && child._folder.URI == item.URI) {
                 return child;
               }
@@ -403,6 +339,7 @@
 
       set parentFolder(val) {
         this._parentFolder = val;
+        this._teardown();
       }
 
       get parentFolder() {
@@ -463,9 +400,9 @@
       /**
        * Get the folders that will appear in the menu.
        *
-       * @param {Element} parentFolder       The parent menu popup/view element.
-       * @param {string[]} excludeServers    Server keys for the servers to exclude.
-       * @param {Function} [filterFunction]  Function for filtering the folders.
+       * @param {Element} parentFolder - The parent menu popup/view element.
+       * @param {string[]} excludeServers - Server keys for the servers to exclude.
+       * @param {Function} [filterFunction] - Function for filtering the folders.
        */
       _getFolders(parentFolder, excludeServers, filterFunction) {
         let folders;
@@ -477,7 +414,7 @@
           // If we don't have a parent, then we assume we should build the
           // top-level accounts. (Actually we build the fake root folders for
           // those accounts.)
-          let accounts = LazyModules.allAccountsSorted(true);
+          const accounts = lazy.FolderUtils.allAccountsSorted(true);
 
           // Now generate our folder list. Note that we'll special case this
           // situation elsewhere, to avoid destroying the sort order we just made.
@@ -499,8 +436,8 @@
       /**
        * Actually constructs the menu items based on the folders given.
        *
-       * @param {nsIMsgFolder[]} folders  An array of nsIMsgFolders to use for building.
-       * @param {string} [mode]  The filtering mode. See comment on _filters field.
+       * @param {nsIMsgFolder[]} folders - An array of nsIMsgFolders to use for building.
+       * @param {string} [mode] - The filtering mode. See comment on _filters field.
        */
       _build(folders, mode) {
         let globalInboxFolder = null;
@@ -513,7 +450,7 @@
           if (mode == "deferred") {
             globalInboxFolder =
               MailServices.accounts.localFoldersServer.rootFolder;
-            let localFoldersIndex = folders.indexOf(globalInboxFolder);
+            const localFoldersIndex = folders.indexOf(globalInboxFolder);
             if (localFoldersIndex != -1) {
               folders.splice(localFoldersIndex, 1);
               folders.unshift(globalInboxFolder);
@@ -533,6 +470,9 @@
         }
 
         this._addFoldersMenuItems(folders, mode, globalInboxFolder);
+        if (!this._parentFolder) {
+          this._addTopLevelBottomMenuItems();
+        }
       }
 
       /**
@@ -566,15 +506,38 @@
       }
 
       /**
+       * Add menu items that only appear at top level (but last), like "<last>".
+       */
+      _addTopLevelBottomMenuItems() {
+        if (this.getAttribute("showLast") != "true") {
+          return;
+        }
+        const folderURI = Services.prefs.getStringPref(
+          "mail.last_msg_movecopy_target_uri"
+        );
+        const folder = folderURI && lazy.MailUtils.getExistingFolder(folderURI);
+        if (!folder) {
+          return;
+        }
+
+        this.childWrapper.appendChild(this._buildSeparator());
+        const attributes = {
+          label: `${folder.prettyName} - ${folder.server.prettyName}`,
+          ...this._getCssSelectorAttributes(folder),
+        };
+        this.childWrapper.appendChild(this._buildMenuItem(attributes, folder));
+      }
+
+      /**
        * Populate a "recent" or "favorites" special submenu with either the
        * recently used or favorite folders, to allow for easy access.
        *
-       * @param {Element} menu  The menu or toolbarbutton element for which one
+       * @param {Element} menu - The menu or toolbarbutton element for which one
        *                        wants to populate the special sub menu.
-       * @param {Element} submenu  The submenu element, typically a menupopup or panelview.
+       * @param {Element} submenu - The submenu element, typically a menupopup.
        */
       _populateSpecialSubmenu(menu, submenu) {
-        let specialType = menu.getAttribute("special");
+        const specialType = menu.getAttribute("special");
         if (this._initializedSpecials.has(specialType)) {
           return;
         }
@@ -590,7 +553,7 @@
         switch (specialType) {
           case "recent":
             // Find the most recently modified ones.
-            specialFolders = LazyModules.getMostRecentFolders(
+            specialFolders = lazy.FolderUtils.getMostRecentFolders(
               specialFolders,
               Services.prefs.getIntPref("mail.folder_widget.max_recent"),
               "MRMTime"
@@ -605,7 +568,7 @@
 
         // Cache the pretty names so that they do not need to be fetched
         // with quadratic complexity when sorting by name.
-        let specialFoldersMap = specialFolders.map(folder => {
+        const specialFoldersMap = specialFolders.map(folder => {
           return {
             folder,
             name: folder.prettyName,
@@ -614,7 +577,7 @@
 
         // Because we're scanning across multiple accounts, we can end up with
         // several folders with the same name. Find those dupes.
-        let dupeNames = new Set();
+        const dupeNames = new Set();
         for (let i = 0; i < specialFoldersMap.length; i++) {
           for (let j = i + 1; j < specialFoldersMap.length; j++) {
             if (specialFoldersMap[i].name == specialFoldersMap[j].name) {
@@ -623,7 +586,7 @@
           }
         }
 
-        for (let folderItem of specialFoldersMap) {
+        for (const folderItem of specialFoldersMap) {
           // If this folder name appears multiple times in the recent list,
           // append the server name to disambiguate.
           // TODO:
@@ -641,12 +604,12 @@
 
         // Make sure the entries are sorted alphabetically.
         specialFoldersMap.sort((a, b) =>
-          LazyModules.folderNameCompare(a.label, b.label)
+          lazy.FolderUtils.folderNameCompare(a.label, b.label)
         );
 
         // Create entries for each of the recent folders.
-        for (let folderItem of specialFoldersMap) {
-          let attributes = {
+        for (const folderItem of specialFoldersMap) {
+          const attributes = {
             label: folderItem.label,
             ...this._getCssSelectorAttributes(folderItem.folder),
           };
@@ -677,15 +640,17 @@
        *  label or if the attribute does not exist the name of the parent
        *  folder instead.
        *
-       * @param {string} mode  The mode attribute.
+       * @param {string} mode - The mode attribute.
        */
       _maybeAddParentFolderMenuItem(mode) {
-        let folder = this._parentFolder;
+        const folder = this._parentFolder;
         if (
           folder &&
           (this.getAttribute("showFileHereLabel") == "true" || !mode)
         ) {
-          let showAccountsFileHere = this.getAttribute("showAccountsFileHere");
+          const showAccountsFileHere = this.getAttribute(
+            "showAccountsFileHere"
+          );
           if (
             (!folder.isServer || showAccountsFileHere != "false") &&
             (!mode ||
@@ -694,7 +659,7 @@
               folder.canFileMessages ||
               showAccountsFileHere == "true")
           ) {
-            let attributes = {};
+            const attributes = {};
 
             if (this.hasAttribute("fileHereLabel")) {
               attributes.label = this.getAttribute("fileHereLabel");
@@ -719,9 +684,9 @@
       /**
        * Add menu items, one for each folder.
        *
-       * @param {nsIMsgFolder[]} folders          Array of folder objects.
-       * @param {string} mode                     The mode attribute.
-       * @param {nsIMsgFolder} globalInboxFolder  The root/global inbox folder.
+       * @param {nsIMsgFolder[]} folders - Array of folder objects.
+       * @param {string} mode - The mode attribute.
+       * @param {nsIMsgFolder} globalInboxFolder - The root/global inbox folder.
        */
       _addFoldersMenuItems(folders, mode, globalInboxFolder) {
         // disableServers attribute is a comma separated list of server keys.
@@ -731,17 +696,17 @@
 
         // We need to call this, or hasSubFolders will always return false.
         // Remove this workaround when Bug 502900 is fixed.
-        LazyModules.MailUtils.discoverFolders();
+        lazy.MailUtils.discoverFolders();
         this._serversOnly = true;
 
-        let [shouldExpand, labels] = this._getShouldExpandAndLabels();
+        const [shouldExpand, labels] = this._getShouldExpandAndLabels();
 
-        for (let folder of folders) {
+        for (const folder of folders) {
           if (!folder.isServer) {
             this._serversOnly = false;
           }
 
-          let attributes = {
+          const attributes = {
             label: this._getFolderLabel(mode, globalInboxFolder, folder),
             ...this._getCssSelectorAttributes(folder),
           };
@@ -762,7 +727,7 @@
 
             this._serversOnly = false;
 
-            let submenuAttributes = {};
+            const submenuAttributes = {};
 
             [
               "class",
@@ -806,10 +771,10 @@
       /**
        * Return the label to use for a folder.
        *
-       * @param {string} mode  The mode, e.g. "deferred".
-       * @param {nsIMsgFolder} globalInboxFolder  The root/global inbox folder.
-       * @param {nsIMsgFolder} folder  The folder for which we are getting a label.
-       * @return {string}  The label to use for the folder.
+       * @param {string} mode - The mode, e.g. "deferred".
+       * @param {nsIMsgFolder} globalInboxFolder - The root/global inbox folder.
+       * @param {nsIMsgFolder} folder - The folder for which we are getting a label.
+       * @returns {string} The label to use for the folder.
        */
       _getFolderLabel(mode, globalInboxFolder, folder) {
         if (
@@ -830,8 +795,8 @@
        * determines whether to show subfolders for a given account type, and an
        * object mapping account types to label names (may be null).
        *
-       * @return {[Function, Object|null]}  Array containing the shouldExpand
-       *                                    function and the labels object.
+       * @returns {any[]} - An array; [0] is the shouldExpand function, [1] is
+       *   the labels object.
        */
       _getShouldExpandAndLabels() {
         let shouldExpand;
@@ -848,15 +813,15 @@
           // to create headers to select the servers. If so, then headlabels
           // is a comma-delimited list of labels corresponding to the server
           // types specified in expandFolders.
-          let types = this.getAttribute("expandFolders").split(/ *, */);
+          const types = this.getAttribute("expandFolders").split(/ *, */);
           // Set the labels. labels[type] = label
           if (this.hasAttribute("headlabels")) {
-            let labelNames = this.getAttribute("headlabels").split(/ *, */);
+            const labelNames = this.getAttribute("headlabels").split(/ *, */);
             labels = {};
             // If the length isn't equal, don't give them any of the labels,
             // since any combination will probably be wrong.
             if (labelNames.length == types.length) {
-              for (let index in types) {
+              for (const index in types) {
                 labels[types[index]] = labelNames[index];
               }
             }
@@ -870,8 +835,8 @@
        * Set attributes on a menu, menuitem, or toolbarbutton element to allow
        * for CSS styling.
        *
-       * @param {nsIMsgFolder} folder  The folder that corresponds to the menu/menuitem.
-       * @param {Element} menuNode     The actual DOM node to set attributes on.
+       * @param {nsIMsgFolder} folder - The folder that corresponds to the menu/menuitem.
+       * @param {Element} menuNode - The actual DOM node to set attributes on.
        */
       _setCssSelectors(folder, menuNode) {
         const cssAttributes = this._getCssSelectorAttributes(folder);
@@ -885,18 +850,19 @@
        * Returns attributes to be set on a menu, menuitem, or toolbarbutton
        * element to allow for CSS styling.
        *
-       * @param {nsIMsgFolder} folder  The folder that corresponds to the menu item.
-       * @return {Object}              Contains the CSS selector attributes.
+       * @param {nsIMsgFolder} folder - The folder that corresponds to the menu item.
+       * @returns {object} Contains the CSS selector attributes.
        */
       _getCssSelectorAttributes(folder) {
-        let attributes = {};
+        const attributes = {};
 
         // First the SpecialFolder attribute.
-        attributes.SpecialFolder = LazyModules.getSpecialFolderString(folder);
+        attributes.SpecialFolder =
+          lazy.FolderUtils.getSpecialFolderString(folder);
 
         // Now the biffState.
-        let biffStates = ["NewMail", "NoMail", "UnknownMail"];
-        for (let state of biffStates) {
+        const biffStates = ["NewMail", "NoMail", "UnknownMail"];
+        for (const state of biffStates) {
           if (folder.biffState == Ci.nsIMsgFolder["nsMsgBiffState_" + state]) {
             attributes.BiffState = state;
             break;
@@ -906,9 +872,7 @@
         attributes.IsServer = folder.isServer;
         attributes.IsSecure = folder.server.isSecure;
         attributes.ServerType = folder.server.type;
-        attributes.IsFeedFolder = !!LazyModules.FeedUtils.getFeedUrlsInFolder(
-          folder
-        );
+        attributes.IsFeedFolder = !!lazy.FeedUtils.getFeedUrlsInFolder(folder);
 
         return attributes;
       }
@@ -921,8 +885,8 @@
        * 'verbose'        - Folder on Account
        * 'path'           - Account/Folder/Subfolder
        *
-       * @param {nsIMsgFolder} folder  The folder that corresponds to the menu/menuitem.
-       * @return {string}              The display name.
+       * @param {nsIMsgFolder} folder - The folder that corresponds to the menu/menuitem.
+       * @returns {string} The display name.
        */
       getDisplayName(folder) {
         if (folder.isServer) {
@@ -937,9 +901,7 @@
         }
 
         if (this._displayformat == "path") {
-          return (
-            LazyModules.FeedUtils.getFolderPrettyPath(folder) || folder.name
-          );
+          return lazy.FeedUtils.getFolderPrettyPath(folder) || folder.name;
         }
 
         return folder.name;
@@ -950,15 +912,16 @@
        * TODO: This function does not work yet for the appmenu. However, as of
        * June 2019, this functionality is not used in the appmenu.
        *
-       * @param {nsIMsgFolder} inputFolder  The folder to select (if none, then Choose Folder).
-       * @return {boolean}                  Is true if any usable folder was found, otherwise false.
-       * @note  If inputFolder is not in this popup, but is instead a descendant of
-       *        a member of the popup, that ancestor will be selected.
+       * @param {nsIMsgFolder} inputFolder - The folder to select (if none,
+       *   then Choose Folder). If inputFolder is not in this popup, but is
+       *   instead a descendant of a member of the popup, that ancestor will be
+       *   selected.
+       * @returns {boolean} Is true if any usable folder was found, otherwise false.
        */
       selectFolder(inputFolder) {
         // Set the label of the menulist element as if folder had been selected.
         function setupParent(folder, menulist, noFolders) {
-          let menupopup = menulist.menupopup;
+          const menupopup = menulist.menupopup;
           if (folder) {
             menulist.setAttribute("label", menupopup.getDisplayName(folder));
           } else if (noFolders) {
@@ -989,17 +952,17 @@
           );
           menulist.setAttribute(
             "SpecialFolder",
-            folder ? LazyModules.getSpecialFolderString(folder) : "none"
+            folder ? lazy.FolderUtils.getSpecialFolderString(folder) : "none"
           );
           menulist.setAttribute(
             "IsFeedFolder",
-            Boolean(folder && LazyModules.FeedUtils.getFeedUrlsInFolder(folder))
+            Boolean(folder && lazy.FeedUtils.getFeedUrlsInFolder(folder))
           );
         }
 
         let folder;
         if (inputFolder) {
-          for (let child of this.children) {
+          for (const child of this.children) {
             if (
               child &&
               child._folder &&
@@ -1038,10 +1001,8 @@
       }
 
       /**
-       * Removes all menu items from this menu, removes their submenus (needed for
-       * the appmenu where the `panelview` submenus are not children of the
-       * `toolbarbutton` menu items), resets all fields, and removes the listener.
-       * This function is called when a change that affects this menu is detected
+       * Removes all menu items from this menu, removes their submenus. This
+       * function is called when a change that affects this menu is detected
        * by the listener.
        */
       _teardown() {
@@ -1077,12 +1038,11 @@
    * items and submenus for all folders from every account (or some subset of
    * folders and accounts). It is also used to provide a menu with a menuitem
    * for each account. Each menu item gets displayed with the folder or
-   * account name and icon. It uses code that is also used by MozFolderPanelView
-   * via the FolderMenuMixin function.
+   * account name and icon.
    *
-   * @extends {MozElements.MozMenuPopup}
+   * @augments {MozElements.MozMenuPopup}
    */
-  let MozFolderMenuPopup = FolderMenuMixin(
+  const MozFolderMenuPopup = FolderMenu(
     class extends MozElements.MozMenuPopup {
       constructor() {
         super();
@@ -1112,7 +1072,7 @@
         // Find out if we are in a wrapper (customize toolbars mode is active).
         let inWrapper = false;
         let node = this;
-        while (node instanceof XULElement) {
+        while (XULElement.isInstance(node)) {
           if (node.id.startsWith("wrapper-")) {
             inWrapper = true;
             break;
@@ -1158,8 +1118,8 @@
       /**
        * Given a menu item, return the menupopup that it opens.
        *
-       * @param {Element} menu   The menu item, typically a `menu` element.
-       * @return {Element|null}  The `menupopup` element or null if none found.
+       * @param {Element} menu - The menu item, typically a `menu` element.
+       * @returns {Element|null} The `menupopup` element or null if none found.
        */
       _getSubMenuForMenuItem(menu) {
         return menu.querySelector("menupopup");
@@ -1176,9 +1136,9 @@
        * Builds a menu item (`menuitem`) element that does not open a submenu
        * (i.e. not a `menu` element).
        *
-       * @param {Object} [attributes]  Attributes to set on the element.
-       * @param {nsIMsgFolder} folder  The folder associated with the menu item.
-       * @returns {Element}            A `menuitem`.
+       * @param {object} [attributes] - Attributes to set on the element.
+       * @param {nsIMsgFolder} folder - The folder associated with the menu item.
+       * @returns {Element} A `menuitem`.
        */
       _buildMenuItem(attributes, folder) {
         const menuitem = generateElement("menuitem", attributes);
@@ -1191,12 +1151,12 @@
        * Builds a menu item (`menu`) element and an associated submenu
        * (`menupopup`) element.
        *
-       * @param {Object} attributes         Attributes to set on the `menu` element.
-       * @param {boolean} folderSubmenu     Whether the submenu is to be a
+       * @param {object} attributes - Attributes to set on the `menu` element.
+       * @param {boolean} folderSubmenu - Whether the submenu is to be a
        *                                    `folder-menupopup` element.
-       * @param {nsIMsgFolder} [folder]     The folder associated with the menu item.
-       * @param {Object} submenuAttributes  Attributes to set on the `menupopup` element.
-       * @return {Element[]}       Array containing the `menu` and
+       * @param {nsIMsgFolder} [folder] - The folder associated with the menu item.
+       * @param {object} submenuAttributes - Attributes to set on the `menupopup` element.
+       * @returns {Element[]} Array containing the `menu` and
        *                                    `menupopup` elements.
        */
       _buildMenuItemWithSubmenu(
@@ -1238,8 +1198,8 @@
        * The submenu (`menupopup`) is just a standard element, not a custom
        * element (`folder-menupopup`).
        *
-       * @param {Object} [attributes]  Attributes to set on the menu item element.
-       * @return {Element}             The menu item (`menu`) element.
+       * @param {object} [attributes] - Attributes to set on the menu item element.
+       * @returns {Element} The menu item (`menu`) element.
        */
       _buildSpecialMenu(attributes) {
         const [menu, menupopup] = this._buildMenuItemWithSubmenu(attributes);
@@ -1259,233 +1219,5 @@
 
   customElements.define("folder-menupopup", MozFolderMenuPopup, {
     extends: "menupopup",
-  });
-
-  /**
-   * Used as a panelview in the appmenu/hamburger menu. It contains
-   * menu items and submenus for all folders from every account (or some subset
-   * of folders and accounts). It is also used to provide a menu with a menuitem
-   * for each account. Each menu item gets displayed with the folder or account
-   * name and icon. It uses code that is also used by MozFolderMenupopup via
-   * the FolderMenuMixin function.
-   *
-   * @extends {MozXULElement}
-   */
-  let MozFolderPanelView = FolderMenuMixin(
-    class extends MozXULElement {
-      constructor() {
-        super();
-
-        // To improve performance, only build the menu when it is shown.
-        this.addEventListener(
-          "ViewShowing",
-          event => {
-            this._ensureInitialized();
-          },
-          true
-        );
-      }
-
-      connectedCallback() {
-        // In the appmenu the panelview elements may move around, so we only want
-        // connectedCallback to run once.
-        if (this.delayConnectedCallback() || this.hasConnected) {
-          return;
-        }
-        this.hasConnected = true;
-        this.setAttribute("is", "folder-panelview");
-        this._setUpPanelView(this);
-      }
-
-      /**
-       * Set up a `folder-panelview` or a plain `panelview` element. If the
-       * panelview was statically defined in a XUL file then it may already have
-       * a child <vbox> element, if it was dynamically generated it may not yet.
-       *
-       * @param {Element} panelview  The panelview to set up.
-       */
-      _setUpPanelView(panelview) {
-        let subviewBody = panelview.querySelector(".panel-subview-body");
-
-        if (!subviewBody) {
-          subviewBody = document.createXULElement("vbox");
-          subviewBody.classList.add("panel-subview-body");
-          panelview.appendChild(subviewBody);
-        }
-        // Because the menu items in a panelview go inside a child vbox but are
-        // direct children of a menupopup, we set up a consistent way to append
-        // and access menu items for both cases.
-        panelview.childWrapper = subviewBody;
-        panelview.classList.add("PanelUI-subView");
-
-        // Prevent the back button from firing the command that is set on the
-        // panelview by stopping propagation of the event. The back button does
-        // not exist until the panelview is shown for the first time (when the
-        // header is added to it).
-        panelview.addEventListener(
-          "ViewShown",
-          () => {
-            const backButton = panelview.querySelector(
-              ".panel-header > .subviewbutton-back"
-            );
-            if (backButton) {
-              backButton.addEventListener("command", event =>
-                event.stopPropagation()
-              );
-            }
-          },
-          { once: true }
-        );
-      }
-
-      /**
-       * Given a menu item, return the submenu that it opens.
-       *
-       * @param {Element} item   The menu item, typically a `toolbarbutton`.
-       * @return {Element|null}  The submenu (or null if none found), typically a
-       *                         `panelview` element.
-       */
-      _getSubMenuForMenuItem(item) {
-        const panelviewId = item.getAttribute("panelviewId");
-        if (panelviewId) {
-          return document.getElementById(panelviewId);
-        }
-        return null;
-      }
-
-      /**
-       * Returns a `toolbarseparator` element for use in a `panelview`.
-       */
-      _buildSeparator() {
-        return generateElement("toolbarseparator");
-      }
-
-      /**
-       * Builds a menu item (`toolbarbutton`) element that does not open a submenu.
-       *
-       * @param {Object} [attributes]  Attributes to set on the element.
-       * @param {nsIMsgFolder} folder  The folder associated with the menu item.
-       * @returns {Element}            A `toolbarbutton`.
-       */
-      _buildMenuItem(attributes, folder) {
-        const button = generateElement("toolbarbutton", attributes);
-        button._folder = folder;
-
-        button.classList.add(
-          "folderMenuItem",
-          "subviewbutton",
-          "subviewbutton-iconic"
-        );
-        return button;
-      }
-
-      /**
-       * Builds a menu item (`toolbarbutton`) element and an associated submenu
-       * (`panelview`) element.
-       *
-       * @param {Object} attributes         Attributes to set on the
-       *                                    `toolbarbutton` element.
-       * @param {boolean} folderSubmenu     Whether the submenu is to be a
-       *                                    `folder-panelview` element.
-       * @param {nsIMsgFolder} [folder]     The folder associated with the menu item.
-       * @param {Object} submenuAttributes  Attributes to set on the `panelview`
-       *                                    element.
-       * @return {Element[]}                Array containing the `toolbarbutton`
-       *                                    and `panelview` elements.
-       */
-      _buildMenuItemWithSubmenu(
-        attributes,
-        folderSubmenu,
-        folder,
-        submenuAttributes
-      ) {
-        const button = generateElement("toolbarbutton", attributes);
-
-        button.classList.add(
-          "folderMenuItem",
-          "subviewbutton",
-          "subviewbutton-iconic",
-          "subviewbutton-nav"
-        );
-
-        const isObject = folderSubmenu ? { is: "folder-panelview" } : null;
-
-        const panelview = generateElement(
-          "panelview",
-          submenuAttributes,
-          isObject
-        );
-
-        if (!folderSubmenu) {
-          this._setUpPanelView(panelview);
-        }
-
-        if (folder) {
-          panelview._parentFolder = folder;
-          panelview._folder = folder;
-        }
-
-        const panelviewId = getUniquePanelViewId("folderPanelView");
-        panelview.setAttribute("id", panelviewId);
-
-        // Pass these attributes down from panelview to panelview.
-        ["command", "oncommand"].forEach(attribute => {
-          if (this.hasAttribute(attribute)) {
-            panelview.setAttribute(attribute, this.getAttribute(attribute));
-          }
-        });
-
-        if (
-          !submenuAttributes ||
-          (submenuAttributes && !submenuAttributes.label)
-        ) {
-          panelview.setAttribute("label", attributes.label);
-        }
-
-        button.addEventListener("command", event => {
-          // Stop event propagation so the command that is set on the panelview
-          // is not fired when we are just navigating to a submenu.
-          event.stopPropagation();
-          PanelUI.showSubView(panelviewId, panelview);
-        });
-
-        // Save the panelviewId on the menu item so we have a way to access the
-        // panelview from the menu item that opens it.
-        button.setAttribute("panelviewId", panelviewId);
-        button.setAttribute("closemenu", "none");
-        document.querySelector("#appMenu-multiView").appendChild(panelview);
-
-        return [button, panelview];
-      }
-
-      /**
-       * Build a special menu item (`toolbarbutton`) and an empty submenu
-       * (`panelview`) for it. The submenu is populated just before it is shown
-       * by `_populateSpecialSubmenu`.
-       *
-       * The submenu (`panelview`) is just a standard element, not a custom
-       * element (`folder-panelview`).
-       *
-       * @param {Object} [attributes]  Attributes to set on the menu item element.
-       * @return {Element}             The menu item (`toolbarbutton`) element.
-       */
-      _buildSpecialMenu(attributes) {
-        const [button, panelview] = this._buildMenuItemWithSubmenu(attributes);
-
-        panelview.addEventListener(
-          "ViewShowing",
-          event => {
-            this._populateSpecialSubmenu(button, panelview);
-          },
-          { once: true }
-        );
-
-        return button;
-      }
-    }
-  );
-
-  customElements.define("folder-panelview", MozFolderPanelView, {
-    extends: "panelview",
   });
 }

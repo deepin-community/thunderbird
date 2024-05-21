@@ -51,9 +51,36 @@ function classPreview() {
       if (#privateVar in this && this.#privateVar !== 0) {
         i = i * 2;
       }
+      const y = {
+        hello: {
+          foo: "foo",
+           bar: "bar"
+        },
+      };
+      y;
       debugger;
     }
   }
   const foo = new Foo();
   foo.breakFn();
+}
+
+function invalidTargets() {
+  "a";
+  false;
+  undefined;
+  null;
+  42;
+  const myVar = "foo";
+  debugger;
+  return myVar;
+}
+
+function multipleTokens() {
+  var foo = {bar: { baz: "bloop"}}, blip = {boom: 0};
+  foo || blip
+  foo.bar;
+  foo.bar.baz;
+  foo || blip.boom;
+  debugger;
 }

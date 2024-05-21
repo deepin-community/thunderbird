@@ -2,24 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import copy
 import errno
 import os
-import six
 import subprocess
 import sys
 import tempfile
 import unittest
-from six import StringIO
+
+import six
+from buildconfig import topobjdir, topsrcdir
+from mozpack import path as mozpath
+from six import StringIO, string_types
 
 from mozbuild.configure import ConfigureSandbox
-from mozbuild.util import memoized_property, ReadOnlyNamespace
-from mozpack import path as mozpath
-from six import string_types
-
-from buildconfig import topobjdir, topsrcdir
+from mozbuild.util import ReadOnlyNamespace, memoized_property
 
 
 def fake_short_path(path):
@@ -41,7 +38,7 @@ class ConfigureTestVFS(object):
         self._paths = set(mozpath.abspath(p) for p in paths)
 
     def _real_file(self, path):
-        return mozpath.basedir(path, [topsrcdir, topobjdir, tempfile.tempdir])
+        return mozpath.basedir(path, [topsrcdir, topobjdir, tempfile.gettempdir()])
 
     def exists(self, path):
         if path in self._paths:
@@ -137,6 +134,7 @@ class ConfigureTestSandbox(ConfigureSandbox):
         return ReadOnlyNamespace(
             CalledProcessError=subprocess.CalledProcessError,
             check_output=self.check_output,
+            run=self.subprocess_run,
             PIPE=subprocess.PIPE,
             STDOUT=subprocess.STDOUT,
             Popen=self.Popen,
@@ -196,7 +194,11 @@ class ConfigureTestSandbox(ConfigureSandbox):
             raise OSError(errno.ENOENT, "File not found")
 
         func = self._subprocess_paths.get(program)
-        retcode, stdout, stderr = func(stdin, args[1:])
+        cwd = kargs.get("cwd")
+        if cwd and func.__code__.co_argcount == 3:
+            retcode, stdout, stderr = func(stdin, args[1:], cwd)
+        else:
+            retcode, stdout, stderr = func(stdin, args[1:])
 
         class Process(object):
             def communicate(self, stdin=None):
@@ -214,6 +216,19 @@ class ConfigureTestSandbox(ConfigureSandbox):
         if retcode:
             raise subprocess.CalledProcessError(retcode, args, stdout)
         return stdout
+
+    def subprocess_run(self, args, **kwargs):
+        proc = self.Popen(args, **kwargs)
+        stdout, stderr = proc.communicate()
+        retcode = proc.wait()
+        if kwargs.get("check") and retcode:
+            raise subprocess.CalledProcessError(retcode, args, stdout)
+        return ReadOnlyNamespace(
+            args=args,
+            returncode=retcode,
+            stdout=stdout,
+            stderr=stderr,
+        )
 
     def shell(self, stdin, args):
         script = mozpath.abspath(args[0])
@@ -292,7 +307,6 @@ class BaseConfigureTest(unittest.TestCase):
                 environ,
                 OLD_CONFIGURE=os.path.join(topsrcdir, "old-configure"),
                 MOZCONFIG=mozconfig_path,
-                MOZ_TEST_PYTHON=sys.executable,
             )
 
             paths = dict(paths)

@@ -12,50 +12,56 @@
 
 var {
   close_compose_window,
+  compose_window_ready,
   open_compose_new_mail,
   open_compose_with_forward,
   open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+);
 var {
   add_message_to_folder,
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
   create_message,
-  mc,
+  get_about_message,
+  get_special_folder,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { gMockPromptService } = ChromeUtils.import(
-  "resource://testing-common/mozmill/PromptHelpers.jsm"
+var { gMockPromptService } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/PromptHelpers.sys.mjs"
+);
+var { get_notification, wait_for_notification_to_show } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+  );
+var { promise_new_window } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var SAVE = 0;
 var CANCEL = 1;
 var DONT_SAVE = 2;
 
-var cwc = null; // compose window controller
 var folder = null;
+var gDraftFolder = null;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   requestLongerTimeout(3);
 
-  folder = create_folder("PromptToSaveTest");
+  folder = await create_folder("PromptToSaveTest");
 
-  add_message_to_folder(folder, create_message()); // row 0
-  let localFolder = folder.QueryInterface(Ci.nsIMsgLocalMailFolder);
+  await add_message_to_folder([folder], create_message()); // row 0
+  const localFolder = folder.QueryInterface(Ci.nsIMsgLocalMailFolder);
   localFolder.addMessage(msgSource("content type: text", "text")); // row 1
   localFolder.addMessage(msgSource("content type missing", null)); // row 2
+  gDraftFolder = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 function msgSource(aSubject, aContentType) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@invalid";
+  const msgId = Services.uuid.generateUUID() + "@invalid";
 
   return (
     "From - Sun Apr 07 22:47:11 2013\r\n" +
@@ -86,17 +92,18 @@ function msgSource(aSubject, aContentType) {
  * the changes. This also tests that the user can cancel the
  * quit request.
  */
-add_task(function test_can_cancel_quit_on_changes() {
+add_task(async function test_can_cancel_quit_on_changes() {
   // Register the Mock Prompt Service
   gMockPromptService.register();
 
   // opening a new compose window
-  cwc = open_compose_new_mail(mc);
+  const cwc = await open_compose_new_mail(window);
 
   // Make some changes
-  cwc.type(cwc.e("content-frame"), "Hey check out this megalol link");
+  cwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey check out this megalol link", cwc);
 
-  let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
+  const cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
   );
 
@@ -107,7 +114,7 @@ add_task(function test_can_cancel_quit_on_changes() {
 
   Services.obs.notifyObservers(cancelQuit, "quit-application-requested");
 
-  let promptState = gMockPromptService.promptState;
+  const promptState = gMockPromptService.promptState;
   Assert.notEqual(null, promptState, "Expected a confirmEx prompt");
 
   Assert.equal("confirmEx", promptState.method);
@@ -116,7 +123,7 @@ add_task(function test_can_cancel_quit_on_changes() {
   // should now be true
   Assert.ok(cancelQuit.data, "Didn't cancel the quit");
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   // Unregister the Mock Prompt Service
   gMockPromptService.unregister();
@@ -129,17 +136,18 @@ add_task(function test_can_cancel_quit_on_changes() {
  * the changes. This also tests that the user can let the quit
  * occur.
  */
-add_task(function test_can_quit_on_changes() {
+add_task(async function test_can_quit_on_changes() {
   // Register the Mock Prompt Service
   gMockPromptService.register();
 
   // opening a new compose window
-  cwc = open_compose_new_mail(mc);
+  const cwc = await open_compose_new_mail(window);
 
   // Make some changes
-  cwc.type(cwc.e("content-frame"), "Hey check out this megalol link");
+  cwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey check out this megalol link", cwc);
 
-  let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
+  const cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
   );
 
@@ -150,7 +158,7 @@ add_task(function test_can_quit_on_changes() {
   // Trigger the quit-application-request notification
   Services.obs.notifyObservers(cancelQuit, "quit-application-requested");
 
-  let promptState = gMockPromptService.promptState;
+  const promptState = gMockPromptService.promptState;
   Assert.notEqual(null, promptState, "Expected a confirmEx prompt");
 
   Assert.equal("confirmEx", promptState.method);
@@ -159,7 +167,7 @@ add_task(function test_can_quit_on_changes() {
   // false
   Assert.ok(!cancelQuit.data, "The quit request was cancelled");
 
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   // Unregister the Mock Prompt Service
   gMockPromptService.unregister();
@@ -171,26 +179,29 @@ add_task(function test_can_quit_on_changes() {
  * window's state is such that subsequent quit requests still cause the
  * Don't Save / Cancel / Save dialog to come up.
  */
-add_task(function test_window_quit_state_reset_on_aborted_quit() {
+add_task(async function test_window_quit_state_reset_on_aborted_quit() {
   // Register the Mock Prompt Service
   gMockPromptService.register();
 
   // open two new compose windows
-  let cwc1 = open_compose_new_mail(mc);
-  let cwc2 = open_compose_new_mail(mc);
+  const cwc1 = await open_compose_new_mail(window);
+  const cwc2 = await open_compose_new_mail(window);
 
   // Type something in each window.
-  cwc1.type(cwc1.e("content-frame"), "Marco!");
-  cwc2.type(cwc2.e("content-frame"), "Polo!");
+  cwc1.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Marco!", cwc1);
 
-  let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
+  cwc2.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Polo!", cwc2);
+
+  const cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
   );
 
   // This is a hacky method for making sure that the second window
   // receives a CANCEL click in the popup dialog.
   var numOfPrompts = 0;
-  gMockPromptService.onPromptCallback = function() {
+  gMockPromptService.onPromptCallback = function () {
     numOfPrompts++;
 
     if (numOfPrompts > 1) {
@@ -213,12 +224,19 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
   // The first window should still prompt when attempting to close the
   // window.
   gMockPromptService.returnValue = DONT_SAVE;
-  cwc2.click(cwc2.e("menu_close"));
 
-  let promptState = gMockPromptService.promptState;
-  Assert.notEqual(null, promptState, "Expected a confirmEx prompt");
+  // Unclear why the timeout is needed.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 500));
 
-  close_compose_window(cwc1);
+  cwc2.goDoCommand("cmd_close");
+
+  TestUtils.waitForCondition(
+    () => !!gMockPromptService.promptState,
+    "Expected a confirmEx prompt to come up"
+  );
+
+  await close_compose_window(cwc1);
 
   gMockPromptService.unregister();
 });
@@ -227,81 +245,176 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
  * Tests that we don't get a prompt to save if there has been no user input
  * into the message yet, when trying to close.
  */
-add_task(function test_no_prompt_on_close_for_unmodified() {
-  be_in_folder(folder);
-  let msg = select_click_row(0);
-  assert_selected_and_displayed(mc, msg);
+add_task(async function test_no_prompt_on_close_for_unmodified() {
+  await be_in_folder(folder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
 
-  let nwc = open_compose_new_mail();
-  close_compose_window(nwc, false);
+  const nwc = await open_compose_new_mail();
+  await close_compose_window(nwc, false);
 
-  let rwc = open_compose_with_reply();
-  close_compose_window(rwc, false);
+  const rwc = await open_compose_with_reply();
+  await close_compose_window(rwc, false);
 
-  let fwc = open_compose_with_forward();
-  close_compose_window(fwc, false);
+  const fwc = await open_compose_with_forward();
+  await close_compose_window(fwc, false);
 });
 
 /**
  * Tests that we get a prompt to save if the user made changes to the message
  * before trying to close it.
  */
-add_task(function test_prompt_on_close_for_modified() {
-  be_in_folder(folder);
-  let msg = select_click_row(0);
-  assert_selected_and_displayed(mc, msg);
+add_task(async function test_prompt_on_close_for_modified() {
+  await be_in_folder(folder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
 
-  let nwc = open_compose_new_mail();
-  nwc.type(nwc.e("content-frame"), "Hey hey hey!");
-  close_compose_window(nwc, true);
+  const nwc = await open_compose_new_mail();
+  nwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey hey hey!", nwc);
+  await close_compose_window(nwc, true);
 
-  let rwc = open_compose_with_reply();
-  rwc.type(rwc.e("content-frame"), "Howdy!");
-  close_compose_window(rwc, true);
+  const rwc = await open_compose_with_reply();
+  rwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Howdy!", rwc);
+  await close_compose_window(rwc, true);
 
-  let fwc = open_compose_with_forward();
-  fwc.type(fwc.e("content-frame"), "Greetings!");
-  close_compose_window(fwc, true);
+  const fwc = await open_compose_with_forward();
+  fwc.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Greetings!", fwc);
+  await close_compose_window(fwc, true);
 });
 
 /**
  * Test there's no prompt on close when no changes was made in reply/forward
  * windows - for the case the original msg had content type "text".
  */
-add_task(function test_no_prompt_on_close_for_unmodified_content_type_text() {
-  be_in_folder(folder);
-  let msg = select_click_row(1); // row 1 is the one with content type text
-  assert_selected_and_displayed(mc, msg);
+add_task(
+  async function test_no_prompt_on_close_for_unmodified_content_type_text() {
+    await be_in_folder(folder);
+    const msg = await select_click_row(1); // row 1 is the one with content type text
+    await assert_selected_and_displayed(window, msg);
 
-  let rwc = open_compose_with_reply();
-  close_compose_window(rwc, false);
+    const rwc = await open_compose_with_reply();
+    await close_compose_window(rwc, false);
 
-  let fwc = open_compose_with_forward();
-  Assert.equal(
-    fwc.e("attachmentBucket").getRowCount(),
-    0,
-    "forwarding msg created attachment"
-  );
-  close_compose_window(fwc, false);
-});
+    const fwc = await open_compose_with_forward();
+    Assert.equal(
+      fwc.document.getElementById("attachmentBucket").getRowCount(),
+      0,
+      "forwarding msg created attachment"
+    );
+    await close_compose_window(fwc, false);
+  }
+);
 
 /**
  * Test there's no prompt on close when no changes was made in reply/forward
  * windows - for the case the original msg had no content type.
  */
-add_task(function test_no_prompt_on_close_for_unmodified_no_content_type() {
-  be_in_folder(folder);
-  let msg = select_click_row(2); // row 2 is the one with no content type
-  assert_selected_and_displayed(mc, msg);
+add_task(
+  async function test_no_prompt_on_close_for_unmodified_no_content_type() {
+    await be_in_folder(folder);
+    const msg = await select_click_row(2); // row 2 is the one with no content type
+    await assert_selected_and_displayed(window, msg);
 
-  let rwc = open_compose_with_reply();
-  close_compose_window(rwc, false);
+    const rwc = await open_compose_with_reply();
+    await close_compose_window(rwc, false);
 
-  let fwc = open_compose_with_forward();
-  Assert.equal(
-    fwc.e("attachmentBucket").getRowCount(),
-    0,
-    "forwarding msg created attachment"
+    const fwc = await open_compose_with_forward();
+    Assert.equal(
+      fwc.document.getElementById("attachmentBucket").getRowCount(),
+      0,
+      "forwarding msg created attachment"
+    );
+    await close_compose_window(fwc, false);
+  }
+);
+
+add_task(async function test_prompt_save_on_pill_editing() {
+  let cwc = await open_compose_new_mail(window);
+
+  // Focus should be on the To field, so just type an address.
+  EventUtils.sendString("test@foo.invalid", cwc);
+  const pillCreated = TestUtils.waitForCondition(
+    () => cwc.document.querySelectorAll("mail-address-pill").length == 1,
+    "One pill was created"
   );
-  close_compose_window(fwc, false);
+  // Trigger the saving of the draft.
+  EventUtils.synthesizeKey("s", { accelKey: true }, cwc);
+  await pillCreated;
+  Assert.ok(cwc.gSaveOperationInProgress, "Should start save operation");
+  await TestUtils.waitForCondition(
+    () => !cwc.gSaveOperationInProgress && !cwc.gWindowLock,
+    "Waiting for the save operation to complete"
+  );
+
+  // All leftover text should have been cleared and pill should have been
+  // created before the draft is actually saved.
+  Assert.equal(
+    cwc.document.activeElement.id,
+    "toAddrInput",
+    "The input field is focused."
+  );
+  Assert.equal(
+    cwc.document.activeElement.value,
+    "",
+    "The input field is empty."
+  );
+
+  // Close the compose window after the saving operation is completed.
+  await close_compose_window(cwc, false);
+
+  // Move to the drafts folder and select the recently saved message.
+  await be_in_folder(gDraftFolder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
+
+  // Click on the "edit draft" notification.
+  const aboutMessage = get_about_message();
+  const kBoxId = "mail-notification-top";
+  await wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+  const box = get_notification(aboutMessage, kBoxId, "draftMsgContent");
+
+  const composePromise = promise_new_window("msgcompose");
+  // Click on the "Edit" button in the draft notification.
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
+  cwc = await compose_window_ready(composePromise);
+
+  // Make sure the address was saved correctly.
+  const pill = cwc.document.querySelector("mail-address-pill");
+  Assert.equal(
+    pill.fullAddress,
+    "test@foo.invalid",
+    "the email address matches"
+  );
+  const isEditing = TestUtils.waitForCondition(
+    () => pill.isEditing,
+    "Pill is being edited"
+  );
+
+  const focusPromise = TestUtils.waitForCondition(
+    () => cwc.document.activeElement == pill,
+    "Pill is focused"
+  );
+  // The focus should be on the subject since we didn't write anything,
+  // so shift+tab to move the focus on the To field, and pressing Arrow Left
+  // should correctly focus the previously generated pill.
+  EventUtils.synthesizeKey("VK_TAB", { shiftKey: true }, cwc);
+  EventUtils.synthesizeKey("KEY_ArrowLeft", {}, cwc);
+  await focusPromise;
+  EventUtils.synthesizeKey("VK_RETURN", {}, cwc);
+  await isEditing;
+
+  const promptPromise = BrowserTestUtils.promiseAlertDialog("extra1");
+  // Try to quit after entering the pill edit mode, a "unsaved changes" dialog
+  // should be triggered.
+  cwc.goDoCommand("cmd_close");
+  await promptPromise;
+
+  await close_compose_window(cwc);
 });

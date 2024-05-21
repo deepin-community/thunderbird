@@ -3,7 +3,9 @@
 
 "use strict";
 
-const { Resource } = ChromeUtils.import("resource://services-sync/resource.js");
+const { Resource } = ChromeUtils.importESModule(
+  "resource://services-sync/resource.sys.mjs"
+);
 
 var httpServer = new HttpServer();
 httpServer.registerPathHandler("/content", contentHandler);
@@ -39,7 +41,7 @@ function triggerRedirect() {
 
   let prefs = Services.prefs.getBranch("network.proxy.");
   prefs.setIntPref("type", 2);
-  prefs.setCharPref("autoconfig_url", "data:text/plain," + PROXY_FUNCTION);
+  prefs.setStringPref("autoconfig_url", "data:text/plain," + PROXY_FUNCTION);
 }
 
 add_task(async function test_headers_copied() {

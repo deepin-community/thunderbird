@@ -71,8 +71,6 @@ app-icon-options =
     .label = Pilihan Ikon Aplikasi…
     .accesskey = n
 
-notification-settings = Makluman dan bunyian piawai boleh dinyahaktifkan dalam anak tetingkap Notifikasi dalam Keutamaan Sistem.
-
 animated-alert-label =
     .label = Papar makluman
     .accesskey = P
@@ -263,10 +261,6 @@ quoted-text-color =
     .label = Warna:
     .accesskey = n
 
-
-
-
-
 save-to-label =
     .label = Simpan fail ke
     .accesskey = S
@@ -416,12 +410,6 @@ restore-html-label =
 default-format-label =
     .label = Guna format Perenggan secara piawai, bukan Teks Kandungan
     .accesskey = P
-
-format-description = Tetapkan tatalaku format teks
-
-send-options-label =
-    .label = Pilihan Hantar…
-    .accesskey = H
 
 autocomplete-description = Apabila mengalamatkan mesej, cari entri yang sepadan dalam:
 
@@ -673,8 +661,6 @@ theme-label =
     .value = Tema:
     .accesskey = T
 
-style-thunderbird =
-    .label = Thunderbird
 style-bubbles =
     .label = Buih
 style-dark =
@@ -693,4 +679,6 @@ chat-variant-label =
     .accesskey = V
 
 ## Preferences UI Search Results
+
+## Settings UI Search Results
 

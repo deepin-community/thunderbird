@@ -4,10 +4,12 @@
 
 "use strict";
 
-const EventEmitter = require("devtools/shared/event-emitter");
+const EventEmitter = require("resource://devtools/shared/event-emitter.js");
 const Debugger = require("Debugger");
 
-const { reportException } = require("devtools/shared/DevToolsUtils");
+const {
+  reportException,
+} = require("resource://devtools/shared/DevToolsUtils.js");
 
 /**
  * Multiple actors that use a |Debugger| instance come in a few versions, each
@@ -25,8 +27,8 @@ const { reportException } = require("devtools/shared/DevToolsUtils");
  * @param Function findDebuggees
  *        Called with one argument: a |Debugger| instance. This function should
  *        return an iterable of globals to be added to the |Debugger|
- *        instance. The globals may be wrapped in a |Debugger.Object|, or
- *        unwrapped.
+ *        instance. The globals are the actual global objects and aren't wrapped
+ *        in in a |Debugger.Object|.
  *
  * @param Function shouldAddNewGlobalAsDebuggee
  *        Called with one argument: a |Debugger.Object| wrapping a global
@@ -61,30 +63,40 @@ module.exports = function makeDebugger({
   const dbg = new Debugger();
   EventEmitter.decorate(dbg);
 
+  // By default, we disable asm.js and WASM debugging because of performance reason.
+  // Enabling asm.js debugging (allowUnobservedAsmJS=false) will make asm.js fallback to JS compiler
+  // and be debugging as a regular JS script.
   dbg.allowUnobservedAsmJS = true;
+  // Enabling WASM debugging (allowUnobservedWasm=false) will make the engine compile WASM scripts
+  // into different machine code with debugging instructions. This significantly increase the memory usage of it.
+  dbg.allowUnobservedWasm = true;
+
   dbg.uncaughtExceptionHook = reportDebuggerHookException;
 
-  const onNewGlobalObject = function(global) {
+  const onNewGlobalObject = function (global) {
     if (shouldAddNewGlobalAsDebuggee(global)) {
       safeAddDebuggee(this, global);
     }
   };
 
   dbg.onNewGlobalObject = onNewGlobalObject;
-  dbg.addDebuggees = function() {
+  dbg.addDebuggees = function () {
     for (const global of findDebuggees(this)) {
       safeAddDebuggee(this, global);
     }
   };
 
-  dbg.disable = function() {
+  dbg.disable = function () {
     dbg.removeAllDebuggees();
     dbg.onNewGlobalObject = undefined;
   };
 
-  dbg.enable = function() {
+  dbg.enable = function () {
     dbg.addDebuggees();
     dbg.onNewGlobalObject = onNewGlobalObject;
+  };
+  dbg.findDebuggees = function () {
+    return findDebuggees(dbg);
   };
 
   return dbg;

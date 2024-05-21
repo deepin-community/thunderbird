@@ -1,10 +1,7 @@
 "use strict";
 
-const { ExtensionPermissions } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionPermissions.jsm"
-);
-const { AboutNewTab } = ChromeUtils.import(
-  "resource:///modules/AboutNewTab.jsm"
+const { ExtensionPermissions } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionPermissions.sys.mjs"
 );
 
 const NEWTAB_PRIVATE_ALLOWED = "browser.newtab.privateAllowed";
@@ -12,7 +9,7 @@ const NEWTAB_EXTENSION_CONTROLLED = "browser.newtab.extensionControlled";
 const NEWTAB_URI = "webext-newtab-1.html";
 
 function promisePrefChange(pref) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     Services.prefs.addObserver(pref, function observer() {
       Services.prefs.removeObserver(pref, observer);
       resolve(arguments);
@@ -67,7 +64,7 @@ async function promiseUpdatePrivatePermission(allowed, extension) {
 add_task(async function test_new_tab_private() {
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "@private-newtab",
         },

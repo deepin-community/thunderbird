@@ -80,8 +80,33 @@ int nr_ice_media_stream_create(nr_ice_ctx *ctx,const char *label,const char *ufr
     stream->component_ct=components;
     stream->ice_state = NR_ICE_MEDIA_STREAM_UNPAIRED;
     stream->obsolete = 0;
+    stream->actually_started_checking = 0;
     stream->r2l_user = 0;
     stream->l2r_user = 0;
+    stream->flags = ctx->flags;
+    if(ctx->stun_server_ct_cfg) {
+      if(!(stream->stun_servers=RCALLOC(sizeof(nr_ice_stun_server)*(ctx->stun_server_ct_cfg))))
+        ABORT(R_NO_MEMORY);
+
+      memcpy(stream->stun_servers,ctx->stun_servers_cfg,sizeof(nr_ice_stun_server)*(ctx->stun_server_ct_cfg));
+      stream->stun_server_ct = ctx->stun_server_ct_cfg;
+    }
+
+    if(ctx->turn_server_ct_cfg) {
+      if(!(stream->turn_servers=RCALLOC(sizeof(nr_ice_turn_server)*(ctx->turn_server_ct_cfg))))
+        ABORT(R_NO_MEMORY);
+
+      for(int i = 0; i < ctx->turn_server_ct_cfg; ++i) {
+        nr_ice_turn_server *dst = &stream->turn_servers[i];
+        nr_ice_turn_server *src = &ctx->turn_servers_cfg[i];
+        memcpy(&dst->turn_server, &src->turn_server, sizeof(nr_ice_stun_server));
+        dst->username = r_strdup(src->username);
+        r_data_create(&dst->password, src->password->data, src->password->len);
+      }
+      stream->turn_server_ct = ctx->turn_server_ct_cfg;
+    }
+
+    r_log(LOG_ICE,LOG_DEBUG,"ICE-STREAM(%s): flags %d",stream->label,stream->flags);
     *streamp=stream;
 
     _status=0;
@@ -124,6 +149,13 @@ int nr_ice_media_stream_destroy(nr_ice_media_stream **streamp)
     r_data_zfree(&stream->r2l_pass);
     r_data_zfree(&stream->l2r_pass);
 
+    RFREE(stream->stun_servers);
+    for (int i = 0; i < stream->turn_server_ct; i++) {
+        RFREE(stream->turn_servers[i].username);
+        r_data_destroy(&stream->turn_servers[i].password);
+    }
+    RFREE(stream->turn_servers);
+
     if(stream->timer)
       NR_async_timer_cancel(stream->timer);
 
@@ -146,8 +178,20 @@ int nr_ice_media_stream_initialize(nr_ice_ctx *ctx, nr_ice_media_stream *stream)
       comp=STAILQ_NEXT(comp,entry);
     }
 
+    if (!nr_ice_media_stream_is_done_gathering(stream) && ctx->gather_handler &&
+        ctx->gather_handler->vtbl->stream_gathering) {
+      ctx->gather_handler->vtbl->stream_gathering(ctx->gather_handler->obj,
+                                                  stream);
+    }
+
     _status=0;
   abort:
+    if (_status) {
+      if (ctx->gather_handler && ctx->gather_handler->vtbl->stream_gathered) {
+        ctx->gather_handler->vtbl->stream_gathered(ctx->gather_handler->obj,
+                                                   stream);
+      }
+    }
     return(_status);
   }
 
@@ -382,6 +426,19 @@ static void nr_ice_media_stream_check_timer_cb(NR_SOCKET s, int h, void *cb_arg)
 
     if(pair){
       nr_ice_candidate_pair_start(pair->pctx,pair); /* Ignore failures */
+
+      /* stream->ice_state goes to checking when we decide that it is ok to
+       * start checking, which can happen before we get remote candidates. We
+       * want to fire this event when we _actually_ start sending checks. */
+      if (!stream->actually_started_checking) {
+        stream->actually_started_checking = 1;
+        if (stream->pctx->handler &&
+            stream->pctx->handler->vtbl->stream_checking) {
+          stream->pctx->handler->vtbl->stream_checking(
+              stream->pctx->handler->obj, stream->local_stream);
+        }
+      }
+
       NR_ASYNC_TIMER_SET(timer_val,nr_ice_media_stream_check_timer_cb,cb_arg,&stream->timer);
     }
     else {
@@ -503,8 +560,6 @@ int nr_ice_media_stream_unfreeze_pairs_foundation(nr_ice_media_stream *stream, c
   {
     int r,_status;
     nr_ice_media_stream *str;
-       nr_ice_component *comp;
-    int invalid_comps=0;
 
     /* 1. Unfreeze all frozen pairs with the same foundation
        in this stream */
@@ -513,16 +568,6 @@ int nr_ice_media_stream_unfreeze_pairs_foundation(nr_ice_media_stream *stream, c
         ABORT(r);
     }
 
-    /* 2. See if there is a pair in the valid list for every component */
-    comp=STAILQ_FIRST(&stream->components);
-    while(comp){
-      if(!comp->valid_pairs)
-        invalid_comps++;
-
-      comp=STAILQ_NEXT(comp,entry);
-    }
-
-    /* If there is a pair in the valid list for every component... */
     /* Now go through the check lists for the other streams */
     str=STAILQ_FIRST(&stream->pctx->peer_streams);
     while(str){
@@ -710,9 +755,21 @@ void nr_ice_media_stream_set_disconnected(nr_ice_media_stream *stream, int disco
 
     if (disconnected == NR_ICE_MEDIA_STREAM_DISCONNECTED) {
       if (!stream->local_stream->obsolete) {
+        if (stream->pctx->handler &&
+            stream->pctx->handler->vtbl->stream_disconnected) {
+          stream->pctx->handler->vtbl->stream_disconnected(
+              stream->pctx->handler->obj, stream->local_stream);
+        }
         nr_ice_peer_ctx_disconnected(stream->pctx);
       }
     } else {
+      if (!stream->local_stream->obsolete) {
+        if (stream->pctx->handler &&
+            stream->pctx->handler->vtbl->stream_ready) {
+          stream->pctx->handler->vtbl->stream_ready(stream->pctx->handler->obj,
+                                                    stream->local_stream);
+        }
+      }
       nr_ice_peer_ctx_check_if_connected(stream->pctx);
     }
   }
@@ -1032,8 +1089,6 @@ void nr_ice_media_stream_role_change(nr_ice_media_stream *stream)
     /* Changing role causes candidate pair priority to change, which requires
      * re-sorting the check list. */
     nr_ice_cand_pair_head old_checklist;
-
-    assert(stream->ice_state != NR_ICE_MEDIA_STREAM_UNPAIRED);
 
     /* Move check_list to old_checklist (not POD, have to do the hard way) */
     TAILQ_INIT(&old_checklist);

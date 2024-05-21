@@ -1,16 +1,15 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { Service } = ChromeUtils.importESModule(
+  "resource://services-sync/service.sys.mjs"
 );
-const { Service } = ChromeUtils.import("resource://services-sync/service.js");
 
 add_task(async function test_findCluster() {
   syncTestLogging();
   _("Test Service._findCluster()");
   try {
-    let whenReadyToAuthenticate = PromiseUtils.defer();
+    let whenReadyToAuthenticate = Promise.withResolvers();
     Service.identity.whenReadyToAuthenticate = whenReadyToAuthenticate;
     whenReadyToAuthenticate.resolve(true);
 
@@ -27,7 +26,9 @@ add_task(async function test_findCluster() {
     let cluster = await Service.identity._findCluster();
     Assert.equal(cluster, "http://weave.user.node/");
   } finally {
-    Svc.Prefs.resetBranch("");
+    for (const pref of Svc.PrefBranch.getChildList("")) {
+      Svc.PrefBranch.clearUserPref(pref);
+    }
   }
 });
 
@@ -53,6 +54,8 @@ add_task(async function test_setCluster() {
     Assert.ok(!(await Service.identity.setCluster()));
     Assert.equal(Service.clusterURL, "http://weave.user.node/");
   } finally {
-    Svc.Prefs.resetBranch("");
+    for (const pref of Svc.PrefBranch.getChildList("")) {
+      Svc.PrefBranch.clearUserPref(pref);
+    }
   }
 });

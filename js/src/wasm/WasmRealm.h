@@ -19,9 +19,14 @@
 #ifndef wasm_realm_h
 #define wasm_realm_h
 
-#include "wasm/WasmJS.h"
+#include "js/TracingAPI.h"
+
+#include "wasm/WasmTypeDecls.h"
 
 namespace js {
+
+class WasmTagObject;
+
 namespace wasm {
 
 // wasm::Realm lives in JS::Realm and contains the wasm-related per-realm state.
@@ -42,7 +47,7 @@ class Realm {
   // After a successful registration, an Instance must call
   // unregisterInstance() before being destroyed.
 
-  bool registerInstance(JSContext* cx, HandleWasmInstanceObject instanceObj);
+  bool registerInstance(JSContext* cx, Handle<WasmInstanceObject*> instanceObj);
   void unregisterInstance(Instance& instance);
 
   // Return a vector of all live instances in the realm. The lifetime of

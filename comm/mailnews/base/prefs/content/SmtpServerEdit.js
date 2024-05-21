@@ -1,17 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { cleanUpHostName, isLegalHostNameOrIP } = ChromeUtils.import(
-  "resource:///modules/hostnameUtils.jsm"
+var { cleanUpHostName, isLegalHostNameOrIP } = ChromeUtils.importESModule(
+  "resource:///modules/hostnameUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { OAuth2Providers } = ChromeUtils.import(
-  "resource:///modules/OAuth2Providers.jsm"
+var { OAuth2Providers } = ChromeUtils.importESModule(
+  "resource:///modules/OAuth2Providers.sys.mjs"
 );
 
 var gSmtpServer;
@@ -25,19 +23,20 @@ var gSmtpSocketType;
 var gPort;
 var gDefaultPort;
 
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogaccept", onAccept);
 
-function onLoad(event) {
+function onLoad() {
   gSmtpServer = window.arguments[0].server;
   initSmtpSettings(gSmtpServer);
 }
 
 function onAccept(event) {
   if (!isLegalHostNameOrIP(cleanUpHostName(gSmtpHostname.value))) {
-    let prefsBundle = document.getElementById("bundle_prefs");
-    let brandBundle = document.getElementById("bundle_brand");
-    let alertTitle = brandBundle.getString("brandShortName");
-    let alertMsg = prefsBundle.getString("enterValidServerName");
+    const prefsBundle = document.getElementById("bundle_prefs");
+    const brandBundle = document.getElementById("bundle_brand");
+    const alertTitle = brandBundle.getString("brandShortName");
+    const alertMsg = prefsBundle.getString("enterValidServerName");
     Services.prompt.alert(window, alertTitle, alertMsg);
 
     window.arguments[0].result = false;
@@ -55,7 +54,7 @@ function onAccept(event) {
 
     saveSmtpSettings(gSmtpServer);
   } catch (ex) {
-    Cu.reportError("Error saving smtp server: " + ex);
+    console.error("Error saving smtp server: " + ex);
   }
 
   window.arguments[0].result = true;
@@ -106,7 +105,7 @@ function initSmtpSettings(server) {
   setLabelFromStringBundle("authMethod-anysecure", "authAnySecure");
   setLabelFromStringBundle("authMethod-any", "authAny");
 
-  sizeToContent();
+  window.sizeToContent();
 
   sslChanged(false);
   authMethodChanged(false);
@@ -116,7 +115,9 @@ function initSmtpSettings(server) {
   }
 
   // Hide OAuth2 option if we can't use it.
-  let details = OAuth2Providers.getHostnameDetails(server.hostname);
+  const details = server
+    ? OAuth2Providers.getHostnameDetails(server.hostname)
+    : null;
   document.getElementById("authMethod-oauth2").hidden = !details;
 
   // Hide deprecated/hidden auth options, unless selected
@@ -142,7 +143,7 @@ function setLabelFromStringBundle(elementID, stringName) {
 // Disables xul elements that have associated preferences locked.
 function onLockPreference() {
   try {
-    let allPrefElements = {
+    const allPrefElements = {
       hostname: gSmtpHostname,
       description: gSmtpDescription,
       port: gSmtpPort,
@@ -152,23 +153,24 @@ function onLockPreference() {
     disableIfLocked(allPrefElements);
   } catch (e) {
     // non-fatal
-    Cu.reportError("Error while getting locked prefs: " + e);
+    console.error("Error while getting locked prefs: " + e);
   }
 }
 
 /**
- * Does the work of disabling an element given the array which contains xul id/prefstring pairs.
+ * Does the work of disabling an element given the array which contains
+ * id/prefstring pairs.
  *
- * @param prefstrArray  array of XUL elements to check
+ * @param {Element[]} prefstrArray - Elements to check.
  *
  * TODO: try to merge this with disableIfLocked function in am-offline.js (bug 755885)
  */
 function disableIfLocked(prefstrArray) {
-  let finalPrefString =
-    "mail.smtpserver." + MailServices.smtp.defaultServer.key + ".";
-  let smtpPrefBranch = Services.prefs.getBranch(finalPrefString);
+  const smtpPrefBranch = Services.prefs.getBranch(
+    "mail.smtpserver." + MailServices.smtp.defaultServer.key + "."
+  );
 
-  for (let prefstring in prefstrArray) {
+  for (const prefstring in prefstrArray) {
     if (smtpPrefBranch.prefIsLocked(prefstring)) {
       prefstrArray[prefstring].disabled = true;
     }
@@ -176,7 +178,6 @@ function disableIfLocked(prefstrArray) {
 }
 
 function saveSmtpSettings(server) {
-  // dump("Saving to " + server + "\n");
   if (server) {
     server.hostname = cleanUpHostName(gSmtpHostname.value);
     server.description = gSmtpDescription.value;
@@ -198,8 +199,8 @@ function authMethodChanged(userAction) {
  * the |gSmtpSocketType| value, and sets the port to use to this default,
  * if that's appropriate.
  *
- * @param userAction  false for dialog initialization,
- *                    true for user action.
+ * @param {boolean} userAction - false for dialog initialization,
+ *   true for user action.
  */
 function sslChanged(userAction) {
   const DEFAULT_SMTP_PORT = "587";

@@ -12,8 +12,8 @@ async function setup() {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["media.test.video-suspend", true],
-      ["media.suspend-bkgnd-video.enabled", true],
-      ["media.suspend-bkgnd-video.delay-ms", 500],
+      ["media.suspend-background-video.enabled", true],
+      ["media.suspend-background-video.delay-ms", 500],
       ["media.dormant-on-pause-timeout-ms", 0],
       ["media.cloneElementVisually.testing", true],
     ],
@@ -196,10 +196,10 @@ function waitForEventOnce(target, event) {
  * @resolves
  *        When the decoder has shut down.
  */
-async function waitForShutdownDecoder(video) {
-  await SimpleTest.promiseWaitForCondition(async () => {
-    let readerData = SpecialPowers.wrap(video).mozDebugReaderData;
-    return readerData.includes(": shutdown");
+function waitForShutdownDecoder(video) {
+  return SimpleTest.promiseWaitForCondition(async () => {
+    let readerData = await SpecialPowers.wrap(video).mozRequestDebugInfo();
+    return readerData.decoder.reader.audioDecoderName == "shutdown";
   }, "Video decoder should eventually shut down.");
 }
 

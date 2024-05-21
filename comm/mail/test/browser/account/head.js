@@ -6,7 +6,7 @@
 
 function is_element_visible(aElement, aMsg) {
   isnot(aElement, null, "Element should not be null, when checking visibility");
-  ok(!BrowserTestUtils.is_hidden(aElement), aMsg);
+  ok(!BrowserTestUtils.isHidden(aElement), aMsg);
 }
 
 function openAndLoadSubDialog(
@@ -15,7 +15,7 @@ function openAndLoadSubDialog(
   aParams = null,
   aClosingCallback = null
 ) {
-  let promise = promiseLoadSubDialog(aURL);
+  const promise = promiseLoadSubDialog(aURL);
   content.gSubDialog.open(
     aURL,
     { features: aFeatures, closingCallback: aClosingCallback },
@@ -25,10 +25,7 @@ function openAndLoadSubDialog(
 }
 
 function promiseLoadSubDialog(aURL) {
-  let env = Cc["@mozilla.org/process/environment;1"].getService(
-    Ci.nsIEnvironment
-  );
-  if (env.get("MOZ_HEADLESS")) {
+  if (Services.env.get("MOZ_HEADLESS")) {
     throw new Error("promiseLoadSubDialog doesn't work in headless mode!");
   }
 
@@ -56,12 +53,11 @@ function promiseLoadSubDialog(aURL) {
         is_element_visible(aEvent.detail.dialog._overlay, "Overlay is visible");
 
         // Check that stylesheets were injected
-        let expectedStyleSheetURLs = aEvent.detail.dialog._injectedStyleSheets.slice(
-          0
-        );
-        for (let styleSheet of aEvent.detail.dialog._frame.contentDocument
+        const expectedStyleSheetURLs =
+          aEvent.detail.dialog._injectedStyleSheets.slice(0);
+        for (const styleSheet of aEvent.detail.dialog._frame.contentDocument
           .styleSheets) {
-          let i = expectedStyleSheetURLs.indexOf(styleSheet.href);
+          const i = expectedStyleSheetURLs.indexOf(styleSheet.href);
           if (i >= 0) {
             info("found " + styleSheet.href);
             expectedStyleSheetURLs.splice(i, 1);

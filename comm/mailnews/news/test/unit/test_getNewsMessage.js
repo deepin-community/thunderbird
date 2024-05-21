@@ -1,16 +1,16 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- Mode: JavaScript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /*
  * Tests:
  * - getNewMessages for a newsgroup folder (single message).
- * - DisplayMessage for a newsgroup message
+ * - loadMessage for a newsgroup message
  *   - Downloading a single message and checking content in stream is correct.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
-// The basic daemon to use for testing Nntpd.jsm implementations
+// The basic daemon to use for testing Nntpd.sys.mjs implementations
 var daemon = setupNNTPDaemon();
 
 var server;
@@ -41,7 +41,7 @@ var streamListener = {
 
   // nsIStreamListener
   onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-    let scriptStream = Cc[
+    const scriptStream = Cc[
       "@mozilla.org/scriptableinputstream;1"
     ].createInstance(Ci.nsIScriptableInputStream);
 
@@ -56,7 +56,7 @@ function doTestFinished() {
 
   server.stop();
 
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     thread.processNextEvent(true);
   }
@@ -89,18 +89,11 @@ function run_test() {
 
     var messageUri = folder.getUriForMsg(message);
 
-    var nntpService = MailServices.nntp.QueryInterface(Ci.nsIMsgMessageService);
-
     do_test_pending();
 
-    nntpService.DisplayMessage(
-      messageUri,
-      streamListener,
-      null,
-      null,
-      null,
-      {}
-    );
+    Cc["@mozilla.org/messenger/messageservice;1?type=news"]
+      .getService(Ci.nsIMsgMessageService)
+      .loadMessage(messageUri, streamListener, null, null, false);
   } catch (e) {
     server.stop();
     do_throw(e);

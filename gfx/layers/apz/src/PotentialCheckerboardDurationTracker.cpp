@@ -6,7 +6,8 @@
 
 #include "PotentialCheckerboardDurationTracker.h"
 
-#include "mozilla/Telemetry.h"  // for Telemetry
+#include "mozilla/Telemetry.h"           // for Telemetry
+#include "mozilla/glean/GleanMetrics.h"  // for Glean telemetry
 
 namespace mozilla {
 namespace layers {
@@ -22,17 +23,20 @@ void PotentialCheckerboardDurationTracker::CheckerboardSeen() {
   mInCheckerboard = true;
 }
 
-void PotentialCheckerboardDurationTracker::CheckerboardDone() {
+void PotentialCheckerboardDurationTracker::CheckerboardDone(
+    bool aRecordTelemetry) {
   MOZ_ASSERT(Tracking());
   mInCheckerboard = false;
   if (!Tracking()) {
-    mozilla::Telemetry::AccumulateTimeDelta(
-        mozilla::Telemetry::CHECKERBOARD_POTENTIAL_DURATION,
-        mCurrentPeriodStart);
+    if (aRecordTelemetry) {
+      mozilla::glean::gfx_checkerboard::potential_duration
+          .AccumulateRawDuration(mCurrentPeriodStart - TimeStamp::Now());
+    }
   }
 }
 
-void PotentialCheckerboardDurationTracker::InTransform(bool aInTransform) {
+void PotentialCheckerboardDurationTracker::InTransform(bool aInTransform,
+                                                       bool aRecordTelemetry) {
   if (aInTransform == mInTransform) {
     // no-op
     return;
@@ -54,9 +58,11 @@ void PotentialCheckerboardDurationTracker::InTransform(bool aInTransform) {
     // would have taken the other !Tracking branch above. If it's false now,
     // it means we just stopped tracking, so we are ending a potential
     // checkerboard period.
-    mozilla::Telemetry::AccumulateTimeDelta(
-        mozilla::Telemetry::CHECKERBOARD_POTENTIAL_DURATION,
-        mCurrentPeriodStart);
+    if (aRecordTelemetry) {
+      mozilla::Telemetry::AccumulateTimeDelta(
+          mozilla::Telemetry::CHECKERBOARD_POTENTIAL_DURATION,
+          mCurrentPeriodStart);
+    }
   }
 }
 

@@ -64,7 +64,7 @@ function run_test() {
   // Setup some incoming filters, setting junk priority low, and good high.
 
   // Can't use the fake server, must use the deferredTo local server!
-  let filterList = localAccountUtils.incomingServer.getFilterList(null);
+  const filterList = localAccountUtils.incomingServer.getFilterList(null);
 
   // junkIsLow filter
   let filter = filterList.createFilter("junkIsLow");
@@ -142,7 +142,7 @@ var classifyListener = {
   },
 };
 
-// nsIDBChangeListener implementation.
+/** @implements {nsIDBChangeListener} */
 function DBListener() {}
 
 DBListener.prototype = {
@@ -159,7 +159,7 @@ DBListener.prototype = {
   onAnnouncerGoingAway(instigator) {
     if (gInboxListener) {
       try {
-        POP3Pump.inbox.msgDatabase.RemoveListener(gInboxListener);
+        POP3Pump.inbox.msgDatabase.removeListener(gInboxListener);
       } catch (e) {
         dump("listener not found\n");
       }
@@ -207,7 +207,7 @@ function startCommand() {
     case kClass:
       // classify message
       gPOP3Pump.files = [gTest.fileName];
-      gPOP3Pump.onDone = function() {
+      gPOP3Pump.onDone = function () {
         do_timeout(100, startCommand);
       };
       gPOP3Pump.run();
@@ -218,9 +218,6 @@ function startCommand() {
 function getSpec(aFileName) {
   var file = do_get_file(aFileName);
   var uri = Services.io.newFileURI(file).QueryInterface(Ci.nsIURL);
-  uri = uri
-    .mutate()
-    .setQuery("type=application/x-message-display")
-    .finalize();
+  uri = uri.mutate().setQuery("type=application/x-message-display").finalize();
   return uri.spec;
 }

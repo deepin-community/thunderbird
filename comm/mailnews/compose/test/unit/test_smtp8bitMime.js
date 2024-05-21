@@ -1,4 +1,3 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /**
  * 8BITMIME tests for SMTP.
  *
@@ -6,8 +5,11 @@
  * advertises it AND if mail.strictly_mime doesn't force us to send 7bit.
  * It does not check the data of the message on either side of the link.
  */
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 var server;
@@ -19,7 +21,7 @@ var kTo = "to@foo.invalid";
 // aStrictMime: Test if mail.strictly_mime omits the BODY=8BITMIME attribute.
 // aServer8bit: Test if BODY=8BITMIME is only sent if advertised by the server.
 
-function test_8bitmime(aStrictMime, aServer8bit) {
+async function test_8bitmime(aStrictMime, aServer8bit) {
   // Test file
   var testFile = do_get_file("data/message1.eml");
 
@@ -42,13 +44,14 @@ function test_8bitmime(aStrictMime, aServer8bit) {
 
     Services.prefs.setBoolPref("mail.strictly_mime", aStrictMime);
 
+    const urlListener = new PromiseTestUtils.PromiseUrlListener();
     MailServices.smtp.sendMailMessage(
       testFile,
       kTo,
       identity,
       kSender,
       null,
-      null,
+      urlListener,
       null,
       null,
       false,
@@ -57,7 +60,7 @@ function test_8bitmime(aStrictMime, aServer8bit) {
       {}
     );
 
-    server.performTest();
+    await urlListener.promise;
 
     var transaction = server.playTransaction();
     do_check_transaction(transaction, [
@@ -77,18 +80,18 @@ function test_8bitmime(aStrictMime, aServer8bit) {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
   }
 }
 
-function run_test() {
+add_task(async function run() {
   // The default SMTP server advertises 8BITMIME capability.
   server = setupServerDaemon();
-  test_8bitmime(true, true);
-  test_8bitmime(false, true);
+  await test_8bitmime(true, true);
+  await test_8bitmime(false, true);
 
   // Now we need a server which does not advertise 8BITMIME capability.
   function createHandler(d) {
@@ -97,6 +100,6 @@ function run_test() {
     return handler;
   }
   server = setupServerDaemon(createHandler);
-  test_8bitmime(true, false);
-  test_8bitmime(false, false);
-}
+  await test_8bitmime(true, false);
+  await test_8bitmime(false, false);
+});

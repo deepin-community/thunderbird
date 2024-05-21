@@ -22,7 +22,7 @@ namespace mozilla {
  * frequency per second.  Therefore we need to multiply QPC value by 1000 to
  * have the same units to allow simple arithmentic with both QPC and GTC.
  */
-#define ms2mt(x) ((x)*mozilla::GetQueryPerformanceFrequencyPerSec())
+#define ms2mt(x) ((x) * mozilla::GetQueryPerformanceFrequencyPerSec())
 #define mt2ms(x) ((x) / mozilla::GetQueryPerformanceFrequencyPerSec())
 #define mt2ms_f(x) (double(x) / mozilla::GetQueryPerformanceFrequencyPerSec())
 
@@ -30,6 +30,8 @@ MFBT_API uint64_t GetQueryPerformanceFrequencyPerSec();
 
 class TimeStamp;
 class TimeStampValue;
+class TimeStampValueTests;
+class TimeStampTests;
 
 TimeStampValue NowInternal(bool aHighResolution);
 
@@ -38,63 +40,72 @@ class TimeStampValue {
   friend bool IsCanonicalTimeStamp(TimeStampValue);
   friend struct IPC::ParamTraits<mozilla::TimeStampValue>;
   friend class TimeStamp;
-  friend class Fuzzyfox;
+  friend class TimeStampValueTests;
+  friend class TimeStampTests;
 
   // Both QPC and GTC are kept in [mt] units.
   uint64_t mGTC;
   uint64_t mQPC;
 
-  bool mUsedCanonicalNow;
   bool mIsNull;
   bool mHasQPC;
 
-  MFBT_API TimeStampValue(uint64_t aGTC, uint64_t aQPC, bool aHasQPC,
-                          bool aUsedCanonicalNow);
+  constexpr MFBT_API TimeStampValue(uint64_t aGTC, uint64_t aQPC, bool aHasQPC)
+      : mGTC(aGTC),
+        mQPC(aQPC),
+        mIsNull(aGTC == 0 && aQPC == 0),
+        mHasQPC(aHasQPC) {}
+
+  // This constructor should be explicit but it is replacing a constructor that
+  // was MOZ_IMPLICIT and there are many locations that are using the automatic
+  // conversion.
+  constexpr MOZ_IMPLICIT MFBT_API TimeStampValue(uint64_t aGTCAndQPC)
+      : TimeStampValue(aGTCAndQPC, aGTCAndQPC, true) {}
 
   MFBT_API uint64_t CheckQPC(const TimeStampValue& aOther) const;
-
-  constexpr MOZ_IMPLICIT TimeStampValue()
-      : mGTC(0),
-        mQPC(0),
-        mUsedCanonicalNow(false),
-        mIsNull(true),
-        mHasQPC(false) {}
 
  public:
   MFBT_API uint64_t operator-(const TimeStampValue& aOther) const;
 
   TimeStampValue operator+(const int64_t aOther) const {
-    return TimeStampValue(mGTC + aOther, mQPC + aOther, mHasQPC,
-                          mUsedCanonicalNow);
+    return TimeStampValue(mGTC + aOther, mQPC + aOther, mHasQPC);
   }
   TimeStampValue operator-(const int64_t aOther) const {
-    return TimeStampValue(mGTC - aOther, mQPC - aOther, mHasQPC,
-                          mUsedCanonicalNow);
+    return TimeStampValue(mGTC - aOther, mQPC - aOther, mHasQPC);
   }
   MFBT_API TimeStampValue& operator+=(const int64_t aOther);
   MFBT_API TimeStampValue& operator-=(const int64_t aOther);
 
-  bool operator<(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) < 0;
+  constexpr bool operator<(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC < aOther.mQPC : mGTC < aOther.mGTC;
   }
-  bool operator>(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) > 0;
+  constexpr bool operator>(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC > aOther.mQPC : mGTC > aOther.mGTC;
   }
-  bool operator<=(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) <= 0;
+  constexpr bool operator<=(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC <= aOther.mQPC
+                                     : mGTC <= aOther.mGTC;
   }
-  bool operator>=(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) >= 0;
+  constexpr bool operator>=(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC >= aOther.mQPC
+                                     : mGTC >= aOther.mGTC;
   }
-  bool operator==(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) == 0;
+  constexpr bool operator==(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC == aOther.mQPC
+                                     : mGTC == aOther.mGTC;
   }
-  bool operator!=(const TimeStampValue& aOther) const {
-    return int64_t(*this - aOther) != 0;
+  constexpr bool operator!=(const TimeStampValue& aOther) const {
+    return mHasQPC && aOther.mHasQPC ? mQPC != aOther.mQPC
+                                     : mGTC != aOther.mGTC;
   }
-  bool UsedCanonicalNow() const { return mUsedCanonicalNow; }
-  void SetCanonicalNow() { mUsedCanonicalNow = true; }
-  bool IsNull() const { return mIsNull; }
+  constexpr bool IsNull() const { return mIsNull; }
+
+#if defined(DEBUG)
+  uint64_t GTC() const { return mGTC; }
+  uint64_t QPC() const { return mQPC; }
+
+  bool HasQPC() const { return mHasQPC; }
+#endif
 };
 
 }  // namespace mozilla

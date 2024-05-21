@@ -1,16 +1,19 @@
+import WebIDL
+
+
 def WebIDLTest(parser, harness):
     threw = False
     try:
         parser.parse(
             """
             interface Foo {
-              [CEReactions(DOMString a)] void foo(boolean arg2);
+              [CEReactions(DOMString a)] undefined foo(boolean arg2);
             };
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] with an argument")
@@ -26,8 +29,8 @@ def WebIDLTest(parser, harness):
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] with an argument")
@@ -43,7 +46,7 @@ def WebIDLTest(parser, harness):
         """
         )
 
-        results = parser.finish()
+        parser.finish()
     except Exception as e:
         harness.ok(
             False,
@@ -58,12 +61,12 @@ def WebIDLTest(parser, harness):
         parser.parse(
             """
             interface Foo {
-              [CEReactions] void foo(boolean arg2);
+              [CEReactions] undefined foo(boolean arg2);
             };
         """
         )
 
-        results = parser.finish()
+        parser.finish()
     except Exception as e:
         harness.ok(
             False,
@@ -83,8 +86,8 @@ def WebIDLTest(parser, harness):
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(
@@ -102,8 +105,8 @@ def WebIDLTest(parser, harness):
         """
         )
 
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] used on a interface")
@@ -118,8 +121,8 @@ def WebIDLTest(parser, harness):
           };
         """
         )
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] used on a named getter")
@@ -134,8 +137,8 @@ def WebIDLTest(parser, harness):
           };
         """
         )
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] used on a legacycaller")
@@ -150,8 +153,8 @@ def WebIDLTest(parser, harness):
           };
         """
         )
-        results = parser.finish()
-    except:
+        parser.finish()
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown for [CEReactions] used on a stringifier")

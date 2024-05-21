@@ -33,16 +33,13 @@ const mockAlertsService = {
     this.showAlert({ cookie, title, text, privateBrowsing }, alertListener);
   },
 
-  closeAlert(name) {
+  closeAlert() {
     // This mock immediately close the alert on show, so this is empty.
   },
 
   QueryInterface: ChromeUtils.generateQI(["nsIAlertsService"]),
 
-  createInstance(outer, iid) {
-    if (outer != null) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance(iid) {
     return this.QueryInterface(iid);
   },
 };

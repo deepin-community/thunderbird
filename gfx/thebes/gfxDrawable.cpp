@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "gfxDrawable.h"
-#include "gfxASurface.h"
 #include "gfxContext.h"
 #include "gfxPlatform.h"
 #include "gfx2DGlue.h"
@@ -104,11 +103,12 @@ already_AddRefed<gfxSurfaceDrawable> gfxCallbackDrawable::MakeSurfaceDrawable(
   RefPtr<DrawTarget> dt =
       aContext->GetDrawTarget()->CreateSimilarDrawTarget(mSize, format);
 
-  if (!dt || !dt->IsValid()) return nullptr;
+  if (!dt || !dt->IsValid()) {
+    return nullptr;
+  }
 
-  RefPtr<gfxContext> ctx = gfxContext::CreateOrNull(dt);
-  MOZ_ASSERT(ctx);  // already checked for target above
-  Draw(ctx, gfxRect(0, 0, mSize.width, mSize.height), ExtendMode::CLAMP,
+  gfxContext ctx(dt);
+  Draw(&ctx, gfxRect(0, 0, mSize.width, mSize.height), ExtendMode::CLAMP,
        aSamplingFilter);
 
   RefPtr<SourceSurface> surface = dt->Snapshot();

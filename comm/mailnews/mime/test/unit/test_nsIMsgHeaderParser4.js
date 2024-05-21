@@ -4,8 +4,8 @@
  * Test suite for nsIMsgHeaderParser::makeFromDisplayAddress.
  * This is what is used to parse in the user input from addressing fields.
  */
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 function run_test() {
@@ -186,10 +186,10 @@ function run_test() {
   // Test -  strings
 
   for (let i = 0; i < checks.length; ++i) {
-    let addrs = MailServices.headerParser.makeFromDisplayAddress(
+    const addrs = MailServices.headerParser.makeFromDisplayAddress(
       checks[i].displayString
     );
-    let checkaddrs = checks[i].addresses;
+    const checkaddrs = checks[i].addresses;
     Assert.equal(addrs.length, checkaddrs.length, "Number of parsed addresses");
     for (let j = 0; j < addrs.length; j++) {
       Assert.equal(addrs[j].name, checkaddrs[j][0], "Parsed name");

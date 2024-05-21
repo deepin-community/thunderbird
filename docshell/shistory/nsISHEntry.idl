@@ -14,7 +14,7 @@
 interface nsIContentSecurityPolicy;
 interface nsIMutableArray;
 interface nsILayoutHistoryState;
-interface nsIContentViewer;
+interface nsIDocumentViewer;
 interface nsIURI;
 interface nsIInputStream;
 interface nsIDocShellTreeItem;
@@ -66,6 +66,11 @@ interface nsISHEntry : nsISupports
     [infallible] attribute nsIURI resultPrincipalURI;
 
     /**
+     * If non-null, the URI as it was before query stripping was performed.
+     */
+    [infallible] attribute nsIURI unstrippedURI;
+
+    /**
      *  This flag remembers whether channel has LOAD_REPLACE set.
      */
     [infallible] attribute boolean loadReplace;
@@ -107,8 +112,10 @@ interface nsISHEntry : nsISupports
     /** Referrer Info*/
     [infallible] attribute nsIReferrerInfo referrerInfo;
 
-    /** Content viewer, for fast restoration of presentation */
-    [infallible] attribute nsIContentViewer contentViewer;
+    /** Document viewer, for fast restoration of presentation */
+    [infallible] attribute nsIDocumentViewer documentViewer;
+
+    [infallible] readonly attribute boolean isInBFCache;
 
     /** Whether the content viewer is marked "sticky" */
     [infallible] attribute boolean sticky;
@@ -121,6 +128,7 @@ interface nsISHEntry : nsISupports
 
     /** Post Data for the document */
     [infallible] attribute nsIInputStream postData;
+    [infallible] readonly attribute boolean hasPostData;
 
     /** LayoutHistoryState for scroll position and form values */
     [infallible] attribute nsILayoutHistoryState layoutHistoryState;
@@ -276,7 +284,7 @@ interface nsISHEntry : nsISupports
     [noscript, notxpcom] void setViewerBounds([const] in nsIntRect bounds);
 
     /**
-     * Saved child docshells corresponding to contentViewer.  The child shells
+     * Saved child docshells corresponding to documentViewer.  The child shells
      * are restored as children of the parent docshell, in this order, when the
      * parent docshell restores a saved presentation.
      */
@@ -296,9 +304,9 @@ interface nsISHEntry : nsISupports
 
     /**
      * Ensure that the cached presentation members are self-consistent.
-     * If either |contentViewer| or |windowState| are null, then all of the
+     * If either |documentViewer| or |windowState| are null, then all of the
      * following members are cleared/reset:
-     *  contentViewer, sticky, windowState, viewerBounds, childShells,
+     *  documentViewer, sticky, windowState, viewerBounds, childShells,
      *  refreshURIList.
      */
     [noscript, notxpcom] void syncPresentationState();
@@ -322,6 +330,7 @@ interface nsISHEntry : nsISupports
                            in boolean dynamicCreation,
                            in nsIURI originalURI,
                            in nsIURI resultPrincipalURI,
+                           in nsIURI unstrippedURI,
                            in bool loadReplace,
                            in nsIReferrerInfo referrerInfo,
                            in AString srcdoc,
@@ -455,4 +464,13 @@ interface nsISHEntry : nsISupports
     [notxpcom] void SyncTreesForSubframeNavigation(in nsISHEntry aEntry,
                                                    in BrowsingContext aTopBC,
                                                    in BrowsingContext aIgnoreBC);
+
+    /**
+     * If browser.history.collectWireframes is true, this will get populated
+     * with a Wireframe upon document navigation / pushState. This will only
+     * be set for nsISHEntry's accessed in the parent process with
+     * sessionHistoryInParent enabled. See Document.webidl for more details on
+     * what a Wireframe is.
+     */
+    [implicit_jscontext] attribute jsval wireframe;
 };

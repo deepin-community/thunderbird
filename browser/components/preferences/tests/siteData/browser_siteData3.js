@@ -131,8 +131,9 @@ add_task(async function test_grouping() {
   // The shown quota can be slightly larger than the raw data we put in (though it should
   // never be smaller), but that doesn't really matter to us since we only want to test that
   // the site data dialog accumulates this into a single column.
-  ok(
-    parseFloat(l10nAttributes.args.value) >= parseFloat(value),
+  Assert.greaterOrEqual(
+    parseFloat(l10nAttributes.args.value),
+    parseFloat(value),
     "Should show the correct accumulated quota size."
   );
   is(
@@ -244,6 +245,84 @@ add_task(async function test_sorting() {
     "Has sorted descending by cookies"
   );
 
+  await SiteDataTestUtils.clear();
+  BrowserTestUtils.removeTab(gBrowser.selectedTab);
+});
+
+// Test single entry removal
+add_task(async function test_single_entry_removal() {
+  let testData = await addTestData([
+    {
+      usage: 1024,
+      origin: "https://xyz.com",
+      cookies: 6,
+      persisted: true,
+    },
+    {
+      usage: 1024 * 3,
+      origin: "http://bar.com",
+      cookies: 2,
+      persisted: false,
+    },
+  ]);
+
+  let updatePromise = promiseSiteDataManagerSitesUpdated();
+  await openPreferencesViaOpenPreferencesAPI("privacy", { leaveOpen: true });
+  await updatePromise;
+  await openSiteDataSettingsDialog();
+
+  let dialog = content.gSubDialog._topDialog;
+  let dialogFrame = dialog._frame;
+  let frameDoc = dialogFrame.contentDocument;
+
+  let sitesList = frameDoc.getElementById("sitesList");
+  let host = testData[0];
+  let site = sitesList.querySelector(`richlistitem[host="${host}"]`);
+  sitesList.addItemToSelection(site);
+  frameDoc.getElementById("removeSelected").doCommand();
+  let saveChangesButton = frameDoc.querySelector("dialog").getButton("accept");
+  let dialogOpened = BrowserTestUtils.promiseAlertDialogOpen(
+    null,
+    REMOVE_DIALOG_URL
+  );
+  setTimeout(() => saveChangesButton.doCommand(), 0);
+  let dialogWin = await dialogOpened;
+  let rootElement = dialogWin.document.getElementById(
+    "SiteDataRemoveSelectedDialog"
+  );
+  is(rootElement.classList.length, 1, "There should only be one class set");
+  is(
+    rootElement.classList[0],
+    "single-entry",
+    "The only class set should be single-entry (to hide the list)"
+  );
+  let description = dialogWin.document.getElementById("removing-description");
+  is(
+    description.getAttribute("data-l10n-id"),
+    "site-data-removing-single-desc",
+    "The description for single site should be selected"
+  );
+
+  let removalList = dialogWin.document.getElementById("removalList");
+  is(
+    BrowserTestUtils.isVisible(removalList),
+    false,
+    "The removal list should be invisible"
+  );
+  let removeButton = dialogWin.document
+    .querySelector("dialog")
+    .getButton("accept");
+  let dialogClosed = BrowserTestUtils.waitForEvent(dialogWin, "unload");
+  updatePromise = promiseSiteDataManagerSitesUpdated();
+  removeButton.doCommand();
+  await dialogClosed;
+  await updatePromise;
+  await openSiteDataSettingsDialog();
+
+  dialog = content.gSubDialog._topDialog;
+  dialogFrame = dialog._frame;
+  frameDoc = dialogFrame.contentDocument;
+  assertSitesListed(frameDoc, testData.slice(1));
   await SiteDataTestUtils.clear();
   BrowserTestUtils.removeTab(gBrowser.selectedTab);
 });

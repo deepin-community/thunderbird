@@ -7,9 +7,15 @@
 
 #include "TouchManager.h"
 
+#include "Units.h"
+#include "mozilla/EventForwards.h"
+#include "mozilla/PresShell.h"
+#include "mozilla/StaticPrefs_test.h"
+#include "mozilla/TimeStamp.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/EventTarget.h"
-#include "mozilla/PresShell.h"
+#include "mozilla/layers/InputAPZContext.h"
+#include "nsIContent.h"
 #include "nsIFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsView.h"
@@ -19,9 +25,11 @@ using namespace mozilla::dom;
 
 namespace mozilla {
 
-nsTHashMap<nsUint32HashKey, TouchManager::TouchInfo>*
+StaticAutoPtr<nsTHashMap<nsUint32HashKey, TouchManager::TouchInfo>>
     TouchManager::sCaptureTouchList;
 layers::LayersId TouchManager::sCaptureTouchLayersId;
+TimeStamp TouchManager::sSingleTouchStartTimeStamp;
+LayoutDeviceIntPoint TouchManager::sSingleTouchStartPoint;
 
 /*static*/
 void TouchManager::InitializeStatics() {
@@ -33,7 +41,6 @@ void TouchManager::InitializeStatics() {
 /*static*/
 void TouchManager::ReleaseStatics() {
   NS_ASSERTION(sCaptureTouchList, "ReleaseStatics called without Initialize!");
-  delete sCaptureTouchList;
   sCaptureTouchList = nullptr;
 }
 
@@ -49,7 +56,7 @@ void TouchManager::Destroy() {
 }
 
 static nsIContent* GetNonAnonymousAncestor(EventTarget* aTarget) {
-  nsCOMPtr<nsIContent> content(do_QueryInterface(aTarget));
+  nsIContent* content = nsIContent::FromEventTargetOrNull(aTarget);
   if (content && content->IsInNativeAnonymousSubtree()) {
     content = content->FindFirstNonChromeOnlyAccessContent();
   }
@@ -59,7 +66,8 @@ static nsIContent* GetNonAnonymousAncestor(EventTarget* aTarget) {
 /*static*/
 void TouchManager::EvictTouchPoint(RefPtr<Touch>& aTouch,
                                    Document* aLimitToDocument) {
-  nsCOMPtr<nsINode> node(do_QueryInterface(aTouch->mOriginalTarget));
+  nsCOMPtr<nsINode> node(
+      nsINode::FromEventTargetOrNull(aTouch->mOriginalTarget));
   if (node) {
     Document* doc = node->GetComposedDoc();
     if (doc && (!aLimitToDocument || aLimitToDocument == doc)) {
@@ -67,11 +75,10 @@ void TouchManager::EvictTouchPoint(RefPtr<Touch>& aTouch,
       if (presShell) {
         nsIFrame* frame = presShell->GetRootFrame();
         if (frame) {
-          nsPoint pt(aTouch->mRefPoint.x, aTouch->mRefPoint.y);
-          nsCOMPtr<nsIWidget> widget = frame->GetView()->GetNearestWidget(&pt);
+          nsCOMPtr<nsIWidget> widget =
+              frame->GetView()->GetNearestWidget(nullptr);
           if (widget) {
             WidgetTouchEvent event(true, eTouchEnd, widget);
-            event.mTime = PR_IntervalNow();
             event.mTouches.AppendElement(aTouch);
             nsEventStatus status;
             widget->DispatchEvent(&event, status);
@@ -167,7 +174,7 @@ nsIFrame* TouchManager::SuppressInvalidPointsAndGetTargetedFrame(
   }
 
   nsIFrame* frame = nullptr;
-  for (int32_t i = aEvent->mTouches.Length(); i;) {
+  for (uint32_t i = aEvent->mTouches.Length(); i;) {
     --i;
     dom::Touch* touch = aEvent->mTouches[i];
     if (TouchManager::HasCapturedTouch(touch->Identifier())) {
@@ -175,9 +182,35 @@ nsIFrame* TouchManager::SuppressInvalidPointsAndGetTargetedFrame(
     }
 
     MOZ_ASSERT(touch->mOriginalTarget);
-    nsCOMPtr<nsIContent> targetContent = do_QueryInterface(touch->GetTarget());
-    nsIFrame* targetFrame =
-        targetContent ? targetContent->GetPrimaryFrame() : nullptr;
+    nsIContent* const targetContent =
+        nsIContent::FromEventTargetOrNull(touch->GetTarget());
+    if (MOZ_UNLIKELY(!targetContent)) {
+      touch->mIsTouchEventSuppressed = true;
+      continue;
+    }
+
+    // Even if the target content is not connected, we should dispatch the touch
+    // start event except when the target content is owned by different
+    // document.
+    if (MOZ_UNLIKELY(!targetContent->IsInComposedDoc())) {
+      if (anyTarget && anyTarget->OwnerDoc() != targetContent->OwnerDoc()) {
+        touch->mIsTouchEventSuppressed = true;
+        continue;
+      }
+      if (!anyTarget) {
+        anyTarget = targetContent;
+      }
+      touch->SetTouchTarget(targetContent->GetAsElementOrParentElement());
+      if (PresShell* const presShell =
+              targetContent->OwnerDoc()->GetPresShell()) {
+        if (nsIFrame* rootFrame = presShell->GetRootFrame()) {
+          frame = rootFrame;
+        }
+      }
+      continue;
+    }
+
+    nsIFrame* targetFrame = targetContent->GetPrimaryFrame();
     if (targetFrame && !anyTarget) {
       anyTarget = targetContent;
     } else {
@@ -201,10 +234,12 @@ nsIFrame* TouchManager::SuppressInvalidPointsAndGetTargetedFrame(
         touch->mIsTouchEventSuppressed = true;
       } else {
         targetFrame = newTargetFrame;
-        targetFrame->GetContentForEvent(aEvent, getter_AddRefs(targetContent));
-        touch->SetTouchTarget(targetContent
-                                  ? targetContent->GetAsElementOrParentElement()
-                                  : nullptr);
+        nsCOMPtr<nsIContent> newTargetContent;
+        targetFrame->GetContentForEvent(aEvent,
+                                        getter_AddRefs(newTargetContent));
+        touch->SetTouchTarget(
+            newTargetContent ? newTargetContent->GetAsElementOrParentElement()
+                             : nullptr);
       }
     }
     if (targetFrame) {
@@ -235,8 +270,11 @@ bool TouchManager::PreHandleEvent(WidgetEvent* aEvent, nsEventStatus* aStatus,
         // touch event associated to. We cache layers id of the first touchstart
         // event, all subsequent touch events will use the same layers id.
         sCaptureTouchLayersId = aEvent->mLayersId;
+        sSingleTouchStartTimeStamp = aEvent->mTimeStamp;
+        sSingleTouchStartPoint = aEvent->AsTouchEvent()->mTouches[0]->mRefPoint;
       } else {
         touchEvent->mLayersId = sCaptureTouchLayersId;
+        sSingleTouchStartTimeStamp = TimeStamp();
       }
       // Add any new touches to the queue
       WidgetTouchEvent::TouchArray& touches = touchEvent->mTouches;
@@ -328,6 +366,10 @@ bool TouchManager::PreHandleEvent(WidgetEvent* aEvent, nsEventStatus* aStatus,
             }
           }
         } else {
+          // This touch event isn't going to be dispatched on the main-thread,
+          // we need to tell it to APZ because returned nsEventStatus is
+          // unreliable to tell whether the event was preventDefaulted or not.
+          layers::InputAPZContext::SetDropped();
           return false;
         }
       }
@@ -399,6 +441,60 @@ bool TouchManager::PreHandleEvent(WidgetEvent* aEvent, nsEventStatus* aStatus,
   return true;
 }
 
+void TouchManager::PostHandleEvent(const WidgetEvent* aEvent,
+                                   const nsEventStatus* aStatus) {
+  switch (aEvent->mMessage) {
+    case eTouchMove: {
+      if (sSingleTouchStartTimeStamp.IsNull()) {
+        break;
+      }
+      if (*aStatus == nsEventStatus_eConsumeNoDefault) {
+        sSingleTouchStartTimeStamp = TimeStamp();
+        break;
+      }
+      const WidgetTouchEvent* touchEvent = aEvent->AsTouchEvent();
+      if (touchEvent->mTouches.Length() > 1) {
+        sSingleTouchStartTimeStamp = TimeStamp();
+        break;
+      }
+      if (touchEvent->mTouches.Length() == 1) {
+        // If the touch moved too far from the start point, don't treat the
+        // touch as a tap.
+        const float distance =
+            static_cast<float>((sSingleTouchStartPoint -
+                                aEvent->AsTouchEvent()->mTouches[0]->mRefPoint)
+                                   .Length());
+        const float maxDistance =
+            StaticPrefs::apz_touch_start_tolerance() *
+            (MOZ_LIKELY(touchEvent->mWidget) ? touchEvent->mWidget->GetDPI()
+                                             : 96.0f);
+        if (distance > maxDistance) {
+          sSingleTouchStartTimeStamp = TimeStamp();
+        }
+      }
+      break;
+    }
+    case eTouchStart:
+    case eTouchEnd:
+      if (*aStatus == nsEventStatus_eConsumeNoDefault &&
+          !sSingleTouchStartTimeStamp.IsNull()) {
+        sSingleTouchStartTimeStamp = TimeStamp();
+      }
+      break;
+    case eTouchCancel:
+    case eTouchPointerCancel:
+    case eMouseLongTap:
+    case eContextMenu: {
+      if (!sSingleTouchStartTimeStamp.IsNull()) {
+        sSingleTouchStartTimeStamp = TimeStamp();
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 /*static*/
 already_AddRefed<nsIContent> TouchManager::GetAnyCapturedTouchTarget() {
   nsCOMPtr<nsIContent> result = nullptr;
@@ -410,7 +506,7 @@ already_AddRefed<nsIContent> TouchManager::GetAnyCapturedTouchTarget() {
     if (touch) {
       EventTarget* target = touch->GetTarget();
       if (target) {
-        result = do_QueryInterface(target);
+        result = nsIContent::FromEventTargetOrNull(target);
         break;
       }
     }
@@ -460,13 +556,32 @@ bool TouchManager::ShouldConvertTouchToPointer(const Touch* aTouch,
       return false;
     }
     case eTouchMove: {
-      // Always fire first pointermove event.
-      return info.mTouch->mMessage != eTouchMove ||
-             !aTouch->Equals(info.mTouch);
+      return !aTouch->Equals(info.mTouch);
     }
     default:
       break;
   }
+  return true;
+}
+
+/* static */
+bool TouchManager::IsSingleTapEndToDoDefault(
+    const WidgetTouchEvent* aTouchEndEvent) {
+  MOZ_ASSERT(aTouchEndEvent);
+  MOZ_ASSERT(aTouchEndEvent->mFlags.mIsSynthesizedForTests);
+  MOZ_ASSERT(!StaticPrefs::test_events_async_enabled());
+  if (sSingleTouchStartTimeStamp.IsNull() ||
+      aTouchEndEvent->mTouches.Length() != 1) {
+    return false;
+  }
+  // If it's pressed long time, we should not treat it as a single tap because
+  // a long press should cause opening context menu by default.
+  if ((aTouchEndEvent->mTimeStamp - sSingleTouchStartTimeStamp)
+          .ToMilliseconds() > StaticPrefs::apz_max_tap_time()) {
+    return false;
+  }
+  NS_WARNING_ASSERTION(aTouchEndEvent->mTouches[0]->mChanged,
+                       "The single tap end should be changed");
   return true;
 }
 

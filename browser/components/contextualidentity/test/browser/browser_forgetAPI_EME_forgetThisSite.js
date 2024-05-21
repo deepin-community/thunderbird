@@ -24,19 +24,6 @@ const TEST_EME_KEY = {
 // Support functions.
 //
 
-async function openTabInUserContext(uri, userContextId) {
-  // Open the tab in the correct userContextId.
-  let tab = BrowserTestUtils.addTab(gBrowser, uri, { userContextId });
-
-  // Select tab and make sure its browser is focused.
-  gBrowser.selectedTab = tab;
-  tab.ownerGlobal.focus();
-
-  let browser = gBrowser.getBrowserForTab(tab);
-  await BrowserTestUtils.browserLoaded(browser);
-  return { tab, browser };
-}
-
 function HexToBase64(hex) {
   var bin = "";
   for (var i = 0; i < hex.length; i += 2) {
@@ -100,56 +87,58 @@ async function setupEMEKey(browser) {
   let keyInfo = generateKeyInfo(TEST_EME_KEY);
 
   // Setup the EME key.
-  let result = await SpecialPowers.spawn(browser, [keyInfo], async function(
-    aKeyInfo
-  ) {
-    let access = await content.navigator.requestMediaKeySystemAccess(
-      "org.w3.clearkey",
-      [
-        {
-          initDataTypes: [aKeyInfo.initDataType],
-          videoCapabilities: [{ contentType: "video/webm" }],
-          sessionTypes: ["persistent-license"],
-          persistentState: "required",
-        },
-      ]
-    );
-    let mediaKeys = await access.createMediaKeys();
-    let session = mediaKeys.createSession(aKeyInfo.sessionType);
-    let res = {};
+  let result = await SpecialPowers.spawn(
+    browser,
+    [keyInfo],
+    async function (aKeyInfo) {
+      let access = await content.navigator.requestMediaKeySystemAccess(
+        "org.w3.clearkey",
+        [
+          {
+            initDataTypes: [aKeyInfo.initDataType],
+            videoCapabilities: [{ contentType: "video/webm" }],
+            sessionTypes: ["persistent-license"],
+            persistentState: "required",
+          },
+        ]
+      );
+      let mediaKeys = await access.createMediaKeys();
+      let session = mediaKeys.createSession(aKeyInfo.sessionType);
+      let res = {};
 
-    // Insert the EME key.
-    await new Promise(resolve => {
-      session.addEventListener("message", function(event) {
-        session
-          .update(aKeyInfo.keyObj)
-          .then(() => {
-            resolve();
-          })
-          .catch(() => {
-            ok(false, "Update the EME key fail.");
-            resolve();
-          });
+      // Insert the EME key.
+      await new Promise(resolve => {
+        session.addEventListener("message", function (event) {
+          session
+            .update(aKeyInfo.keyObj)
+            .then(() => {
+              resolve();
+            })
+            .catch(() => {
+              ok(false, "Update the EME key fail.");
+              resolve();
+            });
+        });
+
+        session.generateRequest(aKeyInfo.initDataType, aKeyInfo.initData);
       });
 
-      session.generateRequest(aKeyInfo.initDataType, aKeyInfo.initData);
-    });
+      let map = session.keyStatuses;
 
-    let map = session.keyStatuses;
+      is(map.size, 1, "One EME key has been added.");
 
-    is(map.size, 1, "One EME key has been added.");
+      if (map.size === 1) {
+        res.keyId = map.keys().next().value;
+        res.sessionId = session.sessionId;
+      }
 
-    if (map.size === 1) {
-      res.keyId = map.keys().next().value;
-      res.sessionId = session.sessionId;
+      // Close the session.
+      session.close();
+      await session.closed;
+
+      return res;
     }
-
-    // Close the session.
-    session.close();
-    await session.closed;
-
-    return res;
-  });
+  );
 
   // Check the EME key ID.
   is(
@@ -166,7 +155,7 @@ async function checkEMEKey(browser, emeSessionId) {
   let keyInfo = generateKeyInfo(TEST_EME_KEY);
   keyInfo.sessionId = emeSessionId;
 
-  await SpecialPowers.spawn(browser, [keyInfo], async function(aKeyInfo) {
+  await SpecialPowers.spawn(browser, [keyInfo], async function (aKeyInfo) {
     let access = await content.navigator.requestMediaKeySystemAccess(
       "org.w3.clearkey",
       [
@@ -199,7 +188,7 @@ async function checkEMEKey(browser, emeSessionId) {
 // Test functions.
 //
 
-add_task(async function setup() {
+add_setup(async function () {
   // Make sure userContext is enabled.
   await SpecialPowers.pushPrefEnv({
     set: [

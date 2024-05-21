@@ -16,7 +16,8 @@ class GMPTestMonitor {
 
   void AwaitFinished() {
     MOZ_ASSERT(NS_IsMainThread());
-    mozilla::SpinEventLoopUntil([&]() { return mFinished; });
+    mozilla::SpinEventLoopUntil("GMPTestMonitor::AwaitFinished"_ns,
+                                [&]() { return mFinished; });
     mFinished = false;
   }
 
@@ -28,10 +29,8 @@ class GMPTestMonitor {
 
  public:
   void SetFinished() {
-    mozilla::SchedulerGroup::Dispatch(mozilla::TaskCategory::Other,
-                                      mozilla::NewNonOwningRunnableMethod(
-                                          "GMPTestMonitor::MarkFinished", this,
-                                          &GMPTestMonitor::MarkFinished));
+    mozilla::SchedulerGroup::Dispatch(mozilla::NewNonOwningRunnableMethod(
+        "GMPTestMonitor::MarkFinished", this, &GMPTestMonitor::MarkFinished));
   }
 
  private:

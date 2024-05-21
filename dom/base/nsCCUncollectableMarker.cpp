@@ -8,7 +8,7 @@
 #include "nsIObserverService.h"
 #include "nsIDocShell.h"
 #include "nsServiceManagerUtils.h"
-#include "nsIContentViewer.h"
+#include "nsIDocumentViewer.h"
 #include "mozilla/dom/Document.h"
 #include "InProcessBrowserChildMessageManager.h"
 #include "nsIWindowMediator.h"
@@ -22,7 +22,8 @@
 #include "nsIAppShellService.h"
 #include "nsAppShellCID.h"
 #include "nsContentUtils.h"
-#include "nsGlobalWindow.h"
+#include "nsGlobalWindowInner.h"
+#include "nsGlobalWindowOuter.h"
 #include "nsJSEnvironment.h"
 #include "nsFrameLoader.h"
 #include "mozilla/CycleCollectedJSContext.h"
@@ -51,9 +52,7 @@ static bool sInited = 0;
 // before we first CC benignly violate the black-gray invariant, due
 // to dom::TraceBlackJS().
 uint32_t nsCCUncollectableMarker::sGeneration = 1;
-#ifdef MOZ_XUL
-#  include "nsXULPrototypeCache.h"
-#endif
+#include "nsXULPrototypeCache.h"
 
 NS_IMPL_ISUPPORTS(nsCCUncollectableMarker, nsIObserver)
 
@@ -171,7 +170,7 @@ static void MarkMessageManagers() {
   }
 }
 
-void MarkContentViewer(nsIContentViewer* aViewer, bool aCleanupJS) {
+void MarkDocumentViewer(nsIDocumentViewer* aViewer, bool aCleanupJS) {
   if (!aViewer) {
     return;
   }
@@ -215,9 +214,9 @@ void MarkSHEntry(nsISHEntry* aSHEntry, bool aCleanupJS) {
     return;
   }
 
-  nsCOMPtr<nsIContentViewer> cview;
-  aSHEntry->GetContentViewer(getter_AddRefs(cview));
-  MarkContentViewer(cview, aCleanupJS);
+  nsCOMPtr<nsIDocumentViewer> viewer;
+  aSHEntry->GetDocumentViewer(getter_AddRefs(viewer));
+  MarkDocumentViewer(viewer, aCleanupJS);
 
   nsCOMPtr<nsIDocShellTreeItem> child;
   int32_t i = 0;
@@ -241,9 +240,9 @@ void MarkDocShell(nsIDocShellTreeItem* aNode, bool aCleanupJS) {
     return;
   }
 
-  nsCOMPtr<nsIContentViewer> cview;
-  shell->GetContentViewer(getter_AddRefs(cview));
-  MarkContentViewer(cview, aCleanupJS);
+  nsCOMPtr<nsIDocumentViewer> viewer;
+  shell->GetDocViewer(getter_AddRefs(viewer));
+  MarkDocumentViewer(viewer, aCleanupJS);
 
   nsCOMPtr<nsIWebNavigation> webNav = do_QueryInterface(shell);
   RefPtr<ChildSHistory> history = webNav->GetSessionHistory();
@@ -366,12 +365,10 @@ nsresult nsCCUncollectableMarker::Observe(nsISupports* aSubject,
     }
   }
 
-#ifdef MOZ_XUL
   nsXULPrototypeCache* xulCache = nsXULPrototypeCache::GetInstance();
   if (xulCache) {
     xulCache->MarkInCCGeneration(sGeneration);
   }
-#endif
 
   enum ForgetSkippableCleanupState {
     eInitial = 0,
@@ -429,20 +426,7 @@ nsresult nsCCUncollectableMarker::Observe(nsISupports* aSubject,
   return NS_OK;
 }
 
-void mozilla::dom::TraceBlackJS(JSTracer* aTrc, bool aIsShutdownGC) {
-#ifdef MOZ_XUL
-  // Mark the scripts held in the XULPrototypeCache. This is required to keep
-  // the JS script in the cache live across GC.
-  nsXULPrototypeCache* cache = nsXULPrototypeCache::MaybeGetInstance();
-  if (cache) {
-    if (aIsShutdownGC) {
-      cache->FlushScripts();
-    } else {
-      cache->MarkInGC(aTrc);
-    }
-  }
-#endif
-
+void mozilla::dom::TraceBlackJS(JSTracer* aTrc) {
   if (!nsCCUncollectableMarker::sGeneration) {
     return;
   }
@@ -504,13 +488,6 @@ void mozilla::dom::TraceBlackJS(JSTracer* aTrc, bool aIsShutdownGC) {
             }
           }
         }
-
-#ifdef MOZ_XUL
-        Document* doc = window->GetExtantDoc();
-        if (doc) {
-          doc->TraceProtos(aTrc);
-        }
-#endif
       }
     }
   }

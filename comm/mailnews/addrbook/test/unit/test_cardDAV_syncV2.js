@@ -10,17 +10,18 @@ async function subtest() {
   );
   CardDAVServer.putCardInternal(
     "change-me.vcf",
-    "BEGIN:VCARD\r\nUID:change-me\r\nFN:I'm going to be changed.\r\nEND:VCARD\r\n"
+    // This one includes a character encoded with UTF-8.
+    "BEGIN:VCARD\r\nUID:change-me\r\nFN:I'm going to be changed. \xCF\x9E\r\nEND:VCARD\r\n"
   );
   CardDAVServer.putCardInternal(
     "delete-me.vcf",
     "BEGIN:VCARD\r\nUID:delete-me\r\nFN:I'm going to be deleted.\r\nEND:VCARD\r\n"
   );
 
-  let directory = initDirectory();
+  const directory = await initDirectory();
 
   // We'll only use this for the initial sync, so I think it's okay to use
-  // _bulkAddCards and not get a notification for every contact.
+  // bulkAddCards and not get a notification for every contact.
   info("Initial sync with server.");
   await directory.fetchAllFromServer();
 
@@ -28,12 +29,15 @@ async function subtest() {
   info(`Token is: ${lastSyncToken}`);
 
   info("Cards:");
-  let cardMap = new Map();
-  let oldETags = new Map();
-  for (let card of directory.childCards) {
-    info(card.displayName);
-    info(card.getProperty("_href", ""));
-    info(card.getProperty("_etag", ""));
+  const cardMap = new Map();
+  const oldETags = new Map();
+  for (const card of directory.childCards) {
+    info(
+      ` ${card.displayName} [${card.getProperty(
+        "_href",
+        ""
+      )}, ${card.getProperty("_etag", "")}]`
+    );
 
     cardMap.set(card.UID, card);
     oldETags.set(card.UID, card.getProperty("_etag", ""));
@@ -47,7 +51,7 @@ async function subtest() {
   ]);
   Assert.equal(
     cardMap.get("change-me").displayName,
-    "I'm going to be changed."
+    "I'm going to be changed. Ϟ"
   );
 
   // Make some changes on the server.
@@ -78,10 +82,13 @@ async function subtest() {
 
   info("Cards:");
   cardMap.clear();
-  for (let card of directory.childCards) {
-    info(card.displayName);
-    info(card.getProperty("_href", ""));
-    info(card.getProperty("_etag", ""));
+  for (const card of directory.childCards) {
+    info(
+      ` ${card.displayName} [${card.getProperty(
+        "_href",
+        ""
+      )}, ${card.getProperty("_etag", "")}]`
+    );
 
     cardMap.set(card.UID, card);
   }
@@ -183,6 +190,11 @@ async function subtest() {
       await observer.waitFor("addrbook-contact-updated"),
       "change-me"
     );
+    observer.checkAndClearNotifications({
+      "addrbook-contact-created": [],
+      "addrbook-contact-updated": ["change-me"],
+      "addrbook-contact-deleted": [],
+    });
 
     changeMeCard = directory.childCards.find(c => c.UID == "change-me");
     cardMap.set("change-me", changeMeCard);
@@ -211,7 +223,7 @@ async function subtest() {
     let newCard = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
-    newCard.displayName = "I'm another new contact.";
+    newCard.displayName = "I'm another new contact. ϔ";
     newCard.UID = "another-new";
     newCard = directory.addCard(newCard);
     Assert.ok(!directory.readOnly, "read-only directory should throw.");
@@ -227,6 +239,11 @@ async function subtest() {
     );
 
     newCard = directory.childCards.find(c => c.UID == "another-new");
+    Assert.equal(
+      newCard.displayName,
+      "I'm another new contact. ϔ",
+      "non-ascii character survived the trip to the server"
+    );
 
     await checkCardsOnServer({
       "another-new": {
@@ -274,7 +291,9 @@ add_task(async function testNormal() {
 
 add_task(async function testGoogle() {
   CardDAVServer.mimicGoogle = true;
+  Services.prefs.setBoolPref("ldap_2.servers.carddav.carddav.vcard3", true);
   await subtest();
+  Services.prefs.clearUserPref("ldap_2.servers.carddav.carddav.vcard3");
   CardDAVServer.mimicGoogle = false;
 });
 
@@ -282,4 +301,108 @@ add_task(async function testReadOnly() {
   Services.prefs.setBoolPref("ldap_2.servers.carddav.readOnly", true);
   await subtest();
   Services.prefs.clearUserPref("ldap_2.servers.carddav.readOnly");
+});
+
+add_task(async function testExpiredToken() {
+  // Put some cards on the server.
+  CardDAVServer.putCardInternal(
+    "first.vcf",
+    "BEGIN:VCARD\r\nUID:first\r\nFN:First Person\r\nEND:VCARD\r\n"
+  );
+  CardDAVServer.putCardInternal(
+    "second.vcf",
+    "BEGIN:VCARD\r\nUID:second\r\nFN:Second Person\r\nEND:VCARD\r\n"
+  );
+  CardDAVServer.putCardInternal(
+    "third.vcf",
+    "BEGIN:VCARD\r\nUID:third\r\nFN:Third Person\r\nEND:VCARD\r\n"
+  );
+
+  const directory = await initDirectory();
+
+  info("Initial sync with server.");
+  await directory.fetchAllFromServer();
+
+  info(`Token is: ${directory._syncToken}`);
+
+  info("Cards:");
+  for (const card of directory.childCards) {
+    info(
+      ` ${card.displayName} [${card.getProperty(
+        "_href",
+        ""
+      )}, ${card.getProperty("_etag", "")}]`
+    );
+  }
+
+  Assert.equal(directory.childCardCount, 3);
+  Assert.deepEqual(Array.from(directory.childCards, c => c.UID).sort(), [
+    "first",
+    "second",
+    "third",
+  ]);
+
+  // Corrupt the sync token. This will cause a 400 Bad Request response and a
+  // complete resync should happen.
+
+  directory._syncToken = "wrong token";
+
+  // Make some changes on the server.
+
+  CardDAVServer.putCardInternal(
+    "fourth.vcf",
+    "BEGIN:VCARD\r\nUID:fourth\r\nFN:Fourth\r\nEND:VCARD\r\n"
+  );
+  CardDAVServer.putCardInternal(
+    "second.vcf",
+    "BEGIN:VCARD\r\nUID:second\r\nFN:Second Person, but different\r\nEND:VCARD\r\n"
+  );
+  CardDAVServer.deleteCardInternal("first.vcf");
+
+  // Sync with the server.
+
+  info("Sync with server.");
+
+  const notificationPromise = TestUtils.topicObserved(
+    "addrbook-directory-invalidated"
+  );
+  observer.init();
+  await directory.updateAllFromServerV2();
+  // Check what notifications were fired. There should be an "invalidated"
+  // notification, making the others redundant, but the "deleted"
+  // notification is hard to avoid.
+  observer.checkAndClearNotifications({
+    "addrbook-contact-created": [],
+    "addrbook-contact-updated": [],
+    "addrbook-contact-deleted": ["first"],
+  });
+  await notificationPromise;
+
+  info(`Token is now: ${directory._syncToken}`);
+
+  info("Cards:");
+  for (const card of directory.childCards) {
+    info(
+      ` ${card.displayName} [${card.getProperty(
+        "_href",
+        ""
+      )}, ${card.getProperty("_etag", "")}]`
+    );
+  }
+
+  // Check that the changes were synced.
+
+  Assert.equal(directory.childCardCount, 3);
+  Assert.deepEqual(Array.from(directory.childCards, c => c.UID).sort(), [
+    "fourth",
+    "second",
+    "third",
+  ]);
+  Assert.equal(
+    directory.childCards.find(c => c.UID == "second").displayName,
+    "Second Person, but different"
+  );
+
+  await clearDirectory(directory);
+  CardDAVServer.reset();
 });

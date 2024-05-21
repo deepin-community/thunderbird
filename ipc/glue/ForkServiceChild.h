@@ -10,6 +10,8 @@
 #include "nsIObserver.h"
 #include "nsString.h"
 #include "mozilla/ipc/MiniTransceiver.h"
+#include "mozilla/ipc/LaunchError.h"
+#include "mozilla/Result.h"
 
 #include <sys/types.h>
 #include <poll.h>
@@ -31,6 +33,16 @@ class ForkServiceChild {
   ForkServiceChild(int aFd, GeckoChildProcessHost* aProcess);
   virtual ~ForkServiceChild();
 
+  struct Args {
+#if defined(XP_LINUX) && defined(MOZ_SANDBOX)
+    int mForkFlags = 0;
+    bool mChroot = false;
+#endif
+    nsTArray<nsCString> mArgv;
+    nsTArray<EnvVar> mEnv;
+    nsTArray<FdMapping> mFdsRemap;
+  };
+
   /**
    * Ask the fork server to create a new process with given parameters.
    *
@@ -43,9 +55,7 @@ class ForkServiceChild {
    * \param aPid returns the PID of the content process created.
    * \return true if success.
    */
-  bool SendForkNewSubprocess(const nsTArray<nsCString>& aArgv,
-                             const nsTArray<EnvVar>& aEnvMap,
-                             const nsTArray<FdMapping>& aFdsRemap, pid_t* aPid);
+  Result<Ok, LaunchError> SendForkNewSubprocess(const Args& aArgs, pid_t* aPid);
 
   /**
    * Create a fork server process and the singleton of this class.
@@ -64,15 +74,20 @@ class ForkServiceChild {
     return child == nullptr || child->mFailed ? nullptr : child;
   }
 
+  /**
+   * Returns whether the fork server was ever active.  Thread-safe.
+   */
+  static bool WasUsed() { return sForkServiceUsed; }
+
  private:
   // Called when a message is received.
-  void OnMessageReceived(IPC::Message&& message);
+  void OnMessageReceived(UniquePtr<IPC::Message> message);
   void OnError();
 
   UniquePtr<MiniTransceiver> mTcver;
   static UniquePtr<ForkServiceChild> sForkServiceChild;
+  static Atomic<bool> sForkServiceUsed;
   pid_t mRecvPid;
-  bool mWaitForHello;
   bool mFailed;  // The forkserver has crashed or disconnected.
   GeckoChildProcessHost* mProcess;
 };

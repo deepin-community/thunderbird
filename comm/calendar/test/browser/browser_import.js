@@ -3,56 +3,42 @@
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 // This tests importing an ICS file. Rather than using the UI to trigger the
-// import, loadEventsFromFile is called directly.
+// import, the dialog is opened directly.
 
-/* globals loadEventsFromFile */
-
-var { CALENDARNAME, controller, createCalendar, deleteCalendars, goToDate } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarUtils.jsm"
-);
-
-const { MockFilePicker } = ChromeUtils.import("resource://specialpowers/MockFilePicker.jsm");
 const ChromeRegistry = Cc["@mozilla.org/chrome/chrome-registry;1"].getService(Ci.nsIChromeRegistry);
 
 add_task(async () => {
   await CalendarTestUtils.setCalendarView(window, "month");
-  goToDate(controller, 2019, 1, 1);
+  await CalendarTestUtils.goToDate(window, 2019, 1, 1);
 
-  let chromeUrl = Services.io.newURI(getRootDirectory(gTestPath) + "data/import.ics");
-  let fileUrl = ChromeRegistry.convertChromeURL(chromeUrl);
-  let file = fileUrl.QueryInterface(Ci.nsIFileURL).file;
+  const chromeUrl = Services.io.newURI(getRootDirectory(gTestPath) + "data/import.ics");
+  const fileUrl = ChromeRegistry.convertChromeURL(chromeUrl);
+  const file = fileUrl.QueryInterface(Ci.nsIFileURL).file;
 
-  MockFilePicker.init(window);
-  MockFilePicker.setFiles([file]);
-  MockFilePicker.returnValue = MockFilePicker.returnCancel;
+  const calendar = CalendarTestUtils.createCalendar();
 
-  let calendarId = createCalendar(controller, CALENDARNAME);
-  let calendar = cal.getCalendarManager().getCalendarById(calendarId);
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+  });
 
-  let cancelReturn = await loadEventsFromFile();
-  ok(!cancelReturn, "loadEventsFromFile returns false on cancel");
-
-  // Prepare to test the import dialog.
-  MockFilePicker.returnValue = MockFilePicker.returnOK;
-
-  let dialogWindowPromise = BrowserTestUtils.promiseAlertDialog(
+  const dialogWindowPromise = BrowserTestUtils.promiseAlertDialog(
     null,
     "chrome://calendar/content/calendar-ics-file-dialog.xhtml",
     {
       async callback(dialogWindow) {
-        let doc = dialogWindow.document;
-        let dialogElement = doc.querySelector("dialog");
+        const doc = dialogWindow.document;
+        const dialogElement = doc.querySelector("dialog");
 
-        let optionsPane = doc.getElementById("calendar-ics-file-dialog-options-pane");
-        let progressPane = doc.getElementById("calendar-ics-file-dialog-progress-pane");
-        let resultPane = doc.getElementById("calendar-ics-file-dialog-result-pane");
+        const optionsPane = doc.getElementById("calendar-ics-file-dialog-options-pane");
+        const progressPane = doc.getElementById("calendar-ics-file-dialog-progress-pane");
+        const resultPane = doc.getElementById("calendar-ics-file-dialog-result-pane");
 
         ok(!optionsPane.hidden);
         ok(progressPane.hidden);
         ok(resultPane.hidden);
 
         // Check the initial import dialog state.
-        let displayedPath = doc.querySelector("#calendar-ics-file-dialog-file-path").value;
+        const displayedPath = doc.querySelector("#calendar-ics-file-dialog-file-path").value;
         let pathFragment = "browser/comm/calendar/test/browser/data/import.ics";
         if (Services.appinfo.OS == "WINNT") {
           pathFragment = pathFragment.replace(/\//g, "\\");
@@ -63,11 +49,11 @@ add_task(async () => {
           "the displayed ics file path is correct"
         );
 
-        let calendarMenu = doc.querySelector("#calendar-ics-file-dialog-calendar-menu");
+        const calendarMenu = doc.querySelector("#calendar-ics-file-dialog-calendar-menu");
         // 0 is the Home calendar.
         calendarMenu.selectedIndex = 1;
-        let calendarMenuItems = calendarMenu.querySelectorAll("menuitem");
-        is(calendarMenu.value, "Mozmill", "correct calendar name is selected");
+        const calendarMenuItems = calendarMenu.querySelectorAll("menuitem");
+        is(calendarMenu.value, "Test", "correct calendar name is selected");
         Assert.equal(calendarMenuItems.length, 1, "exactly one calendar is in the calendars menu");
         is(calendarMenuItems[0].selected, true, "calendar menu item is selected");
 
@@ -138,7 +124,7 @@ add_task(async () => {
         );
 
         function check_displayed_titles(expectedTitles) {
-          let items = doc.querySelectorAll(
+          const items = doc.querySelectorAll(
             ".calendar-ics-file-dialog-item-frame:not([hidden]) > calendar-item-summary"
           );
           Assert.deepEqual(
@@ -147,9 +133,9 @@ add_task(async () => {
           );
         }
 
-        let filterInput = doc.getElementById("calendar-ics-file-dialog-search-input");
+        const filterInput = doc.getElementById("calendar-ics-file-dialog-search-input");
         async function check_filter(filterText, expectedTitles) {
-          let commandPromise = BrowserTestUtils.waitForEvent(filterInput, "command");
+          const commandPromise = BrowserTestUtils.waitForEvent(filterInput, "command");
 
           EventUtils.synthesizeMouseAtCenter(filterInput, {}, dialogWindow);
           if (filterText) {
@@ -171,11 +157,11 @@ add_task(async () => {
         await check_filter("", ["Event One", "Event Two", "Event Three", "Event Four"]);
 
         async function check_sort(order, expectedTitles) {
-          let sortButton = doc.getElementById("calendar-ics-file-dialog-sort-button");
-          let shownPromise = BrowserTestUtils.waitForEvent(sortButton, "popupshown");
+          const sortButton = doc.getElementById("calendar-ics-file-dialog-sort-button");
+          const shownPromise = BrowserTestUtils.waitForEvent(sortButton, "popupshown");
           EventUtils.synthesizeMouseAtCenter(sortButton, {}, dialogWindow);
           await shownPromise;
-          let hiddenPromise = BrowserTestUtils.waitForEvent(sortButton, "popuphidden");
+          const hiddenPromise = BrowserTestUtils.waitForEvent(sortButton, "popuphidden");
           EventUtils.synthesizeMouseAtCenter(
             doc.getElementById(`calendar-ics-file-dialog-sort-${order}`),
             {},
@@ -183,7 +169,7 @@ add_task(async () => {
           );
           await hiddenPromise;
 
-          let items = doc.querySelectorAll("calendar-item-summary");
+          const items = doc.querySelectorAll("calendar-item-summary");
           is(items.length, 4, "four calendar items are displayed");
           Assert.deepEqual(
             [...items].map(summary => summary.item.title),
@@ -219,13 +205,13 @@ add_task(async () => {
         items = doc.querySelectorAll(".calendar-ics-file-dialog-item-frame");
 
         // Import just the first item, and check that the correct number of items remains.
-        let firstItemImportButton = items[0].querySelector(
+        const firstItemImportButton = items[0].querySelector(
           ".calendar-ics-file-dialog-item-import-button"
         );
         EventUtils.synthesizeMouseAtCenter(firstItemImportButton, { clickCount: 1 }, dialogWindow);
 
         await TestUtils.waitForCondition(() => {
-          let remainingItems = doc.querySelectorAll(".calendar-ics-file-dialog-item-frame");
+          const remainingItems = doc.querySelectorAll(".calendar-ics-file-dialog-item-frame");
           return remainingItems.length == 3;
         }, "three items remain after importing the first item");
         check_displayed_titles(["Event Two", "Event Three", "Event Four"]);
@@ -255,7 +241,7 @@ add_task(async () => {
         ok(optionsPane.hidden);
         ok(progressPane.hidden);
 
-        let messageElement = doc.querySelector("#calendar-ics-file-dialog-result-message");
+        const messageElement = doc.querySelector("#calendar-ics-file-dialog-result-message");
         is(messageElement.textContent, "Import complete.", "import success message appeared");
 
         dialogElement.getButton("accept").click();
@@ -263,12 +249,17 @@ add_task(async () => {
     }
   );
 
-  await loadEventsFromFile();
+  Services.ww.openWindow(
+    null,
+    "chrome://calendar/content/calendar-ics-file-dialog.xhtml",
+    "_blank",
+    "chrome,titlebar,modal,centerscreen",
+    file
+  );
   await dialogWindowPromise;
 
   // Check that the items were actually successfully imported.
-  let promiseCalendar = cal.async.promisifyCalendar(calendar);
-  let result = await promiseCalendar.getItems(
+  const result = await calendar.getItemsAsArray(
     Ci.calICalendar.ITEM_FILTER_ALL_ITEMS,
     0,
     cal.createDateTime("20190101T000000"),
@@ -278,9 +269,7 @@ add_task(async () => {
 
   await CalendarTestUtils.monthView.waitForItemAt(window, 1, 3, 4);
 
-  for (let item of result) {
-    await promiseCalendar.deleteItem(item);
+  for (const item of result) {
+    await calendar.deleteItem(item);
   }
-
-  MockFilePicker.cleanup();
 });

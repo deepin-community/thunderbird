@@ -7,15 +7,30 @@
  * type conversion.
  */
 
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
-var { allAccountsSorted } = ChromeUtils.import(
-  "resource:///modules/folderUtils.jsm"
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
 );
-var MailstoreConverter = ChromeUtils.import(
-  "resource:///modules/mailstoreConverter.jsm"
+var { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
+ChromeUtils.defineESModuleGetters(this, {
+  FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
+});
+var MailstoreConverter = ChromeUtils.importESModule(
+  "resource:///modules/mailstoreConverter.sys.mjs"
+);
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
+
+window.addEventListener("DOMContentLoaded", () => {
+  for (const img of document.querySelectorAll(".infoIcon")) {
+    img.setAttribute(
+      "src",
+      "chrome://messenger/skin/icons/new/activity/warning.svg"
+    );
+  }
+});
 
 var log = console.createInstance({
   prefix: "mail.mailstoreconverter",
@@ -37,30 +52,31 @@ var gDeferredAccounts = [];
 var gOriginalOffline;
 /**
  * Place account name in migration dialog modal.
+ *
  * @param {nsIMsgIncomingServer} aServer - account server.
  */
 function placeAccountName(aServer) {
   gOriginalOffline = Services.io.offline;
 
-  let bundle = Services.strings.createBundle(
+  const bundle = Services.strings.createBundle(
     "chrome://messenger/locale/converterDialog.properties"
   );
 
-  let brandShortName = Services.strings
+  const brandShortName = Services.strings
     .createBundle("chrome://branding/locale/brand.properties")
     .GetStringFromName("brandShortName");
 
   // 'deferredToRootFolder' holds path of rootMsgFolder of account to which
   // other accounts have been deferred.
-  let deferredToRootFolder = aServer.rootMsgFolder.filePath.path;
+  const deferredToRootFolder = aServer.rootMsgFolder.filePath.path;
   // String to hold names of deferred accounts separated by commas.
   let deferredAccountsString = "";
   // Account to which other accounts have been deferred.
   let deferredToAccount;
   // Array of all accounts.
-  let accounts = allAccountsSorted(true);
+  const accounts = FolderUtils.allAccountsSorted(true);
 
-  for (let account of accounts) {
+  for (const account of accounts) {
     if (
       account.incomingServer.rootFolder.filePath.path == deferredToRootFolder
     ) {
@@ -119,41 +135,38 @@ function placeAccountName(aServer) {
     }
 
     if (aServer.rootFolder.filePath.path != deferredToRootFolder) {
-      document.getElementById(
-        "warningSpan"
-      ).textContent = bundle.formatStringFromName(
-        "converterDialog.warningForDeferredAccount",
-        [
-          aServer.username,
-          deferredToAccountName,
-          deferredToAccountName,
-          deferredAccountsString,
-          accountsToConvert,
-          storeContractId,
-          brandShortName,
-        ]
-      );
+      document.getElementById("warningSpan").textContent =
+        bundle.formatStringFromName(
+          "converterDialog.warningForDeferredAccount",
+          [
+            aServer.username,
+            deferredToAccountName,
+            deferredToAccountName,
+            deferredAccountsString,
+            accountsToConvert,
+            storeContractId,
+            brandShortName,
+          ]
+        );
     } else {
-      document.getElementById(
-        "warningSpan"
-      ).textContent = bundle.formatStringFromName(
-        "converterDialog.warningForDeferredToAccount",
-        [
-          deferredToAccountName,
-          deferredAccountsString,
-          accountsToConvert,
-          storeContractId,
-          brandShortName,
-        ]
-      );
+      document.getElementById("warningSpan").textContent =
+        bundle.formatStringFromName(
+          "converterDialog.warningForDeferredToAccount",
+          [
+            deferredToAccountName,
+            deferredAccountsString,
+            accountsToConvert,
+            storeContractId,
+            brandShortName,
+          ]
+        );
     }
 
-    document.getElementById(
-      "messageSpan"
-    ).textContent = bundle.formatStringFromName(
-      "converterDialog.messageForDeferredAccount",
-      [accountsToConvert, storeContractId]
-    );
+    document.getElementById("messageSpan").textContent =
+      bundle.formatStringFromName("converterDialog.messageForDeferredAccount", [
+        accountsToConvert,
+        storeContractId,
+      ]);
     gServer = deferredToAccount.incomingServer;
   } else {
     // No account is deferred.
@@ -173,19 +186,17 @@ function placeAccountName(aServer) {
       tempName = aServer.hostName;
     }
 
-    document.getElementById(
-      "warningSpan"
-    ).textContent = bundle.formatStringFromName("converterDialog.warning", [
-      tempName,
-      storeContractId,
-      brandShortName,
-    ]);
-    document.getElementById(
-      "messageSpan"
-    ).textContent = bundle.formatStringFromName("converterDialog.message", [
-      tempName,
-      storeContractId,
-    ]);
+    document.getElementById("warningSpan").textContent =
+      bundle.formatStringFromName("converterDialog.warning", [
+        tempName,
+        storeContractId,
+        brandShortName,
+      ]);
+    document.getElementById("messageSpan").textContent =
+      bundle.formatStringFromName("converterDialog.message", [
+        tempName,
+        storeContractId,
+      ]);
     gServer = aServer;
   }
 
@@ -195,57 +206,58 @@ function placeAccountName(aServer) {
 
 /**
  * Start the conversion process.
- * @param {String} aSelectedStoreType - mailstore type selected by user.
- * @param {Object} aResponse - response from the migration dialog modal.
+ *
+ * @param {string} aSelectedStoreType - mailstore type selected by user.
+ * @param {object} aResponse - response from the migration dialog modal.
  */
 function startContinue(aSelectedStoreType, aResponse) {
   gResponse = aResponse;
   gFolder = gServer.rootFolder.filePath;
 
-  let bundle = Services.strings.createBundle(
+  const bundle = Services.strings.createBundle(
     "chrome://messenger/locale/converterDialog.properties"
   );
 
-  document.getElementById("progress").addEventListener("progress", function(e) {
-    document.getElementById("progress").value = e.detail;
-    document.getElementById(
-      "progressPrcnt"
-    ).textContent = bundle.formatStringFromName("converterDialog.percentDone", [
-      e.detail,
-    ]);
-  });
+  document
+    .getElementById("progress")
+    .addEventListener("progress", function (e) {
+      document.getElementById("progress").value = e.detail;
+      document.getElementById("progressPercent").textContent =
+        bundle.formatStringFromName("converterDialog.percentDone", [e.detail]);
+    });
 
-  document.getElementById("warning").setAttribute("hidden", "hidden");
-  document.getElementById("progressDiv").removeAttribute("hidden");
+  document.getElementById("warningArea").hidden = true;
+  document.getElementById("progressArea").hidden = false;
 
   // Storing original prefs and root folder path
   // to revert changes in case of error.
-  let p1 = "mail.server." + gServer.key + ".directory";
-  let p2 = "mail.server." + gServer.key + ".directory-rel";
-  let p3 = "mail.server." + gServer.key + ".newsrc.file";
-  let p4 = "mail.server." + gServer.key + ".newsrc.file-rel";
-  let p5 = "mail.server." + gServer.key + ".storeContractID";
+  const p1 = "mail.server." + gServer.key + ".directory";
+  const p2 = "mail.server." + gServer.key + ".directory-rel";
+  const p3 = "mail.server." + gServer.key + ".newsrc.file";
+  const p4 = "mail.server." + gServer.key + ".newsrc.file-rel";
+  const p5 = "mail.server." + gServer.key + ".storeContractID";
 
-  let originalDirectoryPref = Services.prefs.getCharPref(p1);
-  let originalDirectoryRelPref = Services.prefs.getCharPref(p2);
+  const originalDirectoryPref = Services.prefs.getCharPref(p1);
+  const originalDirectoryRelPref = Services.prefs.getCharPref(p2);
   let originalNewsrcFilePref;
   let originalNewsrcFileRelPref;
   if (gServer.type == "nntp") {
     originalNewsrcFilePref = Services.prefs.getCharPref(p3);
     originalNewsrcFileRelPref = Services.prefs.getCharPref(p4);
   }
-  let originalStoreContractID = Services.prefs.getCharPref(p5);
-  let originalRootFolderPath = gServer.rootFolder.filePath.path;
+  const originalStoreContractID = Services.prefs.getCharPref(p5);
+  const originalRootFolderPath = gServer.rootFolder.filePath.path;
 
   /**
    * Called when promise returned by convertMailStoreTo() is rejected.
-   * @param {String} aReason - error because of which the promise was rejected.
+   *
+   * @param {string} aReason - error because of which the promise was rejected.
    */
   function promiseRejected(aReason) {
     log.error("Conversion to '" + aSelectedStoreType + "' failed: " + aReason);
-    document.getElementById("messageSpan").style.display = "none";
+    document.getElementById("messageSpan").hidden = true;
 
-    document.getElementById("errorSpan").style.display = "block";
+    document.getElementById("errorSpan").hidden = false;
     gResponse.newRootFolder = null;
 
     // Revert prefs.
@@ -265,15 +277,16 @@ function startContinue(aSelectedStoreType, aResponse) {
 
   /**
    * Called when promise returned by convertMailStoreTo() is resolved.
-   * @param {String} aVal - path of the new account root folder with which the
+   *
+   * @param {string} aVal - path of the new account root folder with which the
    * promise returned by convertMailStoreTo() is resolved.
    */
   function promiseResolved(aVal) {
     log.info("Converted to '" + aSelectedStoreType + "' - " + aVal);
 
     gResponse.newRootFolder = aVal;
-    for (let deferredAccount of gDeferredAccounts) {
-      let defServer = deferredAccount.incomingServer;
+    for (const deferredAccount of gDeferredAccounts) {
+      const defServer = deferredAccount.incomingServer;
       defServer.rootMsgFolder.filePath = new FileUtils.File(aVal);
       Services.prefs.setCharPref(
         "mail.server." + defServer.key + ".storeContractID",
@@ -282,14 +295,15 @@ function startContinue(aSelectedStoreType, aResponse) {
     }
 
     Services.io.offline = gOriginalOffline;
-    document.getElementById("cancel").style.display = "none";
-    document.getElementById("finish").style.display = "inline-block";
-    document.getElementById("messageSpan").style.display = "none";
-    document.getElementById("completeSpan").style.display = "block";
+    document.getElementById("cancel").hidden = true;
+    document.getElementById("finish").hidden = false;
+    document.getElementById("messageSpan").hidden = true;
+    document.getElementById("completeSpan").hidden = false;
   }
 
   /**
    * Check whether an mbox folder can be compacted or not.
+   *
    * @param {nsIMsgFolder} aFolder - mbox folder that is to be checked.
    */
   function canCompact(aFolder) {
@@ -297,7 +311,7 @@ function startContinue(aSelectedStoreType, aResponse) {
       return true;
     }
     if (aFolder.hasSubFolders) {
-      for (let subFolder of aFolder.subFolders) {
+      for (const subFolder of aFolder.subFolders) {
         if (canCompact(subFolder)) {
           return true;
         }
@@ -316,39 +330,35 @@ function startContinue(aSelectedStoreType, aResponse) {
     originalStoreContractID == "@mozilla.org/msgstore/berkeleystore;1" &&
     canCompact(gServer.rootFolder)
   ) {
-    let urlListener = {
+    const urlListener = {
       OnStartRunningUrl(aUrl) {},
       OnStopRunningUrl(aUrl, aExitCode) {
-        let pConvert = MailstoreConverter.convertMailStoreTo(
+        const pConvert = MailstoreConverter.convertMailStoreTo(
           originalStoreContractID,
           gServer,
           document.getElementById("progress")
         );
         pConvert
-          .then(function(val) {
+          .then(function (val) {
             promiseResolved(val);
           })
-          .catch(function(reason) {
+          .catch(function (reason) {
             promiseRejected(reason);
           });
       },
     };
-    gServer.rootFolder.compactAll(
-      urlListener,
-      null,
-      gServer.type == "imap" || gServer.type == "nntp"
-    );
+    gServer.rootFolder.compactAll(urlListener, null);
   } else {
-    let pConvert = MailstoreConverter.convertMailStoreTo(
+    const pConvert = MailstoreConverter.convertMailStoreTo(
       originalStoreContractID,
       gServer,
       document.getElementById("progress")
     );
     pConvert
-      .then(function(val) {
+      .then(function (val) {
         promiseResolved(val);
       })
-      .catch(function(reason) {
+      .catch(function (reason) {
         promiseRejected(reason);
       });
   }
@@ -356,7 +366,8 @@ function startContinue(aSelectedStoreType, aResponse) {
 
 /**
  * Cancel the conversion.
- * @param {Object} aResponse - response param from the migration dialog modal.
+ *
+ * @param {object} aResponse - response param from the migration dialog modal.
  */
 function cancelConversion(aResponse) {
   gResponse = aResponse;

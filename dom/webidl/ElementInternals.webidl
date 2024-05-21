@@ -7,7 +7,73 @@
  * https://html.spec.whatwg.org/#elementinternals
  */
 
-[Pref="dom.webcomponents.formAssociatedCustomElement.enabled", Exposed=Window]
+[Exposed=Window]
 interface ElementInternals {
+  // Shadow root access
+  readonly attribute ShadowRoot? shadowRoot;
+
+  // Form-associated custom elements
+  [Throws]
+  undefined setFormValue((File or USVString or FormData)? value,
+                         optional (File or USVString or FormData)? state);
+
+  [Throws]
+  readonly attribute HTMLFormElement? form;
+
+  [Throws]
+  undefined setValidity(optional ValidityStateFlags flags = {},
+                        optional DOMString message,
+                        optional HTMLElement anchor);
+  [Throws]
+  readonly attribute boolean willValidate;
+  [Throws]
+  readonly attribute ValidityState validity;
+  [Throws]
+  readonly attribute DOMString validationMessage;
+  [Throws]
+  boolean checkValidity();
+  [Throws]
+  boolean reportValidity();
+
+  [Throws]
+  readonly attribute NodeList labels;
+
+  [Pref="dom.element.customstateset.enabled", SameObject] readonly attribute CustomStateSet states;
 };
 
+[Pref="dom.element.customstateset.enabled", Exposed=Window]
+interface CustomStateSet {
+  setlike<DOMString>;
+};
+
+partial interface CustomStateSet {
+  // Setlike methods need to be overriden.
+  [Throws]
+  undefined add(DOMString state);
+
+  [Throws]
+  boolean delete(DOMString state);
+
+  [Throws]
+  undefined clear();
+};
+
+partial interface ElementInternals {
+  [ChromeOnly, Throws]
+  readonly attribute HTMLElement? validationAnchor;
+};
+
+ElementInternals includes ARIAMixin;
+
+dictionary ValidityStateFlags {
+  boolean valueMissing = false;
+  boolean typeMismatch = false;
+  boolean patternMismatch = false;
+  boolean tooLong = false;
+  boolean tooShort = false;
+  boolean rangeUnderflow = false;
+  boolean rangeOverflow = false;
+  boolean stepMismatch = false;
+  boolean badInput = false;
+  boolean customError = false;
+};

@@ -1,29 +1,28 @@
 {
   "langpack_id": "ru",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ru@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Russian (RU) Language Pack",
-  "description": "Language pack for Thunderbird for ru",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Русский (Russian)",
+  "description": "Thunderbird Beta Language Pack for Русский (ru) – Russian",
+  "version": "125.0.20240401.173510",
   "languages": {
     "ru": {
-      "version": "20211016164629",
+      "version": "20240401183348",
       "chrome_resources": {
         "alerts": "chrome/ru/locale/ru/alerts/",
         "autoconfig": "chrome/ru/locale/ru/autoconfig/",
-        "branding": "chrome/ru/locale/ru/branding/",
+        "branding": "chrome/ru/locale/branding/",
         "calendar": "chrome/ru/locale/ru/calendar/",
         "chat": "chrome/ru/locale/ru/chat/",
         "communicator": "chrome/ru/locale/ru/communicator/",
         "devtools": "chrome/ru/locale/ru/devtools/client/",
         "devtools-shared": "chrome/ru/locale/ru/devtools/shared/",
-        "devtools-startup": "chrome/ru/locale/ru/devtools/startup/",
         "global": "chrome/ru/locale/ru/global/",
         "global-platform": {
           "macosx": "chrome/ru/locale/ru/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/ru/locale/ru/mozldap/",
         "necko": "chrome/ru/locale/ru/necko/",
         "passwordmgr": "chrome/ru/locale/ru/passwordmgr/",
-        "pdf.js": "chrome/ru/locale/pdfviewer/",
         "pipnss": "chrome/ru/locale/ru/pipnss/",
         "pippki": "chrome/ru/locale/ru/pippki/",
         "places": "chrome/ru/locale/ru/places/"

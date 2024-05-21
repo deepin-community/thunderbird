@@ -8,7 +8,7 @@ conventions include:
 
 -  Consistency makes measurement of processes simpler across the
    organization
--  Consistency makes it easier to write re-usable process tools
+-  Consistency makes it easier to write reusable process tools
 -  Consistency increases clarity for those than need to work across
    different repositories and bug trackers
 -  Consistency reduces friction around engineering mobility between
@@ -69,7 +69,7 @@ The triage process for Firefox bugs in Bugzilla requires a non default
 value of a bug's :ref:`Severity (definitions) <Defect Severity>`.
 
 Release Status Flags
--------------------------------
+--------------------
 
 Open Firefox bugs may also have :ref:`status flags <Release Status Flags>`
 (``status_firefoxNN``) set for Nightly, Beta, Release, or ESR.
@@ -137,7 +137,7 @@ To represent Bugzilla fields, use labels following this scheme.
    -  ``S1``, ``S2``, ``S3``, ``S4``, ``N/A`` (reserved for bugs
       of type ``task`` or ``enhancement``)
 
--  :ref:`Status flags <Firefox Status Flags>`
+-  :ref:`Status flags <Release Status Flags>`
 
    -  ``status_firefoxNN:<status>``
       (example ``status_firefox77:affected``)

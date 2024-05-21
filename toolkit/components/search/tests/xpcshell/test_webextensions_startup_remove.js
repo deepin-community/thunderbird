@@ -3,22 +3,16 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AddonManager",
-  "resource://gre/modules/AddonManager.jsm"
-);
-
 const ENGINE_ID = "enginetest@example.com";
 let xpi;
 let profile = do_get_profile().clone();
 
-add_task(async function setup() {
+add_setup(async function () {
   await SearchTestUtils.useTestEngines("data1");
   xpi = AddonTestUtils.createTempWebExtensionFile({
     manifest: {
       version: "1.0",
-      applications: {
+      browser_specific_settings: {
         gecko: { id: ENGINE_ID },
       },
       chrome_settings_overrides: {
@@ -43,7 +37,10 @@ add_task(async function test_removeAddonOnStartup() {
 
   Assert.ok(!!engine, "Should have installed the test engine");
 
-  await Services.search.setDefault(engine);
+  await Services.search.setDefault(
+    engine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
   await promise;
 
   await AddonTestUtils.promiseShutdownManager();
@@ -51,8 +48,8 @@ add_task(async function test_removeAddonOnStartup() {
   // Now remove it, reset the search service and start up the add-on manager.
   // Note: the saved settings will have the engine in. If this didn't work,
   // the engine would still be present.
-  await OS.File.remove(
-    OS.Path.join(profile.path, "extensions", `${ENGINE_ID}.xpi`)
+  await IOUtils.remove(
+    PathUtils.join(profile.path, "extensions", `${ENGINE_ID}.xpi`)
   );
 
   let removePromise = SearchTestUtils.promiseSearchNotification(

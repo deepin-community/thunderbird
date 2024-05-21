@@ -4,12 +4,13 @@
 "use strict";
 
 const TRACKING_PAGE =
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.com/browser/browser/base/content/test/protectionsUI/trackingPage.html";
 
 const ST_PROTECTION_PREF = "privacy.trackingprotection.socialtracking.enabled";
 const ST_BLOCK_COOKIES_PREF = "privacy.socialtracking.block_cookies.enabled";
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       [ST_BLOCK_COOKIES_PREF, true],
@@ -58,12 +59,12 @@ async function testIdentityState(hasException) {
   );
 
   ok(
-    BrowserTestUtils.is_visible(gProtectionsHandler.iconBox),
+    BrowserTestUtils.isVisible(gProtectionsHandler.iconBox),
     "icon box is visible regardless the exception"
   );
   await closeProtectionsPanel();
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("socialtracking", "*");
   });
   await openProtectionsPanel();
@@ -81,7 +82,7 @@ async function testIdentityState(hasException) {
     "social trackers are detected"
   );
   ok(
-    BrowserTestUtils.is_visible(gProtectionsHandler.iconBox),
+    BrowserTestUtils.isVisible(gProtectionsHandler.iconBox),
     "icon box is visible"
   );
   is(
@@ -122,7 +123,7 @@ async function testSubview(hasException) {
   }
 
   promise = waitForContentBlockingEvent();
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("socialtracking", "*");
   });
   await promise;
@@ -135,10 +136,10 @@ async function testSubview(hasException) {
 
   // Explicitly waiting for the category item becoming visible.
   await TestUtils.waitForCondition(() => {
-    return BrowserTestUtils.is_visible(categoryItem);
+    return BrowserTestUtils.isVisible(categoryItem);
   });
 
-  ok(BrowserTestUtils.is_visible(categoryItem), "STP category item is visible");
+  ok(BrowserTestUtils.isVisible(categoryItem), "STP category item is visible");
   ok(
     categoryItem.classList.contains("blocked"),
     "STP category item is blocked"
@@ -167,7 +168,7 @@ async function testSubview(hasException) {
   let listItems = subview.querySelectorAll(".protections-popup-list-item");
   is(listItems.length, 1, "We have 1 item in the list");
   let listItem = listItems[0];
-  ok(BrowserTestUtils.is_visible(listItem), "List item is visible");
+  ok(BrowserTestUtils.isVisible(listItem), "List item is visible");
   is(
     listItem.querySelector("label").value,
     "https://social-tracking.example.org",
@@ -224,13 +225,13 @@ async function testCategoryItem(blockLoads) {
     !categoryItem.classList.contains("blocked"),
     "Category not marked as blocked"
   );
-  ok(!BrowserTestUtils.is_visible(categoryItem), "Item should be hidden");
+  ok(!BrowserTestUtils.isVisible(categoryItem), "Item should be hidden");
   ok(
     !gProtectionsHandler._protectionsPopup.hasAttribute("detected"),
     "trackers are not detected"
   );
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("socialtracking", "*");
   });
 
@@ -238,13 +239,13 @@ async function testCategoryItem(blockLoads) {
     !categoryItem.classList.contains("blocked"),
     "Category not marked as blocked"
   );
-  ok(!BrowserTestUtils.is_visible(categoryItem), "Item should be hidden");
+  ok(!BrowserTestUtils.isVisible(categoryItem), "Item should be hidden");
   ok(
     !gProtectionsHandler._protectionsPopup.hasAttribute("detected"),
     "trackers are not detected"
   );
   ok(
-    BrowserTestUtils.is_visible(noTrackersDetectedDesc),
+    BrowserTestUtils.isVisible(noTrackersDetectedDesc),
     "No Trackers detected should be shown"
   );
 
@@ -268,9 +269,9 @@ async function testCategoryItem(blockLoads) {
     "Category marked as not found"
   );
   // At this point we should still be showing "No Trackers Detected"
-  ok(!BrowserTestUtils.is_visible(categoryItem), "Item should not be visible");
+  ok(!BrowserTestUtils.isVisible(categoryItem), "Item should not be visible");
   ok(
-    BrowserTestUtils.is_visible(noTrackersDetectedDesc),
+    BrowserTestUtils.isVisible(noTrackersDetectedDesc),
     "No Trackers detected should be shown"
   );
   ok(
@@ -278,7 +279,7 @@ async function testCategoryItem(blockLoads) {
     "trackers are not detected"
   );
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("socialtracking", "*");
   });
 
@@ -291,9 +292,9 @@ async function testCategoryItem(blockLoads) {
     !categoryItem.classList.contains("notFound"),
     "Category not marked as not found"
   );
-  ok(BrowserTestUtils.is_visible(categoryItem), "Item should be visible");
+  ok(BrowserTestUtils.isVisible(categoryItem), "Item should be visible");
   ok(
-    !BrowserTestUtils.is_visible(noTrackersDetectedDesc),
+    !BrowserTestUtils.isVisible(noTrackersDetectedDesc),
     "No Trackers detected should be hidden"
   );
   ok(

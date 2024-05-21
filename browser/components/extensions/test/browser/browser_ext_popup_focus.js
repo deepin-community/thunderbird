@@ -19,10 +19,10 @@ add_task(async function testPageActionFocus() {
         </head><body>
         </body></html>
       `,
-      "popup.js": function() {
+      "popup.js": function () {
         window.addEventListener(
           "focus",
-          event => {
+          () => {
             browser.test.log("extension popup received focus event");
             browser.test.assertEq(
               true,
@@ -60,10 +60,10 @@ add_task(async function testBrowserActionFocus() {
         </head><body>
         </body></html>
       `,
-      "popup.js": function() {
+      "popup.js": function () {
         window.addEventListener(
           "focus",
-          event => {
+          () => {
             browser.test.log("extension popup received focus event");
             browser.test.assertEq(
               true,

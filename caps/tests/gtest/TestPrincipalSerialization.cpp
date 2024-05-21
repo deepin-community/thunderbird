@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "gtest/gtest.h"
+#include "mozilla/Base64.h"
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/ContentPrincipal.h"
 #include "mozilla/NullPrincipal.h"
@@ -16,7 +17,7 @@ using mozilla::SystemPrincipal;
 // None of these tests work in debug due to assert guards
 #ifndef MOZ_DEBUG
 
-// calling toJson() twice with the same string arg
+// calling toJSON() twice with the same string arg
 // (ensure that we truncate correctly where needed)
 TEST(PrincipalSerialization, ReusedJSONArgument)
 {
@@ -43,28 +44,6 @@ TEST(PrincipalSerialization, ReusedJSONArgument)
   rv = BasePrincipal::Cast(principal2)->ToJSON(JSON);
   ASSERT_EQ(rv, NS_OK);
   ASSERT_TRUE(JSON.EqualsLiteral("{\"1\":{\"0\":\"https://example.com/\"}}"));
-}
-
-// Assure that calling FromProperties() with an empty array list always returns
-// a nullptr The exception here is SystemPrincipal which doesn't have fields but
-// it also doesn't implement FromProperties These are overly cautious checks
-// that we don't try to create a principal in reality FromProperties is only
-// called with a populated array.
-TEST(PrincipalSerialization, FromPropertiesEmpty)
-{
-  nsTArray<ContentPrincipal::KeyVal> resContent;
-  nsCOMPtr<nsIPrincipal> contentPrincipal =
-      ContentPrincipal::FromProperties(resContent);
-  ASSERT_EQ(nullptr, contentPrincipal);
-
-  nsTArray<ExpandedPrincipal::KeyVal> resExpanded;
-  nsCOMPtr<nsIPrincipal> expandedPrincipal =
-      ExpandedPrincipal::FromProperties(resExpanded);
-  ASSERT_EQ(nullptr, expandedPrincipal);
-
-  nsTArray<NullPrincipal::KeyVal> resNull;
-  nsCOMPtr<nsIPrincipal> nullprincipal = NullPrincipal::FromProperties(resNull);
-  ASSERT_EQ(nullptr, nullprincipal);
 }
 
 // Double check that if we have two valid principals in a serialized JSON that
@@ -118,7 +97,7 @@ TEST(PrincipalSerialization, ExpandedPrincipal)
             BasePrincipal::eContentPrincipal);
   allowedDomains[1] = principal2;
 
-  OriginAttributes attrs;
+  mozilla::OriginAttributes attrs;
   RefPtr<ExpandedPrincipal> result =
       ExpandedPrincipal::Create(allowedDomains, attrs);
   ASSERT_EQ(BasePrincipal::Cast(result)->Kind(),
@@ -127,10 +106,9 @@ TEST(PrincipalSerialization, ExpandedPrincipal)
   nsAutoCString JSON;
   rv = BasePrincipal::Cast(result)->ToJSON(JSON);
   ASSERT_EQ(rv, NS_OK);
-  ASSERT_STREQ(
-      JSON.get(),
-      "{\"2\":{\"0\":\"eyIxIjp7IjAiOiJodHRwczovL21vemlsbGEuY29tLyJ9fQ==,"
-      "eyIxIjp7IjAiOiJodHRwczovL21vemlsbGEub3JnLyJ9fQ==\"}}");
+  ASSERT_STREQ(JSON.get(),
+               "{\"2\":{\"0\":[{\"1\":{\"0\":\"https://mozilla.com/"
+               "\"}},{\"1\":{\"0\":\"https://mozilla.org/\"}}]}}");
 
   nsCOMPtr<nsIPrincipal> returnedPrincipal = BasePrincipal::FromJSON(JSON);
   auto outPrincipal = BasePrincipal::Cast(returnedPrincipal);
@@ -177,7 +155,7 @@ TEST(PrincipalSerialization, ExpandedPrincipalOA)
             BasePrincipal::eContentPrincipal);
   allowedDomains[1] = principal2;
 
-  OriginAttributes attrs;
+  mozilla::OriginAttributes attrs;
   nsAutoCString suffix("^userContextId=1");
   bool ok = attrs.PopulateFromSuffix(suffix);
   ASSERT_TRUE(ok);
@@ -190,11 +168,10 @@ TEST(PrincipalSerialization, ExpandedPrincipalOA)
   nsAutoCString JSON;
   rv = BasePrincipal::Cast(result)->ToJSON(JSON);
   ASSERT_EQ(rv, NS_OK);
-  ASSERT_STREQ(
-      JSON.get(),
-      "{\"2\":{\"0\":\"eyIxIjp7IjAiOiJodHRwczovL21vemlsbGEuY29tLyJ9fQ==,"
-      "eyIxIjp7IjAiOiJodHRwczovL21vemlsbGEub3JnLyJ9fQ==\",\"1\":\"^"
-      "userContextId=1\"}}");
+  ASSERT_STREQ(JSON.get(),
+               "{\"2\":{\"0\":[{\"1\":{\"0\":\"https://mozilla.com/"
+               "\"}},{\"1\":{\"0\":\"https://mozilla.org/"
+               "\"}}],\"1\":\"^userContextId=1\"}}");
 
   nsCOMPtr<nsIPrincipal> returnedPrincipal = BasePrincipal::FromJSON(JSON);
   auto outPrincipal = BasePrincipal::Cast(returnedPrincipal);

@@ -1,12 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from preferences.js */
 
-var { Downloads } = ChromeUtils.import("resource://gre/modules/Downloads.jsm");
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
+var { Downloads } = ChromeUtils.importESModule(
+  "resource://gre/modules/Downloads.sys.mjs"
+);
+var { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
+);
 
 Preferences.addAll([
   { id: "browser.download.useDownloadDir", type: "bool" },
@@ -21,7 +24,7 @@ var gDownloadDirSection = {
     var fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
     var bundlePreferences = document.getElementById("bundlePreferences");
     var title = bundlePreferences.getString("chooseAttachmentsFolderTitle");
-    fp.init(window, title, Ci.nsIFilePicker.modeGetFolder);
+    fp.init(window.browsingContext, title, Ci.nsIFilePicker.modeGetFolder);
 
     var customDirPref = Preferences.get("browser.download.dir");
     if (customDirPref.value) {
@@ -29,15 +32,15 @@ var gDownloadDirSection = {
     }
     fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
-    let rv = await new Promise(resolve => fp.open(resolve));
+    const rv = await new Promise(resolve => fp.open(resolve));
     if (rv != Ci.nsIFilePicker.returnOK || !fp.file) {
       return;
     }
 
-    let file = fp.file.QueryInterface(Ci.nsIFile);
-    let currentDirPref = Preferences.get("browser.download.downloadDir");
+    const file = fp.file.QueryInterface(Ci.nsIFile);
+    const currentDirPref = Preferences.get("browser.download.downloadDir");
     customDirPref.value = currentDirPref.value = file;
-    let folderListPref = Preferences.get("browser.download.folderList");
+    const folderListPref = Preferences.get("browser.download.folderList");
     folderListPref.value = await this._fileToIndex(file);
   },
 
@@ -76,9 +79,10 @@ var gDownloadDirSection = {
     switch (aFolder) {
       case "Desktop":
         return Services.dirsvc.get("Desk", Ci.nsIFile);
-      case "Downloads":
-        let downloadsDir = await Downloads.getSystemDownloadsDirectory();
+      case "Downloads": {
+        const downloadsDir = await Downloads.getSystemDownloadsDirectory();
         return new FileUtils.File(downloadsDir);
+      }
     }
     throw new Error(
       "ASSERTION FAILED: folder type should be 'Desktop' or 'Downloads'"
@@ -110,10 +114,10 @@ var gDownloadDirSection = {
     var downloadDir =
       currentDirPref.value || (await this._indexToFile(folderListPref.value));
     if (downloadDir) {
-      let urlSpec = Services.io
+      const urlSpec = Services.io
         .getProtocolHandler("file")
         .QueryInterface(Ci.nsIFileProtocolHandler)
-        .getURLSpecFromFile(downloadDir);
+        .getURLSpecFromDir(downloadDir);
 
       downloadFolder.style.backgroundImage =
         "url(moz-icon://" + urlSpec + "?size=16)";

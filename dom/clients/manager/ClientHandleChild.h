@@ -9,8 +9,7 @@
 #include "ClientThing.h"
 #include "mozilla/dom/PClientHandleChild.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class ClientHandle;
 class ClientInfo;
@@ -21,6 +20,8 @@ class ClientThing;
 class ClientHandleChild final : public PClientHandleChild {
   ClientHandle* mHandle;
   bool mTeardownStarted;
+
+  ~ClientHandleChild() = default;
 
   // PClientHandleChild interface
   mozilla::ipc::IPCResult RecvExecutionReady(
@@ -34,6 +35,8 @@ class ClientHandleChild final : public PClientHandleChild {
   bool DeallocPClientHandleOpChild(PClientHandleOpChild* aActor) override;
 
  public:
+  NS_INLINE_DECL_REFCOUNTING(ClientHandleChild, override)
+
   ClientHandleChild();
 
   void SetOwner(ClientThing<ClientHandleChild>* aThing);
@@ -43,7 +46,6 @@ class ClientHandleChild final : public PClientHandleChild {
   void MaybeStartTeardown();
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // _mozilla_dom_ClientHandleChild_h

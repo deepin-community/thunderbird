@@ -1,19 +1,15 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 [
   {
     "namespace": "manifest",
     "types": [
       {
         "$extend": "OptionalPermission",
-        "choices": [{
-          "type": "string",
-          "enum": [
-            "find"
-          ]
-        }]
+        "choices": [
+          {
+            "type": "string",
+            "enum": ["find"]
+          }
+        ]
       }
     ]
   },
@@ -48,6 +44,11 @@
               "caseSensitive": {
                 "type": "boolean",
                 "description": "Find only ranges with case sensitive match.",
+                "optional": true
+              },
+              "matchDiacritics": {
+                "type": "boolean",
+                "description": "Find only ranges with diacritic sensitive match.",
                 "optional": true
               },
               "entireWord": {

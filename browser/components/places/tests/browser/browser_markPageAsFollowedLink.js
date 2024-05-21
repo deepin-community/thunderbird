@@ -10,11 +10,11 @@ const RIGHT_URL = BASE_URL + "/frameRight.html";
 
 add_task(async function test() {
   // We must wait for both frames to be loaded and the visits to be registered.
-  let deferredLeftFrameVisit = PromiseUtils.defer();
-  let deferredRightFrameVisit = PromiseUtils.defer();
+  let deferredLeftFrameVisit = Promise.withResolvers();
+  let deferredRightFrameVisit = Promise.withResolvers();
 
   Services.obs.addObserver(function observe(subject) {
-    (async function() {
+    (async function () {
       let url = subject.QueryInterface(Ci.nsIURI).spec;
       if (url == LEFT_URL) {
         is(
@@ -45,7 +45,7 @@ add_task(async function test() {
   // Click on the link in the left frame to cause a page load in the
   // right frame.
   info("Clicking link");
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     content.frames[0].document.getElementById("clickme").click();
   });
 

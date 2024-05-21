@@ -31,7 +31,7 @@
         getNode(aID).openPopup(button, "after_start", 0, 0, true, false);
       }
 
-      this.finalCheck = function openMenu_finalCheck(aEvent)
+      this.finalCheck = function openMenu_finalCheck()
       {
         testAccessibleTree(aID, aTree);
       }
@@ -58,7 +58,7 @@
         return "select menuitem " + prettyName(aID);
       }
     }
-    
+
     function openSubMenu(aSubMenuID, aItemID, aMenuID, aTree)
     {
       this.eventSeq = [
@@ -70,7 +70,7 @@
         synthesizeKey("KEY_Enter");
       }
 
-      this.finalCheck = function openSubMenu_finalCheck(aEvent)
+      this.finalCheck = function openSubMenu_finalCheck()
       {
         testAccessibleTree(aMenuID, aTree);
       }

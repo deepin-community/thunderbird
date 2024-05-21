@@ -14,9 +14,9 @@ const DEFAULT_PROCESS_COUNT = Services.prefs
  * of stats was called more often than the max parameter.
  *
  * @param {Array}  stats - an array of [prefName, accessCount] tuples
- * @param {Number} max - the maximum number of times any of the prefs should
+ * @param {number} max - the maximum number of times any of the prefs should
  *                 have been called.
- * @param {Object} knownProblematicPrefs (optional) - an object that defines
+ * @param {object} knownProblematicPrefs (optional) - an object that defines
  *                 prefs that should be exempt from checking the
  *                 maximum access. It looks like the following:
  *
@@ -28,7 +28,7 @@ const DEFAULT_PROCESS_COUNT = Services.prefs
  *                 }
  */
 function checkPrefGetters(stats, max, knownProblematicPrefs = {}) {
-  let getterStats = Object.entries(stats).sort(
+  const getterStats = Object.entries(stats).sort(
     ([, val1], [, val2]) => val2 - val1
   );
 
@@ -36,8 +36,8 @@ function checkPrefGetters(stats, max, knownProblematicPrefs = {}) {
   // forgot any later on.
   knownProblematicPrefs = Object.assign({}, knownProblematicPrefs);
 
-  for (let [pref, count] of getterStats) {
-    let prefLimits = knownProblematicPrefs[pref];
+  for (const [pref, count] of getterStats) {
+    const prefLimits = knownProblematicPrefs[pref];
     if (!prefLimits) {
       Assert.lessOrEqual(
         count,
@@ -77,7 +77,7 @@ function checkPrefGetters(stats, max, knownProblematicPrefs = {}) {
     delete knownProblematicPrefs["browser.startup.record"];
   }
 
-  let unusedPrefs = Object.keys(knownProblematicPrefs);
+  const unusedPrefs = Object.keys(knownProblematicPrefs);
   is(
     unusedPrefs.length,
     0,
@@ -90,7 +90,7 @@ function checkPrefGetters(stats, max, knownProblematicPrefs = {}) {
  * using the Services.prefs.readStats() function.
  */
 function getPreferenceStats() {
-  let stats = {};
+  const stats = {};
   Services.prefs.readStats((key, value) => (stats[key] = value));
   return stats;
 }
@@ -101,37 +101,18 @@ add_task(async function debug_only() {
 
 // Just checks how many prefs were accessed during startup.
 add_task(async function startup() {
-  let max = 40;
+  const max = 40;
 
-  let knownProblematicPrefs = {
+  const knownProblematicPrefs = {
     // These are all similar values to Firefox, check with the equivalent
     // file in Firefox.
     "browser.startup.record": {
+      // This pref is accessed in Nighly and debug builds only.
       min: 200,
-      max: 390,
-    },
-    "layout.css.dpi": {
-      min: 45,
-      max: 250,
+      max: 400,
     },
     "network.loadinfo.skip_type_assertion": {
       // This is accessed in debug only.
-    },
-    "extensions.getAddons.cache.enabled": {
-      min: 3,
-      max: 55,
-    },
-    "chrome.override_package.global": {
-      min: 0,
-      max: 50,
-    },
-    "toolkit.scrollbox.verticalScrollDistance": {
-      min: 100,
-      max: 355,
-    },
-    "toolkit.scrollbox.horizontalScrollDistance": {
-      min: 1,
-      max: 130,
     },
     // Bug 944367: All gloda logs are controlled by one pref.
     "gloda.loglevel": {
@@ -142,78 +123,49 @@ add_task(async function startup() {
 
   // These preferences are used in PresContext or layout areas and all have a
   // similar number of errors - probably being loaded in the same component.
-  let prefsUsedInLayout = [
-    "bidi.direction",
-    "bidi.numeral",
-    "bidi.texttype",
-    "browser.display.auto_quality_min_font_size",
-    "dom.send_after_paint_to_content",
-    "gfx.missing_fonts.notify",
+  const prefsUsedInLayout = [
     "image.animation_mode",
     "layout.reflow.dumpframebyframecounts",
     "layout.reflow.dumpframecounts",
     "layout.reflow.showframecounts",
-    "layout.scrollbar.side",
-    "layout.throttled_frame_rate",
-    "layout.visibility.min-recompute-interval-ms",
   ];
 
-  for (let pref of prefsUsedInLayout) {
+  for (const pref of prefsUsedInLayout) {
     knownProblematicPrefs[pref] = {
       min: 60,
       max: 175,
     };
   }
 
-  if (AppConstants.platform == "win") {
-    // Bug 1660876 - Seem to be coming from PreferenceSheet::Prefs::Load.
-    for (let pref of [
-      "browser.display.focus_text_color",
-      "browser.visited_color",
-      "browser.active_color",
-      "browser.display.focus_background_color",
-    ]) {
-      knownProblematicPrefs[pref] = {
-        min: 2800,
-        max: 3200,
-      };
-    }
-    for (let pref of [
-      "browser.anchor_color",
-      "browser.display.foreground_color",
-      "browser.display.background_color",
-    ]) {
-      knownProblematicPrefs[pref] = {
-        min: 900,
-        max: 1600,
-      };
-    }
-    for (let pref of [
+  if (AppConstants.platform == "macosx") {
+    for (const pref of [
       "font.default.x-western",
-      "font.size.cursive.x-western",
+      "font.minimum-size.x-western",
       "font.name.variable.x-western",
       "font.size-adjust.cursive.x-western",
+      "font.size-adjust.fantasy.x-western",
+      "font.size-adjust.monospace.x-western",
+      "font.size-adjust.sans-serif.x-western",
+      "font.size-adjust.serif.x-western",
+      "font.size-adjust.system-ui.x-western",
+      "font.size-adjust.variable.x-western",
+      "font.size.cursive.x-western",
       "font.size.fantasy.x-western",
       "font.size.monospace.x-western",
       "font.size.sans-serif.x-western",
-      "font.size-adjust.monospace.x-western",
-      "font.size-adjust.serif.x-western",
-      "font.size.variable.x-western",
-      "font.minimum-size.x-western",
-      "font.size-adjust.variable.x-western",
-      "font.size-adjust.fantasy.x-western",
       "font.size.serif.x-western",
-      "font.size-adjust.sans-serif.x-western",
+      "font.size.system-ui.x-western",
+      "font.size.variable.x-western",
     ]) {
       knownProblematicPrefs[pref] = {
         min: 0,
-        max: 75,
+        max: 45,
       };
     }
   }
 
-  let startupRecorder = Cc["@mozilla.org/test/startuprecorder;1"].getService()
-    .wrappedJSObject;
+  const startupRecorder =
+    Cc["@mozilla.org/test/startuprecorder;1"].getService().wrappedJSObject;
   await startupRecorder.done;
 
   ok(startupRecorder.data.prefStats, "startupRecorder has prefStats");

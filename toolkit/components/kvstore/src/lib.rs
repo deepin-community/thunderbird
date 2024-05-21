@@ -25,14 +25,11 @@ mod task;
 use atomic_refcell::AtomicRefCell;
 use error::KeyValueError;
 use libc::c_void;
-use moz_task::{
-    create_background_task_queue, dispatch_background_task_with_options, DispatchOptions,
-    TaskRunnable,
-};
-use nserror::{nsresult, NS_ERROR_FAILURE, NS_ERROR_NO_AGGREGATION, NS_OK};
+use moz_task::{create_background_task_queue, DispatchOptions, TaskRunnable};
+use nserror::{nsresult, NS_ERROR_FAILURE, NS_OK};
 use nsstring::{nsACString, nsCString};
 use owned_value::{owned_to_variant, variant_to_owned};
-use rkv::backend::{SafeModeDatabase, SafeModeEnvironment};
+use rkv::backend::{RecoveryStrategy, SafeModeDatabase, SafeModeEnvironment};
 use rkv::OwnedValue;
 use std::{
     ptr,
@@ -40,15 +37,16 @@ use std::{
     vec::IntoIter,
 };
 use task::{
-    ClearTask, DeleteTask, EnumerateTask, GetOrCreateTask, GetTask, HasTask, PutTask, WriteManyTask,
+    ClearTask, DeleteTask, EnumerateTask, GetOrCreateWithOptionsTask, GetTask, HasTask, PutTask,
+    WriteManyTask,
 };
 use thin_vec::ThinVec;
 use xpcom::{
     getter_addrefs,
     interfaces::{
         nsIKeyValueDatabaseCallback, nsIKeyValueEnumeratorCallback, nsIKeyValuePair,
-        nsIKeyValueVariantCallback, nsIKeyValueVoidCallback, nsISerialEventTarget, nsISupports,
-        nsIVariant,
+        nsIKeyValueService, nsIKeyValueVariantCallback, nsIKeyValueVoidCallback,
+        nsISerialEventTarget, nsIVariant,
     },
     nsIID, xpcom, xpcom_method, RefPtr,
 };
@@ -59,15 +57,10 @@ type KeyValuePairResult = Result<(String, OwnedValue), KeyValueError>;
 
 #[no_mangle]
 pub unsafe extern "C" fn nsKeyValueServiceConstructor(
-    outer: *const nsISupports,
     iid: &nsIID,
     result: *mut *mut c_void,
 ) -> nsresult {
     *result = ptr::null_mut();
-
-    if !outer.is_null() {
-        return NS_ERROR_NO_AGGREGATION;
-    }
 
     let service = KeyValueService::new();
     service.QueryInterface(iid, result)
@@ -96,10 +89,8 @@ pub unsafe extern "C" fn nsKeyValueServiceConstructor(
 // The XPCOM methods are implemented using the xpcom_method! declarative macro
 // from the xpcom crate.
 
-#[derive(xpcom)]
-#[xpimplements(nsIKeyValueService)]
-#[refcnt = "atomic"]
-pub struct InitKeyValueService {}
+#[xpcom(implement(nsIKeyValueService), atomic)]
+pub struct KeyValueService {}
 
 impl KeyValueService {
     fn new() -> RefPtr<KeyValueService> {
@@ -120,23 +111,53 @@ impl KeyValueService {
         path: &nsACString,
         name: &nsACString,
     ) -> Result<(), nsresult> {
-        let task = Box::new(GetOrCreateTask::new(
+        let task = Box::new(GetOrCreateWithOptionsTask::new(
             RefPtr::new(callback),
             nsCString::from(path),
             nsCString::from(name),
+            RecoveryStrategy::Error,
         ));
 
-        dispatch_background_task_with_options(
-            RefPtr::new(TaskRunnable::new("KVService::GetOrCreate", task)?.coerce()),
-            DispatchOptions::default().may_block(true),
+        TaskRunnable::new("KVService::GetOrCreate", task)?
+            .dispatch_background_task_with_options(DispatchOptions::default().may_block(true))
+    }
+
+    xpcom_method!(
+        get_or_create_with_options => GetOrCreateWithOptions(
+            callback: *const nsIKeyValueDatabaseCallback,
+            path: *const nsACString,
+            name: *const nsACString,
+            strategy: u8
         )
+    );
+
+    fn get_or_create_with_options(
+        &self,
+        callback: &nsIKeyValueDatabaseCallback,
+        path: &nsACString,
+        name: &nsACString,
+        xpidl_strategy: u8,
+    ) -> Result<(), nsresult> {
+        let strategy = match xpidl_strategy {
+            nsIKeyValueService::ERROR => RecoveryStrategy::Error,
+            nsIKeyValueService::DISCARD => RecoveryStrategy::Discard,
+            nsIKeyValueService::RENAME => RecoveryStrategy::Rename,
+            _ => return Err(NS_ERROR_FAILURE),
+        };
+        let task = Box::new(GetOrCreateWithOptionsTask::new(
+            RefPtr::new(callback),
+            nsCString::from(path),
+            nsCString::from(name),
+            strategy,
+        ));
+
+        TaskRunnable::new("KVService::GetOrCreateWithOptions", task)?
+            .dispatch_background_task_with_options(DispatchOptions::default().may_block(true))
     }
 }
 
-#[derive(xpcom)]
-#[xpimplements(nsIKeyValueDatabase)]
-#[refcnt = "atomic"]
-pub struct InitKeyValueDatabase {
+#[xpcom(implement(nsIKeyValueDatabase), atomic)]
+pub struct KeyValueDatabase {
     rkv: Arc<RwLock<Rkv>>,
     store: SingleStore,
     queue: RefPtr<nsISerialEventTarget>,
@@ -185,18 +206,22 @@ impl KeyValueDatabase {
     xpcom_method!(
         write_many => WriteMany(
             callback: *const nsIKeyValueVoidCallback,
-            pairs: *const ThinVec<RefPtr<nsIKeyValuePair>>
+            pairs: *const ThinVec<Option<RefPtr<nsIKeyValuePair>>>
         )
     );
 
     fn write_many(
         &self,
         callback: &nsIKeyValueVoidCallback,
-        pairs: &ThinVec<RefPtr<nsIKeyValuePair>>,
+        pairs: &ThinVec<Option<RefPtr<nsIKeyValuePair>>>,
     ) -> Result<(), nsresult> {
         let mut entries = Vec::with_capacity(pairs.len());
 
         for pair in pairs {
+            let pair = pair
+                .as_ref()
+                .ok_or(nsresult::from(KeyValueError::UnexpectedValue))?;
+
             let mut key = nsCString::new();
             unsafe { pair.GetKey(&mut *key) }.to_result()?;
             if key.is_empty() {
@@ -319,10 +344,8 @@ impl KeyValueDatabase {
     }
 }
 
-#[derive(xpcom)]
-#[xpimplements(nsIKeyValueEnumerator)]
-#[refcnt = "atomic"]
-pub struct InitKeyValueEnumerator {
+#[xpcom(implement(nsIKeyValueEnumerator), atomic)]
+pub struct KeyValueEnumerator {
     iter: AtomicRefCell<IntoIter<KeyValuePairResult>>,
 }
 
@@ -356,10 +379,8 @@ impl KeyValueEnumerator {
     }
 }
 
-#[derive(xpcom)]
-#[xpimplements(nsIKeyValuePair)]
-#[refcnt = "atomic"]
-pub struct InitKeyValuePair {
+#[xpcom(implement(nsIKeyValuePair), atomic)]
+pub struct KeyValuePair {
     key: String,
     value: OwnedValue,
 }

@@ -7,7 +7,7 @@
 // a page load whilst we're getting the search url, then we don't handle the
 // original search query.
 
-add_task(async function setup() {
+add_setup(async function () {
   sandbox = sinon.createSandbox();
 
   registerCleanupFunction(async () => {
@@ -16,7 +16,7 @@ add_task(async function setup() {
 });
 
 async function checkShortcutLoading(modifierKeys) {
-  let deferred = PromiseUtils.defer();
+  let deferred = Promise.withResolvers();
   let tab = await BrowserTestUtils.openNewForegroundTab({
     gBrowser,
     opening: "about:robots",
@@ -46,7 +46,7 @@ async function checkShortcutLoading(modifierKeys) {
   );
 
   // Now load a different page.
-  BrowserTestUtils.loadURI(tab.linkedBrowser, "about:license");
+  BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, "about:license");
   await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
   Assert.equal(gBrowser.visibleTabs.length, 2, "Should have 2 tabs");
 

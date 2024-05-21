@@ -8,6 +8,7 @@
 #define NSLINEBREAKER_H_
 
 #include "mozilla/intl/LineBreaker.h"
+#include "mozilla/intl/Segmenter.h"
 #include "nsString.h"
 #include "nsTArray.h"
 
@@ -56,8 +57,7 @@ class nsILineBreakSink {
  *
  * The current strategy is that we break the overall text into
  * whitespace-delimited "words". Then those words are passed to the LineBreaker
- * service for deeper analysis if they contain a "complex" character as
- * described below.
+ * for deeper analysis if they might contain breakable characters.
  *
  * This class also handles detection of which characters should be capitalized
  * for text-transform:capitalize. This is a good place to handle that because
@@ -72,27 +72,12 @@ class nsLineBreaker {
     return mozilla::intl::NS_IsSpace(u);
   }
 
-  static inline bool IsComplexASCIIChar(char16_t u) {
-    return !((0x0030 <= u && u <= 0x0039) || (0x0041 <= u && u <= 0x005A) ||
-             (0x0061 <= u && u <= 0x007A) || (0x000a == u));
-  }
-
-  static inline bool IsComplexChar(char16_t u) {
-    return IsComplexASCIIChar(u) ||
-           mozilla::intl::NS_NeedsPlatformNativeHandling(u) ||
-           (0x1100 <= u && u <= 0x11ff) ||  // Hangul Jamo
-           (0x2000 <= u && u <= 0x21ff) ||  // Punctuations and Symbols
-           (0x2e80 <= u && u <= 0xd7ff) ||  // several CJK blocks
-           (0xf900 <= u && u <= 0xfaff) ||  // CJK Compatibility Idographs
-           (0xff00 <= u && u <= 0xffef);    // Halfwidth and Fullwidth Forms
-  }
-
   // Break opportunities exist at the end of each run of breakable whitespace
   // (see IsSpace above). Break opportunities can also exist between pairs of
   // non-whitespace characters, as determined by mozilla::intl::LineBreaker.
   // We pass a whitespace-
   // delimited word to LineBreaker if it contains at least one character
-  // matching IsComplexChar.
+  // that has breakable line breaking classes.
   // We provide flags to control on a per-chunk basis where breaks are allowed.
   // At any character boundary, exactly one text chunk governs whether a
   // break is allowed at that boundary.
@@ -174,10 +159,9 @@ class nsLineBreaker {
   nsresult Reset(bool* aTrailingBreak);
 
   /*
-   * Set word-break mode for linebreaker.  This is set by word-break property.
-   * @param aMode is LineBreaker::WordBreak::* value.
+   * Set word-break mode for line breaker. This is set by word-break property.
    */
-  void SetWordBreak(mozilla::intl::LineBreaker::WordBreak aMode) {
+  void SetWordBreak(mozilla::intl::WordBreakRule aMode) {
     // If current word is non-empty and mode is changing, flush the breaker.
     if (aMode != mWordBreak && !mCurrentWord.IsEmpty()) {
       nsresult rv = FlushCurrentWord();
@@ -187,7 +171,7 @@ class nsLineBreaker {
       // If previous mode was break-all, we should allow a break here.
       // XXX (jfkthame) css-text spec seems unclear on this, raised question in
       // https://github.com/w3c/csswg-drafts/issues/3897
-      if (mWordBreak == mozilla::intl::LineBreaker::WordBreak::BreakAll) {
+      if (mWordBreak == mozilla::intl::WordBreakRule::BreakAll) {
         mBreakHere = true;
       }
     }
@@ -195,22 +179,21 @@ class nsLineBreaker {
   }
 
   /*
-   * Set line-break rule strictness mode for linebreaker.  This is set by the
+   * Set line-break rule strictness mode for line breaker. This is set by the
    * line-break property.
-   * @param aMode is LineBreaker::Strictness::* value.
    */
-  void SetStrictness(mozilla::intl::LineBreaker::Strictness aMode) {
-    if (aMode != mStrictness && !mCurrentWord.IsEmpty()) {
+  void SetStrictness(mozilla::intl::LineBreakRule aMode) {
+    if (aMode != mLineBreak && !mCurrentWord.IsEmpty()) {
       nsresult rv = FlushCurrentWord();
       if (NS_FAILED(rv)) {
         NS_WARNING("FlushCurrentWord failed, line-breaks may be wrong");
       }
       // If previous mode was anywhere, we should allow a break here.
-      if (mStrictness == mozilla::intl::LineBreaker::Strictness::Anywhere) {
+      if (mLineBreak == mozilla::intl::LineBreakRule::Anywhere) {
         mBreakHere = true;
       }
     }
-    mStrictness = aMode;
+    mLineBreak = aMode;
   }
 
   /**
@@ -259,12 +242,22 @@ class nsLineBreaker {
                              const char16_t* aTextStart,
                              const char16_t* aTextLimit, uint8_t* aBreakState);
 
+  inline constexpr bool IsSegmentSpace(char16_t u) const {
+    if (mLegacyBehavior) {
+      return nsLineBreaker::IsSpace(u);
+    }
+
+    return u == 0x0020 ||  // SPACE u
+           u == 0x0009 ||  // CHARACTER TABULATION
+           u == 0x000D;    // CARRIAGE RETURN
+  }
+
   AutoTArray<char16_t, 100> mCurrentWord;
   // All the items that contribute to mCurrentWord
   AutoTArray<TextItem, 2> mTextItems;
   nsAtom* mCurrentWordLanguage;
   bool mCurrentWordContainsMixedLang;
-  bool mCurrentWordContainsComplexChar;
+  bool mCurrentWordMightBeBreakable = false;
   bool mScriptIsChineseOrJapanese;
 
   // True if the previous character was breakable whitespace
@@ -272,15 +265,17 @@ class nsLineBreaker {
   // True if a break must be allowed at the current position because
   // a run of breakable whitespace ends here
   bool mBreakHere;
-  // line break mode by "word-break" style
-  mozilla::intl::LineBreaker::WordBreak mWordBreak;
-  // strictness of break rules, from line-break property
-  mozilla::intl::LineBreaker::Strictness mStrictness;
+  // Break rules for letters from the "word-break" property.
+  mozilla::intl::WordBreakRule mWordBreak;
+  // Line breaking strictness from the "line-break" property.
+  mozilla::intl::LineBreakRule mLineBreak;
   // Should the text be treated as continuing a word-in-progress (for purposes
   // of initial capitalization)? Normally this is set to false whenever we
   // start using a linebreaker, but it may be set to true if the line-breaker
   // has been explicitly flushed mid-word.
   bool mWordContinuation;
+  // True if using old line segmenter.
+  const bool mLegacyBehavior;
 };
 
 #endif /*NSLINEBREAKER_H_*/

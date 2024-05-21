@@ -5,7 +5,7 @@
  * This file tests support for icons with multiple frames (like .ico files).
  */
 
-add_task(async function() {
+add_task(async function () {
   //  in: 48x48 ico, 56646 bytes.
   // (howstuffworks.com icon, contains 13 icons with sizes from 16x16 to
   // 48x48 in varying depths)
@@ -27,7 +27,7 @@ add_task(async function() {
     Assert.equal(icon.mimeType, "image/png");
     Assert.deepEqual(icon.data, data);
 
-    info("Check moz-anno:favicon protocol");
+    info("Check cached-favicon protocol");
     await compareFavicons(
       Services.io.newFileURI(file),
       PlacesUtils.urlWithSizeRef(

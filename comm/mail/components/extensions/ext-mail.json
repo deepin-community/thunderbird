@@ -3,27 +3,21 @@
     "url": "chrome://messenger/content/parent/ext-accounts.js",
     "schema": "chrome://messenger/content/schemas/accounts.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["accounts"]
-    ]
+    "paths": [["accounts"]]
   },
   "addressBook": {
     "url": "chrome://messenger/content/parent/ext-addressBook.js",
     "schema": "chrome://messenger/content/schemas/addressBook.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["addressBooks"], ["contacts"], ["mailingLists"]
-    ]
+    "paths": [["addressBooks"], ["contacts"], ["mailingLists"]]
   },
   "browserAction": {
     "url": "chrome://messenger/content/parent/ext-browserAction.js",
     "schema": "chrome://messenger/content/schemas/browserAction.json",
     "scopes": ["addon_parent"],
-    "manifest": ["browser_action"],
-    "events": ["uninstall"],
-    "paths": [
-      ["browserAction"]
-    ]
+    "manifest": ["action", "browser_action"],
+    "events": ["update", "uninstall"],
+    "paths": [["action"], ["browserAction"]]
   },
   "browsingData": {
     "url": "chrome://extensions/content/parent/ext-browsingData.js",
@@ -43,9 +37,7 @@
     "schema": "chrome://messenger/content/schemas/cloudFile.json",
     "scopes": ["addon_parent", "content_parent"],
     "manifest": ["cloud_file"],
-    "paths": [
-      ["cloudFile"]
-    ]
+    "paths": [["cloudFile"]]
   },
   "commands": {
     "url": "chrome://messenger/content/parent/ext-commands.js",
@@ -53,17 +45,13 @@
     "scopes": ["addon_parent"],
     "events": ["uninstall"],
     "manifest": ["commands"],
-    "paths": [
-      ["commands"]
-    ]
+    "paths": [["commands"]]
   },
   "compose": {
     "url": "chrome://messenger/content/parent/ext-compose.js",
     "schema": "chrome://messenger/content/schemas/compose.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["compose"]
-    ]
+    "paths": [["compose"]]
   },
   "composeAction": {
     "url": "chrome://messenger/content/parent/ext-composeAction.js",
@@ -71,58 +59,44 @@
     "scopes": ["addon_parent"],
     "manifest": ["compose_action"],
     "events": ["uninstall"],
-    "paths": [
-      ["composeAction"]
-    ]
+    "paths": [["composeAction"]]
   },
   "extensionScripts": {
     "url": "chrome://messenger/content/parent/ext-extensionScripts.js",
     "schema": "chrome://messenger/content/schemas/extensionScripts.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["extensionScripts"]
-    ]
+    "paths": [["extensionScripts"]]
   },
   "folders": {
     "url": "chrome://messenger/content/parent/ext-folders.js",
     "schema": "chrome://messenger/content/schemas/folders.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["folders"]
-    ]
+    "paths": [["folders"]]
   },
   "geckoProfiler": {
     "url": "chrome://extensions/content/parent/ext-geckoProfiler.js",
     "schema": "chrome://extensions/content/schemas/geckoProfiler.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["geckoProfiler"]
-    ]
+    "paths": [["geckoProfiler"]]
   },
   "identities": {
     "url": "chrome://messenger/content/parent/ext-identities.js",
     "schema": "chrome://messenger/content/schemas/identities.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["identities"]
-    ]
+    "paths": [["identities"]]
   },
   "identity": {
     "url": "chrome://extensions/content/parent/ext-identity.js",
     "schema": "chrome://extensions/content/schemas/identity.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["identity"]
-    ]
+    "paths": [["identity"]]
   },
   "mailTabs": {
     "url": "chrome://messenger/content/parent/ext-mailTabs.js",
     "schema": "chrome://messenger/content/schemas/mailTabs.json",
     "scopes": ["addon_parent"],
     "manifest": ["mailTabs"],
-    "paths": [
-      ["mailTabs"]
-    ]
+    "paths": [["mailTabs"]]
   },
   "menusChild": {
     "schema": "chrome://messenger/content/schemas/menus_child.json",
@@ -132,58 +106,72 @@
     "url": "chrome://messenger/content/parent/ext-menus.js",
     "schema": "chrome://messenger/content/schemas/menus.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["menus"]
-    ]
+    "events": ["startup"],
+    "permissions": ["menus"],
+    "paths": [["menus"]]
   },
   "messageDisplay": {
     "url": "chrome://messenger/content/parent/ext-messageDisplay.js",
     "schema": "chrome://messenger/content/schemas/messageDisplay.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["messageDisplay"]
-    ]
+    "paths": [["messageDisplay"]]
   },
   "messageDisplayAction": {
     "url": "chrome://messenger/content/parent/ext-messageDisplayAction.js",
     "schema": "chrome://messenger/content/schemas/messageDisplayAction.json",
     "scopes": ["addon_parent"],
     "manifest": ["message_display_action"],
-    "paths": [
-      ["messageDisplayAction"]
-    ]
+    "events": ["uninstall"],
+    "paths": [["messageDisplayAction"]]
   },
   "messages": {
     "url": "chrome://messenger/content/parent/ext-messages.js",
     "schema": "chrome://messenger/content/schemas/messages.json",
     "scopes": ["addon_parent"],
     "manifest": ["messages"],
-    "paths": [
-      ["messages"]
-    ]
+    "paths": [["messages"]]
+  },
+  "messengerUtilities": {
+    "url": "chrome://messenger/content/parent/ext-utilities.js",
+    "schema": "chrome://messenger/content/schemas/utilities.json",
+    "scopes": ["addon_parent"],
+    "paths": [["messengerUtilities"]]
   },
   "pkcs11": {
     "url": "chrome://messenger/content/parent/ext-pkcs11.js",
     "schema": "chrome://messenger/content/schemas/pkcs11.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["pkcs11"]
-    ]
+    "paths": [["pkcs11"]]
+  },
+  "sessions": {
+    "url": "chrome://messenger/content/parent/ext-sessions.js",
+    "schema": "chrome://messenger/content/schemas/sessions.json",
+    "scopes": ["addon_parent"],
+    "events": ["uninstall"],
+    "paths": [["sessions"]]
+  },
+  "spaces": {
+    "url": "chrome://messenger/content/parent/ext-spaces.js",
+    "schema": "chrome://messenger/content/schemas/spaces.json",
+    "scopes": ["addon_parent"],
+    "paths": [["spaces"]]
+  },
+  "spacesToolbar": {
+    "url": "chrome://messenger/content/parent/ext-spacesToolbar.js",
+    "schema": "chrome://messenger/content/schemas/spacesToolbar.json",
+    "scopes": ["addon_parent"],
+    "paths": [["spacesToolbar"]]
   },
   "tabs": {
     "url": "chrome://messenger/content/parent/ext-tabs.js",
     "schema": "chrome://messenger/content/schemas/tabs.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["tabs"]
-    ]
+    "paths": [["tabs"]]
   },
   "windows": {
     "url": "chrome://messenger/content/parent/ext-windows.js",
     "schema": "chrome://messenger/content/schemas/windows.json",
     "scopes": ["addon_parent"],
-    "paths": [
-      ["windows"]
-    ]
+    "paths": [["windows"]]
   }
 }

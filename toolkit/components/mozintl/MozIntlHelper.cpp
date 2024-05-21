@@ -4,8 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "MozIntlHelper.h"
+#include "nsBidiUtils.h"
+#include "nsJSUtils.h"
 #include "jsapi.h"
-#include "js/experimental/Intl.h"  // JS::AddMozDateTimeFormatConstructor
+#include "js/experimental/Intl.h"   // JS::AddMozDateTimeFormatConstructor
+#include "js/PropertyAndElement.h"  // JS_DefineFunctions
 #include "js/PropertySpec.h"
 #include "js/Wrapper.h"
 
@@ -49,15 +52,6 @@ MozIntlHelper::AddGetCalendarInfo(JS::Handle<JS::Value> val, JSContext* cx) {
 }
 
 NS_IMETHODIMP
-MozIntlHelper::AddGetDisplayNames(JS::Handle<JS::Value> val, JSContext* cx) {
-  static const JSFunctionSpec funcs[] = {
-      JS_SELF_HOSTED_FN("getDisplayNames", "Intl_getDisplayNames", 2, 0),
-      JS_FS_END};
-
-  return AddFunctions(cx, val, funcs);
-}
-
-NS_IMETHODIMP
 MozIntlHelper::AddDateTimeFormatConstructor(JS::Handle<JS::Value> val,
                                             JSContext* cx) {
   if (!val.isObject()) {
@@ -81,10 +75,41 @@ MozIntlHelper::AddDateTimeFormatConstructor(JS::Handle<JS::Value> val,
 }
 
 NS_IMETHODIMP
-MozIntlHelper::AddGetLocaleInfo(JS::Handle<JS::Value> val, JSContext* cx) {
-  static const JSFunctionSpec funcs[] = {
-      JS_SELF_HOSTED_FN("getLocaleInfo", "Intl_getLocaleInfo", 1, 0),
-      JS_FS_END};
+MozIntlHelper::AddDisplayNamesConstructor(JS::Handle<JS::Value> val,
+                                          JSContext* cx) {
+  if (!val.isObject()) {
+    return NS_ERROR_INVALID_ARG;
+  }
 
-  return AddFunctions(cx, val, funcs);
+  // We might be adding this constructor to a Window
+  JS::Rooted<JSObject*> realIntlObj(
+      cx, js::CheckedUnwrapDynamic(&val.toObject(), cx));
+  if (!realIntlObj) {
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  JSAutoRealm ar(cx, realIntlObj);
+
+  if (!JS::AddMozDisplayNamesConstructor(cx, realIntlObj)) {
+    return NS_ERROR_FAILURE;
+  }
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+MozIntlHelper::StringHasRTLChars(JS::Handle<JS::Value> str, JSContext* cx,
+                                 bool* res) {
+  if (!str.isString()) {
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  nsAutoJSString string;
+  if (!string.init(cx, str)) {
+    return NS_ERROR_FAILURE;
+  }
+
+  *res = HasRTLChars(
+      Span(static_cast<const char16_t*>(string.get()), string.Length()));
+  return NS_OK;
 }

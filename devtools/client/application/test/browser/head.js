@@ -3,7 +3,6 @@
 
 /* eslint-env browser */
 /* eslint no-unused-vars: [2, {"vars": "local"}] */
-/* import-globals-from ../../../shared/test/shared-head.js */
 
 "use strict";
 
@@ -36,8 +35,8 @@ async function enableServiceWorkerDebugging() {
 
 async function enableApplicationPanel() {
   // FIXME bug 1575427 this rejection is very common.
-  const { PromiseTestUtils } = ChromeUtils.import(
-    "resource://testing-common/PromiseTestUtils.jsm"
+  const { PromiseTestUtils } = ChromeUtils.importESModule(
+    "resource://testing-common/PromiseTestUtils.sys.mjs"
   );
   PromiseTestUtils.allowMatchingRejectionsGlobally(
     /this._frontCreationListeners is null/
@@ -83,7 +82,11 @@ function checkTelemetryEvent(expectedEvent, objectName = "application") {
   // assert we only got 1 event with a valid session ID
   is(events.length, 1, "There was only 1 event logged");
   const [event] = events;
-  ok(event.session_id > 0, "There is a valid session_id in the event");
+  Assert.greater(
+    Number(event.session_id),
+    0,
+    "There is a valid session_id in the event"
+  );
 
   // assert expected data
   Assert.deepEqual(event, { ...expectedEvent, session_id: event.session_id });
@@ -117,7 +120,7 @@ async function waitForWorkerRegistration(swTab) {
   info("Wait until the registration appears on the window");
   const swBrowser = swTab.linkedBrowser;
   await asyncWaitUntil(async () =>
-    SpecialPowers.spawn(swBrowser, [], function() {
+    SpecialPowers.spawn(swBrowser, [], function () {
       return !!content.wrappedJSObject.getRegistration();
     })
   );

@@ -5,6 +5,7 @@
 #ifndef BUFFER_READER_H_
 #define BUFFER_READER_H_
 
+#include <string.h>
 #include "mozilla/EndianUtils.h"
 #include "nscore.h"
 #include "nsTArray.h"
@@ -36,6 +37,10 @@ class MOZ_RAII BufferReader {
         mRemaining(aData->Length()),
         mLength(aData->Length()) {}
   explicit BufferReader(const mozilla::MediaSpan& aData)
+      : mPtr(aData.Elements()),
+        mRemaining(aData.Length()),
+        mLength(aData.Length()) {}
+  explicit BufferReader(const Span<const uint8_t>& aData)
       : mPtr(aData.Elements()),
         mRemaining(aData.Length()),
         mLength(aData.Length()) {}
@@ -270,7 +275,10 @@ class MOZ_RAII BufferReader {
               ("%s: failure", __func__));
       return 0;
     }
-    return *reinterpret_cast<const T*>(ptr);
+    // handle unaligned accesses by memcpying
+    T ret;
+    memcpy(&ret, ptr, sizeof(T));
+    return ret;
   }
 
   template <typename T>
@@ -303,6 +311,17 @@ class MOZ_RAII BufferReader {
     MOZ_ALWAYS_TRUE(aDest.AppendElements(reinterpret_cast<const T*>(ptr),
                                          aLength, mozilla::fallible));
     return true;
+  }
+
+  template <typename T>
+  mozilla::Result<Span<const T>, nsresult> ReadSpan(size_t aLength) {
+    auto ptr = Read(aLength * sizeof(T));
+    if (!ptr) {
+      MOZ_LOG(gMP4MetadataLog, mozilla::LogLevel::Error,
+              ("%s: failure", __func__));
+      return mozilla::Err(NS_ERROR_FAILURE);
+    }
+    return Span(reinterpret_cast<const T*>(ptr), aLength);
   }
 
  private:

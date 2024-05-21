@@ -2,10 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
 import re
-import six
 import time
+
+import six
 
 from .adb import ADBTimeoutError
 
@@ -135,7 +135,7 @@ class RemoteProcessMonitor:
                         self.last_test_seen = "Last test finished"
                     elif message.get("action") == "log":
                         line = message["message"].strip()
-                        m = re.match(".*:\s*(\d*)", line)
+                        m = re.match(r".*:\s*(\d*)", line)
                         if m:
                             try:
                                 val = int(m.group(1))

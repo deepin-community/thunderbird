@@ -7,7 +7,6 @@
 // NOTE(emilio): This code isn't really executed in Gecko, but we don't want to
 // compile it out so that people remember it exists.
 
-use crate::bezier::Bezier;
 use crate::context::{CascadeInputs, SharedStyleContext};
 use crate::dom::{OpaqueNode, TDocument, TElement, TNode};
 use crate::properties::animated_properties::{AnimationValue, AnimationValueMap};
@@ -16,20 +15,18 @@ use crate::properties::longhands::animation_fill_mode::computed_value::single_va
 use crate::properties::longhands::animation_play_state::computed_value::single_value::T as AnimationPlayState;
 use crate::properties::AnimationDeclarations;
 use crate::properties::{
-    ComputedValues, Importance, LonghandId, LonghandIdSet, PropertyDeclarationBlock,
-    PropertyDeclarationId,
+    ComputedValues, Importance, LonghandId, PropertyDeclarationBlock, PropertyDeclarationId,
+    PropertyDeclarationIdSet,
 };
 use crate::rule_tree::CascadeLevel;
 use crate::selector_parser::PseudoElement;
 use crate::shared_lock::{Locked, SharedRwLock};
 use crate::style_resolver::StyleResolverForElement;
 use crate::stylesheets::keyframes_rule::{KeyframesAnimation, KeyframesStep, KeyframesStepValue};
+use crate::stylesheets::layer_rule::LayerOrder;
 use crate::values::animated::{Animate, Procedure};
 use crate::values::computed::{Time, TimingFunction};
-use crate::values::generics::box_::AnimationIterationCount;
-use crate::values::generics::easing::{
-    StepPosition, TimingFunction as GenericTimingFunction, TimingKeyword,
-};
+use crate::values::generics::easing::BeforeFlag;
 use crate::Atom;
 use fxhash::FxHashMap;
 use parking_lot::RwLock;
@@ -54,22 +51,22 @@ pub struct PropertyAnimation {
 
 impl PropertyAnimation {
     /// Returns the given property longhand id.
-    pub fn property_id(&self) -> LonghandId {
+    pub fn property_id(&self) -> PropertyDeclarationId {
         debug_assert_eq!(self.from.id(), self.to.id());
         self.from.id()
     }
 
-    fn from_longhand(
-        longhand: LonghandId,
+    fn from_property_declaration(
+        property_declaration: &PropertyDeclarationId,
         timing_function: TimingFunction,
         duration: Time,
         old_style: &ComputedValues,
         new_style: &ComputedValues,
     ) -> Option<PropertyAnimation> {
         // FIXME(emilio): Handle the case where old_style and new_style's writing mode differ.
-        let longhand = longhand.to_physical(new_style.writing_mode);
-        let from = AnimationValue::from_computed_values(longhand, old_style)?;
-        let to = AnimationValue::from_computed_values(longhand, new_style)?;
+        let property_declaration = property_declaration.to_physical(new_style.writing_mode);
+        let from = AnimationValue::from_computed_values(property_declaration, old_style)?;
+        let to = AnimationValue::from_computed_values(property_declaration, new_style)?;
         let duration = duration.seconds() as f64;
 
         if from == to || duration == 0.0 {
@@ -87,56 +84,13 @@ impl PropertyAnimation {
     /// The output of the timing function given the progress ration of this animation.
     fn timing_function_output(&self, progress: f64) -> f64 {
         let epsilon = 1. / (200. * self.duration);
-        match self.timing_function {
-            GenericTimingFunction::CubicBezier { x1, y1, x2, y2 } => {
-                Bezier::new(x1, y1, x2, y2).solve(progress, epsilon)
-            },
-            GenericTimingFunction::Steps(steps, pos) => {
-                let mut current_step = (progress * (steps as f64)).floor() as i32;
-
-                if pos == StepPosition::Start ||
-                    pos == StepPosition::JumpStart ||
-                    pos == StepPosition::JumpBoth
-                {
-                    current_step = current_step + 1;
-                }
-
-                // FIXME: We should update current_step according to the "before flag".
-                // In order to get the before flag, we have to know the current animation phase
-                // and whether the iteration is reversed. For now, we skip this calculation.
-                // (i.e. Treat before_flag is unset,)
-                // https://drafts.csswg.org/css-easing/#step-timing-function-algo
-
-                if progress >= 0.0 && current_step < 0 {
-                    current_step = 0;
-                }
-
-                let jumps = match pos {
-                    StepPosition::JumpBoth => steps + 1,
-                    StepPosition::JumpNone => steps - 1,
-                    StepPosition::JumpStart |
-                    StepPosition::JumpEnd |
-                    StepPosition::Start |
-                    StepPosition::End => steps,
-                };
-
-                if progress <= 1.0 && current_step > jumps {
-                    current_step = jumps;
-                }
-
-                (current_step as f64) / (jumps as f64)
-            },
-            GenericTimingFunction::Keyword(keyword) => {
-                let bezier = match keyword {
-                    TimingKeyword::Linear => return progress,
-                    TimingKeyword::Ease => Bezier::new(0.25, 0.1, 0.25, 1.),
-                    TimingKeyword::EaseIn => Bezier::new(0.42, 0., 1., 1.),
-                    TimingKeyword::EaseOut => Bezier::new(0., 0., 0.58, 1.),
-                    TimingKeyword::EaseInOut => Bezier::new(0.42, 0., 0.58, 1.),
-                };
-                bezier.solve(progress, epsilon)
-            },
-        }
+        // FIXME: Need to set the before flag correctly.
+        // In order to get the before flag, we have to know the current animation phase
+        // and whether the iteration is reversed. For now, we skip this calculation
+        // by treating as if the flag is unset at all times.
+        // https://drafts.csswg.org/css-easing/#step-timing-function-algo
+        self.timing_function
+            .calculate_output(progress, BeforeFlag::Unset, epsilon)
     }
 
     /// Update the given animation at a given point of progress.
@@ -290,6 +244,7 @@ impl IntermediateComputedKeyframe {
         let rule_node = base_style.rules().clone();
         let new_node = context.stylist.rule_tree().update_rule_at_level(
             CascadeLevel::Animations,
+            LayerOrder::root(),
             Some(locked_block.borrow_arc()),
             &rule_node,
             &context.guards,
@@ -303,6 +258,7 @@ impl IntermediateComputedKeyframe {
         let inputs = CascadeInputs {
             rules: new_node,
             visited_rules: base_style.visited_rules().cloned(),
+            flags: base_style.flags.for_cascade_inputs(),
         };
         resolver
             .cascade_style_and_visited_with_default_parents(inputs)
@@ -338,7 +294,7 @@ impl ComputedKeyframe {
     where
         E: TElement,
     {
-        let mut animating_properties = LonghandIdSet::new();
+        let mut animating_properties = PropertyDeclarationIdSet::default();
         for property in animation.properties_changed.iter() {
             debug_assert!(property.is_animatable());
             animating_properties.insert(property.to_physical(base_style.writing_mode));
@@ -358,9 +314,11 @@ impl ComputedKeyframe {
         let mut computed_steps: Vec<Self> = Vec::with_capacity(intermediate_steps.len());
         for (step_index, step) in intermediate_steps.into_iter().enumerate() {
             let start_percentage = step.start_percentage;
-            let timing_function = step.timing_function.unwrap_or(default_timing_function);
-            let properties_changed_in_step = step.declarations.longhands().clone();
+            let properties_changed_in_step = step.declarations.property_ids().clone();
+            let step_timing_function = step.timing_function.clone();
             let step_style = step.resolve_style(element, context, base_style, resolver);
+            let timing_function =
+                step_timing_function.unwrap_or_else(|| default_timing_function.clone());
 
             let values = {
                 // If a value is not set in a property declaration we use the value from
@@ -382,9 +340,9 @@ impl ComputedKeyframe {
                 animating_properties
                     .iter()
                     .zip(default_values.iter())
-                    .map(|(longhand, default_value)| {
-                        if properties_changed_in_step.contains(longhand) {
-                            AnimationValue::from_computed_values(longhand, &step_style)
+                    .map(|(property_declaration, default_value)| {
+                        if properties_changed_in_step.contains(property_declaration) {
+                            AnimationValue::from_computed_values(property_declaration, &step_style)
                                 .unwrap_or_else(|| default_value.clone())
                         } else {
                             default_value.clone()
@@ -410,7 +368,7 @@ pub struct Animation {
     pub name: Atom,
 
     /// The properties that change in this animation.
-    properties_changed: LonghandIdSet,
+    properties_changed: PropertyDeclarationIdSet,
 
     /// The computed style for each keyframe of this animation.
     computed_steps: Vec<ComputedKeyframe>,
@@ -453,8 +411,8 @@ pub struct Animation {
 impl Animation {
     /// Whether or not this animation is cancelled by changes from a new style.
     fn is_cancelled_in_new_style(&self, new_style: &Arc<ComputedValues>) -> bool {
-        let index = new_style
-            .get_box()
+        let new_ui = new_style.get_ui();
+        let index = new_ui
             .animation_name_iter()
             .position(|animation_name| Some(&self.name) == animation_name.as_atom());
         let index = match index {
@@ -462,7 +420,7 @@ impl Animation {
             None => return true,
         };
 
-        new_style.get_box().animation_duration_mod(index).seconds() == 0.
+        new_ui.animation_duration_mod(index).seconds() == 0.
     }
 
     /// Given the current time, advances this animation to the next iteration,
@@ -711,7 +669,7 @@ impl Animation {
         // in order to avoid doing more work.
         let mut add_declarations_to_map = |keyframe: &ComputedKeyframe| {
             for value in keyframe.values.iter() {
-                map.insert(value.id(), value.clone());
+                map.insert(value.id().to_owned(), value.clone());
             }
         };
         if total_progress <= 0.0 {
@@ -739,12 +697,12 @@ impl Animation {
             let animation = PropertyAnimation {
                 from: from.clone(),
                 to: to.clone(),
-                timing_function: prev_keyframe.timing_function,
+                timing_function: prev_keyframe.timing_function.clone(),
                 duration: duration_between_keyframes as f64,
             };
 
             if let Ok(value) = animation.calculate_value(progress_between_keyframes) {
-                map.insert(value.id(), value);
+                map.insert(value.id().to_owned(), value);
             }
         }
     }
@@ -1066,21 +1024,21 @@ impl ElementAnimationSet {
     fn start_transition_if_applicable(
         &mut self,
         context: &SharedStyleContext,
-        longhand_id: LonghandId,
+        property_declaration_id: &PropertyDeclarationId,
         index: usize,
         old_style: &ComputedValues,
         new_style: &Arc<ComputedValues>,
     ) {
-        let box_style = new_style.get_box();
-        let timing_function = box_style.transition_timing_function_mod(index);
-        let duration = box_style.transition_duration_mod(index);
-        let delay = box_style.transition_delay_mod(index).seconds() as f64;
+        let style = new_style.get_ui();
+        let timing_function = style.transition_timing_function_mod(index);
+        let duration = style.transition_duration_mod(index);
+        let delay = style.transition_delay_mod(index).seconds() as f64;
         let now = context.current_time_for_animations;
 
         // Only start a new transition if the style actually changes between
         // the old style and the new style.
-        let property_animation = match PropertyAnimation::from_longhand(
-            longhand_id,
+        let property_animation = match PropertyAnimation::from_property_declaration(
+            property_declaration_id,
             timing_function,
             duration,
             old_style,
@@ -1120,7 +1078,9 @@ impl ElementAnimationSet {
             .transitions
             .iter_mut()
             .filter(|transition| transition.state == AnimationState::Running)
-            .find(|transition| transition.property_animation.property_id() == longhand_id)
+            .find(|transition| {
+                transition.property_animation.property_id() == *property_declaration_id
+            })
         {
             // We always cancel any running transitions for the same property.
             old_transition.state = AnimationState::Canceled;
@@ -1148,7 +1108,7 @@ impl ElementAnimationSet {
                 Some(value) => value,
                 None => continue,
             };
-            map.insert(value.id(), value);
+            map.insert(value.id().to_owned(), value);
         }
 
         Some(map)
@@ -1310,10 +1270,12 @@ pub fn start_transitions_if_applicable(
     old_style: &ComputedValues,
     new_style: &Arc<ComputedValues>,
     animation_state: &mut ElementAnimationSet,
-) -> LonghandIdSet {
-    let mut properties_that_transition = LonghandIdSet::new();
+) -> PropertyDeclarationIdSet {
+    let mut properties_that_transition = PropertyDeclarationIdSet::default();
     for transition in new_style.transition_properties() {
-        let physical_property = transition.longhand_id.to_physical(new_style.writing_mode);
+        let physical_property = PropertyDeclarationId::Longhand(
+            transition.longhand_id.to_physical(new_style.writing_mode),
+        );
         if properties_that_transition.contains(physical_property) {
             continue;
         }
@@ -1321,7 +1283,7 @@ pub fn start_transitions_if_applicable(
         properties_that_transition.insert(physical_property);
         animation_state.start_transition_if_applicable(
             context,
-            physical_property,
+            &physical_property,
             transition.index,
             old_style,
             new_style,
@@ -1342,15 +1304,15 @@ pub fn maybe_start_animations<E>(
 ) where
     E: TElement,
 {
-    let box_style = new_style.get_box();
-    for (i, name) in box_style.animation_name_iter().enumerate() {
+    let style = new_style.get_ui();
+    for (i, name) in style.animation_name_iter().enumerate() {
         let name = match name.as_atom() {
             Some(atom) => atom,
             None => continue,
         };
 
         debug!("maybe_start_animations: name={}", name);
-        let duration = box_style.animation_duration_mod(i).seconds() as f64;
+        let duration = style.animation_duration_mod(i).seconds() as f64;
         if duration == 0. {
             continue;
         }
@@ -1373,14 +1335,16 @@ pub fn maybe_start_animations<E>(
         // NB: This delay may be negative, meaning that the animation may be created
         // in a state where we have advanced one or more iterations or even that the
         // animation begins in a finished state.
-        let delay = box_style.animation_delay_mod(i).seconds();
+        let delay = style.animation_delay_mod(i).seconds();
 
-        let iteration_state = match box_style.animation_iteration_count_mod(i) {
-            AnimationIterationCount::Infinite => KeyframesIterationState::Infinite(0.0),
-            AnimationIterationCount::Number(n) => KeyframesIterationState::Finite(0.0, n.into()),
+        let iteration_count = style.animation_iteration_count_mod(i);
+        let iteration_state = if iteration_count.0.is_infinite() {
+            KeyframesIterationState::Infinite(0.0)
+        } else {
+            KeyframesIterationState::Finite(0.0, iteration_count.0 as f64)
         };
 
-        let animation_direction = box_style.animation_direction_mod(i);
+        let animation_direction = style.animation_direction_mod(i);
 
         let initial_direction = match animation_direction {
             AnimationDirection::Normal | AnimationDirection::Alternate => {
@@ -1394,7 +1358,7 @@ pub fn maybe_start_animations<E>(
         let now = context.current_time_for_animations;
         let started_at = now + delay as f64;
         let mut starting_progress = (now - started_at) / duration;
-        let state = match box_style.animation_play_state_mod(i) {
+        let state = match style.animation_play_state_mod(i) {
             AnimationPlayState::Paused => AnimationState::Paused(starting_progress),
             AnimationPlayState::Running => AnimationState::Pending,
         };
@@ -1404,17 +1368,17 @@ pub fn maybe_start_animations<E>(
             &keyframe_animation,
             context,
             new_style,
-            new_style.get_box().animation_timing_function_mod(i),
+            style.animation_timing_function_mod(i),
             resolver,
         );
 
         let mut new_animation = Animation {
             name: name.clone(),
-            properties_changed: keyframe_animation.properties_changed,
+            properties_changed: keyframe_animation.properties_changed.clone(),
             computed_steps,
             started_at,
             duration,
-            fill_mode: box_style.animation_fill_mode_mod(i),
+            fill_mode: style.animation_fill_mode_mod(i),
             delay: delay as f64,
             iteration_state,
             state,

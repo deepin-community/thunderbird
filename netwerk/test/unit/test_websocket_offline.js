@@ -10,11 +10,11 @@ var chan;
 var offlineStatus;
 
 var listener = {
-  onAcknowledge(aContext, aSize) {},
-  onBinaryMessageAvailable(aContext, aMsg) {},
-  onMessageAvailable(aContext, aMsg) {},
-  onServerClose(aContext, aCode, aReason) {},
-  onStart(aContext) {
+  onAcknowledge() {},
+  onBinaryMessageAvailable() {},
+  onMessageAvailable() {},
+  onServerClose() {},
+  onStart() {
     // onStart is not called when a connection fails
     Assert.ok(false);
   },
@@ -42,7 +42,7 @@ function run_test() {
     );
 
     var uri = Services.io.newURI(url);
-    chan.asyncOpen(uri, url, 0, listener, null);
+    chan.asyncOpen(uri, url, {}, 0, listener, null);
     do_test_pending();
   } catch (x) {
     dump("throwing " + x);

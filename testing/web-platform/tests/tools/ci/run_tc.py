@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# mypy: allow-untyped-defs
 
 """Wrapper script for running jobs in Taskcluster
 
@@ -45,8 +46,8 @@ import tarfile
 import tempfile
 import zipfile
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from wpt.utils import get_download_to_descriptor  # type: ignore
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from tools.wpt.utils import get_download_to_descriptor
 
 root = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -91,17 +92,20 @@ def get_parser():
                    help="Browsers that will be used in the job")
     p.add_argument("--channel",
                    default=None,
-                   choices=["experimental", "dev", "nightly", "beta", "stable"],
+                   choices=["experimental", "canary", "dev", "nightly", "beta", "stable"],
                    help="Chrome browser channel")
     p.add_argument("--xvfb",
                    action="store_true",
                    help="Start xvfb")
-    p.add_argument("--checkout",
-                   help="Revision to checkout before starting job")
     p.add_argument("--install-certificates", action="store_true", default=None,
                    help="Install web-platform.test certificates to UA store")
     p.add_argument("--no-install-certificates", action="store_false", default=None,
                    help="Don't install web-platform.test certificates to UA store")
+    p.add_argument("--no-setup-repository", action="store_false", dest="setup_repository",
+                   help="Don't run any repository setup steps, instead use the existing worktree. "
+                        "This is useful for local testing.")
+    p.add_argument("--checkout",
+                   help="Revision to checkout before starting job")
     p.add_argument("--ref",
                    help="Git ref for the commit that should be run")
     p.add_argument("--head-rev",
@@ -136,7 +140,17 @@ def install_certificates():
     run(["sudo", "update-ca-certificates"])
 
 
+def start_dbus():
+    run(["sudo", "service", "dbus", "start"])
+    # Enable dbus autolaunch for Chrome
+    # https://source.chromium.org/chromium/chromium/src/+/main:content/app/content_main.cc;l=220;drc=0bcc023b8cdbc073aa5c48db373810db3f765c87.
+    os.environ["DBUS_SESSION_BUS_ADDRESS"] = "autolaunch:"
+
+
 def install_chrome(channel):
+    if channel == "canary":
+        # Chrome for Testing Canary is installed via --install-browser
+        return
     if channel in ("experimental", "dev"):
         deb_archive = "google-chrome-unstable_current_amd64.deb"
     elif channel == "beta":
@@ -252,10 +266,9 @@ def setup_environment(args):
 
     if "chrome" in args.browser:
         assert args.channel is not None
-        # Chrome Nightly will be installed via `wpt run --install-browser`
-        # later in taskcluster-run.py.
-        if args.channel != "nightly":
-            install_chrome(args.channel)
+        install_chrome(args.channel)
+        # Chrome is using dbus for various features.
+        start_dbus()
 
     if args.xvfb:
         start_xvfb()
@@ -398,7 +411,8 @@ def main():
     if event:
         set_variables(event)
 
-    setup_repository(args)
+    if args.setup_repository:
+        setup_repository(args)
 
     # Hack for backwards compatibility
     if args.script in ["run-all", "lint", "update_built", "tools_unittest",

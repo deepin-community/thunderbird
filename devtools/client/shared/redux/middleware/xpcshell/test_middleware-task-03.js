@@ -7,17 +7,17 @@
 const {
   createStore,
   applyMiddleware,
-} = require("devtools/client/shared/vendor/redux");
+} = require("resource://devtools/client/shared/vendor/redux.js");
 const {
   task,
   ERROR_TYPE,
-} = require("devtools/client/shared/redux/middleware/task");
+} = require("resource://devtools/client/shared/redux/middleware/task.js");
 
 /**
  * Tests that the middleware handles errors thrown in tasks, and rejected promises.
  */
 
-add_task(async function() {
+add_task(async function () {
   const store = applyMiddleware(task)(createStore)(reducer);
 
   store.dispatch(asyncError());
@@ -35,7 +35,7 @@ add_task(async function() {
 });
 
 function asyncError() {
-  return async ({ dispatch, getState }) => {
+  return async () => {
     const error = "task-middleware-error-generator";
     throw error;
   };

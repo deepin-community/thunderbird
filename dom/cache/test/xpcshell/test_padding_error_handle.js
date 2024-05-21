@@ -20,7 +20,7 @@ function createTempPaddingFile() {
   );
 }
 
-async function testSteps() {
+add_task(async function testSteps() {
   create_test_profile("schema_25_profile.zip");
   let cache = await caches.open("test");
 
@@ -53,7 +53,7 @@ async function testSteps() {
   createTempPaddingFile();
 
   let cacheEntries = await cache.keys("https://foo.com");
-  ok(cacheEntries.length === 1, "Cache.put does succeed");
+  Assert.strictEqual(cacheEntries.length, 1, "Cache.put does succeed");
 
   ok(
     temporaryPaddingFile.exists(),
@@ -69,4 +69,4 @@ async function testSteps() {
   );
 
   await caches.delete("test");
-}
+});

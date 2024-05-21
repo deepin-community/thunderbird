@@ -6,32 +6,30 @@
  * Test that S/MIME messages are properly displayed and that the MimeMessage
  * representation is correct.
  */
-/* import-globals-from ../../../../test/resources/logHelper.js */
-/* import-globals-from ../../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../../test/resources/messageInjection.js */
-load("../../../../resources/logHelper.js");
-load("../../../../resources/asyncTestUtils.js");
 
-load("../../../../resources/MessageGenerator.jsm");
-load("../../../../resources/messageModifier.js");
-load("../../../../resources/messageInjection.js");
-
-var msgGen = (gMessageGenerator = new MessageGenerator());
-
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
-var { MsgHdrToMimeMessage } = ChromeUtils.import(
-  "resource:///modules/gloda/MimeMessage.jsm"
+var { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
+var { MessageGenerator, SyntheticMessageSet } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
+var { MsgHdrToMimeMessage } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/MimeMessage.sys.mjs"
+);
+
+var msgGen;
+var messageInjection;
 
 function initNSS() {
   // Copy the NSS database files over.
-  let profile = FileUtils.getDir("ProfD", []);
-  let files = ["cert9.db", "key4.db"];
-  let directory = do_get_file("../../../../data/db-tinderbox-invalid");
-  for (let f of files) {
-    let keydb = directory.clone();
+  const profile = FileUtils.getDir("ProfD", []);
+  const files = ["cert9.db", "key4.db"];
+  const directory = do_get_file("../../../../data/db-tinderbox-invalid");
+  for (const f of files) {
+    const keydb = directory.clone();
     keydb.append(f);
     keydb.copyTo(profile, f);
   }
@@ -40,24 +38,36 @@ function initNSS() {
   Cc["@mozilla.org/psm;1"].getService(Ci.nsISupports);
 }
 
-var gInbox;
-function* test_smime_mimemsg() {
-  let msg = msgGen.makeEncryptedSMimeMessage({
+add_setup(async function () {
+  initNSS();
+  msgGen = new MessageGenerator();
+  messageInjection = new MessageInjection({ mode: "local" }, msgGen);
+});
+
+add_task(async function test_smime_mimemsg() {
+  const msg = msgGen.makeEncryptedSMimeMessage({
     from: ["Tinderbox", "tinderbox@foo.invalid"],
     to: [["Tinderbox", "tinderbox@foo.invalid"]],
     subject: "Albertine disparue (La Fugitive)",
     body: { body: encrypted_blurb },
   });
-  let synSet = new SyntheticMessageSet([msg]);
-  yield add_sets_to_folder(gInbox, [synSet]);
+  const synSet = new SyntheticMessageSet([msg]);
+  await messageInjection.addSetsToFolders(
+    [messageInjection.getInboxFolder()],
+    [synSet]
+  );
 
-  let msgHdr = synSet.getMsgHdr(0);
+  const msgHdr = synSet.getMsgHdr(0);
 
+  let promiseResolve;
+  let promise = new Promise(resolve => {
+    promiseResolve = resolve;
+  });
   // Make sure by default, MimeMessages do not include encrypted parts
   MsgHdrToMimeMessage(
     msgHdr,
     null,
-    function(aMsgHdr, aMimeMsg) {
+    function (aMsgHdr, aMimeMsg) {
       // First make sure the MIME structure is as we expect it to be.
       Assert.equal(aMimeMsg.parts.length, 1);
       // Then, make sure the MimeUnknown part there has the encrypted flag
@@ -66,19 +76,24 @@ function* test_smime_mimemsg() {
       Assert.equal(aMimeMsg.parts[0].parts.length, 0);
       // Make sure we can't see the attachment
       Assert.equal(aMimeMsg.allUserAttachments.length, 0);
-      async_driver();
+      promiseResolve();
     },
     true,
     {}
   );
 
-  yield false;
+  await promise;
+
+  // Reset promise.
+  promise = new Promise(resolve => {
+    promiseResolve = resolve;
+  });
 
   // Now what about we specifically ask to "see" the encrypted parts?
   MsgHdrToMimeMessage(
     msgHdr,
     null,
-    function(aMsgHdr, aMimeMsg) {
+    function (aMsgHdr, aMimeMsg) {
       // First make sure the MIME structure is as we expect it to be.
       Assert.equal(aMimeMsg.parts.length, 1);
       // Then, make sure the MimeUnknown part there has the encrypted flag
@@ -90,7 +105,7 @@ function* test_smime_mimemsg() {
       // Make sure we can see the attachment
       Assert.equal(aMimeMsg.allUserAttachments.length, 1);
       Assert.equal(aMimeMsg.allUserAttachments[0].contentType, "image/jpeg");
-      async_driver();
+      promiseResolve();
       // Extra little bit of testing
     },
     true,
@@ -98,16 +113,8 @@ function* test_smime_mimemsg() {
       examineEncryptedParts: true,
     }
   );
-  yield false;
-}
-
-var tests = [test_smime_mimemsg];
-
-function run_test() {
-  initNSS();
-  gInbox = configure_message_injection({ mode: "local" });
-  async_run_tests(tests);
-}
+  await promise;
+});
 
 var encrypted_blurb =
   "MIAGCSqGSIb3DQEHA6CAMIACAQAxgf8wgfwCAQAwZTBgMQswCQYDVQQGEwJTVzETMBEGA1UE\n" +

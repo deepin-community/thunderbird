@@ -1093,7 +1093,7 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
 const nsIWebBrowserPersist = Ci.nsIWebBrowserPersist;
 function GetWrapColumn() {
   try {
-    return GetCurrentEditor().wrapWidth;
+    return GetCurrentEditor().QueryInterface(Ci.nsIEditorMailSupport).wrapWidth;
   } catch (e) {}
   return 0;
 }
@@ -1234,7 +1234,7 @@ var gEditorOutputProgressListener = {
 
             // Clear transaction cache since we just did a potentially
             //  very large insert and this will eat up memory
-            editor.transactionManager.clear();
+            editor.clearUndoRedo();
           } catch (e) {}
         }
 

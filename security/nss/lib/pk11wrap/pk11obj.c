@@ -134,7 +134,7 @@ PK11_ReadAttribute(PK11SlotInfo *slot, CK_OBJECT_HANDLE id,
 }
 
 /*
- * Read in a single attribute into As a Ulong.
+ * Read in a single attribute into a Ulong.
  */
 CK_ULONG
 PK11_ReadULongAttribute(PK11SlotInfo *slot, CK_OBJECT_HANDLE id,
@@ -575,7 +575,7 @@ PK11_SignatureLen(SECKEYPrivateKey *key)
                 return length * 2;
             }
             return pk11_backupGetSignLength(key);
-
+        case edKey:
         case ecKey:
             rv = PK11_ReadAttribute(key->pkcs11Slot, key->pkcs11ID, CKA_EC_PARAMS,
                                     NULL, &attributeItem);
@@ -1717,7 +1717,10 @@ PK11_GetObjectHandle(PK11ObjectType objType, void *objSpec,
             slot = ((PK11SymKey *)objSpec)->slot;
             handle = ((PK11SymKey *)objSpec)->objectID;
             break;
-        case PK11_TypeCert: /* don't handle cert case for now */
+        case PK11_TypeCert:
+            handle = PK11_FindObjectForCert((CERTCertificate *)objSpec, NULL,
+                                            &slot);
+            break;
         default:
             PORT_SetError(SEC_ERROR_UNKNOWN_OBJECT_TYPE);
             break;

@@ -1,5 +1,8 @@
 // Helpers for Web Audio tests
 
+// It is expected that the test defines this.
+/* global gTest */
+
 function expectException(func, exceptionCode) {
   var threw = false;
   try {
@@ -39,10 +42,10 @@ function expectRejectedPromise(that, func, exceptionName) {
   ok(promise instanceof Promise, "Expect a Promise");
 
   promise
-    .then(function(res) {
+    .then(function () {
       ok(false, "Promise resolved when it should have been rejected.");
     })
-    .catch(function(err) {
+    .catch(function (err) {
       is(
         err.name,
         exceptionName,
@@ -163,6 +166,51 @@ function getEmptyBuffer(context, length) {
   );
 }
 
+function isChannelSilent(channel) {
+  for (var i = 0; i < channel.length; ++i) {
+    if (channel[i] != 0.0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const HRTFPannersByRate = new Map();
+/**
+ * Return a promise that resolves when PannerNodes with HRTF panningModel in
+ * an AudioContext of the specified sample rate will be ready to produce
+ * non-zero output.  Before the HRIR database is loaded, such PannerNodes
+ * produce zero output.
+ */
+async function promiseHRTFReady(sampleRate) {
+  if (HRTFPannersByRate.has(sampleRate)) {
+    return;
+  }
+
+  const ctx = new AudioContext({ sampleRate });
+  const processor = ctx.createScriptProcessor(4096, 2, 0);
+  const panner = new PannerNode(ctx, { panningModel: "HRTF" });
+  panner.connect(processor);
+  const oscillator = ctx.createOscillator();
+  oscillator.connect(panner);
+  oscillator.start(0);
+
+  await new Promise(r => {
+    processor.onaudioprocess = e => {
+      if (!isChannelSilent(e.inputBuffer.getChannelData(0))) {
+        r();
+      }
+    };
+  });
+
+  ctx.suspend();
+  oscillator.disconnect();
+  panner.disconnect();
+  processor.onaudioprocess = null;
+  // Keep a reference to the panner so that the database is not unloaded.
+  HRTFPannersByRate.set(sampleRate, panner);
+}
+
 /**
  * This function assumes that the test file defines a single gTest variable with
  * the following properties and methods:
@@ -232,7 +280,7 @@ function runTest() {
       }
 
       if (gTest.createGraphAsync) {
-        gTest.createGraphAsync(context, function(nodeToInspect) {
+        gTest.createGraphAsync(context, function (nodeToInspect) {
           testOutput(nodeToInspect, expectedBuffers, callback);
         });
       } else {
@@ -249,11 +297,11 @@ function runTest() {
           0
         );
         nodeToInspect.connect(sp);
-        sp.onaudioprocess = function(e) {
+        sp.onaudioprocess = function (e) {
           var expectedBuffer = expectedBuffers.shift();
           testLength += expectedBuffer.length;
           compareBuffers(e.inputBuffer, expectedBuffer);
-          if (expectedBuffers.length == 0) {
+          if (!expectedBuffers.length) {
             sp.onaudioprocess = null;
             callback();
           }
@@ -266,7 +314,7 @@ function runTest() {
     function testOnOfflineContext(callback, sampleRate) {
       function testOutput(nodeToInspect, expectedBuffers, callback) {
         nodeToInspect.connect(context.destination);
-        context.oncomplete = function(e) {
+        context.oncomplete = function (e) {
           var samplesSeen = 0;
           while (expectedBuffers.length) {
             var expectedBuffer = expectedBuffers.shift();
@@ -300,9 +348,9 @@ function runTest() {
       runTestOnContext(context, callback, testOutput);
     }
 
-    testOnNormalContext(function() {
+    testOnNormalContext(function () {
       if (!gTest.skipOfflineContextTests) {
-        testOnOfflineContext(function() {
+        testOnOfflineContext(function () {
           testOnOfflineContext(done, 44100);
         }, 48000);
       } else {

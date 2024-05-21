@@ -10,8 +10,8 @@ const BinaryInputStream = CC(
   "setInputStream"
 );
 
-const currentThread = Cc["@mozilla.org/thread-manager;1"].getService()
-  .currentThread;
+const currentThread =
+  Cc["@mozilla.org/thread-manager;1"].getService().currentThread;
 
 // Most of the socks logic here is copied and upgraded to support authentication
 // for socks5. The original test is from netwerk/test/unit/test_socks.js
@@ -46,7 +46,7 @@ class SocksClient {
     this.state = STATE_WAIT_GREETING;
     this.socket = socket;
 
-    socket.onclose = event => {
+    socket.onclose = () => {
       this.server.requestCompleted(this);
     };
     socket.ondata = event => {
@@ -566,7 +566,7 @@ add_task(async function test_webRequest_socks_proxy() {
       { urls: ["<all_urls>"] }
     );
     browser.webRequest.onAuthRequired.addListener(
-      details => {
+      () => {
         // We should never get onAuthRequired for socks proxy
         browser.test.fail("onAuthRequired");
       },

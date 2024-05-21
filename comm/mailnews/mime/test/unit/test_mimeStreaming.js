@@ -6,8 +6,8 @@
  * This test iterates over the test files in gTestFiles, and streams
  * each as a message and makes sure the streaming doesn't assert or crash.
  */
-const { localAccountUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/LocalAccountUtils.jsm"
+const { localAccountUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/LocalAccountUtils.sys.mjs"
 );
 
 var gTestFiles = ["../../../data/bug505221", "../../../data/bug513543"];
@@ -28,20 +28,20 @@ localAccountUtils.loadLocalMailAccount();
 add_task(async function run_the_test() {
   do_test_pending();
   localAccountUtils.inboxFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
-  for (let fileName of gTestFiles) {
+  for (const fileName of gTestFiles) {
     localAccountUtils.inboxFolder.addMessage(
       await IOUtils.readUTF8(do_get_file(fileName).path)
     );
   }
   gMessages = [
-    ...localAccountUtils.inboxFolder.msgDatabase.EnumerateMessages(),
+    ...localAccountUtils.inboxFolder.msgDatabase.enumerateMessages(),
   ];
   doNextTest();
 });
 
 function streamMsg(msgHdr) {
-  let msgURI = localAccountUtils.inboxFolder.getUriForMsg(msgHdr);
-  let msgService = gMessenger.messageServiceFromURI(msgURI);
+  const msgURI = localAccountUtils.inboxFolder.getUriForMsg(msgHdr);
+  const msgService = MailServices.messageServiceFromURI(msgURI);
   msgService.streamMessage(
     msgURI,
     gStreamListener,
@@ -80,7 +80,7 @@ var gStreamListener = {
 
 function doNextTest() {
   if (gMessages.length > 0) {
-    let msgHdr = gMessages.shift();
+    const msgHdr = gMessages.shift();
     streamMsg(msgHdr);
   } else {
     do_test_finished();

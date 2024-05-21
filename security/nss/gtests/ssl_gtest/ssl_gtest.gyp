@@ -19,6 +19,7 @@
         'ssl_agent_unittest.cc',
         'ssl_auth_unittest.cc',
         'ssl_cert_ext_unittest.cc',
+        'ssl_certificate_compression_unittest.cc',
         'ssl_cipherorder_unittest.cc',
         'ssl_ciphersuite_unittest.cc',
         'ssl_custext_unittest.cc',
@@ -58,7 +59,9 @@
         'tls_ech_unittest.cc',
         'tls_protect.cc',
         'tls_psk_unittest.cc',
-        'tls_subcerts_unittest.cc'
+        'tls_subcerts_unittest.cc',
+        'tls_grease_unittest.cc',
+        'tls_xyber_unittest.cc',
       ],
       'dependencies': [
         '<(DEPTH)/exports.gyp:nss_exports',

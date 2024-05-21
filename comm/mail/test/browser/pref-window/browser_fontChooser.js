@@ -12,25 +12,18 @@
 
 "use strict";
 
-var { content_tab_e } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ContentTabHelpers.jsm"
+var { content_tab_e } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
 );
-var { mc } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+var { close_pref_tab, open_pref_tab } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/PrefTabHelpers.sys.mjs"
 );
-var { close_pref_tab, open_pref_tab } = ChromeUtils.import(
-  "resource://testing-common/mozmill/PrefTabHelpers.jsm"
-);
-var { wait_for_frame_load } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { wait_for_frame_load } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
-);
-var { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
+var { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
 );
 
 var gFontEnumerator;
@@ -45,7 +38,7 @@ var gRealFontLists = {};
 // A list of font types to consider
 const kFontTypes = ["serif", "sans-serif", "monospace"];
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   if (AppConstants.platform == "win") {
     Services.prefs.setStringPref(
       "font.name-list.serif.x-western",
@@ -88,15 +81,15 @@ add_task(function setupModule(module) {
   }
 
   let finished = false;
-  buildFontList().then(() => (finished = true), Cu.reportError);
-  mc.waitFor(
+  buildFontList().then(() => (finished = true), console.error);
+  await TestUtils.waitForCondition(
     () => finished,
     "Timeout waiting for font enumeration to complete."
   );
 
   // Hide Lightning's Today pane as it obscures buttons in preferences in the
   // small TB window our tests run in.
-  gTodayPane = mc.e("today-pane-panel");
+  gTodayPane = document.getElementById("today-pane-panel");
   if (gTodayPane) {
     if (!gTodayPane.collapsed) {
       EventUtils.synthesizeKey("VK_F11", {});
@@ -110,7 +103,7 @@ async function buildFontList() {
   gFontEnumerator = Cc["@mozilla.org/gfx/fontenumerator;1"].createInstance(
     Ci.nsIFontEnumerator
   );
-  for (let fontType of kFontTypes) {
+  for (const fontType of kFontTypes) {
     gRealFontLists[fontType] = await gFontEnumerator.EnumerateFontsAsync(
       kLanguage,
       fontType
@@ -152,18 +145,23 @@ function assert_fonts_equal(aDescription, aExpected, aActual, aPrefix = false) {
  * pref window to the display pane and checks that, then opens the font chooser
  * and checks that too.
  */
-function _verify_fonts_displayed(aDefaults, aSerif, aSansSerif, aMonospace) {
+async function _verify_fonts_displayed(
+  aDefaults,
+  aSerif,
+  aSansSerif,
+  aMonospace
+) {
   // Bring up the preferences window.
-  let prefTab = open_pref_tab("paneGeneral");
-  let contentDoc = prefTab.browser.contentDocument;
-  let prefsWindow = contentDoc.ownerGlobal;
+  const prefTab = await open_pref_tab("paneGeneral");
+  const contentDoc = prefTab.browser.contentDocument;
+  const prefsWindow = contentDoc.ownerGlobal;
   prefsWindow.resizeTo(screen.availWidth, screen.availHeight);
 
-  let isSansDefault =
+  const isSansDefault =
     Services.prefs.getCharPref("font.default." + kLanguage) == "sans-serif";
-  let displayPaneExpected = isSansDefault ? aSansSerif : aSerif;
-  let displayPaneActual = content_tab_e(prefTab, "defaultFont");
-  mc.waitFor(
+  const displayPaneExpected = isSansDefault ? aSansSerif : aSerif;
+  const displayPaneActual = content_tab_e(prefTab, "defaultFont");
+  await TestUtils.waitForCondition(
     () => displayPaneActual.itemCount > 0,
     "No font names were populated in the font picker."
   );
@@ -173,27 +171,41 @@ function _verify_fonts_displayed(aDefaults, aSerif, aSansSerif, aMonospace) {
     displayPaneActual.value
   );
 
-  let advancedFonts = contentDoc.getElementById("advancedFonts");
+  const advancedFonts = contentDoc.getElementById("advancedFonts");
   advancedFonts.scrollIntoView(false);
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 500));
   // Now open the advanced dialog.
   EventUtils.synthesizeMouseAtCenter(advancedFonts, {}, prefsWindow);
-  let fontc = wait_for_frame_load(
+  const fontc = await wait_for_frame_load(
     prefsWindow.gSubDialog._topDialog._frame,
     "chrome://messenger/content/preferences/fonts.xhtml"
   );
 
   // The font pickers are populated async so we need to wait for it.
-  for (let fontElemId of ["serif", "sans-serif", "monospace"]) {
-    fontc.waitFor(
-      () => fontc.e(fontElemId).label != "",
+  for (const fontElemId of ["serif", "sans-serif", "monospace"]) {
+    await TestUtils.waitForCondition(
+      () => fontc.document.getElementById(fontElemId).label != "",
       "Timeout waiting for font picker '" + fontElemId + "' to populate."
     );
   }
 
   if (!aDefaults) {
-    assert_fonts_equal("serif", aSerif, fontc.e("serif").value);
-    assert_fonts_equal("sans-serif", aSansSerif, fontc.e("sans-serif").value);
-    assert_fonts_equal("monospace", aMonospace, fontc.e("monospace").value);
+    assert_fonts_equal(
+      "serif",
+      aSerif,
+      fontc.document.getElementById("serif").value
+    );
+    assert_fonts_equal(
+      "sans-serif",
+      aSansSerif,
+      fontc.document.getElementById("sans-serif").value
+    );
+    assert_fonts_equal(
+      "monospace",
+      aMonospace,
+      fontc.document.getElementById("monospace").value
+    );
   } else if (AppConstants.platform == "linux") {
     // When default fonts are displayed in the menulist, there is no value set,
     // only the label, in the form "Default (font name)".
@@ -202,30 +214,39 @@ function _verify_fonts_displayed(aDefaults, aSerif, aSansSerif, aMonospace) {
     // like 'serif', but here a specific font name will be shown, but it is
     // system-dependent what it will be. So we just check for the 'Default'
     // prefix.
-    assert_fonts_equal("serif", `Default (`, fontc.e("serif").label, true);
+    assert_fonts_equal(
+      "serif",
+      `Default (`,
+      fontc.document.getElementById("serif").label,
+      true
+    );
     assert_fonts_equal(
       "sans-serif",
       `Default (`,
-      fontc.e("sans-serif").label,
+      fontc.document.getElementById("sans-serif").label,
       true
     );
     assert_fonts_equal(
       "monospace",
       `Default (`,
-      fontc.e("monospace").label,
+      fontc.document.getElementById("monospace").label,
       true
     );
   } else {
-    assert_fonts_equal("serif", `Default (${aSerif})`, fontc.e("serif").label);
+    assert_fonts_equal(
+      "serif",
+      `Default (${aSerif})`,
+      fontc.document.getElementById("serif").label
+    );
     assert_fonts_equal(
       "sans-serif",
       `Default (${aSansSerif})`,
-      fontc.e("sans-serif").label
+      fontc.document.getElementById("sans-serif").label
     );
     assert_fonts_equal(
       "monospace",
       `Default (${aMonospace})`,
-      fontc.e("monospace").label
+      fontc.document.getElementById("monospace").label
     );
   }
 
@@ -237,16 +258,16 @@ function _verify_fonts_displayed(aDefaults, aSerif, aSansSerif, aMonospace) {
  * font.name.<type>.<language> is displayed in the font chooser (if it is
  * present on the computer).
  */
-add_task(function test_font_name_displayed() {
+add_task(async function test_font_name_displayed() {
   Services.prefs.setCharPref("font.language.group", kLanguage);
 
   // Pick the first font for each font type and set it.
-  let expected = {};
-  for (let [fontType, fontList] of Object.entries(gRealFontLists)) {
+  const expected = {};
+  for (const [fontType, fontList] of Object.entries(gRealFontLists)) {
     // Work around bug 698238 (on Windows, Courier is returned by the enumerator but
     // substituted with Courier New) by getting the standard (substituted) family
     // name for each font.
-    let standardFamily = gFontEnumerator.getStandardFamilyName(fontList[0]);
+    const standardFamily = gFontEnumerator.getStandardFamilyName(fontList[0]);
     Services.prefs.setCharPref(
       "font.name." + fontType + "." + kLanguage,
       standardFamily
@@ -254,8 +275,8 @@ add_task(function test_font_name_displayed() {
     expected[fontType] = standardFamily;
   }
 
-  let fontTypes = kFontTypes.map(fontType => expected[fontType]);
-  _verify_fonts_displayed(false, ...fontTypes);
+  const fontTypes = kFontTypes.map(fontType => expected[fontType]);
+  await _verify_fonts_displayed(false, ...fontTypes);
   teardownTest();
 });
 
@@ -272,18 +293,18 @@ const kFakeFonts = {
  * present on the computer, we fall back to displaying what's in
  * font.name-list.<type>.<language>.
  */
-add_task(function test_font_name_not_present() {
+add_task(async function test_font_name_not_present() {
   Services.prefs.setCharPref("font.language.group", kLanguage);
 
   // The fonts we're expecting to see selected in the font chooser for
   // test_font_name_not_present.
-  let expected = {};
-  for (let [fontType, fakeFont] of Object.entries(kFakeFonts)) {
+  const expected = {};
+  for (const [fontType, fakeFont] of Object.entries(kFakeFonts)) {
     // Look at the font.name-list. We need to verify that the first font is the
     // fake one, and that the second one is present on the user's computer.
-    let listPref = "font.name-list." + fontType + "." + kLanguage;
-    let fontList = Services.prefs.getCharPref(listPref);
-    let fonts = fontList.split(",").map(font => font.trim());
+    const listPref = "font.name-list." + fontType + "." + kLanguage;
+    const fontList = Services.prefs.getCharPref(listPref);
+    const fonts = fontList.split(",").map(font => font.trim());
     if (fonts.length != 2) {
       throw new Error(
         listPref +
@@ -324,8 +345,8 @@ add_task(function test_font_name_not_present() {
     );
   }
 
-  let fontTypes = kFontTypes.map(fontType => expected[fontType]);
-  _verify_fonts_displayed(true, ...fontTypes);
+  const fontTypes = kFontTypes.map(fontType => expected[fontType]);
+  await _verify_fonts_displayed(true, ...fontTypes);
   teardownTest();
 });
 
@@ -335,7 +356,7 @@ function teardownTest() {
   Preferences.resetBranch("font.name.");
 }
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("font.language.group");
   if (gTodayPane && gTodayPane.collapsed) {
     EventUtils.synthesizeKey("VK_F11", {});

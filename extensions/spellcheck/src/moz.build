@@ -20,14 +20,9 @@ XPCOM_MANIFESTS += [
 FINAL_LIBRARY = "xul"
 
 LOCAL_INCLUDES += [
-    "../hunspell/glue",
-    "../hunspell/src",
-    "/dom/base",
+    "../ipc",
 ]
 EXPORTS.mozilla += [
     "mozInlineSpellChecker.h",
     "mozSpellChecker.h",
 ]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

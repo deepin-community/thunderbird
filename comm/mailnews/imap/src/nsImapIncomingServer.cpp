@@ -4,10 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "msgCore.h"
-#include "nsMsgImapCID.h"
 
 #include "netCore.h"
-#include "nsIImapHostSessionList.h"
+#include "../public/nsIImapHostSessionList.h"
 #include "nsImapIncomingServer.h"
 #include "nsIMsgAccountManager.h"
 #include "nsIMsgIdentity.h"
@@ -31,15 +30,12 @@
 // for the memory cache...
 #include "nsICacheEntry.h"
 #include "nsImapUrl.h"
-#include "nsIMsgProtocolInfo.h"
 #include "nsIMsgMailSession.h"
 #include "nsImapNamespace.h"
-#include "nsArrayUtils.h"
 #include "nsMsgUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsComponentManagerUtils.h"
-#include "nsCRTGlue.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsNetUtil.h"
 #include "mozilla/Utf8.h"
 #include "mozilla/LoadInfo.h"
@@ -50,7 +46,19 @@ using namespace mozilla;
 #define PREF_TRASH_FOLDER_PATH "trash_folder_name"
 #define DEFAULT_TRASH_FOLDER_PATH "Trash"  // XXX Is this a useful default?
 
+#define NS_SUBSCRIBABLESERVER_CID                    \
+  {                                                  \
+    0x8510876a, 0x1dd2, 0x11b2, {                    \
+      0x82, 0x53, 0x91, 0xf7, 0x1b, 0x34, 0x8a, 0x25 \
+    }                                                \
+  }
 static NS_DEFINE_CID(kSubscribableServerCID, NS_SUBSCRIBABLESERVER_CID);
+#define NS_IIMAPHOSTSESSIONLIST_CID                  \
+  {                                                  \
+    0x479ce8fc, 0xe725, 0x11d2, {                    \
+      0xa5, 0x05, 0x00, 0x60, 0xb0, 0xfc, 0x04, 0xb7 \
+    }                                                \
+  }
 static NS_DEFINE_CID(kCImapHostSessionListCID, NS_IIMAPHOSTSESSIONLIST_CID);
 
 NS_IMPL_ADDREF_INHERITED(nsImapIncomingServer, nsMsgIncomingServer)
@@ -149,7 +157,7 @@ nsImapIncomingServer::GetConstructedPrettyName(nsAString& retval) {
   nsresult rv;
 
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgIdentity> identity;
@@ -164,9 +172,9 @@ nsImapIncomingServer::GetConstructedPrettyName(nsAString& retval) {
     identity->GetEmail(identityEmailAddress);
     CopyASCIItoUTF16(identityEmailAddress, emailAddress);
   } else {
-    rv = GetRealUsername(username);
+    rv = GetUsername(username);
     NS_ENSURE_SUCCESS(rv, rv);
-    rv = GetRealHostName(hostName);
+    rv = GetHostName(hostName);
     NS_ENSURE_SUCCESS(rv, rv);
     if (!username.IsEmpty() && !hostName.IsEmpty()) {
       CopyASCIItoUTF16(username, emailAddress);
@@ -266,7 +274,7 @@ nsImapIncomingServer::SetMaximumConnectionsNumber(int32_t aMaxConnections) {
   return SetIntValue("max_cached_connections", aMaxConnections);
 }
 
-NS_IMPL_SERVERPREF_STR(nsImapIncomingServer, ForceSelect, "force_select")
+NS_IMPL_SERVERPREF_BOOL(nsImapIncomingServer, ForceSelect, "force_select_imap")
 
 NS_IMPL_SERVERPREF_BOOL(nsImapIncomingServer, DualUseFolders,
                         "dual_use_folders")
@@ -383,26 +391,7 @@ NS_IMPL_SERVERPREF_STR(nsImapIncomingServer, OtherUsersNamespace,
 
 NS_IMPL_SERVERPREF_BOOL(nsImapIncomingServer, FetchByChunks, "fetch_by_chunks")
 
-NS_IMPL_SERVERPREF_BOOL(nsImapIncomingServer, MimePartsOnDemand,
-                        "mime_parts_on_demand")
-
 NS_IMPL_SERVERPREF_BOOL(nsImapIncomingServer, SendID, "send_client_info")
-
-NS_IMETHODIMP
-nsImapIncomingServer::GetIsAOLServer(bool* aBool) {
-  NS_ENSURE_ARG_POINTER(aBool);
-  *aBool = ((m_capability & kAOLImapCapability) != 0);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsImapIncomingServer::SetIsAOLServer(bool aBool) {
-  if (aBool)
-    m_capability |= kAOLImapCapability;
-  else
-    m_capability &= ~kAOLImapCapability;
-  return NS_OK;
-}
 
 NS_IMETHODIMP
 nsImapIncomingServer::UpdateTrySTARTTLSPref(bool aStartTLSSucceeded) {
@@ -440,7 +429,6 @@ nsImapIncomingServer::GetImapConnectionAndLoadUrl(nsIImapUrl* aImapUrl,
     bool urlRun;
     rv = LoadNextQueuedUrl(nullptr, &urlRun);
   }
-
   return rv;
 }
 
@@ -664,8 +652,8 @@ nsresult nsImapIncomingServer::GetImapConnection(
   (void)GetMaximumConnectionsNumber(&maxConnections);
 
   int32_t cnt = m_connectionCache.Count();
-
   *aImapConnection = nullptr;
+
   // iterate through the connection cache for a connection that can handle this
   // url.
   // loop until we find a connection that can run the url, or doesn't have to
@@ -868,7 +856,12 @@ nsImapIncomingServer::PerformExpand(nsIMsgWindow* aMsgWindow) {
   rv = GetPassword(password);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  if (password.IsEmpty()) return NS_OK;
+  if (password.IsEmpty()) {
+    // Check if this is due to oauth2 showing empty password. If so, keep going.
+    int32_t authMethod = 0;
+    GetAuthMethod(&authMethod);
+    if (authMethod != nsMsgAuthMethod::OAuth2) return NS_OK;
+  }
 
   rv = ResetFoldersToUnverified(nullptr);
 
@@ -879,11 +872,19 @@ nsImapIncomingServer::PerformExpand(nsIMsgWindow* aMsgWindow) {
   if (!rootMsgFolder) return NS_ERROR_FAILURE;
 
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   nsCOMPtr<nsIThread> thread(do_GetCurrentThread());
-  rv =
-      imapService->DiscoverAllFolders(rootMsgFolder, this, aMsgWindow, nullptr);
+  rv = imapService->DiscoverAllFolders(rootMsgFolder, this, aMsgWindow);
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsIImapHostSessionList> hostSessionList =
+      do_GetService(kCImapHostSessionListCID, &rv);
+  if (NS_SUCCEEDED(rv)) {
+    nsAutoCString serverKey;
+    rv = GetKey(serverKey);
+    if (!serverKey.IsEmpty())
+      hostSessionList->SetDiscoveryForHostInProgress(serverKey.get(), true);
+  }
   return rv;
 }
 
@@ -893,7 +894,7 @@ nsImapIncomingServer::VerifyLogon(nsIUrlListener* aUrlListener,
   nsresult rv;
 
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   nsCOMPtr<nsIMsgFolder> rootFolder;
   // this will create the resource if it doesn't exist, but it shouldn't
@@ -927,14 +928,6 @@ nsImapIncomingServer::CloseCachedConnections() {
   }
 
   PR_CExitMonitor(this);
-  return NS_OK;
-}
-
-nsresult nsImapIncomingServer::CreateRootFolderFromUri(
-    const nsACString& serverUri, nsIMsgFolder** rootFolder) {
-  nsImapMailFolder* newRootFolder = new nsImapMailFolder;
-  newRootFolder->Init(serverUri);
-  NS_ADDREF(*rootFolder = newRootFolder);
   return NS_OK;
 }
 
@@ -1320,7 +1313,7 @@ NS_IMETHODIMP nsImapIncomingServer::DiscoveryDone() {
     // flag set appropriately.
 
     nsCOMPtr<nsIMsgAccountManager> accountMgr =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsCOMPtr<nsIMsgIdentity> identity;
@@ -1363,15 +1356,16 @@ NS_IMETHODIMP nsImapIncomingServer::DiscoveryDone() {
     rv = GetSpamSettings(getter_AddRefs(spamSettings));
     if (NS_SUCCEEDED(rv) && spamSettings) {
       nsCString spamFolderUri, existingUri;
-      spamSettings->GetSpamFolderURI(getter_Copies(spamFolderUri));
+      spamSettings->GetSpamFolderURI(spamFolderUri);
       if (CheckSpecialFolder(spamFolderUri, nsMsgFolderFlags::Junk,
                              existingUri)) {
         // This only sets the cached values in the spam settings object.
-        spamSettings->SetActionTargetFolder(existingUri.get());
+        spamSettings->SetActionTargetFolder(existingUri);
         spamSettings->SetMoveTargetMode(
             nsISpamSettings::MOVE_TARGET_MODE_FOLDER);
         // Set the preferences too so that the values persist.
-        SetCharValue("spamActionTargetFolder", existingUri);
+        SetUnicharValue("spamActionTargetFolder",
+                        NS_ConvertUTF8toUTF16(existingUri));
         SetIntValue("moveTargetMode", nsISpamSettings::MOVE_TARGET_MODE_FOLDER);
       }
     }
@@ -1409,9 +1403,15 @@ NS_IMETHODIMP nsImapIncomingServer::DiscoveryDone() {
             // trash_folder_name preference since the full path is stored
             // there when selecting a trash folder in the Account Manager.
             nsAutoCString trashURL;
-            trashFolder->GetFolderURL(trashURL);
+            rv = trashFolder->GetFolderURL(trashURL);
+            if (NS_FAILED(rv)) {
+              continue;
+            }
             nsCOMPtr<nsIURI> uri;
-            NS_NewURI(getter_AddRefs(uri), trashURL);
+            rv = NS_NewURI(getter_AddRefs(uri), trashURL);
+            if (NS_FAILED(rv)) {
+              continue;
+            }
             nsAutoCString trashPath;
             uri->GetPathQueryRef(trashPath);
             nsAutoCString unescapedName;
@@ -1587,10 +1587,10 @@ NS_IMETHODIMP
 nsImapIncomingServer::PromptLoginFailed(nsIMsgWindow* aMsgWindow,
                                         int32_t* aResult) {
   nsAutoCString hostName;
-  GetRealHostName(hostName);
+  GetHostName(hostName);
 
   nsAutoCString userName;
-  GetRealUsername(userName);
+  GetUsername(userName);
 
   nsAutoString accountName;
   GetPrettyName(accountName);
@@ -1629,7 +1629,7 @@ nsresult nsImapIncomingServer::AlertUser(const nsAString& aString,
                                          nsIMsgMailNewsUrl* aUrl) {
   nsresult rv;
   nsCOMPtr<nsIMsgMailSession> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/session;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   return mailSession->AlertUser(aString, aUrl);
@@ -1674,6 +1674,7 @@ NS_IMETHODIMP nsImapIncomingServer::FEAlertFromServer(
 
   nsCString message(aServerString);
   message.Trim(" \t\b\r\n");
+  NS_ENSURE_TRUE(!message.IsEmpty(), NS_OK);
   if (message.Last() != '.') message.Append('.');
 
   // Skip over the first two words (the command tag and "NO").
@@ -1738,7 +1739,7 @@ nsresult nsImapIncomingServer::GetStringBundle() {
   if (m_stringBundle) return NS_OK;
 
   nsCOMPtr<nsIStringBundleService> sBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(sBundleService, NS_ERROR_UNEXPECTED);
   return sBundleService->CreateBundle(IMAP_MSGS_URL,
                                       getter_AddRefs(m_stringBundle));
@@ -1823,23 +1824,34 @@ void nsImapIncomingServer::GetUnverifiedSubFolders(
   }
 }
 
-NS_IMETHODIMP nsImapIncomingServer::ForgetSessionPassword() {
-  nsresult rv = nsMsgIncomingServer::ForgetSessionPassword();
-  NS_ENSURE_SUCCESS(rv, rv);
+NS_IMETHODIMP nsImapIncomingServer::ForgetSessionPassword(bool modifyLogin) {
+  bool usingOauth2 = false;
+  if (modifyLogin) {
+    // Only need to check for oauth2 if modifyLogin is true.
+    int32_t authMethod = 0;
+    GetAuthMethod(&authMethod);
+    usingOauth2 = (authMethod == nsMsgAuthMethod::OAuth2);
+  }
 
-  // fix for bugscape bug #15485
-  // if we use turbo, and we logout, we need to make sure
-  // the server doesn't think it's authenticated.
-  // the biff timer continues to fire when you use turbo
-  // (see #143848).  if we exited, we've set the password to null
-  // but if we're authenticated, and the biff timer goes off
-  // we'll still perform biff, because we use m_userAuthenticated
-  // to determine if we require a password for biff.
-  // (if authenticated, we don't require a password
-  // see nsMsgBiffManager::PerformBiff())
-  // performing biff without a password will pop up the prompt dialog
-  // which is pretty wacky, when it happens after you quit the application
-  m_userAuthenticated = false;
+  // Clear the cached password if not using Oauth2 or if modifyLogin is false.
+  if (!usingOauth2 || !modifyLogin) {
+    nsresult rv = nsMsgIncomingServer::ForgetSessionPassword(modifyLogin);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    // fix for bugscape bug #15485
+    // if we use turbo, and we logout, we need to make sure
+    // the server doesn't think it's authenticated.
+    // the biff timer continues to fire when you use turbo
+    // (see #143848).  if we exited, we've set the password to null
+    // but if we're authenticated, and the biff timer goes off
+    // we'll still perform biff, because we use m_userAuthenticated
+    // to determine if we require a password for biff.
+    // (if authenticated, we don't require a password
+    // see nsMsgBiffManager::PerformBiff())
+    // performing biff without a password will pop up the prompt dialog
+    // which is pretty wacky, when it happens after you quit the application
+    m_userAuthenticated = false;
+  }
   return NS_OK;
 }
 
@@ -1866,7 +1878,7 @@ nsImapIncomingServer::AsyncGetPassword(nsIImapProtocol* aProtocol,
     // prompt), so we need to use the async prompter.
     nsresult rv;
     nsCOMPtr<nsIMsgAsyncPrompter> asyncPrompter =
-        do_GetService(NS_MSGASYNCPROMPTER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/msgAsyncPrompter;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     nsCOMPtr<nsIMsgAsyncPromptListener> promptListener(
         do_QueryInterface(aProtocol));
@@ -1880,14 +1892,26 @@ nsImapIncomingServer::AsyncGetPassword(nsIImapProtocol* aProtocol,
   return NS_OK;
 }
 
+// Get password already stored in login manager. This won't trigger a prompt
+// if no password string is present.
+NS_IMETHODIMP
+nsImapIncomingServer::SyncGetPassword(nsAString& aPassword) {
+  nsresult rv = NS_OK;
+  if (NS_SUCCEEDED(GetPasswordWithoutUI()) && !m_password.IsEmpty())
+    aPassword = m_password;
+  else
+    rv = NS_ERROR_NOT_AVAILABLE;
+  return rv;
+}
+
 NS_IMETHODIMP
 nsImapIncomingServer::PromptPassword(nsIMsgWindow* aMsgWindow,
                                      nsAString& aPassword) {
   nsAutoCString userName;
-  GetRealUsername(userName);
+  GetUsername(userName);
 
   nsAutoCString hostName;
-  GetRealHostName(hostName);
+  GetHostName(hostName);
 
   nsresult rv = GetStringBundle();
   NS_ENSURE_SUCCESS(rv, rv);
@@ -1909,7 +1933,7 @@ nsImapIncomingServer::PromptPassword(nsIMsgWindow* aMsgWindow,
                                             formatStrings2, passwordText);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  rv = GetPasswordWithUI(passwordText, passwordTitle, aMsgWindow, aPassword);
+  rv = GetPasswordWithUI(passwordText, passwordTitle, aPassword);
   if (NS_SUCCEEDED(rv)) m_password = aPassword;
   return rv;
 }
@@ -1977,7 +2001,7 @@ NS_IMETHODIMP nsImapIncomingServer::SetUserAuthenticated(
   if (aUserAuthenticated) {
     nsresult rv;
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     accountManager->SetUserNeedsToAuthenticate(false);
@@ -2015,9 +2039,7 @@ NS_IMETHODIMP nsImapIncomingServer::GetManageMailAccountUrl(
 NS_IMETHODIMP
 nsImapIncomingServer::StartPopulatingWithUri(nsIMsgWindow* aMsgWindow,
                                              bool aForceToServer /*ignored*/,
-                                             const char* uri) {
-  NS_ENSURE_ARG_POINTER(uri);
-
+                                             const nsACString& uri) {
   nsresult rv;
   mDoingSubscribeDialog = true;
 
@@ -2038,16 +2060,15 @@ nsImapIncomingServer::StartPopulatingWithUri(nsIMsgWindow* aMsgWindow,
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   /*
       if uri = imap://user@host/foo/bar, the serverUri is imap://user@host
       to get path from uri, skip over imap://user@host + 1 (for the /)
   */
-  const char* path = uri + serverUri.Length() + 1;
-  return imapService->GetListOfFoldersWithPath(this, aMsgWindow,
-                                               nsDependentCString(path));
+  return imapService->GetListOfFoldersWithPath(
+      this, aMsgWindow, Substring(uri, serverUri.Length() + 1));
 }
 
 NS_IMETHODIMP
@@ -2070,7 +2091,7 @@ nsImapIncomingServer::StartPopulating(nsIMsgWindow* aMsgWindow,
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   return imapService->GetListOfFoldersOnServer(this, aMsgWindow);
 }
@@ -2107,7 +2128,7 @@ nsImapIncomingServer::OnStopRunningUrl(nsIURI* url, nsresult exitCode) {
         if (msgFolder) {
           nsresult rv;
           nsCOMPtr<nsIMsgMailSession> session =
-              do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+              do_GetService("@mozilla.org/messenger/services/session;1", &rv);
           NS_ENSURE_SUCCESS(rv, rv);
           bool folderOpen;
           rv = session->IsFolderOpenInWindow(msgFolder, &folderOpen);
@@ -2229,7 +2250,7 @@ nsImapIncomingServer::SubscribeToFolder(const nsAString& aName, bool subscribe,
                                         nsIURI** aUri) {
   nsresult rv;
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgFolder> rootMsgFolder;
@@ -2374,17 +2395,6 @@ nsImapIncomingServer::GetCanBeDefaultServer(bool* canBeDefaultServer) {
 }
 
 NS_IMETHODIMP
-nsImapIncomingServer::GetCanCompactFoldersOnServer(
-    bool* canCompactFoldersOnServer) {
-  NS_ENSURE_ARG_POINTER(canCompactFoldersOnServer);
-  // Initialize canCompactFoldersOnServer true, a default value for IMAP
-  *canCompactFoldersOnServer = true;
-  GetPrefForServerAttribute("canCompactFoldersOnServer",
-                            canCompactFoldersOnServer);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 nsImapIncomingServer::GetCanUndoDeleteOnServer(bool* canUndoDeleteOnServer) {
   NS_ENSURE_ARG_POINTER(canUndoDeleteOnServer);
   // Initialize canUndoDeleteOnServer true, a default value for IMAP
@@ -2399,15 +2409,6 @@ nsImapIncomingServer::GetCanSearchMessages(bool* canSearchMessages) {
   // Initialize canSearchMessages true, a default value for IMAP
   *canSearchMessages = true;
   GetPrefForServerAttribute("canSearchMessages", canSearchMessages);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsImapIncomingServer::GetCanEmptyTrashOnExit(bool* canEmptyTrashOnExit) {
-  NS_ENSURE_ARG_POINTER(canEmptyTrashOnExit);
-  // Initialize canEmptyTrashOnExit true, a default value for IMAP
-  *canEmptyTrashOnExit = true;
-  GetPrefForServerAttribute("canEmptyTrashOnExit", canEmptyTrashOnExit);
   return NS_OK;
 }
 
@@ -2445,31 +2446,27 @@ nsImapIncomingServer::GetSupportsDiskSpace(bool* aSupportsDiskSpace) {
   return NS_OK;
 }
 
-// count number of non-busy connections in cache
+// Check whether all connections in the cache are idle.
 NS_IMETHODIMP
-nsImapIncomingServer::GetNumIdleConnections(int32_t* aNumIdleConnections) {
-  NS_ENSURE_ARG_POINTER(aNumIdleConnections);
-  *aNumIdleConnections = 0;
+nsImapIncomingServer::GetAllConnectionsIdle(bool* aAllIdle) {
+  NS_ENSURE_ARG_POINTER(aAllIdle);
+  *aAllIdle = true;
 
-  nsresult rv = NS_OK;
-  nsCOMPtr<nsIImapProtocol> connection;
-  bool isBusy = false;
+  nsresult rv;
+  bool isBusy;
   bool isInboxConnection;
+
   PR_CEnterMonitor(this);
-
-  int32_t cnt = m_connectionCache.Count();
-
-  // loop counting idle connections
-  for (int32_t i = 0; i < cnt; ++i) {
-    connection = m_connectionCache[i];
-    if (connection) {
-      rv = connection->IsBusy(&isBusy, &isInboxConnection);
-      if (NS_FAILED(rv)) continue;
-      if (!isBusy) (*aNumIdleConnections)++;
+  for (nsCOMPtr<nsIImapProtocol> connection : m_connectionCache) {
+    rv = connection->IsBusy(&isBusy, &isInboxConnection);
+    if (NS_FAILED(rv) || isBusy) {
+      *aAllIdle = false;
+      break;
     }
   }
   PR_CExitMonitor(this);
-  return rv;
+
+  return NS_OK;
 }
 
 /**
@@ -2512,77 +2509,6 @@ nsImapIncomingServer::GetOfflineSupportLevel(int32_t* aSupportLevel) {
   if (NS_FAILED(rv))  // set default value
     *aSupportLevel = OFFLINE_SUPPORT_LEVEL_REGULAR;
   return NS_OK;
-}
-
-// Called only during the migration process. This routine enables the generation
-// of unique account name based on the username, hostname and the port. If the
-// port is valid and not a default one, it will be appended to the account name.
-NS_IMETHODIMP
-nsImapIncomingServer::GeneratePrettyNameForMigration(nsAString& aPrettyName) {
-  nsCString userName;
-  nsCString hostName;
-
-  /**
-   * Pretty name for migrated account is of format username@hostname:<port>,
-   * provided the port is valid and not the default
-   */
-  // Get user name to construct pretty name
-  nsresult rv = GetUsername(userName);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // Get host name to construct pretty name
-  rv = GetHostName(hostName);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  int32_t defaultServerPort;
-  int32_t defaultSecureServerPort;
-
-  // Here, the final contract ID is already known, so use it directly for
-  // efficiency.
-  nsCOMPtr<nsIMsgProtocolInfo> protocolInfo =
-      do_GetService(NS_IMAPPROTOCOLINFO_CONTRACTID, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // Get the default port
-  rv = protocolInfo->GetDefaultServerPort(false, &defaultServerPort);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // Get the default secure port
-  rv = protocolInfo->GetDefaultServerPort(true, &defaultSecureServerPort);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // Get the current server port
-  int32_t serverPort = PORT_NOT_SET;
-  rv = GetPort(&serverPort);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // Is the server secure ?
-  int32_t socketType;
-  rv = GetSocketType(&socketType);
-  NS_ENSURE_SUCCESS(rv, rv);
-  bool isSecure = (socketType == nsMsgSocketType::SSL);
-
-  // Is server port a default port ?
-  bool isItDefaultPort = false;
-  if (((serverPort == defaultServerPort) && !isSecure) ||
-      ((serverPort == defaultSecureServerPort) && isSecure))
-    isItDefaultPort = true;
-
-  // Construct pretty name from username and hostname
-  nsAutoString constructedPrettyName;
-  CopyASCIItoUTF16(userName, constructedPrettyName);
-  constructedPrettyName.Append('@');
-  constructedPrettyName.Append(NS_ConvertASCIItoUTF16(hostName));
-
-  // If the port is valid and not default, add port value to the pretty name
-  if ((serverPort > 0) && (!isItDefaultPort)) {
-    constructedPrettyName.Append(':');
-    constructedPrettyName.AppendInt(serverPort);
-  }
-
-  // Format the pretty name
-  return GetFormattedStringFromName(constructedPrettyName,
-                                    "imapDefaultAccountName", aPrettyName);
 }
 
 nsresult nsImapIncomingServer::GetFormattedStringFromName(
@@ -2709,7 +2635,7 @@ nsImapIncomingServer::GetNewMessagesForNonInboxFolders(nsIMsgFolder* aFolder,
     if (performingBiff) imapFolder->SetPerformingBiff(true);
     bool isOpen = false;
     nsCOMPtr<nsIMsgMailSession> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+        do_GetService("@mozilla.org/messenger/services/session;1");
     if (mailSession && aFolder)
       mailSession->IsFolderOpenInWindow(aFolder, &isOpen);
     // eventually, the gGotStatusPref should go away, once we work out the kinks
@@ -2770,32 +2696,6 @@ NS_IMETHODIMP nsImapIncomingServer::SetSocketType(int32_t aSocketType) {
   return nsMsgIncomingServer::SetSocketType(aSocketType);
 }
 
-NS_IMETHODIMP
-nsImapIncomingServer::OnUserOrHostNameChanged(const nsACString& oldName,
-                                              const nsACString& newName,
-                                              bool hostnameChanged) {
-  nsresult rv;
-  // 1. Do common things in the base class.
-  rv = nsMsgIncomingServer::OnUserOrHostNameChanged(oldName, newName,
-                                                    hostnameChanged);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // 2. Reset 'HaveWeEverDiscoveredFolders' flag so the new folder list can be
-  //    reloaded (ie, DiscoverMailboxList() will be invoked in nsImapProtocol).
-  nsCOMPtr<nsIImapHostSessionList> hostSessionList =
-      do_GetService(kCImapHostSessionListCID, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-  nsAutoCString serverKey;
-  rv = GetKey(serverKey);
-  NS_ENSURE_SUCCESS(rv, rv);
-  hostSessionList->SetHaveWeEverDiscoveredFoldersForHost(serverKey.get(),
-                                                         false);
-  // 3. Make all the existing folders 'unverified' so that they can be
-  //    removed from the folder pane after users log into the new server.
-  ResetFoldersToUnverified(nullptr);
-  return NS_OK;
-}
-
 // use canonical format in originalUri & convertedUri
 NS_IMETHODIMP
 nsImapIncomingServer::GetUriWithNamespacePrefixIfNecessary(
@@ -2832,7 +2732,7 @@ nsImapIncomingServer::GetUriWithNamespacePrefixIfNecessary(
       // it may be the case that this is the INBOX uri, in which case
       // we don't want to prepend the namespace. In that case, the uri ends with
       // "INBOX", but the namespace is "INBOX/", so they don't match.
-      if (uri.Find(namespacePrefix, false, index + 1) != index + 1 &&
+      if (uri.Find(namespacePrefix, index + 1) != index + 1 &&
           !Substring(uri, index + 1).LowerCaseEqualsLiteral("inbox"))
         uri.Insert(namespacePrefix, index + 1);  // insert namespace prefix
       convertedUri = uri;
@@ -2975,7 +2875,7 @@ nsImapIncomingServer::CramMD5Hash(const char* decodedChallenge, const char* key,
 
 NS_IMETHODIMP
 nsImapIncomingServer::GetLoginUsername(nsACString& aLoginUsername) {
-  return GetRealUsername(aLoginUsername);
+  return GetUsername(aLoginUsername);
 }
 
 NS_IMETHODIMP
@@ -3006,11 +2906,6 @@ nsImapIncomingServer::GetServerShuttingDown(bool* aShuttingDown) {
 NS_IMETHODIMP
 nsImapIncomingServer::ResetServerConnection(const nsACString& aFolderName) {
   return ResetConnection(aFolderName);
-}
-
-NS_IMETHODIMP
-nsImapIncomingServer::SetServerForceSelect(const nsACString& aForceSelect) {
-  return SetForceSelect(aForceSelect);
 }
 
 NS_IMETHODIMP

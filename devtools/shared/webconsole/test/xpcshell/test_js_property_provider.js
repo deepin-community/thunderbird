@@ -2,17 +2,24 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 "use strict";
-const { require } = ChromeUtils.import("resource://devtools/shared/Loader.jsm");
 const {
-  FallibleJSPropertyProvider: JSPropertyProvider,
-} = require("devtools/shared/webconsole/js-property-provider");
+  fallibleJsPropertyProvider: jsPropertyProvider,
+} = require("resource://devtools/shared/webconsole/js-property-provider.js");
 
-const { addDebuggerToGlobal } = ChromeUtils.import(
-  "resource://gre/modules/jsdebugger.jsm"
+const { addDebuggerToGlobal } = ChromeUtils.importESModule(
+  "resource://gre/modules/jsdebugger.sys.mjs"
 );
-addDebuggerToGlobal(this);
+addDebuggerToGlobal(globalThis);
 
 function run_test() {
+  Services.prefs.setBoolPref(
+    "security.allow_parent_unrestricted_js_loads",
+    true
+  );
+  registerCleanupFunction(() => {
+    Services.prefs.clearUserPref("security.allow_parent_unrestricted_js_loads");
+  });
+
   const testArray = `var testArray = [
     {propA: "A"},
     {
@@ -65,6 +72,19 @@ function run_test() {
     };
   `;
 
+  const testProxies = `
+    var testSelfPrototypeProxy = new Proxy({
+      hello: 1
+    }, {
+      getPrototypeOf: () => testProxy
+    });
+    var testArrayPrototypeProxy = new Proxy({
+      world: 2
+    }, {
+      getPrototypeOf: () => Array.prototype
+    })
+  `;
+
   const sandbox = Cu.Sandbox("http://example.com");
   const dbg = new Debugger();
   const dbgObject = dbg.addDebuggee(sandbox);
@@ -84,6 +104,7 @@ function run_test() {
   Cu.evalInSandbox(testLet, sandbox);
   Cu.evalInSandbox(testGenerators, sandbox);
   Cu.evalInSandbox(testGetters, sandbox);
+  Cu.evalInSandbox(testProxies, sandbox);
 
   info("Running tests with dbgObject");
   runChecks(dbgObject, null, sandbox);
@@ -94,7 +115,7 @@ function run_test() {
 
 function runChecks(dbgObject, environment, sandbox) {
   const propertyProvider = (inputValue, options) =>
-    JSPropertyProvider({
+    jsPropertyProvider({
       dbgObject,
       environment,
       inputValue,
@@ -143,6 +164,7 @@ function runChecks(dbgObject, environment, sandbox) {
   info("Test that suggestions are given for '(globalThis).'");
   results = propertyProvider("(globalThis).");
   test_has_result(results, "testObject");
+  test_has_result(results, "Infinity");
 
   info(
     "Test that suggestions are given for deep 'globalThis' properties access"
@@ -671,12 +693,29 @@ function runChecks(dbgObject, environment, sandbox) {
   // Test autocompletion on debugger statement does not throw
   results = propertyProvider(`debugger.`);
   Assert.ok(results === null, "Does not complete a debugger keyword");
+
+  // Test autocompletion on Proxies
+  // proxy does not get autocompletion result from prototype defined in `getPrototypeOf`
+  test_has_no_results(propertyProvider(`testArrayPrototypeProxy.filte`));
+  results = propertyProvider(`testArrayPrototypeProxy.`);
+  // it does get the own property
+  test_has_result(results, `world`);
+  // as well as method from the actual proxy target prototype
+  test_has_result(results, `hasOwnProperty`);
+
+  results = propertyProvider(`testSelfPrototypeProxy.`);
+  test_has_result(results, `hello`);
+  test_has_result(results, `hasOwnProperty`);
+
+  info("Test suggestion for Infinity");
+  results = propertyProvider("Inf");
+  test_has_result(results, "Infinity");
 }
 
 /**
  * A helper that ensures an empty array of results were found.
  * @param Object results
- *        The results returned by JSPropertyProvider.
+ *        The results returned by jsPropertyProvider.
  */
 function test_has_no_results(results) {
   Assert.notEqual(results, null);
@@ -685,7 +724,7 @@ function test_has_no_results(results) {
 /**
  * A helper that ensures (required) results were found.
  * @param Object results
- *        The results returned by JSPropertyProvider.
+ *        The results returned by jsPropertyProvider.
  * @param String requiredSuggestion
  *        A suggestion that must be found from the results.
  */
@@ -703,9 +742,9 @@ function test_has_result(results, requiredSuggestion) {
 /**
  * A helper that ensures results are the expected ones.
  * @param Object results
- *        The results returned by JSPropertyProvider.
+ *        The results returned by jsPropertyProvider.
  * @param Array expectedMatches
- *        An array of the properties that should be returned by JsPropertyProvider.
+ *        An array of the properties that should be returned by jsPropertyProvider.
  */
 function test_has_exact_results(results, expectedMatches) {
   Assert.deepEqual([...results.matches], expectedMatches);

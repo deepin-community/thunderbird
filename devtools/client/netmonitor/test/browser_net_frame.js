@@ -165,7 +165,7 @@ const EXPECTED_REQUESTS_SUB = [
 const REQUEST_COUNT =
   EXPECTED_REQUESTS_TOP.length + EXPECTED_REQUESTS_SUB.length;
 
-add_task(async function() {
+add_task(async function () {
   // the initNetMonitor function clears the network request list after the
   // page is loaded. That's why we first load a bogus page from SIMPLE_URL,
   // and only then load the real thing from TOP_URL - we want to catch
@@ -233,8 +233,9 @@ add_task(async function() {
 
     if (stack) {
       ok(stacktrace, `Request #${i} has a stacktrace`);
-      ok(
-        stackLen > 0,
+      Assert.greater(
+        stackLen,
+        0,
         `Request #${i} (${causeType}) has a stacktrace with ${stackLen} items`
       );
 

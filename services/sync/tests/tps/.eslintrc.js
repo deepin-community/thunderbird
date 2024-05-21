@@ -1,10 +1,8 @@
 "use strict";
 
 module.exports = {
-  extends: ["plugin:mozilla/mochitest-test"],
-
   globals: {
-    // Injected into tests via tps.jsm
+    // Injected into tests via tps.sys.mjs
     Addons: false,
     Addresses: false,
     Bookmarks: false,

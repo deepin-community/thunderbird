@@ -58,6 +58,16 @@ dictionary ProfilerMarkerOptions {
 dictionary InteractionData {
   unsigned long interactionCount = 0;
   unsigned long interactionTimeInMilliseconds = 0;
+  unsigned long scrollingDistanceInPixels = 0;
+};
+
+/**
+ * Confidence value of credit card fields. This is used by the native
+ * Fathom Credit Card model to return the score to JS.
+ */
+dictionary FormAutofillConfidences {
+  double ccNumber = 0;
+  double ccName = 0;
 };
 
 /**
@@ -104,6 +114,26 @@ namespace ChromeUtils {
    */
   [Throws, NewObject]
   HeapSnapshot readHeapSnapshot(DOMString filePath);
+
+  /**
+   * Efficient way to know if DevTools are active in the current process.
+   *
+   * This doesn't help know what particular context is being debugged,
+   * but can help strip off code entirely when DevTools aren't used at all.
+   *
+   * BrowsingContext.isWatchedByDevTools is a more precise way to know
+   * when one precise tab is being debugged.
+   */
+  boolean isDevToolsOpened();
+
+  /**
+   * API exposed to DevTools JS code in order to know when devtools are being active in the current process.
+   *
+   * This API counts the number of calls to these methods, allowing to track many DevTools instances.
+   */
+  undefined notifyDevToolsOpened();
+  undefined notifyDevToolsClosed();
+
 
   /**
    * Return the keys in a weak map.  This operation is
@@ -160,8 +190,8 @@ namespace ChromeUtils {
    *
    * Crash report will be augmented with the current JS stack information.
    */
-  void releaseAssert(boolean condition,
-                     optional DOMString message = "<no message>");
+  undefined releaseAssert(boolean condition,
+                          optional DOMString message = "<no message>");
 
 #ifdef NIGHTLY_BUILD
 
@@ -194,24 +224,24 @@ namespace ChromeUtils {
   /**
    * Reset `recentJSDevError` to `undefined` for the current JSRuntime.
    */
-  void clearRecentJSDevError();
+  undefined clearRecentJSDevError();
 #endif // NIGHTLY_BUILD
 
   /**
    * Clears the stylesheet cache by baseDomain. This includes associated
    * state-partitioned cache.
    */
-  void clearStyleSheetCacheByBaseDomain(UTF8String baseDomain);
+  undefined clearStyleSheetCacheByBaseDomain(UTF8String baseDomain);
 
   /**
    * Clears the stylesheet cache by principal.
    */
-  void clearStyleSheetCacheByPrincipal(Principal principal);
+  undefined clearStyleSheetCacheByPrincipal(Principal principal);
 
   /**
    * Clears the entire stylesheet cache.
    */
-  void clearStyleSheetCache();
+  undefined clearStyleSheetCache();
 
   /**
    * If the profiler is currently running and recording the current thread,
@@ -228,9 +258,100 @@ namespace ChromeUtils {
    *                          In JS modules, use `Cu.now()` to get a timestamp.
    * @param text              Text to associate with the marker.
    */
-  void addProfilerMarker(UTF8String name,
-                         optional (ProfilerMarkerOptions or DOMHighResTimeStamp) options = {},
-                         optional UTF8String text);
+  undefined addProfilerMarker(UTF8String name,
+                              optional (ProfilerMarkerOptions or DOMHighResTimeStamp) options = {},
+                              optional UTF8String text);
+
+  /**
+   * Return the symbolic name of any given XPCOM error code (nsresult):
+   * "NS_OK", "NS_ERROR_FAILURE",...
+   */
+  UTF8String getXPCOMErrorName(unsigned long aErrorCode);
+
+  /**
+   * Return a fractional number representing the current time (in milliseconds from the Epoch).
+   * Should be JS_Now()/1000 so that it can be compared to Date.now in Javascript.
+   */
+  double dateNow();
+
+  /**
+   * Defines a getter on a specified object that will be created upon first
+   * use.
+   *
+   * @param aTarget
+   *        The object to define the lazy getter on.
+   * @param aName
+   *        The name of the getter to define on aTarget.
+   * @param aLambda
+   *        A function that returns what the getter should return.  This will
+   *        only ever be called once.
+   */
+  [Throws]
+  undefined defineLazyGetter(object aTarget, any aName, object aLambda);
+
+
+#ifdef XP_UNIX
+  /**
+   * Return platform-specific libc constants, such as errno values.
+   */
+  LibcConstants getLibcConstants();
+#endif
+
+#ifdef MOZ_WMF_CDM
+  /**
+   * Returns the information about all Media Foundation based content decryption
+   * modules, which would include key system names and their capabilities.
+   */
+  [NewObject]
+  Promise<sequence<CDMInformation>> getWMFContentDecryptionModuleInformation();
+#endif
+
+  /**
+   * Returns the information about the GMP based content decryption
+   * modules, which would include key system names and their capabilities.
+   */
+  [NewObject]
+  Promise<sequence<CDMInformation>> getGMPContentDecryptionModuleInformation();
+
+  /**
+   * Synchronously loads and evaluates the JS module source located at
+   * 'aResourceURI'.
+   *
+   * @param aResourceURI A resource:// URI string to load the module from.
+   * @param aOption An option to specify where to load the module into.
+   * @returns the module's namespace object.
+   *
+   * The implementation maintains a hash of aResourceURI->global obj.
+   * Subsequent invocations of import with 'aResourceURI' pointing to
+   * the same file will not cause the module to be re-evaluated.
+   *
+   * In worker threads, aOption is required and only { global: "current" } and
+   * { global: "contextual" } are supported.
+   *
+   * In DevTools distinct global, aOptions.global is reuiqred.
+   */
+  [Throws]
+  object importESModule(DOMString aResourceURI,
+                        optional ImportESModuleOptionsDictionary aOptions = {});
+
+  /**
+   * Defines propertys on the given target which lazily imports a ES module
+   * when accessed.
+   *
+   * @param aTarget The target object on which to define the property.
+   * @param aModules An object with a property for each module property to be
+   *                 imported, where the property name is the name of the
+   *                 imported symbol and the value is the module URI.
+   * @param aOption An option to specify where to load the module into.
+   *
+   * In worker threads, aOption is required and only { global: "current" } and
+   * { global: "contextual" } are supported.
+   *
+   * In DevTools distinct global, aOptions.global is reuiqred.
+   */
+  [Throws]
+  undefined defineESModuleGetters(object aTarget, object aModules,
+                                  optional ImportESModuleOptionsDictionary aOptions = {});
 
   /**
    * IF YOU ADD NEW METHODS HERE, MAKE SURE THEY ARE THREAD-SAFE.
@@ -317,6 +438,18 @@ partial namespace ChromeUtils {
   getBaseDomainFromPartitionKey(DOMString partitionKey);
 
   /**
+   * Returns the partitionKey for a given URL.
+   *
+   * The function will treat the URL as a first party and construct the
+   * partitionKey according to the scheme, site and port in the URL.
+   *
+   * Throws for invalid urls.
+   */
+  [Throws]
+  DOMString
+  getPartitionKeyFromURL(DOMString url);
+
+  /**
    * Loads and compiles the script at the given URL and returns an object
    * which may be used to execute it repeatedly, in different globals, without
    * re-parsing.
@@ -336,7 +469,7 @@ partial namespace ChromeUtils {
    * nsISupports is implicitly supported, and must not be included in the
    * interface list.
    */
-  [Affects=Nothing, NewObject, Throws]
+  [Affects=Nothing, NewObject]
   MozQueryInterface generateQI(sequence<any> interfaces);
 
   /**
@@ -361,6 +494,20 @@ partial namespace ChromeUtils {
   DOMString getClassName(object obj, optional boolean unwrap = true);
 
   /**
+   * Returns whether the object is a DOM object.
+   *
+   * if |unwrap| is true, all wrappers are unwrapped first. Unless you're
+   * specifically trying to detect whether the object is a proxy, this is
+   * probably what you want.
+   */
+  boolean isDOMObject(object obj, optional boolean unwrap = true);
+
+  /**
+   * Returns whether |str| follows the Date Time String Format.
+   */
+  boolean isISOStyleDate(UTF8String str);
+
+  /**
    * Clones the properties of the given object into a new object in the given
    * target compartment (or the caller compartment if no target is provided).
    * Property values themeselves are not cloned.
@@ -377,24 +524,15 @@ partial namespace ChromeUtils {
    * particular DOM windw.
    */
   [Throws]
-  void idleDispatch(IdleRequestCallback callback,
-                    optional IdleRequestOptions options = {});
+  undefined idleDispatch(IdleRequestCallback callback,
+                         optional IdleRequestOptions options = {});
 
   /**
    * Synchronously loads and evaluates the js file located at
    * 'aResourceURI' with a new, fully privileged global object.
    *
-   * If `aTargetObj` is specified, and non-null, all properties exported by
-   * the module are copied to that object.
-   *
-   * If `aTargetObj` is not specified, or is non-null, an object is returned
-   * containing all of the module's exported properties. The same object is
-   * returned for every call.
-   *
-   * If `aTargetObj` is specified and null, the module's global object is
-   * returned, rather than its explicit exports. This behavior is deprecated,
-   * and will removed in the near future, since it is incompatible with the
-   * ES6 module semanitcs we intend to migrate to. It should not be used in
+   * If `aTargetObj` is specified all properties exported by the module are
+   * copied to that object. This is deprecated and should not be used in
    * new code.
    *
    * @param aResourceURI A resource:// URI string to load the module from.
@@ -406,9 +544,12 @@ partial namespace ChromeUtils {
    * the same file will not cause the module to be re-evaluated, but
    * the symbols in EXPORTED_SYMBOLS will be exported into the
    * specified target object and the global object returned as above.
+   *
+   * TODO: Remove this once m-c, c-c, and out-of-tree code migrations finish
+   *       (bug 1881888).
    */
   [Throws]
-  object import(DOMString aResourceURI, optional object? aTargetObj);
+  object import(UTF8String aResourceURI, optional object aTargetObj);
 
   /**
    * Defines a property on the given target which lazily imports a JavaScript
@@ -441,7 +582,7 @@ partial namespace ChromeUtils {
    *                    ChromeUtils.import.
    */
   [Throws]
-  void defineModuleGetter(object target, DOMString id, DOMString resourceURI);
+  undefined defineModuleGetter(object target, DOMString id, DOMString resourceURI);
 
   /**
    * Returns the scripted location of the first ancestor stack frame with a
@@ -460,12 +601,6 @@ partial namespace ChromeUtils {
   object createError(DOMString message, optional object? stack = null);
 
   /**
-   * Request performance metrics to the current process & all content processes.
-   */
-  [Throws]
-  Promise<sequence<PerformanceInfoDictionary>> requestPerformanceMetrics();
-
-  /**
    * Set the collection of specific detailed performance timing information.
    * Selecting 0 for the mask will end existing collection. All metrics that
    * are chosen will be cleared after updating the mask.
@@ -473,26 +608,32 @@ partial namespace ChromeUtils {
    * @param aCollectionMask A bitmask where each bit corresponds to a metric
    *        to be collected as listed in PerfStats::Metric.
    */
-  void setPerfStatsCollectionMask(unsigned long long aCollectionMask);
+  undefined setPerfStatsCollectionMask(unsigned long long aCollectionMask);
 
   /**
    * Collect results of detailed performance timing information.
    * The output is a JSON string containing performance timings.
    */
-  [Throws]
+  [NewObject]
   Promise<DOMString> collectPerfStats();
 
   /**
   * Returns a Promise containing a sequence of I/O activities
   */
-  [Throws]
+  [NewObject]
   Promise<sequence<IOActivityDataDictionary>> requestIOActivity();
 
   /**
   * Returns a Promise containing all processes info
   */
-  [Throws]
+  [NewObject]
   Promise<ParentProcInfoDictionary> requestProcInfo();
+
+  /**
+   * For testing purpose.
+   */
+  [ChromeOnly]
+  boolean vsyncEnabled();
 
   [ChromeOnly, Throws]
   boolean hasReportingHeaderForOrigin(DOMString aOrigin);
@@ -510,7 +651,14 @@ partial namespace ChromeUtils {
    * For testing purpose we need to reset this value.
    */
   [ChromeOnly]
-  void resetLastExternalProtocolIframeAllowed();
+  undefined resetLastExternalProtocolIframeAllowed();
+
+  /**
+   * For webdriver consistency purposes, we need to be able to end a wheel
+   * transaction from the browser chrome.
+   */
+  [ChromeOnly]
+  undefined endWheelTransaction();
 
   /**
    * Register a new toplevel window global actor. This method may only be
@@ -519,10 +667,10 @@ partial namespace ChromeUtils {
    * See JSWindowActor.webidl for WindowActorOptions fields documentation.
    */
   [ChromeOnly, Throws]
-  void registerWindowActor(UTF8String aName, optional WindowActorOptions aOptions = {});
+  undefined registerWindowActor(UTF8String aName, optional WindowActorOptions aOptions = {});
 
   [ChromeOnly]
-  void unregisterWindowActor(UTF8String aName);
+  undefined unregisterWindowActor(UTF8String aName);
 
   /**
    * Register a new toplevel content global actor. This method may only be
@@ -531,10 +679,10 @@ partial namespace ChromeUtils {
    * See JSProcessActor.webidl for ProcessActorOptions fields documentation.
    */
   [ChromeOnly, Throws]
-  void registerProcessActor(UTF8String aName, optional ProcessActorOptions aOptions = {});
+  undefined registerProcessActor(UTF8String aName, optional ProcessActorOptions aOptions = {});
 
   [ChromeOnly]
-  void unregisterProcessActor(UTF8String aName);
+  undefined unregisterProcessActor(UTF8String aName);
 
   [ChromeOnly]
   // aError should a nsresult.
@@ -546,7 +694,7 @@ partial namespace ChromeUtils {
    * processes for testing purpose.
    */
   [ChromeOnly, Throws]
-  void privateNoteIntentionalCrash();
+  undefined privateNoteIntentionalCrash();
 
   /**
    * nsIDOMProcessChild for the current process.
@@ -571,11 +719,50 @@ partial namespace ChromeUtils {
    */
   [Throws, ChromeOnly]
   record<DOMString, InteractionData> consumeInteractionData();
-  
+
+  /**
+   * Returns a record of user scrolling interactions collected from content processes.
+   *
+   * Valid keys: "Scrolling"
+   */
+  [NewObject]
+  Promise<InteractionData> collectScrollingData();
+
+  [Throws]
+  sequence<FormAutofillConfidences> getFormAutofillConfidences(sequence<Element> elements);
+
+  /**
+   * Returns whether the background of the element is dark.
+   */
+  boolean isDarkBackground(Element element);
+
+  /**
+   * Starts the JSOracle process for ORB JavaScript validation, if it hasn't started already.
+   */
+  undefined ensureJSOracleStarted();
+
+  /**
+   * The number of currently alive utility processes.
+   */
+  [ChromeOnly]
+  readonly attribute unsigned long aliveUtilityProcesses;
+
+  /**
+   * Get a list of all possible Utility process Actor Names ; mostly useful to
+   * perform testing and ensure about:processes display is sound and misses no
+   * actor name.
+   */
+  [ChromeOnly]
+  sequence<UTF8String> getAllPossibleUtilityActorNames();
+
+  boolean shouldResistFingerprinting(JSRFPTarget target,
+                                     unsigned long long? overriddenFingerprintingSettings);
 };
 
 /*
  * This type is a WebIDL representation of mozilla::ProcType.
+ * These must match the similar ones in E10SUtils.sys.mjs, RemoteTypes.h,
+ * ProcInfo.h and ChromeUtils.cpp
  */
 enum WebIDLProcType {
  "web",
@@ -584,8 +771,8 @@ enum WebIDLProcType {
  "extension",
  "privilegedabout",
  "privilegedmozilla",
- "webLargeAllocation",
  "withCoopCoep",
+ "webServiceWorker",
  "browser",
  "ipdlUnitTest",
  "gmpPlugin",
@@ -597,6 +784,7 @@ enum WebIDLProcType {
 #ifdef MOZ_ENABLE_FORKSERVER
  "forkServer",
 #endif
+ "utility",
  "preallocated",
  "unknown",
 };
@@ -610,8 +798,8 @@ enum WebIDLProcType {
 dictionary ThreadInfoDictionary {
   long long tid = 0;
   DOMString name = "";
-  unsigned long long cpuUser = 0;
-  unsigned long long cpuKernel = 0;
+  unsigned long long cpuCycleCount = 0;
+  unsigned long long cpuTime = 0;
 };
 
 dictionary WindowInfoDictionary {
@@ -632,6 +820,26 @@ dictionary WindowInfoDictionary {
   boolean isInProcess = false;
 };
 
+/*
+ * Add new entry to WebIDLUtilityActorName here and update accordingly
+ * UtilityActorNameToWebIDL in dom/base/ChromeUtils.cpp as well as
+ * UtilityActorName in toolkit/components/processtools/ProcInfo.h
+ */
+enum WebIDLUtilityActorName {
+  "unknown",
+  "audioDecoder_Generic",
+  "audioDecoder_AppleMedia",
+  "audioDecoder_WMF",
+  "mfMediaEngineCDM",
+  "jSOracle",
+  "windowsUtils",
+  "windowsFileDialog",
+};
+
+dictionary UtilityActorsDictionary {
+  WebIDLUtilityActorName actorName = "unknown";
+};
+
 /**
  * Information on a child process.
  *
@@ -648,24 +856,19 @@ dictionary ChildProcInfoDictionary {
   // The cross-process descriptor for this process.
   long long pid = 0;
 
-  // Process filename (without the path name).
-  DOMString filename = "";
+  // The best end-user measure for "memory used" that we can obtain without
+  // triggering expensive computations. The value is in bytes.
+  // On Mac and Linux this matches the values shown by the system monitors.
+  // On Windows this will return the Commit Size.
+  unsigned long long memory = 0;
 
-  // RSS, in bytes, i.e. the total amount of memory allocated
-  // by this process.
-  long long residentSetSize = 0;
+  // Total CPU time spent by the process, in ns.
+  unsigned long long cpuTime = 0;
 
-  // Resident unique size, i.e. the total amount of memory
-  // allocated by this process *and not shared with other processes*.
-  // Given that we share lots of memory between processes,
-  // this is probably the best end-user measure for "memory used".
-  long long residentUniqueSize = 0;
-
-  // Time spent by the process in user mode, in ns.
-  unsigned long long cpuUser = 0;
-
-  // Time spent by the process in kernel mode, in ns.
-  unsigned long long cpuKernel = 0;
+  // Total CPU cycles used by this process.
+  // On Windows where the resolution of CPU timings is 16ms, this can
+  // be used to determine if a process is idle or slightly active.
+  unsigned long long cpuCycleCount = 0;
 
   // Thread information for this process.
   sequence<ThreadInfoDictionary> threads = [];
@@ -684,6 +887,9 @@ dictionary ChildProcInfoDictionary {
 
   // The windows implemented by this process.
   sequence<WindowInfoDictionary> windows = [];
+
+  // The utility process list of actors if any
+  sequence<UtilityActorsDictionary> utilityActors = [];
 };
 
 /**
@@ -695,24 +901,19 @@ dictionary ParentProcInfoDictionary {
   // The cross-process descriptor for this process.
   long long pid = 0;
 
-  // Process filename (without the path name).
-  DOMString filename = "";
+  // The best end-user measure for "memory used" that we can obtain without
+  // triggering expensive computations. The value is in bytes.
+  // On Mac and Linux this matches the values shown by the system monitors.
+  // On Windows this will return the Commit Size.
+  unsigned long long memory = 0;
 
-  // RSS, in bytes, i.e. the total amount of memory allocated
-  // by this process.
-  long long residentSetSize = 0;
+  // Total CPU time spent by the process, in ns.
+  unsigned long long cpuTime = 0;
 
-  // Resident unique size, i.e. the total amount of memory
-  // allocated by this process *and not shared with other processes*.
-  // Given that we share lots of memory between processes,
-  // this is probably the best end-user measure for "memory used".
-  long long residentUniqueSize = 0;
-
-  // Time spent by the process in user mode, in ns.
-  unsigned long long cpuUser = 0;
-
-  // Time spent by the process in kernel mode, in ns.
-  unsigned long long cpuKernel = 0;
+  // Total CPU cycles used by this process.
+  // On Windows where the resolution of CPU timings is 16ms, this can
+  // be used to determine if a process is idle or slightly active.
+  unsigned long long cpuCycleCount = 0;
 
   // Thread information for this process.
   sequence<ThreadInfoDictionary> threads = [];
@@ -724,42 +925,6 @@ dictionary ParentProcInfoDictionary {
   // Type of this parent process.
   // As of this writing, this is always `browser`.
   WebIDLProcType type = "browser";
-};
-
-/**
- * Dictionaries duplicating IPDL types in dom/ipc/DOMTypes.ipdlh
- * Used by requestPerformanceMetrics
- */
-dictionary MediaMemoryInfoDictionary {
-  unsigned long long audioSize = 0;
-  unsigned long long videoSize = 0;
-  unsigned long long resourcesSize = 0;
-};
-
-dictionary MemoryInfoDictionary {
-  unsigned long long domDom = 0;
-  unsigned long long domStyle = 0;
-  unsigned long long domOther = 0;
-  unsigned long long GCHeapUsage = 0;
-  required MediaMemoryInfoDictionary media;
-};
-
-dictionary CategoryDispatchDictionary
-{
-  unsigned short category = 0;
-  unsigned short count = 0;
-};
-
-dictionary PerformanceInfoDictionary {
-  ByteString host = "";
-  unsigned long pid = 0;
-  unsigned long long windowId = 0;
-  unsigned long long duration = 0;
-  unsigned long long counterId = 0;
-  boolean isWorker = false;
-  boolean isTopLevel = false;
-  required MemoryInfoDictionary memoryInfo;
-  sequence<CategoryDispatchDictionary> items = [];
 };
 
 /**
@@ -789,7 +954,6 @@ dictionary IOActivityDataDictionary {
 [GenerateInitFromJSON]
 dictionary OriginAttributesDictionary {
   unsigned long userContextId = 0;
-  boolean inIsolatedMozBrowser = false;
   unsigned long privateBrowsingId = 0;
   DOMString firstPartyDomain = "";
   DOMString geckoViewSessionContextId = "";
@@ -799,7 +963,6 @@ dictionary OriginAttributesDictionary {
 [GenerateInitFromJSON, GenerateToJSON]
 dictionary OriginAttributesPatternDictionary {
   unsigned long userContextId;
-  boolean inIsolatedMozBrowser;
   unsigned long privateBrowsingId;
   DOMString firstPartyDomain;
   DOMString geckoViewSessionContextId;
@@ -833,6 +996,48 @@ dictionary CompileScriptOptionsDictionary {
    * should not be used when not absolutely necessary.
    */
   boolean hasReturnValue = false;
+};
+
+/**
+ * Where the modules are loaded into with importESModule and
+ * defineESModuleGetters.
+ */
+enum ImportESModuleTargetGlobal {
+  /**
+   * Load into the shared system global.
+   * This is the default value.
+   */
+  "shared",
+
+  /**
+   * Load into a distinct system global for DevTools, so that the DevTools can
+   * load a distinct set of modules and do not interfere with its debuggee.
+   */
+  "devtools",
+
+  /**
+   * If the current global is DevTools' distinct system global, load into the
+   * DevTools' distinct system global.
+   * If the current thread is worker thread, load into the current global.
+   * Otherwise load into the shared system global.
+   *
+   * This is a temporary workaround until DevTools modules are ESMified.
+   */
+  "contextual",
+
+  /**
+   * Load into current global.
+   *
+   * This can be used for any global.  If this is used for shared global or
+   * devtools global, this has the same effect as "shared" or "devtools".
+   */
+  "current",
+};
+
+dictionary ImportESModuleOptionsDictionary {
+  // This field is required for importESModule and defineESModuleGetters in
+  // DevTools distinct global.
+  ImportESModuleTargetGlobal global;
 };
 
 /**
@@ -902,4 +1107,51 @@ enum PopupBlockerState {
   "openBlocked",
   "openAbused",
   "openOverridden",
+};
+
+// Subset of RFPTargets.inc with JS callers.
+// New values need to be handled in ChromeUtils::ShouldResistFingerprinting.
+enum JSRFPTarget {
+  "RoundWindowSize",
+  "SiteSpecificZoom",
+};
+
+#ifdef XP_UNIX
+dictionary LibcConstants {
+  long EINTR;
+  long EACCES;
+  long EAGAIN;
+  long EINVAL;
+  long ENOSYS;
+
+  long F_SETFD;
+  long F_SETFL;
+
+  long FD_CLOEXEC;
+
+  long AT_EACCESS;
+
+  long O_CREAT;
+  long O_NONBLOCK;
+  long O_WRONLY;
+
+  long POLLIN;
+  long POLLOUT;
+  long POLLERR;
+  long POLLHUP;
+  long POLLNVAL;
+
+  long WNOHANG;
+
+#ifdef XP_LINUX
+  long PR_CAPBSET_READ;
+#endif
+};
+#endif
+
+dictionary CDMInformation {
+  required DOMString keySystemName;
+  required DOMString capabilities;
+  required boolean clearlead;
+  required boolean isHDCP22Compatible;
 };

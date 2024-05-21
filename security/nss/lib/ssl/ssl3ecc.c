@@ -862,6 +862,7 @@ ssl_SendSupportedGroupsXtn(const sslSocket *ss, TLSExtensionData *xtnData,
 {
     unsigned int i;
     PRBool ec;
+    PRBool ec_hybrid = PR_FALSE;
     PRBool ff = PR_FALSE;
     PRBool found = PR_FALSE;
     SECStatus rv;
@@ -878,7 +879,7 @@ ssl_SendSupportedGroupsXtn(const sslSocket *ss, TLSExtensionData *xtnData,
             return SECSuccess;
         }
     } else {
-        ec = ff = PR_TRUE;
+        ec = ec_hybrid = ff = PR_TRUE;
     }
 
     /* Mark the location of the length. */
@@ -895,6 +896,9 @@ ssl_SendSupportedGroupsXtn(const sslSocket *ss, TLSExtensionData *xtnData,
         if (group->keaType == ssl_kea_ecdh && !ec) {
             continue;
         }
+        if (group->keaType == ssl_kea_ecdh_hybrid && !ec_hybrid) {
+            continue;
+        }
         if (group->keaType == ssl_kea_dh && !ff) {
             continue;
         }
@@ -904,6 +908,20 @@ ssl_SendSupportedGroupsXtn(const sslSocket *ss, TLSExtensionData *xtnData,
         if (rv != SECSuccess) {
             return SECFailure;
         }
+    }
+
+    /* GREASE SupportedGroups:
+     * A client MAY select one or more GREASE named group values and advertise
+     * them in the "supported_groups" extension, if sent [RFC8701, Section 3.1].
+     */
+    if (!ss->sec.isServer &&
+        ss->opt.enableGrease &&
+        ss->vrange.max >= SSL_LIBRARY_VERSION_TLS_1_3) {
+        rv = sslBuffer_AppendNumber(buf, ss->ssl3.hs.grease->idx[grease_group], 2);
+        if (rv != SECSuccess) {
+            return SECFailure;
+        }
+        found = PR_TRUE;
     }
 
     if (!found) {

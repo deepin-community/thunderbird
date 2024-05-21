@@ -7,7 +7,6 @@
 #include "nsNumberControlFrame.h"
 
 #include "mozilla/BasicEvents.h"
-#include "mozilla/EventStates.h"
 #include "mozilla/FloatingPoint.h"
 #include "mozilla/PresShell.h"
 #include "HTMLInputElement.h"
@@ -42,10 +41,9 @@ nsNumberControlFrame::nsNumberControlFrame(ComputedStyle* aStyle,
                                            nsPresContext* aPresContext)
     : nsTextControlFrame(aStyle, aPresContext, kClassID) {}
 
-void nsNumberControlFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                                       PostDestroyData& aPostDestroyData) {
-  aPostDestroyData.AddAnonymousContent(mSpinBox.forget());
-  nsTextControlFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+void nsNumberControlFrame::Destroy(DestroyContext& aContext) {
+  aContext.AddAnonymousContent(mSpinBox.forget());
+  nsTextControlFrame::Destroy(aContext);
 }
 
 nsresult nsNumberControlFrame::CreateAnonymousContent(
@@ -66,22 +64,29 @@ nsresult nsNumberControlFrame::CreateAnonymousContent(
 
   nsTextControlFrame::CreateAnonymousContent(aElements);
 
+#if defined(MOZ_WIDGET_ANDROID)
+  // We don't want spin buttons on Android
+  return NS_OK;
+#else
   // The author has elected to hide the spinner by setting this
   // -moz-appearance. We will reframe if it changes.
-  if (StyleDisplay()->EffectiveAppearance() != StyleAppearance::Textfield) {
-    // Create the ::-moz-number-spin-box pseudo-element:
-    mSpinBox = MakeAnonElement(PseudoStyleType::mozNumberSpinBox);
-
-    // Create the ::-moz-number-spin-up pseudo-element:
-    mSpinUp = MakeAnonElement(PseudoStyleType::mozNumberSpinUp, mSpinBox);
-
-    // Create the ::-moz-number-spin-down pseudo-element:
-    mSpinDown = MakeAnonElement(PseudoStyleType::mozNumberSpinDown, mSpinBox);
-
-    aElements.AppendElement(mSpinBox);
+  if (StyleDisplay()->EffectiveAppearance() == StyleAppearance::Textfield) {
+    return NS_OK;
   }
 
+  // Create the ::-moz-number-spin-box pseudo-element:
+  mSpinBox = MakeAnonElement(PseudoStyleType::mozNumberSpinBox);
+
+  // Create the ::-moz-number-spin-up pseudo-element:
+  mSpinUp = MakeAnonElement(PseudoStyleType::mozNumberSpinUp, mSpinBox);
+
+  // Create the ::-moz-number-spin-down pseudo-element:
+  mSpinDown = MakeAnonElement(PseudoStyleType::mozNumberSpinDown, mSpinBox);
+
+  aElements.AppendElement(mSpinBox);
+
   return NS_OK;
+#endif
 }
 
 /* static */
@@ -93,7 +98,7 @@ nsNumberControlFrame* nsNumberControlFrame::GetNumberControlFrameForSpinButton(
   // be wrapped around any of the elements between aFrame and the
   // nsNumberControlFrame that we're looking for (e.g. flex wrappers).
   nsIContent* content = aFrame->GetContent();
-  auto* nacHost = content->GetClosestNativeAnonymousSubtreeRootParent();
+  auto* nacHost = content->GetClosestNativeAnonymousSubtreeRootParentOrHost();
   if (!nacHost) {
     return nullptr;
   }
@@ -138,16 +143,17 @@ int32_t nsNumberControlFrame::GetSpinButtonForPointerEvent(
 }
 
 void nsNumberControlFrame::SpinnerStateChanged() const {
-  MOZ_ASSERT(mSpinUp && mSpinDown,
-             "We should not be called when we have no spinner");
-
-  nsIFrame* spinUpFrame = mSpinUp->GetPrimaryFrame();
-  if (spinUpFrame && spinUpFrame->IsThemed()) {
-    spinUpFrame->InvalidateFrame();
+  if (mSpinUp) {
+    nsIFrame* spinUpFrame = mSpinUp->GetPrimaryFrame();
+    if (spinUpFrame && spinUpFrame->IsThemed()) {
+      spinUpFrame->InvalidateFrame();
+    }
   }
-  nsIFrame* spinDownFrame = mSpinDown->GetPrimaryFrame();
-  if (spinDownFrame && spinDownFrame->IsThemed()) {
-    spinDownFrame->InvalidateFrame();
+  if (mSpinDown) {
+    nsIFrame* spinDownFrame = mSpinDown->GetPrimaryFrame();
+    if (spinDownFrame && spinDownFrame->IsThemed()) {
+      spinDownFrame->InvalidateFrame();
+    }
   }
 }
 

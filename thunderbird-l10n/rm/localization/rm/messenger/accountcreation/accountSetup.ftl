@@ -7,9 +7,7 @@ account-setup-tab-title = Configuraziun dal conto
 ## Header
 
 account-setup-title = Configurar tia adressa dad e-mail existenta
-account-setup-description =
-    Per utilisar tia adressa dad e-mail actuala, inditgescha tias datas d'annunzia.<br/>
-    { -brand-product-name } tschertga lura automaticamain la configuraziun dal server recumandada che funcziunescha.
+account-setup-description = Per utilisar tia adressa dad e-mail actuala, endatescha tias infurmaziuns d'annunzia.
 account-setup-secondary-description = { -brand-product-name } tschertga automaticamain la configuraziun recumandada che funcziunescha per il server.
 account-setup-success-title = Creà il conto cun success
 account-setup-success-description = Ti pos ussa utilisar quest conto cun { -brand-short-name }.
@@ -25,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Tes num, uschia co el duai vegnir mussà ad auters
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Endatescha per plaschair tes num
 account-setup-email-label = Adressa dad e-mail
     .accesskey = e
 account-setup-email-input =
@@ -33,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Tia adressa dad e-mail existenta
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Adressa dad e-mail nunvalida
 account-setup-password-label = Pled-clav
     .accesskey = P
     .title = Facultativ, vegn mo utilisà per validar il num d'utilisader
 account-provisioner-button = Ir per ina nova adressa dad e-mail
     .accesskey = I
-account-setup-password-toggle =
-    .title = Mussar/zuppentar il pled-clav
 account-setup-password-toggle-show =
     .title = Mussar il pled-clav
 account-setup-password-toggle-hide =
@@ -126,21 +122,14 @@ account-setup-results-area-title =
         [one] Configuraziun disponibla
        *[other] Configuraziuns disponiblas
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Sincronisescha tes ordinaturs ed e-mails cun tes server
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Salva tes ordinaturs ed e-mails sin tes computer
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Utilisar il server Microsoft Exchange u servetschs da cloud da Office 365
 account-setup-incoming-title = Posta che entra
 account-setup-outgoing-title = Posta che sorta
 account-setup-username-title = Num d'utilisader
 account-setup-exchange-title = Server
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Nagin criptadi
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -157,15 +146,13 @@ account-setup-credentials-incomplete = L'autentificaziun n'è betg reussida. U c
 account-setup-credentials-wrong = L'autentificaziun n'è betg reussida. Controllescha per plaschair il num d'utilisader ed il pled-clav.
 account-setup-find-settings-failed = { -brand-short-name } n'ha betg chattà la configuraziun per tes conto dad e-mail
 account-setup-exchange-config-unverifiable = I n'è betg reussì da verifitgar la configuraziun. Sche tes num d'utilisader ed il pled-clav èn corrects, èsi probabel che l'administratur dal server ha deactivà la configuraziun tschernida per tes conto. Emprova da tscherner in auter protocol.
+account-setup-provisioner-error = Ina errur è succedida durant la configuraziun da tes nov conto en { -brand-short-name }. Emprova per plaschair da configurar manualmain tes conto cun tias infurmaziuns d'annunzia.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Parameters dal server
 account-setup-incoming-server-legend = Server d'entrada
 account-setup-protocol-label = Protocol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Num dal host:
 account-setup-port-label = Port:
     .title = Endatescha 0 per il numer dal port per laschar emplenir automaticamain
@@ -290,6 +277,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Colur
 account-setup-calendar-refresh-label = Actualisar
 account-setup-calendar-refresh-manual = Manualmain
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Mintga minuta

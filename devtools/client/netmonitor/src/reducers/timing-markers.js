@@ -9,7 +9,7 @@ const {
   ADD_TIMING_MARKER,
   CLEAR_TIMING_MARKERS,
   CLEAR_REQUESTS,
-} = require("devtools/client/netmonitor/src/constants");
+} = require("resource://devtools/client/netmonitor/src/constants.js");
 
 function TimingMarkers() {
   return {
@@ -51,7 +51,7 @@ function addTimingMarker(state, action) {
   return state;
 }
 
-function clearTimingMarkers(state) {
+function clearTimingMarkers() {
   return new TimingMarkers();
 }
 

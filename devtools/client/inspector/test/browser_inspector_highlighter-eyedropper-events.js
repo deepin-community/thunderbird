@@ -60,10 +60,10 @@ const MOVE_EVENTS_DATA = [
   // Mouse initialization for right snapping
   {
     type: "mouse",
-    x: (width, height) => width - 5,
+    x: width => width - 5,
     y: 0,
     expected: {
-      x: (width, height) => width - 5,
+      x: width => width - 5,
       y: 0,
     },
   },
@@ -73,7 +73,7 @@ const MOVE_EVENTS_DATA = [
     key: "VK_RIGHT",
     shift: true,
     expected: {
-      x: (width, height) => width,
+      x: width => width,
       y: 0,
     },
     desc: "Right snapping to x=max window width available",
@@ -101,7 +101,7 @@ const MOVE_EVENTS_DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   const { inspector, highlighterTestFront } = await openInspectorForURL(
     "data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI)
   );

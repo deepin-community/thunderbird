@@ -9,7 +9,7 @@
 #include "ChromiumCDMProxy.h"
 #include "GMPCrashHelper.h"
 #include "mozilla/EMEUtils.h"
-#include "mozilla/JSONWriter.h"
+#include "mozilla/JSONStringWriteFuncs.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/dom/DOMException.h"
 #include "mozilla/dom/Document.h"
@@ -23,7 +23,6 @@
 #include "mozilla/dom/UnionTypes.h"
 #include "mozilla/dom/WindowContext.h"
 #include "mozilla/dom/WindowGlobalChild.h"
-#include "nsContentCID.h"
 #include "nsContentTypeParser.h"
 #include "nsContentUtils.h"
 #include "nsIScriptObjectPrincipal.h"
@@ -36,13 +35,16 @@
 #ifdef XP_WIN
 #  include "mozilla/WindowsVersion.h"
 #endif
+#ifdef MOZ_WMF_CDM
+#  include "mozilla/WMFCDMProxy.h"
+#endif
 
 namespace mozilla::dom {
 
 // We don't use NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE because we need to
 // disconnect our MediaKeys instances from the inner window (mparent) before
 // we unlink it.
-NS_IMPL_CYCLE_COLLECTION_CLASS(MediaKeys)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(MediaKeys)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(MediaKeys)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mElement)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mParent)
@@ -50,7 +52,6 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(MediaKeys)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mPromises)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mPendingSessions)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
-NS_IMPL_CYCLE_COLLECTION_TRACE_WRAPPERCACHE(MediaKeys)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(MediaKeys)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mElement)
@@ -159,7 +160,7 @@ void MediaKeys::OnInnerWindowDestroy() {
   // Don't call shutdown directly because (at time of writing) mProxy can
   // spin the event loop when it's shutdown. This can change the world state
   // in the middle of window destruction, which we do not want.
-  GetMainThreadEventTarget()->Dispatch(
+  GetMainThreadSerialEventTarget()->Dispatch(
       NewRunnableMethod("MediaKeys::Shutdown", this, &MediaKeys::Shutdown));
 }
 
@@ -426,7 +427,11 @@ class MediaKeysGMPCrashHelper : public GMPCrashHelper {
 };
 
 already_AddRefed<CDMProxy> MediaKeys::CreateCDMProxy() {
-  EME_LOG("MediaKeys[%p]::CreateCDMProxy()", this);
+  const bool isHardwareDecryptionSupported =
+      IsHardwareDecryptionSupported(mConfig) ||
+      DoesKeySystemSupportHardwareDecryption(mKeySystem);
+  EME_LOG("MediaKeys[%p]::CreateCDMProxy(), isHardwareDecryptionSupported=%d",
+          this, isHardwareDecryptionSupported);
   RefPtr<CDMProxy> proxy;
 #ifdef MOZ_WIDGET_ANDROID
   if (IsWidevineKeySystem(mKeySystem)) {
@@ -434,6 +439,14 @@ already_AddRefed<CDMProxy> MediaKeys::CreateCDMProxy() {
         this, mKeySystem,
         mConfig.mDistinctiveIdentifier == MediaKeysRequirement::Required,
         mConfig.mPersistentState == MediaKeysRequirement::Required);
+  } else
+#endif
+#ifdef MOZ_WMF_CDM
+      if (IsPlayReadyKeySystemAndSupported(mKeySystem) ||
+          IsWidevineExperimentKeySystemAndSupported(mKeySystem) ||
+          (IsWidevineKeySystem(mKeySystem) && isHardwareDecryptionSupported) ||
+          IsWMFClearKeySystemAndSupported(mKeySystem)) {
+    proxy = new WMFCDMProxy(this, mKeySystem, mConfig);
   } else
 #endif
   {
@@ -589,7 +602,7 @@ already_AddRefed<DetailedPromise> MediaKeys::Init(ErrorResult& aRv) {
   AddRef();
   mProxy->Init(mCreatePromiseId, NS_ConvertUTF8toUTF16(origin),
                NS_ConvertUTF8toUTF16(topLevelOrigin),
-               KeySystemToGMPName(mKeySystem));
+               KeySystemToProxyName(mKeySystem));
 
   ConnectInnerWindow();
 
@@ -649,8 +662,12 @@ already_AddRefed<MediaKeySession> MediaKeys::CreateSession(
 
   EME_LOG("MediaKeys[%p] Creating session", this);
 
-  RefPtr<MediaKeySession> session = new MediaKeySession(
-      GetParentObject(), this, mKeySystem, aSessionType, aRv);
+  const bool isHardwareDecryption =
+      IsHardwareDecryptionSupported(mConfig) ||
+      DoesKeySystemSupportHardwareDecryption(mKeySystem);
+  RefPtr<MediaKeySession> session =
+      new MediaKeySession(GetParentObject(), this, mKeySystem, aSessionType,
+                          isHardwareDecryption, aRv);
 
   if (aRv.Failed()) {
     return nullptr;
@@ -716,14 +733,6 @@ void MediaKeys::Unbind() {
   mElement = nullptr;
 }
 
-struct StringWriteFunc : public JSONWriteFunc {
-  nsString& mString;
-  explicit StringWriteFunc(nsString& aString) : mString(aString) {}
-  void Write(const Span<const char>& aStr) override {
-    mString.Append(NS_ConvertUTF8toUTF16(aStr.data(), aStr.size()));
-  }
-};
-
 void MediaKeys::CheckIsElementCapturePossible() {
   MOZ_ASSERT(NS_IsMainThread());
   EME_LOG("MediaKeys[%p]::IsElementCapturePossible()", this);
@@ -761,11 +770,13 @@ void MediaKeys::CheckIsElementCapturePossible() {
 
   if (mCaptureCheckRequestJson.IsEmpty()) {
     // Lazily populate the JSON the first time we need it.
-    JSONWriter jw{MakeUnique<StringWriteFunc>(mCaptureCheckRequestJson)};
+    JSONStringWriteFunc<nsAutoCString> json;
+    JSONWriter jw{json};
     jw.Start();
     jw.StringProperty("status", "is-capture-possible");
     jw.StringProperty("keySystem", NS_ConvertUTF16toUTF8(mKeySystem));
     jw.End();
+    mCaptureCheckRequestJson = NS_ConvertUTF8toUTF16(json.StringCRef());
   }
 
   MOZ_DIAGNOSTIC_ASSERT(!mCaptureCheckRequestJson.IsEmpty());
@@ -785,14 +796,14 @@ void MediaKeys::GetSessionsInfo(nsString& sessionsInfo) {
       sessionsInfo.AppendLiteral("(kid=");
       sessionsInfo.Append(keyID);
       sessionsInfo.AppendLiteral(" status=");
-      sessionsInfo.AppendASCII(
-          MediaKeyStatusValues::GetString(keyStatusMap->GetValueAtIndex(i)));
+      sessionsInfo.AppendASCII(GetEnumString(keyStatusMap->GetValueAtIndex(i)));
       sessionsInfo.AppendLiteral(")");
     }
     sessionsInfo.AppendLiteral(")");
   }
 }
 
+// https://w3c.github.io/encrypted-media/#dom-mediakeys-getstatusforpolicy
 already_AddRefed<Promise> MediaKeys::GetStatusForPolicy(
     const MediaKeysPolicy& aPolicy, ErrorResult& aRv) {
   RefPtr<DetailedPromise> promise(
@@ -801,15 +812,10 @@ already_AddRefed<Promise> MediaKeys::GetStatusForPolicy(
     return nullptr;
   }
 
-  // Currently, only widevine CDM supports for this API.
-  if (!IsWidevineKeySystem(mKeySystem)) {
-    EME_LOG(
-        "MediaKeys[%p]::GetStatusForPolicy() HDCP policy check on unsupported "
-        "keysystem ",
-        this);
-    NS_WARNING("Tried to query without a CDM");
-    promise->MaybeRejectWithNotSupportedError(
-        "HDCP policy check on unsupported keysystem");
+  // 1. If policy has no present members, return a promise rejected with a newly
+  // created TypeError.
+  if (!aPolicy.mMinHdcpVersion.WasPassed()) {
+    promise->MaybeRejectWithTypeError("No minHdcpVersion in MediaKeysPolicy");
     return promise.forget();
   }
 
@@ -821,8 +827,9 @@ already_AddRefed<Promise> MediaKeys::GetStatusForPolicy(
   }
 
   EME_LOG("GetStatusForPolicy minHdcpVersion = %s.",
-          NS_ConvertUTF16toUTF8(aPolicy.mMinHdcpVersion).get());
-  mProxy->GetStatusForPolicy(StorePromise(promise), aPolicy.mMinHdcpVersion);
+          GetEnumString(aPolicy.mMinHdcpVersion.Value()).get());
+  mProxy->GetStatusForPolicy(StorePromise(promise),
+                             aPolicy.mMinHdcpVersion.Value());
   return promise.forget();
 }
 

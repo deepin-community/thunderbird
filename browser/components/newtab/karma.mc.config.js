@@ -3,6 +3,8 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const path = require("path");
+const webpack = require("webpack");
+const { ResourceUriPlugin } = require("./tools/resourceUriPlugin");
 
 const PATHS = {
   // Where is the entry point for the unit tests?
@@ -28,7 +30,7 @@ preprocessors[PATHS.testFilesPattern] = [
   "sourcemap", // require("karma-sourcemap-loader")
 ];
 
-module.exports = function(config) {
+module.exports = function (config) {
   const isTDD = config.tdd;
   const browsers = isTDD ? ["Firefox"] : ["FirefoxHeadless"]; // require("karma-firefox-launcher")
   config.set({
@@ -58,7 +60,13 @@ module.exports = function(config) {
       outputFile: path.join("logs", "karma-run-results.json"),
     },
     coverageIstanbulReporter: {
-      reports: ["html", "text-summary"],
+      reports: ["lcov", "text-summary"], // for some reason "lcov" reallys means "lcov" and "html"
+      "report-config": {
+        // so the full m-c path gets printed; needed for https://coverage.moz.tools/ integration
+        lcov: {
+          projectRoot: "../../..",
+        },
+      },
       dir: PATHS.coverageReportingPath,
       // This will make karma fail if coverage reporting is less than the minimums here
       thresholds: !isTDD && {
@@ -68,41 +76,20 @@ module.exports = function(config) {
           functions: 100,
           branches: 66,
           overrides: {
-            "lib/AboutPreferences.jsm": {
+            "lib/AboutPreferences.sys.mjs": {
               statements: 98,
               lines: 98,
-              functions: 100,
+              functions: 94,
               branches: 66,
             },
-            "lib/ASRouter.jsm": {
-              statements: 75,
-              lines: 75,
-              functions: 64,
-              branches: 66,
-            },
-            "lib/ASRouterDefaultConfig.jsm": {
-              statements: 0,
-              lines: 0,
-              functions: 0,
+            /**
+             * TelemetryFeed.sys.mjs is tested via an xpcshell test
+             */
+            "lib/TelemetryFeed.sys.mjs": {
+              statements: 10,
+              lines: 10,
+              functions: 9,
               branches: 0,
-            },
-            "content-src/asrouter/asrouter-utils.js": {
-              statements: 66,
-              lines: 66,
-              functions: 100,
-              branches: 63,
-            },
-            "lib/TelemetryFeed.jsm": {
-              statements: 99,
-              lines: 99,
-              functions: 100,
-              branches: 96,
-            },
-            "lib/ASRouterParentProcessMessageHandler.jsm": {
-              statements: 98,
-              lines: 98,
-              functions: 100,
-              branches: 88,
             },
             "content-src/lib/init-store.js": {
               statements: 98,
@@ -110,41 +97,66 @@ module.exports = function(config) {
               functions: 100,
               branches: 100,
             },
-            "lib/ActivityStreamStorage.jsm": {
+            "lib/ActivityStreamStorage.sys.mjs": {
               statements: 100,
               lines: 100,
               functions: 100,
               branches: 83,
             },
-            "lib/PlacesFeed.jsm": {
-              statements: 98,
-              lines: 98,
+            "lib/DownloadsManager.sys.mjs": {
+              statements: 100,
+              lines: 100,
               functions: 100,
-              branches: 84,
+              branches: 78,
             },
-            "lib/UTEventReporting.jsm": {
+            /**
+             * PlacesFeed.sys.mjs is tested via an xpcshell test
+             */
+            "lib/PlacesFeed.sys.mjs": {
+              statements: 7,
+              lines: 7,
+              functions: 8,
+              branches: 0,
+            },
+            "lib/UTEventReporting.sys.mjs": {
               statements: 100,
               lines: 100,
               functions: 100,
               branches: 75,
             },
-            "lib/TopSitesFeed.jsm": {
-              statements: 70,
-              lines: 75,
-              functions: 80,
-              branches: 60,
-            },
-            "lib/Screenshots.jsm": {
+            "lib/Screenshots.sys.mjs": {
               statements: 94,
               lines: 94,
-              functions: 100,
+              functions: 75,
               branches: 84,
             },
-            "lib/*.jsm": {
-              statements: 100,
-              lines: 100,
-              functions: 100,
-              branches: 84,
+            /**
+             * Store.sys.mjs is tested via an xpcshell test
+             */
+            "lib/Store.sys.mjs": {
+              statements: 8,
+              lines: 8,
+              functions: 0,
+              branches: 0,
+            },
+            /**
+             * TopSitesFeed.sys.mjs is tested via an xpcshell test
+             */
+            "lib/TopSitesFeed.sys.mjs": {
+              statements: 9,
+              lines: 9,
+              functions: 5,
+              branches: 0,
+            },
+            /**
+             * TopStoresFeed.sys.mjs is not tested in automation and is slated
+             * for eventual removal.
+             */
+            "lib/TopStoriesFeed.sys.mjs": {
+              statements: 0,
+              lines: 0,
+              functions: 0,
+              branches: 0,
             },
             "content-src/components/DiscoveryStreamComponents/**/*.jsx": {
               statements: 90.48,
@@ -158,7 +170,7 @@ module.exports = function(config) {
               functions: 60,
               branches: 50,
             },
-            "content-src/components/ASRouterAdmin/*.jsx": {
+            "content-src/components/DiscoveryStreamAdmin/*.jsx": {
               statements: 0,
               lines: 0,
               functions: 0,
@@ -176,23 +188,11 @@ module.exports = function(config) {
               functions: 0,
               branches: 0,
             },
-            "content-src/lib/aboutwelcome-utils.js": {
-              statements: 50,
-              lines: 50,
-              functions: 100,
-              branches: 0,
-            },
             "content-src/lib/link-menu-options.js": {
               statements: 96,
               lines: 96,
               functions: 96,
               branches: 70,
-            },
-            "content-src/aboutwelcome/**/*.jsx": {
-              statements: 62,
-              lines: 60,
-              functions: 65,
-              branches: 50,
             },
             "content-src/components/**/*.jsx": {
               statements: 51.1,
@@ -209,15 +209,29 @@ module.exports = function(config) {
     webpack: {
       mode: "none",
       devtool: "inline-source-map",
-      // This loader allows us to override required files in tests
-      resolveLoader: {
-        alias: { inject: path.join(__dirname, "loaders/inject-loader") },
-      },
-      // This resolve config allows us to import with paths relative to the root directory, e.g. "lib/ActivityStream.jsm"
+      // This resolve config allows us to import with paths relative to the root directory, e.g. "lib/ActivityStream.sys.mjs"
       resolve: {
         extensions: [".js", ".jsx"],
         modules: [PATHS.moduleResolveDirectory, "node_modules"],
+        alias: {
+          asrouter: path.join(__dirname, "../asrouter"),
+        },
       },
+      plugins: [
+        // The ResourceUriPlugin handles translating resource URIs in import
+        // statements in .mjs files to paths on the filesystem.
+        new ResourceUriPlugin({
+          resourcePathRegExes: [
+            [
+              new RegExp("^resource://activity-stream/"),
+              path.join(__dirname, "./"),
+            ],
+          ],
+        }),
+        new webpack.DefinePlugin({
+          "process.env.NODE_ENV": JSON.stringify("development"),
+        }),
+      ],
       externals: {
         // enzyme needs these for backwards compatibility with 0.13.
         // see https://github.com/airbnb/enzyme/blob/master/docs/guides/webpack.md#using-enzyme-with-webpack
@@ -227,35 +241,9 @@ module.exports = function(config) {
       },
       module: {
         rules: [
-          // This rule rewrites importing/exporting in .jsm files to be compatible with esmodules
-          {
-            test: /\.jsm$/,
-            exclude: [/node_modules/],
-            use: [
-              {
-                loader: "babel-loader", // require("babel-core")
-                options: {
-                  plugins: [
-                    // Converts .jsm files into common-js modules
-                    [
-                      "jsm-to-commonjs",
-                      {
-                        basePath: PATHS.resourcePathRegEx,
-                        removeOtherImports: true,
-                        replace: true,
-                      },
-                    ], // require("babel-plugin-jsm-to-commonjs")
-                    "@babel/plugin-proposal-nullish-coalescing-operator",
-                    "@babel/plugin-proposal-optional-chaining",
-                    "@babel/plugin-proposal-class-properties",
-                  ],
-                },
-              },
-            ],
-          },
           {
             test: /\.js$/,
-            exclude: [/node_modules\/(?!(fluent|fluent-react)\/).*/, /test/],
+            exclude: [/node_modules\/(?!@fluent\/).*/, /test/],
             loader: "babel-loader",
           },
           {
@@ -273,22 +261,14 @@ module.exports = function(config) {
           {
             enforce: "post",
             test: /\.js[mx]?$/,
-            loader: "istanbul-instrumenter-loader",
+            loader: "@jsdevtools/coverage-istanbul-loader",
             options: { esModules: true },
             include: [
               path.resolve("content-src"),
               path.resolve("lib"),
               path.resolve("common"),
             ],
-            exclude: [
-              path.resolve("test"),
-              path.resolve("vendor"),
-              path.resolve("lib/ASRouterTargeting.jsm"),
-              path.resolve("lib/ASRouterTriggerListeners.jsm"),
-              path.resolve("lib/OnboardingMessageProvider.jsm"),
-              path.resolve("lib/CFRMessageProvider.jsm"),
-              path.resolve("lib/CFRPageActions.jsm"),
-            ],
+            exclude: [path.resolve("test"), path.resolve("vendor")],
           },
         ],
       },

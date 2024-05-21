@@ -25,9 +25,15 @@ add_task(async function test() {
       "Failed to move focus to search bar: button=" + button
     );
 
+    // We intentionally turn off this a11y check, because the following click
+    // is sent on an arbitrary web content that is not expected to be tested
+    // by itself with the browser mochitests, therefore this rule check shall
+    // be ignored by a11y-checks suite.
+    AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
     // Synthesize mouse down event on browser object over the button, such that
     // the event propagates through both processes.
     EventUtils.synthesizeMouse(tab.linkedBrowser, 20, 20, { button });
+    AccessibilityUtils.resetEnv();
 
     isnot(
       fm.focusedElement,
@@ -35,39 +41,41 @@ add_task(async function test() {
       "Failed to move focus away from search bar: button=" + button
     );
 
-    await SpecialPowers.spawn(tab.linkedBrowser, [button], async function(
-      button
-    ) {
-      let fm = Services.focus;
+    await SpecialPowers.spawn(
+      tab.linkedBrowser,
+      [button],
+      async function (button) {
+        let fm = Services.focus;
 
-      let attempts = 10;
-      await new Promise(resolve => {
-        function check() {
-          if (
-            attempts > 0 &&
-            content.document.activeElement.id != "willBeFocused"
-          ) {
-            attempts--;
-            content.window.setTimeout(check, 100);
-            return;
+        let attempts = 10;
+        await new Promise(resolve => {
+          function check() {
+            if (
+              attempts > 0 &&
+              content.document.activeElement.id != "willBeFocused"
+            ) {
+              attempts--;
+              content.window.setTimeout(check, 100);
+              return;
+            }
+
+            Assert.equal(
+              content.document.activeElement.id,
+              "willBeFocused",
+              "The input element isn't active element: button=" + button
+            );
+            Assert.equal(
+              fm.focusedElement,
+              content.document.activeElement,
+              "The active element isn't focused element in App level: button=" +
+                button
+            );
+            resolve();
           }
-
-          Assert.equal(
-            content.document.activeElement.id,
-            "willBeFocused",
-            "The input element isn't active element: button=" + button
-          );
-          Assert.equal(
-            fm.focusedElement,
-            content.document.activeElement,
-            "The active element isn't focused element in App level: button=" +
-              button
-          );
-          resolve();
-        }
-        check();
-      });
-    });
+          check();
+        });
+      }
+    );
   }
 
   gBrowser.removeTab(tab);

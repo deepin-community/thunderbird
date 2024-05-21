@@ -4,14 +4,10 @@
 
 # "Search" is a verb, as in "Search through tabs".
 all-tabs-menu-search-tabs =
-  .label = Search Tabs
+  .label = Search tabs
 
 all-tabs-menu-new-user-context =
-  .label = New Container Tab
+  .label = New container tab
 
 all-tabs-menu-hidden-tabs =
-  .label = Hidden Tabs
-
-all-tabs-menu-manage-user-context =
-  .label = Manage Containers
-  .accesskey = o
+  .label = Hidden tabs

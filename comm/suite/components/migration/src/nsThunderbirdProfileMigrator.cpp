@@ -22,13 +22,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 // nsThunderbirdProfileMigrator
 
-#define FILE_NAME_SITEPERM_OLD    "cookperm.txt"
 #define FILE_NAME_SITEPERM_NEW    "hostperm.1"
-#define FILE_NAME_CERT8DB         "cert8.db"
-#define FILE_NAME_KEY3DB          "key3.db"
-#define FILE_NAME_SECMODDB        "secmod.db"
+#define FILE_NAME_CERT9DB         "cert9.db"
+#define FILE_NAME_KEY4DB          "key4.db"
 #define FILE_NAME_HISTORY         "history.dat"
-#define FILE_NAME_SIGNONS         "signons.sqlite"
+#define FILE_NAME_SIGNONS         "logins.json"
 #define FILE_NAME_MIMETYPES       "mimeTypes.rdf"
 #define FILE_NAME_USER_PREFS      "user.js"
 #define FILE_NAME_PERSONALDICTIONARY "persdict.dat"
@@ -95,8 +93,6 @@ nsThunderbirdProfileMigrator::Migrate(uint16_t aItems,
     // Permissions (Images)
     if (NS_SUCCEEDED(rv))
       rv = CopyFile(FILE_NAME_SITEPERM_NEW, FILE_NAME_SITEPERM_NEW);
-    if (NS_SUCCEEDED(rv))
-      rv = CopyFile(FILE_NAME_SITEPERM_OLD, FILE_NAME_SITEPERM_OLD);
   }
 
   // the last thing to do is to actually copy over any mail folders
@@ -350,7 +346,6 @@ nsThunderbirdProfileMigrator::PrefTransform gTransforms[] = {
   MAKESAMETYPEPREFTRANSFORM("mailnews.mark_message_read.delay",        Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.mark_message_read.delay.interval", Int),
 
-  MAKESAMETYPEPREFTRANSFORM("mailnews.message_display.allow.plugins",  Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.message_display.disable_remote_image", Bool),
 
   MAKESAMETYPEPREFTRANSFORM("mailnews.nav_crosses_folders",            Int),
@@ -361,7 +356,6 @@ nsThunderbirdProfileMigrator::PrefTransform gTransforms[] = {
   MAKESAMETYPEPREFTRANSFORM("mailnews.offline_sync_work_offline",      Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.open_window_warning",            Int),
   MAKESAMETYPEPREFTRANSFORM("mailnews.plaintext_domains",              String),
-  MAKESAMETYPEPREFTRANSFORM("mailnews.remember_selected_message",      Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.reply_in_default_charset",       Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.reuse_message_window",           Bool),
   MAKESAMETYPEPREFTRANSFORM("mailnews.scroll_to_new_message",          Bool),
@@ -410,8 +404,6 @@ nsThunderbirdProfileMigrator::PrefTransform gTransforms[] = {
   MAKESAMETYPEPREFTRANSFORM("offline.download.download_messages",      Int),
   MAKESAMETYPEPREFTRANSFORM("offline.send.unsent_messages",            Int),
   MAKESAMETYPEPREFTRANSFORM("offline.startup_state",                   Int),
-  MAKESAMETYPEPREFTRANSFORM("plugin.override_internal_types",          Bool),
-  MAKESAMETYPEPREFTRANSFORM("plugin.expose_full_path",                 Bool),
   MAKESAMETYPEPREFTRANSFORM("security.default_personal_cert",          String),
   MAKESAMETYPEPREFTRANSFORM("security.password_lifetime",              Int),
   MAKESAMETYPEPREFTRANSFORM("security.tls.version.min",                Int),
@@ -544,11 +536,9 @@ nsThunderbirdProfileMigrator::CopyPreferences(bool aReplace)
 
   // Security Stuff
   if (NS_SUCCEEDED(rv))
-    rv = CopyFile(FILE_NAME_CERT8DB, FILE_NAME_CERT8DB);
+    rv = CopyFile(FILE_NAME_CERT9DB, FILE_NAME_CERT9DB);
   if (NS_SUCCEEDED(rv))
-    rv = CopyFile(FILE_NAME_KEY3DB, FILE_NAME_KEY3DB);
-  if (NS_SUCCEEDED(rv))
-    rv = CopyFile(FILE_NAME_SECMODDB, FILE_NAME_SECMODDB);
+    rv = CopyFile(FILE_NAME_KEY4DB, FILE_NAME_KEY4DB);
 
   // User MIME Type overrides
   if (NS_SUCCEEDED(rv))

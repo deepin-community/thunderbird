@@ -1,8 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { AsyncShutdown } = ChromeUtils.import(
-  "resource://gre/modules/AsyncShutdown.jsm"
+var { AsyncShutdown } = ChromeUtils.importESModule(
+  "resource://gre/modules/AsyncShutdown.sys.mjs"
 );
 
 add_task(async function test_transaction_in_progress() {
@@ -95,8 +95,8 @@ add_task(async function test_blocker_state() {
   let buf = await SyncedBookmarksMirror.open({
     path: "blocker_state_buf.sqlite",
     finalizeAt: barrier.client,
-    recordStepTelemetry(...args) {},
-    recordValidationTelemetry(...args) {},
+    recordStepTelemetry() {},
+    recordValidationTelemetry() {},
   });
   await storeRecords(buf, [
     {

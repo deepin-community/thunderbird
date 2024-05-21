@@ -3,8 +3,6 @@
 
 "use strict";
 
-/* import-globals-from ../head.js */
-
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/remote/cdp/test/browser/head.js",
   this
@@ -49,14 +47,16 @@ function assertEventOrder(first, second, options = {}) {
   const firstDescription = getDescriptionForEvent(first);
   const secondDescription = getDescriptionForEvent(second);
 
-  ok(
-    first.index < second.index,
+  Assert.less(
+    first.index,
+    second.index,
     `${firstDescription} received before ${secondDescription})`
   );
 
   if (!ignoreTimestamps) {
-    ok(
-      first.payload.timestamp <= second.payload.timestamp,
+    Assert.lessOrEqual(
+      first.payload.timestamp,
+      second.payload.timestamp,
       `Timestamp of ${firstDescription}) is earlier than ${secondDescription})`
     );
   }

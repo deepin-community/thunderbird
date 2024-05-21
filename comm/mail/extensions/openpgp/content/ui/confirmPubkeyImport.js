@@ -12,15 +12,25 @@ var gUndecided = null;
 var gUnverified = null;
 
 async function init() {
-  let num = window.arguments[0].keys.length;
-  let label = document.getElementById("importLabel");
-  document.l10n.setAttributes(label, "do-import-multiple", { key: `(${num})` });
+  const num = window.arguments[0].keys.length;
+  const label1 = document.getElementById("importInfo");
+  document.l10n.setAttributes(label1, "openpgp-pubkey-import-intro", {
+    num,
+  });
+  const label2 = document.getElementById("acceptInfo");
+  document.l10n.setAttributes(label2, "openpgp-pubkey-import-accept", {
+    num,
+  });
+
+  const l10nElements = [];
+  l10nElements.push(label1);
+  l10nElements.push(label2);
 
   // TODO: This should be changed to use data-l10n-id in the .xhtml
   // at a later time. We reuse strings on the 78 branch that don't have
   // the .label definition in the .ftl file.
 
-  let [rUnd, rUnv] = await document.l10n.formatValues([
+  const [rUnd, rUnv] = await document.l10n.formatValues([
     { id: "openpgp-key-undecided" },
     { id: "openpgp-key-unverified" },
   ]);
@@ -30,21 +40,39 @@ async function init() {
   gUnverified = document.getElementById("acceptUnverified");
   gUnverified.label = rUnv;
 
-  let keyList = document.getElementById("importKeyList");
+  const keyList = document.getElementById("importKeyList");
 
-  for (let key of window.arguments[0].keys) {
-    let container = document.createXULElement("hbox");
+  for (const key of window.arguments[0].keys) {
+    const container = document.createXULElement("hbox");
     container.classList.add("key-import-row");
 
-    let titleContainer = document.createXULElement("vbox");
+    const titleContainer = document.createXULElement("vbox");
+    const headerHBox = document.createXULElement("hbox");
 
-    let id = document.createXULElement("label");
-    id.classList.add("openpgp-key-id");
-    id.value = key.fpr;
-    titleContainer.appendChild(id);
+    const idSpan = document.createElement("span");
+    const idLabel = document.createXULElement("label");
+    idSpan.appendChild(idLabel);
+    idSpan.classList.add("openpgp-key-id");
+    headerHBox.appendChild(idSpan);
 
-    for (let uid of key.userIds) {
-      let name = document.createXULElement("label");
+    document.l10n.setAttributes(idLabel, "openpgp-pubkey-import-id", {
+      kid: "0x" + key.keyId,
+    });
+
+    const fprSpan = document.createElement("span");
+    const fprLabel = document.createXULElement("label");
+    fprSpan.appendChild(fprLabel);
+    fprSpan.classList.add("openpgp-key-fpr");
+    headerHBox.appendChild(fprSpan);
+
+    document.l10n.setAttributes(fprLabel, "openpgp-pubkey-import-fpr", {
+      fpr: key.fpr,
+    });
+
+    titleContainer.appendChild(headerHBox);
+
+    for (const uid of key.userIds) {
+      const name = document.createXULElement("label");
       name.classList.add("openpgp-key-name");
       name.value = uid.userId;
       titleContainer.appendChild(name);
@@ -54,7 +82,12 @@ async function init() {
     keyList.appendChild(container);
   }
 
-  sizeToContent();
+  await document.l10n.translateElements(l10nElements);
+  window.sizeToContent();
+  window.moveTo(
+    (screen.width - window.outerWidth) / 2,
+    (screen.height - window.outerHeight) / 2
+  );
 }
 
 function onAccept(event) {

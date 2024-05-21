@@ -3,26 +3,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* eslint-env mozilla/frame-script */
+
 "use strict";
 
-const { GeckoViewChildModule } = ChromeUtils.import(
-  "resource://gre/modules/GeckoViewChildModule.jsm"
+const { GeckoViewChildModule } = ChromeUtils.importESModule(
+  "resource://gre/modules/GeckoViewChildModule.sys.mjs"
 );
-// TODO: Bug 1692217
-/* eslint-disable mozilla/reject-chromeutils-import-params */
-ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm", this);
-ChromeUtils.import("resource://gre/modules/Timer.jsm", this);
-const { Services } = ChromeUtils.import(
-  "resource://gre/modules/Services.jsm",
-  this
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-/* eslint-enable mozilla/reject-chromeutils-import-params */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "SessionHistory",
-  "resource://gre/modules/sessionstore/SessionHistory.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  SessionHistory: "resource://gre/modules/sessionstore/SessionHistory.sys.mjs",
+  clearTimeout: "resource://gre/modules/Timer.sys.mjs",
+  setTimeoutWithTarget: "resource://gre/modules/Timer.sys.mjs",
+});
 
 const NO_INDEX = Number.MAX_SAFE_INTEGER;
 const LAST_INDEX = Number.MAX_SAFE_INTEGER - 1;
@@ -99,7 +95,7 @@ class StateChangeNotifier extends Handler {
   /**
    * @see nsIWebProgressListener.onStateChange
    */
-  onStateChange(webProgress, request, stateFlags, status) {
+  onStateChange(webProgress, request, stateFlags) {
     // Ignore state changes for subframes because we're only interested in the
     // top-document starting or stopping its load.
     if (!webProgress.isTopLevel || webProgress.DOMWindow != this.mm.content) {
@@ -162,8 +158,9 @@ class SessionHistoryListener extends Handler {
   }
 
   uninit() {
-    const sessionHistory = this.mm.docShell.QueryInterface(Ci.nsIWebNavigation)
-      .sessionHistory;
+    const sessionHistory = this.mm.docShell.QueryInterface(
+      Ci.nsIWebNavigation
+    ).sessionHistory;
     if (sessionHistory) {
       sessionHistory.legacySHistory.removeSHistoryListener(this);
     }
@@ -208,7 +205,7 @@ class SessionHistoryListener extends Handler {
     });
   }
 
-  handleEvent(event) {
+  handleEvent() {
     this.collect();
   }
 
@@ -220,30 +217,30 @@ class SessionHistoryListener extends Handler {
     this.collect();
   }
 
-  OnHistoryNewEntry(newURI, oldIndex) {
+  OnHistoryNewEntry() {
     // We ought to collect the previously current entry as well, see bug 1350567.
     // TODO: Reenable partial history collection for performance
     // this.collectFrom(oldIndex);
     this.collect();
   }
 
-  OnHistoryGotoIndex(index, gotoURI) {
+  OnHistoryGotoIndex() {
     // We ought to collect the previously current entry as well, see bug 1350567.
     // TODO: Reenable partial history collection for performance
     // this.collectFrom(LAST_INDEX);
     this.collect();
   }
 
-  OnHistoryPurge(numEntries) {
+  OnHistoryPurge() {
     this.collect();
   }
 
-  OnHistoryReload(reloadURI, reloadFlags) {
+  OnHistoryReload() {
     this.collect();
     return true;
   }
 
-  OnHistoryReplaceEntry(index) {
+  OnHistoryReplaceEntry() {
     this.collect();
   }
 }
@@ -317,7 +314,7 @@ class ScrollPositionListener extends Handler {
     const displaySize = {};
     const width = {},
       height = {};
-    domWindowUtils.getContentViewerSize(width, height);
+    domWindowUtils.getDocumentViewerSize(width, height);
 
     displaySize.width = width.value;
     displaySize.height = height.value;
@@ -604,12 +601,17 @@ class SessionStateAggregator extends GeckoViewChildModule {
     this.stateChangeNotifier = new StateChangeNotifier(this);
 
     this.handlers = [
-      new FormDataListener(this),
       new SessionHistoryListener(this),
-      new ScrollPositionListener(this),
       this.stateChangeNotifier,
       this.messageQueue,
     ];
+
+    if (!Services.appinfo.sessionStorePlatformCollection) {
+      this.handlers.push(
+        new FormDataListener(this),
+        new ScrollPositionListener(this)
+      );
+    }
 
     this.messageManager.addMessageListener("GeckoView:FlushSessionState", this);
   }

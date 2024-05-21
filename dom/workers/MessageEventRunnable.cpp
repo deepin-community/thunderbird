@@ -8,18 +8,15 @@
 
 #include "mozilla/dom/MessageEvent.h"
 #include "mozilla/dom/MessageEventBinding.h"
-#include "mozilla/TimelineConsumers.h"
-#include "mozilla/WorkerTimelineMarker.h"
+#include "mozilla/dom/RootedDictionary.h"
 #include "nsQueryObject.h"
-#include "WorkerPrivate.h"
 #include "WorkerScope.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 MessageEventRunnable::MessageEventRunnable(WorkerPrivate* aWorkerPrivate,
-                                           TargetAndBusyBehavior aBehavior)
-    : WorkerDebuggeeRunnable(aWorkerPrivate, aBehavior),
+                                           Target aTarget)
+    : WorkerDebuggeeRunnable(aWorkerPrivate, "MessageEventRunnable", aTarget),
       StructuredCloneHolder(CloningSupported, TransferringSupported,
                             StructuredCloneScope::SameProcess) {}
 
@@ -48,19 +45,6 @@ bool MessageEventRunnable::DispatchDOMEvent(JSContext* aCx,
   JS::Rooted<JS::Value> messageData(aCx);
   IgnoredErrorResult rv;
 
-  UniquePtr<AbstractTimelineMarker> start;
-  UniquePtr<AbstractTimelineMarker> end;
-  RefPtr<TimelineConsumers> timelines = TimelineConsumers::Get();
-  bool isTimelineRecording = timelines && !timelines->IsEmpty();
-
-  if (isTimelineRecording) {
-    start = MakeUnique<WorkerTimelineMarker>(
-        aIsMainThread
-            ? ProfileTimelineWorkerOperationType::DeserializeDataOnMainThread
-            : ProfileTimelineWorkerOperationType::DeserializeDataOffMainThread,
-        MarkerTracingType::START);
-  }
-
   JS::CloneDataPolicy cloneDataPolicy;
   if (parent->GetClientInfo().isSome() &&
       parent->GetClientInfo()->AgentClusterId().isSome() &&
@@ -74,16 +58,6 @@ bool MessageEventRunnable::DispatchDOMEvent(JSContext* aCx,
   }
 
   Read(parent, aCx, &messageData, cloneDataPolicy, rv);
-
-  if (isTimelineRecording) {
-    end = MakeUnique<WorkerTimelineMarker>(
-        aIsMainThread
-            ? ProfileTimelineWorkerOperationType::DeserializeDataOnMainThread
-            : ProfileTimelineWorkerOperationType::DeserializeDataOffMainThread,
-        MarkerTracingType::END);
-    timelines->AddMarkerForAllObservedDocShells(start);
-    timelines->AddMarkerForAllObservedDocShells(end);
-  }
 
   if (NS_WARN_IF(rv.Failed())) {
     DispatchError(aCx, aTarget);
@@ -110,24 +84,12 @@ bool MessageEventRunnable::DispatchDOMEvent(JSContext* aCx,
 
 bool MessageEventRunnable::WorkerRun(JSContext* aCx,
                                      WorkerPrivate* aWorkerPrivate) {
-  if (mBehavior == ParentThreadUnchangedBusyCount) {
+  if (mTarget == ParentThread) {
     // Don't fire this event if the JS object has been disconnected from the
     // private object.
     if (!aWorkerPrivate->IsAcceptingEvents()) {
       return true;
     }
-
-    // Once a window has frozen its workers, their
-    // mMainThreadDebuggeeEventTargets should be paused, and their
-    // WorkerDebuggeeRunnables should not be being executed. The same goes for
-    // WorkerDebuggeeRunnables sent from child to parent workers, but since a
-    // frozen parent worker runs only control runnables anyway, that is taken
-    // care of naturally.
-    MOZ_ASSERT(!aWorkerPrivate->IsFrozen());
-
-    // Similarly for paused windows; all its workers should have been informed.
-    // (Subworkers are unaffected by paused windows.)
-    MOZ_ASSERT(!aWorkerPrivate->IsParentWindowPaused());
 
     aWorkerPrivate->AssertInnerWindowIsCorrect();
 
@@ -137,6 +99,13 @@ bool MessageEventRunnable::WorkerRun(JSContext* aCx,
   }
 
   MOZ_ASSERT(aWorkerPrivate == GetWorkerPrivateFromContext(aCx));
+  MOZ_ASSERT(aWorkerPrivate->GlobalScope());
+
+  // If the worker start shutting down, don't dispatch the message event.
+  if (NS_FAILED(
+          aWorkerPrivate->GlobalScope()->CheckCurrentGlobalCorrectness())) {
+    return true;
+  }
 
   return DispatchDOMEvent(aCx, aWorkerPrivate, aWorkerPrivate->GlobalScope(),
                           false);
@@ -155,5 +124,4 @@ void MessageEventRunnable::DispatchError(JSContext* aCx,
   aTarget->DispatchEvent(*event);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

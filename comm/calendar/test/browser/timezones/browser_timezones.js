@@ -2,30 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-requestLongerTimeout(3);
+requestLongerTimeout(4);
 
-var {
-  CALENDARNAME,
-  createCalendar,
-  controller,
-  deleteCalendars,
-  invokeNewEventDialog,
-  switchToView,
-  goToDate,
-  findEventsInNode,
-  viewForward,
-  viewBack,
-} = ChromeUtils.import("resource://testing-common/calendar/CalendarUtils.jsm");
-var { saveAndCloseItemDialog, setData } = ChromeUtils.import(
-  "resource://testing-common/calendar/ItemEditingHelpers.jsm"
+var { findEventsInNode } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarUtils.sys.mjs"
+);
+var { saveAndCloseItemDialog, setData } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/ItemEditingHelpers.sys.mjs"
+);
+var { CalendarTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarTestUtils.sys.mjs"
 );
 
-var { dayView } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarTestUtils.jsm"
-).CalendarTestUtils;
-
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 var DATES = [
   [2009, 1, 1],
@@ -40,21 +29,33 @@ var DATES = [
 
 var TIMEZONES = [
   "America/St_Johns",
-  "America/Caracas",
+  "America/Caracas", // standard time UTC-4:30 from 2007 to 2016
   "America/Phoenix",
   "America/Los_Angeles",
-  "America/Argentina/Buenos_Aires",
+  "America/Buenos_Aires", // standard time UTC-3, DST UTC-4 from October 2008 to March 2009
   "Europe/Paris",
-  "Asia/Kathmandu",
+  "Asia/Katmandu",
   "Australia/Adelaide",
 ];
 
-add_task(async function testTimezones2_CreateEvents() {
-  createCalendar(controller, CALENDARNAME);
-  goToDate(controller, 2009, 1, 1);
+const calendarViewsInitialState = CalendarTestUtils.saveCalendarViewsState(window);
+
+add_setup(async () => {
+  registerCleanupFunction(async () => {
+    await CalendarTestUtils.restoreCalendarViewsState(window, calendarViewsInitialState);
+    Services.prefs.setStringPref("calendar.timezone.local", "UTC");
+  });
+
+  const calendar = CalendarTestUtils.createCalendar();
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+  });
+
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
   // Create weekly recurring events in all TIMEZONES.
-  let times = [
+  const times = [
     [4, 30],
     [5, 0],
     [3, 0],
@@ -64,103 +65,102 @@ add_task(async function testTimezones2_CreateEvents() {
     [19, 45],
     [1, 30],
   ];
-  let time = cal.createDateTime();
+  const time = cal.createDateTime();
   for (let i = 0; i < TIMEZONES.length; i++) {
-    let eventBox = dayView.getHourBoxAt(controller.window, i + 11);
-    await invokeNewEventDialog(window, eventBox, async (eventWindow, iframeWindow) => {
-      time.hour = times[i][0];
-      time.minute = times[i][1];
+    const eventBox = CalendarTestUtils.dayView.getHourBoxAt(window, i + 11);
+    const { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window, eventBox);
+    time.hour = times[i][0];
+    time.minute = times[i][1];
 
-      // Set event data.
-      await setData(eventWindow, iframeWindow, {
-        title: TIMEZONES[i],
-        repeat: "weekly",
-        repeatuntil: cal.createDateTime("20091231T000000Z"),
-        starttime: time,
-        timezone: TIMEZONES[i],
-      });
-
-      await saveAndCloseItemDialog(eventWindow);
+    // Set event data.
+    await setData(dialogWindow, iframeWindow, {
+      title: TIMEZONES[i],
+      repeat: "weekly",
+      repeatuntil: cal.createDateTime("20091231T000000Z"),
+      starttime: time,
+      timezone: TIMEZONES[i],
     });
+
+    await saveAndCloseItemDialog(dialogWindow);
   }
 });
 
-add_task(function testTimezones3_checkStJohns() {
+add_task(async function testTimezones3_checkStJohns() {
   Services.prefs.setStringPref("calendar.timezone.local", "America/St_Johns");
-  let times = [
+  const times = [
     [
       [4, 30],
-      [5, 30],
-      [6, 30],
-      [7, 30],
-      [8, 30],
-      [9, 30],
-      [10, 30],
-      [11, 30],
-    ],
-    [
-      [4, 30],
-      [6, 30],
-      [7, 30],
-      [7, 30],
-      [9, 30],
-      [9, 30],
-      [11, 30],
-      [12, 30],
-    ],
-    [
-      [4, 30],
-      [6, 30],
-      [7, 30],
-      [7, 30],
-      [9, 30],
-      [9, 30],
-      [11, 30],
-      [13, 30],
-    ],
-    [
-      [4, 30],
-      [6, 30],
-      [7, 30],
-      [7, 30],
-      [9, 30],
-      [9, 30],
-      [11, 30],
-      [13, 30],
-    ],
-    [
-      [4, 30],
-      [6, 30],
-      [7, 30],
-      [7, 30],
-      [9, 30],
-      [9, 30],
-      [11, 30],
-      [13, 30],
-    ],
-    [
-      [4, 30],
-      [6, 30],
-      [7, 30],
-      [7, 30],
-      [9, 30],
-      [9, 30],
-      [11, 30],
-      [12, 30],
-    ],
-    [
-      [4, 30],
+      [6, 0],
       [6, 30],
       [7, 30],
       [7, 30],
       [9, 30],
       [10, 30],
       [11, 30],
+    ],
+    [
+      [4, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [9, 30],
+      [11, 30],
       [12, 30],
     ],
     [
       [4, 30],
-      [5, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [9, 30],
+      [11, 30],
+      [13, 30],
+    ],
+    [
+      [4, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [9, 30],
+      [11, 30],
+      [13, 30],
+    ],
+    [
+      [4, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [9, 30],
+      [11, 30],
+      [13, 30],
+    ],
+    [
+      [4, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [9, 30],
+      [11, 30],
+      [12, 30],
+    ],
+    [
+      [4, 30],
+      [7, 0],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [10, 30],
+      [11, 30],
+      [12, 30],
+    ],
+    [
+      [4, 30],
+      [6, 0],
       [6, 30],
       [7, 30],
       [8, 30],
@@ -169,122 +169,120 @@ add_task(function testTimezones3_checkStJohns() {
       [11, 30],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones4_checkCaracas() {
+add_task(async function testTimezones4_checkCaracas() {
   Services.prefs.setStringPref("calendar.timezone.local", "America/Caracas");
-  // This is actually incorrect. Venezuela shifted clocks forward 30 minutes
-  // in 2016, but our code doesn't handle historical timezones.
-  let times = [
+  const times = [
     [
-      [4, 0],
+      [3, 30],
       [5, 0],
-      [6, 0],
-      [7, 0],
-      [8, 0],
-      [9, 0],
-      [10, 0],
-      [11, 0],
+      [5, 30],
+      [6, 30],
+      [6, 30],
+      [8, 30],
+      [9, 30],
+      [10, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [8, 0],
-      [10, 0],
-      [11, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [10, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [8, 0],
-      [10, 0],
-      [12, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [11, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [8, 0],
-      [10, 0],
-      [12, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [11, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [8, 0],
-      [10, 0],
-      [12, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [11, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [8, 0],
-      [10, 0],
-      [11, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [7, 30],
+      [9, 30],
+      [10, 30],
     ],
     [
-      [3, 0],
+      [2, 30],
       [5, 0],
-      [6, 0],
-      [6, 0],
-      [8, 0],
-      [9, 0],
-      [10, 0],
-      [11, 0],
+      [5, 30],
+      [5, 30],
+      [7, 30],
+      [8, 30],
+      [9, 30],
+      [10, 30],
     ],
     [
-      [4, 0],
+      [3, 30],
       [5, 0],
-      [6, 0],
-      [7, 0],
-      [8, 0],
-      [9, 0],
-      [10, 0],
-      [11, 0],
+      [5, 30],
+      [6, 30],
+      [7, 30],
+      [8, 30],
+      [9, 30],
+      [10, 30],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones5_checkPhoenix() {
+add_task(async function testTimezones5_checkPhoenix() {
   Services.prefs.setStringPref("calendar.timezone.local", "America/Phoenix");
-  let times = [
+  const times = [
     [
       [1, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [4, 0],
-      [5, 0],
+      [4, 0],
       [6, 0],
       [7, 0],
       [8, 0],
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -294,7 +292,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -304,7 +302,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -314,7 +312,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -324,7 +322,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -334,7 +332,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [0, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [3, 0],
       [5, 0],
@@ -344,7 +342,7 @@ add_task(function testTimezones5_checkPhoenix() {
     ],
     [
       [1, 0],
-      [2, 0],
+      [2, 30],
       [3, 0],
       [4, 0],
       [5, 0],
@@ -353,89 +351,89 @@ add_task(function testTimezones5_checkPhoenix() {
       [8, 0],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones6_checkLosAngeles() {
+add_task(async function testTimezones6_checkLosAngeles() {
   Services.prefs.setStringPref("calendar.timezone.local", "America/Los_Angeles");
-  let times = [
+  const times = [
     [
       [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-      [5, 0],
-      [6, 0],
-      [7, 0],
-    ],
-    [
-      [0, 0],
-      [2, 0],
-      [3, 0],
-      [3, 0],
-      [5, 0],
-      [5, 0],
-      [7, 0],
-      [8, 0],
-    ],
-    [
-      [0, 0],
-      [2, 0],
-      [3, 0],
-      [3, 0],
-      [5, 0],
-      [5, 0],
-      [7, 0],
-      [9, 0],
-    ],
-    [
-      [0, 0],
-      [2, 0],
-      [3, 0],
-      [3, 0],
-      [5, 0],
-      [5, 0],
-      [7, 0],
-      [9, 0],
-    ],
-    [
-      [0, 0],
-      [2, 0],
-      [3, 0],
-      [3, 0],
-      [5, 0],
-      [5, 0],
-      [7, 0],
-      [9, 0],
-    ],
-    [
-      [0, 0],
-      [2, 0],
-      [3, 0],
-      [3, 0],
-      [5, 0],
-      [5, 0],
-      [7, 0],
-      [8, 0],
-    ],
-    [
-      [0, 0],
+      [1, 30],
       [2, 0],
       [3, 0],
       [3, 0],
       [5, 0],
       [6, 0],
       [7, 0],
+    ],
+    [
+      [0, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [5, 0],
+      [7, 0],
       [8, 0],
     ],
     [
       [0, 0],
-      [1, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [5, 0],
+      [7, 0],
+      [9, 0],
+    ],
+    [
+      [0, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [5, 0],
+      [7, 0],
+      [9, 0],
+    ],
+    [
+      [0, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [5, 0],
+      [7, 0],
+      [9, 0],
+    ],
+    [
+      [0, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [5, 0],
+      [7, 0],
+      [8, 0],
+    ],
+    [
+      [0, 0],
+      [2, 30],
+      [3, 0],
+      [3, 0],
+      [5, 0],
+      [6, 0],
+      [7, 0],
+      [8, 0],
+    ],
+    [
+      [0, 0],
+      [1, 30],
       [2, 0],
       [3, 0],
       [4, 0],
@@ -444,69 +442,29 @@ add_task(function testTimezones6_checkLosAngeles() {
       [7, 0],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones7_checkBuenosAires() {
+add_task(async function testTimezones7_checkBuenosAires() {
   Services.prefs.setStringPref("calendar.timezone.local", "America/Argentina/Buenos_Aires");
-  let times = [
+  const times = [
     [
-      [5, 0],
       [6, 0],
-      [7, 0],
+      [7, 30],
       [8, 0],
       [9, 0],
-      [10, 0],
-      [11, 0],
-      [12, 0],
-    ],
-    [
-      [4, 0],
-      [6, 0],
-      [7, 0],
-      [7, 0],
-      [9, 0],
       [9, 0],
       [11, 0],
       [12, 0],
-    ],
-    [
-      [4, 0],
-      [6, 0],
-      [7, 0],
-      [7, 0],
-      [9, 0],
-      [9, 0],
-      [11, 0],
       [13, 0],
     ],
     [
       [4, 0],
-      [6, 0],
-      [7, 0],
-      [7, 0],
-      [9, 0],
-      [9, 0],
-      [11, 0],
-      [13, 0],
-    ],
-    [
-      [4, 0],
-      [6, 0],
-      [7, 0],
-      [7, 0],
-      [9, 0],
-      [9, 0],
-      [11, 0],
-      [13, 0],
-    ],
-    [
-      [4, 0],
-      [6, 0],
+      [6, 30],
       [7, 0],
       [7, 0],
       [9, 0],
@@ -516,7 +474,47 @@ add_task(function testTimezones7_checkBuenosAires() {
     ],
     [
       [4, 0],
-      [6, 0],
+      [6, 30],
+      [7, 0],
+      [7, 0],
+      [9, 0],
+      [9, 0],
+      [11, 0],
+      [13, 0],
+    ],
+    [
+      [4, 0],
+      [6, 30],
+      [7, 0],
+      [7, 0],
+      [9, 0],
+      [9, 0],
+      [11, 0],
+      [13, 0],
+    ],
+    [
+      [4, 0],
+      [6, 30],
+      [7, 0],
+      [7, 0],
+      [9, 0],
+      [9, 0],
+      [11, 0],
+      [13, 0],
+    ],
+    [
+      [4, 0],
+      [6, 30],
+      [7, 0],
+      [7, 0],
+      [9, 0],
+      [9, 0],
+      [11, 0],
+      [12, 0],
+    ],
+    [
+      [4, 0],
+      [6, 30],
       [7, 0],
       [7, 0],
       [9, 0],
@@ -526,7 +524,7 @@ add_task(function testTimezones7_checkBuenosAires() {
     ],
     [
       [5, 0],
-      [6, 0],
+      [6, 30],
       [7, 0],
       [8, 0],
       [9, 0],
@@ -535,29 +533,29 @@ add_task(function testTimezones7_checkBuenosAires() {
       [12, 0],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones8_checkParis() {
+add_task(async function testTimezones8_checkParis() {
   Services.prefs.setStringPref("calendar.timezone.local", "Europe/Paris");
-  let times = [
+  const times = [
     [
       [9, 0],
-      [10, 0],
+      [10, 30],
       [11, 0],
       [12, 0],
-      [13, 0],
+      [12, 0],
       [14, 0],
       [15, 0],
       [16, 0],
     ],
     [
       [9, 0],
-      [11, 0],
+      [11, 30],
       [12, 0],
       [12, 0],
       [14, 0],
@@ -567,7 +565,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [9, 0],
-      [11, 0],
+      [11, 30],
       [12, 0],
       [12, 0],
       [14, 0],
@@ -577,7 +575,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [9, 0],
-      [11, 0],
+      [11, 30],
       [12, 0],
       [12, 0],
       [14, 0],
@@ -587,7 +585,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [9, 0],
-      [11, 0],
+      [11, 30],
       [12, 0],
       [12, 0],
       [14, 0],
@@ -597,7 +595,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [9, 0],
-      [11, 0],
+      [11, 30],
       [12, 0],
       [12, 0],
       [14, 0],
@@ -607,7 +605,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [8, 0],
-      [10, 0],
+      [10, 30],
       [11, 0],
       [11, 0],
       [13, 0],
@@ -617,7 +615,7 @@ add_task(function testTimezones8_checkParis() {
     ],
     [
       [9, 0],
-      [10, 0],
+      [10, 30],
       [11, 0],
       [12, 0],
       [13, 0],
@@ -626,29 +624,29 @@ add_task(function testTimezones8_checkParis() {
       [16, 0],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones9_checkKathmandu() {
+add_task(async function testTimezones9_checkKathmandu() {
   Services.prefs.setStringPref("calendar.timezone.local", "Asia/Kathmandu");
-  let times = [
+  const times = [
     [
       [13, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [16, 45],
-      [17, 45],
+      [16, 45],
       [18, 45],
       [19, 45],
       [20, 45],
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -658,7 +656,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -668,7 +666,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -678,7 +676,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -688,7 +686,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -698,7 +696,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [12, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [15, 45],
       [17, 45],
@@ -708,7 +706,7 @@ add_task(function testTimezones9_checkKathmandu() {
     ],
     [
       [13, 45],
-      [14, 45],
+      [15, 15],
       [15, 45],
       [16, 45],
       [17, 45],
@@ -717,29 +715,29 @@ add_task(function testTimezones9_checkKathmandu() {
       [20, 45],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-add_task(function testTimezones10_checkAdelaide() {
+add_task(async function testTimezones10_checkAdelaide() {
   Services.prefs.setStringPref("calendar.timezone.local", "Australia/Adelaide");
-  let times = [
+  const times = [
     [
       [18, 30],
-      [19, 30],
+      [20, 0],
       [20, 30],
       [21, 30],
-      [22, 30],
+      [21, 30],
       [23, 30],
       [0, 30, +1],
       [1, 30, +1],
     ],
     [
       [17, 30],
-      [19, 30],
+      [20, 0],
       [20, 30],
       [20, 30],
       [22, 30],
@@ -749,7 +747,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [16, 30],
-      [18, 30],
+      [19, 0],
       [19, 30],
       [19, 30],
       [21, 30],
@@ -759,7 +757,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [16, 30],
-      [18, 30],
+      [19, 0],
       [19, 30],
       [19, 30],
       [21, 30],
@@ -769,7 +767,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [16, 30],
-      [18, 30],
+      [19, 0],
       [19, 30],
       [19, 30],
       [21, 30],
@@ -779,7 +777,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [17, 30],
-      [19, 30],
+      [20, 0],
       [20, 30],
       [20, 30],
       [22, 30],
@@ -789,7 +787,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [17, 30],
-      [19, 30],
+      [20, 0],
       [20, 30],
       [20, 30],
       [22, 30],
@@ -799,7 +797,7 @@ add_task(function testTimezones10_checkAdelaide() {
     ],
     [
       [18, 30],
-      [19, 30],
+      [20, 0],
       [20, 30],
       [21, 30],
       [22, 30],
@@ -808,72 +806,62 @@ add_task(function testTimezones10_checkAdelaide() {
       [1, 30, +1],
     ],
   ];
-  controller.click(controller.window.document.getElementById("calendar-tab-button"));
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 1);
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("calendarButton"), {}, window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 1);
 
-  verify(DATES, TIMEZONES, times);
+  await verify(DATES, TIMEZONES, times);
 });
 
-function verify(dates, timezones, times) {
+async function verify(dates, timezones, times) {
   function* datetimes() {
     for (let idx = 0; idx < dates.length; idx++) {
       yield [dates[idx][0], dates[idx][1], dates[idx][2], times[idx]];
     }
   }
-  let allowedDifference = 3;
+  const allowedDifference = 3;
 
-  /* Event box' time can't be deduced from it's position in                    ----------------
-     xul element tree because for each event a box is laid over whole day and  |___spacer_____|
-     a spacer is added to push the event to it's correct location.             |__event_box___|
-     But timeline can be used to retrieve the position of a particular hour    |day continues |
-     on screen and it can be compared against the position of the event.       ----------------
-  */
-
-  for (let [selectedYear, selectedMonth, selectedDay, selectedTime] of datetimes()) {
-    goToDate(controller, selectedYear, selectedMonth, selectedDay);
+  for (const [selectedYear, selectedMonth, selectedDay, selectedTime] of datetimes()) {
+    info(`Verifying on day ${selectedDay}, month ${selectedMonth}, year ${selectedYear}`);
+    await CalendarTestUtils.goToDate(window, selectedYear, selectedMonth, selectedDay);
 
     // Find event with timezone tz.
     for (let tzIdx = 0; tzIdx < timezones.length; tzIdx++) {
-      let [correctHour, minutes, day] = selectedTime[tzIdx];
-
-      let timeNode = window.document.querySelector(
-        `#day-view .timebarboxstack > .topbox > box:nth-of-type(${correctHour + 1})`
+      const [hour, minutes, day] = selectedTime[tzIdx];
+      info(
+        `Verifying at ${hour} hours, ${minutes} minutes (offset: ${day || "none"}) ` +
+          `in timezone "${timezones[tzIdx]}"`
       );
-      Assert.ok(timeNode);
-      let boundingRect = timeNode.getBoundingClientRect();
-      let timeY = boundingRect.y + boundingRect.height * (minutes / 60);
-
-      let eventNodes = [];
 
       // following day
       if (day == 1) {
-        viewForward(controller, 1);
+        await CalendarTestUtils.calendarViewForward(window, 1);
       } else if (day == -1) {
-        viewBack(controller, 1);
+        await CalendarTestUtils.calendarViewBackward(window, 1);
       }
 
-      eventNodes = Array.from(dayView.getEventBoxes(controller.window));
-      eventNodes = eventNodes
+      const hourRect = CalendarTestUtils.dayView.getHourBoxAt(window, hour).getBoundingClientRect();
+      const timeY = hourRect.y + hourRect.height * (minutes / 60);
+
+      // Wait for at least one event box to exist.
+      await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
+
+      const eventPositions = Array.from(CalendarTestUtils.dayView.getEventBoxes(window))
         .filter(node => node.mOccurrence.title == timezones[tzIdx])
         .map(node => node.getBoundingClientRect().y);
 
-      dump(`Looking for ${timezones[tzIdx]} at ${timeY}: found `);
-      dump(eventNodes.join(", ") + "\n");
+      dump(`Looking for event at ${timeY}: found ${eventPositions.join(", ")}\n`);
 
-      if (day != undefined && day == 1) {
-        viewBack(controller, 1);
+      if (day == 1) {
+        await CalendarTestUtils.calendarViewBackward(window, 1);
+      } else if (day == -1) {
+        await CalendarTestUtils.calendarViewForward(window, 1);
       }
 
-      if (day != undefined && day == -1) {
-        viewForward(controller, 1);
-      }
-
-      Assert.ok(eventNodes.some(node => Math.abs(timeY - node) < allowedDifference));
+      Assert.ok(
+        eventPositions.some(pos => Math.abs(timeY - pos) < allowedDifference),
+        `There should be an event box that starts at ${hour} hours, ${minutes} minutes`
+      );
     }
   }
 }
-
-registerCleanupFunction(() => {
-  deleteCalendars(controller, CALENDARNAME);
-});

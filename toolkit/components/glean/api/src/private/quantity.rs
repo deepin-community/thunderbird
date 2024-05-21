@@ -41,7 +41,7 @@ impl QuantityMetric {
     }
 }
 
-#[inherent(pub)]
+#[inherent]
 impl Quantity for QuantityMetric {
     /// Set the value. Must be non-negative.
     ///
@@ -52,13 +52,16 @@ impl Quantity for QuantityMetric {
     /// ## Notes
     ///
     /// Logs an error if the `value` is negative.
-    fn set(&self, value: i64) {
+    pub fn set(&self, value: i64) {
         match self {
             QuantityMetric::Parent(p) => {
-                Quantity::set(&*p, value);
+                p.set(value);
             }
             QuantityMetric::Child(_) => {
-                log::error!("Unable to set quantity metric in non-parent process. Ignoring.");
+                log::error!("Unable to set quantity metric in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.
+                assert!(!crate::ipc::is_in_automation(), "Attempted to set quantity metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error.
             }
         }
@@ -76,11 +79,12 @@ impl Quantity for QuantityMetric {
     /// ## Return value
     ///
     /// Returns the stored value or `None` if nothing stored.
-    fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<i64> {
+    pub fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<i64> {
+        let ping_name = ping_name.into().map(|s| s.to_string());
         match self {
             QuantityMetric::Parent(p) => p.test_get_value(ping_name),
             QuantityMetric::Child(_) => {
-                panic!("Cannot get test value for quantity metric in non-parent process!",)
+                panic!("Cannot get test value for quantity metric in non-main process!",)
             }
         }
     }
@@ -98,17 +102,11 @@ impl Quantity for QuantityMetric {
     /// # Returns
     ///
     /// The number of errors reported.
-    fn test_get_num_recorded_errors<'a, S: Into<Option<&'a str>>>(
-        &self,
-        error: glean::ErrorType,
-        ping_name: S,
-    ) -> i32 {
+    pub fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32 {
         match self {
-            QuantityMetric::Parent(p) => {
-                p.test_get_num_recorded_errors(error, ping_name)
-            }
+            QuantityMetric::Parent(p) => p.test_get_num_recorded_errors(error),
             QuantityMetric::Child(_) => panic!(
-                "Cannot get the number of recorded errors for quantity metric in non-parent process!"
+                "Cannot get the number of recorded errors for quantity metric in non-main process!"
             ),
         }
     }

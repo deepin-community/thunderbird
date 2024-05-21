@@ -42,13 +42,16 @@ add_task(
       });
 
       const { sources } = await getSources(threadFront);
-      Assert.equal(sources.length, 1);
+
+      // Note: Since we load the file twice, we end up with two copies of the
+      // source object, and so two sources here.
+      Assert.equal(sources.length, 2);
 
       // Ensure that the breakpoint was properly applied to the JSScipt loaded
       // in the first global.
       let pausedOne = false;
       let onResumed = null;
-      threadFront.once("paused", function(packet) {
+      threadFront.once("paused", function () {
         pausedOne = true;
         onResumed = resume(threadFront);
       });
@@ -59,7 +62,7 @@ add_task(
       // Ensure that the breakpoint was properly applied to the JSScipt loaded
       // in the second global.
       let pausedTwo = false;
-      threadFront.once("paused", function(packet) {
+      threadFront.once("paused", function () {
         pausedTwo = true;
         onResumed = resume(threadFront);
       });

@@ -14,13 +14,13 @@ var {
   be_in_folder,
   create_folder,
   create_message,
-  mc,
+  get_about_message,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { assert_notification_displayed } = ChromeUtils.import(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
+var { assert_notification_displayed } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
 );
 
 var folder;
@@ -28,81 +28,87 @@ var folder;
 var kBoxId = "mail-notification-top";
 var kNotificationValue = "mdnRequested";
 
-add_task(function setupModule(module) {
-  folder = create_folder("ReturnReceiptTest");
+add_setup(async function () {
+  folder = await create_folder("ReturnReceiptTest");
 
   // Create a message that requests a return receipt.
-  let msg0 = create_message({
+  const msg0 = create_message({
     from: ["Ake", "ake@example.com"],
     clobberHeaders: { "Disposition-Notification-To": "ake@example.com" },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
   // ... and one that doesn't request a return receipt.
-  let msg1 = create_message();
-  add_message_to_folder(folder, msg1);
+  const msg1 = create_message();
+  await add_message_to_folder([folder], msg1);
 
   // Create a message that requests a return receipt to a different address.
-  let msg2 = create_message({
+  const msg2 = create_message({
     from: ["Mimi", "me@example.org"],
     clobberHeaders: { "Disposition-Notification-To": "other@example.com" },
   });
-  add_message_to_folder(folder, msg2);
+  await add_message_to_folder([folder], msg2);
 
   // Create a message that requests a return receipt to different addresses.
-  let msg3 = create_message({
+  const msg3 = create_message({
     from: ["Bobby", "bob@example.org"],
     clobberHeaders: {
       "Disposition-Notification-To": "ex1@example.com, ex2@example.com",
     },
   });
-  add_message_to_folder(folder, msg3);
+  await add_message_to_folder([folder], msg3);
 
   // Create a message that requests a return receipt using non-standard header.
-  let msg4 = create_message({
+  const msg4 = create_message({
     from: ["Ake", "ake@example.com"],
     clobberHeaders: { "Return-Receipt-To": "ake@example.com" },
   });
-  add_message_to_folder(folder, msg4);
+  await add_message_to_folder([folder], msg4);
 
   // Create a message that requests a return receipt to a different address
   // using non-standard header.
-  let msg5 = create_message({
+  const msg5 = create_message({
     from: ["Mimi", "me@example.org"],
     clobberHeaders: { "Return-Receipt-To": "other@example.com" },
   });
-  add_message_to_folder(folder, msg5);
+  await add_message_to_folder([folder], msg5);
 
   // Create a message that requests a return receipt to different addresses
   // using non-standard header.
-  let msg6 = create_message({
+  const msg6 = create_message({
     from: ["Bobby", "bob@example.org"],
     clobberHeaders: { "Return-Receipt-To": "ex1@example.com, ex2@example.com" },
   });
-  add_message_to_folder(folder, msg6);
+  await add_message_to_folder([folder], msg6);
+
+  await be_in_folder(folder);
 });
 
 /** Utility to select a message. */
-function gotoMsg(row) {
-  be_in_folder(folder);
-  let curMessage = select_click_row(row);
-  assert_selected_and_displayed(mc, curMessage);
+async function gotoMsg(row) {
+  const curMessage = await select_click_row(row);
+  await assert_selected_and_displayed(window, curMessage);
 }
 
 /**
  * Utility to make sure the MDN bar is shown / not shown.
  */
 function assert_mdn_shown(shouldShow) {
-  assert_notification_displayed(mc, kBoxId, kNotificationValue, shouldShow);
+  assert_notification_displayed(
+    get_about_message(),
+    kBoxId,
+    kNotificationValue,
+    shouldShow
+  );
 }
 
 /**
  * Utility function to make sure the notification contains a certain text.
  */
 function assert_mdn_text_contains(text, shouldContain) {
-  let nb = mc.window.document.getElementById(kBoxId);
-  let box = nb.querySelector(".notificationbox-stack")._notificationBox;
-  let notificationText = box.currentNotification.messageText.textContent;
+  const nb = get_about_message().document.getElementById(kBoxId);
+  const box = nb.querySelector(".notificationbox-stack")._notificationBox;
+  const notificationText = box.currentNotification.messageText.textContent;
   if (shouldContain && !notificationText.includes(text)) {
     throw new Error(
       "mdnBar should contain text=" +
@@ -125,16 +131,17 @@ function assert_mdn_text_contains(text, shouldContain) {
  * Test that return receipts are not shown when Disposition-Notification-To
  * and Return-Receipt-To isn't set.
  */
-add_task(function test_no_mdn_for_normal_msgs() {
-  gotoMsg(1); // This message doesn't request a return receipt.
+add_task(async function test_no_mdn_for_normal_msgs() {
+  await gotoMsg(-1); // TODO this shouldn't be needed but the selection goes to 0 on focus.
+  await gotoMsg(-2); // This message doesn't request a return receipt.
   assert_mdn_shown(false);
 });
 
 /**
  * Test that return receipts are shown when Disposition-Notification-To is set.
  */
-add_task(function test_basic_mdn_shown() {
-  gotoMsg(0); // This message requests a return receipt.
+add_task(async function test_basic_mdn_shown() {
+  await gotoMsg(-1); // This message requests a return receipt.
   assert_mdn_shown(true);
   assert_mdn_text_contains("ake@example.com", false); // only name should show
 });
@@ -142,8 +149,8 @@ add_task(function test_basic_mdn_shown() {
 /**
  * Test that return receipts are shown when Return-Receipt-To is set.
  */
-add_task(function test_basic_mdn_shown_nonrfc() {
-  gotoMsg(4); // This message requests a return receipt.
+add_task(async function test_basic_mdn_shown_nonrfc() {
+  await gotoMsg(-5); // This message requests a return receipt.
   assert_mdn_shown(true);
   assert_mdn_text_contains("ake@example.com", false); // only name should show
 });
@@ -152,8 +159,8 @@ add_task(function test_basic_mdn_shown_nonrfc() {
  * Test that return receipts warns when the mdn address is different.
  * The RFC compliant version.
  */
-add_task(function test_mdn_when_from_and_disposition_to_differs() {
-  gotoMsg(2); // Should display a notification with warning.
+add_task(async function test_mdn_when_from_and_disposition_to_differs() {
+  await gotoMsg(-3); // Should display a notification with warning.
   assert_mdn_shown(true);
   assert_mdn_text_contains("other@example.com", true); // address should show
 });
@@ -162,8 +169,8 @@ add_task(function test_mdn_when_from_and_disposition_to_differs() {
  * Test that return receipts warns when the mdn address is different.
  * The RFC non-compliant version.
  */
-add_task(function test_mdn_when_from_and_disposition_to_differs_nonrfc() {
-  gotoMsg(5); // Should display a notification with warning.
+add_task(async function test_mdn_when_from_and_disposition_to_differs_nonrfc() {
+  await gotoMsg(-6); // Should display a notification with warning.
   assert_mdn_shown(true);
   assert_mdn_text_contains("other@example.com", true); // address should show
 });
@@ -172,8 +179,8 @@ add_task(function test_mdn_when_from_and_disposition_to_differs_nonrfc() {
  * Test that return receipts warns when the mdn address consists of multiple
  * addresses.
  */
-add_task(function test_mdn_when_disposition_to_multi() {
-  gotoMsg(3);
+add_task(async function test_mdn_when_disposition_to_multi() {
+  await gotoMsg(-4);
   // Should display a notification with warning listing all the addresses.
   assert_mdn_shown(true);
   assert_mdn_text_contains("ex1@example.com", true);
@@ -184,8 +191,8 @@ add_task(function test_mdn_when_disposition_to_multi() {
  * Test that return receipts warns when the mdn address consists of multiple
  * addresses. Non-RFC compliant version.
  */
-add_task(function test_mdn_when_disposition_to_multi_nonrfc() {
-  gotoMsg(6);
+add_task(async function test_mdn_when_disposition_to_multi_nonrfc() {
+  await gotoMsg(0);
   // Should display a notification with warning listing all the addresses.
   assert_mdn_shown(true);
   assert_mdn_text_contains("ex1@example.com", true);

@@ -6,13 +6,6 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(this, "OS", "resource://gre/modules/osfile.jsm");
-ChromeUtils.defineModuleGetter(
-  this,
-  "ProfilerGetSymbols",
-  "resource://gre/modules/ProfilerGetSymbols.jsm"
-);
-
 const PREF_ASYNC_STACK = "javascript.options.asyncstack";
 
 const ASYNC_STACKS_ENABLED = Services.prefs.getBoolPref(
@@ -22,18 +15,17 @@ const ASYNC_STACKS_ENABLED = Services.prefs.getBoolPref(
 
 var { ExtensionError } = ExtensionUtils;
 
-const symbolCache = new Map();
-
-const primeSymbolStore = libs => {
-  for (const { path, debugName, debugPath, breakpadId } of libs) {
-    symbolCache.set(`${debugName}/${breakpadId}`, { path, debugPath });
-  }
-};
+ChromeUtils.defineLazyGetter(this, "symbolicationService", () => {
+  let { createLocalSymbolicationService } = ChromeUtils.importESModule(
+    "resource://devtools/client/performance-new/shared/symbolication.sys.mjs"
+  );
+  return createLocalSymbolicationService(Services.profiler.sharedLibraries, []);
+});
 
 const isRunningObserver = {
   _observers: new Set(),
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     switch (topic) {
       case "profiler-started":
       case "profiler-stopped":
@@ -81,13 +73,8 @@ this.geckoProfiler = class extends ExtensionAPI {
     return {
       geckoProfiler: {
         async start(options) {
-          const {
-            bufferSize,
-            windowLength,
-            interval,
-            features,
-            threads,
-          } = options;
+          const { bufferSize, windowLength, interval, features, threads } =
+            options;
 
           Services.prefs.setBoolPref(PREF_ASYNC_STACK, false);
           if (threads) {
@@ -139,10 +126,11 @@ this.geckoProfiler = class extends ExtensionAPI {
             throw new ExtensionError("Path cannot contain a subdirectory.");
           }
 
-          let fragments = [OS.Constants.Path.profileDir, "profiler", fileName];
-          let filePath = OS.Path.join(...fragments);
+          let dirPath = PathUtils.join(PathUtils.profileDir, "profiler");
+          let filePath = PathUtils.join(dirPath, fileName);
 
           try {
+            await IOUtils.makeDirectory(dirPath);
             await Services.profiler.dumpProfileToFileAsync(filePath);
           } catch (e) {
             Cu.reportError(e);
@@ -184,29 +172,7 @@ this.geckoProfiler = class extends ExtensionAPI {
         },
 
         async getSymbols(debugName, breakpadId) {
-          if (symbolCache.size === 0) {
-            primeSymbolStore(Services.profiler.sharedLibraries);
-          }
-
-          const cachedLibInfo = symbolCache.get(`${debugName}/${breakpadId}`);
-          if (!cachedLibInfo) {
-            throw new Error(
-              `The library ${debugName} ${breakpadId} is not in the Services.profiler.sharedLibraries list, ` +
-                "so the local path for it is not known and symbols for it can not be obtained. " +
-                "This usually happens if a content process uses a library that's not used in the parent " +
-                "process - Services.profiler.sharedLibraries only knows about libraries in the parent process."
-            );
-          }
-
-          const { path, debugPath } = cachedLibInfo;
-          if (!OS.Path.split(path).absolute) {
-            throw new Error(
-              `Services.profiler.sharedLibraries did not contain an absolute path for the library ${debugName} ${breakpadId}, ` +
-                "so symbols for this library can not be obtained."
-            );
-          }
-
-          return ProfilerGetSymbols.getSymbolTable(path, debugPath, breakpadId);
+          return symbolicationService.getSymbolTable(debugName, breakpadId);
         },
 
         onRunning: new EventManager({

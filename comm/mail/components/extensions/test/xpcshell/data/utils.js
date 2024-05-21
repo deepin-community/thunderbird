@@ -4,36 +4,80 @@
 
 // Functions for extensions to use, so that we avoid repeating ourselves.
 
-function assertDeepEqual(expected, actual) {
+function assertDeepEqual(
+  expected,
+  actual,
+  description = "Values should be equal",
+  options = {}
+) {
+  let ok;
+  const strict = !!options?.strict;
+  try {
+    ok = assertDeepEqualNested(expected, actual, strict);
+  } catch (e) {
+    ok = false;
+  }
+  if (!ok) {
+    browser.test.fail(
+      `Deep equal test. \n Expected value: ${JSON.stringify(
+        expected
+      )} \n Actual value: ${JSON.stringify(actual)},
+      ${description}`
+    );
+  }
+}
+
+function assertDeepEqualNested(expected, actual, strict) {
   if (expected === null) {
     browser.test.assertTrue(actual === null);
-    return;
+    return actual === null;
+  }
+
+  if (expected === undefined) {
+    browser.test.assertTrue(actual === undefined);
+    return actual === undefined;
   }
 
   if (["boolean", "number", "string"].includes(typeof expected)) {
     browser.test.assertEq(typeof expected, typeof actual);
     browser.test.assertEq(expected, actual);
-    return;
+    return typeof expected == typeof actual && expected == actual;
   }
 
   if (Array.isArray(expected)) {
     browser.test.assertTrue(Array.isArray(actual));
     browser.test.assertEq(expected.length, actual.length);
+    let ok = 0;
+    let all = 0;
     for (let i = 0; i < expected.length; i++) {
-      assertDeepEqual(expected[i], actual[i]);
+      all++;
+      if (assertDeepEqualNested(expected[i], actual[i], strict)) {
+        ok++;
+      }
     }
-    return;
+    return (
+      Array.isArray(actual) && expected.length == actual.length && all == ok
+    );
   }
 
-  let expectedKeys = Object.keys(expected);
-  let actualKeys = Object.keys(actual);
-  // Ignore any extra keys on the actual object.
-  browser.test.assertTrue(expectedKeys.length <= actualKeys.length);
+  const expectedKeys = Object.keys(expected);
+  const actualKeys = Object.keys(actual);
+  // Ignore any extra keys on the actual object in non-strict mode (default).
+  const lengthOk = strict
+    ? expectedKeys.length == actualKeys.length
+    : expectedKeys.length <= actualKeys.length;
+  browser.test.assertTrue(lengthOk);
 
-  for (let key of expectedKeys) {
+  let ok = 0;
+  let all = 0;
+  for (const key of expectedKeys) {
+    all++;
     browser.test.assertTrue(actualKeys.includes(key), `Key ${key} exists`);
-    assertDeepEqual(expected[key], actual[key]);
+    if (assertDeepEqualNested(expected[key], actual[key], strict)) {
+      ok++;
+    }
   }
+  return all == ok && lengthOk;
 }
 
 function waitForMessage() {
@@ -41,7 +85,7 @@ function waitForMessage() {
 }
 
 function waitForEvent(eventName) {
-  let [namespace, name] = eventName.split(".");
+  const [namespace, name] = eventName.split(".");
   return new Promise(resolve => {
     browser[namespace][name].addListener(function listener(...args) {
       browser[namespace][name].removeListener(listener);
@@ -50,8 +94,31 @@ function waitForEvent(eventName) {
   });
 }
 
+async function waitForCondition(condition, msg, interval = 100, maxTries = 50) {
+  let conditionPassed = false;
+  let tries = 0;
+  for (; tries < maxTries && !conditionPassed; tries++) {
+    await new Promise(resolve =>
+      // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+      window.setTimeout(resolve, interval)
+    );
+    try {
+      conditionPassed = await condition();
+    } catch (e) {
+      throw Error(`${msg} - threw exception: ${e}`);
+    }
+  }
+  if (conditionPassed) {
+    browser.test.succeed(
+      `waitForCondition succeeded after ${tries} retries - ${msg}`
+    );
+  } else {
+    browser.test.fail(`${msg} - timed out after ${maxTries} retries`);
+  }
+}
+
 function sendMessage(...args) {
-  let replyPromise = waitForMessage();
+  const replyPromise = waitForMessage();
   browser.test.sendMessage(...args);
   return replyPromise;
 }

@@ -6,7 +6,9 @@
 #ifndef nsCoreUtils_h_
 #define nsCoreUtils_h_
 
+#include "AttrArray.h"
 #include "mozilla/EventForwards.h"
+#include "nsCaseTreatment.h"
 #include "nsIAccessibleEvent.h"
 #include "nsIContent.h"
 #include "mozilla/FlushType.h"
@@ -14,7 +16,10 @@
 
 #include "nsPoint.h"
 #include "nsTArray.h"
+#include "Units.h"
 
+class nsAttrValue;
+class nsGenericHTMLElement;
 class nsRange;
 class nsTreeColumn;
 class nsIFrame;
@@ -25,6 +30,7 @@ namespace mozilla {
 class PresShell;
 namespace dom {
 class Document;
+class Element;
 class XULTreeElement;
 }  // namespace dom
 }  // namespace mozilla
@@ -36,6 +42,7 @@ class nsCoreUtils {
  public:
   typedef mozilla::PresShell PresShell;
   typedef mozilla::dom::Document Document;
+  typedef mozilla::dom::Element Element;
 
   /**
    * Return true if the given node is a label of a control.
@@ -167,10 +174,10 @@ class nsCoreUtils {
    *
    * @param aScrollableFrame  the scrollable frame
    * @param aFrame            the frame to scroll
-   * @param aPoint            the point scroll to
+   * @param aPoint            the point scroll to (in dev pixels)
    */
   static void ScrollFrameToPoint(nsIFrame* aScrollableFrame, nsIFrame* aFrame,
-                                 const nsIntPoint& aPoint);
+                                 const mozilla::LayoutDeviceIntPoint& aPoint);
 
   /**
    * Converts scroll type constant defined in nsIAccessibleScrollType to
@@ -181,14 +188,6 @@ class nsCoreUtils {
                                           mozilla::ScrollAxis* aHorizontal);
 
   /**
-   * Returns coordinates in device pixels relative screen for the top level
-   * window.
-   *
-   * @param aNode  the DOM node hosted in the window.
-   */
-  static nsIntPoint GetScreenCoordsForWindow(nsINode* aNode);
-
-  /**
    * Return document shell for the given DOM node.
    */
   static already_AddRefed<nsIDocShell> GetDocShellFor(nsINode* aNode);
@@ -197,11 +196,6 @@ class nsCoreUtils {
    * Return true if the given document is root document.
    */
   static bool IsRootDocument(Document* aDocument);
-
-  /**
-   * Return true if the given document is content document (not chrome).
-   */
-  static bool IsContentDocument(Document* aDocument);
 
   /**
    * Return true if the given document is a top level content document in this
@@ -234,6 +228,7 @@ class nsCoreUtils {
    * attribute or wrong value then false is returned.
    */
   static bool GetUIntAttr(nsIContent* aContent, nsAtom* aAttr, int32_t* aUInt);
+  static bool GetUIntAttrValue(const nsAttrValue* aVal, int32_t* aUInt);
 
   /**
    * Returns language for the given node.
@@ -312,6 +307,11 @@ class nsCoreUtils {
            aChar == 0xa0;
   }
 
+  /**
+   * Remove non-breaking spaces from the beginning and end of the string.
+   */
+  static void TrimNonBreakingSpaces(nsAString& aString);
+
   /*
    * Return true if there are any observers of accessible events.
    */
@@ -323,6 +323,7 @@ class nsCoreUtils {
   static void DispatchAccEvent(RefPtr<nsIAccessibleEvent> aEvent);
 
   static bool IsDisplayContents(nsIContent* aContent);
+  static bool CanCreateAccessibleWithoutFrame(nsIContent* aContent);
 
   /**
    * Return whether the document and all its in-process ancestors are visible in
@@ -330,6 +331,15 @@ class nsCoreUtils {
    */
   static bool IsDocumentVisibleConsideringInProcessAncestors(
       const Document* aDocument);
+
+  /**
+   * Return true if `aDescendant` is a descendant of any of `aStartAncestor`'s
+   * shadow-including ancestors.
+   */
+  static bool IsDescendantOfAnyShadowIncludingAncestor(nsINode* aDescendant,
+                                                       nsINode* aStartAncestor);
+
+  static Element* GetAriaActiveDescendantElement(Element* aElement);
 };
 
 #endif

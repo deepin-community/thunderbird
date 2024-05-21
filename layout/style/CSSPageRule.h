@@ -42,7 +42,9 @@ class CSSPageRuleDeclaration final : public nsDOMCSSDeclaration {
   friend class CSSPageRule;
 
   explicit CSSPageRuleDeclaration(
-      already_AddRefed<RawServoDeclarationBlock> aDecls);
+      already_AddRefed<StyleLockedDeclarationBlock> aDecls);
+  void SetRawAfterClone(RefPtr<StyleLockedDeclarationBlock>);
+
   ~CSSPageRuleDeclaration();
 
   inline CSSPageRule* Rule();
@@ -53,7 +55,7 @@ class CSSPageRuleDeclaration final : public nsDOMCSSDeclaration {
 
 class CSSPageRule final : public css::Rule {
  public:
-  CSSPageRule(RefPtr<RawServoPageRule> aRawRule, StyleSheet* aSheet,
+  CSSPageRule(RefPtr<StyleLockedPageRule> aRawRule, StyleSheet* aSheet,
               css::Rule* aParentRule, uint32_t aLine, uint32_t aColumn);
 
   NS_DECL_ISUPPORTS_INHERITED
@@ -61,12 +63,16 @@ class CSSPageRule final : public css::Rule {
 
   bool IsCCLeaf() const final;
 
-  RawServoPageRule* Raw() const { return mRawRule; }
+  StyleLockedPageRule* Raw() const { return mRawRule; }
+  void SetRawAfterClone(RefPtr<StyleLockedPageRule>);
 
   // WebIDL interfaces
-  uint16_t Type() const final { return CSSRule_Binding::PAGE_RULE; }
+  StyleCssRuleType Type() const final;
   void GetCssText(nsACString& aCssText) const final;
   nsICSSDeclaration* Style();
+
+  void GetSelectorText(nsACString& aSelectorText) const;
+  void SetSelectorText(const nsACString& aSelectorText);
 
   size_t SizeOfIncludingThis(MallocSizeOf aMallocSizeOf) const final;
 
@@ -82,7 +88,7 @@ class CSSPageRule final : public css::Rule {
   // For computing the offset of mDecls.
   friend class CSSPageRuleDeclaration;
 
-  RefPtr<RawServoPageRule> mRawRule;
+  RefPtr<StyleLockedPageRule> mRawRule;
   CSSPageRuleDeclaration mDecls;
 };
 

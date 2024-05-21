@@ -10,7 +10,6 @@
 #define xpctest_private_h___
 
 #include "nsISupports.h"
-#include "nsMemory.h"
 #include "nsString.h"
 #include "xpctest_attributes.h"
 #include "xpctest_params.h"
@@ -19,7 +18,7 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/ModuleUtils.h"
 
-extern const mozilla::Module kXPCTestModule;
+nsresult xpcTestRegisterComponents();
 
 class xpcTestObjectReadOnly final : public nsIXPCTestObjectReadOnly {
  public:
@@ -68,15 +67,15 @@ class nsXPCTestParams final : public nsIXPCTestParams {
   ~nsXPCTestParams() = default;
 };
 
-class nsXPCTestReturnCodeParent final : public nsIXPCTestReturnCodeParent {
+class nsXPCTestESMReturnCodeParent final : public nsIXPCTestReturnCodeParent {
  public:
   NS_DECL_ISUPPORTS
   NS_DECL_NSIXPCTESTRETURNCODEPARENT
 
-  nsXPCTestReturnCodeParent() = default;
+  nsXPCTestESMReturnCodeParent() = default;
 
  private:
-  ~nsXPCTestReturnCodeParent() = default;
+  ~nsXPCTestESMReturnCodeParent() = default;
 };
 
 class xpcTestCEnums final : public nsIXPCTestCEnums {

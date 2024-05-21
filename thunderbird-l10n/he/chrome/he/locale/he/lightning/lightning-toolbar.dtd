@@ -48,7 +48,3 @@
 <!ENTITY lightning.toolbar.calendarmenu.accesskey    "ח">
 <!ENTITY lightning.toolbar.calendarpane.label        "הצגת חלונית לוח שנה">
 <!ENTITY lightning.toolbar.calendarpane.accesskey    "ח">
-
-<!-- LOCALIZATION NOTE: the same as appmenuButton.label and appmenuButton1.tooltip
-     from messenger.dtd -->
-<!ENTITY lightning.toolbar.appmenuButton.label       "AppMenu">

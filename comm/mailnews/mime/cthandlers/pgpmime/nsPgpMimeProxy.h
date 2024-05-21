@@ -11,6 +11,7 @@
 #include "nsIStreamListener.h"
 #include "nsIInputStream.h"
 #include "nsILoadGroup.h"
+#include "nsIMailChannel.h"
 
 #define PGPMIME_JS_DECRYPTOR_CONTRACTID \
   "@mozilla.org/mime/pgp-mime-js-decrypt;1"
@@ -61,9 +62,12 @@ class nsPgpMimeProxy : public nsIPgpMimeProxy,
   nsCString mByteBuf;
   nsCString mContentType;
   nsCString mMimePart;
+  bool mAllowNestedDecrypt;
 
   nsCOMPtr<nsIURI> mMessageURI;
   nsresult Finalize();
+
+  nsCOMPtr<nsIMailChannel> mMailChannel;
 };
 
 #define MimeEncryptedPgpClassInitializer(ITYPE, CSUPER) \

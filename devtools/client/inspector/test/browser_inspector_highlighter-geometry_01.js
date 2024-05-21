@@ -25,7 +25,7 @@ const HIGHLIGHTER_TYPE = "GeometryEditorHighlighter";
 const ID = "geometry-editor-";
 const SIDES = ["left", "right", "top", "bottom"];
 
-add_task(async function() {
+add_task(async function () {
   const helper = await openInspectorForURL(TEST_URL).then(
     getHighlighterHelperFor(HIGHLIGHTER_TYPE)
   );
@@ -58,7 +58,6 @@ async function hasArrowsAndLabelsAndHandlers({ getElementAttribute }) {
 
 async function isHiddenForNonPositionedNonSizedElement({
   show,
-  hide,
   isElementHidden,
 }) {
   info("Asking to show the highlighter on an inline, non p  ositioned element");

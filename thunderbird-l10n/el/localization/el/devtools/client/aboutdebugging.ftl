@@ -11,7 +11,8 @@
 # Page title (ie tab title) for the Setup page
 about-debugging-page-title-setup-page = Έλεγχος σφαλμάτων - Ρύθμιση
 # Page title (ie tab title) for the Runtime page
-# { $selectedRuntimeId } is the id of the current runtime, such as "this-firefox", "localhost:6080", ...
+# Variables:
+#   $selectedRuntimeId - ID of the current runtime, such as "this-firefox", "localhost:6080", etc.
 about-debugging-page-title-runtime-page = Έλεγχος σφαλμάτων - Εκτέλεση/{ $selectedRuntimeId }
 
 # Sidebar strings
@@ -20,9 +21,11 @@ about-debugging-page-title-runtime-page = Έλεγχος σφαλμάτων - Ε
 # Sidebar and in the Setup page.
 about-debugging-this-firefox-runtime-name = { -brand-shorter-name }
 # Sidebar heading for selecting the currently running instance of Firefox
+# .name is processed by fluent-react / SidebarFixedItem
 about-debugging-sidebar-this-firefox =
     .name = { about-debugging-this-firefox-runtime-name }
 # Sidebar heading for connecting to some remote source
+# .name is processed by fluent-react / SidebarFixedItem
 about-debugging-sidebar-setup =
     .name = Ρύθμιση
 # Text displayed in the about:debugging sidebar when USB devices discovery is enabled.
@@ -56,14 +59,19 @@ about-debugging-sidebar-runtime-item-waiting-for-browser = Αναμονή για
 # computer.
 about-debugging-sidebar-runtime-item-unplugged = Αποσυνδέθηκε
 # Title for runtime sidebar items that are related to a specific device (USB, WiFi).
+# Variables:
+#   $displayName (string) - Displayed name
+#   $deviceName (string) - Name of the device
 about-debugging-sidebar-runtime-item-name =
     .title = { $displayName } ({ $deviceName })
 # Title for runtime sidebar items where we cannot get device information (network
 # locations).
+# Variables:
+#   $displayName (string) - Displayed name
 about-debugging-sidebar-runtime-item-name-no-device =
     .title = { $displayName }
 # Text to show in the footer of the sidebar that links to a help page
-# (currently: https://developer.mozilla.org/docs/Tools/about:debugging)
+# (currently: https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/)
 about-debugging-sidebar-support = Υποστήριξη ελέγχου σφαλμάτων
 # Text to show as the ALT attribute of a help icon that accompanies the help about
 # debugging link in the footer of the sidebar
@@ -80,7 +88,7 @@ about-debugging-setup-title = Ρύθμιση
 # Introduction text in the Setup page to explain how to configure remote debugging.
 about-debugging-setup-intro = Ρυθμίστε τη μέθοδο σύνδεσης για απομακρυσμένο έλεγχο σφαλμάτων στη συσκευή σας.
 # Explanatory text in the Setup page about what the 'This Firefox' page is for
-about-debugging-setup-this-firefox2 = Χρησιμοποιήστε την επιλογή <a>{ about-debugging-this-firefox-runtime-name }</a> για να κάνετε έλεγχο σφαλμάτων στις επεκτάσεις και τα service worker σε αυτή την έκδοση του { -brand-shorter-name }.
+about-debugging-setup-this-firefox2 = Χρησιμοποιήστε την επιλογή <a>{ about-debugging-this-firefox-runtime-name }</a> για να κάνετε έλεγχο σφαλμάτων στις επεκτάσεις και τα service worker σε αυτήν την έκδοση του { -brand-shorter-name }.
 # Title of the heading Connect section of the Setup page.
 about-debugging-setup-connect-heading = Σύνδεση συσκευής
 # USB section of the Setup page
@@ -108,13 +116,13 @@ about-debugging-setup-usb-step-enable-debug-firefox2 = Ενεργοποιήστ�
 # USB section step by step guide
 about-debugging-setup-usb-step-plug-device = Συνδέστε τη συσκευή Android στον υπολογιστή σας.
 # Text shown in the USB section of the setup page with a link to troubleshoot connection errors.
-# The link goes to https://developer.mozilla.org/docs/Tools/Remote_Debugging/Debugging_over_USB
+# The link goes to https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/index.html#connecting-to-a-remote-device
 about-debugging-setup-usb-troubleshoot = Προβλήματα σύνδεσης με τη συσκευή USB; <a>Επίλυση προβλημάτων</a>
 # Network section of the Setup page
 about-debugging-setup-network =
     .title = Τοποθεσία δικτύου
 # Text shown in the Network section of the setup page with a link to troubleshoot connection errors.
-# The link goes to https://developer.mozilla.org/en-US/docs/Tools/Remote_Debugging/Debugging_over_a_network
+# The link goes to https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/index.html#connecting-over-the-network
 about-debugging-setup-network-troubleshoot = Προβλήματα σύνδεσης μέσω τοποθεσίας δικτύου; <a>Επίλυση προβλημάτων</a>
 # Text of a button displayed after the network locations "Host" input.
 # Clicking on it will add the new network location to the list.
@@ -142,35 +150,42 @@ about-debugging-network-location-form-duplicate = Ο κεντρικός υπολ
 # Below are the titles for the various categories of debug targets that can be found
 # on "runtime" pages of about:debugging.
 # Title of the temporary extensions category (only available for "This Firefox" runtime).
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-temporary-extensions =
     .name = Προσωρινές επεκτάσεις
 # Title of the extensions category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-extensions =
     .name = Επεκτάσεις
 # Title of the tabs category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-tabs =
     .name = Καρτέλες
 # Title of the service workers category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-service-workers =
     .name = Service worker
 # Title of the shared workers category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-shared-workers =
     .name = Shared worker
 # Title of the other workers category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-other-workers =
     .name = Άλλα worker
 # Title of the processes category.
+# .name is processed by fluent-react / DebugTargetPane
 about-debugging-runtime-processes =
     .name = Διεργασίες
 # Label of the button opening the performance profiler panel in runtime pages for remote
 # runtimes.
 about-debugging-runtime-profile-button2 = Επιδόσεις προφίλ
 # This string is displayed in the runtime page if the current configuration of the
-# target runtime is incompatible with service workers. "Learn more" points to MDN.
-# https://developer.mozilla.org/en-US/docs/Tools/about%3Adebugging#Service_workers_not_compatible
+# target runtime is incompatible with service workers. "Learn more" points to:
+# https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/index.html#service-workers-not-compatible
 about-debugging-runtime-service-workers-not-compatible = Οι ρυθμίσεις του προγράμματος περιήγησής σας δεν είναι συμβατές με τα service worker. <a>Μάθετε περισσότερα</a>
 # This string is displayed in the runtime page if the remote browser version is too old.
-# "Troubleshooting" link points to https://developer.mozilla.org/docs/Tools/about:debugging#Troubleshooting
+# "Troubleshooting" link points to https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/
 # { $runtimeVersion } is the version of the remote browser (for instance "67.0a1")
 # { $minVersion } is the minimum version that is compatible with the current Firefox instance (same format)
 about-debugging-browser-version-too-old = Το συνδεδεμένο πρόγραμμα περιήγησης έχει παλιά έκδοση ({ $runtimeVersion }). Η ελάχιστη υποστηριζόμενη έκδοση είναι ({ $minVersion }).  Πρόκειται για μη υποστηριζόμενη ρύθμιση και ενδέχεται να προκαλέσει αποτυχία του DevTools. Παρακαλούμε ενημερώστε το συνδεδεμένο πρόγραμμα περιήγησης. <a>Αντιμετώπιση προβλημάτων</a>
@@ -178,7 +193,7 @@ about-debugging-browser-version-too-old = Το συνδεδεμένο πρόγρ
 # from Fx 70+ to the old Firefox for Android (aka Fennec) which uses Fx 68.
 about-debugging-browser-version-too-old-fennec = Αυτή η έκδοση του Firefox δεν μπορεί να χρησιμοποιηθεί για έλεγχο σφαλμάτων στο Firefox για Android (68). Προτείνουμε να εγκαταστήσετε το Firefox για Android Nightly στο τηλέφωνό σας για δοκιμή. <a>Περισσότερες λεπτομέρειες</a>
 # This string is displayed in the runtime page if the remote browser version is too recent.
-# "Troubleshooting" link points to https://developer.mozilla.org/docs/Tools/about:debugging#Troubleshooting
+# "Troubleshooting" link points to https://firefox-source-docs.mozilla.org/devtools-user/about_colon_debugging/
 # { $runtimeID } is the build ID of the remote browser (for instance "20181231", format is yyyyMMdd)
 # { $localID } is the build ID of the current Firefox instance (same format)
 # { $runtimeVersion } is the version of the remote browser (for instance "67.0a1")
@@ -224,6 +239,11 @@ about-debugging-tmp-extension-reload-button = Ανανέωση
 # Text of a button displayed for a temporary extension loaded in the "This Firefox" page.
 # Clicking on the button will uninstall the extension and remove it from the page.
 about-debugging-tmp-extension-remove-button = Αφαίρεση
+# Text of a button displayed for a temporary extension loaded in the "This Firefox" page.
+# Clicking on the button will forcefully terminate the extension background script (button
+# only visible in extensions that includes a non-persistent background script, either an
+# event page or a background service worker).
+about-debugging-tmp-extension-terminate-bgscript-button = Τερματισμός σεναρίου παρασκηνίου
 # Message displayed in the file picker that opens to select a temporary extension to load
 # (triggered by the button using "about-debugging-tmp-extension-install-button")
 # manifest.json .xpi and .zip should not be localized.
@@ -247,17 +267,28 @@ about-debugging-extension-location =
 # For instance "geckoprofiler@mozilla.com" or "{ed26ddcb-5611-4512-a89a-51b8db81cfb2}".
 about-debugging-extension-id =
     .label = ID επέκτασης
+# Text displayed for extensions in "runtime" pages, before displaying the status of the
+# extension background script.
+about-debugging-extension-backgroundscript =
+    .label = Σενάριο παρασκηνίου
+# Displayed for extension using a non-persistent background page (either an event page or
+# background service worker) when the background script is currently running.
+about-debugging-extension-backgroundscript-status-running = Εκτελείται
+# Displayed for extension using a non-persistent background page when is currently stopped.
+about-debugging-extension-backgroundscript-status-stopped = Διακόπηκε
 # This string is displayed as a label of the button that pushes a test payload
 # to a service worker.
 # Note this relates to the "Push" API, which is normally not localized so it is
 # probably better to not localize it.
+# .disabledTitle is processed by the fluent-react / ActionButton code.
 about-debugging-worker-action-push2 = Push
     .disabledTitle = Το push του service worker είναι ανενεργό αυτή τη στιγμή για το { -brand-shorter-name } πολλαπλών διεργασιών
 # This string is displayed as a label of the button that starts a service worker.
+# .disabledTitle is processed by the fluent-react / ActionButton code.
 about-debugging-worker-action-start2 = Έναρξη
     .disabledTitle = Η έναρξη του service worker έχει απενεργοποιηθεί για την πολλαπλή διεργασία { -brand-shorter-name }
 # This string is displayed as a label of the button that unregisters a service worker.
-about-debugging-worker-action-unregister = Κατάργηση εγγραφής
+about-debugging-worker-action-unregister = Κατάργηση
 # Displayed for service workers in runtime pages that listen to Fetch events.
 about-debugging-worker-fetch-listening =
     .label = Λήψη
@@ -282,20 +313,15 @@ about-debugging-worker-push-service =
     .label = Υπηρεσία Push
 # Displayed as title of the inspect button when service worker debugging is disabled.
 about-debugging-worker-inspect-action-disabled =
-    .title = Η επιθεώρηση του service worker είναι απενεργοποιημένη αυτή τη στιγμή για το { -brand-shorter-name } πολλαπλών διεργασιών
+    .title = Η επιθεώρηση του service worker είναι απενεργοποιημένη αυτήν τη στιγμή για το { -brand-shorter-name } πολλαπλών διεργασιών
 # Displayed as title of the inspect button for zombie tabs (e.g. tabs loaded via a session restore).
 about-debugging-zombie-tab-inspect-action-disabled =
     .title = Η καρτέλα δεν έχει φορτωθεί πλήρως και δεν μπορεί να επιθεωρηθεί
 # Displayed as name for the Main Process debug target in the Processes category. Only for
 # remote runtimes, if `devtools.aboutdebugging.process-debugging` is true.
-about-debugging-main-process-name = Κύρια διεργασία
+about-debugging-multiprocess-toolbox-name = Εργαλειοθήκη πολλαπλών διεργασιών
 # Displayed as description for the Main Process debug target in the Processes category.
 # Only for remote browsers, if `devtools.aboutdebugging.process-debugging` is true.
-about-debugging-main-process-description2 = Κύρια διαδικασία για το πρόγραμμα περιήγησης προορισμού
-# Displayed instead of the Main Process debug target when the preference
-# `devtools.browsertoolbox.fission` is true.
-about-debugging-multiprocess-toolbox-name = Εργαλειοθήκη πολλαπλών διεργασιών
-# Description for the Multiprocess Toolbox target.
 about-debugging-multiprocess-toolbox-description = Κύρια διεργασία και διεργασίες περιεχομένου για το πρόγραμμα περιήγησης προορισμού
 # Alt text used for the close icon of message component (warnings, errors and notifications).
 about-debugging-message-close-icon =

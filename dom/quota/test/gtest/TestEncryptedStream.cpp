@@ -20,9 +20,9 @@
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/FixedBufferOutputStream.h"
 #include "mozilla/NotNull.h"
 #include "mozilla/RefPtr.h"
-#include "mozilla/Scoped.h"
 #include "mozilla/Span.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/dom/SafeRefPtr.h"
@@ -30,7 +30,6 @@
 #include "mozilla/dom/quota/DummyCipherStrategy.h"
 #include "mozilla/dom/quota/EncryptedBlock.h"
 #include "mozilla/dom/quota/EncryptingOutputStream_impl.h"
-#include "mozilla/dom/quota/MemoryOutputStream.h"
 #include "mozilla/dom/quota/NSSCipherStrategy.h"
 #include "mozilla/fallible.h"
 #include "nsCOMPtr.h"
@@ -112,6 +111,11 @@ ArrayBufferInputStream::Available(uint64_t* aCount) {
   }
 
   return NS_OK;
+}
+
+NS_IMETHODIMP
+ArrayBufferInputStream::StreamStatus() {
+  return mClosed ? NS_BASE_STREAM_CLOSED : NS_OK;
 }
 
 NS_IMETHODIMP
@@ -224,12 +228,6 @@ NS_IMETHODIMP ArrayBufferInputStream::Clone(nsIInputStream** _retval) {
 }
 }  // namespace mozilla::dom::quota
 
-namespace mozilla {
-MOZ_TYPE_SPECIFIC_SCOPED_POINTER_TEMPLATE(ScopedNSSContext, NSSInitContext,
-                                          NSS_ShutdownContext);
-
-}  // namespace mozilla
-
 using namespace mozilla;
 using namespace mozilla::dom::quota;
 
@@ -238,18 +236,22 @@ class DOM_Quota_EncryptedStream : public ::testing::Test {
   static void SetUpTestCase() {
     // Do this only once, do not tear it down per test case.
     if (!sNssContext) {
-      sNssContext =
+      sNssContext.reset(
           NSS_InitContext("", "", "", "", nullptr,
                           NSS_INIT_READONLY | NSS_INIT_NOCERTDB |
                               NSS_INIT_NOMODDB | NSS_INIT_FORCEOPEN |
-                              NSS_INIT_OPTIMIZESPACE | NSS_INIT_NOROOTINIT);
+                              NSS_INIT_OPTIMIZESPACE | NSS_INIT_NOROOTINIT));
     }
   }
 
   static void TearDownTestCase() { sNssContext = nullptr; }
 
  private:
-  inline static ScopedNSSContext sNssContext = ScopedNSSContext{};
+  struct NSSInitContextDeleter {
+    void operator()(NSSInitContext* p) { NSS_ShutdownContext(p); }
+  };
+  inline static std::unique_ptr<NSSInitContext, NSSInitContextDeleter>
+      sNssContext;
 };
 
 enum struct FlushMode { AfterEachChunk, Never };
@@ -420,15 +422,14 @@ static auto ReadTestData(
 // XXX Change to return the buffer instead.
 template <typename CipherStrategy,
           typename ExtraChecks = decltype(NoExtraChecks<CipherStrategy>)>
-static RefPtr<dom::quota::MemoryOutputStream> DoRoundtripTest(
+static RefPtr<FixedBufferOutputStream> DoRoundtripTest(
     const size_t aDataSize, const size_t aWriteChunkSize,
     const size_t aReadChunkSize, const size_t aBlockSize,
     const typename CipherStrategy::KeyType& aKey, const FlushMode aFlushMode,
     const ExtraChecks& aExtraChecks = NoExtraChecks<CipherStrategy>) {
   // XXX Add deduction guide for RefPtr from already_AddRefed
-  const auto baseOutputStream =
-      WrapNotNull(RefPtr<dom::quota::MemoryOutputStream>{
-          dom::quota::MemoryOutputStream::Create(2048)});
+  const auto baseOutputStream = WrapNotNull(
+      RefPtr<FixedBufferOutputStream>{FixedBufferOutputStream::Create(2048)});
 
   const auto data = MakeTestData(aDataSize);
 
@@ -437,7 +438,7 @@ static RefPtr<dom::quota::MemoryOutputStream> DoRoundtripTest(
       aWriteChunkSize, aBlockSize, aKey, aFlushMode);
 
   const auto baseInputStream =
-      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->Data());
+      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->WrittenData());
 
   ReadTestData<CipherStrategy>(
       WrapNotNull(nsCOMPtr<nsIInputStream>{baseInputStream}), Span{data},
@@ -472,7 +473,8 @@ TEST_P(ParametrizedCryptTest, DummyCipherStrategy_CheckOutput) {
     return;
   }
 
-  const auto encryptedDataSpan = AsBytes(Span(encryptedDataStream->Data()));
+  const auto encryptedData = encryptedDataStream->WrittenData();
+  const auto encryptedDataSpan = AsBytes(Span(encryptedData));
 
   const auto plainTestData = MakeTestData(testParams.DataSize());
   auto encryptedBlock = EncryptedBlock<DummyCipherStrategy::BlockPrefixLength,
@@ -549,9 +551,8 @@ TEST_P(ParametrizedCryptTest, DummyCipherStrategy_Clone) {
   const TestParams& testParams = GetParam();
 
   // XXX Add deduction guide for RefPtr from already_AddRefed
-  const auto baseOutputStream =
-      WrapNotNull(RefPtr<dom::quota::MemoryOutputStream>{
-          dom::quota::MemoryOutputStream::Create(2048)});
+  const auto baseOutputStream = WrapNotNull(
+      RefPtr<FixedBufferOutputStream>{FixedBufferOutputStream::Create(2048)});
 
   const auto data = MakeTestData(testParams.DataSize());
 
@@ -561,7 +562,7 @@ TEST_P(ParametrizedCryptTest, DummyCipherStrategy_Clone) {
       CipherStrategy::KeyType{}, testParams.FlushMode());
 
   const auto baseInputStream =
-      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->Data());
+      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->WrittenData());
 
   const auto inStream = ReadTestData<CipherStrategy>(
       WrapNotNull(nsCOMPtr<nsIInputStream>{baseInputStream}), Span{data},
@@ -597,6 +598,22 @@ TEST_P(ParametrizedCryptTest, DummyCipherStrategy_IncompleteBlock) {
   EXPECT_EQ(NS_ERROR_CORRUPTED_CONTENT,
             inStream->Read(reinterpret_cast<char*>(readData.Elements()),
                            readData.Length(), &read));
+}
+
+TEST_P(ParametrizedCryptTest, zeroInitializedEncryptedBlock) {
+  const TestParams& testParams = GetParam();
+
+  using EncryptedBlock = EncryptedBlock<DummyCipherStrategy::BlockPrefixLength,
+                                        DummyCipherStrategy::BasicBlockSize>;
+
+  EncryptedBlock encryptedBlock{testParams.BlockSize()};
+  auto firstBlock =
+      encryptedBlock.WholeBlock().First<DummyCipherStrategy::BasicBlockSize>();
+  auto unusedBytesInFirstBlock = firstBlock.from(sizeof(uint16_t));
+
+  EXPECT_TRUE(std::all_of(unusedBytesInFirstBlock.begin(),
+                          unusedBytesInFirstBlock.end(),
+                          [](const auto& e) { return 0ul == e; }));
 }
 
 enum struct SeekOffset {
@@ -671,9 +688,8 @@ TEST_P(ParametrizedSeekCryptTest, DummyCipherStrategy_Seek) {
   using CipherStrategy = DummyCipherStrategy;
   const SeekTestParams& testParams = GetParam();
 
-  const auto baseOutputStream =
-      WrapNotNull(RefPtr<dom::quota::MemoryOutputStream>{
-          dom::quota::MemoryOutputStream::Create(2048)});
+  const auto baseOutputStream = WrapNotNull(
+      RefPtr<FixedBufferOutputStream>{FixedBufferOutputStream::Create(2048)});
 
   const auto data = MakeTestData(testParams.mDataSize);
 
@@ -683,7 +699,7 @@ TEST_P(ParametrizedSeekCryptTest, DummyCipherStrategy_Seek) {
       FlushMode::Never);
 
   const auto baseInputStream =
-      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->Data());
+      MakeRefPtr<ArrayBufferInputStream>(baseOutputStream->WrittenData());
 
   const auto inStream = MakeSafeRefPtr<DecryptingInputStream<CipherStrategy>>(
       WrapNotNull(nsCOMPtr<nsIInputStream>{baseInputStream}),
@@ -740,7 +756,7 @@ TEST_P(ParametrizedSeekCryptTest, DummyCipherStrategy_Seek) {
             Span{readData}.First(read).AsConst());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     DOM_Quota_EncryptedStream_Parametrized, ParametrizedCryptTest,
     testing::Combine(
         /* dataSize */ testing::Values(0u, 16u, 256u, 512u, 513u),
@@ -755,7 +771,7 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(FlushMode::Never, FlushMode::AfterEachChunk)),
     TestParamToString);
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     DOM_IndexedDB_EncryptedStream_ParametrizedSeek, ParametrizedSeekCryptTest,
     testing::Combine(
         /* dataSize */ testing::Values(0u, 16u, 256u, 512u, 513u),

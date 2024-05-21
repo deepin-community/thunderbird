@@ -25,8 +25,7 @@
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/dom/LocalStorageCommon.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 using namespace StorageUtils;
 
@@ -213,6 +212,10 @@ nsresult LocalStorageManager::GetStorageInternal(
     if (NS_WARN_IF(NS_FAILED(rv))) {
       return rv;
     }
+
+    if (!backgroundActor->CanSend()) {
+      return NS_ERROR_FAILURE;
+    }
 #endif
 
     // There is always a single instance of a cache per scope
@@ -311,6 +314,16 @@ LocalStorageManager::Preload(nsIPrincipal* aPrincipal, JSContext* aContext,
 NS_IMETHODIMP
 LocalStorageManager::IsPreloaded(nsIPrincipal* aPrincipal, JSContext* aContext,
                                  Promise** _retval) {
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(aPrincipal);
+  MOZ_ASSERT(_retval);
+
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
+LocalStorageManager::GetState(nsIPrincipal* aPrincipal, JSContext* aContext,
+                              Promise** _retval) {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aPrincipal);
   MOZ_ASSERT(_retval);
@@ -442,5 +455,4 @@ LocalStorageManager* LocalStorageManager::Ensure() {
   return sSelf;
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

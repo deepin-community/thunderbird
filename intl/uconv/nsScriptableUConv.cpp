@@ -7,8 +7,9 @@
 #include "nsString.h"
 #include "nsIScriptableUConv.h"
 #include "nsScriptableUConv.h"
-#include "nsIStringStream.h"
 #include "nsComponentManagerUtils.h"
+
+#include <tuple>
 
 using namespace mozilla;
 
@@ -47,10 +48,7 @@ nsScriptableUnicodeConverter::ConvertFromUnicode(const nsAString& aSrc,
   auto dst = AsWritableBytes(*dstChars);
   size_t totalWritten = 0;
   for (;;) {
-    uint32_t result;
-    size_t read;
-    size_t written;
-    Tie(result, read, written) =
+    auto [result, read, written] =
         mEncoder->EncodeFromUTF16WithoutReplacement(src, dst, false);
     if (result != kInputEmpty && result != kOutputFull) {
       MOZ_RELEASE_ASSERT(written < dst.Length(),
@@ -94,10 +92,8 @@ nsScriptableUnicodeConverter::Finish(nsACString& _retval) {
   uint32_t result;
   size_t read;
   size_t written;
-  bool hadErrors;
-  Tie(result, read, written, hadErrors) =
+  std::tie(result, read, written, std::ignore) =
       mEncoder->EncodeFromUTF16(src, dst, true);
-  Unused << hadErrors;
   MOZ_ASSERT(!read);
   MOZ_ASSERT(result == kInputEmpty);
   _retval.SetLength(written);
@@ -129,95 +125,27 @@ nsScriptableUnicodeConverter::ConvertToUnicode(const nsACString& aSrc,
   uint32_t result;
   size_t read;
   size_t written;
-  bool hadErrors;
   // The UTF-8 decoder used to throw regardless of the error behavior.
   // Simulating the old behavior for compatibility with legacy callers.
   // If callers want control over the behavior, they should switch to
   // TextDecoder.
   if (mDecoder->Encoding() == UTF_8_ENCODING) {
-    Tie(result, read, written) =
+    std::tie(result, read, written) =
         mDecoder->DecodeToUTF16WithoutReplacement(src, *dst, false);
     if (result != kInputEmpty) {
       return NS_ERROR_UDEC_ILLEGALINPUT;
     }
   } else {
-    Tie(result, read, written, hadErrors) =
+    std::tie(result, read, written, std::ignore) =
         mDecoder->DecodeToUTF16(src, *dst, false);
   }
   MOZ_ASSERT(result == kInputEmpty);
   MOZ_ASSERT(read == length);
   MOZ_ASSERT(written <= needed.value());
-  Unused << hadErrors;
   if (!_retval.SetLength(written, fallible)) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
   return NS_OK;
-}
-
-NS_IMETHODIMP
-nsScriptableUnicodeConverter::ConvertToByteArray(const nsAString& aString,
-                                                 uint32_t* aLen,
-                                                 uint8_t** _aData) {
-  if (!mEncoder) return NS_ERROR_FAILURE;
-
-  CheckedInt<size_t> needed =
-      mEncoder->MaxBufferLengthFromUTF16WithoutReplacement(aString.Length());
-  if (!needed.isValid() || needed.value() > UINT32_MAX) {
-    return NS_ERROR_OUT_OF_MEMORY;
-  }
-
-  uint8_t* data = (uint8_t*)malloc(needed.value());
-  if (!data) {
-    return NS_ERROR_OUT_OF_MEMORY;
-  }
-  auto src = Span(aString);
-  auto dst = Span(data, needed.value());
-  size_t totalWritten = 0;
-  for (;;) {
-    uint32_t result;
-    size_t read;
-    size_t written;
-    Tie(result, read, written) =
-        mEncoder->EncodeFromUTF16WithoutReplacement(src, dst, true);
-    if (result != kInputEmpty && result != kOutputFull) {
-      // There's always room for one byte in the case of
-      // an unmappable character, because otherwise
-      // we'd have gotten `kOutputFull`.
-      dst[written++] = '?';
-    }
-    totalWritten += written;
-    if (result == kInputEmpty) {
-      *_aData = data;
-      MOZ_ASSERT(totalWritten <= UINT32_MAX);
-      *aLen = totalWritten;
-      return NS_OK;
-    }
-    src = src.From(read);
-    dst = dst.From(written);
-  }
-}
-
-NS_IMETHODIMP
-nsScriptableUnicodeConverter::ConvertToInputStream(const nsAString& aString,
-                                                   nsIInputStream** _retval) {
-  nsresult rv;
-  nsCOMPtr<nsIStringInputStream> inputStream =
-      do_CreateInstance("@mozilla.org/io/string-input-stream;1", &rv);
-  if (NS_FAILED(rv)) return rv;
-
-  uint8_t* data;
-  uint32_t dataLen;
-  rv = ConvertToByteArray(aString, &dataLen, &data);
-  if (NS_FAILED(rv)) return rv;
-
-  rv = inputStream->AdoptData(reinterpret_cast<char*>(data), dataLen);
-  if (NS_FAILED(rv)) {
-    free(data);
-    return rv;
-  }
-
-  NS_ADDREF(*_retval = inputStream);
-  return rv;
 }
 
 NS_IMETHODIMP

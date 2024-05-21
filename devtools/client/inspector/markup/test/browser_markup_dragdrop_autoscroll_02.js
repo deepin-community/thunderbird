@@ -8,7 +8,7 @@
 
 const TEST_URL = URL_ROOT + "doc_markup_dragdrop_autoscroll_02.html";
 
-add_task(async function() {
+add_task(async function () {
   // Set the toolbox to very small in size.
   await pushPref("devtools.toolbox.footer.height", 150);
 
@@ -28,7 +28,7 @@ add_task(async function() {
   });
 
   const bottomScrollPos = await waitForScrollStop(markup.doc);
-  ok(bottomScrollPos > 0, "The view was scrolled down");
+  Assert.greater(bottomScrollPos, 0, "The view was scrolled down");
   info("Simulate a mousemove at the top and expect more scrolling");
 
   markup._onMouseMove({
@@ -38,7 +38,7 @@ add_task(async function() {
   });
 
   const topScrollPos = await waitForScrollStop(markup.doc);
-  ok(topScrollPos < bottomScrollPos, "The view was scrolled up");
+  Assert.less(topScrollPos, bottomScrollPos, "The view was scrolled up");
   is(topScrollPos, 0, "The view was scrolled up to the top");
 
   info("Simulate a mouseup to stop dragging");

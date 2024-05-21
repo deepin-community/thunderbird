@@ -10,15 +10,22 @@
 #include "nsStubDocumentObserver.h"
 
 #ifndef MOZ_NEW_XULSTORE
+#  include "nsCOMPtr.h"
 class nsIXULStore;
 #endif
 
 template <typename T>
 class nsCOMArray;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
+/**
+ * This class synchronizes element attributes (such as window sizing) with the
+ * live elements in a Document and with the XULStore. The XULStore persists
+ * these attributes to the file system. This class is created and owned by the
+ * Document and must only be created in the parent process. It only presists
+ * chrome document element attributes.
+ */
 class XULPersist final : public nsStubDocumentObserver {
  public:
   NS_DECL_ISUPPORTS
@@ -30,25 +37,21 @@ class XULPersist final : public nsStubDocumentObserver {
   NS_DECL_NSIMUTATIONOBSERVER_ATTRIBUTECHANGED
 
  protected:
-  void Persist(mozilla::dom::Element* aElement, int32_t aNameSpaceID,
-               nsAtom* aAttribute);
+  void Persist(mozilla::dom::Element* aElement, nsAtom* aAttribute);
 
  private:
   ~XULPersist();
   nsresult ApplyPersistentAttributes();
-  nsresult ApplyPersistentAttributesInternal();
   nsresult ApplyPersistentAttributesToElements(const nsAString& aID,
+                                               const nsAString& aDocURI,
                                                nsCOMArray<Element>& aElements);
 
-#ifndef MOZ_NEW_XULSTORE
   nsCOMPtr<nsIXULStore> mLocalStore;
-#endif
 
   // A weak pointer to our document. Nulled out by DropDocumentReference.
   Document* MOZ_NON_OWNING_REF mDocument;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_XULPersist_h

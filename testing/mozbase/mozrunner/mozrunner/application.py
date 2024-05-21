@@ -2,20 +2,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
-import six
-from abc import ABCMeta, abstractmethod
-from distutils.spawn import find_executable
 import os
 import posixpath
+from abc import ABCMeta, abstractmethod
+from shutil import which
 
+import six
 from mozdevice import ADBDeviceFactory
 from mozprofile import (
-    Profile,
     ChromeProfile,
     ChromiumProfile,
     FirefoxProfile,
+    Profile,
     ThunderbirdProfile,
 )
 
@@ -53,7 +51,7 @@ class RemoteContext(object):
     @property
     def bindir(self):
         if self._bindir is None:
-            paths = [find_executable("emulator")]
+            paths = [which("emulator")]
             paths = [p for p in paths if p is not None if os.path.isfile(p)]
             if not paths:
                 self._bindir = ""
@@ -90,11 +88,11 @@ class RemoteContext(object):
             paths.insert(0, os.path.abspath(self.bindir))
             os.environ["PATH"] = os.pathsep.join(paths)
 
-        return find_executable(binary)
+        return which(binary)
 
     @abstractmethod
     def stop_application(self):
-        """ Run (device manager) command to stop application. """
+        """Run (device manager) command to stop application."""
         pass
 
 

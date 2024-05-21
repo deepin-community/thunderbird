@@ -3,8 +3,8 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY Window.title        "Taolenn ar pennadoù">
-<!ENTITY buildToc.label      "Sevel an daolennad adalek :">
-<!ENTITY tag.label           "Klav :">
+<!ENTITY buildToc.label      "Sevel an daolennad diouzh:">
+<!ENTITY tag.label           "Merk:">
 <!ENTITY class.label         "Klas :">
 <!ENTITY header1.label       "Live 1">
 <!ENTITY header2.label       "Live 2">

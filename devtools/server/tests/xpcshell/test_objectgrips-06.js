@@ -38,6 +38,8 @@ add_task(
 
 function evalCode(debuggee) {
   debuggee.eval(
+    // These arguments are tested.
+    // eslint-disable-next-line no-unused-vars
     function stopMe(arg1) {
       debugger;
     }.toString()
@@ -45,7 +47,7 @@ function evalCode(debuggee) {
   /* eslint-disable no-undef */
   debuggee.eval(
     "(" +
-      function() {
+      function () {
         const obj1 = {};
         Object.seal(obj1);
         stopMe(obj1, {});

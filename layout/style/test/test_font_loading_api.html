@@ -6,7 +6,7 @@
 
 <script src=descriptor_database.js></script>
 
-<body onload="start()">
+<body onload="runTest()">
 <iframe id=v src="file_font_loading_api_vframe.html"></iframe>
 <iframe id=n style="display: none"></iframe>
 
@@ -1884,15 +1884,6 @@ function runTest() {
     SimpleTest.finish();
 
   });
-}
-
-function start() {
-  if (SpecialPowers.getBoolPref("layout.css.font-loading-api.enabled")) {
-    SpecialPowers.pushPrefEnv({ set: [["layout.css.font-display.enabled", true]] },
-                              runTest);
-  } else {
-    ok(true, "CSS Font Loading API is not enabled.");
-  }
 }
 
 SimpleTest.waitForExplicitFinish();

@@ -6,7 +6,7 @@
 const TAB_URL = URL_ROOT + "resources/service-workers/simple.html";
 
 // check telemetry for debugging a service worker
-add_task(async function() {
+add_task(async function () {
   await enableApplicationPanel();
 
   const { panel, tab, toolbox, commands } = await openNewTabAndApplicationPanel(
@@ -34,7 +34,11 @@ add_task(async function() {
 
   const events = getTelemetryEvents("jsdebugger");
   const openToolboxEvent = events.find(event => event.method == "enter");
-  ok(openToolboxEvent.session_id > 0, "Event has a valid session id");
+  Assert.greater(
+    Number(openToolboxEvent.session_id),
+    0,
+    "Event has a valid session id"
+  );
   is(
     openToolboxEvent.start_state,
     "application",

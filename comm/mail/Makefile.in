@@ -2,8 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-include $(moztopsrcdir)/config/config.mk
-include $(moztopsrcdir)/config/rules.mk
+include $(topsrcdir)/config/config.mk
+include $(topsrcdir)/config/rules.mk
 
 ifdef MAKENSISU
 # For Windows build the uninstaller during the application build since the
@@ -23,6 +23,11 @@ libs:: $(DIST)/bin/platform.ini
 	$(PYTHON3) $(commtopsrcdir)/build/source_repos.py gen_platformini \
 		$(DIST)/bin/platform.ini
 
-libs::
-	@echo Generating $(MOZ_BUILT_FROM_FILE) for Treeherder.
-	$(PYTHON3) $(commtopsrcdir)/build/source_repos.py gen_treeherder_build_links > $(DIST)/$(MOZ_BUILT_FROM_FILE)
+
+vendored-rust-check:
+ifdef MOZ_THUNDERBIRD_RUST
+	@echo "Checking vendored Rust libs"
+	$(PYTHON3) $(commtopsrcdir)/python/rocbuild/rocbuild/rust.py verify_vendored_dependencies
+endif
+
+export:: vendored-rust-check

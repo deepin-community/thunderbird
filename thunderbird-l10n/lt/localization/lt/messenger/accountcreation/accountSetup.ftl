@@ -25,8 +25,6 @@ account-setup-name-info-icon =
     .title = Kitiems rodomas jūsų vardas
 
 
-account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
 
 account-setup-email-label = Elektroninio pašto adresas
     .accesskey = E
@@ -37,8 +35,6 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Jūsų turimas el. pašto adresas
 
-account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
 
 account-setup-password-label = Slaptažodis
     .accesskey = S
@@ -46,9 +42,6 @@ account-setup-password-label = Slaptažodis
 
 account-provisioner-button = Gauti naują el. pašto adresą
     .accesskey = n
-
-account-setup-password-toggle =
-    .title = Rodyti / slėpti slaptažodį
 
 account-setup-remember-password = Įsiminti slaptažodį
     .accesskey = s
@@ -151,18 +144,9 @@ account-setup-forum-help = Palaikymo forumas
 
 ## Results area
 
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
-
 account-setup-result-imap-description = Aplankus ir el. laiškus visada sinchronizuoti su serveriu.
 
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
-
 account-setup-result-pop-description = Aplankus ir el. laiškus saugoti tik kompiuteryje
-
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = „Exchange“
 
 account-setup-incoming-title = Gaunami
 
@@ -171,8 +155,6 @@ account-setup-outgoing-title = Siunčiami
 account-setup-username-title = Naudotojo vardas
 
 account-setup-exchange-title = Serveris
-
-account-setup-result-smtp = SMTP
 
 account-setup-result-no-encryption = Be šifravimo
 
@@ -200,12 +182,6 @@ account-setup-manual-config-title = Serverio nuostatos
 account-setup-incoming-server-legend = Gaunamų laišku serveris
 
 account-setup-protocol-label = Protokolas:
-
-protocol-imap-option = { account-setup-result-imap }
-
-protocol-pop-option = { account-setup-result-pop }
-
-protocol-exchange-option = { account-setup-result-exchange }
 
 account-setup-hostname-label = Serverio pavadinimas:
 

@@ -3,10 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// SearchIntegration.jsm
-/* globals SearchIntegration, SearchSupport, Services */
+// This file gets loaded through Services.scriptloader.loadSubScript.
+// by SearchIntegration.sys.mjs.
 
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+/* globals SearchIntegration, SearchSupport */ // from SearchIntegration.sys.mjs
+
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
 var MSG_DB_LARGE_COMMIT = 1;
 var CRLF = "\r\n";
@@ -29,8 +33,7 @@ var gRegKeys = [
   // This is the property handler
   {
     root: Ci.nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE,
-    key:
-      "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PropertySystem\\PropertyHandlers\\.wdseml",
+    key: "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PropertySystem\\PropertyHandlers\\.wdseml",
     name: "",
     value: "{5FA29220-36A1-40f9-89C6-F4B384B7642E}",
   },
@@ -105,7 +108,7 @@ SearchIntegration = {
   get _regKeysPresent() {
     if (!this.__regKeysPresent) {
       for (let i = 0; i < gRegKeys.length; i++) {
-        let regKey = Cc["@mozilla.org/windows-registry-key;1"].createInstance(
+        const regKey = Cc["@mozilla.org/windows-registry-key;1"].createInstance(
           Ci.nsIWindowsRegKey
         );
         try {
@@ -117,7 +120,7 @@ SearchIntegration = {
         } catch (e) {
           return false;
         }
-        let valuePresent =
+        const valuePresent =
           regKey.hasValue(gRegKeys[i].name) &&
           regKey.readStringValue(gRegKeys[i].name) == gRegKeys[i].value;
         regKey.close();
@@ -170,7 +173,7 @@ SearchIntegration = {
       return;
     }
 
-    let enabled = this.prefEnabled;
+    const enabled = this.prefEnabled;
 
     if (enabled) {
       this._log.info("Initializing Windows Search integration");
@@ -181,7 +184,7 @@ SearchIntegration = {
   /**
    * Add necessary hooks to Windows
    *
-   * @return false if registration did not succeed, because the elevation
+   * @returns false if registration did not succeed, because the elevation
    * request was denied
    */
   register() {
@@ -202,7 +205,7 @@ SearchIntegration = {
       }
     }
     // Also set the FANCI bit to 0 for the profile directory
-    let profD = Services.dirsvc.get("ProfD", Ci.nsIFile);
+    const profD = Services.dirsvc.get("ProfD", Ci.nsIFile);
     this._winSearchHelper.setFANCIBit(profD, false, true);
 
     return true;
@@ -212,7 +215,7 @@ SearchIntegration = {
    * Remove integration from Windows. The only thing removed is the directory
    * from the index list. This will ask for elevation.
    *
-   * @return false if deregistration did not succeed, because the elevation
+   * @returns false if deregistration did not succeed, because the elevation
    * request was denied
    */
   deregister() {
@@ -234,7 +237,7 @@ SearchIntegration = {
 
     onStartRequest(request) {
       try {
-        let outputFileStream = Cc[
+        const outputFileStream = Cc[
           "@mozilla.org/network/file-output-stream;1"
         ].createInstance(Ci.nsIFileOutputStream);
         outputFileStream.init(this._outputFile, -1, -1, 0);
@@ -252,15 +255,15 @@ SearchIntegration = {
         // XXX Once the JS emitter gets checked in, this code should probably be
         // switched over to use that
         // Decode using getMsgTextFromStream
-        let stringStream = Cc[
+        const stringStream = Cc[
           "@mozilla.org/io/string-input-stream;1"
         ].createInstance(Ci.nsIStringInputStream);
         stringStream.setData(this._message, this._message.length);
-        let contentType = {};
-        let folder = this._msgHdr.folder;
-        let text = folder.getMsgTextFromStream(
+        const contentType = {};
+        const folder = this._msgHdr.folder;
+        const text = folder.getMsgTextFromStream(
           stringStream,
-          this._msgHdr.Charset,
+          this._msgHdr.charset,
           65536,
           50000,
           false,
@@ -271,12 +274,12 @@ SearchIntegration = {
         // To get the Received header, we need to parse the message headers.
         // We only need the first header, which contains the latest received
         // date
-        let headers = this._message.split(/\r\n\r\n|\r\r|\n\n/, 1)[0];
-        let mimeHeaders = Cc[
+        const headers = this._message.split(/\r\n\r\n|\r\r|\n\n/, 1)[0];
+        const mimeHeaders = Cc[
           "@mozilla.org/messenger/mimeheaders;1"
         ].createInstance(Ci.nsIMimeHeaders);
         mimeHeaders.initialize(headers);
-        let receivedHeader = mimeHeaders.extractHeader("Received", false);
+        const receivedHeader = mimeHeaders.extractHeader("Received", false);
 
         this._outputStream.writeString("From: " + this._msgHdr.author + CRLF);
         // If we're a newsgroup, then add the name of the folder as the
@@ -308,7 +311,7 @@ SearchIntegration = {
           SearchIntegration._hdrIndexedProperty,
           this._reindexTime
         );
-        folder.msgDatabase.Commit(MSG_DB_LARGE_COMMIT);
+        folder.msgDatabase.commit(MSG_DB_LARGE_COMMIT);
 
         this._message = "";
         SearchIntegration._log.info("Successfully written file");
@@ -322,13 +325,13 @@ SearchIntegration = {
 
     onDataAvailable(request, inputStream, offset, count) {
       try {
-        let inStream = Cc[
+        const inStream = Cc[
           "@mozilla.org/scriptableinputstream;1"
         ].createInstance(Ci.nsIScriptableInputStream);
         inStream.init(inputStream);
 
         // It is necessary to read in data from the input stream
-        let inData = inStream.read(count);
+        const inData = inStream.read(count);
 
         // Ignore stuff after the first 50K or so
         if (this._message && this._message.length > 50000) {

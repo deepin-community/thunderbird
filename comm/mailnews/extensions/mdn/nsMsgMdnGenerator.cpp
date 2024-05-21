@@ -7,7 +7,6 @@
 #include "nsImapCore.h"
 #include "nsIMsgImapMailFolder.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "nsMimeTypes.h"
 #include "prprf.h"
 #include "prmem.h"
@@ -17,7 +16,6 @@
 #include "nsMsgLocalFolderHdrs.h"
 #include "nsIHttpProtocolHandler.h"
 #include "nsISmtpService.h"  // for actually sending the message...
-#include "nsMsgCompCID.h"
 #include "nsComposeStrings.h"
 #include "nsISmtpServer.h"
 #include "nsIPrompt.h"
@@ -29,9 +27,11 @@
 #include "nsMsgUtils.h"
 #include "nsNetUtil.h"
 #include "nsIMsgDatabase.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
 #include "mozilla/Unused.h"
+#include "nsIPromptService.h"
+#include "nsEmbedCID.h"
 
 using namespace mozilla::mailnews;
 
@@ -80,17 +80,16 @@ char DispositionTypes[7][16] = {
 
 NS_IMPL_ISUPPORTS(nsMsgMdnGenerator, nsIMsgMdnGenerator, nsIUrlListener)
 
-nsMsgMdnGenerator::nsMsgMdnGenerator() {
-  m_disposeType = eDisplayed;
-  m_outputStream = nullptr;
-  m_reallySendMdn = false;
-  m_autoSend = false;
-  m_autoAction = false;
-  m_mdnEnabled = false;
-  m_notInToCcOp = eNeverSendOp;
-  m_outsideDomainOp = eNeverSendOp;
-  m_otherOp = eNeverSendOp;
-}
+nsMsgMdnGenerator::nsMsgMdnGenerator()
+    : m_disposeType(eDisplayed),
+      m_key(nsMsgKey_None),
+      m_notInToCcOp(eNeverSendOp),
+      m_outsideDomainOp(eNeverSendOp),
+      m_otherOp(eNeverSendOp),
+      m_reallySendMdn(false),
+      m_autoSend(false),
+      m_autoAction(false),
+      m_mdnEnabled(false) {}
 
 nsMsgMdnGenerator::~nsMsgMdnGenerator() {}
 
@@ -100,7 +99,7 @@ nsresult nsMsgMdnGenerator::FormatStringFromName(const char* aName,
   DEBUG_MDN("nsMsgMdnGenerator::FormatStringFromName");
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -119,7 +118,7 @@ nsresult nsMsgMdnGenerator::GetStringFromName(const char* aName,
   DEBUG_MDN("nsMsgMdnGenerator::GetStringFromName");
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -376,7 +375,7 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
   nsCOMPtr<nsIMsgCompUtils> compUtils;
 
   if (m_mimeSeparator.IsEmpty()) {
-    compUtils = do_GetService(NS_MSGCOMPUTILS_CONTRACTID, &rv);
+    compUtils = do_GetService("@mozilla.org/messengercompose/computils;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     rv = compUtils->MimeMakeSeparator("mdn", getter_Copies(m_mimeSeparator));
     NS_ENSURE_SUCCESS(rv, rv);
@@ -408,9 +407,6 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
   PR_Free(tmpBuffer);
   if (NS_FAILED(rv)) return rv;
 
-  bool conformToStandard = false;
-  if (compUtils) compUtils->GetMsgMimeConformToStandard(&conformToStandard);
-
   nsString fullName;
   m_identity->GetFullName(fullName);
 
@@ -418,8 +414,7 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
   // convert fullName to UTF8 before passing it to MakeMimeAddress
   MakeMimeAddress(NS_ConvertUTF16toUTF8(fullName), m_email, fullAddress);
 
-  convbuf = nsMsgI18NEncodeMimePartIIStr(fullAddress.get(), true, "UTF-8", 0,
-                                         conformToStandard);
+  convbuf = nsMsgI18NEncodeMimePartIIStr(fullAddress.get(), true, "UTF-8", 0);
 
   parm = PR_smprintf("From: %s" CRLF, convbuf ? convbuf : m_email.get());
 
@@ -433,7 +428,9 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
 
   if (compUtils) {
     nsCString msgId;
-    rv = compUtils->MsgGenerateMessageId(m_identity, getter_Copies(msgId));
+    rv = compUtils->MsgGenerateMessageId(m_identity, ""_ns, msgId);
+    NS_ENSURE_SUCCESS(rv, rv);
+
     tmpBuffer = PR_smprintf("Message-ID: %s" CRLF, msgId.get());
     PUSH_N_FREE_STRING(tmpBuffer);
   }
@@ -467,15 +464,13 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
 
   receipt_string.AppendLiteral(" - ");
 
-  char* encodedReceiptString =
-      nsMsgI18NEncodeMimePartIIStr(NS_ConvertUTF16toUTF8(receipt_string).get(),
-                                   false, "UTF-8", 0, conformToStandard);
+  char* encodedReceiptString = nsMsgI18NEncodeMimePartIIStr(
+      NS_ConvertUTF16toUTF8(receipt_string).get(), false, "UTF-8", 0);
 
   nsCString subject;
   m_headers->ExtractHeader(HEADER_SUBJECT, false, subject);
   convbuf = nsMsgI18NEncodeMimePartIIStr(
-      subject.Length() ? subject.get() : "[no subject]", false, "UTF-8", 0,
-      conformToStandard);
+      subject.Length() ? subject.get() : "[no subject]", false, "UTF-8", 0);
   tmpBuffer = PR_smprintf(
       "Subject: %s%s" CRLF, encodedReceiptString,
       (convbuf ? convbuf
@@ -485,8 +480,7 @@ nsresult nsMsgMdnGenerator::CreateFirstPart() {
   PR_Free(convbuf);
   PR_Free(encodedReceiptString);
 
-  convbuf = nsMsgI18NEncodeMimePartIIStr(m_dntRrt.get(), true, "UTF-8", 0,
-                                         conformToStandard);
+  convbuf = nsMsgI18NEncodeMimePartIIStr(m_dntRrt.get(), true, "UTF-8", 0);
   tmpBuffer = PR_smprintf("To: %s" CRLF, convbuf ? convbuf : m_dntRrt.get());
   PUSH_N_FREE_STRING(tmpBuffer);
 
@@ -568,8 +562,6 @@ nsresult nsMsgMdnGenerator::CreateSecondPart() {
   char* tmpBuffer = nullptr;
   char* convbuf = nullptr;
   nsresult rv = NS_OK;
-  nsCOMPtr<nsIMsgCompUtils> compUtils;
-  bool conformToStandard = false;
 
   tmpBuffer = PR_smprintf("--%s" CRLF, m_mimeSeparator.get());
   PUSH_N_FREE_STRING(tmpBuffer);
@@ -589,21 +581,57 @@ nsresult nsMsgMdnGenerator::CreateSecondPart() {
   nsCOMPtr<nsIHttpProtocolHandler> pHTTPHandler =
       do_GetService(NS_NETWORK_PROTOCOL_CONTRACTID_PREFIX "http", &rv);
   if (NS_SUCCEEDED(rv) && pHTTPHandler) {
-    nsAutoCString userAgentString;
-    // Ignore error since we're testing the return value.
-    mozilla::Unused << pHTTPHandler->GetUserAgent(userAgentString);
+    bool sendUserAgent = false;
+    nsCOMPtr<nsIPrefBranch> prefBranch(
+        do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
+    if (NS_SUCCEEDED(rv) && prefBranch) {
+      prefBranch->GetBoolPref("mailnews.headers.sendUserAgent", &sendUserAgent);
+    }
 
-    if (!userAgentString.IsEmpty()) {
-      // Prepend the product name with the dns name according to RFC 3798.
-      char hostName[256];
-      PR_GetSystemInfo(PR_SI_HOSTNAME_UNTRUNCATED, hostName, sizeof hostName);
-      if ((hostName[0] != '\0') && (strchr(hostName, '.') != NULL)) {
-        userAgentString.InsertLiteral("; ", 0);
-        userAgentString.Insert(nsDependentCString(hostName), 0);
+    if (sendUserAgent) {
+      bool useMinimalUserAgent = false;
+      if (prefBranch) {
+        prefBranch->GetBoolPref("mailnews.headers.useMinimalUserAgent",
+                                &useMinimalUserAgent);
       }
+      if (useMinimalUserAgent) {
+        nsCOMPtr<nsIStringBundleService> bundleService =
+            mozilla::components::StringBundle::Service();
+        if (bundleService) {
+          nsCOMPtr<nsIStringBundle> brandBundle;
+          rv = bundleService->CreateBundle(
+              "chrome://branding/locale/brand.properties",
+              getter_AddRefs(brandBundle));
+          if (NS_SUCCEEDED(rv)) {
+            nsString brandName;
+            brandBundle->GetStringFromName("brandFullName", brandName);
+            if (!brandName.IsEmpty()) {
+              NS_ConvertUTF16toUTF8 ua8(brandName);
+              tmpBuffer = PR_smprintf("Reporting-UA: %s" CRLF, ua8.get());
+              PUSH_N_FREE_STRING(tmpBuffer);
+            }
+          }
+        }
+      } else {
+        nsAutoCString userAgentString;
+        // Ignore error since we're testing the return value.
+        mozilla::Unused << pHTTPHandler->GetUserAgent(userAgentString);
 
-      tmpBuffer = PR_smprintf("Reporting-UA: %s" CRLF, userAgentString.get());
-      PUSH_N_FREE_STRING(tmpBuffer);
+        if (!userAgentString.IsEmpty()) {
+          // Prepend the product name with the dns name according to RFC 3798.
+          char hostName[256];
+          PR_GetSystemInfo(PR_SI_HOSTNAME_UNTRUNCATED, hostName,
+                           sizeof hostName);
+          if ((hostName[0] != '\0') && (strchr(hostName, '.') != NULL)) {
+            userAgentString.InsertLiteral("; ", 0);
+            userAgentString.Insert(nsDependentCString(hostName), 0);
+          }
+
+          tmpBuffer =
+              PR_smprintf("Reporting-UA: %s" CRLF, userAgentString.get());
+          PUSH_N_FREE_STRING(tmpBuffer);
+        }
+      }
     }
   }
 
@@ -616,11 +644,7 @@ nsresult nsMsgMdnGenerator::CreateSecondPart() {
     PUSH_N_FREE_STRING(tmpBuffer);
   }
 
-  compUtils = do_GetService(NS_MSGCOMPUTILS_CONTRACTID, &rv);
-  if (compUtils) compUtils->GetMsgMimeConformToStandard(&conformToStandard);
-
-  convbuf = nsMsgI18NEncodeMimePartIIStr(m_email.get(), true, "UTF-8", 0,
-                                         conformToStandard);
+  convbuf = nsMsgI18NEncodeMimePartIIStr(m_email.get(), true, "UTF-8", 0);
   tmpBuffer = PR_smprintf("Final-Recipient: rfc822;%s" CRLF,
                           convbuf ? convbuf : m_email.get());
   PUSH_N_FREE_STRING(tmpBuffer);
@@ -731,8 +755,9 @@ nsresult nsMsgMdnGenerator::OutputAllHeaders() {
       } else {
         NS_ASSERTION(*end == 0, "content of end should be null");
         rv = WriteString(start);
-        if (NS_FAILED(rv)) return rv;
+        NS_ENSURE_SUCCESS(rv, rv);
         rv = WriteString(CRLF);
+        NS_ENSURE_SUCCESS(rv, rv);
         while (end < buf_end && (*end == '\n' || *end == '\r' || *end == 0))
           end++;
         start = end;
@@ -747,17 +772,16 @@ nsresult nsMsgMdnGenerator::SendMdnMsg() {
   DEBUG_MDN("nsMsgMdnGenerator::SendMdnMsg");
   nsresult rv;
   nsCOMPtr<nsISmtpService> smtpService =
-      do_GetService(NS_SMTPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIURI> aUri;
   nsCOMPtr<nsIRequest> aRequest;
   nsCString identEmail;
   m_identity->GetEmail(identEmail);
-  smtpService->SendMailMessage(m_file, m_dntRrt.get(), m_identity,
-                               identEmail.get(), EmptyString(), this, nullptr,
-                               nullptr, false, ""_ns, getter_AddRefs(aUri),
-                               getter_AddRefs(aRequest));
+  smtpService->SendMailMessage(
+      m_file, m_dntRrt, m_identity, identEmail, EmptyString(), this, nullptr,
+      nullptr, false, ""_ns, getter_AddRefs(aUri), getter_AddRefs(aRequest));
 
   return NS_OK;
 }
@@ -774,7 +798,7 @@ nsresult nsMsgMdnGenerator::InitAndProcess(bool* needToAskUser) {
   DEBUG_MDN("nsMsgMdnGenerator::InitAndProcess");
   nsresult rv = m_folder->GetServer(getter_AddRefs(m_server));
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (accountManager && m_server) {
     if (!m_identity) {
       // check if this is a message delivered to the global inbox,
@@ -800,7 +824,8 @@ nsresult nsMsgMdnGenerator::InitAndProcess(bool* needToAskUser) {
           nsCString identEmail;
           ident->GetEmail(identEmail);
           if (!mailTo.IsEmpty() && !identEmail.IsEmpty() &&
-              mailTo.Find(identEmail, /* ignoreCase = */ true) != kNotFound) {
+              FindInReadable(identEmail, mailTo,
+                             nsCaseInsensitiveCStringComparator)) {
             m_identity = ident;
             break;
           }
@@ -811,7 +836,8 @@ nsresult nsMsgMdnGenerator::InitAndProcess(bool* needToAskUser) {
             nsCString identEmail;
             ident->GetEmail(identEmail);
             if (!mailCC.IsEmpty() && !identEmail.IsEmpty() &&
-                mailCC.Find(identEmail, /* ignoreCase = */ true) != kNotFound) {
+                FindInReadable(identEmail, mailCC,
+                               nsCaseInsensitiveCStringComparator)) {
               m_identity = ident;
               break;
             }
@@ -960,7 +986,7 @@ NS_IMETHODIMP nsMsgMdnGenerator::OnStopRunningUrl(nsIURI* url,
   }
 
   nsCOMPtr<nsISmtpService> smtpService(
-      do_GetService(NS_SMTPSERVICE_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Get the smtp hostname and format the string.
@@ -974,7 +1000,7 @@ NS_IMETHODIMP nsMsgMdnGenerator::OnStopRunningUrl(nsIURI* url,
 
   nsCOMPtr<nsIStringBundle> bundle;
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   rv = bundleService->CreateBundle(
@@ -987,9 +1013,14 @@ NS_IMETHODIMP nsMsgMdnGenerator::OnStopRunningUrl(nsIURI* url,
   bundle->FormatStringFromName(exitString, params, failed_msg);
   bundle->GetStringFromName("sendMessageErrorTitle", dialogTitle);
 
-  nsCOMPtr<nsIPrompt> dialog;
-  rv = m_window->GetPromptDialog(getter_AddRefs(dialog));
-  if (NS_SUCCEEDED(rv)) dialog->Alert(dialogTitle.get(), failed_msg.get());
+  nsCOMPtr<mozIDOMWindowProxy> domWindow;
+  m_window->GetDomWindow(getter_AddRefs(domWindow));
+
+  nsCOMPtr<nsIPromptService> dlgService(
+      do_GetService(NS_PROMPTSERVICE_CONTRACTID, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  dlgService->Alert(domWindow, dialogTitle.get(), failed_msg.get());
 
   return NS_OK;
 }

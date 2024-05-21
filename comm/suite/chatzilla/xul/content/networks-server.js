@@ -3,8 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } =
-  ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { isLegalHostNameOrIP = 
   ChromeUtils.import("resource:///modules/hostnameUtils.jsm");
 
@@ -39,7 +37,7 @@ function onLoad(aEvent) {
 }
 
 function onAccept() {
-  let hostname = cleanUpHostName(gNameValue.value);
+  let hostname = cleanUpHostName(gNameValue.value.toLowerCase());
   if (!isLegalHostNameOrIP(hostname)) {
     let alertTitle = gNetworksBundle.getString("invalidServerName");
     let alertMsg = gNetworksBundle.getString("enterValidServerName");

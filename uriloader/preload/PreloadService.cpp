@@ -7,15 +7,24 @@
 
 #include "FetchPreloader.h"
 #include "PreloaderBase.h"
+#include "mozilla/Assertions.h"
 #include "mozilla/AsyncEventDispatcher.h"
+#include "mozilla/Maybe.h"
+#include "mozilla/dom/FetchPriority.h"
 #include "mozilla/dom/HTMLLinkElement.h"
 #include "mozilla/dom/ScriptLoader.h"
+#include "mozilla/dom/ReferrerInfo.h"
 #include "mozilla/Encoding.h"
 #include "mozilla/FontPreloader.h"
 #include "mozilla/StaticPrefs_network.h"
+#include "nsGenericHTMLElement.h"
 #include "nsNetUtil.h"
 
 namespace mozilla {
+
+using namespace dom;
+
+static LazyLogModule sPreloadServiceLog{"PreloadService"};
 
 PreloadService::PreloadService(dom::Document* aDoc) : mDocument(aDoc) {}
 PreloadService::~PreloadService() = default;
@@ -67,15 +76,10 @@ already_AddRefed<PreloaderBase> PreloadService::PreloadLinkElement(
     return nullptr;
   }
 
-  if (!StaticPrefs::network_preload()) {
-    return nullptr;
-  }
-
-  nsAutoString as, charset, crossOrigin, integrity, referrerPolicy, srcset,
-      sizes, type, url;
+  nsAutoString as, charset, crossOrigin, integrity, referrerPolicy,
+      fetchPriority, rel, srcset, sizes, type, url;
 
   nsCOMPtr<nsIURI> uri = aLinkElement->GetURI();
-  aLinkElement->GetAs(as);
   aLinkElement->GetCharset(charset);
   aLinkElement->GetImageSrcset(srcset);
   aLinkElement->GetImageSizes(sizes);
@@ -83,11 +87,27 @@ already_AddRefed<PreloaderBase> PreloadService::PreloadLinkElement(
   aLinkElement->GetCrossOrigin(crossOrigin);
   aLinkElement->GetIntegrity(integrity);
   aLinkElement->GetReferrerPolicy(referrerPolicy);
-  aLinkElement->GetType(type);
+  aLinkElement->GetFetchPriority(fetchPriority);
+  aLinkElement->GetRel(rel);
+
+  nsAutoString nonce;
+  if (nsString* cspNonce =
+          static_cast<nsString*>(aLinkElement->GetProperty(nsGkAtoms::nonce))) {
+    nonce = *cspNonce;
+  }
+
+  if (rel.LowerCaseEqualsASCII("modulepreload")) {
+    as = u"script"_ns;
+    type = u"module"_ns;
+  } else {
+    aLinkElement->GetAs(as);
+    aLinkElement->GetType(type);
+  }
 
   auto result = PreloadOrCoalesce(uri, url, aPolicyType, as, type, charset,
-                                  srcset, sizes, integrity, crossOrigin,
-                                  referrerPolicy, /* aFromHeader = */ false);
+                                  srcset, sizes, nonce, integrity, crossOrigin,
+                                  referrerPolicy, fetchPriority,
+                                  /* aFromHeader = */ false, 0);
 
   if (!result.mPreloader) {
     NotifyNodeEvent(aLinkElement, result.mAlreadyComplete);
@@ -100,29 +120,55 @@ already_AddRefed<PreloaderBase> PreloadService::PreloadLinkElement(
 
 void PreloadService::PreloadLinkHeader(
     nsIURI* aURI, const nsAString& aURL, nsContentPolicyType aPolicyType,
-    const nsAString& aAs, const nsAString& aType, const nsAString& aIntegrity,
-    const nsAString& aSrcset, const nsAString& aSizes, const nsAString& aCORS,
-    const nsAString& aReferrerPolicy) {
+    const nsAString& aAs, const nsAString& aType, const nsAString& aNonce,
+    const nsAString& aIntegrity, const nsAString& aSrcset,
+    const nsAString& aSizes, const nsAString& aCORS,
+    const nsAString& aReferrerPolicy, uint64_t aEarlyHintPreloaderId,
+    const nsAString& aFetchPriority) {
   if (aPolicyType == nsIContentPolicy::TYPE_INVALID) {
     MOZ_ASSERT_UNREACHABLE("Caller should check");
     return;
   }
 
-  if (!StaticPrefs::network_preload()) {
-    return;
+  PreloadOrCoalesce(aURI, aURL, aPolicyType, aAs, aType, u""_ns, aSrcset,
+                    aSizes, aNonce, aIntegrity, aCORS, aReferrerPolicy,
+                    aFetchPriority,
+                    /* aFromHeader = */ true, aEarlyHintPreloaderId);
+}
+
+// The mapping is specified as implementation-defined, see step 15 of
+// <https://fetch.spec.whatwg.org/#concept-fetch>.
+// See corresponding preferences in StaticPrefList.yaml for more context.
+class SupportsPriorityValueFor {
+ public:
+  static int32_t LinkRelPreloadFont(const FetchPriority aFetchPriority) {
+    int32_t priorityValue = nsISupportsPriority::PRIORITY_HIGH;
+    if (!StaticPrefs::network_fetchpriority_enabled()) {
+      return priorityValue;
+    }
+
+    return priorityValue +
+           FETCH_PRIORITY_ADJUSTMENT_FOR(link_preload_font, aFetchPriority);
   }
 
-  PreloadOrCoalesce(aURI, aURL, aPolicyType, aAs, aType, u""_ns, aSrcset,
-                    aSizes, aIntegrity, aCORS, aReferrerPolicy,
-                    /* aFromHeader = */ true);
-}
+  static int32_t LinkRelPreloadFetch(const FetchPriority aFetchPriority) {
+    int32_t priorityValue = nsISupportsPriority::PRIORITY_NORMAL;
+    if (!StaticPrefs::network_fetchpriority_enabled()) {
+      return priorityValue;
+    }
+
+    return priorityValue +
+           FETCH_PRIORITY_ADJUSTMENT_FOR(link_preload_fetch, aFetchPriority);
+  }
+};
 
 PreloadService::PreloadOrCoalesceResult PreloadService::PreloadOrCoalesce(
     nsIURI* aURI, const nsAString& aURL, nsContentPolicyType aPolicyType,
     const nsAString& aAs, const nsAString& aType, const nsAString& aCharset,
-    const nsAString& aSrcset, const nsAString& aSizes,
+    const nsAString& aSrcset, const nsAString& aSizes, const nsAString& aNonce,
     const nsAString& aIntegrity, const nsAString& aCORS,
-    const nsAString& aReferrerPolicy, bool aFromHeader) {
+    const nsAString& aReferrerPolicy, const nsAString& aFetchPriority,
+    bool aFromHeader, uint64_t aEarlyHintPreloaderId) {
   if (!aURI) {
     MOZ_ASSERT_UNREACHABLE("Should not pass null nsIURI");
     return {nullptr, false};
@@ -162,14 +208,16 @@ PreloadService::PreloadOrCoalesceResult PreloadService::PreloadOrCoalesce(
   }
 
   if (aAs.LowerCaseEqualsASCII("script")) {
-    PreloadScript(uri, aType, aCharset, aCORS, aReferrerPolicy, aIntegrity,
-                  true /* isInHead - TODO */);
+    PreloadScript(uri, aType, aCharset, aCORS, aReferrerPolicy, aNonce,
+                  aFetchPriority, aIntegrity, true /* isInHead - TODO */,
+                  aEarlyHintPreloaderId);
   } else if (aAs.LowerCaseEqualsASCII("style")) {
     auto status = mDocument->PreloadStyle(
         aURI, Encoding::ForLabel(aCharset), aCORS,
-        PreloadReferrerPolicy(aReferrerPolicy), aIntegrity,
+        PreloadReferrerPolicy(aReferrerPolicy), aNonce, aIntegrity,
         aFromHeader ? css::StylePreloadKind::FromLinkRelPreloadHeader
-                    : css::StylePreloadKind::FromLinkRelPreloadElement);
+                    : css::StylePreloadKind::FromLinkRelPreloadElement,
+        aEarlyHintPreloaderId, aFetchPriority);
     switch (status) {
       case dom::SheetPreloadStatus::AlreadyComplete:
         return {nullptr, /* already_complete = */ true};
@@ -178,59 +226,94 @@ PreloadService::PreloadOrCoalesceResult PreloadService::PreloadOrCoalesce(
         break;
     }
   } else if (aAs.LowerCaseEqualsASCII("image")) {
-    PreloadImage(uri, aCORS, aReferrerPolicy, isImgSet);
+    PreloadImage(uri, aCORS, aReferrerPolicy, isImgSet, aEarlyHintPreloaderId,
+                 aFetchPriority);
   } else if (aAs.LowerCaseEqualsASCII("font")) {
-    PreloadFont(uri, aCORS, aReferrerPolicy);
+    PreloadFont(uri, aCORS, aReferrerPolicy, aEarlyHintPreloaderId,
+                aFetchPriority);
   } else if (aAs.LowerCaseEqualsASCII("fetch")) {
-    PreloadFetch(uri, aCORS, aReferrerPolicy);
+    PreloadFetch(uri, aCORS, aReferrerPolicy, aEarlyHintPreloaderId,
+                 aFetchPriority);
   }
 
-  return {LookupPreload(preloadKey), false};
+  RefPtr<PreloaderBase> preload = LookupPreload(preloadKey);
+  if (preload && aEarlyHintPreloaderId) {
+    preload->SetForEarlyHints();
+  }
+
+  return {preload, false};
 }
 
-void PreloadService::PreloadScript(nsIURI* aURI, const nsAString& aType,
-                                   const nsAString& aCharset,
-                                   const nsAString& aCrossOrigin,
-                                   const nsAString& aReferrerPolicy,
-                                   const nsAString& aIntegrity,
-                                   bool aScriptFromHead) {
+void PreloadService::PreloadScript(
+    nsIURI* aURI, const nsAString& aType, const nsAString& aCharset,
+    const nsAString& aCrossOrigin, const nsAString& aReferrerPolicy,
+    const nsAString& aNonce, const nsAString& aFetchPriority,
+    const nsAString& aIntegrity, bool aScriptFromHead,
+    uint64_t aEarlyHintPreloaderId) {
   mDocument->ScriptLoader()->PreloadURI(
-      aURI, aCharset, aType, aCrossOrigin, aIntegrity, aScriptFromHead, false,
-      false, false, true, PreloadReferrerPolicy(aReferrerPolicy));
+      aURI, aCharset, aType, aCrossOrigin, aNonce, aFetchPriority, aIntegrity,
+      aScriptFromHead, false, false, true,
+      PreloadReferrerPolicy(aReferrerPolicy), aEarlyHintPreloaderId);
 }
 
 void PreloadService::PreloadImage(nsIURI* aURI, const nsAString& aCrossOrigin,
                                   const nsAString& aImageReferrerPolicy,
-                                  bool aIsImgSet) {
-  mDocument->PreLoadImage(aURI, aCrossOrigin,
-                          PreloadReferrerPolicy(aImageReferrerPolicy),
-                          aIsImgSet, true);
+                                  bool aIsImgSet,
+                                  uint64_t aEarlyHintPreloaderId,
+                                  const nsAString& aFetchPriority) {
+  mDocument->PreLoadImage(
+      aURI, aCrossOrigin, PreloadReferrerPolicy(aImageReferrerPolicy),
+      aIsImgSet, true, aEarlyHintPreloaderId, aFetchPriority);
 }
 
 void PreloadService::PreloadFont(nsIURI* aURI, const nsAString& aCrossOrigin,
-                                 const nsAString& aReferrerPolicy) {
+                                 const nsAString& aReferrerPolicy,
+                                 uint64_t aEarlyHintPreloaderId,
+                                 const nsAString& aFetchPriority) {
   CORSMode cors = dom::Element::StringToCORSMode(aCrossOrigin);
   auto key = PreloadHashKey::CreateAsFont(aURI, cors);
 
-  // * Bug 1618549: Depending on where we decide to do the deduplication, we may
-  // want to check if the font is already being preloaded here.
+  if (PreloadExists(key)) {
+    return;
+  }
+
+  const auto fetchPriority =
+      nsGenericHTMLElement::ToFetchPriority(aFetchPriority);
+  const auto supportsPriorityValue =
+      SupportsPriorityValueFor::LinkRelPreloadFont(fetchPriority);
+  LogPriorityMapping(sPreloadServiceLog, fetchPriority, supportsPriorityValue);
 
   RefPtr<FontPreloader> preloader = new FontPreloader();
   dom::ReferrerPolicy referrerPolicy = PreloadReferrerPolicy(aReferrerPolicy);
-  preloader->OpenChannel(key, aURI, cors, referrerPolicy, mDocument);
+  preloader->OpenChannel(key, aURI, cors, referrerPolicy, mDocument,
+                         aEarlyHintPreloaderId, supportsPriorityValue);
 }
 
 void PreloadService::PreloadFetch(nsIURI* aURI, const nsAString& aCrossOrigin,
-                                  const nsAString& aReferrerPolicy) {
+                                  const nsAString& aReferrerPolicy,
+                                  uint64_t aEarlyHintPreloaderId,
+                                  const nsAString& aFetchPriority) {
   CORSMode cors = dom::Element::StringToCORSMode(aCrossOrigin);
   auto key = PreloadHashKey::CreateAsFetch(aURI, cors);
 
-  // * Bug 1618549: Depending on where we decide to do the deduplication, we may
-  // want to check if a fetch is already being preloaded here.
+  if (PreloadExists(key)) {
+    return;
+  }
 
   RefPtr<FetchPreloader> preloader = new FetchPreloader();
   dom::ReferrerPolicy referrerPolicy = PreloadReferrerPolicy(aReferrerPolicy);
-  preloader->OpenChannel(key, aURI, cors, referrerPolicy, mDocument);
+
+  const auto fetchPriority =
+      nsGenericHTMLElement::ToFetchPriority(aFetchPriority);
+  const int32_t supportsPriorityValue =
+      SupportsPriorityValueFor::LinkRelPreloadFetch(fetchPriority);
+  if (supportsPriorityValue) {
+    LogPriorityMapping(sPreloadServiceLog, fetchPriority,
+                       supportsPriorityValue);
+  }
+
+  preloader->OpenChannel(key, aURI, cors, referrerPolicy, mDocument,
+                         aEarlyHintPreloaderId, supportsPriorityValue);
 }
 
 // static

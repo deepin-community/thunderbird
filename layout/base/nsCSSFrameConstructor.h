@@ -14,19 +14,19 @@
 
 #include "mozilla/ArenaAllocator.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/ContainStyleScopeManager.h"
 #include "mozilla/FunctionRef.h"
 #include "mozilla/LinkedList.h"
 #include "mozilla/Maybe.h"
-#include "mozilla/RestyleManager.h"
 #include "mozilla/ScrollStyles.h"
 #include "mozilla/UniquePtr.h"
+#include "mozilla/PresShell.h"
 
 #include "nsCOMPtr.h"
 #include "nsILayoutHistoryState.h"
-#include "nsQuoteList.h"
-#include "nsCounterManager.h"
 #include "nsIAnonymousContentCreator.h"
 #include "nsFrameManager.h"
+#include "nsIFrame.h"
 
 struct nsStyleDisplay;
 struct nsGenConInitializer;
@@ -47,6 +47,7 @@ namespace mozilla {
 class ComputedStyle;
 class PresShell;
 class PrintedSheetFrame;
+class RestyleManager;
 
 namespace dom {
 
@@ -59,11 +60,11 @@ class FlattenedChildIterator;
 
 class nsCSSFrameConstructor final : public nsFrameManager {
  public:
-  typedef mozilla::ComputedStyle ComputedStyle;
-  typedef mozilla::PseudoStyleType PseudoStyleType;
-  typedef mozilla::PresShell PresShell;
-  typedef mozilla::dom::Element Element;
-  typedef mozilla::dom::Text Text;
+  using ComputedStyle = mozilla::ComputedStyle;
+  using PseudoStyleType = mozilla::PseudoStyleType;
+  using PresShell = mozilla::PresShell;
+  using Element = mozilla::dom::Element;
+  using Text = mozilla::dom::Text;
 
   // FIXME(emilio): Is this really needed?
   friend class mozilla::RestyleManager;
@@ -72,10 +73,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                         PresShell* aPresShell);
   ~nsCSSFrameConstructor() { MOZ_ASSERT(mFCItemsInUse == 0); }
 
-  // get the alternate text for a content node
-  static void GetAlternateTextFor(Element* aContent,
-                                  nsAtom* aTag,  // content object's tag
-                                  nsAString& aAltText);
+  static void GetAlternateTextFor(const Element&, nsAString& aAltText);
 
  private:
   nsCSSFrameConstructor(const nsCSSFrameConstructor& aCopy) = delete;
@@ -104,8 +102,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   }
 
   nsIFrame* ConstructRootFrame();
-
-  void ReconstructDocElementHierarchy(InsertionKind);
 
  private:
   enum Operation { CONTENTAPPEND, CONTENTINSERT };
@@ -275,9 +271,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   bool EnsureFrameForTextNodeIsCreatedAfterFlush(
       mozilla::dom::CharacterData* aContent);
 
-  // Generate the child frames and process bindings
-  void GenerateChildFrames(nsContainerFrame* aFrame);
-
   // Should be called when a frame is going to be destroyed and
   // WillDestroyFrameTree hasn't been called yet.
   void NotifyDestroyingFrame(nsIFrame* aFrame);
@@ -297,12 +290,45 @@ class nsCSSFrameConstructor final : public nsFrameManager {
    *
    * Returns whether a reconstruct was posted for any ancestor.
    */
-  bool DestroyFramesFor(Element* aElement);
+  bool DestroyFramesFor(nsIContent* aContent);
 
   // Request to create a continuing frame.  This method never returns null.
   nsIFrame* CreateContinuingFrame(nsIFrame* aFrame,
                                   nsContainerFrame* aParentFrame,
                                   bool aIsFluid = true);
+
+  /**
+   * Sets the page name when a page break is being generated due to a change
+   * in page name.
+   *
+   * Should only be used during paginated reflow, to signal what page value
+   * the next page content frame should have.
+   *
+   * It is an error to set this if a new page name has already been set, either
+   * through SetNextPageContentFramePageName or
+   * MaybeSetNextPageContentFramePageName.
+   */
+  void SetNextPageContentFramePageName(const nsAtom* aPageName) {
+    MOZ_ASSERT(aPageName, "New page name should never be null");
+    MOZ_ASSERT(!mNextPageContentFramePageName,
+               "PageContentFrame page name was already set");
+    mNextPageContentFramePageName = aPageName;
+  }
+
+  /**
+   * If a new page name has not been set for the next page, sets the value
+   * using the given frame.
+   *
+   * |aFrame| should be a frame to be placed on the new page.
+   *
+   * This function handles the work of resolving an atom for the frame, and
+   * avoids doing this extra work when not necessary.
+   *
+   * This is used during block reflow when a page break has occurred but it was
+   * not caused by a change in page name. It should only be used during
+   * paginated reflow.
+   */
+  void MaybeSetNextPageContentFramePageName(const nsIFrame* aFrame);
 
   // Copy over fixed frames from aParentFrame's prev-in-flow
   nsresult ReplicateFixedFrames(nsPageContentFrame* aParentFrame);
@@ -326,32 +352,28 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   // have a psuedo-element style
   nsIFrame* GetRootElementStyleFrame() { return mRootElementStyleFrame; }
   nsPageSequenceFrame* GetPageSequenceFrame() { return mPageSequenceFrame; }
-
-  // Get the frame that is the parent of the root element.
-  nsContainerFrame* GetDocElementContainingBlock() {
+  // Returns the outermost canvas frame. There's usually one per document, but
+  // if but if we're in printing / paginated mode we might have multiple:  one
+  // per page plus the background one.
+  nsCanvasFrame* GetCanvasFrame() { return mCanvasFrame; }
+  // Get the frame that is the parent of the root element's frame.
+  nsCanvasFrame* GetDocElementContainingBlock() {
     return mDocElementContainingBlock;
   }
 
   void AddSizeOfIncludingThis(nsWindowSizes& aSizes) const;
 
-#ifdef ACCESSIBILITY
-  // Exposed only for nsLayoutUtils::GetMarkerSpokenText to use.
-  const nsCounterManager* CounterManager() const { return &mCounterManager; }
+#if defined(ACCESSIBILITY) || defined(MOZ_LAYOUT_DEBUGGER)
+  // Exposed only for nsLayoutUtils::GetMarkerSpokenText and
+  // nsLayoutDebuggingTools to use.
+  mozilla::ContainStyleScopeManager& GetContainStyleScopeManager() {
+    return mContainStyleScopeManager;
+  }
 #endif
 
  private:
   struct FrameConstructionItem;
   class FrameConstructionItemList;
-
-  // Set the root element frame, and create frames for anonymous content if
-  // there is a canvas frame.
-  //
-  // It's important to do this _before_ constructing the children of the root
-  // element, because XUL popups depend on the anonymous root popupgroup being
-  // constructed already.
-  void SetRootElementFrameAndConstructCanvasAnonContent(
-      nsContainerFrame* aRootElementFrame, nsFrameConstructorState&,
-      nsFrameList&);
 
   mozilla::PrintedSheetFrame* ConstructPrintedSheetFrame(
       PresShell* aPresShell, nsContainerFrame* aParentFrame,
@@ -360,7 +382,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   nsContainerFrame* ConstructPageFrame(PresShell* aPresShell,
                                        nsContainerFrame* aParentFrame,
                                        nsIFrame* aPrevPageFrame,
-                                       nsContainerFrame*& aCanvasFrame);
+                                       nsCanvasFrame*& aCanvasFrame);
 
   void InitAndRestoreFrame(const nsFrameConstructorState& aState,
                            nsIContent* aContent, nsContainerFrame* aParentFrame,
@@ -441,7 +463,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
    * then we also set aText to the returned node.
    */
   already_AddRefed<nsIContent> CreateGenConTextNode(
-      nsFrameConstructorState& aState, const nsString& aString,
+      nsFrameConstructorState& aState, const nsAString& aString,
       mozilla::UniquePtr<nsGenConInitializer> aInitializer);
 
   /**
@@ -450,23 +472,27 @@ class nsCSSFrameConstructor final : public nsFrameManager {
    * to the document, and creating frames for it.
    * @param aOriginatingElement is the node that has the before/after style.
    * @param aComputedStyle is the 'before' or 'after' pseudo-element style.
-   * @param aContentIndex is the index of the content item to create
+   * @param aContentIndex is the index of the content item to create.
+   * @param aAddChild callback to be called for each generated content child.
    */
-  already_AddRefed<nsIContent> CreateGeneratedContent(
-      nsFrameConstructorState& aState, const Element& aOriginatingElement,
-      ComputedStyle& aComputedStyle, uint32_t aContentIndex);
+  void CreateGeneratedContent(
+      nsFrameConstructorState& aState, Element& aOriginatingElement,
+      ComputedStyle& aPseudoStyle, uint32_t aContentIndex,
+      const mozilla::FunctionRef<void(nsIContent*)> aAddChild);
 
   /**
    * Create child content nodes for a ::marker from its 'list-style-*' values.
    */
   void CreateGeneratedContentFromListStyle(
-      nsFrameConstructorState& aState, const ComputedStyle& aPseudoStyle,
+      nsFrameConstructorState& aState, Element& aOriginatingElement,
+      const ComputedStyle& aPseudoStyle,
       const mozilla::FunctionRef<void(nsIContent*)> aAddChild);
   /**
    * Create child content nodes for a ::marker from its 'list-style-type'.
    */
   void CreateGeneratedContentFromListStyleType(
-      nsFrameConstructorState& aState, const ComputedStyle& aPseudoStyle,
+      nsFrameConstructorState& aState, Element& aOriginatingElement,
+      const ComputedStyle& aPseudoStyle,
       const mozilla::FunctionRef<void(nsIContent*)> aAddChild);
 
   // aParentFrame may be null; this method doesn't use it directly in any case.
@@ -587,10 +613,10 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      @param PresShell the presshell whose arena should be used to allocate
                       the frame.
      @param ComputedStyle the style to use for the frame. */
-  typedef nsIFrame* (*FrameCreationFunc)(PresShell*, ComputedStyle*);
-  typedef nsContainerFrame* (*ContainerFrameCreationFunc)(PresShell*,
-                                                          ComputedStyle*);
-  typedef nsBlockFrame* (*BlockFrameCreationFunc)(PresShell*, ComputedStyle*);
+  using FrameCreationFunc = nsIFrame* (*)(PresShell*, ComputedStyle*);
+  using ContainerFrameCreationFunc = nsContainerFrame* (*)(PresShell*,
+                                                           ComputedStyle*);
+  using BlockFrameCreationFunc = nsBlockFrame* (*)(PresShell*, ComputedStyle*);
 
   /* A function that can be used to get a FrameConstructionData.  Such
      a function is allowed to return null.
@@ -599,8 +625,8 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      @param ComputedStyle the style to be used for the frame.
   */
   struct FrameConstructionData;
-  typedef const FrameConstructionData* (*FrameConstructionDataGetter)(
-      const Element&, ComputedStyle&);
+  using FrameConstructionDataGetter =
+      const FrameConstructionData* (*)(const Element&, ComputedStyle&);
 
   /* A constructor function that's used for complicated construction tasks.
      This is expected to create the new frame, initialize it, add whatever
@@ -622,10 +648,12 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      @return the frame that was constructed.  This frame is what the caller
              will set as the frame on the content.  Guaranteed non-null.
   */
-  typedef nsIFrame* (nsCSSFrameConstructor::*FrameFullConstructor)(
-      nsFrameConstructorState& aState, FrameConstructionItem& aItem,
-      nsContainerFrame* aParentFrame, const nsStyleDisplay* aStyleDisplay,
-      nsFrameList& aFrameList);
+  using FrameFullConstructor =
+      nsIFrame* (nsCSSFrameConstructor::*)(nsFrameConstructorState& aState,
+                                           FrameConstructionItem& aItem,
+                                           nsContainerFrame* aParentFrame,
+                                           const nsStyleDisplay* aStyleDisplay,
+                                           nsFrameList& aFrameList);
 
   /* Bits that modify the way a FrameConstructionData is handled */
 
@@ -663,11 +691,9 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   /* If FCDATA_MAY_NEED_SCROLLFRAME is set, the new frame should be wrapped in
      a scrollframe if its overflow type so requires. */
 #define FCDATA_MAY_NEED_SCROLLFRAME 0x80
-#ifdef MOZ_XUL
   /* If FCDATA_IS_POPUP is set, the new frame is a XUL popup frame.  These need
      some really weird special handling.  */
-#  define FCDATA_IS_POPUP 0x100
-#endif /* MOZ_XUL */
+#define FCDATA_IS_POPUP 0x100
   /* If FCDATA_SKIP_ABSPOS_PUSH is set, don't push this frame as an
      absolute containing block, no matter what its style says. */
 #define FCDATA_SKIP_ABSPOS_PUSH 0x200
@@ -683,7 +709,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      inline box. */
 #define FCDATA_IS_INLINE 0x1000
   /* If FCDATA_IS_LINE_PARTICIPANT is set, the frame is something that will
-     return true for IsFrameOfType(nsIFrame::eLineParticipant) */
+     return true for IsLineParticipant() */
 #define FCDATA_IS_LINE_PARTICIPANT 0x2000
   /* If FCDATA_IS_LINE_BREAK is set, the frame is something that will
      induce a line break boundary before and after itself. */
@@ -697,10 +723,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      This can be used with or without FCDATA_FUNC_IS_FULL_CTOR.
      The child items might still need table pseudo processing. */
 #define FCDATA_USE_CHILD_ITEMS 0x10000
-  /* If FCDATA_FORCED_NON_SCROLLABLE_BLOCK is set, then this block
-     would have been scrollable but has been forced to be
-     non-scrollable due to being in a paginated context. */
-#define FCDATA_FORCED_NON_SCROLLABLE_BLOCK 0x20000
   /* If FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS is set, then create a
      block formatting context wrapper around the kids of this frame
      using the FrameConstructionData's mPseudoAtom for its anonymous
@@ -726,23 +748,50 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   /* Structure representing information about how a frame should be
      constructed.  */
   struct FrameConstructionData {
-    // Flag bits that can modify the way the construction happens
-    uint32_t mBits;
     // We have exactly one of three types of functions, so use a union for
-    // better cache locality for the ones that aren't pointer-to-member.  That
-    // one needs to be separate, because we can't cast between it and the
-    // others and hence wouldn't be able to initialize the union without a
-    // constructor and all the resulting generated code.  See documentation
-    // above for FrameCreationFunc, FrameConstructionDataGetter, and
-    // FrameFullConstructor to see what the functions would do.
+    // better cache locality.
     union Func {
       FrameCreationFunc mCreationFunc;
       FrameConstructionDataGetter mDataGetter;
+      FrameFullConstructor mFullConstructor;
+
+      explicit constexpr Func(FrameCreationFunc aFunc) : mCreationFunc(aFunc) {}
+      explicit constexpr Func(FrameConstructionDataGetter aDataGetter)
+          : mDataGetter(aDataGetter) {}
+      explicit constexpr Func(FrameFullConstructor aCtor)
+          : mFullConstructor(aCtor) {}
     } mFunc;
-    FrameFullConstructor mFullConstructor;
+    // Flag bits that can modify the way the construction happens
+    const uint32_t mBits = 0;
     // For cases when FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS is set, the
     // anonymous box type to use for that wrapper.
-    PseudoStyleType const mAnonBoxPseudo;
+    PseudoStyleType const mAnonBoxPseudo = PseudoStyleType::NotPseudo;
+
+    constexpr FrameConstructionData() : FrameConstructionData(nullptr) {}
+
+    MOZ_IMPLICIT constexpr FrameConstructionData(std::nullptr_t,
+                                                 uint32_t aBits = 0)
+        : mFunc(static_cast<FrameCreationFunc>(nullptr)), mBits(aBits) {}
+
+    MOZ_IMPLICIT constexpr FrameConstructionData(
+        FrameCreationFunc aCreationFunc, uint32_t aBits = 0)
+        : mFunc(aCreationFunc), mBits(aBits) {}
+    constexpr FrameConstructionData(FrameCreationFunc aCreationFunc,
+                                    uint32_t aBits,
+                                    PseudoStyleType aAnonBoxPseudo)
+        : mFunc(aCreationFunc),
+          mBits(aBits | FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS),
+          mAnonBoxPseudo(aAnonBoxPseudo) {}
+    MOZ_IMPLICIT constexpr FrameConstructionData(
+        FrameConstructionDataGetter aDataGetter, uint32_t aBits = 0)
+        : mFunc(aDataGetter),
+          mBits(aBits | FCDATA_FUNC_IS_DATA_GETTER),
+          mAnonBoxPseudo(PseudoStyleType::NotPseudo) {}
+    MOZ_IMPLICIT constexpr FrameConstructionData(FrameFullConstructor aCtor,
+                                                 uint32_t aBits = 0)
+        : mFunc(aCtor),
+          mBits(aBits | FCDATA_FUNC_IS_FULL_CTOR),
+          mAnonBoxPseudo(PseudoStyleType::NotPseudo) {}
   };
 
   /* Structure representing a mapping of an atom to a FrameConstructionData.
@@ -840,7 +889,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     bool HasLineBoundaryAtEnd() { return mLineBoundaryAtEnd; }
     bool ParentHasNoShadowDOM() { return mParentHasNoShadowDOM; }
     bool IsEmpty() const { return mItems.isEmpty(); }
-    bool AnyItemsNeedBlockParent() const { return mLineParticipantCount != 0; }
     bool AreAllItemsInline() const { return mInlineCount == mItemCount; }
     bool AreAllItemsBlock() const { return mBlockCount == mItemCount; }
     bool AllWantParentType(ParentType aDesiredParentType) const {
@@ -880,7 +928,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
 
     void InlineItemAdded() { ++mInlineCount; }
     void BlockItemAdded() { ++mBlockCount; }
-    void LineParticipantItemAdded() { ++mLineParticipantCount; }
 
     class Iterator {
      public:
@@ -996,7 +1043,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     FrameConstructionItemList()
         : mInlineCount(0),
           mBlockCount(0),
-          mLineParticipantCount(0),
           mItemCount(0),
           mLineBoundaryAtStart(false),
           mLineBoundaryAtEnd(false),
@@ -1046,7 +1092,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     mozilla::LinkedList<FrameConstructionItem> mItems;
     uint32_t mInlineCount;
     uint32_t mBlockCount;
-    uint32_t mLineParticipantCount;
     uint32_t mItemCount;
     uint32_t mDesiredParentCounts[eParentTypeCount];
     // True if there is guaranteed to be a line boundary before the
@@ -1094,7 +1139,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
           mSuppressWhiteSpaceOptimizations(aSuppressWhiteSpaceOptimizations),
           mIsText(false),
           mIsGeneratedContent(false),
-          mIsRootPopupgroup(false),
           mIsAllInline(false),
           mIsBlock(false),
           mIsPopup(false),
@@ -1155,8 +1199,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     // Whether this is a generated content container.
     // If it is, mContent is a strong pointer.
     bool mIsGeneratedContent : 1;
-    // Whether this is an item for the root popupgroup.
-    bool mIsRootPopupgroup : 1;
     // Whether construction from this item will create only frames that are
     // IsInlineOutside() in the principal child list.  This is not precise, but
     // conservative: if true the frames will really be inline, whereas if false
@@ -1207,7 +1249,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     explicit AutoFrameConstructionItem(nsCSSFrameConstructor* aFCtor,
                                        Args&&... args)
         : mFCtor(aFCtor),
-          mItem(new (aFCtor)
+          mItem(new(aFCtor)
                     FrameConstructionItem(std::forward<Args>(args)...)) {
       MOZ_ASSERT(mFCtor);
     }
@@ -1217,6 +1259,30 @@ class nsCSSFrameConstructor final : public nsFrameManager {
    private:
     nsCSSFrameConstructor* const mFCtor;
     FrameConstructionItem* const mItem;
+  };
+
+  /**
+   * Updates the nsFrameConstructorState auto page-name value, and restores the
+   * previous value on destruction.
+   * See https://drafts.csswg.org/css-page-3/#using-named-pages
+   *
+   * To track this, this will automatically add PageValuesProperty to
+   * the frame.
+   *
+   * Note that this does not add PageValuesProperty to the frame when not in a
+   * paginated context.
+   */
+  class MOZ_RAII AutoFrameConstructionPageName final {
+    nsFrameConstructorState& mState;
+    const nsAtom* mNameToRestore;
+
+   public:
+    AutoFrameConstructionPageName(const AutoFrameConstructionPageName&) =
+        delete;
+    AutoFrameConstructionPageName(AutoFrameConstructionPageName&&) = delete;
+    AutoFrameConstructionPageName(nsFrameConstructorState& aState,
+                                  nsIFrame* const aFrame);
+    ~AutoFrameConstructionPageName();
   };
 
   /**
@@ -1318,14 +1384,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                              nsFrameState aTypeBit);
 
  private:
-  // ConstructSelectFrame puts the new frame in aFrameList and
-  // handles the kids of the select.
-  nsIFrame* ConstructSelectFrame(nsFrameConstructorState& aState,
-                                 FrameConstructionItem& aItem,
-                                 nsContainerFrame* aParentFrame,
-                                 const nsStyleDisplay* aStyleDisplay,
-                                 nsFrameList& aFrameList);
-
   // ConstructFieldSetFrame puts the new frame in aFrameList and
   // handles the kids of the fieldset
   nsIFrame* ConstructFieldSetFrame(nsFrameConstructorState& aState,
@@ -1334,13 +1392,11 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                    const nsStyleDisplay* aStyleDisplay,
                                    nsFrameList& aFrameList);
 
-  // ConstructDetailsFrame puts the new frame in aFrameList and
-  // handles the kids of the details.
-  nsIFrame* ConstructDetailsFrame(nsFrameConstructorState& aState,
-                                  FrameConstructionItem& aItem,
-                                  nsContainerFrame* aParentFrame,
-                                  const nsStyleDisplay* aStyleDisplay,
-                                  nsFrameList& aFrameList);
+  nsIFrame* ConstructListBoxSelectFrame(nsFrameConstructorState& aState,
+                                        FrameConstructionItem& aItem,
+                                        nsContainerFrame* aParentFrame,
+                                        const nsStyleDisplay* aStyleDisplay,
+                                        nsFrameList& aFrameList);
 
   // Creates a block frame wrapping an anonymous ruby frame.
   nsIFrame* ConstructBlockRubyFrame(nsFrameConstructorState& aState,
@@ -1367,8 +1423,18 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   // for it.
   void ReframeTextIfNeeded(nsIContent* aContent);
 
-  void AddPageBreakItem(nsIContent* aContent,
-                        FrameConstructionItemList& aItems);
+  enum InsertPageBreakLocation { eBefore, eAfter };
+  inline void AppendPageBreakItem(nsIContent* aContent,
+                                  FrameConstructionItemList& aItems) {
+    InsertPageBreakItem(aContent, aItems, InsertPageBreakLocation::eAfter);
+  }
+  inline void PrependPageBreakItem(nsIContent* aContent,
+                                   FrameConstructionItemList& aItems) {
+    InsertPageBreakItem(aContent, aItems, InsertPageBreakLocation::eBefore);
+  }
+  void InsertPageBreakItem(nsIContent* aContent,
+                           FrameConstructionItemList& aItems,
+                           InsertPageBreakLocation location);
 
   // Function to find FrameConstructionData for aElement.  Will return
   // null if aElement is not HTML.
@@ -1378,6 +1444,8 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                                    nsIFrame* aParentFrame,
                                                    ComputedStyle&);
   // HTML data-finding helper functions
+  static const FrameConstructionData* FindSelectData(const Element&,
+                                                     ComputedStyle&);
   static const FrameConstructionData* FindImgData(const Element&,
                                                   ComputedStyle&);
   static const FrameConstructionData* FindGeneratedImageData(const Element&,
@@ -1386,14 +1454,15 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                                          ComputedStyle&);
   static const FrameConstructionData* FindSearchControlData(const Element&,
                                                             ComputedStyle&);
-  static const FrameConstructionData* FindDateTimeLocalInputData(
-      const Element&, ComputedStyle&);
   static const FrameConstructionData* FindInputData(const Element&,
                                                     ComputedStyle&);
   static const FrameConstructionData* FindObjectData(const Element&,
                                                      ComputedStyle&);
   static const FrameConstructionData* FindCanvasData(const Element&,
                                                      ComputedStyle&);
+  // <details> always creates a block per spec.
+  static const FrameConstructionData* FindDetailsData(const Element&,
+                                                      ComputedStyle&);
 
   /* Construct a frame from the given FrameConstructionItem.  This function
      will handle adding the frame to frame lists, processing children, setting
@@ -1461,18 +1530,16 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   static const FrameConstructionData* FindXULTagData(const Element&,
                                                      ComputedStyle&);
   // XUL data-finding helper functions and structures
-#ifdef MOZ_XUL
   static const FrameConstructionData* FindPopupGroupData(const Element&,
                                                          ComputedStyle&);
   static const FrameConstructionData* FindXULButtonData(const Element&,
                                                         ComputedStyle&);
   static const FrameConstructionData* FindXULLabelOrDescriptionData(
       const Element&, ComputedStyle&);
-#  ifdef XP_MACOSX
+#ifdef XP_MACOSX
   static const FrameConstructionData* FindXULMenubarData(const Element&,
                                                          ComputedStyle&);
-#  endif /* XP_MACOSX */
-#endif   /* MOZ_XUL */
+#endif /* XP_MACOSX */
 
   /**
    * Constructs an outer frame, an anonymous child that wraps its real
@@ -1526,15 +1593,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                      nsFrameList& aFrameList);
 
   /**
-   * Construct a scrollable block frame using the given block frame creation
-   * function.
-   */
-  nsIFrame* ConstructScrollableBlockWithConstructor(
-      nsFrameConstructorState& aState, FrameConstructionItem& aItem,
-      nsContainerFrame* aParentFrame, const nsStyleDisplay* aDisplay,
-      nsFrameList& aFrameList, BlockFrameCreationFunc aConstructor);
-
-  /**
    * Construct a non-scrollable block frame
    */
   nsIFrame* ConstructNonScrollableBlock(nsFrameConstructorState& aState,
@@ -1544,23 +1602,18 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                         nsFrameList& aFrameList);
 
   /**
-   * Construct a non-scrollable block frame using the given block frame creation
-   * function.
-   */
-  nsIFrame* ConstructNonScrollableBlockWithConstructor(
-      nsFrameConstructorState& aState, FrameConstructionItem& aItem,
-      nsContainerFrame* aParentFrame, const nsStyleDisplay* aDisplay,
-      nsFrameList& aFrameList, BlockFrameCreationFunc aConstructor);
-
-  /**
    * This adds FrameConstructionItem objects to aItemsToConstruct for the
    * anonymous content returned by an nsIAnonymousContentCreator::
    * CreateAnonymousContent implementation.
+   * This includes an AutoFrameConstructionPageName argument as it is always
+   * the caller's responsibility to handle page-name tracking before calling
+   * this function.
    */
   void AddFCItemsForAnonymousContent(
       nsFrameConstructorState& aState, nsContainerFrame* aFrame,
       const nsTArray<nsIAnonymousContentCreator::ContentInfo>& aAnonymousItems,
-      FrameConstructionItemList& aItemsToConstruct, ItemFlags aExtraFlags = {});
+      FrameConstructionItemList& aItemsToConstruct,
+      const AutoFrameConstructionPageName& aUnusedPageNameTracker);
 
   /**
    * Construct the frames for the children of aContent.  "children" is defined
@@ -1639,16 +1692,13 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   void FinishBuildingScrollFrame(nsContainerFrame* aScrollFrame,
                                  nsIFrame* aScrolledFrame);
 
-  // InitializeSelectFrame puts scrollFrame in aFrameList if aBuildCombobox is
-  // false aBuildCombobox indicates if we are building a combobox that has a
-  // dropdown popup widget or not.
-  void InitializeSelectFrame(nsFrameConstructorState& aState,
-                             nsContainerFrame* aScrollFrame,
-                             nsContainerFrame* aScrolledFrame,
-                             nsIContent* aContent,
-                             nsContainerFrame* aParentFrame,
-                             ComputedStyle* aComputedStyle, bool aBuildCombobox,
-                             nsFrameList& aFrameList);
+  void InitializeListboxSelect(nsFrameConstructorState& aState,
+                               nsContainerFrame* aScrollFrame,
+                               nsContainerFrame* aScrolledFrame,
+                               nsIContent* aContent,
+                               nsContainerFrame* aParentFrame,
+                               ComputedStyle* aComputedStyle,
+                               nsFrameList& aFrameList);
 
   /**
    * Recreate frames for aContent.
@@ -2086,31 +2136,38 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   // about the following frames.
 
   // This is just the outermost frame for the root element.
-  nsContainerFrame* mRootElementFrame;
+  nsContainerFrame* mRootElementFrame = nullptr;
   // This is the frame for the root element that has no pseudo-element style.
-  nsIFrame* mRootElementStyleFrame;
+  nsIFrame* mRootElementStyleFrame = nullptr;
   // This is the containing block that contains the root element ---
   // the real "initial containing block" according to CSS 2.1.
-  nsContainerFrame* mDocElementContainingBlock;
-  nsPageSequenceFrame* mPageSequenceFrame;
+  nsCanvasFrame* mDocElementContainingBlock = nullptr;
+  // This is usually mDocElementContainingBlock, except when printing, where it
+  // is the canvas frame that is under all the printed pages.
+  nsCanvasFrame* mCanvasFrame = nullptr;
+  nsPageSequenceFrame* mPageSequenceFrame = nullptr;
 
   // FrameConstructionItem arena + list of freed items available for re-use.
   mozilla::ArenaAllocator<4096, 8> mFCItemPool;
+
+  // This indicates what page name to use for the next nsPageContentFrame.
+  // Set when CSS named pages cause a breakpoint.
+  // This does not apply to the first page content frame, which has its name
+  // set by nsPageContentFrame::EnsurePageName() during first reflow.
+  RefPtr<const nsAtom> mNextPageContentFramePageName;
+
   struct FreeFCItemLink {
     FreeFCItemLink* mNext;
   };
   FreeFCItemLink* mFirstFreeFCItem;
   size_t mFCItemsInUse;
 
-  nsQuoteList mQuoteList;
-  nsCounterManager mCounterManager;
+  mozilla::ContainStyleScopeManager mContainStyleScopeManager;
+
   // Current ProcessChildren depth.
   uint16_t mCurrentDepth;
   bool mQuotesDirty : 1;
   bool mCountersDirty : 1;
-  bool mIsDestroyingFrameTree : 1;
-  // This is true if mDocElementContainingBlock supports absolute positioning
-  bool mHasRootAbsPosContainingBlock : 1;
   bool mAlwaysCreateFramesForIgnorableWhitespace : 1;
 
   // The layout state from our history entry (to restore scroll positions and

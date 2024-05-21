@@ -25,8 +25,8 @@ function toggleDisplay(event) {
 // structural elements. For each structural element,
 // a corresponding element is created in the table of
 // contents.
-var searchTags = new Array("book", "chapter", "section");
-var tocTags = new Array("level1", "level2", "level3");
+var searchTags = ["book", "chapter", "section"];
+var tocTags = ["level1", "level2", "level3"];
 function addToToc(root, tocFrame) {
   var i;
   var newTocFrame = tocFrame;
@@ -99,7 +99,7 @@ function addToToc(root, tocFrame) {
 // Create the root table of contents element (a fixed element)
 // and its contents.
 function createToc() {
-  if (document.getElementsByTagName("toc").length == 0) {
+  if (!document.getElementsByTagName("toc").length) {
     var toc = document.createElement("toc");
     var title = document.createElement("title");
     title.appendChild(document.createTextNode("Table of Contents"));

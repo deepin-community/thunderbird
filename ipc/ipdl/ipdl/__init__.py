@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import print_function
-
 __all__ = [
     "gencxx",
     "genipdl",
@@ -77,7 +75,7 @@ def gencxx(ipdlfilename, ast, outheadersdir, outcppdir, segmentcapacitydict):
 
 
 def genipdl(ast, outdir):
-    return IPDLCodeGen().cgen(ast)
+    return ast.accept(IPDLCodeGen())
 
 
 def genmsgenum(ast):

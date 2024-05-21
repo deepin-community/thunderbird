@@ -1,4 +1,4 @@
-// |reftest| skip -- Intl.Segmenter is not supported
+// |reftest| skip-if(!Intl.Segmenter) -- Intl.Segmenter is not enabled unconditionally
 // Copyright 2018 Igalia, S.L. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 
@@ -44,7 +44,8 @@ for (const args of optionsArguments) {
   const resolvedOptions = segmenter.resolvedOptions();
   assert.sameValue(resolvedOptions.granularity, "grapheme",
     `Calling with ${args.length} empty arguments should yield the correct value for "granularity"`);
-  assert.sameValue(Object.hasOwnProperty(resolvedOptions, "lineBreakStyle"), false,
+  assert(
+    !Object.prototype.hasOwnProperty.call(resolvedOptions, "lineBreakStyle"),
     `Calling with ${args.length} empty arguments should yield the correct value for "lineBreakStyle"`);
 }
 

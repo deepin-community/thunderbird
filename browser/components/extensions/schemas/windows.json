@@ -1,7 +1,3 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 [
   {
     "namespace": "windows",
@@ -252,10 +248,10 @@
                 "description": "A URL or array of URLs to open as tabs in the window. Fully-qualified URLs must include a scheme (i.e. 'http://www.google.com', not 'www.google.com'). Relative URLs will be relative to the current page within the extension. Defaults to the New Tab Page.",
                 "optional": true,
                 "choices": [
-                  { "type": "string", "format": "relativeUrl" },
+                  { "type": "string" },
                   {
                     "type": "array",
-                    "items": { "type": "string", "format": "relativeUrl" }
+                    "items": { "type": "string" }
                   }
                 ]
               },

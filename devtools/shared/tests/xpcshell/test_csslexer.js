@@ -5,7 +5,7 @@
 
 "use strict";
 
-const jsLexer = require("devtools/shared/css/lexer");
+const jsLexer = require("resource://devtools/shared/css/lexer.js");
 
 function test_lexer(cssText, tokenTypes) {
   const lexer = jsLexer.getCSSLexer(cssText);
@@ -22,7 +22,7 @@ function test_lexer(cssText, tokenTypes) {
       combined += ":" + token.text;
     }
     equal(combined, tokenTypes[i]);
-    ok(token.endOffset > token.startOffset);
+    Assert.greater(token.endOffset, token.startOffset);
     equal(token.startOffset, lastTokenEnd);
     lastTokenEnd = token.endOffset;
     reconstructed += cssText.substring(token.startOffset, token.endOffset);

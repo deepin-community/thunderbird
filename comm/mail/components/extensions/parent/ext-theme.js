@@ -8,11 +8,10 @@
 
 /* eslint-disable complexity */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "LightweightThemeManager",
-  "resource://gre/modules/LightweightThemeManager.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  LightweightThemeManager:
+    "resource://gre/modules/LightweightThemeManager.sys.mjs",
+});
 
 const onUpdatedEmitter = new EventEmitter();
 
@@ -23,7 +22,7 @@ const emptyTheme = {
 
 let defaultTheme = emptyTheme;
 // Map[windowId -> Theme instance]
-let windowOverrides = new Map();
+const windowOverrides = new Map();
 
 /**
  * Class representing either a global theme affecting all windows or an override on a specific window.
@@ -52,7 +51,7 @@ class Theme {
     if (startupData && startupData.lwtData) {
       Object.assign(this, startupData);
     } else {
-      // TODO: Update this part after bug 1550090
+      // TODO: Update this part after bug 1550090.
       this.lwtStyles = {};
       this.lwtDarkStyles = null;
       if (darkDetails) {
@@ -60,7 +59,7 @@ class Theme {
       }
 
       if (experiment) {
-        if (extension.experimentsAllowed) {
+        if (extension.canUseThemeExperiment()) {
           this.lwtStyles.experimental = {
             colors: {},
             images: {},
@@ -73,9 +72,9 @@ class Theme {
               properties: {},
             };
           }
-          const { baseURI } = this.extension;
+
           if (experiment.stylesheet) {
-            experiment.stylesheet = baseURI.resolve(experiment.stylesheet);
+            experiment.stylesheet = this.getFileUrl(experiment.stylesheet);
           }
           this.experiment = experiment;
         } else {
@@ -86,6 +85,15 @@ class Theme {
       }
     }
     this.load();
+  }
+
+  // The manifest has moz-extension:// urls. Switch to file:// urls to get around
+  // the skin limitation for moz-extension:// urls.
+  getFileUrl(url) {
+    if (url.startsWith("moz-extension://")) {
+      url = url.split("/").slice(3).join("/");
+    }
+    return this.extension.rootURI.resolve(url);
   }
 
   /**
@@ -136,8 +144,8 @@ class Theme {
   }
 
   /**
-   * @param {Object} details - Details
-   * @param {Object} styles - Styles object in which to store the colors.
+   * @param {object} details - Details
+   * @param {object} styles - Styles object in which to store the colors.
    */
   loadDetails(details, styles) {
     if (details.colors) {
@@ -158,12 +166,12 @@ class Theme {
   /**
    * Helper method for loading colors found in the extension's manifest.
    *
-   * @param {Object} colors - Dictionary mapping color properties to values.
-   * @param {Object} styles - Styles object in which to store the colors.
+   * @param {object} colors - Dictionary mapping color properties to values.
+   * @param {object} styles - Styles object in which to store the colors.
    */
   loadColors(colors, styles) {
-    for (let color of Object.keys(colors)) {
-      let val = colors[color];
+    for (const color of Object.keys(colors)) {
+      const val = colors[color];
 
       if (!val) {
         continue;
@@ -250,14 +258,14 @@ class Theme {
   /**
    * Helper method for loading images found in the extension's manifest.
    *
-   * @param {Object} images - Dictionary mapping image properties to values.
-   * @param {Object} styles - Styles object in which to store the colors.
+   * @param {object} images - Dictionary mapping image properties to values.
+   * @param {object} styles - Styles object in which to store the colors.
    */
   loadImages(images, styles) {
-    const { baseURI, logger } = this.extension;
+    const { logger } = this.extension;
 
-    for (let image of Object.keys(images)) {
-      let val = images[image];
+    for (const image of Object.keys(images)) {
+      const val = images[image];
 
       if (!val) {
         continue;
@@ -265,12 +273,12 @@ class Theme {
 
       switch (image) {
         case "additional_backgrounds": {
-          let backgroundImages = val.map(img => baseURI.resolve(img));
+          const backgroundImages = val.map(img => this.getFileUrl(img));
           styles.additionalBackgrounds = backgroundImages;
           break;
         }
         case "theme_frame": {
-          let resolvedURL = baseURI.resolve(val);
+          const resolvedURL = this.getFileUrl(val);
           styles.headerURL = resolvedURL;
           break;
         }
@@ -280,7 +288,7 @@ class Theme {
             this.experiment.images &&
             image in this.experiment.images
           ) {
-            styles.experimental.images[image] = baseURI.resolve(val);
+            styles.experimental.images[image] = this.getFileUrl(val);
           } else {
             logger.warn(`Unrecognized theme property found: images.${image}`);
           }
@@ -295,11 +303,11 @@ class Theme {
    * Properties are commonly used to specify more advanced behavior of colors,
    * images or icons.
    *
-   * @param {Object} - properties Dictionary mapping properties to values.
-   * @param {Object} - styles Styles object in which to store the colors.
+   * @param {object} - properties Dictionary mapping properties to values.
+   * @param {object} - styles Styles object in which to store the colors.
    */
   loadProperties(properties, styles) {
-    let additionalBackgroundsCount =
+    const additionalBackgroundsCount =
       (styles.additionalBackgrounds && styles.additionalBackgrounds.length) ||
       0;
     const assertValidAdditionalBackgrounds = (property, valueCount) => {
@@ -321,8 +329,8 @@ class Theme {
       return true;
     };
 
-    for (let property of Object.getOwnPropertyNames(properties)) {
-      let val = properties[property];
+    for (const property of Object.getOwnPropertyNames(properties)) {
+      const val = properties[property];
 
       if (!val) {
         continue;
@@ -342,11 +350,16 @@ class Theme {
             break;
           }
 
-          let tiling = [];
+          const tiling = [];
           for (let i = 0, l = styles.additionalBackgrounds.length; i < l; ++i) {
             tiling.push(val[i] || "no-repeat");
           }
           styles.backgroundsTiling = tiling.join(",");
+          break;
+        }
+        case "color_scheme":
+        case "content_color_scheme": {
+          styles[property] = val;
           break;
         }
         default: {
@@ -372,8 +385,8 @@ class Theme {
    * Helper method for loading extension metadata required by downstream
    * consumers.
    *
-   * @param {Object} extension - Extension object.
-   * @param {Object} styles - Styles object in which to store the colors.
+   * @param {object} extension - Extension object.
+   * @param {object} styles - Styles object in which to store the colors.
    */
   loadMetadata(extension, styles) {
     styles.id = extension.id;
@@ -381,7 +394,7 @@ class Theme {
   }
 
   static unload(windowId) {
-    let lwtData = {
+    const lwtData = {
       theme: null,
     };
 
@@ -399,10 +412,43 @@ class Theme {
   }
 }
 
-this.theme = class extends ExtensionAPI {
+this.theme = class extends ExtensionAPIPersistent {
+  PERSISTENT_EVENTS = {
+    // For primed persistent events (deactivated background), the context is only
+    // available after fire.wakeup() has fulfilled (ensuring the convert() function
+    // has been called).
+
+    onUpdated({ fire, context }) {
+      const callback = async (event, theme, windowId) => {
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        if (windowId) {
+          // Force access validation for incognito mode by getting the window.
+          if (windowTracker.getWindow(windowId, context, false)) {
+            fire.async({ theme, windowId });
+          }
+        } else {
+          fire.async({ theme });
+        }
+      };
+
+      onUpdatedEmitter.on("theme-updated", callback);
+      return {
+        unregister() {
+          onUpdatedEmitter.off("theme-updated", callback);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+  };
+
   onManifestEntry(entryName) {
-    let { extension } = this;
-    let { manifest } = extension;
+    const { extension } = this;
+    const { manifest } = extension;
 
     defaultTheme = new Theme({
       extension,
@@ -418,8 +464,8 @@ this.theme = class extends ExtensionAPI {
       return;
     }
 
-    let { extension } = this;
-    for (let [windowId, theme] of windowOverrides) {
+    const { extension } = this;
+    for (const [windowId, theme] of windowOverrides) {
       if (theme.extension === extension) {
         Theme.unload(windowId);
       }
@@ -431,7 +477,7 @@ this.theme = class extends ExtensionAPI {
   }
 
   getAPI(context) {
-    let { extension } = context;
+    const { extension } = context;
 
     return {
       theme: {
@@ -474,7 +520,7 @@ this.theme = class extends ExtensionAPI {
               return Promise.reject(`Invalid window ID: ${windowId}`);
             }
 
-            let theme = windowOverrides.get(windowId) || defaultTheme;
+            const theme = windowOverrides.get(windowId) || defaultTheme;
             if (theme.extension !== extension) {
               return Promise.resolve();
             }
@@ -487,24 +533,9 @@ this.theme = class extends ExtensionAPI {
         },
         onUpdated: new EventManager({
           context,
-          name: "theme.onUpdated",
-          register: fire => {
-            let callback = (event, theme, windowId) => {
-              if (windowId) {
-                // Force access validation for incognito mode by getting the window.
-                if (windowTracker.getWindow(windowId, context, false)) {
-                  fire.async({ theme, windowId });
-                }
-              } else {
-                fire.async({ theme });
-              }
-            };
-
-            onUpdatedEmitter.on("theme-updated", callback);
-            return () => {
-              onUpdatedEmitter.off("theme-updated", callback);
-            };
-          },
+          module: "theme",
+          event: "onUpdated",
+          extensionApi: this,
         }).api(),
       },
     };

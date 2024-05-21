@@ -2,24 +2,25 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<!ENTITY month.1.name "January" >
-<!ENTITY month.2.name "February" >
-<!ENTITY month.3.name "March" >
-<!ENTITY month.4.name "April" >
-<!ENTITY month.5.name "May" >
-<!ENTITY month.6.name "June" >
-<!ENTITY month.7.name "July" >
-<!ENTITY month.8.name "August" >
-<!ENTITY month.9.name "September" >
-<!ENTITY month.10.name "October" >
-<!ENTITY month.11.name "November" >
-<!ENTITY month.12.name "December" >
+<!ENTITY month.1.name "Студзень" >
+<!ENTITY month.2.name "Люты" >
+<!ENTITY month.3.name "Сакавік" >
+<!ENTITY month.4.name "Красавік" >
+<!ENTITY month.5.name "Травень" >
+<!ENTITY month.6.name "Чэрвень" >
+<!ENTITY month.7.name "Ліпень" >
+<!ENTITY month.8.name "Жнівень" >
+<!ENTITY month.9.name "Верасень" >
+<!ENTITY month.10.name "Кастрычнік" >
+<!ENTITY month.11.name "Лістапад" >
+<!ENTITY month.12.name "Снежань" >
 
-<!ENTITY onemonthbackward.tooltip "One Month Back" >
-<!ENTITY onemonthforward.tooltip "One Month Forward" >
-<!ENTITY oneyearbackward.tooltip "One Year Back" >
-<!ENTITY oneyearforward.tooltip "One Year Forward" >
-<!ENTITY showToday.tooltip "Go to Today">
-<!ENTITY onedayforward.tooltip "One Day Forward">
-<!ENTITY onedaybackward.tooltip "One Day Backward">
-<!ENTITY showselectedday.tooltip "Show events for selected day">
+<!ENTITY onemonthbackward.tooltip "Мінулы месяц" >
+<!ENTITY onemonthforward.tooltip "Наступны месяц" >
+<!ENTITY oneyearbackward.tooltip "Мінулы год" >
+<!ENTITY oneyearforward.tooltip "Наступны год" >
+
+<!ENTITY showToday.tooltip "Перайсці да сёння">
+<!ENTITY onedayforward.tooltip "Наступны дзень">
+<!ENTITY onedaybackward.tooltip "Мінулы дзень">
+<!ENTITY showselectedday.tooltip "Паказаць падзеі ў выбраны дзень">

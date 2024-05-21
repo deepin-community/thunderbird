@@ -17,7 +17,11 @@
 #include "charstr.h"
 #include "decContext.h"
 #include "decNumber.h"
+#ifdef JS_HAS_INTL_API
+#include "double-conversion/double-conversion.h"
+#else
 #include "double-conversion.h"
+#endif
 #include "fphdlimp.h"
 #include "uresimp.h"
 #include "ureslocs.h"
@@ -26,7 +30,11 @@ using namespace icu;
 using namespace icu::number;
 using namespace icu::number::impl;
 
+#ifdef JS_HAS_INTL_API
+using double_conversion::DoubleToStringConverter;
+#else
 using icu::double_conversion::DoubleToStringConverter;
+#endif
 
 
 namespace {
@@ -70,7 +78,7 @@ const char16_t* utils::getPatternForStyle(const Locale& locale, const char* nsNa
             break;
         default:
             patternKey = "decimalFormat"; // silence compiler error
-            UPRV_UNREACHABLE;
+            UPRV_UNREACHABLE_EXIT;
     }
     LocalUResourceBundlePointer res(ures_open(nullptr, locale.getName(), &status));
     if (U_FAILURE(status)) { return u""; }
@@ -180,12 +188,6 @@ void DecNum::_setTo(const char* str, int32_t maxDigits, UErrorCode& status) {
         status = U_UNSUPPORTED_ERROR;
         return;
     }
-
-    // For consistency with Java BigDecimal, no support for DecNum that is NaN or Infinity!
-    if (decNumberIsSpecial(fData.getAlias())) {
-        status = U_UNSUPPORTED_ERROR;
-        return;
-    }
 }
 
 void
@@ -250,6 +252,18 @@ bool DecNum::isNegative() const {
 
 bool DecNum::isZero() const {
     return decNumberIsZero(fData.getAlias());
+}
+
+bool DecNum::isSpecial() const {
+    return decNumberIsSpecial(fData.getAlias());
+}
+
+bool DecNum::isInfinity() const {
+    return decNumberIsInfinite(fData.getAlias());
+}
+
+bool DecNum::isNaN() const {
+    return decNumberIsNaN(fData.getAlias());
 }
 
 void DecNum::toString(ByteSink& output, UErrorCode& status) const {

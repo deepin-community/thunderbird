@@ -7,7 +7,6 @@
 #ifndef mozilla_Selection_h__
 #define mozilla_Selection_h__
 
-#include "mozilla/dom/StyledRange.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/EventForwards.h"
 #include "mozilla/PresShellForwards.h"
@@ -15,6 +14,8 @@
 #include "mozilla/SelectionChangeEventDispatcher.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/WeakPtr.h"
+#include "mozilla/dom/Highlight.h"
+#include "mozilla/dom/StyledRange.h"
 #include "nsDirection.h"
 #include "nsISelectionController.h"
 #include "nsISelectionListener.h"
@@ -42,8 +43,10 @@ class AccessibleCaretEventHub;
 class ErrorResult;
 class HTMLEditor;
 class PostContentIterator;
+enum class CaretAssociationHint;
 enum class TableSelectionMode : uint32_t;
 struct AutoPrepareFocusRange;
+struct PrimaryFrameData;
 namespace dom {
 class DocGroup;
 }  // namespace dom
@@ -72,14 +75,27 @@ class Selection final : public nsSupportsWeakReference,
                      nsFrameSelection* aFrameSelection);
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(Selection)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(Selection)
 
-  // match this up with EndbatchChanges. will stop ui updates while multiple
-  // selection methods are called
-  void StartBatchChanges();
+  /**
+   * Match this up with EndbatchChanges. will stop ui updates while multiple
+   * selection methods are called
+   *
+   * @param aDetails string to explian why this is called.  This won't be
+   * stored nor exposed to selection listeners etc.  Just for logging.
+   */
+  void StartBatchChanges(const char* aDetails);
 
-  // match this up with StartBatchChanges
-  void EndBatchChanges(int16_t aReason = nsISelectionListener::NO_REASON);
+  /**
+   * Match this up with StartBatchChanges
+   *
+   * @param aDetails string to explian why this is called.  This won't be
+   * stored nor exposed to selection listeners etc.  Just for logging.
+   * @param aReasons potentially multiple of the reasons defined in
+   * nsISelectionListener.idl
+   */
+  void EndBatchChanges(const char* aDetails,
+                       int16_t aReason = nsISelectionListener::NO_REASON);
 
   /**
    * NotifyAutoCopy() starts to notify AutoCopyListener of selection changes.
@@ -171,7 +187,7 @@ class Selection final : public nsSupportsWeakReference,
    * See `AddRangesForSelectableNodes`.
    */
   [[nodiscard]] MOZ_CAN_RUN_SCRIPT nsresult AddRangesForUserSelectableNodes(
-      nsRange* aRange, int32_t* aOutIndex,
+      nsRange* aRange, Maybe<size_t>* aOutIndex,
       const DispatchSelectstartEvent aDispatchSelectstartEvent);
 
   /**
@@ -182,11 +198,11 @@ class Selection final : public nsSupportsWeakReference,
    *
    * @param aOutIndex points to the range last added, if at least one was added.
    *                  If aRange is already contained, it points to the range
-   *                  containing it. -1 if mStyledRanges.mRanges was empty and
-   * no range was added.
+   *                  containing it. Nothing() if mStyledRanges.mRanges was
+   *                  empty and no range was added.
    */
   [[nodiscard]] MOZ_CAN_RUN_SCRIPT nsresult AddRangesForSelectableNodes(
-      nsRange* aRange, int32_t* aOutIndex,
+      nsRange* aRange, Maybe<size_t>* aOutIndex,
       DispatchSelectstartEvent aDispatchSelectstartEvent);
 
  public:
@@ -206,17 +222,26 @@ class Selection final : public nsSupportsWeakReference,
     return result.StealNSResult();
   }
   MOZ_CAN_RUN_SCRIPT void CollapseInLimiter(const RawRangeBoundary& aPoint,
-                                            ErrorResult& aRv) {
-    CollapseInternal(InLimiter::eYes, aPoint, aRv);
-  }
+                                            ErrorResult& aRv);
 
-  MOZ_CAN_RUN_SCRIPT nsresult Extend(nsINode* aContainer, int32_t aOffset);
+  MOZ_CAN_RUN_SCRIPT nsresult Extend(nsINode* aContainer, uint32_t aOffset);
 
   /**
    * See mStyledRanges.mRanges.
    */
-  nsRange* GetRangeAt(int32_t aIndex) const;
+  nsRange* GetRangeAt(uint32_t aIndex) const;
 
+  /**
+   * @brief Get the |AbstractRange| at |aIndex|.
+   *
+   * This method is safe to be called for every selection type.
+   * However, |StaticRange|s only occur for |SelectionType::eHighlight|.
+   * If the SelectionType may be eHighlight, this method must be called instead
+   * of |GetRangeAt()|.
+   *
+   * Returns null if |aIndex| is out of bounds.
+   */
+  AbstractRange* GetAbstractRangeAt(uint32_t aIndex) const;
   // Get the anchor-to-focus range if we don't care which end is
   // anchor and which end is focus.
   const nsRange* GetAnchorFocusRange() const { return mAnchorFocusRange; }
@@ -231,11 +256,15 @@ class Selection final : public nsSupportsWeakReference,
   void AdjustAnchorFocusForMultiRange(nsDirection aDirection);
 
   nsIFrame* GetPrimaryFrameForAnchorNode() const;
-  nsIFrame* GetPrimaryFrameForFocusNode(bool aVisual,
-                                        int32_t* aOffsetUsed = nullptr) const;
+
+  /**
+   * Get primary frame and some other data for putting caret or extending
+   * selection at the focus point.
+   */
+  PrimaryFrameData GetPrimaryFrameForCaretAtFocusNode(bool aVisual) const;
 
   UniquePtr<SelectionDetails> LookUpSelection(
-      nsIContent* aContent, int32_t aContentOffset, int32_t aContentLength,
+      nsIContent* aContent, uint32_t aContentOffset, uint32_t aContentLength,
       UniquePtr<SelectionDetails> aDetailsHead, SelectionType aSelectionType,
       bool aSlowCheck);
 
@@ -308,7 +337,7 @@ class Selection final : public nsSupportsWeakReference,
    * IsCollapsed -- is the whole selection just one point, or unset?
    */
   bool IsCollapsed() const {
-    uint32_t cnt = mStyledRanges.Length();
+    size_t cnt = mStyledRanges.Length();
     if (cnt == 0) {
       return true;
     }
@@ -352,7 +381,7 @@ class Selection final : public nsSupportsWeakReference,
    * Callers need to keep `aRange` alive.
    */
   MOZ_CAN_RUN_SCRIPT void RemoveRangeAndUnselectFramesAndNotifyListeners(
-      nsRange& aRange, mozilla::ErrorResult& aRv);
+      AbstractRange& aRange, mozilla::ErrorResult& aRv);
 
   MOZ_CAN_RUN_SCRIPT void RemoveAllRanges(mozilla::ErrorResult& aRv);
 
@@ -409,8 +438,24 @@ class Selection final : public nsSupportsWeakReference,
                           nsINode& aFocusNode, uint32_t aFocusOffset,
                           mozilla::ErrorResult& aRv);
 
-  bool GetInterlinePosition(mozilla::ErrorResult& aRv);
-  void SetInterlinePosition(bool aValue, mozilla::ErrorResult& aRv);
+  bool GetInterlinePositionJS(mozilla::ErrorResult& aRv) const;
+  void SetInterlinePositionJS(bool aHintRight, mozilla::ErrorResult& aRv);
+
+  enum class InterlinePosition : uint8_t {
+    // Caret should be put at end of line (i.e., before the line break)
+    EndOfLine,
+    // Caret should be put at start of next line (i.e., after the line break)
+    StartOfNextLine,
+    // Undefined means only what is not EndOfLine nor StartOfNextLine.
+    // `SetInterlinePosition` should never be called with this value, and
+    // if `GetInterlinePosition` returns this, it means that the instance has
+    // not been initialized or cleared by the cycle collector or something.
+    // If a method needs to consider whether to call `SetInterlinePosition` or
+    // not call, this value can be used for the latter.
+    Undefined,
+  };
+  InterlinePosition GetInterlinePosition() const;
+  nsresult SetInterlinePosition(InterlinePosition aInterlinePosition);
 
   Nullable<int16_t> GetCaretBidiLevel(mozilla::ErrorResult& aRv) const;
   void SetCaretBidiLevel(const Nullable<int16_t>& aCaretBidiLevel,
@@ -428,26 +473,33 @@ class Selection final : public nsSupportsWeakReference,
   SelectionType Type() const { return mSelectionType; }
 
   /**
+   * @brief Sets highlight selection properties.
+   *
+   * This includes the highlight name as well as its priority and type.
+   */
+  void SetHighlightSelectionData(
+      HighlightSelectionData aHighlightSelectionData);
+
+  /**
    * See documentation of `GetRangesForInterval` in Selection.webidl.
    *
    * @param aReturn references, not copies, of the internal ranges.
    */
-  void GetRangesForInterval(nsINode& aBeginNode, int32_t aBeginOffset,
-                            nsINode& aEndNode, int32_t aEndOffset,
+  void GetRangesForInterval(nsINode& aBeginNode, uint32_t aBeginOffset,
+                            nsINode& aEndNode, uint32_t aEndOffset,
                             bool aAllowAdjacent,
                             nsTArray<RefPtr<nsRange>>& aReturn,
-                            mozilla::ErrorResult& aRv);
+                            ErrorResult& aRv);
 
   MOZ_CAN_RUN_SCRIPT void ScrollIntoView(int16_t aRegion, bool aIsSynchronous,
-                                         WhereToScroll aVPercent,
-                                         WhereToScroll aHPercent,
-                                         mozilla::ErrorResult& aRv);
+                                         int16_t aVPercent, int16_t aHPercent,
+                                         ErrorResult& aRv);
 
   void SetColors(const nsAString& aForeColor, const nsAString& aBackColor,
                  const nsAString& aAltForeColor, const nsAString& aAltBackColor,
-                 mozilla::ErrorResult& aRv);
+                 ErrorResult& aRv);
 
-  void ResetColors(mozilla::ErrorResult& aRv);
+  void ResetColors();
 
   /**
    * Non-JS callers should use the following
@@ -466,8 +518,7 @@ class Selection final : public nsSupportsWeakReference,
   MOZ_CAN_RUN_SCRIPT void CollapseInLimiter(nsINode& aContainer,
                                             uint32_t aOffset,
                                             ErrorResult& aRv) {
-    CollapseInternal(InLimiter::eYes, RawRangeBoundary(&aContainer, aOffset),
-                     aRv);
+    CollapseInLimiter(RawRangeBoundary(&aContainer, aOffset), aRv);
   }
 
  private:
@@ -514,6 +565,9 @@ class Selection final : public nsSupportsWeakReference,
   MOZ_CAN_RUN_SCRIPT void AddRangeAndSelectFramesAndNotifyListeners(
       nsRange& aRange, mozilla::ErrorResult& aRv);
 
+  MOZ_CAN_RUN_SCRIPT void AddHighlightRangeAndSelectFramesAndNotifyListeners(
+      AbstractRange& aRange);
+
   /**
    * Adds all children of the specified node to the selection.
    * @param aNode the parent of the children to be added to the selection.
@@ -530,9 +584,7 @@ class Selection final : public nsSupportsWeakReference,
    */
   MOZ_CAN_RUN_SCRIPT
   void SetStartAndEnd(const RawRangeBoundary& aStartRef,
-                      const RawRangeBoundary& aEndRef, ErrorResult& aRv) {
-    SetStartAndEndInternal(InLimiter::eNo, aStartRef, aEndRef, eDirNext, aRv);
-  }
+                      const RawRangeBoundary& aEndRef, ErrorResult& aRv);
   MOZ_CAN_RUN_SCRIPT
   void SetStartAndEnd(nsINode& aStartContainer, uint32_t aStartOffset,
                       nsINode& aEndContainer, uint32_t aEndOffset,
@@ -549,9 +601,7 @@ class Selection final : public nsSupportsWeakReference,
   MOZ_CAN_RUN_SCRIPT
   void SetStartAndEndInLimiter(const RawRangeBoundary& aStartRef,
                                const RawRangeBoundary& aEndRef,
-                               ErrorResult& aRv) {
-    SetStartAndEndInternal(InLimiter::eYes, aStartRef, aEndRef, eDirNext, aRv);
-  }
+                               ErrorResult& aRv);
   MOZ_CAN_RUN_SCRIPT
   void SetStartAndEndInLimiter(nsINode& aStartContainer, uint32_t aStartOffset,
                                nsINode& aEndContainer, uint32_t aEndOffset,
@@ -578,9 +628,7 @@ class Selection final : public nsSupportsWeakReference,
                         ErrorResult& aRv);
   MOZ_CAN_RUN_SCRIPT
   void SetBaseAndExtent(const RawRangeBoundary& aAnchorRef,
-                        const RawRangeBoundary& aFocusRef, ErrorResult& aRv) {
-    SetBaseAndExtentInternal(InLimiter::eNo, aAnchorRef, aFocusRef, aRv);
-  }
+                        const RawRangeBoundary& aFocusRef, ErrorResult& aRv);
 
   /**
    * SetBaseAndExtentInLimiter() is similar to SetBaseAndExtent(), but this
@@ -597,9 +645,7 @@ class Selection final : public nsSupportsWeakReference,
   MOZ_CAN_RUN_SCRIPT
   void SetBaseAndExtentInLimiter(const RawRangeBoundary& aAnchorRef,
                                  const RawRangeBoundary& aFocusRef,
-                                 ErrorResult& aRv) {
-    SetBaseAndExtentInternal(InLimiter::eYes, aAnchorRef, aFocusRef, aRv);
-  }
+                                 ErrorResult& aRv);
 
   void AddSelectionChangeBlocker();
   void RemoveSelectionChangeBlocker();
@@ -629,7 +675,7 @@ class Selection final : public nsSupportsWeakReference,
    */
   void SetCanCacheFrameOffset(bool aCanCacheFrameOffset);
 
-  // Selection::GetRangesForIntervalArray
+  // Selection::GetAbstractRangesForIntervalArray
   //
   //    Fills a nsTArray with the ranges overlapping the range specified by
   //    the given endpoints. Ranges in the selection exactly adjacent to the
@@ -648,10 +694,23 @@ class Selection final : public nsSupportsWeakReference,
   //
   //    Now that overlapping ranges are disallowed, there can be a maximum of
   //    2 adjacent ranges
-  nsresult GetRangesForIntervalArray(nsINode* aBeginNode, int32_t aBeginOffset,
-                                     nsINode* aEndNode, int32_t aEndOffset,
-                                     bool aAllowAdjacent,
-                                     nsTArray<nsRange*>* aRanges);
+  nsresult GetAbstractRangesForIntervalArray(nsINode* aBeginNode,
+                                             uint32_t aBeginOffset,
+                                             nsINode* aEndNode,
+                                             uint32_t aEndOffset,
+                                             bool aAllowAdjacent,
+                                             nsTArray<AbstractRange*>* aRanges);
+
+  /**
+   * Converts the results of |GetAbstractRangesForIntervalArray()| to |nsRange|.
+   *
+   * |StaticRange|s can only occur in Selections of type |eHighlight|.
+   * Therefore, this method must not be called for this selection type
+   * as not every |AbstractRange| can be cast to |nsRange|.
+   */
+  nsresult GetDynamicRangesForIntervalArray(
+      nsINode* aBeginNode, uint32_t aBeginOffset, nsINode* aEndNode,
+      uint32_t aEndOffset, bool aAllowAdjacent, nsTArray<nsRange*>* aRanges);
 
   /**
    * Modifies the cursor Bidi level after a change in keyboard direction
@@ -668,17 +727,9 @@ class Selection final : public nsSupportsWeakReference,
   friend class ::nsCopySupport;
   friend class ::nsHTMLCopyEncoder;
   MOZ_CAN_RUN_SCRIPT
-  void AddRangeAndSelectFramesAndNotifyListeners(nsRange& aRange,
-                                                 Document* aDocument,
-                                                 ErrorResult&);
-
-  // This is helper method for GetPrimaryFrameForFocusNode.
-  // If aVisual is true, this returns caret frame.
-  // If false, this returns primary frame.
-  nsIFrame* GetPrimaryOrCaretFrameForNodeOffset(nsIContent* aContent,
-                                                uint32_t aOffset,
-                                                int32_t* aOffsetUsed,
-                                                bool aVisual) const;
+  void AddRangeAndSelectFramesAndNotifyListenersInternal(nsRange& aRange,
+                                                         Document* aDocument,
+                                                         ErrorResult&);
 
   // Get the cached value for nsTextFrame::GetPointFromOffset.
   nsresult GetCachedFrameOffset(nsIFrame* aFrame, int32_t inOffset,
@@ -746,11 +797,10 @@ class Selection final : public nsSupportsWeakReference,
 
   /**
    * Set mAnchorFocusRange to mStyledRanges.mRanges[aIndex] if aIndex is a valid
-   * index. Set mAnchorFocusRange to nullptr if aIndex is negative. Otherwise,
-   * i.e., if aIndex is positive but out of bounds of mStyledRanges.mRanges, do
-   * nothing.
+   * index.
    */
-  void SetAnchorFocusRange(int32_t aIndex);
+  void SetAnchorFocusRange(size_t aIndex);
+  void RemoveAnchorFocusRange() { mAnchorFocusRange = nullptr; }
   void SelectFramesOf(nsIContent* aContent, bool aSelected) const;
 
   /**
@@ -760,7 +810,7 @@ class Selection final : public nsSupportsWeakReference,
       PostContentIterator& aPostOrderIter, nsIContent* aContent,
       bool aSelected) const;
 
-  nsresult SelectFrames(nsPresContext* aPresContext, nsRange* aRange,
+  nsresult SelectFrames(nsPresContext* aPresContext, AbstractRange& aRange,
                         bool aSelect) const;
 
   /**
@@ -770,29 +820,32 @@ class Selection final : public nsSupportsWeakReference,
   void SelectFramesInAllRanges(nsPresContext* aPresContext);
 
   /**
-   * @param aOutIndex points to the index of the range in mStyledRanges.mRanges.
-   * If aDidAddRange is true, it is in [0, mStyledRanges.Length()).
+   * @param aOutIndex   If some, points to the index of the range in
+   * mStyledRanges.mRanges so that it's always in [0, mStyledRanges.Length()].
+   * Otherwise, if nothing, this didn't add the range to mStyledRanges.
    */
   MOZ_CAN_RUN_SCRIPT nsresult MaybeAddTableCellRange(nsRange& aRange,
-                                                     bool* aDidAddRange,
-                                                     int32_t* aOutIndex);
+                                                     Maybe<size_t>* aOutIndex);
 
   Document* GetDocument() const;
+
+  MOZ_CAN_RUN_SCRIPT void RemoveAllRangesInternal(mozilla::ErrorResult& aRv);
 
   void Disconnect();
 
   struct StyledRanges {
+    explicit StyledRanges(Selection& aSelection) : mSelection(aSelection) {}
     void Clear();
 
-    StyledRange* FindRangeData(nsRange* aRange);
+    StyledRange* FindRangeData(AbstractRange* aRange);
 
-    using Elements = AutoTArray<StyledRange, 1>;
+    using StyledRangeArray = AutoTArray<StyledRange, 1>;
 
-    Elements::size_type Length() const;
+    StyledRangeArray::size_type Length() const;
 
     nsresult RemoveCollapsedRanges();
 
-    nsresult RemoveRangeAndUnregisterSelection(nsRange& aRange);
+    nsresult RemoveRangeAndUnregisterSelection(AbstractRange& aRange);
 
     /**
      * Binary searches the given sorted array of ranges for the insertion point
@@ -805,37 +858,48 @@ class Selection final : public nsSupportsWeakReference,
      * @return the index where the point should appear in the array. In
      *         [0, `aElementArray->Length()`].
      */
-    static int32_t FindInsertionPoint(
+    static size_t FindInsertionPoint(
         const nsTArray<StyledRange>* aElementArray, const nsINode& aPointNode,
-        int32_t aPointOffset,
-        int32_t (*aComparator)(const nsINode&, int32_t, const nsRange&));
+        uint32_t aPointOffset,
+        int32_t (*aComparator)(const nsINode&, uint32_t, const AbstractRange&));
 
     /**
      * Works on the same principle as GetRangesForIntervalArray, however
      * instead this returns the indices into mRanges between which
      * the overlapping ranges lie.
      *
-     * @param aStartIndex will be less or equal than aEndIndex.
-     * @param aEndIndex can be in [-1, mRanges.Length()].
+     * @param aStartIndex If some, aEndIndex will also be some and the value of
+     *                    aStartIndex will be less or equal than aEndIndex.  If
+     *                    nothing, aEndIndex will also be nothing and it means
+     *                    that there is no range which in the range.
+     * @param aEndIndex   If some, the value is less than mRanges.Length().
      */
     nsresult GetIndicesForInterval(const nsINode* aBeginNode,
-                                   int32_t aBeginOffset,
-                                   const nsINode* aEndNode, int32_t aEndOffset,
-                                   bool aAllowAdjacent, int32_t& aStartIndex,
-                                   int32_t& aEndIndex) const;
+                                   uint32_t aBeginOffset,
+                                   const nsINode* aEndNode, uint32_t aEndOffset,
+                                   bool aAllowAdjacent,
+                                   Maybe<size_t>& aStartIndex,
+                                   Maybe<size_t>& aEndIndex);
 
-    bool HasEqualRangeBoundariesAt(const nsRange& aRange,
-                                   int32_t aRangeIndex) const;
+    bool HasEqualRangeBoundariesAt(const AbstractRange& aRange,
+                                   size_t aRangeIndex) const;
 
     /**
      * Preserves the sorting and disjunctiveness of mRanges.
      *
-     * @param aOutIndex will point to the index of the added range, or if aRange
-     *                  is already contained, to the one containing it. Hence
-     *                  it'll always be in [0, mRanges.Length()).
+     * @param aOutIndex If some, will point to the index of the added range, or
+     *                  if aRange is already contained, to the one containing
+     *                  it. Hence it'll always be in [0, mRanges.Length()).
+     *                  This is nothing only when the method returns an error.
      */
-    MOZ_CAN_RUN_SCRIPT nsresult MaybeAddRangeAndTruncateOverlaps(
-        nsRange* aRange, int32_t* aOutIndex, Selection& aSelection);
+    MOZ_CAN_RUN_SCRIPT nsresult
+    MaybeAddRangeAndTruncateOverlaps(nsRange* aRange, Maybe<size_t>* aOutIndex);
+
+    /**
+     * Adds the range even if there are overlaps.
+     */
+    MOZ_CAN_RUN_SCRIPT nsresult
+    AddRangeAndIgnoreOverlaps(AbstractRange* aRange);
 
     /**
      * GetCommonEditingHost() returns common editing host of all
@@ -878,6 +942,15 @@ class Selection final : public nsSupportsWeakReference,
 
     void UnregisterSelection();
 
+    // `mRanges` always needs to be sorted by the Range's start point.
+    // Especially when dealing with `StaticRange`s this is not guaranteed
+    // automatically. Therefore this method should be called before paint to
+    // ensure that any potential DOM mutations are incorporated in `mRanges`
+    // order. This method will also move invalid `StaticRange`s into
+    // `mInvalidStaticRanges` (and previously-invalid-now-valid-again
+    // `StaticRange`s back into `mRanges`).
+    void ReorderRangesIfNecessary();
+
     // These are the ranges inside this selection. They are kept sorted in order
     // of DOM start position.
     //
@@ -891,10 +964,26 @@ class Selection final : public nsSupportsWeakReference,
     // If this proves to be a performance concern, then an interval tree may be
     // a possible solution, allowing the calculation of the overlap interval in
     // O(log n) time, though this would require rebalancing and other overhead.
-    Elements mRanges;
+    StyledRangeArray mRanges;
+
+    // With introduction of the custom highlight API, Selection must be able to
+    // hold `StaticRange`s as well. If they become invalid (eg. end is before
+    // start), they must be excluded from painting, but still kept.
+    // mRanges needs to contain valid ranges sorted correctly only. Therefore,
+    // invalid static ranges are being stored in this array, which is being kept
+    // up to date in `ReorderRangesIfNecessary()`.
+    StyledRangeArray mInvalidStaticRanges;
+
+    Selection& mSelection;
+
+    // The Document's generation for which `mRanges` have been ordered.
+    int32_t mDocumentGeneration{0};
+    // This flag indicates that ranges may have changed. It is set to true in
+    // `Selection::NotifySelectionListeners().`
+    bool mRangesMightHaveChanged{false};
   };
 
-  StyledRanges mStyledRanges;
+  StyledRanges mStyledRanges{*this};
 
   RefPtr<nsRange> mAnchorFocusRange;
   RefPtr<nsFrameSelection> mFrameSelection;
@@ -906,6 +995,7 @@ class Selection final : public nsSupportsWeakReference,
   CachedOffsetForFrame* mCachedOffsetForFrame;
   nsDirection mDirection;
   const SelectionType mSelectionType;
+  HighlightSelectionData mHighlightData;
   UniquePtr<SelectionCustomColors> mCustomColors;
 
   // Non-zero if we don't want any changes we make to the selection to be
@@ -934,24 +1024,36 @@ class Selection final : public nsSupportsWeakReference,
 // Stack-class to turn on/off selection batching.
 class MOZ_STACK_CLASS SelectionBatcher final {
  private:
-  RefPtr<Selection> mSelection;
-  int16_t mReason;
+  const RefPtr<Selection> mSelection;
+  const int16_t mReasons;
+  const char* const mRequesterFuncName;
 
  public:
-  explicit SelectionBatcher(Selection& aSelectionRef)
-      : SelectionBatcher(&aSelectionRef) {}
+  /**
+   * @param aRequesterFuncName function name which wants the selection batch.
+   * This won't be stored nor exposed to selection listeners etc, used only for
+   * logging.  This MUST be living when the destructor runs.
+   */
+  // TODO: Mark these constructors `MOZ_CAN_RUN_SCRIPT` because the destructor
+  //       may run script via nsISelectionListener.
+  explicit SelectionBatcher(Selection& aSelectionRef,
+                            const char* aRequesterFuncName,
+                            int16_t aReasons = nsISelectionListener::NO_REASON)
+      : SelectionBatcher(&aSelectionRef, aRequesterFuncName, aReasons) {}
   explicit SelectionBatcher(Selection* aSelection,
-                            int16_t aReason = nsISelectionListener::NO_REASON) {
-    mSelection = aSelection;
-    mReason = aReason;
+                            const char* aRequesterFuncName,
+                            int16_t aReasons = nsISelectionListener::NO_REASON)
+      : mSelection(aSelection),
+        mReasons(aReasons),
+        mRequesterFuncName(aRequesterFuncName) {
     if (mSelection) {
-      mSelection->StartBatchChanges();
+      mSelection->StartBatchChanges(mRequesterFuncName);
     }
   }
 
   ~SelectionBatcher() {
     if (mSelection) {
-      mSelection->EndBatchChanges(mReason);
+      mSelection->EndBatchChanges(mRequesterFuncName, mReasons);
     }
   }
 };
@@ -1009,6 +1111,22 @@ inline SelectionTypeMask ToSelectionTypeMask(SelectionType aSelectionType) {
              ? 0
              : static_cast<SelectionTypeMask>(
                    1 << (static_cast<uint8_t>(aSelectionType) - 1));
+}
+
+inline std::ostream& operator<<(
+    std::ostream& aStream, const dom::Selection::InterlinePosition& aPosition) {
+  using InterlinePosition = dom::Selection::InterlinePosition;
+  switch (aPosition) {
+    case InterlinePosition::EndOfLine:
+      return aStream << "InterlinePosition::EndOfLine";
+    case InterlinePosition::StartOfNextLine:
+      return aStream << "InterlinePosition::StartOfNextLine";
+    case InterlinePosition::Undefined:
+      return aStream << "InterlinePosition::Undefined";
+    default:
+      MOZ_ASSERT_UNREACHABLE("Illegal value");
+      return aStream << "<Illegal value>";
+  }
 }
 
 }  // namespace mozilla

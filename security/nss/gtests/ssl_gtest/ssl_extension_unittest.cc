@@ -9,9 +9,6 @@
 #include "sslerr.h"
 #include "sslproto.h"
 
-// This is only to get DTLS_1_3_DRAFT_VERSION
-#include "ssl3prot.h"
-
 #include <memory>
 
 #include "tls_connect.h"
@@ -175,11 +172,7 @@ class TlsExtensionTest13
     if (variant_ == ssl_variant_datagram) {
       switch (version) {
         case SSL_LIBRARY_VERSION_TLS_1_3:
-#ifdef DTLS_1_3_DRAFT_VERSION
-          version = 0x7f00 | DTLS_1_3_DRAFT_VERSION;
-#else
           version = SSL_LIBRARY_VERSION_DTLS_1_3_WIRE;
-#endif
           break;
         case SSL_LIBRARY_VERSION_TLS_1_2:
           version = SSL_LIBRARY_VERSION_DTLS_1_2_WIRE;
@@ -326,6 +319,7 @@ TEST_P(TlsExtensionTestGeneric, AlpnMismatch) {
   server_->EnableAlpn(server_alpn, sizeof(server_alpn));
 
   ClientHelloErrorTest(nullptr, kTlsAlertNoApplicationProtocol);
+  client_->CheckErrorCode(SSL_ERROR_NEXT_PROTOCOL_NO_PROTOCOL);
 }
 
 TEST_P(TlsExtensionTestGeneric, AlpnDisabledServer) {
@@ -430,7 +424,10 @@ TEST_P(TlsExtensionTest12Plus, SignatureAlgorithmsBadLength) {
 }
 
 TEST_P(TlsExtensionTest12Plus, SignatureAlgorithmsTrailingData) {
-  const uint8_t val[] = {0x00, 0x02, 0x04, 0x01, 0x00};  // sha-256, rsa
+  // make sure the test uses an algorithm that is legal for
+  // tls 1.3 (or tls 1.3 will throw a handshake failure alert
+  // instead of a decode error alert)
+  const uint8_t val[] = {0x00, 0x02, 0x08, 0x09, 0x00};  // sha-256, rsa-pss-pss
   DataBuffer extension(val, sizeof(val));
   ClientHelloErrorTest(std::make_shared<TlsExtensionReplacer>(
       client_, ssl_signature_algorithms_xtn, extension));
@@ -594,6 +591,22 @@ TEST_P(TlsExtensionTestPre13, SupportedPointsTrailingData) {
       client_, ssl_ec_point_formats_xtn, extension));
 }
 
+TEST_P(TlsExtensionTestPre13, SupportedPointsCompressed) {
+  const uint8_t val[] = {0x01, 0x02};
+  DataBuffer extension(val, sizeof(val));
+  ClientHelloErrorTest(std::make_shared<TlsExtensionReplacer>(
+                           client_, ssl_ec_point_formats_xtn, extension),
+                       kTlsAlertIllegalParameter);
+}
+
+TEST_P(TlsExtensionTestPre13, SupportedPointsUndefined) {
+  const uint8_t val[] = {0x01, 0xAA};
+  DataBuffer extension(val, sizeof(val));
+  ClientHelloErrorTest(std::make_shared<TlsExtensionReplacer>(
+                           client_, ssl_ec_point_formats_xtn, extension),
+                       kTlsAlertIllegalParameter);
+}
+
 TEST_P(TlsExtensionTestPre13, RenegotiationInfoBadLength) {
   const uint8_t val[] = {0x99};
   DataBuffer extension(val, sizeof(val));
@@ -755,7 +768,7 @@ TEST_F(TlsExtensionTest13Stream, AddServerSignatureAlgorithmsOnResumption) {
   DataBuffer empty;
   MakeTlsFilter<TlsExtensionInjector>(server_, ssl_signature_algorithms_xtn,
                                       empty);
-  client_->ExpectSendAlert(kTlsAlertUnsupportedExtension);
+  client_->ExpectSendAlert(kTlsAlertIllegalParameter);
   server_->ExpectSendAlert(kTlsAlertUnexpectedMessage);
   ConnectExpectFail();
   EXPECT_EQ(SSL_ERROR_EXTENSION_DISALLOWED_FOR_VERSION, client_->error_code());
@@ -1077,27 +1090,12 @@ TEST_P(TlsExtensionTest13, RemoveTls13FromVersionListBothV12) {
                            SSL_LIBRARY_VERSION_TLS_1_3);
   server_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_2,
                            SSL_LIBRARY_VERSION_TLS_1_3);
-// The downgrade check is disabled in DTLS 1.3, so all that happens when we
-// tamper with the supported versions is that the Finished check fails.
-#ifdef DTLS_1_3_DRAFT_VERSION
-  if (variant_ == ssl_variant_datagram) {
-    ExpectAlert(server_, kTlsAlertDecryptError);
-  } else
-#endif
-  {
-    ExpectAlert(client_, kTlsAlertIllegalParameter);
-  }
+  // The downgrade check is disabled in DTLS 1.3, so all that happens when we
+  // tamper with the supported versions is that the Finished check fails.
+  ExpectAlert(client_, kTlsAlertIllegalParameter);
   ConnectWithReplacementVersionList(SSL_LIBRARY_VERSION_TLS_1_2);
-#ifdef DTLS_1_3_DRAFT_VERSION
-  if (variant_ == ssl_variant_datagram) {
-    client_->CheckErrorCode(SSL_ERROR_DECRYPT_ERROR_ALERT);
-    server_->CheckErrorCode(SSL_ERROR_BAD_HANDSHAKE_HASH_VALUE);
-  } else
-#endif
-  {
-    client_->CheckErrorCode(SSL_ERROR_RX_MALFORMED_SERVER_HELLO);
-    server_->CheckErrorCode(SSL_ERROR_ILLEGAL_PARAMETER_ALERT);
-  }
+  client_->CheckErrorCode(SSL_ERROR_RX_MALFORMED_SERVER_HELLO);
+  server_->CheckErrorCode(SSL_ERROR_ILLEGAL_PARAMETER_ALERT);
 }
 
 TEST_P(TlsExtensionTest13, HrrThenRemoveSignatureAlgorithms) {
@@ -1129,6 +1127,15 @@ TEST_P(TlsExtensionTest13, EmptyVersionList) {
 TEST_P(TlsExtensionTest13, OddVersionList) {
   static const uint8_t kExt[] = {0x00, 0x01, 0x00};
   ConnectWithBogusVersionList(kExt, sizeof(kExt));
+}
+
+TEST_P(TlsExtensionTest13, SignatureAlgorithmsInvalidTls13) {
+  // testing the case where we ask for a invalid parameter for tls13
+  const uint8_t val[] = {0x00, 0x02, 0x04, 0x01};  // sha-256, rsa-pkcs1
+  DataBuffer extension(val, sizeof(val));
+  ClientHelloErrorTest(std::make_shared<TlsExtensionReplacer>(
+                           client_, ssl_signature_algorithms_xtn, extension),
+                       kTlsAlertHandshakeFailure);
 }
 
 // Use the stream version number for TLS 1.3 (0x0304) in DTLS.
@@ -1235,19 +1242,6 @@ TEST_P(TlsBogusExtensionTest13, AddBogusExtensionHelloRetryRequest) {
   Run(kTlsHandshakeHelloRetryRequest);
 }
 
-TEST_P(TlsBogusExtensionTest13, AddVersionExtensionEncryptedExtensions) {
-  Run(kTlsHandshakeEncryptedExtensions, ssl_tls13_supported_versions_xtn);
-}
-
-TEST_P(TlsBogusExtensionTest13, AddVersionExtensionCertificate) {
-  Run(kTlsHandshakeCertificate, ssl_tls13_supported_versions_xtn);
-}
-
-TEST_P(TlsBogusExtensionTest13, AddVersionExtensionCertificateRequest) {
-  server_->RequestClientAuth(false);
-  Run(kTlsHandshakeCertificateRequest, ssl_tls13_supported_versions_xtn);
-}
-
 // NewSessionTicket allows unknown extensions AND it isn't protected by the
 // Finished.  So adding an unknown extension doesn't cause an error.
 TEST_P(TlsBogusExtensionTest13, AddBogusExtensionNewSessionTicket) {
@@ -1263,6 +1257,55 @@ TEST_P(TlsBogusExtensionTest13, AddBogusExtensionNewSessionTicket) {
   ExpectResumption(RESUME_TICKET);
   Connect();
   SendReceive();
+}
+
+class TlsDisallowedExtensionTest13 : public TlsBogusExtensionTest {
+ protected:
+  void ConnectAndFail(uint8_t message) override {
+    ConnectExpectAlert(client_, kTlsAlertIllegalParameter);
+  }
+};
+
+TEST_P(TlsDisallowedExtensionTest13, AddVersionExtensionEncryptedExtensions) {
+  Run(kTlsHandshakeEncryptedExtensions, ssl_tls13_supported_versions_xtn);
+}
+
+TEST_P(TlsDisallowedExtensionTest13, AddVersionExtensionCertificate) {
+  Run(kTlsHandshakeCertificate, ssl_tls13_supported_versions_xtn);
+}
+
+TEST_P(TlsDisallowedExtensionTest13, AddVersionExtensionCertificateRequest) {
+  server_->RequestClientAuth(false);
+  Run(kTlsHandshakeCertificateRequest, ssl_tls13_supported_versions_xtn);
+}
+
+/* For unadvertised disallowed extensions an unsupported_extension alert is
+ * thrown since NSS checks for unadvertised extensions before its disallowed
+ * extension check. */
+class TlsDisallowedUnadvertisedExtensionTest13 : public TlsBogusExtensionTest {
+ protected:
+  void ConnectAndFail(uint8_t message) override {
+    uint8_t alert = kTlsAlertUnsupportedExtension;
+    if (message == kTlsHandshakeCertificateRequest) {
+      alert = kTlsAlertIllegalParameter;
+    }
+    ConnectExpectAlert(client_, alert);
+  }
+};
+
+TEST_P(TlsDisallowedUnadvertisedExtensionTest13,
+       AddPSKExtensionEncryptedExtensions) {
+  Run(kTlsHandshakeEncryptedExtensions, ssl_tls13_pre_shared_key_xtn);
+}
+
+TEST_P(TlsDisallowedUnadvertisedExtensionTest13, AddPSKExtensionCertificate) {
+  Run(kTlsHandshakeCertificate, ssl_tls13_pre_shared_key_xtn);
+}
+
+TEST_P(TlsDisallowedUnadvertisedExtensionTest13,
+       AddPSKExtensionCertificateRequest) {
+  server_->RequestClientAuth(false);
+  Run(kTlsHandshakeCertificateRequest, ssl_tls13_pre_shared_key_xtn);
 }
 
 TEST_P(TlsConnectStream, IncludePadding) {
@@ -1290,6 +1333,107 @@ TEST_F(TlsConnectDatagram13, Dtls13RejectLegacyCookie) {
   ConnectExpectAlert(server_, kTlsAlertIllegalParameter);
   server_->CheckErrorCode(SSL_ERROR_RX_MALFORMED_CLIENT_HELLO);
   client_->CheckErrorCode(SSL_ERROR_ILLEGAL_PARAMETER_ALERT);
+}
+
+TEST_P(TlsConnectGeneric, ClientHelloExtensionPermutation) {
+  EnsureTlsSetup();
+  ASSERT_TRUE(SSL_OptionSet(client_->ssl_fd(),
+                            SSL_ENABLE_CH_EXTENSION_PERMUTATION,
+                            PR_TRUE) == SECSuccess);
+  Connect();
+}
+
+TEST_F(TlsConnectStreamTls13, ClientHelloExtensionPermutationWithPSK) {
+  EnsureTlsSetup();
+
+  ScopedPK11SlotInfo slot(PK11_GetInternalSlot());
+  const uint8_t kPskDummyVal_[16] = {0x01, 0x02, 0x03, 0x04, 0x05,
+                                     0x06, 0x07, 0x08, 0x09, 0x0a,
+                                     0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+  SECItem psk_item;
+  psk_item.type = siBuffer;
+  psk_item.len = sizeof(kPskDummyVal_);
+  psk_item.data = const_cast<uint8_t*>(kPskDummyVal_);
+  PK11SymKey* key =
+      PK11_ImportSymKey(slot.get(), CKM_HKDF_KEY_GEN, PK11_OriginUnwrap,
+                        CKA_DERIVE, &psk_item, NULL);
+
+  ScopedPK11SymKey scoped_psk_(key);
+  const std::string kPskDummyLabel_ = "NSS PSK GTEST label";
+  const SSLHashType kPskHash_ = ssl_hash_sha384;
+  AddPsk(scoped_psk_, kPskDummyLabel_, kPskHash_);
+
+  ASSERT_TRUE(SSL_OptionSet(client_->ssl_fd(),
+                            SSL_ENABLE_CH_EXTENSION_PERMUTATION,
+                            PR_TRUE) == SECSuccess);
+  Connect();
+  SendReceive();
+  CheckKeys(ssl_kea_ecdh, ssl_grp_ec_curve25519, ssl_auth_psk, ssl_sig_none);
+}
+
+/* This test checks that the ClientHello extension order is actually permuted
+ * if ss->opt.chXtnPermutation is set. It is asserted that at least one out of
+ * 10 extension orders differs from the others.
+ *
+ * This is a probabilistic test: The default TLS 1.3 ClientHello contains 8
+ * extensions, leading to a 1/8! probability for any extension order and the
+ * same probability for two drawn extension orders to coincide.
+ * Since all sequences are compared against each other this leads to a false
+ * positive rate of (1/8!)^(n^2-n).
+ * To achieve a spurious failure rate << 1/2^64, we compare n=10 drawn orders.
+ *
+ * This test assures that randomisation is happening but does not check quality
+ * of the used Fisher-Yates shuffle. */
+TEST_F(TlsConnectStreamTls13,
+       ClientHelloExtensionPermutationProbabilisticTest) {
+  std::vector<std::vector<uint16_t>> orders;
+
+  /* Capture the extension order of 10 ClientHello messages. */
+  for (size_t i = 0; i < 10; i++) {
+    client_->StartConnect();
+    /* Enable ClientHello extension permutation. */
+    ASSERT_TRUE(SSL_OptionSet(client_->ssl_fd(),
+                              SSL_ENABLE_CH_EXTENSION_PERMUTATION,
+                              PR_TRUE) == SECSuccess);
+    /* Capture extension order filter. */
+    auto filter = MakeTlsFilter<TlsExtensionOrderCapture>(
+        client_, kTlsHandshakeClientHello);
+    /* Send ClientHello. */
+    client_->Handshake();
+    /* Remember extension order. */
+    orders.push_back(filter->order);
+    /* Reset client / server state. */
+    Reset();
+  }
+
+  /* Check for extension order inequality. */
+  size_t inequal = 0;
+  for (auto& outerOrders : orders) {
+    for (auto& innerOrders : orders) {
+      if (outerOrders != innerOrders) {
+        inequal++;
+      }
+    }
+  }
+  ASSERT_TRUE(inequal >= 1);
+}
+
+// The certificate_authorities xtn can be included in a ClientHello [RFC 8446,
+// Section 4.2]
+TEST_F(TlsConnectStreamTls13, ClientHelloCertAuthXtnToleration) {
+  EnsureTlsSetup();
+  uint8_t bodyBuf[3] = {0x00, 0x01, 0xff};
+  DataBuffer body(bodyBuf, sizeof(bodyBuf));
+  auto ch = MakeTlsFilter<TlsExtensionAppender>(
+      client_, kTlsHandshakeClientHello, ssl_tls13_certificate_authorities_xtn,
+      body);
+  // The Connection will fail because the added extension isn't in the client's
+  // transcript  not because the extension is unsupported (Bug 1815167).
+  server_->ExpectSendAlert(bad_record_mac);
+  client_->ExpectSendAlert(bad_record_mac);
+  ConnectExpectFail();
+  server_->CheckErrorCode(SSL_ERROR_BAD_MAC_READ);
+  client_->CheckErrorCode(SSL_ERROR_BAD_MAC_READ);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1332,6 +1476,15 @@ INSTANTIATE_TEST_SUITE_P(
                        TlsConnectTestBase::kTlsV11V12));
 
 INSTANTIATE_TEST_SUITE_P(BogusExtension13, TlsBogusExtensionTest13,
+                         ::testing::Combine(TlsConnectTestBase::kTlsVariantsAll,
+                                            TlsConnectTestBase::kTlsV13));
+
+INSTANTIATE_TEST_SUITE_P(DisallowedExtension13, TlsDisallowedExtensionTest13,
+                         ::testing::Combine(TlsConnectTestBase::kTlsVariantsAll,
+                                            TlsConnectTestBase::kTlsV13));
+
+INSTANTIATE_TEST_SUITE_P(DisallowedUnadvertisedExtension13,
+                         TlsDisallowedUnadvertisedExtensionTest13,
                          ::testing::Combine(TlsConnectTestBase::kTlsVariantsAll,
                                             TlsConnectTestBase::kTlsV13));
 

@@ -4,15 +4,14 @@
 
 "use strict";
 
-var { settleAll } = require("devtools/shared/DevToolsUtils");
-var EventEmitter = require("devtools/shared/event-emitter");
+var { settleAll } = require("resource://devtools/shared/DevToolsUtils.js");
+var EventEmitter = require("resource://devtools/shared/event-emitter.js");
 
-var { Pool } = require("devtools/shared/protocol/Pool");
+var { Pool } = require("resource://devtools/shared/protocol/Pool.js");
 var {
   getStack,
   callFunctionWithAsyncStack,
-} = require("devtools/shared/platform/stack");
-const defer = require("devtools/shared/defer");
+} = require("resource://devtools/shared/platform/stack.js");
 
 /**
  * Base class for client-side actor fronts.
@@ -32,6 +31,9 @@ const defer = require("devtools/shared/defer");
 class Front extends Pool {
   constructor(conn = null, targetFront = null, parentFront = null) {
     super(conn);
+    if (!conn) {
+      throw new Error("Front without conn");
+    }
     this.actorID = null;
     // The targetFront attribute represents the debuggable context. Only target-scoped
     // fronts and their children fronts will have the targetFront attribute set.
@@ -42,8 +44,8 @@ class Front extends Pool {
     this._requests = [];
 
     // Front listener functions registered via `watchFronts`
-    this._frontCreationListeners = new EventEmitter();
-    this._frontDestructionListeners = new EventEmitter();
+    this._frontCreationListeners = null;
+    this._frontDestructionListeners = null;
 
     // List of optional listener for each event, that is processed immediatly on packet
     // receival, before emitting event via EventEmitter on the Front.
@@ -87,7 +89,7 @@ class Front extends Pool {
   baseFrontClassDestroy() {
     // Reject all outstanding requests, they won't make sense after
     // the front is destroyed.
-    while (this._requests.length > 0) {
+    while (this._requests.length) {
       const { deferred, to, type, stack } = this._requests.shift();
       // Note: many tests are ignoring `Connection closed` promise rejections,
       // via PromiseTestUtils.allowMatchingRejectionsGlobally.
@@ -164,7 +166,9 @@ class Front extends Pool {
     super.unmanage(front);
 
     // Call listeners registered via `watchFronts` method
-    this._frontDestructionListeners.emit(front.typeName, front);
+    if (this._frontDestructionListeners) {
+      this._frontDestructionListeners.emit(front.typeName, front);
+    }
   }
 
   /*
@@ -199,11 +203,17 @@ class Front extends Pool {
         }
       }
 
+      if (!this._frontCreationListeners) {
+        this._frontCreationListeners = new EventEmitter();
+      }
       // Then register the callback for fronts instantiated in the future
       this._frontCreationListeners.on(typeName, onAvailable);
     }
 
     if (onDestroy) {
+      if (!this._frontDestructionListeners) {
+        this._frontDestructionListeners = new EventEmitter();
+      }
       this._frontDestructionListeners.on(typeName, onDestroy);
     }
   }
@@ -222,10 +232,10 @@ class Front extends Pool {
       return;
     }
 
-    if (onAvailable) {
+    if (onAvailable && this._frontCreationListeners) {
       this._frontCreationListeners.off(typeName, onAvailable);
     }
-    if (onDestroy) {
+    if (onDestroy && this._frontDestructionListeners) {
       this._frontDestructionListeners.off(typeName, onDestroy);
     }
   }
@@ -258,7 +268,7 @@ class Front extends Pool {
    * Update the actor from its representation.
    * Subclasses should override this.
    */
-  form(form) {}
+  form() {}
 
   /**
    * Send a packet on the connection.
@@ -279,7 +289,7 @@ class Front extends Pool {
    * Send a two-way request on the connection.
    */
   request(packet) {
-    const deferred = defer();
+    const deferred = Promise.withResolvers();
     // Save packet basics for debugging
     const { to, type } = packet;
     this._requests.push({
@@ -325,12 +335,22 @@ class Front extends Pool {
         if (result && typeof result.then == "function") {
           result.then(() => {
             super.emit(event.name, ...args);
+            ChromeUtils.addProfilerMarker(
+              "DevTools:RDP Front",
+              null,
+              `${this.typeName}.${event.name}`
+            );
           });
           return;
         }
       }
 
       super.emit(event.name, ...args);
+      ChromeUtils.addProfilerMarker(
+        "DevTools:RDP Front",
+        null,
+        `${this.typeName}.${event.name}`
+      );
       return;
     }
 

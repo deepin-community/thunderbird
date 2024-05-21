@@ -1,9 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var cap = {};
-Services.scriptloader.loadSubScript("resource:///modules/ircCAP.jsm", cap);
+var { capMessage } = ChromeUtils.importESModule(
+  "resource:///modules/ircCAP.sys.mjs"
+);
 
 var testData = [
   // A normal LS from the server.
@@ -181,7 +181,7 @@ function run_test() {
  * Test round tripping parsing and then rebuilding the messages from RFC 2812.
  */
 function testCapMessages() {
-  for (let data of testData) {
+  for (const data of testData) {
     // Generate an ircMessage to send into capMessage.
     let i = 0;
     let message;
@@ -197,7 +197,7 @@ function testCapMessages() {
       };
 
       // Create the CAP message.
-      outputs = cap.capMessage(message, account);
+      outputs = capMessage(message, account);
       ++i;
     }
 
@@ -216,12 +216,12 @@ function testCapMessages() {
     }
 
     // Add defaults to the expected output.
-    for (let expectedCap of expectedCaps) {
+    for (const expectedCap of expectedCaps) {
       // By default there's no modifier.
       if (!("modifier" in expectedCap)) {
         expectedCap.modifier = undefined;
       }
-      for (let param of ["disable", "sticky", "ack"]) {
+      for (const param of ["disable", "sticky", "ack"]) {
         if (!(param in expectedCap)) {
           expectedCap[param] = false;
         }

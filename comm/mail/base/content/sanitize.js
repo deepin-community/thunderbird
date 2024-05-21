@@ -2,12 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PlacesUtils } = ChromeUtils.import(
-  "resource://gre/modules/PlacesUtils.jsm"
+var { PlacesUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PlacesUtils.sys.mjs"
 );
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 function Sanitizer() {}
@@ -32,7 +31,7 @@ Sanitizer.prototype = {
   /**
    * Deletes privacy sensitive data in a batch, according to user preferences
    *
-   * @returns  null if everything's fine;  an object in the form
+   * @returns null if everything's fine;  an object in the form
    *           { itemName: error, ... } on (partial) failure
    */
   sanitize() {
@@ -97,14 +96,13 @@ Sanitizer.prototype = {
       clear() {
         if (this.range) {
           // Iterate through the cookies and delete any created after our cutoff.
-          for (let cookie of Services.cookies.cookies) {
+          for (const cookie of Services.cookies.cookies) {
             if (cookie.creationTime > this.range[0]) {
               // This cookie was created after our cutoff, clear it
               Services.cookies.remove(
                 cookie.host,
                 cookie.name,
                 cookie.path,
-                false,
                 cookie.originAttributes
               );
             }
@@ -113,43 +111,6 @@ Sanitizer.prototype = {
           // Remove everything
           Services.cookies.removeAll();
         }
-
-        // Clear plugin data.
-        const phInterface = Ci.nsIPluginHost;
-        const FLAG_CLEAR_ALL = phInterface.FLAG_CLEAR_ALL;
-        let ph = Cc["@mozilla.org/plugin/host;1"].getService(phInterface);
-
-        // Determine age range in seconds. (-1 means clear all.) We don't know
-        // that this.range[1] is actually now, so we compute age range based
-        // on the lower bound. If this.range results in a negative age, do
-        // nothing.
-        let age = this.range ? Date.now() / 1000 - this.range[0] / 1000000 : -1;
-        if (!this.range || age >= 0) {
-          let tags = ph.getPluginTags();
-          for (let i = 0; i < tags.length; i++) {
-            try {
-              ph.clearSiteData(tags[i], null, FLAG_CLEAR_ALL, age);
-            } catch (e) {
-              // If the plugin doesn't support clearing by age, clear everything.
-              if (e.result == Cr.NS_ERROR_PLUGIN_TIME_RANGE_NOT_SUPPORTED) {
-                try {
-                  ph.clearSiteData(tags[i], null, FLAG_CLEAR_ALL, -1);
-                } catch (e) {
-                  // Ignore errors from the plugin
-                }
-              }
-            }
-          }
-        }
-
-        // clear any network geolocation provider sessions
-        try {
-          for (let prefName of Services.prefs.getChildList(
-            "geo.wifi.access_token."
-          )) {
-            Services.prefs.clearUserPref(prefName);
-          }
-        } catch (e) {}
       },
 
       get canClear() {
@@ -206,7 +167,7 @@ Sanitizer.TIMESPAN_TODAY = 4;
 // in the uSec-since-epoch format that PRTime likes.  If we should
 // clear everything, return null.  Use ts if it is defined; otherwise
 // use the timeSpan pref.
-Sanitizer.getClearRange = function(ts) {
+Sanitizer.getClearRange = function (ts) {
   if (ts === undefined) {
     ts = Sanitizer.prefs.getIntPref("timeSpan");
   }
@@ -240,14 +201,14 @@ Sanitizer.getClearRange = function(ts) {
 };
 
 Sanitizer._prefs = null;
-Sanitizer.__defineGetter__("prefs", function() {
+Sanitizer.__defineGetter__("prefs", function () {
   return Sanitizer._prefs
     ? Sanitizer._prefs
     : (Sanitizer._prefs = Services.prefs.getBranch(Sanitizer.prefDomain));
 });
 
 // Shows sanitization UI
-Sanitizer.showUI = function(aParentWindow) {
+Sanitizer.showUI = function (aParentWindow) {
   Services.ww.openWindow(
     AppConstants.platform == "macosx" ? null : aParentWindow,
     "chrome://messenger/content/sanitize.xhtml",
@@ -261,12 +222,12 @@ Sanitizer.showUI = function(aParentWindow) {
  * Deletes privacy sensitive data in a batch, optionally showing the
  * sanitize UI, according to user preferences
  */
-Sanitizer.sanitize = function(aParentWindow) {
+Sanitizer.sanitize = function (aParentWindow) {
   Sanitizer.showUI(aParentWindow);
 };
 
 // this is called on startup and shutdown, to perform pending sanitizations
-Sanitizer._checkAndSanitize = function() {
+Sanitizer._checkAndSanitize = function () {
   const prefs = Sanitizer.prefs;
   if (
     prefs.getBoolPref(Sanitizer.prefShutdown) &&

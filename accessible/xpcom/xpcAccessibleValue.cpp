@@ -6,6 +6,7 @@
 
 #include "xpcAccessibleGeneric.h"
 #include "LocalAccessible.h"
+#include "LocalAccessible-inl.h"
 
 using namespace mozilla;
 using namespace mozilla::a11y;
@@ -21,14 +22,9 @@ xpcAccessibleValue::GetMaximumValue(double* aValue) {
     return NS_ERROR_FAILURE;
   }
 
-  double value;
-  if (Intl()->IsLocal()) {
-    value = Intl()->AsLocal()->MaxValue();
-  } else {
-    value = Intl()->AsRemote()->MaxValue();
-  }
+  double value = Intl()->MaxValue();
 
-  if (!IsNaN(value)) *aValue = value;
+  if (!std::isnan(value)) *aValue = value;
 
   return NS_OK;
 }
@@ -44,14 +40,9 @@ xpcAccessibleValue::GetMinimumValue(double* aValue) {
     return NS_ERROR_FAILURE;
   }
 
-  double value;
-  if (Intl()->IsLocal()) {
-    value = Intl()->AsLocal()->MinValue();
-  } else {
-    value = Intl()->AsRemote()->MinValue();
-  }
+  double value = Intl()->MinValue();
 
-  if (!IsNaN(value)) *aValue = value;
+  if (!std::isnan(value)) *aValue = value;
 
   return NS_OK;
 }
@@ -67,14 +58,9 @@ xpcAccessibleValue::GetCurrentValue(double* aValue) {
     return NS_ERROR_FAILURE;
   }
 
-  double value;
-  if (Intl()->IsLocal()) {
-    value = Intl()->AsLocal()->CurValue();
-  } else {
-    value = Intl()->AsRemote()->CurValue();
-  }
+  double value = Intl()->CurValue();
 
-  if (!IsNaN(value)) *aValue = value;
+  if (!std::isnan(value)) *aValue = value;
 
   return NS_OK;
 }
@@ -87,10 +73,8 @@ xpcAccessibleValue::SetCurrentValue(double aValue) {
     return NS_ERROR_FAILURE;
   }
 
-  if (Intl()->IsLocal()) {
-    Intl()->AsLocal()->SetCurValue(aValue);
-  } else {
-    Intl()->AsRemote()->SetCurValue(aValue);
+  if (!Intl()->SetCurValue(aValue)) {
+    return NS_ERROR_FAILURE;
   }
 
   return NS_OK;
@@ -107,14 +91,9 @@ xpcAccessibleValue::GetMinimumIncrement(double* aValue) {
     return NS_ERROR_FAILURE;
   }
 
-  double value;
-  if (Intl()->IsLocal()) {
-    value = Intl()->AsLocal()->Step();
-  } else {
-    value = Intl()->AsRemote()->Step();
-  }
+  double value = Intl()->Step();
 
-  if (!IsNaN(value)) *aValue = value;
+  if (!std::isnan(value)) *aValue = value;
 
   return NS_OK;
 }

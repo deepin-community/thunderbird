@@ -3,12 +3,10 @@
 // Make sure Shield doesn't hit the network.
 user_pref("app.normandy.api_url", "https://localhost/selfsupport-dummy/");
 user_pref("app.update.staging.enabled", false);
-user_pref("app.update.url.android", "");
 user_pref("browser.safebrowsing.blockedURIs.enabled", false);
 user_pref("browser.safebrowsing.downloads.enabled", false);
 user_pref("browser.safebrowsing.downloads.remote.url", "http://127.0.0.1/safebrowsing-dummy/gethash");
 user_pref("browser.safebrowsing.malware.enabled", false);
-user_pref("browser.safebrowsing.passwords.enabled", false);
 // Likewise for safebrowsing.
 user_pref("browser.safebrowsing.phishing.enabled", false);
 user_pref("browser.safebrowsing.provider.google.gethashURL", "http://127.0.0.1/safebrowsing-dummyg/gethash");
@@ -25,8 +23,6 @@ user_pref("browser.startup.page", 0);
 // assumed 980px content.
 user_pref("browser.viewport.desktopWidth", 800);
 user_pref("datareporting.healthreport.uploadEnabled", false);
-// Allow XUL and XBL files to be opened from file:// URIs
-user_pref("dom.allow_XUL_XBL_for_file", true);
 // Don't forcibly kill content processes after a timeout
 user_pref("dom.ipc.tabs.shutdownTimeoutSecs", 0);
 // For mochitests, we're more interested in testing the behavior of in-
@@ -45,6 +41,9 @@ user_pref("gfx.color_management.mode", 2);
 user_pref("gfx.logging.level", 1);
 // Disable downscale-during-decode, since it makes reftests more difficult.
 user_pref("image.downscale-during-decode.enabled", false);
+// We do the capturing the reftest results with sync decoding
+// so we want to be consistent.
+user_pref("image.decode-sync.enabled", true);
 // Disable interruptible reflow since (1) it's normally not going to
 // happen, but (2) it might happen if we somehow end up with both
 // pending user events and clock skew.  So to avoid having to change
@@ -53,12 +52,14 @@ user_pref("image.downscale-during-decode.enabled", false);
 // reflow so that that rare edge case doesn't lead to reftest
 // failures.
 user_pref("layout.interruptible-reflow.enabled", false);
-// Disable the fade out (over time) of overlay scrollbars, since we
-// can't guarantee taking both reftest snapshots at the same point
-// during the fade.
+// Disable the fade of overlay scrollbars, since we can't guarantee taking both
+// reftest snapshots at the same point during the fade.
 user_pref("layout.testing.overlay-scrollbars.always-visible", true);
+user_pref("ui.scrollbarFadeDuration", 0);
+// The broken image icon doesn't block the load event and thus there's no easy
+// way to guarantee it's loaded by the time we take the reftest screenshot.
+user_pref("layout.image.eager_broken_image_icon", true);
 user_pref("media.gmp-manager.url.override", "http://localhost/dummy-gmp-manager.xml");
-user_pref("media.openUnsupportedTypeWithExternalApp", false);
 // Reftests load a lot of URLs very quickly. This puts avoidable and
 // unnecessary I/O pressure on the Places DB (measured to be in the
 // gigabytes).
@@ -98,3 +99,7 @@ user_pref("dom.push.serverURL", "");
 user_pref("toolkit.telemetry.initDelay", 99999999);
 // Setting this pref to true for usercss reftests, since it relies on userContent.css
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+// Use a light color-scheme unless explicitly overriden.
+user_pref("layout.css.prefers-color-scheme.content-override", 1);
+// Force OffscreenCanvas support
+user_pref("gfx.offscreencanvas.enabled", true);

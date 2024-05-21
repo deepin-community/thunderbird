@@ -7,26 +7,14 @@
 
 const CC = Components.Constructor;
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AppConstants",
-  "resource://gre/modules/AppConstants.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  WindowsVersionInfo:
+    "resource://gre/modules/components-utils/WindowsVersionInfo.sys.mjs",
+});
 
 let expectedResults;
 
-let osVersion = Services.sysinfo.get("version");
-if (AppConstants.platform == "macosx") {
-  // Convert Darwin version to macOS version: 19.x.x -> 10.15 etc.
-  // https://en.wikipedia.org/wiki/Darwin_%28operating_system%29
-  let DarwinVersionParts = osVersion.split(".");
-  let DarwinMajorVersion = +DarwinVersionParts[0];
-  let macOsMinorVersion = DarwinMajorVersion - 4;
-  if (macOsMinorVersion > 15) {
-    macOsMinorVersion = 15;
-  }
-  osVersion = `10.${macOsMinorVersion}`;
-}
+const osVersion = Services.sysinfo.get("version");
 
 const DEFAULT_APPVERSION = {
   linux: "5.0 (X11)",
@@ -50,53 +38,73 @@ if (cpuArch == "x86-64") {
   cpuArch = "x86_64";
 }
 
+// Hard code the User-Agent string's CPU arch on Android, Linux, and other
+// Unix-like platforms. This pref can be removed after we're confident there
+// are no webcompat problems.
+const freezeCpu = Services.prefs.getBoolPref(
+  "network.http.useragent.freezeCpu",
+  false
+);
+
+let defaultLinuxCpu;
+if (freezeCpu) {
+  defaultLinuxCpu = AppConstants.platform == "android" ? "armv81" : "x86_64";
+} else {
+  defaultLinuxCpu = cpuArch;
+}
+
 const DEFAULT_PLATFORM = {
-  linux: `Linux ${cpuArch}`,
+  linux: `Linux ${defaultLinuxCpu}`,
   win: "Win32",
   macosx: "MacIntel",
-  android: `Linux ${cpuArch}`,
-  other: `Linux ${cpuArch}`,
+  android: `Linux ${defaultLinuxCpu}`,
+  other: `Linux ${defaultLinuxCpu}`,
 };
 
 const SPOOFED_PLATFORM = {
   linux: "Linux x86_64",
   win: "Win32",
   macosx: "MacIntel",
-  android: "Linux aarch64",
+  android: "Linux armv81",
   other: "Linux x86_64",
 };
 
-// If comparison with this value fails in the future,
-// it's time to evaluate if exposing a new Windows
-// version to the Web is appropriate. See
+// If comparison with the WindowsOscpu value fails in the future, it's time to
+// evaluate if exposing a new Windows version to the Web is appropriate. See
 // https://bugzilla.mozilla.org/show_bug.cgi?id=1693295
-const WindowsOscpu =
-  cpuArch == "x86_64"
-    ? `Windows NT ${osVersion}; Win64; x64`
-    : `Windows NT ${osVersion}`;
+const WindowsOscpuPromise = (async () => {
+  let WindowsOscpu = null;
+  if (AppConstants.platform == "win") {
+    let isWin11 = WindowsVersionInfo.get().buildNumber >= 22000;
+    let isWow64 = (await Services.sysinfo.processInfo).isWow64;
+    WindowsOscpu =
+      cpuArch == "x86_64" || isWow64 || (cpuArch == "aarch64" && isWin11)
+        ? "Windows NT 10.0; Win64; x64"
+        : "Windows NT 10.0";
+  }
+  return WindowsOscpu;
+})();
 
 const DEFAULT_OSCPU = {
-  linux: `Linux ${cpuArch}`,
-  win: WindowsOscpu,
-  macosx: `Intel Mac OS X ${osVersion}`,
-  android: `Linux ${cpuArch}`,
-  other: `Linux ${cpuArch}`,
+  linux: `Linux ${defaultLinuxCpu}`,
+  macosx: "Intel Mac OS X 10.15",
+  android: `Linux ${defaultLinuxCpu}`,
+  other: `Linux ${defaultLinuxCpu}`,
 };
 
 const SPOOFED_OSCPU = {
   linux: "Linux x86_64",
   win: "Windows NT 10.0; Win64; x64",
   macosx: "Intel Mac OS X 10.15",
-  android: "Linux aarch64",
+  android: "Linux armv81",
   other: "Linux x86_64",
 };
 
 const DEFAULT_UA_OS = {
-  linux: `X11; Linux ${cpuArch}`,
-  win: WindowsOscpu,
-  macosx: `Macintosh; Intel Mac OS X ${osVersion}`,
+  linux: `X11; Linux ${defaultLinuxCpu}`,
+  macosx: "Macintosh; Intel Mac OS X 10.15",
   android: `Android ${osVersion}; Mobile`,
-  other: `X11; Linux ${cpuArch}`,
+  other: `X11; Linux ${defaultLinuxCpu}`,
 };
 
 const SPOOFED_UA_NAVIGATOR_OS = {
@@ -121,9 +129,10 @@ const CONST_PRODUCT = "Gecko";
 const CONST_PRODUCTSUB = "20100101";
 const CONST_VENDOR = "";
 const CONST_VENDORSUB = "";
+const CONST_LEGACY_BUILD_ID = "20181001000000";
 
 const appVersion = parseInt(Services.appinfo.version);
-const spoofedVersion = appVersion - ((appVersion - 78) % 13);
+const spoofedVersion = AppConstants.platform == "android" ? "115" : appVersion;
 
 const LEGACY_UA_GECKO_TRAIL = "20100101";
 
@@ -143,16 +152,18 @@ const SPOOFED_UA_GECKO_TRAIL = {
   other: LEGACY_UA_GECKO_TRAIL,
 };
 
+add_setup(async () => {
+  DEFAULT_OSCPU.win = DEFAULT_UA_OS.win = await WindowsOscpuPromise;
+});
+
 async function testUserAgentHeader() {
-  const BASE =
-    "http://mochi.test:8888/browser/browser/components/resistfingerprinting/test/browser/";
-  const TEST_TARGET_URL = `${BASE}browser_navigator_header.sjs?`;
+  const TEST_TARGET_URL = `${TEST_PATH}file_navigator_header.sjs?`;
   let tab = await BrowserTestUtils.openNewForegroundTab(
     gBrowser,
     TEST_TARGET_URL
   );
 
-  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     return content.document.body.textContent;
   });
 
@@ -172,7 +183,7 @@ async function testNavigator() {
     TEST_PATH + "file_navigator.html"
   );
 
-  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     return content.document.getElementById("result").innerHTML;
   });
 
@@ -195,8 +206,16 @@ async function testNavigator() {
     expectedResults.userAgentNavigator,
     `Checking ${testDesc} navigator.userAgent.`
   );
-  is(result.mimeTypesLength, 0, "Navigator.mimeTypes has a length of 0.");
-  is(result.pluginsLength, 0, "Navigator.plugins has a length of 0.");
+  is(
+    result.mimeTypesLength,
+    expectedResults.mimeTypesLength,
+    `Navigator.mimeTypes has a length of ${expectedResults.mimeTypesLength}.`
+  );
+  is(
+    result.pluginsLength,
+    expectedResults.pluginsLength,
+    `Navigator.plugins has a length of ${expectedResults.pluginsLength}.`
+  );
   is(
     result.oscpu,
     expectedResults.oscpu,
@@ -217,6 +236,11 @@ async function testNavigator() {
     result.appName,
     CONST_APPNAME,
     "Navigator.appName reports correct constant value."
+  );
+  is(
+    result.buildID,
+    CONST_LEGACY_BUILD_ID,
+    "Navigator.buildID reports correct constant value."
   );
   is(
     result.product,
@@ -252,14 +276,14 @@ async function testWorkerNavigator() {
   let result = await SpecialPowers.spawn(
     tab.linkedBrowser,
     [],
-    async function() {
+    async function () {
       let worker = new content.SharedWorker(
-        "file_navigatorWorker.js",
+        "file_navigator.worker.js",
         "WorkerNavigatorTest"
       );
 
       let res = await new Promise(resolve => {
-        worker.port.onmessage = function(e) {
+        worker.port.onmessage = function (e) {
           resolve(e.data);
         };
       });
@@ -275,38 +299,38 @@ async function testWorkerNavigator() {
   is(
     result.appVersion,
     expectedResults.appVersion,
-    `Checking ${testDesc} navigator.appVersion.`
+    `Checking ${testDesc} worker navigator.appVersion.`
   );
   is(
     result.platform,
     expectedResults.platform,
-    `Checking ${testDesc} navigator.platform.`
+    `Checking ${testDesc} worker navigator.platform.`
   );
   is(
     result.userAgent,
     expectedResults.userAgentNavigator,
-    `Checking ${testDesc} navigator.userAgent.`
+    `Checking ${testDesc} worker navigator.userAgent.`
   );
   is(
     result.hardwareConcurrency,
     expectedResults.hardwareConcurrency,
-    `Checking ${testDesc} navigator.hardwareConcurrency.`
+    `Checking ${testDesc} worker navigator.hardwareConcurrency.`
   );
 
   is(
     result.appCodeName,
     CONST_APPCODENAME,
-    "Navigator.appCodeName reports correct constant value."
+    "worker Navigator.appCodeName reports correct constant value."
   );
   is(
     result.appName,
     CONST_APPNAME,
-    "Navigator.appName reports correct constant value."
+    "worker Navigator.appName reports correct constant value."
   );
   is(
     result.product,
     CONST_PRODUCT,
-    "Navigator.product reports correct constant value."
+    "worker Navigator.product reports correct constant value."
   );
 
   BrowserTestUtils.removeTab(tab);
@@ -336,23 +360,119 @@ add_task(async function setupDefaultUserAgent() {
     testDesc: "default",
     appVersion: DEFAULT_APPVERSION[AppConstants.platform],
     hardwareConcurrency: navigator.hardwareConcurrency,
+    mimeTypesLength: 2,
     oscpu: DEFAULT_OSCPU[AppConstants.platform],
     platform: DEFAULT_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
     userAgentNavigator: defaultUserAgent,
     userAgentHeader: defaultUserAgent,
   };
-});
 
-add_task(async function runDefaultNavigatorTest() {
   await testNavigator();
-});
 
-add_task(async function runDefaultHTTPHeaderTest() {
   await testUserAgentHeader();
+
+  await testWorkerNavigator();
 });
 
-add_task(async function runDefaultWorkerNavigatorTest() {
+add_task(async function setupRFPExemptions() {
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["privacy.resistFingerprinting", true],
+      ["privacy.resistFingerprinting.exemptedDomains", "example.net"],
+    ],
+  });
+
+  let defaultUserAgent = `Mozilla/5.0 (${
+    DEFAULT_UA_OS[AppConstants.platform]
+  }; rv:${appVersion}.0) Gecko/${
+    DEFAULT_UA_GECKO_TRAIL[AppConstants.platform]
+  } Firefox/${appVersion}.0`;
+
+  expectedResults = {
+    testDesc: "RFP Exempted Domain",
+    appVersion: DEFAULT_APPVERSION[AppConstants.platform],
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    mimeTypesLength: 2,
+    oscpu: DEFAULT_OSCPU[AppConstants.platform],
+    platform: DEFAULT_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
+    userAgentNavigator: defaultUserAgent,
+    userAgentHeader: defaultUserAgent,
+  };
+
+  await testNavigator();
+
+  await testUserAgentHeader();
+
   await testWorkerNavigator();
+
+  // Pop exempted domains
+  await SpecialPowers.popPrefEnv();
+});
+
+add_task(async function setupETPToggleExemptions() {
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["privacy.fingerprintingProtection", true],
+      ["privacy.fingerprintingProtection.overrides", "+AllTargets"],
+    ],
+  });
+
+  // Open a tab to toggle the ETP state.
+  let tab = await BrowserTestUtils.openNewForegroundTab(
+    gBrowser,
+    TEST_PATH + "file_navigator.html"
+  );
+  let loaded = BrowserTestUtils.browserLoaded(
+    tab.linkedBrowser,
+    false,
+    TEST_PATH + "file_navigator.html"
+  );
+  gProtectionsHandler.disableForCurrentPage();
+  await loaded;
+  BrowserTestUtils.removeTab(tab);
+
+  let defaultUserAgent = `Mozilla/5.0 (${
+    DEFAULT_UA_OS[AppConstants.platform]
+  }; rv:${appVersion}.0) Gecko/${
+    DEFAULT_UA_GECKO_TRAIL[AppConstants.platform]
+  } Firefox/${appVersion}.0`;
+
+  expectedResults = {
+    testDesc: "ETP toggle Exempted Domain",
+    appVersion: DEFAULT_APPVERSION[AppConstants.platform],
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    mimeTypesLength: 2,
+    oscpu: DEFAULT_OSCPU[AppConstants.platform],
+    platform: DEFAULT_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
+    userAgentNavigator: defaultUserAgent,
+    userAgentHeader: defaultUserAgent,
+  };
+
+  await testNavigator();
+
+  await testUserAgentHeader();
+
+  await testWorkerNavigator();
+
+  // Toggle the ETP state back.
+  tab = await BrowserTestUtils.openNewForegroundTab(
+    gBrowser,
+    TEST_PATH + "file_navigator.html"
+  );
+  loaded = BrowserTestUtils.browserLoaded(
+    tab.linkedBrowser,
+    false,
+    TEST_PATH + "file_navigator.html"
+  );
+  gProtectionsHandler.enableForCurrentPage();
+  await loaded;
+  BrowserTestUtils.removeTab(tab);
+
+  // Pop exempted domains
+  await SpecialPowers.popPrefEnv();
 });
 
 add_task(async function setupResistFingerprinting() {
@@ -364,32 +484,28 @@ add_task(async function setupResistFingerprinting() {
 
   let spoofedUserAgentNavigator = `Mozilla/5.0 (${
     SPOOFED_UA_NAVIGATOR_OS[AppConstants.platform]
-  }; rv:${spoofedVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${spoofedVersion}.0`;
+  }; rv:${appVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${appVersion}.0`;
 
   let spoofedUserAgentHeader = `Mozilla/5.0 (${
     SPOOFED_UA_HTTPHEADER_OS[AppConstants.platform]
-  }; rv:${spoofedVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${spoofedVersion}.0`;
+  }; rv:${appVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${appVersion}.0`;
 
   expectedResults = {
     testDesc: "spoofed",
     appVersion: SPOOFED_APPVERSION[AppConstants.platform],
     hardwareConcurrency: SPOOFED_HW_CONCURRENCY,
+    mimeTypesLength: 2,
     oscpu: SPOOFED_OSCPU[AppConstants.platform],
     platform: SPOOFED_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
     userAgentNavigator: spoofedUserAgentNavigator,
     userAgentHeader: spoofedUserAgentHeader,
   };
-});
 
-add_task(async function runSpoofedNavigatorTest() {
   await testNavigator();
-});
 
-add_task(async function runSpoofedHTTPHeaderTest() {
   await testUserAgentHeader();
-});
 
-add_task(async function runSpoofedWorkerNavigatorTest() {
   await testWorkerNavigator();
 });
 
@@ -397,11 +513,11 @@ add_task(async function runSpoofedWorkerNavigatorTest() {
 add_task(async function runOverrideTest() {
   await SpecialPowers.pushPrefEnv({
     set: [
-      ["general.appname.override", "appName overridden"],
       ["general.appversion.override", "appVersion overridden"],
       ["general.platform.override", "platform overridden"],
       ["general.useragent.override", "userAgent overridden"],
       ["general.oscpu.override", "oscpu overridden"],
+      ["general.buildID.override", "buildID overridden"],
     ],
   });
 
@@ -410,4 +526,10 @@ add_task(async function runOverrideTest() {
   await testWorkerNavigator();
 
   await testUserAgentHeader();
+
+  // Pop general.appversion.override etc
+  await SpecialPowers.popPrefEnv();
+
+  // Pop privacy.resistFingerprinting
+  await SpecialPowers.popPrefEnv();
 });

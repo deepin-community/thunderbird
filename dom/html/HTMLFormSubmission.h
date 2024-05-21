@@ -19,10 +19,10 @@ class nsIInputStream;
 class nsGenericHTMLElement;
 class nsIMultiplexInputStream;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class Blob;
+class DialogFormSubmission;
 class Directory;
 class Element;
 class HTMLFormElement;
@@ -39,6 +39,7 @@ class HTMLFormSubmission {
    *
    * @param aForm the form to get a submission object based on
    * @param aSubmitter the submitter element (can be null)
+   * @param aEncoding the submiter element's encoding
    * @param aFormSubmission the form submission object (out param)
    */
   static nsresult GetFromForm(HTMLFormElement* aForm,
@@ -93,8 +94,6 @@ class HTMLFormSubmission {
    */
   void GetCharset(nsACString& aCharset) { mEncoding->Name(aCharset); }
 
-  Element* GetSubmitterElement() const { return mSubmitter.get(); }
-
   /**
    * Get the action URI that will be used for submission.
    */
@@ -117,11 +116,9 @@ class HTMLFormSubmission {
    * Can only be constructed by subclasses.
    *
    * @param aEncoding the character encoding of the form
-   * @param aSubmitter the submitter element (can be null)
    */
   HTMLFormSubmission(nsIURI* aActionURL, const nsAString& aTarget,
-                     mozilla::NotNull<const mozilla::Encoding*> aEncoding,
-                     Element* aSubmitter);
+                     mozilla::NotNull<const mozilla::Encoding*> aEncoding);
 
   // The action url.
   nsCOMPtr<nsIURI> mActionURL;
@@ -131,9 +128,6 @@ class HTMLFormSubmission {
 
   // The character encoding of this form submission
   mozilla::NotNull<const mozilla::Encoding*> mEncoding;
-
-  // Submitter element.
-  RefPtr<Element> mSubmitter;
 
   // Keep track of whether this form submission was user-initiated or not
   bool mInitiatedFromUserInput;
@@ -175,11 +169,9 @@ class EncodingFormSubmission : public HTMLFormSubmission {
 
 class DialogFormSubmission final : public HTMLFormSubmission {
  public:
-  DialogFormSubmission(nsAString& aResult, nsIURI* aActionURL,
-                       const nsAString& aTarget,
-                       NotNull<const Encoding*> aEncoding, Element* aSubmitter,
+  DialogFormSubmission(nsAString& aResult, NotNull<const Encoding*> aEncoding,
                        HTMLDialogElement* aDialogElement)
-      : HTMLFormSubmission(aActionURL, aTarget, aEncoding, aSubmitter),
+      : HTMLFormSubmission(nullptr, u""_ns, aEncoding),
         mDialogElement(aDialogElement),
         mReturnValue(aResult) {}
   nsresult AddNameValuePair(const nsAString& aName,
@@ -294,7 +286,6 @@ class FSMultipartFormData : public EncodingFormSubmission {
   uint64_t mTotalLength;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif /* mozilla_dom_HTMLFormSubmission_h */

@@ -3,7 +3,25 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
-# Addressing widget
+## Send Format
+
+compose-send-format-menu =
+    .label = Format da spediziun
+    .accesskey = F
+compose-send-auto-menu-item =
+    .label = Automatic
+    .accesskey = A
+compose-send-both-menu-item =
+    .label = Tant HTML sco era text brut
+    .accesskey = T
+compose-send-html-menu-item =
+    .label = Mo HTML
+    .accesskey = H
+compose-send-plain-menu-item =
+    .label = Mo text brut
+    .accesskey = b
+
+## Addressing widget
 
 #   $type (String) - the type of the addressing row
 remove-address-row-button =
@@ -30,6 +48,13 @@ pill-tooltip-not-in-address-book = { $email } na sa chatta betg en tes cudeschet
 pill-action-edit =
     .label = Modifitgar l'adressa
     .accesskey = e
+#   $type (String) - the type of the addressing row, e.g. Cc, Bcc, etc.
+pill-action-select-all-sibling-pills =
+    .label = Tscherner tut las adressas en { $type }
+    .accesskey = a
+pill-action-select-all-pills =
+    .label = Tscherner tut las adressas
+    .accesskey = s
 pill-action-move-to =
     .label = Spustar a «a»
     .accesskey = a
@@ -43,7 +68,7 @@ pill-action-expand-list =
     .label = Expander la glista
     .accesskey = x
 
-# Attachment widget
+## Attachment widget
 
 ctrl-cmd-shift-pretty-prefix =
     { PLATFORM() ->
@@ -59,8 +84,9 @@ menuitem-toggle-attachment-pane =
 toolbar-button-add-attachment =
     .label = Agiuntar
     .tooltiptext = Agiuntar ina agiunta ({ ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key })
-add-attachment-notification-reminder =
-    .label = Agiuntar ina agiunta…
+add-attachment-notification-reminder2 =
+    .label = Agiuntar ina datoteca…
+    .accesskey = A
     .tooltiptext = { toolbar-button-add-attachment.tooltiptext }
 menuitem-attach-files =
     .label = Datoteca(s)…
@@ -70,11 +96,27 @@ context-menuitem-attach-files =
     .label = Agiuntar datoteca(s)
     .accesskey = d
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key }
+# Note: Do not translate the term 'vCard'.
+context-menuitem-attach-vcard =
+    .label = Mia vCard
+    .accesskey = C
+context-menuitem-attach-openpgp-key =
+    .label = Mia clav publica OpenPGP
+    .accesskey = c
+#   $count (Number) - the number of attachments in the attachment bucket
+attachment-bucket-count-value =
+    { $count ->
+        [1] { $count } agiunta
+       *[other] { $count } agiuntas
+    }
+attachment-area-show =
+    .title = Mussar la zona d'agiuntas ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
+attachment-area-hide =
+    .title = Zuppentar la zona d'agiuntas ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
 
-expand-attachment-pane-tooltip =
-    .tooltiptext = Mussar la zona d'agiuntas ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
-collapse-attachment-pane-tooltip =
-    .tooltiptext = Zuppentar la zona d'agiuntas ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
+## Variables:
+## $count (Number) - Number of files being dropped onto the composer.
+
 drop-file-label-attachment =
     { $count ->
         [one] Agiuntar sco agiunta
@@ -86,7 +128,7 @@ drop-file-label-inline =
        *[other] Includer a l'intern
     }
 
-# Reorder Attachment Panel
+## Reorder Attachment Panel
 
 move-attachment-first-panel-button =
     .label = Spustar a l'entschatta
@@ -100,47 +142,91 @@ button-return-receipt =
     .label = Retschavida
     .tooltiptext = Dumandar ina conferma da retschavida per quest messadi
 
-# Encryption
+## Encryption
 
-message-to-be-signed-icon =
-    .alt = Signar il messadi
-message-to-be-encrypted-icon =
-    .alt = Criptar il messadi
-
-# Addressing Area
-
-to-compose-address-row-label =
-    .value = A
-#   $key (String) - the shortcut key for this field
-to-compose-show-address-row-menuitem =
-    .label = Champ { to-compose-address-row-label.value }
-    .accesskey = h
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-to-compose-show-address-row-label =
-    .value = { to-compose-address-row-label.value }
-    .tooltiptext = Mussar il champ { to-compose-address-row-label.value } ({ to-compose-show-address-row-menuitem.acceltext })
-cc-compose-address-row-label =
-    .value = Cc
-#   $key (String) - the shortcut key for this field
-cc-compose-show-address-row-menuitem =
-    .label = Champ { cc-compose-address-row-label.value }
-    .accesskey = C
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-cc-compose-show-address-row-label =
-    .value = { cc-compose-address-row-label.value }
-    .tooltiptext = Mussar il champ { cc-compose-address-row-label.value } ({ cc-compose-show-address-row-menuitem.acceltext })
-bcc-compose-address-row-label =
-    .value = Bcc
-#   $key (String) - the shortcut key for this field
-bcc-compose-show-address-row-menuitem =
-    .label = Champ { bcc-compose-address-row-label.value }
+encryption-menu =
+    .label = Segirezza
+    .accesskey = z
+encryption-toggle =
+    .label = Criptar
+    .tooltiptext = Utilisar il criptadi da fin a fin per quest messadi.
+encryption-options-openpgp =
+    .label = OpenPGP
+    .tooltiptext = Consultar u midar ils parameters dal criptadi OpenPGP
+encryption-options-smime =
+    .label = S/MIME
+    .tooltiptext = Consultar u midar ils parameters dal criptadi S/MIME
+signing-toggle =
+    .label = Suttascriver
+    .tooltiptext = Utilisar ina suttascripziun digitala per quest messadi
+menu-openpgp =
+    .label = OpenPGP
+    .accesskey = O
+menu-smime =
+    .label = S/MIME
+    .accesskey = S
+menu-encrypt =
+    .label = Criptar
+    .accesskey = i
+menu-encrypt-subject =
+    .label = Criptar l'object
+    .accesskey = b
+menu-sign =
+    .label = Suttascriver a moda digitala
+    .accesskey = t
+menu-manage-keys =
+    .label = Assistent da clavs
+    .accesskey = A
+menu-view-certificates =
+    .label = Vesair ils certificats dals destinaturs
+    .accesskey = V
+menu-open-key-manager =
+    .label = Administraziun da clavs
     .accesskey = m
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-bcc-compose-show-address-row-label =
-    .value = { bcc-compose-address-row-label.value }
-    .tooltiptext = Mussar il champ { bcc-compose-address-row-label.value } ({ bcc-compose-show-address-row-menuitem.acceltext })
-#   $count (Number) - the count of addresses in the "To" and "Cc" fields.
-many-public-recipients-info = Ils { $count } destinaturs en ils champs A e CC pon vesair l'adressa in da l'auter. Ti pos zuppentar ils destinaturs cun utilisar Bcc.
+openpgp-key-issue-notification-one = Per utilisar il criptadi da fin a fin èsi necessari da schliar ils problems cun la clav per { $addr }
+openpgp-key-issue-notification-many = Per utilisar il criptadi da fin a fin èsi necessari da schliar ils problems cun la clav per { $count } destinaturs.
+smime-cert-issue-notification-one = Per utilisar il criptadi da fin a fin èsi necessari da schliar ils problems cun il certificat per { $addr }.
+smime-cert-issue-notification-many = Per utilisar il criptadi da fin a fin èsi necessari da schliar ils problems cun il certificat per { $count } destinaturs.
+# Variables:
+# $addr (String) - Email address (which related to the currently selected
+#                  from address) which isn't set up to end-to-end encryption.
+openpgp-key-issue-notification-from = Il sistem n'è betg configurà per trametter messadis cun criptadi fin-a-fin da { $addr }.
+# Variables:
+# $addr (String) - Email address with key issues.
+openpgp-key-issue-notification-single = Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun la clav per { $addr }.
+# Variables:
+# $count (Number) - Number of recipients with key issues.
+openpgp-key-issue-notification-multi =
+    { $count ->
+        [one] Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun la clav per { $count } destinatur.
+       *[other] Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun la clav per { $count } destinaturs.
+    }
+# Variables:
+# $addr (String) - mail address with certificate issues.
+smime-cert-issue-notification-single = Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun il certificat per { $addr }.
+# Variables:
+# $count (Number) - Number of recipients with certificate issues.
+smime-cert-issue-notification-multi =
+    { $count ->
+        [one] Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun il certificat per { $count } destinatur.
+       *[other] Per utilisar il criptadi fin-a-fin èsi necessari da schliar ils problems cun il certificat per { $count } destinaturs.
+    }
+key-notification-disable-encryption =
+    .label = Betg criptar
+    .accesskey = B
+    .tooltiptext = Deactivar il criptadi da fin a fin
+key-notification-resolve =
+    .label = Schliar…
+    .accesskey = c
+    .tooltiptext = Avrir l'assistent da clavs OpenPGP
+can-encrypt-smime-notification = Igl è pussaivel d'utilisar il criptadi da fin a fin S/MIME.
+can-encrypt-openpgp-notification = Igl è pussaivel d'utilisar il criptadi da fin a fin OpenPGP.
+can-e2e-encrypt-button =
+    .label = Criptar
+    .accesskey = C
+
+## Addressing Area
+
 to-address-row-label =
     .value = A
 #   $key (String) - the shortcut key for this field
@@ -194,6 +280,14 @@ many-public-recipients-notice =
         [one] Tes messadi ha in destinatur public. Ti pos evitar che destinaturs vegnian revelads cun utilisar il champ Bcc.
        *[other] Ils { $count } destinaturs en ils champs A e Cc pon vesair l'adressa in da l'auter. Ti pos evitar che destinaturs vegnian revelads cun utilisar il champ Bcc.
     }
+public-recipients-notice-single = Tes messadi ha in destinatur public. Igl è pussaivel dad evitar ch'il destinatur è visibel cun utilisar Bcc.
+# Variables:
+# $count (Number) - the count of addresses in the "To" and "Cc" fields.
+public-recipients-notice-multi =
+    { $count ->
+        [one] Ils { $count } destinaturs en ils champs A e Cc pon mintgamai vesair l'adressa dals auters. Ti pos evitar che destinaturs vegnian revelads cun utilisar il champ Bcc.
+       *[other] Ils { $count } destinaturs en ils champs A e Cc pon mintgamai vesair l'adressa dals auters. Ti pos evitar che destinaturs vegnian revelads cun utilisar il champ Bcc.
+    }
 many-public-recipients-bcc =
     .label = Utilisar Bcc
     .accesskey = U
@@ -217,6 +311,7 @@ many-public-recipients-prompt-send = Tuttina trametter
 compose-missing-identity-warning = Betg chattà ina identitad univoca che correspunda a l'adressa «da». Il messadi vegn tramess cun utilisar il champ «da» actual ed ils parameters da l'identitad { $identity }.
 encrypted-bcc-warning = Cun trametter in messadi criptà n'èn ils destinaturs en Bcc betg zuppads dal tuttafatg. Tut ils destinaturs pon potenzialmain identifitgar ils auters destinaturs.
 encrypted-bcc-ignore-button = Chapì
+auto-disable-e2ee-warning = Il criptadi fin-a-fin per quest messadi è vegnì deactivà automaticamain.
 
 ## Editing
 
@@ -225,3 +320,104 @@ encrypted-bcc-ignore-button = Chapì
 
 compose-tool-button-remove-text-styling =
     .tooltiptext = Allontanar la formataziun dal text
+
+## Filelink
+
+# A text used in a tooltip of Filelink attachments, whose account has been
+# removed or is unknown.
+cloud-file-unknown-account-tooltip = Transferì en in conto da Filelink nunenconuschent.
+
+# Placeholder file
+
+# Title for the html placeholder file.
+# $filename - name of the file
+cloud-file-placeholder-title = { $filename } - Agiunta Filelink
+# A text describing that the file was attached as a Filelink and can be downloaded
+# from the link shown below.
+# $filename - name of the file
+cloud-file-placeholder-intro = La datoteca { $filename } è vegnida agiuntada cun agid da Filelink. Ella po vegnir telechargiada cun la colliaziun sutvart.
+
+# Template
+
+# A line of text describing how many uploaded files have been appended to this
+# message. Emphasis should be on sharing as opposed to attaching. This item is
+# used as a header to a list, hence the colon.
+# Variables:
+# $count (Number) - Number of files.
+cloud-file-count-header =
+    { $count ->
+        [one] Jau hai collià { $count } datoteca cun quest e-mail:
+       *[other] Jau hai collià { $count } datotecas cun quest e-mail:
+    }
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service provider.
+# $link (string) - html a-tag for a link pointing to the web page of the provider
+cloud-file-service-provider-footer-single = Ulteriuras infurmaziuns davart { $link }.
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service providers. Links for the used providers are
+# split into a comma separated list of the first n-1 providers and a single entry
+# at the end.
+# $firstLinks (string) - comma separated list of html a-tags pointing to web pages
+#                        of the first n-1 used providers
+# $lastLink (string) - html a-tag pointing the web page of the n-th used provider
+cloud-file-service-provider-footer-multiple = Ulteriuras infurmaziuns davart { $firstLinks } e { $lastLink }.
+# Tooltip for an icon, indicating that the link is protected by a password.
+cloud-file-tooltip-password-protected-link = Colliaziun protegida cun in pled-clav
+# Used in a list of stats about a specific file
+# Service - the used service provider to host the file (Filelink Service: BOX.com)
+# Size - the size of the file (Size: 4.2 MB)
+# Link - the link to the file (Link: https://some.provider.com)
+# Expiry Date - stating the date the link will expire (Expiry Date: 12.12.2022)
+# Download Limit - stating the maximum allowed downloads, before the link becomes invalid
+#                  (Download Limit: 6)
+cloud-file-template-service-name = Servetsch Filelink:
+cloud-file-template-size = Grondezza:
+cloud-file-template-link = Colliaziun:
+cloud-file-template-password-protected-link = Colliaziun protegida cun in pled-clav:
+cloud-file-template-expiry-date = Data da scadenza:
+cloud-file-template-download-limit = Limita da telechargiada:
+
+# Messages
+
+cloud-file-connection-error-title = Errur da connexiun
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-connection-error = { -brand-short-name } è offline. Impussibel da connectar cun { $provider }.
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was uploaded and caused the error
+cloud-file-upload-error-with-custom-message-title = Il transferiment da { $filename } sin { $provider } n'è betg reussì
+cloud-file-rename-error-title = Errur cun renumnar
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error = Igl è succedida ina errur durant renumnar { $filename } sin { $provider }.
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error-with-custom-message-title = I n'è betg reussì da renumnar { $filename } sin { $provider }
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-rename-not-supported = { $provider } na porscha betg la pussaivladad da renumnar datotecas gia transferidas.
+cloud-file-attachment-error-title = Errur d'agiunta Filelink
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-attachment-error = I n'è betg reussì dad actualisar l'agiunta Filelink { $filename } perquai che sia datoteca locala è vegnida spustada u stizzada.
+cloud-file-account-error-title = Errur da conto Filelink
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-account-error = I n'è betg reussì dad actualisar l'agiunta Filelink { $filename } perquai ch'il conto da Filelink correspundent è vegnì stizzà.
+
+## Link Preview
+
+link-preview-title = Prevista da la colliaziun
+link-preview-description = { -brand-short-name } po incorporar ina prevista per colliaziuns inseridas.
+link-preview-autoadd = Agiuntar automaticamain ina prevista per colliaziuns, sche pussaivel
+link-preview-replace-now = Agiuntar ina prevista per questa colliaziun?
+link-preview-yes-replace = Gea
+
+## Dictionary selection popup
+
+spell-add-dictionaries =
+    .label = Agiuntar dicziunaris…
+    .accesskey = A

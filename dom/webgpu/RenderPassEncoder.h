@@ -6,7 +6,6 @@
 #ifndef GPU_RenderPassEncoder_H_
 #define GPU_RenderPassEncoder_H_
 
-#include "mozilla/Scoped.h"
 #include "mozilla/dom/TypedArray.h"
 #include "ObjectModel.h"
 
@@ -25,7 +24,7 @@ class AutoSequence;
 }  // namespace dom
 namespace webgpu {
 namespace ffi {
-struct WGPURenderPass;
+struct WGPURecordedRenderPass;
 }  // namespace ffi
 
 class BindGroup;
@@ -35,10 +34,8 @@ class RenderBundle;
 class RenderPipeline;
 class TextureView;
 
-struct ScopedFfiRenderTraits {
-  typedef ffi::WGPURenderPass* type;
-  static type empty();
-  static void release(type raw);
+struct ffiWGPURenderPassDeleter {
+  void operator()(ffi::WGPURecordedRenderPass*);
 };
 
 class RenderPassEncoder final : public ObjectBase,
@@ -54,7 +51,7 @@ class RenderPassEncoder final : public ObjectBase,
   virtual ~RenderPassEncoder();
   void Cleanup() {}
 
-  Scoped<ScopedFfiRenderTraits> mPass;
+  std::unique_ptr<ffi::WGPURecordedRenderPass, ffiWGPURenderPassDeleter> mPass;
   // keep all the used objects alive while the pass is recorded
   nsTArray<RefPtr<const BindGroup>> mUsedBindGroups;
   nsTArray<RefPtr<const Buffer>> mUsedBuffers;
@@ -87,9 +84,15 @@ class RenderPassEncoder final : public ObjectBase,
   void SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
   void SetBlendConstant(const dom::DoubleSequenceOrGPUColorDict& color);
   void SetStencilReference(uint32_t reference);
+
+  void PushDebugGroup(const nsAString& aString);
+  void PopDebugGroup();
+  void InsertDebugMarker(const nsAString& aString);
+
   void ExecuteBundles(
       const dom::Sequence<OwningNonNull<RenderBundle>>& aBundles);
-  void EndPass(ErrorResult& aRv);
+
+  void End();
 };
 
 }  // namespace webgpu

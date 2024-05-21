@@ -22,6 +22,10 @@
 #include "vm/Runtime.h"
 #include "wasm/WasmModule.h"
 
+namespace JS {
+class OptimizedEncodingListener;
+}
+
 namespace js {
 namespace wasm {
 
@@ -49,8 +53,9 @@ SharedModule CompileBuffer(const CompileArgs& args,
 
 // Attempt to compile the second tier of the given wasm::Module.
 
-void CompileTier2(const CompileArgs& args, const Bytes& bytecode,
-                  const Module& module, Atomic<bool>* cancelled);
+bool CompileTier2(const CompileArgs& args, const Bytes& bytecode,
+                  const Module& module, UniqueChars* error,
+                  UniqueCharsVector* warnings, Atomic<bool>* cancelled);
 
 // Compile the given WebAssembly module which has been broken into three
 // partitions:
@@ -87,6 +92,19 @@ SharedModule CompileStreaming(const CompileArgs& args, const Bytes& envBytes,
                               const ExclusiveStreamEndData& streamEnd,
                               const Atomic<bool>& cancelled, UniqueChars* error,
                               UniqueCharsVector* warnings);
+
+// What to print out from dumping a function from Ion.
+enum class IonDumpContents {
+  UnoptimizedMIR,
+  OptimizedMIR,
+  LIR,
+
+  Default = UnoptimizedMIR,
+};
+
+bool DumpIonFunctionInModule(const ShareableBytes& bytecode,
+                             uint32_t targetFuncIndex, IonDumpContents contents,
+                             GenericPrinter& out, UniqueChars* error);
 
 }  // namespace wasm
 }  // namespace js

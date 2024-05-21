@@ -21,9 +21,8 @@ RemoteSandboxBrokerChild::RemoteSandboxBrokerChild() {
 
 RemoteSandboxBrokerChild::~RemoteSandboxBrokerChild() {}
 
-bool RemoteSandboxBrokerChild::Init(base::ProcessId aParentPid,
-                                    mozilla::ipc::ScopedPort aPort) {
-  if (NS_WARN_IF(!Open(std::move(aPort), aParentPid))) {
+bool RemoteSandboxBrokerChild::Init(mozilla::ipc::UntypedEndpoint&& aEndpoint) {
+  if (NS_WARN_IF(!aEndpoint.Bind(this))) {
     return false;
   }
   CrashReporterClient::InitSingleton(this);
@@ -39,7 +38,7 @@ void RemoteSandboxBrokerChild::ActorDestroy(ActorDestroyReason aWhy) {
   XRE_ShutdownChildProcess();
 }
 
-mozilla::ipc::IPCResult RemoteSandboxBrokerChild::AnswerLaunchApp(
+mozilla::ipc::IPCResult RemoteSandboxBrokerChild::RecvLaunchApp(
     LaunchParameters&& aParams, bool* aOutOk, uint64_t* aOutHandle) {
   auto towstring = [](const nsString& s) {
     return std::wstring(s.get(), s.Length());
@@ -49,16 +48,6 @@ mozilla::ipc::IPCResult RemoteSandboxBrokerChild::AnswerLaunchApp(
   for (const EnvVar& env : aParams.env()) {
     envmap[towstring(env.name())] = towstring(env.value());
   }
-
-  // We need to add our parent as a target peer, so that the sandboxed child can
-  // duplicate handles to it for crash reporting. AddTargetPeer duplicates the
-  // handle, so we use a ScopedProcessHandle to automatically close ours.
-  ipc::ScopedProcessHandle parentProcHandle;
-  if (!base::OpenProcessHandle(OtherPid(), &parentProcHandle.rwget())) {
-    *aOutOk = false;
-    return IPC_OK();
-  }
-  mSandboxBroker.AddTargetPeer(parentProcHandle);
 
   if (!mSandboxBroker.SetSecurityLevelForGMPlugin(
           AbstractSandboxBroker::SandboxLevel(aParams.sandboxLevel()),
@@ -79,10 +68,11 @@ mozilla::ipc::IPCResult RemoteSandboxBrokerChild::AnswerLaunchApp(
   }
 
   HANDLE p;
-  *aOutOk =
+  mozilla::Result<mozilla::Ok, LaunchError> err =
       mSandboxBroker.LaunchApp(aParams.path().get(), aParams.args().get(),
                                envmap, GeckoProcessType(aParams.processType()),
                                aParams.enableLogging(), nullptr, (void**)&p);
+  *aOutOk = err.isOk();
   if (*aOutOk) {
     *aOutHandle = uint64_t(p);
   }

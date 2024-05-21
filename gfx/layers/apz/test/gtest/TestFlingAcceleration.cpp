@@ -13,12 +13,11 @@ class APZCFlingAccelerationTester : public APZCTreeManagerTester {
  protected:
   void SetUp() {
     APZCTreeManagerTester::SetUp();
-    const char* layerTreeSyntax = "c";
-    nsIntRegion layerVisibleRegion[] = {
-        nsIntRegion(IntRect(0, 0, 800, 1000)),
+    const char* treeShape = "x";
+    LayerIntRect layerVisibleRect[] = {
+        LayerIntRect(0, 0, 800, 1000),
     };
-    root = CreateLayerTree(layerTreeSyntax, layerVisibleRegion, nullptr, lm,
-                           layers);
+    CreateScrollData(treeShape, layerVisibleRect);
     SetScrollableFrameMetrics(root, ScrollableLayerGuid::START_SCROLL_ID,
                               CSSRect(0, 0, 800, 50000));
     // Scroll somewhere into the middle of the scroll range, so that we have
@@ -29,8 +28,7 @@ class APZCFlingAccelerationTester : public APZCTreeManagerTester {
       aMetrics.SetVisualDestination(CSSPoint(0, 25000));
     });
 
-    registration =
-        MakeUnique<ScopedLayerTreeRegistration>(LayersId{0}, root, mcc);
+    registration = MakeUnique<ScopedLayerTreeRegistration>(LayersId{0}, mcc);
     UpdateHitTestingTree();
 
     apzc = ApzcOf(root);
@@ -41,8 +39,7 @@ class APZCFlingAccelerationTester : public APZCTreeManagerTester {
     APZEventResult result = TouchDown(apzc, aStartPoint, mcc->Time());
 
     // Allowed touch behaviours must be set after sending touch-start.
-    if (result.GetStatus() != nsEventStatus_eConsumeNoDefault &&
-        StaticPrefs::layout_css_touch_action_enabled()) {
+    if (result.GetStatus() != nsEventStatus_eConsumeNoDefault) {
       SetDefaultAllowedTouchBehavior(apzc, result.mInputBlockId);
     }
 
@@ -143,7 +140,7 @@ TEST_F(APZCFlingAccelerationTester,
 
   ExecutePanGesture100Hz(ScreenIntPoint{698, 1059},
                          {0, 0, 14, 61, 41, 0, 45, 35});
-  CHECK_VELOCITY(Up, 3.2, 4.2);
+  CHECK_VELOCITY(Up, 3.2, 4.3);
 }
 
 TEST_F(APZCFlingAccelerationTester,
@@ -162,10 +159,10 @@ TEST_F(APZCFlingAccelerationTester, ShouldNotAccelerateWhenPausedAtStartOfPan) {
   ExecutePanGesture100Hz(
       ScreenIntPoint{711, 1468},
       {0, 0, 0, 0, -8, 0, -18, -32, -50, -57, -66, -68, -63, -60});
-  CHECK_VELOCITY(Down, 6.2, 8.5);
+  CHECK_VELOCITY(Down, 6.2, 8.6);
 
   ExecuteWait(TimeDuration::FromMilliseconds(285));
-  CHECK_VELOCITY(Down, 3.4, 7.3);
+  CHECK_VELOCITY(Down, 3.4, 7.4);
 
   ExecutePanGesture100Hz(
       ScreenIntPoint{658, 1352},
@@ -178,10 +175,10 @@ TEST_F(APZCFlingAccelerationTester, ShouldNotAccelerateWhenPausedDuringPan) {
   ExecutePanGesture100Hz(
       ScreenIntPoint{732, 1423},
       {0, 0, 0, -5, 0, -15, -41, -71, -90, -93, -85, -64, -44});
-  CHECK_VELOCITY(Down, 7.5, 10.0);
+  CHECK_VELOCITY(Down, 7.5, 10.1);
 
   ExecuteWait(TimeDuration::FromMilliseconds(204));
-  CHECK_VELOCITY(Down, 4.8, 9.3);
+  CHECK_VELOCITY(Down, 4.8, 9.4);
 
   ExecutePanGesture100Hz(
       ScreenIntPoint{651, 1372},
@@ -195,7 +192,7 @@ TEST_F(APZCFlingAccelerationTester,
        ShouldNotAccelerateWhenOppositeDirectionDuringPan) {
   ExecutePanGesture100Hz(ScreenIntPoint{663, 1371},
                          {0, 0, 0, -5, -18, -31, -49, -56, -61, -54, -55});
-  CHECK_VELOCITY(Down, 5.4, 7.0);
+  CHECK_VELOCITY(Down, 5.4, 7.1);
 
   ExecuteWait(TimeDuration::FromMilliseconds(255));
   CHECK_VELOCITY(Down, 3.1, 6.0);

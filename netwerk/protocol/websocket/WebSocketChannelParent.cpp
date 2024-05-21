@@ -7,12 +7,16 @@
 #include "WebSocketLog.h"
 #include "WebSocketChannelParent.h"
 #include "nsIAuthPromptProvider.h"
+#include "mozilla/dom/ContentParent.h"
 #include "mozilla/ipc/InputStreamUtils.h"
 #include "mozilla/ipc/URIUtils.h"
 #include "mozilla/ipc/BackgroundUtils.h"
 #include "SerializedLoadContext.h"
 #include "mozilla/net/NeckoCommon.h"
 #include "mozilla/net/WebSocketChannel.h"
+#include "nsComponentManagerUtils.h"
+#include "IPCTransportProvider.h"
+#include "mozilla/net/ChannelEventQueue.h"
 
 using namespace mozilla::ipc;
 
@@ -47,11 +51,12 @@ mozilla::ipc::IPCResult WebSocketChannelParent::RecvDeleteSelf() {
 }
 
 mozilla::ipc::IPCResult WebSocketChannelParent::RecvAsyncOpen(
-    nsIURI* aURI, const nsCString& aOrigin, const uint64_t& aInnerWindowID,
+    nsIURI* aURI, const nsCString& aOrigin,
+    const OriginAttributes& aOriginAttributes, const uint64_t& aInnerWindowID,
     const nsCString& aProtocol, const bool& aSecure,
     const uint32_t& aPingInterval, const bool& aClientSetPingInterval,
     const uint32_t& aPingTimeout, const bool& aClientSetPingTimeout,
-    const Maybe<LoadInfoArgs>& aLoadInfoArgs,
+    const LoadInfoArgs& aLoadInfoArgs,
     const Maybe<PTransportProviderParent*>& aTransportProvider,
     const nsCString& aNegotiatedExtensions) {
   LOG(("WebSocketChannelParent::RecvAsyncOpen() %p\n", this));
@@ -60,7 +65,10 @@ mozilla::ipc::IPCResult WebSocketChannelParent::RecvAsyncOpen(
   nsCOMPtr<nsILoadInfo> loadInfo;
   nsCOMPtr<nsIURI> uri;
 
-  rv = LoadInfoArgsToLoadInfo(aLoadInfoArgs, getter_AddRefs(loadInfo));
+  rv = LoadInfoArgsToLoadInfo(
+      aLoadInfoArgs,
+      mozilla::dom::ContentParent::Cast(Manager()->Manager())->GetRemoteType(),
+      getter_AddRefs(loadInfo));
   if (NS_FAILED(rv)) {
     goto fail;
   }
@@ -118,7 +126,8 @@ mozilla::ipc::IPCResult WebSocketChannelParent::RecvAsyncOpen(
     MOZ_ASSERT(NS_SUCCEEDED(rv));
   }
 
-  rv = mChannel->AsyncOpen(uri, aOrigin, aInnerWindowID, this, nullptr);
+  rv = mChannel->AsyncOpenNative(uri, aOrigin, aOriginAttributes,
+                                 aInnerWindowID, this, nullptr);
   if (NS_FAILED(rv)) goto fail;
 
   return IPC_OK();
@@ -301,7 +310,7 @@ NS_IMETHODIMP
 WebSocketChannelParent::OnServerClose(nsISupports* aContext, uint16_t code,
                                       const nsACString& reason) {
   LOG(("WebSocketChannelParent::OnServerClose() %p\n", this));
-  if (!CanRecv() || !SendOnServerClose(code, nsCString(reason))) {
+  if (!CanRecv() || !SendOnServerClose(code, reason)) {
     return NS_ERROR_FAILURE;
   }
   return NS_OK;

@@ -20,13 +20,13 @@
 <script class="testbody" type="application/javascript">
 
 SimpleTest.waitForExplicitFinish();
-SimpleTest.expectAssertions(1);  // Assertions in WSRunScanner::TextFragmentData::GetInclusiveNextNBSPPointIfNeedToReplaceWithASCIIWhiteSpace()
 SimpleTest.waitForFocus(runTests);
-
-const kLF = !navigator.platform.indexOf("Win") ? "\r\n" : "\n";
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
+const kLF = !navigator.platform.indexOf("Win") && false ? "\r\n" : "\n";
 
 function runTests() {
-  const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
   var fm = Services.focus;
 
   var listener = {
@@ -34,8 +34,7 @@ function runTests() {
       aEvent.preventDefault(); // prevent the browser default behavior
     },
   };
-  var els = Services.els;
-  els.addSystemEventListener(window, "keypress", listener, false);
+  SpecialPowers.wrap(window).addEventListener("keypress", listener, { mozSystemGroup: true });
 
   var staticContent = document.getElementById("static");
   staticContent._defaultValue = getTextValue(staticContent);
@@ -152,10 +151,13 @@ function runTests() {
     function testDispatchedKeyEvent(aTarget) {
       var targetDescription = " (dispatched to " + aTarget._description + ")";
       function dispatchKeyEvent(aKeyCode, aChar, aDispatchTarget) {
-        var keyEvent = document.createEvent("KeyboardEvent");
-        keyEvent.initKeyEvent("keypress", true, true, null, false, false,
-                               false, false, aKeyCode,
-                               aChar ? aChar.charCodeAt(0) : 0);
+        var keyEvent = new KeyboardEvent("keypress", {
+          bubbles: true,
+          cancelable: true,
+          view: null,
+          keyCode: aKeyCode,
+          charCode: aChar ? aChar.charCodeAt(0) : 0
+        });
         aDispatchTarget.dispatchEvent(keyEvent);
       }
 
@@ -303,7 +305,7 @@ function runTests() {
   testTextInput(inputInEditor);
   testTextInput(textareaInEditor);
 
-  els.removeSystemEventListener(window, "keypress", listener, false);
+  SpecialPowers.wrap(window).removeEventListener("keypress", listener, { mozSystemGroup: true });
 
   SimpleTest.finish();
 }

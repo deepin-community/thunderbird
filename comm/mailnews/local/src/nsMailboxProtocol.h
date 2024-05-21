@@ -24,23 +24,11 @@
 /* states of the machine
  */
 typedef enum _MailboxStatesEnum {
-  MAILBOX_READ_FOLDER,
-  MAILBOX_FINISH_OPEN_FOLDER,
-  MAILBOX_OPEN_MESSAGE,
-  MAILBOX_OPEN_STREAM,
+  MAILBOX_UNINITIALIZED,
   MAILBOX_READ_MESSAGE,
-  MAILBOX_COMPRESS_FOLDER,
-  MAILBOX_FINISH_COMPRESS_FOLDER,
-  MAILBOX_BACKGROUND,
-  MAILBOX_NULL,
-  MAILBOX_NULL2,
-  MAILBOX_DELIVER_QUEUED,
-  MAILBOX_FINISH_DELIVER_QUEUED,
   MAILBOX_DONE,
   MAILBOX_ERROR_DONE,
   MAILBOX_FREE,
-  MAILBOX_COPY_MESSAGES,
-  MAILBOX_FINISH_COPY_MESSAGES
 } MailboxStatesEnum;
 
 class nsMsgLineStreamBuffer;
@@ -70,9 +58,6 @@ class nsMailboxProtocol : public nsMsgProtocol {
       m_runningUrl;  // the nsIMailboxURL that is currently running
   nsMailboxAction m_mailboxAction;  // current mailbox action associated with
                                     // this connection...
-  uint64_t m_msgOffset;
-  // Event sink handles
-  nsCOMPtr<nsIStreamListener> m_mailboxParser;
 
   // Local state for the current operation
   RefPtr<nsMsgLineStreamBuffer>
@@ -82,7 +67,6 @@ class nsMailboxProtocol : public nsMsgProtocol {
   // Generic state information -- What state are we in? What state do we want to
   // go to after the next response? What was the last response code? etc.
   MailboxStatesEnum m_nextState;
-  MailboxStatesEnum m_initialState;
 
   int64_t mCurrentProgress;
 
@@ -90,18 +74,12 @@ class nsMailboxProtocol : public nsMsgProtocol {
   nsCOMPtr<nsIFile> m_tempMessageFile;
   nsCOMPtr<nsIOutputStream> m_msgFileOutputStream;
 
-  // this is used to hold the source mailbox file open when move/copying
-  // multiple messages.
-  nsCOMPtr<nsIInputStream> m_multipleMsgMoveCopyStream;
-
   virtual nsresult ProcessProtocolState(nsIURI* url,
                                         nsIInputStream* inputStream,
                                         uint64_t sourceOffset,
                                         uint32_t length) override;
   virtual nsresult CloseSocket() override;
 
-  nsresult SetupMessageExtraction();
-  nsresult OpenMultipleMsgTransport(uint64_t offset, int64_t size);
   bool RunningMultipleMsgUrl();
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -110,10 +88,6 @@ class nsMailboxProtocol : public nsMsgProtocol {
   //            group them together based on functionality.
   ////////////////////////////////////////////////////////////////////////////////////////
 
-  // When parsing a mailbox folder in chunks, this protocol state reads in the
-  // current chunk and forwards it to the mailbox parser.
-  int32_t ReadFolderResponse(nsIInputStream* inputStream, uint64_t sourceOffset,
-                             uint32_t length);
   int32_t ReadMessageResponse(nsIInputStream* inputStream,
                               uint64_t sourceOffset, uint32_t length);
   nsresult DoneReadingMessage();

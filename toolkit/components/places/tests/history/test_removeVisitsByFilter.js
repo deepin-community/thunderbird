@@ -5,16 +5,12 @@
 
 "use strict";
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
-);
-
 add_task(async function test_removeVisitsByFilter() {
   let referenceDate = new Date(1999, 9, 9, 9, 9);
 
   // Populate a database with 20 entries, remove a subset of entries,
   // ensure consistency.
-  let remover = async function(options) {
+  let remover = async function (options) {
     info("Remover with options " + JSON.stringify(options));
     let SAMPLE_SIZE = options.sampleSize;
 
@@ -121,7 +117,7 @@ add_task(async function test_removeVisitsByFilter() {
       }
       endIndex = Math.min(
         endIndex,
-        removedItems.findIndex((v, index) => v.uri.spec != rawURL) - 1
+        removedItems.findIndex(v => v.uri.spec != rawURL) - 1
       );
     }
     removedItems.splice(endIndex + 1);
@@ -135,9 +131,12 @@ add_task(async function test_removeVisitsByFilter() {
         (options.url &&
           remainingItems.some(v => v.uri.spec == removedItems[i].uri.spec))
       ) {
-        rankingChangePromises.push(PromiseUtils.defer());
+        rankingChangePromises.push(Promise.withResolvers());
       } else if (!options.url || i == 0) {
-        uriDeletePromises.set(removedItems[i].uri.spec, PromiseUtils.defer());
+        uriDeletePromises.set(
+          removedItems[i].uri.spec,
+          Promise.withResolvers()
+        );
       }
     }
 
@@ -302,11 +301,16 @@ add_task(async function test_error_cases() {
   );
   Assert.throws(
     () => PlacesUtils.history.removeVisitsByFilter({ beginDate: "now" }),
-    /TypeError: Expected a Date/
+    /TypeError: Expected a valid Date/
   );
   Assert.throws(
     () => PlacesUtils.history.removeVisitsByFilter({ beginDate: Date.now() }),
-    /TypeError: Expected a Date/
+    /TypeError: Expected a valid Date/
+  );
+  Assert.throws(
+    () =>
+      PlacesUtils.history.removeVisitsByFilter({ beginDate: new Date(NaN) }),
+    /TypeError: Expected a valid Date/
   );
   Assert.throws(
     () =>

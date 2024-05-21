@@ -6,15 +6,13 @@
 #ifndef PLUGINS_GIMP_FILE_JXL_SAVE_H_
 #define PLUGINS_GIMP_FILE_JXL_SAVE_H_
 
-#include <libgimp/gimp.h>
-
-#include "lib/jxl/base/status.h"
+#include "plugins/gimp/common.h"
 
 namespace jxl {
 
-Status SaveJpegXlImage(gint32 image_id, gint32 drawable_id,
-                       gint32 orig_image_id, const gchar* filename);
+bool SaveJpegXlImage(gint32 image_id, gint32 drawable_id, gint32 orig_image_id,
+                     const gchar* filename);
 
-}
+}  // namespace jxl
 
 #endif  // PLUGINS_GIMP_FILE_JXL_SAVE_H_

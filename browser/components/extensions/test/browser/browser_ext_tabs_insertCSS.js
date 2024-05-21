@@ -2,15 +2,15 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
 
 add_task(async function testExecuteScript() {
-  let { MessageChannel } = ChromeUtils.import(
-    "resource://gre/modules/MessageChannel.jsm"
+  let { MessageChannel } = ChromeUtils.importESModule(
+    "resource://testing-common/MessageChannel.sys.mjs"
   );
 
   // When the first extension is started, ProxyMessenger.init adds MessageChannel
@@ -63,7 +63,7 @@ add_task(async function testExecuteScript() {
               code: "* { background: rgb(100, 100, 100) !important }",
               cssOrigin: "author",
             })
-            .then(r =>
+            .then(() =>
               browser.tabs.insertCSS({
                 code: "* { background: rgb(43, 43, 43) !important }",
                 cssOrigin: "author",
@@ -81,7 +81,7 @@ add_task(async function testExecuteScript() {
               code: "* { background: rgb(100, 100, 100) !important }",
               cssOrigin: "user",
             })
-            .then(r =>
+            .then(() =>
               browser.tabs.insertCSS({
                 code: "* { background: rgb(44, 44, 44) !important }",
                 cssOrigin: "author",
@@ -272,7 +272,7 @@ add_task(async function test_csscode_cleanup_on_closed_windows() {
       // destroyed and any removeSheet error already collected (if it has been
       // raised during the content scripts cleanup).
       await browser.tabs.executeScript({
-        code: `(${function() {
+        code: `(${function () {
           const { maxWidth, minWidth } = window.getComputedStyle(document.body);
           browser.test.sendMessage("body-styles", { maxWidth, minWidth });
           browser.runtime.connect();
@@ -300,18 +300,10 @@ add_task(async function test_csscode_cleanup_on_closed_windows() {
 
   // Look for nsIDOMWindowUtils.removeSheet and
   // nsIDOMWindowUtils.removeSheetUsingURIString errors.
-  messages = messages.filter(
-    m =>
-      m.errorMessage &&
-      m.errorMessage.includes(
-        "(NS_ERROR_FAILURE) [nsIDOMWindowUtils.removeSheet"
-      )
-  );
-
   AddonTestUtils.checkMessages(
     messages,
     {
-      forbidden: [/nsIDOMWindowUtils.removeSheet/],
+      forbidden: [{ errorMessage: /nsIDOMWindowUtils.removeSheet/ }],
     },
     "Expect no remoteSheet errors"
   );

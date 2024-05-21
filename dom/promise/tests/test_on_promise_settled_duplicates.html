@@ -26,7 +26,7 @@ Bug 1084065 - Test that Debugger.prototype.onPromiseResolved doesn't get dupes.
      "[object Promise]",
      "We should have the native DOM promise implementation.");
 
-  const {addDebuggerToGlobal} = ChromeUtils.import("resource://gre/modules/jsdebugger.jsm");
+  const {addDebuggerToGlobal} = ChromeUtils.importESModule("resource://gre/modules/jsdebugger.sys.mjs");
   var dbgGlobal = new Cu.Sandbox(document.nodePrincipal,
                                  {freshCompartment: true});
   addDebuggerToGlobal(dbgGlobal);
@@ -38,7 +38,7 @@ Bug 1084065 - Test that Debugger.prototype.onPromiseResolved doesn't get dupes.
     seen.add(wp);
   };
 
-  var promise = new Promise(function(fulfill, reject) {
+  var promise = new Promise(function(fulfill) {
     fulfill(1);
     fulfill(2);
     fulfill(3);

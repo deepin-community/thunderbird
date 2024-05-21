@@ -4,48 +4,42 @@
 
 "use strict";
 
+// Double timeout for code coverage runs.
+if (AppConstants.MOZ_CODE_COVERAGE) {
+  requestLongerTimeout(2);
+}
+
 /*
  * Test rearanging tabs via drag'n'drop.
  */
 
-var EventUtils = ChromeUtils.import(
-  "resource://testing-common/mozmill/EventUtils.jsm"
-);
-
 var {
-  assert_folder_selected_and_displayed,
   assert_number_of_tabs_open,
-  assert_row_visible,
   assert_selected_and_displayed,
   be_in_folder,
   close_popup,
   create_folder,
-  display_message_in_folder_tab,
-  make_new_sets_in_folder,
-  mc,
+  make_message_sets_in_folders,
+  open_folder_in_new_window,
   open_selected_message_in_new_tab,
   select_click_row,
   switch_tab,
   wait_for_message_display_completion,
   wait_for_popup_to_open,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 var {
   drag_n_drop_element,
   synthesize_drag_end,
   synthesize_drag_start,
   synthesize_drag_over,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/MouseEventHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/MouseEventHelpers.sys.mjs"
 );
-var {
-  async_plan_for_new_window,
-  close_window,
-  wait_for_new_window,
-} = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { promise_new_window } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+);
 
 var folder;
 var msgHdrsInFolder = [];
@@ -53,46 +47,20 @@ var msgHdrsInFolder = [];
 // The number of messages in folder.
 var NUM_MESSAGES_IN_FOLDER = 15;
 
-add_task(function setupModule(module) {
-  folder = create_folder("MessageFolder");
-  make_new_sets_in_folder(folder, [{ count: NUM_MESSAGES_IN_FOLDER }]);
-});
-
-registerCleanupFunction(async function teardownModule(module) {
-  folder.deleteSelf(null);
-});
-
-/**
- * Verifies our test environment is setup correctly and initializes
- * all global variables.
- */
-add_task(function test_tab_reorder_setup_globals() {
-  be_in_folder(folder);
-  // Scroll to the top
-  mc.folderDisplay.ensureRowIsVisible(0);
-  let msgHdr = mc.dbView.getMsgHdrAt(1);
-
-  display_message_in_folder_tab(msgHdr, false);
-
-  // Check that the right message is displayed
-  assert_number_of_tabs_open(1);
-  assert_folder_selected_and_displayed(folder);
-  assert_selected_and_displayed(msgHdr);
-
-  assert_row_visible(1);
-
-  // Initialize the globals we'll need for all our tests.
-
-  // Stash messages into arrays for convenience. We do it this way so that the
-  // order of messages in the arrays is the same as in the views.
-  be_in_folder(folder);
-  for (let i = 0; i < NUM_MESSAGES_IN_FOLDER; i++) {
-    msgHdrsInFolder.push(mc.dbView.getMsgHdrAt(i));
-  }
-
-  // Mark all messages read
+add_setup(async function () {
+  folder = await create_folder("MessageFolder");
+  await make_message_sets_in_folders(
+    [folder],
+    [{ count: NUM_MESSAGES_IN_FOLDER }]
+  );
+  msgHdrsInFolder = [...folder.messages];
   folder.markAllMessagesRead(null);
-  teardownTest();
+
+  await be_in_folder(folder);
+});
+
+registerCleanupFunction(async function () {
+  folder.deleteSelf(null);
 });
 
 /**
@@ -101,84 +69,86 @@ add_task(function test_tab_reorder_setup_globals() {
  * It opens additional movable and closable tabs. The picks the first
  * movable tab and drops it onto the third movable tab.
  */
-add_task(function test_tab_reorder_tabbar() {
+add_task(async function test_tab_reorder_tabbar() {
+  const tabmail = document.getElementById("tabmail");
   // Ensure only one tab is open, otherwise our test most likey fail anyway.
-  mc.tabmail.closeOtherTabs(0);
+  tabmail.closeOtherTabs(0);
   assert_number_of_tabs_open(1);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // Open four tabs
   for (let idx = 0; idx < 4; idx++) {
-    select_click_row(idx);
-    open_selected_message_in_new_tab(true);
+    await select_click_row(idx);
+    await open_selected_message_in_new_tab(true);
   }
 
   // Check if every thing is correctly initialized
   assert_number_of_tabs_open(5);
 
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[0] == mc.tabmail.tabInfo[1],
+    tabmail.tabModes.mailMessageTab.tabs[0] == tabmail.tabInfo[1],
     " tabMode.tabs and tabInfo out of sync"
   );
 
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[1] == mc.tabmail.tabInfo[2],
+    tabmail.tabModes.mailMessageTab.tabs[1] ==
+      document.getElementById("tabmail").tabInfo[2],
     " tabMode.tabs and tabInfo out of sync"
   );
 
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[2] == mc.tabmail.tabInfo[3],
+    tabmail.tabModes.mailMessageTab.tabs[2] == tabmail.tabInfo[3],
     " tabMode.tabs and tabInfo out of sync"
   );
 
   // Start dragging the first tab
-  switch_tab(1);
-  assert_selected_and_displayed(msgHdrsInFolder[0]);
+  await switch_tab(1);
+  await assert_selected_and_displayed(msgHdrsInFolder[0]);
 
-  let tab1 = mc.tabmail.tabContainer.allTabs[1];
-  let tab3 = mc.tabmail.tabContainer.allTabs[3];
+  const tab1 = tabmail.tabContainer.allTabs[1];
+  const tab3 = tabmail.tabContainer.allTabs[3];
 
   drag_n_drop_element(
     tab1,
-    mc.window,
+    window,
     tab3,
-    mc.window,
+    window,
     0.75,
     0.0,
-    mc.tabmail.tabContainer
+    tabmail.tabContainer
   );
 
-  wait_for_message_display_completion(mc);
+  await wait_for_message_display_completion(window);
 
   // if every thing went well...
   assert_number_of_tabs_open(5);
 
   // ... we should find tab1 at the third position...
-  Assert.equal(tab1, mc.tabmail.tabContainer.allTabs[3], "Moving tab1 failed");
-  switch_tab(3);
-  assert_selected_and_displayed(msgHdrsInFolder[0]);
+  Assert.equal(tab1, tabmail.tabContainer.allTabs[3], "Moving tab1 failed");
+  await switch_tab(3);
+  await assert_selected_and_displayed(msgHdrsInFolder[0]);
 
   // ... while tab3 moves one up and gets second.
-  Assert.ok(tab3 == mc.tabmail.tabContainer.allTabs[2], "Moving tab3 failed");
-  switch_tab(2);
-  assert_selected_and_displayed(msgHdrsInFolder[2]);
+  Assert.ok(tab3 == tabmail.tabContainer.allTabs[2], "Moving tab3 failed");
+  await switch_tab(2);
+  await assert_selected_and_displayed(msgHdrsInFolder[2]);
 
   // we have one "message" tab and three "folder" tabs, thus tabInfo[1-3] and
   // tabMode["message"].tabs[0-2] have to be same, otherwise something went
   // wrong while moving tabs around
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[0] == mc.tabmail.tabInfo[1],
+    tabmail.tabModes.mailMessageTab.tabs[0] == tabmail.tabInfo[1],
     " tabMode.tabs and tabInfo out of sync"
   );
 
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[1] == mc.tabmail.tabInfo[2],
+    tabmail.tabModes.mailMessageTab.tabs[1] == tabmail.tabInfo[2],
     " tabMode.tabs and tabInfo out of sync"
   );
 
   Assert.ok(
-    mc.tabmail.tabModes.message.tabs[2] == mc.tabmail.tabInfo[3],
+    tabmail.tabModes.mailMessageTab.tabs[2] == tabmail.tabInfo[3],
     " tabMode.tabs and tabInfo out of sync"
   );
   teardownTest();
@@ -188,74 +158,66 @@ add_task(function test_tab_reorder_tabbar() {
  * Tests drag'n'drop tab reordering between windows
  */
 add_task(async function test_tab_reorder_window() {
+  const tabmail = document.getElementById("tabmail");
   // Ensure only one tab is open, otherwise our test most likey fail anyway.
-  mc.tabmail.closeOtherTabs(0);
+  tabmail.closeOtherTabs(0);
   assert_number_of_tabs_open(1);
 
   let mc2 = null;
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // Open a new tab...
-  select_click_row(1);
-  open_selected_message_in_new_tab(false);
+  await select_click_row(1);
+  await open_selected_message_in_new_tab(false);
 
   assert_number_of_tabs_open(2);
 
-  switch_tab(1);
-  assert_selected_and_displayed(msgHdrsInFolder[1]);
+  await switch_tab(1);
+  await assert_selected_and_displayed(msgHdrsInFolder[1]);
 
   // ...and then a new 3 pane as our drop target.
-  let newWindowPromise = async_plan_for_new_window("mail:3pane");
-
-  let args = { msgHdr: msgHdrsInFolder[3] };
-  args.wrappedJSObject = args;
-
-  let aWnd2 = Services.ww.openWindow(
-    null,
-    "chrome://messenger/content/messenger.xhtml",
-    "",
-    "all,chrome,dialog=no,status,toolbar",
-    args
+  mc2 = await open_folder_in_new_window(folder);
+  const tabmail2 = mc2.document.getElementById("tabmail");
+  await TestUtils.waitForCondition(
+    () => tabmail2.currentAbout3Pane.gDBView,
+    "waiting for the new window to be ready"
   );
 
-  mc2 = await newWindowPromise;
-  wait_for_message_display_completion(mc2, true);
-
-  // Double check if we are listening to the right window.
-  Assert.ok(aWnd2 == mc2.window, "Opening Window failed");
-
   // Start dragging the first tab ...
-  let tabA = mc.tabmail.tabContainer.allTabs[1];
+  const tabA = tabmail.tabContainer.allTabs[1];
   Assert.ok(tabA, "No movable Tab");
 
   // We drop onto the Folder Tab, it is guaranteed to exist.
-  let tabB = mc2.tabmail.tabContainer.allTabs[0];
+  const tabB = tabmail2.tabContainer.allTabs[0];
   Assert.ok(tabB, "No movable Tab");
 
-  drag_n_drop_element(
-    tabA,
-    mc.window,
-    tabB,
-    mc2.window,
-    0.75,
-    0.0,
-    mc.tabmail.tabContainer
-  );
-
-  wait_for_message_display_completion(mc2);
+  drag_n_drop_element(tabA, window, tabB, mc2, 0.75, 0.0, tabmail.tabContainer);
 
   Assert.ok(
-    mc.tabmail.tabContainer.allTabs.length == 1,
-    "Moving tab to new window failed, tab still in old window"
+    tabmail.tabContainer.allTabs.length == 1,
+    "tab should be removed from the old window"
   );
-
   Assert.ok(
-    mc2.tabmail.tabContainer.allTabs.length == 2,
-    "Moving tab to new window failed, no new tab in new window"
+    tabmail2.tabContainer.allTabs.length == 2,
+    "a new tab should have opened in then new window"
   );
+  Assert.equal(
+    tabmail2.tabInfo[1].mode.name,
+    "mailMessageTab",
+    "new tab should be a message tab"
+  );
+  Assert.equal(
+    tabmail2.currentTabInfo,
+    tabmail2.tabInfo[1],
+    "new tab should be selected"
+  );
+  await TestUtils.waitForCondition(
+    () => tabmail2.currentAboutMessage.gDBView,
+    "waiting for the new tab to be ready"
+  );
+  await assert_selected_and_displayed(mc2, msgHdrsInFolder[1]);
 
-  assert_selected_and_displayed(mc2, msgHdrsInFolder[1]);
   teardownTest();
 });
 
@@ -263,108 +225,129 @@ add_task(async function test_tab_reorder_window() {
  * Tests detaching tabs into windows via drag'n'drop
  */
 add_task(async function test_tab_reorder_detach() {
+  const tabmail = document.getElementById("tabmail");
   // Ensure only one tab is open, otherwise our test most likey fail anyway.
-  mc.tabmail.closeOtherTabs(0);
+  tabmail.closeOtherTabs(0);
   assert_number_of_tabs_open(1);
 
   let mc2 = null;
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // Open a new tab...
-  select_click_row(2);
-  open_selected_message_in_new_tab(false);
+  await select_click_row(2);
+  await open_selected_message_in_new_tab(false);
 
   assert_number_of_tabs_open(2);
 
   // ... if every thing works we should expect a new window...
-  let newWindowPromise = async_plan_for_new_window("mail:3pane");
+  const newWindowPromise = promise_new_window("mail:3pane");
 
   // ... now start dragging
+  tabmail.switchToTab(1);
 
-  mc.tabmail.switchToTab(1);
+  const tab1 = tabmail.tabContainer.allTabs[1];
+  const dropContent = document.getElementById("tabpanelcontainer");
 
-  let tab1 = mc.tabmail.tabContainer.allTabs[1];
-  let dropContent = mc.e("tabpanelcontainer");
+  const dt = synthesize_drag_start(window, tab1, tabmail.tabContainer);
 
-  let dt = synthesize_drag_start(mc.window, tab1, mc.tabmail.tabContainer);
-
-  synthesize_drag_over(mc.window, dropContent, dt);
+  synthesize_drag_over(window, dropContent, dt);
 
   // notify tab1 drag has ended
-  let dropRect = dropContent.getBoundingClientRect();
-  synthesize_drag_end(mc.window, dropContent, tab1, dt, {
+  const dropRect = dropContent.getBoundingClientRect();
+  synthesize_drag_end(window, dropContent, tab1, dt, {
     screenX: dropContent.screenX + dropRect.width / 2,
     screenY: dropContent.screenY + dropRect.height / 2,
   });
 
   // ... and wait for the new window
   mc2 = await newWindowPromise;
-  wait_for_message_display_completion(mc2, true);
+  const tabmail2 = mc2.document.getElementById("tabmail");
+  await TestUtils.waitForCondition(
+    () => tabmail2.tabInfo[1]?.chromeBrowser,
+    "waiting for a second tab to open in the new window"
+  );
+  await wait_for_message_display_completion(mc2, true);
 
   Assert.ok(
-    mc.tabmail.tabContainer.allTabs.length == 1,
-    "Moving tab to new window failed, tab still in old window"
+    tabmail.tabContainer.allTabs.length == 1,
+    "tab should be removed from the old window"
   );
-
   Assert.ok(
-    mc2.tabmail.tabContainer.allTabs.length == 2,
-    "Moving tab to new window failed, no new tab in new window"
+    tabmail2.tabContainer.allTabs.length == 2,
+    "a new tab should have opened in then new window"
   );
+  Assert.equal(
+    tabmail2.currentTabInfo,
+    tabmail2.tabInfo[1],
+    "new tab should be selected"
+  );
+  await TestUtils.waitForCondition(
+    () => tabmail2.currentAboutMessage?.gDBView,
+    "waiting for the new tab to be ready"
+  );
+  await assert_selected_and_displayed(mc2, msgHdrsInFolder[2]);
 
-  assert_selected_and_displayed(mc2, msgHdrsInFolder[2]);
   teardownTest();
 });
 
 /**
  * Test undo of recently closed tabs.
  */
-add_task(function test_tab_undo() {
+add_task(async function test_tab_undo() {
+  const tabmail = document.getElementById("tabmail");
   // Ensure only one tab is open, otherwise our test most likey fail anyway.
-  mc.tabmail.closeOtherTabs(0);
+  tabmail.closeOtherTabs(0);
   assert_number_of_tabs_open(1);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // Open five tabs...
   for (let idx = 0; idx < 5; idx++) {
-    select_click_row(idx);
-    open_selected_message_in_new_tab(true);
+    await select_click_row(idx);
+    await open_selected_message_in_new_tab(true);
   }
 
   assert_number_of_tabs_open(6);
 
-  switch_tab(2);
-  assert_selected_and_displayed(msgHdrsInFolder[1]);
+  await switch_tab(2);
+  await assert_selected_and_displayed(msgHdrsInFolder[1]);
 
-  mc.tabmail.closeTab(2);
+  tabmail.closeTab(2);
   // This tab should not be added to recently closed tabs...
   // ... thus it can't be restored
-  mc.tabmail.closeTab(2, true);
-  mc.tabmail.closeTab(2);
+  tabmail.closeTab(2, true);
+  tabmail.closeTab(2);
 
   assert_number_of_tabs_open(3);
-  assert_selected_and_displayed(mc, msgHdrsInFolder[4]);
+  await assert_selected_and_displayed(window, msgHdrsInFolder[4]);
 
-  mc.tabmail.undoCloseTab();
+  tabmail.undoCloseTab();
+  await wait_for_message_display_completion();
   assert_number_of_tabs_open(4);
-  assert_selected_and_displayed(mc, msgHdrsInFolder[3]);
+  await assert_selected_and_displayed(window, msgHdrsInFolder[3]);
 
-  // msgHdrsInFolder[2] won't be restorend it was closed with disabled undo.
+  // msgHdrsInFolder[2] won't be restored, it was closed with disabled undo.
 
-  mc.tabmail.undoCloseTab();
+  tabmail.undoCloseTab();
+  await wait_for_message_display_completion();
   assert_number_of_tabs_open(5);
-  assert_selected_and_displayed(mc, msgHdrsInFolder[1]);
+  await assert_selected_and_displayed(window, msgHdrsInFolder[1]);
   teardownTest();
 });
 
 async function _synthesizeRecentlyClosedMenu() {
-  mc.rightClick(mc.tabmail.tabContainer.allTabs[1]);
+  const tab = document.getElementById("tabmail").tabContainer.allTabs[1];
+  EventUtils.synthesizeMouseAtCenter(
+    tab,
+    { type: "contextmenu", button: 2 },
+    tab.ownerGlobal
+  );
 
-  let tabContextMenu = mc.window.document.getElementById("tabContextMenu");
+  const tabContextMenu = document.getElementById("tabContextMenu");
   await wait_for_popup_to_open(tabContextMenu);
 
-  let recentlyClosedTabs = mc.window.document.getElementById(
+  const recentlyClosedTabs = document.getElementById(
     "tabContextMenuRecentlyClosed"
   );
 
@@ -375,50 +358,51 @@ async function _synthesizeRecentlyClosedMenu() {
 }
 
 async function _teardownRecentlyClosedMenu() {
-  let menu = mc.window.document.getElementById("tabContextMenu");
-  await close_popup(mc, menu);
+  const menu = document.getElementById("tabContextMenu");
+  await close_popup(window, menu);
 }
 
 /**
  * Tests the recently closed tabs menu.
  */
 add_task(async function test_tab_recentlyClosed() {
+  const tabmail = document.getElementById("tabmail");
   // Ensure only one tab is open, otherwise our test most likey fail anyway.
-  mc.tabmail.closeOtherTabs(0, true);
+  tabmail.closeOtherTabs(0, true);
   assert_number_of_tabs_open(1);
 
   // We start with a clean tab history.
-  mc.tabmail.clearRecentlyClosedTabs();
-  Assert.equal(mc.tabmail.recentlyClosedTabs.length, 0);
+  tabmail.clearRecentlyClosedTabs();
+  Assert.equal(tabmail.recentlyClosedTabs.length, 0);
 
   // The history is cleaned so let's open 15 tabs...
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   for (let idx = 0; idx < 15; idx++) {
-    select_click_row(idx);
-    open_selected_message_in_new_tab(true);
+    await select_click_row(idx);
+    await open_selected_message_in_new_tab(true);
   }
 
   assert_number_of_tabs_open(16);
 
-  switch_tab(2);
-  assert_selected_and_displayed(msgHdrsInFolder[1]);
+  await switch_tab(2);
+  await assert_selected_and_displayed(msgHdrsInFolder[1]);
 
   // ... and store the tab titles, to ensure they match with the menu items.
-  let tabTitles = [];
+  const tabTitles = [];
   for (let idx = 0; idx < 16; idx++) {
-    tabTitles.unshift(mc.tabmail.tabInfo[idx].title);
+    tabTitles.unshift(tabmail.tabInfo[idx].title);
   }
 
   // Start the test by closing all tabs except the first two tabs...
   for (let idx = 0; idx < 14; idx++) {
-    mc.tabmail.closeTab(2);
+    tabmail.closeTab(2);
   }
 
   assert_number_of_tabs_open(2);
 
   // ...then open the context menu.
-  let menu = await _synthesizeRecentlyClosedMenu();
+  const menu = await _synthesizeRecentlyClosedMenu();
 
   // Check if the context menu was populated correctly...
   Assert.ok(menu.itemCount == 12, "Failed to populate context menu");
@@ -432,10 +416,11 @@ add_task(async function test_tab_recentlyClosed() {
   // Restore the most recently closed tab
   menu.menupopup.activateItem(menu.getItemAtIndex(0));
   await _teardownRecentlyClosedMenu();
+  await new Promise(resolve => setTimeout(resolve));
 
-  wait_for_message_display_completion(mc);
+  await wait_for_message_display_completion(window);
   assert_number_of_tabs_open(3);
-  assert_selected_and_displayed(msgHdrsInFolder[14]);
+  await assert_selected_and_displayed(msgHdrsInFolder[14]);
 
   // The context menu should now contain one item less.
   await _synthesizeRecentlyClosedMenu();
@@ -451,10 +436,11 @@ add_task(async function test_tab_recentlyClosed() {
   // Now we restore an "random" tab.
   menu.menupopup.activateItem(menu.getItemAtIndex(5));
   await _teardownRecentlyClosedMenu();
+  await new Promise(resolve => setTimeout(resolve));
 
-  wait_for_message_display_completion(mc);
+  await wait_for_message_display_completion(window);
   assert_number_of_tabs_open(4);
-  assert_selected_and_displayed(msgHdrsInFolder[8]);
+  await assert_selected_and_displayed(msgHdrsInFolder[8]);
 
   // finally restore all tabs
   await _synthesizeRecentlyClosedMenu();
@@ -471,8 +457,9 @@ add_task(async function test_tab_recentlyClosed() {
 
   menu.menupopup.activateItem(menu.getItemAtIndex(menu.itemCount - 1));
   await _teardownRecentlyClosedMenu();
+  await new Promise(resolve => setTimeout(resolve));
 
-  wait_for_message_display_completion(mc);
+  await wait_for_message_display_completion(window);
 
   // out of the 16 tab, we closed all except two. As the history can store
   // only 10 items we have to endup with exactly 10 + 2 tabs.
@@ -483,13 +470,13 @@ add_task(async function test_tab_recentlyClosed() {
 function teardownTest(test) {
   // Some test cases open new windows, thus we need to ensure all
   // opened windows get closed.
-  for (let win of Services.wm.getEnumerator("mail:3pane")) {
-    if (win != mc.window) {
+  for (const win of Services.wm.getEnumerator("mail:3pane")) {
+    if (win != window) {
       win.close();
     }
   }
 
   // clean up the tabbbar
-  mc.tabmail.closeOtherTabs(0);
+  document.getElementById("tabmail").closeOtherTabs(0);
   assert_number_of_tabs_open(1);
 }

@@ -9,7 +9,9 @@
 // namespace.
 
 #include "StaticPrefsBase.h"
+#include "Preferences.h"
 #include "MainThreadUtils.h"  // for NS_IsMainThread()
+#include "nsXULAppAPI.h"      // for XRE_IsContentProcess()
 
 namespace mozilla {
 namespace StaticPrefs {
@@ -28,6 +30,15 @@ namespace StaticPrefs {
   inline const char* GetPrefName_##base_id() { return name; }                 \
   inline StripAtomic<cpp_type> GetPrefDefault_##base_id() {                   \
     return default_value;                                                     \
+  }
+#define ALWAYS_DATAMUTEX_PREF(name, base_id, full_id, cpp_type, default_value) \
+  extern cpp_type sMirror_##full_id;                                           \
+  inline cpp_type::ConstAutoLock full_id() {                                   \
+    return sMirror_##full_id.ConstLock();                                      \
+  }                                                                            \
+  inline const char* GetPrefName_##base_id() { return name; }                  \
+  inline StripAtomic<cpp_type> GetPrefDefault_##base_id() {                    \
+    return default_value;                                                      \
   }
 #define ONCE_PREF(name, base_id, full_id, cpp_type, default_value) \
   extern cpp_type sMirror_##full_id;                               \

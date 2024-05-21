@@ -8,14 +8,13 @@
 
 #include "mozilla/dom/PClientHandleParent.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class ClientManagerService;
 class ClientSourceParent;
 
-typedef MozPromise<bool, CopyableErrorResult, /* IsExclusive = */ false>
-    SourcePromise;
+using SourcePromise =
+    MozPromise<bool, CopyableErrorResult, /* IsExclusive = */ false>;
 
 class ClientHandleParent final : public PClientHandleParent {
   RefPtr<ClientManagerService> mService;
@@ -29,7 +28,9 @@ class ClientHandleParent final : public PClientHandleParent {
   MozPromiseRequestHolder<SourcePromise> mSourcePromiseRequestHolder;
 
   nsID mClientId;
-  PrincipalInfo mPrincipalInfo;
+  mozilla::ipc::PrincipalInfo mPrincipalInfo;
+
+  ~ClientHandleParent();
 
   // PClientHandleParent interface
   mozilla::ipc::IPCResult RecvTeardown() override;
@@ -46,8 +47,9 @@ class ClientHandleParent final : public PClientHandleParent {
       const ClientOpConstructorArgs& aArgs) override;
 
  public:
+  NS_INLINE_DECL_REFCOUNTING(ClientHandleParent, override)
+
   ClientHandleParent();
-  ~ClientHandleParent();
 
   void Init(const IPCClientInfo& aClientInfo);
 
@@ -59,7 +61,6 @@ class ClientHandleParent final : public PClientHandleParent {
   RefPtr<SourcePromise> EnsureSource();
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // _mozilla_dom_ClientHandleParent_h

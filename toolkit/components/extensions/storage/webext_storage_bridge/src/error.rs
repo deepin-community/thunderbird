@@ -12,7 +12,6 @@ use nserror::{
 };
 use serde_json::error::Error as JsonError;
 use webext_storage::error::Error as WebextStorageError;
-use webext_storage::error::ErrorKind as WebextStorageErrorKind;
 
 /// A specialized `Result` type for extension storage operations.
 pub type Result<T> = result::Result<T, Error>;
@@ -84,8 +83,8 @@ impl From<Error> for nsresult {
     fn from(error: Error) -> nsresult {
         match error {
             Error::Nsresult(result) => result,
-            Error::WebextStorage(e) => match e.kind() {
-                WebextStorageErrorKind::QuotaError(_) => NS_ERROR_DOM_QUOTA_EXCEEDED_ERR,
+            Error::WebextStorage(e) => match e {
+                WebextStorageError::QuotaError(_) => NS_ERROR_DOM_QUOTA_EXCEEDED_ERR,
                 _ => NS_ERROR_FAILURE,
             },
             Error::MigrationFailed(_) => NS_ERROR_CANNOT_CONVERT_DATA,
@@ -104,9 +103,9 @@ impl From<Error> for nsresult {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Nsresult(result) => write!(f, "Operation failed with {}", result),
+            Error::Nsresult(result) => write!(f, "Operation failed with {result}"),
             Error::WebextStorage(error) => error.fmt(f),
-            Error::MigrationFailed(error) => write!(f, "Migration failed with {}", error),
+            Error::MigrationFailed(error) => write!(f, "Migration failed with {error}"),
             Error::GoldenGate(error) => error.fmt(f),
             Error::MalformedString(error) => error.fmt(f),
             Error::AlreadyConfigured => write!(f, "The storage area is already configured"),
@@ -114,8 +113,8 @@ impl fmt::Display for Error {
                 f,
                 "The storage area must be configured by calling `configure` first"
             ),
-            Error::AlreadyRan(what) => write!(f, "`{}` already ran on the background thread", what),
-            Error::DidNotRun(what) => write!(f, "`{}` didn't run on the background thread", what),
+            Error::AlreadyRan(what) => write!(f, "`{what}` already ran on the background thread"),
+            Error::DidNotRun(what) => write!(f, "`{what}` didn't run on the background thread"),
             Error::AlreadyTornDown => {
                 write!(f, "Can't use a storage area that's already torn down")
             }

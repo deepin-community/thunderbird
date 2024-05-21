@@ -27,7 +27,7 @@ with Files("mozbuild/**"):
     BUG_COMPONENT = ("Firefox Build System", "General")
 
 with Files("mozlint/**"):
-    BUG_COMPONENT = ("Firefox Build System", "Linting and Formatting")
+    BUG_COMPONENT = ("Developer Infrastructure", "Lint and Formatting")
 
 with Files("mozversioncontrol/**"):
     BUG_COMPONENT = ("Firefox Build System", "General")
@@ -44,6 +44,9 @@ with Files("mach_commands.py"):
 with Files("mozperftest/**"):
     BUG_COMPONENT = ("Testing", "mozperftest")
 
+with Files("sites/**"):
+    BUG_COMPONENT = ("Firefox Build System", "Mach Core")
+
 
 SPHINX_PYTHON_PACKAGE_DIRS += [
     "mach",
@@ -58,17 +61,19 @@ with Files("**.py"):
 
 SPHINX_TREES["/mach"] = "mach/docs"
 SPHINX_TREES["/python"] = "docs"
+SPHINX_TREES["/mozbuild/vendor"] = "mozbuild/mozbuild/vendor/docs"
 
 with Files("mach/docs/**"):
     SCHEDULES.exclusive = ["docs"]
 
 PYTHON_UNITTEST_MANIFESTS += [
-    "mach/mach/test/python.ini",
-    "mozboot/mozboot/test/python.ini",
-    "mozbuild/mozbuild/test/python.ini",
-    "mozbuild/mozpack/test/python.ini",
-    "mozlint/test/python.ini",
-    "mozrelease/test/python.ini",
-    "mozterm/test/python.ini",
-    "mozversioncontrol/test/python.ini",
+    "mach/mach/test/python.toml",
+    "mozboot/mozboot/test/python.toml",
+    "mozbuild/mozbuild/repackaging/test/python.toml",
+    "mozbuild/mozbuild/test/python.toml",
+    "mozbuild/mozpack/test/python.toml",
+    "mozlint/test/python.toml",
+    "mozrelease/test/python.toml",
+    "mozterm/test/python.toml",
+    "mozversioncontrol/test/python.toml",
 ]

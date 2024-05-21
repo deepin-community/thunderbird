@@ -15,8 +15,7 @@
 #include "nsIThreadRetargetableRequest.h"
 #include "nsIThreadRetargetableStreamListener.h"
 
-namespace mozilla {
-namespace net {
+namespace mozilla::net {
 
 // This class represents an http channel that is being intercepted by a
 // ServiceWorker.  This means that when the channel is opened a FetchEvent
@@ -55,7 +54,6 @@ class InterceptedHttpChannel final
       public nsIInterceptedChannel,
       public nsICacheInfoChannel,
       public nsIAsyncVerifyRedirectCallback,
-      public nsIStreamListener,
       public nsIThreadRetargetableRequest,
       public nsIThreadRetargetableStreamListener {
   NS_DECL_ISUPPORTS_INHERITED
@@ -78,16 +76,114 @@ class InterceptedHttpChannel final
   nsCOMPtr<nsIInterceptedBodyCallback> mBodyCallback;
   nsCOMPtr<nsICacheInfoChannel> mSynthesizedCacheInfo;
   RefPtr<nsInputStreamPump> mPump;
-  TimeStamp mFinishResponseStart;
-  TimeStamp mFinishResponseEnd;
+  TimeStamp mInterceptedChannelCreationTimestamp;
+
+  // For the profiler markers
+  TimeStamp mLastStatusReported;
+
   Atomic<int64_t> mProgress;
   int64_t mProgressReported;
   int64_t mSynthesizedStreamLength;
   uint64_t mResumeStartPos;
   nsCString mResumeEntityId;
   nsString mStatusHost;
-  enum { Invalid = 0, Synthesized, Reset } mSynthesizedOrReset;
   Atomic<bool> mCallingStatusAndProgress;
+  bool mInterceptionReset{false};
+
+  /**
+   *  InterceptionTimeStamps is used to record the time stamps of the
+   *  interception.
+   *  The general usage:
+   *  Step 1. Initialize the InterceptionTimeStamps;
+   *    InterceptionTimeStamps::Init(channel);
+   *  Step 2. Record time for each stage
+   *    InterceptionTimeStamps::RecordTime(); or
+   *    InterceptionTimeStamps::RecordTime(timeStamp);
+   *  Step 3. Record time for the last stage with the final status
+   *    InterceptionTimeStamps::RecordTime(InterceptionTimeStamps::Synthesized);
+   */
+  class InterceptionTimeStamps final {
+   public:
+    // The possible status of the interception.
+    enum Status {
+      Created,
+      Initialized,
+      Synthesized,
+      Reset,
+      Redirected,
+      Canceled,
+      CanceledAfterSynthesized,
+      CanceledAfterReset,
+      CanceledAfterRedirected
+    };
+
+    InterceptionTimeStamps();
+    ~InterceptionTimeStamps() = default;
+
+    /**
+     * Initialize with the given channel.
+     * This method should be called before any RecordTime().
+     */
+    void Init(nsIChannel* aChannel);
+
+    /**
+     * Record the given time stamp for current stage. If there is no given time
+     * stamp, TimeStamp::Now() will be recorded.
+     * The current stage is auto moved to the next one.
+     */
+    void RecordTime(TimeStamp&& aTimeStamp = TimeStamp::Now());
+
+    /**
+     * Record the given time stamp for the last stage(InterceptionFinish) and
+     * set the final status to the given status.
+     * If these is no given time stamp, TimeStamp::Now() will be recorded.
+     * Notice that this method is for the last stage, it calls SaveTimeStamps()
+     * to write data into telemetries.
+     */
+    void RecordTime(Status&& aStatus,
+                    TimeStamp&& aTimeStamp = TimeStamp::Now());
+
+    // The time stamp which the intercepted channel is created and async opend.
+    TimeStamp mInterceptionStart;
+
+    // The time stamp which the interception finishes.
+    TimeStamp mInterceptionFinish;
+
+    // The time stamp which the fetch event starts to be handled by fetch event
+    // handler.
+    TimeStamp mFetchHandlerStart;
+
+    // The time stamp which the fetch event handling finishes. It would the time
+    // which remote worker sends result back.
+    TimeStamp mFetchHandlerFinish;
+
+   private:
+    // The stage of interception.
+    enum Stage {
+      InterceptionStart,
+      FetchHandlerStart,
+      FetchHandlerFinish,
+      InterceptionFinish
+    } mStage;
+
+    // The final status of the interception.
+    Status mStatus;
+
+    bool mIsNonSubresourceRequest;
+    // The keys used for telemetries.
+    nsCString mKey;
+    nsCString mSubresourceKey;
+
+    void RecordTimeInternal(TimeStamp&& aTimeStamp);
+
+    // Generate the record keys with final status.
+    void GenKeysWithStatus(nsCString& aKey, nsCString& aSubresourceKey);
+
+    // Save the time stamps into telemetries.
+    void SaveTimeStamps();
+  };
+
+  InterceptionTimeStamps mTimeStamps;
 
   InterceptedHttpChannel(PRTime aCreationTime,
                          const TimeStamp& aCreationTimestamp,
@@ -121,6 +217,9 @@ class InterceptedHttpChannel final
 
   void MaybeCallBodyCallback();
 
+  TimeStamp mServiceWorkerLaunchStart;
+  TimeStamp mServiceWorkerLaunchEnd;
+
  public:
   static already_AddRefed<InterceptedHttpChannel> CreateForInterception(
       PRTime aCreationTime, const TimeStamp& aCreationTimestamp,
@@ -132,6 +231,11 @@ class InterceptedHttpChannel final
       const TimeStamp& aCreationTimestamp,
       const TimeStamp& aAsyncOpenTimestamp);
 
+  NS_IMETHOD SetCanceledReason(const nsACString& aReason) override;
+  NS_IMETHOD GetCanceledReason(nsACString& aReason) override;
+  NS_IMETHOD CancelWithReason(nsresult status,
+                              const nsACString& reason) override;
+
   NS_IMETHOD
   Cancel(nsresult aStatus) override;
 
@@ -142,14 +246,14 @@ class InterceptedHttpChannel final
   Resume(void) override;
 
   NS_IMETHOD
-  GetSecurityInfo(nsISupports** aSecurityInfo) override;
+  GetSecurityInfo(nsITransportSecurityInfo** aSecurityInfo) override;
 
   NS_IMETHOD
   AsyncOpen(nsIStreamListener* aListener) override;
 
   NS_IMETHOD
-  LogBlockedCORSRequest(const nsAString& aMessage,
-                        const nsACString& aCategory) override;
+  LogBlockedCORSRequest(const nsAString& aMessage, const nsACString& aCategory,
+                        bool aIsWarning) override;
 
   NS_IMETHOD
   LogMimeTypeMismatch(const nsACString& aMessageName, bool aWarning,
@@ -172,14 +276,41 @@ class InterceptedHttpChannel final
   AddClassFlags(uint32_t flags) override;
 
   NS_IMETHOD
+  SetClassOfService(ClassOfService cos) override;
+
+  NS_IMETHOD
+  SetIncremental(bool incremental) override;
+
+  NS_IMETHOD
   ResumeAt(uint64_t startPos, const nsACString& entityID) override;
+
+  NS_IMETHOD
+  SetEarlyHintObserver(nsIEarlyHintObserver* aObserver) override {
+    return NS_OK;
+  }
+
+  NS_IMETHOD SetWebTransportSessionEventListener(
+      WebTransportSessionEventListener* aListener) override {
+    return NS_OK;
+  }
+
+  NS_IMETHOD SetLaunchServiceWorkerStart(TimeStamp aTimeStamp) override;
+  NS_IMETHOD GetLaunchServiceWorkerStart(TimeStamp* aRetVal) override;
+
+  NS_IMETHOD SetLaunchServiceWorkerEnd(TimeStamp aTimeStamp) override;
+  NS_IMETHOD GetLaunchServiceWorkerEnd(TimeStamp* aRetVal) override;
+
+  NS_IMETHOD GetDispatchFetchEventStart(TimeStamp* aRetVal) override;
+  NS_IMETHOD GetDispatchFetchEventEnd(TimeStamp* aRetVal) override;
+
+  NS_IMETHOD GetHandleFetchEventStart(TimeStamp* aRetVal) override;
+  NS_IMETHOD GetHandleFetchEventEnd(TimeStamp* aRetVal) override;
 
   void DoNotifyListenerCleanup() override;
 
   void DoAsyncAbort(nsresult aStatus) override;
 };
 
-}  // namespace net
-}  // namespace mozilla
+}  // namespace mozilla::net
 
 #endif  // mozilla_net_InterceptedHttpChannel_h

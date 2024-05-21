@@ -26,5 +26,5 @@ profile-manager-work-offline =
     .label = Trabalhar offline
     .accesskey = o
 profile-manager-use-selected =
-    .label = Utilizar o perfil selecionado sem perguntar no arranque
+    .label = Utilizar o perfil selecionado na inicialização, sem questionar
     .accesskey = s

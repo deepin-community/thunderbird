@@ -16,8 +16,8 @@
  */
 
 // Globals
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var gMsgFile1;
@@ -33,7 +33,7 @@ var copyListener = {
   OnStartCopy() {},
   OnProgress(aProgress, aProgressMax) {},
   SetMessageKey(aKey) {
-    let hdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
+    const hdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
     gMsgHdrs.push({ hdr, ID: hdr.messageId });
   },
   SetMessageId(aMessageId) {},
@@ -44,7 +44,7 @@ var copyListener = {
     // This can happen with a bunch of synchronous functions grouped together, and
     // can even cause tests to fail because they're still waiting for the listener
     // to return
-    do_timeout(0, function() {
+    do_timeout(0, function () {
       doTest(++gCurTestNum);
     });
   },
@@ -59,7 +59,7 @@ var urlListener = {
     // This can happen with a bunch of synchronous functions grouped together, and
     // can even cause tests to fail because they're still waiting for the listener
     // to return
-    do_timeout(0, function() {
+    do_timeout(0, function () {
       doTest(++gCurTestNum);
     });
   },
@@ -97,7 +97,7 @@ var gTestArray = [
   function testDeleteMessage() {
     // delete to trash
     // Let's take a moment to re-initialize stuff that got moved
-    let inboxDB = localAccountUtils.inboxFolder.msgDatabase;
+    const inboxDB = localAccountUtils.inboxFolder.msgDatabase;
     gMsgHdrs[0].hdr = inboxDB.getMsgHdrForMessageID(gMsgHdrs[0].ID);
 
     // Now delete the message
@@ -108,15 +108,15 @@ var gTestArray = [
     gLocalTrashFolder = gRootFolder.getChildNamed("Trash");
     // hold onto a db to make sure that empty trash deals with the case
     // of someone holding onto the db, but the trash folder has a null db.
-    let gLocalTrashDB = gLocalTrashFolder.msgDatabase; // eslint-disable-line no-unused-vars
+    const gLocalTrashDB = gLocalTrashFolder.msgDatabase; // eslint-disable-line no-unused-vars
     gLocalTrashFolder.msgDatabase = null;
     // this is synchronous
-    gLocalTrashFolder.emptyTrash(null, null);
+    gLocalTrashFolder.emptyTrash(null);
     // check that the trash folder is 0 size, that the db has a 0 message count
     // and has no messages.
     Assert.equal(0, gLocalTrashFolder.filePath.fileSize);
     Assert.equal(0, gLocalTrashFolder.msgDatabase.dBFolderInfo.numMessages);
-    let msgs = [...gLocalTrashFolder.msgDatabase.EnumerateMessages()];
+    const msgs = [...gLocalTrashFolder.msgDatabase.enumerateMessages()];
     Assert.equal(0, msgs.length);
     urlListener.OnStopRunningUrl(null, 0);
   },
@@ -155,7 +155,7 @@ function doTest(test) {
 
     var testFn = gTestArray[test - 1];
     // Set a limit of three seconds; if the notifications haven't arrived by then there's a problem.
-    do_timeout(10000, function() {
+    do_timeout(10000, function () {
       if (gCurTestNum == test) {
         do_throw(
           "Notifications not received in 10000 ms for operation " + testFn.name

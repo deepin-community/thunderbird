@@ -1,8 +1,6 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 /* eslint no-unused-vars: [2, {"vars": "local", "args": "none"}] */
-/* import-globals-from ../../shared/test/shared-head.js */
-/* import-globals-from ../../framework/test/head.js */
 
 "use strict";
 
@@ -67,7 +65,7 @@ async function addJsonViewTab(
 
   // Catch RequireJS errors (usually timeouts)
   const error = tabLoaded.then(() =>
-    SpecialPowers.spawn(browser, [], function() {
+    SpecialPowers.spawn(browser, [], function () {
       return new Promise((resolve, reject) => {
         const { requirejs } = content.wrappedJSObject;
         if (requirejs) {
@@ -85,7 +83,7 @@ async function addJsonViewTab(
   await Promise.race([
     error,
     // eslint-disable-next-line no-shadow
-    ContentTask.spawn(browser, data, async function(data) {
+    ContentTask.spawn(browser, data, async function (data) {
       // Check if there is a JSONView object.
       const { JSONView } = content.wrappedJSObject;
       if (!JSONView) {
@@ -136,8 +134,10 @@ async function addJsonViewTab(
 function clickJsonNode(selector) {
   info("Expanding node: '" + selector + "'");
 
-  const browser = gBrowser.selectedBrowser;
-  return BrowserTestUtils.synthesizeMouseAtCenter(selector, {}, browser);
+  // eslint-disable-next-line no-shadow
+  return ContentTask.spawn(gBrowser.selectedBrowser, selector, selector => {
+    content.document.querySelector(selector).click();
+  });
 }
 
 /**
@@ -146,9 +146,35 @@ function clickJsonNode(selector) {
 function selectJsonViewContentTab(name) {
   info("Selecting tab: '" + name + "'");
 
-  const browser = gBrowser.selectedBrowser;
-  const selector = ".tabs-menu .tabs-menu-item." + name + " a";
-  return BrowserTestUtils.synthesizeMouseAtCenter(selector, {}, browser);
+  // eslint-disable-next-line no-shadow
+  return ContentTask.spawn(gBrowser.selectedBrowser, name, async name => {
+    const tabsSelector = ".tabs-menu .tabs-menu-item";
+    const targetTabSelector = `${tabsSelector}.${CSS.escape(name)}`;
+    const targetTab = content.document.querySelector(targetTabSelector);
+    const targetTabIndex = Array.prototype.indexOf.call(
+      content.document.querySelectorAll(tabsSelector),
+      targetTab
+    );
+    const targetTabButton = targetTab.querySelector("a");
+    await new Promise(resolve => {
+      content.addEventListener(
+        "TabChanged",
+        ({ detail: { index } }) => {
+          is(index, targetTabIndex, "Hm?");
+          if (index === targetTabIndex) {
+            resolve();
+          }
+        },
+        { once: true }
+      );
+      targetTabButton.click();
+    });
+    is(
+      targetTabButton.getAttribute("aria-selected"),
+      "true",
+      "Tab is now selected"
+    );
+  });
 }
 
 function getElementCount(selector) {
@@ -247,7 +273,7 @@ function waitForFilter() {
       }
 
       // Wait till the first row has 'hidden' class set.
-      const observer = new content.MutationObserver(function(mutations) {
+      const observer = new content.MutationObserver(function (mutations) {
         for (let i = 0; i < mutations.length; i++) {
           const mutation = mutations[i];
           if (mutation.attributeName == "class") {

@@ -1,13 +1,14 @@
 // This file needs to contain glue to rephrase the Mocha testsuite framework in
 // a way that the xpcshell test suite can understand.
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
+);
 var requireCache = new Map();
 
 // Preload an assert module
 var assert = new Assert();
-assert.doesNotThrow = function(block, message) {
+assert.doesNotThrow = function (block, message) {
   message = message ? " " + message : ".";
   try {
     block();
@@ -29,7 +30,7 @@ var fs = {
     // node.js feature in the shim since we don't need to.
     var translator = contents => contents;
     if (options !== undefined && "encoding" in options) {
-      translator = function() {
+      translator = function () {
         throw new Error("I can't do this!");
       };
     }
@@ -42,7 +43,9 @@ var fs = {
   },
 };
 requireCache.set("fs", fs);
-var { jsmime } = ChromeUtils.import("resource:///modules/jsmime.jsm");
+var { jsmime } = ChromeUtils.importESModule(
+  "resource:///modules/jsmime.sys.mjs"
+);
 requireCache.set("jsmime", jsmime);
 
 function require(path) {
@@ -52,7 +55,7 @@ function require(path) {
 
   let file;
   if (path.startsWith("test/")) {
-    let name = path.substring("test/".length);
+    const name = path.substring("test/".length);
     file = "resource://testing-common/jsmime/" + name + ".js";
   } else {
     file = "resource:///modules/jsmime/" + path + ".js";
@@ -96,32 +99,32 @@ function MochaSuite(name) {
 }
 
 // The real code for running a suite of tests, written as async function.
-MochaSuite.prototype._runSuite = async function() {
+MochaSuite.prototype._runSuite = async function () {
   info("Running suite " + this.name);
-  for (let setup_ of this.setup) {
+  for (const setup_ of this.setup) {
     await runFunction(setup_);
   }
-  for (let test_ of this.tests) {
+  for (const test_ of this.tests) {
     info("Running test " + test_.name);
     await runFunction(test_.test);
   }
-  for (let suite_ of this.suites) {
+  for (const suite_ of this.suites) {
     await suite_.runSuite();
   }
-  for (let fn of this.teardown) {
+  for (const fn of this.teardown) {
     await runFunction(fn);
   }
   info("Finished suite " + this.name);
 };
 
 // The outer call to run a test suite, which returns a promise of completion.
-MochaSuite.prototype.runSuite = function() {
+MochaSuite.prototype.runSuite = function () {
   return this._runSuite();
 };
 
 // Run the given function, returning a promise of when the test will complete.
 function runFunction(fn) {
-  let completed = new Promise(function(resolve, reject) {
+  const completed = new Promise(function (resolve, reject) {
     function onEnd(error) {
       if (error !== undefined) {
         reject(error);
@@ -148,7 +151,7 @@ function suite(name, tests) {
   if (/[\x80-]/.exec(name)) {
     name = "<unprintable name>";
   }
-  let suiteParent = currentSuite;
+  const suiteParent = currentSuite;
   currentSuite = new MochaSuite(name);
   suiteParent.suites.push(currentSuite);
   tests();

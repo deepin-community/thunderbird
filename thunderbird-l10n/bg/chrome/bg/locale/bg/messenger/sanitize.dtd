@@ -19,6 +19,8 @@ that require it.  -->
 <!ENTITY clearTimeDuration.suffix         "">
 
 
+<!ENTITY historyGroup.label                "История">
+
 <!ENTITY itemHistory.label                 "История на разглеждане">
 <!ENTITY itemHistory.accesskey             "И">
 <!ENTITY itemCookies.label                 "Бисквитки">
@@ -32,5 +34,3 @@ that require it.  -->
 <!ENTITY sanitizeEverythingUndoWarning     "Действието е необратимо.">
 
 <!ENTITY dialog.width                 "28em">
-
-<!ENTITY historyGroup.label                "History">

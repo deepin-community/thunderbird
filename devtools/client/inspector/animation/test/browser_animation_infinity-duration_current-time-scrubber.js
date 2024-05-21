@@ -5,7 +5,7 @@
 
 // Test whether the scrubber was working for even the animation of infinity duration.
 
-add_task(async function() {
+add_task(async function () {
   await addTab(URL_ROOT + "doc_infinity_duration.html");
   await removeAnimatedElementsExcept([".infinity-delay-iteration-start"]);
   const { animationInspector, panel } = await openAnimationInspector();
@@ -32,8 +32,9 @@ add_task(async function() {
   const barBounds = barEl.getBoundingClientRect();
   const barX = barBounds.x + barBounds.width / 2 - controllerBounds.x;
   const expectedBarX = controllerBounds.width * 0.5;
-  ok(
-    Math.abs(barX - expectedBarX) < 1,
+  Assert.less(
+    Math.abs(barX - expectedBarX),
+    1,
     "Progress bar should indicate at progress of 0.5"
   );
 });

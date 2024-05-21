@@ -2,17 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-let { Message } = ChromeUtils.import(
-  "resource://testing-common/TestProtocol.jsm"
-);
-
 add_task(async function testDisplayed() {
-  const account = Services.accounts.createAccount("testuser", "prpl-mochitest");
+  const account = IMServices.accounts.createAccount(
+    "testuser",
+    "prpl-mochitest"
+  );
+  const passwordPromise = TestUtils.topicObserved("account-updated");
   account.password = "this is a test";
+  await passwordPromise;
   account.connect();
 
   await openChatTab();
-  ok(BrowserTestUtils.is_visible(document.getElementById("chatPanel")));
+  ok(BrowserTestUtils.isVisible(document.getElementById("chatPanel")));
 
   const conversation = account.prplAccount.wrappedJSObject.makeMUC("collapse");
   const convNode = getConversationItem(conversation);
@@ -20,10 +21,11 @@ add_task(async function testDisplayed() {
 
   ok(!convNode.hasAttribute("unread"), "No unread messages");
 
-  const message = new Message("mochitest", "hello world", {
+  const messagePromise = waitForNotification(conversation, "new-text");
+  conversation.writeMessage("mochitest", "hello world", {
     incoming: true,
   });
-  message.conversation = conversation;
+  const { subject: message } = await messagePromise;
 
   ok(convNode.hasAttribute("unread"), "Unread message waiting");
   is(convNode.getAttribute("unreadCount"), "(1)");
@@ -36,7 +38,7 @@ add_task(async function testDisplayed() {
     chatConv.convBrowser,
     "MessagesDisplayed"
   );
-  ok(BrowserTestUtils.is_visible(chatConv), "conversation visible");
+  ok(BrowserTestUtils.isVisible(chatConv), "conversation visible");
 
   await browserDisplayed;
   await message.displayed;
@@ -45,5 +47,5 @@ add_task(async function testDisplayed() {
 
   conversation.close();
   account.disconnect();
-  Services.accounts.deleteAccount(account.id);
+  IMServices.accounts.deleteAccount(account.id);
 });

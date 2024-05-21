@@ -10,12 +10,14 @@
 #include "mozilla/Preferences.h"
 #include "mozilla/Components.h"
 #include "mozilla/Unused.h"
+#include "mozilla/dom/PermissionStatusBinding.h"
 #include "mozilla/dom/PushManagerBinding.h"
 #include "mozilla/dom/PushSubscription.h"
 #include "mozilla/dom/PushSubscriptionOptionsBinding.h"
 #include "mozilla/dom/PushUtil.h"
+#include "mozilla/dom/RootedDictionary.h"
+#include "mozilla/dom/ServiceWorker.h"
 #include "mozilla/dom/WorkerRunnable.h"
-#include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerScope.h"
 
 #include "mozilla/dom/Promise.h"
@@ -30,13 +32,11 @@
 #include "nsContentUtils.h"
 #include "nsServiceManagerUtils.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 namespace {
 
-nsresult GetPermissionState(nsIPrincipal* aPrincipal,
-                            PushPermissionState& aState) {
+nsresult GetPermissionState(nsIPrincipal* aPrincipal, PermissionState& aState) {
   nsCOMPtr<nsIPermissionManager> permManager =
       mozilla::components::PermissionManager::Service();
 
@@ -52,11 +52,11 @@ nsresult GetPermissionState(nsIPrincipal* aPrincipal,
 
   if (permission == nsIPermissionManager::ALLOW_ACTION ||
       Preferences::GetBool("dom.push.testing.ignorePermission", false)) {
-    aState = PushPermissionState::Granted;
+    aState = PermissionState::Granted;
   } else if (permission == nsIPermissionManager::DENY_ACTION) {
-    aState = PushPermissionState::Denied;
+    aState = PermissionState::Denied;
   } else {
-    aState = PushPermissionState::Prompt;
+    aState = PermissionState::Prompt;
   }
 
   return NS_OK;
@@ -98,27 +98,34 @@ class GetSubscriptionResultRunnable final : public WorkerRunnable {
                                 RefPtr<PromiseWorkerProxy>&& aProxy,
                                 nsresult aStatus, const nsAString& aEndpoint,
                                 const nsAString& aScope,
+                                Nullable<EpochTimeStamp>&& aExpirationTime,
                                 nsTArray<uint8_t>&& aRawP256dhKey,
                                 nsTArray<uint8_t>&& aAuthSecret,
                                 nsTArray<uint8_t>&& aAppServerKey)
-      : WorkerRunnable(aWorkerPrivate),
+      : WorkerRunnable(aWorkerPrivate, "GetSubscriptionResultRunnable"),
         mProxy(std::move(aProxy)),
         mStatus(aStatus),
         mEndpoint(aEndpoint),
         mScope(aScope),
+        mExpirationTime(std::move(aExpirationTime)),
         mRawP256dhKey(std::move(aRawP256dhKey)),
         mAuthSecret(std::move(aAuthSecret)),
         mAppServerKey(std::move(aAppServerKey)) {}
 
   bool WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) override {
-    RefPtr<Promise> promise = mProxy->WorkerPromise();
+    RefPtr<Promise> promise = mProxy->GetWorkerPromise();
+    // Once Worker had already started shutdown, workerPromise would be nullptr
+    if (!promise) {
+      return true;
+    }
     if (NS_SUCCEEDED(mStatus)) {
       if (mEndpoint.IsEmpty()) {
         promise->MaybeResolve(JS::NullHandleValue);
       } else {
         RefPtr<PushSubscription> sub = new PushSubscription(
-            nullptr, mEndpoint, mScope, std::move(mRawP256dhKey),
-            std::move(mAuthSecret), std::move(mAppServerKey));
+            nullptr, mEndpoint, mScope, std::move(mExpirationTime),
+            std::move(mRawP256dhKey), std::move(mAuthSecret),
+            std::move(mAppServerKey));
         promise->MaybeResolve(sub);
       }
     } else if (NS_ERROR_GET_MODULE(mStatus) == NS_ERROR_MODULE_DOM_PUSH) {
@@ -139,6 +146,7 @@ class GetSubscriptionResultRunnable final : public WorkerRunnable {
   nsresult mStatus;
   nsString mEndpoint;
   nsString mScope;
+  Nullable<EpochTimeStamp> mExpirationTime;
   nsTArray<uint8_t> mRawP256dhKey;
   nsTArray<uint8_t> mAuthSecret;
   nsTArray<uint8_t> mAppServerKey;
@@ -173,8 +181,8 @@ class GetSubscriptionCallback final : public nsIPushSubscriptionCallback {
     WorkerPrivate* worker = mProxy->GetWorkerPrivate();
     RefPtr<GetSubscriptionResultRunnable> r = new GetSubscriptionResultRunnable(
         worker, std::move(mProxy), aStatus, endpoint, mScope,
-        std::move(rawP256dhKey), std::move(authSecret),
-        std::move(appServerKey));
+        std::move(mExpirationTime), std::move(rawP256dhKey),
+        std::move(authSecret), std::move(appServerKey));
     if (!r->Dispatch()) {
       return NS_ERROR_UNEXPECTED;
     }
@@ -193,6 +201,7 @@ class GetSubscriptionCallback final : public nsIPushSubscriptionCallback {
  private:
   RefPtr<PromiseWorkerProxy> mProxy;
   nsString mScope;
+  Nullable<EpochTimeStamp> mExpirationTime;
 };
 
 NS_IMPL_ISUPPORTS(GetSubscriptionCallback, nsIPushSubscriptionCallback)
@@ -231,14 +240,14 @@ class GetSubscriptionRunnable final : public Runnable {
     RefPtr<GetSubscriptionCallback> callback =
         new GetSubscriptionCallback(mProxy, mScope);
 
-    PushPermissionState state;
+    PermissionState state;
     nsresult rv = GetPermissionState(principal, state);
     if (NS_FAILED(rv)) {
       callback->OnPushSubscriptionError(NS_ERROR_FAILURE);
       return NS_OK;
     }
 
-    if (state != PushPermissionState::Granted) {
+    if (state != PermissionState::Granted) {
       if (mAction == PushManager::GetSubscriptionAction) {
         callback->OnPushSubscriptionError(NS_OK);
         return NS_OK;
@@ -286,8 +295,8 @@ class GetSubscriptionRunnable final : public Runnable {
 class PermissionResultRunnable final : public WorkerRunnable {
  public:
   PermissionResultRunnable(PromiseWorkerProxy* aProxy, nsresult aStatus,
-                           PushPermissionState aState)
-      : WorkerRunnable(aProxy->GetWorkerPrivate()),
+                           PermissionState aState)
+      : WorkerRunnable(aProxy->GetWorkerPrivate(), "PermissionResultRunnable"),
         mProxy(aProxy),
         mStatus(aStatus),
         mState(aState) {
@@ -297,8 +306,10 @@ class PermissionResultRunnable final : public WorkerRunnable {
   bool WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) override {
     MOZ_ASSERT(aWorkerPrivate);
     aWorkerPrivate->AssertIsOnWorkerThread();
-
-    RefPtr<Promise> promise = mProxy->WorkerPromise();
+    RefPtr<Promise> promise = mProxy->GetWorkerPromise();
+    if (!promise) {
+      return true;
+    }
     if (NS_SUCCEEDED(mStatus)) {
       promise->MaybeResolve(mState);
     } else {
@@ -315,7 +326,7 @@ class PermissionResultRunnable final : public WorkerRunnable {
 
   RefPtr<PromiseWorkerProxy> mProxy;
   nsresult mStatus;
-  PushPermissionState mState;
+  PermissionState mState;
 };
 
 class PermissionStateRunnable final : public Runnable {
@@ -331,13 +342,16 @@ class PermissionStateRunnable final : public Runnable {
       return NS_OK;
     }
 
-    PushPermissionState state;
+    PermissionState state;
     nsresult rv =
         GetPermissionState(mProxy->GetWorkerPrivate()->GetPrincipal(), state);
 
     RefPtr<PermissionResultRunnable> r =
         new PermissionResultRunnable(mProxy, rv, state);
-    MOZ_ALWAYS_TRUE(r->Dispatch());
+
+    // This can fail if the worker thread is already shutting down, but there's
+    // nothing we can do in that case.
+    Unused << NS_WARN_IF(!r->Dispatch());
 
     return NS_OK;
   }
@@ -402,6 +416,10 @@ already_AddRefed<PushManager> PushManager::Constructor(GlobalObject& aGlobal,
   return ret.forget();
 }
 
+bool PushManager::IsEnabled(JSContext* aCx, JSObject* aGlobal) {
+  return StaticPrefs::dom_push_enabled() && ServiceWorkerVisible(aCx, aGlobal);
+}
+
 already_AddRefed<Promise> PushManager::Subscribe(
     const PushSubscriptionOptionsInit& aOptions, ErrorResult& aRv) {
   if (mImpl) {
@@ -452,7 +470,7 @@ already_AddRefed<Promise> PushManager::PermissionState(
 
 already_AddRefed<Promise> PushManager::PerformSubscriptionActionFromWorker(
     SubscriptionAction aAction, ErrorResult& aRv) {
-  PushSubscriptionOptionsInit options;
+  RootedDictionary<PushSubscriptionOptionsInit> options(RootingCx());
   return PerformSubscriptionActionFromWorker(aAction, options, aRv);
 }
 
@@ -504,18 +522,10 @@ nsresult PushManager::NormalizeAppServerKey(
       return NS_ERROR_DOM_INVALID_CHARACTER_ERR;
     }
     aAppServerKey = decodedKey;
-  } else if (aSource.IsArrayBuffer()) {
-    if (!PushUtil::CopyArrayBufferToArray(aSource.GetAsArrayBuffer(),
-                                          aAppServerKey)) {
-      return NS_ERROR_DOM_PUSH_INVALID_KEY_ERR;
-    }
-  } else if (aSource.IsArrayBufferView()) {
-    if (!PushUtil::CopyArrayBufferViewToArray(aSource.GetAsArrayBufferView(),
-                                              aAppServerKey)) {
-      return NS_ERROR_DOM_PUSH_INVALID_KEY_ERR;
-    }
   } else {
-    MOZ_CRASH("Uninitialized union: expected string, buffer, or view");
+    if (!AppendTypedArrayDataTo(aSource, aAppServerKey)) {
+      return NS_ERROR_DOM_PUSH_INVALID_KEY_ERR;
+    }
   }
   if (aAppServerKey.IsEmpty()) {
     return NS_ERROR_DOM_PUSH_INVALID_KEY_ERR;
@@ -523,5 +533,4 @@ nsresult PushManager::NormalizeAppServerKey(
   return NS_OK;
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

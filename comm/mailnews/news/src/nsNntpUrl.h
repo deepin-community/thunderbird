@@ -32,6 +32,8 @@ class nsNntpUrl : public nsINntpUrl,
 
   // nsNntpUrl
   nsNntpUrl();
+  static nsresult NewURI(const nsACString& aSpec, nsIURI* aBaseURI,
+                         nsIURI** _retval);
 
   NS_DECL_ISUPPORTS_INHERITED
 
@@ -45,8 +47,8 @@ class nsNntpUrl : public nsINntpUrl,
   nsNewsAction m_newsAction;  // the action this url represents...parse mailbox,
                               // display messages, etc.
 
-  nsCString mURI;              // the RDF URI associated with this url.
-  nsCString mCharsetOverride;  // used by nsIMsgI18NUrl...
+  nsCString mURI;           // the RDF URI associated with this url.
+  bool mAutodetectCharset;  // used by nsIMsgI18NUrl...
 
   nsCString mOriginalSpec;
   nsCOMPtr<nsIFile> m_filePath;

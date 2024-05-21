@@ -51,10 +51,12 @@ let gcExperimentFiles = {
     },
   ]),
   "child.js": () => {
-    let { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
+    let { setTimeout } = ChromeUtils.importESModule(
+      "resource://gre/modules/Timer.sys.mjs"
+    );
     /* globals ExtensionAPI */
     this.gcHelper = class extends ExtensionAPI {
-      getAPI(context) {
+      getAPI() {
         let witnesses = new Map();
         return {
           gcHelper: {

@@ -17,7 +17,7 @@ function test() {
   gBrowser.selectedTab = BrowserTestUtils.addTab(gBrowser, TEST_URL);
   let browser = gBrowser.selectedBrowser;
 
-  whenBrowserLoaded(browser, function() {
+  whenBrowserLoaded(browser, function () {
     let seenDialog = false;
 
     // Cancel the prompt the first time.
@@ -36,7 +36,7 @@ function test() {
       "chrome,all,dialog=no",
       "about:blank"
     );
-    ok(win2 != null, "Should have been able to open a new window");
+    Assert.notEqual(win2, null, "Should have been able to open a new window");
     win2.addEventListener(
       "load",
       () => {

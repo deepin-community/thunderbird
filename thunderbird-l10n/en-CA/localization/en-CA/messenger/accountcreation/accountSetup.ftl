@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Your name, as shown to others
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Please enter your name
 account-setup-email-label = Email address
     .accesskey = E
 account-setup-email-input =
@@ -33,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Your existing email address
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Invalid email address
 account-setup-password-label = Password
     .accesskey = P
     .title = Optional, will only be used to validate the username
 account-provisioner-button = Get a new email address
     .accesskey = G
-account-setup-password-toggle =
-    .title = Show/hide password
 account-setup-password-toggle-show =
     .title = Show password in clear text
 account-setup-password-toggle-hide =
@@ -126,21 +124,14 @@ account-setup-results-area-title =
         [one] Available configuration
        *[other] Available configurations
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Keep your folders and emails synced on your server
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Keep your folders and emails on your computer
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Use the Microsoft Exchange server or Office365 cloud services
 account-setup-incoming-title = Incoming
 account-setup-outgoing-title = Outgoing
 account-setup-username-title = Username
 account-setup-exchange-title = Server
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = No Encryption
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -164,9 +155,6 @@ account-setup-provisioner-error = An error occurred while setting up your new ac
 account-setup-manual-config-title = Server settings
 account-setup-incoming-server-legend = Incoming server
 account-setup-protocol-label = Protocol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Hostname:
 account-setup-port-label = Port:
     .title = Set the port number to 0 for autodetection
@@ -291,6 +279,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Colour
 account-setup-calendar-refresh-label = Refresh
 account-setup-calendar-refresh-manual = Manually
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Every minute

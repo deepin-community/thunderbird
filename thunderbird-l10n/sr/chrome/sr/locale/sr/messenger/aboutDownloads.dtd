@@ -14,10 +14,10 @@
 <!ENTITY cmd.showMac.accesskey                     "F">
 <!ENTITY cmd.open.label                            "Отвори">
 <!ENTITY cmd.open.accesskey                        "О">
-<!ENTITY cmd.removeFromHistory.label               "Уклони из историјата">
+<!ENTITY cmd.removeFromHistory.label               "Уклони из историје">
 <!ENTITY cmd.removeFromHistory.accesskey           "У">
 <!ENTITY cmd.clearList.label                       "Очисти списак">
 <!ENTITY cmd.clearList.accesskey                   "О">
 <!ENTITY cmd.clearList.tooltip                     "Уклоните све уносе са списка сачуваних датотека, осим текућих преузимања.">
-<!ENTITY cmd.searchDownloads.label                 "Претрага у току…">
+<!ENTITY cmd.searchDownloads.label                 "Претрага…">
 <!ENTITY cmd.searchDownloads.key                   "F">

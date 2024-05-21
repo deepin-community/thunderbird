@@ -30,29 +30,41 @@
 
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/ClearOnShutdown.h"
 
 using namespace mozilla;
 
-static int32_t gPropertyTableRefCount;
-static nsStaticCaseInsensitiveNameTable* gFontDescTable;
-static nsStaticCaseInsensitiveNameTable* gCounterDescTable;
-static nsTHashMap<nsCStringHashKey, nsCSSPropertyID>* gPropertyIDLNameTable;
+static StaticAutoPtr<nsStaticCaseInsensitiveNameTable> gFontDescTable;
+static StaticAutoPtr<nsStaticCaseInsensitiveNameTable> gCounterDescTable;
+static StaticAutoPtr<nsTHashMap<nsCStringHashKey, nsCSSPropertyID>>
+    gPropertyIDLNameTable;
 
-static const char* const kCSSRawFontDescs[] = {
+static constexpr const char* const kCSSRawFontDescs[] = {
 #define CSS_FONT_DESC(name_, method_) #name_,
 #include "nsCSSFontDescList.h"
 #undef CSS_FONT_DESC
 };
 
-static const char* const kCSSRawCounterDescs[] = {
+static constexpr const char* const kCSSRawCounterDescs[] = {
 #define CSS_COUNTER_DESC(name_, method_) #name_,
 #include "nsCSSCounterDescList.h"
 #undef CSS_COUNTER_DESC
 };
 
+static constexpr CSSPropFlags kFlagsTable[eCSSProperty_COUNT_with_aliases] = {
+#define CSS_PROP_LONGHAND(name_, id_, method_, flags_, ...) flags_,
+#define CSS_PROP_SHORTHAND(name_, id_, method_, flags_, ...) flags_,
+#define CSS_PROP_ALIAS(name_, aliasid_, id_, method_, flags_, ...) flags_,
+#include "mozilla/ServoCSSPropList.h"
+#undef CSS_PROP_ALIAS
+#undef CSS_PROP_SHORTHAND
+#undef CSS_PROP_LONGHAND
+};
+
 static nsStaticCaseInsensitiveNameTable* CreateStaticTable(
     const char* const aRawTable[], int32_t aLength) {
-  auto table = new nsStaticCaseInsensitiveNameTable(aRawTable, aLength);
+  auto* table = new nsStaticCaseInsensitiveNameTable(aRawTable, aLength);
 #ifdef DEBUG
   // Partially verify the entries.
   for (int32_t index = 0; index < aLength; ++index) {
@@ -75,65 +87,49 @@ void nsCSSProps::RecomputeEnabledState(const char* aPref, void*) {
       gPropertyEnabled[pref->mPropID] = true;
 #else
       gPropertyEnabled[pref->mPropID] = Preferences::GetBool(pref->mPref);
-#endif
       if (pref->mPropID == eCSSProperty_backdrop_filter) {
         gPropertyEnabled[pref->mPropID] &=
-            gfx::gfxVars::GetUseWebRenderOrDefault();
+            gfx::gfxVars::GetAllowBackdropFilterOrDefault();
       }
+#endif
     }
   }
   MOZ_ASSERT(foundPref);
 }
 
-void nsCSSProps::AddRefTable(void) {
-  if (0 == gPropertyTableRefCount++) {
-    MOZ_ASSERT(!gFontDescTable, "pre existing array!");
-    MOZ_ASSERT(!gCounterDescTable, "pre existing array!");
-    MOZ_ASSERT(!gPropertyIDLNameTable, "pre existing array!");
+void nsCSSProps::Init() {
+  MOZ_ASSERT(!gFontDescTable, "pre existing array!");
+  MOZ_ASSERT(!gCounterDescTable, "pre existing array!");
+  MOZ_ASSERT(!gPropertyIDLNameTable, "pre existing array!");
 
-    gFontDescTable = CreateStaticTable(kCSSRawFontDescs, eCSSFontDesc_COUNT);
-    gCounterDescTable =
-        CreateStaticTable(kCSSRawCounterDescs, eCSSCounterDesc_COUNT);
+  gFontDescTable = CreateStaticTable(kCSSRawFontDescs, eCSSFontDesc_COUNT);
+  gCounterDescTable =
+      CreateStaticTable(kCSSRawCounterDescs, eCSSCounterDesc_COUNT);
 
-    gPropertyIDLNameTable = new nsTHashMap<nsCStringHashKey, nsCSSPropertyID>;
-    for (nsCSSPropertyID p = nsCSSPropertyID(0);
-         size_t(p) < ArrayLength(kIDLNameTable); p = nsCSSPropertyID(p + 1)) {
-      if (kIDLNameTable[p]) {
-        gPropertyIDLNameTable->InsertOrUpdate(
-            nsDependentCString(kIDLNameTable[p]), p);
-      }
-    }
-
-    static bool prefObserversInited = false;
-    if (!prefObserversInited) {
-      prefObserversInited = true;
-      for (const PropertyPref* pref = kPropertyPrefTable;
-           pref->mPropID != eCSSProperty_UNKNOWN; pref++) {
-        // https://bugzilla.mozilla.org/show_bug.cgi?id=1472523
-        // We need to use nsCString instead of substring because the preference
-        // callback code stores them. Using AssignLiteral prevents any
-        // unnecessary allocations.
-        nsCString prefName;
-        prefName.AssignLiteral(pref->mPref, strlen(pref->mPref));
-        Preferences::RegisterCallback(nsCSSProps::RecomputeEnabledState,
-                                      prefName);
-      }
-      RecomputeEnabledState(/* aPrefName = */ nullptr);
+  gPropertyIDLNameTable = new nsTHashMap<nsCStringHashKey, nsCSSPropertyID>;
+  for (nsCSSPropertyID p = nsCSSPropertyID(0);
+       size_t(p) < ArrayLength(kIDLNameTable); p = nsCSSPropertyID(p + 1)) {
+    if (kIDLNameTable[p]) {
+      gPropertyIDLNameTable->InsertOrUpdate(
+          nsDependentCString(kIDLNameTable[p]), p);
     }
   }
-}
 
-void nsCSSProps::ReleaseTable(void) {
-  if (0 == --gPropertyTableRefCount) {
-    delete gFontDescTable;
-    gFontDescTable = nullptr;
+  ClearOnShutdown(&gFontDescTable);
+  ClearOnShutdown(&gCounterDescTable);
+  ClearOnShutdown(&gPropertyIDLNameTable);
 
-    delete gCounterDescTable;
-    gCounterDescTable = nullptr;
-
-    delete gPropertyIDLNameTable;
-    gPropertyIDLNameTable = nullptr;
+  for (const PropertyPref* pref = kPropertyPrefTable;
+       pref->mPropID != eCSSProperty_UNKNOWN; pref++) {
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1472523
+    // We need to use nsCString instead of substring because the preference
+    // callback code stores them. Using AssignLiteral prevents any
+    // unnecessary allocations.
+    nsCString prefName;
+    prefName.AssignLiteral(pref->mPref, strlen(pref->mPref));
+    Preferences::RegisterCallback(nsCSSProps::RecomputeEnabledState, prefName);
   }
+  RecomputeEnabledState(/* aPrefName = */ nullptr);
 }
 
 /* static */
@@ -160,39 +156,32 @@ nsCSSFontDesc nsCSSProps::LookupFontDesc(const nsACString& aFontDesc) {
   MOZ_ASSERT(gFontDescTable, "no lookup table, needs addref");
   nsCSSFontDesc which = nsCSSFontDesc(gFontDescTable->Lookup(aFontDesc));
 
-  if (which == eCSSFontDesc_Display &&
-      !StaticPrefs::layout_css_font_display_enabled()) {
-    which = eCSSFontDesc_UNKNOWN;
-  }
   return which;
 }
+
+static constexpr auto sDescNullStr = ""_ns;
 
 const nsCString& nsCSSProps::GetStringValue(nsCSSFontDesc aFontDescID) {
   MOZ_ASSERT(gFontDescTable, "no lookup table, needs addref");
   if (gFontDescTable) {
     return gFontDescTable->GetStringValue(int32_t(aFontDescID));
-  } else {
-    static nsDependentCString sNullStr("");
-    return sNullStr;
   }
+  return sDescNullStr;
 }
 
-const nsCString& nsCSSProps::GetStringValue(nsCSSCounterDesc aCounterDesc) {
+const nsCString& nsCSSProps::GetStringValue(nsCSSCounterDesc aCounterDescID) {
   MOZ_ASSERT(gCounterDescTable, "no lookup table, needs addref");
   if (gCounterDescTable) {
-    return gCounterDescTable->GetStringValue(int32_t(aCounterDesc));
-  } else {
-    static nsDependentCString sNullStr("");
-    return sNullStr;
+    return gCounterDescTable->GetStringValue(int32_t(aCounterDescID));
   }
+  return sDescNullStr;
 }
-const CSSPropFlags nsCSSProps::kFlagsTable[eCSSProperty_COUNT] = {
-#define CSS_PROP_LONGHAND(name_, id_, method_, flags_, ...) flags_,
-#define CSS_PROP_SHORTHAND(name_, id_, method_, flags_, ...) flags_,
-#include "mozilla/ServoCSSPropList.h"
-#undef CSS_PROP_SHORTHAND
-#undef CSS_PROP_LONGHAND
-};
+
+CSSPropFlags nsCSSProps::PropFlags(nsCSSPropertyID aProperty) {
+  MOZ_ASSERT(0 <= aProperty && aProperty < eCSSProperty_COUNT_with_aliases,
+             "out of range");
+  return kFlagsTable[aProperty];
+}
 
 /* static */
 bool nsCSSProps::gPropertyEnabled[eCSSProperty_COUNT_with_aliases] = {
@@ -208,7 +197,8 @@ bool nsCSSProps::gPropertyEnabled[eCSSProperty_COUNT_with_aliases] = {
   IS_ENABLED_BY_DEFAULT(flags_),
 #define CSS_PROP_SHORTHAND(name_, id_, method_, flags_, ...) \
   IS_ENABLED_BY_DEFAULT(flags_),
-#define CSS_PROP_ALIAS(...) true,
+#define CSS_PROP_ALIAS(name_, aliasid_, id_, method_, flags_, ...) \
+  IS_ENABLED_BY_DEFAULT(flags_),
 #include "mozilla/ServoCSSPropList.h"
 #undef CSS_PROP_ALIAS
 #undef CSS_PROP_SHORTHAND
@@ -220,23 +210,24 @@ bool nsCSSProps::gPropertyEnabled[eCSSProperty_COUNT_with_aliases] = {
 /**
  * A singleton class to register as a receiver for gfxVars.
  * Updates the state of backdrop-filter's pref if the gfx
- * WebRender var changes state.
+ * backdrop filter var changes state.
  */
 class nsCSSPropsGfxVarReceiver final : public gfx::gfxVarReceiver {
   constexpr nsCSSPropsGfxVarReceiver() = default;
 
-  // WebRender's last known enabled state.
-  static bool sLastKnownUseWebRender;
+  // Backdrop filter's last known enabled state.
+  static bool sLastKnownAllowBackdropFilter;
   static nsCSSPropsGfxVarReceiver sInstance;
 
  public:
   static gfx::gfxVarReceiver& GetInstance() { return sInstance; }
 
   void OnVarChanged(const gfx::GfxVarUpdate&) override {
-    bool enabled = gfxVars::UseWebRender();
-    if (sLastKnownUseWebRender != enabled) {
-      sLastKnownUseWebRender = enabled;
-      nsCSSProps::RecomputeEnabledState("layout.css.backdrop-filter.enabled");
+    bool enabled = gfx::gfxVars::AllowBackdropFilter();
+    if (sLastKnownAllowBackdropFilter != enabled) {
+      sLastKnownAllowBackdropFilter = enabled;
+      nsCSSProps::RecomputeEnabledState(
+          StaticPrefs::GetPrefName_layout_css_backdrop_filter_enabled());
     }
   }
 };
@@ -246,7 +237,7 @@ nsCSSPropsGfxVarReceiver nsCSSPropsGfxVarReceiver::sInstance =
     nsCSSPropsGfxVarReceiver();
 
 /* static */
-bool nsCSSPropsGfxVarReceiver::sLastKnownUseWebRender = false;
+bool nsCSSPropsGfxVarReceiver::sLastKnownAllowBackdropFilter = true;
 
 /* static */
 gfx::gfxVarReceiver& nsCSSProps::GfxVarReceiver() {

@@ -14,6 +14,7 @@
 #include "GMPLog.h"
 #include "GMPService.h"
 #include "GMPUtils.h"
+#include "VideoUtils.h"
 #include "mozilla/dom/MediaKeyMessageEventBinding.h"
 #include "mozilla/gmp/GMPTypes.h"
 #include "mozilla/ScopeExit.h"
@@ -275,67 +276,44 @@ void ChromiumCDMParent::CompleteQueryOutputProtectionStatus(
                                                     aProtectionMask);
 }
 
-// See
-// https://cs.chromium.org/chromium/src/media/blink/webcontentdecryptionmodule_impl.cc?l=33-66&rcl=d49aa59ac8c2925d5bec229f3f1906537b6b4547
-static Result<cdm::HdcpVersion, nsresult> ToCDMHdcpVersion(
-    const nsCString& aMinHdcpVersion) {
-  if (aMinHdcpVersion.IsEmpty()) {
-    return cdm::HdcpVersion::kHdcpVersionNone;
+static cdm::HdcpVersion ToCDMHdcpVersion(
+    const dom::HDCPVersion& aMinHdcpVersion) {
+  switch (aMinHdcpVersion) {
+    case dom::HDCPVersion::_1_0:
+      return cdm::HdcpVersion::kHdcpVersion1_0;
+    case dom::HDCPVersion::_1_1:
+      return cdm::HdcpVersion::kHdcpVersion1_1;
+    case dom::HDCPVersion::_1_2:
+      return cdm::HdcpVersion::kHdcpVersion1_2;
+    case dom::HDCPVersion::_1_3:
+      return cdm::HdcpVersion::kHdcpVersion1_3;
+    case dom::HDCPVersion::_1_4:
+      return cdm::HdcpVersion::kHdcpVersion1_4;
+    case dom::HDCPVersion::_2_0:
+      return cdm::HdcpVersion::kHdcpVersion2_0;
+    case dom::HDCPVersion::_2_1:
+      return cdm::HdcpVersion::kHdcpVersion2_1;
+    case dom::HDCPVersion::_2_2:
+      return cdm::HdcpVersion::kHdcpVersion2_2;
+    case dom::HDCPVersion::_2_3:
+      return cdm::HdcpVersion::kHdcpVersion2_3;
+    // When adding another version remember to update GMPMessageUtils so that we
+    // can serialize it correctly and have correct bounds on the enum!
+    default:
+      MOZ_ASSERT_UNREACHABLE("Unexpected HDCP version!");
+      return cdm::HdcpVersion::kHdcpVersionNone;
   }
-  if (aMinHdcpVersion.EqualsIgnoreCase("1.0")) {
-    return cdm::HdcpVersion::kHdcpVersion1_0;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("1.1")) {
-    return cdm::HdcpVersion::kHdcpVersion1_1;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("1.2")) {
-    return cdm::HdcpVersion::kHdcpVersion1_2;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("1.3")) {
-    return cdm::HdcpVersion::kHdcpVersion1_3;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("1.4")) {
-    return cdm::HdcpVersion::kHdcpVersion1_4;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("2.0")) {
-    return cdm::HdcpVersion::kHdcpVersion2_0;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("2.1")) {
-    return cdm::HdcpVersion::kHdcpVersion2_1;
-  }
-  if (aMinHdcpVersion.EqualsIgnoreCase("2.2")) {
-    return cdm::HdcpVersion::kHdcpVersion2_2;
-  }
-  // When adding another version remember to update GMPMessageUtils so that we
-  // can serialize it correctly and have correct bounds on the enum!
-
-  // Invalid hdcp version string.
-  return Err(NS_ERROR_INVALID_ARG);
 }
 
-void ChromiumCDMParent::GetStatusForPolicy(uint32_t aPromiseId,
-                                           const nsCString& aMinHdcpVersion) {
+void ChromiumCDMParent::GetStatusForPolicy(
+    uint32_t aPromiseId, const dom::HDCPVersion& aMinHdcpVersion) {
   MOZ_ASSERT(mGMPThread->IsOnCurrentThread());
   GMP_LOG_DEBUG("ChromiumCDMParent::GetStatusForPolicy(this=%p)", this);
   if (mIsShutdown) {
     RejectPromiseShutdown(aPromiseId);
     return;
   }
-  auto hdcpVersionResult = ToCDMHdcpVersion(aMinHdcpVersion);
-  if (hdcpVersionResult.isErr()) {
-    ErrorResult rv;
-    // XXXbz there's no spec for this yet, and
-    // <https://github.com/WICG/hdcp-detection/blob/master/explainer.md>
-    // does not define what exceptions get thrown.  Let's assume
-    // TypeError for invalid args, as usual.
-    constexpr auto err =
-        "getStatusForPolicy failed due to bad hdcp version argument"_ns;
-    rv.ThrowTypeError(err);
-    RejectPromise(aPromiseId, std::move(rv), err);
-    return;
-  }
-
-  if (!SendGetStatusForPolicy(aPromiseId, hdcpVersionResult.unwrap())) {
+  if (!SendGetStatusForPolicy(aPromiseId, ToCDMHdcpVersion(aMinHdcpVersion))) {
     RejectPromiseWithStateError(
         aPromiseId, "Failed to send getStatusForPolicy to CDM process"_ns);
   }
@@ -351,7 +329,7 @@ bool ChromiumCDMParent::InitCDMInputBuffer(gmp::CDMInputBuffer& aBuffer,
   }
 
   Shmem shmem;
-  if (!AllocShmem(aSample->Size(), Shmem::SharedMemory::TYPE_BASIC, &shmem)) {
+  if (!AllocShmem(aSample->Size(), &shmem)) {
     return false;
   }
   memcpy(shmem.get<uint8_t>(), aSample->Data(), aSample->Size());
@@ -378,7 +356,7 @@ bool ChromiumCDMParent::InitCDMInputBuffer(gmp::CDMInputBuffer& aBuffer,
                                     ? crypto.mIV
                                     : crypto.mConstantIV;
   aBuffer = gmp::CDMInputBuffer(
-      std::move(shmem), crypto.mKeyId, iv, aSample->mTime.ToMicroseconds(),
+      shmem, crypto.mKeyId, iv, aSample->mTime.ToMicroseconds(),
       aSample->mDuration.ToMicroseconds(), crypto.mPlainSizes,
       crypto.mEncryptedSizes, crypto.mCryptByteBlock, crypto.mSkipByteBlock,
       encryptionScheme);
@@ -390,7 +368,7 @@ bool ChromiumCDMParent::SendBufferToCDM(uint32_t aSizeInBytes) {
   GMP_LOG_DEBUG("ChromiumCDMParent::SendBufferToCDM() size=%" PRIu32,
                 aSizeInBytes);
   Shmem shmem;
-  if (!AllocShmem(aSizeInBytes, Shmem::SharedMemory::TYPE_BASIC, &shmem)) {
+  if (!AllocShmem(aSizeInBytes, &shmem)) {
     return false;
   }
   if (!SendGiveBuffer(std::move(shmem))) {
@@ -936,8 +914,76 @@ void ChromiumCDMParent::ReorderAndReturnOutput(RefPtr<VideoData>&& aFrame) {
 already_AddRefed<VideoData> ChromiumCDMParent::CreateVideoFrame(
     const CDMVideoFrame& aFrame, Span<uint8_t> aData) {
   MOZ_ASSERT(mGMPThread->IsOnCurrentThread());
-  VideoData::YCbCrBuffer b;
   MOZ_ASSERT(aData.Length() > 0);
+  GMP_LOG_DEBUG(
+      "ChromiumCDMParent::CreateVideoFrame(this=%p aFrame.mFormat=%" PRIu32 ")",
+      this, aFrame.mFormat());
+
+  if (aFrame.mFormat() == cdm::VideoFormat::kUnknownVideoFormat) {
+    GMP_LOG_DEBUG(
+        "ChromiumCDMParent::CreateVideoFrame(this=%p) Got kUnknownVideoFormat, "
+        "bailing.",
+        this);
+    return nullptr;
+  }
+
+  if (aFrame.mFormat() == cdm::VideoFormat::kYUV420P9 ||
+      aFrame.mFormat() == cdm::VideoFormat::kYUV422P9 ||
+      aFrame.mFormat() == cdm::VideoFormat::kYUV444P9) {
+    // If we ever hit this we can reconsider support, but 9 bit formats
+    // should be so rare as to be non-existent.
+    GMP_LOG_DEBUG(
+        "ChromiumCDMParent::CreateVideoFrame(this=%p) Got a 9 bit depth pixel "
+        "format. We don't support these, bailing.",
+        this);
+    return nullptr;
+  }
+
+  VideoData::YCbCrBuffer b;
+
+  // Determine the dimensions of our chroma planes, color depth and chroma
+  // subsampling.
+  uint32_t chromaWidth = (aFrame.mImageWidth() + 1) / 2;
+  uint32_t chromaHeight = (aFrame.mImageHeight() + 1) / 2;
+  gfx::ColorDepth colorDepth = gfx::ColorDepth::COLOR_8;
+  gfx::ChromaSubsampling chromaSubsampling =
+      gfx::ChromaSubsampling::HALF_WIDTH_AND_HEIGHT;
+  switch (aFrame.mFormat()) {
+    case cdm::VideoFormat::kYv12:
+    case cdm::VideoFormat::kI420:
+      break;
+    case cdm::VideoFormat::kYUV420P10:
+      colorDepth = gfx::ColorDepth::COLOR_10;
+      break;
+    case cdm::VideoFormat::kYUV422P10:
+      chromaHeight = aFrame.mImageHeight();
+      colorDepth = gfx::ColorDepth::COLOR_10;
+      chromaSubsampling = gfx::ChromaSubsampling::HALF_WIDTH;
+      break;
+    case cdm::VideoFormat::kYUV444P10:
+      chromaWidth = aFrame.mImageWidth();
+      chromaHeight = aFrame.mImageHeight();
+      colorDepth = gfx::ColorDepth::COLOR_10;
+      chromaSubsampling = gfx::ChromaSubsampling::FULL;
+      break;
+    case cdm::VideoFormat::kYUV420P12:
+      colorDepth = gfx::ColorDepth::COLOR_12;
+      break;
+    case cdm::VideoFormat::kYUV422P12:
+      chromaHeight = aFrame.mImageHeight();
+      colorDepth = gfx::ColorDepth::COLOR_12;
+      chromaSubsampling = gfx::ChromaSubsampling::HALF_WIDTH;
+      break;
+    case cdm::VideoFormat::kYUV444P12:
+      chromaWidth = aFrame.mImageWidth();
+      chromaHeight = aFrame.mImageHeight();
+      colorDepth = gfx::ColorDepth::COLOR_12;
+      chromaSubsampling = gfx::ChromaSubsampling::FULL;
+      break;
+    default:
+      MOZ_ASSERT_UNREACHABLE("Should handle all formats");
+      return nullptr;
+  }
 
   // Since we store each plane separately we can just roll the offset
   // into our pointer to that plane and store that.
@@ -948,16 +994,19 @@ already_AddRefed<VideoData> ChromiumCDMParent::CreateVideoFrame(
   b.mPlanes[0].mSkip = 0;
 
   b.mPlanes[1].mData = aData.Elements() + aFrame.mUPlane().mPlaneOffset();
-  b.mPlanes[1].mWidth = (aFrame.mImageWidth() + 1) / 2;
-  b.mPlanes[1].mHeight = (aFrame.mImageHeight() + 1) / 2;
+  b.mPlanes[1].mWidth = chromaWidth;
+  b.mPlanes[1].mHeight = chromaHeight;
   b.mPlanes[1].mStride = aFrame.mUPlane().mStride();
   b.mPlanes[1].mSkip = 0;
 
   b.mPlanes[2].mData = aData.Elements() + aFrame.mVPlane().mPlaneOffset();
-  b.mPlanes[2].mWidth = (aFrame.mImageWidth() + 1) / 2;
-  b.mPlanes[2].mHeight = (aFrame.mImageHeight() + 1) / 2;
+  b.mPlanes[2].mWidth = chromaWidth;
+  b.mPlanes[2].mHeight = chromaHeight;
   b.mPlanes[2].mStride = aFrame.mVPlane().mStride();
   b.mPlanes[2].mSkip = 0;
+
+  b.mColorDepth = colorDepth;
+  b.mChromaSubsampling = chromaSubsampling;
 
   // We unfortunately can't know which colorspace the video is using at this
   // stage.
@@ -965,11 +1014,25 @@ already_AddRefed<VideoData> ChromiumCDMParent::CreateVideoFrame(
       DefaultColorSpace({aFrame.mImageWidth(), aFrame.mImageHeight()});
 
   gfx::IntRect pictureRegion(0, 0, aFrame.mImageWidth(), aFrame.mImageHeight());
-  RefPtr<VideoData> v = VideoData::CreateAndCopyData(
-      mVideoInfo, mImageContainer, mLastStreamOffset,
-      media::TimeUnit::FromMicroseconds(aFrame.mTimestamp()),
-      media::TimeUnit::FromMicroseconds(aFrame.mDuration()), b, false,
-      media::TimeUnit::FromMicroseconds(-1), pictureRegion);
+
+  mozilla::Result<already_AddRefed<VideoData>, MediaResult> r =
+      VideoData::CreateAndCopyData(
+          mVideoInfo, mImageContainer, mLastStreamOffset,
+          media::TimeUnit::FromMicroseconds(
+              CheckedInt64(aFrame.mTimestamp()).value()),
+          media::TimeUnit::FromMicroseconds(
+              CheckedInt64(aFrame.mDuration()).value()),
+          b, false, media::TimeUnit::FromMicroseconds(-1), pictureRegion,
+          mKnowsCompositor);
+  RefPtr<VideoData> v = r.unwrapOr(nullptr);
+
+  if (!v || !v->mImage) {
+    NS_WARNING("Failed to decode video frame.");
+    return v.forget();
+  }
+
+  // This is a DRM image.
+  v->mImage->SetIsDRM(true);
 
   return v.forget();
 }
@@ -1036,7 +1099,8 @@ void ChromiumCDMParent::ActorDestroy(ActorDestroyReason aWhy) {
 
 RefPtr<MediaDataDecoder::InitPromise> ChromiumCDMParent::InitializeVideoDecoder(
     const gmp::CDMVideoDecoderConfig& aConfig, const VideoInfo& aInfo,
-    RefPtr<layers::ImageContainer> aImageContainer) {
+    RefPtr<layers::ImageContainer> aImageContainer,
+    RefPtr<layers::KnowsCompositor> aKnowsCompositor) {
   MOZ_ASSERT(mGMPThread->IsOnCurrentThread());
   if (mIsShutdown) {
     return MediaDataDecoder::InitPromise::CreateAndReject(
@@ -1083,6 +1147,7 @@ RefPtr<MediaDataDecoder::InitPromise> ChromiumCDMParent::InitializeVideoDecoder(
 
   mVideoDecoderInitialized = true;
   mImageContainer = aImageContainer;
+  mKnowsCompositor = aKnowsCompositor;
   mVideoInfo = aInfo;
   mVideoFrameBufferSize = bufferSize;
 

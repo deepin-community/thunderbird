@@ -1,4 +1,4 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -212,10 +212,16 @@ var gMailNewsTabsType =
       // the current selection on the new view.
       let msgHdr = aTabInfo.hdr;
       let msgId  = aTabInfo.selectedMsgId;
+      aTabInfo.hdr = null;
+      aTabInfo.selectedMsgId = null;
+      aTabInfo.dbView = null;
       let folder = MailUtils.getFolderForURI(aTabInfo.uriToOpen);
       gFolderTreeView.selectFolder(folder);
       gCurrentFolderToReroot = null;
       delete aTabInfo.uriToOpen; // destroy after use!
+      // Store the folder that is being opened.
+      aTabInfo.msgSelectedFolder = folder;
+
       // restore our message data
       aTabInfo.hdr = msgHdr;
       aTabInfo.selectedMsgId = msgId;
@@ -224,24 +230,29 @@ var gMailNewsTabsType =
       UpdateMailToolbar("new tab");
     }
 
-    // restore layout if present
-    ShowThreadPane();
-    // Some modes (e.g. new message tabs) need to initially hide the splitters,
-    // this is marked by aTabInfo.clearSplitter=true.
-    let clearSplitter = "clearSplitter" in aTabInfo && aTabInfo.clearSplitter;
-    if (clearSplitter)
-    {
-      aTabInfo.messageSplitter.collapsible = true;
-      aTabInfo.folderSplitter.collapsible  = true;
-      delete aTabInfo.clearSplitter;
+    // Do not bother with Thread and Message panes if at server level.
+    if (!aTabInfo.msgSelectedFolder.isServer) {
+      // Restore the layout if present.
+      ShowThreadPane();
+      // Some modes (e.g. new message tabs) need to initially hide the
+      // splitters, this is marked by aTabInfo.clearSplitter=true.
+      let clearSplitter = "clearSplitter" in aTabInfo && aTabInfo.clearSplitter;
+      if (clearSplitter) {
+        aTabInfo.messageSplitter.collapsible = true;
+        aTabInfo.folderSplitter.collapsible = true;
+        delete aTabInfo.clearSplitter;
+      }
+      SetSplitterState(GetThreadAndMessagePaneSplitter(),
+                       aTabInfo.messageSplitter);
+      SetSplitterState(GetFolderPaneSplitter(),
+                       aTabInfo.folderSplitter);
+      this._updatePaneLayout(aTabInfo);
+      ClearMessagePane();
+      // Force the header pane twisty state restoration by toggling from the
+      // opposite.
+      if (gCollapsedHeaderViewMode != aTabInfo.headerViewMode)
+        ToggleHeaderView();
     }
-    SetSplitterState(GetThreadAndMessagePaneSplitter(), aTabInfo.messageSplitter);
-    SetSplitterState(GetFolderPaneSplitter(),           aTabInfo.folderSplitter);
-    this._updatePaneLayout(aTabInfo);
-    ClearMessagePane();
-    // force header pane twisty state restoration by toggling from the opposite
-    if (gCollapsedHeaderViewMode != aTabInfo.headerViewMode)
-      ToggleHeaderView();
 
     // restore globals
     messenger = aTabInfo.messenger;
@@ -319,6 +330,7 @@ var gMailNewsTabsType =
       // Load AccountCentral page here.
       ShowAccountCentral(gMsgFolderSelected);
     }
+    SetUpToolbarButtons(gMsgFolderSelected.URI);
     UpdateMailToolbar("tab changed");
     delete aTabInfo.lock;
   },
@@ -401,21 +413,18 @@ var gMailNewsTabsType =
     aTabNode.removeAttribute("IMAPDeleted");
 
     // aTabInfo.msgSelectedFolder may contain the base folder of saved search
-    let msgSelectedFolder = null;
+    let folder = null;
     if (aTabInfo.uriToOpen)
     {
       // select folder for the backgound tab without changing the current one
       // (stolen from SelectFolder)
-      let folderResource = RDF.GetResource(aTabInfo.uriToOpen);
-      if (folderResource instanceof Ci.nsIMsgFolder)
-        msgSelectedFolder = folderResource;
+      folder = MailUtils.getFolderForURI(aTabInfo.uriToOpen);
     }
     else
     {
-      msgSelectedFolder = (aTabInfo.dbView && aTabInfo.dbView.viewFolder) ||
-                          (aTabInfo.dbView && aTabInfo.dbView.msgFolder) ||
-                          aTabInfo.msgSelectedFolder ||
-                          gMsgFolderSelected;
+      folder = (aTabInfo.dbView && aTabInfo.dbView.viewFolder) ||
+               (aTabInfo.dbView && aTabInfo.dbView.msgFolder) ||
+               aTabInfo.msgSelectedFolder || gMsgFolderSelected;
     }
 
     // update the message header only if we're the current tab
@@ -437,29 +446,29 @@ var gMailNewsTabsType =
     {
       // Folder Tab
       aTabNode.setAttribute("type", "folder"); // override "3pane"
-      if (!msgSelectedFolder)
+      if (!folder)
       {
         // nothing to do
         return;
       }
       else
       {
-        aTabInfo.title = msgSelectedFolder.prettyName;
-        if (!msgSelectedFolder.isServer && multipleRealAccounts)
-          aTabInfo.title += " - " + msgSelectedFolder.server.prettyName;
+        aTabInfo.title = folder.prettyName;
+        if (!folder.isServer && multipleRealAccounts)
+          aTabInfo.title += " - " + folder.server.prettyName;
       }
 
       // The user may have changed folders, triggering our onTitleChanged callback.
       // Update the appropriate attributes on the tab.
-      aTabNode.setAttribute("SpecialFolder", getSpecialFolderString(msgSelectedFolder));
-      aTabNode.setAttribute("ServerType",    msgSelectedFolder.server.type);
-      aTabNode.setAttribute("IsServer",      msgSelectedFolder.isServer);
-      aTabNode.setAttribute("IsSecure",      msgSelectedFolder.server.isSecure);
-      aTabNode.setAttribute("NewMessages",   msgSelectedFolder.hasNewMessages);
-      aTabNode.setAttribute("ImapShared",    msgSelectedFolder.imapShared);
+      aTabNode.setAttribute("SpecialFolder", FolderUtils.getSpecialFolderString(folder));
+      aTabNode.setAttribute("ServerType", folder.server.type);
+      aTabNode.setAttribute("IsServer", folder.isServer);
+      aTabNode.setAttribute("IsSecure", folder.server.isSecure);
+      aTabNode.setAttribute("NewMessages", folder.hasNewMessages);
+      aTabNode.setAttribute("ImapShared", folder.imapShared);
 
       let biffState = "UnknownMail";
-      switch (msgSelectedFolder.biffState)
+      switch (folder.biffState)
       {
         case Ci.nsIMsgFolder.nsMsgBiffState_NewMail:
           biffState = "NewMail";
@@ -484,7 +493,7 @@ var gMailNewsTabsType =
 
       // message specific tab data
       let flags = aTabInfo.hdr.flags;
-      aTabNode.setAttribute("MessageType", msgSelectedFolder.server.type);
+      aTabNode.setAttribute("MessageType", folder.server.type);
       aTabNode.setAttribute("Offline",
                             Boolean(flags & Ci.nsMsgMessageFlags.Offline));
       aTabNode.setAttribute("Attachment",
@@ -548,12 +557,12 @@ function openContentTab(aUrl, aWhere, aHandlerRegExp)
 
 function AllowOpenTabOnMiddleClick()
 {
-  return Services.prefs.getBoolPref("browser.tabs.opentabfor.middleclick");
+  return Services.prefs.getBoolPref("mail.tabs.opentabfor.middleclick");
 }
 
 function AllowOpenTabOnDoubleClick()
 {
-  return Services.prefs.getBoolPref("browser.tabs.opentabfor.doubleclick");
+  return Services.prefs.getBoolPref("mail.tabs.opentabfor.doubleclick");
 }
 
 //

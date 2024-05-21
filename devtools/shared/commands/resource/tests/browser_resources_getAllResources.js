@@ -7,7 +7,7 @@
 
 const TEST_URI = "data:text/html;charset=utf-8,getAllResources test";
 
-add_task(async function() {
+add_task(async function () {
   const tab = await addTab(TEST_URI);
 
   const { client, resourceCommand, targetCommand } = await initResourceCommand(
@@ -59,9 +59,7 @@ add_task(async function() {
   );
 
   info("Check the resources after reloading");
-  const onReloaded = BrowserTestUtils.browserLoaded(gBrowser.selectedBrowser);
-  gBrowser.reloadTab(tab);
-  await onReloaded;
+  await BrowserTestUtils.reloadTab(tab);
   assertResources(
     resourceCommand.getAllResources(resourceCommand.TYPES.CONSOLE_MESSAGE),
     []
@@ -113,7 +111,11 @@ function assertResources(resources, expectedResources) {
   for (let i = 0; i < resources.length; i++) {
     const resource = resources[i];
     const expectedResource = expectedResources[i];
-    ok(resource === expectedResource, `The ${i}th resource is correct`);
+    Assert.strictEqual(
+      resource,
+      expectedResource,
+      `The ${i}th resource is correct`
+    );
   }
 }
 

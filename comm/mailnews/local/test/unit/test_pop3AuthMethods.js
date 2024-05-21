@@ -50,12 +50,11 @@ var tests = [
     transaction: ["AUTH", "CAPA", "AUTH CRAM-MD5", "STAT"],
   },
   {
-    title:
-      "Encrypted password, with server only supporting AUTH PLAIN and LOGIN (must fail)",
+    title: "Encrypted password, try CRAM even if if not advertised",
     clientAuthMethod: Ci.nsMsgAuthMethod.passwordEncrypted,
     serverAuthMethods: ["PLAIN", "LOGIN"],
     expectSuccess: false,
-    transaction: ["AUTH", "CAPA"],
+    transaction: ["AUTH", "CAPA", "AUTH CRAM-MD5"],
   },
   {
     title: "Any secure method, with server supporting AUTH PLAIN and CRAM",
@@ -90,7 +89,7 @@ var urlListener = {
       do_timeout(0, checkBusy);
     } catch (e) {
       server.stop();
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(true);
       }
@@ -107,7 +106,7 @@ function checkBusy() {
     // No more tests, let everything finish
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
@@ -117,11 +116,7 @@ function checkBusy() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -147,7 +142,7 @@ function testNext() {
     deletePop3Server();
     incomingServer = createPop3Server();
 
-    let msgServer = incomingServer;
+    const msgServer = incomingServer;
     msgServer.QueryInterface(Ci.nsIMsgIncomingServer);
     msgServer.authMethod = thisTest.clientAuthMethod;
 
@@ -166,7 +161,7 @@ function testNext() {
 
 // <copied from="head_maillocal.js::createPop3ServerAndLocalFolders()">
 function createPop3Server() {
-  let incoming = MailServices.accounts.createIncomingServer(
+  const incoming = MailServices.accounts.createIncomingServer(
     "fred",
     "localhost",
     "pop3"
@@ -192,7 +187,7 @@ function run_test() {
   Services.prefs.setBoolPref("mail.biff.show_tray_icon", false);
   Services.prefs.setBoolPref("mail.biff.animate_dock_icon", false);
 
-  let ssd = setupServerDaemon();
+  const ssd = setupServerDaemon();
   server = ssd[1];
   handler = ssd[2];
   server.start();

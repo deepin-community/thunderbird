@@ -17,7 +17,7 @@
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgFolder.h"
 #include "nsDBFolderInfo.h"
-#include "nsICollation.h"
+#include "mozilla/intl/Collator.h"
 #include "nsIMimeConverter.h"
 #include "nsCOMPtr.h"
 #include "nsCOMArray.h"
@@ -25,8 +25,11 @@
 #include "nsTArray.h"
 #include "nsTObserverArray.h"
 
+using mozilla::intl::Collator;
+
 class nsMsgThread;
 class nsMsgDatabase;
+class nsIMsgOfflineOpsDatabase;
 class nsIMsgThread;
 class nsMsgDBEnumerator;
 class nsMsgDBThreadEnumerator;
@@ -71,7 +74,7 @@ class MsgDBReporter;
 }
 }  // namespace mozilla
 
-class nsMsgDatabase : public nsIMsgDatabase {
+class nsMsgDatabase : public nsIMsgOfflineOpsDatabase {
  public:
   friend class nsMsgDBService;
   friend class nsMsgPropertyEnumerator;  // accesses m_mdbEnv and m_mdbStore
@@ -79,6 +82,7 @@ class nsMsgDatabase : public nsIMsgDatabase {
   NS_DECL_ISUPPORTS
   NS_DECL_NSIDBCHANGEANNOUNCER
   NS_DECL_NSIMSGDATABASE
+  NS_DECL_NSIMSGOFFLINEOPSDATABASE
 
   /**
    * Opens a database folder.
@@ -87,7 +91,7 @@ class nsMsgDatabase : public nsIMsgDatabase {
    * @param aCreate         Whether or not the file should be created.
    * @param aLeaveInvalidDB Set to true if you do not want the database to be
    *                        deleted if it is invalid.
-   * @exception NS_ERROR_FILE_TARGET_DOES_NOT_EXIST
+   * @exception NS_ERROR_FILE_NOT_FOUND
    *                        The file could not be created.
    * @exception NS_MSG_ERROR_FOLDER_SUMMARY_OUT_OF_DATE
    *                        The database is present (and was opened), but the
@@ -112,7 +116,7 @@ class nsMsgDatabase : public nsIMsgDatabase {
   virtual nsresult GetThreadForMsgKey(nsMsgKey msgKey, nsIMsgThread** result);
   virtual nsresult EnumerateMessagesWithFlag(nsIMsgEnumerator** result,
                                              uint32_t* pFlag);
-  nsresult GetSearchResultsTable(const char* searchFolderUri,
+  nsresult GetSearchResultsTable(const nsACString& searchFolderUri,
                                  bool createIfMissing, nsIMdbTable** table);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -262,7 +266,7 @@ class nsMsgDatabase : public nsIMsgDatabase {
   virtual nsresult RemoveHeaderFromThread(nsMsgHdr* msgHdr);
   virtual nsresult AdjustExpungedBytesOnDelete(nsIMsgDBHdr* msgHdr);
 
-  nsCOMPtr<nsICollation> m_collationKeyGenerator;
+  mozilla::UniquePtr<mozilla::intl::Collator> m_collationKeyGenerator = nullptr;
   nsCOMPtr<nsIMimeConverter> m_mimeConverter;
   nsCOMPtr<nsIMsgRetentionSettings> m_retentionSettings;
   nsCOMPtr<nsIMsgDownloadSettings> m_downloadSettings;
@@ -313,7 +317,6 @@ class nsMsgDatabase : public nsIMsgDatabase {
   mdb_token m_flagsColumnToken;
   mdb_token m_priorityColumnToken;
   mdb_token m_labelColumnToken;
-  mdb_token m_statusOffsetColumnToken;
   mdb_token m_numLinesColumnToken;
   mdb_token m_ccListColumnToken;
   mdb_token m_bccListColumnToken;

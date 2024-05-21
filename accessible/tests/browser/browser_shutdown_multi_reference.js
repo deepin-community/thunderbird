@@ -4,7 +4,7 @@
 
 "use strict";
 
-add_task(async function() {
+add_task(async function () {
   info("Creating a service");
   // Create a11y service.
   const [a11yInitObserver, a11yInit] = initAccService();
@@ -31,7 +31,7 @@ add_task(async function() {
   const [a11yShutdownObserver, a11yShutdownPromise] = shutdownAccService();
   await a11yShutdownObserver;
   const a11yShutdown = new Promise((resolve, reject) =>
-    a11yShutdownPromise.then(flag =>
+    a11yShutdownPromise.then(() =>
       canShutdown
         ? resolve()
         : reject("Accessible service was shut down incorrectly")

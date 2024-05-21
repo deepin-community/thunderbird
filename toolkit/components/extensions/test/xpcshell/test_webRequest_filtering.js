@@ -1,11 +1,11 @@
 "use strict";
 
-var { WebRequest } = ChromeUtils.import(
-  "resource://gre/modules/WebRequest.jsm"
+var { WebRequest } = ChromeUtils.importESModule(
+  "resource://gre/modules/WebRequest.sys.mjs"
 );
 
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
 );
 
 const server = createHttpServer({ hosts: ["example.com"] });
@@ -73,13 +73,13 @@ function compareLists(list1, list2, kind) {
   equal(String(list1), String(list2), `${kind} URLs correct`);
 }
 
-async function openAndCloseContentPage(url) {
+async function openAndCloseContentPage() {
   let contentPage = await ExtensionTestUtils.loadContentPage(URL);
   // Clear the sheet cache so that it doesn't interact with following tests: A
   // stylesheet with the same URI loaded from the same origin doesn't otherwise
   // guarantee that onBeforeRequest and so on happen, because it may not need
   // to go through necko at all.
-  await contentPage.spawn(null, () =>
+  await contentPage.spawn([], () =>
     content.windowUtils.clearSharedStyleSheetCache()
   );
   await contentPage.close();

@@ -7,10 +7,14 @@
 #ifndef mozilla_dom_ImageBitmapFormatUtils_h
 #define mozilla_dom_ImageBitmapFormatUtils_h
 
-#include "mozilla/UniquePtr.h"
+#include <cstdint>
+
 #include "nsTArrayForwardDeclare.h"
 
 namespace mozilla {
+
+template <typename T>
+class Maybe;
 
 namespace layers {
 class Image;
@@ -50,7 +54,7 @@ class ImageUtils {
   explicit ImageUtils(layers::Image* aImage);
   ~ImageUtils();
 
-  ImageBitmapFormat GetFormat() const;
+  Maybe<ImageBitmapFormat> GetFormat() const;
 
   uint32_t GetBufferLength() const;
 

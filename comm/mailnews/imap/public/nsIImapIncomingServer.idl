@@ -25,12 +25,12 @@ interface nsMsgImapDeleteModels : nsISupports
 interface nsIImapIncomingServer : nsISupports {
 
   attribute long maximumConnectionsNumber;
-  attribute ACString forceSelect;
+  attribute boolean forceSelect;
   attribute long timeOutLimits;
-  attribute ACString adminUrl;
+  attribute AUTF8String adminUrl;
   attribute ACString serverDirectory;
   /// RFC 2971 ID response stored as a pref
-  attribute ACString serverIDPref;
+  attribute AUTF8String serverIDPref;
   attribute boolean cleanupInboxOnExit;
   attribute nsMsgImapDeleteModel deleteModel;
   attribute boolean dualUseFolders;
@@ -40,11 +40,9 @@ interface nsIImapIncomingServer : nsISupports {
   attribute boolean offlineDownload;
   attribute boolean overrideNamespaces;
   attribute boolean usingSubscription;
-  attribute ACString manageMailAccountUrl;
+  attribute AUTF8String manageMailAccountUrl;
   attribute boolean fetchByChunks;
-  attribute boolean mimePartsOnDemand;
   attribute boolean sendID;
-  attribute boolean isAOLServer;
   attribute boolean useIdle;
   attribute boolean checkAllFoldersForNew;
 
@@ -74,6 +72,9 @@ interface nsIImapIncomingServer : nsISupports {
   /// Max age of messages we will autosync to, or keep in offline store.
   attribute long autoSyncMaxAgeDays;
 
+  /** True if there are no busy connections in cache. */
+  readonly attribute boolean allConnectionsIdle;
+
   /**
    * See IMAP RFC 6855
    */
@@ -85,7 +86,7 @@ interface nsIImapIncomingServer : nsISupports {
   void RemoveConnection(in nsIImapProtocol aImapConnection);
   void ResetNamespaceReferences();
   void pseudoInterruptMsgLoad(in nsIMsgFolder aImapFolder, in nsIMsgWindow aMsgWindow, out boolean interrupted);
-  void ResetConnection(in ACString folderName);
+  void ResetConnection(in AUTF8String folderName);
   void CloseConnectionForFolder(in nsIMsgFolder aMsgFolder);
   void reDiscoverAllFolders();
   nsIURI subscribeToFolder(in AString name, in boolean subscribe);
@@ -93,7 +94,7 @@ interface nsIImapIncomingServer : nsISupports {
                                         in nsIMsgWindow aWindow,
                                         in boolean forceAllFolders,
                                         in boolean performingBiff);
-  void getCapability(out unsigned long long capability);
+  unsigned long long getCapability();
 
   /**
    * Get the password from the nsIMsgIncomingServer. May prompt the user
@@ -109,7 +110,7 @@ interface nsIImapIncomingServer : nsISupports {
   AString PromptPassword(in nsIMsgWindow aWindow);
   attribute boolean doingLsub;
 
-  ACString getUriWithNamespacePrefixIfNecessary(in long namespaceType, in ACString originalUri);
+  ACString getUriWithNamespacePrefixIfNecessary(in long namespaceType, in AUTF8String originalUri);
   attribute boolean shuttingDown;
   attribute boolean utf8AcceptEnabled;
 };

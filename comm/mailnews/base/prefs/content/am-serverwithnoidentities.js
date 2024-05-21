@@ -1,17 +1,18 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
 var gAccount;
 var gOriginalStoreType;
 
 /**
  * Called when the store type menu is clicked.
- * @param {Object} aStoreTypeElement - store type menu list element.
+ *
+ * @param {object} aStoreTypeElement - store type menu list element.
  */
 function clickStoreTypeMenu(aStoreTypeElement) {
   if (aStoreTypeElement.value == gOriginalStoreType) {
@@ -21,7 +22,7 @@ function clickStoreTypeMenu(aStoreTypeElement) {
   // Response from migration dialog modal. If the conversion is complete
   // 'response.newRootFolder' will hold the path to the new account root folder,
   // otherwise 'response.newRootFolder' will be null.
-  let response = { newRootFolder: null };
+  const response = { newRootFolder: null };
   // Send 'response' as an argument to converterDialog.xhtml.
   window.browsingContext.topChromeWindow.openDialog(
     "converterDialog.xhtml",
@@ -38,7 +39,8 @@ function clickStoreTypeMenu(aStoreTypeElement) {
  * Revert store type to the original store type if converter modal closes
  * before migration is complete, otherwise change original store type to
  * currently selected store type.
- * @param {Object} aResponse - response from migration dialog modal.
+ *
+ * @param {object} aResponse - response from migration dialog modal.
  */
 function changeStoreType(aResponse) {
   if (aResponse.newRootFolder) {
@@ -46,26 +48,26 @@ function changeStoreType(aResponse) {
     // Set local path to the new account root folder which is present
     // in 'aResponse.newRootFolder'.
     document.getElementById("server.localPath").value = aResponse.newRootFolder;
-    gOriginalStoreType = document.getElementById("server.storeTypeMenulist")
-      .value;
+    gOriginalStoreType = document.getElementById(
+      "server.storeTypeMenulist"
+    ).value;
     MailUtils.restartApplication();
   } else {
     // The conversion failed or was cancelled.
     // Restore selected item to what was selected before conversion.
-    document.getElementById(
-      "server.storeTypeMenulist"
-    ).value = gOriginalStoreType;
+    document.getElementById("server.storeTypeMenulist").value =
+      gOriginalStoreType;
   }
 }
 
 function onInit(aPageId, aServerId) {
   // UI for account store type
-  let storeTypeElement = document.getElementById("server.storeTypeMenulist");
+  const storeTypeElement = document.getElementById("server.storeTypeMenulist");
   // set the menuitem to match the account
-  let currentStoreID = document
+  const currentStoreID = document
     .getElementById("server.storeContractID")
     .getAttribute("value");
-  let targetItem = storeTypeElement.getElementsByAttribute(
+  const targetItem = storeTypeElement.getElementsByAttribute(
     "value",
     currentStoreID
   );
@@ -86,7 +88,7 @@ function onPreInit(account, accountValues) {
 }
 
 function onSave() {
-  let storeContractID = document.getElementById("server.storeTypeMenulist")
+  const storeContractID = document.getElementById("server.storeTypeMenulist")
     .selectedItem.value;
   document
     .getElementById("server.storeContractID")

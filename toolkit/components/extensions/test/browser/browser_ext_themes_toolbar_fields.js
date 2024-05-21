@@ -3,12 +3,12 @@
 // This test checks whether applied WebExtension themes that attempt to change
 // the background color and the color of the navbar text fields are applied properly.
 
-const { CustomizableUITestUtils } = ChromeUtils.import(
-  "resource://testing-common/CustomizableUITestUtils.jsm"
+const { CustomizableUITestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/CustomizableUITestUtils.sys.mjs"
 );
 let gCUITestUtils = new CustomizableUITestUtils(window);
 
-add_task(async function setup() {
+add_setup(async function () {
   await gCUITestUtils.addSearchBar();
   registerCleanupFunction(() => {
     gCUITestUtils.removeSearchBar();
@@ -108,9 +108,10 @@ add_task(async function test_support_toolbar_field_brighttext() {
     hexToCSS("#000000"),
     "Color has been set"
   );
-  Assert.ok(
-    !root.hasAttribute("lwt-toolbar-field-brighttext"),
-    "Brighttext attribute should not be set"
+  Assert.equal(
+    root.getAttribute("lwt-toolbar-field"),
+    "light",
+    "Should be light"
   );
 
   await extension.unload();
@@ -135,9 +136,76 @@ add_task(async function test_support_toolbar_field_brighttext() {
     hexToCSS("#ffffff"),
     "Color has been set"
   );
-  Assert.ok(
-    root.hasAttribute("lwt-toolbar-field-brighttext"),
-    "Brighttext attribute should be set"
+  Assert.equal(
+    root.getAttribute("lwt-toolbar-field"),
+    "dark",
+    "Should be dark"
+  );
+
+  await extension.unload();
+});
+
+// Verifies that we apply the lwt-toolbar-field="dark" attribute when
+// toolbar fields are dark text on a dark background.
+add_task(async function test_support_toolbar_field_brighttext_dark_on_dark() {
+  let root = document.documentElement;
+  // Remove the `remotecontrol` attribute since it interferes with the urlbar styling.
+  root.removeAttribute("remotecontrol");
+  registerCleanupFunction(() => {
+    root.setAttribute("remotecontrol", "true");
+  });
+  let urlbar = gURLBar.textbox;
+
+  let extension = ExtensionTestUtils.loadExtension({
+    manifest: {
+      theme: {
+        colors: {
+          frame: ACCENT_COLOR,
+          tab_background_text: TEXT_COLOR,
+          toolbar_field: "#000",
+          toolbar_field_text: "#111111",
+        },
+      },
+    },
+  });
+
+  await extension.startup();
+
+  Assert.equal(
+    window.getComputedStyle(urlbar).color,
+    hexToCSS("#111111"),
+    "Color has been set"
+  );
+  Assert.equal(
+    root.getAttribute("lwt-toolbar-field"),
+    "dark",
+    "toolbar-field color-scheme should be dark"
+  );
+
+  await extension.unload();
+});
+
+add_task(async function test_no_explicit_toolbar_field_on_dark_toolbar() {
+  let root = document.documentElement;
+
+  let extension = ExtensionTestUtils.loadExtension({
+    manifest: {
+      theme: {
+        colors: {
+          frame: "#000",
+          tab_background_text: "#fff",
+          // Explicitly unset toolbar fields, but they default to light.
+        },
+      },
+    },
+  });
+
+  await extension.startup();
+
+  Assert.equal(
+    root.getAttribute("lwt-toolbar-field"),
+    "light",
+    "toolbar-field color-scheme should be set and light"
   );
 
   await extension.unload();

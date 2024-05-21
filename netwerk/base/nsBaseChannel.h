@@ -6,30 +6,34 @@
 #ifndef nsBaseChannel_h__
 #define nsBaseChannel_h__
 
-#include "mozilla/net/NeckoTargetHolder.h"
+#include "mozilla/dom/MimeType.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/MozPromise.h"
 #include "mozilla/UniquePtr.h"
-#include "nsString.h"
-#include "nsCOMPtr.h"
+#include "mozilla/net/ContentRange.h"
+#include "mozilla/net/NeckoTargetHolder.h"
+#include "mozilla/net/PrivateBrowsingChannel.h"
 #include "nsHashPropertyBag.h"
-#include "nsInputStreamPump.h"
-
+#include "nsIAsyncVerifyRedirectCallback.h"
+#include "nsIBaseChannel.h"
 #include "nsIChannel.h"
-#include "nsIURI.h"
+#include "nsIInterfaceRequestor.h"
 #include "nsILoadGroup.h"
 #include "nsILoadInfo.h"
-#include "nsIStreamListener.h"
-#include "nsIInterfaceRequestor.h"
 #include "nsIProgressEventSink.h"
-#include "nsITransport.h"
-#include "nsIAsyncVerifyRedirectCallback.h"
+#include "nsIStreamListener.h"
 #include "nsIThreadRetargetableRequest.h"
 #include "nsIThreadRetargetableStreamListener.h"
-#include "mozilla/net/PrivateBrowsingChannel.h"
+#include "nsITransport.h"
+#include "nsITransportSecurityInfo.h"
+#include "nsIURI.h"
+#include "nsInputStreamPump.h"
+#include "nsString.h"
 #include "nsThreadUtils.h"
+#include "nsCOMPtr.h"
 
 class nsIInputStream;
+class nsICancelable;
 
 //-----------------------------------------------------------------------------
 // nsBaseChannel is designed to be subclassed.  The subclass is responsible for
@@ -45,6 +49,7 @@ class nsIInputStream;
 
 class nsBaseChannel
     : public nsHashPropertyBag,
+      public nsIBaseChannel,
       public nsIChannel,
       public nsIThreadRetargetableRequest,
       public nsIInterfaceRequestor,
@@ -52,12 +57,12 @@ class nsBaseChannel
       public nsIAsyncVerifyRedirectCallback,
       public mozilla::net::PrivateBrowsingChannel<nsBaseChannel>,
       public mozilla::net::NeckoTargetHolder,
-      protected nsIStreamListener,
       protected nsIThreadRetargetableStreamListener {
  public:
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_NSIREQUEST
   NS_DECL_NSICHANNEL
+  NS_DECL_NSIBASECHANNEL
   NS_DECL_NSIINTERFACEREQUESTOR
   NS_DECL_NSITRANSPORTEVENTSINK
   NS_DECL_NSIASYNCVERIFYREDIRECTCALLBACK
@@ -100,10 +105,23 @@ class nsBaseChannel
   //
   // On success, the callee must begin pumping data to the stream listener,
   // and at some point call OnStartRequest followed by OnStopRequest.
-  // Additionally, it may provide a request object which may be used to
-  // suspend, resume, and cancel the underlying request.
+  //
+  // Additionally, when a successful nsresult is returned, then the subclass
+  // should be setting  through its two out params either:
+  // - a request object, which may be used to suspend, resume, and cancel
+  //   the underlying request.
+  // - or a cancelable object (e.g. when a request can't be returned right away
+  //   due to some async work needed to retrieve it). which may be used to
+  //   cancel the underlying request (e.g. because the channel has been
+  //   canceled)
+  //
+  // Not returning a request or cancelable leads to potentially leaking the
+  // an underling stream pump (which would keep to be pumping data even after
+  // the channel has been canceled and nothing is going to handle the data
+  // available, e.g. see Bug 1706594).
   virtual nsresult BeginAsyncRead(nsIStreamListener* listener,
-                                  nsIRequest** request) {
+                                  nsIRequest** request,
+                                  nsICancelable** cancelableRequest) {
     return NS_ERROR_NOT_IMPLEMENTED;
   }
 
@@ -173,8 +191,8 @@ class nsBaseChannel
 
   // The security info is a property of the transport-layer, which should be
   // assigned by the subclass.
-  nsISupports* SecurityInfo() { return mSecurityInfo; }
-  void SetSecurityInfo(nsISupports* info) { mSecurityInfo = info; }
+  nsITransportSecurityInfo* SecurityInfo() { return mSecurityInfo; }
+  void SetSecurityInfo(nsITransportSecurityInfo* info) { mSecurityInfo = info; }
 
   // Test the load flags
   bool HasLoadFlag(uint32_t flag) { return (mLoadFlags & flag) != 0; }
@@ -202,17 +220,6 @@ class nsBaseChannel
   // and the channel's listener.  The following methods make that possible.
   void SetStreamListener(nsIStreamListener* listener) { mListener = listener; }
   nsIStreamListener* StreamListener() { return mListener; }
-
-  // Pushes a new stream converter in front of the channel's stream listener.
-  // The fromType and toType values are passed to nsIStreamConverterService's
-  // AsyncConvertData method.  If invalidatesContentLength is true, then the
-  // channel's content-length property will be assigned a value of -1.  This is
-  // necessary when the converter changes the length of the resulting data
-  // stream, which is almost always the case for a "stream converter" ;-)
-  // This function optionally returns a reference to the new converter.
-  nsresult PushStreamConverter(const char* fromType, const char* toType,
-                               bool invalidatesContentLength = true,
-                               nsIStreamListener** result = nullptr);
 
  protected:
   void DisallowThreadRetargeting() { mAllowThreadRetargeting = false; }
@@ -271,14 +278,13 @@ class nsBaseChannel
 
   RefPtr<nsInputStreamPump> mPump;
   RefPtr<nsIRequest> mRequest;
+  nsCOMPtr<nsICancelable> mCancelableAsyncRequest;
   bool mPumpingData{false};
   nsCOMPtr<nsIProgressEventSink> mProgressSink;
   nsCOMPtr<nsIURI> mOriginalURI;
   nsCOMPtr<nsISupports> mOwner;
-  nsCOMPtr<nsISupports> mSecurityInfo;
+  nsCOMPtr<nsITransportSecurityInfo> mSecurityInfo;
   nsCOMPtr<nsIChannel> mRedirectChannel;
-  nsCString mContentType;
-  nsCString mContentCharset;
   uint32_t mLoadFlags{LOAD_NORMAL};
   bool mQueriedProgressSink{true};
   bool mSynthProgressEvents{false};
@@ -286,8 +292,12 @@ class nsBaseChannel
   bool mWaitingOnAsyncRedirect{false};
   bool mOpenRedirectChannel{false};
   uint32_t mRedirectFlags{0};
+  RefPtr<mozilla::net::ContentRange> mContentRange;
+  RefPtr<CMimeType> mFullMimeType;
 
  protected:
+  nsCString mContentType;
+  nsCString mContentCharset;
   nsCOMPtr<nsIURI> mURI;
   nsCOMPtr<nsILoadGroup> mLoadGroup;
   nsCOMPtr<nsILoadInfo> mLoadInfo;

@@ -7,10 +7,10 @@
 "use strict";
 
 const TEST_URI =
-  "http://example.com/browser/devtools/client/webconsole/" +
+  "https://example.com/browser/devtools/client/webconsole/" +
   "test/browser/test-inspect-cross-domain-objects-top.html";
 
-add_task(async function() {
+add_task(async function () {
   requestLongerTimeout(2);
 
   // Bug 1518138: GC heuristics are broken for this test, so that the test
@@ -24,13 +24,15 @@ add_task(async function() {
     // is being switched, so here we directly open the "real" test URI. See Bug 1614291.
     hud = await openNewTabAndConsole(TEST_URI);
     info("Wait for the 'foobar' message to be logged by the frame");
-    node = await waitFor(() => findMessage(hud, "foobar"));
+    node = await waitFor(() => findConsoleAPIMessage(hud, "foobar"));
   } else {
-    hud = await openNewTabAndConsole("data:text/html;charset=utf8,<p>hello");
+    hud = await openNewTabAndConsole(
+      "data:text/html;charset=utf8,<!DOCTYPE html><p>hello"
+    );
     info(
       "Navigate and wait for the 'foobar' message to be logged by the frame"
     );
-    const onMessage = waitForMessage(hud, "foobar");
+    const onMessage = waitForMessageByType(hud, "foobar", ".console-api");
     await navigateTo(TEST_URI);
     ({ node } = await onMessage);
   }
@@ -91,7 +93,7 @@ add_task(async function() {
   const highlighter = toolbox.getHighlighter();
 
   const elementNode = oi3.querySelector(".objectBox-node");
-  ok(elementNode !== null, "Node was logged as expected");
+  Assert.notStrictEqual(elementNode, null, "Node was logged as expected");
   const view = node.ownerDocument.defaultView;
 
   info("Highlight the node by moving the cursor on it");
@@ -105,7 +107,11 @@ add_task(async function() {
   EventUtils.synthesizeMouseAtCenter(oi1, { type: "mousemove" }, view);
 
   const openInInspectorIcon = elementNode.querySelector(".open-inspector");
-  ok(openInInspectorIcon !== null, "There is an open in inspector icon");
+  Assert.notStrictEqual(
+    openInInspectorIcon,
+    null,
+    "There is an open in inspector icon"
+  );
 
   info(
     "Clicking on the inspector icon and waiting for the inspector to be selected"

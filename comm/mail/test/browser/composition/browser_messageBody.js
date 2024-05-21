@@ -6,58 +6,58 @@
  * Tests related to message body.
  */
 
-var {
-  get_msg_source,
-  open_compose_new_mail,
-  setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { get_msg_source, open_compose_new_mail, setup_msg_contents } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 var {
   be_in_folder,
   get_special_folder,
+  get_about_message,
   press_delete,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { plan_for_window_close, wait_for_window_close } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var gOutboxFolder;
 
-var gOutboxFolder = get_special_folder(Ci.nsMsgFolderFlags.Queue);
+add_setup(async function () {
+  gOutboxFolder = await get_special_folder(Ci.nsMsgFolderFlags.Queue);
+});
 
 /**
  * Tests that sending link with invalid data uri works.
  */
 add_task(async function test_invalid_data_uri() {
-  let cwc = open_compose_new_mail();
-  setup_msg_contents(
+  const cwc = await open_compose_new_mail();
+  await setup_msg_contents(
     cwc,
     "someone@example.com",
     "Test sending link with invalid data uri",
     ""
   );
 
-  cwc.window
-    .GetCurrentEditor()
-    .insertHTML("<a href=data:1>invalid data uri</a>");
-  plan_for_window_close(cwc);
-  cwc.window.goDoCommand("cmd_sendLater");
-  wait_for_window_close();
+  cwc.GetCurrentEditor().insertHTML("<a href=data:1>invalid data uri</a>");
+  const closePromise = BrowserTestUtils.domWindowClosed(cwc);
+  cwc.goDoCommand("cmd_sendLater");
+  await closePromise;
 
-  be_in_folder(gOutboxFolder);
-  let msgLoaded = BrowserTestUtils.waitForEvent(window, "MsgLoaded");
-  let outMsg = select_click_row(0);
+  await be_in_folder(gOutboxFolder);
+  const msgLoaded = BrowserTestUtils.waitForEvent(
+    get_about_message(),
+    "MsgLoaded"
+  );
+  const outMsg = await select_click_row(0);
   await msgLoaded;
-  let outMsgContent = get_msg_source(outMsg);
+  const outMsgContent = await get_msg_source(outMsg);
 
   ok(
     outMsgContent.includes("invalid data uri"),
     "message containing invalid data uri should be sent"
   );
 
-  press_delete(); // Delete the msg from Outbox.
+  await press_delete(); // Delete the msg from Outbox.
 });
 
 /**
@@ -65,32 +65,39 @@ add_task(async function test_invalid_data_uri() {
  * with $2, $1 should be discarded to prevent duplicated links.
  */
 add_task(async function test_freeTextLink() {
-  if (!Services.prefs.getBoolPref("mailnews.send.jsmodule")) {
-    // This doesn't work for nsMsgSend.cpp.
-    return;
-  }
-  let cwc = open_compose_new_mail();
-  setup_msg_contents(cwc, "someone@example.com", "Test free text link", "");
+  const prevSendFormat = Services.prefs.getIntPref("mail.default_send_format");
+  Services.prefs.setIntPref(
+    "mail.default_send_format",
+    Ci.nsIMsgCompSendFormat.PlainText
+  );
+  const cwc = await open_compose_new_mail();
+  await setup_msg_contents(
+    cwc,
+    "someone@example.com",
+    "Test free text link",
+    ""
+  );
 
-  cwc.window.OutputFormatMenuSelect(cwc.e("format_plain"));
-
-  let link1 = "https://example.com";
-  let link2 = "name@example.com";
-  let link3 = "https://example.net";
-  cwc.window
+  const link1 = "https://example.com";
+  const link2 = "name@example.com";
+  const link3 = "https://example.net";
+  cwc
     .GetCurrentEditor()
     .insertHTML(
       `<a href="${link1}/">${link1}</a> <a href="mailto:${link2}">${link2}</a> <a href="${link3}">link3</a>`
     );
-  plan_for_window_close(cwc);
-  cwc.window.goDoCommand("cmd_sendLater");
-  wait_for_window_close();
+  const closePromise = BrowserTestUtils.domWindowClosed(cwc);
+  cwc.goDoCommand("cmd_sendLater");
+  await closePromise;
 
-  be_in_folder(gOutboxFolder);
-  let msgLoaded = BrowserTestUtils.waitForEvent(window, "MsgLoaded");
-  let outMsg = select_click_row(0);
+  await be_in_folder(gOutboxFolder);
+  const msgLoaded = BrowserTestUtils.waitForEvent(
+    get_about_message(),
+    "MsgLoaded"
+  );
+  const outMsg = await select_click_row(0);
   await msgLoaded;
-  let outMsgContent = get_msg_source(outMsg);
+  const outMsgContent = await get_msg_source(outMsg);
 
   Assert.equal(
     getMessageBody(outMsgContent),
@@ -98,5 +105,7 @@ add_task(async function test_freeTextLink() {
     "Links should be correctly converted to plain text"
   );
 
-  press_delete(); // Delete the msg from Outbox.
+  await press_delete(); // Delete the msg from Outbox.
+
+  Services.prefs.setIntPref("mail.default_send_format", prevSendFormat);
 });

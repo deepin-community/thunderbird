@@ -3,8 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 function toNavigator()
 {
   if (!CycleWindow("navigator:browser"))
@@ -86,7 +84,7 @@ function toOpenWindow( aWindow )
     // Try to focus the previously focused window e.g. message compose body
     aWindow.document.commandDispatcher.focusedWindow.focus();
   } catch (e) {
-    // e.g. full-page plugin or non-XUL document; just raise the top window
+    // e.g. non-XUL document; just raise the top window
     aWindow.focus();
   }
 }
@@ -239,7 +237,7 @@ function checkFocusedWindow()
       if (win.windowState == window.STATE_MINIMIZED) {
         win.restore();
       }
-      win.document.commandDispatcher.focusedWindow.focus();
+      win.focus();
     });
     frag.appendChild(item);
   }

@@ -21,7 +21,6 @@
 #include "nsMsgSearchValue.h"
 #include "nsMsgI18N.h"
 #include "nsIMimeConverter.h"
-#include "nsMsgMimeCID.h"
 #include "nsIPrefBranch.h"
 #include "nsIPrefService.h"
 #include "nsIMsgFilterPlugin.h"
@@ -34,12 +33,10 @@
 #include "nsServiceManagerUtils.h"
 #include "nsComponentManagerUtils.h"
 #include <ctype.h>
-#include "nsMsgBaseCID.h"
 #include "nsIMsgTagService.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgFilterService.h"
 #include "nsIMsgPluggableStore.h"
-#include "nsAbBaseCID.h"
 #include "nsIAbManager.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
@@ -73,7 +70,6 @@ nsMsgSearchAttribEntry SearchAttribEntryTable[] = {
     {nsMsgSearchAttrib::ToOrCC, "to or cc"},
     {nsMsgSearchAttrib::AllAddresses, "all addresses"},
     {nsMsgSearchAttrib::AgeInDays, "age in days"},
-    {nsMsgSearchAttrib::Label, "label"},
     {nsMsgSearchAttrib::Keywords, "tag"},
     {nsMsgSearchAttrib::Size, "size"},
     // this used to be nsMsgSearchAttrib::SenderInAddressBook
@@ -357,6 +353,8 @@ nsMsgSearchTerm::nsMsgSearchTerm(nsMsgSearchAttribValue attrib,
 
   nsMsgResultElement::AssignValues(val, &m_value);
   m_matchAll = false;
+  mBeginsGrouping = false;
+  mEndsGrouping = false;
 }
 
 nsMsgSearchTerm::~nsMsgSearchTerm() {}
@@ -419,10 +417,6 @@ nsresult nsMsgSearchTerm::OutputValue(nsCString& outputStr) {
       }
       case nsMsgSearchAttrib::AgeInDays: {
         outputStr.AppendInt(m_value.u.age);
-        break;
-      }
-      case nsMsgSearchAttrib::Label: {
-        outputStr.AppendInt(m_value.u.label);
         break;
       }
       case nsMsgSearchAttrib::JunkStatus: {
@@ -539,9 +533,6 @@ nsresult nsMsgSearchTerm::ParseValue(char* inStream) {
       case nsMsgSearchAttrib::AgeInDays:
         m_value.u.age = atoi(inStream);
         break;
-      case nsMsgSearchAttrib::Label:
-        m_value.u.label = atoi(inStream);
-        break;
       case nsMsgSearchAttrib::JunkStatus:
         m_value.u.junkStatus =
             atoi(inStream);  // only if we read from disk, right?
@@ -633,22 +624,14 @@ nsresult nsMsgSearchTerm::DeStreamNew(char* inStream, int16_t /*length*/) {
   NS_ENSURE_SUCCESS(rv, rv);
   // convert label filters and saved searches to keyword equivalents
   if (secondCommaSep) ParseValue(secondCommaSep + 1);
-  if (m_attribute == nsMsgSearchAttrib::Label) {
-    nsAutoCString keyword("$label");
-    m_value.attribute = m_attribute = nsMsgSearchAttrib::Keywords;
-    keyword.Append('0' + m_value.u.label);
-    m_value.utf8String = keyword;
-    CopyUTF8toUTF16(keyword, m_value.utf16String);
-  }
   return NS_OK;
 }
 
 // Looks in the MessageDB for the user specified arbitrary header, if it finds
 // the header, it then looks for a match against the value for the header.
 nsresult nsMsgSearchTerm::MatchArbitraryHeader(
-    nsIMsgSearchScopeTerm* scope, uint32_t length /* in lines*/,
-    const char* charset, bool charsetOverride, nsIMsgDBHdr* msg,
-    nsIMsgDatabase* db, const nsACString& headers, bool ForFiltering,
+    nsIMsgSearchScopeTerm* scope, const char* charset, bool charsetOverride,
+    nsIMsgDBHdr* msg, const nsACString& headers, bool ForFiltering,
     bool* pResult) {
   NS_ENSURE_ARG_POINTER(pResult);
 
@@ -662,7 +645,7 @@ nsresult nsMsgSearchTerm::MatchArbitraryHeader(
   bool result = !matchExpected;
 
   nsCString dbHdrValue;
-  msg->GetStringProperty(m_arbitraryHeader.get(), getter_Copies(dbHdrValue));
+  msg->GetStringProperty(m_arbitraryHeader.get(), dbHdrValue);
   if (!dbHdrValue.IsEmpty()) {
     // Match value with the other info. It doesn't check all header occurrences,
     // so we use it only if we match and do line by line headers parsing
@@ -674,10 +657,9 @@ nsresult nsMsgSearchTerm::MatchArbitraryHeader(
     result = *pResult;
   }
 
-  nsMsgBodyHandler* bodyHandler =
-      new nsMsgBodyHandler(scope, length, msg, db, headers.BeginReading(),
-                           headers.Length(), ForFiltering);
-  bodyHandler->SetStripHeaders(false);
+  nsMsgBodyHandler bodyHandler(scope, msg, headers.BeginReading(),
+                               headers.Length(), ForFiltering);
+  bodyHandler.SetStripHeaders(false);
 
   nsCString headerFullValue;  // Contains matched header value accumulated over
                               // multiple lines.
@@ -687,7 +669,7 @@ nsresult nsMsgSearchTerm::MatchArbitraryHeader(
 
   while (processingHeaders) {
     nsCString charsetIgnored;
-    if (bodyHandler->GetNextLine(buf, charsetIgnored) < 0 ||
+    if (bodyHandler.GetNextLine(buf, charsetIgnored) < 0 ||
         EMPTY_MESSAGE_LINE(buf))
       processingHeaders =
           false;  // No more lines or empty line terminating headers.
@@ -753,7 +735,6 @@ nsresult nsMsgSearchTerm::MatchArbitraryHeader(
     }
   }
 
-  delete bodyHandler;
   *pResult = result;
   return rv;
 }
@@ -764,7 +745,7 @@ NS_IMETHODIMP nsMsgSearchTerm::MatchHdrProperty(nsIMsgDBHdr* aHdr,
   NS_ENSURE_ARG_POINTER(aHdr);
 
   nsCString dbHdrValue;
-  aHdr->GetStringProperty(m_hdrProperty.get(), getter_Copies(dbHdrValue));
+  aHdr->GetStringProperty(m_hdrProperty.get(), dbHdrValue);
   return MatchString(dbHdrValue, nullptr, aResult);
 }
 
@@ -813,71 +794,63 @@ NS_IMETHODIMP nsMsgSearchTerm::MatchUint32HdrProperty(nsIMsgDBHdr* aHdr,
 }
 
 nsresult nsMsgSearchTerm::MatchBody(nsIMsgSearchScopeTerm* scope,
-                                    uint64_t offset,
-                                    uint32_t length /*in lines*/,
                                     const char* folderCharset, nsIMsgDBHdr* msg,
-                                    nsIMsgDatabase* db, bool* pResult) {
+                                    bool* pResult) {
   NS_ENSURE_ARG_POINTER(pResult);
-
   nsresult rv = NS_OK;
-
-  bool result = false;
   *pResult = false;
-
-  // Small hack so we don't look all through a message when someone has
-  // specified "BODY IS foo". ### Since length is in lines, this is not quite
-  // right.
-  if ((length > 0) &&
-      (m_operator == nsMsgSearchOp::Is || m_operator == nsMsgSearchOp::Isnt))
-    length = m_value.utf8String.Length();
-
-  nsMsgBodyHandler* bodyHan = new nsMsgBodyHandler(scope, length, msg, db);
-  if (!bodyHan) return NS_ERROR_OUT_OF_MEMORY;
-
-  nsAutoCString buf;
-  bool endOfFile = false;  // if retValue == 0, we've hit the end of the file
-  uint32_t lines = 0;
 
   // Change the sense of the loop so we don't bail out prematurely
   // on negative terms. i.e. opDoesntContain must look at all lines
   bool boolContinueLoop;
   GetMatchAllBeforeDeciding(&boolContinueLoop);
-  result = boolContinueLoop;
+  bool result = boolContinueLoop;
 
   nsCString compare;
-  nsCString charset;
-  while (!endOfFile && result == boolContinueLoop) {
-    if (bodyHan->GetNextLine(buf, charset) >= 0) {
-      bool softLineBreak = false;
-      // Do in-place decoding of quoted printable
-      if (bodyHan->IsQP()) {
-        softLineBreak = StringEndsWith(buf, "="_ns);
-        MsgStripQuotedPrintable(buf);
-        // If soft line break, chop off the last char as well.
-        size_t bufLength = buf.Length();
-        if ((bufLength > 0) && softLineBreak) buf.SetLength(bufLength - 1);
+  nsMsgBodyHandler bodyHandler(scope, msg);
+  uint32_t seen = 0;
+  while (result == boolContinueLoop) {
+    // Small hack so we don't look all through a message when someone has
+    // specified "BODY IS foo".
+    if (m_operator == nsMsgSearchOp::Is || m_operator == nsMsgSearchOp::Isnt) {
+      if (seen > m_value.utf8String.Length()) {
+        break;
       }
-      compare.Append(buf);
-      // If this line ends with a soft line break, loop around
-      // and get the next line before looking for the search string.
-      // This assumes the message can't end on a QP soft line break.
-      // That seems like a pretty safe assumption.
-      if (softLineBreak) continue;
-      if (!compare.IsEmpty()) {
-        char startChar = (char)compare.CharAt(0);
-        if (startChar != '\r' && startChar != '\n') {
-          rv = MatchString(compare,
-                           charset.IsEmpty() ? folderCharset : charset.get(),
-                           &result);
-          lines++;
-        }
-        compare.Truncate();
+    }
+
+    nsAutoCString buf;
+    nsAutoCString charset;
+    int32_t n = bodyHandler.GetNextLine(buf, charset);
+    if (n < 0) {
+      break;  // EOF
+    }
+    seen += n;
+    bool softLineBreak = false;
+    // Do in-place decoding of quoted printable
+    if (bodyHandler.IsQP()) {
+      softLineBreak = StringEndsWith(buf, "="_ns);
+      MsgStripQuotedPrintable(buf);
+      // If soft line break, chop off the last char as well.
+      size_t bufLength = buf.Length();
+      if ((bufLength > 0) && softLineBreak) buf.SetLength(bufLength - 1);
+    }
+    compare.Append(buf);
+    // If this line ends with a soft line break, loop around
+    // and get the next line before looking for the search string.
+    // This assumes the message can't end on a QP soft line break.
+    // That seems like a pretty safe assumption.
+    if (softLineBreak) continue;
+    if (!compare.IsEmpty()) {
+      char startChar = (char)compare.CharAt(0);
+      if (startChar != '\r' && startChar != '\n') {
+        rv = MatchString(compare,
+                         charset.IsEmpty() ? folderCharset : charset.get(),
+                         &result);
       }
-    } else
-      endOfFile = true;
+      compare.Truncate();
+    }
   }
 
-  delete bodyHan;
   *pResult = result;
   return rv;
 }
@@ -898,7 +871,7 @@ nsresult nsMsgSearchTerm::InitializeAddressBook() {
   }
   if (!mDirectory) {
     nsCOMPtr<nsIAbManager> abManager =
-        do_GetService(NS_ABMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/abmanager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     rv =
@@ -947,7 +920,7 @@ nsresult nsMsgSearchTerm::MatchRfc2047String(const nsACString& rfc2047string,
 
   nsresult rv;
   nsCOMPtr<nsIMimeConverter> mimeConverter =
-      do_GetService(NS_MIME_CONVERTER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/mimeconverter;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   nsAutoString stringToMatch;
   rv = mimeConverter->DecodeMimeHeader(PromiseFlatCString(rfc2047string).get(),
@@ -1315,28 +1288,6 @@ nsresult nsMsgSearchTerm::MatchJunkPercent(uint32_t aJunkPercent,
   return rv;
 }
 
-nsresult nsMsgSearchTerm::MatchLabel(nsMsgLabelValue aLabelValue,
-                                     bool* pResult) {
-  NS_ENSURE_ARG_POINTER(pResult);
-
-  nsresult rv = NS_OK;
-  bool result = false;
-  switch (m_operator) {
-    case nsMsgSearchOp::Is:
-      if (m_value.u.label == aLabelValue) result = true;
-      break;
-    case nsMsgSearchOp::Isnt:
-      if (m_value.u.label != aLabelValue) result = true;
-      break;
-    default:
-      rv = NS_ERROR_FAILURE;
-      NS_ERROR("invalid compare op for label value");
-  }
-
-  *pResult = result;
-  return rv;
-}
-
 // MatchStatus () is not only used for nsMsgMessageFlags but also for
 // nsMsgFolderFlags (both being 'unsigned long')
 nsresult nsMsgSearchTerm::MatchStatus(uint32_t statusToMatch, bool* pResult) {
@@ -1417,7 +1368,7 @@ nsresult nsMsgSearchTerm::MatchKeyword(const nsACString& keywordList,
   nsTArray<nsCString> keywordArray;
   ParseString(keywordList, ' ', keywordArray);
   nsCOMPtr<nsIMsgTagService> tagService(
-      do_GetService(NS_MSGTAGSERVICE_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messenger/tagservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Loop through tokens in keywords
@@ -1524,7 +1475,7 @@ NS_IMETHODIMP nsMsgSearchTerm::MatchCustom(nsIMsgDBHdr* aHdr, bool* pResult) {
 
   nsresult rv;
   nsCOMPtr<nsIMsgFilterService> filterService =
-      do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgSearchCustomTerm> customTerm;
@@ -1671,9 +1622,8 @@ nsMsgSearchScopeTerm::GetInputStream(nsIMsgDBHdr* aMsgHdr,
   NS_ENSURE_ARG_POINTER(aInputStream);
   NS_ENSURE_ARG_POINTER(aMsgHdr);
   NS_ENSURE_TRUE(m_folder, NS_ERROR_NULL_POINTER);
-  bool reusable;
-  nsresult rv = m_folder->GetMsgInputStream(aMsgHdr, &reusable,
-                                            getter_AddRefs(m_inputStream));
+  nsresult rv =
+      m_folder->GetLocalMsgStream(aMsgHdr, getter_AddRefs(m_inputStream));
   NS_ENSURE_SUCCESS(rv, rv);
   NS_IF_ADDREF(*aInputStream = m_inputStream);
   return rv;
@@ -1784,9 +1734,6 @@ nsresult nsMsgResultElement::AssignValues(nsIMsgSearchValue* src,
       break;
     case nsMsgSearchAttrib::AgeInDays:
       rv = src->GetAge(&dst->u.age);
-      break;
-    case nsMsgSearchAttrib::Label:
-      rv = src->GetLabel(&dst->u.label);
       break;
     case nsMsgSearchAttrib::JunkStatus:
       rv = src->GetJunkStatus(&dst->u.junkStatus);

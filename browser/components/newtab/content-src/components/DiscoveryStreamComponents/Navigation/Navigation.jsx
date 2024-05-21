@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { actionCreators as ac } from "common/Actions.jsm";
+import { actionCreators as ac } from "common/Actions.sys.mjs";
 import React from "react";
 import { SafeAnchor } from "../SafeAnchor/SafeAnchor";
 import { FluentOrText } from "content-src/components/FluentOrText/FluentOrText";
@@ -17,7 +17,7 @@ export class Topic extends React.PureComponent {
   onLinkClick(event) {
     if (this.props.dispatch) {
       this.props.dispatch(
-        ac.UserEvent({
+        ac.DiscoveryStreamUserEvent({
           event: "CLICK",
           source: "POPULAR_TOPICS",
           action_position: 0,
@@ -45,16 +45,31 @@ export class Topic extends React.PureComponent {
 
 export class Navigation extends React.PureComponent {
   render() {
-    const links = this.props.links || [];
+    let links = this.props.links || [];
     const alignment = this.props.alignment || "centered";
     const header = this.props.header || {};
     const english = this.props.locale.startsWith("en-");
     const privacyNotice = this.props.privacyNoticeURL || {};
+    const { newFooterSection } = this.props;
+    const className = `ds-navigation ds-navigation-${alignment} ${
+      newFooterSection ? `ds-navigation-new-topics` : ``
+    }`;
+    let { title } = header;
+    if (newFooterSection) {
+      title = { id: "newtab-pocket-new-topics-title" };
+      if (this.props.extraLinks) {
+        links = [
+          ...links.slice(0, links.length - 1),
+          ...this.props.extraLinks,
+          links[links.length - 1],
+        ];
+      }
+    }
 
     return (
-      <div className={`ds-navigation ds-navigation-${alignment}`}>
-        {header.title && english ? (
-          <FluentOrText message={header.title}>
+      <div className={className}>
+        {title && english ? (
+          <FluentOrText message={title}>
             <span className="ds-navigation-header" />
           </FluentOrText>
         ) : null}
@@ -74,15 +89,23 @@ export class Navigation extends React.PureComponent {
           </ul>
         ) : null}
 
-        <SafeAnchor
-          onLinkClick={this.onLinkClick}
-          className={this.props.className}
-          url={privacyNotice.url}
-        >
-          <FluentOrText message={privacyNotice.title}>
-            <span className="ds-navigation-privacy" />
-          </FluentOrText>
-        </SafeAnchor>
+        {!newFooterSection ? (
+          <SafeAnchor className="ds-navigation-privacy" url={privacyNotice.url}>
+            <FluentOrText message={privacyNotice.title} />
+          </SafeAnchor>
+        ) : null}
+
+        {newFooterSection ? (
+          <div className="ds-navigation-family">
+            <span className="icon firefox-logo" />
+            <span>|</span>
+            <span className="icon pocket-logo" />
+            <span
+              className="ds-navigation-family-message"
+              data-l10n-id="newtab-pocket-pocket-firefox-family"
+            />
+          </div>
+        ) : null}
       </div>
     );
   }

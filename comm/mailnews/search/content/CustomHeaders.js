@@ -3,8 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gAddButton;
 var gRemoveButton;
 var gHeaderInputElement;
@@ -14,12 +12,13 @@ var gContainer;
 var gFilterBundle = null;
 var gCustomBundle = null;
 
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogaccept", onOk);
 document.addEventListener("dialogextra1", onAddHeader);
 document.addEventListener("dialogextra2", onRemoveHeader);
 
 function onLoad() {
-  let hdrs = Services.prefs.getCharPref("mailnews.customHeaders");
+  const hdrs = Services.prefs.getCharPref("mailnews.customHeaders");
   gHeaderInputElement = document.getElementById("headerInput");
   gHeaderInputElement.focus();
 

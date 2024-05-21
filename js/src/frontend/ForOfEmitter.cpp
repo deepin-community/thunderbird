@@ -8,24 +8,20 @@
 
 #include "frontend/BytecodeEmitter.h"
 #include "frontend/EmitterScope.h"
-#include "frontend/IfEmitter.h"
 #include "frontend/ParserAtom.h"  // TaggedParserAtomIndex
-#include "frontend/SourceNotes.h"
 #include "vm/Opcodes.h"
-#include "vm/Scope.h"
 #include "vm/StencilEnums.h"  // TryNoteKind
 
 using namespace js;
 using namespace js::frontend;
 
-using mozilla::Maybe;
 using mozilla::Nothing;
 
 ForOfEmitter::ForOfEmitter(BytecodeEmitter* bce,
                            const EmitterScope* headLexicalEmitterScope,
-                           bool allowSelfHostedIter, IteratorKind iterKind)
+                           SelfHostedIter selfHostedIter, IteratorKind iterKind)
     : bce_(bce),
-      allowSelfHostedIter_(allowSelfHostedIter),
+      selfHostedIter_(selfHostedIter),
       iterKind_(iterKind),
       headLexicalEmitterScope_(headLexicalEmitterScope) {}
 
@@ -43,18 +39,25 @@ bool ForOfEmitter::emitIterated() {
   return true;
 }
 
-bool ForOfEmitter::emitInitialize(const Maybe<uint32_t>& forPos) {
+bool ForOfEmitter::emitInitialize(uint32_t forPos) {
   MOZ_ASSERT(state_ == State::Iterated);
 
   tdzCacheForIteratedValue_.reset();
 
+  //                [stack] # if AllowContentWithNext
+  //                [stack] NEXT ITER
+  //                [stack] # elif AllowContentWith
+  //                [stack] ITERABLE ITERFN SYNC_ITERFN?
+  //                [stack] # else
+  //                [stack] ITERABLE
+
   if (iterKind_ == IteratorKind::Async) {
-    if (!bce_->emitAsyncIterator()) {
+    if (!bce_->emitAsyncIterator(selfHostedIter_)) {
       //            [stack] NEXT ITER
       return false;
     }
   } else {
-    if (!bce_->emitIterator()) {
+    if (!bce_->emitIterator(selfHostedIter_)) {
       //            [stack] NEXT ITER
       return false;
     }
@@ -64,7 +67,7 @@ bool ForOfEmitter::emitInitialize(const Maybe<uint32_t>& forPos) {
   // stack.
 
   int32_t iterDepth = bce_->bytecodeSection().stackDepth();
-  loopInfo_.emplace(bce_, iterDepth, allowSelfHostedIter_, iterKind_);
+  loopInfo_.emplace(bce_, iterDepth, selfHostedIter_, iterKind_);
 
   if (!loopInfo_->emitLoopHead(bce_, Nothing())) {
     //              [stack] NEXT ITER
@@ -84,7 +87,8 @@ bool ForOfEmitter::emitInitialize(const Maybe<uint32_t>& forPos) {
                ScopeKind::Lexical);
 
     if (headLexicalEmitterScope_->hasEnvironment()) {
-      if (!bce_->emit1(JSOp::RecreateLexicalEnv)) {
+      if (!bce_->emitInternedScopeOp(headLexicalEmitterScope_->index(),
+                                     JSOp::RecreateLexicalEnv)) {
         //          [stack] NEXT ITER
         return false;
       }
@@ -101,10 +105,8 @@ bool ForOfEmitter::emitInitialize(const Maybe<uint32_t>& forPos) {
 #endif
 
   // Make sure this code is attributed to the "for".
-  if (forPos) {
-    if (!bce_->updateSourceCoordNotes(*forPos)) {
-      return false;
-    }
+  if (!bce_->updateSourceCoordNotes(forPos)) {
+    return false;
   }
 
   if (!bce_->emit1(JSOp::Dup2)) {
@@ -112,7 +114,8 @@ bool ForOfEmitter::emitInitialize(const Maybe<uint32_t>& forPos) {
     return false;
   }
 
-  if (!bce_->emitIteratorNext(forPos, iterKind_, allowSelfHostedIter_)) {
+  if (!bce_->emitIteratorNext(mozilla::Some(forPos), iterKind_,
+                              selfHostedIter_)) {
     //              [stack] NEXT ITER RESULT
     return false;
   }
@@ -168,7 +171,7 @@ bool ForOfEmitter::emitBody() {
   return true;
 }
 
-bool ForOfEmitter::emitEnd(const Maybe<uint32_t>& iteratedPos) {
+bool ForOfEmitter::emitEnd(uint32_t iteratedPos) {
   MOZ_ASSERT(state_ == State::Body);
 
   MOZ_ASSERT(bce_->bytecodeSection().stackDepth() == loopDepth_ + 1,
@@ -188,10 +191,8 @@ bool ForOfEmitter::emitEnd(const Maybe<uint32_t>& iteratedPos) {
   // which corresponds to the iteration protocol.
   // This is a bit misleading for 2nd and later iterations and might need
   // some fix (bug 1482003).
-  if (iteratedPos) {
-    if (!bce_->updateSourceCoordNotes(*iteratedPos)) {
-      return false;
-    }
+  if (!bce_->updateSourceCoordNotes(iteratedPos)) {
+    return false;
   }
 
   if (!bce_->emit1(JSOp::Pop)) {

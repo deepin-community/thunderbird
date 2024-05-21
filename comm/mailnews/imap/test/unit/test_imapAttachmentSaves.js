@@ -6,78 +6,118 @@
  * Tests imap save and detach attachments.
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/MessageGenerator.jsm");
-
-// javascript mime emitter functions
-var mimeMsg = {};
-ChromeUtils.import("resource:///modules/gloda/MimeMessage.jsm", mimeMsg);
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
-// IMAP pump
+// javascript mime emitter functions
+var { MsgHdrToMimeMessage } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/MimeMessage.sys.mjs"
+);
 
 var kAttachFileName = "bob.txt";
+function SaveAttachmentCallback() {
+  this.attachments = null;
+  this._promise = new Promise((resolve, reject) => {
+    this._resolve = resolve;
+    this._reject = reject;
+  });
+}
 
-setupIMAPPump();
+SaveAttachmentCallback.prototype = {
+  callback: function saveAttachmentCallback_callback(aMsgHdr, aMimeMessage) {
+    this.attachments = aMimeMessage.allAttachments;
+    this._resolve();
+  },
+  get promise() {
+    return this._promise;
+  },
+};
+var gCallbackObject = new SaveAttachmentCallback();
 
 // Dummy message window so we can say the inbox is open in a window.
 var dummyMsgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
   Ci.nsIMsgWindow
 );
 
-var tests = [loadImapMessage, startMime, startDetach, testDetach, endTest];
+function MsgsDeletedListener() {
+  this._promise = new Promise(resolve => (this._resolve = resolve));
+}
+MsgsDeletedListener.prototype = {
+  msgsDeleted(aMsgArray) {
+    this._resolve();
+  },
+  get promise() {
+    return this._promise;
+  },
+};
+var trackDeletionMessageListener = new MsgsDeletedListener();
+
+add_setup(function () {
+  setupIMAPPump();
+
+  // Add folder listeners that will capture async events
+  MailServices.mfn.addListener(
+    trackDeletionMessageListener,
+    Ci.nsIMsgFolderNotificationService.msgsDeleted
+  );
+
+  // We need to register the dummyMsgWindow so that when we've finished running
+  // the append url, in nsImapMailFolder::OnStopRunningUrl, we'll think the
+  // Inbox is open in a folder and update it, which the detach code relies
+  // on to finish the detach.
+
+  dummyMsgWindow.openFolder = IMAPPump.inbox;
+  MailServices.mailSession.AddMsgWindow(dummyMsgWindow);
+});
 
 // load and update a message in the imap fake server
-function* loadImapMessage() {
-  let gMessageGenerator = new MessageGenerator();
+add_task(async function loadImapMessage() {
+  const gMessageGenerator = new MessageGenerator();
   // create a synthetic message with attachment
-  let smsg = gMessageGenerator.makeMessage({
+  const smsg = gMessageGenerator.makeMessage({
     attachments: [{ filename: kAttachFileName, body: "I like cheese!" }],
   });
 
-  let msgURI = Services.io.newURI(
+  const msgURI = Services.io.newURI(
     "data:text/plain;base64," + btoa(smsg.toMessageString())
   );
-  let imapInbox = IMAPPump.daemon.getMailbox("INBOX");
-  let message = new imapMessage(msgURI.spec, imapInbox.uidnext++, []);
+  const imapInbox = IMAPPump.daemon.getMailbox("INBOX");
+  const message = new ImapMessage(msgURI.spec, imapInbox.uidnext++, []);
   IMAPPump.mailbox.addMessage(message);
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
   Assert.equal(1, IMAPPump.inbox.getTotalMessages(false));
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
   Assert.ok(msgHdr instanceof Ci.nsIMsgDBHdr);
-
-  yield true;
-}
+});
 
 // process the message through mime
-function* startMime() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+add_task(async function startMime() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
 
-  mimeMsg.MsgHdrToMimeMessage(
+  MsgHdrToMimeMessage(
     msgHdr,
     gCallbackObject,
     gCallbackObject.callback,
-    true /* allowDownload */
+    true // allowDownload
   );
-  yield false;
-}
+  await gCallbackObject.promise;
+});
 
 // detach any found attachments
-function* startDetach() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
-  let msgURI = msgHdr.folder.generateMessageURI(msgHdr.messageKey);
+add_task(async function startDetach() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+  const msgURI = msgHdr.folder.generateMessageURI(msgHdr.messageKey);
 
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
+  const messenger = Cc["@mozilla.org/messenger;1"].createInstance(
     Ci.nsIMessenger
   );
-  let attachment = gCallbackObject.attachments[0];
+  const attachment = gCallbackObject.attachments[0];
 
   messenger.detachAttachmentsWOPrompts(
     do_get_profile(),
@@ -88,17 +128,14 @@ function* startDetach() {
     null
   );
   // deletion of original message should kick async_driver.
-  yield false;
-}
+  await trackDeletionMessageListener.promise;
+});
 
 // test that the detachment was successful
-function* testDetach() {
-  // This test seems to fail on Linux without the following delay.
-  mailTestUtils.do_timeout_function(200, async_driver);
-  yield false;
+add_task(async function testDetach() {
   // Check that the file attached to the message now exists in the profile
   // directory.
-  let checkFile = do_get_profile().clone();
+  const checkFile = do_get_profile().clone();
   checkFile.append(kAttachFileName);
   Assert.ok(checkFile.exists());
 
@@ -106,78 +143,57 @@ function* testDetach() {
   //  and search for "AttachmentDetached" which is added on detachment.
 
   // Get the message header - detached copy has UID 2.
-  let msgHdr = IMAPPump.inbox.GetMessageHeader(2);
+  const msgHdr = IMAPPump.inbox.GetMessageHeader(2);
   Assert.ok(msgHdr !== null);
-  let messageContent = getContentFromMessage(msgHdr);
+  const messageContent = await getContentFromMessage(msgHdr);
   Assert.ok(messageContent.includes("AttachmentDetached"));
-}
+});
 
 // Cleanup
-function endTest() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
+});
 
-function SaveAttachmentCallback() {
-  this.attachments = null;
-}
-
-SaveAttachmentCallback.prototype = {
-  callback: function saveAttachmentCallback_callback(aMsgHdr, aMimeMessage) {
-    this.attachments = aMimeMessage.allAttachments;
-    async_driver();
-  },
-};
-var gCallbackObject = new SaveAttachmentCallback();
-
-function run_test() {
-  // Add folder listeners that will capture async events
-  const nsIMFNService = Ci.nsIMsgFolderNotificationService;
-  MailServices.mfn.addListener(mfnListener, nsIMFNService.msgsDeleted);
-
-  // We need to register the dummyMsgWindow so that when we've finished running
-  // the append url, in nsImapMailFolder::OnStopRunningUrl, we'll think the
-  // Inbox is open in a folder and update it, which the detach code relies
-  // on to finish the detach.
-
-  dummyMsgWindow.openFolder = IMAPPump.inbox;
-  MailServices.mailSession.AddMsgWindow(dummyMsgWindow);
-
-  async_run_tests(tests);
-}
-
-/*
+/**
  * Get the full message content.
  *
- * aMsgHdr: nsIMsgDBHdr object whose text body will be read
- *          returns: string with full message contents
+ * @param aMsgHdr - nsIMsgDBHdr object whose text body will be read.
+ * @returns {Promise<string>} full message contents.
  */
 function getContentFromMessage(aMsgHdr) {
-  const MAX_MESSAGE_LENGTH = 65536;
-  let msgFolder = aMsgHdr.folder;
-  let msgUri = msgFolder.getUriForMsg(aMsgHdr);
+  const msgFolder = aMsgHdr.folder;
+  const msgUri = msgFolder.getUriForMsg(aMsgHdr);
 
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
-  let streamListener = Cc[
-    "@mozilla.org/network/sync-stream-listener;1"
-  ].createInstance(Ci.nsISyncStreamListener);
-  // pass true for aLocalOnly since message should be in offline store.
-  messenger
-    .messageServiceFromURI(msgUri)
-    .streamMessage(msgUri, streamListener, null, null, false, "", true);
-  let sis = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
-    Ci.nsIScriptableInputStream
-  );
-  sis.init(streamListener.inputStream);
-  let content = sis.read(MAX_MESSAGE_LENGTH);
-  sis.close();
-  return content;
+  return new Promise((resolve, reject) => {
+    const streamListener = {
+      QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+      sis: Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
+        Ci.nsIScriptableInputStream
+      ),
+      content: "",
+      onDataAvailable(request, inputStream, offset, count) {
+        this.sis.init(inputStream);
+        this.content += this.sis.read(count);
+      },
+      onStartRequest(request) {},
+      onStopRequest(request, statusCode) {
+        this.sis.close();
+        if (Components.isSuccessCode(statusCode)) {
+          resolve(this.content);
+        } else {
+          reject(new Error(statusCode));
+        }
+      },
+    };
+    // Pass true for aLocalOnly since message should be in offline store.
+    MailServices.messageServiceFromURI(msgUri).streamMessage(
+      msgUri,
+      streamListener,
+      null,
+      null,
+      false,
+      "",
+      true
+    );
+  });
 }
-
-var mfnListener = {
-  msgsDeleted(aMsgArray) {
-    dump("msg deleted\n");
-    async_driver();
-  },
-};

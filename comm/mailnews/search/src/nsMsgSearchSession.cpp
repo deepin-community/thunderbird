@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "msgCore.h"
-#include "nsArray.h"
 #include "nsMsgSearchCore.h"
 #include "nsMsgSearchAdapter.h"
 #include "nsMsgSearchBoolExpression.h"
@@ -16,7 +15,7 @@
 #include "nsMsgUtils.h"
 #include "nsIMsgSearchNotify.h"
 #include "nsIMsgMailSession.h"
-#include "nsMsgBaseCID.h"
+#include "nsIMsgWindow.h"
 #include "nsMsgFolderFlags.h"
 #include "nsMsgLocalSearch.h"
 #include "nsComponentManagerUtils.h"
@@ -31,6 +30,7 @@ nsMsgSearchSession::nsMsgSearchSession() {
   m_handlingError = false;
   m_expressionTree = nullptr;
   m_searchPaused = false;
+  m_iListener = -1;
 }
 
 nsMsgSearchSession::~nsMsgSearchSession() {
@@ -382,8 +382,7 @@ nsresult nsMsgSearchSession::GetNextUrl() {
         GetMessageServiceFromURI(folderUri, getter_AddRefs(msgService));
 
     if (NS_SUCCEEDED(rv) && msgService && currentTerm)
-      msgService->Search(this, msgWindow, currentTerm->m_folder,
-                         m_runningUrl.get());
+      msgService->Search(this, msgWindow, currentTerm->m_folder, m_runningUrl);
     return rv;
   }
   return NS_OK;
@@ -501,7 +500,7 @@ void nsMsgSearchSession::ReleaseFolderDBRef() {
   nsCOMPtr<nsIMsgFolder> folder;
   scope->GetFolder(getter_AddRefs(folder));
   nsCOMPtr<nsIMsgMailSession> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/services/session;1");
   if (!mailSession || !folder) return;
 
   mailSession->IsFolderOpenInWindow(folder, &isOpen);

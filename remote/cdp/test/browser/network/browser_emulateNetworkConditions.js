@@ -4,11 +4,24 @@
 "use strict";
 
 const pageEmptyURL =
-  "http://example.com/browser/remote/cdp/test/browser/page/doc_empty.html";
+  "https://example.com/browser/remote/cdp/test/browser/page/doc_empty.html";
+
+/*
+ * Set the optional preference to disallow access to localhost when offline. This is
+ * required because `example.com` resolves to `localhost` in the tests and therefore
+ * would still be accessible even though we are simulating being offline.
+ * By setting this preference, we make sure that these connections to `localhost`
+ * (and by extension, to `example.com`) will fail when we are offline.
+ */
+Services.prefs.setBoolPref("network.disable-localhost-when-offline", true);
+registerCleanupFunction(() => {
+  Services.prefs.clearUserPref("network.disable-localhost-when-offline");
+});
 
 /**
  * Acts just as `add_task`, but does cleanup afterwards
- * @param taskFn
+ *
+ * @param {Function} taskFn
  */
 function add_networking_task(taskFn) {
   add_task(async client => {
@@ -23,15 +36,9 @@ function add_networking_task(taskFn) {
 add_networking_task(async function offlineWithoutArguments({ client }) {
   const { Network } = client;
 
-  let errorThrown = "";
-  try {
-    await Network.emulateNetworkConditions();
-  } catch (e) {
-    errorThrown = e.message;
-  }
-
-  ok(
-    errorThrown.match(/offline: boolean value expected/),
+  await Assert.rejects(
+    Network.emulateNetworkConditions(),
+    /offline: boolean value expected/,
     "Fails without any arguments"
   );
 });
@@ -39,15 +46,9 @@ add_networking_task(async function offlineWithoutArguments({ client }) {
 add_networking_task(async function offlineWithEmptyArguments({ client }) {
   const { Network } = client;
 
-  let errorThrown = "";
-  try {
-    await Network.emulateNetworkConditions({});
-  } catch (e) {
-    errorThrown = e.message;
-  }
-
-  ok(
-    errorThrown.match(/offline: boolean value expected/),
+  await Assert.rejects(
+    Network.emulateNetworkConditions({}),
+    /offline: boolean value expected/,
     "Fails with only empty arguments"
   );
 });
@@ -57,17 +58,10 @@ add_networking_task(async function offlineWithInvalidArguments({ client }) {
   const testTable = [null, undefined, 1, "foo", [], {}];
 
   for (const testCase of testTable) {
-    let errorThrown = "";
-    try {
-      await Network.emulateNetworkConditions({ offline: testCase });
-    } catch (e) {
-      errorThrown = e.message;
-    }
-
     const testType = typeof testCase;
-
-    ok(
-      errorThrown.match(/offline: boolean value expected/),
+    await Assert.rejects(
+      Network.emulateNetworkConditions({ offline: testCase }),
+      /offline: boolean value expected/,
       `Fails with ${testType}-type argument for offline`
     );
   }
@@ -184,45 +178,11 @@ add_networking_task(async function emulateOnlineWhileOffline({ client }) {
  * Navigates to a page, and asserting any status code to appear
  */
 async function assertOfflineNavigationFails() {
-  // Tests always connect to localhost, and per bug 87717, localhost is now
-  // reachable in offline mode.  To avoid this, disable any proxy.
-  const proxyPrefValue = SpecialPowers.getIntPref("network.proxy.type");
-  const diskPrefValue = SpecialPowers.getBoolPref("browser.cache.disk.enable");
-  const memoryPrefValue = SpecialPowers.getBoolPref(
-    "browser.cache.memory.enable"
-  );
-  SpecialPowers.pushPrefEnv({
-    set: [
-      ["network.proxy.type", 0],
-      ["browser.cache.disk.enable", false],
-      ["browser.cache.memory.enable", false],
-    ],
-  });
+  const browser = gBrowser.selectedTab.linkedBrowser;
+  let netErrorLoaded = BrowserTestUtils.waitForErrorPage(browser);
 
-  try {
-    const browser = gBrowser.selectedTab.linkedBrowser;
-    let netErrorLoaded = BrowserTestUtils.waitForErrorPage(browser);
-
-    BrowserTestUtils.loadURI(browser, pageEmptyURL);
-    await netErrorLoaded;
-
-    await SpecialPowers.spawn(browser, [], () => {
-      ok(
-        content.document.documentURI.startsWith("about:neterror?e=netOffline"),
-        "Should be showing error page"
-      );
-    });
-  } finally {
-    // Re-enable the proxy so example.com is resolved to localhost, rather than
-    // the actual example.com.
-    SpecialPowers.pushPrefEnv({
-      set: [
-        ["network.proxy.type", proxyPrefValue],
-        ["browser.cache.disk.enable", diskPrefValue],
-        ["browser.cache.memory.enable", memoryPrefValue],
-      ],
-    });
-  }
+  BrowserTestUtils.startLoadingURIString(browser, pageEmptyURL);
+  await netErrorLoaded;
 }
 
 /**

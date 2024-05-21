@@ -1,9 +1,3 @@
-ChromeUtils.defineModuleGetter(
-  this,
-  "Promise",
-  "resource://gre/modules/Promise.jsm"
-);
-
 /* exported promiseTabLoadEvent, is_element_visible, is_element_hidden */
 
 /**
@@ -19,7 +13,7 @@ ChromeUtils.defineModuleGetter(
  * @rejects if a valid load event is not received within a meaningful interval
  */
 function promiseTabLoadEvent(tab, url) {
-  let deferred = Promise.defer();
+  let deferred = Promise.withResolvers();
   info("Wait tab event: load");
 
   function handle(loadedUrl) {
@@ -46,7 +40,7 @@ function promiseTabLoadEvent(tab, url) {
   });
 
   if (url) {
-    BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+    BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
   }
 
   // Promise.all rejects if either promise rejects (i.e. if we time out) and
@@ -57,9 +51,9 @@ function promiseTabLoadEvent(tab, url) {
 
 function is_element_visible(element, msg) {
   isnot(element, null, "Element should not be null, when checking visibility");
-  ok(BrowserTestUtils.is_visible(element), msg || "Element should be visible");
+  ok(BrowserTestUtils.isVisible(element), msg || "Element should be visible");
 }
 function is_element_hidden(element, msg) {
   isnot(element, null, "Element should not be null, when checking visibility");
-  ok(BrowserTestUtils.is_hidden(element), msg || "Element should be hidden");
+  ok(BrowserTestUtils.isHidden(element), msg || "Element should be hidden");
 }

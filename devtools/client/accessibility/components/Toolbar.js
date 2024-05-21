@@ -4,31 +4,32 @@
 "use strict";
 
 // React
-const { createFactory } = require("devtools/client/shared/vendor/react");
+const {
+  createFactory,
+} = require("resource://devtools/client/shared/vendor/react.js");
 const {
   div,
-  span,
-} = require("devtools/client/shared/vendor/react-dom-factories");
-const { L10N } = require("devtools/client/accessibility/utils/l10n");
+} = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
 const AccessibilityTreeFilter = createFactory(
-  require("devtools/client/accessibility/components/AccessibilityTreeFilter")
+  require("resource://devtools/client/accessibility/components/AccessibilityTreeFilter.js")
 );
 const AccessibilityPrefs = createFactory(
-  require("devtools/client/accessibility/components/AccessibilityPrefs")
+  require("resource://devtools/client/accessibility/components/AccessibilityPrefs.js")
 );
-loader.lazyGetter(this, "SimulationMenuButton", function() {
+loader.lazyGetter(this, "SimulationMenuButton", function () {
   return createFactory(
-    require("devtools/client/accessibility/components/SimulationMenuButton")
+    require("resource://devtools/client/accessibility/components/SimulationMenuButton.js")
   );
 });
 const DisplayTabbingOrder = createFactory(
-  require("devtools/client/accessibility/components/DisplayTabbingOrder")
+  require("resource://devtools/client/accessibility/components/DisplayTabbingOrder.js")
 );
 
-const { connect } = require("devtools/client/shared/vendor/react-redux");
+const {
+  connect,
+} = require("resource://devtools/client/shared/vendor/react-redux.js");
 
 function Toolbar({ audit, simulate, supportsTabbingOrder, toolboxDoc }) {
-  const betaID = "beta";
   const optionalSimulationSection = simulate
     ? [
         div({
@@ -44,15 +45,7 @@ function Toolbar({ audit, simulate, supportsTabbingOrder, toolboxDoc }) {
           role: "separator",
           className: "devtools-separator",
         }),
-        span(
-          {
-            className: "beta",
-            role: "presentation",
-            id: betaID,
-          },
-          L10N.getStr("accessibility.beta")
-        ),
-        DisplayTabbingOrder({ describedby: betaID }),
+        DisplayTabbingOrder(),
       ]
     : [];
 

@@ -2,7 +2,7 @@
 
 const { ExtensionAPI } = ExtensionCommon;
 
-add_task(async function() {
+add_task(async function () {
   const schema = [
     {
       namespace: "manifest",
@@ -41,7 +41,7 @@ add_task(async function() {
   ];
 
   class FakeAPI extends ExtensionAPI {
-    getAPI(context) {
+    getAPI() {
       return {
         testManifestPermission: {
           get testProperty() {

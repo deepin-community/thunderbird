@@ -2,68 +2,85 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-const sourceMapAssets = require("devtools-source-map/assets");
 const path = require("path");
-var fs = require("fs");
-const rimraf = require("rimraf");
-const webpack = require("webpack");
+const { rollup } = require("rollup");
+const nodeResolve = require("@rollup/plugin-node-resolve");
+const commonjs = require("@rollup/plugin-commonjs");
+const injectProcessEnv = require("rollup-plugin-inject-process-env");
+const nodePolyfills = require("rollup-plugin-node-polyfills");
 
 const projectPath = path.resolve(__dirname, "..");
 const bundlePath = path.join(projectPath, "./dist");
-const clientPath = path.join(projectPath, "../");
 
 process.env.NODE_ENV = "production";
 
-function moveFile(src, dest) {
-  if (!fs.existsSync(src)) {
-    return;
-  }
-
-  fs.copyFileSync(src, dest);
-  rimraf.sync(src);
+function getEntry(filename) {
+  return path.join(__dirname, "..", filename);
 }
 
+/**
+ * The `bundle` module will build the following:
+ * - parser-worker.js, pretty-print-worker.js, search-worker:
+ *     Workers used only by the debugger.
+ *     Sources at devtools/client/debugger/src/workers/*
+ */
 (async function bundle() {
-  process.env.TARGET = "firefox-panel";
-  process.env.OUTPUT_PATH = bundlePath;
-
-  const webpackConfig = require(path.resolve(projectPath, "webpack.config.js"));
-  const webpackCompiler = webpack(webpackConfig);
-
-  const result = await new Promise(resolve => {
-    webpackCompiler.run((error, stats) => resolve(stats));
-  });
-
-  if (result.hasErrors()) {
-    console.log(
-      "[bundle] Something went wrong. The error was written to assets-error.log"
-    );
-
-    fs.writeFileSync(
-      "assets-error.log",
-      JSON.stringify(result.toJson("verbose"), null, 2)
-    );
-    return;
-  }
-
-  console.log(`[bundle] Done bundling. Copy bundles to devtools/client/shared`);
-
-  moveFile(
-    path.join(bundlePath, "source-map-worker.js"),
-    path.join(clientPath, "shared/source-map/worker.js")
-  );
-
-  for (const filename of Object.keys(sourceMapAssets)) {
-    moveFile(
-      path.join(bundlePath, "source-map-worker-assets", filename),
-      path.join(clientPath, "shared/source-map/assets", filename)
-    );
-  }
-
-  moveFile(
-    path.join(bundlePath, "source-map-index.js"),
-    path.join(clientPath, "shared/source-map/index.js")
-  );
-
-  console.log("[bundle] Task completed.");
+  const rollupSucceeded = await bundleRollup();
+  process.exit(rollupSucceeded ? 0 : 1);
 })();
+
+/**
+ * Generates all dist/*-worker.js files
+ */
+async function bundleRollup() {
+  console.log(`[bundle|rollup] Start bundling…`);
+
+  let success = true;
+
+  // We need to handle workers 1 by 1 to be able to generate umd bundles.
+  const entries = {
+    "parser-worker": getEntry("src/workers/parser/worker.js"),
+    "pretty-print-worker": getEntry("src/workers/pretty-print/worker.js"),
+    "search-worker": getEntry("src/workers/search/worker.js"),
+  };
+
+  for (const [entryName, input] of Object.entries(entries)) {
+    let bundle;
+    try {
+      // create a bundle
+      bundle = await rollup({
+        input: {
+          [entryName]: input,
+        },
+        plugins: [
+          commonjs({
+            transformMixedEsModules: true,
+            strictRequires: true,
+          }),
+          injectProcessEnv({ NODE_ENV: "production" }),
+          nodeResolve(),
+          // read-wasm.js is part of source-map and is only for Node environment.
+          // we need to ignore it, otherwise __dirname is inlined with the path the bundle
+          // is generated from, which makes the verify-bundle task fail
+          nodePolyfills({ exclude: [/read-wasm\.js/] }),
+        ],
+      });
+      await bundle.write({
+        dir: bundlePath,
+        entryFileNames: "[name].js",
+        format: "umd",
+      });
+    } catch (error) {
+      success = false;
+      // do some error reporting
+      console.error("[bundle|rollup] Something went wrong.", error);
+    }
+    if (bundle) {
+      // closes the bundle
+      await bundle.close();
+    }
+  }
+
+  console.log(`[bundle|rollup] Done bundling`);
+  return success;
+}

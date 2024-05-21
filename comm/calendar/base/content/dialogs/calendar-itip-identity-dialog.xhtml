@@ -3,35 +3,44 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<?xml-stylesheet type="text/css" href="chrome://messenger/skin/messenger.css"?>
-<?xml-stylesheet type="text/css" href="chrome://calendar/skin/shared/dialogs/calendar-itip-identity-dialog.css"?>
-<?xml-stylesheet type="text/css" href="chrome://messenger/skin/themeableDialog.css"?>
-
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:html="http://www.w3.org/1999/xhtml"
-      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-      lightweightthemes="true">
-<head>
-  <title data-l10n-id="calendar-itip-identity-dialog-title"></title>
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  lightweightthemes="true"
+  style="max-width: 400px"
+>
+  <head>
+    <title data-l10n-id="calendar-itip-identity-dialog-box-title"></title>
 
-  <link rel="localization" href="calendar/calendar-itip-identity-dialog.ftl" />
+    <link rel="stylesheet" href="chrome://messenger/skin/messenger.css" />
+    <link
+      rel="stylesheet"
+      href="chrome://calendar/skin/shared/dialogs/calendar-itip-identity-dialog.css"
+    />
+    <link rel="stylesheet" href="chrome://messenger/skin/contextMenu.css" />
+    <link rel="stylesheet" href="chrome://messenger/skin/colors.css" />
+    <link rel="stylesheet" href="chrome://messenger/skin/themeableDialog.css" />
 
-  <script defer="defer" src="chrome://calendar/content/calendar-ui-utils.js"></script>
-  <script defer="defer" src="chrome://calendar/content/calendar-itip-identity-dialog.js"></script>
-  <script defer="defer" src="chrome://messenger/content/dialogShadowDom.js"></script>
-</head>
+    <link rel="localization" href="calendar/calendar-itip-identity-dialog.ftl" />
 
-<html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-  <dialog buttons="accept,cancel">
+    <script defer="defer" src="chrome://calendar/content/calendar-ui-utils.js"></script>
+    <script defer="defer" src="chrome://calendar/content/calendar-itip-identity-dialog.js"></script>
+    <script defer="defer" src="chrome://messenger/content/dialogShadowDom.js"></script>
+  </head>
 
-    <html:div id="calendar-itip-identity-warning"
-              data-l10n-id="calendar-itip-identity-warning"></html:div>
+  <html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    <dialog buttons="accept,cancel">
+      <html:div
+        id="calendar-itip-identity-warning"
+        data-l10n-id="calendar-itip-identity-warning-body"
+      ></html:div>
 
-    <label data-l10n-id="calendar-itip-identity-label" control="identity-menu"/>
+      <label id="identity-menu-label" control="identity-menu" />
 
-    <menulist id="identity-menu"/>
-  </dialog>
-</html:body>
+      <menulist id="identity-menu" />
+    </dialog>
+  </html:body>
 </html>

@@ -9,14 +9,16 @@
  * formatPercent methods.
  */
 
-const utils = require("devtools/client/memory/utils");
+const utils = require("resource://devtools/client/memory/utils.js");
 const {
   snapshotState: states,
   viewState,
-} = require("devtools/client/memory/constants");
-const { Preferences } = require("resource://gre/modules/Preferences.jsm");
+} = require("resource://devtools/client/memory/constants.js");
+const { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
+);
 
-add_task(async function() {
+add_task(async function () {
   const s1 = utils.createSnapshot({ view: { state: viewState.CENSUS } });
   const s2 = utils.createSnapshot({ view: { state: viewState.CENSUS } });
   equal(
@@ -24,8 +26,9 @@ add_task(async function() {
     states.SAVING,
     "utils.createSnapshot() creates snapshot in saving state"
   );
-  ok(
-    s1.id !== s2.id,
+  Assert.notStrictEqual(
+    s1.id,
+    s2.id,
     "utils.createSnapshot() creates snapshot with unique ids"
   );
 

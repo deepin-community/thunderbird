@@ -6,14 +6,7 @@
  * Test for restrictions set through UrlbarQueryContext.sources.
  */
 
-add_task(async function setup() {
-  let engine = await addTestSuggestionsEngine();
-  let oldDefaultEngine = await Services.search.getDefault();
-  Services.search.setDefault(engine);
-  registerCleanupFunction(async () =>
-    Services.search.setDefault(oldDefaultEngine)
-  );
-});
+testEngine_setup();
 
 add_task(async function test_restrictions() {
   await PlacesTestUtils.addVisits([
@@ -85,25 +78,6 @@ add_task(async function test_restrictions() {
   Assert.equal(
     results[0].payload.query,
     `${UrlbarTokenizer.RESTRICT.BOOKMARKS} match`,
-    "The restriction token should be ignored and not stripped"
-  );
-
-  info("search restrict with alias");
-  await SearchTestUtils.installSearchExtension({
-    name: "Test",
-    keyword: "match",
-  });
-  results = await get_results({
-    sources: [UrlbarUtils.RESULT_SOURCE.SEARCH],
-    searchString: "match this",
-  });
-  Assert.ok(
-    !results.some(r => r.payload.engine != SUGGESTIONS_ENGINE_NAME),
-    "All the results should be search results and the alias should be ignored"
-  );
-  Assert.equal(
-    results[0].payload.query,
-    `match this`,
     "The restriction token should be ignored and not stripped"
   );
 

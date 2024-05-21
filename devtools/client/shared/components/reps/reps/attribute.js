@@ -5,15 +5,15 @@
 "use strict";
 
 // Make this available to both AMD and CJS environments
-define(function(require, exports, module) {
+define(function (require, exports, module) {
   // ReactJS
   const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
   const { span } = require("devtools/client/shared/vendor/react-dom-factories");
 
   // Reps
   const {
+    appendRTLClassNameIfNeeded,
     getGripType,
-    isGrip,
     wrapRender,
   } = require("devtools/client/shared/components/reps/reps/rep-utils");
   const {
@@ -43,7 +43,12 @@ define(function(require, exports, module) {
 
     return span(
       config,
-      span({ className: "attrName" }, attrName),
+      span(
+        {
+          className: appendRTLClassNameIfNeeded("attrName", attrName),
+        },
+        attrName
+      ),
       span({ className: "attrEqual" }, "="),
       StringRep({ className: "attrValue", object: value })
     );
@@ -65,11 +70,7 @@ define(function(require, exports, module) {
 
   // Registration
   function supportsObject(grip, noGrip = false) {
-    if (noGrip === true || !isGrip(grip)) {
-      return false;
-    }
-
-    return getGripType(grip, noGrip) == "Attr" && grip.preview;
+    return getGripType(grip, noGrip) == "Attr" && grip?.preview;
   }
 
   module.exports = {

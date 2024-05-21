@@ -19,12 +19,11 @@
 #include "nsWeakReference.h"
 #include "mozIDOMWindow.h"
 #include "nsTArray.h"
-#include "nsIFolderListener.h"
 #include "nsIMsgStatusFeedback.h"
 
-class nsMessenger : public nsIMessenger,
-                    public nsSupportsWeakReference,
-                    public nsIFolderListener {
+class nsSaveAllAttachmentsState;
+
+class nsMessenger : public nsIMessenger, public nsSupportsWeakReference {
   using PathString = mozilla::PathString;
 
  public:
@@ -32,13 +31,13 @@ class nsMessenger : public nsIMessenger,
 
   NS_DECL_ISUPPORTS
   NS_DECL_NSIMESSENGER
-  NS_DECL_NSIFOLDERLISTENER
 
   nsresult Alert(const char* stringName);
 
   nsresult SaveAttachment(nsIFile* file, const nsACString& unescapedUrl,
                           const nsACString& messageUri,
-                          const nsACString& contentType, void* closure,
+                          const nsACString& contentType,
+                          nsSaveAllAttachmentsState* saveState,
                           nsIUrlListener* aListener);
   nsresult PromptIfFileExists(nsIFile* file);
   nsresult DetachAttachments(const nsTArray<nsCString>& aContentTypeArray,
@@ -46,12 +45,14 @@ class nsMessenger : public nsIMessenger,
                              const nsTArray<nsCString>& aDisplayNameArray,
                              const nsTArray<nsCString>& aMessageUriArray,
                              nsTArray<nsCString>* saveFileUris,
+                             nsIUrlListener* aListener,
                              bool withoutWarning = false);
   nsresult SaveAllAttachments(const nsTArray<nsCString>& contentTypeArray,
                               const nsTArray<nsCString>& urlArray,
                               const nsTArray<nsCString>& displayNameArray,
                               const nsTArray<nsCString>& messageUriArray,
-                              bool detaching);
+                              bool detaching,
+                              nsIUrlListener* aListener = nullptr);
   nsresult SaveOneAttachment(const nsACString& aContentType,
                              const nsACString& aURL,
                              const nsACString& aDisplayName,
@@ -77,11 +78,8 @@ class nsMessenger : public nsIMessenger,
                          int32_t* aSaveAsFileType, nsIFile** aSaveAsFile);
 
   nsresult GetSaveToDir(nsIFile** aSaveToDir);
-  nsresult ShowPicker(nsIFilePicker* aPicker, int16_t* aResult);
-
-  // The URL to load in CompleteOpenURL. An empty string to aborts loading.
-  nsCString mURLToLoad;
-  nsresult CompleteOpenURL();
+  nsresult ShowPicker(nsIFilePicker* aPicker,
+                      nsIFilePicker::ResultCode* aResult);
 
   class nsFilePickerShownCallback : public nsIFilePickerShownCallback {
     virtual ~nsFilePickerShownCallback() {}
@@ -90,11 +88,11 @@ class nsMessenger : public nsIMessenger,
     nsFilePickerShownCallback();
     NS_DECL_ISUPPORTS
 
-    NS_IMETHOD Done(int16_t aResult) override;
+    NS_IMETHOD Done(nsIFilePicker::ResultCode aResult) override;
 
    public:
     bool mPickerDone;
-    int16_t mResult;
+    nsIFilePicker::ResultCode mResult;
   };
 
   nsString mId;
@@ -108,15 +106,7 @@ class nsMessenger : public nsIMessenger,
   // String bundles...
   nsCOMPtr<nsIStringBundle> mStringBundle;
 
-  nsCString mCurrentDisplayCharset;
-
   nsCOMPtr<nsISupports> mSearchContext;
-  // this used when the user attempts to force a charset reload of a message...
-  // we need to get the last displayed uri so we can re-display it.
-  nsCString mLastDisplayURI;
-  nsCString mNavigatingToUri;
-  nsTArray<nsCString> mLoadedMsgHistory;
-  int32_t mCurHistoryPos;
 };
 
 #define NS_MESSENGER_CID                             \

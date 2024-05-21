@@ -186,9 +186,9 @@ HASH_ResultLen(HASH_HashType type)
     return hash_obj->length;
 }
 
-static SECStatus
-HASH_HashBuf(HASH_HashType type, unsigned char *dest,
-             const unsigned char *src, PRUint32 src_len)
+SECStatus
+PQG_HashBuf(HASH_HashType type, unsigned char *dest,
+            const unsigned char *src, PRUint32 src_len)
 {
     const SECHashObject *hash_obj = HASH_GetRawHashObject(type);
     void *hashcx = NULL;
@@ -342,7 +342,7 @@ addToSeed(const SECItem *seed,
     CHECK_MPI_OK(mp_init(&modulus));
     SECITEM_TO_MPINT(*seed, &s); /* s = seed */
     /* seed += addend */
-    if (addend < MP_DIGIT_MAX) {
+    if (sizeof(addend) < sizeof(mp_digit) || addend < MP_DIGIT_MAX) {
         CHECK_MPI_OK(mp_add_d(&s, (mp_digit)addend, &s));
     } else {
         CHECK_MPI_OK(mp_init(&tmp));
@@ -385,7 +385,7 @@ addToSeedThenHash(HASH_HashType hashtype,
     if (rv != SECSuccess) {
         return rv;
     }
-    rv = HASH_HashBuf(hashtype, hashOutBuf, str.data, str.len); /* hash result */
+    rv = PQG_HashBuf(hashtype, hashOutBuf, str.data, str.len); /* hash result */
     if (str.data)
         SECITEM_ZfreeItem(&str, PR_FALSE);
     return rv;
@@ -457,7 +457,7 @@ makeQ2fromSeed(
     ** Step 6.
     ** "Compute U = hash[SEED] mod 2**N-1]."
     **/
-    CHECK_SEC_OK(HASH_HashBuf(hashtype, U, seed->data, seed->len));
+    CHECK_SEC_OK(PQG_HashBuf(hashtype, U, seed->data, seed->len));
     /* mod 2**N . Step 7 will explicitly set the top bit to 1, so no need
      * to handle mod 2**N-1 */
     if (hashLen > N_bytes) {
@@ -784,7 +784,7 @@ makePrimefromSeedShaweTaylor(
 
 step_5:
     /* Step 5 c = Hash(prime_seed) xor Hash(prime_seed+1). */
-    CHECK_SEC_OK(HASH_HashBuf(hashtype, x, prime_seed->data, prime_seed->len));
+    CHECK_SEC_OK(PQG_HashBuf(hashtype, x, prime_seed->data, prime_seed->len));
     CHECK_SEC_OK(addToSeedThenHash(hashtype, prime_seed, 1, seedlen, &x[hashlen]));
     for (i = 0; i < hashlen; i++) {
         x[i] = x[i] ^ x[i + hashlen];
@@ -1432,7 +1432,7 @@ step_5:
     ** "will give an acceptable probability of error."
     */
     /*CHECK_SEC_OK( prm_RabinTest(&Q, &passed) );*/
-    err = mpp_pprime(&Q, prime_testcount_q(L, N));
+    err = mpp_pprime_secure(&Q, prime_testcount_q(L, N));
     passed = (err == MP_YES) ? SECSuccess : SECFailure;
     /* ******************************************************************
     ** Step 9. (Step 5 in 186-1) "If q is not prime, goto step 5 (1 in 186-1)."
@@ -1485,7 +1485,7 @@ step_5:
     ** "Perform a robust primality test on p."
     */
         /*CHECK_SEC_OK( prm_RabinTest(&P, &passed) );*/
-        err = mpp_pprime(&P, prime_testcount_p(L, N));
+        err = mpp_pprime_secure(&P, prime_testcount_p(L, N));
         passed = (err == MP_YES) ? SECSuccess : SECFailure;
         /* ******************************************************************
     ** Step 11.8. "If p is determined to be primed return VALID
@@ -1713,9 +1713,9 @@ PQG_VerifyParams(const PQGParams *params,
     CHECK_MPI_OK(mp_mod(&P, &Q, &r));
     CHECKPARAM(mp_cmp_d(&r, 1) == 0);
     /* 5.  Q is prime */
-    CHECKPARAM(mpp_pprime(&Q, prime_testcount_q(L, N)) == MP_YES);
+    CHECKPARAM(mpp_pprime_secure(&Q, prime_testcount_q(L, N)) == MP_YES);
     /* 6.  P is prime */
-    CHECKPARAM(mpp_pprime(&P, prime_testcount_p(L, N)) == MP_YES);
+    CHECKPARAM(mpp_pprime_secure(&P, prime_testcount_p(L, N)) == MP_YES);
     /* Steps 7-12 are done only if the optional PQGVerify is supplied. */
     /* continue processing P */
     /* 7.  counter < 4*L */

@@ -1,9 +1,5 @@
 "use strict";
 
-const PREF_DISABLE_SECURITY =
-  "security.turn_off_all_security_so_that_" +
-  "viruses_can_take_over_this_computer";
-
 const HOSTS = new Set(["example.com", "example.org"]);
 
 const server = createHttpServer({ hosts: HOSTS });
@@ -17,6 +13,10 @@ server.registerPathHandler("/dummy", (request, response) => {
   response.setHeader("Content-Type", "text/html", false);
   response.write("<!DOCTYPE html><html></html>");
 });
+
+function sendMessage(page, msg, data) {
+  return MessageChannel.sendMessage(page.browser.messageManager, msg, data);
+}
 
 add_task(async function test_permissions() {
   function background() {
@@ -47,7 +47,7 @@ add_task(async function test_permissions() {
 
   const frameScript = () => {
     const messageListener = {
-      async receiveMessage({ target, messageName, recipient, data, name }) {
+      async receiveMessage() {
         /* globals content */
         let doc = content.document;
         let iframe = doc.createElement("iframe");
@@ -71,8 +71,8 @@ add_task(async function test_permissions() {
       },
     };
 
-    const { MessageChannel } = ChromeUtils.import(
-      "resource://gre/modules/MessageChannel.jsm"
+    const { MessageChannel } = ChromeUtils.importESModule(
+      "resource://testing-common/MessageChannel.sys.mjs"
     );
     MessageChannel.addListener(this, "Test:Check", messageListener);
   };
@@ -82,7 +82,7 @@ add_task(async function test_permissions() {
   );
   await contentPage.loadFrameScript(frameScript);
 
-  let results = await contentPage.sendMessage("Test:Check", {});
+  let results = await sendMessage(contentPage, "Test:Check", {});
   equal(
     results.page,
     "redirected",
@@ -94,11 +94,10 @@ add_task(async function test_permissions() {
     "Regular webRequest redirect works from an unprivileged page"
   );
 
-  Services.prefs.setBoolPref(PREF_DISABLE_SECURITY, true);
   Services.prefs.setBoolPref("extensions.webapi.testing", true);
   Services.prefs.setBoolPref("extensions.webapi.testing.http", true);
 
-  results = await contentPage.sendMessage("Test:Check", {});
+  results = await sendMessage(contentPage, "Test:Check", {});
   equal(
     results.page,
     "original",
@@ -131,7 +130,7 @@ add_task(async function test_no_webRequestBlocking_error() {
       browser.test.assertThrows(
         () => {
           browser.webRequest[eventName].addListener(
-            details => {},
+            () => {},
             { urls: ["<all_urls>"] },
             ["blocking"]
           );

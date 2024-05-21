@@ -13,8 +13,7 @@ var {
   be_in_folder,
   close_tab,
   create_folder,
-  make_new_sets_in_folder,
-  mc,
+  make_message_sets_in_folders,
   open_selected_message_in_new_tab,
   open_selected_message_in_new_window,
   press_delete,
@@ -22,21 +21,15 @@ var {
   select_click_row,
   set_close_message_on_delete,
   switch_tab,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var {
-  close_window,
-  plan_for_window_close,
-  wait_for_window_close,
-} = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
 
 var folder;
 
-add_task(function setupModule(module) {
-  folder = create_folder("CloseWindowOnDeleteA");
-
-  make_new_sets_in_folder(folder, [{ count: 10 }]);
+add_setup(async function () {
+  folder = await create_folder("CloseWindowOnDeleteA");
+  await make_message_sets_in_folders([folder], [{ count: 10 }]);
 });
 
 /**
@@ -46,30 +39,30 @@ add_task(function setupModule(module) {
 add_task(
   async function test_close_message_window_on_delete_from_message_window() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    let msgc = await open_selected_message_in_new_window();
+    const msgc = await open_selected_message_in_new_window();
 
-    select_click_row(1);
-    let msgc2 = await open_selected_message_in_new_window();
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_window();
 
-    let preCount = folder.getTotalMessages(false);
-    msgc.window.focus();
-    plan_for_window_close(msgc);
-    press_delete(msgc);
+    const preCount = folder.getTotalMessages(false);
+    msgc.focus();
+    const closePromise = BrowserTestUtils.domWindowClosed(msgc);
+    await press_delete(msgc);
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing window");
     }
-    wait_for_window_close(msgc);
+    await closePromise;
 
-    if (msgc2.window.closed) {
+    if (msgc2.closed) {
       throw new Error("should only have closed the active window");
     }
 
-    close_window(msgc2);
+    await BrowserTestUtils.closeWindow(msgc2);
 
     reset_close_message_on_delete();
   }
@@ -82,34 +75,34 @@ add_task(
 add_task(
   async function test_close_multiple_message_windows_on_delete_from_message_window() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    let msgc = await open_selected_message_in_new_window();
-    let msgcA = await open_selected_message_in_new_window();
+    const msgc = await open_selected_message_in_new_window();
+    const msgcA = await open_selected_message_in_new_window();
 
-    select_click_row(1);
-    let msgc2 = await open_selected_message_in_new_window();
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_window();
 
-    let preCount = folder.getTotalMessages(false);
-    msgc.window.focus();
-    plan_for_window_close(msgc);
-    plan_for_window_close(msgcA);
-    press_delete(msgc);
+    const preCount = folder.getTotalMessages(false);
+    msgc.focus();
+    const closePromise = BrowserTestUtils.domWindowClosed(msgc);
+    const closePromiseA = BrowserTestUtils.domWindowClosed(msgcA);
+    await press_delete(msgc);
 
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing window");
     }
-    wait_for_window_close(msgc);
-    wait_for_window_close(msgcA);
+    await closePromise;
+    await closePromiseA;
 
-    if (msgc2.window.closed) {
+    if (msgc2.closed) {
       throw new Error("should only have closed the active window");
     }
 
-    close_window(msgc2);
+    await BrowserTestUtils.closeWindow(msgc2);
 
     reset_close_message_on_delete();
   }
@@ -122,35 +115,35 @@ add_task(
 add_task(
   async function test_close_multiple_message_windows_on_delete_from_3pane_window() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    let msgc = await open_selected_message_in_new_window();
-    let msgcA = await open_selected_message_in_new_window();
+    const msgc = await open_selected_message_in_new_window();
+    const msgcA = await open_selected_message_in_new_window();
 
-    select_click_row(1);
-    let msgc2 = await open_selected_message_in_new_window();
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_window();
 
-    let preCount = folder.getTotalMessages(false);
-    mc.window.focus();
-    plan_for_window_close(msgc);
-    plan_for_window_close(msgcA);
-    select_click_row(0);
-    press_delete(mc);
+    const preCount = folder.getTotalMessages(false);
+    window.focus();
+    const closePromise = BrowserTestUtils.domWindowClosed(msgc);
+    const closePromiseA = BrowserTestUtils.domWindowClosed(msgcA);
+    await select_click_row(0);
+    await press_delete(window);
 
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing window");
     }
-    wait_for_window_close(msgc);
-    wait_for_window_close(msgcA);
+    await closePromise;
+    await closePromiseA;
 
-    if (msgc2.window.closed) {
+    if (msgc2.closed) {
       throw new Error("should only have closed the first window");
     }
 
-    close_window(msgc2);
+    await BrowserTestUtils.closeWindow(msgc2);
 
     reset_close_message_on_delete();
   }
@@ -160,21 +153,21 @@ add_task(
  * Delete a message and check that the message tab is closed
  * where appropriate.
  */
-add_task(function test_close_message_tab_on_delete_from_message_tab() {
+add_task(async function test_close_message_tab_on_delete_from_message_tab() {
   set_close_message_on_delete(true);
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // select the first message
-  select_click_row(0);
+  await select_click_row(0);
   // display it
-  let msgc = open_selected_message_in_new_tab(true);
+  const msgc = await open_selected_message_in_new_tab(true);
 
-  select_click_row(1);
-  let msgc2 = open_selected_message_in_new_tab(true);
+  await select_click_row(1);
+  const msgc2 = await open_selected_message_in_new_tab(true);
 
-  let preCount = folder.getTotalMessages(false);
-  switch_tab(msgc);
-  press_delete();
+  const preCount = folder.getTotalMessages(false);
+  await switch_tab(msgc);
+  await press_delete();
 
   if (folder.getTotalMessages(false) != preCount - 1) {
     throw new Error("didn't delete a message before closing tab");
@@ -182,7 +175,7 @@ add_task(function test_close_message_tab_on_delete_from_message_tab() {
 
   assert_number_of_tabs_open(2);
 
-  if (msgc2 != mc.tabmail.tabInfo[1]) {
+  if (msgc2 != document.getElementById("tabmail").tabInfo[1]) {
     throw new Error("should only have closed the active tab");
   }
 
@@ -196,22 +189,22 @@ add_task(function test_close_message_tab_on_delete_from_message_tab() {
  * message is deleted from one of them.
  */
 add_task(
-  function test_close_multiple_message_tabs_on_delete_from_message_tab() {
+  async function test_close_multiple_message_tabs_on_delete_from_message_tab() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    let msgc = open_selected_message_in_new_tab(true);
-    open_selected_message_in_new_tab(true);
+    const msgc = await open_selected_message_in_new_tab(true);
+    await open_selected_message_in_new_tab(true);
 
-    select_click_row(1);
-    let msgc2 = open_selected_message_in_new_tab(true);
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_tab(true);
 
-    let preCount = folder.getTotalMessages(false);
-    switch_tab(msgc);
-    press_delete();
+    const preCount = folder.getTotalMessages(false);
+    await switch_tab(msgc);
+    await press_delete();
 
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing tab");
@@ -219,7 +212,7 @@ add_task(
 
     assert_number_of_tabs_open(2);
 
-    if (msgc2 != mc.tabmail.tabInfo[1]) {
+    if (msgc2 != document.getElementById("tabmail").tabInfo[1]) {
       throw new Error("should only have closed the active tab");
     }
 
@@ -234,23 +227,23 @@ add_task(
  * message is deleted from the 3-pane window.
  */
 add_task(
-  function test_close_multiple_message_tabs_on_delete_from_3pane_window() {
+  async function test_close_multiple_message_tabs_on_delete_from_3pane_window() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    open_selected_message_in_new_tab(true);
-    open_selected_message_in_new_tab(true);
+    await open_selected_message_in_new_tab(true);
+    await open_selected_message_in_new_tab(true);
 
-    select_click_row(1);
-    let msgc2 = open_selected_message_in_new_tab(true);
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_tab(true);
 
-    let preCount = folder.getTotalMessages(false);
-    mc.window.focus();
-    select_click_row(0);
-    press_delete(mc);
+    const preCount = folder.getTotalMessages(false);
+    window.focus();
+    await select_click_row(0);
+    await press_delete(window);
 
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing window");
@@ -258,7 +251,7 @@ add_task(
 
     assert_number_of_tabs_open(2);
 
-    if (msgc2 != mc.tabmail.tabInfo[1]) {
+    if (msgc2 != document.getElementById("tabmail").tabInfo[1]) {
       throw new Error("should only have closed the active tab");
     }
 
@@ -275,41 +268,41 @@ add_task(
 add_task(
   async function test_close_multiple_windows_tabs_on_delete_from_3pane_window() {
     set_close_message_on_delete(true);
-    be_in_folder(folder);
+    await be_in_folder(folder);
 
     // select the first message
-    select_click_row(0);
+    await select_click_row(0);
     // display it
-    open_selected_message_in_new_tab(true);
-    let msgcA = await open_selected_message_in_new_window();
+    await open_selected_message_in_new_tab(true);
+    const msgcA = await open_selected_message_in_new_window();
 
-    select_click_row(1);
-    let msgc2 = open_selected_message_in_new_tab(true);
-    let msgc2A = await open_selected_message_in_new_window();
+    await select_click_row(1);
+    const msgc2 = await open_selected_message_in_new_tab(true);
+    const msgc2A = await open_selected_message_in_new_window();
 
-    let preCount = folder.getTotalMessages(false);
-    mc.window.focus();
-    plan_for_window_close(msgcA);
-    select_click_row(0);
-    press_delete(mc);
+    const preCount = folder.getTotalMessages(false);
+    window.focus();
+    const closePromise = BrowserTestUtils.domWindowClosed(msgcA);
+    await select_click_row(0);
+    await press_delete(window);
 
     if (folder.getTotalMessages(false) != preCount - 1) {
       throw new Error("didn't delete a message before closing window");
     }
-    wait_for_window_close(msgcA);
+    await closePromise;
 
     assert_number_of_tabs_open(2);
 
-    if (msgc2 != mc.tabmail.tabInfo[1]) {
+    if (msgc2 != document.getElementById("tabmail").tabInfo[1]) {
       throw new Error("should only have closed the active tab");
     }
 
-    if (msgc2A.window.closed) {
+    if (msgc2A.closed) {
       throw new Error("should only have closed the first window");
     }
 
     close_tab(msgc2);
-    close_window(msgc2A);
+    await BrowserTestUtils.closeWindow(msgc2A);
 
     reset_close_message_on_delete();
 

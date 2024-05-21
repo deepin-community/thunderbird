@@ -6,6 +6,8 @@
 
 #include "mozilla/Components.h"
 #include "mozilla/ClearOnShutdown.h"
+#include "mozilla/TimeStamp.h"
+#include "mozilla/glean/GleanMetrics.h"
 #include "mozilla/NullPrincipal.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/net/DNS.h"
@@ -15,6 +17,7 @@
 #include "nsIHttpChannel.h"
 #include "nsIHttpChannelInternal.h"
 #include "nsIHttpsOnlyModePermission.h"
+#include "nsILoadInfo.h"
 #include "nsIPermissionManager.h"
 #include "nsIPrincipal.h"
 #include "nsIRedirectHistoryEntry.h"
@@ -41,6 +44,11 @@ bool nsHTTPSOnlyUtils::IsHttpsOnlyModeEnabled(bool aFromPrivateWindow) {
 
 /* static */
 bool nsHTTPSOnlyUtils::IsHttpsFirstModeEnabled(bool aFromPrivateWindow) {
+  // HTTPS-Only takes priority over HTTPS-First
+  if (IsHttpsOnlyModeEnabled(aFromPrivateWindow)) {
+    return false;
+  }
+
   // if the general pref is set to true, then we always return
   if (mozilla::StaticPrefs::dom_security_https_first()) {
     return true;
@@ -75,8 +83,10 @@ void nsHTTPSOnlyUtils::PotentiallyFireHttpRequestToShortenTimout(
 
   // if neither HTTPS-Only nor HTTPS-First mode is enabled, then there is
   // nothing to do here.
-  if (!IsHttpsOnlyModeEnabled(isPrivateWin) &&
-      !IsHttpsFirstModeEnabled(isPrivateWin)) {
+  if ((!IsHttpsOnlyModeEnabled(isPrivateWin) &&
+       !IsHttpsFirstModeEnabled(isPrivateWin)) &&
+      !(loadInfo->GetWasSchemelessInput() &&
+        mozilla::StaticPrefs::dom_security_https_first_schemeless())) {
     return;
   }
 
@@ -111,6 +121,21 @@ void nsHTTPSOnlyUtils::PotentiallyFireHttpRequestToShortenTimout(
   channel->GetURI(getter_AddRefs(channelURI));
   if (!channelURI->SchemeIs("http")) {
     return;
+  }
+
+  // HTTPS-First only applies to standard ports but HTTPS-Only brute forces
+  // all http connections to be https and overrules HTTPS-First. In case
+  // HTTPS-First is enabled, but HTTPS-Only is not enabled, we might return
+  // early if attempting to send a background request to a non standard port.
+  if ((IsHttpsFirstModeEnabled(isPrivateWin) ||
+       (loadInfo->GetWasSchemelessInput() &&
+        mozilla::StaticPrefs::dom_security_https_first_schemeless()))) {
+    int32_t port = 0;
+    nsresult rv = channelURI->GetPort(&port);
+    int defaultPortforScheme = NS_GetDefaultPort("http");
+    if (NS_SUCCEEDED(rv) && port != defaultPortforScheme && port != -1) {
+      return;
+    }
   }
 
   // Check for general exceptions
@@ -149,12 +174,20 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeRequest(nsIURI* aURI,
   }
 
   // All subresources of an exempt triggering principal are also exempt
-  if (aLoadInfo->GetExternalContentPolicyType() !=
-      ExtContentPolicy::TYPE_DOCUMENT) {
+  ExtContentPolicyType contentType = aLoadInfo->GetExternalContentPolicyType();
+  if (contentType != ExtContentPolicy::TYPE_DOCUMENT) {
     if (!aLoadInfo->TriggeringPrincipal()->IsSystemPrincipal() &&
         TestIfPrincipalIsExempt(aLoadInfo->TriggeringPrincipal())) {
       return false;
     }
+  }
+
+  // We can not upgrade "Save-As" downloads, since we have no way of detecting
+  // if the upgrade failed (Bug 1674859). For now we will just allow the
+  // download, since there will still be a visual warning about the download
+  // being insecure.
+  if (contentType == ExtContentPolicyType::TYPE_SAVEAS_DOWNLOAD) {
+    return false;
   }
 
   // We can upgrade the request - let's log it to the console
@@ -165,10 +198,13 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeRequest(nsIURI* aURI,
   NS_ConvertUTF8toUTF16 reportSpec(aURI->GetSpecOrDefault());
   NS_ConvertUTF8toUTF16 reportScheme(scheme);
 
+  bool isSpeculative = aLoadInfo->GetExternalContentPolicyType() ==
+                       ExtContentPolicy::TYPE_SPECULATIVE;
   AutoTArray<nsString, 2> params = {reportSpec, reportScheme};
-  nsHTTPSOnlyUtils::LogLocalizedString("HTTPSOnlyUpgradeRequest", params,
-                                       nsIScriptError::warningFlag, aLoadInfo,
-                                       aURI);
+  nsHTTPSOnlyUtils::LogLocalizedString(
+      isSpeculative ? "HTTPSOnlyUpgradeSpeculativeConnection"
+                    : "HTTPSOnlyUpgradeRequest",
+      params, nsIScriptError::warningFlag, aLoadInfo, aURI);
 
   // If the status was not determined before, we now indicate that the request
   // will get upgraded, but no event-listener has been registered yet.
@@ -203,6 +239,12 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeWebSocket(nsIURI* aURI,
     nsHTTPSOnlyUtils::LogLocalizedString("HTTPSOnlyNoUpgradeException", params,
                                          nsIScriptError::infoFlag, aLoadInfo,
                                          aURI);
+    return false;
+  }
+
+  // All subresources of an exempt triggering principal are also exempt.
+  if (!aLoadInfo->TriggeringPrincipal()->IsSystemPrincipal() &&
+      TestIfPrincipalIsExempt(aLoadInfo->TriggeringPrincipal())) {
     return false;
   }
 
@@ -273,6 +315,25 @@ bool nsHTTPSOnlyUtils::IsUpgradeDowngradeEndlessLoop(
   nsAutoCString uriHost;
   aURI->GetAsciiHost(uriHost);
 
+  auto uriAndPrincipalComparator = [&](nsIPrincipal* aPrincipal) {
+    nsAutoCString principalHost;
+    aPrincipal->GetAsciiHost(principalHost);
+    bool checkPath = mozilla::StaticPrefs::
+        dom_security_https_only_check_path_upgrade_downgrade_endless_loop();
+    if (!checkPath) {
+      return uriHost.Equals(principalHost);
+    }
+
+    nsAutoCString uriPath;
+    nsresult rv = aURI->GetFilePath(uriPath);
+    if (NS_FAILED(rv)) {
+      return false;
+    }
+    nsAutoCString principalPath;
+    aPrincipal->GetFilePath(principalPath);
+    return uriHost.Equals(principalHost) && uriPath.Equals(principalPath);
+  };
+
   // 6. Check actual redirects. If the Principal that kicked off the
   // load/redirect is not https, then it's definitely not a redirect cause by
   // https-only. If the scheme of the principal however is https and the
@@ -283,12 +344,9 @@ bool nsHTTPSOnlyUtils::IsUpgradeDowngradeEndlessLoop(
     nsCOMPtr<nsIPrincipal> redirectPrincipal;
     for (nsIRedirectHistoryEntry* entry : aLoadInfo->RedirectChain()) {
       entry->GetPrincipal(getter_AddRefs(redirectPrincipal));
-      if (redirectPrincipal && redirectPrincipal->SchemeIs("https")) {
-        nsAutoCString redirectHost;
-        redirectPrincipal->GetAsciiHost(redirectHost);
-        if (uriHost.Equals(redirectHost)) {
-          return true;
-        }
+      if (redirectPrincipal && redirectPrincipal->SchemeIs("https") &&
+          uriAndPrincipalComparator(redirectPrincipal)) {
+        return true;
       }
     }
   } else {
@@ -311,9 +369,8 @@ bool nsHTTPSOnlyUtils::IsUpgradeDowngradeEndlessLoop(
   if (!triggeringPrincipal->SchemeIs("https")) {
     return false;
   }
-  nsAutoCString triggeringHost;
-  triggeringPrincipal->GetAsciiHost(triggeringHost);
-  return uriHost.Equals(triggeringHost);
+
+  return uriAndPrincipalComparator(triggeringPrincipal);
 }
 
 /* static */
@@ -321,13 +378,16 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeHttpsFirstRequest(nsIURI* aURI,
                                                       nsILoadInfo* aLoadInfo) {
   // 1. Check if HTTPS-First Mode is enabled
   bool isPrivateWin = aLoadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
-  if (!IsHttpsFirstModeEnabled(isPrivateWin)) {
+  if (!IsHttpsFirstModeEnabled(isPrivateWin) &&
+      !(aLoadInfo->GetWasSchemelessInput() &&
+        mozilla::StaticPrefs::dom_security_https_first_schemeless())) {
     return false;
   }
 
-  // 2. HTTPS-First only upgrades top-level loads
-  if (aLoadInfo->GetExternalContentPolicyType() !=
-      ExtContentPolicy::TYPE_DOCUMENT) {
+  // 2. HTTPS-First only upgrades top-level loads (and speculative connections)
+  ExtContentPolicyType contentType = aLoadInfo->GetExternalContentPolicyType();
+  if (contentType != ExtContentPolicy::TYPE_DOCUMENT &&
+      contentType != ExtContentPolicy::TYPE_SPECULATIVE) {
     return false;
   }
 
@@ -379,16 +439,37 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeHttpsFirstRequest(nsIURI* aURI,
 
   // We can upgrade the request - let's log to the console and set the status
   // so we know that we upgraded the request.
-  nsAutoCString scheme;
-  aURI->GetScheme(scheme);
-  scheme.AppendLiteral("s");
-  NS_ConvertUTF8toUTF16 reportSpec(aURI->GetSpecOrDefault());
-  NS_ConvertUTF8toUTF16 reportScheme(scheme);
+  if (aLoadInfo->GetWasSchemelessInput() &&
+      !IsHttpsFirstModeEnabled(isPrivateWin)) {
+    nsAutoCString urlCString;
+    aURI->GetSpec(urlCString);
+    NS_ConvertUTF8toUTF16 urlString(urlCString);
 
-  AutoTArray<nsString, 2> params = {reportSpec, reportScheme};
-  nsHTTPSOnlyUtils::LogLocalizedString("HTTPSOnlyUpgradeRequest", params,
-                                       nsIScriptError::warningFlag, aLoadInfo,
-                                       aURI, true);
+    AutoTArray<nsString, 1> params = {urlString};
+    nsHTTPSOnlyUtils::LogLocalizedString("HTTPSFirstSchemeless", params,
+                                         nsIScriptError::warningFlag, aLoadInfo,
+                                         aURI, true);
+
+    mozilla::glean::httpsfirst::upgraded_schemeless.Add();
+  } else {
+    nsAutoCString scheme;
+
+    aURI->GetScheme(scheme);
+    scheme.AppendLiteral("s");
+    NS_ConvertUTF8toUTF16 reportSpec(aURI->GetSpecOrDefault());
+    NS_ConvertUTF8toUTF16 reportScheme(scheme);
+
+    bool isSpeculative = contentType == ExtContentPolicy::TYPE_SPECULATIVE;
+    AutoTArray<nsString, 2> params = {reportSpec, reportScheme};
+    nsHTTPSOnlyUtils::LogLocalizedString(
+        isSpeculative ? "HTTPSOnlyUpgradeSpeculativeConnection"
+                      : "HTTPSOnlyUpgradeRequest",
+        params, nsIScriptError::warningFlag, aLoadInfo, aURI, true);
+
+    if (!isSpeculative) {
+      mozilla::glean::httpsfirst::upgraded.Add();
+    }
+  }
 
   // Set flag so we know that we upgraded the request
   httpsOnlyStatus |= nsILoadInfo::HTTPS_ONLY_UPGRADED_HTTPS_FIRST;
@@ -398,9 +479,11 @@ bool nsHTTPSOnlyUtils::ShouldUpgradeHttpsFirstRequest(nsIURI* aURI,
 
 /* static */
 already_AddRefed<nsIURI>
-nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(nsIChannel* aChannel,
-                                                        nsresult aStatus) {
-  nsCOMPtr<nsILoadInfo> loadInfo = aChannel->LoadInfo();
+nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(
+    mozilla::net::DocumentLoadListener* aDocumentLoadListener,
+    nsresult aStatus) {
+  nsCOMPtr<nsIChannel> channel = aDocumentLoadListener->GetChannel();
+  nsCOMPtr<nsILoadInfo> loadInfo = channel->LoadInfo();
   uint32_t httpsOnlyStatus = loadInfo->GetHttpsOnlyStatus();
   // Only downgrade if we this request was upgraded using HTTPS-First Mode
   if (!(httpsOnlyStatus & nsILoadInfo::HTTPS_ONLY_UPGRADED_HTTPS_FIRST)) {
@@ -416,7 +499,7 @@ nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(nsIChannel* aChannel,
   // to check each NS_OK for those errors.
   // Only downgrade an NS_OK status if it is an 4xx or 5xx error.
   if (NS_SUCCEEDED(aStatus)) {
-    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(aChannel);
+    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(channel);
     // If no httpChannel exists we have nothing to do here.
     if (!httpChannel) {
       return nullptr;
@@ -431,7 +514,7 @@ nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(nsIChannel* aChannel,
     // corresponding NS_ERROR_*.
     // To do so we convert the response status to  an nsresult error
     // Every NS_OK that is NOT an 4xx or 5xx error code won't get downgraded.
-    if (responseStatus >= 400 && responseStatus < 512) {
+    if (responseStatus >= 400 && responseStatus < 600) {
       // HttpProxyResponseToErrorCode() maps 400 and 404 on
       // the same error as a 500 status which would lead to no downgrade
       // later on. For that reason we explicit filter for 400 and 404 status
@@ -460,18 +543,50 @@ nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(nsIChannel* aChannel,
   }
 
   nsCOMPtr<nsIURI> uri;
-  nsresult rv = aChannel->GetURI(getter_AddRefs(uri));
+  nsresult rv = channel->GetURI(getter_AddRefs(uri));
   NS_ENSURE_SUCCESS(rv, nullptr);
 
-  // Only downgrade if the current scheme is HTTPS
-  if (!uri->SchemeIs("https")) {
+  nsAutoCString spec;
+  nsCOMPtr<nsIURI> newURI;
+
+  // Only downgrade if the current scheme is (a) https or (b) view-source:https
+  if (uri->SchemeIs("https")) {
+    rv = uri->GetSpec(spec);
+    NS_ENSURE_SUCCESS(rv, nullptr);
+
+    rv = NS_NewURI(getter_AddRefs(newURI), spec);
+    NS_ENSURE_SUCCESS(rv, nullptr);
+
+    rv = NS_MutateURI(newURI).SetScheme("http"_ns).Finalize(
+        getter_AddRefs(newURI));
+    NS_ENSURE_SUCCESS(rv, nullptr);
+  } else if (uri->SchemeIs("view-source")) {
+    nsCOMPtr<nsINestedURI> nestedURI = do_QueryInterface(uri);
+    if (!nestedURI) {
+      return nullptr;
+    }
+    nsCOMPtr<nsIURI> innerURI;
+    rv = nestedURI->GetInnerURI(getter_AddRefs(innerURI));
+    NS_ENSURE_SUCCESS(rv, nullptr);
+    if (!innerURI || !innerURI->SchemeIs("https")) {
+      return nullptr;
+    }
+    rv = NS_MutateURI(innerURI).SetScheme("http"_ns).Finalize(
+        getter_AddRefs(innerURI));
+    NS_ENSURE_SUCCESS(rv, nullptr);
+
+    nsAutoCString innerSpec;
+    rv = innerURI->GetSpec(innerSpec);
+    NS_ENSURE_SUCCESS(rv, nullptr);
+
+    spec.Append("view-source:");
+    spec.Append(innerSpec);
+
+    rv = NS_NewURI(getter_AddRefs(newURI), spec);
+    NS_ENSURE_SUCCESS(rv, nullptr);
+  } else {
     return nullptr;
   }
-
-  // Change the scheme to http
-  nsCOMPtr<nsIURI> newURI;
-  mozilla::Unused << NS_MutateURI(uri).SetScheme("http"_ns).Finalize(
-      getter_AddRefs(newURI));
 
   // Log downgrade to console
   NS_ConvertUTF8toUTF16 reportSpec(uri->GetSpecOrDefault());
@@ -479,6 +594,33 @@ nsHTTPSOnlyUtils::PotentiallyDowngradeHttpsFirstRequest(nsIChannel* aChannel,
   nsHTTPSOnlyUtils::LogLocalizedString("HTTPSOnlyFailedDowngradeAgain", params,
                                        nsIScriptError::warningFlag, loadInfo,
                                        uri, true);
+
+  // Record telemety
+  nsDOMNavigationTiming* timing = aDocumentLoadListener->GetTiming();
+  if (timing) {
+    mozilla::TimeStamp navigationStart = timing->GetNavigationStartTimeStamp();
+    if (navigationStart) {
+      mozilla::TimeDuration duration =
+          mozilla::TimeStamp::Now() - navigationStart;
+      bool isPrivateWin =
+          loadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
+
+      if (loadInfo->GetWasSchemelessInput() &&
+          !IsHttpsFirstModeEnabled(isPrivateWin)) {
+        mozilla::glean::httpsfirst::downgraded_schemeless.Add();
+        if (timing) {
+          mozilla::glean::httpsfirst::downgrade_time_schemeless
+              .AccumulateRawDuration(duration);
+        }
+      } else {
+        mozilla::glean::httpsfirst::downgraded.Add();
+        if (timing) {
+          mozilla::glean::httpsfirst::downgrade_time.AccumulateRawDuration(
+              duration);
+        }
+      }
+    }
+  }
 
   return newURI.forget();
 }
@@ -534,10 +676,16 @@ void nsHTTPSOnlyUtils::TestSitePermissionAndPotentiallyAddExemption(
     nsIChannel* aChannel) {
   NS_ENSURE_TRUE_VOID(aChannel);
 
-  // if https-only mode is not enabled, then there is nothing to do here.
+  // If HTTPS-Only or HTTPS-First Mode is not enabled, then there is nothing to
+  // do here.
   nsCOMPtr<nsILoadInfo> loadInfo = aChannel->LoadInfo();
   bool isPrivateWin = loadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
-  if (!IsHttpsOnlyModeEnabled(isPrivateWin)) {
+  bool isHttpsOnly = IsHttpsOnlyModeEnabled(isPrivateWin);
+  bool isHttpsFirst = IsHttpsFirstModeEnabled(isPrivateWin);
+  bool isSchemelessHttpsFirst =
+      (loadInfo->GetWasSchemelessInput() &&
+       mozilla::StaticPrefs::dom_security_https_first_schemeless());
+  if (!isHttpsOnly && !isHttpsFirst && !isSchemelessHttpsFirst) {
     return;
   }
 
@@ -558,13 +706,19 @@ void nsHTTPSOnlyUtils::TestSitePermissionAndPotentiallyAddExemption(
       aChannel, getter_AddRefs(principal));
   NS_ENSURE_SUCCESS_VOID(rv);
 
-  // We explicitly add or also remove the exemption flag, because this
-  // function is also consulted after redirects.
   uint32_t httpsOnlyStatus = loadInfo->GetHttpsOnlyStatus();
-  if (TestIfPrincipalIsExempt(principal)) {
+  bool isPrincipalExempt = TestIfPrincipalIsExempt(principal);
+  if (isPrincipalExempt) {
     httpsOnlyStatus |= nsILoadInfo::HTTPS_ONLY_EXEMPT;
   } else {
+    // We explicitly remove the exemption flag, because this
+    // function is also consulted after redirects.
     httpsOnlyStatus &= ~nsILoadInfo::HTTPS_ONLY_EXEMPT;
+  }
+  if (httpsOnlyStatus & nsILoadInfo::HTTPS_FIRST_EXEMPT_NEXT_LOAD &&
+      isHttpsFirst) {
+    httpsOnlyStatus &= ~nsILoadInfo::HTTPS_FIRST_EXEMPT_NEXT_LOAD;
+    httpsOnlyStatus |= nsILoadInfo::HTTPS_ONLY_EXEMPT;
   }
   loadInfo->SetHttpsOnlyStatus(httpsOnlyStatus);
 }
@@ -589,7 +743,7 @@ bool nsHTTPSOnlyUtils::HttpsUpgradeUnrelatedErrorCode(nsresult aError) {
          NS_ERROR_UNKNOWN_HOST == aError || NS_ERROR_PHISHING_URI == aError ||
          NS_ERROR_MALWARE_URI == aError || NS_ERROR_UNWANTED_URI == aError ||
          NS_ERROR_HARMFUL_URI == aError || NS_ERROR_CONTENT_CRASHED == aError ||
-         NS_ERROR_FRAME_CRASHED == aError;
+         NS_ERROR_FRAME_CRASHED == aError || NS_ERROR_SUPERFLUOS_AUTH == aError;
 }
 
 /* ------ Logging ------ */
@@ -623,17 +777,20 @@ void nsHTTPSOnlyUtils::LogMessage(const nsAString& aMessage, uint32_t aFlags,
   message.Append(aMessage);
 
   // Allow for easy distinction in devtools code.
-  nsCString category(aUseHttpsFirst ? "HTTPSFirst" : "HTTPSOnly");
+  auto category = aUseHttpsFirst ? "HTTPSFirst"_ns : "HTTPSOnly"_ns;
 
-  uint32_t innerWindowId = aLoadInfo->GetInnerWindowID();
-  if (innerWindowId > 0) {
+  uint64_t windowId = aLoadInfo->GetInnerWindowID();
+  if (!windowId) {
+    windowId = aLoadInfo->GetTriggeringWindowId();
+  }
+  if (windowId) {
     // Send to content console
     nsContentUtils::ReportToConsoleByWindowID(message, aFlags, category,
-                                              innerWindowId, aURI);
+                                              windowId, aURI);
   } else {
     // Send to browser console
     bool isPrivateWin = aLoadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
-    nsContentUtils::LogSimpleConsoleError(message, category.get(), isPrivateWin,
+    nsContentUtils::LogSimpleConsoleError(message, category, isPrivateWin,
                                           true /* from chrome context */,
                                           aFlags);
   }
@@ -733,29 +890,6 @@ bool nsHTTPSOnlyUtils::IsEqualURIExceptSchemeAndRef(nsIURI* aHTTPSSchemeURI,
   }
 
   return uriEquals;
-}
-
-/*static*/
-void nsHTTPSOnlyUtils::PotentiallyClearExemptFlag(nsILoadInfo* aLoadInfo) {
-  // if neither HTTPS-Only nor HTTPS-First mode is enabled, then there is
-  // nothing to do here.
-  bool isPrivateWin = aLoadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
-  if (!IsHttpsOnlyModeEnabled(isPrivateWin) &&
-      !IsHttpsFirstModeEnabled(isPrivateWin)) {
-    return;
-  }
-  // if it is not a top-level load we have nothing to do here
-  if (aLoadInfo->GetExternalContentPolicyType() !=
-      ExtContentPolicy::TYPE_DOCUMENT) {
-    return;
-  }
-  uint32_t httpsOnlyStatus = aLoadInfo->GetHttpsOnlyStatus();
-  // if request is not exempt we have nothing do here
-  if (httpsOnlyStatus & nsILoadInfo::HTTPS_ONLY_EXEMPT) {
-    // clear exempt flag
-    httpsOnlyStatus ^= nsILoadInfo::HTTPS_ONLY_EXEMPT;
-    aLoadInfo->SetHttpsOnlyStatus(httpsOnlyStatus);
-  }
 }
 /////////////////////////////////////////////////////////////////////
 // Implementation of TestHTTPAnswerRunnable
@@ -858,6 +992,19 @@ TestHTTPAnswerRunnable::OnStartRequest(nsIRequest* aRequest) {
       nsresult httpsOnlyChannelStatus;
       httpsOnlyChannel->GetStatus(&httpsOnlyChannelStatus);
       if (httpsOnlyChannelStatus == NS_OK) {
+        bool isPrivateWin =
+            loadInfo->GetOriginAttributes().mPrivateBrowsingId > 0;
+        if (!nsHTTPSOnlyUtils::IsHttpsOnlyModeEnabled(isPrivateWin)) {
+          // Record HTTPS-First Telemetry
+          if (loadInfo->GetWasSchemelessInput() &&
+              !nsHTTPSOnlyUtils::IsHttpsFirstModeEnabled(isPrivateWin)) {
+            mozilla::glean::httpsfirst::downgraded_on_timer_schemeless
+                .AddToNumerator();
+          } else {
+            mozilla::glean::httpsfirst::downgraded_on_timer.AddToNumerator();
+          }
+        }
+
         httpsOnlyChannel->Cancel(NS_ERROR_NET_TIMEOUT_EXTERNAL);
       }
     }
@@ -918,14 +1065,16 @@ TestHTTPAnswerRunnable::Notify(nsITimer* aTimer) {
   nsCOMPtr<nsIChannel> origChannel = mDocumentLoadListener->GetChannel();
   nsCOMPtr<nsILoadInfo> origLoadInfo = origChannel->LoadInfo();
   uint32_t origHttpsOnlyStatus = origLoadInfo->GetHttpsOnlyStatus();
-  if ((origHttpsOnlyStatus &
-       nsILoadInfo::HTTPS_ONLY_TOP_LEVEL_LOAD_IN_PROGRESS)) {
+  uint32_t topLevelLoadInProgress =
+      origHttpsOnlyStatus & nsILoadInfo::HTTPS_ONLY_TOP_LEVEL_LOAD_IN_PROGRESS;
+  uint32_t downloadInProgress =
+      origHttpsOnlyStatus & nsILoadInfo::HTTPS_ONLY_DOWNLOAD_IN_PROGRESS;
+  if (topLevelLoadInProgress || downloadInProgress) {
     return NS_OK;
   }
 
   mozilla::OriginAttributes attrs = origLoadInfo->GetOriginAttributes();
-  RefPtr<nsIPrincipal> nullPrincipal =
-      mozilla::NullPrincipal::CreateWithInheritedAttributes(attrs);
+  RefPtr<nsIPrincipal> nullPrincipal = mozilla::NullPrincipal::Create(attrs);
 
   uint32_t loadFlags =
       nsIRequest::LOAD_ANONYMOUS | nsIRequest::INHIBIT_CACHING |
@@ -963,7 +1112,8 @@ TestHTTPAnswerRunnable::Notify(nsITimer* aTimer) {
   nsCOMPtr<nsILoadInfo> loadInfo = testHTTPChannel->LoadInfo();
   uint32_t httpsOnlyStatus = loadInfo->GetHttpsOnlyStatus();
   httpsOnlyStatus |= nsILoadInfo::HTTPS_ONLY_EXEMPT |
-                     nsILoadInfo::HTTPS_ONLY_DO_NOT_LOG_TO_CONSOLE;
+                     nsILoadInfo::HTTPS_ONLY_DO_NOT_LOG_TO_CONSOLE |
+                     nsILoadInfo::HTTPS_ONLY_BYPASS_ORB;
   loadInfo->SetHttpsOnlyStatus(httpsOnlyStatus);
 
   testHTTPChannel->SetNotificationCallbacks(this);

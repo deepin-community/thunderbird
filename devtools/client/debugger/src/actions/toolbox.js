@@ -7,8 +7,14 @@
  * @static
  */
 export function openLink(url) {
-  return async function({ panel }) {
+  return async function ({ panel }) {
     return panel.openLink(url);
+  };
+}
+
+export function openSourceMap(url, line, column) {
+  return async function ({ panel }) {
+    return panel.toolbox.viewSource(url, line, column);
   };
 }
 
@@ -24,7 +30,7 @@ export function openElementInInspectorCommand(grip) {
   };
 }
 
-export function openInspector(grip) {
+export function openInspector() {
   return async ({ panel }) => {
     return panel.openInspector();
   };

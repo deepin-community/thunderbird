@@ -100,6 +100,7 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/EndianUtils.h"
 #include "mozilla/Likely.h"
+#include "mozilla/UniquePtrExtensions.h"
 
 #include "RasterImage.h"
 #include "SurfacePipeFactory.h"
@@ -570,7 +571,7 @@ LexerTransition<nsBMPDecoder::State> nsBMPDecoder::ReadInfoHeaderRest(
         break;
       case InfoColorSpace::LINKED:
       case InfoColorSpace::SRGB:
-      case InfoColorSpace::WINDOWS:
+      case InfoColorSpace::WIN:
       default:
         // Nothing to be done at this time.
         break;
@@ -716,7 +717,10 @@ LexerTransition<nsBMPDecoder::State> nsBMPDecoder::ReadBitfields(
 
     // Always allocate and zero 256 entries, even though mNumColors might be
     // smaller, because the file might erroneously index past mNumColors.
-    mColors = MakeUnique<ColorTableEntry[]>(256);
+    mColors = MakeUniqueFallible<ColorTableEntry[]>(256);
+    if (NS_WARN_IF(!mColors)) {
+      return Transition::TerminateFailure();
+    }
     memset(mColors.get(), 0, 256 * sizeof(ColorTableEntry));
 
     // OS/2 Bitmaps have no padding byte.
@@ -731,7 +735,7 @@ LexerTransition<nsBMPDecoder::State> nsBMPDecoder::ReadBitfields(
         PrepareCalibratedColorProfile();
         break;
       case InfoColorSpace::SRGB:
-      case InfoColorSpace::WINDOWS:
+      case InfoColorSpace::WIN:
         MOZ_LOG(sBMPLog, LogLevel::Debug, ("using sRGB color profile\n"));
         if (mColors) {
           // We will transform the color table instead of the output pixels.
@@ -1229,9 +1233,17 @@ LexerTransition<nsBMPDecoder::State> nsBMPDecoder::ReadRLEAbsolute(
   mAbsoluteModeNumPixels = 0;
 
   if (mCurrentPos + n > uint32_t(mH.mWidth)) {
-    // Bad data. Stop decoding; at least part of the image may have been
-    // decoded.
-    return Transition::TerminateSuccess();
+    // Some DIB RLE8 encoders count a padding byte as the absolute mode
+    // pixel number at the end of the row.
+    if (mH.mCompression == Compression::RLE8 && n > 0 && (n & 1) == 0 &&
+        mCurrentPos + n - uint32_t(mH.mWidth) == 1 && aLength > 0 &&
+        aData[aLength - 1] == 0) {
+      n--;
+    } else {
+      // Bad data. Stop decoding; at least part of the image may have been
+      // decoded.
+      return Transition::TerminateSuccess();
+    }
   }
 
   // In absolute mode, n represents the number of pixels that follow, each of

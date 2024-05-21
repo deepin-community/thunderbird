@@ -137,6 +137,53 @@ add_task(async function test_keyword_search() {
     ],
   });
 
+  info("Keyword query with *");
+  // We need a space before the asterisk to ensure it's considered a restriction
+  // token otherwise it will be a regular string character.
+  context = createContext("key blocking *", { isPrivate: false });
+  await check_results({
+    context,
+    matches: [
+      makeKeywordSearchResult(context, {
+        uri: "http://abc/?search=blocking%20*",
+        keyword: "key",
+        title: "abc: blocking *",
+        iconUri: "page-icon:http://abc/?search=%s",
+        heuristic: true,
+      }),
+    ],
+  });
+
+  info("Keyword query with?");
+  context = createContext("key blocking?", { isPrivate: false });
+  await check_results({
+    context,
+    matches: [
+      makeKeywordSearchResult(context, {
+        uri: "http://abc/?search=blocking%3F",
+        keyword: "key",
+        title: "abc: blocking?",
+        iconUri: "page-icon:http://abc/?search=%s",
+        heuristic: true,
+      }),
+    ],
+  });
+
+  info("Keyword query with ?");
+  context = createContext("key blocking ?", { isPrivate: false });
+  await check_results({
+    context,
+    matches: [
+      makeKeywordSearchResult(context, {
+        uri: "http://abc/?search=blocking%20%3F",
+        keyword: "key",
+        title: "abc: blocking ?",
+        iconUri: "page-icon:http://abc/?search=%s",
+        heuristic: true,
+      }),
+    ],
+  });
+
   info("Unescaped term in query");
   // ... but note that we call encodeURIComponent() on the query string when we
   // build the URL, so the expected result will have the ユニコード substring
@@ -200,7 +247,7 @@ add_task(async function test_keyword_search() {
     matches: [
       makeKeywordSearchResult(context, {
         uri: "http://def/?search=",
-        title: "http://def/?search=",
+        fallbackTitle: "http://def/?search=",
         keyword: "key2",
         iconUri: "page-icon:http://def/?search=%s",
         heuristic: true,
@@ -219,7 +266,7 @@ add_task(async function test_keyword_search() {
     matches: [
       makeKeywordSearchResult(context, {
         uri: "http://def/?search=",
-        title: "http://def/?search=",
+        fallbackTitle: "http://def/?search=",
         keyword: "key2",
         iconUri: "page-icon:http://def/?search=%s",
         heuristic: true,
@@ -345,7 +392,7 @@ add_task(async function test_keyword_search() {
       makeVisitResult(context, {
         source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
         uri: "http://key2/",
-        title: "http://key2/",
+        fallbackTitle: "http://key2/",
         heuristic: true,
         providerName: "HeuristicFallback",
       }),

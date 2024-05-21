@@ -1,19 +1,23 @@
 // Bug 37465 -- assertions with no accounts
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
-function run_test() {
-  var daemon = setupNNTPDaemon();
-  var server = makeServer(NNTP_RFC2980_handler, daemon);
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+
+add_task(async function textChannelAsync() {
+  const daemon = setupNNTPDaemon();
+  const server = makeServer(NNTP_RFC2980_handler, daemon);
   server.start();
 
   // Correct URI?
-  let uri = Services.io.newURI(
+  const uri = Services.io.newURI(
     "news://localhost:" + server.port + "/1@regular.invalid"
   );
-  let newsUri = uri
+  const newsUri = uri
     .QueryInterface(Ci.nsINntpUrl)
     .QueryInterface(Ci.nsIMsgMailNewsUrl);
   Assert.equal(uri.port, server.port);
@@ -22,7 +26,7 @@ function run_test() {
   Assert.equal(newsUri.folder, null);
 
   // Run the URI and make sure we get the message
-  let channel = Services.io.newChannelFromURI(
+  const channel = Services.io.newChannelFromURI(
     uri,
     null,
     Services.scriptSecurityManager.getSystemPrincipal(),
@@ -30,20 +34,16 @@ function run_test() {
     Ci.nsILoadInfo.SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
     Ci.nsIContentPolicy.TYPE_OTHER
   );
-  channel.asyncOpen(articleTextListener, null);
-
-  // Run the server
-  var thread = gThreadManager.currentThread;
-  while (!articleTextListener.finished) {
-    thread.processNextEvent(true);
-  }
-
+  const listener = new PromiseTestUtils.PromiseStreamListener();
+  channel.asyncOpen(listener, null);
+  const msgText = await listener.promise;
+  // Correct text? (original file uses LF only, so strip CR)
   Assert.equal(
-    articleTextListener.data,
+    msgText.replaceAll("\r", ""),
     daemon.getArticle("<1@regular.invalid>").fullText
   );
 
   // Shut down connections
   MailServices.accounts.closeCachedConnections();
   server.stop();
-}
+});

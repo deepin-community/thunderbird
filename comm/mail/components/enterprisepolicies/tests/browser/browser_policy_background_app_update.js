@@ -2,23 +2,21 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "UpdateUtils",
-  "resource://gre/modules/UpdateUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  UpdateUtils: "resource://gre/modules/UpdateUtils.sys.mjs",
+});
 
 const PREF_NAME = "app.update.background.enabled";
 
 async function test_background_update_pref(expectedEnabled, expectedLocked) {
-  let actualEnabled = await UpdateUtils.readUpdateConfigSetting(PREF_NAME);
+  const actualEnabled = await UpdateUtils.readUpdateConfigSetting(PREF_NAME);
   is(
     actualEnabled,
     expectedEnabled,
     `Actual background update enabled setting should be ${expectedEnabled}`
   );
 
-  let actualLocked = UpdateUtils.appUpdateSettingIsLocked(PREF_NAME);
+  const actualLocked = UpdateUtils.appUpdateSettingIsLocked(PREF_NAME);
   is(
     actualLocked,
     expectedLocked,
@@ -42,7 +40,7 @@ async function test_background_update_pref(expectedEnabled, expectedLocked) {
   );
 
   if (AppConstants.MOZ_UPDATER && AppConstants.MOZ_UPDATE_AGENT) {
-    let shouldShowUI =
+    const shouldShowUI =
       !expectedLocked && UpdateUtils.PER_INSTALLATION_PREFS_SUPPORTED;
     await BrowserTestUtils.withNewTab("about:preferences", browser => {
       is(

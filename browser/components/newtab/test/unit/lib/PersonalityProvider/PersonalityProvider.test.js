@@ -1,33 +1,5 @@
 import { GlobalOverrider } from "test/unit/utils";
-import { PersonalityProvider } from "lib/PersonalityProvider/PersonalityProvider.jsm";
-
-const TIME_SEGMENTS = [
-  { id: "hour", startTime: 3600, endTime: 0, weightPosition: 1 },
-  { id: "day", startTime: 86400, endTime: 3600, weightPosition: 0.75 },
-  { id: "week", startTime: 604800, endTime: 86400, weightPosition: 0.5 },
-  { id: "weekPlus", startTime: null, endTime: 604800, weightPosition: 0.25 },
-];
-
-const PARAMETER_SETS = {
-  paramSet1: {
-    recencyFactor: 0.5,
-    frequencyFactor: 0.5,
-    combinedDomainFactor: 0.5,
-    perfectFrequencyVisits: 10,
-    perfectCombinedDomainScore: 2,
-    multiDomainBoost: 0.1,
-    itemScoreFactor: 0,
-  },
-  paramSet2: {
-    recencyFactor: 1,
-    frequencyFactor: 0.7,
-    combinedDomainFactor: 0.8,
-    perfectFrequencyVisits: 10,
-    perfectCombinedDomainScore: 2,
-    multiDomainBoost: 0.1,
-    itemScoreFactor: 0,
-  },
-};
+import { PersonalityProvider } from "lib/PersonalityProvider/PersonalityProvider.sys.mjs";
 
 describe("Personality Provider", () => {
   let instance;
@@ -47,7 +19,7 @@ describe("Personality Provider", () => {
     RemoteSettingsOffStub = sandbox.stub().returns();
     RemoteSettingsGetStub = sandbox.stub().returns([]);
 
-    RemoteSettingsStub = name => ({
+    RemoteSettingsStub = () => ({
       get: RemoteSettingsGetStub,
       on: RemoteSettingsOnStub,
       off: RemoteSettingsOffStub,
@@ -60,19 +32,15 @@ describe("Personality Provider", () => {
     global.fetch = async server => ({
       ok: true,
       json: async () => {
-        if (server === "services.settings.server/") {
+        if (server === "bogus://foo/") {
           return { capabilities: { attachments: { base_url: baseURLStub } } };
         }
         return {};
       },
     });
-    globals.sandbox
-      .stub(global.Services.prefs, "getCharPref")
-      .callsFake(pref => pref);
     globals.set("RemoteSettings", RemoteSettingsStub);
 
     instance = new PersonalityProvider();
-    instance.setAffinities(TIME_SEGMENTS, PARAMETER_SETS);
     instance.interestConfig = {
       history_item_builder: "history_item_builder",
       history_required_fields: ["a", "b", "c"],
@@ -174,7 +142,7 @@ describe("Personality Provider", () => {
         },
       ]);
       sinon.spy(instance, "getAttachment");
-      RemoteSettingsStub = name => ({
+      RemoteSettingsStub = () => ({
         get: RemoteSettingsGetStub,
         on: RemoteSettingsOnStub,
         off: RemoteSettingsOffStub,
@@ -379,11 +347,10 @@ describe("Personality Provider", () => {
       );
     });
   });
-  describe("#getAffinities", () => {
-    it("should return correct data for getAffinities", () => {
-      const affinities = instance.getAffinities();
-      assert.isDefined(affinities.timeSegments);
-      assert.isDefined(affinities.parameterSets);
+  describe("#getScores", () => {
+    it("should return correct data for getScores", () => {
+      const scores = instance.getScores();
+      assert.isDefined(scores.interestConfig);
     });
   });
 });

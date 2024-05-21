@@ -33,7 +33,7 @@ class nsMsgSearchDBView : public nsMsgGroupView,
   virtual const char* GetViewName(void) override { return "SearchView"; }
   NS_IMETHOD Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
                   nsMsgViewSortOrderValue sortOrder,
-                  nsMsgViewFlagsTypeValue viewFlags, int32_t* pCount) override;
+                  nsMsgViewFlagsTypeValue viewFlags) override;
   NS_IMETHOD CloneDBView(nsIMessenger* aMessengerInstance,
                          nsIMsgWindow* aMsgWindow,
                          nsIMsgDBViewCommandUpdater* aCmdUpdater,
@@ -56,8 +56,7 @@ class nsMsgSearchDBView : public nsMsgGroupView,
   NS_IMETHOD OpenWithHdrs(nsIMsgEnumerator* aHeaders,
                           nsMsgViewSortTypeValue aSortType,
                           nsMsgViewSortOrderValue aSortOrder,
-                          nsMsgViewFlagsTypeValue aViewFlags,
-                          int32_t* aCount) override;
+                          nsMsgViewFlagsTypeValue aViewFlags) override;
   NS_IMETHOD OnHdrDeleted(nsIMsgDBHdr* aHdrDeleted, nsMsgKey aParentKey,
                           int32_t aFlags,
                           nsIDBChangeListener* aInstigator) override;
@@ -78,11 +77,15 @@ class nsMsgSearchDBView : public nsMsgGroupView,
   NS_IMETHOD OnAnnouncerGoingAway(nsIDBChangeAnnouncer* instigator) override;
 
   virtual nsCOMArray<nsIMsgFolder>* GetFolders() override;
-  virtual nsresult GetFolderFromMsgURI(const char* aMsgURI,
+  virtual nsresult GetFolderFromMsgURI(const nsACString& aMsgURI,
                                        nsIMsgFolder** aFolder) override;
 
   NS_IMETHOD GetThreadContainingMsgHdr(nsIMsgDBHdr* msgHdr,
                                        nsIMsgThread** pThread) override;
+
+  NS_IMETHOD ApplyCommandToIndices(
+      nsMsgViewCommandTypeValue command,
+      nsTArray<nsMsgViewIndex> const& selection) override;
 
  protected:
   virtual ~nsMsgSearchDBView();
@@ -141,7 +144,6 @@ class nsMsgSearchDBView : public nsMsgGroupView,
   nsCOMArray<nsIMsgFolder> m_uniqueFoldersSelected;
   uint32_t mCurIndex;
 
-  nsMsgViewIndex* mIndicesForChainedDeleteAndFile;
   int32_t mTotalIndices;
   nsCOMArray<nsIMsgDatabase> m_dbToUseList;
   nsMsgViewCommandTypeValue mCommand;

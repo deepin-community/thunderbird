@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -29,10 +28,11 @@
  */
 
 /* import-globals-from ../../../../../toolkit/components/printing/content/printUtils.js */
-/* import-globals-from ../../../../../toolkit/content/globalOverlay.js */
+/* import-globals-from ../../../base/content/globalOverlay.js */
 /* import-globals-from ../../../base/content/utilityOverlay.js */
 /* import-globals-from editor.js */
 /* import-globals-from editorUtilities.js */
+/* import-globals-from MsgComposeCommands.js */
 
 var gComposerJSCommandControllerID = 0;
 
@@ -165,18 +165,16 @@ function GetComposerCommandTable() {
   }
   if (!controller) {
     // create it
-    controller = Cc[
-      "@mozilla.org/embedcomp/base-command-controller;1"
-    ].createInstance();
+    controller =
+      Cc["@mozilla.org/embedcomp/base-command-controller;1"].createInstance();
 
     var editorController = controller.QueryInterface(Ci.nsIControllerContext);
     editorController.setCommandContext(GetCurrentEditorElement());
     window.content.controllers.insertControllerAt(0, controller);
 
     // Store the controller ID so we can be sure to get the right one later
-    gComposerJSCommandControllerID = window.content.controllers.getControllerId(
-      controller
-    );
+    gComposerJSCommandControllerID =
+      window.content.controllers.getControllerId(controller);
   }
 
   if (controller) {
@@ -198,9 +196,8 @@ function GetComposerCommandTable() {
  */
 function goUpdateCommandState(command) {
   try {
-    var controller = document.commandDispatcher.getControllerForCommand(
-      command
-    );
+    var controller =
+      document.commandDispatcher.getControllerForCommand(command);
     if (!(controller instanceof Ci.nsICommandController)) {
       return;
     }
@@ -257,7 +254,7 @@ function goUpdateCommandState(command) {
         dump("no update for command: " + command + "\n");
     }
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
   }
 }
 /* eslint-enable complexity */
@@ -297,11 +294,10 @@ function goUpdateComposerMenuItems(commandset) {
  */
 function goDoCommandParams(command, paramValue) {
   try {
-    let params = newCommandParams();
+    const params = newCommandParams();
     params.setStringValue("state_attribute", paramValue);
-    let controller = document.commandDispatcher.getControllerForCommand(
-      command
-    );
+    const controller =
+      document.commandDispatcher.getControllerForCommand(command);
     if (controller && controller.isCommandEnabled(command)) {
       if (controller instanceof Ci.nsICommandController) {
         controller.doCommandWithParams(command, params);
@@ -310,7 +306,7 @@ function goDoCommandParams(command, paramValue) {
       }
     }
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
   }
 }
 
@@ -322,8 +318,8 @@ function goDoCommandParams(command, paramValue) {
  * @param {boolean} desiredState - State to set for the command.
  */
 function pokeStyleUI(uiID, desiredState) {
-  let commandNode = document.getElementById(uiID);
-  let uiState = commandNode.getAttribute("state") == "true";
+  const commandNode = document.getElementById(uiID);
+  const uiState = commandNode.getAttribute("state") == "true";
   if (desiredState != uiState) {
     commandNode.setAttribute("state", desiredState ? "true" : "false");
     let buttonId;
@@ -353,7 +349,7 @@ function pokeStyleUI(uiID, desiredState) {
 /**
  * Maps internal command names to their document.execCommand() command string.
  */
-let gCommandMap = new Map([
+const gCommandMap = new Map([
   ["cmd_bold", "bold"],
   ["cmd_italic", "italic"],
   ["cmd_underline", "underline"],
@@ -383,8 +379,8 @@ function doStyleUICommand(cmdStr) {
     false,
     null
   );
-  let commandNode = document.getElementById(cmdStr);
-  let newState = commandNode.getAttribute("state") != "true";
+  const commandNode = document.getElementById(cmdStr);
+  const newState = commandNode.getAttribute("state") != "true";
   pokeStyleUI(cmdStr, newState);
 }
 
@@ -420,8 +416,8 @@ function pokeMultiStateUI(uiID, cmdParams) {
     desiredAttrib = cmdParams.getStringValue("state_attribute");
   }
 
-  let commandNode = document.getElementById(uiID);
-  let uiState = commandNode.getAttribute("state");
+  const commandNode = document.getElementById(uiID);
+  const uiState = commandNode.getAttribute("state");
   if (desiredAttrib != uiState) {
     commandNode.setAttribute("state", desiredAttrib);
     switch (uiID) {
@@ -483,7 +479,7 @@ function doStatefulCommand(commandID, newState, updateUI) {
   }
 
   if (updateUI) {
-    let commandNode = document.getElementById(commandID);
+    const commandNode = document.getElementById(commandID);
     commandNode.setAttribute("state", newState);
     switch (commandID) {
       case "cmd_fontFace": {
@@ -492,7 +488,7 @@ function doStatefulCommand(commandID, newState, updateUI) {
       }
     }
   } else {
-    let commandNode = document.getElementById(commandID);
+    const commandNode = document.getElementById(commandID);
     if (commandNode) {
       commandNode.setAttribute("state", newState);
     }
@@ -550,7 +546,7 @@ function GetSuggestedFileName(aDocumentURLString, aMIMEType) {
       docURI = docURI.QueryInterface(Ci.nsIURL);
 
       // grab the file name
-      let url = validateFileName(decodeURIComponent(docURI.fileBaseName));
+      const url = validateFileName(decodeURIComponent(docURI.fileBaseName));
       if (url) {
         return url + extension;
       }
@@ -566,7 +562,7 @@ function GetSuggestedFileName(aDocumentURLString, aMIMEType) {
 }
 
 /**
- * @return {Promise} dialogResult
+ * @returns {Promise} dialogResult
  */
 function PromptForSaveLocation(
   aDoSaveAsText,
@@ -575,13 +571,13 @@ function PromptForSaveLocation(
   aDocumentURLString
 ) {
   var dialogResult = {};
-  dialogResult.filepickerClick = nsIFilePicker.returnCancel;
+  dialogResult.filepickerClick = Ci.nsIFilePicker.returnCancel;
   dialogResult.resultingURI = "";
   dialogResult.resultingLocalFile = null;
 
   var fp = null;
   try {
-    fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+    fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
   } catch (e) {}
   if (!fp) {
     return dialogResult;
@@ -595,15 +591,15 @@ function PromptForSaveLocation(
     promptString = GetString("SaveDocumentAs");
   }
 
-  fp.init(window, promptString, nsIFilePicker.modeSave);
+  fp.init(window.browsingContext, promptString, Ci.nsIFilePicker.modeSave);
 
   // Set filters according to the type of output
   if (aDoSaveAsText) {
-    fp.appendFilters(nsIFilePicker.filterText);
+    fp.appendFilters(Ci.nsIFilePicker.filterText);
   } else {
-    fp.appendFilters(nsIFilePicker.filterHTML);
+    fp.appendFilters(Ci.nsIFilePicker.filterHTML);
   }
-  fp.appendFilters(nsIFilePicker.filterAll);
+  fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
   // now let's actually set the filepicker's suggested filename
   var suggestedFileName = GetSuggestedFileName(aDocumentURLString, aMIMEType);
@@ -618,7 +614,7 @@ function PromptForSaveLocation(
 
     var isLocalFile = true;
     try {
-      let docURI = Services.io.newURI(
+      const docURI = Services.io.newURI(
         aDocumentURLString,
         GetCurrentEditor().documentCharacterSet
       );
@@ -646,10 +642,10 @@ function PromptForSaveLocation(
   return new Promise(resolve => {
     fp.open(rv => {
       dialogResult.filepickerClick = rv;
-      if (rv != nsIFilePicker.returnCancel && fp.file) {
+      if (rv != Ci.nsIFilePicker.returnCancel && fp.file) {
         // Allow OK and replace.
         // reset urlstring to new save location
-        dialogResult.resultingURIString = fileHandler.getURLSpecFromFile(
+        dialogResult.resultingURIString = fileHandler.getURLSpecFromActualFile(
           fp.file
         );
         dialogResult.resultingLocalFile = fp.file;
@@ -666,7 +662,8 @@ function PromptForSaveLocation(
 /**
  * If needed, prompt for document title and set the document title to the
  * preferred value.
- * @return true if the title was set up successfully;
+ *
+ * @returns true if the title was set up successfully;
  *         false if the user cancelled the title prompt
  */
 function PromptAndSetTitleIfNone() {
@@ -675,10 +672,10 @@ function PromptAndSetTitleIfNone() {
     return true;
   }
 
-  let result = { value: null };
-  let captionStr = GetString("DocumentTitle");
-  let msgStr = GetString("NeedDocTitle") + "\n" + GetString("DocTitleHelp");
-  let confirmed = Services.prompt.prompt(
+  const result = { value: null };
+  const captionStr = GetString("DocumentTitle");
+  const msgStr = GetString("NeedDocTitle") + "\n" + GetString("DocTitleHelp");
+  const confirmed = Services.prompt.prompt(
     window,
     captionStr,
     msgStr,
@@ -697,14 +694,11 @@ var gPersistObj;
 
 // Don't forget to do these things after calling OutputFileWithPersistAPI:
 // we need to update the uri before notifying listeners
-//    if (doUpdateURI)
-//      SetDocumentURI(docURI);
 //    UpdateWindowTitle();
 //    if (!aSaveCopy)
 //      editor.resetModificationCount();
 // this should cause notification to listeners that document has changed
 
-const webPersist = Ci.nsIWebBrowserPersist;
 function OutputFileWithPersistAPI(
   editorDoc,
   aDestinationLocation,
@@ -732,7 +726,7 @@ function OutputFileWithPersistAPI(
     // we should supply a parent directory if/when we turn on functionality to save related documents
     var persistObj = Cc[
       "@mozilla.org/embedding/browser/nsWebBrowserPersist;1"
-    ].createInstance(webPersist);
+    ].createInstance(Ci.nsIWebBrowserPersist);
     persistObj.progressListener = gEditorOutputProgressListener;
 
     var wrapColumn = GetWrapColumn();
@@ -743,14 +737,15 @@ function OutputFileWithPersistAPI(
     if (!isLocalFile) {
       // if we aren't saving locally then send both cr and lf
       outputFlags |=
-        webPersist.ENCODE_FLAGS_CR_LINEBREAKS |
-        webPersist.ENCODE_FLAGS_LF_LINEBREAKS;
+        Ci.nsIWebBrowserPersist.ENCODE_FLAGS_CR_LINEBREAKS |
+        Ci.nsIWebBrowserPersist.ENCODE_FLAGS_LF_LINEBREAKS;
 
       // we want to serialize the output for all remote publishing
       // some servers can handle only one connection at a time
       // some day perhaps we can make this user-configurable per site?
       persistObj.persistFlags =
-        persistObj.persistFlags | webPersist.PERSIST_FLAGS_SERIALIZE_OUTPUT;
+        persistObj.persistFlags |
+        Ci.nsIWebBrowserPersist.PERSIST_FLAGS_SERIALIZE_OUTPUT;
     }
 
     // note: we always want to set the replace existing files flag since we have
@@ -758,11 +753,11 @@ function OutputFileWithPersistAPI(
     // or the user picked an option where the file is implicitly being replaced (save)
     persistObj.persistFlags =
       persistObj.persistFlags |
-      webPersist.PERSIST_FLAGS_NO_BASE_TAG_MODIFICATIONS |
-      webPersist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
-      webPersist.PERSIST_FLAGS_DONT_FIXUP_LINKS |
-      webPersist.PERSIST_FLAGS_DONT_CHANGE_FILENAMES |
-      webPersist.PERSIST_FLAGS_FIXUP_ORIGINAL_DOM;
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_NO_BASE_TAG_MODIFICATIONS |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_DONT_FIXUP_LINKS |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_DONT_CHANGE_FILENAMES |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_FIXUP_ORIGINAL_DOM;
     persistObj.saveDocument(
       editorDoc,
       aDestinationLocation,
@@ -786,28 +781,31 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
   var editor = GetCurrentEditor();
   var outputEntity =
     editor && editor.documentCharacterSet == "ISO-8859-1"
-      ? webPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES
-      : webPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
+      ? Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES
+      : Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
   if (aMimeType == "text/plain") {
     // When saving in "text/plain" format, always do formatting
-    outputFlags |= webPersist.ENCODE_FLAGS_FORMATTED;
+    outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_FORMATTED;
   } else {
     // Should we prettyprint? Check the pref
     if (Services.prefs.getBoolPref("editor.prettyprint")) {
-      outputFlags |= webPersist.ENCODE_FLAGS_FORMATTED;
+      outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_FORMATTED;
     }
 
     try {
       // How much entity names should we output? Check the pref
       switch (Services.prefs.getCharPref("editor.encode_entity")) {
         case "basic":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
           break;
         case "latin1":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES;
           break;
         case "html":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_HTML_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_HTML_ENTITIES;
           break;
         case "none":
           outputEntity = 0;
@@ -818,7 +816,7 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
   outputFlags |= outputEntity;
 
   if (aWrapColumn > 0) {
-    outputFlags |= webPersist.ENCODE_FLAGS_WRAP;
+    outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_WRAP;
   }
 
   return outputFlags;
@@ -827,7 +825,7 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
 // returns number of column where to wrap
 function GetWrapColumn() {
   try {
-    return GetCurrentEditor().wrapWidth;
+    return GetCurrentEditor().QueryInterface(Ci.nsIEditorMailSupport).wrapWidth;
   } catch (e) {}
   return 0;
 }
@@ -839,9 +837,6 @@ const gShowDebugOutputStatusChange = false;
 const gShowDebugOutputLocationChange = false;
 const gShowDebugOutputSecurityChange = false;
 
-const nsIWebProgressListener = Ci.nsIWebProgressListener;
-const nsIChannel = Ci.nsIChannel;
-
 const kErrorBindingAborted = 2152398850;
 const kErrorBindingRedirected = 2152398851;
 const kFileNotFound = 2152857618;
@@ -851,7 +846,7 @@ var gEditorOutputProgressListener = {
     // Use this to access onStateChange flags
     var requestSpec;
     try {
-      var channel = aRequest.QueryInterface(nsIChannel);
+      var channel = aRequest.QueryInterface(Ci.nsIChannel);
       requestSpec = StripUsernamePasswordFromURI(channel.URI);
     } catch (e) {
       if (gShowDebugOutputStateChange) {
@@ -863,13 +858,13 @@ var gEditorOutputProgressListener = {
       dump("\n***** onStateChange request: " + requestSpec + "\n");
       dump("      state flags: ");
 
-      if (aStateFlags & nsIWebProgressListener.STATE_START) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_START) {
         dump(" STATE_START, ");
       }
-      if (aStateFlags & nsIWebProgressListener.STATE_STOP) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_STOP) {
         dump(" STATE_STOP, ");
       }
-      if (aStateFlags & nsIWebProgressListener.STATE_IS_NETWORK) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_IS_NETWORK) {
         dump(" STATE_IS_NETWORK ");
       }
 
@@ -896,7 +891,7 @@ var gEditorOutputProgressListener = {
         "\n onProgressChange: gPersistObj.result=" + gPersistObj.result + "\n"
       );
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("***** onProgressChange request: " + channel.URI.spec + "\n");
       } catch (e) {}
       dump(
@@ -930,7 +925,7 @@ var gEditorOutputProgressListener = {
     if (gShowDebugOutputLocationChange) {
       dump("***** onLocationChange: " + aLocation.spec + "\n");
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("*****          request: " + channel.URI.spec + "\n");
       } catch (e) {}
     }
@@ -940,7 +935,7 @@ var gEditorOutputProgressListener = {
     if (gShowDebugOutputStatusChange) {
       dump("***** onStatusChange: " + aMessage + "\n");
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("*****        request: " + channel.URI.spec + "\n");
       } catch (e) {
         dump("          couldn't get request\n");
@@ -967,7 +962,7 @@ var gEditorOutputProgressListener = {
   onSecurityChange(aWebProgress, aRequest, state) {
     if (gShowDebugOutputSecurityChange) {
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("***** onSecurityChange request: " + channel.URI.spec + "\n");
       } catch (e) {}
     }
@@ -1167,7 +1162,7 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
       // What is this unused 'replacing' var supposed to be doing?
       /* eslint-disable-next-line no-unused-vars */
       var replacing =
-        dialogResult.filepickerClick == nsIFilePicker.returnReplace;
+        dialogResult.filepickerClick == Ci.nsIFilePicker.returnReplace;
 
       urlstring = dialogResult.resultingURIString;
       tempLocalFile = dialogResult.resultingLocalFile;
@@ -1177,7 +1172,7 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
         doUpdateURI = true;
       }
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       return false;
     }
   } // mustShowFileDialog
@@ -1246,7 +1241,7 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
       }
     }
 
-    let destinationLocation = tempLocalFile ? tempLocalFile : docURI;
+    const destinationLocation = tempLocalFile ? tempLocalFile : docURI;
 
     success = OutputFileWithPersistAPI(
       editorDoc,
@@ -1265,9 +1260,6 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
         if (tempLocalFile) {
           docURI = GetFileProtocolHandler().newFileURI(tempLocalFile);
         }
-
-        // We need to set new document uri before notifying listeners
-        SetDocumentURI(docURI);
       }
 
       // Update window title to show possibly different filename
@@ -1293,15 +1285,6 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
   return success;
 }
 /* eslint-enable complexity */
-
-function SetDocumentURI(uri) {
-  try {
-    // XXX WE'LL NEED TO GET "CURRENT" CONTENT FRAME ONCE MULTIPLE EDITORS ARE ALLOWED
-    GetCurrentEditorElement().docShell.setCurrentURI(uri);
-  } catch (e) {
-    dump("SetDocumentURI:\n" + e + "\n");
-  }
-}
 
 var nsFindReplaceCommand = {
   isCommandEnabled(aCommand, editorElement) {
@@ -1345,7 +1328,7 @@ var nsFindAgainCommand = {
   doCommandParams(aCommand, aParams, editorElement) {},
 
   doCommand(aCommand, editorElement) {
-    let findPrev = aCommand == "cmd_findPrev";
+    const findPrev = aCommand == "cmd_findPrev";
     document.getElementById("FindToolbar").onFindAgainCommand(findPrev);
   },
 };
@@ -1363,9 +1346,7 @@ var nsRewrapCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
-    GetCurrentEditor()
-      .QueryInterface(Ci.nsIEditorMailSupport)
-      .rewrap(false);
+    GetCurrentEditor().QueryInterface(Ci.nsIEditorMailSupport).rewrap(false);
   },
 };
 
@@ -1449,7 +1430,7 @@ var nsHLineCommand = {
         hLine = editor.createElementWithDefaults(tagName);
 
         // We change the default attributes to those saved in the user prefs
-        let align = Services.prefs.getIntPref("editor.hrule.align");
+        const align = Services.prefs.getIntPref("editor.hrule.align");
         if (align == 0) {
           editor.setAttributeOrEquivalent(hLine, "align", "left", true);
         } else if (align == 2) {
@@ -1465,7 +1446,7 @@ var nsHLineCommand = {
 
         editor.setAttributeOrEquivalent(hLine, "width", width, true);
 
-        let height = Services.prefs.getIntPref("editor.hrule.height");
+        const height = Services.prefs.getIntPref("editor.hrule.height");
         editor.setAttributeOrEquivalent(hLine, "size", String(height), true);
 
         if (Services.prefs.getBoolPref("editor.hrule.shading")) {
@@ -1537,6 +1518,7 @@ var nsInsertHTMLWithDialogCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
+    gMsgCompose.allowRemoteContent = true;
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdInsSrc.xhtml",
       "_blank",
@@ -1630,6 +1612,7 @@ var nsObjectPropertiesCommand = {
       var name = element.nodeName.toLowerCase();
       switch (name) {
         case "img":
+          gMsgCompose.allowRemoteContent = true;
           goDoCommand("cmd_image");
           break;
         case "hr":
@@ -1682,8 +1665,8 @@ var nsSetSmiley = {
   getCommandStateParams(aCommand, aParams, aRefCon) {},
   doCommandParams(aCommand, aParams, aRefCon) {
     try {
-      let editor = GetCurrentEditor();
-      let smileyCode = aParams.getStringValue("state_attribute");
+      const editor = GetCurrentEditor();
+      const smileyCode = aParams.getStringValue("state_attribute");
       editor.insertHTML(smileyCode);
       window.content.focus();
     } catch (e) {
@@ -1730,7 +1713,7 @@ var nsIncreaseFontCommand = {
     if (!(IsDocumentEditable() && IsEditingRenderedHTML())) {
       return false;
     }
-    let setIndex = parseInt(getLegacyFontSize());
+    const setIndex = parseInt(getLegacyFontSize());
     return setIndex < 6;
   },
 
@@ -1738,7 +1721,7 @@ var nsIncreaseFontCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
-    let setIndex = parseInt(getLegacyFontSize());
+    const setIndex = parseInt(getLegacyFontSize());
     EditorSetFontSize((setIndex + 1).toString());
   },
 };
@@ -1748,7 +1731,7 @@ var nsDecreaseFontCommand = {
     if (!(IsDocumentEditable() && IsEditingRenderedHTML())) {
       return false;
     }
-    let setIndex = parseInt(getLegacyFontSize());
+    const setIndex = parseInt(getLegacyFontSize());
     return setIndex > 1;
   },
 
@@ -1756,7 +1739,7 @@ var nsDecreaseFontCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
-    let setIndex = parseInt(getLegacyFontSize());
+    const setIndex = parseInt(getLegacyFontSize());
     EditorSetFontSize((setIndex - 1).toString());
   },
 };

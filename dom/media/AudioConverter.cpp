@@ -75,11 +75,16 @@ size_t AudioConverter::ProcessInternal(void* aOut, const void* aIn,
   if (!aFrames) {
     return 0;
   }
+
   if (mIn.Channels() > mOut.Channels()) {
     return DownmixAudio(aOut, aIn, aFrames);
-  } else if (mIn.Channels() < mOut.Channels()) {
+  }
+
+  if (mIn.Channels() < mOut.Channels()) {
     return UpmixAudio(aOut, aIn, aFrames);
-  } else if (mIn.Layout() != mOut.Layout() && CanReorderAudio()) {
+  }
+
+  if (mIn.Layout() != mOut.Layout() && CanReorderAudio()) {
     ReOrderInterleavedChannels(aOut, aIn, aFrames);
   } else if (aIn != aOut) {
     memmove(aOut, aIn, FramesOutToBytes(aFrames));
@@ -156,8 +161,10 @@ static void dumbUpDownMix(TYPE* aOut, int32_t aOutChannels, const TYPE* aIn,
     for (int32_t j = 0; j < commonChannels; j++) {
       aOut[i * aOutChannels + j] = aIn[i * aInChannels + j];
     }
-    for (int32_t j = 0; j < aInChannels - aOutChannels; j++) {
-      aOut[i * aOutChannels + j] = 0;
+    if (aOutChannels > aInChannels) {
+      for (int32_t j = 0; j < aInChannels - aOutChannels; j++) {
+        aOut[i * aOutChannels + j] = 0;
+      }
     }
   }
 }

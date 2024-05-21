@@ -14,20 +14,16 @@ Services.scriptloader.loadSubScript(
   this
 );
 
-add_task(async function() {
+add_task(async function () {
   info("Creating a test document with 2 iframes containing animated nodes");
 
-  const {
-    inspector,
-    target,
-    walker,
-    animations,
-  } = await initAnimationsFrontForUrl(
-    "data:text/html;charset=utf-8," +
-      "<iframe id='iframe' src='" +
-      URL +
-      "'></iframe>"
-  );
+  const { inspector, target, walker, animations } =
+    await initAnimationsFrontForUrl(
+      "data:text/html;charset=utf-8," +
+        "<iframe id='iframe' src='" +
+        URL +
+        "'></iframe>"
+    );
 
   info("Try retrieving all animations from the root doc's <body> node");
   const rootBody = await walker.querySelector(walker.rootNode, "body");
@@ -43,7 +39,11 @@ add_task(async function() {
   // fail depending on how fast or slow the test is (indeed, the test page
   // contains short transitions, and delayed animations). So just make sure we
   // at least have the infinitely running animations.
-  ok(players.length >= 4, "All subtree animations were retrieved");
+  Assert.greaterOrEqual(
+    players.length,
+    4,
+    "All subtree animations were retrieved"
+  );
 
   await target.destroy();
   gBrowser.removeCurrentTab();

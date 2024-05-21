@@ -10,23 +10,32 @@
   <script type="application/javascript">
   <![CDATA[
     SimpleTest.waitForExplicitFinish();
-    SpecialPowers.pushPrefEnv({"set":[["browser.preferences.instantApply", false]]}, function() {
-
     SimpleTest.registerCleanupFunction(() => {
       SpecialPowers.clearUserPref("tests.beforeaccept.dialogShown");
       SpecialPowers.clearUserPref("tests.beforeaccept.called");
     });
 
-    // No instant-apply for this test
-    var prefWindow = window.browsingContext.topChromeWindow.openDialog("window_preferences_beforeaccept.xhtml", "", "", windowOnload);
+    // No instant-apply for this test because type="child".
+    var prefWindow = window.browsingContext.topChromeWindow.openDialog(
+      "window_preferences_beforeaccept.xhtml",
+      "",
+      "",
+      windowOnload
+    );
 
     function windowOnload() {
-      var dialogShown = prefWindow.Preferences.get("tests.beforeaccept.dialogShown");
+      var dialogShown = prefWindow.Preferences.get(
+        "tests.beforeaccept.dialogShown"
+      );
       var called = prefWindow.Preferences.get("tests.beforeaccept.called");
       is(dialogShown.value, true, "dialog opened, shown pref set");
       is(dialogShown.valueFromPreferences, null, "shown pref not committed");
       is(called.value, null, "beforeaccept not yet called");
-      is(called.valueFromPreferences, null, "beforeaccept not yet called, pref not committed");
+      is(
+        called.valueFromPreferences,
+        null,
+        "beforeaccept not yet called, pref not committed"
+      );
 
       // try to accept the dialog, should fail the first time
       prefWindow.document.getElementById("beforeaccept_dialog").acceptDialog();
@@ -44,7 +53,6 @@
 
       SimpleTest.finish();
     }
-});
   ]]>
   </script>
 

@@ -12,8 +12,7 @@
 nsresult NS_NewSVGSymbolElement(
     nsIContent** aResult, already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo);
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 using SVGSymbolElementBase = SVGViewportElement;
 
@@ -25,17 +24,21 @@ class SVGSymbolElement final : public SVGSymbolElementBase {
   explicit SVGSymbolElement(
       already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo);
   ~SVGSymbolElement() = default;
-  virtual JSObject* WrapNode(JSContext* cx,
-                             JS::Handle<JSObject*> aGivenProto) override;
+  JSObject* WrapNode(JSContext* cx, JS::Handle<JSObject*> aGivenProto) override;
+
+  Focusable IsFocusableWithoutStyle(bool aWithMouse) override;
 
  public:
   // interfaces:
   NS_DECL_ISUPPORTS_INHERITED
 
-  virtual nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
+  NS_IMPL_FROMNODE_WITH_TAG(SVGSymbolElement, kNameSpaceID_SVG, symbol)
+
+  nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
+
+  bool CouldBeRendered() const;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // DOM_SVG_SVGSYMBOLELEMENT_H_

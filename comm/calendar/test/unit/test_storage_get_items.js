@@ -6,11 +6,11 @@
  * Tests for the CalStorageCalendar.getItems method.
  */
 
-const { CalendarTestUtils } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarTestUtils.jsm"
+const { CalendarTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarTestUtils.sys.mjs"
 );
-const { CalEvent } = ChromeUtils.import("resource:///modules/CalEvent.jsm");
-const { CalTodo } = ChromeUtils.import("resource:///modules/CalTodo.jsm");
+const { CalEvent } = ChromeUtils.importESModule("resource:///modules/CalEvent.sys.mjs");
+const { CalTodo } = ChromeUtils.importESModule("resource:///modules/CalTodo.sys.mjs");
 
 do_get_profile();
 
@@ -21,20 +21,20 @@ do_get_profile();
  * create more than one calendar with the same id.
  */
 function createStorageCalendar(id) {
-  let db = Services.dirsvc.get("TmpD", Ci.nsIFile);
+  const db = Services.dirsvc.get("TmpD", Ci.nsIFile);
   db.append("test_storage.sqlite");
-  let uri = Services.io.newFileURI(db);
+  const uri = Services.io.newFileURI(db);
 
   // Make sure timezone service is initialized
   Cc["@mozilla.org/calendar/timezone-service;1"].getService(Ci.calIStartupService).startup(null);
 
-  let calendar = Cc["@mozilla.org/calendar/calendar;1?type=storage"].createInstance(
+  const calendar = Cc["@mozilla.org/calendar/calendar;1?type=storage"].createInstance(
     Ci.calISyncWriteCalendar
   );
 
   calendar.uri = uri;
   calendar.id = id;
-  return cal.async.promisifyCalendar(calendar);
+  return calendar;
 }
 
 /**
@@ -50,7 +50,7 @@ function createStorageCalendar(id) {
  *  expect.
  */
 async function doPropertiesTest(filterType, originalItem, originalProps, changedPropList) {
-  for (let [key, value] of Object.entries(originalProps)) {
+  for (const [key, value] of Object.entries(originalProps)) {
     if (key == "CATEGORIES") {
       originalItem.setCategories(value);
     } else {
@@ -58,16 +58,16 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
     }
   }
 
-  let calId = cal.getUUID();
-  let calendar = createStorageCalendar(calId);
+  const calId = cal.getUUID();
+  const calendar = createStorageCalendar(calId);
   await calendar.addItem(originalItem);
 
-  let filter =
+  const filter =
     filterType |
     Ci.calICalendar.ITEM_FILTER_COMPLETED_ALL |
     Ci.calICalendar.ITEM_FILTER_CLASS_OCCURRENCES;
 
-  let savedItems = await calendar.getItems(
+  let savedItems = await calendar.getItemsAsArray(
     filter,
     0,
     cal.createDateTime("20201201T000000Z"),
@@ -81,8 +81,8 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
   );
 
   // Ensure all occurrences have the correct properties initially.
-  for (let item of savedItems) {
-    for (let [key, value] of Object.entries(originalProps)) {
+  for (const item of savedItems) {
+    for (const [key, value] of Object.entries(originalProps)) {
       if (key == "CATEGORIES") {
         Assert.equal(
           item.getCategories().join(),
@@ -97,13 +97,13 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
 
   // Modify the occurrences that have new properties set in changedPropList.
   for (let idx = 0; idx < changedPropList.length; idx++) {
-    let changedProps = changedPropList[idx];
+    const changedProps = changedPropList[idx];
     if (changedProps) {
-      let targetOccurrence = savedItems[idx];
-      let targetException = targetOccurrence.clone();
+      const targetOccurrence = savedItems[idx];
+      const targetException = targetOccurrence.clone();
 
       // Make the changes to the properties.
-      for (let [key, value] of Object.entries(changedProps)) {
+      for (const [key, value] of Object.entries(changedProps)) {
         if (key == "CATEGORIES") {
           targetException.setCategories(value);
         } else {
@@ -111,20 +111,13 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
         }
       }
 
-      await new Promise(resolve => {
-        calendar.modifyItem(
-          cal.itip.prepareSequence(targetException, targetOccurrence),
-          targetOccurrence,
-          {
-            onOperationComplete() {
-              resolve();
-            },
-          }
-        );
-      });
+      await calendar.modifyItem(
+        cal.itip.prepareSequence(targetException, targetOccurrence),
+        targetOccurrence
+      );
 
       // Refresh the saved items list after the change.
-      savedItems = await calendar.getItems(
+      savedItems = await calendar.getItemsAsArray(
         filter,
         0,
         cal.createDateTime("20201201T000000Z"),
@@ -135,7 +128,7 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
 
   // Get a fresh copy of the occurrences by using a new calendar with the
   // same id.
-  let itemsAfterUpdate = await createStorageCalendar(calId).getItems(
+  const itemsAfterUpdate = await createStorageCalendar(calId).getItemsAsArray(
     filter,
     0,
     cal.createDateTime("20201201T000000Z"),
@@ -151,12 +144,12 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
   // Compare each property of each occurrence to ensure the changed
   // occurrences have the values we expect.
   for (let i = 0; i < itemsAfterUpdate.length; i++) {
-    let item = itemsAfterUpdate[i];
-    let isException = changedPropList[i] != null;
-    let label = isException ? `modified occurrence ${i}` : `unmodified occurrence ${i}`;
-    let checkedProps = isException ? changedPropList[i] : originalProps;
+    const item = itemsAfterUpdate[i];
+    const isException = changedPropList[i] != null;
+    const label = isException ? `modified occurrence ${i}` : `unmodified occurrence ${i}`;
+    const checkedProps = isException ? changedPropList[i] : originalProps;
 
-    for (let [key, value] of Object.entries(checkedProps)) {
+    for (const [key, value] of Object.entries(checkedProps)) {
       if (key == "CATEGORIES") {
         Assert.equal(
           item.getCategories().join(),
@@ -178,7 +171,7 @@ async function doPropertiesTest(filterType, originalItem, originalProps, changed
  * Test event exceptions load their properties.
  */
 add_task(async function testEventPropertiesForRecurringExceptionsLoad() {
-  let event = new CalEvent(CalendarTestUtils.dedent`
+  const event = new CalEvent(CalendarTestUtils.dedent`
       BEGIN:VEVENT
       CREATED:20201211T000000Z
       LAST-MODIFIED:20201211T000000Z
@@ -191,13 +184,13 @@ add_task(async function testEventPropertiesForRecurringExceptionsLoad() {
       END:VEVENT
     `);
 
-  let originalProps = {
+  const originalProps = {
     DESCRIPTION: "This is a test event.",
     CATEGORIES: ["Birthday"],
     LOCATION: "Castara",
   };
 
-  let changedProps = [
+  const changedProps = [
     null,
     null,
     {
@@ -221,7 +214,7 @@ add_task(async function testEventPropertiesForRecurringExceptionsLoad() {
  * Test todo exceptions load their properties.
  */
 add_task(async function testTodoPropertiesForRecurringExceptionsLoad() {
-  let todo = new CalTodo(CalendarTestUtils.dedent`
+  const todo = new CalTodo(CalendarTestUtils.dedent`
       BEGIN:VTODO
       CREATED:20201211T000000Z
       LAST-MODIFIED:20201211T000000Z
@@ -234,14 +227,14 @@ add_task(async function testTodoPropertiesForRecurringExceptionsLoad() {
       END:VTODO
     `);
 
-  let originalProps = {
+  const originalProps = {
     DESCRIPTION: "This is a test todo.",
     CATEGORIES: ["Birthday"],
     LOCATION: "Castara",
     STATUS: "NEEDS-ACTION",
   };
 
-  let changedProps = [
+  const changedProps = [
     null,
     null,
     {
@@ -262,7 +255,7 @@ add_task(async function testTodoPropertiesForRecurringExceptionsLoad() {
  * exceptions with their parent item. See bug 1686466.
  */
 add_task(async function testRecurringEventChangesAreNotHiddenByCache() {
-  let event = new CalEvent(CalendarTestUtils.dedent`
+  const event = new CalEvent(CalendarTestUtils.dedent`
       BEGIN:VEVENT
       CREATED:20201211T000000Z
       LAST-MODIFIED:20201211T000000Z
@@ -275,11 +268,11 @@ add_task(async function testRecurringEventChangesAreNotHiddenByCache() {
       END:VEVENT
     `);
 
-  let originalProps = {
+  const originalProps = {
     LOCATION: "San Juan",
   };
 
-  let changedProps = [
+  const changedProps = [
     null,
     {
       LOCATION: "Buenos Aries",
@@ -307,7 +300,7 @@ add_task(async function testRecurringEventChangesAreNotHiddenByCache() {
  * exceptions with their parent item. See bug 1686466.
  */
 add_task(async function testRecurringTodoChangesNotHiddenByCache() {
-  let todo = new CalTodo(CalendarTestUtils.dedent`
+  const todo = new CalTodo(CalendarTestUtils.dedent`
       BEGIN:VTODO
       CREATED:20201211T000000Z
       LAST-MODIFIED:20201211T000000Z
@@ -320,14 +313,14 @@ add_task(async function testRecurringTodoChangesNotHiddenByCache() {
       END:VTODO
     `);
 
-  let originalProps = {
+  const originalProps = {
     DESCRIPTION: "This is a test todo.",
     CATEGORIES: ["Birthday"],
     LOCATION: "Castara",
     STATUS: "NEEDS-ACTION",
   };
 
-  let changedProps = [
+  const changedProps = [
     null,
     {
       STATUS: "COMPLETE",

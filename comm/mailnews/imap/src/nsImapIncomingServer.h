@@ -6,8 +6,8 @@
 #ifndef __nsImapIncomingServer_h
 #define __nsImapIncomingServer_h
 
-#include "mozilla/Attributes.h"
 #include "msgCore.h"
+#include "nsImapCore.h"
 #include "nsIImapIncomingServer.h"
 #include "nsMsgIncomingServer.h"
 #include "nsIImapServerSink.h"
@@ -46,13 +46,9 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
   NS_IMETHOD CloseCachedConnections() override;
   NS_IMETHOD GetConstructedPrettyName(nsAString& retval) override;
   NS_IMETHOD GetCanBeDefaultServer(bool* canBeDefaultServer) override;
-  NS_IMETHOD GetCanCompactFoldersOnServer(
-      bool* canCompactFoldersOnServer) override;
   NS_IMETHOD GetCanUndoDeleteOnServer(bool* canUndoDeleteOnServer) override;
   NS_IMETHOD GetCanSearchMessages(bool* canSearchMessages) override;
-  NS_IMETHOD GetCanEmptyTrashOnExit(bool* canEmptyTrashOnExit) override;
   NS_IMETHOD GetOfflineSupportLevel(int32_t* aSupportLevel) override;
-  NS_IMETHOD GeneratePrettyNameForMigration(nsAString& aPrettyName) override;
   NS_IMETHOD GetSupportsDiskSpace(bool* aSupportsDiskSpace) override;
   NS_IMETHOD GetCanCreateFoldersOnServer(
       bool* aCanCreateFoldersOnServer) override;
@@ -62,11 +58,7 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
   NS_IMETHOD GetSearchScope(nsMsgSearchScopeValue* searchScope) override;
   NS_IMETHOD GetServerRequiresPasswordForBiff(
       bool* aServerRequiresPasswordForBiff) override;
-  NS_IMETHOD OnUserOrHostNameChanged(const nsACString& oldName,
-                                     const nsACString& newName,
-                                     bool hostnameChanged) override;
-  NS_IMETHOD GetNumIdleConnections(int32_t* aNumIdleConnections);
-  NS_IMETHOD ForgetSessionPassword() override;
+  NS_IMETHOD ForgetSessionPassword(bool modifyLogin) override;
   NS_IMETHOD GetMsgFolderFromURI(nsIMsgFolder* aFolderResource,
                                  const nsACString& aURI,
                                  nsIMsgFolder** aFolder) override;
@@ -77,8 +69,6 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
  protected:
   virtual ~nsImapIncomingServer();
   nsresult GetFolder(const nsACString& name, nsIMsgFolder** pFolder);
-  virtual nsresult CreateRootFolderFromUri(const nsACString& serverUri,
-                                           nsIMsgFolder** rootFolder) override;
   nsresult ResetFoldersToUnverified(nsIMsgFolder* parentFolder);
   void GetUnverifiedSubFolders(nsIMsgFolder* parentFolder,
                                nsCOMArray<nsIMsgImapMailFolder>& aFoldersArray);

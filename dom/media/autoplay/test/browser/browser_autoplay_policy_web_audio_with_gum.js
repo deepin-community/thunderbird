@@ -24,7 +24,7 @@ add_task(async function startTestingWebAudioWithGUM() {
 
   await SpecialPowers.pushPrefEnv({
     set: [["media.navigator.permission.force", true]],
-  }).then(async function() {
+  }).then(async function () {
     info("- test web audio with gUM denied -");
     await testWebAudioWithGUM({
       constraints: { video: true },
@@ -50,7 +50,6 @@ function setupTestPreferences() {
       ["media.autoplay.default", SpecialPowers.Ci.nsIAutoplay.BLOCKED],
       ["media.autoplay.blocking_policy", 0],
       ["media.autoplay.block-event.enabled", true],
-      ["media.autoplay.block-webaudio", true],
       ["media.navigator.permission.fake", true],
     ],
   });
@@ -63,7 +62,7 @@ function createAudioContext() {
   ac.stateChangePromise = new Promise(resolve => {
     ac.addEventListener(
       "statechange",
-      function() {
+      function () {
         resolve();
       },
       { once: true }
@@ -72,7 +71,7 @@ function createAudioContext() {
   ac.notAllowedToStart = new Promise(resolve => {
     ac.addEventListener(
       "blocked",
-      function() {
+      function () {
         resolve();
       },
       { once: true }
@@ -83,7 +82,7 @@ function createAudioContext() {
 async function checkingAudioContextRunningState() {
   let ac = content.ac;
   await ac.notAllowedToStart;
-  ok(ac.state === "suspended", `AudioContext is not started yet.`);
+  Assert.strictEqual(ac.state, "suspended", `AudioContext is not started yet.`);
 }
 
 function resumeWithoutExpectedSuccess() {
@@ -106,7 +105,7 @@ function resumeWithExpectedSuccess() {
   let ac = content.ac;
   ac.resumePromises.push(ac.resume());
   return Promise.all(ac.resumePromises).then(() => {
-    ok(ac.state == "running", "audio context starts running");
+    Assert.equal(ac.state, "running", "audio context starts running");
   });
 }
 

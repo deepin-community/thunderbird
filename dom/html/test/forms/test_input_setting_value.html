@@ -15,10 +15,7 @@
 
 <script class="testbody" type="application/javascript">
 SimpleTest.waitForExplicitFinish();
-SimpleTest.waitForFocus(async () => {
-  await SpecialPowers.pushPrefEnv({
-    set: [["dom.input_events.beforeinput.enabled", true]],
-  });
+SimpleTest.waitForFocus(() => {
   const kSetUserInputCancelable = SpecialPowers.getBoolPref("dom.input_event.allow_to_cancel_set_user_input");
 
   let input = document.querySelector("input[type=text]");
@@ -474,7 +471,7 @@ SimpleTest.waitForFocus(async () => {
       is(input.value, "hig",
          `${description}The value should be set to the specified value in "beforeinput" event listener since the event target was already modified`);
       is(inputEvents.length, 1, `${description}"input" event should be fired`);
-      if (inputEvents.length > 0) {
+      if (inputEvents.length) {
         is(inputEvents[0].inputType,
            "insertReplacementText", `${description}inputType of "input" event should be "insertReplacementText"`);
         is(inputEvents[0].data, "def",
@@ -553,7 +550,7 @@ SimpleTest.waitForFocus(async () => {
       // Different from Chrome
       is(inputEvents.length, 1,
          `${description}"input" event should be fired even if the frame of target is destroyed`);
-      if (inputEvents.length > 0) {
+      if (inputEvents.length) {
         is(inputEvents[0].inputType,
            "insertReplacementText", `${description}inputType of "input" event should be "insertReplacementText"`);
         is(inputEvents[0].data, "def",
@@ -600,7 +597,7 @@ SimpleTest.waitForFocus(async () => {
       is(input.value, "hig",
          `${description}The value should be set to the specified value in "beforeinput" event listener since the event target was already modified`);
       is(inputEvents.length, 1, `${description}"input" event should be fired`);
-      if (inputEvents.length > 0) {
+      if (inputEvents.length) {
         is(inputEvents[0].inputType,
            "insertReplacementText", `${description}inputType of "input" event should be "insertReplacementText"`);
         is(inputEvents[0].data, "def",

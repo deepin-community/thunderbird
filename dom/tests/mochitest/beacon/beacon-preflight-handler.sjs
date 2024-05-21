@@ -1,5 +1,4 @@
-function handleRequest(request, response)
-{
+function handleRequest(request, response) {
   response.setHeader("Cache-Control", "no-cache, must-revalidate", false);
 
   if (request.queryString === "verify") {
@@ -34,6 +33,5 @@ function handleRequest(request, response)
     setState("preflight", "oops");
     response.setStatusLine(null, 200, "OK");
     response.write("DONE");
-    return;
   }
 }

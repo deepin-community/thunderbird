@@ -7,13 +7,16 @@
 """Python usage, esp. virtualenv.
 """
 
-from __future__ import absolute_import, division
 import errno
 import json
 import os
+import shutil
+import site
 import socket
+import subprocess
 import sys
 import traceback
+from pathlib import Path
 
 try:
     import urlparse
@@ -41,9 +44,10 @@ external_tools_path = os.path.join(
 def get_tlsv1_post():
     # Monkeypatch to work around SSL errors in non-bleeding-edge Python.
     # Taken from https://lukasa.co.uk/2013/01/Choosing_SSL_Version_In_Requests/
+    import ssl
+
     import requests
     from requests.packages.urllib3.poolmanager import PoolManager
-    import ssl
 
     class TLSV1Adapter(requests.adapters.HTTPAdapter):
         def init_poolmanager(self, connections, maxsize, block=False):
@@ -124,7 +128,6 @@ class VirtualenvMixin(object):
         method=None,
         requirements=None,
         optional=False,
-        two_pass=False,
         editable=False,
     ):
         """Register a module to be installed with the virtualenv.
@@ -136,7 +139,7 @@ class VirtualenvMixin(object):
         applied.
         """
         self._virtualenv_modules.append(
-            (name, url, method, requirements, optional, two_pass, editable)
+            (name, url, method, requirements, optional, editable)
         )
 
     def query_virtualenv_path(self):
@@ -203,7 +206,9 @@ class VirtualenvMixin(object):
                 self.log("package_versions: Program pip not in path", level=error_level)
                 return {}
             pip_freeze_output = self.get_output_from_command(
-                [pip, "list", "--format", "freeze"], silent=True, ignore_errors=True
+                [pip, "list", "--format", "freeze", "--no-index"],
+                silent=True,
+                ignore_errors=True,
             )
             if not isinstance(pip_freeze_output, string_types):
                 self.fatal(
@@ -211,9 +216,9 @@ class VirtualenvMixin(object):
                     + pip_freeze_output
                 )
 
-        for line in pip_freeze_output.splitlines():
+        for l in pip_freeze_output.splitlines():
             # parse the output into package, version
-            line = line.strip()
+            line = l.strip()
             if not line:
                 # whitespace
                 continue
@@ -263,6 +268,11 @@ class VirtualenvMixin(object):
 
         pip install -r requirements1.txt -r requirements2.txt module_url
         """
+        import http.client
+        import time
+        import urllib.error
+        import urllib.request
+
         c = self.config
         dirs = self.query_abs_dirs()
         env = self.query_env()
@@ -280,6 +290,9 @@ class VirtualenvMixin(object):
                 command = [pip, "install"]
             if no_deps:
                 command += ["--no-deps"]
+
+            command += ["--no-use-pep517"]
+
             # To avoid timeouts with our pypi server, increase default timeout:
             # https://bugzilla.mozilla.org/show_bug.cgi?id=1007230#c802
             command += ["--timeout", str(c.get("pip_timeout", 120))]
@@ -289,32 +302,65 @@ class VirtualenvMixin(object):
                 command += ["--no-index"]
             for opt in global_options:
                 command += ["--global-option", opt]
-        elif install_method == "easy_install":
-            if not module:
-                self.fatal(
-                    "module parameter required with install_method='easy_install'"
-                )
-            if requirements:
-                # Install pip requirements files separately, since they're
-                # not understood by easy_install.
-                self.install_module(requirements=requirements, install_method="pip")
-            command = [self.query_python_path(), "-m", "easy_install"]
         else:
             self.fatal(
                 "install_module() doesn't understand an install_method of %s!"
                 % install_method
             )
 
+        # find_links connection check while loop
+        find_links_added = 0
+        fl_retry_sleep_seconds = 10
+        fl_max_retry_minutes = 5
+        fl_retry_loops = (fl_max_retry_minutes * 60) / fl_retry_sleep_seconds
         for link in c.get("find_links", []):
             parsed = urlparse.urlparse(link)
+            dns_result = None
+            get_result = None
+            retry_counter = 0
+            while retry_counter < fl_retry_loops and (
+                dns_result is None or get_result is None
+            ):
+                try:
+                    dns_result = socket.gethostbyname(parsed.hostname)
+                    get_result = urllib.request.urlopen(link, timeout=10).read()
+                    break
+                except socket.gaierror:
+                    retry_counter += 1
+                    self.warning(
+                        "find_links: dns check failed for %s, sleeping %ss and retrying..."
+                        % (parsed.hostname, fl_retry_sleep_seconds)
+                    )
+                    time.sleep(fl_retry_sleep_seconds)
+                except (
+                    urllib.error.HTTPError,
+                    urllib.error.URLError,
+                    socket.timeout,
+                    http.client.RemoteDisconnected,
+                ) as e:
+                    retry_counter += 1
+                    self.warning(
+                        "find_links: connection check failed for %s, sleeping %ss and retrying..."
+                        % (link, fl_retry_sleep_seconds)
+                    )
+                    self.warning("find_links: exception: %s" % e)
+                    time.sleep(fl_retry_sleep_seconds)
+            # now that the connectivity check is good, add the link
+            if dns_result and get_result:
+                self.info("find_links: connection checks passed for %s, adding." % link)
+                find_links_added += 1
+                command.extend(["--find-links", link])
+            else:
+                self.warning(
+                    "find_links: connection checks failed for %s"
+                    ", but max retries reached. continuing..." % link
+                )
 
-            try:
-                socket.gethostbyname(parsed.hostname)
-            except socket.gaierror as e:
-                self.info("error resolving %s (ignoring): %s" % (parsed.hostname, e))
-                continue
-
-            command.extend(["--find-links", link])
+        # TODO: make this fatal if we always see failures after this
+        if find_links_added == 0:
+            self.warning(
+                "find_links: no find_links added. pip installation will probably fail!"
+            )
 
         # module_url can be None if only specifying requirements files
         if module_url:
@@ -404,63 +450,145 @@ class VirtualenvMixin(object):
         self.info("Creating virtualenv %s" % venv_path)
 
         # Always use the virtualenv that is vendored since that is deterministic.
-        # TODO Bug 1408051 - Use the copy of virtualenv under
-        # third_party/python/virtualenv once everything is off buildbot
         # base_work_dir is for when we're running with mozharness.zip, e.g. on
         # test jobs
         # abs_src_dir is for when we're running out of a checked out copy of
         # the source code
-        venv_search_dirs = [
+        vendor_search_dirs = [
             os.path.join("{base_work_dir}", "mozharness"),
             "{abs_src_dir}",
         ]
         if "abs_src_dir" not in dirs and "repo_path" in self.config:
             dirs["abs_src_dir"] = os.path.normpath(self.config["repo_path"])
-        for d in venv_search_dirs:
-            file = os.path.join(
-                d, "third_party", "python", "virtualenv", "virtualenv.py"
-            )
+        for d in vendor_search_dirs:
             try:
-                venv_py_path = file.format(**dirs)
+                src_dir = Path(d.format(**dirs))
             except KeyError:
                 continue
-            if os.path.exists(venv_py_path):
+
+            pip_wheel_path = (
+                src_dir
+                / "third_party"
+                / "python"
+                / "_venv"
+                / "wheels"
+                / "pip-23.0.1-py3-none-any.whl"
+            )
+            setuptools_wheel_path = (
+                src_dir
+                / "third_party"
+                / "python"
+                / "_venv"
+                / "wheels"
+                / "setuptools-51.2.0-py3-none-any.whl"
+            )
+
+            if all(path.exists() for path in (pip_wheel_path, setuptools_wheel_path)):
                 break
         else:
-            self.fatal("Can't find the virtualenv module")
+            self.fatal("Can't find 'pip' and 'setuptools' wheels")
 
-        virtualenv = [
-            sys.executable,
-            venv_py_path,
-        ]
-        virtualenv_options = c.get("virtualenv_options", [])
-        # Creating symlinks in the virtualenv may cause issues during
-        # virtualenv creation or operation on non-Redhat derived
-        # distros. On Redhat derived distros --always-copy causes
-        # imports to fail. See
-        # https://github.com/pypa/virtualenv/issues/565. Therefore
-        # only use --alway-copy when not using Redhat.
-        if self._is_redhat_based():
-            self.warning(
-                "creating virtualenv without --always-copy "
-                "due to issues on Redhat derived distros"
-            )
-        else:
-            virtualenv_options.append("--always-copy")
+        venv_python_bin = Path(self.query_python_path())
 
-        if os.path.exists(self.query_python_path()):
+        if venv_python_bin.exists():
             self.info(
                 "Virtualenv %s appears to already exist; "
                 "skipping virtualenv creation." % self.query_python_path()
             )
         else:
+            self.run_command(
+                [sys.executable, "--version"],
+            )
+
+            # Temporary hack to get around a bug with venv in Python 3.7.3 in CI
+            # https://bugs.python.org/issue36441
+            if self._is_windows():
+                if sys.version_info[:3] == (3, 7, 3):
+                    python_exe = Path(sys.executable)
+                    debug_exe_dir = (
+                        python_exe.parent / "lib" / "venv" / "scripts" / "nt"
+                    )
+
+                    if debug_exe_dir.exists():
+                        for executable in {
+                            "python.exe",
+                            "python_d.exe",
+                            "pythonw.exe",
+                            "pythonw_d.exe",
+                        }:
+                            expected_python_debug_exe = debug_exe_dir / executable
+                            if not expected_python_debug_exe.exists():
+                                shutil.copy(
+                                    sys.executable, str(expected_python_debug_exe)
+                                )
+
+            venv_creation_flags = ["-m", "venv", venv_path]
+
+            if self._is_windows():
+                # To workaround an issue on Windows10 jobs in CI we have to
+                # explicitly install the default pip separately. Ideally we
+                # could just remove the "--without-pip" above and get the same
+                # result, but that's apparently not always the case.
+                venv_creation_flags = venv_creation_flags + ["--without-pip"]
+
             self.mkdir_p(dirs["abs_work_dir"])
             self.run_command(
-                virtualenv + virtualenv_options + [venv_path],
+                [sys.executable] + venv_creation_flags,
                 cwd=dirs["abs_work_dir"],
                 error_list=VirtualenvErrorList,
-                partial_env={"VIRTUALENV_NO_DOWNLOAD": "1"},
                 halt_on_failure=True,
+            )
+
+            if self._is_windows():
+                self.run_command(
+                    [str(venv_python_bin), "-m", "ensurepip", "--default-pip"],
+                    cwd=dirs["abs_work_dir"],
+                    halt_on_failure=True,
+                )
+
+            self._ensure_python_exe(venv_python_bin.parent)
+
+            self.run_command(
+                [
+                    str(venv_python_bin),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--only-binary",
+                    ":all:",
+                    "--disable-pip-version-check",
+                    str(pip_wheel_path),
+                    str(setuptools_wheel_path),
+                ],
+                cwd=dirs["abs_work_dir"],
+                error_list=VirtualenvErrorList,
+                halt_on_failure=True,
+            )
+
+        self.info(self.platform_name())
+        if self.platform_name().startswith("macos"):
+            tmp_path = "{}/bin/bak".format(venv_path)
+            self.info(
+                "Copying venv python binaries to {} to clear for re-sign".format(
+                    tmp_path
+                )
+            )
+            subprocess.call("mkdir -p {}".format(tmp_path), shell=True)
+            subprocess.call(
+                "cp {}/bin/python* {}/".format(venv_path, tmp_path), shell=True
+            )
+            self.info("Replacing venv python binaries with reset copies")
+            subprocess.call(
+                "mv -f {}/* {}/bin/".format(tmp_path, venv_path), shell=True
+            )
+            self.info(
+                "codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime "
+                "-f {}/bin/*".format(venv_path)
+            )
+            subprocess.call(
+                "codesign -s - --preserve-metadata=identifier,entitlements,flags,runtime -f "
+                "{}/bin/python*".format(venv_path),
+                shell=True,
             )
 
         if not modules:
@@ -485,8 +613,6 @@ class VirtualenvMixin(object):
                 module_url = self.config.get("%s_url" % module, module_url)
                 module_name = module
             install_method = "pip"
-            if module_name in ("pywin32",):
-                install_method = "easy_install"
             self.install_module(
                 module=module_name,
                 module_url=module_url,
@@ -501,19 +627,8 @@ class VirtualenvMixin(object):
             method,
             requirements,
             optional,
-            two_pass,
             editable,
         ) in self._virtualenv_modules:
-            if two_pass:
-                self.install_module(
-                    module=module,
-                    module_url=url,
-                    install_method=method,
-                    requirements=requirements or (),
-                    optional=optional,
-                    no_deps=True,
-                    editable=editable,
-                )
             self.install_module(
                 module=module,
                 module_url=url,
@@ -529,9 +644,65 @@ class VirtualenvMixin(object):
 
     def activate_virtualenv(self):
         """Import the virtualenv's packages into this Python interpreter."""
-        bin_dir = os.path.dirname(self.query_python_path())
-        activate = os.path.join(bin_dir, "activate_this.py")
-        exec(open(activate).read(), dict(__file__=activate))
+        venv_root_dir = Path(self.query_virtualenv_path())
+        venv_name = venv_root_dir.name
+        bin_path = Path(self.query_python_path())
+        bin_dir = bin_path.parent
+
+        if self._is_windows():
+            site_packages_dir = venv_root_dir / "Lib" / "site-packages"
+        else:
+            site_packages_dir = (
+                venv_root_dir
+                / "lib"
+                / "python{}.{}".format(*sys.version_info)
+                / "site-packages"
+            )
+
+        os.environ["PATH"] = os.pathsep.join(
+            [str(bin_dir)] + os.environ.get("PATH", "").split(os.pathsep)
+        )
+        os.environ["VIRTUAL_ENV"] = venv_name
+
+        prev_path = set(sys.path)
+
+        site.addsitedir(str(site_packages_dir.resolve()))
+
+        new_path = list(sys.path)
+
+        sys.path[:] = [p for p in new_path if p not in prev_path] + [
+            p for p in new_path if p in prev_path
+        ]
+
+        sys.real_prefix = sys.prefix
+        sys.prefix = str(venv_root_dir)
+        sys.executable = str(bin_path)
+
+    def _ensure_python_exe(self, python_exe_root: Path):
+        """On some machines in CI venv does not behave consistently. Sometimes
+        only a "python3" executable is created, but we expect "python". Since
+        they are functionally identical, we can just copy "python3" to "python"
+        (and vice-versa) to solve the problem.
+        """
+        python3_exe_path = python_exe_root / "python3"
+        python_exe_path = python_exe_root / "python"
+
+        if self._is_windows():
+            python3_exe_path = python3_exe_path.with_suffix(".exe")
+            python_exe_path = python_exe_path.with_suffix(".exe")
+
+        if python3_exe_path.exists() and not python_exe_path.exists():
+            shutil.copy(str(python3_exe_path), str(python_exe_path))
+
+        if python_exe_path.exists() and not python3_exe_path.exists():
+            shutil.copy(str(python_exe_path), str(python3_exe_path))
+
+        if not python_exe_path.exists() and not python3_exe_path.exists():
+            raise Exception(
+                f'Neither a "{python_exe_path.name}" or "{python3_exe_path.name}" '
+                f"were found. This means something unexpected happened during the "
+                f"virtual environment creation and we cannot proceed."
+            )
 
 
 # This is (sadly) a mixin for logging methods.
@@ -554,7 +725,7 @@ class PerfherderResourceOptionsMixin(ScriptMixin):
                 # This file should exist on Linux in EC2.
                 with open("/etc/instance_metadata.json", "rb") as fh:
                     im = json.load(fh)
-                    instance = im.get("aws_instance_type", u"unknown").encode("ascii")
+                    instance = im.get("aws_instance_type", "unknown").encode("ascii")
             except IOError as e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -590,10 +761,7 @@ class ResourceMonitoringMixin(PerfherderResourceOptionsMixin):
     def __init__(self, *args, **kwargs):
         super(ResourceMonitoringMixin, self).__init__(*args, **kwargs)
 
-        self.register_virtualenv_module("psutil>=5.6.3", method="pip", optional=True)
-        self.register_virtualenv_module(
-            "mozsystemmonitor==0.4", method="pip", optional=True
-        )
+        self.register_virtualenv_module("psutil>=5.9.0", method="pip", optional=True)
         self.register_virtualenv_module("jsonschema==2.5.1", method="pip")
         self._resource_monitor = None
 
@@ -618,7 +786,24 @@ class ResourceMonitoringMixin(PerfherderResourceOptionsMixin):
             from mozsystemmonitor.resourcemonitor import SystemResourceMonitor
 
             self.info("Starting resource monitoring.")
-            self._resource_monitor = SystemResourceMonitor(poll_interval=1.0)
+            metadata = {}
+            if "TASKCLUSTER_WORKER_TYPE" in os.environ:
+                metadata["device"] = os.environ["TASKCLUSTER_WORKER_TYPE"]
+            if "MOZHARNESS_TEST_PATHS" in os.environ:
+                metadata["product"] = " ".join(
+                    json.loads(os.environ["MOZHARNESS_TEST_PATHS"]).keys()
+                )
+            if "MOZ_SOURCE_CHANGESET" in os.environ and "MOZ_SOURCE_REPO" in os.environ:
+                metadata["sourceURL"] = (
+                    os.environ["MOZ_SOURCE_REPO"]
+                    + "/rev/"
+                    + os.environ["MOZ_SOURCE_CHANGESET"]
+                )
+            if "TASK_ID" in os.environ:
+                metadata["appBuildID"] = os.environ["TASK_ID"]
+            self._resource_monitor = SystemResourceMonitor(
+                poll_interval=0.1, metadata=metadata
+            )
             self._resource_monitor.start()
         except Exception:
             self.warning(
@@ -646,28 +831,28 @@ class ResourceMonitoringMixin(PerfherderResourceOptionsMixin):
         if not self._resource_monitor:
             return
 
-        # This should never raise an exception. This is a workaround until
-        # mozsystemmonitor is fixed. See bug 895388.
+        self._resource_monitor.stop()
+        self._log_resource_usage()
+
+        # Upload a JSON file containing the raw resource data.
         try:
-            self._resource_monitor.stop()
-            self._log_resource_usage()
-
-            # Upload a JSON file containing the raw resource data.
-            try:
-                upload_dir = self.query_abs_dirs()["abs_blob_upload_dir"]
-                if not os.path.exists(upload_dir):
-                    os.makedirs(upload_dir)
-                with open(os.path.join(upload_dir, "resource-usage.json"), "w") as fh:
-                    json.dump(
-                        self._resource_monitor.as_dict(), fh, sort_keys=True, indent=4
-                    )
-            except (AttributeError, KeyError):
-                self.exception("could not upload resource usage JSON", level=WARNING)
-
-        except Exception:
-            self.warning(
-                "Exception when reporting resource usage: %s" % traceback.format_exc()
-            )
+            upload_dir = self.query_abs_dirs()["abs_blob_upload_dir"]
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+            with open(os.path.join(upload_dir, "resource-usage.json"), "w") as fh:
+                json.dump(
+                    self._resource_monitor.as_dict(), fh, sort_keys=True, indent=4
+                )
+            with open(
+                os.path.join(upload_dir, "profile_resource-usage.json"), "w"
+            ) as fh:
+                json.dump(
+                    self._resource_monitor.as_profile(),
+                    fh,
+                    separators=(",", ":"),
+                )
+        except (AttributeError, KeyError):
+            self.exception("could not upload resource usage JSON", level=WARNING)
 
     def _log_resource_usage(self):
         # Delay import because not available until virtualenv is populated.
@@ -861,7 +1046,7 @@ class ResourceMonitoringMixin(PerfherderResourceOptionsMixin):
 
 # This needs to be inherited only if you have already inherited ScriptMixin
 class Python3Virtualenv(object):
-    """ Support Python3.5+ virtualenv creation."""
+    """Support Python3.5+ virtualenv creation."""
 
     py3_initialized_venv = False
 
@@ -938,6 +1123,8 @@ class Python3Virtualenv(object):
 
         if c.get("find_links") and not c["pip_index"]:
             pip_args += ["--no-index"]
+
+        pip_args += ["--no-use-pep517"]
 
         # Add --find-links pages to look at. Add --trusted-host automatically if
         # the host isn't secure. This allows modern versions of pip to connect

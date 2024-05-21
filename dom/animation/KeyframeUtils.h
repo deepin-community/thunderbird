@@ -14,9 +14,9 @@
 
 struct JSContext;
 class JSObject;
-struct RawServoDeclarationBlock;
 
 namespace mozilla {
+struct AnimatedPropertyID;
 struct AnimationProperty;
 class ComputedStyle;
 
@@ -103,7 +103,7 @@ class KeyframeUtils {
    *                  if the property is animatable or not.
    * @return true if |aProperty| is animatable.
    */
-  static bool IsAnimatableProperty(nsCSSPropertyID aProperty);
+  static bool IsAnimatableProperty(const AnimatedPropertyID& aProperty);
 };
 
 }  // namespace mozilla

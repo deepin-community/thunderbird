@@ -10,19 +10,13 @@ EXPORTS += [
 SOURCES += [
     "nsAbAddressCollector.cpp",
     "nsAbBooleanExpression.cpp",
-    "nsAbBoolExprToLDAPFilter.cpp",
     "nsAbCardProperty.cpp",
     "nsAbDirectoryQuery.cpp",
     "nsAbDirectoryQueryProxy.cpp",
     "nsAbDirProperty.cpp",
-    "nsAbLDAPDirectory.cpp",
-    "nsAbLDAPDirectoryQuery.cpp",
-    "nsAbLDAPListenerBase.cpp",
-    "nsAbLDAPReplicationData.cpp",
-    "nsAbLDAPReplicationQuery.cpp",
-    "nsAbLDAPReplicationService.cpp",
     "nsAbLDIFService.cpp",
     "nsAbQueryStringToExpression.cpp",
+    "nsLDAPURL.cpp",
 ]
 
 if CONFIG["OS_ARCH"] == "WINNT" and CONFIG["MOZ_MAPI_SUPPORT"]:
@@ -42,10 +36,10 @@ if CONFIG["OS_ARCH"] == "Darwin":
     ]
 
 EXTRA_JS_MODULES += [
-    "AbAutoCompleteMyDomain.jsm",
-    "AbAutoCompleteSearch.jsm",
-    "AbLDAPAttributeMap.jsm",
-    "AbLDAPAutoCompleteSearch.jsm",
+    "AbAutoCompleteMyDomain.sys.mjs",
+    "AbAutoCompleteSearch.sys.mjs",
+    "AbLDAPAttributeMap.sys.mjs",
+    "AbLDAPAutoCompleteSearch.sys.mjs",
 ]
 
 FINAL_LIBRARY = "mail"

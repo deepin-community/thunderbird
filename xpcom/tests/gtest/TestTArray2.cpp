@@ -6,6 +6,7 @@
 
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Unused.h"
+#include "mozilla/TimeStamp.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@
 #include "nsIFile.h"
 
 #include "gtest/gtest.h"
+#include "mozilla/gtest/MozAssertions.h"
 
 using namespace mozilla;
 
@@ -238,7 +240,7 @@ class Object {
 
   bool operator<(const Object& other) const {
     // sort based on mStr only
-    return mStr.Compare(other.mStr.get()) < 0;
+    return Compare(mStr, other.mStr) < 0;
   }
 
   const char* Str() const { return mStr.get(); }
@@ -485,7 +487,7 @@ TEST(TArray, test_move_array)
 template <typename TypeParam>
 class TArray_MoveOnlyTest : public ::testing::Test {};
 
-TYPED_TEST_CASE_P(TArray_MoveOnlyTest);
+TYPED_TEST_SUITE_P(TArray_MoveOnlyTest);
 
 static constexpr size_t kMoveOnlyTestArrayLength = 4;
 
@@ -493,8 +495,8 @@ template <typename ArrayType>
 static auto MakeMoveOnlyArray() {
   ArrayType moveOnlyArray;
   for (size_t i = 0; i < kMoveOnlyTestArrayLength; ++i) {
-    EXPECT_TRUE(
-        moveOnlyArray.AppendElement(typename ArrayType::elem_type(), fallible));
+    EXPECT_TRUE(moveOnlyArray.AppendElement(typename ArrayType::value_type(),
+                                            fallible));
   }
   return moveOnlyArray;
 }
@@ -639,7 +641,7 @@ TYPED_TEST_P(TArray_MoveOnlyTest,
   ASSERT_EQ(kMoveOnlyTestArrayLength, autoMoveOnlyArray.Length());
 }
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     TArray_MoveOnlyTest, nsTArray_MoveConstruct, nsTArray_MoveAssign,
     nsTArray_MoveReAssign, nsTArray_to_FallibleTArray_MoveConstruct,
     nsTArray_to_FallibleTArray_MoveAssign,
@@ -656,8 +658,8 @@ REGISTER_TYPED_TEST_CASE_P(
 using BothMoveOnlyTypes =
     ::testing::Types<MoveOnly_RelocateUsingMemutils,
                      MoveOnly_RelocateUsingMoveConstructor>;
-INSTANTIATE_TYPED_TEST_CASE_P(InstantiationOf, TArray_MoveOnlyTest,
-                              BothMoveOnlyTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(InstantiationOf, TArray_MoveOnlyTest,
+                               BothMoveOnlyTypes);
 
 //----
 
@@ -731,7 +733,7 @@ TEST(TArray, test_comptr_array)
     FilePointer f;
     tmpDir->Clone(getter_AddRefs(f));
     ASSERT_TRUE(f);
-    ASSERT_FALSE(NS_FAILED(f->AppendNative(nsDependentCString(kNames[i]))));
+    ASSERT_NS_SUCCEEDED(f->AppendNative(nsDependentCString(kNames[i])));
     fileArray.AppendElement(f);
   }
 
@@ -749,15 +751,59 @@ TEST(TArray, test_comptr_array)
 
 class RefcountedObject {
  public:
-  RefcountedObject() : rc(0) {}
-  void AddRef() { ++rc; }
+  RefcountedObject() : rc(0) { val = std::rand(); }
+  void AddRef() {
+    MOZ_DIAGNOSTIC_ASSERT(rcchangeallowed);
+    ++rc;
+  }
   void Release() {
+    MOZ_DIAGNOSTIC_ASSERT(rcchangeallowed);
     if (--rc == 0) delete this;
   }
   ~RefcountedObject() = default;
 
+  int32_t GetVal() const { return val; }
+
+  static void AllowRCChange() { rcchangeallowed = true; }
+  static void ForbidRCChange() { rcchangeallowed = false; }
+
+  bool operator<(const RefcountedObject& b) const {
+    return this->GetVal() < b.GetVal();
+  };
+
+  bool operator==(const RefcountedObject& b) const {
+    return this->GetVal() == b.GetVal();
+  };
+
  private:
-  int32_t rc;
+  int rc;
+  int32_t val;
+  static bool rcchangeallowed;
+};
+bool RefcountedObject::rcchangeallowed = true;
+
+class ObjectComparatorRaw {
+ public:
+  bool Equals(RefcountedObject* const& a, RefcountedObject* const& b) const {
+    return a->GetVal() == b->GetVal();
+  }
+
+  bool LessThan(RefcountedObject* const& a, RefcountedObject* const& b) const {
+    return a->GetVal() < b->GetVal();
+  }
+};
+
+class ObjectComparatorRefPtr {
+ public:
+  bool Equals(RefPtr<RefcountedObject> const& a,
+              RefPtr<RefcountedObject> const& b) const {
+    return a->GetVal() == b->GetVal();
+  }
+
+  bool LessThan(RefPtr<RefcountedObject> const& a,
+                RefPtr<RefcountedObject> const& b) const {
+    return a->GetVal() < b->GetVal();
+  }
 };
 
 TEST(TArray, test_refptr_array)
@@ -784,6 +830,62 @@ TEST(TArray, test_refptr_array)
   a->Release();
   b->Release();
   c->Release();
+}
+
+TEST(TArray, test_sort_refptr)
+{
+  int numobjects = 1111111;
+  std::vector<RefPtr<RefcountedObject>> myobjects;
+  for (int i = 0; i < numobjects; i++) {
+    auto* obj = new RefcountedObject();
+    myobjects.push_back(obj);
+  }
+
+  {
+    nsTArray<RefPtr<RefcountedObject>> objArray(numobjects);
+    std::vector<RefPtr<RefcountedObject>> plainRefPtrArray(numobjects, nullptr);
+
+    for (int i = 0; i < numobjects; i++) {
+      objArray.AppendElement(myobjects[i]);
+      plainRefPtrArray[i] = myobjects[i];
+    }
+
+    ASSERT_EQ(objArray.IndexOf(myobjects[1]), size_t(1));
+    ASSERT_TRUE(objArray.ApplyIf(
+        myobjects[1],
+        [&](size_t i, RefPtr<RefcountedObject>& r) {
+          return i == 1 && r == myobjects[1];
+        },
+        []() { return false; }));
+
+    // Do not expect that sorting affects the reference counters of elements.
+    RefcountedObject::ForbidRCChange();
+
+    // Sort objArray with explicit, pointee value based comparator
+    objArray.Sort(ObjectComparatorRefPtr());
+    for (int i = 0; i < numobjects - 1; i++) {
+      ASSERT_TRUE(objArray[i]->GetVal() <= objArray[i + 1]->GetVal());
+    }
+
+    // std::sort plainRefPtrArray
+    auto comp = ObjectComparatorRefPtr();
+    std::sort(plainRefPtrArray.begin(), plainRefPtrArray.end(),
+              [&comp](auto const& left, auto const& right) {
+                return comp.LessThan(left, right);
+              });
+
+    // We expect the order to be the same.
+    for (int i = 0; i < numobjects; i++) {
+      ASSERT_TRUE(objArray[i]->GetVal() == plainRefPtrArray[i]->GetVal());
+    }
+
+    RefcountedObject::AllowRCChange();
+    // Destroy the arrays
+  }
+
+  for (int i = 0; i < numobjects; i++) {
+    myobjects.pop_back();
+  }
 }
 
 //----
@@ -905,9 +1007,9 @@ static bool is_heap(const Array& ary, size_t len) {
 // An array |arr| is using its auto buffer if |&arr < arr.Elements()| and
 // |arr.Elements() - &arr| is small.
 
-#define IS_USING_AUTO(arr)                            \
-  ((uintptr_t) & (arr) < (uintptr_t)arr.Elements() && \
-   ((ptrdiff_t)arr.Elements() - (ptrdiff_t)&arr) <= 16)
+#define IS_USING_AUTO(arr)                              \
+  ((uintptr_t) & (arr) < (uintptr_t)(arr).Elements() && \
+   ((ptrdiff_t)(arr).Elements() - (ptrdiff_t) & (arr)) <= 16)
 
 #define CHECK_IS_USING_AUTO(arr)     \
   do {                               \
@@ -919,10 +1021,10 @@ static bool is_heap(const Array& ary, size_t len) {
     ASSERT_FALSE(IS_USING_AUTO(arr)); \
   } while (0)
 
-#define CHECK_USES_SHARED_EMPTY_HDR(arr)          \
-  do {                                            \
-    nsTArray<int> _empty;                         \
-    ASSERT_EQ(_empty.Elements(), arr.Elements()); \
+#define CHECK_USES_SHARED_EMPTY_HDR(arr)            \
+  do {                                              \
+    nsTArray<int> _empty;                           \
+    ASSERT_EQ(_empty.Elements(), (arr).Elements()); \
   } while (0)
 
 #define CHECK_EQ_INT(actual, expected) \

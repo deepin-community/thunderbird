@@ -3,8 +3,8 @@
 
 // Check that TelemetrySession notifies correctly on idle-daily.
 
-const { TelemetrySession } = ChromeUtils.import(
-  "resource://gre/modules/TelemetrySession.jsm"
+const { TelemetrySession } = ChromeUtils.importESModule(
+  "resource://gre/modules/TelemetrySession.sys.mjs"
 );
 
 var gHttpServer = null;
@@ -45,7 +45,7 @@ add_task(async function testSendPendingOnIdleDaily() {
     )
   );
 
-  let gatherPromise = PromiseUtils.defer();
+  let gatherPromise = Promise.withResolvers();
   Services.obs.addObserver(gatherPromise.resolve, "gather-telemetry");
 
   // Check that we are correctly receiving the gather-telemetry notification.
@@ -56,8 +56,8 @@ add_task(async function testSendPendingOnIdleDaily() {
   Services.obs.removeObserver(gatherPromise.resolve, "gather-telemetry");
 
   // Check that the pending ping is correctly received.
-  let { TelemetrySendImpl } = ChromeUtils.import(
-    "resource://gre/modules/TelemetrySend.jsm"
+  let { TelemetrySendImpl } = ChromeUtils.importESModule(
+    "resource://gre/modules/TelemetrySend.sys.mjs"
   );
   TelemetrySendImpl.observe(null, "idle-daily", null);
   let request = await pendingPromise;

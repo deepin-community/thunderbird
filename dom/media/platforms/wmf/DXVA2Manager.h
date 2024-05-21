@@ -22,18 +22,14 @@ class KnowsCompositor;
 
 class DXVA2Manager {
  public:
-  // Creates and initializes a DXVA2Manager. We can use DXVA2 via either
-  // D3D9Ex or D3D11.
-  static DXVA2Manager* CreateD3D9DXVA(layers::KnowsCompositor* aKnowsCompositor,
-                                      nsACString& aFailureReason);
+  // Creates and initializes a DXVA2Manager. We can use DXVA2 via D3D11.
   static DXVA2Manager* CreateD3D11DXVA(
       layers::KnowsCompositor* aKnowsCompositor, nsACString& aFailureReason,
       ID3D11Device* aDevice = nullptr);
 
   // Returns a pointer to the D3D device manager responsible for managing the
-  // device we're using for hardware accelerated video decoding. If we're using
-  // D3D9Ex, this is an IDirect3DDeviceManager9. For D3D11 this is an
-  // IMFDXGIDeviceManager. It is safe to call this on any thread.
+  // device we're using for hardware accelerated video decoding. For D3D11 this
+  // is an IMFDXGIDeviceManager. It is safe to call this on any thread.
   virtual IUnknown* GetDXVADeviceManager() = 0;
 
   // Creates an Image for the video frame stored in aVideoSample.
@@ -41,7 +37,16 @@ class DXVA2Manager {
                               const gfx::IntRect& aRegion,
                               layers::Image** aOutImage) = 0;
 
+  virtual HRESULT WrapTextureWithImage(IMFSample* aVideoSample,
+                                       const gfx::IntRect& aRegion,
+                                       layers::Image** aOutImage) {
+    // Not implemented!
+    MOZ_CRASH("WrapTextureWithImage not implemented on this manager.");
+    return E_FAIL;
+  }
+
   virtual HRESULT CopyToBGRATexture(ID3D11Texture2D* aInTexture,
+                                    uint32_t aArrayIndex,
                                     ID3D11Texture2D** aOutTexture) {
     // Not implemented!
     MOZ_CRASH("CopyToBGRATexture not implemented on this manager.");
@@ -59,13 +64,19 @@ class DXVA2Manager {
 
   virtual ~DXVA2Manager();
 
-  virtual bool SupportsConfig(IMFMediaType* aType, float aFramerate) = 0;
+  virtual bool SupportsConfig(const VideoInfo& aInfo, IMFMediaType* aInputType,
+                              IMFMediaType* aOutputType) = 0;
+
+  // Called before shutdown video MFTDecoder.
+  virtual void BeforeShutdownVideoMFTDecoder() {}
+
+  virtual bool SupportsZeroCopyNV12Texture() { return false; }
 
   static bool IsNV12Supported(uint32_t aVendorID, uint32_t aDeviceID,
                               const nsAString& aDriverVersionString);
 
  protected:
-  Mutex mLock;
+  Mutex mLock MOZ_UNANNOTATED;
   DXVA2Manager();
 
   bool IsUnsupportedResolution(const uint32_t& aWidth, const uint32_t& aHeight,

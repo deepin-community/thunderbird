@@ -1,29 +1,28 @@
 {
   "langpack_id": "zh-TW",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-zh-TW@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Traditional Chinese (zh-TW) Language Pack",
-  "description": "Language pack for Thunderbird for zh-TW",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: 正體中文 (Traditional Chinese)",
+  "description": "Thunderbird Beta Language Pack for 正體中文 (zh-TW) – Traditional Chinese",
+  "version": "125.0.20240401.173510",
   "languages": {
     "zh-TW": {
-      "version": "20211011152209",
+      "version": "20240401183525",
       "chrome_resources": {
         "alerts": "chrome/zh-TW/locale/zh-TW/alerts/",
         "autoconfig": "chrome/zh-TW/locale/zh-TW/autoconfig/",
-        "branding": "chrome/zh-TW/locale/zh-TW/branding/",
+        "branding": "chrome/zh-TW/locale/branding/",
         "calendar": "chrome/zh-TW/locale/zh-TW/calendar/",
         "chat": "chrome/zh-TW/locale/zh-TW/chat/",
         "communicator": "chrome/zh-TW/locale/zh-TW/communicator/",
         "devtools": "chrome/zh-TW/locale/zh-TW/devtools/client/",
         "devtools-shared": "chrome/zh-TW/locale/zh-TW/devtools/shared/",
-        "devtools-startup": "chrome/zh-TW/locale/zh-TW/devtools/startup/",
         "global": "chrome/zh-TW/locale/zh-TW/global/",
         "global-platform": {
           "macosx": "chrome/zh-TW/locale/zh-TW/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/zh-TW/locale/zh-TW/mozldap/",
         "necko": "chrome/zh-TW/locale/zh-TW/necko/",
         "passwordmgr": "chrome/zh-TW/locale/zh-TW/passwordmgr/",
-        "pdf.js": "chrome/zh-TW/locale/pdfviewer/",
         "pipnss": "chrome/zh-TW/locale/zh-TW/pipnss/",
         "pippki": "chrome/zh-TW/locale/zh-TW/pippki/",
         "places": "chrome/zh-TW/locale/zh-TW/places/"

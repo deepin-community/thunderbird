@@ -2,516 +2,129 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-let account = createAccount();
-let defaultIdentity = addIdentity(account);
-let nonDefaultIdentity = addIdentity(account);
-let gRootFolder = account.incomingServer.rootFolder;
+const account = createAccount();
+const defaultIdentity = addIdentity(account);
+const nonDefaultIdentity = addIdentity(account);
+defaultIdentity.attachVCard = false;
+nonDefaultIdentity.attachVCard = true;
+
+const gRootFolder = account.incomingServer.rootFolder;
 
 gRootFolder.createSubfolder("test", null);
-let gTestFolder = gRootFolder.getChildNamed("test");
+const gTestFolder = gRootFolder.getChildNamed("test");
 createMessages(gTestFolder, 4);
 
-gRootFolder.createSubfolder("drafts", null);
-let gDraftsFolder = gRootFolder.getChildNamed("drafts");
+// TODO: Figure out why naming this folder drafts is problematic.
+gRootFolder.createSubfolder("something", null);
+const gDraftsFolder = gRootFolder.getChildNamed("something");
 gDraftsFolder.flags = Ci.nsMsgFolderFlags.Drafts;
 createMessages(gDraftsFolder, 2);
+const gDrafts = [...gDraftsFolder.messages];
 
-add_task(async function testHeaders() {
-  let files = {
+// Verifies ComposeDetails of a given composer can be applied to a different
+// composer, even if they have different compose formats. The composer should pick
+// the matching body/plaintextBody value, if both are specified. The value for
+// isPlainText is ignored by setComposeDetails.
+add_task(async function testIsReflexive() {
+  const files = {
     "background.js": async () => {
-      async function checkWindow(expected) {
-        let state = await browser.compose.getComposeDetails(createdTab.id);
-        for (let field of [
-          "to",
-          "cc",
-          "bcc",
-          "replyTo",
-          "followupTo",
-          "newsgroups",
-        ]) {
-          if (field in expected) {
-            browser.test.assertEq(
-              expected[field].length,
-              state[field].length,
-              `${field} has the right number of values`
-            );
-            for (let i = 0; i < expected[field].length; i++) {
-              browser.test.assertEq(expected[field][i], state[field][i]);
-            }
-          } else {
-            browser.test.assertEq(0, state[field].length, `${field} is empty`);
-          }
-        }
-
-        if (expected.from) {
-          // From will always return a value, only check if explicitly requested.
-          browser.test.assertEq(expected.from, state.from, "from is correct");
-        }
-
-        if (expected.subject) {
-          browser.test.assertEq(
-            expected.subject,
-            state.subject,
-            "subject is correct"
-          );
-        } else {
-          browser.test.assertTrue(!state.subject, "subject is empty");
-        }
-
-        await window.sendMessage("checkWindow", expected);
-      }
-
-      let [account] = await browser.accounts.list();
-      let [defaultIdentity, nonDefaultIdentity] = account.identities;
-
-      let addressBook = await browser.addressBooks.create({
-        name: "Baker Street",
+      // Start a new TEXT message.
+      const createdTextWindowPromise = window.waitForEvent("windows.onCreated");
+      await browser.compose.beginNew({
+        plainTextBody: "This is some PLAIN text.",
+        isPlainText: true,
       });
-      let contacts = {
-        sherlock: await browser.contacts.create(addressBook, {
-          DisplayName: "Sherlock Holmes",
-          PrimaryEmail: "sherlock@bakerstreet.invalid",
-        }),
-        john: await browser.contacts.create(addressBook, {
-          DisplayName: "John Watson",
-          PrimaryEmail: "john@bakerstreet.invalid",
-        }),
-        empty: await browser.contacts.create(addressBook, {
-          DisplayName: "Jim Moriarty",
-          PrimaryEmail: "",
-        }),
-      };
-      let list = await browser.mailingLists.create(addressBook, {
-        name: "Holmes and Watson",
-        description: "Tenants221B",
-      });
-      await browser.mailingLists.addMember(list, contacts.sherlock);
-      await browser.mailingLists.addMember(list, contacts.john);
-
-      let identityChanged = null;
-      browser.compose.onIdentityChanged.addListener((tab, identityId) => {
-        identityChanged = identityId;
+      const [createdTextWindow] = await createdTextWindowPromise;
+      const [createdTextTab] = await browser.tabs.query({
+        windowId: createdTextWindow.id,
       });
 
-      // Start a new message.
-
-      let createdWindowPromise = window.waitForEvent("windows.onCreated");
-      await browser.compose.beginNew();
-      let [createdWindow] = await createdWindowPromise;
-      let [createdTab] = await browser.tabs.query({
-        windowId: createdWindow.id,
-      });
-
-      await checkWindow({ identityId: defaultIdentity.id });
-
-      let tests = [
-        {
-          // Change the identity and check default from.
-          input: { identityId: nonDefaultIdentity.id },
-          expected: {
-            identityId: nonDefaultIdentity.id,
-            from: "mochitest@localhost",
-          },
-          expectIdentityChanged: nonDefaultIdentity.id,
-        },
-        {
-          // Don't change the identity.
-          input: {},
-          expected: {
-            identityId: nonDefaultIdentity.id,
-            from: "mochitest@localhost",
-          },
-        },
-        {
-          // Change the identity back again.
-          input: { identityId: defaultIdentity.id },
-          expected: {
-            identityId: defaultIdentity.id,
-            from: "mochitest@localhost",
-          },
-          expectIdentityChanged: defaultIdentity.id,
-        },
-        {
-          // Single input, string.
-          input: { to: "Greg Lestrade <greg@bakerstreet.invalid>" },
-          expected: { to: ["Greg Lestrade <greg@bakerstreet.invalid>"] },
-        },
-        {
-          // Empty string. Done here so we have something to clear.
-          input: { to: "" },
-          expected: {},
-        },
-        {
-          // Single input, array with string.
-          input: { to: ["John Watson <john@bakerstreet.invalid>"] },
-          expected: { to: ["John Watson <john@bakerstreet.invalid>"] },
-        },
-        {
-          // Name with a comma, not quoted per RFC 822. This is how
-          // getComposeDetails returns names with a comma.
-          input: { to: ["Holmes, Mycroft <mycroft@bakerstreet.invalid>"] },
-          expected: { to: ["Holmes, Mycroft <mycroft@bakerstreet.invalid>"] },
-        },
-        {
-          // Name with a comma, quoted per RFC 822. This should work too.
-          input: { to: [`"Holmes, Mycroft" <mycroft@bakerstreet.invalid>`] },
-          expected: { to: ["Holmes, Mycroft <mycroft@bakerstreet.invalid>"] },
-        },
-        {
-          // Name and address with non-ASCII characters.
-          input: { to: ["Jïm Morïarty <morïarty@bakerstreet.invalid>"] },
-          expected: { to: ["Jïm Morïarty <morïarty@bakerstreet.invalid>"] },
-        },
-        {
-          // Empty array. Done here so we have something to clear.
-          input: { to: [] },
-          expected: {},
-        },
-        {
-          // Single input, array with contact.
-          input: { to: [{ id: contacts.sherlock, type: "contact" }] },
-          expected: { to: ["Sherlock Holmes <sherlock@bakerstreet.invalid>"] },
-        },
-        {
-          // Null input. This should not clear the field.
-          input: { to: null },
-          expected: { to: ["Sherlock Holmes <sherlock@bakerstreet.invalid>"] },
-        },
-        {
-          // Single input, array with mailing list.
-          input: { to: [{ id: list, type: "mailingList" }] },
-          expected: { to: ["Holmes and Watson <Tenants221B>"] },
-        },
-        {
-          // Multiple inputs, string.
-          input: {
-            to:
-              "Molly Hooper <molly@bakerstreet.invalid>, Mrs Hudson <mrs_hudson@bakerstreet.invalid>",
-          },
-          expected: {
-            to: [
-              "Molly Hooper <molly@bakerstreet.invalid>",
-              "Mrs Hudson <mrs_hudson@bakerstreet.invalid>",
-            ],
-          },
-        },
-        {
-          // Multiple inputs, array with strings.
-          input: {
-            to: [
-              "Irene Adler <irene@bakerstreet.invalid>",
-              "Mary Watson <mary@bakerstreet.invalid>",
-            ],
-          },
-          expected: {
-            to: [
-              "Irene Adler <irene@bakerstreet.invalid>",
-              "Mary Watson <mary@bakerstreet.invalid>",
-            ],
-          },
-        },
-        {
-          // Multiple inputs, mixed.
-          input: {
-            to: [
-              { id: contacts.sherlock, type: "contact" },
-              "Mycroft Holmes <mycroft@bakerstreet.invalid>",
-            ],
-          },
-          expected: {
-            to: [
-              "Sherlock Holmes <sherlock@bakerstreet.invalid>",
-              "Mycroft Holmes <mycroft@bakerstreet.invalid>",
-            ],
-          },
-        },
-        {
-          // A newsgroup, string.
-          input: {
-            to: "",
-            newsgroups: "invalid.fake.newsgroup",
-          },
-          expected: {
-            newsgroups: ["invalid.fake.newsgroup"],
-          },
-        },
-        {
-          // Multiple newsgroups, string.
-          input: {
-            newsgroups: "invalid.fake.newsgroup, invalid.real.newsgroup",
-          },
-          expected: {
-            newsgroups: ["invalid.fake.newsgroup", "invalid.real.newsgroup"],
-          },
-        },
-        {
-          // A newsgroup, array with string.
-          input: {
-            newsgroups: ["invalid.real.newsgroup"],
-          },
-          expected: {
-            newsgroups: ["invalid.real.newsgroup"],
-          },
-        },
-        {
-          // Multiple newsgroup, array with string.
-          input: {
-            newsgroups: ["invalid.fake.newsgroup", "invalid.real.newsgroup"],
-          },
-          expected: {
-            newsgroups: ["invalid.fake.newsgroup", "invalid.real.newsgroup"],
-          },
-        },
-        {
-          // Change the subject.
-          input: {
-            newsgroups: "",
-            subject: "This is a test",
-          },
-          expected: {
-            subject: "This is a test",
-          },
-        },
-        {
-          // Clear the subject.
-          input: {
-            subject: "",
-          },
-          expected: {},
-        },
-        {
-          // Override from with string address
-          input: { from: "Mycroft Holmes <mycroft@bakerstreet.invalid>" },
-          expected: { from: "Mycroft Holmes <mycroft@bakerstreet.invalid>" },
-        },
-        {
-          // Override from with contact id
-          input: { from: { id: contacts.sherlock, type: "contact" } },
-          expected: { from: "Sherlock Holmes <sherlock@bakerstreet.invalid>" },
-        },
-        {
-          // Override from with multiple string address
-          input: {
-            from:
-              "Mycroft Holmes <mycroft@bakerstreet.invalid>, Mary Watson <mary@bakerstreet.invalid>",
-          },
-          expected: {
-            errorDescription:
-              "Setting from to multiple addresses should throw.",
-            errorRejected:
-              "ComposeDetails.from: Exactly one address instead of 2 is required.",
-          },
-        },
-        {
-          // Override from with empty string address 1
-          input: { from: "Mycroft Holmes <>" },
-          expected: {
-            errorDescription:
-              "Setting from to a display name without address should throw (#1).",
-            errorRejected: "ComposeDetails.from: Invalid address: ",
-          },
-        },
-        {
-          // Override from with empty string address 2
-          input: { from: "Mycroft Holmes" },
-          expected: {
-            errorDescription:
-              "Setting from to a display name without address should throw (#2).",
-            errorRejected:
-              "ComposeDetails.from: Invalid address: Mycroft Holmes",
-          },
-        },
-        {
-          // Override from with contact id with empty address
-          input: { from: { id: contacts.empty, type: "contact" } },
-          expected: {
-            errorDescription:
-              "Setting from to a contact with an empty PrimaryEmail should throw.",
-            errorRejected: `ComposeDetails.from: Contact does not have a valid email address: ${contacts.empty}`,
-          },
-        },
-        {
-          // Override from with invalid contact id
-          input: { from: { id: "1234", type: "contact" } },
-          expected: {
-            errorDescription:
-              "Setting from to a contact with an invalid contact id should throw.",
-            errorRejected:
-              "ComposeDetails.from: contact with id=1234 could not be found.",
-          },
-        },
-        {
-          // Override from with mailinglist id
-          input: { from: { id: list, type: "mailingList" } },
-          expected: {
-            errorDescription: "Setting from to a mailing list should throw.",
-            errorRejected: "ComposeDetails.from: Mailing list not allowed.",
-          },
-        },
-        {
-          // From may not be cleared.
-          input: { from: "" },
-          expected: {
-            errorDescription: "Setting from to an empty string should throw.",
-            errorRejected:
-              "ComposeDetails.from: Address must not be set to an empty string.",
-          },
-        },
-      ];
-      for (let test of tests) {
-        browser.test.log(`Checking input: ${JSON.stringify(test.input)}`);
-
-        if (test.expected.errorRejected) {
-          await browser.test.assertRejects(
-            browser.compose.setComposeDetails(createdTab.id, test.input),
-            test.expected.errorRejected,
-            test.expected.errorDescription
-          );
-          continue;
-        }
-
-        await browser.compose.setComposeDetails(createdTab.id, test.input);
-        await checkWindow(test.expected);
-
-        if (test.expectIdentityChanged) {
-          browser.test.assertEq(
-            test.expectIdentityChanged,
-            identityChanged,
-            "onIdentityChanged fired"
-          );
-        } else {
-          browser.test.assertEq(
-            null,
-            identityChanged,
-            "onIdentityChanged not fired"
-          );
-        }
-        identityChanged = null;
-      }
-
-      // Change the identity through the UI to check onIdentityChanged works.
-
-      browser.test.log("Checking external identity change");
-      await window.sendMessage("changeIdentity", nonDefaultIdentity.id);
+      // Get details, TEXT message.
+      const textDetails = await browser.compose.getComposeDetails(
+        createdTextTab.id
+      );
+      browser.test.assertTrue(textDetails.isPlainText);
+      browser.test.assertTrue(
+        textDetails.body.includes("This is some PLAIN text")
+      );
       browser.test.assertEq(
-        nonDefaultIdentity.id,
-        identityChanged,
-        "onIdentityChanged fired"
+        "This is some PLAIN text.",
+        textDetails.plainTextBody
+      );
+
+      // Start a new HTML message.
+      const createdHtmlWindowPromise = window.waitForEvent("windows.onCreated");
+      await browser.compose.beginNew({
+        body: "<p>This is some <i>HTML</i> text.</p>",
+        isPlainText: false,
+      });
+      const [createdHtmlWindow] = await createdHtmlWindowPromise;
+      const [createdHtmlTab] = await browser.tabs.query({
+        windowId: createdHtmlWindow.id,
+      });
+
+      // Get details, HTML message.
+      const htmlDetails = await browser.compose.getComposeDetails(
+        createdHtmlTab.id
+      );
+      browser.test.assertFalse(htmlDetails.isPlainText);
+      browser.test.assertTrue(
+        htmlDetails.body.includes("<p>This is some <i>HTML</i> text.</p>")
+      );
+      browser.test.assertEq(
+        "This is some /HTML/ text.",
+        htmlDetails.plainTextBody
+      );
+
+      // Set HTML details on HTML composer. It should not throw.
+      await browser.compose.setComposeDetails(createdHtmlTab.id, htmlDetails);
+
+      // Set TEXT details on TEXT composer. It should not throw.
+      await browser.compose.setComposeDetails(createdTextTab.id, textDetails);
+
+      // Set TEXT details on HTML composer and verify the changed content.
+      await browser.compose.setComposeDetails(createdHtmlTab.id, textDetails);
+      const htmlDetails2 = await browser.compose.getComposeDetails(
+        createdHtmlTab.id
+      );
+      browser.test.assertFalse(htmlDetails2.isPlainText);
+      browser.test.assertTrue(
+        htmlDetails2.body.includes("This is some PLAIN text")
+      );
+      browser.test.assertEq(
+        "This is some PLAIN text.",
+        htmlDetails2.plainTextBody
+      );
+
+      // Set HTML details on TEXT composer and verify the changed content.
+      await browser.compose.setComposeDetails(createdTextTab.id, htmlDetails);
+      const textDetails2 = await browser.compose.getComposeDetails(
+        createdTextTab.id
+      );
+      browser.test.assertTrue(textDetails2.isPlainText);
+      browser.test.assertTrue(
+        textDetails2.body.includes("This is some /HTML/ text.")
+      );
+      browser.test.assertEq(
+        "This is some /HTML/ text.",
+        textDetails2.plainTextBody
       );
 
       // Clean up.
 
-      let removedWindowPromise = window.waitForEvent("windows.onRemoved");
-      browser.windows.remove(createdWindow.id);
-      await removedWindowPromise;
+      const removedHtmlWindowPromise = window.waitForEvent("windows.onRemoved");
+      browser.windows.remove(createdHtmlWindow.id);
+      await removedHtmlWindowPromise;
 
-      await browser.addressBooks.delete(addressBook);
+      const removedTextWindowPromise = window.waitForEvent("windows.onRemoved");
+      browser.windows.remove(createdTextWindow.id);
+      await removedTextWindowPromise;
+
       browser.test.notifyPass("finished");
     },
     "utils.js": await getUtilsJS(),
   };
-  let extension = ExtensionTestUtils.loadExtension({
-    files,
-    manifest: {
-      background: { scripts: ["utils.js", "background.js"] },
-      permissions: ["accountsRead", "addressBooks", "compose", "messagesRead"],
-    },
-  });
-
-  extension.onMessage("checkWindow", async expected => {
-    await checkComposeHeaders(expected);
-    extension.sendMessage();
-  });
-
-  extension.onMessage("changeIdentity", newIdentity => {
-    let composeWindows = [...Services.wm.getEnumerator("msgcompose")];
-    is(composeWindows.length, 1);
-    let composeDocument = composeWindows[0].document;
-
-    let identityList = composeDocument.getElementById("msgIdentity");
-    let identityItem = identityList.querySelector(
-      `[identitykey="${newIdentity}"]`
-    );
-    ok(identityItem);
-    identityList.selectedItem = identityItem;
-    composeWindows[0].LoadIdentity(false);
-    extension.sendMessage();
-  });
-
-  await extension.startup();
-  await extension.awaitFinish("finished");
-  await extension.unload();
-});
-
-add_task(async function testPlainTextBody() {
-  let files = {
-    "background.js": async () => {
-      async function checkWindow(expected) {
-        let state = await browser.compose.getComposeDetails(createdTab.id);
-        for (let field of ["isPlainText"]) {
-          if (field in expected) {
-            browser.test.assertEq(
-              expected[field],
-              state[field],
-              `Check value for ${field}`
-            );
-          }
-        }
-        // Windows and Linux return different line endings. Just check for the
-        // actual line content. The expected value is given as an array, to
-        // indicate the return value of getComposeDetails is not expected to be
-        // a specific line ending.
-        for (let field of ["plainTextBody"]) {
-          if (field in expected) {
-            browser.test.assertEq(
-              JSON.stringify(expected[field]),
-              JSON.stringify(state[field].replaceAll("\r\n", "\n").split("\n")),
-              `Check value for ${field}`
-            );
-          }
-        }
-      }
-
-      // Start a new message.
-      let createdWindowPromise = window.waitForEvent("windows.onCreated");
-      await browser.compose.beginNew({ isPlainText: true });
-      let [createdWindow] = await createdWindowPromise;
-      let [createdTab] = await browser.tabs.query({
-        windowId: createdWindow.id,
-      });
-
-      await checkWindow({ isPlainText: true });
-
-      let tests = [
-        {
-          // Set plaintextBody with Windows style newlines. The test will check
-          // the content of the returned lines, independent of their endings.
-          input: { isPlainText: true, plainTextBody: "123\r\n456\r\n789" },
-          expected: { isPlainText: true, plainTextBody: ["123", "456", "789"] },
-        },
-        {
-          // Set plaintextBody with Linux style newlines. The test will check
-          // the content of the returned lines, independent of their endings.
-          input: { isPlainText: true, plainTextBody: "ABC\nDEF\nGHI" },
-          expected: { isPlainText: true, plainTextBody: ["ABC", "DEF", "GHI"] },
-        },
-      ];
-      for (let test of tests) {
-        browser.test.log(`Checking input: ${JSON.stringify(test.input)}`);
-        await browser.compose.setComposeDetails(createdTab.id, test.input);
-        await checkWindow(test.expected);
-      }
-
-      // Clean up.
-
-      let removedWindowPromise = window.waitForEvent("windows.onRemoved");
-      browser.windows.remove(createdWindow.id);
-      await removedWindowPromise;
-      browser.test.notifyPass("finished");
-    },
-    "utils.js": await getUtilsJS(),
-  };
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files,
     manifest: {
       background: { scripts: ["utils.js", "background.js"] },
@@ -524,223 +137,18 @@ add_task(async function testPlainTextBody() {
   await extension.unload();
 });
 
-add_task(async function testBody() {
-  // Open an compose window with HTML body.
-
-  let params = Cc[
-    "@mozilla.org/messengercompose/composeparams;1"
-  ].createInstance(Ci.nsIMsgComposeParams);
-  params.composeFields = Cc[
-    "@mozilla.org/messengercompose/composefields;1"
-  ].createInstance(Ci.nsIMsgCompFields);
-  params.composeFields.body = "<p>This is some <i>HTML</i> text.</p>";
-
-  let htmlWindowPromise = BrowserTestUtils.domWindowOpened();
-  MailServices.compose.OpenComposeWindowWithParams(null, params);
-  let htmlWindow = await htmlWindowPromise;
-  await BrowserTestUtils.waitForEvent(htmlWindow, "load");
-
-  // Open another compose window with plain text body.
-
-  params = Cc["@mozilla.org/messengercompose/composeparams;1"].createInstance(
-    Ci.nsIMsgComposeParams
-  );
-  params.composeFields = Cc[
-    "@mozilla.org/messengercompose/composefields;1"
-  ].createInstance(Ci.nsIMsgCompFields);
-  params.format = Ci.nsIMsgCompFormat.PlainText;
-  params.composeFields.body = "This is some plain text.";
-
-  let plainTextComposeWindowPromise = BrowserTestUtils.domWindowOpened();
-  MailServices.compose.OpenComposeWindowWithParams(null, params);
-  let plainTextWindow = await plainTextComposeWindowPromise;
-  await BrowserTestUtils.waitForEvent(plainTextWindow, "load");
-
-  // Run the extension.
-
-  let extension = ExtensionTestUtils.loadExtension({
-    background: async () => {
-      let windows = await browser.windows.getAll({
-        populate: true,
-        windowTypes: ["messageCompose"],
-      });
-      let [htmlTabId, plainTextTabId] = windows.map(w => w.tabs[0].id);
-
-      let plainTextBodyTag =
-        '<body style="font-family: -moz-fixed; white-space: pre-wrap; width: 72ch;">';
-
-      // Get details, HTML message.
-
-      let htmlDetails = await browser.compose.getComposeDetails(htmlTabId);
-      browser.test.log(JSON.stringify(htmlDetails));
-      browser.test.assertTrue(!htmlDetails.isPlainText);
-      browser.test.assertTrue(
-        htmlDetails.body.includes("<p>This is some <i>HTML</i> text.</p>")
-      );
-      browser.test.assertEq(
-        "This is some HTML text.",
-        htmlDetails.plainTextBody
-      );
-
-      // Set details, HTML message.
-
-      await browser.compose.setComposeDetails(htmlTabId, {
-        body: htmlDetails.body.replace("<i>HTML</i>", "<code>HTML</code>"),
-      });
-      htmlDetails = await browser.compose.getComposeDetails(htmlTabId);
-      browser.test.log(JSON.stringify(htmlDetails));
-      browser.test.assertTrue(!htmlDetails.isPlainText);
-      browser.test.assertTrue(
-        htmlDetails.body.includes("<p>This is some <code>HTML</code> text.</p>")
-      );
-      browser.test.assertTrue(
-        "This is some HTML text.",
-        htmlDetails.plainTextBody
-      );
-
-      // Get details, plain text message.
-
-      let plainTextDetails = await browser.compose.getComposeDetails(
-        plainTextTabId
-      );
-      browser.test.log(JSON.stringify(plainTextDetails));
-      browser.test.assertTrue(plainTextDetails.isPlainText);
-      browser.test.assertTrue(
-        plainTextDetails.body.includes(
-          plainTextBodyTag + "This is some plain text.</body>"
-        )
-      );
-      browser.test.assertEq(
-        "This is some plain text.",
-        plainTextDetails.plainTextBody
-      );
-
-      // Set details, plain text message.
-
-      await browser.compose.setComposeDetails(plainTextTabId, {
-        plainTextBody:
-          plainTextDetails.plainTextBody + "\nIndeed, it is plain.",
-      });
-      plainTextDetails = await browser.compose.getComposeDetails(
-        plainTextTabId
-      );
-      browser.test.log(JSON.stringify(plainTextDetails));
-      browser.test.assertTrue(plainTextDetails.isPlainText);
-      browser.test.assertTrue(
-        plainTextDetails.body.includes(
-          plainTextBodyTag +
-            "This is some plain text.<br>Indeed, it is plain.</body>"
-        )
-      );
-      browser.test.assertEq(
-        "This is some plain text.\nIndeed, it is plain.",
-        // Fold Windows line-endings \r\n to \n.
-        plainTextDetails.plainTextBody.replace(/\r/g, "")
-      );
-
-      // Some things that should fail.
-
-      try {
-        await browser.compose.setComposeDetails(plainTextTabId, {
-          body: "Trying to set HTML in a plain text message",
-        });
-        browser.test.fail(
-          "calling setComposeDetails with these arguments should throw"
-        );
-      } catch (ex) {
-        browser.test.succeed(`expected exception thrown: ${ex.message}`);
-      }
-
-      try {
-        await browser.compose.setComposeDetails(htmlTabId, {
-          body: "Trying to set HTML",
-          plainTextBody: "and plain text at the same time",
-        });
-        browser.test.fail(
-          "calling setComposeDetails with these arguments should throw"
-        );
-      } catch (ex) {
-        browser.test.succeed(`expected exception thrown: ${ex.message}`);
-      }
-
-      try {
-        await browser.compose.setComposeDetails(htmlTabId, {
-          plainTextBody: "Trying to set a plain text in an html message.",
-        });
-        browser.test.fail(
-          "calling setComposeDetails with these arguments should throw"
-        );
-      } catch (ex) {
-        browser.test.succeed(`expected exception thrown: ${ex.message}`);
-      }
-
-      browser.test.notifyPass("finished");
-    },
-    manifest: {
-      permissions: ["compose"],
-    },
-  });
-
-  await extension.startup();
-  await extension.awaitFinish("finished");
-  await extension.unload();
-
-  // Check the HTML message was edited.
-
-  ok(htmlWindow.gMsgCompose.composeHTML);
-  let htmlDocument = htmlWindow.GetCurrentEditor().document;
-  info(htmlDocument.body.innerHTML);
-  is(htmlDocument.querySelectorAll("i").length, 0, "<i> was removed");
-  is(htmlDocument.querySelectorAll("code").length, 1, "<code> was added");
-
-  // Close the HTML message.
-
-  let closePromises = [
-    // If the window is not marked as dirty, this Promise will never resolve.
-    BrowserTestUtils.promiseAlertDialog("extra1"),
-    BrowserTestUtils.domWindowClosed(htmlWindow),
-  ];
-  Assert.ok(
-    htmlWindow.ComposeCanClose(),
-    "compose window should be allowed to close"
-  );
-  htmlWindow.close();
-  await Promise.all(closePromises);
-
-  // Check the plain text message was edited.
-
-  ok(!plainTextWindow.gMsgCompose.composeHTML);
-  let plainTextDocument = plainTextWindow.GetCurrentEditor().document;
-  info(plainTextDocument.body.innerHTML);
-  ok(/Indeed, it is plain\./.test(plainTextDocument.body.innerHTML));
-
-  // Close the plain text message.
-
-  closePromises = [
-    // If the window is not marked as dirty, this Promise will never resolve.
-    BrowserTestUtils.promiseAlertDialog("extra1"),
-    BrowserTestUtils.domWindowClosed(plainTextWindow),
-  ];
-  Assert.ok(
-    plainTextWindow.ComposeCanClose(),
-    "compose window should be allowed to close"
-  );
-  plainTextWindow.close();
-  await Promise.all(closePromises);
-});
-
 add_task(async function testType() {
-  let files = {
+  const files = {
     "background.js": async () => {
-      let accounts = await browser.accounts.list();
+      const accounts = await browser.accounts.list();
       browser.test.assertEq(1, accounts.length, "number of accounts");
 
-      let testFolder = accounts[0].folders.find(f => f.name == "test");
-      let messages = (await browser.messages.list(testFolder)).messages;
+      const testFolder = accounts[0].folders.find(f => f.name == "test");
+      const messages = (await browser.messages.list(testFolder.id)).messages;
       browser.test.assertEq(4, messages.length, "number of messages");
 
-      let draftFolder = accounts[0].folders.find(f => f.name == "drafts");
-      let drafts = (await browser.messages.list(draftFolder)).messages;
+      const draftFolder = accounts[0].folders.find(f => f.name == "something");
+      const drafts = (await browser.messages.list(draftFolder.id)).messages;
       browser.test.assertEq(2, drafts.length, "number of drafts");
 
       async function checkComposer(tab, expected) {
@@ -752,62 +160,67 @@ add_task(async function testType() {
           "type of window ID"
         );
 
-        let details = await browser.compose.getComposeDetails(tab.id);
+        const details = await browser.compose.getComposeDetails(tab.id);
         browser.test.assertEq(expected.type, details.type, "type of composer");
+        browser.test.assertEq(
+          expected.relatedMessageId,
+          details.relatedMessageId,
+          `related message id (${details.type})`
+        );
         await browser.windows.remove(tab.windowId);
       }
 
-      let tests = [
+      const tests = [
         {
           funcName: "beginNew",
           args: [],
-          expected: { type: "new" },
+          expected: { type: "new", relatedMessageId: null },
         },
         {
           funcName: "beginReply",
           args: [messages[0].id],
-          expected: { type: "reply" },
+          expected: { type: "reply", relatedMessageId: messages[0].id },
         },
         {
           funcName: "beginReply",
           args: [messages[1].id, "replyToAll"],
-          expected: { type: "reply" },
+          expected: { type: "reply", relatedMessageId: messages[1].id },
         },
         {
           funcName: "beginReply",
           args: [messages[2].id, "replyToList"],
-          expected: { type: "reply" },
+          expected: { type: "reply", relatedMessageId: messages[2].id },
         },
         {
           funcName: "beginReply",
           args: [messages[3].id, "replyToSender"],
-          expected: { type: "reply" },
+          expected: { type: "reply", relatedMessageId: messages[3].id },
         },
         {
           funcName: "beginForward",
           args: [messages[0].id],
-          expected: { type: "forward" },
+          expected: { type: "forward", relatedMessageId: messages[0].id },
         },
         {
           funcName: "beginForward",
           args: [messages[1].id, "forwardAsAttachment"],
-          expected: { type: "forward" },
+          expected: { type: "forward", relatedMessageId: messages[1].id },
         },
         // Uses a different code path.
         {
           funcName: "beginForward",
           args: [messages[2].id, "forwardInline"],
-          expected: { type: "forward" },
+          expected: { type: "forward", relatedMessageId: messages[2].id },
         },
         {
           funcName: "beginNew",
           args: [messages[3].id],
-          expected: { type: "new" },
+          expected: { type: "new", relatedMessageId: messages[3].id },
         },
       ];
-      for (let test of tests) {
+      for (const test of tests) {
         browser.test.log(test.funcName);
-        let tab = await browser.compose[test.funcName](...test.args);
+        const tab = await browser.compose[test.funcName](...test.args);
         await checkComposer(tab, test.expected);
       }
 
@@ -815,16 +228,19 @@ add_task(async function testType() {
         // Bug 1702957, if composeWindow.GetComposeDetails() is not delayed
         // until the compose window is ready, it will overwrite the compose
         // fields.
-        let details = await browser.compose.getComposeDetails(tab.id);
+        const details = await browser.compose.getComposeDetails(tab.id);
         browser.test.assertEq(
           "Johnny Jones <johnny@jones.invalid>",
           details.to.pop(),
           "Check Recipients in draft after calling getComposeDetails()"
         );
 
-        let window = await browser.windows.get(tab.windowId);
+        const window = await browser.windows.get(tab.windowId);
         if (window.type == "messageCompose") {
-          await checkComposer(tab, { type: "draft" });
+          await checkComposer(tab, {
+            type: "draft",
+            relatedMessageId: drafts[0].id,
+          });
           browser.test.notifyPass("Finish");
         }
       });
@@ -832,7 +248,7 @@ add_task(async function testType() {
     },
     "utils.js": await getUtilsJS(),
   };
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files,
     manifest: {
       background: { scripts: ["utils.js", "background.js"] },
@@ -850,168 +266,462 @@ add_task(async function testType() {
     Ci.nsIMsgCompType.Draft,
     Ci.nsIMsgCompFormat.Default,
     gDraftsFolder,
-    [gDraftsFolder.generateMessageURI(1)]
+    [gDraftsFolder.generateMessageURI(gDrafts[0].messageKey)]
   );
 
   await extension.awaitFinish("Finish");
   await extension.unload();
 });
 
-add_task(async function testCJK() {
-  let longCJKString = "안".repeat(400);
+add_task(async function testFcc() {
+  const files = {
+    "background.js": async () => {
+      async function checkWindow(createdTab, expected) {
+        const state = await browser.compose.getComposeDetails(createdTab.id);
 
-  // Open an compose window with HTML body.
+        browser.test.assertEq(
+          expected.overrideDefaultFcc,
+          state.overrideDefaultFcc,
+          "overrideDefaultFcc should be correct"
+        );
 
-  let params = Cc[
-    "@mozilla.org/messengercompose/composeparams;1"
-  ].createInstance(Ci.nsIMsgComposeParams);
-  params.composeFields = Cc[
-    "@mozilla.org/messengercompose/composefields;1"
-  ].createInstance(Ci.nsIMsgCompFields);
-  params.composeFields.body = longCJKString;
+        if (expected.overrideDefaultFccFolder) {
+          window.assertDeepEqual(
+            state.overrideDefaultFccFolder,
+            expected.overrideDefaultFccFolder,
+            "overrideDefaultFccFolder should be correct"
+          );
+        } else {
+          browser.test.assertEq(
+            expected.overrideDefaultFccFolder,
+            state.overrideDefaultFccFolder,
+            "overrideDefaultFccFolder should be correct"
+          );
+        }
 
-  let htmlWindowPromise = BrowserTestUtils.domWindowOpened();
-  MailServices.compose.OpenComposeWindowWithParams(null, params);
-  let htmlWindow = await htmlWindowPromise;
-  await BrowserTestUtils.waitForEvent(htmlWindow, "load");
+        if (expected.additionalFccFolder) {
+          window.assertDeepEqual(
+            state.additionalFccFolder,
+            expected.additionalFccFolder,
+            "additionalFccFolder should be correct"
+          );
+        } else {
+          browser.test.assertEq(
+            expected.additionalFccFolder,
+            state.additionalFccFolder,
+            "additionalFccFolder should be correct"
+          );
+        }
 
-  // Open another compose window with plain text body.
+        await window.sendMessage("checkWindow", expected);
+      }
 
-  params = Cc["@mozilla.org/messengercompose/composeparams;1"].createInstance(
-    Ci.nsIMsgComposeParams
-  );
-  params.composeFields = Cc[
-    "@mozilla.org/messengercompose/composefields;1"
-  ].createInstance(Ci.nsIMsgCompFields);
-  params.format = Ci.nsIMsgCompFormat.PlainText;
-  params.composeFields.body = longCJKString;
+      const [account] = await browser.accounts.list();
+      const folder1 = account.folders.find(f => f.name == "Trash");
+      const folder2 = account.folders.find(f => f.name == "something");
 
-  let plainTextComposeWindowPromise = BrowserTestUtils.domWindowOpened();
-  MailServices.compose.OpenComposeWindowWithParams(null, params);
-  let plainTextWindow = await plainTextComposeWindowPromise;
-  await BrowserTestUtils.waitForEvent(plainTextWindow, "load");
+      // Start a new message.
 
-  // Run the extension.
-
-  let extension = ExtensionTestUtils.loadExtension({
-    background: async () => {
-      let longCJKString = "안".repeat(400);
-      let windows = await browser.windows.getAll({
-        populate: true,
-        windowTypes: ["messageCompose"],
+      const createdWindowPromise = window.waitForEvent("windows.onCreated");
+      await browser.compose.beginNew();
+      const [createdWindow] = await createdWindowPromise;
+      const [createdTab] = await browser.tabs.query({
+        windowId: createdWindow.id,
       });
-      let [htmlTabId, plainTextTabId] = windows.map(w => w.tabs[0].id);
 
-      let plainTextBodyTag =
-        '<body style="font-family: -moz-fixed; white-space: pre-wrap; width: 72ch;">';
-
-      // Get details, HTML message.
-
-      let htmlDetails = await browser.compose.getComposeDetails(htmlTabId);
-      browser.test.log(JSON.stringify(htmlDetails));
-      browser.test.assertTrue(!htmlDetails.isPlainText);
-      browser.test.assertTrue(
-        htmlDetails.body.includes(longCJKString),
-        "getComposeDetails.body from html composer returned CJK correctly"
-      );
-      browser.test.assertEq(
-        longCJKString,
-        htmlDetails.plainTextBody,
-        "getComposeDetails.plainTextBody from html composer returned CJK correctly"
-      );
-
-      // Set details, HTML message.
-
-      await browser.compose.setComposeDetails(htmlTabId, {
-        body: longCJKString,
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: false,
+        overrideDefaultFccFolder: null,
+        additionalFccFolder: "",
       });
-      htmlDetails = await browser.compose.getComposeDetails(htmlTabId);
-      browser.test.log(JSON.stringify(htmlDetails));
-      browser.test.assertTrue(!htmlDetails.isPlainText);
-      browser.test.assertTrue(
-        htmlDetails.body.includes(longCJKString),
-        "getComposeDetails.body from html composer returned CJK correctly as set by setComposeDetails"
-      );
-      browser.test.assertTrue(
-        longCJKString,
-        htmlDetails.plainTextBody,
-        "getComposeDetails.plainTextBody from html composer returned CJK correctly as set by setComposeDetails"
+
+      await browser.test.assertRejects(
+        browser.compose.setComposeDetails(createdTab.id, {
+          overrideDefaultFcc: true,
+        }),
+        "Setting overrideDefaultFcc to true requires setting overrideDefaultFccFolder as well",
+        "browser.compose.setComposeDetails() should reject setting overrideDefaultFcc to true."
       );
 
-      // Get details, plain text message.
-
-      let plainTextDetails = await browser.compose.getComposeDetails(
-        plainTextTabId
-      );
-      browser.test.log(JSON.stringify(plainTextDetails));
-      browser.test.assertTrue(plainTextDetails.isPlainText);
-      browser.test.assertTrue(
-        plainTextDetails.body.includes(plainTextBodyTag + longCJKString),
-        "getComposeDetails.body from text composer returned CJK correctly"
-      );
-      browser.test.assertEq(
-        longCJKString,
-        plainTextDetails.plainTextBody,
-        "getComposeDetails.plainTextBody from text composer returned CJK correctly"
-      );
-
-      // Set details, plain text message.
-
-      await browser.compose.setComposeDetails(plainTextTabId, {
-        plainTextBody: longCJKString,
+      // Set folders using IDs
+      await browser.compose.setComposeDetails(createdTab.id, {
+        overrideDefaultFccFolder: folder1.id,
+        additionalFccFolder: folder2.id,
       });
-      plainTextDetails = await browser.compose.getComposeDetails(
-        plainTextTabId
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: true,
+        overrideDefaultFccFolder: folder1,
+        additionalFccFolder: folder2,
+      });
+
+      // Setting overrideDefaultFcc true while it is already true should not change any values.
+      await browser.compose.setComposeDetails(createdTab.id, {
+        overrideDefaultFcc: true,
+      });
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: true,
+        overrideDefaultFccFolder: folder1,
+        additionalFccFolder: folder2,
+      });
+
+      // A no-op should not change any values. Set folder objects, which is not
+      // deprecated here, since a received ComposeDetail object should be usable
+      // as-is with compose.setComposeDetails().
+      await browser.compose.setComposeDetails(createdTab.id, {});
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: true,
+        overrideDefaultFccFolder: folder1,
+        additionalFccFolder: folder2,
+      });
+
+      // Disable fcc.
+      await browser.compose.setComposeDetails(createdTab.id, {
+        overrideDefaultFccFolder: "",
+      });
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: true,
+        overrideDefaultFccFolder: "",
+        additionalFccFolder: folder2,
+      });
+
+      // Disable additional fcc.
+      await browser.compose.setComposeDetails(createdTab.id, {
+        additionalFccFolder: "",
+      });
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: true,
+        overrideDefaultFccFolder: "",
+        additionalFccFolder: "",
+      });
+
+      // Clear override.
+      await browser.compose.setComposeDetails(createdTab.id, {
+        overrideDefaultFcc: false,
+      });
+      await checkWindow(createdTab, {
+        overrideDefaultFcc: false,
+        overrideDefaultFccFolder: null,
+        additionalFccFolder: "",
+      });
+
+      await browser.test.assertRejects(
+        browser.compose.setComposeDetails(createdTab.id, {
+          overrideDefaultFccFolder: {
+            path: "/bad",
+            accountId: folder1.accountId,
+          },
+        }),
+        /Folder not found/,
+        "browser.compose.setComposeDetails() should reject, if an invalid folder is set as overrideDefaultFccFolder."
       );
-      browser.test.log(JSON.stringify(plainTextDetails));
-      browser.test.assertTrue(plainTextDetails.isPlainText);
-      browser.test.assertTrue(
-        plainTextDetails.body.includes(plainTextBodyTag + longCJKString),
-        "getComposeDetails.body from text composer returned CJK correctly as set by setComposeDetails"
+
+      await browser.test.assertRejects(
+        browser.compose.setComposeDetails(createdTab.id, {
+          additionalFccFolder: { path: "/bad", accountId: folder1.accountId },
+        }),
+        /Folder not found/,
+        "browser.compose.setComposeDetails() should reject, if an invalid folder is set as additionalFccFolder."
       );
-      browser.test.assertEq(
-        longCJKString,
-        // Fold Windows line-endings \r\n to \n.
-        plainTextDetails.plainTextBody.replace(/\r/g, ""),
-        "getComposeDetails.plainTextBody from text composer returned CJK correctly as set by setComposeDetails"
-      );
+
+      // Clean up.
+
+      const removedWindowPromise = window.waitForEvent("windows.onRemoved");
+      browser.windows.remove(createdWindow.id);
+      await removedWindowPromise;
 
       browser.test.notifyPass("finished");
     },
+    "utils.js": await getUtilsJS(),
+  };
+  const extension = ExtensionTestUtils.loadExtension({
+    files,
     manifest: {
-      permissions: ["compose"],
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "compose", "messagesRead"],
     },
+  });
+
+  extension.onMessage("checkWindow", async expected => {
+    await checkComposeHeaders(expected);
+    extension.sendMessage();
   });
 
   await extension.startup();
   await extension.awaitFinish("finished");
   await extension.unload();
+});
 
-  // Close the HTML message.
+add_task(async function testSimpleDetails() {
+  const files = {
+    "background.js": async () => {
+      async function checkWindow(createdTab, expected) {
+        const state = await browser.compose.getComposeDetails(createdTab.id);
 
-  let closePromises = [
-    // If the window is not marked as dirty, this Promise will never resolve.
-    BrowserTestUtils.promiseAlertDialog("extra1"),
-    BrowserTestUtils.domWindowClosed(htmlWindow),
-  ];
-  Assert.ok(
-    htmlWindow.ComposeCanClose(),
-    "compose window should be allowed to close"
-  );
-  htmlWindow.close();
-  await Promise.all(closePromises);
+        if (expected.priority) {
+          browser.test.assertEq(
+            expected.priority,
+            state.priority,
+            "priority should be correct"
+          );
+        }
 
-  // Close the plain text message.
+        if (expected.hasOwnProperty("returnReceipt")) {
+          browser.test.assertEq(
+            expected.returnReceipt,
+            state.returnReceipt,
+            "returnReceipt should be correct"
+          );
+        }
 
-  closePromises = [
-    // If the window is not marked as dirty, this Promise will never resolve.
-    BrowserTestUtils.promiseAlertDialog("extra1"),
-    BrowserTestUtils.domWindowClosed(plainTextWindow),
-  ];
-  Assert.ok(
-    plainTextWindow.ComposeCanClose(),
-    "compose window should be allowed to close"
-  );
-  plainTextWindow.close();
-  await Promise.all(closePromises);
+        if (expected.hasOwnProperty("deliveryStatusNotification")) {
+          browser.test.assertEq(
+            expected.deliveryStatusNotification,
+            state.deliveryStatusNotification,
+            "deliveryStatusNotification should be correct"
+          );
+        }
+
+        if (expected.hasOwnProperty("attachVCard")) {
+          browser.test.assertEq(
+            expected.attachVCard,
+            state.attachVCard,
+            "attachVCard should be correct"
+          );
+        }
+
+        if (expected.deliveryFormat) {
+          browser.test.assertEq(
+            expected.deliveryFormat,
+            state.deliveryFormat,
+            "deliveryFormat should be correct"
+          );
+        }
+
+        await window.sendMessage("checkWindow", expected);
+      }
+
+      // Start a new message.
+
+      const createdWindowPromise = window.waitForEvent("windows.onCreated");
+      await browser.compose.beginNew();
+      const [createdWindow] = await createdWindowPromise;
+      const [createdTab] = await browser.tabs.query({
+        windowId: createdWindow.id,
+      });
+
+      const accounts = await browser.accounts.list();
+      browser.test.assertEq(1, accounts.length, "number of accounts");
+      const localAccount = accounts.find(a => a.type == "none");
+      browser.test.assertEq(
+        2,
+        localAccount.identities.length,
+        "number of identities"
+      );
+      const [defaultIdentity, nonDefaultIdentity] = localAccount.identities;
+
+      const expected = {
+        priority: "normal",
+        returnReceipt: false,
+        deliveryStatusNotification: false,
+        deliveryFormat: "auto",
+        attachVCard: false,
+        identityId: defaultIdentity.id,
+      };
+
+      async function changeDetail(key, value, _expected = {}) {
+        await browser.compose.setComposeDetails(createdTab.id, {
+          [key]: value,
+        });
+        expected[key] = value;
+        for (const [k, v] of Object.entries(_expected)) {
+          expected[k] = v;
+        }
+        await checkWindow(createdTab, expected);
+      }
+
+      // Confirm initial condition.
+      await checkWindow(createdTab, expected);
+
+      // Changing the identity without having made any changes, should load the
+      // defaults of the second identity.
+      await changeDetail("identityId", nonDefaultIdentity.id, {
+        attachVCard: true,
+      });
+
+      // Switching back should restore the defaults of the first identity.
+      await changeDetail("identityId", defaultIdentity.id, {
+        attachVCard: false,
+      });
+
+      await changeDetail("priority", "highest");
+      await changeDetail("deliveryFormat", "html");
+      await changeDetail("returnReceipt", true);
+      await changeDetail("deliveryFormat", "plaintext");
+      await changeDetail("priority", "lowest");
+      await changeDetail("attachVCard", true);
+      await changeDetail("priority", "high");
+      await changeDetail("deliveryFormat", "both");
+      await changeDetail("deliveryStatusNotification", true);
+      await changeDetail("priority", "low");
+
+      await changeDetail("priority", "normal");
+      await changeDetail("deliveryFormat", "auto");
+      await changeDetail("attachVCard", false);
+      await changeDetail("returnReceipt", false);
+      await changeDetail("deliveryStatusNotification", false);
+
+      // Changing the identity should not load the defaults of the second identity,
+      // after the values had been changed.
+      await changeDetail("identityId", nonDefaultIdentity.id);
+
+      // Clean up.
+
+      const removedWindowPromise = window.waitForEvent("windows.onRemoved");
+      browser.windows.remove(createdWindow.id);
+      await removedWindowPromise;
+
+      browser.test.notifyPass("finished");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  const extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "compose", "messagesRead"],
+    },
+  });
+
+  extension.onMessage("checkWindow", async expected => {
+    await checkComposeHeaders(expected);
+    extension.sendMessage();
+  });
+
+  await extension.startup();
+  await extension.awaitFinish("finished");
+  await extension.unload();
+});
+
+add_task(async function testAutoComplete() {
+  const files = {
+    "background.js": async () => {
+      async function checkWindow(createdTab, expected) {
+        const state = await browser.compose.getComposeDetails(createdTab.id);
+
+        for (const [id, value] of Object.entries(expected.pills)) {
+          browser.test.assertEq(
+            value,
+            state[id].length ? state[id][0] : "",
+            `value for ${id} should be correct`
+          );
+        }
+
+        await window.sendMessage("checkWindow", expected);
+      }
+
+      // Start a new message.
+      const createdWindowPromise = window.waitForEvent("windows.onCreated");
+      await browser.compose.beginNew();
+      const [createdWindow] = await createdWindowPromise;
+      const [createdTab] = await browser.tabs.query({
+        windowId: createdWindow.id,
+      });
+
+      // Create a test contact.
+      const [addressBook] = await browser.addressBooks.list(true);
+      const contactId = await browser.contacts.create(addressBook.id, {
+        PrimaryEmail: "autocomplete@invalid",
+        DisplayName: "Autocomplete Test",
+      });
+
+      // Confirm the addrTo field has focus and addrTo and replyTo fields are empty.
+      await checkWindow(createdTab, {
+        activeElement: "toAddrInput",
+        pills: { to: "", replyTo: "" },
+        values: { toAddrInput: "", replyAddrInput: "" },
+      });
+
+      // Set the replyTo field, which should not break autocomplete for the currently active addrTo
+      // field.
+      await browser.compose.setComposeDetails(createdTab.id, {
+        replyTo: "test@user.net",
+      });
+
+      // Confirm the addrTo field has focus and replyTo field is set.
+      await checkWindow(createdTab, {
+        activeElement: "toAddrInput",
+        pills: { to: "", replyTo: "test@user.net" },
+        values: { toAddrInput: "", replyAddrInput: "" },
+      });
+
+      // Manually type "Autocomplete" into the active field, which should be the toAddr field and it
+      // should autocomplete.
+      await window.sendMessage("typeIntoActiveAddrField", "Autocomplete");
+
+      // Confirm the addrTo field has focus and replyTo field is set and the addrTo field has been
+      // autocompleted.
+      await checkWindow(createdTab, {
+        activeElement: "toAddrInput",
+        pills: { to: "", replyTo: "test@user.net" },
+        values: {
+          toAddrInput: "Autocomplete Test <autocomplete@invalid>",
+          replyAddrInput: "",
+        },
+      });
+
+      // Clean up.
+      await browser.contacts.delete(contactId);
+      const removedWindowPromise = window.waitForEvent("windows.onRemoved");
+      browser.windows.remove(createdWindow.id);
+      await removedWindowPromise;
+
+      browser.test.notifyPass("finished");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  const extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "compose", "addressBooks"],
+    },
+  });
+
+  extension.onMessage("typeIntoActiveAddrField", async value => {
+    const composeWindows = [...Services.wm.getEnumerator("msgcompose")];
+    is(composeWindows.length, 1);
+
+    for (const s of value) {
+      EventUtils.synthesizeKey(s, {}, composeWindows[0]);
+      await new Promise(r => composeWindows[0].setTimeout(r));
+    }
+
+    extension.sendMessage();
+  });
+
+  extension.onMessage("checkWindow", async expected => {
+    const composeWindows = [...Services.wm.getEnumerator("msgcompose")];
+    is(composeWindows.length, 1);
+    const composeDocument = composeWindows[0].document;
+    await new Promise(resolve => composeWindows[0].setTimeout(resolve));
+
+    Assert.equal(
+      composeDocument.activeElement.id,
+      expected.activeElement,
+      `Active element should be correct`
+    );
+
+    for (const [id, value] of Object.entries(expected.values)) {
+      await TestUtils.waitForCondition(
+        () => composeDocument.getElementById(id).value == value,
+        `Value of field ${id} should be correct`
+      );
+    }
+
+    extension.sendMessage();
+  });
+
+  await extension.startup();
+  await extension.awaitFinish("finished");
+  await extension.unload();
 });

@@ -49,16 +49,18 @@ class nsTLiteralString : public mozilla::detail::nsTStringRepr<T> {
   explicit constexpr nsTLiteralString(const char_type (&aStr)[N])
       : nsTLiteralString(aStr, N - 1) {}
 
+  nsTLiteralString(const nsTLiteralString&) = default;
+
   /**
    * For compatibility with existing code that requires const ns[C]String*.
    * Use sparingly. If possible, rewrite code to use const ns[C]String&
    * and the implicit cast will just work.
    */
-  MOZ_LIFETIME_BOUND const nsTString<T>& AsString() const {
+  const nsTString<T>& AsString() const MOZ_LIFETIME_BOUND {
     return *reinterpret_cast<const nsTString<T>*>(this);
   }
 
-  MOZ_LIFETIME_BOUND operator const nsTString<T>&() const { return AsString(); }
+  operator const nsTString<T>&() const MOZ_LIFETIME_BOUND { return AsString(); }
 
   template <typename N, typename Dummy>
   struct raw_type {
@@ -102,7 +104,7 @@ class nsTLiteralString : public mozilla::detail::nsTStringRepr<T> {
   template <size_type N>
   nsTLiteralString(char_type (&aStr)[N]) = delete;
 
-  self_type& operator=(const self_type&) = delete;
+  nsTLiteralString& operator=(const nsTLiteralString&) = delete;
 };
 
 extern template class nsTLiteralString<char>;

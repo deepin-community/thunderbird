@@ -6,10 +6,10 @@
 
 #include "MediaData.h"
 #include "mozilla/ScopeExit.h"
+#include "mozilla/StaticPrefs_media.h"
+#include "Tracing.h"
 
-// Use abort() instead of exception in SoundTouch.
-#define ST_NO_EXCEPTION_HANDLING 1
-#include "soundtouch/SoundTouchFactory.h"
+#include "RLBoxSoundTouch.h"
 
 namespace mozilla {
 
@@ -78,9 +78,9 @@ bool AudioDecoderInputTrack::ConvertAudioDataToSegment(
     mResampler.own(nullptr);
     mResamplerChannelCount = 0;
   }
-  if (mInputSampleRate != GraphImpl()->GraphRate()) {
+  if (mInputSampleRate != Graph()->GraphRate()) {
     aSegment.ResampleChunks(mResampler, &mResamplerChannelCount,
-                            mInputSampleRate, GraphImpl()->GraphRate());
+                            mInputSampleRate, Graph()->GraphRate());
   }
   return aSegment.GetDuration() > 0;
 }
@@ -233,20 +233,12 @@ void AudioDecoderInputTrack::SetVolume(float aVolume) {
 
 void AudioDecoderInputTrack::SetVolumeImpl(float aVolume) {
   MOZ_ASSERT(NS_IsMainThread());
-  class Message : public ControlMessage {
-   public:
-    Message(AudioDecoderInputTrack* aTrack, float aVolume)
-        : ControlMessage(aTrack), mTrack(aTrack), mVolume(aVolume) {}
-    void Run() override {
-      LOG_M("Apply volume=%f", mTrack.get(), mVolume);
-      mTrack->mVolume = mVolume;
-    }
-
-   protected:
-    const RefPtr<AudioDecoderInputTrack> mTrack;
-    const float mVolume;
-  };
-  GraphImpl()->AppendMessage(MakeUnique<Message>(this, aVolume));
+  QueueControlMessageWithNoShutdown([self = RefPtr{this}, this, aVolume] {
+    TRACE_COMMENT("AudioDecoderInputTrack::SetVolume ControlMessage", "%f",
+                  aVolume);
+    LOG_M("Apply volume=%f", this, aVolume);
+    mVolume = aVolume;
+  });
 }
 
 void AudioDecoderInputTrack::SetPlaybackRate(float aPlaybackRate) {
@@ -261,23 +253,13 @@ void AudioDecoderInputTrack::SetPlaybackRate(float aPlaybackRate) {
 
 void AudioDecoderInputTrack::SetPlaybackRateImpl(float aPlaybackRate) {
   MOZ_ASSERT(NS_IsMainThread());
-  class Message : public ControlMessage {
-   public:
-    Message(AudioDecoderInputTrack* aTrack, float aPlaybackRate)
-        : ControlMessage(aTrack),
-          mTrack(aTrack),
-          mPlaybackRate(aPlaybackRate) {}
-    void Run() override {
-      LOG_M("Apply playback rate=%f", mTrack.get(), mPlaybackRate);
-      mTrack->mPlaybackRate = mPlaybackRate;
-      mTrack->SetTempoAndRateForTimeStretcher();
-    }
-
-   protected:
-    const RefPtr<AudioDecoderInputTrack> mTrack;
-    const float mPlaybackRate;
-  };
-  GraphImpl()->AppendMessage(MakeUnique<Message>(this, aPlaybackRate));
+  QueueControlMessageWithNoShutdown([self = RefPtr{this}, this, aPlaybackRate] {
+    TRACE_COMMENT("AudioDecoderInputTrack::SetPlaybackRate ControlMessage",
+                  "%f", aPlaybackRate);
+    LOG_M("Apply playback rate=%f", this, aPlaybackRate);
+    mPlaybackRate = aPlaybackRate;
+    SetTempoAndRateForTimeStretcher();
+  });
 }
 
 void AudioDecoderInputTrack::SetPreservesPitch(bool aPreservesPitch) {
@@ -292,23 +274,14 @@ void AudioDecoderInputTrack::SetPreservesPitch(bool aPreservesPitch) {
 
 void AudioDecoderInputTrack::SetPreservesPitchImpl(bool aPreservesPitch) {
   MOZ_ASSERT(NS_IsMainThread());
-  class Message : public ControlMessage {
-   public:
-    Message(AudioDecoderInputTrack* aTrack, bool aPreservesPitch)
-        : ControlMessage(aTrack),
-          mTrack(aTrack),
-          mPreservesPitch(aPreservesPitch) {}
-    void Run() override {
-      LOG_M("Apply preserves pitch=%d", mTrack.get(), mPreservesPitch);
-      mTrack->mPreservesPitch = mPreservesPitch;
-      mTrack->SetTempoAndRateForTimeStretcher();
-    }
-
-   protected:
-    const RefPtr<AudioDecoderInputTrack> mTrack;
-    const bool mPreservesPitch;
-  };
-  GraphImpl()->AppendMessage(MakeUnique<Message>(this, aPreservesPitch));
+  QueueControlMessageWithNoShutdown(
+      [self = RefPtr{this}, this, aPreservesPitch] {
+        TRACE_COMMENT("AudioDecoderInputTrack::SetPreservesPitch", "%s",
+                      aPreservesPitch ? "true" : "false");
+        LOG_M("Apply preserves pitch=%d", this, aPreservesPitch);
+        mPreservesPitch = aPreservesPitch;
+        SetTempoAndRateForTimeStretcher();
+      });
 }
 
 void AudioDecoderInputTrack::Close() {
@@ -324,7 +297,8 @@ void AudioDecoderInputTrack::DestroyImpl() {
   AssertOnGraphThreadOrNotRunning();
   mBufferedData.Clear();
   if (mTimeStretcher) {
-    soundtouch::destroySoundTouchObj(mTimeStretcher);
+    delete mTimeStretcher;
+    mTimeStretcher = nullptr;
   }
   ProcessedMediaTrack::DestroyImpl();
 }
@@ -426,10 +400,16 @@ TrackTime AudioDecoderInputTrack::AppendBufferedDataToOutput(
   ApplyTrackDisabling(&outputSegment);
   mSegment->AppendFrom(&outputSegment);
 
+  unsigned int numSamples = 0;
+  if (mTimeStretcher) {
+    numSamples = mTimeStretcher->numSamples().unverified_safe_because(
+        "Only used for logging.");
+  }
+
   LOG("Appended %" PRId64 ", consumed %" PRId64
       ", remaining raw buffered %" PRId64 ", remaining time-stretched %u",
       appendedDuration, consumedDuration, mBufferedData.GetDuration(),
-      mTimeStretcher ? mTimeStretcher->numSamples() : 0);
+      numSamples);
   if (auto gap = aExpectedDuration - appendedDuration; gap > 0) {
     LOG("Audio underrun, fill silence %" PRId64, gap);
     MOZ_ASSERT(mBufferedData.IsEmpty());
@@ -452,9 +432,14 @@ TrackTime AudioDecoderInputTrack::AppendTimeStretchedDataToSegment(
   // into the time stretcher until the amount of samples that time stretcher
   // finishes processed reaches or exceeds the expected duration.
   TrackTime consumedDuration = 0;
-  if (mTimeStretcher->numSamples() < aExpectedDuration) {
-    consumedDuration = FillDataToTimeStretcher(aExpectedDuration);
-  }
+  mTimeStretcher->numSamples().copy_and_verify([&](auto numSamples) {
+    // Attacker controlled soundtouch can return a bogus numSamples, which
+    // can result in filling data into the time stretcher (or not).  This is
+    // safe as long as filling (and getting) data is checked.
+    if (numSamples < aExpectedDuration) {
+      consumedDuration = FillDataToTimeStretcher(aExpectedDuration);
+    }
+  });
   MOZ_ASSERT(consumedDuration >= 0);
   Unused << GetDataFromTimeStretcher(aExpectedDuration, aOutput);
   return consumedDuration;
@@ -503,7 +488,13 @@ TrackTime AudioDecoderInputTrack::FillDataToTimeStretcher(
     mTimeStretcher->putSamples(mInterleavedBuffer.Elements(),
                                aChunk->GetDuration());
     consumedDuration += aChunk->GetDuration();
-    return mTimeStretcher->numSamples() >= aExpectedDuration;
+    return mTimeStretcher->numSamples().copy_and_verify(
+        [&aExpectedDuration](auto numSamples) {
+          // Attacker controlled soundtouch can return a bogus numSamples to
+          // return early or force additional iterations. This is safe
+          // as long as all the writes in the lambda are checked.
+          return numSamples >= aExpectedDuration;
+        });
   });
   mBufferedData.RemoveLeading(consumedDuration);
   return consumedDuration;
@@ -535,7 +526,9 @@ TrackTime AudioDecoderInputTrack::DrainStretchedDataIfNeeded(
   if (!mTimeStretcher) {
     return 0;
   }
-  if (mTimeStretcher->numSamples() == 0) {
+  auto numSamples = mTimeStretcher->numSamples().unverified_safe_because(
+      "Bogus numSamples can result in draining the stretched data (or not).");
+  if (numSamples == 0) {
     return 0;
   }
   return GetDataFromTimeStretcher(aExpectedDuration, aOutput);
@@ -547,14 +540,22 @@ TrackTime AudioDecoderInputTrack::GetDataFromTimeStretcher(
   MOZ_ASSERT(mTimeStretcher);
   MOZ_ASSERT(aExpectedDuration >= 0);
 
-  if (HasSentAllData() && mTimeStretcher->numUnprocessedSamples()) {
-    mTimeStretcher->flush();
-    LOG("Flush %u frames from the time stretcher",
-        mTimeStretcher->numSamples());
-  }
+  auto numSamples =
+      mTimeStretcher->numSamples().unverified_safe_because("Used for logging");
+
+  mTimeStretcher->numUnprocessedSamples().copy_and_verify([&](auto samples) {
+    if (HasSentAllData() && samples) {
+      mTimeStretcher->flush();
+      LOG("Flush %u frames from the time stretcher", numSamples);
+    }
+  });
+
+  // Flushing may have change the number of samples
+  numSamples = mTimeStretcher->numSamples().unverified_safe_because(
+      "Used to decide to flush (or not), which is checked.");
 
   const TrackTime available =
-      std::min((TrackTime)mTimeStretcher->numSamples(), aExpectedDuration);
+      std::min((TrackTime)numSamples, aExpectedDuration);
   if (available == 0) {
     // Either running out of stretched data, or the raw data we filled into
     // the time stretcher were not enough for producing stretched data.
@@ -619,8 +620,8 @@ uint32_t AudioDecoderInputTrack::NumberOfChannels() const {
 void AudioDecoderInputTrack::EnsureTimeStretcher() {
   AssertOnGraphThread();
   if (!mTimeStretcher) {
-    mTimeStretcher = soundtouch::createSoundTouchObj();
-    mTimeStretcher->setSampleRate(GraphImpl()->GraphRate());
+    mTimeStretcher = new RLBoxSoundTouch();
+    mTimeStretcher->setSampleRate(Graph()->GraphRate());
     mTimeStretcher->setChannels(GetChannelCountForTimeStretcher());
     mTimeStretcher->setPitch(1.0);
 
@@ -631,9 +632,15 @@ void AudioDecoderInputTrack::EnsureTimeStretcher() {
     // We are going to use a smaller 10ms sequence size to improve speech
     // clarity, giving more resolution at high tempo and less reverb at low
     // tempo. Maintain 15ms seekwindow and 8ms overlap for smoothness.
-    mTimeStretcher->setSetting(SETTING_SEQUENCE_MS, 10);
-    mTimeStretcher->setSetting(SETTING_SEEKWINDOW_MS, 15);
-    mTimeStretcher->setSetting(SETTING_OVERLAP_MS, 8);
+    mTimeStretcher->setSetting(
+        SETTING_SEQUENCE_MS,
+        StaticPrefs::media_audio_playbackrate_soundtouch_sequence_ms());
+    mTimeStretcher->setSetting(
+        SETTING_SEEKWINDOW_MS,
+        StaticPrefs::media_audio_playbackrate_soundtouch_seekwindow_ms());
+    mTimeStretcher->setSetting(
+        SETTING_OVERLAP_MS,
+        StaticPrefs::media_audio_playbackrate_soundtouch_overlap_ms());
     SetTempoAndRateForTimeStretcher();
     LOG("Create TimeStretcher (channel=%d, playbackRate=%f, preservePitch=%d)",
         GetChannelCountForTimeStretcher(), mPlaybackRate, mPreservesPitch);

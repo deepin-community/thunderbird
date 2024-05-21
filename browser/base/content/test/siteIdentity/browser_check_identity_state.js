@@ -5,18 +5,11 @@
 "use strict";
 
 const DUMMY = "browser/browser/base/content/test/siteIdentity/dummy_page.html";
-const INSECURE_ICON_PREF = "security.insecure_connection_icon.enabled";
 const INSECURE_TEXT_PREF = "security.insecure_connection_text.enabled";
-const INSECURE_PBMODE_ICON_PREF =
-  "security.insecure_connection_icon.pbmode.enabled";
 const HTTPS_FIRST_PBM_PREF = "dom.security.https_first_pbm";
 
 function loadNewTab(url) {
   return BrowserTestUtils.openNewForegroundTab(gBrowser, url, true);
-}
-
-function getIdentityMode(aWindow = window) {
-  return aWindow.document.getElementById("identity-box").className;
 }
 
 function getConnectionState() {
@@ -36,7 +29,7 @@ function getSecurityConnectionBG() {
         .getElementById("identity-popup-mainView")
         .getElementsByClassName("identity-popup-security-connection")[0]
     )
-    .getPropertyValue("background-image");
+    .getPropertyValue("list-style-image");
 }
 
 async function getReaderModeURL() {
@@ -56,41 +49,107 @@ async function getReaderModeURL() {
 // This test is slow on Linux debug e10s
 requestLongerTimeout(2);
 
-async function webpageTest(secureCheck) {
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
+add_task(async function chromeUITest() {
+  // needs to be set due to bug in ion.js that occurs when testing
+  SpecialPowers.pushPrefEnv({
+    set: [
+      ["toolkit.pioneer.testCachedContent", "[]"],
+      ["toolkit.pioneer.testCachedAddons", "[]"],
+    ],
+  });
+  // Might needs to be extended with new secure chrome pages
+  // about:debugging is a secure chrome UI but is not tested for causing problems.
+  let secureChromePages = [
+    "addons",
+    "cache",
+    "certificate",
+    "compat",
+    "config",
+    "downloads",
+    "ion",
+    "license",
+    "logins",
+    "loginsimportreport",
+    "performance",
+    "policies",
+    "preferences",
+    "processes",
+    "profiles",
+    "profiling",
+    "protections",
+    "rights",
+    "sessionrestore",
+    "studies",
+    "support",
+    "telemetry",
+    "welcomeback",
+  ];
+
+  // else skip about:crashes, it is only available with plugin
+  if (AppConstants.MOZ_CRASHREPORTER) {
+    secureChromePages.push("crashes");
+  }
+
+  let nonSecureExamplePages = [
+    "about:about",
+    "about:credits",
+    "about:home",
+    "about:logo",
+    "about:memory",
+    "about:mozilla",
+    "about:networking",
+    "about:privatebrowsing",
+    "about:robots",
+    "about:serviceWorkers",
+    "about:sync-log",
+    "about:unloads",
+    "about:url-classifier",
+    "about:webrtc",
+    "about:welcome",
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
+    "http://example.com/" + DUMMY,
+  ];
+
+  for (let i = 0; i < secureChromePages.length; i++) {
+    await BrowserTestUtils.withNewTab("about:" + secureChromePages[i], () => {
+      is(getIdentityMode(), "chromeUI", "Identity should be chromeUI");
+    });
+  }
+
+  for (let i = 0; i < nonSecureExamplePages.length; i++) {
+    console.log(nonSecureExamplePages[i]);
+    await BrowserTestUtils.withNewTab(nonSecureExamplePages[i], () => {
+      Assert.notEqual(
+        getIdentityMode(),
+        "chromeUI",
+        "Identity should not be chromeUI"
+      );
+    });
+  }
+});
+
+add_task(async function test_webpage() {
   let oldTab = await loadNewTab("about:robots");
 
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let newTab = await loadNewTab("http://example.com/" + DUMMY);
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
 
   gBrowser.selectedTab = oldTab;
   is(getIdentityMode(), "localResource", "Identity should be localResource");
 
   gBrowser.selectedTab = newTab;
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_webpage() {
-  await webpageTest(false);
-  await webpageTest(true);
 });
 
 async function webpageTestTextWarning(secureCheck) {
   await SpecialPowers.pushPrefEnv({ set: [[INSECURE_TEXT_PREF, secureCheck]] });
   let oldTab = await loadNewTab("about:robots");
 
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let newTab = await loadNewTab("http://example.com/" + DUMMY);
   if (secureCheck) {
     is(
@@ -128,13 +187,11 @@ add_task(async function test_webpage_text_warning() {
 
 async function webpageTestTextWarningCombined(secureCheck) {
   await SpecialPowers.pushPrefEnv({
-    set: [
-      [INSECURE_TEXT_PREF, secureCheck],
-      [INSECURE_ICON_PREF, secureCheck],
-    ],
+    set: [[INSECURE_TEXT_PREF, secureCheck]],
   });
   let oldTab = await loadNewTab("about:robots");
 
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let newTab = await loadNewTab("http://example.com/" + DUMMY);
   if (secureCheck) {
     is(
@@ -142,12 +199,10 @@ async function webpageTestTextWarningCombined(secureCheck) {
       "notSecure notSecureText",
       "Identity should be not secure"
     );
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
   }
 
   gBrowser.selectedTab = oldTab;
-  is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
+  is(getIdentityMode(), "localResource", "Identity should be unknown");
 
   gBrowser.selectedTab = newTab;
   if (secureCheck) {
@@ -156,8 +211,6 @@ async function webpageTestTextWarningCombined(secureCheck) {
       "notSecure notSecureText",
       "Identity should be not secure"
     );
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
   }
 
   gBrowser.removeTab(newTab);
@@ -166,13 +219,12 @@ async function webpageTestTextWarningCombined(secureCheck) {
 }
 
 add_task(async function test_webpage_text_warning_combined() {
-  await webpageTestTextWarning(false);
-  await webpageTestTextWarning(true);
+  await webpageTestTextWarningCombined(false);
+  await webpageTestTextWarningCombined(true);
 });
 
-async function blankPageTest(secureCheck) {
+add_task(async function test_blank_page() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
 
   let newTab = await loadNewTab("about:blank");
   is(
@@ -198,17 +250,10 @@ async function blankPageTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_blank() {
-  await blankPageTest(true);
-  await blankPageTest(false);
 });
 
-async function secureTest(secureCheck) {
+add_task(async function test_secure() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
 
   let newTab = await loadNewTab("https://example.com/" + DUMMY);
   is(getIdentityMode(), "verifiedDomain", "Identity should be verified");
@@ -221,16 +266,9 @@ async function secureTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_secure_enabled() {
-  await secureTest(true);
-  await secureTest(false);
 });
 
-async function viewSourceTest() {
+add_task(async function test_view_source() {
   let sourceTab = await loadNewTab("view-source:https://example.com/" + DUMMY);
 
   gBrowser.selectedTab = sourceTab;
@@ -241,57 +279,37 @@ async function viewSourceTest() {
   );
 
   gBrowser.removeTab(sourceTab);
-}
-
-add_task(async function test_viewSource() {
-  await viewSourceTest();
 });
 
-async function insecureTest(secureCheck) {
+add_task(async function test_insecure() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
 
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let newTab = await loadNewTab("http://example.com/" + DUMMY);
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-    is(
-      document.getElementById("identity-icon").getAttribute("tooltiptext"),
-      gNavigatorBundle.getString("identity.notSecure.tooltip"),
-      "The insecure lock icon has a correct tooltip text."
-    );
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
+  is(
+    document.getElementById("identity-icon").getAttribute("tooltiptext"),
+    gNavigatorBundle.getString("identity.notSecure.tooltip"),
+    "The insecure lock icon has a correct tooltip text."
+  );
 
   gBrowser.selectedTab = oldTab;
   is(getIdentityMode(), "localResource", "Identity should be localResource");
 
   gBrowser.selectedTab = newTab;
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-    is(
-      document.getElementById("identity-icon").getAttribute("tooltiptext"),
-      gNavigatorBundle.getString("identity.notSecure.tooltip"),
-      "The insecure lock icon has a correct tooltip text."
-    );
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
+  is(
+    document.getElementById("identity-icon").getAttribute("tooltiptext"),
+    gNavigatorBundle.getString("identity.notSecure.tooltip"),
+    "The insecure lock icon has a correct tooltip text."
+  );
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_insecure() {
-  await insecureTest(true);
-  await insecureTest(false);
 });
 
-async function addonsTest(secureCheck) {
+add_task(async function test_addons() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
 
   let newTab = await loadNewTab("about:addons");
   is(getIdentityMode(), "chromeUI", "Identity should be chrome");
@@ -304,18 +322,10 @@ async function addonsTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_addons() {
-  await addonsTest(true);
-  await addonsTest(false);
 });
 
-async function fileTest(secureCheck) {
+add_task(async function test_file() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
   let fileURI = getTestFilePath("");
 
   let newTab = await loadNewTab(fileURI);
@@ -329,19 +339,11 @@ async function fileTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_file() {
-  await fileTest(true);
-  await fileTest(false);
 });
 
-async function resourceUriTest(secureCheck) {
+add_task(async function test_resource_uri() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
-  let dataURI = "resource://gre/modules/Services.jsm";
+  let dataURI = "resource://gre/modules/XPCOMUtils.sys.mjs";
 
   let newTab = await loadNewTab(dataURI);
 
@@ -359,27 +361,22 @@ async function resourceUriTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_resource_uri() {
-  await resourceUriTest(true);
-  await resourceUriTest(false);
 });
 
-async function noCertErrorTest(secureCheck) {
+add_task(async function test_no_cert_error() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
   let newTab = BrowserTestUtils.addTab(gBrowser);
   gBrowser.selectedTab = newTab;
 
   let promise = BrowserTestUtils.waitForErrorPage(gBrowser.selectedBrowser);
-  BrowserTestUtils.loadURI(gBrowser, "https://nocert.example.com/");
+  BrowserTestUtils.startLoadingURIString(
+    gBrowser,
+    "https://nocert.example.com/"
+  );
   await promise;
   is(
     getIdentityMode(),
-    "certErrorPage",
+    "certErrorPage notSecureText",
     "Identity should be the cert error page."
   );
   is(
@@ -394,7 +391,7 @@ async function noCertErrorTest(secureCheck) {
   gBrowser.selectedTab = newTab;
   is(
     getIdentityMode(),
-    "certErrorPage",
+    "certErrorPage notSecureText",
     "Identity should be the cert error page."
   );
   is(
@@ -405,16 +402,9 @@ async function noCertErrorTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_about_net_error_uri() {
-  await noCertErrorTest(true);
-  await noCertErrorTest(false);
 });
 
-add_task(async function httpsOnlyErrorTest() {
+add_task(async function test_https_only_error() {
   let oldTab = await loadNewTab("about:robots");
   await SpecialPowers.pushPrefEnv({
     set: [["dom.security.https_only_mode", true]],
@@ -423,7 +413,11 @@ add_task(async function httpsOnlyErrorTest() {
   gBrowser.selectedTab = newTab;
 
   let promise = BrowserTestUtils.waitForErrorPage(gBrowser.selectedBrowser);
-  BrowserTestUtils.loadURI(gBrowser, "http://nocert.example.com/");
+  BrowserTestUtils.startLoadingURIString(
+    gBrowser,
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
+    "http://nocert.example.com/"
+  );
   await promise;
   is(
     getIdentityMode(),
@@ -457,16 +451,16 @@ add_task(async function httpsOnlyErrorTest() {
   await SpecialPowers.popPrefEnv();
 });
 
-async function noCertErrorFromNavigationTest(secureCheck) {
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
+add_task(async function test_no_cert_error_from_navigation() {
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let newTab = await loadNewTab("http://example.com/" + DUMMY);
 
   let promise = BrowserTestUtils.waitForErrorPage(gBrowser.selectedBrowser);
-  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function() {
+  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function () {
     content.document.getElementById("no-cert").click();
   });
   await promise;
-  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function() {
+  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function () {
     is(
       content.window.location.href,
       "https://nocert.example.com/",
@@ -481,7 +475,7 @@ async function noCertErrorFromNavigationTest(secureCheck) {
   );
   is(
     getIdentityMode(),
-    "certErrorPage",
+    "certErrorPage notSecureText",
     "Identity should be the cert error page."
   );
   is(
@@ -491,19 +485,16 @@ async function noCertErrorFromNavigationTest(secureCheck) {
   );
 
   gBrowser.removeTab(newTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_about_net_error_uri_from_navigation_tab() {
-  await noCertErrorFromNavigationTest(true);
-  await noCertErrorFromNavigationTest(false);
 });
 
-add_task(async function netErrorPageTest() {
+add_task(async function test_tls_error_page() {
   const TLS10_PAGE = "https://tls1.example.com/";
-  Services.prefs.setIntPref("security.tls.version.min", 3);
-  Services.prefs.setIntPref("security.tls.version.max", 4);
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["security.tls.version.min", 3],
+      ["security.tls.version.max", 4],
+    ],
+  });
 
   let browser;
   let pageLoaded;
@@ -520,7 +511,54 @@ add_task(async function netErrorPageTest() {
   info("Loading and waiting for the net error");
   await pageLoaded;
 
-  await SpecialPowers.spawn(browser, [], function() {
+  await SpecialPowers.spawn(browser, [], function () {
+    const doc = content.document;
+    ok(
+      doc.documentURI.startsWith("about:neterror"),
+      "Should be showing error page"
+    );
+  });
+
+  is(
+    getConnectionState(),
+    "cert-error-page",
+    "Connection state should be the cert error page."
+  );
+
+  BrowserTestUtils.removeTab(gBrowser.selectedTab);
+
+  await SpecialPowers.popPrefEnv();
+});
+
+add_task(async function test_net_error_page() {
+  // Connect to a server that rejects all requests, to test network error pages:
+  let { HttpServer } = ChromeUtils.importESModule(
+    "resource://testing-common/httpd.sys.mjs"
+  );
+  let server = new HttpServer();
+  server.registerPrefixHandler("/", (req, res) =>
+    res.abort(new Error("Noooope."))
+  );
+  server.start(-1);
+  let port = server.identity.primaryPort;
+  const ERROR_PAGE = `http://localhost:${port}/`;
+
+  let browser;
+  let pageLoaded;
+  await BrowserTestUtils.openNewForegroundTab(
+    gBrowser,
+    () => {
+      gBrowser.selectedTab = BrowserTestUtils.addTab(gBrowser, ERROR_PAGE);
+      browser = gBrowser.selectedBrowser;
+      pageLoaded = BrowserTestUtils.waitForErrorPage(browser);
+    },
+    false
+  );
+
+  info("Loading and waiting for the net error");
+  await pageLoaded;
+
+  await SpecialPowers.spawn(browser, [], function () {
     const doc = content.document;
     ok(
       doc.documentURI.startsWith("about:neterror"),
@@ -535,23 +573,19 @@ add_task(async function netErrorPageTest() {
   );
 
   BrowserTestUtils.removeTab(gBrowser.selectedTab);
-
-  await SpecialPowers.popPrefEnv();
 });
 
-async function aboutBlockedTest(secureCheck) {
+add_task(async function test_about_blocked() {
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   let url = "http://www.itisatrap.org/firefox/its-an-attack.html";
   let oldTab = await loadNewTab("about:robots");
   await SpecialPowers.pushPrefEnv({
-    set: [
-      [INSECURE_ICON_PREF, secureCheck],
-      ["urlclassifier.blockedTable", "moztest-block-simple"],
-    ],
+    set: [["urlclassifier.blockedTable", "moztest-block-simple"]],
   });
   let newTab = BrowserTestUtils.addTab(gBrowser);
   gBrowser.selectedTab = newTab;
 
-  BrowserTestUtils.loadURI(gBrowser.selectedBrowser, url);
+  BrowserTestUtils.startLoadingURIString(gBrowser.selectedBrowser, url);
 
   await BrowserTestUtils.browserLoaded(
     gBrowser.selectedBrowser,
@@ -574,18 +608,16 @@ async function aboutBlockedTest(secureCheck) {
   gBrowser.removeTab(oldTab);
 
   await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_about_blocked() {
-  await aboutBlockedTest(true);
-  await aboutBlockedTest(false);
 });
 
-add_task(async function noCertErrorSecurityConnectionBGTest() {
+add_task(async function test_no_cert_error_security_connection_bg() {
   let tab = BrowserTestUtils.addTab(gBrowser);
   gBrowser.selectedTab = tab;
   let promise = BrowserTestUtils.waitForErrorPage(gBrowser.selectedBrowser);
-  BrowserTestUtils.loadURI(gBrowser, "https://nocert.example.com/");
+  BrowserTestUtils.startLoadingURIString(
+    gBrowser,
+    "https://nocert.example.com/"
+  );
   await promise;
 
   is(
@@ -597,9 +629,8 @@ add_task(async function noCertErrorSecurityConnectionBGTest() {
   BrowserTestUtils.removeTab(tab);
 });
 
-async function aboutUriTest(secureCheck) {
+add_task(async function test_about_uri() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
   let aboutURI = "about:robots";
 
   let newTab = await loadNewTab(aboutURI);
@@ -613,18 +644,9 @@ async function aboutUriTest(secureCheck) {
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_about_uri() {
-  await aboutUriTest(true);
-  await aboutUriTest(false);
 });
 
-async function readerUriTest(secureCheck) {
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
-
+add_task(async function test_reader_uri() {
   let newTab = await loadNewTab("about:reader?url=http://example.com");
   gBrowser.selectedTab = newTab;
   let readerURL = await getReaderModeURL();
@@ -637,48 +659,27 @@ async function readerUriTest(secureCheck) {
   gBrowser.removeTab(newTab);
 
   await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_reader_uri() {
-  await readerUriTest(true);
-  await readerUriTest(false);
 });
 
-async function dataUriTest(secureCheck) {
+add_task(async function test_data_uri() {
   let oldTab = await loadNewTab("about:robots");
-  await SpecialPowers.pushPrefEnv({ set: [[INSECURE_ICON_PREF, secureCheck]] });
   let dataURI = "data:text/html,hi";
 
   let newTab = await loadNewTab(dataURI);
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
 
   gBrowser.selectedTab = oldTab;
   is(getIdentityMode(), "localResource", "Identity should be localResource");
 
   gBrowser.selectedTab = newTab;
-  if (secureCheck) {
-    is(getIdentityMode(), "notSecure", "Identity should be not secure");
-  } else {
-    is(getIdentityMode(), "unknownIdentity", "Identity should be unknown");
-  }
+  is(getIdentityMode(), "notSecure", "Identity should be not secure");
 
   gBrowser.removeTab(newTab);
   gBrowser.removeTab(oldTab);
-
-  await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_data_uri() {
-  await dataUriTest(true);
-  await dataUriTest(false);
 });
 
-async function pbModeTest(prefs, secureCheck) {
-  await SpecialPowers.pushPrefEnv({ set: prefs });
+add_task(async function test_pb_mode() {
+  await SpecialPowers.pushPrefEnv({ set: [[HTTPS_FIRST_PBM_PREF, false]] });
 
   let privateWin = await BrowserTestUtils.openNewBrowserWindow({
     private: true,
@@ -689,22 +690,11 @@ async function pbModeTest(prefs, secureCheck) {
   );
   let newTab = await BrowserTestUtils.openNewForegroundTab(
     privateWin.gBrowser,
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
     "http://example.com/" + DUMMY
   );
 
-  if (secureCheck) {
-    is(
-      getIdentityMode(privateWin),
-      "notSecure",
-      "Identity should be not secure"
-    );
-  } else {
-    is(
-      getIdentityMode(privateWin),
-      "unknownIdentity",
-      "Identity should be unknown"
-    );
-  }
+  is(getIdentityMode(privateWin), "notSecure", "Identity should be not secure");
 
   privateWin.gBrowser.selectedTab = oldTab;
   is(
@@ -714,71 +704,17 @@ async function pbModeTest(prefs, secureCheck) {
   );
 
   privateWin.gBrowser.selectedTab = newTab;
-  if (secureCheck) {
-    is(
-      getIdentityMode(privateWin),
-      "notSecure",
-      "Identity should be not secure"
-    );
-  } else {
-    is(
-      getIdentityMode(privateWin),
-      "unknownIdentity",
-      "Identity should be unknown"
-    );
-  }
-
+  is(getIdentityMode(privateWin), "notSecure", "Identity should be not secure");
   await BrowserTestUtils.closeWindow(privateWin);
 
   await SpecialPowers.popPrefEnv();
-}
-
-add_task(async function test_pb_mode() {
-  let prefs = [
-    [INSECURE_ICON_PREF, true],
-    [INSECURE_PBMODE_ICON_PREF, true],
-    [HTTPS_FIRST_PBM_PREF, false],
-  ];
-  await pbModeTest(prefs, true);
-  prefs = [
-    [INSECURE_ICON_PREF, false],
-    [INSECURE_PBMODE_ICON_PREF, true],
-    [HTTPS_FIRST_PBM_PREF, false],
-  ];
-  await pbModeTest(prefs, true);
-  prefs = [
-    [INSECURE_ICON_PREF, false],
-    [INSECURE_PBMODE_ICON_PREF, false],
-    [HTTPS_FIRST_PBM_PREF, false],
-  ];
-  await pbModeTest(prefs, false);
 });
 
-/**
- * Tests that sites opened via the PDF viewer have the correct identity state.
- */
-add_task(async function test_pdf() {
-  const PDF_URI_NOSCHEME =
-    getRootDirectory(gTestPath).replace(
-      "chrome://mochitests/content",
-      "example.com"
-    ) + "file_pdf.pdf";
-
-  const PDF_URI_SECURE = "https://" + PDF_URI_NOSCHEME;
-  const PDF_URI_INSECURE = "http://" + PDF_URI_NOSCHEME;
-
-  await BrowserTestUtils.withNewTab(PDF_URI_INSECURE, async () => {
-    is(
-      getIdentityMode(),
-      "notSecure",
-      "Identity should be notSecure for a PDF served via HTTP."
-    );
-  });
-  await BrowserTestUtils.withNewTab(PDF_URI_SECURE, async () => {
-    is(
-      getIdentityMode(),
-      "verifiedDomain",
-      "Identity should be verifiedDomain for a PDF served via HTTPS."
-    );
+add_setup(() => {
+  SpecialPowers.pushPrefEnv({
+    set: [
+      ["security.insecure_connection_text.enabled", false],
+      ["security.insecure_connection_text.pbmode.enabled", false],
+    ],
   });
 });

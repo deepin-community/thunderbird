@@ -1,11 +1,10 @@
+/* eslint-env mozilla/chrome-script */
+
 "use strict";
 
-/* global addMessageListener, sendAsyncMessage */
-
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 let listener = msg => {
   void (msg instanceof Ci.nsIConsoleMessage);
@@ -36,7 +35,7 @@ for (let win of iterBrowserWindows()) {
   initialTabs.set(win, new Set(getBrowserApp(win).tabs));
 }
 
-addMessageListener("check-cleanup", extensionId => {
+addMessageListener("check-cleanup", () => {
   Services.console.unregisterListener(listener);
 
   let results = {

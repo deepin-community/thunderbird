@@ -10,14 +10,14 @@
 
 "use strict";
 
-var { mc } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+var { NNTP_PORT, setupLocalServer } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/NNTPHelpers.sys.mjs"
 );
-var { NNTP_PORT, setupLocalServer } = ChromeUtils.import(
-  "resource://testing-common/mozmill/NNTPHelpers.jsm"
+var { promise_modal_dialog } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
-var { plan_for_modal_dialog, wait_for_modal_dialog } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { click_menus_in_sequence } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
 var { MailServices } = ChromeUtils.import(
@@ -26,35 +26,48 @@ var { MailServices } = ChromeUtils.import(
 
 var nntpAccount;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   gFolderTreeView.selectFolder(gFolderTreeView._enumerateFolders[1]);
 
-  let server = setupLocalServer(NNTP_PORT);
-  nntpAccount = MailServices.accounts.FindAccountForServer(server);
+  const server = setupLocalServer(NNTP_PORT);
+  nntpAccount = MailServices.accounts.findAccountForServer(server);
 });
 
-add_task(function test_virtual_folder_selection_tree() {
-  plan_for_modal_dialog(
+add_task(async function test_virtual_folder_selection_tree() {
+  const dialogPromise = promise_modal_dialog(
     "mailnews:virtualFolderProperties",
     subtest_create_virtual_folder
   );
-  mc.click_through_appmenu([{ id: "appmenu_new" }], {
-    id: "appmenu_newVirtualFolder",
-  });
 
-  wait_for_modal_dialog("mailnews:virtualFolderProperties");
+  document.getElementById("toolbar-menubar").removeAttribute("autohide");
+
+  EventUtils.synthesizeMouseAtCenter(
+    document.getElementById("menu_File"),
+    {},
+    document.getElementById("menu_File").ownerGlobal
+  );
+  await click_menus_in_sequence(document.getElementById("menu_FilePopup"), [
+    { id: "menu_New" },
+    { id: "menu_newVirtualFolder" },
+  ]);
+
+  await dialogPromise;
 });
 
-function subtest_create_virtual_folder(vfc) {
+async function subtest_create_virtual_folder(vfc) {
   // Open the folder chooser.
-  plan_for_modal_dialog(
+  const dialogPromise = promise_modal_dialog(
     "mailnews:virtualFolderList",
     subtest_check_virtual_folder_list
   );
-  vfc.click(vfc.e("folderListPicker"));
-  wait_for_modal_dialog("mailnews:virtualFolderList");
+  EventUtils.synthesizeMouseAtCenter(
+    vfc.document.getElementById("folderListPicker"),
+    {},
+    vfc.document.getElementById("folderListPicker").ownerGlobal
+  );
+  await dialogPromise;
 
-  vfc.window.document.documentElement.querySelector("dialog").cancelDialog();
+  vfc.document.documentElement.querySelector("dialog").cancelDialog();
 }
 
 /**
@@ -62,36 +75,50 @@ function subtest_create_virtual_folder(vfc) {
  * Check the folder list picker is not empty.
  */
 function subtest_check_virtual_folder_list(listc) {
-  let tree = listc.e("folderPickerTree");
+  const tree = listc.document.getElementById("folderPickerTree");
   // We should see the folders from the 2 base local accounts here.
   Assert.ok(
     tree.view.rowCount > 0,
     "Folder tree was empty in virtual folder selection!"
   );
-  listc.window.document.documentElement.querySelector("dialog").cancelDialog();
+  listc.document.documentElement.querySelector("dialog").cancelDialog();
 }
 
-add_task(function test_offline_sync_folder_selection_tree() {
-  plan_for_modal_dialog("mailnews:synchronizeOffline", subtest_offline_sync);
-
-  mc.click_through_appmenu(
-    [{ id: "appmenu_File" }, { id: "appmenu_offline" }],
-    { id: "appmenu_synchronizeOffline" }
+add_task(async function test_offline_sync_folder_selection_tree() {
+  const dialogPromise = promise_modal_dialog(
+    "mailnews:synchronizeOffline",
+    subtest_offline_sync
   );
 
-  wait_for_modal_dialog("mailnews:synchronizeOffline");
+  document.getElementById("toolbar-menubar").removeAttribute("autohide");
+
+  EventUtils.synthesizeMouseAtCenter(
+    document.getElementById("menu_File"),
+    {},
+    document.getElementById("menu_File").ownerGlobal
+  );
+  await click_menus_in_sequence(document.getElementById("menu_FilePopup"), [
+    { id: "offlineMenuItem" },
+    { id: "menu_synchronizeOffline" },
+  ]);
+
+  await dialogPromise;
 });
 
-function subtest_offline_sync(osc) {
+async function subtest_offline_sync(osc) {
   // Open the folder chooser.
-  plan_for_modal_dialog(
+  const dialogPromise = promise_modal_dialog(
     "mailnews:selectOffline",
     subtest_check_offline_folder_list
   );
-  osc.click(osc.e("select"));
-  wait_for_modal_dialog("mailnews:selectOffline");
+  EventUtils.synthesizeMouseAtCenter(
+    osc.document.getElementById("select"),
+    {},
+    osc.document.getElementById("select").ownerGlobal
+  );
+  await dialogPromise;
 
-  osc.window.document.documentElement.querySelector("dialog").cancelDialog();
+  osc.document.documentElement.querySelector("dialog").cancelDialog();
 }
 
 /**
@@ -99,17 +126,18 @@ function subtest_offline_sync(osc) {
  * Check the folder list picker is not empty.
  */
 function subtest_check_offline_folder_list(listc) {
-  let tree = listc.e("synchronizeTree");
+  const tree = listc.document.getElementById("synchronizeTree");
   // We should see the newsgroups from the NNTP server here.
   Assert.ok(
     tree.view.rowCount > 0,
     "Folder tree was empty in offline sync selection!"
   );
-  listc.window.document.documentElement.querySelector("dialog").cancelDialog();
+  listc.document.documentElement.querySelector("dialog").cancelDialog();
 }
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   MailServices.accounts.removeAccount(nntpAccount);
 
+  document.getElementById("toolbar-menubar").autohide = true;
   document.getElementById("folderTree").focus();
 });

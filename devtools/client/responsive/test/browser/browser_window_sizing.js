@@ -14,7 +14,7 @@ const ZOOM_LEVELS = [0.3, 0.5, 0.9, 1, 1.5, 2, 2.4];
 
 addRDMTask(
   null,
-  async function() {
+  async function () {
     const tab = await addTab(TEST_URL);
     const browser = tab.linkedBrowser;
 
@@ -38,18 +38,20 @@ async function checkWindowOuterSize(ui, zoom_level) {
   return SpecialPowers.spawn(
     ui.getViewportBrowser(),
     [{ width: WIDTH, height: HEIGHT, zoom: zoom_level }],
-    async function({ width, height, zoom }) {
+    async function ({ width, height, zoom }) {
       // Approximate the outer size value returned on the window content with the expected
       // value. We should expect, at the very most, a 2px difference between the two due
       // to floating point rounding errors that occur when scaling from inner size CSS
       // integer values to outer size CSS integer values. See Part 1 of Bug 1107456.
       // Some of the drift is also due to full zoom scaling effects; see Bug 1577775.
-      ok(
-        Math.abs(content.outerWidth - width) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(content.outerWidth - width),
+        2,
         `window.outerWidth zoom ${zoom} should be ${width} and we got ${content.outerWidth}.`
       );
-      ok(
-        Math.abs(content.outerHeight - height) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(content.outerHeight - height),
+        2,
         `window.outerHeight zoom ${zoom} should be ${height} and we got ${content.outerHeight}.`
       );
     }
@@ -60,26 +62,30 @@ async function checkWindowScreenSize(ui, zoom_level) {
   return SpecialPowers.spawn(
     ui.getViewportBrowser(),
     [{ width: WIDTH, height: HEIGHT, zoom: zoom_level }],
-    async function({ width, height, zoom }) {
+    async function ({ width, height, zoom }) {
       const { screen } = content;
 
-      ok(
-        Math.abs(screen.availWidth - width) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(screen.availWidth - width),
+        2,
         `screen.availWidth zoom ${zoom} should be ${width} and we got ${screen.availWidth}.`
       );
 
-      ok(
-        Math.abs(screen.availHeight - height) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(screen.availHeight - height),
+        2,
         `screen.availHeight zoom ${zoom} should be ${height} and we got ${screen.availHeight}.`
       );
 
-      ok(
-        Math.abs(screen.width - width) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(screen.width - width),
+        2,
         `screen.width zoom " ${zoom} should be ${width} and we got ${screen.width}.`
       );
 
-      ok(
-        Math.abs(screen.height - height) <= 2,
+      Assert.lessOrEqual(
+        Math.abs(screen.height - height),
+        2,
         `screen.height zoom " ${zoom} should be ${height} and we got ${screen.height}.`
       );
     }

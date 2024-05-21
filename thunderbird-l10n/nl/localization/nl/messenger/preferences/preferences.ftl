@@ -4,7 +4,7 @@
 
 close-button =
     .aria-label = Sluiten
-preferences-doc-title = Voorkeuren
+preferences-doc-title2 = Instellingen
 category-list =
     .aria-label = Categorieën
 pane-general-title = Algemeen
@@ -22,6 +22,9 @@ category-chat =
 pane-calendar-title = Agenda
 category-calendar =
     .tooltiptext = Agenda
+pane-sync-title = Synchronisatie
+category-sync =
+    .tooltiptext = Synchronisatie
 general-language-and-appearance-header = Taal & Vormgeving
 general-incoming-mail-header = Inkomende berichten
 general-files-and-attachment-header = Bestanden & Bijlagen
@@ -115,12 +118,18 @@ restore-default-label =
     .label = Standaardinstelling herstellen
     .accesskey = S
 default-search-engine = Standaardzoekmachine
-add-search-engine =
-    .label = Uit bestand toevoegen
-    .accesskey = U
+add-web-search-engine =
+    .label = Toevoegen…
+    .accesskey = T
 remove-search-engine =
     .label = Verwijderen
     .accesskey = d
+add-opensearch-provider-title = OpenSearch-provider toevoegen
+add-opensearch-provider-text = Voer de URL in van de OpenSearch-provider die u wilt toevoegen. Gebruik de directe URL van het OpenSearch-beschrijvingsbestand of een URL waar het automatisch kan worden gevonden.
+adding-opensearch-provider-failed-title = Toevoegen van OpenSearch-provider mislukt
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = Kan OpenSearch-provider voor { $url } niet toevoegen.
 minimize-to-tray-label =
     .label = Naar de systeembalk verplaatsen wanneer { -brand-short-name } is geminimaliseerd
     .accesskey = m
@@ -155,7 +164,7 @@ app-icon-options =
             [macos] P
            *[other] T
         }
-notification-settings = Waarschuwingen en het standaardgeluid kunnen worden uitgeschakeld via het paneel Berichtgeving in Systeemvoorkeuren.
+notification-settings2 = Waarschuwingen en het standaardgeluid kunnen worden uitgeschakeld via het paneel Berichtgeving in Systeeminstellingen.
 animated-alert-label =
     .label = Een waarschuwing tonen
     .accesskey = r
@@ -199,6 +208,17 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Vloeiend scrollen gebruiken
     .accesskey = e
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Schuifbalken altijd tonen
+    .accesskey = c
+window-layout-legend = Vensteropmaak
+draw-in-titlebar-label =
+    .label = Titelbalk systeemvenster verbergen
+    .accesskey = v
+auto-hide-tabbar-label =
+    .label = Tabbladenbalk automatisch verbergen
+    .accesskey = u
+auto-hide-tabbar-description = De tabbladenbalk verbergen als slechts één tabblad is geopend
 system-integration-legend = Systeemintegratie
 always-check-default =
     .label = Altijd tijdens het opstarten controleren of { -brand-short-name } de standaard e-mailclient is
@@ -279,6 +299,9 @@ smart-cache-label =
 clear-cache-button =
     .label = Nu wissen
     .accesskey = w
+clear-cache-shutdown-label =
+    .label = Buffer wissen bij afsluiten
+    .accesskey = a
 fonts-legend = Lettertypen & kleuren
 default-font-label =
     .value = Standaardlettertype:
@@ -323,8 +346,8 @@ quoted-text-color =
     .accesskey = u
 search-handler-table =
     .placeholder = Inhoudstypen en acties filteren
-type-column-label = Inhoudstype
-action-column-label = Actie
+type-column-header = Inhoudstype
+action-column-header = Actie
 save-to-label =
     .label = Bestanden opslaan in
     .accesskey = o
@@ -358,6 +381,9 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Direct bij weergeven
     .accesskey = D
+view-attachments-inline =
+    .label = Bijlagen inline tonen
+    .accesskey = t
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -415,6 +441,9 @@ auto-save-end = minuten automatisch opslaan
 warn-on-send-accel-key =
     .label = Bevestiging vragen bij het gebruik van sneltoets om bericht te verzenden
     .accesskey = B
+add-link-previews =
+    .label = Koppelingsvoorbeelden toevoegen bij plakken van URL’s
+    .accesskey = i
 spellcheck-label =
     .label = Spelling controleren voor het verzenden
     .accesskey = c
@@ -446,10 +475,19 @@ restore-html-label =
 default-format-label =
     .label = Standaard tekstopmaak Alinea gebruiken in plaats van Tekst
     .accesskey = r
-format-description = Tekstopmaakgedrag configureren
-send-options-label =
-    .label = Verzendopties…
-    .accesskey = V
+compose-send-format-title = Verzendopmaak
+compose-send-automatic-option =
+    .label = Automatisch
+compose-send-automatic-description = Als er geen opmaak in het bericht wordt gebruikt, platte tekst verzenden. Anders HTML verzenden met een terugval naar platte tekst.
+compose-send-both-option =
+    .label = Zowel HTML als platte tekst
+compose-send-both-description = De e-mailtoepassing van de ontvanger bepaalt welke versie wordt getoond.
+compose-send-html-option =
+    .label = Alleen HTML
+compose-send-html-description = Sommige ontvangers kunnen het bericht mogelijk niet lezen zonder terugval naar platte tekst.
+compose-send-plain-option =
+    .label = Alleen platte tekst
+compose-send-plain-description = Sommige stijlelementen worden omgezet naar platte tekst als alternatief, terwijl andere opstelfuncties worden uitgeschakeld.
 autocomplete-description = Bij het adresseren van berichten, naar overeenkomsten zoeken in:
 ab-label =
     .label = Lokale adresboeken
@@ -518,23 +556,14 @@ third-party-never =
     .label = Nooit
 third-party-visited =
     .label = Van bezochte
-keep-label =
-    .value = Bewaren totdat:
-    .accesskey = B
-keep-expire =
-    .label = ze verlopen
-keep-close =
-    .label = ik { -brand-short-name } afsluit
-keep-ask =
-    .label = mij elke keer vragen
 cookies-button =
     .label = Cookies tonen…
     .accesskey = t
 do-not-track-label =
     .label = Websites een ‘Niet volgen’-signaal sturen om te laten weten dat u niet gevolgd wilt worden
     .accesskey = N
-learn-button =
-    .label = Meer info
+dnt-learn-more-button =
+    .value = Meer info
 passwords-description = { -brand-short-name } kan wachtwoordinformatie voor al uw accounts onthouden.
 passwords-button =
     .label = Opgeslagen wachtwoorden…
@@ -552,6 +581,9 @@ junk-description = Stel uw standaardinstellingen voor ongewensteberichtendetecti
 junk-label =
     .label = Wanneer ik berichten markeer als ongewenst:
     .accesskey = W
+junk-marked-label =
+    .label = Wanneer berichten als ongewenst worden gemarkeerd:
+    .accesskey = W
 junk-move-label =
     .label = ze verplaatsen naar de map ‘Ongewenst’ van de account
     .accesskey = z
@@ -561,6 +593,13 @@ junk-delete-label =
 junk-read-label =
     .label = Berichten die zijn gedetecteerd als ongewenst, markeren als gelezen
     .accesskey = B
+junk-read-description = Berichten markeren als gelezen
+junk-read-manual-label =
+    .label = Wanneer handmatig gemarkeerd als ongewenst
+    .accesskey = m
+junk-read-auto-label =
+    .label = Wanneer { -brand-short-name } berichten detecteert als ongewenst
+    .accesskey = g
 junk-log-label =
     .label = Logboek van zelflerend ongewensteberichtenfilter inschakelen
     .accesskey = o
@@ -594,6 +633,22 @@ certificate-button =
 security-devices-button =
     .label = Beveiligingsapparaten…
     .accesskey = B
+email-e2ee-header = E-mail end-to-end-versleuteling
+account-settings = Accountinstellingen
+email-e2ee-enable-info = E-mailaccounts en identiteiten voor end-to-end-versleuteling in accountinstellingen instellen.
+email-e2ee-automatism = Automatisch gebruik van versleuteling
+email-e2ee-automatism-pre =
+    { -brand-short-name } kan helpen door versleuteling automatisch in of uit te schakelen tijdens het opstellen van een e-mailbericht.
+    Automatisch inschakelen/uitschakelen is gebaseerd op de beschikbaarheid van geldige en geaccepteerde sleutels of certificaten van ontvangers.
+email-e2ee-auto-on =
+    .label = Schakel versleuteling indien mogelijk automatisch in
+email-e2ee-auto-off =
+    .label = Versleuteling automatisch uitschakelen wanneer ontvangers wijzigen en versleuteling niet meer mogelijk is
+email-e2ee-auto-off-notify =
+    .label = Toon een melding wanneer versleuteling automatisch wordt uitgeschakeld
+email-e2ee-automatism-post =
+    Automatische beslissingen kunnen worden opgeheven door versleuteling handmatig in of uit te schakelen bij het opstellen van een bericht.
+    Opmerking: versleuteling is altijd automatisch ingeschakeld bij het beantwoorden van een versleuteld bericht.
 
 ## Chat Tab
 
@@ -663,8 +718,8 @@ chat-browse-sound-button =
 theme-label =
     .value = Thema:
     .accesskey = T
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Tekstballonnen
 style-dark =
@@ -687,17 +742,59 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
-    .placeholder = Zoeken in Voorkeuren
+    .placeholder = Zoeken in instellingen
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Zoekresultaten
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message =
+search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Sorry! Er zijn geen resultaten in Opties voor ‘<span data-l10n-name="query"></span>’.
-       *[other] Sorry! Er zijn geen resultaten in Voorkeuren voor ‘<span data-l10n-name="query"></span>’.
+       *[other] Sorry! Er zijn geen resultaten in Instellingen voor ‘<span data-l10n-name="query"></span>’.
     }
 search-results-help-link = Hulp nodig? Bezoek <a data-l10n-name="url">{ -brand-short-name } Ondersteuning</a>
+
+## Sync Tab
+
+sync-signedout-caption = Neem uw web mee
+sync-signedout-description = Synchroniseer uw accounts, adresboeken, agenda’s, add-ons en instellingen op al uw apparaten.
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Aanmelden om te synchroniseren…
+sync-pane-header = Synchronisatie
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = ‘{ $userEmail }’ is niet geverifieerd.
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Meld u aan om opnieuw te verbinden met ‘{ $userEmail }’
+sync-pane-resend-verification = Verificatie opnieuw verzenden
+sync-pane-sign-in = Aanmelden
+sync-pane-remove-account = Account verwijderen
+sync-pane-edit-photo =
+    .title = Profielafbeelding wijzigen
+sync-pane-manage-account = Account beheren
+sync-pane-sign-out = Afmelden…
+sync-pane-device-name-title = Apparaatnaam
+sync-pane-change-device-name = Apparaatnaam wijzigen
+sync-pane-cancel = Annuleren
+sync-pane-save = Opslaan
+sync-pane-show-synced-header-on = Synchroniseren AAN
+sync-pane-show-synced-header-off = Synchroniseren UIT
+sync-pane-sync-now = Nu synchroniseren
+sync-panel-sync-now-syncing = Synchroniseren…
+show-synced-list-heading = U synchroniseert momenteel deze onderdelen:
+show-synced-learn-more = Meer info…
+show-synced-item-account = E-mailaccounts
+show-synced-item-address = Adresboeken
+show-synced-item-calendar = Agenda’s
+show-synced-item-identity = Identiteiten
+show-synced-item-passwords = Wachtwoorden
+show-synced-change = Wijzigen…
+synced-acount-item-server-config = Serverconfiguratie
+synced-acount-item-filters = Filters
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Synchroniseer uw e-mailaccounts, adresboeken, agenda’s en identiteiten op al uw apparaten.
+sync-disconnected-turn-on-sync = Synchronisatie inschakelen…

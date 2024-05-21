@@ -31,28 +31,26 @@
 #ifndef nsHtml5Tokenizer_h
 #define nsHtml5Tokenizer_h
 
+#include "jArray.h"
+#include "nsAHtml5TreeBuilderState.h"
 #include "nsAtom.h"
+#include "nsGkAtoms.h"
+#include "nsHtml5ArrayCopy.h"
 #include "nsHtml5AtomTable.h"
+#include "nsHtml5DocumentMode.h"
+#include "nsHtml5Highlighter.h"
+#include "nsHtml5Macros.h"
+#include "nsHtml5NamedCharacters.h"
+#include "nsHtml5NamedCharactersAccel.h"
 #include "nsHtml5String.h"
 #include "nsIContent.h"
 #include "nsTraceRefcnt.h"
-#include "jArray.h"
-#include "nsHtml5DocumentMode.h"
-#include "nsHtml5ArrayCopy.h"
-#include "nsHtml5NamedCharacters.h"
-#include "nsHtml5NamedCharactersAccel.h"
-#include "nsGkAtoms.h"
-#include "nsAHtml5TreeBuilderState.h"
-#include "nsHtml5Macros.h"
-#include "nsHtml5Highlighter.h"
-#include "nsHtml5TokenizerLoopPolicies.h"
 
 class nsHtml5StreamParser;
 
 class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5TreeBuilder;
-class nsHtml5MetaScanner;
 class nsHtml5UTF16Buffer;
 class nsHtml5StateSnapshot;
 class nsHtml5Portability;
@@ -212,6 +210,14 @@ class nsHtml5Tokenizer {
 
   static const int32_t PROCESSING_INSTRUCTION_QUESTION_MARK = 74;
 
+  static const int32_t COMMENT_LESSTHAN = 76;
+
+  static const int32_t COMMENT_LESSTHAN_BANG = 77;
+
+  static const int32_t COMMENT_LESSTHAN_BANG_DASH = 78;
+
+  static const int32_t COMMENT_LESSTHAN_BANG_DASH_DASH = 79;
+
  private:
   static const int32_t LEAD_OFFSET = (0xD800 - (0x10000 >> 10));
 
@@ -262,6 +268,7 @@ class nsHtml5Tokenizer {
 
  private:
   bool seenDigits;
+  bool suspendAfterCurrentNonTextToken;
 
  protected:
   int32_t cstart;
@@ -369,8 +376,8 @@ class nsHtml5Tokenizer {
   void emitStrBuf();
   inline void appendSecondHyphenToBogusComment() { appendStrBuf('-'); }
 
-  inline void adjustDoubleHyphenAndAppendToStrBufAndErr(char16_t c) {
-    errConsecutiveHyphens();
+  inline void adjustDoubleHyphenAndAppendToStrBufAndErr(
+      char16_t c, bool reportedConsecutiveHyphens) {
     appendStrBuf(c);
   }
 
@@ -401,37 +408,18 @@ class nsHtml5Tokenizer {
   int32_t stateLoop(int32_t state, char16_t c, int32_t pos, char16_t* buf,
                     bool reconsume, int32_t returnState, int32_t endPos);
   void initDoctypeFields();
-  inline void adjustDoubleHyphenAndAppendToStrBufCarriageReturn() {
-    silentCarriageReturn();
-    adjustDoubleHyphenAndAppendToStrBufAndErr('\n');
-  }
-
-  inline void adjustDoubleHyphenAndAppendToStrBufLineFeed() {
-    silentLineFeed();
-    adjustDoubleHyphenAndAppendToStrBufAndErr('\n');
-  }
-
-  inline void appendStrBufLineFeed() {
-    silentLineFeed();
-    appendStrBuf('\n');
-  }
-
-  inline void appendStrBufCarriageReturn() {
-    silentCarriageReturn();
-    appendStrBuf('\n');
-  }
-
- protected:
-  inline void silentCarriageReturn() {
-    ++line;
-    lastCR = true;
-  }
-
-  inline void silentLineFeed() { ++line; }
-
- private:
+  template <class P>
+  void adjustDoubleHyphenAndAppendToStrBufCarriageReturn();
+  template <class P>
+  void adjustDoubleHyphenAndAppendToStrBufLineFeed();
+  template <class P>
+  void appendStrBufLineFeed();
+  template <class P>
+  void appendStrBufCarriageReturn();
+  template <class P>
   void emitCarriageReturn(char16_t* buf, int32_t pos);
   void emitReplacementCharacter(char16_t* buf, int32_t pos);
+  void maybeEmitReplacementCharacter(char16_t* buf, int32_t pos);
   void emitPlaintextReplacementCharacter(char16_t* buf, int32_t pos);
   void setAdditionalAndRememberAmpersandLocation(char16_t add);
   void bogusDoctype();
@@ -443,9 +431,9 @@ class nsHtml5Tokenizer {
 
  private:
   void emitDoctypeToken(int32_t pos);
-
- protected:
-  inline char16_t checkChar(char16_t* buf, int32_t pos) { return buf[pos]; }
+  void suspendIfRequestedAfterCurrentNonTextToken();
+  void suspendAfterCurrentTokenIfNotInText();
+  bool suspensionAfterCurrentNonTextTokenPending();
 
  public:
   bool internalEncodingDeclaration(nsHtml5String internalCharset);

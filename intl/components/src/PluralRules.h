@@ -8,14 +8,17 @@
 #include <string_view>
 #include <utility>
 
+#include "mozilla/intl/ICUError.h"
 #include "mozilla/intl/NumberFormat.h"
+#include "mozilla/intl/NumberRangeFormat.h"
 #include "mozilla/EnumSet.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/Result.h"
 #include "mozilla/Span.h"
 
-namespace mozilla {
-namespace intl {
+#include "unicode/utypes.h"
+
+namespace mozilla::intl {
 
 class PluralRules final {
  public:
@@ -43,15 +46,6 @@ class PluralRules final {
     Ordinal,
   };
 
-  /**
-   * PluralRules error types.
-   */
-  enum class Error : uint8_t {
-    FormatError,
-    InternalError,
-    OutOfMemory,
-  };
-
   PluralRules(const PluralRules&) = delete;
   PluralRules& operator=(const PluralRules&) = delete;
 
@@ -59,7 +53,7 @@ class PluralRules final {
    * Attempts to construct a PluralRules with the given locale and options.
    */
   // TODO(1709880) use mozilla::Span instead of std::string_view.
-  static Result<UniquePtr<PluralRules>, PluralRules::Error> TryCreate(
+  static Result<UniquePtr<PluralRules>, ICUError> TryCreate(
       std::string_view aLocale, const PluralRulesOptions& aOptions);
 
   /**
@@ -67,13 +61,22 @@ class PluralRules final {
    *
    * https://tc39.es/ecma402/#sec-intl.pluralrules.prototype.select
    */
-  Result<PluralRules::Keyword, PluralRules::Error> Select(double aNumber) const;
+  Result<PluralRules::Keyword, ICUError> Select(double aNumber) const;
+
+  /**
+   * Returns the PluralRules keyword that corresponds to the range from |aStart|
+   * to |aEnd|.
+   *
+   * https://tc39.es/ecma402/#sec-intl.pluralrules.prototype.selectrange
+   */
+  Result<PluralRules::Keyword, ICUError> SelectRange(double aStart,
+                                                     double aEnd) const;
 
   /**
    * Returns an EnumSet with the plural-rules categories that are supported by
    * the locale that the PluralRules instance was created with.
    */
-  Result<EnumSet<PluralRules::Keyword>, PluralRules::Error> Categories() const;
+  Result<EnumSet<PluralRules::Keyword>, ICUError> Categories() const;
 
   ~PluralRules();
 
@@ -83,8 +86,10 @@ class PluralRules final {
 
   UPluralRules* mPluralRules = nullptr;
   UniquePtr<NumberFormat> mNumberFormat;
+  UniquePtr<NumberRangeFormat> mNumberRangeFormat;
 
-  PluralRules(UPluralRules*&, UniquePtr<NumberFormat>&&);
+  PluralRules(UPluralRules*&, UniquePtr<NumberFormat>&&,
+              UniquePtr<NumberRangeFormat>&&);
 
   /**
    * Returns the PluralRules::Keyword that matches the UTF-16 string.
@@ -108,7 +113,7 @@ struct MOZ_STACK_CLASS PluralRulesOptions {
    */
   NumberFormatOptions ToNumberFormatOptions() const {
     NumberFormatOptions options;
-    options.mRoundingModeHalfUp = true;
+    options.mRoundingMode = NumberFormatOptions::RoundingMode::HalfExpand;
 
     if (mFractionDigits.isSome()) {
       options.mFractionDigits.emplace(mFractionDigits.ref());
@@ -121,6 +126,48 @@ struct MOZ_STACK_CLASS PluralRulesOptions {
     if (mSignificantDigits.isSome()) {
       options.mSignificantDigits.emplace(mSignificantDigits.ref());
     }
+
+    options.mStripTrailingZero = mStripTrailingZero;
+
+    options.mRoundingIncrement = mRoundingIncrement;
+
+    options.mRoundingMode = NumberFormatOptions::RoundingMode(mRoundingMode);
+
+    options.mRoundingPriority =
+        NumberFormatOptions::RoundingPriority(mRoundingPriority);
+
+    return options;
+  }
+  /**
+   * Creates a NumberFormatOptions from the PluralRulesOptions.
+   */
+  NumberRangeFormatOptions ToNumberRangeFormatOptions() const {
+    NumberRangeFormatOptions options;
+    options.mRoundingMode = NumberRangeFormatOptions::RoundingMode::HalfExpand;
+    options.mRangeCollapse = NumberRangeFormatOptions::RangeCollapse::None;
+    options.mRangeIdentityFallback =
+        NumberRangeFormatOptions::RangeIdentityFallback::Range;
+
+    if (mFractionDigits.isSome()) {
+      options.mFractionDigits.emplace(mFractionDigits.ref());
+    }
+
+    if (mMinIntegerDigits.isSome()) {
+      options.mMinIntegerDigits.emplace(mMinIntegerDigits.ref());
+    }
+
+    if (mSignificantDigits.isSome()) {
+      options.mSignificantDigits.emplace(mSignificantDigits.ref());
+    }
+
+    options.mStripTrailingZero = mStripTrailingZero;
+
+    options.mRoundingIncrement = mRoundingIncrement;
+
+    options.mRoundingMode = NumberFormatOptions::RoundingMode(mRoundingMode);
+
+    options.mRoundingPriority =
+        NumberFormatOptions::RoundingPriority(mRoundingPriority);
 
     return options;
   }
@@ -155,9 +202,32 @@ struct MOZ_STACK_CLASS PluralRulesOptions {
    * https://tc39.es/ecma402/#sec-intl.pluralrules.prototype.resolvedoptions
    */
   Maybe<std::pair<uint32_t, uint32_t>> mSignificantDigits;
+
+  /**
+   * Set to true to strip trailing zeros after the decimal point for integer
+   * values.
+   */
+  bool mStripTrailingZero = false;
+
+  /**
+   * Set the rounding increment, which must be a non-zero number.
+   */
+  uint32_t mRoundingIncrement = 1;
+
+  /**
+   * Set the rounding mode.
+   */
+  using RoundingMode = NumberFormatOptions::RoundingMode;
+  RoundingMode mRoundingMode = RoundingMode::HalfExpand;
+
+  /**
+   * Set the rounding priority. |mFractionDigits| and |mSignificantDigits| must
+   * both be set if the rounding priority isn't equal to "auto".
+   */
+  using RoundingPriority = NumberFormatOptions::RoundingPriority;
+  RoundingPriority mRoundingPriority = RoundingPriority::Auto;
 };
 
-}  // namespace intl
-}  // namespace mozilla
+}  // namespace mozilla::intl
 
 #endif

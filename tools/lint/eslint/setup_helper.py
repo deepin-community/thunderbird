@@ -10,18 +10,16 @@ import platform
 import re
 import subprocess
 import sys
-from distutils.version import LooseVersion
 from filecmp import dircmp
 
 from mozbuild.nodeutil import (
+    NODE_MIN_VERSION,
+    NPM_MIN_VERSION,
     find_node_executable,
     find_npm_executable,
-    NPM_MIN_VERSION,
-    NODE_MIN_VERSION,
 )
-from mozbuild.util import ensure_subprocess_env
 from mozfile.mozfile import remove as mozfileremove
-
+from packaging.version import Version
 
 NODE_MACHING_VERSION_NOT_FOUND_MESSAGE = """
 Could not find Node.js executable later than %s.
@@ -77,6 +75,15 @@ def eslint_setup(should_clobber=False):
     package_setup(get_project_root(), "eslint", should_clobber=should_clobber)
 
 
+def remove_directory(path):
+    print("Clobbering %s..." % path)
+    if sys.platform.startswith("win") and have_winrm():
+        process = subprocess.Popen(["winrm", "-rf", path])
+        process.wait()
+    else:
+        mozfileremove(path)
+
+
 def package_setup(
     package_root,
     package_name,
@@ -108,13 +115,15 @@ def package_setup(
         os.chdir(project_root)
 
         if should_clobber:
-            node_modules_path = os.path.join(project_root, "node_modules")
-            print("Clobbering %s..." % node_modules_path)
-            if sys.platform.startswith("win") and have_winrm():
-                process = subprocess.Popen(["winrm", "-rf", node_modules_path])
-                process.wait()
-            else:
-                mozfileremove(node_modules_path)
+            remove_directory(os.path.join(project_root, "node_modules"))
+
+        # Always remove the eslint-plugin-mozilla sub-directory as that can
+        # sometimes conflict with the top level node_modules, see bug 1809036.
+        remove_directory(
+            os.path.join(
+                get_eslint_module_path(), "eslint-plugin-mozilla", "node_modules"
+            )
+        )
 
         npm_path, _ = find_npm_executable()
         if not npm_path:
@@ -142,15 +151,20 @@ def package_setup(
         if platform.system() != "Windows":
             cmd.insert(0, node_path)
 
+        cmd.extend(extra_parameters)
+
         # Ensure that bare `node` and `npm` in scripts, including post-install scripts, finds the
         # binary we're invoking with.  Without this, it's easy for compiled extensions to get
         # mismatched versions of the Node.js extension API.
-        extra_parameters.append("--scripts-prepend-node-path")
-
-        cmd.extend(extra_parameters)
+        path = os.environ.get("PATH", "").split(os.pathsep)
+        node_dir = os.path.dirname(node_path)
+        if node_dir not in path:
+            path = [node_dir] + path
 
         print('Installing %s for mach using "%s"...' % (package_name, " ".join(cmd)))
-        result = call_process(package_name, cmd)
+        result = call_process(
+            package_name, cmd, append_env={"PATH": os.pathsep.join(path)}
+        )
 
         if not result:
             return 1
@@ -169,7 +183,7 @@ def package_setup(
 
 def call_process(name, cmd, cwd=None, append_env={}):
     env = dict(os.environ)
-    env.update(ensure_subprocess_env(append_env))
+    env.update(append_env)
 
     try:
         with open(os.devnull, "w") as fnull:
@@ -188,7 +202,7 @@ def call_process(name, cmd, cwd=None, append_env={}):
 def expected_eslint_modules():
     # Read the expected version of ESLint and external modules
     expected_modules_path = os.path.join(get_project_root(), "package.json")
-    with open(expected_modules_path, "r", encoding="utf-8") as f:
+    with open(expected_modules_path, encoding="utf-8") as f:
         sections = json.load(f)
         expected_modules = sections.get("dependencies", {})
         expected_modules.update(sections.get("devDependencies", {}))
@@ -198,15 +212,16 @@ def expected_eslint_modules():
     mozilla_json_path = os.path.join(
         get_eslint_module_path(), "eslint-plugin-mozilla", "package.json"
     )
-    with open(mozilla_json_path, "r", encoding="utf-8") as f:
-        expected_modules.update(json.load(f).get("dependencies", {}))
+    with open(mozilla_json_path, encoding="utf-8") as f:
+        dependencies = json.load(f).get("dependencies", {})
+        expected_modules.update(dependencies)
 
     # Also read the in-tree ESLint plugin spidermonkey information, to ensure the
     # dependencies are up to date.
     mozilla_json_path = os.path.join(
         get_eslint_module_path(), "eslint-plugin-spidermonkey-js", "package.json"
     )
-    with open(mozilla_json_path, "r", encoding="utf-8") as f:
+    with open(mozilla_json_path, encoding="utf-8") as f:
         expected_modules.update(json.load(f).get("dependencies", {}))
 
     return expected_modules
@@ -264,7 +279,7 @@ def eslint_module_needs_setup():
             # these are symlinked, so we'll always pick up the latest.
             continue
 
-        if name == "eslint" and LooseVersion("4.0.0") > LooseVersion(data["version"]):
+        if name == "eslint" and Version("4.0.0") > Version(data["version"]):
             print("ESLint is an old version, clobbering node_modules directory")
             needs_clobber = True
             has_issues = True
@@ -289,7 +304,7 @@ def version_in_range(version, version_range):
     version_match = VERSION_RE.match(version)
     if not version_match:
         raise RuntimeError("mach eslint doesn't understand module version %s" % version)
-    version = LooseVersion(version)
+    version = Version(version)
 
     # Caret ranges as specified by npm allow changes that do not modify the left-most non-zero
     # digit in the [major, minor, patch] tuple.  The code below assumes the major digit is
@@ -299,8 +314,8 @@ def version_in_range(version, version_range):
         range_version = range_match.group(1)
         range_major = int(range_match.group(2))
 
-        range_min = LooseVersion(range_version)
-        range_max = LooseVersion("%d.0.0" % (range_major + 1))
+        range_min = Version(range_version)
+        range_max = Version("%d.0.0" % (range_major + 1))
 
         return range_min <= version < range_max
 

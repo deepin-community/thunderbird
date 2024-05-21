@@ -7,7 +7,7 @@
 msgevent-encryption-required-part1 = { $name }-(e)i zifratu gabeko mezu bat bidaltzen saiatu zara. Politika bezala, mezu zifratu gabeak debekatuak daude.
 
 msgevent-encryption-required-part2 = Elkarrizketa pribatua hasten saiatzen. Zure mezua birbidaliko da elkarrizketa probatua hastean.
-msgevent-encryption-error = Errore bat gertatu da zure mezua enkriptatzean. Mezua ez da bidali.
+msgevent-encryption-error = Errore bat gertatu da zure mezua zifratzean. Mezua ez da bidali.
 
 # Variables:
 #   $name (String) - the screen name of a chat contact person

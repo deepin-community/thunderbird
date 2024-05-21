@@ -87,8 +87,7 @@ class Buffer {
     if (n_bytes > 1024 * 1024 * 1024) {
       return OTS_FAILURE();
     }
-    if ((offset_ + n_bytes > length_) ||
-        (offset_ > length_ - n_bytes)) {
+    if (length_ < n_bytes || offset_ > length_ - n_bytes) {
       return OTS_FAILURE();
     }
     if (buf) {
@@ -99,7 +98,7 @@ class Buffer {
   }
 
   inline bool ReadU8(uint8_t *value) {
-    if (offset_ + 1 > length_) {
+    if (length_ < 1 || offset_ > length_ - 1) {
       return OTS_FAILURE();
     }
     *value = buffer_[offset_];
@@ -108,7 +107,7 @@ class Buffer {
   }
 
   bool ReadU16(uint16_t *value) {
-    if (offset_ + 2 > length_) {
+    if (length_ < 2 || offset_ > length_ - 2) {
       return OTS_FAILURE();
     }
     std::memcpy(value, buffer_ + offset_, sizeof(uint16_t));
@@ -122,7 +121,7 @@ class Buffer {
   }
 
   bool ReadU24(uint32_t *value) {
-    if (offset_ + 3 > length_) {
+    if (length_ < 3 || offset_ > length_ - 3) {
       return OTS_FAILURE();
     }
     *value = static_cast<uint32_t>(buffer_[offset_]) << 16 |
@@ -133,7 +132,7 @@ class Buffer {
   }
 
   bool ReadU32(uint32_t *value) {
-    if (offset_ + 4 > length_) {
+    if (length_ < 4 || offset_ > length_ - 4) {
       return OTS_FAILURE();
     }
     std::memcpy(value, buffer_ + offset_, sizeof(uint32_t));
@@ -147,7 +146,7 @@ class Buffer {
   }
 
   bool ReadR64(uint64_t *value) {
-    if (offset_ + 8 > length_) {
+    if (length_ < 8 || offset_ > length_ - 8) {
       return OTS_FAILURE();
     }
     std::memcpy(value, buffer_ + offset_, sizeof(uint64_t));
@@ -190,6 +189,8 @@ bool CheckTag(uint32_t tag_value);
 #define OTS_TAG_CFF  OTS_TAG('C','F','F',' ')
 #define OTS_TAG_CFF2 OTS_TAG('C','F','F','2')
 #define OTS_TAG_CMAP OTS_TAG('c','m','a','p')
+#define OTS_TAG_COLR OTS_TAG('C','O','L','R')
+#define OTS_TAG_CPAL OTS_TAG('C','P','A','L')
 #define OTS_TAG_CVT  OTS_TAG('c','v','t',' ')
 #define OTS_TAG_FEAT OTS_TAG('F','e','a','t')
 #define OTS_TAG_FPGM OTS_TAG('f','p','g','m')
@@ -261,6 +262,9 @@ class Table {
   // TablePassthru (indicating unparsed data).
   uint32_t Type() { return m_type; }
 
+  // Return the tag assigned when this table was constructed.
+  uint32_t Tag() { return m_tag; }
+
   Font* GetFont() { return m_font; }
 
   bool Error(const char *format, ...);
@@ -312,6 +316,9 @@ struct Font {
   // for |tag|, so it can safely be downcast to the corresponding OpenTypeXXXX;
   // if not (i.e. if the table was treated as Passthru), it will return NULL.
   Table* GetTypedTable(uint32_t tag) const;
+
+  // Insert a new table. Asserts if a table with the same tag already exists.
+  void AddTable(TableEntry entry, Table* table);
 
   // Drop all Graphite tables and don't parse new ones.
   void DropGraphite();

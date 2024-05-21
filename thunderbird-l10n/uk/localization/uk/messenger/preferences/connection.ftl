@@ -8,21 +8,15 @@ connection-dns-over-https-url-resolver = Використовувати пров
 #   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Типово)
-    .tooltiptext = Використовувати типовий URL для розвʼязання DNS через HTTPS
+    .tooltiptext = Використовувати типовий URL для розв'язання DNS через HTTPS
 connection-dns-over-https-url-custom =
     .label = Власний
     .accesskey = В
-    .tooltiptext = Уведіть бажаний URL для розвʼязання DNS через HTTPS
+    .tooltiptext = Введіть бажаний URL для розв'язання DNS через HTTPS
 connection-dns-over-https-custom-label = Власний
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Параметри з’єднання
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Вимкнути розширення
+connection-dialog-title = Параметри з’єднання
 disable-extension-button = Вимкнути розширення
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

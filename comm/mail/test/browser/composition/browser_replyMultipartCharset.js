@@ -26,28 +26,29 @@ var {
   open_compose_with_forward,
   open_compose_with_forward_as_attachments,
   open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+);
 var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
-  mc,
+  get_about_message,
   open_message_from_file,
   press_delete,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { close_window } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { click_menus_in_sequence } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var folder;
 
-var folder = create_folder("FolderWithMessages");
-
-add_task(function setup() {
-  requestLongerTimeout(5);
+add_setup(async function () {
+  requestLongerTimeout(2);
+  folder = await create_folder("FolderWithMessages");
 });
 
 async function subtest_replyEditAsNewForward_charset(
@@ -55,52 +56,65 @@ async function subtest_replyEditAsNewForward_charset(
   aFile,
   aViewed = true
 ) {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
-  let file = new FileUtils.File(getTestFilePath(`data/${aFile}`));
-  let msgc = await open_message_from_file(file);
+  const file = new FileUtils.File(getTestFilePath(`data/${aFile}`));
+  const msgc = await open_message_from_file(file);
+  // We need to be sure the ContextMenu actors are ready before trying to open a
+  // context menu from the message. I can't find a way to be sure, so let's wait.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // Copy the message to a folder. We run the message through a folder
   // since replying/editing as new/forwarding directly to the message
   // opened from a file gives different results on different platforms.
   // All platforms behave the same when using a folder-stored message.
-  let documentChild = msgc.e("messagepane").contentDocument.firstChild;
-  msgc.rightClick(documentChild);
-  await msgc.click_menus_in_sequence(msgc.e("mailContext"), [
-    { id: "mailContext-copyMenu" },
-    { label: "Local Folders" },
-    { label: "FolderWithMessages" },
-  ]);
-  close_window(msgc);
+  const documentChild = msgc.content.document.documentElement;
+  EventUtils.synthesizeMouseAtCenter(
+    documentChild,
+    { type: "contextmenu", button: 2 },
+    documentChild.ownerGlobal
+  );
+  const aboutMessage = get_about_message(msgc);
+  await click_menus_in_sequence(
+    aboutMessage.document.getElementById("mailContext"),
+    [
+      { id: "mailContext-copyMenu" },
+      { label: "Local Folders" },
+      { label: "FolderWithMessages" },
+    ]
+  );
+  await BrowserTestUtils.closeWindow(msgc);
 
-  let msg = select_click_row(0);
+  const msg = await select_click_row(0);
   if (aViewed) {
     // Only if the preview pane is on, we can check the following.
-    assert_selected_and_displayed(mc, msg);
+    await assert_selected_and_displayed(window, msg);
   }
 
   let fwdWin;
   switch (aAction) {
     case 1: // Reply.
-      fwdWin = open_compose_with_reply();
+      fwdWin = await open_compose_with_reply();
       break;
     case 2: // Edit as new.
-      fwdWin = open_compose_with_edit_as_new();
+      fwdWin = await open_compose_with_edit_as_new();
       break;
     case 3: // Forward inline.
-      fwdWin = open_compose_with_forward();
+      fwdWin = await open_compose_with_forward();
       break;
     case 4: // Forward as attachment.
-      fwdWin = open_compose_with_forward_as_attachments();
+      fwdWin = await open_compose_with_forward_as_attachments();
       break;
   }
 
   // Check the charset in the compose window.
-  let charset = fwdWin.e("content-frame").contentDocument.charset;
+  const charset =
+    fwdWin.document.getElementById("messageEditor").contentDocument.charset;
   Assert.equal(charset, "UTF-8", "Compose window has the wrong charset");
-  close_compose_window(fwdWin);
+  await close_compose_window(fwdWin);
 
-  press_delete(mc);
+  await press_delete(window);
 }
 
 add_task(async function test_replyEditAsNewForward_charsetFromBody() {
@@ -120,8 +134,8 @@ add_task(async function test_reply_noUTF16() {
 add_task(async function test_replyEditAsNewForward_noPreview() {
   // Check that it works even if the message wasn't viewed before, so
   // switch off the preview pane (bug 1323377).
-  be_in_folder(folder);
-  mc.window.goDoCommand("cmd_toggleMessagePane");
+  await be_in_folder(folder);
+  window.goDoCommand("cmd_toggleMessagePane");
 
   await subtest_replyEditAsNewForward_charset(1, "./format-flowed.eml", false);
   await subtest_replyEditAsNewForward_charset(2, "./body-greek.eml", false);
@@ -131,7 +145,7 @@ add_task(async function test_replyEditAsNewForward_noPreview() {
     false
   );
 
-  mc.window.goDoCommand("cmd_toggleMessagePane");
+  window.goDoCommand("cmd_toggleMessagePane");
 });
 
 registerCleanupFunction(() => {

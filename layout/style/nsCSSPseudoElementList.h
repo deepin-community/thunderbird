@@ -46,6 +46,7 @@ CSS_PSEUDO_ELEMENT(firstLetter, ":first-letter",
 CSS_PSEUDO_ELEMENT(firstLine, ":first-line",
                    CSS_PSEUDO_ELEMENT_IS_CSS2 |
                    CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
+CSS_PSEUDO_ELEMENT(highlight, ":highlight", 0)
 
 CSS_PSEUDO_ELEMENT(selection, ":selection",
                    CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
@@ -88,6 +89,21 @@ CSS_PSEUDO_ELEMENT(mozTextControlEditingRoot, ":-moz-text-control-editing-root",
 // The element that shows the autofill value.
 CSS_PSEUDO_ELEMENT(mozTextControlPreview, ":-moz-text-control-preview",
                    CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS)
+// The Reveal Password button for <input type=password>.
+CSS_PSEUDO_ELEMENT(mozReveal, ":-moz-reveal",
+                   CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS)
 
+// The button in an <input type=file>
 CSS_PSEUDO_ELEMENT(fileSelectorButton, ":file-selector-button",
                    CSS_PSEUDO_ELEMENT_SUPPORTS_USER_ACTION_STATE)
+
+// Standard progress/meter/range pseudo-elements.
+CSS_PSEUDO_ELEMENT(sliderTrack, ":slider-track",
+                   CSS_PSEUDO_ELEMENT_SUPPORTS_USER_ACTION_STATE |
+                   CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS_AND_CHROME)
+CSS_PSEUDO_ELEMENT(sliderThumb, ":slider-thumb",
+                   CSS_PSEUDO_ELEMENT_SUPPORTS_USER_ACTION_STATE |
+                   CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS_AND_CHROME)
+CSS_PSEUDO_ELEMENT(sliderFill, ":slider-fill",
+                   CSS_PSEUDO_ELEMENT_SUPPORTS_USER_ACTION_STATE |
+                   CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS_AND_CHROME)

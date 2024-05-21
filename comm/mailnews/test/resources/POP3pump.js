@@ -24,28 +24,28 @@
  *
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { localAccountUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/LocalAccountUtils.jsm"
+var { localAccountUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/LocalAccountUtils.sys.mjs"
 );
 
 // Import the pop3 server scripts
-var { nsMailServer } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Maild.jsm"
+var { nsMailServer } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Maild.sys.mjs"
 );
-var { AuthPLAIN, AuthLOGIN, AuthCRAM } = ChromeUtils.import(
-  "resource://testing-common/mailnews/Auth.jsm"
+var { AuthPLAIN, AuthLOGIN, AuthCRAM } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Auth.sys.mjs"
 );
 var {
-  pop3Daemon,
+  Pop3Daemon,
   POP3_RFC1939_handler,
   POP3_RFC2449_handler,
   POP3_RFC5034_handler,
-} = ChromeUtils.import("resource://testing-common/mailnews/Pop3d.jsm");
-var { Promise } = ChromeUtils.import("resource://gre/modules/Promise.jsm");
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/Pop3d.sys.mjs"
+);
 
 function POP3Pump() {
   // public attributes
@@ -59,7 +59,6 @@ function POP3Pump() {
   this._server = null;
   this._daemon = null;
   this._incomingServer = null;
-  this._pop3Service = null;
   this._firstFile = true;
   this._tests = [];
   this._finalCleanup = false;
@@ -71,9 +70,9 @@ function POP3Pump() {
 }
 
 // nsIUrlListener implementation
-POP3Pump.prototype.OnStartRunningUrl = function(url) {};
+POP3Pump.prototype.OnStartRunningUrl = function (url) {};
 
-POP3Pump.prototype.OnStopRunningUrl = function(aUrl, aResult) {
+POP3Pump.prototype.OnStopRunningUrl = function (aUrl, aResult) {
   this._actualResult = aResult;
   if (aResult != Cr.NS_OK) {
     // If we have an error, clean up nicely.
@@ -92,8 +91,8 @@ POP3Pump.prototype.OnStopRunningUrl = function(aUrl, aResult) {
 
 // Setup the daemon and server
 // If the debugOption is set, then it will be applied to the server.
-POP3Pump.prototype._setupServerDaemon = function(aDebugOption) {
-  this._daemon = new pop3Daemon();
+POP3Pump.prototype._setupServerDaemon = function (aDebugOption) {
+  this._daemon = new Pop3Daemon();
   function createHandler(d) {
     return new POP3_RFC1939_handler(d);
   }
@@ -104,7 +103,7 @@ POP3Pump.prototype._setupServerDaemon = function(aDebugOption) {
   return [this._daemon, this._server];
 };
 
-POP3Pump.prototype._createPop3ServerAndLocalFolders = function() {
+POP3Pump.prototype._createPop3ServerAndLocalFolders = function () {
   if (typeof localAccountUtils.inboxFolder == "undefined") {
     localAccountUtils.loadLocalMailAccount();
   }
@@ -121,7 +120,7 @@ POP3Pump.prototype._createPop3ServerAndLocalFolders = function() {
   return this.fakeServer;
 };
 
-POP3Pump.prototype.resetPluggableStore = function(aStoreContractID) {
+POP3Pump.prototype.resetPluggableStore = function (aStoreContractID) {
   if (aStoreContractID == this._mailboxStoreContractID) {
     return;
   }
@@ -148,7 +147,7 @@ POP3Pump.prototype.resetPluggableStore = function(aStoreContractID) {
   this._mailboxStoreContractID = aStoreContractID;
 };
 
-POP3Pump.prototype._checkBusy = function() {
+POP3Pump.prototype._checkBusy = function () {
   if (this._tests.length == 0 && !this._finalCleanup) {
     this._incomingServer.closeCachedConnections();
 
@@ -178,11 +177,7 @@ POP3Pump.prototype._checkBusy = function() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    this._incomingServer.serverBusy ||
-    (this._incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      this._incomingServer.runningProtocol)
-  ) {
+  if (this._incomingServer.serverBusy) {
     do_timeout(20, _checkPumpBusy);
     return;
   }
@@ -190,8 +185,8 @@ POP3Pump.prototype._checkBusy = function() {
   this._testNext();
 };
 
-POP3Pump.prototype._testNext = function() {
-  let thisFiles = this._tests.shift();
+POP3Pump.prototype._testNext = function () {
+  const thisFiles = this._tests.shift();
   if (!thisFiles) {
     // Exit.
     this._checkBusy();
@@ -217,10 +212,10 @@ POP3Pump.prototype._testNext = function() {
     this._daemon.setMessages(thisFiles);
 
     // Now get the mail, get inbox in case it got un-deferred.
-    let inbox = this._incomingServer.rootMsgFolder.getFolderWithFlags(
+    const inbox = this._incomingServer.rootMsgFolder.getFolderWithFlags(
       Ci.nsMsgFolderFlags.Inbox
     );
-    this._pop3Service.GetNewMail(null, this, inbox, this._incomingServer);
+    MailServices.pop3.GetNewMail(null, this, inbox, this._incomingServer);
 
     this._server.performTest();
   } catch (e) {
@@ -230,7 +225,7 @@ POP3Pump.prototype._testNext = function() {
   }
 };
 
-POP3Pump.prototype.run = function(aExpectedResult) {
+POP3Pump.prototype.run = function (aExpectedResult) {
   do_test_pending();
   // Disable new mail notifications
   Services.prefs.setBoolPref("mail.biff.play_sound", false);
@@ -258,7 +253,6 @@ POP3Pump.prototype.run = function(aExpectedResult) {
 
   this._tests[0] = this.files;
 
-  this._pop3Service = MailServices.pop3;
   this._testNext();
 
   // This probably does not work with multiple tests, but nobody is using that.

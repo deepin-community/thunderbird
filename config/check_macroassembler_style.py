@@ -20,9 +20,6 @@
 # proper methods annotations.
 # ----------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import difflib
 import os
 import re
@@ -30,13 +27,17 @@ import sys
 
 architecture_independent = set(["generic"])
 all_unsupported_architectures_names = set(["mips32", "mips64", "mips_shared"])
-all_architecture_names = set(["x86", "x64", "arm", "arm64"])
-all_shared_architecture_names = set(["x86_shared", "arm", "arm64"])
+all_architecture_names = set(
+    ["x86", "x64", "arm", "arm64", "loong64", "riscv64", "wasm32"]
+)
+all_shared_architecture_names = set(
+    ["x86_shared", "arm", "arm64", "loong64", "riscv64", "wasm32"]
+)
 
-reBeforeArg = "(?<=[(,\s])"
-reArgType = "(?P<type>[\w\s:*&]+)"
-reArgName = "(?P<name>\s\w+)"
-reArgDefault = "(?P<default>(?:\s=[^,)]+)?)"
+reBeforeArg = r"(?<=[(,\s])"
+reArgType = r"(?P<type>[\w\s:*&<>]+)"
+reArgName = r"(?P<name>\s\w+)"
+reArgDefault = r"(?P<default>(?:\s=(?:(?:\s[\w:]+\(\))|[^,)]+))?)"
 reAfterArg = "(?=[,)])"
 reMatchArg = re.compile(reBeforeArg + reArgType + reArgName + reArgDefault + reAfterArg)
 
@@ -51,7 +52,7 @@ def get_normalized_signatures(signature, fileAnnot=None):
     # Remove new-line induced spaces after opening braces.
     signature = re.sub(r"\(\s+", "(", signature).strip()
     # Match arguments, and keep only the type.
-    signature = reMatchArg.sub("\g<type>", signature)
+    signature = reMatchArg.sub(r"\g<type>", signature)
     # Remove class name
     signature = signature.replace("MacroAssembler::", "")
 
@@ -62,7 +63,7 @@ def get_normalized_signatures(signature, fileAnnot=None):
 
     if "DEFINED_ON(" in signature:
         archs = re.sub(
-            r".*DEFINED_ON\((?P<archs>[^()]*)\).*", "\g<archs>", signature
+            r".*DEFINED_ON\((?P<archs>[^()]*)\).*", r"\g<archs>", signature
         ).split(",")
         archs = [a.strip() for a in archs]
         signature = re.sub(r"\s+DEFINED_ON\([^()]*\)", "", signature)
@@ -321,7 +322,6 @@ def check_style():
     for diffline in difflines:
         ok = False
         print(diffline, end="")
-
     return ok
 
 

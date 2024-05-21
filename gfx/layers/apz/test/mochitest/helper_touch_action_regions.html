@@ -30,11 +30,9 @@ function listener(callback) {
 // (in JSON string format) containing the counters.
 // The 'end' invocation tears down the listeners, and should be invoked once
 // at the end to clean up. Returns true on success, false on failure.
-/* eslint-env mozilla/frame-script */
 function chromeTouchEventCounter(operation) {
   function chromeProcessCounter() {
-    const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
+    /* eslint-env mozilla/chrome-script */
     const PREFIX = "apz:ctec:";
 
     const LISTENERS = {
@@ -122,6 +120,16 @@ function RunAfterProcessedQueuedInputEvents(aCallback) {
   tm.dispatchToMainThread(aCallback, SpecialPowers.Ci.nsIRunnablePriority.PRIORITY_INPUT_HIGH);
 }
 
+var scrollerPosition;
+async function getScrollerPosition() {
+  const scroller = document.getElementById("scroller");
+  scrollerPosition = await coordinatesRelativeToScreen({
+    offsetX: 0,
+    offsetY: 0,
+    target: scroller,
+  });
+}
+
 function* test(testDriver) {
   // The main part of this test should run completely before the child process'
   // main-thread deals with the touch event, so check to make sure that happens.
@@ -207,13 +215,22 @@ function* test(testDriver) {
 
   // Set up the child process events and callbacks
   var scroller = document.getElementById("scroller");
-  synthesizeNativeTouch(scroller, 10, 110, SpecialPowers.DOMWindowUtils.TOUCH_CONTACT, null, 0);
+  var utils = utilsForTarget(window);
+  utils.sendNativeTouchPoint(0, SpecialPowers.DOMWindowUtils.TOUCH_CONTACT,
+                             scrollerPosition.x + 10, scrollerPosition.y + 110,
+                             1, 90, null);
   RunAfterProcessedQueuedInputEvents(testDriver);
   for (let i = 1; i < 10; i++) {
-    synthesizeNativeTouch(scroller, 10, 110 - (i * 10), SpecialPowers.DOMWindowUtils.TOUCH_CONTACT, null, 0);
+    utils.sendNativeTouchPoint(0, SpecialPowers.DOMWindowUtils.TOUCH_CONTACT,
+                               scrollerPosition.x + 10,
+                               scrollerPosition.y + 110 - (i * 10),
+                               1, 90, null);
     RunAfterProcessedQueuedInputEvents(testDriver);
   }
-  synthesizeNativeTouch(scroller, 10, 10, SpecialPowers.DOMWindowUtils.TOUCH_REMOVE, null, 0);
+  utils.sendNativeTouchPoint(0, SpecialPowers.DOMWindowUtils.TOUCH_REMOVE,
+                             scrollerPosition.x + 10,
+                             scrollerPosition.y + 10,
+                             1, 90, null);
   RunAfterProcessedQueuedInputEvents(testDriver);
   ok(true, "Finished setting up event queue");
 
@@ -276,7 +293,7 @@ function* test(testDriver) {
 //   waitUntilApzStable().then(runContinuation(myTest));
 function runContinuation(testFunction) {
   return function() {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function(resolve) {
       var testContinuation = null;
 
       function driveTest() {
@@ -292,7 +309,7 @@ function runContinuation(testFunction) {
       try {
         driveTest();
       } catch (ex) {
-        SimpleTest.ok(
+        ok(
           false,
           "APZ test continuation failed with exception: " + ex
         );
@@ -309,6 +326,7 @@ if (SpecialPowers.isMainProcess()) {
   subtestDone();
 } else {
   waitUntilApzStable()
+  .then(async () => { await getScrollerPosition(); })
   .then(runContinuation(test))
   .then(subtestDone, subtestFailed);
 }

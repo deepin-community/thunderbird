@@ -5,17 +5,17 @@
 
 // Tests that the spectrum color picker works correctly
 
-const Spectrum = require("devtools/client/shared/widgets/Spectrum");
+const Spectrum = require("resource://devtools/client/shared/widgets/Spectrum.js");
 const {
   accessibility: {
     SCORES: { FAIL, AAA, AA },
   },
-} = require("devtools/shared/constants");
+} = require("resource://devtools/shared/constants.js");
 
 loader.lazyRequireGetter(
   this,
   "cssColors",
-  "devtools/shared/css/color-db",
+  "resource://devtools/shared/css/color-db.js",
   true
 );
 
@@ -30,7 +30,7 @@ const SINGLE_BG_COLOR = {
 };
 const ZERO_ALPHA_COLOR = [0, 255, 255, 0];
 
-add_task(async function() {
+add_task(async function () {
   const { host, doc } = await createHost("bottom", TEST_URI);
 
   const container = doc.getElementById("spectrum-container");
@@ -80,9 +80,8 @@ function testColorPreviewDisplay(
   spectrum.updateUI();
 
   // Extract the first rgba value from the linear gradient
-  const linearGradientStr = colorPreviewStyle.getPropertyValue(
-    "background-image"
-  );
+  const linearGradientStr =
+    colorPreviewStyle.getPropertyValue("background-image");
   const colorPreviewValue = extractRgbaOverlayString(linearGradientStr);
 
   is(
@@ -108,7 +107,11 @@ async function testCreateAndDestroyShouldAppendAndRemoveElements(container) {
   is(container.childElementCount, 0, "Root node is empty");
 
   const s = await createSpectrum(container, cssColors.white);
-  ok(container.childElementCount > 0, "Spectrum has appended elements");
+  Assert.greater(
+    container.childElementCount,
+    0,
+    "Spectrum has appended elements"
+  );
 
   s.destroy();
   is(container.childElementCount, 0, "Destroying spectrum removed all nodes");
@@ -242,12 +245,7 @@ function setSpectrumProps(spectrum, props, updateUI = true) {
   }
 }
 
-function testAriaAttributesOnSpectrumElements(
-  spectrum,
-  colorName,
-  rgbString,
-  alpha
-) {
+function testAriaAttributesOnSpectrumElements(spectrum, colorName, rgbString) {
   for (const slider of [spectrum.dragger, spectrum.hueSlider]) {
     is(
       slider.getAttribute("aria-describedby"),
@@ -279,16 +277,26 @@ async function testSettingColorShoudUpdateTheUI(container) {
 
   setSpectrumProps(s, { rgb: [50, 240, 234, 0.2] });
 
-  ok(s.alphaSlider.value != alphaSliderOriginalVal, "Alpha helper has moved");
-  ok(
-    s.dragHelper.style.top !== dragHelperOriginalPos[0],
+  Assert.notEqual(
+    s.alphaSlider.value,
+    alphaSliderOriginalVal,
+    "Alpha helper has moved"
+  );
+  Assert.notStrictEqual(
+    s.dragHelper.style.top,
+    dragHelperOriginalPos[0],
     "Drag helper has moved"
   );
-  ok(
-    s.dragHelper.style.left !== dragHelperOriginalPos[1],
+  Assert.notStrictEqual(
+    s.dragHelper.style.left,
+    dragHelperOriginalPos[1],
     "Drag helper has moved"
   );
-  ok(s.hueSlider.value !== hueSliderOriginalVal, "Hue helper has moved");
+  Assert.notStrictEqual(
+    s.hueSlider.value,
+    hueSliderOriginalVal,
+    "Hue helper has moved"
+  );
   testAriaAttributesOnSpectrumElements(
     s,
     "Closest to: aqua",
@@ -300,8 +308,9 @@ async function testSettingColorShoudUpdateTheUI(container) {
 
   setSpectrumProps(s, { rgb: ZERO_ALPHA_COLOR });
   is(s.alphaSlider.value, "0", "Alpha range UI has been updated again");
-  ok(
-    hueSliderOriginalVal !== s.hueSlider.value,
+  Assert.notStrictEqual(
+    hueSliderOriginalVal,
+    s.hueSlider.value,
     "Hue slider should have move again"
   );
   testAriaAttributesOnSpectrumElements(s, "aqua", "rgba(0, 255, 255, 0)", 0);
@@ -410,8 +419,9 @@ async function testOnlySelectingLargeTextWithNonZeroAlphaShouldShowIndicator(
 ) {
   let s = await createSpectrum(container, cssColors.white);
 
-  ok(
-    s.contrastLabel.childNodes.length !== 3,
+  Assert.notStrictEqual(
+    s.contrastLabel.childNodes.length,
+    3,
     "Large text indicator is initially hidden."
   );
 

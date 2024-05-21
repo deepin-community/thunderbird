@@ -9,16 +9,18 @@
 const {
   dominatorTreeState,
   viewState,
-} = require("devtools/client/memory/constants");
+} = require("resource://devtools/client/memory/constants.js");
 const {
   takeSnapshotAndCensus,
   fetchImmediatelyDominated,
-} = require("devtools/client/memory/actions/snapshot");
-const DominatorTreeLazyChildren = require("devtools/client/memory/dominator-tree-lazy-children");
+} = require("resource://devtools/client/memory/actions/snapshot.js");
+const DominatorTreeLazyChildren = require("resource://devtools/client/memory/dominator-tree-lazy-children.js");
 
-const { changeView } = require("devtools/client/memory/actions/view");
+const {
+  changeView,
+} = require("resource://devtools/client/memory/actions/view.js");
 
-add_task(async function() {
+add_task(async function () {
   const front = new StubbedMemoryFront();
   const heapWorker = new HeapAnalysesClient();
   await front.attach();
@@ -84,8 +86,9 @@ add_task(async function() {
 
   const oldNode2 = findNodeRev(oldRoot);
   ok(oldNode2, "Should have found another node with more children.");
-  ok(
-    oldNode !== oldNode2,
+  Assert.notStrictEqual(
+    oldNode,
+    oldNode2,
     "The second node should not be the same as the first one"
   );
 
@@ -124,7 +127,11 @@ add_task(async function() {
   );
 
   const newRoot = getState().snapshots[0].dominatorTree.root;
-  ok(oldRoot !== newRoot, "When we insert new nodes, we get a new tree");
+  Assert.notStrictEqual(
+    oldRoot,
+    newRoot,
+    "When we insert new nodes, we get a new tree"
+  );
 
   // Find the new node which has the children inserted.
 
@@ -147,8 +154,9 @@ add_task(async function() {
 
   const newNode = findNodeWithId(oldNode.nodeId, newRoot);
   ok(newNode, "Should find the node in the new tree again");
-  ok(
-    newNode !== oldNode,
+  Assert.notStrictEqual(
+    newNode,
+    oldNode,
     "We did not mutate the old node in place, instead created a new node"
   );
   ok(
@@ -158,8 +166,9 @@ add_task(async function() {
 
   const newNode2 = findNodeWithId(oldNode2.nodeId, newRoot);
   ok(newNode2, "Should find the second node in the new tree again");
-  ok(
-    newNode2 !== oldNode2,
+  Assert.notStrictEqual(
+    newNode2,
+    oldNode2,
     "We did not mutate the second old node in place, instead created a new node"
   );
   ok(

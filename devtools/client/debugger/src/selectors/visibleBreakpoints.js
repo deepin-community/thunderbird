@@ -2,13 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import { createSelector } from "reselect";
-import { uniqBy } from "lodash";
+import { createSelector } from "devtools/client/shared/vendor/reselect";
 
-import { getBreakpointsList } from "../reducers/breakpoints";
-import { getSelectedSource } from "../reducers/sources";
+import { getBreakpointsList } from "./breakpoints";
+import { getSelectedSource } from "./sources";
 
-import { sortSelectedBreakpoints } from "../utils/breakpoint";
+import { sortSelectedBreakpoints } from "../utils/breakpoint/index";
 import { getSelectedLocation } from "../utils/selected-location";
 
 /*
@@ -25,7 +24,7 @@ export const getVisibleBreakpoints = createSelector(
     return breakpoints.filter(
       bp =>
         selectedSource &&
-        getSelectedLocation(bp, selectedSource).sourceId === selectedSource.id
+        getSelectedLocation(bp, selectedSource)?.source.id === selectedSource.id
     );
   }
 );
@@ -41,9 +40,16 @@ export const getFirstVisibleBreakpoints = createSelector(
       return [];
     }
 
-    return uniqBy(
-      sortSelectedBreakpoints(breakpoints, selectedSource),
-      bp => getSelectedLocation(bp, selectedSource).line
-    );
+    // Filter the array so it only return the first breakpoint when there's multiple
+    // breakpoints on the same line.
+    const handledLines = new Set();
+    return sortSelectedBreakpoints(breakpoints, selectedSource).filter(bp => {
+      const line = getSelectedLocation(bp, selectedSource).line;
+      if (handledLines.has(line)) {
+        return false;
+      }
+      handledLines.add(line);
+      return true;
+    });
   }
 );

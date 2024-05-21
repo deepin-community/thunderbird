@@ -1,4 +1,4 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -76,7 +76,7 @@ function ScrollToMessageAfterFolderLoad(folder)
 {
   var scrolled = Services.prefs.getBoolPref("mailnews.scroll_to_new_message") &&
       ScrollToMessage(nsMsgNavigationType.firstNew, true, false /* selectMessage */);
-  if (!scrolled && folder && Services.prefs.getBoolPref("mailnews.remember_selected_message"))
+  if (!scrolled && folder)
   {
     // If we failed to scroll to a new message,
     // reselect the last selected message
@@ -113,15 +113,17 @@ function ScrollToMessageAfterFolderLoad(folder)
 // the folderListener object
 var folderListener =
 {
-  OnItemAdded:   function(parentItem, item) {},
-  OnItemRemoved: function(parentItem, item) {},
+  onFolderAdded: function(parentFolder, child) {},
+  onMessageAdded: function(parentFolder, msg) {},
+  onFolderRemoved: function(parentFolder, child) {},
+  onMessageRemoved: function(parentFolder, msg) {},
 
-  OnItemPropertyChanged:        function(item, property, oldValue, newValue) {},
-  OnItemBoolPropertyChanged:    function(item, property, oldValue, newValue) {},
-  OnItemUnicharPropertyChanged: function(item, property, oldValue, newValue) {},
-  OnItemPropertyFlagChanged:    function(item, property, oldFlag,  newFlag)  {},
+  onFolderPropertyChanged:        function(item, property, oldValue, newValue) {},
+  onFolderBoolPropertyChanged:    function(item, property, oldValue, newValue) {},
+  onFolderUnicharPropertyChanged: function(item, property, oldValue, newValue) {},
+  onFolderPropertyFlagChanged:    function(item, property, oldFlag,  newFlag)  {},
 
-  OnItemIntPropertyChanged: function(item, property, oldValue, newValue)
+  onFolderIntPropertyChanged: function(item, property, oldValue, newValue)
   {
     // handle the currently visible folder
     if (item == gMsgFolderSelected)
@@ -151,7 +153,7 @@ var folderListener =
     }
   },
 
-    OnItemEvent: function(folder, event) {
+    onFolderEvent: function(folder, event) {
       if (event == "FolderLoaded") {
         if (folder) {
           var scrolled = false;
@@ -1174,6 +1176,24 @@ function SetNextMessageAfterDelete()
   }
   else
     gNextMessageViewIndexAfterDelete = treeSelection.currentIndex;
+}
+
+function EnsureFolderIndex(treeView, msgFolder) {
+  // Try to get the index of the folder in the tree.
+  let index = treeView.getIndexOfFolder(msgFolder);
+  if (!index) {
+    // If we couldn't find the folder, open the parents.
+    let folder = msgFolder;
+    while (!index && folder) {
+      folder = folder.parent;
+      index = EnsureFolderIndex(treeView, folder);
+    }
+    if (index) {
+      treeView.toggleOpenState(index);
+      index = treeView.getIndexOfFolder(msgFolder);
+    }
+  }
+  return index;
 }
 
 function SelectMsgFolder(msgFolder) {

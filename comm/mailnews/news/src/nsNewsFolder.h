@@ -26,8 +26,6 @@ class nsMsgNewsFolder : public nsMsgDBFolder, public nsIMsgNewsFolder {
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_NSIMSGNEWSFOLDER
 
-  // nsIUrlListener method
-  NS_IMETHOD OnStopRunningUrl(nsIURI* aUrl, nsresult aExitCode) override;
   // nsIMsgFolder methods:
   NS_IMETHOD GetSubFolders(nsTArray<RefPtr<nsIMsgFolder>>& folders) override;
 
@@ -70,6 +68,8 @@ class nsMsgNewsFolder : public nsMsgDBFolder, public nsIMsgNewsFolder {
   NS_IMETHOD DownloadMessagesForOffline(
       nsTArray<RefPtr<nsIMsgDBHdr>> const& messages,
       nsIMsgWindow* window) override;
+  NS_IMETHOD GetLocalMsgStream(nsIMsgDBHdr* hdr,
+                               nsIInputStream** stream) override;
   NS_IMETHOD Compact(nsIUrlListener* aListener,
                      nsIMsgWindow* aMsgWindow) override;
   NS_IMETHOD DownloadAllForOffline(nsIUrlListener* listener,
@@ -96,8 +96,6 @@ class nsMsgNewsFolder : public nsMsgDBFolder, public nsIMsgNewsFolder {
   nsresult CreateSubFolders(nsIFile* path);
   nsresult AddDirectorySeparator(nsIFile* path);
   nsresult GetDatabase() override;
-  virtual nsresult CreateChildFromURI(const nsACString& uri,
-                                      nsIMsgFolder** folder) override;
 
   nsresult LoadNewsrcFileAndCreateNewsgroups();
   int32_t RememberLine(const nsACString& line);
@@ -115,11 +113,10 @@ class nsMsgNewsFolder : public nsMsgDBFolder, public nsIMsgNewsFolder {
   bool mGettingNews;
   bool mInitialized;
   bool m_downloadMessageForOfflineUse;
-  bool m_downloadingMultipleMessages;
 
   nsCString mOptionLines;
   nsCString mUnsubscribedNewsgroupLines;
-  nsMsgKeySet* mReadSet;
+  RefPtr<nsMsgKeySet> mReadSet;
 
   nsCOMPtr<nsIFile> mNewsrcFilePath;
 

@@ -8,6 +8,7 @@
 #ifndef nsToolkitProfileService_h
 #define nsToolkitProfileService_h
 
+#include "mozilla/Components.h"
 #include "mozilla/LinkedList.h"
 #include "nsIToolkitProfileService.h"
 #include "nsIToolkitProfile.h"
@@ -64,14 +65,6 @@ class nsToolkitProfileLock final : public nsIProfileLock {
   nsProfileLock mLock;
 };
 
-class nsToolkitProfileFactory final : public nsIFactory {
-  ~nsToolkitProfileFactory() = default;
-
- public:
-  NS_DECL_ISUPPORTS
-  NS_DECL_NSIFACTORY
-};
-
 class nsToolkitProfileService final : public nsIToolkitProfileService {
  public:
   NS_DECL_ISUPPORTS
@@ -87,8 +80,8 @@ class nsToolkitProfileService final : public nsIToolkitProfileService {
 
  private:
   friend class nsToolkitProfile;
-  friend class nsToolkitProfileFactory;
-  friend nsresult NS_NewToolkitProfileService(nsToolkitProfileService**);
+  friend already_AddRefed<nsToolkitProfileService>
+  NS_GetToolkitProfileService();
 
   nsToolkitProfileService();
   ~nsToolkitProfileService();
@@ -152,6 +145,9 @@ class nsToolkitProfileService final : public nsIToolkitProfileService {
   // True if this install should use a dedicated default profile.
   const bool mUseDedicatedProfile;
   nsString mStartupReason;
+  // Records the version of the profiles.ini file as it was when it was loaded
+  // during startup.
+  nsCString mStartupFileVersion;
   bool mMaybeLockProfile;
   // Holds the current application update channel. This is only really held
   // so it can be overriden in tests.
@@ -178,5 +174,7 @@ class nsToolkitProfileService final : public nsIToolkitProfileService {
     RefPtr<nsToolkitProfile> mCurrent;
   };
 };
+
+already_AddRefed<nsToolkitProfileService> NS_GetToolkitProfileService();
 
 #endif

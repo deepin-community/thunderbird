@@ -4,6 +4,7 @@ if (typeof classifierHelper == "undefined") {
 
 const CLASSIFIER_COMMON_URL = SimpleTest.getTestFileURL("classifierCommon.js");
 var gScript = SpecialPowers.loadChromeScript(CLASSIFIER_COMMON_URL);
+var gOriginalGetHashURL;
 
 const PREFS = {
   PROVIDER_LISTS: "browser.safebrowsing.provider.mozilla.lists",
@@ -25,8 +26,8 @@ classifierHelper._initsCB = [];
 
 // This function return a Promise, promise is resolved when SafeBrowsing.jsm
 // is initialized.
-classifierHelper.waitForInit = function() {
-  return new Promise(function(resolve, reject) {
+classifierHelper.waitForInit = function () {
+  return new Promise(function (resolve) {
     classifierHelper._initsCB.push(resolve);
     gScript.sendAsyncMessage("waitForInit");
   });
@@ -36,7 +37,7 @@ classifierHelper.waitForInit = function() {
 // some lists like "test-malware-simple" is default disabled to ask for complete.
 // "list" is the db we would like to allow it
 // "url" is the completion server
-classifierHelper.allowCompletion = async function(lists, url) {
+classifierHelper.allowCompletion = async function (lists, url) {
   for (var list of lists) {
     // Add test db to provider
     var pref = await SpecialPowers.getParentCharPref(PREFS.PROVIDER_LISTS);
@@ -49,14 +50,17 @@ classifierHelper.allowCompletion = async function(lists, url) {
     await SpecialPowers.setCharPref(PREFS.DISALLOW_COMPLETIONS, pref);
   }
 
+  // Store the original get hash URL in order to reset it back during clean up.
+  gOriginalGetHashURL = SpecialPowers.getCharPref(PREFS.PROVIDER_GETHASHURL);
+
   // Set get hash url
   await SpecialPowers.setCharPref(PREFS.PROVIDER_GETHASHURL, url);
 };
 
 // Pass { url: ..., db: ... } to add url to database,
 // onsuccess/onerror will be called when update complete.
-classifierHelper.addUrlToDB = function(updateData) {
-  return new Promise(function(resolve, reject) {
+classifierHelper.addUrlToDB = function (updateData) {
+  return new Promise(function (resolve, reject) {
     var testUpdate = "";
     for (var update of updateData) {
       var LISTNAME = update.db;
@@ -90,9 +94,9 @@ classifierHelper.addUrlToDB = function(updateData) {
 
 // This API is used to expire all add/sub chunks we have updated
 // by using addUrlToDB.
-classifierHelper.resetDatabase = function() {
+classifierHelper.resetDatabase = function () {
   function removeDatabase() {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
       var testUpdate = "";
       for (var update of classifierHelper._updatesToCleanup) {
         testUpdate +=
@@ -110,8 +114,8 @@ classifierHelper.resetDatabase = function() {
     .then(classifierHelper.reloadDatabase);
 };
 
-classifierHelper.reloadDatabase = function() {
-  return new Promise(function(resolve, reject) {
+classifierHelper.reloadDatabase = function () {
+  return new Promise(function (resolve) {
     gScript.addMessageListener("reloadSuccess", function handler() {
       gScript.removeMessageListener("reloadSuccess", handler);
       resolve();
@@ -121,7 +125,18 @@ classifierHelper.reloadDatabase = function() {
   });
 };
 
-classifierHelper._update = function(testUpdate, onsuccess, onerror) {
+classifierHelper.getTables = function () {
+  return new Promise(resolve => {
+    gScript.addMessageListener("GetTableSuccess", function handler(tables) {
+      gScript.removeMessageListener("GetTableSuccess", handler);
+      resolve(tables);
+    });
+
+    gScript.sendAsyncMessage("doGetTables");
+  });
+};
+
+classifierHelper._update = function (testUpdate, onsuccess, onerror) {
   // Queue the task if there is still an on-going update
   classifierHelper._updates.push({
     data: testUpdate,
@@ -135,7 +150,7 @@ classifierHelper._update = function(testUpdate, onsuccess, onerror) {
   gScript.sendAsyncMessage("doUpdate", { testUpdate });
 };
 
-classifierHelper._updateSuccess = function() {
+classifierHelper._updateSuccess = function () {
   var update = classifierHelper._updates.shift();
   update.onsuccess();
 
@@ -145,7 +160,7 @@ classifierHelper._updateSuccess = function() {
   }
 };
 
-classifierHelper._updateError = function(errorCode) {
+classifierHelper._updateError = function (errorCode) {
   var update = classifierHelper._updates.shift();
   update.onerror(errorCode);
 
@@ -155,14 +170,14 @@ classifierHelper._updateError = function(errorCode) {
   }
 };
 
-classifierHelper._inited = function() {
-  classifierHelper._initsCB.forEach(function(cb) {
+classifierHelper._inited = function () {
+  classifierHelper._initsCB.forEach(function (cb) {
     cb();
   });
   classifierHelper._initsCB = [];
 };
 
-classifierHelper._setup = function() {
+classifierHelper._setup = function () {
   gScript.addMessageListener("updateSuccess", classifierHelper._updateSuccess);
   gScript.addMessageListener("updateError", classifierHelper._updateError);
   gScript.addMessageListener("safeBrowsingInited", classifierHelper._inited);
@@ -171,11 +186,13 @@ classifierHelper._setup = function() {
   SimpleTest.registerCleanupFunction(classifierHelper._cleanup);
 };
 
-classifierHelper._cleanup = function() {
+classifierHelper._cleanup = function () {
   // clean all the preferences may touch by helper
-  for (var pref in PREFS) {
-    SpecialPowers.clearUserPref(pref);
-  }
+  Object.values(PREFS).map(pref => SpecialPowers.clearUserPref(pref));
+
+  // Set the getHashURL back, the original value isn't the same as the default
+  // pref value.
+  SpecialPowers.setCharPref(PREFS.PROVIDER_GETHASHURL, gOriginalGetHashURL);
 
   if (!classifierHelper._updatesToCleanup) {
     return Promise.resolve();

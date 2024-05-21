@@ -16,8 +16,7 @@
 
 using namespace mozilla::gfx;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 //----------------------------------------------------------------------
 // Helper class: AutoChangePointNotifier
@@ -59,9 +58,6 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(DOMSVGPoint)
   NS_IMPL_CYCLE_COLLECTION_TRACE_PRESERVED_WRAPPER
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
-
-NS_IMPL_CYCLE_COLLECTION_ROOT_NATIVE(DOMSVGPoint, AddRef)
-NS_IMPL_CYCLE_COLLECTION_UNROOT_NATIVE(DOMSVGPoint, Release)
 
 JSObject* DOMSVGPoint::WrapObject(JSContext* aCx,
                                   JS::Handle<JSObject*> aGivenProto) {
@@ -130,8 +126,7 @@ already_AddRefed<DOMSVGPoint> DOMSVGPoint::MatrixTransform(
     return nullptr;
   }
   auto pt = matrix2D->TransformPoint(InternalItem());
-  RefPtr<DOMSVGPoint> newPoint = new DOMSVGPoint(ToPoint(pt));
-  return newPoint.forget();
+  return do_AddRef(new DOMSVGPoint(ToPoint(pt)));
 }
 
 void DOMSVGPoint::InsertingIntoList(DOMSVGPointList* aList, uint32_t aListIndex,
@@ -228,5 +223,4 @@ bool DOMSVGPoint::IndexIsValid() {
 }
 #endif
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

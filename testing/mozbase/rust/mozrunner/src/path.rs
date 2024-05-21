@@ -7,6 +7,19 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "macos")]
+pub fn is_app_bundle(path: &Path) -> bool {
+    if path.is_dir() {
+        let mut info_plist = path.to_path_buf();
+        info_plist.push("Contents");
+        info_plist.push("Info.plist");
+
+        return info_plist.exists();
+    }
+
+    false
+}
+
 #[cfg(unix)]
 fn is_executable(path: &Path) -> bool {
     use std::fs;
@@ -30,7 +43,7 @@ fn is_executable(_: &Path) -> bool {
 /// Determines if the path is an executable binary.  That is, if it exists, is
 /// a file, and is executable where applicable.
 pub fn is_binary(path: &Path) -> bool {
-    path.exists() && path.is_file() && is_executable(&path)
+    path.exists() && path.is_file() && is_executable(path)
 }
 
 /// Searches the system path (`PATH`) for an executable binary and returns the

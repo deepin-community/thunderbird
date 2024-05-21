@@ -6,7 +6,6 @@
 /* import-globals-from editBookmarkOverlay.js */
 /* import-globals-from ../../../../../toolkit/content/contentAreaUtils.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { AppConstants } =
   ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
 
@@ -163,8 +162,7 @@ var PlacesOrganizer = {
   },
 
   QueryInterface: function PO_QueryInterface(aIID) {
-    if (aIID.equals(Ci.nsIDOMEventListener) ||
-        aIID.equals(Ci.nsISupports))
+    if (aIID.equals(Ci.nsISupports))
       return this;
 
     throw Cr.NS_NOINTERFACE;
@@ -1339,7 +1337,7 @@ var ContentTree = {
 
   openSelectedNode: function CT_openSelectedNode(aEvent) {
     let view = this.view;
-    PlacesUIUtils.openNodeWithEvent(view.selectedNode, aEvent);
+    PlacesUIUtils.openNodeWithEvent(view.selectedNode, aEvent, true);
   },
 
   onClick: function CT_onClick(aEvent) {

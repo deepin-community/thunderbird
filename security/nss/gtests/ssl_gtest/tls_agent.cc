@@ -15,9 +15,6 @@
 #include "tls_filter.h"
 #include "tls_parser.h"
 
-// This is an internal header, used to get DTLS_1_3_DRAFT_VERSION.
-#include "ssl3prot.h"
-
 extern "C" {
 // This is not something that should make you happy.
 #include "libssl_internals.h"
@@ -93,7 +90,8 @@ TlsAgent::TlsAgent(const std::string& nm, Role rl, SSLProtocolVariant var)
       auth_certificate_callback_(),
       sni_callback_(),
       skip_version_checks_(false),
-      resumption_token_() {
+      resumption_token_(),
+      policy_() {
   memset(&info_, 0, sizeof(info_));
   memset(&csinfo_, 0, sizeof(csinfo_));
   SECStatus rv = SSL_VersionRangeGetDefault(variant_, &vrange_);
@@ -227,6 +225,7 @@ bool TlsAgent::ConfigServerCert(const std::string& id, bool updateKeyBits,
 bool TlsAgent::EnsureTlsSetup(PRFileDesc* modelSocket) {
   // Don't set up twice
   if (ssl_fd_) return true;
+  NssManagePolicy policyManage(policy_, option_);
 
   ScopedPRFileDesc dummy_fd(adapter_->CreateFD());
   EXPECT_NE(nullptr, dummy_fd);
@@ -319,13 +318,22 @@ bool TlsAgent::MaybeSetResumptionToken() {
 }
 
 void TlsAgent::SetAntiReplayContext(ScopedSSLAntiReplayContext& ctx) {
-  EXPECT_EQ(SECSuccess, SSL_SetAntiReplayContext(ssl_fd_.get(), ctx.get()));
+  EXPECT_EQ(SECSuccess, SSL_SetAntiReplayContext(ssl_fd(), ctx.get()));
 }
 
-void TlsAgent::SetupClientAuth() {
+// Defaults to a Sync callback returning success
+void TlsAgent::SetupClientAuth(ClientAuthCallbackType callbackType,
+                               bool callbackSuccess) {
   EXPECT_TRUE(EnsureTlsSetup());
   ASSERT_EQ(CLIENT, role_);
 
+  client_auth_callback_type_ = callbackType;
+  client_auth_callback_success_ = callbackSuccess;
+
+  if (callbackType == ClientAuthCallbackType::kNone && !callbackSuccess) {
+    // Don't set a callback for this case.
+    return;
+  }
   EXPECT_EQ(SECSuccess,
             SSL_GetClientAuthDataHook(ssl_fd(), GetClientAuthDataHook,
                                       reinterpret_cast<void*>(this)));
@@ -342,26 +350,95 @@ void CheckCertReqAgainstDefaultCAs(const CERTDistNames* caNames) {
   }
 }
 
+// Complete processing of Client Certificate Selection
+// A No-op if the agent is using synchronous client cert selection.
+// Otherwise, calls SSL_ClientCertCallbackComplete.
+// kAsyncDelay triggers a call to SSL_ForceHandshake prior to completion to
+// ensure that the socket is correctly blocked.
+void TlsAgent::ClientAuthCallbackComplete() {
+  ASSERT_EQ(CLIENT, role_);
+
+  if (client_auth_callback_type_ != ClientAuthCallbackType::kAsyncDelay &&
+      client_auth_callback_type_ != ClientAuthCallbackType::kAsyncImmediate) {
+    return;
+  }
+  client_auth_callback_fired_++;
+  EXPECT_TRUE(client_auth_callback_awaiting_);
+
+  std::cerr << "client: calling SSL_ClientCertCallbackComplete with status "
+            << (client_auth_callback_success_ ? "success" : "failed")
+            << std::endl;
+
+  client_auth_callback_awaiting_ = false;
+
+  if (client_auth_callback_type_ == ClientAuthCallbackType::kAsyncDelay) {
+    std::cerr
+        << "Running Handshake prior to running SSL_ClientCertCallbackComplete"
+        << std::endl;
+    SECStatus rv = SSL_ForceHandshake(ssl_fd());
+    EXPECT_EQ(rv, SECFailure);
+    EXPECT_EQ(PORT_GetError(), PR_WOULD_BLOCK_ERROR);
+  }
+
+  ScopedCERTCertificate cert;
+  ScopedSECKEYPrivateKey priv;
+  if (client_auth_callback_success_) {
+    ASSERT_TRUE(TlsAgent::LoadCertificate(name(), &cert, &priv));
+    EXPECT_EQ(SECSuccess,
+              SSL_ClientCertCallbackComplete(ssl_fd(), SECSuccess,
+                                             priv.release(), cert.release()));
+  } else {
+    EXPECT_EQ(SECSuccess, SSL_ClientCertCallbackComplete(ssl_fd(), SECFailure,
+                                                         nullptr, nullptr));
+  }
+}
+
 SECStatus TlsAgent::GetClientAuthDataHook(void* self, PRFileDesc* fd,
                                           CERTDistNames* caNames,
                                           CERTCertificate** clientCert,
                                           SECKEYPrivateKey** clientKey) {
   TlsAgent* agent = reinterpret_cast<TlsAgent*>(self);
-  ScopedCERTCertificate peerCert(SSL_PeerCertificate(agent->ssl_fd()));
-  EXPECT_TRUE(peerCert) << "Client should be able to see the server cert";
+  EXPECT_EQ(CLIENT, agent->role_);
+  agent->client_auth_callback_fired_++;
 
-  // See bug 1573945
-  // CheckCertReqAgainstDefaultCAs(caNames);
+  switch (agent->client_auth_callback_type_) {
+    case ClientAuthCallbackType::kAsyncDelay:
+    case ClientAuthCallbackType::kAsyncImmediate:
+      std::cerr << "Waiting for complete call" << std::endl;
+      agent->client_auth_callback_awaiting_ = true;
+      return SECWouldBlock;
+    case ClientAuthCallbackType::kSync:
+    case ClientAuthCallbackType::kNone:
+      // Handle the sync case. None && Success is treated as Sync and Success.
+      if (!agent->client_auth_callback_success_) {
+        return SECFailure;
+      }
+      ScopedCERTCertificate peerCert(SSL_PeerCertificate(agent->ssl_fd()));
+      EXPECT_TRUE(peerCert) << "Client should be able to see the server cert";
 
-  ScopedCERTCertificate cert;
-  ScopedSECKEYPrivateKey priv;
-  if (!TlsAgent::LoadCertificate(agent->name(), &cert, &priv)) {
-    return SECFailure;
+      // See bug 1573945
+      // CheckCertReqAgainstDefaultCAs(caNames);
+
+      ScopedCERTCertificate cert;
+      ScopedSECKEYPrivateKey priv;
+      if (!TlsAgent::LoadCertificate(agent->name(), &cert, &priv)) {
+        return SECFailure;
+      }
+
+      *clientCert = cert.release();
+      *clientKey = priv.release();
+      return SECSuccess;
   }
+  /* This is unreachable, but some old compilers can't tell that. */
+  PORT_Assert(0);
+  PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
+  return SECFailure;
+}
 
-  *clientCert = cert.release();
-  *clientKey = priv.release();
-  return SECSuccess;
+// Increments by 1 for each callback
+bool TlsAgent::CheckClientAuthCallbacksCompleted(uint8_t expected) {
+  EXPECT_EQ(CLIENT, role_);
+  return expected == client_auth_callback_fired_;
 }
 
 bool TlsAgent::GetPeerChainLength(size_t* count) {
@@ -413,16 +490,19 @@ void TlsAgent::DisableAllCiphers() {
   }
 }
 
-// Not actually all groups, just the onece that we are actually willing
+// Not actually all groups, just the ones that we are actually willing
 // to use.
 const std::vector<SSLNamedGroup> kAllDHEGroups = {
-    ssl_grp_ec_curve25519, ssl_grp_ec_secp256r1, ssl_grp_ec_secp384r1,
-    ssl_grp_ec_secp521r1,  ssl_grp_ffdhe_2048,   ssl_grp_ffdhe_3072,
-    ssl_grp_ffdhe_4096,    ssl_grp_ffdhe_6144,   ssl_grp_ffdhe_8192};
+    ssl_grp_ec_curve25519,   ssl_grp_ec_secp256r1, ssl_grp_ec_secp384r1,
+    ssl_grp_ec_secp521r1,    ssl_grp_ffdhe_2048,   ssl_grp_ffdhe_3072,
+    ssl_grp_ffdhe_4096,      ssl_grp_ffdhe_6144,   ssl_grp_ffdhe_8192,
+    ssl_grp_kem_xyber768d00,
+};
 
 const std::vector<SSLNamedGroup> kECDHEGroups = {
-    ssl_grp_ec_curve25519, ssl_grp_ec_secp256r1, ssl_grp_ec_secp384r1,
-    ssl_grp_ec_secp521r1};
+    ssl_grp_ec_curve25519, ssl_grp_ec_secp256r1,    ssl_grp_ec_secp384r1,
+    ssl_grp_ec_secp521r1,  ssl_grp_kem_xyber768d00,
+};
 
 const std::vector<SSLNamedGroup> kFFDHEGroups = {
     ssl_grp_ffdhe_2048, ssl_grp_ffdhe_3072, ssl_grp_ffdhe_4096,
@@ -431,7 +511,12 @@ const std::vector<SSLNamedGroup> kFFDHEGroups = {
 // Defined because the big DHE groups are ridiculously slow.
 const std::vector<SSLNamedGroup> kFasterDHEGroups = {
     ssl_grp_ec_curve25519, ssl_grp_ec_secp256r1, ssl_grp_ec_secp384r1,
-    ssl_grp_ffdhe_2048, ssl_grp_ffdhe_3072};
+    ssl_grp_ffdhe_2048,    ssl_grp_ffdhe_3072,   ssl_grp_kem_xyber768d00,
+};
+
+const std::vector<SSLNamedGroup> kEcdhHybridGroups = {
+    ssl_grp_kem_xyber768d00,
+};
 
 void TlsAgent::EnableCiphersByKeyExchange(SSLKEAType kea) {
   EXPECT_TRUE(EnsureTlsSetup());
@@ -458,6 +543,9 @@ void TlsAgent::EnableGroupsByKeyExchange(SSLKEAType kea) {
       break;
     case ssl_kea_ecdh:
       ConfigNamedGroups(kECDHEGroups);
+      break;
+    case ssl_kea_ecdh_hybrid:
+      ConfigNamedGroups(kEcdhHybridGroups);
       break;
     default:
       break;
@@ -595,6 +683,7 @@ void TlsAgent::CheckKEA(SSLKEAType kea, SSLNamedGroup kea_group,
   if (kea_size == 0) {
     switch (kea_group) {
       case ssl_grp_ec_curve25519:
+      case ssl_grp_kem_xyber768d00:
         kea_size = 255;
         break;
       case ssl_grp_ec_secp256r1:
@@ -869,8 +958,8 @@ void TlsAgent::ResetPreliminaryInfo() {
 }
 
 void TlsAgent::UpdatePreliminaryChannelInfo() {
-  SECStatus rv = SSL_GetPreliminaryChannelInfo(ssl_fd_.get(), &pre_info_,
-                                               sizeof(pre_info_));
+  SECStatus rv =
+      SSL_GetPreliminaryChannelInfo(ssl_fd(), &pre_info_, sizeof(pre_info_));
   EXPECT_EQ(SECSuccess, rv);
   EXPECT_EQ(sizeof(pre_info_), pre_info_.length);
 }
@@ -952,6 +1041,24 @@ void TlsAgent::Connected() {
   SetState(STATE_CONNECTED);
 }
 
+void TlsAgent::CheckClientAuthCompleted(uint8_t handshakes) {
+  EXPECT_FALSE(client_auth_callback_awaiting_);
+  switch (client_auth_callback_type_) {
+    case ClientAuthCallbackType::kNone:
+      if (!client_auth_callback_success_) {
+        EXPECT_TRUE(CheckClientAuthCallbacksCompleted(0));
+        break;
+      }
+    case ClientAuthCallbackType::kSync:
+      EXPECT_TRUE(CheckClientAuthCallbacksCompleted(handshakes));
+      break;
+    case ClientAuthCallbackType::kAsyncDelay:
+    case ClientAuthCallbackType::kAsyncImmediate:
+      EXPECT_TRUE(CheckClientAuthCallbacksCompleted(2 * handshakes));
+      break;
+  }
+}
+
 void TlsAgent::EnableExtendedMasterSecret() {
   SetOption(SSL_ENABLE_EXTENDED_MASTER_SECRET, PR_TRUE);
 }
@@ -986,6 +1093,10 @@ void TlsAgent::SetDowngradeCheckVersion(uint16_t ver) {
 void TlsAgent::Handshake() {
   LOGV("Handshake");
   SECStatus rv = SSL_ForceHandshake(ssl_fd());
+  if (client_auth_callback_awaiting_) {
+    ClientAuthCallbackComplete();
+    rv = SSL_ForceHandshake(ssl_fd());
+  }
   if (rv == SECSuccess) {
     Connected();
     Poller::Instance()->Wait(READABLE_EVENT, adapter_, this,
@@ -1014,8 +1125,11 @@ void TlsAgent::Handshake() {
     return;
   }
 
-  LOG("Handshake failed with error " << PORT_ErrorToName(err) << ": "
-                                     << PORT_ErrorToString(err));
+  if (err != 0) {
+    LOG("Handshake failed with error " << PORT_ErrorToName(err) << ": "
+                                       << PORT_ErrorToString(err));
+  }
+
   error_code_ = err;
   SetState(STATE_ERROR);
 }
@@ -1134,9 +1248,14 @@ void TlsAgent::ReadBytes(size_t amount) {
       PRErrorCode err = 0;
       if (rv < 0) {
         err = PR_GetError();
-        LOG("Read error " << PORT_ErrorToName(err) << ": "
-                          << PORT_ErrorToString(err));
+        if (err != 0) {
+          LOG("Read error " << PORT_ErrorToName(err) << ": "
+                            << PORT_ErrorToString(err));
+        }
         if (err != PR_WOULD_BLOCK_ERROR && expect_readwrite_error_) {
+          if (ErrorIsFatal(err)) {
+            SetState(STATE_ERROR);
+          }
           error_code_ = err;
           expect_readwrite_error_ = false;
         }
@@ -1170,9 +1289,9 @@ void TlsAgent::ConfigureSessionCache(SessionResumptionMode mode) {
             mode & RESUME_TICKET ? PR_TRUE : PR_FALSE);
 }
 
-void TlsAgent::DisableECDHEServerKeyReuse() {
+void TlsAgent::EnableECDHEServerKeyReuse() {
   ASSERT_EQ(TlsAgent::SERVER, role_);
-  SetOption(SSL_REUSE_SERVER_ECDHE_KEY, PR_FALSE);
+  SetOption(SSL_REUSE_SERVER_ECDHE_KEY, PR_TRUE);
 }
 
 static const std::string kTlsRolesAllArr[] = {"CLIENT", "SERVER"};
@@ -1322,7 +1441,7 @@ DataBuffer TlsAgentTestBase::MakeCannedTls13ServerHello() {
     uint32_t v;
     EXPECT_TRUE(sh.Read(sh.len() - 2, 2, &v));
     EXPECT_EQ(static_cast<uint32_t>(SSL_LIBRARY_VERSION_TLS_1_3), v);
-    sh.Write(sh.len() - 2, 0x7f00 | DTLS_1_3_DRAFT_VERSION, 2);
+    sh.Write(sh.len() - 2, SSL_LIBRARY_VERSION_DTLS_1_3_WIRE, 2);
   }
   return sh;
 }

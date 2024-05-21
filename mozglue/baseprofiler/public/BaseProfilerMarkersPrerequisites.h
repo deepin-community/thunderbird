@@ -24,6 +24,7 @@ enum class StackCaptureOptions {
 
 }
 
+#include "BaseProfileJSONWriter.h"
 #include "BaseProfilingCategory.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/ProfileChunkedBuffer.h"
@@ -176,10 +177,6 @@ class MOZ_STACK_CLASS ProfilerStringView {
     return mStringView;
   }
 
-  [[nodiscard]] constexpr const CHAR* Data() const {
-    return mStringView.data();
-  }
-
   [[nodiscard]] constexpr size_t Length() const { return mStringView.length(); }
 
   [[nodiscard]] constexpr bool IsLiteral() const {
@@ -190,9 +187,10 @@ class MOZ_STACK_CLASS ProfilerStringView {
   }
   // No `IsOwned...()` because it's a secret, only used internally!
 
-  [[nodiscard]] operator Span<const CHAR>() const {
-    return Span<const CHAR>(Data(), Length());
+  [[nodiscard]] Span<const CHAR> AsSpan() const {
+    return Span<const CHAR>(mStringView.data(), mStringView.length());
   }
+  [[nodiscard]] operator Span<const CHAR>() const { return AsSpan(); }
 
  private:
   enum class Ownership { Literal, Reference, OwnedThroughStringView };
@@ -277,7 +275,9 @@ class MarkerThreadId {
   constexpr MarkerThreadId() = default;
 
   // Constructor from a given thread id.
-  constexpr explicit MarkerThreadId(int aThreadId) : mThreadId(aThreadId) {}
+  constexpr explicit MarkerThreadId(
+      baseprofiler::BaseProfilerThreadId aThreadId)
+      : mThreadId(aThreadId) {}
 
   // Use the current thread's id.
   static MarkerThreadId CurrentThread() {
@@ -290,12 +290,16 @@ class MarkerThreadId {
     return MarkerThreadId(baseprofiler::profiler_main_thread_id());
   }
 
-  [[nodiscard]] constexpr int ThreadId() const { return mThreadId; }
+  [[nodiscard]] constexpr baseprofiler::BaseProfilerThreadId ThreadId() const {
+    return mThreadId;
+  }
 
-  [[nodiscard]] constexpr bool IsUnspecified() const { return mThreadId == 0; }
+  [[nodiscard]] constexpr bool IsUnspecified() const {
+    return !mThreadId.IsSpecified();
+  }
 
  private:
-  int mThreadId = 0;
+  baseprofiler::BaseProfilerThreadId mThreadId;
 };
 
 // This marker option contains marker timing information.
@@ -313,9 +317,7 @@ class MarkerTiming {
     return MarkerTiming{aTime, TimeStamp{}, MarkerTiming::Phase::Instant};
   }
 
-  static MarkerTiming InstantNow() {
-    return InstantAt(TimeStamp::NowUnfuzzed());
-  }
+  static MarkerTiming InstantNow() { return InstantAt(TimeStamp::Now()); }
 
   static MarkerTiming Interval(const TimeStamp& aStartTime,
                                const TimeStamp& aEndTime) {
@@ -326,24 +328,22 @@ class MarkerTiming {
   }
 
   static MarkerTiming IntervalUntilNowFrom(const TimeStamp& aStartTime) {
-    return Interval(aStartTime, TimeStamp::NowUnfuzzed());
+    return Interval(aStartTime, TimeStamp::Now());
   }
 
-  static MarkerTiming IntervalStart(
-      const TimeStamp& aTime = TimeStamp::NowUnfuzzed()) {
+  static MarkerTiming IntervalStart(const TimeStamp& aTime = TimeStamp::Now()) {
     MOZ_ASSERT(!aTime.IsNull(), "Time is null for an interval start marker.");
     return MarkerTiming{aTime, TimeStamp{}, MarkerTiming::Phase::IntervalStart};
   }
 
-  static MarkerTiming IntervalEnd(
-      const TimeStamp& aTime = TimeStamp::NowUnfuzzed()) {
+  static MarkerTiming IntervalEnd(const TimeStamp& aTime = TimeStamp::Now()) {
     MOZ_ASSERT(!aTime.IsNull(), "Time is null for an interval end marker.");
     return MarkerTiming{TimeStamp{}, aTime, MarkerTiming::Phase::IntervalEnd};
   }
 
   // Set the interval end in this timing.
   // If there was already a start time, this makes it a full interval.
-  void SetIntervalEnd(const TimeStamp& aTime = TimeStamp::NowUnfuzzed()) {
+  void SetIntervalEnd(const TimeStamp& aTime = TimeStamp::Now()) {
     MOZ_ASSERT(!aTime.IsNull(), "Time is null for an interval end marker.");
     mEndTime = aTime;
     mPhase = mStartTime.IsNull() ? Phase::IntervalEnd : Phase::Interval;
@@ -352,6 +352,13 @@ class MarkerTiming {
   [[nodiscard]] const TimeStamp& StartTime() const { return mStartTime; }
   [[nodiscard]] const TimeStamp& EndTime() const { return mEndTime; }
 
+  // The phase differentiates Instant markers from Interval markers.
+  // Interval markers can either carry both timestamps on a single marker,
+  // or they can be split into individual Start and End markers, which are
+  // associated with each other via the marker name.
+  //
+  // The numeric representation of this enum value is also exposed in the
+  // ETW trace event's Phase field.
   enum class Phase : uint8_t {
     Instant = 0,
     Interval = 1,
@@ -383,6 +390,14 @@ class MarkerTiming {
   [[nodiscard]] uint8_t GetPhase() const {
     MOZ_ASSERT(!IsUnspecified());
     return static_cast<uint8_t>(mPhase);
+  }
+
+  // This is a constructor for Rust FFI bindings. It must not be used outside of
+  // this! Please see the other static constructors above.
+  static void UnsafeConstruct(MarkerTiming* aMarkerTiming,
+                              const TimeStamp& aStartTime,
+                              const TimeStamp& aEndTime, Phase aPhase) {
+    new (aMarkerTiming) MarkerTiming{aStartTime, aEndTime, aPhase};
   }
 
  private:
@@ -499,6 +514,11 @@ class MarkerStack {
   static MarkerStack TakeBacktrace(
       UniquePtr<ProfileChunkedBuffer>&& aExternalChunkedBuffer) {
     return MarkerStack(std::move(aExternalChunkedBuffer));
+  }
+
+  // Construct with the given capture options.
+  static MarkerStack WithCaptureOptions(StackCaptureOptions aCaptureOptions) {
+    return MarkerStack(aCaptureOptions);
   }
 
   [[nodiscard]] StackCaptureOptions CaptureOptions() const {
@@ -672,21 +692,35 @@ class JSONWriter;
 // marker type definition, see Add/Set functions.
 class MarkerSchema {
  public:
+  // This is used to describe a C++ type that is expected to be specified to
+  // the marker and used in PayloadField. This type is the expected input type
+  // to the marker data.
+  enum class InputType {
+    Uint64,
+    Uint32,
+    Uint8,
+    Boolean,
+    CString,
+    String,
+    TimeStamp,
+    TimeDuration
+  };
+
   enum class Location : unsigned {
-    markerChart,
-    markerTable,
+    MarkerChart,
+    MarkerTable,
     // This adds markers to the main marker timeline in the header.
-    timelineOverview,
+    TimelineOverview,
     // In the timeline, this is a section that breaks out markers that are
     // related to memory. When memory counters are enabled, this is its own
     // track, otherwise it is displayed with the main thread.
-    timelineMemory,
+    TimelineMemory,
     // This adds markers to the IPC timeline area in the header.
-    timelineIPC,
+    TimelineIPC,
     // This adds markers to the FileIO timeline area in the header.
-    timelineFileIO,
+    TimelineFileIO,
     // TODO - This is not supported yet.
-    stackChart
+    StackChart
   };
 
   // Used as constructor parameter, to explicitly specify that the location (and
@@ -699,46 +733,93 @@ class MarkerSchema {
     // String types.
 
     // Show the URL, and handle PII sanitization
-    url,
+    Url,
     // Show the file path, and handle PII sanitization.
-    filePath,
+    FilePath,
     // Important, do not put URL or file path information here, as it will not
     // be sanitized. Please be careful with including other types of PII here as
     // well.
     // e.g. "Label: Some String"
-    string,
+    String,
+
+    // Show a string from a UniqueStringArray given an index in the profile.
+    // e.g. 1, given string table ["hello", "world"] will show "world"
+    UniqueString,
 
     // ----------------------------------------------------
     // Numeric types
 
     // For time data that represents a duration of time.
     // e.g. "Label: 5s, 5ms, 5μs"
-    duration,
+    Duration,
     // Data that happened at a specific time, relative to the start of the
     // profile. e.g. "Label: 15.5s, 20.5ms, 30.5μs"
-    time,
+    Time,
     // The following are alternatives to display a time only in a specific unit
     // of time.
-    seconds,       // "Label: 5s"
-    milliseconds,  // "Label: 5ms"
-    microseconds,  // "Label: 5μs"
-    nanoseconds,   // "Label: 5ns"
+    Seconds,       // "Label: 5s"
+    Milliseconds,  // "Label: 5ms"
+    Microseconds,  // "Label: 5μs"
+    Nanoseconds,   // "Label: 5ns"
     // e.g. "Label: 5.55mb, 5 bytes, 312.5kb"
-    bytes,
+    Bytes,
     // This should be a value between 0 and 1.
     // "Label: 50%"
-    percentage,
+    Percentage,
     // The integer should be used for generic representations of numbers.
     // Do not use it for time information.
     // "Label: 52, 5,323, 1,234,567"
-    integer,
+    Integer,
     // The decimal should be used for generic representations of numbers.
     // Do not use it for time information.
     // "Label: 52.23, 0.0054, 123,456.78"
-    decimal
+    Decimal
   };
 
-  enum class Searchable { notSearchable, searchable };
+  // This represents groups of markers which MarkerTypes can expose to indicate
+  // what group they belong to (multiple groups are allowed combined in bitwise
+  // or). This is currently only used for ETW filtering. In the long run this
+  // should be generalized to gecko markers.
+  enum class ETWMarkerGroup : uint64_t {
+    Generic = 1,
+    UserMarkers = 1 << 1,
+    Memory = 1 << 2,
+    Scheduling = 1 << 3,
+    Text = 1 << 4,
+    Tracing = 1 << 5
+  };
+
+  // Flags which describe additional information for a PayloadField.
+  enum class PayloadFlags : uint32_t { None = 0, Searchable = 1 };
+
+  // This is one field of payload to be used for additional marker data.
+  struct PayloadField {
+    // Key identifying the marker.
+    const char* Key;
+    // Input type, this represents the data type specified.
+    InputType InputTy;
+    // Label, additional description.
+    const char* Label = nullptr;
+    // Format as written to the JSON.
+    Format Fmt = Format::String;
+    // Optional PayloadFlags.
+    PayloadFlags Flags = PayloadFlags::None;
+  };
+
+  enum class Searchable { NotSearchable, Searchable };
+  enum class GraphType { Line, Bar, FilledLine };
+  enum class GraphColor {
+    Blue,
+    Green,
+    Grey,
+    Ink,
+    Magenta,
+    Orange,
+    Purple,
+    Red,
+    Teal,
+    Yellow
+  };
 
   // Marker schema, with a non-empty list of locations where markers should be
   // shown.
@@ -747,6 +828,11 @@ class MarkerSchema {
   template <typename... Locations>
   explicit MarkerSchema(Location aLocation, Locations... aLocations)
       : mLocations{aLocation, aLocations...} {}
+
+  // Alternative constructor for MarkerSchema.
+  explicit MarkerSchema(const mozilla::MarkerSchema::Location* aLocations,
+                        size_t aLength)
+      : mLocations(aLocations, aLocations + aLength) {}
 
   // Marker schema for types that have special frontend handling.
   // Nothing else should be set in this case.
@@ -833,12 +919,28 @@ class MarkerSchema {
     return *this;
   }
 
+  // Markers can be shown as timeline tracks.
+
+  MarkerSchema& AddChart(std::string aKey, GraphType aType) {
+    mGraphs.emplace_back(GraphData{std::move(aKey), aType, mozilla::Nothing{}});
+    return *this;
+  }
+
+  MarkerSchema& AddChartColor(std::string aKey, GraphType aType,
+                              GraphColor aColor) {
+    mGraphs.emplace_back(
+        GraphData{std::move(aKey), aType, mozilla::Some(aColor)});
+    return *this;
+  }
+
   // Internal streaming function.
   MFBT_API void Stream(JSONWriter& aWriter, const Span<const char>& aName) &&;
 
  private:
   MFBT_API static Span<const char> LocationToStringSpan(Location aLocation);
   MFBT_API static Span<const char> FormatToStringSpan(Format aFormat);
+  MFBT_API static Span<const char> GraphTypeToStringSpan(GraphType aType);
+  MFBT_API static Span<const char> GraphColorToStringSpan(GraphColor aColor);
 
   // List of marker display locations. Empty for SpecialFrontendLocation.
   std::vector<Location> mLocations;
@@ -862,8 +964,126 @@ class MarkerSchema {
   using DataRowVector = std::vector<DataRow>;
 
   DataRowVector mData;
+
+  struct GraphData {
+    std::string mKey;
+    GraphType mType;
+    mozilla::Maybe<GraphColor> mColor;
+  };
+  std::vector<GraphData> mGraphs;
 };
 
+namespace detail {
+// GCC doesn't allow this to live inside the class.
+template <typename PayloadType>
+static void StreamPayload(baseprofiler::SpliceableJSONWriter& aWriter,
+                          const Span<const char> aKey,
+                          const PayloadType& aPayload) {
+  aWriter.StringProperty(aKey, aPayload);
+}
+
+template <typename PayloadType>
+inline void StreamPayload(baseprofiler::SpliceableJSONWriter& aWriter,
+                          const Span<const char> aKey,
+                          const Maybe<PayloadType>& aPayload) {
+  if (aPayload.isSome()) {
+    StreamPayload(aWriter, aKey, *aPayload);
+  } else {
+    aWriter.NullProperty(aKey);
+  }
+}
+
+template <>
+inline void StreamPayload<bool>(baseprofiler::SpliceableJSONWriter& aWriter,
+                                const Span<const char> aKey,
+                                const bool& aPayload) {
+  aWriter.BoolProperty(aKey, aPayload);
+}
+
+template <>
+inline void StreamPayload<ProfilerString8View>(
+    baseprofiler::SpliceableJSONWriter& aWriter, const Span<const char> aKey,
+    const ProfilerString8View& aPayload) {
+  aWriter.StringProperty(aKey, aPayload);
+}
+}  // namespace detail
+
+// This helper class is used by MarkerTypes that want to support the general
+// MarkerType object schema. When using this the markers will also transmit
+// their payload to the ETW tracer as well as requiring less inline code.
+// This is a curiously recurring template, the template argument is the child
+// class itself.
+template <typename T>
+struct BaseMarkerType {
+  static constexpr const char* AllLabels = nullptr;
+  static constexpr const char* ChartLabel = nullptr;
+  static constexpr const char* TableLabel = nullptr;
+  static constexpr const char* TooltipLabel = nullptr;
+
+  // This indicates whether this marker type wants the names passed to the
+  // individual marker calls stores along with the marker.
+  static constexpr bool StoreName = false;
+
+  static constexpr MarkerSchema::ETWMarkerGroup Group =
+      MarkerSchema::ETWMarkerGroup::Generic;
+
+  static MarkerSchema MarkerTypeDisplay() {
+    using MS = MarkerSchema;
+    MS schema{T::Locations, std::size(T::Locations)};
+    if (T::AllLabels) {
+      schema.SetAllLabels(T::AllLabels);
+    }
+    if (T::ChartLabel) {
+      schema.SetChartLabel(T::ChartLabel);
+    }
+    if (T::TableLabel) {
+      schema.SetTableLabel(T::TableLabel);
+    }
+    if (T::TooltipLabel) {
+      schema.SetTooltipLabel(T::TooltipLabel);
+    }
+    for (const MS::PayloadField field : T::PayloadFields) {
+      if (field.Label) {
+        if (uint32_t(field.Flags) & uint32_t(MS::PayloadFlags::Searchable)) {
+          schema.AddKeyLabelFormatSearchable(field.Key, field.Label, field.Fmt,
+                                             MS::Searchable::Searchable);
+        } else {
+          schema.AddKeyLabelFormat(field.Key, field.Label, field.Fmt);
+        }
+      } else {
+        if (uint32_t(field.Flags) & uint32_t(MS::PayloadFlags::Searchable)) {
+          schema.AddKeyFormatSearchable(field.Key, field.Fmt,
+                                        MS::Searchable::Searchable);
+        } else {
+          schema.AddKeyFormat(field.Key, field.Fmt);
+        }
+      }
+    }
+    if (T::Description) {
+      schema.AddStaticLabelValue("Description", T::Description);
+    }
+    return schema;
+  }
+
+  static constexpr Span<const char> MarkerTypeName() {
+    return MakeStringSpan(T::Name);
+  }
+
+  // This is called by the child class since the child class version of this
+  // function is used to infer the argument types by the profile buffer and
+  // allows the child to do any special data conversion it needs to do.
+  // Optionally the child can opt not to use this at all and write the data
+  // out itself.
+  template <typename... PayloadArguments>
+  static void StreamJSONMarkerDataImpl(
+      baseprofiler::SpliceableJSONWriter& aWriter,
+      const PayloadArguments&... aPayloadArguments) {
+    size_t i = 0;
+    (detail::StreamPayload(aWriter, MakeStringSpan(T::PayloadFields[i++].Key),
+                           aPayloadArguments),
+     ...);
+  }
+};
 }  // namespace mozilla
 
 #endif  // BaseProfilerMarkersPrerequisites_h

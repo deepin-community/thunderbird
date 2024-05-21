@@ -1,10 +1,6 @@
 /* eslint-env webextensions */
 "use strict";
 
-const { E10SUtils } = ChromeUtils.import(
-  "resource://gre/modules/E10SUtils.jsm"
-);
-
 const PRINT_POSTDATA = httpURL("print_postdata.sjs");
 const FILE_DUMMY = fileURL("dummy_page.html");
 const DATA_URL = "data:text/html,Hello%2C World!";
@@ -90,12 +86,11 @@ async function postFrom(start, target) {
       gBrowser,
       url: start,
     },
-    async function(browser) {
+    async function (browser) {
       info("Test tab ready: postFrom " + start);
 
       // Create the form element in our loaded URI.
-      await SpecialPowers.spawn(browser, [{ target }], function({ target }) {
-        // eslint-disable-next-line no-unsanitized/property
+      await SpecialPowers.spawn(browser, [{ target }], function ({ target }) {
         content.document.body.innerHTML = `
         <form method="post" action="${target}">
           <input type="text" name="initialRemoteType" value="${Services.appinfo.remoteType}">
@@ -148,7 +143,7 @@ async function loadAndGetProcessID(browser, target) {
       maybeErrorPage: true,
     },
     () => {
-      BrowserTestUtils.loadURI(browser, target);
+      BrowserTestUtils.startLoadingURIString(browser, target);
     }
   );
 
@@ -171,7 +166,7 @@ async function testLoadAndRedirect(
       gBrowser,
       url: start,
     },
-    async function(_browser) {
+    async function (_browser) {
       info("Test tab ready: getFrom " + start);
 
       let browser = gBrowser.selectedBrowser;
@@ -200,6 +195,12 @@ async function testLoadAndRedirect(
 }
 
 add_task(async function test_enabled() {
+  // Force only one webIsolated content process to ensure same-origin loads
+  // always end in the same process.
+  await SpecialPowers.pushPrefEnv({
+    set: [["dom.ipc.processCount.webIsolated", 1]],
+  });
+
   // URIs should correctly switch processes & the POST
   // should succeed.
   info("ENABLED -- FILE -- raw URI load");
@@ -271,8 +272,7 @@ add_task(async function test_protocol() {
       PRINT_POSTDATA
     );
 
-    // TODO: Processes should be switched due to navigation of different origins.
-    is(respExtRedirect.remoteType, "extension", "process switch");
+    ok(E10SUtils.isWebRemoteType(respExtRedirect.remoteType), "process switch");
     is(respExtRedirect.location, DATA_URL, "correct location");
     is(respExtRedirect.body, DATA_STRING, "correct POST body");
   });

@@ -5,9 +5,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 var _exportNames = {};
 exports.default = void 0;
-
 var matrixcs = _interopRequireWildcard(require("./matrix"));
-
 Object.keys(matrixcs).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -19,17 +17,8 @@ Object.keys(matrixcs).forEach(function (key) {
     }
   });
 });
-
-var utils = _interopRequireWildcard(require("./utils"));
-
-var _request = _interopRequireDefault(require("request"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 /*
 Copyright 2019 The Matrix.org Foundation C.I.C.
 
@@ -45,16 +34,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-matrixcs.request(_request.default);
 
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const crypto = require('crypto');
-
-  utils.setCrypto(crypto);
-} catch (err) {
-  console.log('nodejs was compiled without crypto support');
+if (global.__js_sdk_entrypoint) {
+  throw new Error("Multiple matrix-js-sdk entrypoints detected!");
 }
-
-var _default = matrixcs;
-exports.default = _default;
+global.__js_sdk_entrypoint = true;
+var _default = exports.default = matrixcs;

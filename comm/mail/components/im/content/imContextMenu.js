@@ -4,6 +4,7 @@
 
 // This file is loaded in messenger.xhtml.
 /* globals gatherTextUnder, goUpdateGlobalEditMenuItems, makeURLAbsolute, Services */
+/* import-globals-from ../../../base/content/widgets/browserPopups.js */
 
 var gChatContextMenu = null;
 
@@ -21,6 +22,7 @@ function imContextMenu(aXulMenu) {
   this.isContentSelected = false;
   this.shouldDisplay = true;
   this.ellipsis = "\u2026";
+  this.initedActions = false;
 
   try {
     this.ellipsis = Services.prefs.getComplexValue(
@@ -36,33 +38,32 @@ function imContextMenu(aXulMenu) {
 // Prototype for nsContextMenu "class."
 imContextMenu.prototype = {
   cleanup() {
-    let elt = document.getElementById("context-sep-messageactions")
-      .nextElementSibling;
+    nsContextMenu.contentData.browser.browsingContext.currentWindowGlobal
+      ?.getActor("ChatAction")
+      .reportHide();
+    let elt = document.getElementById(
+      "context-sep-messageactions"
+    ).nextElementSibling;
     // remove the action menuitems added last time we opened the popup
     while (elt && elt.localName != "menuseparator") {
-      let tmp = elt.nextElementSibling;
+      const tmp = elt.nextElementSibling;
       elt.remove();
       elt = tmp;
     }
   },
 
-  // Initialize context menu.
+  /**
+   * Initialize context menu. Shows/hides relevant items. Message actions are
+   * handled separately in |initActions| if the actor gets them after this is
+   * called.
+   *
+   * @param {XULMenuPopupElement} aPopup - The popup to initialize on.
+   */
   initMenu(aPopup) {
     this.menu = aPopup;
 
     // Get contextual info.
-    let node = aPopup.triggerNode;
-    this.setTarget(node);
-
-    let actions = [];
-    while (node) {
-      if (node._originalMsg) {
-        let msg = node._originalMsg;
-        actions = msg.getActions();
-        break;
-      }
-      node = node.parentNode;
-    }
+    this.setTarget();
 
     this.isTextSelected = this.isTextSelection();
     this.isContentSelected = this.isContentSelection();
@@ -81,7 +82,17 @@ imContextMenu.prototype = {
 
     this.showItem("context-copy", this.isContentSelected);
     this.showItem("context-selectall", !this.onLink || this.isContentSelected);
-    this.showItem("context-sep-messageactions", actions.length);
+    if (!this.initedActions) {
+      const actor =
+        nsContextMenu.contentData.browser.browsingContext.currentWindowGlobal?.getActor(
+          "ChatAction"
+        );
+      if (actor?.actions) {
+        this.initActions(actor.actions);
+      } else {
+        this.showItem("context-sep-messageactions", false);
+      }
+    }
 
     // Copy email link depends on whether we're on an email link.
     this.showItem("context-copyemail", this.onMailtoLink);
@@ -92,96 +103,49 @@ imContextMenu.prototype = {
       "context-sep-copylink",
       this.onLink && this.isContentSelected
     );
+  },
+
+  /**
+   * Adds the given message actions to the context menu.
+   *
+   * @param {Array<string>} actions - Array containing the labels for the
+   *   available actions.
+   */
+  initActions(actions) {
+    this.showItem("context-sep-messageactions", actions.length > 0);
 
     // Display action menu items.
-    let sep = document.getElementById("context-sep-messageactions");
-    for (let action of actions) {
-      let menuitem = document.createXULElement("menuitem");
-      menuitem.setAttribute("label", action.label);
-      menuitem.setAttribute("oncommand", "this.action.run();");
-      menuitem.action = action;
+    const sep = document.getElementById("context-sep-messageactions");
+    for (const [index, label] of actions.entries()) {
+      const menuitem = document.createXULElement("menuitem");
+      menuitem.setAttribute("label", label);
+      menuitem.addEventListener("command", () => {
+        nsContextMenu.contentData.browser.browsingContext.currentWindowGlobal
+          ?.getActor("ChatAction")
+          .sendAsyncMessage("ChatAction:Run", { index });
+      });
       sep.parentNode.appendChild(menuitem);
     }
+    this.initedActions = true;
   },
 
   // Set various context menu attributes based on the state of the world.
-  setTarget(aNode) {
+  setTarget() {
     // Initialize contextual info.
-    this.onLink = false;
-    this.linkURL = "";
-    this.linkURI = null;
-    this.linkProtocol = "";
-
-    // Remember the node that was clicked.
-    this.target = aNode;
-
-    // First, do checks for nodes that never have children.
-    // Second, bubble out, looking for items of interest that can have children.
-    // Always pick the innermost link, background image, etc.
-    var elem = this.target;
-    while (elem) {
-      if (elem.nodeType == Node.ELEMENT_NODE) {
-        // Link?
-        if (
-          !this.onLink &&
-          ((elem instanceof HTMLAnchorElement && elem.href) ||
-            (elem instanceof HTMLAreaElement && elem.href) ||
-            elem instanceof HTMLLinkElement ||
-            elem.getAttributeNS("http://www.w3.org/1999/xlink", "type") ==
-              "simple")
-        ) {
-          // Target is a link or a descendant of a link.
-          this.onLink = true;
-
-          // xxxmpc: this is kind of a hack to work around a Gecko bug (see bug 266932)
-          // we're going to walk up the DOM looking for a parent link node,
-          // this shouldn't be necessary, but we're matching the existing behaviour for left click
-          var realLink = elem;
-          var parent = elem;
-          while (
-            (parent = parent.parentNode) &&
-            parent.nodeType == Node.ELEMENT_NODE
-          ) {
-            try {
-              if (
-                (parent instanceof HTMLAnchorElement && parent.href) ||
-                (parent instanceof HTMLAreaElement && parent.href) ||
-                parent instanceof HTMLLinkElement ||
-                parent.getAttributeNS("http://www.w3.org/1999/xlink", "type") ==
-                  "simple"
-              ) {
-                realLink = parent;
-              }
-            } catch (e) {}
-          }
-
-          // Remember corresponding element.
-          this.link = realLink;
-          this.linkURL = this.getLinkURL();
-          this.linkURI = this.getLinkURI();
-          this.linkProtocol = this.getLinkProtocol();
-          this.onMailtoLink = this.linkProtocol == "mailto";
-          this.onSaveableLink = this.isLinkSaveable(this.link);
-        }
-      }
-
-      elem = elem.parentNode;
-    }
-  },
-
-  // Returns true if clicked-on link targets a resource that can be saved.
-  isLinkSaveable(aLink) {
-    return (
-      this.linkProtocol &&
-      !["mailto", "javascript", "news", "snews"].includes(this.linkProtocol)
-    );
+    this.onLink = nsContextMenu.contentData.context.onLink;
+    this.linkURL = nsContextMenu.contentData.context.linkURL;
+    this.linkURI = this.getLinkURI();
+    this.linkProtocol = nsContextMenu.contentData.context.linkProtocol;
+    this.linkText = nsContextMenu.contentData.context.linkTextStr;
+    this.onMailtoLink = nsContextMenu.contentData.context.onMailtoLink;
+    this.onSaveableLink = nsContextMenu.contentData.context.onSaveableLink;
   },
 
   // Open linked-to URL in a new window.
   openLink(aURI) {
     Cc["@mozilla.org/uriloader/external-protocol-service;1"]
       .getService(Ci.nsIExternalProtocolService)
-      .loadURI(aURI || this.linkURI, window);
+      .loadURI(aURI || this.linkURI, nsContextMenu.contentData.principal);
   },
 
   // Generate email address and put it on clipboard.
@@ -244,24 +208,6 @@ imContextMenu.prototype = {
     return node;
   },
 
-  // Generate fully qualified URL for clicked-on link.
-  getLinkURL() {
-    var href = this.link.href;
-    if (href) {
-      return href;
-    }
-
-    href = this.link.getAttributeNS("http://www.w3.org/1999/xlink", "href");
-
-    if (!href || href.trim() == "") {
-      // Without this we try to save as the current doc,
-      // for example, HTML case also throws if empty
-      throw new Error("Empty href");
-    }
-
-    return makeURLAbsolute(this.link.baseURI, href);
-  },
-
   getLinkURI() {
     try {
       return Services.io.newURI(this.linkURL);
@@ -270,30 +216,6 @@ imContextMenu.prototype = {
     }
 
     return null;
-  },
-
-  getLinkProtocol() {
-    if (this.linkURI) {
-      return this.linkURI.scheme; // Can be |undefined|.
-    }
-
-    return null;
-  },
-
-  // Get text of link.
-  linkText() {
-    var text = gatherTextUnder(this.link);
-    if (text == "") {
-      text = this.link.getAttribute("title");
-      if (!text || text.trim() == "") {
-        text = this.link.getAttribute("alt");
-        if (!text || text.trim() == "") {
-          text = this.linkURL;
-        }
-      }
-    }
-
-    return text;
   },
 
   // Get selected text. Only display the first 15 chars.

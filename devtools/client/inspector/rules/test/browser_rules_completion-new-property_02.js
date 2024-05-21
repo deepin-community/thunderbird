@@ -33,6 +33,7 @@ const testData = [
   ["r", {}, "rebeccapurple", OPEN, SELECTED, CHANGE],
   ["VK_DOWN", {}, "red", OPEN, SELECTED, CHANGE],
   ["VK_DOWN", {}, "revert", OPEN, SELECTED, CHANGE],
+  ["VK_DOWN", {}, "revert-layer", OPEN, SELECTED, CHANGE],
   ["VK_DOWN", {}, "rgb", OPEN, SELECTED, CHANGE],
   ["VK_DOWN", {}, "rgba", OPEN, SELECTED, CHANGE],
   ["VK_DOWN", {}, "rosybrown", OPEN, SELECTED, CHANGE],
@@ -52,7 +53,7 @@ const TEST_URI = `
   <h1>Test element</h1>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { toolbox, inspector, view } = await openRuleView();
 
@@ -60,7 +61,7 @@ add_task(async function() {
   await runAutocompletionTest(toolbox, inspector, view);
 
   info("Test autocompletion after page navigation");
-  await refreshTab();
+  await reloadBrowser();
   await runAutocompletionTest(toolbox, inspector, view);
 });
 

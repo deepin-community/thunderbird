@@ -44,6 +44,11 @@ const Types = (exports.__TypesForTests = [
     front: "devtools/client/fronts/array-buffer",
   },
   {
+    types: ["blackboxing"],
+    spec: "devtools/shared/specs/blackboxing",
+    front: "devtools/client/fronts/blackboxing",
+  },
+  {
     types: ["breakpoint-list"],
     spec: "devtools/shared/specs/breakpoint-list",
     front: "devtools/client/fronts/breakpoint-list",
@@ -94,19 +99,9 @@ const Types = (exports.__TypesForTests = [
     front: null,
   },
   {
-    types: ["eventSource"],
-    spec: "devtools/shared/specs/eventsource",
-    front: "devtools/client/fronts/eventsource",
-  },
-  {
     types: ["frame"],
     spec: "devtools/shared/specs/frame",
     front: "devtools/client/fronts/frame",
-  },
-  {
-    types: ["framerate"],
-    spec: "devtools/shared/specs/framerate",
-    front: "devtools/client/fronts/framerate",
   },
   /* heap snapshot has old fashion client and no front */
   {
@@ -133,11 +128,6 @@ const Types = (exports.__TypesForTests = [
     types: ["manifest"],
     spec: "devtools/shared/specs/manifest",
     front: "devtools/client/fronts/manifest",
-  },
-  {
-    types: ["mediarule"],
-    spec: "devtools/shared/specs/media-rule",
-    front: "devtools/client/fronts/media-rule",
   },
   {
     types: ["memory"],
@@ -176,6 +166,11 @@ const Types = (exports.__TypesForTests = [
     front: null,
   },
   {
+    types: ["objects-manager"],
+    spec: "devtools/shared/specs/objects-manager",
+    front: "devtools/client/fronts/objects-manager",
+  },
+  {
     types: ["pagestyle"],
     spec: "devtools/shared/specs/page-style",
     front: "devtools/client/fronts/page-style",
@@ -184,16 +179,6 @@ const Types = (exports.__TypesForTests = [
     types: ["perf"],
     spec: "devtools/shared/specs/perf",
     front: "devtools/client/fronts/perf",
-  },
-  {
-    types: ["performance"],
-    spec: "devtools/shared/specs/performance",
-    front: "devtools/client/fronts/performance",
-  },
-  {
-    types: ["performance-recording"],
-    spec: "devtools/shared/specs/performance-recording",
-    front: "devtools/client/fronts/performance-recording",
   },
   {
     types: ["preference"],
@@ -242,12 +227,12 @@ const Types = (exports.__TypesForTests = [
   },
   {
     types: [
+      "Cache",
       "cookies",
       "localStorage",
-      "sessionStorage",
-      "Cache",
+      "extensionStorage",
       "indexedDB",
-      "storage",
+      "sessionStorage",
     ],
     spec: "devtools/shared/specs/storage",
     front: "devtools/client/fronts/storage",
@@ -267,11 +252,6 @@ const Types = (exports.__TypesForTests = [
     types: ["domstylerule"],
     spec: "devtools/shared/specs/style-rule",
     front: "devtools/client/fronts/style-rule",
-  },
-  {
-    types: ["stylesheet"],
-    spec: "devtools/shared/specs/style-sheet",
-    front: "devtools/client/fronts/style-sheet",
   },
   {
     types: ["stylesheets"],
@@ -294,18 +274,8 @@ const Types = (exports.__TypesForTests = [
     front: "devtools/client/fronts/target-configuration",
   },
   {
-    types: ["browsingContextTarget"],
-    spec: "devtools/shared/specs/targets/browsing-context",
-    front: "devtools/client/fronts/targets/browsing-context",
-  },
-  {
     types: ["contentProcessTarget"],
     spec: "devtools/shared/specs/targets/content-process",
-    front: null,
-  },
-  {
-    types: ["frameTarget"],
-    spec: "devtools/shared/specs/targets/frame",
     front: null,
   },
   {
@@ -317,6 +287,11 @@ const Types = (exports.__TypesForTests = [
     types: ["webExtensionTarget"],
     spec: "devtools/shared/specs/targets/webextension",
     front: null,
+  },
+  {
+    types: ["windowGlobalTarget"],
+    spec: "devtools/shared/specs/targets/window-global",
+    front: "devtools/client/fronts/targets/window-global",
   },
   {
     types: ["workerTarget"],
@@ -334,6 +309,11 @@ const Types = (exports.__TypesForTests = [
     front: "devtools/client/fronts/thread-configuration",
   },
   {
+    types: ["tracer"],
+    spec: "devtools/shared/specs/tracer",
+    front: "devtools/client/fronts/tracer",
+  },
+  {
     types: ["domwalker"],
     spec: "devtools/shared/specs/walker",
     front: "devtools/client/fronts/walker",
@@ -347,11 +327,6 @@ const Types = (exports.__TypesForTests = [
     types: ["console"],
     spec: "devtools/shared/specs/webconsole",
     front: "devtools/client/fronts/webconsole",
-  },
-  {
-    types: ["webSocket"],
-    spec: "devtools/shared/specs/websocket",
-    front: "devtools/client/fronts/websocket",
   },
   {
     types: ["pushSubscription"],

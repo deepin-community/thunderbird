@@ -34,7 +34,7 @@ add_task(async function test_network_markers_service_worker_register() {
     await SpecialPowers.spawn(
       contentBrowser,
       [serviceWorkerFileName],
-      async function(serviceWorkerFileName) {
+      async function (serviceWorkerFileName) {
         await content.wrappedJSObject.registerServiceWorkerAndWait(
           serviceWorkerFileName
         );
@@ -151,37 +151,35 @@ add_task(async function test_network_markers_service_worker_use() {
     );
     Assert.equal(
       parentRedirectMarkers.length,
-      expectedFiles.length,
-      "There should be as many redirect markers in the parent process as requested files."
+      expectedFiles.length * 2, // http -> intercepted, intercepted -> http
+      "There should be twice as many redirect markers in the parent process as requested files."
     );
     Assert.equal(
       contentStopMarkers.length,
       expectedFiles.length,
       "There should be as many stop markers in the content process as requested files."
     );
-    // Note: the redirect markers do not seem to be forwarded to the content
-    // process for the top level navigation.
-    // See Bug 1692879.
+    // Note: there will no redirect markers in the content process for
+    // ServiceWorker fallbacks request to network.
+    // See Bug 1793940.
     Assert.equal(
       contentRedirectMarkers.length,
-      expectedFiles.length - 1,
-      "There should be as one less redirect markers in the content process than requested files."
+      0,
+      "There should be no redirect markers in the content process than requested files."
     );
 
     for (const [i, expectedFile] of expectedFiles.entries()) {
       info(
         `Checking if "${expectedFile}" if present in the network markers in both processes.`
       );
-      const parentMarker = parentStopMarkers.find(
+      const [parentRedirectMarkerIntercept, parentRedirectMarkerReset] =
+        parentRedirectMarkers.filter(
+          marker => marker.data.URI === expectedFile
+        );
+      const parentStopMarker = parentStopMarkers.find(
         marker => marker.data.URI === expectedFile
       );
-      const parentRedirectMarker = parentRedirectMarkers.find(
-        marker => marker.data.URI === expectedFile
-      );
-      const contentMarker = contentStopMarkers.find(
-        marker => marker.data.URI === expectedFile
-      );
-      const contentRedirectMarker = contentRedirectMarkers.find(
+      const contentStopMarker = contentStopMarkers.find(
         marker => marker.data.URI === expectedFile
       );
 
@@ -190,9 +188,10 @@ add_task(async function test_network_markers_service_worker_use() {
           `Load \\d+:.*${escapeStringRegexp(expectedFile)}`
         ),
       };
-      Assert.objectContains(parentMarker, commonProperties);
-      Assert.objectContains(parentRedirectMarker, commonProperties);
-      Assert.objectContains(contentMarker, commonProperties);
+      Assert.objectContains(parentRedirectMarkerIntercept, commonProperties);
+      Assert.objectContains(parentRedirectMarkerReset, commonProperties);
+      Assert.objectContains(parentStopMarker, commonProperties);
+      Assert.objectContains(contentStopMarker, commonProperties);
       // Note: there's no check for the contentRedirectMarker, because there's
       // no marker for a top level navigation redirect in the content process.
 
@@ -239,7 +238,7 @@ add_task(async function test_network_markers_service_worker_use() {
         // serviceworker_page.html,
         // and in this case we don't have all the same properties. Especially
         // the innerWindowID information is missing.
-        Assert.objectContainsOnly(parentMarker.data, {
+        Assert.objectContainsOnly(parentStopMarker.data, {
           ...commonDataProperties,
           // Note that the parent process has the "cache" information, but not the content
           // process. See Bug 1544821.
@@ -248,18 +247,23 @@ add_task(async function test_network_markers_service_worker_use() {
           // "Unresolved" when we got a response from the network before the cache subsystem.
           cache: Expect.stringMatches(/^(Missed|Unresolved)$/),
         });
-        Assert.objectContainsOnly(contentMarker.data, commonDataProperties);
+        Assert.objectContainsOnly(contentStopMarker.data, commonDataProperties);
 
-        Assert.objectContainsOnly(parentRedirectMarker.data, {
+        Assert.objectContainsOnly(parentRedirectMarkerIntercept.data, {
           ...commonRedirectProperties,
-          redirectId: parentMarker.data.id,
+          redirectId: parentRedirectMarkerReset.data.id,
+          cache: "Unresolved",
+        });
+        Assert.objectContainsOnly(parentRedirectMarkerReset.data, {
+          ...commonRedirectProperties,
+          redirectId: parentStopMarker.data.id,
         });
 
         // Note: there's no check for the contentRedirectMarker, because there's
         // no marker for a top level navigation redirect in the content process.
       } else {
         // This is the other file firefox-logo-nightly.svg.
-        Assert.objectContainsOnly(parentMarker.data, {
+        Assert.objectContainsOnly(parentStopMarker.data, {
           ...commonDataProperties,
           // Because the request races with the cache, these 2 values are valid:
           // "Missed" when the cache answered before we get a result from the network.
@@ -267,20 +271,22 @@ add_task(async function test_network_markers_service_worker_use() {
           cache: Expect.stringMatches(/^(Missed|Unresolved)$/),
           innerWindowID: Expect.number(),
         });
-        Assert.objectContainsOnly(contentMarker.data, {
+        Assert.objectContains(contentStopMarker, commonProperties);
+        Assert.objectContainsOnly(contentStopMarker.data, {
           ...commonDataProperties,
           innerWindowID: Expect.number(),
         });
 
-        Assert.objectContainsOnly(parentRedirectMarker.data, {
+        Assert.objectContainsOnly(parentRedirectMarkerIntercept.data, {
           ...commonRedirectProperties,
           innerWindowID: Expect.number(),
-          redirectId: parentMarker.data.id,
+          redirectId: parentRedirectMarkerReset.data.id,
+          cache: "Unresolved",
         });
-        Assert.objectContainsOnly(contentRedirectMarker.data, {
+        Assert.objectContainsOnly(parentRedirectMarkerReset.data, {
           ...commonRedirectProperties,
           innerWindowID: Expect.number(),
-          redirectId: contentMarker.data.id,
+          redirectId: parentStopMarker.data.id,
         });
       }
     }

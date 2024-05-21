@@ -8,12 +8,10 @@
 
 @import url("chrome://messenger/skin/shared/folderMenus.css");
 
-/* Don't apply the here needless -moz-image-region to the dropmarker. */
-menulist::part(dropmarker) {
-  -moz-image-region: unset;
+.folderMenuItem .menu-iconic-left {
+  display: flex;
 }
 
 .menulist-menupopup[is="folder-menupopup"] {
   list-style-image: none;
-  -moz-image-region: unset;
 }

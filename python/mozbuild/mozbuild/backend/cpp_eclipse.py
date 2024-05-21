@@ -2,18 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import errno
 import glob
 import os
 import shutil
 import subprocess
 from xml.sax.saxutils import quoteattr
-from .common import CommonBackend
+
+from mozbuild.base import ExecutionSummary
 
 from ..frontend.data import ComputedFlags
-from mozbuild.base import ExecutionSummary
+from .common import CommonBackend
 
 # TODO Have ./mach eclipse generate the workspace and index it:
 # /Users/bgirard/mozilla/eclipse/eclipse/eclipse/eclipse -application org.eclipse.cdt.managedbuilder.core.headlessbuild -data $PWD/workspace -importAll $PWD/eclipse
@@ -172,14 +171,14 @@ class CppEclipseBackend(CommonBackend):
         # Here we generate the code formatter that will show up in the UI with
         # the name "Mozilla".  The formatter is stored as a single line of XML
         # in the org.eclipse.cdt.ui.formatterprofiles pref.
-        cdt_ui_prefs += """org.eclipse.cdt.ui.formatterprofiles=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\\n<profiles version\="1">\\n<profile kind\="CodeFormatterProfile" name\="Mozilla" version\="1">\\n"""
-        XML_PREF_TEMPLATE = """<setting id\="@PREF_NAME@" value\="@PREF_VAL@"/>\\n"""
+        cdt_ui_prefs += r'org.eclipse.cdt.ui.formatterprofiles=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<profiles version\="1">\n<profile kind\="CodeFormatterProfile" name\="Mozilla" version\="1">\n'
+        XML_PREF_TEMPLATE = r'<setting id\="@PREF_NAME@" value\="@PREF_VAL@"/>\n'
         for line in FORMATTER_SETTINGS.splitlines():
             [pref, val] = line.split("=")
             cdt_ui_prefs += XML_PREF_TEMPLATE.replace("@PREF_NAME@", pref).replace(
                 "@PREF_VAL@", val
             )
-        cdt_ui_prefs += "</profile>\\n</profiles>\\n"
+        cdt_ui_prefs += r"</profile>\n</profiles>\n"
         with open(cdt_ui_prefs_path, "w") as fh:
             fh.write(cdt_ui_prefs)
 
@@ -344,8 +343,8 @@ class CppEclipseBackend(CommonBackend):
             for i in args["includes"]:
                 dirsettings += add_abs_include_path(i)
             for d in args["defines"]:
-                assert d[:2] == u"-D" or d[:2] == u"-U"
-                if d[:2] == u"-U":
+                assert d[:2] == "-D" or d[:2] == "-U"
+                if d[:2] == "-U":
                     # gfx/harfbuzz/src uses -UDEBUG, at least on Mac
                     # netwerk/sctp/src uses -U__APPLE__ on Mac
                     # XXX We should make this code smart enough to remove existing defines.

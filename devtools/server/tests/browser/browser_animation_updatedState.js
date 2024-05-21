@@ -6,7 +6,7 @@
 
 // Check the animation player's updated state
 
-add_task(async function() {
+add_task(async function () {
   const { target, walker, animations } = await initAnimationsFrontForUrl(
     MAIN_DOMAIN + "animation.html"
   );
@@ -45,8 +45,9 @@ async function playStateIsUpdatedDynamically(walker, animations) {
     "finished",
     "The animation has ended and the state has been updated"
   );
-  ok(
-    state.currentTime > player.initialState.currentTime,
+  Assert.greater(
+    state.currentTime,
+    player.initialState.currentTime,
     "The currentTime has been updated"
   );
 }

@@ -4,6 +4,8 @@
  * Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/licenses/publicdomain/
  */
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 var gState = 0;
 /**
  * After all the on/offline handlers run,
@@ -29,7 +31,7 @@ function trace(text) {
  *                       expectedStates.
  */
 function makeHandler(nameTemplate, eventName, expectedStates) {
-  return function(e) {
+  return function (e) {
     var name = nameTemplate.replace(/%1/, eventName);
     ++gState;
     trace(name + ": gState=" + gState);

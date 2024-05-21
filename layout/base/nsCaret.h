@@ -14,11 +14,9 @@
 #include "nsCoord.h"
 #include "nsISelectionListener.h"
 #include "nsIWeakReferenceUtils.h"
-#include "CaretAssociationHint.h"
 #include "nsPoint.h"
 #include "nsRect.h"
 
-class nsDisplayListBuilder;
 class nsFrameSelection;
 class nsIContent;
 class nsIFrame;
@@ -27,6 +25,7 @@ class nsITimer;
 
 namespace mozilla {
 class PresShell;
+enum class CaretAssociationHint;
 namespace gfx {
 class DrawTarget;
 }  // namespace gfx
@@ -45,7 +44,7 @@ class nsCaret final : public nsISelectionListener {
  public:
   NS_DECL_ISUPPORTS
 
-  typedef mozilla::CaretAssociationHint CaretAssociationHint;
+  using CaretAssociationHint = mozilla::CaretAssociationHint;
 
   nsresult Init(mozilla::PresShell* aPresShell);
   void Terminate();
@@ -144,6 +143,12 @@ class nsCaret final : public nsISelectionListener {
    */
   nsIFrame* GetPaintGeometry(nsRect* aRect);
   /**
+   * Same as the overload above, but returns the caret and hook rects
+   * separately, and also computes the color if requested.
+   */
+  nsIFrame* GetPaintGeometry(nsRect* aCaretRect, nsRect* aHookRect,
+                             nscolor* aCaretColor = nullptr);
+  /**
    * A simple wrapper around GetGeometry. Does not take any caret state into
    * account other than the current selection.
    */
@@ -172,10 +177,7 @@ class nsCaret final : public nsISelectionListener {
    */
   static nsIFrame* GetGeometry(const mozilla::dom::Selection* aSelection,
                                nsRect* aRect);
-  static nsIFrame* GetCaretFrameForNodeOffset(
-      nsFrameSelection* aFrameSelection, nsIContent* aContentNode,
-      int32_t aOffset, CaretAssociationHint aFrameHint, uint8_t aBidiLevel,
-      nsIFrame** aReturnUnadjustedFrame, int32_t* aReturnOffset);
+
   static nsRect GetGeometryForFrame(nsIFrame* aFrame, int32_t aFrameOffset,
                                     nscoord* aBidiIndicatorSize);
 
@@ -194,10 +196,6 @@ class nsCaret final : public nsISelectionListener {
 
   size_t SizeOfIncludingThis(mozilla::MallocSizeOf aMallocSizeOf) const;
 
-  nsIFrame* GetFrame(int32_t* aContentOffset);
-  void ComputeCaretRects(nsIFrame* aFrame, int32_t aFrameOffset,
-                         nsRect* aCaretRect, nsRect* aHookRect);
-
  protected:
   static void CaretBlinkCallback(nsITimer* aTimer, void* aClosure);
 
@@ -212,6 +210,8 @@ class nsCaret final : public nsISelectionListener {
   };
   static Metrics ComputeMetrics(nsIFrame* aFrame, int32_t aOffset,
                                 nscoord aCaretHeight);
+  void ComputeCaretRects(nsIFrame* aFrame, int32_t aFrameOffset,
+                         nsRect* aCaretRect, nsRect* aHookRect);
 
   // Returns true if we should not draw the caret because of XUL menu popups.
   // The caret should be hidden if:
@@ -247,9 +247,9 @@ class nsCaret final : public nsISelectionListener {
   /**
    * mBlinkRate is the rate of the caret blinking the last time we read it.
    * It is used as a way to optimize whether we need to reset the blinking
-   * timer.
+   * timer. 0 or a negative value means no blinking.
    */
-  uint32_t mBlinkRate;
+  int32_t mBlinkRate;
   /**
    * mHideCount is not 0, it means that somebody doesn't want the caret
    * to be visible.  See AddForceHide() and RemoveForceHide().

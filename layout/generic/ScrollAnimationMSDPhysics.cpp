@@ -5,7 +5,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "ScrollAnimationMSDPhysics.h"
+#include "mozilla/Logging.h"
 #include "mozilla/StaticPrefs_general.h"
+#include "mozilla/ToString.h"
+
+static mozilla::LazyLogModule sApzMsdLog("apz.msd");
+#define MSD_LOG(...) MOZ_LOG(sApzMsdLog, LogLevel::Debug, (__VA_ARGS__))
 
 using namespace mozilla;
 
@@ -43,10 +48,10 @@ void ScrollAnimationMSDPhysics::Update(const TimeStamp& aTime,
 
   mLastSimulatedTime = mStartTime;
   mDestination = aDestination;
-  mModelX = AxisPhysicsMSDModel(mStartPos.x, aDestination.x,
-                                aCurrentVelocity.width, springConstant, 1);
-  mModelY = AxisPhysicsMSDModel(mStartPos.y, aDestination.y,
-                                aCurrentVelocity.height, springConstant, 1);
+  mModelX = NonOscillatingAxisPhysicsMSDModel(
+      mStartPos.x, aDestination.x, aCurrentVelocity.width, springConstant, 1);
+  mModelY = NonOscillatingAxisPhysicsMSDModel(
+      mStartPos.y, aDestination.y, aCurrentVelocity.height, springConstant, 1);
   mIsFirstIteration = false;
 }
 
@@ -54,6 +59,16 @@ void ScrollAnimationMSDPhysics::ApplyContentShift(const CSSPoint& aShiftDelta) {
   nsPoint shiftDelta = CSSPoint::ToAppUnits(aShiftDelta);
   mStartPos += shiftDelta;
   mDestination += shiftDelta;
+  TimeStamp currentTime = mLastSimulatedTime;
+  nsPoint currentPosition = PositionAt(currentTime) + shiftDelta;
+  nsSize currentVelocity = VelocityAt(currentTime);
+  double springConstant = ComputeSpringConstant(currentTime);
+  mModelX = NonOscillatingAxisPhysicsMSDModel(currentPosition.x, mDestination.x,
+                                              currentVelocity.width,
+                                              springConstant, 1);
+  mModelY = NonOscillatingAxisPhysicsMSDModel(currentPosition.y, mDestination.y,
+                                              currentVelocity.height,
+                                              springConstant, 1);
 }
 
 double ScrollAnimationMSDPhysics::ComputeSpringConstant(
@@ -98,13 +113,17 @@ double ScrollAnimationMSDPhysics::ComputeSpringConstant(
 }
 
 void ScrollAnimationMSDPhysics::SimulateUntil(const TimeStamp& aTime) {
-  if (!mLastSimulatedTime || aTime < mLastSimulatedTime) {
+  if (!mLastSimulatedTime || aTime <= mLastSimulatedTime) {
     return;
   }
   TimeDuration delta = aTime - mLastSimulatedTime;
   mModelX.Simulate(delta);
   mModelY.Simulate(delta);
   mLastSimulatedTime = aTime;
+  MSD_LOG("Simulated for duration %f, finished %d position %s velocity %s\n",
+          delta.ToMilliseconds(), IsFinished(aTime),
+          ToString(CSSPoint::FromAppUnits(PositionAt(aTime))).c_str(),
+          ToString(CSSPoint::FromAppUnits(VelocityAt(aTime))).c_str());
 }
 
 nsPoint ScrollAnimationMSDPhysics::PositionAt(const TimeStamp& aTime) {
@@ -117,4 +136,34 @@ nsSize ScrollAnimationMSDPhysics::VelocityAt(const TimeStamp& aTime) {
   SimulateUntil(aTime);
   return nsSize(NSToCoordRound(mModelX.GetVelocity()),
                 NSToCoordRound(mModelY.GetVelocity()));
+}
+
+static double ClampVelocityToMaximum(double aVelocity, double aInitialPosition,
+                                     double aDestination,
+                                     double aSpringConstant) {
+  // Clamp velocity to the maximum value it could obtain if we started at this
+  // position with zero velocity (see bug 1866904 comment 3). With a damping
+  // ratio >= 1.0, this should be low enough to avoid overshooting the
+  // destination.
+  double velocityLimit =
+      sqrt(aSpringConstant) * abs(aDestination - aInitialPosition);
+  return clamped(aVelocity, -velocityLimit, velocityLimit);
+}
+
+ScrollAnimationMSDPhysics::NonOscillatingAxisPhysicsMSDModel::
+    NonOscillatingAxisPhysicsMSDModel(double aInitialPosition,
+                                      double aInitialDestination,
+                                      double aInitialVelocity,
+                                      double aSpringConstant,
+                                      double aDampingRatio)
+    : AxisPhysicsMSDModel(
+          aInitialPosition, aInitialDestination,
+          ClampVelocityToMaximum(aInitialVelocity, aInitialPosition,
+                                 aInitialDestination, aSpringConstant),
+          aSpringConstant, aDampingRatio) {
+  MSD_LOG("Constructing axis physics model with parameters %f %f %f %f %f\n",
+          aInitialPosition, aInitialDestination, aInitialVelocity,
+          aSpringConstant, aDampingRatio);
+  MOZ_ASSERT(aDampingRatio >= 1.0,
+             "Damping ratio must be >= 1.0 to avoid oscillation");
 }

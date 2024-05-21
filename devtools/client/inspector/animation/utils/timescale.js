@@ -6,7 +6,7 @@
 
 const {
   getFormatStr,
-} = require("devtools/client/inspector/animation/utils/l10n");
+} = require("resource://devtools/client/inspector/animation/utils/l10n.js");
 
 // If total duration for all animations is eqaul to or less than
 // TIME_FORMAT_MAX_DURATION_IN_MS, the text which expresses time is in milliseconds,
@@ -39,7 +39,7 @@ class TimeScale {
       let zeroPositionTime = 0;
 
       // To shift the zero position time is the following two patterns.
-      //  * Animation has negative current time which is smaller than negative dleay.
+      //  * Animation has negative current time which is smaller than negative delay.
       //  * Animation has negative delay.
       // Furthermore, we should override the zero position time if we will need to
       // expand the duration due to this negative current time or negative delay of

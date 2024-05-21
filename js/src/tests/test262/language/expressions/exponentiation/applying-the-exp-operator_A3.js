@@ -5,6 +5,7 @@
 esid: sec-applying-the-exp-operator
 description: >
     If exponent is −0, the result is 1, even if base is NaN.
+features: [exponentiation]
 ---*/
 
 
@@ -22,7 +23,7 @@ bases[8] = NaN;
 
 for (var i = 0; i < bases.length; i++) {
   if ((bases[i] ** exponent) !== 1) {
-    $ERROR("(" + bases[i] + " ** -0) !== 1");
+    throw new Test262Error("(" + bases[i] + " ** -0) !== 1");
   }
 }
 

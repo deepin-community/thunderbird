@@ -40,10 +40,7 @@ class nsHttpChannel;
 }  // namespace net
 }  // namespace mozilla
 
-using mozilla::Maybe;
-
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 /**
  * The ReferrerInfo class holds the raw referrer and potentially a referrer
@@ -74,6 +71,10 @@ class ReferrerInfo : public nsIReferrerInfo {
   explicit ReferrerInfo(const Element&);
   explicit ReferrerInfo(const Document&);
 
+  // Creates already initialized ReferrerInfo from an element or a document with
+  // a specific referrer policy.
+  ReferrerInfo(const Element&, ReferrerPolicyEnum);
+
   // create an exact copy of the ReferrerInfo
   already_AddRefed<ReferrerInfo> Clone() const;
 
@@ -89,15 +90,8 @@ class ReferrerInfo : public nsIReferrerInfo {
   already_AddRefed<ReferrerInfo> CloneWithNewOriginalReferrer(
       nsIURI* aOriginalReferrer) const;
 
-  /*
-   * Helper function to create a new ReferrerInfo object from other. We will not
-   * pass in any computed values and override referrer policy if needed
-   *
-   * @param aOther the other referrerInfo object to init from.
-   * @param aPolicyOverride referrer policy to override if necessary.
-   */
-  static already_AddRefed<nsIReferrerInfo> CreateFromOtherAndPolicyOverride(
-      nsIReferrerInfo* aOther, ReferrerPolicyEnum aPolicyOverride);
+  // Record the telemetry for the referrer policy.
+  void RecordTelemetry(nsIHttpChannel* aChannel);
 
   /*
    * Helper function to create a new ReferrerInfo object from a given document
@@ -135,21 +129,11 @@ class ReferrerInfo : public nsIReferrerInfo {
    * Helper function to create new ReferrerInfo object from a given document.
    * The returned nsIReferrerInfo object will be used for any requests or
    * resources referenced by internal stylesheet (for example style="" or
-   * wrapped by <style> tag).
+   * wrapped by <style> tag), as well as SVG resources.
    *
    * @param aDocument the document to init referrerInfo object.
    */
-  static already_AddRefed<nsIReferrerInfo> CreateForInternalCSSResources(
-      Document* aDocument);
-
-  /**
-   * Helper function to create new ReferrerInfo object from a given document.
-   * The returned nsIReferrerInfo object will be used for any requests or
-   * resources referenced by SVG.
-   *
-   * @param aDocument the document to init referrerInfo object.
-   */
-  static already_AddRefed<nsIReferrerInfo> CreateForSVGResources(
+  static already_AddRefed<nsIReferrerInfo> CreateForInternalCSSAndSVGResources(
       Document* aDocument);
 
   /**
@@ -179,6 +163,17 @@ class ReferrerInfo : public nsIReferrerInfo {
    * do that in cases where we're going to use this information later on.
    */
   static bool IsCrossOriginRequest(nsIHttpChannel* aChannel);
+
+  /**
+   * Returns true if aReferrer's origin and aChannel's URI are cross-origin.
+   */
+  static bool IsReferrerCrossOrigin(nsIHttpChannel* aChannel,
+                                    nsIURI* aReferrer);
+
+  /**
+   * Returns true if the given channel is cross-site request.
+   */
+  static bool IsCrossSiteRequest(nsIHttpChannel* aChannel);
 
   /**
    * Returns true if the given channel is suppressed by Referrer-Policy header
@@ -219,7 +214,16 @@ class ReferrerInfo : public nsIReferrerInfo {
    */
   static ReferrerPolicyEnum GetDefaultReferrerPolicy(
       nsIHttpChannel* aChannel = nullptr, nsIURI* aURI = nullptr,
-      bool privateBrowsing = false);
+      bool aPrivateBrowsing = false);
+
+  /**
+   * Return default referrer policy for third party which is controlled by user
+   * prefs:
+   * network.http.referer.defaultPolicy.trackers for regular mode
+   * network.http.referer.defaultPolicy.trackers.pbmode for private mode
+   */
+  static ReferrerPolicyEnum GetDefaultThirdPartyReferrerPolicy(
+      bool aPrivateBrowsing = false);
 
   /*
    * Helper function to parse ReferrerPolicy from meta tag referrer content.
@@ -254,13 +258,6 @@ class ReferrerInfo : public nsIReferrerInfo {
   static ReferrerPolicyEnum ReferrerPolicyFromHeaderString(
       const nsAString& aContent);
 
-  /*
-   * Helper function to convert ReferrerPolicy enum to string
-   *
-   * @param aPolicy referrer policy to convert.
-   */
-  static const char* ReferrerPolicyToString(ReferrerPolicyEnum aPolicy);
-
   /**
    * Hash function for this object
    */
@@ -274,16 +271,6 @@ class ReferrerInfo : public nsIReferrerInfo {
   virtual ~ReferrerInfo() = default;
 
   ReferrerInfo(const ReferrerInfo& rhs);
-
-  /*
-   * Default referrer policy to use
-   */
-  enum DefaultReferrerPolicy : uint32_t {
-    eDefaultPolicyNoReferrer = 0,
-    eDefaultPolicySameOrgin = 1,
-    eDefaultPolicyStrictWhenXorigin = 2,
-    eDefaultPolicyNoReferrerWhenDownGrade = 3,
-  };
 
   /*
    * Trimming policy when compute referrer, indicate how much information in the
@@ -334,7 +321,8 @@ class ReferrerInfo : public nsIReferrerInfo {
    * This function is called when we already made sure a nonempty referrer is
    * allowed to send.
    */
-  TrimmingPolicy ComputeTrimmingPolicy(nsIHttpChannel* aChannel) const;
+  TrimmingPolicy ComputeTrimmingPolicy(nsIHttpChannel* aChannel,
+                                       nsIURI* aReferrer) const;
 
   // HttpBaseChannel could access IsInitialized() and ComputeReferrer();
   friend class mozilla::net::HttpBaseChannel;
@@ -383,6 +371,20 @@ class ReferrerInfo : public nsIReferrerInfo {
                                   TrimmingPolicy aTrimmingPolicy,
                                   nsACString& aResult) const;
 
+  /**
+   * Returns true if we should ignore less restricted referrer policies,
+   * including 'unsafe_url', 'no_referrer_when_downgrade' and
+   * 'origin_when_cross_origin', for the given channel. We only apply this
+   * restriction for cross-site requests. For the same-site request, we will
+   * still allow overriding the default referrer policy with less restricted
+   * one.
+   *
+   * Note that the channel triggered by the system and the extension will be
+   * exempt from this restriction.
+   */
+  bool ShouldIgnoreLessRestrictedPolicies(
+      nsIHttpChannel* aChannel, const ReferrerPolicyEnum aPolicy) const;
+
   /*
    *  Limit referrer length using the following ruleset:
    *   - If the length of referrer URL is over max length, strip down to origin.
@@ -409,6 +411,13 @@ class ReferrerInfo : public nsIReferrerInfo {
                                TrimmingPolicy aTrimmingPolicy,
                                nsACString& aInAndOutTrimmedReferrer) const;
 
+  /**
+   * The helper function to read the old data format before gecko 100 for
+   * deserialization.
+   */
+  nsresult ReadTailDataBeforeGecko100(const uint32_t& aData,
+                                      nsIObjectInputStream* aInputStream);
+
   /*
    * Write message to the error console
    */
@@ -420,6 +429,12 @@ class ReferrerInfo : public nsIReferrerInfo {
   nsCOMPtr<nsIURI> mOriginalReferrer;
 
   ReferrerPolicyEnum mPolicy;
+
+  // The referrer policy that has been set originally for the channel. Note that
+  // the policy may have been overridden by the default referrer policy, so we
+  // need to keep track of this if we need to recover the original referrer
+  // policy.
+  ReferrerPolicyEnum mOriginalPolicy;
 
   // Indicates if the referrer should be sent or not even when it's available
   // (default is true).
@@ -435,9 +450,14 @@ class ReferrerInfo : public nsIReferrerInfo {
 
   // Store a computed referrer for a given channel
   Maybe<nsCString> mComputedReferrer;
+
+#ifdef DEBUG
+  // Indicates if the telemetry has been recorded. This is used to make sure the
+  // telemetry will be only recored once.
+  bool mTelemetryRecorded = false;
+#endif  // DEBUG
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_ReferrerInfo_h

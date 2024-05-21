@@ -17,9 +17,9 @@
 #include "base/win/windows_version.h"
 #include "sandbox/win/src/acl.h"
 #include "sandbox/win/src/filesystem_policy.h"
-#include "sandbox/win/src/handle_policy.h"
 #include "sandbox/win/src/interception.h"
 #include "sandbox/win/src/job.h"
+#include "sandbox/win/src/line_break_policy.h"
 #include "sandbox/win/src/named_pipe_policy.h"
 #include "sandbox/win/src/policy_broker.h"
 #include "sandbox/win/src/policy_engine_processor.h"
@@ -774,14 +774,6 @@ ResultCode PolicyBase::AddRuleInternal(SubSystem subsystem,
       }
       break;
     }
-    case SUBSYS_HANDLES: {
-      if (!HandlePolicy::GenerateRules(pattern, semantics, policy_maker_)) {
-        NOTREACHED();
-        return SBOX_ERROR_BAD_PARAMS;
-      }
-      break;
-    }
-
     case SUBSYS_WIN32K_LOCKDOWN: {
       // Win32k intercept rules only supported on Windows 8 and above. This must
       // match the version checks in process_mitigations.cc for consistency.
@@ -804,13 +796,20 @@ ResultCode PolicyBase::AddRuleInternal(SubSystem subsystem,
       // consistency.
       if (base::win::GetVersion() >= base::win::Version::WIN10_TH2) {
         DCHECK_EQ(MITIGATION_FORCE_MS_SIGNED_BINS,
-                  mitigations_ & MITIGATION_FORCE_MS_SIGNED_BINS)
+                  (mitigations_ & MITIGATION_FORCE_MS_SIGNED_BINS) | (delayed_mitigations_ & MITIGATION_FORCE_MS_SIGNED_BINS))
             << "Enable MITIGATION_FORCE_MS_SIGNED_BINS before adding signed "
                "policy rules.";
         if (!SignedPolicy::GenerateRules(pattern, semantics, policy_maker_)) {
           NOTREACHED();
           return SBOX_ERROR_BAD_PARAMS;
         }
+      }
+      break;
+    }
+    case SUBSYS_LINE_BREAK: {
+      if (!LineBreakPolicy::GenerateRules(pattern, semantics, policy_maker_)) {
+        NOTREACHED();
+        return SBOX_ERROR_BAD_PARAMS;
       }
       break;
     }

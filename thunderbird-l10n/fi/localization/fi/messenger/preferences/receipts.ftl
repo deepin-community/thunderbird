@@ -4,6 +4,7 @@
 
 receipts-dialog-window =
     .title = Vastaanottokuittaukset
+receipts-dialog-title = Vastaanottokuittaukset
 return-receipt-checkbox-control =
     .label = Lähetettäessä viestiä, pyydä aina vastaanottokuittaus
     .accesskey = W
@@ -18,6 +19,12 @@ receipt-request-label = Vastaanottaessani vastaanottokuittauspyynnön:
 receipt-return-never-radio-control =
     .label = Älä koskaan lähetä vastaanottokuittausta
     .accesskey = Ä
+receipt-return-some-radio-control =
+    .label = Salli vastaanottokuittaukset joillekin viesteille
+    .accesskey = S
+receipt-not-to-cc-label =
+    .value = Jos en ole viestin vastaanottaja- tai kopiokentässä:
+    .accesskey = J
 receipt-send-never-label =
     .label = Älä lähetä
 receipt-send-always-label =

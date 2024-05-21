@@ -11,6 +11,7 @@
 #include "mozilla/dom/ImageUtils.h"
 #include "mozilla/gfx/Point.h"
 #include "mozilla/RefPtr.h"
+#include "mozilla/Result.h"
 #include "nsThreadUtils.h"
 
 using mozilla::ImageFormat;
@@ -41,11 +42,12 @@ static already_AddRefed<SourceSurface> GetSourceSurface(Image* aImage) {
 
   // GLImage::GetAsSourceSurface() only supports main thread
   RefPtr<SourceSurface> surf;
-  NS_DispatchToMainThread(
+  NS_DispatchAndSpinEventLoopUntilComplete(
+      "ImageToI420::GLImage::GetSourceSurface"_ns,
+      mozilla::GetMainThreadSerialEventTarget(),
       NS_NewRunnableFunction(
           "ImageToI420::GLImage::GetSourceSurface",
-          [&aImage, &surf]() { surf = aImage->GetAsSourceSurface(); }),
-      NS_DISPATCH_SYNC);
+          [&aImage, &surf]() { surf = aImage->GetAsSourceSurface(); }));
 
   return surf.forget();
 }
@@ -74,7 +76,12 @@ nsresult ConvertToI420(Image* aImage, uint8_t* aDestY, int aDestStrideY,
 
   if (const PlanarYCbCrData* data = GetPlanarYCbCrData(aImage)) {
     const ImageUtils imageUtils(aImage);
-    switch (imageUtils.GetFormat()) {
+    Maybe<dom::ImageBitmapFormat> format = imageUtils.GetFormat();
+    if (format.isNothing()) {
+      MOZ_ASSERT_UNREACHABLE("YUV format conversion not implemented");
+      return NS_ERROR_NOT_IMPLEMENTED;
+    }
+    switch (format.value()) {
       case ImageBitmapFormat::YUV420P:
         return MapRv(libyuv::I420ToI420(
             data->mYChannel, data->mYStride, data->mCbChannel,

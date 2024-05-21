@@ -5,26 +5,23 @@ const { MockFilePicker } = SpecialPowers;
 let pickerMocked = false;
 
 class PrintHelper {
-  static async withTestPage(testFn, pagePathname) {
-    await SpecialPowers.pushPrefEnv({
-      set: [["print.tab_modal.enabled", true]],
-    });
-
-    let pageUrl = pagePathname
-      ? this.getTestPageUrl(pagePathname)
-      : this.defaultTestPageUrl;
+  static async withTestPage(testFn, pagePathname, useHTTPS = false) {
+    let pageUrl = "";
+    if (pagePathname) {
+      pageUrl = useHTTPS
+        ? this.getTestPageUrlHTTPS(pagePathname)
+        : this.getTestPageUrl(pagePathname);
+    } else {
+      pageUrl = useHTTPS
+        ? this.defaultTestPageUrlHTTPS
+        : this.defaultTestPageUrl;
+    }
     info("withTestPage: " + pageUrl);
     let isPdf = pageUrl.endsWith(".pdf");
 
-    if (isPdf) {
-      await SpecialPowers.pushPrefEnv({
-        set: [["pdfjs.eventBusDispatchToDOM", true]],
-      });
-    }
-
     let taskReturn = await BrowserTestUtils.withNewTab(
       isPdf ? "about:blank" : pageUrl,
-      async function(browser) {
+      async function (browser) {
         if (isPdf) {
           let loaded = BrowserTestUtils.waitForContentEvent(
             browser,
@@ -33,9 +30,7 @@ class PrintHelper {
             null,
             true
           );
-          await SpecialPowers.spawn(browser, [pageUrl], contentUrl => {
-            content.location = contentUrl;
-          });
+          BrowserTestUtils.startLoadingURIString(browser, pageUrl);
           await loaded;
         }
         await testFn(new PrintHelper(browser));
@@ -50,6 +45,10 @@ class PrintHelper {
     // Reset all of the other printing prefs to their default.
     this.resetPrintPrefs();
     return taskReturn;
+  }
+
+  static async withTestPageHTTPS(testFn, pagePathname) {
+    return this.withTestPage(testFn, pagePathname, /* useHttps */ true);
   }
 
   static resetPrintPrefs() {
@@ -68,8 +67,20 @@ class PrintHelper {
     return testPath + pathName;
   }
 
+  static getTestPageUrlHTTPS(pathName) {
+    const testPath = getRootDirectory(gTestPath).replace(
+      "chrome://mochitests/content",
+      "https://example.com"
+    );
+    return testPath + pathName;
+  }
+
   static get defaultTestPageUrl() {
     return this.getTestPageUrl("simplifyArticleSample.html");
+  }
+
+  static get defaultTestPageUrlHTTPS() {
+    return this.getTestPageUrlHTTPS("simplifyArticleSample.html");
   }
 
   static createMockPaper(paperProperties = {}) {
@@ -80,38 +91,18 @@ class PrintHelper {
         width: 612,
         height: 792,
         unwriteableMargin: Promise.resolve(
-          Object.assign(
-            {
-              top: 0.1,
-              bottom: 0.1,
-              left: 0.1,
-              right: 0.1,
-              QueryInterface: ChromeUtils.generateQI([Ci.nsIPaperMargin]),
-            },
-            paperProperties.unwriteableMargin
-          )
+          paperProperties.unwriteableMargin || {
+            top: 0.1,
+            bottom: 0.1,
+            left: 0.1,
+            right: 0.1,
+            QueryInterface: ChromeUtils.generateQI([Ci.nsIPaperMargin]),
+          }
         ),
         QueryInterface: ChromeUtils.generateQI([Ci.nsIPaper]),
       },
       paperProperties
     );
-  }
-
-  // This is used only for the old print preview. For tests
-  // involving the newer UI, use waitForPreview instead.
-  static waitForOldPrintPreview(expectedBrowser) {
-    const { PrintingParent } = ChromeUtils.import(
-      "resource://gre/actors/PrintingParent.jsm"
-    );
-
-    return new Promise(resolve => {
-      PrintingParent.setTestListener(browser => {
-        if (browser == expectedBrowser) {
-          PrintingParent.setTestListener(null);
-          resolve();
-        }
-      });
-    });
   }
 
   constructor(sourceBrowser) {
@@ -170,7 +161,8 @@ class PrintHelper {
   }
 
   resetSettings() {
-    this.win.PrintEventHandler.settings = this.win.PrintEventHandler.defaultSettings;
+    this.win.PrintEventHandler.settings =
+      this.win.PrintEventHandler.defaultSettings;
     this.win.PrintEventHandler.saveSettingsToPrefs(
       this.win.PrintEventHandler.kInitSaveAll
     );
@@ -187,14 +179,15 @@ class PrintHelper {
 
   assertDialogOpen() {
     is(this._dialogs.length, 1, "There is one print dialog");
-    ok(BrowserTestUtils.is_visible(this.dialog._box), "The dialog is visible");
+    ok(BrowserTestUtils.isVisible(this.dialog._box), "The dialog is visible");
   }
 
   assertDialogHidden() {
     is(this._dialogs.length, 1, "There is one print dialog");
-    ok(BrowserTestUtils.is_hidden(this.dialog._box), "The dialog is hidden");
-    ok(
-      this.dialog._box.getBoundingClientRect().width > 0,
+    ok(BrowserTestUtils.isHidden(this.dialog._box), "The dialog is hidden");
+    Assert.greater(
+      this.dialog._box.getBoundingClientRect().width,
+      0,
       "The dialog should still have boxes"
     );
   }
@@ -215,7 +208,7 @@ class PrintHelper {
       50
     );
 
-    ok(file.fileSize > 0, "Target file not empty");
+    Assert.greater(file.fileSize, 0, "Target file not empty");
   }
 
   setupMockPrint() {
@@ -223,11 +216,14 @@ class PrintHelper {
       throw new Error("Print already mocked");
     }
 
-    // Create some Promises that we can resolve/reject from the test.
-    let showSystemDialogPromise = new Promise((resolve, reject) => {
-      this.resolveShowSystemDialog = resolve;
-      this.rejectShowSystemDialog = () => {
-        reject(Components.Exception("", Cr.NS_ERROR_ABORT));
+    // Create some Promises that we can resolve from the test.
+    let showSystemDialogPromise = new Promise(resolve => {
+      this.resolveShowSystemDialog = result => {
+        if (result !== undefined) {
+          resolve(result);
+        } else {
+          resolve(true);
+        }
       };
     });
     let printPromise = new Promise((resolve, reject) => {
@@ -236,7 +232,14 @@ class PrintHelper {
     });
 
     // Mock PrintEventHandler with our Promises.
-    this.win.PrintEventHandler._showPrintDialog = () => showSystemDialogPromise;
+    this.win.PrintEventHandler._showPrintDialog = (
+      window,
+      haveSelection,
+      settings
+    ) => {
+      this.systemDialogOpenedWithSelection = haveSelection;
+      return showSystemDialogPromise;
+    };
     this.win.PrintEventHandler._doPrint = (bc, settings) => {
       this._printedSettings = settings;
       return printPromise;
@@ -265,11 +268,12 @@ class PrintHelper {
       ).fallbackPaperList;
     }
 
-    let defaultSettings = PSSVC.newPrintSettings;
+    let defaultSettings = PSSVC.createNewPrintSettings();
     defaultSettings.printerName = name;
     defaultSettings.toFileName = "";
     defaultSettings.outputFormat = Ci.nsIPrintSettings.kOutputFormatNative;
-    defaultSettings.printToFile = false;
+    defaultSettings.outputDestination =
+      Ci.nsIPrintSettings.kOutputDestinationPrinter;
     defaultSettings.paperSizeUnit = paperSizeUnit;
     if (paperId) {
       defaultSettings.paperId = paperId;
@@ -412,7 +416,7 @@ class PrintHelper {
     if (scroll) {
       el.scrollIntoView();
     }
-    ok(BrowserTestUtils.is_visible(el), "Element must be visible to click");
+    ok(BrowserTestUtils.isVisible(el), "Element must be visible to click");
     EventUtils.synthesizeMouseAtCenter(el, {}, this.win);
   }
 
@@ -517,7 +521,7 @@ class PrintHelper {
   mockFilePickerCancel() {
     if (!pickerMocked) {
       pickerMocked = true;
-      MockFilePicker.init(window);
+      MockFilePicker.init(window.browsingContext);
       registerCleanupFunction(() => MockFilePicker.cleanup());
     }
     MockFilePicker.returnValue = MockFilePicker.returnCancel;
@@ -526,7 +530,7 @@ class PrintHelper {
   mockFilePicker(filename) {
     if (!pickerMocked) {
       pickerMocked = true;
-      MockFilePicker.init(window);
+      MockFilePicker.init(window.browsingContext);
       registerCleanupFunction(() => MockFilePicker.cleanup());
     }
     MockFilePicker.returnValue = MockFilePicker.returnOK;
@@ -543,8 +547,8 @@ class PrintHelper {
 }
 
 function waitForPreviewVisible() {
-  return BrowserTestUtils.waitForCondition(function() {
+  return BrowserTestUtils.waitForCondition(function () {
     let preview = document.querySelector(".printPreviewBrowser");
-    return preview && BrowserTestUtils.is_visible(preview);
+    return preview && BrowserTestUtils.isVisible(preview);
   });
 }

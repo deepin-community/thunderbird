@@ -3,7 +3,10 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 // Test enabling and disabling a debugger statement using editor context menu
-add_task(async function() {
+
+"use strict";
+
+add_task(async function () {
   const dbg = await initDebugger("doc-pause-points.html", "pause-points.js");
   await selectSource(dbg, "pause-points.js");
   await waitForSelectedSource(dbg, "pause-points.js");
@@ -38,7 +41,7 @@ add_task(async function() {
 
   info("Enable the breakpoint for the second debugger statement on line 12");
   let bpElements = await waitForAllElements(dbg, "columnBreakpoints");
-  ok(bpElements.length === 2, "2 column breakpoints");
+  Assert.strictEqual(bpElements.length, 2, "2 column breakpoints");
   assertClass(bpElements[0], "active");
   assertClass(bpElements[1], "active", false);
 
@@ -87,5 +90,5 @@ function waitForBreakpointWithoutCondition(dbg, url, line, index) {
 
 function findBreakpoints(dbg, url, line) {
   const source = findSource(dbg, url);
-  return dbg.selectors.getBreakpointsForSource(source.id, line);
+  return dbg.selectors.getBreakpointsForSource(source, line);
 }

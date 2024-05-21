@@ -8,8 +8,7 @@
 #include "MediaControlKeySource.h"
 #include "MediaStatusManager.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class BrowsingContext;
 
@@ -67,7 +66,7 @@ class ContentMediaAgent : public IMediaInfoUpdater {
   void NotifyMediaFullScreenState(uint64_t aBrowsingContextId,
                                   bool aIsInFullScreen) override;
   void UpdatePositionState(uint64_t aBrowsingContextId,
-                           const PositionState& aState) override;
+                           const Maybe<PositionState>& aState) override;
 
   // Use these methods to register/unregister `ContentMediaControlKeyReceiver`
   // in order to listen to media control key events.
@@ -105,7 +104,6 @@ class ContentMediaController final : public ContentMediaAgent,
   nsTArray<RefPtr<ContentMediaControlKeyReceiver>> mReceivers;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // DOM_MEDIA_MEDIACONTROL_CONTENTMEDIACONTROLLER_H_

@@ -3,11 +3,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
+const { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
 );
-const { UpdateUtils } = ChromeUtils.import(
-  "resource://gre/modules/UpdateUtils.jsm"
+const { UpdateUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/UpdateUtils.sys.mjs"
 );
 
 const PREF_APP_UPDATE_CHANNEL = "app.update.channel";
@@ -25,6 +25,7 @@ add_task(async function test_updatechannel() {
   Assert.equal(UpdateUtils.getUpdateChannel(true), currentChannel);
   Assert.equal(UpdateUtils.getUpdateChannel(false), currentChannel);
 
+  defaultPrefs.unlock(PREF_APP_UPDATE_CHANNEL);
   defaultPrefs.set(PREF_APP_UPDATE_CHANNEL, TEST_CHANNEL);
   Assert.equal(UpdateUtils.UpdateChannel, TEST_CHANNEL);
   Assert.equal(UpdateUtils.getUpdateChannel(true), TEST_CHANNEL);

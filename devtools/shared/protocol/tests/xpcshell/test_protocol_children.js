@@ -7,16 +7,8 @@
 /**
  * Test simple requests using the protocol helpers.
  */
-const protocol = require("devtools/shared/protocol");
+const protocol = require("resource://devtools/shared/protocol.js");
 const { types, Arg, RetVal } = protocol;
-
-function simpleHello() {
-  return {
-    from: "root",
-    applicationType: "xpcshell-tests",
-    traits: [],
-  };
-}
 
 // Predeclaring the actor type so that it can be used in the
 // implementation of the child actor.
@@ -93,62 +85,62 @@ const childSpec = protocol.generateActorSpec({
   },
 });
 
-var ChildActor = protocol.ActorClassWithSpec(childSpec, {
+class ChildActor extends protocol.Actor {
+  constructor(conn, id) {
+    super(conn, childSpec);
+    this.childID = id;
+  }
+
   // Actors returned by this actor should be owned by the root actor.
   marshallPool() {
     return this.getParent();
-  },
+  }
 
   toString() {
     return "[ChildActor " + this.childID + "]";
-  },
-
-  initialize(conn, id) {
-    protocol.Actor.prototype.initialize.call(this, conn);
-    this.childID = id;
-  },
+  }
 
   destroy() {
-    protocol.Actor.prototype.destroy.call(this);
+    super.destroy();
     this.destroyed = true;
-  },
+  }
 
   form() {
     return {
       actor: this.actorID,
       childID: this.childID,
     };
-  },
+  }
 
   echo(str) {
     return str;
-  },
+  }
 
   getDetail1() {
     return this;
-  },
+  }
 
   getDetail2() {
     return this;
-  },
+  }
 
   getIDDetail() {
     return this;
-  },
+  }
 
   getIntArray(inputArray) {
     // Test that protocol.js converts an iterator to an array.
-    const f = function*() {
+    const f = function* () {
       for (const i of inputArray) {
         yield 2 * i;
       }
     };
     return f();
-  },
+  }
 
   getSibling(id) {
     return this.getParent().getChild(id);
-  },
+  }
 
   emitEvents() {
     this.emit("event1", 1, 2, 3);
@@ -157,10 +149,10 @@ var ChildActor = protocol.ActorClassWithSpec(childSpec, {
     this.emit("object-event", this);
     this.emit("array-object-event", [this]);
     return "correct response";
-  },
+  }
 
-  release() {},
-});
+  release() {}
+}
 
 class ChildFront extends protocol.FrontClassWithSpec(childSpec) {
   constructor(client, targetFront, parentFront) {
@@ -201,7 +193,7 @@ class ChildFront extends protocol.FrontClassWithSpec(childSpec) {
     });
   }
 
-  onEvent2b(a, b, c) {
+  onEvent2b(a, b) {
     this.event2arg2 = b;
   }
 }
@@ -217,11 +209,17 @@ const otherChildSpec = protocol.generateActorSpec({
   },
   events: {},
 });
-const OtherChildActor = protocol.ActorClassWithSpec(otherChildSpec, {
+
+class OtherChildActor extends protocol.Actor {
+  constructor(conn) {
+    super(conn, otherChildSpec);
+  }
+
   getOtherChild() {
     return new OtherChildActor(this.conn);
-  },
-});
+  }
+}
+
 class OtherChildFront extends protocol.FrontClassWithSpec(otherChildSpec) {}
 protocol.registerFront(OtherChildFront);
 
@@ -268,19 +266,26 @@ const rootSpec = protocol.generateActorSpec({
 });
 
 let rootActor = null;
-const RootActor = protocol.ActorClassWithSpec(rootSpec, {
-  toString() {
-    return "[root actor]";
-  },
+class RootActor extends protocol.Actor {
+  constructor(conn) {
+    super(conn, rootSpec);
 
-  initialize(conn) {
     rootActor = this;
     this.actorID = "root";
     this._children = {};
-    protocol.Actor.prototype.initialize.call(this, conn);
-  },
+  }
 
-  sayHello: simpleHello,
+  toString() {
+    return "[root actor]";
+  }
+
+  sayHello() {
+    return {
+      from: "root",
+      applicationType: "xpcshell-tests",
+      traits: [],
+    };
+  }
 
   getChild(id) {
     if (id in this._children) {
@@ -289,26 +294,26 @@ const RootActor = protocol.ActorClassWithSpec(rootSpec, {
     const child = new ChildActor(this.conn, id);
     this._children[id] = child;
     return child;
-  },
+  }
 
   // Other child actor won't all be own by the root actor
   // and can have their own children
   getOtherChild() {
     return new OtherChildActor(this.conn);
-  },
+  }
 
   getChildren(ids) {
     return ids.map(id => this.getChild(id));
-  },
+  }
 
   getChildren2(ids) {
-    const f = function*() {
+    const f = function* () {
       for (const c of ids) {
         yield c;
       }
     };
     return f();
-  },
+  }
 
   getManyChildren() {
     return {
@@ -317,26 +322,26 @@ const RootActor = protocol.ActorClassWithSpec(rootSpec, {
       child5: this.getChild("child5"),
       more: [this.getChild("child6"), this.getChild("child7")],
     };
-  },
+  }
 
-  getPolymorphism: function(id) {
+  getPolymorphism(id) {
     if (id == 0) {
       return new ChildActor(this.conn, id);
     } else if (id == 1) {
       return new OtherChildActor(this.conn);
     }
     throw new Error("Unexpected id");
-  },
+  }
 
-  requestPolymorphism: function(id, actor) {
+  requestPolymorphism(id, actor) {
     if (id == 0 && actor instanceof ChildActor) {
       return actor;
     } else if (id == 1 && actor instanceof OtherChildActor) {
       return actor;
     }
     throw new Error("Unexpected id or actor");
-  },
-});
+  }
+}
 
 class RootFront extends protocol.FrontClassWithSpec(rootSpec) {
   constructor(client, targetFront, parentFront) {
@@ -366,9 +371,9 @@ function childrenOfType(pool, type) {
   return children.filter(child => child instanceof type);
 }
 
-add_task(async function() {
+add_task(async function () {
   DevToolsServer.createRootActor = conn => {
-    return RootActor(conn);
+    return new RootActor(conn);
   };
   DevToolsServer.init();
 
@@ -524,7 +529,7 @@ async function testEvents(trace) {
     set.delete("array-object-event");
   });
 
-  const fail = function() {
+  const fail = function () {
     do_throw("Unexpected event");
   };
   ret[1].on("event1", fail);
@@ -591,9 +596,9 @@ async function testManyChildren(trace) {
   Assert.equal(ret.more[1].childID, "child7");
 }
 
-async function testGenerator(trace) {
+async function testGenerator() {
   // Test accepting a generator.
-  const f = function*() {
+  const f = function* () {
     for (const i of [1, 2, 3, 4, 5]) {
       yield i;
     }
@@ -606,7 +611,7 @@ async function testGenerator(trace) {
   }
 
   const ids = await rootFront.getChildren(["child1", "child2"]);
-  const f2 = function*() {
+  const f2 = function* () {
     for (const id of ids) {
       yield id;
     }
@@ -618,7 +623,7 @@ async function testGenerator(trace) {
   Assert.ok(ret[1] instanceof ChildFront);
 }
 
-async function testPolymorphism(trace) {
+async function testPolymorphism() {
   // Check polymorphic types returned by an actor
   const firstChild = await rootFront.getPolymorphism(0);
   Assert.ok(firstChild instanceof ChildFront);
@@ -648,7 +653,7 @@ async function testPolymorphism(trace) {
   }, /Was expecting one of these actors 'childActor,otherChildActor' but instead got an actor of type: 'root'/);
 }
 
-async function testUnmanageChildren(trace) {
+async function testUnmanageChildren() {
   // There is already one front of type OtherChildFront
   Assert.equal(childrenOfType(rootFront, OtherChildFront).length, 1);
 
@@ -666,7 +671,7 @@ async function testUnmanageChildren(trace) {
   Assert.equal(childrenOfType(rootFront, OtherChildFront).length, 0);
 }
 
-async function testDestroy(trace) {
+async function testDestroy() {
   const front = await rootFront.getOtherChild();
   const otherChildFront = await front.getOtherChild();
   Assert.equal(

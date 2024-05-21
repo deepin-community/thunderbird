@@ -22,7 +22,7 @@ const LABEL_BREAKDOWN = {
 
 const MAX_INDIVIDUALS = 10;
 
-add_task(async function() {
+add_task(async function () {
   const client = new HeapAnalysesClient();
 
   const snapshotFilePath = saveNewHeapSnapshot();
@@ -71,8 +71,9 @@ add_task(async function() {
           "number",
           "individual.nodeId should be a number"
         );
-        ok(
-          individual.retainedSize <= lastRetainedSize,
+        Assert.lessOrEqual(
+          individual.retainedSize,
+          lastRetainedSize,
           "individual.retainedSize <= lastRetainedSize"
         );
         lastRetainedSize = individual.retainedSize;

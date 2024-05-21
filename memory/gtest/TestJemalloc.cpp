@@ -4,49 +4,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mozilla/Literals.h"
 #include "mozilla/mozalloc.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
 #include "mozilla/Vector.h"
+#include "mozilla/gtest/MozHelpers.h"
 #include "mozmemory.h"
 #include "nsCOMPtr.h"
-#include "nsICrashReporter.h"
-#include "nsServiceManagerUtils.h"
 #include "Utils.h"
 
 #include "gtest/gtest.h"
 
 #ifdef MOZ_PHC
-#  include "replace_malloc_bridge.h"
-#endif
-
-#if defined(DEBUG) && !defined(XP_WIN) && !defined(ANDROID)
-#  define HAS_GDB_SLEEP_DURATION 1
-extern unsigned int _gdb_sleep_duration;
-#endif
-
-// Death tests are too slow on OSX because of the system crash reporter.
-#ifndef XP_DARWIN
-static void DisableCrashReporter() {
-  nsCOMPtr<nsICrashReporter> crashreporter =
-      do_GetService("@mozilla.org/toolkit/crash-reporter;1");
-  if (crashreporter) {
-    crashreporter->SetEnabled(false);
-  }
-}
-
-// Wrap ASSERT_DEATH_IF_SUPPORTED to disable the crash reporter
-// when entering the subprocess, so that the expected crashes don't
-// create a minidump that the gtest harness will interpret as an error.
-#  define ASSERT_DEATH_WRAP(a, b) \
-    ASSERT_DEATH_IF_SUPPORTED(    \
-        {                         \
-          DisableCrashReporter(); \
-          a;                      \
-        },                        \
-        b)
-#else
-#  define ASSERT_DEATH_WRAP(a, b)
+#  include "PHC.h"
 #endif
 
 using namespace mozilla;
@@ -55,13 +26,13 @@ class AutoDisablePHCOnCurrentThread {
  public:
   AutoDisablePHCOnCurrentThread() {
 #ifdef MOZ_PHC
-    ReplaceMalloc::DisablePHCOnCurrentThread();
+    mozilla::phc::DisablePHCOnCurrentThread();
 #endif
   }
 
   ~AutoDisablePHCOnCurrentThread() {
 #ifdef MOZ_PHC
-    ReplaceMalloc::ReenablePHCOnCurrentThread();
+    mozilla::phc::ReenablePHCOnCurrentThread();
 #endif
   }
 };
@@ -136,9 +107,10 @@ TEST(Jemalloc, PtrInfo)
   jemalloc_ptr_info_t info;
   Vector<char*> small, large, huge;
 
-  // For small (<= 2KiB) allocations, test every position within many possible
-  // sizes.
-  size_t small_max = stats.page_size / 2;
+  // For small (less than half the page size) allocations, test every position
+  // within many possible sizes.
+  size_t small_max =
+      stats.subpage_max ? stats.subpage_max : stats.quantum_wide_max;
   for (size_t n = 0; n <= small_max; n += 8) {
     auto p = (char*)moz_arena_malloc(arenaId, n);
     size_t usable = moz_malloc_size_of(p);
@@ -149,7 +121,7 @@ TEST(Jemalloc, PtrInfo)
     }
   }
 
-  // Similar for large (2KiB + 1 KiB .. 1MiB - 8KiB) allocations.
+  // Similar for large (small_max + 1 KiB .. 1MiB - 8KiB) allocations.
   for (size_t n = small_max + 1_KiB; n <= stats.large_max; n += 1_KiB) {
     auto p = (char*)moz_arena_malloc(arenaId, n);
     size_t usable = moz_malloc_size_of(p);
@@ -199,7 +171,7 @@ TEST(Jemalloc, PtrInfo)
   // the former.
   ASSERT_TRUE(isFreedAlloc != 0);
   ASSERT_TRUE(isFreedPage != 0);
-  ASSERT_TRUE(isFreedAlloc / isFreedPage > 10);
+  ASSERT_TRUE(isFreedAlloc / isFreedPage > 8);
 
   // Free the large allocations and recheck them.
   len = large.length();
@@ -277,7 +249,7 @@ TEST(Jemalloc, PtrInfo)
   moz_dispose_arena(arenaId);
 }
 
-size_t sSizes[] = {1,      42,      79,      918,     1.5_KiB,
+size_t sSizes[] = {1,      42,      79,      918,     1.4_KiB,
                    73_KiB, 129_KiB, 1.1_MiB, 2.6_MiB, 5.1_MiB};
 
 TEST(Jemalloc, Arenas)
@@ -294,11 +266,8 @@ TEST(Jemalloc, Arenas)
   free(ptr);
   moz_dispose_arena(arena);
 
-#ifdef HAS_GDB_SLEEP_DURATION
   // Avoid death tests adding some unnecessary (long) delays.
-  unsigned int old_gdb_sleep_duration = _gdb_sleep_duration;
-  _gdb_sleep_duration = 0;
-#endif
+  SAVE_GDB_SLEEP_LOCAL();
 
   // Can't use an arena after it's disposed.
   // ASSERT_DEATH_WRAP(moz_arena_malloc(arena, 80), "");
@@ -332,9 +301,7 @@ TEST(Jemalloc, Arenas)
   moz_dispose_arena(arena2);
   moz_dispose_arena(arena);
 
-#ifdef HAS_GDB_SLEEP_DURATION
-  _gdb_sleep_duration = old_gdb_sleep_duration;
-#endif
+  RESTORE_GDB_SLEEP_LOCAL();
 }
 
 // Check that a buffer aPtr is entirely filled with a given character from
@@ -382,7 +349,9 @@ class SizeClassesBetween {
 };
 
 #define ALIGNMENT_CEILING(s, alignment) \
-  (((s) + (alignment - 1)) & (~(alignment - 1)))
+  (((s) + ((alignment)-1)) & (~((alignment)-1)))
+
+#define ALIGNMENT_FLOOR(s, alignment) ((s) & (~((alignment)-1)))
 
 static bool IsSameRoundedHugeClass(size_t aSize1, size_t aSize2,
                                    jemalloc_stats_t& aStats) {
@@ -396,7 +365,7 @@ static bool CanReallocInPlace(size_t aFromSize, size_t aToSize,
   // PHC allocations must be disabled because PHC reallocs differently to
   // mozjemalloc.
 #ifdef MOZ_PHC
-  MOZ_RELEASE_ASSERT(!ReplaceMalloc::IsPHCEnabledOnCurrentThread());
+  MOZ_RELEASE_ASSERT(!mozilla::phc::IsPHCEnabledOnCurrentThread());
 #endif
 
   if (aFromSize == malloc_good_size(aToSize)) {
@@ -461,11 +430,8 @@ TEST(Jemalloc, JunkPoison)
   jemalloc_stats_t stats;
   jemalloc_stats(&stats);
 
-#  ifdef HAS_GDB_SLEEP_DURATION
   // Avoid death tests adding some unnecessary (long) delays.
-  unsigned int old_gdb_sleep_duration = _gdb_sleep_duration;
-  _gdb_sleep_duration = 0;
-#  endif
+  SAVE_GDB_SLEEP_LOCAL();
 
   // Create buffers in a separate arena, for faster comparisons with
   // bulk_compare.
@@ -494,6 +460,9 @@ TEST(Jemalloc, JunkPoison)
   params.mMaxDirty = size_t(-1);
   arena_id_t arena = moz_create_arena_with_params(&params);
 
+  // Mozjemalloc is configured to only poison the first four cache lines.
+  const size_t poison_check_len = 256;
+
   // Allocating should junk the buffer, and freeing should poison the buffer.
   for (size_t size : sSizes) {
     if (size <= stats.large_max) {
@@ -508,7 +477,8 @@ TEST(Jemalloc, JunkPoison)
       // We purposefully do a use-after-free here, to check that the data was
       // poisoned.
       ASSERT_NO_FATAL_FAILURE(
-          bulk_compare(buf, 0, allocated, poison_buf, stats.page_size));
+          bulk_compare(buf, 0, std::min(allocated, poison_check_len),
+                       poison_buf, stats.page_size));
     }
   }
 
@@ -524,8 +494,9 @@ TEST(Jemalloc, JunkPoison)
     ASSERT_EQ(ptr, ptr2);
     ASSERT_NO_FATAL_FAILURE(
         bulk_compare(ptr, 0, prev + 1, fill_buf, stats.page_size));
-    ASSERT_NO_FATAL_FAILURE(
-        bulk_compare(ptr, prev + 1, size, poison_buf, stats.page_size));
+    ASSERT_NO_FATAL_FAILURE(bulk_compare(ptr, prev + 1,
+                                         std::min(size, poison_check_len),
+                                         poison_buf, stats.page_size));
     moz_arena_free(arena, ptr);
     prev = size;
   }
@@ -549,12 +520,14 @@ TEST(Jemalloc, JunkPoison)
           // beyond the valid range.
           if (to_size > stats.large_max) {
             size_t page_limit = ALIGNMENT_CEILING(to_size, stats.page_size);
-            ASSERT_NO_FATAL_FAILURE(bulk_compare(ptr, to_size, page_limit,
-                                                 poison_buf, stats.page_size));
+            ASSERT_NO_FATAL_FAILURE(bulk_compare(
+                ptr, to_size, std::min(page_limit, poison_check_len),
+                poison_buf, stats.page_size));
             ASSERT_DEATH_WRAP(ptr[page_limit] = 0, "");
           } else {
-            ASSERT_NO_FATAL_FAILURE(bulk_compare(ptr, to_size, from_size,
-                                                 poison_buf, stats.page_size));
+            ASSERT_NO_FATAL_FAILURE(bulk_compare(
+                ptr, to_size, std::min(from_size, poison_check_len), poison_buf,
+                stats.page_size));
           }
         } else {
           // Enlarging allocation
@@ -598,7 +571,8 @@ TEST(Jemalloc, JunkPoison)
         ASSERT_NE(ptr, ptr2);
         if (from_size <= stats.large_max) {
           ASSERT_NO_FATAL_FAILURE(
-              bulk_compare(ptr, 0, from_size, poison_buf, stats.page_size));
+              bulk_compare(ptr, 0, std::min(from_size, poison_check_len),
+                           poison_buf, stats.page_size));
         }
         ASSERT_NO_FATAL_FAILURE(
             bulk_compare(ptr2, 0, from_size, fill_buf, stats.page_size));
@@ -629,7 +603,8 @@ TEST(Jemalloc, JunkPoison)
         ASSERT_NE(ptr, ptr2);
         if (from_size <= stats.large_max) {
           ASSERT_NO_FATAL_FAILURE(
-              bulk_compare(ptr, 0, from_size, poison_buf, stats.page_size));
+              bulk_compare(ptr, 0, std::min(from_size, poison_check_len),
+                           poison_buf, stats.page_size));
         }
         ASSERT_NO_FATAL_FAILURE(
             bulk_compare(ptr2, 0, to_size, fill_buf, stats.page_size));
@@ -651,13 +626,11 @@ TEST(Jemalloc, JunkPoison)
   moz_arena_free(buf_arena, fill_buf);
   moz_dispose_arena(buf_arena);
 
-#  ifdef HAS_GDB_SLEEP_DURATION
-  _gdb_sleep_duration = old_gdb_sleep_duration;
-#  endif
+  RESTORE_GDB_SLEEP_LOCAL();
 }
 #endif  // !defined(XP_WIN) || !defined(MOZ_CODE_COVERAGE)
 
-TEST(Jemalloc, GuardRegion)
+TEST(Jemalloc, TrailingGuard)
 {
   // Disable PHC allocations for this test, because even a single PHC
   // allocation occurring can throw it off.
@@ -666,11 +639,8 @@ TEST(Jemalloc, GuardRegion)
   jemalloc_stats_t stats;
   jemalloc_stats(&stats);
 
-#ifdef HAS_GDB_SLEEP_DURATION
   // Avoid death tests adding some unnecessary (long) delays.
-  unsigned int old_gdb_sleep_duration = _gdb_sleep_duration;
-  _gdb_sleep_duration = 0;
-#endif
+  SAVE_GDB_SLEEP_LOCAL();
 
   arena_id_t arena = moz_create_arena();
   ASSERT_TRUE(arena != 0);
@@ -692,7 +662,6 @@ TEST(Jemalloc, GuardRegion)
   jemalloc_ptr_info_t info;
   jemalloc_ptr_info(guard_page, &info);
   ASSERT_TRUE(jemalloc_ptr_is_freed_page(&info));
-  ASSERT_TRUE(info.tag == TagFreedPage);
 
   ASSERT_DEATH_WRAP(*(char*)guard_page = 0, "");
 
@@ -703,9 +672,52 @@ TEST(Jemalloc, GuardRegion)
 
   moz_dispose_arena(arena);
 
-#ifdef HAS_GDB_SLEEP_DURATION
-  _gdb_sleep_duration = old_gdb_sleep_duration;
-#endif
+  RESTORE_GDB_SLEEP_LOCAL();
+}
+
+TEST(Jemalloc, LeadingGuard)
+{
+  // Disable PHC allocations for this test, because even a single PHC
+  // allocation occurring can throw it off.
+  AutoDisablePHCOnCurrentThread disable;
+
+  jemalloc_stats_t stats;
+  jemalloc_stats(&stats);
+
+  // Avoid death tests adding some unnecessary (long) delays.
+  SAVE_GDB_SLEEP_LOCAL();
+
+  arena_id_t arena = moz_create_arena();
+  ASSERT_TRUE(arena != 0);
+
+  // Do a simple normal allocation, but force all the allocation space
+  // in the chunk to be used up. This allows us to check that we get
+  // the safe area right in the logic that follows (all memory will be
+  // committed and initialized), and it forces this pointer to the start
+  // of the zone to sit at the very start of the usable chunk area.
+  void* ptr = moz_arena_malloc(arena, stats.large_max);
+  ASSERT_TRUE(ptr != nullptr);
+  // If ptr is chunk-aligned, the above allocation went wrong.
+  void* chunk_start = (void*)ALIGNMENT_FLOOR((uintptr_t)ptr, stats.chunksize);
+  ASSERT_NE((uintptr_t)ptr, (uintptr_t)chunk_start);
+  // If ptr is 1 page after the chunk start (so right after the header),
+  // we must have missed adding the guard page.
+  ASSERT_NE((uintptr_t)ptr, (uintptr_t)chunk_start + stats.page_size);
+  // The actual start depends on the amount of metadata versus the page
+  // size, so we can't check equality without pulling in too many
+  // implementation details.
+
+  // Guard page should be right before data area
+  void* guard_page = (void*)(((uintptr_t)ptr) - sizeof(void*));
+  jemalloc_ptr_info_t info;
+  jemalloc_ptr_info(guard_page, &info);
+  ASSERT_TRUE(info.tag == TagUnknown);
+  ASSERT_DEATH_WRAP(*(char*)guard_page = 0, "");
+
+  moz_arena_free(arena, ptr);
+  moz_dispose_arena(arena);
+
+  RESTORE_GDB_SLEEP_LOCAL();
 }
 
 TEST(Jemalloc, DisposeArena)
@@ -713,11 +725,8 @@ TEST(Jemalloc, DisposeArena)
   jemalloc_stats_t stats;
   jemalloc_stats(&stats);
 
-#ifdef HAS_GDB_SLEEP_DURATION
   // Avoid death tests adding some unnecessary (long) delays.
-  unsigned int old_gdb_sleep_duration = _gdb_sleep_duration;
-  _gdb_sleep_duration = 0;
-#endif
+  SAVE_GDB_SLEEP_LOCAL();
 
   arena_id_t arena = moz_create_arena();
   void* ptr = moz_arena_malloc(arena, 42);
@@ -753,7 +762,5 @@ TEST(Jemalloc, DisposeArena)
   // Using the arena after it's been disposed of is MOZ_CRASH-worthy.
   ASSERT_DEATH_WRAP(moz_arena_malloc(arena, 42), "");
 
-#ifdef HAS_GDB_SLEEP_DURATION
-  _gdb_sleep_duration = old_gdb_sleep_duration;
-#endif
+  RESTORE_GDB_SLEEP_LOCAL();
 }

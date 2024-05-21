@@ -8,7 +8,6 @@
 // A tweak to the standard <button> CE to use textContent on the <label>
 // inside the button, which allows the text to be highlighted when the user
 // is searching.
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const MozButton = customElements.get("button");
 class HighlightableButton extends MozButton {
@@ -49,10 +48,10 @@ var gSearchResultsPane = {
       // Initialize other panes in an idle callback.
       window.requestIdleCallback(() => this.initializeCategories());
     }
-    let helpUrl =
+    const helpUrl =
       Services.urlFormatter.formatURLPref("app.support.baseURL") +
       "preferences";
-    let helpContainer = document.getElementById("need-help");
+    const helpContainer = document.getElementById("need-help");
     helpContainer.querySelector("a").href = helpUrl;
   },
 
@@ -65,8 +64,8 @@ var gSearchResultsPane = {
   /**
    * Check that the text content contains the query string.
    *
-   * @param {String} content the text content to be searched.
-   * @param {String} query the query string.
+   * @param {string} content the text content to be searched.
+   * @param {string} query the query string.
    *
    * @returns {boolean} true when the text content contains the query string else false.
    */
@@ -87,7 +86,7 @@ var gSearchResultsPane = {
     if (!this.categoriesInitialized) {
       this.categoriesInitialized = true;
       // Each element of gCategoryInits is a name.
-      for (let [name, category] of gCategoryInits) {
+      for (const [name, category] of gCategoryInits) {
         if (
           (name != "paneCalendar" && !category.inited) ||
           (calendarDeactivator.isCalendarActivated && !category.inited)
@@ -95,7 +94,7 @@ var gSearchResultsPane = {
           await category.init();
         }
       }
-      let lastSelected = Services.xulStore.getValue(
+      const lastSelected = Services.xulStore.getValue(
         "about:preferences",
         "paneDeck",
         "lastSelected"
@@ -107,7 +106,7 @@ var gSearchResultsPane = {
   /**
    * Finds and returns text nodes within node and all descendants.
    * Iterates through all the sibilings of the node object and adds the sibilings
-   * to an array if sibiling is a TEXT_NODE else checks the text nodes with in current node.
+   * to an array if sibling is a TEXT_NODE else checks the text nodes with in current node.
    * Source - http://stackoverflow.com/questions/10730309/find-all-text-nodes-in-html-page
    *
    * @param {Node} node DOM element.
@@ -135,6 +134,7 @@ var gSearchResultsPane = {
    * We pass in the nodeSizes to tell exactly where highlighting need be done.
    * When creating the range for highlighting, if the nodes are section is split
    * by an access key, it is important to have the size of each of the nodes summed.
+   *
    * @param {Node[]} textNodes List of DOM elements.
    * @param {Node[]} nodeSizes Running size of text nodes. This will contain the same
    *   number of elements as textNodes. The first element is the size of first textNode element.
@@ -143,12 +143,12 @@ var gSearchResultsPane = {
    *   textNodes = [[This is ], [a], [n example]]
    *   nodeSizes = [[8], [9], [18]]
    *   This is used to determine the offset when highlighting.
-   * @param {String} textSearch Concatination of textNodes's text content.
+   * @param {string} textSearch Concatenation of textNodes's text content.
    *    Example:
    *    textNodes = [[This is ], [a], [n example]]
    *    nodeSizes = "This is an example"
    *    This is used when executing the regular expression.
-   * @param {String} searchPhrase word or words to search for.
+   * @param {string} searchPhrase word or words to search for.
    *
    * @returns {boolean} Returns true when atleast one instance of search phrase is found, otherwise false.
    */
@@ -157,7 +157,7 @@ var gSearchResultsPane = {
       return false;
     }
 
-    let indices = [];
+    const indices = [];
     let i = -1;
     while ((i = textSearch.indexOf(searchPhrase, i + 1)) >= 0) {
       indices.push(i);
@@ -172,7 +172,7 @@ var gSearchResultsPane = {
 
       // Determining the start and end node to highlight from.
       for (let index = 0; index < nodeSizes.length; index++) {
-        let lengthNodes = nodeSizes[index];
+        const lengthNodes = nodeSizes[index];
         // Determining the start node.
         if (!startNode && lengthNodes >= startValue) {
           startNode = textNodes[index];
@@ -192,7 +192,7 @@ var gSearchResultsPane = {
           }
         }
       }
-      let range = document.createRange();
+      const range = document.createRange();
       range.setStart(startNode, startValue);
       range.setEnd(endNode, endValue);
       this.getFindSelection(startNode.ownerGlobal).addRange(range);
@@ -204,18 +204,18 @@ var gSearchResultsPane = {
   /**
    * Get the selection instance from given window.
    *
-   * @param {Object} win The window object points to frame's window.
+   * @param {object} win The window object points to frame's window.
    */
   getFindSelection(win) {
     // Yuck. See bug 138068.
-    let docShell = win.docShell;
+    const docShell = win.docShell;
 
-    let controller = docShell
+    const controller = docShell
       .QueryInterface(Ci.nsIInterfaceRequestor)
       .getInterface(Ci.nsISelectionDisplay)
       .QueryInterface(Ci.nsISelectionController);
 
-    let selection = controller.getSelection(
+    const selection = controller.getSelection(
       Ci.nsISelectionController.SELECTION_FIND
     );
     selection.setColors("currentColor", "#ffe900", "currentColor", "#003eaa");
@@ -226,23 +226,23 @@ var gSearchResultsPane = {
   /**
    * Shows or hides content according to search input.
    *
-   * @param {Object} event to search for filted query in.
+   * @param {object} event to search for filted query in.
    */
   async searchFunction(event) {
-    let query = event.target.value.trim().toLowerCase();
+    const query = event.target.value.trim().toLowerCase();
     if (this.query == query) {
       return;
     }
 
-    let subQuery = this.query && query.includes(this.query);
+    const subQuery = this.query && query.includes(this.query);
     this.query = query;
 
     this.getFindSelection(window).removeAllRanges();
     this.removeAllSearchTooltips();
     this.removeAllSearchMenuitemIndicators();
 
-    let srHeader = document.getElementById("header-searchResults");
-    let noResultsEl = document.getElementById("no-results-message");
+    const srHeader = document.getElementById("header-searchResults");
+    const noResultsEl = document.getElementById("no-results-message");
     if (this.query) {
       // Showing the Search Results Tag.
       await gotoPref("paneSearchResults");
@@ -266,7 +266,7 @@ var gSearchResultsPane = {
       }
 
       // Attach the bindings for all children if they were not already visible.
-      for (let child of rootPreferencesChildren) {
+      for (const child of rootPreferencesChildren) {
         if (child.hidden) {
           child.classList.add("visually-hidden");
           child.hidden = false;
@@ -274,13 +274,13 @@ var gSearchResultsPane = {
       }
 
       let ts = performance.now();
-      let FRAME_THRESHOLD = 10;
+      const FRAME_THRESHOLD = 10;
 
       // Showing or Hiding specific section depending on if words in query are found.
-      for (let child of rootPreferencesChildren) {
+      for (const child of rootPreferencesChildren) {
         if (performance.now() - ts > FRAME_THRESHOLD) {
           // Creating tooltips for all the instances found.
-          for (let anchorNode of this.listSearchTooltips) {
+          for (const anchorNode of this.listSearchTooltips) {
             this.createSearchTooltip(anchorNode, this.query);
           }
           ts = await new Promise(resolve =>
@@ -299,8 +299,8 @@ var gSearchResultsPane = {
           child.classList.remove("visually-hidden");
 
           // Show the preceding search-header if one exists.
-          let groupbox = child.closest("groupbox");
-          let groupHeader =
+          const groupbox = child.closest("groupbox");
+          const groupHeader =
             groupbox && groupbox.querySelector(".search-header");
           if (groupHeader) {
             groupHeader.hidden = false;
@@ -318,11 +318,11 @@ var gSearchResultsPane = {
       // message and ereases the query within.
       // The feature is not yet supported, but we should fix for it before
       // we enable it. See bug 1446389 for details.
-      let msgQueryElem = document.getElementById("sorry-message-query");
+      const msgQueryElem = document.getElementById("sorry-message-query");
       msgQueryElem.textContent = this.query;
       if (resultsFound) {
         // Creating tooltips for all the instances found.
-        for (let anchorNode of this.listSearchTooltips) {
+        for (const anchorNode of this.listSearchTooltips) {
           this.createSearchTooltip(anchorNode, this.query);
         }
       }
@@ -334,7 +334,7 @@ var gSearchResultsPane = {
       srHeader.hidden = true;
 
       // Hide some special second level headers in normal view.
-      for (let element of document.querySelectorAll(".search-header")) {
+      for (const element of document.querySelectorAll(".search-header")) {
         element.hidden = true;
       }
     }
@@ -349,7 +349,7 @@ var gSearchResultsPane = {
    * It is a recursive function.
    *
    * @param {Node} nodeObject DOM Element.
-   * @param {String} searchPhrase
+   * @param {string} searchPhrase
    *
    * @returns {boolean} Returns true when found in at least one childNode, false otherwise.
    */
@@ -363,9 +363,9 @@ var gSearchResultsPane = {
       nodeObject.tagName == "menulist" ||
       nodeObject.tagName == "menuitem"
     ) {
-      let simpleTextNodes = this.textNodeDescendants(nodeObject);
-      for (let node of simpleTextNodes) {
-        let result = this.highlightMatches(
+      const simpleTextNodes = this.textNodeDescendants(nodeObject);
+      for (const node of simpleTextNodes) {
+        const result = this.highlightMatches(
           [node],
           [node.length],
           node.textContent.toLowerCase(),
@@ -375,11 +375,11 @@ var gSearchResultsPane = {
       }
 
       // Collecting data from anonymous content / label / description.
-      let nodeSizes = [];
+      const nodeSizes = [];
       let allNodeText = "";
       let runningSize = 0;
 
-      let accessKeyTextNodes = [];
+      const accessKeyTextNodes = [];
 
       if (
         nodeObject.tagName == "label" ||
@@ -388,14 +388,14 @@ var gSearchResultsPane = {
         accessKeyTextNodes.push(...simpleTextNodes);
       }
 
-      for (let node of accessKeyTextNodes) {
+      for (const node of accessKeyTextNodes) {
         runningSize += node.textContent.length;
         allNodeText += node.textContent;
         nodeSizes.push(runningSize);
       }
 
       // Access key are presented.
-      let complexTextNodesResult = this.highlightMatches(
+      const complexTextNodesResult = this.highlightMatches(
         accessKeyTextNodes,
         nodeSizes,
         allNodeText.toLowerCase(),
@@ -404,7 +404,7 @@ var gSearchResultsPane = {
 
       // Searching some elements, such as xul:button, have a 'label' attribute
       // that contains the user-visible text.
-      let labelResult = this.queryMatchesContent(
+      const labelResult = this.queryMatchesContent(
         nodeObject.getAttribute("label"),
         searchPhrase
       );
@@ -412,7 +412,7 @@ var gSearchResultsPane = {
       // Searching some elements, such as xul:label, store their user-visible
       // text in a "value" attribute. Value will be skipped for menuitem since
       // value in menuitem could represent index number to distinct each item.
-      let valueResult =
+      const valueResult =
         nodeObject.tagName !== "menuitem" && nodeObject.tagName !== "radio"
           ? this.queryMatchesContent(
               nodeObject.getAttribute("value"),
@@ -449,7 +449,7 @@ var gSearchResultsPane = {
       if (keywordsResult && nodeObject.tagName === "menuitem") {
         nodeObject.setAttribute("indicator", "true");
         this.listSearchMenuitemIndicators.add(nodeObject);
-        let menulist = nodeObject.closest("menulist");
+        const menulist = nodeObject.closest("menulist");
 
         menulist.setAttribute("indicator", "true");
         this.listSearchMenuitemIndicators.add(menulist);
@@ -472,7 +472,7 @@ var gSearchResultsPane = {
     }
 
     for (let i = 0; i < nodeObject.childNodes.length; i++) {
-      let result = await this.searchChildNodeIfVisible(
+      const result = await this.searchChildNodeIfVisible(
         nodeObject,
         i,
         searchPhrase
@@ -486,8 +486,8 @@ var gSearchResultsPane = {
    * Search for a phrase within a child node if it is visible.
    *
    * @param {Node} nodeObject The parent DOM Element.
-   * @param {Number} index The index for the childNode.
-   * @param {String} searchPhrase
+   * @param {number} index The index for the childNode.
+   * @param {string} searchPhrase
    *
    * @returns {boolean} Returns true when found the specific childNode, false otherwise
    */
@@ -513,7 +513,7 @@ var gSearchResultsPane = {
    * Search for a phrase in l10n messages associated with the element.
    *
    * @param {Node} nodeObject The parent DOM Element.
-   * @param {String} searchPhrase.
+   * @param {string} searchPhrase.
    * @returns {boolean} true when the text content contains the query string else false.
    */
   async matchesSearchL10nIDs(nodeObject, searchPhrase) {
@@ -539,15 +539,15 @@ var gSearchResultsPane = {
 
       // Map the localized messages taking value or a selected attribute and
       // building a string of concatenated translated strings out of it.
-      let keywords = messages
+      const keywords = messages
         .map((msg, i) => {
-          let [refId, refAttr] = refs[i];
+          const [refId, refAttr] = refs[i];
           if (!msg) {
             console.error(`Missing search l10n id "${refId}"`);
             return null;
           }
           if (refAttr) {
-            let attr =
+            const attr =
               msg.attributes && msg.attributes.find(a => a.name === refAttr);
             if (!attr) {
               console.error(`Missing search l10n id "${refId}.${refAttr}"`);
@@ -583,14 +583,14 @@ var gSearchResultsPane = {
    * Then calculation the offsets to position the tooltip in the correct place.
    *
    * @param {Node} anchorNode DOM Element.
-   * @param {String} query Word or words that are being searched for.
+   * @param {string} query Word or words that are being searched for.
    */
   createSearchTooltip(anchorNode, query) {
     if (anchorNode.tooltipNode) {
       return;
     }
-    let searchTooltip = anchorNode.ownerDocument.createElement("span");
-    let searchTooltipText = anchorNode.ownerDocument.createElement("span");
+    const searchTooltip = anchorNode.ownerDocument.createElement("span");
+    const searchTooltipText = anchorNode.ownerDocument.createElement("span");
     searchTooltip.className = "search-tooltip";
     searchTooltipText.textContent = query;
     searchTooltip.appendChild(searchTooltipText);
@@ -604,11 +604,11 @@ var gSearchResultsPane = {
   },
 
   calculateTooltipPosition(anchorNode) {
-    let searchTooltip = anchorNode.tooltipNode;
+    const searchTooltip = anchorNode.tooltipNode;
     // In order to get the up-to-date position of each of the nodes that we're
     // putting tooltips on, we have to flush layout intentionally, and that
     // this is the result of a XUL limitation (bug 1363730).
-    let tooltipRect = searchTooltip.getBoundingClientRect();
+    const tooltipRect = searchTooltip.getBoundingClientRect();
     searchTooltip.style.setProperty(
       "left",
       `calc(50% - ${tooltipRect.width / 2}px)`
@@ -619,7 +619,7 @@ var gSearchResultsPane = {
    * Remove all search tooltips.
    */
   removeAllSearchTooltips() {
-    for (let anchorNode of this.listSearchTooltips) {
+    for (const anchorNode of this.listSearchTooltips) {
       anchorNode.parentElement.classList.remove("search-tooltip-parent");
       if (anchorNode.tooltipNode) {
         anchorNode.tooltipNode.remove();
@@ -633,7 +633,7 @@ var gSearchResultsPane = {
    * Remove all indicators on menuitem.
    */
   removeAllSearchMenuitemIndicators() {
-    for (let node of this.listSearchMenuitemIndicators) {
+    for (const node of this.listSearchMenuitemIndicators) {
       node.removeAttribute("indicator");
     }
     this.listSearchMenuitemIndicators.clear();

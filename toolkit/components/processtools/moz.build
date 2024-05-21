@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 with Files("**"):
-    BUG_COMPONENT = ("Core", "DOM: Content Processes")
+    BUG_COMPONENT = ("Toolkit", "Performance Monitoring")
 
 XPIDL_MODULE = "toolkit_processtools"
 
@@ -19,6 +19,7 @@ XPIDL_SOURCES += [
 
 EXPORTS.mozilla += [
     "ProcInfo.h",
+    "ProcInfo_linux.h",
 ]
 
 EXPORTS += [
@@ -27,20 +28,26 @@ EXPORTS += [
 
 UNIFIED_SOURCES += [
     "ProcessToolsService.cpp",
+    "ProcInfo_common.cpp",
 ]
 
 FINAL_LIBRARY = "xul"
 
-XPCSHELL_TESTS_MANIFESTS += ["tests/xpcshell/xpcshell.ini"]
-BROWSER_CHROME_MANIFESTS += ["tests/browser/browser.ini"]
+XPCSHELL_TESTS_MANIFESTS += ["tests/xpcshell/xpcshell.toml"]
+BROWSER_CHROME_MANIFESTS += ["tests/browser/browser.toml"]
 
 # Platform-specific implementations of `ProcInfo`.
 toolkit = CONFIG["MOZ_WIDGET_TOOLKIT"]
 if toolkit == "gtk" or toolkit == "android":
-    UNIFIED_SOURCES += ["ProcInfo_linux.cpp"]
+    if CONFIG["OS_TARGET"] == "OpenBSD":
+        UNIFIED_SOURCES += ["ProcInfo_bsd.cpp"]
+    elif CONFIG["OS_TARGET"] == "SunOS":
+        UNIFIED_SOURCES += ["ProcInfo_solaris.cpp"]
+    else:
+        UNIFIED_SOURCES += ["ProcInfo_linux.cpp"]
 elif toolkit == "windows":
     UNIFIED_SOURCES += ["ProcInfo_win.cpp"]
-elif toolkit == "cocoa":
+elif toolkit in ("cocoa", "uikit"):
     UNIFIED_SOURCES += ["ProcInfo.mm"]
 
 include("/ipc/chromium/chromium-config.mozbuild")

@@ -6,6 +6,7 @@
 #define DOM_MEDIA_MEDIASESSION_MEDIASESSIONIPCUTILS_H_
 
 #include "ipc/EnumSerializer.h"
+#include "mozilla/dom/BindingIPCUtils.h"
 #include "MediaMetadata.h"
 #include "mozilla/dom/MediaSession.h"
 #include "mozilla/dom/MediaSessionBinding.h"
@@ -25,17 +26,16 @@ template <>
 struct ParamTraits<mozilla::dom::MediaImage> {
   typedef mozilla::dom::MediaImage paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam) {
-    WriteParam(aMsg, aParam.mSizes);
-    WriteParam(aMsg, aParam.mSrc);
-    WriteParam(aMsg, aParam.mType);
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
+    WriteParam(aWriter, aParam.mSizes);
+    WriteParam(aWriter, aParam.mSrc);
+    WriteParam(aWriter, aParam.mType);
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
-    if (!ReadParam(aMsg, aIter, &(aResult->mSizes)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mSrc)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mType))) {
+  static bool Read(MessageReader* aReader, paramType* aResult) {
+    if (!ReadParam(aReader, &(aResult->mSizes)) ||
+        !ReadParam(aReader, &(aResult->mSrc)) ||
+        !ReadParam(aReader, &(aResult->mType))) {
       return false;
     }
     return true;
@@ -46,19 +46,18 @@ template <>
 struct ParamTraits<mozilla::dom::MediaMetadataBase> {
   typedef mozilla::dom::MediaMetadataBase paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam) {
-    WriteParam(aMsg, aParam.mTitle);
-    WriteParam(aMsg, aParam.mArtist);
-    WriteParam(aMsg, aParam.mAlbum);
-    WriteParam(aMsg, aParam.mArtwork);
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
+    WriteParam(aWriter, aParam.mTitle);
+    WriteParam(aWriter, aParam.mArtist);
+    WriteParam(aWriter, aParam.mAlbum);
+    WriteParam(aWriter, aParam.mArtwork);
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
-    if (!ReadParam(aMsg, aIter, &(aResult->mTitle)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mArtist)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mAlbum)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mArtwork))) {
+  static bool Read(MessageReader* aReader, paramType* aResult) {
+    if (!ReadParam(aReader, &(aResult->mTitle)) ||
+        !ReadParam(aReader, &(aResult->mArtist)) ||
+        !ReadParam(aReader, &(aResult->mAlbum)) ||
+        !ReadParam(aReader, &(aResult->mArtwork))) {
       return false;
     }
     return true;
@@ -69,17 +68,18 @@ template <>
 struct ParamTraits<mozilla::dom::PositionState> {
   typedef mozilla::dom::PositionState paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam) {
-    WriteParam(aMsg, aParam.mDuration);
-    WriteParam(aMsg, aParam.mPlaybackRate);
-    WriteParam(aMsg, aParam.mLastReportedPlaybackPosition);
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
+    WriteParam(aWriter, aParam.mDuration);
+    WriteParam(aWriter, aParam.mPlaybackRate);
+    WriteParam(aWriter, aParam.mLastReportedPlaybackPosition);
+    WriteParam(aWriter, aParam.mPositionUpdatedTime);
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
-    if (!ReadParam(aMsg, aIter, &(aResult->mDuration)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mPlaybackRate)) ||
-        !ReadParam(aMsg, aIter, &(aResult->mLastReportedPlaybackPosition))) {
+  static bool Read(MessageReader* aReader, paramType* aResult) {
+    if (!ReadParam(aReader, &(aResult->mDuration)) ||
+        !ReadParam(aReader, &(aResult->mPlaybackRate)) ||
+        !ReadParam(aReader, &(aResult->mLastReportedPlaybackPosition)) ||
+        !ReadParam(aReader, &(aResult->mPositionUpdatedTime))) {
       return false;
     }
     return true;
@@ -88,17 +88,13 @@ struct ParamTraits<mozilla::dom::PositionState> {
 
 template <>
 struct ParamTraits<mozilla::dom::MediaSessionPlaybackState>
-    : public ContiguousEnumSerializer<
-          mozilla::dom::MediaSessionPlaybackState,
-          mozilla::dom::MediaSessionPlaybackState::None,
-          mozilla::dom::MediaSessionPlaybackState::EndGuard_> {};
+    : public mozilla::dom::WebIDLEnumSerializer<
+          mozilla::dom::MediaSessionPlaybackState> {};
 
 template <>
 struct ParamTraits<mozilla::dom::MediaSessionAction>
-    : public ContiguousEnumSerializer<
-          mozilla::dom::MediaSessionAction,
-          mozilla::dom::MediaSessionAction::Play,
-          mozilla::dom::MediaSessionAction::EndGuard_> {};
+    : public mozilla::dom::WebIDLEnumSerializer<
+          mozilla::dom::MediaSessionAction> {};
 
 }  // namespace IPC
 

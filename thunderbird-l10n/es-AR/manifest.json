@@ -1,29 +1,28 @@
 {
   "langpack_id": "es-AR",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-es-AR@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Español (AR) Language Pack",
-  "description": "Language pack for Thunderbird for es-AR",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Español (AR) (Spanish, Argentina)",
+  "description": "Thunderbird Beta Language Pack for Español (AR) (es-AR) – Spanish, Argentina",
+  "version": "125.0.20240401.173510",
   "languages": {
     "es-AR": {
-      "version": "20211018042127",
+      "version": "20240401183302",
       "chrome_resources": {
         "alerts": "chrome/es-AR/locale/es-AR/alerts/",
         "autoconfig": "chrome/es-AR/locale/es-AR/autoconfig/",
-        "branding": "chrome/es-AR/locale/es-AR/branding/",
+        "branding": "chrome/es-AR/locale/branding/",
         "calendar": "chrome/es-AR/locale/es-AR/calendar/",
         "chat": "chrome/es-AR/locale/es-AR/chat/",
         "communicator": "chrome/es-AR/locale/es-AR/communicator/",
         "devtools": "chrome/es-AR/locale/es-AR/devtools/client/",
         "devtools-shared": "chrome/es-AR/locale/es-AR/devtools/shared/",
-        "devtools-startup": "chrome/es-AR/locale/es-AR/devtools/startup/",
         "global": "chrome/es-AR/locale/es-AR/global/",
         "global-platform": {
           "macosx": "chrome/es-AR/locale/es-AR/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/es-AR/locale/es-AR/mozldap/",
         "necko": "chrome/es-AR/locale/es-AR/necko/",
         "passwordmgr": "chrome/es-AR/locale/es-AR/passwordmgr/",
-        "pdf.js": "chrome/es-AR/locale/pdfviewer/",
         "pipnss": "chrome/es-AR/locale/es-AR/pipnss/",
         "pippki": "chrome/es-AR/locale/es-AR/pippki/",
         "places": "chrome/es-AR/locale/es-AR/places/"

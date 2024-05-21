@@ -7,6 +7,7 @@
 #define nsXULContentSink_h__
 
 #include "mozilla/Attributes.h"
+#include "mozilla/WeakPtr.h"
 #include "nsIExpatSink.h"
 #include "nsIWeakReferenceUtils.h"
 #include "nsIXMLContentSink.h"
@@ -33,10 +34,9 @@ class XULContentSinkImpl final : public nsIXMLContentSink, public nsIExpatSink {
 
   // nsIContentSink
   NS_IMETHOD WillParse(void) override { return NS_OK; }
-  NS_IMETHOD WillBuildModel(nsDTDMode aDTDMode) override;
   NS_IMETHOD DidBuildModel(bool aTerminated) override;
   NS_IMETHOD WillInterrupt(void) override;
-  NS_IMETHOD WillResume(void) override;
+  void WillResume() override;
   NS_IMETHOD SetParser(nsParserBase* aParser) override;
   virtual void FlushPendingNotifications(mozilla::FlushType aType) override {}
   virtual void SetDocumentCharset(NotNull<const Encoding*> aEncoding) override;
@@ -132,7 +132,7 @@ class XULContentSinkImpl final : public nsIXMLContentSink, public nsIExpatSink {
   friend class ContextStack;
   ContextStack mContextStack;
 
-  nsWeakPtr mDocument;            // [OWNER]
+  mozilla::WeakPtr<mozilla::dom::Document> mDocument;
   nsCOMPtr<nsIURI> mDocumentURL;  // [OWNER]
 
   RefPtr<nsXULPrototypeDocument> mPrototype;  // [OWNER]

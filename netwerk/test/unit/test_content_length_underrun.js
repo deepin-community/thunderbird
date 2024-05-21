@@ -7,14 +7,15 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+ChromeUtils.defineLazyGetter(this, "URL", function () {
   return "http://localhost:" + httpserver.identity.primaryPort;
 });
 
 var httpserver = new HttpServer();
-var index = 0;
 var test_flags = [];
 var testPathBase = "/cl_hdrs";
 
@@ -29,7 +30,7 @@ registerCleanupFunction(() => {
 });
 
 function run_test() {
-  prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefBranch);
+  prefs = Services.prefs;
   enforcePrefStrict = prefs.getBoolPref("network.http.enforce-framing.http1");
   enforcePrefSoft = prefs.getBoolPref("network.http.enforce-framing.soft");
   enforcePrefStrictChunked = prefs.getBoolPref(
@@ -46,17 +47,20 @@ function run_test() {
 
 function run_test_number(num) {
   let testPath = testPathBase + num;
+  // eslint-disable-next-line no-eval
   httpserver.registerPathHandler(testPath, eval("handler" + num));
 
   var channel = setupChannel(testPath);
   let flags = test_flags[num]; // OK if flags undefined for test
   channel.asyncOpen(
+    // eslint-disable-next-line no-eval
     new ChannelListener(eval("completeTest" + num), channel, flags)
   );
 }
 
 function run_gzip_test(num) {
   let testPath = testPathBase + num;
+  // eslint-disable-next-line no-eval
   httpserver.registerPathHandler(testPath, eval("handler" + num));
 
   var channel = setupChannel(testPath);
@@ -69,7 +73,7 @@ function run_gzip_test(num) {
       "nsIRequestObserver",
     ]),
 
-    onStartRequest(aRequest) {},
+    onStartRequest() {},
 
     onStopRequest(aRequest, aStatusCode) {
       // Make sure we catch the error NS_ERROR_NET_PARTIAL_TRANSFER here.
@@ -78,7 +82,7 @@ function run_gzip_test(num) {
       endTests();
     },
 
-    onDataAvailable(request, stream, offset, count) {},
+    onDataAvailable() {},
   };
 
   let listener = new StreamListener();
@@ -110,6 +114,7 @@ function endTests() {
 // Test 1: FAIL because of Content-Length underrun with HTTP 1.1
 test_flags[1] = CL_EXPECT_LATE_FAILURE;
 
+// eslint-disable-next-line no-unused-vars
 function handler1(metadata, response) {
   var body = "blablabla";
 
@@ -122,7 +127,8 @@ function handler1(metadata, response) {
   response.finish();
 }
 
-function completeTest1(request, data, ctx) {
+// eslint-disable-next-line no-unused-vars
+function completeTest1(request) {
   Assert.equal(request.status, Cr.NS_ERROR_NET_PARTIAL_TRANSFER);
 
   run_test_number(11);
@@ -132,6 +138,7 @@ function completeTest1(request, data, ctx) {
 // Test 11: PASS because of Content-Length underrun with HTTP 1.1 but non 2xx
 test_flags[11] = CL_IGNORE_CL;
 
+// eslint-disable-next-line no-unused-vars
 function handler11(metadata, response) {
   var body = "blablabla";
 
@@ -144,7 +151,8 @@ function handler11(metadata, response) {
   response.finish();
 }
 
-function completeTest11(request, data, ctx) {
+// eslint-disable-next-line no-unused-vars
+function completeTest11(request) {
   Assert.equal(request.status, Cr.NS_OK);
   run_test_number(2);
 }
@@ -154,6 +162,7 @@ function completeTest11(request, data, ctx) {
 
 test_flags[2] = CL_IGNORE_CL;
 
+// eslint-disable-next-line no-unused-vars
 function handler2(metadata, response) {
   var body = "short content";
 
@@ -166,7 +175,8 @@ function handler2(metadata, response) {
   response.finish();
 }
 
-function completeTest2(request, data, ctx) {
+// eslint-disable-next-line no-unused-vars
+function completeTest2(request) {
   Assert.equal(request.status, Cr.NS_OK);
 
   // test 3 requires the enforce-framing prefs to be false
@@ -183,6 +193,7 @@ function completeTest2(request, data, ctx) {
 // Test 3: SUCCEED with bad Content-Length because pref allows it
 test_flags[3] = CL_IGNORE_CL;
 
+// eslint-disable-next-line no-unused-vars
 function handler3(metadata, response) {
   var body = "blablabla";
 
@@ -195,7 +206,8 @@ function handler3(metadata, response) {
   response.finish();
 }
 
-function completeTest3(request, data, ctx) {
+// eslint-disable-next-line no-unused-vars
+function completeTest3(request) {
   Assert.equal(request.status, Cr.NS_OK);
   prefs.setBoolPref("network.http.enforce-framing.soft", true);
   run_test_number(4);
@@ -205,6 +217,7 @@ function completeTest3(request, data, ctx) {
 // Test 4: Succeed because a cut off deflate stream can't be detected
 test_flags[4] = CL_IGNORE_CL;
 
+// eslint-disable-next-line no-unused-vars
 function handler4(metadata, response) {
   // this is the beginning of a deflate compressed response body
 
@@ -235,7 +248,8 @@ function handler4(metadata, response) {
   response.finish();
 }
 
-function completeTest4(request, data, ctx) {
+// eslint-disable-next-line no-unused-vars
+function completeTest4(request) {
   Assert.equal(request.status, Cr.NS_OK);
 
   prefs.setBoolPref("network.http.enforce-framing.http1", true);
@@ -248,6 +262,7 @@ function completeTest4(request, data, ctx) {
 // Note that test 99 here is run completely different than the other tests in
 // this file so if you add more tests here, consider adding them before this.
 
+// eslint-disable-next-line no-unused-vars
 function handler99(metadata, response) {
   // this is the beginning of a gzip compressed response body
 

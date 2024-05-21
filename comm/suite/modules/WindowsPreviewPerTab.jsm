@@ -48,7 +48,6 @@ var EXPORTED_SYMBOLS = ["AeroPeek"];
 const {NetUtil} = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 const {PlacesUtils} = ChromeUtils.import("resource://gre/modules/PlacesUtils.jsm");
 const {PrivateBrowsingUtils} = ChromeUtils.import("resource://gre/modules/PrivateBrowsingUtils.jsm");
-const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 // Pref to enable/disable preview-per-tab.
@@ -83,11 +82,30 @@ function _imageFromURI(uri, privateMode, callback) {
     // Ignore channels which do not support nsIPrivateBrowsingChannel.
   }
   NetUtil.asyncFetch(channel, function(inputStream, resultCode) {
-    if (!Components.isSuccessCode(resultCode))
+    if (!Components.isSuccessCode(resultCode)) {
       return;
+    }
+
+    const decodeCallback = {
+      onImageReady(image, status) {
+        if (!image) {
+          // We failed, so use the default favicon (only if this wasn't the
+          // default favicon).
+          let defaultURI = PlacesUtils.favicons.defaultFavicon;
+          if (!defaultURI.equals(uri)) {
+            _imageFromURI(defaultURI, privateMode, callback);
+            return;
+          }
+        }
+
+        callback(image);
+      }
+    };
+
     try {
-      let out_img = imgTools.decodeImageAsync(inputStream, channel.contentType);
-      callback(out_img);
+      let threadManager = Cc["@mozilla.org/thread-manager;1"].getService();
+      imgTools.decodeImageAsync(inputStream, channel.contentType,
+                                decodeCallback, threadManager.currentThread);
     } catch (e) {
       // We failed, so use the default favicon (only if this wasn't the default
       // favicon).
@@ -141,8 +159,10 @@ function PreviewController(win, tab) {
 }
 
 PreviewController.prototype = {
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsITaskbarPreviewController,
-                                         Ci.nsIDOMEventListener]),
+  QueryInterface: XPCOMUtils.generateQI([Ci.nsITaskbarPreviewController]),
+
+  _cachedWidth: 0,
+  _cachedHeight: 0,
 
   destroy: function () {
     this.tab.removeEventListener("TabAttrModified", this);
@@ -316,7 +336,7 @@ PreviewController.prototype = {
     return true;
   },
 
-  // nsIDOMEventListener
+  // EventListener
   handleEvent: function (evt) {
     switch (evt.type) {
       case "TabAttrModified":
@@ -360,6 +380,8 @@ function TabWindow(win) {
 
 TabWindow.prototype = {
   _enabled: false,
+  _cachedWidth: 0,
+  _cachedHeight: 0,
   tabEvents: ["TabOpen", "TabClose", "TabSelect", "TabMove"],
   winEvents: ["resize"],
 
@@ -479,7 +501,7 @@ TabWindow.prototype = {
     }
   },
 
-  //// nsIDOMEventListener
+  // EventListener
   handleEvent: function (evt) {
     let tab = evt.originalTarget;
     switch (evt.type) {
@@ -577,7 +599,7 @@ TabWindow.prototype = {
     if (aIconURL) {
       let shouldRequestFaviconURL = true;
       try {
-        urlObject = NetUtil.newURI(aIconURL);
+        let urlObject = NetUtil.newURI(aIconURL);
         shouldRequestFaviconURL =
           !this.directRequestProtocols.has(urlObject.scheme);
       } catch (ex) {}

@@ -6,19 +6,19 @@
 loader.lazyRequireGetter(
   this,
   "generateUUID",
-  "devtools/shared/generate-uuid",
+  "resource://devtools/shared/generate-uuid.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   ["entries", "executeSoon", "toObject"],
-  "devtools/shared/DevToolsUtils",
+  "resource://devtools/shared/DevToolsUtils.js",
   true
 );
 
 const PROMISE = (exports.PROMISE = "@@dispatch/promise");
 
-function promiseMiddleware({ dispatch, getState }) {
+function promiseMiddleware({ dispatch }) {
   return next => action => {
     if (!(PROMISE in action)) {
       return next(action);
@@ -44,7 +44,7 @@ function promiseMiddleware({ dispatch, getState }) {
             dispatch(
               Object.assign({}, action, {
                 status: "done",
-                value: value,
+                value,
               })
             );
             resolve(value);

@@ -9,13 +9,13 @@ set_define("MOZ_THUNDERBIRD", True)
 
 imply_option("MOZ_APP_BASENAME", "Thunderbird")
 set_config("MOZ_APPUPDATE_HOST", "aus.thunderbird.net")
-imply_option("MOZ_CRASHREPORTER_URL", "https://crash-reports.thunderbird.net/")
 
 imply_option("--enable-default-browser-agent", False)
 imply_option("MOZ_REQUIRE_SIGNING", False)
+imply_option("MOZ_SERVICES_SYNC", True)
 
 
-@depends(target_is_windows, target_is_linux)
+@depends(target_is_windows, target_has_linux_kernel)
 def bundled_fonts(is_windows, is_linux):
     if is_windows or is_linux:
         return True
@@ -25,72 +25,23 @@ set_config("MOZ_BUNDLED_FONTS", bundled_fonts)
 add_old_configure_assignment("MOZ_BUNDLED_FONTS", bundled_fonts)
 
 
-@depends(check_build_environment, "--help")
-def comm_paths(build_env, _):
+@depends(build_environment, "--help")
+@imports(_from="os.path", _import="join")
+def commtopsrcdir(build_env, _):
     topsrcdir = build_env.topsrcdir
-    topobjdir = build_env.topobjdir
-
-    moztopsrcdir = topsrcdir
-    commtopsrcdir = "%s/comm" % topsrcdir
-    mozreltopsrcdir = "."
-    commreltopsrcdir = "comm"
-    commtopobjdir = "%s/comm" % topobjdir
-
-    return namespace(
-        moztopsrcdir=moztopsrcdir,
-        commtopsrcdir=commtopsrcdir,
-        mozreltopsrcdir=mozreltopsrcdir,
-        commreltopsrcdir=commreltopsrcdir,
-        commtopobjdir=commtopobjdir,
-    )
+    return join(topsrcdir, "comm")
 
 
-@template
-def set_defconf(k, v):
-    set_config(k, v)
-    set_define(k, v)
-    add_old_configure_assignment(k, v)
+add_old_configure_assignment("commtopsrcdir", commtopsrcdir)
+set_config("commtopsrcdir", commtopsrcdir)
 
-
-set_defconf("moztopsrcdir", comm_paths.moztopsrcdir)
-set_defconf("commtopsrcdir", comm_paths.commtopsrcdir)
-set_defconf("mozreltopsrcdir", comm_paths.mozreltopsrcdir)
-set_defconf("commreltopsrcdir", comm_paths.commreltopsrcdir)
-set_defconf("commtopobjdir", comm_paths.commtopobjdir)
-
-
-@depends(check_build_environment, application)
-@imports(_from="os.path", _import="exists")
-@imports(_from="__builtin__", _import="open")
-def thunderbird_version(build_env, app_path):
-    version_file = os.path.join(
-        build_env.topsrcdir, app_path[0], "config", "version.txt"
-    )
-    version_file_display = os.path.join(
-        build_env.topsrcdir, app_path[0], "config", "version_display.txt"
-    )
-    rv = []
-    for f in [version_file, version_file_display]:
-        if exists(f):
-            f_value = open(f).read().strip()
-        else:
-            f_value = "unknown"
-        rv.append(f_value)
-
-    return namespace(version=rv[0], version_display=rv[1])
-
-
-set_defconf("THUNDERBIRD_VERSION", thunderbird_version.version)
-set_defconf("THUNDERBIRD_VERSION_DISPLAY", thunderbird_version.version_display)
-
-set_define("MOZ_SEPARATE_MANIFEST_FOR_THEME_OVERRIDES", True)
 
 imply_option("MOZ_PLACES", True)
 imply_option("MOZ_SERVICES_HEALTHREPORT", True)
 imply_option("MOZ_DEDICATED_PROFILES", True)
 imply_option("MOZ_BLOCK_PROFILE_DOWNGRADE", True)
 
-with only_when(target_is_linux & compile_environment):
+with only_when(target_has_linux_kernel & compile_environment):
     option(env="MOZ_NO_PIE_COMPAT", help="Enable non-PIE wrapper")
 
     set_config("MOZ_NO_PIE_COMPAT", depends_if("MOZ_NO_PIE_COMPAT")(lambda _: True))
@@ -98,13 +49,12 @@ with only_when(target_is_linux & compile_environment):
 
 @depends("MOZ_AUTOMATION")
 @imports(_from="os", _import="environ")
-@imports(_from="six", _import="ensure_text")
 def pkg_libotr(automation):
     if automation:
         fetch_dir = environ.get("MOZ_FETCHES_DIR", None)
         if fetch_dir:
             log.info("Including libotr from {}".format(fetch_dir))
-            return ensure_text(fetch_dir)
+            return fetch_dir
 
         log.info("TB_LIBOTR_PREBUILT is set, but MOZ_FETCHES_DIR is invalid.")
 
@@ -116,16 +66,45 @@ set_config(
     "MOZ_TELEMETRY_EXTRA_HISTOGRAM_FILES",
     ["/comm/mail/components/telemetry/Histograms.json"],
 )
-set_config(
-    "MOZ_TELEMETRY_EXTRA_SCALAR_FILES", ["/comm/mail/components/telemetry/Scalars.yaml"]
-)
-set_config(
-    "MOZ_TELEMETRY_EXTRA_EVENT_FILES", ["/comm/mail/components/telemetry/Events.yaml"]
-)
+set_config("MOZ_TELEMETRY_EXTRA_SCALAR_FILES", ["/comm/mail/components/telemetry/Scalars.yaml"])
+set_config("MOZ_TELEMETRY_EXTRA_EVENT_FILES", ["/comm/mail/components/telemetry/Events.yaml"])
 
 include("../build/moz.configure/gecko_source.configure")
 
 include("../mailnews/moz.configure")
 
 imply_option("--enable-app-system-headers", True)
+
+
+@depends(milestone, update_channel)
+@imports("re")
+def thunderbird_official_branding(milestone, update_channel):
+    rv = "nightly"
+    if update_channel in ("release", "esr"):  # No separate "esr" branding, use same as release
+        rv = "thunderbird"
+    elif update_channel == "beta":
+        rv = "tb_beta"
+    elif update_channel == "default":  # For distros that want official branding but updates
+        version_display = milestone.app_version_display
+        m = re.search(r"([ab])\d+", version_display)
+        if m:  # Alpha or beta, alpha will fall back to nightly
+            if m.group(1) == "b":
+                rv = "tb_beta"
+        else:  # Release
+            rv = "thunderbird"
+    log.info(f"Thunderbird official branding set to '{rv}'.")
+    return rv
+
+
+set_config("THUNDERBIRD_OFFICIAL_BRANDING", thunderbird_official_branding)
+add_old_configure_assignment("THUNDERBIRD_OFFICIAL_BRANDING", thunderbird_official_branding)
+
+# Enable Rust overrides
+option("--enable-thunderbird-rust", help="Enable Rust support within Thunderbird")
+set_config("MOZ_THUNDERBIRD_RUST", True, when="--enable-thunderbird-rust")
+set_config("MOZ_OVERRIDE_GKRUST", True, when="--enable-thunderbird-rust")
+set_config(
+    "MOZ_OVERRIDE_CARGO_CONFIG", "comm/rust/.cargo/config.in", when="--enable-thunderbird-rust"
+)
+
 include("../../toolkit/moz.configure")

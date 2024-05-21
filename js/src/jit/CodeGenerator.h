@@ -7,10 +7,8 @@
 #ifndef jit_CodeGenerator_h
 #define jit_CodeGenerator_h
 
-#include "jit/CacheIR.h"
-#if defined(JS_ION_PERF)
-#  include "jit/PerfSpewer.h"
-#endif
+#include "jit/PerfSpewer.h"
+#include "js/Prefs.h"
 #include "js/ScalarType.h"  // js::Scalar::Type
 
 #if defined(JS_CODEGEN_X86)
@@ -25,15 +23,25 @@
 #  include "jit/mips32/CodeGenerator-mips32.h"
 #elif defined(JS_CODEGEN_MIPS64)
 #  include "jit/mips64/CodeGenerator-mips64.h"
+#elif defined(JS_CODEGEN_LOONG64)
+#  include "jit/loong64/CodeGenerator-loong64.h"
+#elif defined(JS_CODEGEN_RISCV64)
+#  include "jit/riscv64/CodeGenerator-riscv64.h"
+#elif defined(JS_CODEGEN_WASM32)
+#  include "jit/wasm32/CodeGenerator-wasm32.h"
 #elif defined(JS_CODEGEN_NONE)
 #  include "jit/none/CodeGenerator-none.h"
 #else
 #  error "Unknown architecture!"
 #endif
 
-#include "wasm/WasmGC.h"
-
 namespace js {
+
+namespace wasm {
+class Decoder;
+class StackMaps;
+}  // namespace wasm
+
 namespace jit {
 
 class WarpSnapshot;
@@ -52,21 +60,32 @@ class CheckOverRecursedFailure;
 class OutOfLineUnboxFloatingPoint;
 class OutOfLineStoreElementHole;
 class OutOfLineTypeOfV;
+class OutOfLineTypeOfIsNonPrimitiveV;
+class OutOfLineTypeOfIsNonPrimitiveO;
 class OutOfLineUpdateCache;
 class OutOfLineICFallback;
 class OutOfLineCallPostWriteBarrier;
 class OutOfLineCallPostWriteElementBarrier;
+class OutOfLineElementPostWriteBarrier;
 class OutOfLineIsCallable;
 class OutOfLineIsConstructor;
 class OutOfLineRegExpMatcher;
 class OutOfLineRegExpSearcher;
-class OutOfLineRegExpTester;
+class OutOfLineRegExpExecMatch;
+class OutOfLineRegExpExecTest;
 class OutOfLineRegExpPrototypeOptimizable;
 class OutOfLineRegExpInstanceOptimizable;
 class OutOfLineNaNToZero;
-class OutOfLineZeroIfNaN;
+class OutOfLineResumableWasmTrap;
+class OutOfLineAbortingWasmTrap;
 class OutOfLineGuardNumberToIntPtrIndex;
 class OutOfLineBoxNonStrictThis;
+class OutOfLineArrayPush;
+class OutOfLineAtomizeSlot;
+class OutOfLineWasmCallPostWriteBarrierImmediate;
+class OutOfLineWasmCallPostWriteBarrierIndex;
+class OutOfLineWasmNewStruct;
+class OutOfLineWasmNewArray;
 
 class CodeGenerator final : public CodeGeneratorSpecific {
   [[nodiscard]] bool generateBody();
@@ -80,15 +99,17 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   void verifyOsiPointRegs(LSafepoint* safepoint);
 #endif
 
-  void callVMInternal(VMFunctionId id, LInstruction* ins,
-                      const Register* dynStack);
+  void callVMInternal(VMFunctionId id, LInstruction* ins);
 
   template <typename Fn, Fn fn>
-  void callVM(LInstruction* ins, const Register* dynStack = nullptr);
+  void callVM(LInstruction* ins);
 
   template <typename Fn, Fn fn, class ArgSeq, class StoreOutputTo>
   inline OutOfLineCode* oolCallVM(LInstruction* ins, const ArgSeq& args,
                                   const StoreOutputTo& out);
+
+  template <typename LCallIns>
+  void emitCallNative(LCallIns* call, JSNative native);
 
  public:
   CodeGenerator(MIRGenerator* gen, LIRGraph* graph,
@@ -96,24 +117,24 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   ~CodeGenerator();
 
   [[nodiscard]] bool generate();
-  [[nodiscard]] bool generateWasm(wasm::TypeIdDesc funcTypeId,
-                                  wasm::BytecodeOffset trapOffset,
-                                  const wasm::ArgTypeVector& argTys,
-                                  const MachineState& trapExitLayout,
-                                  size_t trapExitLayoutNumWords,
-                                  wasm::FuncOffsets* offsets,
-                                  wasm::StackMaps* stackMaps);
+  [[nodiscard]] bool generateWasm(
+      wasm::CallIndirectId callIndirectId, wasm::BytecodeOffset trapOffset,
+      const wasm::ArgTypeVector& argTys, const RegisterOffsets& trapExitLayout,
+      size_t trapExitLayoutNumWords, wasm::FuncOffsets* offsets,
+      wasm::StackMaps* stackMaps, wasm::Decoder* decoder);
 
   [[nodiscard]] bool link(JSContext* cx, const WarpSnapshot* snapshot);
 
   void emitOOLTestObject(Register objreg, Label* ifTruthy, Label* ifFalsy,
                          Register scratch);
-  void emitIntToString(Register input, Register output, Label* ool);
 
   void emitTypeOfCheck(JSValueType type, Register tag, Register output,
                        Label* done, Label* oolObject);
-  void emitTypeOfName(JSValueType type, Register output);
+  void emitTypeOfJSType(JSValueType type, Register output);
   void emitTypeOfObject(Register obj, Register output, Label* done);
+  void emitTypeOfIsObject(MTypeOfIs* mir, Register obj, Register output,
+                          Label* success, Label* fail, Label* slowCheck);
+  void emitTypeOfIsObjectOOL(MTypeOfIs* mir, Register obj, Register output);
 
   template <typename Fn, Fn fn, class ArgSeq, class StoreOutputTo>
   void visitOutOfLineCallVM(
@@ -121,13 +142,16 @@ class CodeGenerator final : public CodeGeneratorSpecific {
 
   void visitOutOfLineRegExpMatcher(OutOfLineRegExpMatcher* ool);
   void visitOutOfLineRegExpSearcher(OutOfLineRegExpSearcher* ool);
-  void visitOutOfLineRegExpTester(OutOfLineRegExpTester* ool);
+  void visitOutOfLineRegExpExecMatch(OutOfLineRegExpExecMatch* ool);
+  void visitOutOfLineRegExpExecTest(OutOfLineRegExpExecTest* ool);
   void visitOutOfLineRegExpPrototypeOptimizable(
       OutOfLineRegExpPrototypeOptimizable* ool);
   void visitOutOfLineRegExpInstanceOptimizable(
       OutOfLineRegExpInstanceOptimizable* ool);
 
   void visitOutOfLineTypeOfV(OutOfLineTypeOfV* ool);
+  void visitOutOfLineTypeOfIsNonPrimitiveV(OutOfLineTypeOfIsNonPrimitiveV* ool);
+  void visitOutOfLineTypeOfIsNonPrimitiveO(OutOfLineTypeOfIsNonPrimitiveO* ool);
 
   template <SwitchTableType tableType>
   void visitOutOfLineSwitch(OutOfLineSwitch<tableType>* ool);
@@ -136,8 +160,9 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   void visitOutOfLineIsConstructor(OutOfLineIsConstructor* ool);
 
   void visitOutOfLineNaNToZero(OutOfLineNaNToZero* ool);
-  void visitOutOfLineZeroIfNaN(OutOfLineZeroIfNaN* ool);
 
+  void visitOutOfLineResumableWasmTrap(OutOfLineResumableWasmTrap* ool);
+  void visitOutOfLineAbortingWasmTrap(OutOfLineAbortingWasmTrap* ool);
   void visitCheckOverRecursedFailure(CheckOverRecursedFailure* ool);
 
   void visitOutOfLineUnboxFloatingPoint(OutOfLineUnboxFloatingPoint* ool);
@@ -151,16 +176,45 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   void visitOutOfLineCallPostWriteElementBarrier(
       OutOfLineCallPostWriteElementBarrier* ool);
 
+  void visitOutOfLineElementPostWriteBarrier(
+      OutOfLineElementPostWriteBarrier* ool);
+
   void visitOutOfLineNewArray(OutOfLineNewArray* ool);
   void visitOutOfLineNewObject(OutOfLineNewObject* ool);
 
   void visitOutOfLineGuardNumberToIntPtrIndex(
       OutOfLineGuardNumberToIntPtrIndex* ool);
 
+  void visitOutOfLineArrayPush(OutOfLineArrayPush* ool);
+
+  void visitOutOfLineAtomizeSlot(OutOfLineAtomizeSlot* ool);
+
+  void visitOutOfLineWasmCallPostWriteBarrierImmediate(
+      OutOfLineWasmCallPostWriteBarrierImmediate* ool);
+  void visitOutOfLineWasmCallPostWriteBarrierIndex(
+      OutOfLineWasmCallPostWriteBarrierIndex* ool);
+
+  void callWasmStructAllocFun(LInstruction* lir, wasm::SymbolicAddress fun,
+                              Register typeDefData, Register output);
+  void visitOutOfLineWasmNewStruct(OutOfLineWasmNewStruct* ool);
+
+  void callWasmArrayAllocFun(LInstruction* lir, wasm::SymbolicAddress fun,
+                             Register numElements, Register typeDefData,
+                             Register output,
+                             wasm::BytecodeOffset bytecodeOffset);
+  void visitOutOfLineWasmNewArray(OutOfLineWasmNewArray* ool);
+
  private:
   void emitPostWriteBarrier(const LAllocation* obj);
   void emitPostWriteBarrier(Register objreg);
   void emitPostWriteBarrierS(Address address, Register prev, Register next);
+
+  void emitElementPostWriteBarrier(MInstruction* mir,
+                                   const LiveRegisterSet& liveVolatileRegs,
+                                   Register obj, const LAllocation* index,
+                                   Register scratch,
+                                   const ConstantOrRegister& val,
+                                   int32_t indexDiff = 0);
 
   template <class LPostBarrierType, MIRType nurseryType>
   void visitPostWriteBarrierCommon(LPostBarrierType* lir, OutOfLineCode* ool);
@@ -173,21 +227,44 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   template <typename T>
   void emitApplyGeneric(T* apply);
   template <typename T>
-  void emitCallInvokeFunction(T* apply, Register extraStackSize);
-  void emitAllocateSpaceForApply(Register argcreg, Register extraStackSpace);
+  void emitCallInvokeFunction(T* apply);
+  void emitAllocateSpaceForApply(Register argcreg, Register scratch);
   void emitAllocateSpaceForConstructAndPushNewTarget(
-      Register argcreg, Register newTargetAndExtraStackSpace);
+      Register argcreg, Register newTargetAndScratch);
   void emitCopyValuesForApply(Register argvSrcBase, Register argvIndex,
                               Register copyreg, size_t argvSrcOffset,
                               size_t argvDstOffset);
-  void emitPopArguments(Register extraStackSize);
+  void emitRestoreStackPointerFromFP();
+  void emitPushArguments(Register argcreg, Register scratch, Register copyreg,
+                         uint32_t extraFormals);
   void emitPushArrayAsArguments(Register tmpArgc, Register srcBaseAndArgc,
                                 Register scratch, size_t argvSrcOffset);
-  void emitPushArguments(LApplyArgsGeneric* apply, Register extraStackSpace);
-  void emitPushArguments(LApplyArgsObj* apply, Register extraStackSpace);
-  void emitPushArguments(LApplyArrayGeneric* apply, Register extraStackSpace);
-  void emitPushArguments(LConstructArrayGeneric* construct,
-                         Register extraStackSpace);
+  void emitPushArguments(LApplyArgsGeneric* apply, Register scratch);
+  void emitPushArguments(LApplyArgsObj* apply, Register scratch);
+  void emitPushArguments(LApplyArrayGeneric* apply, Register scratch);
+  void emitPushArguments(LConstructArgsGeneric* construct, Register scratch);
+  void emitPushArguments(LConstructArrayGeneric* construct, Register scratch);
+
+  template <class GetInlinedArgument>
+  void emitGetInlinedArgument(GetInlinedArgument* lir, Register index,
+                              ValueOperand output);
+
+  void emitMaybeAtomizeSlot(LInstruction* ins, Register stringReg,
+                            Address slotAddr, TypedOrValueRegister dest);
+
+  using RegisterOrInt32 = mozilla::Variant<Register, int32_t>;
+
+  static RegisterOrInt32 ToRegisterOrInt32(const LAllocation* allocation);
+
+#ifdef DEBUG
+  void emitAssertArgumentsSliceBounds(const RegisterOrInt32& begin,
+                                      const RegisterOrInt32& count,
+                                      Register numActualArgs);
+#endif
+
+  template <class ArgumentsSlice>
+  void emitNewArray(ArgumentsSlice* lir, const RegisterOrInt32& count,
+                    Register output, Register temp);
 
   void visitNewArrayCallVM(LNewArray* lir);
   void visitNewObjectVMCall(LNewObject* lir);
@@ -195,10 +272,7 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   void emitConcat(LInstruction* lir, Register lhs, Register rhs,
                   Register output);
 
-  void emitRest(LInstruction* lir, Register array, Register numActuals,
-                Register temp0, Register temp1, unsigned numFormals,
-                Register resultreg);
-  void emitInstanceOf(LInstruction* ins, const LAllocation* prototypeObject);
+  void emitInstanceOf(LInstruction* ins, Register protoReg);
 
   void loadJSScriptForBlock(MBasicBlock* block, Register reg);
   void loadOutermostJSScript(Register reg);
@@ -226,15 +300,6 @@ class CodeGenerator final : public CodeGeneratorSpecific {
                            const ConstantOrRegister& id,
                            const ConstantOrRegister& value, bool strict);
 
-  [[nodiscard]] bool generateBranchV(const ValueOperand& value, Label* ifTrue,
-                                     Label* ifFalse, FloatRegister fr);
-
-  void emitLambdaInit(Register resultReg, Register envChainReg,
-                      const LambdaFunctionInfo& info);
-
-  void emitFilterArgumentsOrEval(LInstruction* lir, Register string,
-                                 Register temp1, Register temp2);
-
   template <class IteratorObject, class OrderedHashTable>
   void emitGetNextEntryForIterator(LGetNextEntryForIterator* lir);
 
@@ -256,30 +321,27 @@ class CodeGenerator final : public CodeGeneratorSpecific {
 
   void emitWasmCompareAndSelect(LWasmCompareAndSelect* ins);
 
+  template <typename InstructionWithMaybeTrapSite, class AddressOrBaseIndex>
+  void emitWasmValueLoad(InstructionWithMaybeTrapSite* ins, MIRType type,
+                         MWideningOp wideningOp, AddressOrBaseIndex addr,
+                         AnyRegister dst);
+  template <typename InstructionWithMaybeTrapSite, class AddressOrBaseIndex>
+  void emitWasmValueStore(InstructionWithMaybeTrapSite* ins, MIRType type,
+                          MNarrowingOp narrowingOp, AnyRegister src,
+                          AddressOrBaseIndex addr);
+
   void testValueTruthyForType(JSValueType type, ScratchTagScope& tag,
-                              const ValueOperand& value, Register scratch1,
-                              Register scratch2, FloatRegister fr,
+                              const ValueOperand& value, Register tempToUnbox,
+                              Register temp, FloatRegister floatTemp,
                               Label* ifTruthy, Label* ifFalsy,
                               OutOfLineTestObject* ool, bool skipTypeTest);
 
-  // This function behaves like testValueTruthy with the exception that it can
-  // choose to let control flow fall through when the object is truthy, as
-  // an optimization. Use testValueTruthy when it's required to branch to one
-  // of the two labels.
-  void testValueTruthyKernel(const ValueOperand& value,
-                             const LDefinition* scratch1,
-                             const LDefinition* scratch2, FloatRegister fr,
-                             TypeDataList observedTypes, Label* ifTruthy,
-                             Label* ifFalsy, OutOfLineTestObject* ool);
-
   // Test whether value is truthy or not and jump to the corresponding label.
-  // If the value can be an object that emulates |undefined|, |ool| must be
-  // non-null; otherwise it may be null (and the scratch definitions should
-  // be bogus), in which case an object encountered here will always be
-  // truthy.
-  void testValueTruthy(const ValueOperand& value, const LDefinition* scratch1,
-                       const LDefinition* scratch2, FloatRegister fr,
-                       TypeDataList observedTypes, Label* ifTruthy,
+  // The control flow falls through when the object is truthy, as an
+  // optimization.
+  void testValueTruthy(const ValueOperand& value, Register tempToUnbox,
+                       Register temp, FloatRegister floatTemp,
+                       const TypeDataList& observedTypes, Label* ifTruthy,
                        Label* ifFalsy, OutOfLineTestObject* ool);
 
   // This function behaves like testObjectEmulatesUndefined with the exception
@@ -313,8 +375,7 @@ class CodeGenerator final : public CodeGeneratorSpecific {
                                    Register scratch, OutOfLineTestObject* ool);
 
   void emitStoreElementTyped(const LAllocation* value, MIRType valueType,
-                             MIRType elementType, Register elements,
-                             const LAllocation* index);
+                             Register elements, const LAllocation* index);
 
   // Bailout if an element about to be written to is a hole.
   void emitStoreHoleCheck(Register elements, const LAllocation* index,
@@ -353,16 +414,101 @@ class CodeGenerator final : public CodeGeneratorSpecific {
   // Script counts created during code generation.
   IonScriptCounts* scriptCounts_;
 
-#if defined(JS_ION_PERF)
-  PerfSpewer perfSpewer_;
-#endif
+  IonPerfSpewer perfSpewer_;
 
-  // Bit mask of JitRealm stubs that are to be read-barriered.
-  uint32_t realmStubsToReadBarrier_;
+  // Bit mask of JitZone stubs that are to be read-barriered.
+  uint32_t zoneStubsToReadBarrier_;
+
+#ifdef FUZZING_JS_FUZZILLI
+  void emitFuzzilliHashDouble(FloatRegister floatDouble, Register scratch,
+                              Register output);
+  void emitFuzzilliHashObject(LInstruction* lir, Register obj, Register output);
+  void emitFuzzilliHashBigInt(Register bigInt, Register output);
+#endif
 
 #define LIR_OP(op) void visit##op(L##op* ins);
   LIR_OPCODE_LIST(LIR_OP)
 #undef LIR_OP
+
+  // In debug mode, we need to validate that we've not made a mistake with the
+  // fuse.
+  void assertObjectDoesNotEmulateUndefined(Register input, Register temp,
+                                           const MInstruction* mir);
+
+  // Enumerates the fuses that a code generation can depend on. These will
+  // be mapped to an actual fuse by validateAndRegisterFuseDependencies.
+  enum class FuseDependencyKind {
+    HasSeenObjectEmulateUndefinedFuse,
+  };
+
+  // The set of fuses this code generation depends on.
+  mozilla::EnumSet<FuseDependencyKind> fuseDependencies;
+
+  // Register a dependency on the HasSeenObjectEmulateUndefined fuse.
+  void addHasSeenObjectEmulateUndefinedFuseDependency() {
+    fuseDependencies += FuseDependencyKind::HasSeenObjectEmulateUndefinedFuse;
+  }
+
+  // Called during linking on main-thread: Ensures that the fuses are still
+  // intact, and registers a script dependency on a specific fuse before
+  // finishing compilation.
+  void validateAndRegisterFuseDependencies(JSContext* cx, HandleScript script,
+                                           bool* isValid);
+
+  // Return true if the fuse is intact, andd if the fuse is intact note the
+  // dependency
+  bool hasSeenObjectEmulateUndefinedFuseIntactAndDependencyNoted() {
+    if (!JS::Prefs::use_emulates_undefined_fuse()) {
+      // if we're not active, simply pretend the fuse is popped.
+      return false;
+    }
+
+    bool intact = gen->outerInfo().hasSeenObjectEmulateUndefinedFuseIntact();
+    if (intact) {
+      addHasSeenObjectEmulateUndefinedFuseDependency();
+    }
+    return intact;
+  }
+};
+
+class OutOfLineResumableWasmTrap : public OutOfLineCodeBase<CodeGenerator> {
+  LInstruction* lir_;
+  size_t framePushed_;
+  wasm::BytecodeOffset bytecodeOffset_;
+  wasm::Trap trap_;
+
+ public:
+  OutOfLineResumableWasmTrap(LInstruction* lir, size_t framePushed,
+                             wasm::BytecodeOffset bytecodeOffset,
+                             wasm::Trap trap)
+      : lir_(lir),
+        framePushed_(framePushed),
+        bytecodeOffset_(bytecodeOffset),
+        trap_(trap) {}
+
+  void accept(CodeGenerator* codegen) override {
+    codegen->visitOutOfLineResumableWasmTrap(this);
+  }
+  LInstruction* lir() const { return lir_; }
+  size_t framePushed() const { return framePushed_; }
+  wasm::BytecodeOffset bytecodeOffset() const { return bytecodeOffset_; }
+  wasm::Trap trap() const { return trap_; }
+};
+
+class OutOfLineAbortingWasmTrap : public OutOfLineCodeBase<CodeGenerator> {
+  wasm::BytecodeOffset bytecodeOffset_;
+  wasm::Trap trap_;
+
+ public:
+  OutOfLineAbortingWasmTrap(wasm::BytecodeOffset bytecodeOffset,
+                            wasm::Trap trap)
+      : bytecodeOffset_(bytecodeOffset), trap_(trap) {}
+
+  void accept(CodeGenerator* codegen) override {
+    codegen->visitOutOfLineAbortingWasmTrap(this);
+  }
+  wasm::BytecodeOffset bytecodeOffset() const { return bytecodeOffset_; }
+  wasm::Trap trap() const { return trap_; }
 };
 
 }  // namespace jit

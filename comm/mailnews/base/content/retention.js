@@ -1,6 +1,4 @@
-/*
- * -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -18,15 +16,13 @@ function initCommonRetentionSettings(retentionSettings) {
       ? retentionSettings.numHeadersToKeep
       : 2000;
 
-  document.getElementById(
-    "retention.applyToFlagged"
-  ).checked = !retentionSettings.applyToFlaggedMessages;
+  document.getElementById("retention.applyToFlagged").checked =
+    !retentionSettings.applyToFlaggedMessages;
 }
 
 function saveCommonRetentionSettings(aRetentionSettings) {
-  aRetentionSettings.retainByPreference = document.getElementById(
-    "retention.keepMsg"
-  ).value;
+  aRetentionSettings.retainByPreference =
+    document.getElementById("retention.keepMsg").value;
 
   aRetentionSettings.daysToKeepHdrs = document.getElementById(
     "retention.keepOldMsgMin"

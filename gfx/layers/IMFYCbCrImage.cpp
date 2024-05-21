@@ -13,7 +13,6 @@
 #include "mozilla/layers/CompositableForwarder.h"
 #include "mozilla/layers/D3D11YCbCrImage.h"
 #include "mozilla/layers/TextureClient.h"
-#include "d3d9.h"
 
 namespace mozilla {
 namespace layers {
@@ -85,13 +84,13 @@ bool IMFYCbCrImage::CopyDataToTexture(const Data& aData, ID3D11Device* aDevice,
     D3D11_BOX box;
     box.front = box.top = box.left = 0;
     box.back = 1;
-    box.right = aData.mYSize.width;
-    box.bottom = aData.mYSize.height;
+    box.right = aData.YDataSize().width;
+    box.bottom = aData.YDataSize().height;
     ctx->UpdateSubresource(textureY, 0, &box, aData.mYChannel, aData.mYStride,
                            0);
 
-    box.right = aData.mCbCrSize.width;
-    box.bottom = aData.mCbCrSize.height;
+    box.right = aData.CbCrDataSize().width;
+    box.bottom = aData.CbCrDataSize().height;
     ctx->UpdateSubresource(textureCb, 0, &box, aData.mCbChannel,
                            aData.mCbCrStride, 0);
     ctx->UpdateSubresource(textureCr, 0, &box, aData.mCrChannel,
@@ -115,7 +114,7 @@ TextureClient* IMFYCbCrImage::GetD3D11TextureClient(
   {
     DXGIYCbCrTextureAllocationHelper helper(mData, TextureFlags::DEFAULT,
                                             device);
-    mTextureClient = mAllocator->CreateOrRecycle(helper);
+    mTextureClient = mAllocator->CreateOrRecycle(helper).unwrapOr(nullptr);
   }
 
   if (!mTextureClient) {

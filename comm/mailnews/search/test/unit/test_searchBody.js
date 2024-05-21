@@ -8,8 +8,8 @@
 /* import-globals-from ../../../test/resources/searchTestUtils.js */
 load("../../../resources/searchTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var Isnt = Ci.nsMsgSearchOp.Isnt;
@@ -86,6 +86,10 @@ var Files = [
   "../../../data/iso-2022-jp-not-qp.eml", // plaintext, has 現況 which contains =67.
 ];
 var Tests = [
+  // Message basic1 has body: "Hello, world!"
+  { value: "Hello, world!", op: Is, count: 1 },
+  { value: "Hello, world!", op: Isnt, count: Files.length - 1 },
+
   /* Translate Base64 messages */
   // "World!" is contained in three messages, but in bug132340 it's not in a text
   // part and should not be found.
@@ -185,12 +189,12 @@ function fixFile(file) {
   sstream.close();
   fstream.close();
 
-  let targetFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+  const targetFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
   targetFile.initWithFile(do_get_profile());
   targetFile.append(file.leafName);
-  let ostream = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(
-    Ci.nsIFileOutputStream
-  );
+  const ostream = Cc[
+    "@mozilla.org/network/file-output-stream;1"
+  ].createInstance(Ci.nsIFileOutputStream);
   ostream.init(targetFile, -1, -1, 0);
   ostream.write(data, data.length);
   ostream.close();

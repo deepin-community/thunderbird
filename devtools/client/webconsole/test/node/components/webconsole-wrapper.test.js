@@ -8,21 +8,28 @@
 const expect = require("expect");
 const {
   stubPackets,
-} = require("devtools/client/webconsole/test/node/fixtures/stubs/index");
+} = require("resource://devtools/client/webconsole/test/node/fixtures/stubs/index.js");
 const {
   clonePacket,
   getMessageAt,
   getPrivatePacket,
   getWebConsoleUiMock,
-} = require("devtools/client/webconsole/test/node/helpers");
+} = require("resource://devtools/client/webconsole/test/node/helpers.js");
 
-const WebConsoleWrapper = require("devtools/client/webconsole/webconsole-wrapper");
-const { messagesAdd } = require("devtools/client/webconsole/actions/messages");
+const WebConsoleWrapper = require("resource://devtools/client/webconsole/webconsole-wrapper.js");
+const {
+  messagesAdd,
+} = require("resource://devtools/client/webconsole/actions/messages.js");
 
 async function getWebConsoleWrapper() {
   const hud = {
     currentTarget: { client: {}, getFront: () => {} },
     getMappedExpression: () => {},
+    commands: {
+      objectCommand: {
+        releaseObjects: async () => {},
+      },
+    },
   };
   const webConsoleUi = getWebConsoleUiMock(hud);
 

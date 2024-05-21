@@ -1,10 +1,8 @@
-"use strict";
-
 import {
   TopSiteImpressionWrapper,
   INTERSECTION_RATIO,
 } from "content-src/components/TopSites/TopSiteImpressionWrapper";
-import { actionTypes as at } from "common/Actions.jsm";
+import { actionTypes as at } from "common/Actions.sys.mjs";
 import React from "react";
 import { shallow } from "enzyme";
 
@@ -35,6 +33,7 @@ describe("<TopSiteImpressionWrapper>", () => {
   }
 
   const DEFAULT_PROPS = {
+    actionType: at.TOP_SITES_SPONSORED_IMPRESSION_STATS,
     tile: {
       tile_id: 1,
       position: 1,
@@ -84,7 +83,7 @@ describe("<TopSiteImpressionWrapper>", () => {
     assert.calledOnce(dispatch);
 
     let [action] = dispatch.firstCall.args;
-    assert.equal(action.type, at.TOP_SITES_IMPRESSION_STATS);
+    assert.equal(action.type, at.TOP_SITES_SPONSORED_IMPRESSION_STATS);
     assert.deepEqual(action.data, {
       type: "impression",
       ...DEFAULT_PROPS.tile,
@@ -107,7 +106,7 @@ describe("<TopSiteImpressionWrapper>", () => {
     assert.calledOnce(dispatch);
 
     const [action] = dispatch.firstCall.args;
-    assert.equal(action.type, at.TOP_SITES_IMPRESSION_STATS);
+    assert.equal(action.type, at.TOP_SITES_SPONSORED_IMPRESSION_STATS);
     assert.deepEqual(action.data, {
       type: "impression",
       ...DEFAULT_PROPS.tile,
@@ -136,9 +135,8 @@ describe("<TopSiteImpressionWrapper>", () => {
     );
   });
   it("should unobserve the intersection observer when the wrapper is removed", () => {
-    const IntersectionObserver = buildIntersectionObserver(
-      ZeroIntersectEntries
-    );
+    const IntersectionObserver =
+      buildIntersectionObserver(ZeroIntersectEntries);
     const spy = sinon.spy(IntersectionObserver.prototype, "unobserve");
     const props = { dispatch: sinon.spy(), IntersectionObserver };
 

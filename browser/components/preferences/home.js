@@ -28,14 +28,11 @@ Preferences.addAll([
   { id: "browser.newtabpage.enabled", type: "bool" },
 ]);
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  ExtensionPreferencesManager:
-    "resource://gre/modules/ExtensionPreferencesManager.jsm",
-});
-
 const HOMEPAGE_OVERRIDE_KEY = "homepage_override";
 const URL_OVERRIDES_TYPE = "url_overrides";
 const NEW_TAB_KEY = "newTabURL";
+
+const BLANK_HOMEPAGE_URL = "chrome://browser/content/blanktab.html";
 
 var gHomePane = {
   HOME_MODE_FIREFOX_HOME: "0",
@@ -105,7 +102,8 @@ var gHomePane = {
     // If the new tab url was changed to about:blank or about:newtab
     if (
       AboutNewTab.newTabURL === "about:newtab" ||
-      AboutNewTab.newTabURL === "about:blank"
+      AboutNewTab.newTabURL === "about:blank" ||
+      AboutNewTab.newTabURL === BLANK_HOMEPAGE_URL
     ) {
       let newtabEnabledPref = Services.prefs.getBoolPref(
         this.NEWTAB_ENABLED_PREF,
@@ -117,6 +115,7 @@ var gHomePane = {
       if (newValue !== menulist.value) {
         menulist.value = newValue;
       }
+      menulist.disabled = Preferences.get(this.NEWTAB_ENABLED_PREF).locked;
       // If change was triggered by installing an addon we need to update
       // the value of the menulist to be that addon.
     } else {
@@ -161,13 +160,14 @@ var gHomePane = {
       }
 
       let extensionOptions;
+      await ExtensionSettingsStore.initialize();
       if (select.id === "homeMode") {
-        extensionOptions = await ExtensionSettingsStore.getAllSettings(
+        extensionOptions = ExtensionSettingsStore.getAllSettings(
           PREF_SETTING_TYPE,
           HOMEPAGE_OVERRIDE_KEY
         );
       } else {
-        extensionOptions = await ExtensionSettingsStore.getAllSettings(
+        extensionOptions = ExtensionSettingsStore.getAllSettings(
           URL_OVERRIDES_TYPE,
           NEW_TAB_KEY
         );
@@ -309,7 +309,7 @@ var gHomePane = {
     // (and it makes existing tests happy).
     let newValue;
     if (
-      homePage === "about:blank" ||
+      this._isBlankPage(homePage) ||
       (HomePage.isDefault && !HomePage.locked)
     ) {
       newValue = "";
@@ -339,18 +339,21 @@ var gHomePane = {
   isHomePageBlank() {
     const startupPref = Preferences.get("browser.startup.page");
     return (
-      ["about:blank", ""].includes(HomePage.get()) ||
+      ["about:blank", BLANK_HOMEPAGE_URL, ""].includes(HomePage.get()) ||
       startupPref.value === gMainPane.STARTUP_PREF_BLANK
     );
   },
 
   /**
-   * _isTabAboutPreferences: Is a given tab set to about:preferences?
+   * _isTabAboutPreferencesOrSettings: Is a given tab set to about:preferences or about:settings?
    * @param {Element} aTab A tab element
-   * @returns {bool} Is the linkedBrowser of aElement set to about:preferences?
+   * @returns {bool} Is the linkedBrowser of aElement set to about:preferences or about:settings?
    */
-  _isTabAboutPreferences(aTab) {
-    return aTab.linkedBrowser.currentURI.spec.startsWith("about:preferences");
+  _isTabAboutPreferencesOrSettings(aTab) {
+    return (
+      aTab.linkedBrowser.currentURI.spec.startsWith("about:preferences") ||
+      aTab.linkedBrowser.currentURI.spec.startsWith("about:settings")
+    );
   },
 
   /**
@@ -368,7 +371,7 @@ var gHomePane = {
         "navigator:browser"
     ) {
       tabs = win.gBrowser.visibleTabs.slice(win.gBrowser._numPinnedTabs);
-      tabs = tabs.filter(tab => !this._isTabAboutPreferences(tab));
+      tabs = tabs.filter(tab => !this._isTabAboutPreferencesOrSettings(tab));
       // XXX: Bug 1441637 - Fix tabbrowser to report tab.closing before it blurs it
       tabs = tabs.filter(tab => !tab.closing);
     }
@@ -476,8 +479,8 @@ var gHomePane = {
         }
         break;
       case this.HOME_MODE_BLANK:
-        if (HomePage.get() !== "about:blank") {
-          HomePage.safeSet("about:blank");
+        if (!this._isBlankPage(HomePage.get())) {
+          HomePage.safeSet(BLANK_HOMEPAGE_URL);
         } else {
           this._renderCustomSettings({ shouldShow: false });
         }
@@ -560,7 +563,7 @@ var gHomePane = {
 
     // FIXME Bug 244192: using dangerous "|" joiner!
     if (tabs.length) {
-      HomePage.set(tabs.map(getTabURI).join("|")).catch(Cu.reportError);
+      HomePage.set(tabs.map(getTabURI).join("|")).catch(console.error);
     }
   },
 
@@ -570,7 +573,7 @@ var gHomePane = {
     }
     if (rv.urls && rv.names) {
       // XXX still using dangerous "|" joiner!
-      HomePage.set(rv.urls.join("|")).catch(Cu.reportError);
+      HomePage.set(rv.urls.join("|")).catch(console.error);
     }
   },
 
@@ -598,29 +601,9 @@ var gHomePane = {
     AboutNewTab.resetNewTabURL();
   },
 
-  onCustomHomePageInput(event) {
-    if (this._telemetryHomePageTimer) {
-      clearTimeout(this._telemetryHomePageTimer);
-    }
-    let browserHomePage = event.target.value;
-    // The length of the home page URL string should be more then four,
-    // and it should contain at least one ".", for example, "https://mozilla.org".
-    if (browserHomePage.length > 4 && browserHomePage.includes(".")) {
-      this._telemetryHomePageTimer = setTimeout(() => {
-        let homePageNumber = browserHomePage.split("|").length;
-        Services.telemetry.scalarAdd("preferences.browser_home_page_change", 1);
-        Services.telemetry.keyedScalarAdd(
-          "preferences.browser_home_page_count",
-          homePageNumber,
-          1
-        );
-      }, 3000);
-    }
-  },
-
   onCustomHomePageChange(event) {
     const value = event.target.value || HomePage.getDefault();
-    HomePage.set(value).catch(Cu.reportError);
+    HomePage.set(value).catch(console.error);
   },
 
   /**
@@ -645,6 +628,10 @@ var gHomePane = {
     );
   },
 
+  _isBlankPage(url) {
+    return url == "about:blank" || url == BLANK_HOMEPAGE_URL;
+  },
+
   /**
    * Show the Restore Defaults button if any preference on the Home tab was
    * changed, or hide it otherwise.
@@ -652,7 +639,11 @@ var gHomePane = {
   toggleRestoreDefaultsBtn() {
     const btn = document.getElementById("restoreDefaultHomePageBtn");
     const prefChanged = this._changedHomeTabDefaultPrefs();
-    btn.style.visibility = prefChanged ? "visible" : "hidden";
+    if (prefChanged) {
+      btn.style.removeProperty("visibility");
+    } else {
+      btn.style.visibility = "hidden";
+    }
   },
 
   /**
@@ -671,9 +662,6 @@ var gHomePane = {
     document
       .getElementById("homePageUrl")
       .addEventListener("change", this.onCustomHomePageChange.bind(this));
-    document
-      .getElementById("homePageUrl")
-      .addEventListener("input", this.onCustomHomePageInput.bind(this));
     document
       .getElementById("useCurrentBtn")
       .addEventListener("command", this.setHomePageToCurrent.bind(this));

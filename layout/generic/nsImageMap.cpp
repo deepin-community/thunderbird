@@ -23,7 +23,7 @@
 #include "nsIContentInlines.h"
 #include "nsIScriptError.h"
 #include "nsContentUtils.h"
-#include "ImageLayers.h"
+#include "nsLayoutUtils.h"
 
 #ifdef ACCESSIBILITY
 #  include "nsAccessibilityService.h"
@@ -467,7 +467,7 @@ void PolyArea::Draw(nsIFrame* aFrame, DrawTarget& aDrawTarget,
       Point p1(pc->CSSPixelsToDevPixels(mCoords[0]),
                pc->CSSPixelsToDevPixels(mCoords[1]));
       Point p2, p1snapped, p2snapped;
-      for (int32_t i = 2; i < mNumCoords; i += 2) {
+      for (int32_t i = 2; i < mNumCoords - 1; i += 2) {
         p2.x = pc->CSSPixelsToDevPixels(mCoords[i]);
         p2.y = pc->CSSPixelsToDevPixels(mCoords[i + 1]);
         p1snapped = p1;
@@ -493,7 +493,7 @@ void PolyArea::GetRect(nsIFrame* aFrame, nsRect& aRect) {
     nscoord x1, x2, y1, y2, xtmp, ytmp;
     x1 = x2 = nsPresContext::CSSPixelsToAppUnits(mCoords[0]);
     y1 = y2 = nsPresContext::CSSPixelsToAppUnits(mCoords[1]);
-    for (int32_t i = 2; i < mNumCoords; i += 2) {
+    for (int32_t i = 2; i < mNumCoords - 1; i += 2) {
       xtmp = nsPresContext::CSSPixelsToAppUnits(mCoords[i]);
       ytmp = nsPresContext::CSSPixelsToAppUnits(mCoords[i + 1]);
       x1 = x1 < xtmp ? x1 : xtmp;
@@ -688,7 +688,7 @@ void nsImageMap::UpdateAreas() {
 }
 
 void nsImageMap::AddArea(HTMLAreaElement* aArea) {
-  static Element::AttrValuesArray strings[] = {
+  static AttrArray::AttrValuesArray strings[] = {
       nsGkAtoms::rect,     nsGkAtoms::rectangle,
       nsGkAtoms::circle,   nsGkAtoms::circ,
       nsGkAtoms::_default, nsGkAtoms::poly,
@@ -697,8 +697,8 @@ void nsImageMap::AddArea(HTMLAreaElement* aArea) {
   UniquePtr<Area> area;
   switch (aArea->FindAttrValueIn(kNameSpaceID_None, nsGkAtoms::shape, strings,
                                  eIgnoreCase)) {
-    case Element::ATTR_VALUE_NO_MATCH:
-    case Element::ATTR_MISSING:
+    case AttrArray::ATTR_VALUE_NO_MATCH:
+    case AttrArray::ATTR_MISSING:
     case 0:
     case 1:
       area = MakeUnique<RectArea>(aArea);
@@ -732,15 +732,15 @@ void nsImageMap::AddArea(HTMLAreaElement* aArea) {
   aArea->SetPrimaryFrame(mImageFrame);
 
   nsAutoString coords;
-  aArea->GetAttr(kNameSpaceID_None, nsGkAtoms::coords, coords);
+  aArea->GetAttr(nsGkAtoms::coords, coords);
   area->ParseCoords(coords);
   mAreas.AppendElement(std::move(area));
 }
 
-HTMLAreaElement* nsImageMap::GetArea(nscoord aX, nscoord aY) const {
+HTMLAreaElement* nsImageMap::GetArea(const CSSIntPoint& aPt) const {
   NS_ASSERTION(mMap, "Not initialized");
   for (const auto& area : mAreas) {
-    if (area->IsInside(aX, aY)) {
+    if (area->IsInside(aPt.x, aPt.y)) {
       return area->mArea;
     }
   }

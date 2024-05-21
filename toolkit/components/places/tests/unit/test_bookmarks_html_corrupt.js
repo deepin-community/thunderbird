@@ -9,7 +9,7 @@ const TEST_FAVICON_DATA_SIZE = 580;
 
 add_task(async function test_corrupt_file() {
   // Import bookmarks from the corrupt file.
-  let corruptHtml = OS.Path.join(do_get_cwd().path, "bookmarks.corrupt.html");
+  let corruptHtml = PathUtils.join(do_get_cwd().path, "bookmarks.corrupt.html");
   await BookmarkHTMLUtils.importFromFile(corruptHtml, { replace: true });
 
   // Check that bookmarks that are not corrupt have been imported.
@@ -24,19 +24,17 @@ add_task(async function test_corrupt_database() {
     url: "http://test.mozilla.org",
     title: "We love belugas",
   });
-  await PlacesUtils.withConnectionWrapper("test", async function(db) {
+  await PlacesUtils.withConnectionWrapper("test", async function (db) {
     await db.execute("UPDATE moz_bookmarks SET fk = NULL WHERE guid = :guid", {
       guid: corruptBookmark.guid,
     });
   });
 
-  let bookmarksFile = OS.Path.join(
-    OS.Constants.Path.profileDir,
+  let bookmarksFile = PathUtils.join(
+    PathUtils.profileDir,
     "bookmarks.exported.html"
   );
-  if (await OS.File.exists(bookmarksFile)) {
-    await OS.File.remove(bookmarksFile);
-  }
+  await IOUtils.remove(bookmarksFile, { ignoreAbsent: true });
   await BookmarkHTMLUtils.exportToFile(bookmarksFile);
 
   // Import again and check for correctness.
@@ -53,7 +51,7 @@ add_task(async function test_corrupt_database() {
  * @resolves When the checks are finished.
  * @rejects Never.
  */
-var database_check = async function() {
+var database_check = async function () {
   // BOOKMARKS MENU
   let root = PlacesUtils.getFolderContents(PlacesUtils.bookmarks.menuGuid).root;
   Assert.equal(root.childCount, 2);
@@ -114,7 +112,7 @@ var database_check = async function() {
   await new Promise(resolve => {
     PlacesUtils.favicons.getFaviconDataForPage(
       uri(TEST_FAVICON_PAGE_URL),
-      (aURI, aDataLen, aData, aMimeType) => {
+      (aURI, aDataLen) => {
         // aURI should never be null when aDataLen > 0.
         Assert.notEqual(aURI, null);
         // Favicon data is stored in the bookmarks file as a "data:" URI.  For

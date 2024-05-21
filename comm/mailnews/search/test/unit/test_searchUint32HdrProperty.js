@@ -9,8 +9,8 @@
 /* import-globals-from ../../../test/resources/searchTestUtils.js */
 load("../../../resources/searchTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var Isnt = Ci.nsMsgSearchOp.Isnt;
@@ -35,7 +35,7 @@ var Tests = [
   // add a property and test its value
   {
     setup: function setupProperty() {
-      for (let msgHdr of localAccountUtils.inboxFolder.msgDatabase.EnumerateMessages()) {
+      for (const msgHdr of localAccountUtils.inboxFolder.msgDatabase.enumerateMessages()) {
         msgHdr.setUint32Property("iam23", 23);
       }
     },

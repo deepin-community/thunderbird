@@ -11,7 +11,7 @@
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/StaticPtr.h"
 #include "mozilla/Telemetry.h"
-#include "nsGlobalWindowOuter.h"
+#include "nsGlobalWindowInner.h"
 
 namespace mozilla::dom {
 
@@ -286,8 +286,8 @@ void ContentMediaAgent::NotifyMediaFullScreenState(uint64_t aBrowsingContextId,
   }
 }
 
-void ContentMediaAgent::UpdatePositionState(uint64_t aBrowsingContextId,
-                                            const PositionState& aState) {
+void ContentMediaAgent::UpdatePositionState(
+    uint64_t aBrowsingContextId, const Maybe<PositionState>& aState) {
   RefPtr<BrowsingContext> bc = GetBrowsingContextForAgent(aBrowsingContextId);
   if (!bc || bc->IsDiscarded()) {
     return;

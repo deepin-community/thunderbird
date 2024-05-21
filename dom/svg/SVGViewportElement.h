@@ -31,16 +31,6 @@ class SVGAnimatedRect;
 class SVGViewElement;
 class SVGViewportElement;
 
-class svgFloatSize {
- public:
-  svgFloatSize(float aWidth, float aHeight) : width(aWidth), height(aHeight) {}
-  bool operator!=(const svgFloatSize& rhs) {
-    return width != rhs.width || height != rhs.height;
-  }
-  float width;
-  float height;
-};
-
 class SVGViewportElement : public SVGGraphicsElement {
   friend class mozilla::SVGOuterSVGFrame;
   friend class mozilla::SVGViewportFrame;
@@ -51,21 +41,19 @@ class SVGViewportElement : public SVGGraphicsElement {
   ~SVGViewportElement() = default;
 
  public:
-  bool IsNodeOfType(uint32_t aFlags) const override;
-
   // nsIContent interface
   NS_IMETHOD_(bool) IsAttributeMapped(const nsAtom* aAttribute) const override;
 
   // SVGElement specializations:
-  virtual gfxMatrix PrependLocalTransformsTo(
+  gfxMatrix PrependLocalTransformsTo(
       const gfxMatrix& aMatrix,
       SVGTransformTypes aWhich = eAllTransforms) const override;
 
-  virtual bool HasValidDimensions() const override;
+  bool HasValidDimensions() const override;
 
   // SVGViewportElement methods:
 
-  float GetLength(uint8_t aCtxType);
+  float GetLength(uint8_t aCtxType) const;
 
   // public helpers:
 
@@ -116,14 +104,9 @@ class SVGViewportElement : public SVGGraphicsElement {
 
   gfx::Matrix GetViewBoxTransform() const;
 
-  svgFloatSize GetViewportSize() const {
-    return svgFloatSize(mViewportWidth, mViewportHeight);
-  }
+  gfx::Size GetViewportSize() const { return mViewportSize; }
 
-  void SetViewportSize(const svgFloatSize& aSize) {
-    mViewportWidth = aSize.width;
-    mViewportHeight = aSize.height;
-  }
+  void SetViewportSize(const gfx::Size& aSize) { mViewportSize = aSize; }
 
   /**
    * Returns true if either this is an SVG <svg> element that is the child of
@@ -139,7 +122,7 @@ class SVGViewportElement : public SVGGraphicsElement {
   // WebIDL
   already_AddRefed<SVGAnimatedRect> ViewBox();
   already_AddRefed<DOMSVGAnimatedPreserveAspectRatio> PreserveAspectRatio();
-  virtual SVGAnimatedViewBox* GetAnimatedViewBox() override;
+  SVGAnimatedViewBox* GetAnimatedViewBox() override;
 
  protected:
   // implementation helpers:
@@ -170,10 +153,9 @@ class SVGViewportElement : public SVGGraphicsElement {
   enum { ATTR_X, ATTR_Y, ATTR_WIDTH, ATTR_HEIGHT };
   SVGAnimatedLength mLengthAttributes[4];
   static LengthInfo sLengthInfo[4];
-  virtual LengthAttributesInfo GetLengthInfo() override;
+  LengthAttributesInfo GetLengthInfo() override;
 
-  virtual SVGAnimatedPreserveAspectRatio* GetAnimatedPreserveAspectRatio()
-      override;
+  SVGAnimatedPreserveAspectRatio* GetAnimatedPreserveAspectRatio() override;
 
   virtual const SVGAnimatedViewBox& GetViewBoxInternal() const {
     return mViewBox;
@@ -191,8 +173,8 @@ class SVGViewportElement : public SVGGraphicsElement {
   //
   // XXXjwatt Currently only used for outer <svg>, but maybe we could use -1 to
   // flag this as an inner <svg> to save the overhead of GetCtx calls?
-  // XXXjwatt our frame should probably reset these when it's destroyed.
-  float mViewportWidth, mViewportHeight;
+  // XXXjwatt our frame should probably reset this when it's destroyed.
+  gfx::Size mViewportSize;
 
   bool mHasChildrenOnlyTransform;
 };

@@ -14,7 +14,7 @@ const {
   PAGES_BASE_URL,
 } = require("damp-test/tests/head");
 
-module.exports = async function() {
+module.exports = async function () {
   await testSetup(PAGES_BASE_URL + "custom/panels-in-background/index.html");
 
   // Make sure the Console and Network panels are initialized
@@ -40,7 +40,7 @@ function waitForPayload(count, panelWin) {
   return new Promise(resolve => {
     let payloadReady = 0;
 
-    function onPayloadReady(_, id) {
+    function onPayloadReady() {
       payloadReady++;
       maybeResolve();
     }

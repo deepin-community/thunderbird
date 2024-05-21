@@ -5,7 +5,9 @@
 
 /* import-globals-from ../../base/prefs/content/am-prefs.js */
 
-var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
+var { FeedUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FeedUtils.sys.mjs"
+);
 
 var gAccount,
   gUpdateEnabled,
@@ -18,12 +20,13 @@ var gAccount,
 /**
  * Initialize am-newsblog account settings page when it gets shown.
  * Update an account's main settings title etc.
+ *
  * @returns {void}
  */
 function onInit() {
   setAccountTitle();
 
-  let optionsAcct = FeedUtils.getOptionsAcct(gAccount.incomingServer);
+  const optionsAcct = FeedUtils.getOptionsAcct(gAccount.incomingServer);
   document.getElementById("doBiff").checked = optionsAcct.doBiff;
 
   gUpdateEnabled = document.getElementById("updateEnabled");
@@ -35,7 +38,7 @@ function onInit() {
 
   gUpdateEnabled.checked = optionsAcct.updates.enabled;
   gBiffUnits.value = optionsAcct.updates.updateUnits;
-  let minutes =
+  const minutes =
     optionsAcct.updates.updateUnits == FeedUtils.kBiffUnitsMinutes
       ? optionsAcct.updates.updateMinutes
       : optionsAcct.updates.updateMinutes / (24 * 60);
@@ -64,17 +67,20 @@ function onPreInit(account, accountValues) {
  * @returns {void}
  */
 function serverPrettyNameOnBlur(event) {
-  parent.setAccountLabel(gAccount.key, null, event.target.value);
+  parent.setAccountLabel(gAccount.key, event.target.value);
   setAccountTitle();
 }
 
 /**
  * Update an account's main settings title with the account name if applicable.
+ *
  * @returns {void}
  */
 function setAccountTitle() {
-  let accountName = document.getElementById("server.prettyName");
-  let title = document.querySelector("#am-newsblog-title .dialogheader-title");
+  const accountName = document.getElementById("server.prettyName");
+  const title = document.querySelector(
+    "#am-newsblog-title .dialogheader-title"
+  );
   let titleValue = title.getAttribute("defaultTitle");
   if (accountName.value) {
     titleValue += " - " + accountName.value;
@@ -85,7 +91,7 @@ function setAccountTitle() {
 }
 
 function setPrefs(aNode) {
-  let optionsAcct = FeedUtils.getOptionsAcct(gAccount.incomingServer);
+  const optionsAcct = FeedUtils.getOptionsAcct(gAccount.incomingServer);
   switch (aNode.id) {
     case "doBiff":
       FeedUtils.pauseFeedFolderUpdates(
@@ -96,18 +102,19 @@ function setPrefs(aNode) {
       break;
     case "updateEnabled":
     case "updateValue":
-    case "biffUnits":
+    case "biffUnits": {
       optionsAcct.updates.enabled = gUpdateEnabled.checked;
       onCheckItem("updateValue", ["updateEnabled"]);
       onCheckItem("biffMinutes", ["updateEnabled"]);
       onCheckItem("biffDays", ["updateEnabled"]);
-      let minutes =
+      const minutes =
         gBiffUnits.value == FeedUtils.kBiffUnitsMinutes
           ? gUpdateValue.value
           : gUpdateValue.value * 24 * 60;
       optionsAcct.updates.updateMinutes = Number(minutes);
       optionsAcct.updates.updateUnits = gBiffUnits.value;
       break;
+    }
     case "autotagEnable":
       optionsAcct.category.enabled = aNode.checked;
       gAutotagUsePrefix.disabled = !aNode.checked;

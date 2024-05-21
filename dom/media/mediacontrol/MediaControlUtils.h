@@ -18,8 +18,7 @@
 
 extern mozilla::LazyLogModule gMediaControlLog;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 inline const char* ToMediaControlKeyStr(MediaControlKey aKey) {
   switch (aKey) {
@@ -49,6 +48,14 @@ inline const char* ToMediaControlKeyStr(MediaControlKey aKey) {
       MOZ_ASSERT_UNREACHABLE("Invalid action.");
       return "Unknown";
   }
+}
+
+inline const char* ToMediaControlKeyStr(const Maybe<MediaControlKey>& aKey) {
+  if (aKey.isNothing()) {
+    MOZ_ASSERT_UNREACHABLE("Invalid action.");
+    return "Unknown";
+  }
+  return ToMediaControlKeyStr(aKey.value());
 }
 
 inline const char* ToMediaSessionActionStr(MediaSessionAction aAction) {
@@ -98,11 +105,6 @@ inline MediaControlKey ConvertMediaSessionActionToControlKey(
       MOZ_ASSERT(aAction == MediaSessionAction::Stop);
       return MediaControlKey::Stop;
   }
-}
-
-inline MediaSessionAction ConvertToMediaSessionAction(uint8_t aActionValue) {
-  MOZ_DIAGNOSTIC_ASSERT(aActionValue < uint8_t(MediaSessionAction::EndGuard_));
-  return static_cast<MediaSessionAction>(aActionValue);
 }
 
 inline const char* ToMediaPlaybackStateStr(MediaPlaybackState aState) {
@@ -212,7 +214,6 @@ inline uint32_t GetMediaKeyMask(mozilla::dom::MediaControlKey aKey) {
   return 1 << static_cast<uint8_t>(aKey);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // DOM_MEDIA_MEDIACONTROL_MEDIACONTROLUTILS_H_

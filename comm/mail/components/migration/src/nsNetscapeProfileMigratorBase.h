@@ -6,6 +6,7 @@
 #ifndef netscapeprofilemigratorbase___h___
 #define netscapeprofilemigratorbase___h___
 
+#include "nsAttrValue.h"
 #include "nsIFile.h"
 #include "nsIStringBundle.h"
 #include "nsString.h"
@@ -15,7 +16,6 @@
 #include "nsIMailProfileMigrator.h"
 
 class nsIPrefBranch;
-class nsIMutableArray;
 
 struct fileTransactionEntry {
   nsCOMPtr<nsIFile> srcFile;   // the src path including leaf name
@@ -24,25 +24,33 @@ struct fileTransactionEntry {
       newName;  // only valid if the file should be renamed after getting copied
 };
 
-#define F(a) nsNetscapeProfileMigratorBase::a
+#define TRANSFORMFUNCTION(a) nsNetscapeProfileMigratorBase::a
 
-#define MAKEPREFTRANSFORM(pref, newpref, getmethod, setmethod)         \
-  {                                                                    \
-    pref, newpref, F(Get##getmethod), F(Set##setmethod), false, { -1 } \
+#define MAKEPREFTRANSFORM(pref, newpref, getmethod, setmethod) \
+  {                                                            \
+    pref, newpref, TRANSFORMFUNCTION(Get##getmethod),          \
+        TRANSFORMFUNCTION(Set##setmethod), false, {            \
+      -1                                                       \
+    }                                                          \
   }
 
-#define MAKESAMETYPEPREFTRANSFORM(pref, method)            \
-  {                                                        \
-    pref, 0, F(Get##method), F(Set##method), false, { -1 } \
+#define MAKESAMETYPEPREFTRANSFORM(pref, method)                              \
+  {                                                                          \
+    pref, 0, TRANSFORMFUNCTION(Get##method), TRANSFORMFUNCTION(Set##method), \
+        false, {                                                             \
+      -1                                                                     \
+    }                                                                        \
   }
 
 class nsNetscapeProfileMigratorBase : public nsIMailProfileMigrator,
-                                      public nsITimerCallback
+                                      public nsITimerCallback,
+                                      public nsINamed
 
 {
  public:
   NS_DECL_ISUPPORTS
   NS_DECL_NSITIMERCALLBACK
+  NS_DECL_NSINAMED
 
   nsNetscapeProfileMigratorBase();
 

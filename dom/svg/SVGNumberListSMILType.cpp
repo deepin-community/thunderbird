@@ -42,9 +42,7 @@ SVGNumberListSMILType SVGNumberListSMILType::sSingleton;
 void SVGNumberListSMILType::Init(SMILValue& aValue) const {
   MOZ_ASSERT(aValue.IsNull(), "Unexpected value type");
 
-  SVGNumberListAndInfo* numberList = new SVGNumberListAndInfo();
-
-  aValue.mU.mPtr = numberList;
+  aValue.mU.mPtr = new SVGNumberListAndInfo();
   aValue.mType = this;
 }
 
@@ -149,7 +147,7 @@ nsresult SVGNumberListSMILType::ComputeDistance(const SMILValue& aFrom,
     total += delta * delta;
   }
   double distance = sqrt(total);
-  if (!IsFinite(distance)) {
+  if (!std::isfinite(distance)) {
     return NS_ERROR_FAILURE;
   }
   aDistance = distance;

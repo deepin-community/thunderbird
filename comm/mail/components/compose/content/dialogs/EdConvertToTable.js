@@ -5,6 +5,7 @@
 /* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
+window.addEventListener("load", Startup);
 document.addEventListener("dialogaccept", onAccept);
 document.addEventListener("dialogcancel", onCancel);
 
@@ -15,20 +16,14 @@ var gOtherIndex = "2";
 
 // dialog initialization code
 function Startup() {
-  if (!GetCurrentEditor()) {
-    window.close();
-    return;
-  }
-
   gDialog.sepRadioGroup = document.getElementById("SepRadioGroup");
   gDialog.sepCharacterInput = document.getElementById("SepCharacterInput");
   gDialog.deleteSepCharacter = document.getElementById("DeleteSepCharacter");
   gDialog.collapseSpaces = document.getElementById("CollapseSpaces");
 
   // We persist the user's separator character
-  gDialog.sepCharacterInput.value = gDialog.sepRadioGroup.getAttribute(
-    "character"
-  );
+  gDialog.sepCharacterInput.value =
+    gDialog.sepRadioGroup.getAttribute("character");
 
   gIndex = gDialog.sepRadioGroup.getAttribute("index");
 
@@ -142,7 +137,7 @@ function onAccept() {
     if (start >= 0) {
       end = str.indexOf(">", start + 1);
       if (end > start) {
-        let tagContent = str.slice(start + 1, end).trim();
+        const tagContent = str.slice(start + 1, end).trim();
 
         if (/^ol|^ul|^dl/.test(tagContent)) {
           //  Replace list tag with <BR> to start new row

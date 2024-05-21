@@ -21,26 +21,27 @@ const TEST_URI = `
   <div id="testid2">Styled Node</div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode("#testid", inspector);
 
   const ruleEditor = getRuleViewRuleEditor(view, 1);
-  const propEditor = getTextProperty(view, 1, { "background-color": "blue" })
-    .editor;
+  const propEditor = getTextProperty(view, 1, {
+    "background-color": "blue",
+  }).editor;
 
   await focusEditableField(view, propEditor.valueSpan);
 
   info("Deleting all the text out of a value field");
   let onRuleViewChanged = view.once("ruleview-changed");
-  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["DELETE", "RETURN"]);
+  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["DELETE", "TAB"]);
   await onRuleViewChanged;
 
   info("Pressing enter a couple times to cycle through editors");
-  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["RETURN"]);
+  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["TAB"]);
   onRuleViewChanged = view.once("ruleview-changed");
-  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["RETURN"]);
+  await sendKeysAndWaitForFocus(view, ruleEditor.element, ["TAB"]);
   await onRuleViewChanged;
 
   isnot(propEditor.nameSpan.style.display, "none", "The name span is visible");

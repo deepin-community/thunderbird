@@ -30,6 +30,11 @@
   grid-template-columns: 1fr 1fr;
 }
 
+.grid-two-column-auto-min {
+  display: inline-grid;
+  grid-template-columns: auto min-content;
+}
+
 .grid-three-column-auto-x-auto {
   display: inline-grid;
   grid-template-columns: auto 1fr auto;
@@ -63,6 +68,16 @@
 
 .flex-content-center {
   justify-content: center;
+}
+
+.flex-content-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-content-row {
+  display: flex;
+  flex-direction: row;
 }
 
 .grid-item-span-row {

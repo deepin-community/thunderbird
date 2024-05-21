@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Type, Union  # noqa
 
 
 from . import pings
+from . import tags
 from . import util
 
 
@@ -28,7 +29,8 @@ class Lifetime(enum.Enum):
 class DataSensitivity(enum.Enum):
     technical = 1
     interaction = 2
-    web_activity = 3
+    stored_content = 3
+    web_activity = 3  # Old, deprecated name
     highly_sensitive = 4
 
 
@@ -47,6 +49,7 @@ class Metric:
         description: str,
         notification_emails: List[str],
         expires: Any,
+        metadata: Optional[Dict] = None,
         data_reviews: Optional[List[str]] = None,
         version: int = 0,
         disabled: bool = False,
@@ -58,7 +61,7 @@ class Metric:
         data_sensitivity: Optional[List[str]] = None,
         defined_in: Optional[Dict] = None,
         telemetry_mirror: Optional[str] = None,
-        _config: Dict[str, Any] = None,
+        _config: Optional[Dict[str, Any]] = None,
         _validated: bool = False,
     ):
         # Avoid cyclical import
@@ -71,6 +74,9 @@ class Metric:
         self.description = description
         self.notification_emails = notification_emails
         self.expires = expires
+        if metadata is None:
+            metadata = {}
+        self.metadata = metadata
         if data_reviews is None:
             data_reviews = []
         self.data_reviews = data_reviews
@@ -80,8 +86,7 @@ class Metric:
         if send_in_pings is None:
             send_in_pings = ["default"]
         self.send_in_pings = send_in_pings
-        if unit is not None:
-            self.unit = unit
+        self.unit = unit
         self.gecko_datapoint = gecko_datapoint
         if no_lint is None:
             no_lint = []
@@ -172,6 +177,11 @@ class Metric:
                 d[key] = [x.name for x in val]
         del d["name"]
         del d["category"]
+        if not d["unit"]:
+            d.pop("unit")
+        d.pop("_config", None)
+        d.pop("_generate_enums", None)
+        d.pop("_generate_structure", None)
         return d
 
     def _serialize_input(self) -> Dict[str, util.JSONType]:
@@ -193,10 +203,16 @@ class Metric:
         return self.disabled or self.is_expired()
 
     def is_expired(self) -> bool:
-        return self._config.get("custom_is_expired", util.is_expired)(self.expires)
+        def default_handler(expires) -> bool:
+            return util.is_expired(expires, self._config.get("expire_by_version"))
+
+        return self._config.get("custom_is_expired", default_handler)(self.expires)
 
     def validate_expires(self):
-        return self._config.get("custom_validate_expires", util.validate_expires)(
+        def default_handler(expires):
+            return util.validate_expires(expires, self._config.get("expire_by_version"))
+
+        return self._config.get("custom_validate_expires", default_handler)(
             self.expires
         )
 
@@ -294,14 +310,11 @@ class Event(Metric):
 
     default_store_names = ["events"]
 
-    _generate_enums = [("allowed_extra_keys", "Keys")]
-
     def __init__(self, *args, **kwargs):
         self.extra_keys = kwargs.pop("extra_keys", {})
         self.validate_extra_keys(self.extra_keys, kwargs.get("_config", {}))
-        if self.has_extra_types:
-            self._generate_enums = [("allowed_extra_keys_with_types", "Extra")]
         super().__init__(*args, **kwargs)
+        self._generate_enums = [("allowed_extra_keys_with_types", "Extra")]
 
     @property
     def allowed_extra_keys(self):
@@ -312,16 +325,9 @@ class Event(Metric):
     def allowed_extra_keys_with_types(self):
         # Sort keys so that output is deterministic
         return sorted(
-            [(k, v["type"]) for (k, v) in self.extra_keys.items()], key=lambda x: x[0]
+            [(k, v.get("type", "string")) for (k, v) in self.extra_keys.items()],
+            key=lambda x: x[0],
         )
-
-    @property
-    def has_extra_types(self):
-        """
-        If any extra key has a `type` specified,
-        we generate the new struct/object-based API.
-        """
-        return any("type" in x for x in self.extra_keys.values())
 
     @staticmethod
     def validate_extra_keys(extra_keys: Dict[str, str], config: Dict[str, Any]) -> None:
@@ -338,6 +344,10 @@ class Uuid(Metric):
     typename = "uuid"
 
 
+class Url(Metric):
+    typename = "url"
+
+
 class Jwe(Metric):
     typename = "jwe"
 
@@ -348,6 +358,30 @@ class Jwe(Metric):
         )
 
 
+class CowString(str):
+    """
+    Wrapper class for strings that should be represented
+    as a `Cow<'static, str>` in Rust,
+    or `String` in other target languages.
+
+    This wraps `str`, so unless `CowString` is specifically
+    handled it acts (and serializes)
+    as a string.
+    """
+
+    def __init__(self, val: str):
+        self.inner: str = val
+
+    def __eq__(self, other):
+        return self.inner == other.inner
+
+    def __hash__(self):
+        return self.inner.__hash__()
+
+    def __lt__(self, other):
+        return self.inner.__lt__(other.inner)
+
+
 class Labeled(Metric):
     labeled = True
 
@@ -355,7 +389,7 @@ class Labeled(Metric):
         labels = kwargs.pop("labels", None)
         if labels is not None:
             self.ordered_labels = labels
-            self.labels = set(labels)
+            self.labels = set([CowString(label) for label in labels])
         else:
             self.ordered_labels = None
             self.labels = None
@@ -391,4 +425,73 @@ class Rate(Metric):
         super().__init__(*args, **kwargs)
 
 
-ObjectTree = Dict[str, Dict[str, Union[Metric, pings.Ping]]]
+class Denominator(Counter):
+    typename = "denominator"
+    # A denominator is a counter with an additional list of numerators.
+    numerators: List[Rate] = []
+
+
+class Text(Metric):
+    typename = "text"
+
+
+class Object(Metric):
+    typename = "object"
+
+    def __init__(self, *args, **kwargs):
+        structure = kwargs.pop("structure", None)
+        if not structure:
+            raise ValueError("`object` is missing required parameter `structure`")
+
+        self._generate_structure = self.validate_structure(structure)
+        super().__init__(*args, **kwargs)
+
+    ALLOWED_TOPLEVEL = {"type", "properties", "items"}
+    ALLOWED_TYPES = ["object", "array", "number", "string", "boolean"]
+
+    @staticmethod
+    def _validate_substructure(structure):
+        extra = set(structure.keys()) - Object.ALLOWED_TOPLEVEL
+        if extra:
+            extra = ", ".join(extra)
+            allowed = ", ".join(Object.ALLOWED_TOPLEVEL)
+            raise ValueError(
+                f"Found additional fields: {extra}. Only allowed: {allowed}"
+            )
+
+        if "type" not in structure or structure["type"] not in Object.ALLOWED_TYPES:
+            raise ValueError("invalid or missing `type` in object structure")
+
+        if structure["type"] == "object":
+            if "items" in structure:
+                raise ValueError("`items` not allowed in object structure")
+
+            if "properties" not in structure:
+                raise ValueError("`properties` missing for type `object`")
+
+            for key in structure["properties"]:
+                value = structure["properties"][key]
+                structure["properties"][key] = Object._validate_substructure(value)
+
+        if structure["type"] == "array":
+            if "properties" in structure:
+                raise ValueError("`properties` not allowed in array structure")
+
+            if "items" not in structure:
+                raise ValueError("`items` missing for type `array`")
+
+            value = structure["items"]
+            structure["items"] = Object._validate_substructure(value)
+
+        return structure
+
+    @staticmethod
+    def validate_structure(structure):
+        if None:
+            raise ValueError("`structure` needed for object metric.")
+
+        structure = Object._validate_substructure(structure)
+        return structure
+
+
+ObjectTree = Dict[str, Dict[str, Union[Metric, pings.Ping, tags.Tag]]]

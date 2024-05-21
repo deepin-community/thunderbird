@@ -2,13 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* eslint-enable valid-jsdoc */
+
 /* exported addCalendarNames, calendars, changeContextMenuForTask,
  *          contextChangeTaskCalendar, contextChangeTaskPriority,
  *          contextPostponeTask, modifyTaskFromContext, deleteToDoCommand,
  *          tasksToMail, tasksToEvents, toggleCompleted,
  */
 
-/* import-globals-from ../../../../toolkit/content/globalOverlay.js */
+/* import-globals-from ../../../mail/base/content/globalOverlay.js */
 /* import-globals-from item-editing/calendar-item-editing.js */
 /* import-globals-from item-editing/calendar-item-panel.js */
 /* import-globals-from calendar-command-controller.js */
@@ -16,23 +18,23 @@
 /* import-globals-from calendar-ui-utils.js */
 /* import-globals-from calendar-views-utils.js */
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 /**
  * Add registered calendars to the given menupopup. Removes all previous
  * children.
  *
- * @param aEvent    The popupshowing event of the opening menu
+ * @param {Event} aEvent - The popupshowing event of the opening menu.
  */
 function addCalendarNames(aEvent) {
-  let calendarMenuPopup = aEvent.target;
+  const calendarMenuPopup = aEvent.target;
   while (calendarMenuPopup.hasChildNodes()) {
     calendarMenuPopup.lastChild.remove();
   }
-  let tasks = getSelectedTasks(aEvent);
-  let tasksSelected = tasks.length > 0;
+  const tasks = getSelectedTasks();
+  const tasksSelected = tasks.length > 0;
   if (tasksSelected) {
-    let selIndex = appendCalendarItems(
+    const selIndex = appendCalendarItems(
       tasks[0],
       calendarMenuPopup,
       null,
@@ -45,15 +47,16 @@ function addCalendarNames(aEvent) {
 }
 
 /**
- * For each child of an element (for example all menuitems in a menu), if it defines a command
- * set an attribute on the command, otherwise set it on the child node itself.
+ * For each child of an element (for example all menuitems in a menu),
+ * if it defines a command set an attribute on the command, otherwise set it
+ * on the child node itself.
  *
- * @param aAttribute {string}       The attribute to set.
- * @param aValue {boolean|string}   The value to set.
- * @param aElement {Element}        The parent node.
+ * @param {string} aAttribute - The attribute to set.
+ * @param {boolean|string} aValue - The value to set.
+ * @param {Element} aElement - The parent node.
  */
 function setAttributeOnChildrenOrTheirCommands(aAttribute, aValue, aElement) {
-  for (let child of aElement.children) {
+  for (const child of aElement.children) {
     const commandName = child.getAttribute("command");
     const command = commandName && document.getElementById(commandName);
 
@@ -65,9 +68,13 @@ function setAttributeOnChildrenOrTheirCommands(aAttribute, aValue, aElement) {
 /**
  * Change the opening context menu for the selected tasks.
  *
- * @param aEvent    The popupshowing event of the opening menu.
+ * @param {Event} aEvent - The popupshowing event of the opening menu.
  */
 function changeContextMenuForTask(aEvent) {
+  if (aEvent.target.id !== "taskitem-context-menu") {
+    return;
+  }
+
   handleTaskContextMenuStateChange(aEvent);
 
   const treeNodeId = aEvent.target.triggerNode.closest(".calendar-task-tree").id;
@@ -81,8 +88,8 @@ function changeContextMenuForTask(aEvent) {
   document.getElementById("task-context-menu-filter-todaypane").hidden = isMainTaskTree;
   document.getElementById("task-context-menu-separator-filter").hidden = isMainTaskTree;
 
-  let items = getSelectedTasks(aEvent);
-  let tasksSelected = items.length > 0;
+  const items = getSelectedTasks();
+  const tasksSelected = items.length > 0;
 
   setAttributeOnChildrenOrTheirCommands("disabled", !tasksSelected, aEvent.target);
 
@@ -110,19 +117,23 @@ function changeContextMenuForTask(aEvent) {
     document.getElementById("task-context-menu-filter-todaypane-popup")
   );
 
-  changeMenuForTask(aEvent);
+  changeMenuForTask();
 
-  let menu = document.getElementById("task-context-menu-attendance-menu");
+  const menu = document.getElementById("task-context-menu-attendance-menu");
   setupAttendanceMenu(menu, items);
 }
 
 /**
  * Notify the task tree that the context menu open state has changed.
  *
- * @param aEvent    The popupshowing or popuphiding event of the menu.
+ * @param {Event} aEvent - The popupshowing or popuphiding event of the menu.
  */
 function handleTaskContextMenuStateChange(aEvent) {
-  let tree = aEvent.target.triggerNode.closest(".calendar-task-tree");
+  if (aEvent.target.id !== "taskitem-context-menu") {
+    return;
+  }
+
+  const tree = aEvent.target.triggerNode.closest(".calendar-task-tree");
 
   if (tree) {
     tree.updateFocus();
@@ -131,12 +142,10 @@ function handleTaskContextMenuStateChange(aEvent) {
 
 /**
  * Change the opening menu for the selected tasks.
- *
- * @param aEvent    The popupshowing event of the opening menu.
  */
-function changeMenuForTask(aEvent) {
+function changeMenuForTask() {
   // Make sure to update the status of some commands.
-  let commands = [
+  const commands = [
     "calendar_delete_todo_command",
     "calendar_toggle_completed_command",
     "calendar_general-progress_command",
@@ -145,10 +154,10 @@ function changeMenuForTask(aEvent) {
   ];
   commands.forEach(goUpdateCommand);
 
-  let tasks = getSelectedTasks(aEvent);
-  let tasksSelected = tasks.length > 0;
+  const tasks = getSelectedTasks();
+  const tasksSelected = tasks.length > 0;
   if (tasksSelected) {
-    let cmd = document.getElementById("calendar_toggle_completed_command");
+    const cmd = document.getElementById("calendar_toggle_completed_command");
     if (tasks.every(task => task.isCompleted == tasks[0].isCompleted)) {
       cmd.checked = tasks[0].isCompleted;
     } else {
@@ -161,17 +170,16 @@ function changeMenuForTask(aEvent) {
  * Handler function to change the progress of all selected tasks, or of
  * the task loaded in the current tab.
  *
- * @param {XULCommandEvent} aEvent  The DOM event that triggered this command
- * @param {short} aProgress         The new progress percentage
+ * @param {short} aProgress - The new progress percentage
  */
-function contextChangeTaskProgress(aEvent, aProgress) {
+function contextChangeTaskProgress(aProgress) {
   if (gTabmail && gTabmail.currentTabInfo.mode.type == "calendarTask") {
     editToDoStatus(aProgress);
   } else {
     startBatchTransaction();
-    let tasks = getSelectedTasks(aEvent);
-    for (let task of tasks) {
-      let newTask = task.clone().QueryInterface(Ci.calITodo);
+    const tasks = getSelectedTasks();
+    for (const task of tasks) {
+      const newTask = task.clone().QueryInterface(Ci.calITodo);
       newTask.percentComplete = aProgress;
       switch (aProgress) {
         case 0:
@@ -195,13 +203,13 @@ function contextChangeTaskProgress(aEvent, aProgress) {
  * Handler function to change the calendar of the selected tasks. The targeted
  * menuitem must have "calendar" property that implements calICalendar.
  *
- * @param aEvent      The DOM event that triggered this command.
+ * @param {Event} aEvent - The DOM event that triggered this command.
  */
 function contextChangeTaskCalendar(aEvent) {
   startBatchTransaction();
-  let tasks = getSelectedTasks(aEvent);
-  for (let task of tasks) {
-    let newTask = task.clone();
+  const tasks = getSelectedTasks();
+  for (const task of tasks) {
+    const newTask = task.clone();
     newTask.calendar = aEvent.target.calendar;
     doTransaction("modify", newTask, newTask.calendar, task, null);
   }
@@ -212,18 +220,17 @@ function contextChangeTaskCalendar(aEvent) {
  * Handler function to change the priority of the selected tasks, or of
  * the task loaded in the current tab.
  *
- * @param {XULCommandEvent} aEvent  The DOM event that triggered this command
- * @param {short} aPriority         The priority to set on the task(s)
+ * @param {short} aPriority - The priority to set on the task(s)
  */
-function contextChangeTaskPriority(aEvent, aPriority) {
-  let tabType = gTabmail && gTabmail.currentTabInfo.mode.type;
+function contextChangeTaskPriority(aPriority) {
+  const tabType = gTabmail && gTabmail.currentTabInfo.mode.type;
   if (tabType == "calendarTask" || tabType == "calendarEvent") {
     editConfigState({ priority: aPriority });
   } else {
     startBatchTransaction();
-    let tasks = getSelectedTasks(aEvent);
-    for (let task of tasks) {
-      let newTask = task.clone().QueryInterface(Ci.calITodo);
+    const tasks = getSelectedTasks();
+    for (const task of tasks) {
+      const newTask = task.clone().QueryInterface(Ci.calITodo);
       newTask.priority = aPriority;
       doTransaction("modify", newTask, newTask.calendar, task, null);
     }
@@ -238,11 +245,10 @@ function contextChangeTaskPriority(aEvent, aPriority) {
  * format intentionally instead of a calIDuration object because those
  * objects cannot be serialized for message passing with iframes.)
  *
- * @param {XULCommandEvent} aEvent  The DOM event that triggered this command
- * @param {string} aDuration        The duration to postpone in ISO 8601 format
+ * @param {string} aDuration - The duration to postpone in ISO 8601 format
  */
-function contextPostponeTask(aEvent, aDuration) {
-  let duration = cal.createDuration(aDuration);
+function contextPostponeTask(aDuration) {
+  const duration = cal.createDuration(aDuration);
   if (!duration) {
     cal.LOG("[calendar-task-tree] Postpone Task - Invalid duration " + aDuration);
     return;
@@ -252,11 +258,11 @@ function contextPostponeTask(aEvent, aDuration) {
     postponeTask(aDuration);
   } else {
     startBatchTransaction();
-    let tasks = getSelectedTasks(aEvent);
+    const tasks = getSelectedTasks();
 
     tasks.forEach(task => {
       if (task.entryDate || task.dueDate) {
-        let newTask = task.clone();
+        const newTask = task.clone();
         cal.item.shiftOffset(newTask, duration);
         doTransaction("modify", newTask, newTask.calendar, task, null);
       }
@@ -269,31 +275,29 @@ function contextPostponeTask(aEvent, aDuration) {
 /**
  * Modifies the selected tasks with the event dialog
  *
- * @param aEvent        The DOM event that triggered this command.
- * @param initialDate   (optional) The initial date for new task datepickers
+ * @param {calIDateTime} [initialDate] - The initial date for new task datepickers.
  */
-function modifyTaskFromContext(aEvent, initialDate) {
-  let tasks = getSelectedTasks(aEvent);
-  for (let task of tasks) {
+function modifyTaskFromContext(initialDate) {
+  const tasks = getSelectedTasks();
+  for (const task of tasks) {
     modifyEventWithDialog(task, true, initialDate);
   }
 }
 
 /**
- *  Delete the current selected item with focus from the task tree
+ * Delete the current selected item with focus from the task tree
  *
- * @param aEvent          The DOM event that triggered this command.
- * @param aDoNotConfirm   If true, the user will not be asked to delete.
+ * @param {boolean} aDoNotConfirm - If true, the user will not be asked to delete.
  */
-function deleteToDoCommand(aEvent, aDoNotConfirm) {
-  let tasks = getSelectedTasks(aEvent);
+function deleteToDoCommand(aDoNotConfirm) {
+  const tasks = getSelectedTasks();
   calendarViewController.deleteOccurrences(tasks, false, aDoNotConfirm);
 }
 
 /**
- * Gets the currently visible task tree
+ * Gets the currently visible task tree.
  *
- * @return    The XUL task tree element.
+ * @returns {Element} The XUL task tree element.
  */
 function getTaskTree() {
   if (gCurrentMode == "task") {
@@ -304,42 +308,37 @@ function getTaskTree() {
 
 /**
  * Gets the tasks selected in the currently visible task tree.
- *
- * XXX Parameter aEvent is unused, needs to be removed here and in calling
- * functions.
- *
- * @param aEvent      Unused
  */
-function getSelectedTasks(aEvent) {
-  let taskTree = getTaskTree();
+function getSelectedTasks() {
+  const taskTree = getTaskTree();
   return taskTree ? taskTree.selectedTasks : [];
 }
 
 /**
  * Convert selected tasks to emails.
  */
-function tasksToMail(aEvent) {
-  let tasks = getSelectedTasks(aEvent);
+function tasksToMail() {
+  const tasks = getSelectedTasks();
   calendarMailButtonDNDObserver.onDropItems(tasks);
 }
 
 /**
  * Convert selected tasks to events.
  */
-function tasksToEvents(aEvent) {
-  let tasks = getSelectedTasks(aEvent);
+function tasksToEvents() {
+  const tasks = getSelectedTasks();
   calendarCalendarButtonDNDObserver.onDropItems(tasks);
 }
 
 /**
  * Toggle the completed state on selected tasks.
  *
- * @param aEvent    The originating event, can be null.
+ * @param {?Event} aEvent - The originating event, can be null.
  */
 function toggleCompleted(aEvent) {
   if (aEvent.target.getAttribute("checked") == "true") {
-    contextChangeTaskProgress(aEvent, 0);
+    contextChangeTaskProgress(0);
   } else {
-    contextChangeTaskProgress(aEvent, 100);
+    contextChangeTaskProgress(100);
   }
 }

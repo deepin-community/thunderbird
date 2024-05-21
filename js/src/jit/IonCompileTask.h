@@ -14,6 +14,8 @@
 #include "js/Utility.h"
 #include "vm/HelperThreadTask.h"
 
+struct JS_PUBLIC_API JSContext;
+
 namespace js {
 namespace jit {
 
@@ -33,8 +35,14 @@ class IonCompileTask final : public HelperThreadTask,
 
   WarpSnapshot* snapshot_ = nullptr;
 
+  // Alias of the JSContext field of this task, to determine the priority of
+  // compiling this script. Contexts are destroyed after the pending tasks are
+  // removed from the helper threads. Thus this should be safe.
+  const mozilla::Atomic<bool, mozilla::ReleaseAcquire>& isExecuting_;
+
  public:
-  explicit IonCompileTask(MIRGenerator& mirGen, WarpSnapshot* snapshot);
+  explicit IonCompileTask(JSContext* cx, MIRGenerator& mirGen,
+                          WarpSnapshot* snapshot);
 
   JSScript* script() { return mirGen_.outerInfo().script(); }
   MIRGenerator& mirGen() { return mirGen_; }
@@ -49,27 +57,33 @@ class IonCompileTask final : public HelperThreadTask,
     backgroundCodegen_ = codegen;
   }
 
+  // Return whether the main thread which scheduled this task is currently
+  // executing JS code. This changes the way we prioritize tasks.
+  bool isMainThreadRunningJS() const { return isExecuting_; }
+
   ThreadType threadType() override { return THREAD_TYPE_ION; }
   void runTask();
   void runHelperThreadTask(AutoLockHelperThreadState& locked) override;
 };
 
 class IonFreeTask : public HelperThreadTask {
+  IonFreeCompileTasks tasks_;
+
  public:
-  explicit IonFreeTask(IonCompileTask* task) : task_(task) {}
-  IonCompileTask* compileTask() { return task_; }
+  explicit IonFreeTask(IonFreeCompileTasks&& tasks) : tasks_(std::move(tasks)) {
+    MOZ_ASSERT(!tasks_.empty());
+  }
+
+  const IonFreeCompileTasks& compileTasks() const { return tasks_; }
 
   ThreadType threadType() override { return THREAD_TYPE_ION_FREE; }
   void runHelperThreadTask(AutoLockHelperThreadState& locked) override;
-
- private:
-  IonCompileTask* task_;
 };
 
 void AttachFinishedCompilations(JSContext* cx);
-void FinishOffThreadTask(JSRuntime* runtime, IonCompileTask* task,
-                         const AutoLockHelperThreadState& lock);
-void FreeIonCompileTask(IonCompileTask* task);
+void FinishOffThreadTask(JSRuntime* runtime, AutoStartIonFreeTask& freeTask,
+                         IonCompileTask* task);
+void FreeIonCompileTasks(const IonFreeCompileTasks& tasks);
 
 }  // namespace jit
 }  // namespace js

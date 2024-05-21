@@ -13,15 +13,10 @@ FINAL_TARGET = "dist/bin/gmp-clearkey/0.1"
 
 FINAL_TARGET_PP_FILES += ["manifest.json.in"]
 
+USE_LIBS += ["gecko-clearkey"]
+
 UNIFIED_SOURCES += [
-    "ClearKeyBase64.cpp",
     "ClearKeyCDM.cpp",
-    "ClearKeyDecryptionManager.cpp",
-    "ClearKeyPersistence.cpp",
-    "ClearKeySession.cpp",
-    "ClearKeySessionManager.cpp",
-    "ClearKeyStorage.cpp",
-    "ClearKeyUtils.cpp",
     "gmp-clearkey.cpp",
 ]
 
@@ -37,24 +32,15 @@ if CONFIG["OS_ARCH"] == "WINNT":
 
     OS_LIBS += [
         "mfuuid",
+        "uuid",
     ]
 
     DEFINES["ENABLE_WMF"] = True
 
-
 DEFINES["CDM_IMPLEMENTATION"] = True
-
-TEST_DIRS += [
-    "gtest",
-]
 
 DisableStlWrapping()
 DEFINES["MOZ_NO_MOZALLOC"] = True
-
-USE_LIBS += [
-    "nss",
-    "psshparser",
-]
 
 # Suppress warnings in third-party code.
 CFLAGS += [

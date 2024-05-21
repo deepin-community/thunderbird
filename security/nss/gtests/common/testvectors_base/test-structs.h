@@ -69,8 +69,16 @@ typedef struct EcdsaTestVectorStr {
 
 typedef EcdsaTestVector DsaTestVector;
 
-typedef struct EcdhTestVectorStr {
+typedef struct EddsaTestVectorStr {
   uint32_t id;
+  std::vector<uint8_t> sig;
+  std::vector<uint8_t> public_key;
+  std::vector<uint8_t> msg;
+  bool valid;
+} EddsaTestVector;
+
+typedef struct EcdhTestVectorStr {
+  uint64_t id;
   std::vector<uint8_t> private_key;
   std::vector<uint8_t> public_key;
   std::vector<uint8_t> secret;
@@ -127,19 +135,9 @@ typedef struct RsaDecryptTestVectorStr {
   std::vector<uint8_t> msg;
   std::vector<uint8_t> ct;
   std::vector<uint8_t> priv_key;
+  bool invalid_padding;
   bool valid;
 } RsaDecryptTestVector;
-
-typedef struct RsaOaepTestVectorStr {
-  SECOidTag hash_oid;
-  CK_RSA_PKCS_MGF_TYPE mgf_hash;
-  uint32_t id;
-  std::vector<uint8_t> msg;
-  std::vector<uint8_t> ct;
-  std::vector<uint8_t> label;
-  std::vector<uint8_t> priv_key;
-  bool valid;
-} RsaOaepTestVector;
 
 typedef struct RsaPssTestVectorStr {
   SECOidTag hash_oid;

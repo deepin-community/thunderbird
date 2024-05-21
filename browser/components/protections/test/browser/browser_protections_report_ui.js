@@ -4,10 +4,11 @@
 
 // Note: This test may cause intermittents if run at exactly midnight.
 
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
-const { Sqlite } = ChromeUtils.import("resource://gre/modules/Sqlite.jsm");
-const { AboutProtectionsParent } = ChromeUtils.import(
-  "resource:///actors/AboutProtectionsParent.jsm"
+const { Sqlite } = ChromeUtils.importESModule(
+  "resource://gre/modules/Sqlite.sys.mjs"
+);
+const { AboutProtectionsParent } = ChromeUtils.importESModule(
+  "resource:///actors/AboutProtectionsParent.sys.mjs"
 );
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -17,8 +18,8 @@ XPCOMUtils.defineLazyServiceGetter(
   "nsITrackingDBService"
 );
 
-XPCOMUtils.defineLazyGetter(this, "DB_PATH", function() {
-  return OS.Path.join(OS.Constants.Path.profileDir, "protections.sqlite");
+ChromeUtils.defineLazyGetter(this, "DB_PATH", function () {
+  return PathUtils.join(PathUtils.profileDir, "protections.sqlite");
 });
 
 const SQL = {
@@ -29,11 +30,11 @@ const SQL = {
   selectAll: "SELECT * FROM events",
 };
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["browser.contentblocking.database.enabled", true],
-      ["browser.contentblocking.report.vpn.enabled", false],
+      ["browser.vpn_promo.enabled", false],
     ],
   });
 });
@@ -184,7 +185,7 @@ add_task(async function test_graph_display() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     const DATA_TYPES = [
       "cryptominer",
       "fingerprinter",
@@ -474,9 +475,8 @@ add_task(async function test_graph_display() {
       "aria-describedby attribute is trackerContent"
     );
 
-    const fingerprinterTab = content.document.getElementById(
-      "tab-fingerprinter"
-    );
+    const fingerprinterTab =
+      content.document.getElementById("tab-fingerprinter");
     Assert.equal(
       fingerprinterTab.getAttribute("aria-labelledby"),
       "fingerprinterLabel fingerprinterTitle",
@@ -510,6 +510,288 @@ add_task(async function test_graph_display() {
   BrowserTestUtils.removeTab(tab);
 });
 
+// Ensure that the number of suspicious fingerprinter is aggregated into the
+// fingerprinter category on about:protection page.
+add_task(async function test_suspicious_fingerprinter() {
+  // This creates the schema.
+  await TrackingDBService.saveEvents(JSON.stringify({}));
+  let db = await Sqlite.openConnection({ path: DB_PATH });
+
+  // Inserting data for today. It won't contain a fingerprinter entry but only
+  // a suspicious fingerprinter entry.
+  let date = new Date().toISOString();
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKERS_ID,
+    count: 1,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.CRYPTOMINERS_ID,
+    count: 2,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SUSPICIOUS_FINGERPRINTERS_ID,
+    count: 2,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKING_COOKIES_ID,
+    count: 4,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SOCIAL_ID,
+    count: 1,
+    timestamp: date,
+  });
+
+  // Inserting data for 1 day age. It contains both a fingerprinter entry and
+  // a suspicious fingerprinter entry.
+  date = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKERS_ID,
+    count: 1,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.CRYPTOMINERS_ID,
+    count: 2,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.FINGERPRINTERS_ID,
+    count: 1,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SUSPICIOUS_FINGERPRINTERS_ID,
+    count: 1,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKING_COOKIES_ID,
+    count: 4,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SOCIAL_ID,
+    count: 1,
+    timestamp: date,
+  });
+
+  let tab = await BrowserTestUtils.openNewForegroundTab({
+    url: "about:protections",
+    gBrowser,
+  });
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
+    const DATA_TYPES = [
+      "cryptominer",
+      "fingerprinter",
+      "tracker",
+      "cookie",
+      "social",
+    ];
+    let allBars = null;
+    await ContentTaskUtils.waitForMutationCondition(
+      content.document.body,
+      { childList: true, subtree: true },
+      () => {
+        allBars = content.document.querySelectorAll(".graph-bar");
+        return !!allBars.length;
+      }
+    );
+    info("The graph has been built");
+
+    Assert.equal(allBars.length, 7, "7 bars have been found on the graph");
+
+    // Verify today's data. The fingerprinter category should take 20%.
+    Assert.equal(
+      allBars[6].querySelectorAll(".inner-bar").length,
+      DATA_TYPES.length,
+      "today has all of the data types shown"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".tracker-bar").style.height,
+      "10%",
+      "trackers take 10%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".cryptominer-bar").style.height,
+      "20%",
+      "cryptominers take 20%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".fingerprinter-bar").style.height,
+      "20%",
+      "fingerprinters take 20%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".cookie-bar").style.height,
+      "40%",
+      "cross site tracking cookies take 40%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".social-bar").style.height,
+      "10%",
+      "social trackers take 10%"
+    );
+
+    // Verify one day age data. The fingerprinter category should take 20%.
+    Assert.equal(
+      allBars[5].querySelectorAll(".inner-bar").length,
+      DATA_TYPES.length,
+      "today has all of the data types shown"
+    );
+    Assert.equal(
+      allBars[5].querySelector(".tracker-bar").style.height,
+      "10%",
+      "trackers take 10%"
+    );
+    Assert.equal(
+      allBars[5].querySelector(".cryptominer-bar").style.height,
+      "20%",
+      "cryptominers take 20%"
+    );
+    Assert.equal(
+      allBars[5].querySelector(".fingerprinter-bar").style.height,
+      "20%",
+      "fingerprinters take 20%"
+    );
+    Assert.equal(
+      allBars[5].querySelector(".cookie-bar").style.height,
+      "40%",
+      "cross site tracking cookies take 40%"
+    );
+    Assert.equal(
+      allBars[5].querySelector(".social-bar").style.height,
+      "10%",
+      "social trackers take 10%"
+    );
+  });
+
+  // Use the TrackingDBService API to delete the data.
+  await TrackingDBService.clearAll();
+  // Make sure the data was deleted.
+  let rows = await db.execute(SQL.selectAll);
+  is(rows.length, 0, "length is 0");
+  await db.close();
+  BrowserTestUtils.removeTab(tab);
+});
+
+// Ensure that the number of suspicious fingerprinter is displayed even if the
+// fingerprinter blocking is disabled.
+add_task(async function test_suspicious_fingerprinter_without_fp_blocking() {
+  // Disable fingerprinter blocking
+  Services.prefs.setBoolPref(
+    "privacy.trackingprotection.fingerprinting.enabled",
+    false
+  );
+
+  // This creates the schema.
+  await TrackingDBService.saveEvents(JSON.stringify({}));
+  let db = await Sqlite.openConnection({ path: DB_PATH });
+
+  // Inserting data for today. It won't contain a fingerprinter entry but only
+  // a suspicious fingerprinter entry.
+  let date = new Date().toISOString();
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKERS_ID,
+    count: 1,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.CRYPTOMINERS_ID,
+    count: 2,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SUSPICIOUS_FINGERPRINTERS_ID,
+    count: 2,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.TRACKING_COOKIES_ID,
+    count: 4,
+    timestamp: date,
+  });
+  await db.execute(SQL.insertCustomTimeEvent, {
+    type: TrackingDBService.SOCIAL_ID,
+    count: 1,
+    timestamp: date,
+  });
+
+  let tab = await BrowserTestUtils.openNewForegroundTab({
+    url: "about:protections",
+    gBrowser,
+  });
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
+    const DATA_TYPES = [
+      "cryptominer",
+      "fingerprinter",
+      "tracker",
+      "cookie",
+      "social",
+    ];
+    let allBars = null;
+    await ContentTaskUtils.waitForMutationCondition(
+      content.document.body,
+      { childList: true, subtree: true },
+      () => {
+        allBars = content.document.querySelectorAll(".graph-bar");
+        return !!allBars.length;
+      }
+    );
+    info("The graph has been built");
+
+    Assert.equal(allBars.length, 7, "7 bars have been found on the graph");
+
+    // Verify today's data. The fingerprinter category should take 20%.
+    Assert.equal(
+      allBars[6].querySelectorAll(".inner-bar").length,
+      DATA_TYPES.length,
+      "today has all of the data types shown"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".tracker-bar").style.height,
+      "10%",
+      "trackers take 10%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".cryptominer-bar").style.height,
+      "20%",
+      "cryptominers take 20%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".fingerprinter-bar").style.height,
+      "20%",
+      "fingerprinters take 20%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".cookie-bar").style.height,
+      "40%",
+      "cross site tracking cookies take 40%"
+    );
+    Assert.equal(
+      allBars[6].querySelector(".social-bar").style.height,
+      "10%",
+      "social trackers take 10%"
+    );
+  });
+
+  // Use the TrackingDBService API to delete the data.
+  await TrackingDBService.clearAll();
+  // Make sure the data was deleted.
+  let rows = await db.execute(SQL.selectAll);
+  is(rows.length, 0, "length is 0");
+  await db.close();
+  BrowserTestUtils.removeTab(tab);
+
+  Services.prefs.clearUserPref(
+    "privacy.trackingprotection.fingerprinting.enabled"
+  );
+});
+
 // Ensure that each type of tracker is hidden from the graph if there are no recorded
 // trackers of that type and the user has chosen to not block that type.
 add_task(async function test_etp_custom_settings() {
@@ -525,27 +807,27 @@ add_task(async function test_etp_custom_settings() {
     gBrowser,
   });
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let legend = content.document.getElementById("legend");
-      return ContentTaskUtils.is_visible(legend);
+      return ContentTaskUtils.isVisible(legend);
     }, "The legend is visible");
 
     let label = content.document.getElementById("cookieLabel");
-    Assert.ok(ContentTaskUtils.is_hidden(label), "Cookie Label is hidden");
+    Assert.ok(ContentTaskUtils.isHidden(label), "Cookie Label is hidden");
 
     label = content.document.getElementById("trackerLabel");
-    Assert.ok(ContentTaskUtils.is_visible(label), "Tracker Label is visible");
+    Assert.ok(ContentTaskUtils.isVisible(label), "Tracker Label is visible");
     label = content.document.getElementById("socialLabel");
-    Assert.ok(ContentTaskUtils.is_visible(label), "Social Label is visible");
+    Assert.ok(ContentTaskUtils.isVisible(label), "Social Label is visible");
     label = content.document.getElementById("cryptominerLabel");
     Assert.ok(
-      ContentTaskUtils.is_visible(label),
+      ContentTaskUtils.isVisible(label),
       "Cryptominer Label is visible"
     );
     label = content.document.getElementById("fingerprinterLabel");
     Assert.ok(
-      ContentTaskUtils.is_visible(label),
+      ContentTaskUtils.isVisible(label),
       "Fingerprinter Label is visible"
     );
   });
@@ -557,17 +839,17 @@ add_task(async function test_etp_custom_settings() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let legend = content.document.getElementById("legend");
-      return ContentTaskUtils.is_visible(legend);
+      return ContentTaskUtils.isVisible(legend);
     }, "The legend is visible");
 
     let label = content.document.querySelector("#trackerLabel");
-    Assert.ok(ContentTaskUtils.is_hidden(label), "Tracker Label is hidden");
+    Assert.ok(ContentTaskUtils.isHidden(label), "Tracker Label is hidden");
 
     label = content.document.querySelector("#socialLabel");
-    Assert.ok(ContentTaskUtils.is_hidden(label), "Social Label is hidden");
+    Assert.ok(ContentTaskUtils.isHidden(label), "Social Label is hidden");
   });
   BrowserTestUtils.removeTab(tab);
 
@@ -584,14 +866,14 @@ add_task(async function test_etp_custom_settings() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let legend = content.document.getElementById("legend");
-      return ContentTaskUtils.is_visible(legend);
+      return ContentTaskUtils.isVisible(legend);
     }, "The legend is visible");
 
     let label = content.document.querySelector("#socialLabel");
-    Assert.ok(ContentTaskUtils.is_hidden(label), "Social Label is hidden");
+    Assert.ok(ContentTaskUtils.isHidden(label), "Social Label is hidden");
   });
   BrowserTestUtils.removeTab(tab);
 
@@ -600,19 +882,20 @@ add_task(async function test_etp_custom_settings() {
     "privacy.trackingprotection.fingerprinting.enabled",
     false
   );
+  Services.prefs.setBoolPref("privacy.fingerprintingProtection", false);
   tab = await BrowserTestUtils.openNewForegroundTab({
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let legend = content.document.getElementById("legend");
-      return ContentTaskUtils.is_visible(legend);
+      return ContentTaskUtils.isVisible(legend);
     }, "The legend is visible");
 
     let label = content.document.querySelector("#fingerprinterLabel");
     Assert.ok(
-      ContentTaskUtils.is_hidden(label),
+      ContentTaskUtils.isHidden(label),
       "Fingerprinter Label is hidden"
     );
   });
@@ -632,19 +915,20 @@ add_task(async function test_etp_custom_settings() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let legend = content.document.getElementById("legend");
-      return ContentTaskUtils.is_visible(legend);
+      return ContentTaskUtils.isVisible(legend);
     }, "The legend is visible");
 
     let label = content.document.querySelector("#cryptominerLabel");
-    Assert.ok(ContentTaskUtils.is_hidden(label), "Cryptominer Label is hidden");
+    Assert.ok(ContentTaskUtils.isHidden(label), "Cryptominer Label is hidden");
   });
   Services.prefs.clearUserPref("browser.contentblocking.category");
   Services.prefs.clearUserPref(
     "privacy.trackingprotection.fingerprinting.enabled"
   );
+  Services.prefs.clearUserPref("privacy.fingerprintingProtection");
   Services.prefs.clearUserPref(
     "privacy.trackingprotection.cryptomining.enabled"
   );
@@ -679,17 +963,16 @@ add_task(async function test_etp_custom_protections_off() {
     "about:preferences#privacy"
   );
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let etpCard = content.document.querySelector(".etp-card");
       return etpCard.classList.contains("custom-not-blocking");
     }, "The custom protections warning card is showing");
 
-    let manageProtectionsButton = content.document.getElementById(
-      "manage-protections"
-    );
+    let manageProtectionsButton =
+      content.document.getElementById("manage-protections");
     Assert.ok(
-      ContentTaskUtils.is_visible(manageProtectionsButton),
+      ContentTaskUtils.isVisible(manageProtectionsButton),
       "Button to manage protections is displayed"
     );
   });
@@ -702,18 +985,17 @@ add_task(async function test_etp_custom_protections_off() {
     count: 1,
     timestamp: date,
   });
-  await reloadTab(tab);
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await BrowserTestUtils.reloadTab(tab);
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let etpCard = content.document.querySelector(".etp-card");
       return etpCard.classList.contains("custom-not-blocking");
     }, "The custom protections warning card is showing");
 
-    let manageProtectionsButton = content.document.getElementById(
-      "manage-protections"
-    );
+    let manageProtectionsButton =
+      content.document.getElementById("manage-protections");
     Assert.ok(
-      ContentTaskUtils.is_visible(manageProtectionsButton),
+      ContentTaskUtils.isVisible(manageProtectionsButton),
       "Button to manage protections is displayed"
     );
 
@@ -745,17 +1027,17 @@ add_task(async function test_etp_mobile_promotion_pref_on() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     let mobilePromotion = content.document.getElementById("mobile-hanger");
     Assert.ok(
-      ContentTaskUtils.is_visible(mobilePromotion),
+      ContentTaskUtils.isVisible(mobilePromotion),
       "Mobile promotions card is displayed when pref is on and there are no synced mobile devices"
     );
 
     // Card should hide after the X is clicked.
     mobilePromotion.querySelector(".exit-icon").click();
     Assert.ok(
-      ContentTaskUtils.is_hidden(mobilePromotion),
+      ContentTaskUtils.isHidden(mobilePromotion),
       "Mobile promotions card is no longer displayed after clicking the X button"
     );
   });
@@ -769,10 +1051,10 @@ add_task(async function test_etp_mobile_promotion_pref_on() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     let mobilePromotion = content.document.getElementById("mobile-hanger");
     Assert.ok(
-      ContentTaskUtils.is_hidden(mobilePromotion),
+      ContentTaskUtils.isHidden(mobilePromotion),
       "Mobile promotions card is hidden when pref is on if there are synced mobile devices"
     );
   });
@@ -793,10 +1075,10 @@ add_task(async function test_etp_mobile_promotion_pref_on() {
     url: "about:protections",
     gBrowser,
   });
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     let mobilePromotion = content.document.getElementById("mobile-hanger");
     Assert.ok(
-      ContentTaskUtils.is_hidden(mobilePromotion),
+      ContentTaskUtils.isHidden(mobilePromotion),
       "Mobile promotions card is not displayed when pref is off and there are no synced mobile devices"
     );
   });
@@ -811,10 +1093,10 @@ add_task(async function test_etp_mobile_promotion_pref_on() {
     gBrowser,
   });
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     let mobilePromotion = content.document.getElementById("mobile-hanger");
     Assert.ok(
-      ContentTaskUtils.is_hidden(mobilePromotion),
+      ContentTaskUtils.isHidden(mobilePromotion),
       "Mobile promotions card is not displayed when pref is off even if there are synced mobile devices"
     );
   });
@@ -833,7 +1115,7 @@ add_task(async function test_settings_links() {
     "about:preferences#privacy"
   );
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     const protectionSettings = await ContentTaskUtils.waitForCondition(() => {
       return content.document.getElementById("protection-settings");
     }, "protection-settings link exists");

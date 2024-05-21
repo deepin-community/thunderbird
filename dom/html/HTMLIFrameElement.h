@@ -12,8 +12,7 @@
 #include "nsGenericHTMLFrameElement.h"
 #include "nsDOMTokenList.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class FeaturePolicy;
 
@@ -43,6 +42,8 @@ class HTMLIFrameElement final : public nsGenericHTMLFrameElement {
       const override;
 
   virtual nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
+
+  void NodeInfoChanged(Document* aOldDoc) override;
 
   void BindToBrowsingContext(BrowsingContext* aBrowsingContext);
 
@@ -141,11 +142,6 @@ class HTMLIFrameElement final : public nsGenericHTMLFrameElement {
   Document* GetSVGDocument(nsIPrincipal& aSubjectPrincipal) {
     return GetContentDocument(aSubjectPrincipal);
   }
-  bool Mozbrowser() const { return GetBoolAttr(nsGkAtoms::mozbrowser); }
-  void SetMozbrowser(bool aAllow, ErrorResult& aError) {
-    SetHTMLBoolAttr(nsGkAtoms::mozbrowser, aAllow, aError);
-  }
-  using nsGenericHTMLFrameElement::SetMozbrowser;
   // nsGenericHTMLFrameElement::GetFrameLoader is fine
   // nsGenericHTMLFrameElement::GetAppManifestURL is fine
 
@@ -158,24 +154,35 @@ class HTMLIFrameElement final : public nsGenericHTMLFrameElement {
 
   mozilla::dom::FeaturePolicy* FeaturePolicy() const;
 
+  void SetLoading(const nsAString& aLoading, ErrorResult& aError) {
+    SetHTMLAttr(nsGkAtoms::loading, aLoading, aError);
+  }
+
+  void SetLazyLoading();
+  void StopLazyLoading();
+
+  const LazyLoadFrameResumptionState& GetLazyLoadFrameResumptionState() const {
+    return mLazyLoadState;
+  }
+
  protected:
   virtual ~HTMLIFrameElement();
 
   virtual JSObject* WrapNode(JSContext* aCx,
                              JS::Handle<JSObject*> aGivenProto) override;
 
-  virtual nsresult AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aMaybeScriptedPrincipal,
-                                bool aNotify) override;
-  virtual nsresult OnAttrSetButNotChanged(int32_t aNamespaceID, nsAtom* aName,
-                                          const nsAttrValueOrString& aValue,
-                                          bool aNotify) override;
+  virtual void AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                            const nsAttrValue* aValue,
+                            const nsAttrValue* aOldValue,
+                            nsIPrincipal* aMaybeScriptedPrincipal,
+                            bool aNotify) override;
+  virtual void OnAttrSetButNotChanged(int32_t aNamespaceID, nsAtom* aName,
+                                      const nsAttrValueOrString& aValue,
+                                      bool aNotify) override;
+  nsresult BindToTree(BindContext&, nsINode& aParent) override;
 
  private:
-  static void MapAttributesIntoRule(const nsMappedAttributes* aAttributes,
-                                    MappedDeclarations&);
+  static void MapAttributesIntoRule(MappedDeclarationsBuilder&);
 
   static const DOMTokenListSupportedToken sSupportedSandboxTokens[];
 
@@ -206,9 +213,17 @@ class HTMLIFrameElement final : public nsGenericHTMLFrameElement {
 
   RefPtr<dom::FeaturePolicy> mFeaturePolicy;
   RefPtr<nsDOMTokenList> mSandbox;
+
+  /**
+   * Current lazy load resumption state (base URI and referrer policy).
+   * https://html.spec.whatwg.org/#lazy-load-resumption-steps
+   */
+  LazyLoadFrameResumptionState mLazyLoadState;
+
+  // Update lazy load state internally
+  void UpdateLazyLoadState();
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif

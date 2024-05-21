@@ -1,9 +1,9 @@
-/* import-globals-from partitionedstorage_head.js */
-
 PartitionedStorageHelper.runTestInNormalAndPrivateMode(
   "HTTP Cookies",
   async (win3rdParty, win1stParty, allowed) => {
-    await win3rdParty.fetch("cookies.sjs?3rd").then(r => r.text());
+    await win3rdParty
+      .fetch("cookies.sjs?3rd;Partitioned;Secure")
+      .then(r => r.text());
     await win3rdParty
       .fetch("cookies.sjs")
       .then(r => r.text())
@@ -41,7 +41,7 @@ PartitionedStorageHelper.runTestInNormalAndPrivateMode(
 
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -51,7 +51,7 @@ PartitionedStorageHelper.runTestInNormalAndPrivateMode(
 PartitionedStorageHelper.runTestInNormalAndPrivateMode(
   "DOM Cookies",
   async (win3rdParty, win1stParty, allowed) => {
-    win3rdParty.document.cookie = "foo=3rd";
+    win3rdParty.document.cookie = "foo=3rd;Partitioned;Secure";
     is(win3rdParty.document.cookie, "foo=3rd", "3rd party cookie set");
 
     win1stParty.document.cookie = "foo=first";
@@ -74,7 +74,7 @@ PartitionedStorageHelper.runTestInNormalAndPrivateMode(
 
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -92,18 +92,19 @@ PartitionedStorageHelper.runPartitioningTestInNormalAndPrivateMode(
 
   // addDataCallback
   async (win, value) => {
-    win.document.cookie = value;
+    win.document.cookie = value + ";Partitioned;Secure";
     return true;
   },
 
   // cleanup
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
-  }
+  },
+  true
 );
 
 PartitionedStorageHelper.runPartitioningTestInNormalAndPrivateMode(
@@ -122,16 +123,19 @@ PartitionedStorageHelper.runPartitioningTestInNormalAndPrivateMode(
 
   // addDataCallback
   async (win, value) => {
-    await win.fetch("cookies.sjs?" + value).then(r => r.text());
+    await win
+      .fetch("cookies.sjs?" + value + ";Partitioned;Secure")
+      .then(r => r.text());
     return true;
   },
 
   // cleanup
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
-  }
+  },
+  true
 );

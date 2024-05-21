@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = Importar eventos y tareas del calendario
+calendar-ics-file-window-title = Importar eventos y tareas del calendario
 calendar-ics-file-dialog-import-event-button-label = Importar evento
 calendar-ics-file-dialog-import-task-button-label = Importar tarea
 calendar-ics-file-dialog-2 =
@@ -15,7 +16,7 @@ calendar-ics-file-dialog-calendar-menu-label = Importar al calendario:
 calendar-ics-file-dialog-items-loading-message =
     .value = Cargando elementos…
 calendar-ics-file-dialog-search-input =
-    .placeholder = Filtrar elementos...
+    .placeholder = Filtrar elementos…
 calendar-ics-file-dialog-sort-start-ascending =
     .label = Ordenar por fecha de inicio (primero a último)
 calendar-ics-file-dialog-sort-start-descending =

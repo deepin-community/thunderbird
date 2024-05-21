@@ -33,15 +33,18 @@
   //         behavior.
   var ObjectGetOwnPropertyDescriptor = global.Object.getOwnPropertyDescriptor;
 
+  var {get: ArrayBufferByteLength} =
+    ObjectGetOwnPropertyDescriptor(global.ArrayBuffer.prototype, "byteLength");
+
   var Worker = global.Worker;
   var Blob = global.Blob;
   var URL = global.URL;
 
   var document = global.document;
-  var documentAll = global.document.all;
   var documentDocumentElement = global.document.documentElement;
   var DocumentCreateElement = global.document.createElement;
 
+  var DocumentPrototypeAllGetter = ObjectGetOwnPropertyDescriptor(global.Document.prototype, "all").get;
   var EventTargetPrototypeAddEventListener = global.EventTarget.prototype.addEventListener;
   var HTMLElementPrototypeStyleSetter =
     ObjectGetOwnPropertyDescriptor(global.HTMLElement.prototype, "style").set;
@@ -190,7 +193,15 @@
       if (worker === null) {
         worker = CreateWorker("/* black hole */");
       }
-      ReflectApply(WorkerPrototypePostMessage, worker, ["detach", [arrayBuffer]]);
+      try {
+        ReflectApply(WorkerPrototypePostMessage, worker, ["detach", [arrayBuffer]]);
+      } catch (e) {
+        // postMessage throws an error if the array buffer was already detached.
+        // Test for this condition by checking if the byte length is zero.
+        if (ReflectApply(ArrayBufferByteLength, arrayBuffer, []) !== 0) {
+          throw e;
+        }
+      }
     };
 
     global.detachArrayBuffer = detachArrayBuffer;
@@ -199,7 +210,7 @@
   var createIsHTMLDDA = global.createIsHTMLDDA;
   if (typeof createIsHTMLDDA !== "function") {
     createIsHTMLDDA = function() {
-      return documentAll;
+      return ReflectApply(DocumentPrototypeAllGetter, document, []);
     };
 
     global.createIsHTMLDDA = createIsHTMLDDA;
@@ -430,19 +441,6 @@
    ****************************************/
 
   function jsTestDriverBrowserInit() {
-    // Unset all options before running any test code, cf. the call to
-    // |shellOptionsClear| in shell.js' set-up code.
-    for (var optionName of ["strict_mode"]) {
-      if (!HasOwnProperty(SpecialPowersCu, optionName))
-        throw "options is out of sync with Components.utils";
-
-      // Option is set, toggle it to unset. (Reading an option is a cheap
-      // operation, but setting is relatively expensive, so only assign if
-      // necessary.)
-      if (SpecialPowersCu[optionName])
-        SpecialPowersCu[optionName] = false;
-    }
-
     // Initialize with an empty set, because we just turned off all options.
     currentOptions = Object.create(null);
 
@@ -461,6 +459,10 @@
         properties[propertycaptures[1]] = decodeURIComponent(propertycaptures[2]);
       }
     }
+
+    // The test path may contain \ separators for the path.
+    // Bug 1877606: use / consistently
+    properties.test = properties.test.replace(/\\/g, "/");
 
     global.gTestPath = properties.test;
 
@@ -496,6 +498,12 @@
     var scripts = [];
     for (var i = 0; i < testpathparts.length - 1; i++) {
       prepath += testpathparts[i] + "/";
+
+      if (properties["test262-raw"]) {
+        // Skip running test harness files (shell.js and browser.js) if the
+        // test has the raw flag.
+        continue;
+      }
 
       scripts.push({src: prepath + "shell.js", module: false});
       scripts.push({src: prepath + "browser.js", module: false});

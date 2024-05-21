@@ -18,7 +18,7 @@ const {
   MSG_CLOSE_CONNECTION,
   CHANNEL_TYPE,
   SET_EVENT_STREAM_FLAG,
-} = require("devtools/client/netmonitor/src/constants");
+} = require("resource://devtools/client/netmonitor/src/constants.js");
 
 /**
  * The default column states for the MessageListItem component.
@@ -208,7 +208,7 @@ function toggleMessageFilterType(state, action) {
 /**
  * Toggle control frames for the WebSocket connection.
  */
-function toggleControlFrames(state, action) {
+function toggleControlFrames(state) {
   return {
     ...state,
     showControlFrames: !state.showControlFrames,

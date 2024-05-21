@@ -7,7 +7,6 @@
 # certificates used for SSL testing in Mochitest. The already generated
 # certs are located at $topsrcdir/build/pgo/certs/ .
 
-import mozinfo
 import os
 import random
 import re
@@ -15,15 +14,15 @@ import shutil
 import subprocess
 import sys
 
-from mozbuild.base import MozbuildObject, BinaryNotFoundException
+import mozinfo
+from mozbuild.base import BinaryNotFoundException, MozbuildObject
 from mozfile import NamedTemporaryFile, TemporaryDirectory
 from mozprofile.permissions import ServerLocations
-from distutils.spawn import find_executable
 
 dbFiles = [
-    re.compile("^cert[0-9]+\.db$"),
-    re.compile("^key[0-9]+\.db$"),
-    re.compile("^secmod\.db$"),
+    re.compile(r"^cert[0-9]+\.db$"),
+    re.compile(r"^key[0-9]+\.db$"),
+    re.compile(r"^secmod\.db$"),
 ]
 
 
@@ -78,7 +77,7 @@ def writeCertspecForServerLocations(fd):
         i for i in iter(locations) if i.scheme == "https" and "nocert" not in i.options
     ]:
         customCertOption = False
-        customCertRE = re.compile("^cert=(?:\w+)")
+        customCertRE = re.compile(r"^cert=(?:\w+)")
         for _ in [i for i in loc.options if customCertRE.match(i)]:
             customCertOption = True
             break
@@ -103,7 +102,7 @@ def constructCertDatabase(build, srcDir):
     except BinaryNotFoundException as e:
         print("{}\n\n{}\n".format(e, e.help()))
         return 1
-    openssl = find_executable("openssl")
+    openssl = shutil.which("openssl")
     pycert = os.path.join(build.topsrcdir, "security", "manager", "tools", "pycert.py")
     pykey = os.path.join(build.topsrcdir, "security", "manager", "tools", "pykey.py")
 

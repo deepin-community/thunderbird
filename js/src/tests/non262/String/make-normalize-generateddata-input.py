@@ -7,7 +7,6 @@
     to js/src/tests/non262/String/normalize-generateddata-input.js
 """
 
-from __future__ import print_function
 import re
 import sys
 
@@ -19,7 +18,7 @@ def to_code_list(codes):
 
 
 def convert(dir):
-    ver_pat = re.compile("NormalizationTest-([0-9\.]+)\.txt")
+    ver_pat = re.compile(r"NormalizationTest-([0-9\.]+)\.txt")
     part_pat = re.compile("^@(Part([0-9]+) .+)$")
     test_pat = re.compile(
         "^([0-9A-Fa-f ]+);([0-9A-Fa-f ]+);([0-9A-Fa-f ]+);([0-9A-Fa-f ]+);([0-9A-Fa-f ]+);$"

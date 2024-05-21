@@ -29,6 +29,8 @@ While we want to help users resolve build-related issues on their systems, we
 are unable to help resolve build system issues on all possible operating
 systems and versions.
 
+.. _tier_1_hosts:
+
 Tier-1 Hosts and Toolchains
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -47,10 +49,11 @@ cross-compilation where available:
     * Current stable release
     * Previous stable release
 * macOS Intel and M1
-    * Current release
-    * Previous release
+    * Current major macOS release
+    * Previous major macOS release
 * Windows x86_64
     * Windows 10 with MozillaBuild Environment
+    * Windows 11 with MozillaBuild Environment
 
 Tier-2 Hosts and Toolchains
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +99,7 @@ The **Tier-1 Firefox platforms** and their supported compilers are:
 
 -  Android on Linux x86, x86-64, ARMv7 and ARMv8-A (clang)
 -  Linux/x86 and x86-64 (gcc and clang)
--  macOS 10.12 and later on x86-64 and AArch64 (clang)
+-  macOS 10.15 and later on x86-64 and AArch64 (clang)
 -  Windows/x86, x86-64 and AArch64 (clang-cl)
 
 Prior to Firefox 63, Windows/x86 and Windows/x86-64 relied on the MSVC
@@ -144,7 +147,7 @@ platforms may or may not work correctly or build at all.
 -  Linux on various CPU architectures including ARM variants not listed
    above, PowerPC, and x86 CPUs without SSE2 support - maintained by
    various Linux distributions
--  FreeBSD/x86, x86-64, Aarch64 (clang) - maintained by Jan Beich
+-  FreeBSD/x86, x86-64, Aarch64 (clang) - `maintained by gecko@FreeBSD.org <https://www.freshports.org/www/firefox/>`__
 -  OpenBSD/x86, x86-64 (clang) - maintained by Landry Breuil
 -  NetBSD/x86-64 (gcc) - maintained by David Laight
 -  Solaris/x86-64, sparc64 (gcc) - maintained by Petr Sumbera
@@ -161,5 +164,3 @@ proper solution. If you can provide a patch, a regression range or
 assist in verifying that the developer's patches work for your platform,
 that would help a lot towards getting your bugs fixed and checked into
 the tree.
-
-

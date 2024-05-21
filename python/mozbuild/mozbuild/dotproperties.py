@@ -2,15 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-# This file contains utility functions for reading .properties files, like
-# region.properties.
-
-from __future__ import absolute_import, print_function, unicode_literals
+# This file contains utility functions for reading .properties files
 
 import codecs
 import re
-import six
 import sys
+
+import six
 
 if sys.version_info[0] == 3:
     str_type = str
@@ -40,7 +38,7 @@ class DotProperties:
             line = l.strip()
             if not line or line.startswith("#"):
                 continue
-            (k, v) = re.split("\s*=\s*", line, 1)
+            (k, v) = re.split(r"\s*=\s*", line, 1)
             self._properties[k] = v
 
     def get(self, key, default=None):

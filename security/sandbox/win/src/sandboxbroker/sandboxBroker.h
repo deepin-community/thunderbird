@@ -10,11 +10,14 @@
 #include <stdint.h>
 #include <windows.h>
 
-#include "build/build_config.h"
 #include "mozilla/ipc/EnvironmentMap.h"
 #include "nsCOMPtr.h"
 #include "nsXULAppAPI.h"
 #include "nsISupportsImpl.h"
+
+#include "mozilla/ipc/UtilityProcessSandboxing.h"
+#include "mozilla/ipc/LaunchError.h"
+#include "mozilla/Result.h"
 
 namespace sandbox {
 class BrokerServices;
@@ -27,24 +30,22 @@ class AbstractSandboxBroker {
  public:
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(AbstractSandboxBroker)
 
-  static AbstractSandboxBroker* Create(GeckoProcessType aProcessType);
-
   virtual void Shutdown() = 0;
-  virtual bool LaunchApp(const wchar_t* aPath, const wchar_t* aArguments,
-                         base::EnvironmentMap& aEnvironment,
-                         GeckoProcessType aProcessType,
-                         const bool aEnableLogging,
-                         const IMAGE_THUNK_DATA* aCachedNtdllThunk,
-                         void** aProcessHandle) = 0;
+  virtual Result<Ok, mozilla::ipc::LaunchError> LaunchApp(
+      const wchar_t* aPath, const wchar_t* aArguments,
+      base::EnvironmentMap& aEnvironment, GeckoProcessType aProcessType,
+      const bool aEnableLogging, const IMAGE_THUNK_DATA* aCachedNtdllThunk,
+      void** aProcessHandle) = 0;
 
   // Security levels for different types of processes
   virtual void SetSecurityLevelForContentProcess(int32_t aSandboxLevel,
                                                  bool aIsFileProcess) = 0;
 
-  virtual void SetSecurityLevelForGPUProcess(
-      int32_t aSandboxLevel, const nsCOMPtr<nsIFile>& aProfileDir) = 0;
+  virtual void SetSecurityLevelForGPUProcess(int32_t aSandboxLevel) = 0;
   virtual bool SetSecurityLevelForRDDProcess() = 0;
   virtual bool SetSecurityLevelForSocketProcess() = 0;
+  virtual bool SetSecurityLevelForUtilityProcess(
+      mozilla::ipc::SandboxingKind aSandbox) = 0;
 
   enum SandboxLevel { LockDown, Restricted };
   virtual bool SetSecurityLevelForGMPlugin(SandboxLevel aLevel,
@@ -61,6 +62,11 @@ class AbstractSandboxBroker {
    */
   virtual void AddHandleToShare(HANDLE aHandle) = 0;
 
+  /**
+   * @return true if policy has win32k locked down, otherwise false
+   */
+  virtual bool IsWin32kLockedDown() = 0;
+
  protected:
   virtual ~AbstractSandboxBroker() {}
 };
@@ -69,7 +75,10 @@ class SandboxBroker : public AbstractSandboxBroker {
  public:
   SandboxBroker();
 
-  static void Initialize(sandbox::BrokerServices* aBrokerServices);
+  static void Initialize(sandbox::BrokerServices* aBrokerServices,
+                         const nsAString& aBinDir);
+
+  static void EnsureLpacPermsissionsOnDir(const nsString& aDir);
 
   void Shutdown() override {}
 
@@ -79,32 +88,27 @@ class SandboxBroker : public AbstractSandboxBroker {
    */
   static void GeckoDependentInitialize();
 
-  bool LaunchApp(const wchar_t* aPath, const wchar_t* aArguments,
-                 base::EnvironmentMap& aEnvironment,
-                 GeckoProcessType aProcessType, const bool aEnableLogging,
-                 const IMAGE_THUNK_DATA* aCachedNtdllThunk,
-                 void** aProcessHandle) override;
+  Result<Ok, mozilla::ipc::LaunchError> LaunchApp(
+      const wchar_t* aPath, const wchar_t* aArguments,
+      base::EnvironmentMap& aEnvironment, GeckoProcessType aProcessType,
+      const bool aEnableLogging, const IMAGE_THUNK_DATA* aCachedNtdllThunk,
+      void** aProcessHandle) override;
   virtual ~SandboxBroker();
 
   // Security levels for different types of processes
   void SetSecurityLevelForContentProcess(int32_t aSandboxLevel,
                                          bool aIsFileProcess) override;
 
-  void SetSecurityLevelForGPUProcess(
-      int32_t aSandboxLevel, const nsCOMPtr<nsIFile>& aProfileDir) override;
+  void SetSecurityLevelForGPUProcess(int32_t aSandboxLevel) override;
   bool SetSecurityLevelForRDDProcess() override;
   bool SetSecurityLevelForSocketProcess() override;
   bool SetSecurityLevelForGMPlugin(SandboxLevel aLevel,
                                    bool aIsRemoteLaunch = false) override;
+  bool SetSecurityLevelForUtilityProcess(
+      mozilla::ipc::SandboxingKind aSandbox) override;
 
   // File system permissions
   bool AllowReadFile(wchar_t const* file) override;
-
-  /**
-   * Exposes AddTargetPeer from broker services, so that non-sandboxed
-   * processes can be added as handle duplication targets.
-   */
-  static bool AddTargetPeer(HANDLE aPeerProcess);
 
   /**
    * Share a HANDLE with the child process. The HANDLE will be made available
@@ -114,11 +118,12 @@ class SandboxBroker : public AbstractSandboxBroker {
    */
   void AddHandleToShare(HANDLE aHandle) override;
 
+  bool IsWin32kLockedDown() final;
+
   // Set up dummy interceptions via the broker, so we can log calls.
   void ApplyLoggingPolicy();
 
  private:
-  static sandbox::BrokerServices* sBrokerService;
   static bool sRunningFromNetworkDrive;
   sandbox::TargetPolicy* mPolicy;
 };

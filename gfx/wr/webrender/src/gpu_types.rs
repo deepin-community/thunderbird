@@ -6,15 +6,16 @@ use api::{AlphaType, PremultipliedColorF, YuvFormat, YuvRangedColorSpace};
 use api::units::*;
 use crate::composite::CompositeFeatures;
 use crate::segment::EdgeAaSegmentMask;
-use crate::spatial_tree::{SpatialTree, ROOT_SPATIAL_NODE_INDEX, SpatialNodeIndex};
+use crate::spatial_tree::{SpatialTree, SpatialNodeIndex};
 use crate::gpu_cache::{GpuCacheAddress, GpuDataRequest};
 use crate::internal_types::FastHashMap;
 use crate::prim_store::ClipData;
 use crate::render_task::RenderTaskAddress;
-use crate::renderer::ShaderColorMode;
+use crate::render_task_graph::RenderTaskId;
+use crate::renderer::{ShaderColorMode, GpuBufferAddress};
 use std::i32;
 use crate::util::{TransformedRectKind, MatrixHelpers};
-use crate::glyph_rasterizer::SubpixelDirection;
+use glyph_rasterizer::SubpixelDirection;
 use crate::util::{ScaleOffset, pack_as_float};
 
 // Contains type that must exactly match the same structures declared in GLSL.
@@ -55,6 +56,16 @@ impl ZBufferIdGenerator {
         self.next += 1;
         id
     }
+}
+
+#[derive(Clone, Debug)]
+#[repr(C)]
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
+pub struct CopyInstance {
+    pub src_rect: DeviceRect,
+    pub dst_rect: DeviceRect,
+    pub dst_texture_size: DeviceSize,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -114,6 +125,7 @@ pub struct SvgFilterInstance {
     pub kind: u16,
     pub input_count: u16,
     pub generic_int: u16,
+    pub padding: u16,
     pub extra_data_address: GpuCacheAddress,
 }
 
@@ -158,17 +170,6 @@ pub struct ClipMaskInstanceCommon {
     pub device_pixel_scale: f32,
     pub clip_transform_id: TransformPaletteId,
     pub prim_transform_id: TransformPaletteId,
-}
-
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "capture", derive(Serialize))]
-#[cfg_attr(feature = "replay", derive(Deserialize))]
-#[repr(C)]
-pub struct ClipMaskInstanceImage {
-    pub common: ClipMaskInstanceCommon,
-    pub tile_rect: LayoutRect,
-    pub resource_address: GpuCacheAddress,
-    pub local_rect: LayoutRect,
 }
 
 #[derive(Clone, Debug)]
@@ -224,6 +225,7 @@ pub struct ClipMaskInstance {
 }
 
 // 16 bytes per instance should be enough for anyone!
+#[repr(C)]
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "capture", derive(Serialize))]
 #[cfg_attr(feature = "replay", derive(Deserialize))]
@@ -282,7 +284,7 @@ pub struct CompositeInstance {
     color: PremultipliedColorF,
 
     // Packed into a single vec4 (aParams)
-    z_id: f32,
+    _padding: f32,
     color_space_or_uv_type: f32, // YuvColorSpace for YUV;
                                  // UV coordinate space for RGB
     yuv_format: f32,            // YuvFormat
@@ -300,7 +302,6 @@ impl CompositeInstance {
         rect: PictureRect,
         clip_rect: DeviceRect,
         color: PremultipliedColorF,
-        z_id: ZBufferId,
         transform: CompositorTransform,
     ) -> Self {
         let uv = TexelRect::new(0.0, 0.0, 1.0, 1.0);
@@ -308,7 +309,7 @@ impl CompositeInstance {
             rect,
             clip_rect,
             color,
-            z_id: z_id.0 as f32,
+            _padding: 0.0,
             color_space_or_uv_type: pack_as_float(UV_TYPE_NORMALIZED),
             yuv_format: 0.0,
             yuv_channel_bit_depth: 0.0,
@@ -321,7 +322,6 @@ impl CompositeInstance {
         rect: PictureRect,
         clip_rect: DeviceRect,
         color: PremultipliedColorF,
-        z_id: ZBufferId,
         uv_rect: TexelRect,
         transform: CompositorTransform,
     ) -> Self {
@@ -329,7 +329,7 @@ impl CompositeInstance {
             rect,
             clip_rect,
             color,
-            z_id: z_id.0 as f32,
+            _padding: 0.0,
             color_space_or_uv_type: pack_as_float(UV_TYPE_UNNORMALIZED),
             yuv_format: 0.0,
             yuv_channel_bit_depth: 0.0,
@@ -341,7 +341,6 @@ impl CompositeInstance {
     pub fn new_yuv(
         rect: PictureRect,
         clip_rect: DeviceRect,
-        z_id: ZBufferId,
         yuv_color_space: YuvRangedColorSpace,
         yuv_format: YuvFormat,
         yuv_channel_bit_depth: u32,
@@ -352,7 +351,7 @@ impl CompositeInstance {
             rect,
             clip_rect,
             color: PremultipliedColorF::WHITE,
-            z_id: z_id.0 as f32,
+            _padding: 0.0,
             color_space_or_uv_type: pack_as_float(yuv_color_space as u32),
             yuv_format: pack_as_float(yuv_format as u32),
             yuv_channel_bit_depth: pack_as_float(yuv_channel_bit_depth),
@@ -419,6 +418,7 @@ impl PrimitiveHeaders {
         &mut self,
         prim_header: &PrimitiveHeader,
         z: ZBufferId,
+        render_task_address: RenderTaskAddress,
         user_data: [i32; 4],
     ) -> PrimitiveHeaderIndex {
         debug_assert_eq!(self.headers_int.len(), self.headers_float.len());
@@ -431,7 +431,7 @@ impl PrimitiveHeaders {
 
         self.headers_int.push(PrimitiveHeaderI {
             z,
-            unused: 0,
+            render_task_address,
             specific_prim_address: prim_header.specific_prim_address.as_int(),
             transform_id: prim_header.transform_id,
             user_data,
@@ -471,7 +471,7 @@ pub struct PrimitiveHeaderI {
     pub z: ZBufferId,
     pub specific_prim_address: i32,
     pub transform_id: TransformPaletteId,
-    pub unused: i32,                    // To ensure required 16 byte alignment of vertex textures
+    pub render_task_address: RenderTaskAddress,
     pub user_data: [i32; 4],
 }
 
@@ -492,7 +492,6 @@ impl GlyphInstance {
     //           header since they are constant, and some can be
     //           compressed to a smaller size.
     pub fn build(&self,
-        render_task: RenderTaskAddress,
         clip_task: RenderTaskAddress,
         subpx_dir: SubpixelDirection,
         glyph_index_in_text_run: i32,
@@ -502,8 +501,7 @@ impl GlyphInstance {
         PrimitiveInstanceData {
             data: [
                 self.prim_header_index.0 as i32,
-                ((render_task.0 as i32) << 16)
-                | clip_task.0 as i32,
+                clip_task.0 as i32,
                 (subpx_dir as u32 as i32) << 24
                 | (color_mode as u32 as i32) << 16
                 | glyph_index_in_text_run,
@@ -515,7 +513,7 @@ impl GlyphInstance {
 
 pub struct SplitCompositeInstance {
     pub prim_header_index: PrimitiveHeaderIndex,
-    pub polygons_address: GpuCacheAddress,
+    pub polygons_address: i32,
     pub z: ZBufferId,
     pub render_task_address: RenderTaskAddress,
 }
@@ -525,21 +523,94 @@ impl From<SplitCompositeInstance> for PrimitiveInstanceData {
         PrimitiveInstanceData {
             data: [
                 instance.prim_header_index.0,
-                instance.polygons_address.as_int(),
+                instance.polygons_address,
                 instance.z.0,
-                instance.render_task_address.0 as i32,
+                instance.render_task_address.0,
             ],
         }
     }
 }
 
+#[derive(Copy, Clone)]
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
+pub struct QuadInstance {
+    pub render_task_address: RenderTaskAddress,
+    pub prim_address_i: GpuBufferAddress,
+    pub prim_address_f: GpuBufferAddress,
+    pub z_id: ZBufferId,
+    pub transform_id: TransformPaletteId,
+    pub quad_flags: u8,
+    pub edge_flags: u8,
+    pub part_index: u8,
+    pub segment_index: u8,
+}
+
+impl From<QuadInstance> for PrimitiveInstanceData {
+    fn from(instance: QuadInstance) -> Self {
+        /*
+            [32 prim address_i]
+            [32 prim address_f]
+            [8888 qf ef pi si]
+            [32 render task address]
+        */
+
+        PrimitiveInstanceData {
+            data: [
+                instance.prim_address_i.as_int(),
+                instance.prim_address_f.as_int(),
+
+                ((instance.quad_flags as i32)    << 24) |
+                ((instance.edge_flags as i32)    << 16) |
+                ((instance.part_index as i32)    <<  8) |
+                ((instance.segment_index as i32) <<  0),
+
+                instance.render_task_address.0,
+            ],
+        }
+    }
+}
+
+#[cfg_attr(feature = "capture", derive(Serialize))]
+pub struct QuadSegment {
+    pub rect: LayoutRect,
+    pub task_id: RenderTaskId,
+}
+
+#[derive(Copy, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
+#[repr(u32)]
+pub enum ClipSpace {
+    Raster = 0,
+    Primitive = 1,
+}
+
+#[repr(C)]
+#[derive(Clone)]
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
+pub struct MaskInstance {
+    pub prim: PrimitiveInstanceData,
+    pub clip_transform_id: TransformPaletteId,
+    pub clip_address: i32,
+    pub clip_space: ClipSpace,
+    pub unused: i32,
+}
+
+
+// Note: This can use up to 12 bits due to how it will
+// be packed in the instance data.
+
+/// Flags that define how the common brush shader
+/// code should process this instance.
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
+#[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash, MallocSizeOf)]
+pub struct BrushFlags(u16);
+
 bitflags! {
-    /// Flags that define how the common brush shader
-    /// code should process this instance.
-    #[cfg_attr(feature = "capture", derive(Serialize))]
-    #[cfg_attr(feature = "replay", derive(Deserialize))]
-    #[derive(MallocSizeOf)]
-    pub struct BrushFlags: u8 {
+    impl BrushFlags: u16 {
         /// Apply perspective interpolation to UVs
         const PERSPECTIVE_INTERPOLATION = 1;
         /// Do interpolation relative to segment rect,
@@ -553,17 +624,35 @@ bitflags! {
         const SEGMENT_REPEAT_X_ROUND = 16;
         /// Vertically follow border-image-repeat: round.
         const SEGMENT_REPEAT_Y_ROUND = 32;
+        /// Whether to position the repetitions so that the middle tile
+        /// is horizontally centered.
+        const SEGMENT_REPEAT_X_CENTERED = 64;
+        /// Whether to position the repetitions so that the middle tile
+        /// is vertically centered.
+        const SEGMENT_REPEAT_Y_CENTERED = 128;
         /// Middle (fill) area of a border-image-repeat.
-        const SEGMENT_NINEPATCH_MIDDLE = 64;
+        const SEGMENT_NINEPATCH_MIDDLE = 256;
         /// The extra segment data is a texel rect.
-        const SEGMENT_TEXEL_RECT = 128;
+        const SEGMENT_TEXEL_RECT = 512;
+        /// Whether to force the anti-aliasing when the primitive
+        /// is axis-aligned.
+        const FORCE_AA = 1024;
+    }
+}
+
+impl core::fmt::Debug for BrushFlags {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        if self.is_empty() {
+            write!(f, "{:#x}", Self::empty().bits())
+        } else {
+            bitflags::parser::to_writer(self, f)
+        }
     }
 }
 
 /// Convenience structure to encode into PrimitiveInstanceData.
 pub struct BrushInstance {
     pub prim_header_index: PrimitiveHeaderIndex,
-    pub render_task_address: RenderTaskAddress,
     pub clip_task_address: RenderTaskAddress,
     pub segment_index: i32,
     pub edge_flags: EdgeAaSegmentMask,
@@ -576,11 +665,10 @@ impl From<BrushInstance> for PrimitiveInstanceData {
         PrimitiveInstanceData {
             data: [
                 instance.prim_header_index.0,
-                ((instance.render_task_address.0 as i32) << 16)
-                | instance.clip_task_address.0 as i32,
+                instance.clip_task_address.0,
                 instance.segment_index
-                | ((instance.edge_flags.bits() as i32) << 16)
-                | ((instance.brush_flags.bits() as i32) << 24),
+                | ((instance.brush_flags.bits() as i32) << 16)
+                | ((instance.edge_flags.bits() as i32) << 28),
                 instance.resource_address,
             ]
         }
@@ -626,7 +714,7 @@ impl TransformPaletteId {
 
     /// Extract the transform kind from the id.
     pub fn transform_kind(&self) -> TransformedRectKind {
-        if (self.0 >> 24) == 0 {
+        if (self.0 >> 23) == 0 {
             TransformedRectKind::AxisAligned
         } else {
             TransformedRectKind::Complex
@@ -638,7 +726,7 @@ impl TransformPaletteId {
     /// aligned (i.e. perspective warp) even though we may still want to for the
     /// general case.
     pub fn override_transform_kind(&self, kind: TransformedRectKind) -> Self {
-        TransformPaletteId((self.0 & 0xFFFFFFu32) | ((kind as u32) << 24))
+        TransformPaletteId((self.0 & 0x7FFFFFu32) | ((kind as u32) << 23))
     }
 }
 
@@ -695,11 +783,20 @@ pub struct TransformPalette {
 }
 
 impl TransformPalette {
-    pub fn new(count: usize) -> Self {
+    pub fn new(
+        count: usize,
+    ) -> Self {
         let _ = VECS_PER_TRANSFORM;
+
+        let mut transforms = Vec::with_capacity(count);
+        let mut metadata = Vec::with_capacity(count);
+
+        transforms.push(TransformData::invalid());
+        metadata.push(TransformMetadata::invalid());
+
         TransformPalette {
-            transforms: vec![TransformData::invalid(); count],
-            metadata: vec![TransformMetadata::invalid(); count],
+            transforms,
+            metadata,
             map: FastHashMap::default(),
         }
     }
@@ -708,30 +805,13 @@ impl TransformPalette {
         self.transforms
     }
 
-    pub fn set_world_transform(
-        &mut self,
-        index: SpatialNodeIndex,
-        transform: LayoutToWorldTransform,
-    ) {
-        register_transform(
-            &mut self.metadata,
-            &mut self.transforms,
-            index,
-            ROOT_SPATIAL_NODE_INDEX,
-            // We know the root picture space == world space
-            transform.with_destination::<PicturePixel>(),
-        );
-    }
-
     fn get_index(
         &mut self,
         child_index: SpatialNodeIndex,
         parent_index: SpatialNodeIndex,
         spatial_tree: &SpatialTree,
     ) -> usize {
-        if parent_index == ROOT_SPATIAL_NODE_INDEX {
-            child_index.0 as usize
-        } else if child_index == parent_index {
+        if child_index == parent_index {
             0
         } else {
             let key = RelativeTransformKey {
@@ -755,8 +835,6 @@ impl TransformPalette {
                     register_transform(
                         metadata,
                         transforms,
-                        child_index,
-                        parent_index,
                         transform,
                     )
                 })
@@ -781,7 +859,24 @@ impl TransformPalette {
         let transform_kind = self.metadata[index].transform_kind as u32;
         TransformPaletteId(
             (index as u32) |
-            (transform_kind << 24)
+            (transform_kind << 23)
+        )
+    }
+
+    pub fn get_custom(
+        &mut self,
+        transform: LayoutToPictureTransform,
+    ) -> TransformPaletteId {
+        let index = register_transform(
+            &mut self.metadata,
+            &mut self.transforms,
+            transform,
+        );
+
+        let transform_kind = self.metadata[index].transform_kind as u32;
+        TransformPaletteId(
+            (index as u32) |
+            (transform_kind << 23)
         )
     }
 }
@@ -852,8 +947,6 @@ impl ImageSource {
 fn register_transform(
     metadatas: &mut Vec<TransformMetadata>,
     transforms: &mut Vec<TransformData>,
-    from_index: SpatialNodeIndex,
-    to_index: SpatialNodeIndex,
     transform: LayoutToPictureTransform,
 ) -> usize {
     // TODO: refactor the calling code to not even try
@@ -870,17 +963,11 @@ fn register_transform(
         inv_transform,
     };
 
-    if to_index == ROOT_SPATIAL_NODE_INDEX {
-        let index = from_index.0 as usize;
-        metadatas[index] = metadata;
-        transforms[index] = data;
-        index
-    } else {
-        let index = transforms.len();
-        metadatas.push(metadata);
-        transforms.push(data);
-        index
-    }
+    let index = transforms.len();
+    metadatas.push(metadata);
+    transforms.push(data);
+
+    index
 }
 
 pub fn get_shader_opacity(opacity: f32) -> i32 {

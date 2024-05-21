@@ -4,23 +4,28 @@
 
 "use strict";
 
-const Services = require("Services");
-loader.lazyRequireGetter(
-  this,
+const lazy = {};
+loader.lazyGetter(
+  lazy,
   "ContentDOMReference",
-  "resource://gre/modules/ContentDOMReference.jsm",
-  true
+  () =>
+    ChromeUtils.importESModule(
+      "resource://gre/modules/ContentDOMReference.sys.mjs",
+      // ContentDOMReference needs to be retrieved from the shared global
+      // since it is a shared singleton.
+      { global: "shared" }
+    ).ContentDOMReference
 );
 loader.lazyRequireGetter(
   this,
-  ["isRemoteFrame", "isWindowIncluded"],
-  "devtools/shared/layout/utils",
+  ["isFrameWithChildTarget", "isWindowIncluded"],
+  "resource://devtools/shared/layout/utils.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "NodeTabbingOrderHighlighter",
-  "devtools/server/actors/highlighters/node-tabbing-order",
+  "resource://devtools/server/actors/highlighters/node-tabbing-order.js",
   true
 );
 
@@ -117,8 +122,11 @@ class TabbingOrderHighlighter {
 
     if (
       !endElm &&
-      focusableElements.length > 0 &&
-      isRemoteFrame(focusableElements[focusableElements.length - 1])
+      !!focusableElements.length &&
+      isFrameWithChildTarget(
+        this.highlighterEnv.targetActor,
+        focusableElements[focusableElements.length - 1]
+      )
     ) {
       endElm = focusableElements[focusableElements.length - 1];
     }
@@ -138,7 +146,7 @@ class TabbingOrderHighlighter {
     this._trackMutations();
 
     return {
-      contentDOMReference: endElm && ContentDOMReference.get(endElm),
+      contentDOMReference: endElm && lazy.ContentDOMReference.get(endElm),
       index,
     };
   }

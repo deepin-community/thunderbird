@@ -12,18 +12,20 @@ ${helpers.single_keyword(
     engines="gecko",
     gecko_enum_prefix="StyleVectorEffect",
     animation_value_type="discrete",
-    spec="https://www.w3.org/TR/SVGTiny12/painting.html#VectorEffectProperty",
+    spec="https://svgwg.org/svg2-draft/coords.html#VectorEffects",
+    affects="layout",
 )}
 
-// Section 13 - Gradients and Patterns
+// Section 14 - Gradients and Patterns
 
 ${helpers.predefined_type(
     "stop-color",
     "Color",
-    "RGBA::new(0, 0, 0, 255).into()",
+    "computed::Color::BLACK",
     engines="gecko",
     animation_value_type="AnimatedRGBA",
-    spec="https://www.w3.org/TR/SVGTiny12/painting.html#StopColorProperty",
+    spec="https://svgwg.org/svg2-draft/pservers.html#StopColorProperties",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -33,17 +35,19 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://svgwg.org/svg2-draft/pservers.html#StopOpacityProperty",
+    affects="paint",
 )}
 
-// Section 15 - Filter Effects
+// Filter Effects Module
 
 ${helpers.predefined_type(
     "flood-color",
     "Color",
-    "RGBA::new(0, 0, 0, 255).into()",
+    "computed::Color::BLACK",
     engines="gecko",
     animation_value_type="AnimatedColor",
-    spec="https://www.w3.org/TR/SVG/filters.html#FloodColorProperty",
+    spec="https://drafts.fxtf.org/filter-effects-1/#FloodColorProperty",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -52,27 +56,30 @@ ${helpers.predefined_type(
     "1.0",
     engines="gecko",
     animation_value_type="ComputedValue",
-    spec="https://drafts.fxtf.org/filter-effects/#FloodOpacityProperty",
+    spec="https://drafts.fxtf.org/filter-effects-1/#FloodOpacityProperty",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
     "lighting-color",
     "Color",
-    "RGBA::new(255, 255, 255, 255).into()",
+    "computed::Color::WHITE",
     engines="gecko",
     animation_value_type="AnimatedColor",
-    spec="https://www.w3.org/TR/SVG/filters.html#LightingColorProperty",
+    spec="https://drafts.fxtf.org/filter-effects-1#LightingColorProperty",
+    affects="paint",
 )}
 
 // CSS Masking Module Level 1
-// https://drafts.fxtf.org/css-masking
+// https://drafts.fxtf.org/css-masking-1
 ${helpers.single_keyword(
     "mask-type",
     "luminance alpha",
     engines="gecko",
     gecko_enum_prefix="StyleMaskType",
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-type",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-type",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -80,8 +87,10 @@ ${helpers.predefined_type(
     "basic_shape::ClipPath",
     "generics::basic_shape::ClipPath::None",
     engines="gecko",
+    extra_prefixes="webkit",
     animation_value_type="basic_shape::ClipPath",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-clip-path",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-clip-path",
+    affects="paint",
 )}
 
 ${helpers.single_keyword(
@@ -91,7 +100,8 @@ ${helpers.single_keyword(
     gecko_enum_prefix="StyleMaskMode",
     vector=True,
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-mode",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-mode",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -102,8 +112,9 @@ ${helpers.predefined_type(
     initial_specified_value="specified::BackgroundRepeat::repeat()",
     extra_prefixes="webkit",
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-repeat",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-repeat",
     vector=True,
+    affects="paint",
 )}
 
 % for (axis, direction) in [("x", "Horizontal"), ("y", "Vertical")]:
@@ -114,10 +125,11 @@ ${helpers.predefined_type(
         engines="gecko",
         extra_prefixes="webkit",
         initial_specified_value="specified::PositionComponent::Center",
-        spec="https://drafts.fxtf.org/css-masking/#propdef-mask-position",
+        spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-position",
         animation_value_type="ComputedValue",
         vector_animation_type="repeatable_list",
         vector=True,
+        affects="paint",
     )}
 % endfor
 
@@ -131,7 +143,8 @@ ${helpers.single_keyword(
     gecko_enum_prefix="StyleGeometryBox",
     gecko_inexhaustive=True,
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-clip",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-clip",
+    affects="paint",
 )}
 
 ${helpers.single_keyword(
@@ -144,7 +157,8 @@ ${helpers.single_keyword(
     gecko_enum_prefix="StyleGeometryBox",
     gecko_inexhaustive=True,
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-origin",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-origin",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -154,10 +168,11 @@ ${helpers.predefined_type(
     engines="gecko",
     initial_specified_value="specified::BackgroundSize::auto()",
     extra_prefixes="webkit",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-size",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-size",
     animation_value_type="MaskSizeList",
     vector=True,
     vector_animation_type="repeatable_list",
+    affects="paint",
 )}
 
 ${helpers.single_keyword(
@@ -168,7 +183,8 @@ ${helpers.single_keyword(
     vector=True,
     extra_prefixes="webkit",
     animation_value_type="discrete",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-composite",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-composite",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -178,10 +194,11 @@ ${helpers.predefined_type(
     initial_value="computed::Image::None",
     initial_specified_value="specified::Image::None",
     parse_method="parse_with_cors_anonymous",
-    spec="https://drafts.fxtf.org/css-masking/#propdef-mask-image",
+    spec="https://drafts.fxtf.org/css-masking-1/#propdef-mask-image",
     vector=True,
     extra_prefixes="webkit",
     animation_value_type="discrete",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -191,6 +208,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://svgwg.org/svg2-draft/geometry.html#X",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -200,6 +218,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://svgwg.org/svg2-draft/geometry.html#Y",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -209,6 +228,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://svgwg.org/svg2-draft/geometry.html#CX",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -218,6 +238,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://svgwg.org/svg2-draft/geometry.html#CY",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -227,6 +248,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="LengthPercentageOrAuto",
     spec="https://svgwg.org/svg2-draft/geometry.html#RX",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -236,6 +258,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="LengthPercentageOrAuto",
     spec="https://svgwg.org/svg2-draft/geometry.html#RY",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -245,6 +268,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="LengthPercentage",
     spec="https://svgwg.org/svg2-draft/geometry.html#R",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -253,6 +277,6 @@ ${helpers.predefined_type(
     "specified::DProperty::none()",
     engines="gecko",
     animation_value_type="ComputedValue",
-    gecko_pref="layout.css.d-property.enabled",
     spec="https://svgwg.org/svg2-draft/paths.html#TheDProperty",
+    affects="layout",
 )}

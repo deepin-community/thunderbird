@@ -1,8 +1,6 @@
 // This test works by setting up an exception for the tracker domain, which
 // disables all the anti-tracking tests.
 
-/* import-globals-from antitracking_head.js */
-
 add_task(async _ => {
   PermissionTestUtils.add(
     "https://tracking.example.org",
@@ -34,11 +32,12 @@ AntiTracking._createTask({
   allowList: false,
   callback: async _ => {
     document.cookie = "name=value";
+    // Assert isn't available in the webpage.
+    // eslint-disable-next-line mozilla/no-comparison-or-assignment-inside-ok
     ok(document.cookie != "", "Nothing is blocked");
 
     // requestStorageAccess should resolve
-    let dwu = SpecialPowers.getDOMWindowUtils(window);
-    let helper = dwu.setHandlingUserInput(true);
+    SpecialPowers.wrap(document).notifyUserGestureActivation();
     await document
       .requestStorageAccess()
       .then(() => {
@@ -47,9 +46,10 @@ AntiTracking._createTask({
       .catch(() => {
         ok(false, "Should grant storage access");
       });
-    helper.destruct();
+    SpecialPowers.wrap(document).clearUserGestureActivation();
   },
-  extraPrefs: null,
+  // Bug 1617611: Fix all the tests broken by "cookies SameSite=lax by default"
+  extraPrefs: [["network.cookie.sameSite.laxByDefault", false]],
   expectedBlockingNotifications: 0,
   runInPrivateWindow: false,
   iframeSandbox: null,
@@ -59,7 +59,7 @@ AntiTracking._createTask({
 
 add_task(async _ => {
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });

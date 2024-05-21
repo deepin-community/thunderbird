@@ -16,15 +16,15 @@ function ABView(
   this.directory = directory;
   this.listener = listener;
 
-  let directories = directory ? [directory] : MailServices.ab.directories;
+  const directories = directory ? [directory] : MailServices.ab.directories;
   if (searchQuery) {
     searchQuery = searchQuery.replace(/^\?+/, "");
-    for (let dir of directories) {
+    for (const dir of directories) {
       dir.search(searchQuery, searchString, this);
     }
   } else {
-    for (let dir of directories) {
-      for (let card of dir.childCards) {
+    for (const dir of directories) {
+      for (const card of dir.childCards) {
         this._rowMap.push(new abViewCard(card, dir));
       }
     }
@@ -66,13 +66,13 @@ ABView.prototype = {
   collator: new Intl.Collator(undefined, { numeric: true }),
 
   deleteSelectedCards() {
-    let directoryMap = new Map();
+    const directoryMap = new Map();
     for (let i = 0; i < this.selection.getRangeCount(); i++) {
-      let start = {};
-      let finish = {};
+      const start = {};
+      const finish = {};
       this.selection.getRangeAt(i, start, finish);
       for (let j = start.value; j <= finish.value; j++) {
-        let card = this.getCardFromRow(j);
+        const card = this.getCardFromRow(j);
         let cardSet = directoryMap.get(card.directoryUID);
         if (!cardSet) {
           cardSet = new Set();
@@ -93,7 +93,7 @@ ABView.prototype = {
 
       cardSet = [...cardSet];
       directory.deleteCards(cardSet.filter(card => !card.isMailList));
-      for (let card of cardSet.filter(card => card.isMailList)) {
+      for (const card of cardSet.filter(card => card.isMailList)) {
         MailServices.ab.deleteAddressBook(card.mailListURI);
       }
     }
@@ -106,7 +106,7 @@ ABView.prototype = {
   },
   sortBy(sortColumn, sortDirection, resort) {
     // Remember what was selected.
-    let selection = this.selection;
+    const selection = this.selection;
     if (selection) {
       for (let i = 0; i < this._rowMap.length; i++) {
         this._rowMap[i].wasSelected = selection.isSelected(i);
@@ -122,8 +122,8 @@ ABView.prototype = {
       this._rowMap.reverse();
     } else {
       this._rowMap.sort((a, b) => {
-        let aText = a.getText(sortColumn);
-        let bText = b.getText(sortColumn);
+        const aText = a.getText(sortColumn);
+        const bText = b.getText(sortColumn);
         if (sortDirection == "descending") {
           return this.collator.compare(bText, aText);
         }
@@ -166,7 +166,7 @@ ABView.prototype = {
   },
   setTree(tree) {
     this.tree = tree;
-    for (let topic of this._notifications) {
+    for (const topic of this._notifications) {
       if (tree) {
         Services.obs.addObserver(this, topic, true);
       } else {
@@ -191,10 +191,10 @@ ABView.prototype = {
     let offerCertException = false;
     try {
       // If code is not an NSS error, getErrorClass() will fail.
-      let nssErrorsService = Cc["@mozilla.org/nss_errors_service;1"].getService(
-        Ci.nsINSSErrorsService
-      );
-      let errorClass = nssErrorsService.getErrorClass(status);
+      const nssErrorsService = Cc[
+        "@mozilla.org/nss_errors_service;1"
+      ].getService(Ci.nsINSSErrorsService);
+      const errorClass = nssErrorsService.getErrorClass(status);
       if (errorClass == Ci.nsINSSErrorsService.ERROR_CLASS_BAD_CERT) {
         offerCertException = true;
       }
@@ -202,7 +202,7 @@ ABView.prototype = {
 
     if (offerCertException) {
       // Give the user the option of adding an exception for the bad cert.
-      let params = {
+      const params = {
         exceptionAdded: false,
         securityInfo: secInfo,
         prefetchCert: true,
@@ -226,7 +226,7 @@ ABView.prototype = {
         "mail.addr_book.lastnamefirst",
         0
       );
-      for (let card of this._rowMap) {
+      for (const card of this._rowMap) {
         delete card._getTextCache.GeneratedName;
       }
       if (this.tree) {
@@ -252,7 +252,7 @@ ABView.prototype = {
         }
 
         subject.QueryInterface(Ci.nsIAbDirectory);
-        let scrollPosition = this.tree?.getFirstVisibleRow();
+        const scrollPosition = this.tree?.getFirstVisibleRow();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (this._rowMap[i].directory.UID == subject.UID) {
             this._rowMap.splice(i, 1);
@@ -273,7 +273,7 @@ ABView.prototype = {
         subject.QueryInterface(Ci.nsIAbDirectory);
         if (subject == this.directory) {
           this._rowMap.length = 0;
-          for (let card of this.directory.childCards) {
+          for (const card of this.directory.childCards) {
             this._rowMap.push(new abViewCard(card, this.directory));
           }
           this.sortBy(this.sortColumn, this.sortDirection, true);
@@ -283,10 +283,10 @@ ABView.prototype = {
         }
         break;
       case "addrbook-list-created": {
-        let parentDir = MailServices.ab.getDirectoryFromUID(data);
+        const parentDir = MailServices.ab.getDirectoryFromUID(data);
         // `subject` is an nsIAbDirectory, make it the matching card instead.
         subject.QueryInterface(Ci.nsIAbDirectory);
-        for (let card of parentDir.childCards) {
+        for (const card of parentDir.childCards) {
           if (card.UID == subject.UID) {
             subject = card;
             break;
@@ -295,17 +295,17 @@ ABView.prototype = {
       }
       // Falls through.
       case "addrbook-list-member-added":
-      case "addrbook-contact-created":
+      case "addrbook-contact-created": {
         if (topic == "addrbook-list-member-added" && !this.directory) {
           break;
         }
 
         subject.QueryInterface(Ci.nsIAbCard);
-        let viewCard = new abViewCard(subject);
-        let sortText = viewCard.getText(this.sortColumn);
+        const viewCard = new abViewCard(subject);
+        const sortText = viewCard.getText(this.sortColumn);
         let addIndex = null;
         for (let i = 0; addIndex === null && i < this._rowMap.length; i++) {
-          let comparison = this.collator.compare(
+          const comparison = this.collator.compare(
             sortText,
             this._rowMap[i].getText(this.sortColumn)
           );
@@ -327,7 +327,7 @@ ABView.prototype = {
           this.listener.onCountChanged(this.rowCount);
         }
         break;
-
+      }
       case "addrbook-list-updated": {
         let parentDir = this.directory;
         if (!parentDir) {
@@ -335,7 +335,7 @@ ABView.prototype = {
         }
         // `subject` is an nsIAbDirectory, make it the matching card instead.
         subject.QueryInterface(Ci.nsIAbDirectory);
-        for (let card of parentDir.childCards) {
+        for (const card of parentDir.childCards) {
           if (card.UID == subject.UID) {
             subject = card;
             break;
@@ -363,7 +363,7 @@ ABView.prototype = {
 
       case "addrbook-list-deleted": {
         subject.QueryInterface(Ci.nsIAbDirectory);
-        let scrollPosition = this.tree?.getFirstVisibleRow();
+        const scrollPosition = this.tree?.getFirstVisibleRow();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (this._rowMap[i].card.UID == subject.UID) {
             this._rowMap.splice(i, 1);
@@ -387,7 +387,7 @@ ABView.prototype = {
       // Falls through.
       case "addrbook-contact-deleted": {
         subject.QueryInterface(Ci.nsIAbCard);
-        let scrollPosition = this.tree?.getFirstVisibleRow();
+        const scrollPosition = this.tree?.getFirstVisibleRow();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (
             this._rowMap[i].card.equals(subject) &&
@@ -429,11 +429,28 @@ function abViewCard(card, directoryHint) {
     );
   }
 }
+abViewCard.listFormatter = new Services.intl.ListFormat(
+  Services.appinfo.name == "xpcshell" ? "en-US" : undefined,
+  { type: "unit" }
+);
 abViewCard.prototype = {
   _getText(columnID) {
     try {
+      const { getProperty, supportsVCard, vCardProperties } = this.card;
+
+      if (this.card.isMailList) {
+        if (columnID == "GeneratedName") {
+          return this.card.displayName;
+        }
+        if (["NickName", "Notes"].includes(columnID)) {
+          return getProperty(columnID, "");
+        }
+        return "";
+      }
+
       switch (columnID) {
         case "addrbook":
+        case "Addrbook":
           return this._directory.dirName;
         case "GeneratedName":
           return this.card.generateName(ABView.nameFormat);
@@ -441,10 +458,55 @@ abViewCard.prototype = {
           return this.card.generatePhoneticName(true);
         case "ChatName":
           return this.card.isMailList ? "" : this.card.generateChatName();
+        case "EmailAddresses":
+          return abViewCard.listFormatter.format(this.card.emailAddresses);
+        case "PhoneNumbers": {
+          let phoneNumbers;
+          if (supportsVCard) {
+            phoneNumbers = vCardProperties.getAllValues("tel");
+          } else {
+            phoneNumbers = [
+              getProperty("WorkPhone", ""),
+              getProperty("HomePhone", ""),
+              getProperty("CellularNumber", ""),
+              getProperty("FaxNumber", ""),
+              getProperty("PagerNumber", ""),
+            ];
+          }
+          return abViewCard.listFormatter.format(phoneNumbers.filter(Boolean));
+        }
+        case "JobTitle":
+        case "Title":
+          if (supportsVCard) {
+            return vCardProperties.getFirstValue("title");
+          }
+          return getProperty("JobTitle", "");
+        case "Department":
+          if (supportsVCard) {
+            const vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[1] || "";
+            }
+            return "";
+          }
+          return getProperty(columnID, "");
+        case "Company":
+        case "Organization":
+          if (supportsVCard) {
+            const vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[0] || "";
+            }
+            return vCardValue;
+          }
+          return getProperty("Company", "");
+        case "NickName":
+          if (supportsVCard) {
+            return vCardProperties.getFirstValue("nickname");
+          }
+          return getProperty(columnID, "");
         default:
-          return this.card.isMailList
-            ? ""
-            : this.card.getPropertyAsAString(columnID);
+          return getProperty(columnID, "");
       }
     } catch (ex) {
       return "";
@@ -452,7 +514,7 @@ abViewCard.prototype = {
   },
   getText(columnID) {
     if (!(columnID in this._getTextCache)) {
-      this._getTextCache[columnID] = this._getText(columnID);
+      this._getTextCache[columnID] = this._getText(columnID)?.trim() ?? "";
     }
     return this._getTextCache[columnID];
   },

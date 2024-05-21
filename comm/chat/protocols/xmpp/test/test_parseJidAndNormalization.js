@@ -1,9 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XMPPAccountPrototype } = ChromeUtils.import(
-  "resource:///modules/xmpp-base.jsm"
+var { XMPPAccountPrototype } = ChromeUtils.importESModule(
+  "resource:///modules/xmpp-base.sys.mjs"
 );
 
 var TEST_DATA = {
@@ -63,8 +62,8 @@ var TEST_DATA = {
 };
 
 function testParseJID() {
-  for (let currentJID in TEST_DATA) {
-    let jid = XMPPAccountPrototype._parseJID(currentJID);
+  for (const currentJID in TEST_DATA) {
+    const jid = XMPPAccountPrototype._parseJID(currentJID);
     equal(jid.node, TEST_DATA[currentJID].node);
     equal(jid.domain, TEST_DATA[currentJID].domain);
     equal(jid.resource, TEST_DATA[currentJID].resource);
@@ -75,7 +74,7 @@ function testParseJID() {
 }
 
 function testNormalize() {
-  for (let currentJID in TEST_DATA) {
+  for (const currentJID in TEST_DATA) {
     equal(
       XMPPAccountPrototype.normalize(currentJID),
       TEST_DATA[currentJID].normalized
@@ -86,7 +85,7 @@ function testNormalize() {
 }
 
 function testNormalizeFullJid() {
-  for (let currentJID in TEST_DATA) {
+  for (const currentJID in TEST_DATA) {
     equal(
       XMPPAccountPrototype.normalizeFullJid(currentJID),
       TEST_DATA[currentJID].jid

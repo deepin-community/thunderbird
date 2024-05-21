@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # This is a template config file for marionette production on Windows.
-from __future__ import absolute_import
 import os
 import platform
 import sys
@@ -18,15 +17,15 @@ DESKTOP_VISUALFX_THEME = {
     "Custom": 3,
 }.get("Best appearance")
 TASKBAR_AUTOHIDE_REG_PATH = {
-    "Windows 7": "HKCU:SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StuckRects2",
-    "Windows 10": "HKCU:SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3",
+    "Windows 7": r"HKCU:SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StuckRects2",
+    "Windows 10": r"HKCU:SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3",
 }.get("{} {}".format(platform.system(), platform.release()))
 
 #####
 config = {
     # marionette options
     "marionette_address": "localhost:2828",
-    "test_manifest": "unit-tests.ini",
+    "test_manifest": "unit-tests.toml",
     "virtualenv_path": "venv",
     "exes": {
         "python": sys.executable,
@@ -39,12 +38,10 @@ config = {
         "install",
         "run-tests",
     ],
-    "download_symbols": "ondemand",
     "suite_definitions": {
         "marionette_desktop": {
             "options": [
                 "-vv",
-                "--log-raw=%(raw_log_file)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-html=%(html_report_file)s",
                 "--binary=%(binary)s",
@@ -102,12 +99,23 @@ config = {
             "cmd": [
                 "powershell",
                 "-command",
-                "\"&{{&Set-ItemProperty -Path 'HKCU:Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' -Name VisualFXSetting -Value {}}}\"".format(
+                "\"&{{&Set-ItemProperty -Path 'HKCU:Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects' -Name VisualFXSetting -Value {}}}\"".format(
                     DESKTOP_VISUALFX_THEME
                 ),
             ],
             "architectures": ["32bit", "64bit"],
             "halt_on_failure": True,
+            "enabled": True,
+        },
+        {
+            "name": "create scrollbars always show key",
+            "cmd": [
+                "powershell",
+                "-command",
+                r"New-ItemProperty -Path 'HKCU:\Control Panel\Accessibility' -Name 'DynamicScrollbars' -Value 0",
+            ],
+            "architectures": ["32bit", "64bit"],
+            "halt_on_failure": False,
             "enabled": True,
         },
         {

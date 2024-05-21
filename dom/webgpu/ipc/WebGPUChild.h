@@ -9,8 +9,12 @@
 #include "mozilla/webgpu/PWebGPUChild.h"
 #include "mozilla/MozPromise.h"
 #include "mozilla/WeakPtr.h"
+#include "mozilla/webgpu/ffi/wgpu.h"
 
 namespace mozilla {
+namespace ipc {
+class UnsafeSharedMemoryHandle;
+}  // namespace ipc
 namespace dom {
 struct GPURequestAdapterOptions;
 }  // namespace dom
@@ -20,11 +24,27 @@ class CompositorBridgeChild;
 namespace webgpu {
 namespace ffi {
 struct WGPUClient;
+struct WGPULimits;
 struct WGPUTextureViewDescriptor;
 }  // namespace ffi
 
-typedef MozPromise<ipc::ByteBuf, Maybe<ipc::ResponseRejectReason>, true>
-    AdapterPromise;
+using AdapterPromise =
+    MozPromise<ipc::ByteBuf, Maybe<ipc::ResponseRejectReason>, true>;
+using PipelinePromise = MozPromise<RawId, ipc::ResponseRejectReason, true>;
+using DevicePromise = MozPromise<bool, ipc::ResponseRejectReason, true>;
+
+struct PipelineCreationContext {
+  RawId mParentId = 0;
+  RawId mImplicitPipelineLayoutId = 0;
+  nsTArray<RawId> mImplicitBindGroupLayoutIds;
+};
+
+struct DeviceRequest {
+  RawId mId = 0;
+  RefPtr<DevicePromise> mPromise;
+  // Note: we could put `ffi::WGPULimits` in here as well,
+  //  but we don't want to #include ffi stuff in this header
+};
 
 ffi::WGPUByteBuf* ToFFI(ipc::ByteBuf* x);
 
@@ -33,89 +53,60 @@ class WebGPUChild final : public PWebGPUChild, public SupportsWeakPtr {
   friend class layers::CompositorBridgeChild;
 
   NS_DECL_CYCLE_COLLECTION_NATIVE_CLASS(WebGPUChild)
-  NS_INLINE_DECL_CYCLE_COLLECTING_NATIVE_REFCOUNTING(WebGPUChild)
+  NS_INLINE_DECL_CYCLE_COLLECTING_NATIVE_REFCOUNTING_INHERITED(WebGPUChild)
 
  public:
   explicit WebGPUChild();
 
-  bool IsOpen() const { return mIPCOpen; }
+  bool IsOpen() const { return CanSend(); }
 
   RefPtr<AdapterPromise> InstanceRequestAdapter(
       const dom::GPURequestAdapterOptions& aOptions);
-  Maybe<RawId> AdapterRequestDevice(RawId aSelfId,
-                                    const dom::GPUDeviceDescriptor& aDesc);
-  RawId DeviceCreateBuffer(RawId aSelfId,
-                           const dom::GPUBufferDescriptor& aDesc);
-  RawId DeviceCreateTexture(RawId aSelfId,
-                            const dom::GPUTextureDescriptor& aDesc);
-  RawId TextureCreateView(RawId aSelfId, RawId aDeviceId,
-                          const dom::GPUTextureViewDescriptor& aDesc);
-  RawId DeviceCreateSampler(RawId aSelfId,
-                            const dom::GPUSamplerDescriptor& aDesc);
-  RawId DeviceCreateCommandEncoder(
-      RawId aSelfId, const dom::GPUCommandEncoderDescriptor& aDesc);
-  RawId CommandEncoderFinish(RawId aSelfId, RawId aDeviceId,
-                             const dom::GPUCommandBufferDescriptor& aDesc);
+  Maybe<DeviceRequest> AdapterRequestDevice(RawId aSelfId,
+                                            const ffi::WGPUDeviceDescriptor&);
   RawId RenderBundleEncoderFinish(ffi::WGPURenderBundleEncoder& aEncoder,
                                   RawId aDeviceId,
                                   const dom::GPURenderBundleDescriptor& aDesc);
-  RawId DeviceCreateBindGroupLayout(
-      RawId aSelfId, const dom::GPUBindGroupLayoutDescriptor& aDesc);
-  RawId DeviceCreatePipelineLayout(
-      RawId aSelfId, const dom::GPUPipelineLayoutDescriptor& aDesc);
-  RawId DeviceCreateBindGroup(RawId aSelfId,
-                              const dom::GPUBindGroupDescriptor& aDesc);
-  RawId DeviceCreateShaderModule(RawId aSelfId,
-                                 const dom::GPUShaderModuleDescriptor& aDesc);
-  RawId DeviceCreateComputePipeline(
-      RawId aSelfId, const dom::GPUComputePipelineDescriptor& aDesc,
-      RawId* const aImplicitPipelineLayoutId,
-      nsTArray<RawId>* const aImplicitBindGroupLayoutIds);
-  RawId DeviceCreateRenderPipeline(
-      RawId aSelfId, const dom::GPURenderPipelineDescriptor& aDesc,
-      RawId* const aImplicitPipelineLayoutId,
-      nsTArray<RawId>* const aImplicitBindGroupLayoutIds);
+  RawId RenderBundleEncoderFinishError(RawId aDeviceId, const nsString& aLabel);
+
+  ffi::WGPUClient* GetClient() const { return mClient.get(); }
 
   void DeviceCreateSwapChain(RawId aSelfId, const RGBDescriptor& aRgbDesc,
                              size_t maxBufferCount,
-                             wr::ExternalImageId aExternalImageId);
-  void SwapChainPresent(wr::ExternalImageId aExternalImageId, RawId aTextureId);
+                             const layers::RemoteTextureOwnerId& aOwnerId,
+                             bool aUseExternalTextureInSwapChain);
 
-  void RegisterDevice(RawId aId, Device* aDevice);
+  void QueueOnSubmittedWorkDone(const RawId aSelfId,
+                                const RefPtr<dom::Promise>& aPromise);
+
+  void SwapChainPresent(RawId aTextureId,
+                        const RemoteTextureId& aRemoteTextureId,
+                        const RemoteTextureOwnerId& aOwnerId);
+
+  void RegisterDevice(Device* const aDevice);
   void UnregisterDevice(RawId aId);
+  void FreeUnregisteredInParentDevice(RawId aId);
 
-  static void ConvertTextureFormatRef(const dom::GPUTextureFormat& aInput,
-                                      ffi::WGPUTextureFormat& aOutput);
+  void QueueSubmit(RawId aSelfId, RawId aDeviceId,
+                   nsTArray<RawId>& aCommandBuffers);
+  void NotifyWaitForSubmit(RawId aTextureId);
+
+  static void JsWarning(nsIGlobalObject* aGlobal, const nsACString& aMessage);
 
  private:
   virtual ~WebGPUChild();
 
-  void JsWarning(nsIGlobalObject* aGlobal, const nsACString& aMessage);
-
-  // AddIPDLReference and ReleaseIPDLReference are only to be called by
-  // CompositorBridgeChild's AllocPWebGPUChild and DeallocPWebGPUChild methods
-  // respectively. We intentionally make them private to prevent misuse.
-  // The purpose of these methods is to be aware of when the IPC system around
-  // this actor goes down: mIPCOpen is then set to false.
-  void AddIPDLReference() {
-    MOZ_ASSERT(!mIPCOpen);
-    mIPCOpen = true;
-    AddRef();
-  }
-  void ReleaseIPDLReference() {
-    MOZ_ASSERT(mIPCOpen);
-    mIPCOpen = false;
-    Release();
-  }
-
-  ffi::WGPUClient* const mClient;
-  bool mIPCOpen;
-  std::unordered_map<RawId, Device*> mDeviceMap;
+  UniquePtr<ffi::WGPUClient> const mClient;
+  std::unordered_map<RawId, WeakPtr<Device>> mDeviceMap;
+  nsTArray<RawId> mSwapChainTexturesWaitingForSubmit;
 
  public:
-  ipc::IPCResult RecvDeviceUncapturedError(RawId aDeviceId,
-                                           const nsACString& aMessage);
+  ipc::IPCResult RecvUncapturedError(Maybe<RawId> aDeviceId,
+                                     const nsACString& aMessage);
   ipc::IPCResult RecvDropAction(const ipc::ByteBuf& aByteBuf);
+  ipc::IPCResult RecvDeviceLost(RawId aDeviceId, Maybe<uint8_t> aReason,
+                                const nsACString& aMessage);
+  void ActorDestroy(ActorDestroyReason) override;
 };
 
 }  // namespace webgpu

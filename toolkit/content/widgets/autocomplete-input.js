@@ -7,11 +7,11 @@
 // This is loaded into all XUL windows. Wrap in a block to prevent
 // leaking to window scope.
 {
-  const { AppConstants } = ChromeUtils.import(
-    "resource://gre/modules/AppConstants.jsm"
+  const { AppConstants } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppConstants.sys.mjs"
   );
-  const { XPCOMUtils } = ChromeUtils.import(
-    "resource://gre/modules/XPCOMUtils.jsm"
+  const { XPCOMUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/XPCOMUtils.sys.mjs"
   );
 
   class AutocompleteInput extends HTMLInputElement {
@@ -20,11 +20,10 @@
 
       this.popupSelectedIndex = -1;
 
-      ChromeUtils.defineModuleGetter(
-        this,
-        "PrivateBrowsingUtils",
-        "resource://gre/modules/PrivateBrowsingUtils.jsm"
-      );
+      ChromeUtils.defineESModuleGetters(this, {
+        PrivateBrowsingUtils:
+          "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
+      });
 
       XPCOMUtils.defineLazyPreferenceGetter(
         this,
@@ -41,7 +40,7 @@
 
       this.addEventListener(
         "compositionstart",
-        event => {
+        () => {
           if (
             this.mController.input.wrappedJSObject == this.nsIAutocompleteInput
           ) {
@@ -53,7 +52,7 @@
 
       this.addEventListener(
         "compositionend",
-        event => {
+        () => {
           if (
             this.mController.input.wrappedJSObject == this.nsIAutocompleteInput
           ) {
@@ -65,7 +64,7 @@
 
       this.addEventListener(
         "focus",
-        event => {
+        () => {
           this.attachController();
           if (
             window.gBrowser &&
@@ -83,7 +82,7 @@
 
       this.addEventListener(
         "blur",
-        event => {
+        () => {
           if (!this._dontBlur) {
             if (this.forceComplete && this.mController.matchCount >= 1) {
               // If forceComplete is requested, we need to call the enter processing
@@ -263,12 +262,6 @@
       return true;
     }
 
-    set crop(val) {}
-
-    get crop() {
-      return false;
-    }
-
     set open(val) {
       if (val) {
         this.showHistoryPopup();
@@ -350,10 +343,6 @@
     getSearchAt(aIndex) {
       this.initSearchNames();
       return this.mSearchNames[aIndex];
-    }
-
-    setTextValueWithReason(aValue, aReason) {
-      this.textValue = aValue;
     }
 
     selectTextRange(aStartIndex, aEndIndex) {
@@ -636,7 +625,7 @@
       return value;
     }
 
-    onInput(aEvent) {
+    onInput() {
       if (
         !this.mIgnoreInput &&
         this.mController.input.wrappedJSObject == this.nsIAutocompleteInput

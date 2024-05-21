@@ -32,7 +32,7 @@ function assertURL(result, expectedUrl, keyword, input, postData) {
 
 const TEST_URL = `${TEST_BASE_URL}print_postdata.sjs`;
 
-add_task(async function setup() {
+add_setup(async function () {
   await PlacesUtils.keywords.insert({
     keyword: "get",
     url: TEST_URL + "?q=%s",
@@ -54,14 +54,12 @@ add_task(async function setup() {
   await SpecialPowers.pushPrefEnv({
     set: [["browser.urlbar.suggest.searches", false]],
   });
-  let engine = await SearchTestUtils.promiseNewSearchEngine(
-    getRootDirectory(gTestPath) + "searchSuggestionEngine.xml"
-  );
-  let defaultEngine = Services.search.defaultEngine;
-  Services.search.defaultEngine = engine;
+  await SearchTestUtils.promiseNewSearchEngine({
+    url: getRootDirectory(gTestPath) + "searchSuggestionEngine.xml",
+    setAsDefault: true,
+  });
 
-  registerCleanupFunction(async function() {
-    Services.search.defaultEngine = defaultEngine;
+  registerCleanupFunction(async function () {
     await PlacesUtils.keywords.remove("get");
     await PlacesUtils.keywords.remove("post");
     await PlacesUtils.keywords.remove("question?");
@@ -85,7 +83,7 @@ add_task(async function test_display_keyword_without_query() {
   );
   Assert.equal(
     result.displayed.title,
-    "https://example.com/browser/browser/components/urlbar/tests/browser/print_postdata.sjs?q=",
+    "example.com/browser/browser/components/urlbar/tests/browser/print_postdata.sjs?q=",
     "Node should contain the url of the bookmark"
   );
   let [action] = await document.l10n.formatValues([
@@ -192,7 +190,7 @@ add_task(async function test_keyword_using_post() {
   let postData = await SpecialPowers.spawn(
     tab.linkedBrowser,
     [],
-    async function() {
+    async function () {
       return content.document.body.textContent;
     }
   );
@@ -205,10 +203,10 @@ add_task(async function test_keyword_with_question_mark() {
   let result = await promise_first_result("question?");
   Assert.equal(
     result.type,
-    UrlbarUtils.RESULT_TYPE.SEARCH,
-    "Result should be a search"
+    UrlbarUtils.RESULT_TYPE.KEYWORD,
+    "Result should be a keyword"
   );
-  Assert.equal(result.searchParams.query, "question?", "Check search query");
+  Assert.equal(result.keyword, "question?", "Check search query");
 
   result = await promise_first_result("question? something");
   Assert.equal(
@@ -221,20 +219,16 @@ add_task(async function test_keyword_with_question_mark() {
   result = await promise_first_result("?question");
   Assert.equal(
     result.type,
-    UrlbarUtils.RESULT_TYPE.SEARCH,
-    "Result should be a search"
+    UrlbarUtils.RESULT_TYPE.KEYWORD,
+    "Result should be a keyword"
   );
-  Assert.equal(result.searchParams.query, "question", "Check search query");
+  Assert.equal(result.keyword, "?question", "Check search query");
 
   result = await promise_first_result("?question something");
   Assert.equal(
     result.type,
-    UrlbarUtils.RESULT_TYPE.SEARCH,
-    "Result should be a search"
+    UrlbarUtils.RESULT_TYPE.KEYWORD,
+    "Result should be a keyword"
   );
-  Assert.equal(
-    result.searchParams.query,
-    "question something",
-    "Check search query"
-  );
+  Assert.equal(result.keyword, "?question", "Check search query");
 });

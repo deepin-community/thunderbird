@@ -14,11 +14,11 @@ const TEST_DATA = [
   },
   {
     targetClass: "compositor-notall",
-    expectedNumber: 3,
+    expectedNumber: 4,
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   await addTab(URL_ROOT + "doc_simple_animation.html");
   await removeAnimatedElementsExcept(TEST_DATA.map(t => `.${t.targetClass}`));
   const { animationInspector, panel } = await openAnimationInspector();

@@ -4,10 +4,9 @@
 
 "use strict";
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function getExistingDirectories() {
   return MailServices.ab.directories.map(d => d.dirPrefId);
@@ -23,12 +22,12 @@ add_task(async function clearPref() {
     "jsaddrbook://history.sqlite"
   );
 
-  let dirPrefId = MailServices.ab.newAddressBook(
+  const dirPrefId = MailServices.ab.newAddressBook(
     "delete me",
     "",
     Ci.nsIAbManager.JS_DIRECTORY_TYPE
   );
-  let book = MailServices.ab.getDirectoryFromId(dirPrefId);
+  const book = MailServices.ab.getDirectoryFromId(dirPrefId);
 
   Assert.deepEqual(getExistingDirectories(), [
     "ldap_2.servers.pab",

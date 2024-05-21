@@ -102,6 +102,12 @@ interface nsIContentPrefObserver : nsISupports
 interface nsIContentPrefService2 : nsISupports
 {
   /**
+   * Group (called "domain" in this interface) names longer than this will be
+   * truncated automatically.
+   */
+  const unsigned short GROUP_NAME_MAX_LENGTH = 2000;
+
+  /**
    * Gets all the preferences with the given name.
    *
    * @param name      The preferences' name.
@@ -424,7 +430,7 @@ interface nsIContentPrefCallback2 : nsISupports
   const unsigned short COMPLETE_ERROR = 1;
 };
 
-[scriptable, function, uuid(9f24948d-24b5-4b1b-b554-7dbd58c1d792)]
+[scriptable, uuid(9f24948d-24b5-4b1b-b554-7dbd58c1d792)]
 interface nsIContentPref : nsISupports
 {
   readonly attribute AString domain;

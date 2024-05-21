@@ -28,6 +28,15 @@ auth-no =
 
 auth-verified = Eg har stadfesta at dette er det rette fingeravtrykket.
 
+auth-manual-verification-label =
+    .label = { auth-manual-verification }
+
+auth-question-and-answer-label =
+    .label = { auth-question-and-answer }
+
+auth-shared-secret-label =
+    .label = { auth-shared-secret }
+
 auth-how = Korleis vil du stadfeste identiteten til kontakten din?
 
 auth-question = Skriv inn eit spørsmål:

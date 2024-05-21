@@ -1,8 +1,11 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+var { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
+);
+const { setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
 );
 
 loadMatrix();
@@ -15,19 +18,13 @@ add_task(function test_getConversationById() {
   mockAccount.roomList.set("foo", "bar");
   mockAccount._pendingRoomAliases.set("lorem", "ipsum");
 
+  equal(MatrixAccount.prototype.getConversationById.call(mockAccount), null);
   equal(
-    matrix.MatrixAccount.prototype.getConversationById.call(mockAccount),
-    null
-  );
-  equal(
-    matrix.MatrixAccount.prototype.getConversationById.call(mockAccount, "foo"),
+    MatrixAccount.prototype.getConversationById.call(mockAccount, "foo"),
     "bar"
   );
   equal(
-    matrix.MatrixAccount.prototype.getConversationById.call(
-      mockAccount,
-      "lorem"
-    ),
+    MatrixAccount.prototype.getConversationById.call(mockAccount, "lorem"),
     "ipsum"
   );
 });
@@ -56,43 +53,37 @@ add_task(function test_getConversationByIdOrAlias() {
   };
 
   equal(
-    matrix.MatrixAccount.prototype.getConversationByIdOrAlias.call(mockAccount),
+    MatrixAccount.prototype.getConversationByIdOrAlias.call(mockAccount),
     null
   );
   equal(
-    matrix.MatrixAccount.prototype.getConversationByIdOrAlias.call(
-      mockAccount,
-      "foo"
-    ),
+    MatrixAccount.prototype.getConversationByIdOrAlias.call(mockAccount, "foo"),
     "bar"
   );
   equal(
-    matrix.MatrixAccount.prototype.getConversationByIdOrAlias.call(
+    MatrixAccount.prototype.getConversationByIdOrAlias.call(
       mockAccount,
       "lorem"
     ),
     "ipsum"
   );
   equal(
-    matrix.MatrixAccount.prototype.getConversationByIdOrAlias.call(
-      mockAccount,
-      "baz"
-    ),
+    MatrixAccount.prototype.getConversationByIdOrAlias.call(mockAccount, "baz"),
     null
   );
 });
 
 add_task(async function test_getGroupConversation() {
   registerCleanupFunction(() => {
-    const conversations = Services.conversations.getConversations();
+    const conversations = IMServices.conversations.getConversations();
     for (const conversation of conversations) {
       try {
-        conversation.close();
+        conversation.forget();
       } catch {}
     }
   });
 
-  let allowedGetRoomIds = new Set(["baz"]);
+  const allowedGetRoomIds = new Set(["baz"]);
   const mockAccount = getAccount({
     getRoom(roomId) {
       if (this._rooms.has(roomId)) {
@@ -120,63 +111,70 @@ add_task(async function test_getGroupConversation() {
     getHomeserverUrl() {
       return "https://example.com";
     },
-    leave() {
+    leave(roomId) {
+      this._rooms.delete(roomId);
       mockAccount.left = true;
     },
   });
-  mockAccount.roomList.set("foo", getRoom(true, "bar", {}, mockAccount));
+  const fooRoom = getRoom(true, "bar", {}, mockAccount);
+  mockAccount.roomList.set("foo", fooRoom);
 
-  equal(mockAccount.getGroupConversation(""), null);
-  equal(mockAccount.getGroupConversation("foo").name, "bar");
+  equal(mockAccount.getGroupConversation(""), null, "No room with empty ID");
+  equal(
+    mockAccount.getGroupConversation("foo").name,
+    "bar",
+    "Room with expected name"
+  );
+  fooRoom.close();
 
   const existingRoom = mockAccount.getGroupConversation("baz");
+  await existingRoom.waitForRoom();
   strictEqual(existingRoom, mockAccount.roomList.get("baz"));
-  ok(!existingRoom.joining);
+  ok(!existingRoom.joining, "Not joining existing room");
   existingRoom.close();
 
   const joinedRoom = mockAccount.getGroupConversation("lorem");
-  ok(joinedRoom.joining);
+  ok(joinedRoom.joining, "joining room");
   allowedGetRoomIds.add("lorem");
-  await TestUtils.waitForTick();
+  await joinedRoom.waitForRoom();
   strictEqual(joinedRoom, mockAccount.roomList.get("lorem"));
-  ok(!joinedRoom.joining);
+  ok(!joinedRoom.joining, "Joined room");
   joinedRoom.close();
 
   const createdRoom = mockAccount.getGroupConversation("#ipsum:example.com");
-  ok(createdRoom.joining);
+  ok(createdRoom.joining, "Joining new room");
   await createdRoom.waitForRoom();
-  ok(!createdRoom.joining);
+  ok(!createdRoom.joining, "Joined new room");
   strictEqual(createdRoom, mockAccount.roomList.get("!ipsum:example.com"));
   // Wait for catchup to complete.
   await TestUtils.waitForTick();
   createdRoom.close();
 
-  const roomAlreadyBeingCreated = mockAccount.getGroupConversation(
-    "#lorem:example.com"
+  const roomAlreadyBeingCreated =
+    mockAccount.getGroupConversation("#lorem:example.com");
+  ok(
+    roomAlreadyBeingCreated.joining,
+    "Joining room that is about to get replaced"
   );
-  ok(roomAlreadyBeingCreated.joining);
-  mockAccount._pendingRoomAliases.set(
-    "#lorem:example.com",
-    getRoom(true, "hi", {}, mockAccount)
-  );
+  const pendingRoom = getRoom(true, "hi", {}, mockAccount);
+  mockAccount._pendingRoomAliases.set("#lorem:example.com", pendingRoom);
   await roomAlreadyBeingCreated.waitForRoom();
-  ok(!roomAlreadyBeingCreated.joining);
-  ok(roomAlreadyBeingCreated._replacedBy);
+  ok(!roomAlreadyBeingCreated.joining, "Not joining replaced room");
+  ok(roomAlreadyBeingCreated._replacedBy, "Room got replaced");
+  pendingRoom.forget();
 
-  const missingLocalRoom = mockAccount.getGroupConversation(
-    "!ipsum:example.com"
-  );
+  const missingLocalRoom =
+    mockAccount.getGroupConversation("!ipsum:example.com");
   await TestUtils.waitForTick();
-  ok(!missingLocalRoom.joining);
-  ok(mockAccount.left);
+  ok(!missingLocalRoom.joining, "Not joining missing room");
+  ok(mockAccount.left, "Left missing room");
 
   mockAccount.left = false;
-  const unjoinableRemoteRoom = mockAccount.getGroupConversation(
-    "#test:matrix.org"
-  );
+  const unjoinableRemoteRoom =
+    mockAccount.getGroupConversation("#test:matrix.org");
   await TestUtils.waitForTick();
-  ok(!unjoinableRemoteRoom.joining);
-  ok(mockAccount.left);
+  ok(!unjoinableRemoteRoom.joining, "Not joining unjoinable room");
+  ok(mockAccount.left, "Left unjoinable room");
 });
 
 add_task(async function test_joinChat() {
@@ -205,10 +203,7 @@ add_task(async function test_joinChat() {
     },
   };
 
-  const conv = matrix.MatrixAccount.prototype.joinChat.call(
-    mockAccount,
-    components
-  );
+  const conv = MatrixAccount.prototype.joinChat.call(mockAccount, components);
   equal(mockAccount.groupConv, roomId);
   strictEqual(conv, conversation);
   await Promise.resolve();
@@ -297,4 +292,108 @@ add_task(async function test_nameIsMXID() {
   ok(!account.nameIsMXID);
   account.imAccount.name = "test";
   ok(!account.nameIsMXID);
+});
+
+add_task(async function test_invitedToChat_deny() {
+  const chatRoomId = "!test:xample.com";
+  let leftRoom = false;
+  const account = getAccount({
+    leave(roomId) {
+      equal(roomId, chatRoomId);
+      leftRoom = true;
+      return Promise.resolve();
+    },
+  });
+  const room = getClientRoom(
+    chatRoomId,
+    {
+      getCanonicalAlias() {
+        return "#foo:example.com";
+      },
+    },
+    account._client
+  );
+  const requestObserver = TestUtils.topicObserved("conv-authorization-request");
+  account.invitedToChat(room);
+  const [request] = await requestObserver;
+  request.QueryInterface(Ci.prplIChatRequest);
+  equal(request.conversationName, "#foo:example.com");
+  ok(request.canDeny);
+  request.deny();
+  ok(leftRoom);
+});
+
+add_task(async function test_invitedToChat_cannotDenyServerNotice() {
+  const chatRoomId = "!test:xample.com";
+  const account = getAccount({});
+  const room = getClientRoom(
+    chatRoomId,
+    {
+      getCanonicalAlias() {
+        return "#foo:example.com";
+      },
+      tags: {
+        "m.server_notice": true,
+      },
+    },
+    account._client
+  );
+  console.log(room.tags);
+  const requestObserver = TestUtils.topicObserved("conv-authorization-request");
+  account.invitedToChat(room);
+  const [request] = await requestObserver;
+  request.QueryInterface(Ci.prplIChatRequest);
+  equal(request.conversationName, "#foo:example.com");
+  ok(!request.canDeny);
+});
+
+add_task(async function test_deleteAccount() {
+  let clientLoggedIn = true;
+  let storesCleared;
+  const storesPromise = new Promise(resolve => {
+    storesCleared = resolve;
+  });
+  let stopped = false;
+  let removedListeners;
+  const account = getAccount({
+    isLoggedIn() {
+      return true;
+    },
+    logout() {
+      clientLoggedIn = false;
+      return Promise.resolve();
+    },
+    clearStores() {
+      storesCleared();
+    },
+    stopClient() {
+      stopped = true;
+    },
+    removeAllListeners(type) {
+      removedListeners = type;
+    },
+  });
+  const conv = account.getGroupConversation("example");
+  await conv.waitForRoom();
+  const timeout = setTimeout(() => ok(false), 1000); // eslint-disable-line mozilla/no-arbitrary-setTimeout
+  account._verificationRequestTimeouts.add(timeout);
+  let verificationRequestCancelled = false;
+  account._pendingOutgoingVerificationRequests.set("foo", {
+    cancel() {
+      verificationRequestCancelled = true;
+      return Promise.reject(new Error("test"));
+    },
+  });
+  account.remove();
+  account.unInit();
+  await storesPromise;
+  ok(!clientLoggedIn, "logged out");
+  ok(
+    !IMServices.conversations.getConversations().includes(conv),
+    "room closed"
+  );
+  ok(verificationRequestCancelled, "verification request cancelled");
+  ok(stopped);
+  equal(removedListeners, MatrixSDK.ClientEvent.Sync);
+  equal(account._verificationRequestTimeouts.size, 0);
 });

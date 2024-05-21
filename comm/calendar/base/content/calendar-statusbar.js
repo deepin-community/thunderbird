@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 /* exported gCalendarStatusFeedback */
 
@@ -47,7 +47,7 @@ var gCalendarStatusFeedback = {
   startMeteors(aProgressMode, aCalendarCount) {
     if (aProgressMode != Ci.calIStatusObserver.NO_PROGRESS) {
       if (!this.mInitialized) {
-        Cu.reportError("StatusObserver has not been initialized!");
+        console.error("StatusObserver has not been initialized!");
         return;
       }
       this.mCalendars = {};
@@ -60,7 +60,7 @@ var gCalendarStatusFeedback = {
       this.mStatusProgressPanel.removeAttribute("collapsed");
       if (this.mProgressMode == Ci.calIStatusObserver.DETERMINED_PROGRESS) {
         this.mStatusBar.value = 0;
-        let commonStatus = cal.l10n.getCalString("gettingCalendarInfoCommon");
+        const commonStatus = cal.l10n.getCalString("gettingCalendarInfoCommon");
         this.showStatusString(commonStatus);
       }
       if (this.mThrobber) {
@@ -95,7 +95,7 @@ var gCalendarStatusFeedback = {
           this.mCalendars[aCalendar.id] = true;
           this.mStatusBar.value = parseInt(this.mStatusBar.value, 10) + this.mCalendarStep;
           this.mCurIndex++;
-          let curStatus = cal.l10n.getCalString("gettingCalendarInfoDetail", [
+          const curStatus = cal.l10n.getCalString("gettingCalendarInfoDetail", [
             this.mCurIndex,
             this.mCalendarCount,
           ]);

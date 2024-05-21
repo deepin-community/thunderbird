@@ -6,7 +6,7 @@
 // Tests that the components made available by JaAccount can be created with
 // each supported interface.
 
-let tests = [
+const tests = [
   // JaUrl
   ["@mozilla.org/jacppurldelegator;1", "nsISupports"],
   ["@mozilla.org/jacppurldelegator;1", "nsIMsgMailNewsUrl"],
@@ -67,16 +67,10 @@ let tests = [
   // TestJaMsgProtocolInfo
   ["@mozilla.org/messenger/protocol/info;1?type=testja", "nsISupports"],
   ["@mozilla.org/messenger/protocol/info;1?type=testja", "nsIMsgProtocolInfo"],
-  // JaSend
-  ["@mozilla.org/jacppsenddelegator;1", "nsISupports"],
-  ["@mozilla.org/jacppsenddelegator;1", "nsIMsgSend"],
-  ["@mozilla.org/jacppsenddelegator;1", "nsIMsgOperationListener"],
-  ["@mozilla.org/jacppsenddelegator;1", "msgIOverride"],
-  ["@mozilla.org/jacppsenddelegator;1", "nsISupportsWeakReference"],
 ];
 
 function run_test() {
-  for (let [contractID, iface] of tests) {
+  for (const [contractID, iface] of tests) {
     dump(
       "trying to create component " +
         contractID +
@@ -90,7 +84,7 @@ function run_test() {
       dump(e + "\n");
     }
 
-    let comp = Cc[contractID].createInstance(Ci[iface]);
+    const comp = Cc[contractID].createInstance(Ci[iface]);
     Assert.ok(comp instanceof Ci[iface]);
   }
 }

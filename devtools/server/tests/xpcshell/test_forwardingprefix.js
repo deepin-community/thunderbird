@@ -5,7 +5,7 @@
 
 /* Exercise prefix-based forwarding of packets to other transports. */
 
-const { RootActor } = require("devtools/server/actors/root");
+const { RootActor } = require("resource://devtools/server/actors/root.js");
 
 var gMainConnection, gMainTransport;
 var gSubconnection1, gSubconnection2;
@@ -37,21 +37,21 @@ function run_test() {
  */
 function newConnection(prefix) {
   let conn;
-  DevToolsServer.createRootActor = function(connection) {
+  DevToolsServer.createRootActor = function (connection) {
     conn = connection;
     return new RootActor(connection, {});
   };
 
   const transport = DevToolsServer.connectPipe(prefix);
 
-  return { conn: conn, transport: transport };
+  return { conn, transport };
 }
 
 /* Create the main connection for these tests. */
 function createMainConnection() {
   ({ conn: gMainConnection, transport: gMainTransport } = newConnection());
   gClient = new DevToolsClient(gMainTransport);
-  gClient.connect().then(([type, traits]) => run_next_test());
+  gClient.connect().then(() => run_next_test());
 }
 
 /*
@@ -68,55 +68,57 @@ function createMainConnection() {
  *
  * To avoid deep stacks, we call completed from the next tick.
  */
-function tryActors(reachables, completed) {
-  let count = 0;
-
-  let outerActor;
-  for (outerActor of [
+async function tryActors(reachables, completed) {
+  for (const actor of [
     "root",
     "prefix1/root",
     "prefix1/actor",
     "prefix2/root",
     "prefix2/actor",
   ]) {
-    /*
-     * Let each callback capture its own iteration's value; outerActor is
-     * local to the whole loop, not to a single iteration.
-     */
-    const actor = outerActor;
-
-    count++;
-
-    let promise;
-    // phone home
-    if (actor == "root") {
-      promise = gClient.mainRoot.echo({ value: "tango" });
-    } else {
-      promise = gClient.request({ to: actor, type: "echo", value: "tango" });
+    let response;
+    try {
+      if (actor.endsWith("root")) {
+        // Root actor doesn't expose any echo method,
+        // so fallback on getRoot which returns `{ from: "root" }`.
+        // For the top level root actor, we have to use its front.
+        if (actor == "root") {
+          response = await gClient.mainRoot.getRoot();
+        } else {
+          response = await gClient.request({ to: actor, type: "getRoot" });
+        }
+      } else {
+        response = await gClient.request({
+          to: actor,
+          type: "echo",
+          value: "tango",
+        });
+      }
+    } catch (e) {
+      response = e;
     }
-    const callback = response => {
-      if (reachables.has(actor)) {
+    if (reachables.has(actor)) {
+      if (actor.endsWith("root")) {
+        // RootActor's getRoot response is almost empty on xpcshell
+        Assert.deepEqual({ from: actor }, response);
+      } else {
         Assert.deepEqual(
           { from: actor, to: actor, type: "echo", value: "tango" },
           response
         );
-      } else {
-        Assert.deepEqual(
-          {
-            from: actor,
-            error: "noSuchActor",
-            message: "No such actor for ID: " + actor,
-          },
-          response
-        );
       }
-
-      if (--count == 0) {
-        executeSoon(completed, "tryActors callback " + completed.name);
-      }
-    };
-    promise.then(callback, callback);
+    } else {
+      Assert.deepEqual(
+        {
+          from: actor,
+          error: "noSuchActor",
+          message: "No such actor for ID: " + actor,
+        },
+        response
+      );
+    }
   }
+  executeSoon(completed, "tryActors callback " + completed.name);
 }
 
 /*
@@ -142,7 +144,7 @@ function newSubconnection(prefix) {
   };
   gMainConnection.setForwarding(prefix, transport);
 
-  return { conn: conn, transport: transport };
+  return { conn, transport };
 }
 
 /* Create a second root actor, to which we can forward things. */
@@ -150,7 +152,7 @@ function createSubconnection1() {
   const { conn, transport } = newSubconnection("prefix1");
   gSubconnection1 = conn;
   transport.ready();
-  gClient.expectReply("prefix1/root", reply => run_next_test());
+  gClient.expectReply("prefix1/root", () => run_next_test());
 }
 
 // Establish forwarding, but don't put any actors in that server.
@@ -163,7 +165,7 @@ function createSubconnection2() {
   const { conn, transport } = newSubconnection("prefix2");
   gSubconnection2 = conn;
   transport.ready();
-  gClient.expectReply("prefix2/root", reply => run_next_test());
+  gClient.expectReply("prefix2/root", () => run_next_test());
 }
 
 function TestForwardPrefix12OnlyRoot() {
@@ -176,12 +178,11 @@ function TestForwardPrefix12OnlyRoot() {
 // the reply-sending code attaches the replying actor's name to the packet,
 // so simply matching the 'from' field in the reply ensures that we heard
 // from the right actor.
-const { Actor } = require("devtools/shared/protocol/Actor");
+const { Actor } = require("resource://devtools/shared/protocol/Actor.js");
 class EchoActor extends Actor {
   constructor(conn) {
-    super(conn);
+    super(conn, { typeName: "EchoActor", methods: [] });
 
-    this.typeName = "EchoActor";
     this.requestTypes = {
       echo: EchoActor.prototype.onEcho,
     };

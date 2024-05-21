@@ -8,7 +8,6 @@
 Demonstrate actions and config.
 """
 
-from __future__ import absolute_import, print_function
 import os
 import sys
 import time
@@ -95,7 +94,7 @@ class ActionsConfigExample(BaseScript):
 
     def _ship1(self):
         self.info(
-            """
+            r"""
      _~
   _~ )_)_~
   )_))_))_)
@@ -107,7 +106,7 @@ class ActionsConfigExample(BaseScript):
 
     def _ship2(self):
         self.info(
-            """
+            r"""
     _4 _4
    _)_))_)
   _)_)_)_)

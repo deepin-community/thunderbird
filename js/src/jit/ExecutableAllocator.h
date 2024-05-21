@@ -72,7 +72,8 @@ class ExecutablePool {
   bool m_mark : 1;
 
   // Number of bytes currently allocated for each CodeKind.
-  mozilla::EnumeratedArray<CodeKind, CodeKind::Count, size_t> m_codeBytes;
+  mozilla::EnumeratedArray<CodeKind, size_t, size_t(CodeKind::Count)>
+      m_codeBytes;
 
  public:
   void release(bool willDestroy = false);
@@ -172,19 +173,10 @@ class ExecutableAllocator {
                            MustFlushICache::No);
   }
 
-  [[nodiscard]] static bool makeExecutableAndFlushICache(
-      FlushICacheSpec flushSpec, void* start, size_t size) {
-    MustFlushICache mustFlushICache;
-    switch (flushSpec) {
-      case FlushICacheSpec::LocalThreadOnly:
-        mustFlushICache = MustFlushICache::LocalThreadOnly;
-        break;
-      case FlushICacheSpec::AllThreads:
-        mustFlushICache = MustFlushICache::AllThreads;
-        break;
-    }
+  [[nodiscard]] static bool makeExecutableAndFlushICache(void* start,
+                                                         size_t size) {
     return ReprotectRegion(start, size, ProtectionSetting::Executable,
-                           mustFlushICache);
+                           MustFlushICache::Yes);
   }
 
   static void poisonCode(JSRuntime* rt, JitPoisonRangeVector& ranges);

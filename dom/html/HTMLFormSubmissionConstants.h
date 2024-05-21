@@ -7,12 +7,14 @@
 #ifndef mozilla_dom_HTMLFormSubmissionConstants_h
 #define mozilla_dom_HTMLFormSubmissionConstants_h
 
-#include "nsIForm.h"
+#define NS_FORM_METHOD_GET 0
+#define NS_FORM_METHOD_POST 1
+#define NS_FORM_METHOD_DIALOG 2
+#define NS_FORM_ENCTYPE_URLENCODED 0
+#define NS_FORM_ENCTYPE_MULTIPART 1
+#define NS_FORM_ENCTYPE_TEXTPLAIN 2
 
 static const nsAttrValue::EnumTable kFormMethodTable[] = {
-    {"get", NS_FORM_METHOD_GET}, {"post", NS_FORM_METHOD_POST}, {nullptr, 0}};
-
-static const nsAttrValue::EnumTable kFormMethodTableDialogEnabled[] = {
     {"get", NS_FORM_METHOD_GET},
     {"post", NS_FORM_METHOD_POST},
     {"dialog", NS_FORM_METHOD_DIALOG},

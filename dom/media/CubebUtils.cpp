@@ -7,10 +7,9 @@
 #include "CubebUtils.h"
 
 #include "audio_thread_priority.h"
-#include "MediaInfo.h"
 #include "mozilla/AbstractThread.h"
 #include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/AudioDeviceInfo.h"
+#include "mozilla/glean/GleanMetrics.h"
 #include "mozilla/ipc/FileDescriptor.h"
 #include "mozilla/Logging.h"
 #include "mozilla/Preferences.h"
@@ -20,7 +19,7 @@
 #include "mozilla/StaticPtr.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/UnderrunHandler.h"
-#include "nsAutoRef.h"
+#include "nsContentUtils.h"
 #include "nsDebug.h"
 #include "nsIStringBundle.h"
 #include "nsString.h"
@@ -34,14 +33,13 @@
 #ifdef XP_WIN
 #  include "mozilla/mscom/EnsureMTA.h"
 #endif
-#include "audioipc_server_ffi_generated.h"
-#include "audioipc_client_ffi_generated.h"
+#include "audioipc2_server_ffi_generated.h"
+#include "audioipc2_client_ffi_generated.h"
 #include <cmath>
 #include <thread>
-#include "AudioThreadRegistry.h"
+#include "CallbackThreadRegistry.h"
 #include "mozilla/StaticPrefs_media.h"
 
-#define AUDIOIPC_POOL_SIZE_DEFAULT 1
 #define AUDIOIPC_STACK_SIZE_DEFAULT (64 * 4096)
 
 #define PREF_VOLUME_SCALE "media.volume_scale"
@@ -52,16 +50,15 @@
 // Allows to get something non-default for the preferred sample-rate, to allow
 // troubleshooting in the field and testing.
 #define PREF_CUBEB_FORCE_SAMPLE_RATE "media.cubeb.force_sample_rate"
-#define PREF_CUBEB_LOGGING_LEVEL "media.cubeb.logging_level"
+#define PREF_CUBEB_LOGGING_LEVEL "logging.cubeb"
 // Hidden pref used by tests to force failure to obtain cubeb context
 #define PREF_CUBEB_FORCE_NULL_CONTEXT "media.cubeb.force_null_context"
 #define PREF_CUBEB_OUTPUT_VOICE_ROUTING "media.cubeb.output_voice_routing"
 #define PREF_CUBEB_SANDBOX "media.cubeb.sandbox"
-#define PREF_AUDIOIPC_POOL_SIZE "media.audioipc.pool_size"
 #define PREF_AUDIOIPC_STACK_SIZE "media.audioipc.stack_size"
+#define PREF_AUDIOIPC_SHM_AREA_SIZE "media.audioipc.shm_area_size"
 
-#if (defined(XP_LINUX) && !defined(MOZ_WIDGET_ANDROID)) || \
-    defined(XP_MACOSX) || (defined(XP_WIN) && !defined(_ARM64_))
+#if defined(XP_LINUX) || defined(XP_MACOSX) || defined(XP_WIN)
 #  define MOZ_CUBEB_REMOTING
 #endif
 
@@ -91,14 +88,14 @@ enum class CubebState {
   Initialized,
   Shutdown
 } sCubebState = CubebState::Uninitialized;
-cubeb* sCubebContext;
+StaticRefPtr<CubebUtils::CubebHandle> sCubebHandle;
 double sVolumeScale = 1.0;
 uint32_t sCubebPlaybackLatencyInMilliseconds = 100;
 uint32_t sCubebMTGLatencyInFrames = 512;
 // If sCubebForcedSampleRate is zero, PreferredSampleRate will return the
 // preferred sample-rate for the audio backend in use. Otherwise, it will be
 // used as the preferred sample-rate.
-uint32_t sCubebForcedSampleRate = 0;
+Atomic<uint32_t> sCubebForcedSampleRate{0};
 bool sCubebPlaybackLatencyPrefSet = false;
 bool sCubebMTGLatencyPrefSet = false;
 bool sAudioStreamInitEverSucceeded = false;
@@ -106,13 +103,12 @@ bool sCubebForceNullContext = false;
 bool sRouteOutputAsVoice = false;
 #ifdef MOZ_CUBEB_REMOTING
 bool sCubebSandbox = false;
-size_t sAudioIPCPoolSize;
 size_t sAudioIPCStackSize;
+size_t sAudioIPCShmAreaSize;
 #endif
 StaticAutoPtr<char> sBrandName;
 StaticAutoPtr<char> sCubebBackendName;
 StaticAutoPtr<char> sCubebOutputDeviceName;
-StaticAutoPtr<AudioThreadRegistry> sAudioThreadRegistry;
 #ifdef MOZ_WIDGET_ANDROID
 // Counts the number of time a request for switching to global "communication
 // mode" has been received. If this is > 0, global communication mode is to be
@@ -151,7 +147,7 @@ std::unordered_map<std::string, LABELS_MEDIA_AUDIO_BACKEND>
 // given thread before fetching the value, it's guaranteed (via the mutex) that
 // sufficient memory barriers have occurred to ensure the correct value is
 // visible on the querying thread/CPU.
-uint32_t sPreferredSampleRate;
+static Atomic<uint32_t> sPreferredSampleRate{0};
 
 #ifdef MOZ_CUBEB_REMOTING
 // AudioIPC server handle
@@ -161,8 +157,16 @@ void* sServerHandle = nullptr;
 StaticAutoPtr<ipc::FileDescriptor> sIPCConnection;
 
 static bool StartAudioIPCServer() {
-  sServerHandle =
-      audioipc::audioipc_server_start(sBrandName, sCubebBackendName);
+  if (sCubebSandbox) {
+    audioipc2::AudioIpcServerInitParams initParams{};
+    initParams.mThreadCreateCallback = [](const char* aName) {
+      PROFILER_REGISTER_THREAD(aName);
+    };
+    initParams.mThreadDestroyCallback = []() { PROFILER_UNREGISTER_THREAD(); };
+
+    sServerHandle = audioipc2::audioipc2_server_start(
+        sBrandName, sCubebBackendName, &initParams);
+  }
   return sServerHandle != nullptr;
 }
 
@@ -171,7 +175,7 @@ static void ShutdownAudioIPCServer() {
     return;
   }
 
-  audioipc::audioipc_server_stop(sServerHandle);
+  audioipc2::audioipc2_server_stop(sServerHandle);
   sServerHandle = nullptr;
 }
 #endif  // MOZ_CUBEB_REMOTING
@@ -182,7 +186,7 @@ static const uint32_t CUBEB_NORMAL_LATENCY_MS = 100;
 static const uint32_t CUBEB_NORMAL_LATENCY_FRAMES = 1024;
 
 namespace CubebUtils {
-cubeb* GetCubebContextUnlocked();
+RefPtr<CubebHandle> GetCubebUnlocked();
 
 void GetPrefAndSetString(const char* aPref, StaticAutoPtr<char>& aStorage) {
   nsAutoCString value;
@@ -229,18 +233,14 @@ void PrefChanged(const char* aPref, void* aClosure) {
     StaticMutexAutoLock lock(sMutex);
     sCubebForcedSampleRate = Preferences::GetUint(aPref);
   } else if (strcmp(aPref, PREF_CUBEB_LOGGING_LEVEL) == 0) {
-    nsAutoCString value;
-    Preferences::GetCString(aPref, value);
-    LogModule* cubebLog = LogModule::Get("cubeb");
-    if (value.EqualsLiteral("verbose")) {
+    LogLevel value =
+        ToLogLevel(Preferences::GetInt(aPref, 0 /* LogLevel::Disabled */));
+    if (value == LogLevel::Verbose) {
       cubeb_set_log_callback(CUBEB_LOG_VERBOSE, CubebLogCallback);
-      cubebLog->SetLevel(LogLevel::Verbose);
-    } else if (value.EqualsLiteral("normal")) {
+    } else if (value == LogLevel::Debug) {
       cubeb_set_log_callback(CUBEB_LOG_NORMAL, CubebLogCallback);
-      cubebLog->SetLevel(LogLevel::Error);
-    } else if (value.IsEmpty()) {
+    } else if (value == LogLevel::Disabled) {
       cubeb_set_log_callback(CUBEB_LOG_DISABLED, nullptr);
-      cubebLog->SetLevel(LogLevel::Disabled);
     }
   } else if (strcmp(aPref, PREF_CUBEB_BACKEND) == 0) {
     StaticMutexAutoLock lock(sMutex);
@@ -261,14 +261,13 @@ void PrefChanged(const char* aPref, void* aClosure) {
     sCubebSandbox = Preferences::GetBool(aPref);
     MOZ_LOG(gCubebLog, LogLevel::Verbose,
             ("%s: %s", PREF_CUBEB_SANDBOX, sCubebSandbox ? "true" : "false"));
-  } else if (strcmp(aPref, PREF_AUDIOIPC_POOL_SIZE) == 0) {
-    StaticMutexAutoLock lock(sMutex);
-    sAudioIPCPoolSize = Preferences::GetUint(PREF_AUDIOIPC_POOL_SIZE,
-                                             AUDIOIPC_POOL_SIZE_DEFAULT);
   } else if (strcmp(aPref, PREF_AUDIOIPC_STACK_SIZE) == 0) {
     StaticMutexAutoLock lock(sMutex);
     sAudioIPCStackSize = Preferences::GetUint(PREF_AUDIOIPC_STACK_SIZE,
                                               AUDIOIPC_STACK_SIZE_DEFAULT);
+  } else if (strcmp(aPref, PREF_AUDIOIPC_SHM_AREA_SIZE) == 0) {
+    StaticMutexAutoLock lock(sMutex);
+    sAudioIPCShmAreaSize = Preferences::GetUint(PREF_AUDIOIPC_SHM_AREA_SIZE);
   }
 #endif
   else if (strcmp(aPref, PREF_CUBEB_OUTPUT_VOICE_ROUTING) == 0) {
@@ -294,15 +293,19 @@ double GetVolumeScale() {
   return sVolumeScale;
 }
 
-cubeb* GetCubebContext() {
+RefPtr<CubebHandle> GetCubeb() {
   StaticMutexAutoLock lock(sMutex);
-  return GetCubebContextUnlocked();
+  return GetCubebUnlocked();
 }
 
 // This is only exported when running tests.
 void ForceSetCubebContext(cubeb* aCubebContext) {
   StaticMutexAutoLock lock(sMutex);
-  sCubebContext = aCubebContext;
+  if (aCubebContext) {
+    sCubebHandle = new CubebHandle(aCubebContext);
+  } else {
+    sCubebHandle = nullptr;
+  }
   sCubebState = CubebState::Initialized;
 }
 
@@ -325,31 +328,42 @@ void SetInCommunication(bool aInCommunication) {
 }
 
 bool InitPreferredSampleRate() {
-  StaticMutexAutoLock lock(sMutex);
+  sMutex.AssertCurrentThreadOwns();
   if (sPreferredSampleRate != 0) {
     return true;
   }
 #ifdef MOZ_WIDGET_ANDROID
-  sPreferredSampleRate = AndroidGetAudioOutputSampleRate();
+  int rate = AndroidGetAudioOutputSampleRate();
+  if (rate > 0) {
+    sPreferredSampleRate = rate;
+    return true;
+  } else {
+    return false;
+  }
 #else
-  cubeb* context = GetCubebContextUnlocked();
-  if (!context) {
+  RefPtr<CubebHandle> handle = GetCubebUnlocked();
+  if (!handle) {
     return false;
   }
-  if (cubeb_get_preferred_sample_rate(context, &sPreferredSampleRate) !=
-      CUBEB_OK) {
-    return false;
+  uint32_t rate;
+  {
+    StaticMutexAutoUnlock unlock(sMutex);
+    if (cubeb_get_preferred_sample_rate(handle->Context(), &rate) != CUBEB_OK) {
+      return false;
+    }
   }
+  sPreferredSampleRate = rate;
 #endif
   MOZ_ASSERT(sPreferredSampleRate);
   return true;
 }
 
-uint32_t PreferredSampleRate() {
+uint32_t PreferredSampleRate(bool aShouldResistFingerprinting) {
+  StaticMutexAutoLock lock(sMutex);
   if (sCubebForcedSampleRate) {
     return sCubebForcedSampleRate;
   }
-  if (StaticPrefs::privacy_resistFingerprinting()) {
+  if (aShouldResistFingerprinting) {
     return 44100;
   }
   if (!InitPreferredSampleRate()) {
@@ -357,6 +371,23 @@ uint32_t PreferredSampleRate() {
   }
   MOZ_ASSERT(sPreferredSampleRate);
   return sPreferredSampleRate;
+}
+
+int CubebStreamInit(cubeb* context, cubeb_stream** stream,
+                    char const* stream_name, cubeb_devid input_device,
+                    cubeb_stream_params* input_stream_params,
+                    cubeb_devid output_device,
+                    cubeb_stream_params* output_stream_params,
+                    uint32_t latency_frames, cubeb_data_callback data_callback,
+                    cubeb_state_callback state_callback, void* user_ptr) {
+  uint32_t ms = StaticPrefs::media_cubeb_slow_stream_init_ms();
+  if (ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  }
+  return cubeb_stream_init(context, stream, stream_name, input_device,
+                           input_stream_params, output_device,
+                           output_stream_params, latency_frames, data_callback,
+                           state_callback, user_ptr);
 }
 
 void InitBrandName() {
@@ -407,8 +438,8 @@ void InitAudioIPCConnection() {
 }
 #endif
 
-ipc::FileDescriptor CreateAudioIPCConnection() {
 #ifdef MOZ_CUBEB_REMOTING
+ipc::FileDescriptor CreateAudioIPCConnectionUnlocked() {
   MOZ_ASSERT(sCubebSandbox && XRE_IsParentProcess());
   if (!sServerHandle) {
     MOZ_LOG(gCubebLog, LogLevel::Debug, ("Starting cubeb server..."));
@@ -417,9 +448,12 @@ ipc::FileDescriptor CreateAudioIPCConnection() {
       return ipc::FileDescriptor();
     }
   }
+  MOZ_LOG(gCubebLog, LogLevel::Debug,
+          ("%s: %d", PREF_AUDIOIPC_SHM_AREA_SIZE, (int)sAudioIPCShmAreaSize));
   MOZ_ASSERT(sServerHandle);
-  ipc::FileDescriptor::PlatformHandleType rawFD =
-      audioipc::audioipc_server_new_client(sServerHandle);
+  ipc::FileDescriptor::PlatformHandleType rawFD;
+  rawFD = audioipc2::audioipc2_server_new_client(sServerHandle,
+                                                 sAudioIPCShmAreaSize);
   ipc::FileDescriptor fd(rawFD);
   if (!fd.IsValid()) {
     MOZ_LOG(gCubebLog, LogLevel::Error, ("audioipc_server_new_client failed"));
@@ -433,12 +467,19 @@ ipc::FileDescriptor CreateAudioIPCConnection() {
   close(rawFD);
 #  endif
   return fd;
+}
+#endif
+
+ipc::FileDescriptor CreateAudioIPCConnection() {
+#ifdef MOZ_CUBEB_REMOTING
+  StaticMutexAutoLock lock(sMutex);
+  return CreateAudioIPCConnectionUnlocked();
 #else
   return ipc::FileDescriptor();
 #endif
 }
 
-cubeb* GetCubebContextUnlocked() {
+RefPtr<CubebHandle> GetCubebUnlocked() {
   sMutex.AssertCurrentThreadOwns();
   if (sCubebForceNullContext) {
     // Pref set such that we should return a null context
@@ -450,7 +491,7 @@ cubeb* GetCubebContextUnlocked() {
   if (sCubebState != CubebState::Uninitialized) {
     // If we have already passed the initialization point (below), just return
     // the current context, which may be null (e.g., after error or shutdown.)
-    return sCubebContext;
+    return sCubebHandle;
   }
 
   if (!sBrandName && NS_IsMainThread()) {
@@ -469,7 +510,7 @@ cubeb* GetCubebContextUnlocked() {
   if (sCubebSandbox) {
     if (XRE_IsParentProcess() && !sIPCConnection) {
       // TODO: Don't use audio IPC when within the same process.
-      auto fd = CreateAudioIPCConnection();
+      auto fd = CreateAudioIPCConnectionUnlocked();
       if (fd.IsValid()) {
         sIPCConnection = new ipc::FileDescriptor(fd);
       }
@@ -480,8 +521,10 @@ cubeb* GetCubebContextUnlocked() {
       return nullptr;
     }
 
-    audioipc::AudioIpcInitParams initParams;
-    initParams.mPoolSize = sAudioIPCPoolSize;
+    MOZ_LOG(gCubebLog, LogLevel::Debug,
+            ("%s: %d", PREF_AUDIOIPC_STACK_SIZE, (int)sAudioIPCStackSize));
+
+    audioipc2::AudioIpcInitParams initParams{};
     initParams.mStackSize = sAudioIPCStackSize;
     initParams.mServerConnection =
         sIPCConnection->ClonePlatformHandle().release();
@@ -490,19 +533,21 @@ cubeb* GetCubebContextUnlocked() {
     };
     initParams.mThreadDestroyCallback = []() { PROFILER_UNREGISTER_THREAD(); };
 
-    MOZ_LOG(gCubebLog, LogLevel::Debug,
-            ("%s: %d", PREF_AUDIOIPC_POOL_SIZE, (int)initParams.mPoolSize));
-    MOZ_LOG(gCubebLog, LogLevel::Debug,
-            ("%s: %d", PREF_AUDIOIPC_STACK_SIZE, (int)initParams.mStackSize));
-
-    rv =
-        audioipc::audioipc_client_init(&sCubebContext, sBrandName, &initParams);
+    cubeb* temp = nullptr;
+    rv = audioipc2::audioipc2_client_init(&temp, sBrandName, &initParams);
+    if (temp) {
+      sCubebHandle = new CubebHandle(temp);
+    }
   } else {
 #endif  // MOZ_CUBEB_REMOTING
 #ifdef XP_WIN
     mozilla::mscom::EnsureMTA([&]() -> void {
 #endif
-      rv = cubeb_init(&sCubebContext, sBrandName, sCubebBackendName);
+      cubeb* temp = nullptr;
+      rv = cubeb_init(&temp, sBrandName, sCubebBackendName);
+      if (temp) {
+        sCubebHandle = new CubebHandle(temp);
+      }
 #ifdef XP_WIN
     });
 #endif
@@ -514,21 +559,32 @@ cubeb* GetCubebContextUnlocked() {
   sCubebState =
       (rv == CUBEB_OK) ? CubebState::Initialized : CubebState::Uninitialized;
 
-  return sCubebContext;
+  return sCubebHandle;
 }
 
 void ReportCubebBackendUsed() {
-  StaticMutexAutoLock lock(sMutex);
+  RefPtr<CubebHandle> handle;
+  {
+    StaticMutexAutoLock lock(sMutex);
+    sAudioStreamInitEverSucceeded = true;
+    handle = sCubebHandle;
+  }
 
-  sAudioStreamInitEverSucceeded = true;
+  MOZ_RELEASE_ASSERT(handle.get());
 
   LABELS_MEDIA_AUDIO_BACKEND label = LABELS_MEDIA_AUDIO_BACKEND::unknown;
   auto backend =
-      kTelemetryBackendLabel.find(cubeb_get_backend_id(sCubebContext));
+      kTelemetryBackendLabel.find(cubeb_get_backend_id(handle->Context()));
   if (backend != kTelemetryBackendLabel.end()) {
     label = backend->second;
   }
   AccumulateCategorical(label);
+
+  mozilla::glean::media_audio::backend
+      .Get(backend != kTelemetryBackendLabel.end()
+               ? nsDependentCString(cubeb_get_backend_id(handle->Context()))
+               : nsCString("unknown"_ns))
+      .Add();
 }
 
 void ReportCubebStreamInitFailure(bool aIsFirst) {
@@ -541,6 +597,10 @@ void ReportCubebStreamInitFailure(bool aIsFirst) {
   }
   AccumulateCategorical(aIsFirst ? LABELS_MEDIA_AUDIO_INIT_FAILURE::first
                                  : LABELS_MEDIA_AUDIO_INIT_FAILURE::other);
+  mozilla::glean::media_audio::init_failure
+      .EnumGet(aIsFirst ? mozilla::glean::media_audio::InitFailureLabel::eFirst
+                        : mozilla::glean::media_audio::InitFailureLabel::eOther)
+      .Add();
 }
 
 uint32_t GetCubebPlaybackLatencyInMilliseconds() {
@@ -566,14 +626,27 @@ uint32_t GetCubebMTGLatencyInFrames(cubeb_stream_params* params) {
   }
 
 #ifdef MOZ_WIDGET_ANDROID
-  return AndroidGetAudioOutputFramesPerBuffer();
+  int frames = AndroidGetAudioOutputFramesPerBuffer();
+  if (frames > 0) {
+    return frames;
+  } else {
+    return 512;
+  }
 #else
-  cubeb* context = GetCubebContextUnlocked();
-  if (!context) {
+  RefPtr<CubebHandle> handle = GetCubebUnlocked();
+  if (!handle) {
     return sCubebMTGLatencyInFrames;  // default 512
   }
   uint32_t latency_frames = 0;
-  if (cubeb_get_min_latency(context, params, &latency_frames) != CUBEB_OK) {
+  int cubeb_result = CUBEB_OK;
+
+  {
+    StaticMutexAutoUnlock unlock(sMutex);
+    cubeb_result =
+        cubeb_get_min_latency(handle->Context(), params, &latency_frames);
+  }
+
+  if (cubeb_result != CUBEB_OK) {
     NS_WARNING("Could not get minimal latency from cubeb.");
     return sCubebMTGLatencyInFrames;  // default 512
   }
@@ -585,9 +658,10 @@ static const char* gInitCallbackPrefs[] = {
     PREF_VOLUME_SCALE,           PREF_CUBEB_OUTPUT_DEVICE,
     PREF_CUBEB_LATENCY_PLAYBACK, PREF_CUBEB_LATENCY_MTG,
     PREF_CUBEB_BACKEND,          PREF_CUBEB_FORCE_NULL_CONTEXT,
-    PREF_CUBEB_SANDBOX,          PREF_AUDIOIPC_POOL_SIZE,
-    PREF_AUDIOIPC_STACK_SIZE,    nullptr,
+    PREF_CUBEB_SANDBOX,          PREF_AUDIOIPC_STACK_SIZE,
+    PREF_AUDIOIPC_SHM_AREA_SIZE, nullptr,
 };
+
 static const char* gCallbackPrefs[] = {
     PREF_CUBEB_FORCE_SAMPLE_RATE,
     // We don't want to call the callback on startup, because the pref is the
@@ -614,7 +688,7 @@ void InitLibrary() {
 #endif
 #ifdef MOZ_CUBEB_REMOTING
   if (sCubebSandbox && XRE_IsContentProcess()) {
-#  ifdef XP_LINUX
+#  if defined(XP_LINUX) && !defined(MOZ_WIDGET_ANDROID)
     if (atp_set_real_time_limit(0, 48000)) {
       NS_WARNING("could not set real-time limit in CubebUtils::InitLibrary");
     }
@@ -624,28 +698,36 @@ void InitLibrary() {
   }
 #endif
 
-  sAudioThreadRegistry = new AudioThreadRegistry;
+  // Ensure the CallbackThreadRegistry is not created in an audio callback by
+  // creating it now.
+  Unused << CallbackThreadRegistry::Get();
 }
 
 void ShutdownLibrary() {
   Preferences::UnregisterCallbacks(PrefChanged, gInitCallbackPrefs);
   Preferences::UnregisterCallbacks(PrefChanged, gCallbackPrefs);
 
+  cubeb_set_log_callback(CUBEB_LOG_DISABLED, nullptr);
+  RefPtr<CubebHandle> trash;
   StaticMutexAutoLock lock(sMutex);
-  if (sCubebContext) {
-    cubeb_destroy(sCubebContext);
-    sCubebContext = nullptr;
-  }
+  trash = sCubebHandle.forget();
   sBrandName = nullptr;
   sCubebBackendName = nullptr;
   // This will ensure we don't try to re-create a context.
   sCubebState = CubebState::Shutdown;
 
+  if (trash) {
+    StaticMutexAutoUnlock unlock(sMutex);
+    nsrefcnt count = trash.forget().take()->Release();
+    MOZ_RELEASE_ASSERT(!count,
+                       "ShutdownLibrary should be releasing the last reference "
+                       "to the cubeb ctx!");
+  }
+
 #ifdef MOZ_CUBEB_REMOTING
   sIPCConnection = nullptr;
   ShutdownAudioIPCServer();
 #endif
-  sAudioThreadRegistry = nullptr;
 }
 
 bool SandboxEnabled() {
@@ -657,13 +739,11 @@ bool SandboxEnabled() {
 #endif
 }
 
-AudioThreadRegistry* GetAudioThreadRegistry() { return sAudioThreadRegistry; }
-
 uint32_t MaxNumberOfChannels() {
-  cubeb* cubebContext = GetCubebContext();
+  RefPtr<CubebHandle> handle = GetCubeb();
   uint32_t maxNumberOfChannels;
-  if (cubebContext && cubeb_get_max_channel_count(
-                          cubebContext, &maxNumberOfChannels) == CUBEB_OK) {
+  if (handle && cubeb_get_max_channel_count(handle->Context(),
+                                            &maxNumberOfChannels) == CUBEB_OK) {
     return maxNumberOfChannels;
   }
 
@@ -671,9 +751,9 @@ uint32_t MaxNumberOfChannels() {
 }
 
 void GetCurrentBackend(nsAString& aBackend) {
-  cubeb* cubebContext = GetCubebContext();
-  if (cubebContext) {
-    const char* backend = cubeb_get_backend_id(cubebContext);
+  RefPtr<CubebHandle> handle = GetCubeb();
+  if (handle) {
+    const char* backend = cubeb_get_backend_id(handle->Context());
     if (backend) {
       aBackend.AssignASCII(backend);
       return;
@@ -707,6 +787,11 @@ long datacb(cubeb_stream*, void*, const void*, void* out_buffer, long nframes) {
 void statecb(cubeb_stream*, void*, cubeb_state) {}
 
 bool EstimatedRoundTripLatencyDefaultDevices(double* aMean, double* aStdDev) {
+  RefPtr<CubebHandle> handle = GetCubeb();
+  if (!handle) {
+    MOZ_LOG(gCubebLog, LogLevel::Error, ("No cubeb context, bailing."));
+    return false;
+  }
   nsTArray<double> roundtripLatencies;
   // Create a cubeb stream with the correct latency and default input/output
   // devices (mono/stereo channels). Wait for two seconds, get the latency a few
@@ -714,7 +799,7 @@ bool EstimatedRoundTripLatencyDefaultDevices(double* aMean, double* aStdDev) {
   int rv;
   uint32_t rate;
   uint32_t latencyFrames;
-  rv = cubeb_get_preferred_sample_rate(GetCubebContext(), &rate);
+  rv = cubeb_get_preferred_sample_rate(handle->Context(), &rate);
   if (rv != CUBEB_OK) {
     MOZ_LOG(gCubebLog, LogLevel::Error, ("Could not get preferred rate"));
     return false;
@@ -737,7 +822,7 @@ bool EstimatedRoundTripLatencyDefaultDevices(double* aMean, double* aStdDev) {
   input_params.prefs = GetDefaultStreamPrefs(CUBEB_DEVICE_TYPE_INPUT);
 
   cubeb_stream* stm;
-  rv = cubeb_stream_init(GetCubebContext(), &stm,
+  rv = cubeb_stream_init(handle->Context(), &stm,
                          "about:support latency estimation", NULL,
                          &input_params, NULL, &output_params, latencyFrames,
                          datacb, statecb, NULL);
@@ -801,15 +886,21 @@ bool EstimatedRoundTripLatencyDefaultDevices(double* aMean, double* aStdDev) {
 }
 
 #ifdef MOZ_WIDGET_ANDROID
-uint32_t AndroidGetAudioOutputSampleRate() {
+int32_t AndroidGetAudioOutputSampleRate() {
+#  if defined(MOZ_ANDROID_CONTENT_SERVICE_ISOLATED_PROCESS)
+  return 44100;  // TODO: Remote value; will be handled in following patch.
+#  else
   int32_t sample_rate = java::GeckoAppShell::GetAudioOutputSampleRate();
-  MOZ_ASSERT(sample_rate > 0);
   return sample_rate;
+#  endif
 }
-uint32_t AndroidGetAudioOutputFramesPerBuffer() {
+int32_t AndroidGetAudioOutputFramesPerBuffer() {
+#  if defined(MOZ_ANDROID_CONTENT_SERVICE_ISOLATED_PROCESS)
+  return 512;  // TODO: Remote value; will be handled in following patch.
+#  else
   int32_t frames = java::GeckoAppShell::GetAudioOutputFramesPerBuffer();
-  MOZ_ASSERT(frames > 0);
   return frames;
+#  endif
 }
 #endif
 

@@ -1,13 +1,19 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
+/**
+ * Tests to ensure that when a user installs or uninstalls an add-on,
+ * we correctly handle the overriding of default and/or parameters
+ * according to the allowlist.
+ */
+
 "use strict";
 
 const kBaseURL = "https://example.com/";
 const kSearchEngineURL = `${kBaseURL}?q={searchTerms}&foo=myparams`;
 const kOverriddenEngineName = "Simple Engine";
 
-const whitelist = [
+const allowlist = [
   {
     thirdPartyId: "test@thirdparty.example.com",
     overridesId: "simple@search.mozilla.org",
@@ -70,7 +76,7 @@ const tests = [
       keyword: "MozSearch",
       search_url: kSearchEngineURL,
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kSearchEngineURL,
       },
@@ -91,7 +97,7 @@ const tests = [
       keyword: "MozSearch",
       search_url: kSearchEngineURL,
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kSearchEngineURL,
       },
@@ -112,7 +118,7 @@ const tests = [
       keyword: "MozSearch",
       search_url: kSearchEngineURL + "a",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kSearchEngineURL,
       },
@@ -133,7 +139,7 @@ const tests = [
       search_url: kBaseURL,
       search_url_get_params: "q={searchTerms}&enc=UTF-8",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_url_get_params: "q={searchTerms}&enc=UTF-8",
@@ -156,7 +162,7 @@ const tests = [
       search_url: kBaseURL,
       search_url_get_params: "q={searchTerms}&enc=UTF-8a",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_url_get_params: "q={searchTerms}&enc=UTF-8",
@@ -178,7 +184,7 @@ const tests = [
       search_url: kBaseURL,
       search_url_post_params: "q={searchTerms}&enc=UTF-8",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_url_post_params: "q={searchTerms}&enc=UTF-8",
@@ -202,7 +208,7 @@ const tests = [
       search_url: kBaseURL,
       search_url_post_params: "q={searchTerms}&enc=UTF-8a",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_url_post_params: "q={searchTerms}&enc=UTF-8",
@@ -224,7 +230,7 @@ const tests = [
       search_url: kBaseURL,
       search_form: "https://example.com/form",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_form: "https://example.com/form",
@@ -248,7 +254,7 @@ const tests = [
       search_url: kBaseURL,
       search_form: "https://example.com/forma",
     },
-    whitelistUrls: [
+    allowlistUrls: [
       {
         search_url: kBaseURL,
         search_form: "https://example.com/form",
@@ -265,14 +271,14 @@ const tests = [
 let baseExtension;
 let remoteSettingsStub;
 
-add_task(async function setup() {
+add_setup(async function () {
   await SearchTestUtils.useTestEngines("simple-engines");
   await AddonTestUtils.promiseStartupManager();
   await Services.search.init();
 
   baseExtension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "test@thirdparty.example.com",
         },
@@ -306,7 +312,7 @@ for (const test of tests) {
 
     if (test.expected.overridesEngine) {
       remoteSettingsStub.returns([
-        { ...whitelist[0], urls: test.whitelistUrls },
+        { ...allowlist[0], urls: test.allowlistUrls },
       ]);
     }
 
@@ -369,13 +375,15 @@ for (const test of tests) {
       let oldDefaultEngine = Services.search.defaultEngine;
       Services.search.defaultEngine = engine;
 
-      let engineInfo = await Services.search.getDefaultEngineInfo();
+      let engineInfo = Services.search.getDefaultEngineInfo();
       Assert.deepEqual(
         engineInfo,
         {
           defaultSearchEngine: "simple-addon",
           defaultSearchEngineData: {
-            loadPath: "[other]addEngineWithDetails:simple@search.mozilla.org",
+            loadPath: SearchUtils.newSearchConfigEnabled
+              ? "[app]simple@search.mozilla.org"
+              : "[addon]simple@search.mozilla.org",
             name: "Simple Engine",
             origin: "default",
             submissionURL: test.expected.searchUrl.replace("{searchTerms}", ""),

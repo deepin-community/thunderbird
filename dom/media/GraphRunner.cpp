@@ -14,6 +14,9 @@
 #include "prthread.h"
 #include "Tracing.h"
 #include "audio_thread_priority.h"
+#ifdef MOZ_WIDGET_ANDROID
+#  include "AndroidProcess.h"
+#endif  // MOZ_WIDGET_ANDROID
 
 namespace mozilla {
 
@@ -57,17 +60,20 @@ void GraphRunner::Shutdown() {
 }
 
 auto GraphRunner::OneIteration(GraphTime aStateTime, GraphTime aIterationEnd,
-                               AudioMixer* aMixer) -> IterationResult {
-  TRACE();
+                               MixerCallbackReceiver* aMixerReceiver)
+    -> IterationResult {
+  TRACE("GraphRunner::OneIteration");
 
   MonitorAutoLock lock(mMonitor);
   MOZ_ASSERT(mThreadState == ThreadState::Wait);
-  mIterationState = Some(IterationState(aStateTime, aIterationEnd, aMixer));
+  mIterationState =
+      Some(IterationState(aStateTime, aIterationEnd, aMixerReceiver));
 
 #ifdef DEBUG
-  if (auto audioDriver = mGraph->CurrentDriver()->AsAudioCallbackDriver()) {
+  if (const auto* audioDriver =
+          mGraph->CurrentDriver()->AsAudioCallbackDriver()) {
     mAudioDriverThreadId = audioDriver->ThreadId();
-  } else if (auto clockDriver =
+  } else if (const auto* clockDriver =
                  mGraph->CurrentDriver()->AsSystemClockDriver()) {
     mClockDriverThread = clockDriver->Thread();
   } else {
@@ -94,11 +100,30 @@ auto GraphRunner::OneIteration(GraphTime aStateTime, GraphTime aIterationEnd,
   return result;
 }
 
+#ifdef MOZ_WIDGET_ANDROID
+namespace {
+void PromoteRenderingThreadAndroid() {
+  MOZ_LOG(gMediaTrackGraphLog, LogLevel::Debug,
+          ("GraphRunner default thread priority: %d",
+           java::sdk::Process::GetThreadPriority(java::sdk::Process::MyTid())));
+  java::sdk::Process::SetThreadPriority(
+      java::sdk::Process::THREAD_PRIORITY_URGENT_AUDIO);
+  MOZ_LOG(gMediaTrackGraphLog, LogLevel::Debug,
+          ("GraphRunner promoted thread priority: %d",
+           java::sdk::Process::GetThreadPriority(java::sdk::Process::MyTid())));
+}
+};      // namespace
+#endif  // MOZ_WIDGET_ANDROID
+
 NS_IMETHODIMP GraphRunner::Run() {
 #ifndef XP_LINUX
   atp_handle* handle =
       atp_promote_current_thread_to_real_time(0, mGraph->GraphRate());
 #endif
+
+#ifdef MOZ_WIDGET_ANDROID
+  PromoteRenderingThreadAndroid();
+#endif  // MOZ_WIDGET_ANDROID
 
   nsCOMPtr<nsIThreadInternal> threadInternal = do_QueryInterface(mThread);
   threadInternal->SetObserver(mGraph);
@@ -112,10 +137,10 @@ NS_IMETHODIMP GraphRunner::Run() {
       break;
     }
     MOZ_DIAGNOSTIC_ASSERT(mIterationState.isSome());
-    TRACE();
-    mIterationResult = mGraph->OneIterationImpl(mIterationState->StateTime(),
-                                                mIterationState->IterationEnd(),
-                                                mIterationState->Mixer());
+    TRACE("GraphRunner::Run");
+    mIterationResult = mGraph->OneIterationImpl(
+        mIterationState->StateTime(), mIterationState->IterationEnd(),
+        mIterationState->MixerReceiver());
     // Signal that mIterationResult was updated
     mThreadState = ThreadState::Wait;
     mMonitor.Notify();
@@ -130,9 +155,7 @@ NS_IMETHODIMP GraphRunner::Run() {
   return NS_OK;
 }
 
-bool GraphRunner::OnThread() const {
-  return mThread->EventTarget()->IsOnCurrentThread();
-}
+bool GraphRunner::OnThread() const { return mThread->IsOnCurrentThread(); }
 
 #ifdef DEBUG
 bool GraphRunner::InDriverIteration(const GraphDriver* aDriver) const {
@@ -140,11 +163,11 @@ bool GraphRunner::InDriverIteration(const GraphDriver* aDriver) const {
     return false;
   }
 
-  if (auto audioDriver = aDriver->AsAudioCallbackDriver()) {
+  if (const auto* audioDriver = aDriver->AsAudioCallbackDriver()) {
     return audioDriver->ThreadId() == mAudioDriverThreadId;
   }
 
-  if (auto clockDriver = aDriver->AsSystemClockDriver()) {
+  if (const auto* clockDriver = aDriver->AsSystemClockDriver()) {
     return clockDriver->Thread() == mClockDriverThread;
   }
 

@@ -29,21 +29,25 @@ interface mixin GlobalEventHandlers {
 // below.
 //         attribute OnErrorEventHandler onerror;
            attribute EventHandler onfocus;
-           //(Not implemented)attribute EventHandler oncancel;
+           attribute EventHandler oncancel;
            attribute EventHandler onauxclick;
-           [Pref="dom.input_events.beforeinput.enabled"]
            attribute EventHandler onbeforeinput;
+           [Pref="dom.element.popover.enabled"]
+           attribute EventHandler onbeforetoggle;
            attribute EventHandler oncanplay;
            attribute EventHandler oncanplaythrough;
            attribute EventHandler onchange;
            attribute EventHandler onclick;
            attribute EventHandler onclose;
            attribute EventHandler oncontextmenu;
+           attribute EventHandler oncopy;
            attribute EventHandler oncuechange;
+           attribute EventHandler oncut;
            attribute EventHandler ondblclick;
            attribute EventHandler ondrag;
            attribute EventHandler ondragend;
            attribute EventHandler ondragenter;
+           [Func="Event::IsDragExitEnabled"]
            attribute EventHandler ondragexit;
            attribute EventHandler ondragleave;
            attribute EventHandler ondragover;
@@ -61,7 +65,6 @@ interface mixin GlobalEventHandlers {
            attribute EventHandler onload;
            attribute EventHandler onloadeddata;
            attribute EventHandler onloadedmetadata;
-           attribute EventHandler onloadend;
            attribute EventHandler onloadstart;
            attribute EventHandler onmousedown;
   [LegacyLenientThis] attribute EventHandler onmouseenter;
@@ -71,6 +74,7 @@ interface mixin GlobalEventHandlers {
            attribute EventHandler onmouseover;
            attribute EventHandler onmouseup;
            attribute EventHandler onwheel;
+           attribute EventHandler onpaste;
            attribute EventHandler onpause;
            attribute EventHandler onplay;
            attribute EventHandler onplaying;
@@ -79,11 +83,12 @@ interface mixin GlobalEventHandlers {
            attribute EventHandler onreset;
            attribute EventHandler onresize;
            attribute EventHandler onscroll;
+           attribute EventHandler onscrollend;
+           attribute EventHandler onsecuritypolicyviolation;
            attribute EventHandler onseeked;
            attribute EventHandler onseeking;
            attribute EventHandler onselect;
-           [Pref="dom.menuitem.enabled"]
-           attribute EventHandler onshow;
+           attribute EventHandler onslotchange;
            //(Not implemented)attribute EventHandler onsort;
            attribute EventHandler onstalled;
            attribute EventHandler onsubmit;
@@ -93,6 +98,7 @@ interface mixin GlobalEventHandlers {
            attribute EventHandler onwaiting;
 
            attribute EventHandler onselectstart;
+           attribute EventHandler onselectionchange;
 
            attribute EventHandler ontoggle;
 
@@ -160,12 +166,6 @@ interface mixin WindowEventHandlers {
 partial interface mixin WindowEventHandlers {
   attribute EventHandler ongamepadconnected;
   attribute EventHandler ongamepaddisconnected;
-};
-
-interface mixin DocumentAndElementEventHandlers {
-  attribute EventHandler oncopy;
-  attribute EventHandler oncut;
-  attribute EventHandler onpaste;
 };
 
 // The spec has |attribute OnErrorEventHandler onerror;| on

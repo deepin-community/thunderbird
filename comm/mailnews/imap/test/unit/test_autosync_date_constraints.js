@@ -1,56 +1,30 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /*
  * Test autosync date constraints
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/MessageGenerator.jsm");
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 var gMsgImapInboxFolder;
 
 // Adds some messages directly to a mailbox (eg new mail)
 function addMessagesToServer(messages, mailbox) {
-  // Create the imapMessages and store them on the mailbox
-  messages.forEach(function(message) {
-    let dataUri = "data:text/plain," + message.toMessageString();
-    mailbox.addMessage(new imapMessage(dataUri, mailbox.uidnext++, []));
+  // Create the ImapMessages and store them on the mailbox
+  messages.forEach(function (message) {
+    const dataUri = "data:text/plain," + message.toMessageString();
+    mailbox.addMessage(new ImapMessage(dataUri, mailbox.uidnext++, []));
   });
 }
 
-var tests = [
-  setup,
-  function* downloadForOffline() {
-    // ...and download for offline use.
-    // This downloads all messages, ignoring the autosync age constraints.
-    IMAPPump.inbox.downloadAllForOffline(asyncUrlListener, null);
-    yield false;
-  },
-  function applyRetentionSettings() {
-    IMAPPump.inbox.applyRetentionSettings();
-    let enumerator = IMAPPump.inbox.msgDatabase.EnumerateMessages();
-    if (enumerator) {
-      let now = new Date();
-      let dateInSeconds = now.getSeconds();
-      let cutOffDateInSeconds = dateInSeconds - 5 * 60 * 24;
-      for (let header of enumerator) {
-        if (header instanceof Ci.nsIMsgDBHdr) {
-          if (header.dateInSeconds < cutOffDateInSeconds) {
-            Assert.equal(header.getStringProperty("pendingRemoval"), "1");
-          } else {
-            Assert.equal(header.getStringProperty("pendingRemoval"), "");
-          }
-        }
-      }
-    }
-  },
-  teardown,
-];
-
-function setup() {
+add_setup(function () {
   Services.prefs.setIntPref("mail.server.server1.autosync_max_age_days", 4);
 
   setupIMAPPump();
@@ -65,7 +39,7 @@ function setup() {
 
   // Add a couple of messages to the INBOX
   // this is synchronous, afaik
-  let messageGenerator = new MessageGenerator();
+  const messageGenerator = new MessageGenerator();
 
   // build up a diverse list of messages
   let messages = [];
@@ -80,12 +54,35 @@ function setup() {
   );
 
   addMessagesToServer(messages, IMAPPump.daemon.getMailbox("INBOX"));
-}
+});
 
-function teardown() {
+add_task(async function downloadForOffline() {
+  // ...and download for offline use.
+  // This downloads all messages, ignoring the autosync age constraints.
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.downloadAllForOffline(listener, null);
+  await listener.promise;
+});
+
+add_task(function test_applyRetentionSettings() {
+  IMAPPump.inbox.applyRetentionSettings();
+  const enumerator = IMAPPump.inbox.msgDatabase.enumerateMessages();
+  if (enumerator) {
+    const now = new Date();
+    const dateInSeconds = now.getSeconds();
+    const cutOffDateInSeconds = dateInSeconds - 5 * 60 * 24;
+    for (const header of enumerator) {
+      if (header instanceof Ci.nsIMsgDBHdr) {
+        if (header.dateInSeconds < cutOffDateInSeconds) {
+          Assert.equal(header.getStringProperty("pendingRemoval"), "1");
+        } else {
+          Assert.equal(header.getStringProperty("pendingRemoval"), "");
+        }
+      }
+    }
+  }
+});
+
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  async_run_tests(tests);
-}
+});

@@ -22,7 +22,7 @@
 namespace mozilla {
 
 class MediaDrmCDMCallbackProxy;
-class MediaDrmCDMProxy : public CDMProxy {
+class MediaDrmCDMProxy final : public CDMProxy {
  public:
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(MediaDrmCDMProxy, override)
 
@@ -63,8 +63,6 @@ class MediaDrmCDMProxy : public CDMProxy {
 
   void Terminated() override;
 
-  const nsCString& GetNodeId() const override;
-
   void OnSetSessionId(uint32_t aCreateSessionToken,
                       const nsAString& aSessionId) override;
 
@@ -98,15 +96,10 @@ class MediaDrmCDMProxy : public CDMProxy {
   // Can be called from any thread.
   void ResolvePromise(PromiseId aId) override;
 
-  // Threadsafe.
-  const nsString& KeySystem() const override;
-
-  DataMutex<CDMCaps>& Capabilites() override;
-
   void OnKeyStatusesChange(const nsAString& aSessionId) override;
 
   void GetStatusForPolicy(PromiseId aPromiseId,
-                          const nsAString& aMinHdcpVersion) override;
+                          const dom::HDCPVersion& aMinHdcpVersion) override;
 
 #ifdef DEBUG
   bool IsOnOwnerThread() override;
@@ -174,7 +167,6 @@ class MediaDrmCDMProxy : public CDMProxy {
 
   nsCString mNodeId;
   UniquePtr<MediaDrmProxySupport> mCDM;
-  UniquePtr<MediaDrmCDMCallbackProxy> mCallback;
   bool mShutdownCalled;
 
   // =====================================================================

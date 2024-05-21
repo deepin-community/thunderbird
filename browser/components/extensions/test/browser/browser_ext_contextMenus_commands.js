@@ -25,7 +25,7 @@ add_task(async function test_actions_context_menu() {
       contexts: ["all"],
       command: "_execute_sidebar_action",
     });
-    browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    browser.tabs.onUpdated.addListener(tabId => {
       browser.pageAction.show(tabId);
     });
     browser.contextMenus.onClicked.addListener(() => {
@@ -105,6 +105,7 @@ add_task(async function test_v3_action_context_menu() {
       action: {
         default_title: "Test Action",
         default_popup: "test.html",
+        // TODO bug 1830712: Remove this. Probably not even needed for the test.
         browser_style: true,
       },
     },
@@ -115,6 +116,7 @@ add_task(async function test_v3_action_context_menu() {
 
       browser.contextMenus.create(
         {
+          id: "open_action",
           title: "open_action",
           contexts: ["all"],
           command: "_execute_action",

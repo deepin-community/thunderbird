@@ -2,25 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {
-  CALENDARNAME,
-  closeAllEventDialogs,
-  controller,
-  createCalendar,
-  deleteCalendars,
-  goToDate,
-  handleOccurrencePrompt,
-  invokeNewEventDialog,
-  invokeEditingRepeatEventDialog,
-  switchToView,
-  viewForward,
-} = ChromeUtils.import("resource://testing-common/calendar/CalendarUtils.jsm");
-
-var { menulistSelect, saveAndCloseItemDialog, setData } = ChromeUtils.import(
-  "resource://testing-common/calendar/ItemEditingHelpers.jsm"
+var { handleDeleteOccurrencePrompt } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarUtils.sys.mjs"
 );
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { menulistSelect, saveAndCloseItemDialog, setData } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/ItemEditingHelpers.sys.mjs"
+);
+
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 var { dayView, weekView, multiweekView, monthView } = CalendarTestUtils;
 
@@ -29,175 +19,193 @@ const STARTDATE = cal.createDateTime("20090106T000000Z");
 const TITLE = "Event";
 
 add_task(async function testWeeklyWithExceptionRecurrence() {
-  createCalendar(controller, CALENDARNAME);
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 5);
+  const calendar = CalendarTestUtils.createCalendar();
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+  });
+
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 5);
 
   // Create weekly recurring event.
-  let eventBox = dayView.getHourBoxAt(controller.window, HOUR);
-  await invokeNewEventDialog(window, eventBox, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, { title: TITLE, repeat: setRecurrence });
-    await saveAndCloseItemDialog(eventWindow);
-  });
+  let eventBox = dayView.getHourBoxAt(window, HOUR);
+  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window, eventBox);
+  await setData(dialogWindow, iframeWindow, { title: TITLE, repeat: setRecurrence });
+  await saveAndCloseItemDialog(dialogWindow);
+
+  let eventItem = await dayView.waitForEventBoxAt(window, 1);
+  let icon = eventItem.querySelector(".item-recurrence-icon");
+  Assert.equal(icon.src, "chrome://messenger/skin/icons/new/recurrence.svg");
+  Assert.ok(!icon.hidden);
 
   // Move 5th January occurrence to 6th January.
-  eventBox = await dayView.waitForEventBoxAt(controller.window, 1);
-  await invokeEditingRepeatEventDialog(window, eventBox, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, {
-      title: TITLE,
-      startdate: STARTDATE,
-      enddate: STARTDATE,
-    });
-    await saveAndCloseItemDialog(eventWindow);
+  ({ dialogWindow, iframeWindow } = await dayView.editEventOccurrenceAt(window, 1));
+  await setData(dialogWindow, iframeWindow, {
+    title: TITLE,
+    startdate: STARTDATE,
+    enddate: STARTDATE,
   });
+  await saveAndCloseItemDialog(dialogWindow);
 
-  goToDate(controller, 2009, 1, 6);
-  await dayView.waitForEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.goToDate(window, 2009, 1, 6);
+  eventItem = await dayView.waitForEventBoxAt(window, 1);
+  icon = eventItem.querySelector(".item-recurrence-icon");
+  Assert.equal(icon.src, "chrome://messenger/skin/icons/new/recurrence-exception.svg");
 
   // Change recurrence rule.
-  goToDate(controller, 2009, 1, 7);
-  eventBox = await dayView.waitForEventBoxAt(controller.window, 1);
-  await invokeEditingRepeatEventDialog(
-    window,
-    eventBox,
-    async (eventWindow, iframeWindow) => {
-      await setData(eventWindow, iframeWindow, { title: "Event", repeat: changeRecurrence });
-      await saveAndCloseItemDialog(eventWindow);
-    },
-    true
-  );
+  await CalendarTestUtils.goToDate(window, 2009, 1, 7);
+  ({ dialogWindow, iframeWindow } = await dayView.editEventOccurrencesAt(window, 1));
+  await setData(dialogWindow, iframeWindow, {
+    title: "Event",
+    repeat: changeRecurrence,
+  });
+  await saveAndCloseItemDialog(dialogWindow);
 
   // Check two weeks.
   // day view
-  switchToView(controller, "day");
+  await CalendarTestUtils.setCalendarView(window, "day");
 
-  goToDate(controller, 2009, 1, 5);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.goToDate(window, 2009, 1, 5);
+  await dayView.waitForNoEventBoxAt(window, 1);
 
-  viewForward(controller, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
 
   // Assert exactly two.
-  Assert.ok(await dayView.waitForEventBoxAt(controller.window, 1));
-  Assert.ok(await dayView.waitForEventBoxAt(controller.window, 2));
+  Assert.ok(!!(await dayView.waitForEventBoxAt(window, 1)));
+  Assert.ok(!!(await dayView.waitForEventBoxAt(window, 2)));
 
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForNoEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForNoEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForNoEventBoxAt(window, 1);
 
   // next week
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForEventBoxAt(controller.window, 1);
-  viewForward(controller, 1);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForNoEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForEventBoxAt(window, 1);
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await dayView.waitForNoEventBoxAt(window, 1);
 
   // week view
-  switchToView(controller, "week");
-  goToDate(controller, 2009, 1, 5);
+  await CalendarTestUtils.setCalendarView(window, "week");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 5);
 
   // Assert exactly two on Tuesday.
-  Assert.ok(await weekView.waitForEventBoxAt(controller.window, 3, 1));
-  Assert.ok(await weekView.waitForEventBoxAt(controller.window, 3, 2));
+  Assert.ok(!!(await weekView.waitForEventBoxAt(window, 3, 1)));
+  Assert.ok(!!(await weekView.waitForEventBoxAt(window, 3, 2)));
 
   // Wait for the last occurrence because this appears last.
-  await weekView.waitForEventBoxAt(controller.window, 6, 1);
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 1, 1));
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 2, 1));
-  Assert.ok(weekView.getEventBoxAt(controller.window, 4, 1));
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 5, 1));
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 7, 1));
+  eventItem = await weekView.waitForEventBoxAt(window, 6, 1);
+  icon = eventItem.querySelector(".item-recurrence-icon");
+  Assert.equal(icon.src, "chrome://messenger/skin/icons/new/recurrence.svg");
+  Assert.ok(!icon.hidden);
 
-  viewForward(controller, 1);
-  await weekView.waitForEventBoxAt(controller.window, 6, 1);
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 1, 1));
-  Assert.ok(weekView.getEventBoxAt(controller.window, 2, 1));
-  Assert.ok(weekView.getEventBoxAt(controller.window, 3, 1));
-  Assert.ok(weekView.getEventBoxAt(controller.window, 4, 1));
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 5, 1));
-  Assert.ok(!weekView.getEventBoxAt(controller.window, 7, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 1, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 2, 1));
+  Assert.ok(!!weekView.getEventBoxAt(window, 4, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 5, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 7, 1));
+
+  await CalendarTestUtils.calendarViewForward(window, 1);
+  await weekView.waitForEventBoxAt(window, 6, 1);
+  Assert.ok(!weekView.getEventBoxAt(window, 1, 1));
+  Assert.ok(!!weekView.getEventBoxAt(window, 2, 1));
+  Assert.ok(!!weekView.getEventBoxAt(window, 3, 1));
+  Assert.ok(!!weekView.getEventBoxAt(window, 4, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 5, 1));
+  Assert.ok(!weekView.getEventBoxAt(window, 7, 1));
 
   // multiweek view
-  switchToView(controller, "multiweek");
-  goToDate(controller, 2009, 1, 5);
+  await CalendarTestUtils.setCalendarView(window, "multiweek");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 5);
   // Wait for the first items, then check the ones not to be present.
   // Assert exactly two.
-  await multiweekView.waitForItemAt(controller.window, 1, 3, 1, 1);
-  Assert.ok(multiweekView.getItemAt(controller.window, 1, 3, 2, 1));
-  Assert.ok(!multiweekView.getItemAt(controller.window, 1, 3, 3, 1));
+  await multiweekView.waitForItemAt(window, 1, 3, 1, 1);
+  Assert.ok(multiweekView.getItemAt(window, 1, 3, 2, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 1, 3, 3, 1));
   // Then check no item on the 5th.
-  Assert.ok(!multiweekView.getItemAt(controller.window, 1, 2, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 1, 4, 1));
-  Assert.ok(!multiweekView.getItemAt(controller.window, 1, 5, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 1, 6, 1));
-  Assert.ok(!multiweekView.getItemAt(controller.window, 1, 7, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 1, 2, 1));
+  Assert.ok(multiweekView.getItemAt(window, 1, 4, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 1, 5, 1));
+  Assert.ok(multiweekView.getItemAt(window, 1, 6, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 1, 7, 1));
 
-  Assert.ok(!multiweekView.getItemAt(controller.window, 2, 1, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 2, 2, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 2, 3, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 2, 4, 1));
-  Assert.ok(!multiweekView.getItemAt(controller.window, 2, 5, 1));
-  Assert.ok(multiweekView.getItemAt(controller.window, 2, 6, 1));
-  Assert.ok(!multiweekView.getItemAt(controller.window, 2, 7, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 2, 1, 1));
+  Assert.ok(multiweekView.getItemAt(window, 2, 2, 1));
+  Assert.ok(multiweekView.getItemAt(window, 2, 3, 1));
+  Assert.ok(multiweekView.getItemAt(window, 2, 4, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 2, 5, 1));
+  Assert.ok(multiweekView.getItemAt(window, 2, 6, 1));
+  Assert.ok(!multiweekView.getItemAt(window, 2, 7, 1));
+
+  eventItem = multiweekView.getItemAt(window, 2, 4, 1);
+  icon = eventItem.querySelector(".item-recurrence-icon");
+  Assert.equal(icon.src, "chrome://messenger/skin/icons/new/recurrence.svg");
+  Assert.ok(!icon.hidden);
 
   // month view
-  switchToView(controller, "month");
+  await CalendarTestUtils.setCalendarView(window, "month");
   // Wait for the first items, then check the ones not to be present.
   // Assert exactly two.
   // start on the second week
-  await monthView.waitForItemAt(controller.window, 2, 3, 1);
-  Assert.ok(monthView.getItemAt(controller.window, 2, 3, 2));
-  Assert.ok(!monthView.getItemAt(controller.window, 2, 3, 3));
+  await monthView.waitForItemAt(window, 2, 3, 1);
+  Assert.ok(monthView.getItemAt(window, 2, 3, 2));
+  Assert.ok(!monthView.getItemAt(window, 2, 3, 3));
   // Then check no item on the 5th.
-  Assert.ok(!monthView.getItemAt(controller.window, 2, 2, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 2, 4, 1));
-  Assert.ok(!monthView.getItemAt(controller.window, 2, 5, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 2, 6, 1));
-  Assert.ok(!monthView.getItemAt(controller.window, 2, 7, 1));
+  Assert.ok(!monthView.getItemAt(window, 2, 2, 1));
+  Assert.ok(monthView.getItemAt(window, 2, 4, 1));
+  Assert.ok(!monthView.getItemAt(window, 2, 5, 1));
+  Assert.ok(monthView.getItemAt(window, 2, 6, 1));
+  Assert.ok(!monthView.getItemAt(window, 2, 7, 1));
 
-  Assert.ok(!monthView.getItemAt(controller.window, 3, 1, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 3, 2, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 3, 3, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 3, 4, 1));
-  Assert.ok(!monthView.getItemAt(controller.window, 3, 5, 1));
-  Assert.ok(monthView.getItemAt(controller.window, 3, 6, 1));
-  Assert.ok(!monthView.getItemAt(controller.window, 3, 7, 1));
+  Assert.ok(!monthView.getItemAt(window, 3, 1, 1));
+  Assert.ok(monthView.getItemAt(window, 3, 2, 1));
+  Assert.ok(monthView.getItemAt(window, 3, 3, 1));
+  Assert.ok(monthView.getItemAt(window, 3, 4, 1));
+  Assert.ok(!monthView.getItemAt(window, 3, 5, 1));
+  Assert.ok(monthView.getItemAt(window, 3, 6, 1));
+  Assert.ok(!monthView.getItemAt(window, 3, 7, 1));
+
+  eventItem = monthView.getItemAt(window, 3, 6, 1);
+  icon = eventItem.querySelector(".item-recurrence-icon");
+  Assert.equal(icon.src, "chrome://messenger/skin/icons/new/recurrence.svg");
+  Assert.ok(!icon.hidden);
 
   // Delete event.
-  switchToView(controller, "day");
-  goToDate(controller, 2009, 1, 12);
-  eventBox = await dayView.waitForEventBoxAt(controller.window, 1);
-  controller.click(eventBox);
-  handleOccurrencePrompt(controller, eventBox, "delete", true);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2009, 1, 12);
+  eventBox = await dayView.waitForEventBoxAt(window, 1);
+  EventUtils.synthesizeMouseAtCenter(eventBox, {}, window);
+  await handleDeleteOccurrencePrompt(window, eventBox, true);
+  await dayView.waitForNoEventBoxAt(window, 1);
 
   Assert.ok(true, "Test ran to completion");
 });
 
 async function setRecurrence(recurrenceWindow) {
-  let recurrenceDocument = recurrenceWindow.document;
+  const recurrenceDocument = recurrenceWindow.document;
 
   // weekly
   await menulistSelect(recurrenceDocument.getElementById("period-list"), "1");
 
-  let mon = cal.l10n.getDateFmtString("day.2.Mmm");
-  let wed = cal.l10n.getDateFmtString("day.4.Mmm");
-  let fri = cal.l10n.getDateFmtString("day.6.Mmm");
+  const mon = cal.l10n.getDateFmtString("day.2.Mmm");
+  const wed = cal.l10n.getDateFmtString("day.4.Mmm");
+  const fri = cal.l10n.getDateFmtString("day.6.Mmm");
 
-  let dayPicker = recurrenceDocument.getElementById("daypicker-weekday");
+  const dayPicker = recurrenceDocument.getElementById("daypicker-weekday");
 
   // Starting from Monday so it should be checked.
   Assert.ok(dayPicker.querySelector(`[label="${mon}"]`).checked, "mon checked");
@@ -216,26 +224,24 @@ async function setRecurrence(recurrenceWindow) {
   );
   Assert.ok(dayPicker.querySelector(`[label="${fri}"]`).checked, "fri checked");
 
+  const button = recurrenceDocument.querySelector("dialog").getButton("accept");
+  button.scrollIntoView();
   // Close dialog.
-  EventUtils.synthesizeMouseAtCenter(
-    recurrenceDocument.querySelector("dialog").getButton("accept"),
-    {},
-    recurrenceWindow
-  );
+  EventUtils.synthesizeMouseAtCenter(button, {}, recurrenceWindow);
 }
 
 async function changeRecurrence(recurrenceWindow) {
-  let recurrenceDocument = recurrenceWindow.document;
+  const recurrenceDocument = recurrenceWindow.document;
 
   // weekly
   await menulistSelect(recurrenceDocument.getElementById("period-list"), "1");
 
-  let mon = cal.l10n.getDateFmtString("day.2.Mmm");
-  let tue = cal.l10n.getDateFmtString("day.3.Mmm");
-  let wed = cal.l10n.getDateFmtString("day.4.Mmm");
-  let fri = cal.l10n.getDateFmtString("day.6.Mmm");
+  const mon = cal.l10n.getDateFmtString("day.2.Mmm");
+  const tue = cal.l10n.getDateFmtString("day.3.Mmm");
+  const wed = cal.l10n.getDateFmtString("day.4.Mmm");
+  const fri = cal.l10n.getDateFmtString("day.6.Mmm");
 
-  let dayPicker = recurrenceDocument.getElementById("daypicker-weekday");
+  const dayPicker = recurrenceDocument.getElementById("daypicker-weekday");
 
   // Check old rule.
   // Starting from Monday so it should be checked.
@@ -251,15 +257,8 @@ async function changeRecurrence(recurrenceWindow) {
   );
   Assert.ok(dayPicker.querySelector(`[label="${tue}"]`).checked, "tue checked");
 
+  const button = recurrenceDocument.querySelector("dialog").getButton("accept");
+  button.scrollIntoView();
   // Close dialog.
-  EventUtils.synthesizeMouseAtCenter(
-    recurrenceDocument.querySelector("dialog").getButton("accept"),
-    {},
-    recurrenceWindow
-  );
+  EventUtils.synthesizeMouseAtCenter(button, {}, recurrenceWindow);
 }
-
-registerCleanupFunction(function teardownModule() {
-  deleteCalendars(controller, CALENDARNAME);
-  closeAllEventDialogs();
-});

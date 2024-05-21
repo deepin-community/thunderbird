@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -7,9 +6,8 @@
 /* import-globals-from am-copies.js */
 /* import-globals-from ../../../../mail/extensions/am-e2e/am-e2e.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var gIdentity = null; // the identity we are editing (may be null for a new identity)
@@ -21,10 +19,10 @@ function onLoadIdentityProperties() {
   // extract the account
   gIdentity = window.arguments[0].identity;
   gAccount = window.arguments[0].account;
-  let prefBundle = document.getElementById("bundle_prefs");
+  const prefBundle = document.getElementById("bundle_prefs");
 
   if (gIdentity) {
-    let listName = gIdentity.identityName;
+    const listName = gIdentity.identityName;
     document.title = prefBundle.getFormattedString("identityDialogTitleEdit", [
       listName,
     ]);
@@ -74,7 +72,7 @@ function initIdentityValues(identity) {
     document.getElementById("identity.attachVCard").checked =
       identity.attachVCard;
     document.getElementById("identity.escapedVCard").value =
-      identity.escapedVCard;
+      identity.escapedVCard || "";
 
     document.getElementById("identity.catchAll").checked = identity.catchAll;
     document.getElementById("identity.catchAllHint").value =
@@ -82,12 +80,15 @@ function initIdentityValues(identity) {
 
     initSmtpServer(identity.smtpServerKey);
 
-    let servers = MailServices.accounts.getServersForIdentity(identity);
-    document.getElementById("identityCatchAllBox").hidden =
-      servers.length > 0 && servers[0].type == "nntp";
+    // In am-main.xhtml this field has no ID, because it's hidden by other means.
+    const catchAllBox = document.getElementById("identityCatchAllBox");
+    if (catchAllBox) {
+      const servers = MailServices.accounts.getServersForIdentity(identity);
+      catchAllBox.hidden = servers.length > 0 && servers[0].type == "nntp";
+    }
 
     // This field does not exist for the default identity shown in the am-main.xhtml pane.
-    let idLabel = document.getElementById("identity.label");
+    const idLabel = document.getElementById("identity.label");
     if (idLabel) {
       idLabel.value = identity.label;
     }
@@ -115,26 +116,22 @@ function initCopiesAndFolder(identity) {
   document.getElementById("identity.stationeryFolder").value =
     copiesAndFoldersIdentity.stationeryFolder;
 
-  document.getElementById(
-    "identity.fccFolderPickerMode"
-  ).value = copiesAndFoldersIdentity.fccFolderPickerMode
-    ? copiesAndFoldersIdentity.fccFolderPickerMode
-    : 0;
-  document.getElementById(
-    "identity.draftsFolderPickerMode"
-  ).value = copiesAndFoldersIdentity.draftsFolderPickerMode
-    ? copiesAndFoldersIdentity.draftsFolderPickerMode
-    : 0;
-  document.getElementById(
-    "identity.archivesFolderPickerMode"
-  ).value = copiesAndFoldersIdentity.archivesFolderPickerMode
-    ? copiesAndFoldersIdentity.archivesFolderPickerMode
-    : 0;
-  document.getElementById(
-    "identity.tmplFolderPickerMode"
-  ).value = copiesAndFoldersIdentity.tmplFolderPickerMode
-    ? copiesAndFoldersIdentity.tmplFolderPickerMode
-    : 0;
+  document.getElementById("identity.fccFolderPickerMode").value =
+    copiesAndFoldersIdentity.fccFolderPickerMode
+      ? copiesAndFoldersIdentity.fccFolderPickerMode
+      : 0;
+  document.getElementById("identity.draftsFolderPickerMode").value =
+    copiesAndFoldersIdentity.draftsFolderPickerMode
+      ? copiesAndFoldersIdentity.draftsFolderPickerMode
+      : 0;
+  document.getElementById("identity.archivesFolderPickerMode").value =
+    copiesAndFoldersIdentity.archivesFolderPickerMode
+      ? copiesAndFoldersIdentity.archivesFolderPickerMode
+      : 0;
+  document.getElementById("identity.tmplFolderPickerMode").value =
+    copiesAndFoldersIdentity.tmplFolderPickerMode
+      ? copiesAndFoldersIdentity.tmplFolderPickerMode
+      : 0;
 
   document.getElementById("identity.doCc").checked =
     copiesAndFoldersIdentity.doCc;
@@ -164,7 +161,7 @@ function initCompositionAndAddressing(identity) {
     addressingIdentity.directoryServer;
   document.getElementById("identity.overrideGlobal_Pref").value =
     addressingIdentity.overrideGlobalPref;
-  let autoCompleteElement = document.getElementById(
+  const autoCompleteElement = document.getElementById(
     "identity.autocompleteToMyDomain"
   );
   if (autoCompleteElement) {
@@ -246,7 +243,7 @@ function validEmailAddress() {
 
 function saveIdentitySettings(identity) {
   if (identity) {
-    let idLabel = document.getElementById("identity.label");
+    const idLabel = document.getElementById("identity.label");
     if (idLabel) {
       identity.label = idLabel.value;
     }
@@ -280,8 +277,8 @@ function saveIdentitySettings(identity) {
       "identity.smtpServerKey"
     ).value;
 
-    let attachSignaturePath = document.getElementById("identity.signature")
-      .value;
+    const attachSignaturePath =
+      document.getElementById("identity.signature").value;
     identity.signature = null; // this is important so we don't accidentally inherit the default
 
     if (attachSignaturePath) {
@@ -340,7 +337,7 @@ function saveAddressingAndCompositionSettings(identity) {
   ).value;
   identity.overrideGlobalPref =
     document.getElementById("identity.overrideGlobal_Pref").value == "true";
-  let autoCompleteElement = document.getElementById(
+  const autoCompleteElement = document.getElementById(
     "identity.autocompleteToMyDomain"
   );
   if (autoCompleteElement) {
@@ -363,14 +360,12 @@ function saveAddressingAndCompositionSettings(identity) {
 }
 
 function selectFile() {
-  const nsIFilePicker = Ci.nsIFilePicker;
-
-  var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+  var fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
 
   var prefBundle = document.getElementById("bundle_prefs");
   var title = prefBundle.getString("choosefile");
-  fp.init(window, title, nsIFilePicker.modeOpen);
-  fp.appendFilters(nsIFilePicker.filterAll);
+  fp.init(window.browsingContext, title, Ci.nsIFilePicker.modeOpen);
+  fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
   // Get current signature folder, if there is one.
   // We can set that to be the initial folder so that users
@@ -381,7 +376,7 @@ function selectFile() {
   }
 
   fp.open(rv => {
-    if (rv != nsIFilePicker.returnOK || !fp.file) {
+    if (rv != Ci.nsIFilePicker.returnOK || !fp.file) {
       return;
     }
     document.getElementById("identity.signature").value = fp.file.path;
@@ -395,10 +390,11 @@ function selectFile() {
  * Adjust the catch-all hint so that is removes stars from the allowed pattern.
  * We only allow to use stars for matching full domains *@example.com,
  * not *foo@example.com.
+ *
  * @param {Event} event - the oninput event of the catchAllHint input field.
  */
 function handleInputCatchAllHint(event) {
-  let value = event.target.value;
+  const value = event.target.value;
   event.target.value = value
     .replace(/(\*[^@]+)/g, "*")
     .replace(/(^|\s)@/g, "$1*@")
@@ -462,29 +458,62 @@ function setupSignatureItems() {
   }
 }
 
-function editVCardCallback(escapedVCardStr) {
-  var escapedVCard = document.getElementById("identity.escapedVCard");
-  escapedVCard.value = escapedVCardStr;
+function editVCard() {
+  // Read vCard hidden value from UI.
+  const escapedVCard = document.getElementById("identity.escapedVCard");
+  const dialog = top.document.getElementById("editVCardDialog");
+  const form = dialog.querySelector("form");
+  const vCardEdit = dialog.querySelector("vcard-edit");
+
+  vCardEdit.vCardString = decodeURIComponent(escapedVCard.value);
+
+  top.addEventListener("keydown", editVCardKeyDown, { capture: true });
+  form.addEventListener("submit", editVCardSubmit);
+  form.addEventListener("reset", editVCardReset);
+
+  top.gSubDialog._topDialog?._overlay.removeAttribute("topmost");
+  dialog.showModal();
+}
+
+function editVCardKeyDown(event) {
+  const dialog = top.document.getElementById("editVCardDialog");
+  if (event.keyCode == KeyboardEvent.DOM_VK_ESCAPE && dialog.open) {
+    // This is a bit of a hack to prevent other dialogs (particularly
+    // SubDialogs) from closing when the vCard dialog is open.
+    event.preventDefault();
+    editVCardReset();
+  }
+}
+
+function editVCardSubmit(event) {
+  const escapedVCard = document.getElementById("identity.escapedVCard");
+  const dialog = top.document.getElementById("editVCardDialog");
+  const form = dialog.querySelector("form");
+  const vCardEdit = dialog.querySelector("vcard-edit");
+
+  vCardEdit.saveVCard();
+  escapedVCard.value = encodeURIComponent(vCardEdit.vCardString);
   // Trigger a change event so for the am-main view the event listener
   // set up in AccountManager.js onLoad() can make sure to save the change.
   escapedVCard.dispatchEvent(new CustomEvent("change"));
+
+  top.gSubDialog._topDialog?._overlay.setAttribute("topmost", "true");
+  dialog.close();
+
+  event.preventDefault();
+  form.removeEventListener("submit", editVCardSubmit);
+  form.removeEventListener("reset", editVCardReset);
 }
 
-function editVCard() {
-  var escapedVCard = document.getElementById("identity.escapedVCard");
-  let args = {
-    escapedVCardStr: escapedVCard.value,
-    okCallback: editVCardCallback,
-    titleProperty: "editVCardTitle",
-    hideABPicker: true,
-  };
+function editVCardReset() {
+  const dialog = top.document.getElementById("editVCardDialog");
+  const form = dialog.querySelector("form");
 
-  // read vCard hidden value from UI
-  parent.gSubDialog.open(
-    "chrome://messenger/content/am-card-dialog.xhtml",
-    { features: "resizable=no" },
-    args
-  );
+  top.gSubDialog._topDialog?._overlay.setAttribute("topmost", "true");
+  dialog.close();
+
+  form.removeEventListener("submit", editVCardSubmit);
+  form.removeEventListener("reset", editVCardReset);
 }
 
 function getAccountForFolderPickerState() {
@@ -496,15 +525,15 @@ function getAccountForFolderPickerState() {
  */
 function loadSMTPServerList() {
   var smtpServerList = document.getElementById("identity.smtpServerKey");
-  let defaultServer = MailServices.smtp.defaultServer;
-  let currentValue = smtpServerList.value;
+  const defaultServer = MailServices.smtp.defaultServer;
+  const currentValue = smtpServerList.value;
 
   var smtpPopup = smtpServerList.menupopup;
   while (smtpPopup.lastChild.nodeName != "menuseparator") {
     smtpPopup.lastChild.remove();
   }
 
-  for (let server of MailServices.smtp.servers) {
+  for (const server of MailServices.smtp.servers) {
     let serverName = "";
     if (server.description) {
       serverName = server.description + " - ";
@@ -531,12 +560,12 @@ function loadSMTPServerList() {
  * Open dialog for editing properties of currently selected SMTP server.
  */
 function editCurrentSMTP() {
-  let smtpKey = document.getElementById("identity.smtpServerKey").value;
-  let server =
+  const smtpKey = document.getElementById("identity.smtpServerKey").value;
+  const server =
     smtpKey === ""
       ? MailServices.smtp.defaultServer
       : MailServices.smtp.getServerByKey(smtpKey);
-  let args = { server, result: false, addSmtpServer: "" };
+  const args = { server, result: false, addSmtpServer: "" };
 
   parent.gSubDialog.open(
     "chrome://messenger/content/SmtpServerEdit.xhtml",

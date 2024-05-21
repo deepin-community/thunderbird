@@ -1,9 +1,10 @@
-//error: `nullable' qualifier for type `int' makes no sense
+//error: `nullable' qualifier for type `int' is unsupported
 
 union Union {
     nullable int;
 };
 
+[ChildProc=any]
 protocol Nullable2 {
 child:
     async Msg(Union i);

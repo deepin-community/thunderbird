@@ -3,30 +3,38 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../mail/base/content/mailCore.js */
-/* import-globals-from ../prefs/content/accountUtils.js */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
+
+ChromeUtils.defineESModuleGetters(this, {
+  UIDensity: "resource:///modules/UIDensity.sys.mjs",
+  UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
+});
 
 var gSelectedServer = null;
 var gSelectedFolder = null;
+
+window.addEventListener("DOMContentLoaded", OnInit);
 
 /**
  * Set up the whole page depending on the selected folder/account.
  * The folder is passed in via the document URL.
  */
 function OnInit() {
-  let el = document.getElementById("setupTitle");
+  const el = document.getElementById("setupTitle");
 
   document.l10n.setAttributes(el, "setup-title", {
     accounts: MailServices.accounts.accounts.length,
   });
 
   // Selected folder URI is passed as folderURI argument in the query string.
-  let folderURI = document.location.search.replace("?folderURI=", "");
+  const folderURI = decodeURIComponent(
+    document.location.search.replace("?folderURI=", "")
+  );
   gSelectedFolder = folderURI ? MailUtils.getExistingFolder(folderURI) : null;
   gSelectedServer = gSelectedFolder ? gSelectedFolder.server : null;
 
@@ -40,14 +48,17 @@ function OnInit() {
     document.getElementById("version").textContent = Services.appinfo.version;
 
     // Update the style of the account setup buttons and area.
-    let accountSection = document.getElementById("accountSetupSection");
-    for (let btn of accountSection.querySelectorAll(".btn-hub")) {
+    const accountSection = document.getElementById("accountSetupSection");
+    for (const btn of accountSection.querySelectorAll(".btn-hub")) {
       btn.classList.remove("btn-inline");
     }
     accountSection.classList.remove("zebra");
 
     document.getElementById("accountFeaturesSection").hidden = true;
   }
+
+  UIDensity.registerWindow(window);
+  UIFontSize.registerWindow(window);
 }
 
 /**
@@ -64,7 +75,7 @@ function updateAccountCentralUI() {
     .getElementById("accountLogo")
     .setAttribute("type", gSelectedServer.type);
 
-  let exceptions = [];
+  const exceptions = [];
   let protocolInfo = null;
   try {
     protocolInfo = gSelectedServer.protocolInfo;
@@ -73,18 +84,17 @@ function updateAccountCentralUI() {
   }
 
   // Is this a RSS account?
-  let isRssAccount = gSelectedServer && gSelectedServer.type == "rss";
+  const isRssAccount = gSelectedServer?.type == "rss";
 
-  // It can read messages.
-  let canGetMessages = false;
-  try {
-    canGetMessages = protocolInfo && protocolInfo.canGetMessages;
-    document
-      .getElementById("readButton")
-      .toggleAttribute("hidden", !canGetMessages || isRssAccount);
-  } catch (e) {
-    exceptions.push(e);
-  }
+  // Is this an NNTP account?
+  const isNNTPAccount = gSelectedServer?.type == "nntp";
+
+  // Is this a Local Folders account?
+  const isLocalFoldersAccount = gSelectedServer?.type == "none";
+
+  document
+    .getElementById("readButton")
+    .toggleAttribute("hidden", !getReadMessagesFolder());
 
   // It can compose messages.
   let showComposeMsgLink = false;
@@ -98,19 +108,9 @@ function updateAccountCentralUI() {
   }
 
   // It can subscribe to a newsgroup.
-  let canSubscribe = false;
-  try {
-    canSubscribe =
-      gSelectedFolder &&
-      gSelectedFolder.canSubscribe &&
-      protocolInfo &&
-      !protocolInfo.canGetMessages;
-    document
-      .getElementById("nntpSubscriptionButton")
-      .toggleAttribute("hidden", !canSubscribe);
-  } catch (e) {
-    exceptions.push(e);
-  }
+  document
+    .getElementById("nntpSubscriptionButton")
+    .toggleAttribute("hidden", !isNNTPAccount);
 
   // It can subscribe to an RSS feed.
   document
@@ -142,71 +142,76 @@ function updateAccountCentralUI() {
   // It can have End-to-end Encryption.
   document
     .getElementById("e2eButton")
-    .toggleAttribute("hidden", !canGetMessages || isRssAccount);
+    .toggleAttribute(
+      "hidden",
+      isNNTPAccount || isRssAccount || isLocalFoldersAccount
+    );
 
   // Check if we collected any exception.
   while (exceptions.length) {
-    Cu.reportError(
+    console.error(
       "Error in setting AccountCentral Items: " + exceptions.pop() + "\n"
     );
   }
 }
 
 /**
- * Open the Inbox for selected server. If needed, open the twisty and
- * select the Inbox menuitem.
+ * For the selected server, check for new messges and display first
+ * suitable folder (genrally Inbox) for reading.
  */
 function readMessages() {
-  if (!gSelectedServer) {
-    return;
-  }
+  const folder = getReadMessagesFolder();
+  top.MsgGetMessage([folder]);
+  parent.displayFolder(folder);
+}
 
-  try {
-    window.parent.OpenInboxForServer(gSelectedServer);
-  } catch (ex) {
-    Cu.reportError("Error opening Inbox for server: " + ex + "\n");
+/**
+ * Find the folder Read Messages should use.
+ *
+ * @returns {?nsIMsgFolder} folder to use, if we have a suitable one.
+ */
+function getReadMessagesFolder() {
+  const folder = MailUtils.getInboxFolder(gSelectedServer);
+  if (folder) {
+    return folder;
   }
+  // For feeds and nntp, show the first non-trash folder. Don't use Outbox.
+  return gSelectedServer.rootFolder.descendants.find(
+    f =>
+      !(f.flags & Ci.nsMsgFolderFlags.Trash) &&
+      !(f.flags & Ci.nsMsgFolderFlags.Queue)
+  );
 }
 
 /**
  * Open the AccountManager to view the settings for a given account.
  *
- * @param selectPage - The xhtml file name for the viewing page,
+ * @param {string} selectPage - The xhtml file name for the viewing page,
  *   null for the account main page, other pages are 'am-server.xhtml',
  *   'am-copies.xhtml', 'am-offline.xhtml', 'am-addressing.xhtml',
  *   'am-smtp.xhtml'
  */
 function viewSettings(selectPage) {
-  window.parent.MsgAccountManager(selectPage, gSelectedServer);
-}
-
-/**
- * Open the newsgroup account wizard.
- */
-function createNewsgroups() {
-  window.parent.msgOpenAccountWizard(function(state) {
-    updateMailPaneUI();
-    let win = getMostRecentMailWindow();
-    if (state && win && win.gFolderTreeView && this.gCurrentAccount) {
-      win.gFolderTreeView.selectFolder(
-        this.gCurrentAccount.incomingServer.rootMsgFolder
-      );
-    }
-  });
+  window.browsingContext.topChromeWindow.MsgAccountManager(
+    selectPage,
+    gSelectedServer
+  );
 }
 
 /**
  * Bring up the search interface for selected account.
  */
 function searchMessages() {
-  window.parent.MsgSearchMessages(gSelectedFolder);
+  top.document
+    .getElementById("tabmail")
+    .currentAbout3Pane.commandController.doCommand("cmd_searchMessages");
 }
 
 /**
  * Open the filters window.
  */
 function createMsgFilters() {
-  window.parent.MsgFilters(null, gSelectedFolder);
+  window.browsingContext.topChromeWindow.MsgFilters(null, gSelectedFolder);
 }
 
 /**
@@ -217,9 +222,11 @@ function subscribe() {
     return;
   }
   if (gSelectedServer.type == "rss") {
-    window.parent.openSubscriptionsDialog(gSelectedServer.rootFolder);
+    window.browsingContext.topChromeWindow.openSubscriptionsDialog(
+      gSelectedServer.rootFolder
+    );
   } else {
-    window.parent.MsgSubscribe(gSelectedFolder);
+    window.browsingContext.topChromeWindow.MsgSubscribe(gSelectedFolder);
   }
 }
 
@@ -230,7 +237,7 @@ function subscribe() {
  */
 function openLink(event) {
   event.preventDefault();
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance();
-  messenger = messenger.QueryInterface(Ci.nsIMessenger);
-  messenger.launchExternalURL(event.target.href);
+  Cc["@mozilla.org/uriloader/external-protocol-service;1"]
+    .getService(Ci.nsIExternalProtocolService)
+    .loadURI(Services.io.newURI(event.target.href));
 }

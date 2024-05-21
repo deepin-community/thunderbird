@@ -67,7 +67,7 @@ interface nsIMsgCompFormat : nsISupports{
 interface nsIMsgComposeParams : nsISupports {
   attribute MSG_ComposeType       type;
   attribute MSG_ComposeFormat     format;
-  attribute string                originalMsgURI;
+  attribute AUTF8String           originalMsgURI;
   attribute nsIMsgIdentity        identity;
 
   attribute nsIMsgCompFields      composeFields;
@@ -76,6 +76,7 @@ interface nsIMsgComposeParams : nsISupports {
   attribute nsIMsgSendListener    sendListener;
   attribute AString               smtpPassword;
   attribute nsIMsgDBHdr           origMsgHdr;
+  attribute boolean               autodetectCharset;
 
   /**
    * HTML-formatted content to quote in the body of the message.

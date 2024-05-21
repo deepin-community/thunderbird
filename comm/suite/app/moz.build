@@ -7,7 +7,12 @@ DIRS += [
     "icons",
 ]
 
-GeckoProgram(CONFIG["MOZ_APP_NAME"])
+if CONFIG['MOZ_NO_PIE_COMPAT']:
+    GeckoProgram(CONFIG['MOZ_APP_NAME'] + '-bin')
+
+    DIRS += ['no-pie']
+else:
+    GeckoProgram(CONFIG['MOZ_APP_NAME'])
 
 SOURCES += ["nsSuiteApp.cpp"]
 
@@ -34,6 +39,14 @@ if CONFIG["CC_TYPE"] in ("msvc", "clang-cl"):
     # a console application.
     WIN32_EXE_LDFLAGS += ["-ENTRY:wmainCRTStartup"]
 
+if CONFIG["MOZ_SANDBOX"] and CONFIG["OS_ARCH"] == "Darwin":
+    USE_LIBS += [
+        "mozsandbox",
+    ]
+    OS_LIBS += [
+        "-framework CoreFoundation",
+    ]
+
 if CONFIG["MOZ_SANDBOX"] and CONFIG["OS_ARCH"] == "WINNT":
     # For sandbox includes and the include dependencies those have
     LOCAL_INCLUDES += [
@@ -47,6 +60,12 @@ if CONFIG["MOZ_SANDBOX"] and CONFIG["OS_ARCH"] == "WINNT":
 
     USE_LIBS += [
         "sandbox_s",
+    ]
+
+    OS_LIBS += [
+        "advapi32",
+        "winmm",
+        "user32",
     ]
 
     DELAYLOAD_DLLS += [

@@ -7,6 +7,8 @@
 #ifndef nsIScriptElement_h___
 #define nsIScriptElement_h___
 
+#include "js/ColumnNumber.h"  // JS::ColumnNumberOneOrigin
+#include "js/loader/ScriptKind.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/CORSMode.h"
@@ -21,12 +23,14 @@
 // XXX Avoid including this here by moving function bodies to the cpp file
 #include "nsIPrincipal.h"
 
+class nsIContent;
 class nsIParser;
 class nsIPrincipal;
 class nsIURI;
 
 namespace mozilla::dom {
 class Document;
+enum class FetchPriority : uint8_t;
 enum class ReferrerPolicy : uint8_t;
 }  // namespace mozilla::dom
 
@@ -55,10 +59,10 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
         mForceAsync(aFromParser == mozilla::dom::NOT_FROM_PARSER ||
                     aFromParser == mozilla::dom::FROM_PARSER_FRAGMENT),
         mFrozen(false),
-        mIsModule(false),
         mDefer(false),
         mAsync(false),
         mExternal(false),
+        mKind(JS::loader::ScriptKind::eClassic),
         mParserCreated(aFromParser == mozilla::dom::FROM_PARSER_FRAGMENT
                            ? mozilla::dom::NOT_FROM_PARSER
                            : aFromParser),
@@ -90,7 +94,7 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   /**
    * Script source text for inline script elements.
    */
-  virtual void GetScriptText(nsAString& text) = 0;
+  virtual void GetScriptText(nsAString& text) const = 0;
 
   virtual void GetScriptCharset(nsAString& charset) = 0;
 
@@ -98,23 +102,32 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
    * Freezes the return values of the following methods so that subsequent
    * modifications to the attributes don't change execution behavior:
    *  - GetScriptIsModule()
+   *  - GetScriptIsImportMap()
    *  - GetScriptDeferred()
    *  - GetScriptAsync()
    *  - GetScriptURI()
    *  - GetScriptExternal()
    */
-  virtual void FreezeExecutionAttrs(mozilla::dom::Document*) = 0;
+  virtual void FreezeExecutionAttrs(const mozilla::dom::Document*) = 0;
 
   /**
-   * Is the script a module script. Currently only supported by HTML scripts.
+   * Is the script a module script.
    */
   bool GetScriptIsModule() {
     MOZ_ASSERT(mFrozen, "Not ready for this call yet!");
-    return mIsModule;
+    return mKind == JS::loader::ScriptKind::eModule;
   }
 
   /**
-   * Is the script deferred. Currently only supported by HTML scripts.
+   * Is the script an import map.
+   */
+  bool GetScriptIsImportMap() {
+    MOZ_ASSERT(mFrozen, "Not ready for this call yet!");
+    return mKind == JS::loader::ScriptKind::eImportMap;
+  }
+
+  /**
+   * Is the script deferred.
    */
   bool GetScriptDeferred() {
     MOZ_ASSERT(mFrozen, "Not ready for this call yet!");
@@ -122,7 +135,7 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   }
 
   /**
-   * Is the script async. Currently only supported by HTML scripts.
+   * Is the script async.
    */
   bool GetScriptAsync() {
     MOZ_ASSERT(mFrozen, "Not ready for this call yet!");
@@ -146,11 +159,11 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
 
   uint32_t GetScriptLineNumber() { return mLineNumber; }
 
-  void SetScriptColumnNumber(uint32_t aColumnNumber) {
+  void SetScriptColumnNumber(JS::ColumnNumberOneOrigin aColumnNumber) {
     mColumnNumber = aColumnNumber;
   }
 
-  uint32_t GetScriptColumnNumber() { return mColumnNumber; }
+  JS::ColumnNumberOneOrigin GetScriptColumnNumber() { return mColumnNumber; }
 
   void SetIsMalformed() { mMalformed = true; }
 
@@ -166,10 +179,10 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
 
     // Reset state set by FreezeExecutionAttrs().
     mFrozen = false;
-    mIsModule = false;
     mExternal = false;
     mAsync = false;
     mDefer = false;
+    mKind = JS::loader::ScriptKind::eClassic;
   }
 
   void SetCreatorParser(nsIParser* aParser);
@@ -226,6 +239,13 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   }
 
   /**
+   * Get the fetch priority
+   * (https://html.spec.whatwg.org/multipage/scripting.html#attr-script-fetchpriority)
+   * of the script element.
+   */
+  virtual mozilla::dom::FetchPriority GetFetchPriority() const = 0;
+
+  /**
    * Get referrer policy of the script element
    */
   virtual mozilla::dom::ReferrerPolicy GetReferrerPolicy();
@@ -261,6 +281,18 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   virtual bool GetAsyncState() = 0;
 
   /**
+   * Allow implementing elements to avoid unnecessary QueryReferences.
+   */
+  virtual nsIContent* GetAsContent() = 0;
+
+  /**
+   * Determine whether this is a(n) classic/module/importmap script.
+   */
+  void DetermineKindFromType(const mozilla::dom::Document* aOwnerDoc);
+
+  bool IsClassicNonAsyncDefer();
+
+  /**
    * The start line number of the script.
    */
   uint32_t mLineNumber;
@@ -268,7 +300,7 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   /**
    * The start column number of the script.
    */
-  uint32_t mColumnNumber;
+  JS::ColumnNumberOneOrigin mColumnNumber;
 
   /**
    * The "already started" flag per HTML5.
@@ -297,11 +329,6 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
   bool mFrozen;
 
   /**
-   * The effective moduleness.
-   */
-  bool mIsModule;
-
-  /**
    * The effective deferredness.
    */
   bool mDefer;
@@ -316,6 +343,11 @@ class nsIScriptElement : public nsIScriptLoaderObserver {
    * if the src attribute contained an invalid URL string.
    */
   bool mExternal;
+
+  /**
+   * The effective script kind.
+   */
+  JS::loader::ScriptKind mKind;
 
   /**
    * Whether this element was parser-created.

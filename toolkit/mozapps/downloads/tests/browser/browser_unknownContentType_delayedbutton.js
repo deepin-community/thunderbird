@@ -2,10 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
-);
-
 const UCT_URI = "chrome://mozapps/content/downloads/unknownContentType.xhtml";
 const LOAD_URI =
   "http://mochi.test:8888/browser/toolkit/mozapps/downloads/tests/browser/unknownContentType_dialog_layout_data.txt";
@@ -14,19 +10,19 @@ const DIALOG_DELAY =
   Services.prefs.getIntPref("security.dialog_enable_delay") + 200;
 
 let UCTObserver = {
-  opened: PromiseUtils.defer(),
-  closed: PromiseUtils.defer(),
+  opened: Promise.withResolvers(),
+  closed: Promise.withResolvers(),
 
-  observe(aSubject, aTopic, aData) {
+  observe(aSubject, aTopic) {
     let win = aSubject;
 
     switch (aTopic) {
       case "domwindowopened":
         win.addEventListener(
           "load",
-          function onLoad(event) {
+          function onLoad() {
             // Let the dialog initialize
-            SimpleTest.executeSoon(function() {
+            SimpleTest.executeSoon(function () {
               UCTObserver.opened.resolve(win);
             });
           },
@@ -44,13 +40,16 @@ let UCTObserver = {
 };
 
 function waitDelay(delay) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     /* eslint-disable mozilla/no-arbitrary-setTimeout */
     window.setTimeout(resolve, delay);
   });
 }
 
 add_task(async function test_unknownContentType_delayedbutton() {
+  info("Starting browser_unknownContentType_delayedbutton.js...");
+  forcePromptForFiles("text/plain", "txt");
+
   Services.ww.registerNotification(UCTObserver);
 
   await BrowserTestUtils.withNewTab(
@@ -60,7 +59,7 @@ add_task(async function test_unknownContentType_delayedbutton() {
       waitForLoad: false,
       waitForStateStop: true,
     },
-    async function() {
+    async function () {
       let uctWindow = await UCTObserver.opened.promise;
       let dialog = uctWindow.document.getElementById("unknownContentType");
       let ok = dialog.getButton("accept");

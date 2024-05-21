@@ -1,7 +1,6 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, you can obtain one at http://mozilla.org/MPL/2.0/.
-
 [
   {
     "namespace": "manifest",
@@ -11,9 +10,7 @@
         "choices": [
           {
             "type": "string",
-            "enum": [
-              "messagesModify"
-            ]
+            "enum": ["messagesModify", "sensitiveDataUpload"]
           }
         ]
       }
@@ -21,9 +18,7 @@
   },
   {
     "namespace": "composeScripts",
-    "permissions": [
-      "compose"
-    ],
+    "permissions": ["compose"],
     "types": [
       {
         "id": "RegisteredComposeScriptOptions",
@@ -80,9 +75,7 @@
   },
   {
     "namespace": "messageDisplayScripts",
-    "permissions": [
-      "messagesModify"
-    ],
+    "permissions": ["messagesModify"],
     "types": [
       {
         "id": "RegisteredMessageDisplayScriptOptions",
@@ -126,7 +119,7 @@
       {
         "name": "register",
         "type": "function",
-        "description": "Register a message display script programmatically",
+        "description": "Register a message display script programmatically. **Note:** Registered scripts will only be applied to newly opened messages. To apply the script to already open messages, manually inject your script by calling :ref:`tabs.executeScript` for each of the open <value>messageDisplay</value> tabs.",
         "async": true,
         "parameters": [
           {

@@ -12,29 +12,21 @@ var unsafeAboutModule = {
     chan.owner = Services.scriptSecurityManager.getSystemPrincipal();
     return chan;
   },
-  getURIFlags(aURI) {
+  getURIFlags() {
     return Ci.nsIAboutModule.URI_SAFE_FOR_UNTRUSTED_CONTENT;
   },
 };
 
 var factory = {
-  createInstance(aOuter, aIID) {
-    if (aOuter) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance(aIID) {
     return unsafeAboutModule.QueryInterface(aIID);
-  },
-  lockFactory(aLock) {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
   },
   QueryInterface: ChromeUtils.generateQI(["nsIFactory"]),
 };
 
 function run_test() {
   let registrar = Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
-  let classID = Cc["@mozilla.org/uuid-generator;1"]
-    .getService(Ci.nsIUUIDGenerator)
-    .generateUUID();
+  let classID = Services.uuid.generateUUID();
   registrar.registerFactory(
     classID,
     "",

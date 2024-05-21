@@ -8,7 +8,7 @@ const TEST_URL =
  * Register cleanup function to reset prefs after other tasks have run.
  */
 
-add_task(async function() {
+add_task(async function () {
   // Note: SpecialPowers.pushPrefEnv has problems with the "Enable DRM"
   // button on the notification box toggling the prefs. So manually
   // set/unset the prefs the UI we're testing toggles.
@@ -19,7 +19,7 @@ add_task(async function() {
   );
 
   // Restore the preferences to their pre-test state on test finish.
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     // Unlock incase lock test threw and didn't unlock.
     Services.prefs.unlockPref("media.eme.enabled");
     Services.prefs.setBoolPref("media.eme.enabled", emeWasEnabled);
@@ -32,14 +32,19 @@ add_task(async function() {
  */
 
 add_task(async function test_drm_prompt_shows_for_toplevel() {
-  await BrowserTestUtils.withNewTab(TEST_URL, async function(browser) {
+  await BrowserTestUtils.withNewTab(TEST_URL, async function (browser) {
     // Turn off EME and Widevine CDM.
     Services.prefs.setBoolPref("media.eme.enabled", false);
     Services.prefs.setBoolPref("media.gmp-widevinecdm.enabled", false);
+    let notificationShownPromise = BrowserTestUtils.waitForNotificationBar(
+      gBrowser,
+      browser,
+      "drmContentDisabled"
+    );
 
     // Have content request access to Widevine, UI should drop down to
     // prompt user to enable DRM.
-    let result = await SpecialPowers.spawn(browser, [], async function() {
+    let result = await SpecialPowers.spawn(browser, [], async function () {
       try {
         let config = [
           {
@@ -64,7 +69,9 @@ add_task(async function test_drm_prompt_shows_for_toplevel() {
 
     // Verify the UI prompt showed.
     let box = gBrowser.getNotificationBox(browser);
+    await notificationShownPromise;
     let notification = box.currentNotification;
+    await notification.updateComplete;
 
     ok(notification, "Notification should be visible");
     is(
@@ -98,14 +105,14 @@ add_task(async function test_drm_prompt_shows_for_toplevel() {
 });
 
 add_task(async function test_eme_locked() {
-  await BrowserTestUtils.withNewTab(TEST_URL, async function(browser) {
+  await BrowserTestUtils.withNewTab(TEST_URL, async function (browser) {
     // Turn off EME and Widevine CDM.
     Services.prefs.setBoolPref("media.eme.enabled", false);
     Services.prefs.lockPref("media.eme.enabled");
 
     // Have content request access to Widevine, UI should drop down to
     // prompt user to enable DRM.
-    let result = await SpecialPowers.spawn(browser, [], async function() {
+    let result = await SpecialPowers.spawn(browser, [], async function () {
       try {
         let config = [
           {
@@ -148,10 +155,15 @@ add_task(async function test_eme_locked() {
  */
 
 add_task(async function test_drm_prompt_shows_for_cross_origin_iframe() {
-  await BrowserTestUtils.withNewTab(TEST_URL, async function(browser) {
+  await BrowserTestUtils.withNewTab(TEST_URL, async function (browser) {
     // Turn off EME and Widevine CDM.
     Services.prefs.setBoolPref("media.eme.enabled", false);
     Services.prefs.setBoolPref("media.gmp-widevinecdm.enabled", false);
+    let notificationShownPromise = BrowserTestUtils.waitForNotificationBar(
+      gBrowser,
+      browser,
+      "drmContentDisabled"
+    );
 
     // Have content request access to Widevine, UI should drop down to
     // prompt user to enable DRM.
@@ -159,7 +171,7 @@ add_task(async function test_drm_prompt_shows_for_cross_origin_iframe() {
     let result = await SpecialPowers.spawn(
       browser,
       [CROSS_ORIGIN_URL],
-      async function(crossOriginUrl) {
+      async function (crossOriginUrl) {
         let frame = content.document.createElement("iframe");
         frame.src = crossOriginUrl;
         await new Promise(resolve => {
@@ -169,7 +181,7 @@ add_task(async function test_drm_prompt_shows_for_cross_origin_iframe() {
           content.document.body.appendChild(frame);
         });
 
-        return content.SpecialPowers.spawn(frame, [], async function() {
+        return content.SpecialPowers.spawn(frame, [], async function () {
           try {
             let config = [
               {
@@ -198,7 +210,9 @@ add_task(async function test_drm_prompt_shows_for_cross_origin_iframe() {
 
     // Verify the UI prompt showed.
     let box = gBrowser.getNotificationBox(browser);
+    await notificationShownPromise;
     let notification = box.currentNotification;
+    await notification.updateComplete;
 
     ok(notification, "Notification should be visible");
     is(
@@ -227,6 +241,58 @@ add_task(async function test_drm_prompt_shows_for_cross_origin_iframe() {
       enabled,
       true,
       "EME should be enabled after click on 'Enable DRM' button"
+    );
+  });
+});
+
+add_task(async function test_drm_prompt_only_shows_one_notification() {
+  await BrowserTestUtils.withNewTab(TEST_URL, async function (browser) {
+    // Turn off EME and Widevine CDM.
+    Services.prefs.setBoolPref("media.eme.enabled", false);
+    Services.prefs.setBoolPref("media.gmp-widevinecdm.enabled", false);
+    let notificationShownPromise = BrowserTestUtils.waitForNotificationBar(
+      gBrowser,
+      browser,
+      "drmContentDisabled"
+    );
+
+    // Send three EME requests to ensure only one instance of the
+    // "Enable DRM" notification appears in the chrome
+    for (let i = 0; i < 3; i++) {
+      await SpecialPowers.spawn(browser, [], async function () {
+        try {
+          let config = [
+            {
+              initDataTypes: ["webm"],
+              videoCapabilities: [{ contentType: 'video/webm; codecs="vp9"' }],
+            },
+          ];
+          await content.navigator.requestMediaKeySystemAccess(
+            "com.widevine.alpha",
+            config
+          );
+        } catch (ex) {
+          return { rejected: true };
+        }
+        return { rejected: false };
+      });
+    }
+
+    // Verify the UI prompt showed.
+    let box = gBrowser.getNotificationBox(browser);
+    await notificationShownPromise;
+    let notification = box.currentNotification;
+
+    ok(notification, "Notification should be visible");
+    is(
+      notification.getAttribute("value"),
+      "drmContentDisabled",
+      "Should be showing the right notification"
+    );
+    is(
+      box.allNotifications.length,
+      1,
+      "There should only be one notification shown"
     );
   });
 });

@@ -1,33 +1,19 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals gDBView, GetNumSelectedMessages, gFolderDisplay */
-/* global currentHeaderData: false */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+/* import-globals-from ../../../mail/base/content/aboutMessage.js */
 
 var gEncryptionStatus = -1;
 var gSignatureStatus = -1;
 var gSignerCert = null;
 var gEncryptionCert = null;
 
-addEventListener("load", smimeReadOnLoad, { capture: false, once: true });
-
-function smimeReadOnLoad() {
-  top.controllers.appendController(SecurityController);
-
-  addEventListener("unload", smimeReadOnUnload, { capture: false, once: true });
-}
-
-function smimeReadOnUnload() {
-  top.controllers.removeController(SecurityController);
-}
-
 function showImapSignatureUnknown() {
-  let readSmimeBundle = document.getElementById("bundle_read_smime");
-  let brandBundle = document.getElementById("bundle_brand");
+  const readSmimeBundle = Services.strings.createBundle(
+    "chrome://messenger-smime/locale/msgReadSMIMEOverlay.properties"
+  );
+  const brandBundle = document.getElementById("bundle_brand");
   if (!readSmimeBundle || !brandBundle) {
     return;
   }
@@ -36,7 +22,7 @@ function showImapSignatureUnknown() {
     Services.prompt.confirm(
       window,
       brandBundle.getString("brandShortName"),
-      readSmimeBundle.getString("ImapOnDemand")
+      readSmimeBundle.GetStringFromName("ImapOnDemand")
     )
   ) {
     gDBView.reloadMessageWithAllParts();
@@ -47,11 +33,9 @@ function showImapSignatureUnknown() {
  * Populate the message security popup panel with S/MIME data.
  */
 function loadSmimeMessageSecurityInfo() {
-  let sBundle = document.getElementById("bundle_smime_read_info");
-
-  if (!sBundle) {
-    return;
-  }
+  const sBundle = Services.strings.createBundle(
+    "chrome://messenger-smime/locale/msgSecurityInfo.properties"
+  );
 
   let sigInfoLabel = null;
   let sigInfoHeader = null;
@@ -121,35 +105,37 @@ function loadSmimeMessageSecurityInfo() {
     case Ci.nsICMSMessageErrors.VERIFY_ERROR_UNVERIFIED:
     case Ci.nsICMSMessageErrors.VERIFY_ERROR_PROCESSING:
     case Ci.nsICMSMessageErrors.VERIFY_MALFORMED_SIGNATURE:
+    case Ci.nsICMSMessageErrors.VERIFY_TIME_MISMATCH:
       sigInfoLabel = "SIInvalidLabel";
       sigInfoHeader = "SIInvalidHeader";
       sigInfo_clueless = true;
       sigClass = "unverified";
       break;
     default:
-      Cu.reportError("Unexpected gSignatureStatus: " + gSignatureStatus);
+      console.error("Unexpected gSignatureStatus: " + gSignatureStatus);
   }
 
   document.getElementById("techLabel").textContent = "- S/MIME";
 
-  let signatureLabel = document.getElementById("signatureLabel");
-  signatureLabel.textContent = sBundle.getString(sigInfoLabel);
+  const signatureLabel = document.getElementById("signatureLabel");
+  signatureLabel.textContent = sBundle.GetStringFromName(sigInfoLabel);
 
   // Remove the second class to properly update the signature icon.
   signatureLabel.classList.remove(signatureLabel.classList.item(1));
   signatureLabel.classList.add(sigClass);
 
   if (sigInfoHeader) {
-    let label = document.getElementById("signatureHeader");
+    const label = document.getElementById("signatureHeader");
     label.collapsed = false;
-    label.textContent = sBundle.getString(sigInfoHeader);
+    label.textContent = sBundle.GetStringFromName(sigInfoHeader);
   }
 
   let str;
   if (sigInfo) {
-    str = sBundle.getString(sigInfo);
+    str = sBundle.GetStringFromName(sigInfo);
   } else if (sigInfo_clueless) {
-    str = sBundle.getString("SIClueless") + " (" + gSignatureStatus + ")";
+    str =
+      sBundle.GetStringFromName("SIClueless") + " (" + gSignatureStatus + ")";
   }
   document.getElementById("signatureExplanation").textContent = str;
 
@@ -185,26 +171,26 @@ function loadSmimeMessageSecurityInfo() {
       encClass = "notok";
       break;
     default:
-      Cu.reportError("Unexpected gEncryptionStatus: " + gEncryptionStatus);
+      console.error("Unexpected gEncryptionStatus: " + gEncryptionStatus);
   }
 
-  let encryptionLabel = document.getElementById("encryptionLabel");
-  encryptionLabel.textContent = sBundle.getString(encInfoLabel);
+  const encryptionLabel = document.getElementById("encryptionLabel");
+  encryptionLabel.textContent = sBundle.GetStringFromName(encInfoLabel);
 
   // Remove the second class to properly update the encryption icon.
   encryptionLabel.classList.remove(encryptionLabel.classList.item(1));
   encryptionLabel.classList.add(encClass);
 
   if (encInfoHeader) {
-    let label = document.getElementById("encryptionHeader");
+    const label = document.getElementById("encryptionHeader");
     label.collapsed = false;
-    label.textContent = sBundle.getString(encInfoHeader);
+    label.textContent = sBundle.GetStringFromName(encInfoHeader);
   }
 
   if (encInfo) {
-    str = sBundle.getString(encInfo);
+    str = sBundle.GetStringFromName(encInfo);
   } else if (encInfo_clueless) {
-    str = sBundle.getString("EIClueless");
+    str = sBundle.GetStringFromName("EIClueless");
   }
   document.getElementById("encryptionExplanation").textContent = str;
 
@@ -245,10 +231,10 @@ function viewSignatureCert() {
     return;
   }
 
-  let url = `about:certificate?cert=${encodeURIComponent(
+  const url = `about:certificate?cert=${encodeURIComponent(
     gSignerCert.getBase64DERString()
   )}`;
-  let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+  const mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
   mail3PaneWindow.switchToTabHavingURI(url, true, {});
 }
 
@@ -257,25 +243,9 @@ function viewEncryptionCert() {
     return;
   }
 
-  let url = `about:certificate?cert=${encodeURIComponent(
+  const url = `about:certificate?cert=${encodeURIComponent(
     gEncryptionCert.getBase64DERString()
   )}`;
-  let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+  const mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
   mail3PaneWindow.switchToTabHavingURI(url, true, {});
 }
-
-var SecurityController = {
-  supportsCommand(command) {
-    switch (command) {
-      default:
-        return false;
-    }
-  },
-
-  isCommandEnabled(command) {
-    switch (command) {
-      default:
-        return false;
-    }
-  },
-};

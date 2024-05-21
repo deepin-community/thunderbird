@@ -24,30 +24,9 @@ interface nsIMessenger : nsISupports {
     const long eCopyMsg = 3;
     const long eMarkAllMsg = 4;
 
-    void setDisplayCharset(in ACString aCharset);
-
     readonly attribute nsITransactionManager transactionManager;
 
     void setWindow(in mozIDOMWindowProxy ptr, in nsIMsgWindow msgWindow);
-
-    void addMsgUrlToNavigateHistory(in AUTF8String aURL);
-
-    /**
-     * Prevent any pending message load from occurring.
-     */
-    void abortPendingOpenURL();
-    /**
-     * Changes the message pane to the parent process if necessary, and loads
-     * a message (aURL) in it. This may not happen synchronously.
-     */
-    void openURL(in AUTF8String aURL);
-
-    /**
-     * Load a custom message by url, e.g load a attachment as a email
-     */
-    void loadURL(in mozIDOMWindowProxy ptr, in AUTF8String aURL);
-
-    void launchExternalURL(in AUTF8String aURL);
 
     boolean canUndo();
     boolean canRedo();
@@ -55,7 +34,7 @@ interface nsIMessenger : nsISupports {
     unsigned long getRedoTransactionType();
     void undo(in nsIMsgWindow msgWindow);
     void redo(in nsIMsgWindow msgWindow);
-    void setDocumentCharset(in ACString characterSet);
+
     /**
      * Saves a given message to a file or template.
      *
@@ -85,11 +64,6 @@ interface nsIMessenger : nsISupports {
     void saveMessages(in Array<AString> filenameArray,
                       in Array<AUTF8String> messageUriArray);
 
-    void openAttachment(in AUTF8String contentType,
-                        in AUTF8String url,
-                        in AUTF8String displayName,
-                        in AUTF8String messageUri,
-                        in boolean isExternalAttachment);
     void saveAttachment(in AUTF8String contentType,
                         in AUTF8String url,
                         in AUTF8String displayName,
@@ -112,7 +86,6 @@ interface nsIMessenger : nsISupports {
      *  suitable for use in test and filtering.
      *
      * @param aDestFolder       Folder to save files in
-     * @param aCount            Number of attachments to save
      * @param aContentTypeArray Content types of the attachments
      * @param aUrlArray         Urls for the attachments
      * @param aDisplayNameArray Files names to save attachments to. Unique
@@ -133,12 +106,18 @@ interface nsIMessenger : nsISupports {
                           in AUTF8String messageUri,
                           in boolean saveFirst,
                           [optional] in boolean withoutWarning);
+
+    // The nsIUrlListener will notify once the entire operation is over, including
+    // updating the IMAP server and reloading the modified messages. It is not
+    // limited to the file operation caused by the optional saveFirst.
     void detachAllAttachments(in Array<AUTF8String> contentTypeArray,
                               in Array<AUTF8String> urlArray,
                               in Array<AUTF8String> displayNameArray,
                               in Array<AUTF8String> messageUriArray,
                               in boolean saveFirst,
-                              [optional] in boolean withoutWarning);
+                              [optional] in boolean withoutWarning,
+                              [optional] in nsIUrlListener aListener);
+
     // saveAttachmentToFolder is used by the drag and drop code to drop an attachment to a destination folder
     // We need to return the actual file path (including the filename).
     nsIFile saveAttachmentToFolder(in AUTF8String contentType,
@@ -147,27 +126,7 @@ interface nsIMessenger : nsISupports {
                                    in AUTF8String messageUri,
                                    in nsIFile aDestFolder);
 
-    readonly attribute AUTF8String lastDisplayedMessageUri;
-
-    nsIMsgMessageService messageServiceFromURI(in AUTF8String aUri);
     nsIMsgDBHdr msgHdrFromURI(in AUTF8String aUri);
-    // For back forward history, we need a list of visited messages,
-    // and where we are in the list.
 
-    // aPos is relative to the current history cursor - 1 is forward, -1 is back.
-    // Unfortunately, you must call this before navigating to this position,
-    // because calling this has the side effect of making us adjust our current
-    // history pos, and *not* adding the loaded message to the history queue.
-    AUTF8String getMsgUriAtNavigatePos(in long aPos);
-    AUTF8String getFolderUriAtNavigatePos(in long aPos);
-    attribute long navigatePos;
-    /**
-     * Fetch the message navigation history.
-     *
-     * @returns An array containing two URIs for each history position.
-     *          First msgURI, then folderURI. So the array will be
-     *          twice as long as the number of history positions.
-     */
-    Array<AUTF8String> getNavigateHistory();
     AString formatFileSize(in unsigned long long aPos, [optional] in boolean aUseKB);
 };

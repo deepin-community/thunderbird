@@ -11,26 +11,27 @@
 
 #include "mozilla/webgpu/ffi/wgpu.h"
 
-namespace mozilla {
-namespace webgpu {
+namespace mozilla::webgpu {
 
 GPU_IMPL_CYCLE_COLLECTION(ComputePassEncoder, mParent, mUsedBindGroups,
                           mUsedPipelines)
 GPU_IMPL_JS_WRAP(ComputePassEncoder)
 
-ffi::WGPUComputePass* ScopedFfiComputeTraits::empty() { return nullptr; }
-
-void ScopedFfiComputeTraits::release(ffi::WGPUComputePass* raw) {
+void ffiWGPUComputePassDeleter::operator()(ffi::WGPURecordedComputePass* raw) {
   if (raw) {
     ffi::wgpu_compute_pass_destroy(raw);
   }
 }
 
-ffi::WGPUComputePass* BeginComputePass(
+ffi::WGPURecordedComputePass* BeginComputePass(
     RawId aEncoderId, const dom::GPUComputePassDescriptor& aDesc) {
+  MOZ_RELEASE_ASSERT(aEncoderId);
   ffi::WGPUComputePassDescriptor desc = {};
-  Unused << aDesc;  // no useful fields
-  return ffi::wgpu_command_encoder_begin_compute_pass(aEncoderId, &desc);
+
+  webgpu::StringHelper label(aDesc.mLabel);
+  desc.label = label.Get();
+
+  return ffi::wgpu_command_encoder_begin_compute_pass(&desc);
 }
 
 ComputePassEncoder::ComputePassEncoder(
@@ -48,41 +49,63 @@ void ComputePassEncoder::SetBindGroup(
     const dom::Sequence<uint32_t>& aDynamicOffsets) {
   if (mValid) {
     mUsedBindGroups.AppendElement(&aBindGroup);
-    ffi::wgpu_compute_pass_set_bind_group(mPass, aSlot, aBindGroup.mId,
-                                          aDynamicOffsets.Elements(),
-                                          aDynamicOffsets.Length());
+    ffi::wgpu_recorded_compute_pass_set_bind_group(
+        mPass.get(), aSlot, aBindGroup.mId, aDynamicOffsets.Elements(),
+        aDynamicOffsets.Length());
   }
 }
 
 void ComputePassEncoder::SetPipeline(const ComputePipeline& aPipeline) {
   if (mValid) {
     mUsedPipelines.AppendElement(&aPipeline);
-    ffi::wgpu_compute_pass_set_pipeline(mPass, aPipeline.mId);
+    ffi::wgpu_recorded_compute_pass_set_pipeline(mPass.get(), aPipeline.mId);
   }
 }
 
-void ComputePassEncoder::Dispatch(uint32_t x, uint32_t y, uint32_t z) {
+void ComputePassEncoder::DispatchWorkgroups(uint32_t workgroupCountX,
+                                            uint32_t workgroupCountY,
+                                            uint32_t workgroupCountZ) {
   if (mValid) {
-    ffi::wgpu_compute_pass_dispatch(mPass, x, y, z);
+    ffi::wgpu_recorded_compute_pass_dispatch_workgroups(
+        mPass.get(), workgroupCountX, workgroupCountY, workgroupCountZ);
   }
 }
 
-void ComputePassEncoder::DispatchIndirect(const Buffer& aIndirectBuffer,
-                                          uint64_t aIndirectOffset) {
+void ComputePassEncoder::DispatchWorkgroupsIndirect(
+    const Buffer& aIndirectBuffer, uint64_t aIndirectOffset) {
   if (mValid) {
-    ffi::wgpu_compute_pass_dispatch_indirect(mPass, aIndirectBuffer.mId,
-                                             aIndirectOffset);
+    ffi::wgpu_recorded_compute_pass_dispatch_workgroups_indirect(
+        mPass.get(), aIndirectBuffer.mId, aIndirectOffset);
   }
 }
 
-void ComputePassEncoder::EndPass(ErrorResult& aRv) {
+void ComputePassEncoder::PushDebugGroup(const nsAString& aString) {
+  if (mValid) {
+    const NS_ConvertUTF16toUTF8 utf8(aString);
+    ffi::wgpu_recorded_compute_pass_push_debug_group(mPass.get(), utf8.get(),
+                                                     0);
+  }
+}
+void ComputePassEncoder::PopDebugGroup() {
+  if (mValid) {
+    ffi::wgpu_recorded_compute_pass_pop_debug_group(mPass.get());
+  }
+}
+void ComputePassEncoder::InsertDebugMarker(const nsAString& aString) {
+  if (mValid) {
+    const NS_ConvertUTF16toUTF8 utf8(aString);
+    ffi::wgpu_recorded_compute_pass_insert_debug_marker(mPass.get(), utf8.get(),
+                                                        0);
+  }
+}
+
+void ComputePassEncoder::End() {
   if (mValid) {
     mValid = false;
-    auto* pass = mPass.forget();
+    auto* pass = mPass.release();
     MOZ_ASSERT(pass);
-    mParent->EndComputePass(*pass, aRv);
+    mParent->EndComputePass(*pass);
   }
 }
 
-}  // namespace webgpu
-}  // namespace mozilla
+}  // namespace mozilla::webgpu

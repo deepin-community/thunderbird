@@ -31,38 +31,37 @@
 #ifndef nsHtml5TreeBuilder_h
 #define nsHtml5TreeBuilder_h
 
-#include "nsContentUtils.h"
-#include "nsAtom.h"
-#include "nsHtml5AtomTable.h"
-#include "nsHtml5String.h"
-#include "nsNameSpaceManager.h"
-#include "nsIContent.h"
-#include "nsTraceRefcnt.h"
 #include "jArray.h"
-#include "nsHtml5DocumentMode.h"
-#include "nsHtml5ArrayCopy.h"
-#include "nsHtml5Parser.h"
-#include "nsGkAtoms.h"
-#include "nsHtml5TreeOperation.h"
-#include "nsHtml5StateSnapshot.h"
-#include "nsHtml5StackNode.h"
-#include "nsHtml5TreeOpExecutor.h"
-#include "nsHtml5StreamParser.h"
-#include "nsAHtml5TreeBuilderState.h"
-#include "nsHtml5Highlighter.h"
-#include "nsHtml5PlainTextUtils.h"
-#include "nsHtml5ViewSourceUtils.h"
 #include "mozilla/ImportScanner.h"
 #include "mozilla/Likely.h"
-#include "nsIContentHandle.h"
+#include "nsAHtml5TreeBuilderState.h"
+#include "nsAtom.h"
+#include "nsContentUtils.h"
+#include "nsGkAtoms.h"
+#include "nsHtml5ArrayCopy.h"
+#include "nsHtml5AtomTable.h"
+#include "nsHtml5DocumentMode.h"
+#include "nsHtml5Highlighter.h"
 #include "nsHtml5OplessBuilder.h"
+#include "nsHtml5Parser.h"
+#include "nsHtml5PlainTextUtils.h"
+#include "nsHtml5StackNode.h"
+#include "nsHtml5StateSnapshot.h"
+#include "nsHtml5StreamParser.h"
+#include "nsHtml5String.h"
+#include "nsHtml5TreeOperation.h"
+#include "nsHtml5TreeOpExecutor.h"
+#include "nsHtml5ViewSourceUtils.h"
+#include "nsIContent.h"
+#include "nsIContentHandle.h"
+#include "nsNameSpaceManager.h"
+#include "nsTraceRefcnt.h"
 
 class nsHtml5StreamParser;
 
 class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5Tokenizer;
-class nsHtml5MetaScanner;
 class nsHtml5UTF16Buffer;
 class nsHtml5StateSnapshot;
 class nsHtml5Portability;
@@ -175,7 +174,7 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   static const int32_t DIV_OR_BLOCKQUOTE_OR_CENTER_OR_MENU = 50;
 
   static const int32_t
-      ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SECTION_OR_SUMMARY =
+      ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY =
           51;
 
   static const int32_t RUBY_OR_SPAN_OR_SUB_OR_SUP_OR_VAR = 52;
@@ -204,11 +203,9 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
 
   static const int32_t KEYGEN = 65;
 
-  static const int32_t MENUITEM = 66;
+  static const int32_t TEMPLATE = 66;
 
-  static const int32_t TEMPLATE = 67;
-
-  static const int32_t IMG = 68;
+  static const int32_t IMG = 67;
 
  private:
   static const int32_t IN_ROW = 0;
@@ -316,7 +313,8 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
 
  private:
   bool quirks;
-  bool isSrcdocDocument;
+  bool forceNoQuirks;
+  bool allowDeclarativeShadowRoots;
   inline nsHtml5ContentCreatorFunction htmlCreator(
       mozilla::dom::HTMLContentCreatorFunction htmlCreator) {
     nsHtml5ContentCreatorFunction creator;
@@ -338,6 +336,7 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   void comment(char16_t* buf, int32_t start, int32_t length);
   void characters(const char16_t* buf, int32_t start, int32_t length);
   void zeroOriginatingReplacementCharacter();
+  void zeroOrReplacementCharacter();
   void eof();
   void endTokenization();
   void startTag(nsHtml5ElementName* elementName,
@@ -355,6 +354,9 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   bool isTemplateContents();
   bool isTemplateModeStackEmpty();
   bool isSpecialParentInForeign(nsHtml5StackNode* stackNode);
+  nsIContentHandle* getDeclarativeShadowRoot(nsIContentHandle* currentNode,
+                                             nsIContentHandle* templateNode,
+                                             nsHtml5HtmlAttributes* attributes);
 
  public:
   static nsHtml5String extractCharsetFromContent(nsHtml5String attributeValue,
@@ -377,6 +379,7 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   int32_t findLastInScopeHn();
   void generateImpliedEndTagsExceptFor(nsAtom* name);
   void generateImpliedEndTags();
+  void generateImpliedEndTagsThoroughly();
   bool isSecondOnStackBody();
   void documentModeInternal(nsHtml5DocumentMode m,
                             nsHtml5String publicIdentifier,
@@ -478,6 +481,8 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   void appendToCurrentNodeAndPushElementMayFoster(
       nsHtml5ElementName* elementName, nsHtml5HtmlAttributes* attributes,
       nsIContentHandle* form);
+  void appendVoidElementToCurrent(nsHtml5ElementName* elementName,
+                                  nsHtml5HtmlAttributes* attributes);
   void appendVoidElementToCurrentMayFoster(nsHtml5ElementName* elementName,
                                            nsHtml5HtmlAttributes* attributes,
                                            nsIContentHandle* form);
@@ -553,7 +558,10 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
  public:
   bool isScriptingEnabled();
   void setScriptingEnabled(bool scriptingEnabled);
+  void setForceNoQuirks(bool forceNoQuirks);
   void setIsSrcdocDocument(bool isSrcdocDocument);
+  bool isAllowDeclarativeShadowRoots();
+  void setAllowDeclarativeShadowRoots(bool allow);
   void flushCharacters();
 
  private:

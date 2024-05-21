@@ -17,7 +17,6 @@ class ErrorResult;
 
 namespace dom {
 struct GPUComputePassDescriptor;
-class HTMLCanvasElement;
 template <typename T>
 class Sequence;
 struct GPUCommandBufferDescriptor;
@@ -28,12 +27,12 @@ struct GPUImageCopyTexture;
 struct GPUImageBitmapCopyView;
 struct GPUImageDataLayout;
 struct GPURenderPassDescriptor;
-typedef RangeEnforcedUnsignedLongSequenceOrGPUExtent3DDict GPUExtent3D;
+using GPUExtent3D = RangeEnforcedUnsignedLongSequenceOrGPUExtent3DDict;
 }  // namespace dom
 namespace webgpu {
 namespace ffi {
 struct WGPUComputePass;
-struct WGPURenderPass;
+struct WGPURecordedRenderPass;
 struct WGPUImageDataLayout;
 struct WGPUImageCopyTexture_TextureId;
 struct WGPUExtent3d;
@@ -41,6 +40,7 @@ struct WGPUExtent3d;
 
 class BindGroup;
 class Buffer;
+class CanvasContext;
 class CommandBuffer;
 class ComputePassEncoder;
 class Device;
@@ -61,19 +61,21 @@ class CommandEncoder final : public ObjectBase, public ChildOf<Device> {
   static void ConvertTextureCopyViewToFFI(
       const dom::GPUImageCopyTexture& aCopy,
       ffi::WGPUImageCopyTexture_TextureId* aViewFFI);
-  static void ConvertExtent3DToFFI(const dom::GPUExtent3D& aExtent,
-                                   ffi::WGPUExtent3d* aExtentFFI);
 
  private:
   ~CommandEncoder();
   void Cleanup();
 
   RefPtr<WebGPUChild> mBridge;
-  nsTArray<WeakPtr<dom::HTMLCanvasElement>> mTargetCanvases;
+  nsTArray<WeakPtr<CanvasContext>> mPresentationContexts;
+
+  void TrackPresentationContext(CanvasContext* aTargetContext);
 
  public:
-  void EndComputePass(ffi::WGPUComputePass& aPass, ErrorResult& aRv);
-  void EndRenderPass(ffi::WGPURenderPass& aPass, ErrorResult& aRv);
+  const auto& GetDevice() const { return mParent; };
+
+  void EndComputePass(ffi::WGPURecordedComputePass& aPass);
+  void EndRenderPass(ffi::WGPURecordedRenderPass& aPass);
 
   void CopyBufferToBuffer(const Buffer& aSource, BufferAddress aSourceOffset,
                           const Buffer& aDestination,
@@ -88,6 +90,12 @@ class CommandEncoder final : public ObjectBase, public ChildOf<Device> {
   void CopyTextureToTexture(const dom::GPUImageCopyTexture& aSource,
                             const dom::GPUImageCopyTexture& aDestination,
                             const dom::GPUExtent3D& aCopySize);
+  void ClearBuffer(const Buffer& aBuffer, const uint64_t aOffset,
+                   const dom::Optional<uint64_t>& aSize);
+
+  void PushDebugGroup(const nsAString& aString);
+  void PopDebugGroup();
+  void InsertDebugMarker(const nsAString& aString);
 
   already_AddRefed<ComputePassEncoder> BeginComputePass(
       const dom::GPUComputePassDescriptor& aDesc);

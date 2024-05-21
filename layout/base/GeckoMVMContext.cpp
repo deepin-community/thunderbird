@@ -14,6 +14,7 @@
 #include "nsIDOMEventListener.h"
 #include "nsIFrame.h"
 #include "nsIObserverService.h"
+#include "nsIScrollableFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsPIDOMWindow.h"
 #include "nsPresContext.h"
@@ -112,11 +113,11 @@ GeckoMVMContext::ScrollbarAreaToExcludeFromCompositionBounds() const {
       mPresShell->GetPresContext()->AppUnitsPerDevPixel());
 }
 
-Maybe<LayoutDeviceIntSize> GeckoMVMContext::GetContentViewerSize() const {
+Maybe<LayoutDeviceIntSize> GeckoMVMContext::GetDocumentViewerSize() const {
   MOZ_ASSERT(mPresShell);
   LayoutDeviceIntSize result;
-  if (nsLayoutUtils::GetContentViewerSize(mPresShell->GetPresContext(),
-                                          result)) {
+  if (nsLayoutUtils::GetDocumentViewerSize(mPresShell->GetPresContext(),
+                                           result)) {
     return Some(result);
   }
   return Nothing();
@@ -193,12 +194,24 @@ void GeckoMVMContext::UpdateDisplayPortMargins() {
 }
 
 void GeckoMVMContext::Reflow(const CSSSize& aNewSize) {
-  MOZ_ASSERT(mPresShell);
+  RefPtr doc = mDocument;
+  RefPtr ps = mPresShell;
 
-  RefPtr<PresShell> presShell = mPresShell;
-  presShell->ResizeReflowIgnoreOverride(CSSPixel::ToAppUnits(aNewSize.width),
-                                        CSSPixel::ToAppUnits(aNewSize.height),
-                                        ResizeReflowOptions::NoOption);
+  MOZ_ASSERT(doc);
+  MOZ_ASSERT(ps);
+
+  if (ps->ResizeReflowIgnoreOverride(CSSPixel::ToAppUnits(aNewSize.width),
+                                     CSSPixel::ToAppUnits(aNewSize.height))) {
+    doc->FlushPendingNotifications(FlushType::InterruptibleLayout);
+  }
+}
+
+ScreenIntCoord GeckoMVMContext::GetDynamicToolbarOffset() {
+  const nsPresContext* presContext = mPresShell->GetPresContext();
+  return presContext->HasDynamicToolbar()
+             ? presContext->GetDynamicToolbarMaxHeight() -
+                   presContext->GetDynamicToolbarHeight()
+             : ScreenIntCoord(0);
 }
 
 }  // namespace mozilla

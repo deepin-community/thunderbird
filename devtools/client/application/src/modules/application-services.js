@@ -4,8 +4,6 @@
 
 "use strict";
 
-const Services = require("Services");
-
 // keyword to use in telemetry, as `reason` parameter
 const REASON = "application";
 
@@ -36,7 +34,7 @@ class ApplicationServices {
 
   async openWorkerInDebugger(workerDescriptorFront) {
     const debuggerPanel = await this.selectTool("jsdebugger");
-    debuggerPanel.selectWorker(workerDescriptorFront);
+    debuggerPanel.selectServiceWorker(workerDescriptorFront);
   }
 
   async viewWorkerSource(workerDescriptorFront) {

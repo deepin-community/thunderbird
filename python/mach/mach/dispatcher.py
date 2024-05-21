@@ -2,37 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import print_function
-from __future__ import absolute_import, unicode_literals
-
 import argparse
-import difflib
 import shlex
 import sys
-
 from operator import itemgetter
 
-from .base import (
-    NoCommandError,
-    UnknownCommandError,
-    UnrecognizedArgumentError,
-)
-from .decorators import SettingsProvider
+from mach.command_util import suggest_command
 
-
-@SettingsProvider
-class DispatchSettings:
-    config_settings = [
-        (
-            "alias.*",
-            "string",
-            """
-Create a command alias of the form `<alias>=<command> <args>`.
-Aliases can also be used to set default arguments:
-<command>=<command> <args>
-""".strip(),
-        ),
-    ]
+from .base import NoCommandError, UnknownCommandError, UnrecognizedArgumentError
 
 
 class CommandFormatter(argparse.HelpFormatter):
@@ -156,7 +133,7 @@ class CommandAction(argparse.Action):
 
         if command not in self._mach_registrar.command_handlers:
             # Try to find similar commands, may raise UnknownCommandError.
-            command = self._suggest_command(command)
+            command = suggest_command(command)
 
         handler = self._mach_registrar.command_handlers.get(command)
 
@@ -168,7 +145,9 @@ class CommandAction(argparse.Action):
         # If there are sub-commands, parse the intent out immediately.
         if handler.subcommand_handlers and args:
             # mach <command> help <subcommand>
-            if set(args).intersection(("help", "--help")):
+            if set(args[: args.index("--")] if "--" in args else args).intersection(
+                ("help", "--help")
+            ):
                 self._handle_subcommand_help(parser, handler, args)
                 sys.exit(0)
             # mach <command> <subcommand> ...
@@ -446,6 +425,9 @@ class CommandAction(argparse.Action):
         subcommand = subcommand.pop()
         subhandler = handler.subcommand_handlers[subcommand]
 
+        # Initialize the parser if necessary
+        subhandler.parser
+
         c_parser = subhandler.parser or argparse.ArgumentParser(add_help=False)
         c_parser.formatter_class = CommandFormatter
 
@@ -467,27 +449,6 @@ class CommandAction(argparse.Action):
         parser.print_help()
         print("")
         c_parser.print_help()
-
-    def _suggest_command(self, command):
-        names = [h.name for h in self._mach_registrar.command_handlers.values()]
-        # We first try to look for a valid command that is very similar to the given command.
-        suggested_commands = difflib.get_close_matches(command, names, cutoff=0.8)
-        # If we find more than one matching command, or no command at all,
-        # we give command suggestions instead (with a lower matching threshold).
-        # All commands that start with the given command (for instance:
-        # 'mochitest-plain', 'mochitest-chrome', etc. for 'mochitest-')
-        # are also included.
-        if len(suggested_commands) != 1:
-            suggested_commands = set(
-                difflib.get_close_matches(command, names, cutoff=0.5)
-            )
-            suggested_commands |= {cmd for cmd in names if cmd.startswith(command)}
-            raise UnknownCommandError(command, "run", suggested_commands)
-        sys.stderr.write(
-            "We're assuming the '%s' command is '%s' and we're "
-            "executing it for you.\n\n" % (command, suggested_commands[0])
-        )
-        return suggested_commands[0]
 
 
 class NoUsageFormatter(argparse.HelpFormatter):

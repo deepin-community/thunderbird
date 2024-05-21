@@ -13,22 +13,22 @@
 #include "nsAttrValueInlines.h"
 #include <algorithm>
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class HTMLProgressElement final : public nsGenericHTMLElement {
  public:
   explicit HTMLProgressElement(
       already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo);
 
-  EventStates IntrinsicState() const override;
-
   nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
 
-  virtual bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
-                              const nsAString& aValue,
-                              nsIPrincipal* aMaybeScriptedPrincipal,
-                              nsAttrValue& aResult) override;
+  bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
+                      const nsAString& aValue,
+                      nsIPrincipal* aMaybeScriptedPrincipal,
+                      nsAttrValue& aResult) override;
+  void AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                    const nsAttrValue* aValue, const nsAttrValue* aOldValue,
+                    nsIPrincipal* aSubjectPrincipal, bool aNotify) override;
 
   // WebIDL
   double Value() const;
@@ -37,7 +37,10 @@ class HTMLProgressElement final : public nsGenericHTMLElement {
   }
   double Max() const;
   void SetMax(double aValue, ErrorResult& aRv) {
-    SetDoubleAttr(nsGkAtoms::max, aValue, aRv);
+    // https://html.spec.whatwg.org/multipage/form-elements.html#dom-progress-max
+    // The max IDL attribute must reflect the content attribute of the same
+    // name, limited to only positive numbers.
+    SetDoubleAttr<Reflection::OnlyPositive>(nsGkAtoms::max, aValue, aRv);
   }
   double Position() const;
 
@@ -46,25 +49,9 @@ class HTMLProgressElement final : public nsGenericHTMLElement {
  protected:
   virtual ~HTMLProgressElement();
 
-  virtual JSObject* WrapNode(JSContext* aCx,
-                             JS::Handle<JSObject*> aGivenProto) override;
-
- protected:
-  /**
-   * Returns whethem the progress element is in the indeterminate state.
-   * A progress element is in the indeterminate state if its value is ommited
-   * or is not a floating point number..
-   *
-   * @return whether the progress element is in the indeterminate state.
-   */
-  bool IsIndeterminate() const;
-
-  static const double kIndeterminatePosition;
-  static const double kDefaultValue;
-  static const double kDefaultMax;
+  JSObject* WrapNode(JSContext*, JS::Handle<JSObject*> aGivenProto) override;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_HTMLProgressElement_h

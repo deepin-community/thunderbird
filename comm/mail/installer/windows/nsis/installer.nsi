@@ -31,7 +31,6 @@ Var TmpVal
 Var InstallType
 Var AddStartMenuSC
 Var AddTaskbarSC
-Var AddQuickLaunchSC
 Var AddDesktopSC
 Var InstallMaintenanceService
 Var InstallOptionalExtensions
@@ -81,7 +80,7 @@ VIAddVersionKey "OriginalFilename" "setup.exe"
 !insertmacro AddHandlerValues
 !insertmacro ChangeMUIHeaderImage
 !insertmacro CheckForFilesInUse
-!insertmacro CleanUpdateDirectories
+!insertmacro CleanMaintenanceServiceLogs
 !insertmacro CopyFilesFromDir
 !insertmacro CreateRegKey
 !insertmacro GetLongPath
@@ -127,9 +126,9 @@ VIAddVersionKey "OriginalFilename" "setup.exe"
 Name "${BrandFullName}"
 OutFile "setup.exe"
 !ifdef HAVE_64BIT_BUILD
-  InstallDir "$PROGRAMFILES64\${BrandFullName}\"
+  InstallDir "$PROGRAMFILES64\${InstDirName}\"
 !else
-  InstallDir "$PROGRAMFILES32\${BrandFullName}\"
+  InstallDir "$PROGRAMFILES32\${InstDirName}\"
 !endif
 ShowInstDetails nevershow
 
@@ -269,8 +268,8 @@ Section "-InstallStartCleanup"
   ; setup the application model id registration value
   ${InitHashAppModelId} "$INSTDIR" "Software\Mozilla\${AppName}\TaskBarIDs"
 
-  ; Remove the updates directory
-  ${CleanUpdateDirectories} "Thunderbird" "Mozilla\updates"
+  ; Clean up old maintenance service logs
+  ${CleanMaintenanceServiceLogs} "Thunderbird"
 
   ${RemovePrecompleteEntries} "false"
 
@@ -360,16 +359,6 @@ Section "-Application" APP_IDX
 
   ClearErrors
 
-  ${RegisterDLL} "$INSTDIR\AccessibleHandler.dll"
-  ${If} ${Errors}
-    ${LogMsg} "** ERROR Registering: $INSTDIR\AccessibleHandler.dll **"
-  ${Else}
-    ${LogUninstall} "DLLReg: \AccessibleHandler.dll"
-    ${LogMsg} "Registered: $INSTDIR\AccessibleHandler.dll"
-  ${EndIf}
-
-  ClearErrors
-
   ; Record the Windows Error Reporting module
   WriteRegDWORD HKLM "SOFTWARE\Microsoft\Windows\Windows Error Reporting\RuntimeExceptionHelperModules" "$INSTDIR\mozwer.dll" 0
   ${If} ${Errors}
@@ -386,25 +375,14 @@ Section "-Application" APP_IDX
     StrCpy $AddStartMenuSC "1"
   ${EndIf}
 
-  ; Default for creating Quick Launch shortcut (1 = create, 0 = don't create)
-  ${If} $AddQuickLaunchSC == ""
-    ; Don't install the quick launch shortcut on Windows 7
-    ${If} ${AtLeastWin7}
-      StrCpy $AddQuickLaunchSC "0"
-    ${Else}
-      StrCpy $AddQuickLaunchSC "1"
-    ${EndIf}
-  ${EndIf}
-
   ; Default for creating Desktop shortcut (1 = create, 0 = don't create)
   ${If} $AddDesktopSC == ""
     StrCpy $AddDesktopSC "1"
   ${EndIf}
 
-  ${CreateUpdateDir} "Mozilla"
-  ${If} ${Errors}
-    Pop $0
-    ${LogMsg} "** ERROR Failed to create update directory: $0"
+  ; Default for adding a Taskbar pin (1 = pin, 0 = don't pin)
+  ${If} $AddTaskbarSC == ""
+    ${GetPinningSupportedByWindowsVersionWithoutSystemPopup} $AddTaskbarSC
   ${EndIf}
 
   ${LogHeader} "Adding Registry Entries"
@@ -469,14 +447,13 @@ Section "-Application" APP_IDX
   ${AddHandlerValues} "$0\ThunderbirdICS" "$1" "$8,0" \
                       "${AppRegNameCalendar} Document" "" ""
 
-  ; For pre win8, the following keys should only be set if we can write to HKLM.
-  ; For post win8, the keys below can be set in HKCU if needed.
+  ; The keys below can be set in HKCU if needed.
   ${If} $TmpVal == "HKLM"
     ; Set the Start Menu Mail/News and Registered App HKLM registry keys.
     ${SetClientsMail} "HKLM"
     ${SetClientsNews} "HKLM"
     ${SetClientsCalendar} "HKLM"
-  ${ElseIf} ${AtLeastWin8}
+  ${Else}
     ; Set the Start Menu Mail/News and Registered App HKCU registry keys.
     ${SetClientsMail} "HKCU"
     ${SetClientsNews} "HKCU"
@@ -518,6 +495,8 @@ Section "-Application" APP_IDX
   ${WriteRegStr2} $TmpVal "$0" "" "$INSTDIR\${FileMainEXE}" 0
   ${WriteRegStr2} $TmpVal "$0" "Path" "$INSTDIR" 0
 
+  ${WriteToastNotificationRegistration} $TmpVal
+
   ; Create shortcuts
   ${LogHeader} "Adding Shortcuts"
 
@@ -530,9 +509,9 @@ Section "-Application" APP_IDX
   ; Always add the application's shortcuts to the shortcuts log ini file. The
   ; DeleteShortcuts macro will do the right thing on uninstall if the
   ; shortcuts don't exist.
-  ${LogStartMenuShortcut} "${BrandFullName}.lnk"
-  ${LogQuickLaunchShortcut} "${BrandFullName}.lnk"
-  ${LogDesktopShortcut} "${BrandFullName}.lnk"
+  ${LogStartMenuShortcut} "${BrandShortName}.lnk"
+  ${LogQuickLaunchShortcut} "${BrandShortName}.lnk"
+  ${LogDesktopShortcut} "${BrandShortName}.lnk"
 
   ; Best effort to update the Win7 taskbar and start menu shortcut app model
   ; id's. The possible contexts are current user / system and the user that
@@ -562,69 +541,46 @@ Section "-Application" APP_IDX
   ; since this will either add it for the user if unelevated or All Users if
   ; elevated.
   ${If} $AddStartMenuSC == 1
-    CreateShortCut "$SMPROGRAMS\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-    ${If} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-      ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandFullName}.lnk" \
+    CreateShortCut "$SMPROGRAMS\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+    ${If} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+      ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandShortName}.lnk" \
                                            "$INSTDIR"
       ${If} ${AtLeastWin7}
       ${AndIf} "$AppUserModelID" != ""
-        ApplicationID::Set "$SMPROGRAMS\${BrandFullName}.lnk" "$AppUserModelID" "true"
+        ApplicationID::Set "$SMPROGRAMS\${BrandShortName}.lnk" "$AppUserModelID" "true"
       ${EndIf}
-      ${LogMsg} "Added Shortcut: $SMPROGRAMS\${BrandFullName}.lnk"
+      ${LogMsg} "Added Shortcut: $SMPROGRAMS\${BrandShortName}.lnk"
     ${Else}
-      ${LogMsg} "** ERROR Adding Shortcut: $SMPROGRAMS\${BrandFullName}.lnk"
+      ${LogMsg} "** ERROR Adding Shortcut: $SMPROGRAMS\${BrandShortName}.lnk"
     ${EndIf}
   ${EndIf}
 
   ; Update lastwritetime of the Start Menu shortcut to clear the tile cache.
   ; Do this for both shell contexts in case the user has shortcuts in multiple
   ; locations, then restore the previous context at the end.
-  ${If} ${AtLeastWin8}
+  SetShellVarContext all
+  ${TouchStartMenuShortcut}
+  SetShellVarContext current
+  ${TouchStartMenuShortcut}
+  ${If} $TmpVal == "HKLM"
     SetShellVarContext all
-    ${TouchStartMenuShortcut}
+  ${ElseIf} $TmpVal == "HKCU"
     SetShellVarContext current
-    ${TouchStartMenuShortcut}
-    ${If} $TmpVal == "HKLM"
-      SetShellVarContext all
-    ${ElseIf} $TmpVal == "HKCU"
-      SetShellVarContext current
-    ${EndIf}
   ${EndIf}
 
   ${If} $AddDesktopSC == 1
-    CreateShortCut "$DESKTOP\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-    ${If} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-      ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandFullName}.lnk" \
+    CreateShortCut "$DESKTOP\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+    ${If} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+      ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandShortName}.lnk" \
                                              "$INSTDIR"
       ${If} ${AtLeastWin7}
       ${AndIf} "$AppUserModelID" != ""
-        ApplicationID::Set "$DESKTOP\${BrandFullName}.lnk" "$AppUserModelID"  "true"
+        ApplicationID::Set "$DESKTOP\${BrandShortName}.lnk" "$AppUserModelID"  "true"
       ${EndIf}
-      ${LogMsg} "Added Shortcut: $DESKTOP\${BrandFullName}.lnk"
+      ${LogMsg} "Added Shortcut: $DESKTOP\${BrandShortName}.lnk"
     ${Else}
-      ${LogMsg} "** ERROR Adding Shortcut: $DESKTOP\${BrandFullName}.lnk"
+      ${LogMsg} "** ERROR Adding Shortcut: $DESKTOP\${BrandShortName}.lnk"
     ${EndIf}
-  ${EndIf}
-
-  ; If elevated the Quick Launch shortcut must be added from the unelevated
-  ; original process.
-  ${If} $AddQuickLaunchSC == 1
-    ${Unless} ${AtLeastWin7}
-      ClearErrors
-      ${GetParameters} $0
-      ${GetOptions} "$0" "/UAC:" $0
-      ${If} ${Errors}
-        Call AddQuickLaunchShortcut
-        ${LogMsg} "Added Shortcut: $QUICKLAUNCH\${BrandFullName}.lnk"
-      ${Else}
-        ; It is not possible to add a log entry from the unelevated process so
-        ; add the log entry without the path since there is no simple way to
-        ; know the correct full path.
-        ${LogMsg} "Added Quick Launch Shortcut: ${BrandFullName}.lnk"
-        GetFunctionAddress $0 AddQuickLaunchShortcut
-        UAC::ExecCodeSegment $0
-      ${EndIf}
-    ${EndUnless}
   ${EndIf}
 
 !ifdef MOZ_MAINTENANCE_SERVICE
@@ -641,25 +597,8 @@ Section "-InstallEndCleanup"
   DetailPrint "$(STATUS_CLEANUP)"
   SetDetailsPrint none
 
-  ${Unless} ${Silent}
-    ClearErrors
-    ${MUI_INSTALLOPTIONS_READ} $0 "summary.ini" "Field 4" "State"
-    ${If} "$0" == "1"
-      ${LogHeader} "Setting as the default mail application"
-      ClearErrors
-      ${GetParameters} $0
-      ${GetOptions} "$0" "/UAC:" $0
-      ${If} ${Errors}
-        Call SetAsDefaultMailAppUserHKCU
-      ${Else}
-        GetFunctionAddress $0 SetAsDefaultMailAppUserHKCU
-        UAC::ExecCodeSegment $0
-      ${EndIf}
-    ${EndIf}
-  ${EndUnless}
-
   ; Adds a pinned Task Bar shortcut (see MigrateTaskBarShortcut for details).
-  ${MigrateTaskBarShortcut}
+  ${MigrateTaskBarShortcut} "$AddTaskbarSC"
 
   ; Refresh desktop icons
   ${RefreshShellIcons}
@@ -775,14 +714,6 @@ FunctionEnd
 
 ################################################################################
 # Helper Functions
-
-Function AddQuickLaunchShortcut
-  CreateShortCut "$QUICKLAUNCH\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-  ${If} ${FileExists} "$QUICKLAUNCH\${BrandFullName}.lnk"
-    ShellLink::SetShortCutWorkingDirectory "$QUICKLAUNCH\${BrandFullName}.lnk" \
-                                           "$INSTDIR"
-  ${EndIf}
-FunctionEnd
 
 Function CheckExistingInstall
   ; If there is a pending file copy from a previous upgrade don't allow
@@ -960,10 +891,9 @@ Function leaveShortcuts
   ${MUI_INSTALLOPTIONS_READ} $AddDesktopSC "shortcuts.ini" "Field 2" "State"
   ${MUI_INSTALLOPTIONS_READ} $AddStartMenuSC "shortcuts.ini" "Field 3" "State"
 
-  ; Don't install the quick launch shortcut on Windows 7
-  ${Unless} ${AtLeastWin7}
-    ${MUI_INSTALLOPTIONS_READ} $AddQuickLaunchSC "shortcuts.ini" "Field 4" "State"
-  ${EndUnless}
+  ${If} ${IsPinningSupportedByWindowsVersionWithoutSystemPopup}
+    ${MUI_INSTALLOPTIONS_READ} $AddTaskbarSC "shortcuts.ini" "Field 4" "State"
+  ${EndIf}
 
   ${If} $InstallType == ${INSTALLTYPE_CUSTOM}
     Call CheckExistingInstall
@@ -1054,51 +984,14 @@ Function preSummary
     DeleteINIStr "$PLUGINSDIR\summary.ini" "Settings" NextButtonText
   ${EndIf}
 
-  ; Remove the "Field 4" ini section in case the user hits back and changes the
-  ; installation directory which could change whether the make default checkbox
-  ; should be displayed.
-  DeleteINISec "$PLUGINSDIR\summary.ini" "Field 4"
-
-  ; Check if it is possible to write to HKLM
-  ClearErrors
-  WriteRegStr HKLM "Software\Thunderbird" "${BrandShortName}InstallerTest" "Write Test"
-  ${Unless} ${Errors}
-    DeleteRegValue HKLM "Software\Thunderbird" "${BrandShortName}InstallerTest"
-    ; Check if Firefox is already the handler for http. This is set on all
-    ; versions of Windows.
-    ${IsHandlerForInstallDir} "http" $R9
-    ${If} "$R9" != "true"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Settings" NumFields "4"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Type   "checkbox"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Text   "$(SUMMARY_TAKE_DEFAULTS)"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Left   "0"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Right  "-1"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" State  "1"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Top    "32"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Bottom "53"
-    ${EndIf}
-  ${EndUnless}
-
   ${If} "$TmpVal" == "true"
-    ; If there is already a Type entry in the "Field 4" section with a value of
-    ; checkbox then the set as the default mail client checkbox is displayed and
-    ; this text must be moved below it.
-    ReadINIStr $0 "$PLUGINSDIR\summary.ini" "Field 4" "Type"
-    ${If} "$0" == "checkbox"
-      StrCpy $0 "5"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Top    "53"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Bottom "68"
-    ${Else}
-      StrCpy $0 "4"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Top    "35"
-      WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Bottom "50"
-    ${EndIf}
-    WriteINIStr "$PLUGINSDIR\summary.ini" "Settings" NumFields "$0"
-
-    WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Type   "label"
-    WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Text   "$(SUMMARY_REBOOT_REQUIRED_INSTALL)"
-    WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Left   "0"
-    WriteINIStr "$PLUGINSDIR\summary.ini" "Field $0" Right  "-1"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Settings" NumFields "4"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Type   "label"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Text   "$(SUMMARY_REBOOT_REQUIRED_INSTALL)"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Left   "0"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Right  "-1"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Top    "35"
+    WriteINIStr "$PLUGINSDIR\summary.ini" "Field 4" Bottom "50"
   ${EndIf}
 
   !insertmacro MUI_HEADER_TEXT "$(SUMMARY_PAGE_TITLE)" "$(SUMMARY_PAGE_SUBTITLE)"
@@ -1165,8 +1058,8 @@ Function .onInit
   ; SSE2 instruction set is available. Result returned in $R7.
   System::Call "kernel32::IsProcessorFeaturePresent(i 10)i .R7"
 
-  ; Windows NT 6.0 (Vista/Server 2008) and lower are not supported.
-  ${Unless} ${AtLeastWin7}
+  ; Windows 8.1/Server 2012 R2 and lower are not supported.
+  ${Unless} ${AtLeastWin10}
     ${If} "$R7" == "0"
       strCpy $R7 "$(WARN_MIN_SUPPORTED_OSVER_CPU_MSG)"
     ${Else}
@@ -1187,7 +1080,6 @@ Function .onInit
 !ifdef HAVE_64BIT_BUILD
   ${If} "${ARCH}" == "AArch64"
     ${IfNot} ${IsNativeARM64}
-    ${OrIfNot} ${AtLeastWin10}
       MessageBox MB_OKCANCEL|MB_ICONSTOP "$(WARN_MIN_SUPPORTED_OSVER_MSG)" IDCANCEL +2
       ExecShell "open" "${URLSystemRequirements}"
       Quit
@@ -1247,12 +1139,10 @@ Function .onInit
   WriteINIStr "$PLUGINSDIR\options.ini" "Field 5" Top    "67"
   WriteINIStr "$PLUGINSDIR\options.ini" "Field 5" Bottom "87"
 
-  ; Setup the shortcuts.ini file for the Custom Shortcuts Page
-  ; Don't offer to install the quick launch shortcut on Windows 7
-  ${If} ${AtLeastWin7}
-    WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Settings" NumFields "3"
-  ${Else}
+  ${If} ${IsPinningSupportedByWindowsVersionWithoutSystemPopup}
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Settings" NumFields "4"
+  ${Else}
+    WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Settings" NumFields "3"
   ${EndIf}
 
   WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 1" Type   "label"
@@ -1279,16 +1169,15 @@ Function .onInit
   WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 3" Bottom "50"
   WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 3" State  "1"
 
-  ; Don't offer to install the quick launch shortcut on Windows 7
-  ${Unless} ${AtLeastWin7}
+  ${If} ${IsPinningSupportedByWindowsVersionWithoutSystemPopup}
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Type   "checkbox"
-    WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Text   "$(ICONS_QUICKLAUNCH)"
+    WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Text   "$(ICONS_TASKBAR)"
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Left   "0"
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Right  "-1"
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Top    "60"
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" Bottom "70"
     WriteINIStr "$PLUGINSDIR\shortcuts.ini" "Field 4" State  "1"
-  ${EndUnless}
+  ${EndIf}
 
   ; Setup the components.ini file for the Components Page
   WriteINIStr "$PLUGINSDIR\components.ini" "Settings" NumFields "2"

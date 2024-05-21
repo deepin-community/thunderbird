@@ -5,8 +5,6 @@
 /* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
-// Cancel() is in EdDialogCommon.js
-
 var insertNew = true;
 var tagname = "TAG NAME";
 var gColor = "";
@@ -21,15 +19,11 @@ var gColorObj;
 
 // dialog initialization code
 
+window.addEventListener("load", Startup);
 document.addEventListener("dialogaccept", onAccept);
 document.addEventListener("dialogcancel", onCancelColor);
 
 function Startup() {
-  if (!window.arguments[1]) {
-    dump("EdColorPicker: Missing color object param\n");
-    return;
-  }
-
   // window.arguments[1] is object to get initial values and return color data
   gColorObj = window.arguments[1];
   gColorObj.Cancel = false;
@@ -51,7 +45,7 @@ function Startup() {
     ColorType = gColorObj.Type;
     // Get string for dialog title from passed-in type
     //   (note constraint on editor.properties string name)
-    let IsCSSPrefChecked = Services.prefs.getBoolPref("editor.use_css");
+    const IsCSSPrefChecked = Services.prefs.getBoolPref("editor.use_css");
 
     if (GetCurrentEditor()) {
       if (ColorType == "Page" && IsCSSPrefChecked && IsHTMLEditor()) {
@@ -120,16 +114,14 @@ function Startup() {
   // Use last-picked colors passed in, or those persistent on dialog
   if (TextType) {
     if (!("LastTextColor" in gColorObj) || !gColorObj.LastTextColor) {
-      gColorObj.LastTextColor = gDialog.LastPickedColor.getAttribute(
-        "LastTextColor"
-      );
+      gColorObj.LastTextColor =
+        gDialog.LastPickedColor.getAttribute("LastTextColor");
     }
     LastPickedColor = gColorObj.LastTextColor;
   } else if (HighlightType) {
     if (!("LastHighlightColor" in gColorObj) || !gColorObj.LastHighlightColor) {
-      gColorObj.LastHighlightColor = gDialog.LastPickedColor.getAttribute(
-        "LastHighlightColor"
-      );
+      gColorObj.LastHighlightColor =
+        gDialog.LastPickedColor.getAttribute("LastHighlightColor");
     }
     LastPickedColor = gColorObj.LastHighlightColor;
   } else {

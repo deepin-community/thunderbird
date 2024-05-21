@@ -36,7 +36,7 @@ function run_test() {
 function continueTest() {
   // get message headers for the inbox folder
   var msgCount = 0;
-  for (let hdr of localAccountUtils.inboxFolder.msgDatabase.EnumerateMessages()) {
+  for (const hdr of localAccountUtils.inboxFolder.msgDatabase.enumerateMessages()) {
     gMsgHdrs.push(hdr);
     Assert.equal(hdr.subject, testSubjects[msgCount++]);
   }
@@ -46,12 +46,9 @@ function continueTest() {
 }
 
 function streamNextMessage() {
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
-  let msghdr = gMsgHdrs[gHdrIndex];
-  let msgURI = msghdr.folder.getUriForMsg(msghdr);
-  let msgServ = messenger.messageServiceFromURI(msgURI);
+  const msghdr = gMsgHdrs[gHdrIndex];
+  const msgURI = msghdr.folder.getUriForMsg(msghdr);
+  const msgServ = MailServices.messageServiceFromURI(msgURI);
   msgServ.streamMessage(msgURI, gStreamListener, null, null, false, "", true);
 }
 
@@ -64,8 +61,8 @@ var gStreamListener = {
     this._data = "";
   },
   onStopRequest(aRequest, aStatusCode) {
-    // check that the streamed message starts with "From "
-    Assert.ok(this._data.startsWith("From "));
+    // Check the streamed message doesn't start with mbox separator "From ".
+    Assert.ok(!this._data.startsWith("From "));
     if (++gHdrIndex == gFiles.length) {
       do_test_finished();
     } else {

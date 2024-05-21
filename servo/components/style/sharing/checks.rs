@@ -7,10 +7,10 @@
 //! elements can indeed share the same style.
 
 use crate::bloom::StyleBloom;
-use crate::context::{SelectorFlagsMap, SharedStyleContext};
+use crate::context::SharedStyleContext;
 use crate::dom::TElement;
 use crate::sharing::{StyleSharingCandidate, StyleSharingTarget};
-use selectors::NthIndexCache;
+use selectors::matching::SelectorCaches;
 
 /// Determines whether a target and a candidate have compatible parents for
 /// sharing.
@@ -34,8 +34,6 @@ where
         return true;
     }
 
-    // Cousins are a bit more complicated.
-    //
     // If a parent element was already styled and we traversed past it without
     // restyling it, that may be because our clever invalidation logic was able
     // to prove that the styles of that element would remain unchanged despite
@@ -119,23 +117,16 @@ pub fn revalidate<E>(
     candidate: &mut StyleSharingCandidate<E>,
     shared_context: &SharedStyleContext,
     bloom: &StyleBloom<E>,
-    nth_index_cache: &mut NthIndexCache,
-    selector_flags_map: &mut SelectorFlagsMap<E>,
+    selector_caches: &mut SelectorCaches,
 ) -> bool
 where
     E: TElement,
 {
     let stylist = &shared_context.stylist;
 
-    let for_element =
-        target.revalidation_match_results(stylist, bloom, nth_index_cache, selector_flags_map);
+    let for_element = target.revalidation_match_results(stylist, bloom, selector_caches);
 
-    let for_candidate = candidate.revalidation_match_results(stylist, bloom, nth_index_cache);
-
-    // This assert "ensures", to some extent, that the two candidates have
-    // matched the same rulehash buckets, and as such, that the bits we're
-    // comparing represent the same set of selectors.
-    debug_assert_eq!(for_element.len(), for_candidate.len());
+    let for_candidate = candidate.revalidation_match_results(stylist, bloom, selector_caches);
 
     for_element == for_candidate
 }

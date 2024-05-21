@@ -10,6 +10,7 @@
 #include "plhash.h"
 #include "nssrwlk.h"
 #include "nssutil.h"
+#include "secoidt.h"
 
 /* Library identity and versioning */
 
@@ -513,6 +514,16 @@ CONST_OID sha384[] = { SHAXXX, 2 };
 CONST_OID sha512[] = { SHAXXX, 3 };
 CONST_OID sha224[] = { SHAXXX, 4 };
 
+CONST_OID sha3_224[] = { SHAXXX, 7 };
+CONST_OID sha3_256[] = { SHAXXX, 8 };
+CONST_OID sha3_384[] = { SHAXXX, 9 };
+CONST_OID sha3_512[] = { SHAXXX, 10 };
+
+CONST_OID hmac_sha3_224[] = { SHAXXX, 13 };
+CONST_OID hmac_sha3_256[] = { SHAXXX, 14 };
+CONST_OID hmac_sha3_384[] = { SHAXXX, 15 };
+CONST_OID hmac_sha3_512[] = { SHAXXX, 16 };
+
 CONST_OID ansix962ECPublicKey[] = { ANSI_X962_OID, 0x02, 0x01 };
 CONST_OID ansix962SignaturewithSHA1Digest[] = { ANSI_X962_SIGNATURE_OID, 0x01 };
 CONST_OID ansix962SignatureRecommended[] = { ANSI_X962_SIGNATURE_OID, 0x02 };
@@ -601,6 +612,22 @@ CONST_OID evIncorporationCountry[] = { EV_NAME_ATTRIBUTE, 3 };
  * 1.3.6.1.4.1.11591.15.1
  */
 CONST_OID curve25519[] = { 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01 };
+
+/*
+	https://oid-rep.orange-labs.fr/get/1.3.101.112
+	A.1.  ASN.1 Object for Ed25519
+	id-Ed25519 OBJECT IDENTIFIER ::= { 1.3.101.112 }
+	Parameters are absent.  Length is 7 bytes.
+	Binary encoding: 3005 0603 2B65 70
+	
+	The same algorithm identifiers are used for identifying a public key,
+	a private key, and a signature (for the two EdDSA related OIDs).
+	Additional encoding information is provided below for each of these
+	locations.
+*/
+
+CONST_OID ed25519PublicKey[] = { 0x2B, 0x65, 0x70 };
+CONST_OID ed25519Signature[] = { 0x2B, 0x65, 0x70 };
 
 #define OI(x)                                  \
     {                                          \
@@ -1795,6 +1822,26 @@ const static SECOidData oids[SEC_OID_TOTAL] = {
        SEC_OID_EXT_KEY_USAGE_IPSEC_USER,
        "IPsec User",
        CKM_INVALID_MECHANISM, INVALID_CERT_EXTENSION),
+
+    OD(sha3_224, SEC_OID_SHA3_224, "SHA3-224", CKM_SHA3_224, INVALID_CERT_EXTENSION),
+    OD(sha3_256, SEC_OID_SHA3_256, "SHA3-256", CKM_SHA3_256, INVALID_CERT_EXTENSION),
+    OD(sha3_384, SEC_OID_SHA3_384, "SHA3-384", CKM_SHA3_384, INVALID_CERT_EXTENSION),
+    OD(sha3_512, SEC_OID_SHA3_512, "SHA3-512", CKM_SHA3_512, INVALID_CERT_EXTENSION),
+
+    OD(hmac_sha3_224, SEC_OID_HMAC_SHA3_224, "HMAC SHA3-224", CKM_SHA3_224_HMAC, INVALID_CERT_EXTENSION),
+    OD(hmac_sha3_256, SEC_OID_HMAC_SHA3_256, "HMAC SHA3-256", CKM_SHA3_256_HMAC, INVALID_CERT_EXTENSION),
+    OD(hmac_sha3_384, SEC_OID_HMAC_SHA3_384, "HMAC SHA3-384", CKM_SHA3_384_HMAC, INVALID_CERT_EXTENSION),
+    OD(hmac_sha3_512, SEC_OID_HMAC_SHA3_512, "HMAC SHA3-512", CKM_SHA3_512_HMAC, INVALID_CERT_EXTENSION),
+
+    ODE(SEC_OID_XYBER768D00,
+        "X25519+Kyber768 key exchange", CKM_INVALID_MECHANISM, INVALID_CERT_EXTENSION),
+
+    OD(ed25519Signature, SEC_OID_ED25519_SIGNATURE, "X9.62 EDDSA signature", CKM_EDDSA,
+       INVALID_CERT_EXTENSION),
+
+    OD(ed25519PublicKey, SEC_OID_ED25519_PUBLIC_KEY,
+       "X9.62 elliptic edwards curve public key", CKM_EC_EDWARDS_KEY_PAIR_GEN, INVALID_CERT_EXTENSION),
+
 };
 
 /* PRIVATE EXTENDED SECOID Table
@@ -2068,6 +2115,9 @@ SECOID_Init(void)
         return SECSuccess; /* already initialized */
     }
 
+    /* xyber768d00 must be enabled explicitly */
+    xOids[SEC_OID_XYBER768D00].notPolicyFlags = NSS_USE_ALG_IN_SSL_KX;
+
     if (!PR_GetEnvSecure("NSS_ALLOW_WEAK_SIGNATURE_ALG")) {
         /* initialize any policy flags that are disabled by default */
         xOids[SEC_OID_MD2].notPolicyFlags = ~0;
@@ -2106,10 +2156,9 @@ SECOID_Init(void)
 
     for (i = 0; i < SEC_OID_TOTAL; i++) {
         oid = &oids[i];
-
         PORT_Assert(oid->offset == i);
-
         entry = PL_HashTableAdd(oidhash, &oid->oid, (void *)oid);
+
         if (entry == NULL) {
             PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
             PORT_Assert(0); /*This function should never fail. */
@@ -2118,7 +2167,7 @@ SECOID_Init(void)
 
         if (oid->mechanism != CKM_INVALID_MECHANISM) {
             entry = PL_HashTableAdd(oidmechhash,
-                                    (void *)oid->mechanism, (void *)oid);
+                                    (void *)(uintptr_t)oid->mechanism, (void *)oid);
             if (entry == NULL) {
                 PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
                 PORT_Assert(0); /* This function should never fail. */
@@ -2137,9 +2186,13 @@ SECOID_FindOIDByMechanism(unsigned long mechanism)
 {
     SECOidData *ret;
 
-    PR_ASSERT(oidhash != NULL);
+    PR_ASSERT(oidmechhash != NULL);
+    if (oidmechhash == NULL && SECOID_Init() != SECSuccess) {
+        PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
+        return NULL;
+    }
 
-    ret = PL_HashTableLookupConst(oidmechhash, (void *)mechanism);
+    ret = PL_HashTableLookupConst(oidmechhash, (void *)(uintptr_t)mechanism);
     if (ret == NULL) {
         PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
     }
@@ -2153,6 +2206,10 @@ SECOID_FindOID(const SECItem *oid)
     SECOidData *ret;
 
     PR_ASSERT(oidhash != NULL);
+    if (oidhash == NULL && SECOID_Init() != SECSuccess) {
+        PORT_SetError(SEC_ERROR_LIBRARY_FAILURE);
+        return NULL;
+    }
 
     ret = PL_HashTableLookupConst(oidhash, oid);
     if (ret == NULL) {
@@ -2161,7 +2218,6 @@ SECOID_FindOID(const SECItem *oid)
             PORT_SetError(SEC_ERROR_UNRECOGNIZED_OID);
         }
     }
-
     return (ret);
 }
 
@@ -2171,8 +2227,9 @@ SECOID_FindOIDTag(const SECItem *oid)
     SECOidData *oiddata;
 
     oiddata = SECOID_FindOID(oid);
-    if (oiddata == NULL)
+    if (oiddata == NULL) {
         return SEC_OID_UNKNOWN;
+    }
 
     return oiddata->offset;
 }

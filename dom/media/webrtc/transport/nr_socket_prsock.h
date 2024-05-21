@@ -270,7 +270,8 @@ class NrUdpSocketIpc : public NrSocketIpc {
 
   DISALLOW_COPY_ASSIGN(NrUdpSocketIpc);
 
-  nsresult SetAddress();  // Set the local address from parent info.
+  nsresult SetAddress()
+      MOZ_REQUIRES(monitor_);  // Set the local address from parent info.
 
   // Main or private thread executors of the NrSocketBase APIs
   void create_i(const nsACString& host, const uint16_t port);
@@ -283,7 +284,7 @@ class NrUdpSocketIpc : public NrSocketIpc {
   // STS thread executor
   void recv_callback_s(RefPtr<nr_udp_message> msg);
 
-  ReentrantMonitor monitor_;  // protects err_and state_
+  ReentrantMonitor monitor_ MOZ_UNANNOTATED;  // protects err_and state_
   bool err_;
   NrSocketIpcState state_;
 

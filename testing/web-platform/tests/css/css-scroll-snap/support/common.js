@@ -41,7 +41,7 @@ function waitForAnimationEnd(getValue) {
     // MAX_UNCHANGED_FRAMES with no change have been observed.
       if (time - start_time > TIMEOUT ||
           frames - last_changed_frame >= MAX_UNCHANGED_FRAMES) {
-        resolve();
+        resolve(time);
       } else {
         current_value = getValue();
         if (last_value != current_value) {
@@ -55,22 +55,59 @@ function waitForAnimationEnd(getValue) {
   });
 }
 
-function waitForScrollEvent(eventTarget) {
-  return new Promise((resolve, reject) => {
-    const scrollListener = () => {
-      eventTarget.removeEventListener('scroll', scrollListener);
-      resolve();
-    };
-    eventTarget.addEventListener('scroll', scrollListener);
+
+function waitForEvent(eventTarget, type) {
+  return new Promise(resolve => {
+    eventTarget.addEventListener(type, resolve, { once: true });
   });
 }
 
-function waitForScrollEnd(eventTarget, getValue, targetValue) {
-  return new Promise((resolve, reject) => {
+function waitForScrollEvent(eventTarget) {
+  return waitForEvent(eventTarget, 'scroll');
+}
+
+function waitForWheelEvent(eventTarget) {
+  return waitForEvent(eventTarget, 'wheel');
+}
+
+function waitForScrollStop(eventTarget) {
+  const TIMEOUT_IN_MS = 200;
+
+  return new Promise(resolve => {
+    let lastScrollEventTime = performance.now();
+
     const scrollListener = () => {
-      if (getValue() == targetValue) {
+      lastScrollEventTime = performance.now();
+    };
+    eventTarget.addEventListener('scroll', scrollListener);
+
+    const tick = () => {
+      if (performance.now() - lastScrollEventTime > TIMEOUT_IN_MS) {
         eventTarget.removeEventListener('scroll', scrollListener);
         resolve();
+        return;
+      }
+      requestAnimationFrame(tick); // wait another frame
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function waitForScrollEnd(eventTarget) {
+  if (window.onscrollend !== undefined) {
+    return waitForScrollendEventNoTimeout(eventTarget);
+  }
+  return waitForScrollEvent(eventTarget).then(() => {
+    return waitForScrollStop(eventTarget);
+  });
+}
+
+function waitForScrollTo(eventTarget, getValue, targetValue) {
+  return new Promise((resolve, reject) => {
+    const scrollListener = (evt) => {
+      if (getValue() == targetValue) {
+        eventTarget.removeEventListener('scroll', scrollListener);
+        resolve(evt);
       }
     };
     if (getValue() == targetValue)
@@ -80,3 +117,15 @@ function waitForScrollEnd(eventTarget, getValue, targetValue) {
   });
 }
 
+function waitForNextFrame() {
+  return new Promise(resolve => {
+    const start = performance.now();
+    requestAnimationFrame(frameTime => {
+      if (frameTime < start) {
+        requestAnimationFrame(resolve);
+      } else {
+        resolve();
+      }
+    });
+  });
+}

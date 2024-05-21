@@ -6,7 +6,6 @@
 
 EXPORTS += [
     "nsContentDLF.h",
-    "nsLayoutCID.h",
     "nsLayoutStatics.h",
 ]
 
@@ -19,6 +18,7 @@ UNIFIED_SOURCES += [
 include("/ipc/chromium/chromium-config.mozbuild")
 
 LOCAL_INCLUDES += [
+    "!/security/rlbox",
     "../base",
     "../forms",
     "../generic",
@@ -39,7 +39,6 @@ LOCAL_INCLUDES += [
     "/dom/html",
     "/dom/jsurl",
     "/dom/media",
-    "/dom/offline",
     "/dom/storage",
     "/dom/xslt/base",
     "/dom/xslt/xml",
@@ -51,6 +50,7 @@ LOCAL_INCLUDES += [
     "/js/xpconnect/src",
     "/netwerk/base",
     "/netwerk/cookie",
+    "/parser/htmlparser",
     "/toolkit/components/sessionstore",
     "/view",
 ]
@@ -74,6 +74,3 @@ XPCOM_MANIFESTS += [
 ]
 
 FINAL_LIBRARY = "xul"
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

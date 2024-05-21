@@ -31,8 +31,6 @@ function run_test() {
   //* check that creating/enumerating/deleting child keys works
   test_childkey_functions(testKey);
 
-  test_watching_functions(testKey);
-
   //* clean up
   cleanup_test_run(testKey, keyName);
 }
@@ -174,37 +172,6 @@ function test_childkey_functions(testKey) {
   strictEqual(testKey.hasChild(TESTDATA_CHILD_KEY), false);
 }
 
-function test_watching_functions(testKey) {
-  strictEqual(testKey.isWatching(), false);
-  strictEqual(testKey.hasChanged(), false);
-
-  testKey.startWatching(true);
-  strictEqual(testKey.isWatching(), true);
-
-  testKey.stopWatching();
-  strictEqual(testKey.isWatching(), false);
-
-  // Create a child key, and update a value
-  let childKey = testKey.createChild(
-    TESTDATA_CHILD_KEY,
-    nsIWindowsRegKey.ACCESS_ALL
-  );
-  childKey.writeIntValue(TESTDATA_INTNAME, TESTDATA_INTVALUE);
-
-  // Start a recursive watch, and update the child's value
-  testKey.startWatching(true);
-  strictEqual(testKey.isWatching(), true);
-
-  childKey.writeIntValue(TESTDATA_INTNAME, 0);
-  strictEqual(testKey.hasChanged(), true);
-  testKey.stopWatching();
-  strictEqual(testKey.isWatching(), false);
-
-  childKey.removeValue(TESTDATA_INTNAME);
-  childKey.close();
-  testKey.removeChild(TESTDATA_CHILD_KEY);
-}
-
 function cleanup_test_run(testKey, keyName) {
   info("Cleaning up test.");
 
@@ -231,7 +198,7 @@ const TESTDATA_STRVALUE = "The quick brown fox jumps over the lazy dog.";
 const TESTDATA_INTNAME = "AnInteger";
 const TESTDATA_INTVALUE = 65536;
 const TESTDATA_INT64NAME = "AnInt64";
-const TESTDATA_INT64VALUE = 9223372036854775807;
+const TESTDATA_INT64VALUE = 9223372036854775000;
 const TESTDATA_BINARYNAME = "ABinary";
 const TESTDATA_BINARYVALUE = "She sells seashells by the seashore";
 const TESTDATA_CHILD_KEY = "TestChildKey";

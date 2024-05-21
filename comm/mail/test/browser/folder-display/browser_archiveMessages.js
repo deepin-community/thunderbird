@@ -5,7 +5,7 @@
 "use strict";
 
 var {
-  add_sets_to_folders,
+  add_message_sets_to_folders,
   archive_messages,
   assert_message_not_in_view,
   assert_nothing_selected,
@@ -14,14 +14,14 @@ var {
   be_in_folder,
   create_folder,
   create_thread,
-  make_display_threaded,
-  mc,
+  expand_all_threads,
+  get_about_3pane,
   select_click_row,
   select_none,
   select_shift_click_row,
   toggle_thread_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var folder;
@@ -31,87 +31,95 @@ var folder;
  */
 var NUM_MESSAGES_IN_THREAD = 6;
 
-add_task(function setupModule(module) {
-  folder = create_folder("ThreadedMessages");
+add_setup(async function () {
+  folder = await create_folder("ThreadedMessages");
   let thread = create_thread(NUM_MESSAGES_IN_THREAD);
-  add_sets_to_folders([folder], [thread]);
+  await add_message_sets_to_folders([folder], [thread]);
   thread = create_thread(NUM_MESSAGES_IN_THREAD);
-  add_sets_to_folders([folder], [thread]);
+  await add_message_sets_to_folders([folder], [thread]);
 });
 
 /**
  * Test archiving messages that are not currently selected.
  */
-add_task(function test_batch_archiver() {
-  be_in_folder(folder);
-  make_display_threaded();
+add_task(async function test_batch_archiver() {
+  await be_in_folder(folder);
 
-  select_none();
-  assert_nothing_selected();
+  await select_none();
+  await assert_nothing_selected();
+
+  await expand_all_threads();
 
   /* Select the first (expanded) thread */
-  let root = select_click_row(0);
-  assert_selected_and_displayed(root);
+  const root = await select_click_row(0);
+  await assert_selected_and_displayed(root);
 
   /* Get a grip on the first and the second sub-message */
-  let m1 = select_click_row(1);
-  let m2 = select_click_row(2);
-  select_click_row(0);
-  assert_selected_and_displayed(root);
+  const m1 = await select_click_row(1);
+  const m2 = await select_click_row(2);
+  await select_click_row(0);
+  await assert_selected_and_displayed(root);
 
   /* The root message is selected, we archive the first sub-message */
-  archive_messages([m1]);
+  await archive_messages([m1]);
 
   /* This message is gone and the root message is still selected **/
   assert_message_not_in_view([m1]);
-  assert_selected_and_displayed(root);
+  await assert_selected_and_displayed(root);
 
   /* Now, archiving messages under a collapsed thread */
-  toggle_thread_row(0);
-  archive_messages([m2]);
+  await toggle_thread_row(0);
+  await archive_messages([m2]);
 
   /* Selection didn't change */
   assert_selected(root);
 
   /* And the message is gone */
-  toggle_thread_row(0);
+  await toggle_thread_row(0);
   assert_message_not_in_view([m2]);
 
   /* Both threads are collapsed */
-  toggle_thread_row(0);
-  toggle_thread_row(1);
+  await toggle_thread_row(0);
 
   /* Get a grip on the second thread */
-  let root2 = select_click_row(1);
-  select_click_row(0);
+  const root2 = await select_click_row(1);
+  await select_click_row(0);
   assert_selected(root);
 
   /* Archive the first thread, now the second thread should be selected */
-  archive_messages(mc.folderDisplay.selectedMessages);
+  Assert.ok(
+    Services.prefs.getBoolPref("mail.operate_on_msgs_in_collapsed_threads")
+  );
+  Assert.greater(get_about_3pane().gDBView.getSelectedMsgHdrs().length, 1);
+  await archive_messages(get_about_3pane().gDBView.getSelectedMsgHdrs());
+  await select_click_row(0); // TODO This should be unnecessary.
   assert_selected(root2);
 
   /* We only have the first thread left */
-  toggle_thread_row(0);
-  assert_selected_and_displayed(root2);
+  await toggle_thread_row(0);
+  await assert_selected_and_displayed(root2);
+  await expand_all_threads();
 
   /* Archive the head of the thread, check that it still works fine */
-  let child1 = select_click_row(1);
-  select_click_row(0);
-  archive_messages([root2]);
-  assert_selected_and_displayed(child1);
+  const child1 = await select_click_row(1);
+  await select_click_row(0);
+  await archive_messages([root2]);
+  await select_click_row(0); // TODO This should be unnecessary.
+  await assert_selected_and_displayed(child1);
 
   /* Test archiving a partial selection */
-  let child2 = select_click_row(1);
-  let child3 = select_click_row(2);
-  select_click_row(3);
+  const child2 = await select_click_row(1);
+  const child3 = await select_click_row(2);
+  await select_click_row(3);
 
-  select_shift_click_row(2);
-  select_shift_click_row(1);
-  select_shift_click_row(0);
+  await select_shift_click_row(2);
+  await select_shift_click_row(1);
+  await select_shift_click_row(0);
 
-  archive_messages([child1, child3]);
+  await archive_messages([child1, child3]);
   assert_message_not_in_view([child1, child3]);
-  assert_selected_and_displayed(child2);
+  await select_click_row(0); // TODO This should be unnecessary.
+  await assert_selected_and_displayed(child2);
 
   Assert.report(
     false,

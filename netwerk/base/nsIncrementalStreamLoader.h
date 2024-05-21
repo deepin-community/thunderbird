@@ -14,9 +14,7 @@
 
 class nsIRequest;
 
-class nsIncrementalStreamLoader final
-    : public nsIIncrementalStreamLoader,
-      public nsIThreadRetargetableStreamListener {
+class nsIncrementalStreamLoader final : public nsIIncrementalStreamLoader {
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIINCREMENTALSTREAMLOADER
@@ -26,7 +24,7 @@ class nsIncrementalStreamLoader final
 
   nsIncrementalStreamLoader();
 
-  static nsresult Create(nsISupports* aOuter, REFNSIID aIID, void** aResult);
+  static nsresult Create(REFNSIID aIID, void** aResult);
 
  protected:
   ~nsIncrementalStreamLoader() = default;

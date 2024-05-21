@@ -7,7 +7,7 @@
 with Files("**"):
     BUG_COMPONENT = ("Toolkit", "Async Tooling")
 
-XPCSHELL_TESTS_MANIFESTS += ["tests/xpcshell/xpcshell.ini"]
+XPCSHELL_TESTS_MANIFESTS += ["tests/xpcshell/xpcshell.toml"]
 
 SOURCES += [
     "nsTerminator.cpp",
@@ -22,7 +22,7 @@ EXTRA_COMPONENTS += [
 ]
 
 EXTRA_JS_MODULES += [
-    "TerminatorTelemetry.jsm",
+    "TerminatorTelemetry.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [

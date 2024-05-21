@@ -14,42 +14,43 @@ Services.scriptloader.loadSubScript(
 );
 var { PageThumbsStorageMigrator } = tmp;
 
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "gDirSvc",
-  "@mozilla.org/file/directory_service;1",
-  "nsIProperties"
-);
-
 /**
  * This test makes sure we correctly migrate to thumbnail storage version 3.
  * This means copying existing thumbnails from the roaming to the local profile
  * directory and should just apply to Linux.
  */
-function* runTests() {
+async function runTests() {
   // Prepare a local profile directory.
-  let localProfile = FileUtils.getDir("ProfD", ["local-test"], true);
+  let localProfile = await IOUtils.getDirectory(
+    PathUtils.join(PathUtils.profileDir, "local-test")
+  );
   changeLocation("ProfLD", localProfile);
 
-  let roaming = FileUtils.getDir("ProfD", [THUMBNAIL_DIRECTORY], true);
+  let roaming = await IOUtils.getDirectory(
+    PathUtils.join(PathUtils.profileDir, THUMBNAIL_DIRECTORY)
+  );
 
   // Set up some data in the roaming profile.
   let name = PageThumbsStorageService.getLeafNameForURL(URL);
-  let file = FileUtils.getFile("ProfD", [THUMBNAIL_DIRECTORY, name]);
+  let file = await IOUtils.getFile(
+    PathUtils.profileDir,
+    THUMBNAIL_DIRECTORY,
+    name
+  );
   writeDummyFile(file);
 
   name = PageThumbsStorageService.getLeafNameForURL(URL2);
-  file = FileUtils.getFile("ProfD", [THUMBNAIL_DIRECTORY, name]);
+  file = await IOUtils.getFile(PathUtils.profileDir, THUMBNAIL_DIRECTORY, name);
   writeDummyFile(file);
 
   name = PageThumbsStorageService.getLeafNameForURL(URL3);
-  file = FileUtils.getFile("ProfD", [THUMBNAIL_DIRECTORY, name]);
+  file = await IOUtils.getFile(PathUtils.profileDir, THUMBNAIL_DIRECTORY, name);
   writeDummyFile(file);
 
   // Pretend to have one of the thumbnails
   // already in place at the new storage site.
   name = PageThumbsStorageService.getLeafNameForURL(URL3);
-  file = FileUtils.getFile("ProfLD", [THUMBNAIL_DIRECTORY, name]);
+  file = await IOUtils.getFile(PathUtils.profileDir, THUMBNAIL_DIRECTORY, name);
   writeDummyFile(file, "no-overwrite-plz");
 
   // Kick off thumbnail storage migration.
@@ -57,14 +58,14 @@ function* runTests() {
   ok(true, "migration finished");
 
   // Wait until the first thumbnail was moved to its new location.
-  yield whenFileExists(URL);
+  await whenFileExists(URL);
   ok(true, "first thumbnail moved");
 
   // Wait for the second thumbnail to be moved as well.
-  yield whenFileExists(URL2);
+  await whenFileExists(URL2);
   ok(true, "second thumbnail moved");
 
-  yield whenFileRemoved(roaming);
+  await whenFileRemoved(roaming);
   ok(true, "roaming thumbnail directory removed");
 
   // Check that our existing thumbnail wasn't overwritten.
@@ -76,13 +77,13 @@ function* runTests() {
 }
 
 function changeLocation(aLocation, aNewDir) {
-  let oldDir = gDirSvc.get(aLocation, Ci.nsIFile);
-  gDirSvc.undefine(aLocation);
-  gDirSvc.set(aLocation, aNewDir);
+  let oldDir = Services.dirsvc.get(aLocation, Ci.nsIFile);
+  Services.dirsvc.undefine(aLocation);
+  Services.dirsvc.set(aLocation, aNewDir);
 
-  registerCleanupFunction(function() {
-    gDirSvc.undefine(aLocation);
-    gDirSvc.set(aLocation, oldDir);
+  registerCleanupFunction(function () {
+    Services.dirsvc.undefine(aLocation);
+    Services.dirsvc.set(aLocation, oldDir);
   });
 }
 

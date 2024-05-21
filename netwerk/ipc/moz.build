@@ -19,9 +19,13 @@ EXPORTS.mozilla.net += [
     "NeckoTargetHolder.h",
     "ParentChannelWrapper.h",
     "ParentProcessDocumentChannel.h",
+    "ProxyAutoConfigChild.h",
+    "ProxyAutoConfigParent.h",
     "ProxyConfigLookup.h",
     "ProxyConfigLookupChild.h",
     "ProxyConfigLookupParent.h",
+    "SocketProcessBackgroundChild.h",
+    "SocketProcessBackgroundParent.h",
     "SocketProcessBridgeChild.h",
     "SocketProcessBridgeParent.h",
     "SocketProcessChild.h",
@@ -39,6 +43,7 @@ UNIFIED_SOURCES += [
     "InputChannelThrottleQueueChild.cpp",
     "InputChannelThrottleQueueParent.cpp",
     "NeckoChild.cpp",
+    "NeckoCommon.cpp",
     "NeckoParent.cpp",
     "NeckoTargetHolder.cpp",
     "ParentChannelWrapper.cpp",
@@ -46,6 +51,8 @@ UNIFIED_SOURCES += [
     "ProxyConfigLookup.cpp",
     "ProxyConfigLookupChild.cpp",
     "ProxyConfigLookupParent.cpp",
+    "SocketProcessBackgroundChild.cpp",
+    "SocketProcessBackgroundParent.cpp",
     "SocketProcessBridgeChild.cpp",
     "SocketProcessBridgeParent.cpp",
     "SocketProcessChild.cpp",
@@ -54,9 +61,16 @@ UNIFIED_SOURCES += [
     "SocketProcessParent.cpp",
 ]
 
+SOURCES += [
+    "ProxyAutoConfigChild.cpp",
+    "ProxyAutoConfigParent.cpp",
+]
+
+
 PREPROCESSED_IPDL_SOURCES += [
     "PNecko.ipdl",
     "PSocketProcess.ipdl",
+    "PSocketProcessBridge.ipdl",
 ]
 
 IPDL_SOURCES = [
@@ -65,9 +79,10 @@ IPDL_SOURCES = [
     "PDocumentChannel.ipdl",
     "PFileChannel.ipdl",
     "PInputChannelThrottleQueue.ipdl",
+    "PProxyAutoConfig.ipdl",
     "PProxyConfigLookup.ipdl",
     "PSimpleChannel.ipdl",
-    "PSocketProcessBridge.ipdl",
+    "PSocketProcessBackground.ipdl",
 ]
 
 # needed so --disable-webrtc builds work (yes, a bit messy)

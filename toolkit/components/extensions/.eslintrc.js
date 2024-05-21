@@ -6,13 +6,14 @@
 
 module.exports = {
   globals: {
-    // These are defined in the WebExtension script scopes by ExtensionCommon.jsm
+    // These are defined in the WebExtension script scopes by ExtensionCommon.sys.mjs
     Cc: true,
     Ci: true,
     Cr: true,
     Cu: true,
     AppConstants: true,
     ExtensionAPI: true,
+    ExtensionAPIPersistent: true,
     ExtensionCommon: true,
     ExtensionUtils: true,
     extensions: true,
@@ -27,24 +28,10 @@ module.exports = {
     "mozilla/balanced-listeners": "error",
     "mozilla/no-aArgs": "error",
     "mozilla/var-only-at-top-level": "error",
-
-    "valid-jsdoc": [
-      "error",
-      {
-        prefer: {
-          return: "returns",
-        },
-        preferType: {
-          Boolean: "boolean",
-          Number: "number",
-          String: "string",
-          bool: "boolean",
-        },
-        requireParamDescription: false,
-        requireReturn: false,
-        requireReturnDescription: false,
-      },
-    ],
+    // Disable reject-importGlobalProperties because we don't want to include
+    // these in the sandbox directly as that would potentially mean the
+    // imported properties would be instatiated up-front rather than lazily.
+    "mozilla/reject-importGlobalProperties": "off",
 
     // Functions are not required to consistently return something or nothing
     "consistent-return": "off",
@@ -69,8 +56,22 @@ module.exports = {
       },
     ],
 
-    // No using variables before defined
-    "no-use-before-define": "error",
+    // No using things before they're defined.
+    "no-use-before-define": [
+      "error",
+      {
+        allowNamedExports: true,
+        classes: true,
+        // The next two being false allows idiomatic patterns which are more
+        // type-inference friendly.  Functions are hoisted, so this is safe.
+        functions: false,
+        // This flag is only meaningful for `var` declarations.
+        // When false, it still disallows use-before-define in the same scope.
+        // Since we only allow `var` at the global scope, this is no worse than
+        // how we currently declare an uninitialized `let` at the top of file.
+        variables: false,
+      },
+    ],
 
     // Disallow using variables outside the blocks they are defined (especially
     // since only let and const are used, see "no-var").
@@ -119,12 +120,6 @@ module.exports = {
     // Allow use of bitwise operators.
     "no-bitwise": "off",
 
-    // Disallow using the console API.
-    "no-console": "error",
-
-    // Allow using constant expressions in conditions like while (true)
-    "no-constant-condition": "off",
-
     // Allow use of the continue statement.
     "no-continue": "off",
 
@@ -133,9 +128,6 @@ module.exports = {
 
     // Disallow adding to native types
     "no-extend-native": "error",
-
-    // Disallow fallthrough of case statements, except if there is a comment.
-    "no-fallthrough": "error",
 
     // Allow comments inline after code.
     "no-inline-comments": "off",

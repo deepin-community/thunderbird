@@ -3,11 +3,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import print_function, absolute_import, unicode_literals
 import os
-import sys
 import subprocess
-import six
+import sys
+
 from mozbuild.util import system_encoding
 
 # This script is a wrapper for Botan's configure.py to adapt it for moz.build.
@@ -76,11 +75,14 @@ configure = os.path.join(here, "configure.py")
 # from build/moz.configure/util.configure
 def get_cmd_output(*args, **kwargs):
     proc = subprocess.Popen(
-        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=os.name != "nt"
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        close_fds=os.name != "nt",
+        encoding=system_encoding,
+        errors="replace",
     )
     stdout, stderr = proc.communicate()
-    stdout = six.ensure_text(stdout, encoding=system_encoding, errors="replace")
-    stderr = six.ensure_text(stderr, encoding=system_encoding, errors="replace")
     return proc.wait(), stdout, stderr
 
 
@@ -106,6 +108,8 @@ def main(output, *args):
             with open(output.name, "r") as fp:
                 data = fp.read()
                 output.write(data)
+        if os.path.isfile("CMakeLists.txt"):
+            os.remove("CMakeLists.txt")
         else:
             # Probably an error
             raise Exception("Unable to locate real output at {}".format(output.name))

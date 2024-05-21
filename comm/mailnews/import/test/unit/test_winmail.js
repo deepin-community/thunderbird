@@ -42,6 +42,7 @@ var expectedNewsMozillaOrgAccount = {
     hostName: "testnews.mozilla.org",
     prettyName: "accountnamemozillanews",
     port: 119,
+    username: "",
     socketType: 0,
     isSecure: false,
     authMethod: Ci.nsMsgAuthMethod.passwordCleartext,
@@ -61,6 +62,7 @@ var expectedMicrosoftCommunitiesAccount = {
     hostName: "testmsnews.microsoft.invalid",
     prettyName: "Microsoft Communities Test",
     port: 119,
+    username: "",
     socketType: 0,
     isSecure: false,
     authMethod: Ci.nsMsgAuthMethod.passwordCleartext,
@@ -163,7 +165,7 @@ function _test(registry) {
 }
 
 function teardown() {
-  for (let server of MailServices.smtp.servers) {
+  for (const server of MailServices.smtp.servers) {
     MailServices.smtp.deleteServer(server);
   }
 
@@ -171,6 +173,6 @@ function teardown() {
 }
 
 function run_test() {
-  let root = do_get_file("resources/WindowsLiveMail");
+  const root = do_get_file("resources/WindowsLiveMail");
   _test(new WinLiveMailRegistry(root.path));
 }

@@ -7,10 +7,9 @@
 #[cfg(feature = "servo")]
 use crate::properties::StyleBuilder;
 use crate::values::computed::length::{Length, LengthPercentage};
-use crate::values::computed::{Context, NonNegativeLength, NonNegativeNumber, ToComputedValue};
+use crate::values::computed::{Context, ToComputedValue};
 use crate::values::generics::text::InitialLetter as GenericInitialLetter;
-use crate::values::generics::text::LineHeight as GenericLineHeight;
-use crate::values::generics::text::{GenericTextDecorationLength, Spacing};
+use crate::values::generics::text::{GenericTextDecorationLength, GenericTextIndent, Spacing};
 use crate::values::specified::text::{self as specified, TextOverflowSide};
 use crate::values::specified::text::{TextEmphasisFillMode, TextEmphasisShapeKeyword};
 use crate::values::{CSSFloat, CSSInteger};
@@ -18,7 +17,10 @@ use crate::Zero;
 use std::fmt::{self, Write};
 use style_traits::{CssWriter, ToCss};
 
-pub use crate::values::specified::text::{TextAlignLast, TextUnderlinePosition, MozControlCharacterVisibility};
+pub use crate::values::specified::text::{
+    MozControlCharacterVisibility, TextAlignLast, TextUnderlinePosition,
+};
+pub use crate::values::specified::HyphenateCharacter;
 pub use crate::values::specified::{LineBreak, OverflowWrap, RubyPosition, WordBreak};
 pub use crate::values::specified::{TextDecorationLine, TextEmphasisPosition};
 pub use crate::values::specified::{TextDecorationSkipInk, TextJustify, TextTransform};
@@ -31,6 +33,9 @@ pub type TextDecorationLength = GenericTextDecorationLength<LengthPercentage>;
 
 /// The computed value of `text-align`.
 pub type TextAlign = specified::TextAlignKeyword;
+
+/// The computed value of `text-indent`.
+pub type TextIndent = GenericTextIndent<LengthPercentage>;
 
 /// A computed value for the `letter-spacing` property.
 #[repr(transparent)]
@@ -107,9 +112,6 @@ impl ToComputedValue for specified::WordSpacing {
     }
 }
 
-/// A computed value for the `line-height` property.
-pub type LineHeight = GenericLineHeight<NonNegativeNumber, NonNegativeLength>;
-
 impl WordSpacing {
     /// Return the `normal` computed value, which is just zero.
     #[inline]
@@ -158,7 +160,7 @@ impl ToCss for TextOverflow {
             self.second.to_css(dest)?;
         } else {
             self.first.to_css(dest)?;
-            dest.write_str(" ")?;
+            dest.write_char(' ')?;
             self.second.to_css(dest)?;
         }
         Ok(())

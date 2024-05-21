@@ -11,10 +11,16 @@ import threading
 
 from mozdevice import ADBDevice
 from mozlog import get_proxy_logger
-from mozperftest.layers import Layer
-from mozperftest.utils import download_file, install_package, get_output_dir
 from mozprocess import ProcessHandler
 
+from mozperftest.layers import Layer
+from mozperftest.utils import (
+    ON_TRY,
+    download_file,
+    get_output_dir,
+    get_pretty_app_name,
+    install_package,
+)
 
 LOG = get_proxy_logger(component="proxy")
 HERE = os.path.dirname(__file__)
@@ -85,6 +91,21 @@ class ProxyRunner(Layer):
             "or a URL to zip/manifest file. "
             "For recording, it's a zip fle.",
         },
+        "perftest-page": {
+            "type": str,
+            "default": None,
+            "help": "This option can be used to specify a single test to record rather than "
+            "having to continuously modify the pageload_sites.json. This flag should only be "
+            "used by the perftest team and selects items from "
+            "`testing/performance/pageload_sites.json` based on the name field. Note that "
+            "the login fields won't be checked with a request such as this (i.e. it overrides "
+            "those settings).",
+        },
+        "deterministic": {
+            "action": "store_true",
+            "default": False,
+            "help": "If set, the deterministic JS script will be injected into the pages.",
+        },
     }
 
     def __init__(self, env, mach_cmd):
@@ -128,15 +149,20 @@ class ProxyRunner(Layer):
             self.mach_cmd.virtualenv_manager.python_path,
             "-m",
             "mozproxy.driver",
-            "--local",
             "--topsrcdir=" + self.mach_cmd.topsrcdir,
             "--objdir=" + self.mach_cmd.topobjdir,
             "--profiledir=" + self.get_arg("profile-directory"),
         ]
 
+        if not ON_TRY:
+            command.extend(["--local"])
+
         if metadata.flavor == "mobile-browser":
             command.extend(["--tool=%s" % "mitmproxy-android"])
             command.extend(["--binary=android"])
+            command.extend(
+                [f"--app={get_pretty_app_name(self.get_arg('android-app-name'))}"]
+            )
         else:
             command.extend(["--tool=%s" % "mitmproxy"])
             # XXX See bug 1712337, we need a single point where we can get the binary used from
@@ -159,6 +185,10 @@ class ProxyRunner(Layer):
             command.append(str(replay_file))
         else:
             raise ValueError("Proxy mode not provided please provide proxy mode")
+
+        inject_deterministic = self.get_arg("deterministic")
+        if inject_deterministic:
+            command.extend(["--deterministic"])
 
         print(" ".join(command))
         self.output_handler = OutputHandler()

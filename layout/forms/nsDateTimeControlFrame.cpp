@@ -64,11 +64,11 @@ nscoord nsDateTimeControlFrame::GetPrefISize(gfxContext* aRenderingContext) {
   return result;
 }
 
-bool nsDateTimeControlFrame::GetNaturalBaselineBOffset(
-    mozilla::WritingMode aWM, BaselineSharingGroup aBaselineGroup,
-    nscoord* aBaseline) const {
+Maybe<nscoord> nsDateTimeControlFrame::GetNaturalBaselineBOffset(
+    WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+    BaselineExportContext) const {
   return nsTextControlFrame::GetSingleLineTextControlBaseline(
-      this, mFirstBaseline, aWM, aBaselineGroup, aBaseline);
+      this, mFirstBaseline, aWM, aBaselineGroup);
 }
 
 void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
@@ -135,9 +135,8 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
     LogicalMargin childMargin = childReflowInput.ComputedLogicalMargin(myWM);
 
     // offsets of input area frame within this frame:
-    LogicalPoint childOffset(
-        myWM, borderPadding.IStart(myWM) + childMargin.IStart(myWM),
-        borderPadding.BStart(myWM) + childMargin.BStart(myWM));
+    LogicalPoint childOffset =
+        borderPadding.StartOffset(myWM) + childMargin.StartOffset(myWM);
 
     nsReflowStatus childStatus;
     // We initially reflow the child with a dummy containerSize; positioning
@@ -155,17 +154,16 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
 
     if (contentBoxBSize == NS_UNCONSTRAINEDSIZE) {
       // We are intrinsically sized -- we should shrinkwrap the input area's
-      // block-size:
-      contentBoxBSize = childMarginBoxBSize;
+      // block-size, or our line-height:
+      contentBoxBSize =
+          std::max(aReflowInput.GetLineHeight(), childMarginBoxBSize);
 
       // Make sure we obey min/max-bsize in the case when we're doing intrinsic
       // sizing (we get it for free when we have a non-intrinsic
       // aReflowInput.ComputedBSize()).  Note that we do this before
       // adjusting for borderpadding, since ComputedMaxBSize and
       // ComputedMinBSize are content heights.
-      contentBoxBSize =
-          NS_CSS_MINMAX(contentBoxBSize, aReflowInput.ComputedMinBSize(),
-                        aReflowInput.ComputedMaxBSize());
+      contentBoxBSize = aReflowInput.ApplyMinMaxBSize(contentBoxBSize);
 
       borderBoxBSize = contentBoxBSize + borderPadding.BStartEnd(myWM);
     }
@@ -186,7 +184,6 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
 
   LogicalSize logicalDesiredSize(myWM, borderBoxISize, borderBoxBSize);
   aDesiredSize.SetSize(myWM, logicalDesiredSize);
-
   aDesiredSize.SetOverflowAreasToDesiredBounds();
 
   if (inputAreaFrame) {
@@ -198,5 +195,4 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
   NS_FRAME_TRACE(NS_FRAME_TRACE_CALLS,
                  ("exit nsDateTimeControlFrame::Reflow: size=%d,%d",
                   aDesiredSize.Width(), aDesiredSize.Height()));
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }

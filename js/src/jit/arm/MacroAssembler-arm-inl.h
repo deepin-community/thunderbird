@@ -32,6 +32,10 @@ void MacroAssembler::moveGPRToFloat32(Register src, FloatRegister dest) {
   ma_vxfer(src, dest);
 }
 
+void MacroAssembler::move8ZeroExtend(Register src, Register dest) {
+  as_uxtb(dest, src, 0);
+}
+
 void MacroAssembler::move8SignExtend(Register src, Register dest) {
   as_sxtb(dest, src, 0);
 }
@@ -267,6 +271,11 @@ void MacroAssembler::add32(Imm32 imm, Register dest) {
   ma_add(imm, dest, scratch, SetCC);
 }
 
+void MacroAssembler::add32(Imm32 imm, Register src, Register dest) {
+  ScratchRegisterScope scratch(*this);
+  ma_add(src, imm, dest, scratch, SetCC);
+}
+
 void MacroAssembler::add32(Imm32 imm, const Address& dest) {
   ScratchRegisterScope scratch(*this);
   SecondScratchRegisterScope scratch2(*this);
@@ -406,6 +415,17 @@ void MacroAssembler::subFloat32(FloatRegister src, FloatRegister dest) {
 
 void MacroAssembler::mul32(Register rhs, Register srcDest) {
   as_mul(srcDest, srcDest, rhs);
+}
+
+void MacroAssembler::mul32(Imm32 imm, Register srcDest) {
+  ScratchRegisterScope scratch(*this);
+  move32(imm, scratch);
+  mul32(scratch, srcDest);
+}
+
+void MacroAssembler::mulHighUnsigned32(Imm32 imm, Register src, Register dest) {
+  ScratchRegisterScope scratch(*this);
+  ma_umull(src, imm, dest, scratch, scratch);
 }
 
 void MacroAssembler::mulPtr(Register rhs, Register srcDest) {
@@ -968,10 +988,100 @@ void MacroAssembler::rotateRight64(Register shift, Register64 src,
 // ===============================================================
 // Condition functions
 
+void MacroAssembler::cmp8Set(Condition cond, Address lhs, Imm32 rhs,
+                             Register dest) {
+  ScratchRegisterScope scratch(*this);
+  SecondScratchRegisterScope scratch2(*this);
+
+  // Inlined calls to load8{Zero,Sign}Extend() and cmp32Set() to acquire
+  // exclusive access to scratch registers.
+
+  bool isSigned;
+  Imm32 imm(0);
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      isSigned = false;
+      imm = Imm32(uint8_t(rhs.value));
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      isSigned = true;
+      imm = Imm32(int8_t(rhs.value));
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+
+  ma_dataTransferN(IsLoad, 8, isSigned, lhs.base, Imm32(lhs.offset), scratch,
+                   scratch2);
+  ma_cmp(scratch, imm, scratch2);
+  emitSet(cond, dest);
+}
+
+void MacroAssembler::cmp16Set(Condition cond, Address lhs, Imm32 rhs,
+                              Register dest) {
+  ScratchRegisterScope scratch(*this);
+  SecondScratchRegisterScope scratch2(*this);
+
+  // Inlined calls to load16{Zero,Sign}Extend() and cmp32Set() to acquire
+  // exclusive access to scratch registers.
+
+  bool isSigned;
+  Imm32 imm(0);
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      isSigned = false;
+      imm = Imm32(uint16_t(rhs.value));
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      isSigned = true;
+      imm = Imm32(int16_t(rhs.value));
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+
+  ma_dataTransferN(IsLoad, 16, isSigned, lhs.base, Imm32(lhs.offset), scratch,
+                   scratch2);
+  ma_cmp(scratch, imm, scratch2);
+  emitSet(cond, dest);
+}
+
 template <typename T1, typename T2>
 void MacroAssembler::cmp32Set(Condition cond, T1 lhs, T2 rhs, Register dest) {
   cmp32(lhs, rhs);
   emitSet(cond, dest);
+}
+
+void MacroAssembler::cmp64Set(Condition cond, Address lhs, Imm64 rhs,
+                              Register dest) {
+  Label success, done;
+
+  branch64(cond, lhs, rhs, &success);
+  move32(Imm32(0), dest);
+  jump(&done);
+  bind(&success);
+  move32(Imm32(1), dest);
+  bind(&done);
 }
 
 template <typename T1, typename T2>
@@ -1060,6 +1170,147 @@ void MacroAssembler::popcnt64(Register64 src, Register64 dest, Register tmp) {
 
 // ===============================================================
 // Branch functions
+
+void MacroAssembler::branch8(Condition cond, const Address& lhs, Imm32 rhs,
+                             Label* label) {
+  ScratchRegisterScope scratch(*this);
+  SecondScratchRegisterScope scratch2(*this);
+
+  // Inlined calls to load8{Zero,Sign}Extend() and branch32() to acquire
+  // exclusive access to scratch registers.
+
+  bool isSigned;
+  Imm32 imm(0);
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      isSigned = false;
+      imm = Imm32(uint8_t(rhs.value));
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      isSigned = true;
+      imm = Imm32(int8_t(rhs.value));
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+
+  ma_dataTransferN(IsLoad, 8, isSigned, lhs.base, Imm32(lhs.offset), scratch,
+                   scratch2);
+  ma_cmp(scratch, imm, scratch2);
+  ma_b(label, cond);
+}
+
+void MacroAssembler::branch8(Condition cond, const BaseIndex& lhs, Register rhs,
+                             Label* label) {
+  ScratchRegisterScope scratch(*this);
+  SecondScratchRegisterScope scratch2(*this);
+
+  // Inlined calls to load8{Zero,Sign}Extend() and branch32() to acquire
+  // exclusive access to scratch registers.
+
+  bool isSigned;
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      isSigned = false;
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      isSigned = true;
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+
+  if (isSigned) {
+    Register index = lhs.index;
+
+    // ARMv7 does not have LSL on an index register with an extended load.
+    if (lhs.scale != TimesOne) {
+      ma_lsl(Imm32::ShiftOf(lhs.scale), index, scratch);
+      index = scratch;
+    }
+
+    if (lhs.offset != 0) {
+      if (index != scratch) {
+        ma_mov(index, scratch);
+        index = scratch;
+      }
+      ma_add(Imm32(lhs.offset), index, scratch2);
+    }
+    ma_ldrsb(EDtrAddr(lhs.base, EDtrOffReg(index)), scratch);
+  } else {
+    Register base = lhs.base;
+    uint32_t scale = Imm32::ShiftOf(lhs.scale).value;
+
+    if (lhs.offset == 0) {
+      ma_ldrb(DTRAddr(base, DtrRegImmShift(lhs.index, LSL, scale)), scratch);
+    } else {
+      ma_add(base, Imm32(lhs.offset), scratch, scratch2);
+      ma_ldrb(DTRAddr(scratch, DtrRegImmShift(lhs.index, LSL, scale)), scratch);
+    }
+  }
+
+  ma_cmp(scratch, rhs);
+  ma_b(label, cond);
+}
+
+void MacroAssembler::branch16(Condition cond, const Address& lhs, Imm32 rhs,
+                              Label* label) {
+  ScratchRegisterScope scratch(*this);
+  SecondScratchRegisterScope scratch2(*this);
+
+  // Inlined calls to load16{Zero,Sign}Extend() and branch32() to acquire
+  // exclusive access to scratch registers.
+
+  bool isSigned;
+  Imm32 imm(0);
+  switch (cond) {
+    case Assembler::Equal:
+    case Assembler::NotEqual:
+    case Assembler::Above:
+    case Assembler::AboveOrEqual:
+    case Assembler::Below:
+    case Assembler::BelowOrEqual:
+      isSigned = false;
+      imm = Imm32(uint16_t(rhs.value));
+      break;
+
+    case Assembler::GreaterThan:
+    case Assembler::GreaterThanOrEqual:
+    case Assembler::LessThan:
+    case Assembler::LessThanOrEqual:
+      isSigned = true;
+      imm = Imm32(int16_t(rhs.value));
+      break;
+
+    default:
+      MOZ_CRASH("unexpected condition");
+  }
+
+  ma_dataTransferN(IsLoad, 16, isSigned, lhs.base, Imm32(lhs.offset), scratch,
+                   scratch2);
+  ma_cmp(scratch, imm, scratch2);
+  ma_b(label, cond);
+}
 
 template <class L>
 void MacroAssembler::branch32(Condition cond, Register lhs, Register rhs,
@@ -1176,28 +1427,62 @@ void MacroAssembler::branch32(Condition cond, wasm::SymbolicAddress lhs,
 
 void MacroAssembler::branch64(Condition cond, const Address& lhs, Imm64 val,
                               Label* label) {
-  MOZ_ASSERT(cond == Assembler::NotEqual,
+  MOZ_ASSERT(cond == Assembler::NotEqual || cond == Assembler::Equal,
              "other condition codes not supported");
 
-  branch32(cond, lhs, val.firstHalf(), label);
+  Label done;
+
+  if (cond == Assembler::Equal) {
+    branch32(Assembler::NotEqual, lhs, val.firstHalf(), &done);
+  } else {
+    branch32(Assembler::NotEqual, lhs, val.firstHalf(), label);
+  }
   branch32(cond, Address(lhs.base, lhs.offset + sizeof(uint32_t)),
            val.secondHalf(), label);
+
+  bind(&done);
+}
+
+void MacroAssembler::branch64(Condition cond, const Address& lhs,
+                              Register64 rhs, Label* label) {
+  MOZ_ASSERT(cond == Assembler::NotEqual || cond == Assembler::Equal,
+             "other condition codes not supported");
+
+  Label done;
+
+  if (cond == Assembler::Equal) {
+    branch32(Assembler::NotEqual, lhs, rhs.low, &done);
+  } else {
+    branch32(Assembler::NotEqual, lhs, rhs.low, label);
+  }
+  branch32(cond, Address(lhs.base, lhs.offset + sizeof(uint32_t)), rhs.high,
+           label);
+
+  bind(&done);
 }
 
 void MacroAssembler::branch64(Condition cond, const Address& lhs,
                               const Address& rhs, Register scratch,
                               Label* label) {
-  MOZ_ASSERT(cond == Assembler::NotEqual,
+  MOZ_ASSERT(cond == Assembler::NotEqual || cond == Assembler::Equal,
              "other condition codes not supported");
   MOZ_ASSERT(lhs.base != scratch);
   MOZ_ASSERT(rhs.base != scratch);
 
+  Label done;
+
   load32(rhs, scratch);
-  branch32(cond, lhs, scratch, label);
+  if (cond == Assembler::Equal) {
+    branch32(Assembler::NotEqual, lhs, scratch, &done);
+  } else {
+    branch32(Assembler::NotEqual, lhs, scratch, label);
+  }
 
   load32(Address(rhs.base, rhs.offset + sizeof(uint32_t)), scratch);
   branch32(cond, Address(lhs.base, lhs.offset + sizeof(uint32_t)), scratch,
            label);
+
+  bind(&done);
 }
 
 void MacroAssembler::branch64(Condition cond, Register64 lhs, Imm64 val,
@@ -1529,6 +1814,14 @@ void MacroAssembler::branchRshift32(Condition cond, T src, Register dest,
 void MacroAssembler::branchNeg32(Condition cond, Register reg, Label* label) {
   MOZ_ASSERT(cond == Overflow);
   neg32(reg);
+  j(cond, label);
+}
+
+void MacroAssembler::branchAdd64(Condition cond, Imm64 imm, Register64 dest,
+                                 Label* label) {
+  ScratchRegisterScope scratch(*this);
+  ma_add(imm.low(), dest.low, scratch, SetCC);
+  ma_adc(imm.hi(), dest.high, scratch, SetCC);
   j(cond, label);
 }
 
@@ -2023,6 +2316,41 @@ void MacroAssembler::branchTestValue(Condition cond, const BaseIndex& lhs,
   bind(&notSameValue);
 }
 
+template <typename T>
+void MacroAssembler::testNumberSet(Condition cond, const T& src,
+                                   Register dest) {
+  cond = testNumber(cond, src);
+  emitSet(cond, dest);
+}
+
+template <typename T>
+void MacroAssembler::testBooleanSet(Condition cond, const T& src,
+                                    Register dest) {
+  cond = testBoolean(cond, src);
+  emitSet(cond, dest);
+}
+
+template <typename T>
+void MacroAssembler::testStringSet(Condition cond, const T& src,
+                                   Register dest) {
+  cond = testString(cond, src);
+  emitSet(cond, dest);
+}
+
+template <typename T>
+void MacroAssembler::testSymbolSet(Condition cond, const T& src,
+                                   Register dest) {
+  cond = testSymbol(cond, src);
+  emitSet(cond, dest);
+}
+
+template <typename T>
+void MacroAssembler::testBigIntSet(Condition cond, const T& src,
+                                   Register dest) {
+  cond = testBigInt(cond, src);
+  emitSet(cond, dest);
+}
+
 void MacroAssembler::branchToComputedAddress(const BaseIndex& addr) {
   MOZ_ASSERT(
       addr.offset == 0,
@@ -2038,6 +2366,12 @@ void MacroAssembler::branchToComputedAddress(const BaseIndex& addr) {
     // add one extra instruction to accomodate for this shifted offset.
     breakpoint();
   }
+}
+
+void MacroAssembler::cmp32Move32(Condition cond, Register lhs, Imm32 rhs,
+                                 Register src, Register dest) {
+  cmp32(lhs, rhs);
+  ma_mov(src, dest, LeaveCC, cond);
 }
 
 void MacroAssembler::cmp32Move32(Condition cond, Register lhs, Register rhs,
@@ -2083,6 +2417,13 @@ void MacroAssembler::cmp32Load32(Condition cond, Register lhs, Register rhs,
                                  const Address& src, Register dest) {
   // This is never used, but must be present to facilitate linking on arm.
   MOZ_CRASH("No known use cases");
+}
+
+void MacroAssembler::cmp32Load32(Condition cond, Register lhs, Imm32 rhs,
+                                 const Address& src, Register dest) {
+  cmp32(lhs, rhs);
+  ScratchRegisterScope scratch(*this);
+  ma_ldr(src, dest, scratch, Offset, cond);
 }
 
 void MacroAssembler::cmp32LoadPtr(Condition cond, const Address& lhs, Imm32 rhs,
@@ -2160,31 +2501,36 @@ void MacroAssembler::spectreBoundsCheckPtr(Register index,
 
 // ========================================================================
 // Memory access primitives.
-void MacroAssembler::storeUncanonicalizedDouble(FloatRegister src,
-                                                const Address& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedDouble(
+    FloatRegister src, const Address& addr) {
   ScratchRegisterScope scratch(*this);
-  ma_vstr(src, addr, scratch);
+  BufferOffset offset = ma_vstr(src, addr, scratch);
+  return FaultingCodeOffset(offset.getOffset());
 }
-void MacroAssembler::storeUncanonicalizedDouble(FloatRegister src,
-                                                const BaseIndex& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedDouble(
+    FloatRegister src, const BaseIndex& addr) {
   ScratchRegisterScope scratch(*this);
   SecondScratchRegisterScope scratch2(*this);
   uint32_t scale = Imm32::ShiftOf(addr.scale).value;
-  ma_vstr(src, addr.base, addr.index, scratch, scratch2, scale, addr.offset);
+  BufferOffset offset = ma_vstr(src, addr.base, addr.index, scratch, scratch2,
+                                scale, addr.offset);
+  return FaultingCodeOffset(offset.getOffset());
 }
 
-void MacroAssembler::storeUncanonicalizedFloat32(FloatRegister src,
-                                                 const Address& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedFloat32(
+    FloatRegister src, const Address& addr) {
   ScratchRegisterScope scratch(*this);
-  ma_vstr(src.asSingle(), addr, scratch);
+  BufferOffset offset = ma_vstr(src.asSingle(), addr, scratch);
+  return FaultingCodeOffset(offset.getOffset());
 }
-void MacroAssembler::storeUncanonicalizedFloat32(FloatRegister src,
-                                                 const BaseIndex& addr) {
+FaultingCodeOffset MacroAssembler::storeUncanonicalizedFloat32(
+    FloatRegister src, const BaseIndex& addr) {
   ScratchRegisterScope scratch(*this);
   SecondScratchRegisterScope scratch2(*this);
   uint32_t scale = Imm32::ShiftOf(addr.scale).value;
-  ma_vstr(src.asSingle(), addr.base, addr.index, scratch, scratch2, scale,
-          addr.offset);
+  BufferOffset offset = ma_vstr(src.asSingle(), addr.base, addr.index, scratch,
+                                scratch2, scale, addr.offset);
+  return FaultingCodeOffset(offset.getOffset());
 }
 
 void MacroAssembler::memoryBarrier(MemoryBarrierBits barrier) {

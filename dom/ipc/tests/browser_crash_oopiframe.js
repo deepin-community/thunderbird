@@ -1,14 +1,5 @@
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "TelemetryTestUtils",
-  "resource://testing-common/TelemetryTestUtils.jsm"
-);
-
-const SUBFRAME_CRASH_PRESENTED_KEY =
-  "dom.contentprocess.crash_subframe_ui_presented";
-
 /**
  * Opens a number of tabs containing an out-of-process iframe.
  *
@@ -48,8 +39,6 @@ async function openTestTabs(numTabs) {
  * @param numTabs the number of tabs to open.
  */
 async function testFrameCrash(numTabs) {
-  Services.telemetry.clearScalars();
-
   let iframeBC = await openTestTabs(numTabs);
   let browser = gBrowser.selectedBrowser;
   let rootBC = browser.browsingContext;
@@ -77,7 +66,7 @@ async function testFrameCrash(numTabs) {
   info("Waiting for oop-browser-crashed event.");
   await eventFiredPromise.then(event => {
     ok(!event.isTopFrame, "should not be reporting top-level frame crash");
-    ok(event.childID != 0, "childID is non-zero");
+    Assert.notEqual(event.childID, 0, "childID is non-zero");
 
     isnot(
       event.browsingContextId,
@@ -95,10 +84,9 @@ async function testFrameCrash(numTabs) {
   if (numTabs == 1) {
     // The BrowsingContext is re-used, but the window global might still be
     // getting set up at this point, so wait until it's been initialized.
-    let {
-      subject: windowGlobal,
-    } = await BrowserUtils.promiseObserved("window-global-created", wgp =>
-      wgp.documentURI.spec.startsWith("about:framecrashed")
+    let { subject: windowGlobal } = await BrowserUtils.promiseObserved(
+      "window-global-created",
+      wgp => wgp.documentURI.spec.startsWith("about:framecrashed")
     );
 
     is(
@@ -126,33 +114,6 @@ async function testFrameCrash(numTabs) {
   // Next, check that the crash notification bar has appeared.
   await notificationPromise;
 
-  TelemetryTestUtils.assertScalar(
-    TelemetryTestUtils.getProcessScalars("parent"),
-    SUBFRAME_CRASH_PRESENTED_KEY,
-    1,
-    "Subframe crashed ui count"
-  );
-
-  if (numTabs > 1) {
-    // Showing another tab should increase the subframe crash UI telemetry probe as the other
-    // notification will now be visible.
-    await BrowserTestUtils.switchTab(gBrowser, gBrowser.tabs[1]);
-    TelemetryTestUtils.assertScalar(
-      TelemetryTestUtils.getProcessScalars("parent"),
-      SUBFRAME_CRASH_PRESENTED_KEY,
-      2,
-      "Subframe crashed ui count after switching tab"
-    );
-
-    await BrowserTestUtils.switchTab(gBrowser, gBrowser.tabs[2]);
-    TelemetryTestUtils.assertScalar(
-      TelemetryTestUtils.getProcessScalars("parent"),
-      SUBFRAME_CRASH_PRESENTED_KEY,
-      3,
-      "Subframe crashed ui count after switching tab again"
-    );
-  }
-
   for (let count = 1; count <= numTabs; count++) {
     let notificationBox = gBrowser.getNotificationBox(gBrowser.browsers[count]);
     let notification = notificationBox.currentNotification;
@@ -171,11 +132,15 @@ async function testFrameCrash(numTabs) {
       1,
       "Notification " + count + " should have only one button."
     );
-    let links = notification.messageText.querySelectorAll(".text-link");
+    let links = notification.supportLinkEls;
     is(
       links.length,
       1,
       "Notification " + count + " should have only one link."
+    );
+    ok(
+      notification.messageText.textContent.length,
+      "Notification " + count + " should have a crash msg."
     );
   }
 
@@ -202,13 +167,6 @@ async function testFrameCrash(numTabs) {
   for (let count = 1; count <= numTabs; count++) {
     BrowserTestUtils.removeTab(gBrowser.selectedTab);
   }
-
-  TelemetryTestUtils.assertScalar(
-    TelemetryTestUtils.getProcessScalars("parent"),
-    SUBFRAME_CRASH_PRESENTED_KEY,
-    numTabs > 1 ? 3 : 1,
-    "Subframe crashed ui count at end of test"
-  );
 }
 
 /**
@@ -225,10 +183,6 @@ add_task(async function test_crashframe() {
     SpecialPowers.useRemoteSubframes,
     "This test only makes sense of we can use OOP iframes."
   );
-
-  await SpecialPowers.pushPrefEnv({
-    set: [["dom.security.enforceIPCBasedPrincipalVetting", false]],
-  });
 
   // Create the crash reporting directory if it doesn't yet exist, otherwise, a failure
   // sometimes occurs. See bug 1687855 for fixing this.
@@ -248,6 +202,15 @@ add_task(async function test_nominidump() {
     let iframeBC = await openTestTabs(1);
 
     let childID = iframeBC.currentWindowGlobal.domProcess.childID;
+
+    let notificationPromise;
+    if (dumpID) {
+      notificationPromise = BrowserTestUtils.waitForNotificationBar(
+        gBrowser,
+        gBrowser.selectedBrowser,
+        "subframe-crashed"
+      );
+    }
 
     gBrowser.selectedBrowser.dispatchEvent(
       new FrameCrashedEvent("oop-browser-crashed", {
@@ -269,6 +232,7 @@ add_task(async function test_nominidump() {
 
     Services.obs.notifyObservers(bag, "ipc:content-shutdown");
 
+    await notificationPromise;
     let notificationBox = gBrowser.getNotificationBox(gBrowser.selectedBrowser);
     let notification = notificationBox.currentNotification;
     ok(

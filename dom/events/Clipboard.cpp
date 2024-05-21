@@ -4,14 +4,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mozilla/dom/Clipboard.h"
+
+#include <algorithm>
+
 #include "mozilla/AbstractThread.h"
 #include "mozilla/BasePrincipal.h"
+#include "mozilla/RefPtr.h"
 #include "mozilla/Result.h"
 #include "mozilla/ResultVariant.h"
 #include "mozilla/dom/BlobBinding.h"
-#include "mozilla/dom/Clipboard.h"
 #include "mozilla/dom/ClipboardItem.h"
 #include "mozilla/dom/ClipboardBinding.h"
+#include "mozilla/dom/ContentChild.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/PromiseNativeHandler.h"
 #include "mozilla/dom/DataTransfer.h"
@@ -24,13 +29,17 @@
 #include "nsArrayUtils.h"
 #include "nsComponentManagerUtils.h"
 #include "nsContentUtils.h"
+#include "nsGlobalWindowInner.h"
 #include "nsIClipboard.h"
 #include "nsIInputStream.h"
 #include "nsIParserUtils.h"
+#include "nsISupportsPrimitives.h"
 #include "nsITransferable.h"
 #include "nsNetUtil.h"
 #include "nsServiceManagerUtils.h"
 #include "nsStringStream.h"
+#include "nsTArray.h"
+#include "nsThreadUtils.h"
 #include "nsVariant.h"
 
 static mozilla::LazyLogModule gClipboardLog("Clipboard");
@@ -42,123 +51,335 @@ Clipboard::Clipboard(nsPIDOMWindowInner* aWindow)
 
 Clipboard::~Clipboard() = default;
 
-already_AddRefed<Promise> Clipboard::ReadHelper(
-    nsIPrincipal& aSubjectPrincipal, ClipboardReadType aClipboardReadType,
-    ErrorResult& aRv) {
+// static
+bool Clipboard::IsTestingPrefEnabledOrHasReadPermission(
+    nsIPrincipal& aSubjectPrincipal) {
+  return IsTestingPrefEnabled() ||
+         nsContentUtils::PrincipalHasPermission(aSubjectPrincipal,
+                                                nsGkAtoms::clipboardRead);
+}
+
+namespace {
+
+/**
+ * This is a base class for ClipboardGetCallbackForRead and
+ * ClipboardGetCallbackForReadText.
+ */
+class ClipboardGetCallback : public nsIAsyncClipboardGetCallback {
+ public:
+  explicit ClipboardGetCallback(RefPtr<Promise>&& aPromise)
+      : mPromise(std::move(aPromise)) {}
+
+  // nsIAsyncClipboardGetCallback
+  NS_IMETHOD OnError(nsresult aResult) override final {
+    MOZ_ASSERT(mPromise);
+    RefPtr<Promise> p(std::move(mPromise));
+    p->MaybeRejectWithNotAllowedError(
+        "Clipboard read operation is not allowed.");
+    return NS_OK;
+  }
+
+ protected:
+  virtual ~ClipboardGetCallback() { MOZ_ASSERT(!mPromise); };
+
+  // Not cycle-collected, because it should be nulled when the request is
+  // answered, rejected or aborted.
+  RefPtr<Promise> mPromise;
+};
+
+static nsTArray<nsCString> MandatoryDataTypesAsCStrings() {
+  // Mandatory data types defined in
+  // https://w3c.github.io/clipboard-apis/#mandatory-data-types-x. The types
+  // should be in the same order as kNonPlainTextExternalFormats in
+  // DataTransfer.
+  return nsTArray<nsCString>{nsLiteralCString(kHTMLMime),
+                             nsLiteralCString(kTextMime),
+                             nsLiteralCString(kPNGImageMime)};
+}
+
+class ClipboardGetCallbackForRead final : public ClipboardGetCallback {
+ public:
+  explicit ClipboardGetCallbackForRead(nsIGlobalObject* aGlobal,
+                                       RefPtr<Promise>&& aPromise)
+      : ClipboardGetCallback(std::move(aPromise)), mGlobal(aGlobal) {}
+
+  // This object will never be held by a cycle-collected object, so it doesn't
+  // need to be cycle-collected despite holding alive cycle-collected objects.
+  NS_DECL_ISUPPORTS
+
+  // nsIAsyncClipboardGetCallback
+  NS_IMETHOD OnSuccess(
+      nsIAsyncGetClipboardData* aAsyncGetClipboardData) override {
+    MOZ_ASSERT(mPromise);
+    MOZ_ASSERT(aAsyncGetClipboardData);
+
+    nsTArray<nsCString> flavorList;
+    nsresult rv = aAsyncGetClipboardData->GetFlavorList(flavorList);
+    if (NS_FAILED(rv)) {
+      return OnError(rv);
+    }
+
+    AutoTArray<RefPtr<ClipboardItem::ItemEntry>, 3> entries;
+    // We might reuse the request from DataTransfer created for paste event,
+    // which could contain more types that are not in the mandatory list.
+    for (const auto& format : MandatoryDataTypesAsCStrings()) {
+      if (flavorList.Contains(format)) {
+        auto entry = MakeRefPtr<ClipboardItem::ItemEntry>(
+            mGlobal, NS_ConvertUTF8toUTF16(format));
+        entry->LoadDataFromSystemClipboard(aAsyncGetClipboardData);
+        entries.AppendElement(std::move(entry));
+      }
+    }
+
+    RefPtr<Promise> p(std::move(mPromise));
+    // We currently only support one clipboard item.
+    p->MaybeResolve(
+        AutoTArray<RefPtr<ClipboardItem>, 1>{MakeRefPtr<ClipboardItem>(
+            mGlobal, PresentationStyle::Unspecified, std::move(entries))});
+
+    return NS_OK;
+  }
+
+ protected:
+  ~ClipboardGetCallbackForRead() = default;
+
+  nsCOMPtr<nsIGlobalObject> mGlobal;
+};
+
+NS_IMPL_ISUPPORTS(ClipboardGetCallbackForRead, nsIAsyncClipboardGetCallback)
+
+class ClipboardGetCallbackForReadText final
+    : public ClipboardGetCallback,
+      public nsIAsyncClipboardRequestCallback {
+ public:
+  explicit ClipboardGetCallbackForReadText(RefPtr<Promise>&& aPromise)
+      : ClipboardGetCallback(std::move(aPromise)) {}
+
+  // This object will never be held by a cycle-collected object, so it doesn't
+  // need to be cycle-collected despite holding alive cycle-collected objects.
+  NS_DECL_ISUPPORTS
+
+  // nsIAsyncClipboardGetCallback
+  NS_IMETHOD OnSuccess(
+      nsIAsyncGetClipboardData* aAsyncGetClipboardData) override {
+    MOZ_ASSERT(mPromise);
+    MOZ_ASSERT(!mTransferable);
+    MOZ_ASSERT(aAsyncGetClipboardData);
+
+    AutoTArray<nsCString, 3> flavors;
+    nsresult rv = aAsyncGetClipboardData->GetFlavorList(flavors);
+    if (NS_FAILED(rv)) {
+      return OnError(rv);
+    }
+
+    mTransferable = do_CreateInstance("@mozilla.org/widget/transferable;1");
+    if (NS_WARN_IF(!mTransferable)) {
+      return OnError(NS_ERROR_UNEXPECTED);
+    }
+
+    mTransferable->Init(nullptr);
+    mTransferable->AddDataFlavor(kTextMime);
+    if (!flavors.Contains(kTextMime)) {
+      return OnComplete(NS_OK);
+    }
+
+    rv = aAsyncGetClipboardData->GetData(mTransferable, this);
+    if (NS_FAILED(rv)) {
+      return OnError(rv);
+    }
+
+    return NS_OK;
+  }
+
+  // nsIAsyncClipboardRequestCallback
+  NS_IMETHOD OnComplete(nsresult aResult) override {
+    MOZ_ASSERT(mPromise);
+    MOZ_ASSERT(mTransferable);
+
+    if (NS_FAILED(aResult)) {
+      return OnError(aResult);
+    }
+
+    nsAutoString str;
+    nsCOMPtr<nsISupports> data;
+    nsresult rv =
+        mTransferable->GetTransferData(kTextMime, getter_AddRefs(data));
+    if (!NS_WARN_IF(NS_FAILED(rv))) {
+      nsCOMPtr<nsISupportsString> supportsstr = do_QueryInterface(data);
+      MOZ_ASSERT(supportsstr);
+      if (supportsstr) {
+        supportsstr->GetData(str);
+      }
+    }
+
+    RefPtr<Promise> p(std::move(mPromise));
+    p->MaybeResolve(str);
+
+    return NS_OK;
+  }
+
+ protected:
+  ~ClipboardGetCallbackForReadText() = default;
+
+  nsCOMPtr<nsITransferable> mTransferable;
+};
+
+NS_IMPL_ISUPPORTS(ClipboardGetCallbackForReadText, nsIAsyncClipboardGetCallback,
+                  nsIAsyncClipboardRequestCallback)
+
+}  // namespace
+
+void Clipboard::RequestRead(Promise& aPromise, const ReadRequestType& aType,
+                            nsPIDOMWindowInner& aOwner,
+                            nsIPrincipal& aSubjectPrincipal,
+                            nsIAsyncGetClipboardData& aRequest) {
+#ifdef DEBUG
+  bool isValid = false;
+  MOZ_ASSERT(NS_SUCCEEDED(aRequest.GetValid(&isValid)) && isValid);
+#endif
+
+  RefPtr<ClipboardGetCallback> callback;
+  switch (aType) {
+    case ReadRequestType::eRead: {
+      callback =
+          MakeRefPtr<ClipboardGetCallbackForRead>(aOwner.AsGlobal(), &aPromise);
+      break;
+    }
+    case ReadRequestType::eReadText: {
+      callback = MakeRefPtr<ClipboardGetCallbackForReadText>(&aPromise);
+      break;
+    }
+    default: {
+      MOZ_ASSERT_UNREACHABLE("Unknown read type");
+      return;
+    }
+  }
+
+  MOZ_ASSERT(callback);
+  callback->OnSuccess(&aRequest);
+}
+
+void Clipboard::RequestRead(Promise* aPromise, ReadRequestType aType,
+                            nsPIDOMWindowInner* aOwner,
+                            nsIPrincipal& aPrincipal) {
+  RefPtr<Promise> p(aPromise);
+  nsCOMPtr<nsPIDOMWindowInner> owner(aOwner);
+
+  nsresult rv;
+  nsCOMPtr<nsIClipboard> clipboardService(
+      do_GetService("@mozilla.org/widget/clipboard;1", &rv));
+  if (NS_FAILED(rv)) {
+    p->MaybeReject(NS_ERROR_UNEXPECTED);
+    return;
+  }
+
+  RefPtr<ClipboardGetCallback> callback;
+  switch (aType) {
+    case ReadRequestType::eRead: {
+      nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(owner);
+      if (NS_WARN_IF(!global)) {
+        p->MaybeReject(NS_ERROR_UNEXPECTED);
+        return;
+      }
+
+      callback = MakeRefPtr<ClipboardGetCallbackForRead>(global, std::move(p));
+      rv = clipboardService->AsyncGetData(
+          MandatoryDataTypesAsCStrings(), nsIClipboard::kGlobalClipboard,
+          owner->GetWindowContext(), &aPrincipal, callback);
+      break;
+    }
+    case ReadRequestType::eReadText: {
+      callback = MakeRefPtr<ClipboardGetCallbackForReadText>(std::move(p));
+      rv = clipboardService->AsyncGetData(
+          AutoTArray<nsCString, 1>{nsLiteralCString(kTextMime)},
+          nsIClipboard::kGlobalClipboard, owner->GetWindowContext(),
+          &aPrincipal, callback);
+      break;
+    }
+    default: {
+      MOZ_ASSERT_UNREACHABLE("Unknown read type");
+      break;
+    }
+  }
+
+  if (NS_FAILED(rv)) {
+    MOZ_ASSERT(callback);
+    callback->OnError(rv);
+    return;
+  }
+}
+
+static bool IsReadTextExposedToContent() {
+  return StaticPrefs::dom_events_asyncClipboard_readText_DoNotUseDirectly();
+}
+
+already_AddRefed<Promise> Clipboard::ReadHelper(nsIPrincipal& aSubjectPrincipal,
+                                                ReadRequestType aType,
+                                                ErrorResult& aRv) {
   // Create a new promise
   RefPtr<Promise> p = dom::Promise::Create(GetOwnerGlobal(), aRv);
-  if (aRv.Failed()) {
+  if (aRv.Failed() || !p) {
     return nullptr;
   }
 
-  // We want to disable security check for automated tests that have the pref
-  //  dom.events.testing.asyncClipboard set to true
-  if (!IsTestingPrefEnabled() &&
-      !nsContentUtils::PrincipalHasPermission(aSubjectPrincipal,
-                                              nsGkAtoms::clipboardRead)) {
-    MOZ_LOG(GetClipboardLog(), LogLevel::Debug,
-            ("Clipboard, ReadHelper, "
-             "Don't have permissions for reading\n"));
+  nsPIDOMWindowInner* owner = GetOwner();
+  if (!owner) {
     p->MaybeRejectWithUndefined();
     return p.forget();
   }
 
-  // Want isExternal = true in order to use the data transfer object to perform
-  // a read
-  RefPtr<DataTransfer> dataTransfer = new DataTransfer(
-      this, ePaste, /* is external */ true, nsIClipboard::kGlobalClipboard);
+  // If a "paste" clipboard event is actively being processed, we're
+  // intentionally skipping permission/user-activation checks and giving the
+  // webpage access to the clipboard.
+  if (RefPtr<DataTransfer> dataTransfer =
+          nsGlobalWindowInner::Cast(owner)->GetCurrentPasteDataTransfer()) {
+    // If there is valid nsIAsyncGetClipboardData, use it directly.
+    if (nsCOMPtr<nsIAsyncGetClipboardData> asyncGetClipboardData =
+            dataTransfer->GetAsyncGetClipboardData()) {
+      bool isValid = false;
+      asyncGetClipboardData->GetValid(&isValid);
+      if (isValid) {
+        RequestRead(*p, aType, *owner, aSubjectPrincipal,
+                    *asyncGetClipboardData);
+        return p.forget();
+      }
+    }
+  }
 
-  RefPtr<nsPIDOMWindowInner> owner = GetOwner();
+  if (IsTestingPrefEnabledOrHasReadPermission(aSubjectPrincipal)) {
+    MOZ_LOG(GetClipboardLog(), LogLevel::Debug,
+            ("%s: testing pref enabled or has read permission", __FUNCTION__));
+  } else {
+    // Testing pref is not enabled and no read permission (for extension), so
+    // need to check user activation.
+    WindowContext* windowContext = owner->GetWindowContext();
+    if (!windowContext) {
+      MOZ_ASSERT_UNREACHABLE("There should be a WindowContext.");
+      p->MaybeRejectWithUndefined();
+      return p.forget();
+    }
 
-  // Create a new runnable
-  RefPtr<nsIRunnable> r = NS_NewRunnableFunction(
-      "Clipboard::Read", [p, dataTransfer, aClipboardReadType, owner,
-                          principal = RefPtr{&aSubjectPrincipal}]() {
-        IgnoredErrorResult ier;
-        switch (aClipboardReadType) {
-          case eRead: {
-            MOZ_LOG(GetClipboardLog(), LogLevel::Debug,
-                    ("Clipboard, ReadHelper, read case\n"));
-            dataTransfer->FillAllExternalData();
+    // If no transient user activation, reject the promise and return.
+    if (!windowContext->HasValidTransientUserGestureActivation()) {
+      p->MaybeRejectWithNotAllowedError(
+          "Clipboard read request was blocked due to lack of "
+          "user activation.");
+      return p.forget();
+    }
+  }
 
-            // Convert the DataTransferItems to ClipboardItems.
-            // FIXME(bug 1691825): This is only suitable for testing!
-            // A real implementation would only read from the clipboard
-            // in ClipboardItem::getType instead of doing it here.
-            nsTArray<ClipboardItem::ItemEntry> entries;
-            DataTransferItemList* items = dataTransfer->Items();
-            for (size_t i = 0; i < items->Length(); i++) {
-              bool found = false;
-              DataTransferItem* item = items->IndexedGetter(i, found);
-
-              // Only allow strings and files.
-              if (!found || item->Kind() == DataTransferItem::KIND_OTHER) {
-                continue;
-              }
-
-              nsAutoString type;
-              item->GetType(type);
-
-              if (item->Kind() == DataTransferItem::KIND_STRING) {
-                // We just ignore items that we can't access.
-                IgnoredErrorResult ignored;
-                nsCOMPtr<nsIVariant> data = item->Data(principal, ignored);
-                if (NS_WARN_IF(!data || ignored.Failed())) {
-                  continue;
-                }
-
-                nsAutoString string;
-                if (NS_WARN_IF(NS_FAILED(data->GetAsAString(string)))) {
-                  continue;
-                }
-
-                ClipboardItem::ItemEntry* entry = entries.AppendElement();
-                entry->mType = type;
-                entry->mData.SetAsString() = string;
-              } else {
-                IgnoredErrorResult ignored;
-                RefPtr<File> file = item->GetAsFile(*principal, ignored);
-                if (NS_WARN_IF(!file || ignored.Failed())) {
-                  continue;
-                }
-
-                ClipboardItem::ItemEntry* entry = entries.AppendElement();
-                entry->mType = type;
-                entry->mData.SetAsBlob() = file;
-              }
-            }
-
-            nsTArray<RefPtr<ClipboardItem>> sequence;
-            sequence.AppendElement(MakeRefPtr<ClipboardItem>(
-                owner, PresentationStyle::Unspecified, std::move(entries)));
-            p->MaybeResolve(sequence);
-            break;
-          }
-          case eReadText:
-            MOZ_LOG(GetClipboardLog(), LogLevel::Debug,
-                    ("Clipboard, ReadHelper, read text case\n"));
-            nsAutoString str;
-            dataTransfer->GetData(NS_LITERAL_STRING_FROM_CSTRING(kTextMime),
-                                  str, *principal, ier);
-            // Either resolve with a string extracted from data transfer item
-            // or resolve with an empty string if nothing was found
-            p->MaybeResolve(str);
-            break;
-        }
-      });
-  // Dispatch the runnable
-  GetParentObject()->Dispatch(TaskCategory::Other, r.forget());
+  RequestRead(p, aType, owner, aSubjectPrincipal);
   return p.forget();
 }
 
 already_AddRefed<Promise> Clipboard::Read(nsIPrincipal& aSubjectPrincipal,
                                           ErrorResult& aRv) {
-  return ReadHelper(aSubjectPrincipal, eRead, aRv);
+  return ReadHelper(aSubjectPrincipal, ReadRequestType::eRead, aRv);
 }
 
 already_AddRefed<Promise> Clipboard::ReadText(nsIPrincipal& aSubjectPrincipal,
                                               ErrorResult& aRv) {
-  return ReadHelper(aSubjectPrincipal, eReadText, aRv);
+  return ReadHelper(aSubjectPrincipal, ReadRequestType::eReadText, aRv);
 }
 
 namespace {
@@ -187,7 +408,8 @@ class BlobTextHandler final : public PromiseNativeHandler {
     mHolder.Reject(rv, __func__);
   }
 
-  void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue) override {
+  void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                        ErrorResult& aRv) override {
     AssertIsOnMainThread();
 
     nsString text;
@@ -203,7 +425,8 @@ class BlobTextHandler final : public PromiseNativeHandler {
     mHolder.Resolve(std::move(native), __func__);
   }
 
-  void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue) override {
+  void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                        ErrorResult& aRv) override {
     Reject();
   }
 
@@ -216,22 +439,22 @@ class BlobTextHandler final : public PromiseNativeHandler {
 
 NS_IMPL_ISUPPORTS0(BlobTextHandler)
 
-RefPtr<NativeEntryPromise> GetStringNativeEntry(
-    const ClipboardItem::ItemEntry& entry) {
-  if (entry.mData.IsString()) {
+static RefPtr<NativeEntryPromise> GetStringNativeEntry(
+    const nsAString& aType, const OwningStringOrBlob& aData) {
+  if (aData.IsString()) {
     RefPtr<nsVariantCC> variant = new nsVariantCC();
-    variant->SetAsAString(entry.mData.GetAsString());
-    NativeEntry native(entry.mType, variant);
+    variant->SetAsAString(aData.GetAsString());
+    NativeEntry native(aType, variant);
     return NativeEntryPromise::CreateAndResolve(native, __func__);
   }
 
-  RefPtr<BlobTextHandler> handler = new BlobTextHandler(entry.mType);
+  RefPtr<BlobTextHandler> handler = new BlobTextHandler(aType);
   IgnoredErrorResult ignored;
-  RefPtr<Promise> promise = entry.mData.GetAsBlob()->Text(ignored);
+  RefPtr<Promise> promise = aData.GetAsBlob()->Text(ignored);
   if (ignored.Failed()) {
     CopyableErrorResult rv;
     rv.ThrowUnknownError("Unable to read blob for '"_ns +
-                         NS_ConvertUTF16toUTF8(entry.mType) + "' as text."_ns);
+                         NS_ConvertUTF16toUTF8(aType) + "' as text."_ns);
     return NativeEntryPromise::CreateAndReject(rv, __func__);
   }
   promise->AppendNativeHandler(handler);
@@ -276,34 +499,33 @@ class ImageDecodeCallback final : public imgIContainerCallback {
 
 NS_IMPL_ISUPPORTS(ImageDecodeCallback, imgIContainerCallback)
 
-RefPtr<NativeEntryPromise> GetImageNativeEntry(
-    const ClipboardItem::ItemEntry& entry) {
-  if (entry.mData.IsString()) {
+static RefPtr<NativeEntryPromise> GetImageNativeEntry(
+    const nsAString& aType, const OwningStringOrBlob& aData) {
+  if (aData.IsString()) {
     CopyableErrorResult rv;
     rv.ThrowTypeError("DOMString not supported for '"_ns +
-                      NS_ConvertUTF16toUTF8(entry.mType) +
-                      "' as image data."_ns);
+                      NS_ConvertUTF16toUTF8(aType) + "' as image data."_ns);
     return NativeEntryPromise::CreateAndReject(rv, __func__);
   }
 
   IgnoredErrorResult ignored;
   nsCOMPtr<nsIInputStream> stream;
-  entry.mData.GetAsBlob()->CreateInputStream(getter_AddRefs(stream), ignored);
+  aData.GetAsBlob()->CreateInputStream(getter_AddRefs(stream), ignored);
   if (ignored.Failed()) {
     CopyableErrorResult rv;
     rv.ThrowUnknownError("Unable to read blob for '"_ns +
-                         NS_ConvertUTF16toUTF8(entry.mType) + "' as image."_ns);
+                         NS_ConvertUTF16toUTF8(aType) + "' as image."_ns);
     return NativeEntryPromise::CreateAndReject(rv, __func__);
   }
 
-  RefPtr<ImageDecodeCallback> callback = new ImageDecodeCallback(entry.mType);
+  RefPtr<ImageDecodeCallback> callback = new ImageDecodeCallback(aType);
   nsCOMPtr<imgITools> imgtool = do_CreateInstance("@mozilla.org/image/tools;1");
-  imgtool->DecodeImageAsync(stream, NS_ConvertUTF16toUTF8(entry.mType),
-                            callback, GetMainThreadSerialEventTarget());
+  imgtool->DecodeImageAsync(stream, NS_ConvertUTF16toUTF8(aType), callback,
+                            GetMainThreadSerialEventTarget());
   return callback->Promise();
 }
 
-Result<NativeEntry, ErrorResult> SanitizeNativeEntry(
+static Result<NativeEntry, ErrorResult> SanitizeNativeEntry(
     const NativeEntry& aEntry) {
   MOZ_ASSERT(aEntry.mType.EqualsLiteral(kHTMLMime));
 
@@ -334,6 +556,35 @@ Result<NativeEntry, ErrorResult> SanitizeNativeEntry(
   return NativeEntry(aEntry.mType, variant);
 }
 
+static RefPtr<NativeEntryPromise> GetNativeEntry(
+    const nsAString& aType, const OwningStringOrBlob& aData) {
+  if (aType.EqualsLiteral(kPNGImageMime)) {
+    return GetImageNativeEntry(aType, aData);
+  }
+
+  RefPtr<NativeEntryPromise> promise = GetStringNativeEntry(aType, aData);
+  if (aType.EqualsLiteral(kHTMLMime)) {
+    promise = promise->Then(
+        GetMainThreadSerialEventTarget(), __func__,
+        [](const NativeEntryPromise::ResolveOrRejectValue& aValue)
+            -> RefPtr<NativeEntryPromise> {
+          if (aValue.IsReject()) {
+            return NativeEntryPromise::CreateAndReject(aValue.RejectValue(),
+                                                       __func__);
+          }
+
+          auto sanitized = SanitizeNativeEntry(aValue.ResolveValue());
+          if (sanitized.isErr()) {
+            return NativeEntryPromise::CreateAndReject(
+                CopyableErrorResult(sanitized.unwrapErr()), __func__);
+          }
+          return NativeEntryPromise::CreateAndResolve(sanitized.unwrap(),
+                                                      __func__);
+        });
+  }
+  return promise;
+}
+
 // Restrict to types allowed by Chrome
 // SVG is still disabled by default in Chrome.
 static bool IsValidType(const nsAString& aType) {
@@ -342,45 +593,78 @@ static bool IsValidType(const nsAString& aType) {
 }
 
 using NativeItemPromise = NativeEntryPromise::AllPromiseType;
-
-RefPtr<NativeItemPromise> GetClipboardNativeItem(const ClipboardItem& aItem) {
+static RefPtr<NativeItemPromise> GetClipboardNativeItem(
+    const ClipboardItem& aItem) {
   nsTArray<RefPtr<NativeEntryPromise>> promises;
   for (const auto& entry : aItem.Entries()) {
-    if (!IsValidType(entry.mType)) {
+    const nsAString& type = entry->Type();
+    if (!IsValidType(type)) {
       CopyableErrorResult rv;
-      rv.ThrowNotAllowedError("Type '"_ns + NS_ConvertUTF16toUTF8(entry.mType) +
+      rv.ThrowNotAllowedError("Type '"_ns + NS_ConvertUTF16toUTF8(type) +
                               "' not supported for write"_ns);
       return NativeItemPromise::CreateAndReject(rv, __func__);
     }
 
-    if (entry.mType.EqualsLiteral(kPNGImageMime)) {
-      promises.AppendElement(GetImageNativeEntry(entry));
-    } else {
-      RefPtr<NativeEntryPromise> promise = GetStringNativeEntry(entry);
-      if (entry.mType.EqualsLiteral(kHTMLMime)) {
-        promise = promise->Then(
-            GetMainThreadSerialEventTarget(), __func__,
-            [](const NativeEntryPromise::ResolveOrRejectValue& aValue)
-                -> RefPtr<NativeEntryPromise> {
-              if (aValue.IsReject()) {
-                return NativeEntryPromise::CreateAndReject(aValue.RejectValue(),
-                                                           __func__);
-              }
+    using GetDataPromise = ClipboardItem::ItemEntry::GetDataPromise;
+    promises.AppendElement(entry->GetData()->Then(
+        GetMainThreadSerialEventTarget(), __func__,
+        [t = nsString(type)](const GetDataPromise::ResolveOrRejectValue& aValue)
+            -> RefPtr<NativeEntryPromise> {
+          if (aValue.IsReject()) {
+            return NativeEntryPromise::CreateAndReject(
+                CopyableErrorResult(aValue.RejectValue()), __func__);
+          }
 
-              auto sanitized = SanitizeNativeEntry(aValue.ResolveValue());
-              if (sanitized.isErr()) {
-                return NativeEntryPromise::CreateAndReject(
-                    CopyableErrorResult(sanitized.unwrapErr()), __func__);
-              }
-              return NativeEntryPromise::CreateAndResolve(sanitized.unwrap(),
-                                                          __func__);
-            });
-      }
-      promises.AppendElement(promise);
-    }
+          return GetNativeEntry(t, aValue.ResolveValue());
+        }));
   }
   return NativeEntryPromise::All(GetCurrentSerialEventTarget(), promises);
 }
+
+class ClipboardWriteCallback final : public nsIAsyncClipboardRequestCallback {
+ public:
+  // This object will never be held by a cycle-collected object, so it doesn't
+  // need to be cycle-collected despite holding alive cycle-collected objects.
+  NS_DECL_ISUPPORTS
+
+  explicit ClipboardWriteCallback(Promise* aPromise,
+                                  ClipboardItem* aClipboardItem)
+      : mPromise(aPromise), mClipboardItem(aClipboardItem) {}
+
+  // nsIAsyncClipboardRequestCallback
+  NS_IMETHOD OnComplete(nsresult aResult) override {
+    MOZ_ASSERT(mPromise);
+
+    RefPtr<Promise> promise = std::move(mPromise);
+    // XXX We need to check state here is because the promise might be rejected
+    // before the callback is called, we probably could wrap the promise into a
+    // structure to make it less confused.
+    if (promise->State() == Promise::PromiseState::Pending) {
+      if (NS_FAILED(aResult)) {
+        promise->MaybeRejectWithNotAllowedError(
+            "Clipboard write is not allowed.");
+        return NS_OK;
+      }
+
+      promise->MaybeResolveWithUndefined();
+    }
+
+    return NS_OK;
+  }
+
+ protected:
+  ~ClipboardWriteCallback() {
+    // Callback should be notified.
+    MOZ_ASSERT(!mPromise);
+  };
+
+  // It will be reset to nullptr once callback is notified.
+  RefPtr<Promise> mPromise;
+  // Keep ClipboardItem alive until clipboard write is done.
+  RefPtr<ClipboardItem> mClipboardItem;
+};
+
+NS_IMPL_ISUPPORTS(ClipboardWriteCallback, nsIAsyncClipboardRequestCallback)
 
 }  // namespace
 
@@ -438,9 +722,19 @@ already_AddRefed<Promise> Clipboard::Write(
     return p.forget();
   }
 
+  nsCOMPtr<nsIAsyncSetClipboardData> request;
+  RefPtr<ClipboardWriteCallback> callback =
+      MakeRefPtr<ClipboardWriteCallback>(p, aData[0]);
+  nsresult rv = clipboard->AsyncSetData(nsIClipboard::kGlobalClipboard,
+                                        callback, getter_AddRefs(request));
+  if (NS_FAILED(rv)) {
+    p->MaybeReject(rv);
+    return p.forget();
+  }
+
   GetClipboardNativeItem(aData[0])->Then(
       GetMainThreadSerialEventTarget(), __func__,
-      [owner, p, clipboard, context, principal = RefPtr{&aSubjectPrincipal}](
+      [owner, request, context, principal = RefPtr{&aSubjectPrincipal}](
           const nsTArray<NativeEntry>& aEntries) {
         RefPtr<DataTransfer> dataTransfer =
             new DataTransfer(owner, eCopy,
@@ -452,7 +746,7 @@ already_AddRefed<Promise> Clipboard::Write(
               entry.mType, entry.mData, 0, principal);
 
           if (NS_FAILED(rv)) {
-            p->MaybeRejectWithUndefined();
+            request->Abort(rv);
             return;
           }
         }
@@ -461,24 +755,16 @@ already_AddRefed<Promise> Clipboard::Write(
         RefPtr<nsITransferable> transferable =
             dataTransfer->GetTransferable(0, context);
         if (!transferable) {
-          p->MaybeRejectWithUndefined();
+          request->Abort(NS_ERROR_FAILURE);
           return;
         }
 
         // Finally write data to clipboard
-        nsresult rv =
-            clipboard->SetData(transferable,
-                               /* owner of the transferable */ nullptr,
-                               nsIClipboard::kGlobalClipboard);
-        if (NS_FAILED(rv)) {
-          p->MaybeRejectWithUndefined();
-          return;
-        }
-
-        p->MaybeResolveWithUndefined();
+        request->SetData(transferable, /* clipboard owner */ nullptr);
       },
-      [p](const CopyableErrorResult& aErrorResult) {
+      [p, request](const CopyableErrorResult& aErrorResult) {
         p->MaybeReject(CopyableErrorResult(aErrorResult));
+        request->Abort(NS_ERROR_ABORT);
       });
 
   return p.forget();
@@ -487,14 +773,19 @@ already_AddRefed<Promise> Clipboard::Write(
 already_AddRefed<Promise> Clipboard::WriteText(const nsAString& aData,
                                                nsIPrincipal& aSubjectPrincipal,
                                                ErrorResult& aRv) {
+  nsCOMPtr<nsIGlobalObject> global = GetOwnerGlobal();
+  if (!global) {
+    aRv.ThrowInvalidStateError("Unable to get global.");
+    return nullptr;
+  }
+
   // Create a single-element Sequence to reuse Clipboard::Write.
-  nsTArray<ClipboardItem::ItemEntry> items;
-  ClipboardItem::ItemEntry* entry = items.AppendElement();
-  entry->mType = NS_LITERAL_STRING_FROM_CSTRING(kTextMime);
-  entry->mData.SetAsString() = aData;
+  nsTArray<RefPtr<ClipboardItem::ItemEntry>> items;
+  items.AppendElement(MakeRefPtr<ClipboardItem::ItemEntry>(
+      global, NS_LITERAL_STRING_FROM_CSTRING(kTextMime), aData));
 
   nsTArray<OwningNonNull<ClipboardItem>> sequence;
-  RefPtr<ClipboardItem> item = new ClipboardItem(
+  RefPtr<ClipboardItem> item = MakeRefPtr<ClipboardItem>(
       GetOwner(), PresentationStyle::Unspecified, std::move(items));
   sequence.AppendElement(*item);
 
@@ -512,7 +803,8 @@ LogModule* Clipboard::GetClipboardLog() { return gClipboardLog; }
 /* static */
 bool Clipboard::ReadTextEnabled(JSContext* aCx, JSObject* aGlobal) {
   nsIPrincipal* prin = nsContentUtils::SubjectPrincipal(aCx);
-  return IsTestingPrefEnabled() || prin->GetIsAddonOrExpandedAddonPrincipal() ||
+  return IsReadTextExposedToContent() ||
+         prin->GetIsAddonOrExpandedAddonPrincipal() ||
          prin->IsSystemPrincipal();
 }
 

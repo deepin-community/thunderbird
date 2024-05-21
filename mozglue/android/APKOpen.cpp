@@ -38,6 +38,7 @@
 #include "mozilla/Printf.h"
 #include "mozilla/Sprintf.h"
 #include "mozilla/TimeStamp.h"
+#include "mozilla/Try.h"
 #include "mozilla/UniquePtr.h"
 #include "XREChildData.h"
 
@@ -173,13 +174,11 @@ static void EnsureBaseProfilerInitialized() {
     return;
   }
 
-#ifdef MOZ_GECKO_PROFILER
   // The stack depth we observe here will be determined by the stack of
   // whichever caller enters this code first. In practice this means that we may
   // miss some root-most frames, which hopefully shouldn't ruin profiling.
   int stackBase = 5;
   mozilla::baseprofiler::profiler_init(&stackBase);
-#endif
   sInitialized = true;
 }
 
@@ -290,7 +289,8 @@ Java_org_mozilla_gecko_mozglue_GeckoLoader_loadGeckoLibsNative(
 
   auto msg = errorInfo.match(
       [](const nsresult& aRv) {
-        return Smprintf("Error loading Gecko libraries: nsresult 0x%08X", aRv);
+        return Smprintf("Error loading Gecko libraries: nsresult 0x%08X",
+                        uint32_t(aRv));
       },
       [](const DLErrorType& aErr) {
         return Smprintf("Error loading Gecko libraries: %s", aErr.get());
@@ -358,14 +358,13 @@ static void FreeArgv(char** argv, int argc) {
     // String was allocated with strndup, so need to use free to deallocate.
     free(argv[ix]);
   }
-  delete[](argv);
+  delete[] (argv);
 }
 
 extern "C" APKOPEN_EXPORT void MOZ_JNICALL
 Java_org_mozilla_gecko_mozglue_GeckoLoader_nativeRun(
     JNIEnv* jenv, jclass jc, jobjectArray jargs, int prefsFd, int prefMapFd,
-    int ipcFd, int crashFd, int crashAnnotationFd, bool xpcshell,
-    jstring outFilePath) {
+    int ipcFd, int crashFd, bool xpcshell, jstring outFilePath) {
   EnsureBaseProfilerInitialized();
 
   int argc = 0;
@@ -394,8 +393,8 @@ Java_org_mozilla_gecko_mozglue_GeckoLoader_nativeRun(
     ElfLoader::Singleton.ExpectShutdown(true);
 #endif
   } else {
-    gBootstrap->XRE_SetAndroidChildFds(
-        jenv, {prefsFd, prefMapFd, ipcFd, crashFd, crashAnnotationFd});
+    gBootstrap->XRE_SetAndroidChildFds(jenv,
+                                       {prefsFd, prefMapFd, ipcFd, crashFd});
     gBootstrap->XRE_SetProcessType(argv[argc - 1]);
 
     XREChildData childData;

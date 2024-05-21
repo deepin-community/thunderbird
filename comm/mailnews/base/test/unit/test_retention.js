@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /*
  * Simple tests for retention settings. In particular, we'd like to make
  * sure that applying retention settings works with the new code that avoids
@@ -5,43 +9,33 @@
  * the server defaults.
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-
-load("../../../resources/MessageGenerator.jsm");
-load("../../../resources/messageModifier.js");
-load("../../../resources/messageInjection.js");
+var { MessageGenerator, MessageScenarioFactory, SyntheticMessageSet } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+  );
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
 
 var gMessageGenerator = new MessageGenerator();
 var gScenarioFactory = new MessageScenarioFactory(gMessageGenerator);
+var messageInjection = new MessageInjection({ mode: "local" });
 
 var gTestFolder;
 
-function setup_globals(aNextFunc) {
+add_setup(async function () {
   // Add 10 messages
   let messages = [];
   messages = messages.concat(gScenarioFactory.directReply(10));
 
-  let msgSet = new SyntheticMessageSet(messages);
+  const msgSet = new SyntheticMessageSet(messages);
 
-  gTestFolder = make_empty_folder();
-  return add_sets_to_folders(gTestFolder, [msgSet]);
-}
+  gTestFolder = await messageInjection.makeEmptyFolder();
+  await messageInjection.addSetsToFolders([gTestFolder], [msgSet]);
+});
 
-function run_test() {
-  configure_message_injection({ mode: "local" });
-  do_test_pending();
-  async_run({ func: actually_run_test });
-}
-
-function* actually_run_test() {
-  yield async_run({ func: setup_globals });
-  let numMessages = 10;
+add_task(function test_retention() {
+  const numMessages = 10;
   gTestFolder.msgDatabase = null;
   gTestFolder.applyRetentionSettings();
   const gDbService = Cc["@mozilla.org/msgDatabase/msgDBService;1"].getService(
@@ -54,7 +48,7 @@ function* actually_run_test() {
   Assert.equal(gDbService.cachedDBForFolder(gTestFolder), null);
   // no retention settings, so we should have the same number of messages.
   Assert.equal(numMessages, gTestFolder.msgDatabase.dBFolderInfo.numMessages);
-  let serverSettings = gTestFolder.server.retentionSettings;
+  const serverSettings = gTestFolder.server.retentionSettings;
   serverSettings.retainByPreference =
     Ci.nsIMsgRetentionSettings.nsMsgRetainByNumHeaders;
   serverSettings.numHeadersToKeep = 9;
@@ -62,7 +56,7 @@ function* actually_run_test() {
   gTestFolder.applyRetentionSettings();
   // no retention settings, so we should have the same number of messages.
   Assert.equal(9, gTestFolder.msgDatabase.dBFolderInfo.numMessages);
-  let folderSettings = gTestFolder.retentionSettings;
+  const folderSettings = gTestFolder.retentionSettings;
   folderSettings.retainByPreference =
     Ci.nsIMsgRetentionSettings.nsMsgRetainByNumHeaders;
   folderSettings.numHeadersToKeep = 8;
@@ -71,5 +65,4 @@ function* actually_run_test() {
   gTestFolder.applyRetentionSettings();
   // no retention settings, so we should have the same number of messages.
   Assert.equal(8, gTestFolder.msgDatabase.dBFolderInfo.numMessages);
-  do_test_finished();
-}
+});

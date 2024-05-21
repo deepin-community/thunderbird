@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "2c43af06-ab6e-476a-adc4-16cbda54fb89";
 
 let db;
@@ -119,7 +117,7 @@ add_task(async function setUp() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -151,7 +149,7 @@ add_task(async function setUp() {
             })
           );
         },
-        onACK(request) {},
+        onACK() {},
       });
     },
   });

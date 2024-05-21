@@ -16,8 +16,6 @@ class nsGlobalWindowInner;
 
 namespace mozilla {
 
-class PerformanceCounter;
-
 namespace dom {
 
 class TimeoutExecutor;
@@ -135,8 +133,6 @@ class TimeoutManager final {
   void UpdateBudget(const TimeStamp& aNow,
                     const TimeDuration& aDuration = TimeDuration());
 
-  mozilla::PerformanceCounter* GetPerformanceCounter();
-
  private:
   struct Timeouts {
     explicit Timeouts(const TimeoutManager& aManager)
@@ -196,7 +192,7 @@ class TimeoutManager final {
     // mainly used to call state inspecting methods like IsValidFiringId().
     const TimeoutManager& mManager;
 
-    typedef mozilla::LinkedList<RefPtr<Timeout>> TimeoutList;
+    using TimeoutList = mozilla::LinkedList<RefPtr<Timeout>>;
 
     // mTimeoutList is generally sorted by mWhen, but new values are always
     // inserted after any Timeouts with a valid FiringId.

@@ -8,18 +8,18 @@ const {
   createFactory,
   createRef,
   PureComponent,
-} = require("devtools/client/shared/vendor/react");
-const dom = require("devtools/client/shared/vendor/react-dom-factories");
-const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
+} = require("resource://devtools/client/shared/vendor/react.js");
+const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
+const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.js");
 
-const FluentReact = require("devtools/client/shared/vendor/fluent-react");
+const FluentReact = require("resource://devtools/client/shared/vendor/fluent-react.js");
 
 const DebugTargetList = createFactory(
-  require("devtools/client/aboutdebugging/src/components/debugtarget/DebugTargetList")
+  require("resource://devtools/client/aboutdebugging/src/components/debugtarget/DebugTargetList.js")
 );
 
-const Actions = require("devtools/client/aboutdebugging/src/actions/index");
-const Types = require("devtools/client/aboutdebugging/src/types/index");
+const Actions = require("resource://devtools/client/aboutdebugging/src/actions/index.js");
+const Types = require("resource://devtools/client/aboutdebugging/src/types/index.js");
 
 /**
  * This component provides list for debug target and name area.
@@ -106,7 +106,7 @@ class DebugTargetPane extends PureComponent {
             "undecorated-link debug-target-pane__title " +
             "qa-debug-target-pane-title",
           title,
-          onClick: e => this.toggleCollapsibility(),
+          onClick: () => this.toggleCollapsibility(),
         },
         dom.h2(
           { className: "main-subheading debug-target-pane__heading" },

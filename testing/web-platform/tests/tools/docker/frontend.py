@@ -1,3 +1,5 @@
+# mypy: allow-untyped-defs
+
 import argparse
 import logging
 import os
@@ -113,6 +115,8 @@ def parser_run():
                         "/home/test/web-platform-tests/")
     parser.add_argument("--privileged", action="store_true",
                         help="Run the image in priviledged mode (required for emulators)")
+    parser.add_argument("--tag", action="store", default="wpt:local",
+                        help="Docker image tag to use (default wpt:local)")
     return parser
 
 
@@ -125,12 +129,13 @@ def run(*args, **kwargs):
                  os.path.join(wpt_root, "tools", "docker", "seccomp.json")])
     if kwargs["privileged"]:
         args.append("--privileged")
+        args.extend(["--device", "/dev/kvm"])
     if kwargs["checkout"]:
         args.extend(["--env", "REF==%s" % kwargs["checkout"]])
     else:
         args.extend(["--mount",
                      "type=bind,source=%s,target=/home/test/web-platform-tests" % wpt_root])
-    args.extend(["-it", "wpt:local"])
+    args.extend(["-it", kwargs["tag"]])
 
     proc = subprocess.Popen(args)
     proc.wait()

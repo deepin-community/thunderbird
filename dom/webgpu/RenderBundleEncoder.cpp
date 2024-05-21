@@ -10,60 +10,70 @@
 #include "Buffer.h"
 #include "RenderBundle.h"
 #include "RenderPipeline.h"
+#include "Utility.h"
 #include "ipc/WebGPUChild.h"
 #include "mozilla/webgpu/ffi/wgpu.h"
 
-namespace mozilla {
-namespace webgpu {
+namespace mozilla::webgpu {
 
 GPU_IMPL_CYCLE_COLLECTION(RenderBundleEncoder, mParent, mUsedBindGroups,
                           mUsedBuffers, mUsedPipelines, mUsedTextureViews)
 GPU_IMPL_JS_WRAP(RenderBundleEncoder)
 
-ffi::WGPURenderBundleEncoder* ScopedFfiBundleTraits::empty() { return nullptr; }
-
-void ScopedFfiBundleTraits::release(ffi::WGPURenderBundleEncoder* raw) {
+void ffiWGPURenderBundleEncoderDeleter::operator()(
+    ffi::WGPURenderBundleEncoder* raw) {
   if (raw) {
     ffi::wgpu_render_bundle_encoder_destroy(raw);
   }
 }
 
 ffi::WGPURenderBundleEncoder* CreateRenderBundleEncoder(
-    RawId aDeviceId, const dom::GPURenderBundleEncoderDescriptor& aDesc) {
+    RawId aDeviceId, const dom::GPURenderBundleEncoderDescriptor& aDesc,
+    WebGPUChild* const aBridge) {
+  if (!aBridge->CanSend()) {
+    return nullptr;
+  }
+
   ffi::WGPURenderBundleEncoderDescriptor desc = {};
   desc.sample_count = aDesc.mSampleCount;
 
-  nsCString label;
-  if (aDesc.mLabel.WasPassed()) {
-    LossyCopyUTF16toASCII(aDesc.mLabel.Value(), label);
-    desc.label = label.get();
-  }
+  webgpu::StringHelper label(aDesc.mLabel);
+  desc.label = label.Get();
 
-  ffi::WGPUTextureFormat depthStencilFormat = ffi::WGPUTextureFormat_Sentinel;
+  ffi::WGPUTextureFormat depthStencilFormat = {ffi::WGPUTextureFormat_Sentinel};
   if (aDesc.mDepthStencilFormat.WasPassed()) {
-    WebGPUChild::ConvertTextureFormatRef(aDesc.mDepthStencilFormat.Value(),
-                                         depthStencilFormat);
+    depthStencilFormat =
+        ConvertTextureFormat(aDesc.mDepthStencilFormat.Value());
     desc.depth_stencil_format = &depthStencilFormat;
   }
 
   std::vector<ffi::WGPUTextureFormat> colorFormats = {};
   for (const auto i : IntegerRange(aDesc.mColorFormats.Length())) {
-    ffi::WGPUTextureFormat format = ffi::WGPUTextureFormat_Sentinel;
-    WebGPUChild::ConvertTextureFormatRef(aDesc.mColorFormats[i], format);
+    ffi::WGPUTextureFormat format = {ffi::WGPUTextureFormat_Sentinel};
+    format = ConvertTextureFormat(aDesc.mColorFormats[i]);
     colorFormats.push_back(format);
   }
 
   desc.color_formats = colorFormats.data();
   desc.color_formats_length = colorFormats.size();
 
-  return ffi::wgpu_device_create_render_bundle_encoder(aDeviceId, &desc);
+  ipc::ByteBuf failureAction;
+  auto* bundle = ffi::wgpu_device_create_render_bundle_encoder(
+      aDeviceId, &desc, ToFFI(&failureAction));
+  // Report an error only if the operation failed.
+  if (!bundle) {
+    aBridge->SendDeviceAction(aDeviceId, std::move(failureAction));
+  }
+  return bundle;
 }
 
 RenderBundleEncoder::RenderBundleEncoder(
     Device* const aParent, WebGPUChild* const aBridge,
     const dom::GPURenderBundleEncoderDescriptor& aDesc)
     : ChildOf(aParent),
-      mEncoder(CreateRenderBundleEncoder(aParent->mId, aDesc)) {}
+      mEncoder(CreateRenderBundleEncoder(aParent->mId, aDesc, aBridge)) {
+  mValid = mEncoder.get() != nullptr;
+}
 
 RenderBundleEncoder::~RenderBundleEncoder() { Cleanup(); }
 
@@ -78,16 +88,16 @@ void RenderBundleEncoder::SetBindGroup(
     const dom::Sequence<uint32_t>& aDynamicOffsets) {
   if (mValid) {
     mUsedBindGroups.AppendElement(&aBindGroup);
-    ffi::wgpu_render_bundle_set_bind_group(mEncoder, aSlot, aBindGroup.mId,
-                                           aDynamicOffsets.Elements(),
-                                           aDynamicOffsets.Length());
+    ffi::wgpu_render_bundle_set_bind_group(
+        mEncoder.get(), aSlot, aBindGroup.mId, aDynamicOffsets.Elements(),
+        aDynamicOffsets.Length());
   }
 }
 
 void RenderBundleEncoder::SetPipeline(const RenderPipeline& aPipeline) {
   if (mValid) {
     mUsedPipelines.AppendElement(&aPipeline);
-    ffi::wgpu_render_bundle_set_pipeline(mEncoder, aPipeline.mId);
+    ffi::wgpu_render_bundle_set_pipeline(mEncoder.get(), aPipeline.mId);
   }
 }
 
@@ -99,8 +109,8 @@ void RenderBundleEncoder::SetIndexBuffer(
     const auto iformat = aIndexFormat == dom::GPUIndexFormat::Uint32
                              ? ffi::WGPUIndexFormat_Uint32
                              : ffi::WGPUIndexFormat_Uint16;
-    ffi::wgpu_render_bundle_set_index_buffer(mEncoder, aBuffer.mId, iformat,
-                                             aOffset, aSize);
+    ffi::wgpu_render_bundle_set_index_buffer(mEncoder.get(), aBuffer.mId,
+                                             iformat, aOffset, aSize);
   }
 }
 
@@ -108,15 +118,15 @@ void RenderBundleEncoder::SetVertexBuffer(uint32_t aSlot, const Buffer& aBuffer,
                                           uint64_t aOffset, uint64_t aSize) {
   if (mValid) {
     mUsedBuffers.AppendElement(&aBuffer);
-    ffi::wgpu_render_bundle_set_vertex_buffer(mEncoder, aSlot, aBuffer.mId,
-                                              aOffset, aSize);
+    ffi::wgpu_render_bundle_set_vertex_buffer(mEncoder.get(), aSlot,
+                                              aBuffer.mId, aOffset, aSize);
   }
 }
 
 void RenderBundleEncoder::Draw(uint32_t aVertexCount, uint32_t aInstanceCount,
                                uint32_t aFirstVertex, uint32_t aFirstInstance) {
   if (mValid) {
-    ffi::wgpu_render_bundle_draw(mEncoder, aVertexCount, aInstanceCount,
+    ffi::wgpu_render_bundle_draw(mEncoder.get(), aVertexCount, aInstanceCount,
                                  aFirstVertex, aFirstInstance);
   }
 }
@@ -126,16 +136,16 @@ void RenderBundleEncoder::DrawIndexed(uint32_t aIndexCount,
                                       uint32_t aFirstIndex, int32_t aBaseVertex,
                                       uint32_t aFirstInstance) {
   if (mValid) {
-    ffi::wgpu_render_bundle_draw_indexed(mEncoder, aIndexCount, aInstanceCount,
-                                         aFirstIndex, aBaseVertex,
-                                         aFirstInstance);
+    ffi::wgpu_render_bundle_draw_indexed(mEncoder.get(), aIndexCount,
+                                         aInstanceCount, aFirstIndex,
+                                         aBaseVertex, aFirstInstance);
   }
 }
 
 void RenderBundleEncoder::DrawIndirect(const Buffer& aIndirectBuffer,
                                        uint64_t aIndirectOffset) {
   if (mValid) {
-    ffi::wgpu_render_bundle_draw_indirect(mEncoder, aIndirectBuffer.mId,
+    ffi::wgpu_render_bundle_draw_indirect(mEncoder.get(), aIndirectBuffer.mId,
                                           aIndirectOffset);
   }
 }
@@ -143,26 +153,59 @@ void RenderBundleEncoder::DrawIndirect(const Buffer& aIndirectBuffer,
 void RenderBundleEncoder::DrawIndexedIndirect(const Buffer& aIndirectBuffer,
                                               uint64_t aIndirectOffset) {
   if (mValid) {
-    ffi::wgpu_render_bundle_draw_indexed_indirect(mEncoder, aIndirectBuffer.mId,
-                                                  aIndirectOffset);
+    ffi::wgpu_render_bundle_draw_indexed_indirect(
+        mEncoder.get(), aIndirectBuffer.mId, aIndirectOffset);
+  }
+}
+
+void RenderBundleEncoder::PushDebugGroup(const nsAString& aString) {
+  if (mValid) {
+    const NS_ConvertUTF16toUTF8 utf8(aString);
+    ffi::wgpu_render_bundle_push_debug_group(mEncoder.get(), utf8.get());
+  }
+}
+void RenderBundleEncoder::PopDebugGroup() {
+  if (mValid) {
+    ffi::wgpu_render_bundle_pop_debug_group(mEncoder.get());
+  }
+}
+void RenderBundleEncoder::InsertDebugMarker(const nsAString& aString) {
+  if (mValid) {
+    const NS_ConvertUTF16toUTF8 utf8(aString);
+    ffi::wgpu_render_bundle_insert_debug_marker(mEncoder.get(), utf8.get());
   }
 }
 
 already_AddRefed<RenderBundle> RenderBundleEncoder::Finish(
     const dom::GPURenderBundleDescriptor& aDesc) {
-  RawId id = 0;
+  RawId deviceId = mParent->mId;
+  auto bridge = mParent->GetBridge();
+  MOZ_RELEASE_ASSERT(bridge);
+
+  ffi::WGPURenderBundleDescriptor desc = {};
+  webgpu::StringHelper label(aDesc.mLabel);
+  desc.label = label.Get();
+
+  ipc::ByteBuf bb;
+  RawId id;
   if (mValid) {
     mValid = false;
-    auto bridge = mParent->GetBridge();
-    if (bridge && bridge->IsOpen()) {
-      auto* encoder = mEncoder.forget();
-      MOZ_ASSERT(encoder);
-      id = bridge->RenderBundleEncoderFinish(*encoder, mParent->mId, aDesc);
-    }
+
+    auto* encoder = mEncoder.release();
+    id = ffi::wgpu_client_create_render_bundle(bridge->GetClient(), encoder,
+                                               deviceId, &desc, ToFFI(&bb));
+
+  } else {
+    id = ffi::wgpu_client_create_render_bundle_error(
+        bridge->GetClient(), deviceId, label.Get(), ToFFI(&bb));
   }
+
+  if (bridge->CanSend()) {
+    bridge->SendDeviceAction(deviceId, std::move(bb));
+  }
+
   RefPtr<RenderBundle> bundle = new RenderBundle(mParent, id);
   return bundle.forget();
 }
 
-}  // namespace webgpu
-}  // namespace mozilla
+}  // namespace mozilla::webgpu

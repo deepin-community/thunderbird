@@ -24,7 +24,8 @@ void ClientHandleOpParent::ActorDestroy(ActorDestroyReason aReason) {
 }
 
 void ClientHandleOpParent::Init(ClientOpConstructorArgs&& aArgs) {
-  auto handle = static_cast<ClientHandleParent*>(Manager());
+  RefPtr<ClientHandleParent> handle =
+      static_cast<ClientHandleParent*>(Manager());
   handle->EnsureSource()
       ->Then(
           GetCurrentSerialEventTarget(), __func__,
@@ -53,10 +54,8 @@ void ClientHandleOpParent::Init(ClientOpConstructorArgs&& aArgs) {
               rebuild.serviceWorker() = orig.serviceWorker();
 
               ipc::StructuredCloneData data;
-              data.BorrowFromClonedMessageDataForBackgroundParent(
-                  orig.clonedData());
-              if (!data.BuildClonedMessageDataForBackgroundParent(
-                      source->Manager()->Manager(), rebuild.clonedData())) {
+              data.BorrowFromClonedMessageData(orig.clonedData());
+              if (!data.BuildClonedMessageData(rebuild.clonedData())) {
                 CopyableErrorResult rv;
                 rv.ThrowAbortError("Aborting client operation");
                 Unused << PClientHandleOpParent::Send__delete__(this, rv);

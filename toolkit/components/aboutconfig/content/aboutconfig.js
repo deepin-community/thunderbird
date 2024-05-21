@@ -2,12 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { DeferredTask } = ChromeUtils.import(
-  "resource://gre/modules/DeferredTask.jsm"
+const { DeferredTask } = ChromeUtils.importESModule(
+  "resource://gre/modules/DeferredTask.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
+const { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
 );
 
 const SEARCH_TIMEOUT_MS = 100;
@@ -169,6 +168,8 @@ class PrefRow {
     this._element._pref = this;
 
     let nameCell = document.createElement("th");
+    let nameCellSpan = document.createElement("span");
+    nameCell.appendChild(nameCellSpan);
     this._element.append(
       nameCell,
       (this.valueCell = document.createElement("td")),
@@ -188,9 +189,9 @@ class PrefRow {
     // Add <wbr> behind dots to prevent line breaking in random mid-word places.
     let parts = this.name.split(".");
     for (let i = 0; i < parts.length - 1; i++) {
-      nameCell.append(parts[i] + ".", document.createElement("wbr"));
+      nameCellSpan.append(parts[i] + ".", document.createElement("wbr"));
     }
-    nameCell.append(parts[parts.length - 1]);
+    nameCellSpan.append(parts[parts.length - 1]);
 
     this.refreshElement();
 
@@ -234,13 +235,13 @@ class PrefRow {
           this.editButton,
           "about-config-pref-toggle-button"
         );
-        this.editButton.className = "button-toggle";
+        this.editButton.className = "button-toggle semi-transparent";
       } else {
         document.l10n.setAttributes(
           this.editButton,
           "about-config-pref-edit-button"
         );
-        this.editButton.className = "button-edit";
+        this.editButton.className = "button-edit semi-transparent";
       }
       this.editButton.removeAttribute("form");
       delete this.inputField;
@@ -254,6 +255,7 @@ class PrefRow {
       if (this.editing) {
         this.inputField = document.createElement("input");
         this.inputField.value = this.value;
+        this.inputField.ariaLabel = this.name;
         if (this.type == "Number") {
           this.inputField.type = "number";
           this.inputField.required = true;
@@ -267,7 +269,7 @@ class PrefRow {
           this.editButton,
           "about-config-pref-save-button"
         );
-        this.editButton.className = "primary button-save";
+        this.editButton.className = "primary button-save semi-transparent";
       } else {
         delete this.inputField;
         for (let type of ["Boolean", "Number", "String"]) {
@@ -301,7 +303,7 @@ class PrefRow {
           this.editButton,
           "about-config-pref-add-button"
         );
-        this.editButton.className = "button-add";
+        this.editButton.className = "button-add semi-transparent";
       }
       this.valueCell.appendChild(form);
       this.editButton.setAttribute("form", "form-edit");
@@ -317,13 +319,15 @@ class PrefRow {
           this.resetButton,
           "about-config-pref-delete-button"
         );
-        this.resetButton.className = "button-delete ghost-button";
+        this.resetButton.className =
+          "button-delete ghost-button semi-transparent";
       } else {
         document.l10n.setAttributes(
           this.resetButton,
           "about-config-pref-reset-button"
         );
-        this.resetButton.className = "button-reset ghost-button";
+        this.resetButton.className =
+          "button-reset ghost-button semi-transparent";
       }
     } else if (this.resetButton) {
       this.resetButton.remove();
@@ -435,10 +439,10 @@ if (!Preferences.get("browser.aboutConfig.showWarning")) {
     { once: true }
   );
 } else {
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     let warningButton = document.getElementById("warningButton");
     warningButton.addEventListener("click", onWarningButtonClick);
-    warningButton.focus({ preventFocusRing: true });
+    warningButton.focus({ focusVisible: false });
   });
 }
 

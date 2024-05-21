@@ -6,7 +6,9 @@
 
 const gCertFileTypes = "*.p7b; *.crt; *.cert; *.cer; *.pem; *.der";
 
-var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
+var { NetUtil } = ChromeUtils.importESModule(
+  "resource://gre/modules/NetUtil.sys.mjs"
+);
 
 var key;
 
@@ -16,7 +18,8 @@ var certdialogs = Cc["@mozilla.org/nsCertificateDialogs;1"].getService(
 
 /**
  * List of certs currently selected in the active tab.
- * @type nsIX509Cert[]
+ *
+ * @type {nsIX509Cert[]}
  */
 var selected_certs = [];
 var selected_tree_items = [];
@@ -25,12 +28,14 @@ var certdb;
 
 /**
  * Cert tree for the "Authorities" tab.
- * @type nsICertTree
+ *
+ * @type {nsICertTree}
  */
 var caTreeView;
 /**
  * Cert tree for the "Servers" tab.
- * @type nsICertTree
+ *
+ * @type {nsICertTree}
  */
 var serverTreeView;
 
@@ -43,7 +48,7 @@ function createRichlistItem(item) {
 
   let row = document.createXULElement("label");
   row.setAttribute("flex", "1");
-  row.setAttribute("crop", "right");
+  row.setAttribute("crop", "end");
   row.setAttribute("style", "margin-inline-start: 15px;");
   if ("raw" in item) {
     row.setAttribute("value", item.raw);
@@ -61,22 +66,16 @@ var serverRichList = {
 
   buildRichList() {
     let overrides = overrideService.getOverrides().map(item => {
-      let cert = null;
-      if (item.dbKey !== "") {
-        cert = certdb.findCertByDBKey(item.dbKey);
-      }
       return {
         hostPort: item.hostPort,
-        dbKey: item.dbKey,
         asciiHost: item.asciiHost,
         port: item.port,
         originAttributes: item.originAttributes,
-        isTemporary: item.isTemporary,
-        displayName: cert !== null ? cert.displayName : "",
+        fingerprint: item.fingerprint,
       };
     });
     overrides.sort((a, b) => {
-      let criteria = ["hostPort", "displayName"];
+      let criteria = ["hostPort", "fingerprint"];
       for (let c of criteria) {
         let res = a[c].localeCompare(b[c]);
         if (res !== 0) {
@@ -103,10 +102,10 @@ var serverRichList = {
   _richBoxAddItem(item) {
     let richlistitem = document.createXULElement("richlistitem");
 
-    richlistitem.setAttribute("dbKey", item.dbKey);
     richlistitem.setAttribute("host", item.asciiHost);
     richlistitem.setAttribute("port", item.port);
     richlistitem.setAttribute("hostPort", item.hostPort);
+    richlistitem.setAttribute("fingerprint", item.fingerprint);
     richlistitem.setAttribute(
       "originAttributes",
       JSON.stringify(item.originAttributes)
@@ -117,18 +116,7 @@ var serverRichList = {
     hbox.setAttribute("equalsize", "always");
 
     hbox.appendChild(createRichlistItem({ raw: item.hostPort }));
-    hbox.appendChild(
-      createRichlistItem(
-        item.displayName !== ""
-          ? { raw: item.displayName }
-          : { l10nid: "no-cert-stored-for-override" }
-      )
-    );
-    hbox.appendChild(
-      createRichlistItem({
-        l10nid: item.isTemporary ? "temporary-override" : "permanent-override",
-      })
-    );
+    hbox.appendChild(createRichlistItem({ raw: item.fingerprint }));
 
     richlistitem.appendChild(hbox);
 
@@ -167,32 +155,6 @@ var serverRichList = {
     }
   },
 
-  viewSelectedRichListItem() {
-    let selectedItem = this.richlist.selectedItem;
-    if (!selectedItem) {
-      return;
-    }
-
-    let dbKey = selectedItem.getAttribute("dbKey");
-    if (dbKey) {
-      let cert = certdb.findCertByDBKey(dbKey);
-      viewCertHelper(window, cert);
-    }
-  },
-
-  exportSelectedRichListItem() {
-    let selectedItem = this.richlist.selectedItem;
-    if (!selectedItem) {
-      return;
-    }
-
-    let dbKey = selectedItem.getAttribute("dbKey");
-    if (dbKey) {
-      let cert = certdb.findCertByDBKey(dbKey);
-      exportToFile(window, cert);
-    }
-  },
-
   addException() {
     let retval = {
       exceptionAdded: false,
@@ -209,26 +171,20 @@ var serverRichList = {
   },
 
   _setButtonState() {
-    let websiteViewButton = document.getElementById("websites_viewButton");
-    let websiteExportButton = document.getElementById("websites_exportButton");
     let websiteDeleteButton = document.getElementById("websites_deleteButton");
-
-    let certKey = this.richlist.selectedItem?.getAttribute("dbKey");
-    let cert = certKey && certdb.findCertByDBKey(certKey);
-
     websiteDeleteButton.disabled = this.richlist.selectedIndex < 0;
-    websiteExportButton.disabled = !cert;
-    websiteViewButton.disabled = websiteExportButton.disabled;
   },
 };
 /**
  * Cert tree for the "People" tab.
- * @type nsICertTree
+ *
+ * @type {nsICertTree}
  */
 var emailTreeView;
 /**
  * Cert tree for the "Your Certificates" tab.
- * @type nsICertTree
+ *
+ * @type {nsICertTree}
  */
 var userTreeView;
 
@@ -274,10 +230,20 @@ var rememberedDecisionsRichList = {
       hbox.appendChild(createRichlistItem({ raw: "" }));
     } else {
       let tmpCert = certdb.findCertByDBKey(item.dbKey);
-
-      hbox.appendChild(createRichlistItem({ raw: tmpCert.commonName }));
-
-      hbox.appendChild(createRichlistItem({ raw: tmpCert.serialNumber }));
+      // The certificate corresponding to this item's dbKey may not be
+      // available (for example, if it was stored on a token that's been
+      // removed, or if it was deleted).
+      if (tmpCert) {
+        hbox.appendChild(createRichlistItem({ raw: tmpCert.commonName }));
+        hbox.appendChild(createRichlistItem({ raw: tmpCert.serialNumber }));
+      } else {
+        hbox.appendChild(
+          createRichlistItem({ l10nid: "certificate-not-available" })
+        );
+        hbox.appendChild(
+          createRichlistItem({ l10nid: "certificate-not-available" })
+        );
+      }
     }
 
     richlistitem.appendChild(hbox);
@@ -359,9 +325,8 @@ function LoadCerts() {
     Ci.nsICertOverrideService
   );
 
-  rememberedDecisionsRichList.richlist = document.getElementById(
-    "rememberedList"
-  );
+  rememberedDecisionsRichList.richlist =
+    document.getElementById("rememberedList");
   serverRichList.richlist = document.getElementById("serverList");
 
   rememberedDecisionsRichList.buildRichList();
@@ -470,7 +435,7 @@ function getSelectedTreeItems() {
  * selection includes a container. Returns false otherwise.
  *
  * @param {nsICertTree} certTree
- * @returns {Boolean}
+ * @returns {boolean}
  */
 function nothingOrContainerSelected(certTree) {
   var certTreeSelection = certTree.selection;
@@ -576,7 +541,7 @@ async function backupCerts() {
     { id: "choose-p12-backup-file-dialog" },
     { id: "file-browse-pkcs12-spec" },
   ]);
-  fp.init(window, backupFileDialog, Ci.nsIFilePicker.modeSave);
+  fp.init(window.browsingContext, backupFileDialog, Ci.nsIFilePicker.modeSave);
   fp.appendFilter(filePkcs12Spec, "*.p12");
   fp.appendFilters(Ci.nsIFilePicker.filterAll);
   fp.defaultExtension = "p12";
@@ -619,16 +584,13 @@ function editCerts() {
 
 async function restoreCerts() {
   var fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
-  let [
-    restoreFileDialog,
-    filePkcs12Spec,
-    fileCertSpec,
-  ] = await document.l10n.formatValues([
-    { id: "choose-p12-restore-file-dialog" },
-    { id: "file-browse-pkcs12-spec" },
-    { id: "file-browse-certificate-spec" },
-  ]);
-  fp.init(window, restoreFileDialog, Ci.nsIFilePicker.modeOpen);
+  let [restoreFileDialog, filePkcs12Spec, fileCertSpec] =
+    await document.l10n.formatValues([
+      { id: "choose-p12-restore-file-dialog" },
+      { id: "file-browse-pkcs12-spec" },
+      { id: "file-browse-certificate-spec" },
+    ]);
+  fp.init(window.browsingContext, restoreFileDialog, Ci.nsIFilePicker.modeOpen);
   fp.appendFilter(filePkcs12Spec, "*.p12; *.pfx");
   fp.appendFilter(fileCertSpec, gCertFileTypes);
   fp.appendFilters(Ci.nsIFilePicker.filterAll);
@@ -684,7 +646,7 @@ async function restoreCerts() {
         errorCode = certdb.importPKCS12File(fp.file, password.value);
         if (
           errorCode == Ci.nsIX509CertDB.ERROR_BAD_PASSWORD &&
-          password.value.length == 0
+          !password.value.length
         ) {
           // It didn't like empty string password, try no password.
           errorCode = certdb.importPKCS12File(fp.file, null);
@@ -774,13 +736,14 @@ async function addCACerts() {
     { id: "import-ca-certs-prompt" },
     { id: "file-browse-certificate-spec" },
   ]);
-  fp.init(window, importCa, Ci.nsIFilePicker.modeOpen);
+  fp.init(window.browsingContext, importCa, Ci.nsIFilePicker.modeOpen);
   fp.appendFilter(fileCertSpec, gCertFileTypes);
   fp.appendFilters(Ci.nsIFilePicker.filterAll);
   fp.open(rv => {
     if (rv == Ci.nsIFilePicker.returnOK) {
       certdb.importCertsFromFile(fp.file, Ci.nsIX509Cert.CA_CERT);
-      caTreeView.loadCerts(Ci.nsIX509Cert.CA_CERT);
+      let certcache = certdb.getCerts();
+      caTreeView.loadCertsFromCache(certcache, Ci.nsIX509Cert.CA_CERT);
       caTreeView.selection.clearSelection();
     }
   });
@@ -792,7 +755,7 @@ async function addEmailCert() {
     { id: "import-email-cert-prompt" },
     { id: "file-browse-certificate-spec" },
   ]);
-  fp.init(window, importEmail, Ci.nsIFilePicker.modeOpen);
+  fp.init(window.browsingContext, importEmail, Ci.nsIFilePicker.modeOpen);
   fp.appendFilter(fileCertSpec, gCertFileTypes);
   fp.appendFilters(Ci.nsIFilePicker.filterAll);
   fp.open(rv => {

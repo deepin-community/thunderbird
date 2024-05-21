@@ -4,14 +4,16 @@
 
 // Tests that when  pause on next is selected, we  pause on the next execution
 
-add_task(async function() {
+"use strict";
+
+add_task(async function () {
   const dbg = await initDebugger("doc-scripts.html");
   const {
-    selectors: { getIsWaitingOnBreak, getCurrentThread }
+    selectors: { getIsWaitingOnBreak, getCurrentThread },
   } = dbg;
 
   clickElement(dbg, "pause");
-  await waitForState(dbg, state => getIsWaitingOnBreak(getCurrentThread()));
+  await waitForState(dbg, () => getIsWaitingOnBreak(getCurrentThread()));
   invokeInTab("simple");
 
   await waitForPaused(dbg, "simple3");

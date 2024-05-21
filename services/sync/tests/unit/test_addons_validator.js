@@ -1,8 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { AddonValidator } = ChromeUtils.import(
-  "resource://services-sync/engines/addons.js"
+const { AddonValidator } = ChromeUtils.importESModule(
+  "resource://services-sync/engines/addons.sys.mjs"
 );
 
 function getDummyServerAndClient() {
@@ -49,19 +49,15 @@ function getDummyServerAndClient() {
 add_task(async function test_valid() {
   let { server, client } = getDummyServerAndClient();
   let validator = new AddonValidator({
-    _findDupe(item) {
+    _findDupe() {
       return null;
     },
     isAddonSyncable(item) {
       return item.type != "plugin";
     },
   });
-  let {
-    problemData,
-    clientRecords,
-    records,
-    deletedRecords,
-  } = await validator.compareClientWithServer(client, server);
+  let { problemData, clientRecords, records, deletedRecords } =
+    await validator.compareClientWithServer(client, server);
   equal(clientRecords.length, 4);
   equal(records.length, 1);
   equal(deletedRecords.length, 0);

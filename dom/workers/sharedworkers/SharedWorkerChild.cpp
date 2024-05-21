@@ -9,9 +9,14 @@
 #include "mozilla/dom/ErrorEventBinding.h"
 #include "mozilla/dom/Exceptions.h"
 #include "mozilla/dom/RootedDictionary.h"
+#include "mozilla/dom/SecurityPolicyViolationEvent.h"
+#include "mozilla/dom/SecurityPolicyViolationEventBinding.h"
 #include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/SharedWorker.h"
+#include "mozilla/dom/WebTransport.h"
+#include "mozilla/dom/WindowGlobalChild.h"
 #include "mozilla/dom/WorkerError.h"
+#include "mozilla/dom/locks/LockManagerChild.h"
 
 namespace mozilla {
 
@@ -72,6 +77,30 @@ IPCResult SharedWorkerChild::RecvError(const ErrorValue& aValue) {
   nsPIDOMWindowInner* window = mParent->GetOwner();
   uint64_t innerWindowId = window ? window->WindowID() : 0;
 
+  if (aValue.type() == ErrorValue::TCSPViolation) {
+    SecurityPolicyViolationEventInit violationEventInit;
+    if (NS_WARN_IF(
+            !violationEventInit.Init(aValue.get_CSPViolation().json()))) {
+      return IPC_OK();
+    }
+
+    if (NS_WARN_IF(!window)) {
+      return IPC_OK();
+    }
+
+    RefPtr<EventTarget> eventTarget = window->GetExtantDoc();
+    if (NS_WARN_IF(!eventTarget)) {
+      return IPC_OK();
+    }
+
+    RefPtr<Event> event = SecurityPolicyViolationEvent::Constructor(
+        eventTarget, u"securitypolicyviolation"_ns, violationEventInit);
+    event->SetTrusted(true);
+
+    eventTarget->DispatchEvent(*event);
+    return IPC_OK();
+  }
+
   if (aValue.type() == ErrorValue::TErrorData &&
       aValue.get_ErrorData().isWarning()) {
     // Don't fire any events for warnings. Just log to console.
@@ -115,6 +144,27 @@ IPCResult SharedWorkerChild::RecvError(const ErrorValue& aValue) {
   if (defaultActionEnabled) {
     WorkerErrorReport::LogErrorToConsole(aValue.get_ErrorData(), innerWindowId);
   }
+
+  return IPC_OK();
+}
+
+IPCResult SharedWorkerChild::RecvNotifyLock(bool aCreated) {
+  if (!mParent) {
+    return IPC_OK();
+  }
+
+  locks::LockManagerChild::NotifyBFCacheOnMainThread(mParent->GetOwner(),
+                                                     aCreated);
+
+  return IPC_OK();
+}
+
+IPCResult SharedWorkerChild::RecvNotifyWebTransport(bool aCreated) {
+  if (!mParent) {
+    return IPC_OK();
+  }
+
+  WebTransport::NotifyBFCacheOnMainThread(mParent->GetOwner(), aCreated);
 
   return IPC_OK();
 }

@@ -18,15 +18,16 @@ connection-dns-over-https-url-custom =
 
 connection-dns-over-https-custom-label = Custom
 
-connection-dialog-window =
-    .title = Connection Settings
-    .style = { PLATFORM() ->
-        [macos] width: 44em !important
-        *[other] width: 49em !important
-    }
+connection-dialog-title = Connection Settings
 
-connection-disable-extension =
-    .label = Disable Extension
+disable-extension-button = Disable Extension
+
+# Variables:
+#   $name (String) - The extension that is controlling the proxy settings.
+#
+# The extension-icon is the extension's icon, or a fallback image. It should be
+# purely decoration for the actual extension name, with alt="".
+proxy-settings-controlled-by-extension = An extension, <img data-l10n-name="extension-icon" alt="" /> { $name }, is controlling how { -brand-short-name } connects to the Internet.
 
 connection-proxy-legend = Configure Proxies to Access the Internet
 

@@ -2,9 +2,11 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+ChromeUtils.defineLazyGetter(this, "URL", function () {
   return "http://localhost:" + httpserv.identity.primaryPort;
 });
 
@@ -20,22 +22,11 @@ const categoryName = "net-channel-event-sinks";
  */
 var eventsink = {
   QueryInterface: ChromeUtils.generateQI(["nsIFactory", "nsIChannelEventSink"]),
-  createInstance: function eventsink_ci(outer, iid) {
-    if (outer) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance: function eventsink_ci(iid) {
     return this.QueryInterface(iid);
   },
-  lockFactory: function eventsink_lockf(lock) {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
 
-  asyncOnChannelRedirect: function eventsink_onredir(
-    oldChan,
-    newChan,
-    flags,
-    callback
-  ) {
+  asyncOnChannelRedirect: function eventsink_onredir() {
     // veto
     this.called = true;
     throw Components.Exception("", Cr.NS_BINDING_ABORTED);
@@ -93,7 +84,7 @@ var listener = {
     do_throw("Should not get any data!");
   },
 
-  onStopRequest: function test_onStopR(request, status) {
+  onStopRequest: function test_onStopR() {
     if (this._iteration <= 2) {
       run_test_continued();
     } else {
@@ -137,14 +128,10 @@ function run_test() {
 function run_test_continued() {
   eventsink.called = false;
 
-  var catMan = Cc["@mozilla.org/categorymanager;1"].getService(
-    Ci.nsICategoryManager
-  );
-
   var chan;
   if (listener._iteration == 1) {
     // Step 2: Category entry
-    catMan.nsICategoryManager.addCategoryEntry(
+    Services.catMan.addCategoryEntry(
       categoryName,
       "unit test",
       sinkContract,
@@ -154,11 +141,7 @@ function run_test_continued() {
     chan = makeChan(URL + "/redirect");
   } else {
     // Step 3: Global contract id
-    catMan.nsICategoryManager.deleteCategoryEntry(
-      categoryName,
-      "unit test",
-      false
-    );
+    Services.catMan.deleteCategoryEntry(categoryName, "unit test", false);
     listener.expectSinkCall = false;
     chan = makeChan(URL + "/redirectfile");
   }

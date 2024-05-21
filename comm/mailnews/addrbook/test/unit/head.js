@@ -1,12 +1,15 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
+
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+var { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 // Ensure the profile directory is set up
@@ -16,12 +19,12 @@ do_get_profile();
 /* import-globals-from ../../../test/resources/abSetup.js */
 load("../../../resources/abSetup.js");
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../resources/mailShutdown.js");
 });
 
 function promiseDirectoryRemoved(uri) {
-  let removePromise = TestUtils.topicObserved("addrbook-directory-deleted");
+  const removePromise = TestUtils.topicObserved("addrbook-directory-deleted");
   MailServices.ab.deleteAddressBook(uri);
   return removePromise;
 }
@@ -45,7 +48,19 @@ acObserver.prototype = {
   },
 };
 
-// Somehow profile-after-change is not triggered in xpcshell tests, here we
-// manually run the getService, so that correct ldap modules are loaded
-// according to the pref values.
-Cc["@mozilla.org/addressbook/ldap-module-loader;1"].getService();
+function formatVCard(strings, ...values) {
+  const arr = [];
+  for (const str of strings) {
+    arr.push(str);
+    arr.push(values.shift());
+  }
+  const lines = arr.join("").split("\n");
+  const indent = lines[1].length - lines[1].trimLeft().length;
+  const outLines = [];
+  for (const line of lines) {
+    if (line.length > 0) {
+      outLines.push(line.substring(indent) + "\r\n");
+    }
+  }
+  return outLines.join("");
+}

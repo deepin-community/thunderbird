@@ -19,13 +19,16 @@
 #abContextMenuButton {
   margin-block: -4px 2px;
   padding-inline: 5px;
-}
 
-#abContextMenuButton > .toolbarbutton-icon {
-  margin-inline-end: 0;
+  & > .toolbarbutton-icon {
+    margin-inline-end: 0;
+  }
 }
 
 :root:not([lwt-tree]) #abResultsTree {
-  border-top: 1px solid #a9b1b8;
-  border-bottom: 1px solid #a9b1b8;
+  border-block: 1px solid var(--sidebar-border-color);
+}
+
+#GeneratedName {
+  padding-inline-start: 28px;
 }

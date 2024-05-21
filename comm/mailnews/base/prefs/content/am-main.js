@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -14,6 +13,27 @@ var gAccount;
 function onInit() {
   setAccountTitle();
   setupSignatureItems();
+  Services.obs.addObserver(
+    onDefaultIdentityChange,
+    "account-default-identity-changed"
+  );
+}
+
+window.addEventListener("unload", function () {
+  Services.obs.removeObserver(
+    onDefaultIdentityChange,
+    "account-default-identity-changed"
+  );
+});
+
+/**
+ * If the default identity for the current account changes, loads the values
+ * from the new default identity.
+ */
+function onDefaultIdentityChange(subject, topic, data) {
+  if (data == gAccount.key) {
+    initIdentityValues(subject.QueryInterface(Ci.nsIMsgIdentity));
+  }
 }
 
 /**
@@ -23,7 +43,7 @@ function onInit() {
  * @param {Event} event - Blur event from the pretty name input.
  */
 function serverPrettyNameOnBlur(event) {
-  parent.setAccountLabel(gAccount.key, null, event.target.value);
+  parent.setAccountLabel(gAccount.key, event.target.value);
   setAccountTitle();
 }
 
@@ -31,8 +51,8 @@ function serverPrettyNameOnBlur(event) {
  * Update an account's main settings title with the account name if applicable.
  */
 function setAccountTitle() {
-  let accountName = document.getElementById("server.prettyName");
-  let title = document.querySelector("#am-main-title .dialogheader-title");
+  const accountName = document.getElementById("server.prettyName");
+  const title = document.querySelector("#am-main-title .dialogheader-title");
   let titleValue = title.getAttribute("defaultTitle");
   if (accountName.value) {
     titleValue += " - " + accountName.value;
@@ -45,7 +65,7 @@ function setAccountTitle() {
 function onPreInit(account, accountValues) {
   gAccount = account;
   loadSMTPServerList();
-  let type = parent.getAccountValue(
+  const type = parent.getAccountValue(
     account,
     accountValues,
     "server",
@@ -82,9 +102,6 @@ function manageIdentities() {
 
   function onCloseIdentities() {
     if (args.result) {
-      // now re-initialize the default identity settings in case they changed
-      identity = gAccount.defaultIdentity; // Refetch the default identity in case it changed.
-      initIdentityValues(identity);
       // Refresh the SMTP list in case the user changed server properties
       // from the identity dialog.
       loadSMTPServerList();

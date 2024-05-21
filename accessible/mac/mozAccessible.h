@@ -5,9 +5,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#ifndef _MozAccessible_H_
+#define _MozAccessible_H_
+
 #include "AccessibleWrap.h"
 #include "RemoteAccessible.h"
-#include "AccessibleOrProxy.h"
 
 #import <Cocoa/Cocoa.h>
 
@@ -26,39 +28,42 @@ namespace mozilla {
 namespace a11y {
 
 inline mozAccessible* GetNativeFromGeckoAccessible(
-    mozilla::a11y::AccessibleOrProxy aAccOrProxy) {
-  if (aAccOrProxy.IsNull()) {
+    mozilla::a11y::Accessible* aAcc) {
+  if (!aAcc) {
     return nil;
   }
-  if (LocalAccessible* acc = aAccOrProxy.AsAccessible()) {
+  if (LocalAccessible* acc = aAcc->AsLocal()) {
     mozAccessible* native = nil;
     acc->GetNativeInterface((void**)&native);
     return native;
   }
 
-  RemoteAccessible* proxy = aAccOrProxy.AsProxy();
+  RemoteAccessible* proxy = aAcc->AsRemote();
   return reinterpret_cast<mozAccessible*>(proxy->GetWrapper());
 }
 
-}  // a11y
-}  // mozilla
+// Checked state values some accessibles return as AXValue.
+enum CheckedState {
+  kUncheckable = -1,
+  kUnchecked = 0,
+  kChecked = 1,
+  kMixed = 2
+};
+
+}  // namespace a11y
+}  // namespace mozilla
 
 @interface mozAccessible : MOXAccessibleBase {
   /**
    * Reference to the accessible we were created with;
    * either a proxy accessible or an accessible wrap.
    */
-  mozilla::a11y::AccessibleOrProxy mGeckoAccessible;
+  mozilla::a11y::Accessible* mGeckoAccessible;
 
   /**
    * The role of our gecko accessible.
    */
   mozilla::a11y::role mRole;
-
-  /**
-   * A cache of a subset of our states.
-   */
-  uint64_t mCachedState;
 
   nsStaticAtom* mARIARole;
 
@@ -66,12 +71,10 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 }
 
 // inits with the given wrap or proxy accessible
-- (id)initWithAccessible:(mozilla::a11y::AccessibleOrProxy)aAccOrProxy;
+- (id)initWithAccessible:(mozilla::a11y::Accessible*)aAcc;
 
 // allows for gecko accessible access outside of the class
-- (mozilla::a11y::AccessibleOrProxy)geckoAccessible;
-
-- (mozilla::a11y::AccessibleOrProxy)geckoDocument;
+- (mozilla::a11y::Accessible*)geckoAccessible;
 
 // override
 - (void)dealloc;
@@ -82,14 +85,12 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 // Given a gecko accessibility event type, post the relevant
 // system accessibility notification.
 // Note: when overriding or adding new events, make sure your events aren't
-// filtered out in Platform::ProxyEvent or AccessibleWrap::HandleAccEvent!
+// filtered out in Platform::PlatformEvent or AccessibleWrap::HandleAccEvent!
 - (void)handleAccessibleEvent:(uint32_t)eventType;
 
 - (void)handleAccessibleTextChangeEvent:(NSString*)change
                                inserted:(BOOL)isInserted
-                            inContainer:
-                                (const mozilla::a11y::AccessibleOrProxy&)
-                                    container
+                            inContainer:(mozilla::a11y::Accessible*)container
                                      at:(int32_t)start;
 
 // internal method to retrieve a child at a given index.
@@ -101,11 +102,8 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 // Get gecko accessible's state filtered through given mask.
 - (uint64_t)stateWithMask:(uint64_t)mask;
 
-// Notify of a state change, so the cache can be altered.
+// Notify of a state change, so notifications can be fired.
 - (void)stateChanged:(uint64_t)state isEnabled:(BOOL)enabled;
-
-// Invalidate cached state.
-- (void)invalidateState;
 
 // Get top level (tab) web area.
 - (mozAccessible*)topWebArea;
@@ -194,6 +192,9 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 - (NSNumber*)moxSelected;
 
 // override
+- (NSNumber*)moxExpanded;
+
+// override
 - (NSValue*)moxFrame;
 
 // override
@@ -204,6 +205,12 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 
 // override
 - (NSString*)moxARIALive;
+
+// override
+- (NSNumber*)moxARIAPosInSet;
+
+// override
+- (NSNumber*)moxARIASetSize;
 
 // override
 - (NSString*)moxARIARelevant;
@@ -274,3 +281,5 @@ inline mozAccessible* GetNativeFromGeckoAccessible(
 - (BOOL)isExpired;
 
 @end
+
+#endif

@@ -14,7 +14,6 @@
 #include "gfxPlatform.h"
 #include "imgFrame.h"
 #include "nsColor.h"
-#include "nsMemory.h"
 #include "nsRect.h"
 #include "nspr.h"
 #include "png.h"
@@ -115,6 +114,7 @@ nsPNGDecoder::nsPNGDecoder(RasterImage* aImage)
       mDisablePremultipliedAlpha(false),
       mGotInfoCallback(false),
       mUsePipeTransform(false),
+      mErrorIsRecoverable(false),
       mNumFrames(0) {}
 
 nsPNGDecoder::~nsPNGDecoder() {
@@ -130,7 +130,7 @@ nsPNGDecoder::~nsPNGDecoder() {
 }
 
 nsPNGDecoder::TransparencyType nsPNGDecoder::GetTransparencyType(
-    const IntRect& aFrameRect) {
+    const OrientedIntRect& aFrameRect) {
   // Check if the image has a transparent color in its palette.
   if (HasAlphaChannel()) {
     return TransparencyType::eAlpha;
@@ -194,7 +194,7 @@ nsresult nsPNGDecoder::CreateFrame(const FrameInfo& aFrameInfo) {
     }
 
     animParams.emplace(
-        AnimationParams{aFrameInfo.mFrameRect,
+        AnimationParams{aFrameInfo.mFrameRect.ToUnknownRect(),
                         FrameTimeout::FromRawMilliseconds(mAnimInfo.mTimeout),
                         mNumFrames, mAnimInfo.mBlend, mAnimInfo.mDispose});
   }
@@ -383,7 +383,9 @@ LexerTransition<nsPNGDecoder::State> nsPNGDecoder::ReadPNGData(
 
   // libpng uses setjmp/longjmp for error handling.
   if (setjmp(png_jmpbuf(mPNG))) {
-    return Transition::TerminateFailure();
+    return (GetFrameCount() > 0 && mErrorIsRecoverable)
+               ? Transition::TerminateSuccess()
+               : Transition::TerminateFailure();
   }
 
   // Pass the data off to libpng.
@@ -527,7 +529,7 @@ void nsPNGDecoder::info_callback(png_structp png_ptr, png_infop info_ptr) {
   png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
                &interlace_type, &compression_type, &filter_type);
 
-  const IntRect frameRect(0, 0, width, height);
+  const OrientedIntRect frameRect(0, 0, width, height);
 
   // Post our size to the superclass
   decoder->PostSize(frameRect.Width(), frameRect.Height());
@@ -930,10 +932,11 @@ void nsPNGDecoder::frame_info_callback(png_structp png_ptr,
 
   // Save the information necessary to create the frame; we'll actually create
   // it when we return from the yield.
-  const IntRect frameRect(png_get_next_frame_x_offset(png_ptr, decoder->mInfo),
-                          png_get_next_frame_y_offset(png_ptr, decoder->mInfo),
-                          png_get_next_frame_width(png_ptr, decoder->mInfo),
-                          png_get_next_frame_height(png_ptr, decoder->mInfo));
+  const OrientedIntRect frameRect(
+      png_get_next_frame_x_offset(png_ptr, decoder->mInfo),
+      png_get_next_frame_y_offset(png_ptr, decoder->mInfo),
+      png_get_next_frame_width(png_ptr, decoder->mInfo),
+      png_get_next_frame_height(png_ptr, decoder->mInfo));
   const bool isInterlaced = bool(decoder->interlacebuf);
 
 #  ifndef MOZ_EMBEDDED_LIBPNG
@@ -991,6 +994,16 @@ void nsPNGDecoder::end_callback(png_structp png_ptr, png_infop info_ptr) {
 void nsPNGDecoder::error_callback(png_structp png_ptr,
                                   png_const_charp error_msg) {
   MOZ_LOG(sPNGLog, LogLevel::Error, ("libpng error: %s\n", error_msg));
+
+  nsPNGDecoder* decoder =
+      static_cast<nsPNGDecoder*>(png_get_progressive_ptr(png_ptr));
+
+  if (strstr(error_msg, "invalid chunk type")) {
+    decoder->mErrorIsRecoverable = true;
+  } else {
+    decoder->mErrorIsRecoverable = false;
+  }
+
   png_longjmp(png_ptr, 1);
 }
 
@@ -1012,7 +1025,9 @@ bool nsPNGDecoder::IsValidICOResource() const {
   // we need to save the jump buffer here. Otherwise we'll end up without a
   // proper callstack.
   if (setjmp(png_jmpbuf(mPNG))) {
-    // We got here from a longjmp call indirectly from png_get_IHDR
+    // We got here from a longjmp call indirectly from png_get_IHDR via
+    // error_callback. Ignore mErrorIsRecoverable: if we got an invalid chunk
+    // error before even reading the IHDR we can't recover from that.
     return false;
   }
 

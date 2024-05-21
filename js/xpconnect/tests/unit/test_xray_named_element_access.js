@@ -1,15 +1,12 @@
 // See https://bugzilla.mozilla.org/show_bug.cgi?id=1273251
-"use strict"
-
-ChromeUtils.import("resource://gre/modules/Preferences.jsm");
-const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
+"use strict";
 
 add_task(async function() {
   let webnav = Services.appShell.createWindowlessBrowser(false);
 
   let docShell = webnav.docShell;
 
-  docShell.createAboutBlankContentViewer(null, null);
+  docShell.createAboutBlankDocumentViewer(null, null);
 
   let window = webnav.document.defaultView;
   let unwrapped = Cu.waiveXrays(window);

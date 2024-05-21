@@ -10,10 +10,11 @@
 #include "nsMsgUtils.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgThread.h"
-#include "nsMsgMimeCID.h"
 #include "mozilla/Attributes.h"
 #include "nsStringEnumerator.h"
-
+#ifdef DEBUG
+#  include "nsPrintfCString.h"
+#endif
 using namespace mozilla::mailnews;
 
 NS_IMPL_ISUPPORTS(nsMsgHdr, nsIMsgDBHdr)
@@ -39,7 +40,6 @@ nsMsgHdr::nsMsgHdr(nsMsgDatabase* db, nsIMdbRow* dbRow) {
 
 void nsMsgHdr::Init() {
   m_initedValues = 0;
-  m_statusOffset = 0xffffffff;
   m_messageKey = nsMsgKey_None;
   m_messageSize = 0;
   m_date = 0;
@@ -206,32 +206,20 @@ NS_IMETHODIMP nsMsgHdr::MarkFlagged(bool bFlagged) {
   return rv;
 }
 
-NS_IMETHODIMP nsMsgHdr::GetProperty(const char* propertyName,
-                                    nsAString& resultProperty) {
-  NS_ENSURE_ARG_POINTER(propertyName);
-  if (!m_mdb || !m_mdbRow) return NS_ERROR_NULL_POINTER;
-  return m_mdb->GetPropertyAsNSString(m_mdbRow, propertyName, resultProperty);
-}
-
-NS_IMETHODIMP nsMsgHdr::SetProperty(const char* propertyName,
-                                    const nsAString& propertyStr) {
-  NS_ENSURE_ARG_POINTER(propertyName);
-  if (!m_mdb || !m_mdbRow) return NS_ERROR_NULL_POINTER;
-  return m_mdb->SetPropertyFromNSString(m_mdbRow, propertyName, propertyStr);
-}
-
 NS_IMETHODIMP nsMsgHdr::SetStringProperty(const char* propertyName,
-                                          const char* propertyValue) {
+                                          const nsACString& propertyValue) {
   NS_ENSURE_ARG_POINTER(propertyName);
   if (!m_mdb || !m_mdbRow) return NS_ERROR_NULL_POINTER;
-  return m_mdb->SetProperty(m_mdbRow, propertyName, propertyValue);
+  return m_mdb->SetProperty(m_mdbRow, propertyName,
+                            PromiseFlatCString(propertyValue).get());
 }
 
 NS_IMETHODIMP nsMsgHdr::GetStringProperty(const char* propertyName,
-                                          char** aPropertyValue) {
+                                          nsACString& aPropertyValue) {
   NS_ENSURE_ARG_POINTER(propertyName);
   if (!m_mdb || !m_mdbRow) return NS_ERROR_NULL_POINTER;
-  return m_mdb->GetProperty(m_mdbRow, propertyName, aPropertyValue);
+  return m_mdb->GetProperty(m_mdbRow, propertyName,
+                            getter_Copies(aPropertyValue));
 }
 
 NS_IMETHODIMP nsMsgHdr::GetUint32Property(const char* propertyName,
@@ -314,22 +302,23 @@ NS_IMETHODIMP nsMsgHdr::SetMessageId(const char* messageId) {
   return SetStringColumn(messageId, m_mdb->m_messageIdColumnToken);
 }
 
-NS_IMETHODIMP nsMsgHdr::SetSubject(const char* subject) {
-  return SetStringColumn(subject, m_mdb->m_subjectColumnToken);
+NS_IMETHODIMP nsMsgHdr::SetSubject(const nsACString& subject) {
+  return SetStringColumn(PromiseFlatCString(subject).get(),
+                         m_mdb->m_subjectColumnToken);
 }
 
 NS_IMETHODIMP nsMsgHdr::SetAuthor(const char* author) {
   return SetStringColumn(author, m_mdb->m_senderColumnToken);
 }
 
-NS_IMETHODIMP nsMsgHdr::SetReferences(const char* references) {
-  NS_ENSURE_ARG_POINTER(references);
+NS_IMETHODIMP nsMsgHdr::SetReferences(const nsACString& references) {
   m_references.Clear();
-  ParseReferences(references);
+  ParseReferences(PromiseFlatCString(references).get());
 
   m_initedValues |= REFERENCES_INITED;
 
-  return SetStringColumn(references, m_mdb->m_referencesColumnToken);
+  return SetStringColumn(PromiseFlatCString(references).get(),
+                         m_mdb->m_referencesColumnToken);
 }
 
 NS_IMETHODIMP nsMsgHdr::SetRecipients(const char* recipients) {
@@ -368,23 +357,11 @@ NS_IMETHODIMP nsMsgHdr::SetLineCount(uint32_t lineCount) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgHdr::SetStatusOffset(uint32_t statusOffset) {
-  return SetUInt32Column(statusOffset, m_mdb->m_statusOffsetColumnToken);
-}
-
 NS_IMETHODIMP nsMsgHdr::SetDate(PRTime date) {
   m_date = date;
   uint32_t seconds;
   PRTime2Seconds(date, &seconds);
   return SetUInt32Column((uint32_t)seconds, m_mdb->m_dateColumnToken);
-}
-
-NS_IMETHODIMP nsMsgHdr::GetStatusOffset(uint32_t* result) {
-  uint32_t offset = 0;
-  nsresult res = GetUInt32Column(m_mdb->m_statusOffsetColumnToken, &offset);
-
-  *result = offset;
-  return res;
 }
 
 NS_IMETHODIMP nsMsgHdr::SetPriority(nsMsgPriorityValue priority) {
@@ -403,39 +380,47 @@ NS_IMETHODIMP nsMsgHdr::GetPriority(nsMsgPriorityValue* result) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgHdr::SetLabel(nsMsgLabelValue label) {
-  SetUInt32Column((uint32_t)label, m_mdb->m_labelColumnToken);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgHdr::GetLabel(nsMsgLabelValue* result) {
-  NS_ENSURE_ARG_POINTER(result);
-
-  return GetUInt32Column(m_mdb->m_labelColumnToken, result);
-}
-
 // I'd like to not store the account key, if the msg is in
 // the same account as it was received in, to save disk space and memory.
 // This might be problematic when a message gets moved...
 // And I'm not sure if we should short circuit it here,
 // or at a higher level where it might be more efficient.
 NS_IMETHODIMP nsMsgHdr::SetAccountKey(const char* aAccountKey) {
-  return SetStringProperty("account", aAccountKey);
+  return SetStringProperty("account", nsDependentCString(aAccountKey));
 }
 
 NS_IMETHODIMP nsMsgHdr::GetAccountKey(char** aResult) {
   NS_ENSURE_ARG_POINTER(aResult);
 
-  return GetStringProperty("account", aResult);
+  nsCString key;
+  nsresult rv = GetStringProperty("account", key);
+  NS_ENSURE_SUCCESS(rv, rv);
+  *aResult = ToNewCString(key);
+  return NS_OK;
 }
 
 NS_IMETHODIMP nsMsgHdr::GetMessageOffset(uint64_t* result) {
   NS_ENSURE_ARG(result);
 
-  // if there is a message offset, use it, otherwise, we'll use the message key.
   (void)GetUInt64Column(m_mdb->m_offlineMsgOffsetColumnToken, result,
                         (unsigned)-1);
-  if (*result == (unsigned)-1) *result = m_messageKey;
+  if (*result == (unsigned)-1) {
+    // It's unset. Unfortunately there's not much we can do here. There's
+    // a lot of code which relies on being able to read .messageOffset,
+    // even if it doesn't require it to return anything sensible.
+    // (For example - in js unit tests - Assert.equals() stringifies the
+    // attributes of it's expected/actual values to produce an error
+    // message even if the assert passes).
+#ifdef DEBUG
+    nsCString tok;
+    GetStringProperty("storeToken", tok);
+    nsPrintfCString err("Missing .messageOffset (key=%u, storeToken='%s')",
+                        m_messageKey, tok.get());
+    NS_WARNING(err.get());
+#endif
+    // Return something obviously broken.
+    *result = 12345678;
+  }
   return NS_OK;
 }
 
@@ -459,24 +444,14 @@ NS_IMETHODIMP nsMsgHdr::GetLineCount(uint32_t* result) {
   return res;
 }
 
-NS_IMETHODIMP nsMsgHdr::SetPriorityString(const char* priority) {
-  nsMsgPriorityValue priorityVal = nsMsgPriority::Default;
-
-  // We can ignore |NS_MsgGetPriorityFromString()| return value,
-  // since we set a default value for |priorityVal|.
-  NS_MsgGetPriorityFromString(priority, priorityVal);
-
-  return SetPriority(priorityVal);
-}
-
 NS_IMETHODIMP nsMsgHdr::GetAuthor(char** resultAuthor) {
   return m_mdb->RowCellColumnToCharPtr(GetMDBRow(), m_mdb->m_senderColumnToken,
                                        resultAuthor);
 }
 
-NS_IMETHODIMP nsMsgHdr::GetSubject(char** resultSubject) {
+NS_IMETHODIMP nsMsgHdr::GetSubject(nsACString& resultSubject) {
   return m_mdb->RowCellColumnToCharPtr(GetMDBRow(), m_mdb->m_subjectColumnToken,
-                                       resultSubject);
+                                       getter_Copies(resultSubject));
 }
 
 NS_IMETHODIMP nsMsgHdr::GetRecipients(char** resultRecipients) {
@@ -773,9 +748,8 @@ void nsMsgHdr::ReparentInThread(nsIMsgThread* thread) {
     }
     // we didn't find it. So either the root header is our parent,
     // or we're the root.
-    int32_t rootIndex;
     nsCOMPtr<nsIMsgDBHdr> rootHdr;
-    thread->GetRootHdr(&rootIndex, getter_AddRefs(rootHdr));
+    thread->GetRootHdr(getter_AddRefs(rootHdr));
     NS_ASSERTION(rootHdr, "thread has no root hdr - shouldn't happen");
     if (rootHdr) {
       nsMsgKey rootKey;
@@ -949,8 +923,14 @@ void nsMsgPropertyEnumerator::PrefetchNext(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-NS_IMETHODIMP nsMsgHdr::GetPropertyEnumerator(
-    nsIUTF8StringEnumerator** _result) {
-  NS_ADDREF(*_result = new nsMsgPropertyEnumerator(this));
+NS_IMETHODIMP nsMsgHdr::GetProperties(nsTArray<nsCString>& headers) {
+  nsCOMPtr<nsIUTF8StringEnumerator> propertyEnumerator =
+      new nsMsgPropertyEnumerator(this);
+  bool hasMore;
+  while (NS_SUCCEEDED(propertyEnumerator->HasMore(&hasMore)) && hasMore) {
+    nsAutoCString property;
+    propertyEnumerator->GetNext(property);
+    headers.AppendElement(property);
+  }
   return NS_OK;
 }

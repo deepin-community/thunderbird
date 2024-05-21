@@ -4,20 +4,20 @@
 
 "use strict";
 
-const Services = require("Services");
-const { l10n } = require("devtools/client/aboutdebugging/src/modules/l10n");
+const {
+  l10n,
+} = require("resource://devtools/client/aboutdebugging/src/modules/l10n.js");
 
 const {
   DEBUG_TARGETS,
-  PREFERENCES,
   REQUEST_PROCESSES_SUCCESS,
-} = require("devtools/client/aboutdebugging/src/constants");
+} = require("resource://devtools/client/aboutdebugging/src/constants.js");
 
 /**
  * This middleware converts tabs object that get from DevToolsClient.listProcesses() to
  * data which is used in DebugTargetItem.
  */
-const processComponentDataMiddleware = store => next => action => {
+const processComponentDataMiddleware = () => next => action => {
   switch (action.type) {
     case REQUEST_PROCESSES_SUCCESS: {
       const mainProcessComponentData = toMainProcessComponentData(
@@ -31,30 +31,20 @@ const processComponentDataMiddleware = store => next => action => {
   return next(action);
 };
 
-function toMainProcessComponentData(process) {
+function toMainProcessComponentData() {
   const type = DEBUG_TARGETS.PROCESS;
-  const id = process.id;
   const icon = "chrome://devtools/skin/images/aboutdebugging-process-icon.svg";
-
-  const isMultiProcessToolboxEnabled = Services.prefs.getBoolPref(
-    PREFERENCES.FISSION_BROWSER_TOOLBOX,
-    false
-  );
 
   // For now, we assume there is only one process and this is the main process
   // So the name and title are for a remote (multiprocess) browser toolbox.
-  const name = isMultiProcessToolboxEnabled
-    ? l10n.getString("about-debugging-multiprocess-toolbox-name")
-    : l10n.getString("about-debugging-main-process-name");
-
-  const description = isMultiProcessToolboxEnabled
-    ? l10n.getString("about-debugging-multiprocess-toolbox-description")
-    : l10n.getString("about-debugging-main-process-description2");
+  const name = l10n.getString("about-debugging-multiprocess-toolbox-name");
+  const description = l10n.getString(
+    "about-debugging-multiprocess-toolbox-description"
+  );
 
   return {
     name,
     icon,
-    id,
     type,
     details: {
       description,

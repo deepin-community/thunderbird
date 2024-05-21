@@ -7,7 +7,13 @@
 #ifndef mozilla_WasiAtomic_h
 #define mozilla_WasiAtomic_h
 
-#include <cstdint>
+// Clang >= 14 supports <atomic> for wasm targets.
+#if _LIBCPP_VERSION >= 14000
+#  include <atomic>
+#else
+
+#  include <cstddef>  // For ptrdiff_t
+#  include <cstdint>
 
 // WASI doesn't support <atomic> and we use it as single-threaded for now.
 // This is a stub implementation of std atomics to build WASI port of SM.
@@ -188,5 +194,7 @@ using atomic_uint32_t = atomic<uint32_t>;
 using atomic_uint64_t = atomic<uint64_t>;
 
 }  // namespace std
+
+#endif
 
 #endif  // mozilla_WasiAtomic_h

@@ -8,15 +8,14 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-  var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+  var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
   /**
    * The MozCalendarEditableItem widget is used as a full day event item in the
    * Day and Week views of the calendar. It displays the event name, alarm icon
    * and the category type color. It gets displayed in the header container of
    * the respective view of the calendar.
    *
-   * @extends MozXULElement
+   * @augments MozXULElement
    */
   class MozCalendarEditableItem extends MozXULElement {
     static get inheritedAttributes() {
@@ -57,7 +56,8 @@
         if (
           this.selected &&
           !(event.ctrlKey || event.metaKey) &&
-          cal.acl.isCalendarWritable(this.mOccurrence.calendar)
+          cal.acl.isCalendarWritable(this.mOccurrence.calendar) &&
+          !cal.itip.isInvitation(this.mOccurrence)
         ) {
           if (this.editingTimer) {
             clearTimeout(this.editingTimer);
@@ -85,7 +85,11 @@
         }
 
         if (this.calendarView && this.calendarView.controller) {
-          let item = event.ctrlKey ? this.mOccurrence.parentItem : this.mOccurrence;
+          const item = event.ctrlKey ? this.mOccurrence.parentItem : this.mOccurrence;
+          if (Services.prefs.getBoolPref("calendar.events.defaultActionEdit", true)) {
+            this.calendarView.controller.modifyOccurrence(item);
+            return;
+          }
           this.calendarView.controller.viewOccurrence(item);
         }
       });
@@ -97,13 +101,13 @@
         }
       });
 
-      // We have two event listeners for dragstart. This event listener is for the capturing phase.
+      // We have two event listeners for dragstart. This event listener is for the bubbling phase.
       this.addEventListener("dragstart", event => {
-        if (document.monthDragEvent.localName == "calendar-event-box") {
+        if (document.monthDragEvent?.localName == "calendar-event-box") {
           return;
         }
-        let item = this.occurrence;
-        let isInvitation =
+        const item = this.occurrence;
+        const isInvitation =
           item.calendar instanceof Ci.calISchedulingSupport && item.calendar.isInvitation(item);
         if (
           !cal.acl.isCalendarWritable(item.calendar) ||
@@ -133,17 +137,18 @@
                         placeholder='${cal.l10n.getCalString("newEvent")}'/>
             <html:div class="alarm-icons-box"></html:div>
             <html:img class="item-classification-icon" />
+            <html:img class="item-recurrence-icon" />
           </html:div>
           <html:div class="location-desc"></html:div>
           <html:div class="calendar-category-box"></html:div>
         `)
       );
 
-      this.classList.add("calendar-color-box", "calendar-item-grid");
+      this.classList.add("calendar-color-box", "calendar-item-container");
 
-      // We have two event listeners for dragstart. This event listener is for the bubbling phase
+      // We have two event listeners for dragstart. This event listener is for the capturing phase
       // where we are setting up the document.monthDragEvent which will be used in the event listener
-      // in the capturing phase.
+      // in the bubbling phase.
       this.addEventListener(
         "dragstart",
         event => {
@@ -211,7 +216,7 @@
     }
 
     addEventNameTextboxListener() {
-      let stopPropagationIfEditing = event => {
+      const stopPropagationIfEditing = event => {
         if (this.mEditing) {
           event.stopPropagation();
         }
@@ -238,41 +243,45 @@
     }
 
     setEditableLabel() {
-      let label = this.eventNameLabel;
-      let item = this.mOccurrence;
+      const label = this.eventNameLabel;
+      const item = this.mOccurrence;
       label.textContent = item.title
         ? item.title.replace(/\n/g, " ")
         : cal.l10n.getCalString("eventUntitled");
     }
 
     setLocationLabel() {
-      let locationLabel = this.querySelector(".location-desc");
-      let location = this.mOccurrence.getProperty("LOCATION");
-      let showLocation = Services.prefs.getBoolPref("calendar.view.showLocation", false);
+      const locationLabel = this.querySelector(".location-desc");
+      const location = this.mOccurrence.getProperty("LOCATION");
+      const showLocation = Services.prefs.getBoolPref("calendar.view.showLocation", false);
 
       locationLabel.textContent = showLocation && location ? location : "";
       locationLabel.hidden = !showLocation || !location;
     }
 
     setCSSClasses() {
-      let item = this.mOccurrence;
-      let cssSafeId = cal.view.formatStringForCSSRule(item.calendar.id);
+      const item = this.mOccurrence;
+      const cssSafeId = cal.view.formatStringForCSSRule(item.calendar.id);
       this.style.setProperty("--item-backcolor", `var(--calendar-${cssSafeId}-backcolor)`);
       this.style.setProperty("--item-forecolor", `var(--calendar-${cssSafeId}-forecolor)`);
-      let categoriesArray = item.getCategories();
-      let categoriesBox = this.querySelector(".calendar-category-box");
-      if (categoriesArray.length > 0) {
-        let cssClassesArray = categoriesArray.map(cal.view.formatStringForCSSRule);
+      const categoriesBox = this.querySelector(".calendar-category-box");
+
+      const categoriesArray = item.getCategories().map(cal.view.formatStringForCSSRule);
+      // Find the first category with a colour.
+      const firstCategory = categoriesArray.find(
+        category => Services.prefs.getStringPref("calendar.category.color." + category, "") != ""
+      );
+      if (firstCategory) {
         categoriesBox.hidden = false;
-        categoriesBox.style.backgroundColor = `var(--category-${cssClassesArray[0]}-color)`;
+        categoriesBox.style.backgroundColor = `var(--category-${firstCategory}-color)`;
       } else {
         categoriesBox.hidden = true;
       }
 
       // Add alarm icons as needed.
-      let alarms = item.getAlarms();
+      const alarms = item.getAlarms();
       if (alarms.length && Services.prefs.getBoolPref("calendar.alarms.indicator.show", true)) {
-        let iconsBox = this.querySelector(".alarm-icons-box");
+        const iconsBox = this.querySelector(".alarm-icons-box");
         // Set suppressed status on the icons box.
         iconsBox.toggleAttribute("suppressed", item.calendar.getProperty("suppressAlarms"));
 
@@ -280,7 +289,7 @@
       }
 
       // Item classification / privacy.
-      let classificationIcon = this.querySelector(".item-classification-icon");
+      const classificationIcon = this.querySelector(".item-classification-icon");
       if (classificationIcon) {
         switch (item.privacy) {
           case "PRIVATE":
@@ -313,12 +322,35 @@
         }
       }
 
+      const recurrenceIcon = this.querySelector(".item-recurrence-icon");
+      if (item.parentItem != item && item.parentItem.recurrenceInfo) {
+        if (item.parentItem.recurrenceInfo.getExceptionFor(item.recurrenceId)) {
+          recurrenceIcon.setAttribute(
+            "src",
+            "chrome://messenger/skin/icons/new/recurrence-exception.svg"
+          );
+          document.l10n.setAttributes(
+            recurrenceIcon,
+            "calendar-editable-item-recurrence-exception"
+          );
+        } else {
+          recurrenceIcon.setAttribute("src", "chrome://messenger/skin/icons/new/recurrence.svg");
+          document.l10n.setAttributes(recurrenceIcon, "calendar-editable-item-recurrence");
+        }
+        recurrenceIcon.hidden = false;
+      } else {
+        recurrenceIcon.removeAttribute("src");
+        recurrenceIcon.removeAttribute("data-l10n-id");
+        recurrenceIcon.setAttribute("alt", "");
+        recurrenceIcon.hidden = true;
+      }
+
       // Event type specific properties.
       if (item.isEvent() && item.startDate.isDate) {
         this.setAttribute("allday", "true");
       }
       if (item.isTodo()) {
-        let icon = this.querySelector(".item-type-icon");
+        const icon = this.querySelector(".item-type-icon");
         if (cal.item.getProgressAtom(item) === "completed") {
           icon.setAttribute("src", "chrome://calendar/skin/shared/todo-complete.svg");
           document.l10n.setAttributes(icon, "calendar-editable-item-todo-icon-completed-task");
@@ -362,11 +394,6 @@
           "invitation-status",
           cal.itip.getInvitedAttendee(item).participationStatus
         );
-        // FIXME? Set as readonly, but the "click" event listener will still
-        // allow editing the name.
-        this.setAttribute("readonly", "true");
-      } else if (!cal.acl.isCalendarWritable(item.calendar)) {
-        this.setAttribute("readonly", "true");
       }
     }
 
@@ -394,7 +421,7 @@
       let items = this.calendarView.mSelectedItems.slice();
       if (event.ctrlKey || event.metaKey) {
         if (this.selected) {
-          let pos = items.indexOf(this.mOccurrence);
+          const pos = items.indexOf(this.mOccurrence);
           items.splice(pos, 1);
         } else {
           items.push(this.mOccurrence);

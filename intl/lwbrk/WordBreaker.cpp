@@ -3,45 +3,29 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mozilla/CheckedInt.h"
+#include "mozilla/intl/UnicodeProperties.h"
 #include "mozilla/intl/WordBreaker.h"
 #include "mozilla/StaticPrefs_layout.h"
 #include "nsComplexBreaker.h"
+#include "nsTArray.h"
 #include "nsUnicodeProperties.h"
 
-using mozilla::intl::WordBreakClass;
+#if defined(MOZ_ICU4X) && defined(JS_HAS_INTL_API)
+#  include "ICU4XDataProvider.h"
+#  include "ICU4XWordBreakIteratorUtf16.hpp"
+#  include "ICU4XWordSegmenter.hpp"
+#  include "mozilla/intl/ICU4XGeckoDataProvider.h"
+#  include "mozilla/StaticPrefs_intl.h"
+#  include "nsUnicharUtils.h"
+#endif
+
+using mozilla::intl::Script;
+using mozilla::intl::UnicodeProperties;
 using mozilla::intl::WordBreaker;
 using mozilla::intl::WordRange;
-using mozilla::unicode::GetScriptCode;
+using mozilla::unicode::GetGenCategory;
 
-/*static*/
-already_AddRefed<WordBreaker> WordBreaker::Create() {
-  return RefPtr<WordBreaker>(new WordBreaker()).forget();
-}
-
-bool WordBreaker::BreakInBetween(const char16_t* aText1, uint32_t aTextLen1,
-                                 const char16_t* aText2, uint32_t aTextLen2) {
-  MOZ_ASSERT(nullptr != aText1, "null ptr");
-  MOZ_ASSERT(nullptr != aText2, "null ptr");
-
-  if (!aText1 || !aText2 || (0 == aTextLen1) || (0 == aTextLen2)) return false;
-
-  uint8_t c1 = GetClass(aText1[aTextLen1 - 1]);
-  uint8_t c2 = GetClass(aText2[0]);
-
-  if (c1 == c2 && kWbClassScriptioContinua == c1) {
-    nsAutoString text(aText1, aTextLen1);
-    text.Append(aText2, aTextLen2);
-    AutoTArray<uint8_t, 256> breakBefore;
-    breakBefore.SetLength(aTextLen1 + aTextLen2);
-    NS_GetComplexLineBreaks(text.get(), text.Length(), breakBefore.Elements());
-    bool ret = breakBefore[aTextLen1];
-    return ret;
-  }
-
-  return (c1 != c2);
-}
-
-#define IS_ASCII(c) (0 == (0xFF80 & (c)))
 #define ASCII_IS_ALPHA(c) \
   ((('a' <= (c)) && ((c) <= 'z')) || (('A' <= (c)) && ((c) <= 'Z')))
 #define ASCII_IS_DIGIT(c) (('0' <= (c)) && ((c) <= '9'))
@@ -66,14 +50,14 @@ bool WordBreaker::BreakInBetween(const char16_t* aText1, uint32_t aTextLen1,
 // the script is not supported by the platform, we just won't find any useful
 // boundaries.)
 static bool IsScriptioContinua(char16_t aChar) {
-  Script sc = GetScriptCode(aChar);
+  Script sc = UnicodeProperties::GetScriptCode(aChar);
   return sc == Script::THAI || sc == Script::MYANMAR || sc == Script::KHMER ||
          sc == Script::JAVANESE || sc == Script::BALINESE ||
          sc == Script::SUNDANESE || sc == Script::LAO;
 }
 
 /* static */
-WordBreakClass WordBreaker::GetClass(char16_t c) {
+WordBreaker::WordBreakClass WordBreaker::GetClass(char16_t c) {
   // begin of the hack
 
   if (IS_ALPHABETICAL_SCRIPT(c)) {
@@ -119,23 +103,73 @@ WordBreakClass WordBreaker::GetClass(char16_t c) {
   return kWbClassAlphaLetter;
 }
 
-WordRange WordBreaker::FindWord(const char16_t* aText, uint32_t aTextLen,
-                                uint32_t aOffset) {
-  WordRange range;
-  MOZ_ASSERT(nullptr != aText, "null ptr");
-  MOZ_ASSERT(0 != aTextLen, "len = 0");
-  MOZ_ASSERT(aOffset <= aTextLen, "aOffset > aTextLen");
+WordRange WordBreaker::FindWord(const nsAString& aText, uint32_t aPos,
+                                const FindWordOptions aOptions) {
+  const CheckedInt<uint32_t> len = aText.Length();
+  MOZ_RELEASE_ASSERT(len.isValid());
 
-  range.mBegin = aTextLen + 1;
-  range.mEnd = aTextLen + 1;
+  if (aPos >= len.value()) {
+    return {len.value(), len.value()};
+  }
 
-  if (!aText || aOffset > aTextLen) return range;
+  WordRange range{0, len.value()};
 
-  WordBreakClass c = GetClass(aText[aOffset]);
-  uint32_t i;
+#if defined(MOZ_ICU4X) && defined(JS_HAS_INTL_API)
+  if (StaticPrefs::intl_icu4x_segmenter_enabled()) {
+    auto result =
+        capi::ICU4XWordSegmenter_create_auto(mozilla::intl::GetDataProvider());
+    MOZ_ASSERT(result.is_ok);
+    ICU4XWordSegmenter segmenter(result.ok);
+    ICU4XWordBreakIteratorUtf16 iterator =
+        segmenter.segment_utf16(diplomat::span<const uint16_t>(
+            (const uint16_t*)aText.BeginReading(), aText.Length()));
+
+    uint32_t previousPos = 0;
+    while (true) {
+      const int32_t nextPos = iterator.next();
+      if (nextPos < 0) {
+        range.mBegin = previousPos;
+        range.mEnd = len.value();
+        break;
+      }
+      if ((uint32_t)nextPos > aPos) {
+        range.mBegin = previousPos;
+        range.mEnd = (uint32_t)nextPos;
+        break;
+      }
+
+      previousPos = nextPos;
+    }
+
+    if (aOptions != FindWordOptions::StopAtPunctuation) {
+      return range;
+    }
+
+    for (uint32_t i = range.mBegin; i < range.mEnd; i++) {
+      if (mozilla::IsPunctuationForWordSelect(aText[i])) {
+        if (i > aPos) {
+          range.mEnd = i;
+          break;
+        }
+        if (i == aPos) {
+          range.mBegin = i;
+          range.mEnd = i + 1;
+          break;
+        }
+        if (i < aPos) {
+          range.mBegin = i + 1;
+        }
+      }
+    }
+
+    return range;
+  }
+#endif
+
+  WordBreakClass c = GetClass(aText[aPos]);
+
   // Scan forward
-  range.mEnd--;
-  for (i = aOffset + 1; i <= aTextLen; i++) {
+  for (uint32_t i = aPos + 1; i < len.value(); i++) {
     if (c != GetClass(aText[i])) {
       range.mEnd = i;
       break;
@@ -143,8 +177,7 @@ WordRange WordBreaker::FindWord(const char16_t* aText, uint32_t aTextLen,
   }
 
   // Scan backward
-  range.mBegin = 0;
-  for (i = aOffset; i > 0; i--) {
+  for (uint32_t i = aPos; i > 0; i--) {
     if (c != GetClass(aText[i - 1])) {
       range.mBegin = i;
       break;
@@ -156,11 +189,12 @@ WordRange WordBreaker::FindWord(const char16_t* aText, uint32_t aTextLen,
     // shorter answer
     AutoTArray<uint8_t, 256> breakBefore;
     breakBefore.SetLength(range.mEnd - range.mBegin);
-    NS_GetComplexLineBreaks(aText + range.mBegin, range.mEnd - range.mBegin,
-                            breakBefore.Elements());
+    ComplexBreaker::GetBreaks(aText.BeginReading() + range.mBegin,
+                              range.mEnd - range.mBegin,
+                              breakBefore.Elements());
 
     // Scan forward
-    for (i = aOffset + 1; i < range.mEnd; i++) {
+    for (uint32_t i = aPos + 1; i < range.mEnd; i++) {
       if (breakBefore[i - range.mBegin]) {
         range.mEnd = i;
         break;
@@ -168,7 +202,7 @@ WordRange WordBreaker::FindWord(const char16_t* aText, uint32_t aTextLen,
     }
 
     // Scan backward
-    for (i = aOffset; i > range.mBegin; i--) {
+    for (uint32_t i = aPos; i > range.mBegin; i--) {
       if (breakBefore[i - range.mBegin]) {
         range.mBegin = i;
         break;
@@ -178,41 +212,38 @@ WordRange WordBreaker::FindWord(const char16_t* aText, uint32_t aTextLen,
   return range;
 }
 
-int32_t WordBreaker::NextWord(const char16_t* aText, uint32_t aLen,
-                              uint32_t aPos) {
-  WordBreakClass c1, c2;
-  uint32_t cur = aPos;
-  if (cur == aLen) {
+int32_t WordBreaker::Next(const char16_t* aText, uint32_t aLen, uint32_t aPos) {
+  MOZ_ASSERT(aText);
+
+  if (aPos >= aLen) {
     return NS_WORDBREAKER_NEED_MORE_TEXT;
   }
-  c1 = GetClass(aText[cur]);
 
-  for (cur++; cur < aLen; cur++) {
-    c2 = GetClass(aText[cur]);
-    if (c2 != c1) {
+  const WordBreakClass posClass = GetClass(aText[aPos]);
+  uint32_t nextBreakPos;
+  for (nextBreakPos = aPos + 1; nextBreakPos < aLen; ++nextBreakPos) {
+    if (posClass != GetClass(aText[nextBreakPos])) {
       break;
     }
   }
 
-  if (kWbClassScriptioContinua == c1) {
-    // we pass the whole text segment to the complex word breaker to find a
-    // shorter answer
+  if (kWbClassScriptioContinua == posClass) {
+    // We pass the whole text segment to the complex word breaker to find a
+    // shorter answer.
+    const char16_t* segStart = aText + aPos;
+    const uint32_t segLen = nextBreakPos - aPos + 1;
     AutoTArray<uint8_t, 256> breakBefore;
-    breakBefore.SetLength(aLen - aPos);
-    NS_GetComplexLineBreaks(aText + aPos, aLen - aPos, breakBefore.Elements());
-    uint32_t i = 1;
-    while (i < cur - aPos && !breakBefore[i]) {
-      i++;
-    }
-    if (i < cur - aPos) {
-      return aPos + i;
+    breakBefore.SetLength(segLen);
+    ComplexBreaker::GetBreaks(segStart, segLen, breakBefore.Elements());
+
+    for (uint32_t i = aPos + 1; i < nextBreakPos; ++i) {
+      if (breakBefore[i - aPos]) {
+        nextBreakPos = i;
+        break;
+      }
     }
   }
 
-  if (cur == aLen) {
-    return NS_WORDBREAKER_NEED_MORE_TEXT;
-  }
-
-  MOZ_ASSERT(cur != aPos);
-  return cur;
+  MOZ_ASSERT(nextBreakPos != aPos);
+  return nextBreakPos;
 }

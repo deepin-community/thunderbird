@@ -9,14 +9,11 @@
 %>
 
 <%def name="predefined_type(name, type, initial_value, parse_method='parse',
-            vector=False,
-            computed_type=None, initial_specified_value=None,
-            allow_quirks='No', allow_empty=False, **kwargs)">
+            vector=False, none_value=None, initial_specified_value=None,
+            allow_quirks='No', **kwargs)">
     <%def name="predefined_type_inner(name, type, initial_value, parse_method)">
         #[allow(unused_imports)]
         use app_units::Au;
-        #[allow(unused_imports)]
-        use cssparser::{Color as CSSParserColor, RGBA};
         #[allow(unused_imports)]
         use crate::values::specified::AllowQuirks;
         #[allow(unused_imports)]
@@ -25,11 +22,7 @@
         use smallvec::SmallVec;
         pub use crate::values::specified::${type} as SpecifiedValue;
         pub mod computed_value {
-            % if computed_type:
-            pub use ${computed_type} as T;
-            % else:
             pub use crate::values::computed::${type} as T;
-            % endif
         }
         % if initial_value:
         #[inline] pub fn get_initial_value() -> computed_value::T { ${initial_value} }
@@ -54,7 +47,7 @@
     </%def>
     % if vector:
         <%call
-            expr="vector_longhand(name, predefined_type=type, allow_empty=allow_empty or not initial_value, **kwargs)"
+            expr="vector_longhand(name, predefined_type=type, allow_empty=not initial_value, none_value=none_value, **kwargs)"
         >
             ${predefined_type_inner(name, type, initial_value, parse_method)}
             % if caller:
@@ -71,17 +64,6 @@
     % endif
 </%def>
 
-// FIXME (Manishearth): Add computed_value_as_specified argument
-// and handle the empty case correctly
-<%doc>
-    To be used in cases where we have a grammar like "<thing> [ , <thing> ]*".
-
-    Setting allow_empty to False allows for cases where the vector
-    is empty. The grammar for these is usually "none | <thing> [ , <thing> ]*".
-    We assume that the default/initial value is an empty vector for these.
-    `initial_value` need not be defined for these.
-</%doc>
-
 // The setup here is roughly:
 //
 //  * UnderlyingList is the list that is stored in the computed value. This may
@@ -96,6 +78,7 @@
 // longhand.
 <%def name="vector_longhand(name, animation_value_type=None,
                             vector_animation_type=None, allow_empty=False,
+                            none_value=None,
                             simple_vector_bindings=False,
                             separator='Comma',
                             **kwargs)">
@@ -119,8 +102,6 @@
             use crate::values::computed::{Context, ToComputedValue};
             #[allow(unused_imports)]
             use crate::values::{computed, specified};
-            #[allow(unused_imports)]
-            use crate::values::{Auto, Either, None_};
             ${caller.body()}
         }
 
@@ -132,13 +113,13 @@
             use crate::values::resolved::ToResolvedValue;
             pub use super::single_value::computed_value as single_value;
             pub use self::single_value::T as SingleComputedValue;
-            % if not allow_empty or allow_empty == "NotInitial":
+            % if not allow_empty:
             use smallvec::SmallVec;
             % endif
             use crate::values::computed::ComputedVecIter;
 
             <%
-                is_shared_list = allow_empty and allow_empty != "NotInitial" and \
+                is_shared_list = allow_empty and \
                     data.longhands_by_name[name].style_struct.inherited
             %>
 
@@ -146,7 +127,7 @@
             // something for transition-name, which is the only remaining user
             // of NotInitial.
             pub type UnderlyingList<T> =
-                % if allow_empty and allow_empty != "NotInitial":
+                % if allow_empty:
                 % if data.longhands_by_name[name].style_struct.inherited:
                     crate::ArcSlice<T>;
                 % else:
@@ -157,7 +138,7 @@
                 % endif
 
             pub type UnderlyingOwnedList<T> =
-                % if allow_empty and allow_empty != "NotInitial":
+                % if allow_empty:
                     crate::OwnedSlice<T>;
                 % else:
                     SmallVec<[T; 1]>;
@@ -170,15 +151,7 @@
             /// Making this type generic allows the compiler to figure out the
             /// animated value for us, instead of having to implement it
             /// manually for every type we care about.
-            #[derive(
-                Clone,
-                Debug,
-                MallocSizeOf,
-                PartialEq,
-                ToAnimatedValue,
-                ToResolvedValue,
-                ToCss,
-            )]
+            #[derive(Clone, Debug, MallocSizeOf, PartialEq, ToAnimatedValue, ToResolvedValue, ToCss)]
             % if separator == "Comma":
             #[css(comma)]
             % endif
@@ -198,13 +171,7 @@
             % else:
             pub use self::ComputedList as List;
 
-            #[derive(
-                Clone,
-                Debug,
-                MallocSizeOf,
-                PartialEq,
-                ToCss,
-            )]
+            #[derive(Clone, Debug, MallocSizeOf, PartialEq, ToCss)]
             % if separator == "Comma":
             #[css(comma)]
             % endif
@@ -265,8 +232,7 @@
                 Sorry, this is stupid but needed for now.
             % endif
 
-            use crate::properties::animated_properties::ListAnimation;
-            use crate::values::animated::{Animate, ToAnimatedZero, Procedure};
+            use crate::values::animated::{Animate, ToAnimatedZero, Procedure, lists};
             use crate::values::distance::{SquaredDistance, ComputeSquaredDistance};
 
             // FIXME(emilio): For some reason rust thinks that this alias is
@@ -303,7 +269,7 @@
                     procedure: Procedure,
                 ) -> Result<Self, ()> {
                     Ok(OwnedList(
-                        self.0.animate_${vector_animation_type}(&other.0, procedure)?
+                        lists::${vector_animation_type}::animate(&self.0, &other.0, procedure)?
                     ))
                 }
             }
@@ -312,7 +278,7 @@
                     &self,
                     other: &Self,
                 ) -> Result<SquaredDistance, ()> {
-                    self.0.squared_distance_${vector_animation_type}(&other.0)
+                    lists::${vector_animation_type}::squared_distance(&self.0, &other.0)
                 }
             }
             % endif
@@ -325,6 +291,9 @@
 
         /// The specified value of ${name}.
         #[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+        % if none_value:
+        #[value_info(other_values = "none")]
+        % endif
         % if separator == "Comma":
         #[css(comma)]
         % endif
@@ -338,7 +307,7 @@
         );
 
         pub fn get_initial_value() -> computed_value::T {
-            % if allow_empty and allow_empty != "NotInitial":
+            % if allow_empty:
                 computed_value::List(Default::default())
             % else:
                 let mut v = SmallVec::new();
@@ -353,9 +322,13 @@
         ) -> Result<SpecifiedValue, ParseError<'i>> {
             use style_traits::Separator;
 
-            % if allow_empty:
+            % if allow_empty or none_value:
             if input.try_parse(|input| input.expect_ident_matching("none")).is_ok() {
+                % if allow_empty:
                 return Ok(SpecifiedValue(Default::default()))
+                % else:
+                return Ok(SpecifiedValue(crate::OwnedSlice::from(vec![${none_value}])))
+                % endif
             }
             % endif
 
@@ -414,8 +387,6 @@
         #[allow(unused_imports)]
         use crate::properties::{UnparsedValue, ShorthandId};
         #[allow(unused_imports)]
-        use crate::values::{Auto, Either, None_};
-        #[allow(unused_imports)]
         use crate::error_reporting::ParseErrorReporter;
         #[allow(unused_imports)]
         use crate::properties::longhands;
@@ -439,28 +410,34 @@
         use crate::Atom;
         ${caller.body()}
         #[allow(unused_variables)]
-        pub fn cascade_property(
+        pub unsafe fn cascade_property(
             declaration: &PropertyDeclaration,
             context: &mut computed::Context,
         ) {
-            context.for_non_inherited_property =
-                % if property.style_struct.inherited:
-                    None;
-                % else:
-                    Some(LonghandId::${property.camel_case});
-                % endif
-
+            % if property.logical:
+            declaration.debug_crash("Should physicalize before entering here");
+            % else:
+            context.for_non_inherited_property = ${"false" if property.style_struct.inherited else "true"};
+            % if property.logical_group:
+            debug_assert_eq!(
+                declaration.id().as_longhand().unwrap().logical_group(),
+                LonghandId::${property.camel_case}.logical_group(),
+            );
+            % else:
+            debug_assert_eq!(
+                declaration.id().as_longhand().unwrap(),
+                LonghandId::${property.camel_case},
+            );
+            % endif
             let specified_value = match *declaration {
-                PropertyDeclaration::${property.camel_case}(ref value) => value,
-                PropertyDeclaration::CSSWideKeyword(ref declaration) => {
-                    debug_assert_eq!(declaration.id, LonghandId::${property.camel_case});
-                    match declaration.keyword {
+                PropertyDeclaration::CSSWideKeyword(ref wk) => {
+                    match wk.keyword {
                         % if not property.style_struct.inherited:
                         CSSWideKeyword::Unset |
                         % endif
                         CSSWideKeyword::Initial => {
                             % if not property.style_struct.inherited:
-                                debug_assert!(false, "Should be handled in apply_properties");
+                                declaration.debug_crash("Unexpected initial or unset for non-inherited property");
                             % else:
                                 context.builder.reset_${property.ident}();
                             % endif
@@ -470,31 +447,33 @@
                         % endif
                         CSSWideKeyword::Inherit => {
                             % if property.style_struct.inherited:
-                                debug_assert!(false, "Should be handled in apply_properties");
+                                declaration.debug_crash("Unexpected inherit or unset for inherited property");
                             % else:
                                 context.rule_cache_conditions.borrow_mut().set_uncacheable();
                                 context.builder.inherit_${property.ident}();
                             % endif
                         }
-                        CSSWideKeyword::Revert => unreachable!("Should never get here"),
+                        CSSWideKeyword::RevertLayer |
+                        CSSWideKeyword::Revert => {
+                            declaration.debug_crash("Found revert/revert-layer not deal with");
+                        },
                     }
                     return;
-                }
+                },
+                #[cfg(debug_assertions)]
                 PropertyDeclaration::WithVariables(..) => {
-                    panic!("variables should already have been substituted")
-                }
-                _ => panic!("entered the wrong cascade_property() implementation"),
+                    declaration.debug_crash("Found variables not substituted");
+                    return;
+                },
+                _ => unsafe {
+                    declaration.unchecked_value_as::<${property.specified_type()}>()
+                },
             };
 
             % if property.ident in SYSTEM_FONT_LONGHANDS and engine == "gecko":
-                if let Some(sf) = specified_value.get_system() {
-                    longhands::system_font::resolve_system_font(sf, context);
-                }
-            % endif
-
-            % if not property.style_struct.inherited and property.logical:
-                context.rule_cache_conditions.borrow_mut()
-                    .set_writing_mode_dependency(context.builder.writing_mode);
+            if let Some(sf) = specified_value.get_system() {
+                longhands::system_font::resolve_system_font(sf, context);
+            }
             % endif
 
             % if property.is_vector and not property.simple_vector_bindings and engine == "gecko":
@@ -521,6 +500,7 @@
                 % endif
                 context.builder.set_${property.ident}(computed)
             % endif
+            % endif
         }
 
         pub fn parse_declared<'i, 't>(
@@ -538,105 +518,6 @@
                 .map(PropertyDeclaration::${property.camel_case})
         }
     }
-</%def>
-
-<%def name="single_keyword_system(name, values, **kwargs)">
-    <%
-        keyword_kwargs = {a: kwargs.pop(a, None) for a in [
-            'gecko_constant_prefix',
-            'gecko_enum_prefix',
-            'extra_gecko_values',
-            'extra_servo_2013_values',
-            'extra_servo_2020_values',
-            'custom_consts',
-            'gecko_inexhaustive',
-        ]}
-        keyword = keyword=Keyword(name, values, **keyword_kwargs)
-    %>
-    <%call expr="longhand(name, keyword=Keyword(name, values, **keyword_kwargs), **kwargs)">
-        use crate::values::specified::font::SystemFont;
-
-        pub mod computed_value {
-            #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
-            #[derive(
-                Clone,
-                Copy,
-                Debug,
-                Eq,
-                FromPrimitive,
-                Hash,
-                MallocSizeOf,
-                Parse,
-                PartialEq,
-                SpecifiedValueInfo,
-                ToCss,
-                ToResolvedValue,
-                ToShmem,
-            )]
-            pub enum T {
-            % for value in keyword.values_for(engine):
-                ${to_camel_case(value)},
-            % endfor
-            }
-
-            ${gecko_keyword_conversion(keyword, keyword.values_for(engine), type="T", cast_to="i32")}
-        }
-
-        #[cfg_attr(feature = "gecko", derive(MallocSizeOf))]
-        #[derive(Clone, Copy, Debug, Eq, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
-        pub enum SpecifiedValue {
-            Keyword(computed_value::T),
-            #[css(skip)]
-            System(SystemFont),
-        }
-
-        pub fn parse<'i, 't>(_: &ParserContext, input: &mut Parser<'i, 't>) -> Result<SpecifiedValue, ParseError<'i>> {
-            Ok(SpecifiedValue::Keyword(computed_value::T::parse(input)?))
-        }
-
-        impl ToComputedValue for SpecifiedValue {
-            type ComputedValue = computed_value::T;
-            fn to_computed_value(&self, _cx: &Context) -> Self::ComputedValue {
-                match *self {
-                    SpecifiedValue::Keyword(v) => v,
-                    % if engine == "gecko":
-                        SpecifiedValue::System(_) => {
-                            _cx.cached_system_font.as_ref().unwrap().${to_rust_ident(name)}
-                        }
-                    % else:
-                        SpecifiedValue::System(system_font) => {
-                            match system_font {}
-                        }
-                    % endif
-                }
-            }
-            fn from_computed_value(other: &computed_value::T) -> Self {
-                SpecifiedValue::Keyword(*other)
-            }
-        }
-
-        #[inline]
-        pub fn get_initial_value() -> computed_value::T {
-            computed_value::T::${to_camel_case(values.split()[0])}
-        }
-        #[inline]
-        pub fn get_initial_specified_value() -> SpecifiedValue {
-            SpecifiedValue::Keyword(computed_value::T::${to_camel_case(values.split()[0])})
-        }
-
-        impl SpecifiedValue {
-            pub fn system_font(f: SystemFont) -> Self {
-                SpecifiedValue::System(f)
-            }
-            pub fn get_system(&self) -> Option<SystemFont> {
-                if let SpecifiedValue::System(s) = *self {
-                    Some(s)
-                } else {
-                    None
-                }
-            }
-        }
-    </%call>
 </%def>
 
 <%def name="gecko_keyword_conversion(keyword, values=None, type='SpecifiedValue', cast_to=None)">
@@ -970,7 +851,7 @@
 
             first.to_css(dest)?;
             if first != second {
-                dest.write_str(" ")?;
+                dest.write_char(' ')?;
                 second.to_css(dest)?;
             }
             Ok(())
@@ -1025,117 +906,4 @@
             }
         }
     </%call>
-</%def>
-
-<%def name="logical_setter_helper(name)">
-    <%
-        side = None
-        size = None
-        corner = None
-        axis = None
-        maybe_side = [s for s in LOGICAL_SIDES if s in name]
-        maybe_size = [s for s in LOGICAL_SIZES if s in name]
-        maybe_corner = [s for s in LOGICAL_CORNERS if s in name]
-        maybe_axis = [s for s in LOGICAL_AXES if name.endswith(s)]
-        if len(maybe_side) == 1:
-            side = maybe_side[0]
-        elif len(maybe_size) == 1:
-            size = maybe_size[0]
-        elif len(maybe_corner) == 1:
-            corner = maybe_corner[0]
-        elif len(maybe_axis) == 1:
-            axis = maybe_axis[0]
-        def phys_ident(side, phy_side):
-            return to_rust_ident(to_phys(name, side, phy_side))
-    %>
-    % if side is not None:
-        use crate::logical_geometry::PhysicalSide;
-        match wm.${to_rust_ident(side)}_physical_side() {
-            % for phy_side in PHYSICAL_SIDES:
-                PhysicalSide::${phy_side.title()} => {
-                    ${caller.inner(physical_ident=phys_ident(side, phy_side))}
-                }
-            % endfor
-        }
-    % elif corner is not None:
-        use crate::logical_geometry::PhysicalCorner;
-        match wm.${to_rust_ident(corner)}_physical_corner() {
-            % for phy_corner in PHYSICAL_CORNERS:
-                PhysicalCorner::${to_camel_case(phy_corner)} => {
-                    ${caller.inner(physical_ident=phys_ident(corner, phy_corner))}
-                }
-            % endfor
-        }
-    % elif size is not None:
-        <%
-            # (horizontal, vertical)
-            physical_size = ("height", "width")
-            if size == "inline-size":
-                physical_size = ("width", "height")
-        %>
-        if wm.is_vertical() {
-            ${caller.inner(physical_ident=phys_ident(size, physical_size[1]))}
-        } else {
-            ${caller.inner(physical_ident=phys_ident(size, physical_size[0]))}
-        }
-    % elif axis is not None:
-        <%
-            if axis == "inline":
-                me, other = "x", "y"
-            else:
-                assert(axis == "block")
-                me, other = "y", "x"
-        %>
-        if wm.is_vertical() {
-            ${caller.inner(physical_ident=phys_ident(axis, other))}
-        } else {
-            ${caller.inner(physical_ident=phys_ident(axis, me))}
-        }
-    % else:
-        <% raise Exception("Don't know what to do with logical property %s" % name) %>
-    % endif
-</%def>
-
-<%def name="logical_setter(name)">
-    /// Set the appropriate physical property for ${name} given a writing mode.
-    pub fn set_${to_rust_ident(name)}(&mut self,
-                                      v: longhands::${to_rust_ident(name)}::computed_value::T,
-                                      wm: WritingMode) {
-        <%self:logical_setter_helper name="${name}">
-            <%def name="inner(physical_ident)">
-                self.set_${physical_ident}(v)
-            </%def>
-        </%self:logical_setter_helper>
-    }
-
-    /// Copy the appropriate physical property from another struct for ${name}
-    /// given a writing mode.
-    pub fn copy_${to_rust_ident(name)}_from(&mut self,
-                                            other: &Self,
-                                            wm: WritingMode) {
-        <%self:logical_setter_helper name="${name}">
-            <%def name="inner(physical_ident)">
-                self.copy_${physical_ident}_from(other)
-            </%def>
-        </%self:logical_setter_helper>
-    }
-
-    /// Copy the appropriate physical property from another struct for ${name}
-    /// given a writing mode.
-    pub fn reset_${to_rust_ident(name)}(&mut self,
-                                        other: &Self,
-                                        wm: WritingMode) {
-        self.copy_${to_rust_ident(name)}_from(other, wm)
-    }
-
-    /// Get the computed value for the appropriate physical property for
-    /// ${name} given a writing mode.
-    pub fn clone_${to_rust_ident(name)}(&self, wm: WritingMode)
-        -> longhands::${to_rust_ident(name)}::computed_value::T {
-    <%self:logical_setter_helper name="${name}">
-        <%def name="inner(physical_ident)">
-            self.clone_${physical_ident}()
-        </%def>
-    </%self:logical_setter_helper>
-    }
 </%def>

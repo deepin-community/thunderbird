@@ -12,25 +12,26 @@
 #include "mozilla/WeakPtr.h"
 #include "mozilla/RelativeTimeline.h"
 #include "mozilla/TimeStamp.h"
+#include "mozilla/BaseProfilerMarkersPrerequisites.h"
 #include "nsITimer.h"
 
 class nsDocShell;
 class nsIURI;
 
-typedef unsigned long long DOMTimeMilliSec;
-typedef double DOMHighResTimeStamp;
+using DOMTimeMilliSec = unsigned long long;
+using DOMHighResTimeStamp = double;
 
 class PickleIterator;
 namespace IPC {
 class Message;
+class MessageReader;
+class MessageWriter;
 }  // namespace IPC
-namespace mozilla {
-namespace ipc {
+namespace mozilla::ipc {
 class IProtocol;
 template <typename>
 struct IPDLParamTraits;
-}  // namespace ipc
-}  // namespace mozilla
+}  // namespace mozilla::ipc
 
 class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
  public:
@@ -67,8 +68,12 @@ class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
     return mDOMContentLoadedEventStart;
   }
 
-  mozilla::TimeStamp GetFirstContentfulPaintTimeStamp() const {
-    return mContentfulPaint;
+  mozilla::TimeStamp GetFirstContentfulCompositeTimeStamp() const {
+    return mContentfulComposite;
+  }
+
+  mozilla::TimeStamp GetLargestContentfulRenderTimeStamp() const {
+    return mLargestContentfulRender;
   }
 
   DOMTimeMilliSec GetUnloadEventStart() {
@@ -101,8 +106,11 @@ class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
   DOMTimeMilliSec GetTimeToNonBlankPaint() const {
     return TimeStampToDOM(mNonBlankPaint);
   }
-  DOMTimeMilliSec GetTimeToContentfulPaint() const {
-    return TimeStampToDOM(mContentfulPaint);
+  DOMTimeMilliSec GetTimeToContentfulComposite() const {
+    return TimeStampToDOM(mContentfulComposite);
+  }
+  DOMTimeMilliSec GetTimeToLargestContentfulRender() const {
+    return TimeStampToDOM(mLargestContentfulRender);
   }
   DOMTimeMilliSec GetTimeToTTFI() const { return TimeStampToDOM(mTTFI); }
   DOMTimeMilliSec GetTimeToDOMContentFlushed() const {
@@ -170,10 +178,14 @@ class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
 
   void NotifyLongTask(mozilla::TimeStamp aWhen);
   void NotifyNonBlankPaintForRootContentDocument();
-  void NotifyContentfulPaintForRootContentDocument(
+  void NotifyContentfulCompositeForRootContentDocument(
       const mozilla::TimeStamp& aCompositeEndTime);
+  void NotifyLargestContentfulRenderForRootContentDocument(
+      const DOMHighResTimeStamp& aRenderTime);
   void NotifyDOMContentFlushedForRootContentDocument();
   void NotifyDocShellStateChanged(DocShellState aDocShellState);
+
+  void MaybeAddLCPProfilerMarker(mozilla::MarkerInnerWindowId aInnerWindowID);
 
   DOMTimeMilliSec TimeStampToDOM(mozilla::TimeStamp aStamp) const;
 
@@ -229,7 +241,8 @@ class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
   DOMHighResTimeStamp mNavigationStartHighRes;
   mozilla::TimeStamp mNavigationStart;
   mozilla::TimeStamp mNonBlankPaint;
-  mozilla::TimeStamp mContentfulPaint;
+  mozilla::TimeStamp mContentfulComposite;
+  mozilla::TimeStamp mLargestContentfulRender;
   mozilla::TimeStamp mDOMContentFlushed;
 
   mozilla::TimeStamp mBeforeUnloadStart;
@@ -255,17 +268,15 @@ class nsDOMNavigationTiming final : public mozilla::RelativeTimeline {
 // the information and the potential resulting data leakage.
 // For now, this serializer is to only be used under a very narrowed scope
 // so that only the starting times are ever set.
-namespace mozilla {
-namespace ipc {
+namespace mozilla::ipc {
 template <>
 struct IPDLParamTraits<nsDOMNavigationTiming*> {
-  static void Write(IPC::Message* aMsg, IProtocol* aActor,
+  static void Write(IPC::MessageWriter* aWriter, IProtocol* aActor,
                     nsDOMNavigationTiming* aParam);
-  static bool Read(const IPC::Message* aMsg, PickleIterator* aIter,
-                   IProtocol* aActor, RefPtr<nsDOMNavigationTiming>* aResult);
+  static bool Read(IPC::MessageReader* aReader, IProtocol* aActor,
+                   RefPtr<nsDOMNavigationTiming>* aResult);
 };
 
-}  // namespace ipc
-}  // namespace mozilla
+}  // namespace mozilla::ipc
 
 #endif /* nsDOMNavigationTiming_h___ */

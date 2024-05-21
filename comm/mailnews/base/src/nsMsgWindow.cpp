@@ -37,11 +37,10 @@
 #include "mozilla/dom/LoadURIOptionsBinding.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/XULFrameElement.h"
-#include "mozilla/Components.h"
 #include "nsFrameLoader.h"
 
 NS_IMPL_ISUPPORTS(nsMsgWindow, nsIMsgWindow, nsIURIContentListener,
-                  nsISupportsWeakReference, nsIMsgWindowTest)
+                  nsISupportsWeakReference)
 
 nsMsgWindow::nsMsgWindow() {
   mCharsetOverride = false;
@@ -92,7 +91,6 @@ NS_IMETHODIMP nsMsgWindow::GetMessageWindowDocShell(nsIDocShell** aDocShell) {
 }
 
 NS_IMETHODIMP nsMsgWindow::CloseWindow() {
-  mMsgWindowCommands = nullptr;
   mStatusFeedback = nullptr;
 
   StopUrls();
@@ -136,30 +134,6 @@ NS_IMETHODIMP nsMsgWindow::SetStatusFeedback(
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgWindow::SetWindowCommands(
-    nsIMsgWindowCommands* aMsgWindowCommands) {
-  mMsgWindowCommands = aMsgWindowCommands;
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::GetWindowCommands(
-    nsIMsgWindowCommands** aMsgWindowCommands) {
-  NS_ENSURE_ARG_POINTER(aMsgWindowCommands);
-  NS_IF_ADDREF(*aMsgWindowCommands = mMsgWindowCommands);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::GetMsgHeaderSink(nsIMsgHeaderSink** aMsgHdrSink) {
-  NS_ENSURE_ARG_POINTER(aMsgHdrSink);
-  NS_IF_ADDREF(*aMsgHdrSink = mMsgHeaderSink);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetMsgHeaderSink(nsIMsgHeaderSink* aMsgHdrSink) {
-  mMsgHeaderSink = aMsgHdrSink;
-  return NS_OK;
-}
-
 NS_IMETHODIMP nsMsgWindow::GetTransactionManager(
     nsITransactionManager** aTransactionManager) {
   NS_ENSURE_ARG_POINTER(aTransactionManager);
@@ -192,35 +166,6 @@ NS_IMETHODIMP nsMsgWindow::GetRootDocShell(nsIDocShell** aDocShell) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgWindow::GetAuthPrompt(nsIAuthPrompt** aAuthPrompt) {
-  NS_ENSURE_ARG_POINTER(aAuthPrompt);
-
-  // testing only
-  if (mAuthPrompt) {
-    NS_ADDREF(*aAuthPrompt = mAuthPrompt);
-    return NS_OK;
-  }
-
-  if (!mRootDocShellWeak) return NS_ERROR_FAILURE;
-
-  nsresult rv;
-  nsCOMPtr<nsIDocShell> docShell(
-      do_QueryReferent(mRootDocShellWeak.get(), &rv));
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  nsCOMPtr<nsIAuthPrompt> prompt = do_GetInterface(docShell, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  prompt.forget(aAuthPrompt);
-
-  return rv;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetAuthPrompt(nsIAuthPrompt* aAuthPrompt) {
-  mAuthPrompt = aAuthPrompt;
-  return NS_OK;
-}
-
 NS_IMETHODIMP nsMsgWindow::SetRootDocShell(nsIDocShell* aDocShell) {
   // Query for the doc shell and release it
   mRootDocShellWeak = nullptr;
@@ -233,38 +178,6 @@ NS_IMETHODIMP nsMsgWindow::SetRootDocShell(nsIDocShell* aDocShell) {
         do_GetInterface(messagePaneDocShell));
     if (listener) listener->SetParentContentListener(this);
   }
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::GetMailCharacterSet(nsACString& aMailCharacterSet) {
-  aMailCharacterSet = mMailCharacterSet;
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetMailCharacterSet(
-    const nsACString& aMailCharacterSet) {
-  mMailCharacterSet.Assign(aMailCharacterSet);
-
-  // Convert to a canonical charset name instead of using the charset name from
-  // the message header as is. This is needed for charset menu item to have a
-  // check mark correctly.
-  nsresult rv;
-  nsCOMPtr<nsICharsetConverterManager> ccm =
-      do_GetService(NS_CHARSETCONVERTERMANAGER_CONTRACTID, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  return ccm->GetCharsetAlias(PromiseFlatCString(aMailCharacterSet).get(),
-                              mMailCharacterSet);
-}
-
-NS_IMETHODIMP nsMsgWindow::GetCharsetOverride(bool* aCharsetOverride) {
-  NS_ENSURE_ARG_POINTER(aCharsetOverride);
-  *aCharsetOverride = mCharsetOverride;
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetCharsetOverride(bool aCharsetOverride) {
-  mCharsetOverride = aCharsetOverride;
   return NS_OK;
 }
 
@@ -300,19 +213,6 @@ NS_IMETHODIMP nsMsgWindow::SetDomWindow(mozIDOMWindowProxy* aWindow) {
     GetMessageWindowDocShell(getter_AddRefs(messageWindowDocShell));
   }
 
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetNotificationCallbacks(
-    nsIInterfaceRequestor* aNotificationCallbacks) {
-  mNotificationCallbacks = aNotificationCallbacks;
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::GetNotificationCallbacks(
-    nsIInterfaceRequestor** aNotificationCallbacks) {
-  NS_ENSURE_ARG_POINTER(aNotificationCallbacks);
-  NS_IF_ADDREF(*aNotificationCallbacks = mNotificationCallbacks);
   return NS_OK;
 }
 
@@ -409,71 +309,6 @@ NS_IMETHODIMP nsMsgWindow::GetLoadCookie(nsISupports** aLoadCookie) {
 
 NS_IMETHODIMP nsMsgWindow::SetLoadCookie(nsISupports* aLoadCookie) {
   return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgWindow::GetPromptDialog(nsIPrompt** aPrompt) {
-  NS_ENSURE_ARG_POINTER(aPrompt);
-
-  // testing only
-  if (mPromptDialog) {
-    NS_ADDREF(*aPrompt = mPromptDialog);
-    return NS_OK;
-  }
-
-  nsresult rv;
-  nsCOMPtr<nsIDocShell> rootShell(do_QueryReferent(mRootDocShellWeak, &rv));
-  if (rootShell) {
-    nsCOMPtr<nsIPrompt> dialog;
-    dialog = do_GetInterface(rootShell, &rv);
-    dialog.forget(aPrompt);
-  }
-  return rv;
-}
-
-NS_IMETHODIMP nsMsgWindow::SetPromptDialog(nsIPrompt* aPromptDialog) {
-  mPromptDialog = aPromptDialog;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgWindow::DisplayURIInMessagePane(const nsAString& uri, bool clearMsgHdr,
-                                     nsIPrincipal* principal) {
-  if (clearMsgHdr && mMsgWindowCommands) mMsgWindowCommands->ClearMsgPane();
-
-  nsCOMPtr<nsIDocShell> docShell;
-  GetMessageWindowDocShell(getter_AddRefs(docShell));
-  NS_ENSURE_TRUE(docShell, NS_ERROR_FAILURE);
-
-  nsCOMPtr<nsIWebNavigation> webNav(do_QueryInterface(docShell));
-  NS_ENSURE_TRUE(webNav, NS_ERROR_FAILURE);
-
-  mozilla::dom::LoadURIOptions loadURIOptions;
-  loadURIOptions.mTriggeringPrincipal = principal;
-  return webNav->LoadURI(uri, loadURIOptions);
-}
-
-NS_IMETHODIMP
-nsMsgWindow::DisplayHTMLInMessagePane(const nsAString& title,
-                                      const nsAString& body, bool clearMsgHdr) {
-  nsString htmlStr;
-  htmlStr.AppendLiteral(
-      u"<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; "
-      u"charset=UTF-8\"></head><body>");
-  htmlStr.Append(body);
-  htmlStr.AppendLiteral(u"</body></html>");
-
-  char* encodedHtml =
-      PL_Base64Encode(NS_ConvertUTF16toUTF8(htmlStr).get(), 0, nullptr);
-  if (!encodedHtml) return NS_ERROR_OUT_OF_MEMORY;
-
-  nsCString dataSpec;
-  dataSpec = "data:text/html;base64,";
-  dataSpec += encodedHtml;
-
-  PR_FREEIF(encodedHtml);
-
-  return DisplayURIInMessagePane(NS_ConvertASCIItoUTF16(dataSpec), clearMsgHdr,
-                                 nsContentUtils::GetSystemPrincipal());
 }
 
 NS_IMPL_GETSET(nsMsgWindow, Stopped, bool, m_stopped)

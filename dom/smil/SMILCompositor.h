@@ -74,12 +74,16 @@ class SMILCompositor : public PLDHashEntryHdr {
     mCachedBaseValue = std::move(aOther->mCachedBaseValue);
   }
 
+  bool HasSameNumberOfAnimationFunctionsAs(const SMILCompositor& aOther) const {
+    return mAnimationFunctions.Length() == aOther.mAnimationFunctions.Length();
+  }
+
  private:
   // Create a SMILAttr for my target, on the heap.
   //
   // @param aBaseComputedStyle  An optional ComputedStyle which, if set, will be
   //                           used when fetching the base style.
-  UniquePtr<SMILAttr> CreateSMILAttr(ComputedStyle* aBaseComputedStyle);
+  UniquePtr<SMILAttr> CreateSMILAttr(const ComputedStyle* aBaseComputedStyle);
 
   // Returns the CSS property this compositor should animate, or
   // eCSSProperty_UNKNOWN if this compositor does not animate a CSS property.

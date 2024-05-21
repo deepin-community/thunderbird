@@ -6,8 +6,14 @@
 
 include("../../rust/gkrust-features.mozbuild")
 
+if CONFIG["LIBFUZZER"]:
+    gkrust_features += ["gecko-fuzz-targets"]
+
 RustLibrary(
     "gkrust-gtest",
     gkrust_features,
     output_category=None if CONFIG["LINK_GTEST_DURING_COMPILE"] else "gtest",
 )
+
+COMPILE_FLAGS["BASE_INCLUDES"] = []
+HOST_COMPILE_FLAGS["BASE_INCLUDES"] = []

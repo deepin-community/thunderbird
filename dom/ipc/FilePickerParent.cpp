@@ -11,11 +11,12 @@
 #include "nsIFile.h"
 #include "nsISimpleEnumerator.h"
 #include "mozilla/Unused.h"
-#include "mozilla/dom/FileBlobImpl.h"
-#include "mozilla/dom/FileSystemSecurity.h"
+#include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/ContentParent.h"
 #include "mozilla/dom/Element.h"
-#include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/FileBlobImpl.h"
+#include "mozilla/dom/FileSystemSecurity.h"
 #include "mozilla/dom/IPCBlobUtils.h"
 
 using mozilla::Unused;
@@ -25,7 +26,8 @@ NS_IMPL_ISUPPORTS(FilePickerParent::FilePickerShownCallback,
                   nsIFilePickerShownCallback);
 
 NS_IMETHODIMP
-FilePickerParent::FilePickerShownCallback::Done(int16_t aResult) {
+FilePickerParent::FilePickerShownCallback::Done(
+    nsIFilePicker::ResultCode aResult) {
   if (mFilePickerParent) {
     mFilePickerParent->Done(aResult);
   }
@@ -156,7 +158,7 @@ void FilePickerParent::SendFilesOrDirectories(
     IPCBlob ipcBlob;
 
     MOZ_ASSERT(aData[i].mType == BlobImplOrString::eBlobImpl);
-    nsresult rv = IPCBlobUtils::Serialize(aData[i].mBlobImpl, parent, ipcBlob);
+    nsresult rv = IPCBlobUtils::Serialize(aData[i].mBlobImpl, ipcBlob);
     if (NS_WARN_IF(NS_FAILED(rv))) {
       break;
     }
@@ -170,7 +172,7 @@ void FilePickerParent::SendFilesOrDirectories(
   Unused << Send__delete__(this, inblobs, mResult);
 }
 
-void FilePickerParent::Done(int16_t aResult) {
+void FilePickerParent::Done(nsIFilePicker::ResultCode aResult) {
   mResult = aResult;
 
   if (mResult != nsIFilePicker::returnOK) {
@@ -217,22 +219,17 @@ void FilePickerParent::Done(int16_t aResult) {
 }
 
 bool FilePickerParent::CreateFilePicker() {
+  if (!mBrowsingContext) {
+    return false;
+  }
+
   mFilePicker = do_CreateInstance("@mozilla.org/filepicker;1");
+
   if (!mFilePicker) {
     return false;
   }
 
-  Element* element = BrowserParent::GetFrom(Manager())->GetOwnerElement();
-  if (!element) {
-    return false;
-  }
-
-  nsCOMPtr<mozIDOMWindowProxy> window = element->OwnerDoc()->GetWindow();
-  if (!window) {
-    return false;
-  }
-
-  return NS_SUCCEEDED(mFilePicker->Init(window, mTitle, mMode));
+  return NS_SUCCEEDED(mFilePicker->Init(mBrowsingContext, mTitle, mMode));
 }
 
 mozilla::ipc::IPCResult FilePickerParent::RecvOpen(
@@ -241,7 +238,7 @@ mozilla::ipc::IPCResult FilePickerParent::RecvOpen(
     nsTArray<nsString>&& aFilters, nsTArray<nsString>&& aFilterNames,
     nsTArray<nsString>&& aRawFilters, const nsString& aDisplayDirectory,
     const nsString& aDisplaySpecialDirectory, const nsString& aOkButtonLabel,
-    const int16_t& aCapture) {
+    const nsIFilePicker::CaptureTarget& aCapture) {
   if (!CreateFilePicker()) {
     Unused << Send__delete__(this, void_t(), nsIFilePicker::returnCancel);
     return IPC_OK();
@@ -273,9 +270,17 @@ mozilla::ipc::IPCResult FilePickerParent::RecvOpen(
     mFilePicker->SetDisplaySpecialDirectory(aDisplaySpecialDirectory);
   }
 
+  MOZ_ASSERT(!mCallback);
   mCallback = new FilePickerShownCallback(this);
 
   mFilePicker->Open(mCallback);
+  return IPC_OK();
+}
+
+mozilla::ipc::IPCResult FilePickerParent::RecvClose() {
+  if (mFilePicker) {
+    mFilePicker->Close();
+  }
   return IPC_OK();
 }
 

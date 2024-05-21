@@ -2,29 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import { workerUtils } from "devtools-utils";
-const { WorkerDispatcher } = workerUtils;
+import { WorkerDispatcher } from "devtools/client/shared/worker-utils";
+
+const WORKER_URL = "resource://devtools/client/debugger/dist/parser-worker.js";
 
 export class ParserDispatcher extends WorkerDispatcher {
-  async findOutOfScopeLocations(sourceId, position) {
-    return this.invoke("findOutOfScopeLocations", sourceId, position);
+  constructor(jestUrl) {
+    super(jestUrl || WORKER_URL);
   }
 
-  async getNextStep(sourceId, pausedPosition) {
-    return this.invoke("getNextStep", sourceId, pausedPosition);
-  }
+  findOutOfScopeLocations = this.task("findOutOfScopeLocations");
+  findBestMatchExpression = this.task("findBestMatchExpression");
 
-  async clearState() {
-    return this.invoke("clearState");
-  }
+  getScopes = this.task("getScopes");
 
-  async getScopes(location) {
-    return this.invoke("getScopes", location);
-  }
-
-  async getSymbols(sourceId) {
-    return this.invoke("getSymbols", sourceId);
-  }
+  getSymbols = this.task("getSymbols");
+  getFunctionSymbols = this.task("getFunctionSymbols");
+  getClassSymbols = this.task("getClassSymbols");
+  getClosestFunctionName = this.task("getClosestFunctionName");
 
   async setSource(sourceId, content) {
     const astSource = {
@@ -37,28 +32,24 @@ export class ParserDispatcher extends WorkerDispatcher {
     return this.invoke("setSource", astSource);
   }
 
-  async hasSyntaxError(input) {
-    return this.invoke("hasSyntaxError", input);
-  }
+  mapExpression = this.task("mapExpression");
 
-  async mapExpression(
-    expression,
-    mappings,
-    bindings,
-    shouldMapBindings,
-    shouldMapAwait
-  ) {
-    return this.invoke(
-      "mapExpression",
-      expression,
-      mappings,
-      bindings,
-      shouldMapBindings,
-      shouldMapAwait
-    );
-  }
+  clearSources = this.task("clearSources");
 
-  async clear() {
-    await this.clearState();
+  /**
+   * Reports if the location's source can be parsed by this worker.
+   *
+   * @param {Object} location
+   *        A debugger frontend location object. See createLocation().
+   * @return {Boolean}
+   *         True, if the worker may be able to parse this source.
+   */
+  isLocationSupported(location) {
+    // There might be more sources that the worker doesn't support,
+    // like original sources which aren't JavaScript.
+    // But we can only know with the source's content type,
+    // which isn't available right away.
+    // These source will be ignored from within the worker.
+    return !location.source.isWasm;
   }
 }

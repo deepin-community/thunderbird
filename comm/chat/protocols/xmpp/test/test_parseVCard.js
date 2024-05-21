@@ -1,17 +1,19 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { XMPPAccountPrototype } = ChromeUtils.import(
-  "resource:///modules/xmpp-base.jsm"
+var { XMPPAccountPrototype } = ChromeUtils.importESModule(
+  "resource:///modules/xmpp-base.sys.mjs"
 );
-var { XMPPParser } = ChromeUtils.import("resource:///modules/xmpp-xml.jsm");
+var { XMPPParser } = ChromeUtils.importESModule(
+  "resource:///modules/xmpp-xml.sys.mjs"
+);
 
 /*
  * Open an input stream, instantiate an XMPP parser, and feed the input string
  * into it. Then assert that the resulting vCard matches the expected result.
  */
 function _test_vcard(aInput, aExpectedResult) {
-  let listener = {
+  const listener = {
     onXMLError(aError, aException) {
       // Ensure that no errors happen.
       ok(false, aError + " - " + aException);
@@ -19,11 +21,11 @@ function _test_vcard(aInput, aExpectedResult) {
     LOG(aString) {},
     onXmppStanza(aStanza) {
       // This is a simplified stanza parser that assumes inputs are vCards.
-      let vCard = aStanza.getElement(["vCard"]);
+      const vCard = aStanza.getElement(["vCard"]);
       deepEqual(XMPPAccountPrototype.parseVCard(vCard), aExpectedResult);
     },
   };
-  let parser = new XMPPParser(listener);
+  const parser = new XMPPParser(listener);
   parser.onDataAvailable(aInput);
   parser.destroy();
 }

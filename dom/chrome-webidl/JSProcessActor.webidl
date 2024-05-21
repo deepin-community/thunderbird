@@ -54,6 +54,13 @@ dictionary ProcessActorOptions {
    */
   boolean includeParent = false;
 
+  /**
+   * If true, the actor will be loaded in the loader dedicated to DevTools.
+   *
+   * This ultimately prevents DevTools to debug itself.
+   */
+  boolean loadInDevToolsLoader = false;
+
   /** This fields are used for configuring individual sides of the actor. */
   ProcessActorSidedOptions parent;
   ProcessActorChildOptions child;
@@ -62,10 +69,27 @@ dictionary ProcessActorOptions {
 dictionary ProcessActorSidedOptions {
   /**
    * The JSM path which should be loaded for the actor on this side.
-   * If not passed, the specified side cannot receive messages, but may send
-   * them using `sendAsyncMessage` or `sendQuery`.
+   *
+   * Mutually exclusive with `esModuleURI`.
+   *
+   * If neither this nor `esModuleURI` is passed, the specified side cannot receive
+   * messages, but may send them using `sendAsyncMessage` or `sendQuery`.
+   *
+   * TODO: Remove this once m-c, c-c, and out-of-tree code migrations finish
+   *       (bug 1866732).
    */
-  required ByteString moduleURI;
+  ByteString moduleURI;
+
+  /**
+   * The ESM path which should be loaded for the actor on this side.
+   *
+   * Mutually exclusive with `moduleURI`.
+   *
+   * If neither this nor `moduleURI` is passed, the specified side cannot
+   * receive messages, but may send them using `sendAsyncMessage` or
+   * `sendQuery`.
+   */
+  ByteString esModuleURI;
 };
 
 dictionary ProcessActorChildOptions : ProcessActorSidedOptions {

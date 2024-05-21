@@ -6,18 +6,16 @@
 #include "nsISystemProxySettings.h"
 #include "mozilla/Components.h"
 #include "nsIURI.h"
-#include "nsReadableUtils.h"
 #include "nsArrayUtils.h"
 #include "prnetdb.h"
 #include "prenv.h"
-#include "nsPrintfCString.h"
-#include "nsNetCID.h"
+#include "nsInterfaceHashtable.h"
+#include "nsHashtablesFwd.h"
+#include "nsHashKeys.h"
 #include "nsNetUtil.h"
 #include "nsISupportsPrimitives.h"
 #include "nsIGSettingsService.h"
-#include "nsInterfaceHashtable.h"
-#include "mozilla/Attributes.h"
-#include "nsIURI.h"
+#include "nsReadableUtils.h"
 
 using namespace mozilla;
 
@@ -154,7 +152,16 @@ static nsresult GetProxyFromEnvironment(const nsACString& aScheme,
   envVar.AppendLiteral("_proxy");
   const char* proxyVal = PR_GetEnv(envVar.get());
   if (!proxyVal) {
+    // try uppercase name too
+    ToUpperCase(envVar);
+    proxyVal = PR_GetEnv(envVar.get());
+  }
+  if (!proxyVal) {
     proxyVal = PR_GetEnv("all_proxy");
+    if (!proxyVal) {
+      // try uppercase name too
+      proxyVal = PR_GetEnv("ALL_PROXY");
+    }
     if (!proxyVal) {
       // Return failure so that the caller can detect the failure and
       // fall back to other proxy detection (e.g., WPAD)
@@ -163,6 +170,10 @@ static nsresult GetProxyFromEnvironment(const nsACString& aScheme,
   }
 
   const char* noProxyVal = PR_GetEnv("no_proxy");
+  if (!noProxyVal) {
+    // try uppercase name too
+    noProxyVal = PR_GetEnv("NO_PROXY");
+  }
   if (noProxyVal && IsInNoProxyList(aHost, aPort, noProxyVal)) {
     SetProxyResultDirect(aResult);
     return NS_OK;
@@ -358,9 +369,6 @@ nsresult nsUnixSystemProxySettings::GetProxyFromGSettings(
     if (rv != NS_OK)
       rv = SetProxyResultFromGSettings("org.gnome.system.proxy.http", "PROXY",
                                        aResult);
-  } else if (aScheme.LowerCaseEqualsLiteral("ftp")) {
-    rv = SetProxyResultFromGSettings("org.gnome.system.proxy.ftp", "PROXY",
-                                     aResult);
   } else {
     rv = NS_ERROR_FAILURE;
   }
@@ -388,6 +396,12 @@ nsresult nsUnixSystemProxySettings::GetProxyForURI(const nsACString& aSpec,
   }
 
   return GetProxyFromEnvironment(aScheme, aHost, aPort, aResult);
+}
+
+NS_IMETHODIMP
+nsUnixSystemProxySettings::GetSystemWPADSetting(bool* aSystemWPADSetting) {
+  *aSystemWPADSetting = false;
+  return NS_OK;
 }
 
 NS_IMPL_COMPONENT_FACTORY(nsUnixSystemProxySettings) {

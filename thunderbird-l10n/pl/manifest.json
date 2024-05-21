@@ -1,29 +1,28 @@
 {
   "langpack_id": "pl",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-pl@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Polski Language Pack",
-  "description": "Language pack for Thunderbird for pl",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Polski (Polish)",
+  "description": "Thunderbird Beta Language Pack for Polski (pl) – Polish",
+  "version": "125.0.20240401.173510",
   "languages": {
     "pl": {
-      "version": "20211011132114",
+      "version": "20240401183145",
       "chrome_resources": {
         "alerts": "chrome/pl/locale/pl/alerts/",
         "autoconfig": "chrome/pl/locale/pl/autoconfig/",
-        "branding": "chrome/pl/locale/pl/branding/",
+        "branding": "chrome/pl/locale/branding/",
         "calendar": "chrome/pl/locale/pl/calendar/",
         "chat": "chrome/pl/locale/pl/chat/",
         "communicator": "chrome/pl/locale/pl/communicator/",
         "devtools": "chrome/pl/locale/pl/devtools/client/",
         "devtools-shared": "chrome/pl/locale/pl/devtools/shared/",
-        "devtools-startup": "chrome/pl/locale/pl/devtools/startup/",
         "global": "chrome/pl/locale/pl/global/",
         "global-platform": {
           "macosx": "chrome/pl/locale/pl/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/pl/locale/pl/mozldap/",
         "necko": "chrome/pl/locale/pl/necko/",
         "passwordmgr": "chrome/pl/locale/pl/passwordmgr/",
-        "pdf.js": "chrome/pl/locale/pdfviewer/",
         "pipnss": "chrome/pl/locale/pl/pipnss/",
         "pippki": "chrome/pl/locale/pl/pippki/",
         "places": "chrome/pl/locale/pl/places/"

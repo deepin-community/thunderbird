@@ -12,8 +12,8 @@ const TOOLKIT_MINVERSION = "42.0a1";
 
 createAppInfo("xpcshell@tests.mozilla.org", "XPCShell", "42.0a2", "42.0a2");
 
-const { AddonUpdateChecker } = ChromeUtils.import(
-  "resource://gre/modules/addons/AddonUpdateChecker.jsm"
+const { AddonUpdateChecker } = ChromeUtils.importESModule(
+  "resource://gre/modules/addons/AddonUpdateChecker.sys.mjs"
 );
 
 let testserver = createHttpServer();
@@ -337,7 +337,7 @@ add_task(async function test_type_detection() {
   ];
 
   for (let [i, test] of tests.entries()) {
-    let { messages } = await promiseConsoleOutput(async function() {
+    let { messages } = await promiseConsoleOutput(async function () {
       let id = `updatecheck-typedetection-${i}@tests.mozilla.org`;
       let updates;
       try {
@@ -376,4 +376,48 @@ add_task(async function test_type_detection() {
       "expected number of XML parsing errors"
     );
   }
+});
+
+add_task(async function test_empty_manifest() {
+  function checkUpdatesForUnlistedAddon(aData) {
+    // Registers an empty JSON update manifest with the test server to simulate
+    // the update server's actual response in the case of an unlisted add-on.
+
+    let path = `/updates/${aData.id}.json`;
+    let updateUrl = `http://localhost:${gPort}${path}`;
+
+    let manifestJSON = {};
+
+    mapManifest(path.replace(/\?.*/, ""), {
+      data: JSON.stringify(manifestJSON),
+      contentType: "application/json",
+    });
+
+    return new Promise((resolve, reject) => {
+      AddonUpdateChecker.checkForUpdates(aData.id, updateUrl, {
+        onUpdateCheckComplete: resolve,
+
+        onUpdateCheckError(status) {
+          reject(new Error("Update check failed with status " + status));
+        },
+      });
+    });
+  }
+
+  let { messages, result: updates } = await promiseConsoleOutput(() => {
+    return checkUpdatesForUnlistedAddon({
+      id: "unlisted@example.org",
+    });
+  });
+
+  equal(updates.length, 0, "no update could be found");
+
+  messages = messages.filter(msg =>
+    /Received empty update manifest for .*/.test(msg.message)
+  );
+  equal(
+    messages.length,
+    1,
+    "unlisted addon generated the expected console message"
+  );
 });

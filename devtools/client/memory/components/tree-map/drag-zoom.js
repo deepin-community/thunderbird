@@ -4,9 +4,9 @@
 
 "use strict";
 
-const { debounce } = require("devtools/shared/debounce");
-const { lerp } = require("devtools/client/memory/utils");
-const EventEmitter = require("devtools/shared/event-emitter");
+const { debounce } = require("resource://devtools/shared/debounce.js");
+const { lerp } = require("resource://devtools/client/memory/utils.js");
+const EventEmitter = require("resource://devtools/shared/event-emitter.js");
 
 const LERP_SPEED = 0.5;
 const ZOOM_SPEED = 0.01;
@@ -295,10 +295,9 @@ function setScrollHandlers(container, dragZoom, emitChanged, update) {
  * Account for the various mouse wheel event types, per pixel or per line
  *
  * @param  {WheelEvent} event
- * @param  {Window} window
  * @return {Number} The scroll size in pixels
  */
-function getScrollDelta(event, window) {
+function getScrollDelta(event) {
   if (event.deltaMode === LINE_SCROLL_MODE) {
     // Update by a fixed arbitrary value to normalize scroll types
     return event.deltaY * SCROLL_LINE_SIZE;

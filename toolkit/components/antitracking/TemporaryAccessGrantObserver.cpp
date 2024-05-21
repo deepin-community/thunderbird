@@ -7,13 +7,14 @@
 #include "TemporaryAccessGrantObserver.h"
 
 #include "mozilla/PermissionManager.h"
+#include "mozilla/Services.h"
 #include "nsIObserverService.h"
 #include "nsTHashtable.h"
 #include "nsXULAppAPI.h"
 
 using namespace mozilla;
 
-UniquePtr<TemporaryAccessGrantObserver::ObserversTable>
+StaticAutoPtr<TemporaryAccessGrantObserver::ObserversTable>
     TemporaryAccessGrantObserver::sObservers;
 
 TemporaryAccessGrantObserver::TemporaryAccessGrantObserver(
@@ -24,7 +25,7 @@ TemporaryAccessGrantObserver::TemporaryAccessGrantObserver(
              "the parent process");
 }
 
-NS_IMPL_ISUPPORTS(TemporaryAccessGrantObserver, nsIObserver)
+NS_IMPL_ISUPPORTS(TemporaryAccessGrantObserver, nsIObserver, nsINamed)
 
 // static
 void TemporaryAccessGrantObserver::Create(PermissionManager* aPM,
@@ -33,7 +34,7 @@ void TemporaryAccessGrantObserver::Create(PermissionManager* aPM,
   MOZ_ASSERT(XRE_IsParentProcess());
 
   if (!sObservers) {
-    sObservers = MakeUnique<ObserversTable>();
+    sObservers = new ObserversTable();
   }
   sObservers->LookupOrInsertWith(
       std::make_pair(nsCOMPtr<nsIPrincipal>(aPrincipal), nsCString(aType)),
@@ -83,8 +84,14 @@ TemporaryAccessGrantObserver::Observe(nsISupports* aSubject, const char* aTopic,
       mTimer->Cancel();
       mTimer = nullptr;
     }
-    sObservers.reset();
+    sObservers = nullptr;
   }
 
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+TemporaryAccessGrantObserver::GetName(nsACString& aName) {
+  aName.AssignLiteral("TemporaryAccessGrantObserver");
   return NS_OK;
 }

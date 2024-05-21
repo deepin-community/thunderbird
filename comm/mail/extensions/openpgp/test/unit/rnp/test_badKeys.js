@@ -8,27 +8,28 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { RNP } = ChromeUtils.import("chrome://openpgp/content/modules/RNP.jsm");
-const { EnigmailConstants } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/constants.jsm"
+const { RNP } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/RNP.sys.mjs"
 );
-const { EnigmailKeyRing } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/keyRing.jsm"
+const { EnigmailConstants } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/constants.sys.mjs"
 );
-const { EnigmailEncryption } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/encryption.jsm"
+const { EnigmailKeyRing } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/keyRing.sys.mjs"
 );
-const { OpenPGPAlias } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/OpenPGPAlias.jsm"
+const { EnigmailEncryption } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/encryption.sys.mjs"
 );
-const { OpenPGPTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
+const { OpenPGPAlias } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/OpenPGPAlias.sys.mjs"
+);
+const { OpenPGPTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
 );
 
 const KEY_DIR = "../../../../../test/browser/openpgp/data/keys";
 
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();
@@ -38,11 +39,10 @@ add_task(async function setUp() {
 // because it doesn't have a valid signature.
 // Our code should reject the attempt to import the key.
 add_task(async function testFailToImport() {
-  let ids = await OpenPGPTestUtils.importKey(
+  const ids = await OpenPGPTestUtils.importKey(
     null,
     do_get_file(`${KEY_DIR}/invalid-pubkey-nosigs.pgp`),
-    true,
-    false
+    true
   );
   Assert.ok(!ids.length, "importKey should return empty list of imported keys");
 });
@@ -51,22 +51,21 @@ add_task(async function testFailToImport() {
 // has an invalid signature. When attempting to encrypt, our code should
 // skip the bad subkey, and should use the expected good subkey.
 add_task(async function testAvoidBadSubkey() {
-  let ids = await OpenPGPTestUtils.importKey(
+  const ids = await OpenPGPTestUtils.importKey(
     null,
     do_get_file(`${KEY_DIR}/encryption-subkey-bad.pgp`),
-    true,
-    false
+    true
   );
   await OpenPGPTestUtils.updateKeyIdAcceptance(
     ids,
     OpenPGPTestUtils.ACCEPTANCE_VERIFIED
   );
 
-  let primaryKey = await RNP.findKeyByEmail(
+  const primaryKey = await RNP.findKeyByEmail(
     "<encryption-subkey@example.org>",
     true
   );
-  let encSubKey = RNP.getSuitableSubkey(primaryKey, "encrypt");
-  let keyId = RNP.getKeyIDFromHandle(encSubKey);
+  const encSubKey = RNP.getSuitableSubkey(primaryKey, "encrypt");
+  const keyId = RNP.getKeyIDFromHandle(encSubKey);
   Assert.ok(keyId == "BC63472A109D5859", "should obtain key ID of good subkey");
 });

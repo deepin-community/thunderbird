@@ -3,12 +3,12 @@ import {
   BaseContent,
   PrefsButton,
 } from "content-src/components/Base/Base";
-import { ASRouterAdmin } from "content-src/components/ASRouterAdmin/ASRouterAdmin";
+import { DiscoveryStreamAdmin } from "content-src/components/DiscoveryStreamAdmin/DiscoveryStreamAdmin";
 import { ErrorBoundary } from "content-src/components/ErrorBoundary/ErrorBoundary";
 import React from "react";
 import { Search } from "content-src/components/Search/Search";
 import { shallow } from "enzyme";
-import { actionCreators as ac } from "common/Actions.jsm";
+import { actionCreators as ac } from "common/Actions.sys.mjs";
 
 describe("<Base>", () => {
   let DEFAULT_PROPS = {
@@ -42,32 +42,29 @@ describe("<Base>", () => {
     const wrapper = shallow(<Base {...DEFAULT_PROPS} />);
 
     assert.equal(
-      wrapper
-        .find(ErrorBoundary)
-        .first()
-        .prop("className"),
+      wrapper.find(ErrorBoundary).first().prop("className"),
       "base-content-fallback"
     );
   });
 
-  it("should render an ASRouterAdmin if the devtools pref is true", () => {
+  it("should render an DiscoveryStreamAdmin if the devtools pref is true", () => {
     const wrapper = shallow(
       <Base
         {...DEFAULT_PROPS}
         Prefs={{ values: { "asrouter.devtoolsEnabled": true } }}
       />
     );
-    assert.lengthOf(wrapper.find(ASRouterAdmin), 1);
+    assert.lengthOf(wrapper.find(DiscoveryStreamAdmin), 1);
   });
 
-  it("should not render an ASRouterAdmin if the devtools pref is false", () => {
+  it("should not render an DiscoveryStreamAdmin if the devtools pref is false", () => {
     const wrapper = shallow(
       <Base
         {...DEFAULT_PROPS}
         Prefs={{ values: { "asrouter.devtoolsEnabled": false } }}
       />
     );
-    assert.lengthOf(wrapper.find(ASRouterAdmin), 0);
+    assert.lengthOf(wrapper.find(DiscoveryStreamAdmin), 0);
   });
 });
 
@@ -88,23 +85,7 @@ describe("<BaseContent>", () => {
 
     const wrapper = shallow(<BaseContent {...searchEnabledProps} />);
 
-    assert.isTrue(
-      wrapper
-        .find(Search)
-        .parent()
-        .is(ErrorBoundary)
-    );
-  });
-
-  it("should render the PrefsButton component with featureConfig values", () => {
-    const wrapper = shallow(
-      <BaseContent
-        {...DEFAULT_PROPS}
-        Prefs={{ values: { featureConfig: { prefsButtonIcon: "icon-foo" } } }}
-      />
-    );
-    assert.lengthOf(wrapper.find(PrefsButton), 1);
-    assert.equal(wrapper.find(PrefsButton).prop("icon"), "icon-foo");
+    assert.isTrue(wrapper.find(Search).parent().is(ErrorBoundary));
   });
 
   it("should dispatch a user event when the customize menu is opened or closed", () => {
@@ -112,13 +93,15 @@ describe("<BaseContent>", () => {
     const wrapper = shallow(
       <BaseContent
         {...DEFAULT_PROPS}
-        Prefs={{ values: { "newNewtabExperience.enabled": "true" } }}
         dispatch={dispatch}
+        App={{ customizeMenuVisible: true }}
       />
     );
     wrapper.instance().openCustomizationMenu();
+    assert.calledWith(dispatch, { type: "SHOW_PERSONALIZE" });
     assert.calledWith(dispatch, ac.UserEvent({ event: "SHOW_PERSONALIZE" }));
     wrapper.instance().closeCustomizationMenu();
+    assert.calledWith(dispatch, { type: "HIDE_PERSONALIZE" });
     assert.calledWith(dispatch, ac.UserEvent({ event: "HIDE_PERSONALIZE" }));
   });
 

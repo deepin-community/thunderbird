@@ -9,21 +9,21 @@
 
 "use strict";
 
-var composeHelper = ChromeUtils.import(
-  "resource://testing-common/mozmill/ComposeHelpers.jsm"
-);
-var { open_content_tab_with_url } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ContentTabHelpers.jsm"
+var { open_content_tab_with_url } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
 );
 var {
   assert_nothing_selected,
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
-  mc,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+);
+
+var { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
 );
 
 var folder = null;
@@ -46,17 +46,14 @@ var msgBody =
   'pass.png"/>\n' +
   "</body>\n</html>\n";
 
-add_task(function setupModule(module) {
-  folder = create_folder("exposedInContent");
+add_setup(async function () {
+  folder = await create_folder("exposedInContent");
 });
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  const msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
-  let source =
+  const source =
     "From - Sat Nov  1 12:39:54 2008\n" +
     "X-Mozilla-Status: 0001\n" +
     "X-Mozilla-Status2: 00000000\n" +
@@ -86,11 +83,15 @@ function addToFolder(aSubject, aBody, aFolder) {
   return aFolder.msgDatabase.getMsgHdrForMessageID(msgId);
 }
 
-function addMsgToFolder(folder) {
-  let msgDbHdr = addToFolder("exposed test message " + gMsgNo, msgBody, folder);
+async function addMsgToFolder(folder) {
+  const msgDbHdr = addToFolder(
+    "exposed test message " + gMsgNo,
+    msgBody,
+    folder
+  );
 
   // select the newly created message
-  let msgHdr = select_click_row(gMsgNo);
+  const msgHdr = await select_click_row(gMsgNo);
 
   if (msgDbHdr != msgHdr) {
     throw new Error(
@@ -98,18 +99,16 @@ function addMsgToFolder(folder) {
     );
   }
 
-  assert_selected_and_displayed(gMsgNo);
+  await assert_selected_and_displayed(gMsgNo);
 
   ++gMsgNo;
 
   // We also want to return the url of the message, so save that here.
-  let msgSimpleURL = msgHdr.folder.getUriForMsg(msgHdr);
+  const msgSimpleURL = msgHdr.folder.getUriForMsg(msgHdr);
 
-  let msgService = Cc["@mozilla.org/messenger;1"]
-    .createInstance(Ci.nsIMessenger)
-    .messageServiceFromURI(msgSimpleURL);
+  const msgService = MailServices.messageServiceFromURI(msgSimpleURL);
 
-  let neckoURL = msgService.getUrlForUri(msgSimpleURL);
+  const neckoURL = msgService.getUrlForUri(msgSimpleURL);
 
   // This is the full url to the message that we want (i.e. passing this to
   // a browser element or iframe will display it).
@@ -119,15 +118,16 @@ function addMsgToFolder(folder) {
 async function checkContentTab(msgURL) {
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  const preCount =
+    document.getElementById("tabmail").tabContainer.allTabs.length;
 
-  let dataurl =
+  const dataurl =
     "data:text/html,<html><head><title>test exposed</title>" +
     '</head><body><iframe id="msgIframe" src="' +
     encodeURI(msgURL) +
     '"/></body></html>';
 
-  let newTab = open_content_tab_with_url(dataurl);
+  const newTab = await open_content_tab_with_url(dataurl);
 
   Assert.notEqual(newTab.browser.currentURI.spec, "about:blank");
   Assert.equal(newTab.browser.webProgress.isLoadingDocument, false);
@@ -145,20 +145,22 @@ async function checkContentTab(msgURL) {
     );
   });
 
-  mc.tabmail.closeTab(newTab);
+  document.getElementById("tabmail").closeTab(newTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount) {
+  if (
+    document.getElementById("tabmail").tabContainer.allTabs.length != preCount
+  ) {
     throw new Error("The content tab didn't close");
   }
 }
 
 add_task(async function test_exposedInContentTabs() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
-  assert_nothing_selected();
+  await assert_nothing_selected();
 
   // Check for denied in mail
-  let msgURL = addMsgToFolder(folder);
+  const msgURL = await addMsgToFolder(folder);
 
   // Check allowed in content tab
   await checkContentTab(msgURL);

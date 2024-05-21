@@ -6,18 +6,17 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
-  const { TagUtils } = ChromeUtils.import("resource:///modules/TagUtils.jsm");
+  const { TagUtils } = ChromeUtils.importESModule(
+    "resource:///modules/TagUtils.sys.mjs"
+  );
   const { FacetUtils } = ChromeUtils.import(
     "resource:///modules/gloda/Facet.jsm"
   );
-  const { PluralForm } = ChromeUtils.import(
-    "resource://gre/modules/PluralForm.jsm"
+  const { PluralForm } = ChromeUtils.importESModule(
+    "resource:///modules/PluralForm.sys.mjs"
   );
   const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
 
@@ -86,7 +85,8 @@
 
   /**
    * MozFacetResultsMessage shows the search results for the string entered in gloda-searchbox.
-   * @extends {HTMLElement}
+   *
+   * @augments {HTMLElement}
    */
   class MozFacetResultsMessage extends HTMLElement {
     connectedCallback() {
@@ -96,19 +96,12 @@
       this.countNode = document.createElement("h2");
       this.countNode.classList.add("results-message-count");
 
-      this.toggleTimeline = document.createElement("label");
+      this.toggleTimeline = document.createElement("button");
       this.toggleTimeline.setAttribute("id", "date-toggle");
-      this.toggleTimeline.setAttribute("role", "button");
       this.toggleTimeline.setAttribute("tabindex", 0);
       this.toggleTimeline.classList.add("gloda-timeline-button");
       this.toggleTimeline.addEventListener("click", () => {
         FacetContext.toggleTimeline();
-      });
-      this.toggleTimeline.addEventListener("keypress", event => {
-        if (event.charCode == KeyEvent.DOM_VK_SPACE) {
-          FacetContext.toggleTimeline();
-          event.preventDefault();
-        }
       });
 
       const timelineImage = document.createElement("img");
@@ -116,6 +109,7 @@
         "src",
         "chrome://messenger/skin/icons/popular.svg"
       );
+      timelineImage.setAttribute("alt", "");
       this.toggleTimeline.appendChild(timelineImage);
 
       this.toggleText = document.createElement("span");
@@ -125,9 +119,10 @@
       sortDiv.classList.add("results-message-sort-bar");
 
       this.sortSelect = document.createElement("select");
-      let sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
+      this.sortSelect.setAttribute("id", "sortby");
+      const sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
 
-      let relevanceItem = document.createElement("option");
+      const relevanceItem = document.createElement("option");
       relevanceItem.textContent = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.results.message.sort.relevance2"
       );
@@ -138,7 +133,7 @@
       );
       this.sortSelect.appendChild(relevanceItem);
 
-      let dateItem = document.createElement("option");
+      const dateItem = document.createElement("option");
       dateItem.textContent = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.results.message.sort.date2"
       );
@@ -160,27 +155,27 @@
     }
 
     setMessages(messages) {
-      let topMessagesPluralFormat = glodaFacetStrings.GetStringFromName(
+      const topMessagesPluralFormat = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.results.header.countLabel.NMessages"
       );
-      let outOfPluralFormat = glodaFacetStrings.GetStringFromName(
+      const outOfPluralFormat = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.results.header.countLabel.ofN"
       );
-      let groupingFormat = glodaFacetStrings.GetStringFromName(
+      const groupingFormat = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.results.header.countLabel.grouping"
       );
 
-      let displayCount = messages.length;
-      let totalCount = FacetContext.activeSet.length;
+      const displayCount = messages.length;
+      const totalCount = FacetContext.activeSet.length;
 
       // set the count so CSS selectors can know what the results look like
       this.setAttribute("state", totalCount <= 0 ? "empty" : "some");
 
-      let topMessagesStr = PluralForm.get(
+      const topMessagesStr = PluralForm.get(
         displayCount,
         topMessagesPluralFormat
       ).replace("#1", displayCount.toLocaleString());
-      let outOfStr = PluralForm.get(totalCount, outOfPluralFormat).replace(
+      const outOfStr = PluralForm.get(totalCount, outOfPluralFormat).replace(
         "#1",
         totalCount.toLocaleString()
       );
@@ -193,7 +188,7 @@
         "glodaFacetView.results.message.timeline.label"
       );
 
-      let sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
+      const sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
       this.sortSelect.addEventListener("change", () => {
         if (sortByPref >= 2) {
           Services.prefs.setIntPref(
@@ -210,14 +205,14 @@
       }
       try {
         // -- Messages
-        for (let message of messages) {
-          let msgNode = document.createElement("facet-result-message");
+        for (const message of messages) {
+          const msgNode = document.createElement("facet-result-message");
           msgNode.message = message;
           msgNode.setAttribute("class", "message");
           this.messagesNode.appendChild(msgNode);
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
   }
@@ -369,7 +364,7 @@
       //  currently, so leave a reasonable failure case)
       this.trueValues = [];
       this.trueGroups = [true];
-      for (let groupPair of this.orderedGroups) {
+      for (const groupPair of this.orderedGroups) {
         if (groupPair[0]) {
           this.trueValues = groupPair[1];
         }
@@ -464,7 +459,7 @@
       // still holds.)
       if (this.selectedValue != "all") {
         let count = 0;
-        for (let groupPair of this.orderedGroups) {
+        for (const groupPair of this.orderedGroups) {
           if (groupPair[0] != null) {
             count += groupPair[1].length;
           }
@@ -477,7 +472,7 @@
         this.filterNode.lastChild.remove();
       }
 
-      let allNode = document.createElement("option");
+      const allNode = document.createElement("option");
       allNode.textContent = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.facets.filter." +
           this.attrDef.attributeName +
@@ -499,15 +494,15 @@
       this.realTrueGroups = [];
       this.trueValues = [];
       this.falseValues = [];
-      let selectNodes = [];
-      for (let groupPair of this.orderedGroups) {
+      const selectNodes = [];
+      for (const groupPair of this.orderedGroups) {
         if (groupPair[0] === null) {
           this.falseValues.push.apply(this.falseValues, groupPair[1]);
         } else {
           this.trueValues.push.apply(this.trueValues, groupPair[1]);
 
-          let groupValue = groupPair[0];
-          let selNode = document.createElement("option");
+          const groupValue = groupPair[0];
+          const selNode = document.createElement("option");
           selNode.textContent = groupValue[this.groupDisplayProperty];
           selNode.setAttribute("value", this.realTrueGroups.length);
           if (this.selectedValue == groupValue.category) {
@@ -551,7 +546,7 @@
           true
         );
       } else {
-        let groupValue = this.realTrueGroups[parseInt(this.filterNode.value)];
+        const groupValue = this.realTrueGroups[parseInt(this.filterNode.value)];
         this.selectedValue = groupValue.category;
         FacetContext.addFacetConstraint(
           this.faceter,
@@ -635,11 +630,10 @@
       this.excludeList = document.createElement("ul");
       this.excludeList.classList.add("facet-excluded", "barry");
 
-      this.moreButton = document.createElement("div");
+      this.moreButton = document.createElement("button");
       this.moreButton.classList.add("facet-more");
       this.moreButton.setAttribute("needed", "false");
       this.moreButton.setAttribute("tabindex", "0");
-      this.moreButton.setAttribute("role", "button");
 
       this.contentBox.appendChild(this.includeLabel);
       this.contentBox.appendChild(this.includeList);
@@ -712,7 +706,7 @@
           this.maxDisplayRows
         );
         // setup the more button string
-        let groupCount = this.orderedGroups.length;
+        const groupCount = this.orderedGroups.length;
         this.moreButton.textContent = PluralForm.get(
           groupCount,
           glodaFacetStrings.GetStringFromName(
@@ -732,8 +726,9 @@
     }
 
     buildRows() {
-      let nounDef = this.nounDef;
-      let useGroups = this.mode == "all" ? this.orderedGroups : this.topGroups;
+      const nounDef = this.nounDef;
+      const useGroups =
+        this.mode == "all" ? this.orderedGroups : this.topGroups;
 
       // should we just rely on automatic string coercion?
       this.moreButton.setAttribute(
@@ -741,15 +736,15 @@
         this.mode == "top" ? "true" : "false"
       );
 
-      let constraint = this.faceter.constraint;
+      const constraint = this.faceter.constraint;
 
       // -- empty all of our display buckets...
-      let remainderList = this.remainderList;
+      const remainderList = this.remainderList;
       while (remainderList.hasChildNodes()) {
         remainderList.lastChild.remove();
       }
-      let includeList = this.includeList;
-      let excludeList = this.excludeList;
+      const includeList = this.includeList;
+      const excludeList = this.excludeList;
       while (includeList.hasChildNodes()) {
         includeList.lastChild.remove();
       }
@@ -778,15 +773,15 @@
       let ambiguousKeyValues;
       if ("userVisibleString" in nounDef) {
         ambiguousKeyValues = {};
-        for (let groupPair of useGroups) {
-          let [groupValue] = groupPair;
+        for (const groupPair of useGroups) {
+          const [groupValue] = groupPair;
 
           // skip null values, they are handled by the none special-case
           if (groupValue == null) {
             continue;
           }
 
-          let groupStr = nounDef.userVisibleString(groupValue, false);
+          const groupStr = nounDef.userVisibleString(groupValue, false);
           // We use hasOwnProperty because it is possible that groupStr could
           //  be the same as the name of one of the attributes on
           //  Object.prototype.
@@ -800,9 +795,9 @@
 
       // -- create the items, assigning them to the right list based on
       //  existing constraint values
-      for (let groupPair of useGroups) {
-        let [groupValue, groupItems] = groupPair;
-        let li = document.createElement("li");
+      for (const groupPair of useGroups) {
+        const [groupValue, groupItems] = groupPair;
+        const li = document.createElement("li");
         li.setAttribute("class", "bar");
         li.setAttribute("tabindex", "0");
         li.setAttribute("role", "link");
@@ -811,12 +806,12 @@
         li.setAttribute("groupValue", groupValue);
         li.groupItems = groupItems;
 
-        let countSpan = document.createElement("span");
+        const countSpan = document.createElement("span");
         countSpan.setAttribute("class", "bar-count");
         countSpan.textContent = groupItems.length.toLocaleString();
         li.appendChild(countSpan);
 
-        let label = document.createElement("span");
+        const label = document.createElement("span");
         label.setAttribute("class", "bar-link");
 
         // The null value is a special indicator for 'none'
@@ -901,8 +896,8 @@
     clearBrushedItems() {}
 
     afterListVisible(variety, callback) {
-      let labelNode = this[variety + "Label"];
-      let listNode = this[variety + "List"];
+      const labelNode = this[variety + "Label"];
+      const listNode = this[variety + "List"];
 
       // if there are already things displayed, no need
       if (listNode.childElementCount) {
@@ -910,8 +905,9 @@
         return;
       }
 
-      let remListVisible = this.remainderLabel.getAttribute("needed") == "true";
-      let remListShouldBeVisible = this.remainderList.childElementCount > 1;
+      const remListVisible =
+        this.remainderLabel.getAttribute("needed") == "true";
+      const remListShouldBeVisible = this.remainderList.childElementCount > 1;
 
       labelNode.setAttribute("state", "some");
 
@@ -927,8 +923,8 @@
 
     _flyBarAway(barNode, variety, callback) {
       function getRect(aElement) {
-        let box = aElement.getBoundingClientRect();
-        let documentElement = aElement.ownerDocument.documentElement;
+        const box = aElement.getBoundingClientRect();
+        const documentElement = aElement.ownerDocument.documentElement;
         return {
           top: box.top + window.pageYOffset - documentElement.clientTop,
           left: box.left + window.pageXOffset - documentElement.clientLeft,
@@ -938,25 +934,25 @@
       }
       // figure out our origin location prior to adding the target or it
       //  will shift us down.
-      let origin = getRect(barNode);
+      const origin = getRect(barNode);
 
       // clone the node into its target location
-      let targetNode = barNode.cloneNode(true);
+      const targetNode = barNode.cloneNode(true);
       targetNode.groupValue = barNode.groupValue;
       targetNode.groupItems = barNode.groupItems;
       targetNode.setAttribute("variety", variety);
 
-      let targetParent = this[variety + "List"];
+      const targetParent = this[variety + "List"];
       targetParent.appendChild(targetNode);
 
       // create a flying clone
-      let flyingNode = barNode.cloneNode(true);
+      const flyingNode = barNode.cloneNode(true);
 
-      let dest = getRect(targetNode);
+      const dest = getRect(targetNode);
 
       // if the flying box wants to go higher than the content box goes, just
       //  send it to the top of the content box instead.
-      let contentRect = getRect(this.contentBox);
+      const contentRect = getRect(this.contentBox);
       if (dest.top < contentRect.top) {
         dest.top = contentRect.top;
       }
@@ -1010,7 +1006,7 @@
     }
 
     barClicked(barNode, variety) {
-      let groupValue = barNode.groupValue;
+      const groupValue = barNode.groupValue;
       // These determine what goAnimate actually does.
       // flyAway allows us to cancel flying in the case the constraint is
       //  being fully dropped and so the facet is just going to get rebuilt
@@ -1031,8 +1027,8 @@
       // Immediately apply the facet change, triggering the animation after
       //  the faceting completes.
       if (variety == "remainder") {
-        let currentVariety = barNode.getAttribute("variety");
-        let constraintGone = FacetContext.removeFacetConstraint(
+        const currentVariety = barNode.getAttribute("variety");
+        const constraintGone = FacetContext.removeFacetConstraint(
           this.faceter,
           currentVariety == "include",
           [groupValue],
@@ -1046,7 +1042,7 @@
         }
       } else {
         // include/exclude
-        let revalidate = FacetContext.addFacetConstraint(
+        const revalidate = FacetContext.addFacetConstraint(
           this.faceter,
           variety == "include",
           [groupValue],
@@ -1065,8 +1061,8 @@
     }
 
     barHovered(barNode, aInclude) {
-      let groupValue = barNode.groupValue;
-      let groupItems = barNode.groupItems;
+      const groupValue = barNode.groupValue;
+      const groupItems = barNode.groupItems;
 
       FacetContext.hoverFacet(
         this.faceter,
@@ -1081,8 +1077,8 @@
      * We know it's gone, but where has it gone?
      */
     barHoverGone(barNode, include) {
-      let groupValue = barNode.groupValue;
-      let groupItems = barNode.groupItems;
+      const groupValue = barNode.groupValue;
+      const groupItems = barNode.groupItems;
 
       FacetContext.unhoverFacet(
         this.faceter,
@@ -1147,7 +1143,7 @@
 
         return false;
       } catch (e) {
-        return Cu.reportError(e);
+        return console.error(e);
       }
     }
 
@@ -1169,7 +1165,7 @@
 
         return false;
       } catch (e) {
-        return Cu.reportError(e);
+        return console.error(e);
       }
     }
   }
@@ -1325,7 +1321,7 @@
           );
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1333,7 +1329,7 @@
       try {
         // We probably want something quite generic in the long term, but that
         // is way too much for now (needs to skip over invisible items, etc)
-        let focused = document.activeElement;
+        const focused = document.activeElement;
         if (focused == this.includeNode) {
           this.excludeNode.focus();
         } else if (focused == this.excludeNode) {
@@ -1342,13 +1338,13 @@
         event.preventDefault();
         event.stopPropagation();
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
     selectItem(event) {
       try {
-        let focused = document.activeElement;
+        const focused = document.activeElement;
         if (focused == this.includeNode) {
           this.doInclude();
         } else if (focused == this.excludeNode) {
@@ -1357,7 +1353,7 @@
           this.doUndo();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1365,10 +1361,10 @@
       try {
         this.node = barNode;
         this.facetNode = facetNode;
-        let facetDef = facetNode.facetDef;
-        let groupValue = barNode.groupValue;
-        let variety = barNode.getAttribute("variety");
-        let label = barNode.querySelector(".bar-link").textContent;
+        const facetDef = facetNode.facetDef;
+        const groupValue = barNode.groupValue;
+        const variety = barNode.getAttribute("variety");
+        const label = barNode.querySelector(".bar-link").textContent;
         this.build(facetDef, label, groupValue);
         this.node.setAttribute("selected", "true");
         const rtl = window.getComputedStyle(this).direction == "rtl";
@@ -1376,7 +1372,7 @@
          or if we're on a preselected facet value, whether included or
          excluded. The variety attribute handles that through CSS */
         this.setAttribute("variety", variety);
-        let rect = barNode.getBoundingClientRect();
+        const rect = barNode.getBoundingClientRect();
         let x, y;
         if (event.type == "click") {
           // center the menu on the mouse click
@@ -1409,7 +1405,7 @@
           this.undoNode.focus();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1421,7 +1417,7 @@
           this.node.focus();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1430,7 +1426,7 @@
         this.facetNode.includeFacet(this.node);
         this.hide();
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1548,9 +1544,9 @@
 
     /* eslint-disable complexity */
     build() {
-      let message = this.message;
+      const message = this.message;
 
-      let subject = this.subject;
+      const subject = this.subject;
       // -- eventify
       subject.onclick = event => {
         FacetContext.showConversationInTab(this, event.button == 1);
@@ -1569,32 +1565,32 @@
       } else {
         subject.textContent = message.subject;
       }
-      let authorNode = this.author;
+      const authorNode = this.author;
       authorNode.setAttribute("title", message.from.value);
       authorNode.textContent = message.from.contact.name;
-      let toNode = this.to;
+      const toNode = this.to;
       toNode.textContent = glodaFacetStrings.GetStringFromName(
         "glodaFacetView.result.message.toLabel"
       );
 
       // this.author.textContent = ;
-      let { makeFriendlyDateAgo } = ChromeUtils.import(
+      const { makeFriendlyDateAgo } = ChromeUtils.import(
         "resource:///modules/TemplateUtils.jsm"
       );
       this.date.textContent = makeFriendlyDateAgo(message.date);
 
       // - Recipients
       try {
-        let recipientsNode = this.recipients;
+        const recipientsNode = this.recipients;
         if (message.recipients) {
           let recipientCount = 0;
           const MAX_RECIPIENTS = 3;
-          let totalRecipientCount = message.recipients.length;
-          let recipientSeparator = glodaFacetStrings.GetStringFromName(
+          const totalRecipientCount = message.recipients.length;
+          const recipientSeparator = glodaFacetStrings.GetStringFromName(
             "glodaFacetView.results.message.recipientSeparator"
           );
-          for (let index in message.recipients) {
-            let recipNode = document.createElement("span");
+          for (const index in message.recipients) {
+            const recipNode = document.createElement("span");
             recipNode.setAttribute("class", "message-recipient");
             recipNode.textContent = message.recipients[index].contact.name;
             recipientsNode.appendChild(recipNode);
@@ -1604,18 +1600,18 @@
             }
             if (index != totalRecipientCount - 1) {
               // add separators (usually commas)
-              let sepNode = document.createElement("span");
+              const sepNode = document.createElement("span");
               sepNode.setAttribute("class", "message-recipient-separator");
               sepNode.textContent = recipientSeparator;
               recipientsNode.appendChild(sepNode);
             }
           }
           if (totalRecipientCount > MAX_RECIPIENTS) {
-            let nOthers = totalRecipientCount - recipientCount;
-            let andNOthers = document.createElement("span");
+            const nOthers = totalRecipientCount - recipientCount;
+            const andNOthers = document.createElement("span");
             andNOthers.setAttribute("class", "message-recipients-andothers");
 
-            let andOthersLabel = PluralForm.get(
+            const andOthersLabel = PluralForm.get(
               nOthers,
               glodaFacetStrings.GetStringFromName(
                 "glodaFacetView.results.message.andOthers"
@@ -1627,23 +1623,23 @@
           }
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
 
       // - Starred
-      let starNode = this.star;
+      const starNode = this.star;
       if (message.starred) {
         starNode.setAttribute("starred", "true");
       }
 
       // - Attachments
       if (message.attachmentNames) {
-        let attachmentsNode = this.attachments;
-        let imgNode = document.createElement("div");
+        const attachmentsNode = this.attachments;
+        const imgNode = document.createElement("div");
         imgNode.setAttribute("class", "message-attachment-icon");
         attachmentsNode.appendChild(imgNode);
         for (let attach of message.attachmentNames) {
-          let attachNode = document.createElement("div");
+          const attachNode = document.createElement("div");
           attachNode.setAttribute("class", "message-attachment");
           if (attach.length >= 28) {
             attach = attach.substring(0, 24) + "…";
@@ -1654,20 +1650,21 @@
       }
 
       // - Tags
-      let tagsNode = this.tags;
+      const tagsNode = this.tags;
       if ("tags" in message && message.tags.length) {
-        for (let tag of message.tags) {
-          let tagNode = document.createElement("span");
-          let color = MailServices.tags.getColorForKey(tag.key);
-          let textColor = "black";
-          if (!TagUtils.isColorContrastEnough(color)) {
-            textColor = "white";
-          }
+        for (const tag of message.tags) {
+          const tagNode = document.createElement("span");
           tagNode.setAttribute("class", "message-tag");
-          tagNode.setAttribute(
-            "style",
-            "color: " + textColor + "; background-color: " + color + ";"
-          );
+          const color = MailServices.tags.getColorForKey(tag.key);
+          if (color) {
+            const textColor = !TagUtils.isColorContrastEnough(color)
+              ? "white"
+              : "black";
+            tagNode.setAttribute(
+              "style",
+              "color: " + textColor + "; background-color: " + color + ";"
+            );
+          }
           tagNode.textContent = tag.tag;
           tagsNode.appendChild(tagNode);
         }
@@ -1677,7 +1674,7 @@
       if (message.indexedBodyText) {
         let bodyText = message.indexedBodyText;
 
-        let matches = [];
+        const matches = [];
         if ("stashedColumns" in FacetContext.collection) {
           let collection;
           if (
@@ -1688,8 +1685,8 @@
           } else {
             collection = FacetContext.collection;
           }
-          let offsets = collection.stashedColumns[message.id][0];
-          let offsetNums = offsets.split(" ").map(x => parseInt(x));
+          const offsets = collection.stashedColumns[message.id][0];
+          const offsetNums = offsets.split(" ").map(x => parseInt(x));
           for (let i = 0; i < offsetNums.length; i += 4) {
             // i is the column index. The indexedBodyText is in the column 0.
             // Ignore matches for other columns.
@@ -1711,7 +1708,7 @@
           matches.sort((a, b) => a[0] - b[0]);
 
           // Convert the byte offsets and lengths into character indexes.
-          let charCodeToByteCount = c => {
+          const charCodeToByteCount = c => {
             // UTF-8 stores:
             // - code points below U+0080 on 1 byte,
             // - code points below U+0800 on 2 bytes,
@@ -1729,13 +1726,13 @@
           };
           let byteOffset = 0;
           let offset = 0;
-          for (let match of matches) {
+          for (const match of matches) {
             while (byteOffset < match[0]) {
               byteOffset += charCodeToByteCount(bodyText.charCodeAt(offset++));
             }
             match[0] = offset;
             for (let i = offset; i < offset + match[1]; ++i) {
-              let size = charCodeToByteCount(bodyText.charCodeAt(i));
+              const size = charCodeToByteCount(bodyText.charCodeAt(i));
               if (size > 1) {
                 match[1] -= size - 1;
               }
@@ -1797,19 +1794,19 @@
           snippet = snippet.trimRight() + ellipses;
         }
 
-        let parent = this.snippet;
+        const parent = this.snippet;
         let node = document.createTextNode(snippet);
         parent.appendChild(node);
 
         let offset = startIndex ? startIndex - 1 : 0; // The ellipsis takes 1 character.
-        for (let match of matches) {
+        for (const match of matches) {
           if (idxNewline > -1 && match[0] > startIndex + idxNewline) {
             break;
           }
-          let secondNode = node.splitText(match[0] - offset);
+          const secondNode = node.splitText(match[0] - offset);
           node = secondNode.splitText(match[1]);
           offset += match[0] + match[1] - offset;
-          let span = document.createElement("span");
+          const span = document.createElement("span");
           span.textContent = secondNode.data;
           if (!this.firstMatchText) {
             this.firstMatchText = secondNode.data;

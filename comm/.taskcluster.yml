@@ -25,7 +25,7 @@
 #   }
 #
 # - action tasks - See:
-#   * taskcluster/taskgraph/actions/registry.py,
+#   * taskcluster/gecko_taskgraph/actions/registry.py,
 #   * https://docs.taskcluster.net/docs/manual/using/actions/spec
 #   * ci-admin:ciadmin/generate/in_tree_actions.py
 #
@@ -41,7 +41,7 @@
 #
 #   {
 #     tasks_for: 'action',
-#     push: {owner, pushlog_id, revision},
+#     push: {owner, pushlog_id, revision, base_revision},
 #     repository: {url, project, level},
 #     input,
 #     taskId,      // targeted taskId
@@ -105,7 +105,7 @@ tasks:
                                 description: 'Created by a [cron task](https://firefox-ci-tc.services.mozilla.com/tasks/${cron.task_id}) (${treeherder_link})'
 
               provisionerId: "${trustDomain}-${repository.level}"
-              workerType: "decision"
+              workerType: "decision-gcp"
 
               tags:
                   $if: 'tasks_for == "hg-push"'
@@ -132,6 +132,10 @@ tasks:
                             - "index.${trustDomain}.v2.${repository.project}.pushlog-id.${push.pushlog_id}.decision"
                             - "notify.email.${ownerEmail}.on-failed"
                             - "notify.email.${ownerEmail}.on-exception"
+                            # Send a notification email if the push comes from try
+                            - $if: 'repository.project == "try-comm-central"'
+                              then:
+                                  "notify.email.${ownerEmail}.on-completed"
                         else:
                             $if: 'tasks_for == "action"'
                             then:
@@ -193,7 +197,8 @@ tasks:
                       # run-task uses these to check out the source; the inputs
                       # to `mach taskgraph decision` are all on the command line.
                       $merge:
-                          - COMM_BASE_REPOSITORY: 'https://hg.mozilla.org/comm-central'
+                          - COMM_BASE_REPOSITORY: 'https://hg.mozilla.org/comm-unified'
+                            COMM_BASE_REV: '${push.base_revision}'
                             COMM_HEAD_REPOSITORY: '${repoUrl}'
                             COMM_HEAD_REF: '${push.revision}'
                             COMM_HEAD_REV: '${push.revision}'
@@ -212,7 +217,7 @@ tasks:
                                 ACTION_CALLBACK: '${action.cb_name}'
 
                   cache:
-                      "${trustDomain}-level-${repository.level}-checkouts-sparse-v2": /builds/worker/checkouts
+                      "${trustDomain}-level-${repository.level}-checkouts-sparse-v4": /builds/worker/checkouts
 
                   features:
                       taskclusterProxy: true
@@ -220,7 +225,7 @@ tasks:
 
                   # Note: This task is built server side without the context or tooling that
                   # exist in tree so we must hard code the hash
-                  image: 'mozillareleases/gecko_decision:3.0.1@sha256:9964730ed951584e65032bd1d6a2b7ede6d880a8b7aefb72d0d7f82346d834e3'
+                  image: 'mozillareleases/gecko_decision:4.1.0@sha256:ea73900129328095da4fb033697690d538a08d935298fef4d5fa4aae80273bce'
 
                   maxRunTime: 1800
 
@@ -253,14 +258,11 @@ tasks:
                                 --owner='${ownerEmail}'
                                 --level='${repository.level}'
                                 --tasks-for='${tasks_for}'
+                                --repository-type=hg
                                 --base-repository="$GECKO_BASE_REPOSITORY"
                                 --head-repository="$GECKO_HEAD_REPOSITORY"
                                 --head-ref="$GECKO_HEAD_REF"
                                 --head-rev="$GECKO_HEAD_REV"
-                                --comm-base-repository="$COMM_BASE_REPOSITORY"
-                                --comm-head-repository="$COMM_HEAD_REPOSITORY"
-                                --comm-head-ref="$COMM_HEAD_REF"
-                                --comm-head-rev="$COMM_HEAD_REV"
                                 --try-task-config-file=comm/try_task_config.json
                                 ${extraArgs}
 
@@ -319,3 +321,8 @@ tasks:
                                         - link:
                                               text: "Treeherder Jobs"
                                               href: "https://treeherder.mozilla.org/#/jobs?repo=${repository.project}&revision=${push.revision}"
+                                        # Email for try pushes should thank you for your revision
+                                        - $if: 'repository.project == "try-comm-central"'
+                                          then:
+                                              subject: "try-comm-central submission - ${push.revision}"
+                                              content: "Your try-comm-central push has been submitted. It's the best! Use the link to view the status of your jobs."

@@ -3,20 +3,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals ReloadMessage, getBrowser, openContentTab, gDBView,
+/* globals ReloadMessage, getMessagePaneBrowser, openContentTab,
            GetNumSelectedMessages, gMessageNotificationBar */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
-var { MsgHdrToMimeMessage } = ChromeUtils.import(
-  "resource:///modules/gloda/MimeMessage.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { MailE10SUtils } = ChromeUtils.import(
-  "resource:///modules/MailE10SUtils.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { FeedUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FeedUtils.sys.mjs"
 );
+var { MailE10SUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailE10SUtils.sys.mjs"
+);
+
+ChromeUtils.defineESModuleGetters(this, {
+  MsgHdrToMimeMessage: "resource:///modules/gloda/MimeMessage.sys.mjs",
+});
 
 // This global is for SeaMonkey compatibility.
 var gShowFeedSummary;
@@ -69,7 +74,7 @@ var FeedMessageHandler = {
    * message pane.
    *
    * @param {nsIMsgDBHdr} aMsgHdr - The message.
-   * @param {Boolean} aToggle     - true if in toggle mode, false otherwise.
+   * @param {boolean} aToggle - true if in toggle mode, false otherwise.
    *
    * @returns {Boolean} - true if summary is to be displayed, false if web page.
    */
@@ -90,9 +95,9 @@ var FeedMessageHandler = {
     // Thunderbird 2 rss messages with 'Show article summary' not selected,
     // ie message body constructed to show web page in an iframe, can't show
     // a summary - notify user.
-    let browser = getBrowser();
-    let contentDoc = browser ? browser.contentDocument : null;
-    let rssIframe = contentDoc
+    const browser = getMessagePaneBrowser();
+    const contentDoc = browser ? browser.contentDocument : null;
+    const rssIframe = contentDoc
       ? contentDoc.getElementById("_mailrssiframe")
       : null;
     if (rssIframe) {
@@ -108,10 +113,10 @@ var FeedMessageHandler = {
       return (gShowFeedSummary = this.gShowSummary = !this.gShowSummary);
     }
 
-    let wintype = document.documentElement.getAttribute("windowtype");
-    let tabMail = document.getElementById("tabmail");
-    let messageTab = tabMail && tabMail.currentTabInfo.mode.type == "message";
-    let messageWindow = wintype == "mail:messageWindow";
+    const wintype = document.documentElement.getAttribute("windowtype");
+    const tabMail = document.getElementById("tabmail");
+    const messageTab = tabMail && tabMail.currentTabInfo.mode.type == "message";
+    const messageWindow = wintype == "mail:messageWindow";
 
     switch (this.onSelectPref) {
       case this.kSelectOverrideWebPage:
@@ -120,23 +125,24 @@ var FeedMessageHandler = {
       case this.kSelectOverrideSummary:
         showSummary = true;
         break;
-      case this.kSelectFeedDefault:
+      case this.kSelectFeedDefault: {
         // Get quickmode per feed folder pref from feed subscriptions. If the feed
         // message is not in a feed account folder (hence the folder is not in
         // the feeds database), err on the side of showing the summary.
         // For the former, toggle or global override is necessary; for the
         // latter, a show summary checkbox toggle in Subscribe dialog will set
         // one on the path to bliss.
-        let folder = aMsgHdr.folder;
+        const folder = aMsgHdr.folder;
         showSummary = true;
         const ds = FeedUtils.getSubscriptionsDS(folder.server);
-        for (let sub of ds.data) {
+        for (const sub of ds.data) {
           if (sub.destFolder == folder.URI) {
             showSummary = sub.quickMode;
             break;
           }
         }
         break;
+      }
     }
 
     gShowFeedSummary = this.gShowSummary = showSummary;
@@ -178,12 +184,12 @@ var FeedMessageHandler = {
    * is not streamed.
    *
    * @param {nsIMsgDBHdr} aMessageHdr - The message.
-   * @param {Object} aWhere           - name value=true pair, where name is in:
+   * @param {Object} aWhere - name value=true pair, where name is in:
    *                                    'messagepane', 'browser', 'tab', 'window'.
    * @returns {void}
    */
   loadWebPage(aMessageHdr, aWhere) {
-    MsgHdrToMimeMessage(aMessageHdr, null, function(aMsgHdr, aMimeMsg) {
+    MsgHdrToMimeMessage(aMessageHdr, null, function (aMsgHdr, aMimeMsg) {
       if (
         aMimeMsg &&
         aMimeMsg.headers["content-base"] &&
@@ -210,7 +216,12 @@ var FeedMessageHandler = {
             .getService(Ci.nsIExternalProtocolService)
             .loadURI(uri);
         } else if (aWhere.messagepane) {
-          MailE10SUtils.loadURI(getBrowser(), url);
+          const browser = getMessagePaneBrowser();
+          // Load about:blank in the browser before (potentially) switching
+          // to a remote process. This prevents sandbox flags being carried
+          // over to the web document.
+          MailE10SUtils.loadAboutBlank(browser);
+          MailE10SUtils.loadURI(browser, url);
         } else if (aWhere.tab) {
           openContentTab(url, "tab", null);
         } else if (aWhere.window) {
@@ -229,7 +240,7 @@ var FeedMessageHandler = {
    * Display summary or load web page for feed messages. Caller should already
    * know if the message is a feed message.
    *
-   * @param {nsIMsgDBHdr} aMsgHdr  - The message.
+   * @param {nsIMsgDBHdr} aMsgHdr - The message.
    * @param {Boolean} aShowSummary - true if summary is to be displayed,
    *                                 false if web page.
    * @returns {void}
@@ -237,11 +248,11 @@ var FeedMessageHandler = {
   setContent(aMsgHdr, aShowSummary) {
     if (aShowSummary) {
       // Only here if toggling to summary in 3pane.
-      if (this.gToggle && gDBView && GetNumSelectedMessages() == 1) {
+      if (this.gToggle && window.gDBView && GetNumSelectedMessages() == 1) {
         ReloadMessage();
       }
     } else {
-      let browser = getBrowser();
+      const browser = getMessagePaneBrowser();
       if (browser && browser.contentDocument && browser.contentDocument.body) {
         browser.contentDocument.body.hidden = true;
       }
@@ -257,7 +268,7 @@ var FeedMessageHandler = {
 
 function openSubscriptionsDialog(aFolder) {
   // Check for an existing feed subscriptions window and focus it.
-  let subscriptionsWindow = Services.wm.getMostRecentWindow(
+  const subscriptionsWindow = Services.wm.getMostRecentWindow(
     "Mail:News-BlogSubscriptions"
   );
 
@@ -296,12 +307,12 @@ function openComposeWindowForRSSArticle(
   aMsgWindow
 ) {
   // Ensure right content is handled for web pages in window/tab.
-  let tabmail = document.getElementById("tabmail");
-  let is3pane =
+  const tabmail = document.getElementById("tabmail");
+  const is3pane =
     tabmail && tabmail.selectedTab && tabmail.selectedTab.mode
       ? tabmail.selectedTab.mode.type == "folder"
       : false;
-  let showingwebpage =
+  const showingwebpage =
     "FeedMessageHandler" in window &&
     !is3pane &&
     FeedMessageHandler.onOpenPref == FeedMessageHandler.kOpenWebPage;
@@ -320,33 +331,32 @@ function openComposeWindowForRSSArticle(
     );
   } else {
     // Set up the compose message and get the feed message's web page link.
-    let msgHdr = aMsgHdr;
-    let type = aType;
-    let msgComposeType = Ci.nsIMsgCompType;
+    const msgHdr = aMsgHdr;
+    const type = aType;
     let subject = msgHdr.mime2DecodedSubject;
     let fwdPrefix = Services.prefs.getCharPref("mail.forward_subject_prefix");
     fwdPrefix = fwdPrefix ? fwdPrefix + ": " : "";
 
-    let params = Cc[
+    const params = Cc[
       "@mozilla.org/messengercompose/composeparams;1"
     ].createInstance(Ci.nsIMsgComposeParams);
 
-    let composeFields = Cc[
+    const composeFields = Cc[
       "@mozilla.org/messengercompose/composefields;1"
     ].createInstance(Ci.nsIMsgCompFields);
 
     if (
-      type == msgComposeType.Reply ||
-      type == msgComposeType.ReplyAll ||
-      type == msgComposeType.ReplyToSender ||
-      type == msgComposeType.ReplyToGroup ||
-      type == msgComposeType.ReplyToSenderAndGroup ||
-      type == msgComposeType.ReplyToList
+      type == Ci.nsIMsgCompType.Reply ||
+      type == Ci.nsIMsgCompType.ReplyAll ||
+      type == Ci.nsIMsgCompType.ReplyToSender ||
+      type == Ci.nsIMsgCompType.ReplyToGroup ||
+      type == Ci.nsIMsgCompType.ReplyToSenderAndGroup ||
+      type == Ci.nsIMsgCompType.ReplyToList
     ) {
       subject = "Re: " + subject;
     } else if (
-      type == msgComposeType.ForwardInline ||
-      type == msgComposeType.ForwardAsAttachment
+      type == Ci.nsIMsgCompType.ForwardInline ||
+      type == Ci.nsIMsgCompType.ForwardAsAttachment
     ) {
       subject = fwdPrefix + subject;
     }
@@ -362,13 +372,13 @@ function openComposeWindowForRSSArticle(
       MsgHdrToMimeMessage(
         msgHdr,
         null,
-        function(aMsgHdr, aMimeMsg) {
+        function (aMsgHdr, aMimeMsg) {
           if (
             aMimeMsg &&
             aMimeMsg.headers["content-base"] &&
             aMimeMsg.headers["content-base"][0]
           ) {
-            let url = decodeURIComponent(
+            const url = decodeURIComponent(
               escape(aMimeMsg.headers["content-base"])
             );
             params.composeFields.body = url;

@@ -5,7 +5,7 @@
 
 // See Bug 585991.
 
-const TEST_URI = `data:text/html;charset=utf-8,
+const TEST_URI = `data:text/html;charset=utf-8,<!DOCTYPE html>
 <head>
   <script>
     /* Create a prototype-less object so popup does not contain native
@@ -21,7 +21,7 @@ const TEST_URI = `data:text/html;charset=utf-8,
 </head>
 <body>bug 585991 - autocomplete popup navigation and tab key usage test</body>`;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const { jsterm } = hud;
   info("web console opened");
@@ -67,15 +67,17 @@ add_task(async function() {
   let currentSelectionIndex = popup.selectedIndex;
 
   EventUtils.synthesizeKey("KEY_PageUp");
-  ok(
-    popup.selectedIndex < currentSelectionIndex,
+  Assert.less(
+    popup.selectedIndex,
+    currentSelectionIndex,
     "Index is less after Page UP"
   );
 
   currentSelectionIndex = popup.selectedIndex;
   EventUtils.synthesizeKey("KEY_PageDown");
-  ok(
-    popup.selectedIndex > currentSelectionIndex,
+  Assert.greater(
+    popup.selectedIndex,
+    currentSelectionIndex,
     "Index is greater after PGDN"
   );
 

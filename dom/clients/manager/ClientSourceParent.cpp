@@ -26,60 +26,6 @@ using mozilla::ipc::BackgroundParent;
 using mozilla::ipc::IPCResult;
 using mozilla::ipc::PrincipalInfo;
 
-namespace {
-
-// It would be nice to use a lambda instead of this class, but we cannot
-// move capture in lambdas yet and ContentParent cannot be AddRef'd off
-// the main thread.
-class KillContentParentRunnable final : public Runnable {
-  RefPtr<ContentParent> mContentParent;
-
- public:
-  explicit KillContentParentRunnable(RefPtr<ContentParent>&& aContentParent)
-      : Runnable("KillContentParentRunnable"),
-        mContentParent(std::move(aContentParent)) {
-    MOZ_ASSERT(mContentParent);
-  }
-
-  NS_IMETHOD
-  Run() override {
-    MOZ_ASSERT(NS_IsMainThread());
-    mContentParent->KillHard("invalid ClientSourceParent actor");
-    mContentParent = nullptr;
-    return NS_OK;
-  }
-};
-
-}  // anonymous namespace
-
-void ClientSourceParent::KillInvalidChild() {
-  // Try to get the content process before we destroy the actor below.
-  RefPtr<ContentParent> process =
-      BackgroundParent::GetContentParent(Manager()->Manager());
-
-  // First, immediately teardown the ClientSource actor.  No matter what
-  // we want to start this process as soon as possible.
-  Unused << ClientSourceParent::Send__delete__(this);
-
-  // If we are running in non-e10s, then there is nothing else to do here.
-  // There is no child process and we don't want to crash the entire browser
-  // in release builds.  In general, though, this should not happen in non-e10s
-  // so we do assert this condition.
-  if (!process) {
-    MOZ_DIAGNOSTIC_ASSERT(false, "invalid ClientSourceParent in non-e10s");
-    return;
-  }
-
-  // In e10s mode we also want to kill the child process.  Validation failures
-  // typically mean someone sent us bogus data over the IPC link.  We can't
-  // trust that process any more.  We have to do this on the main thread, so
-  // there is a small window of time before we kill the process.  This is why
-  // we start the actor destruction immediately above.
-  nsCOMPtr<nsIRunnable> r = new KillContentParentRunnable(std::move(process));
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
-}
-
 mozilla::ipc::IPCResult ClientSourceParent::RecvWorkerSyncPing() {
   AssertIsOnBackgroundThread();
   // Do nothing here.  This is purely a sync message allowing the child to
@@ -98,8 +44,7 @@ IPCResult ClientSourceParent::RecvExecutionReady(
   // to make sure the child actor is not giving us garbage.  Since we validate
   // on the child side as well we treat a failure here as fatal.
   if (!ClientIsValidCreationURL(mClientInfo.PrincipalInfo(), aArgs.url())) {
-    KillInvalidChild();
-    return IPC_OK();
+    return IPC_FAIL(this, "Invalid creation URL!");
   }
 
   mClientInfo.SetURL(aArgs.url());
@@ -116,19 +61,23 @@ IPCResult ClientSourceParent::RecvExecutionReady(
 };
 
 IPCResult ClientSourceParent::RecvFreeze() {
+#ifdef FUZZING_SNAPSHOT
+  if (mFrozen) {
+    return IPC_FAIL(this, "Freezing when already frozen");
+  }
+#endif
   MOZ_DIAGNOSTIC_ASSERT(!mFrozen);
   mFrozen = true;
-
-  // Frozen clients should not be observable.  Act as if the client has
-  // been destroyed.
-  for (ClientHandleParent* handle : mHandleList.Clone()) {
-    Unused << ClientHandleParent::Send__delete__(handle);
-  }
 
   return IPC_OK();
 }
 
 IPCResult ClientSourceParent::RecvThaw() {
+#ifdef FUZZING_SNAPSHOT
+  if (!mFrozen) {
+    return IPC_FAIL(this, "Thawing when not already frozen");
+  }
+#endif
   MOZ_DIAGNOSTIC_ASSERT(mFrozen);
   mFrozen = false;
   return IPC_OK();
@@ -149,8 +98,7 @@ IPCResult ClientSourceParent::RecvInheritController(
         swm->NoteInheritedController(clientInfo, controller);
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return IPC_OK();
 }
@@ -167,8 +115,7 @@ IPCResult ClientSourceParent::RecvNoteDOMContentLoaded() {
                                  swm->MaybeCheckNavigationUpdate(clientInfo);
                                });
 
-    MOZ_ALWAYS_SUCCEEDS(
-        SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+    MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
   }
   return IPC_OK();
 }
@@ -214,22 +161,23 @@ ClientSourceParent::~ClientSourceParent() {
   mExecutionReadyPromise.RejectIfExists(NS_ERROR_FAILURE, __func__);
 }
 
-void ClientSourceParent::Init() {
+IPCResult ClientSourceParent::Init() {
   // Ensure the principal is reasonable before adding ourself to the service.
   // Since we validate the principal on the child side as well, any failure
   // here is treated as fatal.
   if (NS_WARN_IF(!ClientIsValidPrincipalInfo(mClientInfo.PrincipalInfo()))) {
-    KillInvalidChild();
-    return;
+    mService->ForgetFutureSource(mClientInfo.ToIPC());
+    return IPC_FAIL(Manager(), "Invalid PrincipalInfo!");
   }
 
   // Its possible for AddSource() to fail if there is already an entry for
   // our UUID.  This should not normally happen, but could if someone is
   // spoofing IPC messages.
   if (NS_WARN_IF(!mService->AddSource(this))) {
-    KillInvalidChild();
-    return;
+    return IPC_FAIL(Manager(), "Already registered!");
   }
+
+  return IPC_OK();
 }
 
 const ClientInfo& ClientSourceParent::Info() const { return mClientInfo; }
@@ -254,7 +202,6 @@ void ClientSourceParent::ClearController() { mController.reset(); }
 
 void ClientSourceParent::AttachHandle(ClientHandleParent* aClientHandle) {
   MOZ_DIAGNOSTIC_ASSERT(aClientHandle);
-  MOZ_DIAGNOSTIC_ASSERT(!mFrozen);
   MOZ_ASSERT(!mHandleList.Contains(aClientHandle));
   mHandleList.AppendElement(aClientHandle);
 }

@@ -22,9 +22,7 @@
   }
 #define NS_SYSTEMPRINCIPAL_CONTRACTID "@mozilla.org/systemprincipal;1"
 
-namespace Json {
-class Value;
-}
+class nsScriptSecurityManager;
 
 namespace mozilla {
 
@@ -32,7 +30,7 @@ class SystemPrincipal final : public BasePrincipal, public nsISerializable {
   SystemPrincipal();
 
  public:
-  static already_AddRefed<SystemPrincipal> Create();
+  static already_AddRefed<SystemPrincipal> Get();
 
   static PrincipalKind Kind() { return eSystemPrincipal; }
 
@@ -61,7 +59,12 @@ class SystemPrincipal final : public BasePrincipal, public nsISerializable {
   }
 
  protected:
+  friend class ::nsScriptSecurityManager;
+
   virtual ~SystemPrincipal() = default;
+
+  static already_AddRefed<SystemPrincipal> Init();
+  static void Shutdown();
 
   bool SubsumesInternal(nsIPrincipal* aOther,
                         DocumentDomainConsideration aConsideration) override {

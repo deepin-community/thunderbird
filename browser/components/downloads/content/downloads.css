@@ -29,7 +29,7 @@
 
 /*** Downloads View ***/
 
-#downloadsRichListBox > richlistitem button {
+#downloadsListBox.allDownloadsListBox > richlistitem button {
   /* These buttons should never get focus, as that would "disable"
      the downloads view controller (it's only used when the richlistbox
      is focused). */
@@ -90,12 +90,16 @@
 
 #downloadsPanel-blockedSubview,
 #downloadsPanel-mainView {
-  font: caption;
-  width: 35em;
+  min-width: 37em;
   padding: 0.62em;
 }
 
 #downloadsHistory,
 #downloadsFooterButtons {
   margin: 0;
+}
+
+.downloadMainArea,
+.downloadContainer {
+  min-width: 0;
 }

@@ -7,7 +7,7 @@
        role="group"
        type="arrow"
        noautofocus="true"
-       position="bottomcenter topright"
+       position="bottomright topright"
        hidden="true">
   <panelmultiview mainViewId="widget-overflow-mainView">
     <panelview id="widget-overflow-mainView"
@@ -22,8 +22,7 @@
       <toolbarbutton command="cmd_CustomizeToolbars"
                       id="overflowMenu-customize-button"
                       class="subviewbutton panel-subview-footer-button"
-                      accesskey="&overflowCustomizeToolbar.accesskey;"
-                      label="&overflowCustomizeToolbar.label;"/>
+                      data-l10n-id="toolbar-overflow-customize-button"/>
     </panelview>
   </panelmultiview>
   <!-- This menu is here because not having it in the menu in which it's used flickers
@@ -53,8 +52,7 @@
               id="customizationPanelItemContextMenuUnpin"
               closemenu="single"
               class="customize-context-moveToToolbar"
-              accesskey="&customizeMenu.unpinFromOverflowMenu.accesskey;"
-              label="&customizeMenu.unpinFromOverflowMenu.label;"/>
+              data-l10n-id="customize-menu-unpin-from-overflowmenu"/>
     <menuitem oncommand="gCustomizeMode.removeFromArea(this.parentNode.triggerNode, 'panelitem-context')"
               closemenu="single"
               class="customize-context-removeFromPanel"
@@ -66,22 +64,71 @@
   </menupopup>
 </panel>
 
+<html:template id="unified-extensions-panel-template">
+  <panel id="unified-extensions-panel"
+         class="panel-no-padding"
+         role="group"
+         type="arrow"
+         noautofocus="true"
+         position="bottomright topright"
+         hidden="true">
+    <panelmultiview mainViewId="unified-extensions-view">
+      <panelview id="unified-extensions-view"
+                 class="cui-widget-panelview"
+                 mainview-with-header="true">
+        <box class="panel-header">
+          <html:h1>
+            <html:span data-l10n-id="unified-extensions-header-title"/>
+          </html:h1>
+        </box>
+
+        <toolbarseparator />
+
+        <vbox class="panel-subview-body" context="unified-extensions-context-menu">
+          <html:div id="unified-extensions-messages-container">
+            <!-- messages will be inserted here -->
+          </html:div>
+
+          <vbox id="overflowed-extensions-list">
+            <!-- overflowed extension buttons from the nav-bar will go here -->
+          </vbox>
+
+          <vbox id="unified-extensions-area">
+            <!-- default area for extension browser action buttons -->
+          </vbox>
+
+          <vbox class="unified-extensions-list">
+            <!-- active visible extensions go here -->
+          </vbox>
+        </vbox>
+
+        <toolbarseparator />
+
+        <toolbarbutton id="unified-extensions-manage-extensions"
+                       class="subviewbutton panel-subview-footer-button unified-extensions-manage-extensions"
+                       data-l10n-id="unified-extensions-manage-extensions"
+                       oncommand="BrowserOpenAddonsMgr('addons://list/extension');" />
+      </panelview>
+    </panelmultiview>
+  </panel>
+</html:template>
+
 <html:template id="panicButtonNotificationTemplate">
   <panel id="panic-button-success-notification"
          type="arrow"
-         position="bottomcenter topright"
+         position="bottomright topright"
          hidden="true"
          role="alert"
          orient="vertical">
     <hbox id="panic-button-success-header">
       <image id="panic-button-success-icon" alt=""/>
       <vbox>
-        <description>&panicButton.thankyou.msg1;</description>
-        <description>&panicButton.thankyou.msg2;</description>
+        <description data-l10n-id="panic-button-thankyou-msg1"></description>
+        <description data-l10n-id="panic-button-thankyou-msg2"></description>
       </vbox>
     </hbox>
-    <button label="&panicButton.thankyou.buttonlabel;"
-            id="panic-button-success-closebutton"
+    <button id="panic-button-success-closebutton"
+            data-l10n-id="panic-button-thankyou-button"
             oncommand="PanicButtonNotifier.close()"/>
   </panel>
 </html:template>
@@ -196,19 +243,12 @@
              onpopupshowing="gCustomizeMode.onPaletteContextMenuShowing(event)">
     <menuitem oncommand="gCustomizeMode.addToToolbar(this.parentNode.triggerNode, 'palette-context')"
               class="customize-context-addToToolbar"
-              accesskey="&customizeMenu.addToToolbar.accesskey;"
-              label="&customizeMenu.addToToolbar.label;"/>
+              data-l10n-id="customize-menu-add-to-toolbar"/>
     <menuitem oncommand="gCustomizeMode.addToPanel(this.parentNode.triggerNode, 'palette-context')"
               class="customize-context-addToPanel"
-              accesskey="&customizeMenu.addToOverflowMenu.accesskey;"
-              label="&customizeMenu.addToOverflowMenu.label;"/>
+              data-l10n-id="customize-menu-add-to-overflowmenu"/>
   </menupopup>
 
-  <menupopup id="customizationPanelContextMenu">
-    <menuitem command="cmd_CustomizeToolbars"
-              accesskey="&customizeMenu.addMoreItems.accesskey;"
-              label="&customizeMenu.addMoreItems.label;"/>
-  </menupopup>
   <panel id="downloads-button-autohide-panel"
          role="group"
          type="arrow"
@@ -229,7 +269,7 @@
        type="arrow"
        hidden="true"
        flip="slide"
-       position="bottomcenter topright"
+       position="bottomright topright"
        noautofocus="true">
   <panelmultiview id="appMenu-multiView" mainViewId="appMenu-protonMainView"
                   viewCacheId="appMenu-viewCache">
@@ -242,7 +282,7 @@
          role="group"
          type="arrow"
          flip="slide"
-         position="bottomcenter topright"
+         position="bottomright topright"
          tabspecific="true">
     <popupnotification id="extension-new-tab-notification"
                        class="extension-controlled-notification"

@@ -27,7 +27,6 @@ button > .button-box {
 }
 
 .about-studies-container {
-  font-size: 1.25rem;
   max-width: 960px;
   margin: 0 auto;
 }
@@ -173,5 +172,5 @@ button > .button-box {
 }
 
 .opt-in-box.opt-in-error {
-  color: var(--in-content-error-text-color);
+  color: var(--text-color-error);
 }

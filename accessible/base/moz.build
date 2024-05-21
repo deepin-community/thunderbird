@@ -4,17 +4,32 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+GeneratedFile(
+    "RelationType.h",
+    script="/accessible/base/RelationTypeGen.py",
+    entry_point="generate",
+    inputs=["/accessible/interfaces/nsIAccessibleRelation.idl"],
+)
+GeneratedFile(
+    "Role.h",
+    script="/accessible/base/RoleHGen.py",
+    entry_point="generate",
+    inputs=["/accessible/interfaces/nsIAccessibleRole.idl"],
+)
+
 EXPORTS += ["AccEvent.h", "nsAccessibilityService.h"]
 
 EXPORTS.mozilla.a11y += [
+    "!RelationType.h",
+    "!Role.h",
     "AccAttributes.h",
+    "AccGroupInfo.h",
     "AccTypes.h",
+    "CacheConstants.h",
     "DocManager.h",
     "FocusManager.h",
     "IDSet.h",
     "Platform.h",
-    "RelationType.h",
-    "Role.h",
     "SelectionManager.h",
     "States.h",
 ]
@@ -26,13 +41,13 @@ if CONFIG["MOZ_DEBUG"]:
 
 UNIFIED_SOURCES += [
     "AccAttributes.cpp",
-    "AccessibleOrProxy.cpp",
     "AccEvent.cpp",
     "AccGroupInfo.cpp",
     "AccIterator.cpp",
     "ARIAMap.cpp",
     "ARIAStateMap.cpp",
     "Asserts.cpp",
+    "CachedTableAccessible.cpp",
     "DocManager.cpp",
     "EmbeddedObjCollector.cpp",
     "EventQueue.cpp",
@@ -41,7 +56,6 @@ UNIFIED_SOURCES += [
     "FocusManager.cpp",
     "NotificationController.cpp",
     "nsAccessibilityService.cpp",
-    "nsAccessiblePivot.cpp",
     "nsAccUtils.cpp",
     "nsCoreUtils.cpp",
     "nsEventShell.cpp",
@@ -50,6 +64,7 @@ UNIFIED_SOURCES += [
     "SelectionManager.cpp",
     "StyleInfo.cpp",
     "TextAttrs.cpp",
+    "TextLeafRange.cpp",
     "TextRange.cpp",
     "TextUpdater.cpp",
     "TreeWalker.cpp",
@@ -68,15 +83,6 @@ LOCAL_INCLUDES += [
     "/dom/xul",
 ]
 
-if CONFIG["OS_ARCH"] == "WINNT":
-    LOCAL_INCLUDES += [
-        "/accessible/ipc/win",
-    ]
-else:
-    LOCAL_INCLUDES += [
-        "/accessible/ipc/other",
-    ]
-
 LOCAL_INCLUDES += [
     "/accessible/xpcom",
     "/accessible/xul",
@@ -91,8 +97,8 @@ LOCAL_INCLUDES += [
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
     LOCAL_INCLUDES += [
         "/accessible/atk",
+        "/gfx/cairo/cairo/src",
     ]
-    CXXFLAGS += CONFIG["MOZ_CAIRO_CFLAGS"]
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
     LOCAL_INCLUDES += [
         "/accessible/windows/ia2",
@@ -106,6 +112,10 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
     LOCAL_INCLUDES += [
         "/accessible/android",
     ]
+elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "uikit":
+    LOCAL_INCLUDES += [
+        "/accessible/ios",
+    ]
 else:
     LOCAL_INCLUDES += [
         "/accessible/other",
@@ -114,6 +124,3 @@ else:
 FINAL_LIBRARY = "xul"
 
 include("/ipc/chromium/chromium-config.mozbuild")
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

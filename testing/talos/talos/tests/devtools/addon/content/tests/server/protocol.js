@@ -33,7 +33,7 @@ class DampTestFront extends FrontClassWithSpec(dampTestSpec) {
 }
 protocol.registerFront(DampTestFront);
 
-module.exports = async function() {
+module.exports = async function () {
   let tab = await testSetup(SIMPLE_URL);
   let messageManager = tab.linkedBrowser.messageManager;
 
@@ -42,7 +42,7 @@ module.exports = async function() {
     "data:,(" +
       encodeURIComponent(
         `function () {
-      const { require } = ChromeUtils.import("resource://devtools/shared/Loader.jsm");
+      const { require } = ChromeUtils.importESModule("resource://devtools/shared/loader/Loader.sys.mjs");
 
       const { ActorRegistry } = require("devtools/server/actors/utils/actor-registry");
       ActorRegistry.registerModule("damp-test/tests/server/actor.js", {
@@ -67,7 +67,7 @@ module.exports = async function() {
     bigObject["attribute-" + i] = bigString;
   }
 
-  let bigArray = Array.from({ length: ARRAY_SIZE }, (_, i) => bigObject);
+  let bigArray = Array.from({ length: ARRAY_SIZE }, _ => bigObject);
 
   // Open against options to avoid noise from tools
   let toolbox = await openToolbox("options");

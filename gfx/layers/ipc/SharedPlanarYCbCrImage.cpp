@@ -80,51 +80,63 @@ SharedPlanarYCbCrImage::GetAsSourceSurface() {
   return PlanarYCbCrImage::GetAsSourceSurface();
 }
 
-bool SharedPlanarYCbCrImage::CopyData(const PlanarYCbCrData& aData) {
-  // If mTextureClient has not already been allocated (through Allocate(aData))
-  // allocate it. This code path is slower than the one used when Allocate has
-  // been called since it will trigger a full copy.
-  PlanarYCbCrData data = aData;
-  if (!mTextureClient && !Allocate(data)) {
-    return false;
+nsresult SharedPlanarYCbCrImage::CopyData(const PlanarYCbCrData& aData) {
+  // If mTextureClient has not already been allocated by CreateEmptyBuffer,
+  // allocate it. This code path is slower than the one used when
+  // CreateEmptyBuffer has been called since it will trigger a full copy.
+  if (!mTextureClient) {
+    nsresult r =
+        CreateEmptyBuffer(aData, aData.YDataSize(), aData.CbCrDataSize());
+    if (NS_FAILED(r)) {
+      return r;
+    }
   }
 
   TextureClientAutoLock autoLock(mTextureClient, OpenMode::OPEN_WRITE_ONLY);
   if (!autoLock.Succeeded()) {
     MOZ_ASSERT(false, "Failed to lock the texture.");
-    return false;
+    return NS_ERROR_UNEXPECTED;
   }
 
   if (!UpdateYCbCrTextureClient(mTextureClient, aData)) {
     MOZ_ASSERT(false, "Failed to copy YCbCr data into the TextureClient");
-    return false;
+    return NS_ERROR_UNEXPECTED;
   }
   mTextureClient->MarkImmutable();
-  return true;
+  return NS_OK;
 }
 
-bool SharedPlanarYCbCrImage::AdoptData(const Data& aData) {
+nsresult SharedPlanarYCbCrImage::AdoptData(const Data& aData) {
   MOZ_ASSERT(false, "This shouldn't be used.");
-  return false;
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 bool SharedPlanarYCbCrImage::IsValid() const {
   return mTextureClient && mTextureClient->IsValid();
 }
 
-bool SharedPlanarYCbCrImage::Allocate(PlanarYCbCrData& aData) {
+nsresult SharedPlanarYCbCrImage::CreateEmptyBuffer(
+    const PlanarYCbCrData& aData, const gfx::IntSize& aYSize,
+    const gfx::IntSize& aCbCrSize) {
   MOZ_ASSERT(!mTextureClient, "This image already has allocated data");
 
   TextureFlags flags =
       mCompositable ? mCompositable->GetTextureFlags() : TextureFlags::DEFAULT;
   {
-    YCbCrTextureClientAllocationHelper helper(aData, flags);
-    mTextureClient = RecycleAllocator()->CreateOrRecycle(helper);
+    YCbCrTextureClientAllocationHelper helper(aData, aYSize, aCbCrSize, flags);
+    Result<already_AddRefed<TextureClient>, nsresult> result =
+        RecycleAllocator()->CreateOrRecycle(helper);
+    if (result.isErr()) {
+      return Err(result.unwrapErr());
+    }
+    mTextureClient = result.unwrap();
   }
 
   if (!mTextureClient) {
     NS_WARNING("SharedPlanarYCbCrImage::Allocate failed.");
-    return false;
+    // TODO: TextureClientRecycleAllocator::CreateOrRecycle may return NULL on
+    // non out-of-memory failures.
+    return NS_ERROR_OUT_OF_MEMORY;
   }
 
   MappedYCbCrTextureData mapped;
@@ -138,22 +150,15 @@ bool SharedPlanarYCbCrImage::Allocate(PlanarYCbCrData& aData) {
     MOZ_CRASH("GFX: Cannot lock or borrow mapped YCbCr");
   }
 
-  aData.mYChannel = mapped.y.data;
-  aData.mCbChannel = mapped.cb.data;
-  aData.mCrChannel = mapped.cr.data;
-
   // copy some of aData's values in mData (most of them)
-  mData.mYChannel = aData.mYChannel;
-  mData.mCbChannel = aData.mCbChannel;
-  mData.mCrChannel = aData.mCrChannel;
-  mData.mYSize = aData.mYSize;
-  mData.mCbCrSize = aData.mCbCrSize;
-  mData.mPicX = aData.mPicX;
-  mData.mPicY = aData.mPicY;
-  mData.mPicSize = aData.mPicSize;
+  mData.mYChannel = mapped.y.data;
+  mData.mCbChannel = mapped.cb.data;
+  mData.mCrChannel = mapped.cr.data;
+  mData.mPictureRect = aData.mPictureRect;
   mData.mStereoMode = aData.mStereoMode;
   mData.mYUVColorSpace = aData.mYUVColorSpace;
   mData.mColorDepth = aData.mColorDepth;
+  mData.mChromaSubsampling = aData.mChromaSubsampling;
   // those members are not always equal to aData's, due to potentially different
   // packing.
   mData.mYSkip = 0;
@@ -166,13 +171,22 @@ bool SharedPlanarYCbCrImage::Allocate(PlanarYCbCrData& aData) {
   // will try to manage this memory without knowing it belongs to a
   // shmem.
   mBufferSize = ImageDataSerializer::ComputeYCbCrBufferSize(
-      mData.mYSize, mData.mYStride, mData.mCbCrSize, mData.mCbCrStride);
-  mSize = mData.mPicSize;
-  mOrigin = gfx::IntPoint(aData.mPicX, aData.mPicY);
+      aYSize, mData.mYStride, aCbCrSize, mData.mCbCrStride);
+  mSize = mData.mPictureRect.Size();
+  mOrigin = mData.mPictureRect.TopLeft();
 
   mTextureClient->Unlock();
 
-  return mBufferSize > 0;
+  // ImageDataSerializer::ComputeYCbCrBufferSize may return zero when the size
+  // requested is out of the limit.
+  return mBufferSize > 0 ? NS_OK : NS_ERROR_INVALID_ARG;
+}
+
+void SharedPlanarYCbCrImage::SetIsDRM(bool aIsDRM) {
+  Image::SetIsDRM(aIsDRM);
+  if (mTextureClient) {
+    mTextureClient->AddFlags(TextureFlags::DRM_SOURCE);
+  }
 }
 
 }  // namespace layers

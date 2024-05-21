@@ -8,31 +8,31 @@
 <!ENTITY accountName.label "Назва облікового запису:">
 <!ENTITY accountName.accesskey "І">
 <!ENTITY identityTitle.label "Ідентифікатор">
-<!ENTITY identityDesc.label "Кожен обліковий запис має ідентифікатор для збереження тієї інформації про вас, яку бачать одержувачі ваших повідомлень.">
-<!ENTITY name.label "Ваше ім’я:">
+<!ENTITY identityDesc.label "Кожен обліковий запис має ідентифікатор для збереження тієї інформації про вас, яку бачать отримувачі ваших повідомлень.">
+<!ENTITY name.label "Ваше ім'я:">
 <!ENTITY name.accesskey "В">
 <!ENTITY email.label "Адреса електронної пошти:">
 <!ENTITY email.accesskey "е">
 <!ENTITY catchAll.label "Відповідати з цієї адреси е-пошти, коли заголовки доставляння збігаються:">
 <!ENTITY catchAll.accesskey "о">
 <!ENTITY replyTo.label "Адреса для відповіді:">
-<!ENTITY replyTo.accesskey "д">
-<!ENTITY replyTo.placeholder "Отримувачі будуть відповідати на ці іншу адресу">
+<!ENTITY replyTo.accesskey "А">
+<!ENTITY replyTo.placeholder "Отримувачі відповідатимуть на цю адресу">
 <!ENTITY organization.label "Організація:">
 <!ENTITY organization.accesskey "О">
 <!ENTITY signatureText.label "Текст підпису:">
 <!ENTITY signatureText.accesskey "Т">
 <!ENTITY signatureHtml.label "Використовувати HTML (e.g., &lt;b&gt;bold&lt;/b&gt;)">
 <!ENTITY signatureHtml.accesskey "L">
-<!ENTITY signatureFile.label "Долучати підпис з файлу (текст, малюнок чи HTML):">
-<!ENTITY signatureFile.accesskey "ф">
+<!ENTITY signatureFile.label "Долучати натомість підпис із файлу (текст, HTML або зображення):">
+<!ENTITY signatureFile.accesskey "л">
 <!ENTITY edit.label "Змінити…">
 <!ENTITY choose.label "Вибрати…">
 <!ENTITY choose.accesskey "б">
-<!ENTITY editVCard.label "Змінити візитну картку…">
+<!ENTITY editVCard.label "Редагувати візитівку…">
 <!ENTITY editVCard.accesskey "к">
 <!-- LOCALIZATION NOTE (attachVCard.label) : do not translate "vCard" in below line -->
-<!ENTITY attachVCard.label "Додавати мою візитівку vCard до повідомлень">
+<!ENTITY attachVCard.label "Додавати до повідомлень мою візитівку vCard">
 <!ENTITY attachVCard.accesskey "з">
 
 <!ENTITY manageIdentities.label "Додаткові ідентифікатори…">

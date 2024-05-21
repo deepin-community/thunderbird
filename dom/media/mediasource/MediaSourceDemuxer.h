@@ -13,7 +13,7 @@
 #  include "TrackBuffersManager.h"
 #  include "mozilla/Atomics.h"
 #  include "mozilla/Maybe.h"
-#  include "mozilla/Monitor.h"
+#  include "mozilla/Mutex.h"
 #  include "mozilla/TaskQueue.h"
 #  include "mozilla/dom/MediaDebugInfoBinding.h"
 
@@ -45,14 +45,17 @@ class MediaSourceDemuxer : public MediaDataDemuxer,
   bool ShouldComputeStartTime() const override { return false; }
 
   /* interface for TrackBuffersManager */
-  void AttachSourceBuffer(RefPtr<TrackBuffersManager>& aSourceBuffer);
-  void DetachSourceBuffer(RefPtr<TrackBuffersManager>& aSourceBuffer);
+  void AttachSourceBuffer(const RefPtr<TrackBuffersManager>& aSourceBuffer);
+  void DetachSourceBuffer(const RefPtr<TrackBuffersManager>& aSourceBuffer);
   TaskQueue* GetTaskQueue() { return mTaskQueue; }
   void NotifyInitDataArrived();
 
-  // Returns a structure describing the state of the MediaSource internal
+  // Populates aInfo with info describing the state of the MediaSource internal
   // buffered data. Used for debugging purposes.
-  void GetDebugInfo(dom::MediaSourceDemuxerDebugInfo& aInfo);
+  // aInfo should *not* be accessed until the returned promise has been resolved
+  // or rejected.
+  RefPtr<GenericPromise> GetDebugInfo(
+      dom::MediaSourceDemuxerDebugInfo& aInfo) const;
 
   void AddSizeOfResources(MediaSourceDecoder::ResourceSizes* aSizes);
 
@@ -62,31 +65,38 @@ class MediaSourceDemuxer : public MediaDataDemuxer,
   static constexpr media::TimeUnit EOS_FUZZ =
       media::TimeUnit::FromMicroseconds(500000);
 
+  // Largest gap allowed between muxed streams with different
+  // start times. The specs suggest up to a "reasonably short" gap of
+  // one second, which we use here.
+  // See: https://www.w3.org/TR/media-source-2/#presentation-start-time
+  static constexpr media::TimeUnit EOS_FUZZ_START =
+      media::TimeUnit::FromMicroseconds(1000000);
+
  private:
   ~MediaSourceDemuxer();
   friend class MediaSourceTrackDemuxer;
   // Scan source buffers and update information.
   bool ScanSourceBuffersForContent();
-  RefPtr<TrackBuffersManager> GetManager(TrackInfo::TrackType aType);
-  TrackInfo* GetTrackInfo(TrackInfo::TrackType);
+  RefPtr<TrackBuffersManager> GetManager(TrackInfo::TrackType aType)
+      MOZ_REQUIRES(mMutex);
+  TrackInfo* GetTrackInfo(TrackInfo::TrackType) MOZ_REQUIRES(mMutex);
   void DoAttachSourceBuffer(RefPtr<TrackBuffersManager>&& aSourceBuffer);
-  void DoDetachSourceBuffer(RefPtr<TrackBuffersManager>&& aSourceBuffer);
+  void DoDetachSourceBuffer(const RefPtr<TrackBuffersManager>& aSourceBuffer);
   bool OnTaskQueue() {
     return !GetTaskQueue() || GetTaskQueue()->IsCurrentThreadIn();
   }
 
   RefPtr<TaskQueue> mTaskQueue;
-  nsTArray<RefPtr<MediaSourceTrackDemuxer>> mDemuxers;
-
+  // Accessed on mTaskQueue or from destructor
   nsTArray<RefPtr<TrackBuffersManager>> mSourceBuffers;
-
   MozPromiseHolder<InitPromise> mInitPromise;
 
-  // Monitor to protect members below across multiple threads.
-  mutable Monitor mMonitor;
-  RefPtr<TrackBuffersManager> mAudioTrack;
-  RefPtr<TrackBuffersManager> mVideoTrack;
-  MediaInfo mInfo;
+  // Mutex to protect members below across multiple threads.
+  mutable Mutex mMutex;
+  nsTArray<RefPtr<MediaSourceTrackDemuxer>> mDemuxers MOZ_GUARDED_BY(mMutex);
+  RefPtr<TrackBuffersManager> mAudioTrack MOZ_GUARDED_BY(mMutex);
+  RefPtr<TrackBuffersManager> mVideoTrack MOZ_GUARDED_BY(mMutex);
+  MediaInfo mInfo MOZ_GUARDED_BY(mMutex);
 };
 
 class MediaSourceTrackDemuxer
@@ -95,7 +105,8 @@ class MediaSourceTrackDemuxer
  public:
   MediaSourceTrackDemuxer(MediaSourceDemuxer* aParent,
                           TrackInfo::TrackType aType,
-                          TrackBuffersManager* aManager);
+                          TrackBuffersManager* aManager)
+      MOZ_REQUIRES(aParent->mMutex);
 
   UniquePtr<TrackInfo> GetInfo() const override;
 
@@ -120,12 +131,7 @@ class MediaSourceTrackDemuxer
   void DetachManager();
 
  private:
-  bool OnTaskQueue() const {
-    MOZ_ASSERT(mParent);
-    auto taskQueue = mParent->GetTaskQueue();
-    MOZ_ASSERT(taskQueue);
-    return taskQueue->IsCurrentThreadIn();
-  }
+  bool OnTaskQueue() const { return mTaskQueue->IsCurrentThreadIn(); }
 
   RefPtr<SeekPromise> DoSeek(const media::TimeUnit& aTime);
   RefPtr<SamplesPromise> DoGetSamples(int32_t aNumSamples);
@@ -136,18 +142,22 @@ class MediaSourceTrackDemuxer
   media::TimeUnit GetNextRandomAccessPoint();
 
   RefPtr<MediaSourceDemuxer> mParent;
+  const RefPtr<TaskQueue> mTaskQueue;
+
   TrackInfo::TrackType mType;
-  // Monitor protecting members below accessed from multiple threads.
-  Monitor mMonitor;
+  // Mutex protecting members below accessed from multiple threads.
+  Mutex mMutex MOZ_UNANNOTATED;
   media::TimeUnit mNextRandomAccessPoint;
   // Would be accessed in MFR's demuxer proxy task queue and TaskQueue, and
   // only be set on the TaskQueue. It can be accessed while on TaskQueue without
   // the need for the lock.
   RefPtr<TrackBuffersManager> mManager;
 
+  // Only accessed on TaskQueue
   Maybe<RefPtr<MediaRawData>> mNextSample;
   // Set to true following a reset. Ensure that the next sample demuxed
   // is available at position 0.
+  // Only accessed on TaskQueue
   bool mReset;
 
   // Amount of pre-roll time when seeking.

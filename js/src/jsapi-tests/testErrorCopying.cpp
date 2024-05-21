@@ -8,12 +8,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "js/CallAndConstruct.h"
 #include "js/Exception.h"
 #include "jsapi-tests/tests.h"
 
 BEGIN_TEST(testErrorCopying_columnCopied) {
-  // 0        1         2
-  // 1234567890123456789012345678
+  //    0        1         2
+  //    1234567890123456789012345678
   EXEC("function check() { Object; foo; }");
 
   JS::RootedValue rval(cx);
@@ -25,7 +26,7 @@ BEGIN_TEST(testErrorCopying_columnCopied) {
   JS::ErrorReportBuilder report(cx);
   CHECK(report.init(cx, exnStack, JS::ErrorReportBuilder::WithSideEffects));
 
-  CHECK_EQUAL(report.report()->column, 28u);
+  CHECK_EQUAL(report.report()->column.oneOriginValue(), 28u);
   return true;
 }
 

@@ -15,8 +15,6 @@
 #include "nsIMsgAccount.h"
 #include "nsIImportSettings.h"
 #include "nsOutlookSettings.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgCompCID.h"
 #include "nsISmtpService.h"
 #include "nsISmtpServer.h"
 #include "nsOutlookStringBundle.h"
@@ -178,7 +176,7 @@ bool OutlookSettings::DoImport(nsIMsgAccount** aAccount) {
   }
 
   nsCOMPtr<nsIMsgAccountManager> accMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (NS_FAILED(rv)) {
     IMPORT_LOG0("*** Failed to create a account manager!\n");
     return false;
@@ -266,9 +264,9 @@ bool OutlookSettings::DoIMAPServer(nsIMsgAccountManager* aMgr,
   nsAutoCString nativeServerName;
   NS_CopyUnicodeToNative(aServerName, nativeServerName);
   nsCOMPtr<nsIMsgIncomingServer> in;
-  rv = aMgr->FindServer(nativeUserName, nativeServerName, "imap"_ns,
-                        getter_AddRefs(in));
-  if (NS_FAILED(rv) || (in == nullptr)) {
+  aMgr->FindServer(nativeUserName, nativeServerName, "imap"_ns, 0,
+                   getter_AddRefs(in));
+  if (!in) {
     // Create the incoming server and an account for it?
     rv = aMgr->CreateIncomingServer(nativeUserName, nativeServerName, "imap"_ns,
                                     getter_AddRefs(in));
@@ -319,9 +317,9 @@ bool OutlookSettings::DoPOP3Server(nsIMsgAccountManager* aMgr,
   nsAutoCString nativeServerName;
   NS_CopyUnicodeToNative(aServerName, nativeServerName);
   nsCOMPtr<nsIMsgIncomingServer> in;
-  rv = aMgr->FindServer(nativeUserName, nativeServerName, "pop3"_ns,
-                        getter_AddRefs(in));
-  if (NS_SUCCEEDED(rv)) return true;
+  aMgr->FindServer(nativeUserName, nativeServerName, "pop3"_ns, 0,
+                   getter_AddRefs(in));
+  if (in) return true;
 
   // Create the incoming server and an account for it?
   rv = aMgr->CreateIncomingServer(nativeUserName, nativeServerName, "pop3"_ns,
@@ -341,7 +339,7 @@ bool OutlookSettings::DoPOP3Server(nsIMsgAccountManager* aMgr,
     // XXX: We may need to move this local folder creation code to the generic
     // nsImportSettings code if the other import modules end up needing to do
     // this too. if Local Folders does not exist already, create it
-    rv = aMgr->CreateLocalMailAccount();
+    rv = aMgr->CreateLocalMailAccount(nullptr);
     if (NS_FAILED(rv)) {
       IMPORT_LOG0("*** Failed to create Local Folders!\n");
       return false;
@@ -471,7 +469,7 @@ nsresult OutlookSettings::SetSmtpServer(nsIMsgAccountManager* aMgr,
                                         const nsString& aUser) {
   nsresult rv;
   nsCOMPtr<nsISmtpService> smtpService(
-      do_GetService(NS_SMTPSERVICE_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsAutoCString nativeUserName;
@@ -479,7 +477,7 @@ nsresult OutlookSettings::SetSmtpServer(nsIMsgAccountManager* aMgr,
   nsAutoCString nativeServerName;
   NS_CopyUnicodeToNative(aServer, nativeServerName);
   nsCOMPtr<nsISmtpServer> foundServer;
-  rv = smtpService->FindServer(nativeUserName.get(), nativeServerName.get(),
+  rv = smtpService->FindServer(nativeUserName, nativeServerName,
                                getter_AddRefs(foundServer));
   if (NS_SUCCEEDED(rv) && foundServer) {
     if (aId) SetSmtpServerKey(aId, foundServer);

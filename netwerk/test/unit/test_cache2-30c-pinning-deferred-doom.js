@@ -33,12 +33,12 @@ function run_test() {
   do_get_profile();
 
   var lci = Services.loadContextInfo.default;
-  var testingInterface = get_cache_service().QueryInterface(Ci.nsICacheTesting);
+  var testingInterface = Services.cache2.QueryInterface(Ci.nsICacheTesting);
   Assert.ok(testingInterface);
 
   var mc = new MultipleCallbacks(
     1,
-    function() {
+    function () {
       // (2)
 
       mc = new MultipleCallbacks(1, finish_cache2_test);
@@ -53,7 +53,7 @@ function run_test() {
         log_("purging");
 
         // Invokes cacheservice:purge-memory-pools when done.
-        get_cache_service().purgeFromMemory(
+        Services.cache2.purgeFromMemory(
           Ci.nsICacheStorageService.PURGE_EVERYTHING
         ); // goes to (3)
       });
@@ -74,7 +74,7 @@ function run_test() {
       "pin",
       Ci.nsICacheStorage.OPEN_TRUNCATE,
       lci,
-      new OpenCallback(NEW | WAITFORWRITE, "m" + i, "p" + i, function(entry) {
+      new OpenCallback(NEW | WAITFORWRITE, "m" + i, "p" + i, function () {
         mc.fired();
       })
     );
@@ -85,7 +85,7 @@ function run_test() {
       "disk",
       Ci.nsICacheStorage.OPEN_TRUNCATE,
       lci,
-      new OpenCallback(NEW | WAITFORWRITE, "m" + i, "d" + i, function(entry) {
+      new OpenCallback(NEW | WAITFORWRITE, "m" + i, "d" + i, function () {
         mc.fired();
       })
     );
@@ -93,12 +93,9 @@ function run_test() {
 
   mc.fired(); // Goes to (2)
 
-  var os = Cc["@mozilla.org/observer-service;1"].getService(
-    Ci.nsIObserverService
-  );
-  os.addObserver(
+  Services.obs.addObserver(
     {
-      observe(subject, topic, data) {
+      observe() {
         // (3)
 
         log_("after purge, second set of opens");
@@ -115,7 +112,7 @@ function run_test() {
             "disk",
             Ci.nsICacheStorage.OPEN_NORMALLY,
             lci,
-            new OpenCallback(NORMAL, "m" + i, "p" + i, function(entry) {
+            new OpenCallback(NORMAL, "m" + i, "p" + i, function () {
               mc.fired();
             })
           );
@@ -134,9 +131,7 @@ function run_test() {
             "disk",
             Ci.nsICacheStorage.OPEN_NORMALLY,
             lci,
-            new OpenCallback(MAYBE_NEW | DOOMED, "m" + i, "d" + i, function(
-              entry
-            ) {
+            new OpenCallback(MAYBE_NEW | DOOMED, "m" + i, "d" + i, function () {
               mc.fired();
             })
           );
@@ -144,7 +139,7 @@ function run_test() {
 
         log_("clearing");
         // Now clear everything except pinned, all entries are in state of reading
-        get_cache_service().clear();
+        Services.cache2.clear();
         log_("cleared");
 
         // Resume reading the cache data, only now the pinning status on entries will be discovered,
@@ -161,7 +156,7 @@ function run_test() {
             "disk",
             Ci.nsICacheStorage.OPEN_NORMALLY,
             lci,
-            new OpenCallback(NORMAL, "m" + i, "p" + i, function(entry) {
+            new OpenCallback(NORMAL, "m" + i, "p" + i, function () {
               mc.fired();
             })
           );
@@ -172,7 +167,7 @@ function run_test() {
             "disk",
             Ci.nsICacheStorage.OPEN_NORMALLY,
             lci,
-            new OpenCallback(NEW, "m2" + i, "d2" + i, function(entry) {
+            new OpenCallback(NEW, "m2" + i, "d2" + i, function () {
               mc.fired();
             })
           );

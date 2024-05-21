@@ -5,11 +5,10 @@
 # This module produces a JSON file that provides basic build info and
 # configuration metadata.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import json
 import os
 import re
+
 import six
 
 
@@ -30,6 +29,7 @@ def build_dict(config, env=os.environ):
 
     d = {}
     d["topsrcdir"] = config.topsrcdir
+    d["topobjdir"] = config.topobjdir
 
     if config.mozconfig:
         d["mozconfig"] = config.mozconfig
@@ -96,7 +96,10 @@ def build_dict(config, env=os.environ):
     d["artifact"] = substs.get("MOZ_ARTIFACT_BUILDS") == "1"
     d["ccov"] = substs.get("MOZ_CODE_COVERAGE") == "1"
     d["cc_type"] = substs.get("CC_TYPE")
-    d["non_native_theme"] = True
+    d["domstreams"] = substs.get("MOZ_DOM_STREAMS") == "1"
+    d["isolated_process"] = (
+        substs.get("MOZ_ANDROID_CONTENT_SERVICE_ISOLATED_PROCESS") == "1"
+    )
 
     def guess_platform():
         if d["buildapp"] == "browser":
@@ -123,6 +126,12 @@ def build_dict(config, env=os.environ):
             return "android-arm"
 
     def guess_buildtype():
+        if d["asan"]:
+            return "asan"
+        if d["tsan"]:
+            return "tsan"
+        if d["ccov"]:
+            return "ccov"
         if d["debug"]:
             return "debug"
         if d["pgo"]:
@@ -134,6 +143,7 @@ def build_dict(config, env=os.environ):
     if "buildapp" in d and (d["os"] == "mac" or "bits" in d):
         d["platform_guess"] = guess_platform()
         d["buildtype_guess"] = guess_buildtype()
+    d["buildtype"] = guess_buildtype()
 
     if (
         d.get("buildapp", "") == "mobile/android"

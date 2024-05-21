@@ -11,11 +11,11 @@ use crate::platform::ini_path;
 use ini::Ini;
 use regex::Regex;
 use std::default::Default;
-use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::str::{self, FromStr};
+use thiserror::Error;
 
 /// Details about the version of a Firefox build.
 #[derive(Clone, Default)]
@@ -77,7 +77,7 @@ impl AppVersion {
     pub fn version(&self) -> Option<Version> {
         self.version_string
             .as_ref()
-            .and_then(|x| Version::from_str(&*x).ok())
+            .and_then(|x| Version::from_str(x).ok())
     }
 }
 
@@ -106,8 +106,8 @@ impl Version {
             major: self.major,
             minor: self.minor,
             patch: self.patch,
-            pre: vec![],
-            build: vec![],
+            pre: semver::Prerelease::EMPTY,
+            build: semver::BuildMetadata::EMPTY,
         }
     }
 
@@ -122,7 +122,7 @@ impl FromStr for Version {
 
     fn from_str(version_string: &str) -> VersionResult<Version> {
         let mut version: Version = Default::default();
-        let version_re = Regex::new(r"^(?P<major>[[:digit:]]+)\.(?P<minor>[[:digit:]]+)(?:\.(?P<patch>[[:digit:]]+))?(?:(?P<esr>esr)|(?P<pre0>[a-z]+)(?P<pre1>[[:digit:]]*))?$").unwrap();
+        let version_re = Regex::new(r"^(?P<major>[[:digit:]]+)\.(?P<minor>[[:digit:]]+)(?:\.(?P<patch>[[:digit:]]+))?(?:(?P<esr>esr)|(?P<pre0>\-|[a-z]+)(?P<pre1>[[:digit:]]*))?$").unwrap();
         if let Some(captures) = version_re.captures(version_string) {
             match captures
                 .name("major")
@@ -240,23 +240,23 @@ pub fn firefox_version(binary: &Path) -> VersionResult<AppVersion> {
 /// version string from the output
 pub fn firefox_binary_version(binary: &Path) -> VersionResult<Version> {
     let output = Command::new(binary)
-        .args(&["--version"])
+        .args(["--version"])
         .stdout(Stdio::piped())
         .spawn()
         .and_then(|child| child.wait_with_output())
         .ok();
 
     if let Some(x) = output {
-        let output_str = str::from_utf8(&*x.stdout)
+        let output_str = str::from_utf8(&x.stdout)
             .map_err(|_| Error::VersionError("Couldn't parse version output as UTF8".into()))?;
-        parse_binary_version(&output_str)
+        parse_binary_version(output_str)
     } else {
         Err(Error::VersionError("Running binary failed".into()))
     }
 }
 
 fn parse_binary_version(version_str: &str) -> VersionResult<Version> {
-    let version_regexp = Regex::new(r#"Mozilla Firefox[[:space:]]+(?P<version>.+)"#)
+    let version_regexp = Regex::new(r#"Firefox[[:space:]]+(?P<version>.+)"#)
         .expect("Error parsing version regexp");
 
     let version_match = version_regexp
@@ -267,47 +267,22 @@ fn parse_binary_version(version_str: &str) -> VersionResult<Version> {
     Version::from_str(version_match.as_str())
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Error)]
 pub enum Error {
     /// Error parsing a version string
+    #[error("VersionError: {0}")]
     VersionError(String),
     /// Error reading application metadata
+    #[error("MetadataError: {0}")]
     MetadataError(String),
     /// Error processing a string as a semver comparator
-    SemVerError(semver::ReqParseError),
+    #[error("SemVerError: {0}")]
+    SemVerError(String),
 }
 
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::VersionError(ref x) => {
-                "VersionError: ".fmt(f)?;
-                x.fmt(f)
-            }
-            Error::MetadataError(ref x) => {
-                "MetadataError: ".fmt(f)?;
-                x.fmt(f)
-            }
-            Error::SemVerError(ref e) => {
-                "SemVerError: ".fmt(f)?;
-                e.fmt(f)
-            }
-        }
-    }
-}
-
-impl From<semver::ReqParseError> for Error {
-    fn from(err: semver::ReqParseError) -> Error {
-        Error::SemVerError(err)
-    }
-}
-
-impl error::Error for Error {
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            Error::SemVerError(ref e) => Some(e),
-            Error::VersionError(_) | Error::MetadataError(_) => None,
-        }
+impl From<semver::Error> for Error {
+    fn from(err: semver::Error) -> Error {
+        Error::SemVerError(err.to_string())
     }
 }
 
@@ -424,6 +399,12 @@ mod test {
                 .unwrap()
                 .to_string()
                 == "78.0"
+        );
+        assert!(
+            parse_binary_version("Foo Firefox 113.0.2-1")
+                .unwrap()
+                .to_string()
+                == "113.0.2-1"
         );
     }
 }

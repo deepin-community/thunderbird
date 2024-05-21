@@ -1,18 +1,21 @@
+/**
+ * @license
+ * Copyright 2024 Google Inc.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 const puppeteer = require('puppeteer');
 
 /**
  * To have Puppeteer fetch a Firefox binary for you, first run:
  *
- *  PUPPETEER_PRODUCT=firefox npm install
+ * PUPPETEER_PRODUCT=firefox npm install
  *
  * To get additional logging about which browser binary is executed,
  * run this example as:
  *
- *   DEBUG=puppeteer:launcher NODE_PATH=../ node examples/cross-browser.js
+ * DEBUG=puppeteer:launcher NODE_PATH=../ node examples/cross-browser.js
  *
  * You can set a custom binary with the `executablePath` launcher option.
- *
- *
  */
 
 const firefoxOptions = {
@@ -34,10 +37,10 @@ const firefoxOptions = {
   await page.goto('https://news.ycombinator.com/');
 
   // Extract articles from the page.
-  const resultsSelector = '.storylink';
-  const links = await page.evaluate((resultsSelector) => {
+  const resultsSelector = '.titleline > a';
+  const links = await page.evaluate(resultsSelector => {
     const anchors = Array.from(document.querySelectorAll(resultsSelector));
-    return anchors.map((anchor) => {
+    return anchors.map(anchor => {
       const title = anchor.textContent.trim();
       return `${title} - ${anchor.href}`;
     });

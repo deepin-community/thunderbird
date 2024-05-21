@@ -10,7 +10,9 @@
 #include "mozilla/AnimationCollection.h"
 #include "mozilla/LinkedList.h"
 #include "mozilla/dom/Animation.h"
+#include "mozilla/dom/BaseKeyframeTypesBinding.h"
 #include "mozilla/Assertions.h"
+#include "mozilla/Maybe.h"
 #include "mozilla/TimingParams.h"
 #include "mozilla/dom/Nullable.h"
 #include "nsContentUtils.h"
@@ -52,9 +54,8 @@ class CommonAnimationManager {
   void StopAnimationsForElement(dom::Element* aElement,
                                 PseudoStyleType aPseudoType) {
     MOZ_ASSERT(aElement);
-    AnimationCollection<AnimationType>* collection =
-        AnimationCollection<AnimationType>::GetAnimationCollection(aElement,
-                                                                   aPseudoType);
+    auto* collection =
+        AnimationCollection<AnimationType>::Get(aElement, aPseudoType);
     if (!collection) {
       return;
     }
@@ -110,8 +111,8 @@ class OwningElementRef final {
     return mTarget == aOther.mTarget;
   }
 
-  bool LessThan(int32_t& aChildIndex, const OwningElementRef& aOther,
-                int32_t& aOtherChildIndex) const {
+  bool LessThan(Maybe<uint32_t>& aChildIndex, const OwningElementRef& aOther,
+                Maybe<uint32_t>& aOtherChildIndex) const {
     MOZ_ASSERT(mTarget.mElement && aOther.mTarget.mElement,
                "Elements to compare should not be null");
 
@@ -166,16 +167,57 @@ PhaseType GetAnimationPhaseWithoutEffect(const dom::Animation& aAnimation) {
                                               : PhaseType::After;
 };
 
-inline TimingParams TimingParamsFromCSSParams(float aDuration, float aDelay,
-                                              float aIterationCount,
-                                              dom::PlaybackDirection aDirection,
-                                              dom::FillMode aFillMode) {
-  MOZ_ASSERT(aIterationCount >= 0.0 && !IsNaN(aIterationCount),
+inline dom::PlaybackDirection StyleToDom(StyleAnimationDirection aDirection) {
+  switch (aDirection) {
+    case StyleAnimationDirection::Normal:
+      return dom::PlaybackDirection::Normal;
+    case StyleAnimationDirection::Reverse:
+      return dom::PlaybackDirection::Reverse;
+    case StyleAnimationDirection::Alternate:
+      return dom::PlaybackDirection::Alternate;
+    case StyleAnimationDirection::AlternateReverse:
+      return dom::PlaybackDirection::Alternate_reverse;
+  }
+  MOZ_ASSERT_UNREACHABLE("Wrong style value?");
+  return dom::PlaybackDirection::Normal;
+}
+
+inline dom::FillMode StyleToDom(StyleAnimationFillMode aFillMode) {
+  switch (aFillMode) {
+    case StyleAnimationFillMode::None:
+      return dom::FillMode::None;
+    case StyleAnimationFillMode::Both:
+      return dom::FillMode::Both;
+    case StyleAnimationFillMode::Forwards:
+      return dom::FillMode::Forwards;
+    case StyleAnimationFillMode::Backwards:
+      return dom::FillMode::Backwards;
+  }
+  MOZ_ASSERT_UNREACHABLE("Wrong style value?");
+  return dom::FillMode::None;
+}
+
+inline dom::CompositeOperation StyleToDom(StyleAnimationComposition aStyle) {
+  switch (aStyle) {
+    case StyleAnimationComposition::Replace:
+      return dom::CompositeOperation::Replace;
+    case StyleAnimationComposition::Add:
+      return dom::CompositeOperation::Add;
+    case StyleAnimationComposition::Accumulate:
+      return dom::CompositeOperation::Accumulate;
+  }
+  MOZ_ASSERT_UNREACHABLE("Invalid style composite operation?");
+  return dom::CompositeOperation::Replace;
+}
+
+inline TimingParams TimingParamsFromCSSParams(
+    float aDuration, float aDelay, float aIterationCount,
+    StyleAnimationDirection aDirection, StyleAnimationFillMode aFillMode) {
+  MOZ_ASSERT(aIterationCount >= 0.0 && !std::isnan(aIterationCount),
              "aIterations should be nonnegative & finite, as ensured by "
              "CSSParser");
-
-  return TimingParams{aDuration, aDelay, aIterationCount, aDirection,
-                      aFillMode};
+  return TimingParams{aDuration, aDelay, aIterationCount,
+                      StyleToDom(aDirection), StyleToDom(aFillMode)};
 }
 
 }  // namespace mozilla

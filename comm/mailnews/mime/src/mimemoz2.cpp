@@ -38,18 +38,16 @@
 #include "nsIIOService.h"
 #include "nsIURI.h"
 #include "nsNetCID.h"
-#include "nsIMsgWindow.h"
-#include "nsIMimeMiscStatus.h"
 #include "nsMsgUtils.h"
 #include "nsIChannel.h"
+#include "nsIMailChannel.h"
 #include "mimeebod.h"
 #include "mimeeobj.h"
 // <for functions="HTML2Plaintext,HTMLSantinize">
 #include "nsXPCOM.h"
-#include "nsLayoutCID.h"
 #include "nsIParserUtils.h"
 // </for>
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "mozilla/Unused.h"
 
 void ValidateRealName(nsMsgAttachmentData* aAttach, MimeHeaders* aHdrs);
@@ -66,8 +64,7 @@ mime_stream_data::mime_stream_data()
       obj(nullptr),
       options(nullptr),
       headers(nullptr),
-      output_emitter(nullptr),
-      firstCheck(false) {}
+      output_emitter(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Attachment handling routines
@@ -171,7 +168,7 @@ nsresult ProcessBodyAsAttachment(MimeObject* obj, nsMsgAttachmentData** data) {
   tmp->m_isDownloaded = !id_imap;
 
   if (!id) {
-    delete[] * data;
+    delete[] *data;
     *data = nullptr;
     PR_FREEIF(id_imap);
     return NS_ERROR_OUT_OF_MEMORY;
@@ -195,7 +192,7 @@ nsresult ProcessBodyAsAttachment(MimeObject* obj, nsMsgAttachmentData** data) {
     }
 
     if (!tmp->m_url || NS_FAILED(rv)) {
-      delete[] * data;
+      delete[] *data;
       *data = nullptr;
       PR_FREEIF(id);
       PR_FREEIF(id_imap);
@@ -600,24 +597,21 @@ extern "C" nsresult MimeGetAttachmentList(MimeObject* tobj,
     rv = GenerateAttachmentData(obj, aMessageURL, obj->options, false, size,
                                 *data);
     if (NS_FAILED(rv)) {
-      delete[] * data;  // release data in case of error return.
+      delete[] *data;  // release data in case of error return.
+      *data = nullptr;
       return rv;
     }
   }
   rv = BuildAttachmentList((MimeObject*)cobj, *data, aMessageURL);
   if (NS_FAILED(rv)) {
-    delete[] * data;  // release data in case of error return.
+    delete[] *data;  // release data in case of error return.
+    *data = nullptr;
   }
   return rv;
 }
 
-extern "C" void MimeFreeAttachmentList(nsMsgAttachmentData* data) {
-  delete[] data;
-}
-
 extern "C" void NotifyEmittersOfAttachmentList(MimeDisplayOptions* opt,
                                                nsMsgAttachmentData* data) {
-  int32_t i = 0;
   nsMsgAttachmentData* tmp = data;
 
   if (!tmp) return;
@@ -638,7 +632,6 @@ extern "C" void NotifyEmittersOfAttachmentList(MimeDisplayOptions* opt,
         (tmp->m_realName.IsEmpty() ||
          (!tmp->m_hasFilename &&
           (opt->html_as_p != 4 || opt->metadata_only)))) {
-      ++i;
       ++tmp;
       continue;
     }
@@ -682,7 +675,6 @@ extern "C" void NotifyEmittersOfAttachmentList(MimeDisplayOptions* opt,
     }
 
     mimeEmitterEndAttachment(opt);
-    ++i;
     ++tmp;
   }
   mimeEmitterEndAllAttachments(opt);
@@ -693,7 +685,7 @@ extern "C" nsresult nsMimeNewURI(nsIURI** aInstancePtrResult, const char* aSpec,
                                  nsIURI* aBase) {
   if (nullptr == aInstancePtrResult) return NS_ERROR_NULL_POINTER;
 
-  nsCOMPtr<nsIIOService> pService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> pService = mozilla::components::IO::Service();
   NS_ENSURE_TRUE(pService, NS_ERROR_FACTORY_NOT_REGISTERED);
 
   return pService->NewURI(nsDependentCString(aSpec), nullptr, aBase,
@@ -707,43 +699,18 @@ extern "C" nsresult SetMailCharacterSetToMsgWindow(MimeObject* obj,
   if (obj && obj->options) {
     mime_stream_data* msd = (mime_stream_data*)(obj->options->stream_closure);
     if (msd) {
-      nsIChannel* channel = msd->channel;
-      if (channel) {
-        nsCOMPtr<nsIURI> uri;
-        channel->GetURI(getter_AddRefs(uri));
-        if (uri) {
-          nsCOMPtr<nsIMsgMailNewsUrl> msgurl(do_QueryInterface(uri));
-          if (msgurl) {
-            nsCOMPtr<nsIMsgWindow> msgWindow;
-            msgurl->GetMsgWindow(getter_AddRefs(msgWindow));
-            if (msgWindow)
-              rv = msgWindow->SetMailCharacterSet(
-                  !PL_strcasecmp(aCharacterSet, "us-ascii")
-                      ? static_cast<const nsCString&>("ISO-8859-1"_ns)
-                      : static_cast<const nsCString&>(
-                            nsDependentCString(aCharacterSet)));
-          }
+      nsCOMPtr<nsIMailChannel> mailChannel = do_QueryInterface(msd->channel);
+      if (mailChannel) {
+        if (!PL_strcasecmp(aCharacterSet, "us-ascii")) {
+          mailChannel->SetMailCharacterSet("ISO-8859-1"_ns);
+        } else {
+          mailChannel->SetMailCharacterSet(nsDependentCString(aCharacterSet));
         }
       }
     }
   }
 
   return rv;
-}
-
-static void ResetMsgHeaderSinkProps(nsIURI* uri) {
-  nsCOMPtr<nsIMsgMailNewsUrl> msgurl(do_QueryInterface(uri));
-  if (!msgurl) return;
-
-  nsCOMPtr<nsIMsgWindow> msgWindow;
-  msgurl->GetMsgWindow(getter_AddRefs(msgWindow));
-  if (!msgWindow) return;
-
-  nsCOMPtr<nsIMsgHeaderSink> msgHeaderSink;
-  msgWindow->GetMsgHeaderSink(getter_AddRefs(msgHeaderSink));
-  if (!msgHeaderSink) return;
-
-  msgHeaderSink->ResetProperties();
 }
 
 static char* mime_file_type(const char* filename, void* stream_closure) {
@@ -835,29 +802,6 @@ extern "C" int mime_display_stream_write(nsMIMESession* stream, const char* buf,
   MimeObject* obj = (msd ? msd->obj : 0);
   if (!obj) return -1;
 
-  //
-  // Ok, now check to see if this is a display operation for a MIME Parts on
-  // Demand enabled call.
-  //
-  if (msd->firstCheck) {
-    if (msd->channel) {
-      nsCOMPtr<nsIURI> aUri;
-      if (NS_SUCCEEDED(msd->channel->GetURI(getter_AddRefs(aUri)))) {
-        nsCOMPtr<nsIImapUrl> imapURL = do_QueryInterface(aUri);
-        if (imapURL) {
-          nsImapContentModifiedType cModified;
-          if (NS_SUCCEEDED(imapURL->GetContentModified(&cModified))) {
-            if (cModified !=
-                nsImapContentModifiedTypes::IMAP_CONTENT_NOT_MODIFIED)
-              msd->options->missing_parts = true;
-          }
-        }
-      }
-    }
-
-    msd->firstCheck = false;
-  }
-
   return obj->clazz->parse_buffer((char*)buf, size, obj);
 }
 
@@ -885,8 +829,8 @@ extern "C" void mime_display_stream_complete(nsMIMESession* stream) {
       nsresult rv = MimeGetAttachmentList(obj, msd->url_name, &attachments);
       if (NS_SUCCEEDED(rv)) {
         NotifyEmittersOfAttachmentList(msd->options, attachments);
-        MimeFreeAttachmentList(attachments);
       }
+      delete[] attachments;
     }
 
     // Release the conversion object - this has to be done after
@@ -1278,7 +1222,6 @@ extern "C" void* mime_bridge_create_display_stream(
 
   // Assign the new mime emitter - will handle output operations
   msd->output_emitter = newEmitter;
-  msd->firstCheck = true;
 
   // Store the URL string for this decode operation
   nsAutoCString urlString;
@@ -1295,7 +1238,11 @@ extern "C" void* mime_bridge_create_display_stream(
         return NULL;
       }
       nsCOMPtr<nsIMsgMessageUrl> msgUrl = do_QueryInterface(uri);
-      if (msgUrl) msgUrl->GetOriginalSpec(&msd->orig_url_name);
+      if (msgUrl) {
+        nsAutoCString orgSpec;
+        msgUrl->GetOriginalSpec(orgSpec);
+        msd->orig_url_name = ToNewCString(orgSpec);
+      }
     }
   }
 
@@ -1330,9 +1277,6 @@ extern "C" void* mime_bridge_create_display_stream(
   MIME_HeaderType = MimeHeadersAll;
   msd->options->write_html_p = true;
   switch (format_out) {
-    case nsMimeOutput::nsMimeMessageSplitDisplay:  // the wrapper HTML output to
-                                                   // produce the split
-                                                   // header/body display
     case nsMimeOutput::nsMimeMessageHeaderDisplay:  // the split header/body
                                                     // display
     case nsMimeOutput::nsMimeMessageBodyDisplay:    // the split header/body
@@ -1475,8 +1419,6 @@ extern "C" void* mime_bridge_create_display_stream(
     return 0;
   }
 
-  ResetMsgHeaderSinkProps(uri);
-
   memset(stream, 0, sizeof(*stream));
   stream->name = "MIME Conversion Stream";
   stream->complete = mime_display_stream_complete;
@@ -1515,8 +1457,10 @@ mime_stream_data* GetMSD(MimeDisplayOptions* opt) {
 }
 
 bool NoEmitterProcessing(nsMimeOutputType format_out) {
-  if ((format_out == nsMimeOutput::nsMimeMessageDraftOrTemplate) ||
-      (format_out == nsMimeOutput::nsMimeMessageEditorTemplate))
+  if (format_out == nsMimeOutput::nsMimeMessageDraftOrTemplate ||
+      format_out == nsMimeOutput::nsMimeMessageEditorTemplate ||
+      format_out == nsMimeOutput::nsMimeMessageQuoting ||
+      format_out == nsMimeOutput::nsMimeMessageBodyQuoting)
     return true;
   else
     return false;
@@ -1674,8 +1618,7 @@ extern "C" nsresult mimeEmitterEndHeader(MimeDisplayOptions* opt,
     nsIMimeEmitter* emitter = (nsIMimeEmitter*)msd->output_emitter;
 
     nsCString name;
-    if (msd->format_out == nsMimeOutput::nsMimeMessageSplitDisplay ||
-        msd->format_out == nsMimeOutput::nsMimeMessageHeaderDisplay ||
+    if (msd->format_out == nsMimeOutput::nsMimeMessageHeaderDisplay ||
         msd->format_out == nsMimeOutput::nsMimeMessageBodyDisplay ||
         msd->format_out == nsMimeOutput::nsMimeMessageSaveAs ||
         msd->format_out == nsMimeOutput::nsMimeMessagePrintOutput) {
@@ -1748,7 +1691,7 @@ extern "C" nsresult mimeSetNewURL(nsMIMESession* stream, char* url) {
 
 extern "C" char* MimeGetStringByID(int32_t stringID) {
   nsCOMPtr<nsIStringBundleService> stringBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
 
   nsCOMPtr<nsIStringBundle> stringBundle;
   stringBundleService->CreateBundle(MIME_URL, getter_AddRefs(stringBundle));

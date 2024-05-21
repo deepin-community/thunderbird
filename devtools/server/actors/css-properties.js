@@ -4,56 +4,46 @@
 
 "use strict";
 
-const protocol = require("devtools/shared/protocol");
-const { ActorClassWithSpec, Actor } = protocol;
-const { cssPropertiesSpec } = require("devtools/shared/specs/css-properties");
-const { cssColors } = require("devtools/shared/css/color-db");
-const InspectorUtils = require("InspectorUtils");
+const { Actor } = require("resource://devtools/shared/protocol.js");
+const {
+  cssPropertiesSpec,
+} = require("resource://devtools/shared/specs/css-properties.js");
 
 loader.lazyRequireGetter(
   this,
   "CSS_TYPES",
-  "devtools/shared/css/constants",
+  "resource://devtools/shared/css/constants.js",
   true
 );
 
-exports.CssPropertiesActor = ActorClassWithSpec(cssPropertiesSpec, {
-  initialize(conn) {
-    Actor.prototype.initialize.call(this, conn);
-  },
-
-  destroy() {
-    Actor.prototype.destroy.call(this);
-  },
+class CssPropertiesActor extends Actor {
+  constructor(conn, targetActor) {
+    super(conn, cssPropertiesSpec);
+    this.targetActor = targetActor;
+  }
 
   getCSSDatabase() {
-    const properties = generateCssProperties();
-    const pseudoElements = InspectorUtils.getCSSPseudoElementNames();
-    const supportedFeature = {
-      // checking for css-color-4 color function support.
-      "css-color-4-color-function": InspectorUtils.isValidCSSColor(
-        "rgb(1 1 1 / 100%)"
-      ),
-    };
+    const properties = generateCssProperties(this.targetActor.window.document);
 
-    return { properties, pseudoElements, supportedFeature };
-  },
-});
+    return { properties };
+  }
+}
+exports.CssPropertiesActor = CssPropertiesActor;
 
 /**
  * Generate the CSS properties object. Every key is the property name, while
  * the values are objects that contain information about that property.
  *
+ * @param {Document} doc
  * @return {Object}
  */
-function generateCssProperties() {
+function generateCssProperties(doc) {
   const properties = {};
   const propertyNames = InspectorUtils.getCSSPropertyNames({
     includeAliases: true,
   });
-  const colors = Object.keys(cssColors);
 
-  propertyNames.forEach(name => {
+  for (const name of propertyNames) {
     // Get the list of CSS types this property supports.
     const supports = [];
     for (const type in CSS_TYPES) {
@@ -62,22 +52,16 @@ function generateCssProperties() {
       }
     }
 
-    // Don't send colors over RDP, these will be re-attached by the front.
-    let values = InspectorUtils.getCSSValuesForProperty(name);
-    if (values.includes("aliceblue")) {
-      values = values.filter(x => !colors.includes(x));
-      values.unshift("COLOR");
-    }
-
+    const values = InspectorUtils.getCSSValuesForProperty(name);
     const subproperties = InspectorUtils.getSubpropertiesForCSSProperty(name);
 
     properties[name] = {
-      isInherited: InspectorUtils.isInheritedProperty(name),
+      isInherited: InspectorUtils.isInheritedProperty(doc, name),
       values,
       supports,
       subproperties,
     };
-  });
+  }
 
   return properties;
 }

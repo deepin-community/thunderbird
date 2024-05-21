@@ -28,7 +28,7 @@ class DataSourceSurface;
 
 namespace layers {
 
-class SharedSurfacesChild;
+class CompositorManagerParent;
 class SharedSurfacesMemoryReport;
 
 class SharedSurfacesParent final {
@@ -48,13 +48,13 @@ class SharedSurfacesParent final {
   static bool Release(const wr::ExternalImageId& aId, bool aForCreator = false);
 
   static void Add(const wr::ExternalImageId& aId,
-                  const SurfaceDescriptorShared& aDesc, base::ProcessId aPid);
+                  SurfaceDescriptorShared&& aDesc, base::ProcessId aPid);
 
   static void Remove(const wr::ExternalImageId& aId);
 
-  static void DestroyProcess(base::ProcessId aPid);
+  static void RemoveAll(uint32_t aNamespace);
 
-  static void AccumulateMemoryReport(base::ProcessId aPid,
+  static void AccumulateMemoryReport(uint32_t aNamespace,
                                      SharedSurfacesMemoryReport& aReport);
 
   static bool AccumulateMemoryReport(SharedSurfacesMemoryReport& aReport);
@@ -69,7 +69,7 @@ class SharedSurfacesParent final {
   static bool AgeAndExpireOneGeneration();
 
  private:
-  friend class SharedSurfacesChild;
+  friend class CompositorManagerParent;
   friend class gfx::SourceSurfaceSharedDataWrapper;
 
   SharedSurfacesParent();
@@ -91,7 +91,7 @@ class SharedSurfacesParent final {
   static void ExpireMap(
       nsTArray<RefPtr<gfx::SourceSurfaceSharedDataWrapper>>& aExpired);
 
-  static StaticMutex sMutex;
+  static StaticMutex sMutex MOZ_UNANNOTATED;
 
   static StaticAutoPtr<SharedSurfacesParent> sInstance;
 
@@ -127,6 +127,33 @@ class SharedSurfacesParent final {
   };
 
   MappingTracker mTracker;
+};
+
+/**
+ * Helper class that is used to keep SourceSurfaceSharedDataWrapper objects
+ * around as long as one of the dependent IPDL actors is still alive and may
+ * reference them for a given PCompositorManager namespace.
+ */
+class SharedSurfacesHolder final {
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(SharedSurfacesHolder)
+
+ public:
+  explicit SharedSurfacesHolder(uint32_t aNamespace) : mNamespace(aNamespace) {}
+
+  already_AddRefed<gfx::DataSourceSurface> Get(const wr::ExternalImageId& aId) {
+    uint32_t extNamespace = static_cast<uint32_t>(wr::AsUint64(aId) >> 32);
+    if (NS_WARN_IF(extNamespace != mNamespace)) {
+      MOZ_ASSERT_UNREACHABLE("Wrong namespace?");
+      return nullptr;
+    }
+
+    return SharedSurfacesParent::Get(aId);
+  }
+
+ private:
+  ~SharedSurfacesHolder() { SharedSurfacesParent::RemoveAll(mNamespace); }
+
+  uint32_t mNamespace;
 };
 
 }  // namespace layers

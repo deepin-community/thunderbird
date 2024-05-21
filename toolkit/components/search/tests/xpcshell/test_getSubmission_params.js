@@ -3,7 +3,7 @@
 
 "use strict";
 
-add_task(async function setup() {
+add_setup(async function () {
   await SearchTestUtils.useTestEngines("simple-engines");
   await AddonTestUtils.promiseStartupManager();
   await Services.search.init();
@@ -51,34 +51,7 @@ add_task(async function test_paramSubstitution() {
   check("{startPage}", "1");
   check("{startPage?}", "");
 
-  check("{moz:distributionID}", "");
-  Services.prefs.setCharPref("browser.search.distributionID", "xpcshell");
-  check("{moz:distributionID}", "xpcshell");
-  Services.prefs.setBoolPref("browser.search.official", true);
-  check("{moz:official}", "official");
-  Services.prefs.setBoolPref("browser.search.official", false);
-  check("{moz:official}", "unofficial");
   check("{moz:locale}", Services.locale.requestedLocale);
-
-  url.template = prefix + "{moz:date}";
-  let params = new URLSearchParams(engine.getSubmission(searchTerms).uri.query);
-  Assert.ok(params.has("search"), "Should have a search option");
-
-  let [, year, month, day, hour] = params
-    .get("search")
-    .match(/^(\d{4})(\d{2})(\d{2})(\d{2})/);
-  let date = new Date(year, month - 1, day, hour);
-
-  // We check the time is within an hour of now as the parameter is only
-  // precise to an hour. Checking the difference also should cope with date
-  // changes etc.
-  let difference = Date.now() - date;
-  Assert.lessOrEqual(
-    difference,
-    60 * 60 * 1000,
-    "Should have set the date within an hour"
-  );
-  Assert.greaterOrEqual(difference, 0, "Should not have a time in the past.");
 });
 
 add_task(async function test_mozParamsFailForNonAppProvided() {
@@ -95,8 +68,6 @@ add_task(async function test_mozParamsFailForNonAppProvided() {
   let check = checkSubstitution.bind(this, url, prefix, engine);
 
   // Test moz: parameters (only supported for built-in engines, ie _isDefault == true).
-  check("{moz:distributionID}", "{moz:distributionID}");
-  check("{moz:official}", "{moz:official}");
   check("{moz:locale}", "{moz:locale}");
 
   await promiseAfterSettings();

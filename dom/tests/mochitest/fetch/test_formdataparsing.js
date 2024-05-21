@@ -6,13 +6,14 @@ function testFormDataParsing(fn) {
   function makeTest(shouldPass, input, testFn) {
     var obj = fn(input);
     return obj.formData().then(
-      function(fd) {
+      function (fd) {
         ok(shouldPass, "Expected test to be valid FormData for " + input);
         if (testFn) {
           return testFn(fd);
         }
+        return undefined;
       },
-      function(e) {
+      function (e) {
         if (shouldPass) {
           ok(false, "Expected test to pass for " + input);
         } else {
@@ -32,7 +33,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         is(fd.get("greeting"), '"hello"');
       },
     ],
@@ -54,7 +55,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         is(fd.get("greeting"), '"hello"');
       },
     ],
@@ -194,7 +195,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         is(fd.get("greeting"), "", "Empty value is allowed.");
       },
     ],
@@ -223,7 +224,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         var f = fd.get("file");
         ok(
           f instanceof File,
@@ -231,7 +232,7 @@ function testFormDataParsing(fn) {
         );
         is(f.name, "file1.txt", "Filename should match.");
         is(f.type, "text/plain", "Default content-type should be text/plain.");
-        return readAsText(f).then(function(text) {
+        return readAsText(f).then(function (text) {
           is(text, "", "File should be empty.");
         });
       },
@@ -244,7 +245,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         var f = fd.get("file");
         ok(
           f instanceof File,
@@ -252,7 +253,7 @@ function testFormDataParsing(fn) {
         );
         is(f.name, "file1.txt", "Filename should match.");
         is(f.type, "text/plain", "Default content-type should be text/plain.");
-        return readAsText(f).then(function(text) {
+        return readAsText(f).then(function (text) {
           is(text, "", "File should be empty.");
         });
       },
@@ -272,7 +273,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         var f = fd.get("file");
         ok(
           f instanceof File,
@@ -288,7 +289,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         var f = fd.get("file");
         ok(
           f instanceof File,
@@ -308,7 +309,7 @@ function testFormDataParsing(fn) {
         boundary +
         "-",
 
-      function(fd) {
+      function (fd) {
         var f = fd.get("file");
         ok(
           f instanceof File,
@@ -320,7 +321,7 @@ function testFormDataParsing(fn) {
           "application/xml",
           "content-type should be application/xml."
         );
-        return readAsText(f).then(function(text) {
+        return readAsText(f).then(function (text) {
           is(
             text,
             "<body>foobar\r\n\r\n</body>",

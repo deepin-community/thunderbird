@@ -1,46 +1,60 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
-
-// from enigmailCommon.js:
-/* global GetEnigmailSvc */
-
-// from enigmailKeyManager.js:
-/* global l10n */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { EnigmailFuncs } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/funcs.jsm"
+var { CommonUtils } = ChromeUtils.importESModule(
+  "resource://services-common/utils.sys.mjs"
 );
-var { EnigmailLog } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/log.jsm"
+var { EnigmailFuncs } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/funcs.sys.mjs"
 );
-var { EnigmailKey } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/key.jsm"
+var { EnigmailLog } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/log.sys.mjs"
 );
-var { EnigmailKeyRing } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/keyRing.jsm"
+var { EnigmailKey } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/key.sys.mjs"
 );
-var { PgpSqliteDb2 } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/sqliteDb.jsm"
+var { EnigmailKeyRing } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/keyRing.sys.mjs"
 );
-var { EnigmailDialog } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/dialog.jsm"
+var { PgpSqliteDb2 } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/sqliteDb.sys.mjs"
 );
+var { EnigmailCryptoAPI } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/cryptoAPI.sys.mjs"
+);
+var { KeyLookupHelper } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/keyLookupHelper.sys.mjs"
+);
+var { RNP, RnpPrivateKeyUnlockTracker } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/RNP.sys.mjs"
+);
+
+ChromeUtils.defineESModuleGetters(this, {
+  LoginHelper: "resource://gre/modules/LoginHelper.sys.mjs",
+});
+
+var l10n = new Localization(["messenger/openpgp/openpgp.ftl"], true);
 
 var gModePersonal = false;
 
+// This is the ID that was given to us as a parameter.
+// Note that it might be the ID of a subkey.
 var gKeyId = null;
+
 var gUserId = null;
 var gKeyList = null;
 var gSigTree = null;
 
 var gAllEmails = [];
+var gOriginalAcceptedEmails = null;
+var gAcceptedEmails = null;
+
+var gHaveUnacceptedEmails = false;
 var gFingerprint = "";
+var gHasMissingSecret = false;
 
 var gAcceptanceRadio = null;
 var gPersonalRadio = null;
@@ -48,6 +62,25 @@ var gPersonalRadio = null;
 var gOriginalAcceptance;
 var gOriginalPersonal;
 var gUpdateAllowed = false;
+
+const gAllEmailCheckboxes = [];
+let gOkButton;
+
+let gPrivateKeyTrackers = [];
+
+window.addEventListener("DOMContentLoaded", onLoad);
+window.addEventListener("unload", onUnload);
+
+function onUnload() {
+  releasePrivateKeys();
+}
+
+function releasePrivateKeys() {
+  for (const tracker of gPrivateKeyTrackers) {
+    tracker.release();
+  }
+  gPrivateKeyTrackers = [];
+}
 
 async function onLoad() {
   if (window.arguments[1]) {
@@ -59,24 +92,33 @@ async function onLoad() {
 
   gKeyId = window.arguments[0].keyId;
 
-  let accept = document.querySelector("dialog").getButton("accept");
-  accept.focus();
+  gOkButton = document.querySelector("dialog").getButton("accept");
+  gOkButton.focus();
 
   await reloadData(true);
 
-  resizeDialog();
+  const sepPassphraseEnabled =
+    gModePersonal &&
+    Services.prefs.getBoolPref("mail.openpgp.passphrases.enabled");
+  document.getElementById("passphraseTab").hidden = !sepPassphraseEnabled;
+  document.getElementById("passphrasePanel").hidden = !sepPassphraseEnabled;
+  if (sepPassphraseEnabled) {
+    await loadPassphraseProtection();
+  }
+
+  onAcceptanceChanged();
 }
 
 /***
  * Set the label text of a HTML element
  */
 function setLabel(elementId, label) {
-  let node = document.getElementById(elementId);
+  const node = document.getElementById(elementId);
   node.setAttribute("value", label);
 }
 
 async function changeExpiry() {
-  let keyObj = EnigmailKeyRing.getKeyById(gKeyId);
+  const keyObj = EnigmailKeyRing.getKeyById(gKeyId);
   if (!keyObj || !keyObj.secretAvailable) {
     return;
   }
@@ -90,8 +132,8 @@ async function changeExpiry() {
     return;
   }
 
-  let args = {
-    keyId: gKeyId,
+  const args = {
+    keyId: keyObj.keyId,
     modified: onDataModified,
   };
 
@@ -115,71 +157,256 @@ async function changeExpiry() {
   );
 }
 
+async function refreshOnline() {
+  const keyObj = EnigmailKeyRing.getKeyById(gKeyId);
+  if (!keyObj) {
+    return;
+  }
+
+  const imported = await KeyLookupHelper.lookupAndImportByKeyID(
+    "interactive-import",
+    window,
+    keyObj.fpr,
+    true
+  );
+  if (imported) {
+    onDataModified();
+  }
+}
+
+async function loadPassphraseProtection() {
+  const keyObj = EnigmailKeyRing.getKeyById(gKeyId);
+  if (!keyObj || !keyObj.secretAvailable) {
+    return;
+  }
+
+  const primaryKey = RnpPrivateKeyUnlockTracker.constructFromFingerprint(
+    keyObj.fpr
+  );
+  primaryKey.setAllowPromptingUserForPassword(false);
+  primaryKey.setAllowAutoUnlockWithCachedPasswords(false);
+  const isSecretForPrimaryAvailable = primaryKey.available();
+  let canUnlockSecretForPrimary = false;
+  if (isSecretForPrimaryAvailable) {
+    await primaryKey.unlock();
+    canUnlockSecretForPrimary = primaryKey.isUnlocked();
+    gPrivateKeyTrackers.push(primaryKey);
+  }
+
+  let countSubkeysWithSecretAvailable = 0;
+  let countSubkeysCanAutoUnlock = 0;
+
+  for (let i = 0; i < keyObj.subKeys.length; i++) {
+    const subKey = RnpPrivateKeyUnlockTracker.constructFromFingerprint(
+      keyObj.subKeys[i].fpr
+    );
+    subKey.setAllowPromptingUserForPassword(false);
+    subKey.setAllowAutoUnlockWithCachedPasswords(false);
+    const isSecretForPrimaryAvailable = subKey.available();
+    let canUnlockSecretForPrimary = false;
+    if (isSecretForPrimaryAvailable) {
+      ++countSubkeysWithSecretAvailable;
+      await subKey.unlock();
+      canUnlockSecretForPrimary = subKey.isUnlocked();
+      if (canUnlockSecretForPrimary) {
+        countSubkeysCanAutoUnlock++;
+      }
+      gPrivateKeyTrackers.push(subKey);
+    }
+  }
+
+  const userPassphraseMode = "user-passphrase";
+  const usingPP = LoginHelper.isPrimaryPasswordSet();
+  let protectionMode;
+
+  // Could we use the automatic passphrase to unlock all secret keys for
+  // which the key material is available?
+
+  if (
+    (!isSecretForPrimaryAvailable || canUnlockSecretForPrimary) &&
+    countSubkeysWithSecretAvailable == countSubkeysCanAutoUnlock
+  ) {
+    protectionMode = usingPP ? "primary-password" : "unprotected";
+  } else {
+    protectionMode = userPassphraseMode;
+  }
+
+  // Strings used here:
+  //   openpgp-passphrase-status-unprotected
+  //   openpgp-passphrase-status-primary-password
+  //   openpgp-passphrase-status-user-passphrase
+  document.l10n.setAttributes(
+    document.getElementById("passphraseStatus"),
+    `openpgp-passphrase-status-${protectionMode}`
+  );
+
+  // Strings used here:
+  //   openpgp-passphrase-instruction-unprotected
+  //   openpgp-passphrase-instruction-primary-password
+  //   openpgp-passphrase-instruction-user-passphrase
+  document.l10n.setAttributes(
+    document.getElementById("passphraseInstruction"),
+    `openpgp-passphrase-instruction-${protectionMode}`
+  );
+
+  document.getElementById("unlockBox").hidden =
+    protectionMode != userPassphraseMode;
+  document.getElementById("lockBox").hidden =
+    protectionMode == userPassphraseMode;
+  document.getElementById("usePrimaryPassword").hidden = true;
+  document.getElementById("removeProtection").hidden = true;
+
+  document.l10n.setAttributes(
+    document.getElementById("setPassphrase"),
+    protectionMode == userPassphraseMode
+      ? "openpgp-passphrase-change"
+      : "openpgp-passphrase-set"
+  );
+
+  document.getElementById("passwordInput").value = "";
+  document.getElementById("passwordConfirm").value = "";
+}
+
+async function unlock() {
+  const pwCache = {
+    passwords: [],
+  };
+
+  for (const tracker of gPrivateKeyTrackers) {
+    tracker.setAllowPromptingUserForPassword(true);
+    tracker.setAllowAutoUnlockWithCachedPasswords(true);
+    tracker.setPasswordCache(pwCache);
+    await tracker.unlock();
+    if (!tracker.isUnlocked()) {
+      return;
+    }
+  }
+
+  document.l10n.setAttributes(
+    document.getElementById("passphraseInstruction"),
+    "openpgp-passphrase-unlocked"
+  );
+  document.getElementById("unlockBox").hidden = true;
+  document.getElementById("lockBox").hidden = false;
+  document.getElementById("passwordInput").value = "";
+  document.getElementById("passwordConfirm").value = "";
+
+  document.getElementById(
+    LoginHelper.isPrimaryPasswordSet()
+      ? "usePrimaryPassword"
+      : "removeProtection"
+  ).hidden = false;
+
+  // Necessary to set the disabled status of the button
+  onPasswordInput();
+}
+
+function onPasswordInput() {
+  const pw1 = document.getElementById("passwordInput").value;
+  const pw2 = document.getElementById("passwordConfirm").value;
+
+  // Disable the button if the two passwords don't match, and enable it
+  // if the passwords do match.
+  const disabled = pw1 != pw2 || !pw1.length;
+
+  document.getElementById("setPassphrase").disabled = disabled;
+}
+
+async function setPassphrase() {
+  const pw = document.getElementById("passwordInput").value;
+
+  for (const tracker of gPrivateKeyTrackers) {
+    tracker.setPassphrase(pw);
+  }
+  await RNP.saveKeyRings();
+
+  releasePrivateKeys();
+  loadPassphraseProtection();
+}
+
+async function useAutoPassphrase() {
+  for (const tracker of gPrivateKeyTrackers) {
+    await tracker.setAutoPassphrase();
+  }
+  await RNP.saveKeyRings();
+
+  releasePrivateKeys();
+  loadPassphraseProtection();
+}
+
+function onAcceptanceChanged() {
+  // The check for gAcceptedEmails.size is to handle an edge case.
+  // If a key was previously accepted, for an email address that is
+  // now revoked, and another email address has been added,
+  // then the key can be marked as accepted without any accepted
+  // email address.
+  // In this scenario, we must allow the user to edit the accepted
+  // email addresses, even if there's just one email address available.
+  // Another scenario is a data inconsistency, with accepted key,
+  // but no accepted email.
+
+  const originalAccepted = isAccepted(gOriginalAcceptance);
+  const wantAccepted = isAccepted(gAcceptanceRadio.value);
+
+  const disableEmailsTab =
+    (wantAccepted &&
+      gAllEmails.length < 2 &&
+      gAcceptedEmails.size != 0 &&
+      (!originalAccepted || !gHaveUnacceptedEmails)) ||
+    !wantAccepted;
+
+  document.getElementById("emailAddressesTab").disabled = disableEmailsTab;
+  document.getElementById("emailAddressesPanel").disabled = disableEmailsTab;
+
+  setOkButtonState();
+}
+
 function onDataModified() {
   EnigmailKeyRing.clearCache();
   enableRefresh();
   reloadData(false);
 }
 
-async function reloadData(firstLoad) {
-  var enigmailSvc = GetEnigmailSvc();
-  if (!enigmailSvc) {
-    throw new Error("GetEnigmailSvc failed");
-  }
+function isAccepted(value) {
+  return value == "unverified" || value == "verified";
+}
 
+async function reloadData(firstLoad) {
   gUserId = null;
 
   var treeChildren = document.getElementById("keyListChildren");
-  var uidList = document.getElementById("additionalUid");
 
   // clean lists
   while (treeChildren.firstChild) {
     treeChildren.firstChild.remove();
   }
-  while (uidList.firstChild) {
-    uidList.firstChild.remove();
-  }
 
-  let keyObj = EnigmailKeyRing.getKeyById(gKeyId);
+  const keyObj = EnigmailKeyRing.getKeyById(gKeyId);
   if (!keyObj) {
     return;
   }
 
-  let acceptanceIntro1Text = "";
-  let acceptanceIntro2Text = "";
+  let acceptanceIntroText = "";
+  let acceptanceVerificationText = "";
 
   if (keyObj.fpr) {
     gFingerprint = keyObj.fpr;
     setLabel("fingerprint", EnigmailKey.formatFpr(keyObj.fpr));
   }
 
-  if (keyObj.hasSubUserIds()) {
-    document.getElementById("alsoknown").removeAttribute("collapsed");
-    createUidData(uidList, keyObj);
-  } else {
-    document.getElementById("alsoknown").setAttribute("collapsed", "true");
-  }
+  gSigTree = document.getElementById("signatures_tree");
+  const cApi = EnigmailCryptoAPI();
+  const signatures = await cApi.getKeyObjSignatures(keyObj);
+  gSigTree.view = new SigListView(signatures);
 
-  if (keyObj.signatures) {
-    let sigListViewObj = new SigListView(keyObj);
-    gSigTree = document.getElementById("signatures_tree");
-    gSigTree.view = sigListViewObj;
-  }
-
-  let subkeyListViewObj = new SubkeyListView(keyObj);
-  document.getElementById("subkeyList").view = subkeyListViewObj;
+  document.getElementById("subkeyList").view = new SubkeyListView(keyObj);
 
   gUserId = keyObj.userId;
 
-  let userEmail = EnigmailFuncs.getEmailFromUserID(keyObj.userId);
-  if (userEmail) {
-    gAllEmails.push(userEmail);
-  }
-
-  setLabel("userId", gUserId);
+  setLabel("keyId", "0x" + keyObj.keyId);
   setLabel("keyCreated", keyObj.created);
 
-  let keyIsExpired =
+  const keyIsExpired =
     keyObj.effectiveExpiryTime &&
     keyObj.effectiveExpiryTime < Math.floor(Date.now() / 1000);
 
@@ -204,12 +431,15 @@ async function reloadData(firstLoad) {
   setLabel("keyExpiry", expiryInfo);
 
   gModePersonal = keyObj.secretAvailable;
+
+  document.getElementById("passphraseTab").hidden = !gModePersonal;
+  document.getElementById("passphrasePanel").hidden = !gModePersonal;
+
   if (gModePersonal) {
     gPersonalRadio.removeAttribute("hidden");
     gAcceptanceRadio.setAttribute("hidden", "true");
-    acceptanceIntro1Text = "key-accept-personal";
-    acceptanceIntro2Text = "key-personal-warning";
-    let value = l10n.formatValueSync("key-type-pair");
+    acceptanceIntroText = "key-accept-personal";
+    const value = l10n.formatValueSync("key-type-pair");
     setLabel("keyType", value);
 
     gUpdateAllowed = true;
@@ -225,10 +455,10 @@ async function reloadData(firstLoad) {
     }
   } else {
     gPersonalRadio.setAttribute("hidden", "true");
-    let value = l10n.formatValueSync("key-type-public");
+    const value = l10n.formatValueSync("key-type-public");
     setLabel("keyType", value);
 
-    let isStillValid = !(
+    const isStillValid = !(
       keyObj.keyTrust == "r" ||
       keyObj.keyTrust == "e" ||
       keyIsExpired
@@ -236,71 +466,186 @@ async function reloadData(firstLoad) {
     if (!isStillValid) {
       gAcceptanceRadio.setAttribute("hidden", "true");
       if (keyObj.keyTrust == "r") {
-        acceptanceIntro1Text = "key-revoked-simple";
+        acceptanceIntroText = "key-revoked-simple";
       } else if (keyObj.keyTrust == "e" || keyIsExpired) {
-        acceptanceIntro1Text = "key-expired-simple";
+        acceptanceIntroText = "key-expired-simple";
       }
     } else {
       gAcceptanceRadio.removeAttribute("hidden");
-      acceptanceIntro1Text = "key-do-you-accept";
-      acceptanceIntro2Text = "key-accept-warning";
+      acceptanceIntroText = "key-do-you-accept";
+      acceptanceVerificationText = "key-verification";
       gUpdateAllowed = true;
 
       //await RNP.calculateAcceptance(keyObj.keyId, null);
 
-      let acceptanceResult = {};
-      await PgpSqliteDb2.getFingerprintAcceptance(
+      const acceptanceResult = await PgpSqliteDb2.getFingerprintAcceptance(
         null,
-        keyObj.fpr,
-        acceptanceResult
+        keyObj.fpr
       );
 
       if (firstLoad) {
-        if (
-          "fingerprintAcceptance" in acceptanceResult &&
-          acceptanceResult.fingerprintAcceptance.length &&
-          acceptanceResult.fingerprintAcceptance != "undecided"
-        ) {
-          gOriginalAcceptance = acceptanceResult.fingerprintAcceptance;
-        } else {
+        if (!acceptanceResult) {
           gOriginalAcceptance = "undecided";
+        } else {
+          gOriginalAcceptance = acceptanceResult;
         }
         gAcceptanceRadio.value = gOriginalAcceptance;
       }
     }
-  }
-  if (acceptanceIntro1Text) {
-    let acceptanceIntro1 = document.getElementById("acceptanceIntro1");
-    document.l10n.setAttributes(acceptanceIntro1, acceptanceIntro1Text);
+
+    if (firstLoad) {
+      gAcceptedEmails = new Set();
+
+      for (let i = 0; i < keyObj.userIds.length; i++) {
+        if (keyObj.userIds[i].type === "uid") {
+          const uidEmail = EnigmailFuncs.getEmailFromUserID(
+            keyObj.userIds[i].userId
+          );
+          if (uidEmail) {
+            gAllEmails.push(uidEmail);
+
+            if (isAccepted(gOriginalAcceptance)) {
+              const rv = {};
+              await PgpSqliteDb2.getAcceptance(keyObj.fpr, uidEmail, rv);
+              if (rv.emailDecided) {
+                gAcceptedEmails.add(uidEmail);
+              } else {
+                gHaveUnacceptedEmails = true;
+              }
+            } else {
+              // For not-yet-accepted keys, our default is to accept
+              // all shown email addresses.
+              gAcceptedEmails.add(uidEmail);
+            }
+          }
+        }
+      }
+
+      // clone
+      gOriginalAcceptedEmails = new Set(gAcceptedEmails);
+    }
   }
 
-  if (acceptanceIntro2Text) {
-    let acceptanceIntro2 = document.getElementById("acceptanceIntro2");
-    document.l10n.setAttributes(acceptanceIntro2, acceptanceIntro2Text);
+  await createUidData(keyObj);
+
+  if (acceptanceIntroText) {
+    const acceptanceIntro = document.getElementById("acceptanceIntro");
+    document.l10n.setAttributes(acceptanceIntro, acceptanceIntroText);
   }
 
-  // Resize the dialog only if the data was changed since the first load.
-  if (!firstLoad) {
-    resizeDialog();
+  if (acceptanceVerificationText) {
+    const acceptanceVerification = document.getElementById(
+      "acceptanceVerification"
+    );
+    document.l10n.setAttributes(
+      acceptanceVerification,
+      acceptanceVerificationText,
+      {
+        addr: EnigmailFuncs.getEmailFromUserID(gUserId).toLowerCase(),
+      }
+    );
   }
+
+  document.getElementById("key-detail-has-insecure").hidden =
+    !keyObj.hasIgnoredAttributes;
 }
 
-function createUidData(listNode, keyDetails) {
-  for (let i = 1; i < keyDetails.userIds.length; i++) {
-    if (keyDetails.userIds[i].type === "uid") {
-      let item = listNode.appendItem(keyDetails.userIds[i].userId);
-      item.setAttribute("label", keyDetails.userIds[i].userId);
-      if ("dre".search(keyDetails.userIds[i].keyTrust) >= 0) {
-        item.setAttribute("class", "enigmailDisabled");
-      }
+function setOkButtonState() {
+  const atLeastOneChecked = gAllEmailCheckboxes.some(c => c.checked);
+  gOkButton.disabled = !atLeastOneChecked && isAccepted(gAcceptanceRadio.value);
+}
 
-      let uidEmail = EnigmailFuncs.getEmailFromUserID(
-        keyDetails.userIds[i].userId
-      );
-      if (uidEmail) {
-        gAllEmails.push(uidEmail);
+async function createUidData(keyDetails) {
+  var uidList = document.getElementById("userIds");
+  while (uidList.firstChild) {
+    uidList.firstChild.remove();
+  }
+
+  let primaryIdIndex = 0;
+
+  for (let i = 0; i < keyDetails.userIds.length; i++) {
+    if (keyDetails.userIds[i].type === "uid") {
+      if (keyDetails.userIds[i].userId == keyDetails.userId) {
+        primaryIdIndex = i;
+        break;
       }
     }
+  }
+
+  for (let i = -1; i < keyDetails.userIds.length; i++) {
+    // Handle entry primaryIdIndex first.
+
+    let indexToUse;
+    if (i == -1) {
+      indexToUse = primaryIdIndex;
+    } else if (i == primaryIdIndex) {
+      // already handled when i was -1
+      continue;
+    } else {
+      indexToUse = i;
+    }
+
+    if (keyDetails.userIds[indexToUse].type === "uid") {
+      const uidStr = keyDetails.userIds[indexToUse].userId;
+
+      /* - attempted code with <ul id="userIds">, doesn't work yet
+      let item = document.createElement("li");
+
+      let text = document.createElement("div");
+      text.textContent = uidStr;
+      item.append(text);
+
+      let lf = document.createElement("br");
+      item.append(lf);
+      uidList.appendChild(item);
+      */
+
+      uidList.appendItem(uidStr);
+    }
+  }
+
+  if (gModePersonal) {
+    document.getElementById("emailAddressesTab").hidden = true;
+  } else {
+    const emailList = document.getElementById("addressesList");
+
+    let atLeastOneChecked = false;
+    const gUniqueEmails = new Set();
+
+    for (let i = 0; i < gAllEmails.length; i++) {
+      const email = gAllEmails[i];
+      if (gUniqueEmails.has(email)) {
+        continue;
+      }
+      gUniqueEmails.add(email);
+
+      const checkbox = document.createXULElement("checkbox");
+
+      checkbox.value = email;
+      checkbox.setAttribute("label", email);
+
+      checkbox.checked = gAcceptedEmails.has(email);
+      if (checkbox.checked) {
+        atLeastOneChecked = true;
+      }
+
+      checkbox.disabled = !gUpdateAllowed;
+      checkbox.addEventListener("command", () => {
+        setOkButtonState();
+      });
+
+      emailList.appendChild(checkbox);
+      gAllEmailCheckboxes.push(checkbox);
+    }
+
+    // Usually, if we have only one email address available,
+    // we want to hide the tab.
+    // There are edge cases - if we have a data inconsistency
+    // (key accepted, but no email accepted), then we must show,
+    // to allow the user to repair.
+
+    document.getElementById("emailAddressesTab").hidden =
+      gUniqueEmails.size < 2 && atLeastOneChecked;
   }
 }
 
@@ -367,29 +712,36 @@ function genRevocationCert() {
     defaultFileName, ["XXXasciiArmorFile", "*.asc"];
   if (!outFile) return -1;
 
-  var enigmailSvc = GetEnigmailSvc();
-  if (!enigmailSvc)
-    return -1;
-
   return 0;
   */
 }
 
-function SigListView(keyObj) {
+/**
+ * @param {object[]} signatures - list of signature objects
+ *   signatures.userId {string} - User ID.
+ *   signatures.uidLabel {string} - UID label.
+ *   signatures.created {string} - Creation date as printable string.
+ *   signatures.fpr {string} - Fingerprint.
+ *   signatures.sigList {Object[]} - Objects
+ *   signatures.sigList.userId
+ *   signatures.sigList.created
+ *   signatures.sigList.signerKeyId
+ *   signatures.sigList.sigType
+ *   signatures.sigList.sigKnown
+ */
+function SigListView(signatures) {
   this.keyObj = [];
 
-  let sigObj = keyObj.signatures;
-  for (let i in sigObj) {
-    let k = {
-      uid: sigObj[i].userId,
-      keyId: sigObj[i].keyId,
-      created: sigObj[i].created,
+  for (const sig of signatures) {
+    const k = {
+      uid: sig.userId,
+      keyId: sig.keyId,
+      created: sig.created,
       expanded: true,
       sigList: [],
     };
 
-    for (let j in sigObj[i].sigList) {
-      let s = sigObj[i].sigList[j];
+    for (const s of sig.sigList) {
       k.sigList.push({
         uid: s.userId,
         created: s.created,
@@ -406,12 +758,14 @@ function SigListView(keyObj) {
   this.updateRowCount();
 }
 
-// implements nsITreeView
+/**
+ * @implements {nsITreeView}
+ */
 SigListView.prototype = {
   updateRowCount() {
     let rc = 0;
 
-    for (let i in this.keyObj) {
+    for (const i in this.keyObj) {
       rc += this.keyObj[i].expanded ? this.keyObj[i].sigList.length + 1 : 1;
     }
 
@@ -432,7 +786,7 @@ SigListView.prototype = {
     let j = 0,
       l = 0;
 
-    for (let i in this.keyObj) {
+    for (const i in this.keyObj) {
       if (j === row) {
         return this.setLastKeyObj(this.keyObj[i], row);
       }
@@ -452,14 +806,14 @@ SigListView.prototype = {
   },
 
   getCellText(row, column) {
-    let s = this.getSigAtIndex(row);
+    const s = this.getSigAtIndex(row);
 
     if (s) {
       switch (column.id) {
         case "sig_uid_col":
           return s.uid;
         case "sig_keyid_col":
-          return s.keyId;
+          return "0x" + s.keyId;
         case "sig_created_col":
           return s.created;
       }
@@ -473,7 +827,7 @@ SigListView.prototype = {
   },
 
   isContainer(row) {
-    let s = this.getSigAtIndex(row);
+    const s = this.getSigAtIndex(row);
     return "sigList" in s;
   },
 
@@ -486,7 +840,7 @@ SigListView.prototype = {
   },
 
   getLevel(row) {
-    let s = this.getSigAtIndex(row);
+    const s = this.getSigAtIndex(row);
     return "sigList" in s ? 0 : 1;
   },
 
@@ -499,10 +853,6 @@ SigListView.prototype = {
   getRowProperties(row, props) {},
 
   getCellProperties(row, col) {
-    if (col.id === "sig_keyid_col") {
-      return "fixedWidthFont";
-    }
-
     return "";
   },
 
@@ -523,7 +873,7 @@ SigListView.prototype = {
   getProgressMode(row, col) {},
 
   isContainerOpen(row) {
-    let s = this.getSigAtIndex(row);
+    const s = this.getSigAtIndex(row);
     return s.expanded;
   },
 
@@ -532,15 +882,15 @@ SigListView.prototype = {
   },
 
   toggleOpenState(row) {
-    let s = this.getSigAtIndex(row);
+    const s = this.getSigAtIndex(row);
     s.expanded = !s.expanded;
-    let r = this.rowCount;
+    const r = this.rowCount;
     this.updateRowCount();
     gSigTree.rowCountChanged(row, this.rowCount - r);
   },
 };
 
-function createSubkeyItem(subkey) {
+function createSubkeyItem(mainKeyIsSecret, subkey) {
   // Get expiry state of this subkey
   let expire;
   if (subkey.keyTrust === "r") {
@@ -552,8 +902,10 @@ function createSubkeyItem(subkey) {
   }
 
   let subkeyType = "";
-  if (subkey.secretAvailable && !subkey.secretMaterial) {
+
+  if (mainKeyIsSecret && (!subkey.secretAvailable || !subkey.secretMaterial)) {
     subkeyType = "(!) ";
+    gHasMissingSecret = true;
   }
   if (subkey.type === "pub") {
     subkeyType += l10n.formatValueSync("key-type-primary");
@@ -601,7 +953,7 @@ function createSubkeyItem(subkey) {
     } // * case *
   } // * for *
 
-  let keyObj = {
+  const keyObj = {
     keyType: subkeyType,
     keyId: "0x" + subkey.keyId,
     algo: subkey.algoSym,
@@ -615,19 +967,25 @@ function createSubkeyItem(subkey) {
 }
 
 function SubkeyListView(keyObj) {
+  gHasMissingSecret = false;
+
   this.subkeys = [];
   this.rowCount = keyObj.subKeys.length + 1;
-  this.subkeys.push(createSubkeyItem(keyObj));
+  this.subkeys.push(createSubkeyItem(keyObj.secretAvailable, keyObj));
 
   for (let i = 0; i < keyObj.subKeys.length; i++) {
-    this.subkeys.push(createSubkeyItem(keyObj.subKeys[i]));
+    this.subkeys.push(
+      createSubkeyItem(keyObj.secretAvailable, keyObj.subKeys[i])
+    );
   }
+
+  document.getElementById("legendMissingSecret").hidden = !gHasMissingSecret;
 }
 
 // implements nsITreeView
 SubkeyListView.prototype = {
   getCellText(row, column) {
-    let s = this.subkeys[row];
+    const s = this.subkeys[row];
 
     if (s) {
       switch (column.id) {
@@ -712,7 +1070,7 @@ SubkeyListView.prototype = {
 
 function sigHandleDblClick(event) {}
 
-document.addEventListener("dialogaccept", async function(event) {
+document.addEventListener("dialogaccept", async function (event) {
   // Prevent the closing of the dialog to wait until all the SQLite operations
   // have properly been executed.
   event.preventDefault();
@@ -734,31 +1092,27 @@ document.addEventListener("dialogaccept", async function(event) {
 
   // If the recipient's key hasn't been revoked or invalidated, and the
   // signature acceptance was edited.
-  if (gUpdateAllowed && gAcceptanceRadio.value != gOriginalAcceptance) {
-    await PgpSqliteDb2.updateAcceptance(
-      gFingerprint,
-      gAllEmails,
-      gAcceptanceRadio.value
-    );
+  if (gUpdateAllowed) {
+    const selectedEmails = new Set();
+    for (const checkbox of gAllEmailCheckboxes) {
+      if (checkbox.checked) {
+        selectedEmails.add(checkbox.value);
+      }
+    }
 
-    enableRefresh();
+    if (
+      gAcceptanceRadio.value != gOriginalAcceptance ||
+      !CommonUtils.setEqual(gAcceptedEmails, selectedEmails)
+    ) {
+      await PgpSqliteDb2.updateAcceptance(
+        gFingerprint,
+        [...selectedEmails],
+        gAcceptanceRadio.value
+      );
+
+      enableRefresh();
+    }
   }
 
   window.close();
 });
-
-/**
- * Resize the dialog to account for the newly visible sections.
- */
-function resizeDialog() {
-  // Timeout to trigger the dialog resize after all the data have been loaded on
-  // first run.
-  setTimeout(() => {
-    // Check if the dialog was opened as a SubDialog.
-    if (parent.gSubDialog) {
-      parent.gSubDialog._topDialog.resizeVertically();
-    } else {
-      sizeToContent();
-    }
-  }, 230);
-}

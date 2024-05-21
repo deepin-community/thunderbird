@@ -3,7 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 const {AeroPeek} = ChromeUtils.import("resource:///modules/WindowsPreviewPerTab.jsm");
 var {AppConstants} = ChromeUtils.import(
@@ -2505,7 +2504,7 @@ function URLBarSetURI(aURI, aValid) {
 }
 
 function losslessDecodeURI(aURI) {
-  var value = aURI.spec;
+  var value = aURI.displaySpec;
   var scheme = aURI.scheme;
 
   var decodeASCIIOnly = !["https", "http", "file", "ftp"].includes(scheme);

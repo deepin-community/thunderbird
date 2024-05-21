@@ -1,24 +1,28 @@
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "ObjectUtils",
-  "resource://gre/modules/ObjectUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "QueryCache",
-  "resource://activity-stream/lib/ASRouterTargeting.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  ASRouter: "resource:///modules/asrouter/ASRouter.sys.mjs",
+
+  DiscoveryStreamFeed:
+    "resource://activity-stream/lib/DiscoveryStreamFeed.sys.mjs",
+
+  FeatureCallout: "resource:///modules/asrouter/FeatureCallout.sys.mjs",
+
+  FeatureCalloutBroker:
+    "resource:///modules/asrouter/FeatureCalloutBroker.sys.mjs",
+
+  FeatureCalloutMessages:
+    "resource:///modules/asrouter/FeatureCalloutMessages.sys.mjs",
+
+  ObjectUtils: "resource://gre/modules/ObjectUtils.sys.mjs",
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+  QueryCache: "resource:///modules/asrouter/ASRouterTargeting.sys.mjs",
+});
 
 // We import sinon here to make it available across all mochitest test files
-// eslint-disable-next-line no-unused-vars
-const { sinon } = ChromeUtils.import("resource://testing-common/Sinon.jsm");
+const { sinon } = ChromeUtils.importESModule(
+  "resource://testing-common/Sinon.sys.mjs"
+);
 
 function popPrefs() {
   return SpecialPowers.popPrefEnv();
@@ -39,7 +43,6 @@ async function toggleTopsitesPref() {
   ]);
 }
 
-// eslint-disable-next-line no-unused-vars
 async function setDefaultTopSites() {
   // The pref for TopSites is empty by default.
   await pushPrefs([
@@ -53,7 +56,6 @@ async function setDefaultTopSites() {
   ]);
 }
 
-// eslint-disable-next-line no-unused-vars
 async function setTestTopSites() {
   await pushPrefs([
     "browser.newtabpage.activity-stream.improvesearch.topSiteSearchShortcuts",
@@ -68,17 +70,6 @@ async function setTestTopSites() {
   await toggleTopsitesPref();
 }
 
-// eslint-disable-next-line no-unused-vars
-async function setAboutWelcomePref(value) {
-  return pushPrefs(["browser.aboutwelcome.enabled", value]);
-}
-
-// eslint-disable-next-line no-unused-vars
-async function setProton(value = false) {
-  return pushPrefs(["browser.aboutwelcome.protonDesign", value]);
-}
-
-// eslint-disable-next-line no-unused-vars
 async function clearHistoryAndBookmarks() {
   await PlacesUtils.bookmarks.eraseEverything();
   await PlacesUtils.history.clear();
@@ -102,17 +93,6 @@ async function waitForPreloaded(browser) {
 }
 
 /**
- * Helper function to navigate and wait for page to load
- * https://searchfox.org/mozilla-central/rev/b2716c233e9b4398fc5923cbe150e7f83c7c6c5b/testing/mochitest/BrowserTestUtils/BrowserTestUtils.jsm#383
- */
-// eslint-disable-next-line no-unused-vars
-async function waitForUrlLoad(url) {
-  let browser = gBrowser.selectedBrowser;
-  BrowserTestUtils.loadURI(browser, url);
-  await BrowserTestUtils.browserLoaded(browser, false, url);
-}
-
-/**
  * Helper to force the HighlightsFeed to update.
  */
 function refreshHighlightsFeed() {
@@ -131,7 +111,6 @@ function refreshHighlightsFeed() {
  * Helper to populate the Highlights section with bookmark cards.
  * @param count Number of items to add.
  */
-// eslint-disable-next-line no-unused-vars
 async function addHighlightsBookmarks(count) {
   const bookmarks = new Array(count).fill(null).map((entry, i) => ({
     parentGuid: PlacesUtils.bookmarks.unfiledGuid,
@@ -190,7 +169,6 @@ function addContentHelpers() {
  * @param browserURL {optional String}
  *   {String} This parameter is used to explicitly specify URL opened in new tab
  */
-// eslint-disable-next-line no-unused-vars
 function test_newtab(testInfo, browserURL = "about:newtab") {
   // Extract any test parts or default to just the single content task
   let { before, test: contentTask, after } = testInfo;
@@ -255,8 +233,8 @@ function test_newtab(testInfo, browserURL = "about:newtab") {
       await after(contentResult);
     } finally {
       // Clean up for next tests
-      await scopedPopPrefs();
       BrowserTestUtils.removeTab(tab);
+      await scopedPopPrefs();
     }
   };
 

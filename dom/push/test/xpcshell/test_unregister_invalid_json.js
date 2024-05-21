@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "7f0af1bb-7e1f-4fb8-8e4a-e8de434abde3";
 
 function run_test() {
@@ -53,7 +51,7 @@ add_task(async function test_unregister_invalid_json() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -63,7 +61,7 @@ add_task(async function test_unregister_invalid_json() {
             })
           );
         },
-        onUnregister(request) {
+        onUnregister() {
           this.serverSendMsg(");alert(1);(");
           unregisterDone();
         },

@@ -4,12 +4,14 @@
 
 "use strict";
 
-const { Ci } = require("chrome");
-const { XPCOMUtils } = require("resource://gre/modules/XPCOMUtils.jsm");
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs",
+  { global: "contextual" }
+);
 loader.lazyRequireGetter(
   this,
   "ServiceWorkerRegistrationActor",
-  "devtools/server/actors/worker/service-worker-registration",
+  "resource://devtools/server/actors/worker/service-worker-registration.js",
   true
 );
 
@@ -20,16 +22,16 @@ XPCOMUtils.defineLazyServiceGetter(
   "nsIServiceWorkerManager"
 );
 
-function ServiceWorkerRegistrationActorList(conn) {
-  this._conn = conn;
-  this._actors = new Map();
-  this._onListChanged = null;
-  this._mustNotify = false;
-  this.onRegister = this.onRegister.bind(this);
-  this.onUnregister = this.onUnregister.bind(this);
-}
+class ServiceWorkerRegistrationActorList {
+  constructor(conn) {
+    this._conn = conn;
+    this._actors = new Map();
+    this._onListChanged = null;
+    this._mustNotify = false;
+    this.onRegister = this.onRegister.bind(this);
+    this.onUnregister = this.onUnregister.bind(this);
+  }
 
-ServiceWorkerRegistrationActorList.prototype = {
   getList() {
     // Create a set of registrations.
     const registrations = new Set();
@@ -70,11 +72,11 @@ ServiceWorkerRegistrationActorList.prototype = {
     }
 
     return Promise.resolve(actors);
-  },
+  }
 
   get onListchanged() {
     return this._onListchanged;
-  },
+  }
 
   set onListChanged(onListChanged) {
     if (typeof onListChanged !== "function" && onListChanged !== null) {
@@ -90,7 +92,7 @@ ServiceWorkerRegistrationActorList.prototype = {
       }
     }
     this._onListChanged = onListChanged;
-  },
+  }
 
   _notifyListChanged() {
     this._onListChanged();
@@ -99,15 +101,15 @@ ServiceWorkerRegistrationActorList.prototype = {
       swm.removeListener(this);
     }
     this._mustNotify = false;
-  },
+  }
 
-  onRegister(registration) {
+  onRegister() {
     this._notifyListChanged();
-  },
+  }
 
-  onUnregister(registration) {
+  onUnregister() {
     this._notifyListChanged();
-  },
-};
+  }
+}
 
 exports.ServiceWorkerRegistrationActorList = ServiceWorkerRegistrationActorList;

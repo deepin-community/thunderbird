@@ -49,6 +49,12 @@
                   preference="mail.warn_on_send_accel_key"/>
         <spacer flex="1"/>
       </hbox>
+      <hbox>
+        <checkbox id="addLinkPreviews"
+                  data-l10n-id="add-link-previews"
+                  preference="mail.compose.add_link_preview"/>
+        <spacer flex="1"/>
+      </hbox>
     </html:fieldset>
     </html:div>
 
@@ -70,20 +76,26 @@
 
       <separator class="thin"/>
 
-      <hbox align="center" pack="start">
-        <label data-l10n-id="language-popup-label" control="languageMenuList"/>
-        <hbox flex="1">
-          <menulist id="languageMenuList" preference="spellchecker.dictionary" flex="1">
-            <menupopup onpopupshowing="gComposePane.initLanguageMenu();">
-              <!-- dynamic content populated by JS -->
-            </menupopup>
-          </menulist>
-        </hbox>
+      <vbox flex="1">
+        <label data-l10n-id="language-popup-label" control="dictionaryList"/>
+
+        <html:ul id="dictionaryList" class="indent">
+          <html:template id="dictionaryListItem">
+            <html:li>
+              <html:label>
+                <html:input type="checkbox" />
+                <html:span class="checkbox-label"></html:span>
+              </html:label>
+            </html:li>
+          </html:template>
+        </html:ul>
+
         <label id="downloadDictionaries" class="text-link"
-                onclick="if (event.button == 0) { openDictionaryList('tab'); }"
-                data-l10n-id="download-dictionaries-link"/>
+               onclick="if (event.button == 0) { openDictionaryList('tab'); }"
+               data-l10n-id="download-dictionaries-link"/>
+
         <spacer flex="1"/>
-      </hbox>
+      </vbox>
     </html:fieldset>
     </html:div>
 
@@ -158,30 +170,39 @@
                   data-l10n-id="default-format-label"
                   preference="mail.compose.default_to_paragraph"/>
       </hbox>
+    </html:fieldset>
+    </html:div>
 
-      <hbox align="center">
-        <description flex="1" data-l10n-id="format-description"/>
-        <hbox>
-          <button is="highlightable-button"
-                  data-l10n-id="send-options-label"
-                  search-l10n-ids="
-                    sendoptions-dialog-window.title,
-                    send-mail-title,
-                    auto-downgrade-label.label,
-                    default-html-format-label,
-                    html-format-ask.label,
-                    html-format-convert.label,
-                    html-format-send-html.label,
-                    html-format-send-both.label,
-                    default-html-format-info,
-                    html-tab-label.label,
-                    plain-tab-label.label,
-                    send-message-domain-label,
-                    add-domain-button.label,
-                    delete-domain-button.label"
-                  oncommand="gComposePane.sendOptionsDialog();"/>
-        </hbox>
-      </hbox>
+    <html:div data-category="paneCompose">
+    <html:fieldset data-category="paneCompose">
+      <html:legend data-l10n-id="compose-send-format-title"></html:legend>
+      <radiogroup class="indent"
+                  preference="mail.default_send_format">
+        <radio value="0"
+               aria-describedby="composeSendAutomaticDescription"
+               data-l10n-id="compose-send-automatic-option" />
+        <description id="composeSendAutomaticDescription"
+                     class="indent tip-caption"
+                     data-l10n-id="compose-send-automatic-description" />
+        <radio value="3"
+               aria-describedby="composeSendBothDescription"
+               data-l10n-id="compose-send-both-option" />
+        <description id="composeSendBothDescription"
+                     class="indent tip-caption"
+                     data-l10n-id="compose-send-both-description" />
+        <radio value="2"
+               aria-describedby="composeSendHTMLDescription"
+               data-l10n-id="compose-send-html-option" />
+        <description id="composeSendHTMLDescription"
+                     class="indent tip-caption"
+                     data-l10n-id="compose-send-html-description" />
+        <radio value="1"
+               aria-describedby="composeSendPlainDescription"
+               data-l10n-id="compose-send-plain-option" />
+        <description id="composeSendPlainDescription"
+                     class="indent tip-caption"
+                     data-l10n-id="compose-send-plain-description" />
+      </radiogroup>
     </html:fieldset>
     </html:div>
 
@@ -270,7 +291,7 @@
                   data-l10n-id="attachment-options-label"
                   oncommand="gComposePane.attachmentReminderOptionsDialog();"
                   search-l10n-ids="
-                    attachment-reminder-window.title,
+                    attachment-reminder-dialog-title,
                     attachment-reminder-label,
                     keyword-new-button.label,
                     keyword-edit-button.label,
@@ -281,18 +302,18 @@
                     edit-keyword-label"/>
         </hbox>
       </hbox>
-      <vbox id="cloudFileBox" flex="1">
+      <vbox id="cloudFileBox">
         <hbox id="cloudFileToggleAndThreshold" align="center">
           <checkbox id="enableThreshold"
                     data-l10n-id="enable-cloud-share"
                     preference="mail.compose.big_attachments.notify"/>
-          <html:input id="cloudFileThreshold" type="number" class="size3"
+          <html:input id="cloudFileThreshold" type="number" min="0" class="size3"
                       preference="mail.compose.big_attachments.threshold_kb"/>
           <label control="cloudFileThreshold" data-l10n-id="cloud-share-size"/>
         </hbox>
-        <hbox flex="1" style="height: 480px;">
+        <hbox style="height: 480px; flex: 1 auto;">
           <vbox id="provider-listing">
-            <richlistbox id="cloudFileView" orient="vertical" flex="1"
+            <richlistbox id="cloudFileView" orient="vertical"
                          seltype="single"
                          onoverflow="gCloudFile.onListOverflow();"
                          onselect="gCloudFile.onSelectionChanged(event);">

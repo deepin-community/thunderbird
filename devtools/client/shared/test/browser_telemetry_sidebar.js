@@ -103,7 +103,7 @@ const DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   // Let's reset the counts.
   Services.telemetry.clearEvents();
 
@@ -148,7 +148,7 @@ function testSidebar(toolbox) {
       const tool = sidebarTools.pop();
       if (tool) {
         inspector.sidebar.select(tool);
-        setTimeout(function() {
+        setTimeout(function () {
           setTimeout(selectSidebarTab, TOOL_DELAY);
         }, TOOL_DELAY);
       } else {
@@ -221,7 +221,7 @@ function checkEventTelemetry() {
     const expected = DATA[i];
 
     // ignore timestamp
-    ok(timestamp > 0, "timestamp is greater than 0");
+    Assert.greater(timestamp, 0, "timestamp is greater than 0");
     is(category, expected.category, "category is correct");
     is(method, expected.method, "method is correct");
     is(object, expected.object, "object is correct");

@@ -22,7 +22,7 @@ const TEST_URI = `
   <span class="testclass">This is a span</span>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
 
@@ -61,11 +61,6 @@ async function testEditSelector(view, name) {
     getRuleViewRuleEditor(view, 1).element.getAttribute("unmatched"),
     "Rule with " + name + " does not match the current element."
   );
-
-  // Escape the new property editor after editing the selector
-  const onBlur = once(view.styleDocument.activeElement, "blur");
-  EventUtils.synthesizeKey("KEY_Escape", {}, view.styleWindow);
-  await onBlur;
 }
 
 async function testAddImportantProperty(view) {
@@ -112,9 +107,4 @@ async function testAddMatchedRule(view, name) {
     "false",
     "Rule with " + name + " does match the current element."
   );
-
-  // Escape the new property editor after editing the selector
-  const onBlur = once(view.styleDocument.activeElement, "blur");
-  EventUtils.synthesizeKey("KEY_Escape", {}, view.styleWindow);
-  await onBlur;
 }

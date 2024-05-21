@@ -25,7 +25,7 @@ var SMILUtil = {
   // Returns the first element in the document with the matching tag
   getFirstElemWithTag(aTargetTag) {
     var elemList = document.getElementsByTagName(aTargetTag);
-    return elemList.length == 0 ? null : elemList[0];
+    return !elemList.length ? null : elemList[0];
   },
 
   // Simple wrapper for getComputedStyle
@@ -46,6 +46,7 @@ var SMILUtil = {
       // for other attributes.
       return SMILUtil.getComputedStyleWrapper(elem, attr.attrName);
     }
+    throw new Error(`Unexpected attribute value ${attr.attrType}`);
   },
 
   // Smart wrapper for getComputedStyle, which will generate a "fake" computed

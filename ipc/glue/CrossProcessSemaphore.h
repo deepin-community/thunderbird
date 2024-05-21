@@ -11,7 +11,9 @@
 #include "mozilla/TimeStamp.h"
 #include "mozilla/Maybe.h"
 
-#if !defined(OS_WIN) && !defined(OS_MACOSX)
+#if defined(XP_WIN) || defined(XP_DARWIN)
+#  include "mozilla/UniquePtrExtensions.h"
+#else
 #  include <pthread.h>
 #  include <semaphore.h>
 #  include "mozilla/ipc/SharedMemoryBasic.h"
@@ -34,9 +36,11 @@ inline bool IsHandleValid(const T& handle) {
   return bool(handle);
 }
 
-#if defined(OS_WIN)
-typedef HANDLE CrossProcessSemaphoreHandle;
-#elif !defined(OS_MACOSX)
+#if defined(XP_WIN)
+typedef mozilla::UniqueFileHandle CrossProcessSemaphoreHandle;
+#elif defined(XP_DARWIN)
+typedef mozilla::UniqueMachSendRight CrossProcessSemaphoreHandle;
+#else
 typedef mozilla::ipc::SharedMemoryBasic::Handle CrossProcessSemaphoreHandle;
 
 template <>
@@ -44,10 +48,6 @@ inline bool IsHandleValid<CrossProcessSemaphoreHandle>(
     const CrossProcessSemaphoreHandle& handle) {
   return !(handle == mozilla::ipc::SharedMemoryBasic::NULLHandle());
 }
-#else
-// Stub for other platforms. We can't use uintptr_t here since different
-// processes could disagree on its size.
-typedef uintptr_t CrossProcessSemaphoreHandle;
 #endif
 
 class CrossProcessSemaphore {
@@ -82,13 +82,13 @@ class CrossProcessSemaphore {
   void Signal();
 
   /**
-   * ShareToProcess
+   * CloneHandle
    * This function is called to generate a serializable structure that can
    * be sent to the specified process and opened on the other side.
    *
    * @returns A handle that can be shared to another process
    */
-  CrossProcessSemaphoreHandle ShareToProcess(base::ProcessId aTargetPid);
+  CrossProcessSemaphoreHandle CloneHandle();
 
   void CloseHandle();
 
@@ -99,11 +99,15 @@ class CrossProcessSemaphore {
   CrossProcessSemaphore(const CrossProcessSemaphore&);
   CrossProcessSemaphore& operator=(const CrossProcessSemaphore&);
 
-#if defined(OS_WIN)
+#if defined(XP_WIN)
   explicit CrossProcessSemaphore(HANDLE aSemaphore);
 
   HANDLE mSemaphore;
-#elif !defined(OS_MACOSX)
+#elif defined(XP_DARWIN)
+  explicit CrossProcessSemaphore(CrossProcessSemaphoreHandle aSemaphore);
+
+  CrossProcessSemaphoreHandle mSemaphore;
+#else
   RefPtr<mozilla::ipc::SharedMemoryBasic> mSharedBuffer;
   sem_t* mSemaphore;
   mozilla::Atomic<int32_t>* mRefCount;

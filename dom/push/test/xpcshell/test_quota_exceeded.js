@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "7eb873f9-8d47-4218-804b-fff78dc04e88";
 
 function run_test() {
@@ -79,7 +77,7 @@ add_task(async function test_expiration_origin_threshold() {
   let updates = 0;
   let notifyPromise = promiseObserverNotification(
     PushServiceComponent.pushTopic,
-    (subject, data) => {
+    () => {
       updates++;
       return updates == 6;
     }
@@ -93,7 +91,7 @@ add_task(async function test_expiration_origin_threshold() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -142,7 +140,7 @@ add_task(async function test_expiration_origin_threshold() {
         },
         // We expect to receive acks, but don't care about their
         // contents.
-        onACK(request) {},
+        onACK() {},
       });
     },
   });

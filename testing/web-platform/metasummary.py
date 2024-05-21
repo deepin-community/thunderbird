@@ -7,14 +7,13 @@ import json
 import logging
 import os
 import re
-from urllib import parse as urlparse
 from collections import defaultdict
+from urllib import parse as urlparse
 
 import manifestupdate
-
 from wptrunner import expected
-from wptrunner.wptmanifest.serializer import serialize
 from wptrunner.wptmanifest.backends import base
+from wptrunner.wptmanifest.serializer import serialize
 
 here = os.path.dirname(__file__)
 logger = logging.getLogger(__name__)
@@ -231,7 +230,7 @@ def iter_tests(manifests):
 
 
 def add_manifest(target, path, metadata):
-    dir_name = os.path.dirname(path)
+    dir_name, file_name = path.rsplit(os.sep, 1)
     key = [dir_name]
 
     add_metadata(target, key, metadata)
@@ -241,6 +240,7 @@ def add_manifest(target, path, metadata):
     for test_metadata in metadata.children:
         key.append(test_metadata.name)
         add_metadata(target, key, test_metadata)
+        add_filename(target, key, file_name)
         key.append("_subtests")
         for subtest_metadata in test_metadata.children:
             key.append(subtest_metadata.name)
@@ -259,6 +259,15 @@ simple_props = [
     "bug",
 ]
 statuses = set(["CRASH"])
+
+
+def add_filename(target, key, filename):
+    for part in key:
+        if part not in target:
+            target[part] = {}
+        target = target[part]
+
+    target["_filename"] = filename
 
 
 def add_metadata(target, key, metadata):
@@ -369,8 +378,8 @@ def add_test_data(logger, wpt_meta, dir_path, test, subtest, test_data):
                     meta.set(test, subtest, product="firefox", bug_url=bug_link)
 
 
-bugzilla_re = re.compile("https://bugzilla\.mozilla\.org/show_bug\.cgi\?id=\d+")
-bug_re = re.compile("(?:[Bb][Uu][Gg])?\s*(\d+)")
+bugzilla_re = re.compile(r"https://bugzilla\.mozilla\.org/show_bug\.cgi\?id=\d+")
+bug_re = re.compile(r"(?:[Bb][Uu][Gg])?\s*(\d+)")
 
 
 def get_bug_link(value):

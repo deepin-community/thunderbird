@@ -17,14 +17,14 @@ process-type-privilegedmozilla = Contido privilexiado de Mozilla
 process-type-extension = Extensión
 # process used to open file:// URLs
 process-type-file = Ficheiro local
-# process used to isolate webpages that requested special
-# permission to allocate large amounts of memory
-process-type-weblargeallocation = Gran asignación
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = Contido web illado
+# process used to isolate a ServiceWorker to improve
+# performance
+process-type-webserviceworker = Service worker aillado
 # process preallocated; may change to other types
-process-type-prealloc = Prealocado
+process-type-prealloc = Preasignado
 
 ##
 ## Localization for Gecko process types defined in GeckoProcessTypes.h
@@ -39,6 +39,9 @@ process-type-gpu = GPU
 process-type-socket = Zócalo
 # process used to decode media
 process-type-rdd = RDD
+# process used to run some IPC actor in their own sandbox
+process-type-utility = Actor de IPC illado
+process-type-utility-actor-js-oracle = Utilidade de JavaScript Oracle
 
 ##
 ## Other

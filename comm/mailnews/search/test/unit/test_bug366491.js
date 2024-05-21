@@ -9,8 +9,8 @@
 // only needed during debug
 // do_import_script("mailnews/extensions/bayesian-spam-filter/test/resources/trainingfile.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 // local constants
@@ -79,7 +79,7 @@ var doTestingListener = {
 
     // Have we completed a classification? If so, test
     if (haveClassification) {
-      let test = tests.shift();
+      const test = tests.shift();
       Assert.equal(getSpec(test.fileName), aMsgURI);
       Assert.equal(test.junkPercent, aJunkPercent);
     }
@@ -105,9 +105,6 @@ function getSpec(aFileName) {
     "../../../extensions/bayesian-spam-filter/test/unit/resources/" + aFileName
   );
   var uri = Services.io.newFileURI(file).QueryInterface(Ci.nsIURL);
-  uri = uri
-    .mutate()
-    .setQuery("type=application/x-message-display")
-    .finalize();
+  uri = uri.mutate().setQuery("type=application/x-message-display").finalize();
   return uri.spec;
 }

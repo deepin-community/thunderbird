@@ -4,7 +4,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "QuotaCommon.h"
+#include "mozilla/dom/quota/QuotaCommon.h"
 
 #ifdef QM_ERROR_STACKS_ENABLED
 #  include "base/process_util.h"
@@ -12,11 +12,13 @@
 #include "mozIStorageConnection.h"
 #include "mozIStorageStatement.h"
 #include "mozilla/ErrorNames.h"
+#include "mozilla/MozPromise.h"
 #include "mozilla/Logging.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/TelemetryComms.h"
 #include "mozilla/TelemetryEventEnums.h"
 #include "mozilla/TextUtils.h"
+#include "mozilla/dom/quota/ResultExtensions.h"
 #include "mozilla/dom/quota/ScopedLogExtraInfo.h"
 #include "nsIConsoleService.h"
 #include "nsIFile.h"
@@ -34,7 +36,24 @@
 #  include "nsILocalFileWin.h"
 #endif
 
-namespace mozilla::dom::quota {
+namespace mozilla {
+
+RefPtr<BoolPromise> CreateAndRejectBoolPromise(const char* aFunc,
+                                               nsresult aRv) {
+  return CreateAndRejectMozPromise<BoolPromise>(aFunc, aRv);
+}
+
+RefPtr<Int64Promise> CreateAndRejectInt64Promise(const char* aFunc,
+                                                 nsresult aRv) {
+  return CreateAndRejectMozPromise<Int64Promise>(aFunc, aRv);
+}
+
+RefPtr<BoolPromise> CreateAndRejectBoolPromiseFromQMResult(
+    const char* aFunc, const QMResult& aRv) {
+  return CreateAndRejectMozPromise<BoolPromise>(aFunc, aRv);
+}
+
+namespace dom::quota {
 
 using namespace mozilla::Telemetry;
 
@@ -107,7 +126,7 @@ void AnonymizeOriginString(nsACString& aOriginString) {
 #ifdef XP_WIN
 void CacheUseDOSDevicePathSyntaxPrefValue() {
   MOZ_ASSERT(XRE_IsParentProcess());
-  AssertIsOnBackgroundThread();
+  ::mozilla::ipc::AssertIsOnBackgroundThread();
 
   if (gUseDOSDevicePathSyntax == -1) {
     bool useDOSDevicePathSyntax =
@@ -118,21 +137,23 @@ void CacheUseDOSDevicePathSyntaxPrefValue() {
 #endif
 
 Result<nsCOMPtr<nsIFile>, nsresult> QM_NewLocalFile(const nsAString& aPath) {
-  QM_TRY_UNWRAP(auto file,
-                ToResultInvoke<nsCOMPtr<nsIFile>>(NS_NewLocalFile, aPath,
-                                                  /* aFollowLinks */ false),
-                QM_PROPAGATE, [&aPath](const nsresult rv) {
-                  QM_WARNING("Failed to construct a file for path (%s)",
-                             NS_ConvertUTF16toUTF8(aPath).get());
-                });
+  QM_TRY_UNWRAP(
+      auto file,
+      MOZ_TO_RESULT_INVOKE_TYPED(nsCOMPtr<nsIFile>, NS_NewLocalFile, aPath,
+                                 /* aFollowLinks */ false),
+      QM_PROPAGATE, [&aPath](const nsresult rv) {
+        QM_WARNING("Failed to construct a file for path (%s)",
+                   NS_ConvertUTF16toUTF8(aPath).get());
+      });
 
 #ifdef XP_WIN
   MOZ_ASSERT(gUseDOSDevicePathSyntax != -1);
 
   if (gUseDOSDevicePathSyntax) {
-    QM_TRY_INSPECT(const auto& winFile,
-                   ToResultGet<nsCOMPtr<nsILocalFileWin>>(
-                       MOZ_SELECT_OVERLOAD(do_QueryInterface), file));
+    QM_TRY_INSPECT(
+        const auto& winFile,
+        MOZ_TO_RESULT_GET_TYPED(nsCOMPtr<nsILocalFileWin>,
+                                MOZ_SELECT_OVERLOAD(do_QueryInterface), file));
 
     MOZ_ASSERT(winFile);
     winFile->SetUseDOSDevicePathSyntax(true);
@@ -159,10 +180,10 @@ nsDependentCSubstring GetLeafName(const nsACString& aPath) {
 
 Result<nsCOMPtr<nsIFile>, nsresult> CloneFileAndAppend(
     nsIFile& aDirectory, const nsAString& aPathElement) {
-  QM_TRY_UNWRAP(auto resultFile, MOZ_TO_RESULT_INVOKE_TYPED(nsCOMPtr<nsIFile>,
-                                                            aDirectory, Clone));
+  QM_TRY_UNWRAP(auto resultFile, MOZ_TO_RESULT_INVOKE_MEMBER_TYPED(
+                                     nsCOMPtr<nsIFile>, aDirectory, Clone));
 
-  QM_TRY(resultFile->Append(aPathElement));
+  QM_TRY(MOZ_TO_RESULT(resultFile->Append(aPathElement)));
 
   return resultFile;
 }
@@ -170,17 +191,16 @@ Result<nsCOMPtr<nsIFile>, nsresult> CloneFileAndAppend(
 Result<nsIFileKind, nsresult> GetDirEntryKind(nsIFile& aFile) {
   // Callers call this function without checking if the directory already
   // exists (idempotent usage). QM_OR_ELSE_WARN_IF is not used here since we
-  // just want to log NS_ERROR_FILE_NOT_FOUND,
-  // NS_ERROR_FILE_TARGET_DOES_NOT_EXIST and NS_ERROR_FILE_FS_CORRUPTED results
-  // and not spam the reports.
+  // just want to log NS_ERROR_FILE_NOT_FOUND and NS_ERROR_FILE_FS_CORRUPTED
+  // results and not spam the reports.
   QM_TRY_RETURN(QM_OR_ELSE_LOG_VERBOSE_IF(
-      MOZ_TO_RESULT_INVOKE(aFile, IsDirectory).map([](const bool isDirectory) {
-        return isDirectory ? nsIFileKind::ExistsAsDirectory
-                           : nsIFileKind::ExistsAsFile;
-      }),
+      MOZ_TO_RESULT_INVOKE_MEMBER(aFile, IsDirectory)
+          .map([](const bool isDirectory) {
+            return isDirectory ? nsIFileKind::ExistsAsDirectory
+                               : nsIFileKind::ExistsAsFile;
+          }),
       ([](const nsresult rv) {
         return rv == NS_ERROR_FILE_NOT_FOUND ||
-               rv == NS_ERROR_FILE_TARGET_DOES_NOT_EXIST ||
                // We treat NS_ERROR_FILE_FS_CORRUPTED as if the file did not
                // exist at all.
                rv == NS_ERROR_FILE_FS_CORRUPTED;
@@ -190,16 +210,16 @@ Result<nsIFileKind, nsresult> GetDirEntryKind(nsIFile& aFile) {
 
 Result<nsCOMPtr<mozIStorageStatement>, nsresult> CreateStatement(
     mozIStorageConnection& aConnection, const nsACString& aStatementString) {
-  QM_TRY_RETURN(MOZ_TO_RESULT_INVOKE_TYPED(nsCOMPtr<mozIStorageStatement>,
-                                           aConnection, CreateStatement,
-                                           aStatementString));
+  QM_TRY_RETURN(MOZ_TO_RESULT_INVOKE_MEMBER_TYPED(
+      nsCOMPtr<mozIStorageStatement>, aConnection, CreateStatement,
+      aStatementString));
 }
 
 template <SingleStepResult ResultHandling>
 Result<SingleStepSuccessType<ResultHandling>, nsresult> ExecuteSingleStep(
     nsCOMPtr<mozIStorageStatement>&& aStatement) {
   QM_TRY_INSPECT(const bool& hasResult,
-                 MOZ_TO_RESULT_INVOKE(aStatement, ExecuteStep));
+                 MOZ_TO_RESULT_INVOKE_MEMBER(aStatement, ExecuteStep));
 
   if constexpr (ResultHandling == SingleStepResult::AssertHasResult) {
     MOZ_ASSERT(hasResult);
@@ -225,7 +245,7 @@ template <SingleStepResult ResultHandling>
 Result<SingleStepSuccessType<ResultHandling>, nsresult>
 CreateAndExecuteSingleStepStatement(mozIStorageConnection& aConnection,
                                     const nsACString& aStatementString) {
-  QM_TRY_UNWRAP(auto stmt, MOZ_TO_RESULT_INVOKE_TYPED(
+  QM_TRY_UNWRAP(auto stmt, MOZ_TO_RESULT_INVOKE_MEMBER_TYPED(
                                nsCOMPtr<mozIStorageStatement>, aConnection,
                                CreateStatement, aStatementString));
 
@@ -354,14 +374,15 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
     return;
   }
 
-  nsAutoCString context;
+  const Tainted<nsCString>* contextTaintedPtr = nullptr;
 
 #  ifdef QM_SCOPED_LOG_EXTRA_INFO_ENABLED
   const auto& extraInfoMap = ScopedLogExtraInfo::GetExtraInfoMap();
 
-  if (const auto contextIt = extraInfoMap.find(ScopedLogExtraInfo::kTagContext);
+  if (const auto contextIt =
+          extraInfoMap.find(ScopedLogExtraInfo::kTagContextTainted);
       contextIt != extraInfoMap.cend()) {
-    context = *contextIt->second;
+    contextTaintedPtr = contextIt->second;
   }
 #  endif
 
@@ -371,8 +392,8 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
         return "ERROR"_ns;
       case Severity::Warning:
         return "WARNING"_ns;
-      case Severity::Note:
-        return "NOTE"_ns;
+      case Severity::Info:
+        return "INFO"_ns;
       case Severity::Verbose:
         return "VERBOSE"_ns;
     }
@@ -424,36 +445,45 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
   }
 #  endif
 
-  nsAutoCString extraInfosString;
+  auto extraInfosStringTainted = Tainted<nsAutoCString>([&] {
+    nsAutoCString extraInfosString;
 
-  if (!rvCode.IsEmpty()) {
-    extraInfosString.Append(" failed with resultCode "_ns + rvCode);
-  }
+    if (!rvCode.IsEmpty()) {
+      extraInfosString.Append(" failed with resultCode "_ns + rvCode);
+    }
 
-  if (!rvName.IsEmpty()) {
-    extraInfosString.Append(", resultName "_ns + rvName);
-  }
+    if (!rvName.IsEmpty()) {
+      extraInfosString.Append(", resultName "_ns + rvName);
+    }
 
 #  ifdef QM_ERROR_STACKS_ENABLED
-  if (!frameIdString.IsEmpty()) {
-    extraInfosString.Append(", frameId "_ns + frameIdString);
-  }
+    if (!frameIdString.IsEmpty()) {
+      extraInfosString.Append(", frameId "_ns + frameIdString);
+    }
 
-  if (!stackIdString.IsEmpty()) {
-    extraInfosString.Append(", stackId "_ns + stackIdString);
-  }
+    if (!stackIdString.IsEmpty()) {
+      extraInfosString.Append(", stackId "_ns + stackIdString);
+    }
 
-  if (!processIdString.IsEmpty()) {
-    extraInfosString.Append(", processId "_ns + processIdString);
-  }
+    if (!processIdString.IsEmpty()) {
+      extraInfosString.Append(", processId "_ns + processIdString);
+    }
 #  endif
 
 #  ifdef QM_SCOPED_LOG_EXTRA_INFO_ENABLED
-  for (const auto& item : extraInfoMap) {
-    extraInfosString.Append(", "_ns + nsDependentCString(item.first) + " "_ns +
-                            *item.second);
-  }
+    for (const auto& item : extraInfoMap) {
+      const auto& valueTainted = *item.second;
+
+      extraInfosString.Append(
+          ", "_ns + nsDependentCString(item.first) + " "_ns +
+          MOZ_NO_VALIDATE(valueTainted,
+                          "It's okay to append any `extraInfoMap` value to "
+                          "`extraInfosString`."));
+    }
 #  endif
+
+    return extraInfosString;
+  }());
 
   const auto sourceFileRelativePath =
       detail::MakeSourceFileRelativePath(aSourceFilePath);
@@ -462,9 +492,14 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
   NS_DebugBreak(
       NS_DEBUG_WARNING,
       nsAutoCString("QM_TRY failure ("_ns + severityString + ")"_ns).get(),
-      (extraInfosString.IsEmpty() ? nsPromiseFlatCString(aExpr)
-                                  : static_cast<const nsCString&>(nsAutoCString(
-                                        aExpr + extraInfosString)))
+      (MOZ_NO_VALIDATE(extraInfosStringTainted,
+                       "It's okay to check if `extraInfosString` is empty.")
+               .IsEmpty()
+           ? nsPromiseFlatCString(aExpr)
+           : static_cast<const nsCString&>(nsAutoCString(
+                 aExpr + MOZ_NO_VALIDATE(extraInfosStringTainted,
+                                         "It's okay to log `extraInfosString` "
+                                         "to stdout/console."))))
           .get(),
       nsPromiseFlatCString(sourceFileRelativePath).get(), aSourceFileLine);
 #  endif
@@ -476,13 +511,16 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
   // reporting (instead of the browsing console).
   // Another option is to keep the current check and rely on MOZ_LOG reporting
   // in future once that's available.
-  if (!context.IsEmpty()) {
+  if (contextTaintedPtr) {
     nsCOMPtr<nsIConsoleService> console =
         do_GetService(NS_CONSOLESERVICE_CONTRACTID);
     if (console) {
       NS_ConvertUTF8toUTF16 message(
           "QM_TRY failure ("_ns + severityString + ")"_ns + ": '"_ns + aExpr +
-          extraInfosString + "', file "_ns + sourceFileRelativePath + ":"_ns +
+          MOZ_NO_VALIDATE(
+              extraInfosStringTainted,
+              "It's okay to log `extraInfosString` to the browser console.") +
+          "', file "_ns + sourceFileRelativePath + ":"_ns +
           IntToCString(aSourceFileLine));
 
       // The concatenation above results in a message like:
@@ -497,14 +535,34 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
 #  endif
 
 #  ifdef QM_LOG_ERROR_TO_TELEMETRY_ENABLED
-  if (!context.IsEmpty()) {
+  // The context tag is special because it's used to enable logging to
+  // telemetry (besides carrying information). Other tags (like query) don't
+  // enable logging to telemetry.
+
+  if (contextTaintedPtr) {
+    const auto& contextTainted = *contextTaintedPtr;
+
+    // Do NOT CHANGE this if you don't know what you're doing.
+
+    // `extraInfoString` is not included in the telemetry event on purpose
+    // since it can contain sensitive information.
+
     // For now, we don't include aExpr in the telemetry event. It might help to
     // match locations across versions, but they might be large.
+
+    // New extra entries (with potentially sensitive content) can't be easily
+    // (accidentally) added because they would have to be added to Events.yaml
+    // under "dom.quota.try" which would require a data review.
+
     auto extra = Some([&] {
       auto res = CopyableTArray<EventExtraEntry>{};
       res.SetCapacity(9);
 
-      res.AppendElement(EventExtraEntry{"context"_ns, nsCString{context}});
+      res.AppendElement(EventExtraEntry{
+          "context"_ns,
+          MOZ_NO_VALIDATE(
+              contextTainted,
+              "Context has been data-reviewed for telemetry transmission.")});
 
 #    ifdef QM_ERROR_STACKS_ENABLED
       if (!frameIdString.IsEmpty()) {
@@ -522,16 +580,28 @@ void LogError(const nsACString& aExpr, const Maybe<nsresult> aMaybeRv,
         res.AppendElement(EventExtraEntry{"result"_ns, nsCString{rvName}});
       }
 
-      // The sequence number is currently per-process, and we don't record the
-      // thread id. This is ok as long as we only record during storage
-      // initialization, and that happens (mostly) from a single thread. It's
-      // safe even if errors from multiple threads are interleaved, but the data
-      // will be hard to analyze then. In that case, we should record a pair of
-      // thread id and thread-local sequence number.
-      static Atomic<int32_t> sSequenceNumber{0};
+      // Here, we are generating thread local sequence number and thread Id
+      // information which could be useful for summarizing and categorizing
+      // log statistics in QM_TRY stack propagation scripts. Since, this is
+      // a thread local object, we do not need to worry about data races.
+      static MOZ_THREAD_LOCAL(uint32_t) sSequenceNumber;
+
+      // This would be initialized once, all subsequent calls would be a no-op.
+      MOZ_ALWAYS_TRUE(sSequenceNumber.init());
+
+      // sequence number should always starts at number 1.
+      // `sSequenceNumber` gets initialized to 0; so we have to increment here.
+      const auto newSeqNum = sSequenceNumber.get() + 1;
+      const auto threadId =
+          mozilla::baseprofiler::profiler_current_thread_id().ToNumber();
+
+      const auto threadIdAndSequence =
+          (static_cast<uint64_t>(threadId) << 32) | (newSeqNum & 0xFFFFFFFF);
 
       res.AppendElement(
-          EventExtraEntry{"seq"_ns, IntToCString(++sSequenceNumber)});
+          EventExtraEntry{"seq"_ns, IntToCString(threadIdAndSequence)});
+
+      sSequenceNumber.set(newSeqNum);
 
       res.AppendElement(EventExtraEntry{"severity"_ns, severityString});
 
@@ -603,4 +673,5 @@ Result<bool, nsresult> WarnIfFileIsUnknown(nsIFile& aFile,
 }
 #endif
 
-}  // namespace mozilla::dom::quota
+}  // namespace dom::quota
+}  // namespace mozilla

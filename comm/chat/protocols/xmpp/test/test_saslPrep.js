@@ -1,12 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var xmppAuth = {};
-Services.scriptloader.loadSubScript(
-  "resource:///modules/xmpp-authmechs.jsm",
-  xmppAuth
+var { saslPrep } = ChromeUtils.importESModule(
+  "resource:///modules/xmpp-authmechs.sys.mjs"
 );
 
 // RFC 4013 3.Examples
@@ -56,9 +52,9 @@ var TEST_DATA = [
 ];
 
 function run_test() {
-  for (let current of TEST_DATA) {
+  for (const current of TEST_DATA) {
     try {
-      let result = xmppAuth.saslPrep(current.input);
+      const result = saslPrep(current.input);
       equal(current.isError, false);
       equal(result, current.output);
     } catch (e) {

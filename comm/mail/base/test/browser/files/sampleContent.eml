@@ -4,7 +4,7 @@ Content-Type: multipart/related;
 Subject: Big Meeting Today
 From: "Andy Anway" <andy@anway.invalid>
 To: "Bob Bell" <bob@bell.invalid>
-Message-Id: <0@made.up.invalid>
+Message-Id: <sample.content@made.up.invalid>
 Date: Tue, 01 Feb 2000 00:00:00 +1300
 
 This is a multi-part message in MIME format.
@@ -12,13 +12,21 @@ This is a multi-part message in MIME format.
 Content-Type: text/html; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-<p>This is a page of sample content for tests.</p>
-<p><a href="https://www.thunderbird.net/">Link to a web page</a></p>
-<form>
-  <input type="text" />
-</form>
-<p><img src="cid:logo" width="304" height="84" /></p>
-
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="icon" href="http://mochi.test:8888/browser/comm/mail/base/test/browser/files/tb-logo.png" />
+  </head>
+  <body>
+    <p>This is a page of sample content for tests.</p>
+    <p><a href="https://example.com/">Link to a web page</a></p>
+    <p><a href="mailto:kate@kurtz.invalid">Link to an email address</a></p>
+    <form>
+      <input type="text" />
+    </form>
+    <p><img src="cid:logo" width="304" height="84" /></p>
+  </body>
+</html>
 
 ----------------CHOPCHOP0
 Content-Type: image/png; charset=ISO-8859-1; format=flowed;

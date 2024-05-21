@@ -10,7 +10,7 @@ const URL1 = `https://example.com/${PATH}`;
 const URL2 = `https://example.org/${PATH}`;
 
 function listenForCrash(win) {
-  function listener(event) {
+  function listener() {
     ok(false, "a crash occurred");
   }
 
@@ -20,7 +20,7 @@ function listenForCrash(win) {
   });
 }
 
-add_task(async function() {
+add_task(async function () {
   let win = await BrowserTestUtils.openNewBrowserWindow({
     fission: true,
     private: true,
@@ -33,7 +33,7 @@ add_task(async function() {
     let tab = win.gBrowser.selectedTab;
     let browser = tab.linkedBrowser;
 
-    BrowserTestUtils.loadURI(browser, URL1);
+    BrowserTestUtils.startLoadingURIString(browser, URL1);
     await BrowserTestUtils.browserLoaded(browser, false, URL1);
 
     async function loadURL(url) {

@@ -6,10 +6,13 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-  const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+  const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
-  let formatter = new Services.intl.DateTimeFormat(undefined, { timeStyle: "short" });
+  // Leave these first arguments as `undefined`, to use the OS style if
+  // intl.regional_prefs.use_os_locales is true or the app language matches the OS language.
+  // Otherwise, the app language is used.
+  const dateFormatter = new Services.intl.DateTimeFormat(undefined, { dateStyle: "short" });
+  const timeFormatter = new Services.intl.DateTimeFormat(undefined, { timeStyle: "short" });
 
   let probeSucceeded;
   let alphaMonths;
@@ -223,7 +226,7 @@
    * Typically it represents the popup content that let's the user select a time, in a
    * <timepicker> widget.
    *
-   * @extends MozXULElement
+   * @augments MozXULElement
    */
   class MozTimepickerGrids extends MozXULElement {
     constructor() {
@@ -408,13 +411,13 @@
     /**
      * Sets new mSelectedTime.
      *
-     * @param {String|Array} val        new mSelectedTime value
+     * @param {string | Array} val        new mSelectedTime value
      */
     set value(val) {
       if (typeof val == "string") {
         val = parseTime(val);
       } else if (Array.isArray(val)) {
-        let [hours, minutes] = val;
+        const [hours, minutes] = val;
         val = new Date();
         val.setHours(hours);
         val.setMinutes(minutes);
@@ -423,7 +426,7 @@
     }
 
     /**
-     * @returns {Array}     An array containing mSelectedTime hours and mSelectedTime minutes
+     * @returns {Array} An array containing mSelectedTime hours and mSelectedTime minutes
      */
     get value() {
       return [this.mSelectedTime.getHours(), this.mSelectedTime.getMinutes()];
@@ -434,13 +437,13 @@
      */
     onPopupShowing() {
       // select the hour item
-      let hours24 = this.mSelectedTime.getHours();
-      let hourItem = this.querySelector(`.time-picker-hour-box-class[value="${hours24}"]`);
+      const hours24 = this.mSelectedTime.getHours();
+      const hourItem = this.querySelector(`.time-picker-hour-box-class[value="${hours24}"]`);
       this.selectHourItem(hourItem);
 
       // Show the five minute view if we are an even five minutes,
       // otherwise one minute view
-      let minutesByFive = this.calcNearestFiveMinutes(this.mSelectedTime);
+      const minutesByFive = this.calcNearestFiveMinutes(this.mSelectedTime);
 
       if (minutesByFive == this.mSelectedTime.getMinutes()) {
         this.clickLess();
@@ -457,8 +460,8 @@
       this.switchMinuteView(this.kMINUTE_VIEW_ONE);
 
       // select minute box corresponding to the time
-      let minutes = this.mSelectedTime.getMinutes();
-      let oneMinuteItem = this.querySelector(`.time-picker-one-minute-class[value="${minutes}"]`);
+      const minutes = this.mSelectedTime.getMinutes();
+      const oneMinuteItem = this.querySelector(`.time-picker-one-minute-class[value="${minutes}"]`);
       this.selectMinuteItem(oneMinuteItem);
     }
 
@@ -474,8 +477,8 @@
       // BUT leave the selected time at what may NOT be an even five minutes
       // So that If they click more again the proper non-even-five minute
       // box will be selected
-      let minutesByFive = this.calcNearestFiveMinutes(this.mSelectedTime);
-      let fiveMinuteItem = this.querySelector(
+      const minutesByFive = this.calcNearestFiveMinutes(this.mSelectedTime);
+      const fiveMinuteItem = this.querySelector(
         `.time-picker-five-minute-class[value="${minutesByFive}"]`
       );
       this.selectMinuteItem(fiveMinuteItem);
@@ -484,8 +487,8 @@
     /**
      * Selects the hour item which was clicked.
      *
-     * @param {Node} hourItem           Hour item which was clicked
-     * @param {Number} hourNumber       Hour value of the clicked hour item
+     * @param {Node} hourItem - Hour item which was clicked
+     * @param {number} hourNumber - Hour value of the clicked hour item
      */
     clickHour(hourItem, hourNumber) {
       // select the item
@@ -501,8 +504,8 @@
      * Called when one of the hour boxes is double clicked.
      * Sets the time to the selected hour, on the hour, and closes the popup.
      *
-     * @param {Node} hourItem           Hour item which was clicked
-     * @param {Number} hourNumber       Hour value of the clicked hour item
+     * @param {Node} hourItem - Hour item which was clicked
+     * @param {number} hourNumber - Hour value of the clicked hour item
      */
     doubleClickHour(hourItem, hourNumber) {
       // set the minutes to :00
@@ -515,8 +518,8 @@
      * Changes selectedTime's minute, calls the client's onchange and closes
      * the popup.
      *
-     * @param {Node} minuteItem         Minute item which was clicked
-     * @param {Number} minuteNumber     Minute value of the clicked minute item
+     * @param {Node} minuteItem - Minute item which was clicked
+     * @param {number} minuteNumber - Minute value of the clicked minute item
      */
     clickMinute(minuteItem, minuteNumber) {
       // set the minutes in the selected time
@@ -530,11 +533,11 @@
     /**
      * Helper function to switch between "one" and "five" minute views.
      *
-     * @param {Number} view      Number representing minute view
+     * @param {number} view - Number representing minute view
      */
     switchMinuteView(view) {
-      let fiveMinuteBox = this.querySelector(".time-picker-five-minute-grid-box");
-      let oneMinuteBox = this.querySelector(".time-picker-one-minute-grid-box");
+      const fiveMinuteBox = this.querySelector(".time-picker-five-minute-grid-box");
+      const oneMinuteBox = this.querySelector(".time-picker-one-minute-grid-box");
 
       if (view == this.kMINUTE_VIEW_ONE) {
         fiveMinuteBox.setAttribute("hidden", true);
@@ -548,7 +551,7 @@
     /**
      * Selects an hour item.
      *
-     * @param {Node} hourItem      Hour item node to be selected
+     * @param {Node} hourItem - Hour item node to be selected
      */
     selectHourItem(hourItem) {
       // clear old selection, if there is one
@@ -564,7 +567,7 @@
     /**
      * Selects a minute item.
      *
-     * @param {Node} minuteItem        Minute item node to be selected
+     * @param {Node} minuteItem - Minute item node to be selected
      */
     selectMinuteItem(minuteItem) {
       // clear old selection, if there is one
@@ -581,7 +584,7 @@
      * Moves minute by the number passed and handle rollover cases where the minutes gets
      * greater than 59 or less than 60.
      *
-     * @param {Number} number       Moves minute by the number 'number'
+     * @param {number} number - Moves minute by the number 'number'
      */
     moveMinutes(number) {
       if (!this.mSelectedTime) {
@@ -592,7 +595,7 @@
 
       // Everything above assumes that we are showing the one-minute-grid,
       // If not, we need to do these corrections;
-      let fiveMinuteBox = this.querySelector(".time-picker-five-minute-grid-box");
+      const fiveMinuteBox = this.querySelector(".time-picker-five-minute-grid-box");
 
       if (!fiveMinuteBox.hidden) {
         number *= 5;
@@ -615,8 +618,8 @@
 
       this.mSelectedTime.setMinutes(newMinutes);
 
-      let minuteItemId = `${idPrefix}[value="${this.mSelectedTime.getMinutes()}"]`;
-      let minuteItem = this.querySelector(minuteItemId);
+      const minuteItemId = `${idPrefix}[value="${this.mSelectedTime.getMinutes()}"]`;
+      const minuteItem = this.querySelector(minuteItemId);
 
       this.selectMinuteItem(minuteItem);
       this.mPicker.kTextBox.value = this.mPicker.formatTime(this.mSelectedTime);
@@ -627,7 +630,7 @@
      * Moves hours by the number passed and handle rollover cases where the hours gets greater
      * than 23 or less than 0.
      *
-     * @param {Number} number       Moves hours by the number 'number'
+     * @param {number} number - Moves hours by the number 'number'
      */
     moveHours(number) {
       if (!this.mSelectedTime) {
@@ -646,8 +649,8 @@
 
       this.mSelectedTime.setHours(newHours);
 
-      let hourItemId = `.time-picker-hour-box-class[value="${this.mSelectedTime.getHours()}"]`;
-      let hourItem = this.querySelector(hourItemId);
+      const hourItemId = `.time-picker-hour-box-class[value="${this.mSelectedTime.getHours()}"]`;
+      const hourItem = this.querySelector(hourItemId);
 
       this.selectHourItem(hourItem);
       this.mPicker.kTextBox.value = this.mPicker.formatTime(this.mSelectedTime);
@@ -657,10 +660,10 @@
     /**
      * Calculates the nearest even five minutes.
      *
-     * @param {calDateTime} time     Time near to which nearest five minutes have to be found
+     * @param {calDateTime} time - Time near to which nearest five minutes have to be found
      */
     calcNearestFiveMinutes(time) {
-      let minutes = time.getMinutes();
+      const minutes = time.getMinutes();
       let minutesByFive = Math.round(minutes / 5) * 5;
 
       if (minutesByFive > 59) {
@@ -672,18 +675,18 @@
     /**
      * Changes to 12 hours format by showing am/pm label.
      *
-     * @param {String} amLabel     amLabelBox value
-     * @param {String} pmLabel     pmLabelBox value
+     * @param {string} amLabel - amLabelBox value
+     * @param {string} pmLabel - pmLabelBox value
      */
     changeTo12HoursFormat(amLabel, pmLabel) {
       if (!this.firstElementChild) {
         this.appendChild(document.importNode(this.content, true));
       }
 
-      let amLabelBox = this.querySelector(".amLabelBox");
+      const amLabelBox = this.querySelector(".amLabelBox");
       amLabelBox.removeAttribute("hidden");
       amLabelBox.firstElementChild.setAttribute("value", amLabel);
-      let pmLabelBox = this.querySelector(".pmLabelBox");
+      const pmLabelBox = this.querySelector(".pmLabelBox");
       pmLabelBox.removeAttribute("hidden");
       pmLabelBox.firstElementChild.setAttribute("value", pmLabel);
       this.querySelector(".time-picker-hour-box-class[value='0']").setAttribute("label", "12");
@@ -749,7 +752,7 @@
       this._menulist.addEventListener("change", event => {
         event.stopPropagation();
 
-        let value = parseDateTime(this._inputBoxValue);
+        const value = parseDateTime(this._inputBoxValue);
         if (!value) {
           this._inputBoxValue = this._minimonthValue;
           return;
@@ -795,7 +798,7 @@
       // Accessibility information of these nodes will be
       // presented on XULComboboxAccessible generated from <menulist>;
       // hide these nodes from the accessibility tree.
-      let frag = document.importNode(
+      const frag = document.importNode(
         MozXULElement.parseXULToFragment(`
           <menulist is="menulist-editable" class="datepicker-menulist" editable="true" sizetopopup="false">
             <menupopup ignorekeys="true" popupanchor="bottomright" popupalign="topright">
@@ -815,7 +818,7 @@
     }
 
     set value(val) {
-      let wasForever = this._valueIsForever;
+      const wasForever = this._valueIsForever;
       if (this.getAttribute("type") == "forever" && val == "forever") {
         this._valueIsForever = true;
         this._inputBoxValue = val;
@@ -827,7 +830,7 @@
         val = parseDateTime(val);
       }
 
-      let existingValue = this._minimonthValue;
+      const existingValue = this._minimonthValue;
       this._valueIsForever = false;
       this._inputBoxValue = this._minimonthValue = val;
 
@@ -901,10 +904,10 @@
         // Find the locale strings for the AM/PM prefix/suffix.
         let amTime = new Date(2000, 0, 1, 6, 12, 34);
         let pmTime = new Date(2000, 0, 1, 18, 12, 34);
-        amTime = formatter.format(amTime);
-        pmTime = formatter.format(pmTime);
-        let amLabel = parseTimeRegExp.exec(amTime)[ampmIndex] || "AM";
-        let pmLabel = parseTimeRegExp.exec(pmTime)[ampmIndex] || "PM";
+        amTime = timeFormatter.format(amTime);
+        pmTime = timeFormatter.format(pmTime);
+        const amLabel = parseTimeRegExp.exec(amTime)[ampmIndex] || "AM";
+        const pmLabel = parseTimeRegExp.exec(pmTime)[ampmIndex] || "PM";
 
         this._grid.changeTo12HoursFormat(amLabel, pmLabel);
       }
@@ -924,7 +927,7 @@
       this._inputField.addEventListener("change", event => {
         event.stopPropagation();
 
-        let value = parseTime(this._inputBoxValue);
+        const value = parseTime(this._inputBoxValue);
         if (!value) {
           this._inputBoxValue = this._gridValue;
           return;
@@ -963,7 +966,7 @@
       // Accessibility information of these nodes will be
       // presented on XULComboboxAccessible generated from <menulist>;
       // hide these nodes from the accessibility tree.
-      let frag = document.importNode(
+      const frag = document.importNode(
         MozXULElement.parseXULToFragment(`
           <menulist is="menulist-editable" class="timepicker-menulist" editable="true" sizetopopup="false">
             <menupopup popupanchor="bottomright" popupalign="topright">
@@ -986,13 +989,13 @@
       if (typeof val == "string") {
         val = parseTime(val);
       } else if (Array.isArray(val)) {
-        let [hours, minutes] = val;
+        const [hours, minutes] = val;
         val = new Date();
         val.setHours(hours);
         val.setMinutes(minutes);
       }
       if (val.getHours() != this._hours || val.getMinutes() != this._minutes) {
-        let settingInitalValue = this._hours === undefined;
+        const settingInitalValue = this._hours === undefined;
 
         this._inputBoxValue = this._gridValue = val;
         [this._hours, this._minutes] = this._gridValue;
@@ -1015,7 +1018,7 @@
       if (typeof val == "string") {
         val = parseTime(val);
       } else if (Array.isArray(val)) {
-        let [hours, minutes] = val;
+        const [hours, minutes] = val;
         val = new Date();
         val.setHours(hours);
         val.setMinutes(minutes);
@@ -1096,8 +1099,8 @@
     }
 
     get value() {
-      let dateValue = this._datepicker.value;
-      let [hours, minutes] = this._timepicker.value;
+      const dateValue = this._datepicker.value;
+      const [hours, minutes] = this._timepicker.value;
       dateValue.setHours(hours);
       dateValue.setMinutes(minutes);
       dateValue.setSeconds(0);
@@ -1142,8 +1145,8 @@
       // Made of digits & nonDigits.  (Nondigits may be unicode letters
       // which do not match \w, esp. in CJK locales.)
       // (.*)? binds to null if no suffix.
-      let parseNumShortDateRegex = /^\D*(\d+)\D+(\d+)\D+(\d+)(.*)?$/;
-      let dateNumbersArray = parseNumShortDateRegex.exec(aValue);
+      const parseNumShortDateRegex = /^\D*(\d+)\D+(\d+)\D+(\d+)(.*)?$/;
+      const dateNumbersArray = parseNumShortDateRegex.exec(aValue);
       if (dateNumbersArray != null) {
         year = Number(dateNumbersArray[yearIndex]);
         month = Number(dateNumbersArray[monthIndex]) - 1; // 0-based
@@ -1160,11 +1163,12 @@
       // regexp derived from the Alphabetic ranges in
       // http://www.unicode.org/Public/UNIDATA/DerivedCoreProperties.txt)
       // (.*)? binds to null if no suffix.
-      let parseAlphShortDateRegex = /^\s*(\d+|[^\d\W]+)\W{0,2}(\d+|[^\d\W]+)\W{0,2}(\d+|[^\d\W]+)(.*)?$/;
-      let datePartsArray = parseAlphShortDateRegex.exec(aValue);
+      const parseAlphShortDateRegex =
+        /^\s*(\d+|[^\d\W]+)\W{0,2}(\d+|[^\d\W]+)\W{0,2}(\d+|[^\d\W]+)(.*)?$/;
+      const datePartsArray = parseAlphShortDateRegex.exec(aValue);
       if (datePartsArray != null) {
         year = Number(datePartsArray[yearIndex]);
-        let monthString = datePartsArray[monthIndex].toUpperCase();
+        const monthString = datePartsArray[monthIndex].toUpperCase();
         for (let monthIdx = 0; monthIdx < alphaMonths.length; monthIdx++) {
           if (monthString == alphaMonths[monthIdx]) {
             month = monthIdx;
@@ -1182,8 +1186,8 @@
         //   parse year as up to 30 years in future or 69 years in past.
         //   (Covers 30-year mortgage and most working people's birthdate.)
         // otherwise will be treated as four digit year.
-        let currentYear = new Date().getFullYear();
-        let currentCentury = currentYear - (currentYear % 100);
+        const currentYear = new Date().getFullYear();
+        const currentCentury = currentYear - (currentYear % 100);
         year = currentCentury + year;
         if (year < currentYear - 69) {
           year += 100;
@@ -1197,7 +1201,7 @@
       let minutes = 0;
       let seconds = 0;
       if (timeString != null) {
-        let time = parseTime(timeString);
+        const time = parseTime(timeString);
         if (time != null) {
           hours = time.getHours();
           minutes = time.getMinutes();
@@ -1225,20 +1229,20 @@
    * noon before/after     "\u5348\u524d02:34"    "\u5348\u5f8c 02 34"
    */
   function parseTime(aValue) {
-    let now = new Date();
+    const now = new Date();
 
-    let noon = cal.l10n.getDateFmtString("noon");
+    const noon = cal.l10n.getDateFmtString("noon");
     if (aValue.toLowerCase() == noon.toLowerCase()) {
       return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
     }
 
-    let midnight = cal.l10n.getDateFmtString("midnight");
+    const midnight = cal.l10n.getDateFmtString("midnight");
     if (aValue.toLowerCase() == midnight.toLowerCase()) {
       return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     }
 
     let time = null;
-    let timePartsArray = parseTimeRegExp.exec(aValue);
+    const timePartsArray = parseTimeRegExp.exec(aValue);
     const PRE_INDEX = 1,
       HR_INDEX = 2,
       MIN_INDEX = 4,
@@ -1246,20 +1250,20 @@
       POST_INDEX = 8;
 
     if (timePartsArray != null) {
-      let hoursString = timePartsArray[HR_INDEX];
+      const hoursString = timePartsArray[HR_INDEX];
       let hours = Number(hoursString);
       if (!(hours >= 0 && hours < 24)) {
         return null;
       }
 
-      let minutesString = timePartsArray[MIN_INDEX];
-      let minutes = minutesString == null ? 0 : Number(minutesString);
+      const minutesString = timePartsArray[MIN_INDEX];
+      const minutes = minutesString == null ? 0 : Number(minutesString);
       if (!(minutes >= 0 && minutes < 60)) {
         return null;
       }
 
-      let secondsString = timePartsArray[SEC_INDEX];
-      let seconds = secondsString == null ? 0 : Number(secondsString);
+      const secondsString = timePartsArray[SEC_INDEX];
+      const seconds = secondsString == null ? 0 : Number(secondsString);
       if (!(seconds >= 0 && seconds < 60)) {
         return null;
       }
@@ -1268,7 +1272,7 @@
       if (timePartsArray[PRE_INDEX] || timePartsArray[POST_INDEX]) {
         if (ampmIndex && timePartsArray[ampmIndex]) {
           // try current format order first
-          let ampmString = timePartsArray[ampmIndex];
+          const ampmString = timePartsArray[ampmIndex];
           if (amRegExp.test(ampmString)) {
             ampmCode = "AM";
           } else if (pmRegExp.test(ampmString)) {
@@ -1278,8 +1282,8 @@
         if (ampmCode == null) {
           // not yet found
           // try any format order
-          let preString = timePartsArray[PRE_INDEX];
-          let postString = timePartsArray[POST_INDEX];
+          const preString = timePartsArray[PRE_INDEX];
+          const postString = timePartsArray[POST_INDEX];
           if (
             (preString && amRegExp.test(preString)) ||
             (postString && amRegExp.test(postString))
@@ -1322,7 +1326,7 @@
     // Make sure to use UTC date and timezone here to avoid the pattern
     // detection to fail if the probe date output would have an timezone
     // offset due to our lack of support of historic timezone definitions.
-    let probeDate = new Date(Date.UTC(2002, 3, 6)); // month is 0-based
+    const probeDate = new Date(Date.UTC(2002, 3, 6)); // month is 0-based
     let probeString = formatDate(probeDate, cal.dtz.UTC);
     let probeArray = parseShortDateRegex.exec(probeString);
     if (probeArray) {
@@ -1413,24 +1417,24 @@
     // Digits         HR           sep          MIN         sep          SEC         sep
     //   Index:       2            3            4           5            6           7
     // prettier-ignore
-    let digitsExpr = "(\\d?\\d)\\s?(\\D)?\\s?(?:(\\d\\d)\\s?(\\D)?\\s?(?:(\\d\\d)\\s?(\\D)?\\s?)?)?";
+    const digitsExpr = "(\\d?\\d)\\s?(\\D)?\\s?(?:(\\d\\d)\\s?(\\D)?\\s?(?:(\\d\\d)\\s?(\\D)?\\s?)?)?";
     // digitsExpr has 6 captures, so index of first ampmExpr is 1, of last is 8.
-    let probeTimeRegExp = new RegExp("^\\s*(\\D*)\\s?" + digitsExpr + "\\s?(\\D*)\\s*$");
+    const probeTimeRegExp = new RegExp("^\\s*(\\D*)\\s?" + digitsExpr + "\\s?(\\D*)\\s*$");
     const PRE_INDEX = 1,
       HR_INDEX = 2,
       // eslint-disable-next-line no-unused-vars
       MIN_INDEX = 4,
       SEC_INDEX = 6,
       POST_INDEX = 8;
-    let amProbeTime = new Date(2000, 0, 1, 6, 12, 34);
-    let pmProbeTime = new Date(2000, 0, 1, 18, 12, 34);
-    let amProbeString = formatter.format(amProbeTime);
-    let pmProbeString = formatter.format(pmProbeTime);
+    const amProbeTime = new Date(2000, 0, 1, 6, 12, 34);
+    const pmProbeTime = new Date(2000, 0, 1, 18, 12, 34);
+    const amProbeString = timeFormatter.format(amProbeTime);
+    const pmProbeString = timeFormatter.format(pmProbeTime);
     let amFormatExpr = null,
       pmFormatExpr = null;
     if (amProbeString != pmProbeString) {
-      let amProbeArray = probeTimeRegExp.exec(amProbeString);
-      let pmProbeArray = probeTimeRegExp.exec(pmProbeString);
+      const amProbeArray = probeTimeRegExp.exec(amProbeString);
+      const pmProbeArray = probeTimeRegExp.exec(pmProbeString);
       if (amProbeArray != null && pmProbeArray != null) {
         if (
           amProbeArray[PRE_INDEX] &&
@@ -1444,8 +1448,8 @@
             // captured by the optional separator pattern after seconds digits,
             // or after minutes if no seconds, or after hours if no minutes.
             for (let k = SEC_INDEX; k >= HR_INDEX; k -= 2) {
-              let nextSepI = k + 1;
-              let nextDigitsI = k + 2;
+              const nextSepI = k + 1;
+              const nextDigitsI = k + 2;
               if (
                 (k == SEC_INDEX || (!amProbeArray[nextDigitsI] && !pmProbeArray[nextDigitsI])) &&
                 amProbeArray[nextSepI] &&
@@ -1463,14 +1467,14 @@
           }
         }
         if (ampmIndex) {
-          let makeFormatRegExp = function(string) {
+          const makeFormatRegExp = function (string) {
             // make expr to accept either as provided, lowercased, or uppercased
             let regExp = string.replace(/(\W)/g, "[$1]"); // escape punctuation
-            let lowercased = string.toLowerCase();
+            const lowercased = string.toLowerCase();
             if (string != lowercased) {
               regExp += "|" + lowercased;
             }
-            let uppercased = string.toUpperCase();
+            const uppercased = string.toUpperCase();
             if (string != uppercased) {
               regExp += "|" + uppercased;
             }
@@ -1490,7 +1494,7 @@
       amExpr = amFormatExpr + "|" + amExpr;
       pmExpr = pmFormatExpr + "|" + pmExpr;
     }
-    let ampmExpr = amExpr + "|" + pmExpr;
+    const ampmExpr = amExpr + "|" + pmExpr;
     // Must build am/pm formats into parse time regexp so that it can
     // match them without mistaking the initial char for an optional divider.
     // (For example, want to be able to parse both "12:34pm" and
@@ -1510,11 +1514,16 @@
   function formatDate(aDate, aTimezone) {
     // Usually, floating is ok here, so no need to pass aTimezone - we just need to pass
     // it in if we need to make sure formatting happens without a timezone conversion.
-    let timezone = aTimezone || cal.dtz.floating;
-    return cal.dtz.formatter.formatDateShort(cal.dtz.jsDateToDateTime(aDate, timezone));
+    const formatter = aTimezone
+      ? new Services.intl.DateTimeFormat(undefined, {
+          dateStyle: "short",
+          timeZone: aTimezone.tzid,
+        })
+      : dateFormatter;
+    return formatter.format(aDate);
   }
 
   function formatTime(aValue) {
-    return formatter.format(aValue);
+    return timeFormatter.format(aValue);
   }
 }

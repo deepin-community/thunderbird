@@ -3,15 +3,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import argparse
 import difflib
 import hashlib
 import logging
 import os
 import sys
-
 
 """ Define the transformations needed to make source + update == target
 
@@ -32,7 +29,6 @@ TRANSFORMS = [
         # this can be removed once each channel has a watershed above 59.0b2 (from bug 1431342)
         "files": [
             "defaults/pref/channel-prefs.js",
-            "Contents/Resources/defaults/pref/channel-prefs.js",
         ],
         "channel_prefix": ["aurora", "beta", "release", "esr"],
         "side": "source",
@@ -42,7 +38,6 @@ TRANSFORMS = [
         # updates from a beta to an RC build, the latter specifies the release channel
         "files": [
             "defaults/pref/channel-prefs.js",
-            "Contents/Resources/defaults/pref/channel-prefs.js",
         ],
         "channel_prefix": ["beta"],
         "side": "target",
@@ -55,7 +50,6 @@ TRANSFORMS = [
         # updates from an RC to a beta build
         "files": [
             "defaults/pref/channel-prefs.js",
-            "Contents/Resources/defaults/pref/channel-prefs.js",
         ],
         "channel_prefix": ["beta"],
         "side": "source",
@@ -72,7 +66,6 @@ TRANSFORMS = [
         # to break before applying this transform.
         "files": [
             "defaults/pref/channel-prefs.js",
-            "Contents/Resources/defaults/pref/channel-prefs.js",
         ],
         "channel_prefix": ["aurora", "beta", "release", "esr"],
         "side": "target",
@@ -83,7 +76,7 @@ TRANSFORMS = [
         # updates from a beta to an RC build, the latter specifies the release channel
         # on mac, we actually have both files. The second location is the real
         # one but we copy to the first to run the linux64 updater
-        "files": ["update-settings.ini", "Contents/Resources/update-settings.ini"],
+        "files": ["update-settings.ini"],
         "channel_prefix": ["beta"],
         "side": "target",
         "substitution": [
@@ -91,19 +84,19 @@ TRANSFORMS = [
             "ACCEPTED_MAR_CHANNEL_IDS=firefox-mozilla-beta,firefox-mozilla-release\n",
         ],
     },
-    {
-        # updates from an RC to a beta build
-        # on mac, we only need to modify the legit file this time. unpack_build
-        # handles the copy for the updater in both source and target
-        "files": ["Contents/Resources/update-settings.ini"],
-        "channel_prefix": ["beta"],
-        "side": "source",
-        "substitution": [
-            "ACCEPTED_MAR_CHANNEL_IDS=firefox-mozilla-release\n",
-            "ACCEPTED_MAR_CHANNEL_IDS=firefox-mozilla-beta,firefox-mozilla-release\n",
-        ],
-    },
 ]
+
+# Files that are expected to be different, but cannot be transformed to get a useful diff.
+# This should generally only be used for files that have unpredictable contents, eg:
+# things that are signed but not updated.
+IGNORE_FILES = (
+    "Contents/MacOS/updater.app/Contents/Frameworks/UpdateSettings.framework/Resources/Info.plist",
+    "Contents/MacOS/updater.app/Contents/Frameworks/UpdateSettings.framework/_CodeSignature/CodeResources",
+    "Contents/MacOS/updater.app/Contents/Frameworks/UpdateSettings.framework/UpdateSettings",
+    "Contents/Frameworks/ChannelPrefs.framework/Resources/Info.plist",
+    "Contents/Frameworks/ChannelPrefs.framework/_CodeSignature/CodeResources",
+    "Contents/Frameworks/ChannelPrefs.framework/ChannelPrefs",
+)
 
 
 def walk_dir(path):
@@ -121,17 +114,29 @@ def walk_dir(path):
     return all_dirs, all_files
 
 
-def compare_listings(source_list, target_list, label, source_dir, target_dir):
+def compare_listings(
+    source_list, target_list, label, source_dir, target_dir, ignore_missing=None
+):
     obj1 = set(source_list)
     obj2 = set(target_list)
     difference_found = False
+    ignore_missing = ignore_missing or ()
+
+    if ignore_missing:
+        logging.warning("ignoring paths: {}".format(ignore_missing))
 
     left_diff = obj1 - obj2
     if left_diff:
-        logging.error("{} only in {}:".format(label, source_dir))
+        if left_diff - set(ignore_missing):
+            _log = logging.error
+            difference_found = True
+        else:
+            _log = logging.warning
+            _log("Ignoring missing files due to ignore_missing")
+
+        _log("{} only in {}:".format(label, source_dir))
         for d in sorted(left_diff):
-            logging.error("  {}".format(d))
-        difference_found = True
+            _log("  {}".format(d))
 
     right_diff = obj2 - obj1
     if right_diff:
@@ -161,6 +166,14 @@ def compare_common_files(files, channel, source_dir, target_dir):
             source_file
         ) != hash_file(target_file):
             logging.info("Difference found in {}".format(filename))
+            if filename in IGNORE_FILES:
+                logging.info(
+                    "Ignoring difference in {} because it is listed in IGNORE_FILES".format(
+                        filename
+                    )
+                )
+                continue
+
             file_contents = {
                 "source": open(source_file).readlines(),
                 "target": open(target_file).readlines(),
@@ -223,6 +236,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
+    parser.add_argument(
+        "--ignore-missing",
+        action="append",
+        metavar="<path>",
+        help="Ignore absence of <path> in the target",
+    )
 
     args = parser.parse_args()
     level = logging.INFO
@@ -244,7 +263,7 @@ if __name__ == "__main__":
         source_dirs, target_dirs, "Directories", source, target
     )
     file_list_diff = compare_listings(
-        source_files, target_files, "Files", source, target
+        source_files, target_files, "Files", source, target, args.ignore_missing
     )
     file_diff = compare_common_files(
         set(source_files) & set(target_files), args.channel, source, target

@@ -15,6 +15,6 @@ DIRS += [
 ]
 
 CompiledModules(
+    "constants.js",
     "main.js",
-    "vendors.js",
 )

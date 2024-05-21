@@ -1,7 +1,7 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["test.aboutconfig.copy.false", false],
@@ -15,7 +15,7 @@ add_task(async function setup() {
 });
 
 add_task(async function test_copy() {
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     for (let [name, expectedString] of [
       [PREF_BOOLEAN_DEFAULT_TRUE, "true"],
       [PREF_BOOLEAN_USERVALUE_TRUE, "true"],
@@ -33,6 +33,14 @@ add_task(async function test_copy() {
 
       let selectText = async target => {
         let { width, height } = target.getBoundingClientRect();
+
+        // We intentionally turn off this a11y check, because the following
+        // series of mouse events is purposefully targeting a non-interactive
+        // text content. This action does not require the element to have an
+        // interactive accessible to be done by assistive technology with caret
+        // browsing (when/if supported), this rule check shall be ignored by
+        // a11y_checks suite.
+        AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
         EventUtils.synthesizeMouse(
           target,
           1,
@@ -54,6 +62,7 @@ add_task(async function test_copy() {
           { type: "mouseup" },
           this.browser.contentWindow
         );
+        AccessibilityUtils.resetEnv();
       };
 
       // Drag across the name cell.
@@ -91,7 +100,7 @@ add_task(async function test_copy() {
 });
 
 add_task(async function test_copy_multiple() {
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     // Lines are separated by a single LF character on all platforms.
     let expectedString =
       "test.aboutconfig.copy.false\tfalse\t\n" +
@@ -107,6 +116,13 @@ add_task(async function test_copy_multiple() {
     let { width, height } = endRow.valueCell.getBoundingClientRect();
 
     // Drag from the top left of the first row to the bottom right of the last.
+    // We intentionally turn off this a11y check, because the following
+    // series of mouse events is purposefully targeting a non-interactive
+    // text content. This action does not require the element to have an
+    // interactive accessible to be done by assistive technology with caret
+    // browsing (when/if supported), this rule check shall be ignored by
+    // a11y_checks suite.
+    AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
     EventUtils.synthesizeMouse(
       startRow.nameCell,
       1,
@@ -129,6 +145,7 @@ add_task(async function test_copy_multiple() {
       { type: "mouseup" },
       this.browser.contentWindow
     );
+    AccessibilityUtils.resetEnv();
 
     await SimpleTest.promiseClipboardChange(expectedString, async () => {
       await BrowserTestUtils.synthesizeKey(

@@ -8,9 +8,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -18,7 +18,6 @@
 #include "lib/jxl/base/data_parallel.h"
 #include "lib/jxl/base/status.h"
 #include "lib/jxl/image.h"
-#include "lib/jxl/image_ops.h"
 
 namespace jxl {
 
@@ -36,23 +35,15 @@ class Channel {
   jxl::Plane<pixel_type> plane;
   size_t w, h;
   int hshift, vshift;  // w ~= image.w >> hshift;  h ~= image.h >> vshift
-  int hcshift,
-      vcshift;  // cumulative, i.e. when decoding up to this point, we have data
-                // available with these shifts (for this component)
-  Channel(size_t iw, size_t ih, int hsh = 0, int vsh = 0, int hcsh = 0,
-          int vcsh = 0)
-      : plane(iw, ih),
-        w(iw),
-        h(ih),
-        hshift(hsh),
-        vshift(vsh),
-        hcshift(hcsh),
-        vcshift(vcsh) {}
-  Channel()
-      : plane(0, 0), w(0), h(0), hshift(0), vshift(0), hcshift(0), vcshift(0) {}
-
   Channel(const Channel& other) = delete;
   Channel& operator=(const Channel& other) = delete;
+
+  static StatusOr<Channel> Create(size_t iw, size_t ih, int hsh = 0,
+                                  int vsh = 0) {
+    JXL_ASSIGN_OR_RETURN(Plane<pixel_type> plane,
+                         Plane<pixel_type>::Create(iw, ih));
+    return Channel(std::move(plane), iw, ih, hsh, vsh);
+  }
 
   // Move assignment
   Channel& operator=(Channel&& other) noexcept {
@@ -60,8 +51,6 @@ class Channel {
     h = other.h;
     hshift = other.hshift;
     vshift = other.vshift;
-    hcshift = other.hcshift;
-    vcshift = other.vcshift;
     plane = std::move(other.plane);
     return *this;
   }
@@ -69,75 +58,44 @@ class Channel {
   // Move constructor
   Channel(Channel&& other) noexcept = default;
 
-  void resize(pixel_type value = 0) {
-    if (plane.xsize() == w && plane.ysize() == h) return;
-    jxl::Plane<pixel_type> resizedplane(w, h);
-    if (plane.xsize() || plane.ysize()) {
-      // copy pixels over from old plane to new plane
-      size_t y = 0;
-      for (; y < plane.ysize() && y < h; y++) {
-        const pixel_type* JXL_RESTRICT p = plane.Row(y);
-        pixel_type* JXL_RESTRICT rp = resizedplane.Row(y);
-        size_t x = 0;
-        for (; x < plane.xsize() && x < w; x++) rp[x] = p[x];
-        for (; x < w; x++) rp[x] = value;
-      }
-      for (; y < h; y++) {
-        pixel_type* JXL_RESTRICT p = resizedplane.Row(y);
-        for (size_t x = 0; x < w; x++) p[x] = value;
-      }
-    } else if (w && h && value == 0) {
-      size_t ppr = resizedplane.bytes_per_row();
-      memset(resizedplane.bytes(), 0, ppr * h);
-    } else if (w && h) {
-      FillImage(value, &resizedplane);
-    }
-    plane = std::move(resizedplane);
+  Status shrink() {
+    if (plane.xsize() == w && plane.ysize() == h) return true;
+    JXL_ASSIGN_OR_RETURN(plane, Plane<pixel_type>::Create(w, h));
+    return true;
   }
-  void resize(int nw, int nh) {
+  Status shrink(int nw, int nh) {
     w = nw;
     h = nh;
-    resize();
+    return shrink();
   }
-  bool is_empty() const { return (plane.ysize() == 0); }
 
   JXL_INLINE pixel_type* Row(const size_t y) { return plane.Row(y); }
   JXL_INLINE const pixel_type* Row(const size_t y) const {
     return plane.Row(y);
   }
-  void compute_minmax(pixel_type* min, pixel_type* max) const;
+
+ private:
+  Channel(jxl::Plane<pixel_type>&& p, size_t iw, size_t ih, int hsh, int vsh)
+      : plane(std::move(p)), w(iw), h(ih), hshift(hsh), vshift(vsh) {}
 };
 
 class Transform;
 
 class Image {
  public:
-  std::vector<Channel>
-      channel;  // image data, transforms can dramatically change the number of
-                // channels and their semantics
-  std::vector<Transform>
-      transform;  // keeps track of the transforms that have been applied (and
-                  // that have to be undone when rendering the image)
+  // image data, transforms can dramatically change the number of channels and
+  // their semantics
+  std::vector<Channel> channel;
+  // transforms that have been applied (and that have to be undone)
+  std::vector<Transform> transform;
 
-  size_t w, h;  // actual dimensions of the image (channels may have different
-                // dimensions due to transforms like chroma subsampling and DCT)
-  int minval, maxval;  // actual (largest) range of the channels (actual ranges
-                       // might be different due to transforms; after undoing
-                       // transforms, might still be different due to lossy)
-  size_t nb_channels;  // actual number of distinct channels (after undoing all
-                       // transforms except Palette; can be different from
-                       // channel.size())
-  size_t real_nb_channels;  // real number of channels (after undoing all
-                            // transforms)
-  size_t nb_meta_channels;  // first few channels might contain things like
-                            // palettes or compaction data that are not yet real
-                            // image data
+  // image dimensions (channels may have different dimensions due to transforms)
+  size_t w, h;
+  int bitdepth;
+  size_t nb_meta_channels;  // first few channels might contain palette(s)
   bool error;               // true if a fatal error occurred, false otherwise
 
-  Image(size_t iw, size_t ih, int maxval, int nb_chans);
-
   Image();
-  ~Image();
 
   Image(const Image& other) = delete;
   Image& operator=(const Image& other) = delete;
@@ -145,10 +103,25 @@ class Image {
   Image& operator=(Image&& other) noexcept;
   Image(Image&& other) noexcept = default;
 
-  bool do_transform(const Transform& t, const weighted::Header& wp_header);
-  // undo all except the first 'keep' transforms
-  void undo_transforms(const weighted::Header& wp_header, int keep = 0,
+  static StatusOr<Image> Create(size_t iw, size_t ih, int bitdepth,
+                                int nb_chans);
+
+  bool empty() const {
+    for (const auto& ch : channel) {
+      if (ch.w && ch.h) return false;
+    }
+    return true;
+  }
+
+  static StatusOr<Image> Clone(const Image& that);
+
+  void undo_transforms(const weighted::Header& wp_header,
                        jxl::ThreadPool* pool = nullptr);
+
+  std::string DebugString() const;
+
+ private:
+  Image(size_t iw, size_t ih, int bitdepth);
 };
 
 }  // namespace jxl

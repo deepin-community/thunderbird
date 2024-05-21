@@ -23,23 +23,23 @@ static void IncrementCounterArg(void *arg) {
   }
 }
 
-PRBool NoopExtensionWriter(PRFileDesc *fd, SSLHandshakeType message,
-                           PRUint8 *data, unsigned int *len,
-                           unsigned int maxLen, void *arg) {
+static PRBool NoopExtensionWriter(PRFileDesc *fd, SSLHandshakeType message,
+                                  PRUint8 *data, unsigned int *len,
+                                  unsigned int maxLen, void *arg) {
   IncrementCounterArg(arg);
   return PR_FALSE;
 }
 
-PRBool EmptyExtensionWriter(PRFileDesc *fd, SSLHandshakeType message,
-                            PRUint8 *data, unsigned int *len,
-                            unsigned int maxLen, void *arg) {
+static PRBool EmptyExtensionWriter(PRFileDesc *fd, SSLHandshakeType message,
+                                   PRUint8 *data, unsigned int *len,
+                                   unsigned int maxLen, void *arg) {
   IncrementCounterArg(arg);
   return PR_TRUE;
 }
 
-SECStatus NoopExtensionHandler(PRFileDesc *fd, SSLHandshakeType message,
-                               const PRUint8 *data, unsigned int len,
-                               SSLAlertDescription *alert, void *arg) {
+static SECStatus NoopExtensionHandler(PRFileDesc *fd, SSLHandshakeType message,
+                                      const PRUint8 *data, unsigned int len,
+                                      SSLAlertDescription *alert, void *arg) {
   return SECSuccess;
 }
 
@@ -56,6 +56,7 @@ static const uint16_t kManyExtensions[] = {
     ssl_signed_cert_timestamp_xtn,
     ssl_padding_xtn,
     ssl_extended_master_secret_xtn,
+    ssl_certificate_compression_xtn,
     ssl_session_ticket_xtn,
     ssl_tls13_key_share_xtn,
     ssl_tls13_pre_shared_key_xtn,

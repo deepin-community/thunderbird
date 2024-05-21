@@ -7,13 +7,14 @@
 #include "mozilla/dom/SVGFEOffsetElement.h"
 #include "mozilla/dom/SVGFEOffsetElementBinding.h"
 #include "mozilla/SVGFilterInstance.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/BindContext.h"
 
 NS_IMPL_NS_NEW_SVG_ELEMENT(FEOffset)
 
 using namespace mozilla::gfx;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 JSObject* SVGFEOffsetElement::WrapNode(JSContext* aCx,
                                        JS::Handle<JSObject*> aGivenProto) {
@@ -21,7 +22,7 @@ JSObject* SVGFEOffsetElement::WrapNode(JSContext* aCx,
 }
 
 SVGElement::NumberInfo SVGFEOffsetElement::sNumberInfo[2] = {
-    {nsGkAtoms::dx, 0, false}, {nsGkAtoms::dy, 0, false}};
+    {nsGkAtoms::dx, 0}, {nsGkAtoms::dy, 0}};
 
 SVGElement::StringInfo SVGFEOffsetElement::sStringInfo[2] = {
     {nsGkAtoms::result, kNameSpaceID_None, true},
@@ -73,6 +74,14 @@ void SVGFEOffsetElement::GetSourceImageNames(
   aSources.AppendElement(SVGStringInfo(&mStringAttributes[IN1], this));
 }
 
+nsresult SVGFEOffsetElement::BindToTree(BindContext& aCtx, nsINode& aParent) {
+  if (aCtx.InComposedDoc()) {
+    aCtx.OwnerDoc().SetUseCounter(eUseCounter_custom_feOffset);
+  }
+
+  return SVGFEOffsetElementBase::BindToTree(aCtx, aParent);
+}
+
 //----------------------------------------------------------------------
 // SVGElement methods
 
@@ -86,5 +95,4 @@ SVGElement::StringAttributesInfo SVGFEOffsetElement::GetStringInfo() {
                               ArrayLength(sStringInfo));
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

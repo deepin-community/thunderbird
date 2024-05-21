@@ -8,17 +8,19 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { IMServices } = ChromeUtils.importESModule(
+    "resource:///modules/IMServices.sys.mjs"
   );
-  const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
+  );
 
   /**
    * The MozChatContactRichlistitem widget displays contact information about user under
    * chat-groups, online contacts and offline contacts: i.e. icon and username.
    * On double clicking the element, it gets moved into the conversations.
    *
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozChatContactRichlistitem extends MozElements.MozRichlistitem {
     static get inheritedAttributes() {
@@ -29,6 +31,38 @@
         ".contactStatusText": "value=statusTextWithDash",
       };
     }
+
+    static get markup() {
+      return `
+      <vbox class="box-line"></vbox>
+      <stack class="prplBuddyIcon">
+        <html:img class="protoIcon" alt="" />
+        <html:img class="smallStatusIcon" />
+      </stack>
+      <hbox flex="1" class="contact-hbox">
+        <stack>
+          <label crop="end"
+                 class="contactDisplayName blistDisplayName">
+          </label>
+          <html:input type="text"
+                      class="contactDisplayNameInput"
+                      hidden="hidden"/>
+        </stack>
+        <label crop="end"
+               style="flex: 100000 100000;"
+               class="contactStatusText">
+        </label>
+        <button class="startChatBubble"
+                tooltiptext="&openConversationButton.tooltip;">
+        </button>
+      </hbox>
+      `;
+    }
+
+    static get entities() {
+      return ["chrome://messenger/locale/chat.dtd"];
+    }
+
     connectedCallback() {
       if (this.delayConnectedCallback() || this.hasChildNodes()) {
         return;
@@ -74,7 +108,7 @@
       // @implements {nsIObserver}
       this.observer = {
         QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
-        observe: function(subject, topic, data) {
+        observe: function (subject, topic, data) {
           if (
             topic == "contact-preferred-buddy-changed" ||
             topic == "contact-display-name-changed" ||
@@ -91,36 +125,7 @@
         }.bind(this),
       };
 
-      this.appendChild(
-        MozXULElement.parseXULToFragment(
-          `
-          <vbox class="box-line"></vbox>
-          <stack class="prplBuddyIcon">
-            <html:img class="protoIcon" alt="" />
-            <html:img class="smallStatusIcon" />
-          </stack>
-          <hbox flex="1" class="contact-hbox">
-            <stack>
-              <label crop="end"
-                     flex="1"
-                     class="contactDisplayName blistDisplayName">
-              </label>
-              <html:input type="text"
-                          class="contactDisplayNameInput"
-                          hidden="hidden"/>
-            </stack>
-            <label crop="end"
-                   flex="100000"
-                   class="contactStatusText">
-            </label>
-            <button class="startChatBubble"
-                    tooltiptext="&openConversationButton.tooltip;">
-            </button>
-          </hbox>
-          `,
-          ["chrome://messenger/locale/chat.dtd"]
-        )
-      );
+      this.appendChild(this.constructor.fragment);
 
       this.initializeAttributeInheritance();
     }
@@ -137,10 +142,10 @@
         statusText = " - " + statusText;
       }
       this.setAttribute("statusTextWithDash", statusText);
-      let statusType = this.contact.statusType;
+      const statusType = this.contact.statusType;
 
-      let statusIcon = this.querySelector(".smallStatusIcon");
-      let statusName = Status.toAttribute(statusType);
+      const statusIcon = this.querySelector(".smallStatusIcon");
+      const statusName = Status.toAttribute(statusType);
       statusIcon.setAttribute("src", ChatIcons.getStatusIconURI(statusName));
       statusIcon.setAttribute("alt", Status.toLabel(statusType));
 
@@ -150,7 +155,7 @@
         this.removeAttribute("cansend");
       }
 
-      let protoIcon = this.querySelector(".protoIcon");
+      const protoIcon = this.querySelector(".protoIcon");
       protoIcon.setAttribute(
         "src",
         ChatIcons.getProtocolIconURI(this.contact.preferredBuddy.protocol)
@@ -176,13 +181,13 @@
       }
 
       this.setAttribute("aliasing", "true");
-      let input = this.querySelector(".contactDisplayNameInput");
-      let label = this.querySelector(".contactDisplayName");
+      const input = this.querySelector(".contactDisplayNameInput");
+      const label = this.querySelector(".contactDisplayName");
       input.removeAttribute("hidden");
       label.setAttribute("hidden", "true");
       input.focus();
 
-      this._inputBlurListener = function(event) {
+      this._inputBlurListener = function (event) {
         this.finishAliasing(true);
       }.bind(this);
       input.addEventListener("blur", this._inputBlurListener);
@@ -190,7 +195,7 @@
       // Some keys (home/end for example) can make the selected item
       // of the richlistbox change without producing a blur event on
       // our textbox. Make sure we watch richlistbox selection changes.
-      this._parentSelectListener = function(event) {
+      this._parentSelectListener = function (event) {
         if (event.target == this.parentNode) {
           this.finishAliasing(true);
         }
@@ -202,9 +207,9 @@
       // Cache the parentNode because when we change the contact alias, we
       // trigger a re-order (and a removeContact call), which sets
       // this.parentNode to undefined.
-      let listbox = this.parentNode;
-      let input = this.querySelector(".contactDisplayNameInput");
-      let label = this.querySelector(".contactDisplayName");
+      const listbox = this.parentNode;
+      const input = this.querySelector(".contactDisplayNameInput");
+      const label = this.querySelector(".contactDisplayName");
       input.setAttribute("hidden", "hidden");
       label.removeAttribute("hidden");
       if (save) {
@@ -226,8 +231,8 @@
     }
 
     openConversation() {
-      let prplConv = this.contact.createConversation();
-      let uiConv = Services.conversations.getUIConversation(prplConv);
+      const prplConv = this.contact.createConversation();
+      const uiConv = IMServices.conversations.getUIConversation(prplConv);
       chatHandler.focusConversation(uiConv);
     }
 

@@ -10,12 +10,6 @@
 //  Other values will be added later, for example to start minimized
 pref("messenger.startup.action", 1);
 
-pref("messenger.accounts", "");
-
-// Should the accounts service stored in the password manager the
-// passwords that are currently stored in the preferences?
-pref("messenger.accounts.convertOldPasswords", false);
-
 // The intervals in seconds between automatic reconnection attempts.
 // The last value will be reused for the rest of the reconnection attempts.
 // A value of 0 means that there will be no more reconnection attempts.
@@ -29,7 +23,7 @@ pref("messenger.accounts.maxDebugMessages", 200);
 // "Other contacts" group.
 pref("messenger.buddies.hiddenTags", "");
 
-//  1 accepts invitations automatically,
+//  1 prompts the user about the invite,
 //  0 ignores the invitations,
 // -1 rejects the invitations.
 pref("messenger.conversations.autoAcceptChatInvitations", 1);
@@ -50,8 +44,6 @@ pref("messenger.conversations.selections.actionMessagesTemplate", "chrome://chat
 
 pref("messenger.conversations.textbox.autoResize", true);
 pref("messenger.conversations.textbox.defaultMaxLines", 5);
-
-pref("messenger.conversations.sendFormat", true);
 
 // this preference changes how we filter incoming messages
 // 0 = no formattings
@@ -85,20 +77,19 @@ pref("chat.irc.defaultQuitMessage", "");
 pref("chat.irc.automaticList", true);
 // Whether to enable or disable message carbons protocol (XEP-0280).
 pref("chat.xmpp.messageCarbons", true);
-// Disable Facebook as the XMPP gateway no longer exists.
+// Disable Facebook and Google Talk as the XMPP gateways no longer exist.
 pref("chat.prpls.prpl-facebook.disable", true);
-// Disable Matrix support except for trunk.
-#ifdef NIGHTLY_BUILD
-pref("chat.prpls.prpl-matrix.disable", false);
-#else
-pref("chat.prpls.prpl-matrix.disable", true);
-#endif
+pref("chat.prpls.prpl-gtalk.disable", true);
 // Disable Twitter as the streaming API was shut down.
 pref("chat.prpls.prpl-twitter.disable", true);
 // Disable Yahoo Messenger as legacy Yahoo was shut down.
 pref("chat.prpls.prpl-yahoo.disable", true);
 // Whether to disable SRV lookups that use the system DNS library.
 pref("chat.dns.srv.disable", false);
+
+// Remove deleted message contents from log files
+pref("chat.logging.cleanup", true);
+pref("chat.logging.cleanup.pending", "[]");
 
 // loglevel is the minimum severity level that a libpurple message
 // must have to be reported in the Error Console.
@@ -122,10 +113,8 @@ pref("purple.debug.loglevel", 3);
 pref("purple.debug.loglevel", 2);
 #endif
 
-pref("purple.logging.format", "json");
 pref("purple.logging.log_chats", true);
 pref("purple.logging.log_ims", true);
-pref("purple.logging.log_system", true);
 
 // Send typing notification in private conversations.
 pref("purple.conversations.im.send_typing", true);

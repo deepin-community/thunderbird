@@ -89,7 +89,7 @@ Maybe<uint64_t> ContentPlaybackController::GetActiveMediaSessionId() const {
 void ContentPlaybackController::Focus() {
   // Focus is not part of the MediaSession standard, so always use the
   // default behavior and focus the window currently playing media.
-  if (RefPtr<nsPIDOMWindowOuter> win = mBC->GetDOMWindow()) {
+  if (nsCOMPtr<nsPIDOMWindowOuter> win = mBC->GetDOMWindow()) {
     nsFocusManager::FocusWindow(win, CallerType::System);
   }
 }
@@ -168,8 +168,12 @@ void ContentMediaControlKeyHandler::HandleMediaControlAction(
   if (!aContext->GetDocShell()) {
     return;
   }
+  if (aAction.mKey.isNothing()) {
+    MOZ_ASSERT_UNREACHABLE("Invalid media control key.");
+    return;
+  }
   ContentPlaybackController controller(aContext);
-  switch (aAction.mKey) {
+  switch (aAction.mKey.value()) {
     case MediaControlKey::Focus:
       controller.Focus();
       return;
@@ -178,6 +182,9 @@ void ContentMediaControlKeyHandler::HandleMediaControlAction(
       return;
     case MediaControlKey::Pause:
       controller.Pause();
+      return;
+    case MediaControlKey::Playpause:
+      MOZ_ASSERT_UNREACHABLE("Invalid media control key.");
       return;
     case MediaControlKey::Stop:
       controller.Stop();

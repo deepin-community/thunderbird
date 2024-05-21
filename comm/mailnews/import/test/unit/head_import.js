@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 var CC = Components.Constructor;
@@ -19,6 +18,6 @@ load("../../../resources/abSetup.js");
 /* import-globals-from resources/import_helper.js */
 load("resources/import_helper.js");
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../resources/mailShutdown.js");
 });

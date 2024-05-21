@@ -73,8 +73,8 @@ class nsHTMLFramesetFrame final : public nsContainerFrame {
   virtual void Init(nsIContent* aContent, nsContainerFrame* aParent,
                     nsIFrame* aPrevInFlow) override;
 
-  virtual void SetInitialChildList(ChildListID aListID,
-                                   nsFrameList& aChildList) override;
+  void SetInitialChildList(ChildListID aListID,
+                           nsFrameList&& aChildList) override;
 
   static bool gDragInProgress;
 
@@ -88,7 +88,7 @@ class nsHTMLFramesetFrame final : public nsContainerFrame {
                                mozilla::WidgetGUIEvent* aEvent,
                                nsEventStatus* aEventStatus) override;
 
-  mozilla::Maybe<Cursor> GetCursor(const nsPoint&) override;
+  Cursor GetCursor(const nsPoint&) override;
 
   virtual void BuildDisplayList(nsDisplayListBuilder* aBuilder,
                                 const nsDisplayListSet& aLists) override;

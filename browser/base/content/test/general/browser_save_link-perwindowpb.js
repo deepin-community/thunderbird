@@ -2,7 +2,7 @@
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
 var MockFilePicker = SpecialPowers.MockFilePicker;
-MockFilePicker.init(window);
+MockFilePicker.init(window.browsingContext);
 
 // Trigger a save of a link in public mode, then trigger an identical save
 // in private mode and ensure that the second request is differentiated from
@@ -14,10 +14,10 @@ function triggerSave(aWindow, aCallback) {
   let testBrowser = aWindow.gBrowser.selectedBrowser;
   // This page sets a cookie if and only if a cookie does not exist yet
   let testURI =
-    "http://mochi.test:8888/browser/browser/base/content/test/general/bug792517-2.html";
-  BrowserTestUtils.loadURI(testBrowser, testURI);
+    "https://example.com/browser/browser/base/content/test/general/bug792517-2.html";
+  BrowserTestUtils.startLoadingURIString(testBrowser, testURI);
   BrowserTestUtils.browserLoaded(testBrowser, false, testURI).then(() => {
-    waitForFocus(function() {
+    waitForFocus(function () {
       info("register to handle popupshown");
       aWindow.document.addEventListener("popupshown", contextMenuOpened);
 
@@ -39,7 +39,7 @@ function triggerSave(aWindow, aCallback) {
     var destFile = destDir.clone();
 
     MockFilePicker.displayDirectory = destDir;
-    MockFilePicker.showCallback = function(fp) {
+    MockFilePicker.showCallback = function (fp) {
       info("showCallback");
       fileName = fp.defaultString;
       info("fileName: " + fileName);
@@ -49,7 +49,7 @@ function triggerSave(aWindow, aCallback) {
       info("done showCallback");
     };
 
-    mockTransferCallback = function(downloadSuccess) {
+    mockTransferCallback = function (downloadSuccess) {
       info("mockTransferCallback");
       onTransferComplete(aWindow, downloadSuccess, destDir);
       destDir.remove(true);
@@ -109,7 +109,7 @@ function test() {
 
   mockTransferRegisterer.register();
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     info("Running the cleanup code");
     mockTransferRegisterer.unregister();
     MockFilePicker.cleanup();
@@ -132,7 +132,7 @@ function test() {
     info("onExamineResponse with " + channel.URI.spec);
     if (
       channel.URI.spec !=
-      "http://mochi.test:8888/browser/browser/base/content/test/general/bug792517.sjs"
+      "https://example.com/browser/browser/base/content/test/general/bug792517.sjs"
     ) {
       info("returning");
       return;
@@ -158,7 +158,7 @@ function test() {
     info("onModifyRequest with " + channel.URI.spec);
     if (
       channel.URI.spec !=
-      "http://mochi.test:8888/browser/browser/base/content/test/general/bug792517.sjs"
+      "https://example.com/browser/browser/base/content/test/general/bug792517.sjs"
     ) {
       return;
     }
@@ -181,14 +181,14 @@ function test() {
   Services.obs.addObserver(observer, "http-on-modify-request");
   Services.obs.addObserver(observer, "http-on-examine-response");
 
-  testOnWindow(undefined, function(win) {
+  testOnWindow(undefined, function (win) {
     // The first save from a regular window sets a cookie.
-    triggerSave(win, function() {
+    triggerSave(win, function () {
       is(gNumSet, 1, "1 cookie should be set");
 
       // The second save from a private window also sets a cookie.
-      testOnWindow({ private: true }, function(win2) {
-        triggerSave(win2, function() {
+      testOnWindow({ private: true }, function (win2) {
+        triggerSave(win2, function () {
           is(gNumSet, 2, "2 cookies should be set");
           finish();
         });
@@ -197,7 +197,6 @@ function test() {
   });
 }
 
-/* import-globals-from ../../../../../toolkit/content/tests/browser/common/mockTransfer.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/content/tests/browser/common/mockTransfer.js",
   this

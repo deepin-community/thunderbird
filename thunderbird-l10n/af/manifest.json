@@ -1,29 +1,28 @@
 {
   "langpack_id": "af",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-af@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Afrikaans Language Pack",
-  "description": "Language pack for Thunderbird for af",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Afrikaans",
+  "description": "Thunderbird Beta Language Pack for Afrikaans (af)",
+  "version": "125.0.20240401.173510",
   "languages": {
     "af": {
-      "version": "20211001120334",
+      "version": "20240401183254",
       "chrome_resources": {
         "alerts": "chrome/af/locale/af/alerts/",
         "autoconfig": "chrome/af/locale/af/autoconfig/",
-        "branding": "chrome/af/locale/af/branding/",
+        "branding": "chrome/af/locale/branding/",
         "calendar": "chrome/af/locale/af/calendar/",
         "chat": "chrome/af/locale/af/chat/",
         "communicator": "chrome/af/locale/af/communicator/",
         "devtools": "chrome/af/locale/af/devtools/client/",
         "devtools-shared": "chrome/af/locale/af/devtools/shared/",
-        "devtools-startup": "chrome/af/locale/af/devtools/startup/",
         "global": "chrome/af/locale/af/global/",
         "global-platform": {
           "macosx": "chrome/af/locale/af/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/af/locale/af/mozldap/",
         "necko": "chrome/af/locale/af/necko/",
         "passwordmgr": "chrome/af/locale/af/passwordmgr/",
-        "pdf.js": "chrome/af/locale/pdfviewer/",
         "pipnss": "chrome/af/locale/af/pipnss/",
         "pippki": "chrome/af/locale/af/pippki/",
         "places": "chrome/af/locale/af/places/"

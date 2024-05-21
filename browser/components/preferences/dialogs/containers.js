@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ContextualIdentityService } = ChromeUtils.import(
-  "resource://gre/modules/ContextualIdentityService.jsm"
+const { ContextualIdentityService } = ChromeUtils.importESModule(
+  "resource://gre/modules/ContextualIdentityService.sys.mjs"
 );
 
 /**
@@ -14,11 +14,11 @@ function setTitle() {
 
   let winElem = document.documentElement;
   if (params.userContextId) {
-    document.l10n.setAttributes(winElem, "containers-window-update-settings", {
+    document.l10n.setAttributes(winElem, "containers-window-update-settings2", {
       name: params.identity.name,
     });
   } else {
-    document.l10n.setAttributes(winElem, "containers-window-new");
+    document.l10n.setAttributes(winElem, "containers-window-new2");
   }
 }
 setTitle();
@@ -85,10 +85,10 @@ let gContainersManager = {
   // Check if name is provided to determine if the form can be submitted
   checkForm() {
     const name = document.getElementById("name");
-    this._dialog.setAttribute("buttondisabledaccept", !name.value);
+    this._dialog.setAttribute("buttondisabledaccept", !name.value.trim());
   },
 
-  createIconButtons(defaultIcon) {
+  createIconButtons() {
     let radiogroup = document.createXULElement("radiogroup");
     radiogroup.setAttribute("id", "icon");
     radiogroup.className = "icon-buttons radio-buttons";
@@ -116,7 +116,7 @@ let gContainersManager = {
     return radiogroup;
   },
 
-  createColorSwatches(defaultColor) {
+  createColorSwatches() {
     let radiogroup = document.createXULElement("radiogroup");
     radiogroup.setAttribute("id", "color");
     radiogroup.className = "radio-buttons";

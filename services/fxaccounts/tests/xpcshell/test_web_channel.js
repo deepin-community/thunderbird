@@ -3,18 +3,15 @@
 
 "use strict";
 
-const {
-  ON_PROFILE_CHANGE_NOTIFICATION,
-  WEBCHANNEL_ID,
-  log,
-} = ChromeUtils.import("resource://gre/modules/FxAccountsCommon.js");
-const { CryptoUtils } = ChromeUtils.import(
-  "resource://services-crypto/utils.js"
+const { ON_PROFILE_CHANGE_NOTIFICATION, WEBCHANNEL_ID, log } =
+  ChromeUtils.importESModule("resource://gre/modules/FxAccountsCommon.sys.mjs");
+const { CryptoUtils } = ChromeUtils.importESModule(
+  "resource://services-crypto/utils.sys.mjs"
 );
-const {
-  FxAccountsWebChannel,
-  FxAccountsWebChannelHelpers,
-} = ChromeUtils.import("resource://gre/modules/FxAccountsWebChannel.jsm", null);
+const { FxAccountsWebChannel, FxAccountsWebChannelHelpers } =
+  ChromeUtils.importESModule(
+    "resource://gre/modules/FxAccountsWebChannel.sys.mjs"
+  );
 
 const URL_STRING = "https://example.com";
 
@@ -24,7 +21,7 @@ const mockSendingContext = {
   eventTarget: {},
 };
 
-add_test(function() {
+add_test(function () {
   validationHelper(undefined, "Error: Missing configuration options");
 
   validationHelper(
@@ -53,6 +50,11 @@ add_test(function() {
 });
 
 add_task(async function test_rejection_reporting() {
+  Services.prefs.setBoolPref(
+    "browser.tabs.remote.separatePrivilegedMozillaWebContentProcess",
+    false
+  );
+
   let mockMessage = {
     command: "fxaccounts:login",
     messageId: "1234",
@@ -200,7 +202,7 @@ add_test(function test_error_message_remove_profile_path() {
   const toTest = Object.keys(errors).length;
   for (const key in errors) {
     let error = errors[key];
-    channel._channel.send = (message, context) => {
+    channel._channel.send = message => {
       equal(
         message.data.error.message,
         error.expected,
@@ -221,7 +223,7 @@ add_test(function test_profile_image_change_message() {
     data: { uid: "foo" },
   };
 
-  makeObserver(ON_PROFILE_CHANGE_NOTIFICATION, function(subject, topic, data) {
+  makeObserver(ON_PROFILE_CHANGE_NOTIFICATION, function (subject, topic, data) {
     Assert.equal(data, "foo");
     run_next_test();
   });
@@ -252,6 +254,31 @@ add_test(function test_login_message() {
     },
   });
 
+  channel._channelCallback(WEBCHANNEL_ID, mockMessage, mockSendingContext);
+});
+
+add_test(function test_oauth_login() {
+  const mockData = {
+    code: "oauth code",
+    state: "state parameter",
+    declinedSyncEngines: ["tabs", "creditcards"],
+    offeredSyncEngines: ["tabs", "creditcards", "history"],
+  };
+  const mockMessage = {
+    command: "fxaccounts:oauth_login",
+    data: mockData,
+  };
+  const channel = new FxAccountsWebChannel({
+    channel_id: WEBCHANNEL_ID,
+    content_uri: URL_STRING,
+    helpers: {
+      oauthLogin(data) {
+        Assert.deepEqual(data, mockData);
+        run_next_test();
+        return Promise.resolve();
+      },
+    },
+  });
   channel._channelCallback(WEBCHANNEL_ID, mockMessage, mockSendingContext);
 });
 
@@ -376,7 +403,7 @@ add_test(function test_fxa_status_message() {
   });
 
   channel._channel = {
-    send(response, sendingContext) {
+    send(response) {
       Assert.equal(response.command, "fxaccounts:fxa_status");
       Assert.equal(response.messageId, 123);
 
@@ -486,7 +513,7 @@ add_task(async function test_helpers_login_set_previous_account_name_hash() {
   let helpers = new FxAccountsWebChannelHelpers({
     fxAccounts: {
       _internal: {
-        setSignedInUser(accountData) {
+        setSignedInUser() {
           return new Promise(resolve => {
             // previously signed in user preference is updated.
             Assert.equal(
@@ -527,7 +554,7 @@ add_task(
     let helpers = new FxAccountsWebChannelHelpers({
       fxAccounts: {
         _internal: {
-          setSignedInUser(accountData) {
+          setSignedInUser() {
             return new Promise(resolve => {
               // previously signed in user preference should not be updated.
               Assert.equal(
@@ -831,7 +858,7 @@ add_test(function test_helpers_open_sync_preferences() {
   let mockBrowser = {
     loadURI(uri) {
       Assert.equal(
-        uri,
+        uri.spec,
         "about:preferences?entrypoint=fxa%3Averification_complete#sync"
       );
       run_next_test();
@@ -917,10 +944,7 @@ add_task(async function test_helpers_getFxaStatus_allowed_signedInUser() {
 
     // These properties are filtered and should not
     // be returned to the requester.
-    Assert.equal(false, "kSync" in signedInUser);
-    Assert.equal(false, "kXCS" in signedInUser);
-    Assert.equal(false, "kExtSync" in signedInUser);
-    Assert.equal(false, "kExtKbHash" in signedInUser);
+    Assert.equal(false, "scopedKeys" in signedInUser);
   });
 });
 
@@ -1269,6 +1293,7 @@ add_task(async function test_helpers_change_password() {
             Assert.ok(credentials.hasOwnProperty("unwrapBKey"));
             Assert.ok(credentials.hasOwnProperty("device"));
             Assert.equal(null, credentials.device);
+            Assert.equal(null, credentials.encryptedSendTabKeys);
             // "foo" isn't a field known by storage, so should be dropped.
             Assert.ok(!credentials.hasOwnProperty("foo"));
             wasCalled.updateUserAccountData = true;
@@ -1325,7 +1350,7 @@ add_task(async function test_helpers_change_password_with_error() {
 });
 
 function makeObserver(aObserveTopic, aObserveFunc) {
-  let callback = function(aSubject, aTopic, aData) {
+  let callback = function (aSubject, aTopic, aData) {
     log.debug("observed " + aTopic + " " + aData);
     if (aTopic == aObserveTopic) {
       removeMe();

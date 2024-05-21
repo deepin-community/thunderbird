@@ -4,7 +4,7 @@
 
 close-button =
     .aria-label = Cerrar
-preferences-doc-title = Preferencias
+preferences-doc-title2 = Ajustes
 category-list =
     .aria-label = Categorías
 pane-general-title = General
@@ -22,6 +22,9 @@ category-chat =
 pane-calendar-title = Calendario
 category-calendar =
     .tooltiptext = Calendario
+pane-sync-title = Sincronizar
+category-sync =
+    .tooltiptext = Sincronizar
 general-language-and-appearance-header = Idioma y apariencia
 general-incoming-mail-header = Correos electrónicos entrantes
 general-files-and-attachment-header = Archivos y adjuntos
@@ -115,12 +118,18 @@ restore-default-label =
     .label = Restaurar predeterminados
     .accesskey = R
 default-search-engine = Buscador predeterminado
-add-search-engine =
-    .label = Agregar desde archivo
+add-web-search-engine =
+    .label = Agregar…
     .accesskey = A
 remove-search-engine =
     .label = Eliminar
     .accesskey = E
+add-opensearch-provider-title = Agregar proveedor OpenSearch
+add-opensearch-provider-text = Ingrese URL del proveedor OpenSearch para agregar. Puede usar la URL directa del archivo de descripción OpenSearch o una URL dónde puede descubrirse automáticamente.
+adding-opensearch-provider-failed-title = No se pudo agregar el proveedor OpenSearch
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = No se pudo agregar el proveedor OpenSearch para { $url }.
 minimize-to-tray-label =
     .label = Cuando { -brand-short-name } está minimizado, muévalo a la bandeja
     .accesskey = m
@@ -143,7 +152,7 @@ change-dock-icon = Cambiar preferencias para el ícono de la aplicación
 app-icon-options =
     .label = Opciones de ícono de la aplicación…
     .accesskey = n
-notification-settings = Alertas y el sonido predeterminado pueden deshabilitarse en la vista de notificaciones de las preferencias del sistema.
+notification-settings2 = Se pueden deshabilitar las alertas y el sonido predeterminado en la vista de notificaciones de la configuración del sistema.
 animated-alert-label =
     .label = Mostrar una alerta
     .accesskey = M
@@ -187,6 +196,17 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Usar desplazamiento suave
     .accesskey = m
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Siempre mostrar barras de desplazamiento
+    .accesskey = z
+window-layout-legend = Diseño de ventana
+draw-in-titlebar-label =
+    .label = Ocultar la barra de título de la ventana del sistema
+    .accesskey = O
+auto-hide-tabbar-label =
+    .label = Ocultar automáticamente la barra de pestañas
+    .accesskey = a
+auto-hide-tabbar-description = Ocultar la barra de pestañas cuando haya una sola abierta
 system-integration-legend = Integración con el sistema
 always-check-default =
     .label = Siempre verificar si { -brand-short-name } es el cliente de correo predeterminado al iniciar
@@ -267,6 +287,9 @@ smart-cache-label =
 clear-cache-button =
     .label = Borrar ahora
     .accesskey = B
+clear-cache-shutdown-label =
+    .label = Borrar caché al apagar
+    .accesskey = h
 fonts-legend = Tipografía y colores
 default-font-label =
     .value = Tipografía predeterminada:
@@ -311,8 +334,8 @@ quoted-text-color =
     .accesskey = o
 search-handler-table =
     .placeholder = Filtrar tipos de contenido y acciones
-
-
+type-column-header = Tipo de contenido
+action-column-header = Acción
 save-to-label =
     .label = Guardar archivos en
     .accesskey = G
@@ -346,6 +369,9 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Inmediatamente en pantalla
     .accesskey = I
+view-attachments-inline =
+    .label = Mirá los archivos adjuntos en linea
+    .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -403,6 +429,9 @@ auto-save-end = minutos
 warn-on-send-accel-key =
     .label = Confirmar cuando se usan atajos de teclados para enviar mensajes
     .accesskey = C
+add-link-previews =
+    .label = Agregar vista previa de enlaces al pegar URLs
+    .accesskey = i
 spellcheck-label =
     .label = Verificar ortografía antes de enviar
     .accesskey = V
@@ -434,10 +463,19 @@ restore-html-label =
 default-format-label =
     .label = Usar formato de párrafo en vez de texto de cuerpo por defecto
     .accesskey = p
-format-description = Configurar el comportamiento del formato de texto
-send-options-label =
-    .label = Opciones de envío…
-    .accesskey = O
+compose-send-format-title = Formato de envío
+compose-send-automatic-option =
+    .label = Automático
+compose-send-automatic-description = Si no se usa estilo en el mensaje, enviar texto sin formato. De lo contrario, enviar HTML con un respaldo de texto sin formato.
+compose-send-both-option =
+    .label = Tanto HTML como texto sin formato
+compose-send-both-description = La aplicación de correo electrónico del destinatario determinará qué versión mostrar.
+compose-send-html-option =
+    .label = Solo HTML
+compose-send-html-description = Es posible que algunos destinatarios no puedan leer el mensaje sin un respaldo de texto sin formato.
+compose-send-plain-option =
+    .label = Solo texto sin formato
+compose-send-plain-description = Algunos estilos se convertirán en una alternativa simple, mientras que otras funciones de composición se desactivarán.
 autocomplete-description = Al escribir una dirección, buscar coincidencias en:
 ab-label =
     .label = Libretas de direcciones locales
@@ -506,23 +544,14 @@ third-party-never =
     .label = Nunca
 third-party-visited =
     .label = De visitados
-keep-label =
-    .value = Mantener hasta:
-    .accesskey = h
-keep-expire =
-    .label = que expiren
-keep-close =
-    .label = que cierre { -brand-short-name }
-keep-ask =
-    .label = preguntarme cada vez
 cookies-button =
     .label = Mostrar cookies…
     .accesskey = S
 do-not-track-label =
     .label = Enviar a los sitios una señal de “No rastrear” indicando que no quiere ser rastreado
     .accesskey = n
-learn-button =
-    .label = Conocer más
+dnt-learn-more-button =
+    .value = Conocer más
 passwords-description = { -brand-short-name } puede recordar las contraseñas para todas sus cuentas.
 passwords-button =
     .label = Contraseñas guardadas…
@@ -540,6 +569,9 @@ junk-description = Configuración predeterminada de correo basura. Las configura
 junk-label =
     .label = Cuando marque mensajes como basura:
     .accesskey = C
+junk-marked-label =
+    .label = Cuando los mensajes se marcan como basura:
+    .accesskey = u
 junk-move-label =
     .label = Moverlos a la carpeta "Basura" de la cuenta
     .accesskey = o
@@ -549,6 +581,13 @@ junk-delete-label =
 junk-read-label =
     .label = Marcar los mensajes determinados como basura como ya leídos
     .accesskey = a
+junk-read-description = Marcar mensajes como leídos
+junk-read-manual-label =
+    .label = Cuando se marca manualmente como basura
+    .accesskey = m
+junk-read-auto-label =
+    .label = Cuando { -brand-short-name } determina que son basura
+    .accesskey = t
 junk-log-label =
     .label = Habilitar el registro del filtro de basura adaptativo
     .accesskey = g
@@ -582,6 +621,18 @@ certificate-button =
 security-devices-button =
     .label = Dispositivos de seguridad…
     .accesskey = D
+email-e2ee-header = Cifrado de extremo a extremo del correo electrónico
+account-settings = Configuración de cuenta
+email-e2ee-enable-info = Configure cuentas de correo electrónico e identidades para el cifrado de extremo a extremo en la configuración de la cuenta.
+email-e2ee-automatism = Uso automático del cifrado
+email-e2ee-automatism-pre = { -brand-short-name } puede ayudar habilitando o deshabilitando automáticamente el cifrado al redactar un correo electrónico. La habilitación / deshabilitación automática se basa en la disponibilidad de claves o certificados de corresponsales válidos y aceptados.
+email-e2ee-auto-on =
+    .label = Habilitar el cifrado automáticamente cuando sea posible
+email-e2ee-auto-off =
+    .label = Deshabilitar automáticamente el cifrado cuando los destinatarios cambien y el cifrado ya no sea posible
+email-e2ee-auto-off-notify =
+    .label = Mostrar una notificación cuando el cifrado se deshabilite automáticamente
+email-e2ee-automatism-post = Las decisiones automáticas se pueden anular habilitando o deshabilitando manualmente el cifrado al redactar un mensaje.Nota: el cifrado siempre está activado automáticamente al responder a un mensaje cifrado.
 
 ## Chat Tab
 
@@ -651,8 +702,8 @@ chat-browse-sound-button =
 theme-label =
     .value = Tema:
     .accesskey = T
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Burbujas
 style-dark =
@@ -675,17 +726,59 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
-    .placeholder = Buscar en preferencias
+    .placeholder = Buscar en Ajustes
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Resultados de búsqueda
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message =
+search-results-empty-message2 =
     { PLATFORM() ->
-        [windows] No hay resultados en Preferencias para “<span data-l10n-name="query"></span>”.
-       *[other] No hay resultados en Opciones para “<span data-l10n-name="query"></span>”.
+        [windows] ¡Lo sentimos! No hay resultados en Opciones para “<span data-l10n-name="query">”.
+       *[other] ¡Lo sentimos! No hay resultados en Ajustes para “<span data-l10n-name="query">”.
     }
 search-results-help-link = ¿Necesita ayuda? Visite <a data-l10n-name="url">Ayuda de { -brand-short-name }</a>
+
+## Sync Tab
+
+sync-signedout-caption = Llévese la web con usted
+sync-signedout-description = Sincronice cuentas, libretas de direcciones, calendarios, complementos y configuración en todos sus dispositivos.
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Iniciar sesión para sincronizar…
+sync-pane-header = Sincronizar
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = “{ $userEmail }” no está verificado.
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Vuelva a iniciar sesión para reconectar “{ $userEmail }”
+sync-pane-resend-verification = Reenviar verificación
+sync-pane-sign-in = Iniciar sesión
+sync-pane-remove-account = Eliminar cuenta
+sync-pane-edit-photo =
+    .title = Cambiar la imagen del perfil
+sync-pane-manage-account = Administrar la cuenta
+sync-pane-sign-out = Cerrar la sesión…
+sync-pane-device-name-title = Nombre del dispositivo
+sync-pane-change-device-name = Cambiar el nombre del dispositivo
+sync-pane-cancel = Cancelar
+sync-pane-save = Guardar
+sync-pane-show-synced-header-on = Sincronización ACTIVADA
+sync-pane-show-synced-header-off = Sincronización DESACTIVADA
+sync-pane-sync-now = Sincronizar ahora
+sync-panel-sync-now-syncing = Sincronizando…
+show-synced-list-heading = En este momento está sincronizando estos elementos:
+show-synced-learn-more = Conocer más…
+show-synced-item-account = Cuentas de correo electrónico
+show-synced-item-address = Libretas de direcciones
+show-synced-item-calendar = Calendarios
+show-synced-item-identity = Identidades
+show-synced-item-passwords = Contraseñas
+show-synced-change = Cambiar…
+synced-acount-item-server-config = Configuración de servidor
+synced-acount-item-filters = Filtros
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Sincronice cuentas de correo electrónico, libretas de direcciones, calendarios e identidades en todos sus dispositivos.
+sync-disconnected-turn-on-sync = Habilitar sincronización…

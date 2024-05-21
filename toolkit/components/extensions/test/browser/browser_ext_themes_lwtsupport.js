@@ -28,35 +28,21 @@ add_task(async function test_deprecated_LWT_properties_ignored() {
 
   let docEl = window.document.documentElement;
   let docStyle = window.getComputedStyle(docEl);
-  let navigatorStyle = window.getComputedStyle(
-    docEl.querySelector("#navigator-toolbox")
-  );
-
   Assert.ok(docEl.hasAttribute("lwtheme"), "LWT attribute should be set");
   Assert.ok(
     !docEl.hasAttribute("lwtheme-image"),
     "LWT image attribute should not be set on deprecated headerURL alias"
   );
-  Assert.equal(
-    docEl.getAttribute("lwthemetextcolor"),
-    "dark",
+  Assert.ok(
+    !docEl.getAttribute("lwtheme-brighttext"),
     "LWT text color attribute should not be set on deprecated textcolor alias"
   );
 
-  if (backgroundColorSetOnRoot()) {
-    let rootCS = window.getComputedStyle(docEl);
-    Assert.equal(
-      rootCS.backgroundColor,
-      DEFAULT_THEME_BG_COLOR,
-      "Expected default theme background color"
-    );
-  } else {
-    Assert.equal(
-      navigatorStyle.backgroundColor,
-      DEFAULT_THEME_BG_COLOR,
-      "Expected default theme background color"
-    );
-  }
+  Assert.equal(
+    getToolboxBackgroundColor(),
+    DEFAULT_THEME_BG_COLOR,
+    "Expected default theme background color"
+  );
 
   Assert.equal(
     docStyle.color,

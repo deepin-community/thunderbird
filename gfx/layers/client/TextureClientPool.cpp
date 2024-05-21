@@ -8,13 +8,12 @@
 #include "CompositableClient.h"
 #include "mozilla/layers/CompositableForwarder.h"
 #include "mozilla/layers/TextureForwarder.h"
-#include "mozilla/layers/TiledContentClient.h"
 #include "mozilla/StaticPrefs_layers.h"
 
 #include "nsComponentManagerUtils.h"
 
 #define TCP_LOG(...)
-//#define TCP_LOG(...) printf_stderr(__VA_ARGS__);
+// #define TCP_LOG(...) printf_stderr(__VA_ARGS__);
 
 namespace mozilla {
 namespace layers {
@@ -131,12 +130,6 @@ void TextureClientPool::AllocateTextureClient() {
 
   TextureAllocationFlags allocFlags = ALLOC_DEFAULT;
 
-  if (mKnowsCompositor->SupportsTextureDirectMapping() &&
-      std::max(mSize.width, mSize.height) <= GetMaxTextureSize()) {
-    allocFlags =
-        TextureAllocationFlags(allocFlags | ALLOC_ALLOW_DIRECT_MAPPING);
-  }
-
   RefPtr<TextureClient> newClient;
   if (StaticPrefs::layers_force_shmem_tiles_AtStartup()) {
     // gfx::BackendType::NONE means use the content backend
@@ -196,7 +189,7 @@ void TextureClientPool::ReturnTextureClientDeferred(TextureClient* aClient) {
   if (!aClient || mDestroyed) {
     return;
   }
-  MOZ_ASSERT(aClient->GetReadLock());
+  MOZ_ASSERT(aClient->HasReadLock());
 #ifdef GFX_DEBUG_TRACK_CLIENTS_IN_POOL
   DebugOnly<bool> ok = TestClientPool("defer", aClient, this);
   MOZ_ASSERT(ok);
@@ -265,7 +258,7 @@ void TextureClientPool::ReturnDeferredClients() {
 void TextureClientPool::ReturnUnlockedClients() {
   for (auto it = mTextureClientsDeferred.begin();
        it != mTextureClientsDeferred.end();) {
-    MOZ_ASSERT((*it)->GetReadLock()->AsNonBlockingLock()->GetReadCount() >= 1);
+    MOZ_ASSERT((*it)->GetNonBlockingReadLockCount() >= 1);
     // Last count is held by the lock itself.
     if (!(*it)->IsReadLocked()) {
       mTextureClients.push(*it);

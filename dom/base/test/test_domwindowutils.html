@@ -81,9 +81,8 @@ function test_getUnanimatedComputedStyle() {
   SpecialPowers.pushPrefEnv(
     {
       set: [
-        ["dom.animations-api.core.enabled", true],
-        ["dom.animations-api.getAnimations.enabled", true],
         ["dom.animations-api.timelines.enabled", true],
+        ["layout.css.properties-and-values.enabled", true],
       ],
     },
     () => {
@@ -93,9 +92,7 @@ function test_getUnanimatedComputedStyle() {
 }
 
 function test_setDynamicToolbarMaxHeight() {
-  SpecialPowers.pushPrefEnv({
-    set: [["dom.visualviewport.enabled", true]]
-  }).then(() => window.open("file_domwindowutils_dynamic_toolbar.html"));
+  window.open("file_domwindowutils_dynamic_toolbar.html");
 }
 
 var tests = [

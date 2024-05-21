@@ -7,16 +7,18 @@ EXTRA_COMPONENTS += [
 ]
 
 EXTRA_JS_MODULES += [
-    "ExtensionBrowsingData.jsm",
-    "ExtensionPopups.jsm",
-    "ExtensionToolbarButtons.jsm",
-    "MailExtensionShortcuts.jsm",
+    "ExtensionAccounts.sys.mjs",
+    "ExtensionBrowsingData.sys.mjs",
+    "ExtensionMessages.sys.mjs",
+    "ExtensionPopups.sys.mjs",
+    "ExtensionToolbarButtons.sys.mjs",
+    "MailExtensionShortcuts.sys.mjs",
 ]
 
 JAR_MANIFESTS += ["jar.mn"]
 
 TESTING_JS_MODULES += [
-    "test/AppUiTestDelegate.jsm",
+    "test/AppUiTestDelegate.sys.mjs",
 ]
 
 BROWSER_CHROME_MANIFESTS += ["test/browser/browser.ini"]

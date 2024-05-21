@@ -19,16 +19,15 @@
 
 class nsIGlobalObject;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class MessageData;
 class MessagePortChild;
-struct PostMessageOptions;
 class PostMessageRunnable;
-class SharedMessageBody;
 class RefMessageBodyService;
+class SharedMessageBody;
 class StrongWorkerRef;
+struct StructuredSerializeOptions;
 
 // A class to hold a MessagePortIdentifier from
 // MessagePort::CloneAndDistentangle() and close if neither passed to
@@ -96,7 +95,8 @@ class MessagePort final : public DOMEventTargetHelper {
                    const Sequence<JSObject*>& aTransferable, ErrorResult& aRv);
 
   void PostMessage(JSContext* aCx, JS::Handle<JS::Value> aMessage,
-                   const PostMessageOptions& aOptions, ErrorResult& aRv);
+                   const StructuredSerializeOptions& aOptions,
+                   ErrorResult& aRv);
 
   void Start();
 
@@ -110,7 +110,7 @@ class MessagePort final : public DOMEventTargetHelper {
 
   // Non WebIDL methods
 
-  void UnshippedEntangle(MessagePort* aEntangledPort);
+  void UnshippedEntangle(RefPtr<MessagePort>& aEntangledPort);
 
   bool CanBeCloned() const { return !mHasBeenTransferredOrClosed; }
 
@@ -127,6 +127,10 @@ class MessagePort final : public DOMEventTargetHelper {
 
  private:
   enum State {
+    // The plan is to be eStateUnshippedEntangled once we are told about our
+    // unshipped entangled counterpart.
+    eStateInitializingUnshippedEntangled,
+
     // When a port is created by a MessageChannel it is entangled with the
     // other. They both run on the same thread, same event loop and the
     // messages are added to the queues without using PBackground actors.
@@ -228,7 +232,6 @@ class MessagePort final : public DOMEventTargetHelper {
   bool mHasBeenTransferredOrClosed;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_MessagePort_h

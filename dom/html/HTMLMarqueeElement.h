@@ -10,8 +10,7 @@
 #include "nsGenericHTMLElement.h"
 #include "nsContentUtils.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 class HTMLMarqueeElement final : public nsGenericHTMLElement {
  public:
   explicit HTMLMarqueeElement(already_AddRefed<dom::NodeInfo>&& aNodeInfo)
@@ -20,7 +19,7 @@ class HTMLMarqueeElement final : public nsGenericHTMLElement {
   NS_IMPL_FROMNODE_HTML_WITH_TAG(HTMLMarqueeElement, marquee);
 
   nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  void UnbindFromTree(bool aNullParent = true) override;
+  void UnbindFromTree(UnbindContext&) override;
 
   static const int kDefaultLoop = -1;
   static const int kDefaultScrollAmount = 6;
@@ -105,11 +104,10 @@ class HTMLMarqueeElement final : public nsGenericHTMLElement {
                       const nsAString& aValue,
                       nsIPrincipal* aMaybeScriptedPrincipal,
                       nsAttrValue& aResult) override;
-  virtual nsresult AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aMaybeScriptedPrincipal,
-                                bool aNotify) override;
+  void AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                    const nsAttrValue* aValue, const nsAttrValue* aOldValue,
+                    nsIPrincipal* aMaybeScriptedPrincipal,
+                    bool aNotify) override;
   NS_IMETHOD_(bool) IsAttributeMapped(const nsAtom* aAttribute) const override;
   nsMapRuleToAttributesFunc GetAttributeMappingFunction() const override;
 
@@ -122,13 +120,11 @@ class HTMLMarqueeElement final : public nsGenericHTMLElement {
                      JS::Handle<JSObject*> aGivenProto) override;
 
  private:
-  static void MapAttributesIntoRule(const nsMappedAttributes* aAttributes,
-                                    MappedDeclarations&);
+  static void MapAttributesIntoRule(MappedDeclarationsBuilder&);
 
   void DispatchEventToShadowRoot(const nsAString& aEventTypeArg);
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif /* HTMLMarqueeElement_h___ */

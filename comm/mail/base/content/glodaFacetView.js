@@ -12,15 +12,19 @@
  *  get it wrong and it may eventually want to migrate.
  */
 
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
-);
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { TagUtils } = ChromeUtils.import("resource:///modules/TagUtils.jsm");
+var { TagUtils } = ChromeUtils.importESModule(
+  "resource:///modules/TagUtils.sys.mjs"
+);
 var { Gloda } = ChromeUtils.import("resource:///modules/gloda/GlodaPublic.jsm");
+var { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
+);
+var { GlodaSyntheticView } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaSyntheticView.jsm"
+);
 var { FacetDriver, FacetUtils } = ChromeUtils.import(
   "resource:///modules/gloda/Facet.jsm"
 );
@@ -62,7 +66,7 @@ const QueryExplanation = {
         (aMsgSearcher.andTerms ? "and" : "or") +
         "JoinWord"
     );
-    for (let [iTerm, term] of aMsgSearcher.fulltextTerms.entries()) {
+    for (const [iTerm, term] of aMsgSearcher.fulltextTerms.entries()) {
       if (iTerm) {
         spanify(criteriaText, "explanation-fulltext-criteria");
       }
@@ -88,8 +92,8 @@ const QueryExplanation = {
       );
       spanify(label, "explanation-query-label");
 
-      let constraintStrings = [];
-      for (let constraint of msgQuery._constraints) {
+      const constraintStrings = [];
+      for (const constraint of msgQuery._constraints) {
         if (constraint[0] != 1) {
           // No idea what this is about.
           return;
@@ -107,15 +111,16 @@ const QueryExplanation = {
           const tag = constraint[2];
           const tagNode = document.createElement("span");
           const color = MailServices.tags.getColorForKey(tag.key);
-          let textColor = "black";
-          if (!TagUtils.isColorContrastEnough(color)) {
-            textColor = "white";
-          }
           tagNode.setAttribute("class", "message-tag");
-          tagNode.setAttribute(
-            "style",
-            "color: " + textColor + "; background-color: " + color + ";"
-          );
+          if (color) {
+            const textColor = !TagUtils.isColorContrastEnough(color)
+              ? "white"
+              : "black";
+            tagNode.setAttribute(
+              "style",
+              "color: " + textColor + "; background-color: " + color + ";"
+            );
+          }
           tagNode.textContent = tag.tag;
           spanify(tagLabel, "explanation-query-tagged");
           this.node.appendChild(tagNode);
@@ -123,7 +128,7 @@ const QueryExplanation = {
       }
       label = label + constraintStrings.join(", "); // XXX l10n?
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   },
 };
@@ -158,7 +163,7 @@ const UIFacets = {
     facet.nounDef = attrDef.objectNounDef;
     facet.setAttribute("type", type);
 
-    for (let key in args) {
+    for (const key in args) {
       facet[key] = args[key];
     }
 
@@ -194,7 +199,7 @@ ActiveSingularConstraint.prototype = {
       return;
     }
 
-    let query = (this.query = Gloda.newQuery(Gloda.NOUN_MESSAGE));
+    const query = (this.query = Gloda.newQuery(GlodaConstants.NOUN_MESSAGE));
     let constraintFunc;
     // If the facet definition references a queryHelper defined by the noun
     //  type, use that instead of the standard constraint function.
@@ -219,7 +224,7 @@ ActiveSingularConstraint.prototype = {
    *  just append the new values to the existing set of values.  If it is not
    *  the same, we replace them.
    *
-   * @return true if the caller needs to revalidate their understanding of the
+   * @returns true if the caller needs to revalidate their understanding of the
    *     constraint because we have flipped whether we are inclusive or
    *     exclusive and have thrown away some constraints as a result.
    */
@@ -230,7 +235,7 @@ ActiveSingularConstraint.prototype = {
       return false;
     }
 
-    let needToRevalidate = this.inclusive != null;
+    const needToRevalidate = this.inclusive != null;
     this.inclusive = aInclusive;
     this.groupValues = aGroupValues;
     this._makeQuery();
@@ -241,15 +246,15 @@ ActiveSingularConstraint.prototype = {
    * Relax something we previously constrained.  Remove it, some might say.  It
    *  is possible after relaxing that we will no longer be an active constraint.
    *
-   * @return true if we are no longer constrained at all.
+   * @returns true if we are no longer constrained at all.
    */
   relax(aInclusive, aGroupValues) {
     if (aInclusive != this.inclusive) {
       throw new Error("You can't relax a constraint that isn't possible.");
     }
 
-    for (let groupValue of aGroupValues) {
-      let index = this.groupValues.indexOf(groupValue);
+    for (const groupValue of aGroupValues) {
+      const index = this.groupValues.indexOf(groupValue);
       if (index == -1) {
         throw new Error("Tried to relax a constraint that was not in force.");
       }
@@ -282,8 +287,8 @@ ActiveSingularConstraint.prototype = {
    * Filter the items against our constraint.
    */
   sieve(aItems) {
-    let query = this.query;
-    let expectedResult = !this.invertQuery;
+    const query = this.query;
+    const expectedResult = !this.invertQuery;
     return aItems.filter(item => query.test(item) == expectedResult);
   },
   isIncludedGroup(aGroupValue) {
@@ -317,7 +322,7 @@ ActiveNonSingularConstraint.prototype = {
       return this.faceter.makeQuery(aGroupValues, aInclusive);
     }
 
-    let query = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+    const query = Gloda.newQuery(GlodaConstants.NOUN_MESSAGE);
     let constraintFunc;
     // If the facet definition references a queryHelper defined by the noun
     //  type, use that instead of the standard constraint function.
@@ -344,15 +349,15 @@ ActiveNonSingularConstraint.prototype = {
    *  the same, we replace them.
    */
   constrain(aInclusive, aGroupValues) {
-    let groupIdAttr = this.attrDef.objectNounDef.isPrimitive
+    const groupIdAttr = this.attrDef.objectNounDef.isPrimitive
       ? null
       : this.facetDef.groupIdAttr;
-    let idMap = aInclusive ? this.includedGroupIds : this.excludedGroupIds;
-    let valList = aInclusive
+    const idMap = aInclusive ? this.includedGroupIds : this.excludedGroupIds;
+    const valList = aInclusive
       ? this.includedGroupValues
       : this.excludedGroupValues;
-    for (let groupValue of aGroupValues) {
-      let valId =
+    for (const groupValue of aGroupValues) {
+      const valId =
         groupIdAttr !== null && groupValue != null
           ? groupValue[groupIdAttr]
           : groupValue;
@@ -360,7 +365,7 @@ ActiveNonSingularConstraint.prototype = {
       valList.push(groupValue);
     }
 
-    let [query, invertQuery] = this._makeQuery(aInclusive, valList);
+    const [query, invertQuery] = this._makeQuery(aInclusive, valList);
     if (aInclusive && !invertQuery) {
       this.includeQuery = query;
     } else {
@@ -373,18 +378,18 @@ ActiveNonSingularConstraint.prototype = {
    * Relax something we previously constrained.  Remove it, some might say.  It
    *  is possible after relaxing that we will no longer be an active constraint.
    *
-   * @return true if we are no longer constrained at all.
+   * @returns true if we are no longer constrained at all.
    */
   relax(aInclusive, aGroupValues) {
-    let groupIdAttr = this.attrDef.objectNounDef.isPrimitive
+    const groupIdAttr = this.attrDef.objectNounDef.isPrimitive
       ? null
       : this.facetDef.groupIdAttr;
-    let idMap = aInclusive ? this.includedGroupIds : this.excludedGroupIds;
-    let valList = aInclusive
+    const idMap = aInclusive ? this.includedGroupIds : this.excludedGroupIds;
+    const valList = aInclusive
       ? this.includedGroupValues
       : this.excludedGroupValues;
-    for (let groupValue of aGroupValues) {
-      let valId =
+    for (const groupValue of aGroupValues) {
+      const valId =
         groupIdAttr !== null && groupValue != null
           ? groupValue[groupIdAttr]
           : groupValue;
@@ -393,7 +398,7 @@ ActiveNonSingularConstraint.prototype = {
       }
       delete idMap[valId];
 
-      let index = valList.indexOf(groupValue);
+      const index = valList.indexOf(groupValue);
       valList.splice(index, 1);
     }
 
@@ -404,7 +409,7 @@ ActiveNonSingularConstraint.prototype = {
         this.excludeQuery = null;
       }
     } else {
-      let [query, invertQuery] = this._makeQuery(aInclusive, valList);
+      const [query, invertQuery] = this._makeQuery(aInclusive, valList);
       if (aInclusive && !invertQuery) {
         this.includeQuery = query;
       } else {
@@ -436,8 +441,8 @@ ActiveNonSingularConstraint.prototype = {
    * Filter the items against our constraint.
    */
   sieve(aItems) {
-    let includeQuery = this.includeQuery;
-    let excludeQuery = this.excludeQuery;
+    const includeQuery = this.includeQuery;
+    const excludeQuery = this.excludeQuery;
     return aItems.filter(
       item =>
         (!includeQuery || includeQuery.test(item)) &&
@@ -445,11 +450,11 @@ ActiveNonSingularConstraint.prototype = {
     );
   },
   isIncludedGroup(aGroupValue) {
-    let valId = aGroupValue[this.facetDef.groupIdAttr];
+    const valId = aGroupValue[this.facetDef.groupIdAttr];
     return valId in this.includedGroupIds;
   },
   isExcludedGroup(aGroupValue) {
-    let valId = aGroupValue[this.facetDef.groupIdAttr];
+    const valId = aGroupValue[this.facetDef.groupIdAttr];
     return valId in this.excludedGroupIds;
   },
 };
@@ -482,7 +487,7 @@ var FacetContext = {
       this._sortBy = val;
       this.build(this._sieveAll());
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   },
   /**
@@ -512,7 +517,7 @@ var FacetContext = {
     } else {
       scores = Gloda.scoreNounItems(items);
     }
-    let scoredItems = items.map(function(item, index) {
+    const scoredItems = items.map(function (item, index) {
       return [scores[index], item];
     });
     scoredItems.sort((a, b) => b[0] - a[0]);
@@ -539,7 +544,7 @@ var FacetContext = {
     this.everFaceted = false;
     this._activeConstraints = {};
     if (this.searcher) {
-      let sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
+      const sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
       this._sortBy = sortByPref == 0 || sortByPref == 2 ? "-dascore" : "-date";
     } else {
       this._sortBy = "-date";
@@ -555,7 +560,7 @@ var FacetContext = {
    * Remove duplicate messages from search results.
    *
    * @param aItems the initial set of messages to deduplicate
-   * @return the subset of those, with duplicates removed.
+   * @returns the subset of those, with duplicates removed.
    *
    * Some IMAP servers (here's looking at you, Gmail) will create message
    * duplicates unbeknownst to the user.  We'd like to deal with them earlier
@@ -565,9 +570,9 @@ var FacetContext = {
    * Message-ID of a message already displayed.
    */
   _removeDupes(aItems) {
-    let deduped = [];
-    let msgIdsSeen = {};
-    for (let item of aItems) {
+    const deduped = [];
+    const msgIdsSeen = {};
+    for (const item of aItems) {
       if (item.headerMessageID in msgIdsSeen) {
         continue;
       }
@@ -605,7 +610,7 @@ var FacetContext = {
    * Clean up the UI in preparation for a new query to come in.
    */
   _resetUI() {
-    for (let faceter of this.faceters) {
+    for (const faceter of this.faceters) {
       if (faceter.xblNode && !faceter.xblNode.explicit) {
         faceter.xblNode.remove();
       }
@@ -627,9 +632,9 @@ var FacetContext = {
     if (!this.everFaceted) {
       this.everFaceted = true;
       this.faceters.sort(this._groupCountComparator);
-      for (let faceter of this.faceters) {
-        let attrName = faceter.attrDef.attributeName;
-        let explicitBinding = document.getElementById("facet-" + attrName);
+      for (const faceter of this.faceters) {
+        const attrName = faceter.attrDef.attributeName;
+        const explicitBinding = document.getElementById("facet-" + attrName);
 
         if (explicitBinding) {
           explicitBinding.explicit = true;
@@ -646,7 +651,7 @@ var FacetContext = {
             try {
               explicitBinding.build(true);
             } catch (e) {
-              Cu.reportError(e);
+              console.error(e);
             }
             explicitBinding.removeAttribute("uninitialized");
           }
@@ -669,7 +674,7 @@ var FacetContext = {
         });
       }
     } else {
-      for (let faceter of this.faceters) {
+      for (const faceter of this.faceters) {
         // Do not bother with un-displayed facets, or that are locked by a
         //  constraint.  But do bother if the widget can be updated without
         //  losing important data.
@@ -704,25 +709,25 @@ var FacetContext = {
     this._showResults();
 
     if (this._callbackOnFacetComplete) {
-      let callback = this._callbackOnFacetComplete;
+      const callback = this._callbackOnFacetComplete;
       this._callbackOnFacetComplete = null;
       callback();
     }
   },
 
   _showResults() {
-    let results = document.getElementById("results");
-    let numMessageToShow = Math.min(
+    const results = document.getElementById("results");
+    const numMessageToShow = Math.min(
       this.maxMessagesToShow * this._numPages,
       this._activeSet.length
     );
     results.setMessages(this._activeSet.slice(0, numMessageToShow));
 
-    let showLoading = document.getElementById("showLoading");
+    const showLoading = document.getElementById("showLoading");
     showLoading.style.display = "none"; // Hide spinner, we're done thinking.
 
-    let showEmpty = document.getElementById("showEmpty");
-    let showAll = document.getElementById("gloda-showall");
+    const showEmpty = document.getElementById("showEmpty");
+    const showAll = document.getElementById("gloda-showall");
     // Check for no messages at all.
     if (this._activeSet.length == 0) {
       showEmpty.style.display = "block";
@@ -732,7 +737,7 @@ var FacetContext = {
       showAll.style.display = "block";
     }
 
-    let showMore = document.getElementById("showMore");
+    const showMore = document.getElementById("showMore");
     showMore.style.display =
       this._activeSet.length > numMessageToShow ? "block" : "none";
   },
@@ -743,7 +748,7 @@ var FacetContext = {
   },
 
   zoomOut() {
-    let facetDate = document.getElementById("facet-date");
+    const facetDate = document.getElementById("facet-date");
     this.removeFacetConstraint(
       facetDate.faceter,
       true,
@@ -761,19 +766,19 @@ var FacetContext = {
         this._hideTimeline(false);
       }
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   },
 
   _showTimeline() {
-    let facetDate = document.getElementById("facet-date");
+    const facetDate = document.getElementById("facet-date");
     if (facetDate.style.display == "none") {
       facetDate.style.display = "inherit";
       // Force binding attachment so the transition to the
       // visible state actually happens.
       facetDate.getBoundingClientRect();
     }
-    let listener = () => {
+    const listener = () => {
       // Need to set overflow to visible so that the zoom button
       // is not cut off at the top, and overflow=hidden causes
       // the transition to not work as intended.
@@ -786,7 +791,7 @@ var FacetContext = {
   },
 
   _hideTimeline(immediate) {
-    let facetDate = document.getElementById("facet-date");
+    const facetDate = document.getElementById("facet-date");
     if (immediate) {
       facetDate.style.display = "none";
     }
@@ -830,7 +835,7 @@ var FacetContext = {
   },
   _timeoutHover() {
     this._brushTimeout = null;
-    for (let faceter of this.faceters) {
+    for (const faceter of this.faceters) {
       if (faceter == this._brushedFacet || !faceter.xblNode) {
         continue;
       }
@@ -867,7 +872,7 @@ var FacetContext = {
    * @param aFaceter The faceter that is the source of this constraint.  We
    *     need to know this because once a facet has a constraint attached,
    *     the UI stops updating it.
-   * @param {Boolean} aInclusive Is this an inclusive (true) or exclusive
+   * @param {boolean} aInclusive Is this an inclusive (true) or exclusive
    *     (false) constraint?  The constraint instance is the one that deals with
    *     the nuances resulting from this.
    * @param aGroupValues A list of the group values this constraint covers.  In
@@ -885,7 +890,7 @@ var FacetContext = {
    *     a date constraint applied.)
    * @param [aCallback] The callback to call once (re-)faceting has completed.
    *
-   * @return true if the caller needs to revalidate because the constraint has
+   * @returns true if the caller needs to revalidate because the constraint has
    *     changed in a way other than explicitly requested.  This can occur if
    *     a singular constraint flips its inclusive state and throws away
    *     constraints.
@@ -898,7 +903,7 @@ var FacetContext = {
     aNukeExisting,
     aCallback
   ) {
-    let attrName = aFaceter.attrDef.attributeName;
+    const attrName = aFaceter.attrDef.attributeName;
 
     let constraint;
     let needToSieveAll = false;
@@ -910,7 +915,7 @@ var FacetContext = {
         constraint.clear();
       }
     } else {
-      let constraintClass = aFaceter.attrDef.singular
+      const constraintClass = aFaceter.attrDef.singular
         ? ActiveSingularConstraint
         : ActiveNonSingularConstraint;
       constraint = this._activeConstraints[attrName] = new constraintClass(
@@ -919,7 +924,7 @@ var FacetContext = {
       );
       aFaceter.constraint = constraint;
     }
-    let needToRevalidate = constraint.constrain(aInclusive, aGroupValues);
+    const needToRevalidate = constraint.constrain(aInclusive, aGroupValues);
 
     // Given our current implementation, we can only be further constraining our
     //  active set, so we can just sieve the existing active set with the
@@ -947,14 +952,14 @@ var FacetContext = {
    * @param aGroupValues The list of group values to remove.
    * @param aCallback The callback to call once all facets have been updated.
    *
-   * @return true if the constraint has been completely removed.  Under the
+   * @returns true if the constraint has been completely removed.  Under the
    *     current regime, this will likely cause the binding that is calling us
    *     to be rebuilt, so be aware if you are trying to do any cool animation
    *     that might no longer make sense.
    */
   removeFacetConstraint(aFaceter, aInclusive, aGroupValues, aCallback) {
-    let attrName = aFaceter.attrDef.attributeName;
-    let constraint = this._activeConstraints[attrName];
+    const attrName = aFaceter.attrDef.attributeName;
+    const constraint = this._activeConstraints[attrName];
 
     let constraintGone = false;
 
@@ -977,7 +982,7 @@ var FacetContext = {
   _sieveAll() {
     let items = this.fullSet;
 
-    for (let elem in this._activeConstraints) {
+    for (const elem in this._activeConstraints) {
       items = this._activeConstraints[elem].sieve(items);
     }
 
@@ -991,26 +996,32 @@ var FacetContext = {
   },
 
   /**
-   * Show the active message set in a glodaList tab.
+   * Show the active message set in a 3-pane tab.
    */
   showActiveSetInTab() {
-    let tabmail = this.rootWin.document.getElementById("tabmail");
-    tabmail.openTab("glodaList", {
-      collection: Gloda.explicitCollection(Gloda.NOUN_MESSAGE, this.activeSet),
+    const tabmail = this.rootWin.document.getElementById("tabmail");
+    tabmail.openTab("mail3PaneTab", {
+      folderPaneVisible: false,
+      syntheticView: new GlodaSyntheticView({
+        collection: Gloda.explicitCollection(
+          GlodaConstants.NOUN_MESSAGE,
+          this.activeSet
+        ),
+      }),
       title: this.tab.title,
     });
   },
 
   /**
-   * Show the conversation in a new glodaList tab.
+   * Show the conversation in a new 3-pane tab.
    *
    * @param {glodaFacetBindings.xml#result-message} aResultMessage The
    *     result the user wants to see in more details.
-   * @param {Boolean} [aBackground] Whether it should be in the background.
+   * @param {boolean} [aBackground] Whether it should be in the background.
    */
   showConversationInTab(aResultMessage, aBackground) {
-    let tabmail = this.rootWin.document.getElementById("tabmail");
-    let message = aResultMessage.message;
+    const tabmail = this.rootWin.document.getElementById("tabmail");
+    const message = aResultMessage.message;
     if (
       "IMCollection" in this &&
       message instanceof Gloda.lookupNounDef("im-conversation").clazz
@@ -1023,28 +1034,13 @@ var FacetContext = {
       });
       return;
     }
-    tabmail.openTab("glodaList", {
-      conversation: message.conversation,
-      message,
+    tabmail.openTab("mail3PaneTab", {
+      folderPaneVisible: false,
+      syntheticView: new GlodaSyntheticView({
+        conversation: message.conversation,
+        message,
+      }),
       title: message.conversation.subject,
-      background: aBackground,
-    });
-  },
-
-  /**
-   * Show the message in a new tab.
-   *
-   * @param {GlodaMessage} aMessage The message to show.
-   * @param {Boolean} [aBackground] Whether it should be in the background.
-   */
-  showMessageInTab(aMessage, aBackground) {
-    let tabmail = this.rootWin.document.getElementById("tabmail");
-    let msgHdr = aMessage.folderMessage;
-    if (!msgHdr) {
-      throw new Error("Unable to translate gloda message to message header.");
-    }
-    tabmail.openTab("message", {
-      msgHdr,
       background: aBackground,
     });
   },
@@ -1070,16 +1066,16 @@ var FacetContext = {
  *  differ.  Anywho, this works for now and is a delightful reference to boot.
  */
 function reachOutAndTouchFrame() {
-  let us = window
+  const us = window
     .getInterface(Ci.nsIWebNavigation)
     .QueryInterface(Ci.nsIDocShellTreeItem);
 
   FacetContext.rootWin = us.rootTreeItem.domWindow;
 
-  let parentWin = us.parent.domWindow;
-  let aTab = (FacetContext.tab = parentWin.tab);
+  const parentWin = us.parent.domWindow;
+  const aTab = (FacetContext.tab = parentWin.tab);
   parentWin.tab = null;
-  window.addEventListener("resize", function() {
+  window.addEventListener("resize", function () {
     document.getElementById("facet-date").build(true);
   });
   // we need to hook the context up as a listener in all cases since

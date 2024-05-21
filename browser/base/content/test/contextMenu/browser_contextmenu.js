@@ -34,12 +34,17 @@ let NAVIGATION_ITEMS =
         null,
       ];
 let hasPocket = Services.prefs.getBoolPref("extensions.pocket.enabled");
+let hasStripOnShare = Services.prefs.getBoolPref(
+  "privacy.query_stripping.strip_on_share.enabled"
+);
 let hasContainers =
   Services.prefs.getBoolPref("privacy.userContext.enabled") &&
   ContextualIdentityService.getPublicIdentities().length;
 
 const example_base =
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.com/browser/browser/base/content/test/contextMenu/";
+const about_preferences_base = "about:preferences";
 const chrome_base =
   "chrome://mochitests/content/browser/browser/base/content/test/contextMenu/";
 const head_base =
@@ -59,11 +64,12 @@ function getThisFrameSubMenu(base_menu) {
   return base_menu;
 }
 
-add_task(async function init() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["browser.search.separatePrivateDefault.ui.enabled", true],
       ["extensions.screenshots.disabled", false],
+      ["layout.forms.reveal-password-context-menu.enabled", true],
     ],
   });
 });
@@ -99,6 +105,7 @@ add_task(async function test_xul_text_link_label() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -117,13 +124,9 @@ add_task(async function test_xul_text_link_label() {
 add_task(async function test_setup_html() {
   let url = example_base + "subtst_contextmenu.html";
 
-  await SpecialPowers.pushPrefEnv({
-    set: [["dom.menuitem.enabled", true]],
-  });
-
   await BrowserTestUtils.openNewForegroundTab(gBrowser, url);
 
-  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
+  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function () {
     let doc = content.document;
     let audioIframe = doc.querySelector("#test-audio-in-iframe");
     // media documents always use a <video> tag.
@@ -194,6 +197,7 @@ const kLinkItems = [
   ...(hasPocket ? ["context-savelinktopocket", true] : []),
   "context-copylink",
   true,
+  ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
   "---",
   null,
   "context-searchselect",
@@ -233,6 +237,19 @@ add_task(async function test_mailto() {
   ]);
 });
 
+add_task(async function test_tel() {
+  await test_contextmenu("#test-tel", [
+    "context-copyphone",
+    true,
+    "---",
+    null,
+    "context-searchselect",
+    true,
+    "context-searchselect-private",
+    true,
+  ]);
+});
+
 add_task(async function test_image() {
   for (let selector of ["#test-image", "#test-svg-image"]) {
     await test_contextmenu(
@@ -248,6 +265,7 @@ add_task(async function test_image() {
         true,
         "context-sendimage",
         true,
+        ...getTextRecognitionItems(),
         ...(Services.prefs.getBoolPref("browser.menu.showViewImageInfo", false)
           ? ["context-viewimageinfo", true]
           : []),
@@ -749,10 +767,6 @@ add_task(async function test_video_in_iframe() {
       true,
       "---",
       null,
-      "context-take-frame-screenshot",
-      true,
-      "---",
-      null,
       "context-viewframeinfo",
       true,
     ]),
@@ -832,10 +846,6 @@ add_task(async function test_video_in_iframe() {
       true,
       "---",
       null,
-      "context-take-frame-screenshot",
-      true,
-      "---",
-      null,
       "context-viewframeinfo",
       true,
     ]),
@@ -903,10 +913,6 @@ add_task(async function test_audio_in_iframe() {
       true,
       "---",
       null,
-      "context-take-frame-screenshot",
-      true,
-      "---",
-      null,
       "context-viewframeinfo",
       true,
     ]),
@@ -926,6 +932,7 @@ add_task(async function test_image_in_iframe() {
     true,
     "context-sendimage",
     true,
+    ...getTextRecognitionItems(),
     ...(Services.prefs.getBoolPref("browser.menu.showViewImageInfo", false)
       ? ["context-viewimageinfo", true]
       : []),
@@ -957,10 +964,6 @@ add_task(async function test_image_in_iframe() {
       "---",
       null,
       "context-printframe",
-      true,
-      "---",
-      null,
-      "context-take-frame-screenshot",
       true,
       "---",
       null,
@@ -1163,116 +1166,43 @@ add_task(async function test_copylinkcommand() {
 
       // The easiest way to check the clipboard is to paste the contents
       // into a textbox.
-      await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
-        let doc = content.document;
-        let input = doc.getElementById("test-input");
-        input.focus();
-        input.value = "";
-      });
+      await SpecialPowers.spawn(
+        gBrowser.selectedBrowser,
+        [],
+        async function () {
+          let doc = content.document;
+          let input = doc.getElementById("test-input");
+          input.focus();
+          input.value = "";
+        }
+      );
       document.commandDispatcher
         .getControllerForCommand("cmd_paste")
         .doCommand("cmd_paste");
-      await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
-        let doc = content.document;
-        let input = doc.getElementById("test-input");
-        Assert.equal(
-          input.value,
-          "http://mozilla.com/",
-          "paste for command cmd_paste"
-        );
-        // Don't keep focus, because that may affect clipboard commands in
-        // subsequently-opened menus.
-        input.blur();
-      });
-    },
-  });
-});
-
-add_task(async function test_pagemenu() {
-  let pagemenuItems = [
-    "+Plain item",
-    { type: "", icon: "", checked: false, disabled: false },
-    "+Disabled item",
-    { type: "", icon: "", checked: false, disabled: true },
-    "+Item w/ textContent",
-    { type: "", icon: "", checked: false, disabled: false },
-    "---",
-    null,
-    "+Checkbox",
-    { type: "checkbox", icon: "", checked: true, disabled: false },
-    "---",
-    null,
-    "+Radio1",
-    { type: "checkbox", icon: "", checked: true, disabled: false },
-    "+Radio2",
-    { type: "checkbox", icon: "", checked: false, disabled: false },
-    "+Radio3",
-    { type: "checkbox", icon: "", checked: false, disabled: false },
-    "---",
-    null,
-    "+Item w/ icon",
-    { type: "", icon: "favicon.ico", checked: false, disabled: false },
-    "+Item w/ bad icon",
-    { type: "", icon: "", checked: false, disabled: false },
-    "---",
-    null,
-    "generated-submenu-1",
-    true,
-    [
-      "+Radio1",
-      { type: "checkbox", icon: "", checked: false, disabled: false },
-      "+Radio2",
-      { type: "checkbox", icon: "", checked: true, disabled: false },
-      "+Radio3",
-      { type: "checkbox", icon: "", checked: false, disabled: false },
-      "---",
-      null,
-      "+Checkbox",
-      { type: "checkbox", icon: "", checked: false, disabled: false },
-    ],
-    null,
-    "---",
-    null,
-    "context-savepage",
-    true,
-    ...(hasPocket ? ["context-pocket", true] : []),
-    "context-selectall",
-    true,
-    "---",
-    null,
-    "context-take-screenshot",
-    true,
-    "---",
-    null,
-    "context-viewsource",
-    true,
-  ];
-  pagemenuItems = NAVIGATION_ITEMS.concat(pagemenuItems);
-  if (AppConstants.platform == "macosx") {
-    // Take out the bookmarks page menu:
-    let bookmarkItemIndex = pagemenuItems.indexOf("context-bookmarkpage");
-    let bookmarksItemAndSeparator = pagemenuItems.splice(bookmarkItemIndex, 2);
-    // Put it back before the save page item:
-    pagemenuItems.splice(
-      pagemenuItems.indexOf("context-savepage"),
-      0,
-      ...bookmarksItemAndSeparator
-    );
-  }
-  await test_contextmenu("#test-pagemenu", pagemenuItems, {
-    async postCheckContextMenuFn() {
-      let item = contextMenu.getElementsByAttribute("generateditemid", "1")[0];
-      ok(item, "Got generated XUL menu item");
-      item.doCommand();
-      await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
-        let pagemenu = content.document.getElementById("test-pagemenu");
-        Assert.ok(!pagemenu.hasAttribute("hopeless"), "attribute got removed");
-      });
+      await SpecialPowers.spawn(
+        gBrowser.selectedBrowser,
+        [],
+        async function () {
+          let doc = content.document;
+          let input = doc.getElementById("test-input");
+          Assert.equal(
+            input.value,
+            // eslint-disable-next-line @microsoft/sdl/no-insecure-url
+            "http://mozilla.com/",
+            "paste for command cmd_paste"
+          );
+          // Don't keep focus, because that may affect clipboard commands in
+          // subsequently-opened menus.
+          input.blur();
+        }
+      );
     },
   });
 });
 
 add_task(async function test_dom_full_screen() {
+  let exited = BrowserTestUtils.waitForEvent(window, "MozDOMFullscreen:Exited");
+
   let fullscreenItems = NAVIGATION_ITEMS.concat([
     "context-leave-dom-fullscreen",
     true,
@@ -1312,30 +1242,55 @@ add_task(async function test_dom_full_screen() {
           ["full-screen-api.transition-duration.leave", "0 0"],
         ],
       });
-      await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
-        let doc = content.document;
-        let win = doc.defaultView;
-        let full_screen_element = doc.getElementById("test-dom-full-screen");
-        let awaitFullScreenChange = ContentTaskUtils.waitForEvent(
-          win,
-          "fullscreenchange"
-        );
-        full_screen_element.requestFullscreen();
-        await awaitFullScreenChange;
-      });
+      await SpecialPowers.spawn(
+        gBrowser.selectedBrowser,
+        [],
+        async function () {
+          let doc = content.document;
+          let win = doc.defaultView;
+          let full_screen_element = doc.getElementById("test-dom-full-screen");
+          let awaitFullScreenChange = ContentTaskUtils.waitForEvent(
+            win,
+            "fullscreenchange"
+          );
+          full_screen_element.requestFullscreen();
+          await awaitFullScreenChange;
+        }
+      );
     },
     async postCheckContextMenuFn() {
-      await SpecialPowers.spawn(gBrowser.selectedBrowser, [], async function() {
-        let win = content.document.defaultView;
-        let awaitFullScreenChange = ContentTaskUtils.waitForEvent(
-          win,
-          "fullscreenchange"
-        );
-        content.document.exitFullscreen();
-        await awaitFullScreenChange;
-      });
+      await SpecialPowers.spawn(
+        gBrowser.selectedBrowser,
+        [],
+        async function () {
+          let win = content.document.defaultView;
+          let awaitFullScreenChange = ContentTaskUtils.waitForEvent(
+            win,
+            "fullscreenchange"
+          );
+          content.document.exitFullscreen();
+          await awaitFullScreenChange;
+        }
+      );
     },
   });
+  await exited;
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return !TelemetryStopwatch.running("FULLSCREEN_CHANGE_MS");
+  });
+
+  if (AppConstants.platform == "macosx") {
+    // On macOS, the fullscreen transition takes some extra time
+    // to complete, and we don't receive events for it. We need to
+    // wait for it to complete or else input events in the next test
+    // might get eaten up. This is the best we can currently do.
+
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  await SimpleTest.promiseFocus(window);
 });
 
 add_task(async function test_pagemenu2() {
@@ -1398,7 +1353,9 @@ add_task(async function test_select_text() {
 
 add_task(async function test_select_text_search_service_not_initialized() {
   // Pretend the search service is not initialised.
-  Services.search.wrappedJSObject._initialized = false;
+  Services.search.wrappedJSObject.forceInitializationStatusForTests(
+    "not initialized"
+  );
   await test_contextmenu(
     "#test-select-text",
     [
@@ -1425,8 +1382,9 @@ add_task(async function test_select_text_search_service_not_initialized() {
       },
     }
   );
-  // Pretend the search service is not initialised.
-  Services.search.wrappedJSObject._initialized = true;
+
+  // Restore the search service initialization status
+  Services.search.wrappedJSObject.forceInitializationStatusForTests("success");
 });
 
 add_task(async function test_select_text_link() {
@@ -1480,7 +1438,7 @@ add_task(async function test_select_text_link() {
         await SpecialPowers.spawn(
           gBrowser.selectedBrowser,
           [],
-          async function() {
+          async function () {
             let win = content.document.defaultView;
             win.getSelection().removeAllRanges();
           }
@@ -1511,6 +1469,7 @@ add_task(async function test_imagelink() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-viewimage",
@@ -1523,6 +1482,7 @@ add_task(async function test_imagelink() {
     true,
     "context-sendimage",
     true,
+    ...getTextRecognitionItems(),
     ...(Services.prefs.getBoolPref("browser.menu.showViewImageInfo", false)
       ? ["context-viewimageinfo", true]
       : []),
@@ -1621,6 +1581,7 @@ add_task(async function test_longdesc() {
     true,
     "context-sendimage",
     true,
+    ...getTextRecognitionItems(),
     ...(Services.prefs.getBoolPref("browser.menu.showViewImageInfo", false)
       ? ["context-viewimageinfo", true]
       : []),
@@ -1714,6 +1675,7 @@ add_task(async function test_svg_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1742,6 +1704,7 @@ add_task(async function test_svg_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1770,6 +1733,7 @@ add_task(async function test_svg_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1800,6 +1764,7 @@ add_task(async function test_svg_relative_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1828,6 +1793,7 @@ add_task(async function test_svg_relative_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1856,6 +1822,7 @@ add_task(async function test_svg_relative_link() {
     ...(hasPocket ? ["context-savelinktopocket", true] : []),
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1924,6 +1891,7 @@ add_task(async function test_background_image() {
     true,
     "context-copylink",
     true,
+    ...(hasStripOnShare ? ["context-stripOnShareLink", true] : []),
     "---",
     null,
     "context-searchselect",
@@ -1967,6 +1935,64 @@ add_task(async function test_background_image() {
 });
 
 add_task(async function test_cleanup_html() {
+  lastElementSelector = null;
+  gBrowser.removeCurrentTab();
+});
+
+/*
+ *   Testing that Copy without Site Tracking option does not
+ *   appear on internal about: pages.
+ */
+add_task(async function test_strip_on_share_on_secure_about_page() {
+  let url = about_preferences_base;
+
+  let tab = await BrowserTestUtils.openNewForegroundTab({
+    gBrowser,
+    url,
+  });
+
+  let browser2 = tab.linkedBrowser;
+
+  await SpecialPowers.spawn(browser2, [], () => {
+    let link = content.document.createElement("a");
+    link.href = "https://mozilla.com";
+    link.textContent = "link with query param";
+    link.id = "link-test-strip";
+    content.document.body.appendChild(link);
+  });
+
+  // the Copy without Site Tracking option should not
+  // show up within internal about: pages
+  await test_contextmenu("#link-test-strip", [
+    "context-openlinkintab",
+    true,
+    ...(hasContainers ? ["context-openlinkinusercontext-menu", true] : []),
+    // We need a blank entry here because the containers submenu is
+    // dynamically generated with no ids.
+    ...(hasContainers ? ["", null] : []),
+    "context-openlink",
+    true,
+    "context-openlinkprivate",
+    true,
+    "---",
+    null,
+    "context-bookmarklink",
+    true,
+    "context-savelink",
+    true,
+    ...(hasPocket ? ["context-savelinktopocket", true] : []),
+    "context-copylink",
+    true,
+    "---",
+    null,
+    "context-searchselect",
+    true,
+    "context-searchselect-private",
+    true,
+  ]);
+
+  // Clean up
+  lastElementSelector = null;
   gBrowser.removeCurrentTab();
 });
 
@@ -1981,7 +2007,7 @@ async function selectText(selector) {
   await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [selector],
-    async function(contentSelector) {
+    async function (contentSelector) {
       info(`Selecting text of ${contentSelector}`);
       let doc = content.document;
       let win = doc.defaultView;
@@ -1994,4 +2020,15 @@ async function selectText(selector) {
       win.getSelection().addRange(div);
     }
   );
+}
+
+/**
+ * Not all platforms support text recognition.
+ * @returns {string[]}
+ */
+function getTextRecognitionItems() {
+  return Services.prefs.getBoolPref("dom.text-recognition.enabled") &&
+    Services.appinfo.isTextRecognitionSupported
+    ? ["context-imagetext", true]
+    : [];
 }

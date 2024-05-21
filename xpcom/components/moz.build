@@ -10,7 +10,6 @@ XPIDL_SOURCES += [
     "nsIComponentManager.idl",
     "nsIComponentRegistrar.idl",
     "nsIFactory.idl",
-    "nsIModule.idl",
     "nsIServiceManager.idl",
 ]
 
@@ -43,6 +42,7 @@ if CONFIG["COMPILE_ENVIRONMENT"]:
         "StaticComponentData.h",
         "StaticComponents.cpp",
         "services.json",
+        "components.rs",
         script="gen_static_components.py",
         inputs=["!manifest-lists.json", "StaticComponents.cpp.in"],
     )
@@ -69,20 +69,16 @@ LOCAL_INCLUDES += [
     "../ds",
     "/chrome",
     "/js/xpconnect/loader",
+    "/js/xpconnect/src",
     "/layout/build",
     "/modules/libjar",
 ]
 
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
-    CXXFLAGS += CONFIG["TK_CFLAGS"]
-    if CONFIG["MOZ_ENABLE_DBUS"]:
-        CXXFLAGS += CONFIG["MOZ_DBUS_GLIB_CFLAGS"]
-
-if CONFIG["MOZ_BACKGROUNDTASKS"]:
-    DEFINES["MOZ_BACKGROUNDTASKS"] = True
+    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 
 include("/ipc/chromium/chromium-config.mozbuild")
 
 PYTHON_UNITTEST_MANIFESTS += [
-    "test/python.ini",
+    "test/python.toml",
 ]

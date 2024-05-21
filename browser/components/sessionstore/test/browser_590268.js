@@ -117,7 +117,11 @@ function test() {
         checked++;
       }
     }
-    ok(uniq2Count > 0, "at least 1 tab properly checked 'early access'");
+    Assert.greater(
+      uniq2Count,
+      0,
+      "at least 1 tab properly checked 'early access'"
+    );
     is(checked, uniq2Count, "checked the same number of uniq2 as we set");
   }
 
@@ -136,7 +140,7 @@ function test() {
     // Put this in an executeSoon because we still haven't called restoreNextTab
     // in sessionstore for the last tab (we'll call it after this). We end up
     // trying to restore the tab (since we then add a closed tab to the array).
-    executeSoon(function() {
+    executeSoon(function () {
       ss.setBrowserState(stateBackup);
       executeSoon(finish);
     });

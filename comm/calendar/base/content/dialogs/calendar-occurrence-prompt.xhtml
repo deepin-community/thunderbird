@@ -3,111 +3,58 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<?xml-stylesheet href="chrome://messenger/skin/messenger.css" type="text/css"?>
-<?xml-stylesheet href="chrome://calendar/skin/shared/calendar-occurrence-prompt.css" type="text/css"?>
-<?xml-stylesheet href="chrome://messenger/skin/themeableDialog.css" type="text/css"?>
+<!DOCTYPE html SYSTEM "chrome://calendar/locale/calendar-occurrence-prompt.dtd">
+<html
+  id="calendar-occurrence-prompt"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  lightweightthemes="true"
+  scrolling="false"
+>
+  <head>
+    <title><!-- windowtitle.${itemType}.${action} --></title>
+    <link rel="stylesheet" href="chrome://messenger/skin/messenger.css" />
+    <link rel="stylesheet" href="chrome://messenger/skin/colors.css" />
+    <link rel="stylesheet" href="chrome://messenger/skin/themeableDialog.css" />
+    <link rel="stylesheet" href="chrome://calendar/skin/shared/calendar-occurrence-prompt.css" />
+    <script defer="defer" src="chrome://messenger/content/dialogShadowDom.js"></script>
+    <script defer="defer" src="chrome://calendar/content/calendar-occurrence-prompt.js"></script>
+  </head>
+  <html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    <dialog buttons="accept,cancel">
+      <vbox id="occurrence-prompt-header" pack="center">
+        <label id="title-label" crop="end" />
+        <label id="isrepeating-label" />
+      </vbox>
 
-<!DOCTYPE window SYSTEM "chrome://calendar/locale/calendar-occurrence-prompt.dtd">
-
-<window id="calendar-occurrence-prompt"
-        windowtype="Calendar:OccurrencePrompt"
-        onload="onLoad()"
-        lightweightthemes="true"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml"
-        xmlns:xhtml2="http://www.w3.org/TR/xhtml2"
-        xmlns:wairole="http://www.w3.org/2005/01/wai-rdf/GUIRoleTaxonomy#"
-        xhtml2:role="wairole:alertdialog">
-<dialog buttons="accept,cancel">
-  <script><![CDATA[
-      var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-
-      document.addEventListener("dialogaccept", () => exitOccurrenceDialog(1));
-      document.addEventListener("dialogcancel", () => exitOccurrenceDialog(0));
-
-      function exitOccurrenceDialog(aReturnValue) {
-          window.arguments[0].value = aReturnValue;
-          window.close();
-      }
-
-      function getDString(aKey) {
-          return cal.l10n.getString("calendar-occurrence-prompt", aKey);
-      }
-
-      function onLoad() {
-          let action = window.arguments[0].action || "edit";
-          // the calling code prevents sending no items
-          let multiple = (window.arguments[0].items.length == 1)
-                       ? "single" : "multiple";
-          let itemType;
-          for (let item of window.arguments[0].items) {
-              let type = item.isEvent() ? "event" : "task";
-              if (itemType != type) {
-                  itemType = (itemType) ? "mixed" : type;
-              }
-          }
-
-          // Set up title and type label
-          document.title = getDString(`windowtitle.${itemType}.${action}`);
-          let title = document.getElementById("title-label");
-          if (multiple == "multiple") {
-              title.value = getDString("windowtitle.multipleitems");
-              document.getElementById("isrepeating-label").value = getDString(
-                  `header.containsrepeating.${itemType}.label`
-              );
-          } else {
-              title.value = window.arguments[0].items[0].title;
-              document.getElementById("isrepeating-label").value = getDString(
-                  `header.isrepeating.${itemType}.label`
-              );
-          }
-
-          // Set up buttons
-          document.getElementById("accept-buttons-box")
-                  .setAttribute("action", action);
-          document.getElementById("accept-buttons-box")
-                  .setAttribute("type", itemType);
-
-          document.getElementById("accept-occurrence-button").label = getDString(
-              `buttons.${multiple}.occurrence.${action}.label`
-          );
-
-          document.getElementById("accept-allfollowing-button").label = getDString(
-              `buttons.${multiple}.allfollowing.${action}.label`
-          );
-          document.getElementById("accept-parent-button").label = getDString(
-              `buttons.${multiple}.parent.${action}.label`
-          );
-
-          window.sizeToContent();
-      }
-  ]]></script>
-  <script src="chrome://messenger/content/dialogShadowDom.js"/>
-
-  <vbox id="occurrence-prompt-header" pack="center">
-    <label id="title-label" crop="end"/>
-    <label id="isrepeating-label"/>
-  </vbox>
-
-  <vbox id="accept-buttons-box" flex="1" pack="center">
-    <button id="accept-occurrence-button"
-            default="true"
-            dlgtype="accept"
-            class="occurrence-accept-buttons"
-            accesskey="&buttons.occurrence.accesskey;"
-            oncommand="exitOccurrenceDialog(1)"
-            pack="start"/>
-    <!-- XXXphilipp Button is hidden until all following is implemented -->
-    <button id="accept-allfollowing-button"
-            class="occurrence-accept-buttons"
-            accesskey="&buttons.allfollowing.accesskey;"
-            oncommand="exitOccurrenceDialog(2)"
-            hidden="true"
-            pack="start"/>
-    <button id="accept-parent-button"
-            class="occurrence-accept-buttons"
-            accesskey="&buttons.parent.accesskey;"
-            oncommand="exitOccurrenceDialog(3)"
-            pack="start"/>
-  </vbox>
-</dialog>
-</window>
+      <vbox id="accept-buttons-box" flex="1" pack="center">
+        <button
+          id="accept-occurrence-button"
+          default="true"
+          dlgtype="accept"
+          class="occurrence-accept-buttons"
+          accesskey="&buttons.occurrence.accesskey;"
+          oncommand="exitOccurrenceDialog(1)"
+          pack="start"
+        />
+        <!-- XXXphilipp Button is hidden until all following is implemented -->
+        <button
+          id="accept-allfollowing-button"
+          class="occurrence-accept-buttons"
+          accesskey="&buttons.allfollowing.accesskey;"
+          oncommand="exitOccurrenceDialog(2)"
+          hidden="true"
+          pack="start"
+        />
+        <button
+          id="accept-parent-button"
+          class="occurrence-accept-buttons"
+          accesskey="&buttons.parent.accesskey;"
+          oncommand="exitOccurrenceDialog(3)"
+          pack="start"
+        />
+      </vbox>
+    </dialog>
+  </html:body>
+</html>

@@ -23,9 +23,7 @@ http://creativecommons.org/licenses/publicdomain/
 </pre>
 
 <script class="testbody" type="text/javascript">
-  /* eslint-env mozilla/frame-script */
-
-  function debug(str) {
+  function debug() {
   //  console.log(str + "\n");
   }
 
@@ -56,12 +54,12 @@ http://creativecommons.org/licenses/publicdomain/
   }
 
   function subscribeFail(swr) {
-    return new Promise((res, rej) => {
+    return new Promise((res) => {
       swr.pushManager.subscribe()
-        .then(sub => {
+        .then(() => {
           ok(false, "successful registered for push notification");
           throw new Error("Should fail");
-        }, err => {
+        }, () => {
           ok(true, "could not register for push notification");
           res(swr);
         });
@@ -92,6 +90,7 @@ http://creativecommons.org/licenses/publicdomain/
   // Load chrome script to change offline status in the
   // parent process.
   var offlineChromeScript = SpecialPowers.loadChromeScript(_ => {
+    /* eslint-env mozilla/chrome-script */
     addMessageListener("change-status", function(offline) {
       // eslint-disable-next-line mozilla/use-services
       const ioService = Cc["@mozilla.org/network/io-service;1"]
@@ -119,7 +118,7 @@ http://creativecommons.org/licenses/publicdomain/
   };
 
   function changeOfflineState(offline) {
-    return new Promise(function(res, rej) {
+    return new Promise(function(res) {
       // eslint-disable-next-line mozilla/use-services
       const obsService = SpecialPowers.Cc["@mozilla.org/observer-service;1"]
         .getService(SpecialPowers.Ci.nsIObserverService);
@@ -299,8 +298,9 @@ http://creativecommons.org/licenses/publicdomain/
     .then(SimpleTest.finish);
   }
 
-  setupPrefsAndMockSocket(new MockWebSocket()).then(_ => runTest());
-  SpecialPowers.addPermission("desktop-notification", true, document);
+  setupPrefsAndMockSocket(new MockWebSocket())
+    .then(_ => setPushPermission(true))
+    .then(_ => runTest());
   SimpleTest.waitForExplicitFinish();
 </script>
 </body>

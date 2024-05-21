@@ -91,16 +91,14 @@ addAccessibleTask(
       "Correct AXHasPopup val for button with menu"
     );
 
-    attrChanged = waitForEvent(EVENT_STATE_CHANGE, "menu");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("menu")
         .setAttribute("aria-haspopup", "true");
     });
-    await attrChanged;
 
-    is(
-      menuID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => menuID.getAttributeValue("AXPopupValue"),
       "true",
       "Correct AXPopupValue after change for menu"
     );
@@ -116,8 +114,8 @@ addAccessibleTask(
     });
     await stateChanged;
 
-    is(
-      menuID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => menuID.getAttributeValue("AXPopupValue"),
       null,
       "Correct AXPopupValue after remove for menu"
     );
@@ -140,16 +138,14 @@ addAccessibleTask(
       "Correct AXHasPopup for button with listbox"
     );
 
-    attrChanged = waitForEvent(EVENT_STATE_CHANGE, "listbox");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("listbox")
         .setAttribute("aria-haspopup", "true");
     });
-    await attrChanged;
 
-    is(
-      listboxID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => listboxID.getAttributeValue("AXPopupValue"),
       "true",
       "Correct AXPopupValue after change for listbox"
     );
@@ -191,16 +187,14 @@ addAccessibleTask(
       "Correct AXHasPopup for button with tree"
     );
 
-    attrChanged = waitForEvent(EVENT_STATE_CHANGE, "tree");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("tree")
         .setAttribute("aria-haspopup", "true");
     });
-    await attrChanged;
 
-    is(
-      treeID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => treeID.getAttributeValue("AXPopupValue"),
       "true",
       "Correct AXPopupValue after change for tree"
     );
@@ -240,16 +234,14 @@ addAccessibleTask(
       "Correct AXHasPopup for button with grid"
     );
 
-    attrChanged = waitForEvent(EVENT_STATE_CHANGE, "grid");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("grid")
         .setAttribute("aria-haspopup", "true");
     });
-    await attrChanged;
 
-    is(
-      gridID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => gridID.getAttributeValue("AXPopupValue"),
       "true",
       "Correct AXPopupValue after change for grid"
     );
@@ -289,16 +281,14 @@ addAccessibleTask(
       "Correct AXHasPopup for button with dialog"
     );
 
-    attrChanged = waitForEvent(EVENT_STATE_CHANGE, "dialog");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("dialog")
         .setAttribute("aria-haspopup", "true");
     });
-    await attrChanged;
 
-    is(
-      dialogID.getAttributeValue("AXPopupValue"),
+    await untilCacheIs(
+      () => dialogID.getAttributeValue("AXPopupValue"),
       "true",
       "Correct AXPopupValue after change for dialog"
     );

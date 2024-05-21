@@ -14,16 +14,16 @@ connection-dns-over-https-url-custom =
     .accesskey = Ö
     .tooltiptext = HTTPS üzerinden DNS'i çözümlemek için tercih ettiğiniz URL'i girin
 connection-dns-over-https-custom-label = Özel
-connection-dialog-window =
-    .title = Bağlantı Ayarları
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Uzantıyı etkisizleştir
+connection-dialog-window2 =
+    .title = Bağlantı ayarları
+connection-dialog-title = Bağlantı ayarları
 disable-extension-button = Uzantıyı etkisizleştir
+# Variables:
+#   $name (String) - The extension that is controlling the proxy settings.
+#
+# The extension-icon is the extension's icon, or a fallback image. It should be
+# purely decoration for the actual extension name, with alt="".
+proxy-settings-controlled-by-extension = { -brand-short-name } tarayıcınızın internete nasıl bağlanacağını <img data-l10n-name="extension-icon" alt="" /> { $name } adlı uzantı kontrol ediyor.
 connection-proxy-legend = İnternete Erişmek İçin Vekil Sunucuları Yapılandırın
 proxy-type-no =
     .label = Vekil sunucu kullanma
@@ -84,5 +84,5 @@ proxy-remote-dns =
     .label = SOCKS v5 kullanırken vekil sunucu DNS’i
     .accesskey = d
 proxy-enable-doh =
-    .label = HTTP üzerinden DNS’i etkinleştir
+    .label = HTTPS üzerinden DNS’i etkinleştir
     .accesskey = D

@@ -9,27 +9,14 @@
 
 // make SOLO_FILE="test_folderOfflineFlags.js" -C mailnews/imap/test check-one
 
-// async support
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/alertTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/alertTestUtils.js");
-
-// Definition of tests
-var tests = [
-  setup,
-  testGeneralFoldersOffline,
-  testTrashNotOffline,
-  testJunkNotOffline,
-  teardown,
-];
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 /**
  * Setup the mailboxes that will be used for this test.
  */
-function* setup() {
+add_setup(async function () {
   setupIMAPPump("GMail");
 
   IMAPPump.mailbox.subscribed = true;
@@ -66,65 +53,56 @@ function* setup() {
   IMAPPump.daemon.createMailbox("folder2", { subscribed: true });
 
   // select the inbox to force folder discovery, etc.
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
 /**
  * Test that folders generally are marked for offline use by default.
  */
-function* testGeneralFoldersOffline() {
+add_task(function testGeneralFoldersOffline() {
   Assert.ok(IMAPPump.inbox.getFlag(Ci.nsMsgFolderFlags.Offline));
 
-  let gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
+  const gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
 
-  let allmail = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Archive);
+  const allmail = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Archive);
   Assert.ok(allmail.getFlag(Ci.nsMsgFolderFlags.Offline));
 
-  let drafts = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Drafts);
+  const drafts = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Drafts);
   Assert.ok(drafts.getFlag(Ci.nsMsgFolderFlags.Offline));
 
-  let sent = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.SentMail);
+  const sent = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.SentMail);
   Assert.ok(sent.getFlag(Ci.nsMsgFolderFlags.Offline));
 
-  let rootFolder = IMAPPump.incomingServer.rootFolder;
+  const rootFolder = IMAPPump.incomingServer.rootFolder;
 
-  let folder1 = rootFolder.getChildNamed("folder1");
+  const folder1 = rootFolder.getChildNamed("folder1");
   Assert.ok(folder1.getFlag(Ci.nsMsgFolderFlags.Offline));
 
-  let folder2 = rootFolder.getChildNamed("folder2");
+  const folder2 = rootFolder.getChildNamed("folder2");
   Assert.ok(folder2.getFlag(Ci.nsMsgFolderFlags.Offline));
-
-  yield true;
-}
+});
 
 /**
  * Test that Trash isn't flagged for offline use by default.
  */
-function* testTrashNotOffline() {
-  let gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
-  let trash = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
+add_task(function testTrashNotOffline() {
+  const gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
+  const trash = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
   Assert.ok(!trash.getFlag(Ci.nsMsgFolderFlags.Offline));
-  yield true;
-}
+});
 
 /**
  * Test that Junk isn't flagged for offline use by default.
  */
-function* testJunkNotOffline() {
-  let gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
-  let spam = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Junk);
+add_task(function testJunkNotOffline() {
+  const gmail = IMAPPump.incomingServer.rootFolder.getChildNamed("[Gmail]");
+  const spam = gmail.getFolderWithFlags(Ci.nsMsgFolderFlags.Junk);
   Assert.ok(!spam.getFlag(Ci.nsMsgFolderFlags.Offline));
-  yield true;
-}
+});
 
 /** Cleanup at the end. */
-function teardown() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-/** Run the tests. */
-function run_test() {
-  async_run_tests(tests);
-}
+});

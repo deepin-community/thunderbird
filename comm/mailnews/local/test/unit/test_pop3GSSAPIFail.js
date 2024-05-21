@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- Mode: JavaScript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /**
  * A server offers GSSAPI (Kerberos), but auth fails, due to client or server.
  *
@@ -79,7 +79,7 @@ var urlListener = {
       do_timeout(0, checkBusy);
     } catch (e) {
       server.stop();
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(true);
       }
@@ -96,7 +96,7 @@ function checkBusy() {
     // No more tests, let everything finish
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
@@ -106,11 +106,7 @@ function checkBusy() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -135,7 +131,7 @@ function testNext() {
     deletePop3Server();
     incomingServer = createPop3Server();
 
-    let msgServer = incomingServer;
+    const msgServer = incomingServer;
     msgServer.QueryInterface(Ci.nsIMsgIncomingServer);
     msgServer.authMethod = thisTest.clientAuthMethod;
 
@@ -154,7 +150,7 @@ function testNext() {
 
 // <copied from="head_maillocal.js::createPop3ServerAndLocalFolders()">
 function createPop3Server() {
-  let incoming = MailServices.accounts.createIncomingServer(
+  const incoming = MailServices.accounts.createIncomingServer(
     "fred",
     "localhost",
     "pop3"
@@ -173,12 +169,8 @@ function deletePop3Server() {
   incomingServer = null;
 }
 
-function GSSAPIFail_handler(daemon_) {
-  POP3_RFC5034_handler.call(this, daemon_);
-}
-GSSAPIFail_handler.prototype = {
-  __proto__: POP3_RFC5034_handler.prototype, // inherit
-  _needGSSAPI: false,
+class GSSAPIFail_handler extends POP3_RFC5034_handler {
+  _needGSSAPI = false;
   // kAuthSchemes will be set by test
 
   AUTH(restLine) {
@@ -188,8 +180,8 @@ GSSAPIFail_handler.prototype = {
       this._needGSSAPI = true;
       return "+";
     }
-    return POP3_RFC5034_handler.prototype.AUTH.call(this, restLine); // call parent
-  },
+    return super.AUTH(restLine); // call parent
+  }
   onMultiline(line) {
     if (this._needGSSAPI) {
       this._multiline = false;
@@ -197,13 +189,13 @@ GSSAPIFail_handler.prototype = {
       return "-ERR hm.... shall I allow you? hm... NO.";
     }
 
-    if (POP3_RFC5034_handler.prototype.onMultiline) {
+    if (super.onMultiline) {
       // Call parent.
-      return POP3_RFC5034_handler.prototype.onMultiline.call(this, line);
+      return super.onMultiline(line);
     }
     return undefined;
-  },
-};
+  }
+}
 
 function run_test() {
   // Disable new mail notifications
@@ -212,7 +204,7 @@ function run_test() {
   Services.prefs.setBoolPref("mail.biff.show_tray_icon", false);
   Services.prefs.setBoolPref("mail.biff.animate_dock_icon", false);
 
-  daemon = new pop3Daemon();
+  daemon = new Pop3Daemon();
   function createHandler(d) {
     var handler = new GSSAPIFail_handler(d);
     handler.kAuthSchemes = authSchemes;

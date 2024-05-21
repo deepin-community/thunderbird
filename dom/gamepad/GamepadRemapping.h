@@ -12,8 +12,7 @@
 #include "mozilla/dom/GamepadPoseState.h"
 #include "mozilla/dom/GamepadTouchState.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 // GamepadId is (vendorId << 16) | productId)
 enum class GamepadId : uint32_t {
@@ -57,6 +56,8 @@ enum class GamepadId : uint32_t {
   kMicrosoftProductXboxAdaptive = 0x045e0b0a,
   // Microsoft Xbox Adaptive Wireless
   kMicrosoftProductXboxAdaptiveWireless = 0x045e0b0c,
+  // Microsoft Xbox Series X Wireless
+  kMicrosoftProductXboxSeriesXWireless = 0x045e0b13,
   // Switch Joy-Con L
   kNintendoProduct2006 = 0x057e2006,
   // Switch Joy-Con R
@@ -97,6 +98,41 @@ enum class GamepadId : uint32_t {
   kVendor2836Product0001 = 0x28360001,
 };
 
+// Follow the canonical ordering recommendation for the "Standard Gamepad"
+// from https://www.w3.org/TR/gamepad/#remapping.
+enum CanonicalButtonIndex {
+  BUTTON_INDEX_PRIMARY,
+  BUTTON_INDEX_SECONDARY,
+  BUTTON_INDEX_TERTIARY,
+  BUTTON_INDEX_QUATERNARY,
+  BUTTON_INDEX_LEFT_SHOULDER,
+  BUTTON_INDEX_RIGHT_SHOULDER,
+  BUTTON_INDEX_LEFT_TRIGGER,
+  BUTTON_INDEX_RIGHT_TRIGGER,
+  BUTTON_INDEX_BACK_SELECT,
+  BUTTON_INDEX_START,
+  BUTTON_INDEX_LEFT_THUMBSTICK,
+  BUTTON_INDEX_RIGHT_THUMBSTICK,
+  BUTTON_INDEX_DPAD_UP,
+  BUTTON_INDEX_DPAD_DOWN,
+  BUTTON_INDEX_DPAD_LEFT,
+  BUTTON_INDEX_DPAD_RIGHT,
+  BUTTON_INDEX_META,
+  BUTTON_INDEX_COUNT
+};
+
+enum CanonicalAxisIndex {
+  AXIS_INDEX_LEFT_STICK_X,
+  AXIS_INDEX_LEFT_STICK_Y,
+  AXIS_INDEX_RIGHT_STICK_X,
+  AXIS_INDEX_RIGHT_STICK_Y,
+  AXIS_INDEX_COUNT
+};
+
+static inline bool AxisNegativeAsButton(double input) { return input < -0.5; }
+
+static inline bool AxisPositiveAsButton(double input) { return input > 0.5; }
+
 class GamepadRemapper {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(GamepadRemapper)
 
@@ -136,7 +172,6 @@ already_AddRefed<GamepadRemapper> GetGamepadRemapper(const uint16_t aVendorId,
                                                      const uint16_t aProductId,
                                                      bool& aUsingDefault);
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_GamepadRemapping_h_

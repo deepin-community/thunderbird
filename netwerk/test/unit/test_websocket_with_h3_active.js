@@ -11,11 +11,7 @@ let wssUri;
 let httpsUri;
 
 add_task(async function pre_setup() {
-  let env = Cc["@mozilla.org/process/environment;1"].getService(
-    Ci.nsIEnvironment
-  );
-
-  let h2Port = env.get("MOZHTTP2_PORT");
+  let h2Port = Services.env.get("MOZHTTP2_PORT");
   Assert.notEqual(h2Port, null);
   Assert.notEqual(h2Port, "");
 
@@ -28,17 +24,15 @@ add_task(async function setup() {
   await http3_setup_tests("h3");
 });
 
-let WebSocketListener = function() {};
-
 WebSocketListener.prototype = {
-  onAcknowledge(aContext, aSize) {},
-  onBinaryMessageAvailable(aContext, aMsg) {},
-  onMessageAvailable(aContext, aMsg) {},
-  onServerClose(aContext, aCode, aReason) {},
-  onStart(aContext) {
+  onAcknowledge() {},
+  onBinaryMessageAvailable() {},
+  onMessageAvailable() {},
+  onServerClose() {},
+  onStart() {
     this.finish();
   },
-  onStop(aContext, aStatusCode) {},
+  onStop() {},
 };
 
 function makeH2Chan() {
@@ -83,7 +77,7 @@ add_task(async function open_wss_when_h3_is_active() {
   var wsListener = new WebSocketListener();
   await new Promise(resolve => {
     wsListener.finish = resolve;
-    chan.asyncOpen(uri, wssUri, 0, wsListener, null);
+    chan.asyncOpen(uri, wssUri, {}, 0, wsListener, null);
   });
 
   // Try to use https protocol, it should sttill use HTTP/3

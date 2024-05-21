@@ -26,7 +26,7 @@ const windowTracker = {
     Services.obs.addObserver(this, "chrome-document-global-created");
   },
 
-  async observe(window, topic, data) {
+  async observe(window, topic) {
     if (topic === "chrome-document-global-created") {
       await new Promise(resolve =>
         window.addEventListener("DOMContentLoaded", resolve, { once: true })
@@ -44,9 +44,6 @@ const windowTracker = {
 };
 
 function androidStartup() {
-  // Bug 1526086 - we shouldn't need to do this, but otherwise we hang at
-  // shutdown trying to write the startup cache.
-  Services.obs.notifyObservers(null, "startupcache-invalidate");
   // Only browser chrome tests need help starting.
   let testRoot = Services.prefs.getStringPref("mochitest.testRoot", "");
   if (testRoot.endsWith("/chrome")) {
@@ -62,6 +59,8 @@ function androidStartup() {
 
     windowTracker.init();
   }
+
+  Services.fog.initializeFOG();
 }
 
 // ///// Desktop ///////
@@ -76,11 +75,10 @@ var WindowListener = {
   // needs to happen in all navigator:browser windows should go here.
   setupWindow(win) {
     win.nativeConsole = win.console;
-    ChromeUtils.defineModuleGetter(
-      win,
-      "console",
-      "resource://gre/modules/Console.jsm"
+    let { ConsoleAPI } = ChromeUtils.importESModule(
+      "resource://gre/modules/Console.sys.mjs"
     );
+    win.console = new ConsoleAPI();
   },
 
   tearDownWindow(win) {
@@ -95,7 +93,7 @@ var WindowListener = {
 
     win.addEventListener(
       "load",
-      function() {
+      function () {
         if (
           win.document.documentElement.getAttribute("windowtype") == WINDOW_TYPE
         ) {
@@ -116,17 +114,9 @@ function loadMochitest(e) {
 
   // for mochitest-plain, navigating to the url is all we need
   if (!IS_THUNDERBIRD) {
-    win.loadURI(
-      url,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      Services.scriptSecurityManager.getSystemPrincipal()
-    );
+    win.openLinkIn(url, "current", {
+      triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+    });
   }
   if (flavor == "mochitest") {
     return;

@@ -14,7 +14,18 @@ accounts-conn-security = Seguretat de la connexió
 accounts-auth-method = Mètode d'autenticació
 accounts-default = Per defecte?
 identity-name = Identitat
-
 send-via-email = Envia per correu electrònic
-
 app-basics-telemetry = Dades de telemesura
+app-basics-cache-use = Ús de la memòria cau
+mail-libs-title = Biblioteques
+libs-table-heading-library = Biblioteca
+libs-table-heading-expected-version = Versió mínima esperada
+libs-table-heading-loaded-version = Versió en ús
+libs-table-heading-path = Camí
+libs-table-heading-status = Estat
+libs-rnp-status-ok = Correcte
+libs-rnp-status-load-failed = No s'ha pogut carregar. L'OpenPGP no funcionarà.
+libs-rnp-status-incompatible = Versió incompatible. L'OpenPGP no funcionarà.
+libs-rnp-status-unofficial = Versió no oficial. L'OpenPGP podria no funcionar com s'esperaria.
+libs-otr-status-ok = Correcte
+libs-otr-status-error = No s'ha pogut carregar. El xifratge de xat OTR no funcionarà.

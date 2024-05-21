@@ -30,11 +30,6 @@
 <p>blah blah blah blah</p>
 </div>
 <script class="testbody" type="text/javascript">
-const kStrictKeyPressEvents =
-  SpecialPowers.getBoolPref("dom.keyboardevent.keypress.dispatch_non_printable_keys_only_system_group_in_content");
-const kStrictKeyDownKeyUpEvents =
-  SpecialPowers.getBoolPref("dom.keyboardevent.dispatch_during_composition");
-
 info("\nProfile::EventUtilsLoadTime: " + (loadTime - start) + "\n");
 function starttest() {
   SimpleTest.waitForFocus(
@@ -52,7 +47,7 @@ function starttest() {
 
       if (navigator.appVersion.includes("Android")) {
         // This is the workaround for test failure on debug build.
-        await SpecialPowers.pushPrefEnv({set: [["apz.zoom-to-focused-input.enabled", false]]});
+        await SpecialPowers.pushPrefEnv({set: [["formhelper.autozoom.force-disable.test-only", true]]});
       }
 
       /* test send* functions */
@@ -64,8 +59,10 @@ function starttest() {
         let events = [];
         let listener = event => events.push(event);
         let preventDefault = event => event.preventDefault();
-        $("testMouseEvent").addEventListener("mousedown", listener);
-        $("testMouseEvent").addEventListener("mouseup", listener);
+        // promiseNativeMouseEventAndWaitForEvent uses capturing listeners
+        // internally, so use capturing listeners also here.
+        $("testMouseEvent").addEventListener("mousedown", listener, true);
+        $("testMouseEvent").addEventListener("mouseup", listener, true);
         // Clicking with modifiers may open context menu so that we should prevent to open it.
         window.addEventListener("contextmenu", preventDefault, { capture: true });
         for (const test of [
@@ -246,15 +243,11 @@ function starttest() {
       $("testKeyEvent").addEventListener("keypress", function() { keypress = true; }, {once: true});
       sendKey("DOWN");
       ok(keydown, "sendKey should dispatch keyDown");
-      if (kStrictKeyPressEvents) {
-        ok(!keypress, "sendKey shouldn't dispatch keyPress for non-printable key");
-      } else {
-        ok(keypress, "sendKey should dispatch keyPress even for non-printable key");
-      }
+      ok(!keypress, "sendKey shouldn't dispatch keyPress for non-printable key");
 
       /* test synthesizeMouse* */
       //focus trick enables us to run this in iframes
-      $("radioTarget1").addEventListener('focus', function (aEvent) {
+      $("radioTarget1").addEventListener('focus', function () {
         synthesizeMouse($("radioTarget1"), 1, 1, {});
         is($("radioTarget1").checked, true, "synthesizeMouse should work")
         $("radioTarget1").checked = false;
@@ -267,7 +260,7 @@ function starttest() {
       $("radioTarget1").focus();
 
       //focus trick enables us to run this in iframes
-      $("textBoxA").addEventListener("focus", function (aEvent) {
+      $("textBoxA").addEventListener("focus", function () {
         check = false;
         $("textBoxA").addEventListener("click", function() { check = true; }, { once: true });
         synthesizeMouseAtCenter($("textBoxA"), {});
@@ -357,7 +350,7 @@ function starttest() {
         check = false;
       }
       function checkKeyDownAndKeyUp(aKeyDown, aKeyUp) {
-        if (aKeyDown && (!aKeyDown.inComposition || kStrictKeyDownKeyUpEvents)) {
+        if (aKeyDown) {
           is(keydownEvent.keyCode, aKeyDown.keyCode,
              description + "keydown event should be dispatched (checking keyCode)");
           is(keydownEvent.key, aKeyDown.key,
@@ -366,7 +359,7 @@ function starttest() {
           is(keydownEvent, null,
              description + "keydown event shouldn't be fired");
         }
-        if (aKeyUp && (!aKeyUp.inComposition || kStrictKeyDownKeyUpEvents)) {
+        if (aKeyUp) {
           is(keyupEvent.keyCode, aKeyUp.keyCode,
              description + "keyup event should be dispatched (checking keyCode)");
           is(keyupEvent.key, aKeyUp.key,

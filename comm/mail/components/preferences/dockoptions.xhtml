@@ -1,24 +1,26 @@
 <?xml version="1.0"?>
-<!-- -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 4 -*-
-   - This Source Code Form is subject to the terms of the Mozilla Public
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<?xml-stylesheet href="chrome://global/skin/global.css"?>
-
-<!DOCTYPE window>
-
-<window type="child"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        xmlns:html="http://www.w3.org/1999/xhtml"
-        data-l10n-id="dock-options-window-dialog"
-        data-l10n-attrs="style">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      type="child"
+      scrolling="false"
+      style="min-width: 33em;">
+<head>
+  <title data-l10n-id="dock-options-dialog-title"></title>
+  <link rel="stylesheet" href="chrome://global/skin/global.css" />
+  <link rel="localization" href="messenger/preferences/dock-options.ftl" />
+  <script defer="defer" src="chrome://global/content/preferencesBindings.js"></script>
+  <script defer="defer" src="chrome://messenger/content/preferences/dockoptions.js"></script>
+</head>
+<html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
   <dialog id="DockOptionsDialog"
           dlgbuttons="accept,cancel">
 
-    <linkset>
-      <html:link rel="localization" href="messenger/preferences/dock-options.ftl"/>
-    </linkset>
     <hbox orient="vertical">
 #ifdef XP_MACOSX
       <checkbox id="newMailNotificationBounce"
@@ -50,11 +52,9 @@
       </html:div>
 #ifdef XP_MACOSX
       <separator/>
-      <description class="bold" data-l10n-id="notification-settings-info"/>
+      <description class="bold" data-l10n-id="notification-settings-info2"/>
 #endif
     </hbox>
-
-    <script src="chrome://global/content/preferencesBindings.js"/>
-    <script src="chrome://messenger/content/preferences/dockoptions.js"/>
   </dialog>
-</window>
+</html:body>
+</html>

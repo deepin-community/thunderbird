@@ -6,7 +6,9 @@
 #include "nsPageContentFrame.h"
 
 #include "mozilla/PresShell.h"
+#include "mozilla/PresShellInlines.h"
 #include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/dom/Document.h"
 
 #include "nsContentUtils.h"
 #include "nsPageFrame.h"
@@ -18,10 +20,11 @@
 
 using namespace mozilla;
 
-nsPageContentFrame* NS_NewPageContentFrame(PresShell* aPresShell,
-                                           ComputedStyle* aStyle) {
-  return new (aPresShell)
-      nsPageContentFrame(aStyle, aPresShell->GetPresContext());
+nsPageContentFrame* NS_NewPageContentFrame(
+    PresShell* aPresShell, ComputedStyle* aStyle,
+    already_AddRefed<const nsAtom> aPageName) {
+  return new (aPresShell) nsPageContentFrame(
+      aStyle, aPresShell->GetPresContext(), std::move(aPageName));
 }
 
 NS_IMPL_FRAMEARENA_HELPERS(nsPageContentFrame)
@@ -48,8 +51,7 @@ void nsPageContentFrame::Reflow(nsPresContext* aPresContext,
   // Set our size up front, since some parts of reflow depend on it
   // being already set.  Note that the computed height may be
   // unconstrained; that's ok.  Consumers should watch out for that.
-  const nsSize maxSize(aReflowInput.ComputedWidth(),
-                       aReflowInput.ComputedHeight());
+  const nsSize maxSize = aReflowInput.ComputedPhysicalSize();
   SetSize(maxSize);
 
   // Writing mode for the page content frame.
@@ -80,7 +82,7 @@ void nsPageContentFrame::Reflow(nsPresContext* aPresContext,
 
     // XXXbz this screws up percentage padding (sets padding to zero
     // in the percentage padding case)
-    kidReflowInput.mStylePadding->GetPadding(padding);
+    frame->StylePadding()->GetPadding(padding);
 
     // This is for shrink-to-fit, and therefore we want to use the
     // scrollable overflow, since the purpose of shrink to fit is to
@@ -165,8 +167,6 @@ void nsPageContentFrame::Reflow(nsPresContext* aPresContext,
 
     mRemainingOverflow = std::max(remainingOverflow, 0);
   }
-
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aReflowOutput);
 }
 
 using PageAndOffset = std::pair<nsPageContentFrame*, nscoord>;
@@ -262,34 +262,28 @@ static void BuildPreviousPageOverflow(nsDisplayListBuilder* aBuilder,
  * Remove all leaf display items that are not for descendants of
  * aBuilder->GetReferenceFrame() from aList.
  * @param aPage the page we're constructing the display list for
- * @param aExtraPage the page we constructed aList for
  * @param aList the list that is modified in-place
  */
 static void PruneDisplayListForExtraPage(nsDisplayListBuilder* aBuilder,
                                          nsPageFrame* aPage,
-                                         nsIFrame* aExtraPage,
                                          nsDisplayList* aList) {
-  nsDisplayList newList;
-
-  while (true) {
-    nsDisplayItem* i = aList->RemoveBottom();
+  for (nsDisplayItem* i : aList->TakeItems()) {
     if (!i) break;
     nsDisplayList* subList = i->GetSameCoordinateSystemChildren();
     if (subList) {
-      PruneDisplayListForExtraPage(aBuilder, aPage, aExtraPage, subList);
+      PruneDisplayListForExtraPage(aBuilder, aPage, subList);
       i->UpdateBounds(aBuilder);
     } else {
       nsIFrame* f = i->Frame();
-      if (!nsLayoutUtils::IsProperAncestorFrameCrossDoc(aPage, f)) {
+      if (!nsLayoutUtils::IsProperAncestorFrameCrossDocInProcess(aPage, f)) {
         // We're throwing this away so call its destructor now. The memory
         // is owned by aBuilder which destroys all items at once.
         i->Destroy(aBuilder);
         continue;
       }
     }
-    newList.AppendToTop(i);
+    aList->AppendToTop(i);
   }
-  aList->AppendToTop(&newList);
 }
 
 static void BuildDisplayListForExtraPage(nsDisplayListBuilder* aBuilder,
@@ -303,9 +297,9 @@ static void BuildDisplayListForExtraPage(nsDisplayListBuilder* aBuilder,
   if (!aExtraPage->HasAnyStateBits(NS_FRAME_FORCE_DISPLAY_LIST_DESCEND_INTO)) {
     return;
   }
-  nsDisplayList list;
+  nsDisplayList list(aBuilder);
   aExtraPage->BuildDisplayListForStackingContext(aBuilder, &list);
-  PruneDisplayListForExtraPage(aBuilder, aPage, aExtraPage, &list);
+  PruneDisplayListForExtraPage(aBuilder, aPage, &list);
   aList->AppendToTop(&list);
 }
 
@@ -334,7 +328,7 @@ void nsPageContentFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
 
   nsDisplayListCollection set(aBuilder);
 
-  nsDisplayList content;
+  nsDisplayList content(aBuilder);
   {
     const nsRect clipRect(aBuilder->ToReferenceFrame(this), GetSize());
     DisplayListClipState::AutoSaveRestore clipState(aBuilder);
@@ -349,12 +343,6 @@ void nsPageContentFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
       nsDisplayListBuilder::AutoPageNumberSetter p(aBuilder, pageNum);
       BuildPreviousPageOverflow(aBuilder, pageFrame, this, set);
     }
-
-    nsRect visible = aBuilder->GetVisibleRect();
-    visible.ScaleInverseRoundOut(PresContext()->GetPageScale());
-
-    nsDisplayListBuilder::AutoBuildingDisplayList buildingForChild(
-       aBuilder, this, visible, visible);
     mozilla::ViewportFrame::BuildDisplayList(aBuilder, set);
 
     set.SerializeWithCorrectZOrder(&content, GetContent());
@@ -412,8 +400,35 @@ void nsPageContentFrame::AppendDirectlyOwnedAnonBoxes(
   aResult.AppendElement(mFrames.FirstChild());
 }
 
+void nsPageContentFrame::EnsurePageName() {
+  MOZ_ASSERT(HasAnyStateBits(NS_FRAME_FIRST_REFLOW),
+             "Should only have been called on first reflow");
+  if (mPageName) {
+    return;
+  }
+  MOZ_ASSERT(!GetPrevInFlow(),
+             "Only the first page should initially have a null page name.");
+  // This was the first page, we need to find our own page name and then set
+  // our computed style based on that.
+  mPageName = ComputePageValue();
+
+  MOZ_ASSERT(mPageName, "Page name should never be null");
+  // Resolve the computed style given this page-name and the :first pseudo.
+  RefPtr<ComputedStyle> pageContentPseudoStyle =
+      PresShell()->StyleSet()->ResolvePageContentStyle(
+          mPageName, StylePagePseudoClassFlags::FIRST);
+  SetComputedStyleWithoutNotification(pageContentPseudoStyle);
+}
+
 #ifdef DEBUG_FRAME_DUMP
 nsresult nsPageContentFrame::GetFrameName(nsAString& aResult) const {
   return MakeFrameName(u"PageContent"_ns, aResult);
+}
+void nsPageContentFrame::ExtraContainerFrameInfo(nsACString& aTo) const {
+  if (mPageName) {
+    aTo += " [page=";
+    aTo += nsAtomCString(mPageName);
+    aTo += "]";
+  }
 }
 #endif

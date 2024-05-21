@@ -1,6 +1,6 @@
 const TEST_ORIGIN = "https://example.com";
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["signon.rememberSignons.visibilityToggle", true]],
   });
@@ -14,11 +14,11 @@ add_task(async function mainMenu_entryPoint() {
   let mainMenu = document.getElementById("appMenu-popup");
   let target = document.getElementById("PanelUI-menu-button");
   await TestUtils.waitForCondition(
-    () => BrowserTestUtils.is_visible(target),
+    () => BrowserTestUtils.isVisible(target),
     "Main menu button should be visible."
   );
   info("mainMenu_entryPoint, Main menu button is visible");
-  is(
+  Assert.equal(
     mainMenu.state,
     "closed",
     `Menu panel (${mainMenu.id}) is initally closed.`
@@ -30,13 +30,13 @@ add_task(async function mainMenu_entryPoint() {
   await popupshown;
 
   info("mainMenu_entryPoint, main menu popup is shown");
-  is(mainMenu.state, "open", `Menu panel (${mainMenu.id}) is open.`);
+  Assert.equal(mainMenu.state, "open", `Menu panel (${mainMenu.id}) is open.`);
 
   let loginsButtonID = "appMenu-passwords-button";
 
   let item = document.getElementById(loginsButtonID);
   await TestUtils.waitForCondition(
-    () => BrowserTestUtils.is_visible(item),
+    () => BrowserTestUtils.isVisible(item),
     "Logins and passwords button is visible."
   );
 
@@ -66,7 +66,7 @@ add_task(async function pageInfo_entryPoint() {
       gBrowser,
       url: TEST_ORIGIN,
     },
-    async function(browser) {
+    async function (_browser) {
       info("pageInfo_entryPoint, opening pageinfo");
       let pageInfo = BrowserPageInfo(TEST_ORIGIN, "securityTab", {});
       await BrowserTestUtils.waitForEvent(pageInfo, "page-info-init");
@@ -78,7 +78,7 @@ add_task(async function pageInfo_entryPoint() {
       );
 
       await TestUtils.waitForCondition(
-        () => BrowserTestUtils.is_visible(passwordsButton),
+        () => BrowserTestUtils.isVisible(passwordsButton),
         "Show passwords button should be visible."
       );
       info("pageInfo_entryPoint, clicking the show passwords button...");

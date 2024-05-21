@@ -6,12 +6,6 @@
 #ifndef GFX_WINDOWS_PLATFORM_H
 #define GFX_WINDOWS_PLATFORM_H
 
-/**
- * XXX to get CAIRO_HAS_DWRITE_FONT
- * and cairo_win32_scaled_font_select_font
- */
-#include "cairo-win32.h"
-
 #include "gfxCrashReporterUtils.h"
 #include "gfxFontUtils.h"
 #include "gfxWindowsSurface.h"
@@ -47,9 +41,6 @@ class DrawTarget;
 class FeatureState;
 class DeviceManagerDx;
 }  // namespace gfx
-namespace layers {
-class ReadbackManagerD3D11;
-}
 }  // namespace mozilla
 struct IDirect3DDevice9;
 struct ID3D11Device;
@@ -172,23 +163,12 @@ class gfxWindowsPlatform final : public gfxPlatform {
 
   void FontsPrefsChanged(const char* aPref) override;
 
-  void SetupClearTypeParams();
-
   static inline bool DWriteEnabled() {
     return !!mozilla::gfx::Factory::GetDWriteFactory();
   }
-  inline DWRITE_MEASURING_MODE DWriteMeasuringMode() { return mMeasuringMode; }
-
-  // Note that this may return nullptr, if we encountered an error initializing
-  // the default rendering params.
-  IDWriteRenderingParams* GetRenderingParams(TextRenderingMode aRenderMode) {
-    return mRenderingParams[aRenderMode];
-  }
 
  public:
-  bool DwmCompositionEnabled();
-
-  mozilla::layers::ReadbackManagerD3D11* GetReadbackManager();
+  static nsresult GetGpuTimeSinceProcessStartInMs(uint64_t* aResult);
 
   static bool IsOptimus();
 
@@ -199,7 +179,7 @@ class gfxWindowsPlatform final : public gfxPlatform {
   bool HandleDeviceReset();
   void UpdateBackendPrefs();
 
-  already_AddRefed<mozilla::gfx::VsyncSource> CreateHardwareVsyncSource()
+  already_AddRefed<mozilla::gfx::VsyncSource> CreateGlobalHardwareVsyncSource()
       override;
   static mozilla::Atomic<size_t> sD3D11SharedTextures;
   static mozilla::Atomic<size_t> sD3D9SharedTextures;
@@ -211,11 +191,20 @@ class gfxWindowsPlatform final : public gfxPlatform {
 
   static void InitMemoryReportersForGPUProcess();
 
+  static bool CheckVariationFontSupport();
+
+  // Always false for content processes.
+  bool SupportsHDR() override { return mSupportsHDR; }
+
  protected:
   bool AccelerateLayersByDefault() override { return true; }
-  void GetAcceleratedCompositorBackends(
-      nsTArray<mozilla::layers::LayersBackend>& aBackends) override;
+
   nsTArray<uint8_t> GetPlatformCMSOutputProfileData() override;
+
+ public:
+  static nsTArray<uint8_t> GetPlatformCMSOutputProfileData_Impl();
+
+ protected:
   void GetPlatformDisplayInfo(mozilla::widget::InfoObject& aObj) override;
 
   void ImportGPUDeviceData(const mozilla::gfx::GPUDeviceData& aData) override;
@@ -225,18 +214,12 @@ class gfxWindowsPlatform final : public gfxPlatform {
 
   BackendPrefsData GetBackendPrefs() const override;
 
-  bool CheckVariationFontSupport() override;
+  void UpdateSupportsHDR();
 
- protected:
   RenderMode mRenderMode;
+  bool mSupportsHDR;
 
  private:
-  enum class DwmCompositionStatus : uint32_t {
-    Unknown,
-    Disabled,
-    Enabled,
-  };
-
   void Init();
   void InitAcceleration() override;
   void InitWebRenderConfig() override;
@@ -258,14 +241,7 @@ class gfxWindowsPlatform final : public gfxPlatform {
 
   void RecordStartupTelemetry();
 
-  RefPtr<IDWriteRenderingParams> mRenderingParams[TEXT_RENDERING_COUNT];
-  DWRITE_MEASURING_MODE mMeasuringMode;
-
-  RefPtr<mozilla::layers::ReadbackManagerD3D11> mD3D11ReadbackManager;
   bool mInitializedDevices = false;
-
-  mozilla::Atomic<DwmCompositionStatus, mozilla::ReleaseAcquire>
-      mDwmCompositionStatus;
 
   // Cached contents of the output color profile file
   nsTArray<uint8_t> mCachedOutputColorProfile;

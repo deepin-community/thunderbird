@@ -9,11 +9,7 @@
 
 "use strict";
 
-var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
 var pps = Cc["@mozilla.org/network/protocol-proxy-service;1"].getService();
-var prefs = Cc["@mozilla.org/preferences-service;1"].getService(
-  Ci.nsIPrefBranch
-);
 
 /**
  * Test nsIProtocolHandler that allows proxying, but doesn't allow HTTP
@@ -29,20 +25,19 @@ TestProtocolHandler.prototype = {
     Ci.nsIProtocolHandler.URI_NORELATIVE |
     Ci.nsIProtocolHandler.ALLOWS_PROXY |
     Ci.nsIProtocolHandler.URI_DANGEROUS_TO_LOAD,
-  newChannel(uri, aLoadInfo) {
+  newChannel() {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
   },
-  allowPort(port, scheme) {
+  allowPort() {
     return true;
   },
 };
 
 function TestProtocolHandlerFactory() {}
 TestProtocolHandlerFactory.prototype = {
-  createInstance(delegate, iid) {
+  createInstance(iid) {
     return new TestProtocolHandler().QueryInterface(iid);
   },
-  lockFactory(lock) {},
 };
 
 function register_test_protocol_handler() {
@@ -133,7 +128,7 @@ resolveCallback.prototype = {
 
   QueryInterface: ChromeUtils.generateQI(["nsIProtocolProxyCallback"]),
 
-  onProxyAvailable(req, channel, pi, status) {
+  onProxyAvailable(req, channel, pi) {
     this.nextFunction(pi);
   },
 };

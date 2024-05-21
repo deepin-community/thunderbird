@@ -6,6 +6,7 @@ import * as firefox from "./client/firefox";
 
 import { asyncStore, verifyPrefSchema, prefs } from "./utils/prefs";
 import { setupHelper } from "./utils/dbg";
+import { setToolboxTelemetry } from "./utils/telemetry";
 
 import {
   bootstrapApp,
@@ -17,16 +18,24 @@ import {
 
 import { initialBreakpointsState } from "./reducers/breakpoints";
 import { initialSourcesState } from "./reducers/sources";
-const { sanitizeBreakpoints } = require("devtools/client/shared/thread-utils");
+import { initialUIState } from "./reducers/ui";
+import { initialSourceBlackBoxState } from "./reducers/source-blackbox";
+
+const {
+  sanitizeBreakpoints,
+} = require("resource://devtools/client/shared/thread-utils.js");
 
 async function syncBreakpoints() {
   const breakpoints = await asyncStore.pendingBreakpoints;
   const breakpointValues = Object.values(sanitizeBreakpoints(breakpoints));
   return Promise.all(
     breakpointValues.map(({ disabled, options, generatedLocation }) => {
-      if (!disabled) {
-        return firefox.clientCommands.setBreakpoint(generatedLocation, options);
+      if (disabled) {
+        return Promise.resolve();
       }
+      // Set the breakpoint on the server using the generated location as generated
+      // sources are known on server, not original sources.
+      return firefox.clientCommands.setBreakpoint(generatedLocation, options);
     })
   );
 }
@@ -39,6 +48,13 @@ async function syncXHRBreakpoints() {
         firefox.clientCommands.setXHRBreakpoint(path, method);
       }
     })
+  );
+}
+
+function setPauseOnDebuggerStatement() {
+  const { pauseOnDebuggerStatement } = prefs;
+  return firefox.clientCommands.pauseOnDebuggerStatement(
+    pauseOnDebuggerStatement
   );
 }
 
@@ -56,10 +72,12 @@ async function loadInitialState() {
   );
   const tabs = { tabs: await asyncStore.tabs };
   const xhrBreakpoints = await asyncStore.xhrBreakpoints;
-  const tabsBlackBoxed = await asyncStore.tabsBlackBoxed;
+  const blackboxedRanges = await asyncStore.blackboxedRanges;
   const eventListenerBreakpoints = await asyncStore.eventListenerBreakpoints;
   const breakpoints = initialBreakpointsState(xhrBreakpoints);
-  const sources = initialSourcesState({ tabsBlackBoxed });
+  const sourceBlackBox = initialSourceBlackBoxState({ blackboxedRanges });
+  const sources = initialSourcesState();
+  const ui = initialUIState();
 
   return {
     pendingBreakpoints,
@@ -67,16 +85,23 @@ async function loadInitialState() {
     breakpoints,
     eventListenerBreakpoints,
     sources,
+    sourceBlackBox,
+    ui,
   };
 }
 
 export async function bootstrap({
   commands,
+  fluentBundles,
   resourceCommand,
   workers: panelWorkers,
   panel,
 }) {
   verifyPrefSchema();
+
+  // Set telemetry at the very beginning as some actions fired from this function might
+  // record events.
+  setToolboxTelemetry(panel.toolbox.telemetry);
 
   const initialState = await loadInitialState();
   const workers = bootstrapWorkers(panelWorkers);
@@ -97,6 +122,7 @@ export async function bootstrap({
 
   await syncBreakpoints();
   await syncXHRBreakpoints();
+  await setPauseOnDebuggerStatement();
   await setPauseOnExceptions();
 
   setupHelper({
@@ -108,7 +134,10 @@ export async function bootstrap({
     client: firefox.clientCommands,
   });
 
-  bootstrapApp(store, panel);
+  bootstrapApp(store, panel.getToolboxStore(), {
+    fluentBundles,
+    toolboxDoc: panel.panelWin.parent.document,
+  });
   await connected;
   return { store, actions, selectors, client: firefox.clientCommands };
 }

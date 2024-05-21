@@ -71,10 +71,10 @@ Test preset with syntax subcommand
   Presets from */mozbuild/try_presets.yml: (glob)
   
     bar:
+      dry_run: true
       no_artifact: true
       platforms:
       - win32
-      push: false
       selector: syntax
       tags:
       - bar
@@ -96,10 +96,10 @@ Test preset with syntax subcommand
     
   $ ./mach try syntax $testargs --edit-presets
   bar:
+    dry_run: true
     no_artifact: true
     platforms:
     - win32
-    push: false
     selector: syntax
     tags:
     - bar
@@ -131,15 +131,20 @@ Test preset with fuzzy subcommand
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "rebuild": 5,
+              "tasks": [
+                  "test/foo-debug",
+                  "test/foo-opt"
+              ]
+          }
       },
-      "rebuild": 5,
-      "tasks": [
-          "test/foo-debug",
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
 
@@ -150,15 +155,20 @@ Test preset with fuzzy subcommand
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "rebuild": 5,
+              "tasks": [
+                  "test/foo-debug",
+                  "test/foo-opt"
+              ]
+          }
       },
-      "rebuild": 5,
-      "tasks": [
-          "test/foo-debug",
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
  
@@ -171,16 +181,21 @@ Queries can be appended to presets
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "rebuild": 5,
+              "tasks": [
+                  "build-baz",
+                  "test/foo-debug",
+                  "test/foo-opt"
+              ]
+          }
       },
-      "rebuild": 5,
-      "tasks": [
-          "build-baz",
-          "test/foo-debug",
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
 
@@ -191,14 +206,19 @@ Queries can be appended to presets
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "rebuild": 5,
+              "tasks": [
+                  "test/foo-opt"
+              ]
+          }
       },
-      "rebuild": 5,
-      "tasks": [
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
 
@@ -206,10 +226,10 @@ Queries can be appended to presets
   Presets from */mozbuild/try_presets.yml: (glob)
   
     bar:
+      dry_run: true
       no_artifact: true
       platforms:
       - win32
-      push: false
       selector: syntax
       tags:
       - bar
@@ -218,10 +238,10 @@ Queries can be appended to presets
       tests:
       - none
     baz:
+      dry_run: true
       no_artifact: true
-      push: false
       query:
-      - '''foo'
+      - "'foo"
       rebuild: 5
       selector: fuzzy
     foo:
@@ -238,10 +258,10 @@ Queries can be appended to presets
     
   $ ./mach try fuzzy $testargs --edit-presets
   bar:
+    dry_run: true
     no_artifact: true
     platforms:
     - win32
-    push: false
     selector: syntax
     tags:
     - bar
@@ -250,10 +270,10 @@ Queries can be appended to presets
     tests:
     - none
   baz:
+    dry_run: true
     no_artifact: true
-    push: false
     query:
-    - '''foo'
+    - "'foo"
     rebuild: 5
     selector: fuzzy
   foo:
@@ -277,17 +297,22 @@ Test gecko-profile argument handling. Add in profiling to a preset.
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "gecko-profile": true,
+              "gecko-profile-features": "nostacksampling,cpu",
+              "rebuild": 5,
+              "tasks": [
+                  "test/foo-debug",
+                  "test/foo-opt"
+              ]
+          }
       },
-      "gecko-profile": true,
-      "gecko-profile-features": "nostacksampling,cpu",
-      "rebuild": 5,
-      "tasks": [
-          "test/foo-debug",
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
 Check whether the gecko-profile flags can be used from a preset, and check
@@ -304,25 +329,30 @@ settings; everything else uses dashes.)
   Pushed via `mach try fuzzy`
   Calculated try_task_config.json:
   {
-      "env": {
-          "TRY_SELECTOR": "fuzzy"
+      "parameters": {
+          "optimize_target_tasks": false,
+          "try_task_config": {
+              "env": {
+                  "TRY_SELECTOR": "fuzzy"
+              },
+              "gecko-profile": true,
+              "gecko-profile-features": "nostacksampling,cpu",
+              "rebuild": 5,
+              "tasks": [
+                  "test/foo-debug",
+                  "test/foo-opt"
+              ]
+          }
       },
-      "gecko-profile": true,
-      "gecko-profile-features": "nostacksampling,cpu",
-      "rebuild": 5,
-      "tasks": [
-          "test/foo-debug",
-          "test/foo-opt"
-      ],
-      "version": 1
+      "version": 2
   }
   
   $ EDITOR=cat ./mach try fuzzy $testargs --edit-preset profile
   bar:
+    dry_run: true
     no_artifact: true
     platforms:
     - win32
-    push: false
     selector: syntax
     tags:
     - bar
@@ -331,10 +361,10 @@ settings; everything else uses dashes.)
     tests:
     - none
   baz:
+    dry_run: true
     no_artifact: true
-    push: false
     query:
-    - '''foo'
+    - "'foo"
     rebuild: 5
     selector: fuzzy
   foo:
@@ -349,11 +379,11 @@ settings; everything else uses dashes.)
     tests:
     - mochitests
   profile:
+    dry_run: true
     gecko_profile_features: nostacksampling,cpu
     no_artifact: true
-    push: false
     query:
-    - '''foo'
+    - "'foo"
     rebuild: 5
     selector: fuzzy
 

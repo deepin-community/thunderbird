@@ -3,11 +3,9 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Sanitizer",
-  "resource:///modules/Sanitizer.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  Sanitizer: "resource:///modules/Sanitizer.sys.mjs",
+});
 
 async function test_sanitize_offlineApps(storageHelpersScript) {
   const extension = ExtensionTestUtils.loadExtension({
@@ -19,7 +17,7 @@ async function test_sanitize_offlineApps(storageHelpersScript) {
     },
     files: {
       "storageHelpers.js": storageHelpersScript,
-      "background.js": function() {
+      "background.js": function () {
         browser.test.onMessage.addListener(async (msg, args) => {
           let result = {};
           switch (msg) {
@@ -83,7 +81,7 @@ add_task(async function test_sanitize_offlineApps_extension_indexedDB() {
         const store = tx.objectStore("TestStore");
         return new Promise((resolve, reject) => {
           const req = store.get(k);
-          tx.oncomplete = evt => resolve(req.result);
+          tx.oncomplete = () => resolve(req.result);
           tx.onerror = evt => reject(evt.target.error);
         });
       });
@@ -94,7 +92,10 @@ add_task(
   {
     // Skip this test if LSNG is not enabled (because this test is only
     // going to pass when nextgen local storage is being used).
-    skip_if: () => !Services.prefs.getBoolPref("dom.storage.next_gen"),
+    skip_if: () =>
+      Services.prefs.getBoolPref(
+        "dom.storage.enable_unsupported_legacy_implementation"
+      ),
   },
   async function test_sanitize_offlineApps_extension_localStorage() {
     await test_sanitize_offlineApps(function indexedDBStorageHelpers() {

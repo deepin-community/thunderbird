@@ -2,16 +2,12 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-// restartManager() mucks with XPIProvider.jsm importing, so we hack around.
-this.__defineGetter__("XPIProvider", function() {
-  let scope = {};
-  return ChromeUtils.import(
-    "resource://gre/modules/addons/XPIProvider.jsm",
-    scope
-  ).XPIProvider;
-});
+const { XPIExports } = ChromeUtils.importESModule(
+  "resource://gre/modules/addons/XPIExports.sys.mjs"
+);
 
-const UUID_PATTERN = /^\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}$/i;
+const UUID_PATTERN =
+  /^\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}$/i;
 
 const ADDONS = [
   {
@@ -37,7 +33,7 @@ add_task(async function setup() {
       createTempWebExtensionFile({
         manifest: {
           name: info.name,
-          applications: { gecko: { id: info.id } },
+          browser_specific_settings: { gecko: { id: info.id } },
         },
       })
     )
@@ -64,7 +60,7 @@ add_task(async function test_getter_and_setter() {
 });
 
 add_task(async function test_fetch_by_guid_unknown_guid() {
-  let addon = await XPIProvider.getAddonBySyncGUID("XXXX");
+  let addon = await XPIExports.XPIProvider.getAddonBySyncGUID("XXXX");
   Assert.equal(null, addon);
 });
 
@@ -96,7 +92,7 @@ add_task(async function test_fetch_by_guid_known_guid() {
 
   let syncGUID = addon.syncGUID;
 
-  let newAddon = await XPIProvider.getAddonBySyncGUID(syncGUID);
+  let newAddon = await XPIExports.XPIProvider.getAddonBySyncGUID(syncGUID);
   Assert.notEqual(null, newAddon);
   Assert.equal(syncGUID, newAddon.syncGUID);
 });

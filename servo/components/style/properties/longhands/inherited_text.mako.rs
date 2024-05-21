@@ -9,21 +9,12 @@
 ${helpers.predefined_type(
     "color",
     "ColorPropertyValue",
-    "::cssparser::RGBA::new(0, 0, 0, 255)",
+    "crate::color::AbsoluteColor::BLACK",
     engines="gecko servo-2013 servo-2020",
-    animation_value_type="AnimatedRGBA",
+    animation_value_type="AbsoluteColor",
     ignored_when_colors_disabled="True",
     spec="https://drafts.csswg.org/css-color/#color",
-)}
-
-${helpers.predefined_type(
-    "line-height",
-    "LineHeight",
-    "computed::LineHeight::normal()",
-    engines="gecko servo-2013 servo-2020",
-    animation_value_type="LineHeight",
-    spec="https://drafts.csswg.org/css2/visudet.html#propdef-line-height",
-    servo_restyle_damage="reflow"
+    affects="paint",
 )}
 
 // CSS Text Module Level 3
@@ -36,6 +27,7 @@ ${helpers.predefined_type(
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text/#propdef-text-transform",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.single_keyword(
@@ -46,6 +38,7 @@ ${helpers.single_keyword(
     animation_value_type="discrete",
     extra_prefixes="moz",
     spec="https://drafts.csswg.org/css-text/#propdef-hyphens",
+    affects="layout",
 )}
 
 // TODO: Support <percentage>
@@ -58,18 +51,19 @@ ${helpers.single_keyword(
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-size-adjust/#adjustment-control",
     aliases="-webkit-text-size-adjust",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
     "text-indent",
-    "LengthPercentage",
-    "computed::LengthPercentage::zero()",
+    "TextIndent",
+    "computed::TextIndent::zero()",
     engines="gecko servo-2013 servo-2020",
     servo_2020_pref="layout.2020.unimplemented",
     animation_value_type="ComputedValue",
     spec="https://drafts.csswg.org/css-text/#propdef-text-indent",
-    allow_quirks="Yes",
     servo_restyle_damage = "reflow",
+    affects="layout",
 )}
 
 // Also known as "word-wrap" (which is more popular because of IE), but this is
@@ -84,6 +78,7 @@ ${helpers.predefined_type(
     spec="https://drafts.csswg.org/css-text/#propdef-overflow-wrap",
     aliases="word-wrap",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -95,6 +90,7 @@ ${helpers.predefined_type(
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text/#propdef-word-break",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -106,6 +102,7 @@ ${helpers.predefined_type(
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text/#propdef-text-justify",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -115,6 +112,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text/#propdef-text-align-last",
+    affects="layout",
 )}
 
 // TODO make this a shorthand and implement text-align-last/text-align-all
@@ -126,6 +124,7 @@ ${helpers.predefined_type(
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text/#propdef-text-align",
     servo_restyle_damage = "reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -136,6 +135,7 @@ ${helpers.predefined_type(
     animation_value_type="ComputedValue",
     spec="https://drafts.csswg.org/css-text/#propdef-letter-spacing",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -146,53 +146,19 @@ ${helpers.predefined_type(
     animation_value_type="ComputedValue",
     spec="https://drafts.csswg.org/css-text/#propdef-word-spacing",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
-<%helpers:single_keyword
-    name="white-space"
-    values="normal pre nowrap pre-wrap pre-line"
-    engines="gecko servo-2013 servo-2020",
-    extra_gecko_values="break-spaces -moz-pre-space"
-    gecko_enum_prefix="StyleWhiteSpace"
-    needs_conversion="True"
-    animation_value_type="discrete"
-    spec="https://drafts.csswg.org/css-text/#propdef-white-space"
-    servo_restyle_damage="rebuild_and_reflow"
->
-    % if engine in ["servo-2013", "servo-2020"]:
-    impl SpecifiedValue {
-        pub fn allow_wrap(&self) -> bool {
-            match *self {
-                SpecifiedValue::Nowrap |
-                SpecifiedValue::Pre => false,
-                SpecifiedValue::Normal |
-                SpecifiedValue::PreWrap |
-                SpecifiedValue::PreLine => true,
-            }
-        }
-
-        pub fn preserve_newlines(&self) -> bool {
-            match *self {
-                SpecifiedValue::Normal |
-                SpecifiedValue::Nowrap => false,
-                SpecifiedValue::Pre |
-                SpecifiedValue::PreWrap |
-                SpecifiedValue::PreLine => true,
-            }
-        }
-
-        pub fn preserve_spaces(&self) -> bool {
-            match *self {
-                SpecifiedValue::Normal |
-                SpecifiedValue::Nowrap |
-                SpecifiedValue::PreLine => false,
-                SpecifiedValue::Pre |
-                SpecifiedValue::PreWrap => true,
-            }
-        }
-    }
-    % endif
-</%helpers:single_keyword>
+// TODO: `white-space-collapse: discard` not yet supported
+${helpers.single_keyword(
+    name="white-space-collapse",
+    values="collapse preserve preserve-breaks preserve-spaces break-spaces",
+    engines="gecko",
+    gecko_enum_prefix="StyleWhiteSpaceCollapse",
+    animation_value_type="discrete",
+    spec="https://drafts.csswg.org/css-text-4/#propdef-white-space-collapse",
+    affects="layout",
+)}
 
 ${helpers.predefined_type(
     "text-shadow",
@@ -205,6 +171,7 @@ ${helpers.predefined_type(
     ignored_when_colors_disabled=True,
     simple_vector_bindings=True,
     spec="https://drafts.csswg.org/css-text-decor-3/#text-shadow-property",
+    affects="overflow",
 )}
 
 ${helpers.predefined_type(
@@ -215,16 +182,18 @@ ${helpers.predefined_type(
     initial_specified_value="SpecifiedValue::None",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text-decor/#propdef-text-emphasis-style",
+    affects="overflow",
 )}
 
 ${helpers.predefined_type(
     "text-emphasis-position",
     "TextEmphasisPosition",
-    "computed::TextEmphasisPosition::over_right()",
+    "computed::TextEmphasisPosition::OVER",
     engines="gecko",
-    initial_specified_value="specified::TextEmphasisPosition::over_right()",
+    initial_specified_value="specified::TextEmphasisPosition::OVER",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text-decor/#propdef-text-emphasis-position",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -236,6 +205,7 @@ ${helpers.predefined_type(
     animation_value_type="AnimatedColor",
     ignored_when_colors_disabled=True,
     spec="https://drafts.csswg.org/css-text-decor/#propdef-text-emphasis-color",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -246,6 +216,7 @@ ${helpers.predefined_type(
     animation_value_type="LengthOrNumber",
     spec="https://drafts.csswg.org/css-text-3/#tab-size-property",
     aliases="-moz-tab-size",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -255,6 +226,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text-3/#line-break-property",
+    affects="layout",
 )}
 
 // CSS Compatibility
@@ -267,6 +239,7 @@ ${helpers.predefined_type(
     animation_value_type="AnimatedColor",
     ignored_when_colors_disabled=True,
     spec="https://compat.spec.whatwg.org/#the-webkit-text-fill-color",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
@@ -278,17 +251,18 @@ ${helpers.predefined_type(
     animation_value_type="AnimatedColor",
     ignored_when_colors_disabled=True,
     spec="https://compat.spec.whatwg.org/#the-webkit-text-stroke-color",
+    affects="paint",
 )}
 
 ${helpers.predefined_type(
     "-webkit-text-stroke-width",
-    "BorderSideWidth",
-    "crate::values::computed::NonNegativeLength::new(0.)",
+    "LineWidth",
+    "app_units::Au(0)",
     engines="gecko",
-    initial_specified_value="specified::BorderSideWidth::zero()",
-    computed_type="crate::values::computed::NonNegativeLength",
+    initial_specified_value="specified::LineWidth::zero()",
     spec="https://compat.spec.whatwg.org/#the-webkit-text-stroke-width",
     animation_value_type="discrete",
+    affects="overflow",
 )}
 
 // CSS Ruby Layout Module Level 1
@@ -300,6 +274,7 @@ ${helpers.single_keyword(
     animation_value_type="discrete",
     gecko_enum_prefix="StyleRubyAlign",
     spec="https://drafts.csswg.org/css-ruby/#ruby-align-property",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -309,6 +284,7 @@ ${helpers.predefined_type(
     engines="gecko",
     spec="https://drafts.csswg.org/css-ruby/#ruby-position-property",
     animation_value_type="discrete",
+    affects="layout",
 )}
 
 // CSS Writing Modes Module Level 3
@@ -318,19 +294,22 @@ ${helpers.single_keyword(
     "text-combine-upright",
     "none all",
     engines="gecko",
+    gecko_enum_prefix="StyleTextCombineUpright",
     animation_value_type="none",
     spec="https://drafts.csswg.org/css-writing-modes-3/#text-combine-upright",
+    affects="layout",
 )}
 
-// SVG 1.1: Section 11 - Painting: Filling, Stroking and Marker Symbols
+// SVG 2: Section 13 - Painting: Filling, Stroking and Marker Symbols
 ${helpers.single_keyword(
     "text-rendering",
     "auto optimizespeed optimizelegibility geometricprecision",
     engines="gecko servo-2013 servo-2020",
     gecko_enum_prefix="StyleTextRendering",
     animation_value_type="discrete",
-    spec="https://www.w3.org/TR/SVG11/painting.html#TextRenderingProperty",
+    spec="https://svgwg.org/svg2-draft/painting.html#TextRenderingProperty",
     servo_restyle_damage="rebuild_and_reflow",
+    affects="layout",
 )}
 
 ${helpers.predefined_type(
@@ -342,7 +321,8 @@ ${helpers.predefined_type(
     gecko_pref="layout.css.moz-control-character-visibility.enabled",
     has_effect_on_gecko_scrollbars=False,
     animation_value_type="none",
-    spec="Nonstandard"
+    spec="Nonstandard",
+    affects="layout",
 )}
 
 // text underline offset
@@ -353,6 +333,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="ComputedValue",
     spec="https://drafts.csswg.org/css-text-decor-4/#underline-offset",
+    affects="overflow",
 )}
 
 // text underline position
@@ -363,6 +344,7 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text-decor-3/#text-underline-position-property",
+    affects="overflow",
 )}
 
 // text decoration skip ink
@@ -373,4 +355,60 @@ ${helpers.predefined_type(
     engines="gecko",
     animation_value_type="discrete",
     spec="https://drafts.csswg.org/css-text-decor-4/#text-decoration-skip-ink-property",
+    affects="overflow",
+)}
+
+// hyphenation character
+${helpers.predefined_type(
+    "hyphenate-character",
+    "HyphenateCharacter",
+    "computed::HyphenateCharacter::Auto",
+    engines="gecko",
+    animation_value_type="discrete",
+    spec="https://www.w3.org/TR/css-text-4/#hyphenate-character",
+    affects="layout",
+)}
+
+${helpers.predefined_type(
+    "forced-color-adjust",
+    "ForcedColorAdjust",
+    "computed::ForcedColorAdjust::Auto",
+    engines="gecko",
+    gecko_pref="layout.css.forced-color-adjust.enabled",
+    has_effect_on_gecko_scrollbars=False,
+    animation_value_type="discrete",
+    spec="https://drafts.csswg.org/css-color-adjust-1/#forced-color-adjust-prop",
+    affects="paint",
+)}
+
+${helpers.single_keyword(
+    "-webkit-text-security",
+    "none circle disc square",
+    engines="gecko",
+    gecko_enum_prefix="StyleTextSecurity",
+    animation_value_type="discrete",
+    spec="https://drafts.csswg.org/css-text/#MISSING",
+    affects="layout",
+)}
+
+${helpers.single_keyword(
+    "text-wrap-mode",
+    "wrap nowrap",
+    engines="gecko",
+    gecko_enum_prefix="StyleTextWrapMode",
+    animation_value_type="discrete",
+    spec="https://drafts.csswg.org/css-text-4/#propdef-text-wrap-mode",
+    affects="layout",
+)}
+
+${helpers.single_keyword(
+    "text-wrap-style",
+    "auto stable balance",
+    engines="gecko",
+    gecko_pref="layout.css.text-wrap-balance.enabled",
+    has_effect_on_gecko_scrollbars=False,
+    gecko_enum_prefix="StyleTextWrapStyle",
+    animation_value_type="discrete",
+    spec="https://drafts.csswg.org/css-text-4/#text-wrap-style",
+    affects="layout",
 )}

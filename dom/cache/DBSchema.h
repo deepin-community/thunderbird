@@ -16,9 +16,7 @@
 class mozIStorageConnection;
 struct nsID;
 
-namespace mozilla {
-namespace dom {
-namespace cache {
+namespace mozilla::dom::cache {
 
 class CacheQueryParams;
 class CacheRequest;
@@ -29,7 +27,7 @@ struct SavedResponse;
 namespace db {
 
 // Note, this cannot be executed within a transaction.
-nsresult CreateOrMigrateSchema(mozIStorageConnection& aConn);
+nsresult CreateOrMigrateSchema(nsIFile& aDBDir, mozIStorageConnection& aConn);
 
 // Note, this cannot be executed within a transaction.
 nsresult InitializeConnection(mozIStorageConnection& aConn);
@@ -43,6 +41,8 @@ Result<AutoTArray<CacheId, 8>, nsresult> FindOrphanedCacheIds(
     mozIStorageConnection& aConn);
 
 Result<int64_t, nsresult> FindOverallPaddingSize(mozIStorageConnection& aConn);
+
+Result<int64_t, nsresult> GetTotalDiskUsage(mozIStorageConnection& aConn);
 
 Result<nsTArray<nsID>, nsresult> GetKnownBodyIds(mozIStorageConnection& aConn);
 
@@ -94,8 +94,6 @@ nsresult IncrementalVacuum(mozIStorageConnection& aConn);
 extern const int32_t kFirstShippedSchemaVersion;
 
 }  // namespace db
-}  // namespace cache
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom::cache
 
 #endif  // mozilla_dom_cache_DBSchema_h

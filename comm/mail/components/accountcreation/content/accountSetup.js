@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -6,28 +5,33 @@
 /* global MozElements */
 
 /* import-globals-from ../../../../mailnews/base/prefs/content/accountUtils.js */
-var { AccountCreationUtils } = ChromeUtils.import(
-  "resource:///modules/accountcreation/AccountCreationUtils.jsm"
+var { AccountCreationUtils } = ChromeUtils.importESModule(
+  "resource:///modules/accountcreation/AccountCreationUtils.sys.mjs"
 );
-var { fetchConfigFromExchange, getAddonsList } = ChromeUtils.import(
-  "resource:///modules/accountcreation/ExchangeAutoDiscover.jsm"
+var { fetchConfigFromExchange, getAddonsList } = ChromeUtils.importESModule(
+  "resource:///modules/accountcreation/ExchangeAutoDiscover.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
+ChromeUtils.defineESModuleGetters(this, {
+  AccountConfig: "resource:///modules/accountcreation/AccountConfig.sys.mjs",
+  AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+  cal: "resource:///modules/calendar/calUtils.sys.mjs",
+  ConfigVerifier: "resource:///modules/accountcreation/ConfigVerifier.sys.mjs",
+  CreateInBackend:
+    "resource:///modules/accountcreation/CreateInBackend.sys.mjs",
+  FetchConfig: "resource:///modules/accountcreation/FetchConfig.sys.mjs",
+  GuessConfig: "resource:///modules/accountcreation/GuessConfig.sys.mjs",
+  Sanitizer: "resource:///modules/accountcreation/Sanitizer.sys.mjs",
+  UIDensity: "resource:///modules/UIDensity.sys.mjs",
+  UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
+});
+
 XPCOMUtils.defineLazyModuleGetters(this, {
-  AccountConfig: "resource:///modules/accountcreation/AccountConfig.jsm",
-  cal: "resource:///modules/calendar/calUtils.jsm",
   CardDAVUtils: "resource:///modules/CardDAVUtils.jsm",
-  CreateInBackend: "resource:///modules/accountcreation/CreateInBackend.jsm",
-  FetchConfig: "resource:///modules/accountcreation/FetchConfig.jsm",
-  GuessConfig: "resource:///modules/accountcreation/GuessConfig.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
   OAuth2Providers: "resource:///modules/OAuth2Providers.jsm",
-  Sanitizer: "resource:///modules/accountcreation/Sanitizer.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  verifyConfig: "resource:///modules/accountcreation/verifyConfig.jsm",
 });
 
 var {
@@ -36,15 +40,10 @@ var {
   alertPrompt,
   assert,
   CancelledException,
-  ddump,
-  deepCopy,
   Exception,
   gAccountSetupLogger,
-  getStringBundle,
   NotReached,
   PriorityOrderAbortable,
-  SuccessiveAbortable,
-  TimeoutAbortable,
   UserCancelledException,
 } = AccountCreationUtils;
 
@@ -70,29 +69,6 @@ var {
  * - let user verify and maybe edit the server names and ports
  * - If user clicks OK, create the account
  */
-
-/**
-TODO for bug 549045:
-
-- autodetect protocol
-Bugs
-- SSL cert errors
-  - invalid cert (hostname mismatch) doesn't trigger warning dialog as it should
-  - accept self-signed cert (e.g. imap.mail.ru) doesn't work
-    (works without my patch),
-    verifyConfig.js line 124 has no inServer, for whatever reason,
-    although I didn't change verifyConfig.js at all
-    (the change you see in that file is irrelevant: that was an attempt to fix
-    the bug and clean up the code).
-Things to test (works for me):
-- state transitions, buttons enable, status msgs
-  - stop button
-    - showes up again after stopping detection and restarting it
-    - when stopping [retest]: buttons proper?
-  - enter nonsense domain. guess fails, (so automatically) manual,
-    change domain to real one (not in DB), guess succeeds.
-    former bug: goes to manual first shortly, then to result
-*/
 
 // Keep track of the prefers-reduce-motion media query for JS based animations.
 var gReducedMotion;
@@ -132,19 +108,21 @@ function onSetupComplete() {
  * Prompt a native HTML confirmation dialog for the Exchange auto discover.
  *
  * @param {string} domain - Text with the question.
- * @param {function} okCallback - Called when the user clicks OK.
+ * @param {Function} okCallback - Called when the user clicks OK.
  * @param {function(ex)} cancelCallback - Called when the user clicks Cancel
  *   or if you call `Abortable.cancel()`.
  * @returns {Abortable} - If `Abortable.cancel()` is called,
  *   the dialog is closed and the `cancelCallback()` is called.
  */
 function confirmExchange(domain, okCallback, cancelCallback) {
-  let dialog = document.getElementById("exchangeDialog");
+  const dialog = document.getElementById("exchangeDialog");
 
   document.l10n.setAttributes(
     document.getElementById("exchangeDialogQuestion"),
     "exchange-dialog-question",
-    { domain }
+    {
+      domain,
+    }
   );
 
   document.getElementById("exchangeDialogConfirmButton").onclick = () => {
@@ -160,7 +138,7 @@ function confirmExchange(domain, okCallback, cancelCallback) {
   // Show the dialog.
   dialog.showModal();
 
-  let abortable = new Abortable();
+  const abortable = new Abortable();
   abortable.cancel = ex => {
     dialog.close();
     cancelCallback(ex);
@@ -177,6 +155,21 @@ var gAccountSetup = {
   // Attribute to store methods to interrupt abortable operations like testing
   // a server configuration or installing an add-on.
   _abortable: null,
+
+  tabMonitor: {
+    monitorName: "accountSetupMonitor",
+
+    onTabTitleChanged() {},
+    onTabOpened() {},
+    onTabPersist() {},
+    onTabRestored() {},
+    onTabClosing(tab) {
+      if (tab?.urlbar?.value == "about:accountsetup") {
+        gMainWindow?.postMessage("account-setup-dismissed", "*");
+      }
+    },
+    onTabSwitched() {},
+  },
 
   /**
    * Initialize the main notification box for the account setup process.
@@ -216,8 +209,9 @@ var gAccountSetup = {
     }
 
     gAccountSetupLogger.debug("Initializing setup wizard");
-    gReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
-      .matches;
+    gReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
 
     // Store the main window.
     gMainWindow = Services.wm.getMostRecentWindow("mail:3pane");
@@ -237,7 +231,7 @@ var gAccountSetup = {
     this._email = "";
     this._realname = "";
     if ("@mozilla.org/userinfo;1" in Cc) {
-      let userInfo = Cc["@mozilla.org/userinfo;1"].getService(Ci.nsIUserInfo);
+      const userInfo = Cc["@mozilla.org/userinfo;1"].getService(Ci.nsIUserInfo);
       // Assume that it's a genuine full name if it includes a space.
       if (userInfo.fullname.includes(" ")) {
         this._realname = userInfo.fullname;
@@ -246,6 +240,7 @@ var gAccountSetup = {
     }
 
     this._password = "";
+    // Keep track of the state of the password field, if password or clear text.
     this._showPassword = false;
     // This is used only for Exchange AutoDiscover and only if needed.
     this._exchangeUsername = "";
@@ -262,7 +257,7 @@ var gAccountSetup = {
 
     // Disable the remember password checkbox if the pref is false.
     if (!Services.prefs.getBoolPref("signon.rememberSignons")) {
-      let passwordCheckbox = document.getElementById("rememberPassword");
+      const passwordCheckbox = document.getElementById("rememberPassword");
       passwordCheckbox.checked = false;
       passwordCheckbox.disabled = true;
     }
@@ -273,24 +268,35 @@ var gAccountSetup = {
     // In a new profile, the first request to live.thunderbird.net is much
     // slower because of one-time overheads like DNS and OCSP. Let's create some
     // dummy requests to prime the connections.
-    let autoconfigURL = Services.prefs.getCharPref("mailnews.auto_config_url");
-    fetch(autoconfigURL, { method: "OPTIONS" });
+    const autoconfigURL = Services.prefs.getCharPref(
+      "mailnews.auto_config_url"
+    );
+    fetch(autoconfigURL, { method: "OPTIONS" }).catch(console.error);
 
-    let addonsURL = Services.prefs.getCharPref(
+    const addonsURL = Services.prefs.getCharPref(
       "mailnews.auto_config.addons_url"
     );
     if (new URL(autoconfigURL).origin != new URL(addonsURL).origin) {
-      fetch(addonsURL, { method: "OPTIONS" });
+      fetch(addonsURL, { method: "OPTIONS" }).catch(console.error);
     }
+
+    // The tab monitor will inform us when this tab is getting closed.
+    gMainWindow.document
+      .getElementById("tabmail")
+      .registerTabMonitor(this.tabMonitor);
 
     // We did everything, now we can update the variable.
     this.isInited = true;
     gAccountSetupLogger.debug("Account setup tab loaded.");
+
+    UIDensity.registerWindow(window);
+    UIFontSize.registerWindow(window);
   },
 
   /**
    * Changes the window configuration to the different modes we have.
    * Shows/hides various window parts and buttons.
+   *
    * @param {string} modename
    *    "start" : Just the realname, email address, password fields
    *    "find-config" : detection step, adds the loading notification
@@ -317,11 +323,11 @@ var gAccountSetup = {
     this._currentModename = modename;
     gAccountSetupLogger.debug(`switching to UI mode ${modename}`);
 
-    let continueButton = document.getElementById("continueButton");
-    let createButton = document.getElementById("createButton");
-    let reTestButton = document.getElementById("reTestButton");
-    let autoconfigDesc = document.getElementById("manualConfigDescription");
-    let setupTitle = document.getElementById("accountSetupTitle");
+    const continueButton = document.getElementById("continueButton");
+    const createButton = document.getElementById("createButton");
+    const reTestButton = document.getElementById("reTestButton");
+    const autoconfigDesc = document.getElementById("manualConfigDescription");
+    const setupTitle = document.getElementById("accountSetupTitle");
 
     switch (modename) {
       case "start":
@@ -481,7 +487,7 @@ var gAccountSetup = {
   },
 
   getConcreteConfig() {
-    let result = this._currentConfig.copy();
+    const result = this._currentConfig.copy();
 
     AccountConfig.replaceVariables(
       result,
@@ -525,34 +531,73 @@ var gAccountSetup = {
   onInputPassword() {
     this._password = document.getElementById("password").value;
     this.onStartOver();
+
+    // Show the password toggle button only if the field is not empty.
+    const toggleButton = document.getElementById("passwordToggleButton");
+    toggleButton.hidden = !this._password;
+
+    if (!this._password) {
+      // Always reset the field to the proper type.
+      this.hidePassword();
+    }
   },
 
   /**
    * Toggle the type of the password field between password and text to allow
    * users reading their own password.
    */
-  passwordToggle() {
-    // Don't toggle anything if the user didn't write anything yet.
-    if (!this._password) {
+  passwordToggle(event) {
+    // Prevent the form submission if the user presses Enter.
+    event.preventDefault();
+
+    // The password field is in plain text, change it back to the proper type.
+    if (this._showPassword) {
+      this.hidePassword();
       return;
     }
 
-    let passwordField = document.getElementById("password");
-    let toggleImage = document.getElementById("passwordInfo");
-    // If the type is password, change it to a plain text.
-    if (passwordField.type == "password") {
-      this._showPassword = true;
-      passwordField.type = "text";
-      toggleImage.src = "chrome://messenger/skin/icons/visible.svg";
-      toggleImage.classList.add("password-toggled");
+    // Change the password field to plain text to make the text visible.
+    this.showPassword();
+  },
+
+  /**
+   * Convert the password field into a plain text field allowing users and
+   * assistive technologies to read the typed text.
+   */
+  showPassword() {
+    document.getElementById("password").type = "text";
+    document.l10n.setAttributes(
+      document.getElementById("passwordToggleButton"),
+      "account-setup-password-toggle-hide"
+    );
+
+    const toggleImage = document.getElementById("passwordInfo");
+    toggleImage.src = "chrome://messenger/skin/icons/new/compact/eye.svg";
+    toggleImage.classList.add("password-toggled");
+
+    this._showPassword = true;
+  },
+
+  /**
+   * Convert the password field back to its default password type.
+   */
+  hidePassword() {
+    // No need to reset anything if the password was never shown.
+    if (!this._showPassword) {
       return;
     }
 
-    // Otherwise, change it back to a password field.
-    this._showPassword = false;
-    passwordField.type = "password";
-    toggleImage.src = "chrome://messenger/skin/icons/hidden.svg";
+    document.getElementById("password").type = "password";
+    document.l10n.setAttributes(
+      document.getElementById("passwordToggleButton"),
+      "account-setup-password-toggle-show"
+    );
+
+    const toggleImage = document.getElementById("passwordInfo");
+    toggleImage.src = "chrome://messenger/skin/icons/new/compact/hidden.svg";
     toggleImage.classList.remove("password-toggled");
+
+    this._showPassword = false;
   },
 
   /**
@@ -561,14 +606,15 @@ var gAccountSetup = {
    * detection step.
    */
   checkValidForm() {
-    let isValidForm =
-      document.getElementById("email").checkValidity() &&
+    const email = document.getElementById("email");
+    const isValidForm =
+      email.checkValidity() &&
       document.getElementById("realname").checkValidity();
     this._domain = isValidForm ? this._email.split("@")[1].toLowerCase() : "";
 
     document.getElementById("continueButton").disabled = !isValidForm;
     document.getElementById("manualConfigButton").hidden = !isValidForm;
-    document.getElementById("provisionerButton").hidden = isValidForm;
+    document.getElementById("provisionerButton").hidden = email.value;
   },
 
   /**
@@ -594,18 +640,18 @@ var gAccountSetup = {
     this.switchToMode("find-config");
     this.startLoadingState("account-setup-looking-up-settings");
 
-    let self = this;
+    const self = this;
     let call = null;
     let fetch = null;
 
-    let priority = (this._abortable = new PriorityOrderAbortable(
-      function(config, call) {
+    const priority = (this._abortable = new PriorityOrderAbortable(
+      function (config, call) {
         // success
         self._abortable = null;
-        self.stopLoadingState(call.foundMsg);
+        self.stopLoadingState(self._getConfigSourceStringName(config));
         self.foundConfig(config);
       },
-      function(e, allErrors) {
+      function (e, allErrors) {
         // all failed
         if (e instanceof CancelledException) {
           self.onStartOver();
@@ -613,7 +659,7 @@ var gAccountSetup = {
         }
 
         // guess config
-        let initialConfig = new AccountConfig();
+        const initialConfig = new AccountConfig();
         self._prefillConfig(initialConfig);
         self._guessConfig(domain, initialConfig);
       }
@@ -624,7 +670,6 @@ var gAccountSetup = {
       gAccountSetupLogger.debug(
         "Looking up configuration: Thunderbird installation…"
       );
-      call.foundMsg = "account-setup-success-settings-disk";
       fetch = FetchConfig.fromDisk(
         domain,
         call.successCallback(),
@@ -634,7 +679,6 @@ var gAccountSetup = {
 
       call = priority.addCall();
       gAccountSetupLogger.debug("Looking up configuration: Email provider…");
-      call.foundMsg = "account-setup-success-settings-isp";
       fetch = FetchConfig.fromISP(
         domain,
         emailAddress,
@@ -647,7 +691,6 @@ var gAccountSetup = {
       gAccountSetupLogger.debug(
         "Looking up configuration: Thunderbird installation…"
       );
-      call.foundMsg = "account-setup-success-settings-db";
       fetch = FetchConfig.fromDB(
         domain,
         call.successCallback(),
@@ -659,11 +702,9 @@ var gAccountSetup = {
       gAccountSetupLogger.debug(
         "Looking up configuration: Incoming mail domain…"
       );
-      // "account-setup-success-settings-db" is correct.
-      // We display the same message for both db and mx cases.
-      call.foundMsg = "account-setup-success-settings-db";
       fetch = FetchConfig.forMX(
         domain,
+        emailAddress,
         call.successCallback(),
         call.errorCallback()
       );
@@ -671,7 +712,6 @@ var gAccountSetup = {
 
       call = priority.addCall();
       gAccountSetupLogger.debug("Looking up configuration: Exchange server…");
-      call.foundMsg = "account-setup-success-settings-exchange";
       fetch = fetchConfigFromExchange(
         domain,
         emailAddress,
@@ -681,7 +721,7 @@ var gAccountSetup = {
         call.successCallback(),
         (e, allErrors) => {
           // Must call error callback in any case to stop the discover mode.
-          let errorCallback = call.errorCallback();
+          const errorCallback = call.errorCallback();
           if (e instanceof CancelledException) {
             errorCallback(e);
           } else if (allErrors && allErrors.some(e => e.code == 401)) {
@@ -712,20 +752,51 @@ var gAccountSetup = {
   },
 
   /**
+   * Get success message depending on the source of the config.
+   */
+  _getConfigSourceStringName(config) {
+    switch (config.source) {
+      case AccountConfig.kSourceXML: {
+        switch (config.subSource) {
+          case "xml-from-disk": {
+            return "account-setup-success-settings-disk";
+          }
+          case "xml-from-isp-https":
+          case "xml-from-isp-http": {
+            return "account-setup-success-settings-isp";
+          }
+          case "xml-from-db": {
+            return "account-setup-success-settings-db";
+          }
+          default: {
+            throw new Error(`Unexpected xml subSource: ${config.subSource}`);
+          }
+        }
+      }
+      case AccountConfig.kSourceExchange: {
+        return "account-setup-success-settings-exchange";
+      }
+      default: {
+        throw new Error(`Unexpected source: ${config.source}`);
+      }
+    }
+  },
+
+  /**
    * Just a continuation of findConfig()
    */
   _guessConfig(domain, initialConfig) {
     this.startLoadingState("account-setup-looking-up-settings-guess");
-    let self = this;
+    const self = this;
     self._abortable = GuessConfig.guessConfig(
       domain,
-      function(type, hostname, port, ssl, done, config) {
+      function (type, hostname, port, socketType, done, config) {
         // progress
         gAccountSetupLogger.debug(
-          `${hostname}:${port} ssl=${ssl} ${type}: progress callback`
+          `${hostname}:${port} socketType=${socketType} ${type}: progress callback`
         );
       },
-      function(config) {
+      function (config) {
         // success
         self._abortable = null;
         self.foundConfig(config);
@@ -735,7 +806,7 @@ var gAccountSetup = {
             : "account-setup-success-guess"
         );
       },
-      function(e, config) {
+      function (e, config) {
         // guessconfig failed
         if (e instanceof CancelledException) {
           return;
@@ -770,7 +841,7 @@ var gAccountSetup = {
     }
 
     config.addons = [];
-    let successCallback = () => {
+    const successCallback = () => {
       this._abortable = null;
       this.displayConfigResult(config);
       this.switchToMode("result");
@@ -834,11 +905,11 @@ var gAccountSetup = {
     this.showHelperImage("step2");
 
     // Disable all input fields.
-    for (let input of document.querySelectorAll("#form input")) {
+    for (const input of document.querySelectorAll("#form input")) {
       input.disabled = true;
     }
 
-    let notificationMessage = await document.l10n.formatValue(stringName);
+    const notificationMessage = await document.l10n.formatValue(stringName);
 
     gAccountSetupLogger.debug(`Status msg: ${notificationMessage}`);
 
@@ -853,17 +924,18 @@ var gAccountSetup = {
       return;
     }
 
-    notification = this.notificationBox.appendNotification(
-      notificationMessage,
+    notification = await this.notificationBox.appendNotification(
       "accountSetupLoading",
-      null,
-      this.notificationBox.PRIORITY_INFO_LOW,
+      {
+        label: notificationMessage,
+        priority: this.notificationBox.PRIORITY_INFO_LOW,
+      },
       null
     );
     notification.setAttribute("align", "center");
 
     // Hide the close button to prevent dismissing the notification.
-    notification.removeAttribute("dismissable");
+    notification.dismissable = false;
 
     this.ensureVisibleNotification();
   },
@@ -875,7 +947,7 @@ var gAccountSetup = {
    *   attached to the notification.
    */
   async updateLoadingState(stringName) {
-    let notification = this.notificationBox.getNotificationWithValue(
+    const notification = this.notificationBox.getNotificationWithValue(
       "accountSetupLoading"
     );
     // If a notification doesn't already exist, create one.
@@ -884,7 +956,7 @@ var gAccountSetup = {
       return;
     }
 
-    let notificationMessage = await document.l10n.formatValue(stringName);
+    const notificationMessage = await document.l10n.formatValue(stringName);
     notification.label = notificationMessage;
     this.ensureVisibleNotification();
 
@@ -900,7 +972,7 @@ var gAccountSetup = {
    */
   async stopLoadingState(stringName) {
     // Re-enable all form input fields.
-    for (let input of document.querySelectorAll("#form input")) {
+    for (const input of document.querySelectorAll("#form input")) {
       input.removeAttribute("disabled");
     }
 
@@ -916,19 +988,20 @@ var gAccountSetup = {
 
     gAccountSetupLogger.debug(`Loading stopped: ${stringName}`);
 
-    let notificationMessage = await document.l10n.formatValue(stringName);
+    const notificationMessage = await document.l10n.formatValue(stringName);
 
-    let notification = this.notificationBox.appendNotification(
-      notificationMessage,
+    const notification = await this.notificationBox.appendNotification(
       "accountSetupSuccess",
-      null,
-      this.notificationBox.PRIORITY_INFO_HIGH,
+      {
+        label: notificationMessage,
+        priority: this.notificationBox.PRIORITY_INFO_HIGH,
+      },
       null
     );
     notification.setAttribute("type", "success");
 
     // Hide the close button to prevent dismissing the notification.
-    notification.removeAttribute("dismissable");
+    notification.dismissable = false;
 
     this.showHelperImage("step3");
   },
@@ -939,7 +1012,7 @@ var gAccountSetup = {
    * @param {string} stringName - The name of the fluent string that needs to
    *   be attached to the notification.
    * @param {boolean} isMsgError - True if the message comes from a server error
-   * response or try/catch.
+   *   response or try/catch.
    */
   async showErrorNotification(stringName, isMsgError) {
     gAccountSetupLogger.debug(`Status error: ${stringName}`);
@@ -947,7 +1020,7 @@ var gAccountSetup = {
     this.showHelperImage("step4");
 
     // Re-enable all form input fields.
-    for (let input of document.querySelectorAll("#form input")) {
+    for (const input of document.querySelectorAll("#form input")) {
       input.removeAttribute("disabled");
     }
 
@@ -956,20 +1029,21 @@ var gAccountSetup = {
 
     // Fetch the fluent string only if this is not an error message coming from
     // a previous method.
-    let notificationMessage = isMsgError
+    const notificationMessage = isMsgError
       ? stringName
       : await document.l10n.formatValue(stringName);
 
-    let notification = this.notificationBox.appendNotification(
-      notificationMessage,
+    const notification = await this.notificationBox.appendNotification(
       "accountSetupError",
-      null,
-      this.notificationBox.PRIORITY_WARNING_MEDIUM,
+      {
+        label: notificationMessage,
+        priority: this.notificationBox.PRIORITY_WARNING_MEDIUM,
+      },
       null
     );
 
     // Hide the close button to prevent dismissing the notification.
-    notification.removeAttribute("dismissable");
+    notification.dismissable = false;
 
     this.ensureVisibleNotification();
   },
@@ -982,7 +1056,7 @@ var gAccountSetup = {
   showHelperImage(id) {
     // Hide all currently visible articles containing helper images in the
     // second column.
-    for (let article of document.querySelectorAll(
+    for (const article of document.querySelectorAll(
       ".second-column article:not([hidden])"
     )) {
       article.hidden = true;
@@ -996,7 +1070,7 @@ var gAccountSetup = {
     }
 
     // Handle a nice cross fade between steps.
-    let stepToShow = document.getElementById(id);
+    const stepToShow = document.getElementById(id);
     // Add the class to let the revealing element start from a proper state.
     stepToShow.classList.add("hide");
     stepToShow.hidden = false;
@@ -1040,7 +1114,7 @@ var gAccountSetup = {
   displayConfigResult(config) {
     assert(config instanceof AccountConfig);
     this._currentConfig = config;
-    let configFilledIn = this.getConcreteConfig();
+    const configFilledIn = this.getConcreteConfig();
 
     // Filter out Protcols we don't currently support
     let protocols = config.incomingAlternatives.filter(protocol =>
@@ -1055,21 +1129,26 @@ var gAccountSetup = {
     }, []);
 
     // Hide all the available options in order to start with a clean slate.
-    for (let row of document.querySelectorAll(".content-blocking-category")) {
+    for (const row of document.querySelectorAll(".content-blocking-category")) {
       row.classList.remove("selected");
       row.hidden = true;
     }
 
+    // Remove all previously generated protocol types.
+    for (const type of document.querySelectorAll(".config-type")) {
+      type.remove();
+    }
+
     // Reveal all the matching protocols.
-    for (let protocol of protocols) {
-      let row = document.getElementById(`resultsOption-${protocol.type}`);
+    for (const protocol of protocols) {
+      const row = document.getElementById(`resultsOption-${protocol.type}`);
       row.hidden = false;
       // Attach the protocol to the radio input for later usage.
       row.querySelector(`input[type="radio"]`).configIncoming = protocol;
     }
 
     // Preselect the default protocol type.
-    let selected = document.getElementById(
+    const selected = document.getElementById(
       `resultSelect-${config.incoming.type}`
     );
     selected.closest(".content-blocking-category").classList.add("selected");
@@ -1079,35 +1158,42 @@ var gAccountSetup = {
     document.l10n.setAttributes(
       document.getElementById("resultAreaTitle"),
       "account-setup-results-area-title",
-      { count: protocols.length }
+      {
+        count: protocols.length,
+      }
     );
 
-    // Thunderbird can't handle Exchange server independentely, therefore we
-    // need to prompt the user with the isntallation of the Owl add-on.
+    // Ensure by default the "Done" button is enabled.
+    document.getElementById("createButton").disabled = false;
+
+    // Thunderbird can't handle Exchange server independently, therefore we
+    // need to prompt the user with the installation of the Owl add-on.
     if (config.incoming.type == "exchange") {
-      let addonsInstallRows = document.getElementById("resultAddonInstallRows");
+      const addonsInstallRows = document.getElementById(
+        "resultAddonInstallRows"
+      );
 
       // Remove any pre-existing child element.
       while (addonsInstallRows.hasChildNodes()) {
         addonsInstallRows.lastChild.remove();
       }
 
-      let container = document.getElementById("resultExchangeHostname");
+      const container = document.getElementById("resultExchangeHostname");
       _makeHostDisplayString(config.incoming, container);
-      // It's always SSL, so just clutter.
-      container.querySelector(".ssl").hidden = true;
-      // Already have a nicer label.
-      container.querySelector(".protocol-type").hidden = true;
+      document
+        .getElementById("incomingTitle-exchange")
+        .appendChild(_socketTypeSpan(config.incoming.socketType));
 
       (async () => {
         try {
-          for (let addon of config.addons) {
-            let installer = new AddonInstaller(addon);
+          for (const addon of config.addons) {
+            const installer = new AddonInstaller(addon);
             addon.isInstalled = await installer.isInstalled();
+            addon.isDisabled = await installer.isDisabled();
           }
 
-          let addonInfoArea = document.getElementById("installAddonInfo");
-          let installedAddon = config.addons.find(addon => addon.isInstalled);
+          const addonInfoArea = document.getElementById("installAddonInfo");
+          const installedAddon = config.addons.find(addon => addon.isInstalled);
 
           // The needed add-on is already installed, no need to show anything.
           if (installedAddon) {
@@ -1116,6 +1202,9 @@ var gAccountSetup = {
             addonInfoArea.hidden = true;
             return;
           }
+          // Disable "Done" until add-on is installed, or some other protocol
+          // is selected.
+          document.getElementById("createButton").disabled = true;
 
           addonInfoArea.hidden = false;
 
@@ -1128,25 +1217,25 @@ var gAccountSetup = {
               : "account-setup-addon-no-protocol"
           );
 
-          for (let addon of config.addons) {
+          for (const addon of config.addons) {
             // Creates and addon install section.
             // <div><img/><a></a><button></button></div>
-            let container = document.createElement("div");
+            const container = document.createElement("div");
             container.classList.add("addon-container");
 
-            let img = document.createElement("img");
+            const img = document.createElement("img");
             img.alt = "";
             img.classList.add("icon");
             if (addon.icon32) {
               img.setAttribute("src", addon.icon32);
             }
 
-            let link = document.createElement("a");
+            const link = document.createElement("a");
             link.classList.add("link");
             link.setAttribute("href", addon.websiteURL);
             link.textContent = addon.description;
 
-            let button = document.createElement("button");
+            const button = document.createElement("button");
             document.l10n.setAttributes(
               button,
               "account-setup-addon-install-title"
@@ -1154,6 +1243,32 @@ var gAccountSetup = {
             button.addEventListener("click", () => {
               gAccountSetup.addonInstall(addon);
             });
+            if (addon.isDisabled) {
+              // If the add on is disabled by user, or due to incompatibility
+              // - disable install (it won't help, it's already installed)
+              // - link to the addons manager instead (so they can fix it)
+              button.disabled = true;
+              link.setAttribute("href", "about:addons");
+              link.setAttribute("target", "_blank");
+
+              // Trigger an add-on update check. If an update is available,
+              // enable the install button to (re)install.
+              AddonManager.getAddonByID(addon.id).then(a => {
+                if (!a) {
+                  return;
+                }
+                const listener = {
+                  onUpdateAvailable(addon, install) {
+                    button.disabled = false;
+                  },
+                  onNoUpdateAvailable() {},
+                };
+                a.findUpdates(
+                  listener,
+                  AddonManager.UPDATE_WHEN_USER_REQUESTED
+                );
+              });
+            }
 
             container.appendChild(img);
             container.appendChild(link);
@@ -1161,7 +1276,6 @@ var gAccountSetup = {
 
             addonsInstallRows.appendChild(container);
           }
-          document.getElementById("createButton").disabled = true;
         } catch (e) {
           this.showErrorNotification(e, true);
         }
@@ -1170,30 +1284,15 @@ var gAccountSetup = {
     }
 
     function _makeHostDisplayString(server, container) {
-      // Helper method to quickly create the same span element.
-      function _addComponent(text, className) {
-        let span = document.createElement("span");
-        span.classList.add(className);
-        document.l10n.setAttributes(span, text);
-        container.appendChild(span);
-      }
-
       // Clean up any existing element.
       while (container.hasChildNodes()) {
         container.lastChild.remove();
       }
-      let cert = container.parentNode.querySelector(".cert-status");
+
+      const cert = container.parentNode.querySelector(".cert-status");
       if (cert != null) {
         cert.remove();
       }
-
-      let type = Sanitizer.translate(server.type, {
-        imap: "imap",
-        pop3: "pop",
-        smtp: "smtp",
-        exchange: "exchange",
-      });
-      _addComponent(`account-setup-result-${type}`, "protocol-type");
 
       let domain = server.hostname;
       try {
@@ -1202,7 +1301,7 @@ var gAccountSetup = {
         gAccountSetupLogger.warn(ex);
       }
 
-      let hostSpan = document.createElement("span");
+      const hostSpan = document.createElement("span");
       hostSpan.classList.add("host-without-domain");
       hostSpan.textContent = server.hostname.substr(
         0,
@@ -1210,29 +1309,18 @@ var gAccountSetup = {
       );
       container.appendChild(hostSpan);
 
-      let domainSpan = document.createElement("span");
+      const domainSpan = document.createElement("span");
       domainSpan.classList.add("domain");
       domainSpan.textContent = domain;
       container.appendChild(domainSpan);
 
       if (!gAllStandardPorts.includes(server.port)) {
-        let portSpan = document.createElement("span");
+        const portSpan = document.createElement("span");
         portSpan.classList.add("port");
         portSpan.textContent = `:${server.port}`;
         container.appendChild(portSpan);
       }
 
-      let ssl = Sanitizer.translate(server.socketType, {
-        1: "no-encryption",
-        2: "ssl",
-        3: "starttls",
-      });
-      _addComponent(`account-setup-result-${ssl}`, "ssl");
-
-      if (server.socketType != 2 && server.socketType != 3) {
-        // not SSL/STARTTLS
-        container.querySelector(".ssl").classList.add("insecure");
-      }
       if (server.badCert) {
         container.parentNode
           .querySelector(".cert-status")
@@ -1240,22 +1328,81 @@ var gAccountSetup = {
       }
     }
 
+    /**
+     * Helper method to create the span protocol element.
+     *
+     * @returns {HTMLElement} - The newly created span label.
+     */
+    function _protocolTypeSpan() {
+      const span = document.createElement("span");
+      span.classList.add("protocol-type", "config-type");
+      return span;
+    }
+
+    /**
+     * Helper method to create the span socket element.
+     *
+     * @param {nsMsgSocketType} socket - The value representing the server
+     *   socket type.
+     * @returns {HTMLElement} - The newly created span label.
+     */
+    function _socketTypeSpan(socket) {
+      const ssl = Sanitizer.translate(socket, {
+        0: "no-encryption",
+        2: "starttls",
+        3: "ssl",
+      });
+      const span = _protocolTypeSpan();
+      document.l10n.setAttributes(span, `account-setup-result-${ssl}`);
+      span.classList.add("ssl");
+      if (socket != 2 && socket != 3) {
+        // Not an SSL or STARTTLS socket.
+        span.classList.add("insecure");
+      }
+      return span;
+    }
+
+    const protocolType = config.incoming.type;
     if (configFilledIn.incoming.hostname) {
       _makeHostDisplayString(
         configFilledIn.incoming,
-        document.getElementById(`incomingInfo-${config.incoming.type}`)
+        document.getElementById(`incomingInfo-${protocolType}`)
       );
+
+      const container = document.getElementById(
+        `incomingTitle-${protocolType}`
+      );
+
+      // No need to show the protocol type if it's exchange, and the socket span
+      // is generated somewhere else specifically for exchange.
+      if (protocolType != "exchange") {
+        const span = _protocolTypeSpan();
+        span.textContent = configFilledIn.incoming.type;
+        container.appendChild(span);
+        container.appendChild(_socketTypeSpan(config.incoming.socketType));
+      }
     }
 
-    let outgoingInfo = document.getElementById(
-      `outgoingInfo-${config.incoming.type}`
+    const outgoingInfo = document.getElementById(
+      `outgoingInfo-${protocolType}`
     );
     if (!config.outgoing.existingServerKey) {
       if (configFilledIn.outgoing.hostname) {
         _makeHostDisplayString(configFilledIn.outgoing, outgoingInfo);
       }
+      const container = document.getElementById(
+        `outgoingTitle-${protocolType}`
+      );
+      // No need to show the protocol type if it's exchange, and the socket span
+      // is generated somewhere else specifically for exchange.
+      if (protocolType != "exchange") {
+        const span = _protocolTypeSpan();
+        span.textContent = configFilledIn.outgoing.type;
+        container.appendChild(span);
+        container.appendChild(_socketTypeSpan(config.outgoing.socketType));
+      }
     } else {
-      let span = document.createElement("span");
+      const span = document.createElement("span");
       document.l10n.setAttributes(
         span,
         "account-setup-result-outgoing-existing"
@@ -1263,7 +1410,7 @@ var gAccountSetup = {
       outgoingInfo.appendChild(span);
     }
 
-    let usernameInfo = document.getElementById(
+    const usernameInfo = document.getElementById(
       `usernameInfo-${config.incoming.type}`
     );
     if (configFilledIn.incoming.username == configFilledIn.outgoing.username) {
@@ -1285,7 +1432,7 @@ var gAccountSetup = {
    * radio buttons.
    */
   onResultServerTypeChanged() {
-    let config = this._currentConfig;
+    const config = this._currentConfig;
     // Add current server as best alternative to start of array.
     config.incomingAlternatives.unshift(config.incoming);
 
@@ -1295,7 +1442,7 @@ var gAccountSetup = {
       .classList.remove("selected");
 
     // Use selected server (stored as special property on the <input> node).
-    let selected = document.querySelector(
+    const selected = document.querySelector(
       'input[name="resultsServerType"]:checked'
     );
     selected.closest(".content-blocking-category").classList.add("selected");
@@ -1315,8 +1462,8 @@ var gAccountSetup = {
    * @param {AddonInfo} addon - @see AccountConfig.addons
    */
   async addonInstall(addon) {
-    let addonInfoArea = document.getElementById("installAddonInfo");
-    let createButton = document.getElementById("createButton");
+    const addonInfoArea = document.getElementById("installAddonInfo");
+    const createButton = document.getElementById("createButton");
     addonInfoArea.hidden = true;
     createButton.disabled = true;
 
@@ -1324,16 +1471,22 @@ var gAccountSetup = {
     await this.startLoadingState("account-setup-installing-addon");
 
     try {
-      let installer = (this._abortable = new AddonInstaller(addon));
+      const installer = (this._abortable = new AddonInstaller(addon));
       await installer.install();
 
       this._abortable = null;
       this.stopLoadingState("account-setup-success-addon");
       createButton.disabled = false;
 
-      this._currentConfig.incoming.type = addon.useType.addonAccountType;
-      await this.validateAndFinish();
+      this._currentConfig.incoming.addonAccountType =
+        addon.useType.addonAccountType;
+      // Remove the note about having to install an add-on.
+      const rows = document.getElementById("resultAddonInstallRows");
+      while (rows.lastChild) {
+        rows.lastChild.remove();
+      }
     } catch (e) {
+      console.error(e);
       this.showErrorNotification(e, true);
       addonInfoArea.hidden = false;
     }
@@ -1348,12 +1501,12 @@ var gAccountSetup = {
    * username are concrete and no placeholders anymore.
    */
   getUserConfig() {
-    let config = this.getConcreteConfig() || new AccountConfig();
+    const config = this.getConcreteConfig() || new AccountConfig();
     config.source = AccountConfig.kSourceUser;
 
     // Incoming server
     try {
-      let inHostnameField = document.getElementById("incomingHostname");
+      const inHostnameField = document.getElementById("incomingHostname");
       config.incoming.hostname = Sanitizer.hostname(inHostnameField.value);
       inHostnameField.value = config.incoming.hostname;
     } catch (e) {
@@ -1385,29 +1538,13 @@ var gAccountSetup = {
     config.incoming.auth = Sanitizer.integer(
       document.getElementById("incomingAuthMethod").value
     );
-    config.incoming.username = document.getElementById(
-      "incomingUsername"
-    ).value;
+    config.incoming.username =
+      document.getElementById("incomingUsername").value;
 
     // Outgoing server
 
-    config.outgoing.username = document.getElementById(
-      "outgoingUsername"
-    ).value;
-
-    let smtpValue = document.getElementById("outgoingHostname").value;
-    let foundServer = MailServices.smtp.servers.find(
-      s => s.hostname == smtpValue
-    );
-    // If the user is using a preconfigured SMTP server.
-    if (foundServer) {
-      config.outgoing.existingServerKey = foundServer.key;
-      config.outgoing.existingServerLabel = foundServer.hostname;
-      config.outgoing.addThisServer = false;
-      config.outgoing.useGlobalPreferredServer = false;
-
-      return config;
-    }
+    config.outgoing.username =
+      document.getElementById("outgoingUsername").value;
 
     // The user specified a custom SMTP server.
     config.outgoing.existingServerKey = null;
@@ -1415,7 +1552,7 @@ var gAccountSetup = {
     config.outgoing.useGlobalPreferredServer = false;
 
     try {
-      let input = document.getElementById("outgoingHostname");
+      const input = document.getElementById("outgoingHostname");
       config.outgoing.hostname = Sanitizer.hostname(input.value);
       input.value = config.outgoing.hostname;
     } catch (e) {
@@ -1493,7 +1630,7 @@ var gAccountSetup = {
   _fillManualEditFields(config) {
     assert(config instanceof AccountConfig);
 
-    let isExchange = config.incoming.type == "exchange";
+    const isExchange = config.incoming.type == "exchange";
 
     // Incoming server.
     document.getElementById("incomingProtocolExchange").hidden = !isExchange;
@@ -1524,22 +1661,6 @@ var gAccountSetup = {
       this.adjustIncomingPortToSSLAndProtocol(config);
     }
 
-    // If the incoming server hostname supports OAuth2, enable it.
-    let iDetails = OAuth2Providers.getHostnameDetails(config.incoming.hostname);
-    document.getElementById("in-authMethod-oauth2").hidden = !iDetails;
-    if (iDetails) {
-      gAccountSetupLogger.debug(
-        `OAuth2 details for incoming server ${config.incoming.hostname} is ${iDetails}`
-      );
-      config.incoming.oauthSettings = {};
-      [
-        config.incoming.oauthSettings.issuer,
-        config.incoming.oauthSettings.scope,
-      ] = iDetails;
-      this._currentConfig.incoming.oauthSettings =
-        config.incoming.oauthSettings;
-    }
-
     // Outgoing server.
 
     document.getElementById("outgoingHostname").value =
@@ -1568,8 +1689,38 @@ var gAccountSetup = {
       this.adjustOutgoingPortToSSLAndProtocol(config);
     }
 
+    this.adjustOAuth2Visibility(config);
+  },
+
+  /**
+   * Make OAuth2 visible as an authentication method when a hostname that
+   * OAuth2 can be used with is entered.
+   *
+   * @param {AccountConfig} config - The account configuration.
+   */
+  async adjustOAuth2Visibility(config) {
+    // If the incoming server hostname supports OAuth2, enable it.
+    const iDetails = OAuth2Providers.getHostnameDetails(
+      config.incoming.hostname
+    );
+    document.getElementById("in-authMethod-oauth2").hidden = !iDetails;
+    if (iDetails) {
+      gAccountSetupLogger.debug(
+        `OAuth2 details for incoming server ${config.incoming.hostname} is ${iDetails}`
+      );
+      config.incoming.oauthSettings = {};
+      [
+        config.incoming.oauthSettings.issuer,
+        config.incoming.oauthSettings.scope,
+      ] = iDetails;
+      this._currentConfig.incoming.oauthSettings =
+        config.incoming.oauthSettings;
+    }
+
     // If the smtp hostname supports OAuth2, enable it.
-    let oDetails = OAuth2Providers.getHostnameDetails(config.outgoing.hostname);
+    const oDetails = OAuth2Providers.getHostnameDetails(
+      config.outgoing.hostname
+    );
     document.getElementById("out-authMethod-oauth2").hidden = !oDetails;
     if (oDetails) {
       gAccountSetupLogger.debug(
@@ -1592,33 +1743,23 @@ var gAccountSetup = {
    * @param {AccountConfig} config - The account configuration.
    */
   async adjustIncomingPortToSSLAndProtocol(config) {
-    let incoming = config.incoming;
+    const incoming = config.incoming;
 
     // Bail out if a port number is already defined and it's not part of the
     // known ports array.
-    if (incoming.port && !gAllStandardPorts.includes(incoming.port)) {
+    if (!gAllStandardPorts.includes(incoming.port)) {
       return;
     }
 
-    // Update the incoming auth method selection to Auto.
-    document.getElementById("incomingAuthMethod").value = 0;
-
-    let input = document.getElementById("incomingPort");
-
-    // Bail out if the socketType doesn't match a known type and select the
-    // "Auto" option.
-    if (![1, 2, 3].includes(incoming.socketType)) {
-      input.value = 0;
-      return;
-    }
+    const input = document.getElementById("incomingPort");
 
     switch (incoming.type) {
       case "imap":
-        input.value = incoming.socketType == 2 ? 993 : 143;
+        input.value = incoming.socketType == Ci.nsMsgSocketType.SSL ? 993 : 143;
         break;
 
-      case "pop":
-        input.value = incoming.socketType == 2 ? 995 : 110;
+      case "pop3":
+        input.value = incoming.socketType == Ci.nsMsgSocketType.SSL ? 995 : 110;
         break;
 
       case "exchange":
@@ -1634,64 +1775,76 @@ var gAccountSetup = {
    * @param {AccountConfig} config - The account configuration.
    */
   async adjustOutgoingPortToSSLAndProtocol(config) {
-    let outgoing = config.outgoing;
+    const outgoing = config.outgoing;
 
     // Bail out if a port number is already defined and it's not part of the
     // known ports array.
-    if (outgoing.port && !gAllStandardPorts.includes(outgoing.port)) {
+    if (!gAllStandardPorts.includes(outgoing.port)) {
       return;
     }
 
-    // Update the outgoing auth method selection to Auto.
-    document.getElementById("outgoingAuthMethod").value = 0;
-
-    let input = document.getElementById("outgoingPort");
-
-    // Set the port with the SSL value if the socketType matches it.
-    if (outgoing.socketType == 2) {
-      input.value = 465;
+    // Implicit TLS for SMTP is on port 465.
+    if (outgoing.socketType == Ci.nsMsgSocketType.SSL) {
+      document.getElementById("outgoingPort").value = 465;
       return;
     }
 
-    // Otherwise, any other configuration will get the "Auto" value unless the
-    // user specified a unique port number.
-    input.value = 0;
+    // Implicit TLS for SMTP is on port 465. STARTTLS won't work there.
+    if (
+      outgoing.port == 465 &&
+      outgoing.socketType == Ci.nsMsgSocketType.alwaysSTARTTLS
+    ) {
+      document.getElementById("outgoingPort").value = 587;
+    }
   },
 
   /**
    * If the user changed the port manually, adjust the SSL value,
    * (only) if the new port is impossible with the old SSL value.
+   *
    * @param config {AccountConfig}
    */
   adjustIncomingSSLToPort(config) {
-    let incoming = config.incoming;
-    let newInSocketType = undefined;
-    if (
-      !incoming.port || // auto
-      !gAllStandardPorts.includes(incoming.port)
-    ) {
+    const incoming = config.incoming;
+    if (!gAllStandardPorts.includes(incoming.port)) {
       return;
     }
+
     if (incoming.type == "imap") {
-      // normal SSL impossible
-      if (incoming.port == 143 && incoming.socketType == 2) {
-        newInSocketType = 0; // auto
-        // must be normal SSL
-      } else if (incoming.port == 993 && incoming.socketType != 2) {
-        newInSocketType = 2;
+      // Implicit TLS for IMAP is on port 993.
+      if (
+        incoming.port == 993 &&
+        incoming.socketType != Ci.nsMsgSocketType.SSL
+      ) {
+        document.getElementById("incomingSsl").value = Ci.nsMsgSocketType.SSL;
+        return;
       }
-    } else if (incoming.type == "pop3") {
-      // normal SSL impossible
-      if (incoming.port == 110 && incoming.socketType == 2) {
-        newInSocketType = 0; // auto
-        // must be normal SSL
-      } else if (incoming.port == 995 && incoming.socketType != 2) {
-        newInSocketType = 2;
+      if (
+        incoming.port == 143 &&
+        incoming.socketType == Ci.nsMsgSocketType.SSL
+      ) {
+        document.getElementById("incomingSsl").value =
+          Ci.nsMsgSocketType.alwaysSTARTTLS;
+        return;
       }
     }
-    if (newInSocketType != undefined) {
-      document.getElementById("incomingSsl").value = newInSocketType;
-      document.getElementById("incomingAuthMethod").value = 0; // auto
+
+    if (incoming.type == "pop3") {
+      // Implicit TLS for POP3 is on port 995.
+      if (
+        incoming.port == 995 &&
+        incoming.socketType != Ci.nsMsgSocketType.SSL
+      ) {
+        document.getElementById("incomingSsl").value = Ci.nsMsgSocketType.SSL;
+        return;
+      }
+      if (
+        incoming.port == 110 &&
+        incoming.socketType == Ci.nsMsgSocketType.SSL
+      ) {
+        document.getElementById("incomingSsl").value =
+          Ci.nsMsgSocketType.alwaysSTARTTLS;
+      }
     }
   },
 
@@ -1699,44 +1852,45 @@ var gAccountSetup = {
    * @see adjustIncomingSSLToPort()
    */
   adjustOutgoingSSLToPort(config) {
-    let outgoing = config.outgoing;
-    let newOutSocketType = undefined;
-    if (
-      !outgoing.port || // auto
-      !gAllStandardPorts.includes(outgoing.port)
-    ) {
+    const outgoing = config.outgoing;
+    if (!gAllStandardPorts.includes(outgoing.port)) {
       return;
     }
-    // normal SSL impossible
+
+    // Implicit TLS for SMTP is on port 465.
+    if (outgoing.port == 465 && outgoing.socketType != Ci.nsMsgSocketType.SSL) {
+      document.getElementById("outgoingSsl").value = Ci.nsMsgSocketType.SSL;
+      return;
+    }
+
+    // Port 587 and port 25 are for plain or STARTTLS. Not for Implicit TLS.
     if (
       (outgoing.port == 587 || outgoing.port == 25) &&
-      outgoing.socketType == 2
+      outgoing.socketType == Ci.nsMsgSocketType.SSL
     ) {
-      newOutSocketType = 0; // auto
-      // must be normal SSL
-    } else if (outgoing.port == 465 && outgoing.socketType != 2) {
-      newOutSocketType = 2;
-    }
-    if (newOutSocketType != undefined) {
-      document.getElementById("outgoingSsl").value = newOutSocketType;
-      document.getElementById("outgoingAuthMethod").value = 0; // auto
+      document.getElementById("outgoingSsl").value =
+        Ci.nsMsgSocketType.alwaysSTARTTLS;
     }
   },
 
   onChangedProtocolIncoming() {
-    let config = this.getUserConfig();
+    const config = this.getUserConfig();
     this.adjustIncomingPortToSSLAndProtocol(config);
     this.onChangedManualEdit();
   },
 
   onChangedPortIncoming() {
-    gAccountSetupLogger.debug("incoming port changed");
+    gAccountSetupLogger.debug(
+      "incoming port changed: " + document.getElementById("incomingPort").value
+    );
     this.adjustIncomingSSLToPort(this.getUserConfig());
     this.onChangedManualEdit();
   },
 
   onChangedPortOutgoing() {
-    gAccountSetupLogger.debug("outgoing port changed");
+    gAccountSetupLogger.debug(
+      "outgoing port changed: " + document.getElementById("outgoingPort").value
+    );
     this.adjustOutgoingSSLToPort(this.getUserConfig());
     this.onChangedManualEdit();
   },
@@ -1765,9 +1919,8 @@ var gAccountSetup = {
 
   onInputInUsername() {
     if (this.sameInOutUsernames) {
-      document.getElementById(
-        "outgoingUsername"
-      ).value = document.getElementById("incomingUsername").value;
+      document.getElementById("outgoingUsername").value =
+        document.getElementById("incomingUsername").value;
     }
     this.onChangedManualEdit();
   },
@@ -1777,7 +1930,8 @@ var gAccountSetup = {
     this.onChangedManualEdit();
   },
 
-  onBlurHostname() {
+  onChangeHostname() {
+    this.adjustOAuth2Visibility(this.getUserConfig());
     this.onChangedManualEdit();
   },
 
@@ -1820,7 +1974,7 @@ var gAccountSetup = {
    */
   validateManualEditComplete() {
     // getUserConfig() is expensive, but still OK, not a problem.
-    let manualConfig = this.getUserConfig();
+    const manualConfig = this.getUserConfig();
     this._currentConfig = manualConfig;
 
     if (manualConfig.isComplete()) {
@@ -1844,10 +1998,10 @@ var gAccountSetup = {
    */
   async onAdvancedSetup() {
     assert(this._currentConfig instanceof AccountConfig);
-    let configFilledIn = this.getConcreteConfig();
+    const configFilledIn = this.getConcreteConfig();
 
     if (CreateInBackend.checkIncomingServerAlreadyExists(configFilledIn)) {
-      let [title, description] = await document.l10n.formatValues([
+      const [title, description] = await document.l10n.formatValues([
         "account-setup-creation-error-title",
         "account-setup-error-server-exists",
       ]);
@@ -1855,7 +2009,7 @@ var gAccountSetup = {
       return;
     }
 
-    let [title, description] = await document.l10n.formatValues([
+    const [title, description] = await document.l10n.formatValues([
       "account-setup-confirm-advanced-title",
       "account-setup-confirm-advanced-description",
     ]);
@@ -1865,7 +2019,9 @@ var gAccountSetup = {
     }
 
     gAccountSetupLogger.debug("creating account in backend");
-    let newAccount = CreateInBackend.createAccountInBackend(configFilledIn);
+    const newAccount = await CreateInBackend.createAccountInBackend(
+      configFilledIn
+    );
 
     window.close();
     gMainWindow.postMessage("account-created-in-backend", "*");
@@ -1888,28 +2044,28 @@ var gAccountSetup = {
       "account-setup-looking-up-settings-half-manual"
     );
 
-    let newConfig = this.getUserConfig();
+    const newConfig = this.getUserConfig();
     gAccountSetupLogger.debug("manual config to test:\n" + newConfig);
 
     this.switchToMode("manual-edit-testing");
     // if (this._userPickedOutgoingServer) TODO
-    let self = this;
+    const self = this;
     this._abortable = GuessConfig.guessConfig(
       this._domain,
-      function(type, hostname, port, ssl, done, config) {
+      function (type, hostname, port, ssl, done, config) {
         // Progress.
         gAccountSetupLogger.debug(
           `progress callback host: ${hostname}, port: ${port}, type: ${type}`
         );
       },
-      function(config) {
+      function (config) {
         // Success.
         self._abortable = null;
         self._fillManualEditFields(config);
         self.stopLoadingState("account-setup-success-half-manual");
         self.validateManualEditComplete();
       },
-      function(e, config) {
+      function (e, config) {
         // guessConfig failed.
         if (e instanceof CancelledException) {
           return;
@@ -1928,9 +2084,9 @@ var gAccountSetup = {
   // UI helper functions
 
   _prefillConfig(initialConfig) {
-    let emailsplit = this._email.split("@");
+    const emailsplit = this._email.split("@");
     assert(emailsplit.length > 1);
-    let emaillocal = Sanitizer.nonemptystring(emailsplit[0]);
+    const emaillocal = Sanitizer.nonemptystring(emailsplit[0]);
     initialConfig.incoming.username = emaillocal;
     initialConfig.outgoing.username = emaillocal;
     return initialConfig;
@@ -1955,7 +2111,7 @@ var gAccountSetup = {
     event.preventDefault();
 
     // Select the only primary button that is visible and enabled.
-    let currentButton = document.querySelector(
+    const currentButton = document.querySelector(
       ".buttons-container-last button.primary:not([disabled],[hidden])"
     );
     if (currentButton) {
@@ -1967,72 +2123,129 @@ var gAccountSetup = {
   // Finish & dialog close functions
 
   onCancel() {
-    window.close();
-  },
-
-  onUnload() {
-    if (this._abortable) {
-      this._abortable.cancel(new UserCancelledException());
-    }
-
     // Some tests might close the account setup before it finishes loading,
     // therefore the gMainWindow might still be null. If that's the case, do an
-    // early return since we don't need to post any message to the main window.
+    // early return since we don't need to run any condition.
     if (!gMainWindow) {
+      window.close();
       return;
     }
 
-    // Trigger the startup process if the user didn't complete the setup.
-    gMainWindow.postMessage("account-setup-cancelled", "*");
+    // Ask for confirmation if the user never set Thunderbrid to be used without
+    // an email account, and no account has been configured.
+    if (
+      !Services.prefs.getBoolPref("app.use_without_mail_account", false) &&
+      !MailServices.accounts.accounts.length
+    ) {
+      // Abort any possible process before showing the confirmation dialog.
+      this.checkIfAbortable();
+      this.confirmExitDialog();
+      return;
+    }
+
+    window.close();
+  },
+
+  /**
+   * Ask for confirmation when the account setup is dismissed and the user
+   * doesn't have any configured account.
+   */
+  confirmExitDialog() {
+    const dialog = document.getElementById("confirmExitDialog");
+
+    document.getElementById("exitDialogConfirmButton").onclick = () => {
+      // Update the pref only if the checkbox was checked since it's FALSE by
+      // default. We won't expose this checkbox in the UI anymore afterward.
+      if (document.getElementById("useWithoutAccount").checked) {
+        Services.prefs.setBoolPref("app.use_without_mail_account", true);
+      }
+
+      dialog.close();
+      window.close();
+    };
+
+    document.getElementById("exitDialogCancelButton").onclick = () => {
+      dialog.close();
+    };
+
+    dialog.showModal();
+  },
+
+  /**
+   * Disable the exit dialog button if the user checks the "Use without an email
+   * account" checkbox.
+   *
+   * @param {DOMEvent} event - The checkbox change event.
+   */
+  toggleExitDialogButton(event) {
+    document.getElementById("exitDialogCancelButton").disabled =
+      event.target.checked;
+  },
+
+  checkIfAbortable() {
+    if (this._abortable) {
+      this._abortable.cancel(new UserCancelledException());
+    }
+  },
+
+  onUnload() {
+    gMainWindow.document
+      .getElementById("tabmail")
+      .unregisterTabMonitor(this.tabMonitor);
+    this.checkIfAbortable();
     gAccountSetupLogger.debug("Shutting down email config dialog");
   },
 
   async onCreate() {
-    try {
-      gAccountSetupLogger.debug("Create button clicked");
+    gAccountSetupLogger.debug("Create button clicked");
 
-      let configFilledIn = this.getConcreteConfig();
-      let self = this;
-      // If the dialog is not needed, it will go straight to OK callback
-      gSecurityWarningDialog.open(
-        this._currentConfig,
-        configFilledIn,
-        true,
-        async function() {
-          // on OK
-          await self.validateAndFinish(configFilledIn);
-        },
-        function() {
-          // on cancel, do nothing
-        }
-      );
-    } catch (ex) {
-      let errorMessage = await document.l10n.formatValue(
-        "account-setup-creation-error-title"
-      );
-      errorMessage += `. Ex=${ex}. Stack=${ex.stack}`;
-      gAccountSetupLogger.error(errorMessage);
+    const configFilledIn = this.getConcreteConfig();
+    const self = this;
+    // If the dialog is not needed, it will go straight to OK callback
+    gSecurityWarningDialog.open(
+      this._currentConfig,
+      configFilledIn,
+      true,
+      async function () {
+        // on OK
+        await self.validateAndFinish(configFilledIn).catch(async ex => {
+          const errorMessage = await document.l10n.formatValue(
+            "account-setup-creation-error-title"
+          );
+          gAccountSetupLogger.error(errorMessage + ". " + ex);
 
-      this.clearNotifications();
-      let notification = this.notificationBox.appendNotification(
-        errorMessage,
-        "accountSetupError",
-        null,
-        this.notificationBox.PRIORITY_CRITICAL_HIGH,
-        null
-      );
+          self.clearNotifications();
+          const notification = await self.notificationBox.appendNotification(
+            "accountSetupError",
+            {
+              label: errorMessage,
+              priority: self.notificationBox.PRIORITY_CRITICAL_HIGH,
+            },
+            null
+          );
 
-      // Hide the close button to prevent dismissing the notification.
-      notification.removeAttribute("dismissable");
-    }
+          // Hide the close button to prevent dismissing the notification.
+          notification.dismissable = false;
+        });
+      },
+      function () {
+        // on cancel, do nothing
+      }
+    );
   },
 
   // called by onCreate()
   async validateAndFinish(configFilled) {
-    let configFilledIn = configFilled || this.getConcreteConfig();
+    const configFilledIn = configFilled || this.getConcreteConfig();
+    if (
+      configFilledIn.incoming.type == "exchange" &&
+      "addonAccountType" in configFilledIn.incoming
+    ) {
+      configFilledIn.incoming.type = configFilledIn.incoming.addonAccountType;
+    }
 
     if (CreateInBackend.checkIncomingServerAlreadyExists(configFilledIn)) {
-      let [title, description] = await document.l10n.formatValues([
+      const [title, description] = await document.l10n.formatValues([
         "account-setup-creation-error-title",
         "account-setup-error-server-exists",
       ]);
@@ -2041,40 +2254,43 @@ var gAccountSetup = {
     }
 
     if (configFilledIn.outgoing.addThisServer) {
-      let existingServer = CreateInBackend.checkOutgoingServerAlreadyExists(
-        configFilledIn
-      );
+      const existingServer =
+        CreateInBackend.checkOutgoingServerAlreadyExists(configFilledIn);
       if (existingServer) {
         configFilledIn.outgoing.addThisServer = false;
         configFilledIn.outgoing.existingServerKey = existingServer.key;
       }
     }
 
-    let createButton = document.getElementById("createButton");
-    let reTestButton = document.getElementById("reTestButton");
+    const createButton = document.getElementById("createButton");
+    const reTestButton = document.getElementById("reTestButton");
     createButton.disabled = true;
     reTestButton.disabled = true;
 
     this.clearNotifications();
     this.startLoadingState("account-setup-checking-password");
-    let telemetryKey =
+    const telemetryKey =
       this._currentConfig.source == AccountConfig.kSourceXML ||
       this._currentConfig.source == AccountConfig.kSourceExchange
         ? this._currentConfig.subSource
         : this._currentConfig.source;
 
-    let self = this;
-    // logic function defined in verifyConfig.js
-    verifyConfig(
-      configFilledIn,
-      // guess login config?
-      configFilledIn.source != AccountConfig.kSourceXML,
-      // TODO Instead, the following line would be correct, but I cannot use it,
-      // because some other code doesn't adhere to the expectations/specs.
-      // Find out what it was and fix it.
-      // concreteConfig.source == AccountConfig.kSourceGuess,
-      this._msgWindow,
-      function(successfulConfig) {
+    const self = this;
+    const verifier = new ConfigVerifier(this._msgWindow);
+    window.addEventListener("unload", event => {
+      verifier.cleanup();
+    });
+    verifier
+      .verifyConfig(
+        configFilledIn,
+        // guess login config?
+        configFilledIn.source != AccountConfig.kSourceXML
+        // TODO Instead, the following line would be correct, but I cannot use it,
+        // because some other code doesn't adhere to the expectations/specs.
+        // Find out what it was and fix it.
+        // concreteConfig.source == AccountConfig.kSourceGuess,
+      )
+      .then(successfulConfig => {
         // success
         self.stopLoadingState(
           successfulConfig.incoming.password
@@ -2082,8 +2298,7 @@ var gAccountSetup = {
             : null
         );
 
-        // the auth might have changed, so we
-        // should back-port it to the current config.
+        // The auth might have changed, so we should update the current config.
         self._currentConfig.incoming.auth = successfulConfig.incoming.auth;
         self._currentConfig.outgoing.auth = successfulConfig.outgoing.auth;
         self._currentConfig.incoming.username =
@@ -2108,8 +2323,8 @@ var gAccountSetup = {
           telemetryKey,
           1
         );
-      },
-      function(e) {
+      })
+      .catch(e => {
         // failed
         // Could be a wrong password, but there are 1000 other
         // reasons why this failed. Only the backend knows.
@@ -2126,7 +2341,7 @@ var gAccountSetup = {
             "account-setup-exchange-config-unverifiable"
           );
         } else {
-          let msg = e.message || e.toString();
+          const msg = e.message || e.toString();
           self.showErrorNotification(msg, true);
         }
 
@@ -2140,13 +2355,17 @@ var gAccountSetup = {
           telemetryKey,
           1
         );
-      }
-    );
+      });
   },
 
-  finish(concreteConfig) {
+  /**
+   * @param {AccountConfig} concreteConfig - The config to use.
+   */
+  async finish(concreteConfig) {
     gAccountSetupLogger.debug("creating account in backend");
-    let newAccount = CreateInBackend.createAccountInBackend(concreteConfig);
+    const newAccount = await CreateInBackend.createAccountInBackend(
+      concreteConfig
+    );
 
     // Trigger the first login to download the folder structure and messages.
     newAccount.incomingServer.getNewMessages(
@@ -2166,7 +2385,7 @@ var gAccountSetup = {
    * Toggle the visibility of the list of available services to configure.
    */
   toggleSetupContainer(event) {
-    let container = event.target.closest(".linked-services-section");
+    const container = event.target.closest(".linked-services-section");
     container.classList.toggle("opened");
     container
       .querySelector(".linked-services-container")
@@ -2189,17 +2408,10 @@ var gAccountSetup = {
       account.incomingServer.type;
 
     // Store the host domain that will be used to look for CardDAV and CalDAV
-    // services. We do this because we can't safely rely on DNS SRV.
-    this._hostname = account.incomingServer.hostName;
-    try {
-      this._hostname = Services.eTLD.getBaseDomainFromHost(
-        account.incomingServer.hostName
-      );
-    } catch (ex) {
-      gAccountSetupLogger.warn(ex);
-    }
+    // services.
+    this._hostname = this._email.split("@")[1];
 
-    // Set up even listeners for the quick links.
+    // Set up event listeners for the quick links.
     document.getElementById("settingsButton").addEventListener(
       "click",
       () => {
@@ -2209,7 +2421,7 @@ var gAccountSetup = {
     );
 
     // Hide the e2ee button if the current server doesn't support it.
-    let hasEncryption =
+    const hasEncryption =
       account.incomingServer.type != "rss" &&
       account.incomingServer.type != "nntp" &&
       account.incomingServer.protocolInfo?.canGetMessages;
@@ -2233,17 +2445,20 @@ var gAccountSetup = {
     // or calendars.
     gAccountSetupLogger.debug("Fetching linked address books and calendars");
 
-    let notification = this.syncingBox.appendNotification(
-      await document.l10n.formatValue("account-setup-looking-up-address-books"),
+    const notification = await this.syncingBox.appendNotification(
       "accountSetupLoading",
-      null,
-      this.syncingBox.PRIORITY_INFO_LOW,
+      {
+        label: await document.l10n.formatValue(
+          "account-setup-looking-up-address-books"
+        ),
+        priority: this.syncingBox.PRIORITY_INFO_LOW,
+      },
       null
     );
     notification.setAttribute("align", "center");
 
     // Hide the close button to prevent dismissing the notification.
-    notification.removeAttribute("dismissable");
+    notification.dismissable = false;
 
     // Detect linked address books.
     await this.fetchAddressBooks();
@@ -2285,11 +2500,11 @@ var gAccountSetup = {
       gAccountSetupLogger.error(ex);
     }
 
-    let hideAddressBookUI = !this.addressBooks.length;
+    const hideAddressBookUI = !this.addressBooks.length;
     document.getElementById("linkedAddressBooks").hidden = hideAddressBookUI;
 
     // Clear the UI from any previous list.
-    let abList = document.querySelector(
+    const abList = document.querySelector(
       "#addressBooksSetup .linked-services-list"
     );
     while (abList.hasChildNodes()) {
@@ -2309,41 +2524,41 @@ var gAccountSetup = {
 
     // Collect existing carddav address books to compare with the list of
     // recently fetched ones.
-    let existing = MailServices.ab.directories.map(d =>
+    const existing = MailServices.ab.directories.map(d =>
       d.getStringValue("carddav.url", "")
     );
 
     // Populate the list of available address books.
-    for (let book of this.addressBooks) {
-      let provider = document.createElement("span");
+    for (const book of this.addressBooks) {
+      const provider = document.createElement("span");
       provider.classList.add("protocol-type");
       provider.textContent = "CardDAV";
 
-      let name = document.createElement("span");
+      const name = document.createElement("span");
       name.classList.add("list-item-name");
       name.textContent = book.name;
 
-      let button = document.createElement("button");
+      const button = document.createElement("button");
       button.setAttribute("type", "button");
 
       if (existing.includes(book.url.href)) {
         // This address book aready exists for some reason, so disable the
         // button and mark it as existing.
-        button.classList.add("existing", "small");
+        button.classList.add("existing", "small-button");
         document.l10n.setAttributes(
           button,
           "account-setup-existing-address-book"
         );
         button.disabled = true;
       } else {
-        button.classList.add("small");
+        button.classList.add("small-button");
         document.l10n.setAttributes(button, "account-setup-connect-link");
-        button.addEventListener("click", () => {
-          this._setupAddressBook(button, book);
+        button.addEventListener("click", async () => {
+          await this._setupAddressBook(button, book);
         });
       }
 
-      let row = document.createElement("li");
+      const row = document.createElement("li");
       row.appendChild(provider);
       row.appendChild(name);
       row.appendChild(button);
@@ -2361,8 +2576,8 @@ var gAccountSetup = {
    * @param {HTMLElement} button - The clicked button in the list.
    * @param {foundBook} book - The address book to configure.
    */
-  _setupAddressBook(button, book) {
-    book.create();
+  async _setupAddressBook(button, book) {
+    await book.create();
 
     // Update the button to reflect the creation of the new address book.
     button.classList.add("existing");
@@ -2371,11 +2586,10 @@ var gAccountSetup = {
 
     // Check if we have any address book left to set up and hide the
     // "Connect all" button if not.
-    document.getElementById(
-      "addressBooksSetupAll"
-    ).hidden = !document.querySelectorAll(
-      "#addressBooksSetup .linked-services-list button:not(.existing)"
-    ).length;
+    document.getElementById("addressBooksSetupAll").hidden =
+      !document.querySelectorAll(
+        "#addressBooksSetup .linked-services-list button:not(.existing)"
+      ).length;
   },
 
   /**
@@ -2383,7 +2597,7 @@ var gAccountSetup = {
    * button to trigger the method attached to the onclick listener.
    */
   setupAllAddressBooks() {
-    for (let button of document.querySelectorAll(
+    for (const button of document.querySelectorAll(
       "#addressBooksSetup .linked-services-list button"
     )) {
       button.click();
@@ -2408,11 +2622,11 @@ var gAccountSetup = {
       gAccountSetupLogger.error(ex);
     }
 
-    let hideCalendarUI = !this.calendars.size;
+    const hideCalendarUI = !this.calendars.size;
     document.getElementById("linkedCalendars").hidden = hideCalendarUI;
 
     // Clear the UI from any previous list.
-    let calList = document.querySelector(
+    const calList = document.querySelector(
       "#calendarsSetup .linked-services-list"
     );
     while (calList.hasChildNodes()) {
@@ -2426,40 +2640,37 @@ var gAccountSetup = {
 
     // Collect existing calendars to compare with the list of recently fetched
     // ones.
-    let existing = new Set(
-      cal
-        .getCalendarManager()
-        .getCalendars({})
-        .map(calendar => calendar.uri.spec)
+    const existing = new Set(
+      cal.manager.getCalendars({}).map(calendar => calendar.uri.spec)
     );
 
     let calendarsCount = 0;
 
     // Populate the list of available calendars.
-    for (let [provider, calendars] of this.calendars.entries()) {
-      for (let calendar of calendars) {
-        let cal_provider = document.createElement("span");
+    for (const [provider, calendars] of this.calendars.entries()) {
+      for (const calendar of calendars) {
+        const cal_provider = document.createElement("span");
         cal_provider.classList.add("protocol-type");
         cal_provider.textContent = provider.shortName;
 
-        let cal_name = document.createElement("span");
+        const cal_name = document.createElement("span");
         cal_name.classList.add("list-item-name");
         cal_name.textContent = calendar.name;
 
-        let button = document.createElement("button");
+        const button = document.createElement("button");
         button.setAttribute("type", "button");
 
         if (existing.has(calendar.uri.spec)) {
           // This calendar aready exists for some reason, so disable the button
           // and mark it as existing.
-          button.classList.add("existing", "small");
+          button.classList.add("existing", "small-button");
           document.l10n.setAttributes(
             button,
             "account-setup-existing-calendar"
           );
           button.disabled = true;
         } else {
-          button.classList.add("small");
+          button.classList.add("small-button");
           document.l10n.setAttributes(button, "account-setup-connect-link");
           button.addEventListener("click", () => {
             // If the button has a specific data attribute it means we want to
@@ -2473,7 +2684,7 @@ var gAccountSetup = {
           });
         }
 
-        let row = document.createElement("li");
+        const row = document.createElement("li");
         row.appendChild(cal_provider);
         row.appendChild(cal_name);
         row.appendChild(button);
@@ -2503,36 +2714,36 @@ var gAccountSetup = {
    * @param {calICalendar} calendar - The calendar to configure.
    */
   _showCalendarDialog(button, calendar) {
-    let dialog = document.getElementById("calendarDialog");
+    const dialog = document.getElementById("calendarDialog");
 
     // Update the calendar info in the dialog.
-    let nameInput = document.getElementById("calendarName");
+    const nameInput = document.getElementById("calendarName");
     nameInput.value = calendar.name;
 
     // Some servers provide colors as an 8-character hex string, which the color
     // picker can't handle. Strip the alpha component.
     let color = calendar.getProperty("color");
-    let alpha = color?.match(/^(#[0-9A-Fa-f]{6})[0-9A-Fa-f]{2}$/);
+    const alpha = color?.match(/^(#[0-9A-Fa-f]{6})[0-9A-Fa-f]{2}$/);
     if (alpha) {
       calendar.setProperty("color", alpha[1]);
       color = alpha[1];
     }
-    let colorInput = document.getElementById("calendarColor");
+    const colorInput = document.getElementById("calendarColor");
     colorInput.value = color || "#A8C2E1";
 
-    let readOnlyCheckbox = document.getElementById("calendarReadOnly");
+    const readOnlyCheckbox = document.getElementById("calendarReadOnly");
     readOnlyCheckbox.checked = calendar.readOnly;
 
     // Hide the "Show reminders" checkbox if the calendar doesn't support it.
     document.getElementById("calendarShowRemindersRow").hidden =
       calendar.getProperty("capabilities.alarms.popup.supported") === false;
-    let remindersCheckbox = document.getElementById("calendarShowReminders");
+    const remindersCheckbox = document.getElementById("calendarShowReminders");
     remindersCheckbox.checked = !calendar.getProperty("suppressAlarms");
 
     // Hide the "Offline support" if the calendar doesn't support it.
-    let offlineCheckbox = document.getElementById("calendarOfflineSupport");
-    let canCache = calendar.getProperty("cache.supported") !== false;
-    let alwaysCache = calendar.getProperty("cache.always");
+    const offlineCheckbox = document.getElementById("calendarOfflineSupport");
+    const canCache = calendar.getProperty("cache.supported") !== false;
+    const alwaysCache = calendar.getProperty("cache.always");
     if (!canCache || alwaysCache) {
       offlineCheckbox.hidden = true;
       offlineCheckbox.disabled = true;
@@ -2541,7 +2752,7 @@ var gAccountSetup = {
       alwaysCache || (canCache && calendar.getProperty("cache.enabled"));
 
     // Set up the "Refresh calendar" menulist.
-    let calendarRefresh = document.getElementById("calendaRefresh");
+    const calendarRefresh = document.getElementById("calendarRefresh");
     calendarRefresh.disabled = !calendar.canRefresh;
     calendarRefresh.value = calendar.getProperty("refreshInterval") || 30;
 
@@ -2579,7 +2790,7 @@ var gAccountSetup = {
    * @param {calICalendar} calendar - The calendar to configure.
    */
   _setupCalendar(button, calendar) {
-    cal.getCalendarManager().registerCalendar(calendar);
+    cal.manager.registerCalendar(calendar);
 
     // Update the button to reflect the creation of the new calendar.
     button.classList.add("existing");
@@ -2588,11 +2799,10 @@ var gAccountSetup = {
 
     // Check if we have any calendar left to set up and hide the "Connect all"
     // button if not.
-    document.getElementById(
-      "calendarsSetupAll"
-    ).hidden = !document.querySelectorAll(
-      "#calendarsSetup .linked-services-list button:not(.existing)"
-    ).length;
+    document.getElementById("calendarsSetupAll").hidden =
+      !document.querySelectorAll(
+        "#calendarsSetup .linked-services-list button:not(.existing)"
+      ).length;
   },
 
   /**
@@ -2600,7 +2810,7 @@ var gAccountSetup = {
    * button to trigger the method attached to the onclick listener.
    */
   setupAllCalendars() {
-    for (let button of document.querySelectorAll(
+    for (const button of document.querySelectorAll(
       "#calendarsSetup .linked-services-list button:not(.existing)"
     )) {
       // Set the attribute to skip the opening of the properties dialog.
@@ -2665,7 +2875,7 @@ var gSecurityWarningDialog = {
    *
    * @param configSchema @see open()
    * @param configFilledIn @see open()
-   * @returns {Boolean} - True when the dialog should be shown
+   * @returns {boolean} - True when the dialog should be shown
    *   (call open()). if false, the dialog can and should be skipped.
    */
   needed(configSchema, configFilledIn) {
@@ -2717,7 +2927,7 @@ var gSecurityWarningDialog = {
    *      This object may be modified to store the user's confirmations, but
    *      currently that's not the case.
    * @param configFilledIn   The concrete config with placeholders replaced.
-   * @param onlyIfNeeded {Boolean}   If there is nothing to warn about,
+   * @param onlyIfNeeded {Boolean} - If there is nothing to warn about,
    *     call okCallback() immediately (and sync).
    * @param okCallback {function(config {AccountConfig})}
    *      Called when the user clicked OK and approved the config including
@@ -2730,7 +2940,7 @@ var gSecurityWarningDialog = {
     assert(typeof cancelCallback == "function");
 
     // needed() also checks the parameters
-    let needed = this.needed(configSchema, configFilledIn);
+    const needed = this.needed(configSchema, configFilledIn);
     if (needed == 0 && onlyIfNeeded) {
       okCallback();
       return;
@@ -2738,19 +2948,19 @@ var gSecurityWarningDialog = {
 
     assert(needed > 0, "security dialog opened needlessly");
 
-    let dialog = document.getElementById("insecureDialog");
+    const dialog = document.getElementById("insecureDialog");
     this._currentConfigFilledIn = configFilledIn;
     this._okCallback = okCallback;
     this._cancelCallback = cancelCallback;
-    let incoming = configFilledIn.incoming;
-    let outgoing = configFilledIn.outgoing;
+    const incoming = configFilledIn.incoming;
+    const outgoing = configFilledIn.outgoing;
 
     // Reset the dialog, in case we've shown it before.
     document.getElementById("acknowledgeWarning").checked = false;
     document.getElementById("insecureConfirmButton").disabled = true;
 
     // Incoming security is bad.
-    let insecureIncoming = document.getElementById("insecureSectionIncoming");
+    const insecureIncoming = document.getElementById("insecureSectionIncoming");
     if (needed & this._inSecurityBad) {
       document.l10n.setAttributes(
         document.getElementById("warningIncoming"),
@@ -2771,7 +2981,7 @@ var gSecurityWarningDialog = {
     }
 
     // Outgoing security or certificate is bad.
-    let insecureOutgoing = document.getElementById("insecureSectionOutgoing");
+    const insecureOutgoing = document.getElementById("insecureSectionOutgoing");
     if (needed & this._outSecurityBad) {
       document.l10n.setAttributes(
         document.getElementById("warningOutgoing"),
@@ -2805,9 +3015,8 @@ var gSecurityWarningDialog = {
    * warning.
    */
   toggleAcknowledge() {
-    document.getElementById(
-      "insecureConfirmButton"
-    ).disabled = !document.getElementById("acknowledgeWarning").checked;
+    document.getElementById("insecureConfirmButton").disabled =
+      !document.getElementById("acknowledgeWarning").checked;
   },
 
   /**
@@ -2830,7 +3039,7 @@ var gSecurityWarningDialog = {
     assert(document.getElementById("acknowledgeWarning").checked);
 
     // Need filled in, in case the hostname is a placeholder.
-    let storeConfig = this._currentConfigFilledIn.copy();
+    const storeConfig = this._currentConfigFilledIn.copy();
     this._acknowledged.push(storeConfig.incoming);
     this._acknowledged.push(storeConfig.outgoing);
 
@@ -2844,10 +3053,10 @@ var gSecurityWarningDialog = {
  * Helper method to open the dictionaries list in a new tab.
  */
 function openDictionariesTab() {
-  let mailWindow = Services.wm.getMostRecentWindow("mail:3pane");
-  let tabmail = mailWindow.document.getElementById("tabmail");
+  const mailWindow = Services.wm.getMostRecentWindow("mail:3pane");
+  const tabmail = mailWindow.document.getElementById("tabmail");
 
-  let url = Services.urlFormatter.formatURLPref(
+  const url = Services.urlFormatter.formatURLPref(
     "spellchecker.dictionaries.download.url"
   );
 

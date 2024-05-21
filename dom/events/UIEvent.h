@@ -19,8 +19,7 @@
 
 class nsINode;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class UIEvent : public Event {
  public:
@@ -31,8 +30,9 @@ class UIEvent : public Event {
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(UIEvent, Event)
 
   void DuplicatePrivateData() override;
-  void Serialize(IPC::Message* aMsg, bool aSerializeInterfaceType) override;
-  bool Deserialize(const IPC::Message* aMsg, PickleIterator* aIter) override;
+  void Serialize(IPC::MessageWriter* aWriter,
+                 bool aSerializeInterfaceType) override;
+  bool Deserialize(IPC::MessageReader* aReader) override;
 
   static already_AddRefed<UIEvent> Constructor(const GlobalObject& aGlobal,
                                                const nsAString& aType,
@@ -102,21 +102,18 @@ class UIEvent : public Event {
 
   nsCOMPtr<nsPIDOMWindowOuter> mView;
   int32_t mDetail;
-  CSSIntPoint mClientPoint;
+  CSSIntPoint mDefaultClientPoint;
   // Screenpoint is mEvent->mRefPoint.
   nsIntPoint mLayerPoint;
   CSSIntPoint mPagePoint;
   nsIntPoint mMovementPoint;
-  bool mIsPointerLocked;
-  CSSIntPoint mLastClientPoint;
 
   static Modifiers ComputeModifierState(const nsAString& aModifiersList);
   bool GetModifierStateInternal(const nsAString& aKey);
   void InitModifiers(const EventModifierInit& aParam);
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 already_AddRefed<mozilla::dom::UIEvent> NS_NewDOMUIEvent(
     mozilla::dom::EventTarget* aOwner, nsPresContext* aPresContext,

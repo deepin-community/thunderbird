@@ -18,6 +18,12 @@ using namespace js;
 
 void JSONPrinter::indent() {
   MOZ_ASSERT(indentLevel_ >= 0);
+
+  if (inlineLevel_ > 0) {
+    out_.putChar(' ');
+    return;
+  }
+
   if (indent_) {
     out_.putChar('\n');
     for (int i = 0; i < indentLevel_; i++) {
@@ -26,11 +32,15 @@ void JSONPrinter::indent() {
   }
 }
 
-void JSONPrinter::propertyName(const char* name) {
+void JSONPrinter::beforeValue() {
   if (!first_) {
     out_.putChar(',');
   }
   indent();
+}
+
+void JSONPrinter::propertyName(const char* name) {
+  beforeValue();
   out_.printf("\"%s\":", name);
   if (indent_) {
     out_.put(" ");
@@ -39,20 +49,14 @@ void JSONPrinter::propertyName(const char* name) {
 }
 
 void JSONPrinter::beginObject() {
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.putChar('{');
   indentLevel_++;
   first_ = true;
 }
 
 void JSONPrinter::beginList() {
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.putChar('[');
   indentLevel_++;
   first_ = true;
@@ -72,6 +76,11 @@ void JSONPrinter::beginListProperty(const char* name) {
   first_ = true;
 }
 
+void JSONPrinter::beginInlineListProperty(const char* name) {
+  beginListProperty(name);
+  beginInline();
+}
+
 GenericPrinter& JSONPrinter::beginStringProperty(const char* name) {
   propertyName(name);
   out_.putChar('"');
@@ -84,10 +93,7 @@ void JSONPrinter::endStringProperty() {
 }
 
 GenericPrinter& JSONPrinter::beginString() {
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.putChar('"');
   return out_;
 }
@@ -97,6 +103,38 @@ void JSONPrinter::endString() { out_.putChar('"'); }
 void JSONPrinter::boolProperty(const char* name, bool value) {
   propertyName(name);
   out_.put(value ? "true" : "false");
+}
+
+template <typename CharT>
+static void JSONString(GenericPrinter& out, const CharT* s, size_t length) {
+  const CharT* end = s + length;
+  for (const CharT* t = s; t < end; s = ++t) {
+    // This quote implementation is probably correct,
+    // but uses \u even when not strictly necessary.
+    char16_t c = *t;
+    if (c == '"' || c == '\\') {
+      out.printf("\\");
+      out.printf("%c", char(c));
+    } else if (!IsAsciiPrintable(c)) {
+      out.printf("\\u%04x", c);
+    } else {
+      out.printf("%c", char(c));
+    }
+  }
+}
+
+void JSONPrinter::property(const char* name, JSLinearString* str) {
+  JS::AutoCheckCannotGC nogc;
+  beginStringProperty(name);
+
+  // Limit the string length to reduce the JSON file size.
+  size_t length = std::min(str->length(), size_t(128));
+  if (str->hasLatin1Chars()) {
+    JSONString(out_, str->latin1Chars(nogc), length);
+  } else {
+    JSONString(out_, str->twoByteChars(nogc), length);
+  }
+  endStringProperty();
 }
 
 void JSONPrinter::property(const char* name, const char* value) {
@@ -127,10 +165,7 @@ void JSONPrinter::value(const char* format, ...) {
   va_list ap;
   va_start(ap, format);
 
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.putChar('"');
   out_.vprintf(format, ap);
   out_.putChar('"');
@@ -145,10 +180,7 @@ void JSONPrinter::property(const char* name, int32_t value) {
 }
 
 void JSONPrinter::value(int val) {
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.printf("%d", val);
   first_ = false;
 }
@@ -177,15 +209,14 @@ void JSONPrinter::property(const char* name, size_t value) {
 
 void JSONPrinter::floatProperty(const char* name, double value,
                                 size_t precision) {
-  if (!mozilla::IsFinite(value)) {
+  if (!std::isfinite(value)) {
     propertyName(name);
     out_.put("null");
     return;
   }
 
-  // Note: NumberToCString does not use the |cx| argument for base 10.
   ToCStringBuf cbuf;
-  const char* str = NumberToCString(nullptr, &cbuf, value);
+  const char* str = NumberToCString(&cbuf, value);
   MOZ_ASSERT(str);
 
   property(name, str);
@@ -219,10 +250,7 @@ void JSONPrinter::nullProperty(const char* name) {
 }
 
 void JSONPrinter::nullValue() {
-  if (!first_) {
-    out_.putChar(',');
-  }
-  indent();
+  beforeValue();
   out_.put("null");
   first_ = false;
 }
@@ -240,3 +268,12 @@ void JSONPrinter::endList() {
   out_.putChar(']');
   first_ = false;
 }
+
+void JSONPrinter::endInlineList() {
+  endList();
+  endInline();
+}
+
+void JSONPrinter::beginInline() { inlineLevel_++; }
+
+void JSONPrinter::endInline() { inlineLevel_--; }

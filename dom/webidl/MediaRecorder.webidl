@@ -10,6 +10,9 @@
  * liability, trademark and document use rules apply.
  */
 
+
+enum BitrateMode { "constant", "variable" };
+
 enum RecordingState { "inactive", "recording", "paused" };
 
 [Exposed=Window]
@@ -33,15 +36,15 @@ interface MediaRecorder : EventTarget {
 
 
   [Throws]
-  void start(optional unsigned long timeslice);
+  undefined start(optional unsigned long timeslice);
   [Throws]
-  void stop();
+  undefined stop();
   [Throws]
-  void pause();
+  undefined pause();
   [Throws]
-  void resume();
+  undefined resume();
   [Throws]
-  void requestData();
+  undefined requestData();
 
   static boolean isTypeSupported(DOMString type);
 };

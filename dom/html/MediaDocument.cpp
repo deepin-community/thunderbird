@@ -41,11 +41,6 @@ MediaDocumentStreamListener::~MediaDocumentStreamListener() {
 NS_IMPL_ISUPPORTS(MediaDocumentStreamListener, nsIRequestObserver,
                   nsIStreamListener, nsIThreadRetargetableStreamListener)
 
-void MediaDocumentStreamListener::SetStreamListener(
-    nsIStreamListener* aListener) {
-  mNextStream = aListener;
-}
-
 NS_IMETHODIMP
 MediaDocumentStreamListener::OnStartRequest(nsIRequest* request) {
   NS_ENSURE_TRUE(mDocument, NS_ERROR_FAILURE);
@@ -94,6 +89,20 @@ MediaDocumentStreamListener::OnDataAvailable(nsIRequest* request,
 }
 
 NS_IMETHODIMP
+MediaDocumentStreamListener::OnDataFinished(nsresult aStatus) {
+  if (!mNextStream) {
+    return NS_ERROR_FAILURE;
+  }
+  nsCOMPtr<nsIThreadRetargetableStreamListener> retargetable =
+      do_QueryInterface(mNextStream);
+  if (retargetable) {
+    return retargetable->OnDataFinished(aStatus);
+  }
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 MediaDocumentStreamListener::CheckListenerChain() {
   nsCOMPtr<nsIThreadRetargetableStreamListener> retargetable =
       do_QueryInterface(mNextStream);
@@ -111,12 +120,14 @@ const char* const MediaDocument::sFormatNames[4] = {
     ""                       // eWithDimAndFile
 };
 
-MediaDocument::MediaDocument()
-    : nsHTMLDocument(), mDidInitialDocumentSetup(false) {}
+MediaDocument::MediaDocument() : mDidInitialDocumentSetup(false) {
+  mCompatMode = eCompatibility_FullStandards;
+}
 MediaDocument::~MediaDocument() = default;
 
-nsresult MediaDocument::Init() {
-  nsresult rv = nsHTMLDocument::Init();
+nsresult MediaDocument::Init(nsIPrincipal* aPrincipal,
+                             nsIPrincipal* aPartitionedPrincipal) {
+  nsresult rv = nsHTMLDocument::Init(aPrincipal, aPartitionedPrincipal);
   NS_ENSURE_SUCCESS(rv, rv);
 
   mIsSyntheticDocument = true;
@@ -124,14 +135,11 @@ nsresult MediaDocument::Init() {
   return NS_OK;
 }
 
-nsresult MediaDocument::StartDocumentLoad(const char* aCommand,
-                                          nsIChannel* aChannel,
-                                          nsILoadGroup* aLoadGroup,
-                                          nsISupports* aContainer,
-                                          nsIStreamListener** aDocListener,
-                                          bool aReset, nsIContentSink* aSink) {
-  nsresult rv = Document::StartDocumentLoad(
-      aCommand, aChannel, aLoadGroup, aContainer, aDocListener, aReset, aSink);
+nsresult MediaDocument::StartDocumentLoad(
+    const char* aCommand, nsIChannel* aChannel, nsILoadGroup* aLoadGroup,
+    nsISupports* aContainer, nsIStreamListener** aDocListener, bool aReset) {
+  nsresult rv = Document::StartDocumentLoad(aCommand, aChannel, aLoadGroup,
+                                            aContainer, aDocListener, aReset);
   if (NS_FAILED(rv)) {
     return rv;
   }

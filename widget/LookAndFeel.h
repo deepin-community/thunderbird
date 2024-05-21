@@ -16,12 +16,16 @@
 #include "nsTArray.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/widget/ThemeChangeKind.h"
+#include "mozilla/ColorScheme.h"
 
 struct gfxFontStyle;
 
 class nsIFrame;
 
 namespace mozilla {
+
+using Modifiers = uint16_t;
+struct StyleColorSchemeFlags;
 
 namespace dom {
 class Document;
@@ -38,12 +42,15 @@ enum class StyleSystemFont : uint8_t;
 class LookAndFeel {
  public:
   using ColorID = StyleSystemColor;
+  using ColorScheme = mozilla::ColorScheme;
 
   // When modifying this list, also modify nsXPLookAndFeel::sIntPrefs
   // in widget/xpwidgts/nsXPLookAndFeel.cpp.
   enum class IntID {
     // default, may be overriden by OS
     CaretBlinkTime,
+    // Amount of blinks that happen before the caret stops blinking.
+    CaretBlinkCount,
     // pixel width of caret
     CaretWidth,
     // show the caret when text is selected?
@@ -58,8 +65,6 @@ class LookAndFeel {
     UseOverlayScrollbars,
     // allow H and V overlay scrollbars to overlap?
     AllowOverlayScrollbarsOverlap,
-    // show/hide scrollbars based on activity
-    ShowHideScrollbars,
     // skip navigating to disabled menu item?
     SkipNavigatingDisabledMenuItem,
     // begin a drag if the mouse is moved further than the threshold while the
@@ -71,8 +76,6 @@ class LookAndFeel {
 
     // position of scroll arrows in a scrollbar
     ScrollArrowStyle,
-    // is scroll thumb proportional or fixed?
-    ScrollSliderStyle,
 
     // each button can take one of four values:
     ScrollButtonLeftMouseButtonAction,
@@ -106,58 +109,15 @@ class LookAndFeel {
     WindowsAccentColorInTitlebar,
 
     /*
-     * A Boolean value to determine whether the Windows default theme is
-     * being used.
-     *
-     * The value of this metric is not used on other platforms. These platforms
-     * should return NS_ERROR_NOT_IMPLEMENTED when queried for this metric.
-     */
-    WindowsDefaultTheme,
-
-    /*
-     * A Boolean value to determine whether the DWM compositor is being used
-     *
-     * This metric is not used on non-Windows platforms. These platforms
-     * should return NS_ERROR_NOT_IMPLEMENTED when queried for this metric.
-     */
-    DWMCompositor,
-
-    /*
-     * A Boolean value to determine whether Windows is themed (Classic vs.
-     * uxtheme)
-     *
-     * This is Windows-specific and is not implemented on other platforms
-     * (will return the default of NS_ERROR_FAILURE).
-     */
-    WindowsClassic,
-
-    /*
-     * A Boolean value to determine whether the current Windows desktop theme
-     * supports Aero Glass.
-     *
-     * This is Windows-specific and is not implemented on other platforms
-     * (will return the default of NS_ERROR_FAILURE).
-     */
-    WindowsGlass,
-
-    /*
-     * A Boolean value to determine whether the Mac graphite theme is
-     * being used.
-     *
-     * The value of this metric is not used on other platforms. These platforms
-     * should return NS_ERROR_NOT_IMPLEMENTED when queried for this metric.
-     */
-    MacGraphiteTheme,
-
-    /*
      * A Boolean value to determine whether the macOS Big Sur-specific
      * theming should be used.
-     *
-     * The value of this metric is not used on non-Mac platforms. These
-     * platforms should return NS_ERROR_NOT_IMPLEMENTED when queried for this
-     * metric.
      */
     MacBigSurTheme,
+
+    /*
+     * A Boolean value to determine whether macOS is in RTL mode or not.
+     */
+    MacRTL,
 
     /*
      * AlertNotificationOrigin indicates from which corner of the
@@ -199,25 +159,12 @@ class LookAndFeel {
      */
     MenuBarDrag,
     /**
-     * Return the appropriate WindowsThemeIdentifier for the current theme.
-     */
-    WindowsThemeIdentifier,
-    /**
-     * Return an appropriate os version identifier.
-     */
-    OperatingSystemVersionIdentifier,
-    /**
      * 0: scrollbar button repeats to scroll only when cursor is on the button.
      * 1: scrollbar button repeats to scroll even if cursor is outside of it.
      */
     ScrollbarButtonAutoRepeatBehavior,
-    /**
-     * Delay before showing a tooltip.
-     */
-    TooltipDelay,
     /*
-     * A Boolean value to determine whether Mac OS X Lion style swipe animations
-     * should be used.
+     * A Boolean value to determine whether swipe animations should be used.
      */
     SwipeAnimationEnabled,
 
@@ -247,18 +194,6 @@ class LookAndFeel {
     GTKCSDAvailable,
 
     /*
-     * A boolean value indicating whether GTK+ system titlebar should be
-     * disabled by default.
-     */
-    GTKCSDHideTitlebarByDefault,
-
-    /*
-     * A boolean value indicating whether client-side decorations should
-     * have transparent background.
-     */
-    GTKCSDTransparentBackground,
-
-    /*
      * A boolean value indicating whether client-side decorations should
      * contain a minimize button.
      */
@@ -278,25 +213,19 @@ class LookAndFeel {
 
     /**
      * An Integer value that will represent the position of the Minimize button
-     * in GTK Client side decoration header. Its value will be between 0 and 2
-     * if it is on the left side of the tabbar, otherwise it will be between
-     * 3 and 5.
+     * in GTK Client side decoration header.
      */
     GTKCSDMinimizeButtonPosition,
 
     /**
      * An Integer value that will represent the position of the Maximize button
-     * in GTK Client side decoration header. Its value will be between 0 and 2
-     * if it is on the left side of the tabbar, otherwise it will be between
-     * 3 and 5.
+     * in GTK Client side decoration header.
      */
     GTKCSDMaximizeButtonPosition,
 
     /**
      * An Integer value that will represent the position of the Close button
-     * in GTK Client side decoration header. Its value will be between 0 and 2
-     * if it is on the left side of the tabbar, otherwise it will be between
-     * 3 and 5.
+     * in GTK Client side decoration header.
      */
     GTKCSDCloseButtonPosition,
 
@@ -318,8 +247,24 @@ class LookAndFeel {
      * 0: no-preference
      * 1: reduce
      */
-
     PrefersReducedMotion,
+
+    /**
+     * Corresponding to prefers-reduced-transparency.
+     * https://drafts.csswg.org/mediaqueries-5/#prefers-reduced-transparency
+     * 0: no-preference
+     * 1: reduce
+     */
+    PrefersReducedTransparency,
+
+    /**
+     * Corresponding to inverted-colors.
+     * https://drafts.csswg.org/mediaqueries-5/#inverted
+     * 0: none
+     * 1: inverted
+     */
+    InvertedColors,
+
     /**
      * Corresponding to PointerCapabilities in ServoTypes.h
      * 0: None
@@ -334,11 +279,36 @@ class LookAndFeel {
      * 'Coarse | Fine | Hover'.
      */
     AllPointerCapabilities,
-    /** The vertical scrollbar width, in CSS pixels. */
-    SystemVerticalScrollbarWidth,
 
-    /** The horizontal scrollbar height, in CSS pixels. */
-    SystemHorizontalScrollbarHeight,
+    /** The scrollbar size, in CSS pixels. */
+    SystemScrollbarSize,
+
+    /** A boolean value to determine whether a touch device is present */
+    TouchDeviceSupportPresent,
+
+    /** GTK titlebar radius */
+    TitlebarRadius,
+
+    /** GTK button-to-button spacing in the inline axis */
+    TitlebarButtonSpacing,
+
+    /**
+     * Corresponding to dynamic-range.
+     * https://drafts.csswg.org/mediaqueries-5/#dynamic-range
+     * 0: Standard
+     * 1: High
+     */
+    DynamicRange,
+    VideoDynamicRange,
+
+    /** Whether XUL panel animations are enabled. */
+    PanelAnimations,
+
+    /* Whether we should hide the cursor while typing */
+    HideCursorWhileTyping,
+
+    /* The StyleGtkThemeFamily of the current GTK theme. */
+    GTKThemeFamily,
 
     /*
      * Not an ID; used to define the range of valid IDs.  Must be last.
@@ -351,30 +321,11 @@ class LookAndFeel {
     return GetInt(IntID::UseOverlayScrollbars);
   }
 
-  /**
-   * Windows themes we currently detect.
-   */
-  enum WindowsTheme {
-    eWindowsTheme_Generic = 0,  // unrecognized theme
-    eWindowsTheme_Classic,
-    eWindowsTheme_Aero,
-    eWindowsTheme_LunaBlue,
-    eWindowsTheme_LunaOlive,
-    eWindowsTheme_LunaSilver,
-    eWindowsTheme_Royale,
-    eWindowsTheme_Zune,
-    eWindowsTheme_AeroLite
-  };
-
-  /**
-   * Operating system versions.
-   */
-  enum class OperatingSystemVersion {
-    Windows7 = 2,
-    Windows8,
-    Windows10,
-    Unknown
-  };
+  // Returns keyCode value of a modifier key which is used for accesskey.
+  // Returns 0 if the platform doesn't support access key.
+  static uint32_t GetMenuAccessKey();
+  // Modifier mask for the menu accesskey.
+  static Modifiers GetMenuAccessKeyModifiers();
 
   enum {
     eScrollArrow_None = 0,
@@ -400,8 +351,6 @@ class LookAndFeel {
         eScrollArrow_StartBackward | eScrollArrow_StartForward
   };
 
-  enum { eScrollThumbStyle_Normal, eScrollThumbStyle_Proportional };
-
   // When modifying this list, also modify nsXPLookAndFeel::sFloatPrefs
   // in widget/nsXPLookAndFeel.cpp.
   enum class FloatID {
@@ -415,23 +364,27 @@ class LookAndFeel {
     // GTK text scale factor.
     TextScaleFactor,
 
+    // Mouse pointer scaling factor.
+    CursorScale,
+
     // Not an ID; used to define the range of valid IDs.  Must be last.
     End,
   };
 
   using FontID = mozilla::StyleSystemFont;
 
-  // Whether we should use a light or dark appearance.
-  //
-  // This is currently ignored (but won't be for long).
-  enum class ColorScheme : uint8_t { Light, Dark };
-
   static ColorScheme SystemColorScheme() {
     return GetInt(IntID::SystemUsesDarkTheme) ? ColorScheme::Dark
                                               : ColorScheme::Light;
   }
 
-  static ColorScheme ColorSchemeForDocument(const dom::Document& aDoc);
+  static bool IsDarkColor(nscolor);
+
+  static ColorScheme ColorSchemeForStyle(
+      const dom::Document&, const StyleColorSchemeFlags&,
+      ColorSchemeMode = ColorSchemeMode::Used);
+  static ColorScheme ColorSchemeForFrame(
+      const nsIFrame*, ColorSchemeMode = ColorSchemeMode::Used);
 
   // Whether standins for native colors should be used (that is, colors faked,
   // taken from win7, mostly). This forces light appearance, effectively.
@@ -450,15 +403,7 @@ class LookAndFeel {
   static Maybe<nscolor> GetColor(ColorID, ColorScheme, UseStandins);
 
   // Gets the color with appropriate defaults for UseStandins, ColorScheme etc
-  // for a given document.
-  static Maybe<nscolor> GetColor(ColorID, const dom::Document&);
-
-  // Gets the color with appropriate defaults for UseStandins, ColorScheme etc
   // for a given frame.
-  //
-  // TODO(emilio): This right now just peeks the document out of the frame's
-  // pres context, but in the future we actually want to look at the style to
-  // get the right color scheme, to implement the color-scheme property.
   static Maybe<nscolor> GetColor(ColorID, const nsIFrame*);
 
   // Versions of the above which returns the color if found, or a default (which
@@ -469,15 +414,25 @@ class LookAndFeel {
     return GetColor(aId, aScheme, aUseStandins).valueOr(aDefault);
   }
 
-  static nscolor Color(ColorID aId, const dom::Document& aDoc,
-                       nscolor aDefault = NS_RGB(0, 0, 0)) {
-    return GetColor(aId, aDoc).valueOr(aDefault);
-  }
-
   static nscolor Color(ColorID aId, nsIFrame* aFrame,
                        nscolor aDefault = NS_RGB(0, 0, 0)) {
     return GetColor(aId, aFrame).valueOr(aDefault);
   }
+
+  static float GetTextScaleFactor() {
+    float f = GetFloat(FloatID::TextScaleFactor, 1.0f);
+    if (MOZ_UNLIKELY(f <= 0.0f)) {
+      return 1.0f;
+    }
+    return f;
+  }
+
+  struct ZoomSettings {
+    float mFullZoom = 1.0f;
+    float mTextZoom = 1.0f;
+  };
+
+  static ZoomSettings SystemZoomSettings();
 
   /**
    * GetInt() and GetFloat() return a int or float value for aID.  The result
@@ -533,10 +488,40 @@ class LookAndFeel {
   static bool GetEchoPassword();
 
   /**
+   * Whether we should be drawing in the titlebar by default.
+   */
+  static bool DrawInTitlebar();
+
+  enum class TitlebarAction {
+    None,
+    WindowLower,
+    WindowMenu,
+    WindowMinimize,
+    WindowMaximize,
+    WindowMaximizeToggle,
+    // We don't support more actions (maximize-horizontal, maximize-vertical,..)
+    // as they're implemented as part of Wayland gtk_surface1 protocol
+    // which is not accessible to us.
+  };
+
+  enum class TitlebarEvent {
+    Double_Click,
+    Middle_Click,
+  };
+
+  /**
+   * Get system defined action for titlebar events.
+   */
+  static TitlebarAction GetTitlebarAction(TitlebarEvent aEvent);
+
+  /**
    * The millisecond to mask password value.
    * This value is only valid when GetEchoPassword() returns true.
    */
   static uint32_t GetPasswordMaskDelay();
+
+  /** Gets theme information for about:support */
+  static void GetThemeInfo(nsACString&);
 
   /**
    * When system look and feel is changed, Refresh() must be called.  Then,
@@ -556,6 +541,19 @@ class LookAndFeel {
 
   static void SetData(widget::FullLookAndFeel&& aTables);
   static void NotifyChangedAllWindows(widget::ThemeChangeKind);
+  static bool HasPendingGlobalThemeChange() { return sGlobalThemeChanged; }
+  static void HandleGlobalThemeChange() {
+    if (MOZ_UNLIKELY(HasPendingGlobalThemeChange())) {
+      DoHandleGlobalThemeChange();
+    }
+  }
+
+ protected:
+  static void DoHandleGlobalThemeChange();
+  // Set to true when ThemeChanged needs to be called on mTheme (and other
+  // global LookAndFeel.  This is used because mTheme is a service, so there's
+  // no need to notify it from more than one prescontext.
+  static bool sGlobalThemeChanged;
 };
 
 }  // namespace mozilla

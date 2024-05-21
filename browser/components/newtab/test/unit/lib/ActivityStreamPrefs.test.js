@@ -1,4 +1,4 @@
-import { DefaultPrefs, Prefs } from "lib/ActivityStreamPrefs.jsm";
+import { DefaultPrefs, Prefs } from "lib/ActivityStreamPrefs.sys.mjs";
 
 const TEST_PREF_CONFIG = new Map([
   ["foo", { value: true }],
@@ -85,7 +85,7 @@ describe("ActivityStreamPrefs", () => {
         assert.calledWith(defaultPrefs.set, "foo", true);
       });
       it("should not initialize a pref if a default exists", () => {
-        defaultPrefs.prefs.foo = false;
+        defaultPrefs.prefs.set("foo", false);
 
         defaultPrefs.init();
 

@@ -28,8 +28,7 @@ class nsProgressFrame final : public nsContainerFrame,
   explicit nsProgressFrame(ComputedStyle* aStyle, nsPresContext* aPresContext);
   virtual ~nsProgressFrame();
 
-  virtual void DestroyFrom(nsIFrame* aDestructRoot,
-                           PostDestroyData& aPostDestroyData) override;
+  void Destroy(DestroyContext&) override;
 
   virtual void BuildDisplayList(nsDisplayListBuilder* aBuilder,
                                 const nsDisplayListSet& aLists) override;
@@ -63,11 +62,6 @@ class nsProgressFrame final : public nsContainerFrame,
 
   virtual nscoord GetMinISize(gfxContext* aRenderingContext) override;
   virtual nscoord GetPrefISize(gfxContext* aRenderingContext) override;
-
-  virtual bool IsFrameOfType(uint32_t aFlags) const override {
-    return nsContainerFrame::IsFrameOfType(
-        aFlags & ~(nsIFrame::eReplaced | nsIFrame::eReplacedContainsBlock));
-  }
 
   /**
    * Returns whether the frame and its child should use the native style.

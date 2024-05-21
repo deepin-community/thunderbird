@@ -9,8 +9,8 @@
 /* import-globals-from ../../../test/resources/searchTestUtils.js */
 load("../../../resources/searchTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var kCustomId = "xpcomtest@mozilla.org#test";
@@ -51,7 +51,7 @@ var customTerm = {
   match(msgHdr, searchValue, searchOp) {
     switch (searchOp) {
       case Ci.nsMsgSearchOp.Is:
-        if (msgHdr.getProperty("theTestProperty") == searchValue) {
+        if (msgHdr.getStringProperty("theTestProperty") == searchValue) {
           return true;
         }
     }
@@ -77,7 +77,7 @@ function run_test() {
 
   // Get a message into the local filestore.
   // function testSearch() continues the testing after the copy.
-  let bugmail1 = do_get_file("../../../data/bugmail1");
+  const bugmail1 = do_get_file("../../../data/bugmail1");
   do_test_pending();
 
   MailServices.copy.copyFileMessage(
@@ -93,7 +93,7 @@ function run_test() {
 }
 
 function doTest() {
-  let test = Tests.shift();
+  const test = Tests.shift();
   if (test) {
     gHdr.setStringProperty("theTestProperty", test.setValue);
     new TestSearch(

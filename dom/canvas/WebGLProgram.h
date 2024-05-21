@@ -6,16 +6,19 @@
 #ifndef WEBGL_PROGRAM_H_
 #define WEBGL_PROGRAM_H_
 
+#include <bitset>
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
 #include "mozilla/RefPtr.h"
+#include "mozilla/Vector.h"
 #include "mozilla/WeakPtr.h"
 
 #include "CacheInvalidator.h"
-#include "WebGLContext.h"
 #include "WebGLObjectModel.h"
+#include "WebGLTypes.h"
 
 namespace mozilla {
 class ErrorResult;
@@ -74,16 +77,27 @@ struct ActiveUniformValidationInfo final {
 };
 
 struct SamplerUniformInfo final {
-  const decltype(WebGLContext::mBound2DTextures)& texListForType;
+  const nsTArray<RefPtr<WebGLTexture>>& texListForType;
+  // = const decltype(WebGLContext::mBound2DTextures)&
   const webgl::TextureBaseType texBaseType;
   const bool isShadowSampler;
-  std::vector<uint32_t> texUnits;
+  Vector<uint8_t, 8> texUnits = decltype(texUnits)();
 };
 
 struct LocationInfo final {
   const ActiveUniformValidationInfo info;
   const uint32_t indexIntoUniform;
   SamplerUniformInfo* const samplerInfo;
+
+  auto PrettyName() const {
+    auto ret = info.info.name;
+    if (info.isArray) {
+      ret += "[";
+      ret += std::to_string(indexIntoUniform);
+      ret += "]";
+    }
+    return ret;
+  }
 };
 
 // -
@@ -100,12 +114,14 @@ struct LinkedProgramInfo final : public RefCounted<LinkedProgramInfo>,
   WebGLProgram* const prog;
   const GLenum transformFeedbackBufferMode;
 
+  std::bitset<kMaxDrawBuffers> hasOutput = 0;
   std::unordered_map<uint8_t, const FragOutputInfo> fragOutputs;
   uint8_t zLayerCount = 1;
 
   mutable std::vector<size_t> componentsPerTFVert;
 
   bool attrib0Active = false;
+  GLint webgl_gl_VertexID_Offset = -1;  // Location
 
   // -
 

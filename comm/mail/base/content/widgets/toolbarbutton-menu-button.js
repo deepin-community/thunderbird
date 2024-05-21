@@ -10,12 +10,12 @@
 {
   /**
    * The MozToolbarButtonMenuButton widget is a toolbarbutton with
-   * type="menu-button". Place a menupopup element inside the button to create
+   * type="menu". Place a menupopup element inside the button to create
    * the menu popup. When the dropmarker in the toobarbutton is pressed the
    * menupopup will open. When clicking the main area of the button it works
    * like a normal toolbarbutton.
    *
-   * @extends MozToolbarbutton
+   * @augments MozToolbarbutton
    */
   class MozToolbarButtonMenuButton extends customElements.get("toolbarbutton") {
     static get inheritedAttributes() {
@@ -27,12 +27,12 @@
       };
     }
     static get menubuttonFragment() {
-      let frag = document.importNode(
+      const frag = document.importNode(
         MozXULElement.parseXULToFragment(`
           <toolbarbutton class="box-inherit toolbarbutton-menubutton-button"
                          flex="1"
                          allowevents="true"></toolbarbutton>
-          <dropmarker type="menu-button"
+          <dropmarker type="menu"
                       class="toolbarbutton-menubutton-dropmarker"></dropmarker>
         `),
         true
@@ -62,12 +62,12 @@
 
       // Defer creating DOM elements for content inside popups.
       // These will be added in the popupshown handler above.
-      let panel = this.closest("panel");
+      const panel = this.closest("panel");
       if (panel && !panel.hasAttribute("hasbeenopened")) {
         return;
       }
       this.setAttribute("is", "toolbarbutton-menu-button");
-      this.setAttribute("type", "menu-button");
+      this.setAttribute("type", "menu");
 
       this.render();
     }

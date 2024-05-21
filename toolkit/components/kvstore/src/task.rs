@@ -10,8 +10,11 @@ use moz_task::Task;
 use nserror::{nsresult, NS_ERROR_FAILURE};
 use nsstring::nsCString;
 use owned_value::owned_to_variant;
-use rkv::backend::{BackendInfo, SafeMode, SafeModeDatabase, SafeModeEnvironment};
-use rkv::{Migrator, OwnedValue, StoreError, StoreOptions, Value};
+use rkv::backend::{
+    BackendEnvironmentBuilder, BackendInfo, RecoveryStrategy, SafeMode, SafeModeDatabase,
+    SafeModeEnvironment,
+};
+use rkv::{OwnedValue, StoreError, StoreOptions, Value};
 use std::{
     path::Path,
     str,
@@ -44,9 +47,9 @@ type SingleStore = rkv::SingleStore<SafeModeDatabase>;
 macro_rules! task_done {
     (value) => {
         fn done(&self) -> Result<(), nsresult> {
-            // If TaskRunnable.run() calls Task.done() to return a result
-            // on the main thread before TaskRunnable.run() returns on the database
-            // thread, then the Task will get dropped on the database thread.
+            // If TaskRunnable calls Task.done() to return a result on the
+            // main thread before TaskRunnable returns on the database thread,
+            // then the Task will get dropped on the database thread.
             //
             // But the callback is an nsXPCWrappedJS that isn't safe to release
             // on the database thread.  So we move it out of the Task here to ensure
@@ -65,9 +68,9 @@ macro_rules! task_done {
 
     (void) => {
         fn done(&self) -> Result<(), nsresult> {
-            // If TaskRunnable.run() calls Task.done() to return a result
-            // on the main thread before TaskRunnable.run() returns on the database
-            // thread, then the Task will get dropped on the database thread.
+            // If TaskRunnable calls Task.done() to return a result on the
+            // main thread before TaskRunnable returns on the database thread,
+            // then the Task will get dropped on the database thread.
             //
             // But the callback is an nsXPCWrappedJS that isn't safe to release
             // on the database thread.  So we move it out of the Task here to ensure
@@ -161,23 +164,26 @@ fn passive_resize(env: &Rkv, wanted: usize) -> Result<(), StoreError> {
     Ok(())
 }
 
-pub struct GetOrCreateTask {
+pub struct GetOrCreateWithOptionsTask {
     callback: AtomicCell<Option<ThreadBoundRefPtr<nsIKeyValueDatabaseCallback>>>,
     path: nsCString,
     name: nsCString,
+    strategy: RecoveryStrategy,
     result: AtomicCell<Option<Result<RkvStoreTuple, KeyValueError>>>,
 }
 
-impl GetOrCreateTask {
+impl GetOrCreateWithOptionsTask {
     pub fn new(
         callback: RefPtr<nsIKeyValueDatabaseCallback>,
         path: nsCString,
         name: nsCString,
-    ) -> GetOrCreateTask {
-        GetOrCreateTask {
+        strategy: RecoveryStrategy,
+    ) -> GetOrCreateWithOptionsTask {
+        GetOrCreateWithOptionsTask {
             callback: AtomicCell::new(Some(ThreadBoundRefPtr::new(callback))),
             path,
             name,
+            strategy,
             result: AtomicCell::default(),
         }
     }
@@ -187,19 +193,24 @@ impl GetOrCreateTask {
     }
 }
 
-impl Task for GetOrCreateTask {
+impl Task for GetOrCreateWithOptionsTask {
     fn run(&self) {
         // We do the work within a closure that returns a Result so we can
         // use the ? operator to simplify the implementation.
         self.result
             .store(Some(|| -> Result<RkvStoreTuple, KeyValueError> {
                 let store;
+                let mut builder = Rkv::environment_builder::<SafeMode>();
+                builder.set_corruption_recovery_strategy(self.strategy);
                 let mut manager = Manager::singleton().write()?;
                 // Note that path canonicalization is diabled to work around crashes on Fennec:
                 // https://bugzilla.mozilla.org/show_bug.cgi?id=1531887
                 let path = Path::new(str::from_utf8(&self.path)?);
-                let rkv = manager.get_or_create(path, Rkv::new::<SafeMode>)?;
-                Migrator::easy_migrate_lmdb_to_safe_mode(path, rkv.read()?)?;
+                let rkv = manager.get_or_create_from_builder(
+                    path,
+                    builder,
+                    Rkv::from_builder::<SafeMode>,
+                )?;
                 {
                     let env = rkv.read()?;
                     let load_ratio = env.load_ratio()?.unwrap_or(0.0);
@@ -279,7 +290,15 @@ impl Task for PutTask {
                     Err(err) => return Err(KeyValueError::StoreError(err)),
                 }
 
-                writer.commit()?;
+                // Ignore errors caused by simultaneous access.
+                // We intend to investigate/revert this in bug 1810212.
+                match writer.commit() {
+                    Err(StoreError::IoError(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                        // Explicitly ignore errors from simultaneous access.
+                    }
+                    Err(e) => return Err(From::from(e)),
+                    _ => (),
+                };
                 break;
             }
 
@@ -384,7 +403,15 @@ impl Task for WriteManyTask {
                     }
                 }
 
-                writer.commit()?;
+                // Ignore errors caused by simultaneous access.
+                // We intend to investigate/revert this in bug 1810212.
+                match writer.commit() {
+                    Err(StoreError::IoError(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                        // Explicitly ignore errors from simultaneous access.
+                    }
+                    Err(e) => return Err(From::from(e)),
+                    _ => (),
+                };
                 break; // 'outer: loop
             }
 
@@ -544,7 +571,15 @@ impl Task for DeleteTask {
                 Err(err) => return Err(KeyValueError::StoreError(err)),
             };
 
-            writer.commit()?;
+            // Ignore errors caused by simultaneous access.
+            // We intend to investigate/revert this in bug 1810212.
+            match writer.commit() {
+                Err(StoreError::IoError(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // Explicitly ignore errors from simultaneous access.
+                }
+                Err(e) => return Err(From::from(e)),
+                _ => (),
+            };
 
             Ok(())
         }()));
@@ -583,7 +618,15 @@ impl Task for ClearTask {
             let env = self.rkv.read()?;
             let mut writer = env.write()?;
             self.store.clear(&mut writer)?;
-            writer.commit()?;
+            // Ignore errors caused by simultaneous access.
+            // We intend to investigate/revert this in bug 1810212.
+            match writer.commit() {
+                Err(StoreError::IoError(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // Explicitly ignore errors from simultaneous access.
+                }
+                Err(e) => return Err(From::from(e)),
+                _ => (),
+            };
 
             Ok(())
         }()));

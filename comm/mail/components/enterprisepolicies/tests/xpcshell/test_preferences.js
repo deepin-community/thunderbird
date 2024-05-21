@@ -64,6 +64,22 @@ const NEW_PREFERENCES_TESTS = [
           Value: 11,
           Status: "user",
         },
+        "mail.openMessageBehavior": {
+          Value: 1,
+          Status: "locked",
+        },
+        "mailnews.display.prefer_plaintext": {
+          Value: true,
+          Status: "locked",
+        },
+        "chat.enabled": {
+          Value: false,
+          Status: "locked",
+        },
+        "calendar.agenda.days": {
+          Value: 21,
+          Status: "locked",
+        },
       },
     },
     defaultPrefs: {
@@ -75,6 +91,10 @@ const NEW_PREFERENCES_TESTS = [
       "browser.policies.test.locked.boolean": true,
       "browser.policies.test.locked.string": "string",
       "browser.policies.test.locked.number": 11,
+      "mail.openMessageBehavior": 1,
+      "mailnews.display.prefer_plaintext": true,
+      "chat.enabled": false,
+      "calendar.agenda.days": 21,
     },
     userPrefs: {
       "browser.policies.test.user.boolean": true,
@@ -113,10 +133,11 @@ const BAD_PREFERENCES_TESTS = [
           Value: true,
           Status: "default",
         },
-        "security.turn_off_all_security_so_that_viruses_can_take_over_this_computer": {
-          Value: true,
-          Status: "default",
-        },
+        "security.turn_off_all_security_so_that_viruses_can_take_over_this_computer":
+          {
+            Value: true,
+            Status: "default",
+          },
       },
     },
     defaultPrefs: {
@@ -127,54 +148,60 @@ const BAD_PREFERENCES_TESTS = [
 ];
 
 add_task(async function test_old_preferences() {
-  for (let test of OLD_PREFERENCES_TESTS) {
+  for (const test of OLD_PREFERENCES_TESTS) {
     await setupPolicyEngineWithJson({
       policies: test.policies,
     });
 
     info("Checking policy: " + Object.keys(test.policies)[0]);
 
-    for (let [prefName, prefValue] of Object.entries(test.lockedPrefs || {})) {
+    for (const [prefName, prefValue] of Object.entries(
+      test.lockedPrefs || {}
+    )) {
       checkLockedPref(prefName, prefValue);
     }
   }
 });
 
 add_task(async function test_new_preferences() {
-  for (let test of NEW_PREFERENCES_TESTS) {
+  for (const test of NEW_PREFERENCES_TESTS) {
     await setupPolicyEngineWithJson({
       policies: test.policies,
     });
 
     info("Checking policy: " + Object.keys(test.policies)[0]);
 
-    for (let [prefName, prefValue] of Object.entries(test.lockedPrefs || {})) {
+    for (const [prefName, prefValue] of Object.entries(
+      test.lockedPrefs || {}
+    )) {
       checkLockedPref(prefName, prefValue);
     }
 
-    for (let [prefName, prefValue] of Object.entries(test.defaultPrefs || {})) {
+    for (const [prefName, prefValue] of Object.entries(
+      test.defaultPrefs || {}
+    )) {
       checkDefaultPref(prefName, prefValue);
     }
 
-    for (let [prefName, prefValue] of Object.entries(test.userPrefs || {})) {
+    for (const [prefName, prefValue] of Object.entries(test.userPrefs || {})) {
       checkUserPref(prefName, prefValue);
     }
 
-    for (let [prefName, prefValue] of Object.entries(test.clearPrefs || {})) {
+    for (const [prefName, prefValue] of Object.entries(test.clearPrefs || {})) {
       checkClearPref(prefName, prefValue);
     }
   }
 });
 
 add_task(async function test_bad_preferences() {
-  for (let test of BAD_PREFERENCES_TESTS) {
+  for (const test of BAD_PREFERENCES_TESTS) {
     await setupPolicyEngineWithJson({
       policies: test.policies,
     });
 
     info("Checking policy: " + Object.keys(test.policies)[0]);
 
-    for (let prefName of Object.entries(test.defaultPrefs || {})) {
+    for (const prefName of Object.entries(test.defaultPrefs || {})) {
       checkUnsetPref(prefName);
     }
   }
@@ -212,17 +239,6 @@ add_task(async function test_security_preference() {
   });
 
   checkUnsetPref("security.this.should.not.work");
-});
-
-add_task(async function test_JSON_preferences() {
-  await setupPolicyEngineWithJson({
-    policies: {
-      Preferences:
-        '{"browser.policies.test.default.boolean.json": {"Value": true,"Status": "default"}}',
-    },
-  });
-
-  checkDefaultPref("browser.policies.test.default.boolean.json", true);
 });
 
 add_task(async function test_bug_1666836() {

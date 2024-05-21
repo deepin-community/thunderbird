@@ -51,7 +51,7 @@ function run_test() {
 
     QueryInterface: ChromeUtils.generateQI(["nsIAuthPrompt"]),
 
-    prompt: function ap1_prompt(title, text, realm, save, defaultText, result) {
+    prompt: function ap1_prompt(title, text, realm) {
       this.called |= CALLED_PROMPT;
       this.doChecks(text, realm);
       return this.rv;
@@ -197,32 +197,6 @@ function run_test() {
     }
 
     info.flags &= ~nsIAuthInformation.NEED_DOMAIN;
-
-    info.domain = "";
-    info.username = "";
-    info.password = "";
-
-    // 5: FTP
-    var uri2 = NetUtil.newURI("ftp://" + host);
-    var ftpchan = NetUtil.newChannel({
-      uri: uri2,
-      loadUsingSystemPrincipal: true,
-    });
-
-    prompt1 = new Prompt1();
-    prompt1.rv = expectedRV;
-    prompt1.scheme = "ftp";
-
-    wrapper = adapter.createAdapter(prompt1);
-    var rv = wrapper.promptAuth(ftpchan, 0, info);
-    Assert.equal(rv, prompt1.rv);
-    Assert.equal(prompt1.called, CALLED_PROMPTUP);
-
-    if (rv) {
-      Assert.equal(info.domain, "");
-      Assert.equal(info.username, prompt1.user);
-      Assert.equal(info.password, prompt1.pw);
-    }
 
     info.domain = "";
     info.username = "";

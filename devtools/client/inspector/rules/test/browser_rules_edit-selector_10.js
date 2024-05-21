@@ -22,7 +22,7 @@ const TEST_URI = `
   </div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode(".pickme", inspector);
@@ -37,11 +37,6 @@ async function testEditSelector(view) {
   const onRuleViewChanged = once(view, "ruleview-changed");
   EventUtils.synthesizeKey("KEY_Enter");
   await onRuleViewChanged;
-
-  // Escape the new property editor after editing the selector
-  const onBlur = once(view.styleDocument.activeElement, "blur");
-  EventUtils.synthesizeKey("KEY_Escape", {}, view.styleWindow);
-  await onBlur;
 
   // Get the new rule editor that replaced the original
   ruleEditor = getRuleViewRuleEditor(view, 1);

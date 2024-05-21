@@ -13,11 +13,6 @@ pub struct Url {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct LegacyWebElement {
-    pub id: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Locator {
     pub using: Selector,
     pub value: String,
@@ -62,6 +57,13 @@ pub struct Keys {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PrintPageRange {
+    Integer(u64),
+    Range(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PrintParameters {
     pub orientation: PrintOrientation,
@@ -69,7 +71,7 @@ pub struct PrintParameters {
     pub background: bool,
     pub page: PrintPage,
     pub margin: PrintMargins,
-    pub page_ranges: Vec<String>,
+    pub page_ranges: Vec<PrintPageRange>,
     pub shrink_to_fit: bool,
 }
 
@@ -87,18 +89,15 @@ impl Default for PrintParameters {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PrintOrientation {
     Landscape,
+    #[default]
     Portrait,
 }
 
-impl Default for PrintOrientation {
-    fn default() -> Self {
-        PrintOrientation::Portrait
-    }
-}
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PrintPage {
@@ -132,6 +131,52 @@ impl Default for PrintMargins {
             right: 1.0,
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum WebAuthnProtocol {
+    #[serde(rename = "ctap1/u2f")]
+    Ctap1U2f,
+    #[serde(rename = "ctap2")]
+    Ctap2,
+    #[serde(rename = "ctap2_1")]
+    Ctap2_1,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AuthenticatorTransport {
+    Usb,
+    Nfc,
+    Ble,
+    SmartCard,
+    Hybrid,
+    Internal,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct AuthenticatorParameters {
+    pub protocol: WebAuthnProtocol,
+    pub transport: AuthenticatorTransport,
+    pub has_resident_key: bool,
+    pub has_user_verification: bool,
+    pub is_user_consenting: bool,
+    pub is_user_verified: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct CredentialParameters {
+    pub credential_id: String,
+    pub is_resident_credential: bool,
+    pub rp_id: String,
+    pub private_key: String,
+    pub user_handle: String,
+    pub sign_count: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct UserVerificationParameters {
+    pub is_user_verified: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -172,9 +217,9 @@ pub enum Command {
     #[serde(rename = "WebDriver:DismissAlert")]
     DismissAlert,
     #[serde(rename = "WebDriver:ElementClear")]
-    ElementClear(LegacyWebElement),
+    ElementClear { id: String },
     #[serde(rename = "WebDriver:ElementClick")]
-    ElementClick(LegacyWebElement),
+    ElementClick { id: String },
     #[serde(rename = "WebDriver:ElementSendKeys")]
     ElementSendKeys {
         id: String,
@@ -201,6 +246,20 @@ pub enum Command {
         using: Selector,
         value: String,
     },
+    #[serde(rename = "WebDriver:FindElementFromShadowRoot")]
+    FindShadowRootElement {
+        #[serde(rename = "shadowRoot")]
+        shadow_root: String,
+        using: Selector,
+        value: String,
+    },
+    #[serde(rename = "WebDriver:FindElementsFromShadowRoot")]
+    FindShadowRootElements {
+        #[serde(rename = "shadowRoot")]
+        shadow_root: String,
+        using: Selector,
+        value: String,
+    },
     #[serde(rename = "WebDriver:FullscreenWindow")]
     FullscreenWindow,
     #[serde(rename = "WebDriver:Navigate")]
@@ -209,6 +268,10 @@ pub enum Command {
     GetActiveElement,
     #[serde(rename = "WebDriver:GetAlertText")]
     GetAlertText,
+    #[serde(rename = "WebDriver:GetComputedLabel")]
+    GetComputedLabel { id: String },
+    #[serde(rename = "WebDriver:GetComputedRole")]
+    GetComputedRole { id: String },
     #[serde(rename = "WebDriver:GetCookies")]
     GetCookies,
     #[serde(rename = "WebDriver:GetElementCSSValue")]
@@ -224,13 +287,15 @@ pub enum Command {
     #[serde(rename = "WebDriver:GetElementProperty")]
     GetElementProperty { id: String, name: String },
     #[serde(rename = "WebDriver:GetElementRect")]
-    GetElementRect(LegacyWebElement),
+    GetElementRect { id: String },
     #[serde(rename = "WebDriver:GetElementTagName")]
-    GetElementTagName(LegacyWebElement),
+    GetElementTagName { id: String },
     #[serde(rename = "WebDriver:GetElementText")]
-    GetElementText(LegacyWebElement),
+    GetElementText { id: String },
     #[serde(rename = "WebDriver:GetPageSource")]
     GetPageSource,
+    #[serde(rename = "WebDriver:GetShadowRoot")]
+    GetShadowRoot { id: String },
     #[serde(rename = "WebDriver:GetTimeouts")]
     GetTimeouts,
     #[serde(rename = "WebDriver:GetTitle")]
@@ -246,11 +311,11 @@ pub enum Command {
     #[serde(rename = "WebDriver:Forward")]
     GoForward,
     #[serde(rename = "WebDriver:IsElementDisplayed")]
-    IsDisplayed(LegacyWebElement),
+    IsDisplayed { id: String },
     #[serde(rename = "WebDriver:IsElementEnabled")]
-    IsEnabled(LegacyWebElement),
+    IsEnabled { id: String },
     #[serde(rename = "WebDriver:IsElementSelected")]
-    IsSelected(LegacyWebElement),
+    IsSelected { id: String },
     #[serde(rename = "WebDriver:MaximizeWindow")]
     MaximizeWindow,
     #[serde(rename = "WebDriver:MinimizeWindow")]
@@ -281,6 +346,20 @@ pub enum Command {
     TakeFullScreenshot(ScreenshotOptions),
     #[serde(rename = "WebDriver:TakeScreenshot")]
     TakeScreenshot(ScreenshotOptions),
+    #[serde(rename = "WebAuthn:AddVirtualAuthenticator")]
+    WebAuthnAddVirtualAuthenticator(AuthenticatorParameters),
+    #[serde(rename = "WebAuthn:RemoveVirtualAuthenticator")]
+    WebAuthnRemoveVirtualAuthenticator,
+    #[serde(rename = "WebAuthn:AddCredential")]
+    WebAuthnAddCredential(CredentialParameters),
+    #[serde(rename = "WebAuthn:GetCredentials")]
+    WebAuthnGetCredentials,
+    #[serde(rename = "WebAuthn:RemoveCredential")]
+    WebAuthnRemoveCredential,
+    #[serde(rename = "WebAuthn:RemoveAllCredentials")]
+    WebAuthnRemoveAllCredentials,
+    #[serde(rename = "WebAuthn:SetUserVerified")]
+    WebAuthnSetUserVerified(UserVerificationParameters),
 }
 
 #[cfg(test)]
@@ -445,6 +524,22 @@ mod tests {
     }
 
     #[test]
+    fn test_json_get_computed_label_command() {
+        assert_ser_de(
+            &Command::GetComputedLabel { id: "foo".into() },
+            json!({"WebDriver:GetComputedLabel": {"id": "foo"}}),
+        );
+    }
+
+    #[test]
+    fn test_json_get_computed_role_command() {
+        assert_ser_de(
+            &Command::GetComputedRole { id: "foo".into() },
+            json!({"WebDriver:GetComputedRole": {"id": "foo"}}),
+        );
+    }
+
+    #[test]
     fn test_json_get_css_value() {
         assert_ser_de(
             &Command::GetCSSValue {
@@ -452,6 +547,30 @@ mod tests {
                 property: "bar".into(),
             },
             json!({"WebDriver:GetElementCSSValue": {"id": "foo", "propertyName": "bar"}}),
+        );
+    }
+
+    #[test]
+    fn test_json_find_shadow_root_element() {
+        assert_ser_de(
+            &Command::FindShadowRootElement {
+                shadow_root: "foo".into(),
+                using: Selector::Css,
+                value: "bar".into(),
+            },
+            json!({"WebDriver:FindElementFromShadowRoot": {"shadowRoot": "foo", "using": "css selector", "value": "bar"}}),
+        );
+    }
+
+    #[test]
+    fn test_json_find_shadow_root_elements() {
+        assert_ser_de(
+            &Command::FindShadowRootElements {
+                shadow_root: "foo".into(),
+                using: Selector::Css,
+                value: "bar".into(),
+            },
+            json!({"WebDriver:FindElementsFromShadowRoot": {"shadowRoot": "foo", "using": "css selector", "value": "bar"}}),
         );
     }
 }

@@ -5,14 +5,15 @@ async function promiseAllURLFrecencies() {
   let frecencies = new Map();
   let db = await PlacesUtils.promiseDBConnection();
   let rows = await db.execute(`
-    SELECT url, frecency
+    SELECT url, frecency, recalc_frecency
     FROM moz_places
     WHERE url_hash BETWEEN hash('http', 'prefix_lo') AND
                            hash('http', 'prefix_hi')`);
   for (let row of rows) {
-    let url = row.getResultByName("url");
-    let frecency = row.getResultByName("frecency");
-    frecencies.set(url, frecency);
+    frecencies.set(row.getResultByName("url"), {
+      frecency: row.getResultByName("frecency"),
+      recalc: row.getResultByName("recalc_frecency"),
+    });
   }
   return frecencies;
 }
@@ -106,13 +107,7 @@ add_task(async function test_update_frecencies() {
   });
 
   info("Calculate frecencies for all local URLs");
-  await PlacesUtils.withConnectionWrapper(
-    "Update all frecencies",
-    async function(db) {
-      await db.execute(`UPDATE moz_places SET
-        frecency = CALCULATE_FRECENCY(id)`);
-    }
-  );
+  await PlacesFrecencyRecalculator.recalculateAnyOutdatedFrecencies();
 
   info("Make remote changes");
   await storeRecords(buf, [
@@ -161,7 +156,7 @@ add_task(async function test_update_frecencies() {
       id: "bookmarkDDDD",
       parentid: "unfiled",
       type: "bookmark",
-      title: "D",
+      title: null,
       bmkUri: "http://example.com/d",
     },
     {
@@ -183,15 +178,14 @@ add_task(async function test_update_frecencies() {
   ]);
 
   info("Apply new items and recalculate 3 frecencies");
-  await buf.apply({
-    maxFrecenciesToRecalculate: 3,
-  });
+  await buf.apply();
+  await PlacesFrecencyRecalculator.recalculateSomeFrecencies({ chunkSize: 3 });
 
   {
     let frecencies = await promiseAllURLFrecencies();
     let urlsWithFrecency = mapFilterIterator(
       frecencies.entries(),
-      ([href, frecency]) => (frecency > 0 ? href : null)
+      ([href, { recalc }]) => (recalc == 0 ? href : null)
     );
 
     // A is unchanged, and we should recalculate frecency for three more
@@ -236,12 +230,13 @@ add_task(async function test_update_frecencies() {
 
   info("Apply new item and recalculate remaining frecencies");
   await buf.apply();
+  await PlacesFrecencyRecalculator.recalculateAnyOutdatedFrecencies();
 
   {
     let frecencies = await promiseAllURLFrecencies();
     let urlsWithoutFrecency = mapFilterIterator(
       frecencies.entries(),
-      ([href, frecency]) => (frecency <= 0 ? href : null)
+      ([href, { recalc }]) => (recalc == 1 ? href : null)
     );
     deepEqual(
       urlsWithoutFrecency,
@@ -286,7 +281,7 @@ async function setupLocalTree(localTimeSeconds) {
       },
       {
         guid: "bookmarkDDDD",
-        title: "D",
+        title: null,
         url: "http://example.com/d",
         dateAdded,
         lastModified,
@@ -386,6 +381,7 @@ add_task(async function test_apply_then_revert() {
   );
 
   info("Revert local tree");
+  let dateAdded = new Date(localTimeSeconds * 1000);
   await PlacesSyncUtils.bookmarks.wipe();
   await setupLocalTree(localTimeSeconds);
   await PlacesTestUtils.markBookmarksAsSynced();
@@ -394,10 +390,10 @@ add_task(async function test_apply_then_revert() {
     parentGuid: PlacesUtils.bookmarks.menuGuid,
     title: "E",
     url: "http://example.com/e",
-    dateAdded: new Date(localTimeSeconds * 1000),
+    dateAdded,
     lastModified: new Date(localTimeSeconds * 1000),
   });
-  let localIdForD = await PlacesUtils.promiseItemId("bookmarkDDDD");
+  let localIdForD = await PlacesTestUtils.promiseItemId("bookmarkDDDD");
 
   info("Apply remote changes, second time");
   await buf.db.execute(
@@ -424,48 +420,46 @@ add_task(async function test_apply_then_revert() {
     "Should stage identical records to upload, first and second time"
   );
 
-  let localItemIds = await PlacesUtils.promiseManyItemIds([
+  let localItemIds = await PlacesTestUtils.promiseManyItemIds([
     "bookmarkFFFF",
     "bookmarkEEEE",
     "folderAAAAAA",
     "bookmarkCCCC",
     "bookmarkBBBB",
+    PlacesUtils.bookmarks.menuGuid,
   ]);
-
   observer.check([
-    {
-      name: "onItemChanged",
-      params: {
-        itemId: localItemIds.get("bookmarkEEEE"),
-        property: "guid",
-        isAnnoProperty: false,
-        newValue: "bookmarkEEEE",
-        type: PlacesUtils.bookmarks.TYPE_BOOKMARK,
-        parentId: PlacesUtils.bookmarksMenuFolderId,
-        guid: "bookmarkEEEE",
-        parentGuid: PlacesUtils.bookmarks.menuGuid,
-        oldValue: "bookmarkEEE1",
-        source: PlacesUtils.bookmarks.SOURCES.SYNC,
-      },
-    },
     {
       name: "bookmark-removed",
       params: {
         itemId: localIdForD,
-        parentId: PlacesUtils.bookmarksMenuFolderId,
+        parentId: localItemIds.get(PlacesUtils.bookmarks.menuGuid),
         index: 1,
         type: PlacesUtils.bookmarks.TYPE_BOOKMARK,
         urlHref: "http://example.com/d",
+        title: "", // null titles get turned into empty strings.
         guid: "bookmarkDDDD",
         parentGuid: PlacesUtils.bookmarks.menuGuid,
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
       },
     },
     {
+      name: "bookmark-guid-changed",
+      params: {
+        itemId: localItemIds.get("bookmarkEEEE"),
+        type: PlacesUtils.bookmarks.TYPE_BOOKMARK,
+        urlHref: "",
+        guid: "bookmarkEEEE",
+        parentGuid: PlacesUtils.bookmarks.menuGuid,
+        source: PlacesUtils.bookmarks.SOURCES.SYNC,
+        isTagging: false,
+      },
+    },
+    {
       name: "bookmark-added",
       params: {
         itemId: localItemIds.get("bookmarkFFFF"),
-        parentId: PlacesUtils.bookmarksMenuFolderId,
+        parentId: localItemIds.get(PlacesUtils.bookmarks.menuGuid),
         index: 1,
         type: PlacesUtils.bookmarks.TYPE_BOOKMARK,
         urlHref: "http://example.com/f",
@@ -473,6 +467,10 @@ add_task(async function test_apply_then_revert() {
         guid: "bookmarkFFFF",
         parentGuid: PlacesUtils.bookmarks.menuGuid,
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
+        tags: "",
+        frecency: 1,
+        hidden: false,
+        visitCount: 0,
       },
     },
     {
@@ -488,6 +486,13 @@ add_task(async function test_apply_then_revert() {
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
         urlHref: "http://example.com/e",
         isTagging: false,
+        title: "E",
+        tags: "",
+        frecency: 0,
+        hidden: false,
+        visitCount: 0,
+        dateAdded: dateAdded.getTime(),
+        lastVisitDate: null,
       },
     },
     {
@@ -503,6 +508,13 @@ add_task(async function test_apply_then_revert() {
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
         urlHref: "",
         isTagging: false,
+        title: "A (remote)",
+        tags: "",
+        frecency: 0,
+        hidden: false,
+        visitCount: 0,
+        dateAdded: dateAdded.getTime(),
+        lastVisitDate: null,
       },
     },
     {
@@ -518,6 +530,13 @@ add_task(async function test_apply_then_revert() {
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
         urlHref: "http://example.com/c",
         isTagging: false,
+        title: "C",
+        tags: "",
+        frecency: 1,
+        hidden: false,
+        visitCount: 0,
+        dateAdded: dateAdded.getTime(),
+        lastVisitDate: null,
       },
     },
     {
@@ -533,36 +552,34 @@ add_task(async function test_apply_then_revert() {
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
         urlHref: "http://example.com/b-remote",
         isTagging: false,
+        title: "B",
+        tags: "",
+        frecency: -1,
+        hidden: false,
+        visitCount: 0,
+        dateAdded: dateAdded.getTime(),
+        lastVisitDate: null,
       },
     },
     {
-      name: "onItemChanged",
+      name: "bookmark-title-changed",
       params: {
         itemId: localItemIds.get("folderAAAAAA"),
-        property: "title",
-        isAnnoProperty: false,
-        newValue: "A (remote)",
-        type: PlacesUtils.bookmarks.TYPE_FOLDER,
-        parentId: PlacesUtils.toolbarFolderId,
+        title: "A (remote)",
         guid: "folderAAAAAA",
         parentGuid: PlacesUtils.bookmarks.toolbarGuid,
-        oldValue: "A",
-        source: PlacesUtils.bookmarks.SOURCES.SYNC,
       },
     },
     {
-      name: "onItemChanged",
+      name: "bookmark-url-changed",
       params: {
         itemId: localItemIds.get("bookmarkBBBB"),
-        property: "uri",
-        isAnnoProperty: false,
-        newValue: "http://example.com/b-remote",
         type: PlacesUtils.bookmarks.TYPE_BOOKMARK,
-        parentId: localItemIds.get("folderAAAAAA"),
+        urlHref: "http://example.com/b-remote",
         guid: "bookmarkBBBB",
         parentGuid: "folderAAAAAA",
-        oldValue: "http://example.com/b",
         source: PlacesUtils.bookmarks.SOURCES.SYNC,
+        isTagging: false,
       },
     },
   ]);

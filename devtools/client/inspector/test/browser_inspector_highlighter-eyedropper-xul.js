@@ -6,16 +6,14 @@
 // Test that the eyedropper icons in the toolbar and in the color picker aren't displayed
 // when the page isn't an HTML one.
 
-const TEST_URL = URL_ROOT + "doc_inspector_eyedropper_disabled.xhtml";
+const TEST_URL = URL_ROOT_SSL + "doc_inspector_eyedropper_disabled.xhtml";
 const TEST_URL_2 =
   "data:text/html;charset=utf-8,<h1 style='color:red'>HTML test page</h1>";
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
+add_task(async function () {
+  await SpecialPowers.pushPermissions([
+    { type: "allowXULXBL", allow: true, context: URL_ROOT_SSL },
+  ]);
 
   const { inspector } = await openInspectorForURL(TEST_URL);
 
@@ -39,6 +37,10 @@ add_task(async function() {
 
   button = cPicker.tooltip.container.querySelector("#eyedropper-button");
   ok(isDisabled(button), "The button is disabled in the color picker");
+
+  // Close the picker to avoid pending Promise when the connection closes because of
+  // the navigation to the HTML document (See Bug 1721369).
+  cPicker.hide();
 
   info("Navigate to a HTML document");
   const toolbarUpdated = inspector.once("inspector-toolbar-updated");

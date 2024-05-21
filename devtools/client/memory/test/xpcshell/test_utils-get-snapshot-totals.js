@@ -12,17 +12,21 @@ const {
   censusDisplays,
   viewState,
   censusState,
-} = require("devtools/client/memory/constants");
-const { getSnapshotTotals } = require("devtools/client/memory/utils");
+} = require("resource://devtools/client/memory/constants.js");
+const {
+  getSnapshotTotals,
+} = require("resource://devtools/client/memory/utils.js");
 const {
   takeSnapshotAndCensus,
-} = require("devtools/client/memory/actions/snapshot");
+} = require("resource://devtools/client/memory/actions/snapshot.js");
 const {
   setCensusDisplayAndRefresh,
-} = require("devtools/client/memory/actions/census-display");
-const { changeView } = require("devtools/client/memory/actions/view");
+} = require("resource://devtools/client/memory/actions/census-display.js");
+const {
+  changeView,
+} = require("resource://devtools/client/memory/actions/view.js");
 
-add_task(async function() {
+add_task(async function () {
   const front = new StubbedMemoryFront();
   const heapWorker = new HeapAnalysesClient();
   await front.attach();
@@ -48,8 +52,8 @@ add_task(async function() {
   const totalBytes = result.bytes;
   const totalCount = result.count;
 
-  ok(totalBytes > 0, "counted up bytes in the census");
-  ok(totalCount > 0, "counted up count in the census");
+  Assert.greater(totalBytes, 0, "counted up bytes in the census");
+  Assert.greater(totalCount, 0, "counted up count in the census");
 
   result = getSnapshotTotals(getState().snapshots[0].census);
   equal(

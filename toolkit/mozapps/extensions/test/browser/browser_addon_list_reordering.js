@@ -3,8 +3,8 @@
 
 "use strict";
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
@@ -66,7 +66,7 @@ function waitForTransitionEnd(...els) {
   );
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   // Ensure prefers-reduced-motion isn't set. Some linux environments will have
   // this enabled by default.
   await SpecialPowers.pushPrefEnv({
@@ -86,7 +86,7 @@ add_task(async function testReordering() {
     ExtensionTestUtils.loadExtension({
       manifest: {
         name: id,
-        applications: { gecko: { id } },
+        browser_specific_settings: { gecko: { id } },
       },
       useAddonManager: "temporary",
     })
@@ -142,11 +142,18 @@ add_task(async function testReordering() {
   assertInSection(cardThree, "disabled", "cardThree stays in disabled");
 
   transitionsEnded = waitForTransitionEnd(cardOne, cardThree);
+  // We intentionally turn off this a11y check, because the following click
+  // is purposefully targeting a non-interactive element to clear the focused
+  // state with a mouse which can be done by assistive technology and keyboard
+  // by pressing `Esc` key, this rule check shall be ignored by a11y_checks suite.
+  AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
+  // Click outside the list to clear any focus.
   EventUtils.synthesizeMouseAtCenter(
     win.document.querySelector(".header-name"),
     {},
     win
   );
+  AccessibilityUtils.resetEnv();
   await transitionsEnded;
 
   assertInSection(cardOne, "enabled", "cardOne is now in enabled");

@@ -1,7 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { Sqlite } = ChromeUtils.import("resource://gre/modules/Sqlite.jsm");
+const { Sqlite } = ChromeUtils.importESModule(
+  "resource://gre/modules/Sqlite.sys.mjs"
+);
 
 XPCOMUtils.defineLazyServiceGetter(
   this,
@@ -10,19 +12,34 @@ XPCOMUtils.defineLazyServiceGetter(
   "nsITrackingDBService"
 );
 
-XPCOMUtils.defineLazyGetter(this, "TRACK_DB_PATH", function() {
-  return OS.Path.join(OS.Constants.Path.profileDir, "protections.sqlite");
+ChromeUtils.defineLazyGetter(this, "TRACK_DB_PATH", function () {
+  return PathUtils.join(PathUtils.profileDir, "protections.sqlite");
 });
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "ContentBlockingAllowList",
-  "resource://gre/modules/ContentBlockingAllowList.jsm"
+ChromeUtils.defineESModuleGetters(this, {
+  ContentBlockingAllowList:
+    "resource://gre/modules/ContentBlockingAllowList.sys.mjs",
+});
+
+var { UrlClassifierTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/UrlClassifierTestUtils.sys.mjs"
 );
 
-var { UrlClassifierTestUtils } = ChromeUtils.import(
-  "resource://testing-common/UrlClassifierTestUtils.jsm"
-);
+async function waitForProtectionsPanelToast() {
+  await BrowserTestUtils.waitForEvent(
+    gProtectionsHandler._protectionsPopup,
+    "popupshown"
+  );
+  Assert.ok(
+    gProtectionsHandler._protectionsPopup.hasAttribute("toast"),
+    "Protections panel toast is shown."
+  );
+
+  await BrowserTestUtils.waitForEvent(
+    gProtectionsHandler._protectionsPopup,
+    "popuphidden"
+  );
+}
 
 async function openProtectionsPanel(toast, win = window) {
   let popupShownPromise = BrowserTestUtils.waitForEvent(
@@ -33,6 +50,13 @@ async function openProtectionsPanel(toast, win = window) {
   );
   let shieldIconContainer = win.document.getElementById(
     "tracking-protection-icon-container"
+  );
+
+  // Register a promise to wait for the tooltip to be shown.
+  let tooltip = win.document.getElementById("tracking-protection-icon-tooltip");
+  let tooltipShownPromise = BrowserTestUtils.waitForPopupEvent(
+    tooltip,
+    "shown"
   );
 
   // Move out than move over the shield icon to trigger the hover event in
@@ -51,6 +75,9 @@ async function openProtectionsPanel(toast, win = window) {
     },
     win
   );
+
+  // Wait for the tooltip to be shown.
+  await tooltipShownPromise;
 
   if (!toast) {
     EventUtils.synthesizeMouseAtCenter(shieldIconContainer, {}, win);
@@ -133,7 +160,7 @@ async function waitForAboutProtectionsTab() {
 
   // When the graph is built it means the messaging has finished,
   // we can close the tab.
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await ContentTaskUtils.waitForCondition(() => {
       let bars = content.document.querySelectorAll(".graph-bar");
       return bars.length;
@@ -171,7 +198,7 @@ function promiseTabLoadEvent(tab, url) {
   let loaded = BrowserTestUtils.browserLoaded(tab.linkedBrowser, false, handle);
 
   if (url) {
-    BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+    BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
   }
 
   return loaded;

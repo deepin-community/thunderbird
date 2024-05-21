@@ -2,20 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import json
 import os
 from argparse import Namespace
 
-from mozbuild.base import MozbuildObject
-from mozprofile.prefs import Preferences
-from mozprofile import Profile
-from six import string_types
-
 import mozunit
 import pytest
 from conftest import setup_args
+from mozbuild.base import MozbuildObject
+from mozprofile import Profile
+from mozprofile.prefs import Preferences
+from six import string_types
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -46,10 +43,7 @@ def profile_data_dir():
 
 
 def test_common_prefs_are_all_set(build_profile, profile_data_dir):
-    # We set e10s=False here because MochitestDesktop.buildProfile overwrites
-    # the value defined in the base profile.
-    # TODO stop setting browser.tabs.remote.autostart in the base profile
-    md, result = build_profile(e10s=False)
+    md, result = build_profile()
 
     with open(os.path.join(profile_data_dir, "profiles.json"), "r") as fh:
         base_profiles = json.load(fh)["mochitest"]

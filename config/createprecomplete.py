@@ -6,11 +6,8 @@
 # longer present in a complete update. The current working directory is used for
 # the location to enumerate and to create the precomplete file.
 
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
-import os
 import io
+import os
 
 
 def get_build_entries(root_path):
@@ -27,7 +24,11 @@ def get_build_entries(root_path):
             if not (
                 rel_path_file.endswith("channel-prefs.js")
                 or rel_path_file.endswith("update-settings.ini")
-                or rel_path_file.find("distribution/") != -1
+                or "/ChannelPrefs.framework/" in rel_path_file
+                or rel_path_file.startswith("ChannelPrefs.framework/")
+                or "/UpdateSettings.framework/" in rel_path_file
+                or rel_path_file.startswith("UpdateSettings.framework/")
+                or "distribution/" in rel_path_file
             ):
                 rel_file_path_set.add(rel_path_file)
 

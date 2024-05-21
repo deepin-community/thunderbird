@@ -6,8 +6,9 @@
 
 "use strict";
 
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
-const { Sqlite } = ChromeUtils.import("resource://gre/modules/Sqlite.jsm");
+const { Sqlite } = ChromeUtils.importESModule(
+  "resource://gre/modules/Sqlite.sys.mjs"
+);
 XPCOMUtils.defineLazyServiceGetter(
   this,
   "TrackingDBService",
@@ -15,8 +16,8 @@ XPCOMUtils.defineLazyServiceGetter(
   "nsITrackingDBService"
 );
 
-XPCOMUtils.defineLazyGetter(this, "DB_PATH", function() {
-  return OS.Path.join(OS.Constants.Path.profileDir, "protections.sqlite");
+ChromeUtils.defineLazyGetter(this, "DB_PATH", function () {
+  return PathUtils.join(PathUtils.profileDir, "protections.sqlite");
 });
 
 const SQL = {
@@ -84,6 +85,21 @@ const LOG = {
   "https://14.example.com": [
     [Ci.nsIWebProgressListener.STATE_BLOCKED_FINGERPRINTING_CONTENT, false, 1],
   ],
+  // Two fingerprinters replaced with a shims script, should be treated as blocked
+  // and increment the counter.
+  "https://15.example.com": [
+    [Ci.nsIWebProgressListener.STATE_REPLACED_FINGERPRINTING_CONTENT, true, 1],
+  ],
+  "https://16.example.com": [
+    [Ci.nsIWebProgressListener.STATE_REPLACED_FINGERPRINTING_CONTENT, true, 1],
+  ],
+  "https://17.example.com": [
+    [
+      Ci.nsIWebProgressListener.STATE_BLOCKED_SUSPICIOUS_FINGERPRINTING,
+      true,
+      1,
+    ],
+  ],
 };
 
 do_get_profile();
@@ -93,6 +109,11 @@ Services.prefs.setBoolPref(
   "privacy.socialtracking.block_cookies.enabled",
   true
 );
+Services.prefs.setBoolPref(
+  "privacy.trackingprotection.fingerprinting.enabled",
+  true
+);
+Services.prefs.setBoolPref("privacy.fingerprintingProtection", true);
 Services.prefs.setBoolPref(
   "browser.contentblocking.cfr-milestone.enabled",
   true
@@ -109,6 +130,10 @@ Services.prefs.setStringPref(
 registerCleanupFunction(() => {
   Services.prefs.clearUserPref("browser.contentblocking.database.enabled");
   Services.prefs.clearUserPref("privacy.socialtracking.block_cookies.enabled");
+  Services.prefs.clearUserPref(
+    "privacy.trackingprotection.fingerprinting.enabled"
+  );
+  Services.prefs.clearUserPref("privacy.fingerprintingProtection");
   Services.prefs.clearUserPref("browser.contentblocking.cfr-milestone.enabled");
   Services.prefs.clearUserPref(
     "browser.contentblocking.cfr-milestone.update-interval"
@@ -134,8 +159,8 @@ add_task(async function test_save_and_delete() {
   let rows = await db.execute(SQL.selectAll);
   equal(
     rows.length,
-    5,
-    "Events that should not be saved have not been, length is 4"
+    6,
+    "Events that should not be saved have not been, length is 6"
   );
   rows = await db.execute(SQL.selectAllEntriesOfType, {
     type: TrackingDBService.TRACKERS_ID,
@@ -171,7 +196,7 @@ add_task(async function test_save_and_delete() {
     "Only one day has had fingerprinters entries, length is 1"
   );
   count = rows[0].getResultByName("count");
-  equal(count, 1, "there is only one fingerprinter entry");
+  equal(count, 3, "there are three fingerprinter entries");
 
   rows = await db.execute(SQL.selectAllEntriesOfType, {
     type: TrackingDBService.SOCIAL_ID,
@@ -179,6 +204,17 @@ add_task(async function test_save_and_delete() {
   equal(rows.length, 1, "Only one day has had social entries, length is 1");
   count = rows[0].getResultByName("count");
   equal(count, 2, "there are two social entries");
+
+  rows = await db.execute(SQL.selectAllEntriesOfType, {
+    type: TrackingDBService.SUSPICIOUS_FINGERPRINTERS_ID,
+  });
+  equal(
+    rows.length,
+    1,
+    "Only one day has had suspicious fingerprinting entries, length is 1"
+  );
+  count = rows[0].getResultByName("count");
+  equal(count, 1, "there is one suspicious fingerprinting entry");
 
   // Use the TrackingDBService API to delete the data.
   await TrackingDBService.clearAll();
@@ -287,7 +323,7 @@ add_task(async function test_timestamp_aggragation() {
     if (i == 0) {
       equal(count, 2, "Yesterday's count is 2");
     } else if (i == 1) {
-      equal(count, 3, "Today's count is 3, new entries were aggregated");
+      equal(count, 5, "Today's count is 5, new entries were aggregated");
     }
   }
 
@@ -471,6 +507,32 @@ add_task(async function test_sendMilestoneNotification() {
   );
   await awaitNotification;
 
+  await TrackingDBService.clearAll();
+  await db.close();
+});
+
+// Ensure we don't record suspicious fingerprinting if the fingerprinting
+// protection is disabled.
+add_task(async function test_noSuspiciousFingerprintingWithFPPDisabled() {
+  Services.prefs.setBoolPref("privacy.fingerprintingProtection", false);
+
+  await TrackingDBService.saveEvents(JSON.stringify(LOG));
+
+  // Peek in the DB to make sure we have the right data.
+  let db = await Sqlite.openConnection({ path: DB_PATH });
+  // Make sure the items table was created.
+  ok(await db.tableExists("events"), "events table exists");
+
+  let rows = await db.execute(SQL.selectAllEntriesOfType, {
+    type: TrackingDBService.SUSPICIOUS_FINGERPRINTERS_ID,
+  });
+  equal(
+    rows.length,
+    0,
+    "Should be no suspicious entry if the fingerprinting protection is disabled"
+  );
+
+  // Use the TrackingDBService API to delete the data.
   await TrackingDBService.clearAll();
   await db.close();
 });

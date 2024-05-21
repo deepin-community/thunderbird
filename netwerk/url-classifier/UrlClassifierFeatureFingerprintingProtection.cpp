@@ -11,6 +11,10 @@
 #include "ChannelClassifierService.h"
 #include "mozilla/StaticPrefs_privacy.h"
 #include "nsNetUtil.h"
+#include "mozilla/StaticPtr.h"
+#include "nsIWebProgressListener.h"
+#include "nsIHttpChannelInternal.h"
+#include "nsIChannel.h"
 
 namespace mozilla {
 namespace net {
@@ -39,7 +43,7 @@ StaticRefPtr<UrlClassifierFeatureFingerprintingProtection>
 
 UrlClassifierFeatureFingerprintingProtection::
     UrlClassifierFeatureFingerprintingProtection()
-    : UrlClassifierFeatureBase(
+    : UrlClassifierFeatureAntiTrackingBase(
           nsLiteralCString(FINGERPRINTING_FEATURE_NAME),
           nsLiteralCString(URLCLASSIFIER_FINGERPRINTING_BLOCKLIST),
           nsLiteralCString(URLCLASSIFIER_FINGERPRINTING_ENTITYLIST),
@@ -155,9 +159,17 @@ UrlClassifierFeatureFingerprintingProtection::ProcessChannel(
   if (decision != ChannelBlockDecision::Blocked) {
     uint32_t event =
         decision == ChannelBlockDecision::Replaced
-            ? nsIWebProgressListener::STATE_REPLACED_TRACKING_CONTENT
-            : nsIWebProgressListener::STATE_ALLOWED_TRACKING_CONTENT;
-    ContentBlockingNotifier::OnEvent(aChannel, event, false);
+            ? nsIWebProgressListener::STATE_REPLACED_FINGERPRINTING_CONTENT
+            : nsIWebProgressListener::STATE_ALLOWED_FINGERPRINTING_CONTENT;
+
+    // Need to set aBlocked to True if we replace the Fingerprinter with a shim,
+    //  since the shim is treated as a blocked event
+    if (event ==
+        nsIWebProgressListener::STATE_REPLACED_FINGERPRINTING_CONTENT) {
+      ContentBlockingNotifier::OnEvent(aChannel, event, true);
+    } else {
+      ContentBlockingNotifier::OnEvent(aChannel, event, false);
+    }
 
     *aShouldContinue = true;
     return NS_OK;

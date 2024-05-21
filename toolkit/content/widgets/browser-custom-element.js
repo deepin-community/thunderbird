@@ -7,39 +7,27 @@
 // This is loaded into all XUL windows. Wrap in a block to prevent
 // leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-  const { AppConstants } = ChromeUtils.import(
-    "resource://gre/modules/AppConstants.jsm"
+  const { AppConstants } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppConstants.sys.mjs"
   );
 
-  const { BrowserUtils } = ChromeUtils.import(
-    "resource://gre/modules/BrowserUtils.jsm"
+  const { XPCOMUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/XPCOMUtils.sys.mjs"
   );
 
-  const { XPCOMUtils } = ChromeUtils.import(
-    "resource://gre/modules/XPCOMUtils.jsm"
-  );
+  let lazy = {};
 
-  let LazyModules = {};
+  ChromeUtils.defineESModuleGetters(lazy, {
+    BrowserUtils: "resource://gre/modules/BrowserUtils.sys.mjs",
+    Finder: "resource://gre/modules/Finder.sys.mjs",
+    FinderParent: "resource://gre/modules/FinderParent.sys.mjs",
+    PopupBlocker: "resource://gre/actors/PopupBlockingParent.sys.mjs",
+    SelectParentHelper: "resource://gre/actors/SelectParent.sys.mjs",
+    RemoteWebNavigation: "resource://gre/modules/RemoteWebNavigation.sys.mjs",
+  });
 
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "E10SUtils",
-    "resource://gre/modules/E10SUtils.jsm"
-  );
-
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "RemoteWebNavigation",
-    "resource://gre/modules/RemoteWebNavigation.jsm"
-  );
-
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "PopupBlocker",
-    "resource://gre/actors/PopupBlockingParent.jsm"
+  ChromeUtils.defineLazyGetter(lazy, "blankURI", () =>
+    Services.io.newURI("about:blank")
   );
 
   let lazyPrefs = {};
@@ -48,18 +36,18 @@
     "unloadTimeoutMs",
     "dom.beforeunload_timeout_ms"
   );
-
-  Object.defineProperty(LazyModules, "ProcessHangMonitor", {
+  Object.defineProperty(lazy, "ProcessHangMonitor", {
     configurable: true,
     get() {
       // Import if we can - this is a browser/ module so it may not be
       // available, in which case we return null. We replace this getter
       // when the module becomes available (should be on delayed startup
-      // when the first browser window loads, via BrowserGlue.jsm ).
-      const kURL = "resource:///modules/ProcessHangMonitor.jsm";
-      if (Cu.isModuleLoaded(kURL)) {
-        let { ProcessHangMonitor } = ChromeUtils.import(kURL);
-        Object.defineProperty(LazyModules, "ProcessHangMonitor", {
+      // when the first browser window loads, via BrowserGlue.sys.mjs).
+      const kURL = "resource:///modules/ProcessHangMonitor.sys.mjs";
+      if (Cu.isESModuleLoaded(kURL)) {
+        let { ProcessHangMonitor } = ChromeUtils.importESModule(kURL);
+        // eslint-disable-next-line mozilla/valid-lazy
+        Object.defineProperty(lazy, "ProcessHangMonitor", {
           value: ProcessHangMonitor,
         });
         return ProcessHangMonitor;
@@ -69,13 +57,14 @@
   });
 
   // Get SessionStore module in the same as ProcessHangMonitor above.
-  Object.defineProperty(LazyModules, "SessionStore", {
+  Object.defineProperty(lazy, "SessionStore", {
     configurable: true,
     get() {
-      const kURL = "resource:///modules/sessionstore/SessionStore.jsm";
-      if (Cu.isModuleLoaded(kURL)) {
-        let { SessionStore } = ChromeUtils.import(kURL);
-        Object.defineProperty(LazyModules, "SessionStore", {
+      const kURL = "resource:///modules/sessionstore/SessionStore.sys.mjs";
+      if (Cu.isESModuleLoaded(kURL)) {
+        let { SessionStore } = ChromeUtils.importESModule(kURL);
+        // eslint-disable-next-line mozilla/valid-lazy
+        Object.defineProperty(lazy, "SessionStore", {
           value: SessionStore,
         });
         return SessionStore;
@@ -115,6 +104,13 @@
 
       this._inPermitUnload = new WeakSet();
 
+      this._originalURI = null;
+      this._searchTerms = "";
+      // When we open a prompt in reaction to a 401, if this 401 comes from
+      // a different base domain, the url of that site will be stored here
+      // and will be used for auth prompt spoofing protections.
+      // See bug 791594 for reference.
+      this._currentAuthPromptURI = null;
       /**
        * These are managed by the tabbrowser:
        */
@@ -122,8 +118,8 @@
       this.mIconURL = null;
       this.lastURI = null;
 
-      XPCOMUtils.defineLazyGetter(this, "popupBlocker", () => {
-        return new LazyModules.PopupBlocker(this);
+      ChromeUtils.defineLazyGetter(this, "popupBlocker", () => {
+        return new lazy.PopupBlocker(this);
       });
 
       this.addEventListener(
@@ -175,6 +171,10 @@
 
           let linkHandler = Services.droppedLinkHandler;
           try {
+            if (!linkHandler.canDropLink(event, false)) {
+              return;
+            }
+
             // Pass true to prevent the dropping of javascript:/data: URIs
             var links = linkHandler.dropLinks(event, true);
           } catch (ex) {
@@ -237,6 +237,12 @@
 
       this._documentURI = null;
 
+      this._originalURI = null;
+
+      this._currentAuthPromptURI = null;
+
+      this._searchTerms = "";
+
       this._documentContentType = null;
 
       this._loadContext = null;
@@ -270,8 +276,6 @@
       this._isSyntheticDocument = false;
 
       this.mPrefs = Services.prefs;
-
-      this._mStrBundle = null;
 
       this._audioMuted = false;
 
@@ -344,7 +348,14 @@
       return this.webNavigation.canGoForward;
     }
 
+    // While an auth prompt from a base domain different than the current sites is open, we want to display the url of the cross domain site.
+    // This is to prevent possible auth spoofing scenarios.
+    // The URL of the requesting origin is provided by 'currentAuthPromptURI', this will only be non null while an auth prompt is open.
+    // See bug 791594 for reference.
     get currentURI() {
+      if (this.currentAuthPromptURI) {
+        return this.currentAuthPromptURI;
+      }
       if (this.webNavigation) {
         return this.webNavigation.currentURI;
       }
@@ -389,10 +400,6 @@
 
     get autoCompletePopup() {
       return document.getElementById(this.getAttribute("autocompletepopup"));
-    }
-
-    get dateTimePicker() {
-      return document.getElementById(this.getAttribute("datetimepicker"));
     }
 
     set suspendMediaWhenInactive(val) {
@@ -481,9 +488,7 @@
     get finder() {
       if (this.isRemoteBrowser) {
         if (!this._remoteFinder) {
-          let jsm = "resource://gre/modules/FinderParent.jsm";
-          let { FinderParent } = ChromeUtils.import(jsm, {});
-          this._remoteFinder = new FinderParent(this);
+          this._remoteFinder = new lazy.FinderParent(this);
         }
         return this._remoteFinder;
       }
@@ -492,9 +497,7 @@
           return null;
         }
 
-        let Finder = ChromeUtils.import("resource://gre/modules/Finder.jsm", {})
-          .Finder;
-        this._finder = new Finder(this.docShell);
+        this._finder = new lazy.Finder(this.docShell);
       }
       return this._finder;
     }
@@ -682,17 +685,6 @@
       return !!this.browsingContext.opener;
     }
 
-    get mStrBundle() {
-      if (!this._mStrBundle) {
-        // need to create string bundle manually instead of using <xul:stringbundle/>
-        // see bug 63370 for details
-        this._mStrBundle = Services.strings.createBundle(
-          "chrome://global/locale/browser.properties"
-        );
-      }
-      return this._mStrBundle;
-    }
-
     get audioMuted() {
       return this._audioMuted;
     }
@@ -726,6 +718,31 @@
       return 2;
     }
 
+    set originalURI(aURI) {
+      if (aURI instanceof Ci.nsIURI) {
+        this._originalURI = aURI;
+      }
+    }
+
+    get originalURI() {
+      return this._originalURI;
+    }
+
+    set searchTerms(val) {
+      this._searchTerms = val;
+    }
+
+    get searchTerms() {
+      return this._searchTerms;
+    }
+
+    set currentAuthPromptURI(aURI) {
+      this._currentAuthPromptURI = aURI;
+    }
+
+    get currentAuthPromptURI() {
+      return this._currentAuthPromptURI;
+    }
     _wrapURIChangeCall(fn) {
       if (!this.isRemoteBrowser) {
         this.isNavigating = true;
@@ -740,7 +757,8 @@
     }
 
     goBack(
-      requireUserInteraction = BrowserUtils.navigationRequireUserInteraction
+      requireUserInteraction = lazy.BrowserUtils
+        .navigationRequireUserInteraction
     ) {
       var webNavigation = this.webNavigation;
       if (webNavigation.canGoBack) {
@@ -751,7 +769,8 @@
     }
 
     goForward(
-      requireUserInteraction = BrowserUtils.navigationRequireUserInteraction
+      requireUserInteraction = lazy.BrowserUtils
+        .navigationRequireUserInteraction
     ) {
       var webNavigation = this.webNavigation;
       if (webNavigation.canGoForward) {
@@ -777,34 +796,35 @@
       this.webNavigation.stop(flags);
     }
 
+    _fixLoadParamsToLoadURIOptions(params) {
+      let loadFlags =
+        params.loadFlags || params.flags || Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
+      delete params.flags;
+      params.loadFlags = loadFlags;
+    }
+
     /**
      * throws exception for unknown schemes
      */
-    loadURI(aURI, aParams = {}) {
-      if (!aURI) {
-        aURI = "about:blank";
+    loadURI(uri, params = {}) {
+      if (!uri) {
+        uri = lazy.blankURI;
       }
-      let {
-        referrerInfo,
-        triggeringPrincipal,
-        postData,
-        headers,
-        csp,
-      } = aParams;
-      let loadFlags =
-        aParams.loadFlags ||
-        aParams.flags ||
-        Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
-      let loadURIOptions = {
-        triggeringPrincipal,
-        csp,
-        referrerInfo,
-        loadFlags,
-        postData,
-        headers,
-      };
+      this._fixLoadParamsToLoadURIOptions(params);
+      this._wrapURIChangeCall(() => this.webNavigation.loadURI(uri, params));
+    }
+
+    /**
+     * throws exception for unknown schemes
+     */
+    fixupAndLoadURIString(uriString, params = {}) {
+      if (!uriString) {
+        this.loadURI(null, params);
+        return;
+      }
+      this._fixLoadParamsToLoadURIOptions(params);
       this._wrapURIChangeCall(() =>
-        this.webNavigation.loadURI(aURI, loadURIOptions)
+        this.webNavigation.fixupAndLoadURIString(uriString, params)
       );
     }
 
@@ -826,18 +846,15 @@
       if (!this.isRemoteBrowser) {
         return;
       }
-      let { frameLoader } = this;
-      if (frameLoader.remoteTab) {
-        frameLoader.remoteTab.deprioritize();
+      let { remoteTab } = this.frameLoader;
+      if (remoteTab) {
+        remoteTab.priorityHint = false;
+        remoteTab.deprioritize();
       }
     }
 
     getTabBrowser() {
-      if (
-        this.ownerGlobal.gBrowser &&
-        this.ownerGlobal.gBrowser.getTabForBrowser &&
-        this.ownerGlobal.gBrowser.getTabForBrowser(this)
-      ) {
+      if (this?.ownerGlobal?.gBrowser?.getTabForBrowser(this)) {
         return this.ownerGlobal.gBrowser;
       }
       return null;
@@ -855,10 +872,10 @@
       this.webProgress.removeProgressListener(aListener);
     }
 
-    onPageHide(aEvent) {
+    onPageHide() {
       // If we're browsing from the tab crashed UI to a URI that keeps
       // this browser non-remote, we'll handle that here.
-      LazyModules.SessionStore?.maybeExitCrashedState(this);
+      lazy.SessionStore?.maybeExitCrashedState(this);
 
       if (!this.docShell || !this.fastFind) {
         return;
@@ -961,6 +978,21 @@
       );
     }
 
+    constrainPopup(popup) {
+      if (this.getAttribute("constrainpopups") != "false") {
+        let constraintRect = this.getBoundingClientRect();
+        constraintRect = new DOMRect(
+          constraintRect.left + window.mozInnerScreenX,
+          constraintRect.top + window.mozInnerScreenY,
+          constraintRect.width,
+          constraintRect.height
+        );
+        popup.setConstraintRect(constraintRect);
+      } else {
+        popup.setConstraintRect(new DOMRect(0, 0, 0, 0));
+      }
+    }
+
     construct() {
       elementsToDestroyOnUnload.add(this);
       this.resetFields();
@@ -971,7 +1003,7 @@
          * the <browser> element may not be initialized yet.
          */
 
-        this._remoteWebNavigation = new LazyModules.RemoteWebNavigation(this);
+        this._remoteWebNavigation = new lazy.RemoteWebNavigation(this);
 
         // Initialize contentPrincipal to the about:blank principal for this loadcontext
         let aboutBlank = Services.io.newURI("about:blank");
@@ -1014,12 +1046,12 @@
               this.docShell.browsingContext.useGlobalHistory = true;
             } catch (ex) {
               // This can occur if the Places database is locked
-              Cu.reportError("Error enabling browser global history: " + ex);
+              console.error("Error enabling browser global history: ", ex);
             }
           }
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
       try {
         // Ensures the securityUI is initialized.
@@ -1033,8 +1065,9 @@
     }
 
     /**
-     * This is necessary because the destructor doesn't always get called when
-     * we are removed from a tabbrowser. This will be explicitly called by tabbrowser.
+     * This is necessary because custom elements don't have a "real" destructor.
+     * This method is called explicitly by tabbrowser, when changing remoteness,
+     * and when we're disconnected or the window unloads.
      */
     destroy() {
       elementsToDestroyOnUnload.delete(this);
@@ -1044,18 +1077,12 @@
       // non-remote browser for a remote one doesn't cause the pagehide event
       // to be fired. Previously, we used to do this in the frame script's
       // unload handler.
-      LazyModules.SessionStore?.maybeExitCrashedState(this);
+      lazy.SessionStore?.maybeExitCrashedState(this);
 
       // Make sure that any open select is closed.
-      if (this.hasAttribute("selectmenulist")) {
-        let menulist = document.getElementById(
-          this.getAttribute("selectmenulist")
-        );
-        if (menulist && menulist.open) {
-          let resourcePath = "resource://gre/actors/SelectParent.jsm";
-          let { SelectParentHelper } = ChromeUtils.import(resourcePath);
-          SelectParentHelper.hide(menulist, this);
-        }
+      let menulist = document.getElementById("ContentSelectDropdown");
+      if (menulist?.open) {
+        lazy.SelectParentHelper.hide(menulist, this);
       }
 
       this.resetFields();
@@ -1117,7 +1144,8 @@
       if (this.isRemoteBrowser && this.messageManager) {
         if (aCharset != null) {
           this._characterSet = aCharset;
-          this._mayEnableCharacterEncodingMenu = aMayEnableCharacterEncodingMenu;
+          this._mayEnableCharacterEncodingMenu =
+            aMayEnableCharacterEncodingMenu;
         }
 
         if (aContentType != null) {
@@ -1187,26 +1215,44 @@
       }
     }
 
-    createAboutBlankContentViewer(aPrincipal, aPartitionedPrincipal) {
-      let principal = BrowserUtils.principalWithMatchingOA(
+    createAboutBlankDocumentViewer(aPrincipal, aPartitionedPrincipal) {
+      let principal = lazy.BrowserUtils.principalWithMatchingOA(
         aPrincipal,
         this.contentPrincipal
       );
-      let partitionedPrincipal = BrowserUtils.principalWithMatchingOA(
+      let partitionedPrincipal = lazy.BrowserUtils.principalWithMatchingOA(
         aPartitionedPrincipal,
         this.contentPartitionedPrincipal
       );
 
       if (this.isRemoteBrowser) {
-        this.frameLoader.remoteTab.createAboutBlankContentViewer(
+        this.frameLoader.remoteTab.createAboutBlankDocumentViewer(
           principal,
           partitionedPrincipal
         );
       } else {
-        this.docShell.createAboutBlankContentViewer(
+        this.docShell.createAboutBlankDocumentViewer(
           principal,
           partitionedPrincipal
         );
+      }
+    }
+
+    _acquireAutoScrollWakeLock() {
+      const pm = Cc["@mozilla.org/power/powermanagerservice;1"].getService(
+        Ci.nsIPowerManagerService
+      );
+      this._autoScrollWakelock = pm.newWakeLock("autoscroll", window);
+    }
+
+    _releaseAutoScrollWakeLock() {
+      if (this._autoScrollWakelock) {
+        try {
+          this._autoScrollWakelock.unlock();
+        } catch (e) {
+          // Ignore error since wake lock is already unlocked
+        }
+        this._autoScrollWakelock = null;
       }
     }
 
@@ -1227,7 +1273,6 @@
             .getActor("AutoScroll")
             .sendAsyncMessage("Autoscroll:Stop", {});
         }
-        this._autoScrollBrowsingContext = null;
 
         try {
           Services.obs.removeObserver(this.observer, "apz:cancel-autoscroll");
@@ -1235,17 +1280,18 @@
           // It's not clear why this sometimes throws an exception
         }
 
-        if (this.isRemoteBrowser && this._autoScrollScrollId != null) {
-          let { remoteTab } = this.frameLoader;
-          if (remoteTab) {
-            remoteTab.stopApzAutoscroll(
-              this._autoScrollScrollId,
-              this._autoScrollPresShellId
-            );
-          }
+        if (this._autoScrollScrollId != null) {
+          this._autoScrollBrowsingContext.stopApzAutoscroll(
+            this._autoScrollScrollId,
+            this._autoScrollPresShellId
+          );
+
           this._autoScrollScrollId = null;
           this._autoScrollPresShellId = null;
         }
+
+        this._autoScrollBrowsingContext = null;
+        this._releaseAutoScrollWakeLock();
       }
     }
 
@@ -1264,8 +1310,8 @@
 
     startScroll({
       scrolldir,
-      screenX,
-      screenY,
+      screenXDevPx,
+      screenYDevPx,
       scrollId,
       presShellId,
       browsingContext,
@@ -1274,7 +1320,9 @@
         return { autoscrollEnabled: false, usingApz: false };
       }
 
-      const POPUP_SIZE = 32;
+      // The popup size is 32px for the circle plus space for a 4px box-shadow
+      // on each side.
+      const POPUP_SIZE = 40;
       if (!this._autoScrollPopup) {
         this._autoScrollPopup = this._getAndMaybeCreateAutoScrollPopup();
         document.documentElement.appendChild(this._autoScrollPopup);
@@ -1285,10 +1333,19 @@
         this._autoScrollPopup.style.margin = -POPUP_SIZE / 2 + "px";
       }
 
+      // In desktop pixels.
+      let screenXDesktopPx = screenXDevPx / window.desktopToDeviceScale;
+      let screenYDesktopPx = screenYDevPx / window.desktopToDeviceScale;
+
       let screenManager = Cc["@mozilla.org/gfx/screenmanager;1"].getService(
         Ci.nsIScreenManager
       );
-      let screen = screenManager.screenForRect(screenX, screenY, 1, 1);
+      let screen = screenManager.screenForRect(
+        screenXDesktopPx,
+        screenYDesktopPx,
+        1,
+        1
+      );
 
       // we need these attributes so themers don't need to create per-platform packages
       if (screen.colorDepth > 8) {
@@ -1308,35 +1365,45 @@
       this._autoScrollPopup.setAttribute("scrolldir", scrolldir);
       this._autoScrollPopup.addEventListener("popuphidden", this, true);
 
-      // Sanitize screenX/screenY for available screen size with half the size
-      // of the popup removed. The popup uses negative margins to center on the
-      // coordinates we pass. Unfortunately `window.screen.availLeft` can be negative
-      // on Windows in multi-monitor setups, so we use nsIScreenManager instead:
-      let left = {},
-        top = {},
-        width = {},
-        height = {};
-      screen.GetAvailRect(left, top, width, height);
+      // In CSS pixels
+      let popupX;
+      let popupY;
+      {
+        let cssToDesktopScale =
+          window.devicePixelRatio / window.desktopToDeviceScale;
 
-      // We need to get screen CSS-pixel (rather than display-pixel) coordinates.
-      // With 175% DPI, the actual ratio of display pixels to CSS pixels is
-      // 1.7647 because of rounding inside gecko. Unfortunately defaultCSSScaleFactor
-      // returns the original 1.75 dpi factor. While window.devicePixelRatio would
-      // get us the correct ratio, if the window is split between 2 screens,
-      // window.devicePixelRatio isn't guaranteed to match the screen we're
-      // autoscrolling on. So instead we do the same math as Gecko.
-      const scaleFactor = 60 / Math.round(60 / screen.defaultCSSScaleFactor);
-      let minX = left.value / scaleFactor + 0.5 * POPUP_SIZE;
-      let maxX = (left.value + width.value) / scaleFactor - 0.5 * POPUP_SIZE;
-      let minY = top.value / scaleFactor + 0.5 * POPUP_SIZE;
-      let maxY = (top.value + height.value) / scaleFactor - 0.5 * POPUP_SIZE;
-      let popupX = Math.max(minX, Math.min(maxX, screenX));
-      let popupY = Math.max(minY, Math.min(maxY, screenY));
+        // Sanitize screenX/screenY for available screen size with half the size
+        // of the popup removed. The popup uses negative margins to center on the
+        // coordinates we pass. Use desktop pixels to deal correctly with
+        // multi-monitor / multi-dpi scenarios.
+        let left = {},
+          top = {},
+          width = {},
+          height = {};
+        screen.GetAvailRectDisplayPix(left, top, width, height);
+
+        let popupSizeDesktopPx = POPUP_SIZE * cssToDesktopScale;
+        let minX = left.value + 0.5 * popupSizeDesktopPx;
+        let maxX = left.value + width.value - 0.5 * popupSizeDesktopPx;
+        let minY = top.value + 0.5 * popupSizeDesktopPx;
+        let maxY = top.value + height.value - 0.5 * popupSizeDesktopPx;
+
+        popupX =
+          Math.max(minX, Math.min(maxX, screenXDesktopPx)) / cssToDesktopScale;
+        popupY =
+          Math.max(minY, Math.min(maxY, screenYDesktopPx)) / cssToDesktopScale;
+      }
+
+      // In CSS pixels.
+      let screenX = screenXDevPx / window.devicePixelRatio;
+      let screenY = screenYDevPx / window.devicePixelRatio;
+
       this._autoScrollPopup.openPopupAtScreen(popupX, popupY);
       this._ignoreMouseEvents = true;
       this._startX = screenX;
       this._startY = screenY;
       this._autoScrollBrowsingContext = browsingContext;
+      this._acquireAutoScrollWakeLock();
 
       window.addEventListener("mousemove", this, true);
       window.addEventListener("mousedown", this, true);
@@ -1348,29 +1415,23 @@
       window.addEventListener("keyup", this, true);
 
       let usingApz = false;
+
       if (
-        this.isRemoteBrowser &&
         scrollId != null &&
         this.mPrefs.getBoolPref("apz.autoscroll.enabled", false)
       ) {
-        let { remoteTab } = this.frameLoader;
-        if (remoteTab) {
-          // If APZ is handling the autoscroll, it may decide to cancel
-          // it of its own accord, so register an observer to allow it
-          // to notify us of that.
-          Services.obs.addObserver(
-            this.observer,
-            "apz:cancel-autoscroll",
-            true
-          );
+        // If APZ is handling the autoscroll, it may decide to cancel
+        // it of its own accord, so register an observer to allow it
+        // to notify us of that.
+        Services.obs.addObserver(this.observer, "apz:cancel-autoscroll", true);
 
-          usingApz = remoteTab.startApzAutoscroll(
-            screenX,
-            screenY,
-            scrollId,
-            presShellId
-          );
-        }
+        usingApz = browsingContext.startApzAutoscroll(
+          screenXDevPx,
+          screenYDevPx,
+          scrollId,
+          presShellId
+        );
+
         // Save the IDs for later
         this._autoScrollScrollId = scrollId;
         this._autoScrollPresShellId = presShellId;
@@ -1535,6 +1596,8 @@
             "_contentPrincipal",
             "_contentPartitionedPrincipal",
             "_isSyntheticDocument",
+            "_originalURI",
+            "_userTypedValue",
           ]
         );
       }
@@ -1601,11 +1664,11 @@
         return;
       }
 
-      if (!this.docShell || !this.docShell.contentViewer) {
+      if (!this.docShell || !this.docShell.docViewer) {
         aCallback(false);
         return;
       }
-      aCallback(this.docShell.contentViewer.inPermitUnload);
+      aCallback(this.docShell.docViewer.inPermitUnload);
     }
 
     async asyncPermitUnload(action) {
@@ -1643,10 +1706,9 @@
         }
 
         // Don't bother asking if this browser is hung:
-        let { ProcessHangMonitor } = LazyModules;
         if (
-          ProcessHangMonitor?.findActiveReport(this) ||
-          ProcessHangMonitor?.findPausedReport(this)
+          lazy.ProcessHangMonitor?.findActiveReport(this) ||
+          lazy.ProcessHangMonitor?.findPausedReport(this)
         ) {
           return { permitUnload: true };
         }
@@ -1678,16 +1740,51 @@
         throw result;
       }
 
-      if (!this.docShell || !this.docShell.contentViewer) {
+      if (!this.docShell || !this.docShell.docViewer) {
         return { permitUnload: true };
       }
       return {
-        permitUnload: this.docShell.contentViewer.permitUnload(),
+        permitUnload: this.docShell.docViewer.permitUnload(),
       };
     }
 
-    async drawSnapshot(x, y, w, h, scale, backgroundColor) {
-      let rect = new DOMRect(x, y, w, h);
+    /**
+     * Gets a screenshot of this browser as an ImageBitmap.
+     *
+     * @param {Number} x
+     *   The x coordinate of the region from the underlying document to capture
+     *   as a screenshot. This is ignored if fullViewport is true.
+     * @param {Number} y
+     *   The y coordinate of the region from the underlying document to capture
+     *   as a screenshot. This is ignored if fullViewport is true.
+     * @param {Number} w
+     *   The width of the region from the underlying document to capture as a
+     *   screenshot. This is ignored if fullViewport is true.
+     * @param {Number} h
+     *   The height of the region from the underlying document to capture as a
+     *   screenshot. This is ignored if fullViewport is true.
+     * @param {Number} scale
+     *   The scale factor for the captured screenshot. See the documentation for
+     *   WindowGlobalParent.drawSnapshot for more detail.
+     * @param {String} backgroundColor
+     *   The default background color for the captured screenshot. See the
+     *   documentation for WindowGlobalParent.drawSnapshot for more detail.
+     * @param {boolean|undefined} fullViewport
+     *   True if the viewport rect should be captured. If this is true, the
+     *   x, y, w and h parameters are ignored. Defaults to false.
+     * @returns {Promise}
+     * @resolves {ImageBitmap}
+     */
+    async drawSnapshot(
+      x,
+      y,
+      w,
+      h,
+      scale,
+      backgroundColor,
+      fullViewport = false
+    ) {
+      let rect = fullViewport ? null : new DOMRect(x, y, w, h);
       try {
         return this.browsingContext.currentWindowGlobal.drawSnapshot(
           rect,
@@ -1808,25 +1905,6 @@
       return origins;
     }
 
-    get processSwitchBehavior() {
-      // If a `remotenessChangeHandler` is attached to this browser, it supports
-      // having its toplevel process switched dynamically in response to
-      // navigations.
-      if (this.hasAttribute("maychangeremoteness")) {
-        return Ci.nsIBrowser.PROCESS_BEHAVIOR_STANDARD;
-      }
-
-      // For backwards compatibility, we need to mark remote, but
-      // non-`allowremote`, frames as `PROCESS_BEHAVIOR_SUBFRAME_ONLY`, as some
-      // tests rely on it.
-      // FIXME: Remove this?
-      if (this.isRemoteBrowser) {
-        return Ci.nsIBrowser.PROCESS_BEHAVIOR_SUBFRAME_ONLY;
-      }
-      // Otherwise, don't allow gecko-initiated toplevel process switches.
-      return Ci.nsIBrowser.PROCESS_BEHAVIOR_DISABLED;
-    }
-
     // This method is replaced by frontend code in order to delay performing the
     // process switch until some async operatin is completed.
     //
@@ -1841,7 +1919,7 @@
     // Called immediately after changing remoteness.  If this method returns
     // `true`, Gecko will assume frontend handled resuming the load, and will
     // not attempt to resume the load itself.
-    afterChangeRemoteness(browser, redirectLoadSwitchId) {
+    afterChangeRemoteness() {
       /* no-op unless replaced */
       return false;
     }

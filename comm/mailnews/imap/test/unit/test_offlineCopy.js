@@ -11,8 +11,8 @@
  * by allowUndo == true in copyMessages).
  */
 
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/logHelper.js */
@@ -32,12 +32,12 @@ var gFolder1;
 // Adds some messages directly to a mailbox (eg new mail)
 function addMessagesToServer(messages, mailbox) {
   // For every message we have, we need to convert it to a file:/// URI
-  messages.forEach(function(message) {
-    let URI = Services.io
+  messages.forEach(function (message) {
+    const URI = Services.io
       .newFileURI(message.file)
       .QueryInterface(Ci.nsIFileURL);
-    // Create the imapMessage and store it on the mailbox.
-    mailbox.addMessage(new imapMessage(URI.spec, mailbox.uidnext++, []));
+    // Create the ImapMessage and store it on the mailbox.
+    mailbox.addMessage(new ImapMessage(URI.spec, mailbox.uidnext++, []));
   });
 }
 
@@ -55,7 +55,7 @@ var tests = [
 
     setupIMAPPump();
 
-    let promiseFolderAdded = PromiseTestUtils.promiseFolderAdded("folder 1");
+    const promiseFolderAdded = PromiseTestUtils.promiseFolderAdded("folder 1");
     IMAPPump.incomingServer.rootFolder.createSubfolder("folder 1", null);
     await promiseFolderAdded;
 
@@ -80,12 +80,12 @@ var tests = [
     );
   },
   async function updateFolder() {
-    let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+    const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
     IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
     await promiseUrlListener.promise;
   },
   async function downloadAllForOffline() {
-    let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+    const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
     IMAPPump.inbox.downloadAllForOffline(promiseUrlListener, null);
     await promiseUrlListener.promise;
   },
@@ -116,15 +116,15 @@ var tests = [
     );
     await promiseCopyListener.promise;
 
-    let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+    const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
     IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
     await promiseUrlListener.promise;
 
-    let db = IMAPPump.inbox.msgDatabase;
+    const db = IMAPPump.inbox.msgDatabase;
 
     // test the headers in the inbox
     let count = 0;
-    for (let message of db.EnumerateMessages()) {
+    for (const message of db.enumerateMessages()) {
       count++;
       message instanceof Ci.nsIMsgDBHdr;
       dump(
@@ -152,7 +152,7 @@ var tests = [
   function copyMessagesToSubfolder() {
     //  a message created from IMAP download
     let db = IMAPPump.inbox.msgDatabase;
-    let msg1 = db.getMsgHdrForMessageID(gMsgId1);
+    const msg1 = db.getMsgHdrForMessageID(gMsgId1);
     // this is sync, I believe?
     MailServices.copy.copyMessages(
       IMAPPump.inbox,
@@ -165,7 +165,7 @@ var tests = [
     );
 
     // two messages originally created from file copies (like in Send)
-    let msg3 = db.getMsgHdrForMessageID(gMsg3Id);
+    const msg3 = db.getMsgHdrForMessageID(gMsg3Id);
     Assert.ok(msg3 instanceof Ci.nsIMsgDBHdr);
     MailServices.copy.copyMessages(
       IMAPPump.inbox,
@@ -177,7 +177,7 @@ var tests = [
       true
     );
 
-    let msg4 = db.getMsgHdrForMessageID(gMsg4Id);
+    const msg4 = db.getMsgHdrForMessageID(gMsg4Id);
     Assert.ok(msg4 instanceof Ci.nsIMsgDBHdr);
 
     // because bug 790912 created messages with correct storeToken but messageOffset=0,
@@ -196,7 +196,7 @@ var tests = [
     // test the db headers in folder1
     db = gFolder1.msgDatabase;
     let count = 0;
-    for (let message of db.EnumerateMessages()) {
+    for (const message of db.enumerateMessages()) {
       count++;
       message instanceof Ci.nsIMsgDBHdr;
       dump(
@@ -220,25 +220,23 @@ var tests = [
     Assert.equal(count, 3);
   },
   async function test_headers() {
-    let msgIds = [gMsgId1, gMsg3Id, gMsg4Id];
-    for (let msgId of msgIds) {
-      let newMsgHdr = gFolder1.msgDatabase.getMsgHdrForMessageID(msgId);
+    const msgIds = [gMsgId1, gMsg3Id, gMsg4Id];
+    for (const msgId of msgIds) {
+      const newMsgHdr = gFolder1.msgDatabase.getMsgHdrForMessageID(msgId);
       Assert.ok(newMsgHdr.flags & Ci.nsMsgMessageFlags.Offline);
-      let msgURI = newMsgHdr.folder.getUriForMsg(newMsgHdr);
-      let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-        Ci.nsIMessenger
-      );
-      let msgServ = messenger.messageServiceFromURI(msgURI);
-      let promiseStreamListener = new PromiseTestUtils.PromiseStreamListener();
+      const msgURI = newMsgHdr.folder.getUriForMsg(newMsgHdr);
+      const msgServ = MailServices.messageServiceFromURI(msgURI);
+      const promiseStreamListener =
+        new PromiseTestUtils.PromiseStreamListener();
       msgServ.streamHeaders(msgURI, promiseStreamListener, null, true);
-      let data = await promiseStreamListener.promise;
+      const data = await promiseStreamListener.promise;
       dump("\nheaders for messageId " + msgId + "\n" + data + "\n\n");
       Assert.ok(data.includes(msgId));
     }
   },
   function moveMessagesToSubfolder() {
-    let db = IMAPPump.inbox.msgDatabase;
-    let messages = [...db.EnumerateMessages()];
+    const db = IMAPPump.inbox.msgDatabase;
+    const messages = [...db.enumerateMessages()];
     Assert.ok(messages.length > 0);
     // this is sync, I believe?
     MailServices.copy.copyMessages(
@@ -252,15 +250,15 @@ var tests = [
     );
 
     // the inbox should now be empty
-    Assert.ok([...db.EnumerateMessages()].length == 0);
+    Assert.ok([...db.enumerateMessages()].length == 0);
 
     // maildir should also delete the files.
     if (IMAPPump.inbox.msgStore.storeType == "maildir") {
-      let curDir = IMAPPump.inbox.filePath.clone();
+      const curDir = IMAPPump.inbox.filePath.clone();
       curDir.append("cur");
       Assert.ok(curDir.exists());
       Assert.ok(curDir.isDirectory());
-      let curEnum = curDir.directoryEntries;
+      const curEnum = curDir.directoryEntries;
       // the directory should be empty, fails from bug 771643
       Assert.ok(!curEnum.hasMoreElements());
     }

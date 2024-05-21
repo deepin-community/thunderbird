@@ -6,31 +6,32 @@
 
 #include "RenderMacIOSurfaceTextureHost.h"
 
-#include "GLContextCGL.h"
+#ifdef XP_MACOSX
+#  include "GLContextCGL.h"
+#else
+#  include "GLContextEAGL.h"
+#endif
+
 #include "mozilla/gfx/Logging.h"
 #include "ScopedGLHelpers.h"
 
 namespace mozilla {
 namespace wr {
 
-static CGLError CreateTextureForPlane(uint8_t aPlaneID, gl::GLContext* aGL,
-                                      MacIOSurface* aSurface, GLuint* aTexture,
-                                      wr::ImageRendering aRendering) {
+static bool CreateTextureForPlane(uint8_t aPlaneID, gl::GLContext* aGL,
+                                  MacIOSurface* aSurface, GLuint* aTexture) {
   MOZ_ASSERT(aGL && aSurface && aTexture);
 
   aGL->fGenTextures(1, aTexture);
   ActivateBindAndTexParameteri(aGL, LOCAL_GL_TEXTURE0,
-                               LOCAL_GL_TEXTURE_RECTANGLE_ARB, *aTexture,
-                               aRendering);
+                               LOCAL_GL_TEXTURE_RECTANGLE_ARB, *aTexture);
   aGL->fTexParameteri(LOCAL_GL_TEXTURE_RECTANGLE_ARB, LOCAL_GL_TEXTURE_WRAP_T,
                       LOCAL_GL_CLAMP_TO_EDGE);
   aGL->fTexParameteri(LOCAL_GL_TEXTURE_RECTANGLE_ARB, LOCAL_GL_TEXTURE_WRAP_S,
                       LOCAL_GL_CLAMP_TO_EDGE);
 
-  CGLError result = kCGLNoError;
   gfx::SurfaceFormat readFormat = gfx::SurfaceFormat::UNKNOWN;
-  result = aSurface->CGLTexImageIOSurface2D(
-      aGL, gl::GLContextCGL::Cast(aGL)->GetCGLContext(), aPlaneID, &readFormat);
+  bool result = aSurface->BindTexImage(aGL, aPlaneID, &readFormat);
   // If this is a yuv format, the Webrender only supports YUV422 interleaving
   // format.
   MOZ_ASSERT(aSurface->GetFormat() != gfx::SurfaceFormat::YUV422 ||
@@ -76,8 +77,8 @@ size_t RenderMacIOSurfaceTextureHost::Bytes() {
   return mSurface->GetAllocSize();
 }
 
-wr::WrExternalImage RenderMacIOSurfaceTextureHost::Lock(
-    uint8_t aChannelIndex, gl::GLContext* aGL, wr::ImageRendering aRendering) {
+wr::WrExternalImage RenderMacIOSurfaceTextureHost::Lock(uint8_t aChannelIndex,
+                                                        gl::GLContext* aGL) {
   if (mGL.get() != aGL) {
     // release the texture handle in the previous gl context
     DeleteTextureHandle();
@@ -90,33 +91,24 @@ wr::WrExternalImage RenderMacIOSurfaceTextureHost::Lock(
   }
 
   if (!mTextureHandles[0]) {
+#ifdef XP_MACOSX
     MOZ_ASSERT(gl::GLContextCGL::Cast(mGL.get())->GetCGLContext());
+#else
+    MOZ_ASSERT(gl::GLContextEAGL::Cast(mGL.get())->GetEAGLContext());
+#endif
 
-    mCachedRendering = aRendering;
     // The result of GetPlaneCount() is 0 for single plane format, but it will
     // be 2 if the format has 2 planar data.
-    CreateTextureForPlane(0, mGL, mSurface, &(mTextureHandles[0]), aRendering);
+    CreateTextureForPlane(0, mGL, mSurface, &(mTextureHandles[0]));
     for (size_t i = 1; i < mSurface->GetPlaneCount(); ++i) {
-      CreateTextureForPlane(i, mGL, mSurface, &(mTextureHandles[i]),
-                            aRendering);
-    }
-    // update filter if filter was changed
-  } else if (IsFilterUpdateNecessary(aRendering)) {
-    ActivateBindAndTexParameteri(aGL, LOCAL_GL_TEXTURE0,
-                                 LOCAL_GL_TEXTURE_RECTANGLE_ARB,
-                                 mTextureHandles[0], aRendering);
-    // Cache new rendering filter.
-    mCachedRendering = aRendering;
-    for (size_t i = 1; i < mSurface->GetPlaneCount(); ++i) {
-      ActivateBindAndTexParameteri(aGL, LOCAL_GL_TEXTURE0,
-                                   LOCAL_GL_TEXTURE_RECTANGLE_ARB,
-                                   mTextureHandles[i], aRendering);
+      CreateTextureForPlane(i, mGL, mSurface, &(mTextureHandles[i]));
     }
   }
 
-  gfx::IntSize size = GetSize(aChannelIndex);
-  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), 0, 0,
-                                        size.width, size.height);
+  const auto uvs = GetUvCoords(GetSize(aChannelIndex));
+  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), uvs.first.x,
+                                        uvs.first.y, uvs.second.x,
+                                        uvs.second.y);
 }
 
 void RenderMacIOSurfaceTextureHost::Unlock() {}
@@ -142,7 +134,7 @@ gfx::SurfaceFormat RenderMacIOSurfaceTextureHost::GetFormat() const {
 }
 
 gfx::ColorDepth RenderMacIOSurfaceTextureHost::GetColorDepth() const {
-  return gfx::ColorDepth::COLOR_8;
+  return mSurface->GetColorDepth();
 }
 
 gfx::YUVRangedColorSpace RenderMacIOSurfaceTextureHost::GetYUVColorSpace()

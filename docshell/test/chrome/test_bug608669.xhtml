@@ -17,7 +17,7 @@ https://bugzilla.mozilla.org/show_bug.cgi?id=608669
   <!-- test code goes here -->
   <script type="application/javascript"><![CDATA[
 
-/** Test for Bug 608669 **/
+/** Test for Bug 608669 */
 SimpleTest.waitForExplicitFinish();
 
 addLoadEvent(nextTest);
@@ -42,8 +42,7 @@ function* doTest() {
     }
   };
 
-  var os = Cc["@mozilla.org/observer-service;1"].
-    getService(Ci.nsIObserverService);
+  var os = SpecialPowers.Services.obs;
   os.addObserver(observer, "chrome-document-global-created");
   os.addObserver(observer, "content-document-global-created");
 

@@ -1,4 +1,5 @@
-/* -*- Mode: C++; tab-width: 40; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set ts=2 et sw=2 tw=80: */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,6 +9,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include "imgIContainer.h"
 #include "ErrorList.h"
 #include "Units.h"
 #include "mozilla/AlreadyAddRefed.h"
@@ -39,31 +41,32 @@
 #include "nsStringFwd.h"
 #include "nsTArray.h"
 #include "nsTHashMap.h"
-#include "nsWidgetInitData.h"
+#include "mozilla/widget/InitData.h"
 #include "nsXULAppAPI.h"
-
-#ifdef MOZ_IS_GCC
-#  include "VsyncSource.h"
-#endif
 
 // forward declarations
 class nsIBidiKeyboard;
 class nsIRollupListener;
-class imgIContainer;
 class nsIContent;
 class ViewWrapper;
-class nsIScreen;
 class nsIRunnable;
-class nsUint64HashKey;
 
 namespace mozilla {
-class NativeEventData;
+enum class NativeKeyBindingsType : uint8_t;
+class VsyncDispatcher;
 class WidgetGUIEvent;
 class WidgetInputEvent;
 class WidgetKeyboardEvent;
 struct FontRange;
+enum class ColorScheme : uint8_t;
+enum class WindowButtonType : uint8_t;
 
-enum class StyleWindowShadow : uint8_t;
+enum class WindowShadow : uint8_t {
+  None,
+  Menu,
+  Panel,
+  Tooltip,
+};
 
 #if defined(MOZ_WIDGET_ANDROID)
 namespace ipc {
@@ -74,24 +77,21 @@ namespace dom {
 class BrowserChild;
 enum class CallerType : uint32_t;
 }  // namespace dom
+class WindowRenderer;
 namespace layers {
 class AsyncDragMetrics;
 class Compositor;
 class CompositorBridgeChild;
 struct FrameMetrics;
 class LayerManager;
-class LayerManagerComposite;
-class PLayerTransactionChild;
 class WebRenderBridgeChild;
 }  // namespace layers
-namespace gfx {
-class VsyncSource;
-}  // namespace gfx
 namespace widget {
 class TextEventDispatcher;
 class TextEventDispatcherListener;
 class CompositorWidget;
 class CompositorWidgetInitData;
+class Screen;
 }  // namespace widget
 namespace wr {
 class DisplayListBuilder;
@@ -118,23 +118,18 @@ typedef nsEventStatus (*EVENT_CALLBACK)(mozilla::WidgetGUIEvent* aEvent);
 typedef void* nsNativeWidget;
 
 /**
- * Flags for the GetNativeData and SetNativeData functions
+ * Values for the GetNativeData function
  */
 #define NS_NATIVE_WINDOW 0
 #define NS_NATIVE_GRAPHIC 1
-#define NS_NATIVE_TMP_WINDOW 2
 #define NS_NATIVE_WIDGET 3
-#define NS_NATIVE_DISPLAY 4
 #define NS_NATIVE_REGION 5
 #define NS_NATIVE_OFFSETX 6
 #define NS_NATIVE_OFFSETY 7
-#define NS_NATIVE_PLUGIN_PORT 8
 #define NS_NATIVE_SCREEN 9
 // The toplevel GtkWidget containing this nsIWidget:
 #define NS_NATIVE_SHELLWIDGET 10
 #define NS_NATIVE_OPENGL_CONTEXT 12
-// See RegisterPluginWindowForRemoteUpdates
-#define NS_NATIVE_PLUGIN_ID 13
 // This is available only with GetNativeData() in parent process.  Anybody
 // shouldn't access this pointer as a valid pointer since the result may be
 // special value like NS_ONLY_ONE_NATIVE_IME_CONTEXT.  So, the result is just
@@ -143,10 +138,6 @@ typedef void* nsNativeWidget;
 // XP code should use nsIWidget::GetNativeIMEContext() instead of using this.
 #define NS_RAW_NATIVE_IME_CONTEXT 14
 #define NS_NATIVE_WINDOW_WEBRTC_DEVICE_ID 15
-#ifdef XP_MACOSX
-#  define NS_NATIVE_PLUGIN_PORT_QD 100
-#  define NS_NATIVE_PLUGIN_PORT_CG 101
-#endif
 #ifdef XP_WIN
 #  define NS_NATIVE_TSF_THREAD_MGR 100
 #  define NS_NATIVE_TSF_CATEGORY_MGR 101
@@ -154,14 +145,10 @@ typedef void* nsNativeWidget;
 #  define NS_NATIVE_ICOREWINDOW 103  // winrt specific
 #endif
 #if defined(MOZ_WIDGET_GTK)
-// set/get nsPluginNativeWindowGtk, e10s specific
-#  define NS_NATIVE_PLUGIN_OBJECT_PTR 104
 #  define NS_NATIVE_EGL_WINDOW 106
 #endif
 #ifdef MOZ_WIDGET_ANDROID
 #  define NS_JAVA_SURFACE 100
-#  define NS_PRESENTATION_WINDOW 101
-#  define NS_PRESENTATION_SURFACE 102
 #endif
 
 #define MOZ_WIDGET_MAX_SIZE 16384
@@ -174,22 +161,6 @@ typedef void* nsNativeWidget;
       0xac, 0x45, 0x75, 0x26, 0x53, 0xb1, 0xc9, 0x80 \
     }                                                \
   }
-
-/**
- * Transparency modes
- */
-
-enum nsTransparencyMode {
-  eTransparencyOpaque = 0,   // Fully opaque
-  eTransparencyTransparent,  // Parts of the window may be transparent
-  eTransparencyGlass,  // Transparent parts of the window have Vista AeroGlass
-                       // effect applied
-  eTransparencyBorderlessGlass  // As above, but without a border around the
-                                // opaque areas when there would otherwise be
-                                // one with eTransparencyGlass
-  // If you add to the end here, you must update the serialization code in
-  // WidgetMessageUtils.h
-};
 
 /**
  * Cursor types.
@@ -279,8 +250,7 @@ enum nsTopLevelWidgetZPlacement {  // for PlaceBehind()
  */
 #define NS_WIDGET_MAC_APP_ACTIVATE_OBSERVER_TOPIC "mac_app_activate"
 
-namespace mozilla {
-namespace widget {
+namespace mozilla::widget {
 
 /**
  * Size constraints for setting the minimum and maximum size of a widget.
@@ -361,8 +331,7 @@ struct AutoObserverNotifier {
   static nsTHashMap<uint64_t, nsCOMPtr<nsIObserver>> sSavedObservers;
 };
 
-}  // namespace widget
-}  // namespace mozilla
+}  // namespace mozilla::widget
 
 /**
  * The base class for all the widgets. It provides the interface for
@@ -377,9 +346,9 @@ class nsIWidget : public nsISupports {
   typedef mozilla::layers::AsyncDragMetrics AsyncDragMetrics;
   typedef mozilla::layers::FrameMetrics FrameMetrics;
   typedef mozilla::layers::LayerManager LayerManager;
-  typedef mozilla::layers::LayerManagerComposite LayerManagerComposite;
+  typedef mozilla::WindowRenderer WindowRenderer;
   typedef mozilla::layers::LayersBackend LayersBackend;
-  typedef mozilla::layers::PLayerTransactionChild PLayerTransactionChild;
+  typedef mozilla::layers::LayersId LayersId;
   typedef mozilla::layers::ScrollableLayerGuid ScrollableLayerGuid;
   typedef mozilla::layers::ZoomConstraints ZoomConstraints;
   typedef mozilla::widget::IMEEnabled IMEEnabled;
@@ -406,10 +375,19 @@ class nsIWidget : public nsISupports {
   typedef mozilla::CSSToScreenScale CSSToScreenScale;
   typedef mozilla::DesktopIntRect DesktopIntRect;
   typedef mozilla::DesktopPoint DesktopPoint;
+  typedef mozilla::DesktopIntPoint DesktopIntPoint;
   typedef mozilla::DesktopRect DesktopRect;
   typedef mozilla::DesktopSize DesktopSize;
   typedef mozilla::CSSPoint CSSPoint;
   typedef mozilla::CSSRect CSSRect;
+
+  using InitData = mozilla::widget::InitData;
+  using WindowType = mozilla::widget::WindowType;
+  using PopupType = mozilla::widget::PopupType;
+  using PopupLevel = mozilla::widget::PopupLevel;
+  using BorderStyle = mozilla::widget::BorderStyle;
+  using TransparencyMode = mozilla::widget::TransparencyMode;
+  using Screen = mozilla::widget::Screen;
 
   // Used in UpdateThemeGeometries.
   struct ThemeGeometry {
@@ -430,7 +408,7 @@ class nsIWidget : public nsISupports {
       : mLastChild(nullptr),
         mPrevSibling(nullptr),
         mOnDestroyCalled(false),
-        mWindowType(eWindowType_child),
+        mWindowType(WindowType::Child),
         mZIndex(0)
 
   {
@@ -468,10 +446,10 @@ class nsIWidget : public nsISupports {
    * @param     aInitData     data that is used for widget initialization
    *
    */
-  [[nodiscard]] virtual nsresult Create(
-      nsIWidget* aParent, nsNativeWidget aNativeParent,
-      const LayoutDeviceIntRect& aRect,
-      nsWidgetInitData* aInitData = nullptr) = 0;
+  [[nodiscard]] virtual nsresult Create(nsIWidget* aParent,
+                                        nsNativeWidget aNativeParent,
+                                        const LayoutDeviceIntRect& aRect,
+                                        InitData* = nullptr) = 0;
 
   /*
    * As above, but with aRect specified in DesktopPixel units (for top-level
@@ -484,7 +462,7 @@ class nsIWidget : public nsISupports {
   [[nodiscard]] virtual nsresult Create(nsIWidget* aParent,
                                         nsNativeWidget aNativeParent,
                                         const DesktopIntRect& aRect,
-                                        nsWidgetInitData* aInitData = nullptr) {
+                                        InitData* aInitData = nullptr) {
     LayoutDeviceIntRect devPixRect =
         RoundedToInt(aRect * GetDesktopToDeviceScale());
     return Create(aParent, aNativeParent, devPixRect, aInitData);
@@ -507,7 +485,7 @@ class nsIWidget : public nsISupports {
    * understood code, and shouldn't be used in new code.
    */
   virtual already_AddRefed<nsIWidget> CreateChild(
-      const LayoutDeviceIntRect& aRect, nsWidgetInitData* aInitData = nullptr,
+      const LayoutDeviceIntRect& aRect, InitData* = nullptr,
       bool aForceUseIWidgetParent = false) = 0;
 
   /**
@@ -531,17 +509,22 @@ class nsIWidget : public nsISupports {
    * nsView in connection with AttachViewToTopLevel above.
    */
   virtual void SetAttachedWidgetListener(nsIWidgetListener* aListener) = 0;
-  virtual nsIWidgetListener* GetAttachedWidgetListener() = 0;
+  virtual nsIWidgetListener* GetAttachedWidgetListener() const = 0;
   virtual void SetPreviouslyAttachedWidgetListener(
       nsIWidgetListener* aListener) = 0;
   virtual nsIWidgetListener* GetPreviouslyAttachedWidgetListener() = 0;
+
+  /**
+   * Notifies the root widget of a non-blank paint.
+   */
+  virtual void DidGetNonBlankPaint() {}
 
   /**
    * Accessor functions to get and set the listener which handles various
    * actions for the widget.
    */
   //@{
-  virtual nsIWidgetListener* GetWidgetListener() = 0;
+  virtual nsIWidgetListener* GetWidgetListener() const = 0;
   virtual void SetWidgetListener(nsIWidgetListener* alistener) = 0;
   //@}
 
@@ -600,6 +583,11 @@ class nsIWidget : public nsISupports {
   virtual float GetDPI() = 0;
 
   /**
+   * Fallback DPI for when there's no widget available.
+   */
+  static float GetFallbackDPI();
+
+  /**
    * Return the scaling factor between device pixels and the platform-
    * dependent "desktop pixels" used to manage window positions on a
    * potentially multi-screen, mixed-resolution desktop.
@@ -622,6 +610,11 @@ class nsIWidget : public nsISupports {
    * overriding the system setting.
    */
   mozilla::CSSToLayoutDeviceScale GetDefaultScale();
+
+  /**
+   * Fallback default scale for when there's no widget available.
+   */
+  static mozilla::CSSToLayoutDeviceScale GetFallbackDefaultScale();
 
   /**
    * Return the first child of this widget.  Will return null if
@@ -700,20 +693,18 @@ class nsIWidget : public nsISupports {
   virtual bool IsVisible() const = 0;
 
   /**
+   * Returns whether the window has allocated resources so
+   * we can paint into it.
+   * Recently it's used on Linux/Gtk where we should not paint
+   * to invisible window.
+   */
+  virtual bool IsMapped() const { return true; }
+
+  /**
    * Perform platform-dependent sanity check on a potential window position.
    * This is guaranteed to work only for top-level windows.
-   *
-   * @param aAllowSlop: if true, allow the window to slop offscreen;
-   *                    the window should be partially visible. if false,
-   *                    force the entire window onscreen (or at least
-   *                    the upper-left corner, if it's too large).
-   * @param aX in: an x position expressed in screen coordinates.
-   *           out: the x position constrained to fit on the screen(s).
-   * @param aY in: an y position expressed in screen coordinates.
-   *           out: the y position constrained to fit on the screen(s).
-   *
-   **/
-  virtual void ConstrainPosition(bool aAllowSlop, int32_t* aX, int32_t* aY) = 0;
+   */
+  virtual void ConstrainPosition(DesktopIntPoint&) = 0;
 
   /**
    * NOTE:
@@ -950,14 +941,25 @@ class nsIWidget : public nsISupports {
    *  icon and window title text. Glass desktops will refuse to set
    *  dimensions between zero and size < system default.
    */
-  virtual nsresult SetNonClientMargins(LayoutDeviceIntMargin& aMargins) = 0;
+  virtual nsresult SetNonClientMargins(const LayoutDeviceIntMargin&) = 0;
 
+  /**
+   * Sets the region around the edges of the window that can be dragged to
+   * resize the window. All four sides of the window will get the same margin.
+   */
+  virtual void SetResizeMargin(mozilla::LayoutDeviceIntCoord aResizeMargin) = 0;
   /**
    * Get the client offset from the window origin.
    *
    * @return the x and y of the offset.
    */
   virtual LayoutDeviceIntPoint GetClientOffset() = 0;
+
+  /**
+   * Returns the slop from the screen edges in device pixels.
+   * @see Window.screenEdgeSlop{X,Y}
+   */
+  virtual LayoutDeviceIntPoint GetScreenEdgeSlop() { return {}; }
 
   /**
    * Equivalent to GetClientBounds but only returns the size.
@@ -1012,21 +1014,14 @@ class nsIWidget : public nsISupports {
    */
   virtual void SetCursor(const Cursor&) = 0;
 
+  virtual void SetCustomCursorAllowed(bool) = 0;
+
   static nsIntSize CustomCursorSize(const Cursor&);
 
   /**
    * Get the window type of this widget.
    */
-  nsWindowType WindowType() { return mWindowType; }
-
-  /**
-   * Determines if this widget is one of the three types of plugin widgets.
-   */
-  bool IsPlugin() {
-    return mWindowType == eWindowType_plugin ||
-           mWindowType == eWindowType_plugin_ipc_chrome ||
-           mWindowType == eWindowType_plugin_ipc_content;
-  }
+  WindowType GetWindowType() const { return mWindowType; }
 
   /**
    * Set the transparency mode of the top-level window containing this widget.
@@ -1045,108 +1040,20 @@ class nsIWidget : public nsISupports {
    * all pixels are reset to 1.
    * Pixel RGB color values are already premultiplied with alpha channel values.
    */
-  virtual void SetTransparencyMode(nsTransparencyMode aMode) = 0;
+  virtual void SetTransparencyMode(TransparencyMode aMode) = 0;
 
   /**
    * Get the transparency mode of the top-level window that contains this
    * widget.
    */
-  virtual nsTransparencyMode GetTransparencyMode() = 0;
-
-  /**
-   * This represents a command to set the bounds and clip region of
-   * a child widget.
-   */
-  struct Configuration {
-    nsCOMPtr<nsIWidget> mChild;
-    uintptr_t mWindowID;  // e10s specific, the unique plugin port id
-    bool mVisible;        // e10s specific, widget visibility
-    LayoutDeviceIntRect mBounds;
-    CopyableTArray<LayoutDeviceIntRect> mClipRegion;
-  };
-
-  /**
-   * Sets the clip region of each mChild (which must actually be a child
-   * of this widget) to the union of the pixel rects given in
-   * mClipRegion, all relative to the top-left of the child
-   * widget. Clip regions are not implemented on all platforms and only
-   * need to actually work for children that are plugins.
-   *
-   * Also sets the bounds of each child to mBounds.
-   *
-   * This will invalidate areas of the children that have changed, but
-   * does not need to invalidate any part of this widget.
-   *
-   * Children should be moved in the order given; the array is
-   * sorted so to minimize unnecessary invalidation if children are
-   * moved in that order.
-   */
-  virtual nsresult ConfigureChildren(
-      const nsTArray<Configuration>& aConfigurations) = 0;
-  virtual nsresult SetWindowClipRegion(
-      const nsTArray<LayoutDeviceIntRect>& aRects,
-      bool aIntersectWithExisting) = 0;
-
-  /**
-   * Appends to aRects the rectangles constituting this widget's clip
-   * region. If this widget is not clipped, appends a single rectangle
-   * (0, 0, bounds.width, bounds.height).
-   */
-  virtual void GetWindowClipRegion(nsTArray<LayoutDeviceIntRect>* aRects) = 0;
-
-  /**
-   * Register or unregister native plugin widgets which receive Configuration
-   * data from the content process via the compositor.
-   *
-   * Lookups are used by the main thread via the compositor to lookup widgets
-   * based on a unique window id. On Windows and Linux this is the
-   * NS_NATIVE_PLUGIN_PORT (hwnd/XID). This tracking maintains a reference to
-   * widgets held. Consumers are responsible for removing widgets from this
-   * list.
-   */
-  virtual void RegisterPluginWindowForRemoteUpdates() = 0;
-  virtual void UnregisterPluginWindowForRemoteUpdates() = 0;
-  static nsIWidget* LookupRegisteredPluginWindow(uintptr_t aWindowID);
-
-  /**
-   * Iterates across the list of registered plugin widgets and updates thier
-   * visibility based on which plugins are included in the 'visible' list.
-   *
-   * The compositor knows little about tabs, but it does know which plugin
-   * widgets are currently included in the visible layer tree. It calls this
-   * helper to hide widgets it knows nothing about.
-   */
-  static void UpdateRegisteredPluginWindowVisibility(
-      uintptr_t aOwnerWidget, nsTArray<uintptr_t>& aPluginIds);
-
-#if defined(XP_WIN)
-  /**
-   * Iterates over the list of registered plugins and for any that are owned
-   * by aOwnerWidget and visible it takes a snapshot.
-   *
-   * @param aOwnerWidget only captures visible widgets owned by this
-   */
-  static void CaptureRegisteredPlugins(uintptr_t aOwnerWidget);
-
-  /**
-   * Take a scroll capture for this widget if possible.
-   */
-  virtual void UpdateScrollCapture() = 0;
-
-  /**
-   * Creates an async ImageContainer to hold scroll capture images that can be
-   * used if the plugin is hidden during scroll.
-   * @return the async container ID of the created ImageContainer.
-   */
-  virtual uint64_t CreateScrollCaptureContainer() = 0;
-#endif
+  virtual TransparencyMode GetTransparencyMode() = 0;
 
   /**
    * Set the shadow style of the window.
    *
    * Ignored on child widgets and on non-Mac platforms.
    */
-  virtual void SetWindowShadowStyle(mozilla::StyleWindowShadow aStyle) = 0;
+  virtual void SetWindowShadowStyle(mozilla::WindowShadow aStyle) = 0;
 
   /**
    * Set the opacity of the window.
@@ -1165,11 +1072,23 @@ class nsIWidget : public nsISupports {
   virtual void SetWindowTransform(const mozilla::gfx::Matrix& aTransform) {}
 
   /**
-   * Set whether the window should ignore mouse events or not.
-   *
-   * This is only used on popup windows.
+   * Set the preferred color-scheme for the widget.
+   * Ignored on non-Mac platforms.
    */
-  virtual void SetWindowMouseTransparent(bool aIsTransparent) {}
+  virtual void SetColorScheme(const mozilla::Maybe<mozilla::ColorScheme>&) {}
+
+  /**
+   * Set whether the window should ignore mouse events or not, and if it should
+   * not, what input margin should it use.
+   *
+   * This is only used on popup windows. The margin is only implemented on
+   * Linux.
+   */
+  struct InputRegion {
+    bool mFullyTransparent = false;
+    mozilla::LayoutDeviceIntCoord mMargin = 0;
+  };
+  virtual void SetInputRegion(const InputRegion&) {}
 
   /*
    * On macOS, this method shows or hides the pill button in the titlebar
@@ -1252,21 +1171,16 @@ class nsIWidget : public nsISupports {
   /**
    * Return the screen the widget is in, or null if we don't know.
    */
-  virtual already_AddRefed<nsIScreen> GetWidgetScreen() = 0;
+  virtual already_AddRefed<Screen> GetWidgetScreen() = 0;
 
   /**
    * Put the toplevel window into or out of fullscreen mode.
-   * If aTargetScreen is given, attempt to go fullscreen on that screen,
-   * if possible.  (If not, it behaves as if aTargetScreen is null.)
-   * If !aFullScreen, aTargetScreen is ignored.
-   * aTargetScreen support is currently only implemented on Windows.
    *
    * @return NS_OK if the widget is setup properly for fullscreen and
    * FullscreenChanged callback has been or will be called. If other
    * value is returned, the caller should continue the change itself.
    */
-  virtual nsresult MakeFullScreen(bool aFullScreen,
-                                  nsIScreen* aTargetScreen = nullptr) = 0;
+  virtual nsresult MakeFullScreen(bool aFullScreen) = 0;
 
   /**
    * Same as MakeFullScreen, except that, on systems which natively
@@ -1274,9 +1188,8 @@ class nsIWidget : public nsISupports {
    * requests that behavior.
    * It is currently only supported on macOS 10.7+.
    */
-  virtual nsresult MakeFullScreenWithNativeTransition(
-      bool aFullScreen, nsIScreen* aTargetScreen = nullptr) {
-    return MakeFullScreen(aFullScreen, aTargetScreen);
+  virtual nsresult MakeFullScreenWithNativeTransition(bool aFullScreen) {
+    return MakeFullScreen(aFullScreen);
   }
 
   /**
@@ -1291,27 +1204,17 @@ class nsIWidget : public nsISupports {
   };
 
   /**
-   * Return the widget's LayerManager. The layer tree for that
-   * LayerManager is what gets rendered to the widget.
+   * Return the widget's LayerManager. The layer tree for that LayerManager is
+   * what gets rendered to the widget.
+   *
+   * Note that this tries to create a renderer if it doesn't exist.
    */
-  inline LayerManager* GetLayerManager() {
-    return GetLayerManager(nullptr, mozilla::layers::LayersBackend::LAYERS_NONE,
-                           LAYER_MANAGER_CURRENT);
-  }
-
-  inline LayerManager* GetLayerManager(LayerManagerPersistence aPersistence) {
-    return GetLayerManager(nullptr, mozilla::layers::LayersBackend::LAYERS_NONE,
-                           aPersistence);
-  }
+  virtual WindowRenderer* GetWindowRenderer() = 0;
 
   /**
-   * Like GetLayerManager(), but prefers creating a layer manager of
-   * type |aBackendHint| instead of what would normally be created.
-   * LayersBackend::LAYERS_NONE means "no hint".
+   * Returns whether there's an existing window renderer.
    */
-  virtual LayerManager* GetLayerManager(
-      PLayerTransactionChild* aShadowManager, LayersBackend aBackendHint,
-      LayerManagerPersistence aPersistence = LAYER_MANAGER_CURRENT) = 0;
+  virtual bool HasWindowRenderer() const = 0;
 
   /**
    * Called before each layer manager transaction to allow any preparation
@@ -1320,14 +1223,6 @@ class nsIWidget : public nsISupports {
    * Always called on the main thread.
    */
   virtual void PrepareWindowEffects() = 0;
-
-  /**
-   * Called on the main thread at the end of WebRender display list building.
-   */
-  virtual void AddWindowOverlayWebRenderCommands(
-      mozilla::layers::WebRenderBridgeChild* aWrBridge,
-      mozilla::wr::DisplayListBuilder& aBuilder,
-      mozilla::wr::IpcResourceUpdateQueue& aResources) {}
 
   /**
    * Called when Gecko knows which themed widgets exist in this window.
@@ -1371,7 +1266,6 @@ class nsIWidget : public nsISupports {
   virtual void AddChild(nsIWidget* aChild) = 0;
   virtual void RemoveChild(nsIWidget* aChild) = 0;
   virtual void* GetNativeData(uint32_t aDataType) = 0;
-  virtual void SetNativeData(uint32_t aDataType, uintptr_t aVal) = 0;
   virtual void FreeNativeData(void* data, uint32_t aDataType) = 0;  //~~~
 
   //@}
@@ -1421,13 +1315,20 @@ class nsIWidget : public nsISupports {
     return mozilla::LayoutDeviceToLayoutDeviceMatrix4x4();
   }
 
+  mozilla::LayoutDeviceIntPoint WidgetToTopLevelWidgetOffset() {
+    return mozilla::LayoutDeviceIntPoint::Round(
+        WidgetToTopLevelWidgetTransform().TransformPoint(
+            mozilla::LayoutDevicePoint()));
+  }
+
   /**
-   * Given the specified client size, return the corresponding window size,
-   * which includes the area for the borders and titlebar. This method
-   * should work even when the window is not yet visible.
+   * Returns the margins that are applied to go from client sizes to window
+   * sizes (which includes window borders and titlebar).
+   * This method should work even when the window is not yet visible.
    */
-  virtual LayoutDeviceIntSize ClientToWindowSize(
-      const LayoutDeviceIntSize& aClientSize) = 0;
+  virtual LayoutDeviceIntMargin ClientToWindowMargin() { return {}; }
+
+  LayoutDeviceIntSize ClientToWindowSizeDifference();
 
   /**
    * Dispatches an event to the widget
@@ -1440,6 +1341,12 @@ class nsIWidget : public nsISupports {
    * No-op in the child process.
    */
   virtual void DispatchEventToAPZOnly(mozilla::WidgetInputEvent* aEvent) = 0;
+
+  /*
+   * Dispatch a gecko event for this widget.
+   * Returns true if it's consumed.  Otherwise, false.
+   */
+  virtual bool DispatchWindowEvent(mozilla::WidgetGUIEvent& event) = 0;
 
   // A structure that groups the statuses from APZ dispatch and content
   // dispatch.
@@ -1472,22 +1379,33 @@ class nsIWidget : public nsISupports {
   virtual bool AsyncPanZoomEnabled() const = 0;
 
   /**
+   */
+  virtual void SwipeFinished() = 0;
+
+  /**
    * Enables the dropping of files to a widget.
    */
   virtual void EnableDragDrop(bool aEnable) = 0;
   virtual nsresult AsyncEnableDragDrop(bool aEnable) = 0;
 
   /**
-   * Enables/Disables system mouse capture.
-   * @param aCapture true enables mouse capture, false disables mouse capture
+   * Classify the window for the window manager. Mostly for X11.
+   *
+   *  @param xulWinType The window type. Characters other than [A-Za-z0-9_-] are
+   *                    converted to '_'. Anything before the first colon is
+   *                    assigned to name, anything after it to role. If there's
+   *                    no colon, assign the whole thing to both role and name.
+   *
+   * @param xulWinClass The window class. If set, overrides the normal value.
+   *                    Otherwise, the program class it used.
+   *
+   * @param xulWinName The window name. If set, overrides the value specified in
+   *                   window type. Otherwise, name from window type is used.
    *
    */
-  virtual void CaptureMouse(bool aCapture) = 0;
-
-  /**
-   * Classify the window for the window manager. Mostly for X11.
-   */
-  virtual void SetWindowClass(const nsAString& xulWinType) = 0;
+  virtual void SetWindowClass(const nsAString& xulWinType,
+                              const nsAString& xulWinClass,
+                              const nsAString& xulWinName) = 0;
 
   /**
    * Enables/Disables system capture of any and all events that would cause a
@@ -1496,8 +1414,7 @@ class nsIWidget : public nsISupports {
    * @param aDoCapture true enables capture, false disables capture
    *
    */
-  virtual void CaptureRollupEvents(nsIRollupListener* aListener,
-                                   bool aDoCapture) = 0;
+  virtual void CaptureRollupEvents(bool aDoCapture) = 0;
 
   /**
    * Bring this window to the user's attention.  This is intended to be a more
@@ -1518,19 +1435,6 @@ class nsIWidget : public nsISupports {
    */
   virtual bool HasPendingInputEvent() = 0;
 
-  /**
-   * If set to true, the window will draw its contents into the titlebar
-   * instead of below it.
-   *
-   * Ignored on any platform that does not support it. Ignored by widgets that
-   * do not represent windows.
-   * May result in a resize event, so should only be called from places where
-   * reflow and painting is allowed.
-   *
-   * @param aState Whether drawing into the titlebar should be activated.
-   */
-  virtual void SetDrawsInTitlebar(bool aState) = 0;
-
   /*
    * Determine whether the widget shows a resize widget. If it does,
    * aResizerRect returns the resizer's rect.
@@ -1541,13 +1445,6 @@ class nsIWidget : public nsISupports {
    * @return Whether a resize widget is shown.
    */
   virtual bool ShowsResizeIndicator(LayoutDeviceIntRect* aResizerRect) = 0;
-
-  /**
-   * Begin a window resizing drag, based on the event passed in.
-   */
-  [[nodiscard]] virtual nsresult BeginResizeDrag(
-      mozilla::WidgetGUIEvent* aEvent, int32_t aHorizontal,
-      int32_t aVertical) = 0;
 
   // TODO: Make this an enum class with MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS or
   //       EnumSet class.
@@ -1689,10 +1586,14 @@ class nsIWidget : public nsISupports {
     ALL_BITS = (1 << 4) - 1
   };
   /*
-   * TouchpadPinchPhase states for SynthesizeNativeTouchPadPinch. Match
-   * Phase states in nsIDOMWindowUtils.idl.
+   * TouchpadGesturePhase states for SynthesizeNativeTouchPadPinch and
+   * SynthesizeNativeTouchpadPan. Match phase states in nsIDOMWindowUtils.idl.
    */
-  enum TouchpadPinchPhase { PHASE_BEGIN = 0, PHASE_UPDATE = 1, PHASE_END = 2 };
+  enum TouchpadGesturePhase {
+    PHASE_BEGIN = 0,
+    PHASE_UPDATE = 1,
+    PHASE_END = 2
+  };
   /*
    * Create a new or update an existing touch pointer on the digitizer.
    * To trigger os level gestures, individual touch points should
@@ -1717,10 +1618,9 @@ class nsIWidget : public nsISupports {
   /*
    * See nsIDOMWindowUtils.sendNativeTouchpadPinch().
    */
-  virtual nsresult SynthesizeNativeTouchPadPinch(TouchpadPinchPhase aEventPhase,
-                                                 float aScale,
-                                                 LayoutDeviceIntPoint aPoint,
-                                                 int32_t aModifierFlags) = 0;
+  virtual nsresult SynthesizeNativeTouchPadPinch(
+      TouchpadGesturePhase aEventPhase, float aScale,
+      LayoutDeviceIntPoint aPoint, int32_t aModifierFlags) = 0;
 
   /*
    * Helper for simulating a simple tap event with one touch point. When
@@ -1734,10 +1634,13 @@ class nsIWidget : public nsISupports {
                                             bool aLongTap,
                                             nsIObserver* aObserver);
 
-  virtual nsresult SynthesizeNativePenInput(
-      uint32_t aPointerId, TouchPointerState aPointerState,
-      LayoutDeviceIntPoint aPoint, double aPressure, uint32_t aRotation,
-      int32_t aTiltX, int32_t aTiltY, nsIObserver* aObserver) = 0;
+  virtual nsresult SynthesizeNativePenInput(uint32_t aPointerId,
+                                            TouchPointerState aPointerState,
+                                            LayoutDeviceIntPoint aPoint,
+                                            double aPressure,
+                                            uint32_t aRotation, int32_t aTiltX,
+                                            int32_t aTiltY, int32_t aButton,
+                                            nsIObserver* aObserver) = 0;
 
   /*
    * Cancels all active simulated touch input points and pending long taps.
@@ -1754,6 +1657,15 @@ class nsIWidget : public nsISupports {
    */
   virtual nsresult SynthesizeNativeTouchpadDoubleTap(
       LayoutDeviceIntPoint aPoint, uint32_t aModifierFlags) = 0;
+
+  /*
+   * See nsIDOMWindowUtils.sendNativeTouchpadPan().
+   */
+  virtual nsresult SynthesizeNativeTouchpadPan(TouchpadGesturePhase aEventPhase,
+                                               LayoutDeviceIntPoint aPoint,
+                                               double aDeltaX, double aDeltaY,
+                                               int32_t aModifierFlags,
+                                               nsIObserver* aObserver) = 0;
 
   virtual void StartAsyncScrollbarDrag(
       const AsyncDragMetrics& aDragMetrics) = 0;
@@ -1773,6 +1685,8 @@ class nsIWidget : public nsISupports {
    */
   virtual void StopAsyncAutoscroll(const ScrollableLayerGuid& aGuid) = 0;
 
+  virtual LayersId GetRootLayerTreeId() = 0;
+
   // If this widget supports out-of-process compositing, it can override
   // this method to provide additional information to the compositor.
   virtual void GetCompositorWidgetInitData(
@@ -1788,23 +1702,13 @@ class nsIWidget : public nsISupports {
     return NS_ERROR_NOT_IMPLEMENTED;
   }
 
-  // Get rectangle of the screen where the window is placed.
-  // It's used to detect popup overflow under Wayland because
-  // Screenmanager does not work under it.
-#ifdef MOZ_WAYLAND
-  virtual nsresult GetScreenRect(LayoutDeviceIntRect* aRect) {
-    return NS_ERROR_NOT_IMPLEMENTED;
+  /**
+   * Wayland specific routines.
+   */
+  virtual LayoutDeviceIntSize GetMoveToRectPopupSize() const {
+    NS_WARNING("GetLayoutPopupRect implemented only for wayland");
+    return LayoutDeviceIntSize();
   }
-  virtual nsRect GetPreferredPopupRect() {
-    NS_WARNING("GetPreferredPopupRect implemented only for wayland");
-    return nsRect(0, 0, 0, 0);
-  }
-  virtual void FlushPreferredPopupRect() {
-    NS_WARNING("FlushPreferredPopupRect implemented only for wayland");
-    return;
-  }
-
-#endif
 
   /**
    * If this widget uses native pointer lock instead of warp-to-center
@@ -1949,13 +1853,9 @@ class nsIWidget : public nsISupports {
    * Retrieve edit commands when the key combination of aEvent is used
    * in platform native applications.
    */
-  enum NativeKeyBindingsType : uint8_t {
-    NativeKeyBindingsForSingleLineEditor,
-    NativeKeyBindingsForMultiLineEditor,
-    NativeKeyBindingsForRichTextEditor
-  };
   MOZ_CAN_RUN_SCRIPT virtual bool GetEditCommands(
-      NativeKeyBindingsType aType, const mozilla::WidgetKeyboardEvent& aEvent,
+      mozilla::NativeKeyBindingsType aType,
+      const mozilla::WidgetKeyboardEvent& aEvent,
       nsTArray<mozilla::CommandInt>& aCommands);
 
   /*
@@ -2076,15 +1976,32 @@ class nsIWidget : public nsISupports {
   virtual CompositorBridgeChild* GetRemoteRenderer() { return nullptr; }
 
   /**
+   * If there is a remote renderer, pause or resume it.
+   */
+  virtual void PauseOrResumeCompositor(bool aPause);
+
+  /**
    * Clear WebRender resources
    */
   virtual void ClearCachedWebrenderResources() {}
 
   /**
-   * If this widget has its own vsync source, return it, otherwise return
-   * nullptr. An example of such local source would be Wayland frame callbacks.
+   * Clear WebRender animation resources
    */
-  virtual RefPtr<mozilla::gfx::VsyncSource> GetVsyncSource() { return nullptr; }
+  virtual void ClearWebrenderAnimationResources() {}
+
+  /**
+   * Request fast snapshot at RenderCompositor of WebRender.
+   * Since readback of Windows DirectComposition is very slow.
+   */
+  virtual bool SetNeedFastSnaphot() { return false; }
+
+  /**
+   * If this widget has its own vsync dispatcher, return it, otherwise return
+   * nullptr. An example of such a local vsync dispatcher would be Wayland frame
+   * callbacks.
+   */
+  virtual RefPtr<mozilla::VsyncDispatcher> GetVsyncDispatcher();
 
   /**
    * Returns true if the widget requires synchronous repaints on resize,
@@ -2117,6 +2034,11 @@ class nsIWidget : public nsISupports {
   virtual TextEventDispatcherListener*
   GetNativeTextEventDispatcherListener() = 0;
 
+  /**
+   * Trigger an animation to zoom to the given |aRect|.
+   * |aRect| should be relative to the layout viewport of the widget's root
+   * document
+   */
   virtual void ZoomToRect(const uint32_t& aPresShellId,
                           const ScrollableLayerGuid::ViewID& aViewId,
                           const CSSRect& aRect, const uint32_t& aFlags) = 0;
@@ -2182,6 +2104,24 @@ class nsIWidget : public nsISupports {
    */
   virtual double GetDefaultScaleInternal() { return 1.0; }
 
+  using WindowButtonType = mozilla::WindowButtonType;
+
+  /**
+   * Layout uses this to alert the widget to the client rect representing
+   * the window maximize button.  An empty rect indicates there is no
+   * maximize button (for example, in fullscreen).  This is only implemented
+   * on Windows.
+   */
+  virtual void SetWindowButtonRect(WindowButtonType aButtonType,
+                                   const LayoutDeviceIntRect& aClientRect) {}
+
+#ifdef DEBUG
+  virtual nsresult SetHiDPIMode(bool aHiDPI) {
+    return NS_ERROR_NOT_IMPLEMENTED;
+  }
+  virtual nsresult RestoreHiDPIMode() { return NS_ERROR_NOT_IMPLEMENTED; }
+#endif
+
  protected:
   // keep the list of children.  We also keep track of our siblings.
   // The ownership model is as follows: parent holds a strong ref to
@@ -2195,7 +2135,7 @@ class nsIWidget : public nsISupports {
   nsIWidget* MOZ_NON_OWNING_REF mPrevSibling;
   // When Destroy() is called, the sub class should set this true.
   bool mOnDestroyCalled;
-  nsWindowType mWindowType;
+  WindowType mWindowType;
   int32_t mZIndex;
 };
 

@@ -2,18 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../src/calFilter.js */
-/* import-globals-from agenda-listbox.js */
-/* import-globals-from calendar-command-controller.js */
-/* import-globals-from calendar-dnd-listener.js */
-/* import-globals-from calendar-task-tree-view.js */
-/* import-globals-from calendar-views-utils.js */
-
-/* globals MozXULElement */
+/* globals MozXULElement, calendarController, invokeEventDragSession, CalendarTaskTreeView,
+    calFilter, TodayPane, currentView */
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
+  const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+  const { PluralForm } = ChromeUtils.importESModule("resource:///modules/PluralForm.sys.mjs");
 
   /**
    * An observer for the calendar event data source. This keeps the unifinder
@@ -26,7 +21,7 @@
     /**
      * Creates and connects the new observer to a CalendarTaskTree and sets up Query Interface.
      *
-     * @param {CalendarTaskTree} taskTree    The tree to observe.
+     * @param {CalendarTaskTree} taskTree - The tree to observe.
      */
     constructor(taskTree) {
       this.tree = taskTree;
@@ -44,25 +39,37 @@
     }
 
     onAddItem(item) {
+      if (!this.tree.hasBeenVisible) {
+        return;
+      }
+
       if (item.isTodo()) {
         this.tree.mTreeView.addItems(this.tree.mFilter.getOccurrences(item));
       }
     }
 
     onModifyItem(newItem, oldItem) {
+      if (!this.tree.hasBeenVisible) {
+        return;
+      }
+
       if (newItem.isTodo() || oldItem.isTodo()) {
         this.tree.mTreeView.modifyItems(
           this.tree.mFilter.getOccurrences(newItem),
           this.tree.mFilter.getOccurrences(oldItem)
         );
         // We also need to notify potential listeners.
-        let event = document.createEvent("Events");
+        const event = document.createEvent("Events");
         event.initEvent("select", true, false);
         this.tree.dispatchEvent(event);
       }
     }
 
     onDeleteItem(deletedItem) {
+      if (!this.tree.hasBeenVisible) {
+        return;
+      }
+
       if (deletedItem.isTodo()) {
         this.tree.mTreeView.removeItems(this.tree.mFilter.getOccurrences(deletedItem));
       }
@@ -107,7 +114,7 @@
   /**
    * Custom element for table-style display of tasks (rows and columns).
    *
-   * @extends {MozTree}
+   * @augments {MozTree}
    */
   class CalendarTaskTree extends customElements.get("tree") {
     connectedCallback() {
@@ -122,91 +129,89 @@
           <treecols>
             <treecol is="treecol-image" id="calendar-task-tree-col-completed"
                      class="calendar-task-tree-col-completed"
-                     minwidth="19"
+                     style="min-width: 18px"
                      fixed="true"
                      cycler="true"
                      sortKey="completedDate"
                      itemproperty="completed"
-                     src="chrome://messenger/skin/icons/checkbox.svg"
-                     label="&calendar.unifinder.tree.done.label;"
-                     tooltiptext="&calendar.unifinder.tree.done.tooltip2;"/>
+                     closemenu="none"
+                     src="chrome://messenger/skin/icons/new/compact/checkbox.svg"
+                     data-l10n-id="calendar-event-listing-column-completed"/>
             <splitter class="tree-splitter"/>
             <treecol is="treecol-image" id="calendar-task-tree-col-priority"
                      class="calendar-task-tree-col-priority"
-                     minwidth="17"
+                     style="min-width: 17px"
                      fixed="true"
                      itemproperty="priority"
-                     src="chrome://calendar/skin/shared/icons/priority.svg"
-                     label="&calendar.unifinder.tree.priority.label;"
-                     tooltiptext="&calendar.unifinder.tree.priority.tooltip2;"/>
+                     closemenu="none"
+                     src="chrome://messenger/skin/icons/new/compact/priority.svg"
+                     data-l10n-id="calendar-event-listing-column-priority"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-title"
                      itemproperty="title"
-                     flex="1"
-                     label="&calendar.unifinder.tree.title.label;"
-                     tooltiptext="&calendar.unifinder.tree.title.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-title"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-entrydate"
                      itemproperty="entryDate"
-                     flex="1"
-                     label="&calendar.unifinder.tree.startdate.label;"
-                     tooltiptext="&calendar.unifinder.tree.startdate.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-start-date"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-duedate"
                      itemproperty="dueDate"
-                     flex="1"
-                     label="&calendar.unifinder.tree.duedate.label;"
-                     tooltiptext="&calendar.unifinder.tree.duedate.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-due-date"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-duration"
                      itemproperty="duration"
                      sortKey="dueDate"
-                     flex="1"
-                     label="&calendar.unifinder.tree.duration.label;"
-                     tooltiptext="&calendar.unifinder.tree.duration.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-time-until-due"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-completeddate"
                      itemproperty="completedDate"
-                     flex="1"
-                     label="&calendar.unifinder.tree.completeddate.label;"
-                     tooltiptext="&calendar.unifinder.tree.completeddate.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-completed-date"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-percentcomplete"
                      itemproperty="percentComplete"
-                     flex="1"
-                     minwidth="40"
-                     label="&calendar.unifinder.tree.percentcomplete.label;"
-                     tooltiptext="&calendar.unifinder.tree.percentcomplete.tooltip2;"/>
+                     style="flex: 1 auto; min-width: 40px;"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-percent-complete"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-categories"
                      itemproperty="categories"
-                     flex="1"
-                     label="&calendar.unifinder.tree.categories.label;"
-                     tooltiptext="&calendar.unifinder.tree.categories.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-category"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-location"
                      itemproperty="location"
-                     flex="1"
-                     label="&calendar.unifinder.tree.location.label;"
-                     tooltiptext="&calendar.unifinder.tree.location.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-location"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-status"
                      itemproperty="status"
-                     flex="1"
-                     label="&calendar.unifinder.tree.status.label;"
-                     tooltiptext="&calendar.unifinder.tree.status.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-status"/>
             <splitter class="tree-splitter"/>
             <treecol class="calendar-task-tree-col-calendar"
                      itemproperty="calendar"
-                     flex="1"
-                     label="&calendar.unifinder.tree.calendarname.label;"
-                     tooltiptext="&calendar.unifinder.tree.calendarname.tooltip2;"/>
+                     style="flex: 1 auto"
+                     closemenu="none"
+                     data-l10n-id="calendar-event-listing-column-calendar-name"/>
           </treecols>
           <treechildren class="calendar-task-treechildren"
                         tooltip="taskTreeTooltip"
                         ondblclick="mTreeView.onDoubleClick(event)"/>
-          `,
-          ["chrome://calendar/locale/global.dtd", "chrome://calendar/locale/calendar.dtd"]
+          `
         )
       );
 
@@ -242,7 +247,7 @@
           // We should only drag treechildren, not for example the scrollbar.
           return;
         }
-        let item = this.mTreeView.getItemFromEvent(event);
+        const item = this.mTreeView.getItemFromEvent(event);
         if (!item || item.calendar.readOnly) {
           return;
         }
@@ -274,6 +279,7 @@
 
       // Set up the tree filter.
       this.mFilter = new calFilter();
+      this.mFilter.itemType = Ci.calICalendar.ITEM_FILTER_TYPE_TODO;
 
       this.restoreColumnState();
 
@@ -289,9 +295,9 @@
     }
 
     get selectedTasks() {
-      let tasks = [];
-      let start = {};
-      let end = {};
+      const tasks = [];
+      const start = {};
+      const end = {};
       if (!this.mTreeView.selection) {
         return tasks;
       }
@@ -302,7 +308,7 @@
         this.mTreeView.selection.getRangeAt(range, start, end);
 
         for (let i = start.value; i <= end.value; i++) {
-          let task = this.getTaskAtRow(i);
+          const task = this.getTaskAtRow(i);
           if (task) {
             tasks.push(this.getTaskAtRow(i));
           }
@@ -341,7 +347,7 @@
      */
     persistColumnState() {
       const columns = Array.from(this.querySelectorAll("treecol"));
-      const widths = columns.map(col => col.width || 0);
+      const widths = columns.map(col => col.getBoundingClientRect().width || 0);
       const ordinals = columns.map(col => col.ordinal);
       const visibleColumns = columns
         .filter(col => !col.hidden)
@@ -367,11 +373,11 @@
      * state of the columns across restarts. Used with `persistTaskTreeColumnState` function.
      */
     restoreColumnState() {
-      let visibleColumns = this.getAttribute("visible-columns").split(" ");
-      let ordinals = this.getAttribute("ordinals").split(" ");
-      let widths = this.getAttribute("widths").split(" ");
-      let sorted = this.getAttribute("sort-active");
-      let sortDirection = this.getAttribute("sort-direction") || "ascending";
+      const visibleColumns = this.getAttribute("visible-columns").split(" ");
+      const ordinals = this.getAttribute("ordinals").split(" ");
+      const widths = this.getAttribute("widths").split(" ");
+      const sorted = this.getAttribute("sort-active");
+      const sortDirection = this.getAttribute("sort-direction") || "ascending";
 
       this.querySelectorAll("treecol").forEach(col => {
         const itemProperty = col.getAttribute("itemproperty");
@@ -384,7 +390,7 @@
           col.ordinal = ordinals.shift();
         }
         if (widths && widths.length > 0) {
-          col.width = Number(widths.shift());
+          col.style.width = Number(widths.shift()) + "px";
         }
         if (sorted && sorted == itemProperty) {
           this.mTreeView.sortDirection = sortDirection;
@@ -393,7 +399,7 @@
       });
       // Update the ordinal positions of splitters to even numbers, so that
       // they are in between columns.
-      let splitters = this.getElementsByTagName("splitter");
+      const splitters = this.getElementsByTagName("splitter");
       for (let i = 0; i < splitters.length; i++) {
         splitters[i].style.MozBoxOrdinalGroup = (i + 1) * 2;
       }
@@ -403,8 +409,8 @@
      * Calculates the text to display in the "Due In" column for the given task,
      * the amount of time between now and when the task is due.
      *
-     * @param {Object} task    A task object.
-     * @return {string}        A formatted string for the "Due In" column for the task.
+     * @param {object} task - A task object.
+     * @returns {string} A formatted string for the "Due In" column for the task.
      */
     duration(task) {
       const noValidDueDate = !(task && task.dueDate && task.dueDate.isValid);
@@ -446,8 +452,8 @@
     /**
      * Return the task object at a given row.
      *
-     * @param {number} row        The index number identifying the row.
-     * @return {Object | null}    A task object or null if none found.
+     * @param {number} row - The index number identifying the row.
+     * @returns {object | null} A task object or null if none found.
      */
     getTaskAtRow(row) {
       return row > -1 ? this.mTaskArray[row] : null;
@@ -456,64 +462,58 @@
     /**
      * Return the task object related to a given event.
      *
-     * @param {Event} event        The event.
-     * @return {Object | false}    The task object related to the event or false if none found.
+     * @param {Event} event - The event.
+     * @returns {object | false} The task object related to the event or false if none found.
      */
     getTaskFromEvent(event) {
       return this.mTreeView.getItemFromEvent(event);
     }
 
     refreshFromCalendar(calendar) {
-      let refreshJob = {
+      if (!this.hasBeenVisible) {
+        return;
+      }
+
+      const refreshJob = {
         QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
         tree: this,
         calendar: null,
         items: null,
         operation: null,
 
-        onOperationComplete(opCalendar, status, operationType, id, dateTime) {
-          if (!this.tree.mTreeView.tree) {
-            // Looks like we've been disconnected from the DOM, there's no point in continuing.
-            return;
-          }
-
-          if (opCalendar.id in this.tree.mPendingRefreshJobs) {
-            delete this.tree.mPendingRefreshJobs[opCalendar.id];
-          }
-
-          let oldItems = this.tree.mTaskArray.filter(item => item.calendar.id == opCalendar.id);
-          this.tree.mTreeView.modifyItems(this.items, oldItems);
-          this.tree.dispatchEvent(new CustomEvent("refresh", { bubbles: false }));
-        },
-
-        onGetResult(opCalendar, status, itemType, detail, items) {
-          this.items = this.items.concat(items);
-        },
-
-        cancel() {
-          if (this.operation && this.operation.isPending) {
-            this.operation.cancel();
+        async cancel() {
+          if (this.operation) {
+            await this.operation.cancel();
             this.operation = null;
             this.items = [];
           }
         },
 
-        execute() {
+        async execute() {
           if (calendar.id in this.tree.mPendingRefreshJobs) {
             this.tree.mPendingRefreshJobs[calendar.id].cancel();
           }
           this.calendar = calendar;
           this.items = [];
+          this.tree.mPendingRefreshJobs[calendar.id] = this;
+          this.operation = cal.iterate.streamValues(this.tree.mFilter.getItems(calendar));
 
-          let operation = this.tree.mFilter.getItems(
-            calendar,
-            calendar.ITEM_FILTER_TYPE_TODO,
-            this
-          );
-          if (operation && operation.isPending) {
-            this.operation = operation;
-            this.tree.mPendingRefreshJobs[calendar.id] = this;
+          for await (const items of this.operation) {
+            this.items = this.items.concat(items);
           }
+
+          if (!this.tree.mTreeView.tree) {
+            // Looks like we've been disconnected from the DOM, there's no point in continuing.
+            return;
+          }
+
+          if (calendar.id in this.tree.mPendingRefreshJobs) {
+            delete this.tree.mPendingRefreshJobs[calendar.id];
+          }
+
+          const oldItems = this.tree.mTaskArray.filter(item => item.calendar.id == calendar.id);
+          this.tree.mTreeView.modifyItems(this.items, oldItems);
+          this.tree.dispatchEvent(new CustomEvent("refresh", { bubbles: false }));
         },
       };
 
@@ -531,7 +531,10 @@
      * Sets up the tree view, calendar event observer, and preference observer.
      */
     refresh() {
-      this.view = this.mTreeView;
+      // Only set the view if it's not already mTreeView, otherwise things get confused.
+      if (this.view?.wrappedJSObject != this.mTreeView) {
+        this.view = this.mTreeView;
+      }
 
       cal.view.getCompositeCalendar(window).addObserver(this.mTaskTreeObserver);
 
@@ -556,9 +559,9 @@
 
     sortItems() {
       if (this.mTreeView.selectedColumn) {
-        let column = this.mTreeView.selectedColumn;
-        let modifier = this.mTreeView.sortDirection == "descending" ? -1 : 1;
-        let sortKey = column.getAttribute("sortKey") || column.getAttribute("itemproperty");
+        const column = this.mTreeView.selectedColumn;
+        const modifier = this.mTreeView.sortDirection == "descending" ? -1 : 1;
+        const sortKey = column.getAttribute("sortKey") || column.getAttribute("itemproperty");
 
         cal.unifinder.sortItems(this.mTaskArray, sortKey, modifier);
       }
@@ -583,12 +586,12 @@
 
     doUpdateFilter(filter) {
       let needsRefresh = false;
-      let oldStart = this.mFilter.mStartDate;
-      let oldEnd = this.mFilter.mEndDate;
-      let filterText = this.mFilter.filterText || "";
+      const oldStart = this.mFilter.mStartDate;
+      const oldEnd = this.mFilter.mEndDate;
+      const filterText = this.mFilter.filterText || "";
 
       if (filter) {
-        let props = this.mFilter.filterProperties;
+        const props = this.mFilter.filterProperties;
         this.mFilter.applyFilter(filter);
         needsRefresh = !props || !props.equals(this.mFilter.filterProperties);
       } else {
@@ -596,7 +599,7 @@
       }
 
       if (this.mTextFilterField) {
-        let field = document.getElementById(this.mTextFilterField);
+        const field = document.getElementById(this.mTextFilterField);
         if (field) {
           this.mFilter.filterText = field.value;
           needsRefresh =
@@ -629,13 +632,13 @@
 
       // We need to consider the tree focused if the context menu is open.
       if (this.hasAttribute("context")) {
-        let context = document.getElementById(this.getAttribute("context"));
+        const context = document.getElementById(this.getAttribute("context"));
         if (context && context.state) {
           menuOpen = context.state == "open" || context.state == "showing";
         }
       }
 
-      let focused = document.activeElement == this || menuOpen;
+      const focused = document.activeElement == this || menuOpen;
 
       calendarController.onSelectionChanged({ detail: focused ? this.selectedTasks : [] });
       calendarController.todo_tasktree_focused = focused;
@@ -655,9 +658,8 @@
    */
   class CalendarTaskTreeTodaypane extends CalendarTaskTree {
     getInitialDate() {
-      return (agendaListbox.today && agendaListbox.today.start) || cal.dtz.now();
+      return TodayPane.start || cal.dtz.now();
     }
-
     updateFilter(filter) {
       this.mFilter.selectedDate = this.getInitialDate();
       this.doUpdateFilter(filter);

@@ -1,10 +1,10 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
 var gSynchronizeTree = null;
 var gParentMsgWindow;
@@ -12,14 +12,12 @@ var gMsgWindow;
 
 var gInitialFolderStates = {};
 
+window.addEventListener("DOMContentLoaded", onLoad);
+
 document.addEventListener("dialogaccept", syncOkButton);
 
-function OnLoad() {
-  if (window.arguments && window.arguments[0]) {
-    if (window.arguments[0].msgWindow) {
-      gParentMsgWindow = window.arguments[0].msgWindow;
-    }
-  }
+function onLoad() {
+  gParentMsgWindow = window.arguments?.[0]?.msgWindow;
 
   document.getElementById("syncMail").checked = Services.prefs.getBoolPref(
     "mailnews.offline_sync_mail"
@@ -33,8 +31,6 @@ function OnLoad() {
   document.getElementById("workOffline").checked = Services.prefs.getBoolPref(
     "mailnews.offline_sync_work_offline"
   );
-
-  return true;
 }
 
 function syncOkButton() {
@@ -81,7 +77,7 @@ function selectOkButton() {
 
 function selectCancelButton() {
   for (var resourceValue in gInitialFolderStates) {
-    let folder = MailUtils.getExistingFolder(resourceValue);
+    const folder = MailUtils.getExistingFolder(resourceValue);
     if (gInitialFolderStates[resourceValue]) {
       folder.setFlag(Ci.nsMsgFolderFlags.Offline);
     } else {
@@ -89,18 +85,6 @@ function selectCancelButton() {
     }
   }
   return true;
-}
-
-function selectOnLoad() {
-  gMsgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
-    Ci.nsIMsgWindow
-  );
-  gMsgWindow.domWindow = window;
-  gMsgWindow.rootDocShell.appType = Ci.nsIDocShell.APP_TYPE_MAIL;
-
-  gSynchronizeTree = document.getElementById("synchronizeTree");
-
-  SortSynchronizePane("folderNameCol", "?folderTreeNameSort");
 }
 
 function SortSynchronizePane(column, sortKey) {
@@ -138,7 +122,7 @@ function onSynchronizeClick(event) {
     return;
   }
 
-  let treeCellInfo = gSynchronizeTree.getCellAt(event.clientX, event.clientY);
+  const treeCellInfo = gSynchronizeTree.getCellAt(event.clientX, event.clientY);
   if (treeCellInfo.row == -1) {
     return;
   }

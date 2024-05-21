@@ -4,8 +4,6 @@
 
 /* exported launchBrowser */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Launch the given url (string) in the external browser. If an event is passed,
  * then this is only done on left click and the event propagation is stopped.
@@ -24,14 +22,14 @@ function launchBrowser(url, event) {
   // XXX: We likely will want to do this using nsIURLs in the future to
   //      prevent sneaky nasty escaping issues, but this is fine for now.
   if (!/^https?:/i.test(url) && !/^mid:/i.test(url)) {
-    Cu.reportError(
+    console.error(
       "launchBrowser: Invalid URL provided: " + url + " Only http(s):// and mid:// URLs are valid."
     );
     return;
   }
 
   if (/^mid:/i.test(url)) {
-    let { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+    const { MailUtils } = ChromeUtils.importESModule("resource:///modules/MailUtils.sys.mjs");
     MailUtils.openMessageByMessageId(url.slice(4));
     return;
   }

@@ -12,6 +12,7 @@
 #include "mozilla/dom/Directory.h"
 #include "mozilla/dom/File.h"
 #include "mozilla/dom/BrowserChild.h"
+#include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/IPCBlobUtils.h"
 
 using namespace mozilla::dom;
@@ -24,19 +25,19 @@ nsFilePickerProxy::nsFilePickerProxy()
 nsFilePickerProxy::~nsFilePickerProxy() = default;
 
 NS_IMETHODIMP
-nsFilePickerProxy::Init(mozIDOMWindowProxy* aParent, const nsAString& aTitle,
-                        int16_t aMode) {
-  BrowserChild* browserChild = BrowserChild::GetFrom(aParent);
+nsFilePickerProxy::Init(BrowsingContext* aBrowsingContext,
+                        const nsAString& aTitle, nsIFilePicker::Mode aMode) {
+  BrowserChild* browserChild =
+      BrowserChild::GetFrom(aBrowsingContext->GetDocShell());
   if (!browserChild) {
     return NS_ERROR_FAILURE;
   }
 
-  mParent = nsPIDOMWindowOuter::From(aParent);
-
+  mBrowsingContext = aBrowsingContext;
   mMode = aMode;
 
-  NS_ADDREF_THIS();
-  browserChild->SendPFilePickerConstructor(this, nsString(aTitle), aMode);
+  browserChild->SendPFilePickerConstructor(this, aTitle, aMode,
+                                           aBrowsingContext);
 
   mIPCActive = true;
   return NS_OK;
@@ -54,13 +55,13 @@ nsFilePickerProxy::AppendFilter(const nsAString& aTitle,
 }
 
 NS_IMETHODIMP
-nsFilePickerProxy::GetCapture(int16_t* aCapture) {
+nsFilePickerProxy::GetCapture(nsIFilePicker::CaptureTarget* aCapture) {
   *aCapture = mCapture;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsFilePickerProxy::SetCapture(int16_t aCapture) {
+nsFilePickerProxy::SetCapture(nsIFilePicker::CaptureTarget aCapture) {
   mCapture = aCapture;
   return NS_OK;
 }
@@ -120,7 +121,7 @@ nsFilePickerProxy::GetFiles(nsISimpleEnumerator** aFiles) {
   return NS_ERROR_FAILURE;
 }
 
-nsresult nsFilePickerProxy::Show(int16_t* aReturn) {
+nsresult nsFilePickerProxy::Show(nsIFilePicker::ResultCode* aReturn) {
   MOZ_ASSERT(false, "Show is unimplemented; use Open");
   return NS_ERROR_NOT_IMPLEMENTED;
 }
@@ -145,10 +146,18 @@ nsFilePickerProxy::Open(nsIFilePickerShownCallback* aCallback) {
   return NS_OK;
 }
 
+NS_IMETHODIMP
+nsFilePickerProxy::Close() {
+  SendClose();
+
+  return NS_OK;
+}
+
 mozilla::ipc::IPCResult nsFilePickerProxy::Recv__delete__(
-    const MaybeInputData& aData, const int16_t& aResult) {
-  nsPIDOMWindowInner* inner =
-      mParent ? mParent->GetCurrentInnerWindow() : nullptr;
+    const MaybeInputData& aData, const nsIFilePicker::ResultCode& aResult) {
+  auto* inner = mBrowsingContext->GetDOMWindow()
+                    ? mBrowsingContext->GetDOMWindow()->GetCurrentInnerWindow()
+                    : nullptr;
 
   if (NS_WARN_IF(!inner)) {
     return IPC_OK();
@@ -273,4 +282,16 @@ void nsFilePickerProxy::ActorDestroy(ActorDestroyReason aWhy) {
     mCallback->Done(nsIFilePicker::returnCancel);
     mCallback = nullptr;
   }
+}
+
+nsresult nsFilePickerProxy::ResolveSpecialDirectory(
+    const nsAString& aSpecialDirectory) {
+  MOZ_ASSERT(XRE_IsContentProcess());
+  // Resolving the special-directory name to a path in both the child and parent
+  // processes is redundant -- and sandboxing may prevent us from doing so in
+  // the child process, anyway. (See bugs 1357846 and 1838244.)
+  //
+  // Unfortunately we can't easily verify that `aSpecialDirectory` is usable or
+  // even meaningful here, so we just accept anything.
+  return NS_OK;
 }

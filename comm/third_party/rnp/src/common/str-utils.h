@@ -27,8 +27,31 @@
 #ifndef RNP_STR_UTILS_H_
 #define RNP_STR_UTILS_H_
 
-char *rnp_strip_eol(char *s);
-bool  rnp_is_blank_line(const char *line, size_t len);
+#include <string>
+
+namespace rnp {
+char *strip_eol(char *s);
+/**
+ * @brief Strip EOL characters from the string's end.
+ *
+ * @param s string to check
+ * @return true if EOL was found and stripped, or false otherwise.
+ */
+bool strip_eol(std::string &s);
+bool is_blank_line(const char *line, size_t len);
+bool str_case_eq(const char *s1, const char *s2);
+bool str_case_eq(const std::string &s1, const std::string &s2);
+
+bool        is_hex(const std::string &s);
+std::string strip_hex(const std::string &s);
+
+/**
+ * @brief Convert string to lowercase and return it.
+ */
+char *lowercase(char *s);
+bool  str_to_int(const std::string &s, int &val);
+bool  is_slash(char c);
+} // namespace rnp
 #ifdef _WIN32
 #include <string>
 std::wstring wstr_from_utf8(const char *s);

@@ -25,9 +25,8 @@ static bool MimeContainer_displayable_inline_p(MimeObjectClass* clazz,
 static int MimeContainer_debug_print(MimeObject*, PRFileDesc*, int32_t depth);
 #endif
 
-static int MimeContainerClassInitialize(MimeContainerClass* clazz) {
-  MimeObjectClass* oclass = (MimeObjectClass*)&clazz->object;
-
+static int MimeContainerClassInitialize(MimeObjectClass* oclass) {
+  MimeContainerClass* clazz = (MimeContainerClass*)oclass;
   NS_ASSERTION(!oclass->class_initialized,
                "1.1 <rhp@netscape.com> 19 Mar 1999 12:00");
   oclass->initialize = MimeContainer_initialize;
@@ -57,7 +56,24 @@ static void MimeContainer_finalize(MimeObject* object) {
   /* Do this first so that children have their parse_eof methods called
    in forward order (0-N) but are destroyed in backward order (N-0)
    */
-  if (!object->closed_p) object->clazz->parse_eof(object, false);
+
+  /* If we're being destroyed, prior to deleting any data, mark
+   * flush data in all children and mark them as closed, to avoid
+   * flushing during subsequent mime_free of the children.
+   * This also helps if this (parent) object is already marked as
+   * closed, but a child is not yet marked as closed.
+   */
+  ((MimeObjectClass*)&MIME_SUPERCLASS)->parse_eof(object, true);
+  if (cont->children) {
+    int i;
+    for (i = 0; i < cont->nchildren; i++) {
+      MimeObject* kid = cont->children[i];
+      if (kid && !kid->closed_p) {
+        kid->clazz->parse_eof(kid, true);
+      }
+    }
+  }
+
   if (!object->parsed_p) object->clazz->parse_end(object, false);
 
   if (cont->children) {

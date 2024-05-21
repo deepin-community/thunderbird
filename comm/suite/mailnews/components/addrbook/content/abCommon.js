@@ -1,7 +1,7 @@
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 
 const { IOUtils } = ChromeUtils.import("resource:///modules/IOUtils.js");
 const { MailServices } =
@@ -10,7 +10,6 @@ const { FileUtils } =
   ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
 const { PrivateBrowsingUtils } =
   ChromeUtils.import("resource://gre/modules/PrivateBrowsingUtils.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 
 var gDirTree = null;

@@ -8,14 +8,17 @@
 
 // XYB -> linear sRGB.
 
+#include <jxl/cms_interface.h>
+
+#include <cstddef>
+#include <cstdint>
+
 #include "lib/jxl/base/compiler_specific.h"
 #include "lib/jxl/base/data_parallel.h"
 #include "lib/jxl/base/status.h"
 #include "lib/jxl/color_encoding_internal.h"
-#include "lib/jxl/dec_bit_reader.h"
 #include "lib/jxl/image.h"
 #include "lib/jxl/image_metadata.h"
-#include "lib/jxl/opsin_params.h"
 
 namespace jxl {
 
@@ -29,15 +32,45 @@ struct OpsinParams {
 };
 
 struct OutputEncodingInfo {
+  //
+  // Fields depending only on image metadata
+  //
+  ColorEncoding orig_color_encoding;
+  // Used for the HLG OOTF and PQ tone mapping.
+  float orig_intensity_target;
+  // Opsin inverse matrix taken from the metadata.
+  Matrix3x3 orig_inverse_matrix;
+  bool default_transform;
+  bool xyb_encoded;
+  //
+  // Fields depending on output color encoding
+  //
+  // The requested color encoding.
   ColorEncoding color_encoding;
-  // Used for Gamma and DCI transfer functions.
-  float inverse_gamma;
+  // This is expected as the output of the conversion from XYB.
+  // It is equal to `color_encoding`, but with a linear tone response curve.
+  ColorEncoding linear_color_encoding;
+  bool color_encoding_is_original;
   // Contains an opsin matrix that converts to the primaries of the output
   // encoding.
   OpsinParams opsin_params;
-  Status Set(const ImageMetadata& metadata);
-  bool all_default_opsin = true;
-  bool color_encoding_is_original = false;
+  bool all_default_opsin;
+  // Used for Gamma and DCI transfer functions.
+  float inverse_gamma;
+  // Luminances of color_encoding's primaries, used for the HLG inverse OOTF and
+  // for PQ tone mapping.
+  // Default to sRGB's.
+  Vector3 luminances;
+  // Used for the HLG inverse OOTF and PQ tone mapping.
+  float desired_intensity_target;
+  bool cms_set = false;
+  JxlCmsInterface color_management_system;
+
+  Status SetFromMetadata(const CodecMetadata& metadata);
+  Status MaybeSetColorEncoding(const ColorEncoding& c_desired);
+
+ private:
+  Status SetColorEncoding(const ColorEncoding& c_desired);
 };
 
 // Converts `inout` (not padded) from opsin to linear sRGB in-place. Called from
@@ -56,18 +89,9 @@ void OpsinToLinear(const Image3F& opsin, const Rect& rect, ThreadPool* pool,
 // a bias to make the values unsigned).
 void YcbcrToRgb(const Image3F& ycbcr, Image3F* rgb, const Rect& rect);
 
-ImageF UpsampleV2(const ImageF& src, ThreadPool* pool);
-
-// WARNING: this uses unaligned accesses, so the caller must first call
-// src.InitializePaddingForUnalignedAccesses() to avoid msan crashes.
-ImageF UpsampleH2(const ImageF& src, size_t output_xsize, ThreadPool* pool);
-
 bool HasFastXYBTosRGB8();
-void FastXYBTosRGB8(const Image3F& input, const Rect& input_rect,
-                    const Rect& output_buf_rect, const ImageF* alpha,
-                    const Rect& alpha_rect, bool is_rgba,
-                    uint8_t* JXL_RESTRICT output_buf, size_t xsize,
-                    size_t output_stride);
+void FastXYBTosRGB8(const float* input[4], uint8_t* output, bool is_rgba,
+                    size_t xsize);
 
 }  // namespace jxl
 

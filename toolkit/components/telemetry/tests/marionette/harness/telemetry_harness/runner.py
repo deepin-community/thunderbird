@@ -22,6 +22,10 @@ class TelemetryTestRunner(BaseMarionetteTestRunner):
 
         prefs = kwargs.pop("prefs", {})
 
+        prefs["fission.autostart"] = True
+        if kwargs["disable_fission"]:
+            prefs["fission.autostart"] = False
+
         # Set Firefox Client Telemetry specific preferences
         prefs.update(
             {
@@ -48,6 +52,9 @@ class TelemetryTestRunner(BaseMarionetteTestRunner):
                 # Disable Normandy a little harder (bug 1608807).
                 # This should also disable Nimbus.
                 "app.shield.optoutstudies.enabled": False,
+                # Bug 1789727: Keep the screenshots extension disabled to avoid
+                # disabling the addon resulting in extra subsessions
+                "screenshots.browser.component.enabled": False,
             }
         )
 

@@ -10,6 +10,7 @@
 #include <stddef.h>  // for size_t
 #include <stdint.h>  // for uint32_t
 #include "gfxTypes.h"
+#include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/gfx/Point.h"         // for IntSize
 #include "mozilla/ipc/SharedMemory.h"  // for SharedMemory, etc
 #include "mozilla/RefPtr.h"
@@ -51,8 +52,6 @@ enum BufferCapabilities {
 };
 
 class SurfaceDescriptor;
-
-mozilla::ipc::SharedMemory::SharedMemoryType OptimalShmemType();
 
 /**
  * An interface used to create and destroy surfaces that are shared with the
@@ -102,6 +101,8 @@ class ISurfaceAllocator {
   virtual bool UsesImageBridge() const { return false; }
 
   virtual bool UsesWebRenderBridge() const { return false; }
+
+  virtual dom::ContentParentId GetContentId() { return dom::ContentParentId(); }
 
  protected:
   void Finalize() {}
@@ -187,9 +188,6 @@ class LegacySurfaceDescriptorAllocator {
 
 bool IsSurfaceDescriptorValid(const SurfaceDescriptor& aSurface);
 
-already_AddRefed<gfx::DrawTarget> GetDrawTargetForDescriptor(
-    const SurfaceDescriptor& aDescriptor);
-
 already_AddRefed<gfx::DataSourceSurface> GetSurfaceForDescriptor(
     const SurfaceDescriptor& aDescriptor);
 
@@ -247,6 +245,8 @@ class GfxMemoryImageReporter final : public nsIMemoryReporter {
 /// copy-on-write locks for now).
 class FixedSizeSmallShmemSectionAllocator final : public ShmemSectionAllocator {
  public:
+  NS_DECL_OWNINGTHREAD
+
   enum AllocationStatus { STATUS_ALLOCATED, STATUS_FREED };
 
   struct ShmemSectionHeapHeader {

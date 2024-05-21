@@ -7,865 +7,900 @@ ChromeUtils.defineModuleGetter(
   "MailServices",
   "resource:///modules/MailServices.jsm"
 );
-ChromeUtils.defineModuleGetter(
-  this,
-  "MessageArchiver",
-  "resource:///modules/MessageArchiver.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "MimeParser",
-  "resource:///modules/mimeParser.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "MsgHdrToMimeMessage",
-  "resource:///modules/gloda/MimeMessage.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "NetUtil",
-  "resource://gre/modules/NetUtil.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "jsmime",
-  "resource:///modules/jsmime.jsm"
+ChromeUtils.defineESModuleGetters(this, {
+  AttachmentInfo: "resource:///modules/AttachmentInfo.sys.mjs",
+  MessageArchiver: "resource:///modules/MessageArchiver.sys.mjs",
+  NetUtil: "resource://gre/modules/NetUtil.sys.mjs",
+});
+
+var {
+  getMsgPartUrl,
+  getMessagesInFolder,
+  CachedMsgHeader,
+  MessageQuery,
+  MsgHdrProcessor,
+} = ChromeUtils.importESModule("resource:///modules/ExtensionMessages.sys.mjs");
+
+var { getFolder } = ChromeUtils.importESModule(
+  "resource:///modules/ExtensionAccounts.sys.mjs"
 );
 
-// eslint-disable-next-line mozilla/reject-importGlobalProperties
-Cu.importGlobalProperties(["fetch", "File"]);
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
+);
+
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+XPCOMUtils.defineLazyGlobalGetters(this, ["File"]);
 
 var { DefaultMap } = ExtensionUtils;
 
 /**
- * Takes a part of a MIME message (as retrieved with MsgHdrToMimeMessage) and
- * filters out the properties we don't want to send to extensions.
+ * Takes a MimeTreePart and returns the processed headers, to be used in the
+ * WebExtension MessagePart.
+ *
+ * @param {MimeTreePart} mimeTreePart
+ * @returns {Object<string, string[]>} The headers of the part. Each key is the
+ *   name of a header and its value is an array of the header values.
+ *
+ * @see mail/extensions/openpgp/content/modules/MimeTree.sys.mjs
  */
-function convertMessagePart(part) {
-  let partObject = {};
-  for (let key of ["body", "contentType", "name", "partName", "size"]) {
-    if (key in part) {
-      partObject[key] = part[key];
-    }
-  }
-
-  // Decode headers. This also takes care of headers, which still include
-  // encoded words and need to be RFC 2047 decoded.
-  if ("headers" in part) {
-    partObject.headers = {};
-    for (let header of Object.keys(part.headers)) {
-      partObject.headers[header] = part.headers[header].map(h =>
-        MailServices.mimeConverter.decodeMimeHeader(
-          h,
-          null,
-          false /* override_charset */,
-          true /* eatContinuations */
-        )
+function convertHeaders(mimeTreePart) {
+  const partHeaders = {};
+  for (const [headerName, headerValue] of mimeTreePart.headers._rawHeaders) {
+    // Return an array, even for single values.
+    const valueArray = Array.isArray(headerValue) ? headerValue : [headerValue];
+    // Return a binary string.
+    partHeaders[headerName] = valueArray.map(value => {
+      return MailServices.mimeConverter.decodeMimeHeader(
+        MailStringUtils.stringToByteString(value),
+        null,
+        false /* override_charset */,
+        true /* eatContinuations */
       );
-    }
+    });
+  }
+  if (!partHeaders["content-type"]) {
+    partHeaders["content-type"] = ["text/plain"];
+  }
+  return partHeaders;
+}
+
+/**
+ * @typedef MessagePart
+ *
+ * The WebExtension type "MessagePart", as defined in messages.json.
+ *
+ * @property {string} [body] - The content of the part.
+ * @property {string} [contentType] - The contentType of the part.
+ * @property {string} [decryptionStatus] - The decryptionStatus of the part, one
+ *   of "none", "skipped", "success" or "fail".
+ * @property {Object<string, string[]>} [headers] - The headers of the part. Each
+ *   key is the name of a header and its value is an array of the header values.
+ * @property {string} [name] - Name of the part, if it is an attachment/file.
+ * @property {string} [partName] - The identifier of this part in the message
+ *   (for example "1.2").
+ * @property {MessagePart[]} [parts] - Any sub-parts of this part.
+ * @property {integer} [size] - The size of this part. The size of message/* parts
+ *   is not the actual message size (on disc), but the total size of its decoded
+ *   body parts, excluding headers.
+ *
+ * @see mail/components/extensions/schemas/messages.json
+ */
+
+/**
+ * Takes a MimeTreePart, filters out the properties we don't want to send to
+ * extensions and converts it to a WebExtension MessagePart.
+ *
+ * @param {MimeTreePart} mimeTreePart
+ * @param {boolean} isRoot - if this is the root part, while working through the
+ *   tree recursivly
+ * @returns {MessagePart}
+ *
+ * @see mail/extensions/openpgp/content/modules/MimeTree.sys.mjs
+ */
+function convertMessagePart(mimeTreePart, isRoot = true) {
+  const partObject = {
+    contentType: mimeTreePart.headers.contentType.type || "text/plain",
+    headers: convertHeaders(mimeTreePart),
+    size: mimeTreePart.size,
+    partName: mimeTreePart.partNum,
+  };
+  if (mimeTreePart.body && !mimeTreePart.isAttachment) {
+    partObject.body = mimeTreePart.body;
+  }
+  if (mimeTreePart.isAttachment) {
+    partObject.name = mimeTreePart.name || "";
   }
 
-  if ("parts" in part && Array.isArray(part.parts) && part.parts.length > 0) {
-    partObject.parts = part.parts.map(convertMessagePart);
+  if (
+    mimeTreePart.decryptionStatus != "fail" &&
+    "subParts" in mimeTreePart &&
+    Array.isArray(mimeTreePart.subParts) &&
+    mimeTreePart.subParts.length > 0
+  ) {
+    partObject.parts = mimeTreePart.subParts.map(part =>
+      convertMessagePart(part, false)
+    );
+  }
+
+  // The root mimeTreePart is the first MIME part of the message (for example a
+  // multipart/* or a text/plain part). WebExtensions should get an outer
+  // message/rfc822 part. Most headers are also moved to the outer message part.
+  if (isRoot) {
+    const rootHeaders = Object.fromEntries(
+      Object.entries(partObject.headers).filter(
+        h => !h[0].startsWith("content-")
+      )
+    );
+    rootHeaders["content-type"] = ["message/rfc822"];
+    partObject.headers = Object.fromEntries(
+      Object.entries(partObject.headers).filter(h =>
+        h[0].startsWith("content-")
+      )
+    );
+    return {
+      contentType: "message/rfc822",
+      partName: "",
+      size: mimeTreePart.size,
+      decryptionStatus: mimeTreePart.decryptionStatus,
+      headers: rootHeaders,
+      parts: mimeTreePart.decryptionStatus != "fail" ? [partObject] : [],
+    };
   }
   return partObject;
 }
 
-function convertAttachment(attachment) {
-  return {
-    contentType: attachment.contentType,
-    name: attachment.name,
-    size: attachment.size,
-    partName: attachment.partName,
+/**
+ * Takes a MimeTreePart of an attachment and returns a WebExtension MessageAttachment.
+ *
+ * @param {nsIMsgDBHdr} msgHdr - the msgHdr of the attachment's message
+ * @param {MimeTreePart} mimeTreePart
+ *
+ * @returns {MessageAttachment}
+ *
+ * @see mail/extensions/openpgp/content/modules/MimeTree.sys.mjs
+ * @see mail/components/extensions/schemas/messages.json
+ */
+async function convertAttachment(msgHdr, mimeTreePart, extension) {
+  const rv = {
+    contentType: mimeTreePart.headers.contentType.type || "text/plain",
+    name: mimeTreePart.name || "",
+    size: mimeTreePart.size,
+    partName: mimeTreePart.partNum,
   };
+
+  // If it is an attached message, create a dummy msgHdr for it.
+  if (rv.contentType.startsWith("message/")) {
+    // A message/rfc822 MimeTreePart has its headers in the first child.
+    const headers = convertHeaders(mimeTreePart.subParts[0]);
+
+    const attachedMsgHdr = new CachedMsgHeader();
+    const attachedMsgUrl = getMsgPartUrl(msgHdr, mimeTreePart.partNum);
+    attachedMsgHdr.setStringProperty("dummyMsgUrl", attachedMsgUrl);
+    attachedMsgHdr.recipients = headers.to;
+    attachedMsgHdr.ccList = headers.cc;
+    attachedMsgHdr.bccList = headers.bcc;
+    attachedMsgHdr.author = headers.from?.[0] || "";
+    attachedMsgHdr.subject = headers.subject?.[0] || "";
+    attachedMsgHdr.messageSize = mimeTreePart.size;
+
+    const hdrDate = headers.date?.[0];
+    attachedMsgHdr.date = hdrDate ? Date.parse(hdrDate) * 1000 : 0;
+
+    const hdrId = headers["message-id"]?.[0];
+    attachedMsgHdr.messageId = hdrId ? hdrId.replace(/^<|>$/g, "") : "";
+
+    rv.message = extension.messageManager.convert(attachedMsgHdr);
+  }
+  return rv;
 }
 
-this.messages = class extends ExtensionAPI {
-  getAPI(context) {
-    function collectMessagesInFolders(messageIds) {
-      let folderMap = new DefaultMap(() => new Set());
+this.messages = class extends ExtensionAPIPersistent {
+  PERSISTENT_EVENTS = {
+    // For primed persistent events (deactivated background), the context is only
+    // available after fire.wakeup() has fulfilled (ensuring the convert() function
+    // has been called).
 
-      for (let id of messageIds) {
-        let msgHdr = messageTracker.getMessage(id);
+    onNewMailReceived({ context, fire }, [monitorAllFolders]) {
+      const listener = async (event, folder, newMessages) => {
+        const { extension } = this;
+        // The msgHdr could be gone after the wakeup, convert it early.
+        const page = await messageListTracker.startList(newMessages, extension);
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        // Evaluate sensitivity.
+        const flags = folder.flags;
+        const isInbox = f => f & Ci.nsMsgFolderFlags.Inbox;
+        const isNormal = f =>
+          !(f & (Ci.nsMsgFolderFlags.SpecialUse | Ci.nsMsgFolderFlags.Virtual));
+        if (monitorAllFolders || isInbox(flags) || isNormal(flags)) {
+          fire.async(extension.folderManager.convert(folder), page);
+        }
+      };
+      messageTracker.on("messages-received", listener);
+      return {
+        unregister: () => {
+          messageTracker.off("messages-received", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onUpdated({ context, fire }) {
+      const listener = async (event, message, properties) => {
+        const { extension } = this;
+        // The msgHdr could be gone after the wakeup, convert it early.
+        const convertedMessage = extension.messageManager.convert(message);
+        if (!convertedMessage) {
+          return;
+        }
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.async(convertedMessage, properties);
+      };
+      messageTracker.on("message-updated", listener);
+      return {
+        unregister: () => {
+          messageTracker.off("message-updated", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onMoved({ context, fire }) {
+      const listener = async (event, srcMessages, dstMessages) => {
+        const { extension } = this;
+        // The msgHdr could be gone after the wakeup, convert them early.
+        const srcPage = await messageListTracker.startList(
+          srcMessages,
+          extension
+        );
+        const dstPage = await messageListTracker.startList(
+          dstMessages,
+          extension
+        );
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.async(srcPage, dstPage);
+      };
+      messageTracker.on("messages-moved", listener);
+      return {
+        unregister: () => {
+          messageTracker.off("messages-moved", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onCopied({ context, fire }) {
+      const listener = async (event, srcMessages, dstMessages) => {
+        const { extension } = this;
+        // The msgHdr could be gone after the wakeup, convert them early.
+        const srcPage = await messageListTracker.startList(
+          srcMessages,
+          extension
+        );
+        const dstPage = await messageListTracker.startList(
+          dstMessages,
+          extension
+        );
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.async(srcPage, dstPage);
+      };
+      messageTracker.on("messages-copied", listener);
+      return {
+        unregister: () => {
+          messageTracker.off("messages-copied", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onDeleted({ context, fire }) {
+      const listener = async (event, deletedMessages) => {
+        const { extension } = this;
+        // The msgHdr could be gone after the wakeup, convert them early.
+        const deletedPage = await messageListTracker.startList(
+          deletedMessages,
+          extension
+        );
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.async(deletedPage);
+      };
+      messageTracker.on("messages-deleted", listener);
+      return {
+        unregister: () => {
+          messageTracker.off("messages-deleted", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+  };
+
+  getAPI(context) {
+    const { extension } = this;
+    const { tabManager, messageManager } = extension;
+
+    function collectMessagesInFolders(messageIds) {
+      const folderMap = new DefaultMap(() => new Set());
+
+      for (const messageId of messageIds) {
+        const msgHdr = messageManager.get(messageId);
         if (!msgHdr) {
-          continue;
+          throw new ExtensionError(`Message not found: ${messageId}.`);
         }
 
-        let sourceSet = folderMap.get(msgHdr.folder);
-        sourceSet.add(msgHdr);
+        const msgHeaderSet = folderMap.get(msgHdr.folder);
+        msgHeaderSet.add(msgHdr);
       }
 
       return folderMap;
     }
 
-    async function moveOrCopyMessages(messageIds, { accountId, path }, isMove) {
+    async function createTempFileMessage(msgHdr) {
+      const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+      const rawBinaryString = await msgHdrProcessor.getOriginalMessage();
+      const pathEmlFile = await IOUtils.createUniqueFile(
+        PathUtils.tempDir,
+        encodeURIComponent(msgHdr.messageId).replaceAll(/[/:*?\"<>|]/g, "_") +
+          ".eml",
+        0o600
+      );
+
+      const emlFile = Cc["@mozilla.org/file/local;1"].createInstance(
+        Ci.nsIFile
+      );
+      emlFile.initWithPath(pathEmlFile);
+      const extAppLauncher = Cc[
+        "@mozilla.org/uriloader/external-helper-app-service;1"
+      ].getService(Ci.nsPIExternalAppLauncher);
+      extAppLauncher.deleteTemporaryFileOnExit(emlFile);
+
+      const buffer = MailStringUtils.byteStringToUint8Array(rawBinaryString);
+      await IOUtils.write(pathEmlFile, buffer);
+      return emlFile;
+    }
+
+    async function moveOrCopyMessages(messageIds, destination, isMove) {
+      const functionName = isMove ? "messages.move()" : "messages.copy()";
+
       if (
         !context.extension.hasPermission("accountsRead") ||
         !context.extension.hasPermission("messagesMove")
       ) {
         throw new ExtensionError(
-          `Using messages.${
-            isMove ? "move" : "copy"
-          }() requires the "accountsRead" and the "messagesMove" permission`
+          `Using ${functionName} requires the "accountsRead" and the "messagesMove" permission`
         );
       }
-      let destinationURI = folderPathToURI(accountId, path);
-      let destinationFolder = MailServices.folderLookup.getFolderForURL(
-        destinationURI
-      );
-      let folderMap = collectMessagesInFolders(messageIds);
-      let promises = [];
-      for (let [sourceFolder, sourceSet] of folderMap.entries()) {
-        if (sourceFolder == destinationFolder) {
-          continue;
-        }
+      const { folder: destinationFolder } = getFolder(destination);
+      if (destinationFolder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
+        throw new ExtensionError(
+          `The destination used in ${functionName} cannot be a search folder`
+        );
+      }
 
-        let messages = [...sourceSet];
-        promises.push(
-          new Promise((resolve, reject) => {
-            MailServices.copy.copyMessages(
-              sourceFolder,
-              messages,
-              destinationFolder,
-              isMove,
-              {
-                OnStartCopy() {},
-                OnProgress(progress, progressMax) {},
-                SetMessageKey(key) {},
-                GetMessageId(messageId) {},
-                OnStopCopy(status) {
-                  if (status == Cr.NS_OK) {
-                    resolve();
-                  } else {
-                    reject(status);
-                  }
-                },
-              },
-              /* msgWindow */ null,
-              /* allowUndo */ true
-            );
-          })
-        );
-      }
       try {
+        const promises = [];
+        const folderMap = collectMessagesInFolders(messageIds);
+        for (const [sourceFolder, msgHeaderSet] of folderMap.entries()) {
+          if (sourceFolder == destinationFolder) {
+            continue;
+          }
+          const msgHeaders = [...msgHeaderSet];
+
+          // Special handling for external messages.
+          if (!sourceFolder) {
+            if (isMove) {
+              throw new ExtensionError(
+                `Operation not permitted for external messages`
+              );
+            }
+
+            for (const msgHdr of msgHeaders) {
+              let file;
+              const fileUrl = msgHdr.getStringProperty("dummyMsgUrl");
+              if (fileUrl.startsWith("file://")) {
+                file = Services.io
+                  .newURI(fileUrl)
+                  .QueryInterface(Ci.nsIFileURL).file;
+              } else {
+                file = await createTempFileMessage(msgHdr);
+              }
+
+              promises.push(
+                new Promise((resolve, reject) => {
+                  MailServices.copy.copyFileMessage(
+                    file,
+                    destinationFolder,
+                    /* msgToReplace */ null,
+                    /* isDraftOrTemplate */ false,
+                    /* aMsgFlags */ Ci.nsMsgMessageFlags.Read,
+                    /* aMsgKeywords */ "",
+                    {
+                      OnStartCopy() {},
+                      OnProgress(progress, progressMax) {},
+                      SetMessageKey(key) {},
+                      GetMessageId(messageId) {},
+                      OnStopCopy(status) {
+                        if (status == Cr.NS_OK) {
+                          resolve();
+                        } else {
+                          reject(status);
+                        }
+                      },
+                    },
+                    /* msgWindow */ null
+                  );
+                })
+              );
+            }
+            continue;
+          }
+
+          // Since the archiver falls back to copy if delete is not supported,
+          // lets do that here as well.
+          promises.push(
+            new Promise((resolve, reject) => {
+              MailServices.copy.copyMessages(
+                sourceFolder,
+                msgHeaders,
+                destinationFolder,
+                isMove && sourceFolder.canDeleteMessages,
+                {
+                  OnStartCopy() {},
+                  OnProgress(progress, progressMax) {},
+                  SetMessageKey(key) {},
+                  GetMessageId(messageId) {},
+                  OnStopCopy(status) {
+                    if (status == Cr.NS_OK) {
+                      resolve();
+                    } else {
+                      reject(status);
+                    }
+                  },
+                },
+                /* msgWindow */ null,
+                /* allowUndo */ true
+              );
+            })
+          );
+        }
         await Promise.all(promises);
       } catch (ex) {
-        Cu.reportError(ex);
-        if (isMove) {
-          throw new ExtensionError(`Unexpected error moving messages: ${ex}`);
-        }
-        throw new ExtensionError(`Unexpected error copying messages: ${ex}`);
-      }
-    }
-
-    async function getMimeMessage(msgHdr) {
-      // Use jsmime based MimeParser to read NNTP messages, which are not
-      // supported by MsgHdrToMimeMessage. No encryption support!
-      if (msgHdr.folder.server.type == "nntp") {
-        try {
-          let raw = await MsgHdrToRawMessage(msgHdr);
-          let mimeMsg = MimeParser.extractMimeMsg(raw, {
-            includeAttachments: false,
-          });
-          return mimeMsg;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      return new Promise(resolve => {
-        MsgHdrToMimeMessage(
-          msgHdr,
-          null,
-          (_msgHdr, mimeMsg) => {
-            resolve(mimeMsg);
-          },
-          true,
-          { examineEncryptedParts: true }
+        console.error(ex);
+        throw new ExtensionError(
+          `Error ${isMove ? "moving" : "copying"} message: ${ex.message}`
         );
-      });
+      }
     }
 
     return {
       messages: {
         onNewMailReceived: new EventManager({
           context,
-          name: "messages.onNewMailReceived",
-          register: fire => {
-            let listener = async (event, folder, newMessages) => {
-              let page = await messageListTracker.startList(
-                newMessages,
-                context.extension
-              );
-              fire.async(convertFolder(folder), page);
-            };
-
-            messageTracker.on("messages-received", listener);
-            return () => {
-              messageTracker.off("messages-received", listener);
-            };
-          },
+          module: "messages",
+          event: "onNewMailReceived",
+          extensionApi: this,
         }).api(),
         onUpdated: new EventManager({
           context,
-          name: "messageDisplay.onUpdated",
-          register: fire => {
-            let listener = async (event, message, properties) => {
-              fire.async(
-                convertMessage(message, context.extension),
-                properties
-              );
-            };
-            messageTracker.on("message-updated", listener);
-            return () => {
-              messageTracker.off("message-updated", listener);
-            };
-          },
+          module: "messages",
+          event: "onUpdated",
+          extensionApi: this,
         }).api(),
         onMoved: new EventManager({
           context,
-          name: "messageDisplay.onMoved",
-          register: fire => {
-            let listener = async (event, srcMessages, dstMessages) => {
-              let srcPage = await messageListTracker.startList(
-                srcMessages,
-                context.extension
-              );
-              let dstPage = await messageListTracker.startList(
-                dstMessages,
-                context.extension
-              );
-              fire.async(srcPage, dstPage);
-            };
-            messageTracker.on("messages-moved", listener);
-            return () => {
-              messageTracker.off("messages-moved", listener);
-            };
-          },
+          module: "messages",
+          event: "onMoved",
+          extensionApi: this,
         }).api(),
         onCopied: new EventManager({
           context,
-          name: "messageDisplay.onCopied",
-          register: fire => {
-            let listener = async (event, srcMessages, dstMessages) => {
-              let srcPage = await messageListTracker.startList(
-                srcMessages,
-                context.extension
-              );
-              let dstPage = await messageListTracker.startList(
-                dstMessages,
-                context.extension
-              );
-              fire.async(srcPage, dstPage);
-            };
-            messageTracker.on("messages-copied", listener);
-            return () => {
-              messageTracker.off("messages-copied", listener);
-            };
-          },
+          module: "messages",
+          event: "onCopied",
+          extensionApi: this,
         }).api(),
         onDeleted: new EventManager({
           context,
-          name: "messageDisplay.onDeleted",
-          register: fire => {
-            let listener = async (event, deletedMessages) => {
-              let deletedPage = await messageListTracker.startList(
-                deletedMessages,
-                context.extension
-              );
-              fire.async(deletedPage);
-            };
-            messageTracker.on("messages-deleted", listener);
-            return () => {
-              messageTracker.off("messages-deleted", listener);
-            };
-          },
+          module: "messages",
+          event: "onDeleted",
+          extensionApi: this,
         }).api(),
-        async list({ accountId, path }) {
-          let uri = folderPathToURI(accountId, path);
-          let folder = MailServices.folderLookup.getFolderForURL(uri);
-
-          if (!folder) {
-            throw new ExtensionError(`Folder not found: ${path}`);
-          }
-
-          return messageListTracker.startList(
-            folder.messages,
-            context.extension
-          );
+        async list(target) {
+          const { folder } = getFolder(target);
+          const messages = getMessagesInFolder(folder);
+          return messageListTracker.startList(messages, context.extension);
         },
         async continueList(messageListId) {
-          let messageList = messageListTracker.getList(
+          const messageList = messageListTracker.getList(
             messageListId,
             context.extension
           );
           return messageListTracker.getNextPage(messageList);
         },
-        async get(messageId) {
-          return convertMessage(
-            messageTracker.getMessage(messageId),
+        async abortList(messageListId) {
+          const messageList = messageListTracker.getList(
+            messageListId,
             context.extension
           );
+          messageList.done();
         },
-        async getFull(messageId) {
-          let msgHdr = messageTracker.getMessage(messageId);
-          let mimeMsg = await getMimeMessage(msgHdr);
-          if (!mimeMsg) {
+        async get(messageId) {
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
+          const messageHeader =
+            context.extension.messageManager.convert(msgHdr);
+          if (!messageHeader || messageHeader.id != messageId) {
+            throw new ExtensionError(
+              "Unexpected Error: Returned message does not equal requested message."
+            );
+          }
+          return messageHeader;
+        },
+        async getFull(messageId, options) {
+          // Default for decrypt is true (backward compatibility).
+          const decrypt = options?.decrypt ?? true;
+
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
+
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let mimeTree;
+          try {
+            if (decrypt) {
+              mimeTree = await msgHdrProcessor.getDecryptedTree();
+            } else {
+              mimeTree = await msgHdrProcessor.getOriginalTree();
+            }
+          } catch (ex) {
+            console.error(ex);
             throw new ExtensionError(`Error reading message ${messageId}`);
           }
-          return convertMessagePart(mimeMsg);
+
+          if (msgHdr.flags & Ci.nsMsgMessageFlags.Partial) {
+            // Do not include fake body parts.
+            mimeTree.subParts = [];
+          }
+          return convertMessagePart(mimeTree);
         },
-        async getRaw(messageId) {
-          let msgHdr = messageTracker.getMessage(messageId);
-          return MsgHdrToRawMessage(msgHdr).catch(() => {
-            throw new ExtensionError(`Error reading message ${messageId}`);
+        async getRaw(messageId, options) {
+          // Default for decrypt is false (backward compatibility).
+          const decrypt = options?.decrypt ?? false;
+
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
+
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let raw;
+          try {
+            if (decrypt) {
+              raw = await msgHdrProcessor.getDecryptedMessage();
+            } else {
+              raw = await msgHdrProcessor.getOriginalMessage();
+            }
+          } catch (ex) {
+            switch (ex.cause) {
+              case "MessageDecryptionError":
+                throw new ExtensionError(
+                  `Error decrypting message ${messageId}`
+                );
+              default:
+                console.error(ex);
+                throw new ExtensionError(`Error reading message ${messageId}`);
+            }
+          }
+
+          let data_format = options?.data_format;
+          if (!["File", "BinaryString"].includes(data_format)) {
+            data_format =
+              extension.manifestVersion < 3 ? "BinaryString" : "File";
+          }
+          if (data_format == "BinaryString") {
+            return raw;
+          }
+          // Convert binary string to Uint8Array and return a File.
+          const bytes = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) {
+            bytes[i] = raw.charCodeAt(i) & 0xff;
+          }
+          return new File([bytes], `message-${messageId}.eml`, {
+            type: "message/rfc822",
           });
         },
         async listAttachments(messageId) {
-          let msgHdr = messageTracker.getMessage(messageId);
+          const msgHdr = messageManager.get(messageId);
           if (!msgHdr) {
             throw new ExtensionError(`Message not found: ${messageId}.`);
           }
 
-          // Use jsmime based MimeParser to read NNTP messages, which are not
-          // supported by MsgHdrToMimeMessage. No encryption support!
-          if (msgHdr.folder.server.type == "nntp") {
-            let raw = await MsgHdrToRawMessage(msgHdr);
-            let mimeMsg = MimeParser.extractMimeMsg(raw, {
-              includeAttachments: true,
-            });
-            return mimeMsg.allAttachments.map(convertAttachment);
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let attachments;
+          try {
+            attachments = await msgHdrProcessor.getAttachmentParts();
+          } catch (ex) {
+            switch (ex.cause) {
+              case "MessageDecryptionError":
+                throw new ExtensionError(
+                  `Error decrypting message ${messageId}`
+                );
+              default:
+                console.error(ex);
+                throw new ExtensionError(`Error reading message ${messageId}`);
+            }
           }
 
-          return new Promise(resolve => {
-            MsgHdrToMimeMessage(
+          for (let i = 0; i < attachments.length; i++) {
+            attachments[i] = await convertAttachment(
               msgHdr,
-              null,
-              (_msgHdr, mimeMsg) => {
-                resolve(mimeMsg.allAttachments.map(convertAttachment));
-              },
-              true,
-              { examineEncryptedParts: true, partsOnDemand: true }
+              attachments[i],
+              context.extension
             );
-          });
+          }
+          return attachments;
         },
         async getAttachmentFile(messageId, partName) {
-          let msgHdr = messageTracker.getMessage(messageId);
+          const msgHdr = messageManager.get(messageId);
           if (!msgHdr) {
             throw new ExtensionError(`Message not found: ${messageId}.`);
           }
 
-          // Use jsmime based MimeParser to read NNTP messages, which are not
-          // supported by MsgHdrToMimeMessage. No encryption support!
-          if (msgHdr.folder.server.type == "nntp") {
-            let raw = await MsgHdrToRawMessage(msgHdr);
-            let attachment = MimeParser.extractMimeMsg(raw, {
-              includeAttachments: true,
-              getMimePart: partName,
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let attachmentPart;
+          try {
+            attachmentPart = await msgHdrProcessor.getAttachmentPart(partName, {
+              includeRaw: true,
             });
-            if (!attachment) {
-              throw new ExtensionError(
-                `Part ${partName} not found in message ${messageId}.`
-              );
-            }
-            return new File([attachment.bodyAsTypedArray], attachment.name, {
-              type: attachment.contentType,
-            });
-          }
-
-          // It's not ideal to have to call MsgHdrToMimeMessage here but we
-          // need the name of the attached file, plus this also gives us the
-          // URI without having to jump through a lot of hoops.
-          let attachment = await new Promise(resolve => {
-            MsgHdrToMimeMessage(
-              msgHdr,
-              null,
-              (_msgHdr, mimeMsg) => {
-                resolve(
-                  mimeMsg.allAttachments.find(a => a.partName == partName)
+          } catch (ex) {
+            switch (ex.cause) {
+              case "MessageDecryptionError":
+                throw new ExtensionError(
+                  `Error decrypting message ${messageId}`
                 );
-              },
-              true,
-              { examineEncryptedParts: true, partsOnDemand: true }
-            );
-          });
-
-          if (!attachment) {
+              default:
+                console.error(ex);
+                throw new ExtensionError(`Error reading message ${messageId}`);
+            }
+          }
+          if (!attachmentPart) {
             throw new ExtensionError(
               `Part ${partName} not found in message ${messageId}.`
             );
           }
 
-          let channel = Services.io.newChannelFromURI(
-            Services.io.newURI(attachment.url),
-            null,
-            Services.scriptSecurityManager.getSystemPrincipal(),
-            null,
-            Ci.nsILoadInfo.SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
-            Ci.nsIContentPolicy.TYPE_OTHER
-          );
-
-          let byteArray = await new Promise(resolve => {
-            let listener = Cc[
-              "@mozilla.org/network/stream-loader;1"
-            ].createInstance(Ci.nsIStreamLoader);
-            listener.init({
-              onStreamComplete(loader, context, status, resultLength, result) {
-                resolve(Uint8Array.from(result));
-              },
-            });
-            channel.asyncOpen(listener, null);
+          // Convert binary string to Uint8Array and return a File.
+          const bytes = new Uint8Array(attachmentPart.body.length);
+          for (let i = 0; i < attachmentPart.body.length; i++) {
+            bytes[i] = attachmentPart.body.charCodeAt(i) & 0xff;
+          }
+          return new File([bytes], attachmentPart.name, {
+            type: attachmentPart.headers.contentType.type,
           });
+        },
+        async openAttachment(messageId, partName, tabId) {
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
 
-          return new File([byteArray], attachment.name, {
-            type: attachment.contentType,
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let attachmentPart;
+          try {
+            attachmentPart = await msgHdrProcessor.getAttachmentPart(partName);
+          } catch (ex) {
+            switch (ex.cause) {
+              case "MessageDecryptionError":
+                throw new ExtensionError(
+                  `Error decrypting message ${messageId}`
+                );
+              default:
+                console.error(ex);
+                throw new ExtensionError(`Error reading message ${messageId}`);
+            }
+          }
+          if (!attachmentPart) {
+            throw new ExtensionError(
+              `Part ${partName} not found in message ${messageId}.`
+            );
+          }
+
+          const isExternalAttachment = attachmentPart.headers.has(
+            "x-mozilla-external-attachment-url"
+          );
+          const data = {
+            contentType: attachmentPart.headers.contentType.type,
+            url: getMsgPartUrl(msgHdr, partName),
+            name: attachmentPart.name,
+            uri: msgHdr.folder
+              ? msgHdr.folder.getUriForMsg(msgHdr)
+              : msgHdr.getStringProperty("dummyMsgUrl"),
+            isExternalAttachment,
+            message: msgHdr,
+          };
+          const attachmentInfo = new AttachmentInfo(data);
+          const tab = tabManager.get(tabId);
+          try {
+            // Content tabs or content windows use browser, while mail and message
+            // tabs use chromeBrowser.
+            const browser =
+              tab.nativeTab.chromeBrowser || tab.nativeTab.browser;
+            await attachmentInfo.open(browser.browsingContext);
+          } catch (ex) {
+            throw new ExtensionError(
+              `Part ${partName} could not be opened: ${ex}.`
+            );
+          }
+        },
+        async deleteAttachments(messageId, partNames) {
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
+
+          if (!msgHdr.folder) {
+            throw new ExtensionError(
+              `Operation not permitted for external messages`
+            );
+          }
+
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          const attachmentInfos = [];
+          for (const partName of partNames) {
+            let attachmentPart;
+            try {
+              attachmentPart = await msgHdrProcessor.getAttachmentPart(
+                partName
+              );
+            } catch (ex) {
+              switch (ex.cause) {
+                case "MessageDecryptionError":
+                  throw new ExtensionError(
+                    `Error decrypting message ${messageId}`
+                  );
+                default:
+                  console.error(ex);
+                  throw new ExtensionError(
+                    `Error reading message ${messageId}`
+                  );
+              }
+            }
+            if (!attachmentPart) {
+              throw new ExtensionError(
+                `Part ${partName} not found in message ${messageId}.`
+              );
+            }
+
+            const isExternalAttachment = attachmentPart.headers.has(
+              "x-mozilla-external-attachment-url"
+            );
+            if (isExternalAttachment) {
+              throw new ExtensionError(
+                `Operation not permitted for external attachment ${partName} in message ${messageId}.`
+              );
+            }
+            const attachmentInfo = new AttachmentInfo({
+              contentType: attachmentPart.headers.contentType.type,
+              url: getMsgPartUrl(msgHdr, partName),
+              name: attachmentPart.name,
+              uri: msgHdr.folder.getUriForMsg(msgHdr),
+              isExternalAttachment,
+              message: msgHdr,
+            });
+
+            const deleted = !attachmentInfo.hasFile;
+            if (deleted) {
+              throw new ExtensionError(
+                `Operation not permitted for deleted attachment ${partName} in message ${messageId}.`
+              );
+            }
+
+            attachmentInfos.push(attachmentInfo);
+          }
+
+          await new Promise(resolve => {
+            const listener = {
+              OnStartRunningUrl(aUrl) {},
+              OnStopRunningUrl(aUrl, aExitCode) {
+                resolve();
+              },
+            };
+            const messenger = Cc["@mozilla.org/messenger;1"].createInstance(
+              Ci.nsIMessenger
+            );
+            messenger.detachAllAttachments(
+              attachmentInfos.map(attachmentInfo => attachmentInfo.contentType),
+              attachmentInfos.map(attachmentInfo => attachmentInfo.url),
+              attachmentInfos.map(attachmentInfo => attachmentInfo.name),
+              attachmentInfos.map(attachmentInfo => attachmentInfo.uri),
+              false, // aSaveFirst
+              true, // withoutWarning
+              listener
+            );
           });
         },
         async query(queryInfo) {
-          let composeFields = Cc[
-            "@mozilla.org/messengercompose/composefields;1"
-          ].createInstance(Ci.nsIMsgCompFields);
-
-          const includesContent = (folder, parts, searchTerm) => {
-            if (!parts || parts.length == 0) {
-              return false;
-            }
-            for (let part of parts) {
-              if (
-                coerceBodyToPlaintext(folder, part).includes(searchTerm) ||
-                includesContent(folder, part.parts, searchTerm)
-              ) {
-                return true;
-              }
-            }
-            return false;
-          };
-
-          const coerceBodyToPlaintext = (folder, part) => {
-            if (!part || !part.body) {
-              return "";
-            }
-            if (part.contentType == "text/plain") {
-              return part.body;
-            }
-            // text/enriched gets transformed into HTML by libmime
-            if (
-              part.contentType == "text/html" ||
-              part.contentType == "text/enriched"
-            ) {
-              return folder.convertMsgSnippetToPlainText(part.body);
-            }
-            return "";
-          };
-
-          /**
-           * Prepare name and email properties of the address object returned by
-           * MailServices.headerParser.makeFromDisplayAddress() to be lower case.
-           * Also fix the name being wrongly returned in the email property, if
-           * the address was just a single name.
-           */
-          const prepareAddress = displayAddr => {
-            let email = displayAddr.email?.toLocaleLowerCase();
-            let name = displayAddr.name?.toLocaleLowerCase();
-            if (email && !name && !email.includes("@")) {
-              name = email;
-              email = null;
-            }
-            return { name, email };
-          };
-
-          /**
-           * Check multiple addresses if they match the provided search address.
-           *
-           * @returns A boolean indicating if search was successful.
-           */
-          const searchInMultipleAddresses = (searchAddress, addresses) => {
-            // Return on first positive match.
-            for (let address of addresses) {
-              let nameMatched =
-                searchAddress.name &&
-                address.name &&
-                address.name.includes(searchAddress.name);
-
-              // Check for email match. Name match being required on top, if
-              // specified.
-              if (
-                (nameMatched || !searchAddress.name) &&
-                searchAddress.email &&
-                address.email &&
-                address.email == searchAddress.email
-              ) {
-                return true;
-              }
-
-              // If address match failed, name match may only be true if no
-              // email has been specified.
-              if (!searchAddress.email && nameMatched) {
-                return true;
-              }
-            }
-            return false;
-          };
-
-          /**
-           * Substring match on name and exact match on email. If searchTerm
-           * includes multiple addresses, all of them must match.
-           *
-           * @returns A boolean indicating if search was successful.
-           */
-          const isAddressMatch = (searchTerm, addressObjects) => {
-            let searchAddresses = MailServices.headerParser.makeFromDisplayAddress(
-              searchTerm
-            );
-            if (!searchAddresses || searchAddresses.length == 0) {
-              return false;
-            }
-
-            // Prepare addresses.
-            let addresses = [];
-            for (let addressObject of addressObjects) {
-              let decodedAddressString = addressObject.doRfc2047
-                ? jsmime.headerparser.decodeRFC2047Words(addressObject.addr)
-                : addressObject.addr;
-              for (let address of MailServices.headerParser.makeFromDisplayAddress(
-                decodedAddressString
-              )) {
-                addresses.push(prepareAddress(address));
-              }
-            }
-            if (addresses.length == 0) {
-              return false;
-            }
-
-            let success = false;
-            for (let searchAddress of searchAddresses) {
-              // Exit early if this search was not successfully, but all search
-              // addresses have to be matched.
-              if (
-                !searchInMultipleAddresses(
-                  prepareAddress(searchAddress),
-                  addresses
-                )
-              ) {
-                return false;
-              }
-              success = true;
-            }
-
-            return success;
-          };
-
-          const checkSearchCriteria = async (folder, msg) => {
-            // Check date ranges.
-            if (
-              queryInfo.fromDate !== null &&
-              msg.dateInSeconds * 1000 < queryInfo.fromDate.getTime()
-            ) {
-              return false;
-            }
-            if (
-              queryInfo.toDate !== null &&
-              msg.dateInSeconds * 1000 > queryInfo.toDate.getTime()
-            ) {
-              return false;
-            }
-
-            // Check headerMessageId.
-            if (
-              queryInfo.headerMessageId &&
-              msg.messageId != queryInfo.headerMessageId
-            ) {
-              return false;
-            }
-
-            // Check unread.
-            if (queryInfo.unread !== null && msg.isRead != !queryInfo.unread) {
-              return false;
-            }
-
-            // Check flagged.
-            if (
-              queryInfo.flagged !== null &&
-              msg.isFlagged != queryInfo.flagged
-            ) {
-              return false;
-            }
-
-            // Check subject (substring match).
-            if (
-              queryInfo.subject &&
-              !msg.mime2DecodedSubject.includes(queryInfo.subject)
-            ) {
-              return false;
-            }
-
-            // Check tags.
-            if (requiredTags || forbiddenTags) {
-              let messageTags = msg.getStringProperty("keywords").split(" ");
-              if (requiredTags.length > 0) {
-                if (
-                  queryInfo.tags.mode == "all" &&
-                  !requiredTags.every(tag => messageTags.includes(tag))
-                ) {
-                  return false;
-                }
-                if (
-                  queryInfo.tags.mode == "any" &&
-                  !requiredTags.some(tag => messageTags.includes(tag))
-                ) {
-                  return false;
-                }
-              }
-              if (forbiddenTags.length > 0) {
-                if (
-                  queryInfo.tags.mode == "all" &&
-                  forbiddenTags.every(tag => messageTags.includes(tag))
-                ) {
-                  return false;
-                }
-                if (
-                  queryInfo.tags.mode == "any" &&
-                  forbiddenTags.some(tag => messageTags.includes(tag))
-                ) {
-                  return false;
-                }
-              }
-            }
-
-            // Check toMe (case insensitive email address match).
-            if (queryInfo.toMe !== null) {
-              let recipients = [].concat(
-                composeFields.splitRecipients(msg.recipients, true),
-                composeFields.splitRecipients(msg.ccList, true),
-                composeFields.splitRecipients(msg.bccList, true)
-              );
-
-              if (
-                queryInfo.toMe !=
-                recipients.some(email =>
-                  identities.includes(email.toLocaleLowerCase())
-                )
-              ) {
-                return false;
-              }
-            }
-
-            // Check fromMe (case insensitive email address match).
-            if (queryInfo.fromMe !== null) {
-              let authors = composeFields.splitRecipients(
-                msg.mime2DecodedAuthor,
-                true
-              );
-              if (
-                queryInfo.fromMe !=
-                authors.some(email =>
-                  identities.includes(email.toLocaleLowerCase())
-                )
-              ) {
-                return false;
-              }
-            }
-
-            // Check author.
-            if (
-              queryInfo.author &&
-              !isAddressMatch(queryInfo.author, [
-                { addr: msg.mime2DecodedAuthor, doRfc2047: false },
-              ])
-            ) {
-              return false;
-            }
-
-            // Check recipients.
-            if (
-              queryInfo.recipients &&
-              !isAddressMatch(queryInfo.recipients, [
-                { addr: msg.mime2DecodedRecipients, doRfc2047: false },
-                { addr: msg.ccList, doRfc2047: true },
-                { addr: msg.bccList, doRfc2047: true },
-              ])
-            ) {
-              return false;
-            }
-
-            // Check if fullText is already partially fulfilled.
-            let fullTextBodySearchNeeded = false;
-            if (queryInfo.fullText) {
-              let subjectMatches = msg.mime2DecodedSubject.includes(
-                queryInfo.fullText
-              );
-              let authorMatches = msg.mime2DecodedAuthor.includes(
-                queryInfo.fullText
-              );
-              fullTextBodySearchNeeded = !(subjectMatches || authorMatches);
-            }
-
-            // Check body.
-            if (queryInfo.body || fullTextBodySearchNeeded) {
-              let mimeMsg = await getMimeMessage(msg);
-              if (
-                queryInfo.body &&
-                !includesContent(folder, [mimeMsg], queryInfo.body)
-              ) {
-                return false;
-              }
-              if (
-                fullTextBodySearchNeeded &&
-                !includesContent(folder, [mimeMsg], queryInfo.fullText)
-              ) {
-                return false;
-              }
-            }
-
-            return true;
-          };
-
-          const searchMessages = async (
-            folder,
-            messageList,
-            includeSubFolders = false
-          ) => {
-            let messages = null;
-            try {
-              messages = folder.messages;
-            } catch (e) {
-              /* Some folders fail on message query, instead of returning empty */
-            }
-
-            if (messages) {
-              while (messages.hasMoreElements()) {
-                let msg = messages.getNext();
-                if (await checkSearchCriteria(folder, msg)) {
-                  messageList.add(msg);
-                }
-              }
-            }
-
-            if (includeSubFolders) {
-              for (let subFolder of folder.subFolders) {
-                await searchMessages(subFolder, messageList, true);
-              }
-            }
-          };
-
-          const searchFolders = async (
-            folders,
-            messageList,
-            includeSubFolders = false
-          ) => {
-            for (let folder of folders) {
-              await searchMessages(folder, messageList, includeSubFolders);
-            }
-            return messageList.done();
-          };
-
-          // Prepare case insensitive me filtering.
-          let identities;
-          if (queryInfo.toMe !== null || queryInfo.fromMe !== null) {
-            identities = MailServices.accounts.allIdentities.map(i =>
-              i.email.toLocaleLowerCase()
-            );
-          }
-
-          // Prepare tag filtering.
-          let requiredTags;
-          let forbiddenTags;
-          if (queryInfo.tags) {
-            let availableTags = MailServices.tags.getAllTags();
-            requiredTags = availableTags.filter(
-              tag =>
-                tag.key in queryInfo.tags.tags && queryInfo.tags.tags[tag.key]
-            );
-            forbiddenTags = availableTags.filter(
-              tag =>
-                tag.key in queryInfo.tags.tags && !queryInfo.tags.tags[tag.key]
-            );
-            // If non-existing tags have been required, return immediately with
-            // an empty message list.
-            if (
-              requiredTags.length === 0 &&
-              Object.values(queryInfo.tags.tags).filter(v => v).length > 0
-            ) {
-              return messageListTracker.startList([], context.extension);
-            }
-            requiredTags = requiredTags.map(tag => tag.key);
-            forbiddenTags = forbiddenTags.map(tag => tag.key);
-          }
-
-          // Limit search to a given folder, or search all folders.
-          let folders = [];
-          let includeSubFolders = false;
-          if (queryInfo.folder) {
-            includeSubFolders = !!queryInfo.includeSubFolders;
-            if (!context.extension.hasPermission("accountsRead")) {
-              throw new ExtensionError(
-                'Querying by folder requires the "accountsRead" permission'
-              );
-            }
-            let folder = MailServices.folderLookup.getFolderForURL(
-              folderPathToURI(queryInfo.folder.accountId, queryInfo.folder.path)
-            );
-            if (!folder) {
-              throw new ExtensionError(
-                `Folder not found: ${queryInfo.folder.path}`
-              );
-            }
-            folders.push(folder);
-          } else {
-            includeSubFolders = true;
-            for (let account of MailServices.accounts.accounts) {
-              folders.push(account.incomingServer.rootFolder);
-            }
-          }
-
-          // The searchFolders() function searches the provided folders for
-          // messages matching the query and adds results to the messageList. It
-          // is an asynchronous function, but it is not awaited here. Instead,
-          // messageListTracker.getNextPage() returns a Promise, which will
-          // fulfill after enough messages for a full page have been added.
-          let messageList = messageListTracker.createList(context.extension);
-          searchFolders(folders, messageList, includeSubFolders);
-          return messageListTracker.getNextPage(messageList);
+          const messageQuery = new MessageQuery(
+            queryInfo,
+            messageListTracker,
+            context.extension
+          );
+          return messageQuery.startSearch();
         },
         async update(messageId, newProperties) {
-          let msgHdr = messageTracker.getMessage(messageId);
-          if (!msgHdr) {
-            return;
-          }
-          let msgs = [msgHdr];
+          try {
+            const msgHdr = messageManager.get(messageId);
+            if (!msgHdr) {
+              throw new ExtensionError(`Message not found: ${messageId}.`);
+            }
+            if (!msgHdr.folder) {
+              throw new ExtensionError(
+                `Operation not permitted for external messages`
+              );
+            }
 
-          if (newProperties.read !== null) {
-            msgHdr.folder.markMessagesRead(msgs, newProperties.read);
-          }
-          if (newProperties.flagged !== null) {
-            msgHdr.folder.markMessagesFlagged(msgs, newProperties.flagged);
-          }
-          if (newProperties.junk !== null) {
-            let score = newProperties.junk
-              ? Ci.nsIJunkMailPlugin.IS_SPAM_SCORE
-              : Ci.nsIJunkMailPlugin.IS_HAM_SCORE;
-            msgHdr.folder.setJunkScoreForMessages(msgs, score);
-            // nsIFolderListener::OnItemEvent is notified about changes through
-            // setJunkScoreForMessages(), but does not provide the actual message.
-            // nsIMsgFolderListener::msgsJunkStatusChanged is notified only by
-            // nsMsgDBView::ApplyCommandToIndices(). Since it only works on
-            // selected messages, we cannot use it here.
-            // Notify msgsJunkStatusChanged() manually.
-            MailServices.mfn.notifyMsgsJunkStatusChanged(msgs);
-          }
-          if (Array.isArray(newProperties.tags)) {
-            let currentTags = msgHdr.getStringProperty("keywords").split(" ");
+            const msgs = [msgHdr];
+            if (newProperties.read !== null) {
+              msgHdr.folder.markMessagesRead(msgs, newProperties.read);
+            }
+            if (newProperties.flagged !== null) {
+              msgHdr.folder.markMessagesFlagged(msgs, newProperties.flagged);
+            }
+            if (newProperties.junk !== null) {
+              const score = newProperties.junk
+                ? Ci.nsIJunkMailPlugin.IS_SPAM_SCORE
+                : Ci.nsIJunkMailPlugin.IS_HAM_SCORE;
+              msgHdr.folder.setJunkScoreForMessages(msgs, score);
+              // nsIFolderListener::OnFolderEvent is notified about changes through
+              // setJunkScoreForMessages(), but does not provide the actual message.
+              // nsIMsgFolderListener::msgsJunkStatusChanged is notified only by
+              // nsMsgDBView::ApplyCommandToIndices(). Since it only works on
+              // selected messages, we cannot use it here.
+              // Notify msgsJunkStatusChanged() manually.
+              MailServices.mfn.notifyMsgsJunkStatusChanged(msgs);
+            }
+            if (Array.isArray(newProperties.tags)) {
+              const currentTags = msgHdr
+                .getStringProperty("keywords")
+                .split(" ");
 
-            for (let { key: tagKey } of MailServices.tags.getAllTags()) {
-              if (newProperties.tags.includes(tagKey)) {
-                if (!currentTags.includes(tagKey)) {
-                  msgHdr.folder.addKeywordsToMessages(msgs, tagKey);
+              for (const { key: tagKey } of MailServices.tags.getAllTags()) {
+                if (newProperties.tags.includes(tagKey)) {
+                  if (!currentTags.includes(tagKey)) {
+                    msgHdr.folder.addKeywordsToMessages(msgs, tagKey);
+                  }
+                } else if (currentTags.includes(tagKey)) {
+                  msgHdr.folder.removeKeywordsFromMessages(msgs, tagKey);
                 }
-              } else if (currentTags.includes(tagKey)) {
-                msgHdr.folder.removeKeywordsFromMessages(msgs, tagKey);
               }
             }
+          } catch (ex) {
+            console.error(ex);
+            throw new ExtensionError(`Error updating message: ${ex.message}`);
           }
         },
         async move(messageIds, destination) {
@@ -875,77 +910,262 @@ this.messages = class extends ExtensionAPI {
           return moveOrCopyMessages(messageIds, destination, false);
         },
         async delete(messageIds, skipTrash) {
-          let folderMap = collectMessagesInFolders(messageIds);
-          for (let sourceFolder of folderMap.keys()) {
-            if (!sourceFolder.canDeleteMessages) {
-              throw new ExtensionError(
-                `Unable to delete messages in "${sourceFolder.prettyName}"`
+          try {
+            const promises = [];
+            const folderMap = collectMessagesInFolders(messageIds);
+            for (const [sourceFolder, msgHeaderSet] of folderMap.entries()) {
+              if (!sourceFolder) {
+                throw new ExtensionError(
+                  `Operation not permitted for external messages`
+                );
+              }
+              if (!sourceFolder.canDeleteMessages) {
+                throw new ExtensionError(
+                  `Messages in "${sourceFolder.prettyName}" cannot be deleted`
+                );
+              }
+              promises.push(
+                new Promise((resolve, reject) => {
+                  sourceFolder.deleteMessages(
+                    [...msgHeaderSet],
+                    /* msgWindow */ null,
+                    /* deleteStorage */ skipTrash,
+                    /* isMove */ false,
+                    {
+                      OnStartCopy() {},
+                      OnProgress(progress, progressMax) {},
+                      SetMessageKey(key) {},
+                      GetMessageId(messageId) {},
+                      OnStopCopy(status) {
+                        if (status == Cr.NS_OK) {
+                          resolve();
+                        } else {
+                          reject(status);
+                        }
+                      },
+                    },
+                    /* allowUndo */ true
+                  );
+                })
               );
             }
+            await Promise.all(promises);
+          } catch (ex) {
+            console.error(ex);
+            throw new ExtensionError(`Error deleting message: ${ex.message}`);
           }
-          let promises = [];
-          for (let [sourceFolder, sourceSet] of folderMap.entries()) {
-            promises.push(
-              new Promise((resolve, reject) => {
-                sourceFolder.deleteMessages(
-                  [...sourceSet],
-                  /* msgWindow */ null,
-                  /* deleteStorage */ skipTrash,
-                  /* isMove */ false,
-                  {
-                    OnStartCopy() {},
-                    OnProgress(progress, progressMax) {},
-                    SetMessageKey(key) {},
-                    GetMessageId(messageId) {},
-                    OnStopCopy(status) {
-                      if (status == Cr.NS_OK) {
-                        resolve();
-                      } else {
-                        reject(status);
-                      }
-                    },
-                  },
-                  /* allowUndo */ true
-                );
-              })
+        },
+        async import(file, destination, properties) {
+          if (
+            !context.extension.hasPermission("accountsRead") ||
+            !context.extension.hasPermission("messagesImport")
+          ) {
+            throw new ExtensionError(
+              `Using messages.import() requires the "accountsRead" and the "messagesImport" permission`
+            );
+          }
+          const { folder: destinationFolder } = getFolder(destination);
+          if (destinationFolder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
+            throw new ExtensionError(
+              `The destination used in messages.import() cannot be a search folder`
+            );
+          }
+
+          if (!["none", "pop3"].includes(destinationFolder.server.type)) {
+            throw new ExtensionError(
+              `messages.import() is not supported for ${destinationFolder.server.type} accounts`
             );
           }
           try {
-            await Promise.all(promises);
+            const tempFile = await getRealFileForFile(file);
+            const msgHeader = await new Promise((resolve, reject) => {
+              let newKey = null;
+              const msgHdrs = new Map();
+
+              const folderListener = {
+                onMessageAdded(parentItem, msgHdr) {
+                  if (destinationFolder.URI != msgHdr.folder.URI) {
+                    return;
+                  }
+                  const key = msgHdr.messageKey;
+                  msgHdrs.set(key, msgHdr);
+                  if (msgHdrs.has(newKey)) {
+                    finish(msgHdrs.get(newKey));
+                  }
+                },
+                onFolderAdded(parent, child) {},
+              };
+
+              // Note: Currently this API is not supported for IMAP. Once this gets added (Bug 1787104),
+              // please note that the MailServices.mfn.addListener will fire only when the IMAP message
+              // is visibly shown in the UI, while MailServices.mailSession.AddFolderListener fires as
+              // soon as it has been added to the database .
+              MailServices.mailSession.AddFolderListener(
+                folderListener,
+                Ci.nsIFolderListener.added
+              );
+
+              const finish = msgHdr => {
+                MailServices.mailSession.RemoveFolderListener(folderListener);
+                resolve(msgHdr);
+              };
+
+              let tags = "";
+              let flags = 0;
+              if (properties) {
+                if (properties.tags) {
+                  const knownTags = MailServices.tags
+                    .getAllTags()
+                    .map(tag => tag.key);
+                  tags = properties.tags
+                    .filter(tag => knownTags.includes(tag))
+                    .join(" ");
+                }
+                flags |= properties.new ? Ci.nsMsgMessageFlags.New : 0;
+                flags |= properties.read ? Ci.nsMsgMessageFlags.Read : 0;
+                flags |= properties.flagged ? Ci.nsMsgMessageFlags.Marked : 0;
+              }
+              MailServices.copy.copyFileMessage(
+                tempFile,
+                destinationFolder,
+                /* msgToReplace */ null,
+                /* isDraftOrTemplate */ false,
+                /* aMsgFlags */ flags,
+                /* aMsgKeywords */ tags,
+                {
+                  OnStartCopy() {},
+                  OnProgress(progress, progressMax) {},
+                  SetMessageKey(aKey) {
+                    /* Note: Not fired for offline IMAP. Add missing
+                     * if (aCopyState) {
+                     *  ((nsImapMailCopyState*)aCopyState)->m_listener->SetMessageKey(fakeKey);
+                     * }
+                     * before firing the OnStopRunningUrl listener in
+                     * nsImapService::OfflineAppendFromFile
+                     */
+                    newKey = aKey;
+                    if (msgHdrs.has(newKey)) {
+                      finish(msgHdrs.get(newKey));
+                    }
+                  },
+                  GetMessageId(messageId) {},
+                  OnStopCopy(status) {
+                    if (status == Cr.NS_OK) {
+                      if (newKey && msgHdrs.has(newKey)) {
+                        finish(msgHdrs.get(newKey));
+                      }
+                    } else {
+                      reject(status);
+                    }
+                  },
+                },
+                /* msgWindow */ null
+              );
+            });
+
+            // Do not wait till the temp file is removed on app shutdown. However, skip deletion if
+            // the provided DOM File was already linked to a real file.
+            if (!file.mozFullPath) {
+              await IOUtils.remove(tempFile.path);
+            }
+            return context.extension.messageManager.convert(msgHeader);
           } catch (ex) {
-            Cu.reportError(ex);
-            throw new ExtensionError(
-              `Unexpected error deleting messages: ${ex}`
-            );
+            console.error(ex);
+            throw new ExtensionError(`Error importing message: ${ex.message}`);
           }
         },
         async archive(messageIds) {
-          let messages = [];
-          for (let id of messageIds) {
-            let msgHdr = messageTracker.getMessage(id);
-            if (!msgHdr) {
-              continue;
+          try {
+            const messages = [];
+            const folderMap = collectMessagesInFolders(messageIds);
+            for (const [sourceFolder, msgHeaderSet] of folderMap.entries()) {
+              if (!sourceFolder) {
+                throw new ExtensionError(
+                  `Operation not permitted for external messages`
+                );
+              }
+              messages.push(...msgHeaderSet);
             }
-            messages.push(msgHdr);
-          }
-
-          return new Promise(resolve => {
-            let archiver = new MessageArchiver();
-            archiver.oncomplete = resolve;
-            archiver.archiveMessages(messages);
-          });
-        },
-        async listTags() {
-          return MailServices.tags
-            .getAllTags()
-            .map(({ key, tag, color, ordinal }) => {
-              return {
-                key,
-                tag,
-                color,
-                ordinal,
-              };
+            await new Promise(resolve => {
+              const archiver = new MessageArchiver();
+              archiver.oncomplete = resolve;
+              archiver.archiveMessages(messages);
             });
+          } catch (ex) {
+            console.error(ex);
+            throw new ExtensionError(`Error archiving message: ${ex.message}`);
+          }
+        },
+
+        // Deprecated and removed in MV3.
+        async listTags() {
+          return this.tags.list();
+        },
+        async createTag(key, tag, color) {
+          return this.tags.create(key, tag, color);
+        },
+        async updateTag(key, updateProperties) {
+          return this.tags.update(key, updateProperties);
+        },
+        async deleteTag(key) {
+          return this.tags.delete(key);
+        },
+
+        tags: {
+          async list() {
+            return MailServices.tags
+              .getAllTags()
+              .map(({ key, tag, color, ordinal }) => {
+                return {
+                  key,
+                  tag,
+                  color,
+                  ordinal,
+                };
+              });
+          },
+          async create(key, tag, color) {
+            const tags = MailServices.tags.getAllTags();
+            key = key.toLowerCase();
+            if (tags.find(t => t.key == key)) {
+              throw new ExtensionError(`Specified key already exists: ${key}`);
+            }
+            if (tags.find(t => t.tag == tag)) {
+              throw new ExtensionError(`Specified tag already exists: ${tag}`);
+            }
+            MailServices.tags.addTagForKey(key, tag, color.toUpperCase(), "");
+          },
+          async update(key, updateProperties) {
+            const tags = MailServices.tags.getAllTags();
+            key = key.toLowerCase();
+            const tag = tags.find(t => t.key == key);
+            if (!tag) {
+              throw new ExtensionError(`Specified key does not exist: ${key}`);
+            }
+            if (updateProperties.color) {
+              const newColor = updateProperties.color.toUpperCase();
+              if (newColor != tag.color.toUpperCase()) {
+                MailServices.tags.setColorForKey(key, newColor);
+              }
+            }
+            if (updateProperties.tag && tag.tag != updateProperties.tag) {
+              // Don't let the user edit a tag to the name of another existing tag.
+              if (tags.find(t => t.tag == updateProperties.tag)) {
+                throw new ExtensionError(
+                  `Specified tag already exists: ${updateProperties.tag}`
+                );
+              }
+              MailServices.tags.setTagForKey(key, updateProperties.tag);
+            }
+          },
+          async delete(key) {
+            const tags = MailServices.tags.getAllTags();
+            key = key.toLowerCase();
+            if (!tags.find(t => t.key == key)) {
+              throw new ExtensionError(`Specified key does not exist: ${key}`);
+            }
+            MailServices.tags.deleteKey(key);
+          },
         },
       },
     };

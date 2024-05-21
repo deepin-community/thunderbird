@@ -22,11 +22,16 @@
 
 namespace mozilla::wr {
 
+extern LazyLogModule gRenderThreadLog;
+#define LOG(...) MOZ_LOG(gRenderThreadLog, LogLevel::Debug, (__VA_ARGS__))
+
 RenderCompositorNative::RenderCompositorNative(
     const RefPtr<widget::CompositorWidget>& aWidget, gl::GLContext* aGL)
     : RenderCompositor(aWidget),
       mNativeLayerRoot(GetWidget()->GetNativeLayerRoot()) {
-#if defined(XP_MACOSX) || defined(MOZ_WAYLAND)
+  LOG("RenderCompositorNative::RenderCompositorNative()");
+
+#if defined(XP_DARWIN) || defined(MOZ_WAYLAND)
   auto pool = RenderThread::Get()->SharedSurfacePool();
   if (pool) {
     mSurfacePoolHandle = pool->GetHandleForGL(aGL);
@@ -36,6 +41,8 @@ RenderCompositorNative::RenderCompositorNative(
 }
 
 RenderCompositorNative::~RenderCompositorNative() {
+  LOG("RRenderCompositorNative::~RenderCompositorNative()");
+
   Pause();
   mProfilerScreenshotGrabber.Destroy();
   mNativeLayerRoot->SetLayers({});
@@ -89,16 +96,14 @@ RenderedFrameId RenderCompositorNative::EndFrame(
   return frameId;
 }
 
-void RenderCompositorNative::Pause() { mNativeLayerRoot->PauseCompositor(); }
+void RenderCompositorNative::Pause() {}
 
-bool RenderCompositorNative::Resume() {
-  return mNativeLayerRoot->ResumeCompositor();
-}
+bool RenderCompositorNative::Resume() { return true; }
 
 inline layers::WebRenderCompositor RenderCompositorNative::CompositorType()
     const {
   if (gfx::gfxVars::UseWebRenderCompositor()) {
-#if defined(XP_MACOSX)
+#if defined(XP_DARWIN)
     return layers::WebRenderCompositor::CORE_ANIMATION;
 #elif defined(MOZ_WAYLAND)
     return layers::WebRenderCompositor::WAYLAND;
@@ -113,6 +118,14 @@ LayoutDeviceIntSize RenderCompositorNative::GetBufferSize() {
 
 bool RenderCompositorNative::ShouldUseNativeCompositor() {
   return gfx::gfxVars::UseWebRenderCompositor();
+}
+
+void RenderCompositorNative::GetCompositorCapabilities(
+    CompositorCapabilities* aCaps) {
+  RenderCompositor::GetCompositorCapabilities(aCaps);
+#if defined(XP_DARWIN)
+  aCaps->supports_surface_for_backdrop = !gfx::gfxVars::UseSoftwareWebRender();
+#endif
 }
 
 bool RenderCompositorNative::MaybeReadback(
@@ -219,12 +232,13 @@ void RenderCompositorNative::CompositorBeginFrame() {
   mAddedLayers.Clear();
   mAddedTilePixelCount = 0;
   mAddedClippedPixelCount = 0;
-  mBeginFrameTimeStamp = TimeStamp::NowUnfuzzed();
+  mBeginFrameTimeStamp = TimeStamp::Now();
   mSurfacePoolHandle->OnBeginFrame();
+  mNativeLayerRoot->PrepareForCommit();
 }
 
 void RenderCompositorNative::CompositorEndFrame() {
-  if (profiler_thread_is_being_profiled()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     auto bufferSize = GetBufferSize();
     [[maybe_unused]] uint64_t windowPixelCount =
         uint64_t(bufferSize.width) * bufferSize.height;
@@ -295,6 +309,20 @@ void RenderCompositorNative::CreateExternalSurface(wr::NativeSurfaceId aId,
 
   Surface surface{DeviceIntSize{}, aIsOpaque};
   surface.mIsExternal = true;
+  surface.mNativeLayers.insert({TileKey(0, 0), layer});
+
+  mSurfaces.insert({aId, std::move(surface)});
+}
+
+void RenderCompositorNative::CreateBackdropSurface(wr::NativeSurfaceId aId,
+                                                   wr::ColorF aColor) {
+  MOZ_RELEASE_ASSERT(mSurfaces.find(aId) == mSurfaces.end());
+
+  gfx::DeviceColor color(aColor.r, aColor.g, aColor.b, aColor.a);
+  RefPtr<layers::NativeLayer> layer =
+      mNativeLayerRoot->CreateLayerForColor(color);
+
+  Surface surface{DeviceIntSize{}, (aColor.a >= 1.0f)};
   surface.mNativeLayers.insert({TileKey(0, 0), layer});
 
   mSurfaces.insert({aId, std::move(surface)});
@@ -382,11 +410,12 @@ void RenderCompositorNative::AddSurface(
   MOZ_RELEASE_ASSERT(surfaceCursor != mSurfaces.end());
   const Surface& surface = surfaceCursor->second;
 
-  gfx::Matrix4x4 transform(
-      aTransform.m11, aTransform.m12, aTransform.m13, aTransform.m14,
-      aTransform.m21, aTransform.m22, aTransform.m23, aTransform.m24,
-      aTransform.m31, aTransform.m32, aTransform.m33, aTransform.m34,
-      aTransform.m41, aTransform.m42, aTransform.m43, aTransform.m44);
+  float sx = aTransform.scale.x;
+  float sy = aTransform.scale.y;
+  float tx = aTransform.offset.x;
+  float ty = aTransform.offset.y;
+  gfx::Matrix4x4 transform(sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, 1.0,
+                           0.0, tx, ty, 0.0, 1.0);
 
   for (auto it = surface.mNativeLayers.begin();
        it != surface.mNativeLayers.end(); ++it) {
@@ -480,7 +509,7 @@ void RenderCompositorNativeOGL::DoSwap() {
 void RenderCompositorNativeOGL::DoFlush() { mGL->fFlush(); }
 
 void RenderCompositorNativeOGL::InsertFrameDoneSync() {
-#ifdef XP_MACOSX
+#ifdef XP_DARWIN
   // Only do this on macOS.
   // On other platforms, SwapBuffers automatically applies back-pressure.
   if (mThisFrameDoneSync) {

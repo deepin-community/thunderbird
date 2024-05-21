@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 about-httpsonly-title-alert = 純 HTTPS 模式警示
-about-httpsonly-title-connection-not-available = 無法進行安全連線
 about-httpsonly-title-site-not-available = 無法使用安全網站
 # Variables:
 #   $websiteUrl (String) - Url of the website that failed to load. Example: www.example.com
@@ -14,11 +13,11 @@ about-httpsonly-explanation-risk = 也可能是有人正打算攻擊您。若您
 about-httpsonly-explanation-continue = 若繼續，將暫時針對此網站關閉純 HTTPS 模式。
 about-httpsonly-button-continue-to-site = 繼續前往 HTTP 網站
 about-httpsonly-button-go-back = 回上一頁
-about-httpsonly-link-learn-more = 了解更多…
+about-httpsonly-link-learn-more = 更多資訊…
 
 ## Suggestion Box that only shows up if a secure connection to www can be established
 ## Variables:
-##   $websiteUrl (String) - Url of the website that can be securely loded with these alternatives. Example: example.com
+##   $websiteUrl (String) - Url of the website that can be securely loaded with these alternatives. Example: example.com
 
 about-httpsonly-suggestion-box-header = 可能有不同網址
 about-httpsonly-suggestion-box-www-text = 此網站有個安全加密版本位於 <em>www.{ $websiteUrl }</em>，您可以改造訪此網頁，而不是目前的開啟的 <em>{ $websiteUrl }</em>。

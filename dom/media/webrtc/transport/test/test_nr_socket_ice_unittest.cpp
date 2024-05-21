@@ -43,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gtest_utils.h"
 
 extern "C" {
-#include "stun_msg.h"
 #include "ice_ctx.h"
 #include "ice_peer_ctx.h"
 #include "nICEr/src/net/transport_addr.h"
@@ -74,7 +73,8 @@ class IcePeer {
         peer_ctx_(nullptr),
         nat_(nat),
         test_utils_(test_utils) {
-    nr_ice_ctx_create(const_cast<char*>(name_.c_str()), flags, &ice_ctx_);
+    nr_ice_ctx_create(const_cast<char*>(name_.c_str()), flags, nullptr,
+                      &ice_ctx_);
 
     if (nat_) {
       nr_socket_factory* factory;
@@ -109,8 +109,7 @@ class IcePeer {
   virtual ~IcePeer() { Destroy(); }
 
   void Destroy() {
-    test_utils_->sts_target()->Dispatch(WrapRunnable(this, &IcePeer::Destroy_s),
-                                        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(WrapRunnable(this, &IcePeer::Destroy_s));
   }
 
   void Destroy_s() {
@@ -121,9 +120,8 @@ class IcePeer {
   }
 
   void Gather(bool default_route_only = false) {
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnable(this, &IcePeer::Gather_s, default_route_only),
-        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnable(this, &IcePeer::Gather_s, default_route_only));
   }
 
   void Gather_s(bool default_route_only = false) {
@@ -133,9 +131,8 @@ class IcePeer {
 
   std::vector<std::string> GetStreamAttributes() {
     std::vector<std::string> attributes;
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnableRet(&attributes, this, &IcePeer::GetStreamAttributes_s),
-        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnableRet(&attributes, this, &IcePeer::GetStreamAttributes_s));
     return attributes;
   }
 
@@ -159,9 +156,8 @@ class IcePeer {
 
   std::vector<std::string> GetGlobalAttributes() {
     std::vector<std::string> attributes;
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnableRet(&attributes, this, &IcePeer::GetGlobalAttributes_s),
-        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnableRet(&attributes, this, &IcePeer::GetGlobalAttributes_s));
     return attributes;
   }
 
@@ -198,9 +194,8 @@ class IcePeer {
   }
 
   void SetRemoteAttributes(std::vector<std::string> attributes) {
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnable(this, &IcePeer::SetRemoteAttributes_s, attributes),
-        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnable(this, &IcePeer::SetRemoteAttributes_s, attributes));
   }
 
   void SetRemoteAttributes_s(std::vector<std::string> attributes) {
@@ -220,8 +215,7 @@ class IcePeer {
   }
 
   void StartChecks() {
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnable(this, &IcePeer::StartChecks_s), NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(WrapRunnable(this, &IcePeer::StartChecks_s));
   }
 
   void StartChecks_s() {

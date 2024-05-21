@@ -14,6 +14,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Security-Policy" content="default-src chrome:; object-src 'none'" />
+    <meta name="color-scheme" content="light dark" />
     <title data-l10n-id="page-title"/>
 
     <link rel="icon" type="image/png" id="favicon"
@@ -23,9 +24,6 @@
 <!-- Added for TB -->
     <link rel="stylesheet" href="chrome://messenger/skin/aboutSupport.css"
           type="text/css"/>
-    <!-- Private data is hidden by default. -->
-    <link rel="stylesheet" href="chrome://messenger/content/about-support/hide-private.css"
-          type="text/css" id="about-support-private"/>
 <!-- End of TB addition -->
     <script src="chrome://messenger/content/about-support/aboutSupport.js"/>
     <link rel="localization" href="branding/brand.ftl"/>
@@ -35,53 +33,60 @@
 <!-- Added for TB -->
     <link rel="localization" href="messenger/aboutSupportMail.ftl"/>
     <link rel="localization" href="messenger/aboutSupportCalendar.ftl"/>
+    <link rel="localization" href="messenger/aboutSupportChat.ftl"/>
     <script src="chrome://messenger/content/about-support/accounts.js"/>
     <script src="chrome://messenger/content/about-support/calendars.js"/>
+    <script src="chrome://messenger/content/about-support/chat.js"/>
+    <script src="chrome://messenger/content/about-support/libs.js"/>
     <script src="chrome://messenger/content/about-support/export.js"/>
 <!-- End of TB addition -->
   </head>
 
   <body class="wide-container">
+    <h1 data-l10n-id="page-title"/>
+    <div class="header-flex">
+      <div class="content-flex">
+        <div class="page-subtitle" data-l10n-id="page-subtitle">
+          <a id="supportLink" data-l10n-name="support-link"></a>
+        </div>
+        <div id="support-buttons">
+          <!-- Not used on TB
+          <button id="copy-raw-data-to-clipboard" data-l10n-id="copy-raw-data-to-clipboard-label"/>
+          -->
+          <button id="copy-to-clipboard" data-l10n-id="copy-text-to-clipboard-label"/>
+          <!-- Added for TB -->
+          <button id="send-via-email" data-l10n-id="send-via-email"/>
+          <div>
+            <input type="checkbox"
+                   id="check-show-private-data"
+                   class="data-uionly"
+                   role="checkbox"/>
+            <span>
+              <label for="check-show-private-data" data-l10n-id="show-private-data-main-text"/>
+              <span class="gray-text" data-l10n-id="show-private-data-explanation-text"></span>
+            </span>
+          </div>
+          <!-- End of TB addition -->
+        </div>
+      </div>
 
 #ifndef ANDROID
-    <div id="action-box" class="notice-box">
-      <div id="reset-box">
-        <h3 data-l10n-id="refresh-profile"/>
-        <button id="reset-box-button" data-l10n-id="refresh-profile-button"/>
+      <div class="action-box">
+        <div id="reset-box">
+          <h3 data-l10n-id="refresh-profile"/>
+          <button id="reset-box-button" data-l10n-id="refresh-profile-button"/>
+        </div>
+        <div id="safe-mode-box">
+          <h3 data-l10n-id="troubleshoot-mode-title"/>
+          <button id="restart-in-safe-mode-button" data-l10n-id="restart-in-troubleshoot-mode-label"/>
+        </div>
+        <div id="clear-startup-cache-box">
+          <h3 data-l10n-id="clear-startup-cache-title"/>
+          <button id="clear-startup-cache-button" data-l10n-id="clear-startup-cache-label"/>
+        </div>
       </div>
-      <div id="safe-mode-box">
-        <h3 data-l10n-id="troubleshoot-mode-title"/>
-        <button id="restart-in-safe-mode-button" data-l10n-id="restart-in-troubleshoot-mode-label"/>
-      </div>
-      <div id="clear-startup-cache-box">
-        <h3 data-l10n-id="clear-startup-cache-title"/>
-        <button id="clear-startup-cache-button" data-l10n-id="clear-startup-cache-label"/>
-      </div>
-    </div>
 #endif
-
-    <h1 data-l10n-id="page-title"/>
-
-    <div class="page-subtitle" data-l10n-id="page-subtitle">
-      <a id="supportLink" data-l10n-name="support-link"></a>
     </div>
-
-    <div>
-<!-- Not used on TB
-      <button id="copy-raw-data-to-clipboard" data-l10n-id="copy-raw-data-to-clipboard-label"/>
- -->
-      <button id="copy-to-clipboard" data-l10n-id="copy-text-to-clipboard-label"/>
-<!-- Added for TB -->
-      <button id="send-via-email" data-l10n-id="send-via-email"/>
-      <input type="checkbox"
-             id="check-show-private-data"
-             class="data-uionly"
-             role="checkbox"/>
-      <label for="check-show-private-data" data-l10n-id="show-private-data-main-text"/>
-      <label class="gray-text" data-l10n-id="show-private-data-explanation-text"/>
-<!-- End of TB addition -->
-    </div>
-
     <div id="contents">
 
       <!-- - - - - - - - - - - - - - - - - - - - - -->
@@ -116,7 +121,7 @@
 
 #ifndef ANDROID
 #ifdef MOZ_UPDATER
-          <tr id="update-row" class="no-copy">
+          <tr id="update-dir-row" class="no-copy">
             <th class="column" data-l10n-id="app-basics-update-dir"/>
 
             <td>
@@ -126,7 +131,7 @@
             </td>
           </tr>
 
-          <tr class="no-copy">
+          <tr id="update-history-row" class="no-copy">
             <th class="column" data-l10n-id="app-basics-update-history"/>
 
             <td>
@@ -154,6 +159,13 @@
             <th class="column" data-l10n-id="app-basics-os"/>
 
             <td id="os-box">
+            </td>
+          </tr>
+
+          <tr id="os-theme-row">
+            <th class="column" data-l10n-id="app-basics-os-theme"/>
+
+            <td id="os-theme-box">
             </td>
           </tr>
 
@@ -200,10 +212,18 @@
           </tr>
 
           <tr class="no-copy">
+            <th class="column" data-l10n-id="app-basics-cache-use"/>
+
+            <td>
+              <a href="about:cache" target="_blank">about:cache</a>
+            </td>
+          </tr>
+
+          <tr class="no-copy">
             <th class="column" data-l10n-id="app-basics-performance"/>
 
             <td>
-              <a href="about:performance" target="_blank">about:performance</a>
+              <a href="about:processes" target="_blank">about:processes</a>
             </td>
           </tr>
 
@@ -294,6 +314,20 @@
             </td>
           </tr>
 
+          <tr>
+            <th class="column" data-l10n-id="app-basics-memory-size"/>
+
+            <td id="memory-size-box">
+            </td>
+          </tr>
+
+          <tr>
+            <th class="column" data-l10n-id="app-basics-disk-available"/>
+
+            <td id="disk-available-box">
+            </td>
+          </tr>
+
 #ifndef ANDROID
           <tr class="no-copy">
             <th class="column" data-l10n-id="app-basics-profiles"/>
@@ -355,6 +389,39 @@
         </tbody>
       </table>
 
+      <h2 class="major-section" data-l10n-id="mail-libs-title"></h2>
+      <table class="mail-libs-table">
+        <caption></caption>
+        <thead>
+          <th data-l10n-id="libs-table-heading-library"></th>
+          <th data-l10n-id="libs-table-heading-status"></th>
+          <th data-l10n-id="libs-table-heading-expected-version"></th>
+          <th data-l10n-id="libs-table-heading-loaded-version"></th>
+          <th data-l10n-id="libs-table-heading-path"></th>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>RNP (OpenPGP)</td>
+            <td id="rnp-status">
+            </td>
+            <td id="rnp-expected-version">
+            </td>
+            <td id="rnp-loaded-version">
+            </td>
+            <td id="rnp-path">
+            </td>
+          </tr>
+          <tr>
+            <td>OTR</td>
+            <td id="otr-status"></td>
+            <td>-</td>
+            <td>-</td>
+            <td id="otr-path"></td>
+          </tr>
+        </tbody>
+      </table>
+
       <h2 class="major-section" data-l10n-id="calendars-title"></h2>
 
       <div id="calendar-tables"></div>
@@ -375,6 +442,30 @@
         <tr>
           <td></td>
           <td></td>
+        </tr>
+      </template>
+
+      <h2 class="major-section no-copy" data-l10n-id="chat-title"></h2>
+
+      <table class="no-copy" id="chat-table">
+        <thead>
+          <tr>
+            <th data-l10n-id="chat-table-heading-account"></th>
+            <th data-l10n-id="chat-table-heading-protocol"></th>
+            <th data-l10n-id="chat-table-heading-name" class="data-private"></th>
+            <th data-l10n-id="chat-table-heading-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="chat-tbody">
+        </tbody>
+      </table>
+
+      <template id="chat-table-row-template">
+        <tr>
+          <td></td>
+          <td></td>
+          <td class="data-private"></td>
+          <td><button class="button" type="button" data-l10n-id="chat-table-copy-debug-log"></button></td>
         </tr>
       </template>
 
@@ -482,6 +573,28 @@
             <th class="column" data-l10n-id="security-software-firewall"/>
 
             <td id="security-software-firewall">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- - - - - - - - - - - - - - - - - - - - - -->
+
+      <h2 class="major-section" id="legacyUserStylesheets" data-l10n-id="legacy-user-stylesheets-title"/>
+
+      <table>
+        <tbody id="legacyUserStylesheets-info-tbody">
+          <tr>
+            <th class="column" data-l10n-id="legacy-user-stylesheets-enabled"/>
+
+            <td id="legacyUserStylesheets-enabled">
+            </td>
+          </tr>
+
+          <tr>
+            <th class="column" data-l10n-id="legacy-user-stylesheets-stylesheet-types"/>
+
+            <td id="legacyUserStylesheets-types">
             </td>
           </tr>
         </tbody>

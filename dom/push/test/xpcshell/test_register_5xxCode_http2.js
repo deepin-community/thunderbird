@@ -3,13 +3,13 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
-
-const { PushDB, PushService, PushServiceHttp2 } = serviceExports;
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
 var httpServer = null;
 
-XPCOMUtils.defineLazyGetter(this, "serverPort", function() {
+ChromeUtils.defineLazyGetter(this, "serverPort", function () {
   return httpServer.identity.primaryPort;
 });
 
@@ -40,7 +40,7 @@ function subscribe5xxCodeHandler(metadata, response) {
 
 function listenSuccessHandler(metadata, response) {
   Assert.ok(true, "New listener point");
-  ok(retries == 2, "Should try 2 times.");
+  Assert.equal(retries, 2, "Should try 2 times.");
   do_test_finished();
   response.setHeader("Retry-After", "10");
   response.setStatusLine(metadata.httpVersion, 500, "Retry");

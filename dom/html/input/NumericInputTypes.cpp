@@ -41,25 +41,9 @@ bool NumericInputTypeBase::IsRangeUnderflow() const {
   return value < minimum;
 }
 
-bool NumericInputTypeBase::HasStepMismatch(bool aUseZeroIfValueNaN) const {
+bool NumericInputTypeBase::HasStepMismatch() const {
   Decimal value = mInputElement->GetValueAsDecimal();
-  if (value.isNaN()) {
-    if (aUseZeroIfValueNaN) {
-      value = Decimal(0);
-    } else {
-      // The element can't suffer from step mismatch if it's value isn't a
-      // number.
-      return false;
-    }
-  }
-
-  Decimal step = mInputElement->GetStep();
-  if (step == kStepAny) {
-    return false;
-  }
-
-  // Value has to be an integral multiple of step.
-  return NS_floorModulo(value - GetStepBase(), step) != Decimal(0);
+  return mInputElement->ValueIsStepMismatch(value);
 }
 
 nsresult NumericInputTypeBase::GetRangeOverflowMessage(nsAString& aMessage) {
@@ -68,11 +52,7 @@ nsresult NumericInputTypeBase::GetRangeOverflowMessage(nsAString& aMessage) {
   MOZ_ASSERT(!maximum.isNaN());
 
   nsAutoString maxStr;
-  char buf[32];
-  DebugOnly<bool> ok = maximum.toString(buf, ArrayLength(buf));
-  maxStr.AssignASCII(buf);
-  MOZ_ASSERT(ok, "buf not big enough");
-
+  ConvertNumberToString(maximum, maxStr);
   return nsContentUtils::FormatMaybeLocalizedString(
       aMessage, nsContentUtils::eDOM_PROPERTIES,
       "FormValidationNumberRangeOverflow", mInputElement->OwnerDoc(), maxStr);
@@ -83,25 +63,15 @@ nsresult NumericInputTypeBase::GetRangeUnderflowMessage(nsAString& aMessage) {
   MOZ_ASSERT(!minimum.isNaN());
 
   nsAutoString minStr;
-  char buf[32];
-  DebugOnly<bool> ok = minimum.toString(buf, ArrayLength(buf));
-  minStr.AssignASCII(buf);
-  MOZ_ASSERT(ok, "buf not big enough");
-
+  ConvertNumberToString(minimum, minStr);
   return nsContentUtils::FormatMaybeLocalizedString(
       aMessage, nsContentUtils::eDOM_PROPERTIES,
       "FormValidationNumberRangeUnderflow", mInputElement->OwnerDoc(), minStr);
 }
 
-bool NumericInputTypeBase::ConvertStringToNumber(nsAString& aValue,
-                                                 Decimal& aResultValue) const {
-  ICUUtils::LanguageTagIterForContent langTagIter(mInputElement);
-  aResultValue =
-      Decimal::fromDouble(ICUUtils::ParseNumber(aValue, langTagIter));
-  if (!aResultValue.isFinite()) {
-    aResultValue = HTMLInputElement::StringToDecimal(aValue);
-  }
-  return aResultValue.isFinite();
+auto NumericInputTypeBase::ConvertStringToNumber(const nsAString& aValue) const
+    -> StringToNumberResult {
+  return {HTMLInputElement::StringToDecimal(aValue)};
 }
 
 bool NumericInputTypeBase::ConvertNumberToString(
@@ -138,6 +108,20 @@ bool NumberInputType::HasBadInput() const {
   return !value.IsEmpty() && mInputElement->GetValueAsDecimal().isNaN();
 }
 
+auto NumberInputType::ConvertStringToNumber(const nsAString& aValue) const
+    -> StringToNumberResult {
+  auto result = NumericInputTypeBase::ConvertStringToNumber(aValue);
+  if (result.mResult.isFinite()) {
+    return result;
+  }
+  // Try to read the localized value from the user.
+  ICUUtils::LanguageTagIterForContent langTagIter(mInputElement);
+  result.mLocalized = true;
+  result.mResult =
+      Decimal::fromDouble(ICUUtils::ParseNumber(aValue, langTagIter));
+  return result;
+}
+
 bool NumberInputType::ConvertNumberToString(Decimal aValue,
                                             nsAString& aResultString) const {
   MOZ_ASSERT(aValue.isFinite(), "aValue must be a valid non-Infinite number.");
@@ -161,12 +145,11 @@ nsresult NumberInputType::GetBadInputMessage(nsAString& aMessage) {
 }
 
 bool NumberInputType::IsMutable() const {
-  return !mInputElement->IsDisabled() &&
-         !mInputElement->HasAttr(kNameSpaceID_None, nsGkAtoms::readonly);
+  return !mInputElement->IsDisabledOrReadOnly();
 }
 
 /* input type=range */
-nsresult RangeInputType::MinMaxStepAttrChanged() {
+void RangeInputType::MinMaxStepAttrChanged() {
   // The value may need to change when @min/max/step changes since the value may
   // have been invalid and can now change to a valid value, or vice versa. For
   // example, consider: <input type=range value=-1 max=1 step=3>. The valid
@@ -179,6 +162,5 @@ nsresult RangeInputType::MinMaxStepAttrChanged() {
   // example above were to change from 1 to -1.
   nsAutoString value;
   GetNonFileValueInternal(value);
-  return SetValueInternal(value,
-                          TextControlState::ValueSetterOption::ByInternalAPI);
+  SetValueInternal(value, TextControlState::ValueSetterOption::ByInternalAPI);
 }

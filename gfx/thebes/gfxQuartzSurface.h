@@ -10,7 +10,11 @@
 #include "nsSize.h"
 #include "gfxPoint.h"
 
-#include <Carbon/Carbon.h>
+#ifdef MOZ_WIDGET_COCOA
+#  include <Carbon/Carbon.h>
+#else
+#  include <CoreGraphics/CoreGraphics.h>
+#endif
 
 class gfxContext;
 class gfxImageSurface;
@@ -20,8 +24,6 @@ class gfxQuartzSurface : public gfxASurface {
   gfxQuartzSurface(const mozilla::gfx::IntSize&, gfxImageFormat format);
   gfxQuartzSurface(CGContextRef context, const mozilla::gfx::IntSize& size);
   gfxQuartzSurface(cairo_surface_t* csurf, const mozilla::gfx::IntSize& aSize);
-  gfxQuartzSurface(unsigned char* data, const mozilla::gfx::IntSize& size,
-                   long stride, gfxImageFormat format);
 
   virtual ~gfxQuartzSurface();
 

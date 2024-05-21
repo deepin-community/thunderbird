@@ -1,9 +1,9 @@
-add_task(async function() {
+add_task(async function () {
   var privWin = OpenBrowserWindow({ private: true });
   await new privWin.Promise(resolve => {
     privWin.addEventListener(
       "load",
-      function() {
+      function () {
         resolve();
       },
       { once: true }
@@ -14,7 +14,7 @@ add_task(async function() {
   await new pubWin.Promise(resolve => {
     pubWin.addEventListener(
       "load",
-      function() {
+      function () {
         resolve();
       },
       { once: true }
@@ -37,43 +37,43 @@ add_task(async function() {
   var pubBrowser = gBrowser.getBrowserForTab(pubTab);
 
   // Check if pubWin can see privWin's storage events
-  await SpecialPowers.spawn(pubBrowser, [], function(opts) {
+  await SpecialPowers.spawn(pubBrowser, [], function () {
     content.window.gotStorageEvent = false;
-    content.window.addEventListener("storage", ev => {
+    content.window.addEventListener("storage", () => {
       content.window.gotStorageEvent = true;
     });
   });
 
-  await SpecialPowers.spawn(privBrowser, [], function(opts) {
+  await SpecialPowers.spawn(privBrowser, [], function () {
     content.window.localStorage.key = "ablooabloo";
   });
 
-  let pubSaw = await SpecialPowers.spawn(pubBrowser, [], function(opts) {
+  let pubSaw = await SpecialPowers.spawn(pubBrowser, [], function () {
     return content.window.gotStorageEvent;
   });
 
   ok(!pubSaw, "pubWin shouldn't be able to see privWin's storage events");
 
-  await SpecialPowers.spawn(privBrowser, [], function(opts) {
+  await SpecialPowers.spawn(privBrowser, [], function () {
     content.window.gotStorageEvent = false;
-    content.window.addEventListener("storage", ev => {
+    content.window.addEventListener("storage", () => {
       content.window.gotStorageEvent = true;
     });
   });
 
   // Check if privWin can see pubWin's storage events
-  await SpecialPowers.spawn(privBrowser, [], function(opts) {
+  await SpecialPowers.spawn(privBrowser, [], function () {
     content.window.gotStorageEvent = false;
-    content.window.addEventListener("storage", ev => {
+    content.window.addEventListener("storage", () => {
       content.window.gotStorageEvent = true;
     });
   });
 
-  await SpecialPowers.spawn(pubBrowser, [], function(opts) {
+  await SpecialPowers.spawn(pubBrowser, [], function () {
     content.window.localStorage.key = "ablooabloo";
   });
 
-  let privSaw = await SpecialPowers.spawn(privBrowser, [], function(opts) {
+  let privSaw = await SpecialPowers.spawn(privBrowser, [], function () {
     return content.window.gotStorageEvent;
   });
 

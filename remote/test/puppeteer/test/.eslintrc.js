@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2024 Google Inc.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 module.exports = {
   rules: {
     'no-restricted-imports': [
@@ -10,4 +15,29 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      files: ['*.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-unused-vars': [
+          'error',
+          {argsIgnorePattern: '^_', varsIgnorePattern: '^_'},
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            message:
+              'Use helper command `launch` to make sure the browsers get cleaned',
+            selector:
+              'MemberExpression[object.name="puppeteer"][property.name="launch"]',
+          },
+          {
+            message: 'Unexpected debugging mocha test.',
+            selector:
+              'CallExpression[callee.object.name="it"] > MemberExpression > Identifier[name="deflake"], CallExpression[callee.object.name="it"] > MemberExpression > Identifier[name="deflakeOnly"]',
+          },
+        ],
+      },
+    },
+  ],
 };

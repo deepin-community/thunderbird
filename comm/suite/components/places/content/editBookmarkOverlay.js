@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 const LAST_USED_ANNO = "bookmarkPropertiesDialog/folderLastUsed";
@@ -358,23 +357,8 @@ var gEditItemOverlay = {
     if (aElement.value != aValue) {
       aElement.value = aValue;
 
-      // Clear the editor's undo stack
-      let transactionManager;
-      try {
-        transactionManager = aElement.editor.transactionManager;
-      } catch (e) {
-        // When retrieving the transaction manager, editor may be null resulting
-        // in a TypeError. Additionally, the transaction manager may not
-        // exist yet, which causes access to it to throw NS_ERROR_FAILURE.
-        // In either event, the transaction manager doesn't exist it, so we
-        // don't need to worry about clearing it.
-        if (!(e instanceof TypeError) && e.result != Cr.NS_ERROR_FAILURE) {
-          throw e;
-        }
-      }
-      if (transactionManager) {
-        transactionManager.clear();
-      }
+      // Clear the editor's undo stack, but note that editor may be null here.
+      aElement.editor?.clearUndoRedo();
     }
   },
 
@@ -475,8 +459,7 @@ var gEditItemOverlay = {
   },
 
   QueryInterface:
-  XPCOMUtils.generateQI([Ci.nsIDOMEventListener,
-                         Ci.nsINavBookmarkObserver]),
+  XPCOMUtils.generateQI([Ci.nsINavBookmarkObserver]),
 
   _element(aID) {
     return document.getElementById("editBMPanel_" + aID);
@@ -955,7 +938,7 @@ var gEditItemOverlay = {
                                   this._folderTree.columns.getFirstColumn());
   },
 
-  // nsIDOMEventListener
+  // EventListener
   handleEvent(aEvent) {
     switch (aEvent.type) {
     case "CheckboxStateChange":

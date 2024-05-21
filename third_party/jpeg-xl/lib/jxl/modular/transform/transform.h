@@ -29,17 +29,10 @@ enum class TransformId : uint32_t {
 
   // Invalid for now.
   kInvalid = 3,
-
-  // this is lossy preprocessing, doesn't have an inverse transform and doesn't
-  // exist from the decoder point of view
-  kNearLossless = 4,
-
-  // The total number of transforms. Update this if adding more transformations.
-  kNumTransforms = 5,
 };
 
 struct SqueezeParams : public Fields {
-  const char *Name() const override { return "SqueezeParams"; }
+  JXL_FIELDS_NAME(SqueezeParams)
   bool horizontal;
   bool in_place;
   uint32_t begin_c;
@@ -81,14 +74,16 @@ class Transform : public Fields {
 
   explicit Transform(TransformId id);
   // default constructor for bundles.
-  Transform() : Transform(TransformId::kNumTransforms) {}
+  Transform() : Transform(TransformId::kInvalid) {}
 
   Status VisitFields(Visitor *JXL_RESTRICT visitor) override {
-    JXL_QUIET_RETURN_IF_ERROR(visitor->U32(
-        Val((uint32_t)TransformId::kRCT), Val((uint32_t)TransformId::kPalette),
-        Val((uint32_t)TransformId::kSqueeze),
-        Val((uint32_t)TransformId::kInvalid), (uint32_t)TransformId::kRCT,
-        reinterpret_cast<uint32_t *>(&id)));
+    JXL_QUIET_RETURN_IF_ERROR(
+        visitor->U32(Val(static_cast<uint32_t>(TransformId::kRCT)),
+                     Val(static_cast<uint32_t>(TransformId::kPalette)),
+                     Val(static_cast<uint32_t>(TransformId::kSqueeze)),
+                     Val(static_cast<uint32_t>(TransformId::kInvalid)),
+                     static_cast<uint32_t>(TransformId::kRCT),
+                     reinterpret_cast<uint32_t *>(&id)));
     if (id == TransformId::kInvalid) {
       return JXL_FAILURE("Invalid transform ID");
     }
@@ -116,7 +111,7 @@ class Transform : public Fields {
           visitor->U32(Val(0), BitsOffset(8, 1), BitsOffset(10, 257),
                        BitsOffset(16, 1281), 0, &nb_deltas));
       JXL_QUIET_RETURN_IF_ERROR(
-          visitor->Bits(4, (uint32_t)Predictor::Zero,
+          visitor->Bits(4, static_cast<uint32_t>(Predictor::Zero),
                         reinterpret_cast<uint32_t *>(&predictor)));
       if (predictor >= Predictor::Best) {
         return JXL_FAILURE("Invalid predictor");
@@ -136,17 +131,19 @@ class Transform : public Fields {
     return true;
   }
 
-  const char *Name() const override { return "Transform"; }
+  JXL_FIELDS_NAME(Transform)
 
-  // Returns the name of the transform.
-  const char *TransformName() const;
-
-  Status Forward(Image &input, const weighted::Header &wp_header,
-                 ThreadPool *pool = nullptr);
   Status Inverse(Image &input, const weighted::Header &wp_header,
                  ThreadPool *pool = nullptr);
   Status MetaApply(Image &input);
 };
+
+Status CheckEqualChannels(const Image &image, uint32_t c1, uint32_t c2);
+
+static inline pixel_type PixelAdd(pixel_type a, pixel_type b) {
+  return static_cast<pixel_type>(static_cast<uint32_t>(a) +
+                                 static_cast<uint32_t>(b));
+}
 
 }  // namespace jxl
 

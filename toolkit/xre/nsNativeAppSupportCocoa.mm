@@ -11,6 +11,7 @@
 #include "nsCOMPtr.h"
 #include "nsCocoaFeatures.h"
 #include "nsNativeAppSupportBase.h"
+#include "nsServiceManagerUtils.h"
 
 #include "nsIBaseWindow.h"
 #include "nsCommandLine.h"
@@ -114,11 +115,12 @@ nsNativeAppSupportCocoa::ReOpen() {
 
       nsCOMPtr<nsIWidget> widget = nullptr;
       baseWindow->GetMainWidget(getter_AddRefs(widget));
-      if (!widget) {
+      if (!widget || !widget->IsVisible()) {
         windowList->HasMoreElements(&more);
         continue;
       }
-      NSWindow* cocoaWindow = (NSWindow*)widget->GetNativeData(NS_NATIVE_WINDOW);
+      NSWindow* cocoaWindow =
+          (NSWindow*)widget->GetNativeData(NS_NATIVE_WINDOW);
       if (![cocoaWindow isMiniaturized]) {
         haveNonMiniaturized = true;
         break;  // have un-minimized windows, nothing to do
@@ -127,9 +129,14 @@ nsNativeAppSupportCocoa::ReOpen() {
     }  // end while
 
     if (!haveNonMiniaturized) {
-      // Deminiaturize the most recenty used window
+      // Prioritize browser windows for deminiaturization
       nsCOMPtr<mozIDOMWindowProxy> mru;
-      wm->GetMostRecentWindow(nullptr, getter_AddRefs(mru));
+      wm->GetMostRecentBrowserWindow(getter_AddRefs(mru));
+
+      // Failing that, deminiaturize the most recently used window
+      if (!mru) {
+        wm->GetMostRecentWindow(nullptr, getter_AddRefs(mru));
+      }
 
       if (mru) {
         NSWindow* cocoaMru = nil;
@@ -148,7 +155,8 @@ nsNativeAppSupportCocoa::ReOpen() {
       nsCOMPtr<nsICommandLineRunner> cmdLine(new nsCommandLine());
 
       nsresult rv;
-      rv = cmdLine->Init(0, argv, nullptr, nsICommandLine::STATE_REMOTE_EXPLICIT);
+      rv = cmdLine->Init(0, argv, nullptr,
+                         nsICommandLine::STATE_REMOTE_EXPLICIT);
       NS_ENSURE_SUCCESS(rv, rv);
 
       return cmdLine->Run();

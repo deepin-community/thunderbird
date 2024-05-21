@@ -14,6 +14,7 @@
 
 #include "nsAtom.h"
 #include "nsIContent.h"
+#include "nsTHashSet.h"
 
 class nsINode;
 
@@ -118,6 +119,11 @@ const uint8_t ATTR_VALTOKEN = 0x1 << 2;
  */
 const uint8_t ATTR_GLOBAL = 0x1 << 3;
 
+/**
+ * Indicates that the attribute should have an integer value.
+ */
+const uint8_t ATTR_VALINT = 0x1 << 4;
+
 ////////////////////////////////////////////////////////////////////////////////
 // State map entry
 
@@ -198,6 +204,8 @@ struct nsRoleMapEntry {
  */
 namespace mozilla {
 namespace a11y {
+class AccAttributes;
+
 namespace aria {
 
 /**
@@ -225,6 +233,19 @@ const uint8_t LANDMARK_ROLE_MAP_ENTRY_INDEX = UINT8_MAX;
  *                if none
  */
 const nsRoleMapEntry* GetRoleMap(dom::Element* aEl);
+
+/*
+ * Get the role map entry pointer's index for a given DOM node, skipping any
+ * given roles. This will use the first valid ARIA role if the role attribute
+ * provides a space delimited list of roles, excluding any given roles.
+ *
+ * @param aEl          [in] the DOM node to get the role map entry for
+ * @param aRolesToSkip [in] the roles to skip when searching the role string
+ * @return             the index of the pointer to the role map entry for the
+ *                     ARIA role, or NO_ROLE_MAP_ENTRY_INDEX if none
+ */
+uint8_t GetFirstValidRoleMapIndexExcluding(
+    dom::Element* aEl, std::initializer_list<nsStaticAtom*> aRolesToSkip);
 
 /**
  * Get the role map entry pointer's index for a given DOM node. This will use
@@ -259,6 +280,11 @@ const nsRoleMapEntry* GetRoleMapFromIndex(uint8_t aRoleMapIndex);
 uint8_t GetIndexFromRoleMap(const nsRoleMapEntry* aRoleMap);
 
 /**
+ * Determine whether a role map entry index is valid.
+ */
+bool IsRoleMapIndexValid(uint8_t aRoleMapIndex);
+
+/**
  * Return accessible state from ARIA universal states applied to the given
  * element.
  */
@@ -288,11 +314,15 @@ class AttrIterator {
 
   bool Next();
 
-  void AttrName(nsAString& aAttrName) const;
-
   nsAtom* AttrName() const;
 
   void AttrValue(nsAString& aAttrValue) const;
+
+  /**
+   * Expose this ARIA attribute in a specified AccAttributes. The appropriate
+   * type will be used for the attribute; e.g. an atom for a token value.
+   */
+  bool ExposeAttr(AccAttributes* aTargetAttrs) const;
 
  private:
   AttrIterator() = delete;
@@ -300,9 +330,15 @@ class AttrIterator {
   AttrIterator& operator=(const AttrIterator&) = delete;
 
   dom::Element* mElement;
+
+  bool mIteratingDefaults;
+  nsTHashSet<RefPtr<nsAtom>> mOverriddenAttrs;
+
+  const AttrArray* mAttrs;
   uint32_t mAttrIdx;
   uint32_t mAttrCount;
   RefPtr<nsAtom> mAttrAtom;
+  uint8_t mAttrCharacteristics;
 };
 
 }  // namespace aria

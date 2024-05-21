@@ -6,17 +6,32 @@
 
 "use strict";
 
-const { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
-);
-
-const SEARCH_SERVICE_TOPIC = "browser-search-service";
-const SEARCH_ENGINE_TOPIC = "browser-search-engine-modified";
-
 const GOOD_CONFIG = [
   {
     webExtension: {
       id: "engine@search.mozilla.org",
+      name: "Test search engine",
+      search_url: "https://www.google.com/search",
+      params: [
+        {
+          name: "q",
+          value: "{searchTerms}",
+        },
+        {
+          name: "channel",
+          condition: "purpose",
+          purpose: "contextmenu",
+          value: "rcs",
+        },
+        {
+          name: "channel",
+          condition: "purpose",
+          purpose: "keyword",
+          value: "fflb",
+        },
+      ],
+      suggest_url:
+        "https://suggestqueries.google.com/complete/search?output=firefox&client=firefox&hl={moz:locale}&q={searchTerms}",
     },
     appliesTo: [
       {
@@ -40,24 +55,49 @@ const BAD_CONFIG = [
   },
 ];
 
-function listenFor(name, key) {
-  let notifyObserved = false;
-  let obs = (subject, topic, data) => {
-    if (data == key) {
-      notifyObserved = true;
-    }
-  };
-  Services.obs.addObserver(obs, name);
+const CONFIG_V2 = [
+  {
+    recordType: "engine",
+    identifier: "engine",
+    base: {
+      name: "Test search engine",
+      urls: {
+        search: {
+          base: "https://www.google.com/search",
+          params: [
+            {
+              name: "channel",
+              searchAccessPoint: {
+                addressbar: "fflb",
+                contextmenu: "rcs",
+              },
+            },
+          ],
+          searchTermParamName: "q",
+        },
+        suggestions: {
+          base: "https://suggestqueries.google.com/complete/search?output=firefox&client=firefox&hl={moz:locale}",
+          searchTermParamName: "q",
+        },
+      },
+    },
+    variants: [
+      {
+        environment: { allRegionsAndLocales: true },
+      },
+    ],
+  },
+  {
+    recordType: "defaultEngines",
+    specificDefaults: [],
+  },
+  {
+    recordType: "engineOrders",
+    orders: [],
+  },
+];
 
-  return () => {
-    Services.obs.removeObserver(obs, name);
-    return notifyObserved;
-  };
-}
-
-let configurationStub;
-
-add_task(async function setup() {
+add_setup(async function () {
   SearchTestUtils.useMockIdleService();
   await AddonTestUtils.promiseStartupManager();
 
@@ -68,10 +108,10 @@ add_task(async function setup() {
 });
 
 add_task(async function test_startup_with_missing() {
-  configurationStub = await SearchTestUtils.useTestEngines(
+  await SearchTestUtils.useTestEngines(
     "data",
     null,
-    BAD_CONFIG
+    SearchUtils.newSearchConfigEnabled ? CONFIG_V2 : BAD_CONFIG
   );
 
   const result = await Services.search.init();
@@ -90,13 +130,12 @@ add_task(async function test_startup_with_missing() {
 });
 
 add_task(async function test_update_with_missing() {
-  let reloadObserved = SearchTestUtils.promiseSearchNotification(
-    "engines-reloaded"
-  );
+  let reloadObserved =
+    SearchTestUtils.promiseSearchNotification("engines-reloaded");
 
   await RemoteSettings(SearchUtils.SETTINGS_KEY).emit("sync", {
     data: {
-      current: GOOD_CONFIG,
+      current: SearchUtils.newSearchConfigEnabled ? CONFIG_V2 : GOOD_CONFIG,
     },
   });
 
@@ -112,13 +151,12 @@ add_task(async function test_update_with_missing() {
     "Should have just the good engine"
   );
 
-  reloadObserved = SearchTestUtils.promiseSearchNotification(
-    "engines-reloaded"
-  );
+  reloadObserved =
+    SearchTestUtils.promiseSearchNotification("engines-reloaded");
 
   await RemoteSettings(SearchUtils.SETTINGS_KEY).emit("sync", {
     data: {
-      current: BAD_CONFIG,
+      current: SearchUtils.newSearchConfigEnabled ? CONFIG_V2 : BAD_CONFIG,
     },
   });
 

@@ -2,36 +2,41 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import { Component } from "react";
-import { toEditorLine, endOperation, startOperation } from "../../utils/editor";
+import { Component } from "devtools/client/shared/vendor/react";
+import PropTypes from "devtools/client/shared/vendor/react-prop-types";
+import {
+  toEditorLine,
+  endOperation,
+  startOperation,
+} from "../../utils/editor/index";
 import { getDocument, hasDocument } from "../../utils/editor/source-documents";
 
-import { connect } from "../../utils/connect";
+import { connect } from "devtools/client/shared/vendor/react-redux";
 import {
   getVisibleSelectedFrame,
   getSelectedLocation,
-  getSelectedSourceWithContent,
+  getSelectedSourceTextContent,
   getPauseCommand,
   getCurrentThread,
-} from "../../selectors";
+  getShouldHighlightSelectedLocation,
+} from "../../selectors/index";
 
 function isDebugLine(selectedFrame, selectedLocation) {
   if (!selectedFrame) {
-    return;
+    return false;
   }
 
   return (
-    selectedFrame.location.sourceId == selectedLocation.sourceId &&
+    selectedFrame.location.source.id == selectedLocation.source.id &&
     selectedFrame.location.line == selectedLocation.line
   );
 }
 
-function isDocumentReady(selectedSource, selectedLocation) {
+function isDocumentReady(selectedLocation, selectedSourceTextContent) {
   return (
     selectedLocation &&
-    selectedSource &&
-    selectedSource.content &&
-    hasDocument(selectedLocation.sourceId)
+    selectedSourceTextContent &&
+    hasDocument(selectedLocation.source.id)
   );
 }
 
@@ -39,9 +44,27 @@ export class HighlightLine extends Component {
   isStepping = false;
   previousEditorLine = null;
 
+  static get propTypes() {
+    return {
+      pauseCommand: PropTypes.oneOf([
+        "expression",
+        "resume",
+        "stepOver",
+        "stepIn",
+        "stepOut",
+      ]),
+      selectedFrame: PropTypes.object,
+      selectedLocation: PropTypes.object.isRequired,
+      selectedSourceTextContent: PropTypes.object.isRequired,
+    };
+  }
+
   shouldComponentUpdate(nextProps) {
-    const { selectedLocation, selectedSource } = nextProps;
-    return this.shouldSetHighlightLine(selectedLocation, selectedSource);
+    const { selectedLocation, selectedSourceTextContent } = nextProps;
+    return this.shouldSetHighlightLine(
+      selectedLocation,
+      selectedSourceTextContent
+    );
   }
 
   componentDidUpdate(prevProps) {
@@ -52,11 +75,11 @@ export class HighlightLine extends Component {
     this.completeHighlightLine(null);
   }
 
-  shouldSetHighlightLine(selectedLocation, selectedSource) {
-    const { sourceId, line } = selectedLocation;
-    const editorLine = toEditorLine(sourceId, line);
+  shouldSetHighlightLine(selectedLocation, selectedSourceTextContent) {
+    const { line } = selectedLocation;
+    const editorLine = toEditorLine(selectedLocation.source.id, line);
 
-    if (!isDocumentReady(selectedSource, selectedLocation)) {
+    if (!isDocumentReady(selectedLocation, selectedSourceTextContent)) {
       return false;
     }
 
@@ -72,7 +95,8 @@ export class HighlightLine extends Component {
       pauseCommand,
       selectedLocation,
       selectedFrame,
-      selectedSource,
+      selectedSourceTextContent,
+      shouldHighlightSelectedLocation,
     } = this.props;
     if (pauseCommand) {
       this.isStepping = true;
@@ -82,20 +106,29 @@ export class HighlightLine extends Component {
     if (prevProps) {
       this.clearHighlightLine(
         prevProps.selectedLocation,
-        prevProps.selectedSource
+        prevProps.selectedSourceTextContent
       );
     }
-    this.setHighlightLine(selectedLocation, selectedFrame, selectedSource);
+    if (shouldHighlightSelectedLocation) {
+      this.setHighlightLine(
+        selectedLocation,
+        selectedFrame,
+        selectedSourceTextContent
+      );
+    }
     endOperation();
   }
 
-  setHighlightLine(selectedLocation, selectedFrame, selectedSource) {
-    const { sourceId, line } = selectedLocation;
-    if (!this.shouldSetHighlightLine(selectedLocation, selectedSource)) {
+  setHighlightLine(selectedLocation, selectedFrame, selectedSourceTextContent) {
+    const { line } = selectedLocation;
+    if (
+      !this.shouldSetHighlightLine(selectedLocation, selectedSourceTextContent)
+    ) {
       return;
     }
 
     this.isStepping = false;
+    const sourceId = selectedLocation.source.id;
     const editorLine = toEditorLine(sourceId, line);
     this.previousEditorLine = editorLine;
 
@@ -104,7 +137,7 @@ export class HighlightLine extends Component {
     }
 
     const doc = getDocument(sourceId);
-    doc.addLineClass(editorLine, "wrapClass", "highlight-line");
+    doc.addLineClass(editorLine, "wrap", "highlight-line");
     this.resetHighlightLine(doc, editorLine);
   }
 
@@ -123,21 +156,21 @@ export class HighlightLine extends Component {
     );
 
     setTimeout(
-      () =>
-        doc && doc.removeLineClass(editorLine, "wrapClass", "highlight-line"),
+      () => doc && doc.removeLineClass(editorLine, "wrap", "highlight-line"),
       duration
     );
   }
 
-  clearHighlightLine(selectedLocation, selectedSource) {
-    if (!isDocumentReady(selectedSource, selectedLocation)) {
+  clearHighlightLine(selectedLocation, selectedSourceTextContent) {
+    if (!isDocumentReady(selectedLocation, selectedSourceTextContent)) {
       return;
     }
 
-    const { line, sourceId } = selectedLocation;
+    const { line } = selectedLocation;
+    const sourceId = selectedLocation.source.id;
     const editorLine = toEditorLine(sourceId, line);
     const doc = getDocument(sourceId);
-    doc.removeLineClass(editorLine, "wrapClass", "highlight-line");
+    doc.removeLineClass(editorLine, "wrap", "highlight-line");
   }
 
   render() {
@@ -153,8 +186,9 @@ export default connect(state => {
   }
   return {
     pauseCommand: getPauseCommand(state, getCurrentThread(state)),
+    shouldHighlightSelectedLocation: getShouldHighlightSelectedLocation(state),
     selectedFrame: getVisibleSelectedFrame(state),
     selectedLocation,
-    selectedSource: getSelectedSourceWithContent(state),
+    selectedSourceTextContent: getSelectedSourceTextContent(state),
   };
 })(HighlightLine);

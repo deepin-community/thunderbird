@@ -13,6 +13,8 @@
 <!ENTITY aboutProduct2.accesskey "S">
 <!ENTITY productHelp.label "Ajuda do &brandShortName;">
 <!ENTITY productHelp.accesskey "A">
+
+<!-- Help Menu -->
 <!ENTITY productHelp.commandkey "VK_F1">
 <!ENTITY productHelpMac.commandkey "?">
 <!ENTITY productHelpMac.modifiers "atalho">
@@ -23,10 +25,10 @@
 <!ENTITY helpFeedbackPage.label "Enviar opinião…">
 <!ENTITY helpFeedbackPage.accesskey "v">
 
-<!ENTITY helpShowTour2.label "Tour no &brandShorterName;">
-<!ENTITY helpShowTour2.accesskey "o">
+<!ENTITY helpShowTour2.label "Tutorial do &brandShorterName;">
+<!ENTITY helpShowTour2.accesskey "u">
 
-<!ENTITY helpGetInvolvedPage.label "Envolva-se">
+<!ENTITY helpGetInvolvedPage.label "Participe">
 <!ENTITY helpGetInvolvedPage.accesskey "n">
 
 <!ENTITY helpDonationsPage.label "Faça uma doação">

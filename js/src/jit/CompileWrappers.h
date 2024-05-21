@@ -11,6 +11,8 @@
 
 #include "gc/Pretenuring.h"
 #include "js/TypeDecls.h"
+#include "vm/Realm.h"
+#include "vm/RealmFuses.h"
 
 struct JSAtomState;
 
@@ -37,7 +39,6 @@ namespace gc {
 
 enum class AllocKind : uint8_t;
 
-class AllocSite;
 class FreeSpan;
 
 }  // namespace gc
@@ -77,10 +78,16 @@ class CompileRuntime {
   const JSClass* maybeWindowProxyClass();
 
   const void* mainContextPtr();
-  uint32_t* addressOfTenuredAllocCount();
   const void* addressOfJitStackLimit();
   const void* addressOfInterruptBits();
   const void* addressOfZone();
+  const void* addressOfMegamorphicCache();
+  const void* addressOfMegamorphicSetPropCache();
+  const void* addressOfStringToAtomCache();
+  const void* addressOfLastBufferedWholeCell();
+
+  bool hasSeenObjectEmulateUndefinedFuseIntact();
+  const void* addressOfHasSeenObjectEmulateUndefinedFuse();
 
 #ifdef DEBUG
   const void* addressOfIonBailAfterCounter();
@@ -92,6 +99,8 @@ class CompileRuntime {
   bool runtimeMatches(JSRuntime* rt);
 };
 
+class JitZone;
+
 class CompileZone {
   friend class MacroAssembler;
   JS::Zone* zone();
@@ -99,30 +108,29 @@ class CompileZone {
  public:
   static CompileZone* get(JS::Zone* zone);
 
+  const JitZone* jitZone();
+
   CompileRuntime* runtime();
   bool isAtomsZone();
 
   const uint32_t* addressOfNeedsIncrementalBarrier();
+  uint32_t* addressOfTenuredAllocCount();
   gc::FreeSpan** addressOfFreeList(gc::AllocKind allocKind);
+  bool allocNurseryObjects();
+  bool allocNurseryStrings();
+  bool allocNurseryBigInts();
   void* addressOfNurseryPosition();
-  void* addressOfStringNurseryPosition();
-  void* addressOfBigIntNurseryPosition();
-  const void* addressOfNurseryCurrentEnd();
-  const void* addressOfStringNurseryCurrentEnd();
-  const void* addressOfBigIntNurseryCurrentEnd();
-
-  uint32_t* addressOfNurseryAllocCount();
 
   void* addressOfNurseryAllocatedSites();
 
   bool canNurseryAllocateStrings();
   bool canNurseryAllocateBigInts();
 
-  uintptr_t nurseryCellHeader(JS::TraceKind traceKind,
-                              gc::CatchAllAllocSite siteKind);
-};
+  gc::AllocSite* catchAllAllocSite(JS::TraceKind traceKind,
+                                   gc::CatchAllAllocSite siteKind);
 
-class JitRealm;
+  bool hasRealmWithAllocMetadataBuilder();
+};
 
 class CompileRealm {
   JS::Realm* realm();
@@ -135,15 +143,13 @@ class CompileRealm {
 
   const void* realmPtr() { return realm(); }
 
+  RealmFuses& realmFuses() { return realm()->realmFuses; }
+
   const mozilla::non_crypto::XorShift128PlusRNG*
   addressOfRandomNumberGenerator();
 
-  const JitRealm* jitRealm();
-
   const GlobalObject* maybeGlobal();
   const uint32_t* addressOfGlobalWriteBarriered();
-
-  bool hasAllocationMetadataBuilder();
 };
 
 class JitCompileOptions {

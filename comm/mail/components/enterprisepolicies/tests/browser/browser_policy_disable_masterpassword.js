@@ -9,14 +9,14 @@ const mpToken = Cc["@mozilla.org/security/pk11tokendb;1"]
   .getInternalKeyToken();
 
 async function checkDeviceManager({ buttonIsDisabled }) {
-  let deviceManagerWindow = window.openDialog(
+  const deviceManagerWindow = window.openDialog(
     "chrome://pippki/content/device_manager.xhtml",
     "",
     ""
   );
   await BrowserTestUtils.waitForEvent(deviceManagerWindow, "load");
 
-  let tree = deviceManagerWindow.document.getElementById("device_tree");
+  const tree = deviceManagerWindow.document.getElementById("device_tree");
   ok(tree, "The device tree exists");
 
   // Find and select the item related to the internal key token
@@ -24,7 +24,7 @@ async function checkDeviceManager({ buttonIsDisabled }) {
     tree.view.selection.select(i);
 
     try {
-      let selected_token = deviceManagerWindow.selected_slot.getToken();
+      const selected_token = deviceManagerWindow.selected_slot.getToken();
       if (selected_token.isInternalKeyToken) {
         break;
       }
@@ -32,9 +32,8 @@ async function checkDeviceManager({ buttonIsDisabled }) {
   }
 
   // Check to see if the button was updated correctly
-  let changePwButton = deviceManagerWindow.document.getElementById(
-    "change_pw_button"
-  );
+  const changePwButton =
+    deviceManagerWindow.document.getElementById("change_pw_button");
   is(
     changePwButton.getAttribute("disabled") == "true",
     buttonIsDisabled,
@@ -51,7 +50,7 @@ async function checkAboutPreferences({ checkboxIsDisabled }) {
       is(
         browser.contentDocument.getElementById("useMasterPassword").disabled,
         checkboxIsDisabled,
-        "Master Password checkbox is in the correct state: " +
+        "Primary Password checkbox is in the correct state: " +
           checkboxIsDisabled
       );
     }
@@ -61,7 +60,7 @@ async function checkAboutPreferences({ checkboxIsDisabled }) {
 add_task(async function test_policy_disable_masterpassword() {
   ok(!mpToken.hasPassword, "Starting the test with no password");
 
-  // No password and no policy: access to setting a master password
+  // No password and no policy: access to setting a primary password
   // should be enabled.
   await checkDeviceManager({ buttonIsDisabled: false });
   await checkAboutPreferences({ checkboxIsDisabled: false });
@@ -73,14 +72,14 @@ add_task(async function test_policy_disable_masterpassword() {
   });
 
   // With the `DisableMasterPasswordCreation: true` policy active, the
-  // UI entry points for creating a Master Password should be disabled.
+  // UI entry points for creating a Primary Password should be disabled.
   await checkDeviceManager({ buttonIsDisabled: true });
   await checkAboutPreferences({ checkboxIsDisabled: true });
 
   mpToken.changePassword("", MASTER_PASSWORD);
   ok(mpToken.hasPassword, "Master password was set");
 
-  // If a Master Password is already set, there's no point in disabling
+  // If a Primary Password is already set, there's no point in disabling
   // the
   await checkDeviceManager({ buttonIsDisabled: false });
   await checkAboutPreferences({ checkboxIsDisabled: false });
