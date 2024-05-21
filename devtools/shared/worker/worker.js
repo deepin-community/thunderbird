@@ -6,55 +6,28 @@
 
 /* global ChromeWorker */
 
-(function(factory) {
+(function (factory) {
   if (this.module && module.id.includes("worker")) {
     // require
-    const { Cc, Ci, Cu, ChromeWorker } = require("chrome");
     const dumpn = require("devtools/shared/DevToolsUtils").dumpn;
-    factory.call(
-      this,
-      require,
-      exports,
-      module,
-      { Cc, Ci, Cu },
-      ChromeWorker,
-      dumpn
-    );
+    factory.call(this, require, exports, module, ChromeWorker, dumpn);
   } else {
     // Cu.import
-    const { require } = ChromeUtils.import(
-      "resource://devtools/shared/Loader.jsm"
+    const { require } = ChromeUtils.importESModule(
+      "resource://devtools/shared/loader/Loader.sys.mjs"
     );
     this.isWorker = false;
-    this.Promise = require("resource://gre/modules/Promise.jsm").Promise;
     this.console = console;
-    factory.call(
-      this,
-      require,
-      this,
-      { exports: this },
-      { Cc, Ci, Cu },
-      ChromeWorker,
-      null
-    );
+    factory.call(this, require, this, { exports: this }, ChromeWorker, null);
     this.EXPORTED_SYMBOLS = ["DevToolsWorker", "workerify"];
   }
-}.call(this, function(
-  require,
-  exports,
-  module,
-  { Ci, Cc },
-  ChromeWorker,
-  dumpn
-) {
+}).call(this, function (require, exports, module, ChromeWorker, dumpn) {
   let MESSAGE_COUNTER = 0;
 
   /**
    * Creates a wrapper around a ChromeWorker, providing easy
    * communication to offload demanding tasks. The corresponding URL
    * must implement the interface provided by `devtools/shared/worker/helper`.
-   *
-   * @see `./devtools/client/shared/widgets/GraphsWorker.js`
    *
    * @param {string} url
    *        The URL of the worker.
@@ -86,7 +59,7 @@
    *        Optional array of transferable objects to transfer ownership of.
    * @return {Promise}
    */
-  DevToolsWorker.prototype.performTask = function(task, data, transfer) {
+  DevToolsWorker.prototype.performTask = function (task, data, transfer) {
     if (this._destroyed) {
       return Promise.reject(
         "Cannot call performTask on a destroyed DevToolsWorker"
@@ -135,13 +108,13 @@
   /**
    * Terminates the underlying worker. Use when no longer needing the worker.
    */
-  DevToolsWorker.prototype.destroy = function() {
+  DevToolsWorker.prototype.destroy = function () {
     this._worker.terminate();
     this._worker = null;
     this._destroyed = true;
   };
 
-  DevToolsWorker.prototype.onError = function({ message, filename, lineno }) {
+  DevToolsWorker.prototype.onError = function ({ message, filename, lineno }) {
     dump(new Error(message + " @ " + filename + ":" + lineno) + "\n");
   };
 
@@ -171,7 +144,6 @@
         "used in production."
     );
     // Fetch modules here as we don't want to include it normally.
-    const Services = require("Services");
     const { URL, Blob } = Services.wm.getMostRecentWindow("navigator:browser");
     const stringifiedFn = createWorkerString(fn);
     const blob = new Blob([stringifiedFn]);
@@ -181,7 +153,7 @@
     const wrapperFn = (data, transfer) =>
       worker.performTask("workerifiedTask", data, transfer);
 
-    wrapperFn.destroy = function() {
+    wrapperFn.destroy = function () {
       URL.revokeObjectURL(url);
       worker.destroy();
     };
@@ -199,4 +171,4 @@
             const { createTask } = require("resource://devtools/shared/worker/helper.js");
             createTask(self, "workerifiedTask", ${fn.toString()});`;
   }
-}));
+});

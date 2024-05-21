@@ -185,19 +185,18 @@ void ClearSiteData::ClearDataFromChannel(nsIHttpChannel* aChannel) {
   int32_t cleanFlags = 0;
   RefPtr<PendingCleanupHolder> holder = new PendingCleanupHolder(aChannel);
 
-  if (flags & eCache) {
-    LogOpToConsole(aChannel, uri, eCache);
-    cleanFlags |= nsIClearDataService::CLEAR_ALL_CACHES;
-  }
-
   if (flags & eCookies) {
     LogOpToConsole(aChannel, uri, eCookies);
-    cleanFlags |= nsIClearDataService::CLEAR_COOKIES;
+    cleanFlags |= nsIClearDataService::CLEAR_COOKIES |
+                  nsIClearDataService::CLEAR_COOKIE_BANNER_EXECUTED_RECORD |
+                  nsIClearDataService::CLEAR_FINGERPRINTING_PROTECTION_STATE;
   }
 
   if (flags & eStorage) {
     LogOpToConsole(aChannel, uri, eStorage);
-    cleanFlags |= nsIClearDataService::CLEAR_DOM_STORAGES;
+    cleanFlags |= nsIClearDataService::CLEAR_DOM_STORAGES |
+                  nsIClearDataService::CLEAR_COOKIE_BANNER_EXECUTED_RECORD |
+                  nsIClearDataService::CLEAR_FINGERPRINTING_PROTECTION_STATE;
   }
 
   if (cleanFlags) {
@@ -235,11 +234,6 @@ uint32_t ClearSiteData::ParseHeader(nsIHttpChannel* aChannel,
     // around tokens.
     value.StripTaggedASCII(mozilla::ASCIIMask::MaskWhitespace());
 
-    if (value.EqualsLiteral("\"cache\"")) {
-      flags |= eCache;
-      continue;
-    }
-
     if (value.EqualsLiteral("\"cookies\"")) {
       flags |= eCookies;
       continue;
@@ -251,7 +245,7 @@ uint32_t ClearSiteData::ParseHeader(nsIHttpChannel* aChannel,
     }
 
     if (value.EqualsLiteral("\"*\"")) {
-      flags = eCache | eCookies | eStorage;
+      flags = eCookies | eStorage;
       break;
     }
 
@@ -303,10 +297,6 @@ void ClearSiteData::LogToConsoleInternal(
 
 void ClearSiteData::TypeToString(Type aType, nsAString& aStr) const {
   switch (aType) {
-    case eCache:
-      aStr.AssignLiteral("cache");
-      break;
-
     case eCookies:
       aStr.AssignLiteral("cookies");
       break;

@@ -5,35 +5,18 @@
 
 const gHttpTestRoot = "https://example.com/browser/dom/workers/test/";
 
-function grabHistogramsFromContent(
-  use_counter_name,
-  worker_type,
-  counter_before = null
-) {
-  let telemetry = Cc["@mozilla.org/base/telemetry;1"].getService(
-    Ci.nsITelemetry
-  );
-  let gather = () => {
-    let snapshots;
-    if (Services.appinfo.browserTabsRemoteAutostart) {
-      snapshots = telemetry.getSnapshotForHistograms("main", false).content;
-    } else {
-      snapshots = telemetry.getSnapshotForHistograms("main", false).parent;
-    }
-    let checkedGet = probe => {
-      return snapshots[probe] ? snapshots[probe].sum : 0;
-    };
-    return [
-      checkedGet(`USE_COUNTER2_${use_counter_name}_${worker_type}_WORKER`),
-      checkedGet(`${worker_type}_WORKER_DESTROYED`),
-    ];
-  };
-  return BrowserTestUtils.waitForCondition(() => {
-    return counter_before != gather()[0];
-  }).then(gather, gather);
+function unscream(s) {
+  // Takes SCREAMINGCASE `s` and returns "Screamingcase".
+  return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-var check_use_counter_worker = async function(
+function screamToCamel(s) {
+  // Takes SCREAMING_CASE `s` and returns "screamingCase".
+  const pascal = s.split("_").map(unscream).join("");
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+}
+
+var check_use_counter_worker = async function (
   use_counter_name,
   worker_type,
   content_task
@@ -44,14 +27,19 @@ var check_use_counter_worker = async function(
   gBrowser.selectedTab = newTab;
   newTab.linkedBrowser.stop();
 
-  // Hold on to the current values of the telemetry histograms we're
+  // Hold on to the current values of the instrumentation we're
   // interested in.
-  let [histogram_before, destructions_before] = await grabHistogramsFromContent(
-    use_counter_name,
-    worker_type
-  );
+  await Services.fog.testFlushAllChildren();
+  let glean_before =
+    Glean[`useCounterWorker${unscream(worker_type)}`][
+      screamToCamel(use_counter_name)
+    ].testGetValue();
+  let glean_destructions_before =
+    Glean.useCounter[
+      `${worker_type.toLowerCase()}WorkersDestroyed`
+    ].testGetValue();
 
-  BrowserTestUtils.loadURI(
+  BrowserTestUtils.startLoadingURIString(
     gBrowser.selectedBrowser,
     gHttpTestRoot + "file_use_counter_worker.html"
   );
@@ -63,32 +51,48 @@ var check_use_counter_worker = async function(
   gBrowser.removeTab(newTab);
   await tabClosed;
 
-  // Grab histograms again and compare.
-  let [histogram_after, destructions_after] = await grabHistogramsFromContent(
-    use_counter_name,
-    worker_type,
-    histogram_before
-  );
+  // Grab data again and compare.
+  // We'd like for this to be synchronous, but use counters are reported on
+  // worker destruction which we don't directly observe.
+  // So we check in a quick loop.
+  await BrowserTestUtils.waitForCondition(async () => {
+    await Services.fog.testFlushAllChildren();
+    return (
+      glean_before !=
+      Glean[`useCounterWorker${unscream(worker_type)}`][
+        screamToCamel(use_counter_name)
+      ].testGetValue()
+    );
+  });
+  let glean_after =
+    Glean[`useCounterWorker${unscream(worker_type)}`][
+      screamToCamel(use_counter_name)
+    ].testGetValue();
+  let glean_destructions_after =
+    Glean.useCounter[
+      `${worker_type.toLowerCase()}WorkersDestroyed`
+    ].testGetValue();
 
   is(
-    histogram_after,
-    histogram_before + 1,
-    `histogram ${use_counter_name} counts for ${worker_type} worker are correct`
+    glean_after,
+    glean_before + 1,
+    `Glean counter ${use_counter_name} for ${worker_type} worker is correct.`
   );
   // There might be other workers created by prior tests get destroyed during
   // this tests.
-  ok(
-    destructions_after > destructions_before,
-    `${worker_type} worker counts are correct`
+  Assert.greater(
+    glean_destructions_after,
+    glean_destructions_before ?? 0,
+    `Glean ${worker_type} worker counts are correct`
   );
 };
 
 add_task(async function test_dedicated_worker() {
   await check_use_counter_worker("CONSOLE_LOG", "DEDICATED", async browser => {
-    await ContentTask.spawn(browser, {}, function() {
+    await ContentTask.spawn(browser, {}, function () {
       return new Promise(resolve => {
         let worker = new content.Worker("file_use_counter_worker.js");
-        worker.onmessage = function(e) {
+        worker.onmessage = function (e) {
           if (e.data === "DONE") {
             worker.terminate();
             resolve();
@@ -101,12 +105,12 @@ add_task(async function test_dedicated_worker() {
 
 add_task(async function test_shared_worker() {
   await check_use_counter_worker("CONSOLE_LOG", "SHARED", async browser => {
-    await ContentTask.spawn(browser, {}, function() {
+    await ContentTask.spawn(browser, {}, function () {
       return new Promise(resolve => {
         let worker = new content.SharedWorker(
           "file_use_counter_shared_worker.js"
         );
-        worker.port.onmessage = function(e) {
+        worker.port.onmessage = function (e) {
           if (e.data === "DONE") {
             resolve();
           }
@@ -119,12 +123,12 @@ add_task(async function test_shared_worker() {
 
 add_task(async function test_shared_worker_microtask() {
   await check_use_counter_worker("CONSOLE_LOG", "SHARED", async browser => {
-    await ContentTask.spawn(browser, {}, function() {
+    await ContentTask.spawn(browser, {}, function () {
       return new Promise(resolve => {
         let worker = new content.SharedWorker(
           "file_use_counter_shared_worker_microtask.js"
         );
-        worker.port.onmessage = function(e) {
+        worker.port.onmessage = function (e) {
           if (e.data === "DONE") {
             resolve();
           }
@@ -137,8 +141,8 @@ add_task(async function test_shared_worker_microtask() {
 
 add_task(async function test_service_worker() {
   await check_use_counter_worker("CONSOLE_LOG", "SERVICE", async browser => {
-    await ContentTask.spawn(browser, {}, function() {
-      let waitForActivated = async function(registration) {
+    await ContentTask.spawn(browser, {}, function () {
+      let waitForActivated = async function (registration) {
         return new Promise(resolve => {
           let worker =
             registration.installing ||
@@ -162,7 +166,7 @@ add_task(async function test_service_worker() {
         content.navigator.serviceWorker
           .register("file_use_counter_service_worker.js")
           .then(async registration => {
-            content.navigator.serviceWorker.onmessage = function(e) {
+            content.navigator.serviceWorker.onmessage = function (e) {
               if (e.data === "DONE") {
                 registration.unregister().then(resolve);
               }

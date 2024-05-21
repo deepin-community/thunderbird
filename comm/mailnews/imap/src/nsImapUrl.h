@@ -89,8 +89,6 @@ class nsImapUrl : public nsIImapUrl,
   bool m_runningUrl;
   bool m_idsAreUids;
   bool m_mimePartSelectorDetected;
-  bool m_allowContentChange;  // if false, we can't use Mime parts on demand
-  bool m_fetchPartsOnDemand;  // if true, we should fetch leave parts on server.
   bool m_msgLoadingFromCache;  // if true, we might need to mark read on server
   bool m_externalLinkUrl;  // if true, we're running this url because the user
   // True if the fetch results should be put in the offline store.
@@ -126,8 +124,8 @@ class nsImapUrl : public nsIImapUrl,
   bool m_addDummyEnvelope;
   bool m_canonicalLineEnding;  // CRLF
 
-  nsCString mURI;              // the RDF URI associated with this url.
-  nsCString mCharsetOverride;  // used by nsIMsgI18NUrl...
+  nsCString mURI;           // the RDF URI associated with this url.
+  bool mAutodetectCharset;  // used by nsIMsgI18NUrl...
   mozilla::Mutex mLock;
 };
 

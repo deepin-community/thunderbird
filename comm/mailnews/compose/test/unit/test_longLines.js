@@ -3,8 +3,9 @@
  * Most of this test was copied from test_messageHeaders.js.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
+const { MimeParser } = ChromeUtils.importESModule(
+  "resource:///modules/mimeParser.sys.mjs"
+);
 
 var CompFields = CC(
   "@mozilla.org/messengercompose/composefields;1",
@@ -25,16 +26,16 @@ function checkDraftHeadersAndBody(
   expectedBody,
   charset = "UTF-8"
 ) {
-  let msgData = mailTestUtils.loadMessageToString(
+  const msgData = mailTestUtils.loadMessageToString(
     gDraftFolder,
     mailTestUtils.firstMsgHdr(gDraftFolder)
   );
   checkMessageHeaders(msgData, expectedHeaders);
 
   // Get the message body, decode from base64 and check.
-  let endOfHeaders = msgData.indexOf("\r\n\r\n");
+  const endOfHeaders = msgData.indexOf("\r\n\r\n");
   let body = msgData.slice(endOfHeaders + 4);
-  let endOfBody = body.indexOf("\r\n\r\n");
+  const endOfBody = body.indexOf("\r\n\r\n");
 
   if (endOfBody > 0) {
     body = body.slice(0, endOfBody);
@@ -48,32 +49,32 @@ function checkDraftHeadersAndBody(
   }
 
   if (charset == "UTF-8") {
-    let expectedBinary = String.fromCharCode.apply(
+    const expectedBinary = String.fromCharCode.apply(
       undefined,
       new TextEncoder("UTF-8").encode(expectedBody)
     );
     Assert.equal(body, expectedBinary);
   } else {
-    let strView = stringToTypedArray(body);
-    let decodedBody = new TextDecoder(charset).decode(strView);
+    const strView = stringToTypedArray(body);
+    const decodedBody = new TextDecoder(charset).decode(strView);
     Assert.equal(decodedBody, expectedBody);
   }
 }
 
 function checkMessageHeaders(msgData, expectedHeaders, partNum = "") {
   let seen = false;
-  let handler = {
+  const handler = {
     startPart(part, headers) {
       if (part != partNum) {
         return;
       }
       seen = true;
-      for (let header in expectedHeaders) {
-        let expected = expectedHeaders[header];
+      for (const header in expectedHeaders) {
+        const expected = expectedHeaders[header];
         if (expected === undefined) {
           Assert.ok(!headers.has(header));
         } else {
-          let value = headers.getRawHeader(header);
+          const value = headers.getRawHeader(header);
           Assert.equal(value.length, 1);
           value[0] = value[0].replace(/boundary=[^;]*(;|$)/, "boundary=.");
           Assert.equal(value[0], expected);
@@ -91,34 +92,22 @@ function checkMessageHeaders(msgData, expectedHeaders, partNum = "") {
 
 // Create a line with 600 letters 'a' with acute accent, encoded as
 // two bytes c3a1 in UTF-8.
-let longMultibyteLine = "\u00E1".repeat(600);
+const longMultibyteLine = "\u00E1".repeat(600);
 
 // And here a line with a Korean character, encoded as three bytes
 // ec9588 in UTF-8.
-let longMultibyteLineCJK = "안".repeat(400);
+const longMultibyteLineCJK = "안".repeat(400);
 
 // And some Japanese.
-let longMultibyteLineJapanese = "語".repeat(450);
+const longMultibyteLineJapanese = "語".repeat(450);
 
 async function testBodyWithLongLine() {
-  let newline;
-  // Windows uses CR+LF, the other platforms just LF.
-  // Note: Services.appinfo.OS returns "XPCShell" in the test, so we
-  // use this hacky condition to separate Windows from the others.
-  if (
-    "@mozilla.org/windows-registry-key;1" in Cc ||
-    // Lines in the message body are split by CRLF according to RFC 5322, should
-    // be independant of the system. For nsMsgSend.cpp on non-Windows this is
-    // not respected.
-    Services.prefs.getBoolPref("mailnews.send.jsmodule")
-  ) {
-    newline = "\r\n";
-  } else {
-    newline = "\n";
-  }
+  // Lines in the message body are split by CRLF according to RFC 5322, should
+  // be independent of the system.
+  const newline = "\r\n";
 
-  let fields = new CompFields();
-  let identity = getSmtpIdentity(
+  const fields = new CompFields();
+  const identity = getSmtpIdentity(
     "from@tinderbox.invalid",
     getBasicSmtpServer()
   );
@@ -132,7 +121,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=utf-8">' +
     "</head><body>" +
     longMultibyteLine +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(
@@ -163,7 +152,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=utf-8">' +
     "</head><body>" +
     longMultibyteLineCJK +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(
@@ -194,7 +183,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=ISO-2022-JP">' +
     "</head><body>" +
     longMultibyteLineJapanese +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(
@@ -211,7 +200,7 @@ async function testBodyWithLongLine() {
   fields.useMultipartAlternative = false;
   await richCreateMessage(fields, [], identity);
 
-  let expectedBody = longMultibyteLineJapanese + " " + newline + newline;
+  const expectedBody = longMultibyteLineJapanese + " " + newline + newline;
 
   checkDraftHeadersAndBody(
     {

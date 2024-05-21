@@ -1,8 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { Stanza } = ChromeUtils.import("resource:///modules/xmpp-xml.jsm");
+var { Stanza } = ChromeUtils.importESModule(
+  "resource:///modules/xmpp-xml.sys.mjs"
+);
 
 var TEST_DATA = [
   {
@@ -72,9 +73,9 @@ var TEST_DATA = [
 ];
 
 function testXMLNode() {
-  for (let current of TEST_DATA) {
+  for (const current of TEST_DATA) {
     try {
-      let result = Stanza.node(
+      const result = Stanza.node(
         current.input.name,
         current.input.namespace,
         current.input.attributes,

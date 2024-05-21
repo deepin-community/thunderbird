@@ -12,22 +12,16 @@ var factory = {
   createInstance() {
     throw new Error("There is no history service");
   },
-  lockFactory() {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
   QueryInterface: ChromeUtils.generateQI(["nsIFactory"]),
 };
 
-var newClassID = Cc["@mozilla.org/uuid-generator;1"]
-  .getService(Ci.nsIUUIDGenerator)
-  .generateUUID();
+var newClassID = Services.uuid.generateUUID();
 
 var registrar = Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
 var oldClassID = registrar.contractIDToCID(CONTRACT_ID);
-var oldFactory = Components.manager.getClassObject(
-  Cc[CONTRACT_ID],
-  Ci.nsIFactory
-);
+// TODO: There was a var oldFactory = here causing linter errors as it
+// was unused. We should check if this function call is needed at all.
+Components.manager.getClassObject(Cc[CONTRACT_ID], Ci.nsIFactory);
 registrar.registerFactory(newClassID, "", CONTRACT_ID, factory);
 
 function cleanupFactory() {
@@ -59,6 +53,11 @@ add_task(function test() {
   } catch (e) {
     Assert.ok(true, "There wasn't a nsINavHistoryService");
   }
+
+  // We need to execute a pm method to be sure that the DB is fully
+  // initialized.
+  var pm = Services.perms;
+  Assert.ok(pm.all.length >= 0, "Permission manager not initialized?");
 
   let db = Services.storage.openDatabase(GetPermissionsFile(profile));
   db.schemaVersion = 4;
@@ -144,7 +143,6 @@ add_task(function test() {
     insertHost("bar.ca", "A", 1, 0, 0, 0, 1000, true),
     insertHost("localhost", "A", 1, 0, 0, 0, 0, false),
     insertHost("127.0.0.1", "A", 1, 0, 0, 0, 0, false),
-    insertHost("263.123.555.676", "A", 1, 0, 0, 0, 0, false),
     insertHost("file:///some/path/to/file.html", "A", 1, 0, 0, 0, 0, false),
     insertHost("file:///another/file.html", "A", 1, 0, 0, 0, 0, false),
     insertHost(
@@ -180,21 +178,19 @@ add_task(function test() {
   let expected = [
     ["http://foo.com", "A", 1, 0, 0],
     ["http://foo.com", "C", 1, 0, 0],
-    ["http://foo.com^inBrowser=1", "A", 1, 0, 0],
     ["http://sub.foo.com", "B", 1, 0, 0],
     ["http://subber.sub.foo.com", "B", 1, 0, 0],
 
     ["https://foo.com", "A", 1, 0, 0],
     ["https://foo.com", "C", 1, 0, 0],
-    ["https://foo.com^inBrowser=1", "A", 1, 0, 0],
     ["https://sub.foo.com", "B", 1, 0, 0],
     ["https://subber.sub.foo.com", "B", 1, 0, 0],
 
     // bar.ca will have both http:// and https:// for all entries, because there are no associated history entries
     ["http://bar.ca", "B", 1, 0, 0],
     ["https://bar.ca", "B", 1, 0, 0],
-    ["http://bar.ca^inBrowser=1", "A", 1, 0, 0],
-    ["https://bar.ca^inBrowser=1", "A", 1, 0, 0],
+    ["http://bar.ca", "A", 1, 0, 0],
+    ["https://bar.ca", "A", 1, 0, 0],
     ["file:///some/path/to/file.html", "A", 1, 0, 0],
     ["file:///another/file.html", "A", 1, 0, 0],
 
@@ -203,11 +199,9 @@ add_task(function test() {
     ["https://localhost", "A", 1, 0, 0],
     ["http://127.0.0.1", "A", 1, 0, 0],
     ["https://127.0.0.1", "A", 1, 0, 0],
-    ["http://263.123.555.676", "A", 1, 0, 0],
-    ["https://263.123.555.676", "A", 1, 0, 0],
   ];
 
-  let found = expected.map(it => 0);
+  let found = expected.map(() => 0);
 
   // This will force the permission-manager to reload the data.
   Services.obs.notifyObservers(null, "testonly-reload-permissions-from-disk");

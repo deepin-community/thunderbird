@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 
 import yaml
@@ -93,8 +91,15 @@ class Parser(object):
                     "form 'module:object'".format(linter["setup"]),
                 )
 
-        if "extensions" in linter:
-            linter["extensions"] = [e.strip(".") for e in linter["extensions"]]
+        if "extensions" in linter and "exclude_extensions" in linter:
+            raise LinterParseError(
+                relpath,
+                "Can't have both 'extensions' and 'exclude_extensions'!",
+            )
+
+        for prop in ["extensions", "exclude_extensions"]:
+            if prop in linter:
+                linter[prop] = [e.strip(".") for e in linter[prop]]
 
     def parse(self, path):
         """Read a linter and return its LINTER definition.

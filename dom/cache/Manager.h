@@ -11,6 +11,7 @@
 #include "mozilla/dom/SafeRefPtr.h"
 #include "mozilla/dom/cache/Types.h"
 #include "mozilla/dom/quota/Client.h"
+#include "mozilla/dom/quota/StringifyUtils.h"
 #include "CacheCommon.h"
 #include "nsCOMPtr.h"
 #include "nsISupportsImpl.h"
@@ -72,7 +73,7 @@ class StreamList;
 // As an invariant, all Manager objects must cease all IO before shutdown.  This
 // is enforced by the Manager::Factory.  If content still holds references to
 // Cache DOM objects during shutdown, then all operations will begin rejecting.
-class Manager final : public SafeRefCounted<Manager> {
+class Manager final : public SafeRefCounted<Manager>, public Stringifyable {
   using Client = quota::Client;
   using DirectoryLock = quota::DirectoryLock;
 
@@ -197,6 +198,11 @@ class Manager final : public SafeRefCounted<Manager> {
   void NoteStreamOpenComplete(const nsID& aBodyId, ErrorResult&& aRv,
                               nsCOMPtr<nsIInputStream>&& aBodyStream);
 
+#ifdef MOZ_DIAGNOSTIC_ASSERT_ENABLED
+  void RecordMayNotDeleteCSCP(int32_t aCacheStreamControlParentId);
+  void RecordHaveDeletedCSCP(int32_t aCacheStreamControlParentId);
+#endif
+
  private:
   class Factory;
   class BaseAction;
@@ -216,7 +222,7 @@ class Manager final : public SafeRefCounted<Manager> {
 
   class OpenStreamAction;
 
-  typedef uint64_t ListenerId;
+  using ListenerId = uint64_t;
 
   void Init(Maybe<Manager&> aOldManager);
   void Shutdown();
@@ -263,7 +269,7 @@ class Manager final : public SafeRefCounted<Manager> {
     }
   };
 
-  typedef nsTArray<ListenerEntry> ListenerList;
+  using ListenerList = nsTArray<ListenerEntry>;
   ListenerList mListeners;
   static ListenerId sNextListenerId;
 
@@ -288,6 +294,8 @@ class Manager final : public SafeRefCounted<Manager> {
   nsTArray<BodyIdRefCounter> mBodyIdRefs;
 
   struct ConstructorGuard {};
+
+  void DoStringify(nsACString& aData) override;
 
  public:
   Manager(SafeRefPtr<ManagerId> aManagerId, nsIThread* aIOThread,

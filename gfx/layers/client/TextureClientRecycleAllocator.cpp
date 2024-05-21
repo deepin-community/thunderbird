@@ -68,11 +68,19 @@ class MOZ_RAII DefaultTextureClientAllocationHelper
 };
 
 YCbCrTextureClientAllocationHelper::YCbCrTextureClientAllocationHelper(
-    const PlanarYCbCrData& aData, TextureFlags aTextureFlags)
-    : ITextureClientAllocationHelper(gfx::SurfaceFormat::YUV, aData.mYSize,
+    const PlanarYCbCrData& aData, const gfx::IntSize& aYSize,
+    const gfx::IntSize& aCbCrSize, TextureFlags aTextureFlags)
+    : ITextureClientAllocationHelper(gfx::SurfaceFormat::YUV, aYSize,
                                      BackendSelector::Content, aTextureFlags,
                                      ALLOC_DEFAULT),
-      mData(aData) {}
+      mData(aData),
+      mYSize(aYSize),
+      mCbCrSize(aCbCrSize) {}
+
+YCbCrTextureClientAllocationHelper::YCbCrTextureClientAllocationHelper(
+    const PlanarYCbCrData& aData, TextureFlags aTextureFlags)
+    : YCbCrTextureClientAllocationHelper(aData, aData.YDataSize(),
+                                         aData.CbCrDataSize(), aTextureFlags) {}
 
 bool YCbCrTextureClientAllocationHelper::IsCompatible(
     TextureClient* aTextureClient) {
@@ -80,9 +88,13 @@ bool YCbCrTextureClientAllocationHelper::IsCompatible(
 
   BufferTextureData* bufferData =
       aTextureClient->GetInternalData()->AsBufferTextureData();
-  if (!bufferData || aTextureClient->GetSize() != mData.mYSize ||
+
+  if (!bufferData ||
+      !bufferData->GetPictureRect().IsEqualEdges(mData.mPictureRect) ||
+      bufferData->GetYSize().isNothing() ||
+      bufferData->GetYSize().ref() != mYSize ||
       bufferData->GetCbCrSize().isNothing() ||
-      bufferData->GetCbCrSize().ref() != mData.mCbCrSize ||
+      bufferData->GetCbCrSize().ref() != mCbCrSize ||
       bufferData->GetYStride().isNothing() ||
       bufferData->GetYStride().ref() != mData.mYStride ||
       bufferData->GetCbCrStride().isNothing() ||
@@ -92,7 +104,9 @@ bool YCbCrTextureClientAllocationHelper::IsCompatible(
       bufferData->GetColorDepth().isNothing() ||
       bufferData->GetColorDepth().ref() != mData.mColorDepth ||
       bufferData->GetStereoMode().isNothing() ||
-      bufferData->GetStereoMode().ref() != mData.mStereoMode) {
+      bufferData->GetStereoMode().ref() != mData.mStereoMode ||
+      bufferData->GetChromaSubsampling().isNothing() ||
+      bufferData->GetChromaSubsampling().ref() != mData.mChromaSubsampling) {
     return false;
   }
   return true;
@@ -101,9 +115,10 @@ bool YCbCrTextureClientAllocationHelper::IsCompatible(
 already_AddRefed<TextureClient> YCbCrTextureClientAllocationHelper::Allocate(
     KnowsCompositor* aKnowsCompositor) {
   return TextureClient::CreateForYCbCr(
-      aKnowsCompositor, mData.GetPictureRect(), mData.mYSize, mData.mYStride,
-      mData.mCbCrSize, mData.mCbCrStride, mData.mStereoMode, mData.mColorDepth,
-      mData.mYUVColorSpace, mData.mColorRange, mTextureFlags);
+      aKnowsCompositor, mData.mPictureRect, mYSize, mData.mYStride, mCbCrSize,
+      mData.mCbCrStride, mData.mStereoMode, mData.mColorDepth,
+      mData.mYUVColorSpace, mData.mColorRange, mData.mChromaSubsampling,
+      mTextureFlags);
 }
 
 TextureClientRecycleAllocator::TextureClientRecycleAllocator(
@@ -131,10 +146,11 @@ already_AddRefed<TextureClient> TextureClientRecycleAllocator::CreateOrRecycle(
   MOZ_ASSERT(!(aTextureFlags & TextureFlags::RECYCLE));
   DefaultTextureClientAllocationHelper helper(this, aFormat, aSize, aSelector,
                                               aTextureFlags, aAllocFlags);
-  return CreateOrRecycle(helper);
+  return CreateOrRecycle(helper).unwrapOr(nullptr);
 }
 
-already_AddRefed<TextureClient> TextureClientRecycleAllocator::CreateOrRecycle(
+Result<already_AddRefed<TextureClient>, nsresult>
+TextureClientRecycleAllocator::CreateOrRecycle(
     ITextureClientAllocationHelper& aHelper) {
   MOZ_ASSERT(aHelper.mTextureFlags & TextureFlags::RECYCLE);
 
@@ -143,7 +159,7 @@ already_AddRefed<TextureClient> TextureClientRecycleAllocator::CreateOrRecycle(
   {
     MutexAutoLock lock(mLock);
     if (mIsDestroyed || !mKnowsCompositor->GetTextureForwarder()) {
-      return nullptr;
+      return Err(NS_ERROR_NOT_AVAILABLE);
     }
     if (!mPooledClients.empty()) {
       textureHolder = mPooledClients.top();
@@ -170,7 +186,7 @@ already_AddRefed<TextureClient> TextureClientRecycleAllocator::CreateOrRecycle(
     // Allocate new TextureClient
     RefPtr<TextureClient> texture = aHelper.Allocate(mKnowsCompositor);
     if (!texture) {
-      return nullptr;
+      return Err(NS_ERROR_OUT_OF_MEMORY);
     }
     textureHolder = new TextureClientHolder(texture);
   }

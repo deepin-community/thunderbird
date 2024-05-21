@@ -4,14 +4,14 @@
  */
 /*globals Cu, is, ok*/
 "use strict";
-const { ManifestObtainer } = ChromeUtils.import(
-  "resource://gre/modules/ManifestObtainer.jsm"
+const { ManifestObtainer } = ChromeUtils.importESModule(
+  "resource://gre/modules/ManifestObtainer.sys.mjs"
 );
 const path = "/tests/dom/security/test/csp/";
 const testFile = `${path}file_web_manifest.html`;
 const mixedContentFile = `${path}file_web_manifest_mixed_content.html`;
 const server = `${path}file_testserver.sjs`;
-const defaultURL = new URL(`http://example.org${server}`);
+const defaultURL = new URL(`https://example.org${server}`);
 const mixedURL = new URL(`http://mochi.test:8888${server}`);
 
 // Enable web manifest processing.
@@ -57,7 +57,7 @@ const tests = [
 ];
 
 //jscs:disable
-add_task(async function() {
+add_task(async function () {
   //jscs:enable
   const testPromises = tests.map(test => {
     const tabOptions = {
@@ -102,6 +102,7 @@ function createNetObserver(test) {
   const finished = new Promise(resolver => {
     finishedTest = resolver;
   });
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
   const timeoutId = setTimeout(() => {
     if (!success) {
       test.run("This test timed out.");

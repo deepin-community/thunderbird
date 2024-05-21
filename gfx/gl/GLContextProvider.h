@@ -48,26 +48,16 @@ namespace gl {
 #include "GLContextProviderImpl.h"
 #undef GL_CONTEXT_PROVIDER_NAME
 
-#if defined(MOZ_X11)
-#  define GL_CONTEXT_PROVIDER_NAME GLContextProviderGLX
-#  include "GLContextProviderImpl.h"
-#  undef GL_CONTEXT_PROVIDER_NAME
-#  define GL_CONTEXT_PROVIDER_NAME GLContextProviderX11
-#  include "GLContextProviderImpl.h"
-#  undef GL_CONTEXT_PROVIDER_NAME
-#  if defined(MOZ_WAYLAND)
-#    define GL_CONTEXT_PROVIDER_NAME GLContextProviderWayland
+#if defined(MOZ_WIDGET_GTK)
+#  ifdef MOZ_X11
+#    define GL_CONTEXT_PROVIDER_NAME GLContextProviderGLX
 #    include "GLContextProviderImpl.h"
 #    undef GL_CONTEXT_PROVIDER_NAME
-#    define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderWayland
 #  endif
-#  ifndef GL_CONTEXT_PROVIDER_DEFAULT
-#    define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderX11
-#  endif
-#endif
-
-#ifndef GL_CONTEXT_PROVIDER_DEFAULT
-#  define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderEGL
+#  define GL_CONTEXT_PROVIDER_NAME GLContextProviderLinux
+#  include "GLContextProviderImpl.h"
+#  undef GL_CONTEXT_PROVIDER_NAME
+#  define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderLinux
 #endif
 
 #if defined(MOZ_WIDGET_UIKIT)
@@ -77,6 +67,10 @@ namespace gl {
 #  ifndef GL_CONTEXT_PROVIDER_DEFAULT
 #    define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderEAGL
 #  endif
+#endif
+
+#ifndef GL_CONTEXT_PROVIDER_DEFAULT
+#  define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderEGL
 #endif
 
 #ifdef MOZ_GL_PROVIDER

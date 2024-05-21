@@ -1,27 +1,6 @@
+/* eslint-disable no-nested-ternary */
 /**
  * EventUtils provides some utility methods for creating and sending DOM events.
- * Current methods:
- *  sendMouseEvent
- *  sendDragEvent
- *  sendChar
- *  sendString
- *  sendKey
- *  sendWheelAndPaint
- *  sendWheelAndPaintNoFlush
- *  synthesizeMouse
- *  synthesizeMouseAtCenter
- *  synthesizeNativeMouseEvent
- *  synthesizeWheel
- *  synthesizeWheelAtPoint
- *  synthesizeKey
- *  synthesizeNativeKey
- *  synthesizeMouseExpectEvent
- *  synthesizeKeyExpectEvent
- *  synthesizeDragOver
- *  synthesizeDropAfterDragOver
- *  synthesizeDrop
- *  synthesizePlainDragAndDrop
- *  synthesizePlainDragAndCancel
  *
  *  When adding methods to this file, please add a performance test for it.
  */
@@ -39,28 +18,32 @@
 // placebo for compat. An easy way to differentiate this from the real thing
 // is whether the property is read-only or not.  The real |Components| property
 // is read-only.
-/* global _EU_Ci, _EU_Cc, _EU_Cu, _EU_OS */
-window.__defineGetter__("_EU_Ci", function() {
+/* global _EU_Ci, _EU_Cc, _EU_Cu, _EU_ChromeUtils, _EU_OS */
+window.__defineGetter__("_EU_Ci", function () {
   var c = Object.getOwnPropertyDescriptor(window, "Components");
   return c && c.value && !c.writable ? Ci : SpecialPowers.Ci;
 });
 
-window.__defineGetter__("_EU_Cc", function() {
+window.__defineGetter__("_EU_Cc", function () {
   var c = Object.getOwnPropertyDescriptor(window, "Components");
   return c && c.value && !c.writable ? Cc : SpecialPowers.Cc;
 });
 
-window.__defineGetter__("_EU_Cu", function() {
+window.__defineGetter__("_EU_Cu", function () {
   var c = Object.getOwnPropertyDescriptor(window, "Components");
   return c && c.value && !c.writable ? Cu : SpecialPowers.Cu;
 });
 
-window.__defineGetter__("_EU_OS", function() {
+window.__defineGetter__("_EU_ChromeUtils", function () {
+  var c = Object.getOwnPropertyDescriptor(window, "ChromeUtils");
+  return c && c.value && !c.writable ? ChromeUtils : SpecialPowers.ChromeUtils;
+});
+
+window.__defineGetter__("_EU_OS", function () {
   delete this._EU_OS;
   try {
-    this._EU_OS = this._EU_Cu.import(
-      "resource://gre/modules/AppConstants.jsm",
-      {}
+    this._EU_OS = _EU_ChromeUtils.import(
+      "resource://gre/modules/AppConstants.jsm"
     ).platform;
   } catch (ex) {
     this._EU_OS = null;
@@ -135,6 +118,16 @@ function _EU_maybeWrap(o) {
 }
 
 function _EU_maybeUnwrap(o) {
+  var haveWrap = false;
+  try {
+    haveWrap = SpecialPowers.unwrap != undefined;
+  } catch (e) {
+    // Just leave it false.
+  }
+  if (!haveWrap) {
+    // Not much we can do here.
+    return o;
+  }
   var c = Object.getOwnPropertyDescriptor(window, "Components");
   return c && c.value && !c.writable ? o : SpecialPowers.unwrap(o);
 }
@@ -189,7 +182,6 @@ async function promiseElementReadyForUserInput(
         capture: true,
         once: true,
       });
-      synthesizeMouseAtCenter(aElement, { type: "mousemove" }, aWindow);
       timeout = aWindow.setInterval(() => {
         if (aLogFunc) {
           aLogFunc("mousemove not received in this 300ms");
@@ -199,6 +191,7 @@ async function promiseElementReadyForUserInput(
         });
         resolve(false);
       }, 300);
+      synthesizeMouseAtCenter(aElement, { type: "mousemove" }, aWindow);
     });
   }
   for (let i = 0; i < 20; i++) {
@@ -209,15 +202,6 @@ async function promiseElementReadyForUserInput(
   throw new Error("The element or the window did not become interactive");
 }
 
-/**
- * Send a mouse event to the node aTarget (aTarget can be an id, or an
- * actual node) . The "event" passed in to aEvent is just a JavaScript
- * object with the properties set that the real mouse event object should
- * have. This includes the type of the mouse event.
- * E.g. to send an click event to the node with id 'node' you might do this:
- *
- * sendMouseEvent({type:'click'}, 'node');
- */
 function getElement(id) {
   return typeof id == "string" ? document.getElementById(id) : id;
 }
@@ -247,6 +231,16 @@ function computeButtons(aEvent, utils) {
   return utils.MOUSE_BUTTONS_NOT_SPECIFIED;
 }
 
+/**
+ * Send a mouse event to the node aTarget (aTarget can be an id, or an
+ * actual node) . The "event" passed in to aEvent is just a JavaScript
+ * object with the properties set that the real mouse event object should
+ * have. This includes the type of the mouse event. Pretty much all those
+ * properties are optional.
+ * E.g. to send an click event to the node with id 'node' you might do this:
+ *
+ * ``sendMouseEvent({type:'click'}, 'node');``
+ */
 function sendMouseEvent(aEvent, aTarget, aWindow) {
   if (
     ![
@@ -270,10 +264,6 @@ function sendMouseEvent(aEvent, aTarget, aWindow) {
 
   if (typeof aTarget == "string") {
     aTarget = aWindow.document.getElementById(aTarget);
-  }
-
-  if (aEvent.type === "click" && this.AccessibilityUtils) {
-    this.AccessibilityUtils.assertCanBeClicked(aTarget);
   }
 
   var event = aWindow.document.createEvent("MouseEvent");
@@ -469,15 +459,32 @@ function sendChar(aChar, aWindow) {
  * key state on US keyboard layout.
  */
 function sendString(aStr, aWindow) {
-  for (var i = 0; i < aStr.length; ++i) {
-    sendChar(aStr.charAt(i), aWindow);
+  for (let i = 0; i < aStr.length; ++i) {
+    // Do not split a surrogate pair to call synthesizeKey.  Dispatching two
+    // sets of keydown and keyup caused by two calls of synthesizeKey is not
+    // good behavior.  It could happen due to a bug, but a surrogate pair should
+    // be introduced with one key press operation.  Therefore, calling it with
+    // a surrogate pair is the right thing.
+    // Note that TextEventDispatcher will consider whether a surrogate pair
+    // should cause one or two keypress events automatically.  Therefore, we
+    // don't need to check the related prefs here.
+    if (
+      (aStr.charCodeAt(i) & 0xfc00) == 0xd800 &&
+      i + 1 < aStr.length &&
+      (aStr.charCodeAt(i + 1) & 0xfc00) == 0xdc00
+    ) {
+      sendChar(aStr.substring(i, i + 2), aWindow);
+      i++;
+    } else {
+      sendChar(aStr.charAt(i), aWindow);
+    }
   }
 }
 
 /**
  * Send the non-character key aKey to the focused node.
- * The name of the key should be the part that comes after "DOM_VK_" in the
- *   KeyEvent constant name for this key.
+ * The name of the key should be the part that comes after ``DOM_VK_`` in the
+ * KeyEvent constant name for this key.
  * No modifiers are handled at this point.
  */
 function sendKey(aKey, aWindow) {
@@ -533,9 +540,6 @@ function _parseModifiers(aEvent, aWindow = window) {
   if (aEvent.symbolLockKey) {
     mval |= nsIDOMWindowUtils.MODIFIER_SYMBOLLOCK;
   }
-  if (aEvent.osKey) {
-    mval |= nsIDOMWindowUtils.MODIFIER_OS;
-  }
 
   return mval;
 }
@@ -566,14 +570,170 @@ function synthesizeMouse(aTarget, aOffsetX, aOffsetY, aEvent, aWindow) {
     aWindow
   );
 }
-function synthesizeTouch(aTarget, aOffsetX, aOffsetY, aEvent, aWindow) {
-  var rect = aTarget.getBoundingClientRect();
-  return synthesizeTouchAtPoint(
-    rect.left + aOffsetX,
-    rect.top + aOffsetY,
-    aEvent,
-    aWindow
-  );
+
+/**
+ * Synthesize one or more touches on aTarget. aTarget can be either Element
+ * or Array of Elements.  aOffsetX, aOffsetY, aEvent.id, aEvent.rx, aEvent.ry,
+ * aEvent.angle, aEvent.force, aEvent.tiltX, aEvent.tiltY and aEvent.twist can
+ * be either Number or Array of Numbers (can be mixed).  If you specify array
+ * to synthesize a multi-touch, you need to specify same length arrays.  If
+ * you don't specify array to them, same values (or computed default values for
+ * aEvent.id) are used for all touches.
+ *
+ * @param {Element | Element[]} aTarget The target element which you specify
+ * relative offset from its top-left.
+ * @param {Number | Number[]} aOffsetX The relative offset from left of aTarget.
+ * @param {Number | Number[]} aOffsetY The relative offset from top of aTarget.
+ * @param {Object} aEvent
+ * type: The touch event type.  If undefined, "touchstart" and "touchend" will
+ * be synthesized at same point.
+ *
+ * id: The touch id.  If you don't specify this, default touch id will be used
+ * for first touch and further touch ids are the values incremented from the
+ * first id.
+ *
+ * rx, ry: The radii of the touch.
+ *
+ * angle: The angle in degree.
+ *
+ * force: The force of the touch.  If the type is "touchend", this should be 0.
+ * If unspecified, this is default to 0 for "touchend"  or 1 for the others.
+ *
+ * tiltX, tiltY: The tilt of the touch.
+ *
+ * twist: The twist of the touch.
+ * @param {Window} aWindow Default to `window`.
+ * @returns true if and only if aEvent.type is specified and default of the
+ * event is prevented.
+ */
+function synthesizeTouch(
+  aTarget,
+  aOffsetX,
+  aOffsetY,
+  aEvent = {},
+  aWindow = window
+) {
+  let rectX, rectY;
+  if (Array.isArray(aTarget)) {
+    let lastTarget, lastTargetRect;
+    aTarget.forEach(target => {
+      const rect =
+        target == lastTarget ? lastTargetRect : target.getBoundingClientRect();
+      rectX.push(rect.left);
+      rectY.push(rect.top);
+      lastTarget = target;
+      lastTargetRect = rect;
+    });
+  } else {
+    const rect = aTarget.getBoundingClientRect();
+    rectX = [rect.left];
+    rectY = [rect.top];
+  }
+  const offsetX = (() => {
+    if (Array.isArray(aOffsetX)) {
+      let ret = [];
+      aOffsetX.forEach((value, index) => {
+        ret.push(value + rectX[Math.min(index, rectX.length - 1)]);
+      });
+      return ret;
+    }
+    return aOffsetX + rectX[0];
+  })();
+  const offsetY = (() => {
+    if (Array.isArray(aOffsetY)) {
+      let ret = [];
+      aOffsetY.forEach((value, index) => {
+        ret.push(value + rectY[Math.min(index, rectY.length - 1)]);
+      });
+      return ret;
+    }
+    return aOffsetY + rectY[0];
+  })();
+  return synthesizeTouchAtPoint(offsetX, offsetY, aEvent, aWindow);
+}
+
+/**
+ * Return the drag service.  Note that if we're in the headless mode, this
+ * may return null because the service may be never instantiated (e.g., on
+ * Linux).
+ */
+function getDragService() {
+  try {
+    return _EU_Cc["@mozilla.org/widget/dragservice;1"].getService(
+      _EU_Ci.nsIDragService
+    );
+  } catch (e) {
+    // If we're in the headless mode, the drag service may be never
+    // instantiated.  In this case, an exception is thrown.  Let's ignore
+    // any exceptions since without the drag service, nobody can create a
+    // drag session.
+    return null;
+  }
+}
+
+/**
+ * End drag session if there is.
+ *
+ * TODO: This should synthesize "drop" if necessary.
+ *
+ * @param left          X offset in the viewport
+ * @param top           Y offset in the viewport
+ * @param aEvent        The event data, the modifiers are applied to the
+ *                      "dragend" event.
+ * @param aWindow       The window.
+ * @return              true if handled.  In this case, the caller should not
+ *                      synthesize DOM events basically.
+ */
+function _maybeEndDragSession(left, top, aEvent, aWindow) {
+  const dragService = getDragService();
+  const dragSession = dragService?.getCurrentSession();
+  if (!dragSession) {
+    return false;
+  }
+  // FIXME: If dragSession.dragAction is not
+  // nsIDragService.DRAGDROP_ACTION_NONE nor aEvent.type is not `keydown`, we
+  // need to synthesize a "drop" event or call setDragEndPointForTests here to
+  // set proper left/top to `dragend` event.
+  try {
+    dragService.endDragSession(false, _parseModifiers(aEvent, aWindow));
+  } catch (e) {}
+  return true;
+}
+
+function _maybeSynthesizeDragOver(left, top, aEvent, aWindow) {
+  const dragSession = getDragService()?.getCurrentSession();
+  if (!dragSession) {
+    return false;
+  }
+  const target = aWindow.document.elementFromPoint(left, top);
+  if (target) {
+    sendDragEvent(
+      createDragEventObject(
+        "dragover",
+        target,
+        aWindow,
+        dragSession.dataTransfer,
+        {
+          accelKey: aEvent.accelKey,
+          altKey: aEvent.altKey,
+          altGrKey: aEvent.altGrKey,
+          ctrlKey: aEvent.ctrlKey,
+          metaKey: aEvent.metaKey,
+          shiftKey: aEvent.shiftKey,
+          capsLockKey: aEvent.capsLockKey,
+          fnKey: aEvent.fnKey,
+          fnLockKey: aEvent.fnLockKey,
+          numLockKey: aEvent.numLockKey,
+          scrollLockKey: aEvent.scrollLockKey,
+          symbolKey: aEvent.symbolKey,
+          symbolLockKey: aEvent.symbolLockKey,
+        }
+      ),
+      target,
+      aWindow
+    );
+  }
+  return true;
 }
 
 /*
@@ -590,6 +750,18 @@ function synthesizeTouch(aTarget, aOffsetX, aOffsetY, aEvent, aWindow) {
  * aWindow is optional, and defaults to the current window object.
  */
 function synthesizeMouseAtPoint(left, top, aEvent, aWindow = window) {
+  if (aEvent.allowToHandleDragDrop) {
+    if (aEvent.type == "mouseup" || !aEvent.type) {
+      if (_maybeEndDragSession(left, top, aEvent, aWindow)) {
+        return false;
+      }
+    } else if (aEvent.type == "mousemove") {
+      if (_maybeSynthesizeDragOver(left, top, aEvent, aWindow)) {
+        return false;
+      }
+    }
+  }
+
   var utils = _getDOMWindowUtils(aWindow);
   var defaultPrevented = false;
 
@@ -677,56 +849,160 @@ function synthesizeMouseAtPoint(left, top, aEvent, aWindow = window) {
   return defaultPrevented;
 }
 
-function synthesizeTouchAtPoint(left, top, aEvent, aWindow = window) {
-  var utils = _getDOMWindowUtils(aWindow);
-  let defaultPrevented = false;
+/**
+ * Synthesize one or more touches at the points. aLeft, aTop, aEvent.id,
+ * aEvent.rx, aEvent.ry, aEvent.angle, aEvent.force, aEvent.tiltX, aEvent.tiltY
+ * and aEvent.twist can be either Number or Array of Numbers (can be mixed).
+ * If you specify array to synthesize a multi-touch, you need to specify same
+ * length arrays.  If you don't specify array to them, same values are used for
+ * all touches.
+ *
+ * @param {Element | Element[]} aTarget The target element which you specify
+ * relative offset from its top-left.
+ * @param {Number | Number[]} aOffsetX The relative offset from left of aTarget.
+ * @param {Number | Number[]} aOffsetY The relative offset from top of aTarget.
+ * @param {Object} aEvent
+ * type: The touch event type.  If undefined, "touchstart" and "touchend" will
+ * be synthesized at same point.
+ *
+ * id: The touch id.  If you don't specify this, default touch id will be used
+ * for first touch and further touch ids are the values incremented from the
+ * first id.
+ *
+ * rx, ry: The radii of the touch.
+ *
+ * angle: The angle in degree.
+ *
+ * force: The force of the touch.  If the type is "touchend", this should be 0.
+ * If unspecified, this is default to 0 for "touchend"  or 1 for the others.
+ *
+ * tiltX, tiltY: The tilt of the touch.
+ *
+ * twist: The twist of the touch.
+ * @param {Window} aWindow Default to `window`.
+ * @returns true if and only if aEvent.type is specified and default of the
+ * event is prevented.
+ */
+function synthesizeTouchAtPoint(aLeft, aTop, aEvent = {}, aWindow = window) {
+  let utils = _getDOMWindowUtils(aWindow);
+  if (!utils) {
+    return false;
+  }
 
-  if (utils) {
-    var id = aEvent.id || utils.DEFAULT_TOUCH_POINTER_ID;
-    var rx = aEvent.rx || 1;
-    var ry = aEvent.ry || 1;
-    var angle = aEvent.angle || 0;
-    var force = aEvent.force || (aEvent.type === "touchend" ? 0 : 1);
-    var modifiers = _parseModifiers(aEvent, aWindow);
+  if (
+    Array.isArray(aLeft) &&
+    Array.isArray(aTop) &&
+    aLeft.length != aTop.length
+  ) {
+    throw new Error(`aLeft and aTop should be same length array`);
+  }
 
-    if ("type" in aEvent && aEvent.type) {
-      defaultPrevented = utils.sendTouchEvent(
-        aEvent.type,
-        [id],
-        [left],
-        [top],
-        [rx],
-        [ry],
-        [angle],
-        [force],
-        modifiers
-      );
-    } else {
-      utils.sendTouchEvent(
-        "touchstart",
-        [id],
-        [left],
-        [top],
-        [rx],
-        [ry],
-        [angle],
-        [force],
-        modifiers
-      );
-      utils.sendTouchEvent(
-        "touchend",
-        [id],
-        [left],
-        [top],
-        [rx],
-        [ry],
-        [angle],
-        [force],
-        modifiers
-      );
+  const arrayLength = Array.isArray(aLeft)
+    ? aLeft.length
+    : Array.isArray(aTop)
+    ? aTop.length
+    : 1;
+
+  function throwExceptionIfDifferentLengthArray(aArray, aName) {
+    if (Array.isArray(aArray) && arrayLength !== aArray.length) {
+      throw new Error(`${aName} is different length array`);
     }
   }
-  return defaultPrevented;
+  const leftArray = (() => {
+    if (Array.isArray(aLeft)) {
+      return aLeft;
+    }
+    return new Array(arrayLength).fill(aLeft);
+  })();
+  const topArray = (() => {
+    if (Array.isArray(aTop)) {
+      throwExceptionIfDifferentLengthArray(aTop, "aTop");
+      return aTop;
+    }
+    return new Array(arrayLength).fill(aTop);
+  })();
+  const idArray = (() => {
+    if ("id" in aEvent && Array.isArray(aEvent.id)) {
+      throwExceptionIfDifferentLengthArray(aEvent.id, "aEvent.id");
+      return aEvent.id;
+    }
+    let id = aEvent.id || utils.DEFAULT_TOUCH_POINTER_ID;
+    let ret = [];
+    for (let i = 0; i < arrayLength; i++) {
+      ret.push(id++);
+    }
+    return ret;
+  })();
+  function getSameLengthArrayOfEventProperty(aProperty, aDefaultValue) {
+    if (aProperty in aEvent && Array.isArray(aEvent[aProperty])) {
+      throwExceptionIfDifferentLengthArray(
+        aEvent.rx,
+        arrayLength,
+        `aEvent.${aProperty}`
+      );
+      return aEvent[aProperty];
+    }
+    return new Array(arrayLength).fill(aEvent[aProperty] || aDefaultValue);
+  }
+  const rxArray = getSameLengthArrayOfEventProperty("rx", 1);
+  const ryArray = getSameLengthArrayOfEventProperty("ry", 1);
+  const angleArray = getSameLengthArrayOfEventProperty("angle", 0);
+  const forceArray = getSameLengthArrayOfEventProperty(
+    "force",
+    aEvent.type === "touchend" ? 0 : 1
+  );
+  const tiltXArray = getSameLengthArrayOfEventProperty("tiltX", 0);
+  const tiltYArray = getSameLengthArrayOfEventProperty("tiltY", 0);
+  const twistArray = getSameLengthArrayOfEventProperty("twist", 0);
+
+  const modifiers = _parseModifiers(aEvent, aWindow);
+
+  if ("type" in aEvent && aEvent.type) {
+    return utils.sendTouchEvent(
+      aEvent.type,
+      idArray,
+      leftArray,
+      topArray,
+      rxArray,
+      ryArray,
+      angleArray,
+      forceArray,
+      tiltXArray,
+      tiltYArray,
+      twistArray,
+      modifiers
+    );
+  }
+
+  utils.sendTouchEvent(
+    "touchstart",
+    idArray,
+    leftArray,
+    topArray,
+    rxArray,
+    ryArray,
+    angleArray,
+    forceArray,
+    tiltXArray,
+    tiltYArray,
+    twistArray,
+    modifiers
+  );
+  utils.sendTouchEvent(
+    "touchend",
+    idArray,
+    leftArray,
+    topArray,
+    rxArray,
+    ryArray,
+    angleArray,
+    forceArray,
+    tiltXArray,
+    tiltYArray,
+    twistArray,
+    modifiers
+  );
+  return false;
 }
 
 // Call synthesizeMouse with coordinates at the center of aTarget.
@@ -740,9 +1016,14 @@ function synthesizeMouseAtCenter(aTarget, aEvent, aWindow) {
     aWindow
   );
 }
-function synthesizeTouchAtCenter(aTarget, aEvent, aWindow) {
+function synthesizeTouchAtCenter(aTarget, aEvent = {}, aWindow = window) {
   var rect = aTarget.getBoundingClientRect();
-  synthesizeTouch(aTarget, rect.width / 2, rect.height / 2, aEvent, aWindow);
+  synthesizeTouchAtPoint(
+    rect.left + rect.width / 2,
+    rect.top + rect.height / 2,
+    aEvent,
+    aWindow
+  );
 }
 
 /**
@@ -889,7 +1170,7 @@ function _sendWheelAndPaint(
     // from the content thread. If we send a wheel event now, it could be ignored
     // by APZ (or its scroll offset could be overridden). To avoid problems we
     // just wait for the paint to complete.
-    aWindow.waitForAllPaintsFlushed(function() {
+    aWindow.waitForAllPaintsFlushed(function () {
       _sendWheelAndPaint(
         aTarget,
         aOffsetX,
@@ -903,12 +1184,14 @@ function _sendWheelAndPaint(
     return;
   }
 
-  var onwheel = function() {
-    SpecialPowers.removeSystemEventListener(window, "wheel", onwheel);
+  var onwheel = function () {
+    SpecialPowers.wrap(window).removeEventListener("wheel", onwheel, {
+      mozSystemGroup: true,
+    });
 
     // Wait one frame since the wheel event has not caused a refresh observer
     // to be added yet.
-    setTimeout(function() {
+    setTimeout(function () {
       utils.advanceTimeAndRefresh(1000);
 
       if (!aCallback) {
@@ -916,12 +1199,12 @@ function _sendWheelAndPaint(
         return;
       }
 
-      var waitForPaints = function() {
+      var waitForPaints = function () {
         SpecialPowers.Services.obs.removeObserver(
           waitForPaints,
           "apz-repaints-flushed"
         );
-        aWindow.waitForAllPaintsFlushed(function() {
+        aWindow.waitForAllPaintsFlushed(function () {
           utils.restoreNormalRefresh();
           aCallback();
         });
@@ -939,7 +1222,9 @@ function _sendWheelAndPaint(
 
   // Listen for the system wheel event, because it happens after all of
   // the other wheel events, including legacy events.
-  SpecialPowers.addSystemEventListener(aWindow, "wheel", onwheel);
+  SpecialPowers.wrap(aWindow).addEventListener("wheel", onwheel, {
+    mozSystemGroup: true,
+  });
   if (aFlushMode === _FlushModes.FLUSH) {
     synthesizeWheel(aTarget, aOffsetX, aOffsetY, aEvent, aWindow);
   } else {
@@ -980,8 +1265,8 @@ function sendWheelAndPaint(
 
 /**
  * Similar to sendWheelAndPaint but without flushing layout for obtaining
- * |aTarget| position in |aWindow| before sending the wheel event.
- * |aOffsetX| and |aOffsetY| should be offsets against aWindow.
+ * ``aTarget`` position in ``aWindow`` before sending the wheel event.
+ * ``aOffsetX`` and ``aOffsetY`` should be offsets against aWindow.
  */
 function sendWheelAndPaintNoFlush(
   aTarget,
@@ -1032,7 +1317,7 @@ function synthesizeNativeTap(
     return;
   }
 
-  let scale = utils.screenPixelsPerCSSPixel;
+  let scale = aWindow.devicePixelRatio;
   let rect = aTarget.getBoundingClientRect();
   let x = (aWindow.mozInnerScreenX + rect.left + aOffsetX) * scale;
   let y = (aWindow.mozInnerScreenY + rect.top + aOffsetY) * scale;
@@ -1047,24 +1332,56 @@ function synthesizeNativeTap(
   utils.sendNativeTouchTap(x, y, aLongTap, observer);
 }
 
+/**
+ * Similar to synthesizeMouse but generates a native widget level event
+ * (so will actually move the "real" mouse cursor etc. Be careful because
+ * this can impact later code as well! (e.g. with hover states etc.)
+ *
+ * @description There are 3 mutually exclusive ways of indicating the location of the
+ * mouse event: set ``atCenter``, or pass ``offsetX`` and ``offsetY``,
+ * or pass ``screenX`` and ``screenY``. Do not attempt to mix these.
+ *
+ * @param {object} aParams
+ * @param {string} aParams.type "click", "mousedown", "mouseup" or "mousemove"
+ * @param {Element} aParams.target Origin of offsetX and offsetY, must be an element
+ * @param {Boolean} [aParams.atCenter]
+ *        Instead of offsetX/Y, synthesize the event at center of `target`.
+ * @param {Number} [aParams.offsetX]
+ *        X offset in `target` (in CSS pixels if `scale` is "screenPixelsPerCSSPixel")
+ * @param {Number} [aParams.offsetY]
+ *        Y offset in `target` (in CSS pixels if `scale` is "screenPixelsPerCSSPixel")
+ * @param {Number} [aParams.screenX]
+ *        X offset in screen (in CSS pixels if `scale` is "screenPixelsPerCSSPixel"),
+ *        Neither offsetX/Y nor atCenter must be set if this is set.
+ * @param {Number} [aParams.screenY]
+ *        Y offset in screen (in CSS pixels if `scale` is "screenPixelsPerCSSPixel"),
+ *        Neither offsetX/Y nor atCenter must be set if this is set.
+ * @param {String} [aParams.scale="screenPixelsPerCSSPixel"]
+ *        If scale is "screenPixelsPerCSSPixel", devicePixelRatio will be used.
+ *        If scale is "inScreenPixels", clientX/Y nor scaleX/Y are not adjusted with screenPixelsPerCSSPixel.
+ * @param {Number} [aParams.button=0]
+ *        Defaults to 0, if "click", "mousedown", "mouseup", set same value as DOM MouseEvent.button
+ * @param {Object} [aParams.modifiers={}]
+ *        Active modifiers, see `_parseNativeModifiers`
+ * @param {Window} [aParams.win=window]
+ *        The window to use its utils. Defaults to the window in which EventUtils.js is running.
+ * @param {Element} [aParams.elementOnWidget=target]
+ *        Defaults to target. If element under the point is in another widget from target's widget,
+ *        e.g., when it's in a XUL <panel>, specify this.
+ */
 function synthesizeNativeMouseEvent(aParams, aCallback = null) {
   const {
-    type, // "click", "mousedown", "mouseup" or "mousemove"
-    target, // Origin of offsetX and offsetY, must be an element
-    offsetX, // X offset in `target` (in CSS pixels if `scale` is "screenPixelsPerCSSPixel*")
-    offsetY, // Y offset in `target` (in CSS pixels if `scale` is "screenPixelsPerCSSPixel*")
-    atCenter, // Instead of offsetX/Y, synthesize the event at center of `target`
-    screenX, // X offset in screen (in CSS pixels if `scale` is "screenPixelsPerCSSPixel*"), offsetX/Y nor atCenter must not be set if this is set
-    screenY, // Y offset in screen (in CSS pixels if `scale` is "screenPixelsPerCSSPixel*"), offsetX/Y nor atCenter must not be set if this is set
-    // If scale is "screenPixelsPerCSSPixel", it'll be used.
-    // If scale is "screenPixelsPerCSSPixelNoOverride", it'll be used.
-    // If scale is "inScreenPixels", clientX/Y nor scaleX/Y are not adjusted with screenPixelsPerCSSPixel*.
+    type,
+    target,
+    offsetX,
+    offsetY,
+    atCenter,
+    screenX,
+    screenY,
     scale = "screenPixelsPerCSSPixel",
-    button = 0, // if "click", "mousedown", "mouseup", set same value as DOM MouseEvent.button
-    modifiers = {}, // Active modifiers, see `_parseNativeModifiers`
-    win = window, // The window to use its utils
-    // If element under the point is in another widget from target's widget,
-    //  e.g., when it's in a XUL <panel>, specify this.
+    button = 0,
+    modifiers = {},
+    win = window,
     elementOnWidget = target,
   } = aParams;
   if (atCenter) {
@@ -1117,10 +1434,7 @@ function synthesizeNativeMouseEvent(aParams, aCallback = null) {
       return 1.0;
     }
     if (scale === "screenPixelsPerCSSPixel") {
-      return utils.screenPixelsPerCSSPixel;
-    }
-    if (scale === "screenPixelsPerCSSPixelNoOverride") {
-      return utils.screenPixelsPerCSSPixelNoOverride;
+      return win.devicePixelRatio;
     }
     throw Error(`invalid scale value (${scale}) is specified`);
   })();
@@ -1183,7 +1497,7 @@ function synthesizeNativeMouseEvent(aParams, aCallback = null) {
       button,
       modifierFlags,
       elementOnWidget,
-      function() {
+      function () {
         utils.sendNativeMouseEvent(
           x,
           y,
@@ -1255,15 +1569,12 @@ function synthesizeAndWaitNativeMouseMove(
 ) {
   let browser = gBrowser.selectedTab.linkedBrowser;
   let mm = browser.messageManager;
-  let ContentTask = _EU_Cu.import(
-    "resource://testing-common/ContentTask.jsm",
-    null
-  ).ContentTask;
+  let { ContentTask } = _EU_ChromeUtils.importESModule(
+    "resource://testing-common/ContentTask.sys.mjs"
+  );
 
   let eventRegisteredPromise = new Promise(resolve => {
-    mm.addMessageListener("Test:MouseMoveRegistered", function processed(
-      message
-    ) {
+    mm.addMessageListener("Test:MouseMoveRegistered", function processed() {
       mm.removeMessageListener("Test:MouseMoveRegistered", processed);
       resolve();
     });
@@ -1299,49 +1610,88 @@ function synthesizeAndWaitNativeMouseMove(
  * Synthesize a key event. It is targeted at whatever would be targeted by an
  * actual keypress by the user, typically the focused element.
  *
- * aKey should be:
- *  - key value (recommended).  If you specify a non-printable key name,
- *    append "KEY_" prefix.  Otherwise, specifying a printable key, the
- *    key value should be specified.
- *  - keyCode name starting with "VK_" (e.g., VK_RETURN).  This is available
- *    only for compatibility with legacy API.  Don't use this with new tests.
+ * @param {String} aKey
+ *        Should be either:
  *
- * aEvent is an object which may contain the properties:
- *  - code: If you don't specify this explicitly, it'll be guessed from aKey
- *          of US keyboard layout.  Note that this value may be different
- *          between browsers.  For example, "Insert" is never set only on
- *          macOS since actual key operation won't cause this code value.
- *          In such case, the value becomes empty string.
- *          If you need to emulate non-US keyboard layout or virtual keyboard
- *          which doesn't emulate hardware key input, you should set this value
- *          to empty string explicitly.
- *  - repeat: If you emulates auto-repeat, you should set the count of repeat.
- *            This method will automatically synthesize keydown (and keypress).
- *  - location: If you want to specify this, you can specify this explicitly.
- *              However, if you don't specify this value, it will be computed
- *              from code value.
- *  - type: Basically, you shouldn't specify this.  Then, this function will
- *          synthesize keydown (, keypress) and keyup.
- *          If keydown is specified, this only fires keydown (and keypress if
- *          it should be fired).
- *          If keyup is specified, this only fires keyup.
- *  - accelKey, altKey, altGraphKey, ctrlKey, capsLockKey, fnKey, fnLockKey,
- *    numLockKey, metaKey, osKey, scrollLockKey, shiftKey, symbolKey,
- *    symbolLockKey:
- *        Basically, you shouldn't use these attributes.  nsITextInputProcessor
- *        manages modifier key state when you synthesize modifier key events.
- *        However, if some of these attributes are true, this function activates
- *        the modifiers only during dispatching the key events.
- *        Note that if some of these values are false, they are ignored (i.e.,
- *        not inactivated with this function).
- *  - keyCode: Must be 0 - 255 (0xFF). If this is specified explicitly,
- *             .keyCode value is initialized with this value.
+ *        - key value (recommended).  If you specify a non-printable key name,
+ *          prepend the ``KEY_`` prefix.  Otherwise, specifying a printable key, the
+ *          key value should be specified.
  *
- * aWindow is optional, and defaults to the current window object.
- * aCallback is optional, use the callback for receiving notifications of TIP.
+ *        - keyCode name starting with ``VK_`` (e.g., ``VK_RETURN``).  This is available
+ *          only for compatibility with legacy API.  Don't use this with new tests.
+ *
+ * @param {Object} [aEvent]
+ *        Optional event object with more specifics about the key event to
+ *        synthesize.
+ * @param {String} [aEvent.code]
+ *        If you don't specify this explicitly, it'll be guessed from aKey
+ *        of US keyboard layout.  Note that this value may be different
+ *        between browsers.  For example, "Insert" is never set only on
+ *        macOS since actual key operation won't cause this code value.
+ *        In such case, the value becomes empty string.
+ *        If you need to emulate non-US keyboard layout or virtual keyboard
+ *        which doesn't emulate hardware key input, you should set this value
+ *        to empty string explicitly.
+ * @param {Number} [aEvent.repeat]
+ *        If you emulate auto-repeat, you should set the count of repeat.
+ *        This method will automatically synthesize keydown (and keypress).
+ * @param {*} aEvent.location
+ *        If you want to specify this, you can specify this explicitly.
+ *        However, if you don't specify this value, it will be computed
+ *        from code value.
+ * @param {String} aEvent.type
+ *        Basically, you shouldn't specify this.  Then, this function will
+ *        synthesize keydown (, keypress) and keyup.
+ *        If keydown is specified, this only fires keydown (and keypress if
+ *        it should be fired).
+ *        If keyup is specified, this only fires keyup.
+ * @param {Number} aEvent.keyCode
+ *        Must be 0 - 255 (0xFF). If this is specified explicitly,
+ *        .keyCode value is initialized with this value.
+ * @param {Window} aWindow
+ *        Is optional and defaults to the current window object.
+ * @param {Function} aCallback
+ *        Is optional and can be used to receive notifications from TIP.
+ *
+ * @description
+ * ``accelKey``, ``altKey``, ``altGraphKey``, ``ctrlKey``, ``capsLockKey``,
+ * ``fnKey``, ``fnLockKey``, ``numLockKey``, ``metaKey``, ``scrollLockKey``,
+ * ``shiftKey``, ``symbolKey``, ``symbolLockKey``
+ * Basically, you shouldn't use these attributes.  nsITextInputProcessor
+ * manages modifier key state when you synthesize modifier key events.
+ * However, if some of these attributes are true, this function activates
+ * the modifiers only during dispatching the key events.
+ * Note that if some of these values are false, they are ignored (i.e.,
+ * not inactivated with this function).
+ *
  */
 function synthesizeKey(aKey, aEvent = undefined, aWindow = window, aCallback) {
-  var event = aEvent === undefined || aEvent === null ? {} : aEvent;
+  const event = aEvent === undefined || aEvent === null ? {} : aEvent;
+  let dispatchKeydown =
+    !("type" in event) || event.type === "keydown" || !event.type;
+  const dispatchKeyup =
+    !("type" in event) || event.type === "keyup" || !event.type;
+
+  if (dispatchKeydown && aKey == "KEY_Escape") {
+    let eventForKeydown = Object.assign({}, JSON.parse(JSON.stringify(event)));
+    eventForKeydown.type = "keydown";
+    if (
+      _maybeEndDragSession(
+        // TODO: We should set the last dragover point instead
+        0,
+        0,
+        eventForKeydown,
+        aWindow
+      )
+    ) {
+      if (!dispatchKeyup) {
+        return;
+      }
+      // We don't need to dispatch only keydown event because it's consumed by
+      // the drag session.
+      dispatchKeydown = false;
+    }
+  }
 
   var TIP = _getTIP(aWindow, aCallback);
   if (!TIP) {
@@ -1351,10 +1701,6 @@ function synthesizeKey(aKey, aEvent = undefined, aWindow = window, aCallback) {
   var modifiers = _emulateToActivateModifiers(TIP, event, aWindow);
   var keyEventDict = _createKeyboardEventDictionary(aKey, event, TIP, aWindow);
   var keyEvent = new KeyboardEvent("", keyEventDict.dictionary);
-  var dispatchKeydown =
-    !("type" in event) || event.type === "keydown" || !event.type;
-  var dispatchKeyup =
-    !("type" in event) || event.type === "keyup" || !event.type;
 
   try {
     if (dispatchKeydown) {
@@ -1394,13 +1740,12 @@ function synthesizeAndWaitKey(
   let mm = browser.messageManager;
   let keyCode = _createKeyboardEventDictionary(aKey, aEvent, null, aWindow)
     .dictionary.keyCode;
-  let ContentTask = _EU_Cu.import(
-    "resource://testing-common/ContentTask.jsm",
-    null
-  ).ContentTask;
+  let { ContentTask } = _EU_ChromeUtils.importESModule(
+    "resource://testing-common/ContentTask.sys.mjs"
+  );
 
   let keyRegisteredPromise = new Promise(resolve => {
-    mm.addMessageListener("Test:KeyRegistered", function processed(message) {
+    mm.addMessageListener("Test:KeyRegistered", function processed() {
       mm.removeMessageListener("Test:KeyRegistered", processed);
       resolve();
     });
@@ -1506,102 +1851,139 @@ const KEYBOARD_LAYOUT_ARABIC = {
   Win: 0x00000401,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_ARABIC", KEYBOARD_LAYOUT_ARABIC);
 const KEYBOARD_LAYOUT_ARABIC_PC = {
   name: "Arabic - PC",
   Mac: 7,
   Win: null,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_ARABIC_PC", KEYBOARD_LAYOUT_ARABIC_PC);
 const KEYBOARD_LAYOUT_BRAZILIAN_ABNT = {
   name: "Brazilian ABNT",
   Mac: null,
   Win: 0x00000416,
   hasAltGrOnWin: true,
 };
+_defineConstant(
+  "KEYBOARD_LAYOUT_BRAZILIAN_ABNT",
+  KEYBOARD_LAYOUT_BRAZILIAN_ABNT
+);
 const KEYBOARD_LAYOUT_DVORAK_QWERTY = {
   name: "Dvorak-QWERTY",
   Mac: 4,
   Win: null,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_DVORAK_QWERTY", KEYBOARD_LAYOUT_DVORAK_QWERTY);
 const KEYBOARD_LAYOUT_EN_US = {
   name: "US",
   Mac: 0,
   Win: 0x00000409,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_EN_US", KEYBOARD_LAYOUT_EN_US);
 const KEYBOARD_LAYOUT_FRENCH = {
   name: "French",
-  Mac: 8,
+  Mac: 8, // Some keys mapped different from PC, e.g., Digit6, Digit8, Equal, Slash and Backslash
   Win: 0x0000040c,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_FRENCH", KEYBOARD_LAYOUT_FRENCH);
+const KEYBOARD_LAYOUT_FRENCH_PC = {
+  name: "French-PC",
+  Mac: 13, // Compatible with Windows
+  Win: 0x0000040c,
+  hasAltGrOnWin: true,
+};
+_defineConstant("KEYBOARD_LAYOUT_FRENCH_PC", KEYBOARD_LAYOUT_FRENCH_PC);
 const KEYBOARD_LAYOUT_GREEK = {
   name: "Greek",
   Mac: 1,
   Win: 0x00000408,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_GREEK", KEYBOARD_LAYOUT_GREEK);
 const KEYBOARD_LAYOUT_GERMAN = {
   name: "German",
   Mac: 2,
   Win: 0x00000407,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_GERMAN", KEYBOARD_LAYOUT_GERMAN);
 const KEYBOARD_LAYOUT_HEBREW = {
   name: "Hebrew",
   Mac: 9,
   Win: 0x0000040d,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_HEBREW", KEYBOARD_LAYOUT_HEBREW);
 const KEYBOARD_LAYOUT_JAPANESE = {
   name: "Japanese",
   Mac: null,
   Win: 0x00000411,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_JAPANESE", KEYBOARD_LAYOUT_JAPANESE);
 const KEYBOARD_LAYOUT_KHMER = {
   name: "Khmer",
   Mac: null,
   Win: 0x00000453,
   hasAltGrOnWin: true,
 }; // available on Win7 or later.
+_defineConstant("KEYBOARD_LAYOUT_KHMER", KEYBOARD_LAYOUT_KHMER);
 const KEYBOARD_LAYOUT_LITHUANIAN = {
   name: "Lithuanian",
   Mac: 10,
   Win: 0x00010427,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_LITHUANIAN", KEYBOARD_LAYOUT_LITHUANIAN);
 const KEYBOARD_LAYOUT_NORWEGIAN = {
   name: "Norwegian",
   Mac: 11,
   Win: 0x00000414,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_NORWEGIAN", KEYBOARD_LAYOUT_NORWEGIAN);
+const KEYBOARD_LAYOUT_RUSSIAN = {
+  name: "Russian",
+  Mac: null,
+  Win: 0x00000419,
+  hasAltGrOnWin: true, // No AltGr, but Ctrl + Alt + Digit8 introduces a char
+};
+_defineConstant("KEYBOARD_LAYOUT_RUSSIAN", KEYBOARD_LAYOUT_RUSSIAN);
 const KEYBOARD_LAYOUT_RUSSIAN_MNEMONIC = {
   name: "Russian - Mnemonic",
   Mac: null,
   Win: 0x00020419,
   hasAltGrOnWin: true,
 }; // available on Win8 or later.
+_defineConstant(
+  "KEYBOARD_LAYOUT_RUSSIAN_MNEMONIC",
+  KEYBOARD_LAYOUT_RUSSIAN_MNEMONIC
+);
 const KEYBOARD_LAYOUT_SPANISH = {
   name: "Spanish",
   Mac: 12,
   Win: 0x0000040a,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_SPANISH", KEYBOARD_LAYOUT_SPANISH);
 const KEYBOARD_LAYOUT_SWEDISH = {
   name: "Swedish",
   Mac: 3,
   Win: 0x0000041d,
   hasAltGrOnWin: true,
 };
+_defineConstant("KEYBOARD_LAYOUT_SWEDISH", KEYBOARD_LAYOUT_SWEDISH);
 const KEYBOARD_LAYOUT_THAI = {
   name: "Thai",
   Mac: 5,
   Win: 0x0002041e,
   hasAltGrOnWin: false,
 };
+_defineConstant("KEYBOARD_LAYOUT_THAI", KEYBOARD_LAYOUT_THAI);
 
 /**
  * synthesizeNativeKey() dispatches native key event on active window.
@@ -1688,7 +2070,7 @@ function _expectEvent(aExpectedTarget, aExpectedEvent, aTestName) {
     aExpectedEvent.charAt(0) == "!"
       ? aExpectedEvent.substring(1)
       : aExpectedEvent;
-  var eventHandler = function(event) {
+  var eventHandler = function (event) {
     var epassed =
       !_gSeenEvent &&
       event.originalTarget == aExpectedTarget &&
@@ -2125,7 +2507,6 @@ function _emulateToActivateModifiers(aTIP, aKeyEvent, aWindow = window) {
       { key: "Control", attr: "ctrlKey" },
       { key: "Fn", attr: "fnKey" },
       { key: "Meta", attr: "metaKey" },
-      { key: "OS", attr: "osKey" },
       { key: "Shift", attr: "shiftKey" },
       { key: "Symbol", attr: "symbolKey" },
       { key: _EU_isMac(aWindow) ? "Meta" : "Control", attr: "accelKey" },
@@ -2560,12 +2941,23 @@ function synthesizeQueryCaretRect(aOffset, aWindow) {
  * @param aWindow  Optional (If null, current |window| will be used)
  * @return         True, if succeeded.  Otherwise false.
  */
-function synthesizeSelectionSet(aOffset, aLength, aReverse, aWindow) {
-  var utils = _getDOMWindowUtils(aWindow);
+async function synthesizeSelectionSet(
+  aOffset,
+  aLength,
+  aReverse,
+  aWindow = window
+) {
+  const utils = _getDOMWindowUtils(aWindow);
   if (!utils) {
     return false;
   }
-  var flags = aReverse ? SELECTION_SET_FLAG_REVERSE : 0;
+  // eSetSelection event will be compared with selection cache in
+  // IMEContentObserver, but it may have not been updated yet.  Therefore, we
+  // need to flush pending things of IMEContentObserver.
+  await new Promise(resolve =>
+    aWindow.requestAnimationFrame(() => aWindow.requestAnimationFrame(resolve))
+  );
+  const flags = aReverse ? SELECTION_SET_FLAG_REVERSE : 0;
   return utils.sendSelectionSetEvent(aOffset, aLength, flags);
 }
 
@@ -2727,24 +3119,37 @@ function createDragEventObject(
 /**
  * Emulate a event sequence of dragstart, dragenter, and dragover.
  *
- * @param aSrcElement   The element to use to start the drag.
- * @param aDestElement  The element to fire the dragover, dragenter events
- * @param aDragData     The data to supply for the data transfer.
- *                      This data is in the format:
- *                        [ [ {type: value, data: value}, ...], ... ]
- *                      Pass null to avoid modifying dataTransfer.
- * @param aDropEffect   The drop effect to set during the dragstart event, or
- *                      'move' if null.
- * @param aWindow       Optional; Defaults to the current window object.
- * @param aDestWindow   Optional; Defaults to aWindow.
- *                      Used when aDestElement is in a different window than
- *                      aSrcElement.
- * @param aDragEvent    Optional; Defaults to empty object. Overwrites an object
- *                      passed to sendDragEvent.
- * @return              A two element array, where the first element is the
- *                      value returned from sendDragEvent for
- *                      dragover event, and the second element is the
- *                      dataTransfer for the current drag session.
+ * @param {Element} aSrcElement
+ *        The element to use to start the drag.
+ * @param {Element} aDestElement
+ *        The element to fire the dragover, dragenter events
+ * @param {Array}   aDragData
+ *        The data to supply for the data transfer.
+ *        This data is in the format:
+ *
+ *        [
+ *          [
+ *            {"type": value, "data": value },
+ *            ...,
+ *          ],
+ *          ...
+ *        ]
+ *
+ *        Pass null to avoid modifying dataTransfer.
+ * @param {String} [aDropEffect="move"]
+ *        The drop effect to set during the dragstart event, or 'move' if omitted.
+ * @param {Window} [aWindow=window]
+ *        The window in which the drag happens. Defaults to the window in which
+ *        EventUtils.js is loaded.
+ * @param {Window} [aDestWindow=aWindow]
+ *        Used when aDestElement is in a different window than aSrcElement.
+ *        Default is to match ``aWindow``.
+ * @param {Object} [aDragEvent={}]
+ *        Defaults to empty object. Overwrites an object passed to sendDragEvent.
+ * @return {Array}
+ *        A two element array, where the first element is the value returned
+ *        from sendDragEvent for dragover event, and the second element is the
+ *        dataTransfer for the current drag session.
  */
 function synthesizeDragOver(
   aSrcElement,
@@ -2834,16 +3239,19 @@ function synthesizeDragOver(
  * Emulate the drop event and mouseup event.
  * This should be called after synthesizeDragOver.
  *
- * @param aResult        The first element of the array returned from
- *                       synthesizeDragOver.
- * @param aDataTransfer  The second element of the array returned from
- *                       synthesizeDragOver.
- * @param aDestElement   The element to fire the drop event.
- * @param aDestWindow    Optional; Defaults to the current window object.
- * @param aDragEvent     Optional; Defaults to empty object. Overwrites an
- *                       object passed to sendDragEvent.
- * @return               "none" if aResult is true,
- *                       aDataTransfer.dropEffect otherwise.
+ * @param {*} aResult
+ *        The first element of the array returned from ``synthesizeDragOver``.
+ * @param {DataTransfer} aDataTransfer
+ *        The second element of the array returned from ``synthesizeDragOver``.
+ * @param {Element} aDestElement
+ *        The element on which to fire the drop event.
+ * @param {Window} [aDestWindow=window]
+ *        The window in which the drop happens. Defaults to the window in which
+ *        EventUtils.js is loaded.
+ * @param {Object} [aDragEvent={}]
+ *        Defaults to empty object. Overwrites an object passed to sendDragEvent.
+ * @return {String}
+ *        "none" if aResult is true, ``aDataTransfer.dropEffect`` otherwise.
  */
 function synthesizeDropAfterDragOver(
   aResult,
@@ -2871,7 +3279,14 @@ function synthesizeDropAfterDragOver(
     );
     sendDragEvent(event, aDestElement, aDestWindow);
   }
+  // Don't run accessibility checks for this click, since we're not actually
+  // clicking. It's just generated as part of the drop.
+  // this.AccessibilityUtils might not be set if this isn't a browser test or
+  // if a browser test has loaded its own copy of EventUtils for some reason.
+  // In the latter case, the test probably shouldn't do that.
+  this.AccessibilityUtils?.suppressClickHandling(true);
   synthesizeMouse(aDestElement, 2, 2, { type: "mouseup" }, aDestWindow);
+  this.AccessibilityUtils?.suppressClickHandling(false);
 
   return effect;
 }
@@ -2880,21 +3295,35 @@ function synthesizeDropAfterDragOver(
  * Emulate a drag and drop by emulating a dragstart and firing events dragenter,
  * dragover, and drop.
  *
- * @param aSrcElement   The element to use to start the drag.
- * @param aDestElement  The element to fire the dragover, dragenter events
- * @param aDragData     The data to supply for the data transfer.
- *                      This data is in the format:
- *                        [ [ {type: value, data: value}, ...], ... ]
- *                      Pass null to avoid modifying dataTransfer.
- * @param aDropEffect   The drop effect to set during the dragstart event, or
- *                      'move' if null.
- * @param aWindow       Optional; Defaults to the current window object.
- * @param aDestWindow   Optional; Defaults to aWindow.
- *                      Used when aDestElement is in a different window than
- *                      aSrcElement.
- * @param aDragEvent    Optional; Defaults to empty object. Overwrites an object
- *                      passed to sendDragEvent.
- * @return              The drop effect that was desired.
+ * @param {Element} aSrcElement
+ *        The element to use to start the drag.
+ * @param {Element} aDestElement
+ *        The element to fire the dragover, dragenter events
+ * @param {Array}   aDragData
+ *        The data to supply for the data transfer.
+ *        This data is in the format:
+ *
+ *            [
+ *              [
+ *                {"type": value, "data": value },
+ *                ...,
+ *              ],
+ *              ...
+ *            ]
+ *
+ *        Pass null to avoid modifying dataTransfer.
+ * @param {String} [aDropEffect="move"]
+ *        The drop effect to set during the dragstart event, or 'move' if omitted..
+ * @param {Window} [aWindow=window]
+ *        The window in which the drag happens. Defaults to the window in which
+ *        EventUtils.js is loaded.
+ * @param {Window} [aDestWindow=aWindow]
+ *        Used when aDestElement is in a different window than aSrcElement.
+ *        Default is to match ``aWindow``.
+ * @param {Object} [aDragEvent={}]
+ *        Defaults to empty object. Overwrites an object passed to sendDragEvent.
+ * @return {String}
+ *        The drop effect that was desired.
  */
 function synthesizeDrop(
   aSrcElement,
@@ -2957,15 +3386,43 @@ function synthesizeDrop(
   }
 }
 
+function _getFlattenedTreeParentNode(aNode) {
+  return _EU_maybeUnwrap(_EU_maybeWrap(aNode).flattenedTreeParentNode);
+}
+
+function _getInclusiveFlattenedTreeParentElement(aNode) {
+  for (
+    let inclusiveAncestor = aNode;
+    inclusiveAncestor;
+    inclusiveAncestor = _getFlattenedTreeParentNode(inclusiveAncestor)
+  ) {
+    if (inclusiveAncestor.nodeType == Node.ELEMENT_NODE) {
+      return inclusiveAncestor;
+    }
+  }
+  return null;
+}
+
+function _nodeIsFlattenedTreeDescendantOf(
+  aPossibleDescendant,
+  aPossibleAncestor
+) {
+  do {
+    if (aPossibleDescendant == aPossibleAncestor) {
+      return true;
+    }
+    aPossibleDescendant = _getFlattenedTreeParentNode(aPossibleDescendant);
+  } while (aPossibleDescendant);
+  return false;
+}
+
 function _computeSrcElementFromSrcSelection(aSrcSelection) {
   let srcElement = aSrcSelection.focusNode;
   while (_EU_maybeWrap(srcElement).isNativeAnonymous) {
-    srcElement = _EU_maybeUnwrap(
-      _EU_maybeWrap(srcElement).flattenedTreeParentNode
-    );
+    srcElement = _getFlattenedTreeParentNode(srcElement);
   }
-  if (srcElement.nodeType !== Node.NODE_TYPE_ELEMENT) {
-    srcElement = srcElement.parentElement;
+  if (srcElement.nodeType !== Node.ELEMENT_NODE) {
+    srcElement = _getInclusiveFlattenedTreeParentElement(srcElement);
   }
   return srcElement;
 }
@@ -2978,33 +3435,41 @@ function _computeSrcElementFromSrcSelection(aSrcSelection) {
  * Note that if synthesized dragstart is canceled, this throws an exception
  * because in such case, Gecko does not start drag session.
  *
- * @param aParams
- *        {
- *          dragEvent:    The DnD events will be generated with modifiers
- *                        specified with this.
- *          srcElement:   The element to start dragging.  If srcSelection is
- *                        set, this is computed for element at focus node.
- *          srcSelection: The selection to start to drag, set null if
- *                        srcElement is set.
- *          destElement:  The element to drop on. Pass null to emulate
- *                        a drop on an invalid target.
- *          srcX:         The initial x coordinate inside srcElement or
- *                        ignored if srcSelection is set.
- *          srcY:         The initial y coordinate inside srcElement or
- *                        ignored if srcSelection is set.
- *          stepX:        The x-axis step for mousemove inside srcElement
- *          stepY:        The y-axis step for mousemove inside srcElement
- *          finalX:       The final x coordinate inside srcElement
- *          finalY:       The final x coordinate inside srcElement
- *          id:           The pointer event id
- *          srcWindow:    The window for dispatching event on srcElement,
- *                        defaults to the current window object
- *          destWindow:   The window for dispatching event on destElement,
- *                        defaults to the current window object
- *          expectCancelDragStart:  Set to true if the test cancels "dragstart"
- *          logFunc:      Set function which takes one argument if you need
- *                        to log rect of target.  E.g., `console.log`.
- *        }
+ * @param {Object} aParams
+ * @param {Event} aParams.dragEvent
+ *                The DnD events will be generated with modifiers specified with this.
+ * @param {Element} aParams.srcElement
+ *                The element to start dragging.  If srcSelection is
+ *                set, this is computed for element at focus node.
+ * @param {Selection|nil} aParams.srcSelection
+ *                The selection to start to drag, set null if srcElement is set.
+ * @param {Element|nil} aParams.destElement
+ *                The element to drop on. Pass null to emulate a drop on an invalid target.
+ * @param {Number} aParams.srcX
+ *                The initial x coordinate inside srcElement or ignored if srcSelection is set.
+ * @param {Number} aParams.srcY
+ *                The initial y coordinate inside srcElement or ignored if srcSelection is set.
+ * @param {Number} aParams.stepX
+ *                The x-axis step for mousemove inside srcElement
+ * @param {Number} aParams.stepY
+ *                The y-axis step for mousemove inside srcElement
+ * @param {Number} aParams.finalX
+ *                The final x coordinate inside srcElement
+ * @param {Number} aParams.finalY
+ *                The final x coordinate inside srcElement
+ * @param {Any} aParams.id
+ *                The pointer event id
+ * @param {Window} aParams.srcWindow
+ *                The window for dispatching event on srcElement, defaults to the current window object.
+ * @param {Window} aParams.destWindow
+ *                The window for dispatching event on destElement, defaults to the current window object.
+ * @param {Boolean} aParams.expectCancelDragStart
+ *                Set to true if the test cancels "dragstart"
+ * @param {Boolean} aParams.expectSrcElementDisconnected
+ *                Set to true if srcElement will be disconnected and
+ *                "dragend" event won't be fired.
+ * @param {Function} aParams.logFunc
+ *                Set function which takes one argument if you need to log rect of target.  E.g., `console.log`.
  */
 // eslint-disable-next-line complexity
 async function synthesizePlainDragAndDrop(aParams) {
@@ -3023,6 +3488,7 @@ async function synthesizePlainDragAndDrop(aParams) {
     srcWindow = window,
     destWindow = window,
     expectCancelDragStart = false,
+    expectSrcElementDisconnected = false,
     logFunc,
   } = aParams;
   // Don't modify given dragEvent object because we modify dragEvent below and
@@ -3054,8 +3520,9 @@ async function synthesizePlainDragAndDrop(aParams) {
     let lastSelectionRect = selectionRectList[selectionRectList.length - 1];
     if (logFunc) {
       logFunc(
-        `srcSelection.getRangeAt(0).getClientRects()[${selectionRectList.length -
-          1}]: ${rectToString(lastSelectionRect)}`
+        `srcSelection.getRangeAt(0).getClientRects()[${
+          selectionRectList.length - 1
+        }]: ${rectToString(lastSelectionRect)}`
       );
     }
     // Click at center of last selection rect.
@@ -3086,20 +3553,79 @@ async function synthesizePlainDragAndDrop(aParams) {
     _EU_Ci.nsIDragService
   );
 
+  const editingHost = (() => {
+    if (!srcElement.matches(":read-write")) {
+      return null;
+    }
+    let lastEditableElement = srcElement;
+    for (
+      let inclusiveAncestor =
+        _getInclusiveFlattenedTreeParentElement(srcElement);
+      inclusiveAncestor;
+      inclusiveAncestor = _getInclusiveFlattenedTreeParentElement(
+        _getFlattenedTreeParentNode(inclusiveAncestor)
+      )
+    ) {
+      if (inclusiveAncestor.matches(":read-write")) {
+        lastEditableElement = inclusiveAncestor;
+        if (lastEditableElement == srcElement.ownerDocument.body) {
+          break;
+        }
+      }
+    }
+    return lastEditableElement;
+  })();
   try {
-    _getDOMWindowUtils().disableNonTestMouseEvents(true);
+    _getDOMWindowUtils(srcWindow).disableNonTestMouseEvents(true);
 
     await new Promise(r => setTimeout(r, 0));
 
-    synthesizeMouse(
-      srcElement,
-      srcX,
-      srcY,
-      { type: "mousedown", id },
-      srcWindow
-    );
-    if (logFunc) {
-      logFunc(`mousedown at ${srcX}, ${srcY}`);
+    let mouseDownEvent;
+    function onMouseDown(aEvent) {
+      mouseDownEvent = aEvent;
+      if (logFunc) {
+        logFunc(
+          `"${aEvent.type}" event is fired on ${
+            aEvent.target
+          } (composedTarget: ${_EU_maybeUnwrap(
+            _EU_maybeWrap(aEvent).composedTarget
+          )}`
+        );
+      }
+      if (
+        !_nodeIsFlattenedTreeDescendantOf(
+          _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget),
+          srcElement
+        )
+      ) {
+        // If srcX and srcY does not point in one of rects in srcElement,
+        // "mousedown" target is not in srcElement.  Such case must not
+        // be expected by this API users so that we should throw an exception
+        // for making debugging easier.
+        throw new Error(
+          'event target of "mousedown" is not srcElement nor its descendant'
+        );
+      }
+    }
+    try {
+      srcWindow.addEventListener("mousedown", onMouseDown, { capture: true });
+      synthesizeMouse(
+        srcElement,
+        srcX,
+        srcY,
+        { type: "mousedown", id },
+        srcWindow
+      );
+      if (logFunc) {
+        logFunc(`mousedown at ${srcX}, ${srcY}`);
+      }
+      if (!mouseDownEvent) {
+        throw new Error('"mousedown" event is not fired');
+      }
+    } finally {
+      srcWindow.removeEventListener("mousedown", onMouseDown, {
+        capture: true,
+      });
     }
 
     let dragStartEvent;
@@ -3109,14 +3635,15 @@ async function synthesizePlainDragAndDrop(aParams) {
         logFunc(`"${aEvent.type}" event is fired`);
       }
       if (
-        !srcElement.contains(
-          _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget)
+        !_nodeIsFlattenedTreeDescendantOf(
+          _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget),
+          srcElement
         )
       ) {
         // If srcX and srcY does not point in one of rects in srcElement,
         // "dragstart" target is not in srcElement.  Such case must not
         // be expected by this API users so that we should throw an exception
-        // for making debug easier.
+        // for making debugging easier.
         throw new Error(
           'event target of "dragstart" is not srcElement nor its descendant'
         );
@@ -3295,8 +3822,9 @@ async function synthesizePlainDragAndDrop(aParams) {
             logFunc(`"${aEvent.type}" event is fired`);
           }
           if (
-            !destElement.contains(
-              _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget)
+            !_nodeIsFlattenedTreeDescendantOf(
+              _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget),
+              destElement
             )
           ) {
             throw new Error(
@@ -3341,6 +3869,7 @@ async function synthesizePlainDragAndDrop(aParams) {
     await new Promise(r => setTimeout(r, 0));
 
     if (ds.getCurrentSession()) {
+      const sourceNode = ds.sourceNode;
       let dragEndEvent;
       function onDragEnd(aEvent) {
         dragEndEvent = aEvent;
@@ -3348,29 +3877,42 @@ async function synthesizePlainDragAndDrop(aParams) {
           logFunc(`"${aEvent.type}" event is fired`);
         }
         if (
-          !srcElement.contains(
-            _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget)
-          )
+          !_nodeIsFlattenedTreeDescendantOf(
+            _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget),
+            srcElement
+          ) &&
+          _EU_maybeUnwrap(_EU_maybeWrap(aEvent).composedTarget) != editingHost
         ) {
           throw new Error(
             'event target of "dragend" is not srcElement nor its descendant'
+          );
+        }
+        if (expectSrcElementDisconnected) {
+          throw new Error(
+            `"dragend" event shouldn't be fired when the source node is disconnected (the source node is ${
+              sourceNode?.isConnected ? "connected" : "null or disconnected"
+            })`
           );
         }
       }
       srcWindow.addEventListener("dragend", onDragEnd, { capture: true });
       try {
         ds.endDragSession(true, _parseModifiers(dragEvent));
-        if (!dragEndEvent) {
+        if (!expectSrcElementDisconnected && !dragEndEvent) {
           // eslint-disable-next-line no-unsafe-finally
           throw new Error(
-            '"dragend" event is not fired by nsIDragService.endDragSession()'
+            `"dragend" event is not fired by nsIDragService.endDragSession()${
+              ds.sourceNode && !ds.sourceNode.isConnected
+                ? "(sourceNode was disconnected)"
+                : ""
+            }`
           );
         }
       } finally {
         srcWindow.removeEventListener("dragend", onDragEnd, { capture: true });
       }
     }
-    _getDOMWindowUtils().disableNonTestMouseEvents(false);
+    _getDOMWindowUtils(srcWindow).disableNonTestMouseEvents(false);
     if (logFunc) {
       logFunc("synthesizePlainDragAndDrop() -- END");
     }
@@ -3421,26 +3963,46 @@ function _checkDataTransferItems(aDataTransfer, aExpectedDragData) {
 }
 
 /**
+ * This callback type is used with ``synthesizePlainDragAndCancel()``.
+ * It should compare ``actualData`` and ``expectedData`` and return
+ * true if the two should be considered equal, false otherwise.
+ *
+ * @callback eqTest
+ * @param {*} actualData
+ * @param {*} expectedData
+ * @return {boolean}
+ */
+
+/**
  * synthesizePlainDragAndCancel() synthesizes drag start with
  * synthesizePlainDragAndDrop(), but always cancel it with preventing default
  * of "dragstart".  Additionally, this checks whether the dataTransfer of
  * "dragstart" event has only expected items.
  *
- * @param aParams       The params which is set to the argument of
- *                      synthesizePlainDragAndDrop().
- * @param aExpectedDataTransferItems
- *                      All expected dataTransfer items.
- *                      This data is in the format:
- *                         [ [ {type: value, data: value, test: function}, ... ], ... ]
- *                      can be null.
- *                      eqTest is an optional function if comparison can't be
- *                      done with x == y;
- *                      function (actualData, expectedData) {return boolean}
- * @return              true if aExpectedDataTransferItems matches with
- *                      DragEvent.dataTransfer of "dragstart" event.
- *                      Otherwise, the dataTransfer object (may be null) or
- *                      thrown exception, NOT false.  Therefore, you shouldn't
- *                      use
+ * @param {Object} aParams
+ *        The params which is set to the argument of ``synthesizePlainDragAndDrop()``.
+ * @param {Array} aExpectedDataTransferItems
+ *        All expected dataTransfer items.
+ *        This data is in the format:
+ *
+ *        [
+ *          [
+ *            {"type": value, "data": value, eqTest: function}
+ *            ...,
+ *          ],
+ *          ...
+ *        ]
+ *
+ *        This can also be null.
+ *        You can optionally provide ``eqTest`` {@type eqTest} if the
+ *        comparison to the expected data transfer items can't be done
+ *        with x == y;
+ * @return {boolean}
+ *        true if aExpectedDataTransferItems matches with
+ *        DragEvent.dataTransfer of "dragstart" event.
+ *        Otherwise, the dataTransfer object (may be null) or
+ *        thrown exception, NOT false.  Therefore, you shouldn't
+ *        use.
  */
 async function synthesizePlainDragAndCancel(
   aParams,
@@ -3457,21 +4019,19 @@ async function synthesizePlainDragAndCancel(
       aExpectedDataTransferItems
     );
   }
-  SpecialPowers.addSystemEventListener(
-    srcElement.ownerDocument,
+  SpecialPowers.wrap(srcElement.ownerDocument).addEventListener(
     "dragstart",
     onDragStart,
-    { capture: true }
+    { capture: true, mozSystemGroup: true }
   );
   try {
     aParams.expectCancelDragStart = true;
     await synthesizePlainDragAndDrop(aParams);
   } finally {
-    SpecialPowers.removeSystemEventListener(
-      srcElement.ownerDocument,
+    SpecialPowers.wrap(srcElement.ownerDocument).removeEventListener(
       "dragstart",
       onDragStart,
-      { capture: true }
+      { capture: true, mozSystemGroup: true }
     );
   }
   return result;
@@ -3488,33 +4048,23 @@ class EventCounter {
     // SpecialPowers is picky and needs to be passed an explicit reference to
     // the function to be called. To avoid having to bind "this", we therefore
     // define the method this way, via a property.
-    this.handleEvent = aEvent => {
+    this.handleEvent = () => {
       this.eventCount++;
     };
 
-    if (aOptions.mozSystemGroup) {
-      SpecialPowers.addSystemEventListener(
-        aTarget,
-        aType,
-        this.handleEvent,
-        aOptions.capture
-      );
-    } else {
-      aTarget.addEventListener(aType, this, aOptions);
-    }
+    SpecialPowers.wrap(aTarget).addEventListener(
+      aType,
+      this.handleEvent,
+      aOptions
+    );
   }
 
   unregister() {
-    if (this.options.mozSystemGroup) {
-      SpecialPowers.removeSystemEventListener(
-        this.target,
-        this.type,
-        this.handleEvent,
-        this.options.capture
-      );
-    } else {
-      this.target.removeEventListener(this.type, this, this.options);
-    }
+    SpecialPowers.wrap(this.target).removeEventListener(
+      this.type,
+      this.handleEvent,
+      this.options
+    );
   }
 
   get count() {

@@ -17,15 +17,14 @@ BROWSER_CHROME_MANIFESTS += [
 ]
 
 TESTING_JS_MODULES.calendar += [
-    "CalDAVServer.jsm",
-    "CalendarTestUtils.jsm",
-    "CalendarUtils.jsm",
-    "ICSServer.jsm",
-    "ItemEditingHelpers.jsm",
+    "CalDAVServer.sys.mjs",
+    "CalendarTestUtils.sys.mjs",
+    "CalendarUtils.sys.mjs",
+    "ICSServer.sys.mjs",
+    "ItemEditingHelpers.sys.mjs",
 ]
 
 XPCSHELL_TESTS_MANIFESTS += [
     "unit/providers/xpcshell.ini",
-    "unit/xpcshell-icaljs.ini",
-    "unit/xpcshell-libical.ini",
+    "unit/xpcshell.ini",
 ]

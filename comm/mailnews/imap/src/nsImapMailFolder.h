@@ -233,10 +233,9 @@ class nsImapMailFolder : public nsMsgDBFolder,
 
   NS_IMETHOD Compact(nsIUrlListener* aListener,
                      nsIMsgWindow* aMsgWindow) override;
-  NS_IMETHOD CompactAll(nsIUrlListener* aListener, nsIMsgWindow* aMsgWindow,
-                        bool aCompactOfflineAlso) override;
-  NS_IMETHOD EmptyTrash(nsIMsgWindow* msgWindow,
-                        nsIUrlListener* aListener) override;
+  NS_IMETHOD CompactAll(nsIUrlListener* aListener,
+                        nsIMsgWindow* aMsgWindow) override;
+  NS_IMETHOD EmptyTrash(nsIUrlListener* aListener) override;
   NS_IMETHOD CopyDataToOutputStreamForAppend(
       nsIInputStream* aIStream, int32_t aLength,
       nsIOutputStream* outputStream) override;
@@ -271,8 +270,6 @@ class nsImapMailFolder : public nsMsgDBFolder,
   NS_IMETHOD MarkMessagesFlagged(const nsTArray<RefPtr<nsIMsgDBHdr>>& messages,
                                  bool markFlagged) override;
   NS_IMETHOD MarkThreadRead(nsIMsgThread* thread) override;
-  NS_IMETHOD SetLabelForMessages(const nsTArray<RefPtr<nsIMsgDBHdr>>& aMessages,
-                                 nsMsgLabelValue aLabel) override;
   NS_IMETHOD SetJunkScoreForMessages(
       const nsTArray<RefPtr<nsIMsgDBHdr>>& aMessages,
       const nsACString& aJunkScore) override;
@@ -317,7 +314,7 @@ class nsImapMailFolder : public nsMsgDBFolder,
   NS_IMETHOD GetCanFileMessages(bool* aCanFileMessages) override;
   NS_IMETHOD GetCanDeleteMessages(bool* aCanDeleteMessages) override;
   NS_IMETHOD FetchMsgPreviewText(nsTArray<nsMsgKey> const& aKeysToFetch,
-                                 bool aLocalOnly, nsIUrlListener* aUrlListener,
+                                 nsIUrlListener* aUrlListener,
                                  bool* aAsyncResults) override;
 
   NS_IMETHOD AddKeywordsToMessages(
@@ -331,10 +328,8 @@ class nsImapMailFolder : public nsMsgDBFolder,
 
   // overrides nsMsgDBFolder::HasMsgOffline()
   NS_IMETHOD HasMsgOffline(nsMsgKey msgKey, bool* _retval) override;
-  // overrides nsMsgDBFolder::GetOfflineFileStream()
-  NS_IMETHOD GetOfflineFileStream(nsMsgKey msgKey, int64_t* offset,
-                                  uint32_t* size,
-                                  nsIInputStream** aFileStream) override;
+  NS_IMETHOD GetLocalMsgStream(nsIMsgDBHdr* hdr,
+                               nsIInputStream** stream) override;
 
   NS_DECL_NSIMSGIMAPMAILFOLDER
   NS_DECL_NSIIMAPMAILFOLDERSINK
@@ -352,17 +347,6 @@ class nsImapMailFolder : public nsMsgDBFolder,
   NS_IMETHOD IsCommandEnabled(const nsACString& command, bool* result) override;
   NS_IMETHOD SetFilterList(nsIMsgFilterList* aMsgFilterList) override;
   NS_IMETHOD GetCustomIdentity(nsIMsgIdentity** aIdentity) override;
-
-  /**
-   * This method is used to locate a folder where a msg could be present, not
-   * just the folder where the message first arrives, this method searches for
-   * the existence of msg in all the folders/labels that we retrieve from
-   * X-GM-LABELS also. overrides nsMsgDBFolder::GetOfflineMsgFolder()
-   *  @param msgKey key  of the msg for which we are trying to get the folder;
-   *  @param aMsgFolder  required folder;
-   */
-  NS_IMETHOD GetOfflineMsgFolder(nsMsgKey msgKey,
-                                 nsIMsgFolder** aMsgFolder) override;
 
   NS_IMETHOD GetIncomingServerType(nsACString& serverType) override;
 
@@ -387,15 +371,12 @@ class nsImapMailFolder : public nsMsgDBFolder,
   nsresult SetSupportedUserFlags(uint32_t userFlags);
   nsresult GetSupportedUserFlags(uint32_t* userFlags);
 
-  // Find the start of a range of msgKeys that can hold srcCount headers.
-  nsresult FindOpenRange(nsMsgKey& fakeBase, uint32_t srcCount);
-
  protected:
   virtual ~nsImapMailFolder();
   // Helper methods
 
-  virtual nsresult CreateChildFromURI(const nsACString& uri,
-                                      nsIMsgFolder** folder) override;
+  nsresult ExpungeAndCompact(nsIUrlListener* aListener,
+                             nsIMsgWindow* aMsgWindow);
   void FindKeysToAdd(const nsTArray<nsMsgKey>& existingKeys,
                      nsTArray<nsMsgKey>& keysToFetch, uint32_t& numNewUnread,
                      nsIImapFlagAndUidState* flagState);
@@ -500,8 +481,6 @@ class nsImapMailFolder : public nsMsgDBFolder,
   // Pseudo-Offline operation playback timer
   static void PlaybackTimerCallback(nsITimer* aTimer, void* aClosure);
 
-  nsresult CreatePlaybackTimer();
-
   // Allocate and initialize associated auto-sync state object.
   void InitAutoSyncState();
 
@@ -521,6 +500,7 @@ class nsImapMailFolder : public nsMsgDBFolder,
   /// the junk destination folder
   nsCOMPtr<nsIMsgFolder> mSpamFolder;
   nsMsgKey m_curMsgUid;
+  nsMsgKey m_previousHighestUid;
   uint32_t m_uidValidity;
 
   // These three vars are used to store counts from STATUS or SELECT command
@@ -556,10 +536,6 @@ class nsImapMailFolder : public nsMsgDBFolder,
   bool m_folderNeedsACLListed;
   bool m_performingBiff;
   bool m_updatingFolder;
-  // These two vars are used to keep track of compaction state so we can know
-  // when to send a done notification.
-  bool m_compactingOfflineStore;
-  bool m_expunging;
   bool m_applyIncomingFilters;  // apply filters to this folder, even if not the
                                 // inbox
   nsMsgIMAPFolderACL* m_folderACL;
@@ -602,5 +578,14 @@ class nsImapMailFolder : public nsMsgDBFolder,
   void DeleteStoreMessages(const nsTArray<nsMsgKey>& aMessages);
   static void DeleteStoreMessages(const nsTArray<nsMsgKey>& aMessages,
                                   nsIMsgFolder* aFolder);
+  /**
+   * This method is used to locate a folder where a msg could be present, not
+   * just the folder where the message first arrives, this method searches for
+   * the existence of msg in all the folders/labels that we retrieve from
+   * X-GM-LABELS also.
+   *  @param msgKey key  of the msg for which we are trying to get the folder;
+   *  @param aMsgFolder  required folder;
+   */
+  nsresult GetOfflineMsgFolder(nsMsgKey msgKey, nsIMsgFolder** aMsgFolder);
 };
 #endif

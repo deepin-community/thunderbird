@@ -17,8 +17,10 @@
 #include "jit/MacroAssembler.h"
 #include "jit/MoveEmitter.h"
 #include "util/Memory.h"
+#include "vm/BigIntType.h"
 #include "vm/JitActivation.h"  // js::jit::JitActivation
 #include "vm/JSContext.h"
+#include "vm/StringType.h"
 
 #include "jit/MacroAssembler-inl.h"
 #include "vm/JSScript-inl.h"
@@ -77,7 +79,7 @@ void MacroAssemblerX86::loadConstantSimd128Float(const SimdConstant& v,
 }
 
 void MacroAssemblerX86::vpPatchOpSimd128(
-    const SimdConstant& v, FloatRegister reg,
+    const SimdConstant& v, FloatRegister src, FloatRegister dest,
     void (X86Encoding::BaseAssemblerX86::*op)(
         const void* address, X86Encoding::XMMRegisterID srcId,
         X86Encoding::XMMRegisterID destId)) {
@@ -85,12 +87,12 @@ void MacroAssemblerX86::vpPatchOpSimd128(
   if (!val) {
     return;
   }
-  (masm.*op)(nullptr, reg.encoding(), reg.encoding());
+  (masm.*op)(nullptr, src.encoding(), dest.encoding());
   propagateOOM(val->uses.append(CodeOffset(masm.size())));
 }
 
 void MacroAssemblerX86::vpPatchOpSimd128(
-    const SimdConstant& v, FloatRegister reg,
+    const SimdConstant& v, FloatRegister src, FloatRegister dest,
     size_t (X86Encoding::BaseAssemblerX86::*op)(
         const void* address, X86Encoding::XMMRegisterID srcId,
         X86Encoding::XMMRegisterID destId)) {
@@ -99,318 +101,362 @@ void MacroAssemblerX86::vpPatchOpSimd128(
     return;
   }
   size_t patchOffsetFromEnd =
-      (masm.*op)(nullptr, reg.encoding(), reg.encoding());
+      (masm.*op)(nullptr, src.encoding(), dest.encoding());
   propagateOOM(val->uses.append(CodeOffset(masm.size() - patchOffsetFromEnd)));
 }
 
-void MacroAssemblerX86::vpaddbSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddb_mr);
+void MacroAssemblerX86::vpaddbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddb_mr);
 }
 
-void MacroAssemblerX86::vpaddwSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddw_mr);
+void MacroAssemblerX86::vpaddwSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddw_mr);
 }
 
-void MacroAssemblerX86::vpadddSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddd_mr);
+void MacroAssemblerX86::vpadddSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddd_mr);
 }
 
-void MacroAssemblerX86::vpaddqSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddq_mr);
+void MacroAssemblerX86::vpaddqSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddq_mr);
 }
 
-void MacroAssemblerX86::vpsubbSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubb_mr);
+void MacroAssemblerX86::vpsubbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubb_mr);
 }
 
-void MacroAssemblerX86::vpsubwSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubw_mr);
+void MacroAssemblerX86::vpsubwSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubw_mr);
 }
 
-void MacroAssemblerX86::vpsubdSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubd_mr);
+void MacroAssemblerX86::vpsubdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubd_mr);
 }
 
-void MacroAssemblerX86::vpsubqSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubq_mr);
+void MacroAssemblerX86::vpsubqSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubq_mr);
 }
 
-void MacroAssemblerX86::vpmullwSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmullw_mr);
+void MacroAssemblerX86::vpmullwSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmullw_mr);
 }
 
-void MacroAssemblerX86::vpmulldSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmulld_mr);
+void MacroAssemblerX86::vpmulldSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmulld_mr);
 }
 
-void MacroAssemblerX86::vpaddsbSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddsb_mr);
+void MacroAssemblerX86::vpaddsbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddsb_mr);
 }
 
 void MacroAssemblerX86::vpaddusbSimd128(const SimdConstant& v,
-                                        FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddusb_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddusb_mr);
 }
 
-void MacroAssemblerX86::vpaddswSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddsw_mr);
+void MacroAssemblerX86::vpaddswSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddsw_mr);
 }
 
 void MacroAssemblerX86::vpadduswSimd128(const SimdConstant& v,
-                                        FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpaddusw_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpaddusw_mr);
 }
 
-void MacroAssemblerX86::vpsubsbSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubsb_mr);
+void MacroAssemblerX86::vpsubsbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubsb_mr);
 }
 
 void MacroAssemblerX86::vpsubusbSimd128(const SimdConstant& v,
-                                        FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubusb_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubusb_mr);
 }
 
-void MacroAssemblerX86::vpsubswSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubsw_mr);
+void MacroAssemblerX86::vpsubswSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubsw_mr);
 }
 
 void MacroAssemblerX86::vpsubuswSimd128(const SimdConstant& v,
-                                        FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpsubusw_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpsubusw_mr);
 }
 
-void MacroAssemblerX86::vpminsbSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminsb_mr);
+void MacroAssemblerX86::vpminsbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminsb_mr);
 }
 
-void MacroAssemblerX86::vpminubSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminub_mr);
+void MacroAssemblerX86::vpminubSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminub_mr);
 }
 
-void MacroAssemblerX86::vpminswSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminsw_mr);
+void MacroAssemblerX86::vpminswSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminsw_mr);
 }
 
-void MacroAssemblerX86::vpminuwSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminuw_mr);
+void MacroAssemblerX86::vpminuwSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminuw_mr);
 }
 
-void MacroAssemblerX86::vpminsdSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminsd_mr);
+void MacroAssemblerX86::vpminsdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminsd_mr);
 }
 
-void MacroAssemblerX86::vpminudSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpminud_mr);
+void MacroAssemblerX86::vpminudSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpminud_mr);
 }
 
-void MacroAssemblerX86::vpmaxsbSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxsb_mr);
+void MacroAssemblerX86::vpmaxsbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxsb_mr);
 }
 
-void MacroAssemblerX86::vpmaxubSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxub_mr);
+void MacroAssemblerX86::vpmaxubSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxub_mr);
 }
 
-void MacroAssemblerX86::vpmaxswSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxsw_mr);
+void MacroAssemblerX86::vpmaxswSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxsw_mr);
 }
 
-void MacroAssemblerX86::vpmaxuwSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxuw_mr);
+void MacroAssemblerX86::vpmaxuwSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxuw_mr);
 }
 
-void MacroAssemblerX86::vpmaxsdSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxsd_mr);
+void MacroAssemblerX86::vpmaxsdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxsd_mr);
 }
 
-void MacroAssemblerX86::vpmaxudSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaxud_mr);
+void MacroAssemblerX86::vpmaxudSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaxud_mr);
 }
 
-void MacroAssemblerX86::vpandSimd128(const SimdConstant& v,
-                                     FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpand_mr);
+void MacroAssemblerX86::vpandSimd128(const SimdConstant& v, FloatRegister lhs,
+                                     FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpand_mr);
 }
 
-void MacroAssemblerX86::vpxorSimd128(const SimdConstant& v,
-                                     FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpxor_mr);
+void MacroAssemblerX86::vpxorSimd128(const SimdConstant& v, FloatRegister lhs,
+                                     FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpxor_mr);
 }
 
-void MacroAssemblerX86::vporSimd128(const SimdConstant& v,
-                                    FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpor_mr);
+void MacroAssemblerX86::vporSimd128(const SimdConstant& v, FloatRegister lhs,
+                                    FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpor_mr);
 }
 
-void MacroAssemblerX86::vaddpsSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vaddps_mr);
+void MacroAssemblerX86::vaddpsSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vaddps_mr);
 }
 
-void MacroAssemblerX86::vaddpdSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vaddpd_mr);
+void MacroAssemblerX86::vaddpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vaddpd_mr);
 }
 
-void MacroAssemblerX86::vsubpsSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vsubps_mr);
+void MacroAssemblerX86::vsubpsSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vsubps_mr);
 }
 
-void MacroAssemblerX86::vsubpdSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vsubpd_mr);
+void MacroAssemblerX86::vsubpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vsubpd_mr);
 }
 
-void MacroAssemblerX86::vdivpsSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vdivps_mr);
+void MacroAssemblerX86::vdivpsSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vdivps_mr);
 }
 
-void MacroAssemblerX86::vdivpdSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vdivpd_mr);
+void MacroAssemblerX86::vdivpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vdivpd_mr);
 }
 
-void MacroAssemblerX86::vmulpsSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vmulps_mr);
+void MacroAssemblerX86::vmulpsSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vmulps_mr);
 }
 
-void MacroAssemblerX86::vmulpdSimd128(const SimdConstant& v,
-                                      FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vmulpd_mr);
+void MacroAssemblerX86::vmulpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vmulpd_mr);
+}
+
+void MacroAssemblerX86::vandpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vandpd_mr);
+}
+
+void MacroAssemblerX86::vminpdSimd128(const SimdConstant& v, FloatRegister lhs,
+                                      FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vminpd_mr);
 }
 
 void MacroAssemblerX86::vpacksswbSimd128(const SimdConstant& v,
-                                         FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpacksswb_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpacksswb_mr);
 }
 
 void MacroAssemblerX86::vpackuswbSimd128(const SimdConstant& v,
-                                         FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpackuswb_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpackuswb_mr);
 }
 
 void MacroAssemblerX86::vpackssdwSimd128(const SimdConstant& v,
-                                         FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpackssdw_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpackssdw_mr);
 }
 
 void MacroAssemblerX86::vpackusdwSimd128(const SimdConstant& v,
-                                         FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpackusdw_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpackusdw_mr);
 }
 
-void MacroAssemblerX86::vpshufbSimd128(const SimdConstant& v,
-                                       FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpshufb_mr);
+void MacroAssemblerX86::vpunpckldqSimd128(const SimdConstant& v,
+                                          FloatRegister lhs,
+                                          FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpunpckldq_mr);
+}
+
+void MacroAssemblerX86::vunpcklpsSimd128(const SimdConstant& v,
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vunpcklps_mr);
+}
+
+void MacroAssemblerX86::vpshufbSimd128(const SimdConstant& v, FloatRegister lhs,
+                                       FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpshufb_mr);
 }
 
 void MacroAssemblerX86::vptestSimd128(const SimdConstant& v,
-                                      FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vptest_mr);
+                                      FloatRegister lhs) {
+  vpPatchOpSimd128(v, lhs, &X86Encoding::BaseAssemblerX86::vptest_mr);
 }
 
 void MacroAssemblerX86::vpmaddwdSimd128(const SimdConstant& v,
-                                        FloatRegister srcDest) {
-  vpPatchOpSimd128(v, srcDest, &X86Encoding::BaseAssemblerX86::vpmaddwd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaddwd_mr);
 }
 
 void MacroAssemblerX86::vpcmpeqbSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpeqb_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpeqb_mr);
 }
 
 void MacroAssemblerX86::vpcmpgtbSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpgtb_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpgtb_mr);
 }
 
 void MacroAssemblerX86::vpcmpeqwSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpeqw_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpeqw_mr);
 }
 
 void MacroAssemblerX86::vpcmpgtwSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpgtw_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpgtw_mr);
 }
 
 void MacroAssemblerX86::vpcmpeqdSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpeqd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpeqd_mr);
 }
 
 void MacroAssemblerX86::vpcmpgtdSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vpcmpgtd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpcmpgtd_mr);
 }
 
 void MacroAssemblerX86::vcmpeqpsSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpeqps_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpeqps_mr);
 }
 
 void MacroAssemblerX86::vcmpneqpsSimd128(const SimdConstant& v,
-                                         FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpneqps_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpneqps_mr);
 }
 
 void MacroAssemblerX86::vcmpltpsSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpltps_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpltps_mr);
 }
 
 void MacroAssemblerX86::vcmplepsSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpleps_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpleps_mr);
+}
+
+void MacroAssemblerX86::vcmpgepsSimd128(const SimdConstant& v,
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpgeps_mr);
 }
 
 void MacroAssemblerX86::vcmpeqpdSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpeqpd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpeqpd_mr);
 }
 
 void MacroAssemblerX86::vcmpneqpdSimd128(const SimdConstant& v,
-                                         FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpneqpd_mr);
+                                         FloatRegister lhs,
+                                         FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpneqpd_mr);
 }
 
 void MacroAssemblerX86::vcmpltpdSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmpltpd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmpltpd_mr);
 }
 
 void MacroAssemblerX86::vcmplepdSimd128(const SimdConstant& v,
-                                        FloatRegister src) {
-  vpPatchOpSimd128(v, src, &X86Encoding::BaseAssemblerX86::vcmplepd_mr);
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vcmplepd_mr);
+}
+
+void MacroAssemblerX86::vpmaddubswSimd128(const SimdConstant& v,
+                                          FloatRegister lhs,
+                                          FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmaddubsw_mr);
+}
+
+void MacroAssemblerX86::vpmuludqSimd128(const SimdConstant& v,
+                                        FloatRegister lhs, FloatRegister dest) {
+  vpPatchOpSimd128(v, lhs, dest, &X86Encoding::BaseAssemblerX86::vpmuludq_mr);
 }
 
 void MacroAssemblerX86::finish() {
@@ -463,119 +509,143 @@ void MacroAssemblerX86::finish() {
   }
 }
 
-void MacroAssemblerX86::handleFailureWithHandlerTail(Label* profilerExitTail) {
+void MacroAssemblerX86::handleFailureWithHandlerTail(Label* profilerExitTail,
+                                                     Label* bailoutTail) {
   // Reserve space for exception information.
   subl(Imm32(sizeof(ResumeFromException)), esp);
   movl(esp, eax);
 
   // Call the handler.
-  using Fn = void (*)(ResumeFromException * rfe);
+  using Fn = void (*)(ResumeFromException* rfe);
   asMasm().setupUnalignedABICall(ecx);
   asMasm().passABIArg(eax);
   asMasm().callWithABI<Fn, HandleException>(
-      MoveOp::GENERAL, CheckUnsafeCallWithABI::DontCheckHasExitFrame);
+      ABIType::General, CheckUnsafeCallWithABI::DontCheckHasExitFrame);
 
   Label entryFrame;
   Label catch_;
   Label finally;
-  Label return_;
+  Label returnBaseline;
+  Label returnIon;
   Label bailout;
   Label wasm;
   Label wasmCatch;
 
-  loadPtr(Address(esp, offsetof(ResumeFromException, kind)), eax);
+  loadPtr(Address(esp, ResumeFromException::offsetOfKind()), eax);
   asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_ENTRY_FRAME),
-                    &entryFrame);
+                    Imm32(ExceptionResumeKind::EntryFrame), &entryFrame);
+  asMasm().branch32(Assembler::Equal, eax, Imm32(ExceptionResumeKind::Catch),
+                    &catch_);
+  asMasm().branch32(Assembler::Equal, eax, Imm32(ExceptionResumeKind::Finally),
+                    &finally);
   asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_CATCH), &catch_);
+                    Imm32(ExceptionResumeKind::ForcedReturnBaseline),
+                    &returnBaseline);
   asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_FINALLY), &finally);
+                    Imm32(ExceptionResumeKind::ForcedReturnIon), &returnIon);
+  asMasm().branch32(Assembler::Equal, eax, Imm32(ExceptionResumeKind::Bailout),
+                    &bailout);
+  asMasm().branch32(Assembler::Equal, eax, Imm32(ExceptionResumeKind::Wasm),
+                    &wasm);
   asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_FORCED_RETURN), &return_);
-  asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_BAILOUT), &bailout);
-  asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_WASM), &wasm);
-  asMasm().branch32(Assembler::Equal, eax,
-                    Imm32(ResumeFromException::RESUME_WASM_CATCH), &wasmCatch);
+                    Imm32(ExceptionResumeKind::WasmCatch), &wasmCatch);
 
   breakpoint();  // Invalid kind.
 
-  // No exception handler. Load the error value, load the new stack pointer
-  // and return from the entry frame.
+  // No exception handler. Load the error value, restore state and return from
+  // the entry frame.
   bind(&entryFrame);
   asMasm().moveValue(MagicValue(JS_ION_ERROR), JSReturnOperand);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
   ret();
 
   // If we found a catch handler, this must be a baseline frame. Restore state
   // and jump to the catch block.
   bind(&catch_);
-  loadPtr(Address(esp, offsetof(ResumeFromException, target)), eax);
-  loadPtr(Address(esp, offsetof(ResumeFromException, framePointer)), ebp);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfTarget()), eax);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
   jmp(Operand(eax));
 
-  // If we found a finally block, this must be a baseline frame. Push
-  // two values expected by JSOp::Retsub: BooleanValue(true) and the
-  // exception.
+  // If we found a finally block, this must be a baseline frame. Push three
+  // values expected by the finally block: the exception, the exception stack,
+  // and BooleanValue(true).
   bind(&finally);
   ValueOperand exception = ValueOperand(ecx, edx);
-  loadValue(Address(esp, offsetof(ResumeFromException, exception)), exception);
+  loadValue(Address(esp, ResumeFromException::offsetOfException()), exception);
 
-  loadPtr(Address(esp, offsetof(ResumeFromException, target)), eax);
-  loadPtr(Address(esp, offsetof(ResumeFromException, framePointer)), ebp);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  ValueOperand exceptionStack = ValueOperand(esi, edi);
+  loadValue(Address(esp, ResumeFromException::offsetOfExceptionStack()),
+            exceptionStack);
 
-  pushValue(BooleanValue(true));
+  loadPtr(Address(esp, ResumeFromException::offsetOfTarget()), eax);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
+
   pushValue(exception);
+  pushValue(exceptionStack);
+  pushValue(BooleanValue(true));
   jmp(Operand(eax));
 
-  // Only used in debug mode. Return BaselineFrame->returnValue() to the caller.
-  bind(&return_);
-  loadPtr(Address(esp, offsetof(ResumeFromException, framePointer)), ebp);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  // Return BaselineFrame->returnValue() to the caller.
+  // Used in debug mode and for GeneratorReturn.
+  Label profilingInstrumentation;
+  bind(&returnBaseline);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
   loadValue(Address(ebp, BaselineFrame::reverseOffsetOfReturnValue()),
             JSReturnOperand);
-  movl(ebp, esp);
-  pop(ebp);
+  jump(&profilingInstrumentation);
+
+  // Return the given value to the caller.
+  bind(&returnIon);
+  loadValue(Address(esp, ResumeFromException::offsetOfException()),
+            JSReturnOperand);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
 
   // If profiling is enabled, then update the lastProfilingFrame to refer to
-  // caller frame before returning.
+  // caller frame before returning. This code is shared by ForcedReturnIon
+  // and ForcedReturnBaseline.
+  bind(&profilingInstrumentation);
   {
     Label skipProfilingInstrumentation;
     // Test if profiler enabled.
     AbsoluteAddress addressOfEnabled(
-        GetJitContext()->runtime->geckoProfiler().addressOfEnabled());
+        asMasm().runtime()->geckoProfiler().addressOfEnabled());
     asMasm().branch32(Assembler::Equal, addressOfEnabled, Imm32(0),
                       &skipProfilingInstrumentation);
     jump(profilerExitTail);
     bind(&skipProfilingInstrumentation);
   }
 
+  movl(ebp, esp);
+  pop(ebp);
   ret();
 
   // If we are bailing out to baseline to handle an exception, jump to the
   // bailout tail stub. Load 1 (true) in ReturnReg to indicate success.
   bind(&bailout);
-  loadPtr(Address(esp, offsetof(ResumeFromException, bailoutInfo)), ecx);
+  loadPtr(Address(esp, ResumeFromException::offsetOfBailoutInfo()), ecx);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
   move32(Imm32(1), ReturnReg);
-  jmp(Operand(esp, offsetof(ResumeFromException, target)));
+  jump(bailoutTail);
 
   // If we are throwing and the innermost frame was a wasm frame, reset SP and
   // FP; SP is pointing to the unwound return address to the wasm entry, so
   // we can just ret().
   bind(&wasm);
-  loadPtr(Address(esp, offsetof(ResumeFromException, framePointer)), ebp);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
+  movePtr(ImmPtr((const void*)wasm::FailInstanceReg), InstanceReg);
   masm.ret();
 
   // Found a wasm catch handler, restore state and jump to it.
   bind(&wasmCatch);
-  loadPtr(Address(esp, offsetof(ResumeFromException, target)), eax);
-  loadPtr(Address(esp, offsetof(ResumeFromException, framePointer)), ebp);
-  loadPtr(Address(esp, offsetof(ResumeFromException, stackPointer)), esp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfTarget()), eax);
+  loadPtr(Address(esp, ResumeFromException::offsetOfFramePointer()), ebp);
+  loadPtr(Address(esp, ResumeFromException::offsetOfStackPointer()), esp);
   jmp(Operand(eax));
 }
 
@@ -590,7 +660,21 @@ void MacroAssemblerX86::profilerEnterFrame(Register framePtr,
 }
 
 void MacroAssemblerX86::profilerExitFrame() {
-  jump(GetJitContext()->runtime->jitRuntime()->getProfilerExitFrameTail());
+  jump(asMasm().runtime()->jitRuntime()->getProfilerExitFrameTail());
+}
+
+Assembler::Condition MacroAssemblerX86::testStringTruthy(
+    bool truthy, const ValueOperand& value) {
+  Register string = value.payloadReg();
+  cmp32(Operand(string, JSString::offsetOfLength()), Imm32(0));
+  return truthy ? Assembler::NotEqual : Assembler::Equal;
+}
+
+Assembler::Condition MacroAssemblerX86::testBigIntTruthy(
+    bool truthy, const ValueOperand& value) {
+  Register bi = value.payloadReg();
+  cmp32(Operand(bi, JS::BigInt::offsetOfDigitLength()), Imm32(0));
+  return truthy ? Assembler::NotEqual : Assembler::Equal;
 }
 
 MacroAssembler& MacroAssemblerX86::asMasm() {
@@ -692,19 +776,19 @@ void MacroAssembler::callWithABIPre(uint32_t* stackAdjust, bool callFromWasm) {
   assertStackAlignment(ABIStackAlignment);
 }
 
-void MacroAssembler::callWithABIPost(uint32_t stackAdjust, MoveOp::Type result,
+void MacroAssembler::callWithABIPost(uint32_t stackAdjust, ABIType result,
                                      bool callFromWasm) {
   freeStack(stackAdjust);
 
   // Calls to native functions in wasm pass through a thunk which already
   // fixes up the return value for us.
   if (!callFromWasm) {
-    if (result == MoveOp::DOUBLE) {
+    if (result == ABIType::Float64) {
       reserveStack(sizeof(double));
       fstp(Operand(esp, 0));
       loadDouble(Operand(esp, 0), ReturnDoubleReg);
       freeStack(sizeof(double));
-    } else if (result == MoveOp::FLOAT32) {
+    } else if (result == ABIType::Float32) {
       reserveStack(sizeof(float));
       fstp32(Operand(esp, 0));
       loadFloat32(Operand(esp, 0), ReturnFloat32Reg);
@@ -722,15 +806,14 @@ void MacroAssembler::callWithABIPost(uint32_t stackAdjust, MoveOp::Type result,
 #endif
 }
 
-void MacroAssembler::callWithABINoProfiler(Register fun, MoveOp::Type result) {
+void MacroAssembler::callWithABINoProfiler(Register fun, ABIType result) {
   uint32_t stackAdjust;
   callWithABIPre(&stackAdjust);
   call(fun);
   callWithABIPost(stackAdjust, result);
 }
 
-void MacroAssembler::callWithABINoProfiler(const Address& fun,
-                                           MoveOp::Type result) {
+void MacroAssembler::callWithABINoProfiler(const Address& fun, ABIType result) {
   uint32_t stackAdjust;
   callWithABIPre(&stackAdjust);
   call(fun);
@@ -811,8 +894,8 @@ void MacroAssembler::loadStoreBuffer(Register ptr, Register buffer) {
   if (ptr != buffer) {
     movePtr(ptr, buffer);
   }
-  orPtr(Imm32(gc::ChunkMask), buffer);
-  loadPtr(Address(buffer, gc::ChunkStoreBufferOffsetFromLastByte), buffer);
+  andPtr(Imm32(~gc::ChunkMask), buffer);
+  loadPtr(Address(buffer, gc::ChunkStoreBufferOffset), buffer);
 }
 
 void MacroAssembler::branchPtrInNurseryChunk(Condition cond, Register ptr,
@@ -835,10 +918,9 @@ void MacroAssembler::branchPtrInNurseryChunkImpl(Condition cond, Register ptr,
                                                  Label* label) {
   MOZ_ASSERT(cond == Assembler::Equal || cond == Assembler::NotEqual);
 
-  orPtr(Imm32(gc::ChunkMask), ptr);
-  branchPtr(InvertCondition(cond),
-            Address(ptr, gc::ChunkStoreBufferOffsetFromLastByte), ImmWord(0),
-            label);
+  andPtr(Imm32(~gc::ChunkMask), ptr);
+  branchPtr(InvertCondition(cond), Address(ptr, gc::ChunkStoreBufferOffset),
+            ImmWord(0), label);
 }
 
 void MacroAssembler::branchValueIsNurseryCell(Condition cond,
@@ -898,17 +980,16 @@ void MacroAssembler::branchTestValue(Condition cond, const ValueOperand& lhs,
 // Memory access primitives.
 template <typename T>
 void MacroAssembler::storeUnboxedValue(const ConstantOrRegister& value,
-                                       MIRType valueType, const T& dest,
-                                       MIRType slotType) {
+                                       MIRType valueType, const T& dest) {
+  MOZ_ASSERT(valueType < MIRType::Value);
+
   if (valueType == MIRType::Double) {
     storeDouble(value.reg().typedReg().fpu(), dest);
     return;
   }
 
-  // Store the type tag if needed.
-  if (valueType != slotType) {
-    storeTypeTag(ImmType(ValueTypeFromMIRType(valueType)), Operand(dest));
-  }
+  // Store the type tag.
+  storeTypeTag(ImmType(ValueTypeFromMIRType(valueType)), Operand(dest));
 
   // Store the payload.
   if (value.constant()) {
@@ -920,11 +1001,10 @@ void MacroAssembler::storeUnboxedValue(const ConstantOrRegister& value,
 
 template void MacroAssembler::storeUnboxedValue(const ConstantOrRegister& value,
                                                 MIRType valueType,
-                                                const Address& dest,
-                                                MIRType slotType);
+                                                const Address& dest);
 template void MacroAssembler::storeUnboxedValue(
     const ConstantOrRegister& value, MIRType valueType,
-    const BaseObjectElementIndex& dest, MIRType slotType);
+    const BaseObjectElementIndex& dest);
 
 // wasm specific methods, used in both the wasm baseline compiler and ion.
 
@@ -936,54 +1016,84 @@ void MacroAssembler::wasmLoad(const wasm::MemoryAccessDesc& access,
   MOZ_ASSERT_IF(
       access.isZeroExtendSimd128Load(),
       access.type() == Scalar::Float32 || access.type() == Scalar::Float64);
-  MOZ_ASSERT_IF(access.isSplatSimd128Load(), access.type() == Scalar::Float64);
+  MOZ_ASSERT_IF(
+      access.isSplatSimd128Load(),
+      access.type() == Scalar::Uint8 || access.type() == Scalar::Uint16 ||
+          access.type() == Scalar::Float32 || access.type() == Scalar::Float64);
   MOZ_ASSERT_IF(access.isWidenSimd128Load(), access.type() == Scalar::Float64);
 
+  // NOTE: the generated code must match the assembly code in gen_load in
+  // GenerateAtomicOperations.py
   memoryBarrierBefore(access.sync());
 
-  append(access, size());
   switch (access.type()) {
     case Scalar::Int8:
+      append(access, wasm::TrapMachineInsn::Load8,
+             FaultingCodeOffset(currentOffset()));
       movsbl(srcAddr, out.gpr());
       break;
     case Scalar::Uint8:
-      movzbl(srcAddr, out.gpr());
+      append(access, wasm::TrapMachineInsn::Load8,
+             FaultingCodeOffset(currentOffset()));
+      if (access.isSplatSimd128Load()) {
+        vbroadcastb(srcAddr, out.fpu());
+      } else {
+        movzbl(srcAddr, out.gpr());
+      }
       break;
     case Scalar::Int16:
+      append(access, wasm::TrapMachineInsn::Load16,
+             FaultingCodeOffset(currentOffset()));
       movswl(srcAddr, out.gpr());
       break;
     case Scalar::Uint16:
-      movzwl(srcAddr, out.gpr());
+      append(access, wasm::TrapMachineInsn::Load16,
+             FaultingCodeOffset(currentOffset()));
+      if (access.isSplatSimd128Load()) {
+        vbroadcastw(srcAddr, out.fpu());
+      } else {
+        movzwl(srcAddr, out.gpr());
+      }
       break;
     case Scalar::Int32:
     case Scalar::Uint32:
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
       movl(srcAddr, out.gpr());
       break;
     case Scalar::Float32:
-      // vmovss does the right thing also for access.isZeroExtendSimd128Load()
-      vmovss(srcAddr, out.fpu());
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
+      if (access.isSplatSimd128Load()) {
+        vbroadcastss(srcAddr, out.fpu());
+      } else {
+        // vmovss does the right thing also for access.isZeroExtendSimd128Load()
+        vmovss(srcAddr, out.fpu());
+      }
       break;
     case Scalar::Float64:
+      append(access, wasm::TrapMachineInsn::Load64,
+             FaultingCodeOffset(currentOffset()));
       if (access.isSplatSimd128Load()) {
         vmovddup(srcAddr, out.fpu());
       } else if (access.isWidenSimd128Load()) {
         switch (access.widenSimdOp()) {
-          case wasm::SimdOp::I16x8LoadS8x8:
+          case wasm::SimdOp::V128Load8x8S:
             vpmovsxbw(srcAddr, out.fpu());
             break;
-          case wasm::SimdOp::I16x8LoadU8x8:
+          case wasm::SimdOp::V128Load8x8U:
             vpmovzxbw(srcAddr, out.fpu());
             break;
-          case wasm::SimdOp::I32x4LoadS16x4:
+          case wasm::SimdOp::V128Load16x4S:
             vpmovsxwd(srcAddr, out.fpu());
             break;
-          case wasm::SimdOp::I32x4LoadU16x4:
+          case wasm::SimdOp::V128Load16x4U:
             vpmovzxwd(srcAddr, out.fpu());
             break;
-          case wasm::SimdOp::I64x2LoadS32x2:
+          case wasm::SimdOp::V128Load32x2S:
             vpmovsxdq(srcAddr, out.fpu());
             break;
-          case wasm::SimdOp::I64x2LoadU32x2:
+          case wasm::SimdOp::V128Load32x2U:
             vpmovzxdq(srcAddr, out.fpu());
             break;
           default:
@@ -995,6 +1105,8 @@ void MacroAssembler::wasmLoad(const wasm::MemoryAccessDesc& access,
       }
       break;
     case Scalar::Simd128:
+      append(access, wasm::TrapMachineInsn::Load128,
+             FaultingCodeOffset(currentOffset()));
       vmovups(srcAddr, out.fpu());
       break;
     case Scalar::Int64:
@@ -1020,37 +1132,48 @@ void MacroAssembler::wasmLoadI64(const wasm::MemoryAccessDesc& access,
 
   memoryBarrierBefore(access.sync());
 
-  append(access, size());
   switch (access.type()) {
     case Scalar::Int8:
       MOZ_ASSERT(out == Register64(edx, eax));
+      append(access, wasm::TrapMachineInsn::Load8,
+             FaultingCodeOffset(currentOffset()));
       movsbl(srcAddr, out.low);
 
       cdq();
       break;
     case Scalar::Uint8:
+      append(access, wasm::TrapMachineInsn::Load8,
+             FaultingCodeOffset(currentOffset()));
       movzbl(srcAddr, out.low);
 
       xorl(out.high, out.high);
       break;
     case Scalar::Int16:
       MOZ_ASSERT(out == Register64(edx, eax));
+      append(access, wasm::TrapMachineInsn::Load16,
+             FaultingCodeOffset(currentOffset()));
       movswl(srcAddr, out.low);
 
       cdq();
       break;
     case Scalar::Uint16:
+      append(access, wasm::TrapMachineInsn::Load16,
+             FaultingCodeOffset(currentOffset()));
       movzwl(srcAddr, out.low);
 
       xorl(out.high, out.high);
       break;
     case Scalar::Int32:
       MOZ_ASSERT(out == Register64(edx, eax));
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
       movl(srcAddr, out.low);
 
       cdq();
       break;
     case Scalar::Uint32:
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
       movl(srcAddr, out.low);
 
       xorl(out.high, out.high);
@@ -1064,9 +1187,12 @@ void MacroAssembler::wasmLoadI64(const wasm::MemoryAccessDesc& access,
         MOZ_RELEASE_ASSERT(srcAddr.toAddress().base != out.low);
       }
 
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
       movl(LowWord(srcAddr), out.low);
 
-      append(access, size());
+      append(access, wasm::TrapMachineInsn::Load32,
+             FaultingCodeOffset(currentOffset()));
       movl(HighWord(srcAddr), out.high);
 
       break;
@@ -1090,30 +1216,44 @@ void MacroAssembler::wasmStore(const wasm::MemoryAccessDesc& access,
   MOZ_ASSERT(dstAddr.kind() == Operand::MEM_REG_DISP ||
              dstAddr.kind() == Operand::MEM_SCALE);
 
+  // NOTE: the generated code must match the assembly code in gen_store in
+  // GenerateAtomicOperations.py
   memoryBarrierBefore(access.sync());
 
-  append(access, size());
   switch (access.type()) {
     case Scalar::Int8:
     case Scalar::Uint8Clamped:
     case Scalar::Uint8:
+      append(access, wasm::TrapMachineInsn::Store8,
+             FaultingCodeOffset(currentOffset()));
+      // FIXME figure out where this movb goes
       movb(value.gpr(), dstAddr);
       break;
     case Scalar::Int16:
     case Scalar::Uint16:
+      append(access, wasm::TrapMachineInsn::Store16,
+             FaultingCodeOffset(currentOffset()));
       movw(value.gpr(), dstAddr);
       break;
     case Scalar::Int32:
     case Scalar::Uint32:
+      append(access, wasm::TrapMachineInsn::Store32,
+             FaultingCodeOffset(currentOffset()));
       movl(value.gpr(), dstAddr);
       break;
     case Scalar::Float32:
+      append(access, wasm::TrapMachineInsn::Store32,
+             FaultingCodeOffset(currentOffset()));
       vmovss(value.fpu(), dstAddr);
       break;
     case Scalar::Float64:
+      append(access, wasm::TrapMachineInsn::Store64,
+             FaultingCodeOffset(currentOffset()));
       vmovsd(value.fpu(), dstAddr);
       break;
     case Scalar::Simd128:
+      append(access, wasm::TrapMachineInsn::Store128,
+             FaultingCodeOffset(currentOffset()));
       vmovups(value.fpu(), dstAddr);
       break;
     case Scalar::Int64:
@@ -1136,10 +1276,12 @@ void MacroAssembler::wasmStoreI64(const wasm::MemoryAccessDesc& access,
 
   // Store the high word first so as to hit guard-page-based OOB checks without
   // writing partial data.
-  append(access, size());
+  append(access, wasm::TrapMachineInsn::Store32,
+         FaultingCodeOffset(currentOffset()));
   movl(value.high, HighWord(dstAddr));
 
-  append(access, size());
+  append(access, wasm::TrapMachineInsn::Store32,
+         FaultingCodeOffset(currentOffset()));
   movl(value.low, LowWord(dstAddr));
 }
 
@@ -1158,7 +1300,8 @@ static void AtomicLoad64(MacroAssembler& masm,
   masm.movl(eax, ebx);
 
   if (access) {
-    masm.append(*access, masm.size());
+    masm.append(*access, wasm::TrapMachineInsn::Atomic,
+                FaultingCodeOffset(masm.currentOffset()));
   }
   masm.lock_cmpxchg8b(edx, eax, ecx, ebx, Operand(address));
 }
@@ -1186,8 +1329,11 @@ static void CompareExchange64(MacroAssembler& masm,
   MOZ_ASSERT(replacement.high == ecx);
   MOZ_ASSERT(replacement.low == ebx);
 
+  // NOTE: the generated code must match the assembly code in gen_cmpxchg in
+  // GenerateAtomicOperations.py
   if (access) {
-    masm.append(*access, masm.size());
+    masm.append(*access, wasm::TrapMachineInsn::Atomic,
+                FaultingCodeOffset(masm.currentOffset()));
   }
   masm.lock_cmpxchg8b(edx, eax, ecx, ebx, Operand(mem));
 }
@@ -1230,7 +1376,8 @@ static void AtomicExchange64(MacroAssembler& masm,
   Label again;
   masm.bind(&again);
   if (access) {
-    masm.append(*access, masm.size());
+    masm.append(*access, wasm::TrapMachineInsn::Atomic,
+                FaultingCodeOffset(masm.currentOffset()));
   }
   masm.lock_cmpxchg8b(edx, eax, ecx, ebx, Operand(mem));
   masm.j(MacroAssembler::NonZero, &again);
@@ -1256,38 +1403,39 @@ static void AtomicFetchOp64(MacroAssembler& masm,
   // We don't have enough registers for all the operands on x86, so the rhs
   // operand is in memory.
 
-#define ATOMIC_OP_BODY(OPERATE)                            \
-  do {                                                     \
-    MOZ_ASSERT(output.low == eax);                         \
-    MOZ_ASSERT(output.high == edx);                        \
-    MOZ_ASSERT(temp.low == ebx);                           \
-    MOZ_ASSERT(temp.high == ecx);                          \
-    if (access) {                                          \
-      masm.append(*access, masm.size());                   \
-    }                                                      \
-    masm.load64(mem, output);                              \
-    Label again;                                           \
-    masm.bind(&again);                                     \
-    masm.move64(output, temp);                             \
-    masm.OPERATE(Operand(value), temp);                    \
-    masm.lock_cmpxchg8b(edx, eax, ecx, ebx, Operand(mem)); \
-    masm.j(MacroAssembler::NonZero, &again);               \
+#define ATOMIC_OP_BODY(OPERATE)                                         \
+  do {                                                                  \
+    MOZ_ASSERT(output.low == eax);                                      \
+    MOZ_ASSERT(output.high == edx);                                     \
+    MOZ_ASSERT(temp.low == ebx);                                        \
+    MOZ_ASSERT(temp.high == ecx);                                       \
+    FaultingCodeOffsetPair fcop = masm.load64(mem, output);             \
+    if (access) {                                                       \
+      masm.append(*access, wasm::TrapMachineInsn::Load32, fcop.first);  \
+      masm.append(*access, wasm::TrapMachineInsn::Load32, fcop.second); \
+    }                                                                   \
+    Label again;                                                        \
+    masm.bind(&again);                                                  \
+    masm.move64(output, temp);                                          \
+    masm.OPERATE(Operand(value), temp);                                 \
+    masm.lock_cmpxchg8b(edx, eax, ecx, ebx, Operand(mem));              \
+    masm.j(MacroAssembler::NonZero, &again);                            \
   } while (0)
 
   switch (op) {
-    case AtomicFetchAddOp:
+    case AtomicOp::Add:
       ATOMIC_OP_BODY(add64FromMemory);
       break;
-    case AtomicFetchSubOp:
+    case AtomicOp::Sub:
       ATOMIC_OP_BODY(sub64FromMemory);
       break;
-    case AtomicFetchAndOp:
+    case AtomicOp::And:
       ATOMIC_OP_BODY(and64FromMemory);
       break;
-    case AtomicFetchOrOp:
+    case AtomicOp::Or:
       ATOMIC_OP_BODY(or64FromMemory);
       break;
-    case AtomicFetchXorOp:
+    case AtomicOp::Xor:
       ATOMIC_OP_BODY(xor64FromMemory);
       break;
     default:
@@ -1478,60 +1626,57 @@ void MacroAssembler::wasmTruncateFloat32ToUInt64(
 // ========================================================================
 // Primitive atomic operations.
 
-void MacroAssembler::atomicLoad64(const Synchronization&, const Address& mem,
+void MacroAssembler::atomicLoad64(Synchronization, const Address& mem,
                                   Register64 temp, Register64 output) {
   AtomicLoad64(*this, nullptr, mem, temp, output);
 }
 
-void MacroAssembler::atomicLoad64(const Synchronization&, const BaseIndex& mem,
+void MacroAssembler::atomicLoad64(Synchronization, const BaseIndex& mem,
                                   Register64 temp, Register64 output) {
   AtomicLoad64(*this, nullptr, mem, temp, output);
 }
 
-void MacroAssembler::atomicStore64(const Synchronization&, const Address& mem,
+void MacroAssembler::atomicStore64(Synchronization, const Address& mem,
                                    Register64 value, Register64 temp) {
   AtomicExchange64(*this, nullptr, mem, value, temp);
 }
 
-void MacroAssembler::atomicStore64(const Synchronization&, const BaseIndex& mem,
+void MacroAssembler::atomicStore64(Synchronization, const BaseIndex& mem,
                                    Register64 value, Register64 temp) {
   AtomicExchange64(*this, nullptr, mem, value, temp);
 }
 
-void MacroAssembler::compareExchange64(const Synchronization&,
-                                       const Address& mem, Register64 expected,
-                                       Register64 replacement,
-                                       Register64 output) {
-  CompareExchange64(*this, nullptr, mem, expected, replacement, output);
-}
-
-void MacroAssembler::compareExchange64(const Synchronization&,
-                                       const BaseIndex& mem,
+void MacroAssembler::compareExchange64(Synchronization, const Address& mem,
                                        Register64 expected,
                                        Register64 replacement,
                                        Register64 output) {
   CompareExchange64(*this, nullptr, mem, expected, replacement, output);
 }
 
-void MacroAssembler::atomicExchange64(const Synchronization&,
-                                      const Address& mem, Register64 value,
-                                      Register64 output) {
+void MacroAssembler::compareExchange64(Synchronization, const BaseIndex& mem,
+                                       Register64 expected,
+                                       Register64 replacement,
+                                       Register64 output) {
+  CompareExchange64(*this, nullptr, mem, expected, replacement, output);
+}
+
+void MacroAssembler::atomicExchange64(Synchronization, const Address& mem,
+                                      Register64 value, Register64 output) {
   AtomicExchange64(*this, nullptr, mem, value, output);
 }
 
-void MacroAssembler::atomicExchange64(const Synchronization&,
-                                      const BaseIndex& mem, Register64 value,
-                                      Register64 output) {
+void MacroAssembler::atomicExchange64(Synchronization, const BaseIndex& mem,
+                                      Register64 value, Register64 output) {
   AtomicExchange64(*this, nullptr, mem, value, output);
 }
 
-void MacroAssembler::atomicFetchOp64(const Synchronization&, AtomicOp op,
+void MacroAssembler::atomicFetchOp64(Synchronization, AtomicOp op,
                                      const Address& value, const Address& mem,
                                      Register64 temp, Register64 output) {
   AtomicFetchOp64(*this, nullptr, op, value, mem, temp, output);
 }
 
-void MacroAssembler::atomicFetchOp64(const Synchronization&, AtomicOp op,
+void MacroAssembler::atomicFetchOp64(Synchronization, AtomicOp op,
                                      const Address& value, const BaseIndex& mem,
                                      Register64 temp, Register64 output) {
   AtomicFetchOp64(*this, nullptr, op, value, mem, temp, output);
@@ -1570,8 +1715,6 @@ void MacroAssembler::convertUInt64ToDouble(Register64 src, FloatRegister dest,
     return;
   }
 
-  ScratchSimd128Scope scratch(*this);
-
   // Following operation uses entire 128-bit of dest XMM register.
   // Currently higher 64-bit is free when we have access to lower 64-bit.
   MOZ_ASSERT(dest.size() == 8);
@@ -1581,15 +1724,18 @@ void MacroAssembler::convertUInt64ToDouble(Register64 src, FloatRegister dest,
   // Assume that src is represented as following:
   //   src      = 0x HHHHHHHH LLLLLLLL
 
-  // Move src to dest (=dest128) and ScratchInt32x4Reg (=scratch):
-  //   dest     = 0x 00000000 00000000  00000000 LLLLLLLL
-  //   scratch  = 0x 00000000 00000000  00000000 HHHHHHHH
-  vmovd(src.low, dest128);
-  vmovd(src.high, scratch);
+  {
+    // Move src to dest (=dest128) and ScratchInt32x4Reg (=scratch):
+    //   dest     = 0x 00000000 00000000  00000000 LLLLLLLL
+    //   scratch  = 0x 00000000 00000000  00000000 HHHHHHHH
+    ScratchSimd128Scope scratch(*this);
+    vmovd(src.low, dest128);
+    vmovd(src.high, scratch);
 
-  // Unpack and interleave dest and scratch to dest:
-  //   dest     = 0x 00000000 00000000  HHHHHHHH LLLLLLLL
-  vpunpckldq(scratch, dest128, dest128);
+    // Unpack and interleave dest and scratch to dest:
+    //   dest     = 0x 00000000 00000000  HHHHHHHH LLLLLLLL
+    vpunpckldq(scratch, dest128, dest128);
+  }
 
   // Unpack and interleave dest and a constant C1 to dest:
   //   C1       = 0x 00000000 00000000  45300000 43300000
@@ -1605,8 +1751,7 @@ void MacroAssembler::convertUInt64ToDouble(Register64 src, FloatRegister dest,
       0x0,
   };
 
-  loadConstantSimd128Int(SimdConstant::CreateX4(CST1), scratch);
-  vpunpckldq(scratch, dest128, dest128);
+  vpunpckldqSimd128(SimdConstant::CreateX4(CST1), dest128, dest128);
 
   // Subtract a constant C2 from dest, for each 64-bit part:
   //   C2       = 0x 45300000 00000000  43300000 00000000
@@ -1623,8 +1768,7 @@ void MacroAssembler::convertUInt64ToDouble(Register64 src, FloatRegister dest,
       0x45300000,
   };
 
-  loadConstantSimd128Int(SimdConstant::CreateX4(CST2), scratch);
-  vsubpd(Operand(scratch), dest128, dest128);
+  vsubpdSimd128(SimdConstant::CreateX4(CST2), dest128, dest128);
 
   // Add HI(dest) and LO(dest) in double and store it into LO(dest),
   //   LO(dest) = double(0x HHHHHHHH 00000000) + double(0x 00000000 LLLLLLLL)
@@ -1712,5 +1856,39 @@ void MacroAssembler::patchNearAddressMove(CodeLocationLabel loc,
                                           CodeLocationLabel target) {
   PatchDataWithValueCheck(loc, ImmPtr(target.raw()), ImmPtr(nullptr));
 }
+
+void MacroAssembler::wasmBoundsCheck64(Condition cond, Register64 index,
+                                       Register64 boundsCheckLimit, Label* ok) {
+  Label notOk;
+  cmp32(index.high, Imm32(0));
+  j(Assembler::NonZero, &notOk);
+  wasmBoundsCheck32(cond, index.low, boundsCheckLimit.low, ok);
+  bind(&notOk);
+}
+
+void MacroAssembler::wasmBoundsCheck64(Condition cond, Register64 index,
+                                       Address boundsCheckLimit, Label* ok) {
+  Label notOk;
+  cmp32(index.high, Imm32(0));
+  j(Assembler::NonZero, &notOk);
+  wasmBoundsCheck32(cond, index.low, boundsCheckLimit, ok);
+  bind(&notOk);
+}
+
+#ifdef ENABLE_WASM_TAIL_CALLS
+void MacroAssembler::wasmMarkSlowCall() {
+  static_assert(esi == InstanceReg);
+  or32(esi, esi);
+}
+
+const int32_t SlowCallMarker = 0xf60b;  // OR esi, esi
+
+void MacroAssembler::wasmCheckSlowCallsite(Register ra, Label* notSlow,
+                                           Register temp1, Register temp2) {
+  // Check if RA has slow marker.
+  cmp16(Address(ra, 0), Imm32(SlowCallMarker));
+  j(Assembler::NotEqual, notSlow);
+}
+#endif  // ENABLE_WASM_TAIL_CALLS
 
 //}}} check_macroassembler_style

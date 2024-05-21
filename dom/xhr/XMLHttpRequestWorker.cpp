@@ -9,12 +9,11 @@
 #include "nsIDOMEventListener.h"
 
 #include "GeckoProfiler.h"
-#include "jsapi.h"  // JS::RootedValueArray
 #include "jsfriendapi.h"
 #include "js/ArrayBuffer.h"  // JS::Is{,Detached}ArrayBufferObject
 #include "js/GCPolicyAPI.h"
 #include "js/JSON.h"
-#include "js/RootingAPI.h"  // JS::{Handle,Heap},PersistentRooted
+#include "js/RootingAPI.h"  // JS::{Handle,Heap,PersistentRooted}
 #include "js/TracingAPI.h"
 #include "js/Value.h"  // JS::{Undefined,}Value
 #include "mozilla/ArrayUtils.h"
@@ -27,10 +26,8 @@
 #include "mozilla/dom/SerializedStackHolder.h"
 #include "mozilla/dom/StreamBlobImpl.h"
 #include "mozilla/dom/StructuredCloneHolder.h"
-#include "mozilla/dom/UnionConversions.h"
 #include "mozilla/dom/URLSearchParams.h"
 #include "mozilla/dom/WorkerScope.h"
-#include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRef.h"
 #include "mozilla/dom/WorkerRunnable.h"
 #include "mozilla/dom/XMLHttpRequestBinding.h"
@@ -45,9 +42,12 @@
 
 #include "mozilla/UniquePtr.h"
 
-namespace mozilla {
+extern mozilla::LazyLogModule gXMLHttpRequestLog;
 
-namespace dom {
+namespace mozilla::dom {
+
+using EventType = XMLHttpRequest::EventType;
+using Events = XMLHttpRequest::Events;
 
 /**
  *  XMLHttpRequest in workers
@@ -96,9 +96,12 @@ class Proxy final : public nsIDOMEventListener {
  public:
   // Read on multiple threads.
   WorkerPrivate* mWorkerPrivate;
-  XMLHttpRequestWorker* mXMLHttpRequestPrivate;
   const ClientInfo mClientInfo;
   const Maybe<ServiceWorkerDescriptor> mController;
+
+  // Only ever dereferenced and/or checked on the worker thread. Cleared
+  // explicitly on the worker thread inside XMLHttpRequestWorker::ReleaseProxy.
+  WeakPtr<XMLHttpRequestWorker> mXMLHttpRequestPrivate;
 
   // XHR Params:
   bool mMozAnon;
@@ -121,6 +124,7 @@ class Proxy final : public nsIDOMEventListener {
   uint64_t mLastTotal;
   uint64_t mLastUploadLoaded;
   uint64_t mLastUploadTotal;
+  nsresult mLastErrorDetailAtLoadend;
   bool mIsSyncXHR;
   bool mLastLengthComputable;
   bool mLastUploadLengthComputable;
@@ -139,9 +143,9 @@ class Proxy final : public nsIDOMEventListener {
         const Maybe<ServiceWorkerDescriptor>& aController, bool aMozAnon,
         bool aMozSystem)
       : mWorkerPrivate(nullptr),
-        mXMLHttpRequestPrivate(aXHRPrivate),
         mClientInfo(aClientInfo),
         mController(aController),
+        mXMLHttpRequestPrivate(aXHRPrivate),
         mMozAnon(aMozAnon),
         mMozSystem(aMozSystem),
         mInnerEventStreamId(0),
@@ -154,6 +158,7 @@ class Proxy final : public nsIDOMEventListener {
         mLastTotal(0),
         mLastUploadLoaded(0),
         mLastUploadTotal(0),
+        mLastErrorDetailAtLoadend(NS_OK),
         mIsSyncXHR(false),
         mLastLengthComputable(false),
         mLastUploadLengthComputable(false),
@@ -170,7 +175,7 @@ class Proxy final : public nsIDOMEventListener {
 
   bool Init();
 
-  void Teardown(bool aSendUnpin);
+  void Teardown();
 
   bool AddRemoveEventListeners(bool aUpload, bool aAdd);
 
@@ -190,6 +195,20 @@ class Proxy final : public nsIDOMEventListener {
     return target.forget();
   }
 
+#ifdef DEBUG
+  void DebugStoreWorkerRef(RefPtr<StrongWorkerRef>& aWorkerRef) {
+    MOZ_ASSERT(!NS_IsMainThread());
+    MutexAutoLock lock(mXHR->mTSWorkerRefMutex);
+    mXHR->mTSWorkerRef = new ThreadSafeWorkerRef(aWorkerRef);
+  }
+
+  void DebugForgetWorkerRef() {
+    MOZ_ASSERT(!NS_IsMainThread());
+    MutexAutoLock lock(mXHR->mTSWorkerRefMutex);
+    mXHR->mTSWorkerRef = nullptr;
+  }
+#endif
+
  private:
   ~Proxy() {
     MOZ_ASSERT(!mXHR);
@@ -203,8 +222,8 @@ class WorkerThreadProxySyncRunnable : public WorkerMainThreadRunnable {
   RefPtr<Proxy> mProxy;
 
  private:
-  // mErrorCode is set on the main thread by MainThreadRun and it's used to at
-  // the end of the Dispatch() to return the error code.
+  // mErrorCode is set on the main thread by MainThreadRun and it's used at the
+  // end of the Dispatch() to return the error code.
   nsresult mErrorCode;
 
  public:
@@ -265,76 +284,19 @@ class SendRunnable final : public WorkerThreadProxySyncRunnable {
 
 namespace {
 
-enum {
-  STRING_abort = 0,
-  STRING_error,
-  STRING_load,
-  STRING_loadstart,
-  STRING_progress,
-  STRING_timeout,
-  STRING_loadend,
-  STRING_readystatechange,
-
-  STRING_COUNT,
-
-  STRING_LAST_XHR = STRING_readystatechange,
-  STRING_LAST_EVENTTARGET = STRING_loadend
-};
-
-static_assert(STRING_LAST_XHR >= STRING_LAST_EVENTTARGET, "Bad string setup!");
-static_assert(STRING_LAST_XHR == STRING_COUNT - 1, "Bad string setup!");
-
-const char* const sEventStrings[] = {
-    // XMLHttpRequestEventTarget event types, supported by both XHR and Upload.
-    "abort",
-    "error",
-    "load",
-    "loadstart",
-    "progress",
-    "timeout",
-    "loadend",
-
-    // XMLHttpRequest event types, supported only by XHR.
-    "readystatechange",
-};
-
-static_assert(MOZ_ARRAY_LENGTH(sEventStrings) == STRING_COUNT,
-              "Bad string count!");
-
 class MainThreadProxyRunnable : public MainThreadWorkerSyncRunnable {
  protected:
   RefPtr<Proxy> mProxy;
 
-  MainThreadProxyRunnable(WorkerPrivate* aWorkerPrivate, Proxy* aProxy)
-      : MainThreadWorkerSyncRunnable(aWorkerPrivate, aProxy->GetEventTarget()),
+  MainThreadProxyRunnable(WorkerPrivate* aWorkerPrivate, Proxy* aProxy,
+                          const char* aName = "MainThreadProxyRunnable")
+      : MainThreadWorkerSyncRunnable(aWorkerPrivate, aProxy->GetEventTarget(),
+                                     aName),
         mProxy(aProxy) {
     MOZ_ASSERT(aProxy);
   }
 
   virtual ~MainThreadProxyRunnable() = default;
-};
-
-class XHRUnpinRunnable final : public MainThreadWorkerControlRunnable {
-  XMLHttpRequestWorker* mXMLHttpRequestPrivate;
-
- public:
-  XHRUnpinRunnable(WorkerPrivate* aWorkerPrivate,
-                   XMLHttpRequestWorker* aXHRPrivate)
-      : MainThreadWorkerControlRunnable(aWorkerPrivate),
-        mXMLHttpRequestPrivate(aXHRPrivate) {
-    MOZ_ASSERT(aXHRPrivate);
-  }
-
- private:
-  ~XHRUnpinRunnable() = default;
-
-  bool WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) override {
-    if (mXMLHttpRequestPrivate->SendInProgress()) {
-      mXMLHttpRequestPrivate->Unpin();
-    }
-
-    return true;
-  }
 };
 
 class AsyncTeardownRunnable final : public Runnable {
@@ -353,9 +315,7 @@ class AsyncTeardownRunnable final : public Runnable {
   Run() override {
     AssertIsOnMainThread();
 
-    // This means the XHR was GC'd, so we can't be pinned, and we don't need to
-    // try to unpin.
-    mProxy->Teardown(/* aSendUnpin */ false);
+    mProxy->Teardown();
     mProxy = nullptr;
 
     return NS_OK;
@@ -367,21 +327,17 @@ class LoadStartDetectionRunnable final : public Runnable,
   WorkerPrivate* mWorkerPrivate;
   RefPtr<Proxy> mProxy;
   RefPtr<XMLHttpRequest> mXHR;
-  XMLHttpRequestWorker* mXMLHttpRequestPrivate;
-  nsString mEventType;
   uint32_t mChannelId;
   bool mReceivedLoadStart;
 
   class ProxyCompleteRunnable final : public MainThreadProxyRunnable {
-    XMLHttpRequestWorker* mXMLHttpRequestPrivate;
     uint32_t mChannelId;
 
    public:
     ProxyCompleteRunnable(WorkerPrivate* aWorkerPrivate, Proxy* aProxy,
-                          XMLHttpRequestWorker* aXHRPrivate,
                           uint32_t aChannelId)
-        : MainThreadProxyRunnable(aWorkerPrivate, aProxy),
-          mXMLHttpRequestPrivate(aXHRPrivate),
+        : MainThreadProxyRunnable(aWorkerPrivate, aProxy,
+                                  "ProxyCompleteRunnable"),
           mChannelId(aChannelId) {}
 
    private:
@@ -395,35 +351,29 @@ class LoadStartDetectionRunnable final : public Runnable,
       }
 
       if (mSyncLoopTarget) {
-        aWorkerPrivate->StopSyncLoop(mSyncLoopTarget, true);
+        aWorkerPrivate->StopSyncLoop(mSyncLoopTarget, NS_OK);
       }
 
-      if (mXMLHttpRequestPrivate->SendInProgress()) {
-        mXMLHttpRequestPrivate->Unpin();
+      XMLHttpRequestWorker* xhrw = mProxy->mXMLHttpRequestPrivate.get();
+      if (xhrw && xhrw->SendInProgress()) {
+        xhrw->Unpin();
       }
 
       return true;
     }
 
-    nsresult Cancel() override {
-      // This must run!
-      nsresult rv = MainThreadProxyRunnable::Cancel();
-      nsresult rv2 = Run();
-      return NS_FAILED(rv) ? rv : rv2;
-    }
+    nsresult Cancel() override { return Run(); }
   };
 
  public:
-  LoadStartDetectionRunnable(Proxy* aProxy, XMLHttpRequestWorker* aXHRPrivate)
+  explicit LoadStartDetectionRunnable(Proxy* aProxy)
       : Runnable("dom::LoadStartDetectionRunnable"),
         mWorkerPrivate(aProxy->mWorkerPrivate),
         mProxy(aProxy),
         mXHR(aProxy->mXHR),
-        mXMLHttpRequestPrivate(aXHRPrivate),
         mChannelId(mProxy->mInnerChannelId),
         mReceivedLoadStart(false) {
     AssertIsOnMainThread();
-    mEventType.AssignASCII(sEventStrings[STRING_loadstart]);
   }
 
   NS_DECL_ISUPPORTS_INHERITED
@@ -433,7 +383,8 @@ class LoadStartDetectionRunnable final : public Runnable,
   bool RegisterAndDispatch() {
     AssertIsOnMainThread();
 
-    if (NS_FAILED(mXHR->AddEventListener(mEventType, this, false, false))) {
+    if (NS_FAILED(
+            mXHR->AddEventListener(Events::loadstart, this, false, false))) {
       NS_WARNING("Failed to add event listener!");
       return false;
     }
@@ -446,7 +397,7 @@ class LoadStartDetectionRunnable final : public Runnable,
 };
 
 class EventRunnable final : public MainThreadProxyRunnable {
-  nsString mType;
+  const EventType& mType;
   UniquePtr<XMLHttpRequestWorker::ResponseData> mResponseData;
   nsString mResponseURL;
   nsCString mStatusText;
@@ -459,16 +410,18 @@ class EventRunnable final : public MainThreadProxyRunnable {
   bool mProgressEvent;
   bool mLengthComputable;
   nsresult mStatusResult;
+  nsresult mErrorDetail;
   // mScopeObj is used in PreDispatch only.  We init it in our constructor, and
   // reset() in PreDispatch, to ensure that it's not still linked into the
   // runtime once we go off-thread.
   JS::PersistentRooted<JSObject*> mScopeObj;
 
  public:
-  EventRunnable(Proxy* aProxy, bool aUploadEvent, const nsString& aType,
+  EventRunnable(Proxy* aProxy, bool aUploadEvent, const EventType& aType,
                 bool aLengthComputable, uint64_t aLoaded, uint64_t aTotal,
                 JS::Handle<JSObject*> aScopeObj)
-      : MainThreadProxyRunnable(aProxy->mWorkerPrivate, aProxy),
+      : MainThreadProxyRunnable(aProxy->mWorkerPrivate, aProxy,
+                                "EventRunnable"),
         mType(aType),
         mResponseData(new XMLHttpRequestWorker::ResponseData()),
         mLoaded(aLoaded),
@@ -480,11 +433,13 @@ class EventRunnable final : public MainThreadProxyRunnable {
         mProgressEvent(true),
         mLengthComputable(aLengthComputable),
         mStatusResult(NS_OK),
+        mErrorDetail(NS_OK),
         mScopeObj(RootingCx(), aScopeObj) {}
 
-  EventRunnable(Proxy* aProxy, bool aUploadEvent, const nsString& aType,
+  EventRunnable(Proxy* aProxy, bool aUploadEvent, const EventType& aType,
                 JS::Handle<JSObject*> aScopeObj)
-      : MainThreadProxyRunnable(aProxy->mWorkerPrivate, aProxy),
+      : MainThreadProxyRunnable(aProxy->mWorkerPrivate, aProxy,
+                                "EventRunnable"),
         mType(aType),
         mResponseData(new XMLHttpRequestWorker::ResponseData()),
         mLoaded(0),
@@ -496,6 +451,7 @@ class EventRunnable final : public MainThreadProxyRunnable {
         mProgressEvent(false),
         mLengthComputable(0),
         mStatusResult(NS_OK),
+        mErrorDetail(NS_OK),
         mScopeObj(RootingCx(), aScopeObj) {}
 
  private:
@@ -514,7 +470,7 @@ class SyncTeardownRunnable final : public WorkerThreadProxySyncRunnable {
   ~SyncTeardownRunnable() = default;
 
   virtual void RunOnMainThread(ErrorResult& aRv) override {
-    mProxy->Teardown(/* aSendUnpin */ true);
+    mProxy->Teardown();
     MOZ_ASSERT(!mProxy->mSyncLoopTarget);
   }
 };
@@ -801,7 +757,7 @@ bool Proxy::Init() {
   return true;
 }
 
-void Proxy::Teardown(bool aSendUnpin) {
+void Proxy::Teardown() {
   AssertIsOnMainThread();
 
   if (mXHR) {
@@ -818,17 +774,11 @@ void Proxy::Teardown(bool aSendUnpin) {
     }
 
     if (mOutstandingSendCount) {
-      if (aSendUnpin) {
-        RefPtr<XHRUnpinRunnable> runnable =
-            new XHRUnpinRunnable(mWorkerPrivate, mXMLHttpRequestPrivate);
-        MOZ_ALWAYS_TRUE(runnable->Dispatch());
-      }
-
       if (mSyncLoopTarget) {
         // We have an unclosed sync loop.  Fix that now.
         RefPtr<MainThreadStopSyncLoopRunnable> runnable =
             new MainThreadStopSyncLoopRunnable(
-                mWorkerPrivate, std::move(mSyncLoopTarget), false);
+                mWorkerPrivate, std::move(mSyncLoopTarget), NS_ERROR_FAILURE);
         MOZ_ALWAYS_TRUE(runnable->Dispatch());
       }
 
@@ -860,17 +810,16 @@ bool Proxy::AddRemoveEventListeners(bool aUpload, bool aAdd) {
               : static_cast<XMLHttpRequestEventTarget*>(mXHR.get());
   MOZ_ASSERT(targetHelper, "This should never fail!");
 
-  uint32_t lastEventType = aUpload ? STRING_LAST_EVENTTARGET : STRING_LAST_XHR;
-
-  nsAutoString eventType;
-  for (uint32_t index = 0; index <= lastEventType; index++) {
-    eventType = NS_ConvertASCIItoUTF16(sEventStrings[index]);
+  for (const EventType* type : Events::All) {
+    if (aUpload && *type == Events::readystatechange) {
+      continue;
+    }
     if (aAdd) {
-      if (NS_FAILED(targetHelper->AddEventListener(eventType, this, false))) {
+      if (NS_FAILED(targetHelper->AddEventListener(*type, this, false))) {
         return false;
       }
     } else {
-      targetHelper->RemoveEventListener(eventType, this, false);
+      targetHelper->RemoveEventListener(*type, this, false);
     }
   }
 
@@ -887,18 +836,24 @@ NS_IMETHODIMP
 Proxy::HandleEvent(Event* aEvent) {
   AssertIsOnMainThread();
 
-  if (!mWorkerPrivate || !mXMLHttpRequestPrivate) {
+  // EventRunnable::WorkerRun will bail out if mXMLHttpRequestWorker is null,
+  // so we do not need to prevent the dispatch from the main thread such that
+  // we do not need to touch it off-worker-thread.
+  if (!mWorkerPrivate) {
     NS_ERROR("Shouldn't get here!");
     return NS_OK;
   }
 
-  nsAutoString type;
-  aEvent->GetType(type);
+  nsAutoString _type;
+  aEvent->GetType(_type);
+  const EventType* typePtr = Events::Find(_type);
+  MOZ_DIAGNOSTIC_ASSERT(typePtr, "Shouldn't get non-XMLHttpRequest events");
+  const EventType& type = *typePtr;
 
   bool isUploadTarget = mXHR != aEvent->GetTarget();
   ProgressEvent* progressEvent = aEvent->AsProgressEvent();
 
-  if (mInOpen && type.EqualsASCII(sEventStrings[STRING_readystatechange])) {
+  if (mInOpen && type == Events::readystatechange) {
     if (mXHR->ReadyState() == 1) {
       mInnerEventStreamId++;
     }
@@ -921,7 +876,7 @@ Proxy::HandleEvent(Event* aEvent) {
 
     RefPtr<EventRunnable> runnable;
     if (progressEvent) {
-      if (!mIsSyncXHR || !type.EqualsASCII(sEventStrings[STRING_progress])) {
+      if (!mIsSyncXHR || type != Events::progress) {
         runnable = new EventRunnable(
             this, isUploadTarget, type, progressEvent->LengthComputable(),
             progressEvent->Loaded(), progressEvent->Total(), scope);
@@ -936,14 +891,13 @@ Proxy::HandleEvent(Event* aEvent) {
   }
 
   if (!isUploadTarget) {
-    if (type.EqualsASCII(sEventStrings[STRING_loadstart])) {
+    if (type == Events::loadstart) {
       mMainThreadSeenLoadStart = true;
-    } else if (mMainThreadSeenLoadStart &&
-               type.EqualsASCII(sEventStrings[STRING_loadend])) {
+    } else if (mMainThreadSeenLoadStart && type == Events::loadend) {
       mMainThreadSeenLoadStart = false;
 
       RefPtr<LoadStartDetectionRunnable> runnable =
-          new LoadStartDetectionRunnable(this, mXMLHttpRequestPrivate);
+          new LoadStartDetectionRunnable(this);
       if (!runnable->RegisterAndDispatch()) {
         NS_WARNING("Failed to dispatch LoadStartDetectionRunnable!");
       }
@@ -960,7 +914,7 @@ NS_IMETHODIMP
 LoadStartDetectionRunnable::Run() {
   AssertIsOnMainThread();
 
-  mXHR->RemoveEventListener(mEventType, this, false);
+  mXHR->RemoveEventListener(Events::loadstart, this, false);
 
   if (!mReceivedLoadStart) {
     if (mProxy->mOutstandingSendCount > 1) {
@@ -968,8 +922,8 @@ LoadStartDetectionRunnable::Run() {
     } else if (mProxy->mOutstandingSendCount == 1) {
       mProxy->Reset();
 
-      RefPtr<ProxyCompleteRunnable> runnable = new ProxyCompleteRunnable(
-          mWorkerPrivate, mProxy, mXMLHttpRequestPrivate, mChannelId);
+      RefPtr<ProxyCompleteRunnable> runnable =
+          new ProxyCompleteRunnable(mWorkerPrivate, mProxy, mChannelId);
       if (runnable->Dispatch()) {
         mProxy->mWorkerPrivate = nullptr;
         mProxy->mSyncLoopTarget = nullptr;
@@ -980,7 +934,6 @@ LoadStartDetectionRunnable::Run() {
 
   mProxy = nullptr;
   mXHR = nullptr;
-  mXMLHttpRequestPrivate = nullptr;
   return NS_OK;
 }
 
@@ -992,7 +945,7 @@ LoadStartDetectionRunnable::HandleEvent(Event* aEvent) {
   {
     nsAutoString type;
     aEvent->GetType(type);
-    MOZ_ASSERT(type == mEventType);
+    MOZ_ASSERT(type == Events::loadstart);
   }
 #endif
 
@@ -1021,7 +974,7 @@ bool EventRunnable::PreDispatch(WorkerPrivate* /* unused */) {
   XMLHttpRequestResponseType type = xhr->ResponseType();
 
   // We want to take the result data only if this is available.
-  if (mType.EqualsASCII(sEventStrings[STRING_readystatechange])) {
+  if (mType == Events::readystatechange) {
     switch (type) {
       case XMLHttpRequestResponseType::_empty:
       case XMLHttpRequestResponseType::Text: {
@@ -1056,6 +1009,8 @@ bool EventRunnable::PreDispatch(WorkerPrivate* /* unused */) {
   mStatus = xhr->GetStatus(rv);
   mStatusResult = rv.StealNSResult();
 
+  mErrorDetail = xhr->ErrorDetail();
+
   xhr->GetStatusText(mStatusText, rv);
   MOZ_ASSERT(!rv.Failed());
 
@@ -1077,13 +1032,17 @@ bool EventRunnable::WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) {
     return true;
   }
 
-  if (mType.EqualsASCII(sEventStrings[STRING_loadstart])) {
+  if (mType == Events::loadend) {
+    mProxy->mLastErrorDetailAtLoadend = mErrorDetail;
+  }
+
+  if (mType == Events::loadstart) {
     if (mUploadEvent) {
       mProxy->mSeenUploadLoadStart = true;
     } else {
       mProxy->mSeenLoadStart = true;
     }
-  } else if (mType.EqualsASCII(sEventStrings[STRING_loadend])) {
+  } else if (mType == Events::loadend) {
     if (mUploadEvent) {
       mProxy->mSeenUploadLoadStart = false;
       if (mProxy->mDispatchPrematureAbortEventToUpload) {
@@ -1097,7 +1056,7 @@ bool EventRunnable::WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) {
         return true;
       }
     }
-  } else if (mType.EqualsASCII(sEventStrings[STRING_abort])) {
+  } else if (mType == Events::abort) {
     if ((mUploadEvent && mProxy->mDispatchPrematureAbortEventToUpload) ||
         (!mUploadEvent && mProxy->mDispatchPrematureAbortEvent)) {
       // We've already dispatched premature abort events.
@@ -1131,10 +1090,9 @@ bool EventRunnable::WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) {
   state->mResponseURL = mResponseURL;
 
   XMLHttpRequestWorker* xhr = mProxy->mXMLHttpRequestPrivate;
-  xhr->UpdateState(std::move(state),
-                   mType.EqualsASCII(sEventStrings[STRING_readystatechange])
-                       ? std::move(mResponseData)
-                       : nullptr);
+  xhr->UpdateState(std::move(state), mType == Events::readystatechange
+                                         ? std::move(mResponseData)
+                                         : nullptr);
 
   if (mUploadEvent && !xhr->GetUploadObjectNoCreate()) {
     return true;
@@ -1172,6 +1130,15 @@ bool EventRunnable::WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) {
   }
 
   event->SetTrusted(true);
+
+  if (MOZ_LOG_TEST(gXMLHttpRequestLog, LogLevel::Debug)) {
+    nsAutoString type;
+    event->GetType(type);
+    MOZ_LOG(gXMLHttpRequestLog, LogLevel::Debug,
+            ("%p firing %s event (%u,%u,%" PRIu64 ",%" PRIu64 ")",
+             mProxy->mXHR.get(), NS_ConvertUTF16toUTF8(type).get(),
+             mUploadEvent, mLengthComputable, mLoaded, mTotal));
+  }
 
   target->DispatchEvent(*event);
 
@@ -1267,9 +1234,8 @@ void OpenRunnable::MainThreadRunInternal(ErrorResult& aRv) {
 }
 
 void SendRunnable::RunOnMainThread(ErrorResult& aRv) {
-  nsresult rv = mProxy->mXHR->CheckCurrentGlobalCorrectness();
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv = rv;
+  // Before we change any state let's check if we can send.
+  if (!mProxy->mXHR->CanSend(aRv)) {
     return;
   }
 
@@ -1355,6 +1321,7 @@ XMLHttpRequestWorker::XMLHttpRequestWorker(WorkerPrivate* aWorkerPrivate,
       mBackgroundRequest(false),
       mWithCredentials(false),
       mCanceled(false),
+      mFlagSendActive(false),
       mMozAnon(false),
       mMozSystem(false),
       mMimeTypeOverride(VoidString()) {
@@ -1437,6 +1404,14 @@ void XMLHttpRequestWorker::ReleaseProxy(ReleaseType aType) {
 
   if (mProxy) {
     if (aType == XHRIsGoingAway) {
+      // Coming here means the XHR was GC'd, so we can't be pinned.
+      MOZ_ASSERT(!mProxy->mXMLHttpRequestPrivate ||
+                 !mProxy->mXMLHttpRequestPrivate->mPinnedSelfRef);
+
+      // We need to clear our weak pointer on the worker thread, let's do it now
+      // before doing it implicitly in the Proxy dtor on the wrong thread.
+      mProxy->mXMLHttpRequestPrivate = nullptr;
+
       // We're in a GC finalizer, so we can't do a sync call here (and we don't
       // need to).
       RefPtr<AsyncTeardownRunnable> runnable =
@@ -1453,6 +1428,13 @@ void XMLHttpRequestWorker::ReleaseProxy(ReleaseType aType) {
         // Don't let any more events run.
         mProxy->mOuterEventStreamId++;
       }
+
+      // Ensure we are unpinned before we clear the weak reference.
+      RefPtr<XMLHttpRequestWorker> self = this;
+      if (mPinnedSelfRef) {
+        Unpin();
+      }
+      mProxy->mXMLHttpRequestPrivate = nullptr;
 
       // We need to make a sync call here.
       RefPtr<SyncTeardownRunnable> runnable =
@@ -1487,7 +1469,11 @@ void XMLHttpRequestWorker::MaybePin(ErrorResult& aRv) {
     return;
   }
 
-  NS_ADDREF_THIS();
+  mPinnedSelfRef = this;
+
+#ifdef DEBUG
+  mProxy->DebugStoreWorkerRef(mWorkerRef);
+#endif
 }
 
 void XMLHttpRequestWorker::MaybeDispatchPrematureAbortEvents(ErrorResult& aRv) {
@@ -1505,12 +1491,12 @@ void XMLHttpRequestWorker::MaybeDispatchPrematureAbortEvents(ErrorResult& aRv) {
   if (mProxy->mSeenUploadLoadStart) {
     MOZ_ASSERT(mUpload);
 
-    DispatchPrematureAbortEvent(mUpload, u"abort"_ns, true, aRv);
+    FireEvent(mUpload, Events::abort, true, aRv);
     if (aRv.Failed()) {
       return;
     }
 
-    DispatchPrematureAbortEvent(mUpload, u"loadend"_ns, true, aRv);
+    FireEvent(mUpload, Events::loadend, true, aRv);
     if (aRv.Failed()) {
       return;
     }
@@ -1527,18 +1513,18 @@ void XMLHttpRequestWorker::MaybeDispatchPrematureAbortEvents(ErrorResult& aRv) {
 
   if (mProxy->mSeenLoadStart) {
     if (isStateChanged) {
-      DispatchPrematureAbortEvent(this, u"readystatechange"_ns, false, aRv);
+      FireEvent(this, Events::readystatechange, false, aRv);
       if (aRv.Failed()) {
         return;
       }
     }
 
-    DispatchPrematureAbortEvent(this, u"abort"_ns, false, aRv);
+    FireEvent(this, Events::abort, false, aRv);
     if (aRv.Failed()) {
       return;
     }
 
-    DispatchPrematureAbortEvent(this, u"loadend"_ns, false, aRv);
+    FireEvent(this, Events::loadend, false, aRv);
     if (aRv.Failed()) {
       return;
     }
@@ -1554,9 +1540,9 @@ void XMLHttpRequestWorker::MaybeDispatchPrematureAbortEvents(ErrorResult& aRv) {
   }
 }
 
-void XMLHttpRequestWorker::DispatchPrematureAbortEvent(
-    EventTarget* aTarget, const nsAString& aEventType, bool aUploadTarget,
-    ErrorResult& aRv) {
+void XMLHttpRequestWorker::FireEvent(EventTarget* aTarget,
+                                     const EventType& aEventType,
+                                     bool aUploadTarget, ErrorResult& aRv) {
   mWorkerPrivate->AssertIsOnWorkerThread();
   MOZ_ASSERT(aTarget);
 
@@ -1566,12 +1552,11 @@ void XMLHttpRequestWorker::DispatchPrematureAbortEvent(
   }
 
   RefPtr<Event> event;
-  if (aEventType.EqualsLiteral("readystatechange")) {
+  if (aEventType == Events::readystatechange) {
     event = NS_NewDOMEvent(aTarget, nullptr, nullptr);
     event->InitEvent(aEventType, false, false);
   } else {
-    if (mProxy->mIsSyncXHR &&
-        aEventType.EqualsASCII(sEventStrings[STRING_progress])) {
+    if (mProxy->mIsSyncXHR && aEventType == Events::progress) {
       return;
     }
 
@@ -1597,6 +1582,13 @@ void XMLHttpRequestWorker::DispatchPrematureAbortEvent(
 
   event->SetTrusted(true);
 
+  MOZ_LOG(gXMLHttpRequestLog, LogLevel::Debug,
+          ("%p firing %s pre-abort event (%u,%u,%" PRIu64 ",%" PRIu64, this,
+           aEventType.cStr, aUploadTarget,
+           aUploadTarget ? mProxy->mLastUploadLengthComputable
+                         : mProxy->mLastLengthComputable,
+           aUploadTarget ? mProxy->mLastUploadLoaded : mProxy->mLastLoaded,
+           aUploadTarget ? mProxy->mLastUploadTotal : mProxy->mLastTotal));
   aTarget->DispatchEvent(*event);
 }
 
@@ -1604,9 +1596,17 @@ void XMLHttpRequestWorker::Unpin() {
   mWorkerPrivate->AssertIsOnWorkerThread();
 
   MOZ_ASSERT(mWorkerRef, "Mismatched calls to Unpin!");
+
+#ifdef DEBUG
+  if (mProxy) {
+    // The proxy will be gone if WorkerIsGoingAway
+    mProxy->DebugForgetWorkerRef();
+  }
+#endif
+
   mWorkerRef = nullptr;
 
-  NS_RELEASE_THIS();
+  mPinnedSelfRef = nullptr;
 }
 
 void XMLHttpRequestWorker::SendInternal(const BodyExtractorBase* aBody,
@@ -1653,14 +1653,15 @@ void XMLHttpRequestWorker::SendInternal(const BodyExtractorBase* aBody,
     return;
   }
 
+  RefPtr<XMLHttpRequestWorker> selfRef = this;
   AutoUnpinXHR autoUnpin(this);
   Maybe<AutoSyncLoopHolder> autoSyncLoop;
 
-  nsCOMPtr<nsIEventTarget> syncLoopTarget;
+  nsCOMPtr<nsISerialEventTarget> syncLoopTarget;
   bool isSyncXHR = mProxy->mIsSyncXHR;
   if (isSyncXHR) {
     autoSyncLoop.emplace(mWorkerPrivate, Canceling);
-    syncLoopTarget = autoSyncLoop->GetEventTarget();
+    syncLoopTarget = autoSyncLoop->GetSerialEventTarget();
     if (!syncLoopTarget) {
       aRv.Throw(NS_ERROR_DOM_INVALID_STATE_ERR);
       return;
@@ -1694,8 +1695,33 @@ void XMLHttpRequestWorker::SendInternal(const BodyExtractorBase* aBody,
 
   autoUnpin.Clear();
 
-  bool succeeded = autoSyncLoop->Run();
+  bool succeeded = NS_SUCCEEDED(autoSyncLoop->Run());
   mStateData->mFlagSend = false;
+
+  // Throw appropriately If a sync XHR failed per spec's RequestErrorSteps
+  if (isSyncXHR && mProxy) {
+    nsresult error = mProxy->mLastErrorDetailAtLoadend;
+    if (error == NS_ERROR_DOM_ABORT_ERR) {
+      MOZ_LOG(gXMLHttpRequestLog, LogLevel::Info,
+              ("%p throwing NS_ERROR_DOM_ABORT_ERR", this));
+      aRv.Throw(error);
+      return;
+    }
+    if (error == NS_ERROR_DOM_TIMEOUT_ERR) {
+      MOZ_LOG(gXMLHttpRequestLog, LogLevel::Info,
+              ("%p throwing NS_ERROR_DOM_TIMEOUT_ERR", this));
+      aRv.Throw(error);
+      return;
+    }
+    if (error == NS_ERROR_DOM_NETWORK_ERR ||
+        NS_ERROR_GET_MODULE(error) == NS_ERROR_MODULE_NETWORK) {
+      MOZ_LOG(gXMLHttpRequestLog, LogLevel::Info,
+              ("%p throwing NS_ERROR_DOM_NETWORK_ERR (0x%" PRIx32 ")", this,
+               static_cast<uint32_t>(error)));
+      aRv.Throw(NS_ERROR_DOM_NETWORK_ERR);
+      return;
+    }
+  }
 
   // Don't clobber an existing exception that we may have thrown on aRv
   // already... though can there really be one?  In any case, it seems to me
@@ -1703,6 +1729,8 @@ void XMLHttpRequestWorker::SendInternal(const BodyExtractorBase* aBody,
   // for it will come from ProxyCompleteRunnable and that always passes true for
   // the second arg.
   if (!succeeded && !aRv.Failed()) {
+    MOZ_LOG(gXMLHttpRequestLog, LogLevel::Debug,
+            ("%p SendInternal failed; throwing NS_ERROR_FAILURE", this));
     aRv.Throw(NS_ERROR_FAILURE);
   }
 }
@@ -1713,6 +1741,10 @@ void XMLHttpRequestWorker::Open(const nsACString& aMethod,
                                 const Optional<nsAString>& aPassword,
                                 ErrorResult& aRv) {
   mWorkerPrivate->AssertIsOnWorkerThread();
+
+  MOZ_LOG(gXMLHttpRequestLog, LogLevel::Debug,
+          ("%p Open(%s,%s,%d)", this, nsAutoCString(aMethod).get(),
+           NS_ConvertUTF16toUTF8(aUrl).get(), aAsync));
 
   if (mCanceled) {
     aRv.ThrowUncatchableException();
@@ -1804,7 +1836,7 @@ void XMLHttpRequestWorker::SetTimeout(uint32_t aTimeout, ErrorResult& aRv) {
   mTimeout = aTimeout;
 
   if (!mProxy) {
-    // Open may not have been called yet, in which case we'll handle the
+    // Open might not have been called yet, in which case we'll handle the
     // timeout in OpenRunnable.
     return;
   }
@@ -1826,7 +1858,7 @@ void XMLHttpRequestWorker::SetWithCredentials(bool aWithCredentials,
   mWithCredentials = aWithCredentials;
 
   if (!mProxy) {
-    // Open may not have been called yet, in which case we'll handle the
+    // Open might not have been called yet, in which case we'll handle the
     // credentials in OpenRunnable.
     return;
   }
@@ -1848,7 +1880,7 @@ void XMLHttpRequestWorker::SetMozBackgroundRequest(bool aBackgroundRequest,
   mBackgroundRequest = aBackgroundRequest;
 
   if (!mProxy) {
-    // Open may not have been called yet, in which case we'll handle the
+    // Open might not have been called yet, in which case we'll handle the
     // background request in OpenRunnable.
     return;
   }
@@ -1881,12 +1913,28 @@ void XMLHttpRequestWorker::Send(
     ErrorResult& aRv) {
   mWorkerPrivate->AssertIsOnWorkerThread();
 
+  if (mFlagSendActive) {
+    aRv.Throw(NS_ERROR_DOM_INVALID_STATE_XHR_HAS_INVALID_CONTEXT);
+    return;
+  }
+  mFlagSendActive = true;
+  auto clearRecursionFlag = MakeScopeExit([&]() {
+    // No one else should have touched this flag.
+    MOZ_ASSERT(mFlagSendActive);
+    mFlagSendActive = false;
+  });
+
   if (mCanceled) {
     aRv.ThrowUncatchableException();
     return;
   }
 
-  if (!mProxy || mStateData->mFlagSend) {
+  if (mStateData->mReadyState != XMLHttpRequest_Binding::OPENED) {
+    aRv.ThrowInvalidStateError("XMLHttpRequest state must be OPENED.");
+    return;
+  }
+
+  if (!mProxy || !mProxy->mXMLHttpRequestPrivate || mStateData->mFlagSend) {
     aRv.Throw(NS_ERROR_DOM_INVALID_STATE_ERR);
     return;
   }
@@ -2111,10 +2159,7 @@ void XMLHttpRequestWorker::GetResponse(JSContext* aCx,
         return;
       }
 
-      XMLHttpRequestStringSnapshotReaderHelper helper(
-          mResponseData->mResponseText);
-
-      str = JS_NewUCStringCopyN(aCx, helper.Buffer(), helper.Length());
+      str = mResponseData->mResponseText.GetAsJSStringCopy(aCx);
       if (!str) {
         aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
         return;
@@ -2154,7 +2199,8 @@ void XMLHttpRequestWorker::GetResponse(JSContext* aCx,
             Blob::Create(GetOwnerGlobal(), mResponseData->mResponseBlobImpl);
       }
 
-      if (!GetOrCreateDOMReflector(aCx, mResponseBlob, aResponse)) {
+      if (!mResponseBlob ||
+          !GetOrCreateDOMReflector(aCx, mResponseBlob, aResponse)) {
         aResponse.setNull();
       }
 
@@ -2229,5 +2275,4 @@ void XMLHttpRequestWorker::ResetResponseData() {
   mResponseJSONValue.setUndefined();
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

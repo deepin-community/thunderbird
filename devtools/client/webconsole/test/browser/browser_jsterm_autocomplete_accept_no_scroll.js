@@ -5,7 +5,7 @@
 
 // Test that the accepting an autocompletion does not scroll the input.
 
-const TEST_URI = `data:text/html;charset=utf-8,
+const TEST_URI = `data:text/html;charset=utf-8,<!DOCTYPE html>
   <script>
     /* Create a prototype-less object so popup does not contain native
      * Object prototype properties.
@@ -16,7 +16,7 @@ const TEST_URI = `data:text/html;charset=utf-8,
     }));
   </script>`;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const { jsterm, ui } = hud;
   const { autocompletePopup: popup } = jsterm;
@@ -32,7 +32,7 @@ add_task(async function() {
   await onPopUpOpen;
   const scrollableEl = ui.window.document.querySelector(".CodeMirror-scroll");
 
-  ok(scrollableEl.scrollTop > 0, "The input overflows");
+  Assert.greater(scrollableEl.scrollTop, 0, "The input overflows");
   const scrollTop = scrollableEl.scrollTop;
 
   info("Hit Enter to accept the autocompletion");

@@ -101,9 +101,6 @@ restore-default-label =
     .label = Վերականգնել հիմնականը
     .accesskey = R
 default-search-engine = Հիմնական որոնիչ
-add-search-engine =
-    .label = Ավելացնել նիշքից
-    .accesskey = A
 remove-search-engine =
     .label = Հեռացնել
     .accesskey = v
@@ -129,7 +126,6 @@ change-dock-icon = Ծրագրի պատկերակի կարգավորումներ�
 app-icon-options =
     .label = Ծրագրի պատկերակի ընտրանքներ...
     .accesskey = կ
-notification-settings = Ահազանգերը և լռելյայն ձայնը կարող են անջատվել համակարգի նախապատվությունների ծանուցման վահանակում:
 animated-alert-label =
     .label = Ցուցադրել ազդի ժամանակ
     .accesskey = Ց
@@ -289,8 +285,6 @@ smaller-size-item =
 quoted-text-color =
     .label = Գույնը.
     .accesskey = o
-
-
 save-to-label =
     .label = Պահել ֆայլերը՝
     .accesskey = S
@@ -412,10 +406,6 @@ restore-html-label =
 default-format-label =
     .label = Օգտագործեք Պարբերություն ձևաչափը՝ Հիմնական գրվածքի փոխարեն
     .accesskey = Պ
-format-description = Կարգավորել տեքստայինի վարքը
-send-options-label =
-    .label = Ուղարկելու ընտրանքներ...
-    .accesskey = S
 autocomplete-description = Նամակները հասցեավորելիս, նայել համապատասխանեցումը.
 ab-label =
     .label = Հասցեագրքում
@@ -501,6 +491,8 @@ do-not-track-label =
     .accesskey = n
 learn-button =
     .label = Իմանալ ավելին
+dnt-learn-more-button =
+    .value = Իմանալ ավելին
 passwords-description = { -brand-short-name }-ը կարող է հիշել Ձեր բոլոր փոստարկղերի գաղտնաբառերը։
 passwords-button =
     .label = Պահպանված գաղտնաբառեր…
@@ -620,8 +612,6 @@ chat-browse-sound-button =
 theme-label =
     .value = Թեման.
     .accesskey = T
-style-thunderbird =
-    .label = Thunderbird
 style-bubbles =
     .label = Պղպջակներ
 style-dark =
@@ -637,13 +627,10 @@ chat-variant-label =
     .value = Տարբերակ․
     .accesskey = V
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Որոնման արդյունքներ
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message =
-    { PLATFORM() ->
-        [windows] Ընտրանքերում այլ արդյունքներ չկան “<span data-l10n-name="query"></span>”-ի համար:
-       *[other] Նախապատվություններում այլ արդյունքներ չկան “<span data-l10n-name="query"></span>”-ի համար:
-    }
 search-results-help-link = Օգնությո՞ւն է պետք: Այցելեք { -brand-short-name }-ի աջակցում</a>
+
+## Sync Tab
+

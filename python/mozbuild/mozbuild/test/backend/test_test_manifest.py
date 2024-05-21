@@ -2,12 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
-import six.moves.cPickle as pickle
 import os
 
 import mozpack.path as mozpath
+import six.moves.cPickle as pickle
 from mozunit import main
 
 from mozbuild.backend.test_manifest import TestManifestBackend
@@ -58,12 +56,12 @@ class TestTestManifestBackend(BackendTester):
         with open(test_defaults_path, "rb") as fh:
             o = {mozpath.normpath(k): v for k, v in pickle.load(fh).items()}
 
-        self.assertEquals(
+        self.assertEqual(
             set(mozpath.relpath(k, env.topsrcdir) for k in o.keys()),
-            set(["dir1/xpcshell.ini", "xpcshell.ini", "mochitest.ini"]),
+            set(["dir1/xpcshell.toml", "xpcshell.toml", "mochitest.toml"]),
         )
 
-        manifest_path = mozpath.join(env.topsrcdir, "xpcshell.ini")
+        manifest_path = mozpath.join(env.topsrcdir, "xpcshell.toml")
         self.assertIn("here", o[manifest_path])
         self.assertIn("support-files", o[manifest_path])
 
@@ -79,12 +77,12 @@ class TestTestManifestBackend(BackendTester):
         with open(backend_path, "r") as fh:
             sources = set(source.strip() for source in fh)
 
-        self.assertEquals(
+        self.assertEqual(
             sources,
             set(
                 [
-                    mozpath.join(env.topsrcdir, "mochitest.ini"),
-                    mozpath.join(env.topsrcdir, "mochitest-common.ini"),
+                    mozpath.join(env.topsrcdir, "mochitest.toml"),
+                    mozpath.join(env.topsrcdir, "mochitest-common.toml"),
                     mozpath.join(env.topsrcdir, "moz.build"),
                     status_path,
                 ]

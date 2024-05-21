@@ -3,13 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailE10SUtils } = ChromeUtils.import(
-  "resource:///modules/MailE10SUtils.jsm"
+var { MailE10SUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailE10SUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gLogView;
 var gLogFile;
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 function onLoad() {
   gLogView = document.getElementById("logView");
@@ -36,12 +37,12 @@ function clearLog() {
 }
 
 function addStyling() {
-  let style = gLogView.contentDocument.createElement("style");
+  const style = gLogView.contentDocument.createElement("style");
   gLogView.contentDocument.head.appendChild(style);
   style.sheet.insertRule(
     `@media (prefers-color-scheme: dark) {
        :root { scrollbar-color: rgba(249, 249, 250, .4) rgba(20, 20, 25, .3);}
-       body { color: #f9f9fa;}
+       body { color: #f9f9fa; }
      }`
   );
 }

@@ -10,7 +10,7 @@ add_task(async function test_sessions_tab_value() {
       { key: "tabkey3", value: { val: "Tab Value" } },
       {
         key: "tabkey4",
-        value: function() {
+        value: function () {
           return null;
         },
       },
@@ -99,7 +99,7 @@ add_task(async function test_sessions_tab_value() {
 
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "exampleextension@mozilla.org",
         },
@@ -134,7 +134,7 @@ add_task(async function test_sessions_tab_value_persistence() {
     // Wait until the newly created tab has completed loading or it will still have
     // about:blank url when it gets removed and will not appear in the removed tabs history.
     browser.webNavigation.onCompleted.addListener(
-      async function newTabListener(details) {
+      async function newTabListener() {
         browser.webNavigation.onCompleted.removeListener(newTabListener);
 
         let tabs = await browser.tabs.query({ currentWindow: true });
@@ -208,7 +208,7 @@ add_task(async function test_sessions_tab_value_persistence() {
 
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "exampleextension@mozilla.org",
         },
@@ -236,7 +236,7 @@ add_task(async function test_sessions_window_value() {
       { key: "winkey3", value: { val: "Window Value" } },
       {
         key: "winkey4",
-        value: function() {
+        value: function () {
           return null;
         },
       },
@@ -322,7 +322,7 @@ add_task(async function test_sessions_window_value() {
 
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "exampleextension@mozilla.org",
         },
@@ -379,7 +379,7 @@ add_task(async function test_sessions_window_value_persistence() {
 
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "exampleextension@mozilla.org",
         },

@@ -76,6 +76,8 @@ class CxxCodeGen(CodePrinter, Visitor):
             ts += "&"
         elif t.rvalref:
             ts += "&&"
+        elif t.rightconst:
+            ts += " const"
 
         self.write(ts)
 
@@ -263,6 +265,8 @@ class CxxCodeGen(CodePrinter, Visitor):
 
         if md.methodspec == MethodSpec.OVERRIDE:
             self.write(" override")
+        elif md.methodspec == MethodSpec.FINAL:
+            self.write(" final")
         elif md.methodspec == MethodSpec.PURE:
             self.write(" = 0")
 
@@ -385,9 +389,6 @@ class CxxCodeGen(CodePrinter, Visitor):
         self.write("(")
         self.writeExprList(ec.args)
         self.write(")")
-
-    def visitExprMove(self, em):
-        self.visitExprCall(em)
 
     def visitExprNew(self, en):
         self.write("new ")

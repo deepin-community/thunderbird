@@ -6,26 +6,25 @@
  * Test styling messages.
  */
 
-requestLongerTimeout(2);
+requestLongerTimeout(3);
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  FormatHelper,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, FormatHelper } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 
 add_task(async function test_style_buttons() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
-  let buttonSet = [
+  const buttonSet = [
     { name: "bold", tag: "B", node: formatHelper.boldButton },
     { name: "italic", tag: "I", node: formatHelper.italicButton },
     { name: "underline", tag: "U", node: formatHelper.underlineButton },
   ];
 
   // Without focus on message.
-  for (let button of buttonSet) {
+  for (const button of buttonSet) {
     Assert.ok(
       button.node.disabled,
       `${button.name} button should be disabled with no focus`
@@ -35,7 +34,7 @@ add_task(async function test_style_buttons() {
   formatHelper.focusMessage();
 
   // With focus on message.
-  for (let button of buttonSet) {
+  for (const button of buttonSet) {
     Assert.ok(
       !button.node.disabled,
       `${button.name} button should be enabled with focus`
@@ -61,9 +60,9 @@ add_task(async function test_style_buttons() {
     );
   }
 
-  for (let button of buttonSet) {
-    let name = button.name;
-    let tags = new Set();
+  for (const button of buttonSet) {
+    const name = button.name;
+    const tags = new Set();
     tags.add(button.tag);
 
     await formatHelper.assertShownStyles(
@@ -75,7 +74,7 @@ add_task(async function test_style_buttons() {
       [name],
       `${name} is shown after clicking`
     );
-    let text = `test-${button.name}`;
+    const text = `test-${button.name}`;
     await formatHelper.typeInMessage(text);
     await formatHelper.assertShownStyles(
       [name],
@@ -87,7 +86,7 @@ add_task(async function test_style_buttons() {
     );
 
     // Stop styling on click.
-    let addedText = "not-styled";
+    const addedText = "not-styled";
     button.node.click();
     await formatHelper.assertShownStyles(
       null,
@@ -154,20 +153,20 @@ add_task(async function test_style_buttons() {
     await formatHelper.emptyParagraph();
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_multi_style_with_buttons() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
-  let boldButton = formatHelper.boldButton;
-  let italicButton = formatHelper.italicButton;
-  let underlineButton = formatHelper.underlineButton;
+  const boldButton = formatHelper.boldButton;
+  const italicButton = formatHelper.italicButton;
+  const underlineButton = formatHelper.underlineButton;
 
   formatHelper.focusMessage();
 
-  let parts = ["bold", " and italic", " and underline"];
+  const parts = ["bold", " and italic", " and underline"];
 
   boldButton.click();
   await formatHelper.typeInMessage(parts[0]);
@@ -228,27 +227,28 @@ add_task(async function test_multi_style_with_buttons() {
     "Removed bold in middle"
   );
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_text_styling_whilst_typing() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   formatHelper.focusMessage();
 
   await formatHelper.assertShownStyles(null, "None checked");
 
-  for (let style of formatHelper.styleDataMap.values()) {
-    let tags = new Set();
+  for (const style of formatHelper.styleDataMap.values()) {
+    const tags = new Set();
     tags.add(style.tag);
-    let name = style.name;
+    const name = style.name;
 
     // Start styling.
     await formatHelper.selectStyle(style);
+
     // See Bug 1716840.
     // await formatHelper.assertShownStyles(style, `${name} selected`);
-    let text = `test-${name}`;
+    const text = `test-${name}`;
     await formatHelper.typeInMessage(text);
     await formatHelper.assertShownStyles(style, `${name} selected and typing`);
     formatHelper.assertMessageParagraph([{ tags, text }], `Selecting ${name}`);
@@ -257,7 +257,7 @@ add_task(async function test_text_styling_whilst_typing() {
     await formatHelper.selectStyle(style);
     // See Bug 1716840.
     // await formatHelper.assertShownStyles(null, `${name} unselected`);
-    let addedText = "not-styled";
+    const addedText = "not-styled";
     await formatHelper.typeInMessage(addedText);
     formatHelper.assertMessageParagraph(
       [{ tags, text }, addedText],
@@ -265,30 +265,41 @@ add_task(async function test_text_styling_whilst_typing() {
     );
     await formatHelper.assertShownStyles(null, `${name} unselected and typing`);
 
+    // Select these again to unselect for next loop cycle. Needs to be done
+    // before empty paragraph since they happen only after "typing".
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
+
+    // Select again to unselect for next loop cycle.
+    await formatHelper.selectStyle(style);
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_text_styling_update_on_selection_change() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   formatHelper.focusMessage();
 
-  for (let style of formatHelper.styleDataMap.values()) {
-    let tags = new Set();
+  for (const style of formatHelper.styleDataMap.values()) {
+    const tags = new Set();
     tags.add(style.tag);
-    let name = style.name;
+    const name = style.name;
 
     // Start styling.
     await formatHelper.selectStyle(style);
-    let text = `test-${name}`;
+    const text = `test-${name}`;
     await formatHelper.typeInMessage(text);
     // Stop styling.
     await formatHelper.selectStyle(style);
-    let addedText = "not-styled";
+    const addedText = "not-styled";
     await formatHelper.typeInMessage("not-styled");
     formatHelper.assertMessageParagraph(
       [{ tags, text }, addedText],
@@ -319,24 +330,31 @@ add_task(async function test_text_styling_update_on_selection_change() {
           `${forward ? "forwards" : "backwards"}`
       );
     }
-
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    await formatHelper.selectStyle(style);
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_text_styling_on_selections() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   formatHelper.focusMessage();
 
   let start;
   let end = 0;
-  let parts = [];
+  const parts = [];
   let fullText = "";
-  for (let text of ["test for ", "styling some", " selections"]) {
+  for (const text of ["test for ", "styling some", " selections"]) {
     start = end;
     end += text.length;
     parts.push({ text, start, end });
@@ -345,10 +363,10 @@ add_task(async function test_text_styling_on_selections() {
   await formatHelper.typeInMessage(fullText);
   formatHelper.assertMessageParagraph([fullText], "No styling at start");
 
-  for (let style of formatHelper.styleDataMap.values()) {
-    let tags = new Set();
+  for (const style of formatHelper.styleDataMap.values()) {
+    const tags = new Set();
     tags.add(style.tag);
-    let name = style.name;
+    const name = style.name;
 
     formatHelper.assertMessageParagraph(
       [fullText],
@@ -396,26 +414,26 @@ add_task(async function test_text_styling_on_selections() {
 
   formatHelper.assertMessageParagraph([fullText], "No style at end");
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_induced_text_styling() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   formatHelper.focusMessage();
 
-  for (let style of formatHelper.styleDataMap.values()) {
+  for (const style of formatHelper.styleDataMap.values()) {
     if (!style.implies && !style.linked) {
       continue;
     }
-    let tags = new Set();
+    const tags = new Set();
     tags.add(style.tag);
-    let name = style.name;
+    const name = style.name;
 
     // Start styling.
     await formatHelper.selectStyle(style);
-    let text = `test-${name}`;
+    const text = `test-${name}`;
     await formatHelper.typeInMessage(text);
     await formatHelper.assertShownStyles(style, `${name} initial text`);
     formatHelper.assertMessageParagraph(
@@ -425,26 +443,26 @@ add_task(async function test_induced_text_styling() {
 
     if (style.implies) {
       // Unselecting implied styles will be ignored.
-      let desc = `${style.implies.name} implied by ${name}`;
+      const desc = `${style.implies.name} implied by ${name}`;
       await formatHelper.selectTextRange(0, text.length);
       await formatHelper.assertShownStyles(
         style,
-        `Before trying to unselect ${desc}`
+        `Before trying to deselect ${desc}`
       );
 
       await formatHelper.selectStyle(style.implies);
       formatHelper.assertMessageParagraph(
         [{ tags, text }],
-        `After trying to unselect ${desc}`
+        `After trying to deselect ${desc}`
       );
       await formatHelper.assertShownStyles(
         style,
-        `After trying to unselect ${desc}`
+        `After trying to deselect ${desc}`
       );
     }
     if (style.linked) {
       // Unselecting the linked style also unselects the current one.
-      let desc = `${style.linked.name} linked from ${name}`;
+      const desc = `${style.linked.name} linked from ${name}`;
       await formatHelper.selectTextRange(0, text.length);
       await formatHelper.assertShownStyles(style, `Before unselecting ${desc}`);
       await formatHelper.selectStyle(style.linked);
@@ -452,20 +470,29 @@ add_task(async function test_induced_text_styling() {
       formatHelper.assertMessageParagraph([text], `After unselecting ${desc}`);
       await formatHelper.assertShownStyles(null, `After unselecting ${desc}`);
     }
+
+    await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });
 
 add_task(async function test_fixed_width_text_styling_font_change() {
-  let controller = open_compose_new_mail();
-  let formatHelper = new FormatHelper(controller.window);
+  const win = await open_compose_new_mail();
+  const formatHelper = new FormatHelper(win);
 
   formatHelper.focusMessage();
 
   await formatHelper.assertShownFont("", "Variable width to start");
-  for (let style of formatHelper.styleDataMap.values()) {
+  for (const style of formatHelper.styleDataMap.values()) {
     if (
       style.name !== "tt" &&
       style.linked?.name !== "tt" &&
@@ -474,9 +501,9 @@ add_task(async function test_fixed_width_text_styling_font_change() {
       continue;
     }
 
-    let tags = new Set();
+    const tags = new Set();
     tags.add(style.tag);
-    let name = style.name;
+    const name = style.name;
 
     // Start styling.
     await formatHelper.selectStyle(style);
@@ -545,7 +572,7 @@ add_task(async function test_fixed_width_text_styling_font_change() {
     );
 
     // Change the font to something else.
-    let font = formatHelper.commonFonts[0];
+    const font = formatHelper.commonFonts[0];
     await formatHelper.selectFont(font);
     // Doesn't remove the style, but adds the font.
     formatHelper.assertMessageParagraph(
@@ -570,7 +597,15 @@ add_task(async function test_fixed_width_text_styling_font_change() {
     //);
 
     await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
+    await formatHelper.emptyParagraph();
   }
 
-  close_compose_window(controller);
+  await close_compose_window(win);
 });

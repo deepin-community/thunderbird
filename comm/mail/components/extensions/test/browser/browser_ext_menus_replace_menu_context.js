@@ -13,7 +13,7 @@ function checkIsDefaultMenuItemVisible(visibleMenuItemIds) {
   // In this whole test file, we open a menu on a link. Assume that all
   // default menu items are shown if one link-specific menu item is shown.
   ok(
-    visibleMenuItemIds.includes("mailContext-copylink"),
+    visibleMenuItemIds.includes("browserContext-copylink"),
     `The default 'Copy Link Location' menu item should be in ${visibleMenuItemIds}.`
   );
 }
@@ -23,21 +23,21 @@ function checkIsDefaultMenuItemVisible(visibleMenuItemIds) {
 add_task(async function overrideContext_with_context() {
   // Background script of the main test extension and the auxiliary other extension.
   function background() {
-    const HTTP_URL = "http://example.com/?SomeTab";
+    const HTTP_URL = "https://example.com/?SomeTab";
     browser.test.onMessage.addListener(async (msg, tabId) => {
       browser.test.assertEq(
         "testTabAccess",
         msg,
         `Expected message in ${browser.runtime.id}`
       );
-      let tab = await browser.tabs.get(tabId);
+      const tab = await browser.tabs.get(tabId);
       if (!tab.url) {
         // tabs or activeTab not active.
         browser.test.sendMessage("testTabAccessDone", "tab_no_url");
         return;
       }
       try {
-        let [url] = await browser.tabs.executeScript(tabId, {
+        const [url] = await browser.tabs.executeScript(tabId, {
           code: "document.URL",
         });
         browser.test.assertEq(
@@ -46,7 +46,6 @@ add_task(async function overrideContext_with_context() {
           "Expected successful executeScript"
         );
         browser.test.sendMessage("testTabAccessDone", "executeScript_ok");
-        return;
       } catch (e) {
         browser.test.assertEq(
           "Missing host permission for the tab",
@@ -151,22 +150,28 @@ add_task(async function overrideContext_with_context() {
     }
   }
 
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     manifest: {
       applications: { gecko: { id: "@menu-test-extension" } },
       permissions: ["menus", "menus.overrideContext", "tabs"],
     },
     files: {
-      "tab.html": `
-        <!DOCTYPE html><meta charset="utf-8">
-        <a href="http://example.com/">Link</a>
-        <script src="tab.js"></script>
-      `,
+      "tab.html": `<!DOCTYPE html>
+        <html>
+          <head>
+            <title>Popup</title>
+            <meta charset="utf-8">
+            <script defer="defer" src="tab.js"></script>
+          </head>
+          <body>
+            <a href="http://example.com/">Link</a>
+          </body>
+        </html>`,
       "tab.js": async () => {
-        let [tab] = await browser.tabs.query({
-          url: "http://example.com/?SomeTab",
+        const [tab] = await browser.tabs.query({
+          url: "https://example.com/?SomeTab",
         });
-        let testCases = [
+        const testCases = [
           {
             context: "tab",
             tabId: tab.id,
@@ -197,10 +202,10 @@ add_task(async function overrideContext_with_context() {
     background,
   });
 
-  let { browser } = window.openContentTab("http://example.com/?SomeTab");
-  await BrowserTestUtils.browserLoaded(browser);
+  const { browser } = window.openContentTab("https://example.com/?SomeTab");
+  await awaitBrowserLoaded(browser);
 
-  let otherExtension = ExtensionTestUtils.loadExtension({
+  const otherExtension = ExtensionTestUtils.loadExtension({
     manifest: {
       applications: { gecko: { id: "@other-test-extension" } },
       permissions: ["menus", "activeTab"],
@@ -213,16 +218,16 @@ add_task(async function overrideContext_with_context() {
   await extension.startup();
   await extension.awaitMessage("menu_items_registered");
 
-  let { tabId, httpUrl, extensionUrl } = await extension.awaitMessage(
+  const { tabId, httpUrl, extensionUrl } = await extension.awaitMessage(
     "setup_ready"
   );
   info(`Set up test with tabId=${tabId}.`);
 
   {
     // Test case 1: context=tab
-    let menu = await openContextMenu("a");
+    const menu = await openContextMenu("a");
     await extension.awaitMessage("oncontextmenu_in_dom");
-    for (let ext of [extension, otherExtension]) {
+    for (const ext of [extension, otherExtension]) {
       info(`Testing menu from ${ext.id} after changing context to tab`);
       Assert.deepEqual(
         await ext.awaitMessage("onShown"),
@@ -241,7 +246,7 @@ add_task(async function overrideContext_with_context() {
         "Expected onShown details after changing context to tab"
       );
     }
-    let topLevels = menu.getElementsByAttribute("ext-type", "top-level-menu");
+    const topLevels = menu.getElementsByAttribute("ext-type", "top-level-menu");
     is(topLevels.length, 1, "Expected top-level menu for otherExtension");
 
     Assert.deepEqual(
@@ -256,7 +261,7 @@ add_task(async function overrideContext_with_context() {
       "Expected menu items after changing context to tab"
     );
 
-    let submenu = await openSubmenu(topLevels[0]);
+    const submenu = await openSubmenu(topLevels[0]);
     is(submenu, topLevels[0].menupopup, "Correct submenu opened");
 
     Assert.deepEqual(
@@ -284,13 +289,13 @@ add_task(async function overrideContext_with_context() {
     );
 
     // Click on the menu item of the other extension to unlock host permissions.
-    let menuItems = menu.getElementsByAttribute("label", "tab_context");
+    const menuItems = menu.getElementsByAttribute("label", "tab_context");
     is(
       menuItems.length,
       2,
       "There are two menu items with label 'tab_context'"
     );
-    await closeExtensionContextMenu(menuItems[1]);
+    await clickItemInBrowserContextMenuPopup(menuItems[1]);
 
     Assert.deepEqual(
       await otherExtension.awaitMessage("onClicked"),
@@ -321,20 +326,20 @@ add_task(async function overrideContext_with_context() {
 
   {
     // Test case 2: context=tab, click on menu item of extension..
-    let menu = await openContextMenu("a");
+    const menu = await openContextMenu("a");
     await extension.awaitMessage("oncontextmenu_in_dom");
 
     // The previous test has already verified the visible menu items,
     // so we skip checking the onShown result and only test clicking.
     await extension.awaitMessage("onShown");
     await otherExtension.awaitMessage("onShown");
-    let menuItems = menu.getElementsByAttribute("label", "tab_context");
+    const menuItems = menu.getElementsByAttribute("label", "tab_context");
     is(
       menuItems.length,
       2,
       "There are two menu items with label 'tab_context'"
     );
-    await closeExtensionContextMenu(menuItems[0]);
+    await clickItemInBrowserContextMenuPopup(menuItems[0]);
 
     Assert.deepEqual(
       await extension.awaitMessage("onClicked"),
@@ -358,18 +363,18 @@ add_task(async function overrideContext_with_context() {
 
   {
     // Test case 4: context=tab, invalid tabId.
-    let menu = await openContextMenu("a");
+    const menu = await openContextMenu("a");
     await extension.awaitMessage("oncontextmenu_in_dom");
     // When an invalid tabId is used, all extension menu logic is skipped and
     // the default menu is shown.
     checkIsDefaultMenuItemVisible(getVisibleChildrenIds(menu));
-    await closeContextMenu(menu);
+    await closeMenuPopup(menu);
   }
 
   await extension.unload();
   await otherExtension.unload();
 
-  let tabmail = document.getElementById("tabmail");
+  const tabmail = document.getElementById("tabmail");
   tabmail.closeTab(tabmail.currentTabInfo);
   tabmail.closeTab(tabmail.currentTabInfo);
 });

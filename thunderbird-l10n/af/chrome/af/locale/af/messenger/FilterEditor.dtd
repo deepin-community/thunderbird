@@ -60,7 +60,6 @@
 <!-- Flex Attribute: https://developer.mozilla.org/docs/XUL/Attribute/flex -->
 
 
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY contextDesc.label "Apply filter when:">
 <!ENTITY contextIncomingMail.label "Getting New Mail:">
 <!ENTITY contextIncomingMail.accesskey "G">

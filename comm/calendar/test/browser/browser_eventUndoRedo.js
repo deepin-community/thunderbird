@@ -2,22 +2,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-"use-strict";
+"use strict";
 
 /**
  * Tests for ensuring the undo/redo options are enabled properly when
  * manipulating events.
  */
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  CalTransactionManager: "resource:///modules/CalTransactionManager.sys.mjs",
 });
 
-const calendar = CalendarTestUtils.createProxyCalendar("Undo Redo Test");
-const calTransManager = Cc["@mozilla.org/calendar/transactionmanager;1"].getService(
-  Ci.calITransactionManager
-).wrappedJSObject;
+const calendar = CalendarTestUtils.createCalendar("Undo Redo Test");
+const calTransManager = CalTransactionManager.getInstance();
 
 /**
  * Checks the value of the "disabled" property for items in either the "Edit"
@@ -29,33 +27,27 @@ const calTransManager = Cc["@mozilla.org/calendar/transactionmanager;1"].getServ
  *                               bar, if "appmenu" then the app menu.
  */
 async function isDisabled(element) {
-  let targetMenu;
-  if (element.id.startsWith("menu")) {
-    targetMenu = document.getElementById("menu_EditPopup");
+  const targetMenu = document.getElementById("menu_EditPopup");
 
-    let shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("menu_Edit"), {});
-    await shownPromise;
-  } else if (element.id.startsWith("appmenu")) {
-    targetMenu = document.getElementById("appMenu-popup");
+  const shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("menu_Edit"), {});
+  await shownPromise;
 
-    let shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("button-appmenu"), {});
-    await shownPromise;
-
-    let viewShownPromise = BrowserTestUtils.waitForEvent(
-      document.getElementById("appMenu-editView"),
-      "ViewShown"
-    );
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("appmenu-edit-button"), {});
-    await viewShownPromise;
-  }
-
-  let hiddenPromise = BrowserTestUtils.waitForEvent(targetMenu, "popuphidden");
-  let status = element.disabled;
-  EventUtils.synthesizeKey("VK_ESCAPE");
+  const hiddenPromise = BrowserTestUtils.waitForEvent(targetMenu, "popuphidden");
+  const status = element.disabled;
+  targetMenu.hidePopup();
   await hiddenPromise;
   return status;
+}
+
+async function clickItem(element) {
+  const targetMenu = document.getElementById("menu_EditPopup");
+
+  const shownPromise = BrowserTestUtils.waitForEvent(targetMenu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(document.getElementById("menu_Edit"), {});
+  await shownPromise;
+
+  targetMenu.activateItem(element);
 }
 
 /**
@@ -63,8 +55,8 @@ async function isDisabled(element) {
  * tests are unhindered.
  */
 function clearTransactions() {
-  calTransManager.transactionManager.clearUndoStack();
-  calTransManager.batchTransactions = [];
+  calTransManager.undoStack = [];
+  calTransManager.redoStack = [];
 }
 
 /**
@@ -74,17 +66,17 @@ function clearTransactions() {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function testAddUndoRedoEvent(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let newBtn = document.getElementById("calendar-newevent-button");
-  let windowOpened = CalendarTestUtils.waitForEventDialog("edit");
+  const newBtn = document.getElementById("sidePanelNewEvent");
+  const windowOpened = CalendarTestUtils.waitForEventDialog("edit");
   EventUtils.synthesizeMouseAtCenter(newBtn, {});
 
-  let win = await windowOpened;
-  let iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
+  const win = await windowOpened;
+  const iframeWin = win.document.getElementById("calendar-item-panel-iframe").contentWindow;
   await CalendarTestUtils.items.setData(win, iframeWin, { title: "A New Event" });
   await CalendarTestUtils.items.saveAndCloseItemDialog(win);
 
@@ -98,7 +90,7 @@ async function testAddUndoRedoEvent(undoId, redoId) {
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
   // Test undo.
-  undo.doCommand();
+  await clickItem(undo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return !eventItem;
@@ -107,7 +99,7 @@ async function testAddUndoRedoEvent(undoId, redoId) {
   Assert.ok(!eventItem, `#${undoId} reverses item creation`);
 
   // Test redo.
-  redo.doCommand();
+  await clickItem(redo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return eventItem;
@@ -125,12 +117,12 @@ async function testAddUndoRedoEvent(undoId, redoId) {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function testModifyUndoRedoEvent(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.title = "Modifiable Event";
   event.startDate = cal.dtz.now();
   await calendar.addItem(event);
@@ -142,7 +134,7 @@ async function testModifyUndoRedoEvent(undoId, redoId) {
     return eventItem;
   }, "event not created in time");
 
-  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editItem(window, eventItem);
+  const { dialogWindow, iframeWindow } = await CalendarTestUtils.editItem(window, eventItem);
   await CalendarTestUtils.items.setData(dialogWindow, iframeWindow, {
     title: "Modified Event",
   });
@@ -157,7 +149,7 @@ async function testModifyUndoRedoEvent(undoId, redoId) {
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
   // Test undo.
-  undo.doCommand();
+  await clickItem(undo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return eventItem && eventItem.item.title == "Modifiable Event";
@@ -166,7 +158,7 @@ async function testModifyUndoRedoEvent(undoId, redoId) {
   Assert.equal(eventItem.item.title, "Modifiable Event", `#${undoId} reverses item modification`);
 
   // Test redo.
-  redo.doCommand();
+  await clickItem(redo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return eventItem && eventItem.item.title == "Modified Event";
@@ -185,12 +177,12 @@ async function testModifyUndoRedoEvent(undoId, redoId) {
  * @param {string} redoId - The id of the "redo" menu item.
  */
 async function testDeleteUndoRedo(undoId, redoId) {
-  let undo = document.getElementById(undoId);
-  let redo = document.getElementById(redoId);
+  const undo = document.getElementById(undoId);
+  const redo = document.getElementById(redoId);
   Assert.ok(await isDisabled(undo), `#${undoId} is disabled`);
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.title = "Deletable Event";
   event.startDate = cal.dtz.now();
   await calendar.addItem(event);
@@ -214,7 +206,7 @@ async function testDeleteUndoRedo(undoId, redoId) {
   Assert.ok(await isDisabled(redo), `#${redoId} is disabled`);
 
   // Test undo.
-  undo.doCommand();
+  await clickItem(undo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return eventItem;
@@ -222,7 +214,7 @@ async function testDeleteUndoRedo(undoId, redoId) {
   Assert.ok(eventItem, `#${undoId} reverses item deletion`);
 
   // Test redo.
-  redo.doCommand();
+  await clickItem(redo);
   await TestUtils.waitForCondition(() => {
     eventItem = document.querySelector("calendar-month-day-box-item");
     return !eventItem;
@@ -235,22 +227,15 @@ async function testDeleteUndoRedo(undoId, redoId) {
 /**
  * Ensure the menu bar is visible and navigate the calendar view to today.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   registerCleanupFunction(() => {
-    CalendarTestUtils.removeProxyCalendar(calendar);
+    CalendarTestUtils.removeCalendar(calendar);
   });
 
   clearTransactions();
-  document.getElementById("mail-toolbar-menubar2").setAttribute("autohide", null);
+  document.getElementById("toolbar-menubar").setAttribute("autohide", null);
   await CalendarTestUtils.setCalendarView(window, "month");
   window.goToDate(cal.dtz.now());
-});
-
-/**
- * Tests the app menu's undo/redo after adding an event.
- */
-add_task(async function testAppMenuAddEventUndoRedo() {
-  return testAddUndoRedoEvent("appmenu-editmenu-undo", "appmenu-editmenu-redo");
 });
 
 /**
@@ -261,25 +246,11 @@ add_task(async function testMenuBarAddEventUndoRedo() {
 }).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
 
 /**
- * Tests the app menu's undo/redo after modifying an event.
- */
-add_task(async function testAppMenuModifyEventUndoRedo() {
-  return testModifyUndoRedoEvent("appmenu-editmenu-undo", "appmenu-editmenu-redo");
-});
-
-/**
  * Tests the menu bar's undo/redo after modifying an event.
  */
 add_task(async function testMenuBarModifyEventUndoRedo() {
   return testModifyUndoRedoEvent("menu_undo", "menu_redo");
 }).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
-
-/**
- * Tests the app menu's undo/redo after deleting an event.
- */
-add_task(async function testAppMenuDeleteEventUndoRedo() {
-  return testDeleteUndoRedo("appmenu-editmenu-undo", "appmenu-editmenu-redo");
-});
 
 /**
  * Tests the menu bar's undo/redo after deleting an event.

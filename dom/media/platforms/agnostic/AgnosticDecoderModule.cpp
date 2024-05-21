@@ -6,11 +6,8 @@
 
 #include "AgnosticDecoderModule.h"
 
-#include "OpusDecoder.h"
 #include "TheoraDecoder.h"
 #include "VPXDecoder.h"
-#include "VorbisDecoder.h"
-#include "WAVDecoder.h"
 #include "mozilla/Logging.h"
 #include "mozilla/StaticPrefs_media.h"
 #include "VideoUtils.h"
@@ -82,24 +79,45 @@ static bool IsAvailableInRdd(DecoderType type) {
   }
 }
 
-// Checks if decoder is available in the current process
-static bool IsAvailable(DecoderType type) {
-  return XRE_IsRDDProcess() ? IsAvailableInRdd(type)
-                            : IsAvailableInDefault(type);
+static bool IsAvailableInUtility(DecoderType type) {
+  switch (type) {
+    case DecoderType::Opus:
+      return StaticPrefs::media_utility_opus_enabled();
+    case DecoderType::Vorbis:
+      return StaticPrefs::media_utility_vorbis_enabled();
+    case DecoderType::Wave:
+      return StaticPrefs::media_utility_wav_enabled();
+    case DecoderType::Theora:  // Video codecs, dont take care of them
+    case DecoderType::VPX:
+    default:
+      return false;
+  }
 }
 
-bool AgnosticDecoderModule::SupportsMimeType(
+// Checks if decoder is available in the current process
+static bool IsAvailable(DecoderType type) {
+  return XRE_IsRDDProcess()       ? IsAvailableInRdd(type)
+         : XRE_IsUtilityProcess() ? IsAvailableInUtility(type)
+                                  : IsAvailableInDefault(type);
+}
+
+media::DecodeSupportSet AgnosticDecoderModule::SupportsMimeType(
     const nsACString& aMimeType, DecoderDoctorDiagnostics* aDiagnostics) const {
   UniquePtr<TrackInfo> trackInfo = CreateTrackInfoWithMIMEType(aMimeType);
   if (!trackInfo) {
-    return false;
+    return media::DecodeSupportSet{};
   }
   return Supports(SupportDecoderParams(*trackInfo), aDiagnostics);
 }
 
-bool AgnosticDecoderModule::Supports(
+media::DecodeSupportSet AgnosticDecoderModule::Supports(
     const SupportDecoderParams& aParams,
     DecoderDoctorDiagnostics* aDiagnostics) const {
+  // This should only be supported by MFMediaEngineDecoderModule.
+  if (aParams.mMediaEngineId) {
+    return media::DecodeSupportSet{};
+  }
+
   const auto& trackInfo = aParams.mConfig;
   const nsACString& mimeType = trackInfo.mMimeType;
 
@@ -111,20 +129,20 @@ bool AgnosticDecoderModule::Supports(
       (AOMDecoder::IsAV1(mimeType) && IsAvailable(DecoderType::AV1)) ||
 #endif
       (VPXDecoder::IsVPX(mimeType) && IsAvailable(DecoderType::VPX)) ||
-      (TheoraDecoder::IsTheora(mimeType) && IsAvailable(DecoderType::Theora)) ||
-      (VorbisDataDecoder::IsVorbis(mimeType) &&
-       IsAvailable(DecoderType::Vorbis)) ||
-      (WaveDataDecoder::IsWave(mimeType) && IsAvailable(DecoderType::Wave)) ||
-      (OpusDataDecoder::IsOpus(mimeType) && IsAvailable(DecoderType::Opus));
+      (TheoraDecoder::IsTheora(mimeType) && IsAvailable(DecoderType::Theora));
   MOZ_LOG(sPDMLog, LogLevel::Debug,
-          ("Agnostic decoder %s requested type",
-           supports ? "supports" : "rejects"));
-  return supports;
+          ("Agnostic decoder %s requested type '%s'",
+           supports ? "supports" : "rejects", mimeType.BeginReading()));
+  if (supports) {
+    return media::DecodeSupport::SoftwareDecode;
+  }
+  return media::DecodeSupportSet{};
 }
 
 already_AddRefed<MediaDataDecoder> AgnosticDecoderModule::CreateVideoDecoder(
     const CreateDecoderParams& aParams) {
-  if (!Supports(SupportDecoderParams(aParams), nullptr /* diagnostic */)) {
+  if (Supports(SupportDecoderParams(aParams), nullptr /* diagnostic */)
+          .isEmpty()) {
     return nullptr;
   }
   RefPtr<MediaDataDecoder> m;
@@ -155,21 +173,7 @@ already_AddRefed<MediaDataDecoder> AgnosticDecoderModule::CreateVideoDecoder(
 
 already_AddRefed<MediaDataDecoder> AgnosticDecoderModule::CreateAudioDecoder(
     const CreateDecoderParams& aParams) {
-  if (!Supports(SupportDecoderParams(aParams), nullptr /* diagnostic */)) {
-    return nullptr;
-  }
-  RefPtr<MediaDataDecoder> m;
-
-  const TrackInfo& config = aParams.mConfig;
-  if (VorbisDataDecoder::IsVorbis(config.mMimeType)) {
-    m = new VorbisDataDecoder(aParams);
-  } else if (OpusDataDecoder::IsOpus(config.mMimeType)) {
-    m = new OpusDataDecoder(aParams);
-  } else if (WaveDataDecoder::IsWave(config.mMimeType)) {
-    m = new WaveDataDecoder(aParams);
-  }
-
-  return m.forget();
+  return nullptr;
 }
 
 /* static */

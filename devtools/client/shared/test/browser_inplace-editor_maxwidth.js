@@ -10,12 +10,12 @@ const MAX_WIDTH = 300;
 const START_TEXT = "Start text";
 const LONG_TEXT =
   "I am a long text and I will not fit in a 300px container. " +
-  "I expect the inplace editor to wrap.";
+  "I expect the inplace editor to wrap over more than two lines.";
 
 // Test the inplace-editor behavior with a maxWidth configuration option
 // defined.
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8,inplace editor max width tests");
   const { host, doc } = await createHost();
 
@@ -37,10 +37,11 @@ add_task(async function() {
   gBrowser.removeCurrentTab();
 });
 
-const testMaxWidth = async function(editor) {
+const testMaxWidth = async function (editor) {
   is(editor.input.value, START_TEXT, "Span text content should be used");
-  ok(
-    editor.input.offsetWidth < MAX_WIDTH,
+  Assert.less(
+    editor.input.offsetWidth,
+    MAX_WIDTH,
     "Input width should be strictly smaller than MAX_WIDTH"
   );
   is(getLines(editor.input), 1, "Input should display 1 line of text");
@@ -89,12 +90,14 @@ const testMaxWidth = async function(editor) {
     checkScrollbars(editor.input);
   }
 
-  ok(
-    editor.input.offsetWidth < MAX_WIDTH,
+  Assert.less(
+    editor.input.offsetWidth,
+    MAX_WIDTH,
     "Input width should again be strictly smaller than MAX_WIDTH"
   );
-  ok(
-    editor.input.offsetWidth > 0,
+  Assert.greater(
+    editor.input.offsetWidth,
+    0,
     "Even with no content, the input has a non-zero width"
   );
   is(getLines(editor.input), 1, "Input should display 1 line of text");

@@ -9,23 +9,25 @@ kind-dependencies:
     - packages
 
 reference-jobs:
+    - android-build
     - debian8-i386-packages
     - debian8-i386-raw
     - debian8-packages
     - debian8-raw
-    - deb10-toolchain-build
-    - debian10-amd64-build
-    - debian10-base
-    - debian10-packages
-    - debian10-raw
+    - deb12-toolchain-build
+    - debian12-amd64-build
+    - debian12-base
+    - debian12-packages
+    - debian12-raw
     - fetch
     - funsize-update-generator
     - image_builder
     - index-task
     - lint
-    - mingw32-build
-    - periodic-updates
+    - push-to-try
+    - static-analysis-build
     - ubuntu1804-base
+    - ubuntu1804-build-python
     - ubuntu1804-i386-packages
     - ubuntu1804-i386-raw
     - ubuntu1804-packages
@@ -35,12 +37,15 @@ reference-jobs:
     - ubuntu2004-base
     - ubuntu2004-packages
     - ubuntu2004-raw
+    - ubuntu2204-raw
+    - ubuntu2204-packages
+    - ubuntu2204-base
     - update-verify
 
 transforms:
-    - taskgraph.transforms.docker_image:transforms
-    - taskgraph.transforms.cached_tasks:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.docker_image:transforms
+    - gecko_taskgraph.transforms.cached_tasks:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 jobs-from:
     - docker-image.yml

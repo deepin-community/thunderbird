@@ -5,11 +5,11 @@
 
 const TEST_URL = "about:buildconfig";
 
-add_task(async function setup() {
+add_setup(async function () {
   // Clean before and after so we don't have anything in the folders.
   await PlacesUtils.bookmarks.eraseEverything();
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     await PlacesUtils.bookmarks.eraseEverything();
   });
 });
@@ -23,7 +23,7 @@ async function simulateDrop(
   targetGuid,
   isVirtualRoot = false
 ) {
-  await withSidebarTree("bookmarks", async function(tree) {
+  await withSidebarTree("bookmarks", async function (tree) {
     for (let target of selectTargets) {
       tree.selectItems([target]);
       if (tree.selectedNode instanceof Ci.nsINavHistoryContainerResultNode) {
@@ -37,10 +37,10 @@ async function simulateDrop(
       mozCursor: "auto",
       mozItemCount: 1,
       types: [PlacesUtils.TYPE_X_MOZ_PLACE],
-      mozTypesAt(i) {
+      mozTypesAt() {
         return [this._data[0].type];
       },
-      mozGetDataAt(i) {
+      mozGetDataAt() {
         return this._data[0].data;
       },
       mozSetDataAt(type, data, index) {
@@ -80,7 +80,7 @@ async function simulateDrop(
     Assert.equal(dataTransfer.dropEffect, dropEffect);
 
     let ip = new PlacesInsertionPoint({
-      parentId: await PlacesUtils.promiseItemId(targetGuid),
+      parentId: await PlacesTestUtils.promiseItemId(targetGuid),
       parentGuid: targetGuid,
       index: 0,
       orientation: Ci.nsITreeView.DROP_ON,

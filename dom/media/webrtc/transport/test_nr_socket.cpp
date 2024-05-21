@@ -82,19 +82,15 @@ nrappkit copyright:
 
 extern "C" {
 #include "stun_msg.h"  // for NR_STUN_MAX_MESSAGE_SIZE
-#include "nr_api.h"
 #include "async_wait.h"
 #include "async_timer.h"
 #include "nr_socket.h"
-#include "nr_socket_local.h"
 #include "stun.h"
-#include "stun_hint.h"
 #include "transport_addr.h"
 }
 
 #include "mozilla/RefPtr.h"
 #include "test_nr_socket.h"
-#include "runnable_utils.h"
 
 namespace mozilla {
 
@@ -135,7 +131,7 @@ static nr_socket_factory_vtbl test_nat_socket_factory_vtbl = {
 
 /* static */
 TestNat::NatBehavior TestNat::ToNatBehavior(const std::string& type) {
-  if (!type.compare("ENDPOINT_INDEPENDENT")) {
+  if (type.empty() || !type.compare("ENDPOINT_INDEPENDENT")) {
     return TestNat::ENDPOINT_INDEPENDENT;
   }
   if (!type.compare("ADDRESS_DEPENDENT")) {
@@ -192,6 +188,11 @@ int TestNat::create_socket_factory(nr_socket_factory** factorypp) {
   return r;
 }
 
+void TestNat::set_proxy_config(
+    std::shared_ptr<NrSocketProxyConfig> aProxyConfig) {
+  proxy_config_ = std::move(aProxyConfig);
+}
+
 TestNrSocket::TestNrSocket(TestNat* nat)
     : nat_(nat), tls_(false), timer_handle_(nullptr) {
   nat_->insert_socket(this);
@@ -222,7 +223,8 @@ RefPtr<NrSocketBase> TestNrSocket::create_external_socket(
   }
 
   RefPtr<NrSocketBase> external_socket;
-  r = NrSocketBase::CreateSocket(&nat_external_addr, &external_socket, nullptr);
+  r = NrSocketBase::CreateSocket(&nat_external_addr, &external_socket,
+                                 nat_->proxy_config_);
 
   if (r) {
     r_log(LOG_GENERIC, LOG_CRIT, "%s: Failure in NrSocket::create: %d",
@@ -386,10 +388,11 @@ int TestNrSocket::recvfrom(void* buf, size_t maxlen, size_t* len, int flags,
   if (readable_socket_) {
     // If any of the external sockets got data, see if it will be passed through
     r = readable_socket_->recvfrom(buf, maxlen, len, 0, from);
+    const nr_transport_addr to = readable_socket_->my_addr();
     readable_socket_ = nullptr;
     if (!r) {
       PortMapping* port_mapping_used;
-      ingress_allowed = allow_ingress(*from, &port_mapping_used);
+      ingress_allowed = allow_ingress(to, *from, &port_mapping_used);
       if (ingress_allowed) {
         r_log(LOG_GENERIC, LOG_DEBUG, "TestNrSocket %s received from %s via %s",
               internal_socket_->my_addr().as_string, from->as_string,
@@ -434,25 +437,38 @@ int TestNrSocket::recvfrom(void* buf, size_t maxlen, size_t* len, int flags,
   return r;
 }
 
-bool TestNrSocket::allow_ingress(const nr_transport_addr& from,
+bool TestNrSocket::allow_ingress(const nr_transport_addr& to,
+                                 const nr_transport_addr& from,
                                  PortMapping** port_mapping_used) const {
   // This is only called for traffic arriving at a port mapping
   MOZ_ASSERT(nat_->enabled_);
   MOZ_ASSERT(!nat_->is_an_internal_tuple(from));
 
-  *port_mapping_used = get_port_mapping(from, nat_->filtering_type_);
+  // Find the port mapping (if any) that this packet landed on
+  *port_mapping_used = nullptr;
+  for (PortMapping* port_mapping : port_mappings_) {
+    if (!nr_transport_addr_cmp(&to, &port_mapping->external_socket_->my_addr(),
+                               NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
+        !is_port_mapping_stale(*port_mapping)) {
+      *port_mapping_used = port_mapping;
+      // TODO: Bug 1857149
+      // Adding a break here causes test failures, but we would not expect to
+      // find more than one matching mapping at a time.
+    }
+  }
+
   if (!(*port_mapping_used)) {
     r_log(LOG_GENERIC, LOG_INFO,
           "TestNrSocket %s denying ingress from %s: "
-          "Filtered",
+          "No non-stale port mapping for this local port.",
           internal_socket_->my_addr().as_string, from.as_string);
     return false;
   }
 
-  if (is_port_mapping_stale(**port_mapping_used)) {
+  if (!port_mapping_matches(**port_mapping_used, from, nat_->filtering_type_)) {
     r_log(LOG_GENERIC, LOG_INFO,
           "TestNrSocket %s denying ingress from %s: "
-          "Stale port mapping",
+          "Filtered (no port mapping for source)",
           internal_socket_->my_addr().as_string, from.as_string);
     return false;
   }
@@ -562,6 +578,15 @@ int TestNrSocket::write(const void* msg, size_t len, size_t* written) {
     return R_INTERNAL;
   }
 
+  if (nat_->block_tls_ && tls_) {
+    // Should cause this socket to be abandoned
+    r_log(LOG_GENERIC, LOG_DEBUG,
+          "TestNrSocket %s dropping outgoing TLS "
+          "because it is configured to drop TLS",
+          my_addr().as_string);
+    return R_INTERNAL;
+  }
+
   if (port_mappings_.empty()) {
     // The no-nat case, just pass call through.
     r_log(LOG_GENERIC, LOG_DEBUG, "TestNrSocket %s writing",
@@ -633,6 +658,11 @@ int TestNrSocket::read(void* buf, size_t maxlen, size_t* len) {
   }
 
   if (nat_->block_tcp_ && !tls_) {
+    // Should cause this socket to be abandoned
+    return R_INTERNAL;
+  }
+
+  if (nat_->block_tls_ && tls_) {
     // Should cause this socket to be abandoned
     return R_INTERNAL;
   }
@@ -762,6 +792,12 @@ bool TestNrSocket::is_port_mapping_stale(
   PRIntervalTime now = PR_IntervalNow();
   PRIntervalTime elapsed_ticks = now - port_mapping.last_used_;
   uint32_t idle_duration = PR_IntervalToMilliseconds(elapsed_ticks);
+  r_log(LOG_GENERIC, LOG_INFO,
+        "TestNrSocket %s port mapping %s -> %s last used %u",
+        internal_socket_->my_addr().as_string,
+        port_mapping.external_socket_->my_addr().as_string,
+        port_mapping.remote_address_.as_string,
+        static_cast<unsigned>(idle_duration));
   return idle_duration > nat_->mapping_timeout_;
 }
 
@@ -852,6 +888,18 @@ bool TestNrSocket::is_tcp_connection_behind_nat() const {
 TestNrSocket::PortMapping* TestNrSocket::get_port_mapping(
     const nr_transport_addr& remote_address,
     TestNat::NatBehavior filter) const {
+  for (PortMapping* port_mapping : port_mappings_) {
+    if (port_mapping_matches(*port_mapping, remote_address, filter)) {
+      return port_mapping;
+    }
+  }
+  return nullptr;
+}
+
+/* static */
+bool TestNrSocket::port_mapping_matches(const PortMapping& port_mapping,
+                                        const nr_transport_addr& remote_addr,
+                                        TestNat::NatBehavior filter) {
   int compare_flags;
   switch (filter) {
     case TestNat::ENDPOINT_INDEPENDENT:
@@ -865,13 +913,8 @@ TestNrSocket::PortMapping* TestNrSocket::get_port_mapping(
       break;
   }
 
-  for (PortMapping* port_mapping : port_mappings_) {
-    if (!nr_transport_addr_cmp(&remote_address, &port_mapping->remote_address_,
-                               compare_flags)) {
-      return port_mapping;
-    }
-  }
-  return nullptr;
+  return !nr_transport_addr_cmp(&remote_addr, &port_mapping.remote_address_,
+                                compare_flags);
 }
 
 TestNrSocket::PortMapping* TestNrSocket::create_port_mapping(

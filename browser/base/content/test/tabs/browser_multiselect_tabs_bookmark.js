@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 async function addTab_example_com() {
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   const tab = BrowserTestUtils.addTab(gBrowser, "http://example.com/", {
     skipAnimation: true,
   });
@@ -47,11 +48,6 @@ add_task(async function test() {
     false,
     "Bookmark Selected Tabs is hidden"
   );
-  is(
-    PlacesCommandHook.uniqueSelectedPages.length,
-    1,
-    "No more than one unique selected page"
-  );
 
   info("Add a different page to selection");
   let tab4 = await addTab_example_com();
@@ -67,11 +63,6 @@ add_task(async function test() {
     menuItemBookmarkSelectedTabs.hidden,
     false,
     "Bookmark Selected Tabs is hidden"
-  );
-  is(
-    PlacesCommandHook.uniqueSelectedPages.length,
-    2,
-    "More than one unique selected page"
   );
 
   for (let tab of [tab1, tab2, tab3, tab4]) {

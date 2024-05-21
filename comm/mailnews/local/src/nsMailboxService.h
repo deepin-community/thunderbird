@@ -9,7 +9,6 @@
 #include "nscore.h"
 #include "nsISupports.h"
 
-#include "nsIMailboxService.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgMessageService.h"
 #include "nsIMsgWindow.h"
@@ -18,8 +17,7 @@
 #include "nsIUrlListener.h"
 #include "nsIProtocolHandler.h"
 
-class nsMailboxService : public nsIMailboxService,
-                         public nsIMsgMessageService,
+class nsMailboxService : public nsIMsgMessageService,
                          public nsIMsgMessageFetchPartService,
                          public nsIProtocolHandler {
  public:
@@ -28,17 +26,15 @@ class nsMailboxService : public nsIMailboxService,
                          nsIURI* aBaseURI, nsIURI** _retval);
 
   NS_DECL_ISUPPORTS
-  NS_DECL_NSIMAILBOXSERVICE
   NS_DECL_NSIMSGMESSAGESERVICE
   NS_DECL_NSIMSGMESSAGEFETCHPARTSERVICE
   NS_DECL_NSIPROTOCOLHANDLER
 
  protected:
   virtual ~nsMailboxService();
-  bool mPrintingOperation;
 
   // helper functions used by the service
-  nsresult PrepareMessageUrl(const char* aSrcMsgMailboxURI,
+  nsresult PrepareMessageUrl(const nsACString& aSrcMsgMailboxURI,
                              nsIUrlListener* aUrlListener,
                              nsMailboxAction aMailboxAction,
                              nsIMailboxUrl** aMailboxUrl,
@@ -48,14 +44,13 @@ class nsMailboxService : public nsIMailboxService,
                          nsISupports* aDisplayConsumer = nullptr);
 
   nsresult FetchMessage(
-      const char* aMessageURI, nsISupports* aDisplayConsumer,
+      const nsACString& aMessageURI, nsISupports* aDisplayConsumer,
       nsIMsgWindow* aMsgWindow, nsIUrlListener* aUrlListener,
       const char* aFileName, /* only used by open attachment */
-      nsMailboxAction mailboxAction, const char* aCharsetOverride,
-      nsIURI** aURL);
+      nsMailboxAction mailboxAction, bool aAutodetectCharset, nsIURI** aURL);
 
-  nsresult DecomposeMailboxURI(const char* aMessageURI, nsIMsgFolder** aFolder,
-                               nsMsgKey* aMsgKey);
+  nsresult DecomposeMailboxURI(const nsACString& aMessageURI,
+                               nsIMsgFolder** aFolder, nsMsgKey* aMsgKey);
 };
 
 #endif /* nsMailboxService_h___ */

@@ -36,6 +36,7 @@ nsresult CheckInternal(nsIContentSecurityPolicy* aCSP,
   // The value is set at any "return", but better to have a default value here.
   *aAllowed = false;
 
+  // This is the non-CSP check for gating eval() use in the SystemPrincipal
 #if !defined(ANDROID)
   JSContext* cx = nsContentUtils::GetCurrentJSContext();
   if (!nsContentSecurityUtils::IsEvalAllowed(
@@ -82,7 +83,7 @@ class WorkerCSPCheckRunnable final : public WorkerMainThreadRunnable {
 
   bool MainThreadRun() override {
     mResult = CheckInternal(
-        mWorkerPrivate->GetCSP(), mWorkerPrivate->CSPEventListener(),
+        mWorkerPrivate->GetCsp(), mWorkerPrivate->CSPEventListener(),
         mWorkerPrivate->GetLoadingPrincipal(), mExpression, mFileNameString,
         mLineNum, mColumnNum, &mEvalAllowed);
     return true;
@@ -130,7 +131,7 @@ nsresult CSPEvalChecker::CheckForWindow(JSContext* aCx,
 
   // Get the calling location.
   uint32_t lineNum = 0;
-  uint32_t columnNum = 0;
+  uint32_t columnNum = 1;
   nsAutoString fileNameString;
   if (!nsJSUtils::GetCallingLocation(aCx, fileNameString, &lineNum,
                                      &columnNum)) {
@@ -163,7 +164,7 @@ nsresult CSPEvalChecker::CheckForWorker(JSContext* aCx,
 
   // Get the calling location.
   uint32_t lineNum = 0;
-  uint32_t columnNum = 0;
+  uint32_t columnNum = 1;
   nsAutoString fileNameString;
   if (!nsJSUtils::GetCallingLocation(aCx, fileNameString, &lineNum,
                                      &columnNum)) {

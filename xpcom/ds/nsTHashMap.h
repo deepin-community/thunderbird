@@ -13,28 +13,31 @@
 #include "nsBaseHashtable.h"
 #include "nsCOMPtr.h"
 #include "nsHashKeys.h"
+#include "nsAtomHashKeys.h"
 #include "nsHashtablesFwd.h"
 #include <type_traits>
 
 namespace mozilla::detail {
 template <class KeyType>
-struct nsKeyClass {
-  // Prevent instantiation with an incomplete KeyType, as std::is_base_of_v
-  // would have undefined behaviour then.
-  static_assert(sizeof(KeyType) > 0,
-                "KeyType must be a complete type (unless there's an explicit "
-                "specialization for nsKeyClass<KeyType>)");
-  static_assert(std::is_base_of_v<PLDHashEntryHdr, KeyType>,
-                "KeyType must inherit from PLDHashEntryHdr (unless there's an "
-                "explicit specialization for nsKeyClass<KeyType>)");
-
-  using type = std::conditional_t<std::is_base_of_v<PLDHashEntryHdr, KeyType>,
-                                  KeyType, void>;
+struct nsKeyClass<
+    KeyType, std::enable_if_t<sizeof(KeyType) &&
+                              std::is_base_of_v<PLDHashEntryHdr, KeyType>>> {
+  using type = KeyType;
 };
 
 template <typename KeyType>
 struct nsKeyClass<KeyType*> {
   using type = nsPtrHashKey<KeyType>;
+};
+
+template <>
+struct nsKeyClass<nsAtom*> {
+  using type = nsWeakAtomHashKey;
+};
+
+template <typename Ret, typename... Args>
+struct nsKeyClass<Ret (*)(Args...)> {
+  using type = nsFuncPtrHashKey<Ret (*)(Args...)>;
 };
 
 template <>
@@ -49,19 +52,10 @@ struct nsKeyClass<nsString> {
   using type = nsStringHashKey;
 };
 
-template <>
-struct nsKeyClass<uint32_t> {
-  using type = nsUint32HashKey;
-};
-
-template <>
-struct nsKeyClass<uint64_t> {
-  using type = nsUint64HashKey;
-};
-
-template <>
-struct nsKeyClass<intptr_t> {
-  using type = IntPtrHashKey;
+template <typename KeyType>
+struct nsKeyClass<KeyType, std::enable_if_t<std::is_integral_v<KeyType> ||
+                                            std::is_enum_v<KeyType>>> {
+  using type = nsIntegralHashKey<KeyType>;
 };
 
 template <>
@@ -72,6 +66,11 @@ struct nsKeyClass<nsCOMPtr<nsISupports>> {
 template <typename T>
 struct nsKeyClass<RefPtr<T>> {
   using type = nsRefPtrHashKey<T>;
+};
+
+template <>
+struct nsKeyClass<RefPtr<nsAtom>> {
+  using type = nsAtomHashKey;
 };
 
 template <>

@@ -22,19 +22,15 @@
 #define MSGHDR_CACHE_MAX_SIZE 8192
 #define MSGHDR_CACHE_DEFAULT_SIZE 100
 
-nsMsgGroupView::nsMsgGroupView() {
-  m_dayChanged = false;
-  m_lastCurExplodedTime.tm_mday = 0;
-}
+nsMsgGroupView::nsMsgGroupView() { m_dayChanged = false; }
 
 nsMsgGroupView::~nsMsgGroupView() {}
 
 NS_IMETHODIMP
 nsMsgGroupView::Open(nsIMsgFolder* aFolder, nsMsgViewSortTypeValue aSortType,
                      nsMsgViewSortOrderValue aSortOrder,
-                     nsMsgViewFlagsTypeValue aViewFlags, int32_t* aCount) {
-  nsresult rv =
-      nsMsgDBView::Open(aFolder, aSortType, aSortOrder, aViewFlags, aCount);
+                     nsMsgViewFlagsTypeValue aViewFlags) {
+  nsresult rv = nsMsgDBView::Open(aFolder, aSortType, aSortOrder, aViewFlags);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
@@ -44,7 +40,7 @@ nsMsgGroupView::Open(nsIMsgFolder* aFolder, nsMsgViewSortTypeValue aSortType,
   rv = m_db->EnumerateMessages(getter_AddRefs(headers));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  return OpenWithHdrs(headers, aSortType, aSortOrder, aViewFlags, aCount);
+  return OpenWithHdrs(headers, aSortType, aSortOrder, aViewFlags);
 }
 
 void nsMsgGroupView::InternalClose() {
@@ -94,14 +90,16 @@ nsresult nsMsgGroupView::GetAgeBucketValue(nsIMsgDBHdr* aMsgHdr,
   NS_ENSURE_ARG_POINTER(aAgeBucket);
 
   PRTime dateOfMsg;
+  uint32_t rcvDateSecs;
   nsresult rv;
-  if (!rcvDate)
-    rv = aMsgHdr->GetDate(&dateOfMsg);
-  else {
-    uint32_t rcvDateSecs;
+
+  // Silently return Date: instead if Received: is unavailable.
+  if (rcvDate) {
     rv = aMsgHdr->GetUint32Property("dateReceived", &rcvDateSecs);
-    Seconds2PRTime(rcvDateSecs, &dateOfMsg);
+    if (rcvDateSecs != 0) Seconds2PRTime(rcvDateSecs, &dateOfMsg);
   }
+
+  if (!rcvDate || rcvDateSecs == 0) rv = aMsgHdr->GetDate(&dateOfMsg);
   NS_ENSURE_SUCCESS(rv, rv);
 
   PRTime currentTime = PR_Now();
@@ -161,7 +159,7 @@ nsresult nsMsgGroupView::HashHdr(nsIMsgDBHdr* msgHdr, nsString& aHashKey) {
 
   switch (m_sortType) {
     case nsMsgViewSortType::bySubject:
-      (void)msgHdr->GetSubject(getter_Copies(cStringKey));
+      (void)msgHdr->GetSubject(cStringKey);
       CopyASCIItoUTF16(cStringKey, aHashKey);
       break;
     case nsMsgViewSortType::byAuthor:
@@ -244,7 +242,14 @@ nsresult nsMsgGroupView::HashHdr(nsIMsgDBHdr* msgHdr, nsString& aHashKey) {
 }
 
 nsMsgGroupThread* nsMsgGroupView::CreateGroupThread(nsIMsgDatabase* db) {
-  return new nsMsgGroupThread(db);
+  nsMsgViewSortOrderValue threadSortOrder = nsMsgViewSortOrder::descending;
+  if (m_sortType == nsMsgViewSortType::byDate ||
+      m_sortType == nsMsgViewSortType::byReceived) {
+    threadSortOrder = m_sortOrder;
+  } else {
+    m_db->GetDefaultSortOrder(&threadSortOrder);
+  }
+  return new nsMsgGroupThread(db, threadSortOrder);
 }
 
 nsMsgGroupThread* nsMsgGroupView::AddHdrToThread(nsIMsgDBHdr* msgHdr,
@@ -364,8 +369,7 @@ NS_IMETHODIMP
 nsMsgGroupView::OpenWithHdrs(nsIMsgEnumerator* aHeaders,
                              nsMsgViewSortTypeValue aSortType,
                              nsMsgViewSortOrderValue aSortOrder,
-                             nsMsgViewFlagsTypeValue aViewFlags,
-                             int32_t* aCount) {
+                             nsMsgViewFlagsTypeValue aViewFlags) {
   nsresult rv = NS_OK;
 
   m_groupsTable.Clear();
@@ -434,7 +438,6 @@ nsMsgGroupView::OpenWithHdrs(nsIMsgEnumerator* aHeaders,
       }
     }
   }
-  *aCount = m_keys.Length();
   return rv;
 }
 
@@ -459,8 +462,18 @@ nsMsgGroupView::CopyDBView(nsMsgDBView* aNewMsgDBView,
 
   // If grouped, we need to clone the group thread hash table.
   if (m_viewFlags & nsMsgViewFlagsType::kGroupBySort) {
-    for (auto iter = m_groupsTable.Iter(); !iter.Done(); iter.Next()) {
-      newMsgDBView->m_groupsTable.InsertOrUpdate(iter.Key(), iter.UserData());
+    if (mIsXFVirtual) {
+      for (auto iter = m_groupsTable.Iter(); !iter.Done(); iter.Next()) {
+        newMsgDBView->m_groupsTable.InsertOrUpdate(
+            iter.Key(),
+            static_cast<nsMsgXFGroupThread*>(iter.UserData())->Clone());
+      }
+    } else {
+      for (auto iter = m_groupsTable.Iter(); !iter.Done(); iter.Next()) {
+        newMsgDBView->m_groupsTable.InsertOrUpdate(
+            iter.Key(),
+            static_cast<nsMsgGroupThread*>(iter.UserData())->Clone());
+      }
     }
   }
   return NS_OK;
@@ -475,7 +488,6 @@ nsMsgGroupView::CopyDBView(nsMsgDBView* aNewMsgDBView,
 nsresult nsMsgGroupView::RebuildView(nsMsgViewFlagsTypeValue newFlags) {
   nsCOMPtr<nsIMsgEnumerator> headers;
   if (NS_SUCCEEDED(GetMessageEnumerator(getter_AddRefs(headers)))) {
-    int32_t count;
     m_dayChanged = false;
     AutoTArray<nsMsgKey, 1> preservedSelection;
     nsMsgKey curSelectedKey;
@@ -492,12 +504,13 @@ nsresult nsMsgGroupView::RebuildView(nsMsgViewFlagsTypeValue newFlags) {
     // This needs to happen after we remove all the keys, since
     // RowCountChanged() will call our GetRowCount().
     if (mTree) mTree->RowCountChanged(0, -oldSize);
+    if (mJSTree) mJSTree->RowCountChanged(0, -oldSize);
 
     SetSuppressChangeNotifications(true);
-    nsresult rv =
-        OpenWithHdrs(headers, m_sortType, m_sortOrder, newFlags, &count);
+    nsresult rv = OpenWithHdrs(headers, m_sortType, m_sortOrder, newFlags);
     SetSuppressChangeNotifications(false);
     if (mTree) mTree->RowCountChanged(0, GetSize());
+    if (mJSTree) mJSTree->RowCountChanged(0, GetSize());
 
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -653,8 +666,7 @@ nsMsgGroupView::OnHdrDeleted(nsIMsgDBHdr* aHdrDeleted, nsMsgKey aParentKey,
 
   nsMsgGroupThread* groupThread =
       static_cast<nsMsgGroupThread*>((nsIMsgThread*)thread);
-
-  bool rootDeleted = viewIndexOfThread != nsMsgKey_None &&
+  bool rootDeleted = IsValidIndex(viewIndexOfThread) &&
                      m_keys[viewIndexOfThread] == keyDeleted;
   rv = nsMsgDBView::OnHdrDeleted(aHdrDeleted, aParentKey, aFlags, aInstigator);
   if (groupThread->m_dummy) {
@@ -738,14 +750,16 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
   if (!IsValidIndex(aRow)) return NS_MSG_INVALID_DBVIEW_INDEX;
 
   if (!(m_flags[aRow] & MSG_VIEW_FLAG_DUMMY) ||
-      aColumnName.EqualsLiteral("unreadCol"))
+      aColumnName.EqualsLiteral("unreadCol") ||
+      aColumnName.EqualsLiteral("newCol"))
     return nsMsgDBView::CellTextForColumn(aRow, aColumnName, aValue);
 
   // We only treat "subject" and "total" here.
   bool isSubject;
   if (!(isSubject = aColumnName.EqualsLiteral("subjectCol")) &&
-      !aColumnName.EqualsLiteral("totalCol"))
+      !aColumnName.EqualsLiteral("totalCol")) {
     return NS_OK;
+  }
 
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
   nsresult rv = GetMsgHdrForViewIndex(aRow, getter_AddRefs(msgHdr));
@@ -762,7 +776,6 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
     bool rcvDate = false;
     msgHdr->GetFlags(&flags);
     aValue.Truncate();
-    nsString tmp_str;
     switch (m_sortType) {
       case nsMsgViewSortType::byReceived:
         rcvDate = true;
@@ -772,47 +785,29 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
         GetAgeBucketValue(msgHdr, &ageBucket, rcvDate);
         switch (ageBucket) {
           case 1:
-            if (m_kTodayString.IsEmpty())
-              m_kTodayString.Adopt(GetString(u"today"));
-
-            aValue.Assign(m_kTodayString);
+            aValue.Assign(nsMsgDBView::kTodayString);
             break;
           case 2:
-            if (m_kYesterdayString.IsEmpty())
-              m_kYesterdayString.Adopt(GetString(u"yesterday"));
-
-            aValue.Assign(m_kYesterdayString);
+            aValue.Assign(nsMsgDBView::kYesterdayString);
             break;
           case 3:
-            if (m_kLastWeekString.IsEmpty())
-              m_kLastWeekString.Adopt(GetString(u"last7Days"));
-
-            aValue.Assign(m_kLastWeekString);
+            aValue.Assign(nsMsgDBView::kLastWeekString);
             break;
           case 4:
-            if (m_kTwoWeeksAgoString.IsEmpty())
-              m_kTwoWeeksAgoString.Adopt(GetString(u"last14Days"));
-
-            aValue.Assign(m_kTwoWeeksAgoString);
+            aValue.Assign(nsMsgDBView::kTwoWeeksAgoString);
             break;
           case 5:
-            if (m_kOldMailString.IsEmpty())
-              m_kOldMailString.Adopt(GetString(u"older"));
-
-            aValue.Assign(m_kOldMailString);
+            aValue.Assign(nsMsgDBView::kOldMailString);
             break;
           default:
             // Future date, error/spoofed.
-            if (m_kFutureDateString.IsEmpty())
-              m_kFutureDateString.Adopt(GetString(u"futureDate"));
-
-            aValue.Assign(m_kFutureDateString);
+            aValue.Assign(nsMsgDBView::kFutureDateString);
             break;
         }
         break;
       }
       case nsMsgViewSortType::bySubject:
-        FetchSubject(msgHdr, m_flags[aRow], aValue);
+        FetchSubject(msgHdr, m_flags[aRow] & ~nsMsgMessageFlags::HasRe, aValue);
         break;
       case nsMsgViewSortType::byAuthor:
         FetchAuthor(msgHdr, aValue);
@@ -820,22 +815,19 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
       case nsMsgViewSortType::byStatus:
         rv = FetchStatus(m_flags[aRow], aValue);
         if (aValue.IsEmpty()) {
-          tmp_str.Adopt(GetString(u"messagesWithNoStatus"));
-          aValue.Assign(tmp_str);
+          GetString(u"messagesWithNoStatus", aValue);
         }
         break;
       case nsMsgViewSortType::byTags:
         rv = FetchTags(msgHdr, aValue);
         if (aValue.IsEmpty()) {
-          tmp_str.Adopt(GetString(u"untaggedMessages"));
-          aValue.Assign(tmp_str);
+          GetString(u"untaggedMessages", aValue);
         }
         break;
       case nsMsgViewSortType::byPriority:
         FetchPriority(msgHdr, aValue);
         if (aValue.IsEmpty()) {
-          tmp_str.Adopt(GetString(u"noPriority"));
-          aValue.Assign(tmp_str);
+          GetString(u"noPriority", aValue);
         }
         break;
       case nsMsgViewSortType::byAccount:
@@ -845,16 +837,14 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
         FetchRecipients(msgHdr, aValue);
         break;
       case nsMsgViewSortType::byAttachments:
-        tmp_str.Adopt(GetString(flags & nsMsgMessageFlags::Attachment
-                                    ? u"attachments"
-                                    : u"noAttachments"));
-        aValue.Assign(tmp_str);
+        GetString(flags & nsMsgMessageFlags::Attachment ? u"attachments"
+                                                        : u"noAttachments",
+                  aValue);
         break;
       case nsMsgViewSortType::byFlagged:
-        tmp_str.Adopt(GetString(flags & nsMsgMessageFlags::Marked
-                                    ? u"groupFlagged"
-                                    : u"notFlagged"));
-        aValue.Assign(tmp_str);
+        GetString(
+            flags & nsMsgMessageFlags::Marked ? u"groupFlagged" : u"notFlagged",
+            aValue);
         break;
       // byLocation is a special case; we don't want to have duplicate
       // all this logic in nsMsgSearchDBView, and its hash key is what we
@@ -884,29 +874,6 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
         NS_ASSERTION(false, "we don't sort by group for this type");
         break;
     }
-
-    if (groupThread) {
-      // Get number of messages in group.
-      nsAutoString formattedCountMsg;
-      uint32_t numMsg = groupThread->NumRealChildren();
-      formattedCountMsg.AppendInt(numMsg);
-
-      // Get number of unread messages.
-      nsAutoString formattedCountUnrMsg;
-      uint32_t numUnrMsg = 0;
-      groupThread->GetNumUnreadChildren(&numUnrMsg);
-      formattedCountUnrMsg.AppendInt(numUnrMsg);
-
-      // Add text to header.
-      aValue.AppendLiteral(u" (");
-      if (numUnrMsg) {
-        aValue.Append(formattedCountUnrMsg);
-        aValue.Append(u'/');
-      }
-
-      aValue.Append(formattedCountMsg);
-      aValue.Append(u')');
-    }
   } else {
     nsAutoString formattedCountString;
     uint32_t numChildren = (groupThread) ? groupThread->NumRealChildren() : 0;
@@ -914,31 +881,6 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
     aValue.Assign(formattedCountString);
   }
   return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgGroupView::LoadMessageByViewIndex(nsMsgViewIndex aViewIndex) {
-  if (!IsValidIndex(aViewIndex)) return NS_MSG_INVALID_DBVIEW_INDEX;
-
-  if (m_flags[aViewIndex] & MSG_VIEW_FLAG_DUMMY) {
-    // If we used to have one item selected, and now we have more than one,
-    // we should clear the message pane.
-    nsCOMPtr<nsIMsgWindow> msgWindow(do_QueryReferent(mMsgWindowWeak));
-    nsCOMPtr<nsIMsgWindowCommands> windowCommands;
-    if (msgWindow &&
-        NS_SUCCEEDED(
-            msgWindow->GetWindowCommands(getter_AddRefs(windowCommands))) &&
-        windowCommands) {
-      windowCommands->ClearMsgPane();
-    }
-
-    // Since we are selecting a dummy row, we should also clear out
-    // m_currentlyDisplayedMsgUri.
-    m_currentlyDisplayedMsgUri.Truncate();
-    return NS_OK;
-  } else {
-    return nsMsgDBView::LoadMessageByViewIndex(aViewIndex);
-  }
 }
 
 NS_IMETHODIMP

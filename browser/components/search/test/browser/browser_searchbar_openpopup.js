@@ -34,41 +34,34 @@ let searchIcon;
 let goButton;
 let engine;
 
-add_task(async function setup() {
+add_setup(async function () {
   searchbar = await gCUITestUtils.addSearchBar();
   textbox = searchbar.textbox;
   searchIcon = searchbar.querySelector(".searchbar-search-button");
   goButton = searchbar.querySelector(".search-go-button");
 
-  let defaultEngine = await Services.search.getDefault();
-  engine = await SearchTestUtils.promiseNewSearchEngine(
-    getRootDirectory(gTestPath) + "testEngine.xml"
-  );
-  await Services.search.setDefault(engine);
+  engine = await SearchTestUtils.promiseNewSearchEngine({
+    url: getRootDirectory(gTestPath) + "testEngine.xml",
+    setAsDefault: true,
+  });
 
   await clearSearchbarHistory();
 
-  await new Promise((resolve, reject) => {
-    info("adding search history values: " + kValues);
-    let addOps = kValues.map(value => {
-      return { op: "add", fieldname: "searchbar-history", value };
-    });
-    searchbar.FormHistory.update(addOps, {
-      handleCompletion: resolve,
-      handleError: reject,
-    });
+  let addOps = kValues.map(value => {
+    return { op: "add", fieldname: "searchbar-history", value };
   });
+  info("adding search history values: " + kValues);
+  await FormHistory.update(addOps);
 
   registerCleanupFunction(async () => {
     await clearSearchbarHistory();
-    await Services.search.setDefault(defaultEngine);
     gCUITestUtils.removeSearchBar();
   });
 });
 
 // Adds a task that shouldn't show the search suggestions popup.
 function add_no_popup_task(task) {
-  add_task(async function() {
+  add_task(async function () {
     let sawPopup = false;
     function listener() {
       sawPopup = true;
@@ -85,7 +78,7 @@ function add_no_popup_task(task) {
 
 // Simulates the full set of events for a context click
 function context_click(target) {
-  for (let event of ["mousedown", "contextmenu", "mouseup"]) {
+  for (let event of ["mousedown", "contextmenu"]) {
     EventUtils.synthesizeMouseAtCenter(target, { type: event, button: 2 });
   }
 }
@@ -111,6 +104,11 @@ add_task(async function open_empty() {
 
   let promise = promiseEvent(searchPopup, "popupshown");
   info("Clicking icon");
+  is(
+    searchIcon.getAttribute("aria-expanded"),
+    "false",
+    "The search icon is not expanded by default"
+  );
   EventUtils.synthesizeMouseAtCenter(searchIcon, {});
   await promise;
   is(
@@ -118,12 +116,17 @@ add_task(async function open_empty() {
     "true",
     "Should only show the settings"
   );
+  is(
+    searchIcon.getAttribute("aria-expanded"),
+    "true",
+    "The search icon is now expanded"
+  );
   is(textbox.mController.searchString, "", "Should be an empty search string");
 
   let image = searchPopup.querySelector(".searchbar-engine-image");
   Assert.equal(
     image.src,
-    engine.getIconURLBySize(16, 16),
+    await engine.getIconURL(16),
     "Should have the correct icon"
   );
 
@@ -146,6 +149,11 @@ add_task(async function open_empty() {
     textbox.mController.searchString,
     "",
     "Should not have started to search for the new text"
+  );
+  is(
+    searchIcon.getAttribute("aria-expanded"),
+    "false",
+    "The search icon should not be expanded"
   );
 
   // Cancel the search if it started.
@@ -205,8 +213,9 @@ add_task(async function open_empty_hiddenOneOffs() {
   let engines = (await Services.search.getVisibleEngines()).filter(
     e => e.name != defaultEngine.name
   );
-  await SpecialPowers.pushPrefEnv({
-    set: [["browser.search.hiddenOneOffs", engines.map(e => e.name).join(",")]],
+
+  engines.forEach(e => {
+    e.hideOneOffButton = true;
   });
 
   textbox.value = "foo";
@@ -219,7 +228,7 @@ add_task(async function open_empty_hiddenOneOffs() {
     "The one-offs buttons container should have the hidden attribute."
   );
   Assert.ok(
-    BrowserTestUtils.is_hidden(searchPopup.searchOneOffsContainer),
+    BrowserTestUtils.isHidden(searchPopup.searchOneOffsContainer),
     "The one-off buttons container should be hidden."
   );
 
@@ -234,7 +243,9 @@ add_task(async function open_empty_hiddenOneOffs() {
   });
   await promise;
 
-  await SpecialPowers.popPrefEnv();
+  engines.forEach(e => {
+    e.hideOneOffButton = false;
+  });
   textbox.value = "";
 });
 
@@ -255,6 +266,13 @@ add_no_popup_task(async function right_click_doesnt_open_popup() {
   });
   context_click(textbox);
   let contextPopup = await promise;
+
+  // Assert that the context menu click inside the popup does nothing. If it
+  // opens something, assert_no_popup_task will make us fail. On macOS this
+  // doesn't work because of native context menus.
+  if (!navigator.platform.includes("Mac")) {
+    context_click(contextPopup);
+  }
 
   is(
     Services.focus.focusedElement,
@@ -797,5 +815,5 @@ add_task(async function cleanup() {
   let removeOps = kValues.map(value => {
     return { op: "remove", fieldname: "searchbar-history", value };
   });
-  searchbar.FormHistory.update(removeOps);
+  FormHistory.update(removeOps);
 });

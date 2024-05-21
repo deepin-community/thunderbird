@@ -7,8 +7,6 @@
 // Import modules
 //////////////////////////////////////////////////////////////
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 //////////////////////////////////////////////////////////////
 // Global variables
 //////////////////////////////////////////////////////////////
@@ -220,9 +218,7 @@ function add_datasource_to_other_panels(link) {
   debug("Current URL:  " +url);
   debug("Current link: " +link);
 
-  var uri = Cc['@mozilla.org/network/standard-url;1'].createInstance();
-  uri = uri.QueryInterface(Ci.nsIURI);
-  uri.spec = url;
+  var uri = Services.io.newURI(url);
   uri = uri.resolve(link);
 
   debug("New URL:      " +uri);

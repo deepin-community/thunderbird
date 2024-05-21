@@ -9,6 +9,7 @@
 
 #include "nsISupports.h"
 #include "nsURIHashKey.h"
+#include "nsTHashSet.h"
 #include "nsTObserverArray.h"
 
 class nsIURI;
@@ -17,6 +18,7 @@ class nsIWidget;
 namespace mozilla {
 
 namespace dom {
+class ContentParent;
 class Document;
 class Link;
 }  // namespace dom
@@ -32,6 +34,8 @@ class Link;
 class IHistory : public nsISupports {
  public:
   NS_DECLARE_STATIC_IID_ACCESSOR(IHISTORY_IID)
+
+  using ContentParentSet = nsTHashSet<RefPtr<dom::ContentParent>>;
 
   /**
    * Registers the Link for notifications about the visited-ness of aURI.
@@ -57,6 +61,15 @@ class IHistory : public nsISupports {
   virtual void RegisterVisitedCallback(nsIURI* aURI, dom::Link* aLink) = 0;
 
   /**
+   * Schedules a single visited query from a given child process.
+   *
+   * @param aURI the URI to query.
+   * @param ContentParent the process interested in knowing about the visited
+   *                      state of this URI.
+   */
+  virtual void ScheduleVisitedQuery(nsIURI* aURI, dom::ContentParent*) = 0;
+
+  /**
    * Unregisters a previously registered Link object.  This must be called
    * before destroying the registered object, and asserts when misused.
    *
@@ -79,8 +92,13 @@ class IHistory : public nsISupports {
   /**
    * Notifies about the visited status of a given URI. The visited status cannot
    * be unknown, otherwise there's no point in notifying of anything.
+   *
+   * @param ContentParentSet a set of content processes that are interested on
+   *                         this change. If null, it is broadcasted to all
+   *                         child processes.
    */
-  virtual void NotifyVisited(nsIURI*, VisitedStatus) = 0;
+  virtual void NotifyVisited(nsIURI*, VisitedStatus,
+                             const ContentParentSet* = nullptr) = 0;
 
   enum VisitFlags {
     /**
@@ -109,7 +127,13 @@ class IHistory : public nsISupports {
      * Note this differs from REDIRECT_PERMANENT because that one refers to how
      * we reached the URI, while this is used when the URI itself redirects.
      */
-    REDIRECT_SOURCE_PERMANENT = 1 << 5
+    REDIRECT_SOURCE_PERMANENT = 1 << 5,
+    /**
+     * If REDIRECT_SOURCE is set, this indicates that this is a special redirect
+     * caused by HSTS or HTTPS-Only/First upgrading to the HTTPS version of the
+     * URI.
+     */
+    REDIRECT_SOURCE_UPGRADED = 1 << 6
   };
 
   /**
@@ -125,9 +149,11 @@ class IHistory : public nsISupports {
    *        The URI of the last visit in the chain.
    * @param aFlags
    *        The VisitFlags describing this visit.
+   * @param aBrowserId
+   *        The id of browser used for this visit.
    */
   NS_IMETHOD VisitURI(nsIWidget* aWidget, nsIURI* aURI, nsIURI* aLastVisitedURI,
-                      uint32_t aFlags) = 0;
+                      uint32_t aFlags, uint64_t aBrowserId) = 0;
 
   /**
    * Set the title of the URI.

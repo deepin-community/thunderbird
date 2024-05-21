@@ -15,6 +15,10 @@ support-addons-type = 種類
 support-addons-enabled = 有効
 support-addons-version = バージョン
 support-addons-id = ID
+legacy-user-stylesheets-title = 従来のユーザースタイルシート
+legacy-user-stylesheets-enabled = 使用中
+legacy-user-stylesheets-stylesheet-types = スタイルシート
+legacy-user-stylesheets-no-stylesheets-found = スタイルシートが見つかりません
 security-software-title = セキュリティソフトウェア
 security-software-type = 種類
 security-software-name = 製品名
@@ -70,6 +74,13 @@ app-basics-location-service-key-google = Google Location Service キー
 app-basics-safebrowsing-key-google = Google Safebrowsing キー
 app-basics-key-mozilla = Mozilla Location Service キー
 app-basics-safe-mode = セーフモード
+app-basics-memory-size = メモリーサイズ (RAM)
+app-basics-disk-available = 空きディスク領域
+app-basics-pointing-devices = ポインティングデバイス
+# Variables:
+#   $value (number) - Amount of data being stored
+#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Finder に表示
@@ -99,11 +110,21 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = 決定ログ
 graphics-crash-guards-title = クラッシュガードが無効化した機能
 graphics-workarounds-title = 回避策
+graphics-device-pixel-ratios = ウィンドウデバイスのピクセル比
 # Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = ウィンドウプロトコル
 # Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = デスクトップ環境
 place-database-title = Places データベース
+place-database-stats = 統計
+place-database-stats-show = 統計を表示
+place-database-stats-hide = 統計を隠す
+place-database-stats-entity = 実体
+place-database-stats-count = カウント
+place-database-stats-size-kib = サイズ (KiB)
+place-database-stats-size-perc = サイズ (%)
+place-database-stats-efficiency-perc = 効率 (%)
+place-database-stats-sequentiality-perc = 連続性 (%)
 place-database-integrity = 完全性
 place-database-verify-integrity = 完全性を検証
 a11y-title = アクセシビリティ
@@ -149,9 +170,37 @@ media-device-format = 形式
 media-device-channels = チャンネル
 media-device-rate = レート
 media-device-latency = 遅延
-media-capabilities-title = メディア性能
+media-capabilities-title = メディア機能
+media-codec-support-info = コーデックサポート情報
 # List all the entries of the database.
 media-capabilities-enumerate = データベースを列挙
+
+## Codec support table
+
+media-codec-support-sw-decoding = ソフトウェアデコーディング
+media-codec-support-hw-decoding = ハードウェアデコーディング
+media-codec-support-codec-name = コーデック名
+media-codec-support-supported = 対応
+media-codec-support-unsupported = 未対応
+media-codec-support-error = コーデック対応情報が利用できません。メディアファイルの再生後に再度試してください。
+media-codec-support-lack-of-extension = 拡張機能をインストール
+
+## Media Content Decryption Modules (CDM)
+## See EME Spec for more explanation for following technical terms
+## https://w3c.github.io/encrypted-media/
+
+media-content-decryption-modules-title = コンテンツ復号モジュール (CDM) 情報
+media-key-system-name = 鍵システム名
+media-video-robustness = 動画の頑強性
+media-audio-robustness = 音声の頑強性
+media-cdm-capabilities = 機能
+# Clear Lead isn't defined in the spec, which means the the first few seconds
+# are not encrypted. It allows playback to start without having to wait for
+# license response, improving video start time and user experience.
+media-cdm-clear-lead = 平文リード
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = HDCP 2.2 互換
 
 ##
 
@@ -211,6 +260,7 @@ try-newer-driver = グラフィックドライバーのバージョンが対応�
 # there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType パラメーター
 compositing = 画像処理
+support-font-determination = フォント表示のデバッグ情報
 hardware-h264 = ハードウェア H264 デコード
 main-thread-no-omtc = メインスレッド、OMTC なし
 yes = はい
@@ -246,6 +296,8 @@ webgl2-renderer = WebGL 2 ドライバーのレンダラー
 webgl2-version = WebGL 2 ドライバーのバージョン
 webgl2-driver-extensions = WebGL 2 ドライバーの拡張
 webgl2-extensions = WebGL 2 拡張
+webgpu-default-adapter = WebGPU の既定のアダプター
+webgpu-fallback-adapter = WebGPU のフォールバックアダプター
 # Variables
 #   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = 既知の問題によりブロックリストに追加: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
@@ -275,6 +327,7 @@ can-sandbox-media = メディアプラグインのサンドボックス化
 content-sandbox-level = コンテンツプロセスのサンドボックスレベル
 effective-content-sandbox-level = 効果的なコンテンツプロセスのサンドボックスレベル
 content-win32k-lockdown-state = コンテンツプロセスの Win32k ロックダウン状態
+support-sandbox-gpu-level = GPU プロセスのサンドボックスレベル
 sandbox-proc-type-content = コンテンツ
 sandbox-proc-type-file = ファイルコンテンツ
 sandbox-proc-type-media-plugin = メディアプラグイン
@@ -300,7 +353,7 @@ fission-status-experiment-control = 実験のため無効
 fission-status-experiment-treatment = 実験のため有効
 fission-status-disabled-by-e10s-env = 動作環境により無効
 fission-status-enabled-by-env = 動作環境により有効
-fission-status-disabled-by-safe-mode = セーフモードのため無効
+fission-status-disabled-by-env = 動作環境により無効
 fission-status-enabled-by-default = 既定で有効
 fission-status-disabled-by-default = 既定で無効
 fission-status-enabled-by-user-pref = ユーザーにより有効
@@ -324,8 +377,8 @@ touch-warning = 非同期タッチ入力は未サポートの設定により無�
 
 ## Strings representing the status of the Enterprise Policies engine.
 
-policies-inactive = 非アクティブ
-policies-active = アクティブ
+policies-inactive = 未使用
+policies-active = 使用中
 policies-error = エラー
 
 ## Printing section
@@ -346,3 +399,10 @@ support-remote-experiments-see-about-studies = 各実験を無効にする方法
 support-remote-features-title = リモート機能
 support-remote-features-name = 機能名
 support-remote-features-status = 状態
+
+## Pointing devices
+
+pointing-device-mouse = マウス
+pointing-device-touchscreen = タッチスクリーン
+pointing-device-pen-digitizer = デジタイザーペン
+pointing-device-none = ポインティングデバイスなし

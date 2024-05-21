@@ -14,6 +14,7 @@
 #include "mozilla/PresShell.h"
 #include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/WritingModes.h"
+#include "nsLayoutUtils.h"
 #include "nsLineLayout.h"
 #include "nsPresContext.h"
 #include "nsContainerFrameInlines.h"
@@ -42,14 +43,6 @@ nsContainerFrame* NS_NewRubyFrame(PresShell* aPresShell,
 
 // nsRubyFrame Method Implementations
 // ==================================
-
-/* virtual */
-bool nsRubyFrame::IsFrameOfType(uint32_t aFlags) const {
-  if (aFlags & eBidiInlineContainer) {
-    return false;
-  }
-  return nsInlineFrame::IsFrameOfType(aFlags);
-}
 
 #ifdef DEBUG_FRAME_DUMP
 nsresult nsRubyFrame::GetFrameName(nsAString& aResult) const {
@@ -85,7 +78,7 @@ void nsRubyFrame::AddInlinePrefISize(gfxContext* aRenderingContext,
 static nsRubyBaseContainerFrame* FindRubyBaseContainerAncestor(
     nsIFrame* aFrame) {
   for (nsIFrame* ancestor = aFrame->GetParent();
-       ancestor && ancestor->IsFrameOfType(nsIFrame::eLineParticipant);
+       ancestor && ancestor->IsLineParticipant();
        ancestor = ancestor->GetParent()) {
     if (ancestor->IsRubyBaseContainerFrame()) {
       return static_cast<nsRubyBaseContainerFrame*>(ancestor);
@@ -253,15 +246,15 @@ void nsRubyFrame::ReflowSegment(nsPresContext* aPresContext,
       PushChildrenToOverflow(lastChild->GetNextSibling(), lastChild);
       aReflowInput.mLineLayout->SetDirtyNextLine();
     }
-  } else {
+  } else if (rtcCount) {
+    DestroyContext context(PresShell());
     // If the ruby base container is reflowed completely, the line
     // layout will remove the next-in-flows of that frame. But the
     // line layout is not aware of the ruby text containers, hence
     // it is necessary to remove them here.
     for (uint32_t i = 0; i < rtcCount; i++) {
-      nsIFrame* nextRTC = textContainers[i]->GetNextInFlow();
-      if (nextRTC) {
-        nextRTC->GetParent()->DeleteNextInFlowChild(nextRTC, true);
+      if (nsIFrame* nextRTC = textContainers[i]->GetNextInFlow()) {
+        nextRTC->GetParent()->DeleteNextInFlowChild(context, nextRTC, true);
       }
     }
   }

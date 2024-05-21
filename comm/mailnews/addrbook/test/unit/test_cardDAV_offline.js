@@ -9,9 +9,8 @@
 // Note that we close the server rather than using Services.io.offline, as
 // the server is localhost and therefore not affected by the offline setting.
 
-var { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-var { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+var { setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
 );
 
 var directory, restart, useSyncV1;
@@ -28,7 +27,7 @@ async function subtest() {
     "BEGIN:VCARD\r\nUID:delete-me\r\nFN:Please delete me.\r\nEND:VCARD\r\n"
   );
 
-  directory = initDirectory();
+  directory = await initDirectory();
 
   info("Initial sync with server.");
   await directory.fetchAllFromServer();
@@ -97,7 +96,7 @@ async function subtestCreateCard() {
   await CardDAVServer.close();
 
   let contactPromise = TestUtils.topicObserved("addrbook-contact-created");
-  let syncFailedPromise = promiseSyncFailed();
+  const syncFailedPromise = promiseSyncFailed();
   let newCard = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
     Ci.nsIAbCard
   );
@@ -133,10 +132,10 @@ async function subtestCreateCard() {
   );
 
   contactPromise = TestUtils.topicObserved("addrbook-contact-updated");
-  let syncSucceededPromise = promiseSyncSucceeded();
+  const syncSucceededPromise = promiseSyncSucceeded();
   await directory.syncWithServer();
   await syncSucceededPromise;
-  let [notificationCard] = await contactPromise;
+  const [notificationCard] = await contactPromise;
   notificationCard.QueryInterface(Ci.nsIAbCard);
   Assert.equal(
     notificationCard.UID,
@@ -154,9 +153,9 @@ async function subtestCreateCard() {
     "68",
     "card should have been given _etag property"
   );
-  Assert.equal(
+  vCardEqual(
     notificationCard.getProperty("_vCard", "WRONG"),
-    "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
+    "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
     "card should have been given _vCard property"
   );
 
@@ -177,7 +176,7 @@ async function subtestCreateCard() {
       etag: "68",
       href: `${CardDAVServer.path}a-new-card.vcf`,
       vCard:
-        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
+        "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
     },
   });
 }
@@ -195,7 +194,7 @@ async function subtestUpdateCard() {
   await CardDAVServer.close();
 
   let contactPromise = TestUtils.topicObserved("addrbook-contact-updated");
-  let syncFailedPromise = promiseSyncFailed();
+  const syncFailedPromise = promiseSyncFailed();
   let cardToChange = directory.childCards.find(c => c.UID == "change-me");
   cardToChange.displayName = "I'm a new man!";
   cardToChange = directory.modifyCard(cardToChange);
@@ -224,10 +223,10 @@ async function subtestUpdateCard() {
   );
 
   contactPromise = TestUtils.topicObserved("addrbook-contact-updated");
-  let syncSucceededPromise = promiseSyncSucceeded();
+  const syncSucceededPromise = promiseSyncSucceeded();
   await directory.syncWithServer();
   await syncSucceededPromise;
-  let [notificationCard] = await contactPromise;
+  const [notificationCard] = await contactPromise;
   notificationCard.QueryInterface(Ci.nsIAbCard);
   Assert.equal(
     notificationCard.UID,
@@ -245,7 +244,7 @@ async function subtestUpdateCard() {
     "58",
     "card _etag property did change"
   );
-  Assert.equal(
+  vCardEqual(
     notificationCard.getProperty("_vCard", "WRONG"),
     "BEGIN:VCARD\r\nUID:change-me\r\nFN:I'm a new man!\r\nEND:VCARD\r\n",
     "card _vCard property did change"
@@ -268,7 +267,7 @@ async function subtestUpdateCard() {
       etag: "68",
       href: `${CardDAVServer.path}a-new-card.vcf`,
       vCard:
-        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
+        "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
     },
   });
 }
@@ -285,9 +284,9 @@ async function subtestDeleteCard() {
   info("Going offline, deleting a card.");
   await CardDAVServer.close();
 
-  let contactPromise = TestUtils.topicObserved("addrbook-contact-deleted");
-  let syncFailedPromise = promiseSyncFailed();
-  let cardToDelete = directory.childCards.find(c => c.UID == "delete-me");
+  const contactPromise = TestUtils.topicObserved("addrbook-contact-deleted");
+  const syncFailedPromise = promiseSyncFailed();
+  const cardToDelete = directory.childCards.find(c => c.UID == "delete-me");
   directory.deleteCards([cardToDelete]);
   await contactPromise;
   await syncFailedPromise;
@@ -317,7 +316,7 @@ async function subtestDeleteCard() {
     "card should NOT have been removed on server before syncing"
   );
 
-  let syncSucceededPromise = promiseSyncSucceeded();
+  const syncSucceededPromise = promiseSyncSucceeded();
   await directory.syncWithServer();
   await syncSucceededPromise;
 
@@ -332,7 +331,7 @@ async function subtestDeleteCard() {
       etag: "68",
       href: `${CardDAVServer.path}a-new-card.vcf`,
       vCard:
-        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
+        "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
     },
   });
 }
@@ -350,7 +349,7 @@ async function subtestCreateDeleteCard() {
   await CardDAVServer.close();
 
   let contactPromise = TestUtils.topicObserved("addrbook-contact-created");
-  let syncFailedPromise = promiseSyncFailed();
+  const syncFailedPromise = promiseSyncFailed();
   let newCard = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
     Ci.nsIAbCard
   );
@@ -405,7 +404,7 @@ async function subtestCreateDeleteCard() {
   await pretendToRestart(directory);
   CardDAVServer.reopen();
 
-  let syncSucceededPromise = promiseSyncSucceeded();
+  const syncSucceededPromise = promiseSyncSucceeded();
   await directory.syncWithServer();
   await syncSucceededPromise;
 
@@ -420,7 +419,7 @@ async function subtestCreateDeleteCard() {
       etag: "68",
       href: `${CardDAVServer.path}a-new-card.vcf`,
       vCard:
-        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
+        "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:A New Card\r\nUID:a-new-card\r\nEND:VCARD\r\n",
     },
   });
 }
@@ -471,7 +470,7 @@ async function subtestStillOffline() {
   );
 
   info("Still offline, deleting a card.");
-  let cardToDelete = directory.childCards.find(c => c.UID == "a-new-card");
+  const cardToDelete = directory.childCards.find(c => c.UID == "a-new-card");
   contactPromise = TestUtils.topicObserved("addrbook-contact-deleted");
   syncFailedPromise = promiseSyncFailed();
   directory.deleteCards([cardToDelete]);
@@ -506,7 +505,7 @@ async function subtestStillOffline() {
   await pretendToRestart(directory);
   CardDAVServer.reopen();
 
-  let syncSucceededPromise = promiseSyncSucceeded();
+  const syncSucceededPromise = promiseSyncSucceeded();
   await directory.syncWithServer();
   await syncSucceededPromise;
 
@@ -521,7 +520,7 @@ async function subtestStillOffline() {
       etag: "80",
       href: `${CardDAVServer.path}another-new-card.vcf`,
       vCard:
-        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Another New Card\r\nUID:another-new-card\r\nEND:VCARD\r\n",
+        "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Another New Card\r\nUID:another-new-card\r\nEND:VCARD\r\n",
     },
   });
 }

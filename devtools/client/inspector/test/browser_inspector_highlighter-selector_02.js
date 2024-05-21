@@ -40,12 +40,8 @@ const TEST_DATA = [
 
 requestLongerTimeout(5);
 
-add_task(async function() {
-  const { inspector, highlighterTestFront } = await openInspectorForURL(
-    TEST_URL
-  );
-  const front = inspector.inspectorFront;
-  const highlighter = await front.getHighlighterByType("SelectorHighlighter");
+add_task(async function () {
+  const { inspector } = await openInspectorForURL(TEST_URL);
 
   for (const { inIframe, selector, containerCount } of TEST_DATA) {
     info(
@@ -63,16 +59,26 @@ add_task(async function() {
       contextNode = await getNodeFront("body", inspector);
     }
 
+    const inspectorFront = await contextNode.targetFront.getFront("inspector");
+    const highlighter = await inspectorFront.getHighlighterByType(
+      "SelectorHighlighter"
+    );
+    const highlighterTestFront = await getHighlighterTestFront(
+      inspector.toolbox,
+      {
+        target: contextNode.targetFront,
+      }
+    );
+
     await highlighter.show(contextNode, { selector });
 
     const nb = await highlighterTestFront.getSelectorHighlighterBoxNb(
       highlighter.actorID
     );
-    ok(nb !== null, "The number of highlighters was retrieved");
+    Assert.notStrictEqual(nb, null, "The number of highlighters was retrieved");
 
     is(nb, containerCount, "The correct number of highlighers were created");
     await highlighter.hide();
+    await highlighter.finalize();
   }
-
-  await highlighter.finalize();
 });

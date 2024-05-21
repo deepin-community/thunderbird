@@ -49,7 +49,7 @@ let fooExperimentFiles = {
   /* globals ExtensionAPI */
   "parent.js": () => {
     this.foo = class extends ExtensionAPI {
-      getAPI(context) {
+      getAPI() {
         return {
           experiments: {
             foo: {
@@ -65,7 +65,7 @@ let fooExperimentFiles = {
 
   "child.js": () => {
     this.foo = class extends ExtensionAPI {
-      getAPI(context) {
+      getAPI() {
         return {
           experiments: {
             foo: {
@@ -134,7 +134,9 @@ add_task(async function test_browseraction_with_experiment() {
     isPrivileged: true,
 
     manifest: {
-      browser_action: {},
+      browser_action: {
+        default_area: "navbar",
+      },
 
       experiment_apis: fooExperimentAPIs,
     },

@@ -2,11 +2,8 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-const { MessageManagerProxy } = ChromeUtils.import(
-  "resource://gre/modules/MessageManagerProxy.jsm"
-);
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { MessageManagerProxy } = ChromeUtils.importESModule(
+  "resource://gre/modules/MessageManagerProxy.sys.mjs"
 );
 
 class TestMessageManagerProxy extends MessageManagerProxy {
@@ -39,7 +36,7 @@ class TestMessageManagerProxy extends MessageManagerProxy {
 
   async testPingPong(description) {
     equal(this.deferred, null, "should not be waiting for a message");
-    this.deferred = PromiseUtils.defer();
+    this.deferred = Promise.withResolvers();
     this.sendAsyncMessage("test:MessageManagerProxy:Ping", description);
     let result = await this.deferred.promise;
     equal(result, `${this.identifier}:${description}`, "Expected ping-pong");

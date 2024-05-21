@@ -8,39 +8,31 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  open_compose_with_reply_to_list,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var {
-  assert_selected_and_displayed,
-  be_in_folder,
-  mc,
-  select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
+var { close_compose_window, open_compose_with_reply_to_list } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
+var { assert_selected_and_displayed, be_in_folder, select_click_row } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var testFolder = null;
-var msgHdr = null;
 var replyToListWindow = null;
 
 var identityString1 = "tinderbox_correct_identity@foo.invalid";
 
-add_task(function setupModule(module) {
+add_setup(function () {
   addIdentitiesAndFolder();
   addMessageToFolder(testFolder);
 });
 
 function addMessageToFolder(aFolder) {
-  var msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  var msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   var source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -76,37 +68,37 @@ function addMessageToFolder(aFolder) {
 }
 
 function addIdentitiesAndFolder() {
-  let identity2 = MailServices.accounts.createIdentity();
+  const identity2 = MailServices.accounts.createIdentity();
   // identity.fullName = "Tinderbox_Identity1";
   identity2.email = "tinderbox_identity1@foo.invalid";
 
-  let identity = MailServices.accounts.createIdentity();
+  const identity = MailServices.accounts.createIdentity();
   // identity.fullName = "Tinderbox_Identity1";
   identity.email = identityString1;
 
-  let server = MailServices.accounts.createIncomingServer(
+  const server = MailServices.accounts.createIncomingServer(
     "nobody",
     "Test Local Folders",
     "pop3"
   );
-  let localRoot = server.rootFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
+  const localRoot = server.rootFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
   testFolder = localRoot.createLocalSubfolder("Test Folder");
 
-  let account = MailServices.accounts.createAccount();
+  const account = MailServices.accounts.createAccount();
   account.incomingServer = server;
   account.addIdentity(identity);
   account.addIdentity(identity2);
 }
 
-add_task(function test_Reply_To_List_From_Address() {
-  be_in_folder(testFolder);
+add_task(async function test_Reply_To_List_From_Address() {
+  await be_in_folder(testFolder);
 
-  let curMessage = select_click_row(0);
-  assert_selected_and_displayed(mc, curMessage);
+  const curMessage = await select_click_row(0);
+  await assert_selected_and_displayed(window, curMessage);
 
-  replyToListWindow = open_compose_with_reply_to_list();
+  replyToListWindow = await open_compose_with_reply_to_list();
 
-  var identityList = replyToListWindow.e("msgIdentity");
+  var identityList = replyToListWindow.document.getElementById("msgIdentity");
 
   // see if it's the correct identity selected
   if (!identityList.selectedItem.label.includes(identityString1)) {
@@ -118,7 +110,7 @@ add_task(function test_Reply_To_List_From_Address() {
     );
   }
 
-  close_compose_window(replyToListWindow);
+  await close_compose_window(replyToListWindow);
 
   Assert.report(
     false,

@@ -10,12 +10,11 @@
 #include "mozilla/css/GroupRule.h"
 #include "mozilla/ServoBindingTypes.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class CSSMediaRule final : public css::ConditionRule {
  public:
-  CSSMediaRule(RefPtr<RawServoMediaRule> aRawRule, StyleSheet* aSheet,
+  CSSMediaRule(RefPtr<StyleMediaRule> aRawRule, StyleSheet* aSheet,
                css::Rule* aParentRule, uint32_t aLine, uint32_t aColumn);
 
   NS_DECL_ISUPPORTS_INHERITED
@@ -27,15 +26,16 @@ class CSSMediaRule final : public css::ConditionRule {
   void List(FILE* out = stdout, int32_t aIndent = 0) const final;
 #endif
 
-  RawServoMediaRule* Raw() const { return mRawRule; }
+  StyleMediaRule* Raw() const { return mRawRule; }
+  void SetRawAfterClone(RefPtr<StyleMediaRule>);
+  already_AddRefed<StyleLockedCssRules> GetOrCreateRawRules() final;
+  bool IsCCLeaf() const override;
 
   // WebIDL interface
-  uint16_t Type() const override { return CSSRule_Binding::MEDIA_RULE; }
+  StyleCssRuleType Type() const override;
   // WebIDL interface
   void GetCssText(nsACString& aCssText) const final;
   void GetConditionText(nsACString& aConditionText) final;
-  void SetConditionText(const nsACString& aConditionText,
-                        ErrorResult& aRv) final;
   dom::MediaList* Media();
 
   size_t SizeOfIncludingThis(MallocSizeOf) const override;
@@ -46,11 +46,10 @@ class CSSMediaRule final : public css::ConditionRule {
  private:
   virtual ~CSSMediaRule();
 
-  RefPtr<RawServoMediaRule> mRawRule;
+  RefPtr<StyleMediaRule> mRawRule;
   RefPtr<dom::MediaList> mMediaList;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_CSSMediaRule_h

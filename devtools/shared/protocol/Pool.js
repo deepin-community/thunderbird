@@ -4,7 +4,7 @@
 
 "use strict";
 
-var EventEmitter = require("devtools/shared/event-emitter");
+var EventEmitter = require("resource://devtools/shared/event-emitter.js");
 
 /**
  * Actor and Front implementations
@@ -94,10 +94,11 @@ class Pool extends EventEmitter {
       // look at devtools/server/tests/xpcshell/test_addon_reload.js
 
       const parent = actor.getParent();
-      if (parent) {
+      if (parent && parent !== this) {
         parent.unmanage(actor);
       }
     }
+
     this._poolMap.set(actor.actorID, actor);
     actor.parentPool = this;
   }
@@ -211,7 +212,12 @@ class Pool extends EventEmitter {
         actor.destroy = destroy;
       }
     }
-    this.conn.removeActorPool(this);
+
+    // `conn` might be null for LazyPool in an unexplained way.
+    if (this.conn) {
+      this.conn.removeActorPool(this);
+      this.conn = null;
+    }
   }
 }
 

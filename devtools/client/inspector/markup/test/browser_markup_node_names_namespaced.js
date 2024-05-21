@@ -22,7 +22,7 @@ const XHTML = `
 
 const TEST_URI = "data:application/xhtml+xml;charset=utf-8," + encodeURI(XHTML);
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URI);
 
   // Get and open the svg element to show its children.
@@ -35,8 +35,9 @@ add_task(async function() {
     inspector
   );
   info("Checking the clipPath element");
-  ok(
-    clipPathContainer.editor.tag.textContent === "svg:clipPath",
+  Assert.strictEqual(
+    clipPathContainer.editor.tag.textContent,
+    "svg:clipPath",
     "svg:clipPath node is correctly displayed"
   );
 
@@ -45,8 +46,9 @@ add_task(async function() {
     inspector
   );
   info("Checking the circle element");
-  ok(
-    circlePathContainer.editor.tag.textContent === "svg:circle",
+  Assert.strictEqual(
+    circlePathContainer.editor.tag.textContent,
+    "svg:circle",
     "svg:circle node is correctly displayed"
   );
 });

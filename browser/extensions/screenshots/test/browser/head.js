@@ -1,12 +1,5 @@
 "use strict";
 
-const { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
-);
-const { ContentTaskUtils } = ChromeUtils.import(
-  "resource://testing-common/ContentTaskUtils.jsm"
-);
-
 const TEST_ROOT = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
   "http://example.com"
@@ -19,6 +12,7 @@ const gScreenshotUISelectors = {
   visiblePageButton: "button.visible",
   previewIframe: "#firefox-screenshots-preview-iframe",
   copyButton: "button.highlight-button-copy",
+  downloadButton: "button.highlight-button-download",
 };
 
 class ScreenshotsHelper {
@@ -34,7 +28,7 @@ class ScreenshotsHelper {
   async triggerUIFromToolbar() {
     let button = this.toolbarButton;
     ok(
-      BrowserTestUtils.is_visible(button),
+      BrowserTestUtils.isVisible(button),
       "The screenshot toolbar button is visible"
     );
     EventUtils.synthesizeMouseAtCenter(button, {});
@@ -49,23 +43,23 @@ class ScreenshotsHelper {
     await SpecialPowers.spawn(
       this.browser,
       [iframeSel, elemSel],
-      async function(iframeSelector, elemSelector) {
+      async function (iframeSelector, elemSelector) {
         info(
           `in waitForUIContent content function, iframeSelector: ${iframeSelector}, elemSelector: ${elemSelector}`
         );
         let iframe;
         await ContentTaskUtils.waitForCondition(() => {
           iframe = content.document.querySelector(iframeSelector);
-          if (!iframe || !ContentTaskUtils.is_visible(iframe)) {
+          if (!iframe || !ContentTaskUtils.isVisible(iframe)) {
             info("in waitForUIContent, no visible iframe yet");
             return false;
           }
           let elem = iframe.contentDocument.querySelector(elemSelector);
           info(
             "in waitForUIContent, got visible elem: " +
-              (elem && ContentTaskUtils.is_visible(elem))
+              (elem && ContentTaskUtils.isVisible(elem))
           );
-          return elem && ContentTaskUtils.is_visible(elem);
+          return elem && ContentTaskUtils.isVisible(elem);
         });
         // wait a frame for the screenshots UI to finish any init
         await new content.Promise(res => content.requestAnimationFrame(res));
@@ -77,7 +71,7 @@ class ScreenshotsHelper {
     await SpecialPowers.spawn(
       this.browser,
       [iframeSel, elemSel],
-      async function(iframeSelector, elemSelector) {
+      async function (iframeSelector, elemSelector) {
         info(
           `in clickScreenshotsUIElement content function, iframeSelector: ${iframeSelector}, elemSelector: ${elemSelector}`
         );
@@ -99,7 +93,7 @@ class ScreenshotsHelper {
   }
 
   getContentDimensions() {
-    return SpecialPowers.spawn(this.browser, [], async function() {
+    return SpecialPowers.spawn(this.browser, [], async function () {
       let doc = content.document;
       let rect = doc.documentElement.getBoundingClientRect();
       return {
@@ -137,7 +131,11 @@ function getRawClipboardData(flavor) {
   );
   xferable.init(null);
   xferable.addDataFlavor(flavor);
-  Services.clipboard.getData(xferable, whichClipboard);
+  Services.clipboard.getData(
+    xferable,
+    whichClipboard,
+    SpecialPowers.wrap(window).browsingContext.currentWindowContext
+  );
   let data = {};
   try {
     xferable.getTransferData(flavor, data);
@@ -186,7 +184,7 @@ async function getImageSizeFromClipboard(browser) {
   // We are going to load the image in the content page to measure its size.
   // We don't want to insert the image directly in the browser's document
   // which could mess all sorts of things up
-  return SpecialPowers.spawn(browser, [buffer], async function(_buffer) {
+  return SpecialPowers.spawn(browser, [buffer], async function (_buffer) {
     const img = content.document.createElement("img");
     const loaded = new Promise(r => {
       img.addEventListener("load", r, { once: true });
@@ -213,7 +211,7 @@ async function getImageSizeFromClipboard(browser) {
   });
 }
 
-add_task(async function common_initialize() {
+add_setup(async function common_initialize() {
   // Ensure Screenshots is initially enabled for all tests
   const addon = await AddonManager.getAddonByID("screenshots@mozilla.org");
   const isEnabled = addon.enabled;

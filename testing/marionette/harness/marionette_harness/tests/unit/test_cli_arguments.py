@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import copy
 
 import requests
@@ -19,7 +17,7 @@ class TestCommandLineArguments(MarionetteTestCase):
 
     def tearDown(self):
         self.marionette.instance.app_args = self.orig_arguments
-        self.marionette.quit(clean=True)
+        self.marionette.quit(in_app=False, clean=True)
 
         super(TestCommandLineArguments, self).tearDown()
 
@@ -30,49 +28,65 @@ class TestCommandLineArguments(MarionetteTestCase):
         )
         self.assertIsNone(debugger_address)
 
-        # With BiDi only enabled the capability doesn't have to be returned
-        self.marionette.enforce_gecko_prefs({"remote.active-protocols": 1})
-        try:
-            self.marionette.quit()
-            self.marionette.instance.app_args.append("-remote-debugging-port")
-            self.marionette.start_session()
-
-            debugger_address = self.marionette.session_capabilities.get(
-                "moz:debuggerAddress"
-            )
-            self.assertIsNone(debugger_address)
-        finally:
-            self.marionette.clear_pref("remote.active-protocols")
-            self.marionette.restart()
-
-        # With all protocols enabled the capability has to be returned
+        # With BiDi only enabled the capability shouldn't be returned
+        self.marionette.set_pref("remote.active-protocols", 1)
         self.marionette.quit()
-        self.marionette.instance.switch_profile()
+
+        self.marionette.instance.app_args.append("-remote-debugging-port")
         self.marionette.start_session()
 
         debugger_address = self.marionette.session_capabilities.get(
             "moz:debuggerAddress"
         )
+        self.assertIsNone(debugger_address)
 
-        self.assertEqual(debugger_address, "localhost:9222")
+        # Clean the profile so that the preference is definetely reset.
+        self.marionette.quit(in_app=False, clean=True)
+
+        # With all protocols enabled again the capability has to be returned
+        self.marionette.start_session()
+        debugger_address = self.marionette.session_capabilities.get(
+            "moz:debuggerAddress"
+        )
+
+        self.assertEqual(debugger_address, "127.0.0.1:9222")
         result = requests.get(url="http://{}/json/version".format(debugger_address))
         self.assertTrue(result.ok)
 
-    def test_start_in_safe_mode(self):
-        self.marionette.instance.app_args.append("-safe-mode")
+    def test_websocket_url(self):
+        # By default Remote Agent is not enabled
+        self.assertNotIn("webSocketUrl", self.marionette.session_capabilities)
+
+        # With CDP only enabled the capability is still not returned
+        self.marionette.set_pref("remote.active-protocols", 2)
 
         self.marionette.quit()
-        self.marionette.start_session()
+        self.marionette.instance.app_args.append("-remote-debugging-port")
+        self.marionette.start_session({"webSocketUrl": True})
 
-        with self.marionette.using_context("chrome"):
-            safe_mode = self.marionette.execute_script(
-                """
-              Cu.import("resource://gre/modules/Services.jsm");
+        self.assertNotIn("webSocketUrl", self.marionette.session_capabilities)
 
-              return Services.appinfo.inSafeMode;
-            """
-            )
-            self.assertTrue(safe_mode, "Safe Mode has not been enabled")
+        # Clean the profile so that the preference is definetely reset.
+        self.marionette.quit(in_app=False, clean=True)
+
+        # With all protocols enabled again the capability has to be returned
+        self.marionette.start_session({"webSocketUrl": True})
+
+        session_id = self.marionette.session_id
+        websocket_url = self.marionette.session_capabilities.get("webSocketUrl")
+
+        self.assertEqual(
+            websocket_url, "ws://127.0.0.1:9222/session/{}".format(session_id)
+        )
+
+    # An issue in the command line argument handling lead to open Firefox on
+    # random URLs when remote-debugging-port is set to an explicit value, on macos.
+    # See Bug 1724251.
+    def test_start_page_about_blank(self):
+        self.marionette.quit()
+        self.marionette.instance.app_args.append("-remote-debugging-port=0")
+        self.marionette.start_session({"webSocketUrl": True})
+        self.assertEqual(self.marionette.get_url(), "about:blank")
 
     def test_startup_timeout(self):
         try:

@@ -10,14 +10,13 @@
 #include <functional>
 #include <stdint.h>
 #include "mozilla/dom/quota/CommonMetadata.h"
+#include "mozilla/dom/quota/PersistenceType.h"
 #include "nsCOMPtr.h"
 #include "nsIFile.h"
 #include "nsIInputStream.h"
 #include "nsString.h"
 
-namespace mozilla {
-namespace dom {
-namespace cache {
+namespace mozilla::dom::cache {
 
 enum Namespace {
   DEFAULT_NAMESPACE,
@@ -26,14 +25,28 @@ enum Namespace {
 };
 static const Namespace INVALID_NAMESPACE = NUMBER_OF_NAMESPACES;
 
-typedef int64_t CacheId;
+using CacheId = int64_t;
 static const CacheId INVALID_CACHE_ID = -1;
 
-// XXX Rename to OriginMetadata.
-// XXX Consider inheritance from ClientMetadata.
-struct QuotaInfo : quota::OriginMetadata {
+struct CacheDirectoryMetadata : quota::ClientMetadata {
   nsCOMPtr<nsIFile> mDir;
   int64_t mDirectoryLockId = -1;
+
+  explicit CacheDirectoryMetadata(
+      const quota::PrincipalMetadata& aPrincipalMetadata)
+      : quota::ClientMetadata(
+            quota::OriginMetadata{aPrincipalMetadata,
+                                  aPrincipalMetadata.mIsPrivate
+                                      ? quota::PERSISTENCE_TYPE_PRIVATE
+                                      : quota::PERSISTENCE_TYPE_DEFAULT},
+            quota::Client::Type::DOMCACHE) {}
+
+  explicit CacheDirectoryMetadata(quota::OriginMetadata aOriginMetadata)
+      : quota::ClientMetadata(std::move(aOriginMetadata),
+                              quota::Client::Type::DOMCACHE) {
+    MOZ_DIAGNOSTIC_ASSERT(mPersistenceType == quota::PERSISTENCE_TYPE_DEFAULT ||
+                          mPersistenceType == quota::PERSISTENCE_TYPE_PRIVATE);
+  }
 };
 
 struct DeletionInfo {
@@ -41,12 +54,10 @@ struct DeletionInfo {
   int64_t mDeletedPaddingSize = 0;
 };
 
-typedef std::function<void(nsCOMPtr<nsIInputStream>&&)> InputStreamResolver;
+using InputStreamResolver = std::function<void(nsCOMPtr<nsIInputStream>&&)>;
 
 enum class OpenMode : uint8_t { Eager, Lazy, NumTypes };
 
-}  // namespace cache
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom::cache
 
 #endif  // mozilla_dom_cache_Types_h

@@ -8,6 +8,7 @@
 
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/InputTaskManager.h"
+#include "mozilla/Preferences.h"
 #include "mozilla/dom/BrowsingContextBinding.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/ContentChild.h"
@@ -18,8 +19,11 @@
 #include "nsFocusManager.h"
 #include "nsTHashMap.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
+
+// Maximum number of successive dialogs before we prompt users to disable
+// dialogs for this window.
+#define MAX_SUCCESSIVE_DIALOG_COUNT 5
 
 static StaticRefPtr<BrowsingContextGroup> sChromeGroup;
 
@@ -46,8 +50,59 @@ already_AddRefed<BrowsingContextGroup> BrowsingContextGroup::GetExisting(
   return nullptr;
 }
 
-already_AddRefed<BrowsingContextGroup> BrowsingContextGroup::Create() {
-  return GetOrCreate(nsContentUtils::GenerateBrowsingContextId());
+// Only use 53 bits for the BrowsingContextGroup ID.
+static constexpr uint64_t kBrowsingContextGroupIdTotalBits = 53;
+static constexpr uint64_t kBrowsingContextGroupIdProcessBits = 22;
+static constexpr uint64_t kBrowsingContextGroupIdFlagBits = 1;
+static constexpr uint64_t kBrowsingContextGroupIdBits =
+    kBrowsingContextGroupIdTotalBits - kBrowsingContextGroupIdProcessBits -
+    kBrowsingContextGroupIdFlagBits;
+
+// IDs for the relevant flags
+static constexpr uint64_t kPotentiallyCrossOriginIsolatedFlag = 0x1;
+
+// The next ID value which will be used.
+static uint64_t sNextBrowsingContextGroupId = 1;
+
+// Generate the next ID with the given flags.
+static uint64_t GenerateBrowsingContextGroupId(uint64_t aFlags) {
+  MOZ_RELEASE_ASSERT(aFlags < (uint64_t(1) << kBrowsingContextGroupIdFlagBits));
+  uint64_t childId = XRE_IsContentProcess()
+                         ? ContentChild::GetSingleton()->GetID()
+                         : uint64_t(0);
+  MOZ_RELEASE_ASSERT(childId <
+                     (uint64_t(1) << kBrowsingContextGroupIdProcessBits));
+  uint64_t id = sNextBrowsingContextGroupId++;
+  MOZ_RELEASE_ASSERT(id < (uint64_t(1) << kBrowsingContextGroupIdBits));
+
+  return (childId << (kBrowsingContextGroupIdBits +
+                      kBrowsingContextGroupIdFlagBits)) |
+         (id << kBrowsingContextGroupIdFlagBits) | aFlags;
+}
+
+// Extract flags from the given ID.
+static uint64_t GetBrowsingContextGroupIdFlags(uint64_t aId) {
+  return aId & ((uint64_t(1) << kBrowsingContextGroupIdFlagBits) - 1);
+}
+
+uint64_t BrowsingContextGroup::CreateId(bool aPotentiallyCrossOriginIsolated) {
+  // We encode the potentially cross-origin isolated bit within the ID so that
+  // the information can be recovered whenever the group needs to be re-created
+  // due to e.g. being garbage-collected.
+  //
+  // In the future if we end up needing more complex information stored within
+  // the ID, we can consider converting it to a more complex type, like a
+  // string.
+  uint64_t flags =
+      aPotentiallyCrossOriginIsolated ? kPotentiallyCrossOriginIsolatedFlag : 0;
+  uint64_t id = GenerateBrowsingContextGroupId(flags);
+  MOZ_ASSERT(GetBrowsingContextGroupIdFlags(id) == flags);
+  return id;
+}
+
+already_AddRefed<BrowsingContextGroup> BrowsingContextGroup::Create(
+    bool aPotentiallyCrossOriginIsolated) {
+  return GetOrCreate(CreateId(aPotentiallyCrossOriginIsolated));
 }
 
 BrowsingContextGroup::BrowsingContextGroup(uint64_t aId) : mId(aId) {
@@ -81,18 +136,29 @@ void BrowsingContextGroup::EnsureHostProcess(ContentParent* aProcess) {
   MOZ_DIAGNOSTIC_ASSERT(!aProcess->GetRemoteType().IsEmpty(),
                         "host process must have remote type");
 
+  // XXX: The diagnostic crashes in bug 1816025 seemed to come through caller
+  // ContentParent::GetNewOrUsedLaunchingBrowserProcess where we already
+  // did AssertAlive, so IsDead should be irrelevant here. Still it reads
+  // wrong that we ever might do AddBrowsingContextGroup if aProcess->IsDead().
   if (aProcess->IsDead() ||
       mHosts.WithEntryHandle(aProcess->GetRemoteType(), [&](auto&& entry) {
         if (entry) {
-          MOZ_DIAGNOSTIC_ASSERT(
+          // We know from bug 1816025 that this happens quite often and we have
+          // bug 1815480 on file that should harden the entire flow. But in the
+          // meantime we can just live with NOT replacing the found host
+          // process with a new one here if it is still alive.
+          MOZ_ASSERT(
               entry.Data() == aProcess,
               "There's already another host process for this remote type");
-          return false;
+          if (!entry.Data()->IsShuttingDown()) {
+            return false;
+          }
         }
 
-        // This process wasn't already marked as our host, so insert it, and
-        // begin subscribing, unless the process is still launching.
-        entry.Insert(do_AddRef(aProcess));
+        // This process wasn't already marked as our host, so insert it (or
+        // update if the old process is shutting down), and begin subscribing,
+        // unless the process is still launching.
+        entry.InsertOrUpdate(do_AddRef(aProcess));
 
         return true;
       })) {
@@ -306,43 +372,36 @@ JSObject* BrowsingContextGroup::WrapObject(JSContext* aCx,
   return BrowsingContextGroup_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-nsresult BrowsingContextGroup::QueuePostMessageEvent(
-    already_AddRefed<nsIRunnable>&& aRunnable) {
-  if (StaticPrefs::dom_separate_event_queue_for_post_message_enabled()) {
-    if (!mPostMessageEventQueue) {
-      nsCOMPtr<nsISerialEventTarget> target = GetMainThreadSerialEventTarget();
-      mPostMessageEventQueue = ThrottledEventQueue::Create(
-          target, "PostMessage Queue",
-          nsIRunnablePriority::PRIORITY_DEFERRED_TIMERS);
-      nsresult rv = mPostMessageEventQueue->SetIsPaused(false);
-      MOZ_ALWAYS_SUCCEEDS(rv);
-    }
+nsresult BrowsingContextGroup::QueuePostMessageEvent(nsIRunnable* aRunnable) {
+  MOZ_ASSERT(StaticPrefs::dom_separate_event_queue_for_post_message_enabled());
 
-    // Ensure the queue is enabled
-    if (mPostMessageEventQueue->IsPaused()) {
-      nsresult rv = mPostMessageEventQueue->SetIsPaused(false);
-      MOZ_ALWAYS_SUCCEEDS(rv);
-    }
-
-    if (mPostMessageEventQueue) {
-      mPostMessageEventQueue->Dispatch(std::move(aRunnable),
-                                       NS_DISPATCH_NORMAL);
-      return NS_OK;
-    }
+  if (!mPostMessageEventQueue) {
+    nsCOMPtr<nsISerialEventTarget> target = GetMainThreadSerialEventTarget();
+    mPostMessageEventQueue = ThrottledEventQueue::Create(
+        target, "PostMessage Queue",
+        nsIRunnablePriority::PRIORITY_DEFERRED_TIMERS);
+    nsresult rv = mPostMessageEventQueue->SetIsPaused(false);
+    MOZ_ALWAYS_SUCCEEDS(rv);
   }
-  return NS_ERROR_FAILURE;
+
+  // Ensure the queue is enabled
+  if (mPostMessageEventQueue->IsPaused()) {
+    nsresult rv = mPostMessageEventQueue->SetIsPaused(false);
+    MOZ_ALWAYS_SUCCEEDS(rv);
+  }
+
+  return mPostMessageEventQueue->Dispatch(aRunnable, NS_DISPATCH_NORMAL);
 }
 
 void BrowsingContextGroup::FlushPostMessageEvents() {
-  if (StaticPrefs::dom_separate_event_queue_for_post_message_enabled()) {
-    if (mPostMessageEventQueue) {
-      nsresult rv = mPostMessageEventQueue->SetIsPaused(true);
-      MOZ_ALWAYS_SUCCEEDS(rv);
-      nsCOMPtr<nsIRunnable> event;
-      while ((event = mPostMessageEventQueue->GetEvent())) {
-        NS_DispatchToMainThread(event.forget());
-      }
-    }
+  if (!mPostMessageEventQueue) {
+    return;
+  }
+  nsresult rv = mPostMessageEventQueue->SetIsPaused(true);
+  MOZ_ALWAYS_SUCCEEDS(rv);
+  nsCOMPtr<nsIRunnable> event;
+  while ((event = mPostMessageEventQueue->GetEvent())) {
+    NS_DispatchToMainThread(event.forget());
   }
 }
 
@@ -468,13 +527,44 @@ void BrowsingContextGroup::GetAllGroups(
   aGroups = ToArray(sBrowsingContextGroups->Values());
 }
 
+// For tests only.
+void BrowsingContextGroup::ResetDialogAbuseState() {
+  mDialogAbuseCount = 0;
+  // Reset the timer.
+  mLastDialogQuitTime =
+      TimeStamp::Now() -
+      TimeDuration::FromSeconds(DEFAULT_SUCCESSIVE_DIALOG_TIME_LIMIT);
+}
+
+bool BrowsingContextGroup::DialogsAreBeingAbused() {
+  if (mLastDialogQuitTime.IsNull() || nsContentUtils::IsCallerChrome()) {
+    return false;
+  }
+
+  TimeDuration dialogInterval(TimeStamp::Now() - mLastDialogQuitTime);
+  if (dialogInterval.ToSeconds() <
+      Preferences::GetInt("dom.successive_dialog_time_limit",
+                          DEFAULT_SUCCESSIVE_DIALOG_TIME_LIMIT)) {
+    mDialogAbuseCount++;
+
+    return PopupBlocker::GetPopupControlState() > PopupBlocker::openAllowed ||
+           mDialogAbuseCount > MAX_SUCCESSIVE_DIALOG_COUNT;
+  }
+
+  // Reset the abuse counter
+  mDialogAbuseCount = 0;
+
+  return false;
+}
+
+bool BrowsingContextGroup::IsPotentiallyCrossOriginIsolated() {
+  return GetBrowsingContextGroupIdFlags(mId) &
+         kPotentiallyCrossOriginIsolatedFlag;
+}
+
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BrowsingContextGroup, mContexts,
                                       mToplevels, mHosts, mSubscribers,
                                       mTimerEventQueue, mWorkerEventQueue,
                                       mDocGroups)
 
-NS_IMPL_CYCLE_COLLECTION_ROOT_NATIVE(BrowsingContextGroup, AddRef)
-NS_IMPL_CYCLE_COLLECTION_UNROOT_NATIVE(BrowsingContextGroup, Release)
-
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

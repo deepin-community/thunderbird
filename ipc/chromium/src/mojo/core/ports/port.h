@@ -5,15 +5,16 @@
 #ifndef MOJO_CORE_PORTS_PORT_H_
 #define MOJO_CORE_PORTS_PORT_H_
 
+#include <map>
 #include <memory>
-#include <queue>
 #include <utility>
 #include <vector>
 
 #include "mojo/core/ports/event.h"
 #include "mojo/core/ports/message_queue.h"
 #include "mojo/core/ports/user_data.h"
-#include "mozilla/Mutex.h"
+#include "mozilla/Atomics.h"
+#include "mozilla/PlatformMutex.h"
 #include "mozilla/RefPtr.h"
 #include "nsISupportsImpl.h"
 
@@ -22,6 +23,43 @@ namespace core {
 namespace ports {
 
 class PortLocker;
+
+namespace detail {
+
+// Ports cannot use mozilla::Mutex, as the acquires-before relationships handled
+// by PortLocker can overload the debug-only deadlock detector.
+class MOZ_CAPABILITY("mutex") PortMutex : private ::mozilla::detail::MutexImpl {
+ public:
+  void AssertCurrentThreadOwns() const MOZ_ASSERT_CAPABILITY(this) {
+#ifdef DEBUG
+    MOZ_ASSERT(mOwningThread == PR_GetCurrentThread());
+#endif
+  }
+
+ private:
+  // PortMutex should only be locked/unlocked via PortLocker
+  friend class ::mojo::core::ports::PortLocker;
+
+  void Lock() MOZ_CAPABILITY_ACQUIRE() {
+    ::mozilla::detail::MutexImpl::lock();
+#ifdef DEBUG
+    mOwningThread = PR_GetCurrentThread();
+#endif
+  }
+  void Unlock() MOZ_CAPABILITY_RELEASE() {
+#ifdef DEBUG
+    MOZ_ASSERT(mOwningThread == PR_GetCurrentThread());
+    mOwningThread = nullptr;
+#endif
+    ::mozilla::detail::MutexImpl::unlock();
+  }
+
+#ifdef DEBUG
+  mozilla::Atomic<PRThread*, mozilla::Relaxed> mOwningThread;
+#endif
+};
+
+}  // namespace detail
 
 // A Port is essentially a node in a circular list of addresses. For the sake of
 // this documentation such a list will henceforth be referred to as a "route."
@@ -108,6 +146,21 @@ class Port {
   NodeName peer_node_name;
   PortName peer_port_name;
 
+  // We keep track of the port that is currently sending messages to this port.
+  // This allows us to verify that the sender node is allowed to send messages
+  // to this port as a mitigation against info leak vulnerabilities.
+  // Tracking the previous port has the nice side effect of keeping received
+  // messages in order.
+  NodeName prev_node_name;
+  PortName prev_port_name;
+
+  // Mark this port as to be merged.
+  bool pending_merge_peer;
+
+  // Next sequence number to send for all event messages.
+  uint64_t next_control_sequence_num_to_send;
+  uint64_t next_control_sequence_num_to_receive;
+
   // The next available sequence number to use for outgoing user message events
   // originating from this port.
   uint64_t next_sequence_num_to_send;
@@ -148,6 +201,9 @@ class Port {
   // in strict sequential order.
   MessageQueue message_queue;
 
+  // Buffer outgoing control messages while this port is in kBuffering state.
+  std::vector<std::pair<NodeName, ScopedEvent>> control_message_queue;
+
   // In some edge cases, a Node may need to remember to route a single special
   // event upon destruction of this (proxying) Port. That event is stashed here
   // in the interim.
@@ -183,12 +239,35 @@ class Port {
 
   void AssertLockAcquired() { lock_.AssertCurrentThreadOwns(); }
 
+  // Check if the given event should be handled next based on the sequence
+  // number and sender peer.
+  bool IsNextEvent(const NodeName& from_node, const Event& event);
+
+  // Get the next buffered event to be processed. If none is available, |event|
+  // will not be modified.
+  void NextEvent(NodeName* from_node, ScopedEvent* event);
+
+  // Buffer the event for later processing.
+  void BufferEvent(const NodeName& from_node, ScopedEvent event);
+
+  // Flushes the queue of events pending peer verification and returns all user
+  // events
+  void TakePendingMessages(
+      std::vector<mozilla::UniquePtr<UserMessageEvent>>& messages);
+
  private:
+  using NodePortPair = std::pair<NodeName, PortName>;
+  using EventQueue = std::vector<mozilla::UniquePtr<Event>>;
+  std::map<NodePortPair, EventQueue> control_event_queues_;
+
   friend class PortLocker;
 
   ~Port();
 
-  mozilla::Mutex lock_{"Port State"};
+  // This lock guards all fields in Port, but is locked in a unique way which is
+  // unfortunately somewhat difficult to get to work with the thread-safety
+  // analysis.
+  detail::PortMutex lock_ MOZ_ANNOTATED;
 };
 
 }  // namespace ports

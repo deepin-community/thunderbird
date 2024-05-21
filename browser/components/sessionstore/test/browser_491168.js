@@ -4,13 +4,14 @@ const REFERRER1 = "http://example.org/?" + Date.now();
 const REFERRER2 = "http://example.org/?" + Math.random();
 const REFERRER3 = "http://example.org/?" + Math.random();
 
-add_task(async function() {
+add_task(async function () {
   function getExpectedReferrer(referrer) {
     let defaultPolicy = Services.prefs.getIntPref(
       "network.http.referer.defaultPolicy"
     );
-    ok(
-      [2, 3].indexOf(defaultPolicy) > -1,
+    Assert.greater(
+      [2, 3].indexOf(defaultPolicy),
+      -1,
       "default referrer policy should be either strict-origin-when-cross-origin(2) or no-referrer-when-downgrade(3)"
     );
     if (defaultPolicy == 2) {
@@ -23,7 +24,7 @@ add_task(async function() {
     await SpecialPowers.spawn(
       gBrowser.selectedBrowser,
       [{ referrer, msg }],
-      async function(args) {
+      async function (args) {
         Assert.equal(content.document.referrer, args.referrer, args.msg);
       }
     );
@@ -48,7 +49,7 @@ add_task(async function() {
     true,
     Services.io.newURI(REFERRER1)
   );
-  browser.loadURI("http://example.org", {
+  browser.loadURI(Services.io.newURI("http://example.org"), {
     referrerInfo: referrerInfo1,
     triggeringPrincipal: Services.scriptSecurityManager.createNullPrincipal({}),
   });
@@ -71,9 +72,8 @@ add_task(async function() {
     Services.io.newURI(REFERRER2)
   );
 
-  tabState.entries[0].referrerInfo = E10SUtils.serializeReferrerInfo(
-    referrerInfo2
-  );
+  tabState.entries[0].referrerInfo =
+    E10SUtils.serializeReferrerInfo(referrerInfo2);
   await promiseTabState(tab, tabState);
 
   await checkDocumentReferrer(

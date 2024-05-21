@@ -19,8 +19,6 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/ScopeExit.h"
 
-#include "jsapi.h"
-#include "jsfriendapi.h"
 #include "jsnum.h"
 
 #include "jit/AtomicOperations.h"
@@ -29,10 +27,9 @@
 #include "js/friend/ErrorMessages.h"  // js::GetErrorMessage, JSMSG_*
 #include "js/PropertySpec.h"
 #include "js/Result.h"
+#include "js/WaitCallbacks.h"
 #include "vm/GlobalObject.h"
-#include "vm/Time.h"
 #include "vm/TypedArrayObject.h"
-#include "wasm/WasmInstance.h"
 
 #include "vm/Compartment-inl.h"
 #include "vm/JSObject-inl.h"
@@ -48,6 +45,12 @@ static bool ReportBadArrayType(JSContext* cx) {
 static bool ReportDetachedArrayBuffer(JSContext* cx) {
   JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
                             JSMSG_TYPED_ARRAY_DETACHED);
+  return false;
+}
+
+static bool ReportResizedArrayBuffer(JSContext* cx) {
+  JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+                            JSMSG_TYPED_ARRAY_RESIZED_BOUNDS);
   return false;
 }
 
@@ -112,23 +115,28 @@ static bool ValidateIntegerTypedArray(
 static bool ValidateAtomicAccess(JSContext* cx,
                                  Handle<TypedArrayObject*> typedArray,
                                  HandleValue requestIndex, size_t* index) {
-  // Step 1 (implicit).
-
   MOZ_ASSERT(!typedArray->hasDetachedBuffer());
-  size_t length = typedArray->length();
 
-  // Step 2.
+  // Steps 1-2.
+  mozilla::Maybe<size_t> length = typedArray->length();
+  if (!length) {
+    // ValidateIntegerTypedArray doesn't check for out-of-bounds in our
+    // implementation, so we have to handle this case here.
+    return ReportResizedArrayBuffer(cx);
+  }
+
+  // Steps 3-4.
   uint64_t accessIndex;
   if (!ToIndex(cx, requestIndex, &accessIndex)) {
     return false;
   }
 
-  // Steps 3-5.
-  if (accessIndex >= length) {
+  // Step 5.
+  if (accessIndex >= *length) {
     return ReportOutOfRange(cx);
   }
 
-  // Step 6.
+  // Steps 6-9.
   *index = size_t(accessIndex);
   return true;
 }
@@ -286,8 +294,18 @@ bool AtomicAccess(JSContext* cx, HandleValue obj, HandleValue index, Op op) {
 template <typename T>
 static SharedMem<T*> TypedArrayData(JSContext* cx, TypedArrayObject* typedArray,
                                     size_t index) {
-  if (typedArray->hasDetachedBuffer()) {
+  // RevalidateAtomicAccess, steps 1-3.
+  mozilla::Maybe<size_t> length = typedArray->length();
+
+  // RevalidateAtomicAccess, step 4.
+  if (!length) {
     ReportDetachedArrayBuffer(cx);
+    return {};
+  }
+
+  // RevalidateAtomicAccess, step 5.
+  if (index >= *length) {
+    ReportOutOfRange(cx);
     return {};
   }
 
@@ -636,10 +654,10 @@ static bool DoAtomicsWait(JSContext* cx,
     }
 
     // Step 7.
-    if (!mozilla::IsNaN(timeout_ms)) {
+    if (!std::isnan(timeout_ms)) {
       if (timeout_ms < 0) {
         timeout = mozilla::Some(mozilla::TimeDuration::FromSeconds(0.0));
-      } else if (!mozilla::IsInfinite(timeout_ms)) {
+      } else if (!std::isinf(timeout_ms)) {
         timeout =
             mozilla::Some(mozilla::TimeDuration::FromMilliseconds(timeout_ms));
       }
@@ -651,24 +669,27 @@ static bool DoAtomicsWait(JSContext* cx,
       cx, unwrappedTypedArray->bufferShared());
 
   // Step 11.
-  size_t offset = unwrappedTypedArray->byteOffset();
+  mozilla::Maybe<size_t> offset = unwrappedTypedArray->byteOffset();
+  MOZ_ASSERT(
+      offset,
+      "offset can't become invalid because shared buffers can only grow");
 
   // Steps 12-13.
   // The computation will not overflow because range checks have been
   // performed.
-  size_t indexedPosition = index * sizeof(T) + offset;
+  size_t indexedPosition = index * sizeof(T) + *offset;
 
   // Steps 8-9, 14-25.
   switch (atomics_wait_impl(cx, unwrappedSab->rawBufferObject(),
                             indexedPosition, value, timeout)) {
     case FutexThread::WaitResult::NotEqual:
-      r.setString(cx->names().futexNotEqual);
+      r.setString(cx->names().not_equal_);
       return true;
     case FutexThread::WaitResult::OK:
-      r.setString(cx->names().futexOK);
+      r.setString(cx->names().ok);
       return true;
     case FutexThread::WaitResult::TimedOut:
-      r.setString(cx->names().futexTimedOut);
+      r.setString(cx->names().timed_out_);
       return true;
     case FutexThread::WaitResult::Error:
       return false;
@@ -820,13 +841,16 @@ static bool atomics_notify(JSContext* cx, unsigned argc, Value* vp) {
       cx, unwrappedTypedArray->bufferShared());
 
   // Step 6.
-  size_t offset = unwrappedTypedArray->byteOffset();
+  mozilla::Maybe<size_t> offset = unwrappedTypedArray->byteOffset();
+  MOZ_ASSERT(
+      offset,
+      "offset can't become invalid because shared buffers can only grow");
 
   // Steps 7-9.
   // The computation will not overflow because range checks have been
   // performed.
   size_t elementSize = Scalar::byteSize(unwrappedTypedArray->type());
-  size_t indexedPosition = intIndex * elementSize + offset;
+  size_t indexedPosition = intIndex * elementSize + *offset;
 
   // Steps 10-16.
   r.setNumber(double(atomics_notify_impl(unwrappedSab->rawBufferObject(),
@@ -1069,11 +1093,7 @@ static const JSPropertySpec AtomicsProperties[] = {
     JS_STRING_SYM_PS(toStringTag, "Atomics", JSPROP_READONLY), JS_PS_END};
 
 static JSObject* CreateAtomicsObject(JSContext* cx, JSProtoKey key) {
-  Handle<GlobalObject*> global = cx->global();
-  RootedObject proto(cx, GlobalObject::getOrCreateObjectPrototype(cx, global));
-  if (!proto) {
-    return nullptr;
-  }
+  RootedObject proto(cx, &cx->global()->getObjectPrototype());
   return NewTenuredObjectWithGivenProto(cx, &AtomicsObject::class_, proto);
 }
 

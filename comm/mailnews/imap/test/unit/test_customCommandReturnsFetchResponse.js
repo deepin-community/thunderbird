@@ -7,15 +7,11 @@
  * Bug 778246
  */
 
-// async support
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 // IMAP pump
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Globals
 
@@ -31,124 +27,101 @@ var gMsgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
 
 setupIMAPPump("CUSTOM1");
 
-// Definition of tests
-var tests = [
-  loadImapMessage,
-  testStoreCustomList,
-  testStoreMinusCustomList,
-  testStorePlusCustomList,
-  endTest,
-];
+add_setup(async function () {
+  Services.prefs.setBoolPref(
+    "mail.server.server1.autosync_offline_stores",
+    false
+  );
+  // Load and update a message in the imap fake server.
 
-// load and update a message in the imap fake server
-function* loadImapMessage() {
-  gMessage = new imapMessage(
+  gMessage = new ImapMessage(
     specForFileName(gMessageFileName),
     IMAPPump.mailbox.uidnext++,
     []
   );
   gMessage.xCustomList = [];
   IMAPPump.mailbox.addMessage(gMessage);
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
-function* testStoreCustomList() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+add_task(async function testStoreCustomList() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
   gExpectedLength = gCustomList.length;
-  let uri = IMAPPump.inbox.issueCommandOnMsgs(
+  const uri = IMAPPump.inbox.issueCommandOnMsgs(
     "STORE",
     msgHdr.messageKey + " X-CUSTOM-LIST (" + gCustomList.join(" ") + ")",
     gMsgWindow
   );
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
+  // Listens for response from customCommandResult request for X-CUSTOM-LIST.
+  const storeCustomListSetListener = new PromiseTestUtils.PromiseUrlListener({
+    OnStopRunningUrl(aUrl, aExitCode) {
+      aUrl.QueryInterface(Ci.nsIImapUrl);
+      Assert.equal(
+        aUrl.customCommandResult,
+        "(" + gMessage.xCustomList.join(" ") + ")"
+      );
+      Assert.equal(gMessage.xCustomList.length, gExpectedLength);
+    },
+  });
   uri.RegisterListener(storeCustomListSetListener);
-  yield false;
-}
+  await storeCustomListSetListener.promise;
+});
 
-// listens for response from customCommandResult request for X-CUSTOM-LIST
-var storeCustomListSetListener = {
-  OnStartRunningUrl(aUrl) {},
-
-  OnStopRunningUrl(aUrl, aExitCode) {
-    aUrl.QueryInterface(Ci.nsIImapUrl);
-    Assert.equal(
-      aUrl.customCommandResult,
-      "(" + gMessage.xCustomList.join(" ") + ")"
-    );
-    Assert.equal(gMessage.xCustomList.length, gExpectedLength);
-    async_driver();
-  },
-};
-
-function* testStoreMinusCustomList() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+add_task(async function testStoreMinusCustomList() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
   gExpectedLength--;
-  let uri = IMAPPump.inbox.issueCommandOnMsgs(
+  const uri = IMAPPump.inbox.issueCommandOnMsgs(
     "STORE",
     msgHdr.messageKey + " -X-CUSTOM-LIST (" + gCustomList[0] + ")",
     gMsgWindow
   );
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
+  // Listens for response from customCommandResult request for X-CUSTOM-LIST.
+  const storeCustomListRemovedListener =
+    new PromiseTestUtils.PromiseUrlListener({
+      OnStopRunningUrl(aUrl, aExitCode) {
+        aUrl.QueryInterface(Ci.nsIImapUrl);
+        Assert.equal(
+          aUrl.customCommandResult,
+          "(" + gMessage.xCustomList.join(" ") + ")"
+        );
+        Assert.equal(gMessage.xCustomList.length, gExpectedLength);
+      },
+    });
   uri.RegisterListener(storeCustomListRemovedListener);
-  yield false;
-}
+  await storeCustomListRemovedListener.promise;
+});
 
-// listens for response from customCommandResult request for X-CUSTOM-LIST
-var storeCustomListRemovedListener = {
-  OnStartRunningUrl(aUrl) {},
-
-  OnStopRunningUrl(aUrl, aExitCode) {
-    aUrl.QueryInterface(Ci.nsIImapUrl);
-    Assert.equal(
-      aUrl.customCommandResult,
-      "(" + gMessage.xCustomList.join(" ") + ")"
-    );
-    Assert.equal(gMessage.xCustomList.length, gExpectedLength);
-    async_driver();
-  },
-};
-
-function* testStorePlusCustomList() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+add_task(async function testStorePlusCustomList() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
   gExpectedLength++;
-  let uri = IMAPPump.inbox.issueCommandOnMsgs(
+  const uri = IMAPPump.inbox.issueCommandOnMsgs(
     "STORE",
     msgHdr.messageKey + ' +X-CUSTOM-LIST ("Custom4")',
     gMsgWindow
   );
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
+  const storeCustomListAddedListener = new PromiseTestUtils.PromiseUrlListener({
+    OnStopRunningUrl(aUrl, aExitCode) {
+      aUrl.QueryInterface(Ci.nsIImapUrl);
+      Assert.equal(
+        aUrl.customCommandResult,
+        "(" + gMessage.xCustomList.join(" ") + ")"
+      );
+      Assert.equal(gMessage.xCustomList.length, gExpectedLength);
+    },
+  });
   uri.RegisterListener(storeCustomListAddedListener);
-  yield false;
-}
-
-// listens for response from customCommandResult request for X-CUSTOM-LIST
-var storeCustomListAddedListener = {
-  OnStartRunningUrl(aUrl) {},
-
-  OnStopRunningUrl(aUrl, aExitCode) {
-    aUrl.QueryInterface(Ci.nsIImapUrl);
-    Assert.equal(
-      aUrl.customCommandResult,
-      "(" + gMessage.xCustomList.join(" ") + ")"
-    );
-    Assert.equal(gMessage.xCustomList.length, gExpectedLength);
-    async_driver();
-  },
-};
+  await storeCustomListAddedListener.promise;
+});
 
 // Cleanup at end
-function endTest() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  Services.prefs.setBoolPref(
-    "mail.server.server1.autosync_offline_stores",
-    false
-  );
-  async_run_tests(tests);
-}
+});
 
 /*
  * helper functions
@@ -156,7 +129,7 @@ function run_test() {
 
 // given a test file, return the file uri spec
 function specForFileName(aFileName) {
-  let file = do_get_file("../../../data/" + aFileName);
-  let msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
+  const file = do_get_file("../../../data/" + aFileName);
+  const msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
   return msgfileuri.spec;
 }

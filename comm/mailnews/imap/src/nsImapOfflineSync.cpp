@@ -10,7 +10,6 @@
 #include "nsImapMailFolder.h"
 #include "nsMsgFolderFlags.h"
 #include "nsMsgMessageFlags.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgAccountManager.h"
 #include "nsINntpIncomingServer.h"
@@ -23,25 +22,33 @@
 #include "mozilla/Unused.h"
 
 NS_IMPL_ISUPPORTS(nsImapOfflineSync, nsIUrlListener, nsIMsgCopyServiceListener,
-                  nsIDBChangeListener)
+                  nsIDBChangeListener, nsIImapOfflineSync)
 
-nsImapOfflineSync::nsImapOfflineSync(nsIMsgWindow* window,
-                                     nsIUrlListener* listener,
-                                     nsIMsgFolder* singleFolderOnly,
-                                     bool isPseudoOffline) {
-  m_singleFolderToUpdate = singleFolderOnly;
-  m_window = window;
-  // not the perfect place for this, but I think it will work.
-  if (m_window) m_window->SetStopped(false);
-
+nsImapOfflineSync::nsImapOfflineSync() {
+  m_singleFolderToUpdate = nullptr;
+  m_window = nullptr;
   mCurrentPlaybackOpType = nsIMsgOfflineImapOperation::kFlagsChanged;
   m_mailboxupdatesStarted = false;
   m_mailboxupdatesFinished = false;
   m_createdOfflineFolders = false;
-  m_pseudoOffline = isPseudoOffline;
+  m_pseudoOffline = false;
   m_KeyIndex = 0;
   mCurrentUIDValidity = nsMsgKey_None;
+  m_listener = nullptr;
+}
+
+NS_IMETHODIMP
+nsImapOfflineSync::Init(nsIMsgWindow* window, nsIUrlListener* listener,
+                        nsIMsgFolder* singleFolderOnly, bool isPseudoOffline) {
+  m_window = window;
   m_listener = listener;
+  m_singleFolderToUpdate = singleFolderOnly;
+  m_pseudoOffline = isPseudoOffline;
+
+  // not the perfect place for this, but I think it will work.
+  if (m_window) m_window->SetStopped(false);
+
+  return NS_OK;
 }
 
 nsImapOfflineSync::~nsImapOfflineSync() {}
@@ -114,7 +121,7 @@ bool nsImapOfflineSync::AdvanceToNextServer() {
     NS_ASSERTION(!m_currentServer, "this shouldn't be set");
     m_currentServer = nullptr;
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ASSERTION(accountManager && NS_SUCCEEDED(rv),
                  "couldn't get account mgr");
     if (!accountManager || NS_FAILED(rv)) return false;
@@ -334,10 +341,6 @@ void nsImapOfflineSync::ProcessAppendMsgOperation(
     return;
   }
 
-  uint64_t messageOffset;
-  uint32_t messageSize;
-  mailHdr->GetMessageOffset(&messageOffset);
-  mailHdr->GetOfflineMessageSize(&messageSize);
   nsCOMPtr<nsIFile> tmpFile;
 
   if (NS_WARN_IF(NS_FAILED(GetSpecialDirectoryWithFileName(
@@ -357,48 +360,23 @@ void nsImapOfflineSync::ProcessAppendMsgOperation(
   bool setPlayingBack = false;
   do {
     nsCString moveDestination;
-    currentOp->GetDestinationFolderURI(getter_Copies(moveDestination));
+    currentOp->GetDestinationFolderURI(moveDestination);
 
     nsCOMPtr<nsIMsgFolder> destFolder;
     rv = GetOrCreateFolder(moveDestination, getter_AddRefs(destFolder));
     if (NS_WARN_IF(NS_FAILED(rv))) break;
 
-    nsCOMPtr<nsIInputStream> offlineStoreInputStream;
-    bool reusable;
-    rv = destFolder->GetMsgInputStream(mailHdr, &reusable,
-                                       getter_AddRefs(offlineStoreInputStream));
-    if (NS_WARN_IF((NS_FAILED(rv) || !offlineStoreInputStream))) break;
-
-    nsCOMPtr<nsISeekableStream> seekStream =
-        do_QueryInterface(offlineStoreInputStream);
-    MOZ_ASSERT(seekStream, "non seekable stream - can't read from offline msg");
-    if (!seekStream) break;
+    nsCOMPtr<nsIInputStream> inStream;
+    rv = destFolder->GetLocalMsgStream(mailHdr, getter_AddRefs(inStream));
+    if (NS_WARN_IF((NS_FAILED(rv)))) break;
 
     // From this point onwards, we need to set "playing back".
     setPlayingBack = true;
 
-    rv = seekStream->Seek(PR_SEEK_SET, messageOffset);
-    if (NS_WARN_IF(NS_FAILED(rv))) break;
-
     // Copy the dest folder offline store msg to the temp file.
-    int32_t inputBufferSize = FILE_IO_BUFFER_SIZE;
-    char* inputBuffer = (char*)PR_Malloc(inputBufferSize);
-    int32_t bytesLeft;
-    uint32_t bytesRead, bytesWritten;
-
-    bytesLeft = messageSize;
-    rv = inputBuffer ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
-    while (bytesLeft > 0 && NS_SUCCEEDED(rv)) {
-      int32_t bytesToRead = std::min(inputBufferSize, bytesLeft);
-      rv = offlineStoreInputStream->Read(inputBuffer, bytesToRead, &bytesRead);
-      if (NS_WARN_IF(NS_FAILED(rv)) || bytesRead == 0) break;
-      rv = outputStream->Write(inputBuffer, bytesRead, &bytesWritten);
-      if (NS_WARN_IF(NS_FAILED(rv))) break;
-      MOZ_ASSERT(bytesWritten == bytesRead,
-                 "wrote out incorrect number of bytes");
-      bytesLeft -= bytesRead;
-    }
-    PR_FREEIF(inputBuffer);
+    uint64_t bytesCopied;
+    rv = SyncCopyStream(inStream, outputStream, bytesCopied,
+                        FILE_IO_BUFFER_SIZE);
 
     // rv could have an error from Read/Write.
     nsresult rv2 = outputStream->Close();
@@ -420,7 +398,7 @@ void nsImapOfflineSync::ProcessAppendMsgOperation(
     tmpFile->Clone(getter_AddRefs(cloneTmpFile));
     m_curTempFile = cloneTmpFile;
     nsCOMPtr<nsIMsgCopyService> copyService =
-        do_GetService(NS_MSGCOPYSERVICE_CONTRACTID);
+        do_GetService("@mozilla.org/messenger/messagecopyservice;1");
 
     // CopyFileMessage returns error async to this->OnStopCopy
     // if copyService is null, let's crash here and now.
@@ -457,7 +435,7 @@ void nsImapOfflineSync::ProcessMoveOperation(nsIMsgOfflineImapOperation* op) {
   nsTArray<nsMsgKey> matchingFlagKeys;
   uint32_t currentKeyIndex = m_KeyIndex;
   nsCString moveDestination;
-  op->GetDestinationFolderURI(getter_Copies(moveDestination));
+  op->GetDestinationFolderURI(moveDestination);
   bool moveMatches = true;
   nsCOMPtr<nsIMsgOfflineImapOperation> currentOp = op;
   do {  // loop for all messages with the same destination
@@ -479,7 +457,7 @@ void nsImapOfflineSync::ProcessMoveOperation(nsIMsgOfflineImapOperation* op) {
         nsOfflineImapOperationType opType;
         currentOp->GetOperation(&opType);
         if (opType & nsIMsgOfflineImapOperation::kMsgMoved) {
-          currentOp->GetDestinationFolderURI(getter_Copies(nextDestination));
+          currentOp->GetDestinationFolderURI(nextDestination);
           moveMatches = moveDestination.Equals(nextDestination);
         }
       }
@@ -499,8 +477,11 @@ void nsImapOfflineSync::ProcessMoveOperation(nsIMsgOfflineImapOperation* op) {
   nsCOMPtr<nsIMsgImapMailFolder> imapFolder =
       do_QueryInterface(m_currentFolder);
   if (imapFolder && DestFolderOnSameServer(destFolder)) {
+    uint32_t curFolderFlags;
+    m_currentFolder->GetFlags(&curFolderFlags);
+    bool curFolderOffline = curFolderFlags & nsMsgFolderFlags::Offline;
     imapFolder->ReplayOfflineMoveCopy(matchingFlagKeys, true, destFolder, this,
-                                      m_window);
+                                      m_window, curFolderOffline);
   } else {
     nsresult rv;
     nsTArray<RefPtr<nsIMsgDBHdr>> messages;
@@ -531,7 +512,7 @@ void nsImapOfflineSync::ProcessMoveOperation(nsIMsgOfflineImapOperation* op) {
       }
     }
     nsCOMPtr<nsIMsgCopyService> copyService =
-        do_GetService(NS_MSGCOPYSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/messagecopyservice;1", &rv);
     if (copyService) {
       copyService->CopyMessages(m_currentFolder, messages, destFolder, true,
                                 this, m_window, false);
@@ -604,8 +585,11 @@ void nsImapOfflineSync::ProcessCopyOperation(
   nsCOMPtr<nsIMsgImapMailFolder> imapFolder =
       do_QueryInterface(m_currentFolder);
   if (imapFolder && DestFolderOnSameServer(destFolder)) {
+    uint32_t curFolderFlags;
+    m_currentFolder->GetFlags(&curFolderFlags);
+    bool curFolderOffline = curFolderFlags & nsMsgFolderFlags::Offline;
     rv = imapFolder->ReplayOfflineMoveCopy(matchingFlagKeys, false, destFolder,
-                                           this, m_window);
+                                           this, m_window, curFolderOffline);
   } else {
     nsTArray<RefPtr<nsIMsgDBHdr>> messages;
     for (uint32_t keyIndex = 0; keyIndex < matchingFlagKeys.Length();
@@ -616,7 +600,7 @@ void nsImapOfflineSync::ProcessCopyOperation(
       if (NS_SUCCEEDED(rv) && mailHdr) messages.AppendElement(mailHdr);
     }
     nsCOMPtr<nsIMsgCopyService> copyService =
-        do_GetService(NS_MSGCOPYSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/messagecopyservice;1", &rv);
     if (copyService)
       copyService->CopyMessages(m_currentFolder, messages, destFolder, false,
                                 this, m_window, false);
@@ -624,7 +608,7 @@ void nsImapOfflineSync::ProcessCopyOperation(
 }
 
 void nsImapOfflineSync::ProcessEmptyTrash() {
-  m_currentFolder->EmptyTrash(m_window, this);
+  m_currentFolder->EmptyTrash(this);
   ClearDB();  // EmptyTrash closes and deletes the trash db.
 }
 
@@ -680,7 +664,8 @@ int32_t nsImapOfflineSync::GetCurrentUIDValidity() {
  * The first state is creating online any folders created offline (we do this
  * first, so we can play back any operations in them in the next pass)
  */
-nsresult nsImapOfflineSync::ProcessNextOperation() {
+NS_IMETHODIMP
+nsImapOfflineSync::ProcessNextOperation() {
   nsresult rv = NS_OK;
 
   // if we haven't created offline folders, and we're updating all folders,
@@ -710,15 +695,19 @@ nsresult nsImapOfflineSync::ProcessNextOperation() {
     // any folder with events should have nsMsgFolderFlags::OfflineEvents set.
     if (folderFlags &
         (nsMsgFolderFlags::OfflineEvents /* | nsMsgFolderFlags::Offline */)) {
+      nsCOMPtr<nsIMsgDatabase> db;
       m_currentFolder->GetDBFolderInfoAndDB(getter_AddRefs(folderInfo),
-                                            getter_AddRefs(m_currentDB));
-      if (m_currentDB) m_currentDB->AddListener(this);
+                                            getter_AddRefs(db));
+      if (db) {
+        m_currentDB = do_QueryInterface(db, &rv);
+        m_currentDB->AddListener(this);
+      }
     }
 
     if (m_currentDB) {
       m_CurrentKeys.Clear();
       m_KeyIndex = 0;
-      if (NS_FAILED(m_currentDB->ListAllOfflineOpIds(&m_CurrentKeys)) ||
+      if (NS_FAILED(m_currentDB->ListAllOfflineOpIds(m_CurrentKeys)) ||
           m_CurrentKeys.IsEmpty()) {
         ClearDB();
         folderInfo = nullptr;  // can't hold onto folderInfo longer than db
@@ -766,7 +755,7 @@ nsresult nsImapOfflineSync::ProcessNextOperation() {
         if (deletedGhostMsgs) m_currentFolder->SummaryChanged();
 
         m_CurrentKeys.Clear();
-        if (NS_FAILED(m_currentDB->ListAllOfflineOpIds(&m_CurrentKeys)) ||
+        if (NS_FAILED(m_currentDB->ListAllOfflineOpIds(m_CurrentKeys)) ||
             m_CurrentKeys.IsEmpty()) {
           ClearDB();
         } else if (folderFlags & nsMsgFolderFlags::ImapBox) {
@@ -978,7 +967,8 @@ void nsImapOfflineSync::DeleteAllOfflineOpsForCurrentDB() {
 
 nsImapOfflineDownloader::nsImapOfflineDownloader(nsIMsgWindow* aMsgWindow,
                                                  nsIUrlListener* aListener)
-    : nsImapOfflineSync(aMsgWindow, aListener) {
+    : nsImapOfflineSync() {
+  Init(aMsgWindow, aListener, nullptr, false);
   // pause auto-sync service
   nsresult rv;
   nsCOMPtr<nsIAutoSyncManager> autoSyncMgr =
@@ -988,7 +978,8 @@ nsImapOfflineDownloader::nsImapOfflineDownloader(nsIMsgWindow* aMsgWindow,
 
 nsImapOfflineDownloader::~nsImapOfflineDownloader() {}
 
-nsresult nsImapOfflineDownloader::ProcessNextOperation() {
+NS_IMETHODIMP
+nsImapOfflineDownloader::ProcessNextOperation() {
   nsresult rv = NS_OK;
   m_mailboxupdatesStarted = true;
 
@@ -1095,6 +1086,7 @@ void nsImapOfflineSync::ClearDB() {
 
 NS_IMETHODIMP
 nsImapOfflineSync::OnHdrPropertyChanged(nsIMsgDBHdr* aHdrToChange,
+                                        const nsACString& property,
                                         bool aPreChange, uint32_t* aStatus,
                                         nsIDBChangeListener* aInstigator) {
   return NS_OK;

@@ -1,10 +1,11 @@
 "use strict";
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AboutNewTab: "resource:///modules/AboutNewTab.jsm",
-  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.jsm",
-  PlacesUtils: "resource://gre/modules/PlacesUtils.jsm",
-  UrlbarTestUtils: "resource://testing-common/UrlbarTestUtils.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  AboutNewTab: "resource:///modules/AboutNewTab.sys.mjs",
+  PerfTestHelpers: "resource://testing-common/PerfTestHelpers.sys.mjs",
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+  PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
+  UrlbarTestUtils: "resource://testing-common/UrlbarTestUtils.sys.mjs",
 });
 
 /**
@@ -258,8 +259,8 @@ async function ensureNoPreloadedBrowser(win = window) {
 // which confuses tests that look at repaints in the toolbar.  Use this
 // function to cancel the badge update.
 function disableFxaBadge() {
-  let { ToolbarBadgeHub } = ChromeUtils.import(
-    "resource://activity-stream/lib/ToolbarBadgeHub.jsm"
+  let { ToolbarBadgeHub } = ChromeUtils.importESModule(
+    "resource:///modules/asrouter/ToolbarBadgeHub.sys.mjs"
   );
   ToolbarBadgeHub.removeAllNotifications();
 
@@ -267,6 +268,15 @@ function disableFxaBadge() {
   return SpecialPowers.pushPrefEnv({
     set: [["identity.fxaccounts.toolbar.accessed", true]],
   });
+}
+
+function rectInBoundingClientRect(r, bcr) {
+  return (
+    bcr.x <= r.x1 &&
+    bcr.y <= r.y1 &&
+    bcr.x + bcr.width >= r.x2 &&
+    bcr.y + bcr.height >= r.y2
+  );
 }
 
 async function getBookmarksToolbarRect() {
@@ -291,9 +301,16 @@ async function getBookmarksToolbarRect() {
   return bookmarksToolbarRect;
 }
 
+async function ensureAnimationsFinished(win = window) {
+  let animations = win.document.getAnimations();
+  info(`Waiting for ${animations.length} animations`);
+  await Promise.allSettled(animations.map(a => a.finished));
+}
+
 async function prepareSettledWindow() {
   let win = await BrowserTestUtils.openNewBrowserWindow();
   await ensureNoPreloadedBrowser(win);
+  await ensureAnimationsFinished(win);
   return win;
 }
 
@@ -309,7 +326,8 @@ function computeMaxTabCount() {
   let currentTabCount = gBrowser.tabs.length;
   let newTabButton = gBrowser.tabContainer.newTabButton;
   let newTabRect = newTabButton.getBoundingClientRect();
-  let tabStripRect = gBrowser.tabContainer.arrowScrollbox.getBoundingClientRect();
+  let tabStripRect =
+    gBrowser.tabContainer.arrowScrollbox.getBoundingClientRect();
   let availableTabStripWidth = tabStripRect.width - newTabRect.width;
 
   let tabMinWidth = parseInt(
@@ -378,6 +396,7 @@ async function addDummyHistoryEntries(searchStr = "") {
 
   for (let i = 0; i < NUM_VISITS; ++i) {
     visits.push({
+      // eslint-disable-next-line @microsoft/sdl/no-insecure-url
       uri: `http://example.com/urlbar-reflows-${i}`,
       title: `Reflow test for URL bar entry #${i} - ${searchStr}`,
     });
@@ -385,7 +404,7 @@ async function addDummyHistoryEntries(searchStr = "") {
 
   await PlacesTestUtils.addVisits(visits);
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     await PlacesUtils.history.clear();
   });
 }
@@ -530,7 +549,7 @@ function compareFrames(frame, previousFrame) {
   // The following code block merges rects that are close to each other
   // (less than kMaxEmptyPixels away).
   // This is needed to avoid having a rect for each letter when a label moves.
-  let areRectsContiguous = function(r1, r2) {
+  let areRectsContiguous = function (r1, r2) {
     return (
       r1.y2 >= r2.y1 - 1 - kMaxEmptyPixels &&
       r2.x1 - 1 - kMaxEmptyPixels <= r1.x2 &&
@@ -617,26 +636,32 @@ function reportUnexpectedFlicker(frames, expectations) {
       previousFrame = frames[i - 1];
     let rects = compareFrames(frame, previousFrame);
 
+    let rectText = r => `${r.toSource()}, window width: ${frame.width}`;
+
+    rects = rects.filter(rect => {
+      for (let e of expectations.exceptions || []) {
+        if (e.condition(rect)) {
+          todo(false, e.name + ", " + rectText(rect));
+          return false;
+        }
+      }
+      return true;
+    });
+
     if (expectations.filter) {
       rects = expectations.filter(rects, frame, previousFrame);
     }
 
-    rects = rects.filter(rect => {
-      let rectText = `${rect.toSource()}, window width: ${frame.width}`;
-      for (let e of expectations.exceptions || []) {
-        if (e.condition(rect)) {
-          todo(false, e.name + ", " + rectText);
-          return false;
-        }
-      }
-
-      ok(false, "unexpected changed rect: " + rectText);
-      return true;
-    });
-
     if (!rects.length) {
       continue;
     }
+
+    ok(
+      false,
+      `unexpected ${rects.length} changed rects: ${rects
+        .map(rectText)
+        .join(", ")}`
+    );
 
     // Before dumping a frame with unexpected differences for the first time,
     // ensure at least one previous frame has been logged so that it's possible
@@ -720,7 +745,7 @@ async function runUrlbarTest(
 
   URLBar.focus();
   URLBar.value = SEARCH_TERM;
-  let testFn = async function() {
+  let testFn = async function () {
     let popup = URLBar.view;
     let oldOnQueryResults = popup.onQueryResults.bind(popup);
     let oldOnQueryFinished = popup.onQueryFinished.bind(popup);
@@ -774,7 +799,7 @@ async function runUrlbarTest(
   };
 
   let urlbarRect = URLBar.textbox.getBoundingClientRect();
-  const SHADOW_SIZE = 14;
+  const SHADOW_SIZE = 17;
   let expectedRects = {
     filter: rects => {
       // We put text into the urlbar so expect its textbox to change.
@@ -843,7 +868,7 @@ async function runUrlbarTest(
  *        If true, dump the stacks for all loaded modules. Makes the output
  *        noisy.
  */
-function checkLoadedScripts({
+async function checkLoadedScripts({
   loadedInfo,
   known,
   intermittent,
@@ -851,6 +876,32 @@ function checkLoadedScripts({
   dumpAllStacks,
 }) {
   let loadedList = {};
+
+  async function checkAllExist(scriptType, list, listType) {
+    if (scriptType == "services") {
+      for (let contract of list) {
+        ok(
+          contract in Cc,
+          `${listType} entry ${contract} for content process startup must exist`
+        );
+      }
+    } else {
+      let results = await PerfTestHelpers.throttledMapPromises(
+        list,
+        async uri => ({
+          uri,
+          exists: await PerfTestHelpers.checkURIExists(uri),
+        })
+      );
+
+      for (let { uri, exists } of results) {
+        ok(
+          exists,
+          `${listType} entry ${uri} for content process startup must exist`
+        );
+      }
+    }
+  }
 
   for (let scriptType in known) {
     loadedList[scriptType] = Object.keys(loadedInfo[scriptType]).filter(c => {
@@ -865,6 +916,9 @@ function checkLoadedScripts({
       return !intermittent[scriptType].has(c);
     });
 
+    if (loadedList[scriptType].length) {
+      console.log("Unexpected scripts:", loadedList[scriptType]);
+    }
     is(
       loadedList[scriptType].length,
       0,
@@ -879,6 +933,8 @@ function checkLoadedScripts({
         loadedInfo[scriptType][script]
       );
     }
+
+    await checkAllExist(scriptType, intermittent[scriptType], "intermittent");
 
     is(
       known[scriptType].size,
@@ -919,5 +975,27 @@ function checkLoadedScripts({
         );
       }
     }
+
+    await checkAllExist(scriptType, forbidden[scriptType], "forbidden");
   }
+}
+
+// The first screenshot we get in OSX / Windows shows an unfocused browser
+// window for some reason. See bug 1445161. This function allows to deal with
+// that in a central place.
+function isLikelyFocusChange(rects, frame) {
+  if (rects.length > 3 && rects.every(r => r.y2 < 100)) {
+    // There are at least 4 areas that changed near the top of the screen.
+    // Note that we need a bit more leeway than the titlebar height, because on
+    // OSX other toolbarbuttons in the navigation toolbar also get disabled
+    // state.
+    return true;
+  }
+  if (
+    rects.every(r => r.y1 == 0 && r.x1 == 0 && r.w == frame.width && r.y2 < 100)
+  ) {
+    // Full-width rect in the top of the titlebar.
+    return true;
+  }
+  return false;
 }

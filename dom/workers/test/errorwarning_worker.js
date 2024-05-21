@@ -7,7 +7,7 @@ function errorHandler() {
   postMessage({ type: "error" });
 }
 
-onmessage = function(event) {
+onmessage = function (event) {
   if (event.data.errors) {
     try {
       // This is an error:
@@ -29,7 +29,7 @@ onmessage = function(event) {
       errors: event.data.errors,
     });
 
-    worker.onmessage = function(e) {
+    worker.onmessage = function (e) {
       postMessage(e.data);
     };
   } else {
@@ -38,7 +38,9 @@ onmessage = function(event) {
 };
 
 onerror = errorHandler;
+// eslint-disable-next-line no-self-assign
 onerror = onerror;
+// eslint-disable-next-line no-self-compare
 if (!onerror || onerror != onerror) {
   throw "onerror wasn't set properly";
 }

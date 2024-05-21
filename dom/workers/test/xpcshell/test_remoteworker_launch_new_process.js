@@ -2,14 +2,12 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-const { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 const { createHttpServer } = AddonTestUtils;
 
@@ -30,12 +28,6 @@ server.registerPathHandler("/sw.js", (request, response) => {
 });
 
 add_task(async function setup_prefs() {
-  equal(
-    Services.prefs.getBoolPref("browser.tabs.remote.autostart"),
-    true,
-    "e10s is expected to be enabled"
-  );
-
   // Enable nsIServiceWorkerManager.registerForTest.
   Services.prefs.setBoolPref("dom.serviceWorkers.testing.enabled", true);
 

@@ -62,12 +62,52 @@ additionalProperties:
         syntax](https://www.markdownguide.org/basic-syntax/).
       type: string
 
+    metadata:
+      title: Metadata
+      description: |
+        Additional metadata about this ping. Currently limited to a list of
+        tags.
+      type: object
+      properties:
+        tags:
+          title: Tags
+          description: Which tags are specified for this ping.
+          type: array
+          items:
+            type: string
+            maxLength: 80
+        precise_timestamps:
+          title: Precise Timestamps
+          description: |
+            When `true` Glean uses millisecond-precise timestamps for
+            the ping's start/end time (the default).
+            When `false` Glean uses minute-precise timestamps for
+            the ping's start/end time.
+          type: boolean
+        include_info_sections:
+          title: Include Info Sections
+          description: |
+            When `true`, assemble and include the `client_info` and `ping_info`
+            sections in the ping on submission.
+            When `false`, omit the `client_info` and `ping_info` sections when
+            assembling the ping on submission.
+            Defaults to `true`.
+
+            Interaction with `include_client_id`: `include_client_id` only takes
+            effect when `metadata.include_info_sections` is `true`.
+          type: boolean
+
+      default: {}
+
     include_client_id:
       title: Include client id
       description: |
         **Required.**
 
         When `true`, include the `client_id` value in the ping.
+
+        Interaction with `metadata.include_info_sections`: `include_client_id`
+        only takes effect when `metadata.include_info_sections` is `true`.
       type: boolean
 
     send_if_empty:

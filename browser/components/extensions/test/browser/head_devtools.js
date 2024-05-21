@@ -11,21 +11,14 @@
      TOOLBOX_BLANK_PANEL_ID,
 */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "loader",
-  "resource://devtools/shared/Loader.jsm"
-);
-XPCOMUtils.defineLazyGetter(this, "gDevTools", () => {
+ChromeUtils.defineESModuleGetters(this, {
+  loader: "resource://devtools/shared/loader/Loader.sys.mjs",
+  DevToolsShim: "chrome://devtools-startup/content/DevToolsShim.sys.mjs",
+});
+ChromeUtils.defineLazyGetter(this, "gDevTools", () => {
   const { gDevTools } = loader.require("devtools/client/framework/devtools");
   return gDevTools;
 });
-
-ChromeUtils.defineModuleGetter(
-  this,
-  "DevToolsShim",
-  "chrome://devtools-startup/content/DevToolsShim.jsm"
-);
 
 const TOOLBOX_BLANK_PANEL_ID = "testBlankPanel";
 
@@ -37,7 +30,7 @@ async function registerBlankToolboxPanel() {
     id: TOOLBOX_BLANK_PANEL_ID,
     url: "about:blank",
     label: "Blank Tool",
-    isTargetSupported() {
+    isToolSupported() {
       return true;
     },
     build(iframeWindow, toolbox) {
@@ -78,19 +71,9 @@ async function openToolboxForTab(tab, panelId = TOOLBOX_BLANK_PANEL_ID) {
 }
 
 async function closeToolboxForTab(tab) {
-  const toolbox = await gDevTools.getToolboxForTab(tab);
-  const target = toolbox.target;
-  const { url, outerWindowID } = target.form;
-
   await gDevTools.closeToolboxForTab(tab);
-  await target.destroy();
-
-  info(
-    `Developer toolbox closed for target ${JSON.stringify({
-      url,
-      outerWindowID,
-    })}`
-  );
+  const tabUrl = tab.linkedBrowser.currentURI.spec;
+  info(`Developer toolbox closed for tab "${tabUrl}"`);
 }
 
 function assertDevToolsExtensionEnabled(uuid, enabled) {
@@ -108,7 +91,7 @@ function assertDevToolsExtensionEnabled(uuid, enabled) {
  * Also wait for the toolbox to attach to the new target, if we navigated
  * to a new process.
  *
- * @param {Object} tab The tab to redirect.
+ * @param {object} tab The tab to redirect.
  * @param {string} uri The url to be loaded in the current tab.
  * @param {boolean} isErrorPage You may pass `true` is the URL is an error
  *                    page. Otherwise BrowserTestUtils.browserLoaded will wait
@@ -117,7 +100,7 @@ function assertDevToolsExtensionEnabled(uuid, enabled) {
  * @returns {Promise} A promise that resolves when the page has fully loaded.
  */
 async function navigateToWithDevToolsOpen(tab, uri, isErrorPage = false) {
-  const toolbox = await gDevTools.getToolboxForTab(tab);
+  const toolbox = gDevTools.getToolboxForTab(tab);
   const target = toolbox.target;
 
   // If we're switching origins, we need to wait for the 'switched-target'
@@ -125,9 +108,8 @@ async function navigateToWithDevToolsOpen(tab, uri, isErrorPage = false) {
   // Navigating from/to pages loaded in the parent process, like about:robots,
   // also spawn new targets.
   // (If target switching is disabled, the toolbox will reboot)
-  const onTargetSwitched = toolbox.commands.targetCommand.once(
-    "switched-target"
-  );
+  const onTargetSwitched =
+    toolbox.commands.targetCommand.once("switched-target");
   // Otherwise, if we don't switch target, it is safe to wait for navigate event.
   const onNavigate = target.once("navigate");
 
@@ -146,7 +128,7 @@ async function navigateToWithDevToolsOpen(tab, uri, isErrorPage = false) {
     null,
     isErrorPage
   );
-  BrowserTestUtils.loadURI(browser, uri);
+  BrowserTestUtils.startLoadingURIString(browser, uri);
 
   info(`Waiting for page to be loaded…`);
   await onBrowserLoaded;

@@ -15,7 +15,6 @@
 #include "nsIImportMailboxDescriptor.h"
 #include "nsIImportABDescriptor.h"
 #include "nsOutlookStringBundle.h"
-#include "nsAbBaseCID.h"
 #include "nsIAbCard.h"
 #include "mdb.h"
 #include "ImportDebug.h"
@@ -337,7 +336,7 @@ NS_IMETHODIMP ImportMailboxRunnable::Run() {
   mCaller->OpenMessageStore(pFolder);
   if (!mCaller->m_lpMdb) {
     IMPORT_LOG1("*** Unable to obtain mapi message store for mailbox: %S\n",
-                mName);
+                (const wchar_t*)mName);
     mResult = NS_ERROR_FAILURE;
     return NS_OK;  // Sync runnable must return OK.
   }
@@ -363,19 +362,17 @@ NS_IMETHODIMP ImportMailboxRunnable::Run() {
 
   while (!done) {
     if (!contents.GetNext(&cbEid, &lpEid, &oType, &done)) {
-      IMPORT_LOG1("*** Error iterating mailbox: %S\n", mName);
+      IMPORT_LOG1("*** Error iterating mailbox: %S\n", (const wchar_t*)mName);
       mResult = NS_ERROR_FAILURE;
       return NS_OK;  // Sync runnable must return OK.
     }
 
     nsCOMPtr<nsIMsgDBHdr> msgHdr;
-    bool reusable;
-
     rv = msgStore->GetNewMsgOutputStream(mDstFolder, getter_AddRefs(msgHdr),
-                                         &reusable,
                                          getter_AddRefs(outputStream));
     if (NS_FAILED(rv)) {
-      IMPORT_LOG1("*** Error getting nsIOutputStream of mailbox: %S\n", mName);
+      IMPORT_LOG1("*** Error getting nsIOutputStream of mailbox: %S\n",
+                  (const wchar_t*)mName);
       mResult = rv;
       return NS_OK;  // Sync runnable must return OK.
     }
@@ -391,7 +388,8 @@ NS_IMETHODIMP ImportMailboxRunnable::Run() {
     if (!done && (oType == MAPI_MESSAGE)) {
       if (!mCaller->m_mapi.OpenMdbEntry(mCaller->m_lpMdb, cbEid, lpEid,
                                         (LPUNKNOWN*)&lpMsg)) {
-        IMPORT_LOG1("*** Error opening messages in mailbox: %S\n", mName);
+        IMPORT_LOG1("*** Error opening messages in mailbox: %S\n",
+                    (const wchar_t*)mName);
         mResult = NS_ERROR_FAILURE;
         return NS_OK;  // Sync runnable must return OK.
       }
@@ -408,15 +406,15 @@ NS_IMETHODIMP ImportMailboxRunnable::Run() {
       if (NS_SUCCEEDED(rv)) {  // No errors & really imported
         (*mMsgCount)++;
         msgStore->FinishNewMessage(outputStream, msgHdr);
+        outputStream = nullptr;
       } else {
-        IMPORT_LOG1("*** Error reading message from mailbox: %S\n", mName);
+        IMPORT_LOG1("*** Error reading message from mailbox: %S\n",
+                    (const wchar_t*)mName);
         msgStore->DiscardNewMessage(outputStream, msgHdr);
+        outputStream = nullptr;
       }
-      if (!reusable) outputStream->Close();
     }
   }
-
-  if (outputStream) outputStream->Close();
   return NS_OK;
 }
 
@@ -425,7 +423,9 @@ nsresult ProxyImportMailbox(uint32_t* pDoneSoFar, bool* pAbort, int32_t index,
                             int32_t* pMsgCount, nsOutlookMail* aCaller) {
   RefPtr<ImportMailboxRunnable> importMailbox = new ImportMailboxRunnable(
       pDoneSoFar, pAbort, index, pName, dstFolder, pMsgCount, aCaller);
-  nsresult rv = NS_DispatchToMainThread(importMailbox, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyImportMailbox"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(importMailbox));
   NS_ENSURE_SUCCESS(rv, rv);
 
   return importMailbox->mResult;
@@ -471,7 +471,7 @@ nsresult ImportMailboxRunnable::ImportMessage(LPMESSAGE lpMsg,
 }
 
 BOOL nsOutlookMail::WriteData(nsIOutputStream* pDest, const char* pData,
-                              int32_t len) {
+                              uint32_t len) {
   uint32_t written;
   nsresult rv = pDest->Write(pData, len, &written);
   return NS_SUCCEEDED(rv) && written == len;
@@ -511,7 +511,7 @@ nsresult nsOutlookMail::ImportAddresses(uint32_t* pCount, uint32_t* pTotal,
   if (!m_lpMdb) {
     IMPORT_LOG1(
         "*** Unable to obtain mapi message store for address book: %S\n",
-        pName);
+        (const wchar_t*)pName);
     return NS_ERROR_FAILURE;
   }
 
@@ -543,7 +543,8 @@ nsresult nsOutlookMail::ImportAddresses(uint32_t* pCount, uint32_t* pTotal,
     (*pCount)++;
 
     if (!contents.GetNext(&cbEid, &lpEid, &oType, &done)) {
-      IMPORT_LOG1("*** Error iterating address book: %S\n", pName);
+      IMPORT_LOG1("*** Error iterating address book: %S\n",
+                  (const wchar_t*)pName);
       return NS_ERROR_FAILURE;
     }
 
@@ -551,7 +552,8 @@ nsresult nsOutlookMail::ImportAddresses(uint32_t* pCount, uint32_t* pTotal,
 
     if (!done && (oType == MAPI_MESSAGE)) {
       if (!m_mapi.OpenMdbEntry(m_lpMdb, cbEid, lpEid, (LPUNKNOWN*)&lpMsg)) {
-        IMPORT_LOG1("*** Error opening messages in mailbox: %S\n", pName);
+        IMPORT_LOG1("*** Error opening messages in mailbox: %S\n",
+                    (const wchar_t*)pName);
         return NS_ERROR_FAILURE;
       }
 
@@ -568,7 +570,7 @@ nsresult nsOutlookMail::ImportAddresses(uint32_t* pCount, uint32_t* pTotal,
           if (pVal) m_mapi.GetStringFromProp(pVal, subject);
 
           nsCOMPtr<nsIAbCard> newCard =
-              do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID, &rv);
+              do_CreateInstance("@mozilla.org/addressbook/cardproperty;1", &rv);
           if (newCard) {
             if (BuildCard(subject.get(), pDirectory, newCard, lpMsg,
                           pFieldMap)) {
@@ -603,7 +605,7 @@ nsresult nsOutlookMail::CreateList(const nsString& pName,
   if (!pDirectory) return rv;
 
   nsCOMPtr<nsIAbDirectory> newList =
-      do_CreateInstance(NS_ABDIRPROPERTY_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/addressbook/directoryproperty;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   rv = newList->SetDirName(pName);
   NS_ENSURE_SUCCESS(rv, rv);
@@ -643,7 +645,8 @@ nsresult nsOutlookMail::CreateList(const nsString& pName,
     cbEid = sa->lpbin[idx].cb;
 
     if (!m_mapi.OpenEntry(cbEid, lpEid, (LPUNKNOWN*)&lpMsg)) {
-      IMPORT_LOG1("*** Error opening messages in mailbox: %S\n", pName.get());
+      IMPORT_LOG1("*** Error opening messages in mailbox: %S\n",
+                  static_cast<const wchar_t*>(pName.get()));
       m_mapi.MAPIFreeBuffer(value);
       return NS_ERROR_FAILURE;
     }
@@ -653,7 +656,7 @@ nsresult nsOutlookMail::CreateList(const nsString& pName,
     if (pVal) m_mapi.GetStringFromProp(pVal, subject);
 
     nsCOMPtr<nsIAbCard> newCard =
-        do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID, &rv);
+        do_CreateInstance("@mozilla.org/addressbook/cardproperty;1", &rv);
     if (newCard) {
       if (BuildCard(subject.get(), pDirectory, newCard, lpMsg, pFieldMap)) {
         nsIAbCard* outCard;
@@ -670,12 +673,12 @@ nsresult nsOutlookMail::CreateList(const nsString& pName,
 
 void nsOutlookMail::SanitizeValue(nsString& val) {
   val.ReplaceSubstring(u"\r\n"_ns, u", "_ns);
-  val.ReplaceChar("\r\n", ',');
+  val.ReplaceChar(u"\r\n", u',');
 }
 
 void nsOutlookMail::SplitString(nsString& val1, nsString& val2) {
   // Find the last line if there is more than one!
-  int32_t idx = val1.RFind("\x0D\x0A");
+  int32_t idx = val1.RFind(u"\x0D\x0A");
   int32_t cnt = 2;
   if (idx == -1) {
     cnt = 1;

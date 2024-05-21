@@ -4,8 +4,6 @@
 
 // tests that localization strings added in bug 484147 are defined in preferences
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gValidityManager = Cc[
   "@mozilla.org/mail/search/validityManager;1"
 ].getService(Ci.nsIMsgSearchValidityManager);
@@ -32,12 +30,12 @@ var kValidScopes = [
 
 function run_test() {
   for (var index = 0; index < kValidScopes.length; ++index) {
-    let scope = kValidScopes[index];
-    let table = gValidityManager.getTable(scope);
-    let attributes = table.getAvailableAttributes();
+    const scope = kValidScopes[index];
+    const table = gValidityManager.getTable(scope);
+    const attributes = table.getAvailableAttributes();
     let attribute;
     while ((attribute = attributes.pop()) && attribute) {
-      let property = gValidityManager.getAttributeProperty(attribute);
+      const property = gValidityManager.getAttributeProperty(attribute);
       let valid = false;
       let localizedString;
       try {

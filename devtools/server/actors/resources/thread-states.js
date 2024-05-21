@@ -6,12 +6,13 @@
 
 const {
   TYPES: { THREAD_STATE },
-} = require("devtools/server/actors/resources/index");
+} = require("resource://devtools/server/actors/resources/index.js");
+const Targets = require("resource://devtools/server/actors/targets/index.js");
 
 const {
   PAUSE_REASONS,
   STATES: THREAD_STATES,
-} = require("devtools/server/actors/thread");
+} = require("resource://devtools/server/actors/thread.js");
 
 // Possible values of breakpoint's resource's `state` attribute
 const STATES = {
@@ -48,8 +49,17 @@ class BreakpointWatcher {
    *          This will be called for each resource.
    */
   async watch(targetActor, { onAvailable }) {
-    // Force attaching the target in order to ensure it instantiates the ThreadActor
-    targetActor.attach();
+    // When debugging the whole browser (via the Browser Toolbox), we instantiate both content process and window global (FRAME) targets.
+    // But the debugger will only use the content process target's thread actor.
+    // Thread actor, Sources and Breakpoints have to be only managed for the content process target,
+    // and we should explicitly ignore the window global target.
+    if (
+      targetActor.sessionContext.type == "all" &&
+      targetActor.targetType === Targets.TYPES.FRAME &&
+      targetActor.typeName != "parentProcessTarget"
+    ) {
+      return;
+    }
 
     const { threadActor } = targetActor;
     this.threadActor = threadActor;
@@ -90,6 +100,9 @@ class BreakpointWatcher {
    * Stop watching for breakpoints
    */
   destroy() {
+    if (!this.threadActor) {
+      return;
+    }
     this.threadActor.off("paused", this.onPaused);
     this.threadActor.off("resumed", this.onResumed);
   }
@@ -119,7 +132,7 @@ class BreakpointWatcher {
     ]);
   }
 
-  onResumed(packet) {
+  onResumed() {
     // NOTE: resumed events are suppressed while interrupted
     // to prevent unintentional behavior.
     if (this.isInterrupted) {

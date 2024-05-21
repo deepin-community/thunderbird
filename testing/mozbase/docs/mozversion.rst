@@ -1,7 +1,7 @@
 :mod:`mozversion` --- Get application information
 =================================================
 
-`mozversion <https://github.com/mozilla/mozbase/tree/master/mozversion>`_
+`mozversion <https://hg.mozilla.org/mozilla-central/file/tip/testing/mozbase/mozversion>`_
 provides version information such as the application name and the changesets
 that it has been built from. This is commonly used in reporting or for
 conditional logic based on the application under test.
@@ -19,7 +19,7 @@ Firefox::
 
     import mozversion
 
-    version = mozversion.get_version(binary='/path/to/firefox-bin')
+    version = mozversion.get_version(binary='/path/to/firefox')
     for (key, value) in sorted(version.items()):
         if value:
             print '%s: %s' % (key, value)

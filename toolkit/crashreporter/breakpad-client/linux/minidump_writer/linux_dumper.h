@@ -56,6 +56,10 @@
 #include "common/memory_allocator.h"
 #include "google_breakpad/common/minidump_format.h"
 
+#if defined(XP_LINUX)
+#  include "linux_utils.h"
+#endif // defined(XP_LINUX)
+
 namespace google_breakpad {
 
 // Typedef for our parsing of the auxv variables in /proc/pid/auxv.
@@ -101,6 +105,10 @@ class LinuxDumper {
   // Read information about the |index|-th thread of |threads_|.
   // Returns true on success. One must have called |ThreadsSuspend| first.
   virtual bool GetThreadInfoByIndex(size_t index, ThreadInfo* info) = 0;
+
+  // Read the name ofthe |index|-th thread of |threads_|.
+  // Returns true on success. One must have called |ThreadsSuspend| first.
+  virtual bool GetThreadNameByIndex(size_t index, char* name, size_t size) = 0;
 
   size_t GetMainThreadIndex() const {
     for (size_t i = 0; i < threads_.size(); ++i) {
@@ -195,6 +203,7 @@ class LinuxDumper {
     return crash_exception_info_;
   }
 
+  pid_t pid() const { return pid_; }
   pid_t crash_thread() const { return crash_thread_; }
   void set_crash_thread(pid_t crash_thread) { crash_thread_ = crash_thread; }
 
@@ -208,11 +217,12 @@ class LinuxDumper {
   // other cases, however, a library can be mapped from an archive (e.g., when
   // loading .so libs from an apk on Android) and this method is able to
   // reconstruct the original file name.
-  void GetMappingEffectiveNameAndPath(const MappingInfo& mapping,
+  void GetMappingEffectiveNamePathAndVersion(const MappingInfo& mapping,
                                       char* file_path,
                                       size_t file_path_size,
                                       char* file_name,
-                                      size_t file_name_size);
+                                      size_t file_name_size,
+                                      uint32_t* version);
 
  protected:
   bool ReadAuxv();

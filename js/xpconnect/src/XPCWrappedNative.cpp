@@ -7,6 +7,7 @@
 /* Wrapper object for reflecting native xpcom objects into JavaScript. */
 
 #include "xpcprivate.h"
+#include "XPCMaps.h"
 #include "nsWrapperCacheInlines.h"
 #include "XPCLog.h"
 #include "js/Array.h"                   // JS::GetArrayLength, JS::IsArrayObject
@@ -14,6 +15,7 @@
 #include "js/MemoryFunctions.h"
 #include "js/Object.h"  // JS::GetPrivate, JS::SetPrivate, JS::SetReservedSlot
 #include "js/Printf.h"
+#include "js/PropertyAndElement.h"  // JS_GetProperty, JS_GetPropertyById, JS_SetProperty, JS_SetPropertyById
 #include "jsfriendapi.h"
 #include "AccessCheck.h"
 #include "WrapperFactory.h"
@@ -152,7 +154,6 @@ static nsresult FinishCreate(JSContext* cx, XPCWrappedNativeScope* Scope,
 nsresult XPCWrappedNative::WrapNewGlobal(JSContext* cx,
                                          xpcObjectHelper& nativeHelper,
                                          nsIPrincipal* principal,
-                                         bool initStandardClasses,
                                          JS::RealmOptions& aOptions,
                                          XPCWrappedNative** wrappedGlobal) {
   nsCOMPtr<nsISupports> identity = do_QueryInterface(nativeHelper.Object());
@@ -192,11 +193,6 @@ nsresult XPCWrappedNative::WrapNewGlobal(JSContext* cx,
   // create ends up there.
   JSAutoRealm ar(cx, global);
 
-  // If requested, initialize the standard classes on the global.
-  if (initStandardClasses && !JS::InitRealmStandardClasses(cx)) {
-    return NS_ERROR_FAILURE;
-  }
-
   // Make a proto.
   XPCWrappedNativeProto* proto = XPCWrappedNativeProto::GetNewOrUsed(
       cx, scope, nativeHelper.GetClassInfo(), scrProto);
@@ -227,8 +223,10 @@ nsresult XPCWrappedNative::WrapNewGlobal(JSContext* cx,
   // Set the JS object to the global we already created.
   wrapper->SetFlatJSObject(global);
 
-  // Set the private to the XPCWrappedNative.
-  JS::SetPrivate(global, wrapper);
+  // Set the reserved slot to the XPCWrappedNative.
+  static_assert(JSCLASS_GLOBAL_APPLICATION_SLOTS > 0,
+                "Need at least one slot for JSCLASS_SLOT0_IS_NSISUPPORTS");
+  JS::SetObjectISupports(global, wrapper);
 
   // There are dire comments elsewhere in the code about how a GC can
   // happen somewhere after wrapper initialization but before the wrapper is
@@ -651,7 +649,7 @@ bool XPCWrappedNative::Init(JSContext* cx, nsIXPCScriptable* aScriptable) {
 
   SetFlatJSObject(object);
 
-  JS::SetPrivate(mFlatJSObject, this);
+  JS::SetObjectISupports(mFlatJSObject, this);
 
   return FinishInit(cx);
 }
@@ -746,7 +744,8 @@ void XPCWrappedNative::FlatJSObjectFinalized() {
        to = to->GetNextTearOff()) {
     JSObject* jso = to->GetJSObjectPreserveColor();
     if (jso) {
-      JS::SetPrivate(jso, nullptr);
+      JS::SetReservedSlot(jso, XPCWrappedNativeTearOff::TearOffSlot,
+                          JS::UndefinedValue());
       to->JSObjectFinalized();
     }
 
@@ -768,11 +767,6 @@ void XPCWrappedNative::FlatJSObjectFinalized() {
   UnsetFlatJSObject();
 
   MOZ_ASSERT(mIdentity, "bad pointer!");
-#ifdef XP_WIN
-  // Try to detect free'd pointer
-  MOZ_ASSERT(*(int*)mIdentity.get() != (int)0xdddddddd, "bad pointer!");
-  MOZ_ASSERT(*(int*)mIdentity.get() != (int)0, "bad pointer!");
-#endif
 
   if (IsWrapperExpired()) {
     Destroy();
@@ -809,7 +803,7 @@ void XPCWrappedNative::SystemIsBeingShutDown() {
   // We leak mIdentity (see above).
 
   // Short circuit future finalization.
-  JS::SetPrivate(mFlatJSObject, nullptr);
+  JS::SetObjectISupports(mFlatJSObject, nullptr);
   UnsetFlatJSObject();
 
   XPCWrappedNativeProto* proto = GetProto();
@@ -824,7 +818,8 @@ void XPCWrappedNative::SystemIsBeingShutDown() {
   for (XPCWrappedNativeTearOff* to = &mFirstTearOff; to;
        to = to->GetNextTearOff()) {
     if (JSObject* jso = to->GetJSObjectPreserveColor()) {
-      JS::SetPrivate(jso, nullptr);
+      JS::SetReservedSlot(jso, XPCWrappedNativeTearOff::TearOffSlot,
+                          JS::UndefinedValue());
       to->SetJSObject(nullptr);
     }
     // We leak the tearoff mNative
@@ -835,25 +830,6 @@ void XPCWrappedNative::SystemIsBeingShutDown() {
 }
 
 /***************************************************************************/
-
-// Dynamically ensure that two objects don't end up with the same private.
-class MOZ_STACK_CLASS AutoClonePrivateGuard {
- public:
-  AutoClonePrivateGuard(JSContext* cx, JSObject* aOld, JSObject* aNew)
-      : mOldReflector(cx, aOld), mNewReflector(cx, aNew) {
-    MOZ_ASSERT(JS::GetPrivate(aOld) == JS::GetPrivate(aNew));
-  }
-
-  ~AutoClonePrivateGuard() {
-    if (JS::GetPrivate(mOldReflector)) {
-      JS::SetPrivate(mNewReflector, nullptr);
-    }
-  }
-
- private:
-  RootedObject mOldReflector;
-  RootedObject mNewReflector;
-};
 
 bool XPCWrappedNative::ExtendSet(JSContext* aCx,
                                  XPCNativeInterface* aInterface) {
@@ -1035,10 +1011,11 @@ bool XPCWrappedNative::InitTearOffJSObject(JSContext* cx,
     return false;
   }
 
-  JS::SetPrivate(obj, to);
+  JS::SetReservedSlot(obj, XPCWrappedNativeTearOff::TearOffSlot,
+                      JS::PrivateValue(to));
   to->SetJSObject(obj);
 
-  JS::SetReservedSlot(obj, XPC_WN_TEAROFF_FLAT_OBJECT_SLOT,
+  JS::SetReservedSlot(obj, XPCWrappedNativeTearOff::FlatObjectSlot,
                       JS::ObjectValue(*mFlatJSObject));
   return true;
 }
@@ -1647,8 +1624,7 @@ nsresult CallMethodHelper::Invoke() {
 static void TraceParam(JSTracer* aTrc, void* aVal, const nsXPTType& aType,
                        uint32_t aArrayLen = 0) {
   if (aType.Tag() == nsXPTType::T_JSVAL) {
-    JS::UnsafeTraceRoot(aTrc, (JS::Value*)aVal,
-                        "XPCWrappedNative::CallMethod param");
+    JS::TraceRoot(aTrc, (JS::Value*)aVal, "XPCWrappedNative::CallMethod param");
   } else if (aType.Tag() == nsXPTType::T_ARRAY) {
     auto* array = (xpt::detail::UntypedTArray*)aVal;
     const nsXPTType& elty = aType.ArrayElementType();
@@ -1687,7 +1663,15 @@ void CallMethodHelper::trace(JSTracer* aTrc) {
 
 JSObject* XPCWrappedNative::GetJSObject() { return GetFlatJSObject(); }
 
-NS_IMETHODIMP XPCWrappedNative::DebugDump(int16_t depth) {
+XPCWrappedNative* nsIXPConnectWrappedNative::AsXPCWrappedNative() {
+  return static_cast<XPCWrappedNative*>(this);
+}
+
+nsresult nsIXPConnectWrappedNative::DebugDump(int16_t depth) {
+  return AsXPCWrappedNative()->DebugDump(depth);
+}
+
+nsresult XPCWrappedNative::DebugDump(int16_t depth) {
 #ifdef DEBUG
   depth--;
   XPC_LOG_ALWAYS(

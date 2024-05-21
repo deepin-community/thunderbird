@@ -70,7 +70,7 @@ pub struct Date(pub u64);
 pub enum Frame {
     Index(u16),
     Element(String),
-    Parent,
+    Top,
 }
 
 impl Serialize for Frame {
@@ -82,7 +82,7 @@ impl Serialize for Frame {
         match self {
             Frame::Index(nth) => map.serialize_entry("id", nth)?,
             Frame::Element(el) => map.serialize_entry("element", el)?,
-            Frame::Parent => map.serialize_entry("id", &Value::Null)?,
+            Frame::Top => map.serialize_entry("id", &Value::Null)?,
         }
         map.end()
     }
@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for Frame {
             (Some(_id), Some(_element)) => Err(de::Error::custom("conflicting frame identifiers")),
             (Some(id), None) => Ok(Frame::Index(id)),
             (None, Some(element)) => Ok(Frame::Element(element)),
-            (None, None) => Ok(Frame::Parent),
+            (None, None) => Ok(Frame::Top),
         }
     }
 }
@@ -121,12 +121,7 @@ pub struct WebElement {
 pub struct Timeouts {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub implicit: Option<u64>,
-    #[serde(
-        default,
-        rename = "pageLoad",
-        alias = "page load",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "pageLoad", skip_serializing_if = "Option::is_none")]
     pub page_load: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[allow(clippy::option_option)]
@@ -135,7 +130,6 @@ pub struct Timeouts {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Window {
-    pub name: String,
     pub handle: String,
 }
 
@@ -200,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_json_frame_parent() {
-        assert_ser_de(&Frame::Parent, json!({ "id": null }));
+        assert_ser_de(&Frame::Top, json!({ "id": null }));
     }
 
     #[test]
@@ -221,10 +215,6 @@ mod tests {
         assert_ser_de(
             &data,
             json!({"implicit":1000,"pageLoad":200000,"script":60000}),
-        );
-        assert_de(
-            &data,
-            json!({"implicit":1000,"page load":200000,"script":60000}),
         );
     }
 

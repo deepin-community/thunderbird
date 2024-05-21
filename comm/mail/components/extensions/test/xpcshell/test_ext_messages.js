@@ -4,18 +4,16 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
-var { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
-);
-var { ExtensionsUI } = ChromeUtils.import(
-  "resource:///modules/ExtensionsUI.jsm"
+var { ExtensionsUI } = ChromeUtils.importESModule(
+  "resource:///modules/ExtensionsUI.sys.mjs"
 );
 
 let account, rootFolder, subFolders;
-add_task(
+
+add_setup(
   {
     skip_if: () => IS_NNTP,
   },
@@ -23,27 +21,31 @@ add_task(
     account = createAccount();
     rootFolder = account.incomingServer.rootFolder;
     subFolders = {
-      test0: await createSubfolder(rootFolder, "test0"),
-      test1: await createSubfolder(rootFolder, "test1"),
-      test2: await createSubfolder(rootFolder, "test2"),
       test3: await createSubfolder(rootFolder, "test3"),
       test4: await createSubfolder(rootFolder, "test4"),
       trash: rootFolder.getChildNamed("Trash"),
     };
     await createMessages(subFolders.trash, 99);
-    await createMessages(subFolders.test0, 1);
-    // 100 messages must be created before this line or test_move_copy_delete will break.
-    await createMessages(subFolders.test1, 5);
-    subFolders.test0.addKeywordsToMessages(
-      [[...subFolders.test0.messages][0]],
-      "testkeyword"
-    );
     await createMessages(subFolders.test4, 1);
+
+    // There are a couple of deprecated properties in MV3, which we still want to
+    // test in MV2 but also report to the user. By default, tests throw when
+    // deprecated properties are used.
+    Services.prefs.setBoolPref(
+      "extensions.webextensions.warnings-as-errors",
+      false
+    );
+    registerCleanupFunction(async () => {
+      Services.prefs.clearUserPref(
+        "extensions.webextensions.warnings-as-errors"
+      );
+    });
+    await new Promise(resolve => executeSoon(resolve));
   }
 );
 
 add_task(async function non_canonical_permission_description_mapping() {
-  let { msgs } = ExtensionsUI._buildStrings({
+  const { msgs } = ExtensionsUI._buildStrings({
     addon: { name: "FakeExtension" },
     permissions: {
       origins: [],
@@ -68,15 +70,15 @@ add_task(
     skip_if: () => IS_NNTP,
   },
   async function test_pagination() {
-    let files = {
+    const files = {
       "background.js": async () => {
         // Test a response of 99 messages at 10 messages per page.
-        let [folder] = await window.waitForMessage();
+        const [folder] = await window.waitForMessage();
         let page = await browser.messages.list(folder);
         browser.test.assertEq(36, page.id.length);
         browser.test.assertEq(10, page.messages.length);
 
-        let originalPageId = page.id;
+        const originalPageId = page.id;
         let numPages = 1;
         let numMessages = 10;
         while (page.id) {
@@ -109,9 +111,10 @@ add_task(
       },
       "utils.js": await getUtilsJS(),
     };
-    let extension = ExtensionTestUtils.loadExtension({
+    const extension = ExtensionTestUtils.loadExtension({
       files,
       manifest: {
+        manifest_version: 2,
         background: { scripts: ["utils.js", "background.js"] },
         permissions: ["accountsRead", "messagesRead"],
       },
@@ -135,612 +138,14 @@ add_task(
   {
     skip_if: () => IS_NNTP,
   },
-  async function test_update() {
-    let files = {
-      "background.js": async () => {
-        function newUpdatePromise(numberOfEventsToCollapse = 1) {
-          return new Promise(resolve => {
-            let seenEvents = {};
-            const listener = (msg, props) => {
-              if (!seenEvents.hasOwnProperty(msg.id)) {
-                seenEvents[msg.id] = {
-                  counts: 0,
-                  props: {},
-                };
-              }
-
-              seenEvents[msg.id].counts++;
-              for (let prop of Object.keys(props)) {
-                seenEvents[msg.id].props[prop] = props[prop];
-              }
-
-              if (seenEvents[msg.id].counts == numberOfEventsToCollapse) {
-                browser.messages.onUpdated.removeListener(listener);
-                resolve({ msg, props: seenEvents[msg.id].props });
-              }
-            };
-            browser.messages.onUpdated.addListener(listener);
-          });
-        }
-
-        let tags = await browser.messages.listTags();
-        let [data] = await window.waitForMessage();
-        let messageList = await browser.messages.list(data.folder);
-        browser.test.assertEq(1, messageList.messages.length);
-        let message = messageList.messages[0];
-        browser.test.assertFalse(message.flagged);
-        browser.test.assertFalse(message.read);
-        browser.test.assertFalse(message.junk);
-        browser.test.assertEq(0, message.junkScore);
-        browser.test.assertEq(0, message.tags.length);
-        browser.test.assertEq(data.size, message.size);
-        browser.test.assertEq("99@made.up.invalid", message.headerMessageId);
-
-        // Test that setting flagged works.
-        let updatePromise = newUpdatePromise();
-        await browser.messages.update(message.id, { flagged: true });
-        let updateInfo = await updatePromise;
-        browser.test.assertEq(message.id, updateInfo.msg.id);
-        window.assertDeepEqual({ flagged: true }, updateInfo.props);
-        await window.sendMessage("flagged");
-
-        // Test that setting read works.
-        updatePromise = newUpdatePromise();
-        await browser.messages.update(message.id, { read: true });
-        updateInfo = await updatePromise;
-        browser.test.assertEq(message.id, updateInfo.msg.id);
-        window.assertDeepEqual({ read: true }, updateInfo.props);
-        await window.sendMessage("read");
-
-        // Test that setting junk works.
-        updatePromise = newUpdatePromise();
-        await browser.messages.update(message.id, { junk: true });
-        updateInfo = await updatePromise;
-        browser.test.assertEq(message.id, updateInfo.msg.id);
-        window.assertDeepEqual({ junk: true }, updateInfo.props);
-        await window.sendMessage("junk");
-
-        // Test that setting one tag works.
-        updatePromise = newUpdatePromise();
-        await browser.messages.update(message.id, { tags: [tags[0].key] });
-        updateInfo = await updatePromise;
-        browser.test.assertEq(message.id, updateInfo.msg.id);
-        window.assertDeepEqual({ tags: [tags[0].key] }, updateInfo.props);
-        await window.sendMessage("tags1");
-
-        // Test that setting two tags works. We get 3 events: one removing tags0,
-        // one adding tags1 and one adding tags2. updatePromise is waiting for
-        // the third one before resolving.
-        updatePromise = newUpdatePromise(3);
-        await browser.messages.update(message.id, {
-          tags: [tags[1].key, tags[2].key],
-        });
-        updateInfo = await updatePromise;
-        browser.test.assertEq(message.id, updateInfo.msg.id);
-        window.assertDeepEqual(
-          { tags: [tags[1].key, tags[2].key] },
-          updateInfo.props
-        );
-        await window.sendMessage("tags2");
-
-        // Test that unspecified properties aren't changed.
-        let listenerCalls = 0;
-        const listenerFunc = (msg, props) => {
-          listenerCalls++;
-        };
-        browser.messages.onUpdated.addListener(listenerFunc);
-        await browser.messages.update(message.id, {});
-        await window.sendMessage("empty");
-        // Check if the no-op update call triggered a listener.
-        await new Promise(resolve => setTimeout(resolve));
-        browser.messages.onUpdated.removeListener(listenerFunc);
-        browser.test.assertEq(
-          0,
-          listenerCalls,
-          "Not expecting listener callbacks on no-op updates."
-        );
-
-        message = await browser.messages.get(message.id);
-        browser.test.assertTrue(message.flagged);
-        browser.test.assertTrue(message.read);
-        browser.test.assertTrue(message.junk);
-        browser.test.assertEq(100, message.junkScore);
-        browser.test.assertEq(2, message.tags.length);
-        browser.test.assertEq(tags[1].key, message.tags[0]);
-        browser.test.assertEq(tags[2].key, message.tags[1]);
-        browser.test.assertEq("99@made.up.invalid", message.headerMessageId);
-
-        // Test that clearing properties works.
-        updatePromise = newUpdatePromise(5);
-        await browser.messages.update(message.id, {
-          flagged: false,
-          read: false,
-          junk: false,
-          tags: [],
-        });
-        updateInfo = await updatePromise;
-        window.assertDeepEqual(
-          {
-            flagged: false,
-            read: false,
-            junk: false,
-            tags: [],
-          },
-          updateInfo.props
-        );
-        await window.sendMessage("clear");
-
-        message = await browser.messages.get(message.id);
-        browser.test.assertFalse(message.flagged);
-        browser.test.assertFalse(message.read);
-        browser.test.assertFalse(message.junk);
-        browser.test.assertEq(0, message.junkScore);
-        browser.test.assertEq(0, message.tags.length);
-        browser.test.assertEq("99@made.up.invalid", message.headerMessageId);
-
-        browser.test.notifyPass("finished");
-      },
-      "utils.js": await getUtilsJS(),
-    };
-    let extension = ExtensionTestUtils.loadExtension({
-      files,
-      manifest: {
-        background: { scripts: ["utils.js", "background.js"] },
-        permissions: ["accountsRead", "messagesRead"],
-      },
-    });
-
-    let message = [...subFolders.test0.messages][0];
-    ok(!message.isFlagged);
-    ok(!message.isRead);
-    equal(message.getProperty("keywords"), "testkeyword");
-
-    await extension.startup();
-    extension.sendMessage({
-      folder: { accountId: account.key, path: "/test0" },
-      size: message.messageSize,
-    });
-
-    await extension.awaitMessage("flagged");
-    await TestUtils.waitForCondition(() => message.isFlagged);
-    extension.sendMessage();
-
-    await extension.awaitMessage("read");
-    await TestUtils.waitForCondition(() => message.isRead);
-    extension.sendMessage();
-
-    await extension.awaitMessage("junk");
-    await TestUtils.waitForCondition(
-      () => message.getStringProperty("junkscore") == 100
-    );
-    extension.sendMessage();
-
-    await extension.awaitMessage("tags1");
-    if (IS_IMAP) {
-      // Only IMAP sets the junk/nonjunk keyword.
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword junk $label1"
-      );
-    } else {
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword $label1"
-      );
-    }
-    extension.sendMessage();
-
-    await extension.awaitMessage("tags2");
-    if (IS_IMAP) {
-      await TestUtils.waitForCondition(
-        () =>
-          message.getProperty("keywords") == "testkeyword junk $label2 $label3"
-      );
-    } else {
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword $label2 $label3"
-      );
-    }
-    extension.sendMessage();
-
-    await extension.awaitMessage("empty");
-    await TestUtils.waitForCondition(() => message.isFlagged);
-    await TestUtils.waitForCondition(() => message.isRead);
-    if (IS_IMAP) {
-      await TestUtils.waitForCondition(
-        () =>
-          message.getProperty("keywords") == "testkeyword junk $label2 $label3"
-      );
-    } else {
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword $label2 $label3"
-      );
-    }
-    extension.sendMessage();
-
-    await extension.awaitMessage("clear");
-    await TestUtils.waitForCondition(() => !message.isFlagged);
-    await TestUtils.waitForCondition(() => !message.isRead);
-    await TestUtils.waitForCondition(
-      () => message.getStringProperty("junkscore") == 0
-    );
-    if (IS_IMAP) {
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword nonjunk"
-      );
-    } else {
-      await TestUtils.waitForCondition(
-        () => message.getProperty("keywords") == "testkeyword"
-      );
-    }
-    extension.sendMessage();
-
-    await extension.awaitFinish("finished");
-    await extension.unload();
-  }
-);
-
-add_task(
-  {
-    skip_if: () => IS_NNTP,
-  },
-  async function test_move_copy_delete() {
-    let files = {
-      "background.js": async () => {
-        async function checkMessagesInFolder(expectedKeys, folder) {
-          let expectedSubjects = expectedKeys.map(k => messages[k].subject);
-          browser.test.log("expected: " + expectedSubjects);
-          let { messages: actualMessages } = await browser.messages.list(
-            folder
-          );
-          browser.test.log("actual: " + actualMessages.map(m => m.subject));
-
-          browser.test.assertEq(expectedSubjects.length, actualMessages.length);
-          for (let m of actualMessages) {
-            browser.test.assertTrue(
-              expectedSubjects.includes(m.subject),
-              `${m.subject} at ${m.id}`
-            );
-            messages[m.subject.split(" ")[0]].id = m.id;
-          }
-
-          // Return the messages for convenience.
-          return actualMessages;
-        }
-
-        function newMovePromise(numberOfEventsToCollapse = 1) {
-          return new Promise(resolve => {
-            let seenEvents = 0;
-            let seenSrcMsgs = [];
-            let seenDstMsgs = [];
-            const listener = (srcMsgs, dstMsgs) => {
-              seenEvents++;
-              seenSrcMsgs.push(...srcMsgs.messages);
-              seenDstMsgs.push(...dstMsgs.messages);
-              if (seenEvents == numberOfEventsToCollapse) {
-                browser.messages.onMoved.removeListener(listener);
-                resolve({ srcMsgs: seenSrcMsgs, dstMsgs: seenDstMsgs });
-              }
-            };
-            browser.messages.onMoved.addListener(listener);
-          });
-        }
-
-        function newCopyPromise(numberOfEventsToCollapse = 1) {
-          return new Promise(resolve => {
-            let seenEvents = 0;
-            let seenSrcMsgs = [];
-            let seenDstMsgs = [];
-            const listener = (srcMsgs, dstMsgs) => {
-              seenEvents++;
-              seenSrcMsgs.push(...srcMsgs.messages);
-              seenDstMsgs.push(...dstMsgs.messages);
-              if (seenEvents == numberOfEventsToCollapse) {
-                browser.messages.onCopied.removeListener(listener);
-                resolve({ srcMsgs: seenSrcMsgs, dstMsgs: seenDstMsgs });
-              }
-            };
-            browser.messages.onCopied.addListener(listener);
-          });
-        }
-
-        function newDeletePromise(numberOfEventsToCollapse = 1) {
-          return new Promise(resolve => {
-            let seenEvents = 0;
-            let seenMsgs = [];
-            const listener = msgs => {
-              seenEvents++;
-              seenMsgs.push(...msgs.messages);
-              if (seenEvents == numberOfEventsToCollapse) {
-                browser.messages.onDeleted.removeListener(listener);
-                resolve(seenMsgs);
-              }
-            };
-            browser.messages.onDeleted.addListener(listener);
-          });
-        }
-
-        async function checkEventInformation(
-          infoPromise,
-          expected,
-          messages,
-          dstFolder
-        ) {
-          let eventInfo = await infoPromise;
-          browser.test.assertEq(eventInfo.srcMsgs.length, expected.length);
-          browser.test.assertEq(eventInfo.dstMsgs.length, expected.length);
-          for (let msg of expected) {
-            let idx = eventInfo.srcMsgs.findIndex(
-              e => e.id == messages[msg].id
-            );
-            browser.test.assertEq(
-              eventInfo.srcMsgs[idx].subject,
-              messages[msg].subject
-            );
-            browser.test.assertEq(
-              eventInfo.dstMsgs[idx].subject,
-              messages[msg].subject
-            );
-            browser.test.assertEq(
-              eventInfo.dstMsgs[idx].folder.path,
-              dstFolder.path
-            );
-          }
-        }
-
-        let [accountId] = await window.waitForMessage();
-        let { folders } = await browser.accounts.get(accountId);
-        let testFolder1 = folders.find(f => f.name == "test1");
-        let testFolder2 = folders.find(f => f.name == "test2");
-        let testFolder3 = folders.find(f => f.name == "test3");
-        let trashFolder = folders.find(f => f.name == "Trash");
-
-        let { messages: folder1Messages } = await browser.messages.list(
-          testFolder1
-        );
-
-        // Since the ID of a message changes when it is moved, track by subject.
-        let messages = {};
-        for (let m of folder1Messages) {
-          messages[m.subject.split(" ")[0]] = { id: m.id, subject: m.subject };
-        }
-
-        // To help with debugging, output the IDs of our five messages.
-        // Conveniently at this point we know the messages should be numbered 101-105,
-        // (since we used 100 messages in the previous two tests) so I've put the
-        // expected values in comments.
-        browser.test.log(JSON.stringify(messages));
-
-        // Move one message to another folder.
-        let movePromise = newMovePromise();
-        await browser.messages.move([messages.Red.id], testFolder2);
-        await checkEventInformation(
-          movePromise,
-          ["Red"],
-          messages,
-          testFolder2
-        );
-        await checkMessagesInFolder(
-          ["Green", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder(["Red"], testFolder2);
-        browser.test.log(JSON.stringify(messages)); // 106, 102, 103, 104, 105
-
-        // And back again.
-        movePromise = newMovePromise();
-        await browser.messages.move([messages.Red.id], testFolder1);
-        await checkEventInformation(
-          movePromise,
-          ["Red"],
-          messages,
-          testFolder1
-        );
-        await checkMessagesInFolder(
-          ["Red", "Green", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder([], testFolder2);
-        browser.test.log(JSON.stringify(messages)); // 101, 102, 103, 103, 105
-
-        // Move two messages to another folder.
-        movePromise = newMovePromise();
-        await browser.messages.move(
-          [messages.Green.id, messages.My.id],
-          testFolder2
-        );
-        await checkEventInformation(
-          movePromise,
-          ["Green", "My"],
-          messages,
-          testFolder2
-        );
-        await checkMessagesInFolder(["Red", "Blue", "Happy"], testFolder1);
-        await checkMessagesInFolder(["Green", "My"], testFolder2);
-        browser.test.log(JSON.stringify(messages)); // 101, 107, 103, 108, 105
-
-        // Move one back again.
-        movePromise = newMovePromise();
-        await browser.messages.move([messages.My.id], testFolder1);
-        await checkEventInformation(movePromise, ["My"], messages, testFolder1);
-        await checkMessagesInFolder(
-          ["Red", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder(["Green"], testFolder2);
-        browser.test.log(JSON.stringify(messages)); // 101, 107, 103, 104, 105
-
-        // Move messages from different folders to a third folder. We collapse
-        // the two events (one for each source folder).
-        movePromise = newMovePromise(2);
-        await browser.messages.move(
-          [messages.Green.id, messages.My.id],
-          testFolder3
-        );
-        await checkEventInformation(
-          movePromise,
-          ["Green", "My"],
-          messages,
-          testFolder3
-        );
-        await checkMessagesInFolder(["Red", "Blue", "Happy"], testFolder1);
-        await checkMessagesInFolder([], testFolder2);
-        await checkMessagesInFolder(["Green", "My"], testFolder3);
-        browser.test.log(JSON.stringify(messages)); // 101, 109, 103, 110, 105
-
-        // The following tests should not trigger move events.
-        let listenerCalls = 0;
-        const listenerFunc = () => {
-          listenerCalls++;
-        };
-        browser.messages.onMoved.addListener(listenerFunc);
-
-        // Move a message to the folder it's already in.
-        await browser.messages.move([messages.Green.id], testFolder3);
-        await checkMessagesInFolder(["Green", "My"], testFolder3);
-        browser.test.log(JSON.stringify(messages)); // 101, 109, 103, 110, 105
-
-        // Move no messages.
-        await browser.messages.move([], testFolder3);
-        await checkMessagesInFolder(["Red", "Blue", "Happy"], testFolder1);
-        await checkMessagesInFolder([], testFolder2);
-        await checkMessagesInFolder(["Green", "My"], testFolder3);
-        browser.test.log(JSON.stringify(messages)); // 101, 109, 103, 110, 105
-
-        // Move a non-existent message.
-        await browser.messages.move([9999], testFolder1);
-        await checkMessagesInFolder(["Red", "Blue", "Happy"], testFolder1);
-        browser.test.log(JSON.stringify(messages)); // 101, 109, 103, 110, 105
-
-        // Move to a non-existent folder.
-        await browser.test.assertRejects(
-          browser.messages.move([messages.Red.id], {
-            accountId,
-            path: "/missing",
-          }),
-          /Unexpected error moving messages/,
-          "something should happen"
-        );
-
-        // Check that no move event was triggered.
-        browser.messages.onMoved.removeListener(listenerFunc);
-        browser.test.assertEq(0, listenerCalls);
-
-        // Put everything back where it was at the start of the test.
-        await browser.messages.move(
-          Object.values(messages).map(m => m.id),
-          testFolder1
-        );
-        await checkMessagesInFolder(
-          ["Red", "Green", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder([], testFolder2);
-        await checkMessagesInFolder([], testFolder3);
-
-        // Copy one message to another folder.
-        let copyPromise = newCopyPromise();
-        await browser.messages.copy([messages.Happy.id], testFolder2);
-        await checkEventInformation(
-          copyPromise,
-          ["Happy"],
-          messages,
-          testFolder2
-        );
-        await checkMessagesInFolder(
-          ["Red", "Green", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        let { messages: folder2Messages } = await browser.messages.list(
-          testFolder2
-        );
-        browser.test.assertEq(1, folder2Messages.length);
-        browser.test.assertEq(
-          messages.Happy.subject,
-          folder2Messages[0].subject
-        );
-        browser.test.assertTrue(folder2Messages[0].id != messages.Happy.id);
-        browser.test.log(JSON.stringify(messages)); // 101, 102, 103, 104, 105, 111
-
-        // Delete the copied message.
-        let deletePromise = newDeletePromise();
-        await browser.messages.delete([folder2Messages[0].id], true);
-        // Check if the delete information is correct.
-        let deleteLog = await deletePromise;
-        browser.test.assertEq(1, deleteLog.length);
-        browser.test.assertEq(folder2Messages[0].id, deleteLog[0].id);
-        // Check if the message was deleted.
-        await checkMessagesInFolder(
-          ["Red", "Green", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder([], testFolder2);
-        await checkMessagesInFolder([], testFolder3);
-        browser.test.log(JSON.stringify(messages)); // 101, 102, 103, 104, 105
-
-        // Move a message to the trash.
-        movePromise = newMovePromise();
-        browser.test.log("this is the other failing bit");
-        await browser.messages.move([messages.Green.id], trashFolder);
-        await checkEventInformation(
-          movePromise,
-          ["Green"],
-          messages,
-          trashFolder
-        );
-        await checkMessagesInFolder(
-          ["Red", "Blue", "My", "Happy"],
-          testFolder1
-        );
-        await checkMessagesInFolder([], testFolder2);
-        await checkMessagesInFolder([], testFolder3);
-
-        let { messages: trashFolderMessages } = await browser.messages.list(
-          trashFolder
-        );
-        browser.test.assertTrue(
-          trashFolderMessages.find(m => m.subject == messages.Green.subject)
-        );
-        browser.test.log(JSON.stringify(messages)); // 101, 102, 103, 104
-
-        browser.test.notifyPass("finished");
-      },
-      "utils.js": await getUtilsJS(),
-    };
-    let extension = ExtensionTestUtils.loadExtension({
-      files,
-      manifest: {
-        background: { scripts: ["utils.js", "background.js"] },
-        permissions: [
-          "accountsRead",
-          "messagesMove",
-          "messagesRead",
-          "messagesDelete",
-        ],
-      },
-    });
-
-    Services.prefs.setIntPref("extensions.webextensions.messagesPerPage", 1000);
-
-    await extension.startup();
-    extension.sendMessage(account.key);
-    await extension.awaitFinish("finished");
-    await extension.unload();
-
-    Services.prefs.clearUserPref("extensions.webextensions.messagesPerPage");
-  }
-);
-
-add_task(
-  {
-    skip_if: () => IS_NNTP,
-  },
   async function test_delete_without_permission() {
-    let files = {
+    const files = {
       "background.js": async () => {
-        let [accountId] = await window.waitForMessage();
-        let { folders } = await browser.accounts.get(accountId);
-        let testFolder4 = folders.find(f => f.name == "test4");
+        const [accountId] = await window.waitForMessage();
+        const { folders } = await browser.accounts.get(accountId);
+        const testFolder4 = folders.find(f => f.name == "test4");
 
-        let { messages: folder4Messages } = await browser.messages.list(
+        const { messages: folder4Messages } = await browser.messages.list(
           testFolder4
         );
 
@@ -755,10 +160,14 @@ add_task(
       },
       "utils.js": await getUtilsJS(),
     };
-    let extension = ExtensionTestUtils.loadExtension({
+    const extension = ExtensionTestUtils.loadExtension({
       files,
       manifest: {
+        manifest_version: 2,
         background: { scripts: ["utils.js", "background.js"] },
+        browser_specific_settings: {
+          gecko: { id: "messages.delete@mochi.test" },
+        },
         permissions: ["accountsRead", "messagesMove", "messagesRead"],
       },
     });
@@ -774,15 +183,15 @@ add_task(
   {
     skip_if: () => IS_NNTP,
   },
-  async function test_move_anc_copy_without_permission() {
-    let files = {
+  async function test_move_and_copy_without_permission() {
+    const files = {
       "background.js": async () => {
-        let [accountId] = await window.waitForMessage();
-        let { folders } = await browser.accounts.get(accountId);
-        let testFolder4 = folders.find(f => f.name == "test4");
-        let testFolder3 = folders.find(f => f.name == "test3");
+        const [accountId] = await window.waitForMessage();
+        const { folders } = await browser.accounts.get(accountId);
+        const testFolder4 = folders.find(f => f.name == "test4");
+        const testFolder3 = folders.find(f => f.name == "test3");
 
-        let { messages: folder4Messages } = await browser.messages.list(
+        const { messages: folder4Messages } = await browser.messages.list(
           testFolder4
         );
 
@@ -804,9 +213,503 @@ add_task(
       },
       "utils.js": await getUtilsJS(),
     };
-    let extension = ExtensionTestUtils.loadExtension({
+    const extension = ExtensionTestUtils.loadExtension({
       files,
       manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        browser_specific_settings: {
+          gecko: { id: "messages.move@mochi.test" },
+        },
+        permissions: ["messagesRead", "accountsRead"],
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage(account.key);
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    skip_if: () => IS_NNTP,
+  },
+  async function test_tags() {
+    const files = {
+      "background.js": async () => {
+        const [accountId] = await window.waitForMessage();
+        const { folders } = await browser.accounts.get(accountId);
+        const testFolder4 = folders.find(f => f.name == "test4");
+        const { messages: folder4Messages } = await browser.messages.list(
+          testFolder4
+        );
+
+        const tags1 = await browser.messages.listTags();
+        window.assertDeepEqual(
+          [
+            {
+              key: "$label1",
+              tag: "Important",
+              color: "#FF0000",
+              ordinal: "",
+            },
+            {
+              key: "$label2",
+              tag: "Work",
+              color: "#FF9900",
+              ordinal: "",
+            },
+            {
+              key: "$label3",
+              tag: "Personal",
+              color: "#009900",
+              ordinal: "",
+            },
+            {
+              key: "$label4",
+              tag: "To Do",
+              color: "#3333FF",
+              ordinal: "",
+            },
+            {
+              key: "$label5",
+              tag: "Later",
+              color: "#993399",
+              ordinal: "",
+            },
+          ],
+          tags1
+        );
+
+        // Test some allowed special chars and that the key is created as lower
+        // case.
+        const goodKeys = [
+          "TestKey",
+          "Test_Key",
+          "Test\\Key",
+          "Test}Key",
+          "Test&Key",
+          "Test!Key",
+          "Test§Key",
+          "Test$Key",
+          "Test=Key",
+          "Test?Key",
+        ];
+        for (const key of goodKeys) {
+          await browser.messages.createTag(key, "Test Tag", "#cd3456");
+          const goodTags = await browser.messages.listTags();
+          window.assertDeepEqual(
+            [
+              {
+                key: "$label1",
+                tag: "Important",
+                color: "#FF0000",
+                ordinal: "",
+              },
+              {
+                key: "$label2",
+                tag: "Work",
+                color: "#FF9900",
+                ordinal: "",
+              },
+              {
+                key: "$label3",
+                tag: "Personal",
+                color: "#009900",
+                ordinal: "",
+              },
+              {
+                key: "$label4",
+                tag: "To Do",
+                color: "#3333FF",
+                ordinal: "",
+              },
+              {
+                key: "$label5",
+                tag: "Later",
+                color: "#993399",
+                ordinal: "",
+              },
+              {
+                key: key.toLowerCase(),
+                tag: "Test Tag",
+                color: "#CD3456",
+                ordinal: "",
+              },
+            ],
+            goodTags
+          );
+          await browser.messages.deleteTag(key.toLowerCase());
+        }
+
+        await browser.messages.createTag("custom_tag", "Custom Tag", "#123456");
+        const tags2 = await browser.messages.listTags();
+        window.assertDeepEqual(
+          [
+            {
+              key: "$label1",
+              tag: "Important",
+              color: "#FF0000",
+              ordinal: "",
+            },
+            {
+              key: "$label2",
+              tag: "Work",
+              color: "#FF9900",
+              ordinal: "",
+            },
+            {
+              key: "$label3",
+              tag: "Personal",
+              color: "#009900",
+              ordinal: "",
+            },
+            {
+              key: "$label4",
+              tag: "To Do",
+              color: "#3333FF",
+              ordinal: "",
+            },
+            {
+              key: "$label5",
+              tag: "Later",
+              color: "#993399",
+              ordinal: "",
+            },
+            {
+              key: "custom_tag",
+              tag: "Custom Tag",
+              color: "#123456",
+              ordinal: "",
+            },
+          ],
+          tags2
+        );
+
+        await browser.messages.tags.update("$label5", {
+          tag: "A Bit Later",
+          color: "#AB4488",
+        });
+        const tags3a = await browser.messages.listTags();
+        window.assertDeepEqual(
+          [
+            {
+              key: "$label1",
+              tag: "Important",
+              color: "#FF0000",
+              ordinal: "",
+            },
+            {
+              key: "$label2",
+              tag: "Work",
+              color: "#FF9900",
+              ordinal: "",
+            },
+            {
+              key: "$label3",
+              tag: "Personal",
+              color: "#009900",
+              ordinal: "",
+            },
+            {
+              key: "$label4",
+              tag: "To Do",
+              color: "#3333FF",
+              ordinal: "",
+            },
+            {
+              key: "$label5",
+              tag: "A Bit Later",
+              color: "#AB4488",
+              ordinal: "",
+            },
+            {
+              key: "custom_tag",
+              tag: "Custom Tag",
+              color: "#123456",
+              ordinal: "",
+            },
+          ],
+          tags3a
+        );
+
+        await browser.messages.updateTag("$label5", {
+          tag: "Much Later",
+          color: "#cd5599",
+        });
+        const tags3b = await browser.messages.listTags();
+        window.assertDeepEqual(
+          [
+            {
+              key: "$label1",
+              tag: "Important",
+              color: "#FF0000",
+              ordinal: "",
+            },
+            {
+              key: "$label2",
+              tag: "Work",
+              color: "#FF9900",
+              ordinal: "",
+            },
+            {
+              key: "$label3",
+              tag: "Personal",
+              color: "#009900",
+              ordinal: "",
+            },
+            {
+              key: "$label4",
+              tag: "To Do",
+              color: "#3333FF",
+              ordinal: "",
+            },
+            {
+              key: "$label5",
+              tag: "Much Later",
+              color: "#CD5599",
+              ordinal: "",
+            },
+            {
+              key: "custom_tag",
+              tag: "Custom Tag",
+              color: "#123456",
+              ordinal: "",
+            },
+          ],
+          tags3b
+        );
+
+        // Test rejects for createTag().
+        const badKeys = [
+          "Bad Key",
+          "Bad%Key",
+          "Bad/Key",
+          "Bad*Key",
+          'Bad"Key',
+          "Bad{Key}",
+          "Bad(Key)",
+          "Bad<Key>",
+        ];
+        for (const badKey of badKeys) {
+          await browser.test.assertThrows(
+            () =>
+              browser.messages.createTag(badKey, "Important Stuff", "#223344"),
+            /Type error for parameter key/,
+            `Should reject creating an invalid key: ${badKey}`
+          );
+        }
+
+        await browser.test.assertThrows(
+          () =>
+            browser.messages.createTag(
+              "GoodKeyBadColor",
+              "Important Stuff",
+              "#223"
+            ),
+          /Type error for parameter color /,
+          "Should reject creating a key using an invalid short color"
+        );
+
+        await browser.test.assertThrows(
+          () =>
+            browser.messages.createTag(
+              "GoodKeyBadColor",
+              "Important Stuff",
+              "123223"
+            ),
+          /Type error for parameter color /,
+          "Should reject creating a key using an invalid color without leading #"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.createTag("$label5", "Important Stuff", "#223344"),
+          `Specified key already exists: $label5`,
+          "Should reject creating a key which exists already"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.createTag(
+            "Custom_Tag",
+            "Important Stuff",
+            "#223344"
+          ),
+          `Specified key already exists: custom_tag`,
+          "Should reject creating a key which exists already"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.createTag("GoodKey", "Important", "#223344"),
+          `Specified tag already exists: Important`,
+          "Should reject creating a key using a tag which exists already"
+        );
+
+        // Test rejects for updateTag();
+        await browser.test.assertThrows(
+          () => browser.messages.updateTag("Bad Key", { tag: "Much Later" }),
+          /Type error for parameter key/,
+          "Should reject updating an invalid key"
+        );
+
+        await browser.test.assertThrows(
+          () =>
+            browser.messages.updateTag("GoodKeyBadColor", { color: "123223" }),
+          /Error processing color/,
+          "Should reject updating a key using an invalid color"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.updateTag("$label50", { tag: "Much Later" }),
+          `Specified key does not exist: $label50`,
+          "Should reject updating an unknown key"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.updateTag("$label5", { tag: "Important" }),
+          `Specified tag already exists: Important`,
+          "Should reject updating a key using a tag which exists already"
+        );
+
+        // Test rejects for deleteTag();
+        await browser.test.assertThrows(
+          () => browser.messages.deleteTag("Bad Key"),
+          /Type error for parameter key/,
+          "Should reject deleting an invalid key"
+        );
+
+        await browser.test.assertRejects(
+          browser.messages.deleteTag("$label50"),
+          `Specified key does not exist: $label50`,
+          "Should reject deleting an unknown key"
+        );
+
+        // Test tagging messages, deleting tag and re-creating tag.
+        await browser.messages.update(folder4Messages[0].id, {
+          tags: ["custom_tag"],
+        });
+        const message1 = await browser.messages.get(folder4Messages[0].id);
+        window.assertDeepEqual(["custom_tag"], message1.tags);
+
+        await browser.messages.tags.delete("custom_tag");
+        const message2 = await browser.messages.get(folder4Messages[0].id);
+        window.assertDeepEqual([], message2.tags);
+
+        await browser.messages.tags.create(
+          "custom_tag",
+          "Custom Tag",
+          "#AB3456"
+        );
+        const message3 = await browser.messages.get(folder4Messages[0].id);
+        window.assertDeepEqual(["custom_tag"], message3.tags);
+
+        // Test deleting built-in tag.
+        await browser.messages.deleteTag("$label5");
+        const tags4 = await browser.messages.listTags();
+        window.assertDeepEqual(
+          [
+            {
+              key: "$label1",
+              tag: "Important",
+              color: "#FF0000",
+              ordinal: "",
+            },
+            {
+              key: "$label2",
+              tag: "Work",
+              color: "#FF9900",
+              ordinal: "",
+            },
+            {
+              key: "$label3",
+              tag: "Personal",
+              color: "#009900",
+              ordinal: "",
+            },
+            {
+              key: "$label4",
+              tag: "To Do",
+              color: "#3333FF",
+              ordinal: "",
+            },
+            {
+              key: "custom_tag",
+              tag: "Custom Tag",
+              color: "#AB3456",
+              ordinal: "",
+            },
+          ],
+          tags4
+        );
+
+        // Clean up.
+        await browser.messages.update(folder4Messages[0].id, { tags: [] });
+        await browser.messages.deleteTag("custom_tag");
+        await browser.messages.tags.create("$label5", "Later", "#993399");
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: [
+          "messagesRead",
+          "accountsRead",
+          "messagesTags",
+          "messagesUpdate",
+        ],
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage(account.key);
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    skip_if: () => IS_NNTP,
+  },
+  async function test_tags_no_permission() {
+    const files = {
+      "background.js": async () => {
+        await browser.test.assertThrows(
+          () =>
+            browser.messages.createTag(
+              "custom_tag",
+              "Important Stuff",
+              "#223344"
+            ),
+          /browser.messages.createTag is not a function/,
+          "Should reject creating tags without messagesTags permission"
+        );
+
+        await browser.test.assertThrows(
+          () => browser.messages.updateTag("$label5", { tag: "Much Later" }),
+          /browser.messages.updateTag is not a function/,
+          "Should reject updating tags without messagesTags permission"
+        );
+
+        await browser.test.assertThrows(
+          () => browser.messages.deleteTag("$label5"),
+          /browser.messages.deleteTag is not a function/,
+          "Should reject deleting tags without messagesTags permission"
+        );
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
         background: { scripts: ["utils.js", "background.js"] },
         permissions: ["messagesRead", "accountsRead"],
       },
@@ -820,84 +723,865 @@ add_task(
 );
 
 // The IMAP fakeserver just can't handle this.
-add_task({ skip_if: () => IS_IMAP || IS_NNTP }, async function test_archive() {
-  let account2 = createAccount();
-  account2.addIdentity(MailServices.accounts.createIdentity());
-  let inbox2 = await createSubfolder(
-    account2.incomingServer.rootFolder,
-    "test"
-  );
-  await createMessages(inbox2, 15);
+add_task(
+  {
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_archive() {
+    const account2 = createAccount();
+    account2.addIdentity(MailServices.accounts.createIdentity());
+    const inbox2 = await createSubfolder(
+      account2.incomingServer.rootFolder,
+      "test"
+    );
+    await createMessages(inbox2, 15);
 
-  let month = 10;
-  for (let message of inbox2.messages) {
-    message.date = new Date(2018, month++, 15) * 1000;
+    let month = 10;
+    for (const message of inbox2.messages) {
+      message.date = new Date(2018, month++, 15) * 1000;
+    }
+
+    const files = {
+      "background.js": async () => {
+        const [accountId] = await window.waitForMessage();
+
+        const accountBefore = await browser.accounts.get(accountId);
+        browser.test.assertEq(3, accountBefore.folders.length);
+        browser.test.assertEq("/test", accountBefore.folders[2].path);
+
+        const messagesBefore = await browser.messages.list(
+          accountBefore.folders[2]
+        );
+        browser.test.assertEq(15, messagesBefore.messages.length);
+        await browser.messages.archive(messagesBefore.messages.map(m => m.id));
+
+        const accountAfter = await browser.accounts.get(accountId);
+        browser.test.assertEq(4, accountAfter.folders.length);
+        browser.test.assertEq("/test", accountAfter.folders[3].path);
+        browser.test.assertEq("/Archives", accountAfter.folders[0].path);
+        browser.test.assertEq(3, accountAfter.folders[0].subFolders.length);
+        browser.test.assertEq(
+          "/Archives/2018",
+          accountAfter.folders[0].subFolders[0].path
+        );
+        browser.test.assertEq(
+          "/Archives/2019",
+          accountAfter.folders[0].subFolders[1].path
+        );
+        browser.test.assertEq(
+          "/Archives/2020",
+          accountAfter.folders[0].subFolders[2].path
+        );
+
+        const messagesAfter = await browser.messages.list(
+          accountAfter.folders[3]
+        );
+        browser.test.assertEq(0, messagesAfter.messages.length);
+
+        const messages2018 = await browser.messages.list(
+          accountAfter.folders[0].subFolders[0]
+        );
+        browser.test.assertEq(2, messages2018.messages.length);
+
+        const messages2019 = await browser.messages.list(
+          accountAfter.folders[0].subFolders[1]
+        );
+        browser.test.assertEq(12, messages2019.messages.length);
+
+        const messages2020 = await browser.messages.list(
+          accountAfter.folders[0].subFolders[2]
+        );
+        browser.test.assertEq(1, messages2020.messages.length);
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesMove", "messagesRead"],
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage(account2.key);
+    await extension.awaitFinish("finished");
+    await extension.unload();
   }
+);
 
-  let files = {
-    "background.js": async () => {
-      let [accountId] = await window.waitForMessage();
+add_task(
+  {
+    // This is basically a unit test for the MessageList implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_list_auto_early_page_return() {
+    const files = {
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
 
-      let accountBefore = await browser.accounts.get(accountId);
-      browser.test.assertEq(3, accountBefore.folders.length);
-      browser.test.assertEq("/test", accountBefore.folders[2].path);
+        let page = await browser.messages.list(folder);
+        const listId = page.id;
+        // This test uses 10 messages per page. The first page should have been
+        // returned before all 99 messages have been added to 10 pages.
+        // Aborting the list prevents further additions. Therefore, we should not
+        // be able to receive all 10 pages.
+        browser.messages.abortList(listId);
 
-      let messagesBefore = await browser.messages.list(
-        accountBefore.folders[2]
-      );
-      browser.test.assertEq(15, messagesBefore.messages.length);
-      await browser.messages.archive(messagesBefore.messages.map(m => m.id));
+        browser.test.assertEq(
+          36,
+          listId.length,
+          "The listId should have the correct length"
+        );
+        browser.test.assertEq(
+          10,
+          page.messages.length,
+          "The page should have the correct number of messages"
+        );
 
-      let accountAfter = await browser.accounts.get(accountId);
-      browser.test.assertEq(4, accountAfter.folders.length);
-      browser.test.assertEq("/test", accountAfter.folders[2].path);
-      browser.test.assertEq("/Archives", accountAfter.folders[3].path);
-      browser.test.assertEq(3, accountAfter.folders[3].subFolders.length);
-      browser.test.assertEq(
-        "/Archives/2018",
-        accountAfter.folders[3].subFolders[0].path
-      );
-      browser.test.assertEq(
-        "/Archives/2019",
-        accountAfter.folders[3].subFolders[1].path
-      );
-      browser.test.assertEq(
-        "/Archives/2020",
-        accountAfter.folders[3].subFolders[2].path
-      );
+        // Search for the last page.
+        let pageCount = 1;
+        while (page.id) {
+          pageCount++;
+          browser.test.assertEq(
+            listId,
+            page.id,
+            "The listId should be correct"
+          );
+          page = await browser.messages.continueList(listId);
+        }
 
-      let messagesAfter = await browser.messages.list(accountAfter.folders[2]);
-      browser.test.assertEq(0, messagesAfter.messages.length);
+        browser.test.assertEq(
+          2,
+          pageCount,
+          "Should have received only 2 pages."
+        );
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+      },
+    });
 
-      let messages2018 = await browser.messages.list(
-        accountAfter.folders[3].subFolders[0]
-      );
-      browser.test.assertEq(2, messages2018.messages.length);
+    Services.prefs.setIntPref("extensions.webextensions.messagesPerPage", 10);
 
-      let messages2019 = await browser.messages.list(
-        accountAfter.folders[3].subFolders[1]
-      );
-      browser.test.assertEq(12, messages2019.messages.length);
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
 
-      let messages2020 = await browser.messages.list(
-        accountAfter.folders[3].subFolders[2]
-      );
-      browser.test.assertEq(1, messages2020.messages.length);
+    Services.prefs.clearUserPref("extensions.webextensions.messagesPerPage");
+  }
+);
 
-      browser.test.notifyPass("finished");
-    },
-    "utils.js": await getUtilsJS(),
-  };
-  let extension = ExtensionTestUtils.loadExtension({
-    files,
-    manifest: {
-      background: { scripts: ["utils.js", "background.js"] },
-      permissions: ["accountsRead", "messagesMove", "messagesRead"],
-    },
-  });
+add_task(
+  {
+    // This is basically a unit test for the MessageList implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_query_auto_early_page_return() {
+    const files = {
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
 
-  await extension.startup();
-  extension.sendMessage(account2.key);
-  await extension.awaitFinish("finished");
-  await extension.unload();
-});
+        let page = await browser.messages.query({
+          folder,
+          messagesPerPage: 10,
+        });
+        const listId = page.id;
+        // This test uses 10 messages per page. The first page should have been
+        // returned before all 99 messages have been added to 10 pages.
+        // Aborting the list prevents further additions. Therefore, we should not
+        // be able to receive all 10 pages.
+        browser.messages.abortList(listId);
+
+        browser.test.assertEq(
+          36,
+          listId.length,
+          "The listId should have the correct length"
+        );
+        browser.test.assertEq(
+          10,
+          page.messages.length,
+          "The page should have the correct number of messages"
+        );
+
+        // Search for the last page.
+        let pageCount = 1;
+        while (page.id) {
+          pageCount++;
+          browser.test.assertEq(
+            listId,
+            page.id,
+            "The listId should be correct"
+          );
+          page = await browser.messages.continueList(listId);
+        }
+
+        browser.test.assertEq(
+          2,
+          pageCount,
+          "Should have received only 2 pages."
+        );
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    // This is basically a unit test for the MessageQuery implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_query_auto_pagination() {
+    const files = {
+      "schema.json": [
+        {
+          namespace: "PaginationTest",
+          functions: [
+            {
+              name: "throttledQuery",
+              type: "function",
+              async: true,
+              parameters: [
+                {
+                  type: "object",
+                  name: "queryInfo",
+                  properties: {
+                    folder: {
+                      $ref: "folders.MailFolder",
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "implementation.js": () => {
+        var { ExtensionCommon } = ChromeUtils.importESModule(
+          "resource://gre/modules/ExtensionCommon.sys.mjs"
+        );
+        var { MessageQuery } = ChromeUtils.importESModule(
+          "resource:///modules/ExtensionMessages.sys.mjs"
+        );
+        this.PaginationTest = class extends ExtensionCommon.ExtensionAPI {
+          getAPI(context) {
+            const { extension } = context;
+            const { messageManager } = extension;
+            const messageListTracker = messageManager._messageListTracker;
+
+            return {
+              PaginationTest: {
+                async throttledQuery(queryInfo) {
+                  let msgCounter = 1;
+                  const messageDelays = new Map();
+                  messageDelays.set(2, 1500);
+                  messageDelays.set(6, 1500);
+
+                  const messageQuery = new MessageQuery(
+                    queryInfo,
+                    messageListTracker,
+                    extension,
+                    async () => {
+                      // This is a dummy checkSearchCriteriaFn().
+                      const delay = messageDelays.get(msgCounter) || 0;
+                      if (delay) {
+                        console.log(
+                          `Simulating a prolonged synchronous search for message #${msgCounter}`
+                        );
+                        const start = Date.now();
+                        while (Date.now() - start < delay) {
+                          // No Op.
+                        }
+                      }
+                      msgCounter++;
+                      return true;
+                    }
+                  );
+                  return messageQuery.startSearch();
+                },
+              },
+            };
+          }
+        };
+      },
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
+
+        // Test the auto-pagination mechanism and the ability to retrieve pages
+        // as soon as they are available.
+        // If the search process happens to be purely synchronous (determined by
+        // queryInfo), the execution flow will not return to the WebExtension
+        // before the entire messages-add-process has finished. We therefore
+        // interrupt the synchronous execution in MessageQuery.searchMessages()
+        // after new pages have been added and allow pending callbacks on the call
+        // stack to be processed.
+        //
+        // This test will return 99 messages, but will need 1500ms to find the
+        // 2nd and 6th message. The auto-pagination after the default 1000ms will
+        // create early pages and the enforced interruption will allow the
+        // WebExtension to receive the pages before the entire message-add-process
+        // has finished.
+        const firstPage = await browser.PaginationTest.throttledQuery({
+          folder,
+        });
+        const firstPageCreationTime = Date.now();
+        const listId = firstPage.id;
+        browser.test.assertEq(
+          36,
+          listId.length,
+          "The listId should have the correct length"
+        );
+        browser.test.assertEq(
+          2,
+          firstPage.messages.length,
+          "The first page should be correct"
+        );
+
+        const secondPage = await browser.messages.continueList(listId);
+        const secondPageCreationTime = Date.now();
+        browser.test.assertEq(
+          listId,
+          secondPage.id,
+          "The listId should be correct"
+        );
+        browser.test.assertEq(
+          4,
+          secondPage.messages.length,
+          "The second page should be correct"
+        );
+
+        const thirdPage = await browser.messages.continueList(listId);
+        browser.test.assertEq(
+          null,
+          thirdPage.id,
+          "The listId should be correct"
+        );
+        browser.test.assertEq(
+          93,
+          thirdPage.messages.length,
+          "The third page should be correct"
+        );
+
+        browser.test.assertTrue(
+          secondPageCreationTime - firstPageCreationTime > 1000,
+          `secondPageCreationTime - firstPageCreationTime > 1000: ${
+            secondPageCreationTime - firstPageCreationTime
+          }`
+        );
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+        experiment_apis: {
+          PaginationTest: {
+            schema: "schema.json",
+            parent: {
+              scopes: ["addon_parent"],
+              paths: [["PaginationTest"]],
+              script: "implementation.js",
+            },
+          },
+        },
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    // This is basically a unit test for the MessageQuery implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_query_auto_pagination_custom_timeout() {
+    const files = {
+      "schema.json": [
+        {
+          namespace: "PaginationTest",
+          functions: [
+            {
+              name: "throttledQuery",
+              type: "function",
+              async: true,
+              parameters: [
+                {
+                  type: "object",
+                  name: "queryInfo",
+                  properties: {
+                    folder: {
+                      $ref: "folders.MailFolder",
+                    },
+                    autoPaginationTimeout: {
+                      type: "integer",
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "implementation.js": () => {
+        var { ExtensionCommon } = ChromeUtils.importESModule(
+          "resource://gre/modules/ExtensionCommon.sys.mjs"
+        );
+        var { MessageQuery } = ChromeUtils.importESModule(
+          "resource:///modules/ExtensionMessages.sys.mjs"
+        );
+        this.PaginationTest = class extends ExtensionCommon.ExtensionAPI {
+          getAPI(context) {
+            const { extension } = context;
+            const { messageManager } = extension;
+            const messageListTracker = messageManager._messageListTracker;
+
+            return {
+              PaginationTest: {
+                async throttledQuery(queryInfo) {
+                  let msgCounter = 1;
+                  const messageDelays = new Map();
+                  messageDelays.set(2, 500);
+                  messageDelays.set(6, 500);
+
+                  const messageQuery = new MessageQuery(
+                    queryInfo,
+                    messageListTracker,
+                    extension,
+                    async () => {
+                      // This is a dummy checkSearchCriteriaFn().
+                      const delay = messageDelays.get(msgCounter) || 0;
+                      if (delay) {
+                        console.log(
+                          `Simulating a prolonged synchronous search for message #${msgCounter}`
+                        );
+                        const start = Date.now();
+                        while (Date.now() - start < delay) {
+                          // No Op.
+                        }
+                      }
+                      msgCounter++;
+                      return true;
+                    }
+                  );
+                  return messageQuery.startSearch();
+                },
+              },
+            };
+          }
+        };
+      },
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
+
+        // This test will return 99 messages, but will need 500ms to find the
+        // 2nd and 6th message. The auto-pagination after the custom 250ms will
+        // create early pages and the enforced interruption will allow the
+        // WebExtension to receive the pages before the entire message-add-process
+        // has finished.
+        const firstPage = await browser.PaginationTest.throttledQuery({
+          folder,
+          autoPaginationTimeout: 250,
+        });
+        const firstPageCreationTime = Date.now();
+        const listId = firstPage.id;
+        browser.test.assertEq(
+          36,
+          listId.length,
+          "The listId should have the correct length"
+        );
+        browser.test.assertEq(
+          2,
+          firstPage.messages.length,
+          "The first page should be correct"
+        );
+
+        const secondPage = await browser.messages.continueList(listId);
+        const secondPageCreationTime = Date.now();
+        browser.test.assertEq(
+          listId,
+          secondPage.id,
+          "The listId should be correct"
+        );
+        browser.test.assertEq(
+          4,
+          secondPage.messages.length,
+          "The second page should be correct"
+        );
+
+        const thirdPage = await browser.messages.continueList(listId);
+        browser.test.assertEq(
+          null,
+          thirdPage.id,
+          "The listId should be correct"
+        );
+        browser.test.assertEq(
+          93,
+          thirdPage.messages.length,
+          "The second page should be correct"
+        );
+
+        browser.test.assertTrue(
+          secondPageCreationTime - firstPageCreationTime > 250,
+          `secondPageCreationTime - firstPageCreationTime > 250: ${
+            secondPageCreationTime - firstPageCreationTime
+          }`
+        );
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+        experiment_apis: {
+          PaginationTest: {
+            schema: "schema.json",
+            parent: {
+              scopes: ["addon_parent"],
+              paths: [["PaginationTest"]],
+              script: "implementation.js",
+            },
+          },
+        },
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    // This is basically a unit test for the MessageQuery implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_query_disabled_auto_pagination() {
+    const files = {
+      "schema.json": [
+        {
+          namespace: "PaginationTest",
+          functions: [
+            {
+              name: "throttledQuery",
+              type: "function",
+              async: true,
+              parameters: [
+                {
+                  type: "object",
+                  name: "queryInfo",
+                  properties: {
+                    folder: {
+                      $ref: "folders.MailFolder",
+                    },
+                    autoPaginationTimeout: {
+                      type: "integer",
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "implementation.js": () => {
+        var { ExtensionCommon } = ChromeUtils.importESModule(
+          "resource://gre/modules/ExtensionCommon.sys.mjs"
+        );
+        var { MessageQuery } = ChromeUtils.importESModule(
+          "resource:///modules/ExtensionMessages.sys.mjs"
+        );
+        this.PaginationTest = class extends ExtensionCommon.ExtensionAPI {
+          getAPI(context) {
+            const { extension } = context;
+            const { messageManager } = extension;
+            const messageListTracker = messageManager._messageListTracker;
+
+            return {
+              PaginationTest: {
+                async throttledQuery(queryInfo) {
+                  let msgCounter = 1;
+                  const messageDelays = new Map();
+                  messageDelays.set(2, 500);
+                  messageDelays.set(6, 500);
+                  messageDelays.set(10, 500);
+                  messageDelays.set(30, 500);
+
+                  const messageQuery = new MessageQuery(
+                    queryInfo,
+                    messageListTracker,
+                    extension,
+                    async () => {
+                      // This is a dummy checkSearchCriteriaFn().
+                      const delay = messageDelays.get(msgCounter) || 0;
+                      if (delay) {
+                        console.log(
+                          `Simulating a prolonged synchronous search for message #${msgCounter}`
+                        );
+                        const start = Date.now();
+                        while (Date.now() - start < delay) {
+                          // No Op.
+                        }
+                      }
+                      msgCounter++;
+                      return true;
+                    }
+                  );
+                  return messageQuery.startSearch();
+                },
+              },
+            };
+          }
+        };
+      },
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
+
+        // This test will return 99 messages, but will need 500ms to find the
+        // 2nd, 6th, 10th and 30th message. Since auto-pagination is disabled,
+        // the query will return a single page with all messages after the entire
+        // message-add-process has finished.
+        const firstPage = await browser.PaginationTest.throttledQuery({
+          folder,
+          autoPaginationTimeout: 0,
+        });
+        browser.test.assertEq(
+          null,
+          firstPage.id,
+          "The listId should not be present"
+        );
+        browser.test.assertEq(
+          99,
+          firstPage.messages.length,
+          "The first page should be correct"
+        );
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+        experiment_apis: {
+          PaginationTest: {
+            schema: "schema.json",
+            parent: {
+              scopes: ["addon_parent"],
+              paths: [["PaginationTest"]],
+              script: "implementation.js",
+            },
+          },
+        },
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    // This is basically a unit test for the MessageQuery implementation and does
+    // not need to be tested for IMAP and NNTP individually.
+    skip_if: () => IS_IMAP || IS_NNTP,
+  },
+  async function test_query_returnMessageListId() {
+    const files = {
+      "schema.json": [
+        {
+          namespace: "PaginationTest",
+          functions: [
+            {
+              name: "throttledQuery",
+              type: "function",
+              async: true,
+              parameters: [
+                {
+                  type: "object",
+                  name: "queryInfo",
+                  properties: {
+                    folder: {
+                      $ref: "folders.MailFolder",
+                    },
+                    autoPaginationTimeout: {
+                      type: "integer",
+                    },
+                    returnMessageListId: {
+                      type: "boolean",
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "implementation.js": () => {
+        var { ExtensionCommon } = ChromeUtils.importESModule(
+          "resource://gre/modules/ExtensionCommon.sys.mjs"
+        );
+        var { MessageQuery } = ChromeUtils.importESModule(
+          "resource:///modules/ExtensionMessages.sys.mjs"
+        );
+        this.PaginationTest = class extends ExtensionCommon.ExtensionAPI {
+          getAPI(context) {
+            const { extension } = context;
+            const { messageManager } = extension;
+            const messageListTracker = messageManager._messageListTracker;
+
+            return {
+              PaginationTest: {
+                async throttledQuery(queryInfo) {
+                  let msgCounter = 1;
+                  const searchResults = new Map();
+                  searchResults.set(6, true);
+                  searchResults.set(55, true);
+
+                  const messageQuery = new MessageQuery(
+                    queryInfo,
+                    messageListTracker,
+                    extension,
+                    async () => {
+                      // This is a dummy checkSearchCriteriaFn().
+                      const result = searchResults.has(msgCounter);
+                      console.log(
+                        `Simulating a prolonged synchronous search for message #${msgCounter}`
+                      );
+                      const start = Date.now();
+                      while (Date.now() - start < 20) {
+                        // No Op.
+                      }
+                      msgCounter++;
+                      return result;
+                    }
+                  );
+                  return messageQuery.startSearch();
+                },
+              },
+            };
+          }
+        };
+      },
+      "background.js": async () => {
+        const [folder] = await window.waitForMessage();
+
+        // This test will return message #6 and message #55, and will need 20ms
+        // to check each of the 99 messages in the specified folder.
+        // Since autoPagination is disabled and returnMessageListId is enabled,
+        // the query should return the listId immediately, and one page with two
+        // messages after all 99 messages have been processed.
+        const listId = await browser.PaginationTest.throttledQuery({
+          folder,
+          autoPaginationTimeout: 0,
+          returnMessageListId: true,
+        });
+        const listCreationTime = Date.now();
+        browser.test.assertEq(
+          36,
+          listId.length,
+          "The listId should have the correct length"
+        );
+
+        const firstPage = await browser.messages.continueList(listId);
+        const firstPageCreationTime = Date.now();
+        browser.test.assertEq(
+          null,
+          firstPage.id,
+          "The listId should be correct"
+        );
+        browser.test.assertEq(
+          2,
+          firstPage.messages.length,
+          "The page should be correct"
+        );
+
+        browser.test.assertTrue(
+          firstPageCreationTime - listCreationTime >= 1980,
+          `secondPageCreationTime - firstPageCreationTime >= 99*20 = 1980: ${
+            firstPageCreationTime - listCreationTime
+          }`
+        );
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    };
+    const extension = ExtensionTestUtils.loadExtension({
+      files,
+      manifest: {
+        manifest_version: 2,
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+        experiment_apis: {
+          PaginationTest: {
+            schema: "schema.json",
+            parent: {
+              scopes: ["addon_parent"],
+              paths: [["PaginationTest"]],
+              script: "implementation.js",
+            },
+          },
+        },
+      },
+    });
+
+    await extension.startup();
+    extension.sendMessage({ accountId: account.key, path: "/Trash" });
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);

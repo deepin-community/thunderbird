@@ -25,7 +25,7 @@ const TEST_URI = `<style>
   </style>
   <h1 class=title>Header</h1>`;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
 
@@ -60,7 +60,7 @@ add_task(async function() {
 
   info("Check that UP/DOWN navigates in the input, even when next to a number");
   EventUtils.synthesizeKey("VK_DOWN", {}, view.styleWindow);
-  ok(editor.input.selectionStart !== pos, "Input caret moved");
+  Assert.notStrictEqual(editor.input.selectionStart, pos, "Input caret moved");
   is(editor.input.value, LONG_CSS_VALUE, "Input value was not decremented.");
 
   info("Move the caret to the end of the gradient definition.");

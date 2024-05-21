@@ -2,8 +2,11 @@
 import {
   AboutPreferences,
   PREFERENCES_LOADED_EVENT,
-} from "lib/AboutPreferences.jsm";
-import { actionTypes as at, actionCreators as ac } from "common/Actions.jsm";
+} from "lib/AboutPreferences.sys.mjs";
+import {
+  actionTypes as at,
+  actionCreators as ac,
+} from "common/Actions.sys.mjs";
 import { GlobalOverrider } from "test/unit/utils";
 
 describe("AboutPreferences Feed", () => {
@@ -23,7 +26,9 @@ describe("AboutPreferences Feed", () => {
       dispatch: sandbox.stub(),
       getState: () => ({ Sections, DiscoveryStream }),
     };
-    globals.set("NimbusFeatures", { newtab: { getValue: sandbox.stub() } });
+    globals.set("NimbusFeatures", {
+      newtab: { getAllVariables: sandbox.stub() },
+    });
   });
   afterEach(() => {
     globals.restore();
@@ -141,7 +146,7 @@ describe("AboutPreferences Feed", () => {
               },
             },
             createProcessingInstruction: sandbox.stub(),
-            createElementNS: sandbox.stub().callsFake((NS, el) => node),
+            createElementNS: sandbox.stub().callsFake(() => node),
             getElementById: sandbox.stub().returns(node),
             insertBefore: sandbox.stub().returnsArg(0),
             querySelector: sandbox

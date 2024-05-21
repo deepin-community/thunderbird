@@ -12,7 +12,6 @@
 if CONFIG["MOZ_GECKO_PROFILER"]:
     DEFINES["IMPL_MFBT"] = True
     EXPORTS += [
-        "public/BaseProfilerSharedLibraries.h",
         "public/BaseProfilingStack.h",
     ]
     UNIFIED_SOURCES += [
@@ -30,7 +29,7 @@ if CONFIG["MOZ_GECKO_PROFILER"]:
     ]
 
     if CONFIG["OS_TARGET"] in ("Android", "Linux", "FreeBSD"):
-        if CONFIG["CPU_ARCH"] in ("arm", "aarch64", "x86", "x86_64", "mips64"):
+        if CONFIG["TARGET_CPU"] in ("arm", "aarch64", "x86", "x86_64", "mips64"):
             UNIFIED_SOURCES += [
                 "lul/AutoObjectMapper.cpp",
                 "lul/LulCommon.cpp",
@@ -44,7 +43,7 @@ if CONFIG["MOZ_GECKO_PROFILER"]:
         SOURCES += [
             "core/shared-libraries-linux.cc",
         ]
-        if CONFIG["CPU_ARCH"] == "arm" and CONFIG["OS_TARGET"] != "FreeBSD":
+        if CONFIG["TARGET_CPU"] == "arm" and CONFIG["OS_TARGET"] != "FreeBSD":
             SOURCES += [
                 "core/EHABIStackWalk.cpp",
             ]
@@ -66,15 +65,22 @@ if CONFIG["MOZ_GECKO_PROFILER"]:
         DEFINES["ANDROID_NDK_MAJOR_VERSION"] = CONFIG["ANDROID_NDK_MAJOR_VERSION"]
         DEFINES["ANDROID_NDK_MINOR_VERSION"] = CONFIG["ANDROID_NDK_MINOR_VERSION"]
 
-    FINAL_LIBRARY = "mozglue"
+GeneratedFile(
+    "public/ProfilingCategoryList.h",
+    script="build/generate_profiling_categories.py",
+    entry_point="generate_macro_header",
+    inputs=["build/profiling_categories.yaml"],
+)
 
 EXPORTS += [
+    "!public/ProfilingCategoryList.h",
     "public/BaseProfiler.h",
+    "public/BaseProfilerSharedLibraries.h",
     "public/BaseProfilingCategory.h",
-    "public/ProfilingCategoryList.h",
 ]
 
 EXPORTS.mozilla += [
+    "public/BaseAndGeckoProfilerDetail.h",
     "public/BaseProfileJSONWriter.h",
     "public/BaseProfilerCounts.h",
     "public/BaseProfilerDetail.h",
@@ -83,8 +89,10 @@ EXPORTS.mozilla += [
     "public/BaseProfilerMarkersDetail.h",
     "public/BaseProfilerMarkersPrerequisites.h",
     "public/BaseProfilerMarkerTypes.h",
+    "public/BaseProfilerRAIIMacro.h",
     "public/BaseProfilerState.h",
-    "public/BlocksRingBuffer.h",
+    "public/BaseProfilerUtils.h",
+    "public/FailureLatch.h",
     "public/leb128iterator.h",
     "public/ModuloBuffer.h",
     "public/PowerOfTwo.h",
@@ -97,6 +105,15 @@ EXPORTS.mozilla += [
     "public/ProfileBufferEntrySerialization.h",
     "public/ProfileBufferIndex.h",
     "public/ProfileChunkedBuffer.h",
+    "public/ProfileChunkedBufferDetail.h",
+    "public/ProfilerBufferSize.h",
+    "public/ProgressLogger.h",
+    "public/ProportionValue.h",
+]
+
+UNIFIED_SOURCES += [
+    "core/BaseAndGeckoProfilerDetail.cpp",
+    "core/ProfilerUtils.cpp",
 ]
 
 if CONFIG["MOZ_VTUNE"]:
@@ -105,10 +122,10 @@ if CONFIG["MOZ_VTUNE"]:
         "core/VTuneProfiler.cpp",
     ]
 
+FINAL_LIBRARY = "mozglue"
 
 if CONFIG["CC_TYPE"] in ("clang", "gcc"):
     CXXFLAGS += [
-        "-Wno-error=shadow",
         "-Wno-ignored-qualifiers",  # due to use of breakpad headers
     ]
 

@@ -10,30 +10,47 @@ XPIDL_SOURCES += [
 XPIDL_MODULE = "calbaseinternal"
 
 EXTRA_JS_MODULES += [
-    "CalAlarm.jsm",
-    "CalAlarmMonitor.jsm",
-    "CalAlarmService.jsm",
-    "CalAttachment.jsm",
-    "CalAttendee.jsm",
-    "CalCalendarManager.jsm",
-    "CalDefaultACLManager.jsm",
-    "CalDeletedItems.jsm",
-    "CalEvent.jsm",
-    "CalFreeBusyService.jsm",
-    "CalIcsParser.jsm",
-    "CalIcsSerializer.jsm",
-    "CalItipItem.jsm",
-    "CalMimeConverter.jsm",
-    "CalProtocolHandler.jsm",
-    "CalRecurrenceDate.jsm",
-    "CalRecurrenceInfo.jsm",
-    "CalRelation.jsm",
-    "CalSleepMonitor.jsm",
-    "CalStartupService.jsm",
-    "CalTimezoneService.jsm",
-    "CalTodo.jsm",
-    "CalTransactionManager.jsm",
-    "CalWeekInfoService.jsm",
+    "CalAlarm.sys.mjs",
+    "CalAlarmMonitor.sys.mjs",
+    "CalAlarmService.sys.mjs",
+    "CalAttachment.sys.mjs",
+    "CalAttendee.sys.mjs",
+    "CalCachedCalendar.sys.mjs",
+    "CalCalendarManager.sys.mjs",
+    "CalDateTime.sys.mjs",
+    "CalDefaultACLManager.sys.mjs",
+    "CalDeletedItems.sys.mjs",
+    "CalDuration.sys.mjs",
+    "CalEvent.sys.mjs",
+    "CalFreeBusyService.sys.mjs",
+    "CalIcsParser.sys.mjs",
+    "CalIcsSerializer.sys.mjs",
+    "CalICSService.sys.mjs",
+    "CalItemBase.sys.mjs",
+    "CalItipItem.sys.mjs",
+    "CalMetronome.sys.mjs",
+    "CalMimeConverter.sys.mjs",
+    "CalPeriod.sys.mjs",
+    "CalProtocolHandler.sys.mjs",
+    "CalReadableStreamFactory.sys.mjs",
+    "CalRecurrenceDate.sys.mjs",
+    "CalRecurrenceInfo.sys.mjs",
+    "CalRecurrenceRule.sys.mjs",
+    "CalRelation.sys.mjs",
+    "CalStartupService.sys.mjs",
+    "CalTimezone.sys.mjs",
+    "CalTimezoneService.sys.mjs",
+    "CalTodo.sys.mjs",
+    "CalTransactionManager.sys.mjs",
+    "CalWeekInfoService.sys.mjs",
+]
+
+EXPORTS += [
+    "TimezoneDatabase.h",
+]
+
+UNIFIED_SOURCES += [
+    "TimezoneDatabase.cpp",
 ]
 
 XPCOM_MANIFESTS += [
@@ -42,10 +59,7 @@ XPCOM_MANIFESTS += [
 
 # These files go in components so they can be packaged correctly.
 FINAL_TARGET_FILES.components += [
-    "calCachedCalendar.js",
-    "calFilter.js",
-    "calItemBase.js",
-    "calTimezone.js",
+    "calICSService-worker.js",
 ]
 
 with Files("**"):
@@ -53,3 +67,5 @@ with Files("**"):
 
 with Files("calAlarm*"):
     BUG_COMPONENT = ("Calendar", "Alarms")
+
+FINAL_LIBRARY = "xul"

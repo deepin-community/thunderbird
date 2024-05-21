@@ -8,12 +8,14 @@
 
 "use strict";
 
-const { OTRLibLoader } = ChromeUtils.import("resource:///modules/OTRLib.jsm");
+const { OTRLibLoader } = ChromeUtils.importESModule(
+  "resource:///modules/OTRLib.sys.mjs"
+);
 
 /**
  * Initialize libotr.
  */
-add_task(async function setUp() {
-  let libOTR = await OTRLibLoader.init();
+add_setup(async function () {
+  const libOTR = await OTRLibLoader.init();
   Assert.ok(libOTR.otrl_version, "libotr did load");
 });

@@ -2,12 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import React, { Component } from "react";
-import classNames from "classnames";
+import React, { Component } from "devtools/client/shared/vendor/react";
+import { div } from "devtools/client/shared/vendor/react-dom-factories";
+import PropTypes from "devtools/client/shared/vendor/react-prop-types";
 import BracketArrow from "./BracketArrow";
 import SmartGap from "./SmartGap";
 
-import "./Popover.css";
+const classnames = require("resource://devtools/client/shared/classnames.js");
 
 class Popover extends Component {
   state = {
@@ -24,6 +25,17 @@ class Popover extends Component {
     type: "popover",
   };
 
+  static get propTypes() {
+    return {
+      children: PropTypes.node.isRequired,
+      editorRef: PropTypes.object.isRequired,
+      mouseout: PropTypes.func.isRequired,
+      target: PropTypes.object.isRequired,
+      targetPosition: PropTypes.object.isRequired,
+      type: PropTypes.string.isRequired,
+    };
+  }
+
   componentDidMount() {
     const { type } = this.props;
     this.gapHeight = this.$gap.getBoundingClientRect().height;
@@ -36,6 +48,23 @@ class Popover extends Component {
 
     this.firstRender = false;
     this.startTimer();
+  }
+
+  componentDidUpdate(prevProps) {
+    // We have to update `coords` when the Popover type changes
+    if (
+      prevProps.type != this.props.type ||
+      prevProps.target !== this.props.target
+    ) {
+      const coords =
+        this.props.type == "popover"
+          ? this.getPopoverCoords()
+          : this.getTooltipCoords();
+
+      if (coords) {
+        this.setState({ coords });
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -60,7 +89,8 @@ class Popover extends Component {
         this.timerId = setTimeout(this.onTimeout, 200);
         return;
       }
-      return this.props.mouseout();
+      this.props.mouseout();
+      return;
     }
 
     // Don't clear the current preview if mouse is hovered on
@@ -209,20 +239,26 @@ class Popover extends Component {
 
   getGap() {
     if (this.firstRender) {
-      return <div className="gap" key="gap" ref={a => (this.$gap = a)} />;
+      return div({
+        className: "gap",
+        key: "gap",
+        ref: a => (this.$gap = a),
+      });
     }
 
-    return (
-      <div className="gap" key="gap" ref={a => (this.$gap = a)}>
-        <SmartGap
-          token={this.props.target}
-          preview={this.$tooltip || this.$popover}
-          type={this.props.type}
-          gapHeight={this.gapHeight}
-          coords={this.state.coords}
-          offset={this.$gap.getBoundingClientRect().left}
-        />
-      </div>
+    return div(
+      {
+        className: "gap",
+        key: "gap",
+        ref: a => (this.$gap = a),
+      },
+      React.createElement(SmartGap, {
+        token: this.props.target,
+        preview: this.$tooltip || this.$popover,
+        gapHeight: this.gapHeight,
+        coords: this.state.coords,
+        offset: this.$gap.getBoundingClientRect().left,
+      })
     );
   }
 
@@ -236,38 +272,40 @@ class Popover extends Component {
     } else {
       arrowProps = { orientation: "left", top, left: -4 };
     }
-
-    return <BracketArrow {...arrowProps} />;
+    return React.createElement(BracketArrow, arrowProps);
   }
 
   renderPopover() {
     const { top, left, orientation, targetMid } = this.state.coords;
     const arrow = this.getPopoverArrow(orientation, targetMid.x, targetMid.y);
-
-    return (
-      <div
-        className={classNames("popover", `orientation-${orientation}`, {
+    return div(
+      {
+        className: classnames("popover", `orientation-${orientation}`, {
           up: orientation === "up",
-        })}
-        style={{ top, left }}
-        ref={c => (this.$popover = c)}
-      >
-        {arrow}
-        {this.getChildren()}
-      </div>
+        }),
+        style: {
+          top,
+          left,
+        },
+        ref: c => (this.$popover = c),
+      },
+      arrow,
+      this.getChildren()
     );
   }
 
   renderTooltip() {
     const { top, left, orientation } = this.state.coords;
-    return (
-      <div
-        className={classNames("tooltip", `orientation-${orientation}`)}
-        style={{ top, left }}
-        ref={c => (this.$tooltip = c)}
-      >
-        {this.getChildren()}
-      </div>
+    return div(
+      {
+        className: `tooltip orientation-${orientation}`,
+        style: {
+          top,
+          left,
+        },
+        ref: c => (this.$tooltip = c),
+      },
+      this.getChildren()
     );
   }
 

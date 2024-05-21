@@ -3,8 +3,8 @@
 
 "use strict";
 
-const { PromptTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PromptTestUtils.jsm"
+const { PromptTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/PromptTestUtils.sys.mjs"
 );
 
 /**
@@ -36,7 +36,7 @@ function getTestDirectory() {
   return tmpDir.path;
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       // Allow using our MockFilePicker in the content process.
@@ -54,6 +54,7 @@ add_task(async function setup() {
  * @returns {Promise} - Resolves once the prompt has been closed.
  */
 async function testUploadPrompt(confirmUpload) {
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   await BrowserTestUtils.withNewTab("http://example.com", async browser => {
     // Create file input element
     await ContentTask.spawn(browser, null, () => {
@@ -87,7 +88,7 @@ async function testUploadPrompt(confirmUpload) {
     await ContentTask.spawn(browser, { path }, args => {
       let MockFilePicker = content.SpecialPowers.MockFilePicker;
       MockFilePicker.init(
-        content,
+        content.browsingContext,
         "A Mock File Picker",
         content.SpecialPowers.Ci.nsIFilePicker.modeGetFolder
       );

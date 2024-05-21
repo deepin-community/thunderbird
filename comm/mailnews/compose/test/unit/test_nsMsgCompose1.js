@@ -4,12 +4,11 @@
  * Tests nsMsgCompose expandMailingLists.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Helper to check population worked as expected.
- * @param aTo - text in the To field
- * @param aCheckTo - the expected To addresses (after possible ist population)
+ *
+ * @param {string} aTo - Text in the To field.
+ * @param {string} aCheckTo - The expected To addresses (after possible list population)
  */
 function checkPopulate(aTo, aCheckTo) {
   var msgCompose = Cc["@mozilla.org/messengercompose/compose;1"].createInstance(
@@ -33,8 +32,8 @@ function checkPopulate(aTo, aCheckTo) {
   msgCompose.initialize(params);
 
   msgCompose.expandMailingLists();
-  let addresses = fields.getHeader("To");
-  let checkEmails = MailServices.headerParser.parseDecodedHeader(aCheckTo);
+  const addresses = fields.getHeader("To");
+  const checkEmails = MailServices.headerParser.parseDecodedHeader(aCheckTo);
   Assert.equal(addresses.length, checkEmails.length);
   for (let i = 0; i < addresses.length; i++) {
     Assert.equal(addresses[i].name, checkEmails[i].name);
@@ -112,32 +111,6 @@ function run_test() {
   checkPopulate("TestList2 <TestList2>", "test4@foo.invalid");
 
   checkPopulate("TestList3 <TestList3>", "test5@foo.invalid");
-
-  // Test expandMailingLists w/ mailnews.html_domains set.
-  Services.prefs.setCharPref(
-    "mailnews.html_domains",
-    "foo.invalid,bar.invalid"
-  );
-  checkPopulate(
-    "htmlformat@foo.invalid,unknownformat@nonfoo.invalid",
-    "htmlformat@foo.invalid,unknownformat@nonfoo.invalid"
-  );
-  Services.prefs.clearUserPref("mailnews.html_domains");
-
-  // Test expandMailingLists w/ mailnews.plaintext_domains set.
-  Services.prefs.setCharPref(
-    "mailnews.plaintext_domains",
-    "foo.invalid,bar.invalid"
-  );
-  checkPopulate(
-    "plainformat@foo.invalid,unknownformat@nonfoo.invalid",
-    "plainformat@foo.invalid,unknownformat@nonfoo.invalid"
-  );
-  checkPopulate(
-    "plainformat@foo.invalid,plainformat@cc.bar.invalid",
-    "plainformat@foo.invalid,plainformat@cc.bar.invalid"
-  );
-  Services.prefs.clearUserPref("mailnews.plaintext_domains");
 
   // Test - expandMailingLists with items from multiple address books.
 

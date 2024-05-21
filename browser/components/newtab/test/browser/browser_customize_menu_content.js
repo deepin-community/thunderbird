@@ -3,14 +3,24 @@
 test_newtab({
   async before({ pushPrefs }) {
     await pushPrefs(
-      ["browser.newtabpage.activity-stream.newNewtabExperience.enabled", true],
-      ["browser.newtabpage.activity-stream.customizationMenu.enabled", true],
       ["browser.newtabpage.activity-stream.feeds.topsites", false],
       ["browser.newtabpage.activity-stream.feeds.section.topstories", false],
       ["browser.newtabpage.activity-stream.feeds.section.highlights", false]
     );
   },
   test: async function test_render_customizeMenu() {
+    function getSection(sectionIdentifier) {
+      return content.document.querySelector(
+        `section[data-section-id="${sectionIdentifier}"]`
+      );
+    }
+    function promiseSectionShown(sectionIdentifier) {
+      return ContentTaskUtils.waitForMutationCondition(
+        content.document.querySelector("main"),
+        { childList: true, subtree: true },
+        () => getSection(sectionIdentifier)
+      );
+    }
     const TOPSITES_PREF = "browser.newtabpage.activity-stream.feeds.topsites";
     const HIGHLIGHTS_PREF =
       "browser.newtabpage.activity-stream.feeds.section.highlights";
@@ -34,88 +44,67 @@ test_newtab({
       "Customize Menu should be visible on screen"
     );
 
-    // Test that clicking the shortcuts toggle will make the section appear on the newtab page.
-    let shortcutsSwitch = content.document.querySelector(
-      "#shortcuts-section .switch"
-    );
-    let shortcutsSection = content.document.querySelector(
-      "section[data-section-id='topsites']"
+    // Test that clicking the shortcuts toggle will make the section
+    // appear on the newtab page.
+    //
+    // We waive XRay wrappers because we want to call the click()
+    // method defined on the toggle from this context.
+    let shortcutsSwitch = Cu.waiveXrays(
+      content.document.querySelector("#shortcuts-section moz-toggle")
     );
     Assert.ok(
       !Services.prefs.getBoolPref(TOPSITES_PREF),
       "Topsites are turned off"
     );
-    Assert.ok(!shortcutsSection, "Shortcuts section is not rendered");
+    Assert.ok(!getSection("topsites"), "Shortcuts section is not rendered");
 
-    let prefPromise = ContentTaskUtils.waitForCondition(
-      () => Services.prefs.getBoolPref(TOPSITES_PREF),
-      "TopSites pref is turned on"
-    );
+    let sectionShownPromise = promiseSectionShown("topsites");
     shortcutsSwitch.click();
-    await prefPromise;
+    await sectionShownPromise;
 
-    Assert.ok(
-      content.document.querySelector("section[data-section-id='topsites']"),
-      "Shortcuts section is rendered"
-    );
+    Assert.ok(getSection("topsites"), "Shortcuts section is rendered");
 
-    // Test that clicking the pocket toggle will make the pocket section appear on the newtab page
-    let pocketSwitch = content.document.querySelector(
-      "#pocket-section .switch"
+    // Test that clicking the pocket toggle will make the pocket section
+    // appear on the newtab page
+    //
+    // We waive XRay wrappers because we want to call the click()
+    // method defined on the toggle from this context.
+    let pocketSwitch = Cu.waiveXrays(
+      content.document.querySelector("#pocket-section moz-toggle")
     );
     Assert.ok(
       !Services.prefs.getBoolPref(TOPSTORIES_PREF),
       "Pocket pref is turned off"
     );
-    Assert.ok(
-      !content.document.querySelector("section[data-section-id='topstories']"),
-      "Pocket section is not rendered"
-    );
+    Assert.ok(!getSection("topstories"), "Pocket section is not rendered");
 
-    prefPromise = ContentTaskUtils.waitForCondition(
-      () => Services.prefs.getBoolPref(TOPSTORIES_PREF),
-      "Pocket pref is turned on"
-    );
+    sectionShownPromise = promiseSectionShown("topstories");
     pocketSwitch.click();
-    await prefPromise;
+    await sectionShownPromise;
 
-    Assert.ok(
-      content.document.querySelector("section[data-section-id='topstories']"),
-      "Pocket section is rendered"
-    );
+    Assert.ok(getSection("topstories"), "Pocket section is rendered");
 
-    // Test that clicking the recent activity toggle will make the recent activity section appear on the newtab page
-    let highlightsSwitch = content.document.querySelector(
-      "#recent-section .switch"
+    // Test that clicking the recent activity toggle will make the
+    // recent activity section appear on the newtab page.
+    //
+    // We waive XRay wrappers because we want to call the click()
+    // method defined on the toggle from this context.
+    let highlightsSwitch = Cu.waiveXrays(
+      content.document.querySelector("#recent-section moz-toggle")
     );
     Assert.ok(
       !Services.prefs.getBoolPref(HIGHLIGHTS_PREF),
       "Highlights pref is turned off"
     );
-    Assert.ok(
-      !content.document.querySelector("section[data-section-id='highlights']"),
-      "Highlights section is not rendered"
-    );
+    Assert.ok(!getSection("highlights"), "Highlights section is not rendered");
 
-    prefPromise = ContentTaskUtils.waitForCondition(
-      () => Services.prefs.getBoolPref(HIGHLIGHTS_PREF),
-      "Highlights pref is turned on"
-    );
+    sectionShownPromise = promiseSectionShown("highlights");
     highlightsSwitch.click();
-    await prefPromise;
+    await sectionShownPromise;
 
-    Assert.ok(
-      content.document.querySelector("section[data-section-id='highlights']"),
-      "Highlights section is rendered"
-    );
+    Assert.ok(getSection("highlights"), "Highlights section is rendered");
   },
   async after() {
-    Services.prefs.clearUserPref(
-      "browser.newtabpage.activity-stream.newNewtabExperience.enabled"
-    );
-    Services.prefs.clearUserPref(
-      "browser.newtabpage.activity-stream.customizationMenu.enabled"
-    );
     Services.prefs.clearUserPref(
       "browser.newtabpage.activity-stream.feeds.topsites"
     );
@@ -129,12 +118,6 @@ test_newtab({
 });
 
 test_newtab({
-  async before({ pushPrefs }) {
-    await pushPrefs([
-      "browser.newtabpage.activity-stream.newNewtabExperience.enabled",
-      true,
-    ]);
-  },
   test: async function test_open_close_customizeMenu() {
     const EventUtils = ContentTaskUtils.getEventUtils(content);
     await ContentTaskUtils.waitForCondition(
@@ -231,11 +214,6 @@ test_newtab({
           content.document.querySelector(".customize-menu")
         ).transform !== defaultPos,
       "Customize Menu should not be visible anymore"
-    );
-  },
-  async after() {
-    Services.prefs.clearUserPref(
-      "browser.newtabpage.activity-stream.newNewtabExperience.enabled"
     );
   },
 });

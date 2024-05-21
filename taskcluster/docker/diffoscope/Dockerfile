@@ -12,13 +12,14 @@ RUN apt-get install \
       bzip2 \
       curl \
       enjarify \
-      diffoscope/buster-backports \
+      diffoscope \
       jsbeautifier \
       libc++abi1 \
       locales \
       default-jdk-headless \
       python3-progressbar \
       unzip \
+      xxd \
       zip \
       && \
     sed -i '/en_US.UTF-8/s/^# *//' /etc/locale.gen && \

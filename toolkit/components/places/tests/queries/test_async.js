@@ -85,7 +85,7 @@ var tests = [
       node.containerOpen = false;
     },
 
-    opened(node, newState, oldState) {
+    opened() {
       do_throw("opened should not be called");
     },
 
@@ -107,7 +107,7 @@ function Test() {
   // This maps a state name to the number of times it's been observed.
   this.stateCounts = {};
   // Promise object resolved when the next test can be run.
-  this.deferNextTest = PromiseUtils.defer();
+  this.deferNextTest = Promise.withResolvers();
 }
 
 Test.prototype = {
@@ -309,7 +309,7 @@ var DataHelper = {
    */
   makeDataArray: function DH_makeDataArray(aData) {
     let self = this;
-    return aData.map(function(dat) {
+    return aData.map(function (dat) {
       let type = dat.type;
       dat = self._makeDataWithDefaults(dat, self.defaults[type]);
       switch (type) {
@@ -367,7 +367,7 @@ add_task(async function test_async() {
   for (let test of tests) {
     await PlacesUtils.bookmarks.eraseEverything();
 
-    test.__proto__ = new Test();
+    Object.setPrototypeOf(test, new Test());
     await test.setup();
 
     print("------ Running test: " + test.desc);

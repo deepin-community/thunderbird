@@ -1,9 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var irc = {};
-Services.scriptloader.loadSubScript("resource:///modules/irc.jsm", irc);
+var { ircAccount, ircMessage } = ChromeUtils.importESModule(
+  "resource:///modules/ircAccount.sys.mjs"
+);
 
 var testData = [
   // First off, let's test the messages from RFC 2812.
@@ -131,9 +131,9 @@ function run_test() {
 function testRFC2812Messages() {
   for (let expectedStringMessage of testData) {
     // Pass in an empty default origin in order to check this below.
-    let message = irc.ircMessage(expectedStringMessage, "");
+    const message = ircMessage(expectedStringMessage, "");
 
-    let stringMessage = irc.ircAccount.prototype.buildMessage(
+    const stringMessage = ircAccount.prototype.buildMessage(
       message.command,
       message.params
     );
@@ -156,7 +156,7 @@ function testRFC2812Messages() {
 // Unreal sends a couple of broken messages, see ircMessage in irc.jsm for a
 // description of what's wrong.
 function testBrokenUnrealMessages() {
-  let messages = {
+  const messages = {
     // Two spaces after command.
     ":gravel.mozilla.org 432  #momo :Erroneous Nickname: Illegal characters": {
       rawMessage:
@@ -193,8 +193,8 @@ function testBrokenUnrealMessages() {
     },
   };
 
-  for (let messageStr in messages) {
-    deepEqual(messages[messageStr], irc.ircMessage(messageStr, ""));
+  for (const messageStr in messages) {
+    deepEqual(messages[messageStr], ircMessage(messageStr, ""));
   }
 
   run_next_test();
@@ -203,7 +203,7 @@ function testBrokenUnrealMessages() {
 // After unescaping we can end up with line breaks inside of IRC messages. Test
 // this edge case specifically.
 function testNewLinesInMessages() {
-  let messages = {
+  const messages = {
     ":test!Instantbir@host PRIVMSG #instantbird :First line\nSecond line": {
       rawMessage:
         ":test!Instantbir@host PRIVMSG #instantbird :First line\nSecond line",
@@ -228,8 +228,8 @@ function testNewLinesInMessages() {
     },
   };
 
-  for (let messageStr in messages) {
-    deepEqual(messages[messageStr], irc.ircMessage(messageStr));
+  for (const messageStr in messages) {
+    deepEqual(messages[messageStr], ircMessage(messageStr));
   }
 
   run_next_test();
@@ -239,7 +239,7 @@ function testNewLinesInMessages() {
 // servername. Generally this happens when connecting to localhost or a local
 // hostname and is likely seen with bouncers.
 function testLocalhost() {
-  let messages = {
+  const messages = {
     ":localhost 001 clokep :Welcome to the BitlBee gateway, clokep": {
       rawMessage:
         ":localhost 001 clokep :Welcome to the BitlBee gateway, clokep",
@@ -253,15 +253,15 @@ function testLocalhost() {
     },
   };
 
-  for (let messageStr in messages) {
-    deepEqual(messages[messageStr], irc.ircMessage(messageStr));
+  for (const messageStr in messages) {
+    deepEqual(messages[messageStr], ircMessage(messageStr));
   }
 
   run_next_test();
 }
 
 function testTags() {
-  let messages = {
+  const messages = {
     "@aaa=bBb;ccc;example.com/ddd=eee :nick!ident@host.com PRIVMSG me :Hello": {
       rawMessage:
         "@aaa=bBb;ccc;example.com/ddd=eee :nick!ident@host.com PRIVMSG me :Hello",
@@ -328,8 +328,8 @@ function testTags() {
     },
   };
 
-  for (let messageStr in messages) {
-    deepEqual(messages[messageStr], irc.ircMessage(messageStr, ""));
+  for (const messageStr in messages) {
+    deepEqual(messages[messageStr], ircMessage(messageStr, ""));
   }
 
   run_next_test();

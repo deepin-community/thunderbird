@@ -10,8 +10,10 @@
  */
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
-const { editableField } = require("devtools/client/shared/inplace-editor");
-const { colorUtils } = require("devtools/shared/css/color");
+const {
+  editableField,
+} = require("resource://devtools/client/shared/inplace-editor.js");
+const { colorUtils } = require("resource://devtools/shared/css/color.js");
 
 /**
  * Create an inplace editor linked to a span element and click on the span to
@@ -24,7 +26,7 @@ const { colorUtils } = require("devtools/shared/css/color");
  * @param {String} textContent
  *        (optional) String that will be used as the text content of the span.
  */
-const createInplaceEditorAndClick = async function(options, doc, textContent) {
+const createInplaceEditorAndClick = async function (options, doc, textContent) {
   const span = (options.element = createSpan(doc));
   if (textContent) {
     span.textContent = textContent;
@@ -128,16 +130,27 @@ async function testCompletion(
       "autocomplete-swatch autocomplete-colorswatch"
     );
     if (colorSwatch) {
-      ok(swatchSpan.length === 1, "Displayed the expected color swatch");
+      Assert.strictEqual(
+        swatchSpan.length,
+        1,
+        "Displayed the expected color swatch"
+      );
       const color = new colorUtils.CssColor(
         swatchSpan[0].style.backgroundColor
       );
       const swatchColor = color.rgba;
-      color.newColor(postLabel);
-      const postColor = color.rgba;
-      ok(swatchColor == postColor, "Color swatch matches postLabel value");
+      const postColor = new colorUtils.CssColor(postLabel).rgba;
+      Assert.equal(
+        swatchColor,
+        postColor,
+        "Color swatch matches postLabel value"
+      );
     } else {
-      ok(swatchSpan.length === 0, "As expected no swatches were available");
+      Assert.strictEqual(
+        swatchSpan.length,
+        0,
+        "As expected no swatches were available"
+      );
     }
   }
 

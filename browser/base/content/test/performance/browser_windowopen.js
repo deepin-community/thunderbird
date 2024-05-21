@@ -17,28 +17,11 @@ const EXPECTED_REFLOWS = [
    */
 ];
 
-// We'll assume the changes we are seeing are due to this focus change if
-// there are at least 5 areas that changed near the top of the screen, or if
-// the toolbar background is involved on OSX, but will only ignore this once.
-function isLikelyFocusChange(rects) {
-  if (rects.length > 5 && rects.every(r => r.y2 < 100)) {
-    return true;
-  }
-  if (
-    Services.appinfo.OS == "Darwin" &&
-    rects.length == 2 &&
-    rects.every(r => r.y1 == 0 && r.h == 33)
-  ) {
-    return true;
-  }
-  return false;
-}
-
 /*
  * This test ensures that there are no unexpected
  * uninterruptible reflows or flickering areas when opening new windows.
  */
-add_task(async function() {
+add_task(async function () {
   // Flushing all caches helps to ensure that we get consistent
   // behaviour when opening a new window, even if windows have been
   // opened in previous tests.
@@ -64,8 +47,7 @@ add_task(async function() {
       filter(rects, frame, previousFrame) {
         // The first screenshot we get in OSX / Windows shows an unfocused browser
         // window for some reason. See bug 1445161.
-        if (!alreadyFocused && isLikelyFocusChange(rects)) {
-          alreadyFocused = true;
+        if (!alreadyFocused && isLikelyFocusChange(rects, frame)) {
           todo(
             false,
             "bug 1445161 - the window should be focused at first paint, " +
@@ -73,7 +55,7 @@ add_task(async function() {
           );
           return [];
         }
-
+        alreadyFocused = true;
         return rects;
       },
       exceptions: [
@@ -115,8 +97,7 @@ add_task(async function() {
         {
           // Note that the length and x values here are a bit weird because on
           // some fonts, we appear to detect the two words separately.
-          name:
-            "Initial bookmark text ('Getting Started' or 'Get Involved') appearing after startup",
+          name: "Initial bookmark text ('Getting Started' or 'Get Involved') appearing after startup",
           condition: r =>
             inRange(r.w, 25, 120) && // length of text
             inRange(r.h, 9, 15) && // height of text
@@ -132,7 +113,7 @@ add_task(async function() {
   };
 
   await withPerfObserver(
-    async function() {
+    async function () {
       // Avoid showing the remotecontrol UI.
       await new Promise(resolve => {
         win.addEventListener(

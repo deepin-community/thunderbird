@@ -4,6 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "builtin/FinalizationRegistryObject.h"
+#include "gc/GC.h"
 #include "gc/PublicIterators.h"
 #include "js/friend/WindowProxy.h"  // js::IsWindow, js::IsWindowProxy
 #include "js/Wrapper.h"
@@ -303,16 +305,6 @@ bool CrossCompartmentWrapper::nativeCall(JSContext* cx, IsAcceptableThis test,
   return cx->compartment()->wrap(cx, srcArgs.rval());
 }
 
-bool CrossCompartmentWrapper::hasInstance(JSContext* cx, HandleObject wrapper,
-                                          MutableHandleValue v,
-                                          bool* bp) const {
-  AutoRealm call(cx, wrappedObject(wrapper));
-  if (!cx->compartment()->wrap(cx, v)) {
-    return false;
-  }
-  return Wrapper::hasInstance(cx, wrapper, v, bp);
-}
-
 const char* CrossCompartmentWrapper::className(JSContext* cx,
                                                HandleObject wrapper) const {
   AutoRealm call(cx, wrappedObject(wrapper));
@@ -348,7 +340,7 @@ RegExpShared* CrossCompartmentWrapper::regexp_toShared(
   }
 
   // Get an equivalent RegExpShared associated with the current compartment.
-  RootedAtom source(cx, re->getSource());
+  Rooted<JSAtom*> source(cx, re->getSource());
   cx->markAtom(source);
   return cx->zone()->regExps().get(cx, source, re->getFlags());
 }
@@ -394,12 +386,18 @@ static bool NukedAllRealms(JS::Compartment* comp) {
 }
 
 /*
- * NukeChromeCrossCompartmentWrappersForGlobal reaches into chrome and cuts
- * all of the cross-compartment wrappers that point to an object in the |target|
- * realm. The snag here is that we need to avoid cutting wrappers that point to
- * the window object on page navigation (inner window destruction) and only do
- * that on tab close (outer window destruction).  Thus the option of how to
- * handle the global object.
+ * NukeCrossCompartmentWrappers invalidates all cross-compartment wrappers
+ * that point to objects in the |target| realm.
+ *
+ * There is some complexity in targeting to preserve semantics which requires
+ * the filtering and behavioural options:
+ *
+ * - |sourceFilter| limits the compartments searched for source pointers
+ * - |nukeReferencesToWindow| will, if set to DontNukeWindowReferences skip
+ *   wrappers whose target is the window proxy of the target realm.
+ * - |nukeReferencesFromTarget| will, when set to NukeAllReferences, disallow
+ *   the creation of new wrappers to the target realm. This option can also
+ *   allow more wrappers to be cleaned up transitively.
  */
 JS_PUBLIC_API bool js::NukeCrossCompartmentWrappers(
     JSContext* cx, const CompartmentFilter& sourceFilter, JS::Realm* target,
@@ -451,13 +449,6 @@ JS_PUBLIC_API bool js::NukeCrossCompartmentWrappers(
         continue;
       }
 
-      // We never nuke ScriptSourceObjects, since they are only ever used
-      // internally by the JS engine, and are expected to remain valid
-      // throughout a script's lifetime.
-      if (MOZ_UNLIKELY(wrapped->is<ScriptSourceObject>())) {
-        continue;
-      }
-
       // We only skip nuking window references that point to a target
       // compartment, not the ones that belong to it.
       if (nukeReferencesToWindow == DontNukeWindowReferences &&
@@ -476,16 +467,9 @@ JS_PUBLIC_API bool js::NukeCrossCompartmentWrappers(
 
 JS_PUBLIC_API bool js::AllowNewWrapper(JS::Compartment* target, JSObject* obj) {
   // Disallow creating new wrappers if we nuked the object realm or target
-  // compartment. However, we always need to provide live wrappers for
-  // ScriptSourceObjects, since they're used for cross-compartment cloned
-  // scripts, and need to remain accessible even after the original realm has
-  // been nuked.
+  // compartment.
 
   MOZ_ASSERT(obj->compartment() != target);
-
-  if (obj->is<ScriptSourceObject>()) {
-    return true;
-  }
 
   if (target->nukedOutgoingWrappers ||
       obj->nonCCWRealm()->nukedIncomingWrappers) {
@@ -506,9 +490,6 @@ JS_PUBLIC_API bool js::NukedObjectRealm(JSObject* obj) {
 // inconsistent state.
 void js::RemapWrapper(JSContext* cx, JSObject* wobjArg,
                       JSObject* newTargetArg) {
-  MOZ_ASSERT(!IsInsideNursery(wobjArg));
-  MOZ_ASSERT(!IsInsideNursery(newTargetArg));
-
   RootedObject wobj(cx, wobjArg);
   RootedObject newTarget(cx, newTargetArg);
   MOZ_ASSERT(wobj->is<CrossCompartmentWrapperObject>());
@@ -555,6 +536,10 @@ void js::RemapDeadWrapper(JSContext* cx, HandleObject wobj,
   MOZ_ASSERT(IsDeadProxyObject(wobj));
   MOZ_ASSERT(!newTarget->is<CrossCompartmentWrapperObject>());
 
+  // These are not exposed. Doing this would require updating the
+  // FinalizationObservers data structures.
+  MOZ_ASSERT(!newTarget->is<FinalizationRecordObject>());
+
   AutoDisableProxyCheck adpc;
 
   // wobj is not a cross-compartment wrapper, so we can use nonCCWRealm.
@@ -583,7 +568,7 @@ void js::RemapDeadWrapper(JSContext* cx, HandleObject wobj,
   }
 
   if (!wobj->is<WrapperObject>()) {
-    MOZ_ASSERT(js::IsDOMRemoteProxyObject(wobj));
+    MOZ_ASSERT(js::IsDOMRemoteProxyObject(wobj) || IsDeadProxyObject(wobj));
     return;
   }
 
@@ -606,9 +591,6 @@ void js::RemapDeadWrapper(JSContext* cx, HandleObject wobj,
 JS_PUBLIC_API bool js::RemapAllWrappersForObject(JSContext* cx,
                                                  HandleObject oldTarget,
                                                  HandleObject newTarget) {
-  MOZ_ASSERT(!IsInsideNursery(oldTarget));
-  MOZ_ASSERT(!IsInsideNursery(newTarget));
-
   AutoWrapperVector toTransplant(cx);
 
   for (CompartmentsIter c(cx->runtime()); !c.done(); c.next()) {
@@ -648,6 +630,13 @@ JS_PUBLIC_API bool js::RecomputeWrappers(
     // Iterate over object wrappers, filtering appropriately.
     for (Compartment::ObjectWrapperEnum e(c, targetFilter); !e.empty();
          e.popFront()) {
+      // Don't remap wrappers to finalization record objects. These are used
+      // internally and are not exposed.
+      JSObject* wrapper = *e.front().value().unsafeGet();
+      if (Wrapper::wrappedObject(wrapper)->is<FinalizationRecordObject>()) {
+        continue;
+      }
+
       // Add the wrapper to the list.
       if (!toRecompute.append(WrapperValue(e))) {
         return false;

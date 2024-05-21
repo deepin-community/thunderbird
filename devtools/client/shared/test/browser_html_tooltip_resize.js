@@ -12,12 +12,12 @@ const TEST_URI = CHROME_URL_ROOT + "doc_html_tooltip.xhtml";
 
 const {
   HTMLTooltip,
-} = require("devtools/client/shared/widgets/tooltip/HTMLTooltip");
+} = require("resource://devtools/client/shared/widgets/tooltip/HTMLTooltip.js");
 loadHelperScript("helper_html_tooltip.js");
 
 const TOOLBOX_WIDTH = 500;
 
-add_task(async function() {
+add_task(async function () {
   await pushPref("devtools.toolbox.sidebar.width", TOOLBOX_WIDTH);
 
   // Open the host on the right so that the doorhangers hang right.
@@ -57,15 +57,17 @@ add_task(async function() {
 
   const panelXMovement =
     `panel right: ${originalPanelBounds.right} -> ` + updatedPanelBounds.right;
-  ok(
-    Math.round(updatedPanelBounds.right - originalPanelBounds.right) === 100,
+  Assert.strictEqual(
+    Math.round(updatedPanelBounds.right - originalPanelBounds.right),
+    100,
     `Panel should have moved 100px to the right (actual: ${panelXMovement})`
   );
 
   const panelYMovement =
     `panel top: ${originalPanelBounds.top} -> ` + updatedPanelBounds.top;
-  ok(
-    Math.round(updatedPanelBounds.top - originalPanelBounds.top) === 10,
+  Assert.strictEqual(
+    Math.round(updatedPanelBounds.top - originalPanelBounds.top),
+    10,
     `Panel should have moved 10px down (actual: ${panelYMovement})`
   );
 
@@ -76,15 +78,17 @@ add_task(async function() {
 
   const arrowXMovement =
     `arrow left: ${originalArrowBounds.left} -> ` + updatedArrowBounds.left;
-  ok(
-    Math.round(updatedArrowBounds.left - originalArrowBounds.left) === 0,
+  Assert.strictEqual(
+    Math.round(updatedArrowBounds.left - originalArrowBounds.left),
+    0,
     `Arrow should not have moved (actual: ${arrowXMovement})`
   );
 
   const arrowYMovement =
     `arrow top: ${originalArrowBounds.top} -> ` + updatedArrowBounds.top;
-  ok(
-    Math.round(updatedArrowBounds.top - originalArrowBounds.top) === 0,
+  Assert.strictEqual(
+    Math.round(updatedArrowBounds.top - originalArrowBounds.top),
+    0,
     `Arrow should not have moved (actual: ${arrowYMovement})`
   );
 

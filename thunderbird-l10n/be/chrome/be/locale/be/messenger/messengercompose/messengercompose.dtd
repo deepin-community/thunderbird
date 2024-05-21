@@ -20,9 +20,6 @@
 <!ENTITY attachCloudCmd.accesskey "i">
 <!ENTITY attachPageCmd.label "Старонку Сеціва…">
 <!ENTITY attachPageCmd.accesskey "С">
-<!--LOCALIZATION NOTE attachVCardCmd.label Don't translate the term 'vCard' -->
-<!ENTITY attachVCardCmd.label "Асабістую картку (vCard)">
-<!ENTITY attachVCardCmd.accesskey "А">
 <!ENTITY remindLater.label "Напомніць мне пазней">
 <!ENTITY remindLater.accesskey "п">
 <!ENTITY closeCmd.label "Зачыніць">
@@ -107,13 +104,13 @@
 <!-- View Menu -->
 <!ENTITY viewMenu.label "Прагляд">
 <!ENTITY viewMenu.accesskey "г">
-<!ENTITY viewToolbarsMenuNew.label "Паліцы прыладаў">
+<!ENTITY viewToolbarsMenuNew.label "Паліцы інструментаў">
 <!ENTITY viewToolbarsMenuNew.accesskey "п">
 <!ENTITY menubarCmd.label "Паліца меню">
 <!ENTITY menubarCmd.accesskey "м">
-<!ENTITY showCompositionToolbarCmd.label "Прыладапаліца ўкладання">
+<!ENTITY showCompositionToolbarCmd.label "Паліца кампаноўкі">
 <!ENTITY showCompositionToolbarCmd.accesskey "ў">
-<!ENTITY showFormattingBarCmd.label "Прыладапаліца фарматавання">
+<!ENTITY showFormattingBarCmd.label "Паліца фарматавання">
 <!ENTITY showFormattingBarCmd.accesskey "ф">
 <!ENTITY showTaskbarCmd.label "Паліца статуса">
 <!ENTITY showTaskbarCmd.accesskey "с">
@@ -147,16 +144,6 @@
 <!ENTITY returnReceiptMenu.accesskey "т">
 <!ENTITY dsnMenu.label "Пацвярджэнне дастаўкі">
 <!ENTITY dsnMenu.accesskey "П">
-<!ENTITY deliveryFormatMenu.label "Фармат дастаўкі">
-<!ENTITY deliveryFormatMenu.accesskey "Ф">
-<!ENTITY autoFormatCmd.label "Сама-вызначэнне">
-<!ENTITY autoFormatCmd.accesskey "С">
-<!ENTITY plainTextFormatCmd.label "Толькі просты тэкст">
-<!ENTITY plainTextFormatCmd.accesskey "П">
-<!ENTITY htmlFormatCmd.label "Толькі аздоблены тэкст (HTML)">
-<!ENTITY htmlFormatCmd.accesskey "з">
-<!ENTITY bothFormatCmd.label "Просты і аздоблены (HTML) тэкст">
-<!ENTITY bothFormatCmd.accesskey "і">
 <!ENTITY priorityMenu.label "Прыярытэт">
 <!ENTITY priorityMenu.accesskey "П">
 <!ENTITY priorityButton.title "Прыярытэт">
@@ -217,11 +204,12 @@
 <!ENTITY printButton.tooltip "Надрукаваць гэты ліст">
 
 <!-- Headers -->
-<!-- Headers -->
+<!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
+    Subject: rows. It should be larger than the largest Header label  -->
 <!ENTITY fromAddr.accesskey "А">
 <!ENTITY subject.accesskey "Т">
 
-<!-- Format Toolbar, imported from editorAppShell.xul -->
+<!-- Format Toolbar, imported from editorAppShell.xhtml -->
 <!ENTITY SmileButton.tooltip "Уставіць тварык-усмешку">
 <!ENTITY smiley1Cmd.label "Усмешка">
 <!ENTITY smiley2Cmd.label "Пахмурны">
@@ -257,6 +245,7 @@
 <!ENTITY pasteQuote.label "Уставіць як вытрымку">
 <!ENTITY pasteQuote.accesskey "В">
 
+<!-- Attachment Item and List Context Menus -->
 <!ENTITY openAttachment.label "Адчыніць">
 <!ENTITY openAttachment.accesskey "А">
 <!ENTITY delete.label "Выдаліць">
@@ -281,6 +270,9 @@
 <!ENTITY attachPage.accesskey "с">
 
 <!-- Attachment Pane Header Bar Context Menu -->
+<!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
+     Should use the same wording as startExpandedCmd.label
+     in msgHdrViewOverlay.dtd. -->
 
 <!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Дадаць слоўнікі…">
@@ -293,15 +285,17 @@
 <!ENTITY customizeFromAddress.label "Наладзіць адрас адпраўніка…">
 <!ENTITY customizeFromAddress.accesskey "Н">
 
+<!-- Accessibility name for the document -->
+
 <!-- Status Bar -->
 <!ENTITY languageStatusButton.tooltip "Мова праверкі правапісу">
 <!ENTITY encodingStatusPanel.tooltip "Кадаванне тэксту">
 
+<!ENTITY newMessage.accesskey "M">
 <!ENTITY sortAttachmentsPanelBtn.key "y">
 <!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
     Subject: rows. It should be larger than the largest Header label  -->
 <!ENTITY headersSpace2.style "width: 8em;">
-<!ENTITY extraRecipients.tooltip "Other types of addressing fields">
 <!ENTITY fromAddr2.label "From">
 <!ENTITY replyAddr2.label "Reply-To">
 <!ENTITY newsgroupsAddr2.label "Newsgroup">

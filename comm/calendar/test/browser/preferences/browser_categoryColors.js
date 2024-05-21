@@ -2,24 +2,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+
+var { CalendarTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarTestUtils.sys.mjs"
+);
 
 add_task(async function testCategoryColors() {
-  let manager = cal.getCalendarManager();
-  let calendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  calendar.name = "Mochitest";
-  manager.registerCalendar(calendar);
+  const calendar = CalendarTestUtils.createCalendar("Mochitest", "memory");
 
   registerCleanupFunction(async () => {
-    manager.unregisterCalendar(calendar);
+    CalendarTestUtils.removeCalendar(calendar);
   });
 
-  let { prefsWindow, prefsDocument } = await openNewPrefsTab("paneCalendar", "categorieslist");
+  const { prefsWindow, prefsDocument } = await openNewPrefsTab("paneCalendar", "categorieslist");
 
-  let listBox = prefsDocument.getElementById("categorieslist");
+  const listBox = prefsDocument.getElementById("categorieslist");
   Assert.equal(listBox.itemChildren.length, 22);
 
-  for (let item of listBox.itemChildren) {
+  for (const item of listBox.itemChildren) {
     info(`${item.firstElementChild.value}: ${item.lastElementChild.style.backgroundColor}`);
     Assert.ok(item.lastElementChild.style.backgroundColor);
   }
@@ -38,11 +39,10 @@ add_task(async function testCategoryColors() {
   await subDialogPromise;
 
   let subDialogBrowser = prefsWindow.gSubDialog._topDialog._frame;
-  await new Promise(subDialogBrowser.contentWindow.setTimeout);
   let subDialogDocument = subDialogBrowser.contentDocument;
   subDialogDocument.getElementById("categoryName").value = "ZZZ Mochitest";
   subDialogDocument.getElementById("categoryColor").value = "#00CC00";
-  subDialogDocument.documentElement.firstElementChild.getButton("accept").click();
+  subDialogDocument.body.firstElementChild.getButton("accept").click();
 
   let listItem = listBox.itemChildren[listBox.itemCount - 1];
   Assert.equal(listBox.selectedItem, listItem);
@@ -60,7 +60,7 @@ add_task(async function testCategoryColors() {
   EventUtils.synthesizeMouse(listBox, 5, 5, {}, prefsWindow);
   EventUtils.synthesizeKey("VK_HOME", {}, prefsWindow);
   Assert.equal(listBox.selectedIndex, 0);
-  let itemName = listBox.itemChildren[0].firstElementChild.value;
+  const itemName = listBox.itemChildren[0].firstElementChild.value;
   EventUtils.synthesizeMouseAtCenter(prefsDocument.getElementById("editCButton"), {}, prefsWindow);
 
   await subDialogPromise;
@@ -69,7 +69,7 @@ add_task(async function testCategoryColors() {
   await new Promise(subDialogBrowser.contentWindow.setTimeout);
   subDialogDocument = subDialogBrowser.contentDocument;
   subDialogDocument.getElementById("useColor").checked = false;
-  subDialogDocument.documentElement.firstElementChild.getButton("accept").click();
+  subDialogDocument.body.firstElementChild.getButton("accept").click();
 
   listItem = listBox.itemChildren[0];
   Assert.equal(listBox.selectedItem, listItem);

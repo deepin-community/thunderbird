@@ -7,17 +7,18 @@
 // available at once). The example outputs the pixels and color information to a
 // floating point image and an ICC profile on disk.
 
+#include <jxl/codestream_header.h>
+#include <jxl/decode.h>
+#include <jxl/decode_cxx.h>
+#include <jxl/resizable_parallel_runner.h>
+#include <jxl/resizable_parallel_runner_cxx.h>
+#include <jxl/types.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <vector>
-
-#include "jxl/decode.h"
-#include "jxl/decode_cxx.h"
-#include "jxl/thread_parallel_runner.h"
-#include "jxl/thread_parallel_runner_cxx.h"
 
 /** Decodes JPEG XL image to floating point pixels and ICC Profile. Pixel are
  * stored as floating point, as interleaved RGBA (4 floating point values per
@@ -29,8 +30,7 @@ bool DecodeJpegXlOneShot(const uint8_t* jxl, size_t size,
                          std::vector<float>* pixels, size_t* xsize,
                          size_t* ysize, std::vector<uint8_t>* icc_profile) {
   // Multi-threaded parallel runner.
-  auto runner = JxlThreadParallelRunnerMake(
-      nullptr, JxlThreadParallelRunnerDefaultNumWorkerThreads());
+  auto runner = JxlResizableParallelRunnerMake(nullptr);
 
   auto dec = JxlDecoderMake(nullptr);
   if (JXL_DEC_SUCCESS !=
@@ -42,7 +42,7 @@ bool DecodeJpegXlOneShot(const uint8_t* jxl, size_t size,
   }
 
   if (JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec.get(),
-                                                     JxlThreadParallelRunner,
+                                                     JxlResizableParallelRunner,
                                                      runner.get())) {
     fprintf(stderr, "JxlDecoderSetParallelRunner failed\n");
     return false;
@@ -52,6 +52,7 @@ bool DecodeJpegXlOneShot(const uint8_t* jxl, size_t size,
   JxlPixelFormat format = {4, JXL_TYPE_FLOAT, JXL_NATIVE_ENDIAN, 0};
 
   JxlDecoderSetInput(dec.get(), jxl, size);
+  JxlDecoderCloseInput(dec.get());
 
   for (;;) {
     JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
@@ -69,19 +70,21 @@ bool DecodeJpegXlOneShot(const uint8_t* jxl, size_t size,
       }
       *xsize = info.xsize;
       *ysize = info.ysize;
+      JxlResizableParallelRunnerSetThreads(
+          runner.get(),
+          JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
     } else if (status == JXL_DEC_COLOR_ENCODING) {
       // Get the ICC color profile of the pixel data
       size_t icc_size;
       if (JXL_DEC_SUCCESS !=
-          JxlDecoderGetICCProfileSize(
-              dec.get(), &format, JXL_COLOR_PROFILE_TARGET_DATA, &icc_size)) {
+          JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
+                                      &icc_size)) {
         fprintf(stderr, "JxlDecoderGetICCProfileSize failed\n");
         return false;
       }
       icc_profile->resize(icc_size);
       if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
-                                 dec.get(), &format,
-                                 JXL_COLOR_PROFILE_TARGET_DATA,
+                                 dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                  icc_profile->data(), icc_profile->size())) {
         fprintf(stderr, "JxlDecoderGetColorAsICCProfile failed\n");
         return false;
@@ -94,12 +97,13 @@ bool DecodeJpegXlOneShot(const uint8_t* jxl, size_t size,
         return false;
       }
       if (buffer_size != *xsize * *ysize * 16) {
-        fprintf(stderr, "Invalid out buffer size %zu %zu\n", buffer_size,
-                *xsize * *ysize * 16);
+        fprintf(stderr, "Invalid out buffer size %d %d\n",
+                static_cast<int>(buffer_size),
+                static_cast<int>(*xsize * *ysize * 16));
         return false;
       }
       pixels->resize(*xsize * *ysize * 4);
-      void* pixels_buffer = (void*)pixels->data();
+      void* pixels_buffer = static_cast<void*>(pixels->data());
       size_t pixels_buffer_size = pixels->size() * sizeof(float);
       if (JXL_DEC_SUCCESS != JxlDecoderSetImageOutBuffer(dec.get(), &format,
                                                          pixels_buffer,
@@ -138,8 +142,8 @@ bool WritePFM(const char* filename, const float* pixels, size_t xsize,
   uint8_t little_endian[4];
   memcpy(little_endian, &endian_test, 4);
 
-  fprintf(file, "PF\n%d %d\n%s\n", (int)xsize, (int)ysize,
-          little_endian[0] ? "-1.0" : "1.0");
+  fprintf(file, "PF\n%d %d\n%s\n", static_cast<int>(xsize),
+          static_cast<int>(ysize), little_endian[0] ? "-1.0" : "1.0");
   for (int y = ysize - 1; y >= 0; y--) {
     for (size_t x = 0; x < xsize; x++) {
       for (size_t c = 0; c < 3; c++) {
@@ -224,7 +228,8 @@ int main(int argc, char* argv[]) {
 
   std::vector<float> pixels;
   std::vector<uint8_t> icc_profile;
-  size_t xsize = 0, ysize = 0;
+  size_t xsize = 0;
+  size_t ysize = 0;
   if (!DecodeJpegXlOneShot(jxl.data(), jxl.size(), &pixels, &xsize, &ysize,
                            &icc_profile)) {
     fprintf(stderr, "Error while decoding the jxl file\n");

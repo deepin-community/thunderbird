@@ -27,45 +27,13 @@
 #include "jit/arm64/vixl/Cpu-vixl.h"
 #include "jit/arm64/vixl/Simulator-vixl.h"
 #include "jit/arm64/vixl/Utils-vixl.h"
-#include "util/Windows.h"
+#include "util/WindowsWrapper.h"
 
 #if defined(XP_DARWIN)
 #  include <libkern/OSCacheControl.h>
 #endif
 
-#if defined(__aarch64__) && (defined(__linux__) || defined(__android__))
-#   if defined(__linux__)
-#    include <linux/membarrier.h>
-#    include <sys/syscall.h>
-#    include <sys/utsname.h>
-#    include <unistd.h>
-#   elif defined(__ANDROID__)
-#    include <sys/syscall.h>
-#    include <unistd.h>
-#   else
-#    error "Missing platform-specific declarations for membarrier syscall!"
-#   endif // __linux__ / ANDROID
-
-#  include "vm/JSContext.h" // TlsContext
-
-static int membarrier(int cmd, int flags) {
-    return syscall(__NR_membarrier, cmd, flags);
-}
-
-// These definitions come from the Linux kernel source, for kernels before 4.16
-// which didn't have access to these membarrier commands.
-#  ifndef MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE
-#  define MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE (1 << 5)
-#  endif
-
-#  ifndef MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE
-#  define MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE (1 << 6)
-#  endif
-
-#endif // __aarch64__
-
 namespace vixl {
-
 
 // Currently computes I and D cache line size.
 void CPU::SetUp() {
@@ -100,13 +68,16 @@ void CPU::SetUp() {
 
 
 uint32_t CPU::GetCacheType() {
-#if defined(__aarch64__) && (defined(__linux__) || defined(__android__))
+#if defined(__aarch64__) && !defined(_MSC_VER) && !defined(XP_DARWIN) && !defined(__OpenBSD__)
   uint64_t cache_type_register;
   // Copy the content of the cache type register to a core register.
   __asm__ __volatile__ ("mrs %[ctr], ctr_el0"  // NOLINT
                         : [ctr] "=r" (cache_type_register));
-  VIXL_ASSERT(IsUint32(cache_type_register));
-  return static_cast<uint32_t>(cache_type_register);
+  // The top bits are reserved, or report information about MTE which currently
+  // we discard. This will likely need to be changed to just return
+  // cache_type_register when we update VIXL next.
+  uint64_t mask = 0xffffffffull;
+  return static_cast<uint32_t>(cache_type_register & mask);
 #else
   // This will lead to a cache with 1 byte long lines, which is fine since
   // neither EnsureIAndDCacheCoherency nor the simulator will need this
@@ -115,45 +86,7 @@ uint32_t CPU::GetCacheType() {
 #endif
 }
 
-bool CPU::CanFlushICacheFromBackgroundThreads() {
-#if defined(__aarch64__) && (defined(__linux__) || defined(__android__))
-  // On linux, check the kernel supports membarrier(2), that is, it's a kernel
-  // above Linux 4.16 included.
-  //
-  // Note: this code has been extracted (August 2020) from
-  // https://android.googlesource.com/platform/art/+/58520dfba31d6eeef75f5babff15e09aa28e5db8/libartbase/base/membarrier.cc#50
-  static constexpr int kRequiredMajor = 4;
-  static constexpr int kRequiredMinor = 16;
-
-  static bool computed = false;
-  static bool kernelHasMembarrier = false;
-
-  if (!computed) {
-    struct utsname uts;
-    int major, minor;
-    kernelHasMembarrier = uname(&uts) == 0 &&
-        strcmp(uts.sysname, "Linux") == 0 &&
-        sscanf(uts.release, "%d.%d", &major, &minor) == 2 &&
-        major >= kRequiredMajor && (major != kRequiredMajor || minor >= kRequiredMinor);
-
-    // As a test bed, try to run the syscall with the command registering the
-    // intent to use the actual membarrier we'll want to carry out later.
-    if (kernelHasMembarrier &&
-        membarrier(MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE, 0) != 0) {
-      kernelHasMembarrier = false;
-    }
-
-    computed = true;
-  }
-
-  return kernelHasMembarrier;
-#else
-  // On other platforms, we assume that the provided syscall does the right thing.
-  return true;
-#endif
-}
-
-void CPU::EnsureIAndDCacheCoherency(void *address, size_t length, bool codeIsThreadLocal) {
+void CPU::EnsureIAndDCacheCoherency(void* address, size_t length) {
 #if defined(JS_SIMULATOR_ARM64) && defined(JS_CACHE_SIMULATOR_ARM64)
   // This code attempts to emulate what the following assembly sequence is
   // doing, which is sending the information to all cores that some cache line
@@ -175,17 +108,12 @@ void CPU::EnsureIAndDCacheCoherency(void *address, size_t length, bool codeIsThr
   Simulator* sim = vixl::Simulator::Current();
   if (sim) {
     sim->FlushICache();
-  } else if (!codeIsThreadLocal) {
-    // We're on a background thread; emulate what the real hardware would do by
-    // emitting a membarrier that'll interrupt and cause an icache invalidation
-    // on all the threads.
-    SimulatorProcess::membarrier();
   }
 #elif defined(_MSC_VER) && defined(_M_ARM64)
   FlushInstructionCache(GetCurrentProcess(), address, length);
 #elif defined(XP_DARWIN)
   sys_icache_invalidate(address, length);
-#elif defined(__aarch64__) && (defined(__linux__) || defined(__android__))
+#elif defined(__aarch64__) && (defined(__linux__) || defined(__android__) || defined(__FreeBSD__))
   // Implement the cache synchronisation for all targets where AArch64 is the
   // host, even if we're building the simulator for an AAarch64 host. This
   // allows for cases where the user wants to simulate code as well as run it
@@ -262,35 +190,42 @@ void CPU::EnsureIAndDCacheCoherency(void *address, size_t length, bool codeIsThr
     iline += isize;
   } while (iline < end);
 
-  __asm__ __volatile__ (
-    // Make sure that the instruction cache operations (above) take effect
-    // before the isb (below).
-    "   dsb  ish\n"
+  __asm__ __volatile__(
+      // Make sure that the instruction cache operations (above) take effect
+      // before the isb (below).
+      "   dsb  ish\n"
 
-    // Ensure that any instructions already in the pipeline are discarded and
-    // reloaded from the new data.
-    // isb : Instruction Synchronisation Barrier
-    "   isb\n"
-    : : : "memory");
+      // Ensure that any instructions already in the pipeline are discarded and
+      // reloaded from the new data.
+      // isb : Instruction Synchronisation Barrier
+      "   isb\n"
+      :
+      :
+      : "memory");
+#elif defined(__aarch64__) && !defined(__OpenBSD__)
+# error Please check/implement the cache invalidation code for your OS
 
-  if (!codeIsThreadLocal) {
-    // If we're on a background thread, emit a membarrier that will synchronize
-    // all the executing threads with the new version of the code.
-    JSContext* cx = js::TlsContext.get();
-    if (!cx || !cx->isMainThreadContext()) {
-      MOZ_RELEASE_ASSERT(CPU::CanFlushICacheFromBackgroundThreads());
-      // The intent to use this command has been carried over in
-      // CanFlushICacheFromBackgroundThreads.
-      if (membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE, 0) != 0) {
-        // Better safe than sorry.
-        MOZ_CRASH("membarrier can't be executed");
-      }
-    }
-  }
 #else
   // If the host isn't AArch64, we must be using the simulator, so this function
   // doesn't have to do anything.
   USE(address, length);
+#endif
+}
+
+void CPU::FlushExecutionContext() {
+#if defined(JS_SIMULATOR_ARM64) && defined(JS_CACHE_SIMULATOR_ARM64)
+  // Performing an 'isb' will ensure the current core instruction pipeline is
+  // synchronized with an icache flush executed by another core.
+  using js::jit::SimulatorProcess;
+  js::jit::AutoLockSimulatorCache alsc;
+  Simulator* sim = vixl::Simulator::Current();
+  if (sim) {
+    sim->FlushICache();
+  }
+#elif defined(__aarch64__)
+  // Ensure that any instructions already in the pipeline are discarded and
+  // reloaded from the icache.
+  __asm__ __volatile__("isb\n" : : : "memory");
 #endif
 }
 

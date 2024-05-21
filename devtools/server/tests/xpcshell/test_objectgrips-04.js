@@ -20,10 +20,8 @@ add_task(
     Assert.equal(args[0].class, "Object");
 
     const objectFront = threadFront.pauseGrip(args[0]);
-    const {
-      ownProperties,
-      prototype,
-    } = await objectFront.getPrototypeAndProperties();
+    const { ownProperties, prototype } =
+      await objectFront.getPrototypeAndProperties();
     Assert.equal(ownProperties.x.configurable, true);
     Assert.equal(ownProperties.x.enumerable, true);
     Assert.equal(ownProperties.x.writable, true);
@@ -42,15 +40,14 @@ add_task(
 
     Assert.ok(prototype != undefined);
 
-    const { ownPropertyNames } = await prototype.getOwnPropertyNames();
-    Assert.ok(ownPropertyNames.toString != undefined);
-
     await threadFront.resume();
   })
 );
 
 function evalCode(debuggee) {
   debuggee.eval(
+    // These arguments are tested.
+    // eslint-disable-next-line no-unused-vars
     function stopMe(arg1) {
       debugger;
     }.toString()

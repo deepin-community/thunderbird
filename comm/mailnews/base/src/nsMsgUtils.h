@@ -40,6 +40,14 @@ class nsIMsgSearchTerm;
 #define FILE_IO_BUFFER_SIZE (16 * 1024)
 #define MSGS_URL "chrome://messenger/locale/messenger.properties"
 
+enum nsDateFormatSelectorComm : long {
+  kDateFormatNone = 0,
+  kDateFormatLong = 1,
+  kDateFormatShort = 2,
+  kDateFormatUnused = 3,
+  kDateFormatWeekday = 4
+};
+
 // These are utility functions that can used throughout the mailnews code
 
 NS_MSG_BASE nsresult GetMessageServiceContractIDForURI(const char* uri,
@@ -48,7 +56,8 @@ NS_MSG_BASE nsresult GetMessageServiceContractIDForURI(const char* uri,
 NS_MSG_BASE nsresult GetMessageServiceFromURI(
     const nsACString& uri, nsIMsgMessageService** aMessageService);
 
-NS_MSG_BASE nsresult GetMsgDBHdrFromURI(const char* uri, nsIMsgDBHdr** msgHdr);
+NS_MSG_BASE nsresult GetMsgDBHdrFromURI(const nsACString& uri,
+                                        nsIMsgDBHdr** msgHdr);
 
 NS_MSG_BASE nsresult NS_MsgGetPriorityFromString(
     const char* const priority, nsMsgPriorityValue& outPriority);
@@ -198,9 +207,6 @@ NS_MSG_BASE nsresult MsgCleanupTempFiles(const char* fileName,
 NS_MSG_BASE nsresult MsgGetFileStream(nsIFile* file,
                                       nsIOutputStream** fileStream);
 
-NS_MSG_BASE nsresult MsgReopenFileStream(nsIFile* file,
-                                         nsIInputStream* fileStream);
-
 // Automatically creates an output stream with a suitable buffer
 NS_MSG_BASE nsresult MsgNewBufferedFileOutputStream(nsIOutputStream** aResult,
                                                     nsIFile* aFile,
@@ -253,7 +259,8 @@ NS_MSG_BASE nsresult MsgExamineForProxyAsync(nsIChannel* channel,
 NS_MSG_BASE int32_t MsgFindCharInSet(const nsCString& aString,
                                      const char* aChars, uint32_t aOffset = 0);
 NS_MSG_BASE int32_t MsgFindCharInSet(const nsString& aString,
-                                     const char* aChars, uint32_t aOffset = 0);
+                                     const char16_t* aChars,
+                                     uint32_t aOffset = 0);
 
 // advances bufferOffset to the beginning of the next line, if we don't
 // get to maxBufferOffset first. Returns false if we didn't get to the
@@ -430,5 +437,28 @@ void MsgLogToConsole4(const nsAString& aErrorText, const nsAString& aFilename,
     MSG_LOCAL_INFO_TO_CONSOLE(_txt);                                  \
     fprintf(stderr, "(info) %s (%s:%d)\n", _txt, __FILE__, __LINE__); \
   } while (0)
+
+/**
+ * Perform C-style string escaping. E.g. "foo\r\n" => "foo\\r\\n"
+ * This is primarily intended to ease debugging large strings.
+ * CEscapeString("foo\r\n") => "foo\\r\\n"
+ * CEscapeString("foo\r\n", 5) => "fo..."
+ */
+nsCString CEscapeString(nsACString const& s, size_t maxLen = SIZE_MAX);
+
+/**
+ * Synchronously copy the contents of src to dest, until EOF is encountered
+ * or an error occurs.
+ * The total number of bytes copied is returned in bytesCopied.
+ */
+nsresult SyncCopyStream(nsIInputStream* src, nsIOutputStream* dest,
+                        uint64_t& bytesCopied,
+                        size_t bufSize = FILE_IO_BUFFER_SIZE);
+
+// Used for "@mozilla.org/network/sync-stream-listener;1".
+already_AddRefed<nsIStreamListener> SyncStreamListenerCreate();
+
+nsresult IsOnSameServer(nsIMsgFolder* folder1, nsIMsgFolder* folder2,
+                        bool* sameServer);
 
 #endif

@@ -54,13 +54,16 @@ for patch in \
  suppress-warnings.diff \
  bug-1198952-workaround-make-3.82-bug.diff \
  bug-1614941-dsb-hsb-dates.diff \
- bug-1636984-alias-append-items-sink.diff \
  bug-1636984-display-name-fractional-seconds.diff \
  bug-1636984-append-item-dayperiod-fractional-seconds.diff \
  bug-1706949-wasi-workaround.diff \
- bug-1714933-1-locale-unicode-keywords.diff \
- bug-1714933-2-locale-basename-memory-leak.diff \
- bug-1714933-3-locale-nullptr-deref.diff \
+ bug-1790071-ICU-22132-standardize-vtzone-output.diff \
+ bug-1838173-ICU-22412-start-time-iso8601.diff \
+ bug-1814862-ICU-22260.diff \
+ double-conversion.diff \
+ bug-1856428-ICU-22541.diff \
+ bug-1856290-ICU-20548-dateinterval-timezone.diff \
+ bug-1856291-ICU-22526-calendar-timezone-offset-limit.diff \
 ; do
   echo "Applying local patch $patch"
   patch -d ${icu_dir}/../../ -p1 --no-backup-if-mismatch < ${icu_dir}/../icu-patches/$patch

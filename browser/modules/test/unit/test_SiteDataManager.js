@@ -3,41 +3,33 @@
  */
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { SiteDataManager } = ChromeUtils.import(
-  "resource:///modules/SiteDataManager.jsm"
-);
-const { SiteDataTestUtils } = ChromeUtils.import(
-  "resource://testing-common/SiteDataTestUtils.jsm"
-);
-const { PermissionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PermissionTestUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "setTimeout",
-  "resource://gre/modules/Timer.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "TestUtils",
-  "resource://testing-common/TestUtils.jsm"
-);
+// We intend to add tests that add real quota manager data to test
+// data size fetching in the new clear history dialog.
+// Bug 1874387 - Add a test to SiteDataManager to test data size display in the new clear
+// history dialog using real quota manager data
+
+ChromeUtils.defineESModuleGetters(this, {
+  SiteDataManager: "resource:///modules/SiteDataManager.sys.mjs",
+  SiteDataTestUtils: "resource://testing-common/SiteDataTestUtils.sys.mjs",
+  PermissionTestUtils: "resource://testing-common/PermissionTestUtils.sys.mjs",
+});
 
 const EXAMPLE_ORIGIN = "https://www.example.com";
 const EXAMPLE_ORIGIN_2 = "https://example.org";
 const EXAMPLE_ORIGIN_3 = "http://localhost:8000";
 
-let p = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-  EXAMPLE_ORIGIN
-);
+let p =
+  Services.scriptSecurityManager.createContentPrincipalFromOrigin(
+    EXAMPLE_ORIGIN
+  );
 let partitionKey = `(${p.scheme},${p.baseDomain})`;
-let EXAMPLE_ORIGIN_2_PARTITIONED = Services.scriptSecurityManager.createContentPrincipal(
-  Services.io.newURI(EXAMPLE_ORIGIN_2),
-  {
-    partitionKey,
-  }
-).origin;
+let EXAMPLE_ORIGIN_2_PARTITIONED =
+  Services.scriptSecurityManager.createContentPrincipal(
+    Services.io.newURI(EXAMPLE_ORIGIN_2),
+    {
+      partitionKey,
+    }
+  ).origin;
 
 add_task(function setup() {
   do_get_profile();

@@ -10,8 +10,8 @@
 
 let gExpectedResourcesSeen = 0;
 async function onModifyRequest() {
-  return new Promise((resolve, reject) => {
-    Services.obs.addObserver(function observer(subject, topic, data) {
+  return new Promise(resolve => {
+    Services.obs.addObserver(function observer(subject) {
       let httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
       let spec = httpChannel.URI.spec;
       info("Observed channel for " + spec);
@@ -44,7 +44,7 @@ async function onModifyRequest() {
   });
 }
 
-add_task(async function() {
+add_task(async function () {
   info("Starting subResources test");
 
   await SpecialPowers.flushPrefEnv();
@@ -80,7 +80,7 @@ add_task(async function() {
   await SpecialPowers.spawn(
     browser,
     [{ expected: gExpectedResourcesSeen }],
-    async function(obj) {
+    async function (obj) {
       is(
         content.document.blockedNodeByClassifierCount,
         obj.expected,

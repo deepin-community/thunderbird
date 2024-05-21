@@ -16,7 +16,6 @@
 var {BrowserUtils} =
   ChromeUtils.import("resource://gre/modules/BrowserUtils.jsm");
 var {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm"
 var {LoginManagerContextMenu} =
   ChromeUtils.import("resource://gre/modules/LoginManagerContextMenu.jsm");
 
@@ -38,7 +37,7 @@ XPCOMUtils.defineLazyModuleGetters(this, {
   findCssSelector: "resource://gre/modules/css-selector.js",
   LoginHelper: "resource://gre/modules/LoginHelper.jsm",
   LoginManagerContent: "resource://gre/modules/LoginManagerContent.jsm",
-  DevToolsShim: "chrome://devtools-shim/content/DevToolsShim.jsm",
+  DevToolsShim: "chrome://devtools-startup/content/DevToolsShim.jsm",
   NetUtil: "resource://gre/modules/NetUtil.jsm",
   ShellService: "resource:///modules/ShellService.jsm",
 
@@ -240,7 +239,7 @@ nsContextMenu.prototype = {
     this.showItem("context-viewsource", showView);
     this.showItem("context-viewinfo", showView);
 
-    var showInspect = DevToolsShim.isInstalled() &&
+    var showInspect = DevToolsShim.isEnabled() &&
                       "gDevTools" in window &&
                       Services.prefs.getBoolPref("devtools.inspector.enabled", false);
     this.showItem("inspect-separator", showInspect);

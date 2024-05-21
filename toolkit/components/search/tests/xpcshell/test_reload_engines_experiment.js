@@ -3,21 +3,33 @@
 
 "use strict";
 
-const { SearchEngineSelector } = ChromeUtils.import(
-  "resource://gre/modules/SearchEngineSelector.jsm"
-);
-const { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
-);
-
-const SEARCH_SERVICE_TOPIC = "browser-search-service";
-const SEARCH_ENGINE_TOPIC = "browser-search-engine-modified";
-
 const CONFIG = [
   {
     // Just a basic engine that won't be changed.
     webExtension: {
       id: "engine@search.mozilla.org",
+      name: "Test search engine",
+      search_url: "https://www.google.com/search",
+      params: [
+        {
+          name: "q",
+          value: "{searchTerms}",
+        },
+        {
+          name: "channel",
+          condition: "purpose",
+          purpose: "contextmenu",
+          value: "rcs",
+        },
+        {
+          name: "channel",
+          condition: "purpose",
+          purpose: "keyword",
+          value: "fflb",
+        },
+      ],
+      suggest_url:
+        "https://suggestqueries.google.com/complete/search?output=firefox&client=firefox&hl={moz:locale}&q={searchTerms}",
     },
     appliesTo: [
       {
@@ -30,6 +42,17 @@ const CONFIG = [
     // This engine will have the locale swapped when the experiment is set.
     webExtension: {
       id: "engine-same-name@search.mozilla.org",
+      default_locale: "en",
+      searchProvider: {
+        en: {
+          name: "engine-same-name",
+          search_url: "https://www.google.com/search?q={searchTerms}",
+        },
+        gd: {
+          name: "engine-same-name",
+          search_url: "https://www.example.com/search?q={searchTerms}",
+        },
+      },
     },
     appliesTo: [
       {
@@ -49,23 +72,87 @@ const CONFIG = [
   },
 ];
 
-function listenFor(name, key) {
-  let notifyObserved = false;
-  let obs = (subject, topic, data) => {
-    if (data == key) {
-      notifyObserved = true;
-    }
-  };
-  Services.obs.addObserver(obs, name);
+const CONFIG_V2 = [
+  {
+    recordType: "engine",
+    identifier: "engine",
+    base: {
+      name: "Test search engine",
+      urls: {
+        search: {
+          base: "https://www.google.com/search",
+          params: [
+            {
+              name: "channel",
+              searchAccessPoint: {
+                addressbar: "fflb",
+                contextmenu: "rcs",
+              },
+            },
+          ],
+          searchTermParamName: "q",
+        },
+      },
+    },
+    variants: [
+      {
+        environment: { allRegionsAndLocales: true },
+      },
+    ],
+  },
+  {
+    recordType: "engine",
+    identifier: "engine-same-name-en",
+    base: {
+      name: "engine-same-name",
+      urls: {
+        search: {
+          base: "https://www.google.com/search",
+          searchTermParamName: "q",
+        },
+      },
+    },
+    variants: [
+      {
+        environment: { allRegionsAndLocales: true },
+      },
+    ],
+  },
+  {
+    recordType: "engine",
+    identifier: "engine-same-name-gd",
+    base: {
+      name: "engine-same-name",
+      urls: {
+        search: {
+          base: "https://www.example.com/search",
+          searchTermParamName: "q",
+        },
+      },
+    },
+    variants: [
+      {
+        environment: { allRegionsAndLocales: true, experiment: "xpcshell" },
+      },
+    ],
+  },
+  {
+    recordType: "defaultEngines",
+    globalDefault: "engine",
+    specificDefaults: [],
+  },
+  {
+    recordType: "engineOrders",
+    orders: [],
+  },
+];
 
-  return () => {
-    Services.obs.removeObserver(obs, name);
-    return notifyObserved;
-  };
-}
-
-add_task(async function setup() {
-  await SearchTestUtils.useTestEngines("data", null, CONFIG);
+add_setup(async function () {
+  await SearchTestUtils.useTestEngines(
+    "data",
+    null,
+    SearchUtils.newSearchConfigEnabled ? CONFIG_V2 : CONFIG
+  );
   await AddonTestUtils.promiseStartupManager();
 });
 
@@ -90,9 +177,8 @@ add_task(async function test_initial_config_correct() {
 
 add_task(async function test_config_updated_engine_changes() {
   // Update the config.
-  const reloadObserved = SearchTestUtils.promiseSearchNotification(
-    "engines-reloaded"
-  );
+  const reloadObserved =
+    SearchTestUtils.promiseSearchNotification("engines-reloaded");
   const enginesAdded = [];
   const enginesModified = [];
   const enginesRemoved = [];
@@ -118,19 +204,42 @@ add_task(async function test_config_updated_engine_changes() {
   await reloadObserved;
   Services.obs.removeObserver(enginesObs, SearchUtils.TOPIC_ENGINE_MODIFIED);
 
-  Assert.deepEqual(enginesAdded, [], "Should have added the correct engines");
+  if (SearchUtils.newSearchConfigEnabled) {
+    // In the new config, engine-same-name-en and engine-same-name-gd are two
+    // different engine configs and they will be treated as different engines
+    // and not the same. That's the reason why the assertions are different below.
+    Assert.deepEqual(
+      enginesAdded,
+      ["engine-same-name-gd"],
+      "Should have added the correct engines"
+    );
 
-  Assert.deepEqual(
-    enginesModified.sort(),
-    ["engine", "engine-same-name-gd"],
-    "Should have modified the expected engines"
-  );
+    Assert.deepEqual(
+      enginesModified.sort(),
+      ["engine", "engine-same-name-en"],
+      "Should have modified the expected engines"
+    );
 
-  Assert.deepEqual(
-    enginesRemoved,
-    [],
-    "Should have removed the expected engine"
-  );
+    Assert.deepEqual(
+      enginesRemoved,
+      ["engine-same-name"],
+      "Should have removed the expected engine"
+    );
+  } else {
+    Assert.deepEqual(enginesAdded, [], "Should have added the correct engines");
+
+    Assert.deepEqual(
+      enginesModified.sort(),
+      ["engine", "engine-same-name-gd"],
+      "Should have modified the expected engines"
+    );
+
+    Assert.deepEqual(
+      enginesRemoved,
+      [],
+      "Should have removed the expected engine"
+    );
+  }
 
   const installedEngines = await Services.search.getAppProvidedEngines();
 
@@ -150,7 +259,9 @@ add_task(async function test_config_updated_engine_changes() {
   );
 
   Assert.equal(
-    Services.search.wrappedJSObject._settings.getAttribute("useSavedOrder"),
+    Services.search.wrappedJSObject._settings.getMetaDataAttribute(
+      "useSavedOrder"
+    ),
     false,
     "Should not have set the useSavedOrder preference"
   );

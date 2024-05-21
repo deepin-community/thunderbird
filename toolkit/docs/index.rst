@@ -7,9 +7,9 @@ This is the nascent documentation of the Toolkit code that is shared across Fire
 .. toctree::
    :maxdepth: 1
 
+   javascript-logging
    mozapps/extensions/addon-manager/index
    components/backgroundtasks/index
-   crash-reporting/index
    components/crashes/crash-manager/index
    crashreporter/crashreporter/index
    components/featuregates/featuregates/index
@@ -24,6 +24,10 @@ This is the nascent documentation of the Toolkit code that is shared across Fire
    components/glean/index
    modules/toolkit_modules/index
    content/toolkit_widgets/index
+   components/resistfingerprinting/resistfingerprinting/index
    components/url-classifier/url-classifier/index
    components/extensions/webextensions/index
    /extensions/spellcheck/index
+   mozapps/update/docs/index
+   components/antitracking/anti-tracking/index
+   components/translations/index

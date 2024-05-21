@@ -1,9 +1,11 @@
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 // Cross origin request
 var prefix = "http://example.com/tests/dom/serviceworkers/test/eventsource/";
 
 self.importScripts("eventsource_worker_helper.js");
 
-self.addEventListener("fetch", function(event) {
+self.addEventListener("fetch", function (event) {
   var request = event.request;
   var url = new URL(request.url);
 

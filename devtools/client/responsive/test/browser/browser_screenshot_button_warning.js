@@ -15,7 +15,7 @@ const TEST_URL = `http://example.net/document-builder.sjs?html=
 
 addRDMTask(
   TEST_URL,
-  async function({ ui, browser, manager }) {
+  async function ({ ui, browser, manager }) {
     const { toolWindow } = ui;
     const { document } = toolWindow;
 
@@ -46,13 +46,13 @@ addRDMTask(
     const notificationEl = box.currentNotification;
     ok(notificationEl, "Notification should be visible");
     is(
-      notificationEl.messageText.textContent,
+      notificationEl.messageText.textContent.trim(),
       "The device pixel ratio was reduced to 1 as the resulting image was too large",
       "The expected warning was displayed"
     );
 
     //Remove the downloaded screenshot file
-    await OS.File.remove(filePath);
+    await IOUtils.remove(filePath);
     await resetDownloads();
   },
   { waitForDeviceList: true }

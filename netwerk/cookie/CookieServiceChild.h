@@ -10,8 +10,6 @@
 #include "mozilla/net/PCookieServiceChild.h"
 #include "nsClassHashtable.h"
 #include "nsICookieService.h"
-#include "nsIObserver.h"
-#include "nsIPrefBranch.h"
 #include "mozIThirdPartyUtil.h"
 #include "nsWeakReference.h"
 #include "nsThreadUtils.h"
@@ -27,41 +25,36 @@ class CookieStruct;
 
 class CookieServiceChild final : public PCookieServiceChild,
                                  public nsICookieService,
-                                 public nsIObserver,
-                                 public nsITimerCallback,
                                  public nsSupportsWeakReference {
   friend class PCookieServiceChild;
 
  public:
   NS_DECL_ISUPPORTS
   NS_DECL_NSICOOKIESERVICE
-  NS_DECL_NSIOBSERVER
-  NS_DECL_NSITIMERCALLBACK
 
   typedef nsTArray<RefPtr<Cookie>> CookiesList;
   typedef nsClassHashtable<CookieKey, CookiesList> CookiesMap;
 
   CookieServiceChild();
 
+  void Init();
+
   static already_AddRefed<CookieServiceChild> GetSingleton();
 
-  void TrackCookieLoad(nsIChannel* aChannel);
+  RefPtr<GenericPromise> TrackCookieLoad(nsIChannel* aChannel);
 
  private:
   ~CookieServiceChild();
-  void MoveCookies();
 
   void RecordDocumentCookie(Cookie* aCookie, const OriginAttributes& aAttrs);
 
   uint32_t CountCookiesFromHashTable(const nsACString& aBaseDomain,
                                      const OriginAttributes& aOriginAttrs);
 
-  void PrefChanged(nsIPrefBranch* aPrefBranch);
-
   static bool RequireThirdPartyCheck(nsILoadInfo* aLoadInfo);
 
   mozilla::ipc::IPCResult RecvTrackCookiesLoad(
-      nsTArray<CookieStruct>&& aCookiesList, const OriginAttributes& aAttrs);
+      nsTArray<CookieStructTable>&& aCookiesListTable);
 
   mozilla::ipc::IPCResult RecvRemoveAll();
 
@@ -75,8 +68,10 @@ class CookieServiceChild final : public PCookieServiceChild,
   mozilla::ipc::IPCResult RecvAddCookie(const CookieStruct& aCookie,
                                         const OriginAttributes& aAttrs);
 
+  void RemoveSingleCookie(const CookieStruct& aCookie,
+                          const OriginAttributes& aAttrs);
+
   CookiesMap mCookiesMap;
-  nsCOMPtr<nsITimer> mCookieTimer;
   nsCOMPtr<mozIThirdPartyUtil> mThirdPartyUtil;
   nsCOMPtr<nsIEffectiveTLDService> mTLDService;
 };

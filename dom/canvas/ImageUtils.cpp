@@ -8,8 +8,6 @@
 
 #include "ImageContainer.h"
 #include "Intervals.h"
-#include "mozilla/AlreadyAddRefed.h"
-#include "mozilla/ErrorResult.h"
 #include "mozilla/dom/ImageBitmapBinding.h"
 
 using namespace mozilla::layers;
@@ -17,27 +15,27 @@ using namespace mozilla::gfx;
 
 namespace mozilla::dom {
 
-static ImageBitmapFormat GetImageBitmapFormatFromSurfaceFromat(
+static Maybe<ImageBitmapFormat> GetImageBitmapFormatFromSurfaceFromat(
     SurfaceFormat aSurfaceFormat) {
   switch (aSurfaceFormat) {
     case SurfaceFormat::B8G8R8A8:
     case SurfaceFormat::B8G8R8X8:
-      return ImageBitmapFormat::BGRA32;
+      return Some(ImageBitmapFormat::BGRA32);
     case SurfaceFormat::R8G8B8A8:
     case SurfaceFormat::R8G8B8X8:
-      return ImageBitmapFormat::RGBA32;
+      return Some(ImageBitmapFormat::RGBA32);
     case SurfaceFormat::R8G8B8:
-      return ImageBitmapFormat::RGB24;
+      return Some(ImageBitmapFormat::RGB24);
     case SurfaceFormat::B8G8R8:
-      return ImageBitmapFormat::BGR24;
+      return Some(ImageBitmapFormat::BGR24);
     case SurfaceFormat::HSV:
-      return ImageBitmapFormat::HSV;
+      return Some(ImageBitmapFormat::HSV);
     case SurfaceFormat::Lab:
-      return ImageBitmapFormat::Lab;
+      return Some(ImageBitmapFormat::Lab);
     case SurfaceFormat::Depth:
-      return ImageBitmapFormat::DEPTH;
+      return Some(ImageBitmapFormat::DEPTH);
     case SurfaceFormat::A8:
-      return ImageBitmapFormat::GRAY8;
+      return Some(ImageBitmapFormat::GRAY8);
     case SurfaceFormat::R5G6B5_UINT16:
     case SurfaceFormat::YUV:
     case SurfaceFormat::NV12:
@@ -45,58 +43,54 @@ static ImageBitmapFormat GetImageBitmapFormatFromSurfaceFromat(
     case SurfaceFormat::P016:
     case SurfaceFormat::UNKNOWN:
     default:
-      return ImageBitmapFormat::EndGuard_;
+      return Nothing();
   }
 }
 
-static ImageBitmapFormat GetImageBitmapFormatFromPlanarYCbCrData(
+static Maybe<ImageBitmapFormat> GetImageBitmapFormatFromPlanarYCbCrData(
     layers::PlanarYCbCrData const* aData) {
   MOZ_ASSERT(aData);
 
+  auto ySize = aData->YDataSize();
+  auto cbcrSize = aData->CbCrDataSize();
   media::Interval<uintptr_t> YInterval(
       uintptr_t(aData->mYChannel),
-      uintptr_t(aData->mYChannel) + aData->mYSize.height * aData->mYStride),
-      CbInterval(uintptr_t(aData->mCbChannel),
-                 uintptr_t(aData->mCbChannel) +
-                     aData->mCbCrSize.height * aData->mCbCrStride),
-      CrInterval(uintptr_t(aData->mCrChannel),
-                 uintptr_t(aData->mCrChannel) +
-                     aData->mCbCrSize.height * aData->mCbCrStride);
+      uintptr_t(aData->mYChannel) + ySize.height * aData->mYStride),
+      CbInterval(
+          uintptr_t(aData->mCbChannel),
+          uintptr_t(aData->mCbChannel) + cbcrSize.height * aData->mCbCrStride),
+      CrInterval(
+          uintptr_t(aData->mCrChannel),
+          uintptr_t(aData->mCrChannel) + cbcrSize.height * aData->mCbCrStride);
   if (aData->mYSkip == 0 && aData->mCbSkip == 0 &&
       aData->mCrSkip == 0) {  // Possibly three planes.
     if (!YInterval.Intersects(CbInterval) &&
         !CbInterval.Intersects(CrInterval)) {  // Three planes.
-      if (aData->mYSize.height == aData->mCbCrSize.height) {
-        if (aData->mYSize.width == aData->mCbCrSize.width) {
-          return ImageBitmapFormat::YUV444P;
-        }
-        if (((aData->mYSize.width + 1) / 2) == aData->mCbCrSize.width) {
-          return ImageBitmapFormat::YUV422P;
-        }
-      } else if (((aData->mYSize.height + 1) / 2) == aData->mCbCrSize.height) {
-        if (((aData->mYSize.width + 1) / 2) == aData->mCbCrSize.width) {
-          return ImageBitmapFormat::YUV420P;
-        }
+      switch (aData->mChromaSubsampling) {
+        case ChromaSubsampling::FULL:
+          return Some(ImageBitmapFormat::YUV444P);
+        case ChromaSubsampling::HALF_WIDTH:
+          return Some(ImageBitmapFormat::YUV422P);
+        case ChromaSubsampling::HALF_WIDTH_AND_HEIGHT:
+          return Some(ImageBitmapFormat::YUV420P);
+        default:
+          break;
       }
     }
-  } else if (aData->mYSkip == 0 && aData->mCbSkip == 1 &&
-             aData->mCrSkip == 1) {  // Possibly two planes.
+  } else if (aData->mYSkip == 0 && aData->mCbSkip == 1 && aData->mCrSkip == 1 &&
+             aData->mChromaSubsampling ==
+                 ChromaSubsampling::HALF_WIDTH_AND_HEIGHT) {  // Possibly two
+                                                              // planes.
     if (!YInterval.Intersects(CbInterval) &&
         aData->mCbChannel == aData->mCrChannel - 1) {  // Two planes.
-      if (((aData->mYSize.height + 1) / 2) == aData->mCbCrSize.height &&
-          ((aData->mYSize.width + 1) / 2) == aData->mCbCrSize.width) {
-        return ImageBitmapFormat::YUV420SP_NV12;  // Y-Cb-Cr
-      }
+      return Some(ImageBitmapFormat::YUV420SP_NV12);   // Y-Cb-Cr
     } else if (!YInterval.Intersects(CrInterval) &&
                aData->mCrChannel == aData->mCbChannel - 1) {  // Two planes.
-      if (((aData->mYSize.height + 1) / 2) == aData->mCbCrSize.height &&
-          ((aData->mYSize.width + 1) / 2) == aData->mCbCrSize.width) {
-        return ImageBitmapFormat::YUV420SP_NV21;  // Y-Cr-Cb
-      }
+      return Some(ImageBitmapFormat::YUV420SP_NV21);          // Y-Cr-Cb
     }
   }
 
-  return ImageBitmapFormat::EndGuard_;
+  return Nothing();
 }
 
 // ImageUtils::Impl implements the _generic_ algorithm which always readback
@@ -110,7 +104,7 @@ class ImageUtils::Impl {
 
   virtual ~Impl() = default;
 
-  virtual ImageBitmapFormat GetFormat() const {
+  virtual Maybe<ImageBitmapFormat> GetFormat() const {
     return GetImageBitmapFormatFromSurfaceFromat(Surface()->GetFormat());
   }
 
@@ -150,7 +144,7 @@ class YUVImpl final : public ImageUtils::Impl {
                aImage->GetFormat() == ImageFormat::NV_IMAGE);
   }
 
-  ImageBitmapFormat GetFormat() const override {
+  Maybe<ImageBitmapFormat> GetFormat() const override {
     return GetImageBitmapFormatFromPlanarYCbCrData(GetPlanarYCbCrData());
   }
 
@@ -182,7 +176,7 @@ ImageUtils::ImageUtils(layers::Image* aImage) : mImpl(nullptr) {
     case mozilla::ImageFormat::NV_IMAGE:
       mImpl = new YUVImpl(aImage);
       break;
-    case mozilla::ImageFormat::CAIRO_SURFACE:
+    case mozilla::ImageFormat::MOZ2D_SURFACE:
     default:
       mImpl = new Impl(aImage);
   }
@@ -195,7 +189,7 @@ ImageUtils::~ImageUtils() {
   }
 }
 
-ImageBitmapFormat ImageUtils::GetFormat() const {
+Maybe<ImageBitmapFormat> ImageUtils::GetFormat() const {
   MOZ_ASSERT(mImpl);
   return mImpl->GetFormat();
 }

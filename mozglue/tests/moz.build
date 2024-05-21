@@ -32,13 +32,11 @@ if CONFIG["OS_ARCH"] == "WINNT":
         [
             "TestNativeNt",
             "TestPEExportSection",
+            "TestStackCookie",
             "TestTimeStampWin",
         ],
         linkage=None,
     )
-    TEST_DIRS += [
-        "interceptor",
-    ]
     OS_LIBS += [
         "ntdll",
         "version",

@@ -19,39 +19,37 @@ class gfxConfigManager {
  public:
   gfxConfigManager()
       : mFeatureWr(nullptr),
-        mFeatureWrQualified(nullptr),
         mFeatureWrCompositor(nullptr),
         mFeatureWrAngle(nullptr),
         mFeatureWrDComp(nullptr),
         mFeatureWrPartial(nullptr),
         mFeatureWrShaderCache(nullptr),
         mFeatureWrOptimizedShaders(nullptr),
-        mFeatureWrSoftware(nullptr),
+        mFeatureWrScissoredCacheClears(nullptr),
         mFeatureHwCompositing(nullptr),
         mFeatureD3D11HwAngle(nullptr),
         mFeatureD3D11Compositing(nullptr),
         mFeatureGPUProcess(nullptr),
         mWrForceEnabled(false),
-        mWrForceDisabled(false),
         mWrSoftwareForceEnabled(false),
         mWrCompositorForceEnabled(false),
         mWrForceAngle(false),
         mWrForceAngleNoGPUProcess(false),
         mWrDCompWinEnabled(false),
         mWrCompositorDCompRequired(false),
+        mWrForcePartialPresent(false),
         mWrPartialPresent(false),
         mWrOptimizedShaders(false),
+        mWrScissoredCacheClearsEnabled(false),
+        mWrScissoredCacheClearsForceEnabled(false),
         mGPUProcessAllowSoftware(false),
-        mXRenderEnabled(false),
         mWrEnvForceEnabled(false),
-        mWrEnvForceDisabled(false),
         mScaledResolution(false),
         mDisableHwCompositingNoWr(false),
         mIsNightly(false),
         mIsEarlyBetaOrEarlier(false),
         mSafeMode(false),
-        mIsWin10OrLater(false),
-        mHasWrSoftwareBlocklist(false) {}
+        mIsWin11OrLater(false) {}
 
   void Init();
 
@@ -61,19 +59,17 @@ class gfxConfigManager {
  protected:
   void EmplaceUserPref(const char* aPrefName, Maybe<bool>& aValue);
   void ConfigureWebRenderQualified();
-  void ConfigureWebRenderSoftware();
 
   nsCOMPtr<nsIGfxInfo> mGfxInfo;
 
   FeatureState* mFeatureWr;
-  FeatureState* mFeatureWrQualified;
   FeatureState* mFeatureWrCompositor;
   FeatureState* mFeatureWrAngle;
   FeatureState* mFeatureWrDComp;
   FeatureState* mFeatureWrPartial;
   FeatureState* mFeatureWrShaderCache;
   FeatureState* mFeatureWrOptimizedShaders;
-  FeatureState* mFeatureWrSoftware;
+  FeatureState* mFeatureWrScissoredCacheClears;
 
   FeatureState* mFeatureHwCompositing;
   FeatureState* mFeatureD3D11HwAngle;
@@ -85,24 +81,24 @@ class gfxConfigManager {
    */
   Maybe<bool> mWrCompositorEnabled;
   bool mWrForceEnabled;
-  bool mWrForceDisabled;
   bool mWrSoftwareForceEnabled;
   bool mWrCompositorForceEnabled;
   bool mWrForceAngle;
   bool mWrForceAngleNoGPUProcess;
   bool mWrDCompWinEnabled;
   bool mWrCompositorDCompRequired;
+  bool mWrForcePartialPresent;
   bool mWrPartialPresent;
   Maybe<bool> mWrShaderCache;
   bool mWrOptimizedShaders;
+  bool mWrScissoredCacheClearsEnabled;
+  bool mWrScissoredCacheClearsForceEnabled;
   bool mGPUProcessAllowSoftware;
-  bool mXRenderEnabled;
 
   /**
    * Environment variables
    */
   bool mWrEnvForceEnabled;
-  bool mWrEnvForceDisabled;
 
   /**
    * System support
@@ -113,8 +109,7 @@ class gfxConfigManager {
   bool mIsNightly;
   bool mIsEarlyBetaOrEarlier;
   bool mSafeMode;
-  bool mIsWin10OrLater;
-  bool mHasWrSoftwareBlocklist;
+  bool mIsWin11OrLater;
 };
 
 }  // namespace gfx

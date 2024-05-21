@@ -2,12 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from mailWindow.js */
+/* globals goUpdateCommand */ // From globalOverlay.js
 
-var { PlacesUtils } = ChromeUtils.import(
-  "resource://gre/modules/PlacesUtils.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { openLinkExternally, openUILink } = ChromeUtils.importESModule(
+  "resource:///modules/LinkHelper.sys.mjs"
+);
 
 var gShowBiDi = false;
 
@@ -48,17 +50,6 @@ function goUpdatePasteMenuItems() {
   goUpdateCommand("cmd_paste");
 }
 
-function goCopyImage() {
-  // Always copy the image data. It doesn't make sense to insert an image
-  // as a http(s) reference since the recipient might block it.
-  let param = Cu.createCommandParams();
-  param.setLongValue("imageCopy", Ci.nsIContentViewerEdit.COPY_IMAGE_DATA);
-  document.commandDispatcher
-    .getControllerForCommand("cmd_copyImage")
-    .QueryInterface(Ci.nsICommandController)
-    .doCommandWithParams("cmd_copyImage", param);
-}
-
 // update Find As You Type menu items, they rely on focus
 function goUpdateFindTypeMenuItems() {
   goUpdateCommand("cmd_findTypeText");
@@ -67,6 +58,7 @@ function goUpdateFindTypeMenuItems() {
 
 /**
  * Gather all descendent text under given node.
+ *
  * @param {Node} root - The root node to gather text from.
  * @returns {string} The text data under the node.
  */
@@ -79,7 +71,7 @@ function gatherTextUnder(root) {
     if (node.nodeType == Node.TEXT_NODE) {
       // Add this text to our collection.
       text += " " + node.data;
-    } else if (node instanceof HTMLImageElement) {
+    } else if (HTMLImageElement.isInstance(node)) {
       // If it has an alt= attribute, add that.
       var altText = node.getAttribute("alt");
       if (altText && altText != "") {
@@ -151,7 +143,7 @@ function goToggleToolbar(id, elementID) {
   var toolbar = document.getElementById(id);
   var element = document.getElementById(elementID);
   if (toolbar) {
-    var isHidden = toolbar.hidden;
+    const isHidden = toolbar.getAttribute("hidden") === "true";
     toolbar.setAttribute("hidden", !isHidden);
     Services.xulStore.persist(toolbar, "hidden");
     if (element) {
@@ -177,26 +169,6 @@ function togglePaneSplitter(splitterId) {
   }
 }
 
-// openUILink handles clicks on UI elements that cause URLs to load.
-// We currently only react to left click in Thunderbird.
-function openUILink(url, event) {
-  if (!event.button) {
-    PlacesUtils.history
-      .insert({
-        url,
-        visits: [
-          {
-            date: new Date(),
-          },
-        ],
-      })
-      .catch(Cu.reportError);
-    let messenger = Cc["@mozilla.org/messenger;1"].createInstance();
-    messenger = messenger.QueryInterface(Ci.nsIMessenger);
-    messenger.launchExternalURL(url);
-  }
-}
-
 function openLinkText(event, what) {
   switch (what) {
     case "getInvolvedURL":
@@ -207,35 +179,17 @@ function openLinkText(event, what) {
       break;
     case "donateURL":
       openUILink(
-        "https://donate.mozilla.org/thunderbird/?utm_source=thunderbird-client&utm_medium=referral&utm_content=help-menu",
+        "https://give.thunderbird.net/?utm_source=thunderbird-client&utm_medium=referral&utm_content=help-menu",
         event
       );
       break;
     case "tourURL":
       openUILink("https://www.thunderbird.net/features/", event);
       break;
+    case "feedbackURL":
+      openUILink("https://connect.mozilla.org/", event);
+      break;
   }
-}
-
-/**
- * Open a web search in the default browser for a given query.
- *
- * @param query the string to search for
- * @param engine (optional) the search engine to use
- */
-function openWebSearch(query, engine) {
-  return Services.search.init().then(async () => {
-    if (!engine) {
-      engine = await Services.search.getDefault();
-      openLinkExternally(engine.getSubmission(query).uri.spec);
-
-      Services.telemetry.keyedScalarAdd(
-        "tb.websearch.usage",
-        engine.name.toLowerCase(),
-        1
-      );
-    }
-  });
 }
 
 /**
@@ -251,7 +205,7 @@ function openTab(tabType, tabParams, where) {
     let tabmail = document.getElementById("tabmail");
     if (!tabmail) {
       // Try opening new tabs in an existing 3pane window
-      let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+      const mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
       if (mail3PaneWindow) {
         tabmail = mail3PaneWindow.document.getElementById("tabmail");
         mail3PaneWindow.focus();
@@ -270,17 +224,20 @@ function openTab(tabType, tabParams, where) {
     "_blank",
     "chrome,dialog=no,all",
     null,
-    { tabType, tabParams }
+    {
+      tabType,
+      tabParams,
+    }
   );
 }
 
 /**
  * Open the specified URL as a content tab (or window)
  *
- * @param {String} url - The location to open.
- * @param {String} [where="tab"] - 'tab' to open in a new tab or 'window' to
+ * @param {string} url - The location to open.
+ * @param {string} [where="tab"] - 'tab' to open in a new tab or 'window' to
  *     open in a new window
- * @param {String} [linkHandler] - See specialTabs.contentTabType.openTab.
+ * @param {string} [linkHandler] - See specialTabs.contentTabType.openTab.
  */
 function openContentTab(url, where, linkHandler) {
   return openTab("contentTab", { url, linkHandler }, where);
@@ -295,7 +252,6 @@ function openContentTab(url, where, linkHandler) {
  */
 function openPreferencesTab(paneID, scrollPaneTo, otherArgs) {
   openTab("preferencesTab", {
-    url: "about:preferences",
     paneID,
     scrollPaneTo,
     otherArgs,
@@ -313,7 +269,7 @@ function openPreferencesTab(paneID, scrollPaneTo, otherArgs) {
  *        'window'). See openContentTab for more details.
  */
 function openDictionaryList(where) {
-  let dictUrl = Services.urlFormatter.formatURLPref(
+  const dictUrl = Services.urlFormatter.formatURLPref(
     "spellchecker.dictionaries.download.url"
   );
 
@@ -329,17 +285,121 @@ function openDictionaryList(where) {
  */
 function openPrivacyPolicy(where) {
   const kTelemetryInfoUrl = "toolkit.telemetry.infoURL";
-  let url = Services.prefs.getCharPref(kTelemetryInfoUrl);
+  const url = Services.prefs.getCharPref(kTelemetryInfoUrl);
   openContentTab(url, where);
 }
 
-/* Used by the Add-on manager's search box */
-function openLinkIn(aURL, aWhere, aOpenParams) {
-  if (!aURL) {
+/**
+ * Used by the developer tools (in the toolbox process) and a few toolkit pages
+ * for opening URLs.
+ *
+ * Thunderbird code should avoid using this function.
+ *
+ * This is similar, but not identical, to the same function in Firefox.
+ *
+ * @param {string} url - The URL to load.
+ * @param {string} [where] - Ignored, only here for compatibility.
+ * @param {object} [openParams] - Optional parameters for changing behaviour.
+ */
+function openTrustedLinkIn(url, where, params = {}) {
+  if (!params.triggeringPrincipal) {
+    params.triggeringPrincipal =
+      Services.scriptSecurityManager.getSystemPrincipal();
+  }
+
+  openLinkIn(url, where, params);
+}
+
+/**
+ * Used by the developer tools (in the toolbox process) for opening URLs.
+ * MDN URLs get send to a browser, all others are displayed in a new window.
+ *
+ * Thunderbird code should avoid using this function.
+ *
+ * This is similar, but not identical, to the same function in Firefox.
+ *
+ * @param {string} url - The URL to load.
+ * @param {string} [where] - Ignored, only here for compatibility.
+ * @param {object} [openParams] - Optional parameters for changing behaviour.
+ */
+function openWebLinkIn(url, where, params = {}) {
+  if (url.startsWith("https://developer.mozilla.org/")) {
+    openLinkExternally(url);
     return;
   }
-  // Open a new tab and set the regexp to open links from the Addons site in Thunderbird.
-  switchToTabHavingURI(aURL, true);
+
+  if (!params.triggeringPrincipal) {
+    params.triggeringPrincipal =
+      Services.scriptSecurityManager.createNullPrincipal({});
+  }
+  if (params.triggeringPrincipal.isSystemPrincipal) {
+    throw new Error(
+      "System principal should never be passed into openWebLinkIn()"
+    );
+  }
+
+  openLinkIn(url, where, params);
+}
+
+// Thunderbird itself is not using this function. It is however called for the
+// "contribute" button for add-ons in the add-on manager. We ignore all additional
+// parameters including "where" and always open the link externally. We don't
+// want to open donation pages in a tab due to their complexity, and we don't
+// want to handle them inside Thunderbird.
+function openUILinkIn(
+  url,
+  where,
+  aAllowThirdPartyFixup,
+  aPostData,
+  aReferrerInfo
+) {
+  openLinkExternally(url);
+}
+
+/**
+ * Loads a URL in Thunderbird. If this is a mail:3pane window, the URL opens
+ * in a content tab, otherwise a new window is opened.
+ *
+ * This is similar, but not identical, to the same function in Firefox.
+ *
+ * @param {string} url - The URL to load.
+ * @param {string} [where] - Ignored, only here for compatibility.
+ * @param {object} [openParams] - Optional parameters for changing behaviour.
+ */
+function openLinkIn(url, where, openParams) {
+  if (!url) {
+    return;
+  }
+
+  if ("switchToTabHavingURI" in window) {
+    window.switchToTabHavingURI(url, true);
+    return;
+  }
+
+  // If we get here, this isn't a mail:3pane window, which means it's probably
+  // the developer tools window and therefore a completely separate program
+  // from the rest of Thunderbird. Be careful what you do here.
+
+  const args = Cc["@mozilla.org/array;1"].createInstance(Ci.nsIMutableArray);
+  const uri = Cc["@mozilla.org/supports-string;1"].createInstance(
+    Ci.nsISupportsString
+  );
+  uri.data = url;
+  args.appendElement(uri);
+
+  const win = Services.ww.openWindow(
+    window,
+    AppConstants.BROWSER_CHROME_URL,
+    null,
+    "chrome,dialog=no,all",
+    args
+  );
+
+  if (openParams.resolveOnContentBrowserCreated) {
+    win.addEventListener("load", () =>
+      openParams.resolveOnContentBrowserCreated(win.gBrowser.selectedBrowser)
+    );
+  }
 }
 
 /**
@@ -367,20 +427,18 @@ function goSetAccessKey(aCommand, aAccessKeyAttribute) {
 }
 
 function buildHelpMenu() {
-  let helpTroubleshootModeItem = document.getElementById(
+  const helpTroubleshootModeItem = document.getElementById(
     "helpTroubleshootMode"
   );
   if (helpTroubleshootModeItem) {
-    helpTroubleshootModeItem.disabled = !Services.policies.isAllowed(
-      "safeMode"
-    );
+    helpTroubleshootModeItem.disabled =
+      !Services.policies.isAllowed("safeMode");
   }
-  let appmenu_troubleshootModeItem = document.getElementById(
+  const appmenu_troubleshootModeItem = document.getElementById(
     "appmenu_troubleshootMode"
   );
   if (appmenu_troubleshootModeItem) {
-    appmenu_troubleshootModeItem.disabled = !Services.policies.isAllowed(
-      "safeMode"
-    );
+    appmenu_troubleshootModeItem.disabled =
+      !Services.policies.isAllowed("safeMode");
   }
 }

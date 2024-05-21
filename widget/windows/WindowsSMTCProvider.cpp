@@ -12,7 +12,6 @@
 
 #  include <windows.h>
 #  include <windows.media.h>
-#  include <winsdkver.h>
 #  include <wrl.h>
 
 #  include "nsMimeTypes.h"
@@ -20,7 +19,6 @@
 #  include "mozilla/Logging.h"
 #  include "mozilla/Maybe.h"
 #  include "mozilla/WidgetUtils.h"
-#  include "mozilla/WindowsVersion.h"
 #  include "mozilla/ScopeExit.h"
 #  include "mozilla/dom/MediaControlUtils.h"
 #  include "mozilla/media/MediaUtils.h"
@@ -124,11 +122,11 @@ WindowsSMTCProvider::~WindowsSMTCProvider() {
   // Dispose the window
   MOZ_ASSERT(mWindow);
   if (!DestroyWindow(mWindow)) {
-    LOG("Failed to destroy the hidden window. Error Code: %d", GetLastError());
+    LOG("Failed to destroy the hidden window. Error Code: %lu", GetLastError());
   }
   if (!UnregisterClass(L"Firefox-MediaKeys", nullptr)) {
     // Note that this is logged when the class wasn't even registered.
-    LOG("Failed to unregister the class. Error Code: %d", GetLastError());
+    LOG("Failed to unregister the class. Error Code: %lu", GetLastError());
   }
 }
 
@@ -137,11 +135,6 @@ bool WindowsSMTCProvider::IsOpened() const { return mInitialized; }
 bool WindowsSMTCProvider::Open() {
   LOG("Opening Source");
   MOZ_ASSERT(!mInitialized);
-
-  if (!IsWin8Point1OrLater()) {
-    LOG("Windows 8.1 or later is required for Media Key Support");
-    return false;
-  }
 
   if (!InitDisplayAndControls()) {
     LOG("Failed to initialize the SMTC and its display");
@@ -222,8 +215,7 @@ void WindowsSMTCProvider::SetPlaybackState(
 void WindowsSMTCProvider::SetMediaMetadata(
     const mozilla::dom::MediaMetadataBase& aMetadata) {
   MOZ_ASSERT(mInitialized);
-  SetMusicMetadata(aMetadata.mArtist.get(), aMetadata.mTitle.get(),
-                   aMetadata.mAlbum.get());
+  SetMusicMetadata(aMetadata.mArtist, aMetadata.mTitle);
   LoadThumbnail(aMetadata.mArtwork);
 }
 
@@ -263,6 +255,25 @@ void WindowsSMTCProvider::UnregisterEvents() {
   if (mControls && mButtonPressedToken.value != 0) {
     mControls->remove_ButtonPressed(mButtonPressedToken);
   }
+
+  if (mControls && mSeekRegistrationToken.value != 0) {
+    ComPtr<ISystemMediaTransportControls2> smtc2;
+    HRESULT hr = mControls.As(&smtc2);
+    if (FAILED(hr)) {
+      LOG("Failed to cast controls to ISystemMediaTransportControls2 (hr=%lx)",
+          hr);
+      return;
+    }
+    MOZ_ASSERT(smtc2);
+
+    hr = smtc2->remove_PlaybackPositionChangeRequested(mSeekRegistrationToken);
+    if (FAILED(hr)) {
+      LOG("SystemMediaTransportControls: Failed unregister position change "
+          "event (hr=%lx)",
+          hr);
+      return;
+    }
+  }
 }
 
 bool WindowsSMTCProvider::RegisterEvents() {
@@ -297,6 +308,48 @@ bool WindowsSMTCProvider::RegisterEvents() {
     return false;
   }
 
+  ComPtr<ISystemMediaTransportControls2> smtc2;
+  HRESULT hr = mControls.As(&smtc2);
+  if (FAILED(hr)) {
+    LOG("Failed to cast controls to ISystemMediaTransportControls2 (hr=%lx)",
+        hr);
+    return false;
+  }
+  MOZ_ASSERT(smtc2);
+
+  auto positionChangeRequested =
+      Callback<ITypedEventHandler<SystemMediaTransportControls*,
+                                  PlaybackPositionChangeRequestedEventArgs*>>(
+          [this, self](
+              ISystemMediaTransportControls*,
+              IPlaybackPositionChangeRequestedEventArgs* pArgs) -> HRESULT {
+            MOZ_ASSERT(pArgs);
+
+            TimeSpan value;
+            HRESULT hr = pArgs->get_RequestedPlaybackPosition(&value);
+            if (FAILED(hr)) {
+              LOG("SystemMediaTransportControls: Playback Position Change - "
+                  "failed to get requested position (hr=%lx)",
+                  hr);
+              return S_OK;  // Propagating the error probably wouldn't help.
+            }
+
+            double position =
+                static_cast<double>(value.Duration) / (1e6 * 10.0);
+            this->OnPositionChangeRequested(position);
+
+            return S_OK;
+          });
+
+  hr = smtc2->add_PlaybackPositionChangeRequested(positionChangeRequested.Get(),
+                                                  &mSeekRegistrationToken);
+  if (FAILED(hr)) {
+    LOG("SystemMediaTransportControls: Failed to register position change "
+        "event (hr=%lx)",
+        hr);
+    return false;
+  }
+
   return true;
 }
 
@@ -317,12 +370,14 @@ bool WindowsSMTCProvider::EnableControl(bool aEnabled) const {
   return SUCCEEDED(mControls->put_IsEnabled(aEnabled));
 }
 
-bool WindowsSMTCProvider::UpdateButtons() const {
+bool WindowsSMTCProvider::UpdateButtons() {
   static const mozilla::dom::MediaControlKey kKeys[] = {
-      mozilla::dom::MediaControlKey::Play, mozilla::dom::MediaControlKey::Pause,
+      mozilla::dom::MediaControlKey::Play,
+      mozilla::dom::MediaControlKey::Pause,
       mozilla::dom::MediaControlKey::Previoustrack,
       mozilla::dom::MediaControlKey::Nexttrack,
-      mozilla::dom::MediaControlKey::Stop};
+      mozilla::dom::MediaControlKey::Stop,
+      mozilla::dom::MediaControlKey::Seekto};
 
   bool success = true;
   for (const mozilla::dom::MediaControlKey& key : kKeys) {
@@ -355,9 +410,25 @@ bool WindowsSMTCProvider::EnableKey(mozilla::dom::MediaControlKey aKey,
       return SUCCEEDED(mControls->put_IsNextEnabled(aEnable));
     case mozilla::dom::MediaControlKey::Stop:
       return SUCCEEDED(mControls->put_IsStopEnabled(aEnable));
+    case mozilla::dom::MediaControlKey::Seekto:
+      // The callback for the event checks if the key is supported
+      return mSeekRegistrationToken.value != 0;
     default:
       LOG("No button for %s", ToMediaControlKeyStr(aKey));
       return false;
+  }
+}
+
+void WindowsSMTCProvider::OnPositionChangeRequested(double aPosition) const {
+  if (!IsKeySupported(mozilla::dom::MediaControlKey::Seekto)) {
+    LOG("Seekto is not supported");
+    return;
+  }
+
+  for (const auto& listener : mListeners) {
+    listener->OnActionPerformed(
+        mozilla::dom::MediaControlAction(mozilla::dom::MediaControlKey::Seekto,
+                                         mozilla::dom::SeekDetails(aPosition)));
   }
 }
 
@@ -395,13 +466,9 @@ bool WindowsSMTCProvider::InitDisplayAndControls() {
   return true;
 }
 
-bool WindowsSMTCProvider::SetMusicMetadata(const wchar_t* aArtist,
-                                           const wchar_t* aTitle,
-                                           const wchar_t* aAlbumArtist) {
+bool WindowsSMTCProvider::SetMusicMetadata(const nsString& aArtist,
+                                           const nsString& aTitle) {
   MOZ_ASSERT(mDisplay);
-  MOZ_ASSERT(aArtist);
-  MOZ_ASSERT(aTitle);
-  MOZ_ASSERT(aAlbumArtist);
   ComPtr<IMusicDisplayProperties> musicProps;
 
   HRESULT hr = mDisplay->put_Type(MediaPlaybackType::MediaPlaybackType_Music);
@@ -413,21 +480,15 @@ bool WindowsSMTCProvider::SetMusicMetadata(const wchar_t* aArtist,
     return false;
   }
 
-  hr = musicProps->put_Artist(HStringReference(aArtist).Get());
+  hr = musicProps->put_Artist(HStringReference(aArtist.get()).Get());
   if (FAILED(hr)) {
     LOG("Failed to set the music's artist");
     return false;
   }
 
-  hr = musicProps->put_Title(HStringReference(aTitle).Get());
+  hr = musicProps->put_Title(HStringReference(aTitle.get()).Get());
   if (FAILED(hr)) {
     LOG("Failed to set the music's title");
-    return false;
-  }
-
-  hr = musicProps->put_AlbumArtist(HStringReference(aAlbumArtist).Get());
-  if (FAILED(hr)) {
-    LOG("Failed to set the music's album");
     return false;
   }
 
@@ -438,6 +499,100 @@ bool WindowsSMTCProvider::SetMusicMetadata(const wchar_t* aArtist,
   }
 
   return true;
+}
+
+void WindowsSMTCProvider::SetPositionState(
+    const mozilla::Maybe<mozilla::dom::PositionState>& aState) {
+  ComPtr<ISystemMediaTransportControls2> smtc2;
+  HRESULT hr = mControls.As(&smtc2);
+  if (FAILED(hr)) {
+    LOG("Failed to cast controls to ISystemMediaTransportControls2 (hr=%lx)",
+        hr);
+    return;
+  }
+  MOZ_ASSERT(smtc2);
+
+  ComPtr<ISystemMediaTransportControlsTimelineProperties> properties;
+  hr = RoActivateInstance(
+      HStringReference(
+          RuntimeClass_Windows_Media_SystemMediaTransportControlsTimelineProperties)
+          .Get(),
+      &properties);
+  if (FAILED(hr)) {
+    LOG("Failed to create timeline properties (hr=%lx)", hr);
+    return;
+  }
+  MOZ_ASSERT(properties);
+
+  // Converts a value in seconds to a TimeSpan
+  // The TimeSpan's Duration is a value in 100ns ticks
+  // https://learn.microsoft.com/en-us/windows/win32/api/windows.foundation/ns-windows-foundation-timespan#members
+  auto toTimeSpan = [this](double seconds) {
+    constexpr double kMaxMicroseconds =
+        static_cast<double>(std::numeric_limits<LONG64>::max() / 10);
+
+    double microseconds = seconds * 1e6;
+
+    if (microseconds > kMaxMicroseconds) {
+      LOG("Failed to convert %f microseconds to TimeSpan (overflow)",
+          microseconds);
+      return TimeSpan{0};
+    }
+
+    return TimeSpan{static_cast<LONG64>(microseconds * 10.0)};
+  };
+
+  TimeSpan endTime{0};
+  TimeSpan position{0};
+  double playbackRate = 1.0;
+
+  if (aState) {
+    endTime = toTimeSpan(aState->mDuration);
+    position = toTimeSpan(aState->CurrentPlaybackPosition());
+    playbackRate = aState->mPlaybackRate;
+  }
+
+  hr = properties->put_StartTime({0});
+  if (FAILED(hr)) {
+    LOG("Failed to set the start time (hr=%lx)", hr);
+    return;
+  }
+
+  hr = properties->put_MinSeekTime({0});
+  if (FAILED(hr)) {
+    LOG("Failed to set the min seek time (hr=%lx)", hr);
+    return;
+  }
+
+  hr = properties->put_EndTime(endTime);
+  if (FAILED(hr)) {
+    LOG("Failed to set the end time (hr=%lx)", hr);
+    return;
+  }
+
+  hr = properties->put_MaxSeekTime(endTime);
+  if (FAILED(hr)) {
+    LOG("Failed to set the max seek time (hr=%lx)", hr);
+    return;
+  }
+
+  hr = properties->put_Position(position);
+  if (FAILED(hr)) {
+    LOG("Failed to set the playback position (hr=%lx)", hr);
+    return;
+  }
+
+  hr = smtc2->UpdateTimelineProperties(properties.Get());
+  if (FAILED(hr)) {
+    LOG("Failed to update timeline properties (hr=%lx)", hr);
+    return;
+  }
+
+  hr = smtc2->put_PlaybackRate(playbackRate);
+  if (FAILED(hr)) {
+    LOG("Failed to set the playback rate (hr=%lx)", hr);
+    return;
+  }
 }
 
 void WindowsSMTCProvider::LoadThumbnail(

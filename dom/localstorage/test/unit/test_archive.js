@@ -3,7 +3,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-async function testSteps() {
+add_task(async function testSteps() {
   const lsArchiveFile = "storage/ls-archive.sqlite";
 
   const principalInfo = {
@@ -72,7 +72,7 @@ async function testSteps() {
   installPackage("archive_profile");
 
   let fileSize = archiveFile.fileSize;
-  ok(fileSize > 0, "archive file size is greater than zero");
+  Assert.greater(fileSize, 0, "archive file size is greater than zero");
 
   checkStorage();
-}
+});

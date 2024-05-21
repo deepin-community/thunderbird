@@ -1,19 +1,18 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+/* -*- Mode: Javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*  This file contains the js functions necessary to implement view navigation within the 3 pane. */
 
-/* import-globals-from commandglue.js */
-/* import-globals-from folderDisplay.js */
-/* import-globals-from mailWindow.js */
-/* import-globals-from messageDisplay.js */
+/* globals DBViewWrapper, dbViewWrapperListener, TreeSelection */
+/* globals gDBView: true, gFolder: true, gViewWrapper: true */ // mailCommon.js
 
-var { allAccountsSorted } = ChromeUtils.import(
-  "resource:///modules/folderUtils.jsm"
+ChromeUtils.defineModuleGetter(
+  this,
+  "FolderUtils",
+  "resource:///modules/FolderUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function GetSubFoldersInFolderPaneOrder(folder) {
   function compareFolderSortKey(folder1, folder2) {
@@ -38,7 +37,7 @@ function FindNextChildFolder(aParent, aAfter) {
       folder = subFolders[i++];
     }
 
-    let ignoreFlags =
+    const ignoreFlags =
       Ci.nsMsgFolderFlags.Trash |
       Ci.nsMsgFolderFlags.SentMail |
       Ci.nsMsgFolderFlags.Drafts |
@@ -121,87 +120,89 @@ function FindNextFolder() {
 }
 
 function GetRootFoldersInFolderPaneOrder() {
-  let accounts = allAccountsSorted(false);
+  const accounts = FolderUtils.allAccountsSorted(false);
 
-  let serversMsgFolders = [];
-  for (let account of accounts) {
+  const serversMsgFolders = [];
+  for (const account of accounts) {
     serversMsgFolders.push(account.incomingServer.rootMsgFolder);
   }
 
   return serversMsgFolders;
 }
 
+/**
+ * Handle switching the folder if required for the given kind of navigation.
+ * Only used in about:3pane.
+ *
+ * @param {nsMsgNavigationType} type - The type of navigation.
+ * @returns {boolean} If the folder was changed for the navigation.
+ */
 function CrossFolderNavigation(type) {
   // do cross folder navigation for next unread message/thread and message history
   if (
     type != Ci.nsMsgNavigationType.nextUnreadMessage &&
-    type != Ci.nsMsgNavigationType.nextUnreadThread &&
-    type != Ci.nsMsgNavigationType.forward &&
-    type != Ci.nsMsgNavigationType.back
+    type != Ci.nsMsgNavigationType.nextUnreadThread
   ) {
-    return;
+    return false;
   }
 
-  if (
-    type == Ci.nsMsgNavigationType.nextUnreadMessage ||
-    type == Ci.nsMsgNavigationType.nextUnreadThread
-  ) {
-    var nextMode = Services.prefs.getIntPref("mailnews.nav_crosses_folders");
-    // 0: "next" goes to the next folder, without prompting
-    // 1: "next" goes to the next folder, and prompts (the default)
-    // 2: "next" does nothing when there are no unread messages
+  const nextMode = Services.prefs.getIntPref("mailnews.nav_crosses_folders");
+  // 0: "next" goes to the next folder, without prompting
+  // 1: "next" goes to the next folder, and prompts (the default)
+  // 2: "next" does nothing when there are no unread messages
 
-    // not crossing folders, don't find next
-    if (nextMode == 2) {
-      return;
-    }
+  // not crossing folders, don't find next
+  if (nextMode == 2) {
+    return false;
+  }
 
-    var folder = FindNextFolder();
-    if (folder && gDBView.msgFolder.URI != folder.URI) {
-      if (nextMode == 1) {
-        let promptText = document
-          .getElementById("bundle_messenger")
-          .getFormattedString("advanceNextPrompt", [folder.name], 1);
-        if (
-          Services.prompt.confirmEx(
-            window,
-            null,
-            promptText,
-            Services.prompt.STD_YES_NO_BUTTONS,
-            null,
-            null,
-            null,
-            null,
-            {}
-          )
-        ) {
-          return;
-        }
-      }
-      gFolderDisplay.pushNavigation(type, true);
-      SelectFolder(folder.URI);
+  const folder = FindNextFolder();
+  if (!folder || gDBView.msgFolder.URI == folder.URI) {
+    return false;
+  }
+
+  if (nextMode == 1) {
+    const messengerBundle =
+      window.messengerBundle ||
+      Services.strings.createBundle(
+        "chrome://messenger/locale/messenger.properties"
+      );
+    const promptText = messengerBundle.formatStringFromName(
+      "advanceNextPrompt",
+      [folder.name]
+    );
+    if (
+      Services.prompt.confirmEx(
+        window,
+        null,
+        promptText,
+        Services.prompt.STD_YES_NO_BUTTONS,
+        null,
+        null,
+        null,
+        null,
+        {}
+      )
+    ) {
+      return false;
     }
+  }
+
+  if (window.threadPane) {
+    // In about:3pane.
+    window.threadPane.forgetSelection(folder.URI);
+    window.displayFolder(folder.URI);
   } else {
-    // if no message is loaded, relPos should be 0, to
-    // go back to the previously loaded message
-    var relPos = 0;
-    if (type == Ci.nsMsgNavigationType.forward) {
-      relPos = 1;
-    } else if (gMessageDisplay.displayedMessage) {
-      relPos = -1;
-    }
-    var folderUri = messenger.getFolderUriAtNavigatePos(relPos);
-    var curPos = messenger.navigatePos;
-    curPos += relPos;
-    messenger.navigatePos = curPos;
-    SelectFolder(folderUri);
+    // In standalone about:message. Do just enough to call
+    // `commandController._navigate` again.
+    gViewWrapper = new DBViewWrapper(dbViewWrapperListener);
+    gViewWrapper._viewFlags = Ci.nsMsgViewFlagsType.kThreadedDisplay;
+    gViewWrapper.open(folder);
+    gDBView = gViewWrapper.dbView;
+    const selection = (gDBView.selection = new TreeSelection());
+    selection.view = gDBView;
+    // We're now in a bit of a weird state until `displayMessage` is called,
+    // but being here means we have everything we need for that to happen.
   }
-}
-
-function GoNextMessage(type, startFromBeginning) {
-  if (!gFolderDisplay.navigate(type)) {
-    CrossFolderNavigation(type);
-  }
-
-  SetFocusThreadPaneIfNotOnMessagePane();
+  return true;
 }

@@ -4,14 +4,11 @@
 
 /* eslint-env webextensions */
 
-let { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { cloudFileAccounts } = ChromeUtils.importESModule(
+  "resource:///modules/cloudFileAccounts.sys.mjs"
 );
-let { cloudFileAccounts } = ChromeUtils.import(
-  "resource:///modules/cloudFileAccounts.jsm"
-);
-let { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+const { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 function ManagementScript() {
@@ -20,8 +17,8 @@ function ManagementScript() {
       return;
     }
     function verifyButton(buttonElement, expected) {
-      let buttonStyle = window.getComputedStyle(buttonElement);
-      let buttonBackgroundColor = buttonStyle.backgroundColor;
+      const buttonStyle = window.getComputedStyle(buttonElement);
+      const buttonBackgroundColor = buttonStyle.backgroundColor;
       if (browserStyle && expected.hasBrowserStyleClass) {
         browser.test.assertEq(
           "rgb(9, 150, 248)",
@@ -37,8 +34,8 @@ function ManagementScript() {
     }
 
     function verifyCheckboxOrRadio(element, expected) {
-      let style = window.getComputedStyle(element);
-      let styledBackground = element.checked
+      const style = window.getComputedStyle(element);
+      const styledBackground = element.checked
         ? "rgb(9, 150, 248)"
         : "rgb(255, 255, 255)";
       if (browserStyle && expected.hasBrowserStyleClass) {
@@ -55,23 +52,25 @@ function ManagementScript() {
       }
     }
 
-    let normalButton = document.getElementById("normalButton");
-    let browserStyleButton = document.getElementById("browserStyleButton");
+    const normalButton = document.getElementById("normalButton");
+    const browserStyleButton = document.getElementById("browserStyleButton");
     verifyButton(normalButton, { hasBrowserStyleClass: false });
     verifyButton(browserStyleButton, { hasBrowserStyleClass: true });
 
-    let normalCheckbox1 = document.getElementById("normalCheckbox1");
-    let normalCheckbox2 = document.getElementById("normalCheckbox2");
-    let browserStyleCheckbox = document.getElementById("browserStyleCheckbox");
+    const normalCheckbox1 = document.getElementById("normalCheckbox1");
+    const normalCheckbox2 = document.getElementById("normalCheckbox2");
+    const browserStyleCheckbox = document.getElementById(
+      "browserStyleCheckbox"
+    );
     verifyCheckboxOrRadio(normalCheckbox1, { hasBrowserStyleClass: false });
     verifyCheckboxOrRadio(normalCheckbox2, { hasBrowserStyleClass: false });
     verifyCheckboxOrRadio(browserStyleCheckbox, {
       hasBrowserStyleClass: true,
     });
 
-    let normalRadio1 = document.getElementById("normalRadio1");
-    let normalRadio2 = document.getElementById("normalRadio2");
-    let browserStyleRadio = document.getElementById("browserStyleRadio");
+    const normalRadio1 = document.getElementById("normalRadio1");
+    const normalRadio2 = document.getElementById("normalRadio2");
+    const browserStyleRadio = document.getElementById("browserStyleRadio");
     verifyCheckboxOrRadio(normalRadio1, { hasBrowserStyleClass: false });
     verifyCheckboxOrRadio(normalRadio2, { hasBrowserStyleClass: false });
     verifyCheckboxOrRadio(browserStyleRadio, { hasBrowserStyleClass: true });
@@ -83,7 +82,7 @@ function ManagementScript() {
 
 let extension;
 async function startExtension(browser_style) {
-  let cloud_file = {
+  const cloud_file = {
     name: "Mochitest",
     management_url: "management.html",
   };
@@ -103,8 +102,8 @@ async function startExtension(browser_style) {
         if (message != "set-configured") {
           return;
         }
-        let accounts = await browser.cloudFile.getAllAccounts();
-        for (let account of accounts) {
+        const accounts = await browser.cloudFile.getAllAccounts();
+        for (const account of accounts) {
           await browser.cloudFile.updateAccount(account.id, {
             configured: true,
           });
@@ -170,7 +169,7 @@ let accountIsConfigured = false;
 // we want to remove an account, so let's say yes.
 
 /** @implements {nsIPromptService} */
-let mockPromptService = {
+const mockPromptService = {
   confirmCount: 0,
   confirm() {
     this.confirmCount++;
@@ -179,7 +178,7 @@ let mockPromptService = {
   QueryInterface: ChromeUtils.generateQI(["nsIPromptService"]),
 };
 /** @implements {nsIExternalProtocolService} */
-let mockExternalProtocolService = {
+const mockExternalProtocolService = {
   _loadedURLs: [],
   externalProtocolHandlerExists(aProtocolScheme) {},
   getApplicationDescription(aScheme) {},
@@ -196,10 +195,10 @@ let mockExternalProtocolService = {
   QueryInterface: ChromeUtils.generateQI(["nsIExternalProtocolService"]),
 };
 
-let originalPromptService = Services.prompt;
+const originalPromptService = Services.prompt;
 Services.prompt = mockPromptService;
 
-let mockExternalProtocolServiceCID = MockRegistrar.register(
+const mockExternalProtocolServiceCID = MockRegistrar.register(
   "@mozilla.org/uriloader/external-protocol-service;1",
   mockExternalProtocolService
 );
@@ -215,17 +214,17 @@ add_task(async function addRemoveAccounts() {
 
   // Load the preferences tab.
 
-  let { prefsDocument, prefsWindow } = await openNewPrefsTab(
+  const { prefsDocument, prefsWindow } = await openNewPrefsTab(
     "paneCompose",
     "compositionAttachmentsCategory"
   );
 
   // Check everything is as it should be.
 
-  let accountList = prefsDocument.getElementById("cloudFileView");
+  const accountList = prefsDocument.getElementById("cloudFileView");
   is(accountList.itemCount, 0);
 
-  let buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
+  const buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
   ok(!buttonList.hidden);
   is(buttonList.childElementCount, 1);
   is(
@@ -233,7 +232,7 @@ add_task(async function addRemoveAccounts() {
     "ext-fake@extensions.thunderbird.net"
   );
 
-  let menuButton = prefsDocument.getElementById("addCloudFileAccount");
+  const menuButton = prefsDocument.getElementById("addCloudFileAccount");
   ok(menuButton.hidden);
   is(menuButton.itemCount, 1);
   is(
@@ -241,15 +240,17 @@ add_task(async function addRemoveAccounts() {
     "ext-fake@extensions.thunderbird.net"
   );
 
-  let removeButton = prefsDocument.getElementById("removeCloudFileAccount");
+  const removeButton = prefsDocument.getElementById("removeCloudFileAccount");
   ok(removeButton.disabled);
 
-  let cloudFileDefaultPanel = prefsDocument.getElementById(
+  const cloudFileDefaultPanel = prefsDocument.getElementById(
     "cloudFileDefaultPanel"
   );
   ok(!cloudFileDefaultPanel.hidden);
 
-  let browserWrapper = prefsDocument.getElementById("cloudFileSettingsWrapper");
+  const browserWrapper = prefsDocument.getElementById(
+    "cloudFileSettingsWrapper"
+  );
   is(browserWrapper.childElementCount, 0);
 
   // Register our test provider.
@@ -295,8 +296,8 @@ add_task(async function addRemoveAccounts() {
   is(cloudFileAccounts.accounts.length, 1);
   is(cloudFileAccounts.configuredAccounts.length, 0);
 
-  let account = cloudFileAccounts.accounts[0];
-  let accountKey = account.accountKey;
+  const account = cloudFileAccounts.accounts[0];
+  const accountKey = account.accountKey;
   is(cloudFileAccounts.accounts[0].type, "ext-cloudfile@mochitest");
 
   // Check prefs were updated.
@@ -321,16 +322,16 @@ add_task(async function addRemoveAccounts() {
   let accountListItem = accountList.selectedItem;
   is(accountListItem.getAttribute("value"), accountKey);
   is(
-    accountListItem.style.listStyleImage,
-    `url("chrome://messenger/content/extension.svg")`
+    accountListItem.querySelector(".typeIcon:not(.configuredWarning)").src,
+    "chrome://messenger/content/extension.svg"
   );
   is(accountListItem.querySelector("label").value, "Mochitest");
-  is(accountListItem.querySelector("image.configuredWarning").hidden, false);
+  is(accountListItem.querySelector(".configuredWarning").hidden, false);
 
   ok(cloudFileDefaultPanel.hidden);
   is(browserWrapper.childElementCount, 1);
 
-  let browser = browserWrapper.firstElementChild;
+  const browser = browserWrapper.firstElementChild;
   if (
     browser.webProgress?.isLoadingDocument ||
     browser.currentURI?.spec == "about:blank"
@@ -343,8 +344,8 @@ add_task(async function addRemoveAccounts() {
   );
   await extension.awaitMessage("management-ui-ready");
 
-  let tabmail = document.getElementById("tabmail");
-  let tabCount = tabmail.tabInfo.length;
+  const tabmail = document.getElementById("tabmail");
+  const tabCount = tabmail.tabInfo.length;
   BrowserTestUtils.synthesizeMouseAtCenter("a", {}, browser);
   // It might take a moment to get to the external protocol service.
   // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
@@ -430,7 +431,7 @@ add_task(async function addRemoveAccounts() {
 
   await new Promise(resolve => prefsWindow.requestAnimationFrame(resolve));
 
-  is(accountListItem.querySelector("image.configuredWarning").hidden, true);
+  is(accountListItem.querySelector(".configuredWarning").hidden, true);
   is(cloudFileAccounts.accounts.length, 1);
   is(cloudFileAccounts.configuredAccounts.length, 1);
 
@@ -539,20 +540,22 @@ async function subtestBrowserStyle(assertMessage, expected) {
 
   // Load the preferences tab.
 
-  let { prefsDocument, prefsWindow } = await openNewPrefsTab(
+  const { prefsDocument, prefsWindow } = await openNewPrefsTab(
     "paneCompose",
     "compositionAttachmentsCategory"
   );
 
   // Minimal check everything is as it should be.
 
-  let accountList = prefsDocument.getElementById("cloudFileView");
+  const accountList = prefsDocument.getElementById("cloudFileView");
   is(accountList.itemCount, 0);
 
-  let buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
+  const buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
   ok(!buttonList.hidden);
 
-  let browserWrapper = prefsDocument.getElementById("cloudFileSettingsWrapper");
+  const browserWrapper = prefsDocument.getElementById(
+    "cloudFileSettingsWrapper"
+  );
   is(browserWrapper.childElementCount, 0);
 
   // Register our test provider.
@@ -576,8 +579,8 @@ async function subtestBrowserStyle(assertMessage, expected) {
   is(cloudFileAccounts.accounts.length, 1);
   is(cloudFileAccounts.configuredAccounts.length, 0);
 
-  let account = cloudFileAccounts.accounts[0];
-  let accountKey = account.accountKey;
+  const account = cloudFileAccounts.accounts[0];
+  const accountKey = account.accountKey;
   is(cloudFileAccounts.accounts[0].type, "ext-cloudfile@mochitest");
 
   // Minimal check UI was updated.
@@ -589,7 +592,7 @@ async function subtestBrowserStyle(assertMessage, expected) {
   is(accountListItem.getAttribute("value"), accountKey);
 
   is(browserWrapper.childElementCount, 1);
-  let browser = browserWrapper.firstElementChild;
+  const browser = browserWrapper.firstElementChild;
   if (
     browser.webProgress?.isLoadingDocument ||
     browser.currentURI?.spec == "about:blank"
@@ -620,7 +623,7 @@ async function subtestBrowserStyle(assertMessage, expected) {
     prefsWindow
   );
 
-  let removeButton = prefsDocument.getElementById("removeCloudFileAccount");
+  const removeButton = prefsDocument.getElementById("removeCloudFileAccount");
   ok(!removeButton.disabled);
   EventUtils.synthesizeMouseAtCenter(
     removeButton,
@@ -685,20 +688,20 @@ add_task(async function accountListOverflow() {
 
   // Load the preferences tab.
 
-  let { prefsDocument, prefsWindow } = await openNewPrefsTab(
+  const { prefsDocument, prefsWindow } = await openNewPrefsTab(
     "paneCompose",
     "compositionAttachmentsCategory"
   );
 
-  let accountList = prefsDocument.getElementById("cloudFileView");
+  const accountList = prefsDocument.getElementById("cloudFileView");
   is(accountList.itemCount, 0);
 
-  let buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
+  const buttonList = prefsDocument.getElementById("addCloudFileAccountButtons");
   ok(!buttonList.hidden);
   is(buttonList.childElementCount, 2);
   is(buttonList.children[0].getAttribute("value"), "ext-cloudfile@mochitest");
 
-  let menuButton = prefsDocument.getElementById("addCloudFileAccount");
+  const menuButton = prefsDocument.getElementById("addCloudFileAccount");
   ok(menuButton.hidden);
 
   // Add new accounts until the list overflows. The list of buttons should be hidden
@@ -706,25 +709,27 @@ add_task(async function accountListOverflow() {
 
   let count = 0;
   do {
+    const readyPromise = extension.awaitMessage("management-ui-ready");
     EventUtils.synthesizeMouseAtCenter(
       buttonList.children[0],
       { clickCount: 1 },
       prefsWindow
     );
-    await new Promise(resolve => setTimeout(resolve));
-    await extension.awaitMessage("management-ui-ready");
+    await readyPromise;
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(r => setTimeout(r, 500));
     if (buttonList.hidden) {
       break;
     }
   } while (++count < 25);
 
-  ok(count < 24); // If count reaches 25, we have a problem.
+  Assert.less(count, 24); // If count reaches 25, we have a problem.
   ok(!menuButton.hidden);
 
   // Remove the added accounts. The list of buttons should not reappear and the
   // button with the drop-down should remain.
 
-  let removeButton = prefsDocument.getElementById("removeCloudFileAccount");
+  const removeButton = prefsDocument.getElementById("removeCloudFileAccount");
   do {
     EventUtils.synthesizeMouseAtCenter(
       accountList.getItemAtIndex(0),
@@ -754,7 +759,7 @@ add_task(async function accountListOrder() {
   is(cloudFileAccounts.providers.length, 1);
   is(cloudFileAccounts.accounts.length, 0);
 
-  for (let [key, displayName] of [
+  for (const [key, displayName] of [
     ["someKey1", "carl's Account"],
     ["someKey2", "Amber's Account"],
     ["someKey3", "alice's Account"],
@@ -777,12 +782,12 @@ add_task(async function accountListOrder() {
   is(cloudFileAccounts.providers.length, 2);
   is(cloudFileAccounts.accounts.length, 4);
 
-  let { prefsDocument } = await openNewPrefsTab(
+  const { prefsDocument } = await openNewPrefsTab(
     "paneCompose",
     "compositionAttachmentsCategory"
   );
 
-  let accountList = prefsDocument.getElementById("cloudFileView");
+  const accountList = prefsDocument.getElementById("cloudFileView");
   is(accountList.itemCount, 4);
 
   is(accountList.getItemAtIndex(0).value, "someKey3");

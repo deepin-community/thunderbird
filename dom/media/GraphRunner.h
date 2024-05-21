@@ -36,12 +36,12 @@ class GraphRunner final : public Runnable {
    * the iteration there.
    */
   IterationResult OneIteration(GraphTime aStateTime, GraphTime aIterationEnd,
-                               AudioMixer* aMixer);
+                               MixerCallbackReceiver* aMixerReceiver);
 
   /**
    * Runs mGraph until it shuts down.
    */
-  NS_IMETHOD Run();
+  NS_IMETHOD Run() override;
 
   /**
    * Returns true if called on mThread.
@@ -64,18 +64,18 @@ class GraphRunner final : public Runnable {
   class IterationState {
     GraphTime mStateTime;
     GraphTime mIterationEnd;
-    AudioMixer* MOZ_NON_OWNING_REF mMixer;
+    MixerCallbackReceiver* MOZ_NON_OWNING_REF mMixerReceiver;
 
    public:
     IterationState(GraphTime aStateTime, GraphTime aIterationEnd,
-                   AudioMixer* aMixer)
+                   MixerCallbackReceiver* aMixerReceiver)
         : mStateTime(aStateTime),
           mIterationEnd(aIterationEnd),
-          mMixer(aMixer) {}
+          mMixerReceiver(aMixerReceiver) {}
     IterationState& operator=(const IterationState& aOther) = default;
     GraphTime StateTime() const { return mStateTime; }
     GraphTime IterationEnd() const { return mIterationEnd; }
-    AudioMixer* Mixer() const { return mMixer; }
+    MixerCallbackReceiver* MixerReceiver() const { return mMixerReceiver; }
   };
 
   // Monitor used for yielding mThread through Wait(), and scheduling mThread
@@ -86,9 +86,9 @@ class GraphRunner final : public Runnable {
   MediaTrackGraphImpl* const mGraph;
   // State being handed over to the graph through OneIteration. Protected by
   // mMonitor.
-  Maybe<IterationState> mIterationState;
+  Maybe<IterationState> mIterationState MOZ_GUARDED_BY(mMonitor);
   // Result from mGraph's OneIteration. Protected by mMonitor.
-  IterationResult mIterationResult;
+  IterationResult mIterationResult MOZ_GUARDED_BY(mMonitor);
 
   enum class ThreadState {
     Wait,      // Waiting for a message.  This is the initial state.
@@ -100,7 +100,7 @@ class GraphRunner final : public Runnable {
   };
   // Protected by mMonitor until set to Shutdown, after which this is not
   // modified.
-  ThreadState mThreadState;
+  ThreadState mThreadState MOZ_GUARDED_BY(mMonitor);
 
   // The thread running mGraph.  Set on construction, after other members are
   // initialized.  Cleared at the end of Shutdown().

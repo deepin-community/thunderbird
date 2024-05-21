@@ -2,72 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
-from mozboot.base import BaseBootstrapper
-from mozboot.linux_common import LinuxBootstrapper
-
+import subprocess
 import sys
 
-MERCURIAL_INSTALL_PROMPT = """
-Mercurial releases a new version every 3 months and your distro's package
-may become out of date. This may cause incompatibility with some
-Mercurial extensions that rely on new Mercurial features. As a result,
-you may not have an optimal version control experience.
-
-To have the best Mercurial experience possible, we recommend installing
-Mercurial via the "pip" Python packaging utility. This will likely result
-in files being placed in /usr/local/bin and /usr/local/lib.
-
-How would you like to continue?
-  1. Install a modern Mercurial via pip [default]
-  2. Install a legacy Mercurial via apt
-  3. Do not install Mercurial
-Your choice: """
+from mozboot.base import MERCURIAL_INSTALL_PROMPT, BaseBootstrapper
+from mozboot.linux_common import LinuxBootstrapper
 
 
 class DebianBootstrapper(LinuxBootstrapper, BaseBootstrapper):
-
-    # These are common packages for all Debian-derived distros (such as
-    # Ubuntu).
-    COMMON_PACKAGES = [
-        "build-essential",
-        "libpython3-dev",
-        "m4",
-        "nodejs",
-        "unzip",
-        "uuid",
-        "zip",
-    ]
-
-    # Ubuntu and Debian don't often differ, but they do for npm.
-    DEBIAN_PACKAGES = [
-        # Comment the npm package until Debian bring it back
-        # 'npm'
-    ]
-
-    # These are common packages for building Firefox for Desktop
-    # (browser) for all Debian-derived distros (such as Ubuntu).
-    BROWSER_COMMON_PACKAGES = [
-        "libasound2-dev",
-        "libcurl4-openssl-dev",
-        "libdbus-1-dev",
-        "libdbus-glib-1-dev",
-        "libdrm-dev",
-        "libgtk-3-dev",
-        "libpulse-dev",
-        "libx11-xcb-dev",
-        "libxt-dev",
-        "xvfb",
-    ]
-
-    # These are common packages for building Firefox for Android
-    # (mobile/android) for all Debian-derived distros (such as Ubuntu).
-    MOBILE_ANDROID_COMMON_PACKAGES = [
-        "openjdk-8-jdk-headless",  # Android's `sdkmanager` requires Java 1.8 exactly.
-        "wget",  # For downloading the Android SDK and NDK.
-    ]
-
     def __init__(self, distro, version, dist_id, codename, **kwargs):
         BaseBootstrapper.__init__(self, **kwargs)
 
@@ -76,54 +18,21 @@ class DebianBootstrapper(LinuxBootstrapper, BaseBootstrapper):
         self.dist_id = dist_id
         self.codename = codename
 
-        self.packages = list(self.COMMON_PACKAGES)
-        if self.distro == "debian":
-            self.packages += self.DEBIAN_PACKAGES
-
-    def suggest_install_distutils(self):
-        print(
-            "HINT: Try installing distutils with "
-            "`apt-get install python3-distutils`.",
-            file=sys.stderr,
-        )
-
     def suggest_install_pip3(self):
         print(
             "HINT: Try installing pip3 with `apt-get install python3-pip`.",
             file=sys.stderr,
         )
 
-    def install_system_packages(self):
-        self.apt_install(*self.packages)
+    def install_packages(self, packages):
+        try:
+            if int(self.version) < 11:
+                # watchman is only available starting from Debian 11.
+                packages = [p for p in packages if p != "watchman"]
+        except ValueError:
+            pass
 
-    def install_browser_packages(self, mozconfig_builder):
-        self.ensure_browser_packages()
-
-    def install_browser_artifact_mode_packages(self, mozconfig_builder):
-        self.ensure_browser_packages(artifact_mode=True)
-
-    def install_mobile_android_packages(self, mozconfig_builder):
-        self.ensure_mobile_android_packages(mozconfig_builder)
-
-    def install_mobile_android_artifact_mode_packages(self, mozconfig_builder):
-        self.ensure_mobile_android_packages(mozconfig_builder, artifact_mode=True)
-
-    def ensure_browser_packages(self, artifact_mode=False):
-        # TODO: Figure out what not to install for artifact mode
-        self.apt_install(*self.BROWSER_COMMON_PACKAGES)
-        modern = self.is_nasm_modern()
-        if not modern:
-            self.apt_install("nasm")
-
-    def ensure_mobile_android_packages(self, mozconfig_builder, artifact_mode=False):
-        # Multi-part process:
-        # 1. System packages.
-        # 2. Android SDK. Android NDK only if we are not in artifact mode. Android packages.
-        self.apt_install(*self.MOBILE_ANDROID_COMMON_PACKAGES)
-
-        # 2. Android pieces.
-        self.ensure_java(mozconfig_builder)
-        super().ensure_mobile_android_packages(artifact_mode=artifact_mode)
+        self.apt_install(*packages)
 
     def _update_package_manager(self):
         self.apt_update()
@@ -151,3 +60,31 @@ class DebianBootstrapper(LinuxBootstrapper, BaseBootstrapper):
         # pip.
         assert res == 1
         self.run_as_root(["pip3", "install", "--upgrade", "Mercurial"])
+
+    def _check_packages_installed(self, *packages):
+        command = ["dpkg-query", "-W"]
+        command.extend(packages)
+        return (
+            subprocess.run(
+                command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ).returncode
+            == 0
+        )
+
+    def apt_install(self, *packages):
+        if self._check_packages_installed(*packages):
+            # Packages already installed
+            return
+        command = ["apt-get", "install"]
+        if self.no_interactive:
+            command.append("-y")
+        command.extend(packages)
+
+        self.run_as_root(command)
+
+    def apt_update(self):
+        command = ["apt-get", "update"]
+        if self.no_interactive:
+            command.append("-y")
+
+        self.run_as_root(command)

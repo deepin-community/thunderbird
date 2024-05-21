@@ -1,3 +1,4 @@
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -9,8 +10,8 @@
 
 var { FeedUtils } =
   ChromeUtils.import("resource:///modules/FeedUtils.jsm");
-var { folderUtils } =
-  ChromeUtils.import("resource:///modules/folderUtils.jsm");
+var { FolderUtils } =
+  ChromeUtils.import("resource:///modules/FolderUtils.jsm");
 var { IOUtils } =
   ChromeUtils.import("resource:///modules/IOUtils.js");
 var { IteratorUtils } =
@@ -19,8 +20,8 @@ var { mailServices } =
   ChromeUtils.import("resource:///modules/mailServices.js");
 var { MailUtils } =
   ChromeUtils.import("resource:///modules/MailUtils.js");
-var { Services } =
-  ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { AppConstants } =
+  ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
 
 if (typeof FeedMessageHandler != "object") {
   Services.scriptloader.loadSubScript("chrome://messenger-newsblog/content/newsblogOverlay.js");
@@ -258,6 +259,17 @@ let gFolderTreeView = {
 
     // Don't let the double-click toggle the open state of the folder here.
     aEvent.stopPropagation();
+  },
+
+  onKeyPress(event) {
+    if (event.keyCode == KeyEvent.DOM_VK_RETURN) {
+      if ((AppConstants.platform == "macosx" ? event.metaKey : event.ctrlKey) &&
+          AllowOpenTabOnMiddleClick()) {
+        FolderPaneContextMenuNewTab(event);
+        let folderTree = document.getElementById("folderTree");
+        RestoreSelectionWithoutContentLoad(folderTree);
+      }
+    }
   },
 
   getFolderAtCoords: function ftv_getFolderAtCoords(aX, aY) {
@@ -633,7 +645,8 @@ let gFolderTreeView = {
       let isMove = Cc["@mozilla.org/widget/dragservice;1"]
                       .getService(Ci.nsIDragService).getCurrentSession()
                       .dragAction == Ci.nsIDragService.DRAGDROP_ACTION_MOVE;
-      if (!sourceFolder.canDeleteMessages)
+      let isNews = sourceFolder.flags & Ci.nsMsgFolderFlags.Newsgroup;
+      if (!sourceFolder.canDeleteMessages || isNews)
         isMove = false;
 
       Services.prefs.setCharPref("mail.last_msg_movecopy_target_uri",
@@ -1048,7 +1061,7 @@ let gFolderTreeView = {
   },
 
   _sortedAccounts: function ftv_getSortedAccounts() {
-    let accounts = allAccountsSorted(true);
+    let accounts = FolderUtils.allAccountsSorted(true);
 
     // Don't show deferred pop accounts.
     accounts = accounts.filter(function isNotDeferred(a) {
@@ -1274,10 +1287,12 @@ let gFolderTreeView = {
         const MAXRECENT = 15;
 
         // Get 15 (MAXRECENT) most recently accessed folders.
-        let recentFolders = getMostRecentFolders(ftv._enumerateFolders,
-                                                 MAXRECENT,
-                                                 "MRUTime",
-                                                 null);
+        let recentFolders = FolderUtils.getMostRecentFolders(
+          ftv._enumerateFolders,
+          MAXRECENT,
+          "MRUTime",
+          null
+        );
 
         // Sort the folder names alphabetically.
         recentFolders.sort(function rf_sort(a, b){
@@ -1287,7 +1302,7 @@ let gFolderTreeView = {
             aLabel = a.server.prettyName;
             bLabel = b.server.prettyName;
           }
-          return folderNameCompare(aLabel, bLabel);
+          return FolderUtils.folderNameCompare(aLabel, bLabel);
         });
 
         let items = recentFolders.map(f => new ftvItem(f));
@@ -1377,10 +1392,9 @@ let gFolderTreeView = {
   /**
    * This is our implementation of nsIMsgFolderListener to watch for changes
    */
-  OnItemAdded: function ftl_add(aParentItem, aItem) {
+  onFolderAdded: function ftl_add(aParentItem, aItem) {
     // Ignore this item if it's not a folder, or we knew about it.
-    if (!(aItem instanceof Ci.nsIMsgFolder) ||
-        this.getIndexOfFolder(aItem) != null)
+    if (this.getIndexOfFolder(aItem) != null)
       return;
 
     // If no parent, this is an account, so let's rebuild.
@@ -1392,6 +1406,7 @@ let gFolderTreeView = {
     this._modes[this._mode].onFolderAdded(
       aParentItem.QueryInterface(Ci.nsIMsgFolder), aItem);
   },
+  onMessageAdded: function(parentFolder, msg) {},
 
   addFolder: function ftl_add_folder(aParentItem, aItem) {
     // This intentionally adds any new folder even if it would not pass the
@@ -1438,10 +1453,7 @@ let gFolderTreeView = {
     this._addChildToView(parent, parentIndex, newChild);
   },
 
-  OnItemRemoved: function ftl_remove(aRDFParentItem, aItem) {
-    if (!(aItem instanceof Ci.nsIMsgFolder))
-      return;
-
+  onFolderRemoved: function ftl_remove(aRDFParentItem, aItem) {
     this._persistItemClosed(aItem.URI);
 
     let index = this.getIndexOfFolder(aItem);
@@ -1462,8 +1474,10 @@ let gFolderTreeView = {
     this._tree.invalidateRow(index);
   },
 
-  OnItemPropertyChanged: function(aItem, aProperty, aOld, aNew) {},
-  OnItemIntPropertyChanged: function(aItem, aProperty, aOld, aNew) {
+  onMessageRemoved: function(parentFolder, msg) {},
+
+  onFolderPropertyChanged: function(aItem, aProperty, aOld, aNew) {},
+  onFolderIntPropertyChanged: function(aItem, aProperty, aOld, aNew) {
     // First try mode specific handling of the changed property.
     if (this._modes[this.mode].handleChangedIntProperty(aItem, aProperty, aOld,
                                                         aNew))
@@ -1485,14 +1499,14 @@ let gFolderTreeView = {
     }
   },
 
-  OnItemBoolPropertyChanged: function(aItem, aProperty, aOld, aNew) {
+  onFolderBoolPropertyChanged: function(aItem, aProperty, aOld, aNew) {
     let index = this.getIndexOfFolder(aItem);
     if (index != null)
       this._tree.invalidateRow(index);
   },
-  OnItemUnicharPropertyChanged: function(aItem, aProperty, aOld, aNew) {},
-  OnItemPropertyFlagChanged: function(aItem, aProperty, aOld, aNew) {},
-  OnItemEvent: function(aFolder, aEvent) {
+  onFolderUnicharPropertyChanged: function(aItem, aProperty, aOld, aNew) {},
+  onFolderPropertyFlagChanged: function(aItem, aProperty, aOld, aNew) {},
+  onFolderEvent: function(aFolder, aEvent) {
     let index = this.getIndexOfFolder(aFolder);
     if (index != null)
       this._tree.invalidateRow(index);
@@ -1645,8 +1659,7 @@ ftvItem.prototype = {
     if (aColumn && aColumn.id != "folderNameCol")
       return "";
 
-    // From folderUtils.jsm
-    let properties = getFolderProperties(this._folder, this.open);
+    let properties = FolderUtils.getFolderProperties(this._folder, this.open);
 
     return properties;
   },
@@ -1904,7 +1917,7 @@ var gFolderTreeController = {
       return;
 
     if (this._checkConfirmationPrompt("emptyTrash"))
-      folder.emptyTrash(msgWindow, null);
+      folder.emptyTrash(null);
   },
 
   /**
@@ -1926,7 +1939,7 @@ var gFolderTreeController = {
 
     // Delete any sub-folders this folder might have.
     for (let f of folder.subFolders) {
-      folder.propagateDelete(f, true, msgWindow);
+      folder.propagateDelete(f, true);
     }
 
     // Now delete the messages.
@@ -1966,11 +1979,9 @@ var gFolderTreeController = {
   compactAllFoldersForAccount(aFolders) {
     let folders = aFolders || GetSelectedMsgFolders();
     for (let folder of folders) {
-      let isImapFolder = folder.server.type == "imap";
-      folder.compactAll(null, msgWindow, isImapFolder ||
-                                         folder.server.type == "nntp");
+      folder.compactAll(null, msgWindow);
       // Reset thread pane for non-imap folders.
-      if (gDBView && !isImapFolder)
+      if (gDBView && folder.server.type != "imap")
         this._resetThreadPane();
     }
   },
@@ -1993,7 +2004,7 @@ var gFolderTreeController = {
 
     window.openDialog("chrome://messenger/content/virtualFolderProperties.xul",
                       "", "chrome,modal,centerscreen",
-                      {folder: folder, searchTerms: aSearchTems,
+                      {folder: folder, searchTerms: aSearchTerms,
                        newFolderName: name});
   },
 

@@ -2,20 +2,30 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-import six
 import json
 import os
 from argparse import Namespace
 
-import pytest
-
 import mozinfo
+import pytest
+import six
 from manifestparser import TestManifest, expression
-from moztest.selftest.fixtures import binary, setup_test_harness  # noqa
+from moztest.selftest.fixtures import binary_fixture, setup_test_harness  # noqa
 
 here = os.path.abspath(os.path.dirname(__file__))
 setup_args = [os.path.join(here, "files"), "mochitest", "testing/mochitest"]
+
+
+@pytest.fixture
+def create_manifest(tmpdir, build_obj):
+    def inner(string, name="manifest.ini"):
+        manifest = tmpdir.join(name)
+        manifest.write(string, ensure=True)
+        # pylint --py3k: W1612
+        path = six.text_type(manifest)
+        return TestManifest(manifests=(path,), strict=False, rootdir=tmpdir.strpath)
+
+    return inner
 
 
 @pytest.fixture(scope="function")
@@ -42,6 +52,10 @@ def runtests(setup_test_harness, binary, parser, request):
     if "runFailures" in request.fixturenames:
         runFailures = request.getfixturevalue("runFailures")
 
+    restartAfterFailure = False
+    if "restartAfterFailure" in request.fixturenames:
+        restartAfterFailure = request.getfixturevalue("restartAfterFailure")
+
     setup_test_harness(*setup_args, flavor=flavor)
 
     runtests = pytest.importorskip("runtests")
@@ -64,6 +78,7 @@ def runtests(setup_test_harness, binary, parser, request):
             "app": binary,
             "flavor": flavor,
             "runFailures": runFailures,
+            "restartAfterFailure": restartAfterFailure,
             "keep_open": False,
             "log_raw": [buf],
         }
@@ -89,24 +104,32 @@ def runtests(setup_test_harness, binary, parser, request):
     options.update(getattr(request.module, "OPTIONS", {}))
 
     def normalize(test):
-        return {
-            "name": test,
-            "relpath": test,
-            "path": os.path.join(test_root, test),
-            # add a dummy manifest file because mochitest expects it
-            "manifest": os.path.join(test_root, manifest_name),
-            "manifest_relpath": manifest_name,
-            "skip-if": runFailures,
-        }
+        if isinstance(test, str):
+            test = [test]
+        return [
+            {
+                "name": t,
+                "relpath": t,
+                "path": os.path.join(test_root, t),
+                # add a dummy manifest file because mochitest expects it
+                "manifest": os.path.join(test_root, manifest_name),
+                "manifest_relpath": manifest_name,
+                "skip-if": runFailures,
+            }
+            for t in test
+        ]
 
     def inner(*tests, **opts):
         assert len(tests) > 0
 
-        manifest = TestManifest()
-        # pylint --py3k: W1636
-        manifest.tests.extend(list(map(normalize, tests)))
-        options["manifestFile"] = manifest
-        options.update(opts)
+        # Inject a TestManifest in the runtests option if one
+        # has not been already included by the caller.
+        if not isinstance(options["manifestFile"], TestManifest):
+            manifest = TestManifest()
+            options["manifestFile"] = manifest
+            # pylint --py3k: W1636
+            manifest.tests.extend(list(map(normalize, tests))[0])
+            options.update(opts)
 
         result = runtests.run_test_harness(parser, Namespace(**options))
         out = json.loads("[" + ",".join(buf.getvalue().splitlines()) + "]")
@@ -137,7 +160,7 @@ def skip_using_mozinfo(request, setup_test_harness):
     runtests = pytest.importorskip("runtests")
     runtests.update_mozinfo()
 
-    skip_mozinfo = request.node.get_marker("skip_mozinfo")
+    skip_mozinfo = request.node.get_closest_marker("skip_mozinfo")
     if skip_mozinfo:
         value = skip_mozinfo.args[0]
         if expression.parse(value, **mozinfo.info):

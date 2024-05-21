@@ -2,26 +2,38 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import React from "react";
+import React from "devtools/client/shared/vendor/react";
 import { shallow } from "enzyme";
+import configureStore from "redux-mock-store";
 
 import SearchInput from "../SearchInput";
 
 describe("SearchInput", () => {
   // !! wrapper is defined outside test scope
   // so it will keep values between tests
+  const mockStore = configureStore([]);
+  const store = mockStore({
+    ui: { mutableSearchOptions: { "foo-search": {} } },
+  });
   const wrapper = shallow(
-    <SearchInput
-      query=""
-      count={5}
-      placeholder="A placeholder"
-      summaryMsg="So many results"
-      showErrorEmoji={false}
-      isLoading={false}
-      onChange={() => {}}
-      onKeyDown={() => {}}
-    />
-  );
+    React.createElement(SearchInput, {
+      store,
+      query: "",
+      count: 5,
+      placeholder: "A placeholder",
+      summaryMsg: "So many results",
+      showErrorEmoji: false,
+      isLoading: false,
+      onChange: () => {},
+      onKeyDown: () => {},
+      searchKey: "foo-search",
+      showSearchModifiers: false,
+      showExcludePatterns: false,
+      showClose: true,
+      handleClose: jest.fn(),
+      setSearchOptions: jest.fn(),
+    })
+  ).dive();
 
   it("renders", () => expect(wrapper).toMatchSnapshot());
 

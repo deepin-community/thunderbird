@@ -48,7 +48,7 @@
 #include "mozilla/fallible.h"
 #include "nsCOMPtr.h"
 #include "nsDebug.h"
-#include "nsGlobalWindowOuter.h"
+#include "nsGlobalWindowInner.h"
 #include "nsIConsoleService.h"
 #include "nsIScriptError.h"
 #include "nsScriptError.h"
@@ -58,8 +58,7 @@
 #include "nscore.h"
 #include "xpcpublic.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 namespace {
 
@@ -69,7 +68,8 @@ class ReportErrorRunnable final : public WorkerDebuggeeRunnable {
  public:
   ReportErrorRunnable(WorkerPrivate* aWorkerPrivate,
                       UniquePtr<WorkerErrorReport> aReport)
-      : WorkerDebuggeeRunnable(aWorkerPrivate), mReport(std::move(aReport)) {}
+      : WorkerDebuggeeRunnable(aWorkerPrivate, "ReportErrorRunnable"),
+        mReport(std::move(aReport)) {}
 
  private:
   virtual void PostDispatch(WorkerPrivate* aWorkerPrivate,
@@ -93,18 +93,6 @@ class ReportErrorRunnable final : public WorkerDebuggeeRunnable {
     } else {
       AssertIsOnMainThread();
 
-      // Once a window has frozen its workers, their
-      // mMainThreadDebuggeeEventTargets should be paused, and their
-      // WorkerDebuggeeRunnables should not be being executed. The same goes for
-      // WorkerDebuggeeRunnables sent from child to parent workers, but since a
-      // frozen parent worker runs only control runnables anyway, that is taken
-      // care of naturally.
-      MOZ_ASSERT(!aWorkerPrivate->IsFrozen());
-
-      // Similarly for paused windows; all its workers should have been
-      // informed. (Subworkers are unaffected by paused windows.)
-      MOZ_ASSERT(!aWorkerPrivate->IsParentWindowPaused());
-
       if (aWorkerPrivate->IsSharedWorker()) {
         aWorkerPrivate->GetRemoteWorkerController()
             ->ErrorPropagationOnMainThread(mReport.get(),
@@ -117,7 +105,7 @@ class ReportErrorRunnable final : public WorkerDebuggeeRunnable {
       // the ServiceWorkerManager to report on any controlled documents.
       if (aWorkerPrivate->IsServiceWorker()) {
         RefPtr<RemoteWorkerChild> actor(
-            aWorkerPrivate->GetRemoteWorkerControllerWeakRef());
+            aWorkerPrivate->GetRemoteWorkerController());
 
         Unused << NS_WARN_IF(!actor);
 
@@ -163,7 +151,7 @@ class ReportGenericErrorRunnable final : public WorkerDebuggeeRunnable {
 
  private:
   explicit ReportGenericErrorRunnable(WorkerPrivate* aWorkerPrivate)
-      : WorkerDebuggeeRunnable(aWorkerPrivate) {
+      : WorkerDebuggeeRunnable(aWorkerPrivate, "ReportGenericErrorRunnable") {
     aWorkerPrivate->AssertIsOnWorkerThread();
   }
 
@@ -176,17 +164,9 @@ class ReportGenericErrorRunnable final : public WorkerDebuggeeRunnable {
   }
 
   bool WorkerRun(JSContext* aCx, WorkerPrivate* aWorkerPrivate) override {
-    // Once a window has frozen its workers, their
-    // mMainThreadDebuggeeEventTargets should be paused, and their
-    // WorkerDebuggeeRunnables should not be being executed. The same goes for
-    // WorkerDebuggeeRunnables sent from child to parent workers, but since a
-    // frozen parent worker runs only control runnables anyway, that is taken
-    // care of naturally.
-    MOZ_ASSERT(!aWorkerPrivate->IsFrozen());
-
-    // Similarly for paused windows; all its workers should have been informed.
-    // (Subworkers are unaffected by paused windows.)
-    MOZ_ASSERT(!aWorkerPrivate->IsParentWindowPaused());
+    if (!aWorkerPrivate->IsAcceptingEvents()) {
+      return true;
+    }
 
     if (aWorkerPrivate->IsSharedWorker()) {
       aWorkerPrivate->GetRemoteWorkerController()->ErrorPropagationOnMainThread(
@@ -196,7 +176,7 @@ class ReportGenericErrorRunnable final : public WorkerDebuggeeRunnable {
 
     if (aWorkerPrivate->IsServiceWorker()) {
       RefPtr<RemoteWorkerChild> actor(
-          aWorkerPrivate->GetRemoteWorkerControllerWeakRef());
+          aWorkerPrivate->GetRemoteWorkerController());
 
       Unused << NS_WARN_IF(!actor);
 
@@ -204,10 +184,6 @@ class ReportGenericErrorRunnable final : public WorkerDebuggeeRunnable {
         actor->ErrorPropagationOnMainThread(nullptr, false);
       }
 
-      return true;
-    }
-
-    if (!aWorkerPrivate->IsAcceptingEvents()) {
       return true;
     }
 
@@ -225,9 +201,9 @@ class ReportGenericErrorRunnable final : public WorkerDebuggeeRunnable {
 }  // namespace
 
 void WorkerErrorBase::AssignErrorBase(JSErrorBase* aReport) {
-  CopyUTF8toUTF16(MakeStringSpan(aReport->filename), mFilename);
+  CopyUTF8toUTF16(MakeStringSpan(aReport->filename.c_str()), mFilename);
   mLineNumber = aReport->lineno;
-  mColumnNumber = aReport->column;
+  mColumnNumber = aReport->column.oneOriginValue();
   mErrorNumber = aReport->errorNumber;
 }
 
@@ -288,6 +264,7 @@ void WorkerErrorReport::ReportError(
       init.mMessage = aReport->mMessage;
       init.mFilename = aReport->mFilename;
       init.mLineno = aReport->mLineNumber;
+      init.mColno = aReport->mColumnNumber;
       init.mError = aException;
     }
 
@@ -321,7 +298,7 @@ void WorkerErrorReport::ReportError(
       nsEventStatus status = nsEventStatus_eIgnore;
 
       if (aWorkerPrivate) {
-        WorkerGlobalScope* globalScope = nullptr;
+        RefPtr<WorkerGlobalScope> globalScope;
         UNWRAP_OBJECT(WorkerGlobalScope, &global, globalScope);
 
         if (!globalScope) {
@@ -353,7 +330,7 @@ void WorkerErrorReport::ReportError(
         event->SetTrusted(true);
 
         if (NS_FAILED(EventDispatcher::DispatchDOMEvent(
-                ToSupports(globalScope), nullptr, event, nullptr, &status))) {
+                globalScope, nullptr, event, nullptr, &status))) {
           NS_WARNING("Failed to dispatch worker thread error event!");
           status = nsEventStatus_eIgnore;
         }
@@ -389,8 +366,8 @@ void WorkerErrorReport::ReportError(
 void WorkerErrorReport::LogErrorToConsole(JSContext* aCx,
                                           WorkerErrorReport& aReport,
                                           uint64_t aInnerWindowId) {
-  JS::RootedObject stack(aCx, aReport.ReadStack(aCx));
-  JS::RootedObject stackGlobal(aCx, JS::CurrentGlobalOrNull(aCx));
+  JS::Rooted<JSObject*> stack(aCx, aReport.ReadStack(aCx));
+  JS::Rooted<JSObject*> stackGlobal(aCx, JS::CurrentGlobalOrNull(aCx));
 
   ErrorData errorData(
       aReport.mIsWarning, aReport.mLineNumber, aReport.mColumnNumber,
@@ -405,8 +382,8 @@ void WorkerErrorReport::LogErrorToConsole(JSContext* aCx,
 /* static */
 void WorkerErrorReport::LogErrorToConsole(const ErrorData& aReport,
                                           uint64_t aInnerWindowId,
-                                          JS::HandleObject aStack,
-                                          JS::HandleObject aStackGlobal) {
+                                          JS::Handle<JSObject*> aStack,
+                                          JS::Handle<JSObject*> aStackGlobal) {
   AssertIsOnMainThread();
 
   RefPtr<nsScriptErrorBase> scriptError =
@@ -472,5 +449,4 @@ void WorkerErrorReport::CreateAndDispatchGenericErrorRunnableToParent(
   ReportGenericErrorRunnable::CreateAndDispatch(aWorkerPrivate);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

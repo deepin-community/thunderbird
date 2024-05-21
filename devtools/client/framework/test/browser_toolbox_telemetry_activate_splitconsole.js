@@ -53,7 +53,7 @@ const DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   // See Bug 1500141: this test frequently fails on beta because some highlighter
   // requests made by the BoxModel component in the layout view come back when the
   // connection between the client and the server has been destroyed. We are forcing
@@ -95,7 +95,7 @@ async function checkResults() {
     const expected = DATA[i];
 
     // ignore timestamp
-    ok(timestamp > 0, "timestamp is greater than 0");
+    Assert.greater(timestamp, 0, "timestamp is greater than 0");
     is(category, expected.category, "category is correct");
     is(method, expected.method, "method is correct");
     is(object, expected.object, "object is correct");
@@ -103,6 +103,6 @@ async function checkResults() {
 
     // extras
     is(extra.host, expected.extra.host, "host is correct");
-    ok(extra.width > 0, "width is greater than 0");
+    Assert.greater(Number(extra.width), 0, "width is greater than 0");
   }
 }

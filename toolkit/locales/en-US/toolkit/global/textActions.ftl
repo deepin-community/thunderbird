@@ -30,9 +30,19 @@ text-action-copy =
 text-action-copy-shortcut =
     .key = C
 
+# This command copies the link, removing additional
+# query parameters used to track users across sites.
+text-action-strip-on-share =
+    .label = Copy Without Site Tracking
+    .accesskey = n
+
 text-action-paste =
     .label = Paste
     .accesskey = P
+
+text-action-paste-no-formatting =
+    .label = Paste Without Formatting
+    .accesskey = m
 
 text-action-paste-shortcut =
     .key = V
@@ -50,3 +60,29 @@ text-action-select-all-shortcut =
 
 text-action-spell-no-suggestions =
     .label = No Spelling Suggestions
+
+text-action-spell-add-to-dictionary =
+    .label = Add to Dictionary
+    .accesskey = o
+
+text-action-spell-undo-add-to-dictionary =
+    .label = Undo Add To Dictionary
+    .accesskey = n
+
+text-action-spell-check-toggle =
+    .label = Check Spelling
+    .accesskey = g
+
+text-action-spell-add-dictionaries =
+    .label = Add Dictionaries…
+    .accesskey = A
+
+text-action-spell-dictionaries =
+    .label = Languages
+    .accesskey = L
+
+text-action-search-text-box-clear =
+    .title = Clear
+
+text-action-highlight-selection =
+    .label = Highlight Selection

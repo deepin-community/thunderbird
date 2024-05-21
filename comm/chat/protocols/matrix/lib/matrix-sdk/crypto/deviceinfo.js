@@ -3,11 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.DeviceInfo = DeviceInfo;
-
-/*
-Copyright 2016 OpenMarket Ltd
-Copyright 2019 The Matrix.org Foundation C.I.C.
+exports.DeviceInfo = void 0;
+var _device = require("../models/device");
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } /*
+Copyright 2016 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,164 +22,133 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 /**
- * @module crypto/deviceinfo
- */
-
-/**
-  * Information about a user's device
-  *
-  * @constructor
-  * @alias module:crypto/deviceinfo
-  *
-  * @property {string} deviceId the ID of this device
-  *
-  * @property {string[]} algorithms list of algorithms supported by this device
-  *
-  * @property {Object.<string,string>} keys a map from
-  *      &lt;key type&gt;:&lt;id&gt; -> &lt;base64-encoded key&gt;>
-  *
-  * @property {module:crypto/deviceinfo.DeviceVerification} verified
-  *     whether the device has been verified/blocked by the user
-  *
-  * @property {boolean} known
-  *     whether the user knows of this device's existence (useful when warning
-  *     the user that a user has added new devices)
-  *
-  * @property {Object} unsigned  additional data from the homeserver
-  *
-  * @param {string} deviceId id of the device
-  */
-function DeviceInfo(deviceId) {
-  // you can't change the deviceId
-  Object.defineProperty(this, 'deviceId', {
-    enumerable: true,
-    value: deviceId
-  });
-  this.algorithms = [];
-  this.keys = {};
-  this.verified = DeviceVerification.UNVERIFIED;
-  this.known = false;
-  this.unsigned = {};
-  this.signatures = {};
-}
-/**
- * rehydrate a DeviceInfo from the session store
+ * Information about a user's device
  *
- * @param {object} obj  raw object from session store
- * @param {string} deviceId id of the device
- *
- * @return {module:crypto~DeviceInfo} new DeviceInfo
+ * Superceded by {@link Device}.
  */
-
-
-DeviceInfo.fromStorage = function (obj, deviceId) {
-  const res = new DeviceInfo(deviceId);
-
-  for (const prop in obj) {
-    if (obj.hasOwnProperty(prop)) {
-      res[prop] = obj[prop];
+class DeviceInfo {
+  /**
+   * rehydrate a DeviceInfo from the session store
+   *
+   * @param obj -  raw object from session store
+   * @param deviceId - id of the device
+   *
+   * @returns new DeviceInfo
+   */
+  static fromStorage(obj, deviceId) {
+    const res = new DeviceInfo(deviceId);
+    for (const prop in obj) {
+      if (obj.hasOwnProperty(prop)) {
+        // @ts-ignore - this is messy and typescript doesn't like it
+        res[prop] = obj[prop];
+      }
     }
+    return res;
+  }
+  /**
+   * @param deviceId - id of the device
+   */
+  constructor(deviceId) {
+    this.deviceId = deviceId;
+    /** list of algorithms supported by this device */
+    _defineProperty(this, "algorithms", []);
+    /** a map from `<key type>:<id> -> <base64-encoded key>` */
+    _defineProperty(this, "keys", {});
+    /** whether the device has been verified/blocked by the user */
+    _defineProperty(this, "verified", _device.DeviceVerification.Unverified);
+    /**
+     * whether the user knows of this device's existence
+     * (useful when warning the user that a user has added new devices)
+     */
+    _defineProperty(this, "known", false);
+    /** additional data from the homeserver */
+    _defineProperty(this, "unsigned", {});
+    _defineProperty(this, "signatures", {});
   }
 
-  return res;
-};
-/**
- * Prepare a DeviceInfo for JSON serialisation in the session store
- *
- * @return {object} deviceinfo with non-serialised members removed
- */
+  /**
+   * Prepare a DeviceInfo for JSON serialisation in the session store
+   *
+   * @returns deviceinfo with non-serialised members removed
+   */
+  toStorage() {
+    return {
+      algorithms: this.algorithms,
+      keys: this.keys,
+      verified: this.verified,
+      known: this.known,
+      unsigned: this.unsigned,
+      signatures: this.signatures
+    };
+  }
 
+  /**
+   * Get the fingerprint for this device (ie, the Ed25519 key)
+   *
+   * @returns base64-encoded fingerprint of this device
+   */
+  getFingerprint() {
+    return this.keys["ed25519:" + this.deviceId];
+  }
 
-DeviceInfo.prototype.toStorage = function () {
-  return {
-    algorithms: this.algorithms,
-    keys: this.keys,
-    verified: this.verified,
-    known: this.known,
-    unsigned: this.unsigned,
-    signatures: this.signatures
-  };
-};
-/**
- * Get the fingerprint for this device (ie, the Ed25519 key)
- *
- * @return {string} base64-encoded fingerprint of this device
- */
+  /**
+   * Get the identity key for this device (ie, the Curve25519 key)
+   *
+   * @returns base64-encoded identity key of this device
+   */
+  getIdentityKey() {
+    return this.keys["curve25519:" + this.deviceId];
+  }
 
+  /**
+   * Get the configured display name for this device, if any
+   *
+   * @returns displayname
+   */
+  getDisplayName() {
+    return this.unsigned.device_display_name || null;
+  }
 
-DeviceInfo.prototype.getFingerprint = function () {
-  return this.keys["ed25519:" + this.deviceId];
-};
-/**
- * Get the identity key for this device (ie, the Curve25519 key)
- *
- * @return {string} base64-encoded identity key of this device
- */
+  /**
+   * Returns true if this device is blocked
+   *
+   * @returns true if blocked
+   */
+  isBlocked() {
+    return this.verified == _device.DeviceVerification.Blocked;
+  }
 
+  /**
+   * Returns true if this device is verified
+   *
+   * @returns true if verified
+   */
+  isVerified() {
+    return this.verified == _device.DeviceVerification.Verified;
+  }
 
-DeviceInfo.prototype.getIdentityKey = function () {
-  return this.keys["curve25519:" + this.deviceId];
-};
-/**
- * Get the configured display name for this device, if any
- *
- * @return {string?} displayname
- */
+  /**
+   * Returns true if this device is unverified
+   *
+   * @returns true if unverified
+   */
+  isUnverified() {
+    return this.verified == _device.DeviceVerification.Unverified;
+  }
 
-
-DeviceInfo.prototype.getDisplayName = function () {
-  return this.unsigned.device_display_name || null;
-};
-/**
- * Returns true if this device is blocked
- *
- * @return {Boolean} true if blocked
- */
-
-
-DeviceInfo.prototype.isBlocked = function () {
-  return this.verified == DeviceVerification.BLOCKED;
-};
-/**
- * Returns true if this device is verified
- *
- * @return {Boolean} true if verified
- */
-
-
-DeviceInfo.prototype.isVerified = function () {
-  return this.verified == DeviceVerification.VERIFIED;
-};
-/**
- * Returns true if this device is unverified
- *
- * @return {Boolean} true if unverified
- */
-
-
-DeviceInfo.prototype.isUnverified = function () {
-  return this.verified == DeviceVerification.UNVERIFIED;
-};
-/**
- * Returns true if the user knows about this device's existence
- *
- * @return {Boolean} true if known
- */
-
-
-DeviceInfo.prototype.isKnown = function () {
-  return this.known == true;
-};
-/**
- * @enum
- */
-
-
-DeviceInfo.DeviceVerification = {
-  VERIFIED: 1,
-  UNVERIFIED: 0,
-  BLOCKED: -1
-};
-const DeviceVerification = DeviceInfo.DeviceVerification;
+  /**
+   * Returns true if the user knows about this device's existence
+   *
+   * @returns true if known
+   */
+  isKnown() {
+    return this.known === true;
+  }
+}
+exports.DeviceInfo = DeviceInfo;
+_defineProperty(DeviceInfo, "DeviceVerification", {
+  VERIFIED: _device.DeviceVerification.Verified,
+  UNVERIFIED: _device.DeviceVerification.Unverified,
+  BLOCKED: _device.DeviceVerification.Blocked
+});

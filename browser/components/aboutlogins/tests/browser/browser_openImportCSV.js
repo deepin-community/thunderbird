@@ -2,12 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { FileTestUtils } = ChromeUtils.import(
-  "resource://testing-common/FileTestUtils.jsm"
+const { FileTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/FileTestUtils.sys.mjs"
 );
 
-let { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+let { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
 
 let { MockFilePicker } = SpecialPowers;
@@ -25,7 +25,7 @@ class CsvImportHelper {
    */
   static waitForOpenFilePicker(destFile) {
     return new Promise(resolve => {
-      MockFilePicker.showCallback = fp => {
+      MockFilePicker.showCallback = _fp => {
         info("showCallback");
         info("fileName: " + destFile.path);
         MockFilePicker.setFiles([destFile]);
@@ -48,7 +48,7 @@ class CsvImportHelper {
    * @returns {Promise} A promise that is resolved when the picker selects the file.
    */
   static async clickImportFromCsvMenu(browser, linesInFile) {
-    MockFilePicker.init(window);
+    MockFilePicker.init(window.browsingContext);
     MockFilePicker.returnValue = MockFilePicker.returnOK;
     let csvFile = await LoginTestUtils.file.setupCsvFileWithLines(linesInFile);
 
@@ -92,7 +92,7 @@ class CsvImportHelper {
 
       info("waiting for Import file picker to get opened");
       await filePickerPromise;
-      ok(true, "Import file picker opened");
+      Assert.ok(true, "Import file picker opened");
     }
 
     await waitForFilePicker();
@@ -134,9 +134,8 @@ class CsvImportHelper {
         errors,
       };
       if (dialog.shadowRoot.activeElement) {
-        dialogData.l10nFocused = dialog.shadowRoot.activeElement.getAttribute(
-          "data-l10n-id"
-        );
+        dialogData.l10nFocused =
+          dialog.shadowRoot.activeElement.getAttribute("data-l10n-id");
       }
       return dialogData;
     });
@@ -162,9 +161,8 @@ class CsvImportHelper {
         .getAttribute("data-l10n-id");
       return {
         hidden: dialog.hidden,
-        l10nFocused: dialog.shadowRoot.activeElement.getAttribute(
-          "data-l10n-id"
-        ),
+        l10nFocused:
+          dialog.shadowRoot.activeElement.getAttribute("data-l10n-id"),
         l10nTitle,
         l10nDescription,
       };
@@ -219,11 +217,9 @@ class CsvImportHelper {
   /**
    * An utility method to fetch data from the about:loginsimportreport page.
    *
-   * @param {browser} browser
-   *        The browser object.
    * @returns {Promise<Object>} A promise that contains the detailed report data like added, modified, noChange, errors and rows.
    */
-  static async getDetailedReportData(browser) {
+  static async getDetailedReportData() {
     const data = await SpecialPowers.spawn(
       gBrowser.selectedBrowser,
       [],
@@ -257,7 +253,7 @@ class CsvImportHelper {
 
 const random = Math.round(Math.random() * 100000001);
 
-add_task(async function setup() {
+add_setup(async function () {
   registerCleanupFunction(() => {
     Services.logins.removeAllUserFacingLogins();
   });
@@ -276,8 +272,8 @@ add_task(async function test_open_import_one_item_from_csv() {
       let summary = await CsvImportHelper.getCsvImportSuccessDialogData(
         browser
       );
-      is(summary.added, "1", "It should have one item as added");
-      is(
+      Assert.equal(summary.added, "1", "It should have one item as added");
+      Assert.equal(
         summary.l10nFocused,
         "about-logins-import-dialog-done",
         "dismiss button should be focused"
@@ -316,10 +312,18 @@ add_task(async function test_open_import_all_four_categories() {
       let summary = await CsvImportHelper.getCsvImportSuccessDialogData(
         browser
       );
-      is(summary.added, "1", "It should have one item as added");
-      is(summary.modified, "1", "It should have one item as modified");
-      is(summary.noChange, "1", "It should have one item as unchanged");
-      is(summary.errors, "1", "It should have one item as error");
+      Assert.equal(summary.added, "1", "It should have one item as added");
+      Assert.equal(
+        summary.modified,
+        "1",
+        "It should have one item as modified"
+      );
+      Assert.equal(
+        summary.noChange,
+        "1",
+        "It should have one item as unchanged"
+      );
+      Assert.equal(summary.errors, "1", "It should have one item as error");
     }
   );
 });
@@ -351,18 +355,18 @@ add_task(async function test_open_import_all_four_detailed_report() {
       await CsvImportHelper.clickImportFromCsvMenu(browser, updatedCsvData);
       await CsvImportHelper.waitForImportToComplete();
       const reportTab = await CsvImportHelper.clickDetailedReport(browser);
-      const report = await CsvImportHelper.getDetailedReportData(browser);
+      const report = await CsvImportHelper.getDetailedReportData();
       BrowserTestUtils.removeTab(reportTab);
       const { added, modified, noChange, errors, rows } = report;
-      is(added, 1, "It should have one item as added");
-      is(modified, 1, "It should have one item as modified");
-      is(noChange, 1, "It should have one item as unchanged");
-      is(errors, 1, "It should have one item as error");
+      Assert.equal(added, 1, "It should have one item as added");
+      Assert.equal(modified, 1, "It should have one item as modified");
+      Assert.equal(noChange, 1, "It should have one item as unchanged");
+      Assert.equal(errors, 1, "It should have one item as error");
       Assert.deepEqual(
         [
-          "about-logins-import-report-row-description-added",
-          "about-logins-import-report-row-description-modified",
-          "about-logins-import-report-row-description-no-change",
+          "about-logins-import-report-row-description-added2",
+          "about-logins-import-report-row-description-modified2",
+          "about-logins-import-report-row-description-no-change2",
           "about-logins-import-report-row-description-error-missing-field",
         ],
         rows,
@@ -384,18 +388,18 @@ add_task(async function test_open_import_from_csv_with_invalid_file() {
       const errorDialog = await CsvImportHelper.getCsvImportErrorDialogData(
         browser
       );
-      is(errorDialog.hidden, false, "Dialog should not be hidden");
-      is(
+      Assert.equal(errorDialog.hidden, false, "Dialog should not be hidden");
+      Assert.equal(
         errorDialog.l10nTitle,
         "about-logins-import-dialog-error-file-format-title",
         "Dialog error title should be correct"
       );
-      is(
+      Assert.equal(
         errorDialog.l10nDescription,
         "about-logins-import-dialog-error-file-format-description",
         "Dialog error description should be correct"
       );
-      is(
+      Assert.equal(
         errorDialog.l10nFocused,
         "about-logins-import-dialog-error-learn-more",
         "Learn more link should be focused."

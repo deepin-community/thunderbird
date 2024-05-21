@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = Ofspraken en taken ymportearje
+calendar-ics-file-window-title = Ofspraken en taken ymportearje
 calendar-ics-file-dialog-import-event-button-label = Ofspraak ymportearje
 calendar-ics-file-dialog-import-task-button-label = Taak ymportearje
 calendar-ics-file-dialog-2 =
@@ -42,4 +43,4 @@ calendar-ics-file-import-errors =
         [one] Ien item kin net ymportearre wurde. Rieplachtsje de flaterconsole foar details.
        *[other] { $errorsCount } items koene net ymportearre wurde. Rieplachtsje de flaterconsole foar details.
     }
-calendar-ics-file-dialog-no-calendars = Der binne gjin aginda’s dy't ôfspraken of taken ymportearje kinne.
+calendar-ics-file-dialog-no-calendars = Der binne gjin aginda’s dy’t ôfspraken of taken ymportearje kinne.

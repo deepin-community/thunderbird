@@ -14,14 +14,13 @@
 #include "nsIChannel.h"
 #include "prinrval.h"
 #include "nsIMsgMailNewsUrl.h"
-#include "nsIMimeMiscStatus.h"
 #include "nsIMsgWindow.h"
 #include "nsMsgUtils.h"
 #include "nsIMsgHdr.h"
 #include "nsIMsgFolder.h"
 #include "nsMsgDBFolder.h"
 #include "nsServiceManagerUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsMsgUtils.h"
 
 #define MSGFEEDBACK_TIMER_INTERVAL 500
@@ -29,7 +28,7 @@
 nsMsgStatusFeedback::nsMsgStatusFeedback()
     : m_meteorsSpinning(false), m_lastPercent(0), m_lastProgressTime(0) {
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
 
   if (bundleService)
     bundleService->CreateBundle(
@@ -95,14 +94,6 @@ nsMsgStatusFeedback::OnStateChange(nsIWebProgress* aWebProgress,
                                  &messageDisplayUrl);
 
           if (messageDisplayUrl) {
-            // get the header sink
-            nsCOMPtr<nsIMsgWindow> msgWindow;
-            mailnewsUrl->GetMsgWindow(getter_AddRefs(msgWindow));
-            if (msgWindow) {
-              nsCOMPtr<nsIMsgHeaderSink> hdrSink;
-              msgWindow->GetMsgHeaderSink(getter_AddRefs(hdrSink));
-              if (hdrSink) hdrSink->OnEndMsgDownload(mailnewsUrl);
-            }
             // get the folder and notify that the msg has been loaded. We're
             // using NotifyPropertyFlagChanged. To be completely consistent,
             // we'd send a similar notification that the old message was
@@ -173,14 +164,13 @@ nsMsgStatusFeedback::SetStatusString(const nsAString& aStatus) {
 
 NS_IMETHODIMP
 nsMsgStatusFeedback::ShowProgress(int32_t aPercentage) {
-  // if the percentage hasn't changed...OR if we are going from 0 to 100% in one
+  // If the percentage hasn't changed...OR if we are going from 0 to 100% in one
   // step then don't bother....just fall out....
   if (aPercentage == m_lastPercent ||
       (m_lastPercent == 0 && aPercentage >= 100))
     return NS_OK;
 
-  m_lastPercent = aPercentage;
-
+  // Throttle updates.
   int64_t nowMS = 0;
   if (aPercentage < 100)  // always need to do 100%
   {
@@ -188,6 +178,7 @@ nsMsgStatusFeedback::ShowProgress(int32_t aPercentage) {
     if (nowMS < m_lastProgressTime + 250) return NS_OK;
   }
 
+  m_lastPercent = aPercentage;
   m_lastProgressTime = nowMS;
   nsCOMPtr<nsIMsgStatusFeedback> jsStatusFeedback(
       do_QueryReferent(mJSStatusFeedbackWeak));
@@ -248,7 +239,7 @@ NS_IMETHODIMP nsMsgStatusFeedback::OnStatus(nsIRequest* request,
 
   // forming the status message
   nsCOMPtr<nsIStringBundleService> sbs =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(sbs, NS_ERROR_UNEXPECTED);
   nsString str;
   rv = sbs->FormatStatusMessage(aStatus, aStatusArg, str);

@@ -10,11 +10,10 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  get_msg_source,
-  open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, get_msg_source, open_compose_with_reply } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 var {
   be_in_folder,
   get_special_folder,
@@ -24,23 +23,14 @@ var {
   smimeUtils_ensureNSS,
   smimeUtils_loadCertificateAndKey,
   smimeUtils_loadPEMCertificate,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { close_window } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
-
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var gDrafts;
 
-add_task(function setupModule(module) {
-  gDrafts = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+add_setup(async function () {
+  gDrafts = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 
   Services.prefs.setBoolPref("mail.identity.id1.compose_html", true);
 });
@@ -52,33 +42,29 @@ add_task(async function test_multipart_alternative() {
     Ci.nsIX509Cert.CA_CERT
   );
   smimeUtils_loadCertificateAndKey(
-    new FileUtils.File(getTestFilePath("data/Bob.p12"))
+    new FileUtils.File(getTestFilePath("data/Bob.p12"), "nss")
   );
 
-  let msgc = await open_message_from_file(
+  const msgc = await open_message_from_file(
     new FileUtils.File(getTestFilePath("data/multipart-alternative.eml"))
   );
 
-  let cwc = open_compose_with_reply(msgc);
+  const cwc = await open_compose_with_reply(msgc);
 
-  close_window(msgc);
+  await BrowserTestUtils.closeWindow(msgc);
 
   // Now save the message as a draft.
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    cwc.window
-  );
+  EventUtils.synthesizeKey("s", { shiftKey: false, accelKey: true }, cwc);
   await TestUtils.waitForCondition(
-    () => !cwc.window.gSaveOperationInProgress && !cwc.window.gWindowLock,
+    () => !cwc.gSaveOperationInProgress && !cwc.gWindowLock,
     "Saving of draft did not finish"
   );
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 
   // Now check the message content in the drafts folder.
-  be_in_folder(gDrafts);
-  let message = select_click_row(0);
-  let messageContent = get_msg_source(message);
+  await be_in_folder(gDrafts);
+  const message = await select_click_row(0);
+  const messageContent = await get_msg_source(message);
 
   // Check for a single line that contains text and make sure there is a
   // space at the end for a flowed reply.
@@ -88,9 +74,18 @@ add_task(async function test_multipart_alternative() {
   );
 
   // Delete the outgoing message.
-  press_delete();
+  await press_delete();
 });
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("mail.identity.id1.compose_html");
+
+  // Some tests that open new windows don't return focus to the main window
+  // in a way that satisfies mochitest, and the test times out.
+  Services.focus.focusedWindow = window;
+  // Focus an element in the main window, then blur it again to avoid it
+  // hijacking keypresses.
+  const mainWindowElement = document.getElementById("button-appmenu");
+  mainWindowElement.focus();
+  mainWindowElement.blur();
 });

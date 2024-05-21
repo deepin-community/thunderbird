@@ -47,7 +47,7 @@ const TEST_DATA = [
 
 requestLongerTimeout(5);
 
-add_task(async function() {
+add_task(async function () {
   const { inspector, highlighterTestFront } = await openInspectorForURL(
     TEST_URL
   );
@@ -70,7 +70,7 @@ add_task(async function() {
     const nb = await highlighterTestFront.getSelectorHighlighterBoxNb(
       highlighter.actorID
     );
-    ok(nb !== null, "The number of highlighters was retrieved");
+    Assert.notStrictEqual(nb, null, "The number of highlighters was retrieved");
 
     is(nb, containerCount, "The correct number of highlighers were created");
     await highlighter.hide();

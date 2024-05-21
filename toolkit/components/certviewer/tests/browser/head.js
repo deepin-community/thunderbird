@@ -16,7 +16,7 @@ function checkAndClickButton(document, id) {
 
 function is_element_visible(aElement, aMsg) {
   isnot(aElement, null, "Element should not be null, when checking visibility");
-  Assert.ok(!BrowserTestUtils.is_hidden(aElement), aMsg);
+  Assert.ok(!BrowserTestUtils.isHidden(aElement), aMsg);
 }
 
 // Extracted from https://searchfox.org/mozilla-central/rev/40ef22080910c2e2c27d9e2120642376b1d8b8b2/browser/components/preferences/in-content/tests/head.js#41
@@ -45,9 +45,8 @@ function promiseLoadSubDialog(aURL) {
         is_element_visible(aEvent.detail.dialog._overlay, "Overlay is visible");
 
         // Check that stylesheets were injected
-        let expectedStyleSheetURLs = aEvent.detail.dialog._injectedStyleSheets.slice(
-          0
-        );
+        let expectedStyleSheetURLs =
+          aEvent.detail.dialog._injectedStyleSheets.slice(0);
         for (let styleSheet of aEvent.detail.dialog._frame.contentDocument
           .styleSheets) {
           let i = expectedStyleSheetURLs.indexOf(styleSheet.href);
@@ -74,7 +73,7 @@ function injectErrorPageFrame(tab, src) {
   return SpecialPowers.spawn(
     tab.linkedBrowser,
     [{ frameSrc: src }],
-    async function({ frameSrc }) {
+    async function ({ frameSrc }) {
       let loaded = ContentTaskUtils.waitForEvent(
         content.wrappedJSObject,
         "DOMFrameContentLoaded"

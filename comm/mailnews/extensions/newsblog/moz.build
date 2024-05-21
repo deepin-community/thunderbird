@@ -4,11 +4,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 EXTRA_JS_MODULES += [
-    "Feed.jsm",
-    "FeedItem.jsm",
-    "FeedParser.jsm",
-    "FeedUtils.jsm",
-    "NewsBlog.jsm",
+    "Feed.sys.mjs",
+    "FeedItem.sys.mjs",
+    "FeedParser.sys.mjs",
+    "FeedUtils.sys.mjs",
+    "NewsBlog.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [

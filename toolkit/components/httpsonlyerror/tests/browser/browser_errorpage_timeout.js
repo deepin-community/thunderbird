@@ -23,17 +23,17 @@ const TIMEOUT_PAGE_URI_HTTPS =
   TEST_PATH_HTTPS + "file_errorpage_timeout_server.sjs";
 
 add_task(async function avoid_timeout_and_show_https_only_error_page() {
-  await BrowserTestUtils.withNewTab("about:blank", async function(browser) {
+  await BrowserTestUtils.withNewTab("about:blank", async function (browser) {
     let loaded = BrowserTestUtils.browserLoaded(
       browser,
       false, // includeSubFrames = false, no need to includeSubFrames
       TIMEOUT_PAGE_URI_HTTPS, // Wait for upgraded page to timeout
       true // maybeErrorPage = true, because we need the error page to appear
     );
-    BrowserTestUtils.loadURI(browser, TIMEOUT_PAGE_URI_HTTP);
+    BrowserTestUtils.startLoadingURIString(browser, TIMEOUT_PAGE_URI_HTTP);
     await loaded;
 
-    await SpecialPowers.spawn(browser, [], async function() {
+    await SpecialPowers.spawn(browser, [], async function () {
       const doc = content.document;
       let errorPage = doc.body.innerHTML;
       // It's possible that fluent has not been translated when running in
@@ -42,6 +42,11 @@ add_task(async function avoid_timeout_and_show_https_only_error_page() {
       ok(
         errorPage.includes("about-httpsonly-button-continue-to-site"),
         "Potential time-out in https-only mode should cause error page to appear!"
+      );
+      // Verify that the right title is set.
+      ok(
+        errorPage.includes("about-httpsonly-title-site-not-available"),
+        "Potential time-out in https-only mode should cause error page to appear with right title!"
       );
     });
   });

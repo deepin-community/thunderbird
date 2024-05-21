@@ -3,19 +3,24 @@ Date: Sun, 5 Feb 2017 08:41:22 +0900
 Subject: Set program name from the remoting name
 
 ---
- toolkit/xre/nsAppRunner.cpp | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ toolkit/xre/nsAppRunner.cpp | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/toolkit/xre/nsAppRunner.cpp b/toolkit/xre/nsAppRunner.cpp
-index d3bb809..61918f7 100644
+index c1b7129..353e2d4 100644
 --- a/toolkit/xre/nsAppRunner.cpp
 +++ b/toolkit/xre/nsAppRunner.cpp
-@@ -4263,7 +4263,7 @@ int XREMain::XRE_mainStartup(bool* aExitFlag) {
+@@ -4653,8 +4653,11 @@ int XREMain::XRE_mainStartup(bool* aExitFlag) {
+   // consistently.
  
    // Set program name to the one defined in application.ini.
-   {
--    nsAutoCString program(gAppData->name);
+-  g_set_prgname(gAppData->remotingName);
+-
++  {
 +    nsAutoCString program(gAppData->remotingName);
-     ToLowerCase(program);
-     g_set_prgname(program.get());
-   }
++    ToLowerCase(program);
++    g_set_prgname(program.get());
++  }
+   // Initialize GTK here for splash.
+ 
+ #  if defined(MOZ_WIDGET_GTK) && defined(MOZ_X11)

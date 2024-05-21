@@ -6,7 +6,7 @@
 // Test editing selectors for rules inside @import'd stylesheets.
 // This is a regression test for bug 1355819.
 
-add_task(async function() {
+add_task(async function () {
   await addTab(URL_ROOT + "doc_edit_imported_selector.html");
   const { inspector, view } = await openRuleView();
 
@@ -22,11 +22,6 @@ add_task(async function() {
   const onRuleViewChanged = once(view, "ruleview-changed");
   EventUtils.synthesizeKey("KEY_Enter");
   await onRuleViewChanged;
-
-  info("Escape the new property editor after editing the selector");
-  const onBlur = once(view.styleDocument.activeElement, "blur");
-  EventUtils.synthesizeKey("KEY_Escape", {}, view.styleWindow);
-  await onBlur;
 
   info("Check the rules are still displayed correctly");
   is(view._elementStyle.rules.length, 3, "The element still has 3 rules.");

@@ -4,48 +4,36 @@
 
 receipts-dialog-window =
     .title = การแจ้งเตือนการเปิดอ่าน
-
-return-receipt-checkbox =
+receipts-dialog-title = การแจ้งเตือนการเปิดอ่าน
+return-receipt-checkbox-control =
     .label = เมื่อส่งข้อความ ให้ขอการแจ้งเตือนการเปิดอ่านเสมอ
-    .acceskey = ม
-
+    .accesskey = ม
 receipt-arrive-label = เมื่อการแจ้งเตือนมาถึง:
-
-receipt-leave-radio =
+receipt-leave-radio-control =
     .label = ทิ้งไว้ในกล่องขาเข้าของฉัน
-    .acceskey = ท
-
-receipt-move-radio =
-    .label = ย้ายไปไว้ในโฟลเดอร์ "ที่ส่งแล้ว" ของฉัน
-    .acceskey = ย
-
+    .accesskey = ท
+receipt-move-radio-control =
+    .label = ย้ายไปไว้ในโฟลเดอร์ “ที่ส่งแล้ว” ของฉัน
+    .accesskey = ย
 receipt-request-label = เมื่อฉันได้รับคำขอให้ส่งการแจ้งเตือนการเปิดอ่าน:
-
-receipt-return-never-radio =
+receipt-return-never-radio-control =
     .label = ไม่ต้องส่งการแจ้งเตือนการเปิดอ่าน
-    .acceskey = ไ
-
-receipt-return-some-radio =
+    .accesskey = ม
+receipt-return-some-radio-control =
     .label = อนุญาตการแจ้งเตือนการเปิดอ่านสำหรับบางข้อความ
-    .acceskey = อ
-
-receipt-not-to-cc =
+    .accesskey = อ
+receipt-not-to-cc-label =
     .value = หากฉันไม่ได้อยู่ใน ถึง หรือ สำเนา ของข้อความ:
-    .acceskey = ห
-
+    .accesskey = ห
 receipt-send-never-label =
     .label = ไม่ส่งเสมอ
-
 receipt-send-always-label =
     .label = ส่งเสมอ
-
 receipt-send-ask-label =
     .label = ถามฉัน
-
-sender-outside-domain =
+sender-outside-domain-label =
     .value = หากผู้ส่งอยู่นอกโดเมนของฉัน:
-    .acceskey = น
-
-other-cases-label =
+    .accesskey = า
+other-cases-text-label =
     .value = ในกรณีอื่น ๆ ทั้งหมด:
-    .acceskey = ก
+    .accesskey = น

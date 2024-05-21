@@ -4,47 +4,44 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-<?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
-<?xml-stylesheet href="chrome://messenger/content/messenger.css" type="text/css"?>
-
-<!DOCTYPE window [
+<!DOCTYPE html [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
 %brandDTD;
 <!ENTITY % baseMenuOverlayDTD SYSTEM "chrome://messenger/locale/baseMenuOverlay.dtd">
 %baseMenuOverlayDTD;
 <!ENTITY % sourceDTD SYSTEM "chrome://messenger/locale/viewSource.dtd" >
 %sourceDTD;
-<!ENTITY % editMenuDTD SYSTEM "chrome://global/locale/editMenuOverlay.dtd" >
-%editMenuDTD;
 ]>
-
-<window id="viewSource"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml"
-        contenttitlesetting="true"
-        title="&mainWindow.title;"
-        titlemodifier="&mainWindow.titlemodifier;"
-        titlepreface="&mainWindow.preface;"
-        titlemenuseparator ="&mainWindow.titlemodifierseparator;"
-        windowtype="navigator:view-source"
-        width="640" height="480"
-        screenX="10" screenY="10"
-        persist="screenX screenY width height sizemode">
-
-<linkset>
-  <html:link rel="localization" href="messenger/messenger.ftl"/>
-  <html:link rel="localization" href="messenger/menubar.ftl"/>
-  <html:link rel="localization" href="toolkit/global/textActions.ftl"/>
-  <html:link rel="localization" href="toolkit/printing/printUI.ftl" />
-</linkset>
-
-  <script src="chrome://global/content/globalOverlay.js"/>
-  <script src="chrome://global/content/contentAreaUtils.js"/>
-  <script src="chrome://messenger/content/mailCore.js"/>
-  <script src="chrome://messenger/content/viewSource.js"/>
-  <script src="chrome://messenger/content/viewZoomOverlay.js"/>
-  <script src="chrome://global/content/editMenuOverlay.js"/>
-  <script src="chrome://messenger/content/nsContextMenu.js"/>
-
+<html id="viewSource" xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      scrolling="false"
+      titlemodifier="&mainWindow.titlemodifier;"
+      titlepreface="&mainWindow.preface;"
+      titlemenuseparator ="&mainWindow.titlemodifierseparator;"
+      windowtype="navigator:view-source"
+      width="640" height="480"
+      screenX="10" screenY="10"
+      persist="screenX screenY width height sizemode">
+<head>
+  <title>&mainWindow.title;</title>
+  <link rel="stylesheet" href="chrome://messenger/skin/messenger.css" />
+  <link rel="stylesheet" href="chrome://messenger/skin/contextMenu.css" />
+  <link rel="localization" href="branding/brand.ftl" />
+  <link rel="localization" href="messenger/messenger.ftl" />
+  <link rel="localization" href="messenger/menubar.ftl" />
+  <link rel="localization" href="messenger/appmenu.ftl" />
+  <link rel="localization" href="messenger/viewSource.ftl" />
+  <link rel="localization" href="toolkit/global/textActions.ftl" />
+  <link rel="localization" href="toolkit/printing/printUI.ftl" />
+  <script defer="defer" src="chrome://messenger/content/globalOverlay.js"></script>
+  <script defer="defer" src="chrome://global/content/contentAreaUtils.js"></script>
+  <script defer="defer" src="chrome://messenger/content/mailCore.js"></script>
+  <script defer="defer" src="chrome://messenger/content/viewSource.js"></script>
+  <script defer="defer" src="chrome://messenger/content/viewZoomOverlay.js"></script>
+  <script defer="defer" src="chrome://global/content/editMenuOverlay.js"></script>
+</head>
+<html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
   <stringbundle id="viewSourceBundle" src="chrome://messenger/locale/viewSource.properties"/>
 
   <command id="cmd_savePage" oncommand="ViewSourceSavePage();"/>
@@ -67,7 +64,6 @@
   <command id="cmd_textZoomEnlarge" oncommand="ZoomManager.enlarge();"/>
   <command id="cmd_textZoomReset" oncommand="ZoomManager.reset();"/>
 
-#includesubst @TOOLKIT_DIR@/content/editMenuKeys.inc.xhtml
   <keyset id="viewSourceKeys">
     <key id="key_savePage" key="&savePageCmd.commandkey;" modifiers="accel" command="cmd_savePage"/>
     <key id="key_print" key="&printCmd.commandkey;" modifiers="accel" command="cmd_print"/>
@@ -86,6 +82,9 @@
     <key key="&reloadCmd.commandkey;" command="cmd_reload" modifiers="accel,shift"/>
     <key keycode="VK_F5" command="cmd_reload"/>
     <key keycode="VK_F5" command="cmd_reload" modifiers="accel"/>
+
+    <key id="key_copy" data-l10n-id="text-action-copy-shortcut" modifiers="accel" command="cmd_copy"/>
+    <key id="key_selectAll" data-l10n-id="text-action-select-all-shortcut" modifiers="accel" command="cmd_selectAll"/>
     <key id="key_find" key="&findOnCmd.commandkey;" command="cmd_find" modifiers="accel"/>
     <key id="key_findAgain" key="&findAgainCmd.commandkey;" command="cmd_findAgain" modifiers="accel"/>
     <key id="key_findPrevious" key="&findAgainCmd.commandkey;" command="cmd_findPrevious" modifiers="accel,shift"/>
@@ -130,12 +129,10 @@
               command="cmd_selectAll"/>
     <menuseparator/>
     <menuitem id="cMenu_find"
-              label="&findCmd.label;"
-              accesskey="&findCmd.accesskey;"
+              data-l10n-id="context-text-action-find"
               command="cmd_find"/>
     <menuitem id="cMenu_findAgain"
-              label="&findAgainCmd.label;"
-              accesskey="&findAgainCmd.accesskey;"
+              data-l10n-id="context-text-action-find-again"
               command="cmd_findAgain"/>
   </menupopup>
 
@@ -170,11 +167,13 @@
                     key="key_selectAll"
                     command="cmd_selectAll"/>
           <menuseparator/>
-          <menuitem id="menu_find" label="&findCmd.label;"
-                    key="key_find" accesskey="&findCmd.accesskey;"
+          <menuitem id="menu_find"
+                    data-l10n-id="text-action-find"
+                    key="key_find"
                     command="cmd_find"/>
-          <menuitem id="menu_findAgain" label="&findAgainCmd.label;"
-                    key="key_findAgain" accesskey="&findAgainCmd.accesskey;"
+          <menuitem id="menu_findAgain"
+                    data-l10n-id="text-action-find-again"
+                    key="key_findAgain"
                     command="cmd_findAgain"/>
           <menuseparator/>
           <menuitem id="menu_goToLine" key="key_goToLine" command="cmd_goToLine"
@@ -212,17 +211,10 @@
         </menupopup>
       </menu>
       <menu id="helpMenu"
-#ifdef XP_WIN
-            label="&helpMenuWin.label;" accesskey="&helpMenuWin.accesskey;">
-#else
-            label="&helpMenu.label;" accesskey="&helpMenu.accesskey;">
-#endif
+            data-l10n-id="menu-help-help-title">
         <menupopup id="menu_HelpPopup">
           <menuitem id="menu_openHelp"
-                    label="&productHelp.label;"
-#ifndef XP_MACOSX
-                    accesskey="&productHelp.accesskey;"
-#endif
+                    data-l10n-id="appmenu-help-get-help"
                     key="key_openHelp"
                     oncommand="openSupportURL();"/>
         </menupopup>
@@ -230,7 +222,7 @@
     </menubar>
     </toolbar>
   </toolbox>
-  <vbox id="appcontent" class="printPreviewStack" flex="1">
+  <vbox class="printPreviewStack" flex="1">
     <browser id="content"
              type="content"
              name="content"
@@ -238,7 +230,6 @@
              flex="1"
              primary="true"
              disableglobalhistory="true"
-             context="viewSourceContextMenu"
              showcaret="true"
              tooltip="aHTMLTooltip"
              maychangeremoteness="true"
@@ -247,4 +238,5 @@
   </vbox>
 
 #include tabDialogs.inc.xhtml
-</window>
+</html:body>
+</html>

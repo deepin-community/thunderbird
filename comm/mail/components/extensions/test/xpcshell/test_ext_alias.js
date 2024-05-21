@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+var { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 // ExtensionContent.jsm needs to know when it's running from xpcshell,
 // to use the right timeout for content scripts executed at document_idle.
@@ -24,9 +24,9 @@ server.registerPathHandler("/dummy", (request, response) => {
 });
 
 add_task(async function test_alias() {
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     background: async () => {
-      let pending = new Set(["contentscript", "webscript"]);
+      const pending = new Set(["contentscript", "webscript"]);
 
       browser.runtime.onMessage.addListener(message => {
         if (message == "contentscript") {
@@ -86,17 +86,15 @@ add_task(async function test_alias() {
 
         browser.runtime.sendMessage("contentscript");
       `,
-      "web.html": `
-        <!DOCTYPE html>
+      "web.html": `<!DOCTYPE html>
         <html>
           <head>
             <meta charset='utf8'>
-            <script src="web.js"></script>
+            <script defer="defer" src="web.js"></script>
           </head>
           <body>
           </body>
-        </html>
-      `,
+        </html>`,
       "web.js": `
         browser.test.assertEq("object", typeof browser, "Web accessible script has browser object");
         browser.test.assertEq("object", typeof messenger, "Web accessible script has messenger object");

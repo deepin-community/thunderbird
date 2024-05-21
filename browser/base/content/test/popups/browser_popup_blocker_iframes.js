@@ -4,30 +4,35 @@
 
 "use strict";
 
-requestLongerTimeout(2);
+requestLongerTimeout(5);
 
 const testURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.org"
 );
 
 const examplecomURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.com"
 );
 
 const w3cURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://w3c-test.org"
 );
 
 const examplenetURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.net"
 );
 
 const prefixexamplecomURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://prefixexample.com"
 );
 
@@ -102,13 +107,14 @@ async function runTest(count, urls, permissions, delayedAllow) {
 
   if (delayedAllow) {
     await delayedAllow();
-    await SpecialPowers.spawn(tab.linkedBrowser, contexts, async function(
-      bc1,
-      bc2
-    ) {
-      bc1.window.postMessage("allow", "*");
-      bc2.window.postMessage("allow", "*");
-    });
+    await SpecialPowers.spawn(
+      tab.linkedBrowser,
+      contexts,
+      async function (bc1, bc2) {
+        bc1.window.postMessage("allow", "*");
+        bc2.window.postMessage("allow", "*");
+      }
+    );
   }
 
   await TestUtils.waitForCondition(
@@ -116,13 +122,13 @@ async function runTest(count, urls, permissions, delayedAllow) {
     `waiting for ${count} tabs, got ${cleaner.count()}`
   );
 
-  ok(cleaner.count() == count, `should have ${count} tabs`);
+  Assert.equal(cleaner.count(), count, `should have ${count} tabs`);
 
   await SpecialPowers.popPermissions();
   cleaner.clean();
 }
 
-add_task(async function() {
+add_task(async function () {
   let permission = {
     type: "popup",
     allow: true,

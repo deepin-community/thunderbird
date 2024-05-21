@@ -2,8 +2,8 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-add_task(async function() {
-  let extension = ExtensionTestUtils.loadExtension({
+add_task(async function () {
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "_locales/en/messages.json": {
         with_translation: {
@@ -75,7 +75,7 @@ add_task(async function() {
             "The shortcut should match the default shortcut provided in the manifest";
           browser.test.assertEq("Ctrl+Shift+D", command.shortcut, errorMessage);
 
-          let platformKeys = {
+          const platformKeys = {
             macosx: "M",
             linux: "L",
             win: "W",
@@ -83,8 +83,8 @@ add_task(async function() {
           };
 
           command = commands.find(c => c.name == "with-platform-info");
-          let platformKey = platformKeys[additionalScope.platform];
-          let shortcut = `Ctrl+Shift+${platformKey}`;
+          const platformKey = platformKeys[additionalScope.platform];
+          const shortcut = `Ctrl+Shift+${platformKey}`;
           errorMessage = `The shortcut should match the one provided in the manifest for OS='${additionalScope.platform}'`;
           browser.test.assertEq(shortcut, command.shortcut, errorMessage);
 

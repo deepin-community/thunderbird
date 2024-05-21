@@ -15,10 +15,6 @@
 #include "nsIImapUrl.h"
 #include "nsIMailboxUrl.h"
 #include "nsINntpUrl.h"
-#include "nsMsgNewsCID.h"
-#include "nsMsgLocalCID.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgImapCID.h"
 #include "nsMsgI18N.h"
 #include "nsNativeCharsetUtils.h"
 #include "nsCharTraits.h"
@@ -27,7 +23,6 @@
 #include "nsNetCID.h"
 #include "nsIIOService.h"
 #include "nsIMimeConverter.h"
-#include "nsMsgMimeCID.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsISupportsPrimitives.h"
@@ -66,7 +61,7 @@
 #include "nsIParserUtils.h"
 #include "nsICharsetConverterManager.h"
 #include "nsIDocumentEncoder.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "locale.h"
 #include "nsStringStream.h"
 #include "nsIInputStreamPump.h"
@@ -79,6 +74,9 @@
 #include "mozilla/EncodingDetector.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Utf8.h"
+#include "mozilla/Buffer.h"
+#include "nsIPromptService.h"
+#include "nsEmbedCID.h"
 
 /* for logging to Error Console */
 #include "nsIScriptError.h"
@@ -97,7 +95,7 @@ NS_MSG_BASE void MsgLogToConsole4(const nsAString& aErrorText,
       do_GetService(NS_CONSOLESERVICE_CONTRACTID);
   if (NS_WARN_IF(!console)) return;
   if (NS_FAILED(scriptError->Init(aErrorText, aFilename, EmptyString(),
-                                  aLinenumber, 0, aFlag, "mailnews", false,
+                                  aLinenumber, 0, aFlag, "mailnews"_ns, false,
                                   false)))
     return;
   console->LogMessage(scriptError);
@@ -121,9 +119,9 @@ nsresult GetMessageServiceContractIDForURI(const char* uri,
 
   nsAutoCString protocol(StringHead(uriStr, pos));
 
-  if (protocol.EqualsLiteral("file") &&
-      uriStr.Find("application/x-message-display") != -1)
+  if (protocol.EqualsLiteral("file")) {
     protocol.AssignLiteral("mailbox");
+  }
   // Build message service contractid
   contractID = "@mozilla.org/messenger/messageservice;1?type=";
   contractID += protocol.get();
@@ -131,6 +129,7 @@ nsresult GetMessageServiceContractIDForURI(const char* uri,
   return rv;
 }
 
+// Note: This function is also implemented in JS, see MailServices.jsm.
 nsresult GetMessageServiceFromURI(const nsACString& uri,
                                   nsIMsgMessageService** aMessageService) {
   nsresult rv;
@@ -148,14 +147,14 @@ nsresult GetMessageServiceFromURI(const nsACString& uri,
   return rv;
 }
 
-nsresult GetMsgDBHdrFromURI(const char* uri, nsIMsgDBHdr** msgHdr) {
+nsresult GetMsgDBHdrFromURI(const nsACString& uri, nsIMsgDBHdr** msgHdr) {
   nsCOMPtr<nsIMsgMessageService> msgMessageService;
-  nsresult rv = GetMessageServiceFromURI(nsDependentCString(uri),
-                                         getter_AddRefs(msgMessageService));
+  nsresult rv =
+      GetMessageServiceFromURI(uri, getter_AddRefs(msgMessageService));
   NS_ENSURE_SUCCESS(rv, rv);
   if (!msgMessageService) return NS_ERROR_FAILURE;
 
-  return msgMessageService->MessageURIToMsgHdr(nsDependentCString(uri), msgHdr);
+  return msgMessageService->MessageURIToMsgHdr(uri, msgHdr);
 }
 
 // Where should this live? It's a utility used to convert a string priority,
@@ -284,7 +283,7 @@ int32_t MsgFindCharInSet(const nsCString& aString, const char* aChars,
   return aString.FindCharInSet(aChars, aOffset);
 }
 
-int32_t MsgFindCharInSet(const nsString& aString, const char* aChars,
+int32_t MsgFindCharInSet(const nsString& aString, const char16_t* aChars,
                          uint32_t aOffset) {
   return aString.FindCharInSet(aChars, aOffset);
 }
@@ -360,8 +359,8 @@ nsresult NS_MsgHashIfNecessary(nsAutoCString& name) {
 nsresult NS_MsgHashIfNecessary(nsAutoString& name) {
   if (name.IsEmpty()) return NS_OK;  // Nothing to do.
   int32_t illegalCharacterIndex = MsgFindCharInSet(
-      name, FILE_PATH_SEPARATOR FILE_ILLEGAL_CHARACTERS ILLEGAL_FOLDER_CHARS,
-      0);
+      name,
+      u"" FILE_PATH_SEPARATOR FILE_ILLEGAL_CHARACTERS ILLEGAL_FOLDER_CHARS, 0);
 
   // Need to check the first ('.') and last ('.', '~' and ' ') char
   if (illegalCharacterIndex == -1) {
@@ -406,7 +405,7 @@ nsresult FormatFileSize(int64_t size, bool useKB, nsAString& formattedSize) {
   nsresult rv;
 
   nsCOMPtr<nsIStringBundleService> bundleSvc =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleSvc, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -550,7 +549,8 @@ bool NS_MsgStripRE(const nsCString& subject, nsCString& modifiedSubject) {
   // We cannot strip "Re:" for RFC2047-encoded subject without modifying the
   // original.
   if (subject.Find("=?") != kNotFound) {
-    mimeConverter = do_GetService(NS_MIME_CONVERTER_CONTRACTID, &rv);
+    mimeConverter =
+        do_GetService("@mozilla.org/messenger/mimeconverter;1", &rv);
     if (NS_SUCCEEDED(rv))
       rv = mimeConverter->DecodeMimeHeaderToUTF8(subject, nullptr, false, true,
                                                  decodedString);
@@ -669,7 +669,7 @@ nsresult NS_MsgDecodeUnescapeURLPath(const nsACString& aPath,
 bool WeAreOffline() {
   bool offline = false;
 
-  nsCOMPtr<nsIIOService> ioService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
   if (ioService) ioService->GetOffline(&offline);
 
   return offline;
@@ -750,8 +750,10 @@ nsresult EscapeFromSpaceLine(nsIOutputStream* outputStream, char* start,
 
     if (pChar < end) {
       // Found a line so check if it's a qualified "From " line.
-      if (IsAFromSpaceLine(start, pChar))
+      if (IsAFromSpaceLine(start, pChar)) {
         rv = outputStream->Write(">", 1, &written);
+        NS_ENSURE_SUCCESS(rv, rv);
+      }
       int32_t lineTerminatorCount = (*(pChar + 1) == '\n') ? 2 : 1;
       rv = outputStream->Write(start, pChar - start + lineTerminatorCount,
                                &written);
@@ -760,8 +762,10 @@ nsresult EscapeFromSpaceLine(nsIOutputStream* outputStream, char* start,
       start = pChar;
     } else if (start < end) {
       // Check and flush out the remaining data and we're done.
-      if (IsAFromSpaceLine(start, end))
+      if (IsAFromSpaceLine(start, end)) {
         rv = outputStream->Write(">", 1, &written);
+        NS_ENSURE_SUCCESS(rv, rv);
+      }
       rv = outputStream->Write(start, end - start, &written);
       NS_ENSURE_SUCCESS(rv, rv);
       break;
@@ -1264,25 +1268,16 @@ nsresult MsgCleanupTempFiles(const char* fileName, const char* extension) {
       // start with "Picture-1.jpg" after "Picture.jpg" exists
       tmpFile->SetNativeLeafName(leafName);
     }
-  } while (exists && ++index < 10000);
+  } while (exists && index++ < 10000);
   return NS_OK;
 }
 
 nsresult MsgGetFileStream(nsIFile* file, nsIOutputStream** fileStream) {
   RefPtr<nsMsgFileStream> newFileStream = new nsMsgFileStream;
   nsresult rv = newFileStream->InitWithFile(file);
-  if (NS_SUCCEEDED(rv))
-    rv = newFileStream->QueryInterface(NS_GET_IID(nsIOutputStream),
-                                       (void**)fileStream);
-  return rv;
-}
-
-nsresult MsgReopenFileStream(nsIFile* file, nsIInputStream* fileStream) {
-  nsMsgFileStream* msgFileStream = static_cast<nsMsgFileStream*>(fileStream);
-  if (msgFileStream) {
-    return msgFileStream->InitWithFile(file);
-  }
-  return NS_ERROR_FAILURE;
+  NS_ENSURE_SUCCESS(rv, rv);
+  newFileStream.forget(fileStream);
+  return NS_OK;
 }
 
 nsresult MsgNewBufferedFileOutputStream(nsIOutputStream** aResult,
@@ -1316,7 +1311,7 @@ bool MsgFindKeyword(const nsCString& keyword, nsCString& keywords,
 //                       int32_t aOffset=0,
 //                       int32_t aCount=-1 ) const;
 #define FIND_KEYWORD(keywords, keyword, offset) \
-  ((keywords).Find((keyword), false, (offset)))
+  ((keywords).Find((keyword), (offset)))
   // 'keyword' is the single keyword we're looking for
   // 'keywords' is a space delimited list of keywords to be searched,
   // which may be just a single keyword or even be empty
@@ -1529,23 +1524,18 @@ NS_MSG_BASE nsresult MsgPromptLoginFailed(nsIMsgWindow* aMsgWindow,
                                           const nsACString& aUsername,
                                           const nsAString& aAccountname,
                                           int32_t* aResult) {
-  nsCOMPtr<nsIPrompt> dialog;
-  if (aMsgWindow) aMsgWindow->GetPromptDialog(getter_AddRefs(dialog));
-
-  nsresult rv;
-
-  // If we haven't got one, use a default dialog.
-  if (!dialog) {
-    nsCOMPtr<nsIWindowWatcher> wwatch =
-        do_GetService(NS_WINDOWWATCHER_CONTRACTID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    rv = wwatch->GetNewPrompter(0, getter_AddRefs(dialog));
-    NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<mozIDOMWindowProxy> domWindow;
+  if (aMsgWindow) {
+    aMsgWindow->GetDomWindow(getter_AddRefs(domWindow));
   }
 
+  nsresult rv;
+  nsCOMPtr<nsIPromptService> dlgService(
+      do_GetService(NS_PROMPTSERVICE_CONTRACTID, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
+
   nsCOMPtr<nsIStringBundleService> bundleSvc =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleSvc, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -1583,8 +1573,8 @@ NS_MSG_BASE nsresult MsgPromptLoginFailed(nsIMsgWindow* aMsgWindow,
   NS_ENSURE_SUCCESS(rv, rv);
 
   bool dummyValue = false;
-  return dialog->ConfirmEx(
-      title.get(), message.get(),
+  return dlgService->ConfirmEx(
+      domWindow, title.get(), message.get(),
       (nsIPrompt::BUTTON_TITLE_IS_STRING * nsIPrompt::BUTTON_POS_0) +
           (nsIPrompt::BUTTON_TITLE_CANCEL * nsIPrompt::BUTTON_POS_1) +
           (nsIPrompt::BUTTON_TITLE_IS_STRING * nsIPrompt::BUTTON_POS_2),
@@ -1832,4 +1822,113 @@ void MsgRemoveQueryPart(nsCString& aSpec) {
   if (ind != kNotFound) aSpec.SetLength(ind);
   ind = aSpec.Find("/;");
   if (ind != kNotFound) aSpec.SetLength(ind);
+}
+
+// Perform C-style string escaping.
+// e.g. "foo\r\n" => "foo\\r\\n"
+// (See also CEscape(), in protobuf, for similar function).
+// maxLen can be set to truncate overlong strings (default is SIZE_MAX).
+// E.g.
+// CEscapeString("foo\r\n") => "foo\\r\\n"
+// CEscapeString("foo\r\n", 5) => "fo..."
+nsCString CEscapeString(nsACString const& s, size_t maxLen) {
+  nsCString out;
+  for (size_t i = 0; i < s.Length() && out.Length() < maxLen; ++i) {
+    char c = s[i];
+    switch (c) {
+      case '\a':
+        out += "\\a";
+        break;
+      case '\b':
+        out += "\\b";
+        break;
+      case '\f':
+        out += "\\f";
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      case '\t':
+        out += "\\t";
+        break;
+      case '\v':
+        out += "\\v";
+        break;
+      default:
+        if (c < ' ' || c & 0x80) {
+          out.AppendPrintf("\\x%02x", (uint8_t)c);
+        } else {
+          out += c;
+        }
+        break;
+    }
+  }
+
+  if (maxLen < 3) {
+    maxLen = 3;
+  }
+  if (out.Length() > maxLen - 3) {
+    out.SetLength(maxLen - 3);
+    out.AppendLiteral("...");
+  }
+  return out;
+}
+
+nsresult SyncCopyStream(nsIInputStream* src, nsIOutputStream* dest,
+                        uint64_t& bytesCopied, size_t bufSize) {
+  mozilla::Buffer<char> buf(bufSize);
+  nsresult rv;
+
+  bytesCopied = 0;
+  while (1) {
+    uint32_t numRead;
+    rv = src->Read(buf.Elements(), buf.Length(), &numRead);
+    NS_ENSURE_SUCCESS(rv, rv);
+    if (numRead == 0) {
+      break;  // EOF.
+    }
+    uint32_t pos = 0;
+    while (pos < numRead) {
+      uint32_t n;
+      rv = dest->Write(&buf[pos], numRead - pos, &n);
+      NS_ENSURE_SUCCESS(rv, rv);
+      pos += n;
+      bytesCopied += n;
+    }
+  }
+  return NS_OK;
+}
+
+// Used for "@mozilla.org/network/sync-stream-listener;1".
+already_AddRefed<nsIStreamListener> SyncStreamListenerCreate() {
+  MOZ_ASSERT(NS_IsMainThread());
+
+  nsCOMPtr<nsIStreamListener> listener;
+  nsCOMPtr<nsIInputStream> stream;
+  nsresult rv = NS_NewSyncStreamListener(getter_AddRefs(listener),
+                                         getter_AddRefs(stream));
+  NS_ENSURE_SUCCESS(rv, nullptr);
+  return listener.forget();
+}
+
+// Determine if folder1 and folder2 reside on the same server
+nsresult IsOnSameServer(nsIMsgFolder* folder1, nsIMsgFolder* folder2,
+                        bool* sameServer) {
+  NS_ENSURE_ARG_POINTER(folder1);
+  NS_ENSURE_ARG_POINTER(folder2);
+  NS_ENSURE_ARG_POINTER(sameServer);
+
+  nsCOMPtr<nsIMsgIncomingServer> server1;
+  nsresult rv = folder1->GetServer(getter_AddRefs(server1));
+  NS_ENSURE_SUCCESS(rv, NS_MSG_INVALID_OR_MISSING_SERVER);
+
+  nsCOMPtr<nsIMsgIncomingServer> server2;
+  rv = folder2->GetServer(getter_AddRefs(server2));
+  NS_ENSURE_SUCCESS(rv, NS_MSG_INVALID_OR_MISSING_SERVER);
+
+  NS_ENSURE_TRUE(server2, NS_ERROR_NULL_POINTER);
+  return server2->Equals(server1, sameServer);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2017-2021, [Ribose Inc](https://www.ribose.com).
  * Copyright (c) 2009 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -38,43 +38,55 @@
 #include <string.h>
 #include <stdarg.h>
 #include "rnpkeys.h"
+#include "str-utils.h"
+#include <set>
 
-// must be placed after include "utils.h"
-#ifndef RNP_USE_STD_REGEX
-#include <regex.h>
-#else
-#include <regex>
-#endif
-
-extern const char *rnp_keys_progname;
-
-const char *usage = "-h, --help OR\n"
-                    "\t--export-key [options] OR\n"
-                    "\t--export-rev [options] OR\n"
-                    "\t--revoke-key [options] OR\n"
-                    "\t--generate-key [options] OR\n"
-                    "\t--import, --import-keys, --import-sigs [options] OR\n"
-                    "\t--list-keys [options] OR\n"
-                    "\t--remove-key [options] OR\n"
-                    "\t--version\n"
-                    "where options are:\n"
-                    "\t[--cipher=<cipher name>] AND/OR\n"
-                    "\t[--coredumps] AND/OR\n"
-                    "\t[--expert] AND/OR\n"
-                    "\t[--with-sigs] AND/OR\n"
-                    "\t[--force] AND/OR\n"
-                    "\t[--hash=<hash alg>] AND/OR\n"
-                    "\t[--homedir=<homedir>] AND/OR\n"
-                    "\t[--keyring=<keyring>] AND/OR\n"
-                    "\t[--pass-fd=<fd>] OR\n"
-                    "\t[--password=<password>] AND/OR\n"
-                    "\t[--permissive] AND/OR\n"
-                    "\t[--output=file] file OR\n"
-                    "\t[--keystore-format=<format>] AND/OR\n"
-                    "\t[--userid=<userid>] AND/OR\n"
-                    "\t[--expiration=<expiration>] AND/OR\n"
-                    "\t[--rev-type, --rev-reason] AND/OR\n"
-                    "\t[--verbose]\n";
+const char *usage =
+  "Manipulate OpenPGP keys and keyrings.\n"
+  "Usage: rnpkeys --command [options] [files]\n"
+  "Commands:\n"
+  "  -h, --help             This help message.\n"
+  "  -V, --version          Print RNP version information.\n"
+  "  -g, --generate-key     Generate a new keypair (default is RSA).\n"
+  "    --userid             Specify key's userid.\n"
+  "    --expert             Select key type, size, and additional parameters.\n"
+  "    --numbits            Override default key size (2048).\n"
+  "    --expiration         Set key and subkey expiration time.\n"
+  "    --cipher             Set cipher used to encrypt a secret key.\n"
+  "    --hash               Set hash which is used for key derivation.\n"
+  "    --allow-weak-hash    Allow usage of a weak hash algorithm.\n"
+  "  -l, --list-keys        List keys in the keyrings.\n"
+  "    --secret             List secret keys instead of public ones.\n"
+  "    --with-sigs          List signatures as well.\n"
+  "  --import               Import keys or signatures.\n"
+  "  --import-keys          Import keys.\n"
+  "  --import-sigs          Import signatures.\n"
+  "    --permissive         Skip erroring keys/sigs instead of failing.\n"
+  "  --export-key           Export a key.\n"
+  "    --secret             Export a secret key instead of a public.\n"
+  "  --export-rev           Export a key's revocation.\n"
+  "    --rev-type           Set revocation type.\n"
+  "    --rev-reason         Human-readable reason for revocation.\n"
+  "  --revoke-key           Revoke a key specified.\n"
+  "  --remove-key           Remove a key specified.\n"
+  "  --edit-key             Edit key properties.\n"
+  "    --add-subkey         Add new subkey.\n"
+  "    --check-cv25519-bits Check whether Cv25519 subkey bits are correct.\n"
+  "    --fix-cv25519-bits   Fix Cv25519 subkey bits.\n"
+  "    --set-expire         Set key expiration time.\n"
+  "\n"
+  "Other options:\n"
+  "  --homedir              Override home directory (default is ~/.rnp/).\n"
+  "  --password             Password, which should be used during operation.\n"
+  "  --pass-fd              Read password(s) from the file descriptor.\n"
+  "  --force                Force operation (like secret key removal).\n"
+  "  --output [file, -]     Write data to the specified file or stdout.\n"
+  "  --overwrite            Overwrite output file without a prompt.\n"
+  "  --notty                Do not write anything to the TTY.\n"
+  "  --current-time         Override system's time.\n"
+  "\n"
+  "See man page for a detailed listing and explanation.\n"
+  "\n";
 
 struct option options[] = {
   /* key-management commands */
@@ -93,6 +105,7 @@ struct option options[] = {
   {"export-revocation", no_argument, NULL, CMD_EXPORT_REV},
   {"revoke-key", no_argument, NULL, CMD_REVOKE_KEY},
   {"remove-key", no_argument, NULL, CMD_REMOVE_KEY},
+  {"edit-key", no_argument, NULL, CMD_EDIT_KEY},
   /* debugging commands */
   {"help", no_argument, NULL, CMD_HELP},
   {"version", no_argument, NULL, CMD_VERSION},
@@ -101,29 +114,33 @@ struct option options[] = {
   {"coredumps", no_argument, NULL, OPT_COREDUMPS},
   {"keystore-format", required_argument, NULL, OPT_KEY_STORE_FORMAT},
   {"userid", required_argument, NULL, OPT_USERID},
-  {"format", required_argument, NULL, OPT_FORMAT},
   {"with-sigs", no_argument, NULL, OPT_WITH_SIGS},
-  {"hash-alg", required_argument, NULL, OPT_HASH_ALG},
   {"hash", required_argument, NULL, OPT_HASH_ALG},
-  {"algorithm", required_argument, NULL, OPT_HASH_ALG},
   {"home", required_argument, NULL, OPT_HOMEDIR},
   {"homedir", required_argument, NULL, OPT_HOMEDIR},
   {"numbits", required_argument, NULL, OPT_NUMBITS},
   {"s2k-iterations", required_argument, NULL, OPT_S2K_ITER},
   {"s2k-msec", required_argument, NULL, OPT_S2K_MSEC},
   {"expiration", required_argument, NULL, OPT_EXPIRATION},
-  {"verbose", no_argument, NULL, OPT_VERBOSE},
   {"pass-fd", required_argument, NULL, OPT_PASSWDFD},
   {"password", required_argument, NULL, OPT_PASSWD},
   {"results", required_argument, NULL, OPT_RESULTS},
   {"cipher", required_argument, NULL, OPT_CIPHER},
   {"expert", no_argument, NULL, OPT_EXPERT},
   {"output", required_argument, NULL, OPT_OUTPUT},
+  {"overwrite", no_argument, NULL, OPT_OVERWRITE},
   {"force", no_argument, NULL, OPT_FORCE},
   {"secret", no_argument, NULL, OPT_SECRET},
   {"rev-type", required_argument, NULL, OPT_REV_TYPE},
   {"rev-reason", required_argument, NULL, OPT_REV_REASON},
   {"permissive", no_argument, NULL, OPT_PERMISSIVE},
+  {"notty", no_argument, NULL, OPT_NOTTY},
+  {"fix-cv25519-bits", no_argument, NULL, OPT_FIX_25519_BITS},
+  {"check-cv25519-bits", no_argument, NULL, OPT_CHK_25519_BITS},
+  {"add-subkey", no_argument, NULL, OPT_ADD_SUBKEY},
+  {"set-expire", required_argument, NULL, OPT_SET_EXPIRE},
+  {"current-time", required_argument, NULL, OPT_CURTIME},
+  {"allow-weak-hash", no_argument, NULL, OPT_ALLOW_WEAK_HASH},
   {NULL, 0, NULL, 0},
 };
 
@@ -131,8 +148,8 @@ struct option options[] = {
 static bool
 print_keys_info(cli_rnp_t *rnp, FILE *fp, const char *filter)
 {
-    bool psecret = cli_rnp_cfg(*rnp).get_bool(CFG_SECRET);
-    bool psigs = cli_rnp_cfg(*rnp).get_bool(CFG_WITH_SIGS);
+    bool psecret = rnp->cfg().get_bool(CFG_SECRET);
+    bool psigs = rnp->cfg().get_bool(CFG_WITH_SIGS);
     int  flags = CLI_SEARCH_SUBKEYS_AFTER | (psecret ? CLI_SEARCH_SECRET : 0);
     std::vector<rnp_key_handle_t> keys;
 
@@ -152,33 +169,20 @@ print_keys_info(cli_rnp_t *rnp, FILE *fp, const char *filter)
 }
 
 static bool
-imported_key_changed(json_object *key)
+import_keys(cli_rnp_t *rnp, rnp_input_t input, const std::string &inname)
 {
-    const char *pub = json_obj_get_str(key, "public");
-    const char *sec = json_obj_get_str(key, "secret");
+    std::set<std::string> new_pub_keys;
+    std::set<std::string> new_sec_keys;
+    std::set<std::string> updated_keys;
+    bool                  res = false;
+    bool                  updated = false;
+    size_t                unchanged_keys = 0;
+    size_t                processed_keys = 0;
 
-    if (pub && ((!strcmp(pub, "updated") || !strcmp(pub, "new")))) {
-        return true;
-    }
-    return sec && ((!strcmp(sec, "updated") || !strcmp(sec, "new")));
-}
+    uint32_t flags = RNP_LOAD_SAVE_PUBLIC_KEYS | RNP_LOAD_SAVE_SECRET_KEYS |
+                     RNP_LOAD_SAVE_SINGLE | RNP_LOAD_SAVE_BASE64;
 
-static bool
-import_keys(cli_rnp_t *rnp, const char *file)
-{
-    rnp_input_t input = NULL;
-    bool        res = false;
-    bool        updated = false;
-
-    if (rnp_input_from_path(&input, file)) {
-        ERR_MSG("failed to open file %s", file);
-        return false;
-    }
-
-    uint32_t flags =
-      RNP_LOAD_SAVE_PUBLIC_KEYS | RNP_LOAD_SAVE_SECRET_KEYS | RNP_LOAD_SAVE_SINGLE;
-
-    bool permissive = cli_rnp_cfg(*rnp).get_bool(CFG_PERMISSIVE);
+    bool permissive = rnp->cfg().get_bool(CFG_PERMISSIVE);
     if (permissive) {
         flags |= RNP_LOAD_SAVE_PERMISSIVE;
     }
@@ -191,8 +195,14 @@ import_keys(cli_rnp_t *rnp, const char *file)
             res = true;
             break;
         }
+        if (ret && updated) {
+            /* some keys were imported, but then error occurred */
+            ERR_MSG("warning: not all data was processed.");
+            res = true;
+            break;
+        }
         if (ret) {
-            ERR_MSG("failed to import key(s), from file %s, stopping.", file);
+            ERR_MSG("failed to import key(s) from %s, stopping.", inname.c_str());
             break;
         }
 
@@ -209,28 +219,60 @@ import_keys(cli_rnp_t *rnp, const char *file)
             json_object_put(jso);
             break;
         }
+        processed_keys += json_object_array_length(keys);
         for (size_t idx = 0; idx < (size_t) json_object_array_length(keys); idx++) {
             json_object *    keyinfo = json_object_array_get_idx(keys, idx);
             rnp_key_handle_t key = NULL;
-            if (!keyinfo || !imported_key_changed(keyinfo)) {
+            if (!keyinfo) {
                 continue;
             }
+            std::string pub_status = json_obj_get_str(keyinfo, "public");
+            std::string sec_status = json_obj_get_str(keyinfo, "secret");
             const char *fphex = json_obj_get_str(keyinfo, "fingerprint");
+
+            if (pub_status == "new") {
+                new_pub_keys.insert(fphex);
+                updated = true;
+            }
+            if (sec_status == "new") {
+                new_sec_keys.insert(fphex);
+                updated = true;
+            }
+            if (pub_status == "updated" || sec_status == "updated") {
+                updated_keys.insert(fphex);
+                updated = true;
+            }
+            if (pub_status == "unchanged" || sec_status == "unchanged") {
+                if (!new_pub_keys.count(fphex) && !new_sec_keys.count(fphex) &&
+                    !updated_keys.count(fphex)) {
+                    unchanged_keys++;
+                    continue;
+                }
+            }
             if (rnp_locate_key(rnp->ffi, "fingerprint", fphex, &key) || !key) {
                 ERR_MSG("failed to locate key with fingerprint %s", fphex);
                 continue;
             }
             cli_rnp_print_key_info(stdout, rnp->ffi, key, true, false);
             rnp_key_handle_destroy(key);
-            updated = true;
         }
         json_object_put(jso);
     } while (1);
 
+    // print statistics
+    ERR_MSG("Import finished: %lu key%s processed, %lu new public keys, %lu new secret keys, "
+            "%lu updated, %lu unchanged.",
+            processed_keys,
+            (processed_keys != 1) ? "s" : "",
+            new_pub_keys.size(),
+            new_sec_keys.size(),
+            updated_keys.size(),
+            unchanged_keys);
+
     if (updated) {
         // set default key if we didn't have one
-        if (cli_rnp_defkey(rnp).empty()) {
-            cli_rnp_set_default_key(rnp);
+        if (rnp->defkey().empty()) {
+            rnp->set_defkey();
         }
 
         // save public and secret keyrings
@@ -238,21 +280,13 @@ import_keys(cli_rnp_t *rnp, const char *file)
             ERR_MSG("failed to save keyrings");
         }
     }
-    rnp_input_destroy(input);
     return res;
 }
 
 static bool
-import_sigs(cli_rnp_t *rnp, const char *file)
+import_sigs(cli_rnp_t *rnp, rnp_input_t input, const std::string &inname)
 {
-    rnp_input_t input = NULL;
-    bool        res = false;
-
-    if (rnp_input_from_path(&input, file)) {
-        ERR_MSG("Failed to open file %s", file);
-        return false;
-    }
-
+    bool         res = false;
     char *       results = NULL;
     json_object *jso = NULL;
     json_object *sigs = NULL;
@@ -261,7 +295,7 @@ import_sigs(cli_rnp_t *rnp, const char *file)
     int          old_sigs = 0;
 
     if (rnp_import_signatures(rnp->ffi, input, 0, &results)) {
-        ERR_MSG("Failed to import signatures from file %s", file);
+        ERR_MSG("Failed to import signatures from %s", inname.c_str());
         goto done;
     }
     // print information about imported signature(s)
@@ -306,56 +340,51 @@ import_sigs(cli_rnp_t *rnp, const char *file)
 done:
     json_object_put(jso);
     rnp_buffer_destroy(results);
-    rnp_input_destroy(input);
     return res;
 }
 
 static bool
-import(cli_rnp_t *rnp, const char *file, int cmd)
+import(cli_rnp_t *rnp, const std::string &spec, int cmd)
 {
-    if (!file) {
-        ERR_MSG("Import file isn't specified");
+    if (spec.empty()) {
+        ERR_MSG("Import path isn't specified");
         return false;
     }
-
-    if (cmd == CMD_IMPORT_KEYS) {
-        return import_keys(rnp, file);
-    }
-    if (cmd == CMD_IMPORT_SIGS) {
-        return import_sigs(rnp, file);
-    }
-
-    rnp_input_t input = NULL;
-    if (rnp_input_from_path(&input, file)) {
-        ERR_MSG("Failed to open file %s", file);
+    rnp_input_t input = cli_rnp_input_from_specifier(*rnp, spec, NULL);
+    if (!input) {
+        ERR_MSG("Failed to create input for %s", spec.c_str());
         return false;
     }
+    if (cmd == CMD_IMPORT) {
+        char *contents = NULL;
+        if (rnp_guess_contents(input, &contents)) {
+            ERR_MSG("Warning! Failed to guess content type to import. Assuming keys.");
+        }
+        cmd = (contents && !strcmp(contents, "signature")) ? CMD_IMPORT_SIGS : CMD_IMPORT_KEYS;
+        rnp_buffer_destroy(contents);
+    }
 
-    char *contents = NULL;
-    if (rnp_guess_contents(input, &contents)) {
-        ERR_MSG("Warning! Failed to guess content type to import. Assuming keys.");
+    bool res = false;
+    switch (cmd) {
+    case CMD_IMPORT_KEYS:
+        res = import_keys(rnp, input, spec);
+        break;
+    case CMD_IMPORT_SIGS:
+        res = import_sigs(rnp, input, spec);
+        break;
+    default:
+        ERR_MSG("Unexpected command: %d", cmd);
     }
     rnp_input_destroy(input);
-    bool signature = contents && !strcmp(contents, "signature");
-    rnp_buffer_destroy(contents);
-
-    return signature ? import_sigs(rnp, file) : import_keys(rnp, file);
-}
-
-void
-print_praise(void)
-{
-    ERR_MSG("%s\nAll bug reports, praise and chocolate, please, to:\n%s",
-            PACKAGE_STRING,
-            PACKAGE_BUGREPORT);
+    return res;
 }
 
 /* print a usage message */
 void
 print_usage(const char *usagemsg)
 {
-    print_praise();
-    ERR_MSG("Usage: %s %s", rnp_keys_progname, usagemsg);
+    cli_rnp_print_praise();
+    puts(usagemsg);
 }
 
 /* do a command once for a specified file 'f' */
@@ -366,14 +395,14 @@ rnp_cmd(cli_rnp_t *rnp, optdefs_t cmd, const char *f)
 
     switch (cmd) {
     case CMD_LIST_KEYS:
-        if (!f && cli_rnp_cfg(*rnp).get_count(CFG_USERID)) {
-            fs = cli_rnp_cfg(*rnp).get_str(CFG_USERID, 0);
+        if (!f && rnp->cfg().get_count(CFG_USERID)) {
+            fs = rnp->cfg().get_str(CFG_USERID, 0);
             f = fs.c_str();
         }
         return print_keys_info(rnp, stdout, f);
     case CMD_EXPORT_KEY: {
-        if (!f && cli_rnp_cfg(*rnp).get_count(CFG_USERID)) {
-            fs = cli_rnp_cfg(*rnp).get_str(CFG_USERID, 0);
+        if (!f && rnp->cfg().get_count(CFG_USERID)) {
+            fs = rnp->cfg().get_str(CFG_USERID, 0);
             f = fs.c_str();
         }
         if (!f) {
@@ -385,12 +414,12 @@ rnp_cmd(cli_rnp_t *rnp, optdefs_t cmd, const char *f)
     case CMD_IMPORT:
     case CMD_IMPORT_KEYS:
     case CMD_IMPORT_SIGS:
-        return import(rnp, f, cmd);
+        return import(rnp, f ? f : "", cmd);
     case CMD_GENERATE_KEY: {
         if (!f) {
-            size_t count = cli_rnp_cfg(*rnp).get_count(CFG_USERID);
+            size_t count = rnp->cfg().get_count(CFG_USERID);
             if (count == 1) {
-                fs = cli_rnp_cfg(*rnp).get_str(CFG_USERID, 0);
+                fs = rnp->cfg().get_str(CFG_USERID, 0);
                 f = fs.c_str();
             } else if (count > 1) {
                 ERR_MSG("Only single userid is supported for generated keys");
@@ -420,13 +449,20 @@ rnp_cmd(cli_rnp_t *rnp, optdefs_t cmd, const char *f)
         }
         return cli_rnp_remove_key(rnp, f);
     }
+    case CMD_EDIT_KEY: {
+        if (!f) {
+            ERR_MSG("You need to specify a key or subkey to edit.");
+            return false;
+        }
+        return rnp->edit_key(f);
+    }
     case CMD_VERSION:
-        print_praise();
+        cli_rnp_print_praise();
         return true;
     case CMD_HELP:
     default:
         print_usage(usage);
-        return false;
+        return true;
     }
 }
 
@@ -436,6 +472,9 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
 {
     switch (val) {
     case OPT_COREDUMPS:
+#ifdef _WIN32
+        ERR_MSG("warning: --coredumps doesn't make sense on windows systems.");
+#endif
         cfg.set_bool(CFG_COREDUMPS, true);
         return true;
     case CMD_GENERATE_KEY:
@@ -450,6 +489,7 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
     case CMD_EXPORT_REV:
     case CMD_REVOKE_KEY:
     case CMD_REMOVE_KEY:
+    case CMD_EDIT_KEY:
     case CMD_IMPORT:
     case CMD_IMPORT_KEYS:
     case CMD_IMPORT_SIGS:
@@ -459,60 +499,29 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         return true;
     /* options */
     case OPT_KEY_STORE_FORMAT:
-        if (!arg) {
-            ERR_MSG("No keyring format argument provided");
-            return false;
-        }
         cfg.set_str(CFG_KEYSTOREFMT, arg);
         return true;
     case OPT_USERID:
-        if (!arg) {
-            ERR_MSG("no userid argument provided");
-            return false;
-        }
         cfg.add_str(CFG_USERID, arg);
         return true;
-    case OPT_VERBOSE:
-        cfg.set_int(CFG_VERBOSE, cfg.get_int(CFG_VERBOSE) + 1);
-        return true;
     case OPT_HOMEDIR:
-        if (!arg) {
-            ERR_MSG("no home directory argument provided");
-            return false;
-        }
         cfg.set_str(CFG_HOMEDIR, arg);
         return true;
     case OPT_NUMBITS: {
-        if (!arg) {
-            ERR_MSG("no number of bits argument provided");
-            return false;
-        }
-        int bits = atoi(arg);
-        if ((bits < 1024) || (bits > 16384)) {
+        int bits = 0;
+        if (!rnp::str_to_int(arg, bits) || (bits < 1024) || (bits > 16384)) {
             ERR_MSG("wrong bits value: %s", arg);
             return false;
         }
         cfg.set_int(CFG_NUMBITS, bits);
         return true;
     }
-    case OPT_HASH_ALG: {
-        if (!arg) {
-            ERR_MSG("No hash algorithm argument provided");
-            return false;
-        }
-        bool supported = false;
-        if (rnp_supports_feature(RNP_FEATURE_HASH_ALG, arg, &supported) || !supported) {
-            ERR_MSG("Unsupported hash algorithm: %s", arg);
-            return false;
-        }
-        cfg.set_str(CFG_HASH, arg);
+    case OPT_ALLOW_WEAK_HASH:
+        cfg.set_bool(CFG_WEAK_HASH, true);
         return true;
-    }
+    case OPT_HASH_ALG:
+        return cli_rnp_set_hash(cfg, arg);
     case OPT_S2K_ITER: {
-        if (!arg) {
-            ERR_MSG("No s2k iteration argument provided");
-            return false;
-        }
         int iterations = atoi(arg);
         if (!iterations) {
             ERR_MSG("Wrong iterations value: %s", arg);
@@ -526,12 +535,8 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         cfg.set_str(CFG_KG_SUBKEY_EXPIRATION, arg);
         return true;
     case OPT_S2K_MSEC: {
-        if (!arg) {
-            ERR_MSG("No s2k msec argument provided");
-            return false;
-        }
-        int msec = atoi(arg);
-        if (!msec) {
+        int msec = 0;
+        if (!rnp::str_to_int(arg, msec) || !msec) {
             ERR_MSG("Invalid s2k msec value: %s", arg);
             return false;
         }
@@ -539,50 +544,28 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         return true;
     }
     case OPT_PASSWDFD:
-        if (!arg) {
-            ERR_MSG("no pass-fd argument provided");
-            return false;
-        }
         cfg.set_str(CFG_PASSFD, arg);
         return true;
     case OPT_PASSWD:
-        if (!arg) {
-            ERR_MSG("No password argument provided");
-            return false;
-        }
         cfg.set_str(CFG_PASSWD, arg);
         return true;
     case OPT_RESULTS:
-        if (!arg) {
-            ERR_MSG("No output filename argument provided");
-            return false;
-        }
         cfg.set_str(CFG_IO_RESS, arg);
         return true;
-    case OPT_FORMAT:
-        if (!arg) {
-            ERR_MSG("No key format argument provided");
-            return false;
-        }
-        cfg.set_str(CFG_KEYFORMAT, arg);
-        return true;
-    case OPT_CIPHER: {
-        bool supported = false;
-        if (rnp_supports_feature(RNP_FEATURE_SYMM_ALG, arg, &supported) || !supported) {
-            ERR_MSG("Unsupported symmetric algorithm: %s", arg);
-            return false;
-        }
-        cfg.set_str(CFG_CIPHER, arg);
-        return true;
-    }
+    case OPT_CIPHER:
+        return cli_rnp_set_cipher(cfg, arg);
     case OPT_DEBUG:
-        return !rnp_enable_debug(arg);
+        ERR_MSG("Option --debug is deprecated, ignoring.");
+        return true;
     case OPT_OUTPUT:
         if (!arg) {
             ERR_MSG("No output filename argument provided");
             return false;
         }
         cfg.set_str(CFG_OUTFILE, arg);
+        return true;
+    case OPT_OVERWRITE:
+        cfg.set_bool(CFG_OVERWRITE, true);
         return true;
     case OPT_FORCE:
         cfg.set_bool(CFG_FORCE, true);
@@ -594,10 +577,6 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         cfg.set_bool(CFG_WITH_SIGS, true);
         return true;
     case OPT_REV_TYPE: {
-        if (!arg) {
-            ERR_MSG("No revocation type argument provided");
-            return false;
-        }
         std::string revtype = arg;
         if (revtype == "0") {
             revtype = "no";
@@ -612,14 +591,28 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
         return true;
     }
     case OPT_REV_REASON:
-        if (!arg) {
-            ERR_MSG("No revocation reason argument provided");
-            return false;
-        }
         cfg.set_str(CFG_REV_REASON, arg);
         return true;
     case OPT_PERMISSIVE:
         cfg.set_bool(CFG_PERMISSIVE, true);
+        return true;
+    case OPT_NOTTY:
+        cfg.set_bool(CFG_NOTTY, true);
+        return true;
+    case OPT_FIX_25519_BITS:
+        cfg.set_bool(CFG_FIX_25519_BITS, true);
+        return true;
+    case OPT_CHK_25519_BITS:
+        cfg.set_bool(CFG_CHK_25519_BITS, true);
+        return true;
+    case OPT_CURTIME:
+        cfg.set_str(CFG_CURTIME, arg);
+        return true;
+    case OPT_ADD_SUBKEY:
+        cfg.set_bool(CFG_ADD_SUBKEY, true);
+        return true;
+    case OPT_SET_EXPIRE:
+        cfg.set_str(CFG_SET_KEY_EXPIRE, arg);
         return true;
     default:
         *cmd = CMD_HELP;
@@ -627,92 +620,29 @@ setoption(rnp_cfg &cfg, optdefs_t *cmd, int val, const char *arg)
     }
 }
 
-/* we have -o option=value -- parse, and process */
 bool
-parse_option(rnp_cfg &cfg, optdefs_t *cmd, const char *s)
-{
-#ifndef RNP_USE_STD_REGEX
-    static regex_t opt;
-    struct option *op;
-    static int     compiled;
-    regmatch_t     matches[10];
-    char           option[128];
-    char           value[128];
-
-    if (!compiled) {
-        compiled = 1;
-        if (regcomp(&opt, "([^=]{1,128})(=(.*))?", REG_EXTENDED) != 0) {
-            ERR_MSG("Can't compile regex");
-            return false;
-        }
-    }
-    if (regexec(&opt, s, 10, matches, 0) == 0) {
-        (void) snprintf(option,
-                        sizeof(option),
-                        "%.*s",
-                        (int) (matches[1].rm_eo - matches[1].rm_so),
-                        &s[matches[1].rm_so]);
-        if (matches[2].rm_so > 0) {
-            (void) snprintf(value,
-                            sizeof(value),
-                            "%.*s",
-                            (int) (matches[3].rm_eo - matches[3].rm_so),
-                            &s[matches[3].rm_so]);
-        } else {
-            value[0] = 0x0;
-        }
-        for (op = options; op->name; op++) {
-            if (strcmp(op->name, option) == 0) {
-                return setoption(cfg, cmd, op->val, value);
-            }
-        }
-    }
-#else
-    static std::regex re("([^=]{1,128})(=(.*))?", std::regex_constants::extended);
-    std::string       input = s;
-    std::smatch       result;
-
-    if (std::regex_match(input, result, re)) {
-        std::string option = result[1];
-        std::string value;
-        if (result.size() >= 4) {
-            value = result[3];
-        }
-        for (struct option *op = options; op->name; op++) {
-            if (strcmp(op->name, option.c_str()) == 0) {
-                return setoption(cfg, cmd, op->val, value.c_str());
-            }
-        }
-    }
-#endif
-    return false;
-}
-
-bool
-rnpkeys_init(cli_rnp_t *rnp, const rnp_cfg &cfg)
+rnpkeys_init(cli_rnp_t &rnp, const rnp_cfg &cfg)
 {
     rnp_cfg rnpcfg;
-    bool    ret = false;
     rnpcfg.load_defaults();
     rnpcfg.set_int(CFG_NUMBITS, DEFAULT_RSA_NUMBITS);
     rnpcfg.set_str(CFG_IO_RESS, "<stdout>");
-    rnpcfg.set_str(CFG_KEYFORMAT, "human");
     rnpcfg.copy(cfg);
 
     if (!cli_cfg_set_keystore_info(rnpcfg)) {
         ERR_MSG("fatal: cannot set keystore info");
-        goto end;
+        return false;
     }
-    if (!cli_rnp_init(rnp, rnpcfg)) {
+    if (!rnp.init(rnpcfg)) {
         ERR_MSG("fatal: failed to initialize rnpkeys");
-        goto end;
+        return false;
+    }
+    if (!cli_rnp_check_weak_hash(&rnp)) {
+        ERR_MSG("Weak hash algorithm detected. Pass --allow-weak-hash option if you really "
+                "want to use it.");
+        return false;
     }
     /* TODO: at some point we should check for error here */
-    (void) cli_rnp_load_keyrings(rnp, true);
-    ret = true;
-end:
-    if (!ret) {
-        cli_rnp_end(rnp);
-    }
-    return ret;
+    (void) rnp.load_keyrings(true);
+    return true;
 }

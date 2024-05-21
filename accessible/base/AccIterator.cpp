@@ -5,10 +5,11 @@
 #include "AccIterator.h"
 
 #include "AccGroupInfo.h"
-#ifdef MOZ_XUL
-#  include "XULTreeAccessible.h"
-#endif
+#include "DocAccessible-inl.h"
+#include "LocalAccessible-inl.h"
+#include "XULTreeAccessible.h"
 
+#include "mozilla/a11y/DocAccessibleParent.h"
 #include "mozilla/dom/DocumentOrShadowRoot.h"
 #include "mozilla/dom/HTMLLabelElement.h"
 
@@ -70,36 +71,71 @@ AccIterator::IteratorState::IteratorState(const LocalAccessible* aParent,
 RelatedAccIterator::RelatedAccIterator(DocAccessible* aDocument,
                                        nsIContent* aDependentContent,
                                        nsAtom* aRelAttr)
-    : mDocument(aDocument), mRelAttr(aRelAttr), mProviders(nullptr), mIndex(0) {
+    : mDocument(aDocument),
+      mDependentContent(aDependentContent),
+      mRelAttr(aRelAttr),
+      mProviders(nullptr),
+      mIndex(0),
+      mIsWalkingDependentElements(false) {
   nsAutoString id;
   if (aDependentContent->IsElement() &&
-      aDependentContent->AsElement()->GetAttr(kNameSpaceID_None, nsGkAtoms::id,
-                                              id)) {
+      aDependentContent->AsElement()->GetAttr(nsGkAtoms::id, id)) {
     mProviders = mDocument->GetRelProviders(aDependentContent->AsElement(), id);
   }
 }
 
 LocalAccessible* RelatedAccIterator::Next() {
-  if (!mProviders) return nullptr;
+  if (!mProviders || mIndex == mProviders->Length()) {
+    if (mIsWalkingDependentElements) {
+      // We've walked both dependent ids and dependent elements, so there are
+      // no more targets.
+      return nullptr;
+    }
+    // We've returned all dependent ids, but there might be dependent elements
+    // too. Walk those next.
+    mIsWalkingDependentElements = true;
+    mIndex = 0;
+    if (auto providers =
+            mDocument->mDependentElementsMap.Lookup(mDependentContent)) {
+      mProviders = &providers.Data();
+    } else {
+      mProviders = nullptr;
+      return nullptr;
+    }
+  }
 
   while (mIndex < mProviders->Length()) {
     const auto& provider = (*mProviders)[mIndex++];
 
     // Return related accessible for the given attribute.
-    if (provider->mRelAttr == mRelAttr) {
-      LocalAccessible* related = mDocument->GetAccessible(provider->mContent);
-      if (related) {
-        return related;
-      }
+    if (mRelAttr && provider->mRelAttr != mRelAttr) {
+      continue;
+    }
+    // If we're walking elements (not ids), the explicitly set attr-element
+    // `mDependentContent` must be a descendant of any of the refering element
+    // `mProvider->mContent`'s shadow-including ancestors.
+    if (mIsWalkingDependentElements &&
+        !nsCoreUtils::IsDescendantOfAnyShadowIncludingAncestor(
+            mDependentContent, provider->mContent)) {
+      continue;
+    }
+    LocalAccessible* related = mDocument->GetAccessible(provider->mContent);
+    if (related) {
+      return related;
+    }
 
-      // If the document content is pointed by relation then return the
-      // document itself.
-      if (provider->mContent == mDocument->GetContent()) {
-        return mDocument;
-      }
+    // If the document content is pointed by relation then return the
+    // document itself.
+    if (provider->mContent == mDocument->GetContent()) {
+      return mDocument;
     }
   }
 
+  // We exhausted mProviders without returning anything.
+  if (!mIsWalkingDependentElements) {
+    // Call this function again to start walking the dependent elements.
+    return Next();
+  }
   return nullptr;
 }
 
@@ -139,8 +175,7 @@ LocalAccessible* HTMLLabelIterator::Next() {
   LocalAccessible* walkUp = mAcc->LocalParent();
   while (walkUp && !walkUp->IsDoc()) {
     nsIContent* walkUpEl = walkUp->GetContent();
-    if (IsLabel(walkUp) &&
-        !walkUpEl->AsElement()->HasAttr(kNameSpaceID_None, nsGkAtoms::_for)) {
+    if (IsLabel(walkUp) && !walkUpEl->AsElement()->HasAttr(nsGkAtoms::_for)) {
       mLabelFilter = eSkipAncestorLabel;  // prevent infinite loop
       return walkUp;
     }
@@ -212,7 +247,7 @@ IDRefsIterator::IDRefsIterator(DocAccessible* aDoc, nsIContent* aContent,
                                nsAtom* aIDRefsAttr)
     : mContent(aContent), mDoc(aDoc), mCurrIdx(0) {
   if (mContent->IsElement()) {
-    mContent->AsElement()->GetAttr(kNameSpaceID_None, aIDRefsAttr, mIDs);
+    mContent->AsElement()->GetAttr(aIDRefsAttr, mIDs);
   }
 }
 
@@ -279,12 +314,15 @@ LocalAccessible* IDRefsIterator::Next() {
 // SingleAccIterator
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalAccessible* SingleAccIterator::Next() {
-  RefPtr<LocalAccessible> nextAcc;
-  mAcc.swap(nextAcc);
-  if (!nextAcc || nextAcc->IsDefunct()) {
+Accessible* SingleAccIterator::Next() {
+  Accessible* nextAcc = mAcc;
+  mAcc = nullptr;
+  if (!nextAcc) {
     return nullptr;
   }
+
+  MOZ_ASSERT(!nextAcc->IsLocal() || !nextAcc->AsLocal()->IsDefunct(),
+             "Iterator references defunct accessible?");
   return nextAcc;
 }
 
@@ -292,14 +330,18 @@ LocalAccessible* SingleAccIterator::Next() {
 // ItemIterator
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalAccessible* ItemIterator::Next() {
+Accessible* ItemIterator::Next() {
   if (mContainer) {
     mAnchor = AccGroupInfo::FirstItemOf(mContainer);
     mContainer = nullptr;
     return mAnchor;
   }
 
-  return mAnchor ? (mAnchor = AccGroupInfo::NextItemTo(mAnchor)) : nullptr;
+  if (mAnchor) {
+    mAnchor = AccGroupInfo::NextItemTo(mAnchor);
+  }
+
+  return mAnchor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,5 +377,20 @@ LocalAccessible* XULTreeItemIterator::Next() {
     mCurrRowIdx++;
   }
 
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// RemoteAccIterator
+////////////////////////////////////////////////////////////////////////////////
+
+Accessible* RemoteAccIterator::Next() {
+  while (mIndex < mIds.Length()) {
+    uint64_t id = mIds[mIndex++];
+    Accessible* acc = mDoc->GetAccessible(id);
+    if (acc) {
+      return acc;
+    }
+  }
   return nullptr;
 }

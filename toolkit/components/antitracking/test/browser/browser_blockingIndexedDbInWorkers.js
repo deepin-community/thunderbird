@@ -1,5 +1,3 @@
-/* import-globals-from antitracking_head.js */
-
 AntiTracking.runTestInNormalAndPrivateMode(
   "IndexedDB in workers",
   async _ => {
@@ -22,7 +20,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -30,7 +28,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
@@ -51,7 +49,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -59,16 +57,17 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
-  }
+  },
+  [["dom.indexedDB.hide_in_pbmode.enabled", false]]
 );

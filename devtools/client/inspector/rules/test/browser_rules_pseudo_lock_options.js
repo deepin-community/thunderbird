@@ -5,7 +5,9 @@
 
 // Tests that the rule view pseudo lock options work properly.
 
-const { PSEUDO_CLASSES } = require("devtools/shared/css/constants");
+const {
+  PSEUDO_CLASSES,
+} = require("resource://devtools/shared/css/constants.js");
 const TEST_URI = `
   <style type='text/css'>
     div {
@@ -36,10 +38,24 @@ const TEST_URI = `
   <div>test div</div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode("div", inspector);
+
+  info("Check that the toggle button exists");
+  const button = inspector.panelDoc.getElementById("pseudo-class-panel-toggle");
+  ok(button, "The pseudo-class panel toggle button exists");
+  is(
+    view.pseudoClassToggle,
+    button,
+    "The rule-view refers to the right element"
+  );
+  is(
+    inspector.panelDoc.getElementById(button.getAttribute("aria-controls")),
+    view.pseudoClassPanel,
+    "The pseudo-class panel toggle button has valid aria-controls attribute"
+  );
 
   await assertPseudoPanelClosed(view);
 
@@ -127,8 +143,12 @@ function assertPseudoRemoved(inspector, view, numRules) {
 
 function assertPseudoPanelOpened(view) {
   info("Check the opened state of the pseudo class panel");
-
   ok(!view.pseudoClassPanel.hidden, "Pseudo Class Panel Opened");
+  is(
+    view.pseudoClassToggle.getAttribute("aria-pressed"),
+    "true",
+    "The toggle button is pressed"
+  );
 
   for (const pseudo of PSEUDO_CLASSES) {
     const checkbox = getPseudoClassCheckbox(view, pseudo);
@@ -143,8 +163,12 @@ function assertPseudoPanelOpened(view) {
 
 function assertPseudoPanelClosed(view) {
   info("Check the closed state of the pseudo clas panel");
-
   ok(view.pseudoClassPanel.hidden, "Pseudo Class Panel Hidden");
+  is(
+    view.pseudoClassToggle.getAttribute("aria-pressed"),
+    "false",
+    "The toggle button is not pressed"
+  );
 
   for (const pseudo of PSEUDO_CLASSES) {
     const checkbox = getPseudoClassCheckbox(view, pseudo);

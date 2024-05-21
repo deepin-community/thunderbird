@@ -27,6 +27,7 @@
 #include "nsISpeculativeConnect.h"
 #include "nsTHashMap.h"
 #include "nsTHashSet.h"
+
 #ifdef DEBUG
 #  include "nsIOService.h"
 #endif
@@ -35,7 +36,9 @@
 // method implementations to the cpp file
 #include "nsIChannel.h"
 #include "nsIHttpChannel.h"
+#include "nsSocketTransportService2.h"
 
+class nsIHttpActivityDistributor;
 class nsIHttpUpgradeListener;
 class nsIPrefBranch;
 class nsICancelable;
@@ -45,10 +48,7 @@ class nsIRequestContextService;
 class nsISiteSecurityService;
 class nsIStreamConverterService;
 
-namespace mozilla {
-namespace net {
-
-bool OnSocketThread();
+namespace mozilla::net {
 
 class ATokenBucketEvent;
 class EventTokenBucket;
@@ -118,11 +118,12 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   [[nodiscard]] nsresult AddStandardRequestHeaders(
       nsHttpRequestHead*, bool isSecure,
-      ExtContentPolicyType aContentPolicyType);
+      ExtContentPolicyType aContentPolicyType,
+      bool aShouldResistFingerprinting);
   [[nodiscard]] nsresult AddConnectionHeader(nsHttpRequestHead*, uint32_t caps);
   bool IsAcceptableEncoding(const char* encoding, bool isSecure);
 
-  const nsCString& UserAgent();
+  const nsCString& UserAgent(bool aShouldResistFingerprinting);
 
   enum HttpVersion HttpVersion() { return mHttpVersion; }
   enum HttpVersion ProxyHttpVersion() { return mProxyHttpVersion; }
@@ -148,11 +149,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
     return mEnablePersistentHttpsCaching;
   }
 
-  bool IsSpdyEnabled() { return mEnableSpdy; }
-  bool IsHttp2Enabled() { return mHttp2Enabled; }
-  bool EnforceHttp2TlsProfile() { return mEnforceHttp2TlsProfile; }
-  bool CoalesceSpdy() { return mCoalesceSpdy; }
-  bool UseSpdyPersistentSettings() { return mSpdyPersistentSettings; }
   uint32_t SpdySendingChunkSize() { return mSpdySendingChunkSize; }
   uint32_t SpdySendBufferSize() { return mSpdySendBufferSize; }
   uint32_t SpdyPushAllowance() { return mSpdyPushAllowance; }
@@ -160,7 +156,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   uint32_t DefaultSpdyConcurrent() { return mDefaultSpdyConcurrent; }
   PRIntervalTime SpdyPingThreshold() { return mSpdyPingThreshold; }
   PRIntervalTime SpdyPingTimeout() { return mSpdyPingTimeout; }
-  bool AllowPush() { return mAllowPush; }
   bool AllowAltSvc() { return mEnableAltSvc; }
   bool AllowAltSvcOE() { return mEnableAltSvcOE; }
   bool AllowOriginExtension() { return mEnableOriginExtension; }
@@ -172,9 +167,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   bool CriticalRequestPrioritization() {
     return mCriticalRequestPrioritization;
   }
-
-  bool UseH2Deps() { return mUseH2Deps; }
-  bool IsH2WebsocketsEnabled() { return mEnableH2Websockets; }
 
   uint32_t MaxConnectionsPerOrigin() {
     return mMaxPersistentConnectionsPerServer;
@@ -280,7 +272,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
                                                int32_t priority);
 
   void UpdateClassOfServiceOnTransaction(HttpTransactionShell* trans,
-                                         uint32_t classOfService);
+                                         const ClassOfService& classOfService);
 
   // Called to cancel a transaction, which may or may not be assigned to
   // a connection.  Callable from any thread.
@@ -312,7 +304,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
     TickleWifi(callbacks);
     RefPtr<nsHttpConnectionInfo> clone = ci->Clone();
     return mConnMgr->SpeculativeConnect(clone, callbacks, caps, nullptr,
-                                        aFetchHTTPSRR);
+                                        aFetchHTTPSRR | EchConfigEnabled());
   }
 
   [[nodiscard]] nsresult SpeculativeConnect(nsHttpConnectionInfo* ci,
@@ -374,11 +366,21 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
     NotifyObservers(chan, NS_HTTP_ON_MODIFY_REQUEST_TOPIC);
   }
 
+  // Same as OnModifyRequest but before cookie headers are written.
+  void OnModifyRequestBeforeCookies(nsIHttpChannel* chan) {
+    NotifyObservers(chan, NS_HTTP_ON_MODIFY_REQUEST_BEFORE_COOKIES_TOPIC);
+  }
+
   void OnModifyDocumentRequest(nsIIdentChannel* chan) {
     NotifyObservers(chan, NS_DOCUMENT_ON_MODIFY_REQUEST_TOPIC);
   }
 
-  // Called by the channel before writing a request
+  // Called by the channel before calling onStopRequest
+  void OnBeforeStopRequest(nsIHttpChannel* chan) {
+    NotifyObservers(chan, NS_HTTP_ON_BEFORE_STOP_REQUEST_TOPIC);
+  }
+
+  // Called by the channel after calling onStopRequest
   void OnStopRequest(nsIHttpChannel* chan) {
     NotifyObservers(chan, NS_HTTP_ON_STOP_REQUEST_TOPIC);
   }
@@ -441,12 +443,10 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   uint32_t DefaultHpackBuffer() const { return mDefaultHpackBuffer; }
 
-  bool Bug1563538() const { return mBug1563538; }
-
+  static bool IsHttp3Enabled();
   bool IsHttp3VersionSupported(const nsACString& version);
 
   static bool IsHttp3SupportedByServer(nsHttpResponseHead* aResponseHead);
-  bool IsHttp3Enabled() const { return mHttp3Enabled; }
   uint32_t DefaultQpackTableSize() const { return mQpackTableSize; }
   uint16_t DefaultHttp3MaxBlockedStreams() const {
     return (uint16_t)mHttp3MaxBlockedStreams;
@@ -472,8 +472,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   void SetLastActiveTabLoadOptimizationHit(TimeStamp const& when);
   bool IsBeforeLastActiveTabLoadOptimization(TimeStamp const& when);
 
-  bool DumpHpackTables() { return mDumpHpackTables; }
-
   HttpTrafficAnalyzer* GetHttpTrafficAnalyzer();
 
   bool GetThroughCaptivePortal() { return mThroughCaptivePortal; }
@@ -491,18 +489,23 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   bool UseHTTPSRRAsAltSvcEnabled() const;
 
-  bool EchConfigEnabled() const;
+  bool EchConfigEnabled(bool aIsHttp3 = false) const;
   // When EchConfig is enabled and all records with echConfig are failed, this
   // functon indicate whether we can fallback to the origin server.
   // In the case an HTTPS RRSet contains some RRs with echConfig and some
   // without, we always fallback to the origin one.
   bool FallbackToOriginIfConfigsAreECHAndAllFailed() const;
 
-  bool UseHTTPSRRForSpeculativeConnection() const;
-
   // So we can ensure that this is done during process preallocation to
   // avoid first-use overhead
   static void PresetAcceptLanguages();
+
+  bool HttpActivityDistributorActivated();
+  void ObserveHttpActivityWithArgs(const HttpActivityArgs& aArgs,
+                                   uint32_t aActivityType,
+                                   uint32_t aActivitySubtype, PRTime aTimestamp,
+                                   uint64_t aExtraSizeData,
+                                   const nsACString& aExtraStringData);
 
  private:
   nsHttpHandler();
@@ -528,11 +531,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   friend class SocketProcessChild;
   void SetHttpHandlerInitArgs(const HttpHandlerInitArgs& aArgs);
-  void SetDeviceModelId(const nsCString& aModelId);
-
-  // Checks if there are any user certs or active smart cards on a different
-  // thread. Updates mSpeculativeConnectEnabled when done.
-  void MaybeEnableSpeculativeConnect();
+  void SetDeviceModelId(const nsACString& aModelId);
 
   // We only allow DNSUtils and TRRServiceChannel itself to create
   // TRRServiceChannel.
@@ -629,7 +628,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   // cache support
   uint32_t mLastUniqueID;
-  uint32_t mSessionStartTime{0};
+  Atomic<uint32_t, Relaxed> mSessionStartTime{0};
 
   // useragent components
   nsCString mLegacyAppName{"Mozilla"};
@@ -667,25 +666,17 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   // The value of 'hidden' network.http.debug-observations : 1;
   uint32_t mDebugObservations : 1;
 
-  uint32_t mEnableSpdy : 1;
-  uint32_t mHttp2Enabled : 1;
-  uint32_t mUseH2Deps : 1;
-  uint32_t mEnforceHttp2TlsProfile : 1;
-  uint32_t mCoalesceSpdy : 1;
-  uint32_t mSpdyPersistentSettings : 1;
-  uint32_t mAllowPush : 1;
   uint32_t mEnableAltSvc : 1;
   uint32_t mEnableAltSvcOE : 1;
   uint32_t mEnableOriginExtension : 1;
-  uint32_t mEnableH2Websockets : 1;
-  uint32_t mDumpHpackTables : 1;
 
   // Try to use SPDY features instead of HTTP/1.1 over SSL
   SpdyInformation mSpdyInfo;
 
   uint32_t mSpdySendingChunkSize{ASpdySession::kSendingChunkSize};
   uint32_t mSpdySendBufferSize{ASpdySession::kTCPSendBufferSize};
-  uint32_t mSpdyPushAllowance{131072};  // match default pref
+  uint32_t mSpdyPushAllowance{
+      ASpdySession::kInitialPushAllowance};  // match default pref
   uint32_t mSpdyPullAllowance{ASpdySession::kInitialRwin};
   uint32_t mDefaultSpdyConcurrent{ASpdySession::kDefaultMaxConcurrent};
   PRIntervalTime mSpdyPingThreshold;
@@ -737,10 +728,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   // The default size (in bytes) of the HPACK decompressor table.
   uint32_t mDefaultHpackBuffer{4096};
 
-  // Pref for the whole fix that bug provides
-  Atomic<bool, Relaxed> mBug1563538{true};
-
-  Atomic<bool, Relaxed> mHttp3Enabled{true};
   // Http3 parameters
   Atomic<uint32_t, Relaxed> mQpackTableSize{4096};
   // uint16_t is enough here, but Atomic only supports uint32_t or uint64_t.
@@ -753,10 +740,6 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
   // The ratio for dispatching transactions from the focused window.
   float mFocusedWindowTransactionRatio{0.9f};
-
-  // We may disable speculative connect if the browser has user certificates
-  // installed as that might randomly popup the certificate choosing window.
-  Atomic<bool, Relaxed> mSpeculativeConnectEnabled{false};
 
   // If true, the transactions from active tab will be dispatched first.
   bool mActiveTabPriority{true};
@@ -800,8 +783,10 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
 
  private:
   [[nodiscard]] nsresult SpeculativeConnectInternal(
-      nsIURI* aURI, nsIPrincipal* aPrincipal, nsIInterfaceRequestor* aCallbacks,
-      bool anonymous);
+      nsIURI* aURI, nsIPrincipal* aPrincipal,
+      Maybe<OriginAttributes>&& aOriginAttributes,
+      nsIInterfaceRequestor* aCallbacks, bool anonymous);
+  void ExcludeHttp2OrHttp3Internal(const nsHttpConnectionInfo* ci);
 
   // State for generating channelIds
   uint32_t mProcessId{0};
@@ -820,7 +805,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
       "nsHttpConnectionMgr::LastActiveTabLoadOptimization"};
   TimeStamp mLastActiveTabLoadOptimizationHit;
 
-  Mutex mHttpExclusionLock{"nsHttpHandler::HttpExclusion"};
+  Mutex mHttpExclusionLock MOZ_UNANNOTATED{"nsHttpHandler::HttpExclusion"};
 
  public:
   [[nodiscard]] nsresult NewChannelId(uint64_t& channelId);
@@ -832,6 +817,8 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   [[nodiscard]] bool IsHttp2Excluded(const nsHttpConnectionInfo* ci);
   void ExcludeHttp3(const nsHttpConnectionInfo* ci);
   [[nodiscard]] bool IsHttp3Excluded(const nsACString& aRoutedHost);
+  void Exclude0RttTcp(const nsHttpConnectionInfo* ci);
+  [[nodiscard]] bool Is0RttTcpExcluded(const nsHttpConnectionInfo* ci);
 
   void ExcludeHTTPSRRHost(const nsACString& aHost);
   [[nodiscard]] bool IsHostExcludedForHTTPSRR(const nsACString& aHost);
@@ -839,6 +826,7 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
  private:
   nsTHashSet<nsCString> mExcludedHttp2Origins;
   nsTHashSet<nsCString> mExcludedHttp3Origins;
+  nsTHashSet<nsCString> mExcluded0RttTcpOrigins;
   // A set of hosts that we should not upgrade to HTTPS with HTTPS RR.
   nsTHashSet<nsCString> mExcludedHostsForHTTPSRRUpgrade;
 
@@ -851,6 +839,8 @@ class nsHttpHandler final : public nsIHttpProtocolHandler,
   // The pref set artificial altSvc-s for origin for testing.
   // This maps an origin to an altSvc.
   nsClassHashtable<nsCStringHashKey, nsCString> mAltSvcMappingTemptativeMap;
+
+  nsCOMPtr<nsIHttpActivityDistributor> mActivityDistributor;
 };
 
 extern StaticRefPtr<nsHttpHandler> gHttpHandler;
@@ -873,7 +863,29 @@ class nsHttpsHandler : public nsIHttpProtocolHandler,
   NS_DECL_NSIPROTOCOLHANDLER
   NS_FORWARD_NSIPROXIEDPROTOCOLHANDLER(gHttpHandler->)
   NS_FORWARD_NSIHTTPPROTOCOLHANDLER(gHttpHandler->)
-  NS_FORWARD_NSISPECULATIVECONNECT(gHttpHandler->)
+
+  NS_IMETHOD SpeculativeConnect(nsIURI* aURI, nsIPrincipal* aPrincipal,
+                                nsIInterfaceRequestor* aCallbacks,
+                                bool aAnonymous) override {
+    return gHttpHandler->SpeculativeConnect(aURI, aPrincipal, aCallbacks,
+                                            aAnonymous);
+  }
+
+  NS_IMETHOD SpeculativeConnectWithOriginAttributes(
+      nsIURI* aURI, JS::Handle<JS::Value> originAttributes,
+      nsIInterfaceRequestor* aCallbacks, bool aAnonymous,
+      JSContext* cx) override {
+    return gHttpHandler->SpeculativeConnectWithOriginAttributes(
+        aURI, originAttributes, aCallbacks, aAnonymous, cx);
+  }
+
+  NS_IMETHOD_(void)
+  SpeculativeConnectWithOriginAttributesNative(
+      nsIURI* aURI, mozilla::OriginAttributes&& originAttributes,
+      nsIInterfaceRequestor* aCallbacks, bool aAnonymous) override {
+    gHttpHandler->SpeculativeConnectWithOriginAttributesNative(
+        aURI, std::move(originAttributes), aCallbacks, aAnonymous);
+  }
 
   nsHttpsHandler() = default;
 
@@ -906,7 +918,6 @@ class HSTSDataCallbackWrapper final {
   std::function<void(bool)> mCallback;
 };
 
-}  // namespace net
-}  // namespace mozilla
+}  // namespace mozilla::net
 
 #endif  // nsHttpHandler_h__

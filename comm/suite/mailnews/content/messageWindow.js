@@ -1,5 +1,5 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -24,31 +24,30 @@ var gNextMessageAfterLoad = null;
 
 // the folderListener object
 var folderListener = {
-  OnItemAdded: function(parentItem, item) {},
-
-  OnItemRemoved: function(parentItem, item)
+  onFolderAdded: function(parentFolder, child) {},
+  onMessageAdded: function(parentFolder, msg) {},
+  onFolderRemoved: function(parentFolder, child) {},
+  onMessageRemoved: function(parentFolder, msg)
   {
-    if (parentItem.URI != gCurrentFolderUri)
+    if (parentFolder.URI != gCurrentFolderUri)
       return;
-
-    if (item instanceof Ci.nsIMsgDBHdr &&
-        extractMsgKeyFromURI() == item.messageKey)
+    if (extractMsgKeyFromURI() == msg.messageKey)
       gCurrentMessageIsDeleted = true;
   },
 
-  OnItemPropertyChanged: function(item, property, oldValue, newValue) {},
-  OnItemIntPropertyChanged: function(item, property, oldValue, newValue) {
+  onFolderPropertyChanged: function(item, property, oldValue, newValue) {},
+  onFolderIntPropertyChanged: function(item, property, oldValue, newValue) {
     if (item.URI == gCurrentFolderUri) {
       if (property == "TotalMessages" || property == "TotalUnreadMessages") {
         UpdateStandAloneMessageCounts();
       }
     }
   },
-  OnItemBoolPropertyChanged: function(item, property, oldValue, newValue) {},
-  OnItemUnicharPropertyChanged: function(item, property, oldValue, newValue){},
-  OnItemPropertyFlagChanged: function(item, property, oldFlag, newFlag) {},
+  onFolderBoolPropertyChanged: function(item, property, oldValue, newValue) {},
+  onFolderUnicharPropertyChanged: function(item, property, oldValue, newValue){},
+  onFolderPropertyFlagChanged: function(item, property, oldFlag, newFlag) {},
 
-  OnItemEvent: function(folder, event) {
+  onFolderEvent: function(folder, event) {
     if (event == "DeleteOrMoveMsgCompleted")
       HandleDeleteOrMoveMsgCompleted(folder);
     else if (event == "DeleteOrMoveMsgFailed")
@@ -598,6 +597,9 @@ var MessageWindowController =
       case "cmd_forwardInline":
       case "cmd_forwardAttachment":
       case "cmd_editAsNew":
+      case "cmd_editDraftMsg":
+      case "cmd_newMsgFromTemplate":
+      case "cmd_editTemplateMsg":
       case "cmd_getNextNMessages":
       case "cmd_find":
       case "cmd_findNext":
@@ -677,6 +679,9 @@ var MessageWindowController =
       case "cmd_forwardInline":
       case "cmd_forwardAttachment":
       case "cmd_editAsNew":
+      case "cmd_editDraftMsg":
+      case "cmd_newMsgFromTemplate":
+      case "cmd_editTemplateMsg":
       case "cmd_print":
       case "cmd_printpreview":
       case "button_print":
@@ -813,7 +818,16 @@ var MessageWindowController =
         MsgForwardAsAttachment(null);
         break;
       case "cmd_editAsNew":
-        MsgEditMessageAsNew();
+        MsgEditMessageAsNew(null);
+        break;
+      case "cmd_editDraftMsg":
+        MsgEditDraftMessage(null);
+        break;
+      case "cmd_newMsgFromTemplate":
+        MsgNewMessageFromTemplate(null);
+        break;
+      case "cmd_editTemplateMsg":
+        MsgEditTemplateMessage(null);
         break;
       case "cmd_createFilterFromPopup":
         CreateFilter(document.popupNode);

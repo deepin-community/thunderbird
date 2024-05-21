@@ -68,15 +68,10 @@ SOURCES += [
     "nsStreamConverter.cpp",
 ]
 
-EXTRA_COMPONENTS += [
-    "msgMime.manifest",
-]
-
 EXTRA_JS_MODULES += [
-    "extraMimeParsers.jsm",
-    "jsmime.jsm",
-    "MimeJSComponents.jsm",
-    "mimeParser.jsm",
+    "jsmime.sys.mjs",
+    "MimeJSComponents.sys.mjs",
+    "mimeParser.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [

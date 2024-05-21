@@ -5,12 +5,13 @@
 #filter substitution
 /*.app/***
 /certutil
-/@MOZ_APP_NAME@-bin
 #if defined(MOZ_CRASHREPORTER)
 /minidump-analyzer
 #endif
 /pingsender
 /pk12util
+/rnp-cli
+/rnpkeys
 /ssltunnel
 /xpcshell
 /XUL

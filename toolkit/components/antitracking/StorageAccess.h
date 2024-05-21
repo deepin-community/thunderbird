@@ -9,6 +9,11 @@
 
 #include <cstdint>
 
+#include "mozilla/MozPromise.h"
+#include "mozilla/RefPtr.h"
+
+#include "mozilla/dom/BrowsingContext.h"
+
 class nsIChannel;
 class nsICookieJarSettings;
 class nsIPrincipal;
@@ -65,6 +70,8 @@ StorageAccess StorageAllowedForWindow(nsPIDOMWindowInner* aWindow,
  */
 StorageAccess StorageAllowedForDocument(const dom::Document* aDoc);
 
+StorageAccess CookieAllowedForDocument(const dom::Document* aDoc);
+
 /*
  * Checks if storage should be allowed for a new window with the given
  * principal, load URI, and parent.
@@ -86,25 +93,6 @@ StorageAccess StorageAllowedForChannel(nsIChannel* aChannel);
 StorageAccess StorageAllowedForServiceWorker(
     nsIPrincipal* aPrincipal, nsICookieJarSettings* aCookieJarSettings);
 
-/*
- * Returns true if this window/channel/aPrincipal should disable storages
- * because of the anti-tracking feature.
- * Note that either aWindow or aChannel may be null when calling this
- * function. If the caller wants the UI to be notified when the storage gets
- * disabled, it must pass a non-null channel object.
- */
-bool StorageDisabledByAntiTracking(nsPIDOMWindowInner* aWindow,
-                                   nsIChannel* aChannel,
-                                   nsIPrincipal* aPrincipal, nsIURI* aURI,
-                                   uint32_t& aRejectedReason);
-
-/*
- * Returns true if this document should disable storages because of the
- * anti-tracking feature.
- */
-bool StorageDisabledByAntiTracking(dom::Document* aDocument, nsIURI* aURI,
-                                   uint32_t& aRejectedReason);
-
 bool ShouldPartitionStorage(StorageAccess aAccess);
 
 bool ShouldPartitionStorage(uint32_t aRejectedReason);
@@ -114,6 +102,63 @@ bool StoragePartitioningEnabled(StorageAccess aAccess,
 
 bool StoragePartitioningEnabled(uint32_t aRejectedReason,
                                 nsICookieJarSettings* aCookieJarSettings);
+
+// This method returns true if the URI has first party storage access when
+// loaded inside the passed 3rd party context tracking resource window.
+// If the window is first party context, please use
+// ApproximateAllowAccessForWithoutChannel();
+//
+// aRejectedReason could be set to one of these values if passed and if the
+// storage permission is not granted:
+//  * nsIWebProgressListener::STATE_COOKIES_BLOCKED_BY_PERMISSION
+//  * nsIWebProgressListener::STATE_COOKIES_BLOCKED_TRACKER
+//  * nsIWebProgressListener::STATE_COOKIES_BLOCKED_SOCIALTRACKER
+//  * nsIWebProgressListener::STATE_COOKIES_BLOCKED_ALL
+//  * nsIWebProgressListener::STATE_COOKIES_BLOCKED_FOREIGN
+//
+// If you update this function, you almost certainly want to consider
+// updating the other overloaded functions
+// (and ApproximateAllowAccessForWithoutChannel).
+bool ShouldAllowAccessFor(nsPIDOMWindowInner* a3rdPartyTrackingWindow,
+                          nsIURI* aURI, uint32_t* aRejectedReason);
+
+// Note: you should use ShouldAllowAccessFor() passing the nsIChannel! Use
+// this method _only_ if the channel is not available.  For first party
+// window, it's impossible to know if the aURI is a tracking resource
+// synchronously, so here we return the best guest: if we are sure that the
+// permission is granted for the origin of aURI, this method returns true,
+// otherwise false.
+//
+// If you update this function, you almost certainly want to consider
+// updating the ShouldAllowAccessFor functions.
+bool ApproximateAllowAccessForWithoutChannel(
+    nsPIDOMWindowInner* aFirstPartyWindow, nsIURI* aURI);
+
+// It returns true if the URI has access to the first party storage.
+// aChannel can be a 3rd party channel, or not.
+// See ShouldAllowAccessFor(window) to see the possible values of
+// aRejectedReason.
+//
+// If you update this function, you almost certainly want to consider
+// updating the other overloaded functions
+// (and ApproximateAllowAccessForWithoutChannel).
+bool ShouldAllowAccessFor(nsIChannel* aChannel, nsIURI* aURI,
+                          uint32_t* aRejectedReason);
+
+// This method checks if the principal has the permission to access to the
+// first party storage.
+// Warning: only use this function when aPrincipal is first-party.
+//
+// If you update this function, you almost certainly want to consider
+// updating the other overloaded functions
+// (and ApproximateAllowAccessForWithoutChannel).
+bool ShouldAllowAccessFor(nsIPrincipal* aPrincipal,
+                          nsICookieJarSettings* aCookieJarSettings);
+
+namespace detail {
+uint32_t CheckCookiePermissionForPrincipal(
+    nsICookieJarSettings* aCookieJarSettings, nsIPrincipal* aPrincipal);
+}
 
 }  // namespace mozilla
 

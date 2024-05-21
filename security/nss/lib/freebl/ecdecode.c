@@ -120,7 +120,8 @@ EC_FillParams(PLArenaPool *arena, const SECItem *encodedParams,
 
     if ((encodedParams->len != ANSI_X962_CURVE_OID_TOTAL_LEN) &&
         (encodedParams->len != SECG_CURVE_OID_TOTAL_LEN) &&
-        (encodedParams->len != PKIX_NEWCURVES_OID_TOTAL_LEN)) {
+        (encodedParams->len != PKIX_NEWCURVES_OID_TOTAL_LEN) &&
+        (encodedParams->len != ED25519_OID_TOTAL_LEN)) {
         PORT_SetError(SEC_ERROR_UNSUPPORTED_ELLIPTIC_CURVE);
         return SECFailure;
     };
@@ -155,7 +156,7 @@ EC_FillParams(PLArenaPool *arena, const SECItem *encodedParams,
              * (the NIST P-256 curve)
              */
             CHECK_SEC_OK(gf_populate_params_bytes(ECCurve_X9_62_PRIME_256V1,
-                                                  ec_field_GFp, params));
+                                                  ec_field_plain, params));
             break;
 
         case SEC_OID_SECG_EC_SECP384R1:
@@ -174,9 +175,18 @@ EC_FillParams(PLArenaPool *arena, const SECItem *encodedParams,
                                                   ec_field_GFp, params));
             break;
 
+        case SEC_OID_ED25519_PUBLIC_KEY:
+            params->type = ec_params_edwards_named;
+            CHECK_SEC_OK(gf_populate_params_bytes(ECCurve_Ed25519,
+                                                  ec_field_plain, params));
+
+            break;
+
         case SEC_OID_CURVE25519:
             /* Populate params for Curve25519 */
-            CHECK_SEC_OK(gf_populate_params_bytes(ECCurve25519, ec_field_plain,
+            params->type = ec_params_montgomery_named;
+            CHECK_SEC_OK(gf_populate_params_bytes(ECCurve25519,
+                                                  ec_field_plain,
                                                   params));
             break;
 
@@ -244,9 +254,25 @@ EC_GetPointSize(const ECParams *params)
         int sizeInBytes = (params->fieldID.size + 7) / 8;
         return sizeInBytes * 2 + 1;
     }
-    if (name == ECCurve25519) {
-        /* Only X here */
+
+    if (params->type == ec_params_edwards_named || params->type == ec_params_montgomery_named) {
         return curveParams->scalarSize;
     }
+
     return curveParams->pointSize - 1;
+}
+
+int
+EC_GetScalarSize(const ECParams *params)
+{
+    ECCurveName name = params->name;
+    const ECCurveBytes *curveParams;
+
+    if ((name < ECCurve_noName) || (name > ECCurve_pastLastCurve) ||
+        ((curveParams = ecCurve_map[name]) == NULL)) {
+        /* unknown curve, calculate scalar size from field size in params */
+        int sizeInBytes = (params->fieldID.size + 7) / 8;
+        return sizeInBytes;
+    }
+    return curveParams->scalarSize;
 }

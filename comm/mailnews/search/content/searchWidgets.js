@@ -3,24 +3,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* global MozXULElement */
+/* global MozElements MozXULElement */
 
+/* import-globals-from ../../base/content/dateFormat.js */
+// TODO: This is completely bogus. Only one use of this file also has FilterEditor.js.
 /* import-globals-from FilterEditor.js */
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
   );
-  const { MailServices } = ChromeUtils.import(
-    "resource:///modules/MailServices.jsm"
+  const { MailUtils } = ChromeUtils.importESModule(
+    "resource:///modules/MailUtils.sys.mjs"
   );
-  const { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
   const updateParentNode = parentNode => {
     if (parentNode.hasAttribute("initialActionIndex")) {
-      let actionIndex = parentNode.getAttribute("initialActionIndex");
-      let filterAction = gFilter.getActionAt(actionIndex);
+      const actionIndex = parentNode.getAttribute("initialActionIndex");
+      const filterAction = gFilter.getActionAt(actionIndex);
       parentNode.initWithAction(filterAction);
     }
     parentNode.updateRemoveButton();
@@ -35,7 +36,7 @@
       menulist.setAttribute("flex", "1");
       menulist.appendChild(menuPopup);
 
-      for (let taginfo of MailServices.tags.getAllTags()) {
+      for (const taginfo of MailServices.tags.getAllTags()) {
         const newMenuItem = document.createXULElement("menuitem");
         newMenuItem.setAttribute("label", taginfo.tag);
         newMenuItem.setAttribute("value", taginfo.key);
@@ -105,11 +106,11 @@
 
       this.appendChild(menulist);
 
-      let ruleaction = this.closest(".ruleaction");
-      let raMenulist = ruleaction.querySelector(
+      const ruleaction = this.closest(".ruleaction");
+      const raMenulist = ruleaction.querySelector(
         '[is="ruleactiontype-menulist"]'
       );
-      for (let { label, value } of raMenulist.findTemplates()) {
+      for (const { label, value } of raMenulist.findTemplates()) {
         menulist.appendItem(label, value);
       }
       updateParentNode(ruleaction);
@@ -255,7 +256,7 @@
    * This is an abstract class for search menulist general functionality.
    *
    * @abstract
-   * @extends MozXULElement
+   * @augments MozXULElement
    */
   class MozSearchMenulistAbstract extends MozXULElement {
     static get observedAttributes() {
@@ -397,8 +398,8 @@
         // -1 means not initialized
         return null;
       }
-      let isCustom = isNaN(this.value);
-      let typedValue = isCustom ? this.value : parseInt(this.value);
+      const isCustom = isNaN(this.value);
+      const typedValue = isCustom ? this.value : parseInt(this.value);
       // custom attribute to style the unavailable menulist item
       this.menulist.setAttribute(
         "unavailable",
@@ -465,7 +466,7 @@
     onSelect(event) {
       if (this.menulist.value == Ci.nsMsgSearchAttrib.OtherHeader) {
         // Customize menuitem selected.
-        let args = {};
+        const args = {};
         window.openDialog(
           "chrome://messenger/content/CustomHeaders.xhtml",
           "",
@@ -501,7 +502,7 @@
    * The MozSearchAttribute widget is typically used in the search and filter dialogs to show a list
    * of possible message headers.
    *
-   * @extends MozSearchMenulistAbstract
+   * @augments MozSearchMenulistAbstract
    */
   class MozSearchAttribute extends MozSearchMenulistAbstract {
     constructor() {
@@ -521,13 +522,13 @@
     get valueLabel() {
       if (isNaN(this.value)) {
         // is this a custom term?
-        let customTerm = MailServices.filters.getCustomTerm(this.value);
+        const customTerm = MailServices.filters.getCustomTerm(this.value);
         if (customTerm) {
           return customTerm.name;
         }
         // The custom term may be missing after the extension that added it
         // was disabled or removed. We need to notify the user.
-        let scriptError = Cc["@mozilla.org/scripterror;1"].createInstance(
+        const scriptError = Cc["@mozilla.org/scripterror;1"].createInstance(
           Ci.nsIScriptError
         );
         scriptError.init(
@@ -548,9 +549,9 @@
     }
 
     get valueIds() {
-      let result = this.validityTable.getAvailableAttributes();
+      const result = this.validityTable.getAvailableAttributes();
       // add any available custom search terms
-      for (let customTerm of MailServices.filters.getCustomTerms()) {
+      for (const customTerm of MailServices.filters.getCustomTerms()) {
         // For custom terms, the array element is a string with the custom id
         // instead of the integer attribute
         if (customTerm.getAvailable(this.searchScope, null)) {
@@ -561,8 +562,8 @@
     }
 
     get valueStrings() {
-      let strings = [];
-      let ids = this.valueIds;
+      const strings = [];
+      const ids = this.valueIds;
       let hdrsArray = null;
       try {
         let hdrs = Services.prefs.getCharPref("mailnews.customHeaders");
@@ -573,7 +574,7 @@
       for (let i = 0; i < ids.length; i++) {
         if (isNaN(ids[i])) {
           // Is this a custom search term?
-          let customTerm = MailServices.filters.getCustomTerm(ids[i]);
+          const customTerm = MailServices.filters.getCustomTerm(ids[i]);
           if (customTerm) {
             strings[i] = customTerm.name;
           } else {
@@ -596,7 +597,7 @@
    * MozSearchOperator contains a list of operators that can be applied on search-attribute and
    * search-value value.
    *
-   * @extends MozSearchMenulistAbstract
+   * @augments MozSearchMenulistAbstract
    */
   class MozSearchOperator extends MozSearchMenulistAbstract {
     constructor() {
@@ -618,9 +619,9 @@
     }
 
     get valueIds() {
-      let isCustom = isNaN(this.searchAttribute);
+      const isCustom = isNaN(this.searchAttribute);
       if (isCustom) {
-        let customTerm = MailServices.filters.getCustomTerm(
+        const customTerm = MailServices.filters.getCustomTerm(
           this.searchAttribute
         );
         if (customTerm) {
@@ -632,8 +633,8 @@
     }
 
     get valueStrings() {
-      let strings = [];
-      let ids = this.valueIds;
+      const strings = [];
+      const ids = this.valueIds;
       for (let i = 0; i < ids.length; i++) {
         strings[i] = this.stringBundle.GetStringFromID(ids[i]);
       }
@@ -665,7 +666,7 @@
    * MozSearchValue is a widget that allows selecting the value to search or filter on. It can be a
    * text entry, priority, status, junk status, tags, hasAttachment status, and addressbook etc.
    *
-   * @extends MozXULElement
+   * @augments MozXULElement
    */
   class MozSearchValue extends MozXULElement {
     static get observedAttributes() {
@@ -685,296 +686,408 @@
       this.internalOperator = null;
       this.internalAttribute = null;
       this.internalValue = null;
-    }
 
-    /**
-     * Show the child matching the given index.
-     *
-     * @param {integer} index - Child index. Use -1 to not show any child.
-     */
-    showChildAt(index) {
-      for (let i = 0; i < this.children.length; i++) {
-        this.children[i].hidden = i != index;
-      }
-    }
-
-    /**
-     * Find the child that is currently shown.
-     *
-     * @return {Node} the currently shown child node.
-     */
-    findActiveItem() {
-      for (let i = 0; i < this.children.length; i++) {
-        if (!this.children[i].hidden) {
-          return this.children[i];
-        }
-      }
-      return null;
+      this.inputType = "none";
     }
 
     connectedCallback() {
-      if (this.delayConnectedCallback() || this.hasChildNodes()) {
-        return;
+      this.classList.add("input-container");
+    }
+
+    static get stringBundle() {
+      if (!this._stringBundle) {
+        this._stringBundle = Services.strings.createBundle(
+          "chrome://messenger/locale/messenger.properties"
+        );
+      }
+      return this._stringBundle;
+    }
+
+    /**
+     * Create a menulist to be used as the input.
+     *
+     * @param {object[]} itemDataList - An ordered list of items to add to the
+     *   menulist. Each entry must have a 'value' property to be used as the
+     *   item value. If the entry has a 'label' property, it will be used
+     *   directly as the item label, otherwise it must identify a bundle string
+     *   using the 'stringId' property.
+     *
+     * @returns {MozMenuList} - The newly created menulist.
+     */
+    static _createMenulist(itemDataList) {
+      const menulist = document.createXULElement("menulist");
+      menulist.classList.add("search-value-menulist");
+      const menupopup = document.createXULElement("menupopup");
+      menupopup.classList.add("search-value-popup");
+
+      const bundle = this.stringBundle;
+
+      for (const itemData of itemDataList) {
+        const item = document.createXULElement("menuitem");
+        item.classList.add("search-value-menuitem");
+        item.label =
+          itemData.label || bundle.GetStringFromName(itemData.stringId);
+        item.value = itemData.value;
+        menupopup.appendChild(item);
+      }
+      menulist.appendChild(menupopup);
+      return menulist;
+    }
+
+    /**
+     * Set the child input. The input will only be changed if the type changes.
+     *
+     * @param {string} type - The type of input to use.
+     * @param {string|number|undefined} value - A value to set on the input, or
+     *   leave undefined to not change the value. See setInputValue.
+     */
+    setInput(type, value) {
+      if (type != this.inputType) {
+        this.inputType = type;
+        this.input?.remove();
+        let input;
+        switch (type) {
+          case "text":
+            input = document.createElement("input");
+            input.type = "text";
+            input.classList.add("input-inline", "search-value-input");
+            break;
+          case "date":
+            input = document.createElement("input");
+            input.type = "text";
+            input.classList.add("input-inline", "search-value-input");
+            if (!value) {
+              // Newly created date input shows today's date.
+              // value is expected in microseconds since epoch.
+              value = Date.now() * 1000;
+            }
+            break;
+          case "size":
+            input = document.createElement("input");
+            input.type = "number";
+            input.min = 0;
+            input.max = 1000000000;
+            input.classList.add("input-inline", "search-value-input");
+            break;
+          case "age":
+            input = document.createElement("input");
+            input.type = "number";
+            input.min = -40000; // ~100 years.
+            input.max = 40000;
+            input.classList.add("input-inline", "search-value-input");
+            break;
+          case "percent":
+            input = document.createElement("input");
+            input.type = "number";
+            input.min = 0;
+            input.max = 100;
+            input.classList.add("input-inline", "search-value-input");
+            break;
+          case "priority":
+            input = this.constructor._createMenulist([
+              { stringId: "priorityHighest", value: Ci.nsMsgPriority.highest },
+              { stringId: "priorityHigh", value: Ci.nsMsgPriority.high },
+              { stringId: "priorityNormal", value: Ci.nsMsgPriority.normal },
+              { stringId: "priorityLow", value: Ci.nsMsgPriority.low },
+              { stringId: "priorityLowest", value: Ci.nsMsgPriority.lowest },
+            ]);
+            break;
+          case "status":
+            input = this.constructor._createMenulist([
+              { stringId: "replied", value: Ci.nsMsgMessageFlags.Replied },
+              { stringId: "read", value: Ci.nsMsgMessageFlags.Read },
+              { stringId: "new", value: Ci.nsMsgMessageFlags.New },
+              { stringId: "forwarded", value: Ci.nsMsgMessageFlags.Forwarded },
+              { stringId: "flagged", value: Ci.nsMsgMessageFlags.Marked },
+            ]);
+            break;
+          case "addressbook":
+            input = document.createXULElement("menulist", {
+              is: "menulist-addrbooks",
+            });
+            input.setAttribute("localonly", "true");
+            input.classList.add("search-value-menulist");
+            if (!value) {
+              // Select the personal addressbook by default.
+              value = "jsaddrbook://abook.sqlite";
+            }
+            break;
+          case "tags":
+            input = this.constructor._createMenulist(
+              MailServices.tags.getAllTags().map(taginfo => {
+                return { label: taginfo.tag, value: taginfo.key };
+              })
+            );
+            break;
+          case "junk-status":
+            // "Junk Status is/isn't/is empty/isn't empty 'Junk'".
+            input = this.constructor._createMenulist([
+              { stringId: "junk", value: Ci.nsIJunkMailPlugin.JUNK },
+            ]);
+            break;
+          case "attachment-status":
+            // "Attachment Status is/isn't 'Has Attachments'".
+            input = this.constructor._createMenulist([
+              { stringId: "hasAttachments", value: "0" },
+            ]);
+            break;
+          case "junk-origin":
+            input = this.constructor._createMenulist([
+              { stringId: "junkScoreOriginPlugin", value: "plugin" },
+              { stringId: "junkScoreOriginUser", value: "user" },
+              { stringId: "junkScoreOriginFilter", value: "filter" },
+              { stringId: "junkScoreOriginWhitelist", value: "whitelist" },
+              { stringId: "junkScoreOriginImapFlag", value: "imapflag" },
+            ]);
+            break;
+          case "none":
+            input = null;
+            break;
+          case "custom":
+            // Used by extensions.
+            // FIXME: We need a better way for extensions to set a custom input.
+            input = document.createXULElement("hbox");
+            input.setAttribute("flex", "1");
+            input.classList.add("search-value-custom");
+            break;
+          default:
+            throw new Error(`Unrecognised input type "${type}"`);
+        }
+
+        this.input = input;
+        if (input) {
+          this.appendChild(input);
+        }
+
+        this._updateAttributes();
       }
 
-      this.classList.add("input-container");
+      this.setInputValue(value);
+    }
 
-      // Append all the possible widgets. These will then be shown and
-      // hidden based on child index.
-      this.appendChild(
-        MozXULElement.parseXULToFragment(`
-          <html:input class="input-inline search-value-textbox"
-                      inherits="disabled" />
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup">
-              <menuitem value="6"
-                        stringTag="priorityHighest"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="5"
-                        stringTag="priorityHigh"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="4"
-                        stringTag="priorityNormal"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="3"
-                        stringTag="priorityLow"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="2"
-                        stringTag="priorityLowest"
-                        class="search-value-menuitem"></menuitem>
-            </menupopup>
-          </menulist>
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup">
-              <menuitem value="2"
-                        stringTag="replied"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="1"
-                        stringTag="read"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="65536"
-                        stringTag="new"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="4096"
-                        stringTag="forwarded"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="4"
-                        stringTag="flagged"
-                        class="search-value-menuitem"></menuitem>
-            </menupopup>
-          </menulist>
-          <html:input class="input-inline search-value-textbox"
-                      inherits="disabled" />
-          <menulist is="menulist-addrbooks"
-                    class="search-value-menulist"
-                    inherits="disabled"
-                    localonly="true"/>
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup"></menupopup>
-          </menulist>
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup">
-              <menuitem value="2"
-                        stringTag="junk"
-                        class="search-value-menuitem"></menuitem>
-            </menupopup>
-          </menulist>
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup">
-              <menuitem value="0"
-                        stringTag="hasAttachments"
-                        class="search-value-menuitem"></menuitem>
-            </menupopup>
-          </menulist>
-          <menulist class="search-value-menulist"
-                    inherits="disabled">
-            <menupopup class="search-value-popup">
-              <menuitem value="plugin"
-                        stringTag="junkScoreOriginPlugin"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="user"
-                        stringTag="junkScoreOriginUser"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="filter"
-                        stringTag="junkScoreOriginFilter"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="whitelist"
-                        stringTag="junkScoreOriginWhitelist"
-                        class="search-value-menuitem"></menuitem>
-              <menuitem value="imapflag"
-                        stringTag="junkScoreOriginImapFlag"
-                        class="search-value-menuitem"></menuitem>
-            </menupopup>
-          </menulist>
-          <html:input type="number"
-                      class="input-inline search-value-textbox"
-                      inherits="disabled" />
-          <hbox flex="1"
-                class="search-value-custom"
-                inherits="disabled"></hbox>
-        `)
-      );
-      this.showChildAt(-1);
+    /**
+     * Set the child input to the given value.
+     *
+     * @param {string|number} value - The value to set on the input. For "date"
+     *   inputs, this should be a number of microseconds since the epoch.
+     */
+    setInputValue(value) {
+      if (value === undefined) {
+        return;
+      }
+      switch (this.inputType) {
+        case "text":
+        case "size":
+        case "age":
+        case "percent":
+          this.input.value = value;
+          break;
+        case "date":
+          this.input.value = convertPRTimeToString(value);
+          break;
+        case "priority":
+        case "status":
+        case "addressbook":
+        case "tags":
+        case "junk-status":
+        case "attachment-status":
+        case "junk-origin": {
+          const item = this.input.querySelector(`menuitem[value="${value}"]`);
+          if (item) {
+            this.input.selectedItem = item;
+          }
+          break;
+        }
+        case "none":
+          // Silently ignore the value.
+          break;
+        case "custom":
+          this.input.setAttribute("value", value);
+          break;
+        default:
+          throw new Error(`Unhandled input type "${this.inputType}"`);
+      }
+    }
 
-      // Initialize strings.
-      const bundle = Services.strings.createBundle(
-        "chrome://messenger/locale/messenger.properties"
-      );
+    /**
+     * Get the child input's value.
+     *
+     * @returns {string|number} - The value set in the input. For "date"
+     *   inputs, this is the number of microseconds since the epoch.
+     */
+    getInputValue() {
+      switch (this.inputType) {
+        case "text":
+        case "size":
+        case "age":
+        case "percent":
+          return this.input.value;
+        case "date":
+          return convertStringToPRTime(this.input.value);
+        case "priority":
+        case "status":
+        case "addressbook":
+        case "tags":
+        case "junk-status":
+        case "attachment-status":
+        case "junk-origin":
+          return this.input.selectedItem.value;
+        case "none":
+          return "";
+        case "custom":
+          return this.input.getAttribute("value");
+        default:
+          throw new Error(`Unhandled input type "${this.inputType}"`);
+      }
+    }
 
-      // Initialize the priority picker.
-      this.fillStringsForChildren(
-        this.children[1].querySelector("menupopup"),
-        bundle
-      );
-
-      // Initialize the status picker.
-      this.fillStringsForChildren(
-        this.children[2].querySelector("menupopup"),
-        bundle
-      );
-
-      // initialize the address book picker
-      this.fillStringsForChildren(
-        this.children[4].querySelector("menupopup"),
-        bundle
-      );
-
-      // initialize the junk status picker
-      this.fillStringsForChildren(
-        this.children[6].querySelector("menupopup"),
-        bundle
-      );
-
-      // initialize the has attachment status picker
-      this.fillStringsForChildren(
-        this.children[7].querySelector("menupopup"),
-        bundle
-      );
-
-      // initialize the junk score origin picker
-      this.fillStringsForChildren(
-        this.children[8].querySelector("menupopup"),
-        bundle
-      );
-
-      // Initialize the date picker.
-      const datePicker = this.children[3];
-      const searchAttribute = this.searchAttribute;
-      const time =
-        searchAttribute == Ci.nsMsgSearchAttrib.Date
-          ? datePicker.value
-          : new Date();
-
-      // The search-value widget has two textboxes one for text, one as a placeholder for a
-      // date/calendar widget.
-      datePicker.setAttribute("value", convertDateToString(time));
-
-      // initialize the tag list
-      this.fillInTags();
-
-      this._updateAttributes();
+    /**
+     * Get the element's displayed value.
+     *
+     * @returns {string} - The value seen by the user.
+     */
+    getReadableValue() {
+      switch (this.inputType) {
+        case "text":
+        case "size":
+        case "age":
+        case "percent":
+        case "date":
+          return this.input.value;
+        case "priority":
+        case "status":
+        case "addressbook":
+        case "tags":
+        case "junk-status":
+        case "attachment-status":
+        case "junk-origin":
+          return this.input.selectedItem.label;
+        case "none":
+          return "";
+        case "custom":
+          return this.input.getAttribute("value");
+        default:
+          throw new Error(`Unhandled input type "${this.inputType}"`);
+      }
     }
 
     attributeChangedCallback() {
-      if (!this.isConnectedAndReady) {
-        return;
-      }
-
       this._updateAttributes();
     }
 
     _updateAttributes() {
-      this.querySelectorAll("[inherits='disabled']").forEach(elem => {
-        if (this.hasAttribute("disabled")) {
-          elem.setAttribute("disabled", this.getAttribute("disabled"));
-        } else {
-          elem.removeAttribute("disabled");
-        }
-      });
+      if (!this.input) {
+        return;
+      }
+      if (this.hasAttribute("disabled")) {
+        this.input.setAttribute("disabled", this.getAttribute("disabled"));
+      } else {
+        this.input.removeAttribute("disabled");
+      }
     }
 
+    /**
+     * Update the displayed input according to the selected sibling attributes
+     * and operators.
+     *
+     * @param {nsIMsgSearchValue} [value] - A value to display in the input. Or
+     *   leave unset to not change the value.
+     */
+    updateDisplay(value) {
+      const operator = Number(this.internalOperator);
+      switch (Number(this.internalAttribute)) {
+        // Use the index to hide/show the appropriate child.
+        case Ci.nsMsgSearchAttrib.Priority:
+          this.setInput("priority", value?.priority);
+          break;
+        case Ci.nsMsgSearchAttrib.MsgStatus:
+          this.setInput("status", value?.status);
+          break;
+        case Ci.nsMsgSearchAttrib.Date:
+          this.setInput("date", value?.date);
+          break;
+        case Ci.nsMsgSearchAttrib.Sender:
+        case Ci.nsMsgSearchAttrib.To:
+        case Ci.nsMsgSearchAttrib.ToOrCC:
+        case Ci.nsMsgSearchAttrib.AllAddresses:
+        case Ci.nsMsgSearchAttrib.CC:
+          if (
+            operator == Ci.nsMsgSearchOp.IsntInAB ||
+            operator == Ci.nsMsgSearchOp.IsInAB
+          ) {
+            this.setInput("addressbook", value?.str);
+          } else {
+            this.setInput("text", value?.str);
+          }
+          break;
+        case Ci.nsMsgSearchAttrib.Keywords:
+          this.setInput(
+            operator == Ci.nsMsgSearchOp.IsEmpty ||
+              operator == Ci.nsMsgSearchOp.IsntEmpty
+              ? "none"
+              : "tags",
+            value?.str
+          );
+          break;
+        case Ci.nsMsgSearchAttrib.JunkStatus:
+          this.setInput(
+            operator == Ci.nsMsgSearchOp.IsEmpty ||
+              operator == Ci.nsMsgSearchOp.IsntEmpty
+              ? "none"
+              : "junk-status",
+            value?.junkStatus
+          );
+          break;
+        case Ci.nsMsgSearchAttrib.HasAttachmentStatus:
+          this.setInput("attachment-status", value?.hasAttachmentStatus);
+          break;
+        case Ci.nsMsgSearchAttrib.JunkScoreOrigin:
+          this.setInput("junk-origin", value?.str);
+          break;
+        case Ci.nsMsgSearchAttrib.AgeInDays:
+          this.setInput("age", value?.age);
+          break;
+        case Ci.nsMsgSearchAttrib.Size:
+          this.setInput("size", value?.size);
+          break;
+        case Ci.nsMsgSearchAttrib.JunkPercent:
+          this.setInput("percent", value?.junkPercent);
+          break;
+        default:
+          if (isNaN(this.internalAttribute)) {
+            // Custom attribute, the internalAttribute is a string.
+            // FIXME: We need a better way for extensions to set a custom input.
+            this.setInput("custom", value?.str);
+            this.input.setAttribute("searchAttribute", this.internalAttribute);
+          } else {
+            this.setInput("text", value?.str);
+          }
+          break;
+      }
+    }
+
+    /**
+     * The sibling operator type.
+     *
+     * @type {nsMsgSearchOpValue}
+     */
     set opParentValue(val) {
-      // Noop if we're not changing it.
       if (this.internalOperator == val) {
         return;
       }
-
-      // Keywords has the null field IsEmpty.
-      if (this.searchAttribute == Ci.nsMsgSearchAttrib.Keywords) {
-        if (
-          val == Ci.nsMsgSearchOp.IsEmpty ||
-          val == Ci.nsMsgSearchOp.IsntEmpty
-        ) {
-          this.showChildAt(-1);
-        } else {
-          this.showChildAt(5);
-        }
-      }
-
-      // JunkStatus has the null field IsEmpty.
-      if (this.searchAttribute == Ci.nsMsgSearchAttrib.JunkStatus) {
-        if (
-          val == Ci.nsMsgSearchOp.IsEmpty ||
-          val == Ci.nsMsgSearchOp.IsntEmpty
-        ) {
-          this.showChildAt(-1);
-        } else {
-          this.showChildAt(6);
-        }
-      }
-
-      // If it's not sender, to, cc, alladdresses, or to or cc, we don't care.
-      if (
-        this.searchAttribute != Ci.nsMsgSearchAttrib.Sender &&
-        this.searchAttribute != Ci.nsMsgSearchAttrib.To &&
-        this.searchAttribute != Ci.nsMsgSearchAttrib.ToOrCC &&
-        this.searchAttribute != Ci.nsMsgSearchAttrib.AllAddresses &&
-        this.searchAttribute != Ci.nsMsgSearchAttrib.CC
-      ) {
-        this.internalOperator = val;
-        return;
-      }
-
-      const children = this.children;
-      if (val == Ci.nsMsgSearchOp.IsntInAB || val == Ci.nsMsgSearchOp.IsInAB) {
-        // If the old internalOperator was IsntInAB or IsInAB, and the new internalOperator is
-        // IsntInAB or IsInAB, noop because the search value was an ab type, and it still is.
-        // Otherwise, switch to the ab picker and select the PAB.
-        if (
-          this.internalOperator != Ci.nsMsgSearchOp.IsntInAB &&
-          this.internalOperator != Ci.nsMsgSearchOp.IsInAB
-        ) {
-          const abs = children[4].querySelector(
-            `[value="moz-abmdbdirectory://abook.mab"], [value="jsaddrbook://abook.sqlite"]`
-          );
-          if (abs) {
-            children[4].selectedItem = abs;
-          }
-          this.showChildAt(4);
-        }
-      } else if (
-        this.internalOperator == Ci.nsMsgSearchOp.IsntInAB ||
-        this.internalOperator == Ci.nsMsgSearchOp.IsInAB
-      ) {
-        // If the old internalOperator wasn't IsntInAB or IsInAB, and the new internalOperator isn't
-        // IsntInAB or IsInAB, noop because the search value wasn't an ab type, and it still isn't.
-        // Otherwise, switch to the textbox and clear it
-        children[0].value = "";
-        this.showChildAt(0);
-      }
-
       this.internalOperator = val;
+      this.updateDisplay();
     }
 
     get opParentValue() {
       return this.internalOperator;
     }
 
+    /**
+     * A duplicate of the searchAttribute property.
+     *
+     * @type {nsMsgSearchAttribValue}
+     */
     set parentValue(val) {
       this.searchAttribute = val;
     }
@@ -983,239 +1096,96 @@
       return this.searchAttribute;
     }
 
+    /**
+     * The sibling attribute type.
+     *
+     * @type {nsMsgSearchAttribValue}
+     */
     set searchAttribute(val) {
-      // noop if we're not changing it.
       if (this.internalAttribute == val) {
         return;
       }
       this.internalAttribute = val;
-
-      // If the searchAttribute changing, null out the internalOperator.
-      this.internalOperator = null;
-
-      // Use the index to hide/show the appropriate child.
-      if (isNaN(val)) {
-        // Is this a custom attribute?
-        this.showChildAt(10);
-        let customHbox = this.children[10];
-        if (this.internalValue) {
-          customHbox.setAttribute("value", this.internalValue.str);
-        }
-        // the searchAttribute attribute is intended as a selector in
-        // CSS for custom search terms to bind a custom value
-        customHbox.setAttribute("searchAttribute", val);
-      } else if (val == Ci.nsMsgSearchAttrib.Priority) {
-        this.showChildAt(1);
-      } else if (val == Ci.nsMsgSearchAttrib.MsgStatus) {
-        this.showChildAt(2);
-      } else if (val == Ci.nsMsgSearchAttrib.Date) {
-        this.showChildAt(3);
-      } else if (val == Ci.nsMsgSearchAttrib.Sender) {
-        // Since the internalOperator is null, this is the same as the initial state.
-        // The initial state for Sender isn't an ab type search, it's a text search,
-        // so show the textbox.
-        this.showChildAt(0);
-      } else if (val == Ci.nsMsgSearchAttrib.Keywords) {
-        this.showChildAt(5);
-      } else if (val == Ci.nsMsgSearchAttrib.JunkStatus) {
-        this.showChildAt(6);
-      } else if (val == Ci.nsMsgSearchAttrib.HasAttachmentStatus) {
-        this.showChildAt(7);
-      } else if (val == Ci.nsMsgSearchAttrib.JunkScoreOrigin) {
-        this.showChildAt(8);
-      } else if (val == Ci.nsMsgSearchAttrib.AgeInDays) {
-        let valueBox = this.children[9];
-        valueBox.min = -40000; // ~-100 years
-        valueBox.max = 40000; // ~100 years
-        this.showChildAt(9);
-      } else if (val == Ci.nsMsgSearchAttrib.Size) {
-        let valueBox = this.children[9];
-        valueBox.min = 0;
-        valueBox.max = 1000000000;
-        this.showChildAt(9);
-      } else if (val == Ci.nsMsgSearchAttrib.JunkPercent) {
-        let valueBox = this.children[9];
-        valueBox.min = 0;
-        valueBox.max = 100;
-        this.showChildAt(9);
-      } else {
-        // a normal text field
-        this.showChildAt(0);
-      }
+      this.updateDisplay();
     }
 
     get searchAttribute() {
       return this.internalAttribute;
     }
 
+    /**
+     * The stored value for this element.
+     *
+     * Note that the input value is *derived* from this object when it is set.
+     * But changes to the input value using the UI will not change the stored
+     * value until the save method is called.
+     *
+     * @type {nsIMsgSearchValue}
+     */
     set value(val) {
       // val is a nsIMsgSearchValue object
       this.internalValue = val;
-      const attrib = this.internalAttribute;
-      const children = this.children;
-      this.searchAttribute = attrib;
-      if (isNaN(attrib)) {
-        // a custom term
-        let customHbox = this.children[10];
-        customHbox.setAttribute("value", val.str);
-        return;
-      }
-      if (attrib == Ci.nsMsgSearchAttrib.Priority) {
-        const matchingPriority = children[1].querySelector(
-          `[value="${val.priority}"]`
-        );
-        if (matchingPriority) {
-          children[1].selectedItem = matchingPriority;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.MsgStatus) {
-        const matchingStatus = children[2].querySelector(
-          `[value="${val.status}"]`
-        );
-        if (matchingStatus) {
-          children[2].selectedItem = matchingStatus;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.AgeInDays) {
-        children[9].value = val.age;
-      } else if (attrib == Ci.nsMsgSearchAttrib.Date) {
-        children[3].value = convertPRTimeToString(val.date);
-      } else if (
-        attrib == Ci.nsMsgSearchAttrib.Sender ||
-        attrib == Ci.nsMsgSearchAttrib.To ||
-        attrib == Ci.nsMsgSearchAttrib.CC ||
-        attrib == Ci.nsMsgSearchAttrib.AllAddresses ||
-        attrib == Ci.nsMsgSearchAttrib.ToOrCC
-      ) {
-        if (
-          this.internalOperator == Ci.nsMsgSearchOp.IsntInAB ||
-          this.internalOperator == Ci.nsMsgSearchOp.IsInAB
-        ) {
-          const abs = children[4].querySelector(`[value="${val.str}"]`);
-          if (abs) {
-            children[4].selectedItem = abs;
-          }
-        } else {
-          children[0].value = val.str;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.Keywords) {
-        const keywordVal = children[5].querySelector(`[value="${val.str}"]`);
-        if (keywordVal) {
-          children[5].value = val.str;
-          children[5].selectedItem = keywordVal;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.JunkStatus) {
-        const junkStatus = children[6].querySelector(
-          `[value="${val.junkStatus}"]`
-        );
-        if (junkStatus) {
-          children[6].selectedItem = junkStatus;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.HasAttachmentStatus) {
-        const hasAttachmentStatus = children[7].querySelector(
-          `[value="${val.hasAttachmentStatus}"]`
-        );
-        if (hasAttachmentStatus) {
-          children[7].selectedItem = hasAttachmentStatus;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.JunkScoreOrigin) {
-        const junkScoreOrigin = children[8].querySelector(
-          `[value="${val.str}"]`
-        );
-        if (junkScoreOrigin) {
-          children[8].selectedItem = junkScoreOrigin;
-        }
-      } else if (attrib == Ci.nsMsgSearchAttrib.JunkPercent) {
-        children[9].value = val.junkPercent;
-      } else if (attrib == Ci.nsMsgSearchAttrib.Size) {
-        children[9].value = val.size;
-      } else {
-        children[0].value = val.str;
-      }
+      this.updateDisplay(val);
     }
 
     get value() {
       return this.internalValue;
     }
 
+    /**
+     * Updates the stored value for this element to reflect its current input
+     * value.
+     */
     save() {
       const searchValue = this.value;
       const searchAttribute = this.searchAttribute;
-      const children = this.children;
 
-      searchValue.attrib = searchAttribute;
-      if (searchAttribute == Ci.nsMsgSearchAttrib.Priority) {
-        searchValue.priority = children[1].selectedItem.value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.MsgStatus) {
-        searchValue.status = children[2].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.AgeInDays) {
-        searchValue.age = children[9].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.Date) {
-        searchValue.date = convertStringToPRTime(children[3].value);
-      } else if (
-        searchAttribute == Ci.nsMsgSearchAttrib.Sender ||
-        searchAttribute == Ci.nsMsgSearchAttrib.To ||
-        searchAttribute == Ci.nsMsgSearchAttrib.CC ||
-        searchAttribute == Ci.nsMsgSearchAttrib.AllAddresses ||
-        searchAttribute == Ci.nsMsgSearchAttrib.ToOrCC
-      ) {
-        if (
-          this.internalOperator == Ci.nsMsgSearchOp.IsntInAB ||
-          this.internalOperator == Ci.nsMsgSearchOp.IsInAB
-        ) {
-          searchValue.str = children[4].selectedItem.value;
-        } else {
-          searchValue.str = children[0].value;
-        }
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.Keywords) {
-        searchValue.str = children[5].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.JunkStatus) {
-        searchValue.junkStatus = children[6].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.JunkPercent) {
-        searchValue.junkPercent = children[9].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.Size) {
-        searchValue.size = children[9].value;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.HasAttachmentStatus) {
-        searchValue.status = Ci.nsMsgMessageFlags.Attachment;
-      } else if (searchAttribute == Ci.nsMsgSearchAttrib.JunkScoreOrigin) {
-        searchValue.str = children[8].value;
-      } else if (isNaN(searchAttribute)) {
-        // a custom term
-        searchValue.attrib = Ci.nsMsgSearchAttrib.Custom;
-        searchValue.str = children[10].getAttribute("value");
-      } else {
-        searchValue.str = children[0].value;
+      searchValue.attrib = isNaN(searchAttribute)
+        ? Ci.nsMsgSearchAttrib.Custom
+        : searchAttribute;
+      switch (Number(searchAttribute)) {
+        case Ci.nsMsgSearchAttrib.Priority:
+          searchValue.priority = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.MsgStatus:
+          searchValue.status = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.AgeInDays:
+          searchValue.age = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.Date:
+          searchValue.date = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.JunkStatus:
+          searchValue.junkStatus = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.HasAttachmentStatus:
+          searchValue.status = Ci.nsMsgMessageFlags.Attachment;
+          break;
+        case Ci.nsMsgSearchAttrib.JunkPercent:
+          searchValue.junkPercent = this.getInputValue();
+          break;
+        case Ci.nsMsgSearchAttrib.Size:
+          searchValue.size = this.getInputValue();
+          break;
+        default:
+          searchValue.str = this.getInputValue();
+          break;
       }
     }
 
+    /**
+     * Stores the displayed value for this element in the given object.
+     *
+     * Note that after this call, the stored value will remain pointing to the
+     * given searchValue object.
+     *
+     * @param {nsIMsgSearchValue} searchValue - The object to store the
+     *   displayed value in.
+     */
     saveTo(searchValue) {
       this.internalValue = searchValue;
       this.save();
-    }
-
-    fillInTags() {
-      let menulist = this.children[5];
-      // Force initialization of the menulist custom element first.
-      customElements.upgrade(menulist);
-      let tagArray = MailServices.tags.getAllTags();
-      for (let i = 0; i < tagArray.length; i++) {
-        const taginfo = tagArray[i];
-        const newMenuItem = menulist.appendItem(taginfo.tag, taginfo.key);
-        if (i == 0) {
-          menulist.selectedItem = newMenuItem;
-        }
-      }
-    }
-
-    fillStringsForChildren(parentNode, bundle) {
-      for (let node of parentNode.children) {
-        const stringTag = node.getAttribute("stringTag");
-        if (stringTag) {
-          const attr = node.tagName == "label" ? "value" : "label";
-          node.setAttribute(attr, bundle.GetStringFromName(stringTag));
-        }
-      }
-
-      // Force initialization of the menulist custom element.
-      customElements.upgrade(parentNode);
     }
   }
   customElements.define("search-value", MozSearchValue);
@@ -1230,7 +1200,7 @@
      * The MozRuleactiontypeMenulist is a widget that allows selecting the actions from the given menulist for
      * the selected folder. It gets displayed in the message filter dialog box.
      *
-     * @extends {MozMenuList}
+     * @augments {MozMenuList}
      */
     class MozRuleactiontypeMenulist extends customElements.get("menulist") {
       connectedCallback() {
@@ -1247,9 +1217,9 @@
         });
 
         this.addEventListener("popupshowing", event => {
-          let unavailableActions = this.usedActionsList();
+          const unavailableActions = this.usedActionsList();
           for (let index = 0; index < this.menuitems.length; index++) {
-            let menu = this.menuitems[index];
+            const menu = this.menuitems[index];
             menu.setAttribute("disabled", menu.value in unavailableActions);
           }
         });
@@ -1266,10 +1236,10 @@
         // Differentiate between creating a new, next available action,
         // and creating a row which will be initialized with an action.
         if (!this.parentNode.hasAttribute("initialActionIndex")) {
-          let unavailableActions = this.usedActionsList();
+          const unavailableActions = this.usedActionsList();
           // Select the first one that's not in the list.
           for (let index = 0; index < this.menuitems.length; index++) {
-            let menu = this.menuitems[index];
+            const menu = this.menuitems[index];
             if (!(menu.value in unavailableActions) && !menu.hidden) {
               this.value = menu.value;
               this.parentNode.setAttribute("value", menu.value);
@@ -1283,8 +1253,8 @@
       }
 
       hideInvalidActions() {
-        let menupopup = this.menupopup;
-        let scope = getScopeFromFilterList(gFilterList);
+        const menupopup = this.menupopup;
+        const scope = getScopeFromFilterList(gFilterList);
 
         // Walk through the list of filter actions and hide any actions which aren't valid
         // for our given scope (news, imap, pop, etc) and context.
@@ -1334,10 +1304,10 @@
       }
 
       addCustomActions() {
-        let menupopup = this.menupopup;
+        const menupopup = this.menupopup;
         for (let i = 0; i < gCustomActions.length; i++) {
-          let customAction = gCustomActions[i];
-          let menuitem = document.createXULElement("menuitem");
+          const customAction = gCustomActions[i];
+          const menuitem = document.createXULElement("menuitem");
           menuitem.setAttribute("label", customAction.name);
           menuitem.setAttribute("value", customAction.id);
           menuitem.setAttribute("isCustom", "true");
@@ -1349,18 +1319,18 @@
        * Returns a hash containing all of the filter actions which are currently
        * being used by other filteractionrows.
        *
-       * @return {Object} - a hash containing all of the filter actions which are
+       * @returns {object} - a hash containing all of the filter actions which are
        *                    currently being used by other filteractionrows.
        */
       usedActionsList() {
-        let usedActions = {};
-        let currentFilterActionRow = this.parentNode;
-        let listBox = currentFilterActionRow.parentNode; // need to account for the list item.
+        const usedActions = {};
+        const currentFilterActionRow = this.parentNode;
+        const listBox = currentFilterActionRow.parentNode; // need to account for the list item.
         // Now iterate over each list item in the list box.
         for (let index = 0; index < listBox.getRowCount(); index++) {
-          let filterActionRow = listBox.getItemAtIndex(index);
+          const filterActionRow = listBox.getItemAtIndex(index);
           if (filterActionRow != currentFilterActionRow) {
-            let actionValue = filterActionRow.getAttribute("value");
+            const actionValue = filterActionRow.getAttribute("value");
 
             // Let custom actions decide if dups are allowed.
             let isCustom = false;
@@ -1404,11 +1374,12 @@
 
       /**
        * Check if there exist any templates in this account.
-       * @return {Object[]} - An array of template headers: each has a label and
+       *
+       * @returns {object[]} - An array of template headers: each has a label and
        *                      a value.
        */
       findTemplates() {
-        let identities = MailServices.accounts.getIdentitiesForServer(
+        const identities = MailServices.accounts.getIdentitiesForServer(
           gFilterList.folder.server
         );
         // Typically if this is Local Folders.
@@ -1420,27 +1391,27 @@
           }
         }
 
-        let templates = [];
-        let foldersScanned = [];
+        const templates = [];
+        const foldersScanned = [];
 
-        for (let identity of identities) {
+        for (const identity of identities) {
           let enumerator = null;
-          let msgFolder = MailUtils.getExistingFolder(
+          const msgFolder = MailUtils.getExistingFolder(
             identity.stationeryFolder
           );
           // If we already processed this folder, do not set enumerator
           // so that we skip this identity.
           if (msgFolder && !foldersScanned.includes(msgFolder)) {
             foldersScanned.push(msgFolder);
-            enumerator = msgFolder.msgDatabase.EnumerateMessages();
+            enumerator = msgFolder.msgDatabase.enumerateMessages();
           }
 
           if (!enumerator) {
             continue;
           }
 
-          for (let header of enumerator) {
-            let uri =
+          for (const header of enumerator) {
+            const uri =
               msgFolder.URI +
               "?messageId=" +
               header.messageId +
@@ -1466,7 +1437,7 @@
    * and button to add or remove the MozRuleactionRichlistitem. It gets added in the
    * filterActionList richlistbox in the Filter Editor dialog.
    *
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozRuleactionRichlistitem extends MozElements.MozRichlistitem {
     static get inheritedAttributes() {
@@ -1488,7 +1459,7 @@
       this.appendChild(
         MozXULElement.parseXULToFragment(
           `
-          <menulist is="ruleactiontype-menulist" flex="&filterActionTypeFlexValue;">
+          <menulist is="ruleactiontype-menulist" style="flex: &filterActionTypeFlexValue;">
             <menupopup>
               <menuitem label="&moveMessage.label;"
                         value="movemessage"
@@ -1538,7 +1509,8 @@
             </menupopup>
           </menulist>
           <ruleactiontarget-wrapper class="ruleactiontarget"
-                                    flex="&filterActionTargetFlexValue;"></ruleactiontarget-wrapper>
+                                    style="flex: &filterActionTargetFlexValue;">
+          </ruleactiontarget-wrapper>
           <hbox>
             <button class="small-button"
                     label="+"
@@ -1592,11 +1564,11 @@
 
     initWithAction(aFilterAction) {
       let filterActionStr;
-      let actionTarget = this.children[1];
-      let actionItem = actionTarget.ruleactiontargetElement;
-      let nsMsgFilterAction = Ci.nsMsgFilterAction;
+      const actionTarget = this.children[1];
+      const actionItem = actionTarget.ruleactiontargetElement;
+      const nsMsgFilterAction = Ci.nsMsgFilterAction;
       switch (aFilterAction.type) {
-        case nsMsgFilterAction.Custom:
+        case nsMsgFilterAction.Custom: {
           filterActionStr = aFilterAction.customId;
           if (actionItem) {
             actionItem.children[0].value = aFilterAction.strValue;
@@ -1613,7 +1585,7 @@
             }
           }
           if (needCustomLabel) {
-            let menuitem = document.createXULElement("menuitem");
+            const menuitem = document.createXULElement("menuitem");
             menuitem.setAttribute(
               "label",
               gFilterBundle.getString("filterMissingCustomAction")
@@ -1621,7 +1593,7 @@
             menuitem.setAttribute("value", filterActionStr);
             menuitem.disabled = true;
             this.mRuleActionType.menupopup.appendChild(menuitem);
-            let scriptError = Cc["@mozilla.org/scripterror;1"].createInstance(
+            const scriptError = Cc["@mozilla.org/scripterror;1"].createInstance(
               Ci.nsIScriptError
             );
             scriptError.init(
@@ -1636,6 +1608,7 @@
             Services.console.logMessage(scriptError);
           }
           break;
+        }
         case nsMsgFilterAction.MoveToFolder:
         case nsMsgFilterAction.CopyToFolder:
           actionItem.children[0].value = aFilterAction.targetFolderUri;
@@ -1643,9 +1616,6 @@
         case nsMsgFilterAction.Reply:
         case nsMsgFilterAction.Forward:
           actionItem.children[0].value = aFilterAction.strValue;
-          break;
-        case nsMsgFilterAction.Label:
-          actionItem.children[0].value = aFilterAction.label;
           break;
         case nsMsgFilterAction.ChangePriority:
           actionItem.children[0].value = aFilterAction.priority;
@@ -1672,26 +1642,27 @@
      * Function is used to check if the filter is valid or not. This routine
      * also prompts the user.
      *
-     * @return {boolean} - true if this row represents a valid filter action.
+     * @returns {boolean} - true if this row represents a valid filter action.
      */
     validateAction() {
-      let filterActionString = this.getAttribute("value");
-      let actionTarget = this.children[1];
-      let actionTargetLabel =
+      const filterActionString = this.getAttribute("value");
+      const actionTarget = this.children[1];
+      const actionTargetLabel =
         actionTarget.ruleactiontargetElement &&
         actionTarget.ruleactiontargetElement.children[0].value;
       let errorString, customError;
 
       switch (filterActionString) {
         case "movemessage":
-        case "copymessage":
-          let msgFolder = actionTargetLabel
+        case "copymessage": {
+          const msgFolder = actionTargetLabel
             ? MailUtils.getOrCreateFolder(actionTargetLabel)
             : null;
           if (!msgFolder || !msgFolder.canFileMessages) {
             errorString = "mustSelectFolder";
           }
           break;
+        }
         case "forwardmessage":
           if (
             actionTargetLabel.length < 3 ||
@@ -1733,19 +1704,16 @@
     /**
      * Create a new filter action, fill it in, and then append it to the filter.
      *
-     * @param {Object} aFilter - filter object to save.
+     * @param {object} aFilter - filter object to save.
      */
     saveToFilter(aFilter) {
-      let filterAction = aFilter.createAction();
-      let filterActionString = this.getAttribute("value");
+      const filterAction = aFilter.createAction();
+      const filterActionString = this.getAttribute("value");
       filterAction.type = gFilterActionStrings.indexOf(filterActionString);
-      let actionTarget = this.children[1];
-      let actionItem = actionTarget.ruleactiontargetElement;
-      let nsMsgFilterAction = Ci.nsMsgFilterAction;
+      const actionTarget = this.children[1];
+      const actionItem = actionTarget.ruleactiontargetElement;
+      const nsMsgFilterAction = Ci.nsMsgFilterAction;
       switch (filterAction.type) {
-        case nsMsgFilterAction.Label:
-          filterAction.label = actionItem.children[0].getAttribute("value");
-          break;
         case nsMsgFilterAction.ChangePriority:
           filterAction.priority = actionItem.children[0].getAttribute("value");
           break;
@@ -1777,7 +1745,7 @@
     }
 
     addRow() {
-      let listItem = document.createXULElement("richlistitem", {
+      const listItem = document.createXULElement("richlistitem", {
         is: "ruleaction-richlistitem",
       });
       listItem.classList.add("ruleaction");
@@ -1792,7 +1760,7 @@
 
     removeRow() {
       // this.mListBox will fail after the row is removed, so save a reference.
-      let listBox = this.mListBox;
+      const listBox = this.mListBox;
       if (listBox.getRowCount() > 1) {
         this.remove();
       }

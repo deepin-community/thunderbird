@@ -1,29 +1,13 @@
 <?xml version="1.0"?>
-# -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-<?xml-stylesheet href="chrome://global/skin/global.css"?>
-<?xml-stylesheet href="chrome://global/skin/popup.css"?>
-<?xml-stylesheet href="chrome://global/skin/autocomplete.css"?>
-<?xml-stylesheet href="chrome://messenger/skin/input-fields.css"?>
-<?xml-stylesheet href="chrome://messenger/content/preferences/handlers.css"?>
-<?xml-stylesheet href="chrome://messenger/skin/preferences/applications.css"?>
-<?xml-stylesheet href="chrome://global/skin/in-content/common.css"?>
-<?xml-stylesheet href="chrome://messenger/skin/preferences/preferences.css"?>
-<?xml-stylesheet href="chrome://calendar/skin/shared/calendar-preferences.css" type="text/css"?>
-<?xml-stylesheet href="chrome://calendar/skin/calendar.css"?>
 
 <!DOCTYPE html [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd">
 %brandDTD;
 <!ENTITY % editorOverlayDTD SYSTEM "chrome://messenger/locale/messengercompose/editorOverlay.dtd">
 %editorOverlayDTD;
-#ifdef MOZ_UPDATER
-<!ENTITY % aboutDialogDTD SYSTEM "chrome://messenger/locale/aboutDialog.dtd" >
-%aboutDialogDTD;
-#endif
 <!ENTITY % lightningDTD SYSTEM "chrome://lightning/locale/lightning.dtd">
 %lightningDTD;
 <!ENTITY % globalDTD SYSTEM "chrome://calendar/locale/global.dtd">
@@ -38,15 +22,35 @@
       xmlns:html="http://www.w3.org/1999/xhtml"
       scrolling="false">
 <head>
-  <title data-l10n-id="preferences-doc-title"></title>
-  <meta http-equiv="Content-Security-Policy" content="default-src chrome:; script-src chrome: 'unsafe-inline'; img-src chrome: moz-icon: https: data:; style-src chrome: data: 'unsafe-inline'; object-src 'none'" />
+  <title data-l10n-id="preferences-doc-title2"></title>
+  <meta http-equiv="Content-Security-Policy" content="default-src chrome:; connect-src *; script-src chrome: 'unsafe-inline'; img-src chrome: moz-icon: https: data:; style-src chrome: data: 'unsafe-inline'; object-src 'none'" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="chrome://global/skin/global.css" />
+  <link rel="stylesheet" href="chrome://global/skin/popup.css" />
+  <link rel="stylesheet" href="chrome://global/skin/autocomplete.css" />
+  <link rel="stylesheet" href="chrome://messenger/skin/input-fields.css" />
+  <link
+    rel="stylesheet"
+    href="chrome://messenger/skin/preferences/applications.css"
+  />
+  <link rel="stylesheet" href="chrome://global/skin/in-content/common.css" />
+  <link
+    rel="stylesheet"
+    href="chrome://messenger/skin/preferences/preferences.css"
+  />
+  <link
+    rel="stylesheet"
+    href="chrome://calendar/skin/shared/calendar-preferences.css"
+  />
+  <link rel="stylesheet" href="chrome://calendar/skin/calendar.css" />
+
   <link rel="localization" href="branding/brand.ftl" />
   <link rel="localization" href="messenger/preferences/preferences.ftl" />
   <link rel="localization" href="messenger/preferences/fonts.ftl" />
   <link rel="localization" href="messenger/preferences/languages.ftl" />
+  <link rel="localization" href="messenger/aboutDialog.ftl"/>
 
   <!-- Links below are only used for search-l10n-ids into subdialogs -->
-  <link rel="localization" href="messenger/preferences/sendoptions.ftl" />
   <link rel="localization" href="messenger/preferences/receipts.ftl" />
   <link rel="localization" href="messenger/preferences/permissions.ftl" />
   <link rel="localization" href="messenger/preferences/cookies.ftl" />
@@ -63,12 +67,16 @@
   <link rel="localization" href="messenger/preferences/passwordManager.ftl" />
   <link rel="localization" href="security/certificates/certManager.ftl" />
   <link rel="localization" href="security/certificates/deviceManager.ftl" />
+#ifdef NIGHTLY_BUILD
+  <link rel="localization" href="messenger/preferences/sync-dialog.ftl" />
+  <link rel="localization" href="messenger/syncAccounts.ftl" />
+#endif
 
   <script defer="defer" src="chrome://global/content/preferencesBindings.js"></script>
 #ifdef MOZ_UPDATER
   <script defer="defer" src="chrome://messenger/content/aboutDialog-appUpdater.js"></script>
 #endif
-  <script defer="defer" src="chrome://global/content/globalOverlay.js"></script>
+  <script defer="defer" src="chrome://messenger/content/globalOverlay.js"></script>
   <script defer="defer" src="chrome://global/content/editMenuOverlay.js"></script>
   <script defer="defer" src="chrome://messenger/content/accountUtils.js"></script>
 
@@ -100,7 +108,9 @@
                         value="paneGeneral"
                         data-l10n-id="category-general"
                         align="center">
-            <image class="category-icon"/>
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/settings.svg"
+                      alt="" />
             <label class="category-name" flex="1" data-l10n-id="pane-general-title"/>
           </richlistitem>
 
@@ -109,7 +119,9 @@
                         value="paneCompose"
                         data-l10n-id="category-compose"
                         align="center">
-            <image class="category-icon"/>
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/pencil.svg"
+                      alt="" />
             <label class="category-name" flex="1" data-l10n-id="pane-compose-title"/>
           </richlistitem>
 
@@ -118,7 +130,9 @@
                         value="panePrivacy"
                         data-l10n-id="category-privacy"
                         align="center">
-            <image class="category-icon"/>
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/lock.svg"
+                      alt="" />
             <label class="category-name" flex="1" data-l10n-id="pane-privacy-title"/>
           </richlistitem>
 
@@ -127,7 +141,9 @@
                         value="paneChat"
                         data-l10n-id="category-chat"
                         align="center">
-            <image class="category-icon"/>
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/chat.svg"
+                      alt="" />
             <label class="category-name" flex="1" data-l10n-id="pane-chat-title"/>
           </richlistitem>
 
@@ -136,27 +152,45 @@
                         value="paneCalendar"
                         data-l10n-id="category-calendar"
                         align="center">
-            <image class="category-icon"/>
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/calendar.svg"
+                      alt="" />
             <label class="category-name" flex="1" data-l10n-id="pane-calendar-title"/>
           </richlistitem>
+#ifdef NIGHTLY_BUILD
+          <richlistitem id="category-sync"
+                        class="category"
+                        value="paneSync"
+                        data-l10n-id="category-sync"
+                        align="center">
+            <html:img class="category-icon"
+                      src="chrome://messenger/skin/icons/new/touch/sync.svg"
+                      alt="" />
+            <label class="category-name" flex="1" data-l10n-id="pane-sync-title"/>
+          </richlistitem>
+#endif
         </richlistbox>
 
         <spacer flex="1"/>
 
         <vbox class="sidebar-footer-list">
-          <label is="text-link" id="accountButton" class="sidebar-footer-link"
-                 onclick="MsgAccountManager(null);">
-            <image class="sidebar-footer-icon account-icon"/>
+          <html:a id="accountButton" class="sidebar-footer-link"
+                  onclick="MsgAccountManager(null);">
+            <html:img class="sidebar-footer-icon account-icon"
+                      src="chrome://messenger/skin/icons/new/compact/account-settings.svg"
+                      alt="" />
             <label data-l10n-id="account-button" class="sidebar-footer-label" flex="1"/>
-          </label>
+          </html:a>
 
-          <label is="text-link" id="addonsButton" class="sidebar-footer-link"
-                 onclick="window.browsingContext.topChromeWindow.openAddonsMgr();">
-            <image class="sidebar-footer-icon addons-icon"/>
+          <html:a id="addonsButton" class="sidebar-footer-link"
+                  onclick="window.browsingContext.topChromeWindow.openAddonsMgr();">
+            <html:img class="sidebar-footer-icon"
+                      src="chrome://messenger/skin/icons/new/compact/extension.svg"
+                      alt="" />
             <label class="sidebar-footer-label"
                    data-l10n-id="open-addons-sidebar-button"
                    flex="1"/>
-          </label>
+          </html:a>
         </vbox>
 
       </vbox>
@@ -165,7 +199,7 @@
         <vbox class="paneDeckContainer">
           <hbox class="sticky-container" pack="end" align="top" flex="1">
             <search-textbox id="searchInput"
-                            data-l10n-id="search-preferences-input"
+                            data-l10n-id="search-preferences-input2"
                             data-l10n-attrs="placeholder, style"
                             hidden="true"/>
           </hbox>
@@ -176,6 +210,9 @@
 #include privacy.inc.xhtml
 #include chat.inc.xhtml
 #include ../../../calendar/base/content/preferences/calendar-preferences.inc.xhtml
+#ifdef NIGHTLY_BUILD
+#include sync.inc.xhtml
+#endif
           </vbox>
         </vbox>
       </vbox>

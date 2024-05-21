@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "T">
 <!ENTITY newVirtualFolderCmd.label "Carian Tersimpan…">
 <!ENTITY newVirtualFolderCmd.accesskey "C">
-<!ENTITY newOtherAccountsCmd.label "Akaun Lain…">
-<!ENTITY newOtherAccountsCmd.accesskey "L">
 <!ENTITY newCreateEmailAccountCmd.label "Dapatkan Akaun Mel Baru…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "D">
 <!ENTITY newExistingEmailAccountCmd.label "Akaun Mel Sedia ada…">
@@ -46,8 +44,6 @@
 <!ENTITY openMessageFileCmd.accesskey "B">
 <!ENTITY saveAsMenu.label "Simpan Sebagai">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Fail">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Templat">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -316,7 +312,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Sembang">
 <!ENTITY goChatCmd.accesskey "S">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Mesej Berbintang">
 <!ENTITY prevStarredMsgCmd.accesskey "B">
 <!ENTITY folderMenu.label "Folder">
@@ -940,6 +935,8 @@
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY glodaSearchCmd.label "Global Search…">
 <!ENTITY glodaSearchCmd.accesskey "G">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY openMsgConversationButton.tooltip "Show conversation of selected message">
 <!-- Thread Pane -->
 <!ENTITY selectColumn.label "Select Messages">

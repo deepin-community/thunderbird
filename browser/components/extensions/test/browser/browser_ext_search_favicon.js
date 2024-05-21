@@ -2,11 +2,11 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
-const { XPCShellContentUtils } = ChromeUtils.import(
-  "resource://testing-common/XPCShellContentUtils.jsm"
+const { XPCShellContentUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/XPCShellContentUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
@@ -25,15 +25,17 @@ server.registerPathHandler("/ico.png", (request, response) => {
   response.write(atob(HTTP_ICON_DATA));
 });
 
-function promiseEngineIconLoaded(engineName) {
-  return TestUtils.topicObserved(
+async function promiseEngineIconLoaded(engineName) {
+  await TestUtils.topicObserved(
     "browser-search-engine-modified",
     (engine, verb) => {
       engine.QueryInterface(Ci.nsISearchEngine);
-      return (
-        verb == "engine-changed" && engine.name == engineName && engine.iconURI
-      );
+      return verb == "engine-changed" && engine.name == engineName;
     }
+  );
+  Assert.ok(
+    await Services.search.getEngineByName(engineName).getIconURL(),
+    "Should have a valid icon URL"
   );
 }
 

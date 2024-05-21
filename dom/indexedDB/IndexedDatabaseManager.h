@@ -65,8 +65,6 @@ class IndexedDatabaseManager final {
   }
 #endif
 
-  static bool InTestingMode();
-
   static bool FullSynchronous();
 
   static LoggingMode GetLoggingMode()
@@ -87,17 +85,9 @@ class IndexedDatabaseManager final {
   }
 #endif
 
-  static bool ExperimentalFeaturesEnabled();
-
-  static bool ExperimentalFeaturesEnabled(JSContext* aCx, JSObject* aGlobal);
-
-  static bool IsFileHandleEnabled();
-
   static uint32_t DataThreshold();
 
   static uint32_t MaxSerializedMsgSize();
-
-  static bool PreprocessingEnabled();
 
   // The maximum number of extra entries to preload in an Cursor::OpenOp or
   // Cursor::ContinueOp.
@@ -112,6 +102,8 @@ class IndexedDatabaseManager final {
   void AddFileManager(SafeRefPtr<DatabaseFileManager> aFileManager);
 
   void InvalidateAllFileManagers();
+
+  void InvalidateFileManagers(PersistenceType aPersistenceType);
 
   void InvalidateFileManagers(PersistenceType aPersistenceType,
                               const nsACString& aOrigin);
@@ -131,10 +123,10 @@ class IndexedDatabaseManager final {
 
   nsresult FlushPendingFileDeletions();
 
-  static const nsCString& GetLocale();
+  // XXX This extra explicit initialization should go away with bug 1730706.
+  nsresult EnsureLocale();
 
-  static nsresult CommonPostHandleEvent(EventChainPostVisitor& aVisitor,
-                                        const IDBFactory& aFactory);
+  static const nsCString& GetLocale();
 
   static bool ResolveSandboxBinding(JSContext* aCx);
 

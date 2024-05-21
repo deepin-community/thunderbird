@@ -29,7 +29,6 @@
 #include "nsQueryObject.h"
 
 #include "nsPIDOMWindow.h"
-#include "nsGlobalWindow.h"
 
 #include "nsIStringBundle.h"
 
@@ -39,7 +38,6 @@
 #include "nsPresContext.h"
 #include "nsIAsyncVerifyRedirectCallback.h"
 #include "nsIBrowserDOMWindow.h"
-#include "nsGlobalWindow.h"
 #include "mozilla/ThrottledEventQueue.h"
 using namespace mozilla;
 using mozilla::DebugOnly;
@@ -116,9 +114,6 @@ nsDocLoader::nsDocLoader(bool aNotifyAboutBackgroundRequests)
       mIsRestoringDocument(false),
       mDontFlushLayout(false),
       mIsFlushingLayout(false),
-      mTreatAsBackgroundLoad(false),
-      mHasFakeOnLoadDispatched(false),
-      mIsReadyToHandlePostMessage(false),
       mDocumentOpenedButNotLoaded(false),
       mNotifyAboutBackgroundRequests(aNotifyAboutBackgroundRequests) {
   ClearInternalProgress();
@@ -246,8 +241,8 @@ nsresult nsDocLoader::AddDocLoaderAsChildOfRoot(nsDocLoader* aDocLoader) {
   return rootDocLoader->AddChildLoader(aDocLoader);
 }
 
-NS_IMETHODIMP
-nsDocLoader::Stop(void) {
+// TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
+MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHODIMP nsDocLoader::Stop(void) {
   nsresult rv = NS_OK;
 
   MOZ_LOG(gDocLoaderLog, LogLevel::Debug,
@@ -255,7 +250,10 @@ nsDocLoader::Stop(void) {
 
   NS_OBSERVER_ARRAY_NOTIFY_XPCOM_OBSERVERS(mChildList, Stop, ());
 
-  if (mLoadGroup) rv = mLoadGroup->Cancel(NS_BINDING_ABORTED);
+  if (mLoadGroup) {
+    rv = mLoadGroup->CancelWithReason(NS_BINDING_ABORTED,
+                                      "nsDocLoader::Stop"_ns);
+  }
 
   // Don't report that we're flushing layout so IsBusy returns false after a
   // Stop call.
@@ -266,7 +264,11 @@ nsDocLoader::Stop(void) {
   // after this, since mDocumentRequest will be null after the
   // DocLoaderIsEmpty() call.
   mChildrenInOnload.Clear();
-  mOOPChildrenLoading.Clear();
+  nsCOMPtr<nsIDocShell> ds = do_QueryInterface(GetAsSupports(this));
+  Document* doc = ds ? ds->GetExtantDocument() : nullptr;
+  if (doc) {
+    doc->ClearOOPChildrenLoading();
+  }
 
   // Make sure to call DocLoaderIsEmpty now so that we reset mDocumentRequest,
   // etc, as needed.  We could be getting into here from a subframe onload, in
@@ -289,10 +291,6 @@ nsDocLoader::Stop(void) {
   return rv;
 }
 
-bool nsDocLoader::TreatAsBackgroundLoad() { return mTreatAsBackgroundLoad; }
-
-void nsDocLoader::SetBackgroundLoadIframe() { mTreatAsBackgroundLoad = true; }
-
 bool nsDocLoader::IsBusy() {
   nsresult rv;
 
@@ -306,7 +304,9 @@ bool nsDocLoader::IsBusy() {
   //   3. It's currently flushing layout in DocLoaderIsEmpty().
   //
 
-  if (!mChildrenInOnload.IsEmpty() || !mOOPChildrenLoading.IsEmpty() ||
+  nsCOMPtr<nsIDocShell> ds = do_QueryInterface(GetAsSupports(this));
+  Document* doc = ds ? ds->GetExtantDocument() : nullptr;
+  if (!mChildrenInOnload.IsEmpty() || (doc && doc->HasOOPChildrenLoading()) ||
       mIsFlushingLayout) {
     return true;
   }
@@ -330,15 +330,11 @@ bool nsDocLoader::IsBusy() {
   uint32_t count = mChildList.Length();
   for (uint32_t i = 0; i < count; i++) {
     nsIDocumentLoader* loader = ChildAt(i);
-
-    // If 'dom.cross_origin_iframes_loaded_in_background' is set, the parent
-    // document treats cross domain iframes as background loading frame
-    if (loader && static_cast<nsDocLoader*>(loader)->TreatAsBackgroundLoad()) {
-      continue;
-    }
     // This is a safe cast, because we only put nsDocLoader objects into the
     // array
-    if (loader && static_cast<nsDocLoader*>(loader)->IsBusy()) return true;
+    if (loader && static_cast<nsDocLoader*>(loader)->IsBusy()) {
+      return true;
+    }
   }
 
   return false;
@@ -504,7 +500,8 @@ nsDocLoader::OnStartRequest(nsIRequest* request) {
   return NS_OK;
 }
 
-NS_IMETHODIMP
+// TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
+MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHODIMP
 nsDocLoader::OnStopRequest(nsIRequest* aRequest, nsresult aStatus) {
   // Some docloaders deal with background requests in their OnStopRequest
   // override, but here we don't want to do anything with them, so return early.
@@ -805,46 +802,43 @@ void nsDocLoader::DocLoaderIsEmpty(bool aFlushLayout,
             loadGroupStatus == NS_ERROR_PARSED_DATA_CACHED) {
           // Can "doc" or "window" ever come back null here?  Our state machine
           // is complicated enough I wouldn't bet against it...
-          nsCOMPtr<Document> doc = do_GetInterface(GetAsSupports(this));
-          if (doc) {
+          if (nsCOMPtr<Document> doc = do_GetInterface(GetAsSupports(this))) {
             doc->SetReadyStateInternal(Document::READYSTATE_COMPLETE,
                                        /* updateTimingInformation = */ false);
             doc->StopDocumentLoad();
 
             nsCOMPtr<nsPIDOMWindowOuter> window = doc->GetWindow();
             if (window && !doc->SkipLoadEventAfterClose()) {
-              if (!mozilla::dom::DocGroup::TryToLoadIframesInBackground() ||
-                  (mozilla::dom::DocGroup::TryToLoadIframesInBackground() &&
-                   !HasFakeOnLoadDispatched())) {
-                MOZ_LOG(gDocLoaderLog, LogLevel::Debug,
-                        ("DocLoader:%p: Firing load event for document.open\n",
-                         this));
+              MOZ_LOG(gDocLoaderLog, LogLevel::Debug,
+                      ("DocLoader:%p: Firing load event for document.open\n",
+                       this));
 
-                // This is a very cut-down version of
-                // nsDocumentViewer::LoadComplete that doesn't do various things
-                // that are not relevant here because this wasn't an actual
-                // navigation.
-                WidgetEvent event(true, eLoad);
-                event.mFlags.mBubbles = false;
-                event.mFlags.mCancelable = false;
-                // Dispatching to |window|, but using |document| as the target,
-                // per spec.
-                event.mTarget = doc;
-                nsEventStatus unused = nsEventStatus_eIgnore;
-                doc->SetLoadEventFiring(true);
-                EventDispatcher::Dispatch(window, nullptr, &event, nullptr,
-                                          &unused);
-                doc->SetLoadEventFiring(false);
+              // This is a very cut-down version of
+              // nsDocumentViewer::LoadComplete that doesn't do various things
+              // that are not relevant here because this wasn't an actual
+              // navigation.
+              WidgetEvent event(true, eLoad);
+              event.mFlags.mBubbles = false;
+              event.mFlags.mCancelable = false;
+              // Dispatching to |window|, but using |document| as the target,
+              // per spec.
+              event.mTarget = doc;
+              nsEventStatus unused = nsEventStatus_eIgnore;
+              doc->SetLoadEventFiring(true);
+              // MOZ_KnownLive due to bug 1506441
+              EventDispatcher::Dispatch(
+                  MOZ_KnownLive(nsGlobalWindowOuter::Cast(window)), nullptr,
+                  &event, nullptr, &unused);
+              doc->SetLoadEventFiring(false);
 
-                // Now unsuppress painting on the presshell, if we
-                // haven't done that yet.
-                RefPtr<PresShell> presShell = doc->GetPresShell();
-                if (presShell && !presShell->IsDestroying()) {
-                  presShell->UnsuppressPainting();
+              // Now unsuppress painting on the presshell, if we
+              // haven't done that yet.
+              RefPtr<PresShell> presShell = doc->GetPresShell();
+              if (presShell && !presShell->IsDestroying()) {
+                presShell->UnsuppressPainting();
 
-                  if (!presShell->IsDestroying()) {
-                    presShell->LoadComplete();
-                  }
+                if (!presShell->IsDestroying()) {
+                  presShell->LoadComplete();
                 }
               }
             }
@@ -866,7 +860,7 @@ void nsDocLoader::NotifyDoneWithOnload(nsDocLoader* aParent) {
     return;
   }
   BrowsingContext* bc = nsDocShell::Cast(docShell)->GetBrowsingContext();
-  if (bc->IsContentSubframe() && !bc->GetParent()->IsInProcess()) {
+  if (bc->IsContentSubframe() && !bc->GetParentWindowContext()->IsInProcess()) {
     if (BrowserChild* browserChild = BrowserChild::GetFrom(docShell)) {
       mozilla::Unused << browserChild->SendMaybeFireEmbedderLoadEvents(
           dom::EmbedderElementEventType::NoEvent);
@@ -1007,6 +1001,14 @@ nsDocLoader::RemoveProgressListener(nsIWebProgressListener* aListener) {
 }
 
 NS_IMETHODIMP
+nsDocLoader::GetBrowsingContextXPCOM(BrowsingContext** aResult) {
+  *aResult = nullptr;
+  return NS_OK;
+}
+
+BrowsingContext* nsDocLoader::GetBrowsingContext() { return nullptr; }
+
+NS_IMETHODIMP
 nsDocLoader::GetDOMWindow(mozIDOMWindowProxy** aResult) {
   return CallGetInterface(this, aResult);
 }
@@ -1034,15 +1036,7 @@ nsDocLoader::GetLoadType(uint32_t* aLoadType) {
 
 NS_IMETHODIMP
 nsDocLoader::GetTarget(nsIEventTarget** aTarget) {
-  nsCOMPtr<mozIDOMWindowProxy> window;
-  nsresult rv = GetDOMWindow(getter_AddRefs(window));
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(window);
-  NS_ENSURE_STATE(global);
-
-  nsCOMPtr<nsIEventTarget> target =
-      global->EventTargetFor(mozilla::TaskCategory::Other);
+  nsCOMPtr<nsIEventTarget> target = GetMainThreadSerialEventTarget();
   target.forget(aTarget);
   return NS_OK;
 }
@@ -1394,7 +1388,7 @@ void nsDocLoader::FireOnStatusChange(nsIWebProgress* aWebProgress,
 }
 
 bool nsDocLoader::RefreshAttempted(nsIWebProgress* aWebProgress, nsIURI* aURI,
-                                   int32_t aDelay, bool aSameURI) {
+                                   uint32_t aDelay, bool aSameURI) {
   /*
    * Returns true if the refresh may proceed,
    * false if the refresh should be blocked.
@@ -1544,6 +1538,12 @@ NS_IMETHODIMP nsDocLoader::AdjustPriority(int32_t aDelta) {
   NS_OBSERVER_ARRAY_NOTIFY_XPCOM_OBSERVERS(mChildList, AdjustPriority,
                                            (aDelta));
 
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsDocLoader::GetDocumentRequest(nsIRequest** aRequest) {
+  NS_IF_ADDREF(*aRequest = mDocumentRequest);
   return NS_OK;
 }
 

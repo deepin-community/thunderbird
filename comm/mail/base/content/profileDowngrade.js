@@ -4,10 +4,13 @@
 
 let gParams;
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+window.addEventListener("load", event => {
+  init();
+});
 
 function init() {
   /*
@@ -23,10 +26,7 @@ function init() {
   document.addEventListener("dialogaccept", quit);
   document.addEventListener("dialogcancel", quit);
 
-  document
-    .querySelector("dialog")
-    .getButton("accept")
-    .focus();
+  document.querySelector("dialog").getButton("accept").focus();
 }
 
 function quit() {
@@ -44,7 +44,7 @@ function moreInfo(event) {
   }
   event.preventDefault();
 
-  let uri = Services.io.newURI(
+  const uri = Services.io.newURI(
     "https://support.mozilla.org/kb/unable-launch-older-version-profile"
   );
   Cc["@mozilla.org/uriloader/external-protocol-service;1"]

@@ -1,3 +1,5 @@
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 function info(message) {
   dump("INFO: " + message + "\n");
 }
@@ -12,7 +14,7 @@ function is(a, b, message) {
 
 if (self.Notification) {
   var steps = [
-    function(done) {
+    function (done) {
       info("Test notification permission");
       ok(typeof Notification === "function", "Notification constructor exists");
       ok(
@@ -21,14 +23,14 @@ if (self.Notification) {
       );
 
       var n = new Notification("Hello");
-      n.onerror = function(e) {
+      n.onerror = function (e) {
         ok(true, "error called due to permission denied.");
         done();
       };
     },
   ];
 
-  onmessage = function(e) {
+  onmessage = function (e) {
     var context = {};
     (function executeRemainingTests(remainingTests) {
       if (!remainingTests.length) {

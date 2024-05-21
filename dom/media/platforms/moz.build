@@ -8,12 +8,10 @@ EXPORTS += [
     "agnostic/AgnosticDecoderModule.h",
     "agnostic/BlankDecoderModule.h",
     "agnostic/DummyMediaDataDecoder.h",
-    "agnostic/OpusDecoder.h",
     "agnostic/TheoraDecoder.h",
-    "agnostic/VorbisDecoder.h",
     "agnostic/VPXDecoder.h",
-    "agnostic/WAVDecoder.h",
     "AllocationPolicy.h",
+    "MediaCodecsSupport.h",
     "MediaTelemetryConstants.h",
     "PDMFactory.h",
     "PEMFactory.h",
@@ -31,15 +29,14 @@ UNIFIED_SOURCES += [
     "agnostic/BlankDecoderModule.cpp",
     "agnostic/DummyMediaDataDecoder.cpp",
     "agnostic/NullDecoderModule.cpp",
-    "agnostic/OpusDecoder.cpp",
     "agnostic/TheoraDecoder.cpp",
-    "agnostic/VorbisDecoder.cpp",
     "agnostic/VPXDecoder.cpp",
-    "agnostic/WAVDecoder.cpp",
     "AllocationPolicy.cpp",
+    "MediaCodecsSupport.cpp",
     "PDMFactory.cpp",
     "PEMFactory.cpp",
     "PlatformDecoderModule.cpp",
+    "PlatformEncoderModule.cpp",
     "wrappers/AudioTrimmer.cpp",
     "wrappers/MediaChangeMonitor.cpp",
     "wrappers/MediaDataDecoderProxy.cpp",
@@ -50,19 +47,13 @@ DIRS += ["agnostic/bytestreams", "agnostic/eme", "agnostic/gmp", "omx"]
 if CONFIG["MOZ_WMF"]:
     DIRS += ["wmf"]
 
-if CONFIG["MOZ_FFVPX"] or CONFIG["MOZ_FFMPEG"]:
-    # common code to either FFmpeg or FFVPX
-    EXPORTS += [
-        "ffmpeg/FFmpegRDFTTypes.h",
-    ]
-    UNIFIED_SOURCES += [
-        "ffmpeg/FFmpegLibWrapper.cpp",
-    ]
+UNIFIED_SOURCES += [
+    "ffmpeg/FFmpegLibWrapper.cpp",
+]
 
-if CONFIG["MOZ_FFVPX"]:
-    DIRS += [
-        "ffmpeg/ffvpx",
-    ]
+DIRS += [
+    "ffmpeg/ffvpx",
+]
 
 if CONFIG["MOZ_FFMPEG"]:
     DIRS += [
@@ -134,9 +125,6 @@ if CONFIG["MOZ_WIDGET_TOOLKIT"] == "android":
     ]
 
 FINAL_LIBRARY = "xul"
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
 
 # Add libFuzzer configuration directives
 include("/tools/fuzzing/libfuzzer-config.mozbuild")

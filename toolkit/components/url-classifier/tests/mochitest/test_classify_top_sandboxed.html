@@ -14,44 +14,38 @@ async function runTests() {
 
   var chromeScript;
   chromeScript = SpecialPowers.loadChromeScript(_ => {
-    const { Services } = ChromeUtils.import(
-      "resource://gre/modules/Services.jsm"
-    );
-
-    function onExamResp(subject, topic, data) {
+    /* eslint-env mozilla/chrome-script */
+    function onExamResp(subject) {
       let channel = subject.QueryInterface(Ci.nsIHttpChannel);
       let classifiedChannel = subject.QueryInterface(Ci.nsIClassifiedChannel);
       if (
         !channel ||
         !classifiedChannel ||
         !channel.URI.spec.startsWith(
-          "http://itisatracker.org/tests/toolkit/components/url-classifier/tests/mochitest/evil.js"
+          "https://itisatracker.org/tests/toolkit/components/url-classifier/tests/mochitest/evil.js"
         )
       ) {
         return;
       }
 
-      // eslint-disable-next-line no-undef
       sendAsyncMessage("last-channel-flags", {
         classified: Ci.nsIClassifiedChannel.CLASSIFIED_TRACKING == classifiedChannel.classificationFlags,
       });
     }
 
-    // eslint-disable-next-line no-undef
     addMessageListener("done", __ => {
       Services.obs.removeObserver(onExamResp, "http-on-examine-response");
     });
 
     Services.obs.addObserver(onExamResp, "http-on-examine-response");
 
-    // eslint-disable-next-line no-undef
     sendAsyncMessage("start-test");
   });
 
   chromeScript.addMessageListener(
     "start-test",
     async _ => {
-      window.open("http://example.org/tests/toolkit/components/url-classifier/tests/mochitest/sandboxed.html")
+      window.open("https://example.org/tests/toolkit/components/url-classifier/tests/mochitest/sandboxed.html")
     },
     { once: true }
   );

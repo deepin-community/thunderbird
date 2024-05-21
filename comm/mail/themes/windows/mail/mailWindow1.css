@@ -16,11 +16,6 @@
   background-color: -moz-Dialog;
 }
 
-#folderPaneHeader {
-  border-top-style: none;
-  border-bottom: 1px solid ThreeDShadow;
-}
-
 /* ::::: thread decoration ::::: */
 
 /* ::::: group rows ::::: */
@@ -34,467 +29,235 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 
 #tabpanelcontainer {
   appearance: none;
+  color-scheme: light dark;
 }
 
-/* ..... Draw in titlebar ..... */
+@media not (prefers-contrast) {
+  :root:not(:-moz-lwtheme) {
+    background-color: light-dark(var(--color-gray-10), var(--color-gray-90));
 
-#messengerWindow[sizemode="normal"] #titlebar {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-titlebar;
-}
+    &:-moz-lwtheme {
+      background-color: var(--lwt-accent-color);
 
-#messengerWindow[sizemode="maximized"] #titlebar {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-titlebar-maximized;
-}
-
-@media (-moz-windows-classic) {
-  #messengerWindow[tabsintitlebar] #navigation-toolbox > #mail-toolbar-menubar2 {
-    border-bottom: none;
-  }
-
-  #messengerWindow[tabsintitlebar][sizemode="normal"] #navigation-toolbox > #mail-toolbar-menubar2 {
-    margin-top: 4px;
-  }
-}
-
-/* Prevent window controls from overlapping the nav bar's shadow on the tab
- * bar. */
-#titlebar-buttonbox-container {
-  margin-bottom: var(--tabs-tabbar-border-size);
-}
-
-/* The button box must appear on top of the navigator-toolbox in order for
- * click and hover mouse events to work properly for the button in the restored
- * window state. Otherwise, elements in the navigator-toolbox, like the menubar,
- * can swallow those events. It will also place the buttons above the fog on
- * themes with Aero Glass.
- */
-#titlebar-buttonbox {
-  z-index: 1;
-}
-
-#messengerWindow:not([tabsintitlebar]) #titlebar {
-  visibility: collapse;
-}
-
-#titlebar-buttonbox {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-box;
-  position: relative;
-}
-
-#messengerWindow[sizemode="maximized"] #titlebar-buttonbox {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-box-maximized;
-}
-
-#titlebar-min {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-minimize;
-}
-
-@media (-moz-windows-classic: 0) {
-  #titlebar-min {
-    margin-inline-end: 2px;
-  }
-}
-
-#titlebar-max {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-maximize;
-}
-
-#messengerWindow[sizemode="maximized"] #titlebar-max {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-restore;
-}
-
-#titlebar-close {
-  appearance: auto;
-  -moz-default-appearance: -moz-window-button-close;
-}
-
-#messengerWindow[tabsintitlebar] .titlebar-placeholder[type="caption-buttons"] {
-  margin-inline-start: 10px; /* additional space for Aero Snap */
-}
-
-#messengerWindow:not([tabsintitlebar]) .titlebar-placeholder {
-  visibility: collapse;
-}
-
-@media (-moz-os-version: windows-win7) and (-moz-windows-glass: 0) {
-  #messengerWindow[tabsintitlebar]
-    #mail-toolbar-menubar2:not([autohide]) + #tabs-toolbar >
-    .titlebar-placeholder {
-    visibility: collapse;
-  }
-}
-
-/* Add extra space to titlebar for dragging */
-:root[sizemode="normal"] #mail-toolbar-menubar2[autohide="true"][inactive] ~ #tabs-toolbar {
-  padding-top: var(--space-above-tabbar);
-}
-
-@media (-moz-windows-compositor) {
-  @media (-moz-os-version: windows-win7),
-         (-moz-os-version: windows-win8) {
-    :root {
-      appearance: auto;
-      -moz-default-appearance: -moz-win-borderless-glass;
-      background-color: transparent;
-    }
-
-    /* These should be hidden w/ glass enabled. Windows draws its own buttons. */
-    .titlebar-button {
-      display: none;
-    }
-
-    :root[sizemode="normal"] #titlebar-buttonbox:-moz-lwtheme {
-      margin-top: -2px;
-    }
-
-    :root[sizemode="maximized"] #titlebar-buttonbox {
-      margin-inline-end: 3px;
-    }
-  }
-
-  /* Artificially draw window borders that are covered by lwtheme,
-     see bug 591930. win7 are uses different colors than win8 */
-  @media (-moz-os-version: windows-win7) {
-    #messengerWindow[sizemode="normal"] #titlebar >
-    #titlebar-content:-moz-lwtheme {
-      border-top: 1px solid;
-      padding-top: 1px;
-      border-top-color: rgb(37, 44, 51);
-      box-shadow: 0 1px 0 rgba(255,255,255,.6) inset;
-    }
-
-    #messengerWindow[sizemode="normal"] #titlebar >
-    #titlebar-content:-moz-lwtheme:-moz-window-inactive {
-      border-top-color: rgb(102, 102, 102);
-    }
-  }
-
-  @media (-moz-os-version: windows-win8) {
-    #messengerWindow[sizemode="normal"] #titlebar >
-    #titlebar-content:-moz-lwtheme {
-      border-top: 1px solid hsla(209, 67%, 12%, 0.35);
-    }
-  }
-
-  @media (-moz-os-version: windows-win10) {
-    @media (-moz-windows-default-theme) {
-      :root:not(:-moz-lwtheme) {
-        background-color: #d1d1d1;
-      }
-
-      :root[tabsintitlebar]:-moz-lwtheme {
-        background-color: var(--lwt-accent-color);
-      }
-
-      :root[tabsintitlebar]:-moz-lwtheme:-moz-window-inactive {
+      &:-moz-window-inactive {
         background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
       }
+    }
+  }
 
-      :root[tabsintitlebar] #navigation-toolbox {
-        margin-top: -1px;
-      }
+  @media (-moz-windows-accent-color-in-titlebar: 0) {
+    :root[sizemode=normal][tabsintitlebar] {
+      border-top: 1px solid rgba(0, 0, 0, 0.7);
 
-      :root[tabsintitlebar] #mail-toolbar-menubar2:not([inactive="true"]) {
-        margin-top: 1px;
-      }
-
-      :root[tabsintitlebar] #LW-background-box:-moz-lwtheme {
-        top: 1px;
-      }
-
-      @media (-moz-windows-accent-color-in-titlebar: 0) {
-        :root[sizemode=normal][tabsintitlebar] {
-          border-top: 1px solid rgba(0,0,0,.7);
-        }
-        :root[sizemode=normal][tabsintitlebar][always-use-accent-color-for-window-border]:not(:-moz-window-inactive) {
-          border-top-color: -moz-accent-color;
-        }
-        :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme) {
-          background-color: #a8cbdb;
-        }
-      }
-
-      @media (-moz-windows-accent-color-in-titlebar) {
-        :root[sizemode=normal][tabsintitlebar] {
-          border-top: 1px solid -moz-accent-color;
-        }
-        :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme),
-        :root[tabsintitlebar]:not(:-moz-window-inactive)[lwt-default-theme-in-dark-mode] {
-          background-color: -moz-accent-color;
-        }
-
-        :root[tabsintitlebar] #navigation-toolbox:not(:-moz-window-inactive,:-moz-lwtheme),
-        :root[tabsintitlebar] #navigation-toolbox:not(:-moz-window-inactive)[lwt-default-theme-in-dark-mode] {
-          color: -moz-accent-color-foreground;
-        }
-
-        :root[tabsintitlebar][lwt-default-theme-in-dark-mode]:not(:-moz-window-inactive)
-          .titlebar-button {
-          stroke: -moz-accent-color-foreground;
-        }
-
-        :root[tabsintitlebar][lwt-default-theme-in-dark-mode]:not(:-moz-window-inactive) #tabs-toolbar {
-          --toolbarbutton-icon-fill: -moz-accent-color-foreground;
-          --toolbarbutton-icon-fill-opacity: .7;
-        }
-      }
-
-      :root[sizemode=normal][tabsintitlebar]:-moz-window-inactive {
-        border-top-color: rgba(0,0,0,.3);
+      &[always-use-accent-color-for-window-border]:not(:-moz-window-inactive) {
+        border-top-color: AccentColor;
       }
     }
-
-    @media (prefers-contrast) {
-      :root {
-        appearance: auto;
-        -moz-default-appearance: -moz-win-glass;
-        background-color: transparent;
-      }
-
-      #tabmail-container {
-        appearance: auto;
-        -moz-default-appearance: -moz-win-exclude-glass;
-      }
+    :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme) {
+      background-color: light-dark(var(--color-gray-20), var(--color-gray-90));
     }
+  }
 
-    #titlebar-buttonbox,
-    .titlebar-button {
-      appearance: none !important;
-    }
+  @media (-moz-windows-accent-color-in-titlebar) {
+    :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme) {
+      background-color: AccentColor;
 
-    .titlebar-button {
-      border: none;
-      margin: 0 !important;
-      padding: 9px 17px;
-      -moz-context-properties: stroke;
-      stroke: currentColor;
-    }
-
-    @media (-moz-windows-default-theme) {
-      @media (-moz-windows-accent-color-in-titlebar) {
-        .titlebar-button:not(:-moz-window-inactive,:-moz-lwtheme) {
-          stroke: -moz-accent-color-foreground;
-        }
+      & #navigation-toolbox {
+        color: AccentColorText;
       }
     }
+  }
+}
 
-    .titlebar-button > .toolbarbutton-icon {
-      width: 12px;
-      height: 12px;
-    }
+@media (prefers-contrast) {
+  :root[tabsintitlebar] #navigation-toolbox:not(:-moz-lwtheme) {
+    background-color: ActiveCaption;
+    color: CaptionText;
 
-    #titlebar-min {
-      list-style-image: url(chrome://messenger/skin/window-controls/minimize.svg);
+    &:-moz-window-inactive {
+      background-color: InactiveCaption;
+      color: InactiveCaptionText;
     }
+  }
+}
 
-    #titlebar-max {
-      list-style-image: url(chrome://messenger/skin/window-controls/maximize.svg);
-    }
+.titlebar-buttonbox,
+.titlebar-button {
+  appearance: none !important;
+}
 
-    :root[sizemode="maximized"] #titlebar-max {
-      list-style-image: url(chrome://messenger/skin/window-controls/restore.svg);
-    }
+.titlebar-button {
+  border: none;
+  margin: 0 !important;
+  padding: 9px 17px;
+  -moz-context-properties: stroke;
+  stroke: currentColor;
 
-    :root[sizemode="maximized"] #titlebar-max:-moz-locale-dir(rtl) {
-      transform: scaleX(-1);
+  @media not (prefers-contrast) {
+    @media (-moz-windows-accent-color-in-titlebar) {
+      &:not(:-moz-window-inactive, :-moz-lwtheme) {
+        stroke: AccentColorText;
+      }
     }
+  }
 
-    #titlebar-close {
-      list-style-image: url(chrome://messenger/skin/window-controls/close.svg);
-    }
-
-    :root[lwtheme-image] .titlebar-button {
-      -moz-context-properties: unset;
-    }
-    :root[lwtheme-image] #titlebar-min {
-      list-style-image: url(chrome://messenger/skin/window-controls/minimize-themes.svg);
-    }
-    :root[lwtheme-image] #titlebar-max {
-      list-style-image: url(chrome://messenger/skin/window-controls/maximize-themes.svg);
-    }
-    :root[lwtheme-image][sizemode="maximized"] #titlebar-max {
-      list-style-image: url(chrome://messenger/skin/window-controls/restore-themes.svg);
-    }
-    :root[lwtheme-image] #titlebar-close {
-      list-style-image: url(chrome://messenger/skin/window-controls/close-themes.svg);
-    }
+  & > .toolbarbutton-icon {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
 
     /* the 12px image renders a 10px icon, and the 10px upscaled gets rounded to 12.5, which
      * rounds up to 13px, which makes the icon one pixel too big on 1.25dppx. Fix: */
-    @media (min-resolution: 1.20dppx) and (max-resolution: 1.45dppx) {
+    @media (1.20dppx <= resolution <= 1.45dppx) {
       .titlebar-button > .toolbarbutton-icon {
         width: 11.5px;
         height: 11.5px;
       }
     }
+  }
 
-    /* 175% dpi should result in the same device pixel sizes as 150% dpi. */
-    @media (min-resolution: 1.70dppx) and (max-resolution: 1.95dppx) {
-      .titlebar-button {
-        padding-left: 14.1px;
-        padding-right: 14.1px;
-      }
+  /* 175% dpi should result in the same device pixel sizes as 150% dpi. */
+  @media (1.70dppx <= resolution <= 1.95dppx) {
+    padding-inline: 14.1px;
 
-      .titlebar-button > .toolbarbutton-icon {
-        width: 10.8px;
-        height: 10.8px;
+    & > .toolbarbutton-icon {
+      width: 10.8px;
+      height: 10.8px;
+    }
+  }
+
+  /* 225% dpi should result in the same device pixel sizes as 200% dpi. */
+  @media (2.20dppx <= resolution <= 2.45dppx) {
+    padding-inline: 15.3333px;
+
+    & > .toolbarbutton-icon {
+      width: 10.8px;
+      height: 10.8px;
+    }
+  }
+
+  /* 275% dpi should result in the same device pixel sizes as 250% dpi. */
+  @media (2.70dppx <= resolution <= 2.95dppx) {
+    /* NB: todo: this should also change padding on the buttons
+     * themselves, but without a device to test this on, it's
+     * impossible to know by how much. */
+    & > .toolbarbutton-icon {
+      width: 10.8px;
+      height: 10.8px;
+    }
+  }
+
+  @media not (prefers-contrast) {
+    &:hover {
+      background-color: hsla(0, 0%, 0%, 0.12);
+
+      &:active {
+        background-color: hsla(0, 0%, 0%, 0.22);
       }
     }
 
-    /* 225% dpi should result in the same device pixel sizes as 200% dpi. */
-    @media (min-resolution: 2.20dppx) and (max-resolution: 2.45dppx) {
-      .titlebar-button {
-        padding-left: 15.3333px;
-        padding-right: 15.3333px;
-      }
-
-      .titlebar-button > .toolbarbutton-icon {
-        width: 10.8px;
-        height: 10.8px;
-      }
+    &:not(:hover) > .toolbarbutton-icon:-moz-window-inactive {
+      opacity: 0.5;
     }
 
-    /* 275% dpi should result in the same device pixel sizes as 250% dpi. */
-    @media (min-resolution: 2.70dppx) and (max-resolution: 2.95dppx) {
-      /* NB: todo: this should also change padding on the buttons
-       * themselves, but without a device to test this on, it's
-       * impossible to know by how much. */
-      .titlebar-button > .toolbarbutton-icon {
-        width: 10.8px;
-        height: 10.8px;
+    @media (prefers-color-scheme: dark) {
+      &:hover {
+        background-color: hsla(0, 0%, 100%, 0.12);
+
+        &:active {
+          background-color: hsla(0, 0%, 100%, 0.22);
+        }
       }
     }
+  }
 
-    @media (-moz-windows-default-theme) {
-      .titlebar-button:hover {
-        background-color: hsla(0, 0%, 0%, .12);
-      }
+  :root[lwtheme-image] & {
+    -moz-context-properties: unset;
+  }
 
-      .titlebar-button:hover:active {
-        background-color: hsla(0, 0%, 0%, .22);
-      }
+  @media (prefers-contrast) {
+    stroke: ButtonText;
+    background-color: Field;
 
-      .titlebar-button:not(:hover) > .toolbarbutton-icon:-moz-window-inactive {
-        opacity: 0.5;
-      }
-
-      #titlebar-close:hover {
-        stroke: white;
-        background-color: hsl(355, 86%, 49%);
-      }
-
-      #titlebar-close:hover:active {
-        background-color: hsl(355, 82%, 69%);
-      }
-
-      .titlebar-button:-moz-lwtheme-brighttext:hover {
-        background-color: hsla(0, 0%, 100%, .12);
-      }
-
-      .titlebar-button:-moz-lwtheme-brighttext:hover:active {
-        background-color: hsla(0, 0%, 100%, .22);
-      }
-    }
-    @media (prefers-contrast) {
-      .titlebar-button {
-        stroke: ButtonText;
-        background-color: Field;
-      }
-      .titlebar-button:hover {
-        stroke: HighlightText;
-        background-color: Highlight;
-      }
-
-      #titlebar-min {
-        list-style-image: url(chrome://messenger/skin/window-controls/minimize-highcontrast.svg);
-      }
-
-      #titlebar-max {
-        list-style-image: url(chrome://messenger/skin/window-controls/maximize-highcontrast.svg);
-      }
-
-      :root[sizemode="maximized"] #titlebar-max {
-        list-style-image: url(chrome://messenger/skin/window-controls/restore-highcontrast.svg);
-      }
-
-      #titlebar-close {
-        list-style-image: url(chrome://messenger/skin/window-controls/close-highcontrast.svg);
-      }
+    &:hover {
+      stroke: SelectedItemText;
+      background-color: SelectedItem;
     }
   }
 }
 
-#folderpane_splitter,
-#threadpane-splitter:not([orient="vertical"]) {
-  border-width: 0;
-  min-width: 0;
-  width: 5px;
-  background-color: transparent;
-  margin-top: 0;
-  position: relative;
-  z-index: 10;
-  transition: border-width .3s ease-in;
+.titlebar-min {
+  list-style-image: url("chrome://messenger/skin/window-controls/minimize.svg");
+  margin-inline-end: 2px;
+
+  :root[lwtheme-image] & {
+    list-style-image: url("chrome://messenger/skin/window-controls/minimize-themes.svg");
+  }
+
+  @media (prefers-contrast) {
+    list-style-image: url("chrome://messenger/skin/window-controls/minimize-highcontrast.svg");
+  }
 }
 
-#folderpane_splitter {
-  border-inline-start: 1px solid var(--splitter-color);
-  /* make only the splitter border visible */
-  margin-inline-end: -4px;
+.titlebar-max {
+  list-style-image: url("chrome://messenger/skin/window-controls/maximize.svg");
+
+  :root[lwtheme-image] & {
+    list-style-image: url("chrome://messenger/skin/window-controls/maximize-themes.svg");
+  }
+
+  @media (prefers-contrast) {
+    list-style-image: url("chrome://messenger/skin/window-controls/maximize-highcontrast.svg");
+  }
 }
 
-#folderpane_splitter[state="collapsed"]:hover {
-  border-inline-start: 4px solid highlight;
+.titlebar-restore {
+  list-style-image: url("chrome://messenger/skin/window-controls/restore.svg");
+
+  &:-moz-locale-dir(rtl) {
+    transform: scaleX(-1);
+  }
+
+  :root[lwtheme-image] & {
+    list-style-image: url("chrome://messenger/skin/window-controls/restore-themes.svg");
+  }
+
+  @media (prefers-contrast) {
+    list-style-image: url("chrome://messenger/skin/window-controls/restore-highcontrast.svg");
+  }
 }
 
-#threadpane-splitter:not([orient="vertical"]) {
-  border-inline-end: 1px solid var(--splitter-color);
-  /* make only the splitter border visible */
-  margin-inline-start: -4px;
-}
+.titlebar-close {
+  list-style-image: url("chrome://messenger/skin/window-controls/close.svg");
 
-#threadpane-splitter[state="collapsed"]:not([orient="vertical"]):hover {
-  border-inline-end: 4px solid highlight;
-}
+  :root[lwtheme-image] & {
+    list-style-image: url("chrome://messenger/skin/window-controls/close-themes.svg");
+  }
 
-#threadpane-splitter,
-#attachment-splitter {
-  border-width: 0;
-  min-height: 0;
-  height: 5px;
-  background-color: transparent;
-  margin-top: -5px;
-  position: relative;
-  z-index: 10;
-  transition: border-width .3s ease-in;
-}
+  @media (prefers-contrast) {
+    list-style-image: url("chrome://messenger/skin/window-controls/close-highcontrast.svg");
+  }
 
-#threadpane-splitter {
-  border-bottom: 1px solid var(--splitter-color);
-}
+  @media not (prefers-contrast) {
+    &:hover {
+      stroke: white;
+      background-color: var(--color-red-60);
 
-#attachment-splitter {
-  border-bottom: 1px solid #a9b7c9;
-}
+      &:hover:active {
+        background-color: var(--color-red-50);
+      }
+    }
 
-#attachment-splitter:not([state="collapsed"]) {
-  border-bottom: 1px solid transparent;
-}
+    @media (prefers-color-scheme: dark) {
+      &:hover {
+        background-color: var(--color-red-70);
 
-#attachment-splitter,
-#threadpane-splitter[state="collapsed"] {
-  transition: border-color .3s;
-}
-
-#threadpane-splitter[state="collapsed"]:hover,
-#attachment-splitter[state="collapsed"]:hover {
-  border-bottom: 4px solid highlight;
+        &:hover:active {
+          background-color: var(--color-red-60);
+        }
+      }
+    }
+  }
 }
 
 #messagepanebox {
@@ -502,189 +265,21 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
   border-inline-start: none;
 }
 
-@media not (-moz-windows-non-native-menus) {
-  #viewPickerPopup menu,
-  #viewPickerPopup menuitem {
-    appearance: none;
-    padding-inline-end: 1px;
-  }
-}
-
-@media (-moz-windows-non-native-menus) {
-  #viewPickerPopup > menu,
-  #viewPickerPopup > menuitem {
-    padding-inline-start: 1em;
-  }
-}
-
 @media (prefers-contrast) {
   :root:not(:-moz-lwtheme)
-    treechildren::-moz-tree-cell-text(untagged, unread) {
-    color: -moz-cellhighlighttext !important;
-  }
-
-  :root:not(:-moz-lwtheme)
-    treechildren::-moz-tree-cell-text(untagged, unread, hover) {
-    color: inherit !important;
-  }
-
-  :root:not(:-moz-lwtheme)
-    treechildren::-moz-tree-cell-text(selected, untagged, unread, focus) {
-    color: HighlightText !important;
+    treechildren::-moz-tree-image(selected) {
+    color: inherit;
   }
 }
 
-@media (-moz-windows-default-theme) {
-  @media not (-moz-windows-non-native-menus) {
-    #viewPickerPopup > menu,
-    #viewPickerPopup > menuitem {
-      margin: 1px;
-    }
-  }
-
-  :root[sizemode=maximized][tabsintitlebar] #LW-background-box:-moz-lwtheme {
-    top: 8px;
-  }
-
-  :root:not([lwt-tree]) #folderTree {
-    background-color: #fafafa;
-  }
-
-  treechildren::-moz-tree-line(selected, focus),
-  tree[seltype="cell"] > treechildren::-moz-tree-line(active, selected, focus) {
-    border-color: -moz-DialogText;
-  }
-
-  #viewPicker::part(label),
-  #locationFolders::part(label) {
-    margin-block: 0 !important;
-  }
+:root:not([lwt-tree], :-moz-lwtheme) #folderTree {
+  background-color: #fafafa;
 }
 
-#viewPicker::part(icon),
-#locationFolders::part(icon) {
-  min-height: 16px;
-}
+/* Global notification popup */
 
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme) {
-  @media (-moz-windows-glass: 0) {
-    #messengerWindow:not([tabsintitlebar]) #navigation-toolbox:not(:-moz-lwtheme) {
-      background-color: #d1d1d1;
-    }
-  }
-
-  #viewPickerPopup > menu > .menu-text {
-    padding-inline-start: 0 !important;
-  }
-}
-
-@media (-moz-windows-default-theme: 0) {
-  #viewPickerPopup > menu > .menu-text {
-    padding-inline-start: 0 !important;
-  }
-
-  :root[sizemode=maximized][tabsintitlebar] #LW-background-box:-moz-lwtheme {
-    top: 4px;
-  }
-}
-
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme),
-       (-moz-os-version: windows-win8) and (-moz-windows-default-theme) {
-  @media (-moz-windows-compositor) {
-    :root:not(:-moz-lwtheme) {
-      --tabs-border-color: var(--glassShadowColor);
-    }
-
-    #messengerWindow[sizemode=normal] #tabpanelcontainer {
-      border: 1px solid var(--glassShadowColor);
-      border-top: none;
-      background-clip: padding-box;
-    }
-
-    #messengerWindow[sizemode=normal] #mail-toolbar-menubar2 {
-      border-right: 1px solid var(--glassShadowColor);
-      border-left: 1px solid var(--glassShadowColor);
-      background-clip: padding-box;
-    }
-
-    #messengerWindow[sizemode=normal] .statusbar {
-      margin-top: -1px;
-      border: 1px solid var(--glassShadowColor);
-      border-top-color: threedshadow;
-      border-radius: 1px 1px 0 0;
-      background-clip: padding-box;
-    }
-  }
-}
-
-@media (-moz-os-version: windows-win8) and (-moz-windows-default-theme),
-       (-moz-os-version: windows-win10) and (-moz-windows-default-theme) {
-  #folderPaneHeader {
-    border-bottom-color: #c2c2c2;
-  }
-}
-
-@media (-moz-os-version: windows-win8) and (-moz-windows-default-theme) {
-  #messengerWindow:not([tabsintitlebar]) #navigation-toolbox:not(:-moz-lwtheme) {
-    background-color: #d1d1d1;
-  }
-}
-
-@media (-moz-windows-glass) {
-  /* lesser transparency on Glass background */
-  #tabbar-toolbar menulist:not(:-moz-lwtheme,[open="true"]) {
-    background-color: rgba(227, 237, 246, .7);
-  }
-
-  /* lesser transparency on Glass background */
-  #tabbar-toolbar menulist:not(:-moz-lwtheme,[open="true"]):hover {
-    background-color: rgba(136, 197, 213, .85);
-  }
-
-  #tabbar-toolbar #viewPickerLabel:not(:-moz-lwtheme,:-moz-window-inactive) {
-    margin-inline-start: 4px;
-    margin-inline-end: 0;
-    padding-inline-start: 2px;
-    padding-inline-end: 5px;
-    background-color: rgba(255, 255, 255, .3);
-    border-radius: 4px;
-  }
-
-  #folderPaneHeader {
-    border-bottom-color: #aabccf;
-  }
-}
-
-#viewPicker::part(icon),
-#locationFolders::part(icon) {
-  min-height: 16px;
-}
-
-@media not (-moz-windows-non-native-menus) {
-  #viewPickerPopup > menu > .menu-text {
-    appearance: none;
-    margin-inline-start: 0 !important;
-    padding-inline-start: 0 !important;
-  }
-}
-
-#viewPickerTagsPopup > menuitem > .menu-iconic-text,
-#viewPickerCustomViewsPopup > menuitem > .menu-iconic-text {
-  padding: 1px 3px;
-}
-
-@media (-moz-windows-compositor: 0) {
-  #mail-toolbar-menubar2[autohide="false"] +
-  #tabs-toolbar > .titlebar-placeholder {
-    display: none;
-  }
-
-  @media (-moz-windows-default-theme) {
-    #messengerWindow:not(:-moz-lwtheme) {
-      background-color: rgb(185, 209, 234);
-    }
-    #messengerWindow:not(:-moz-lwtheme):-moz-window-inactive {
-      background-color: rgb(215, 228, 242);
-    }
-  }
+#notification-popup {
+  appearance: none;
+  background: transparent;
+  border: none;
 }

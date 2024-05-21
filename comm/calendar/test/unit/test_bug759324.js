@@ -2,16 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+const storage = getStorageCal();
+
 /**
  * Checks if the capabilities.propagate-sequence feature of the storage calendar
  * still works
  */
-function run_test() {
-  let storage = getStorageCal();
-
+add_task(async function testBug759324() {
   storage.setProperty("capabilities.propagate-sequence", "true");
 
-  let str = [
+  const str = [
     "BEGIN:VEVENT",
     "UID:recItem",
     "SEQUENCE:3",
@@ -20,57 +20,55 @@ function run_test() {
     "END:VEVENT",
   ].join("\r\n");
 
-  let item = createEventFromIcalString(str);
-  let rid = cal.createDateTime("20120101T010101Z");
-  let rec = item.recurrenceInfo.getOccurrenceFor(rid);
+  const item = createEventFromIcalString(str);
+  const rid = cal.createDateTime("20120101T010101Z");
+  const rec = item.recurrenceInfo.getOccurrenceFor(rid);
   rec.title = "changed";
   item.recurrenceInfo.modifyException(rec, true);
 
   do_test_pending();
-  storage.addItem(item, { onOperationComplete: checkAddedItem });
 
-  function checkAddedItem(calendar, status, opType, id, addedItem) {
-    addedItem.QueryInterface(Ci.calIEvent);
-    let seq = addedItem.getProperty("SEQUENCE");
-    let occ = addedItem.recurrenceInfo.getOccurrenceFor(rid);
+  const addedItem = await storage.addItem(item);
+  addedItem.QueryInterface(Ci.calIEvent);
+  const seq = addedItem.getProperty("SEQUENCE");
+  const occ = addedItem.recurrenceInfo.getOccurrenceFor(rid);
 
-    equal(seq, 3);
-    equal(occ.getProperty("SEQUENCE"), seq);
+  equal(seq, 3);
+  equal(occ.getProperty("SEQUENCE"), seq);
 
-    let changedItem = addedItem.clone();
-    changedItem.setProperty("SEQUENCE", parseInt(seq, 10) + 1);
+  const changedItem = addedItem.clone();
+  changedItem.setProperty("SEQUENCE", parseInt(seq, 10) + 1);
 
-    storage.modifyItem(changedItem, addedItem, { onOperationComplete: checkModifiedItem });
-  }
+  checkModifiedItem(rid, await storage.modifyItem(changedItem, addedItem));
+});
 
-  function checkModifiedItem(calendar, status, opType, id, changedItem) {
-    changedItem.QueryInterface(Ci.calIEvent);
-    let seq = changedItem.getProperty("SEQUENCE");
-    let occ = changedItem.recurrenceInfo.getOccurrenceFor(rid);
+async function checkModifiedItem(rid, changedItem) {
+  changedItem.QueryInterface(Ci.calIEvent);
+  const seq = changedItem.getProperty("SEQUENCE");
+  const occ = changedItem.recurrenceInfo.getOccurrenceFor(rid);
 
-    equal(seq, 4);
-    equal(occ.getProperty("SEQUENCE"), seq);
+  equal(seq, 4);
+  equal(occ.getProperty("SEQUENCE"), seq);
 
-    // Now check with the pref off
-    storage.deleteProperty("capabilities.propagate-sequence");
+  // Now check with the pref off
+  storage.deleteProperty("capabilities.propagate-sequence");
 
-    let changedItem2 = changedItem.clone();
-    changedItem2.setProperty("SEQUENCE", parseInt(seq, 10) + 1);
+  const changedItem2 = changedItem.clone();
+  changedItem2.setProperty("SEQUENCE", parseInt(seq, 10) + 1);
 
-    storage.modifyItem(changedItem2, changedItem, { onOperationComplete: checkNormalItem });
-  }
+  checkNormalItem(rid, await storage.modifyItem(changedItem2, changedItem));
+}
 
-  function checkNormalItem(calendar, status, opType, id, changedItem) {
-    changedItem.QueryInterface(Ci.calIEvent);
-    let seq = changedItem.getProperty("SEQUENCE");
-    let occ = changedItem.recurrenceInfo.getOccurrenceFor(rid);
+function checkNormalItem(rid, changedItem) {
+  changedItem.QueryInterface(Ci.calIEvent);
+  const seq = changedItem.getProperty("SEQUENCE");
+  const occ = changedItem.recurrenceInfo.getOccurrenceFor(rid);
 
-    equal(seq, 5);
-    equal(occ.getProperty("SEQUENCE"), 4);
-    completeTest();
-  }
+  equal(seq, 5);
+  equal(occ.getProperty("SEQUENCE"), 4);
+  completeTest();
+}
 
-  function completeTest() {
-    do_test_finished();
-  }
+function completeTest() {
+  do_test_finished();
 }

@@ -6,12 +6,11 @@ _(
     "requests."
 );
 
-const { RESTRequest } = ChromeUtils.import(
-  "resource://services-common/rest.js"
+const { RESTRequest } = ChromeUtils.importESModule(
+  "resource://services-common/rest.sys.mjs"
 );
-const { Service } = ChromeUtils.import("resource://services-sync/service.js");
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { Service } = ChromeUtils.importESModule(
+  "resource://services-sync/service.sys.mjs"
 );
 
 add_task(async function setup() {
@@ -73,7 +72,7 @@ async function syncAndExpectNodeReassignment(
   secondNotification,
   url
 ) {
-  let deferred = PromiseUtils.defer();
+  let deferred = Promise.withResolvers();
 
   let getTokenCount = 0;
   let mockTSC = {
@@ -107,7 +106,7 @@ async function syncAndExpectNodeReassignment(
 
     // Make absolutely sure that any event listeners are done with their work
     // before we proceed.
-    waitForZeroTimer(function() {
+    waitForZeroTimer(function () {
       _("Second sync nextTick.");
       Assert.equal(getTokenCount, 1);
       Service.startOver().then(() => {
@@ -144,6 +143,15 @@ add_task(async function test_momentary_401_engine() {
   _("First sync to prepare server contents.");
   await Service.sync();
 
+  let numResets = 0;
+  let observeReset = (obs, topic) => {
+    if (topic == "rotary") {
+      numResets += 1;
+    }
+  };
+  _("Adding observer that we saw an engine reset.");
+  Svc.Obs.add("weave:engine:reset-client:finish", observeReset);
+
   _("Setting up Rotary collection to 401.");
   let rotary = john.createCollection("rotary");
   let oldHandler = rotary.collectionHandler;
@@ -176,6 +184,8 @@ add_task(async function test_momentary_401_engine() {
     Service.storageURL + "rotary"
   );
 
+  Svc.Obs.remove("weave:engine:reset-client:finish", observeReset);
+  Assert.equal(numResets, 1);
   await tracker.clearChangedIDs();
   await Service.engineManager.unregister(engine);
 });
@@ -285,7 +295,7 @@ add_task(async function test_loop_avoidance_storage() {
   let secondNotification = "weave:service:login:error";
   let thirdNotification = "weave:service:sync:finish";
 
-  let deferred = PromiseUtils.defer();
+  let deferred = Promise.withResolvers();
 
   let getTokenCount = 0;
   let mockTSC = {
@@ -354,7 +364,7 @@ add_task(async function test_loop_avoidance_storage() {
 
     // Make absolutely sure that any event listeners are done with their work
     // before we proceed.
-    waitForZeroTimer(function() {
+    waitForZeroTimer(function () {
       _("Third sync nextTick.");
       Assert.ok(!getReassigned());
       Assert.equal(getTokenCount, 2);
@@ -383,7 +393,7 @@ add_task(async function test_loop_avoidance_engine() {
 
   _("Enabling the Rotary engine.");
   let { engine, syncID, tracker } = await registerRotaryEngine();
-  let deferred = PromiseUtils.defer();
+  let deferred = Promise.withResolvers();
 
   let getTokenCount = 0;
   let mockTSC = {
@@ -491,7 +501,7 @@ add_task(async function test_loop_avoidance_engine() {
 
     // Make absolutely sure that any event listeners are done with their work
     // before we proceed.
-    waitForZeroTimer(function() {
+    waitForZeroTimer(function () {
       _("Third sync nextTick.");
       Assert.ok(!getReassigned());
       Assert.equal(getTokenCount, 2);

@@ -8,9 +8,9 @@
  * same goes for relations and attachments.
  */
 add_task(async () => {
-  let storageCal = getStorageCal();
+  const storageCal = getStorageCal();
 
-  let item = createEventFromIcalString(
+  const item = createEventFromIcalString(
     "BEGIN:VEVENT\r\n" +
       "CREATED:20090603T171401Z\r\n" +
       "LAST-MODIFIED:20090617T080410Z\r\n" +
@@ -36,7 +36,7 @@ add_task(async () => {
   equal(item.getAttachments().length, 1);
 
   // Change the occurrence to another day
-  let occ = item.recurrenceInfo.getOccurrenceFor(cal.createDateTime("20090604T073000Z"));
+  const occ = item.recurrenceInfo.getOccurrenceFor(cal.createDateTime("20090604T073000Z"));
   occ.QueryInterface(Ci.calIEvent);
   occ.startDate = cal.createDateTime("20090618T073000Z");
   item.recurrenceInfo.modifyException(occ, true);
@@ -47,21 +47,9 @@ add_task(async () => {
   equal(item.getAttachments().length, 1);
 
   // Add the item to the storage calendar and retrieve it again
-  await new Promise(resolve => {
-    storageCal.adoptItem(item, {
-      onGetResult(calendar, status, itemType, detail, items) {},
-      onOperationComplete: resolve,
-    });
-  });
-  let retrievedItem = await new Promise(resolve => {
-    storageCal.getItem("c1a6cfe7-7fbb-4bfb-a00d-861e07c649a5", {
-      onGetResult(cal, stat, type, detail, items) {
-        resolve(items[0]);
-      },
-      onOperationComplete() {},
-    });
-  });
+  await storageCal.adoptItem(item);
 
+  const retrievedItem = await storageCal.getItem("c1a6cfe7-7fbb-4bfb-a00d-861e07c649a5");
   // There should still be one alarm, one relation and one attachment
   equal(retrievedItem.getAlarms().length, 1);
   equal(retrievedItem.getRelations().length, 1);

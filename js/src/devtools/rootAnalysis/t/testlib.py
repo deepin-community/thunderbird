@@ -2,9 +2,10 @@ import json
 import os
 import re
 import subprocess
+import sys
+from collections import defaultdict, namedtuple
 
 from sixgill import Body
-from collections import defaultdict, namedtuple
 
 scriptdir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -53,13 +54,15 @@ class Test(object):
     def compile(self, source, options=""):
         env = os.environ
         env["CCACHE_DISABLE"] = "1"
-        cmd = "{CXX} -c {source} -O3 -std=c++11 -fplugin={sixgill} -fplugin-arg-xgill-mangle=1 {options}".format(  # NOQA: E501
+        if "-fexceptions" not in options and "-fno-exceptions" not in options:
+            options += " -fno-exceptions"
+        cmd = "{CXX} -c {source} -O3 -std=c++17 -fplugin={sixgill} -fplugin-arg-xgill-mangle=1 {options}".format(  # NOQA: E501
             source=self.infile(source),
             CXX=self.cfg.cxx,
             sixgill=self.cfg.sixgill_plugin,
             options=options,
         )
-        if self.cfg.verbose:
+        if self.cfg.verbose > 0:
             print("Running %s" % cmd)
         subprocess.check_call(["sh", "-c", cmd])
 
@@ -84,7 +87,7 @@ class Test(object):
         )
         return json.loads(output)
 
-    def run_analysis_script(self, phase, upto=None):
+    def run_analysis_script(self, startPhase="gcTypes", upto=None):
         open("defaults.py", "w").write(
             """\
 analysis_scriptdir = '{scriptdir}'
@@ -94,17 +97,16 @@ sixgill_bin = '{bindir}'
             )
         )
         cmd = [
+            sys.executable,
             os.path.join(scriptdir, "analyze.py"),
-            "-v" if self.verbose else "-q",
-            phase,
+            ["-q", "", "-v"][min(self.verbose, 2)],
         ]
+        cmd += ["--first", startPhase]
         if upto:
-            cmd += ["--upto", upto]
+            cmd += ["--last", upto]
         cmd.append("--source=%s" % self.indir)
-        cmd.append("--objdir=%s" % self.outdir)
         cmd.append("--js=%s" % self.cfg.js)
         if self.cfg.verbose:
-            cmd.append("--verbose")
             print("Running " + " ".join(cmd))
         subprocess.check_call(cmd)
 
@@ -119,12 +121,10 @@ sixgill_bin = '{bindir}'
         values = (extract(line.strip()) for line in open(fullpath, "r"))
         return list(filter(lambda _: _ is not None, values))
 
-    def load_suppressed_functions(self):
-        return set(
-            self.load_text_file(
-                "limitedFunctions.lst", extract=lambda l: l.split(" ")[1]
-            )
-        )
+    def load_json_file(self, filename, reviver=None):
+        fullpath = os.path.join(self.outdir, filename)
+        with open(fullpath) as fh:
+            return json.load(fh, object_hook=reviver)
 
     def load_gcTypes(self):
         def grab_type(line):
@@ -141,8 +141,10 @@ sixgill_bin = '{bindir}'
         return gctypes
 
     def load_typeInfo(self, filename="typeInfo.txt"):
-        with open(os.path.join(self.outdir, filename)) as fh:
-            return json.load(fh)
+        return self.load_json_file(filename)
+
+    def load_funcInfo(self, filename="limitedFunctions.lst"):
+        return self.load_json_file(filename)
 
     def load_gcFunctions(self):
         return self.load_text_file("gcFunctions.lst", extract=extract_unmangled)
@@ -186,21 +188,37 @@ sixgill_bin = '{bindir}'
                 data.unmangledToMangled[unmangled] = mangled
                 return
 
-            limit = 0
-            m = re.match(r"^\w (?:/(\d+))? ", line)
-            if m:
-                limit = int(m[1])
-
+            # Sample lines:
+            #   D 10 20
+            #   D /3 10 20
+            #   D 3:3 10 20
+            # All of these mean that there is a direct call from function #10
+            # to function #20. The latter two mean that the call is made in a
+            # context where the 0x1 and 0x2 properties (3 == 0x1 | 0x2) are in
+            # effect. The `/n` syntax was the original, which was then expanded
+            # to `m:n` to allow multiple calls to be combined together when not
+            # all calls have the same properties in effect. The `/n` syntax is
+            # deprecated.
+            #
+            # The properties usually refer to "limits", eg "GC is suppressed
+            # in the scope surrounding this call". For testing purposes, the
+            # difference between `m` and `n` in `m:n` is currently ignored.
             tokens = line.split(" ")
+            limit = 0
+            if tokens[1].startswith("/"):
+                attr_str = tokens.pop(1)
+                limit = int(attr_str[1:])
+            elif ":" in tokens[1]:
+                attr_str = tokens.pop(1)
+                limit = int(attr_str[0 : attr_str.index(":")])
+
             if tokens[0] in ("D", "R"):
                 _, caller, callee = tokens
                 add_call(lookup(caller), lookup(callee), limit)
             elif tokens[0] == "T":
                 data.tags[tokens[1]].add(line.split(" ", 2)[2])
             elif tokens[0] in ("F", "V"):
-                m = re.match(r"^[FV] (\d+) (\d+) CLASS (.*?) FIELD (.*)", line)
-                caller, callee, csu, field = m.groups()
-                add_call(lookup(caller), lookup(callee), limit)
+                pass
 
             elif tokens[0] == "I":
                 m = re.match(r"^I (\d+) VARIABLE ([^\,]*)", line)
@@ -222,7 +240,7 @@ sixgill_bin = '{bindir}'
                 return HazardSummary(*info)
             return None
 
-        return self.load_text_file("rootingHazards.txt", extract=grab_hazard)
+        return self.load_text_file("hazards.txt", extract=grab_hazard)
 
     def process_body(self, body):
         return Body(body)

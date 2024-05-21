@@ -1,19 +1,18 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 [
   {
     "namespace": "manifest",
     "types": [
       {
         "$extend": "PermissionNoPrompt",
-        "choices": [{
-          "type": "string",
-          "enum": [
-            "theme"
-          ]
-        }]
+        "choices": [
+          {
+            "type": "string",
+            "enum": ["theme"]
+          }
+        ]
       },
       {
         "id": "ThemeColor",
@@ -21,11 +20,11 @@
         "choices": [
           {
             "type": "string",
-            "description": "A string containing a valid `CSS color string <https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#color_keywords>`__, including hexadecimal or functional representations. For example the color *crimson* can be specified as: <li>``crimson`` <li>``#dc143c`` <li>``rgb(220, 20, 60)`` (or ``rgba(220, 20, 60, 0.5)`` to set 50% opacity) <li>``hsl(348, 83%, 47%)`` (or ``hsla(348, 83%, 47%, 0.5)`` to set 50% opacity)"
+            "description": "A string containing a valid `CSS color string <|link-css-color-string|>`__, including hexadecimal or functional representations. For example the color *crimson* can be specified as: <li><value>crimson</value> <li><value>#dc143c</value> <li><value>rgb(220, 20, 60)</value> (or <value>rgba(220, 20, 60, 0.5)</value> to set 50% opacity) <li><value>hsl(348, 83%, 47%)</value> (or <value>hsla(348, 83%, 47%, 0.5)</value> to set 50% opacity)"
           },
           {
             "type": "array",
-            "description": "An RGB array of 3 integers. For example ``[220, 20, 60]`` for the color *crimson*.",
+            "description": "An RGB array of 3 integers. For example <value>[220, 20, 60]</value> for the color *crimson*.",
             "minItems": 3,
             "maxItems": 3,
             "items": {
@@ -36,7 +35,7 @@
           },
           {
             "type": "array",
-            "description": "An RGBA array of 3 integers and a fractional (a float between 0 and 1). For example ``[220, 20, 60, 0.5]`` for the color *crimson* with 50% opacity.",
+            "description": "An RGBA array of 3 integers and a fractional (a float between 0 and 1). For example <value>[220, 20, 60, 0.5]<value> for the color *crimson* with 50% opacity.",
             "minItems": 4,
             "maxItems": 4,
             "items": {
@@ -47,16 +46,18 @@
       },
       {
         "id": "ThemeExperiment",
-        "description" : "Defines additional color, image and property keys to be used in :ref:`theme.ThemeType`, extending the theme-able areas of Thunderbird.",
+        "description": "Defines additional color, image and property keys to be used in :ref:`theme.ThemeType`, extending the theme-able areas of Thunderbird.",
         "type": "object",
         "properties": {
           "stylesheet": {
             "optional": true,
+            "description": "URL to a stylesheet introducing additional CSS variables, extending the theme-able areas of Thunderbird. The `theme_experiment add-on in our example repository <https://github.com/thunderbird/sample-extensions/tree/master/manifest_v2/theme_experiment>`__ is using the stylesheet shown below, to add the <value>--chat-button-color</value> CSS color variable: <literalinclude>includes/theme/theme_experiment_style.css<lang>CSS</lang></literalinclude>The following <em>manifest.json</em> file maps the </value>--chat-button-color</value> CSS color variable to the theme color key <value>exp_chat_button</value> and uses it to set a color for the chat button: <literalinclude>includes/theme/theme_experiment_manifest.json<lang>JSON</lang></literalinclude>",
             "$ref": "ExtensionURL"
           },
           "images": {
             "type": "object",
             "optional": true,
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map new theme image keys to internal Thunderbird CSS image variables. The new image key is usable as an image reference in :ref:`theme.ThemeType`. Example: <literalinclude>includes/theme/theme_experiment_image.json<lang>JSON</lang></literalinclude>",
             "additionalProperties": {
               "type": "string"
             }
@@ -64,6 +65,7 @@
           "colors": {
             "type": "object",
             "optional": true,
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map new theme color keys to internal Thunderbird CSS color variables. The example shown below maps the theme color key <value>popup_affordance</value> to the CSS color variable </value>--arrowpanel-dimmed</value>. The new color key is usable as a color reference in :ref:`theme.ThemeType`. <literalinclude>includes/theme/theme_experiment_color.json<lang>JSON</lang></literalinclude>",
             "additionalProperties": {
               "type": "string"
             }
@@ -71,6 +73,7 @@
           "properties": {
             "type": "object",
             "optional": true,
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map new theme property keys to internal Thunderbird CSS property variables. The new property key is usable as a property reference in :ref:`theme.ThemeType`. Example: <literalinclude>includes/theme/theme_experiment_property.json<lang>JSON</lang></literalinclude>",
             "additionalProperties": {
               "type": "string"
             }
@@ -83,21 +86,23 @@
         "type": "object",
         "properties": {
           "images": {
-            "description": "Object with one or more key-value pairs to map images to theme image keys. The following built-in theme image keys are supported:",
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map images to theme image keys. The following built-in theme image keys are supported:",
             "type": "object",
             "optional": true,
             "properties": {
               "additional_backgrounds": {
                 "type": "array",
-                "items": { "$ref": "ImageDataOrExtensionURL" },
+                "items": {
+                  "$ref": "ImageDataOrExtensionURL"
+                },
                 "maxItems": 15,
                 "optional": true,
-                "description": "Additional images added to the header area and displayed behind the 'theme_frame' image."
+                "description": "Additional images added to the header area and displayed behind the ``theme_frame`` image."
               },
               "headerURL": {
                 "$ref": "ImageDataOrExtensionURL",
                 "optional": true,
-                "deprecated": "Unsupported images property, use 'theme.images.theme_frame', this alias is ignored in Thunderbird >= 70."
+                "deprecated": "Unsupported images property, use ``theme.images.theme_frame``, this alias is ignored in Thunderbird >= 70."
               },
               "theme_frame": {
                 "$ref": "ImageDataOrExtensionURL",
@@ -105,10 +110,12 @@
                 "description": "Foreground image on the header area."
               }
             },
-            "additionalProperties": { "$ref": "ImageDataOrExtensionURL" }
+            "additionalProperties": {
+              "$ref": "ImageDataOrExtensionURL"
+            }
           },
           "colors": {
-            "description": "Object with one or more key-value pairs to map color values to theme color keys. The following built-in theme color keys are supported:",
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map color values to theme color keys. The following built-in theme color keys are supported:",
             "type": "object",
             "optional": true,
             "properties": {
@@ -120,7 +127,7 @@
               "accentcolor": {
                 "$ref": "ThemeColor",
                 "optional": true,
-                "deprecated": "Unsupported colors property, use 'theme.colors.frame', this alias is ignored in Thunderbird >= 70."
+                "deprecated": "Unsupported colors property, use ``theme.colors.frame``, this alias is ignored in Thunderbird >= 70."
               },
               "frame": {
                 "$ref": "ThemeColor",
@@ -135,7 +142,7 @@
               "textcolor": {
                 "$ref": "ThemeColor",
                 "optional": true,
-                "deprecated": "Unsupported color property, use 'theme.colors.tab_background_text', this alias is ignored in Thunderbird >= 70."
+                "deprecated": "Unsupported color property, use ``theme.colors.tab_background_text``, this alias is ignored in Thunderbird >= 70."
               },
               "tab_background_text": {
                 "$ref": "ThemeColor",
@@ -155,7 +162,7 @@
               "tab_text": {
                 "$ref": "ThemeColor",
                 "optional": true,
-                "description": "The text color for the selected tab.  Defaults to the color specified by ``toolbar_text``."
+                "description": "The text color for the selected tab. Defaults to the color specified by ``toolbar_text``."
               },
               "tab_line": {
                 "$ref": "ThemeColor",
@@ -170,7 +177,7 @@
               "toolbar_text": {
                 "$ref": "ThemeColor",
                 "optional": true,
-                 "description": "The text color in the main Thunderbird toolbar. Also used as default value for ``icons`` and ``tab_text``."
+                "description": "The text color in the main Thunderbird toolbar. Also used as default value for ``icons`` and ``tab_text``."
               },
               "bookmark_text": {
                 "$ref": "ThemeColor",
@@ -221,11 +228,11 @@
               "icons_attention": {
                 "$ref": "ThemeColor",
                 "optional": true,
-                "description": "The color of the toolbar icons in attention state such as the chat icon whith new messages."
+                "description": "The color of the toolbar icons in attention state such as the chat icon with new messages."
               },
               "button_background_hover": {
-               "$ref": "ThemeColor",
-               "optional": true,
+                "$ref": "ThemeColor",
+                "optional": true,
                 "description": "The color of the background of the toolbar buttons on hover."
               },
               "button_background_active": {
@@ -324,10 +331,12 @@
                 "description": "The color used to draw text that's currently selected in the search field."
               }
             },
-            "additionalProperties": { "$ref": "ThemeColor" }
+            "additionalProperties": {
+              "$ref": "ThemeColor"
+            }
           },
           "properties": {
-            "description": "Object with one or more key-value pairs to map property values to theme property keys. The following built-in theme property keys are supported:",
+            "description": "A <em>dictionary object</em> with one or more <em>key-value</em> pairs to map property values to theme property keys. The following built-in theme property keys are supported:",
             "type": "object",
             "optional": true,
             "properties": {
@@ -336,10 +345,20 @@
                 "items": {
                   "type": "string",
                   "enum": [
-                    "bottom", "center", "left", "right", "top",
-                    "center bottom", "center center", "center top",
-                    "left bottom", "left center", "left top",
-                    "right bottom", "right center", "right top"
+                    "bottom",
+                    "center",
+                    "left",
+                    "right",
+                    "top",
+                    "center bottom",
+                    "center center",
+                    "center top",
+                    "left bottom",
+                    "left center",
+                    "left top",
+                    "right bottom",
+                    "right center",
+                    "right top"
                   ]
                 },
                 "maxItems": 15,
@@ -353,12 +372,28 @@
                 },
                 "maxItems": 15,
                 "optional": true
+              },
+              "color_scheme": {
+                "description": "If set, overrides the general theme (context menus, toolbars, content area).",
+                "optional": true,
+                "type": "string",
+                "enum": ["light", "dark", "auto"]
+              },
+              "content_color_scheme": {
+                "description": "If set, overrides the color scheme for the content area.",
+                "optional": true,
+                "type": "string",
+                "enum": ["light", "dark", "auto"]
               }
             },
-            "additionalProperties": { "type": "string" }
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         },
-        "additionalProperties": { "$ref": "UnrecognizedProperty" }
+        "additionalProperties": {
+          "$ref": "UnrecognizedProperty"
+        }
       },
       {
         "id": "ThemeManifest",
@@ -387,7 +422,9 @@
             "type": "object",
             "optional": true,
             "patternProperties": {
-              "^[1-9]\\d*$": { "type": "string" }
+              "^[1-9]\\d*$": {
+                "type": "string"
+              }
             },
             "description": "Icons shown in the Add-ons Manager."
           }
@@ -398,7 +435,8 @@
         "properties": {
           "theme_experiment": {
             "$ref": "ThemeExperiment",
-            "optional": true
+            "optional": true,
+            "description": "A theme experiment allows modifying the user interface of Thunderbird beyond what is currently possible using the built-in color, image and property keys of :ref:`theme.ThemeType`. These experiments are a precursor to proposing new theme features for inclusion in Thunderbird. Experimentation is done by mapping internal CSS color, image and property variables to new theme keys and using them in :ref:`theme.ThemeType` and by loading additional style sheets to add new CSS variables, extending the theme-able areas of Thunderbird. Can be used in static and dynamic themes."
           }
         }
       }
@@ -406,7 +444,7 @@
   },
   {
     "namespace": "theme",
-    "description": "The theme API allows customizing of visual elements of Thunderbird.",
+    "description": "The theme API allows for customization of Thunderbird's visual elements.",
     "types": [
       {
         "id": "ThemeUpdateInfo",
@@ -414,7 +452,7 @@
         "description": "Info provided in the onUpdated listener.",
         "properties": {
           "theme": {
-            "type": "object",
+            "$ref": "ThemeType",
             "description": "The new theme after update"
           },
           "windowId": {
@@ -443,7 +481,7 @@
       {
         "name": "getCurrent",
         "type": "function",
-        "async": true,
+        "async": "callback",
         "description": "Returns the current theme for the specified window or the last focused window.",
         "parameters": [
           {
@@ -451,6 +489,16 @@
             "name": "windowId",
             "optional": true,
             "description": "The window for which we want the theme."
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "ThemeType"
+              }
+            ]
           }
         ]
       },

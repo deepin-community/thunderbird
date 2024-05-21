@@ -67,7 +67,7 @@ var StarUI = {
     });
   },
 
-  // nsIDOMEventListener
+  // EventListener
   handleEvent: function SU_handleEvent(aEvent) {
     switch (aEvent.type) {
       case "popuphidden":
@@ -302,7 +302,6 @@ var PlacesCommandHook = {
     if (!info) {
       let parentGuid = PlacesUtils.bookmarks.unfiledGuid;
       info = { url, parentGuid };
-      // Bug 1148838 - Make this code work for full page plugins.
       let description = null;
       let charset = null;
 

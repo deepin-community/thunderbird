@@ -22,8 +22,6 @@ user_pref("datareporting.healthreport.uploadEnabled", false);
 user_pref("browser.safebrowsing.phishing.enabled", false);
 user_pref("browser.safebrowsing.malware.enabled", false);
 user_pref("browser.safebrowsing.blockedURIs.enabled", false);
-user_pref("browser.safebrowsing.passwords.enabled", false);
-user_pref("plugins.flashBlock.enabled", false);
 user_pref("privacy.trackingprotection.annotate_channels", false);
 user_pref("privacy.trackingprotection.enabled", false);
 user_pref("privacy.trackingprotection.pbmode.enabled", false);
@@ -32,6 +30,6 @@ user_pref("browser.webapps.checkForUpdates", 0);
 user_pref("javascript.options.weakrefs", true);
 user_pref("javascript.options.experimental.weakrefs.expose_cleanupSome", true);
 user_pref("javascript.options.experimental.iterator_helpers", true);
-user_pref("javascript.options.experimental.top_level_await", true);
-user_pref("javascript.options.experimental.ergonomic_brand_checks", true);
-user_pref("javascript.options.experimental.class_static_blocks", true);
+user_pref("javascript.options.experimental.import_attributes", true);
+user_pref("javascript.options.experimental.import_attributes.assert_syntax", true);
+

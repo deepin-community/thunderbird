@@ -9,7 +9,6 @@
 #include "nsAttrValue.h"
 #include "nsIFrame.h"
 #include "nsDisplayList.h"
-#include "FrameLayerBuilder.h"
 #include "nsPrintfCString.h"
 
 #include <stdio.h>
@@ -60,15 +59,13 @@ static void PrintDisplayItemTo(nsDisplayListBuilder* aBuilder,
     }
   }
   bool snap;
-  nsRect rect = aItem->GetBounds(aBuilder, &snap);
-  nsRect layerRect = rect - (*aItem->GetAnimatedGeometryRoot())
-                                ->GetOffsetToCrossDoc(aItem->ReferenceFrame());
-  nsRect vis = aItem->GetPaintRect();
-  nsRect build = aItem->GetBuildingRect();
-  nsRect component = aItem->GetComponentAlphaBounds(aBuilder);
+  nsRect rect = aBuilder ? aItem->GetBounds(aBuilder, &snap) : nsRect();
+  nsRect component =
+      aBuilder ? aItem->GetComponentAlphaBounds(aBuilder) : nsRect();
   nsDisplayList* list = aItem->GetChildren();
   const DisplayItemClip& clip = aItem->GetClip();
-  nsRegion opaque = aItem->GetOpaqueRegion(aBuilder, &snap);
+  nsRegion opaque =
+      aBuilder ? aItem->GetOpaqueRegion(aBuilder, &snap) : nsRect();
 
 #ifdef MOZ_DUMP_PAINTING
   if (aDumpHtml && aItem->Painted()) {
@@ -82,20 +79,15 @@ static void PrintDisplayItemTo(nsDisplayListBuilder* aBuilder,
 
   aStream << nsPrintfCString(
       "%s p=0x%p f=0x%p(%s) key=%d %sbounds(%d,%d,%d,%d) "
-      "layerBounds(%d,%d,%d,%d) visible(%d,%d,%d,%d) building(%d,%d,%d,%d) "
-      "componentAlpha(%d,%d,%d,%d) clip(%s) asr(%s) clipChain(%s)%s ref=0x%p "
-      "agr=0x%p",
+      "componentAlpha(%d,%d,%d,%d) clip(%s) asr(%s) clipChain(%s)%s ",
       aItem->Name(), aItem, (void*)f, NS_ConvertUTF16toUTF8(contentData).get(),
       aItem->GetPerFrameKey(),
       (aItem->ZIndex() ? nsPrintfCString("z=%d ", aItem->ZIndex()).get() : ""),
-      rect.x, rect.y, rect.width, rect.height, layerRect.x, layerRect.y,
-      layerRect.width, layerRect.height, vis.x, vis.y, vis.width, vis.height,
-      build.x, build.y, build.width, build.height, component.x, component.y,
+      rect.x, rect.y, rect.width, rect.height, component.x, component.y,
       component.width, component.height, clip.ToString().get(),
       ActiveScrolledRoot::ToString(aItem->GetActiveScrolledRoot()).get(),
       DisplayItemClipChain::ToString(aItem->GetClipChain()).get(),
-      aItem->IsUniform(aBuilder) ? " uniform" : "", aItem->ReferenceFrame(),
-      aItem->GetAnimatedGeometryRoot()->mFrame);
+      (aBuilder && aItem->IsUniform(aBuilder)) ? " uniform" : "");
 
   for (auto iter = opaque.RectIter(); !iter.Done(); iter.Next()) {
     const nsRect& r = iter.Get();
@@ -126,6 +118,25 @@ static void PrintDisplayItemTo(nsDisplayListBuilder* aBuilder,
                                area.width, area.height);
   }
 
+  auto ReuseStateToString = [](nsDisplayItem::ReuseState aState) {
+    switch (aState) {
+      case nsDisplayItem::ReuseState::None:
+        return "None";
+      case nsDisplayItem::ReuseState::Reusable:
+        return "Reusable";
+      case nsDisplayItem::ReuseState::PreProcessed:
+        return "PreProcessed";
+      case nsDisplayItem::ReuseState::Reused:
+        return "Reused";
+    }
+
+    MOZ_ASSERT_UNREACHABLE();
+    return "";
+  };
+
+  aStream << nsPrintfCString(" reuse-state(%s)",
+                             ReuseStateToString(aItem->GetReuseState()));
+
   // Display item specific debug info
   aItem->WriteDebugInfo(aStream);
 
@@ -134,15 +145,6 @@ static void PrintDisplayItemTo(nsDisplayListBuilder* aBuilder,
     aStream << "</a>";
   }
 #endif
-  DisplayItemData* data = mozilla::FrameLayerBuilder::GetOldDataFor(aItem);
-  if (data && data->GetLayer()) {
-    if (aDumpHtml) {
-      aStream << nsPrintfCString(" <a href=\"#%p\">layer=%p</a>",
-                                 data->GetLayer(), data->GetLayer());
-    } else {
-      aStream << nsPrintfCString(" layer=0x%p", data->GetLayer());
-    }
-  }
 #ifdef MOZ_DUMP_PAINTING
   if (aItem->GetType() == DisplayItemType::TYPE_MASK) {
     nsCString str;
@@ -179,7 +181,7 @@ static void PrintDisplayListTo(nsDisplayListBuilder* aBuilder,
     aStream << "<ul>";
   }
 
-  for (nsDisplayItem* i = aList.GetBottom(); i != nullptr; i = i->GetAbove()) {
+  for (nsDisplayItem* i : aList) {
     if (aDumpHtml) {
       aStream << "<li>";
     }

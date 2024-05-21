@@ -29,9 +29,7 @@ This layer already exists in some panels, but we are using slightly different na
   Today, we pass the `connector` to all middlewares from configureStore,
   we could instead pass the netmonitor command object.
 * Web Console has:
-  * WebConsoleConnectionProxy, but this is probably going to disappear and doesn't do much.
-  * WebConsoleUI, which does dispatch to many target's actor, via getAllProxies (see clearMessagesCache)
-  * See devtools/client/webconsole/actions/input.js:handleHelperResult(), where we have to put some code, which is a duplicate of Netmonitor Connector,
+  * devtools/client/webconsole/actions/input.js:handleHelperResult(), where we have to put some code, which is a duplicate of Netmonitor Connector,
     and could be shared via a netmonitor command class.
 * Inspector is probably the panel doing the most dispatch to many target's actor.
   Codes using getAllInspectorFronts could all be migrated to an inspector command class:
@@ -44,3 +42,10 @@ This layer already exists in some panels, but we are using slightly different na
 Last, but not least, this layer may allow us to slowly get rid of protocol.js.
 Command classes aren't Fronts, nor are they particularly connected to protocol.js.
 If we make it so that all the Frontend code using Fronts uses Commands instead, we might more easily get away from protocol.js.
+
+If you want to create a new command, you can use a bash script to help your bootstrap all basic required files:
+```
+$ ./create-command.sh command-file-name CommandName
+```
+Where the first argument will be the name used for folder and files, using lower case and dash as separator.
+And the second argument will be the class name in code, using camlcase.

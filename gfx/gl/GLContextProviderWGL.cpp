@@ -18,9 +18,9 @@
 #include "mozilla/gfx/gfxVars.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/ScopeExit.h"
+#include "mozilla/StaticPrefs_gl.h"
 #include "mozilla/StaticPtr.h"
 #include "mozilla/layers/CompositorOptions.h"
-#include "mozilla/webrender/RenderThread.h"
 #include "mozilla/widget/CompositorWidget.h"
 #include "mozilla/widget/WinCompositorWidget.h"
 
@@ -100,7 +100,10 @@ bool WGLLibrary::EnsureInitialized() {
       { "wgl" #X }                \
     }                             \
   }
-#define END_OF_SYMBOLS {nullptr, {}}
+#define END_OF_SYMBOLS \
+  {                    \
+    nullptr, {}        \
+  }
 
   {
     const auto loader = SymbolLoader(*mOGLLibrary);
@@ -160,12 +163,16 @@ bool WGLLibrary::EnsureInitialized() {
   const auto curCtx = mSymbols.fGetCurrentContext();
   const auto curDC = mSymbols.fGetCurrentDC();
 
+  GLContext::ResetTLSCurrentContext();
+
   if (!mSymbols.fMakeCurrent(mRootDc, mDummyGlrc)) {
     NS_WARNING("wglMakeCurrent failed");
     return false;
   }
-  const auto resetContext =
-      MakeScopeExit([&]() { mSymbols.fMakeCurrent(curDC, curCtx); });
+  const auto resetContext = MakeScopeExit([&]() {
+    GLContext::ResetTLSCurrentContext();
+    mSymbols.fMakeCurrent(curDC, curCtx);
+  });
 
   const auto loader = GetSymbolLoader();
 
@@ -194,7 +201,6 @@ bool WGLLibrary::EnsureInitialized() {
 
   const auto extString = mSymbols.fGetExtensionsStringARB(mRootDc);
   MOZ_ASSERT(extString);
-  MOZ_ASSERT(HasExtension(extString, "WGL_ARB_extensions_string"));
 
   // --
 
@@ -300,6 +306,8 @@ GLContextWGL::~GLContextWGL() {
 }
 
 bool GLContextWGL::MakeCurrentImpl() const {
+  GLContext::ResetTLSCurrentContext();
+
   const bool succeeded = sWGLLib.mSymbols.fMakeCurrent(mDC, mContext);
   NS_ASSERTION(succeeded, "Failed to make GL context current!");
   return succeeded;
@@ -382,7 +390,7 @@ static RefPtr<GLContext> CreateForWidget(const HWND window,
                                         LOCAL_WGL_FULL_ACCELERATION_ARB,
                                         0};
     const int* attribs;
-    if (wr::RenderThread::IsInRenderThread()) {
+    if (isWebRender) {
       attribs = kAttribsForWebRender;
     } else {
       attribs = kAttribs;
@@ -414,7 +422,7 @@ static RefPtr<GLContext> CreateForWidget(const HWND window,
                                         0};
 
     const int* attribs;
-    if (wr::RenderThread::IsInRenderThread()) {
+    if (isWebRender) {
       attribs = kAttribsForWebRender;
     } else {
       attribs = kAttribs;

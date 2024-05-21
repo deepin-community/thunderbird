@@ -7,12 +7,10 @@
  * is initialized.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gExpectedFiles;
 
 function create_temporary_files_for(name) {
-  let file = Services.dirsvc.get("TmpD", Ci.nsIFile);
+  const file = Services.dirsvc.get("TmpD", Ci.nsIFile);
   file.append(name);
   file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o600);
 
@@ -20,13 +18,14 @@ function create_temporary_files_for(name) {
 }
 
 function collect_expected_temporary_files() {
-  let files = [];
+  const files = [];
 
   files.push(create_temporary_files_for("nsmail.tmp"));
   files.push(create_temporary_files_for("nsmail.tmp"));
   files.push(create_temporary_files_for("nsmail.tmp"));
-  files.push(create_temporary_files_for("nsemail.html"));
-  files.push(create_temporary_files_for("nsemail.html"));
+  files.push(create_temporary_files_for("nsemail.eml"));
+  files.push(create_temporary_files_for("nsemail.tmp"));
+  files.push(create_temporary_files_for("nsqmail.tmp"));
   files.push(create_temporary_files_for("nscopy.tmp"));
   files.push(create_temporary_files_for("nscopy.tmp"));
 
@@ -34,15 +33,15 @@ function collect_expected_temporary_files() {
 }
 
 function check_files_not_exist(files) {
-  files.forEach(function(file) {
+  files.forEach(function (file) {
     Assert.ok(!file.exists());
   });
 }
 
 function run_test() {
   gExpectedFiles = collect_expected_temporary_files();
-  registerCleanupFunction(function() {
-    gExpectedFiles.forEach(function(file) {
+  registerCleanupFunction(function () {
+    gExpectedFiles.forEach(function (file) {
       if (file.exists()) {
         file.remove(false);
       }

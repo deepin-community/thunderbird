@@ -8,15 +8,11 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-
   /**
    * The MozMapList widget behaves as a popup menu showing available map options
    * for an address. It is a part of the card view in the addressbook.
    *
-   * @extends {MozElements.MozMenuPopup}
+   * @augments {MozElements.MozMenuPopup}
    */
   class MozMapList extends MozElements.MozMenuPopup {
     connectedCallback() {
@@ -43,14 +39,14 @@
 
     /**
      * Initializes the necessary address data from an addressbook card.
-     * @param {nsIAbCard} card   - the card to get the address data from
-     * @param {string} addPrefix - card property prefix: "Home" or "Work",
-     *                             to make the map use either HomeAddress
-     *                             or WorkAddress
+     *
+     * @param {nsIAbCard} card - The card to get the address data from.
+     * @param {string} addrPrefix - Card property prefix: "Home" or "Work",
+     *    to make the map use either HomeAddress or WorkAddress.
      */
     initMapAddressFromCard(card, addrPrefix) {
-      let mapItURLFormat = this._getMapURLPref();
-      let doNotShowMap = !mapItURLFormat || !addrPrefix || !card;
+      const mapItURLFormat = this._getMapURLPref();
+      const doNotShowMap = !mapItURLFormat || !addrPrefix || !card;
       this._setWidgetDisabled(doNotShowMap);
       if (doNotShowMap) {
         return;
@@ -74,7 +70,9 @@
     /**
      * Returns the Map service URL from localized pref. Returns null if there
      * is none at the given index.
-     * @param integer [index=0] - the index of the service to return. 0 is the default service.
+     *
+     * @param {integer} [index=0] - The index of the service to return.
+     *   0 is the default service.
      */
     _getMapURLPref(index = 0) {
       let url = null;
@@ -104,16 +102,16 @@
       let itemFound = true;
       let defaultFound = false;
       const kUserIndex = 100;
-      let mapList = this;
+      const mapList = this;
       while (mapList.hasChildNodes()) {
         mapList.lastChild.remove();
       }
 
-      let defaultUrl = this._getMapURLPref();
+      const defaultUrl = this._getMapURLPref();
 
       // Creates the menuitem with supplied data.
       function addMapService(url, name) {
-        let item = document.createXULElement("menuitem");
+        const item = document.createXULElement("menuitem");
         item.setAttribute("url", url);
         item.setAttribute("label", name);
         item.setAttribute("type", "radio");
@@ -132,7 +130,7 @@
       // Add all defined map services as menuitems.
       while (itemFound) {
         let urlName;
-        let urlTemplate = this._getMapURLPref(index);
+        const urlTemplate = this._getMapURLPref(index);
         if (!urlTemplate) {
           itemFound = false;
         } else {
@@ -162,7 +160,7 @@
         // If user had put a customized map URL into mail.addr_book.mapit_url.format
         // preserve it as a new map service named with the URL.
         // 'index' now points to the first unused entry in prefs.
-        let defaultName = generateName(defaultUrl);
+        const defaultName = generateName(defaultUrl);
         addMapService(defaultUrl, defaultName);
         Services.prefs.setCharPref(
           "mail.addr_book.mapit_url." + index + ".format",
@@ -177,13 +175,14 @@
 
     /**
      * Save user selected mapping service.
-     * @param item  The chosen menuitem with map service.
+     *
+     * @param {Element} item - The chosen menuitem with map service.
      */
     _chooseMapService(item) {
       // Save selected URL as the default.
-      let defaultUrl = Cc["@mozilla.org/pref-localizedstring;1"].createInstance(
-        Ci.nsIPrefLocalizedString
-      );
+      const defaultUrl = Cc[
+        "@mozilla.org/pref-localizedstring;1"
+      ].createInstance(Ci.nsIPrefLocalizedString);
       defaultUrl.data = item.getAttribute("url");
       Services.prefs.setComplexValue(
         "mail.addr_book.mapit_url.format",
@@ -194,6 +193,7 @@
 
     /**
      * Generate the map URL used to open the link on clicking the menulist button.
+     *
      * @returns {urlFormat} - the map url generated from the address.
      */
     _createMapItURL() {

@@ -4,9 +4,9 @@
 "use strict";
 
 let engine;
-let originalDefaultEngine;
+let appDefaultEngine;
 
-add_task(async function setup() {
+add_setup(async function () {
   await AddonTestUtils.promiseStartupManager();
   useHttpServer();
 
@@ -19,15 +19,12 @@ add_task(async function setup() {
     true
   );
 
-  originalDefaultEngine = await Services.search.getDefault();
+  appDefaultEngine = await Services.search.getDefault();
 });
 
 add_task(async function test_addingEngine_opensearch() {
   const addEngineObserver = new SearchObserver(
     [
-      // engine-loaded
-      // Engine was loaded.
-      SearchUtils.MODIFIED_TYPE.LOADED,
       // engine-added
       // Engine was added to the store by the search service.
       SearchUtils.MODIFIED_TYPE.ADDED,
@@ -35,7 +32,9 @@ add_task(async function test_addingEngine_opensearch() {
     SearchUtils.MODIFIED_TYPE.ADDED
   );
 
-  await Services.search.addOpenSearchEngine(gDataUrl + "engine.xml", null);
+  await SearchTestUtils.promiseNewSearchEngine({
+    url: gDataUrl + "engine.xml",
+  });
 
   engine = await addEngineObserver.promise;
 
@@ -89,7 +88,10 @@ add_task(async function test_defaultPrivateEngine_notifications() {
 
 add_task(
   async function test_defaultPrivateEngine_notifications_when_not_enabled() {
-    await Services.search.setDefault(originalDefaultEngine);
+    await Services.search.setDefault(
+      appDefaultEngine,
+      Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+    );
 
     Services.prefs.setBoolPref(
       SearchUtils.BROWSER_SEARCH_PREF + "separatePrivateDefault",
@@ -101,8 +103,14 @@ add_task(
 );
 
 add_task(async function test_removeEngine() {
-  await Services.search.setDefault(engine);
-  await Services.search.setDefaultPrivate(engine);
+  await Services.search.setDefault(
+    engine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
+  await Services.search.setDefaultPrivate(
+    engine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
   const removedObserver = new SearchObserver([
     SearchUtils.MODIFIED_TYPE.DEFAULT,

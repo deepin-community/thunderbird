@@ -13,7 +13,6 @@
 #include "nsIAppShellService.h"
 #include "mozIDOMWindow.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "nsIStringBundle.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
@@ -24,7 +23,6 @@
 #include "nsIMsgCompFields.h"
 #include "nsIMsgComposeParams.h"
 #include "nsIMsgCompose.h"
-#include "nsMsgCompCID.h"
 #include "nsIMsgSend.h"
 #include "nsIMsgComposeService.h"
 #include "nsDirectoryServiceDefs.h"
@@ -38,9 +36,13 @@
 #include "nsNetUtil.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/ReentrantMonitor.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsEmbedCID.h"
+#include "mozilla/ErrorNames.h"
 #include "mozilla/Logging.h"
+#include "mozilla/SpinEventLoopUntil.h"
+
+using namespace mozilla::dom;
 
 extern mozilla::LazyLogModule MAPI;  // defined in msgMapiImp.cpp
 
@@ -94,7 +96,10 @@ class MAPISendListener : public nsIMsgSendListener,
   }
 
   /* void OnGetDraftFolderURI (); */
-  NS_IMETHOD OnGetDraftFolderURI(const char* aFolderURI) { return NS_OK; }
+  NS_IMETHOD OnGetDraftFolderURI(const char* aMsgID,
+                                 const nsACString& aFolderURI) {
+    return NS_OK;
+  }
 
   bool IsDone() { return m_done; }
 
@@ -150,7 +155,7 @@ bool nsMapiHook::DisplayLoginDialog(bool aLogin, char16_t** aUsername,
       do_GetService(NS_PROMPTSERVICE_CONTRACTID, &rv));
   if (NS_SUCCEEDED(rv) && dlgService) {
     nsCOMPtr<nsIStringBundleService> bundleService =
-        mozilla::services::GetStringBundleService();
+        mozilla::components::StringBundle::Service();
     if (!bundleService) return false;
 
     nsCOMPtr<nsIStringBundle> bundle;
@@ -178,10 +183,9 @@ bool nsMapiHook::DisplayLoginDialog(bool aLogin, char16_t** aUsername,
       rv = bundle->GetStringFromName("loginTextwithName", loginText);
       if (NS_FAILED(rv) || loginText.IsEmpty()) return false;
 
-      bool dummyValue = false;
-      rv = dlgService->PromptUsernameAndPassword(
-          nullptr, loginTitle.get(), loginText.get(), aUsername, aPassword,
-          nullptr, &dummyValue, &btnResult);
+      rv = dlgService->PromptUsernameAndPassword(nullptr, loginTitle.get(),
+                                                 loginText.get(), aUsername,
+                                                 aPassword, &btnResult);
     } else {
       // nsString loginString;
       nsString loginText;
@@ -190,10 +194,8 @@ bool nsMapiHook::DisplayLoginDialog(bool aLogin, char16_t** aUsername,
           bundle->FormatStringFromName("loginText", userNameStrings, loginText);
       if (NS_FAILED(rv)) return false;
 
-      bool dummyValue = false;
       rv = dlgService->PromptPassword(nullptr, loginTitle.get(),
-                                      loginText.get(), aPassword, nullptr,
-                                      &dummyValue, &btnResult);
+                                      loginText.get(), aPassword, &btnResult);
     }
   }
 
@@ -206,7 +208,7 @@ bool nsMapiHook::VerifyUserName(const nsCString& aUsername, nsCString& aIdKey) {
   if (aUsername.IsEmpty()) return false;
 
   nsCOMPtr<nsIMsgAccountManager> accountManager(
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv));
   if (NS_FAILED(rv)) return false;
   nsTArray<RefPtr<nsIMsgIdentity>> identities;
   rv = accountManager->GetAllIdentities(identities);
@@ -244,7 +246,7 @@ bool nsMapiHook::IsBlindSendAllowed() {
 
   nsresult rv;
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   if (!bundleService) return false;
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -300,7 +302,7 @@ nsresult nsMapiHook::BlindSendMail(unsigned long aSession,
 
   // get the MsgIdentity for the above key using AccountManager
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/account-manager;1");
   if (NS_FAILED(rv) || (!accountManager)) return rv;
 
   nsCOMPtr<nsIMsgIdentity> pMsgId;
@@ -312,7 +314,7 @@ nsresult nsMapiHook::BlindSendMail(unsigned long aSession,
 
   // create the compose params object
   nsCOMPtr<nsIMsgComposeParams> pMsgComposeParams(
-      do_CreateInstance(NS_MSGCOMPOSEPARAMS_CONTRACTID, &rv));
+      do_CreateInstance("@mozilla.org/messengercompose/composeparams;1", &rv));
   if (NS_FAILED(rv) || (!pMsgComposeParams)) return rv;
 
   // populate the compose params
@@ -328,30 +330,26 @@ nsresult nsMapiHook::BlindSendMail(unsigned long aSession,
 
   // create the nsIMsgCompose object to send the object
   nsCOMPtr<nsIMsgCompose> pMsgCompose(
-      do_CreateInstance(NS_MSGCOMPOSE_CONTRACTID, &rv));
+      do_CreateInstance("@mozilla.org/messengercompose/compose;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   rv = pMsgCompose->Initialize(pMsgComposeParams, hiddenWindow, nullptr);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // If we're in offline mode, we'll need to queue it for later.
-  RefPtr<mozilla::dom::Promise> promise;
+  RefPtr<Promise> promise;
   rv = pMsgCompose->SendMsg(WeAreOffline() ? nsIMsgSend::nsMsgQueueForLater
                                            : nsIMsgSend::nsMsgDeliverNow,
                             pMsgId, nullptr, nullptr, nullptr,
                             getter_AddRefs(promise));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // We need to wait to make sure that we only return when the send is
-  // completed. If we're offline, we're not sending yet, so don't bother
-  // waiting.
+  // When offline, the message is saved to Outbox and OnStopSending won't be
+  // called.
   if (WeAreOffline()) return NS_OK;
 
-  nsCOMPtr<nsIThread> thread(do_GetCurrentThread());
-  while (!sendListener->IsDone()) {
-    mozilla::ReentrantMonitorAutoEnter mon(*sendListener);
-    sendListener->Wait(PR_MicrosecondsToInterval(1000UL));
-    NS_ProcessPendingEvents(thread);
-  }
+  // Wait for OnStopSending to be called.
+  mozilla::SpinEventLoopUntil("nsIMsgCompose::SendMsg is async"_ns,
+                              [=]() { return sendListener->IsDone(); });
 
   return rv;
 }
@@ -386,8 +384,7 @@ nsresult nsMapiHook::HandleAttachments(nsIMsgCompFields* aCompFields,
           ("nsMapiHook::HandleAttachments: filename: %s path: %s exists = %s\n",
            (const char*)aFiles[i].lpszFileName,
            (const char*)aFiles[i].lpszPathName, bExist ? "true" : "false"));
-      if (NS_FAILED(rv) || (!bExist))
-        return NS_ERROR_FILE_TARGET_DOES_NOT_EXIST;
+      if (NS_FAILED(rv) || (!bExist)) return NS_ERROR_FILE_NOT_FOUND;
 
       // Temp Directory
       nsCOMPtr<nsIFile> pTempDir;
@@ -426,7 +423,7 @@ nsresult nsMapiHook::HandleAttachments(nsIMsgCompFields* aCompFields,
         pFile->GetLeafName(leafName);
 
       nsCOMPtr<nsIMsgAttachment> attachment =
-          do_CreateInstance(NS_MSGATTACHMENT_CONTRACTID, &rv);
+          do_CreateInstance("@mozilla.org/messengercompose/attachment;1", &rv);
       NS_ENSURE_SUCCESS(rv, rv);
       attachment->SetName(leafName);
 
@@ -464,10 +461,13 @@ nsresult nsMapiHook::HandleAttachments(nsIMsgCompFields* aCompFields,
 
       // add the attachment
       rv = aCompFields->AddAttachment(attachment);
-      if (NS_FAILED(rv))
-        MOZ_LOG(
-            MAPI, mozilla::LogLevel::Debug,
-            ("nsMapiHook::HandleAttachments: AddAttachment rv =  %lx\n", rv));
+      if (NS_FAILED(rv)) {
+        nsAutoCString name;
+        mozilla::GetErrorName(rv, name);
+        MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
+                ("nsMapiHook::HandleAttachments: AddAttachment rv =  %s\n",
+                 name.get()));
+      }
     }
   }
   return rv;
@@ -501,8 +501,7 @@ nsresult nsMapiHook::HandleAttachmentsW(nsIMsgCompFields* aCompFields,
                NS_ConvertUTF16toUTF8(aFiles[i].lpszFileName).get(),
                NS_ConvertUTF16toUTF8(aFiles[i].lpszPathName).get(),
                bExist ? "true" : "false"));
-      if (NS_FAILED(rv) || (!bExist))
-        return NS_ERROR_FILE_TARGET_DOES_NOT_EXIST;
+      if (NS_FAILED(rv) || (!bExist)) return NS_ERROR_FILE_NOT_FOUND;
 
       // Temp Directory.
       nsCOMPtr<nsIFile> pTempDir;
@@ -535,7 +534,7 @@ nsresult nsMapiHook::HandleAttachmentsW(nsIMsgCompFields* aCompFields,
         pFile->GetLeafName(leafName);
 
       nsCOMPtr<nsIMsgAttachment> attachment =
-          do_CreateInstance(NS_MSGATTACHMENT_CONTRACTID, &rv);
+          do_CreateInstance("@mozilla.org/messengercompose/attachment;1", &rv);
       NS_ENSURE_SUCCESS(rv, rv);
       attachment->SetName(leafName);
 
@@ -573,10 +572,13 @@ nsresult nsMapiHook::HandleAttachmentsW(nsIMsgCompFields* aCompFields,
 
       // Add the attachment.
       rv = aCompFields->AddAttachment(attachment);
-      if (NS_FAILED(rv))
-        MOZ_LOG(
-            MAPI, mozilla::LogLevel::Debug,
-            ("nsMapiHook::HandleAttachmentsW: AddAttachment rv =  %lx\n", rv));
+      if (NS_FAILED(rv)) {
+        nsAutoCString name;
+        mozilla::GetErrorName(rv, name);
+        MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
+                ("nsMapiHook::HandleAttachmentsW: AddAttachment rv =  %s\n",
+                 name.get()));
+      }
     }
   }
   return rv;
@@ -678,7 +680,7 @@ nsresult nsMapiHook::PopulateCompFieldsWithConversion(
 
     // This is needed when Simple MAPI is used without a compose window.
     // See bug 1366196.
-    if (Body.Find("<html>") == kNotFound) aCompFields->SetForcePlainText(true);
+    if (Body.Find(u"<html>") == kNotFound) aCompFields->SetForcePlainText(true);
 
     rv = aCompFields->SetBody(Body);
   } else {
@@ -764,7 +766,7 @@ nsresult nsMapiHook::PopulateCompFieldsW(lpnsMapiMessageW aMessage,
 
     // This is needed when Simple MAPI is used without a compose window.
     // See bug 1366196.
-    if (Body.Find("<html>") == kNotFound) aCompFields->SetForcePlainText(true);
+    if (Body.Find(u"<html>") == kNotFound) aCompFields->SetForcePlainText(true);
 
     rv = aCompFields->SetBody(Body);
   } else {
@@ -851,8 +853,7 @@ nsresult nsMapiHook::PopulateCompFieldsForSendDocs(
       pFile->InitWithNativePath(RemainingPaths);
 
       rv = pFile->Exists(&bExist);
-      if (NS_FAILED(rv) || (!bExist))
-        return NS_ERROR_FILE_TARGET_DOES_NOT_EXIST;
+      if (NS_FAILED(rv) || (!bExist)) return NS_ERROR_FILE_NOT_FOUND;
 
       // filename of the file attachment
       nsAutoString leafName;
@@ -864,7 +865,7 @@ nsresult nsMapiHook::PopulateCompFieldsForSendDocs(
 
       // create MsgCompose attachment object
       nsCOMPtr<nsIMsgAttachment> attachment =
-          do_CreateInstance(NS_MSGATTACHMENT_CONTRACTID, &rv);
+          do_CreateInstance("@mozilla.org/messengercompose/attachment;1", &rv);
       NS_ENSURE_SUCCESS(rv, rv);
 
       nsDependentString fileNameNative(leafName.get());
@@ -908,7 +909,7 @@ nsresult nsMapiHook::ShowComposerWindow(unsigned long aSession,
 
   // create the compose params object
   nsCOMPtr<nsIMsgComposeParams> pMsgComposeParams(
-      do_CreateInstance(NS_MSGCOMPOSEPARAMS_CONTRACTID, &rv));
+      do_CreateInstance("@mozilla.org/messengercompose/composeparams;1", &rv));
   if (NS_FAILED(rv) || (!pMsgComposeParams)) return rv;
 
   // If we found HTML, compose in HTML.
@@ -930,7 +931,7 @@ nsresult nsMapiHook::ShowComposerWindow(unsigned long aSession,
 
   /** get the nsIMsgComposeService object to open the compose window **/
   nsCOMPtr<nsIMsgComposeService> compService =
-      do_GetService(NS_MSGCOMPOSESERVICE_CONTRACTID);
+      do_GetService("@mozilla.org/messengercompose;1");
   if (NS_FAILED(rv) || (!compService)) return rv;
 
   rv = compService->OpenComposeWindowWithParams(nullptr, pMsgComposeParams);

@@ -53,7 +53,7 @@ const DATA = [
 
 addRDMTask(
   null,
-  async function() {
+  async function () {
     // Let's reset the counts.
     Services.telemetry.clearEvents();
 
@@ -103,7 +103,7 @@ async function checkResults() {
     const expected = DATA[i];
 
     // ignore timestamp
-    ok(timestamp > 0, "timestamp is greater than 0");
+    Assert.greater(timestamp, 0, "timestamp is greater than 0");
     is(category, expected.category, "category is correct");
     is(method, expected.method, "method is correct");
     is(object, expected.object, "object is correct");
@@ -111,6 +111,6 @@ async function checkResults() {
 
     // extras
     is(extra.host, expected.extra.host, "host is correct");
-    ok(extra.width > 0, "width is greater than 0");
+    Assert.greater(Number(extra.width), 0, "width is greater than 0");
   }
 }

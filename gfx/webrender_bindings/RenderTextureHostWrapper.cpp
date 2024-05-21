@@ -7,6 +7,7 @@
 #include "RenderTextureHostWrapper.h"
 
 #include "mozilla/gfx/Logging.h"
+#include "mozilla/layers/RemoteTextureMap.h"
 #include "mozilla/webrender/RenderThread.h"
 
 namespace mozilla {
@@ -16,6 +17,7 @@ RenderTextureHostWrapper::RenderTextureHostWrapper(
     ExternalImageId aExternalImageId)
     : mExternalImageId(aExternalImageId) {
   MOZ_COUNT_CTOR_INHERITED(RenderTextureHostWrapper, RenderTextureHost);
+  EnsureTextureHost();
 }
 
 RenderTextureHostWrapper::~RenderTextureHostWrapper() {
@@ -23,24 +25,25 @@ RenderTextureHostWrapper::~RenderTextureHostWrapper() {
 }
 
 void RenderTextureHostWrapper::EnsureTextureHost() const {
+  if (mTextureHost) {
+    return;
+  }
+
+  mTextureHost = RenderThread::Get()->GetRenderTexture(mExternalImageId);
+  MOZ_ASSERT(mTextureHost);
   if (!mTextureHost) {
-    mTextureHost = RenderThread::Get()->GetRenderTexture(mExternalImageId);
-    MOZ_ASSERT(mTextureHost);
-    if (!mTextureHost) {
-      gfxCriticalNoteOnce << "Failed to get RenderTextureHost for extId:"
-                          << AsUint64(mExternalImageId);
-    }
+    gfxCriticalNoteOnce << "Failed to get RenderTextureHost for extId:"
+                        << AsUint64(mExternalImageId);
   }
 }
 
-wr::WrExternalImage RenderTextureHostWrapper::Lock(
-    uint8_t aChannelIndex, gl::GLContext* aGL, wr::ImageRendering aRendering) {
-  EnsureTextureHost();
+wr::WrExternalImage RenderTextureHostWrapper::Lock(uint8_t aChannelIndex,
+                                                   gl::GLContext* aGL) {
   if (!mTextureHost) {
     return InvalidToWrExternalImage();
   }
 
-  return mTextureHost->Lock(aChannelIndex, aGL, aRendering);
+  return mTextureHost->Lock(aChannelIndex, aGL);
 }
 
 void RenderTextureHostWrapper::Unlock() {
@@ -49,15 +52,45 @@ void RenderTextureHostWrapper::Unlock() {
   }
 }
 
+std::pair<gfx::Point, gfx::Point> RenderTextureHostWrapper::GetUvCoords(
+    gfx::IntSize aTextureSize) const {
+  if (mTextureHost) {
+    return mTextureHost->GetUvCoords(aTextureSize);
+  }
+  return RenderTextureHost::GetUvCoords(aTextureSize);
+}
+
 void RenderTextureHostWrapper::ClearCachedResources() {
   if (mTextureHost) {
     mTextureHost->ClearCachedResources();
   }
 }
 
+void RenderTextureHostWrapper::PrepareForUse() {
+  if (!mTextureHost) {
+    return;
+  }
+  mTextureHost->PrepareForUse();
+}
+
+void RenderTextureHostWrapper::NotifyForUse() {
+  if (!mTextureHost) {
+    return;
+  }
+  mTextureHost->NotifyForUse();
+}
+
+void RenderTextureHostWrapper::NotifyNotUsed() {
+  if (!mTextureHost) {
+    return;
+  }
+  mTextureHost->NotifyNotUsed();
+}
+
+bool RenderTextureHostWrapper::SyncObjectNeeded() { return false; }
+
 RenderMacIOSurfaceTextureHost*
 RenderTextureHostWrapper::AsRenderMacIOSurfaceTextureHost() {
-  EnsureTextureHost();
   if (!mTextureHost) {
     return nullptr;
   }
@@ -65,7 +98,6 @@ RenderTextureHostWrapper::AsRenderMacIOSurfaceTextureHost() {
 }
 
 RenderDXGITextureHost* RenderTextureHostWrapper::AsRenderDXGITextureHost() {
-  EnsureTextureHost();
   if (!mTextureHost) {
     return nullptr;
   }
@@ -74,20 +106,63 @@ RenderDXGITextureHost* RenderTextureHostWrapper::AsRenderDXGITextureHost() {
 
 RenderDXGIYCbCrTextureHost*
 RenderTextureHostWrapper::AsRenderDXGIYCbCrTextureHost() {
-  EnsureTextureHost();
   if (!mTextureHost) {
     return nullptr;
   }
   return mTextureHost->AsRenderDXGIYCbCrTextureHost();
 }
 
-RenderTextureHostSWGL* RenderTextureHostWrapper::EnsureRenderTextureHostSWGL()
-    const {
-  EnsureTextureHost();
+RenderDcompSurfaceTextureHost*
+RenderTextureHostWrapper::AsRenderDcompSurfaceTextureHost() {
+  if (!mTextureHost) {
+    return nullptr;
+  }
+  return mTextureHost->AsRenderDcompSurfaceTextureHost();
+}
+
+RenderTextureHostSWGL* RenderTextureHostWrapper::AsRenderTextureHostSWGL() {
   if (!mTextureHost) {
     return nullptr;
   }
   return mTextureHost->AsRenderTextureHostSWGL();
+}
+
+RenderAndroidHardwareBufferTextureHost*
+RenderTextureHostWrapper::AsRenderAndroidHardwareBufferTextureHost() {
+  if (!mTextureHost) {
+    return nullptr;
+  }
+  return mTextureHost->AsRenderAndroidHardwareBufferTextureHost();
+}
+
+RenderAndroidSurfaceTextureHost*
+RenderTextureHostWrapper::AsRenderAndroidSurfaceTextureHost() {
+  if (!mTextureHost) {
+    return nullptr;
+  }
+  return mTextureHost->AsRenderAndroidSurfaceTextureHost();
+}
+
+RenderTextureHostSWGL* RenderTextureHostWrapper::EnsureRenderTextureHostSWGL()
+    const {
+  if (!mTextureHost) {
+    return nullptr;
+  }
+  return mTextureHost->AsRenderTextureHostSWGL();
+}
+
+void RenderTextureHostWrapper::SetIsSoftwareDecodedVideo() {
+  if (!mTextureHost) {
+    return;
+  }
+  return mTextureHost->SetIsSoftwareDecodedVideo();
+}
+
+bool RenderTextureHostWrapper::IsSoftwareDecodedVideo() {
+  if (!mTextureHost) {
+    return false;
+  }
+  return mTextureHost->IsSoftwareDecodedVideo();
 }
 
 size_t RenderTextureHostWrapper::GetPlaneCount() const {

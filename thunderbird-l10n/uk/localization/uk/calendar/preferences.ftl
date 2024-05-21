@@ -15,6 +15,10 @@ dateformat-long =
 #   $date (String) - the formatted example date
 dateformat-short =
     .label = Стислий: { $date }
+use-system-timezone-radio-button =
+    .label = Використовувати системний часовий пояс
+set-timezone-manually-radio-button =
+    .label = Установити часовий пояс вручну
 timezone-label =
     .value = Часовий пояс:
 weekstart-label =
@@ -31,7 +35,7 @@ day-4-name =
 day-5-name =
     .label = Четвер
 day-6-name =
-    .label = П’ятниця
+    .label = П'ятниця
 day-7-name =
     .label = Субота
 show-weeknumber-label =
@@ -101,12 +105,6 @@ previous-weeks-label =
     .value = Показувати попередніх тижнів:
     .accesskey = П
 todaypane-legend = Панель дня
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Розділ "Незабаром" показує:
-    .accesskey = Н
 agenda-days =
     .value = У розкладі зазначено:
     .accesskey = з

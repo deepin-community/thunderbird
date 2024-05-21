@@ -8,21 +8,20 @@
 
 "use strict";
 
-var { open_message_from_file } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { close_window } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { get_about_message, open_message_from_file } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 add_task(async function test_base64_display() {
-  let file = new FileUtils.File(
+  const file = new FileUtils.File(
     getTestFilePath("data/base64-with-whitespace.eml")
   );
-  let msgc = await open_message_from_file(file);
-  let bodyText = msgc.e("messagepane").contentDocument.querySelector("body")
-    .textContent;
-  close_window(msgc);
+  const msgc = await open_message_from_file(file);
+  const aboutMessage = get_about_message(msgc);
+  const bodyText = aboutMessage.document
+    .getElementById("messagepane")
+    .contentDocument.querySelector("body").textContent;
+  await BrowserTestUtils.closeWindow(msgc);
 
   Assert.ok(
     bodyText.includes("abcdefghijklmnopqrstuvwxyz"),
@@ -31,11 +30,15 @@ add_task(async function test_base64_display() {
 });
 
 add_task(async function test_base64_display2() {
-  let file = new FileUtils.File(getTestFilePath("data/base64-bug1586890.eml"));
-  let msgc = await open_message_from_file(file);
-  let bodyText = msgc.e("messagepane").contentDocument.querySelector("body")
-    .textContent;
-  close_window(msgc);
+  const file = new FileUtils.File(
+    getTestFilePath("data/base64-bug1586890.eml")
+  );
+  const msgc = await open_message_from_file(file);
+  const aboutMessage = get_about_message(msgc);
+  const bodyText = aboutMessage.document
+    .getElementById("messagepane")
+    .contentDocument.querySelector("body").textContent;
+  await BrowserTestUtils.closeWindow(msgc);
 
   Assert.ok(
     bodyText.includes("abcdefghijklm"),

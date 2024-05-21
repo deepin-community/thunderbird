@@ -2,7 +2,7 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<!ENTITY event.title.label                  "Ögeyi düzenle" >
+<!ENTITY event.title.label                  "Kaydı düzenle" >
 
 <!ENTITY event.dialog.keepDurationButton.tooltip   "Bitiş tarihini değiştirirken süreyi sabit tut">
 <!ENTITY event.dialog.keepDurationButton.accesskey "t">
@@ -43,13 +43,10 @@
 <!ENTITY event.attendees.disallowcounter.tooltip     "Karşı teklifleri kabul etmeyeceğinizi gösterir">
 
 <!-- Keyboard Shortcuts -->
-<!ENTITY event.dialog.new.event.key2              "I">
-<!ENTITY event.dialog.new.task.key2               "D">
 <!ENTITY event.dialog.new.message.key2            "N">
 <!ENTITY event.dialog.close.key                   "W">
 <!ENTITY event.dialog.save.key                    "S">
 <!ENTITY event.dialog.saveandclose.key            "L">
-<!ENTITY event.dialog.print.key                   "P">
 <!ENTITY event.dialog.undo.key                    "z">
 <!ENTITY event.dialog.redo.key                    "Y">
 <!ENTITY event.dialog.cut.key                     "X">
@@ -87,14 +84,10 @@
     - when editing events/tasks in a tab. -->
 <!ENTITY  event.menu.item.saveandclose.label              "Kaydet ve kapat">
 <!ENTITY  event.menu.item.saveandclose.accesskey          "a">
-<!ENTITY  event.menu.item.saveandclose.tab.accesskey      "z">
+<!ENTITY  event.menu.item.saveandclose.tab.accesskey      "e">
 
 <!ENTITY  event.menu.item.delete.label                    "Sil…">
 <!ENTITY  event.menu.item.delete.accesskey                "S">
-<!ENTITY  event.menu.item.page.setup.label                "Sayfa düzeni">
-<!ENTITY  event.menu.item.page.setup.accesskey            "z">
-<!ENTITY  event.menu.item.print.label                     "Yazdır">
-<!ENTITY  event.menu.item.print.accesskey                 "r">
 
 <!ENTITY  event.menu.edit.label                           "Düzenle">
 <!ENTITY  event.menu.edit.accesskey                       "e">
@@ -119,8 +112,6 @@
 <!ENTITY  event.menu.view.toolbars.event.accesskey        "a">
 <!ENTITY  event.menu.view.toolbars.customize.label        "Özelleştir…">
 <!ENTITY  event.menu.view.toolbars.customize.accesskey    "z">
-<!ENTITY  event.menu.view.showlink.label                  "İlgili bağlantıyı göster">
-<!ENTITY  event.menu.view.showlink.accesskey              "b">
 
 <!ENTITY  event.menu.options.label                            "Seçenekler">
 <!ENTITY  event.menu.options.accesskey                        "S">
@@ -142,7 +133,7 @@
 <!ENTITY  event.menu.options.privacy.accesskey                "G">
 <!ENTITY  event.menu.options.privacy.public.label             "Açık etkinlik">
 <!ENTITY  event.menu.options.privacy.public.accesskey         "A">
-<!ENTITY  event.menu.options.privacy.confidential.label       "Sadece saati ve tarihi göster">
+<!ENTITY  event.menu.options.privacy.confidential.label       "Yalnızca saati ve tarihi göster">
 <!ENTITY  event.menu.options.privacy.confidential.accesskey   "S">
 <!ENTITY  event.menu.options.privacy.private.label            "Özel etkinlik">
 <!ENTITY  event.menu.options.privacy.private.accesskey        "z">
@@ -242,9 +233,9 @@
 <!ENTITY event.attachments.popup.attachPage.label         "Web sayfası ekle…" >
 <!ENTITY event.attachments.popup.attachPage.accesskey     "W" >
 <!ENTITY event.url.label                                  "İlgili bağlantı:" >
-<!ENTITY event.priority2.label                            "Önemlilik:">
+<!ENTITY event.priority2.label                            "Öncelik:">
 
-<!ENTITY event.reminder.none.label                        "Anımsatıcı yok" >
+<!ENTITY event.reminder.none.label                        "Anımsatıcı yok " >
 <!ENTITY event.reminder.0minutes.before.label             "0 dakika önce" >
 <!ENTITY event.reminder.5minutes.before.label             "5 dakika önce" >
 <!ENTITY event.reminder.15minutes.before.label            "15 dakika önce" >
@@ -325,7 +316,7 @@
 <!ENTITY event.recurrence.pattern.yearly.month.2.label       "Şubat" >
 <!ENTITY event.recurrence.pattern.yearly.month.3.label       "Mart" >
 <!ENTITY event.recurrence.pattern.yearly.month.4.label       "Nisan" >
-<!ENTITY event.recurrence.pattern.yearly.month.5.label       "May" >
+<!ENTITY event.recurrence.pattern.yearly.month.5.label       "Mayıs" >
 <!ENTITY event.recurrence.pattern.yearly.month.6.label       "Haziran" >
 <!ENTITY event.recurrence.pattern.yearly.month.7.label       "Temmuz" >
 <!ENTITY event.recurrence.pattern.yearly.month.8.label       "Ağustos" >
@@ -364,10 +355,9 @@
 
 <!ENTITY event.recurrence.range.label                   "Tekrarlama aralığı">
 <!ENTITY event.recurrence.forever.label                 "Bitiş tarihi yok" >
-<!ENTITY event.recurrence.repeat.for.label              "⁠" >
+<!ENTITY event.recurrence.repeat.for.label              "Oluştur" >
 <!ENTITY event.recurrence.appointments.label            "etkinlik oluştur" >
 <!ENTITY event.repeat.until.label                       "Şu tarihe kadar tekrarla" >
-<!ENTITY event.recurrence.preview.label                 "Önizleme">
 
 <!-- Attendees dialog -->
 <!ENTITY invite.title.label                     "Katılımcıları davet et">

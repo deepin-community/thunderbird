@@ -3,10 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 page-title = ਸਮੱਸਿਆ ਹੱਲ਼ ਜਾਣਕਾਰੀ
-page-subtitle =
-    ਇਹ ਸਫ਼ੇ ਉੱਤੇ ਤਕਨੀਕੀ ਜਾਣਕਾਰੀ ਹੈ, ਜੋ ਕਿ ਤੁਹਾਨੂੰ ਸਮੱਸਿਆ ਹੱਲ਼ ਕਰਨ ਲਈ ਫਾਇਦੇਮੰਦ
-    ਹੋ ਸਕਦੀ ਹੈ। ਜੇ ਤੁਸੀਂ { -brand-short-name } ਬਾਰੇ ਆਮ ਸਵਾਦ ਦੇ ਜਵਾਬ ਲੱਭ ਰਹੇ ਹੋ ਤਾਂ
-    ਸਾਡੀ <a data-l10n-name="support-link">ਸਪੋਰਟ ਵੈੱਬ ਸਾਈਟ</a> ਨੂੰ ਵੇਖੋ ਜੀ।
+page-subtitle = ਇਹ ਸਫ਼ੇ ਉੱਤੇ ਤਕਨੀਕੀ ਜਾਣਕਾਰੀ ਹੈ, ਜੋ ਕਿ ਤੁਹਾਨੂੰ ਸਮੱਸਿਆ ਹੱਲ਼ ਕਰਨ ਲਈ ਫਾਇਦੇਮੰਦ ਹੋ ਸਕਦੀ ਹੈ। ਜੇ ਤੁਸੀਂ { -brand-short-name } ਬਾਰੇ ਆਮ ਸਵਾਲਾਂ ਦੇ ਜਵਾਬ ਲੱਭ ਰਹੇ ਹੋ ਤਾਂ ਸਾਡੀ <a data-l10n-name="support-link">ਸਪੋਰਟ ਵੈੱਬ ਸਾਈਟ</a> ਨੂੰ ਵੇਖੋ ਜੀ।
 crashes-title = ਕਰੈਸ਼ ਰਿਪੋਰਟਾਂ
 crashes-id = ਰਿਪੋਰਟ ID
 crashes-send-date = ਭੇਜੀਆਂ
@@ -18,6 +15,10 @@ support-addons-type = ਕਿਸਮ
 support-addons-enabled = ਸਮਰੱਥ ਹੈ
 support-addons-version = ਵਰਜ਼ਨ
 support-addons-id = ID
+legacy-user-stylesheets-title = ਪੁਰਾਣੀਆਂ ਵਰਤੋਂਕਾਰ ਸਟਾਈਲਸ਼ੀਟਾਂ
+legacy-user-stylesheets-enabled = ਸਰਗਰਮ
+legacy-user-stylesheets-stylesheet-types = ਸਟਾਈਲਸ਼ੀਟਾਂ
+legacy-user-stylesheets-no-stylesheets-found = ਕੋਈ ਸਟਾਈਲਸ਼ੀਟਾਂ ਨਹੀਂ ਲੱਭੀਆਂ
 security-software-title = ਸੁਰੱਖਿਆ ਸਾਫਟਵੇਅਰ
 security-software-type = ਕਿਸਮ
 security-software-name = ਨਾਂ
@@ -73,8 +74,15 @@ app-basics-remote-processes-count = ਰਿਮੋਟ ਪਰੋਸੈਸ
 app-basics-enterprise-policies = ਇੰਟਰਪ੍ਰਾਈਜ਼ ਨੀਤੀਆਂ
 app-basics-location-service-key-google = ਗੂਗਲ ਟਿਕਾਣਾ ਸੇਵਾ ਕੁੰਜੀ
 app-basics-safebrowsing-key-google = ਗੂਗਲ ਸੇਫ਼-ਬਰਾਊਜਿੰਗ ਕੁੰਜੀ
-app-basics-key-mozilla = Mozilla Location Service Key
+app-basics-key-mozilla = Mozilla ਟਿਕਾਣਾ ਸੇਵਾ ਕੁੰਜੀ
 app-basics-safe-mode = ਸੁਰੱਖਿਅਤ ਮੋਡ
+app-basics-memory-size = ਮੈਮੋਰੀ ਆਕਾਰ (RAM)
+app-basics-disk-available = ਮੌਜੂਦ ਡਿਸਕ ਥਾਂ
+app-basics-pointing-devices = ਪੁਆਇੰਟ ਕਰਨ ਵਾਲੇ ਡਿਵਾਈਸ
+# Variables:
+#   $value (number) - Amount of data being stored
+#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Finder ਵਿੱਚ ਵੇਖਾਓ
@@ -104,11 +112,21 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = ਫ਼ੈਸਲਾ ਲਾਗ
 graphics-crash-guards-title = ਕਰੈਸ਼ ਗਾਰਡ ਆਯੋਗ ਫੀਚਰ
 graphics-workarounds-title = ਜੁਗਾੜ
+graphics-device-pixel-ratios = ਵਿੰਡੋ ਡਿਵਾਈਸ ਪਿਕਸਲ ਅਨੁਪਾਤ
 # Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = ਵਿੰਡੋ ਪਰੋਟੋਕਾਲ
 # Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = ਡੈਸਕਟਾਪ ਇੰਵਾਇਰਨਮੈਂਟ
 place-database-title = ਥਾਵਾਂ ਦਾ ਡਾਟਾਬੇਸ
+place-database-stats = ਅੰਕੜੇ
+place-database-stats-show = ਅੰਕੜੇ ਵੇਖੋ
+place-database-stats-hide = ਅੰਕੜੇ ਓਹਲੇ
+place-database-stats-entity = ਐਨਟੇਟੀ
+place-database-stats-count = ਗਿਣਤੀ
+place-database-stats-size-kib = ਆਕਾਰ (KiB)
+place-database-stats-size-perc = ਆਕਾਰ (%)
+place-database-stats-efficiency-perc = ਕਾਰਗੁਜ਼ਾਰੀ (%)
+place-database-stats-sequentiality-perc = ਲੜੀ (%)
 place-database-integrity = ਇਕਸਾਰਤਾ
 place-database-verify-integrity = ਇਕਸਾਰਤਾ ਨੂੰ ਤਸਦੀਕ ਕਰੋ
 a11y-title = ਅਸੈਸਬਿਲਟੀ
@@ -120,14 +138,14 @@ library-version-title = ਲਾਇਬਰੇਰੀ ਵਰਜ਼ਨ
 copy-text-to-clipboard-label = ਟੈਕਸਟ ਕਲਿੱਪਬੋਰਡ ਵਿੱਚ ਕਾਪੀ ਕਰੋ
 copy-raw-data-to-clipboard-label = ਰਾਅ ਡਾਟਾ ਕਲਿੱਪਬੋਰਡ ਵਿੱਚ ਕਾਪੀ ਕਰੋ
 sandbox-title = ਸੈਂਡਬਾਕਸ
-sandbox-sys-call-log-title = Rejected System Calls
+sandbox-sys-call-log-title = ਰੱਦ ਕੀਤੀਆਂ ਸਿਸਟਮ ਕਾਲਾਂ
 sandbox-sys-call-index = #
 sandbox-sys-call-age = ਸਕਿੰਟ ਪਹਿਲਾਂ
 sandbox-sys-call-pid = PID
 sandbox-sys-call-tid = TID
-sandbox-sys-call-proc-type = Process Type
+sandbox-sys-call-proc-type = ਪਰੋਸੈਸ ਦੀ ਕਿਸਮ
 sandbox-sys-call-number = Syscall
-sandbox-sys-call-args = Arguments
+sandbox-sys-call-args = ਆਰਗੂਮੈਂਟ
 troubleshoot-mode-title = ਮਸਲਿਆਂ ਦੀ ਪੜਤਾਲ ਕਰੋ
 restart-in-troubleshoot-mode-label = ਸਮੱਸਿਆ ਨਿਪਟਾਰਾ ਢੰਗ…
 clear-startup-cache-title = ਸ਼ੁਰੂਆਤੀ ਕੈਸ਼ ਨੂੰ ਸਾਫ਼ ਕਰਕੇ ਕੋਸ਼ਿਸ਼ ਕਰੋ
@@ -155,8 +173,36 @@ media-device-channels = ਚੈਨਲ
 media-device-rate = ਰੇਟ
 media-device-latency = ਦੇਰੀ
 media-capabilities-title = ਮੀਡਿਆ ਸਮਰੱਥਾਵਾਂ
+media-codec-support-info = Codec ਸਹਿਯੋਗ ਜਾਣਕਾਰੀ
 # List all the entries of the database.
 media-capabilities-enumerate = ਡਾਟਾਬੇਸ ਦੇ ਇੰਦਰਾਜ਼ਾਂ ਦੀ ਸੂਚੀ
+
+## Codec support table
+
+media-codec-support-sw-decoding = ਸਾਫ਼ਟਵੇਅਰ ਡਿਕੋਡਿੰਗ
+media-codec-support-hw-decoding = ਹਾਰਡਵੇਅਰ ਡਿਕੋਡਿੰਗ
+media-codec-support-codec-name = Codec ਦਾ ਨਾਂ
+media-codec-support-supported = ਸਹਿਯੋਗੀ
+media-codec-support-unsupported = ਗ਼ੈਰ-ਸਹਿਯੋਗੀ
+media-codec-support-error = Codec ਸਹਿਯੋਗ ਦੀ ਜਾਣਕਾਰੀ ਮੌਜੂਦ ਨਹੀਂ ਹੈ। ਮੀਡੀਆ ਫ਼ਾਇਲ ਚਲਾਉਣ ਤੋਂ ਬਾਅਦ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।
+media-codec-support-lack-of-extension = ਇਕਸਟੈਨਸ਼ਨ ਇੰਸਟਾਲ ਕਰੋ
+
+## Media Content Decryption Modules (CDM)
+## See EME Spec for more explanation for following technical terms
+## https://w3c.github.io/encrypted-media/
+
+media-content-decryption-modules-title = ਸਮੱਗਰੀ ਡਿਕ੍ਰਿਪਸ਼ਨ ਮੋਡੀਊਲ ਜਾਣਕਾਰੀ
+media-key-system-name = ਕੁੰਜੀ ਸਿਸਟਮ ਨਾਂ
+media-video-robustness = ਵੀਡੀਓ ਰੋਬਸਟਨੈਸ
+media-audio-robustness = ਆਡੀਓ ਰੋਬਸਟਨੈਸ
+media-cdm-capabilities = ਸਮਰੱਥਾਵਾਂ
+# Clear Lead isn't defined in the spec, which means the the first few seconds
+# are not encrypted. It allows playback to start without having to wait for
+# license response, improving video start time and user experience.
+media-cdm-clear-lead = ਮੁੱਢ ਨੂੰ ਸਾਫ਼ ਕਰੋ
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = HDCP 2.2 ਅਨੁਕੂਲ
 
 ##
 
@@ -228,7 +274,7 @@ text-copied = ਟੈਕਸਟ ਕਲਿੱਪਬੋਰਡ ਵਿੱਚ ਕਾਪ
 blocked-driver = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜਨ ਲਈ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ।
 blocked-gfx-card = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਕਾਰਡ ਲਈ ਪਾਬੰਦੀ ਹੈ, ਕਿਉਂਕਿ ਡਰਾਇਵਰ ਨਾਲ ਨਾ-ਸੁਝਲੀਆਂ ਸਮੱਸਿਆਵਾਂ ਹਨ।
 blocked-os-version = ਤੁਹਾਡੇ ਓਪਰੇਟਿੰਗ ਸਿਸਟਮ ਰਾਹੀਂ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ।
-blocked-mismatched-version = Blocked for your graphics driver version mismatch between registry and DLL.
+blocked-mismatched-version = ਰਜਿਸਟਰ ਅਤੇ DLL ਵਿਚਾਲੇ ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜ਼ਨ ਲਈ ਪਾਬੰਦੀ ਲੱਗੀ ਹੈ।
 # Variables
 # $driverVersion - The graphics driver version string
 try-newer-driver = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜਨ ਲਈ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ। ਆਪਣੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਨੂੰ { $driverVersion } ਜਾਂ ਨਵੇਂ ਵਰਜਨ ਨਾਲ ਅੱਪਡੇਟ ਕਰਨ ਦੇ ਬਾਅਦ ਕੋਸ਼ਿਸ਼ ਕਰੋ।
@@ -236,6 +282,7 @@ try-newer-driver = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ �
 # there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType ਪੈਰਾਮੀਟਰ
 compositing = ਬਣਤਰ
+support-font-determination = ਫ਼ੌਂਟ ਦਿੱਖ ਡੀਬੱਗ ਜਾਣਕਾਰੀ
 hardware-h264 = ਹਾਰਡਵੇਅਰ H264 ਡੀਕੋਡਿੰਗ
 main-thread-no-omtc = ਮੁੱਖ ਥਰਿੱਡ, OMTC ਨਹੀਂ
 yes = ਹਾਂ
@@ -261,16 +308,18 @@ gpu-driver-vendor = ਡਰਾਇਵਰ ਵੇਂਡਰ
 gpu-driver-version = ਡਰਾਇਵਰ ਵਰਜ਼ਨ
 gpu-driver-date = ਡਰਾਇਵਰ ਮਿਤੀ
 gpu-active = ਸਰਗਰਮ
-webgl1-wsiinfo = WebGL 1 Driver WSI Info
-webgl1-renderer = WebGL 1 Driver Renderer
-webgl1-version = WebGL 1 Driver Version
-webgl1-driver-extensions = WebGL 1 Driver Extensions
-webgl1-extensions = WebGL 1 Extensions
-webgl2-wsiinfo = WebGL 2 Driver WSI Info
+webgl1-wsiinfo = WebGL 1 ਡਰਾਇਵਰ WSI ਜਾਣਕਾਰੀ
+webgl1-renderer = WebGL 1 ਡਰਾਇਵਰ ਰੈਂਡਰਰ
+webgl1-version = WebGL 1 ਡਰਾਇਵਰ ਵਰਜ਼ਨ
+webgl1-driver-extensions = WebGL 1 ਡਰਾਇਵਰ ਇਕਸਟੈਨਸ਼ਨ
+webgl1-extensions = WebGL 1 ਇਕਸਟੈਨਸ਼ਨਾਂ
+webgl2-wsiinfo = WebGL 2 ਡਰਾਇਵਰ WSI ਜਾਣਕਾਰੀ
 webgl2-renderer = WebGL2 ਰੈਂਡਰਰ
-webgl2-version = WebGL 2 Driver Version
-webgl2-driver-extensions = WebGL 2 Driver Extensions
-webgl2-extensions = WebGL 2 Extensions
+webgl2-version = WebGL 2 ਡਰਾਇਵਰ ਵਰਜ਼ਨ
+webgl2-driver-extensions = WebGL 2 ਡਰਾਇਵਰ ਇਕਸਟੈਨਸ਼ਨ
+webgl2-extensions = WebGL 2 ਇਕਸਟੈਨਸ਼ਨਾਂ
+webgpu-default-adapter = WebGPU ਮੂਲ ਅਡੈਪਟਰ
+webgpu-fallback-adapter = WebGPU ਫ਼ਾਲਬੈਕ ਅਡੈਪਟਰ
 # Variables
 #   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = ਜਾਣੇ-ਪਛਾਣੇ ਮਸਲਿਆਂ ਕਰਕੇ ਪਾਬੰਦੀ ਲਾਈ: <a data-l10n-name="bug-link">ਬੱਗ { $bugNumber }</a>
@@ -281,7 +330,7 @@ d3d11layers-crash-guard = D3D11 ਕੰਪੋਜ਼ਿਟਰ
 glcontext-crash-guard = OpenGL
 wmfvpxvideo-crash-guard = WMF VPX ਵੀਡਿਓ ਡੀਕੋਡਰ
 reset-on-next-restart = ਅਗਲੀ ਵਾਰ ਮੁੜ-ਚਲਾਉਣ ਉੱਤੇ ਮੁੜ-ਸੈੱਟ ਕਰੋ
-gpu-process-kill-button = Terminate GPU Process
+gpu-process-kill-button = GPU ਪਰੋਸੈਸ ਖ਼ਤਮ ਕਰੋ
 gpu-device-reset = ਡਿਵਾਈਸ ਮੁੜ-ਸੈੱਟ ਕਰੋ
 gpu-device-reset-button = ਡਿਵਾਈਸ ਮੁੜ-ਸੈੱਟ ਲਈ ਪਲਟੋ
 uses-tiling = ਟਿਲਿੰਗ ਵਰਤਦਾ ਹੈ
@@ -297,8 +346,10 @@ has-user-namespaces = ਵਰਤੋਂਕਾਰ ਨੇਮ-ਸਪੇਸ
 has-privileged-user-namespaces = ਅਧਿਕਾਰ ਪ੍ਰਾਪਤ ਕਾਰਵਾਈਆਂ ਲਈ ਵਰਤੋਂਕਾਰ ਨੇਮਸਪੇਸ
 can-sandbox-content = ਪ੍ਰਸੰਗ ਕਾਰਵਾਈ ਸੈਂਡਬੌਕਸਿੰਗ
 can-sandbox-media = ਮੀਡੀਆ ਪਲੱਗਇਨ ਸੈਂਡਬੌਕਸਿੰਗ
-content-sandbox-level = Content Process Sandbox Level
+content-sandbox-level = ਪ੍ਰਸੰਗ ਪਰੋਸੈਸ ਸੈਂਡਬਾਕਸ ਪੱਧਰ
 effective-content-sandbox-level = ਪ੍ਰਭਾਵੀ ਸਮੱਗਰੀ ਕਾਰਵਾਈ ਸੈਂਡਬਾਕਸ ਪੱਧਰ
+content-win32k-lockdown-state = ਸਮੱਗਰੀ ਸੁਰੱਖਿਆ ਲਈ Win32k ਲਾਕਡਾਊਨ ਸਥਿਤੀ
+support-sandbox-gpu-level = GPU ਪ੍ਰੋਸੈਸ ਸੈਂਡਬਾਕਸ ਪੱਧਰ
 sandbox-proc-type-content = ਸਮੱਗਰੀ
 sandbox-proc-type-file = ਫ਼ਾਇਲ ਸਮੱਗਰੀ
 sandbox-proc-type-media-plugin = ਮੀਡੀਆ ਪਲੱਗਇਨ
@@ -324,17 +375,18 @@ fission-status-experiment-control = ਤਰਜਬੇ ਵਲੋਂ ਅਸਮਰੱ
 fission-status-experiment-treatment = ਤਜਰਬੇ ਵਲੋਂ ਸਮਰੱਥ ਕੀਤਾ
 fission-status-disabled-by-e10s-env = ਵਾਤਾਵਰਨ ਰਾਹੀਂ ਅਸਮਰੱਥ ਕੀਤਾ
 fission-status-enabled-by-env = ਵਾਤਾਵਰਨ ਰਾਹੀਂ ਸਮਰੱਥ ਕੀਤਾ
-fission-status-disabled-by-safe-mode = ਸੁਰੱਖਿਅਤ ਢੰਗ ਰਾਹੀਂ ਅਸਮਰੱਥ ਕੀਤਾ
+fission-status-disabled-by-env = ਪ੍ਰਣਾਲੀ ਵਲੋਂ ਅਸਮਰੱਥ ਕੀਤਾ ਹੈ
 fission-status-enabled-by-default = ਮੂਲ ਰੂਪ ਵਿੱਚ ਸਮਰੱਥ ਹੈ
 fission-status-disabled-by-default = ਮੂਲ ਰੂਪ 'ਚ ਅਸਮਰੱਥ ਹੈ
 fission-status-enabled-by-user-pref = ਵਰਤੋਂਕਾਰ ਵਲੋਂ ਸਮਰੱਥ ਕੀਤਾ
 fission-status-disabled-by-user-pref = ਵਰਤੋਂਕਾਰ ਵਲੋਂ ਅਸਮਰੱਥ ਹੈ
 fission-status-disabled-by-e10s-other = E10s ਅਸਮਰੱਥ ਹੈ
+fission-status-enabled-by-rollout = ਲੜੀਵਾਰ ਵੰਡਣ ਰਾਹੀਂ ਸਮਰੱਥ ਕੀਤਾ
 async-pan-zoom = ਅਸਮਕਾਲੀ ਪੈਨ/ਜ਼ੂਮ
 apz-none = ਕੋਈ ਨਹੀਂ
 wheel-enabled = ਵ੍ਹੀਲ ਇਨਪੁਟ ਸਮਰੱਥ ਹੈ
 touch-enabled = ਟੱਚ ਇਨਪੁਟ ਸਮਰੱਥ ਹੈ
-drag-enabled = scrollbar drag enabled
+drag-enabled = ਸਰੋਲਬਾਰ ਡਰੈਗ ਸਮਰੱਥ ਹੈ
 keyboard-enabled = ਕੀਬੋਰਡ ਸਮਰੱਥ ਹੈ
 autoscroll-enabled = ਆਪੇ-ਸਕਰੋਲ ਸਮਰੱਥ ਹੈ
 zooming-enabled = ਸਰਲ ਢੂੰਡੀ ਭਰਨ ਵਾਲਾ ਜ਼ੂਮ ਸਮਰੱਥ ਹੈ
@@ -369,3 +421,10 @@ support-remote-experiments-see-about-studies = ਹੋਰ ਜਾਣਕਾਰੀ �
 support-remote-features-title = ਰਿਮੋਟ ਫ਼ੀਚਰ
 support-remote-features-name = ਨਾਂ
 support-remote-features-status = ਹਾਲਤ
+
+## Pointing devices
+
+pointing-device-mouse = ਮਾਊਸ
+pointing-device-touchscreen = ਟੱਚ-ਸਕਰੀਨ
+pointing-device-pen-digitizer = ਪੈਨ ਡਿਜ਼ੀਟਾਈਜ਼ਰ
+pointing-device-none = ਕੋਈ ਪੁਆਇੰਟ ਕਰਨ ਵਾਲਾ ਡਿਵਾਈਸ ਨਹੀਂ ਹੈ

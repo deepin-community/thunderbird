@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { cookie } = ChromeUtils.import(
-  "chrome://remote/content/marionette/cookie.js"
+const { cookie } = ChromeUtils.importESModule(
+  "chrome://remote/content/marionette/cookie.sys.mjs"
 );
 
 /* eslint-disable mozilla/use-chromeutils-generateqi */
@@ -64,7 +64,7 @@ cookie.manager = {
   },
 };
 
-add_test(function test_fromJSON() {
+add_task(function test_fromJSON() {
   // object
   for (let invalidType of ["foo", 42, true, [], null, undefined]) {
     Assert.throws(() => cookie.fromJSON(invalidType), /Expected cookie object/);
@@ -209,11 +209,9 @@ add_test(function test_fromJSON() {
   equal(true, full.httpOnly);
   equal(42, full.expiry);
   equal("Lax", full.sameSite);
-
-  run_next_test();
 });
 
-add_test(function test_add() {
+add_task(function test_add() {
   cookie.manager.cookies = [];
 
   for (let invalidType of [42, true, [], {}, null, undefined]) {
@@ -241,7 +239,10 @@ add_test(function test_add() {
   equal("value", cookie.manager.cookies[0].value);
   equal(".domain", cookie.manager.cookies[0].host);
   equal("/", cookie.manager.cookies[0].path);
-  ok(cookie.manager.cookies[0].expiry > new Date(Date.now()).getTime() / 1000);
+  Assert.greater(
+    cookie.manager.cookies[0].expiry,
+    new Date(Date.now()).getTime() / 1000
+  );
 
   cookie.add({
     name: "name2",
@@ -296,11 +297,9 @@ add_test(function test_add() {
   Assert.throws(() => {
     cookie.add({ name: "fail", value: "value6", domain: "domain6" });
   }, /UnableToSetCookieError/);
-
-  run_next_test();
 });
 
-add_test(function test_remove() {
+add_task(function test_remove() {
   cookie.manager.cookies = [];
 
   let crumble = {
@@ -317,11 +316,9 @@ add_test(function test_remove() {
   cookie.remove(crumble);
   equal(0, cookie.manager.cookies.length);
   equal(undefined, cookie.manager.cookies[0]);
-
-  run_next_test();
 });
 
-add_test(function test_iter() {
+add_task(function test_iter() {
   cookie.manager.cookies = [];
   let tomorrow = new Date();
   tomorrow.setHours(tomorrow.getHours() + 24);
@@ -365,6 +362,4 @@ add_test(function test_iter() {
   let sameSiteCookies = [...cookie.iter("samesite.example.com")];
   equal(1, sameSiteCookies.length);
   equal("Lax", sameSiteCookies[0].sameSite);
-
-  run_next_test();
 });

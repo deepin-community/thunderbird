@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 from six.moves.urllib.parse import quote
 
 from marionette_harness import MarionetteTestCase
@@ -49,6 +47,6 @@ class TestPageSource(MarionetteTestCase):
         import re
 
         self.assertEqual(
-            re.sub("\s", "", source), "<xml><foo><bar>baz</bar></foo></xml>"
+            re.sub(r"\s", "", source), "<xml><foo><bar>baz</bar></foo></xml>"
         )
         self.assertEqual(source, from_web_api)

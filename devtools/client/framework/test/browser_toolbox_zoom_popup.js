@@ -5,15 +5,14 @@
 
 // Test the popup menu position when zooming in the devtools panel.
 
-const { Toolbox } = require("devtools/client/framework/toolbox");
-const { getCurrentZoom } = require("devtools/shared/layout/utils");
+const { Toolbox } = require("resource://devtools/client/framework/toolbox.js");
 
 // Use a simple URL in order to prevent displacing the left position of the
 // frames menu.
 const TEST_URL = "data:text/html;charset=utf-8,<iframe/>";
 
-add_task(async function() {
-  registerCleanupFunction(async function() {
+add_task(async function () {
+  registerCleanupFunction(async function () {
     Services.prefs.clearUserPref("devtools.toolbox.zoomValue");
   });
   const zoom = 1.4;
@@ -30,11 +29,10 @@ add_task(async function() {
   const hostWindow = toolbox.win.parent;
   const originWidth = hostWindow.outerWidth;
   const originHeight = hostWindow.outerHeight;
-  const windowUtils = toolbox.win.windowUtils;
 
-  info("Waiting for the toolbox window will to be rendered with zoom x1.4");
+  info(`Waiting for the toolbox window will to be rendered with zoom x${zoom}`);
   await waitUntil(() => {
-    return parseFloat(windowUtils.fullZoom.toFixed(1)) === zoom;
+    return parseFloat(toolbox.win.browsingContext.fullZoom.toFixed(1)) === zoom;
   });
 
   info(
@@ -42,13 +40,16 @@ add_task(async function() {
   );
   // If the window is displayed bottom of screen, the menu might be displayed
   // above the button so move it to the top of the screen first.
-  await moveWindowTo(hostWindow, 0, 0);
+  await moveWindowTo(hostWindow, 10, 10);
 
   // Shrink the width of the window such that the inspector's tab menu button
   // and chevron button are visible.
   const prevTabs = toolbox.doc.querySelectorAll(".devtools-tab").length;
+  info("Shrinking window");
+
   hostWindow.resizeTo(400, hostWindow.outerHeight);
   await waitUntil(() => {
+    info(`Waiting for chevron(${hostWindow.outerWidth})`);
     return (
       hostWindow.outerWidth === 400 &&
       toolbox.doc.getElementById("tools-chevron-menu-button") &&
@@ -65,12 +66,8 @@ add_task(async function() {
   ];
 
   for (const menu of menuList) {
-    const {
-      buttonBounds,
-      menuType,
-      menuBounds,
-      arrowBounds,
-    } = await getButtonAndMenuInfo(toolbox, menu);
+    const { buttonBounds, menuType, menuBounds, arrowBounds } =
+      await getButtonAndMenuInfo(toolbox, menu);
 
     switch (menuType) {
       case "native":
@@ -81,8 +78,16 @@ add_task(async function() {
           // vertical: IntID::ContextMenuOffsetVertical of macOS uses -6.
           const xDelta = Math.abs(menuBounds.left - buttonBounds.left);
           const yDelta = Math.abs(menuBounds.top - buttonBounds.bottom);
-          ok(xDelta < 2, "xDelta is lower than 2: " + xDelta + ". #" + menu.id);
-          ok(yDelta < 6, "yDelta is lower than 6: " + yDelta + ". #" + menu.id);
+          Assert.less(
+            xDelta,
+            2,
+            "xDelta is lower than 2: " + xDelta + ". #" + menu.id
+          );
+          Assert.less(
+            yDelta,
+            6,
+            "yDelta is lower than 6: " + yDelta + ". #" + menu.id
+          );
         }
         break;
 
@@ -93,8 +98,9 @@ add_task(async function() {
           const buttonCenter = buttonBounds.left + buttonBounds.width / 2;
           const arrowCenter = arrowBounds.left + arrowBounds.width / 2;
           const delta = Math.abs(arrowCenter - buttonCenter);
-          ok(
-            Math.round(delta) <= 1,
+          Assert.lessOrEqual(
+            Math.round(delta),
+            1,
             "Center of arrow is within 1px of button center" +
               ` (delta: ${delta})`
           );
@@ -111,15 +117,17 @@ add_task(async function() {
   gBrowser.removeCurrentTab();
 });
 
-function convertScreenToDoc(rect, doc) {
-  const zoom = getCurrentZoom(doc);
+function convertScreenToDoc(popup, doc) {
+  const rect = popup.getOuterScreenRect();
   const screenX = doc.defaultView.mozInnerScreenX;
   const screenY = doc.defaultView.mozInnerScreenY;
+  const scale =
+    popup.ownerGlobal.devicePixelRatio / doc.ownerGlobal.devicePixelRatio;
   return new DOMRect(
-    rect.x / zoom - screenX,
-    rect.y / zoom - screenY,
-    rect.width / zoom,
-    rect.height / zoom
+    rect.x * scale - screenX,
+    rect.y * scale - screenY,
+    rect.width * scale,
+    rect.height * scale
   );
 }
 
@@ -178,7 +186,7 @@ async function getButtonAndMenuInfo(toolbox, menuButton) {
     });
     // menuPopup is a XUL menupopup element. Call getOuterScreenRect(), which is
     // suported on both native and non-native menupopup implementations.
-    menuBounds = convertScreenToDoc(menuPopup.getOuterScreenRect(), doc);
+    menuBounds = convertScreenToDoc(menuPopup, doc);
   }
   ok(menuPopup, "Menu popup is displayed.");
 

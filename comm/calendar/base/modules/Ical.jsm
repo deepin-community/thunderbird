@@ -3,12 +3,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * This is ical.js from <https://github.com/mozilla-comm/ical.js>.
+ * This is ical.js from <https://github.com/kewisch/ical.js>.
+ *
+ * A maintenance branch is used as this version doesn't use ES6 modules,
+ * so that changes can be easily backported to Thunderbird 102 ESR.
  *
  * If you would like to change anything in ical.js, it is required to do so
  * upstream first.
  *
- * Current ical.js git revision: 7c99a434b38ad5d670a0e778ef055a2e17ccb3db (v1.4.0)
+ * Current ical.js git revision:
+ * https://github.com/darktrojan/ical.js/commit/0f1af2444b82708bb3a0a6b05d834884dedd8109
  */
 
 var EXPORTED_SYMBOLS = ["ICAL", "unwrap", "unwrapSetter", "unwrapSingle", "wrapGetter"];
@@ -31,7 +35,7 @@ function unwrapSingle(type, val) {
     } else if (val.wrappedJSObject.innerObject instanceof type) {
         return val.wrappedJSObject.innerObject;
     } else {
-        var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+        var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
         Cu.reportError("Unknown " + (type.icalclass || type) + " passed at " + cal.STACK(10));
         return null;
     }
@@ -42,21 +46,9 @@ function unwrapSingle(type, val) {
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- * Portions Copyright (C) Philipp Kewisch, 2011-2015 */
+ * Portions Copyright (C) Philipp Kewisch, 2021 */
 
-var ICAL;
-
-/* istanbul ignore next */
-/* jshint ignore:start */
-if (typeof module === 'object') {
-  // CommonJS, where exports may be different each time.
-  ICAL = module.exports;
-} else if (typeof ICAL !== 'object') {/* istanbul ignore next */
-  /** @ignore */
-  ICAL = {};
-}
-/* jshint ignore:end */
-
+var ICAL = {};
 
 /**
  * The number of characters before iCalendar line folding should occur
@@ -329,11 +321,22 @@ ICAL.helpers = {
    */
   foldline: function foldline(aLine) {
     var result = "";
-    var line = aLine || "";
-
+    var line = aLine || "", pos = 0, line_length = 0;
+    //pos counts position in line for the UTF-16 presentation
+    //line_length counts the bytes for the UTF-8 presentation
     while (line.length) {
-      result += ICAL.newLineChar + " " + line.substr(0, ICAL.foldLength);
-      line = line.substr(ICAL.foldLength);
+      var cp = line.codePointAt(pos);
+      if (cp < 128) ++line_length;
+      else if (cp < 2048) line_length += 2;//needs 2 UTF-8 bytes
+      else if (cp < 65536) line_length += 3;
+      else line_length += 4; //cp is less than 1114112
+      if (line_length < ICAL.foldLength + 1)
+        pos += cp > 65535 ? 2 : 1;
+      else {
+        result += ICAL.newLineChar + " " + line.substring(0, pos);
+        line = line.substring(pos);
+        pos = line_length = 0;
+      }
     }
     return result.substr(ICAL.newLineChar.length + 1);
   },
@@ -450,7 +453,7 @@ ICAL.design = (function() {
       toICAL: function(aValue, structuredEscape) {
         var regEx = toNewline;
         if (structuredEscape)
-          regEx = new RegExp(regEx.source + '|' + structuredEscape);
+          regEx = new RegExp(regEx.source + '|' + structuredEscape, regEx.flags);
         return aValue.replace(regEx, function(str) {
           switch (str) {
           case "\\":
@@ -506,7 +509,7 @@ ICAL.design = (function() {
       return value;
     }
     if (structuredEscape)
-      newline = new RegExp(newline.source + '|\\\\' + structuredEscape);
+      newline = new RegExp(newline.source + '|\\\\' + structuredEscape, newline.flags);
     return value.replace(newline, replaceNewlineReplace);
   }
 
@@ -613,7 +616,7 @@ ICAL.design = (function() {
 
   var icalParams = {
     // Although the syntax is DQUOTE uri DQUOTE, I don't think we should
-    // enfoce anything aside from it being a valid content line.
+    // enforce anything aside from it being a valid content line.
     //
     // At least some params require - if multi values are used - DQUOTEs
     // for each of its values - e.g. delegated-from="uri1","uri2"
@@ -665,7 +668,7 @@ ICAL.design = (function() {
       allowIanaToken: true
     },
     "range": {
-      values: ["THISLANDFUTURE"]
+      values: ["THISANDFUTURE"]
     },
     "related": {
       values: ["START", "END"]
@@ -839,7 +842,6 @@ ICAL.design = (function() {
       }
     },
     period: {
-
       fromICAL: function(string) {
         var parts = string.split('/');
         parts[0] = icalValues['date-time'].fromICAL(parts[0]);
@@ -852,6 +854,7 @@ ICAL.design = (function() {
       },
 
       toICAL: function(parts) {
+        parts = parts.slice();
         if (!design.strict && parts[0].length == 10) {
           parts[0] = icalValues.date.toICAL(parts[0]);
         } else {
@@ -1167,6 +1170,18 @@ ICAL.design = (function() {
     timestamp: icalValues['date-time'],
     "language-tag": {
       matches: /^[a-zA-Z0-9-]+$/ // Could go with a more strict regex here
+    },
+    "phone-number": {
+      fromICAL: function(aValue) {
+        return Array.from(aValue).filter(function(c) {
+            return c === '\\' ? undefined : c;
+          }).join('');
+      },
+      toICAL: function(aValue) {
+        return Array.from(aValue).map(function(c) {
+          return c === ',' || c === ";" ? '\\' + c : c;
+        }).join('');
+      }
     }
   });
 
@@ -1223,10 +1238,7 @@ ICAL.design = (function() {
     binary: icalValues.binary,
     date: vcardValues.date,
     "date-time": vcardValues["date-time"],
-    "phone-number": {
-      // TODO
-      /* ... */
-    },
+    "phone-number": vcardValues["phone-number"],
     uri: icalValues.uri,
     text: icalValues.text,
     time: icalValues.time,
@@ -1316,7 +1328,8 @@ ICAL.design = (function() {
   var icalSet = {
     value: icalValues,
     param: icalParams,
-    property: icalProperties
+    property: icalProperties,
+    propertyGroups: false
   };
 
   /**
@@ -1326,7 +1339,8 @@ ICAL.design = (function() {
   var vcardSet = {
     value: vcardValues,
     param: vcardParams,
-    property: vcardProperties
+    property: vcardProperties,
+    propertyGroups: true
   };
 
   /**
@@ -1336,7 +1350,8 @@ ICAL.design = (function() {
   var vcard3Set = {
     value: vcard3Values,
     param: vcard3Params,
-    property: vcard3Properties
+    property: vcard3Properties,
+    propertyGroups: true
   };
 
   /**
@@ -1356,7 +1371,8 @@ ICAL.design = (function() {
      * @memberOf ICAL.design
      * @property {Object} value       Definitions for value types, keys are type names
      * @property {Object} param       Definitions for params, keys are param names
-     * @property {Object} property    Defintions for properties, keys are property names
+     * @property {Object} property    Definitions for properties, keys are property names
+     * @property {boolean} propertyGroups  If content lines may include a group name
      */
 
     /**
@@ -1552,28 +1568,43 @@ ICAL.stringify = (function() {
     var jsName = property[0];
     var params = property[1];
 
-    var line = name;
+    if (!designSet) {
+      designSet = design.defaultSet;
+    }
+
+    var groupName = params.group;
+    var line;
+    if (designSet.propertyGroups && groupName) {
+      line = groupName.toUpperCase() + "." + name;
+    } else {
+      line = name;
+    }
 
     var paramName;
     for (paramName in params) {
+      if (designSet.propertyGroups && paramName == 'group') {
+        continue;
+      }
+
       var value = params[paramName];
+      var paramDesign = designSet.param[paramName];
 
       /* istanbul ignore else */
       if (params.hasOwnProperty(paramName)) {
-        var multiValue = (paramName in designSet.param) && designSet.param[paramName].multiValue;
+        var multiValue = paramDesign && paramDesign.multiValue;
         if (multiValue && Array.isArray(value)) {
-          if (designSet.param[paramName].multiValueSeparateDQuote) {
-            multiValue = '"' + multiValue + '"';
-          }
-          value = value.map(stringify._rfc6868Unescape);
+          value = value.map(function(val) {
+            val = stringify._rfc6868Unescape(val);
+            val = stringify.paramPropertyValue(val, paramDesign.multiValueSeparateDQuote);
+            return val;
+          });
           value = stringify.multiValue(value, multiValue, "unknown", null, designSet);
         } else {
           value = stringify._rfc6868Unescape(value);
+          value = stringify.paramPropertyValue(value);
         }
 
-
-        line += ';' + paramName.toUpperCase();
-        line += '=' + stringify.propertyValue(value);
+        line += ';' + paramName.toUpperCase() + '=' + value;
       }
     }
 
@@ -1583,10 +1614,6 @@ ICAL.stringify = (function() {
     }
 
     var valueType = property[2];
-
-    if (!designSet) {
-      designSet = design.defaultSet;
-    }
 
     var propDetails;
     var multiValue = false;
@@ -1655,13 +1682,14 @@ ICAL.stringify = (function() {
    * If any of the above are present the result is wrapped
    * in double quotes.
    *
-   * @function ICAL.stringify.propertyValue
+   * @function ICAL.stringify.paramPropertyValue
    * @param {String} value      Raw property value
+   * @param {boolean} force     If value should be escaped even when unnecessary
    * @return {String}           Given or escaped value when needed
    */
-  stringify.propertyValue = function(value) {
-
-    if ((helpers.unescapedIndexOf(value, ',') === -1) &&
+  stringify.paramPropertyValue = function(value, force) {
+    if (!force &&
+        (helpers.unescapedIndexOf(value, ',') === -1) &&
         (helpers.unescapedIndexOf(value, ':') === -1) &&
         (helpers.unescapedIndexOf(value, ';') === -1)) {
 
@@ -1908,11 +1936,11 @@ ICAL.parse = (function() {
      *    // ROLE= is a param because : has not happened yet
      */
       // when the parameter delimiter is after the
-      // value delimiter then its not a parameter.
+      // value delimiter then it is not a parameter.
 
     if ((paramPos !== -1 && valuePos !== -1)) {
       // when the parameter delimiter is after the
-      // value delimiter then its not a parameter.
+      // value delimiter then it is not a parameter.
       if (paramPos > valuePos) {
         paramPos = -1;
       }
@@ -1955,14 +1983,14 @@ ICAL.parse = (function() {
         state.component = state.stack.pop();
         return;
       }
-      // If its not begin/end, then this is a property with an empty value,
+      // If it is not begin/end, then this is a property with an empty value,
       // which should be considered valid.
     } else {
       /**
        * Invalid line.
        * The rational to throw an error is we will
        * never be certain that the rest of the file
-       * is sane and its unlikely that we can serialize
+       * is sane and it is unlikely that we can serialize
        * the result correctly either.
        */
       throw new ParserError(
@@ -1974,9 +2002,20 @@ ICAL.parse = (function() {
     var multiValue = false;
     var structuredValue = false;
     var propertyDetails;
+    var splitName;
+    var ungroupedName;
 
-    if (name in state.designSet.property) {
-      propertyDetails = state.designSet.property[name];
+    // fetch the ungrouped part of the name
+    if (state.designSet.propertyGroups && name.indexOf('.') !== -1) {
+      splitName = name.split('.');
+      params.group = splitName[0];
+      ungroupedName = splitName[1];
+    } else {
+      ungroupedName = name;
+    }
+
+    if (ungroupedName in state.designSet.property) {
+      propertyDetails = state.designSet.property[ungroupedName];
 
       if ('multiValue' in propertyDetails) {
         multiValue = propertyDetails.multiValue;
@@ -2012,22 +2051,22 @@ ICAL.parse = (function() {
      *
      * I observed that building the array in pieces has adverse
      * effects on performance, so where possible we inline the creation.
-     * Its a little ugly but resulted in ~2000 additional ops/sec.
+     * It is a little ugly but resulted in ~2000 additional ops/sec.
      */
 
     var result;
     if (multiValue && structuredValue) {
       value = parser._parseMultiValue(value, structuredValue, valueType, [], multiValue, state.designSet, structuredValue);
-      result = [name, params, valueType, value];
+      result = [ungroupedName, params, valueType, value];
     } else if (multiValue) {
-      result = [name, params, valueType];
+      result = [ungroupedName, params, valueType];
       parser._parseMultiValue(value, multiValue, valueType, result, null, state.designSet, false);
     } else if (structuredValue) {
       value = parser._parseMultiValue(value, structuredValue, valueType, [], null, state.designSet, structuredValue);
-      result = [name, params, valueType, value];
+      result = [ungroupedName, params, valueType, value];
     } else {
       value = parser._parseValue(value, valueType, state.designSet, false);
-      result = [name, params, valueType, value];
+      result = [ungroupedName, params, valueType, value];
     }
     // rfc6350 requires that in vCard 4.0 the first component is the VERSION
     // component with as value 4.0, note that 3.0 does not have this requirement.
@@ -2340,12 +2379,16 @@ ICAL.Component = (function() {
     this.jCal = jCal;
 
     this.parent = parent || null;
+
+    if (!this.parent && this.name === 'vcalendar') {
+      this._timezoneCache = new Map();
+    }
   }
 
   Component.prototype = {
     /**
      * Hydrated properties are inserted into the _properties array at the same
-     * position as in the jCal array, so its possible the array contains
+     * position as in the jCal array, so it is possible that the array contains
      * undefined values for unhydrdated properties. To avoid iterating the
      * array when checking if all properties have been hydrated, we save the
      * count here.
@@ -2362,6 +2405,15 @@ ICAL.Component = (function() {
      * @private
      */
     _hydratedComponentCount: 0,
+
+    /**
+     * A cache of hydrated time zone objects which may be used by consumers, keyed
+     * by time zone ID.
+     *
+     * @type {Map}
+     * @private
+     */
+    _timezoneCache: null,
 
     /**
      * The name of this component
@@ -2695,7 +2747,7 @@ ICAL.Component = (function() {
      */
     addProperty: function(property) {
       if (!(property instanceof ICAL.Property)) {
-        throw new TypeError('must instance of ICAL.Property');
+        throw new TypeError('must be instance of ICAL.Property');
       }
 
       if (!this._properties) {
@@ -2796,6 +2848,53 @@ ICAL.Component = (function() {
       return ICAL.stringify.component(
         this.jCal, this._designSet
       );
+    },
+
+    /**
+     * Retrieve a time zone definition from the component tree, if any is present.
+     * If the tree contains no time zone definitions or the TZID cannot be
+     * matched, returns null.
+     *
+     * @param {String} tzid     The ID of the time zone to retrieve
+     * @return {ICAL.Timezone}  The time zone corresponding to the ID, or null
+     */
+    getTimeZoneByID: function(tzid) {
+      // VTIMEZONE components can only appear as a child of the VCALENDAR
+      // component; walk the tree if we're not the root.
+      if (this.parent) {
+        return this.parent.getTimeZoneByID(tzid);
+      }
+
+      // If there is no time zone cache, we are probably parsing an incomplete
+      // file and will have no time zone definitions.
+      if (!this._timezoneCache) {
+        return null;
+      }
+
+      if (this._timezoneCache.has(tzid)) {
+        return this._timezoneCache.get(tzid);
+      }
+
+      // If the time zone is not already cached, hydrate it from the
+      // subcomponents.
+      var zones = this.getAllSubcomponents('vtimezone');
+      for (var i = 0; i < zones.length; i++) {
+        var zone = zones[i];
+        if (zone.getFirstProperty('tzid').getFirstValue() === tzid) {
+          var hydratedZone = new ICAL.Timezone({
+            component: zone,
+            tzid: tzid,
+          });
+
+          this._timezoneCache.set(tzid, hydratedZone);
+
+          return hydratedZone;
+        }
+      }
+
+      // Per the standard, we should always have a time zone defined in a file
+      // for any referenced TZID, but don't blow up if the file is invalid.
+      return null;
     }
   };
 
@@ -2836,7 +2935,7 @@ ICAL.Property = (function() {
    * property, with its parameters and value.
    *
    * @description
-   * Its important to note that mutations done in the wrapper
+   * It is important to note that mutations done in the wrapper
    * directly mutate the jCal object used to initialize.
    *
    * Can also be used to create new properties by passing
@@ -3019,8 +3118,8 @@ ICAL.Property = (function() {
     /**
      * Gets a parameter on the property.
      *
-     * @param {String}        name   Property name (lowercase)
-     * @return {Array|String}        Property value
+     * @param {String}        name   Parameter name (lowercase)
+     * @return {Array|String}        Parameter value
      */
     getParameter: function(name) {
       if (name in this.jCal[PROP_INDEX]) {
@@ -3033,8 +3132,8 @@ ICAL.Property = (function() {
     /**
      * Gets first parameter on the property.
      *
-     * @param {String}        name   Property name (lowercase)
-     * @return {String}        Property value
+     * @param {String}        name   Parameter name (lowercase)
+     * @return {String}        Parameter value
      */
     getFirstParameter: function(name) {
       var parameters = this.getParameter(name);
@@ -3121,7 +3220,7 @@ ICAL.Property = (function() {
       var len = this.jCal.length - VALUE_INDEX;
 
       if (len < 1) {
-        // its possible for a property to have no value.
+        // it is possible for a property to have no value.
         return [];
       }
 
@@ -4470,10 +4569,6 @@ ICAL.Binary = (function() {
 
       changesEndYear += ICAL.Timezone.EXTRA_COVERAGE;
 
-      if (changesEndYear > ICAL.Timezone.MAX_YEAR) {
-        changesEndYear = ICAL.Timezone.MAX_YEAR;
-      }
-
       if (!this.changes.length || this.expandedUntilYear < aYear) {
         var subcomps = this.component.getAllSubcomponents();
         var compLen = subcomps.length;
@@ -4724,7 +4819,6 @@ ICAL.Binary = (function() {
   };
 
   ICAL.Timezone._minimumExpansionYear = -1;
-  ICAL.Timezone.MAX_YEAR = 2035; // TODO this is because of time_t, which we don't need. Still usefull?
   ICAL.Timezone.EXTRA_COVERAGE = 5;
 })();
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -4742,7 +4836,7 @@ ICAL.TimezoneService = (function() {
 
   /**
    * @classdesc
-   * Singleton class to contain timezones.  Right now its all manual registry in
+   * Singleton class to contain timezones.  Right now it is all manual registry in
    * the future we may use this class to download timezone information or handle
    * loading pre-expanded timezones.
    *
@@ -5271,7 +5365,7 @@ ICAL.TimezoneService = (function() {
 
 
         // if the offset goes into the past
-        // week we add 7 so its goes into the next
+        // week we add 7 so it goes into the next
         // week. We only want to go forward in time here.
         if (offset < 0)
           // this is really important otherwise we would
@@ -5320,7 +5414,7 @@ ICAL.TimezoneService = (function() {
      *
      * @param {ICAL.Time.weekDay} aDayOfWeek       Day of week to check
      * @param {Number} aPos                        Relative position
-     * @return {Boolean}                           True, if its the nth weekday
+     * @return {Boolean}                           True, if it is the nth weekday
      */
     isNthWeekDay: function(aDayOfWeek, aPos) {
       var dow = this.dayOfWeek();
@@ -5424,7 +5518,7 @@ ICAL.TimezoneService = (function() {
      * the relative difference between two time objects excluding their
      * timezone differences.
      *
-     * @param {ICAL.Time} aDate     The date to substract
+     * @param {ICAL.Time} aDate     The date to subtract
      * @return {ICAL.Duration}      The difference as a duration
      */
     subtractDate: function icaltime_subtract(aDate) {
@@ -5483,7 +5577,7 @@ ICAL.TimezoneService = (function() {
     },
 
     /**
-     * Convert the instance into another timzone. The returned ICAL.Time
+     * Convert the instance into another timezone. The returned ICAL.Time
      * instance is always a copy.
      *
      * @param {ICAL.Timezone} zone      The zone to convert to
@@ -5688,15 +5782,22 @@ ICAL.TimezoneService = (function() {
      */
     fromUnixTime: function fromUnixTime(seconds) {
       this.zone = ICAL.Timezone.utcTimezone;
-      var epoch = ICAL.Time.epochTime.clone();
-      epoch.adjust(0, 0, 0, seconds);
-
-      this.year = epoch.year;
-      this.month = epoch.month;
-      this.day = epoch.day;
-      this.hour = epoch.hour;
-      this.minute = epoch.minute;
-      this.second = Math.floor(epoch.second);
+      // We could use `fromJSDate` here, but this is about twice as fast.
+      // We could also clone `epochTime` and use `adjust` for a more
+      // ical.js-centric approach, but this is about 100 times as fast.
+      var date = new Date(seconds * 1000);
+      this.year = date.getUTCFullYear();
+      this.month = date.getUTCMonth() + 1;
+      this.day = date.getUTCDate();
+      if (this._time.isDate) {
+        this.hour = 0;
+        this.minute = 0;
+        this.second = 0;
+      } else {
+        this.hour = date.getUTCHours();
+        this.minute = date.getUTCMinutes();
+        this.second = date.getUTCSeconds();
+      }
 
       this._cachedUnixTime = null;
     },
@@ -5946,25 +6047,45 @@ ICAL.TimezoneService = (function() {
     }
 
     var zone;
+    var zoneId;
 
     if (aValue[19] && aValue[19] === 'Z') {
-      zone = 'Z';
+      zone = ICAL.Timezone.utcTimezone;
     } else if (prop) {
-      zone = prop.getParameter('tzid');
+      zoneId = prop.getParameter('tzid');
+
+      if (prop.parent) {
+        if (prop.parent.name === 'standard' || prop.parent.name === 'daylight') {
+          // Per RFC 5545 3.8.2.4 and 3.8.2.2, start/end date-times within
+          // these components MUST be specified in local time.
+          zone = ICAL.Timezone.floating;
+        } else if (zoneId) {
+          // If the desired time zone is defined within the component tree,
+          // fetch its definition and prefer that.
+          zone = prop.parent.getTimeZoneByID(zoneId);
+        }
+      }
     }
 
-    // 2012-10-10T10:10:10(Z)?
-    var time = new ICAL.Time({
+    var timeData = {
       year: ICAL.helpers.strictParseInt(aValue.substr(0, 4)),
       month: ICAL.helpers.strictParseInt(aValue.substr(5, 2)),
       day: ICAL.helpers.strictParseInt(aValue.substr(8, 2)),
       hour: ICAL.helpers.strictParseInt(aValue.substr(11, 2)),
       minute: ICAL.helpers.strictParseInt(aValue.substr(14, 2)),
       second: ICAL.helpers.strictParseInt(aValue.substr(17, 2)),
-      timezone: zone
-    });
+    };
 
-    return time;
+    // Although RFC 5545 requires that all TZIDs used within a file have a
+    // corresponding time zone definition, we may not be parsing the full file
+    // or we may be dealing with a non-compliant file; in either case, we can
+    // check our own time zone service for the TZID in a last-ditch effort.
+    if (zoneId && !zone) {
+      timeData.timezone = zoneId;
+    }
+
+    // 2012-10-10T10:10:10(Z)?
+    return new ICAL.Time(timeData, zone);
   };
 
   /**
@@ -6014,6 +6135,9 @@ ICAL.TimezoneService = (function() {
 
   /**
    * Creates a new ICAL.Time instance from the current moment.
+   * The instance is “floating” - has no timezone relation.
+   * To create an instance considering the time zone, call
+   * ICAL.Time.fromJSDate(new Date(), true)
    * @return {ICAL.Time}
    */
   ICAL.Time.now = function icaltime_now() {
@@ -6812,7 +6936,7 @@ ICAL.TimezoneService = (function() {
     BYMONTHDAY: parseNumericValue.bind(this, 'BYMONTHDAY', -31, 31),
     BYYEARDAY: parseNumericValue.bind(this, 'BYYEARDAY', -366, 366),
     BYWEEKNO: parseNumericValue.bind(this, 'BYWEEKNO', -53, 53),
-    BYMONTH: parseNumericValue.bind(this, 'BYMONTH', 0, 12),
+    BYMONTH: parseNumericValue.bind(this, 'BYMONTH', 1, 12),
     BYSETPOS: parseNumericValue.bind(this, 'BYSETPOS', -366, 366)
   };
 
@@ -6911,7 +7035,7 @@ ICAL.RecurIterator = (function() {
   /**
    * @classdesc
    * An iterator for a single recurrence rule. This class usually doesn't have
-   * to be instanciated directly, the convenience method
+   * to be instantiated directly, the convenience method
    * {@link ICAL.Recur#iterator} can be used.
    *
    * @description
@@ -7058,12 +7182,19 @@ ICAL.RecurIterator = (function() {
       this.initialized = options.initialized || false;
 
       if (!this.initialized) {
-        this.init();
+        try {
+          this.init();
+        } catch (e) {
+          // Init may error if there are no possible recurrence instances from
+          // the rule, but we don't want to bubble this error up. Instead, we
+          // create an empty iterator.
+          this.completed = true;
+        }
       }
     },
 
     /**
-     * Intialize the iterator
+     * Initialize the iterator
      * @private
      */
     init: function icalrecur_iterator_init() {
@@ -7112,7 +7243,7 @@ ICAL.RecurIterator = (function() {
       this.last.second = this.setup_defaults("BYSECOND", "SECONDLY", this.dtstart.second);
       this.last.minute = this.setup_defaults("BYMINUTE", "MINUTELY", this.dtstart.minute);
       this.last.hour = this.setup_defaults("BYHOUR", "HOURLY", this.dtstart.hour);
-      this.last.day = this.setup_defaults("BYMONTHDAY", "DAILY", this.dtstart.day);
+      var dayOffset = this.last.day = this.setup_defaults("BYMONTHDAY", "DAILY", this.dtstart.day);
       this.last.month = this.setup_defaults("BYMONTH", "MONTHLY", this.dtstart.month);
 
       if (this.rule.freq == "WEEKLY") {
@@ -7132,12 +7263,26 @@ ICAL.RecurIterator = (function() {
       }
 
       if (this.rule.freq == "YEARLY") {
-        for (;;) {
+        // Some yearly recurrence rules may be specific enough to not actually
+        // occur on a yearly basis, e.g. the 29th day of February or the fifth
+        // Monday of a given month. The standard isn't clear on the intended
+        // behavior in these cases, but `libical` at least will iterate until it
+        // finds a matching year.
+        // CAREFUL: Some rules may specify an occurrence that can never happen,
+        // e.g. the first Monday of April so long as it falls on the 15th
+        // through the 21st. Detecting these is non-trivial, so ensure that we
+        // stop iterating at some point.
+        var untilYear = this.rule.until ? this.rule.until.year : 20000;
+        while (this.last.year <= untilYear) {
           this.expand_year_days(this.last.year);
           if (this.days.length > 0) {
             break;
           }
           this.increment_year(this.rule.interval);
+        }
+
+        if (this.days.length == 0) {
+          throw new Error("No possible occurrences");
         }
 
         this._nextByYearDay();
@@ -7200,12 +7345,29 @@ ICAL.RecurIterator = (function() {
         }
 
       } else if (this.has_by_data("BYMONTHDAY")) {
-        if (this.last.day < 0) {
-          var daysInMonth = ICAL.Time.daysInMonth(this.last.month, this.last.year);
-          this.last.day = daysInMonth + this.last.day + 1;
+        // Attempting to access `this.last.day` will cause the date to be normalised.
+        // So it will never be a negative value or more than the number of days in the month.
+        // We keep the value in a separate variable instead.
+
+        // Change the day value so that normalisation won't change the month.
+        this.last.day = 1;
+        var daysInMonth = ICAL.Time.daysInMonth(this.last.month, this.last.year);
+
+        if (dayOffset < 0) {
+          // A negative value represents days before the end of the month.
+          this.last.day = daysInMonth + dayOffset + 1;
+        } else if (this.by_data.BYMONTHDAY[0] > daysInMonth) {
+          // There's no occurrence in this month, find the next valid month.
+          // The longest possible sequence of skipped months is February-April-June,
+          // so we might need to call next_month up to three times.
+          if (!this.next_month() && !this.next_month() && !this.next_month()) {
+            throw new Error("No possible occurrences");
+          }
+        } else {
+          // Otherwise, reset the day.
+          this.last.day = dayOffset;
         }
       }
-
     },
 
     /**
@@ -7213,15 +7375,12 @@ ICAL.RecurIterator = (function() {
      * @return {ICAL.Time}
      */
     next: function icalrecur_iterator_next() {
-      var before = (this.last ? this.last.clone() : null);
-
       if ((this.rule.count && this.occurrence_number >= this.rule.count) ||
           (this.rule.until && this.last.compare(this.rule.until) > 0)) {
-
-        //XXX: right now this is just a flag and has no impact
-        //     we can simplify the above case to check for completed later.
         this.completed = true;
+      }
 
+      if (this.completed) {
         return null;
       }
 
@@ -7230,7 +7389,6 @@ ICAL.RecurIterator = (function() {
         this.occurrence_number++;
         return this.last;
       }
-
 
       var valid;
       do {
@@ -7265,12 +7423,6 @@ ICAL.RecurIterator = (function() {
       } while (!this.check_contracting_rules() ||
                this.last.compare(this.dtstart) < 0 ||
                !valid);
-
-      // TODO is this valid?
-      if (this.last.compare(before) == 0) {
-        throw new Error("Same occurrence found twice, protecting " +
-                        "you from death by recursion");
-      }
 
       if (this.rule.until && this.last.compare(this.rule.until) > 0) {
         this.completed = true;
@@ -7394,11 +7546,11 @@ ICAL.RecurIterator = (function() {
 
         // negative case
         if (rule < 0) {
-          // we add (not subtract its a negative number)
+          // we add (not subtract it is a negative number)
           // one from the rule because 1 === last day of month
           rule = daysInMonth + (rule + 1);
         } else if (rule === 0) {
-          // skip zero its invalid.
+          // skip zero: it is invalid.
           continue;
         }
 
@@ -7504,7 +7656,7 @@ ICAL.RecurIterator = (function() {
         // find next date
         var next = byMonthDay[dateIdx++];
 
-        // this logic is dependant on the BYMONTHDAYS
+        // this logic is dependent on the BYMONTHDAYS
         // being in order (which is done by #normalizeByMonthDayRules)
         if (next >= date) {
           // if the next month day is in the future jump to it.
@@ -7534,7 +7686,7 @@ ICAL.RecurIterator = (function() {
           }
         }
 
-        // Its completely possible that the combination
+        // It is completely possible that the combination
         // cannot be matched in the current month.
         // When we reach the end of possible combinations
         // in the current month we iterate to the next one.
@@ -8371,7 +8523,7 @@ ICAL.RecurExpansion = (function() {
    * });
    *
    * // remember there are infinite rules
-   * // so its a good idea to limit the scope
+   * // so it is a good idea to limit the scope
    * // of the iterations then resume later on.
    *
    * // next is always an ICAL.Time or null
@@ -8556,7 +8708,7 @@ ICAL.RecurExpansion = (function() {
       while (true) {
         if (currentTry++ > maxTries) {
           throw new Error(
-            'max tries have occured, rule may be impossible to forfill.'
+            'max tries have occurred, rule may be impossible to fulfill.'
           );
         }
 
@@ -9121,7 +9273,7 @@ ICAL.Event = (function() {
      * Checks if the event describes a recurrence exception. See
      * {@tutorial terminology} for details.
      *
-     * @return {Boolean}    True, if the even describes a recurrence exception
+     * @return {Boolean}    True, if the event describes a recurrence exception
      */
     isRecurrenceException: function() {
       return this.component.hasProperty('recurrence-id');
@@ -9275,6 +9427,18 @@ ICAL.Event = (function() {
 
     set description(value) {
       this._setProp('description', value);
+    },
+
+    /**
+     * The event color from [rfc7986](https://datatracker.ietf.org/doc/html/rfc7986)
+     * @type {String}
+     */
+    get color() {
+      return this._firstProp('color');
+    },
+
+    set color(value) {
+      this._setProp('color', value);
     },
 
     /**

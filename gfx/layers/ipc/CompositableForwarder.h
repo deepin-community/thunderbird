@@ -9,8 +9,10 @@
 
 #include <stdint.h>  // for int32_t, uint32_t, uint64_t
 #include "mozilla/Assertions.h"  // for AssertionConditionType, MOZ_ASSERT, MOZ_ASSERT_HELPER1
-#include "mozilla/RefPtr.h"                  // for RefPtr
-#include "mozilla/TimeStamp.h"               // for TimeStamp
+#include "mozilla/Atomics.h"
+#include "mozilla/RefPtr.h"             // for RefPtr
+#include "mozilla/TimeStamp.h"          // for TimeStamp
+#include "mozilla/ipc/ProtocolUtils.h"  // for IToplevelProtocol, ProtocolID
 #include "mozilla/layers/KnowsCompositor.h"  // for KnowsCompositor
 #include "nsRect.h"                          // for nsIntRect
 #include "nsRegion.h"                        // for nsIntRegion
@@ -22,10 +24,78 @@ class CompositableClient;
 class CompositableHandle;
 class ImageContainer;
 class PTextureChild;
-class ShadowLayerForwarder;
 class SurfaceDescriptorTiles;
 class TextureClient;
-class ThebesBufferData;
+
+/**
+ * FwdTransactionCounter issues forwarder transaction numbers that represent a
+ * sequential stream of transactions to be transported over IPDL. Since every
+ * top-level protocol represents its own independently-sequenced IPDL queue,
+ * transaction numbers most naturally align with top-level protocols, rather
+ * than have different sub-protocols with their own independent transaction
+ * numbers that can't be usefully sequenced. FwdTransactionCounter expects
+ * users of it to provide themselves as proof they are a top-level protocol
+ * to avoid issues.
+ */
+struct FwdTransactionCounter {
+  explicit FwdTransactionCounter(mozilla::ipc::IToplevelProtocol* aToplevel)
+      : mFwdTransactionType(aToplevel->GetProtocolId()) {}
+
+  /**
+   * The ID of the top-level protocol. This is useful to tag the source of
+   * the transaction numbers in case different sources must be disambiguated.
+   */
+  mozilla::ipc::ProtocolId mFwdTransactionType;
+
+  /**
+   * Transaction id of ShadowLayerForwarder.
+   * It is incremented by UpdateFwdTransactionId() in each BeginTransaction()
+   * call.
+   */
+  uint64_t mFwdTransactionId = 0;
+};
+
+/**
+ * FwdTransactionTracker is to be used by CompositableForwarder consumers that
+ * must remember the last transaction in which they were used.
+ */
+class FwdTransactionTracker {
+ public:
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FwdTransactionTracker)
+
+  static already_AddRefed<FwdTransactionTracker> GetOrCreate(
+      RefPtr<FwdTransactionTracker>& aTracker) {
+    if (!aTracker) {
+      aTracker = new FwdTransactionTracker;
+    }
+    return do_AddRef(aTracker);
+  }
+
+  bool IsUsed() const { return mFwdTransactionType && mFwdTransactionId; }
+
+  void Use(const FwdTransactionCounter& aCounter) {
+    mFwdTransactionType = aCounter.mFwdTransactionType;
+    mFwdTransactionId = aCounter.mFwdTransactionId;
+  }
+
+  Atomic<mozilla::ipc::ProtocolId> mFwdTransactionType{
+      (mozilla::ipc::ProtocolId)0};
+  Atomic<uint64_t> mFwdTransactionId{0};
+
+ private:
+  FwdTransactionTracker() = default;
+  ~FwdTransactionTracker() = default;
+};
+
+inline RemoteTextureTxnType ToRemoteTextureTxnType(
+    const RefPtr<FwdTransactionTracker>& aTracker) {
+  return aTracker ? (RemoteTextureTxnType)aTracker->mFwdTransactionType : 0;
+}
+
+inline RemoteTextureTxnId ToRemoteTextureTxnId(
+    const RefPtr<FwdTransactionTracker>& aTracker) {
+  return aTracker ? (RemoteTextureTxnId)aTracker->mFwdTransactionId : 0;
+}
 
 /**
  * A transaction is a set of changes that happenned on the content side, that
@@ -52,22 +122,6 @@ class CompositableForwarder : public KnowsCompositor {
    */
   virtual void Connect(CompositableClient* aCompositable,
                        ImageContainer* aImageContainer = nullptr) = 0;
-
-  /**
-   * Tell the CompositableHost on the compositor side what TiledLayerBuffer to
-   * use for the next composition.
-   */
-  virtual void UseTiledLayerBuffer(
-      CompositableClient* aCompositable,
-      const SurfaceDescriptorTiles& aTiledDescriptor) = 0;
-
-  /**
-   * Communicate to the compositor that aRegion in the texture identified by
-   * aCompositable and aIdentifier has been updated to aThebesBuffer.
-   */
-  virtual void UpdateTextureRegion(CompositableClient* aCompositable,
-                                   const ThebesBufferData& aThebesBufferData,
-                                   const nsIntRegion& aUpdatedRegion) = 0;
 
   virtual void ReleaseCompositable(const CompositableHandle& aHandle) = 0;
   virtual bool DestroyInTransaction(PTextureChild* aTexture) = 0;
@@ -99,22 +153,36 @@ class CompositableForwarder : public KnowsCompositor {
    */
   virtual void UseTextures(CompositableClient* aCompositable,
                            const nsTArray<TimedTextureClient>& aTextures) = 0;
-  virtual void UseComponentAlphaTextures(CompositableClient* aCompositable,
-                                         TextureClient* aClientOnBlack,
-                                         TextureClient* aClientOnWhite) = 0;
 
-  virtual void UpdateFwdTransactionId() = 0;
-  virtual uint64_t GetFwdTransactionId() = 0;
+  virtual void UseRemoteTexture(
+      CompositableClient* aCompositable, const RemoteTextureId aTextureId,
+      const RemoteTextureOwnerId aOwnerId, const gfx::IntSize aSize,
+      const TextureFlags aFlags,
+      const RefPtr<layers::FwdTransactionTracker>& aTracker) = 0;
+
+  void UpdateFwdTransactionId() {
+    ++GetFwdTransactionCounter().mFwdTransactionId;
+  }
+  uint64_t GetFwdTransactionId() {
+    return GetFwdTransactionCounter().mFwdTransactionId;
+  }
+  mozilla::ipc::ProtocolId GetFwdTransactionType() {
+    return GetFwdTransactionCounter().mFwdTransactionType;
+  }
 
   virtual bool InForwarderThread() = 0;
 
   void AssertInForwarderThread() { MOZ_ASSERT(InForwarderThread()); }
 
-  static uint32_t GetMaxFileDescriptorsPerMessage();
-
-  virtual ShadowLayerForwarder* AsLayerForwarder() { return nullptr; }
-
  protected:
+  virtual FwdTransactionCounter& GetFwdTransactionCounter() = 0;
+
+  void TrackFwdTransaction(const RefPtr<FwdTransactionTracker>& aTracker) {
+    if (aTracker) {
+      aTracker->Use(GetFwdTransactionCounter());
+    }
+  }
+
   nsTArray<RefPtr<TextureClient>> mTexturesToRemove;
   nsTArray<RefPtr<CompositableClient>> mCompositableClientsToRemove;
 };

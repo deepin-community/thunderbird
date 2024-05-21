@@ -11,6 +11,13 @@ TEST_DIRS += [
 if CONFIG["OS_ARCH"] == "WINNT":
     TEST_DIRS += ["windows"]
 
+if CONFIG["OS_TARGET"] == "Linux":
+    CppUnitTests(
+        [
+            "TestMemoryPressureWatcherLinux",
+        ]
+    )
+
 EXPORTS.testing += [
     "TestHarness.h",
 ]
@@ -26,7 +33,7 @@ SimplePrograms(test_progs)
 
 USE_LIBS += ["mozglue"]
 
-XPCSHELL_TESTS_MANIFESTS += ["unit/xpcshell.ini"]
+XPCSHELL_TESTS_MANIFESTS += ["unit/xpcshell.toml"]
 
 if CONFIG["COMPILE_ENVIRONMENT"]:
     TEST_HARNESS_FILES.xpcshell.xpcom.tests.unit += [
@@ -39,6 +46,7 @@ XPIDL_SOURCES += [
 ]
 
 LOCAL_INCLUDES += [
+    "../base",
     "../ds",
 ]
 

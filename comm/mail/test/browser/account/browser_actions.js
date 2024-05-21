@@ -4,33 +4,25 @@
 
 "use strict";
 
-var {
-  click_account_tree_row,
-  get_account_tree_row,
-  open_advanced_settings,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
-);
-var { close_popup, wait_for_popup_to_open } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+var { click_account_tree_row, get_account_tree_row, open_advanced_settings } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
+  );
+var { close_popup, wait_for_popup_to_open } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
-var { content_tab_e } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ContentTabHelpers.jsm"
-);
-
-var { mc } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+var { content_tab_e } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
 );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var imapAccount, nntpAccount, originalAccountCount;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   // There may be pre-existing accounts from other tests.
   originalAccountCount = MailServices.accounts.allServers.length;
   // There already should be a Local Folders account created.
@@ -38,7 +30,7 @@ add_task(function setupModule(module) {
   Assert.ok(MailServices.accounts.localFoldersServer);
 
   // Create an IMAP server
-  let imapServer = MailServices.accounts
+  const imapServer = MailServices.accounts
     .createIncomingServer("nobody", "example.com", "imap")
     .QueryInterface(Ci.nsIImapIncomingServer);
 
@@ -50,7 +42,7 @@ add_task(function setupModule(module) {
   imapAccount.addIdentity(identity);
 
   // Create a NNTP server
-  let nntpServer = MailServices.accounts
+  const nntpServer = MailServices.accounts
     .createIncomingServer(null, "example.nntp.invalid", "nntp")
     .QueryInterface(Ci.nsINntpIncomingServer);
 
@@ -67,7 +59,7 @@ add_task(function setupModule(module) {
   );
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   // Remove our test accounts to leave the profile clean.
   MailServices.accounts.removeAccount(nntpAccount);
   MailServices.accounts.removeAccount(imapAccount);
@@ -78,11 +70,11 @@ registerCleanupFunction(function teardownModule(module) {
 /**
  * Check that the account actions for the account are enabled or disabled appropriately.
  *
- * @param {Object} tab - The account manager tab.
- * @param {Number} accountKey - The key of the account to select.
+ * @param {object} tab - The account manager tab.
+ * @param {number} accountKey - The key of the account to select.
  * @param {boolean} isSetAsDefaultEnabled - True if the menuitem should be enabled, false otherwise.
  * @param {boolean} isRemoveEnabled - True if the menuitem should be enabled, false otherwise.
- * @param {boolean} isAddAccountEnabled  - True if the menuitems (Add Mail Account+Add Other Account)
+ * @param {boolean} isAddAccountEnabled - True if the menuitems (Add Mail Account+Add Other Account)
  *                                         should be enabled, false otherwise.
  */
 async function subtest_check_account_actions(
@@ -92,21 +84,29 @@ async function subtest_check_account_actions(
   isRemoveEnabled,
   isAddAccountEnabled
 ) {
-  let accountRow = get_account_tree_row(accountKey, null, tab);
-  click_account_tree_row(tab, accountRow);
+  const accountRow = get_account_tree_row(accountKey, null, tab);
+  await click_account_tree_row(tab, accountRow);
 
   // click the Actions Button to bring up the popup with menuitems to test
-  mc.click(content_tab_e(tab, "accountActionsButton"), 5, 5);
+  const button = content_tab_e(tab, "accountActionsButton");
+  EventUtils.synthesizeMouseAtCenter(
+    button,
+    { clickCount: 1 },
+    button.ownerGlobal
+  );
   await wait_for_popup_to_open(content_tab_e(tab, "accountActionsDropdown"));
 
-  let actionAddMailAccount = content_tab_e(tab, "accountActionsAddMailAccount");
+  const actionAddMailAccount = content_tab_e(
+    tab,
+    "accountActionsAddMailAccount"
+  );
   Assert.notEqual(actionAddMailAccount, undefined);
   Assert.equal(
     !actionAddMailAccount.getAttribute("disabled"),
     isAddAccountEnabled
   );
 
-  let actionAddOtherAccount = content_tab_e(
+  const actionAddOtherAccount = content_tab_e(
     tab,
     "accountActionsAddOtherAccount"
   );
@@ -116,28 +116,31 @@ async function subtest_check_account_actions(
     isAddAccountEnabled
   );
 
-  let actionSetDefault = content_tab_e(tab, "accountActionsDropdownSetDefault");
+  const actionSetDefault = content_tab_e(
+    tab,
+    "accountActionsDropdownSetDefault"
+  );
   Assert.notEqual(actionSetDefault, undefined);
   Assert.equal(
     !actionSetDefault.getAttribute("disabled"),
     isSetAsDefaultEnabled
   );
 
-  let actionRemove = content_tab_e(tab, "accountActionsDropdownRemove");
+  const actionRemove = content_tab_e(tab, "accountActionsDropdownRemove");
   Assert.notEqual(actionRemove, undefined);
   Assert.equal(!actionRemove.getAttribute("disabled"), isRemoveEnabled);
 
-  await close_popup(mc, content_tab_e(tab, "accountActionsDropdown"));
+  await close_popup(window, content_tab_e(tab, "accountActionsDropdown"));
 }
 
 add_task(async function test_account_actions() {
   // IMAP account: can be default, can be removed.
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(tab, imapAccount.key, true, true, true);
   });
 
   // NNTP (News) account: can't be default, can be removed.
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(
       tab,
       nntpAccount.key,
@@ -148,10 +151,10 @@ add_task(async function test_account_actions() {
   });
 
   // Local Folders account: can't be removed, can't be default.
-  var localFoldersAccount = MailServices.accounts.FindAccountForServer(
+  var localFoldersAccount = MailServices.accounts.findAccountForServer(
     MailServices.accounts.localFoldersServer
   );
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(
       tab,
       localFoldersAccount.key,
@@ -161,8 +164,8 @@ add_task(async function test_account_actions() {
     );
   });
   // SMTP server row: can't be removed, can't be default.
-  await open_advanced_settings(async function(tab) {
-    await subtest_check_account_actions(tab, null, false, false, true);
+  await open_advanced_settings(async function (tab) {
+    await subtest_check_account_actions(tab, "smtp", false, false, true);
   });
 
   // on the IMAP account, disable Delete Account menu item
@@ -172,7 +175,7 @@ add_task(async function test_account_actions() {
   Services.prefs.getDefaultBranch("").setBoolPref(disableItemPref, true);
   Services.prefs.lockPref(disableItemPref);
 
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(
       tab,
       imapAccount.key,
@@ -191,7 +194,7 @@ add_task(async function test_account_actions() {
   Services.prefs.getDefaultBranch("").setBoolPref(disableItemPref, true);
   Services.prefs.lockPref(disableItemPref);
 
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(
       tab,
       imapAccount.key,
@@ -210,7 +213,7 @@ add_task(async function test_account_actions() {
   Services.prefs.getDefaultBranch("").setBoolPref(disableItemPref, true);
   Services.prefs.lockPref(disableItemPref);
 
-  await open_advanced_settings(async function(tab) {
+  await open_advanced_settings(async function (tab) {
     await subtest_check_account_actions(
       tab,
       imapAccount.key,

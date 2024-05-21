@@ -3,14 +3,26 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+DIRS += ["webextensions"]
+
 BROWSER_CHROME_MANIFESTS += [
+    "browser/browser-detachedWindows.ini",
+    "browser/browser-drawBelowTitlebar.ini",
+    "browser/browser-drawInTitlebar.ini",
     "browser/browser.ini",
     "performance/browser.ini",
-    "webextensions/browser.ini",
+    "widgets/browser.ini",
 ]
 
-XPCSHELL_TESTS_MANIFESTS += ["unit/xpcshell.ini"]
+XPCSHELL_TESTS_MANIFESTS += [
+    "unit/xpcshell.ini",
+    "unit/xpcshell_maildir.ini",
+]
 
 TESTING_JS_MODULES += [
-    "../../../../browser/components/customizableui/test/CustomizableUITestUtils.jsm",
+    "../../../../browser/components/customizableui/test/CustomizableUITestUtils.sys.mjs",
+    "IMAPServer.sys.mjs",
+    "NNTPServer.sys.mjs",
+    "POP3Server.sys.mjs",
+    "SMTPServer.sys.mjs",
 ]

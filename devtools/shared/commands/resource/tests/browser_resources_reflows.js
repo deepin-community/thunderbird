@@ -5,11 +5,13 @@
 
 // Test the ResourceCommand API for reflows
 
-const { TYPES } = require("devtools/shared/commands/resource/resource-command");
+const {
+  TYPES,
+} = require("resource://devtools/shared/commands/resource/resource-command.js");
 
-add_task(async function() {
+add_task(async function () {
   const tab = await addTab(
-    "http://example.com/document-builder.sjs?html=<h1>Test reflow resources</h1>"
+    "https://example.com/document-builder.sjs?html=<h1>Test reflow resources</h1>"
   );
 
   const { client, resourceCommand, targetCommand } = await initResourceCommand(
@@ -58,7 +60,7 @@ add_task(async function() {
       );
       content.document.body.appendChild(el);
       el.src =
-        "http://example.org/document-builder.sjs?html=<h2>remote iframe</h2>";
+        "https://example.org/document-builder.sjs?html=<h2>remote iframe</h2>";
       await onIframeLoaded;
       return el.browsingContext;
     }
@@ -104,6 +106,10 @@ function checkReflowResource(resource) {
       "reflow start property is a number"
     );
     is(Number.isFinite(reflow.end), true, "reflow end property is a number");
-    ok(reflow.end >= reflow.start, "end is greater than start");
+    Assert.greaterOrEqual(
+      reflow.end,
+      reflow.start,
+      "end is greater than start"
+    );
   }
 }

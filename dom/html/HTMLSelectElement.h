@@ -7,12 +7,13 @@
 #define mozilla_dom_HTMLSelectElement_h
 
 #include "mozilla/Attributes.h"
+#include "mozilla/dom/ConstraintValidation.h"
 #include "nsGenericHTMLElement.h"
-#include "nsIConstraintValidation.h"
 
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/UnionTypes.h"
 #include "mozilla/dom/HTMLOptionsCollection.h"
+#include "mozilla/EnumSet.h"
 #include "nsCheapSets.h"
 #include "nsCOMPtr.h"
 #include "nsError.h"
@@ -34,7 +35,7 @@ class PresState;
 
 namespace dom {
 
-class HTMLFormSubmission;
+class FormData;
 class HTMLSelectElement;
 
 class MOZ_STACK_CLASS SafeOptionListMutation {
@@ -53,7 +54,7 @@ class MOZ_STACK_CLASS SafeOptionListMutation {
   void MutationFailed() { mNeedsRebuild = true; }
 
  private:
-  static void* operator new(size_t) noexcept(true) { return 0; }
+  static void* operator new(size_t) noexcept(true) { return nullptr; }
   static void operator delete(void*, size_t) {}
   /** The select element which option list is being mutated. */
   RefPtr<HTMLSelectElement> mSelect;
@@ -64,8 +65,8 @@ class MOZ_STACK_CLASS SafeOptionListMutation {
   /** Whether we should be notifying when we make various method calls on
       mSelect */
   const bool mNotify;
-  /** The selected index at mutation start. */
-  int32_t mInitialSelectedIndex;
+  /** The selected option at mutation start. */
+  RefPtr<HTMLOptionElement> mInitialSelectedOption;
   /** Option list must be recreated if more than one mutation is detected. */
   nsMutationGuard mGuard;
 };
@@ -73,32 +74,37 @@ class MOZ_STACK_CLASS SafeOptionListMutation {
 /**
  * Implementation of &lt;select&gt;
  */
-class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
-                                public nsIConstraintValidation {
+class HTMLSelectElement final : public nsGenericHTMLFormControlElementWithState,
+                                public ConstraintValidation {
  public:
   /**
-   *  IS_SELECTED   whether to set the option(s) to true or false
+   *  IsSelected        whether to set the option(s) to true or false
    *
-   *  CLEAR_ALL     whether to clear all other options (for example, if you
-   *                are normal-clicking on the current option)
+   *  ClearAll          whether to clear all other options (for example, if you
+   *                     are normal-clicking on the current option)
    *
-   *  SET_DISABLED  whether it is permissible to set disabled options
-   *                (for JavaScript)
+   *  SetDisabled       whether it is permissible to set disabled options
+   *                     (for JavaScript)
    *
-   *  NOTIFY        whether to notify frames and such
+   *  Notify             whether to notify frames and such
    *
-   *  NO_RESELECT   no need to select something after an option is deselected
-   *                (for reset)
+   *  NoReselect        no need to select something after an option is
+   * deselected (for reset)
+   *
+   *  InsertingOptions  if an option has just been inserted some bailouts can't
+   * be taken
    */
-  enum OptionType {
-    IS_SELECTED = 1 << 0,
-    CLEAR_ALL = 1 << 1,
-    SET_DISABLED = 1 << 2,
-    NOTIFY = 1 << 3,
-    NO_RESELECT = 1 << 4
+  enum class OptionFlag : uint8_t {
+    IsSelected,
+    ClearAll,
+    SetDisabled,
+    Notify,
+    NoReselect,
+    InsertingOptions
   };
+  using OptionFlags = EnumSet<OptionFlag>;
 
-  using nsIConstraintValidation::GetValidationMessage;
+  using ConstraintValidation::GetValidationMessage;
 
   explicit HTMLSelectElement(
       already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo,
@@ -109,16 +115,12 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
   // nsISupports
   NS_DECL_ISUPPORTS_INHERITED
 
-  virtual int32_t TabIndexDefault() override;
+  int32_t TabIndexDefault() override;
 
   // Element
-  virtual bool IsInteractiveHTMLContent() const override { return true; }
+  bool IsInteractiveHTMLContent() const override { return true; }
 
   // WebIdl HTMLSelectElement
-  bool Autofocus() const { return GetBoolAttr(nsGkAtoms::autofocus); }
-  void SetAutofocus(bool aVal, ErrorResult& aRv) {
-    SetHTMLBoolAttr(nsGkAtoms::autofocus, aVal, aRv);
-  }
   void GetAutocomplete(DOMString& aValue);
   void SetAutocomplete(const nsAString& aValue, ErrorResult& aRv) {
     SetHTMLAttr(nsGkAtoms::autocomplete, aValue, aRv);
@@ -126,12 +128,12 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
 
   void GetAutocompleteInfo(AutocompleteInfo& aInfo);
 
+  // Sets the user interacted flag and fires input/change events if needed.
+  MOZ_CAN_RUN_SCRIPT void UserFinishedInteracting(bool aChanged);
+
   bool Disabled() const { return GetBoolAttr(nsGkAtoms::disabled); }
   void SetDisabled(bool aVal, ErrorResult& aRv) {
     SetHTMLBoolAttr(nsGkAtoms::disabled, aVal, aRv);
-  }
-  HTMLFormElement* GetForm() const {
-    return nsGenericHTMLFormElementWithState::GetForm();
   }
   bool Multiple() const { return GetBoolAttr(nsGkAtoms::multiple); }
   void SetMultiple(bool aVal, ErrorResult& aRv) {
@@ -142,7 +144,7 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
   void SetName(const nsAString& aName, ErrorResult& aRv) {
     SetHTMLAttr(nsGkAtoms::name, aName, aRv);
   }
-  bool Required() const { return State().HasState(NS_EVENT_STATE_REQUIRED); }
+  bool Required() const { return State().HasState(ElementState::REQUIRED); }
   void SetRequired(bool aVal, ErrorResult& aRv) {
     SetHTMLBoolAttr(nsGkAtoms::required, aVal, aRv);
   }
@@ -167,7 +169,7 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
   }
   void Add(const HTMLOptionElementOrHTMLOptGroupElement& aElement,
            const Nullable<HTMLElementOrLong>& aBefore, ErrorResult& aRv);
-  void Remove(int32_t aIndex);
+  void Remove(int32_t aIndex) const;
   void IndexedSetter(uint32_t aIndex, HTMLOptionElement* aOption,
                      ErrorResult& aRv) {
     mOptions->IndexedSetter(aIndex, aOption, aRv);
@@ -179,40 +181,41 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
 
   int32_t SelectedIndex() const { return mSelectedIndex; }
   void SetSelectedIndex(int32_t aIdx) { SetSelectedIndexInternal(aIdx, true); }
-  void GetValue(DOMString& aValue);
+  void GetValue(DOMString& aValue) const;
   void SetValue(const nsAString& aValue);
 
   // Override SetCustomValidity so we update our state properly when it's called
   // via bindings.
   void SetCustomValidity(const nsAString& aError);
 
+  void ShowPicker(ErrorResult& aRv);
+
   using nsINode::Remove;
 
   // nsINode
-  virtual JSObject* WrapNode(JSContext* aCx,
-                             JS::Handle<JSObject*> aGivenProto) override;
+  JSObject* WrapNode(JSContext*, JS::Handle<JSObject*> aGivenProto) override;
 
   // nsIContent
   void GetEventTargetParent(EventChainPreVisitor& aVisitor) override;
-  MOZ_CAN_RUN_SCRIPT
-  nsresult PostHandleEvent(EventChainPostVisitor& aVisitor) override;
 
-  virtual bool IsHTMLFocusable(bool aWithMouse, bool* aIsFocusable,
-                               int32_t* aTabIndex) override;
-  virtual void InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
-                                 bool aNotify, ErrorResult& aRv) override;
-  virtual void RemoveChildNode(nsIContent* aKid, bool aNotify) override;
+  bool IsHTMLFocusable(bool aWithMouse, bool* aIsFocusable,
+                       int32_t* aTabIndex) override;
+  void InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
+                         bool aNotify, ErrorResult& aRv) override;
+  void RemoveChildNode(nsIContent* aKid, bool aNotify) override;
+
+  // nsGenericHTMLElement
+  bool IsDisabledForEvents(WidgetEvent* aEvent) override;
+
+  // nsGenericHTMLFormElement
+  void SaveState() override;
+  bool RestoreState(PresState* aState) override;
 
   // Overriden nsIFormControl methods
   NS_IMETHOD Reset() override;
-  NS_IMETHOD SubmitNamesValues(HTMLFormSubmission* aFormSubmission) override;
-  NS_IMETHOD SaveState() override;
-  virtual bool RestoreState(PresState* aState) override;
-  virtual bool IsDisabledForEvents(WidgetEvent* aEvent) override;
+  NS_IMETHOD SubmitNamesValues(FormData* aFormData) override;
 
-  virtual void FieldSetDisabledChanged(bool aNotify) override;
-
-  EventStates IntrinsicState() const override;
+  void FieldSetDisabledChanged(bool aNotify) override;
 
   /**
    * To be called when stuff is added under a child of the select--but *before*
@@ -261,47 +264,44 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
    * @return whether any options were actually changed
    */
   bool SetOptionsSelectedByIndex(int32_t aStartIndex, int32_t aEndIndex,
-                                 uint32_t aOptionsMask);
+                                 OptionFlags aOptionsMask);
 
   /**
    * Called when an attribute is about to be changed
    */
-  virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  virtual void UnbindFromTree(bool aNullParent) override;
-  virtual nsresult BeforeSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                 const nsAttrValueOrString* aValue,
-                                 bool aNotify) override;
-  virtual nsresult AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aSubjectPrincipal,
-                                bool aNotify) override;
+  nsresult BindToTree(BindContext&, nsINode& aParent) override;
+  void UnbindFromTree(UnbindContext&) override;
+  void BeforeSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                     const nsAttrValue* aValue, bool aNotify) override;
+  void AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                    const nsAttrValue* aValue, const nsAttrValue* aOldValue,
+                    nsIPrincipal* aSubjectPrincipal, bool aNotify) override;
 
-  virtual void DoneAddingChildren(bool aHaveNotified) override;
-  virtual bool IsDoneAddingChildren() override { return mIsDoneAddingChildren; }
+  void DoneAddingChildren(bool aHaveNotified) override;
+  bool IsDoneAddingChildren() const { return mIsDoneAddingChildren; }
 
-  virtual bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
-                              const nsAString& aValue,
-                              nsIPrincipal* aMaybeScriptedPrincipal,
-                              nsAttrValue& aResult) override;
-  virtual nsMapRuleToAttributesFunc GetAttributeMappingFunction()
-      const override;
-  virtual nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
-                                              int32_t aModType) const override;
+  bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
+                      const nsAString& aValue,
+                      nsIPrincipal* aMaybeScriptedPrincipal,
+                      nsAttrValue& aResult) override;
+  nsMapRuleToAttributesFunc GetAttributeMappingFunction() const override;
+  nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
+                                      int32_t aModType) const override;
   NS_IMETHOD_(bool) IsAttributeMapped(const nsAtom* aAttribute) const override;
 
-  virtual nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
+  nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
 
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(HTMLSelectElement,
-                                           nsGenericHTMLFormElementWithState)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(
+      HTMLSelectElement, nsGenericHTMLFormControlElementWithState)
 
   HTMLOptionsCollection* GetOptions() { return mOptions; }
 
-  // nsIConstraintValidation
+  // ConstraintValidation
   nsresult GetValidationMessage(nsAString& aValidationMessage,
                                 ValidityStateType aType) override;
 
   void UpdateValueMissingValidityState();
+  void UpdateValidityElementStates(bool aNotify);
   /**
    * Insert aElement before the node given by aBefore
    */
@@ -321,8 +321,8 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
    */
   bool IsCombobox() const { return !Multiple() && Size() <= 1; }
 
-  bool OpenInParentProcess();
-  void SetOpenInParentProcess(bool aVal);
+  bool OpenInParentProcess() const { return mIsOpenInParentProcess; }
+  void SetOpenInParentProcess(bool aVal) { mIsOpenInParentProcess = aVal; }
 
   void GetPreviewValue(nsAString& aValue) { aValue = mPreviewValue; }
   void SetPreviewValue(const nsAString& aValue);
@@ -338,7 +338,7 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
    * @param aIndex the index
    * @return whether the option at the index is selected
    */
-  bool IsOptionSelectedByIndex(int32_t aIndex);
+  bool IsOptionSelectedByIndex(int32_t aIndex) const;
   /**
    * Starting with (and including) aStartIndex, find the first selected index
    * and set mSelectedIndex to it.
@@ -436,8 +436,8 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
   nsISelectControlFrame* GetSelectFrame();
 
   /**
-   * Helper method for dispatching ContentReset notifications to list
-   * and combo box frames.
+   * Helper method for dispatching ContentReset notifications to list box
+   * frames.
    */
   void DispatchContentReset();
 
@@ -452,7 +452,7 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
 
   void SetSelectedIndexInternal(int32_t aIndex, bool aNotify);
 
-  void SetSelectionChanged(bool aValue, bool aNotify);
+  void OnSelectionChanged();
 
   /**
    * Marks the selectedOptions list as dirty, so that it'll populate itself
@@ -460,58 +460,30 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
    */
   void UpdateSelectedOptions();
 
-  /**
-   * Return whether an element should have a validity UI.
-   * (with :-moz-ui-invalid and :-moz-ui-valid pseudo-classes).
-   *
-   * @return Whether the element should have a validity UI.
-   */
-  bool ShouldShowValidityUI() const {
-    /**
-     * Always show the validity UI if the form has already tried to be submitted
-     * but was invalid.
-     *
-     * Otherwise, show the validity UI if the selection has been changed.
-     */
-    if (mForm && mForm->HasEverTriedInvalidSubmit()) {
-      return true;
-    }
-
-    return mSelectionHasChanged;
-  }
+  void SetUserInteracted(bool) final;
 
   /** The options[] array */
   RefPtr<HTMLOptionsCollection> mOptions;
   nsContentUtils::AutocompleteAttrState mAutocompleteAttrState;
   nsContentUtils::AutocompleteAttrState mAutocompleteInfoState;
   /** false if the parser is in the middle of adding children. */
-  bool mIsDoneAddingChildren;
+  bool mIsDoneAddingChildren : 1;
   /** true if our disabled state has changed from the default **/
-  bool mDisabledChanged;
+  bool mDisabledChanged : 1;
   /** true if child nodes are being added or removed.
    *  Used by SafeOptionListMutation.
    */
-  bool mMutating;
+  bool mMutating : 1;
   /**
    * True if DoneAddingChildren will get called but shouldn't restore state.
    */
-  bool mInhibitStateRestoration;
-  /**
-   * True if the selection has changed since the element's creation.
-   */
-  bool mSelectionHasChanged;
-  /**
-   * True if the default selected option has been set.
-   */
-  bool mDefaultSelectionSet;
-  /**
-   * True if :-moz-ui-invalid can be shown.
-   */
-  bool mCanShowInvalidUI;
-  /**
-   * True if :-moz-ui-valid can be shown.
-   */
-  bool mCanShowValidUI;
+  bool mInhibitStateRestoration : 1;
+  /** https://html.spec.whatwg.org/#user-interacted */
+  bool mUserInteracted : 1;
+  /** True if the default selected option has been set. */
+  bool mDefaultSelectionSet : 1;
+  /** True if we're open in the parent process */
+  bool mIsOpenInParentProcess : 1;
 
   /** The number of non-options as children of the select */
   uint32_t mNonOptionChildren;
@@ -539,8 +511,7 @@ class HTMLSelectElement final : public nsGenericHTMLFormElementWithState,
   nsString mPreviewValue;
 
  private:
-  static void MapAttributesIntoRule(const nsMappedAttributes* aAttributes,
-                                    MappedDeclarations&);
+  static void MapAttributesIntoRule(MappedDeclarationsBuilder&);
 };
 
 }  // namespace dom

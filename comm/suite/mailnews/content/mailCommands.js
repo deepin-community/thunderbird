@@ -1,9 +1,8 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.js");
 
 /**
@@ -80,7 +79,9 @@ function GetIdentityForHeader(aMsgHdr, aType)
   let hintForIdentity = "";
   if (aType == Ci.nsIMsgCompType.ReplyToList)
     hintForIdentity = findDeliveredToIdentityEmail();
-  else if (aType == Ci.nsIMsgCompType.Template)
+  else if (aType == Ci.nsIMsgCompType.Template ||
+           aType == Ci.nsIMsgCompType.EditTemplate ||
+           aType == Ci.nsIMsgCompType.EditAsNew)
     hintForIdentity = aMsgHdr.author;
   else
     hintForIdentity = aMsgHdr.recipients + "," + aMsgHdr.ccList + "," +

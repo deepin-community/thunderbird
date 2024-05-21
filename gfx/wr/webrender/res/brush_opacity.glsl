@@ -8,23 +8,16 @@
 #include shared,prim_shared,brush
 
 // Interpolated UV coordinates to sample.
-varying vec2 v_uv;
+varying highp vec2 v_uv;
 
 // Normalized bounds of the source image in the texture, adjusted to avoid
 // sampling artifacts.
-flat varying vec4 v_uv_sample_bounds;
+flat varying highp vec4 v_uv_sample_bounds;
 
-#if defined(PLATFORM_ANDROID) && !defined(SWGL)
-// Work around Adreno 3xx driver bug. See the v_perspective comment in
-// brush_image or bug 1630356 for details.
-flat varying vec2 v_perspective_vec;
-#define v_perspective v_perspective_vec.x
-#else
+flat varying mediump vec2 v_opacity_perspective_vec;
+#define v_opacity v_opacity_perspective_vec.x
 // Flag to allow perspective interpolation of UV.
-flat varying float v_perspective;
-#endif
-
-flat varying float v_opacity;
+#define v_perspective v_opacity_perspective_vec.y
 
 #ifdef WR_VERTEX_SHADER
 void brush_vs(

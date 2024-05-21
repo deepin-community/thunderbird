@@ -590,6 +590,20 @@ function getService(contractID, iface)
 
 }
 
+function getNSSErrorClass(errorCode)
+{
+    var nssErrSvc = getService("@mozilla.org/nss_errors_service;1", "nsINSSErrorsService");
+
+    try
+    {
+        return nssErrSvc.getErrorClass(errorCode);
+    }
+    catch
+    {
+        return 0;
+    }
+}
+
 function getContentWindow(frame)
 {
     try
@@ -1101,6 +1115,37 @@ function viewCert(cert, parent)
     if (!parent)
         parent = window;
     cd.viewCert(parent, cert);
+}
+
+function addOrUpdateLogin(url, type, username, password)
+{
+    username = username.toLowerCase();
+    var newinfo = newObject("@mozilla.org/login-manager/loginInfo;1",
+                            "nsILoginInfo");
+    newinfo.init(url, null, type, username, password, "", "");
+    var oldinfo = getLogin(url, type, username);
+
+    if (oldinfo) {
+        Services.logins.modifyLogin(oldinfo, newinfo);
+        return true; //updated
+    }
+
+    Services.logins.addLogin(newinfo);
+    return false; //added
+}
+
+function getLogin(url, realm, username)
+{
+    username = username.toLowerCase();
+
+    let logins = Services.logins.findLogins({}, url, null, realm);
+    for (let login of logins) {
+        if (login.username == username) {
+            return login;
+        }
+    }
+
+    return null;
 }
 
 function getHostmaskParts(hostmask)

@@ -15,7 +15,7 @@ const gHandlerService = Cc[
 
 // This seems odd, but for test purposes, this just has to be a file that we know exists,
 // and by using this file, we don't have to worry about different platforms.
-let exeFile = Services.dirsvc.get("XREExeF", Ci.nsIFile);
+const exeFile = Services.dirsvc.get("XREExeF", Ci.nsIFile);
 
 add_task(async function test_valid_handlers() {
   await setupPolicyEngineWithJson({
@@ -73,6 +73,8 @@ add_task(async function test_valid_handlers() {
   );
   is(handlerInfo.preferredApplicationHandler, null);
 
+  gHandlerService.remove(handlerInfo);
+
   handlerInfo = gExternalProtocolService.getProtocolHandlerInfo("fake_scheme");
   is(handlerInfo.preferredAction, handlerInfo.useHelperApp);
   is(handlerInfo.alwaysAskBeforeHandling, false);
@@ -88,6 +90,8 @@ add_task(async function test_valid_handlers() {
   handlerInfo = gExternalProtocolService.getProtocolHandlerInfo("fake_scheme");
   is(handlerInfo.preferredApplicationHandler, null);
 
+  gHandlerService.remove(handlerInfo);
+
   handlerInfo = gMIMEService.getFromTypeAndExtension("", "txt");
   is(handlerInfo.preferredAction, handlerInfo.saveToDisk);
   is(handlerInfo.alwaysAskBeforeHandling, false);
@@ -96,6 +100,8 @@ add_task(async function test_valid_handlers() {
   gHandlerService.store(handlerInfo);
   handlerInfo = gMIMEService.getFromTypeAndExtension("", "txt");
   is(handlerInfo.preferredApplicationHandler, null);
+
+  gHandlerService.remove(handlerInfo);
 });
 
 add_task(async function test_no_handler() {
@@ -111,12 +117,13 @@ add_task(async function test_no_handler() {
     },
   });
 
-  let handlerInfo = gExternalProtocolService.getProtocolHandlerInfo(
-    "no_handler"
-  );
+  const handlerInfo =
+    gExternalProtocolService.getProtocolHandlerInfo("no_handler");
   is(handlerInfo.preferredAction, handlerInfo.alwaysAsk);
   is(handlerInfo.alwaysAskBeforeHandling, true);
   is(handlerInfo.preferredApplicationHandler, null);
+
+  gHandlerService.remove(handlerInfo);
 });
 
 add_task(async function test_bad_web_handler1() {
@@ -129,7 +136,7 @@ add_task(async function test_bad_web_handler1() {
             handlers: [
               {
                 name: "Name",
-                uriTemplate: "http://www.example.org/?%s",
+                uriTemplate: "https://www.example.org/?%s",
               },
             ],
           },
@@ -138,12 +145,13 @@ add_task(async function test_bad_web_handler1() {
     },
   });
 
-  let handlerInfo = gExternalProtocolService.getProtocolHandlerInfo(
-    "bad_web_handler1"
-  );
+  const handlerInfo =
+    gExternalProtocolService.getProtocolHandlerInfo("bad_web_handler1");
   is(handlerInfo.preferredAction, handlerInfo.alwaysAsk);
   is(handlerInfo.alwaysAskBeforeHandling, true);
   is(handlerInfo.preferredApplicationHandler, null);
+
+  gHandlerService.remove(handlerInfo);
 });
 
 add_task(async function test_bad_web_handler2() {
@@ -156,7 +164,7 @@ add_task(async function test_bad_web_handler2() {
             handlers: [
               {
                 name: "Name",
-                uriTemplate: "http://www.example.org/",
+                uriTemplate: "https://www.example.org/",
               },
             ],
           },
@@ -165,10 +173,11 @@ add_task(async function test_bad_web_handler2() {
     },
   });
 
-  let handlerInfo = gExternalProtocolService.getProtocolHandlerInfo(
-    "bad_web_handler1"
-  );
+  const handlerInfo =
+    gExternalProtocolService.getProtocolHandlerInfo("bad_web_handler1");
   is(handlerInfo.preferredAction, handlerInfo.alwaysAsk);
   is(handlerInfo.alwaysAskBeforeHandling, true);
   is(handlerInfo.preferredApplicationHandler, null);
+
+  gHandlerService.remove(handlerInfo);
 });

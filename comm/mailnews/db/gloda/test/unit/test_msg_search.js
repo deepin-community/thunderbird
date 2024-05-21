@@ -21,18 +21,117 @@
  *  test_query_core to our message search logic.
  */
 
-/* import-globals-from resources/glodaTestHelper.js */
-load("resources/glodaTestHelper.js");
+var {
+  assertExpectedMessagesIndexed,
+  glodaTestHelperInitialize,
+  waitForGlodaIndexer,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/gloda/GlodaTestHelper.sys.mjs"
+);
+var { queryExpect } = ChromeUtils.importESModule(
+  "resource://testing-common/gloda/GlodaQueryHelper.sys.mjs"
+);
+var { GlodaMsgSearcher } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaMsgSearcher.sys.mjs"
+);
+var { waitForGlodaDBFlush } = ChromeUtils.importESModule(
+  "resource://testing-common/gloda/GlodaTestHelperFunctions.sys.mjs"
+);
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
 
 var uniqueCounter = 0;
+var messageInjection;
+
+add_setup(async function () {
+  const msgGen = new MessageGenerator();
+  messageInjection = new MessageInjection({ mode: "local" }, msgGen);
+  glodaTestHelperInitialize(messageInjection);
+});
+
+/**
+ * Verify that the ranking function is using the weights as expected.  We do not
+ *  need to test all the permutations
+ */
+add_task(async function test_fulltext_weighting_by_column() {
+  const ustr = unique_string();
+  const [, subjSet, bodySet] = await messageInjection.makeFoldersWithSets(1, [
+    { count: 1, subject: ustr },
+    { count: 1, body: { body: ustr } },
+  ]);
+  await waitForGlodaIndexer();
+  Assert.ok(...assertExpectedMessagesIndexed([subjSet, bodySet]));
+  await asyncMsgSearcherExpect(ustr, subjSet);
+});
+
+/**
+ * A term mentioned 3 times in the body is worth more than twice in the subject.
+ * (This is because the subject saturates at one occurrence worth 2.0 and the
+ * body does not saturate until 10, each worth 1.0.)
+ */
+add_task(async function test_fulltext_weighting_saturation() {
+  const ustr = unique_string();
+  const double_ustr = ustr + " " + ustr;
+  const thrice_ustr = ustr + " " + ustr + " " + ustr;
+  const [, subjSet, bodySet] = await messageInjection.makeFoldersWithSets(1, [
+    { count: 1, subject: double_ustr },
+    { count: 1, body: { body: thrice_ustr } },
+  ]);
+  await waitForGlodaIndexer();
+  Assert.ok(...assertExpectedMessagesIndexed([subjSet, bodySet]));
+  await asyncMsgSearcherExpect(ustr, bodySet);
+});
+
+/**
+ * Use a starred message with the same fulltext match characteristics as another
+ * message to verify the preference goes the right way.  Have the starred
+ * message be the older message for safety.
+ */
+add_task(async function test_static_interestingness_boost_works() {
+  const ustr = unique_string();
+  const [, starred, notStarred] = await messageInjection.makeFoldersWithSets(
+    1,
+    [
+      { count: 1, subject: ustr },
+      { count: 1, subject: ustr },
+    ]
+  );
+  // Index in their native state.
+  await waitForGlodaIndexer();
+  Assert.ok(...assertExpectedMessagesIndexed([starred, notStarred]));
+  // Star and index.
+  starred.setStarred(true);
+  await waitForGlodaIndexer();
+  Assert.ok(...assertExpectedMessagesIndexed([starred]));
+  // Stars upon thars wins.
+  await asyncMsgSearcherExpect(ustr, starred);
+});
+
+/**
+ * Make sure that the query does not retrieve more than actually matches.
+ */
+add_task(async function test_joins_do_not_return_everybody() {
+  const ustr = unique_string();
+  const [, subjSet] = await messageInjection.makeFoldersWithSets(1, [
+    { count: 1, subject: ustr },
+  ]);
+  await waitForGlodaIndexer();
+  Assert.ok(...assertExpectedMessagesIndexed([subjSet]));
+  await asyncMsgSearcherExpect(ustr, subjSet, 2);
+});
+
 /**
  * Generate strings like "aaaaa", "aabaa", "aacaa", etc.  The idea with the
  * suffix is to avoid the porter stemmer from doing something weird that
  * collapses things.
  */
 function unique_string() {
-  let uval = uniqueCounter++;
-  let s =
+  const uval = uniqueCounter++;
+  const s =
     String.fromCharCode(97 + Math.floor(uval / (26 * 26))) +
     String.fromCharCode(97 + (Math.floor(uval / 26) % 26)) +
     String.fromCharCode(97 + (uval % 26)) +
@@ -40,102 +139,22 @@ function unique_string() {
   return s;
 }
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { GlodaMsgSearcher } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaMsgSearcher.jsm"
-);
-
 /**
  * Wrap the construction of a GlodaMsgSearcher with a limit of 1 and feed it to
  * queryExpect.
  *
- * @param aFulltextStr The fulltext query string which GlodaMsgSearcher will
- *     parse.
- * @param aExpectedSet The expected result set.  Make sure that the size of the
- *     set is consistent with aLimit.
- * @param [aLimit=1]
+ * @param {string} aFulltextStr - The fulltext query string which
+ *   GlodaMsgSearcher will parse.
+ * @param {object} aExpectedSet The expected result set.  Make sure that the
+ *   size of the set is consistent with aLimit.
+ * @param {integer} [aLimit=1] - Limit.
  *
  * Use like so:
- *  yield asyncMsgSearchExpect("foo bar", someSynMsgSet);
+ *  await asyncMsgSearchExpect("foo bar", someSynMsgSet);
  */
-function asyncMsgSearcherExpect(aFulltextStr, aExpectedSet, aLimit) {
-  let limit = aLimit ? aLimit : 1;
+async function asyncMsgSearcherExpect(aFulltextStr, aExpectedSet, aLimit) {
+  const limit = aLimit ? aLimit : 1;
   Services.prefs.setIntPref("mailnews.database.global.search.msg.limit", limit);
-  let searcher = new GlodaMsgSearcher(null, aFulltextStr);
-  queryExpect(searcher.buildFulltextQuery(), aExpectedSet);
-  return false;
-}
-
-/**
- * Verify that the ranking function is using the weights as expected.  We do not
- *  need to test all the permutations
- */
-function* test_fulltext_weighting_by_column() {
-  let ustr = unique_string();
-  let [, subjSet, bodySet] = make_folder_with_sets([
-    { count: 1, subject: ustr },
-    { count: 1, body: { body: ustr } },
-  ]);
-  yield wait_for_gloda_indexer([subjSet, bodySet]);
-  yield asyncMsgSearcherExpect(ustr, subjSet);
-}
-
-/**
- * A term mentioned 3 times in the body is worth more than twice in the subject.
- * (This is because the subject saturates at one occurrence worth 2.0 and the
- * body does not saturate until 10, each worth 1.0.)
- */
-function* test_fulltext_weighting_saturation() {
-  let ustr = unique_string();
-  let double_ustr = ustr + " " + ustr;
-  let thrice_ustr = ustr + " " + ustr + " " + ustr;
-  let [, subjSet, bodySet] = make_folder_with_sets([
-    { count: 1, subject: double_ustr },
-    { count: 1, body: { body: thrice_ustr } },
-  ]);
-  yield wait_for_gloda_indexer([subjSet, bodySet]);
-  yield asyncMsgSearcherExpect(ustr, bodySet);
-}
-
-/**
- * Use a starred message with the same fulltext match characteristics as another
- * message to verify the preference goes the right way.  Have the starred
- * message be the older message for safety.
- */
-function* test_static_interestingness_boost_works() {
-  let ustr = unique_string();
-  let [, starred, notStarred] = make_folder_with_sets([
-    { count: 1, subject: ustr },
-    { count: 1, subject: ustr },
-  ]);
-  // index in their native state
-  yield wait_for_gloda_indexer([starred, notStarred]);
-  // star and index
-  starred.setStarred(true);
-  yield wait_for_gloda_indexer([starred]);
-  // stars upon thars wins
-  yield asyncMsgSearcherExpect(ustr, starred);
-}
-
-/**
- * Make sure that the query does not retrieve more than actually matches.
- */
-function* test_joins_do_not_return_everybody() {
-  let ustr = unique_string();
-  let [, subjSet] = make_folder_with_sets([{ count: 1, subject: ustr }]);
-  yield wait_for_gloda_indexer([subjSet]);
-  yield asyncMsgSearcherExpect(ustr, subjSet, 2);
-}
-
-var tests = [
-  test_fulltext_weighting_by_column,
-  test_fulltext_weighting_saturation,
-  test_static_interestingness_boost_works,
-  test_joins_do_not_return_everybody,
-];
-
-function run_test() {
-  // use mbox injection because the fake server chokes sometimes right now
-  configure_message_injection({ mode: "local" });
-  glodaHelperRunTests(tests);
+  const searcher = new GlodaMsgSearcher(null, aFulltextStr);
+  await queryExpect(searcher.buildFulltextQuery(), aExpectedSet);
 }

@@ -9,15 +9,17 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+ChromeUtils.defineLazyGetter(this, "URL", function () {
   return "http://localhost:" + httpServer.identity.primaryPort;
 });
 
 var httpServer = null;
 
-function make_channel(url, callback, ctx) {
+function make_channel(url) {
   return NetUtil.newChannel({ uri: url, loadUsingSystemPrincipal: true });
 }
 
@@ -36,11 +38,11 @@ function contentHandler(metadata, response) {
   if (!metadata.hasHeader("If-Range")) {
     response.setHeader("Content-Length", responseBody.length + "");
     response.processAsync();
-    var slice = responseBody.slice(0, 100);
+    let slice = responseBody.slice(0, 100);
     response.bodyOutputStream.write(slice, slice.length);
     response.finish();
   } else {
-    var slice = responseBody.slice(100);
+    let slice = responseBody.slice(100);
     response.setStatusLine(metadata.httpVersion, 206, "Partial Content");
     response.setHeader(
       "Content-Range",
@@ -82,7 +84,7 @@ function run_test() {
   do_test_pending();
 }
 
-function firstTimeThrough(request, buffer) {
+function firstTimeThrough() {
   // Change single cache entry limit to 1 kb.  This emulates smart size change.
   Services.prefs.setIntPref("browser.cache.disk.max_entry_size", 1);
 

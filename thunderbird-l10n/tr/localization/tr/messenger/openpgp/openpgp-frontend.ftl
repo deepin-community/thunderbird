@@ -5,7 +5,6 @@
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP anahtar yöneticisi
     .accesskey = O
-
 openpgp-ctx-decrypt-open =
     .label = Şifreyi çöz ve aç
     .accesskey = Ç
@@ -18,46 +17,40 @@ openpgp-ctx-import-key =
 openpgp-ctx-verify-att =
     .label = İmzayı doğrula
     .accesskey = d
-
 openpgp-has-sender-key = Bu ileti, gönderenin OpenPGP ortak anahtarını içerdiğini belirtiyor.
+# Variables:
+# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Uyarı: Bu iletideki yeni ortak genel anahtarı, daha önce { $email } için kabul ettiğiniz ortak anahtarlardan farklı.
-
 openpgp-import-sender-key =
     .label = İçe aktar…
-
 openpgp-search-keys-openpgp =
     .label = OpenPGP anahtarını keşfet
-
 openpgp-missing-signature-key = Bu ileti henüz sahip olmadığınız bir anahtarla imzalandı.
-
 openpgp-search-signature-key =
     .label = Keşfet…
-
 # Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Bu ileti, görünüşe göre MS-Exchange tarafından bozulmuş bir OpenPGP iletisidir ve yerel bir dosyadan açıldığı için onarılamaz. Otomatik onarmayı denemek için iletiyi bir posta klasörüne kopyalayın.
 openpgp-broken-exchange-info = Bu ileti, görünüşe göre MS-Exchange tarafından bozulmuş bir OpenPGP iletisidir. İleti içeriği beklendiği gibi gösterilmezse otomatik onarmayı deneyebilirsiniz.
 openpgp-broken-exchange-repair =
     .label = İletiyi onar
 openpgp-broken-exchange-wait = Lütfen bekleyin…
-
+openpgp-has-nested-encrypted-parts = Bu ileti, şifrelenmiş ek kısımlar içeriyor.
+openpgp-show-encrypted-parts = Şifreyi çöz ve göster
+openpgp-has-nested-signed-parts = Bu iletinin bazı kısımları dijital olarak imzalanmış olabilir.
+openpgp-show-signed-parts = Aç ve göster
 openpgp-cannot-decrypt-because-mdc =
     Bu ileti, eski ve güvenlik açığı bulunan bir mekanizmayla şifrelenmiş.
     İletinin taşınması sırasında içeriğini çalmak amacıyla iletide değişiklik yapılmış olabilir.
     Bu riski önlemek için ileti içeriği gösterilmemektedir.
-
 openpgp-cannot-decrypt-because-missing-key = Bu iletinin şifresini çözmek için gereken gizli anahtar mevcut değil.
-
 openpgp-partially-signed =
     Bu iletinin yalnızca bir alt kümesi ile kullanılarak dijital olarak imzalanmış.
     Doğrula düğmesini tıklatırsanız, korunmayan parçalar gizlenir ve dijital imzanın durumu gösterilir.
-
 openpgp-partially-encrypted =
     Bu iletinin yalnızca bir alt kümesi OpenPGP ile şifrelenmiş.
     İletinin ekranda gördüğünüz okunabilir kısımları şifrelenmemiş.
     Şifreyi çöz düğmesini tıklarsanız şifrelenen kısımların da içeriği gösterilecektir.
-
 openpgp-reminder-partial-display = Hatırlatma: Aşağıda gösterilen ileti, asıl iletinin yalnızca bir alt kümesidir.
-
 openpgp-partial-verify-button = Doğrula
 openpgp-partial-decrypt-button = Şifreyi çöz
-
+openpgp-unexpected-key-for-you = Uyarı: Bu ileti kendi e-posta adreslerinizden birini işaret eden bilinmeyen bir OpenPGP anahtarı içeriyor. Bu sizin kendi anahtarlarınızdan biri değilse, diğer yazıştığınız kişileri kandırma girişimi olabilir.

@@ -4,15 +4,12 @@
 
 "use strict";
 
-const { assert } = require("devtools/shared/DevToolsUtils");
-const { actions } = require("devtools/client/memory/constants");
+const { assert } = require("resource://devtools/shared/DevToolsUtils.js");
+const { actions } = require("resource://devtools/client/memory/constants.js");
 
 const handlers = Object.create(null);
 
-handlers[actions.TOGGLE_RECORD_ALLOCATION_STACKS_START] = function(
-  state,
-  action
-) {
+handlers[actions.TOGGLE_RECORD_ALLOCATION_STACKS_START] = function (state) {
   assert(
     !state.togglingInProgress,
     "Changing recording state must not be reentrant."
@@ -24,10 +21,7 @@ handlers[actions.TOGGLE_RECORD_ALLOCATION_STACKS_START] = function(
   };
 };
 
-handlers[actions.TOGGLE_RECORD_ALLOCATION_STACKS_END] = function(
-  state,
-  action
-) {
+handlers[actions.TOGGLE_RECORD_ALLOCATION_STACKS_END] = function (state) {
   assert(
     state.togglingInProgress,
     "Should not complete changing recording state if we weren't changing " +
@@ -45,7 +39,7 @@ const DEFAULT_ALLOCATIONS_STATE = {
   togglingInProgress: false,
 };
 
-module.exports = function(state = DEFAULT_ALLOCATIONS_STATE, action) {
+module.exports = function (state = DEFAULT_ALLOCATIONS_STATE, action) {
   const handle = handlers[action.type];
   if (handle) {
     return handle(state, action);

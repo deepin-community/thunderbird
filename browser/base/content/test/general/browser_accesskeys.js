@@ -1,6 +1,4 @@
-/* eslint-env mozilla/frame-script */
-
-add_task(async function() {
+add_task(async function () {
   await pushPrefs(["ui.key.contentAccess", 5], ["ui.key.chromeAccess", 5]);
 
   const gPageURL1 =
@@ -23,9 +21,9 @@ add_task(async function() {
   // Add an element with an accesskey to the chrome and press its accesskey while the chrome is focused.
   let newButton = document.createXULElement("button");
   newButton.id = "chromebutton";
+  newButton.setAttribute("aria-label", "chromebutton");
   newButton.setAttribute("accesskey", "z");
   document.documentElement.appendChild(newButton);
-
   Services.focus.clearFocus(window);
 
   newButton.getBoundingClientRect(); // Accesskey registration happens during frame construction.
@@ -142,7 +140,7 @@ function performAccessKey(browser, key) {
       callback,
       { capture: true },
       event => {
-        if (!(event.target instanceof HTMLElement)) {
+        if (!HTMLElement.isInstance(event.target)) {
           return false; // ignore window and document focus events
         }
 

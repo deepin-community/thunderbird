@@ -43,7 +43,7 @@ add_task(async function eventsForScriptErrorWithoutException({ client }) {
   const events = await runEntryAddedTest(client, 1, async () => {
     throwScriptError({
       text: "foo",
-      sourceName: "http://foo.bar",
+      sourceName: "https://foo.bar",
       lineNumber: 7,
       category: "javascript",
     });
@@ -52,7 +52,7 @@ add_task(async function eventsForScriptErrorWithoutException({ client }) {
   is(events[0].source, "javascript", "Got expected source");
   is(events[0].level, "error", "Got expected level");
   is(events[0].text, "foo", "Got expected text");
-  is(events[0].url, "http://foo.bar", "Got expected url");
+  is(events[0].url, "https://foo.bar", "Got expected url");
   is(events[0].lineNumber, 7, "Got expected line number");
 });
 
@@ -100,7 +100,7 @@ add_task(async function eventsForScriptErrorContent({ client }) {
   is(events[0].lineNumber, 2, "Got expected line number");
 });
 
-async function runEntryAddedTest(client, eventCount, callback, options = {}) {
+async function runEntryAddedTest(client, eventCount, callback) {
   const { Log } = client;
 
   const EVENT_ENTRY_ADDED = "Log.entryAdded";
@@ -109,7 +109,7 @@ async function runEntryAddedTest(client, eventCount, callback, options = {}) {
   history.addRecorder({
     event: Log.entryAdded,
     eventName: EVENT_ENTRY_ADDED,
-    messageFn: payload => `Received "${EVENT_ENTRY_ADDED}"`,
+    messageFn: () => `Received "${EVENT_ENTRY_ADDED}"`,
   });
 
   const timeBefore = Date.now();

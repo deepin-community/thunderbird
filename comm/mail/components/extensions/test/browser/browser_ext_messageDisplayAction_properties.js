@@ -3,23 +3,31 @@
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 add_task(async () => {
-  let account = createAccount();
+  const account = createAccount();
   addIdentity(account);
-  let rootFolder = account.incomingServer.rootFolder;
+  const rootFolder = account.incomingServer.rootFolder;
   rootFolder.createSubfolder("test", null);
-  let folder = rootFolder.getChildNamed("test");
+  const folder = rootFolder.getChildNamed("test");
   createMessages(folder, 1);
-  let [message] = [...folder.messages];
+  const [message] = [...folder.messages];
 
-  let msgLoaded = BrowserTestUtils.waitForEvent(window, "MsgLoaded");
-  window.gFolderTreeView.selectFolder(folder);
-  window.gFolderDisplay.selectViewIndex(0);
-  await msgLoaded;
+  const tabmail = document.getElementById("tabmail");
+  const about3Pane = tabmail.currentAbout3Pane;
+  about3Pane.restoreState({
+    folderPaneVisible: true,
+    folderURI: folder.URI,
+    messagePaneVisible: true,
+  });
+  about3Pane.threadTree.selectedIndex = 0;
+  await awaitBrowserLoaded(
+    about3Pane.messageBrowser.contentWindow.getMessagePaneBrowser()
+  );
+
   await openMessageInTab(message);
   await openMessageInWindow(message);
   await new Promise(resolve => executeSoon(resolve));
 
-  let files = {
+  const files = {
     "background.js": async () => {
       async function checkProperty(property, expectedDefault, ...expected) {
         browser.test.log(
@@ -40,9 +48,9 @@ add_task(async () => {
         await window.sendMessage("checkProperty", property, expected);
       }
 
-      let tabs = await browser.tabs.query({});
+      const tabs = await browser.tabs.query({});
       browser.test.assertEq(3, tabs.length);
-      let tabIDs = tabs.map(t => t.id);
+      const tabIDs = tabs.map(t => t.id);
 
       await checkProperty("isEnabled", true, true, true, true);
       await browser.messageDisplayAction.disable();
@@ -103,7 +111,7 @@ add_task(async () => {
     },
     "utils.js": await getUtilsJS(),
   };
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files,
     manifest: {
       applications: {
@@ -120,18 +128,14 @@ add_task(async () => {
 
   await extension.startup();
 
-  let tabmail = document.getElementById("tabmail");
-  let mainWindowTabs = tabmail.tabInfo;
+  const mainWindowTabs = tabmail.tabInfo;
   is(mainWindowTabs.length, 2);
 
-  let mainWindowButton = document.getElementById(
-    "message_display_action_properties_mochi_test-messageDisplayAction-toolbarbutton"
-  );
-
-  let messageWindow = Services.wm.getMostRecentWindow("mail:messageWindow");
-  let messageWindowButton = messageWindow.document.getElementById(
-    "message_display_action_properties_mochi_test-messageDisplayAction-toolbarbutton"
-  );
+  const messageWindow = Services.wm.getMostRecentWindow("mail:messageWindow");
+  const messageWindowButton =
+    messageWindow.messageBrowser.contentDocument.getElementById(
+      "message_display_action_properties_mochi_test-messageDisplayAction-toolbarbutton"
+    );
 
   extension.onMessage("checkProperty", async (property, expected) => {
     function checkButton(button, expectedIndex) {
@@ -155,8 +159,17 @@ add_task(async () => {
 
     for (let i = 0; i < 2; i++) {
       tabmail.switchToTab(mainWindowTabs[i]);
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      checkButton(mainWindowButton, i);
+      let aboutMessage = mainWindowTabs[i].chromeBrowser.contentWindow;
+      if (aboutMessage.location.href == "about:3pane") {
+        aboutMessage = aboutMessage.messageBrowser.contentWindow;
+      }
+      await new Promise(resolve => aboutMessage.requestAnimationFrame(resolve));
+      checkButton(
+        aboutMessage.document.getElementById(
+          "message_display_action_properties_mochi_test-messageDisplayAction-toolbarbutton"
+        ),
+        i
+      );
     }
     checkButton(messageWindowButton, 2);
 
@@ -167,6 +180,5 @@ add_task(async () => {
   await extension.unload();
 
   messageWindow.close();
-  tabmail.closeTab(mainWindowTabs[1]);
-  is(tabmail.tabInfo.length, 1);
+  tabmail.closeOtherTabs(0);
 });

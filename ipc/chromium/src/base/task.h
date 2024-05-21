@@ -9,7 +9,7 @@
 
 #include "base/revocable_store.h"
 #include "base/tuple.h"
-#include "mozilla/Tuple.h"
+
 #include "nsISupportsImpl.h"
 #include "nsThreadUtils.h"
 
@@ -26,15 +26,15 @@ namespace details {
 // be IndexSequence<0, 1, ..., N-1>.
 template <size_t... Indices, class ObjT, class Method, typename... Args>
 void CallMethod(std::index_sequence<Indices...>, ObjT* obj, Method method,
-                mozilla::Tuple<Args...>& arg) {
-  (obj->*method)(std::move(mozilla::Get<Indices>(arg))...);
+                std::tuple<Args...>& arg) {
+  (obj->*method)(std::move(std::get<Indices>(arg))...);
 }
 
 // Same as above, but call a function.
 template <size_t... Indices, typename Function, typename... Args>
 void CallFunction(std::index_sequence<Indices...>, Function function,
-                  mozilla::Tuple<Args...>& arg) {
-  (*function)(std::move(mozilla::Get<Indices>(arg))...);
+                  std::tuple<Args...>& arg) {
+  (*function)(std::move(std::get<Indices>(arg))...);
 }
 
 }  // namespace details
@@ -42,145 +42,15 @@ void CallFunction(std::index_sequence<Indices...>, Function function,
 // Call a method on the given object. Arguments are passed by move semantics
 // from the given tuple.
 template <class ObjT, class Method, typename... Args>
-void DispatchTupleToMethod(ObjT* obj, Method method,
-                           mozilla::Tuple<Args...>& arg) {
+void DispatchTupleToMethod(ObjT* obj, Method method, std::tuple<Args...>& arg) {
   details::CallMethod(std::index_sequence_for<Args...>{}, obj, method, arg);
 }
 
 // Same as above, but call a function.
 template <typename Function, typename... Args>
-void DispatchTupleToFunction(Function function, mozilla::Tuple<Args...>& arg) {
+void DispatchTupleToFunction(Function function, std::tuple<Args...>& arg) {
   details::CallFunction(std::index_sequence_for<Args...>{}, function, arg);
 }
-
-// Scoped Factories ------------------------------------------------------------
-//
-// These scoped factory objects can be used by non-refcounted objects to safely
-// place tasks in a message loop.  Each factory guarantees that the tasks it
-// produces will not run after the factory is destroyed.  Commonly, factories
-// are declared as class members, so the class' tasks will automatically cancel
-// when the class instance is destroyed.
-//
-// Exampe Usage:
-//
-// class MyClass {
-//  private:
-//   // This factory will be used to schedule invocations of SomeMethod.
-//   ScopedRunnableMethodFactory<MyClass> some_method_factory_;
-//
-//  public:
-//   // It is safe to suppress warning 4355 here.
-//   MyClass() : some_method_factory_(this) { }
-//
-//   void SomeMethod() {
-//     // If this function might be called directly, you might want to revoke
-//     // any outstanding runnable methods scheduled to call it.  If it's not
-//     // referenced other than by the factory, this is unnecessary.
-//     some_method_factory_.RevokeAll();
-//     ...
-//   }
-//
-//   void ScheduleSomeMethod() {
-//     // If you'd like to only only have one pending task at a time, test for
-//     // |empty| before manufacturing another task.
-//     if (!some_method_factory_.empty())
-//       return;
-//
-//     // The factories are not thread safe, so always invoke on
-//     // |MessageLoop::current()|.
-//     MessageLoop::current()->PostDelayedTask(
-//         some_method_factory_.NewRunnableMethod(&MyClass::SomeMethod),
-//         kSomeMethodDelayMS);
-//   }
-// };
-
-// A ScopedTaskFactory produces tasks of type |TaskType| and prevents them from
-// running after it is destroyed.
-template <class TaskType>
-class ScopedTaskFactory : public RevocableStore {
- public:
-  ScopedTaskFactory() {}
-
-  // Create a new task.
-  inline TaskType* NewTask() { return new TaskWrapper(this); }
-
-  class TaskWrapper : public TaskType {
-   public:
-    explicit TaskWrapper(RevocableStore* store) : revocable_(store) {}
-
-    NS_IMETHOD Run() override {
-      if (!revocable_.revoked()) TaskType::Run();
-      return NS_OK;
-    }
-
-    ~TaskWrapper() { NS_ASSERT_OWNINGTHREAD(TaskWrapper); }
-
-   private:
-    Revocable revocable_;
-
-    NS_DECL_OWNINGTHREAD
-
-    DISALLOW_EVIL_CONSTRUCTORS(TaskWrapper);
-  };
-
- private:
-  DISALLOW_EVIL_CONSTRUCTORS(ScopedTaskFactory);
-};
-
-// A ScopedRunnableMethodFactory creates runnable methods for a specified
-// object.  This is particularly useful for generating callbacks for
-// non-reference counted objects when the factory is a member of the object.
-template <class T>
-class ScopedRunnableMethodFactory : public RevocableStore {
- public:
-  explicit ScopedRunnableMethodFactory(T* object) : object_(object) {}
-
-  template <class Method, typename... Elements>
-  inline already_AddRefed<mozilla::Runnable> NewRunnableMethod(
-      Method method, Elements&&... elements) {
-    typedef mozilla::Tuple<std::decay_t<Elements>...> ArgsTuple;
-    typedef RunnableMethod<Method, ArgsTuple> Runnable;
-    typedef typename ScopedTaskFactory<Runnable>::TaskWrapper TaskWrapper;
-
-    RefPtr<TaskWrapper> task = new TaskWrapper(this);
-    task->Init(object_, method,
-               mozilla::MakeTuple(std::forward<Elements>(elements)...));
-    return task.forget();
-  }
-
- protected:
-  template <class Method, class Params>
-  class RunnableMethod : public mozilla::Runnable {
-   public:
-    RunnableMethod()
-        : mozilla::Runnable("ScopedRunnableMethodFactory::RunnableMethod") {}
-
-    void Init(T* obj, Method meth, Params&& params) {
-      obj_ = obj;
-      meth_ = meth;
-      params_ = std::forward<Params>(params);
-    }
-
-    NS_IMETHOD Run() override {
-      DispatchTupleToMethod(obj_, meth_, params_);
-      return NS_OK;
-    }
-
-   private:
-    T* MOZ_UNSAFE_REF(
-        "The validity of this pointer must be enforced by "
-        "external factors.") obj_;
-    Method meth_;
-    Params params_;
-
-    DISALLOW_EVIL_CONSTRUCTORS(RunnableMethod);
-  };
-
- private:
-  T* object_;
-
-  DISALLOW_EVIL_CONSTRUCTORS(ScopedRunnableMethodFactory);
-};
 
 // General task implementations ------------------------------------------------
 
@@ -300,9 +170,9 @@ template <class T, class Method, typename... Args>
 inline already_AddRefed<mozilla::Runnable> NewRunnableMethod(T* object,
                                                              Method method,
                                                              Args&&... args) {
-  typedef mozilla::Tuple<std::decay_t<Args>...> ArgsTuple;
+  typedef std::tuple<std::decay_t<Args>...> ArgsTuple;
   RefPtr<mozilla::Runnable> t = new RunnableMethod<T, Method, ArgsTuple>(
-      object, method, mozilla::MakeTuple(std::forward<Args>(args)...));
+      object, method, std::make_tuple(std::forward<Args>(args)...));
   return t.forget();
 }
 
@@ -338,19 +208,19 @@ template <class Function, typename... Args>
 inline already_AddRefed<mozilla::CancelableRunnable>
 NewCancelableRunnableFunction(const char* name, Function function,
                               Args&&... args) {
-  typedef mozilla::Tuple<std::decay_t<Args>...> ArgsTuple;
+  typedef std::tuple<std::decay_t<Args>...> ArgsTuple;
   RefPtr<mozilla::CancelableRunnable> t =
       new RunnableFunction<Function, ArgsTuple>(
-          name, function, mozilla::MakeTuple(std::forward<Args>(args)...));
+          name, function, std::make_tuple(std::forward<Args>(args)...));
   return t.forget();
 }
 
 template <class Function, typename... Args>
 inline already_AddRefed<mozilla::Runnable> NewRunnableFunction(
     const char* name, Function function, Args&&... args) {
-  typedef mozilla::Tuple<std::decay_t<Args>...> ArgsTuple;
+  typedef std::tuple<std::decay_t<Args>...> ArgsTuple;
   RefPtr<mozilla::Runnable> t = new RunnableFunction<Function, ArgsTuple>(
-      name, function, mozilla::MakeTuple(std::forward<Args>(args)...));
+      name, function, std::make_tuple(std::forward<Args>(args)...));
   return t.forget();
 }
 

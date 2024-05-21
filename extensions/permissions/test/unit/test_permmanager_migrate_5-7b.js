@@ -1,12 +1,6 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
-
 var PERMISSIONS_FILE_NAME = "permissions.sqlite";
 
 function GetPermissionsFile(profile) {
@@ -108,13 +102,12 @@ add_task(function test() {
   let expected = [
     ["https://foo.com", "A", 2, 0, 0, 0],
     ["http://foo.com", "A", 2, 0, 0, 0],
-    ["http://foo.com^inBrowser=1", "A", 2, 0, 0, 0],
 
     ["http://127.0.0.1", "B", 2, 0, 0, 0],
     ["http://localhost", "B", 2, 0, 0, 0],
   ];
 
-  let found = expected.map(it => 0);
+  let found = expected.map(() => 0);
 
   // This will force the permission-manager to reload the data.
   Services.obs.notifyObservers(null, "testonly-reload-permissions-from-disk");

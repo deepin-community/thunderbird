@@ -1,5 +1,3 @@
-/* import-globals-from antitracking_head.js */
-
 function waitStoragePermission() {
   return new Promise(resolve => {
     let id = setInterval(async _ => {
@@ -17,7 +15,7 @@ function waitStoragePermission() {
   });
 }
 
-add_task(async function() {
+add_setup(async function () {
   info("Starting subResources test");
 
   await SpecialPowers.flushPrefEnv();
@@ -45,8 +43,16 @@ add_task(async function() {
   await UrlClassifierTestUtils.addTestTrackers();
 });
 
-add_task(async function testWindowOpenHeuristic() {
-  info("Starting window.open() heuristic test...");
+async function runTestWindowOpenHeuristic(disableHeuristics) {
+  info(
+    `Starting window.open() heuristic test with heuristic ${
+      disableHeuristics ? "disabled" : "enabled"
+    }.`
+  );
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["privacy.antitracking.enableWebcompat", !disableHeuristics]],
+  });
 
   info("Creating a new tab");
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -61,6 +67,7 @@ add_task(async function testWindowOpenHeuristic() {
     [
       {
         page: TEST_3RD_PARTY_PAGE_WO,
+        disableHeuristics,
       },
     ],
     async obj => {
@@ -70,15 +77,23 @@ add_task(async function testWindowOpenHeuristic() {
         await noStorageAccessInitially();
       }).toString();
 
-      msg.nonBlockingCallback = (async _ => {
-        /* import-globals-from storageAccessAPIHelpers.js */
-        await hasStorageAccessInitially();
-      }).toString();
+      // If the heuristic is disabled, we won't get storage access.
+      if (obj.disableHeuristics) {
+        msg.nonBlockingCallback = (async _ => {
+          /* import-globals-from storageAccessAPIHelpers.js */
+          await stillNoStorageAccess();
+        }).toString();
+      } else {
+        msg.nonBlockingCallback = (async _ => {
+          /* import-globals-from storageAccessAPIHelpers.js */
+          await hasStorageAccessInitially();
+        }).toString();
+      }
 
       info("Checking if storage access is denied");
       await new content.Promise(resolve => {
         let ifr = content.document.createElement("iframe");
-        ifr.onload = function() {
+        ifr.onload = function () {
           info("Sending code to the 3rd party content");
           ifr.contentWindow.postMessage(msg, "*");
         };
@@ -111,15 +126,23 @@ add_task(async function testWindowOpenHeuristic() {
 
   info("Removing the tab");
   BrowserTestUtils.removeTab(tab);
-});
 
-add_task(async function() {
+  await SpecialPowers.popPrefEnv();
+
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
+}
+
+add_task(async function testWindowOpenHeuristic() {
+  await runTestWindowOpenHeuristic(false);
+});
+
+add_task(async function testWindowOpenHeuristicDisabled() {
+  await runTestWindowOpenHeuristic(true);
 });
 
 add_task(async function testDoublyNestedWindowOpenHeuristic() {
@@ -155,7 +178,7 @@ add_task(async function testDoublyNestedWindowOpenHeuristic() {
       info("Checking if storage access is denied");
       await new content.Promise(resolve => {
         let ifr = content.document.createElement("iframe");
-        ifr.onload = function() {
+        ifr.onload = function () {
           info("Sending code to the 3rd party content");
           ifr.contentWindow.postMessage(msg, "*");
         };
@@ -190,17 +213,24 @@ add_task(async function testDoublyNestedWindowOpenHeuristic() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
 });
 
-add_task(async function testUserInteractionHeuristic() {
-  info("Starting user interaction heuristic test...");
+async function runTestUserInteractionHeuristic(disableHeuristics) {
+  info(
+    `Starting user interaction heuristic test with heuristic ${
+      disableHeuristics ? "disabled" : "enabled"
+    }.`
+  );
+  await SpecialPowers.pushPrefEnv({
+    set: [["privacy.antitracking.enableWebcompat", !disableHeuristics]],
+  });
 
   info("Creating a new tab");
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -266,8 +296,7 @@ add_task(async function testUserInteractionHeuristic() {
         let windowClosed = new content.Promise(resolve => {
           Services.ww.registerNotification(function notification(
             aSubject,
-            aTopic,
-            aData
+            aTopic
           ) {
             // We need to check the document URI for Fission. It's because the
             // 'domwindowclosed' would be triggered twice, one for the
@@ -324,18 +353,28 @@ add_task(async function testUserInteractionHeuristic() {
       {
         page: TEST_3RD_PARTY_PAGE_UI,
         popup: TEST_POPUP_PAGE,
+        disableHeuristics,
       },
     ],
     async obj => {
       let msg = {};
+
       msg.blockingCallback = (async _ => {
         await noStorageAccessInitially();
       }).toString();
 
-      msg.nonBlockingCallback = (async _ => {
-        /* import-globals-from storageAccessAPIHelpers.js */
-        await hasStorageAccessInitially();
-      }).toString();
+      // If the heuristic is disabled, we won't get storage access.
+      if (obj.disableHeuristics) {
+        msg.nonBlockingCallback = (async _ => {
+          /* import-globals-from storageAccessAPIHelpers.js */
+          await stillNoStorageAccess();
+        }).toString();
+      } else {
+        msg.nonBlockingCallback = (async _ => {
+          /* import-globals-from storageAccessAPIHelpers.js */
+          await hasStorageAccessInitially();
+        }).toString();
+      }
 
       info("Checking if storage access is denied");
 
@@ -378,8 +417,7 @@ add_task(async function testUserInteractionHeuristic() {
         let windowClosed = new content.Promise(resolve => {
           Services.ww.registerNotification(function notification(
             aSubject,
-            aTopic,
-            aData
+            aTopic
           ) {
             // We need to check the document URI here as well for the same
             // reason above.
@@ -431,18 +469,28 @@ add_task(async function testUserInteractionHeuristic() {
 
   info("Removing the tab");
   BrowserTestUtils.removeTab(tab);
-});
 
-add_task(async function() {
-  info("Wait until the storage permission is ready before cleaning up.");
-  await waitStoragePermission();
+  if (!disableHeuristics) {
+    info("Wait until the storage permission is ready before cleaning up.");
+    await waitStoragePermission();
+  }
 
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
+
+  await SpecialPowers.popPrefEnv();
+}
+
+add_task(async function testUserInteractionHeuristic() {
+  await runTestUserInteractionHeuristic(false);
+});
+
+add_task(async function testUserInteractionHeuristicDisabled() {
+  await runTestUserInteractionHeuristic(true);
 });
 
 add_task(async function testDoublyNestedUserInteractionHeuristic() {
@@ -514,8 +562,7 @@ add_task(async function testDoublyNestedUserInteractionHeuristic() {
       let windowClosed = new content.Promise(resolve => {
         Services.ww.registerNotification(function notification(
           aSubject,
-          aTopic,
-          aData
+          aTopic
         ) {
           if (aTopic == "domwindowclosed") {
             Services.ww.unregisterNotification(notification);
@@ -624,8 +671,7 @@ add_task(async function testDoublyNestedUserInteractionHeuristic() {
       let windowClosed = new content.Promise(resolve => {
         Services.ww.registerNotification(function notification(
           aSubject,
-          aTopic,
-          aData
+          aTopic
         ) {
           if (aTopic == "domwindowclosed") {
             Services.ww.unregisterNotification(notification);
@@ -676,20 +722,28 @@ add_task(async function testDoublyNestedUserInteractionHeuristic() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Wait until the storage permission is ready before cleaning up.");
   await waitStoragePermission();
 
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
 });
 
-add_task(async function testFirstPartyWindowOpenHeuristic() {
-  info("Starting first-party window.open() heuristic test...");
+async function runTestFirstPartyWindowOpenHeuristic(disableHeuristics) {
+  info(
+    `Starting first-party window.open() heuristic test with heuristic ${
+      disableHeuristics ? "disabled" : "enabled"
+    }.`
+  );
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["privacy.antitracking.enableWebcompat", !disableHeuristics]],
+  });
 
   // Interact with the tracker first before testing window.open heuristic
   await AntiTracking.interactWithTracker();
@@ -718,7 +772,7 @@ add_task(async function testFirstPartyWindowOpenHeuristic() {
 
       await new content.Promise(resolve => {
         let ifr = content.document.createElement("iframe");
-        ifr.onload = function() {
+        ifr.onload = function () {
           info("Sending code to the 3rd party content");
           ifr.contentWindow.postMessage(msg.blockingCallback, "*");
         };
@@ -782,13 +836,24 @@ add_task(async function testFirstPartyWindowOpenHeuristic() {
     }
   );
 
-  await SpecialPowers.spawn(browser, [], async obj => {
-    info("Tracker should have storage access now");
+  await SpecialPowers.spawn(browser, [{ disableHeuristics }], async obj => {
+    info(
+      "If the heuristic is enabled, the tracker should have storage access now."
+    );
     let msg = {};
-    msg.nonBlockingCallback = (async _ => {
-      /* import-globals-from storageAccessAPIHelpers.js */
-      await hasStorageAccessInitially();
-    }).toString();
+
+    // If the heuristic is disabled, we won't get storage access.
+    if (obj.disableHeuristics) {
+      msg.nonBlockingCallback = (async _ => {
+        /* import-globals-from storageAccessAPIHelpers.js */
+        await stillNoStorageAccess();
+      }).toString();
+    } else {
+      msg.nonBlockingCallback = (async _ => {
+        /* import-globals-from storageAccessAPIHelpers.js */
+        await hasStorageAccessInitially();
+      }).toString();
+    }
 
     await new content.Promise(resolve => {
       let ifr = content.document.getElementById("ifr");
@@ -819,15 +884,25 @@ add_task(async function testFirstPartyWindowOpenHeuristic() {
 
   info("Removing the tab");
   BrowserTestUtils.removeTab(tab);
-});
 
-add_task(async function() {
+  await SpecialPowers.popPrefEnv();
+
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
+}
 
+add_task(async function testFirstPartyWindowOpenHeuristic() {
+  await runTestFirstPartyWindowOpenHeuristic(false);
+});
+
+add_task(async function testFirstPartyWindowOpenHeuristicDisabled() {
+  await runTestFirstPartyWindowOpenHeuristic(true);
+});
+
+add_task(async function () {
   UrlClassifierTestUtils.cleanupTestTrackers();
 });

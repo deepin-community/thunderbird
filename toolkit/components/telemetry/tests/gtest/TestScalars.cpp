@@ -6,6 +6,7 @@
 #include "core/TelemetryScalar.h"
 #include "gtest/gtest.h"
 #include "js/Conversions.h"
+#include "js/PropertyAndElement.h"  // JS_GetProperty, JS_HasProperty
 #include "mozilla/Telemetry.h"
 #include "mozilla/TelemetryProcessEnums.h"
 #include "mozilla/Unused.h"
@@ -13,9 +14,13 @@
 #include "nsThreadUtils.h"
 #include "TelemetryFixture.h"
 #include "TelemetryTestHelpers.h"
+#include "mozilla/glean/GleanMetrics.h"
+#include "mozilla/glean/fog_ffi_generated.h"
 
 using namespace mozilla;
 using namespace TelemetryTestHelpers;
+using namespace mozilla::glean;
+using namespace mozilla::glean::impl;
 using mozilla::Telemetry::ProcessID;
 
 #define EXPECTED_STRING "Nice, expected and creative string."
@@ -36,7 +41,7 @@ TEST_F(TelemetryTestFixture, ScalarUnsigned) {
                        kExpectedUint - kInitialValue);
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
   CheckUintScalar("telemetry.test.unsigned_int_kind", cx.GetJSContext(),
                   scalarsSnapshot, kExpectedUint);
@@ -80,12 +85,13 @@ TEST_F(TelemetryTestFixture, AutoScalarTimer) {
   // Check that there's a recorded value that is greater than 0. Since
   // this is a timer, we'll not check the non-deterministic value - just
   // that it exists.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
 
   // Validate the value of the test scalar.
-  JS::RootedValue value(cx.GetJSContext());
-  JS::RootedObject scalarObj(cx.GetJSContext(), &scalarsSnapshot.toObject());
+  JS::Rooted<JS::Value> value(cx.GetJSContext());
+  JS::Rooted<JSObject*> scalarObj(cx.GetJSContext(),
+                                  &scalarsSnapshot.toObject());
   ASSERT_TRUE(JS_GetProperty(cx.GetJSContext(), scalarObj, kScalarName, &value))
   << "The test scalar must be reported.";
 
@@ -118,7 +124,7 @@ TEST_F(TelemetryTestFixture, ScalarBoolean) {
 #endif
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
   CheckBoolScalar("telemetry.test.boolean_kind", cx.GetJSContext(),
                   scalarsSnapshot, true);
@@ -146,7 +152,7 @@ TEST_F(TelemetryTestFixture, ScalarString) {
 #endif
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
   CheckStringScalar("telemetry.test.string_kind", cx.GetJSContext(),
                     scalarsSnapshot, EXPECTED_STRING);
@@ -179,7 +185,7 @@ TEST_F(TelemetryTestFixture, KeyedScalarUnsigned) {
 #endif
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   // Check the keyed scalar we're interested in.
@@ -227,7 +233,7 @@ TEST_F(TelemetryTestFixture, KeyedScalarBoolean) {
 #endif
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   // Make sure that the keys contain the expected values.
@@ -261,7 +267,7 @@ TEST_F(TelemetryTestFixture, NonMainThreadAdd) {
   testingThread->Shutdown();
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
   CheckUintScalar("telemetry.test.unsigned_int_kind", cx.GetJSContext(),
                   scalarsSnapshot, 37);
@@ -289,7 +295,7 @@ TEST_F(TelemetryTestFixture, ScalarUnknownID) {
     Telemetry::ScalarSetMaximum(scalarId, 1);
 
     // Make sure that nothing was recorded in the plain scalars.
-    JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+    JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
     GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
     ASSERT_TRUE(scalarsSnapshot.isUndefined())
     << "No scalar must be recorded";
@@ -301,7 +307,7 @@ TEST_F(TelemetryTestFixture, ScalarUnknownID) {
     Telemetry::ScalarSetMaximum(scalarId, u"key1"_ns, 1);
 
     // Make sure that nothing was recorded in the keyed scalars.
-    JS::RootedValue keyedSnapshot(cx.GetJSContext());
+    JS::Rooted<JS::Value> keyedSnapshot(cx.GetJSContext());
     GetScalarsSnapshot(true, cx.GetJSContext(), &keyedSnapshot);
     ASSERT_TRUE(keyedSnapshot.isUndefined())
     << "No keyed scalar must be recorded";
@@ -324,7 +330,7 @@ TEST_F(TelemetryTestFixture, ScalarEventSummary) {
                                   false /* aDynamic */);
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   CheckKeyedUintScalar(kScalarName, kLongestEvent, cx.GetJSContext(),
@@ -379,7 +385,7 @@ TEST_F(TelemetryTestFixture, ScalarEventSummary_Dynamic) {
                                   true /* aDynamic */);
 
   // Check the recorded value.
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot,
                      ProcessID::Dynamic);
 
@@ -411,7 +417,7 @@ TEST_F(TelemetryTestFixture, WrongScalarOperator) {
                        true);
   TelemetryScalar::ApplyPendingOperations();
 
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(false, cx.GetJSContext(), &scalarsSnapshot);
   CheckStringScalar("telemetry.test.string_kind", cx.GetJSContext(),
                     scalarsSnapshot, EXPECTED_STRING);
@@ -443,7 +449,7 @@ TEST_F(TelemetryTestFixture, WrongKeyedScalarOperator) {
 
   TelemetryScalar::ApplyPendingOperations();
 
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
   CheckKeyedUintScalar("telemetry.test.keyed_unsigned_int", "key1",
                        cx.GetJSContext(), scalarsSnapshot, kExpectedUint);
@@ -472,7 +478,7 @@ TEST_F(TelemetryTestFixture, TestKeyedScalarAllowedKeys) {
   Telemetry::ScalarSet(Telemetry::ScalarID::TELEMETRY_TEST_KEYED_WITH_KEYS,
                        u"not-valid"_ns, kExpectedUint);
 
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
   CheckKeyedUintScalar("telemetry.test.keyed_with_keys", "only",
                        cx.GetJSContext(), scalarsSnapshot, kExpectedUint);
@@ -513,11 +519,12 @@ TEST_F(TelemetryTestFixture, TooLongKey) {
   Telemetry::ScalarSet(Telemetry::ScalarID::TELEMETRY_TEST_KEYED_WITH_KEYS,
                        u"dummy"_ns, kDummyUint);
   // Check the recorded value
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   bool foundp = true;
-  JS::RootedObject scalarObj(cx.GetJSContext(), &scalarsSnapshot.toObject());
+  JS::Rooted<JSObject*> scalarObj(cx.GetJSContext(),
+                                  &scalarsSnapshot.toObject());
   ASSERT_TRUE(
       JS_HasProperty(cx.GetJSContext(), scalarObj, kScalarName, &foundp));
   EXPECT_FALSE(foundp);
@@ -546,11 +553,12 @@ TEST_F(TelemetryTestFixture, EmptyKey) {
                        u"dummy"_ns, kDummyUint);
 
   // Check the recorded value
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   bool foundp = true;
-  JS::RootedObject scalarObj(cx.GetJSContext(), &scalarsSnapshot.toObject());
+  JS::Rooted<JSObject*> scalarObj(cx.GetJSContext(),
+                                  &scalarsSnapshot.toObject());
   ASSERT_TRUE(
       JS_HasProperty(cx.GetJSContext(), scalarObj, kScalarName, &foundp));
   EXPECT_FALSE(foundp);
@@ -578,10 +586,37 @@ TEST_F(TelemetryTestFixture, TooManyKeys) {
   }
 
   // Check the recorded value
-  JS::RootedValue scalarsSnapshot(cx.GetJSContext());
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
   GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
 
   // Check 100 keys are present.
   CheckNumberOfProperties(kScalarName, cx.GetJSContext(), scalarsSnapshot, 100);
 #endif  // #ifndef DEBUG
+}
+
+TEST_F(TelemetryTestFixture, GleanLabeledGifft) {
+  AutoJSContextWithGlobal cx(mCleanGlobal);
+  // Need to test-reset Glean so it's working
+  nsCString empty;
+  ASSERT_EQ(NS_OK, fog_test_reset(&empty, &empty));
+
+  ASSERT_EQ(mozilla::Nothing(),
+            test_only_ipc::a_labeled_counter.Get("hot_air"_ns)
+                .TestGetValue()
+                .unwrap());
+
+  const char* kScalarName = "telemetry.test.another_mirror_for_labeled_counter";
+  const uint32_t kExpectedUint = 1172017;
+  const int32_t kExpectedInt = (int32_t)1172017;
+
+  test_only_ipc::a_labeled_counter.Get("hot_air"_ns).Add(kExpectedInt);
+  ASSERT_EQ(kExpectedInt, test_only_ipc::a_labeled_counter.Get("hot_air"_ns)
+                              .TestGetValue()
+                              .unwrap()
+                              .ref());
+
+  JS::Rooted<JS::Value> scalarsSnapshot(cx.GetJSContext());
+  GetScalarsSnapshot(true, cx.GetJSContext(), &scalarsSnapshot);
+  CheckKeyedUintScalar(kScalarName, "hot_air", cx.GetJSContext(),
+                       scalarsSnapshot, kExpectedUint);
 }

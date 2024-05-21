@@ -15,7 +15,7 @@ function getAccessKey(str)
 
 // @internal
 function CommandRecord(name, func, usage, help, label, accesskey, flags,
-                       keystr, tip, format)
+                       keystr, tip, format, helpUsage)
 {
     this.name = name;
     this.func = func;
@@ -25,6 +25,7 @@ function CommandRecord(name, func, usage, help, label, accesskey, flags,
     this.label = label ? label : name;
     this.accesskey = accesskey ? accesskey : "";
     this.format = format;
+    this.helpUsage = helpUsage;
     this.labelstr = label.replace ("&", "");
     this.tip = tip;
     this.flags = flags;
@@ -117,28 +118,6 @@ function cr_scanusage()
 }
 
 /**
- * Returns the command formatted for presentation as part of online
- * documentation.
- */
-CommandRecord.prototype.getDocumentation =
-function cr_getdocs(flagFormatter)
-
-{
-    var str;
-    str  = getMsg(MSG_DOC_COMMANDLABEL,
-                  [this.label.replace("&", ""), this.name]) + "\n";
-    str += getMsg(MSG_DOC_KEY, this.keystr ? this.keystr : MSG_VAL_NA) + "\n";
-    str += getMsg(MSG_DOC_SYNTAX, [this.name, this.usage]) + "\n";
-    str += MSG_DOC_NOTES + "\n";
-    str += (flagFormatter ? flagFormatter(this.flags) : this.flags) + "\n\n";
-    str += MSG_DOC_DESCRIPTION + "\n";
-    str += wrapText(this.help, 75) + "\n";
-    return str;
-}
-
-CommandRecord.prototype.argNames = new Array();
-
-/**
  * Manages commands, with accelerator keys, help text and argument processing.
  *
  * You should never need to create an instance of this prototype; access the
@@ -178,16 +157,11 @@ function cmgr_defcmds(cmdary)
 
     for (var i = 0; i < len; ++i)
     {
-        var name  = cmdary[i][0];
-        var func  = cmdary[i][1];
-        var flags = cmdary[i][2];
-        var usage;
-        if (3 in cmdary[i])
-            usage = cmdary[i][3];
-
-        var command = this.defineCommand(name, func, flags, usage, bundle);
-        commands[name] = command;
-
+        let name  = cmdary[i][0];
+        let func  = cmdary[i][1];
+        let flags = cmdary[i][2];
+        let usage = (3 in cmdary[i]) ? cmdary[i][3] : "";
+        commands[name] = this.defineCommand(name, func, flags, usage, bundle);
     }
 
     return commands;
@@ -201,8 +175,7 @@ function cmgr_defcmds(cmdary)
  * @param flags Optional. A |Number| indicating any special requirements for the
  *              command.
  * @param usage Optional. A |String| specifying the arguments to the command. If
- *              not specified, the property string "cmd." + |name| + ".params"
- *              is read from |bundle| or |defaultBundle|.
+ *              not specified, then it is assumed there are none.
  * @param bundle Optional. An |nsIStringBundle| to fetch parameters, labels,
  *               accelerator keys and help from. If not specified, the
  *               |defaultBundle| is used.
@@ -221,7 +194,7 @@ function cmdmgr_defcmd(name, func, flags, usage, bundle)
         flags = this.defaultFlags;
 
     if (typeof usage != "string")
-        usage = getMsgFrom(bundle, "cmd." + name + ".params", null, "");
+        usage = "";
 
     if (typeof func == "string")
     {
@@ -240,13 +213,24 @@ function cmdmgr_defcmd(name, func, flags, usage, bundle)
                            labelDefault);
     var accesskey = getMsgFrom(bundle, "cmd." + name + ".accesskey", null,
                                getAccessKey(label));
-    var help  = getMsgFrom(bundle, "cmd." + name + ".help", null,
-                           helpDefault);
+    var help = helpDefault;
+    var helpUsage = "";
+    // Help is only shown for commands that available from the console.
+    if (flags & CMD_CONSOLE)
+    {
+        help = getMsgFrom(bundle, "cmd." + name + ".help", null, helpDefault);
+        // Only need to lookup localized helpUsage for commands that have them.
+        if (usage)
+        {
+            helpUsage = getMsgFrom(bundle, "cmd." + name + ".helpUsage", null,
+                                   "");
+        }
+    }
     var keystr = getMsgFrom (bundle, "cmd." + name + ".key", null, "");
     var format = getMsgFrom (bundle, "cmd." + name + ".format", null, null);
     var tip = getMsgFrom (bundle, "cmd." + name + ".tip", null, "");
     var command = new CommandRecord(name, func, usage, help, label, accesskey,
-                                    flags, keystr, tip, format);
+                                    flags, keystr, tip, format, helpUsage);
     this.addCommand(command);
     if (aliasFor)
         command.aliasFor = aliasFor;
@@ -540,7 +524,7 @@ function cmgr_unhook (commandName, id, before)
  * @param flags Optional. Flags to logically AND with commands.
  */
 CommandManager.prototype.list =
-function cmgr_list (partialName, flags)
+function cmgr_list(partialName, flags, exact)
 {
     /* returns array of command objects which look like |partialName|, or
      * all commands if |partialName| is not specified */
@@ -561,30 +545,19 @@ function cmgr_list (partialName, flags)
     var ary = new Array();
     var commandNames = keys(this.commands);
 
-    /* A command named "eval" wouldn't show up in the result of keys() because
-     * eval is not-enumerable, even if overwritten, in Mozilla 1.0. */
-    if (objectContains(this.commands, "eval") && !arrayContains(commandNames, "eval"))
-        commandNames.push("eval");
-
-    for (var i in commandNames)
+    for (var name of commandNames)
     {
-        var name = commandNames[i];
-        if (!flags || (this.commands[name].flags & flags))
+        let command = this.commands[name];
+        if ((!flags || (command.flags & flags)) &&
+            (!partialName || command.name.startsWith(partialName)))
         {
-            if (!partialName ||
-                this.commands[name].name.indexOf(partialName) == 0)
+            if (exact && partialName &&
+                partialName.length == command.name.length)
             {
-                if (partialName &&
-                    partialName.length == this.commands[name].name.length)
-                {
-                    /* exact match */
-                    return [this.commands[name]];
-                }
-                else
-                {
-                    ary.push (this.commands[name]);
-                }
+                /* exact match */
+                return [command];
             }
+            ary.push(command);
         }
     }
 
@@ -601,7 +574,7 @@ function cmgr_list (partialName, flags)
 CommandManager.prototype.listNames =
 function cmgr_listnames (partialName, flags)
 {
-    var cmds = this.list(partialName, flags);
+    var cmds = this.list(partialName, flags, false);
     var cmdNames = new Array();
 
     for (var c in cmds)

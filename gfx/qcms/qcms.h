@@ -1,6 +1,8 @@
 #ifndef QCMS_H
 #define QCMS_H
 
+/* clang-format off */
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -9,35 +11,35 @@ extern "C" {
 #ifndef ICC_H
 /* icc34 defines */
 
-/***************************************************************** 
+/*****************************************************************
  Copyright (c) 1994-1996 SunSoft, Inc.
 
                     Rights Reserved
 
-Permission is hereby granted, free of charge, to any person 
+Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without restrict- 
-ion, including without limitation the rights to use, copy, modify, 
-merge, publish distribute, sublicense, and/or sell copies of the 
-Software, and to permit persons to whom the Software is furnished 
-to do so, subject to the following conditions: 
- 
-The above copyright notice and this permission notice shall be 
-included in all copies or substantial portions of the Software. 
- 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+files (the "Software"), to deal in the Software without restrict-
+ion, including without limitation the rights to use, copy, modify,
+merge, publish distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-
-INFRINGEMENT.  IN NO EVENT SHALL SUNSOFT, INC. OR ITS PARENT 
-COMPANY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
-OTHER DEALINGS IN THE SOFTWARE. 
- 
-Except as contained in this notice, the name of SunSoft, Inc. 
-shall not be used in advertising or otherwise to promote the 
-sale, use or other dealings in this Software without written 
-authorization from SunSoft Inc. 
+INFRINGEMENT.  IN NO EVENT SHALL SUNSOFT, INC. OR ITS PARENT
+COMPANY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of SunSoft, Inc.
+shall not be used in advertising or otherwise to promote the
+sale, use or other dealings in this Software without written
+authorization from SunSoft Inc.
 ******************************************************************/
 
 /*
@@ -46,11 +48,11 @@ authorization from SunSoft Inc.
  * don't use the same objects on different threads at the same time.
  */
 
-/* 
+/*
  * Color Space Signatures
  * Note that only icSigXYZData and icSigLabData are valid
  * Profile Connection Spaces (PCSs)
- */ 
+ */
 typedef enum {
     icSigXYZData                        = 0x58595A20L,  /* 'XYZ ' */
     icSigLabData                        = 0x4C616220L,  /* 'Lab ' */
@@ -77,12 +79,13 @@ typedef enum {
     icSig13colorData                    = 0x44434C52L,  /* 'DCLR' */
     icSig14colorData                    = 0x45434C52L,  /* 'ECLR' */
     icSig15colorData                    = 0x46434C52L,  /* 'FCLR' */
-    icMaxEnumData                       = 0xFFFFFFFFL   
+    icMaxEnumData                       = 0xFFFFFFFFL
 } icColorSpaceSignature;
 #endif
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <cstdint>
 
 struct _qcms_transform;
 typedef struct _qcms_transform qcms_transform;
@@ -149,7 +152,15 @@ void qcms_data_create_rgb_with_gamma(
                 void **mem,
                 size_t *size);
 
+/* The arguments are standardized Coding-independent Code Points
+ * See [Rec. ITU-T H.273 (12/2016)](https://www.itu.int/rec/T-REC-H.273-201612-I/en)
+ *
+ * Don't use enums here because they can't go safely across FFI. */
+qcms_profile* qcms_profile_create_cicp(uint8_t colour_primaries,
+                                       uint8_t transfer_characteristics);
+
 qcms_profile* qcms_profile_from_memory(const void *mem, size_t size);
+qcms_profile* qcms_profile_from_memory_curves_only(const void *mem, size_t size);
 
 qcms_profile* qcms_profile_from_file(FILE *file);
 qcms_profile* qcms_profile_from_path(const char *path);
@@ -163,6 +174,7 @@ void qcms_data_from_unicode_path(const wchar_t *path, void **mem, size_t *size);
 
 qcms_CIE_xyY qcms_white_point_sRGB(void);
 qcms_profile* qcms_profile_sRGB(void);
+qcms_profile* qcms_profile_displayP3(void);
 
 void qcms_profile_release(qcms_profile *profile);
 
@@ -185,6 +197,42 @@ void qcms_transform_data(qcms_transform *transform, const void *src, void *dest,
 void qcms_enable_iccv4();
 void qcms_enable_neon();
 void qcms_enable_avx();
+
+
+
+// -
+/*
+struct qcms_mat3r3 {
+    struct row {
+        float cols[3];
+    };
+    row rows[3];
+};
+*/
+struct qcms_profile_data {
+    uint32_t class_type;
+    uint32_t color_space;
+    uint32_t pcs;
+    qcms_intent rendering_intent;
+    float red_colorant_xyzd50[3];
+    float blue_colorant_xyzd50[3];
+    float green_colorant_xyzd50[3];
+    int32_t linear_from_trc_red_samples;
+    int32_t linear_from_trc_blue_samples;
+    int32_t linear_from_trc_green_samples;
+};
+
+void qcms_profile_get_data(const qcms_profile*, qcms_profile_data* out_data);
+
+
+enum class qcms_color_channel : uint8_t {
+    Red,
+    Green,
+    Blue,
+};
+
+void qcms_profile_get_lut(const qcms_profile*, qcms_color_channel,
+    float* begin, float* end);
 
 #ifdef  __cplusplus
 }

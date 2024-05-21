@@ -6,8 +6,10 @@
 
 #include "DecoderDoctorDiagnostics.h"
 #include "MediaKeySystemAccessPermissionRequest.h"
+#include "VideoUtils.h"
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/Document.h"
+#include "mozilla/dom/KeySystemNames.h"
 #include "mozilla/DetailedPromise.h"
 #include "mozilla/EMEUtils.h"
 #include "mozilla/Preferences.h"
@@ -16,9 +18,6 @@
 #include "mozilla/Unused.h"
 #ifdef XP_WIN
 #  include "mozilla/WindowsVersion.h"
-#endif
-#ifdef XP_MACOSX
-#  include "nsCocoaFeatures.h"
 #endif
 #include "nsComponentManagerUtils.h"
 #include "nsContentUtils.h"
@@ -33,7 +32,7 @@ namespace mozilla::dom {
 MediaKeySystemAccessManager::PendingRequest::PendingRequest(
     DetailedPromise* aPromise, const nsAString& aKeySystem,
     const Sequence<MediaKeySystemConfiguration>& aConfigs)
-    : mPromise(aPromise), mKeySystem(aKeySystem), mConfigs(aConfigs) {
+    : MediaKeySystemAccessRequest(aKeySystem, aConfigs), mPromise(aPromise) {
   MOZ_COUNT_CTOR(MediaKeySystemAccessManager::PendingRequest);
 }
 
@@ -70,8 +69,9 @@ void MediaKeySystemAccessManager::PendingRequest::RejectPromiseWithTypeError(
 }
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(MediaKeySystemAccessManager)
-  NS_INTERFACE_MAP_ENTRY(nsISupports)
+  NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIObserver)
   NS_INTERFACE_MAP_ENTRY(nsIObserver)
+  NS_INTERFACE_MAP_ENTRY(nsINamed)
 NS_INTERFACE_MAP_END
 
 NS_IMPL_CYCLE_COLLECTING_ADDREF(MediaKeySystemAccessManager)
@@ -374,6 +374,10 @@ void MediaKeySystemAccessManager::RequestMediaKeySystemAccess(
   //   agent, reject promise with a NotSupportedError. String comparison is
   //   case-sensitive.
   if (!IsWidevineKeySystem(aRequest->mKeySystem) &&
+#ifdef MOZ_WMF_CDM
+      !IsPlayReadyKeySystemAndSupported(aRequest->mKeySystem) &&
+      !IsWidevineExperimentKeySystemAndSupported(aRequest->mKeySystem) &&
+#endif
       !IsClearkeyKeySystem(aRequest->mKeySystem)) {
     // Not to inform user, because nothing to do if the keySystem is not
     // supported.
@@ -402,19 +406,23 @@ void MediaKeySystemAccessManager::RequestMediaKeySystemAccess(
 
   nsAutoCString message;
   MediaKeySystemStatus status =
-      MediaKeySystemAccess::GetKeySystemStatus(aRequest->mKeySystem, message);
+      MediaKeySystemAccess::GetKeySystemStatus(*aRequest, message);
 
   nsPrintfCString msg(
       "MediaKeySystemAccess::GetKeySystemStatus(%s) "
       "result=%s msg='%s'",
       NS_ConvertUTF16toUTF8(aRequest->mKeySystem).get(),
-      nsCString(MediaKeySystemStatusValues::GetString(status)).get(),
-      message.get());
+      GetEnumString(status).get(), message.get());
   LogToBrowserConsole(NS_ConvertUTF8toUTF16(msg));
+  EME_LOG("%s", msg.get());
 
-  // We may need to install the CDM to continue.
+  // We may need to install Widevine CDM to continue.
   if (status == MediaKeySystemStatus::Cdm_not_installed &&
-      IsWidevineKeySystem(aRequest->mKeySystem)) {
+      (IsWidevineKeySystem(aRequest->mKeySystem)
+#ifdef MOZ_WMF_CDM
+       || IsWidevineExperimentKeySystemAndSupported(aRequest->mKeySystem)
+#endif
+           )) {
     // These are cases which could be resolved by downloading a new(er) CDM.
     // When we send the status to chrome, chrome's GMPProvider will attempt to
     // download or update the CDM. In AwaitInstall() we add listeners to wait
@@ -436,13 +444,25 @@ void MediaKeySystemAccessManager::RequestMediaKeySystemAccess(
       return;
     }
 
-    const nsString keySystem = aRequest->mKeySystem;
+    nsString keySystem = aRequest->mKeySystem;
+#ifdef MOZ_WMF_CDM
+    // If cdm-not-install is for HWDRM, that means we want to install Widevine
+    // L1, which requires using hardware key system name for GMP to look up the
+    // plugin.
+    if (CheckIfHarewareDRMConfigExists(aRequest->mConfigs)) {
+      keySystem = NS_ConvertUTF8toUTF16(kWidevineExperimentKeySystemName);
+    }
+#endif
     if (AwaitInstall(std::move(aRequest))) {
       // Notify chrome that we're going to wait for the CDM to download/update.
+      EME_LOG("Await %s for installation",
+              NS_ConvertUTF16toUTF8(keySystem).get());
       MediaKeySystemAccess::NotifyObservers(mWindow, keySystem, status);
     } else {
       // Failed to await the install. Log failure and give up trying to service
       // this request.
+      EME_LOG("Failed to await %s for installation",
+              NS_ConvertUTF16toUTF8(keySystem).get());
       diagnostics.StoreMediaKeySystemAccess(mWindow->GetExtantDoc(), keySystem,
                                             false, __func__);
     }
@@ -452,6 +472,8 @@ void MediaKeySystemAccessManager::RequestMediaKeySystemAccess(
     // Failed due to user disabling something, send a notification to
     // chrome, so we can show some UI to explain how the user can rectify
     // the situation.
+    EME_LOG("Notify CDM failure for %s and reject the promise",
+            NS_ConvertUTF16toUTF8(aRequest->mKeySystem).get());
     MediaKeySystemAccess::NotifyObservers(mWindow, aRequest->mKeySystem,
                                           status);
     aRequest->RejectPromiseWithNotSupportedError(message);
@@ -594,7 +616,7 @@ nsresult MediaKeySystemAccessManager::Observe(nsISupports* aSubject,
     for (size_t i = mPendingInstallRequests.Length(); i-- > 0;) {
       nsAutoCString message;
       MediaKeySystemStatus status = MediaKeySystemAccess::GetKeySystemStatus(
-          mPendingInstallRequests[i]->mKeySystem, message);
+          *mPendingInstallRequests[i], message);
       if (status == MediaKeySystemStatus::Cdm_not_installed) {
         // Not yet installed, don't retry. Keep waiting until timeout.
         continue;
@@ -622,6 +644,11 @@ nsresult MediaKeySystemAccessManager::Observe(nsISupports* aSubject,
       }
     }
   }
+  return NS_OK;
+}
+
+nsresult MediaKeySystemAccessManager::GetName(nsACString& aName) {
+  aName.AssignLiteral("MediaKeySystemAccessManager");
   return NS_OK;
 }
 

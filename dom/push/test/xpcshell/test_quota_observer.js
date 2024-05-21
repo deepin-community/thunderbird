@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "28cd09e2-7506-42d8-9e50-b02785adc7ef";
 
 var db;
@@ -17,7 +15,7 @@ function run_test() {
   run_next_test();
 }
 
-let putRecord = async function(perm, record) {
+let putRecord = async function (perm, record) {
   let uri = Services.io.newURI(record.scope);
 
   PermissionTestUtils.add(
@@ -79,7 +77,7 @@ add_task(async function test_expiration_history_observer() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -108,7 +106,7 @@ add_task(async function test_expiration_history_observer() {
           equal(request.code, 201, "Expected quota exceeded unregister reason");
           unregisterDone();
         },
-        onACK(request) {},
+        onACK() {},
       });
     },
   });

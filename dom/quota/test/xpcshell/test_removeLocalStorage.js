@@ -10,7 +10,10 @@ function* testSteps() {
 
   info("Setting pref");
 
-  SpecialPowers.setBoolPref("dom.storage.next_gen", false);
+  SpecialPowers.setBoolPref(
+    "dom.storage.enable_unsupported_legacy_implementation",
+    true
+  );
 
   // Profile 1
   info("Clearing");
@@ -34,7 +37,7 @@ function* testSteps() {
   let request = init(continueToNextStepSync);
   yield undefined;
 
-  ok(request.resultCode == NS_OK, "Initialization succeeded");
+  Assert.equal(request.resultCode, NS_OK, "Initialization succeeded");
 
   info("Checking ls archive file");
 
@@ -70,7 +73,7 @@ function* testSteps() {
   request = init(continueToNextStepSync);
   yield undefined;
 
-  ok(request.resultCode == NS_OK, "Initialization succeeded");
+  Assert.equal(request.resultCode, NS_OK, "Initialization succeeded");
 
   info("Checking ls archive file");
 

@@ -2,11 +2,8 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-var { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
-);
-const { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
+const { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
 );
 
 /**
@@ -187,14 +184,14 @@ function waitForSourceLoaded(tab) {
  */
 async function openDocumentSelect(aURI, aCSSSelector) {
   let tab = await BrowserTestUtils.openNewForegroundTab(gBrowser, aURI);
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     gBrowser.removeTab(tab);
   });
 
   await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [{ selector: aCSSSelector }],
-    async function(arg) {
+    async function (arg) {
       let element = content.document.querySelector(arg.selector);
       content.getSelection().selectAllChildren(element);
     }
@@ -212,7 +209,7 @@ async function openDocumentSelect(aURI, aCSSSelector) {
  */
 async function openDocument(aURI) {
   let tab = await BrowserTestUtils.openNewForegroundTab(gBrowser, aURI);
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     gBrowser.removeTab(tab);
   });
 
@@ -224,7 +221,7 @@ function pushPrefs(...aPrefs) {
 }
 
 function waitForPrefChange(pref) {
-  let deferred = PromiseUtils.defer();
+  let deferred = Promise.withResolvers();
   let observer = () => {
     Preferences.ignore(pref, observer);
     deferred.resolve();

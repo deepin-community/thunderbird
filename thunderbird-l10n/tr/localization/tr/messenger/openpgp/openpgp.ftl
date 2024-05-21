@@ -1,53 +1,44 @@
-
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 e2e-intro-description = Şifrelenmiş veya dijital olarak imzalanmış iletiler göndermek için OpenPGP veya S/MIME gibi bir şifreleme teknolojisini yapılandırmanız gerekir.
 e2e-intro-description-more = OpenPGP kullanımını etkinleştirmek için kişisel anahtarınızı veya S/MIME kullanımını etkinleştirmek için kişisel sertifikanızı seçin. Kişisel anahtar veya sertifikanın gizli anahtarına da sahip olmalısınız.
+e2e-signing-description = Dijital imza sayesinde alıcılar iletinin sizin tarafınızdan gönderildiğini ve içeriğinin değiştirilmediğini doğrulayabilir. Şifrelenmiş iletiler varsayılan olarak her zaman imzalanır.
+e2e-sign-message =
+    .label = Şifrelenmemiş iletileri imzala
+    .accesskey = f
+e2e-disable-enc =
+    .label = Yeni iletiler için şifrelemeyi devre dışı bırak
+    .accesskey = Y
+e2e-enable-enc =
+    .label = Yeni iletiler için şifrelemeyi etkinleştir
+    .accesskey = n
+e2e-enable-description = İstediğiniz iletiler için şifrelemeyi devre dışı bırakabileceksiniz.
 e2e-advanced-section = Gelişmiş ayarlar
-
-openpgp-key-user-id-label = Hesap / Kullanıcı kimliği
-openpgp-keygen-title-label =
-    .title = OpenPGP Anahtarı Oluştur
-openpgp-cancel-key =
-    .label = İptal
-    .tooltiptext = Anahtar oluşturmayı iptal et
-openpgp-key-gen-expiry-title =
-    .label = Anahtar süre sonu
-openpgp-key-gen-expire-label = Anahtarın süre soru:
-openpgp-key-gen-days-label =
-    .label = gün
-openpgp-key-gen-months-label =
-    .label = ay
-openpgp-key-gen-years-label =
-    .label = yıl
-openpgp-key-gen-no-expiry-label =
-    .label = Anahtarın süresi dolmasın
-openpgp-key-gen-key-size-label = Anahtar boyutu
-openpgp-key-gen-console-label = Anahtar üretimi
-openpgp-key-gen-key-type-label = Anahtar türü
-openpgp-key-gen-key-type-rsa =
-    .label = RSA
-openpgp-key-gen-key-type-ecc =
-    .label = ECC (Eliptik Eğri)
-openpgp-generate-key =
-    .label = Anahtar oluştur
-    .tooltiptext = Şifreleme ve/veya imzalama için yeni bir OpenPGP uyumlu anahtar oluşturur
-openpgp-advanced-prefs-button-label =
-    .label = Gelişmiş…
-openpgp-keygen-desc = <a data-l10n-name="openpgp-keygen-desc-link">NOT: Anahtarın oluşturulması birkaç dakika sürebilir.</a> Anahtar oluşturma devam ederken uygulamadan çıkmayın. Anahtar oluşturma sırasında internette gezinmeniz ve veya diskiniz kullanmanız "rastgelelik havuzunu" dolduracak ve süreci hızlandıracaktır. Anahtar oluşturma tamamlandığında bilgilendirileceksiniz.
-
+e2e-attach-key =
+    .label = OpenPGP dijital imzası eklerken ortak anahtarımı da ekle
+    .accesskey = p
+e2e-encrypt-subject =
+    .label = OpenPGP iletilerinin konusunu şifrele
+    .accesskey = O
+e2e-encrypt-drafts =
+    .label = Taslak iletileri şifrelenmiş olarak sakla
+    .accesskey = r
+# Do not translate "Autocrypt", it's the name of a standard.
+e2e-autocrypt-headers =
+    .label = Autocrypt ile uyumluluk için OpenPGP ortak anahtarlarını e-posta üst bilgisinde gönder
+    .accesskey = t
+openpgp-key-created-label =
+    .label = Oluşturma
 openpgp-key-expiry-label =
     .label = Süre sonu
-
 openpgp-key-id-label =
     .label = Anahtar kimliği
-
 openpgp-cannot-change-expiry = Bu karmaşık yapıya sahip bir anahtar. Son kullanma tarihinin değiştirilmesi desteklenmiyor.
-
 openpgp-key-man-title =
     .title = OpenPGP Anahtar Yöneticisi
+openpgp-key-man-dialog-title = OpenPGP Anahtar Yöneticisi
 openpgp-key-man-generate =
     .label = Yeni anahtar çifti
     .accesskey = a
@@ -56,7 +47,9 @@ openpgp-key-man-gen-revoke =
     .accesskey = İ
 openpgp-key-man-ctx-gen-revoke-label =
     .label = İptal sertifikası oluştur ve kaydet
-
+openpgp-key-man-gen-revocation =
+    .label = İptal sertifikasını dosyaya kaydet
+    .accesskey = s
 openpgp-key-man-file-menu =
     .label = Dosya
     .accesskey = D
@@ -72,7 +65,6 @@ openpgp-key-man-generate-menu =
 openpgp-key-man-keyserver-menu =
     .label = Anahtar sunucusu
     .accesskey = A
-
 openpgp-key-man-import-public-from-file =
     .label = Ortak anahtarları dosyadan içe aktar
     .accesskey = O
@@ -95,29 +87,35 @@ openpgp-key-man-send-keys =
 openpgp-key-man-backup-secret-keys =
     .label = Gizli anahtar(lar)ı dosyaya yedekle
     .accesskey = G
-
 openpgp-key-man-discover-cmd =
     .label = Çevrimiçi anahtarları keşfet
     .accesskey = k
+openpgp-key-man-publish-cmd =
+    .label = Yayımla
+    .accesskey = Y
+openpgp-key-publish = Yayımla
 openpgp-key-man-discover-prompt = OpenPGP anahtarlarını çevrimiçi olarak anahtar sunucularında veya WKD protokolünü kullanarak bulmak için bir e-posta adresi veya bir anahtar kimliği girin.
 openpgp-key-man-discover-progress = Aranıyor…
-
+# Variables:
+# $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
+openpgp-key-publish-ok = Ortak anahtar "{ $keyserver }" sunucusuna gönderildi.
+# Variables:
+# $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
+openpgp-key-publish-fail = Ortak anahtarınız "{ $keyserver }" sunucusuna gönderilemedi.
 openpgp-key-copy-key =
     .label = Ortak anahtarı kopyala
     .accesskey = k
-
 openpgp-key-export-key =
     .label = Ortak anahtarı dosyaya aktar
     .accesskey = O
-
 openpgp-key-backup-key =
     .label = Gizli anahtarı dosyaya yedekle
     .accesskey = G
-
 openpgp-key-send-key =
     .label = Ortak anahtarı e-postayla gönder
     .accesskey = ö
-
+# Variables:
+# $count (Number) - Number of keys ids to copy.
 openpgp-key-man-copy-key-ids =
     .label =
         { $count ->
@@ -125,7 +123,8 @@ openpgp-key-man-copy-key-ids =
            *[other] Anahtar kimliklerini panoya kopyala
         }
     .accesskey = k
-
+# Variables:
+# $count (Number) - Number of fingerprints to copy.
 openpgp-key-man-copy-fprs =
     .label =
         { $count ->
@@ -133,7 +132,8 @@ openpgp-key-man-copy-fprs =
            *[other] Parmak izlerini panoya kopyala
         }
     .accesskey = P
-
+# Variables:
+# $count (Number) - Number of public keys to copy.
 openpgp-key-man-copy-to-clipboard =
     .label =
         { $count ->
@@ -141,14 +141,11 @@ openpgp-key-man-copy-to-clipboard =
            *[other] Ortak anahtarları panoya kopyala
         }
     .accesskey = O
-
-openpgp-key-man-ctx-expor-to-file-label =
-    .label = Anahtarları dosyaya aktar
-
 openpgp-key-man-ctx-copy =
     .label = Kopyala
     .accesskey = K
-
+# Variables:
+# $count (Number) - Number of fingerprints.
 openpgp-key-man-ctx-copy-fprs =
     .label =
         { $count ->
@@ -156,7 +153,8 @@ openpgp-key-man-ctx-copy-fprs =
            *[other] Parmak izleri
         }
     .accesskey = P
-
+# Variables:
+# $count (Number) - Number of key ids.
 openpgp-key-man-ctx-copy-key-ids =
     .label =
         { $count ->
@@ -164,7 +162,8 @@ openpgp-key-man-ctx-copy-key-ids =
            *[other] Anahtar kimlikleri
         }
     .accesskey = n
-
+# Variables:
+# $count (Number) - Number of public keys.
 openpgp-key-man-ctx-copy-public-keys =
     .label =
         { $count ->
@@ -172,7 +171,6 @@ openpgp-key-man-ctx-copy-public-keys =
            *[other] Ortak anahtarlar
         }
     .accesskey = O
-
 openpgp-key-man-close =
     .label = Kapat
 openpgp-key-man-reload =
@@ -181,6 +179,11 @@ openpgp-key-man-reload =
 openpgp-key-man-change-expiry =
     .label = Geçerlilik tarihini değiştir
     .accesskey = G
+openpgp-key-man-refresh-online =
+    .label = Çevrimiçi tazele
+    .accesskey = T
+openpgp-key-man-ignored-ids =
+    .label = E-posta adresleri
 openpgp-key-man-del-key =
     .label = Anahtar(lar)ı sil
     .accesskey = S
@@ -220,29 +223,34 @@ openpgp-key-man-nothing-found-tooltip =
     .label = Arama terimlerinizle eşleşen anahtar yok
 openpgp-key-man-please-wait-tooltip =
     .label = Anahtarlar yüklenirken lütfen bekleyin…
-
 openpgp-key-man-filter-label =
     .placeholder = Anahtar ara
-
 openpgp-key-man-select-all-key =
     .key = A
 openpgp-key-man-key-details-key =
     .key = I
-
-openpgp-key-details-title =
-    .title = Anahtar özellikleri
+openpgp-ign-addr-intro = Aşağıdaki seçili e-posta adresleri için bu anahtarı kullanmayı kabul ediyorsunuz:
+openpgp-key-details-doc-title = Anahtar Özellikleri
 openpgp-key-details-signatures-tab =
     .label = Sertifikalar
 openpgp-key-details-structure-tab =
     .label = Yapı
 openpgp-key-details-uid-certified-col =
     .label = Kullanıcı kimliği / Onaylayan
-openpgp-key-details-user-id2-label = İddia edilen anahtar sahibi
+openpgp-key-details-key-id-label = Anahtar kimliği
+openpgp-key-details-user-id3-label = Talep eden anahtar sahibi
 openpgp-key-details-id-label =
     .label = Kimlik
 openpgp-key-details-key-type-label = Türü
 openpgp-key-details-key-part-label =
     .label = Anahtar bölümü
+openpgp-key-details-attr-ignored = Uyarı: Bazı özellikleri güvenli olmadığından ve göz ardı edilebileceğinden, bu anahtar beklendiği gibi çalışmıyor olabilir.
+openpgp-key-details-attr-upgrade-sec = Güvenli olmayan özellikleri yükseltmelisiniz.
+openpgp-key-details-attr-upgrade-pub = Bu anahtarın sahibinden güvenli olmayan özellikleri yükseltmesini istemelisiniz.
+openpgp-key-details-upgrade-unsafe =
+    .label = Güvensiz özellikleri yükselt
+    .accesskey = G
+openpgp-key-details-upgrade-ok = Anahtar başarıyla yükseltildi. Yükseltilmiş ortak anahtarı yazıştığınız kişilerle paylaşmalısınız.
 openpgp-key-details-algorithm-label =
     .label = Algoritma
 openpgp-key-details-size-label =
@@ -256,10 +264,10 @@ openpgp-key-details-expiry-header = Süre sonu
 openpgp-key-details-usage-label =
     .label = Kullanım
 openpgp-key-details-fingerprint-label = Parmak izi
+openpgp-key-details-legend-secret-missing = (!) ile işaretlenmiş anahtarlar için gizli anahtar kullanılamaz.
 openpgp-key-details-sel-action =
     .label = Eylem seçin…
     .accesskey = E
-openpgp-key-details-also-known-label = Anahtar sahibinin iddia edilen alternatif kimlikleri:
 openpgp-card-details-close-window-label =
     .buttonlabelaccept = Kapat
 openpgp-acceptance-label =
@@ -273,89 +281,87 @@ openpgp-acceptance-unverified-label =
 openpgp-acceptance-verified-label =
     .label = Evet, bu anahtarın doğru parmak izine sahip olduğunu doğruladım.
 key-accept-personal =
-    Bu anahtarın hem ortak hem gizli parçasına sahipsiniz. Anahtarı Kişisel anahtar olarak kullanabilirsiniz.
+    Bu anahtarın hem ortak hem gizli parçasına sahipsiniz. Bu anahtarı kişisel anahtar olarak kullanabilirsiniz.
     Ama bu anahtarı size başka birisi verdiyse kişisel anahtar olarak kullanmayın.
-key-personal-warning = Bu anahtarı kendiniz mi oluşturdunuz ve ekranda görünen anahtar sahibi siz misiniz?
 openpgp-personal-no-label =
     .label = Hayır, kişisel anahtarım olarak kullanma.
 openpgp-personal-yes-label =
-    .label = Evet, bu anahtara kişisel anahtar olarak kullan.
-
+    .label = Evet, bu anahtarı kişisel anahtar olarak kullan.
+openpgp-passphrase-protection =
+    .label = Parola koruması
+openpgp-passphrase-status-unprotected = Korumasız
+openpgp-passphrase-status-primary-password = { -brand-short-name } ana parolasıyla korunuyor
+openpgp-passphrase-status-user-passphrase = Parolayla korunuyor
+openpgp-passphrase-instruction-unprotected = Bu anahtarı korumak için bir parola belirleyin
+openpgp-passphrase-instruction-primary-password = Alternatif olarak, bu anahtarı ayrı bir parolayla koruyun
+openpgp-passphrase-instruction-user-passphrase = Korumasını değiştirmek için bu anahtarın kilidini açın.
+openpgp-passphrase-unlock = Kilidi aç
+openpgp-passphrase-unlocked = Anahtarın kilidi başarıyla açıldı.
+openpgp-remove-protection = Parola korumasını kaldır
+openpgp-use-primary-password = Parolayı kaldır ve ana parola ile koru
+openpgp-passphrase-new = Yeni parola
+openpgp-passphrase-new-repeat = Yeni parolayı doğrulayın
+openpgp-passphrase-set = Parola belirle
+openpgp-passphrase-change = Parolayı değiştir
 openpgp-copy-cmd-label =
     .label = Kopyala
 
 ## e2e encryption settings
 
+#   $identity (String) - the email address of the currently selected identity
+openpgp-description-no-key = { -brand-short-name }, <b>{ $identity }</b> için kişisel OpenPGP anahtarına sahip değil
 #   $count (Number) - the number of configured keys associated with the current identity
 #   $identity (String) - the email address of the currently selected identity
-openpgp-description =
+openpgp-description-has-keys =
     { $count ->
-        [0] Thunderbird <b>{ $identity }</b> için kişisel OpenPGP anahtarına sahip değil
-        [one] Thunderbird, <b>{ $identity }</b> ile ilişkili { $count } kişisel OpenPGP anahtarı buldu
-       *[other] Thunderbird, <b>{ $identity }</b> ile ilişkili { $count } kişisel OpenPGP anahtarı buldu
+        [one] { -brand-short-name }, <b>{ $identity }</b> ile ilişkili { $count } kişisel OpenPGP anahtarı buldu
+       *[other] { -brand-short-name }, <b>{ $identity }</b> ile ilişkili { $count } kişisel OpenPGP anahtarı buldu
     }
-
 #   $key (String) - the currently selected OpenPGP key
 openpgp-selection-status-have-key = Geçerli yapılandırmalarınızda <b>{ $key }</b> anahtar kimliği kullanılıyor
-
 #   $key (String) - the currently selected OpenPGP key
 openpgp-selection-status-error = Geçerli yapılandırmanızda süresi dolmuş <b>{ $key }</b> anahtarı kullanılıyor.
-
 openpgp-add-key-button =
     .label = Anahtar ekle…
     .accesskey = e
-
 e2e-learn-more = Daha fazla bilgi al
-
 openpgp-keygen-success = OpenPGP anahtarı başarıyla oluşturuldu!
-
 openpgp-keygen-import-success = OpenPGP anahtarları başarıyla içe aktarıldı!
-
 openpgp-keygen-external-success = Harici GnuPG anahtar kimliği kaydedildi!
 
 ## OpenPGP Key selection area
 
 openpgp-radio-none =
     .label = Hiçbiri
-
 openpgp-radio-none-desc = Bu kimlik için OpenPGP kullanma.
-
 openpgp-radio-key-not-usable = Gizli anahtar eksik olduğu için bu anahtar kişisel anahtar olarak kullanılamaz.
 openpgp-radio-key-not-accepted = Bu anahtarı kullanmak için kişisel anahtar olarak onaylamanız gerekiyor.
 openpgp-radio-key-not-found = Bu anahtar bulunamadı! Anahtarı kullanmak istiyorsanız { -brand-short-name }’e aktarmalısınız.
-
-#   $key (String) - the expiration date of the OpenPGP key
+#   $date (String) - the future expiration date of when the OpenPGP key will expire
 openpgp-radio-key-expires = Son geçerlilik tarihi: { $date }
-
-#   $key (String) - the expiration date of the OpenPGP key
+#   $date (String) - the past expiration date of when the OpenPGP key expired
 openpgp-radio-key-expired = Son geçerlilik tarihi: { $date }
-
 openpgp-key-expires-within-6-months-icon =
     .title = Anahtarın süresi 6 aydan kısa bir süre içinde dolacak
-
 openpgp-key-has-expired-icon =
     .title = Anahtarın süresi doldu
-
+openpgp-suggest-publishing-key = Ortak anahtarı bir anahtar sunucusunda yayımlamak, başkalarının anahtarı keşfetmesine olanak tanır.
 openpgp-key-expand-section =
     .tooltiptext = Daha fazla bilgi
-
 openpgp-key-revoke-title = Anahtarı iptal et
-
 openpgp-key-edit-title = OpenPGP anahtarını değiştir
-
 openpgp-key-edit-date-title = Geçerlilik tarihini uzat
-
+openpgp-manager-description = Yazıştığınız kişilerin ortak anahtarlarını ve yukarıda listelenmeyen diğer tüm anahtarları görüntülemek ve yönetmek için OpenPGP anahtar yöneticisini kullanın.
 openpgp-manager-button =
     .label = OpenPGP Anahtar Yöneticisi
     .accesskey = Y
-
 openpgp-key-remove-external =
     .label = Harici anahtar kimliğini kaldır
     .accesskey = H
-
 key-external-label = Harici GnuPG anahtarı
 
-# Strings in keyDetailsDlg.xhtml
+## Strings in keyDetailsDlg.xhtml
+
 key-type-public = ortak anahtar
 key-type-primary = birincil anahtar
 key-type-subkey = alt anahtar
@@ -365,21 +371,26 @@ key-usage-encrypt = Şifrele
 key-usage-sign = İmzala
 key-usage-certify = Onayla
 key-usage-authentication = Yetkilendirme
+key-does-not-expire = Anahtarın süresi dolmasın
+# Variables:
+# $keyExpiry (String) - Date the key expired on.
 key-expired-date = Anahtarın süresi { $keyExpiry } tarihinde doldu
 key-expired-simple = Anahtarın süresi doldu
 key-revoked-simple = Anahtar iptal edildi
 key-do-you-accept = Dijital imzaları doğrulamak ve iletileri şifrelemek için bu anahtarı kabul ediyor musunuz?
+# Variables:
+# $addr (String) - Email address the key claims it belongs to.
+key-verification = Gerçekten { $addr } e-postasının anahtarı olduğundan emin olmak için e-posta dışında güvenli bir iletişim kanalı kullanarak anahtarın parmak izini doğrulayın.
 
-# Strings enigmailMsgComposeOverlay.js
+## Strings enigmailMsgComposeOverlay.js
+
+# Variables:
+# $problem (String) - Error message from key usability check.
 cannot-use-own-key-because = Kişisel anahtarınızla ilgili bir sorun olduğundan ileti gönderilemedi. { $problem }
-cannot-encrypt-because-missing = Aşağıdaki alıcıların anahtarlarında sorun olduğu için bu ileti uçtan uca şifrelemeyle gönderilemedi: { $problem }
 window-locked = Oluşturma penceresi kilitli; gönderme iptal edildi
 
-# Strings in mimeDecrypt.jsm
-mime-decrypt-encrypted-part-attachment-label = Şifrelenmiş mesaj bölümü
-mime-decrypt-encrypted-part-concealed-data = Bu, şifrelenmiş bir ileti parçasıdır. Eke tıklayarak ayrı bir pencerede açmanız gerekiyor.
+## Strings in keyserver.jsm
 
-# Strings in keyserver.jsm
 keyserver-error-aborted = Durduruldu
 keyserver-error-unknown = Bilinmeyen bir hata oluştu
 keyserver-error-server-error = Anahtar sunucusu bir hata bildirdi.
@@ -389,41 +400,59 @@ keyserver-error-security-error = Anahtar sunucusu şifreli erişimi desteklemiyo
 keyserver-error-certificate-error = Anahtar sunucusunun sertifikası geçerli değil.
 keyserver-error-unsupported = Anahtar sunucusu desteklenmiyor.
 
+## Strings in mimeWkdHandler.jsm
+
+wkd-message-body-req =
+    E-posta sağlayıcınız ortak anahtarınızı OpenPGP web anahtarı dizinine yükleme isteğinizi işleme koydu.
+    Lütfen ortak anahtarınızın yayımlanmasını tamamlamak için onaylayın.
 wkd-message-body-process =
     Bu, ortak anahtarınızı OpenPGP Web Anahtar Dizini'ne yüklemek için otomatik işlemeyle ilgili bir e-postadır.
     Şu anda herhangi bir işlem yapmanız gerekmiyor.
 
-# Strings in gpg.jsm
-unknown-signing-alg = Bilinmeyen imzalama algoritması (ID: { $id })
+## Strings in persistentCrypto.jsm
 
-expiry-open-key-manager = OpenPGP anahtar yöneticisini aç
-expiry-open-key-properties = Anahtar özelliklerini aç
 
-# Strings filters.jsm
+## Strings filters.jsm
+
 filter-folder-required = Bir hedef klasör seçmelisiniz.
 filter-term-pgpencrypted-label = OpenPGP ile şifrelenmiş
 filter-key-required = Bir alıcı anahtarı seçmelisiniz.
+# Variables:
+# $desc (String) - Email address to look for a key of.
 filter-key-not-found = '{ $desc }' için şifreleme anahtarı bulunamadı.
 
-# Strings filtersWrapper.jsm
+## Strings filtersWrapper.jsm
+
 filter-decrypt-move-label = Kalıcı olarak şifresini çöz (OpenPGP)
 filter-decrypt-copy-label = Şifresi çözülmüş bir kopya oluştur (OpenPGP)
 filter-encrypt-label = Anahtara şifrele (OpenPGP)
 
-# Strings in enigmailKeyImportInfo.js
+## Strings in enigmailKeyImportInfo.js
+
 import-info-title =
     .title = Anahtarlar başarıyla içe aktarıldı!
+import-info-dialog-title = Anahtarlar başarıyla içe aktarıldı!
 import-info-bits = Bit
 import-info-created = Oluşturma
 import-info-fpr = Parmak izi
 import-info-details = Ayrıntıları görüntüle ve anahtar kabulünü yönet
 import-info-no-keys = İçe aktarılmış anahtar yok.
 
-# Strings in enigmailKeyManager.js
+## Strings in enigmailKeyManager.js
+
 import-from-clip = Panodan bazı anahtarları içe aktarmak istiyor musunuz?
 import-from-url = Ortak anahtarı bu adresten indir:
 copy-to-clipbrd-failed = Seçilen anahtar(lar) panoya kopyalanamadı.
 copy-to-clipbrd-ok = Anahtar(lar) panoya kopyalandı
+delete-mix =
+    UYARI: Gizli anahtarları silmek üzeresiniz!
+    Gizli anahtarınızı silerseniz artık o anahtar kullanılarak şifrelenmiş iletilerin şifresini çözemezsiniz.
+    Seçilen gizli ve ortak anahtarların HER ikisini de gerçekten silmek istiyor musunuz?
+# Variables:
+# $userId (String) - User id of the key.
+delete-pub-key =
+    ‘{ $userId }’
+    ortak anahtarını silmek istiyor musunuz?
 delete-selected-pub-key = Ortak anahtarları silmek istiyor musunuz?
 refresh-all-question = Herhangi bir anahtar seçmediniz. TÜM anahtarları yenilemek ister misiniz?
 key-man-button-export-sec-key = &Gizli anahtarları dışa aktar
@@ -439,7 +468,10 @@ save-keys-ok = Anahtarlar başarıyla kaydedildi
 save-keys-failed = Anahtarların kaydedilmesi başarısız oldu
 default-pub-key-filename = Disa-aktarilan-ortak-anahtarlar
 default-pub-sec-key-filename = Gizli-anahtar-yedegi
+refresh-key-warn = Uyarı: Anahtar sayısına ve bağlantı hızına bağlı olarak, tüm anahtarların yenilenmesi oldukça uzun sürebilir.
 preview-failed = Ortak anahtar dosyası okunamıyor.
+# Variables:
+# $reason (String) - Error description.
 general-error = Hata: { $reason }
 dlg-button-delete = &Sil
 
@@ -447,63 +479,84 @@ dlg-button-delete = &Sil
 
 openpgp-export-public-success = <b>Ortak anahtar başarıyla dışa aktarıldı.</b>
 openpgp-export-public-fail = <b>Seçilen ortak anahtar dışa aktarılamadı.</b>
-
 openpgp-export-secret-success = <b>Gizli anahtar başarıyla dışa aktarıldı.</b>
 openpgp-export-secret-fail = <b>Seçilen gizli anahtar dışa aktarılamadı.</b>
 
-# Strings in keyObj.jsm
+## Strings in keyObj.jsm
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = { $userId } anahtarı (anahtar kimliği { $keyId }) iptal edildi.
 key-ring-pub-key-expired = { $userId } anahtarının (anahtar kimliği { $keyId }) süresi doldu.
+key-ring-no-secret-key = Anahtarlığınızda { $userId } (anahtar kimliği { $keyId }) için gizli anahtar yok. İmzalama için bu anahtarı kullanamazsınız.
+key-ring-pub-key-not-for-signing = { $userId } anahtarı (anahtar kimliği { $keyId }) imzalama için kullanılamaz.
+key-ring-pub-key-not-for-encryption = { $userId } anahtarı (anahtar kimliği { $keyId }) şifreleme için kullanılamaz.
 key-ring-sign-sub-keys-revoked = { $UserId } anahtarının tüm imzalama alt anahtarları (anahtar kimliği { $keyId }) iptal edildi.
 key-ring-sign-sub-keys-expired = { $userId } anahtarının (anahtar kimliği { $keyId }) tüm imzalama alt anahtarlarının süresi doldu.
 key-ring-enc-sub-keys-revoked = { $userId } anahtarının tüm şifreleme alt anahtarları (anahtar kimliği { $keyId }) iptal edildi.
+key-ring-enc-sub-keys-expired = { $userId } anahtarının tüm şifreleme alt anahtarlarının (anahtar kimliği { $keyId }) süresi doldu.
 
-# Strings in gnupg-keylist.jsm
+## Strings in gnupg-keylist.jsm
+
 keyring-photo = Fotoğraf
 user-att-photo = Kullanıcı özniteliği (JPEG resmi)
 
-# Strings in key.jsm
-already-revoked = Bu anahtar zaten iptal edilmiş.
+## Strings in key.jsm
 
+already-revoked = Bu anahtar zaten iptal edilmiş.
 #   $keyId (String) - the id of the key being revoked
 revoke-key-already-revoked = 0x{ $keyId } anahtarı zaten iptal edilmiş.
-
 key-man-button-revoke-key = &Anahtarı iptal et
-
 openpgp-key-revoke-success = Anahtar başarıyla iptal edildi.
 
-# Strings in keyRing.jsm & decryption.jsm
+## Strings in keyRing.jsm & decryption.jsm
+
 key-man-button-import = &İçe aktar
-
 delete-key-title = OpenPGP anahtarını sil
-
 delete-external-key-title = Harici GnuPG anahtarını çıkar
-
 delete-external-key-description = Bu harici GnuPG anahtar kimliğini kaldırmak istiyor musunuz?
-
 key-in-use-title = Şu anda kullanılan OpenPGP anahtarı
+delete-key-in-use-description = Devam edilemiyor! Silmek için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip tekrar deneyin.
+revoke-key-in-use-description = Devam edilemiyor! İptal için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip tekrar deneyin.
 
+## Strings used in errorHandling.jsm
+
+# Variables:
+# $keySpec (String) - Email address.
+key-error-key-spec-not-found = ‘{ $keySpec }’ e-posta adresi, anahtarlığınızdaki bir anahtarla eşleştirilemez.
+# $keySpec (String) - Key id.
+key-error-key-id-not-found = Yapılandırılan anahtar kimliği ‘{ $keySpec }’ anahtarlığınızda bulunamadı.
+# $keySpec (String) - Key id.
 key-error-not-accepted-as-personal = '{ $keySpec }' kimliğine sahip anahtarın kişisel anahtarınız olduğunu doğrulamadınız.
 
-# Strings used in enigmailKeyManager.js & windows.jsm
+## Strings used in enigmailKeyManager.js & windows.jsm
+
 need-online = Seçtiğiniz işlev çevrimdışı modda kullanılamaz. Lütfen çevrimiçi olun ve tekrar deneyin.
 
-# Strings used in keyRing.jsm & keyLookupHelper.jsm
-no-key-found = Belirtilen arama ölçütleriyle eşleşen bir anahtar bulamadık.
+## Strings used in keyRing.jsm & keyLookupHelper.jsm
 
-# Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
+no-key-found2 = Belirtilen arama ölçütleriyle eşleşen kullanılabilir bir anahtar bulamadık.
+no-update-found = Çevrimiçi keşfedilmiş anahtarlara zaten sahipsiniz.
+
+## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
+
 fail-key-extract = Hata - Anahtar çıkarma komutu başarısız oldu
 
-# Strings used in keyRing.jsm
+## Strings used in keyRing.jsm
+
 fail-cancel = Hata - Anahtar alımı kullanıcı tarafından iptal edildi
 not-first-block = Hata - İlk OpenPGP bloku ortak anahtar bloku değil
 import-key-confirm = İletiye gömülü ortak anahtar(lar) içe aktarılsın mı?
 fail-key-import = Hata - anahtar içe aktarma başarısız oldu
+# Variables:
+# $output (String) - File that writing was attempted to.
 file-write-failed = { $output } dosyasına yazılamadı
 no-pgp-block = Hata - Geçerli bir zırhlı OpenPGP veri bloku bulunamadı
 confirm-permissive-import = İçe aktarma başarısız oldu. İçe aktarmaya çalıştığınız anahtar bozuk veya bilinmeyen öznitelikler kullanıyor olabilir. Düzgün görünen kısımları içe aktarmayı denemek ister misiniz? Bu, eksik ve kullanılamaz anahtarların içe aktarılmasına neden olabilir.
 
-# Strings used in trust.jsm
+## Strings used in trust.jsm
+
 key-valid-unknown = bilinmiyor
 key-valid-invalid = geçersiz
 key-valid-disabled = devre dışı
@@ -512,36 +565,60 @@ key-valid-expired = süresi doldu
 key-trust-untrusted = güvenilmeyen
 key-trust-marginal = marjinal
 key-trust-full = güvenilir
+key-trust-ultimate = en yüksek
 key-trust-group = (grup)
 
-# Strings used in commonWorkflows.js
+## Strings used in commonWorkflows.js
+
 import-key-file = OpenPGP anahtar dosyasını içe aktar
 import-rev-file = OpenPGP iptal dosyasını içe aktar
 gnupg-file = GnuPG dosyaları
 import-keys-failed = Anahtarlar içe aktarılamadı
-passphrase-prompt = Lütfen şu anahtarın kilidini açan parolayı girin: { $key }
+# Variables:
+# $key (String) - Key id to unlock.
+# $date (String) - The date on which the key was created
+# $username_and_email (String) - The user name, and/or the email address which the key owner has set for the key.
+passphrase-prompt2 = { $key } kimlikli, { $date } tarihinde oluşturulan { $username_and_email } gizli anahtarının kilidini açmak için parolayı girin
+# Variables:
+# $subkey (String) - Key id to unlock, which is a subkey.
+# $key (String) - This is the main key, to which the subkey belongs.
+# $date (String) - The date on which the key was created
+# $username_and_email (String) - The user name, and/or the email address which the key owner has set for the key.
+passphrase-prompt2-sub = { $key } anahtar kimliğinin alt anahtarı olan { $subkey } kimlikli, { $date } tarihinde oluşturulan { $username_and_email } gizli anahtarının kilidini açmak için parolayı girin
 file-to-big-to-import = Bu dosya çok büyük. Lütfen büyük anahtar kümelerini aynı anda içe aktarmayın.
 
-# Strings used in enigmailKeygen.js
+## Strings used in enigmailKeygen.js
+
 save-revoke-cert-as = İptal sertifikası oluştur ve kaydet
+revoke-cert-ok = İptal sertifikası başarıyla oluşturuldu. Bu sertifikayı gizli anahtarınızı kaybetmeniz gibi durumlarda ortak anahtarınızı iptal etmek için kullanabilirsiniz.
 revoke-cert-failed = İptal sertifikası oluşturulamadı.
 gen-going = Anahtar üretimi devam ediyor!
+keygen-missing-user-name = Seçilen hesap/kimlik için bir ad belirtilmedi. Lütfen hesap ayarlarında  “Adınız” alanına bir değer girin.
 expiry-too-short = Anahtarınız en az bir gün geçerli olmalıdır.
 expiry-too-long = Süresi 100 yıldan fazla olan bir anahtar oluşturamazsınız.
+# Variables:
+# $id (String) - Name and/or email address to generate keys for.
 key-confirm = '{ $id }' için ortak ve gizli anahtar oluşturulsun mu?
 key-man-button-generate-key = Anahtar &oluştur
 key-abort = Anahtar üretimi iptal edilsin mi?
 key-man-button-generate-key-abort = Anahtar üretmeyi &iptal et
 key-man-button-generate-key-continue = Anahtar üretmeye &devam et
 
-# Strings used in enigmailMessengerOverlay.js
+## Strings used in enigmailMessengerOverlay.js
 
 failed-decrypt = Hata - şifre çözme başarısız oldu
 fix-broken-exchange-msg-failed = Bu ileti onarılamadı.
-
+# Variables:
+# $attachment (String) - File name of the signature file.
 attachment-no-match-from-signature = '{ $attachment }' imza dosyası bir ekle eşleştirilemedi
+# Variables:
+# $attachment (String) - File name of the attachment.
 attachment-no-match-to-signature = '{ $attachment }' eki ile imza dosyası eşleştirilemedi
+# Variables:
+# $attachment (String) - File name of the attachment
 signature-verified-ok = { $attachment } ekinin imzası başarıyla doğrulandı
+# Variables:
+# $attachment (String) - File name of the attachment
 signature-verify-failed = { $attachment } ekinin imzası doğrulanamadı
 decrypt-ok-no-sig =
     Uyarı
@@ -549,53 +626,85 @@ decrypt-ok-no-sig =
 msg-ovl-button-cont-anyway = &Yine de devam et
 enig-content-note = *Bu iletideki ekler imzalanmamış ve şifrelenmemiştir*
 
-# Strings used in enigmailMsgComposeOverlay.js
+## Strings used in enigmailMsgComposeOverlay.js
+
 msg-compose-button-send = &İletiyi gönder
 msg-compose-details-button-label = Ayrıntılar…
 msg-compose-details-button-access-key = n
 send-aborted = Gönderme işlemi iptal edildi.
+# Variables:
+# $key (String) - Key id.
+key-not-trusted = ‘{ $key }’ anahtarı için güven yetersiz
+# Variables:
+# $key (String) - Key id.
 key-not-found = '{ $key }' anahtarı bulunamadı
+# Variables:
+# $key (String) - Key id.
 key-revoked = '{ $key }' anahtarı iptal edildi
+# Variables:
+# $key (String) - Key id.
 key-expired = '{ $key }' anahtarının süresi doldu
 msg-compose-internal-error = Dahili bir hata oluştu.
 keys-to-export = Eklenecek OpenPGP anahtarlarını seçin
 msg-compose-cannot-save-draft = Taslak kaydedilirken hata oluştu
 msg-compose-partially-encrypted-short = Hassas bilgilerin sızmasına karşı dikkatli olun: Bu e-posta kısmen şifrelenmiş.
+# Variables:
+# $width (Number) - Number of characters per line.
+minimal-line-wrapping =
+    Satır kaydırmayı { $width } karakter olarak ayarladınız. Doğru şifreleme ve/veya imzalama için bu değer en az 68 karakter olmalıdır.
+    Satır kaydırmayı 68 karakter olarak değiştirmek ister misiniz?
+sending-news =
+    Şifrelenmiş gönderme işlemi iptal edildi.
+    Alıcılar arasında haber grubu alıcıları olduğu için bu ileti şifrelenemez. Lütfen iletiyi şifrelemeden tekrar gönderin.
 save-attachment-header = Şifresi çözülmüş eki kaydet
-no-temp-dir =
-    Yazılacak geçici klasör bulunamadı
-    Lütfen TEMP ortam değişkenini ayarlayın
+# Variables:
+# $key (String) - Sender email address.
 cannot-send-sig-because-no-own-key = <{ $key }> için uçtan uca şifrelemeyi henüz yapılandırmadığınız için bu iletiyi dijital olarak imzalayamazsınız
+# Variables:
+# $key (String) - Sender email address.
 cannot-send-enc-because-no-own-key = <{ $key }> anahtarı için uçtan uca şifrelemeyi henüz yapılandırmadığınız için bu ileti şifrelenmiş olarak gönderilemiyor
 
-compose-menu-attach-key =
-    .label = Ortak anahtarımı ekle
-    .accesskey = e
+## Strings used in decryption.jsm
 
-# Strings used in decryption.jsm
+# Variables:
+# $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
     Aşağıdaki anahtarlar içe aktarılsın mı?
     { $key }
+# Variables:
+# $name (String) - Name and/or email address mentioned in the key.
+# $id (String) - Key id of the key.
 do-import-one = { $name } ({ $id }) içe aktarılsın mı?
 cant-import = Ortak anahtar içe aktarılırken hata oluştu
 unverified-reply = Girintili ileti kısmı (yanıt) muhtemelen değiştirilmiş
 key-in-message-body = İleti gövdesinde bir anahtar bulundu. İçe aktarmak için "Anahtarı içe aktar"a tıklayın
 sig-mismatch = Hata - İmza uyuşmazlığı
 invalid-email = Hata: geçersiz e-posta adres(ler)i
+# Variables:
+# $name (String) - File name of the attachment.
 attachment-pgp-key =
-    Açtığınız '{ $name }' eki bir OpenPGP anahtar dosyası gibi görünüyor.
-    Dosyanın içerdiği anahtarları içe aktarmak için 'İçe aktar'ı veya dosya içeriğini tarayıcı penceresinde görüntülemek için 'Görüntüle'yi tıklayın
+    Açtığınız ‘{ $name }’ eki bir OpenPGP anahtar dosyası gibi görünüyor.
+    Dosyanın içerdiği anahtarları içe aktarmak için ‘İçe aktar’ı veya dosya içeriğini tarayıcı penceresinde görüntülemek için ‘Görüntüle’yi tıklayın
 dlg-button-view = &Göster
 
-# Strings used in encryption.jsm
+## Strings used in encryption.jsm
+
 not-required = Hata - şifreleme gerekmiyor
 
-# Strings used in windows.jsm
+## Strings used in windows.jsm
+
 no-photo-available = Fotoğraf yok
+# Variables:
+# $photo (String) - Path of the photo in the key.
 error-photo-path-not-readable = '{ $photo }' fotoğraf yolu okunamıyor
 debug-log-title = OpenPGP hata ayıklama günlüğü
 
-# Strings used in dialog.jsm
+## Strings used in dialog.jsm
+
+# This string is followed by either repeat-suffix-singular if $count is 1 or else
+# by repeat-suffix-plural.
+# Variables:
+# $count (Number) - Number of times the alert will repeat.
 repeat-prefix = Bu uyarı { $count }
 repeat-suffix-singular = kere daha tekrarlanacak.
 repeat-suffix-plural = kere daha tekrarlanacak.
@@ -610,10 +719,12 @@ enig-confirm = OpenPGP Onayı
 enig-alert = OpenPGP Uyarısı
 enig-info = OpenPGP Bilgilendirmesi
 
-# Strings used in persistentCrypto.jsm
+## Strings used in persistentCrypto.jsm
+
 dlg-button-retry = &Yeniden dene
 dlg-button-skip = &Geç
 
-# Strings used in enigmailMsgBox.js
+## Strings used in enigmailMsgBox.js
+
 enig-alert-title =
     .title = OpenPGP uyarısı

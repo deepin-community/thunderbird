@@ -2,14 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalAttachment: "resource:///modules/CalAttachment.jsm",
-  CalAttendee: "resource:///modules/CalAttendee.jsm",
-  CalEvent: "resource:///modules/CalEvent.jsm",
-  CalRelation: "resource:///modules/CalRelation.jsm",
-  CalTodo: "resource:///modules/CalTodo.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalAttachment: "resource:///modules/CalAttachment.sys.mjs",
+  CalAttendee: "resource:///modules/CalAttendee.sys.mjs",
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  CalRelation: "resource:///modules/CalRelation.sys.mjs",
+  CalTodo: "resource:///modules/CalTodo.sys.mjs",
 });
 
 function run_test() {
@@ -124,24 +124,22 @@ function test_roundtrip() {
     }
   }
 
-  let icssrv = cal.getIcsService();
-
-  for (let data of test_data) {
+  for (const data of test_data) {
     // First round, use the icalString setter which uses synchronous parsing
     dump("Checking" + data.ics + "\n");
-    let event = createEventFromIcalString(data.ics);
+    const event = createEventFromIcalString(data.ics);
     checkEvent(data, event);
 
     // Now, try the same thing with asynchronous parsing. We need a copy of
     // the data variable, otherwise javascript will mix the data between
     // foreach loop iterations.
     do_test_pending();
-    let thisdata = data;
-    icssrv.parseICSAsync(data.ics, null, {
+    const thisdata = data;
+    cal.icsService.parseICSAsync(data.ics, {
       onParsingComplete(rc, rootComp) {
         try {
           ok(Components.isSuccessCode(rc));
-          let event2 = new CalEvent();
+          const event2 = new CalEvent();
           event2.icalComponent = rootComp;
           checkEvent(thisdata, event2);
           do_test_finished();
@@ -158,7 +156,7 @@ function test_folding() {
   // check folding
   const id =
     "loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong-id-provoking-folding";
-  let todo = new CalTodo(),
+  const todo = new CalTodo(),
     todo_ = new CalTodo();
   todo.id = id;
   todo_.icalString = todo.icalString;
@@ -177,9 +175,8 @@ function test_icalProps() {
  */
 
 function checkIcalProp(aPropName, aObj) {
-  let icssvc = cal.getIcsService();
-  let prop1 = icssvc.createIcalProperty(aPropName);
-  let prop2 = icssvc.createIcalProperty(aPropName);
+  const prop1 = cal.icsService.createIcalProperty(aPropName);
+  const prop2 = cal.icsService.createIcalProperty(aPropName);
   prop1.value = "foo";
   prop2.value = "bar";
   prop1.setParameter("X-FOO", "BAR");
@@ -198,14 +195,14 @@ function checkIcalProp(aPropName, aObj) {
 }
 
 function checkProps(expectedProps, obj) {
-  for (let key in expectedProps) {
+  for (const key in expectedProps) {
     equal(obj[key], expectedProps[key]);
   }
 }
 
 function checkRoundtrip(expectedProps, obj) {
-  let icsdata = obj.icalString;
-  for (let key in expectedProps) {
+  const icsdata = obj.icalString;
+  for (const key in expectedProps) {
     // Need translation
     let icskey = key;
     switch (key) {
@@ -222,15 +219,15 @@ function checkRoundtrip(expectedProps, obj) {
 }
 
 function test_duration() {
-  let e = new CalEvent();
+  const e = new CalEvent();
   e.startDate = cal.createDateTime();
   e.endDate = null;
   equal(e.duration.icalString, "PT0S");
 }
 
 function test_serialize() {
-  let e = new CalEvent();
-  let prop = cal.getIcsService().createIcalComponent("VTODO");
+  const e = new CalEvent();
+  const prop = cal.icsService.createIcalComponent("VTODO");
 
   throws(() => {
     e.icalComponent = prop;

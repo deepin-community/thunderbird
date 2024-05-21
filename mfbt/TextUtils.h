@@ -31,23 +31,30 @@ namespace mozilla {
 // overloads.
 
 /** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
-constexpr bool IsAscii(unsigned char aChar) { return aChar < 0x80; }
+inline constexpr bool IsAscii(unsigned char aChar) { return aChar < 0x80; }
 
 /** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
-constexpr bool IsAscii(signed char aChar) {
+inline constexpr bool IsAscii(signed char aChar) {
   return IsAscii(static_cast<unsigned char>(aChar));
 }
 
 /** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
-constexpr bool IsAscii(char aChar) {
+inline constexpr bool IsAscii(char aChar) {
   return IsAscii(static_cast<unsigned char>(aChar));
 }
 
+#ifdef __cpp_char8_t
 /** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
-constexpr bool IsAscii(char16_t aChar) { return aChar < 0x80; }
+inline constexpr bool IsAscii(char8_t aChar) {
+  return IsAscii(static_cast<unsigned char>(aChar));
+}
+#endif
 
 /** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
-constexpr bool IsAscii(char32_t aChar) { return aChar < 0x80; }
+inline constexpr bool IsAscii(char16_t aChar) { return aChar < 0x80; }
+
+/** Returns true iff |aChar| is ASCII, i.e. in the range [0, 0x80). */
+inline constexpr bool IsAscii(char32_t aChar) { return aChar < 0x80; }
 
 /**
  * Returns |true| iff |aString| contains only ASCII characters, that is,

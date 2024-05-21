@@ -9,14 +9,22 @@
  * after removing it and resets to its original value when it looses focus.
  */
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
+add_task(async function () {
+  if (
+    Services.prefs.getBoolPref(
+      "devtools.netmonitor.features.newEditAndResend",
+      true
+    )
+  ) {
+    ok(
+      true,
+      "Skip this test when pref is true, because this panel won't be default when that is the case."
+    );
+    return;
+  }
+  const { monitor } = await initNetMonitor(HTTPS_SIMPLE_URL, {
+    requestCount: 1,
   });
-
-  const { monitor } = await initNetMonitor(SIMPLE_URL, { requestCount: 1 });
   info("Starting test... ");
 
   const { document, store, windowRequire } = monitor.panelWin;
@@ -25,7 +33,7 @@ add_task(async function() {
 
   // Reload to have one request in the list.
   const waitForEvents = waitForNetworkEvents(monitor, 1);
-  await navigateTo(SIMPLE_URL);
+  await navigateTo(HTTPS_SIMPLE_URL);
   await waitForEvents;
 
   // Open context menu and execute "Edit & Resend".
@@ -39,11 +47,7 @@ add_task(async function() {
   EventUtils.sendMouseEvent({ type: "contextmenu" }, firstRequest);
 
   // Open "New Request" form
-  const contextResend = getContextMenuItem(
-    monitor,
-    "request-list-context-resend"
-  );
-  contextResend.click();
+  await selectContextMenuItem(monitor, "request-list-context-edit-resend");
   await waitUntil(() => document.querySelector("#custom-headers-value"));
   const headersTextarea = document.querySelector("#custom-headers-value");
   await waitUntil(() => document.querySelector("#custom-method-value"));
@@ -70,9 +74,9 @@ add_task(async function() {
   methodField.select();
   EventUtils.synthesizeKey("VK_DELETE", {});
 
-  ok(
-    getSelectedRequest(store.getState()).requestHeaders.headers[0] !==
-      hostHeader,
+  Assert.notStrictEqual(
+    getSelectedRequest(store.getState()).requestHeaders.headers[0],
+    hostHeader,
     "Value of Host header was edited and should change"
   );
 
@@ -82,17 +86,19 @@ add_task(async function() {
     "Position of caret should not change"
   );
 
-  ok(
-    getSelectedRequest(store.getState()).method === "",
+  Assert.strictEqual(
+    getSelectedRequest(store.getState()).method,
+    "",
     "Value of method header was deleted and should be empty"
   );
 
   headersTextarea.focus();
 
-  ok(
-    getSelectedRequest(store.getState()).method === originalMethodValue,
+  Assert.strictEqual(
+    getSelectedRequest(store.getState()).method,
+    originalMethodValue,
     "Value of method header should reset to its original value"
   );
 
-  return teardown(monitor);
+  await teardown(monitor);
 });

@@ -6,12 +6,11 @@
 
 #include "vm/SymbolType.h"
 
-#include "builtin/Symbol.h"
-#include "gc/Allocator.h"
 #include "gc/HashUtil.h"
-#include "gc/Rooting.h"
+#include "js/Printer.h"  // js::GenericPrinter, js::Fprinter
 #include "util/StringBuffer.h"
 #include "vm/JSContext.h"
+#include "vm/JSONPrinter.h"  // js::JSONPrinter
 #include "vm/Realm.h"
 
 #include "vm/Realm-inl.h"
@@ -20,20 +19,15 @@ using JS::Symbol;
 using namespace js;
 
 Symbol* Symbol::newInternal(JSContext* cx, JS::SymbolCode code, uint32_t hash,
-                            HandleAtom description) {
+                            Handle<JSAtom*> description) {
   MOZ_ASSERT(CurrentThreadCanAccessRuntime(cx->runtime()));
   AutoAllocInAtomsZone az(cx);
-
-  Symbol* p = Allocate<JS::Symbol>(cx);
-  if (!p) {
-    return nullptr;
-  }
-  return new (p) Symbol(code, hash, description);
+  return cx->newCell<Symbol>(code, hash, description);
 }
 
 Symbol* Symbol::new_(JSContext* cx, JS::SymbolCode code,
                      HandleString description) {
-  RootedAtom atom(cx);
+  Rooted<JSAtom*> atom(cx);
   if (description) {
     atom = AtomizeString(cx, description);
     if (!atom) {
@@ -48,8 +42,13 @@ Symbol* Symbol::new_(JSContext* cx, JS::SymbolCode code,
   return sym;
 }
 
+Symbol* Symbol::newWellKnown(JSContext* cx, JS::SymbolCode code,
+                             Handle<PropertyName*> description) {
+  return newInternal(cx, code, cx->runtime()->randomHashCode(), description);
+}
+
 Symbol* Symbol::for_(JSContext* cx, HandleString description) {
-  RootedAtom atom(cx, AtomizeString(cx, description));
+  Rooted<JSAtom*> atom(cx, AtomizeString(cx, description));
   if (!atom) {
     return nullptr;
   }
@@ -78,36 +77,102 @@ Symbol* Symbol::for_(JSContext* cx, HandleString description) {
 }
 
 #if defined(DEBUG) || defined(JS_JITSPEW)
-void Symbol::dump() {
+void Symbol::dump() const {
   js::Fprinter out(stderr);
   dump(out);
 }
 
-void Symbol::dump(js::GenericPrinter& out) {
+void Symbol::dump(js::GenericPrinter& out) const {
+  js::JSONPrinter json(out);
+  dump(json);
+  out.put("\n");
+}
+
+void Symbol::dump(js::JSONPrinter& json) const {
+  json.beginObject();
+  dumpFields(json);
+  json.endObject();
+}
+
+template <typename KnownF, typename UnknownF>
+void SymbolCodeToString(JS::SymbolCode code, KnownF known, UnknownF unknown) {
+  switch (code) {
+#  define DEFINE_CASE(name)    \
+    case JS::SymbolCode::name: \
+      known(#name);            \
+      break;
+    JS_FOR_EACH_WELL_KNOWN_SYMBOL(DEFINE_CASE)
+#  undef DEFINE_CASE
+
+    case JS::SymbolCode::Limit:
+      known("Limit");
+      break;
+    case JS::SymbolCode::WellKnownAPILimit:
+      known("WellKnownAPILimit");
+      break;
+    case JS::SymbolCode::PrivateNameSymbol:
+      known("PrivateNameSymbol");
+      break;
+    case JS::SymbolCode::InSymbolRegistry:
+      known("InSymbolRegistry");
+      break;
+    case JS::SymbolCode::UniqueSymbol:
+      known("UniqueSymbol");
+      break;
+    default:
+      unknown(uint32_t(code));
+      break;
+  }
+}
+
+void Symbol::dumpFields(js::JSONPrinter& json) const {
+  json.formatProperty("address", "(JS::Symbol*)0x%p", this);
+
+  SymbolCodeToString(
+      code_, [&](const char* name) { json.property("code", name); },
+      [&](uint32_t code) {
+        json.formatProperty("code", "Unknown(%08x)", code);
+      });
+
+  json.formatProperty("hash", "0x%08x", hash());
+
+  if (description()) {
+    js::GenericPrinter& out = json.beginStringProperty("description");
+    description()->dumpCharsNoQuote(out);
+    json.endStringProperty();
+  } else {
+    json.nullProperty("description");
+  }
+}
+
+void Symbol::dumpStringContent(js::GenericPrinter& out) const {
+  dumpPropertyName(out);
+
+  if (!isWellKnownSymbol()) {
+    out.printf(" @ (JS::Symbol*)0x%p", this);
+  }
+}
+
+void Symbol::dumpPropertyName(js::GenericPrinter& out) const {
   if (isWellKnownSymbol()) {
     // All the well-known symbol names are ASCII.
-    description()->dumpCharsNoNewline(out);
+    description()->dumpCharsNoQuote(out);
   } else if (code_ == SymbolCode::InSymbolRegistry ||
              code_ == SymbolCode::UniqueSymbol) {
     out.printf(code_ == SymbolCode::InSymbolRegistry ? "Symbol.for("
                                                      : "Symbol(");
 
     if (description()) {
-      description()->dumpCharsNoNewline(out);
+      description()->dumpCharsSingleQuote(out);
     } else {
       out.printf("undefined");
     }
 
     out.putChar(')');
-
-    if (code_ == SymbolCode::UniqueSymbol) {
-      out.printf("@%p", (void*)this);
-    }
   } else if (code_ == SymbolCode::PrivateNameSymbol) {
     MOZ_ASSERT(description());
     out.putChar('#');
-    description()->dumpCharsNoNewline(out);
-    out.printf("@%p", (void*)this);
+    description()->dumpCharsNoQuote(out);
   } else {
     out.printf("<Invalid Symbol code=%u>", unsigned(code_));
   }

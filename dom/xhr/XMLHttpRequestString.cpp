@@ -5,15 +5,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "XMLHttpRequestString.h"
+#include "js/String.h"
 #include "nsISupportsImpl.h"
 #include "mozilla/dom/DOMString.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class XMLHttpRequestStringBuffer final {
+  friend class XMLHttpRequestStringSnapshot;
   friend class XMLHttpRequestStringWriterHelper;
-  friend class XMLHttpRequestStringSnapshotReaderHelper;
 
  public:
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(XMLHttpRequestStringBuffer)
@@ -26,10 +26,12 @@ class XMLHttpRequestStringBuffer final {
     return mData.Length();
   }
 
-  uint32_t UnsafeLength() const { return mData.Length(); }
+  uint32_t UnsafeLength() const MOZ_NO_THREAD_SAFETY_ANALYSIS {
+    return mData.Length();
+  }
 
   mozilla::Result<mozilla::BulkWriteHandle<char16_t>, nsresult> UnsafeBulkWrite(
-      uint32_t aCapacity) {
+      uint32_t aCapacity) MOZ_NO_THREAD_SAFETY_ANALYSIS {
     return mData.BulkWrite(aCapacity, UnsafeLength(), false);
   }
 
@@ -45,7 +47,8 @@ class XMLHttpRequestStringBuffer final {
     return aString.Assign(mData, mozilla::fallible);
   }
 
-  size_t SizeOfThis(MallocSizeOf aMallocSizeOf) const {
+  size_t SizeOfThis(MallocSizeOf aMallocSizeOf) {
+    MutexAutoLock lock(mMutex);
     return mData.SizeOfExcludingThisIfUnshared(aMallocSizeOf);
   }
 
@@ -79,12 +82,10 @@ class XMLHttpRequestStringBuffer final {
  private:
   ~XMLHttpRequestStringBuffer() = default;
 
-  nsString& UnsafeData() { return mData; }
-
   Mutex mMutex;
 
   // The following member variable is protected by mutex.
-  nsString mData;
+  nsString mData MOZ_GUARDED_BY(mMutex);
 };
 
 // ---------------------------------------------------------------------------
@@ -157,6 +158,13 @@ bool XMLHttpRequestStringSnapshot::GetAsString(DOMString& aString) const {
   return true;
 }
 
+JSString* XMLHttpRequestStringSnapshot::GetAsJSStringCopy(
+    JSContext* aCx) const {
+  MutexAutoLock lock(mBuffer->mMutex);
+  return JS_NewUCStringCopyN(aCx, mBuffer->mData.BeginReading(),
+                             mBuffer->mData.Length());
+}
+
 // ---------------------------------------------------------------------------
 // XMLHttpRequestStringWriterHelper
 
@@ -175,24 +183,4 @@ XMLHttpRequestStringWriterHelper::BulkWrite(uint32_t aCapacity) {
   return mBuffer->UnsafeBulkWrite(aCapacity);
 }
 
-// ---------------------------------------------------------------------------
-// XMLHttpRequestStringReaderHelper
-
-XMLHttpRequestStringSnapshotReaderHelper::
-    XMLHttpRequestStringSnapshotReaderHelper(
-        XMLHttpRequestStringSnapshot& aSnapshot)
-    : mBuffer(aSnapshot.mBuffer), mLock(aSnapshot.mBuffer->mMutex) {}
-
-XMLHttpRequestStringSnapshotReaderHelper::
-    ~XMLHttpRequestStringSnapshotReaderHelper() = default;
-
-const char16_t* XMLHttpRequestStringSnapshotReaderHelper::Buffer() const {
-  return mBuffer->UnsafeData().BeginReading();
-}
-
-uint32_t XMLHttpRequestStringSnapshotReaderHelper::Length() const {
-  return mBuffer->UnsafeLength();
-}
-
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

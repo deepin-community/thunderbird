@@ -4,8 +4,8 @@
 
 // Test of message count changes in virtual folder views
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var bugmail1 = do_get_file("../../../data/bugmail1");
@@ -81,14 +81,14 @@ function setupVirtualFolder() {
   MailServices.tags.addTagForKey(tag1, tag1, null, null);
 
   // add tag1 to 4 messages
-  let messages0to3 = [hdrs[0], hdrs[1], hdrs[2], hdrs[3]];
+  const messages0to3 = [hdrs[0], hdrs[1], hdrs[2], hdrs[3]];
   localAccountUtils.inboxFolder.addKeywordsToMessages(messages0to3, tag1);
 
   // set 3 messages unread, 2 messages read
-  let messages0to2 = [hdrs[0], hdrs[1], hdrs[2]];
+  const messages0to2 = [hdrs[0], hdrs[1], hdrs[2]];
   localAccountUtils.inboxFolder.markMessagesRead(messages0to2, false);
 
-  let messages3to4 = [hdrs[3], hdrs[4]];
+  const messages3to4 = [hdrs[3], hdrs[4]];
   localAccountUtils.inboxFolder.markMessagesRead(messages3to4, true);
 
   // search will look for tag tag1 in the inbox folder
@@ -206,11 +206,11 @@ function CreateVirtualFolder(
   dbFolderInfo.setBooleanProperty("searchOnline", searchOnline);
   // This fails because the folder doesn't exist - why were we doing it?
   //  vfdb.summaryValid = true;
-  vfdb.Close(true);
+  vfdb.close(true);
   // use acctMgr to setup the virtual folder listener
   var acctMgr = MailServices.accounts.QueryInterface(Ci.nsIFolderListener);
   // print(acctMgr);
-  acctMgr.OnItemAdded(null, newFolder);
+  acctMgr.onFolderAdded(parentFolder, newFolder);
   return newFolder;
 }
 

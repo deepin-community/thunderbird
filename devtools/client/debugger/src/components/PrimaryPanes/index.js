@@ -2,27 +2,29 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import React, { Component } from "react";
-import classnames from "classnames";
-import { Tab, Tabs, TabList, TabPanels } from "react-aria-components/src/tabs";
+import React, { Component } from "devtools/client/shared/vendor/react";
+import PropTypes from "devtools/client/shared/vendor/react-prop-types";
 
-import actions from "../../actions";
-import {
-  getActiveSearch,
-  getProjectDirectoryRootName,
-  getSelectedPrimaryPaneTab,
-  getAllThreads,
-  getContext,
-} from "../../selectors";
-import { features, prefs } from "../../utils/prefs";
-import { connect } from "../../utils/connect";
-import { formatKeyShortcut } from "../../utils/text";
+import actions from "../../actions/index";
+import { getSelectedPrimaryPaneTab } from "../../selectors/index";
+import { prefs } from "../../utils/prefs";
+import { connect } from "devtools/client/shared/vendor/react-redux";
+import { primaryPaneTabs } from "../../constants";
 
 import Outline from "./Outline";
 import SourcesTree from "./SourcesTree";
-import AccessibleImage from "../shared/AccessibleImage";
+import ProjectSearch from "./ProjectSearch";
 
-import "./Sources.css";
+const {
+  TabPanel,
+  Tabs,
+} = require("resource://devtools/client/shared/components/tabs/Tabs.js");
+
+const tabs = [
+  primaryPaneTabs.SOURCES,
+  primaryPaneTabs.OUTLINE,
+  primaryPaneTabs.PROJECT_SEARCH,
+];
 
 class PrimaryPanes extends Component {
   constructor(props) {
@@ -33,13 +35,15 @@ class PrimaryPanes extends Component {
     };
   }
 
-  componentDidCatch(error) {
-    console.log(error);
+  static get propTypes() {
+    return {
+      projectRootName: PropTypes.string.isRequired,
+      selectedTab: PropTypes.oneOf(tabs).isRequired,
+      setPrimaryPaneTab: PropTypes.func.isRequired,
+      setActiveSearch: PropTypes.func.isRequired,
+      closeActiveSearch: PropTypes.func.isRequired,
+    };
   }
-
-  showPane = selectedPane => {
-    this.props.setPrimaryPaneTab(selectedPane);
-  };
 
   onAlphabetizeClick = () => {
     const alphabetizeOutline = !prefs.alphabetizeOutline;
@@ -48,105 +52,75 @@ class PrimaryPanes extends Component {
   };
 
   onActivateTab = index => {
-    if (index === 0) {
-      this.showPane("sources");
+    const tab = tabs.at(index);
+    this.props.setPrimaryPaneTab(tab);
+    if (tab == primaryPaneTabs.PROJECT_SEARCH) {
+      this.props.setActiveSearch(tab);
     } else {
-      this.showPane("outline");
+      this.props.closeActiveSearch();
     }
   };
 
-  renderOutlineTabs() {
-    if (!features.outline) {
-      return;
-    }
-
-    const sources = formatKeyShortcut(L10N.getStr("sources.header"));
-    const outline = formatKeyShortcut(L10N.getStr("outline.header"));
-    const isSources = this.props.selectedTab === "sources";
-    const isOutline = this.props.selectedTab === "outline";
-
-    return [
-      <Tab
-        className={classnames("tab sources-tab", { active: isSources })}
-        key="sources-tab"
-      >
-        {sources}
-      </Tab>,
-      <Tab
-        className={classnames("tab outline-tab", { active: isOutline })}
-        key="outline-tab"
-      >
-        {outline}
-      </Tab>,
-    ];
-  }
-
-  renderProjectRootHeader() {
-    const { cx, projectRootName } = this.props;
-
-    if (!projectRootName) {
-      return null;
-    }
-
-    return (
-      <div key="root" className="sources-clear-root-container">
-        <button
-          className="sources-clear-root"
-          onClick={() => this.props.clearProjectDirectoryRoot(cx)}
-          title={L10N.getStr("removeDirectoryRoot.label")}
-        >
-          <AccessibleImage className="home" />
-          <AccessibleImage className="breadcrumb" />
-          <span className="sources-clear-root-label">{projectRootName}</span>
-        </button>
-      </div>
-    );
-  }
-
-  renderThreadSources() {
-    return <SourcesTree threads={this.props.threads} />;
-  }
-
   render() {
-    const { selectedTab, projectRootName } = this.props;
-    const activeIndex = selectedTab === "sources" ? 0 : 1;
-
-    return (
-      <Tabs
-        activeIndex={activeIndex}
-        className="sources-panel"
-        onActivateTab={this.onActivateTab}
-      >
-        <TabList className="source-outline-tabs">
-          {this.renderOutlineTabs()}
-        </TabList>
-        <TabPanels
-          className={classnames("source-outline-panel", {
-            "has-root": projectRootName,
-          })}
-          hasFocusableContent
-        >
-          <div className="threads-list">
-            {this.renderProjectRootHeader()}
-            {this.renderThreadSources()}
-          </div>
-          <Outline
-            alphabetizeOutline={this.state.alphabetizeOutline}
-            onAlphabetizeClick={this.onAlphabetizeClick}
-          />
-        </TabPanels>
-      </Tabs>
+    const { selectedTab } = this.props;
+    return React.createElement(
+      "aside",
+      {
+        className: "tab-panel sources-panel",
+      },
+      React.createElement(
+        Tabs,
+        {
+          activeTab: tabs.indexOf(selectedTab),
+          onAfterChange: this.onActivateTab,
+        },
+        React.createElement(
+          TabPanel,
+          {
+            id: "sources-tab",
+            key: `sources-tab${
+              selectedTab === primaryPaneTabs.SOURCES ? "-selected" : ""
+            }`,
+            className: "tab sources-tab",
+            title: L10N.getStr("sources.header"),
+          },
+          React.createElement(SourcesTree, null)
+        ),
+        React.createElement(
+          TabPanel,
+          {
+            id: "outline-tab",
+            key: `outline-tab${
+              selectedTab === primaryPaneTabs.OUTLINE ? "-selected" : ""
+            }`,
+            className: "tab outline-tab",
+            title: L10N.getStr("outline.header"),
+          },
+          React.createElement(Outline, {
+            alphabetizeOutline: this.state.alphabetizeOutline,
+            onAlphabetizeClick: this.onAlphabetizeClick,
+          })
+        ),
+        React.createElement(
+          TabPanel,
+          {
+            id: "search-tab",
+            key: `search-tab${
+              selectedTab === primaryPaneTabs.PROJECT_SEARCH ? "-selected" : ""
+            }`,
+            className: "tab search-tab",
+            title: L10N.getStr("search.header"),
+          },
+          React.createElement(ProjectSearch, null)
+        )
+      )
     );
   }
 }
 
 const mapStateToProps = state => {
   return {
-    cx: getContext(state),
     selectedTab: getSelectedPrimaryPaneTab(state),
-    sourceSearchOn: getActiveSearch(state) === "source",
-    threads: getAllThreads(state),
-    projectRootName: getProjectDirectoryRootName(state),
   };
 };
 
@@ -154,7 +128,6 @@ const connector = connect(mapStateToProps, {
   setPrimaryPaneTab: actions.setPrimaryPaneTab,
   setActiveSearch: actions.setActiveSearch,
   closeActiveSearch: actions.closeActiveSearch,
-  clearProjectDirectoryRoot: actions.clearProjectDirectoryRoot,
 });
 
 export default connector(PrimaryPanes);

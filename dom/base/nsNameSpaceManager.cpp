@@ -19,7 +19,6 @@
 #include "nsGkAtoms.h"
 #include "mozilla/dom/Document.h"
 #include "nsString.h"
-#include "mozilla/dom/NodeInfo.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/Preferences.h"
@@ -27,10 +26,11 @@
 using namespace mozilla;
 using namespace mozilla::dom;
 
-static const char* kPrefSVGDisabled = "svg.disabled";
-static const char* kPrefMathMLDisabled = "mathml.disabled";
-static const char* kObservedNSPrefs[] = {kPrefMathMLDisabled, kPrefSVGDisabled,
-                                         nullptr};
+static constexpr const char* kPrefSVGDisabled = "svg.disabled";
+static constexpr const char* kPrefMathMLDisabled = "mathml.disabled";
+static constexpr const char* kObservedNSPrefs[] = {kPrefMathMLDisabled,
+                                                   kPrefSVGDisabled, nullptr};
+
 StaticRefPtr<nsNameSpaceManager> nsNameSpaceManager::sInstance;
 
 /* static */
@@ -176,17 +176,24 @@ const char* nsNameSpaceManager::GetNameSpaceDisplayName(uint32_t aNameSpaceID) {
 nsresult NS_NewElement(Element** aResult,
                        already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo,
                        FromParser aFromParser, const nsAString* aIs) {
+  RefPtr<nsAtom> isAtom = aIs ? NS_AtomizeMainThread(*aIs) : nullptr;
+  return NS_NewElement(aResult, std::move(aNodeInfo), aFromParser, isAtom);
+}
+
+nsresult NS_NewElement(Element** aResult,
+                       already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo,
+                       FromParser aFromParser, nsAtom* aIsAtom,
+                       CustomElementDefinition* aDefinition) {
   RefPtr<mozilla::dom::NodeInfo> ni = aNodeInfo;
   int32_t ns = ni->NamespaceID();
-  RefPtr<nsAtom> isAtom = aIs ? NS_AtomizeMainThread(*aIs) : nullptr;
   if (ns == kNameSpaceID_XHTML) {
-    return NS_NewHTMLElement(aResult, ni.forget(), aFromParser, isAtom);
+    return NS_NewHTMLElement(aResult, ni.forget(), aFromParser, aIsAtom,
+                             aDefinition);
   }
-#ifdef MOZ_XUL
   if (ns == kNameSpaceID_XUL) {
-    return NS_NewXULElement(aResult, ni.forget(), aFromParser, isAtom);
+    return NS_NewXULElement(aResult, ni.forget(), aFromParser, aIsAtom,
+                            aDefinition);
   }
-#endif
   if (ns == kNameSpaceID_MathML) {
     // If the mathml.disabled pref. is true, convert all MathML nodes into
     // disabled MathML nodes by swapping the namespace.
@@ -218,9 +225,7 @@ nsresult NS_NewElement(Element** aResult,
 
 bool nsNameSpaceManager::HasElementCreator(int32_t aNameSpaceID) {
   return aNameSpaceID == kNameSpaceID_XHTML ||
-#ifdef MOZ_XUL
          aNameSpaceID == kNameSpaceID_XUL ||
-#endif
          aNameSpaceID == kNameSpaceID_MathML ||
          aNameSpaceID == kNameSpaceID_SVG || false;
 }

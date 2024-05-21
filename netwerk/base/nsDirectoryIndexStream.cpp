@@ -17,12 +17,7 @@
 #include "nsDirectoryIndexStream.h"
 #include "mozilla/Logging.h"
 #include "prtime.h"
-#ifdef THREADSAFE_I18N
-#  include "nsCollationCID.h"
-#  include "nsICollation.h"
-#endif
 #include "nsIFile.h"
-#include "nsURLHelper.h"
 #include "nsNativeCharsetUtils.h"
 
 // NOTE: This runs on the _file transport_ thread.
@@ -31,9 +26,6 @@
 // is threadsafe.
 // So THIS CODE IS ASCII ONLY!!!!!!!! This is no worse than the current
 // behaviour, though. See bug 99382.
-// When this is fixed, #define THREADSAFE_I18N to get this code working
-
-//#define THREADSAFE_I18N
 
 using namespace mozilla;
 static LazyLogModule gLog("nsDirectoryIndexStream");
@@ -42,7 +34,7 @@ nsDirectoryIndexStream::nsDirectoryIndexStream() {
   MOZ_LOG(gLog, LogLevel::Debug, ("nsDirectoryIndexStream[%p]: created", this));
 }
 
-static int compare(nsIFile* aElement1, nsIFile* aElement2, void* aData) {
+static int compare(nsIFile* aElement1, nsIFile* aElement2) {
   if (!NS_IsNativeUTF8()) {
     // don't check for errors, because we can't report them anyway
     nsAutoString name1, name2;
@@ -100,26 +92,7 @@ nsresult nsDirectoryIndexStream::Init(nsIFile* aDir) {
     mArray.AppendObject(file);  // addrefs
   }
 
-#ifdef THREADSAFE_I18N
-  nsCOMPtr<nsICollationFactory> cf =
-      do_CreateInstance(NS_COLLATIONFACTORY_CONTRACTID, &rv);
-  if (NS_FAILED(rv)) return rv;
-
-  nsCOMPtr<nsICollation> coll;
-  rv = cf->CreateCollation(getter_AddRefs(coll));
-  if (NS_FAILED(rv)) return rv;
-
-  mArray.Sort(compare, coll);
-#else
-  mArray.Sort(compare, nullptr);
-#endif
-
-  mBuf.AppendLiteral("300: ");
-  nsAutoCString url;
-  rv = net_GetURLSpecFromFile(aDir, url);
-  if (NS_FAILED(rv)) return rv;
-  mBuf.Append(url);
-  mBuf.Append('\n');
+  mArray.Sort(compare);
 
   mBuf.AppendLiteral("200: filename content-length last-modified file-type\n");
 
@@ -168,6 +141,9 @@ nsDirectoryIndexStream::Available(uint64_t* aLength) {
   *aLength = (mPos < mArray.Count()) ? 1 : 0;
   return NS_OK;
 }
+
+NS_IMETHODIMP
+nsDirectoryIndexStream::StreamStatus() { return mStatus; }
 
 NS_IMETHODIMP
 nsDirectoryIndexStream::Read(char* aBuf, uint32_t aCount,

@@ -9,19 +9,15 @@
 
 "use strict";
 
-const { Service } = ChromeUtils.import("resource://services-sync/service.js");
-const { SCORE_INCREMENT_XLARGE } = ChromeUtils.import(
-  "resource://services-sync/constants.js"
+const { Service } = ChromeUtils.importESModule(
+  "resource://services-sync/service.sys.mjs"
+);
+const { SCORE_INCREMENT_XLARGE } = ChromeUtils.importESModule(
+  "resource://services-sync/constants.sys.mjs"
 );
 
-let sanitizeStorageObject, AutofillRecord, AddressesEngine;
-add_task(async function() {
-  ({
-    sanitizeStorageObject,
-    AutofillRecord,
-    AddressesEngine,
-  } = ChromeUtils.import("resource://autofill/FormAutofillSync.jsm", null));
-});
+const { sanitizeStorageObject, AutofillRecord, AddressesEngine } =
+  ChromeUtils.importESModule("resource://autofill/FormAutofillSync.sys.mjs");
 
 Services.prefs.setCharPref("extensions.formautofill.loglevel", "Trace");
 initTestLogging("Trace");
@@ -29,9 +25,7 @@ initTestLogging("Trace");
 const TEST_STORE_FILE_NAME = "test-profile.json";
 
 const TEST_PROFILE_1 = {
-  "given-name": "Timothy",
-  "additional-name": "John",
-  "family-name": "Berners-Lee",
+  name: "Timothy John Berners-Lee",
   organization: "World Wide Web Consortium",
   "street-address": "32 Vassar Street\nMIT Room 32-G524",
   "address-level2": "Cambridge",
@@ -40,6 +34,8 @@ const TEST_PROFILE_1 = {
   country: "US",
   tel: "+16172535702",
   email: "timbl@w3.org",
+  // A field this client doesn't "understand" from another client
+  "unknown-1": "some unknown data from another client",
 };
 
 const TEST_PROFILE_2 = {
@@ -214,7 +210,7 @@ add_task(async function test_incoming_new() {
             TEST_PROFILE_1
           ),
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
     server.insertWBO(
@@ -226,7 +222,7 @@ add_task(async function test_incoming_new() {
           id: deletedID,
           deleted: true,
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
 
@@ -249,6 +245,10 @@ add_task(async function test_incoming_new() {
     strictEqual(getSyncChangeCounter(profileStorage.addresses, profileID), 0);
     strictEqual(getSyncChangeCounter(profileStorage.addresses, deletedID), 0);
 
+    // Validate incoming records with unknown fields get stored
+    let localRecord = await profileStorage.addresses.get(profileID);
+    equal(localRecord["unknown-1"], TEST_PROFILE_1["unknown-1"]);
+
     // The sync applied new records - ensure our tracker knew it came from
     // sync and didn't bump the score.
     equal(engine._tracker.score, 0);
@@ -270,7 +270,7 @@ add_task(async function test_incoming_existing() {
     // now server records that modify the existing items.
     let modifiedEntry1 = Object.assign({}, TEST_PROFILE_1, {
       version: 1,
-      "given-name": "NewName",
+      name: "NewName",
     });
 
     let lastSync = await engine.getLastSync();
@@ -388,7 +388,7 @@ add_task(async function test_applyIncoming_nonexistent_tombstone() {
         id: guid,
         deleted: true,
       }),
-      Date.now() / 1000
+      getDateForSync()
     );
 
     await engine.setLastSync(0);
@@ -480,8 +480,7 @@ add_task(async function test_applyIncoming_incoming_restored() {
     let localRecord = await profileStorage.addresses.get(guid);
     ok(
       objectMatches(localRecord, {
-        "given-name": "Timothy",
-        "family-name": "Berners-Lee",
+        name: "Timothy John Berners-Lee",
         "street-address": "I moved!",
       })
     );
@@ -535,9 +534,10 @@ add_task(async function test_applyIncoming_outgoing_restored() {
     ok(!serverPayload.deleted, "Should resurrect record on server");
     ok(
       objectMatches(serverPayload.entry, {
-        "given-name": "Timothy",
-        "family-name": "Berners-Lee",
+        name: "Timothy John Berners-Lee",
         "street-address": "I moved!",
+        // resurrection also beings back any unknown fields we had
+        "unknown-1": "some unknown data from another client",
       })
     );
 
@@ -566,7 +566,7 @@ add_task(async function test_reconcile_both_modified_identical() {
           id: guid,
           entry: TEST_PROFILE_1,
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
 
@@ -673,7 +673,7 @@ add_task(async function test_dedupe_identical_unsynced() {
             TEST_PROFILE_1
           ),
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
 
@@ -746,8 +746,7 @@ add_task(async function test_dedupe_multiple_candidates() {
     // overwrite that tombstone when we see A.
 
     let localRecord = {
-      "given-name": "Mark",
-      "family-name": "Hammond",
+      name: "Mark Hammond",
       organization: "Mozilla",
       country: "AU",
       tel: "+12345678910",
@@ -773,7 +772,7 @@ add_task(async function test_dedupe_multiple_candidates() {
           id: bGuid,
           entry: serverRecord,
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
     server.insertWBO(
@@ -785,7 +784,7 @@ add_task(async function test_dedupe_multiple_candidates() {
           id: aGuid,
           entry: serverRecord,
         }),
-        Date.now() / 1000
+        getDateForSync()
       )
     );
 
@@ -795,16 +794,14 @@ add_task(async function test_dedupe_multiple_candidates() {
     await expectLocalProfiles(profileStorage, [
       {
         guid: aGuid,
-        "given-name": "Mark",
-        "family-name": "Hammond",
+        name: "Mark Hammond",
         organization: "Mozilla",
         country: "AU",
         tel: "+12345678910",
       },
       {
         guid: bGuid,
-        "given-name": "Mark",
-        "family-name": "Hammond",
+        name: "Mark Hammond",
         organization: "Mozilla",
         country: "AU",
         tel: "+12345678910",
@@ -871,14 +868,12 @@ add_task(async function test_reconcile_both_modified_conflict() {
     await expectLocalProfiles(profileStorage, [
       {
         guid,
-        "given-name": "Timothy",
-        "family-name": "Berners-Lee",
+        name: "Timothy John Berners-Lee",
         "street-address": "I moved, too!",
       },
       {
         guid: forkedPayload.id,
-        "given-name": "Timothy",
-        "family-name": "Berners-Lee",
+        name: "Timothy John Berners-Lee",
         "street-address": "I moved!",
       },
     ]);
@@ -918,6 +913,95 @@ add_task(async function test_wipe() {
     Assert.equal(data, "removeAll", "a removeAll should be noted");
 
     await expectLocalProfiles(profileStorage, []);
+  } finally {
+    await cleanup(server);
+  }
+});
+
+// Other clients might have data that we aren't able to process/understand yet
+// We should keep that data and ensure when we sync we don't lose that data
+add_task(async function test_full_roundtrip_unknown_data() {
+  let { profileStorage, server, engine } = await setup();
+  try {
+    let profileID = Utils.makeGUID();
+
+    info("Incoming records with unknown fields are properly stored");
+    // Insert a record onto the server
+    server.insertWBO(
+      "foo",
+      "addresses",
+      new ServerWBO(
+        profileID,
+        encryptPayload({
+          id: profileID,
+          entry: Object.assign(
+            {
+              version: 1,
+            },
+            TEST_PROFILE_1
+          ),
+        }),
+        getDateForSync()
+      )
+    );
+
+    // The tracker should start with no score.
+    equal(engine._tracker.score, 0);
+
+    await engine.setLastSync(0);
+    await engine.sync();
+
+    await expectLocalProfiles(profileStorage, [
+      {
+        guid: profileID,
+      },
+    ]);
+
+    strictEqual(getSyncChangeCounter(profileStorage.addresses, profileID), 0);
+
+    // The sync applied new records - ensure our tracker knew it came from
+    // sync and didn't bump the score.
+    equal(engine._tracker.score, 0);
+
+    // Validate incoming records with unknown fields are correctly stored
+    let localRecord = await profileStorage.addresses.get(profileID);
+    equal(localRecord["unknown-1"], TEST_PROFILE_1["unknown-1"]);
+
+    let onChanged = TestUtils.topicObserved(
+      "formautofill-storage-changed",
+      (subject, data) => data == "update"
+    );
+
+    // Validate we can update the records locally and not drop any unknown fields
+    info("Unknown fields are sent back up to the server");
+
+    // Modify the local copy
+    let localCopy = Object.assign({}, TEST_PROFILE_1);
+    localCopy["street-address"] = "I moved!";
+    await profileStorage.addresses.update(profileID, localCopy);
+    await onChanged;
+    await profileStorage._saveImmediately();
+
+    let updatedCopy = await profileStorage.addresses.get(profileID);
+    equal(updatedCopy["street-address"], "I moved!");
+
+    // Sync our changes to the server
+    await engine.setLastSync(0);
+    await engine.sync();
+
+    let collection = server.user("foo").collection("addresses");
+
+    Assert.ok(collection.wbo(profileID));
+    let serverPayload = JSON.parse(
+      JSON.parse(collection.payload(profileID)).ciphertext
+    );
+
+    // The server has the updated field as well as any unknown fields
+    equal(
+      serverPayload.entry["unknown-1"],
+      "some unknown data from another client"
+    );
+    equal(serverPayload.entry["street-address"], "I moved!");
   } finally {
     await cleanup(server);
   }

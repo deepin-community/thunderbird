@@ -22,10 +22,8 @@ https://bitbucket.org/hpk42/py/src/980c8d526463958ee7cae678a7e4e9b054f36b94/py/_
 by holger krekel, holger at merlinux eu. 2009
 """
 
-from __future__ import absolute_import
-
-import sys
 import re
+import sys
 
 if sys.version_info >= (3, 0):
 
@@ -36,7 +34,6 @@ if sys.version_info >= (3, 0):
         if hasattr(x, "__unicode__"):
             return x.__unicode__()
         return str(x)
-
 
 else:
 
@@ -147,7 +144,7 @@ class raw(object):
 
 
 class SimpleUnicodeVisitor(object):
-    """ recursive visitor to write unicode. """
+    """recursive visitor to write unicode."""
 
     def __init__(self, write, indent=0, curindent=0, shortempty=True):
         self.write = write
@@ -159,7 +156,7 @@ class SimpleUnicodeVisitor(object):
         self.shortempty = shortempty  # short empty tags or not
 
     def visit(self, node):
-        """ dispatcher on node's class/bases name. """
+        """dispatcher on node's class/bases name."""
         cls = node.__class__
         try:
             visitmethod = self.cache[cls]
@@ -238,7 +235,7 @@ class SimpleUnicodeVisitor(object):
             return ' %s="%s"' % (name, insert)
 
     def getstyle(self, tag):
-        """ return attribute list suitable for styling. """
+        """return attribute list suitable for styling."""
         try:
             styledict = tag.style.__dict__
         except AttributeError:
@@ -257,7 +254,6 @@ class SimpleUnicodeVisitor(object):
 
 
 class HtmlVisitor(SimpleUnicodeVisitor):
-
     single = dict(
         [
             (x, 1)
@@ -306,7 +302,7 @@ class _escape:
         return self.escape[match.group(0)]
 
     def __call__(self, ustring):
-        """ xml-escape the given unicode string. """
+        """xml-escape the given unicode string."""
         ustring = unicode(ustring)
         return self.charef_rex.sub(self._replacer, ustring)
 

@@ -76,6 +76,15 @@ void SMILAnimationFunction::SetAnimationElement(
 bool SMILAnimationFunction::SetAttr(nsAtom* aAttribute, const nsAString& aValue,
                                     nsAttrValue& aResult,
                                     nsresult* aParseResult) {
+  // Some elements such as set and discard don't support all possible attributes
+  if (IsDisallowedAttribute(aAttribute)) {
+    aResult.SetTo(aValue);
+    if (aParseResult) {
+      *aParseResult = NS_OK;
+    }
+    return true;
+  }
+
   bool foundMatch = true;
   nsresult parseResult = NS_OK;
 
@@ -111,6 +120,10 @@ bool SMILAnimationFunction::SetAttr(nsAtom* aAttribute, const nsAString& aValue,
 }
 
 bool SMILAnimationFunction::UnsetAttr(nsAtom* aAttribute) {
+  if (IsDisallowedAttribute(aAttribute)) {
+    return true;
+  }
+
   bool foundMatch = true;
 
   if (aAttribute == nsGkAtoms::by || aAttribute == nsGkAtoms::from ||
@@ -157,7 +170,7 @@ void SMILAnimationFunction::SampleAt(SMILTime aSampleTime,
 }
 
 void SMILAnimationFunction::SampleLastValue(uint32_t aRepeatIteration) {
-  if (mHasChanged || !mLastValue || mRepeatIteration != aRepeatIteration) {
+  if (!mLastValue || mRepeatIteration != aRepeatIteration) {
     mHasChanged = true;
   }
 
@@ -218,7 +231,7 @@ void SMILAnimationFunction::ComposeResult(const SMILAttr& aSMILAttr,
 
   } else if (mLastValue) {
     // Sampling last value
-    const SMILValue& last = values[values.Length() - 1];
+    const SMILValue& last = values.LastElement();
     result = last;
 
     // See comment in AccumulateResult: to-animation does not accumulate
@@ -458,11 +471,9 @@ nsresult SMILAnimationFunction::InterpolateResult(const SMILValueArray& aValues,
 nsresult SMILAnimationFunction::AccumulateResult(const SMILValueArray& aValues,
                                                  SMILValue& aResult) {
   if (!IsToAnimation() && GetAccumulate() && mRepeatIteration) {
-    const SMILValue& lastValue = aValues[aValues.Length() - 1];
-
     // If the target attribute type doesn't support addition, Add will
     // fail and we leave aResult untouched.
-    aResult.Add(lastValue, mRepeatIteration);
+    aResult.Add(aValues.LastElement(), mRepeatIteration);
   }
 
   return NS_OK;
@@ -641,15 +652,24 @@ double SMILAnimationFunction::ScaleIntervalProgress(double aProgress,
 }
 
 bool SMILAnimationFunction::HasAttr(nsAtom* aAttName) const {
+  if (IsDisallowedAttribute(aAttName)) {
+    return false;
+  }
   return mAnimationElement->HasAttr(aAttName);
 }
 
 const nsAttrValue* SMILAnimationFunction::GetAttr(nsAtom* aAttName) const {
+  if (IsDisallowedAttribute(aAttName)) {
+    return nullptr;
+  }
   return mAnimationElement->GetParsedAttr(aAttName);
 }
 
 bool SMILAnimationFunction::GetAttr(nsAtom* aAttName,
                                     nsAString& aResult) const {
+  if (IsDisallowedAttribute(aAttName)) {
+    return false;
+  }
   return mAnimationElement->GetAttr(aAttName, aResult);
 }
 
@@ -675,14 +695,9 @@ bool SMILAnimationFunction::ParseAttr(nsAtom* aAttName,
                                       bool& aPreventCachingOfSandwich) const {
   nsAutoString attValue;
   if (GetAttr(aAttName, attValue)) {
-    bool preventCachingOfSandwich = false;
     nsresult rv = aSMILAttr.ValueFromString(attValue, mAnimationElement,
-                                            aResult, preventCachingOfSandwich);
+                                            aResult, aPreventCachingOfSandwich);
     if (NS_FAILED(rv)) return false;
-
-    if (preventCachingOfSandwich) {
-      aPreventCachingOfSandwich = true;
-    }
   }
   return true;
 }
@@ -816,7 +831,7 @@ void SMILAnimationFunction::CheckKeyTimes(uint32_t aNumValues) {
 
   // last value must be 1 for linear or spline calcModes
   if (calcMode != CALC_DISCRETE && numKeyTimes > 1 &&
-      mKeyTimes[numKeyTimes - 1] != 1.0) {
+      mKeyTimes.LastElement() != 1.0) {
     SetKeyTimesErrorFlag(true);
     return;
   }

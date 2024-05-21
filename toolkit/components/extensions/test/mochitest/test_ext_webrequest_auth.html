@@ -12,7 +12,6 @@
 "use strict";
 
 // This file defines content scripts.
-/* eslint-env mozilla/frame-script */
 
 let baseUrl = "http://mochi.test:8888/tests/toolkit/components/passwordmgr/test/mochitest/authenticate.sjs";
 function testXHR(url) {
@@ -67,8 +66,7 @@ add_task(async function test_webRequest_auth_nonblocking_forwardAuthProvider() {
   // if the authorization is not handled by the onAuthRequired handler.
 
   let chromeScript = SpecialPowers.loadChromeScript(() => {
-    const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
+    /* eslint-env mozilla/chrome-script */
     let observer = channel => {
       if (!(channel instanceof Ci.nsIHttpChannel && channel.URI.host === "mochi.test" &&
             channel.URI.spec.includes("authenticate.sjs"))) {
@@ -81,13 +79,13 @@ add_task(async function test_webRequest_auth_nonblocking_forwardAuthProvider() {
                                                 "nsIAuthPrompt2"]),
         getInterface: ChromeUtils.generateQI(["nsIAuthPromptProvider",
                                               "nsIAuthPrompt2"]),
-        promptAuth(channel, level, authInfo) {
+        promptAuth() {
           throw Components.Exception("", Cr.NS_ERROR_NO_INTERFACE);
         },
-        getAuthPrompt(reason, iid) {
+        getAuthPrompt() {
           return this;
         },
-        asyncPromptAuth(channel, callback, context, level, authInfo) {
+        asyncPromptAuth(channel, callback, context) {
           // We just cancel here, we're only ensuring that non-webrequest
           // notificationcallbacks get called if webrequest doesn't handle it.
           Promise.resolve().then(() => {
@@ -129,8 +127,7 @@ add_task(async function test_webRequest_auth_nonblocking_forwardAuthPrompt2() {
   // if the authorization is not handled by the onAuthRequired handler.
 
   let chromeScript = SpecialPowers.loadChromeScript(() => {
-    const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
+    /* eslint-env mozilla/chrome-script */
     let observer = channel => {
       if (!(channel instanceof Ci.nsIHttpChannel && channel.URI.host === "mochi.test" &&
             channel.URI.spec.includes("authenticate.sjs"))) {
@@ -141,10 +138,10 @@ add_task(async function test_webRequest_auth_nonblocking_forwardAuthPrompt2() {
         QueryInterface: ChromeUtils.generateQI(["nsIInterfaceRequestor",
                                                 "nsIAuthPrompt2"]),
         getInterface: ChromeUtils.generateQI(["nsIAuthPrompt2"]),
-        promptAuth(request, level, authInfo) {
+        promptAuth() {
           throw Components.Exception("", Cr.NS_ERROR_NO_INTERFACE);
         },
-        asyncPromptAuth(request, callback, context, level, authInfo) {
+        asyncPromptAuth(request) {
           // We just cancel here, we're only ensuring that non-webrequest
           // notificationcallbacks get called if webrequest doesn't handle it.
           Promise.resolve().then(() => {

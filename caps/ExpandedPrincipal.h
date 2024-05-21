@@ -8,21 +8,22 @@
 
 #include "nsCOMPtr.h"
 #include "nsJSPrincipals.h"
+#include "nsProxyRelease.h"
 #include "nsTArray.h"
 #include "nsNetUtil.h"
 #include "mozilla/BasePrincipal.h"
 
 class nsIContentSecurityPolicy;
 
-namespace Json {
-class Value;
-}
+namespace mozilla {
+class JSONWriter;
+}  // namespace mozilla
 
 class ExpandedPrincipal : public nsIExpandedPrincipal,
                           public mozilla::BasePrincipal {
  public:
   static already_AddRefed<ExpandedPrincipal> Create(
-      nsTArray<nsCOMPtr<nsIPrincipal>>& aAllowList,
+      const nsTArray<nsCOMPtr<nsIPrincipal>>& aAllowList,
       const mozilla::OriginAttributes& aAttrs);
 
   static PrincipalKind Kind() { return eExpandedPrincipal; }
@@ -56,13 +57,16 @@ class ExpandedPrincipal : public nsIExpandedPrincipal,
 
   nsresult GetSiteIdentifier(mozilla::SiteIdentifier& aSite) override;
 
-  virtual nsresult PopulateJSONObject(Json::Value& aObject) override;
+  virtual nsresult WriteJSONInnerProperties(
+      mozilla::JSONWriter& aWriter) override;
+
   // Serializable keys are the valid enum fields the serialization supports
   enum SerializableKeys : uint8_t { eSpecs = 0, eSuffix, eMax = eSuffix };
-  typedef mozilla::BasePrincipal::KeyValT<SerializableKeys> KeyVal;
 
-  static already_AddRefed<BasePrincipal> FromProperties(
-      nsTArray<ExpandedPrincipal::KeyVal>& aFields);
+  static constexpr char SpecsKey = '0';
+  static_assert(eSpecs == 0);
+  static constexpr char SuffixKey = '1';
+  static_assert(eSuffix == 1);
 
   class Deserializer : public BasePrincipal::Deserializer {
    public:
@@ -83,7 +87,8 @@ class ExpandedPrincipal : public nsIExpandedPrincipal,
 
  private:
   const nsTArray<nsCOMPtr<nsIPrincipal>> mPrincipals;
-  nsCOMPtr<nsIContentSecurityPolicy> mCSP;
+  nsMainThreadPtrHandle<nsIContentSecurityPolicy> mCSP
+      MOZ_GUARDED_BY(mozilla::sMainThreadCapability);
 };
 
 #define NS_EXPANDEDPRINCIPAL_CID                     \

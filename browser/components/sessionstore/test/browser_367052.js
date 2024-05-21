@@ -4,8 +4,8 @@
 
 "use strict";
 
-add_task(async function() {
-  // make sure that the next closed tab will increase getClosedTabCount
+add_task(async function () {
+  // make sure that the next closed tab will increase getClosedTabCountForWindow
   let max_tabs_undo = Services.prefs.getIntPref(
     "browser.sessionstore.max_tabs_undo"
   );
@@ -17,17 +17,18 @@ add_task(async function() {
     Services.prefs.clearUserPref("browser.sessionstore.max_tabs_undo")
   );
 
-  // Empty the list of closed tabs.
-  while (ss.getClosedTabCount(window)) {
-    ss.forgetClosedTab(window, 0);
-  }
+  forgetClosedTabs(window);
 
   // restore a blank tab
   let tab = BrowserTestUtils.addTab(gBrowser, "about:mozilla");
   await promiseBrowserLoaded(tab.linkedBrowser);
 
   let count = await promiseSHistoryCount(tab.linkedBrowser);
-  ok(count >= 1, "the new tab does have at least one history entry");
+  Assert.greaterOrEqual(
+    count,
+    1,
+    "the new tab does have at least one history entry"
+  );
 
   await promiseTabState(tab, { entries: [] });
 
@@ -38,14 +39,14 @@ add_task(async function() {
 
   await promiseRemoveTabAndSessionState(tab);
   is(
-    ss.getClosedTabCount(window),
+    ss.getClosedTabCountForWindow(window),
     0,
     "The closed blank tab wasn't added to Recently Closed Tabs"
   );
 });
 
 function promiseSHistoryCount(browser) {
-  return SpecialPowers.spawn(browser, [], async function() {
+  return SpecialPowers.spawn(browser, [], async function () {
     return docShell.QueryInterface(Ci.nsIWebNavigation).sessionHistory.count;
   });
 }

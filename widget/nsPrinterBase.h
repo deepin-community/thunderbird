@@ -31,6 +31,8 @@ class nsPrinterBase : public nsIPrinter {
   using MarginDouble = mozilla::gfx::MarginDouble;
   using PrintSettingsInitializer = mozilla::PrintSettingsInitializer;
 
+  NS_IMETHOD CopyFromWithValidation(nsIPrintSettings*, JSContext*,
+                                    Promise**) override;
   NS_IMETHOD GetSupportsDuplex(JSContext*, Promise**) final;
   NS_IMETHOD GetSupportsColor(JSContext*, Promise**) final;
   NS_IMETHOD GetSupportsMonochrome(JSContext*, Promise**) final;
@@ -102,8 +104,8 @@ class nsPrinterBase : public nsIPrinter {
       const mozilla::gfx::SizeDouble& aSize) const;
 
  private:
-  mozilla::EnumeratedArray<AsyncAttribute, AsyncAttribute::Last,
-                           RefPtr<Promise>>
+  mozilla::EnumeratedArray<AsyncAttribute, RefPtr<Promise>,
+                           size_t(AsyncAttribute::Last)>
       mAsyncAttributePromises;
   // List of built-in, commonly used paper sizes.
   const RefPtr<const mozilla::CommonPaperInfoArray> mCommonPaperInfo;

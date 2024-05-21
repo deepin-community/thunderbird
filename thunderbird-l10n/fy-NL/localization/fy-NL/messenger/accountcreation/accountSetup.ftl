@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Jo namme, as toant oan oaren
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Fier jo namme yn
 account-setup-email-label = E-mailadres
     .accesskey = E
 account-setup-email-input =
@@ -33,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Jo besteande e-mailadres
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Unjildich e-mailadres
 account-setup-password-label = Wachtwurd
     .accesskey = W
     .title = Opsjoneel, wurdt allinnich brûkt om de brûkersnamme te falidearjen
 account-provisioner-button = Krij in nij e-mailadres
     .accesskey = K
-account-setup-password-toggle =
-    .title = Wachtwurd toane/ferstopje
 account-setup-password-toggle-show =
     .title = Wachtwurd yn platte tekst toane
 account-setup-password-toggle-hide =
@@ -126,21 +124,14 @@ account-setup-results-area-title =
         [one] Beskikbere konfiguraasje
        *[other] Beskikbere konfiguraasjes
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Hâld jo mappen en e-mailberjochten syngronisearre op jo server
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Hâld jo mappen en e-mailberjochten op jo kompjûter
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Brûk de Microsoft Exchange-server of Office 365-cloudtsjinsten
 account-setup-incoming-title = Ynkommend
 account-setup-outgoing-title = Utgeand
 account-setup-username-title = Brûkersnamme
 account-setup-exchange-title = Server
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Gjin fersifering
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -164,13 +155,10 @@ account-setup-provisioner-error = Der is in flater bard by it ynstellen fan jo n
 account-setup-manual-config-title = Serverynstellingen
 account-setup-incoming-server-legend = Ynkommende server
 account-setup-protocol-label = Protokol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Hostnamme:
 account-setup-port-label = Poarte:
     .title = Stel it poartenûmer yn op 0 foar autodeteksje
-account-setup-auto-description = { -brand-short-name } probearret fjilden dy't leech litten binne, automatysk te detektearjen.
+account-setup-auto-description = { -brand-short-name } probearret fjilden dy’t leech litten binne, automatysk te detektearjen.
 account-setup-ssl-label = Ferbiningsbefeiliging:
 account-setup-outgoing-server-legend = Utgeande server
 
@@ -248,21 +236,21 @@ account-setup-address-book-carddav-button = Ferbining meitsje mei in CardDAV-adr
 account-setup-address-book-ldap-button = Ferbining meitsje mei in LDAP-adresboek
 account-setup-calendar-button = Ferbining meitsje mei in eksterne aginda
 account-setup-linked-services-title = Ferbining meitsje mei jo keppele services
-account-setup-linked-services-description = { -brand-short-name } hat oare services dy't oan jo e-mailaccount keppele binne detektearre.
+account-setup-linked-services-description = { -brand-short-name } hat oare services dy’t oan jo e-mailaccount keppele binne detektearre.
 account-setup-no-linked-description = Oare services ynstelle om it measte út jo { -brand-short-name }-ûnderfining te heljen.
 # Variables:
 # $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { $count ->
         [one] { -brand-short-name } hat ien adresboek dat keppele is oan jo e-mailaccount fûn.
-       *[other] { -brand-short-name } hat { $count } adresboeken dy't keppele binne oan jo e-mailaccount fûn.
+       *[other] { -brand-short-name } hat { $count } adresboeken dy’t keppele binne oan jo e-mailaccount fûn.
     }
 # Variables:
 # $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { $count ->
-        [one] { -brand-short-name } hat ien adresboek dy't keppele is oan jo e-mailaccount fûn.
-       *[other] { -brand-short-name } hat { $count } adresboeken dy't keppele binne oan jo e-mailaccount fûn.
+        [one] { -brand-short-name } hat ien adresboek dy’t keppele is oan jo e-mailaccount fûn.
+       *[other] { -brand-short-name } hat { $count } adresboeken dy’t keppele binne oan jo e-mailaccount fûn.
     }
 account-setup-button-finish = Foltôgje
     .accesskey = F
@@ -291,6 +279,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Kleur
 account-setup-calendar-refresh-label = Fernije
 account-setup-calendar-refresh-manual = Hânmjittich
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Elke minút

@@ -9,7 +9,7 @@
 /* import-globals-from EdAEJSEAttributes.js */
 /* import-globals-from EdDialogCommon.js */
 
-/** ************         GLOBALS         **************/
+/** ************         GLOBALS         */
 var gElement = null; // handle to actual element edited
 
 var HTMLAttrs = []; // html attributes
@@ -25,7 +25,9 @@ var JSERAttrs = []; // removed js events
 var gDoOnSelectTree = true;
 var gUpdateTreeValue = true;
 
-/** ************ INITIALISATION && SETUP **************/
+/** ************ INITIALISATION && SETUP */
+
+window.addEventListener("load", Startup);
 
 document.addEventListener("dialogaccept", onAccept);
 document.addEventListener("dialogcancel", onCancel);
@@ -35,7 +37,7 @@ document.addEventListener("dialogcancel", onCancel);
  * parameters : none
  * returns    : none
  * desc.      : startup and initialisation, prepares dialog.
- **/
+ */
 function Startup() {
   var editor = GetCurrentEditor();
 
@@ -110,7 +112,7 @@ function Startup() {
  * parameters : none
  * returns    : boolean true to close the window
  * desc.      : event handler for ok button
- **/
+ */
 function onAccept() {
   var editor = GetCurrentEditor();
   editor.beginTransaction();
@@ -159,7 +161,7 @@ function doSetAttribute(attrib, value) {
  * returns    : true if attribute already exists, false if it does not
  * desc.      : checks to see if any other attributes by the same name as the arg supplied
  *              already exist.
- **/
+ */
 function CheckAttributeNameSimilarity(attName, attArray) {
   for (var i = 0; i < attArray.length; i++) {
     if (attName.toLowerCase() == attArray[i].toLowerCase()) {
@@ -175,7 +177,7 @@ function CheckAttributeNameSimilarity(attName, attArray) {
  * returns    : true if attribute already exists in tree, false if it does not
  * desc.      : checks to see if any other attributes by the same name as the arg supplied
  *              already exist while setting the associated value if different from current value
- **/
+ */
 function UpdateExistingAttribute(attName, attValue, treeChildrenId) {
   var treeChildren = document.getElementById(treeChildrenId);
   if (!treeChildren) {
@@ -212,7 +214,7 @@ function UpdateExistingAttribute(attName, attValue, treeChildrenId) {
  * function   : string GetAndSelectExistingAttributeValue ( string attName, string treeChildrenId );
  * parameters : attribute to look for, ID of <treeChildren> node in XUL tree
  * returns    : value in from the tree or empty string if name not found
- **/
+ */
 function GetAndSelectExistingAttributeValue(attName, treeChildrenId) {
   if (!attName) {
     return "";

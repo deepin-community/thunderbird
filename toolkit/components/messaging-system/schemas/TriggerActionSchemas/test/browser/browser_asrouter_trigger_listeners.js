@@ -1,22 +1,13 @@
-ChromeUtils.defineModuleGetter(
-  this,
-  "ASRouterTriggerListeners",
-  "resource://activity-stream/lib/ASRouterTriggerListeners.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "TestUtils",
-  "resource://testing-common/TestUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PrivateBrowsingUtils",
-  "resource://gre/modules/PrivateBrowsingUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  ASRouterTriggerListeners:
+    "resource:///modules/asrouter/ASRouterTriggerListeners.sys.mjs",
+  PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
+  TestUtils: "resource://testing-common/TestUtils.sys.mjs",
+});
 
 async function openURLInWindow(window, url) {
   const { selectedBrowser } = window.gBrowser;
-  BrowserTestUtils.loadURI(selectedBrowser, url);
+  BrowserTestUtils.startLoadingURIString(selectedBrowser, url);
   await BrowserTestUtils.browserLoaded(selectedBrowser, false, url);
 }
 
@@ -297,14 +288,13 @@ add_task(async function check_contentBlocking_listener() {
       1,
       `event ${type} is valid`
     );
-    ok(pageLoadSum <= pageLoad, "pageLoad is non-decreasing");
+    Assert.lessOrEqual(pageLoadSum, pageLoad, "pageLoad is non-decreasing");
 
     observerEvent += 1;
     pageLoadSum = pageLoad;
   };
-  const contentBlockingListener = ASRouterTriggerListeners.get(
-    "contentBlocking"
-  );
+  const contentBlockingListener =
+    ASRouterTriggerListeners.get("contentBlocking");
 
   // Previously initialized by the Router
   contentBlockingListener.uninit();
@@ -423,9 +413,8 @@ add_task(async function check_contentBlockingMilestone_listener() {
     is(type, "ContentBlockingMilestone", "Should be the correct event type");
     observerEvent += 1;
   };
-  const contentBlockingListener = ASRouterTriggerListeners.get(
-    "contentBlocking"
-  );
+  const contentBlockingListener =
+    ASRouterTriggerListeners.get("contentBlocking");
 
   // Previously initialized by the Router
   contentBlockingListener.uninit();

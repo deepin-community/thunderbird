@@ -25,11 +25,3 @@ description {
 #value-column {
   min-width: 15em;
 }
-
-.serverLabel {
-  width: 8em;
-}
-
-.serverDataBox {
-  margin-inline-start: 15px;
-}

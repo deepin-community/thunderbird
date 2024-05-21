@@ -5,6 +5,7 @@
 use inherent::inherent;
 
 use super::{CommonMetricData, MetricId, TimeUnit};
+use std::convert::TryInto;
 use std::time::Duration;
 
 use glean::traits::Timespan;
@@ -41,74 +42,89 @@ impl TimespanMetric {
             }
             TimespanMetric::Child => {
                 log::error!(
-                    "Unable to set_raw_unitless on timespan in non-main process. Ignoring."
+                    "Unable to set_raw_unitless on timespan in non-main process. This operation will be ignored."
                 );
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.
+                assert!(!crate::ipc::is_in_automation(), "Attempted to set_raw_unitless on timespan metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error. bug 1704504.
             }
         }
     }
 }
 
-#[inherent(pub)]
+#[inherent]
 impl Timespan for TimespanMetric {
-    fn start(&self) {
+    pub fn start(&self) {
         match self {
-            TimespanMetric::Parent(p, _) => Timespan::start(p),
+            TimespanMetric::Parent(p, _) => p.start(),
             TimespanMetric::Child => {
-                log::error!("Unable to start timespan metric in non-main process. Ignoring.");
+                log::error!("Unable to start timespan metric in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.assert!(!crate::ipc::is_in_automation());
+                assert!(!crate::ipc::is_in_automation(), "Attempted to start timespan metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error. bug 1704504.
             }
         }
     }
 
-    fn stop(&self) {
+    pub fn stop(&self) {
         match self {
-            TimespanMetric::Parent(p, _) => Timespan::stop(p),
+            TimespanMetric::Parent(p, _) => p.stop(),
             TimespanMetric::Child => {
-                log::error!("Unable to stop timespan metric in non-main process. Ignoring.");
+                log::error!("Unable to stop timespan metric in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.assert!(!crate::ipc::is_in_automation());
+                assert!(!crate::ipc::is_in_automation(), "Attempted to stop timespan metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error. bug 1704504.
             }
         }
     }
 
-    fn cancel(&self) {
+    pub fn cancel(&self) {
         match self {
-            TimespanMetric::Parent(p, _) => Timespan::cancel(p),
+            TimespanMetric::Parent(p, _) => p.cancel(),
             TimespanMetric::Child => {
-                log::error!("Unable to cancel timespan metric in non-main process. Ignoring.");
+                log::error!("Unable to cancel timespan metric in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.assert!(!crate::ipc::is_in_automation());
+                assert!(!crate::ipc::is_in_automation(), "Attempted to cancel timespan metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error. bug 1704504.
             }
         }
     }
 
-    fn set_raw(&self, elapsed: Duration) {
+    pub fn set_raw(&self, elapsed: Duration) {
+        let elapsed = elapsed.as_nanos().try_into().unwrap_or(i64::MAX);
         match self {
-            TimespanMetric::Parent(p, _) => Timespan::set_raw(p, elapsed),
+            TimespanMetric::Parent(p, _) => p.set_raw_nanos(elapsed),
             TimespanMetric::Child => {
-                log::error!("Unable to set_raw on timespan in non-main process. Ignoring.");
+                log::error!("Unable to set_raw on timespan in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.assert!(!crate::ipc::is_in_automation());
+                assert!(!crate::ipc::is_in_automation(), "Attempted to set_raw on timespan metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error. bug 1704504.
             }
         }
     }
 
-    fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<u64> {
+    pub fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<u64> {
+        let ping_name = ping_name.into().map(|s| s.to_string());
         match self {
-            TimespanMetric::Parent(p, _) => p.test_get_value(ping_name),
+            // Conversion is ok here:
+            // Timespans are really tricky to set to excessive values with the pleasant APIs.
+            TimespanMetric::Parent(p, _) => p.test_get_value(ping_name).map(|i| i as u64),
             TimespanMetric::Child => {
-                panic!("Cannot get test value for in non-parent process!");
+                panic!("Cannot get test value for in non-main process!");
             }
         }
     }
 
-    fn test_get_num_recorded_errors<'a, S: Into<Option<&'a str>>>(
-        &self,
-        error: glean::ErrorType,
-        ping_name: S,
-    ) -> i32 {
+    pub fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32 {
         match self {
-            TimespanMetric::Parent(p, _) => p.test_get_num_recorded_errors(error, ping_name),
+            TimespanMetric::Parent(p, _) => p.test_get_num_recorded_errors(error),
             TimespanMetric::Child => {
-                panic!("Cannot get the number of recorded errors for timespan metric in non-parent process!");
+                panic!("Cannot get the number of recorded errors for timespan metric in non-main process!");
             }
         }
     }

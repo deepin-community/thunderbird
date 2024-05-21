@@ -2,8 +2,8 @@
  * Test bug 460636 - nsMsgSaveAsListener sometimes inserts extra LF characters
  */
 
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 var gSavedMsgFile;
@@ -31,9 +31,9 @@ async function setup() {
     .QueryInterface(Ci.nsIFileURL);
 
   IMAPPump.mailbox.addMessage(
-    new imapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
   );
-  let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+  const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
   await promiseUrlListener.promise;
 
@@ -51,7 +51,7 @@ async function setup() {
   //                        in boolean canonicalLineEnding,
   //                        in nsIMsgWindow aMsgWindow);
   // Enforcing canonicalLineEnding (i.e., CRLF) makes sure that the
-  let promiseUrlListener2 = new PromiseTestUtils.PromiseUrlListener();
+  const promiseUrlListener2 = new PromiseTestUtils.PromiseUrlListener();
   gIMAPService.SaveMessageToDisk(
     "imap-message://user@localhost/INBOX#" + (IMAPPump.mailbox.uidnext - 1),
     gSavedMsgFile,

@@ -6,7 +6,7 @@ const PREF_MODIFY_BOOLEAN = "test.aboutconfig.modify.boolean";
 const PREF_MODIFY_NUMBER = "test.aboutconfig.modify.number";
 const PREF_MODIFY_STRING = "test.aboutconfig.modify.string";
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       [PREF_MODIFY_BOOLEAN, true],
@@ -31,7 +31,7 @@ add_task(async function test_add_user_pref() {
     Ci.nsIPrefBranch.PREF_INVALID
   );
 
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     // The row for a new preference appears when searching for its name.
     Assert.ok(!this.getRow(PREF_NEW));
 
@@ -79,7 +79,7 @@ add_task(async function test_delete_user_pref() {
     [2, "value"],
   ]) {
     Preferences.set(PREF_NEW, testValue);
-    await AboutConfigTest.withNewTab(async function() {
+    await AboutConfigTest.withNewTab(async function () {
       // Deleting the preference should keep the row.
       let row = this.getRow(PREF_NEW);
       row.resetColumnButton.click();
@@ -111,7 +111,7 @@ add_task(async function test_click_type_label_multiple_forms() {
   const PREF_TO_DELETE = "test.aboutconfig.modify.boolean";
   const PREF_NEW_WHILE_DELETED = "test.aboutconfig.modify.";
 
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     this.search(PREF_NEW_WHILE_DELETED);
 
     // This preference will remain deleted during the test.
@@ -158,7 +158,7 @@ add_task(async function test_reset_user_pref() {
     ],
   });
 
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     // Click reset.
     let row = this.getRow(PREF_BOOLEAN_DEFAULT_TRUE);
     row.resetColumnButton.click();
@@ -188,7 +188,7 @@ add_task(async function test_reset_user_pref() {
 });
 
 add_task(async function test_modify() {
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     // Test toggle for boolean prefs.
     for (let nameOfBoolPref of [
       PREF_MODIFY_BOOLEAN,
@@ -274,7 +274,7 @@ add_task(async function test_edit_field_selected() {
     [PREF_MODIFY_STRING, "A string", "A new string"],
     [PREF_MODIFY_NUMBER, "100", "500"],
   ];
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     for (let [prefName, startValue, endValue] of prefsToCheck) {
       Preferences.set(prefName, startValue);
       let row = this.getRow(prefName);
@@ -282,6 +282,11 @@ add_task(async function test_edit_field_selected() {
       Assert.equal(row.value, startValue);
       row.editColumnButton.click();
       Assert.equal(row.valueInput.value, startValue);
+      Assert.equal(
+        row.valueInput.getAttribute("aria-label"),
+        prefName,
+        "The input field is labeled from the pref name"
+      );
 
       EventUtils.sendString(endValue, this.window);
 
@@ -293,7 +298,7 @@ add_task(async function test_edit_field_selected() {
 });
 
 add_task(async function test_escape_cancels_edit() {
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     let row = this.getRow(PREF_MODIFY_STRING);
     Preferences.set(PREF_MODIFY_STRING, "Edit me, maybe");
 
@@ -328,21 +333,37 @@ add_task(async function test_double_click_modify() {
   Preferences.set(PREF_MODIFY_NUMBER, 10);
   Preferences.set(PREF_MODIFY_STRING, "Hello!");
 
-  await AboutConfigTest.withNewTab(async function() {
+  await AboutConfigTest.withNewTab(async function () {
     this.search(PREF_MODIFY_PREFIX);
 
     let click = (target, opts) =>
       EventUtils.synthesizeMouseAtCenter(target, opts, this.window);
     let doubleClick = target => {
+      // We intentionally turn off this a11y check, because the following series
+      // of clicks (in these test cases) is either performing an activation of
+      // the edit mode for prefs or selecting a text in focused inputs. The
+      // edit mode can be activated with a separate "Edit" or "Toggle" button
+      // provided for each pref, and the text selection can be performed with
+      // caret browsing (when supported). Thus, this rule check can be ignored
+      // by a11y_checks suite.
+      AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
       // Trigger two mouse events to simulate the first then second click.
       click(target, { clickCount: 1 });
       click(target, { clickCount: 2 });
+      AccessibilityUtils.resetEnv();
     };
     let tripleClick = target => {
+      // We intentionally turn off this a11y check, because the following series
+      // of clicks is purposefully targeting a non - interactive text content.
+      // This action does not require the element to have an interactive
+      // accessible to be done by assistive technology with caret browsing
+      // (when supported), this rule check shall be ignored by a11y_checks suite.
+      AccessibilityUtils.setEnv({ mustHaveAccessibleRule: false });
       // Trigger all 3 mouse events to simulate the three mouse events we'd see.
       click(target, { clickCount: 1 });
       click(target, { clickCount: 2 });
       click(target, { clickCount: 3 });
+      AccessibilityUtils.resetEnv();
     };
 
     // Check double-click to edit a boolean.

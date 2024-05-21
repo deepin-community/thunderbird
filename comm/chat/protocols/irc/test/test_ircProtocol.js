@@ -1,8 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { ircProtocol } = ChromeUtils.import("resource:///modules/irc.jsm");
+const { ircProtocol } = ChromeUtils.importESModule(
+  "resource:///modules/irc.sys.mjs"
+);
 
 add_task(function test_splitUsername() {
   const bareUsername = "foobar";

@@ -31,14 +31,16 @@ class AwaitPromiseProvider extends UrlbarTestUtils.TestProvider {
 
   async startQuery(context, add) {
     await this._promise;
-    for (let result of this._results) {
+    for (let result of this.results) {
       add(this, result);
     }
   }
 }
 
-add_task(async function setup() {
-  registerCleanupFunction(function() {
+add_setup(async function () {
+  await SearchTestUtils.installSearchExtension({}, { setAsDefault: true });
+
+  registerCleanupFunction(function () {
     SpecialPowers.clipboardCopyString("");
   });
 });
@@ -211,7 +213,7 @@ add_task(async function searchTip() {
 
   info("Click the tip button.");
   const result = await UrlbarTestUtils.getDetailsOfResultAt(win, 0);
-  const button = result.element.row._elements.get("tipButton");
+  const button = result.element.row._buttons.get("0");
   await UrlbarTestUtils.promisePopupClose(win, () => {
     EventUtils.synthesizeMouseAtCenter(button, {}, win);
   });
@@ -368,7 +370,7 @@ async function withAwaitProvider(args, promise, callback) {
   try {
     await callback();
   } catch (ex) {
-    Cu.reportError(ex);
+    console.error(ex);
   } finally {
     UrlbarProvidersManager.unregisterProvider(provider);
   }

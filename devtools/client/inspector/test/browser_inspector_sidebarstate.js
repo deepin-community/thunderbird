@@ -50,16 +50,13 @@ const TELEMETRY_DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   // Let's reset the counts.
   Services.telemetry.clearEvents();
 
   // Ensure no events have been logged
   const snapshot = Services.telemetry.snapshotEvents(ALL_CHANNELS, true);
   ok(!snapshot.parent, "No events have been logged for the main process");
-
-  // Enable the compatibility view explictly as this pref is enabled for only Nightly and DevEdition.
-  await pushPref("devtools.inspector.compatibility.enabled", true);
 
   let { inspector, toolbox } = await openInspectorForURL(TEST_URI);
 
@@ -125,8 +122,8 @@ function checkTelemetryResults() {
     const expected = TELEMETRY_DATA[i];
 
     // ignore timestamp
-    ok(timestamp > 0, "timestamp is greater than 0");
-    ok(extra.time_open > 0, "time_open is greater than 0");
+    Assert.greater(timestamp, 0, "timestamp is greater than 0");
+    Assert.greater(Number(extra.time_open), 0, "time_open is greater than 0");
     is(category, expected.category, "category is correct");
     is(method, expected.method, "method is correct");
     is(object, expected.object, "object is correct");

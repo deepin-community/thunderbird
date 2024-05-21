@@ -22,7 +22,7 @@ class WrapperCachedNonISupportsTestInterface;
 
 class TestFunctions : public NonRefcountedDOMObject {
  public:
-  static TestFunctions* Constructor(GlobalObject& aGlobal);
+  static UniquePtr<TestFunctions> Constructor(GlobalObject& aGlobal);
 
   static void ThrowUncatchableException(GlobalObject& aGlobal,
                                         ErrorResult& aRv);
@@ -109,6 +109,12 @@ class TestFunctions : public NonRefcountedDOMObject {
       const ArrayBufferOrArrayBufferViewOrString& aUnion);
   void TestUnionOfAllowSharedBuffferSource(
       const MaybeSharedArrayBufferOrMaybeSharedArrayBufferView& aUnion);
+
+  bool StaticAndNonStaticOverload() { return false; }
+  static bool StaticAndNonStaticOverload(GlobalObject& aGlobal,
+                                         const Optional<uint32_t>& aLength) {
+    return true;
+  }
 
   static bool ObjectFromAboutBlank(JSContext* aCx, JSObject* aObj);
 

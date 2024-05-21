@@ -8,16 +8,10 @@
 
 #include <iostream>
 #include <string>
-#include <map>
 
 #include "sigslot.h"
 
-#include "logging.h"
-#include "nsNetCID.h"
 #include "nsITimer.h"
-#include "nsComponentManagerUtils.h"
-#include "nsThreadUtils.h"
-#include "nsXPCOM.h"
 
 #include "transportflow.h"
 #include "transportlayer.h"
@@ -39,13 +33,14 @@ namespace {
 
 class TransportTestPeer;
 
-class SendPeriodic : public nsITimerCallback {
+class SendPeriodic : public nsITimerCallback, public nsINamed {
  public:
   SendPeriodic(TransportTestPeer* peer, int to_send)
       : peer_(peer), to_send_(to_send) {}
 
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSITIMERCALLBACK
+  NS_DECL_NSINAMED
 
  protected:
   virtual ~SendPeriodic() = default;
@@ -54,7 +49,7 @@ class SendPeriodic : public nsITimerCallback {
   int to_send_;
 };
 
-NS_IMPL_ISUPPORTS(SendPeriodic, nsITimerCallback)
+NS_IMPL_ISUPPORTS(SendPeriodic, nsITimerCallback, nsINamed)
 
 class TransportTestPeer : public sigslot::has_slots<> {
  public:
@@ -124,16 +119,15 @@ class TransportTestPeer : public sigslot::has_slots<> {
     usrsctp_close(sctp_);
     usrsctp_deregister_address(static_cast<void*>(this));
 
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnable(this, &TransportTestPeer::Disconnect_s), NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnable(this, &TransportTestPeer::Disconnect_s));
 
     std::cerr << "~TransportTestPeer() completed" << std::endl;
   }
 
   void ConnectSocket(TransportTestPeer* peer) {
-    test_utils_->sts_target()->Dispatch(
-        WrapRunnable(this, &TransportTestPeer::ConnectSocket_s, peer),
-        NS_DISPATCH_SYNC);
+    test_utils_->SyncDispatchToSTS(
+        WrapRunnable(this, &TransportTestPeer::ConnectSocket_s, peer));
   }
 
   void ConnectSocket_s(TransportTestPeer* peer) {
@@ -306,6 +300,12 @@ NS_IMETHODIMP SendPeriodic::Notify(nsITimer* timer) {
   if (!to_send_) {
     timer->Cancel();
   }
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+SendPeriodic::GetName(nsACString& aName) {
+  aName.AssignLiteral("SendPeriodic");
   return NS_OK;
 }
 

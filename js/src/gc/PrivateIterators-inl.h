@@ -15,8 +15,7 @@
 
 #include "gc/GC-inl.h"
 
-namespace js {
-namespace gc {
+namespace js::gc {
 
 class ArenaCellIterUnderGC : public ArenaCellIter {
  public:
@@ -34,8 +33,7 @@ class ArenaCellIterUnderFinalize : public ArenaCellIter {
 
 class GrayObjectIter : public ZoneAllCellIter<js::gc::TenuredCell> {
  public:
-  explicit GrayObjectIter(JS::Zone* zone, AllocKind kind)
-      : ZoneAllCellIter<js::gc::TenuredCell>() {
+  explicit GrayObjectIter(JS::Zone* zone, AllocKind kind) {
     initForTenuredIteration(zone, kind);
   }
 
@@ -51,10 +49,7 @@ class GCZonesIter {
 
  public:
   explicit GCZonesIter(GCRuntime* gc) : zone(gc) {
-    MOZ_ASSERT(JS::RuntimeHeapIsBusy());
-    MOZ_ASSERT_IF(gc->atomsZone->wasGCStarted(),
-                  !gc->rt->hasHelperThreadZones());
-
+    MOZ_ASSERT(gc->heapState() != JS::HeapState::Idle);
     if (!done() && !zone->wasGCStarted()) {
       next();
     }
@@ -161,7 +156,6 @@ class ArenaFreeCellIter {
   TenuredCell* operator->() const { return get(); }
 };
 
-}  // namespace gc
-}  // namespace js
+}  // namespace js::gc
 
 #endif  // gc_PrivateIterators_inl_h

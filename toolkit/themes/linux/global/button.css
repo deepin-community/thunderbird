@@ -17,11 +17,6 @@ button {
   text-shadow: none;
 }
 
-.button-box {
-  appearance: auto;
-  -moz-default-appearance: button-focus;
-}
-
 .button-text {
   margin: 0;
   margin-inline-start: 2px;
@@ -37,13 +32,19 @@ button:where(:hover:not([checked="true"])) {
 /* .......... active state .......... */
 
 button:where(:hover:active, [open="true"]) {
-  color: -moz-gtk-buttonactivetext;
+  color: -moz-buttonactivetext;
 }
 
 /* .......... disabled state .......... */
 
 button:where([disabled="true"]) {
   color: GrayText;
+}
+
+/* .......... focused state .......... */
+
+button:where(:focus-visible) {
+  outline: auto;
 }
 
 /* ::::: menu buttons ::::: */
@@ -58,17 +59,4 @@ button:where([disabled="true"]) {
 button.plain {
   margin: 0 !important;
   padding: 0 !important;
-}
-
-button[type="disclosure"] {
-  margin: 0;
-  appearance: none;
-  list-style-image: url("chrome://global/skin/icons/arrow-right-12.svg");
-  -moz-context-properties: fill;
-  fill: currentColor;
-  min-width: 0;
-}
-
-button[type="disclosure"][open="true"] {
-  list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");
 }

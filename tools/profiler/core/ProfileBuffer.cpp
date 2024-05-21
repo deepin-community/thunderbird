@@ -7,6 +7,7 @@
 #include "ProfileBuffer.h"
 
 #include "BaseProfiler.h"
+#include "js/ColumnNumber.h"  // JS::LimitedColumnNumberOneOrigin
 #include "js/GCAPI.h"
 #include "jsfriendapi.h"
 #include "mozilla/MathAlgorithms.h"
@@ -47,12 +48,12 @@ uint64_t ProfileBuffer::AddEntry(const ProfileBufferEntry& aEntry) {
 
 /* static */
 ProfileBufferBlockIndex ProfileBuffer::AddThreadIdEntry(
-    ProfileChunkedBuffer& aProfileChunkedBuffer, int aThreadId) {
+    ProfileChunkedBuffer& aProfileChunkedBuffer, ProfilerThreadId aThreadId) {
   return AddEntry(aProfileChunkedBuffer,
                   ProfileBufferEntry::ThreadId(aThreadId));
 }
 
-uint64_t ProfileBuffer::AddThreadIdEntry(int aThreadId) {
+uint64_t ProfileBuffer::AddThreadIdEntry(ProfilerThreadId aThreadId) {
   return AddThreadIdEntry(mEntries, aThreadId).ConvertToProfileBufferIndex();
 }
 
@@ -156,11 +157,17 @@ void ProfileBuffer::CollectOverheadStats(double aSamplingTimeMs,
   mCountersUs.Count(counters);
   mThreadsUs.Count(threads);
 
-  AddEntry(ProfileBufferEntry::ProfilerOverheadTime(aSamplingTimeMs));
-  AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(locking));
-  AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(cleaning));
-  AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(counters));
-  AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(threads));
+  static const bool sRecordSamplingOverhead = []() {
+    const char* recordOverheads = getenv("MOZ_PROFILER_RECORD_OVERHEADS");
+    return recordOverheads && recordOverheads[0] != '\0';
+  }();
+  if (sRecordSamplingOverhead) {
+    AddEntry(ProfileBufferEntry::ProfilerOverheadTime(aSamplingTimeMs));
+    AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(locking));
+    AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(cleaning));
+    AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(counters));
+    AddEntry(ProfileBufferEntry::ProfilerOverheadDuration(threads));
+  }
 }
 
 ProfilerBufferInfo ProfileBuffer::GetProfilerBufferInfo() const {
@@ -186,8 +193,10 @@ void ProfileBufferCollector::CollectJitReturnAddr(void* aAddr) {
   mBuf.AddEntry(ProfileBufferEntry::JitReturnAddr(aAddr));
 }
 
-void ProfileBufferCollector::CollectWasmFrame(const char* aLabel) {
-  mBuf.CollectCodeLocation("", aLabel, 0, 0, Nothing(), Nothing(), Nothing());
+void ProfileBufferCollector::CollectWasmFrame(
+    JS::ProfilingCategoryPair aCategory, const char* aLabel) {
+  mBuf.CollectCodeLocation("", aLabel, 0, 0, Nothing(), Nothing(),
+                           Some(aCategory));
 }
 
 void ProfileBufferCollector::CollectProfilingStackFrame(
@@ -217,9 +226,9 @@ void ProfileBufferCollector::CollectProfilingStackFrame(
       // a local variable in order -- to avoid rooting hazards.
       if (aFrame.script()) {
         if (aFrame.pc()) {
-          unsigned col = 0;
+          JS::LimitedColumnNumberOneOrigin col;
           line = Some(JS_PCToLineNumber(aFrame.script(), aFrame.pc(), &col));
-          column = Some(col);
+          column = Some(col.oneOriginValue());
         }
       }
 

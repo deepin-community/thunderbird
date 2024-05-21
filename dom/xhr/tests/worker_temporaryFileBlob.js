@@ -1,4 +1,7 @@
 /* eslint-env worker */
+
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 importScripts("common_temporaryFileBlob.js");
 
 function info(msg) {
@@ -17,7 +20,7 @@ function next() {
   postMessage({ type: "finish" });
 }
 
-onmessage = function(e) {
+onmessage = function (e) {
   if (e.data == "simple") {
     test_simple();
   } else if (e.data == "abort") {

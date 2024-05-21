@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "msgCore.h"  // for pre-compiled headers
-#include "nsMsgBaseCID.h"
 #include "nsMsgMailSession.h"
 #include "nsIMsgMessageService.h"
 #include "nsMsgUtils.h"
@@ -32,6 +31,8 @@
 #include "mozilla/dom/Element.h"
 #include "mozilla/Components.h"
 #include "nsFocusManager.h"
+#include "nsIPromptService.h"
+#include "nsEmbedCID.h"
 
 NS_IMPL_ISUPPORTS(nsMsgMailSession, nsIMsgMailSession, nsIFolderListener)
 
@@ -43,7 +44,7 @@ nsresult nsMsgMailSession::Init() {
   // Ensures the shutdown service is initialised
   nsresult rv;
   nsCOMPtr<nsIMsgShutdownService> shutdownService =
-      do_GetService(NS_MSGSHUTDOWNSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/msgshutdownservice;1", &rv);
   return rv;
 }
 
@@ -83,69 +84,81 @@ NS_IMETHODIMP nsMsgMailSession::RemoveFolderListener(
   PR_END_MACRO
 
 NS_IMETHODIMP
-nsMsgMailSession::OnItemPropertyChanged(nsIMsgFolder* aItem,
-                                        const nsACString& aProperty,
-                                        const nsACString& aOldValue,
-                                        const nsACString& aNewValue) {
-  NOTIFY_FOLDER_LISTENERS(propertyChanged, OnItemPropertyChanged,
+nsMsgMailSession::OnFolderPropertyChanged(nsIMsgFolder* aItem,
+                                          const nsACString& aProperty,
+                                          const nsACString& aOldValue,
+                                          const nsACString& aNewValue) {
+  NOTIFY_FOLDER_LISTENERS(propertyChanged, OnFolderPropertyChanged,
                           (aItem, aProperty, aOldValue, aNewValue));
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgMailSession::OnItemUnicharPropertyChanged(nsIMsgFolder* aItem,
-                                               const nsACString& aProperty,
-                                               const nsAString& aOldValue,
-                                               const nsAString& aNewValue) {
-  NOTIFY_FOLDER_LISTENERS(unicharPropertyChanged, OnItemUnicharPropertyChanged,
+nsMsgMailSession::OnFolderUnicharPropertyChanged(nsIMsgFolder* aItem,
+                                                 const nsACString& aProperty,
+                                                 const nsAString& aOldValue,
+                                                 const nsAString& aNewValue) {
+  NOTIFY_FOLDER_LISTENERS(unicharPropertyChanged,
+                          OnFolderUnicharPropertyChanged,
                           (aItem, aProperty, aOldValue, aNewValue));
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgMailSession::OnItemIntPropertyChanged(nsIMsgFolder* aItem,
-                                           const nsACString& aProperty,
-                                           int64_t aOldValue,
-                                           int64_t aNewValue) {
-  NOTIFY_FOLDER_LISTENERS(intPropertyChanged, OnItemIntPropertyChanged,
+nsMsgMailSession::OnFolderIntPropertyChanged(nsIMsgFolder* aItem,
+                                             const nsACString& aProperty,
+                                             int64_t aOldValue,
+                                             int64_t aNewValue) {
+  NOTIFY_FOLDER_LISTENERS(intPropertyChanged, OnFolderIntPropertyChanged,
                           (aItem, aProperty, aOldValue, aNewValue));
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgMailSession::OnItemBoolPropertyChanged(nsIMsgFolder* aItem,
-                                            const nsACString& aProperty,
-                                            bool aOldValue, bool aNewValue) {
-  NOTIFY_FOLDER_LISTENERS(boolPropertyChanged, OnItemBoolPropertyChanged,
+nsMsgMailSession::OnFolderBoolPropertyChanged(nsIMsgFolder* aItem,
+                                              const nsACString& aProperty,
+                                              bool aOldValue, bool aNewValue) {
+  NOTIFY_FOLDER_LISTENERS(boolPropertyChanged, OnFolderBoolPropertyChanged,
                           (aItem, aProperty, aOldValue, aNewValue));
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgMailSession::OnItemPropertyFlagChanged(nsIMsgDBHdr* aItem,
-                                            const nsACString& aProperty,
-                                            uint32_t aOldValue,
-                                            uint32_t aNewValue) {
-  NOTIFY_FOLDER_LISTENERS(propertyFlagChanged, OnItemPropertyFlagChanged,
+nsMsgMailSession::OnFolderPropertyFlagChanged(nsIMsgDBHdr* aItem,
+                                              const nsACString& aProperty,
+                                              uint32_t aOldValue,
+                                              uint32_t aNewValue) {
+  NOTIFY_FOLDER_LISTENERS(propertyFlagChanged, OnFolderPropertyFlagChanged,
                           (aItem, aProperty, aOldValue, aNewValue));
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgMailSession::OnItemAdded(nsIMsgFolder* aParentItem,
-                                            nsISupports* aItem) {
-  NOTIFY_FOLDER_LISTENERS(added, OnItemAdded, (aParentItem, aItem));
+NS_IMETHODIMP nsMsgMailSession::OnFolderAdded(nsIMsgFolder* parent,
+                                              nsIMsgFolder* child) {
+  NOTIFY_FOLDER_LISTENERS(added, OnFolderAdded, (parent, child));
+  return NS_OK;
+}
+NS_IMETHODIMP nsMsgMailSession::OnMessageAdded(nsIMsgFolder* parent,
+                                               nsIMsgDBHdr* msg) {
+  NOTIFY_FOLDER_LISTENERS(added, OnMessageAdded, (parent, msg));
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgMailSession::OnItemRemoved(nsIMsgFolder* aParentItem,
-                                              nsISupports* aItem) {
-  NOTIFY_FOLDER_LISTENERS(removed, OnItemRemoved, (aParentItem, aItem));
+NS_IMETHODIMP nsMsgMailSession::OnFolderRemoved(nsIMsgFolder* parent,
+                                                nsIMsgFolder* child) {
+  NOTIFY_FOLDER_LISTENERS(removed, OnFolderRemoved, (parent, child));
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgMailSession::OnItemEvent(nsIMsgFolder* aFolder,
-                                            const nsACString& aEvent) {
-  NOTIFY_FOLDER_LISTENERS(event, OnItemEvent, (aFolder, aEvent));
+NS_IMETHODIMP nsMsgMailSession::OnMessageRemoved(nsIMsgFolder* parent,
+                                                 nsIMsgDBHdr* msg) {
+  NOTIFY_FOLDER_LISTENERS(removed, OnMessageRemoved, (parent, msg));
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgMailSession::OnFolderEvent(nsIMsgFolder* aFolder,
+                                              const nsACString& aEvent) {
+  NOTIFY_FOLDER_LISTENERS(event, OnFolderEvent, (aFolder, aEvent));
   return NS_OK;
 }
 
@@ -174,7 +187,7 @@ NS_IMETHODIMP
 nsMsgMailSession::AlertUser(const nsAString& aMessage,
                             nsIMsgMailNewsUrl* aUrl) {
   bool listenersNotified = false;
-  nsTObserverArray<nsCOMPtr<nsIMsgUserFeedbackListener> >::ForwardIterator iter(
+  nsTObserverArray<nsCOMPtr<nsIMsgUserFeedbackListener>>::ForwardIterator iter(
       mFeedbackListeners);
   nsCOMPtr<nsIMsgUserFeedbackListener> listener;
 
@@ -184,6 +197,11 @@ nsMsgMailSession::AlertUser(const nsAString& aMessage,
     listener->OnAlert(aMessage, aUrl, &notified);
     listenersNotified = listenersNotified || notified;
   }
+
+  // Are alerts disabled by preference?
+  nsCOMPtr<nsIPrefBranch> prefService =
+      do_GetService(NS_PREFSERVICE_CONTRACTID);
+  prefService->GetBoolPref("mail.suppressAlertsForTests", &listenersNotified);
 
   // If the listeners notified the user, then we don't need to. Also exit if
   // aUrl is null because we won't have a nsIMsgWindow in that case.
@@ -197,20 +215,15 @@ nsMsgMailSession::AlertUser(const nsAString& aMessage,
 
   if (!msgWindow) return NS_OK;
 
-  nsCOMPtr<nsIPrompt> dialog;
-  msgWindow->GetPromptDialog(getter_AddRefs(dialog));
+  nsCOMPtr<mozIDOMWindowProxy> domWindow;
+  msgWindow->GetDomWindow(getter_AddRefs(domWindow));
 
-  if (!dialog)  // if we didn't get one, use the default....
-  {
-    nsresult rv;
-    nsCOMPtr<nsIWindowWatcher> wwatch =
-        do_GetService(NS_WINDOWWATCHER_CONTRACTID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+  nsresult rv;
+  nsCOMPtr<nsIPromptService> dlgService(
+      do_GetService(NS_PROMPTSERVICE_CONTRACTID, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
 
-    wwatch->GetNewPrompter(0, getter_AddRefs(dialog));
-  }
-
-  if (dialog) return dialog->Alert(nullptr, PromiseFlatString(aMessage).get());
+  dlgService->Alert(domWindow, nullptr, PromiseFlatString(aMessage).get());
 
   return NS_OK;
 }
@@ -328,7 +341,7 @@ NS_IMETHODIMP nsMsgMailSession::RemoveMsgWindow(nsIMsgWindow* msgWindow) {
   if (!mWindows.Count()) {
     nsresult rv;
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     if (NS_FAILED(rv)) return rv;
     accountManager->CleanupOnExit();
   }
@@ -419,7 +432,8 @@ NS_IMPL_ISUPPORTS(nsMsgShutdownService, nsIMsgShutdownService, nsIUrlListener,
                   nsIObserver)
 
 nsMsgShutdownService::nsMsgShutdownService()
-    : mQuitMode(nsIAppStartup::eAttemptQuit),
+    : mTaskIndex(0),
+      mQuitMode(nsIAppStartup::eAttemptQuit),
       mProcessedShutdown(false),
       mQuitForced(false),
       mReadyToQuit(false) {
@@ -455,7 +469,7 @@ nsresult nsMsgShutdownService::ProcessNextTask() {
     SetStatusText(taskName);
 
     nsCOMPtr<nsIMsgMailSession> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+        do_GetService("@mozilla.org/messenger/services/session;1");
     NS_ENSURE_TRUE(mailSession, NS_ERROR_FAILURE);
 
     nsCOMPtr<nsIMsgWindow> topMsgWindow;
@@ -556,11 +570,11 @@ NS_IMETHODIMP nsMsgShutdownService::Observe(nsISupports* aSubject,
 
     mTaskIndex = 0;
 
-    mMsgProgress = do_CreateInstance(NS_MSGPROGRESS_CONTRACTID);
+    mMsgProgress = do_CreateInstance("@mozilla.org/messenger/progress;1");
     NS_ENSURE_TRUE(mMsgProgress, NS_ERROR_FAILURE);
 
     nsCOMPtr<nsIMsgMailSession> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+        do_GetService("@mozilla.org/messenger/services/session;1");
     NS_ENSURE_TRUE(mailSession, NS_ERROR_FAILURE);
 
     nsCOMPtr<nsIMsgWindow> topMsgWindow;

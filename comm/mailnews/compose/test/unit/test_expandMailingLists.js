@@ -9,30 +9,30 @@ var MsgComposeParamsContractID =
   "@mozilla.org/messengercompose/composeparams;1";
 var MsgComposeFieldsContractID =
   "@mozilla.org/messengercompose/composefields;1";
-var nsIMsgCompose = Ci.nsIMsgCompose;
-var nsIMsgComposeParams = Ci.nsIMsgComposeParams;
-var nsIMsgCompFields = Ci.nsIMsgCompFields;
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 /**
  * Helper to check population worked as expected.
- * @param aTo - text in the To field
- * @param aCheckTo - the expected To addresses (after possible list population)
+ *
+ * @param {string} aTo - Text in the To field.
+ * @param {string} aCheckTo - The expected To addresses (after possible list population).
  */
 function checkPopulate(aTo, aCheckTo) {
-  let msgCompose = Cc[MsgComposeContractID].createInstance(nsIMsgCompose);
+  const msgCompose = Cc[MsgComposeContractID].createInstance(Ci.nsIMsgCompose);
 
   // Set up some basic fields for compose.
-  let fields = Cc[MsgComposeFieldsContractID].createInstance(nsIMsgCompFields);
+  const fields = Cc[MsgComposeFieldsContractID].createInstance(
+    Ci.nsIMsgCompFields
+  );
 
   fields.to = aTo;
 
   // Set up some params
-  let params = Cc[MsgComposeParamsContractID].createInstance(
-    nsIMsgComposeParams
+  const params = Cc[MsgComposeParamsContractID].createInstance(
+    Ci.nsIMsgComposeParams
   );
 
   params.composeFields = fields;

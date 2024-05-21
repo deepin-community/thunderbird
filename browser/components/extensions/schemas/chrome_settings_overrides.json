@@ -16,7 +16,7 @@
                 "optional": true,
                 "preprocess": "localize"
               },
-             "search_provider": {
+              "search_provider": {
                 "type": "object",
                 "optional": true,
                 "additionalProperties": { "$ref": "UnrecognizedProperty" },
@@ -153,6 +153,7 @@
                   },
                   "params": {
                     "optional": true,
+                    "max_manifest_version": 2,
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -176,7 +177,13 @@
                         "purpose": {
                           "type": "string",
                           "optional": true,
-                          "enum": ["contextmenu", "searchbar", "homepage", "keyword", "newtab"],
+                          "enum": [
+                            "contextmenu",
+                            "searchbar",
+                            "homepage",
+                            "keyword",
+                            "newtab"
+                          ],
                           "description": "The context that initiates a search, required if condition is \"purpose\"."
                         },
                         "value": {

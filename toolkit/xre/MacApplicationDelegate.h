@@ -10,8 +10,9 @@
 #define MacApplicationDelegate_h_
 
 void EnsureUseCocoaDockAPI(void);
-void SetupMacApplicationDelegate(void);
-void ProcessPendingGetURLAppleEvents(void);
+void SetupMacApplicationDelegate(bool* gRestartedByOS);
+void InitializeMacApp(void);
+nsTArray<nsCString> TakeStartupURLs();
 void DisableAppNap(void);
 
 #endif

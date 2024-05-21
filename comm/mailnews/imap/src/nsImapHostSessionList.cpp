@@ -5,7 +5,6 @@
 
 #include "msgCore.h"
 #include "nsImapHostSessionList.h"
-#include "nsImapBodyShell.h"
 #include "nsImapNamespace.h"
 #include "nsIImapIncomingServer.h"
 #include "nsCOMPtr.h"
@@ -30,13 +29,13 @@ nsIMAPHostInfo::nsIMAPHostInfo(const char* serverKey,
 #else
   fHaveWeEverDiscoveredFolders = false;  // try this, see what bad happens
 #endif
+  fDiscoveryForHostInProgress = false;
   fCanonicalOnlineSubDir = NULL;
   fNamespaceList = nsImapNamespaceList::CreatensImapNamespaceList();
   fUsingSubscription = true;
   server->GetUsingSubscription(&fUsingSubscription);
   fOnlineTrashFolderExists = false;
   fShouldAlwaysListInbox = true;
-  fShellCache = nsImapBodyShellCache::Create();
   fPasswordVerifiedOnline = false;
   fDeleteIsMoveToTrash = true;
   fShowDeletedMessages = false;
@@ -51,7 +50,6 @@ nsIMAPHostInfo::~nsIMAPHostInfo() {
   PR_Free(fHierarchyDelimiters);
   delete fNamespaceList;
   delete fTempNamespaceList;
-  delete fShellCache;
 }
 
 NS_IMPL_ISUPPORTS(nsImapHostSessionList, nsIImapHostSessionList, nsIObserver,
@@ -292,6 +290,27 @@ NS_IMETHODIMP nsImapHostSessionList::SetHaveWeEverDiscoveredFoldersForHost(
   PR_EnterMonitor(gCachedHostInfoMonitor);
   nsIMAPHostInfo* host = FindHost(serverKey);
   if (host) host->fHaveWeEverDiscoveredFolders = discovered;
+  PR_ExitMonitor(gCachedHostInfoMonitor);
+  return (host == NULL) ? NS_ERROR_ILLEGAL_VALUE : NS_OK;
+}
+
+NS_IMETHODIMP nsImapHostSessionList::GetDiscoveryForHostInProgress(
+    const char* serverKey, bool& result) {
+  PR_EnterMonitor(gCachedHostInfoMonitor);
+  nsIMAPHostInfo* host = FindHost(serverKey);
+  if (host)
+    result = host->fDiscoveryForHostInProgress;
+  else
+    result = false;
+  PR_ExitMonitor(gCachedHostInfoMonitor);
+  return (host == NULL) ? NS_ERROR_ILLEGAL_VALUE : NS_OK;
+}
+
+NS_IMETHODIMP nsImapHostSessionList::SetDiscoveryForHostInProgress(
+    const char* serverKey, bool inProgress) {
+  PR_EnterMonitor(gCachedHostInfoMonitor);
+  nsIMAPHostInfo* host = FindHost(serverKey);
+  if (host) host->fDiscoveryForHostInProgress = inProgress;
   PR_ExitMonitor(gCachedHostInfoMonitor);
   return (host == NULL) ? NS_ERROR_ILLEGAL_VALUE : NS_OK;
 }
@@ -573,43 +592,4 @@ nsImapHostSessionList::SetNamespaceHierarchyDelimiterFromMailboxForHost(
   }
   PR_ExitMonitor(gCachedHostInfoMonitor);
   return (host) ? NS_OK : NS_ERROR_ILLEGAL_VALUE;
-}
-
-NS_IMETHODIMP nsImapHostSessionList::AddShellToCacheForHost(
-    const char* serverKey, nsImapBodyShell* shell) {
-  nsresult rv = NS_OK;
-  PR_EnterMonitor(gCachedHostInfoMonitor);
-  nsIMAPHostInfo* host = FindHost(serverKey);
-  if (host) {
-    if (host->fShellCache) {
-      if (!host->fShellCache->AddShellToCache(shell)) rv = NS_ERROR_UNEXPECTED;
-    }
-  } else
-    rv = NS_ERROR_ILLEGAL_VALUE;
-
-  PR_ExitMonitor(gCachedHostInfoMonitor);
-  return rv;
-}
-
-NS_IMETHODIMP nsImapHostSessionList::FindShellInCacheForHost(
-    const char* serverKey, const char* mailboxName, const char* UID,
-    IMAP_ContentModifiedType modType, nsImapBodyShell** shell) {
-  nsCString uidString(UID);
-
-  PR_EnterMonitor(gCachedHostInfoMonitor);
-  nsIMAPHostInfo* host = FindHost(serverKey);
-  if (host && host->fShellCache)
-    NS_IF_ADDREF(*shell = host->fShellCache->FindShellForUID(
-                     uidString, mailboxName, modType));
-  PR_ExitMonitor(gCachedHostInfoMonitor);
-  return (host == NULL) ? NS_ERROR_ILLEGAL_VALUE : NS_OK;
-}
-
-NS_IMETHODIMP
-nsImapHostSessionList::ClearShellCacheForHost(const char* serverKey) {
-  PR_EnterMonitor(gCachedHostInfoMonitor);
-  nsIMAPHostInfo* host = FindHost(serverKey);
-  if (host && host->fShellCache) host->fShellCache->Clear();
-  PR_ExitMonitor(gCachedHostInfoMonitor);
-  return (host == NULL) ? NS_ERROR_ILLEGAL_VALUE : NS_OK;
 }

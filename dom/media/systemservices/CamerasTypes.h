@@ -8,10 +8,9 @@
 #define mozilla_CamerasTypes_h
 
 #include "ipc/EnumSerializer.h"
+#include "PerformanceRecorder.h"
 
-namespace mozilla {
-
-namespace camera {
+namespace mozilla::camera {
 
 enum CaptureEngine : int {
   InvalidEngine = 0,
@@ -22,8 +21,26 @@ enum CaptureEngine : int {
   MaxEngine
 };
 
-}  // namespace camera
-}  // namespace mozilla
+enum class CamerasAccessStatus {
+  // We have full access to cameras, either because it was granted, or because
+  // requesting it from the user was not necessary.
+  Granted = 1,
+  // A permission request to the platform is required before we know the
+  // camera access status. Enumeration will result in a single placeholder
+  // device, should any cameras be present on the system. The placeholder
+  // device cannot be captured.
+  RequestRequired,
+  // A permission request was made and was rejected by the platform.
+  Rejected,
+  // Generic error while doing the request, for instance with pipewire most
+  // likely the xdg-desktop-portal request failed.
+  Error,
+};
+
+TrackingId::Source CaptureEngineToTrackingSourceStr(
+    const CaptureEngine& aEngine);
+
+}  // namespace mozilla::camera
 
 namespace IPC {
 template <>
@@ -32,6 +49,13 @@ struct ParamTraits<mozilla::camera::CaptureEngine>
           mozilla::camera::CaptureEngine,
           mozilla::camera::CaptureEngine::InvalidEngine,
           mozilla::camera::CaptureEngine::MaxEngine> {};
+
+template <>
+struct ParamTraits<mozilla::camera::CamerasAccessStatus>
+    : public ContiguousEnumSerializerInclusive<
+          mozilla::camera::CamerasAccessStatus,
+          mozilla::camera::CamerasAccessStatus::Granted,
+          mozilla::camera::CamerasAccessStatus::Error> {};
 }  // namespace IPC
 
 #endif  // mozilla_CamerasTypes_h

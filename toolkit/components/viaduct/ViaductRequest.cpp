@@ -9,6 +9,7 @@
 #include "mozilla/ResultExtensions.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/Services.h"
+#include "mozilla/Try.h"
 
 #include "nsComponentManagerUtils.h"
 #include "nsContentUtils.h"
@@ -185,6 +186,8 @@ nsCString ConvertMethod(
       return "OPTIONS"_ns;
     case Request_Method::Request_Method_TRACE:
       return "TRACE"_ns;
+    case Request_Method::Request_Method_PATCH:
+      return "PATCH"_ns;
   }
   return "UNKNOWN"_ns;
 }
@@ -215,7 +218,7 @@ ViaductRequest::~ViaductRequest() {
   NotifyMonitor();
 }
 
-NS_IMPL_ISUPPORTS(ViaductRequest, nsIStreamListener, nsITimerCallback,
+NS_IMPL_ISUPPORTS(ViaductRequest, nsIStreamListener, nsITimerCallback, nsINamed,
                   nsIChannelEventSink)
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -288,7 +291,7 @@ ViaductRequest::OnStopRequest(nsIRequest* aRequest, nsresult aStatusCode) {
     rv = httpChannel->VisitResponseHeaders(visitor);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    mResponse.set_body(mBodyBuffer.BeginReading());
+    mResponse.set_body(mBodyBuffer.BeginReading(), mBodyBuffer.Length());
   }
 
   return NS_OK;
@@ -317,6 +320,15 @@ ViaductRequest::Notify(nsITimer* timer) {
     mChannel->Cancel(NS_ERROR_ABORT);
     mChannel = nullptr;
   }
+  return NS_OK;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// nsINamed implementation
+
+NS_IMETHODIMP
+ViaductRequest::GetName(nsACString& aName) {
+  aName.AssignLiteral("ViaductRequest");
   return NS_OK;
 }
 

@@ -89,8 +89,7 @@ nsID ChildSHistory::AddPendingHistoryChange() {
 
 nsID ChildSHistory::AddPendingHistoryChange(int32_t aIndexDelta,
                                             int32_t aLengthDelta) {
-  nsID changeID = {};
-  nsContentUtils::GenerateUUIDInPlace(changeID);
+  nsID changeID = nsID::GenerateUUID();
   PendingSHistoryChange change = {changeID, aIndexDelta, aLengthDelta};
   mPendingSHistoryChanges.AppendElement(change);
   return changeID;
@@ -109,7 +108,7 @@ void ChildSHistory::SetIndexAndLength(uint32_t aIndex, uint32_t aLength,
 void ChildSHistory::Reload(uint32_t aReloadFlags, ErrorResult& aRv) {
   if (mozilla::SessionHistoryInParent()) {
     if (XRE_IsParentProcess()) {
-      nsISHistory* shistory =
+      nsCOMPtr<nsISHistory> shistory =
           mBrowsingContext->Canonical()->GetSessionHistory();
       if (shistory) {
         aRv = shistory->Reload(aReloadFlags);
@@ -121,7 +120,8 @@ void ChildSHistory::Reload(uint32_t aReloadFlags, ErrorResult& aRv) {
 
     return;
   }
-  aRv = mHistory->Reload(aReloadFlags);
+  nsCOMPtr<nsISHistory> shistory = mHistory;
+  aRv = shistory->Reload(aReloadFlags);
 }
 
 bool ChildSHistory::CanGo(int32_t aOffset) {
@@ -156,7 +156,8 @@ void ChildSHistory::Go(int32_t aOffset, bool aRequireUserInteraction,
     // Check for user interaction if desired, except for the first and last
     // history entries. We compare with >= to account for the case where
     // aOffset >= Count().
-    if (!aRequireUserInteraction || index.value() >= Count() - 1 ||
+    if (!StaticPrefs::browser_navigation_requireUserInteraction() ||
+        !aRequireUserInteraction || index.value() >= Count() - 1 ||
         index.value() <= 0) {
       break;
     }
@@ -208,16 +209,18 @@ void ChildSHistory::GotoIndex(int32_t aIndex, int32_t aOffset,
     }
 
     nsCOMPtr<nsISHistory> shistory = mHistory;
-    mBrowsingContext->HistoryGo(
+    RefPtr<BrowsingContext> bc = mBrowsingContext;
+    bc->HistoryGo(
         aOffset, mHistoryEpoch, aRequireUserInteraction, aUserActivation,
-        [shistory](int32_t&& aRequestedIndex) {
+        [shistory](Maybe<int32_t>&& aRequestedIndex) {
           // FIXME Should probably only do this for non-fission.
-          if (shistory) {
-            shistory->InternalSetRequestedIndex(aRequestedIndex);
+          if (aRequestedIndex.isSome() && shistory) {
+            shistory->InternalSetRequestedIndex(aRequestedIndex.value());
           }
         });
   } else {
-    aRv = mHistory->GotoIndex(aIndex, aUserActivation);
+    nsCOMPtr<nsISHistory> shistory = mHistory;
+    aRv = shistory->GotoIndex(aIndex, aUserActivation);
   }
 }
 
@@ -233,9 +236,9 @@ void ChildSHistory::RemovePendingHistoryNavigations() {
   mPendingNavigations.clear();
 }
 
-void ChildSHistory::EvictLocalContentViewers() {
+void ChildSHistory::EvictLocalDocumentViewers() {
   if (!mozilla::SessionHistoryInParent()) {
-    mHistory->EvictAllContentViewers();
+    mHistory->EvictAllDocumentViewers();
   }
 }
 
@@ -265,7 +268,7 @@ NS_INTERFACE_MAP_END
 NS_IMPL_CYCLE_COLLECTING_ADDREF(ChildSHistory)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(ChildSHistory)
 
-NS_IMPL_CYCLE_COLLECTION_CLASS(ChildSHistory)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(ChildSHistory)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(ChildSHistory)
   if (tmp->mHistory) {
@@ -278,8 +281,6 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(ChildSHistory)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mBrowsingContext, mHistory)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
-
-NS_IMPL_CYCLE_COLLECTION_TRACE_WRAPPERCACHE(ChildSHistory)
 
 JSObject* ChildSHistory::WrapObject(JSContext* cx,
                                     JS::Handle<JSObject*> aGivenProto) {

@@ -79,7 +79,7 @@ static sslOptions ssl_defaults = {
     .enableOCSPStapling = PR_FALSE,
     .enableDelegatedCredentials = PR_FALSE,
     .enableALPN = PR_TRUE,
-    .reuseServerECDHEKey = PR_TRUE,
+    .reuseServerECDHEKey = PR_FALSE,
     .enableFallbackSCSV = PR_FALSE,
     .enableServerDhe = PR_TRUE,
     .enableExtendedMS = PR_TRUE,
@@ -89,24 +89,27 @@ static sslOptions ssl_defaults = {
     .enableTls13CompatMode = PR_FALSE,
     .enableDtls13VersionCompat = PR_FALSE,
     .enableDtlsShortHeader = PR_FALSE,
-    .enableHelloDowngradeCheck = PR_FALSE,
+    .enableHelloDowngradeCheck = PR_TRUE,
     .enableV2CompatibleHello = PR_FALSE,
     .enablePostHandshakeAuth = PR_FALSE,
     .suppressEndOfEarlyData = PR_FALSE,
     .enableTls13GreaseEch = PR_FALSE,
-    .enableTls13BackendEch = PR_FALSE
+    .enableTls13BackendEch = PR_FALSE,
+    .callExtensionWriterOnEchInner = PR_FALSE,
+    .enableGrease = PR_FALSE,
+    .enableChXtnPermutation = PR_FALSE
 };
 
 /*
  * default range of enabled SSL/TLS protocols
  */
 static SSLVersionRange versions_defaults_stream = {
-    SSL_LIBRARY_VERSION_TLS_1_0,
+    SSL_LIBRARY_VERSION_TLS_1_2,
     SSL_LIBRARY_VERSION_TLS_1_3
 };
 
 static SSLVersionRange versions_defaults_datagram = {
-    SSL_LIBRARY_VERSION_TLS_1_1,
+    SSL_LIBRARY_VERSION_TLS_1_2,
     SSL_LIBRARY_VERSION_TLS_1_2
 };
 
@@ -164,6 +167,7 @@ const sslNamedGroupDef ssl_named_groups[] = {
     ECGROUP(secp256r1, 256, SECP256R1, PR_TRUE),
     ECGROUP(secp384r1, 384, SECP384R1, PR_TRUE),
     ECGROUP(secp521r1, 521, SECP521R1, PR_TRUE),
+    { ssl_grp_kem_xyber768d00, 256, ssl_kea_ecdh_hybrid, SEC_OID_XYBER768D00, PR_TRUE },
     FFGROUP(2048),
     FFGROUP(3072),
     FFGROUP(4096),
@@ -888,6 +892,14 @@ SSL_OptionSet(PRFileDesc *fd, PRInt32 which, PRIntn val)
 
         case SSL_SUPPRESS_END_OF_EARLY_DATA:
             ss->opt.suppressEndOfEarlyData = val;
+            break;
+
+        case SSL_ENABLE_GREASE:
+            ss->opt.enableGrease = val;
+            break;
+
+        case SSL_ENABLE_CH_EXTENSION_PERMUTATION:
+            ss->opt.enableChXtnPermutation = val;
             break;
 
         default:
@@ -1716,7 +1728,7 @@ NSS_SetDomesticPolicy(void)
     /* If we've already defined some policy oids, skip changing them */
     rv = NSS_GetAlgorithmPolicy(SEC_OID_APPLY_SSL_POLICY, &policy);
     if ((rv == SECSuccess) && (policy & NSS_USE_POLICY_IN_SSL)) {
-        return ssl_Init(); /* make sure the policies have bee loaded */
+        return ssl_Init(); /* make sure the policies have been loaded */
     }
 
     for (cipher = SSL_ImplementedCiphers; *cipher != 0; ++cipher) {
@@ -2096,23 +2108,35 @@ ssl_SelectDHEGroup(sslSocket *ss, const sslNamedGroupDef **groupDef)
         ssl_grp_ffdhe_custom, WEAK_DHE_SIZE, ssl_kea_dh,
         SEC_OID_TLS_DHE_CUSTOM, PR_TRUE
     };
+    PRInt32 minDH;
+    SECStatus rv;
+
+    // make sure we select a group consistent with our
+    // current policy policy
+    rv = NSS_OptionGet(NSS_DH_MIN_KEY_SIZE, &minDH);
+    if (rv != SECSuccess || minDH <= 0) {
+        minDH = DH_MIN_P_BITS;
+    }
 
     /* Only select weak groups in TLS 1.2 and earlier, but not if the client has
      * indicated that it supports an FFDHE named group. */
     if (ss->ssl3.dheWeakGroupEnabled &&
         ss->version < SSL_LIBRARY_VERSION_TLS_1_3 &&
-        !ss->xtnData.peerSupportsFfdheGroups) {
+        !ss->xtnData.peerSupportsFfdheGroups &&
+        weak_group_def.bits >= minDH) {
         *groupDef = &weak_group_def;
         return SECSuccess;
     }
     if (ss->ssl3.dhePreferredGroup &&
-        ssl_NamedGroupEnabled(ss, ss->ssl3.dhePreferredGroup)) {
+        ssl_NamedGroupEnabled(ss, ss->ssl3.dhePreferredGroup) &&
+        ss->ssl3.dhePreferredGroup->bits >= minDH) {
         *groupDef = ss->ssl3.dhePreferredGroup;
         return SECSuccess;
     }
     for (i = 0; i < SSL_NAMED_GROUP_COUNT; ++i) {
         if (ss->namedGroupPreferences[i] &&
-            ss->namedGroupPreferences[i]->keaType == ssl_kea_dh) {
+            ss->namedGroupPreferences[i]->keaType == ssl_kea_dh &&
+            ss->namedGroupPreferences[i]->bits >= minDH) {
             *groupDef = ss->namedGroupPreferences[i];
             return SECSuccess;
         }
@@ -2551,6 +2575,7 @@ SSL_ReconfigFD(PRFileDesc *model, PRFileDesc *fd)
         ss->handshakeCallbackData = sm->handshakeCallbackData;
     if (sm->pkcs11PinArg)
         ss->pkcs11PinArg = sm->pkcs11PinArg;
+
     return fd;
 }
 
@@ -3876,7 +3901,7 @@ loser:
     return SECFailure;
 }
 
-#if defined(XP_UNIX) || defined(XP_WIN32) || defined(XP_BEOS)
+#if defined(XP_UNIX) || defined(XP_WIN32)
 #define NSS_HAVE_GETENV 1
 #endif
 
@@ -4072,6 +4097,8 @@ ssl_NewEphemeralKeyPair(const sslNamedGroupDef *group,
     PR_INIT_CLIST(&pair->link);
     pair->group = group;
     pair->keys = keys;
+    pair->kemKeys = NULL;
+    pair->kemCt = NULL;
 
     return pair;
 }
@@ -4086,9 +4113,19 @@ ssl_CopyEphemeralKeyPair(sslEphemeralKeyPair *keyPair)
         return NULL; /* error already set */
     }
 
+    pair->kemCt = NULL;
+    if (keyPair->kemCt) {
+        pair->kemCt = SECITEM_DupItem(keyPair->kemCt);
+        if (!pair->kemCt) {
+            PORT_Free(pair);
+            return NULL;
+        }
+    }
+
     PR_INIT_CLIST(&pair->link);
     pair->group = keyPair->group;
     pair->keys = ssl_GetKeyPairRef(keyPair->keys);
+    pair->kemKeys = keyPair->kemKeys ? ssl_GetKeyPairRef(keyPair->kemKeys) : NULL;
 
     return pair;
 }
@@ -4101,6 +4138,8 @@ ssl_FreeEphemeralKeyPair(sslEphemeralKeyPair *keyPair)
     }
 
     ssl_FreeKeyPair(keyPair->keys);
+    ssl_FreeKeyPair(keyPair->kemKeys);
+    SECITEM_FreeItem(keyPair->kemCt, PR_TRUE);
     PR_REMOVE_LINK(&keyPair->link);
     PORT_Free(keyPair);
 }
@@ -4292,6 +4331,7 @@ struct {
     EXP(AddExternalPsk0Rtt),
     EXP(AeadDecrypt),
     EXP(AeadEncrypt),
+    EXP(CallExtensionWriterOnEchInner),
     EXP(CipherSuiteOrderGet),
     EXP(CipherSuiteOrderSet),
     EXP(CreateAntiReplayContext),
@@ -4304,6 +4344,7 @@ struct {
     EXP(DestroyResumptionTokenInfo),
     EXP(EnableTls13BackendEch),
     EXP(EnableTls13GreaseEch),
+    EXP(SetTls13GreaseEchSize),
     EXP(EncodeEchConfigId),
     EXP(GetCurrentEpoch),
     EXP(GetEchRetryConfigs),
@@ -4335,6 +4376,7 @@ struct {
     EXP(SetResumptionToken),
     EXP(SetServerEchConfigs),
     EXP(SetTimeFunc),
+    EXP(SetCertificateCompressionAlgorithm),
 #endif
     { "", NULL }
 };
@@ -4382,6 +4424,24 @@ SSLExp_EnableTls13GreaseEch(PRFileDesc *fd, PRBool enabled)
 }
 
 SECStatus
+SSLExp_SetTls13GreaseEchSize(PRFileDesc *fd, PRUint8 size)
+{
+    sslSocket *ss = ssl_FindSocket(fd);
+    if (!ss || size == 0) {
+        return SECFailure;
+    }
+    ssl_Get1stHandshakeLock(ss);
+    ssl_GetSSL3HandshakeLock(ss);
+
+    ss->ssl3.hs.greaseEchSize = size;
+
+    ssl_ReleaseSSL3HandshakeLock(ss);
+    ssl_Release1stHandshakeLock(ss);
+
+    return SECSuccess;
+}
+
+SECStatus
 SSLExp_EnableTls13BackendEch(PRFileDesc *fd, PRBool enabled)
 {
     sslSocket *ss = ssl_FindSocket(fd);
@@ -4389,6 +4449,17 @@ SSLExp_EnableTls13BackendEch(PRFileDesc *fd, PRBool enabled)
         return SECFailure;
     }
     ss->opt.enableTls13BackendEch = enabled;
+    return SECSuccess;
+}
+
+SECStatus
+SSLExp_CallExtensionWriterOnEchInner(PRFileDesc *fd, PRBool enabled)
+{
+    sslSocket *ss = ssl_FindSocket(fd);
+    if (!ss) {
+        return SECFailure;
+    }
+    ss->opt.callExtensionWriterOnEchInner = enabled;
     return SECSuccess;
 }
 

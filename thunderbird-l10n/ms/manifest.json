@@ -1,29 +1,28 @@
 {
   "langpack_id": "ms",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ms@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Bahasa Melayu (ms) Language Pack",
-  "description": "Language pack for Thunderbird for ms",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Melayu (Malay)",
+  "description": "Thunderbird Beta Language Pack for Melayu (ms) – Malay",
+  "version": "125.0.20240401.173510",
   "languages": {
     "ms": {
-      "version": "20211001122915",
+      "version": "20240401183349",
       "chrome_resources": {
         "alerts": "chrome/ms/locale/ms/alerts/",
         "autoconfig": "chrome/ms/locale/ms/autoconfig/",
-        "branding": "chrome/ms/locale/ms/branding/",
+        "branding": "chrome/ms/locale/branding/",
         "calendar": "chrome/ms/locale/ms/calendar/",
         "chat": "chrome/ms/locale/ms/chat/",
         "communicator": "chrome/ms/locale/ms/communicator/",
         "devtools": "chrome/ms/locale/ms/devtools/client/",
         "devtools-shared": "chrome/ms/locale/ms/devtools/shared/",
-        "devtools-startup": "chrome/ms/locale/ms/devtools/startup/",
         "global": "chrome/ms/locale/ms/global/",
         "global-platform": {
           "macosx": "chrome/ms/locale/ms/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/ms/locale/ms/mozldap/",
         "necko": "chrome/ms/locale/ms/necko/",
         "passwordmgr": "chrome/ms/locale/ms/passwordmgr/",
-        "pdf.js": "chrome/ms/locale/pdfviewer/",
         "pipnss": "chrome/ms/locale/ms/pipnss/",
         "pippki": "chrome/ms/locale/ms/pippki/",
         "places": "chrome/ms/locale/ms/places/"

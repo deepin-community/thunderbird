@@ -7,11 +7,20 @@
   ======================================================================= */
 
 @import url("chrome://messenger/skin/messenger.css");
+@import url("chrome://messenger/skin/icons.css");
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
 window {
   --lwt-header-image: none !important;
+}
+
+.input-inline {
+  margin-inline-end: 0 !important;
+
+  .showingPhonetic & {
+    max-width: 16ch;
+  }
 }
 
 /* ::::: Card Edit dialog ::::: */
@@ -30,10 +39,6 @@ window {
 
 .align-end {
   text-align: end;
-}
-
-.showingPhonetic .input-inline {
-  max-width: 16ch;
 }
 
 #BirthMonth[value="-1"],
@@ -56,16 +61,36 @@ window {
 
 /* ::::: List dialogs ::::: */
 
-#addressingWidget {
-  -moz-user-focus: none;
-  width: 0;
+.menu-iconic-left,
+menulist::part(icon) {
+  -moz-context-properties: fill, stroke;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
 }
 
-.addressingWidgetItem,
-.dummy-row {
+#addressingWidget {
+  -moz-user-focus: none;
+  height: 15em;
+  margin-bottom: 12px;
+}
+
+.dummy-row,
+.addressingWidgetItem {
   border: none !important;
   background-color: inherit !important;
   color: inherit !important;
+  min-height: 30px;
+}
+
+.addressingWidgetItem:hover,
+.autocomplete-richlistitem:hover {
+  background-color: var(--in-content-item-hover, hsla(0, 0%, 50%, 0.3)) !important;
+}
+
+.textbox-addressingWidget {
+  min-height: 30px;
+  padding-inline: 5px;
+  outline-offset: -2px;
 }
 
 .dummy-row-cell,
@@ -73,15 +98,36 @@ window {
   border-bottom: 1px solid hsla(0, 0%, 50%, 0.3);
 }
 
+panel[type="autocomplete-richlistbox"] {
+  border: 1px solid var(--in-content-box-border-color, ThreeDShadow);
+
+  &::part(content) {
+    border-width: 0;
+  }
+}
+
+.autocomplete-richlistbox {
+  border-width: 0;
+  border-radius: 0;
+}
+
+.autocomplete-richlistitem {
+  padding-inline-start: 3px;
+}
+
 .person-icon {
   margin: 0 3px;
-  list-style-image: url("chrome://messenger/skin/icons/contact.svg");
-  -moz-context-properties: fill;
-  fill: currentColor;
+  content: var(--icon-contact);
+  -moz-context-properties: fill, stroke;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
 }
 
 #photo {
-  list-style-image: url("chrome://messenger/skin/addressbook/icons/contact-generic.svg");
+  list-style-image: var(--icon-user);
+  -moz-context-properties: fill, stroke;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
   box-shadow: 0 0 5px rgba(127, 127, 127, 0.7);
 }
 
@@ -91,10 +137,10 @@ window {
 
 #PhotoDropTarget {
   margin-top: 5px;
-}
 
-#PhotoDropTarget:hover {
-  border: 1px dashed hsla(0, 0%, 50%, 0.5);
+  &:hover {
+    border: 1px dashed hsla(0, 0%, 50%, 0.5);
+  }
 }
 
 #PhotoFile {
@@ -107,8 +153,9 @@ window {
   max-height: 0;
   transition: all .5s ease-out;
   overflow: hidden;
-}
-#ProgressContainer.expanded {
-  margin-top: 10px;
-  max-height: 40px; /* something higher than the actual height, but not too large */
+
+  &.expanded {
+    margin-top: 10px;
+    max-height: 40px; /* something higher than the actual height, but not too large */
+  }
 }

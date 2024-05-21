@@ -3,12 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+window.addEventListener("load", hiddenWindowStartup);
+
 function hiddenWindowStartup() {
   // Disable menus which are not appropriate
-  let disabledItems = [
+  const disabledItems = [
     "menu_newFolder",
     "newMailAccountMenuItem",
-    "newAccountMenuItem",
+    "newNewsgroupAccountMenuItem",
     "menu_close",
     "menu_saveAs",
     "menu_saveAsFile",
@@ -28,6 +30,7 @@ function hiddenWindowStartup() {
     "menu_Toolbars",
     "menu_MessagePaneLayout",
     "menu_showMessage",
+    "menu_toggleThreadPaneHeader",
     "menu_showFolderPane",
     "menu_FolderViews",
     "viewSortMenu",
@@ -86,71 +89,29 @@ function hiddenWindowStartup() {
     "filtersCmd",
     "cmd_close",
     "minimizeWindow",
-    "appmenu_markMenu",
     "zoomWindow",
-    "appmenu_replyMainMenu",
-    "appmenu_replyNewsgroupMainMenu",
     "appmenu_newFolder",
     "appmenu_newMailAccountMenuItem",
-    "appmenu_close",
-    "appmenu_newAccountMenuItem",
+    "appmenu_newNewsgroupAccountMenuItem",
     "appmenu_saveAs",
     "appmenu_saveAsFile",
     "appmenu_newVirtualFolder",
-    "appmenu_viewBodyMenu",
-    "appmenu_goNextMenu",
     "appmenu_findAgainCmd",
-    "appmenu_sendUnsentMsgs",
-    "appmenu_charsetRepairMenuitem",
-    "appmenu_deleteFolder",
-    "appmenu_renameFolder",
     "appmenu_favoriteFolder",
     "appmenu_properties",
     "appmenu_MessagePaneLayout",
     "appmenu_showMessage",
+    "appmenu_toggleThreadPaneHeader",
     "appmenu_showFolderPane",
     "appmenu_FolderViews",
-    "appmenu_viewSortMenu",
     "appmenu_groupBySort",
-    "appmenu_viewMessageViewMenu",
-    "appmenu_subscribe",
-    "appmenu_viewMessagesMenu",
-    "appmenu_expandAllThreads",
     "appmenu_findCmd",
-    "appmenu_collapseAllThreads",
-    "appmenu_viewHeadersMenu",
     "appmenu_find",
-    "appmenu_viewAttachmentsInlineMenuitem",
-    "appmenu_replySenderMainMenu",
-    "appmenu_nextMsg",
-    "appmenu_nextUnreadMsg",
-    "appmenu_nextUnreadThread",
-    "appmenu_goPreviousMenu",
-    "appmenu_prevMsg",
-    "appmenu_prevUnreadMsg",
-    "appmenu_goForward",
-    "appmenu_goBack",
-    "appmenu_goStartPage",
-    "appmenu_newMsgCmd",
-    "appmenu_viewFullZoomMenu",
-    "appmenu_replyToAll",
-    "appmenu_replyToList",
-    "appmenu_forwardMsg",
-    "appmenu_forwardAsMenu",
-    "appmenu_editMsgAsNew",
-    "appmenu_tagMenu",
-    "appmenu_moveToFolderAgain",
     "appmenu_openMessageWindowMenuitem",
-    "appmenu_openConversationMenuitem",
-    "appmenu_moveMenu",
-    "appmenu_copyMenu",
-    "appmenu_createFilter",
-    "appmenu_killThread",
-    "appmenu_killSubthread",
   ];
 
   let element;
-  for (let id of disabledItems) {
+  for (const id of disabledItems) {
     element = document.getElementById(id);
     if (element) {
       element.setAttribute("disabled", "true");

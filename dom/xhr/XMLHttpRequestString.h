@@ -10,8 +10,10 @@
 #include "mozilla/Mutex.h"
 #include "nsString.h"
 
-namespace mozilla {
-namespace dom {
+struct JSContext;
+class JSString;
+
+namespace mozilla::dom {
 
 class ArrayBufferBuilder;
 class BlobImpl;
@@ -19,7 +21,6 @@ class DOMString;
 class XMLHttpRequestStringBuffer;
 class XMLHttpRequestStringSnapshot;
 class XMLHttpRequestStringWriterHelper;
-class XMLHttpRequestStringSnapshotReaderHelper;
 
 // We want to avoid the dup of strings when XHR in workers has access to
 // responseText for events dispatched during the loading state. For this reason
@@ -91,7 +92,6 @@ class MOZ_STACK_CLASS XMLHttpRequestStringWriterHelper final {
 // grown in the meantime.
 class XMLHttpRequestStringSnapshot final {
   friend class XMLHttpRequestStringBuffer;
-  friend class XMLHttpRequestStringSnapshotReaderHelper;
 
  public:
   XMLHttpRequestStringSnapshot();
@@ -110,6 +110,8 @@ class XMLHttpRequestStringSnapshot final {
 
   [[nodiscard]] bool GetAsString(DOMString& aString) const;
 
+  JSString* GetAsJSStringCopy(JSContext* aCx) const;
+
  private:
   XMLHttpRequestStringSnapshot(const XMLHttpRequestStringSnapshot&) = delete;
   XMLHttpRequestStringSnapshot& operator=(
@@ -124,30 +126,6 @@ class XMLHttpRequestStringSnapshot final {
   bool mVoid;
 };
 
-// This class locks the buffer and allows the callee to read data from it.
-class MOZ_STACK_CLASS XMLHttpRequestStringSnapshotReaderHelper final {
- public:
-  explicit XMLHttpRequestStringSnapshotReaderHelper(
-      XMLHttpRequestStringSnapshot& aSnapshot);
-  ~XMLHttpRequestStringSnapshotReaderHelper();
-
-  const char16_t* Buffer() const;
-
-  uint32_t Length() const;
-
- private:
-  XMLHttpRequestStringSnapshotReaderHelper(
-      const XMLHttpRequestStringSnapshotReaderHelper&) = delete;
-  XMLHttpRequestStringSnapshotReaderHelper& operator=(
-      const XMLHttpRequestStringSnapshotReaderHelper&) = delete;
-  XMLHttpRequestStringSnapshotReaderHelper& operator=(
-      const XMLHttpRequestStringSnapshotReaderHelper&&) = delete;
-
-  RefPtr<XMLHttpRequestStringBuffer> mBuffer;
-  MutexAutoLock mLock;
-};
-
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_XMLHttpRequestString_h

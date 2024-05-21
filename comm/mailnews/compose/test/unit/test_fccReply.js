@@ -7,11 +7,14 @@
  * is copied to the same folder as the original mail.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
+var { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
 
 var gServer;
@@ -20,17 +23,17 @@ var gServer;
  * Send a reply to originalMsgURI.
  */
 async function sendReply(identity, fields, originalMsgURI, compType) {
-  let params = Cc[
+  const params = Cc[
     "@mozilla.org/messengercompose/composeparams;1"
   ].createInstance(Ci.nsIMsgComposeParams);
   params.composeFields = fields;
   params.originalMsgURI = originalMsgURI;
-  let msgCompose = MailServices.compose.initCompose(params);
+  const msgCompose = MailServices.compose.initCompose(params);
   msgCompose.type = compType;
-  let progress = Cc["@mozilla.org/messenger/progress;1"].createInstance(
+  const progress = Cc["@mozilla.org/messenger/progress;1"].createInstance(
     Ci.nsIMsgProgress
   );
-  let promise = new Promise((resolve, reject) => {
+  const promise = new Promise((resolve, reject) => {
     progressListener.resolve = resolve;
     progressListener.reject = reject;
   });
@@ -48,7 +51,7 @@ async function sendReply(identity, fields, originalMsgURI, compType) {
 /**
  * Load local mail account and start fake SMTP server.
  */
-add_task(async function setup() {
+add_setup(function () {
   localAccountUtils.loadLocalMailAccount();
   gServer = setupServerDaemon();
   gServer.start();
@@ -63,15 +66,15 @@ add_task(async function setup() {
  */
 add_task(async function testFccReply() {
   // Turn on fccReplyFollowsParent.
-  let identity = getSmtpIdentity(
+  const identity = getSmtpIdentity(
     "from@tinderbox.invalid",
     getBasicSmtpServer(gServer.port)
   );
   identity.fccReplyFollowsParent = true;
 
   // Copy a test mail into the Inbox.
-  let file = do_get_file("data/message1.eml"); // mail to reply to
-  let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
+  const file = do_get_file("data/message1.eml"); // mail to reply to
+  const promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
   MailServices.copy.copyFileMessage(
     file,
     localAccountUtils.inboxFolder,
@@ -84,19 +87,19 @@ add_task(async function testFccReply() {
   );
   await promiseCopyListener.promise;
 
-  let CompFields = CC(
+  const CompFields = CC(
     "@mozilla.org/messengercompose/composefields;1",
     Ci.nsIMsgCompFields
   );
-  let msgHdr = mailTestUtils.firstMsgHdr(localAccountUtils.inboxFolder);
-  let originalMsgURI = msgHdr.folder.getUriForMsg(msgHdr);
+  const msgHdr = mailTestUtils.firstMsgHdr(localAccountUtils.inboxFolder);
+  const originalMsgURI = msgHdr.folder.getUriForMsg(msgHdr);
 
   // Test nsIMsgCompFields.Reply.
-  let fields = new CompFields();
+  const fields = new CompFields();
   fields.to = "Nobody <nobody@tinderbox.invalid>";
   fields.subject = "Test fcc reply";
   await sendReply(identity, fields, originalMsgURI, Ci.nsIMsgCompType.Reply);
-  gServer.performTest();
+  await TestUtils.waitForCondition(() => gServer._daemon.post);
   let msgData = mailTestUtils.loadMessageToString(
     localAccountUtils.inboxFolder,
     mailTestUtils.getMsgHdrN(localAccountUtils.inboxFolder, 1)
@@ -112,7 +115,7 @@ add_task(async function testFccReply() {
     originalMsgURI,
     Ci.nsIMsgCompType.ReplyToGroup
   );
-  gServer.performTest();
+  await TestUtils.waitForCondition(() => gServer._daemon.post);
   msgData = mailTestUtils.loadMessageToString(
     localAccountUtils.inboxFolder,
     mailTestUtils.getMsgHdrN(localAccountUtils.inboxFolder, 2)
@@ -128,7 +131,7 @@ add_task(async function testFccReply() {
     originalMsgURI,
     Ci.nsIMsgCompType.ReplyToList
   );
-  gServer.performTest();
+  await TestUtils.waitForCondition(() => gServer._daemon.post);
   msgData = mailTestUtils.loadMessageToString(
     localAccountUtils.inboxFolder,
     mailTestUtils.getMsgHdrN(localAccountUtils.inboxFolder, 3)

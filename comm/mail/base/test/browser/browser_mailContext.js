@@ -2,509 +2,999 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* eslint-env webextensions */
+requestLongerTimeout(2);
 
-var { MailE10SUtils } = ChromeUtils.import(
-  "resource:///modules/MailE10SUtils.jsm"
+/**
+ * Tests that items on the mail context menu are correctly shown in context.
+ */
+
+var { ConversationOpener } = ChromeUtils.importESModule(
+  "resource:///modules/ConversationOpener.sys.mjs"
+);
+var { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
+var { GlodaIndexer } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaIndexer.jsm"
+);
+var { GlodaSyntheticView } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaSyntheticView.jsm"
+);
+var { MailConsts } = ChromeUtils.importESModule(
+  "resource:///modules/MailConsts.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { MessageGenerator } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MessageGenerator.jsm"
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { cal } = ChromeUtils.importESModule(
+  "resource:///modules/calendar/calUtils.sys.mjs"
 );
 
-const TEST_DOCUMENT_URL =
-  "http://mochi.test:8888/browser/comm/mail/base/test/browser/files/sampleContent.html";
-const TEST_MESSAGE_URL =
-  "http://mochi.test:8888/browser/comm/mail/base/test/browser/files/sampleContent.eml";
-const TEST_IMAGE_URL =
-  "http://mochi.test:8888/browser/comm/mail/base/test/browser/files/tb-logo.png";
+const tabmail = document.getElementById("tabmail");
+let testFolder, testMessages;
+let draftsFolder, draftsMessages;
+let templatesFolder, templatesMessages;
+let listFolder, listMessages;
 
-let testFolder;
+const singleSelectionMessagePane = [
+  "singleMessage",
+  "draftsFolder",
+  "templatesFolder",
+  "listFolder",
+  "syntheticFolderDraft",
+  "syntheticFolder",
+];
+const singleSelectionThreadPane = [
+  "singleMessageTree",
+  "draftsFolderTree",
+  "templatesFolderTree",
+  "listFolderTree",
+  "syntheticFolderDraftTree",
+  "syntheticFolderTree",
+];
+const onePane = ["messageTab", "messageWindow"];
+const external = ["externalMessageTab", "externalMessageWindow"];
+const allSingleSelection = [
+  ...singleSelectionMessagePane,
+  ...singleSelectionThreadPane,
+  ...onePane,
+  ...external,
+];
+const allThreePane = [
+  ...singleSelectionMessagePane,
+  ...singleSelectionThreadPane,
+  "multipleMessagesTree",
+  "collapsedThreadTree",
+  "multipleDraftsFolderTree",
+  "multipleTemplatesFolderTree",
+];
+const noCollapsedThreads = [
+  ...singleSelectionMessagePane,
+  ...singleSelectionThreadPane,
+  "multipleMessagesTree",
+  "multipleDraftsFolderTree",
+  "multipleTemplatesFolderTree",
+  ...onePane,
+  ...external,
+];
+const notExternal = [...allThreePane, ...onePane];
+const singleNotExternal = [
+  ...singleSelectionMessagePane,
+  ...singleSelectionThreadPane,
+  ...onePane,
+];
+const notSynthetic = [
+  "singleMessage",
+  "draftsFolder",
+  "templatesFolder",
+  "listFolder",
+  "singleMessageTree",
+  "draftsFolderTree",
+  "templatesFolderTree",
+  "listFolderTree",
+  "multipleMessagesTree",
+  "collapsedThreadTree",
+  "multipleDraftsFolderTree",
+  "multipleTemplatesFolderTree",
+];
 
-async function getImageArrayBuffer() {
-  let response = await fetch(TEST_IMAGE_URL);
-  let blob = await response.blob();
+const mailContextData = {
+  "mailContext-openInBrowser": [],
+  "mailContext-openLinkInBrowser": [],
+  "mailContext-copylink": [],
+  "mailContext-savelink": [],
+  "mailContext-reportPhishingURL": [],
+  "mailContext-addemail": [],
+  "mailContext-composeemailto": [],
+  "mailContext-copyemail": [],
+  "mailContext-copyimage": [],
+  "mailContext-saveimage": [],
+  "mailContext-copy": [],
+  "mailContext-selectall": [
+    ...singleSelectionMessagePane,
+    ...onePane,
+    ...external,
+  ],
+  "mailContext-searchTheWeb": [],
+  "mailContext-editDraftMsg": [
+    "draftsFolder",
+    "draftsFolderTree",
+    "multipleDraftsFolderTree",
+    "syntheticFolderDraft",
+    "syntheticFolderDraftTree",
+  ],
+  "mailContext-newMsgFromTemplate": [
+    "templatesFolder",
+    "templatesFolderTree",
+    "multipleTemplatesFolderTree",
+  ],
+  "mailContext-editTemplateMsg": [
+    "templatesFolder",
+    "templatesFolderTree",
+    "multipleTemplatesFolderTree",
+  ],
+  "mailContext-openNewTab": singleSelectionThreadPane,
+  "mailContext-openNewWindow": singleSelectionThreadPane,
+  "mailContext-openConversation": [
+    ...singleSelectionMessagePane,
+    ...singleSelectionThreadPane,
+    ...onePane,
+    "collapsedThreadTree",
+  ],
+  "mailContext-openContainingFolder": [
+    "syntheticFolderDraft",
+    "syntheticFolderDraftTree",
+    "syntheticFolder",
+    "syntheticFolderTree",
+    ...onePane,
+  ],
+  "mailContext-replyNewsgroup": [],
+  "mailContext-replySender": noCollapsedThreads,
+  "mailContext-replyAll": noCollapsedThreads,
+  "mailContext-replyList": ["listFolder", "listFolderTree"],
+  "mailContext-forward": allSingleSelection,
+  "mailContext-forwardAsMenu": allSingleSelection,
+  "mailContext-multiForwardAsAttachment": [
+    "multipleMessagesTree",
+    "multipleDraftsFolderTree",
+    "multipleTemplatesFolderTree",
+  ],
+  "mailContext-redirect": noCollapsedThreads,
+  "mailContext-cancel": [],
+  "mailContext-editAsNew": noCollapsedThreads,
+  "mailContext-tags": notExternal,
+  "mailContext-mark": notExternal,
+  "mailContext-copyMessageUrl": [],
+  "mailContext-archive": notExternal,
+  "mailContext-moveMenu": notExternal,
+  "mailContext-copyMenu": true,
+  "mailContext-moveToFolderAgain": [],
+  "mailContext-decryptToFolder": [
+    "multipleMessagesTree",
+    "collapsedThreadTree",
+    "multipleDraftsFolderTree",
+    "multipleTemplatesFolderTree",
+  ],
+  "mailContext-calendar-convert-menu": singleNotExternal,
+  "mailContext-delete": notExternal,
+  "mailContext-ignoreThread": notSynthetic,
+  "mailContext-ignoreSubthread": notSynthetic,
+  "mailContext-watchThread": [...notSynthetic, ...onePane],
+  "mailContext-saveAs": true,
+  "mailContext-print": true,
+  "mailContext-downloadSelected": [
+    "multipleMessagesTree",
+    "collapsedThreadTree",
+    "multipleDraftsFolderTree",
+    "multipleTemplatesFolderTree",
+  ],
+};
 
-  return new Promise((resolve, reject) => {
-    let reader = new FileReader();
-    reader.addEventListener("loadend", event => {
-      resolve(event.target.result);
-    });
-    reader.readAsArrayBuffer(blob);
-  });
-}
-
-function checkMenuitems(menu, ...expectedItems) {
-  if (expectedItems.length == 0) {
+function checkMenuitems(menu, mode) {
+  if (!mode) {
     // Menu should not be shown.
     Assert.equal(menu.state, "closed");
     return;
   }
 
-  Assert.notEqual(menu.state, "closed");
+  info(`Checking menus for ${mode} ...`);
 
-  let actualItems = [];
-  for (let item of menu.children) {
+  Assert.notEqual(menu.state, "closed", "Menu should be closed");
+
+  const expectedItems = [];
+  for (const [id, modes] of Object.entries(mailContextData)) {
+    if (modes === true || modes.includes(mode)) {
+      expectedItems.push(id);
+    }
+  }
+
+  const actualItems = [];
+  for (const item of menu.children) {
     if (["menu", "menuitem"].includes(item.localName) && !item.hidden) {
       actualItems.push(item.id);
     }
   }
-  Assert.deepEqual(actualItems, expectedItems);
-}
 
-async function checkABrowser(browser) {
-  if (
-    browser.webProgress?.isLoadingDocument ||
-    browser.currentURI?.spec == "about:blank"
-  ) {
-    await BrowserTestUtils.browserLoaded(browser);
+  const notFoundItems = expectedItems.filter(i => !actualItems.includes(i));
+  if (notFoundItems.length) {
+    Assert.report(
+      true,
+      undefined,
+      undefined,
+      "items expected but not found: " + notFoundItems.join(", ")
+    );
   }
 
-  let mailContext = browser.ownerDocument.getElementById("mailContext");
+  const unexpectedItems = actualItems.filter(i => !expectedItems.includes(i));
+  if (unexpectedItems.length) {
+    Assert.report(
+      true,
+      undefined,
+      undefined,
+      "items found but not expected: " + unexpectedItems.join(", ")
+    );
+  }
 
-  // Just some text.
+  Assert.deepEqual(actualItems, expectedItems);
 
-  let shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
-  await BrowserTestUtils.synthesizeMouseAtCenter(
-    "p",
-    { type: "contextmenu" },
-    browser
-  );
-  await shownPromise;
-  checkMenuitems(
-    mailContext,
-    "mailContext-reload",
-    "mailContext-stop",
-    "mailContext-selectall"
-  );
-  mailContext.hidePopup();
-
-  // A link.
-
-  shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
-  await BrowserTestUtils.synthesizeMouseAtCenter(
-    "a",
-    { type: "contextmenu" },
-    browser
-  );
-  await shownPromise;
-  checkMenuitems(
-    mailContext,
-    "mailContext-openLinkInBrowser",
-    "mailContext-selectall",
-    "mailContext-copylink",
-    "mailContext-savelink"
-  );
-  mailContext.hidePopup();
-
-  // A text input widget.
-
-  await BrowserTestUtils.synthesizeMouseAtCenter("input", {}, browser);
-  shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
-  await BrowserTestUtils.synthesizeMouseAtCenter(
-    "input",
-    { type: "contextmenu" },
-    browser
-  );
-  await shownPromise;
-  checkMenuitems(
-    mailContext,
-    "mailContext-undo",
-    "mailContext-cut",
-    "mailContext-copy",
-    "mailContext-paste",
-    "mailContext-selectall",
-    "mailContext-spell-check-enabled"
-  );
-  mailContext.hidePopup();
-
-  // An image. Also checks Save Image As works.
-
-  shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
-  await BrowserTestUtils.synthesizeMouseAtCenter(
-    "img",
-    { type: "contextmenu" },
-    browser
-  );
-  await shownPromise;
-  checkMenuitems(
-    mailContext,
-    "mailContext-selectall",
-    "mailContext-copyimage",
-    "mailContext-saveimage"
-  );
-
-  let pickerPromise = new Promise(resolve => {
-    SpecialPowers.MockFilePicker.init(window);
-    SpecialPowers.MockFilePicker.showCallback = picker => {
-      resolve(picker.defaultString);
-      return Ci.nsIFilePicker.returnCancel;
-    };
-  });
-  mailContext.activateItem(
-    browser.ownerDocument.getElementById("mailContext-saveimage")
-  );
-  Assert.equal(await pickerPromise, "tb-logo.png");
-  SpecialPowers.MockFilePicker.cleanup();
+  menu.hidePopup();
 }
 
-add_task(async function testMessagePane() {
-  MailServices.accounts.createLocalMailAccount();
-  let account = MailServices.accounts.accounts[0];
+add_setup(async function () {
+  Services.prefs.clearUserPref("mail.last_msg_movecopy_target_uri");
+  const generator = new MessageGenerator();
+
+  const account = MailServices.accounts.createLocalMailAccount();
   account.addIdentity(MailServices.accounts.createIdentity());
-  let rootFolder = account.incomingServer.rootFolder;
-  rootFolder.createSubfolder("test", null);
+  const rootFolder = account.incomingServer.rootFolder.QueryInterface(
+    Ci.nsIMsgLocalMailFolder
+  );
   testFolder = rootFolder
-    .getChildNamed("test")
+    .createLocalSubfolder("mailContextFolder")
     .QueryInterface(Ci.nsIMsgLocalMailFolder);
-  let message = await fetch(TEST_MESSAGE_URL).then(r => r.text());
-  testFolder.addMessageBatch([message]);
-  let messages = new MessageGenerator().makeMessages({ count: 5 });
-  let messageStrings = messages.map(message => message.toMboxString());
+  const messages = [
+    ...generator.makeMessages({ count: 5 }),
+    ...generator.makeMessages({ count: 5, msgsPerThread: 5 }),
+    ...generator.makeMessages({ count: 60 }),
+  ];
+  const messageStrings = messages.map(message => message.toMessageString());
   testFolder.addMessageBatch(messageStrings);
+  testMessages = [...testFolder.messages];
+  draftsFolder = rootFolder
+    .createLocalSubfolder("mailContextDrafts")
+    .QueryInterface(Ci.nsIMsgLocalMailFolder);
+  draftsFolder.setFlag(Ci.nsMsgFolderFlags.Drafts);
+  draftsFolder.addMessageBatch(
+    generator
+      .makeMessages({ count: 5 })
+      .map(message => message.toMessageString())
+  );
+  draftsMessages = [...draftsFolder.messages];
+  templatesFolder = rootFolder
+    .createLocalSubfolder("mailContextTemplates")
+    .QueryInterface(Ci.nsIMsgLocalMailFolder);
+  templatesFolder.setFlag(Ci.nsMsgFolderFlags.Templates);
+  templatesFolder.addMessageBatch(
+    generator
+      .makeMessages({ count: 5 })
+      .map(message => message.toMessageString())
+  );
+  templatesMessages = [...templatesFolder.messages];
+  listFolder = rootFolder
+    .createLocalSubfolder("mailContextMailingList")
+    .QueryInterface(Ci.nsIMsgLocalMailFolder);
+  listFolder.addMessage(
+    "From - Mon Jan 01 00:00:00 2001\n" +
+      "To: Mailing List <list@example.com>\n" +
+      "Date: Mon, 01 Jan 2001 00:00:00 +0100\n" +
+      "List-Help: <https://list.example.com>\n" +
+      "List-Post: <mailto:list@example.com>\n" +
+      "List-Software: Mailing List Software\n" +
+      "List-Subscribe: <https://subscribe.example.com>\n" +
+      "Precedence: list\n" +
+      "Subject: Mailing List Test Mail\n" +
+      `Message-ID: <${Date.now()}@example.com>\n` +
+      "From: Mailing List <list@example.com>\n" +
+      "List-Unsubscribe: <https://unsubscribe.example.com>,\n" +
+      " <mailto:unsubscribe@example.com?subject=Unsubscribe Test>\n" +
+      "MIME-Version: 1.0\n" +
+      "Content-Type: text/plain; charset=UTF-8\n" +
+      "Content-Transfer-Encoding: quoted-printable\n" +
+      "\n" +
+      "Mailing List Message Body\n"
+  );
+  listMessages = [...listFolder.messages];
+
+  tabmail.currentAbout3Pane.restoreState({
+    folderURI: testFolder.URI,
+    messagePaneVisible: true,
+  });
+
+  // Enable home calendar.
+  cal.manager.getCalendars()[0].setProperty("disabled", false);
 
   registerCleanupFunction(() => {
-    MailServices.accounts.removeAccount(account, true);
+    for (const folder of MailServices.accounts.allFolders) {
+      Gloda.setFolderIndexingPriority(folder, -1);
+    }
+    MailServices.accounts.removeAccount(account, false);
+    Services.prefs.clearUserPref("mail.openMessageBehavior");
+    cal.manager.getCalendars()[0].setProperty("disabled", true);
   });
+});
 
-  window.gFolderTreeView.selectFolder(testFolder);
-  if (window.IsMessagePaneCollapsed()) {
-    window.MsgToggleMessagePane();
-  }
+/**
+ * Tests the mailContext menu on the thread tree and message pane when no
+ * messages are selected.
+ */
+add_task(async function testNoMessages() {
+  const about3Pane = tabmail.currentAbout3Pane;
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { messageBrowser, messagePane, threadTree } = about3Pane;
+  messagePane.clearAll();
 
-  // No messages are selected.
+  // The message pane browser isn't visible.
 
-  let mailContext = document.getElementById("mailContext");
-  let messagePane = document.getElementById("messagepane");
-  Assert.equal(messagePane.currentURI.spec, "about:blank");
-  EventUtils.synthesizeMouseAtCenter(messagePane, { type: "contextmenu" });
-  checkMenuitems(mailContext);
-
-  // A web page is shown in the message pane.
-
-  MailE10SUtils.loadURI(messagePane, TEST_DOCUMENT_URL);
-  await checkABrowser(messagePane);
-
-  let tree = window.gFolderDisplay.tree;
-  let coords = tree.getCoordsForCellItem(6, tree.columns.subjectCol, "cell");
-  let treeChildren = tree.lastElementChild;
-  EventUtils.synthesizeMouse(
-    treeChildren,
-    coords.x + coords.width / 2,
-    coords.y + coords.height / 2,
+  Assert.ok(
+    BrowserTestUtils.isHidden(messageBrowser),
+    "message browser should be hidden"
+  );
+  Assert.equal(messageBrowser.currentURI.spec, "about:message");
+  Assert.equal(
+    messageBrowser.contentWindow.getMessagePaneBrowser().currentURI.spec,
+    "about:blank"
+  );
+  EventUtils.synthesizeMouseAtCenter(
+    about3Pane.document.getElementById("messagePane"),
     { type: "contextmenu" }
   );
   checkMenuitems(mailContext);
 
-  // One message is selected.
+  // Open the menu from an empty part of the thread pane.
 
-  window.gFolderDisplay.selectViewIndex(0);
-  await BrowserTestUtils.browserLoaded(messagePane);
-  let shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
+  const treeRect = threadTree.getBoundingClientRect();
+  EventUtils.synthesizeMouse(
+    threadTree,
+    treeRect.x + treeRect.width / 2,
+    treeRect.bottom - 10,
+    { type: "contextmenu" },
+    about3Pane
+  );
+  checkMenuitems(mailContext);
+});
+
+/**
+ * Tests the mailContext menu on the thread tree and message pane when one
+ * message is selected.
+ */
+add_task(async function testSingleMessage() {
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(testMessages[0]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing",
+    1000
+  );
+
+  const about3Pane = tabmail.currentAbout3Pane;
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { gDBView, messageBrowser, threadTree } = about3Pane;
+  const aboutMessage = messageBrowser.contentWindow;
+  const messagePaneBrowser = aboutMessage.getMessagePaneBrowser();
+
+  const loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(0))
+  );
+  threadTree.selectedIndex = 0;
+  threadTree.scrollToIndex(0, true);
+  await loadedPromise;
+
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+
   await BrowserTestUtils.synthesizeMouseAtCenter(
     ":root",
     { type: "contextmenu" },
-    messagePane
+    messagePaneBrowser
   );
-  await shownPromise;
-  let messageItems = [
-    "mailContext-selectall",
-    "mailContext-openContainingFolder",
-    "mailContext-replySender",
-    "mailContext-replyAll",
-    "mailContext-replyList",
-    "mailContext-forward",
-    "mailContext-forwardAsMenu",
-    "mailContext-redirect",
-    "mailContext-editAsNew",
-    "mailContext-tags",
-    "mailContext-mark",
-    "mailContext-archive",
-    "mailContext-moveMenu",
-    "mailContext-copyMenu",
-    "mailContext-moveToFolderAgain",
-    "mailContext-calendar-convert-menu",
-    "mailContext-delete",
-    "mailContext-ignoreThread",
-    "mailContext-ignoreSubthread",
-    "mailContext-watchThread",
-    "mailContext-saveAs",
-    "mailContext-print",
-  ];
-  checkMenuitems(mailContext, ...messageItems);
-  mailContext.hidePopup();
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "singleMessage");
 
-  shownPromise = BrowserTestUtils.waitForEvent(mailContext, "popupshown");
-  EventUtils.synthesizeMouse(
-    treeChildren,
-    coords.x + coords.width / 2,
-    coords.y + coords.height / 2,
-    { type: "contextmenu" }
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(0),
+    { type: "contextmenu" },
+    about3Pane
   );
-  await shownPromise;
-  let treeItems = [
-    "threadPaneContext-openNewTab",
-    "mailContext-openNewWindow",
-    "mailContext-openContainingFolder",
-    "mailContext-replySender",
-    "mailContext-replyAll",
-    "mailContext-replyList",
-    "mailContext-forward",
-    "mailContext-forwardAsMenu",
-    "mailContext-redirect",
-    "mailContext-editAsNew",
-    "mailContext-tags",
-    "mailContext-mark",
-    "mailContext-archive",
-    "mailContext-moveMenu",
-    "mailContext-copyMenu",
-    "mailContext-moveToFolderAgain",
-    "mailContext-calendar-convert-menu",
-    "mailContext-delete",
-    "mailContext-ignoreThread",
-    "mailContext-ignoreSubthread",
-    "mailContext-watchThread",
-    "mailContext-saveAs",
-    "mailContext-print",
-  ];
-  checkMenuitems(mailContext, ...treeItems);
-  mailContext.hidePopup();
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "singleMessageTree");
 
-  // Multiple messages are selected.
+  // Open the menu through the keyboard.
 
-  tree.view.selection.rangedSelect(1, 3, false);
-
-  EventUtils.synthesizeMouse(
-    treeChildren,
-    coords.x + coords.width / 2,
-    coords.y + coords.height / 2,
-    { type: "contextmenu" }
+  const row = threadTree.getRowAtIndex(0);
+  row.focus();
+  EventUtils.synthesizeMouseAtCenter(
+    row,
+    { type: "contextmenu", button: 0 },
+    about3Pane
   );
-  checkMenuitems(
-    mailContext,
-    "mailContext-multiForwardAsAttachment",
-    "mailContext-tags",
-    "mailContext-mark",
-    "mailContext-archive",
-    "mailContext-moveMenu",
-    "mailContext-copyMenu",
-    "mailContext-moveToFolderAgain",
-    "mailContext-delete",
-    "mailContext-ignoreThread",
-    "mailContext-ignoreSubthread",
-    "mailContext-watchThread",
-    "mailContext-saveAs",
-    "mailContext-print",
-    "downloadSelected"
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  Assert.ok(
+    BrowserTestUtils.isVisible(mailContext),
+    "Context menu is shown through keyboard action"
   );
   mailContext.hidePopup();
 
-  window.gFolderDisplay.selectMessages([]);
-});
+  // Open the menu through the keyboard on a message that is scrolled slightly
+  // out of view.
 
-add_task(async function testContentTab() {
-  let tab = window.openContentTab(TEST_DOCUMENT_URL);
-  await checkABrowser(tab.browser);
-
-  let tabmail = document.getElementById("tabmail");
-  tabmail.closeTab(tab);
-});
-
-add_task(async function testExtensionTab() {
-  let extension = ExtensionTestUtils.loadExtension({
-    background: async () => {
-      await browser.tabs.create({ url: "sampleContent.html" });
-      browser.test.notifyPass("ready");
-    },
-    files: {
-      "sampleContent.html": await fetch(TEST_DOCUMENT_URL).then(response =>
-        response.text()
-      ),
-      "tb-logo.png": await getImageArrayBuffer(),
-    },
-  });
-
-  await extension.startup();
-  await extension.awaitFinish("ready");
-
-  let tabmail = document.getElementById("tabmail");
-  await checkABrowser(tabmail.tabInfo[1].browser);
-  tabmail.closeOtherTabs(tabmail.tabInfo[0]);
-
-  await extension.unload();
-});
-
-add_task(async function testExtensionPopupWindow() {
-  let extension = ExtensionTestUtils.loadExtension({
-    background: async () => {
-      await browser.windows.create({
-        url: "sampleContent.html",
-        type: "popup",
-        width: 800,
-        height: 500,
-      });
-      browser.test.notifyPass("ready");
-    },
-    files: {
-      "sampleContent.html": await fetch(TEST_DOCUMENT_URL).then(response =>
-        response.text()
-      ),
-      "tb-logo.png": await getImageArrayBuffer(),
-    },
-  });
-
-  await extension.startup();
-  await extension.awaitFinish("ready");
-
-  let extensionPopup = Services.wm.getMostRecentWindow("mail:extensionPopup");
-  // extensionPopup.xhtml needs time to initialise properly.
-  await new Promise(resolve => extensionPopup.setTimeout(resolve, 500));
-  await checkABrowser(extensionPopup.document.getElementById("requestFrame"));
-  await BrowserTestUtils.closeWindow(extensionPopup);
-
-  await extension.unload();
-});
-
-add_task(async function testExtensionBrowserAction() {
-  let extension = ExtensionTestUtils.loadExtension({
-    files: {
-      "sampleContent.html": await fetch(TEST_DOCUMENT_URL).then(response =>
-        response.text()
-      ),
-      "tb-logo.png": await getImageArrayBuffer(),
-    },
-    manifest: {
-      applications: {
-        gecko: {
-          id: "mailcontext@mochi.test",
-        },
-      },
-      browser_action: {
-        default_popup: "sampleContent.html",
-      },
-    },
-  });
-
-  await extension.startup();
-
-  let actionButton = document.getElementById(
-    "mailcontext_mochi_test-browserAction-toolbarbutton"
+  threadTree.selectedIndex = 5;
+  threadTree.scrollToIndex(threadTree.getLastVisibleIndex() + 7, true);
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
+  Assert.equal(threadTree.currentIndex, 5, "Row 5 is the current row");
+  Assert.ok(row.parentNode, "Row element should still be attached");
+  Assert.greater(
+    threadTree.getFirstVisibleIndex(),
+    5,
+    "Selected row should no longer be visible"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {});
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree,
+    { type: "contextmenu", button: 0 },
+    about3Pane
+  );
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  Assert.greaterOrEqual(
+    5,
+    threadTree.getFirstVisibleIndex(),
+    "Current row is greater than or equal to first visible index"
+  );
+  Assert.lessOrEqual(
+    5,
+    threadTree.getLastVisibleIndex(),
+    "Current row is less than or equal to last visible index"
+  );
+  mailContext.hidePopup();
 
-  let panel = document.getElementById("webextension-remote-preload-panel");
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 500));
-  await checkABrowser(browser);
-  panel.hidePopup();
+  // Open the menu on a message that is scrolled out of view.
 
-  await extension.unload();
+  threadTree.scrollToIndex(60, true);
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
+  Assert.ok(!row.parentNode, "Row element should no longer be attached");
+  Assert.equal(threadTree.currentIndex, 5, "Row 5 is the current row");
+  Assert.ok(
+    !threadTree.getRowAtIndex(threadTree.currentIndex),
+    "Current row is scrolled out of view"
+  );
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree,
+    { type: "contextmenu", button: 0 },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  Assert.ok(
+    threadTree.getRowAtIndex(threadTree.currentIndex),
+    "Current row is scrolled into view when showing context menu"
+  );
+  Assert.greaterOrEqual(
+    5,
+    threadTree.getFirstVisibleIndex(),
+    "Current row is greater than or equal to first visible index"
+  );
+  Assert.lessOrEqual(
+    5,
+    threadTree.getLastVisibleIndex(),
+    "Current row is less than or equal to last visible index"
+  );
+  mailContext.hidePopup();
+
+  Assert.ok(BrowserTestUtils.isHidden(mailContext), "Context menu is hidden");
 });
 
-add_task(async function testExtensionComposeAction() {
-  let extension = ExtensionTestUtils.loadExtension({
-    files: {
-      "sampleContent.html": await fetch(TEST_DOCUMENT_URL).then(response =>
-        response.text()
-      ),
-      "tb-logo.png": await getImageArrayBuffer(),
-    },
-    manifest: {
-      applications: {
-        gecko: {
-          id: "mailcontext@mochi.test",
-        },
-      },
-      compose_action: {
-        default_popup: "sampleContent.html",
-      },
-    },
-  });
-
-  await extension.startup();
-
-  let params = Cc[
-    "@mozilla.org/messengercompose/composeparams;1"
-  ].createInstance(Ci.nsIMsgComposeParams);
-  params.composeFields = Cc[
-    "@mozilla.org/messengercompose/composefields;1"
-  ].createInstance(Ci.nsIMsgCompFields);
-
-  let composeWindowPromise = BrowserTestUtils.domWindowOpened();
-  MailServices.compose.OpenComposeWindowWithParams(null, params);
-  let composeWindow = await composeWindowPromise;
-  await BrowserTestUtils.waitForEvent(composeWindow, "load");
-  let composeDocument = composeWindow.document;
-
-  await new Promise(resolve => composeWindow.setTimeout(resolve, 500));
-
-  let actionButton = composeDocument.getElementById(
-    "mailcontext_mochi_test-composeAction-toolbarbutton"
+/**
+ * Tests the mailContext menu on the thread tree when more than one message is
+ * selected.
+ */
+add_task(async function testMultipleMessages() {
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(testMessages[5]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {}, composeWindow);
 
-  let panel = composeDocument.getElementById(
-    "webextension-remote-preload-panel"
+  const about3Pane = tabmail.currentAbout3Pane;
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { messageBrowser, multiMessageBrowser, threadTree } = about3Pane;
+  threadTree.scrollToIndex(1, true);
+  threadTree.selectedIndices = [1, 2, 3];
+  await TestUtils.waitForTick(); // Wait for rows to be added.
+
+  // Sometimes a bit more waiting is needed.
+  await TestUtils.waitForCondition(
+    () => threadTree.getRowAtIndex(2),
+    "waiting for rows to be added"
   );
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  await new Promise(resolve => composeWindow.setTimeout(resolve, 500));
-  await checkABrowser(browser);
-  panel.hidePopup();
 
-  await extension.unload();
-  await BrowserTestUtils.closeWindow(composeWindow);
+  // The message pane browser isn't visible.
+
+  Assert.ok(
+    BrowserTestUtils.isHidden(messageBrowser),
+    "message browser should be hidden"
+  );
+  Assert.ok(
+    BrowserTestUtils.isVisible(multiMessageBrowser),
+    "multimessage browser should be visible"
+  );
+
+  // Open the menu from the thread pane.
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(2),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "multipleMessagesTree");
+
+  // Select a collapsed thread and open the menu.
+
+  threadTree.scrollToIndex(5, true);
+  threadTree.selectedIndices = [5];
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(5),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "collapsedThreadTree");
+
+  // Open the menu in the thread pane on a message scrolled out of view.
+
+  threadTree.selectAll();
+  threadTree.currentIndex = 60;
+  await TestUtils.waitForTick();
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
+  threadTree.scrollToIndex(0, true);
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
+  Assert.ok(
+    !threadTree.getRowAtIndex(threadTree.currentIndex),
+    "Current row is scrolled out of view"
+  );
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree,
+    { type: "contextmenu", button: 0 },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  Assert.ok(
+    threadTree.getRowAtIndex(threadTree.currentIndex),
+    "Current row is scrolled into view when popup is shown"
+  );
+  mailContext.hidePopup();
 });
 
-add_task(async function testExtensionMessageDisplayAction() {
-  let extension = ExtensionTestUtils.loadExtension({
-    files: {
-      "sampleContent.html": await fetch(TEST_DOCUMENT_URL).then(response =>
-        response.text()
-      ),
-      "tb-logo.png": await getImageArrayBuffer(),
-    },
-    manifest: {
-      applications: {
-        gecko: {
-          id: "mailcontext@mochi.test",
-        },
-      },
-      message_display_action: {
-        default_popup: "sampleContent.html",
-      },
-    },
+/**
+ * Tests the mailContext menu on the thread tree and message pane of a Drafts
+ * folder.
+ */
+add_task(async function testDraftsFolder() {
+  const about3Pane = tabmail.currentAbout3Pane;
+  about3Pane.restoreState({ folderURI: draftsFolder.URI });
+
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(draftsMessages[1]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing"
+  );
+
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { gDBView, messageBrowser, threadTree } = about3Pane;
+  const messagePaneBrowser =
+    messageBrowser.contentWindow.getMessagePaneBrowser();
+
+  const loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(0))
+  );
+  threadTree.selectedIndex = 0;
+  await loadedPromise;
+
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    messagePaneBrowser
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "draftsFolder");
+
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(0),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "draftsFolderTree");
+
+  threadTree.scrollToIndex(1, true);
+  threadTree.selectedIndices = [1, 2, 3];
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(2),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "multipleDraftsFolderTree");
+});
+
+/**
+ * Tests the mailContext menu on the thread tree and message pane of a Templates
+ * folder.
+ */
+add_task(async function testTemplatesFolder() {
+  const about3Pane = tabmail.currentAbout3Pane;
+  about3Pane.restoreState({ folderURI: templatesFolder.URI });
+
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(templatesMessages[1]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing"
+  );
+
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { gDBView, messageBrowser, threadTree } = about3Pane;
+  const messagePaneBrowser =
+    messageBrowser.contentWindow.getMessagePaneBrowser();
+
+  const loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(0))
+  );
+  threadTree.selectedIndex = 0;
+  await loadedPromise;
+
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    messagePaneBrowser
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "templatesFolder");
+
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(0),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "templatesFolderTree");
+
+  threadTree.scrollToIndex(1, true);
+  threadTree.selectedIndices = [1, 2, 3];
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(2),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "multipleTemplatesFolderTree");
+});
+
+/**
+ * Tests the mailContext menu on the thread tree and message pane of a
+ * mailing list message.
+ */
+add_task(async function testListMessage() {
+  const about3Pane = tabmail.currentAbout3Pane;
+  about3Pane.restoreState({ folderURI: listFolder.URI });
+
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(listMessages[0]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing"
+  );
+
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { gDBView, messageBrowser, threadTree } = about3Pane;
+  const messagePaneBrowser =
+    messageBrowser.contentWindow.getMessagePaneBrowser();
+
+  const loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(0))
+  );
+  threadTree.selectedIndex = 0;
+  await loadedPromise;
+
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    messagePaneBrowser
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "listFolder");
+
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(0),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "listFolderTree");
+});
+
+/**
+ * Tests the mailContext menu on the thread tree and message pane of a Gloda
+ * synthetic view (in this case a conversation, but a list of search results
+ * should be the same).
+ */
+add_task(async function testSyntheticFolder() {
+  await TestUtils.waitForCondition(
+    () =>
+      ConversationOpener.isMessageIndexed(testMessages[5]) &&
+      !GlodaIndexer.indexing,
+    "waiting for Gloda to finish indexing"
+  );
+
+  const tabPromise = BrowserTestUtils.waitForEvent(
+    window,
+    "aboutMessageLoaded"
+  );
+  const tab = tabmail.openTab("mail3PaneTab", {
+    syntheticView: new GlodaSyntheticView({
+      collection: Gloda.getMessageCollectionForHeaders([
+        ...draftsMessages,
+        ...testMessages.slice(0, 6),
+      ]),
+    }),
+    title: "Test gloda results",
   });
+  await tabPromise;
 
-  await extension.startup();
+  const about3Pane = tab.chromeBrowser.contentWindow;
+  const mailContext = about3Pane.document.getElementById("mailContext");
+  const { messageBrowser, threadTree } = about3Pane;
+  const messagePaneBrowser =
+    messageBrowser.contentWindow.getMessagePaneBrowser();
 
-  let messageWindowPromise = BrowserTestUtils.domWindowOpened();
-  window.MsgOpenNewWindowForMessage([...testFolder.messages][0]);
-  let messageWindow = await messageWindowPromise;
-  await BrowserTestUtils.waitForEvent(messageWindow, "load");
-  let messageDocument = messageWindow.document;
-
-  await new Promise(resolve => messageWindow.setTimeout(resolve, 500));
-
-  let actionButton = messageDocument.getElementById(
-    "mailcontext_mochi_test-messageDisplayAction-toolbarbutton"
+  const gDBView = await TestUtils.waitForCondition(
+    () => about3Pane.gDBView,
+    "waiting for view to load in new tab"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {}, messageWindow);
-
-  let panel = messageDocument.getElementById(
-    "webextension-remote-preload-panel"
+  let loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(9))
   );
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 500));
-  await checkABrowser(browser);
-  panel.hidePopup();
+  threadTree.selectedIndex = 9;
+  await loadedPromise;
 
-  await extension.unload();
-  await BrowserTestUtils.closeWindow(messageWindow);
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    messagePaneBrowser
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "syntheticFolderDraft");
+
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(9),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "syntheticFolderDraftTree");
+
+  loadedPromise = BrowserTestUtils.browserLoaded(
+    messagePaneBrowser,
+    undefined,
+    url => url.endsWith(gDBView.getKeyAt(4))
+  );
+  threadTree.selectedIndex = 4;
+  await loadedPromise;
+
+  // Open the menu from the message pane.
+
+  Assert.ok(
+    BrowserTestUtils.isVisible(messageBrowser),
+    "message browser should be visible"
+  );
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    messagePaneBrowser
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "syntheticFolder");
+
+  // Open the menu from the thread pane.
+
+  EventUtils.synthesizeMouseAtCenter(
+    threadTree.getRowAtIndex(5),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "syntheticFolderTree");
+
+  tabmail.closeOtherTabs(0);
+});
+
+/**
+ * Tests the mailContext menu on the message pane of a message in a tab.
+ */
+add_task(async function testMessageTab() {
+  const tabPromise = BrowserTestUtils.waitForEvent(
+    tabmail.tabContainer,
+    "TabOpen"
+  );
+  window.OpenMessageInNewTab(testMessages[0], { background: false });
+  const {
+    detail: { tabInfo },
+  } = await tabPromise;
+  await messageLoadedIn(tabInfo.chromeBrowser);
+
+  const aboutMessage = tabInfo.chromeBrowser.contentWindow;
+  const mailContext = aboutMessage.document.getElementById("mailContext");
+
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    aboutMessage.getMessagePaneBrowser()
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "messageTab");
+
+  tabmail.closeOtherTabs(0);
+});
+
+/**
+ * Tests the mailContext menu on the message pane of a file message in a tab.
+ */
+add_task(async function testExternalMessageTab() {
+  const tabPromise = BrowserTestUtils.waitForEvent(
+    tabmail.tabContainer,
+    "TabOpen"
+  );
+  const messageFile = new FileUtils.File(
+    getTestFilePath("files/sampleContent.eml")
+  );
+  Services.prefs.setIntPref(
+    "mail.openMessageBehavior",
+    MailConsts.OpenMessageBehavior.NEW_TAB
+  );
+  MailUtils.openEMLFile(
+    window,
+    messageFile,
+    Services.io.newFileURI(messageFile)
+  );
+  const {
+    detail: { tabInfo },
+  } = await tabPromise;
+  await messageLoadedIn(tabInfo.chromeBrowser);
+
+  const aboutMessage = tabInfo.chromeBrowser.contentWindow;
+  const mailContext = aboutMessage.document.getElementById("mailContext");
+
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    aboutMessage.getMessagePaneBrowser()
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "externalMessageTab");
+
+  tabmail.closeOtherTabs(0);
+});
+
+/**
+ * Tests the mailContext menu on the message pane of a message in a window.
+ */
+add_task(async function testMessageWindow() {
+  const winPromise = BrowserTestUtils.domWindowOpenedAndLoaded();
+  window.MsgOpenNewWindowForMessage(testMessages[0]);
+  const win = await winPromise;
+  await messageLoadedIn(win.messageBrowser);
+  await SimpleTest.promiseFocus(win);
+
+  const aboutMessage = win.messageBrowser.contentWindow;
+  const mailContext = aboutMessage.document.getElementById("mailContext");
+
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    aboutMessage.getMessagePaneBrowser()
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "messageWindow");
+
+  await BrowserTestUtils.closeWindow(win);
+});
+
+/**
+ * Tests the mailContext menu on the message pane of a file message in a window.
+ */
+add_task(async function testExternalMessageWindow() {
+  const winPromise = BrowserTestUtils.domWindowOpenedAndLoaded();
+  const messageFile = new FileUtils.File(
+    getTestFilePath("files/sampleContent.eml")
+  );
+  Services.prefs.setIntPref(
+    "mail.openMessageBehavior",
+    MailConsts.OpenMessageBehavior.NEW_WINDOW
+  );
+  MailUtils.openEMLFile(
+    window,
+    messageFile,
+    Services.io.newFileURI(messageFile)
+  );
+  const win = await winPromise;
+  await messageLoadedIn(win.messageBrowser);
+  await SimpleTest.promiseFocus(win);
+
+  const aboutMessage = win.messageBrowser.contentWindow;
+  const mailContext = aboutMessage.document.getElementById("mailContext");
+
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    ":root",
+    { type: "contextmenu" },
+    aboutMessage.getMessagePaneBrowser()
+  );
+  await BrowserTestUtils.waitForPopupEvent(mailContext, "shown");
+  checkMenuitems(mailContext, "externalMessageWindow");
+
+  await BrowserTestUtils.closeWindow(win);
 });

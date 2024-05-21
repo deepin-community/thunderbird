@@ -7,68 +7,64 @@
 #include "DefaultBrowser.h"
 
 #include <string>
-#include <unordered_map>
 
 #include <shlobj.h>
-#include <shlwapi.h>
 
-#include "common.h"
 #include "EventLog.h"
 #include "Registry.h"
 
+#include "mozilla/ArrayUtils.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/Unused.h"
+#include "mozilla/Try.h"
 #include "mozilla/WinHeaderOnlyUtils.h"
+
+namespace mozilla::default_agent {
 
 using BrowserResult = mozilla::WindowsErrorResult<Browser>;
 
+constexpr std::string_view kUnknownBrowserString = "";
+
+constexpr std::pair<std::string_view, Browser> kStringBrowserMap[]{
+    {"error", Browser::Error},
+    {kUnknownBrowserString, Browser::Unknown},
+    {"firefox", Browser::Firefox},
+    {"chrome", Browser::Chrome},
+    {"edge", Browser::EdgeWithEdgeHTML},
+    {"edge-chrome", Browser::EdgeWithBlink},
+    {"ie", Browser::InternetExplorer},
+    {"opera", Browser::Opera},
+    {"brave", Browser::Brave},
+    {"yandex", Browser::Yandex},
+    {"qq-browser", Browser::QQBrowser},
+    {"360-browser", Browser::_360Browser},
+    {"sogou", Browser::Sogou},
+    {"duckduckgo", Browser::DuckDuckGo},
+};
+
+static_assert(mozilla::ArrayLength(kStringBrowserMap) == kBrowserCount);
+
 std::string GetStringForBrowser(Browser browser) {
-  switch (browser) {
-    case Browser::Firefox:
-      return std::string("firefox");
-    case Browser::Chrome:
-      return std::string("chrome");
-    case Browser::EdgeWithEdgeHTML:
-      return std::string("edge");
-    case Browser::EdgeWithBlink:
-      return std::string("edge-chrome");
-    case Browser::InternetExplorer:
-      return std::string("ie");
-    case Browser::Opera:
-      return std::string("opera");
-    case Browser::Brave:
-      return std::string("brave");
-    case Browser::Unknown:
-      return std::string("");
+  for (const auto& [mapString, mapBrowser] : kStringBrowserMap) {
+    if (browser == mapBrowser) {
+      return std::string{mapString};
+    }
   }
+
+  return std::string(kUnknownBrowserString);
 }
 
 Browser GetBrowserFromString(const std::string& browserString) {
-  if (browserString.compare("firefox") == 0) {
-    return Browser::Firefox;
+  for (const auto& [mapString, mapBrowser] : kStringBrowserMap) {
+    if (browserString == mapString) {
+      return mapBrowser;
+    }
   }
-  if (browserString.compare("chrome") == 0) {
-    return Browser::Chrome;
-  }
-  if (browserString.compare("edge") == 0) {
-    return Browser::EdgeWithEdgeHTML;
-  }
-  if (browserString.compare("edge-chrome") == 0) {
-    return Browser::EdgeWithBlink;
-  }
-  if (browserString.compare("ie") == 0) {
-    return Browser::InternetExplorer;
-  }
-  if (browserString.compare("opera") == 0) {
-    return Browser::Opera;
-  }
-  if (browserString.compare("brave") == 0) {
-    return Browser::Brave;
-  }
+
   return Browser::Unknown;
 }
 
-static BrowserResult GetDefaultBrowser() {
+BrowserResult TryGetDefaultBrowser() {
   RefPtr<IApplicationAssociationRegistration> pAAR;
   HRESULT hr = CoCreateInstance(
       CLSID_ApplicationAssociationRegistration, nullptr, CLSCTX_INPROC,
@@ -79,34 +75,91 @@ static BrowserResult GetDefaultBrowser() {
   }
 
   // Whatever is handling the HTTP protocol is effectively the default browser.
-  wchar_t* rawRegisteredApp;
-  hr = pAAR->QueryCurrentDefault(L"http", AT_URLPROTOCOL, AL_EFFECTIVE,
-                                 &rawRegisteredApp);
+  mozilla::UniquePtr<wchar_t, mozilla::CoTaskMemFreeDeleter> registeredApp;
+  {
+    wchar_t* rawRegisteredApp;
+    hr = pAAR->QueryCurrentDefault(L"http", AT_URLPROTOCOL, AL_EFFECTIVE,
+                                   &rawRegisteredApp);
+    if (FAILED(hr)) {
+      LOG_ERROR(hr);
+      return BrowserResult(mozilla::WindowsError::FromHResult(hr));
+    }
+    registeredApp = mozilla::UniquePtr<wchar_t, mozilla::CoTaskMemFreeDeleter>(
+        rawRegisteredApp);
+  }
+
+  // Get the application Friendly Name associated to the found ProgID. This is
+  // sized to be larger than any observed or expected friendly names. Long
+  // friendly names tend to be in the form `[Company] [Browser] [Variant]`
+  std::array<wchar_t, 256> friendlyName{};
+  DWORD friendlyNameLen = friendlyName.size();
+  hr = AssocQueryStringW(ASSOCF_NONE, ASSOCSTR_FRIENDLYAPPNAME,
+                         registeredApp.get(), nullptr, friendlyName.data(),
+                         &friendlyNameLen);
   if (FAILED(hr)) {
     LOG_ERROR(hr);
     return BrowserResult(mozilla::WindowsError::FromHResult(hr));
   }
-  mozilla::UniquePtr<wchar_t, mozilla::CoTaskMemFreeDeleter> registeredApp(
-      rawRegisteredApp);
 
-  // This maps a prefix of the AppID string used to register each browser's HTTP
-  // handler to a custom string that we'll use to identify that browser in our
-  // telemetry ping (which is this function's return value).
-  // We're assuming that any UWP app set as the default browser must be Edge.
-  const std::unordered_map<std::wstring, Browser> AppIDPrefixes = {
+  // This maps a browser's Friendly Name prefix to an enum variant that we'll
+  // use to identify that browser in our telemetry ping (which is this
+  // function's return value).
+  constexpr std::pair<std::wstring_view, Browser> kFriendlyNamePrefixes[] = {
       {L"Firefox", Browser::Firefox},
-      {L"Chrome", Browser::Chrome},
-      {L"AppX", Browser::EdgeWithEdgeHTML},
-      {L"MSEdgeHTM", Browser::EdgeWithBlink},
-      {L"IE.", Browser::InternetExplorer},
+      {L"Google Chrome", Browser::Chrome},
+      {L"Microsoft Edge", Browser::EdgeWithBlink},
+      {L"Internet Explorer", Browser::InternetExplorer},
       {L"Opera", Browser::Opera},
       {L"Brave", Browser::Brave},
+      {L"Yandex", Browser::Yandex},
+      {L"QQBrowser", Browser::QQBrowser},
+      // 360安全浏览器 UTF-16 encoding
+      {L"\u0033\u0036\u0030\u5b89\u5168\u6d4f\u89c8\u5668",
+       Browser::_360Browser},
+      // 搜狗高速浏览器 UTF-16 encoding
+      {L"\u641c\u72d7\u9ad8\u901f\u6d4f\u89c8\u5668", Browser::Sogou},
+      {L"DuckDuckGo", Browser::DuckDuckGo},
   };
 
-  for (const auto& prefix : AppIDPrefixes) {
-    if (!wcsnicmp(registeredApp.get(), prefix.first.c_str(),
-                  prefix.first.length())) {
-      return prefix.second;
+  // We should have one prefix for every browser we track, minus exceptions
+  // listed below.
+  // Error - not a real browser.
+  // Unknown - not a real browser.
+  // EdgeWithEdgeHTML - duplicate friendly name with EdgeWithBlink with special
+  //   handling below.
+  static_assert(mozilla::ArrayLength(kFriendlyNamePrefixes) ==
+                kBrowserCount - 3);
+
+  for (const auto& [prefix, browser] : kFriendlyNamePrefixes) {
+    // Find matching Friendly Name prefix.
+    if (!wcsnicmp(friendlyName.data(), prefix.data(), prefix.length())) {
+      if (browser == Browser::EdgeWithBlink) {
+        // Disambiguate EdgeWithEdgeHTML and EdgeWithBlink.
+        // The ProgID below is documented as having not changed while Edge was
+        // actively developed. It's assumed but unverified this is true in all
+        // cases (e.g. across locales).
+        //
+        // Note: at time of commit EdgeWithBlink from the Windows Store was a
+        // wrapper for Edge Installer instead of a package containing Edge,
+        // therefore the Default Browser associating ProgID was not in the form
+        // "AppX[hash]" as expected. It is unclear if the EdgeWithEdgeHTML and
+        // EdgeWithBlink ProgIDs would differ if the latter is changed into a
+        // package containing Edge.
+        constexpr std::wstring_view progIdEdgeHtml1{
+            L"AppXq0fevzme2pys62n3e0fbqa7peapykr8v"};
+        // Apparently there is at least one other ProgID used by EdgeHTML Edge.
+        constexpr std::wstring_view progIdEdgeHtml2{
+            L"AppXd4nrz8ff68srnhf9t5a8sbjyar1cr723"};
+
+        if (!wcsnicmp(registeredApp.get(), progIdEdgeHtml1.data(),
+                      progIdEdgeHtml1.length()) ||
+            !wcsnicmp(registeredApp.get(), progIdEdgeHtml2.data(),
+                      progIdEdgeHtml2.length())) {
+          return Browser::EdgeWithEdgeHTML;
+        }
+      }
+
+      return browser;
     }
   }
 
@@ -114,7 +167,7 @@ static BrowserResult GetDefaultBrowser() {
   return Browser::Unknown;
 }
 
-static BrowserResult GetPreviousDefaultBrowser(Browser currentDefault) {
+BrowserResult TryGetReplacePreviousDefaultBrowser(Browser currentDefault) {
   // This function uses a registry value which stores the current default
   // browser. It returns the data stored in that registry value and replaces the
   // stored string with the current default browser string that was passed in.
@@ -129,25 +182,6 @@ static BrowserResult GetPreviousDefaultBrowser(Browser currentDefault) {
       IsPrefixed::Unprefixed, L"CurrentDefault", currentDefaultStr.c_str());
 
   return GetBrowserFromString(previousDefault);
-}
-
-DefaultBrowserResult GetDefaultBrowserInfo() {
-  DefaultBrowserInfo browserInfo;
-
-  BrowserResult defaultBrowserResult = GetDefaultBrowser();
-  if (defaultBrowserResult.isErr()) {
-    return DefaultBrowserResult(defaultBrowserResult.unwrapErr());
-  }
-  browserInfo.currentDefaultBrowser = defaultBrowserResult.unwrap();
-
-  BrowserResult previousDefaultBrowserResult =
-      GetPreviousDefaultBrowser(browserInfo.currentDefaultBrowser);
-  if (previousDefaultBrowserResult.isErr()) {
-    return DefaultBrowserResult(previousDefaultBrowserResult.unwrapErr());
-  }
-  browserInfo.previousDefaultBrowser = previousDefaultBrowserResult.unwrap();
-
-  return browserInfo;
 }
 
 // We used to prefix this key with the installation directory, but that causes
@@ -183,3 +217,13 @@ void MaybeMigrateCurrentDefault() {
                                               value.c_str());
   }
 }
+
+Browser GetDefaultBrowser() {
+  return TryGetDefaultBrowser().unwrapOr(Browser::Error);
+}
+Browser GetReplacePreviousDefaultBrowser(Browser currentBrowser) {
+  return TryGetReplacePreviousDefaultBrowser(currentBrowser)
+      .unwrapOr(Browser::Error);
+}
+
+}  // namespace mozilla::default_agent

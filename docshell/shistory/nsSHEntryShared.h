@@ -23,8 +23,8 @@ class nsSHEntry;
 class nsISHEntry;
 class nsISHistory;
 class nsIContentSecurityPolicy;
-class nsIContentViewer;
 class nsIDocShellTreeItem;
+class nsIDocumentViewer;
 class nsILayoutHistoryState;
 class nsIPrincipal;
 class nsDocShellEditorData;
@@ -81,6 +81,7 @@ struct SHEntrySharedState {
   nsCOMPtr<nsILayoutHistoryState> mLayoutHistoryState;
   uint32_t mCacheKey = 0;
   bool mIsFrameNavigation = false;
+  bool mSaveLayoutState = true;
 
  protected:
   static uint64_t GenerateId();
@@ -101,7 +102,7 @@ class SHEntrySharedParentState : public SHEntrySharedState {
 
   nsFrameLoader* GetFrameLoader();
 
-  void NotifyListenersContentViewerEvicted();
+  void NotifyListenersDocumentViewerEvicted();
 
   nsExpirationState* GetExpirationState() { return &mExpirationState; }
 
@@ -146,8 +147,6 @@ class SHEntrySharedParentState : public SHEntrySharedState {
 
   // This flag is about necko cache, not bfcache.
   bool mExpired = false;
-
-  bool mSaveLayoutState = true;
 };
 
 /**
@@ -165,7 +164,7 @@ class SHEntrySharedChildState {
 
   // These members aren't copied by SHEntrySharedChildState::CopyFrom() because
   // they're specific to a particular content viewer.
-  nsCOMPtr<nsIContentViewer> mContentViewer;
+  nsCOMPtr<nsIDocumentViewer> mDocumentViewer;
   RefPtr<mozilla::dom::Document> mDocument;
   nsCOMPtr<nsISupports> mWindowState;
   // FIXME Move to parent?
@@ -214,7 +213,7 @@ class nsSHEntryShared final : public nsIBFCacheEntry,
   void SyncPresentationState();
   void DropPresentationState();
 
-  nsresult SetContentViewer(nsIContentViewer* aViewer);
+  nsresult SetDocumentViewer(nsIDocumentViewer* aViewer);
 };
 
 #endif

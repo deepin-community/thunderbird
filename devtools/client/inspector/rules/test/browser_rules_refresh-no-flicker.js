@@ -10,7 +10,7 @@ const TESTCASE_URI =
   '<div id="testdiv" style="font-size:10px;">' +
   "Test div!</div>";
 
-add_task(async function() {
+add_task(async function () {
   await addTab(TESTCASE_URI);
 
   info("Opening the rule view and selecting the test node");
@@ -19,8 +19,9 @@ add_task(async function() {
   await selectNode(testdiv, inspector);
 
   const htmlBefore = view.element.innerHTML;
-  ok(
-    htmlBefore.indexOf("font-size") > -1,
+  Assert.greater(
+    htmlBefore.indexOf("font-size"),
+    -1,
     "The rule view should contain a font-size property."
   );
 

@@ -6,12 +6,10 @@
 #ifndef GPU_RenderBundleEncoder_H_
 #define GPU_RenderBundleEncoder_H_
 
-#include "mozilla/Scoped.h"
 #include "mozilla/dom/TypedArray.h"
 #include "ObjectModel.h"
 
-namespace mozilla {
-namespace webgpu {
+namespace mozilla::webgpu {
 namespace ffi {
 struct WGPURenderBundleEncoder;
 }  // namespace ffi
@@ -19,10 +17,8 @@ struct WGPURenderBundleEncoder;
 class Device;
 class RenderBundle;
 
-struct ScopedFfiBundleTraits {
-  typedef ffi::WGPURenderBundleEncoder* type;
-  static type empty();
-  static void release(type raw);
+struct ffiWGPURenderBundleEncoderDeleter {
+  void operator()(ffi::WGPURenderBundleEncoder*);
 };
 
 class RenderBundleEncoder final : public ObjectBase, public ChildOf<Device> {
@@ -37,7 +33,7 @@ class RenderBundleEncoder final : public ObjectBase, public ChildOf<Device> {
   ~RenderBundleEncoder();
   void Cleanup();
 
-  Scoped<ScopedFfiBundleTraits> mEncoder;
+  std::unique_ptr<ffi::WGPURenderBundleEncoder, ffiWGPURenderBundleEncoderDeleter> mEncoder;
   // keep all the used objects alive while the encoder is finished
   nsTArray<RefPtr<const BindGroup>> mUsedBindGroups;
   nsTArray<RefPtr<const Buffer>> mUsedBuffers;
@@ -63,12 +59,16 @@ class RenderBundleEncoder final : public ObjectBase, public ChildOf<Device> {
   void DrawIndirect(const Buffer& aIndirectBuffer, uint64_t aIndirectOffset);
   void DrawIndexedIndirect(const Buffer& aIndirectBuffer,
                            uint64_t aIndirectOffset);
+
+  void PushDebugGroup(const nsAString& aString);
+  void PopDebugGroup();
+  void InsertDebugMarker(const nsAString& aString);
+
   // self
   already_AddRefed<RenderBundle> Finish(
       const dom::GPURenderBundleDescriptor& aDesc);
 };
 
-}  // namespace webgpu
-}  // namespace mozilla
+}  // namespace mozilla::webgpu
 
 #endif  // GPU_RenderBundleEncoder_H_

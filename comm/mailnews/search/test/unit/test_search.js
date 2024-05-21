@@ -11,8 +11,8 @@
 /* import-globals-from ../../../test/resources/searchTestUtils.js */
 load("../../../resources/searchTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var Isnt = Ci.nsMsgSearchOp.Isnt;
@@ -600,9 +600,9 @@ function testSearch() {
   if (test && test.dbHeader) {
     //  test of a custom db header
     dump("testing dbHeader " + test.dbHeader + "\n");
-    let customValue = mailTestUtils
+    const customValue = mailTestUtils
       .firstMsgHdr(localAccountUtils.inboxFolder)
-      .getProperty(test.dbHeader);
+      .getStringProperty(test.dbHeader);
     Assert.equal(customValue, test.testString);
     do_timeout(0, testSearch);
   } else if (test) {

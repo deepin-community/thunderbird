@@ -33,7 +33,7 @@
 <!ENTITY authMethod.accesskey "Y">
 <!ENTITY leaveOnServer.label "İletileri sunucuda bırak">
 <!ENTITY leaveOnServer.accesskey "b">
-<!ENTITY headersOnly.label "Sadece üst bilgileri getir">
+<!ENTITY headersOnly.label "Yalnızca üst bilgileri getir">
 <!ENTITY headersOnly.accesskey "S">
 <!ENTITY deleteByAgeFromServer.label "En fazla">
 <!ENTITY deleteByAgeFromServer.accesskey "E">
@@ -70,11 +70,11 @@
 <!ENTITY newsrcPicker1.label "News.rc dosyasını seçin">
 <!ENTITY abbreviate.label "Haber grubu isimlerini posta dizini bölmesinde göster:">
 <!ENTITY abbreviateOn.label "Tam isimler (örnek: 'netscape.public.mozilla.mail-news')">
-<!ENTITY abbreviateOff.label "Kısa isimler (örnek, 'n.p.m.mail-news')">
+<!ENTITY abbreviateOff.label "Kısa adlar (örnek: 'n.p.m.mail-news')">
 <!ENTITY advancedButton.label "Gelişmiş…">
 <!ENTITY advancedButton.accesskey "G">
 <!ENTITY serverDefaultCharset2.label "Varsayılan metin kodlaması:">
-<!ENTITY localPath1.label "Yerel klasör:">
+<!ENTITY localPath1.label "Yerel dizin:">
 <!ENTITY localFolderPicker.label "Yerel dizin seçin">
 <!ENTITY browseFolder.label "Gözat…">
 <!ENTITY browseFolder.accesskey "a">

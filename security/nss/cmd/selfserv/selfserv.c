@@ -44,10 +44,6 @@
 #include "ocsp.h"
 #include "nssb64.h"
 
-#ifndef PORT_Sprintf
-#define PORT_Sprintf sprintf
-#endif
-
 #ifndef PORT_Strstr
 #define PORT_Strstr strstr
 #endif
@@ -229,7 +225,8 @@ PrintParameterUsage()
         "-Q enables ALPN for HTTP/1.1 [RFC7301]\n"
         "-I comma separated list of enabled groups for TLS key exchange.\n"
         "   The following values are valid:\n"
-        "   P256, P384, P521, x25519, FF2048, FF3072, FF4096, FF6144, FF8192\n"
+        "   P256, P384, P521, x25519, FF2048, FF3072, FF4096, FF6144, FF8192,\n"
+        "   xyber768d00\n"
         "-J comma separated list of enabled signature schemes in preference order.\n"
         "   The following values are valid:\n"
         "     rsa_pkcs1_sha1, rsa_pkcs1_sha256, rsa_pkcs1_sha384, rsa_pkcs1_sha512,\n"
@@ -906,7 +903,7 @@ lockedVars_WaitForDone(lockedVars *lv)
 }
 
 int /* returns count */
-    lockedVars_AddToCount(lockedVars *lv, int addend)
+lockedVars_AddToCount(lockedVars *lv, int addend)
 {
     int rv;
 
@@ -1535,15 +1532,15 @@ handle_connection(PRFileDesc *tcp_sock, PRFileDesc *model_sock)
                     }
                 }
             } else if (reqLen <= 0) { /* hit eof */
-                PORT_Sprintf(msgBuf, "Get or Post incomplete after %d bytes.\r\n",
-                             bufDat);
+                snprintf(msgBuf, sizeof(msgBuf), "Get or Post incomplete after %d bytes.\r\n",
+                         bufDat);
 
                 iovs[numIOVs].iov_base = msgBuf;
                 iovs[numIOVs].iov_len = PORT_Strlen(msgBuf);
                 numIOVs++;
             } else if (reqLen < bufDat) {
-                PORT_Sprintf(msgBuf, "Discarded %d characters.\r\n",
-                             bufDat - reqLen);
+                snprintf(msgBuf, sizeof(msgBuf), "Discarded %d characters.\r\n",
+                         bufDat - reqLen);
 
                 iovs[numIOVs].iov_base = msgBuf;
                 iovs[numIOVs].iov_len = PORT_Strlen(msgBuf);
@@ -1711,19 +1708,30 @@ do_accepts(
 PRFileDesc *
 getBoundListenSocket(unsigned short port)
 {
-    PRFileDesc *listen_sock;
+    PRFileDesc *listen_sock = NULL;
     int listenQueueDepth = 5 + (2 * maxThreads);
     PRStatus prStatus;
     PRNetAddr addr;
     PRSocketOptionData opt;
 
-    addr.inet.family = PR_AF_INET;
-    addr.inet.ip = PR_INADDR_ANY;
-    addr.inet.port = PR_htons(port);
+    // We want to listen on the IP family that tstclnt will use.
+    // tstclnt uses PR_GetPrefLoopbackAddrInfo to decide, if it's
+    // asked to connect to localhost.
 
-    listen_sock = PR_NewTCPSocket();
+    prStatus = PR_GetPrefLoopbackAddrInfo(&addr, port);
+    if (prStatus == PR_FAILURE) {
+        addr.inet.family = PR_AF_INET;
+        addr.inet.ip = PR_htonl(PR_INADDR_ANY);
+        addr.inet.port = PR_htons(port);
+    }
+
+    if (addr.inet.family == PR_AF_INET6) {
+        listen_sock = PR_OpenTCPSocket(PR_AF_INET6);
+    } else if (addr.inet.family == PR_AF_INET) {
+        listen_sock = PR_NewTCPSocket();
+    }
     if (listen_sock == NULL) {
-        errExit("PR_NewTCPSocket");
+        errExit("Couldn't create socket");
     }
 
     opt.option = PR_SockOpt_Nonblocking;
@@ -1929,7 +1937,7 @@ configureEchWithPublicName(PRFileDesc *model_sock, const char *public_name)
         goto loser;
     }
 
-    rv = SSL_EncodeEchConfigId(configId, echParamsStr, 100,
+    rv = SSL_EncodeEchConfigId(configId, public_name, 100,
                                HpkeDhKemX25519Sha256, pubKey,
                                &echCipherSuite, 1,
                                configBuf, &len, sizeof(configBuf));
@@ -1975,7 +1983,7 @@ loser:
 static SECStatus
 configureEchWithData(PRFileDesc *model_sock)
 {
-/* The input should be a Base64-encoded ECHKey struct:
+    /* The input should be a Base64-encoded ECHKey struct:
      *  struct {
      *     opaque pkcs8_ech_keypair<0..2^16-1>;
      *     ECHConfigs configs<0..2^16>; // draft-ietf-tls-esni-09

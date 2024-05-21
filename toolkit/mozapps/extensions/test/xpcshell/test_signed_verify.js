@@ -16,11 +16,10 @@ function verifySignatures() {
     Services.obs.addObserver(observer, "xpi-signature-changed");
 
     info("Verifying signatures");
-    let XPIscope = ChromeUtils.import(
-      "resource://gre/modules/addons/XPIProvider.jsm",
-      null
+    const { XPIExports } = ChromeUtils.importESModule(
+      "resource://gre/modules/addons/XPIExports.sys.mjs"
     );
-    XPIscope.XPIDatabase.verifySignatures();
+    XPIExports.XPIDatabase.verifySignatures();
   });
 }
 

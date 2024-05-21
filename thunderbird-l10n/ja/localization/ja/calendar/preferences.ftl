@@ -15,6 +15,10 @@ dateformat-long =
 #   $date (String) - the formatted example date
 dateformat-short =
     .label = 短い形式: { $date }
+use-system-timezone-radio-button =
+    .label = システムのタイムゾーンを使用する
+set-timezone-manually-radio-button =
+    .label = タイムゾーンを手動で設定する
 timezone-label =
     .value = タイムゾーン:
 weekstart-label =
@@ -101,12 +105,9 @@ previous-weeks-label =
     .value = 前に表示する週の数:
     .accesskey = P
 todaypane-legend = Today ペイン
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = 近日中セクションの表示期間:
-    .accesskey = U
+agenda-days =
+    .value = 日程の表示期間:
+    .accesskey = g
 event-task-legend = 予定と ToDo
 default-length-label =
     .value = 予定と ToDo の既定の期間:
@@ -137,10 +138,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = 予定や ToDo を削除する前に確認する
     .accesskey = V
-accessibility-legend = アクセシビリティ
-accessibility-colors-label =
-    .label = システムの配色に最適化する
-    .accesskey = c
 reminder-legend = 通知方法
 reminder-play-checkbox =
     .label = 音を鳴らす

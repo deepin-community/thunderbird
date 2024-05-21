@@ -4,20 +4,170 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 var _exportNames = {
-  request: true,
-  getRequest: true,
-  wrapRequest: true,
   setCryptoStoreFactory: true,
   createClient: true,
+  createRoomWidgetClient: true,
+  TypedEventEmitter: true,
+  LocationAssetType: true,
+  IdentityProviderBrand: true,
+  SSOAction: true,
   ContentHelpers: true,
+  SecretStorage: true,
   createNewMatrixCall: true,
-  setMatrixCallAudioInput: true,
-  setMatrixCallVideoInput: true
+  CallEvent: true,
+  GroupCall: true,
+  GroupCallEvent: true,
+  GroupCallIntent: true,
+  GroupCallState: true,
+  GroupCallType: true,
+  GroupCallStatsReportEvent: true,
+  CryptoEvent: true,
+  SyncState: true,
+  SetPresence: true,
+  SlidingSyncEvent: true,
+  MediaHandlerEvent: true,
+  CallFeedEvent: true,
+  StatsReport: true,
+  Relations: true,
+  RelationsEvent: true,
+  LocalStorageErrors: true,
+  DeviceVerificationStatus: true,
+  Crypto: true
 };
-exports.request = request;
-exports.getRequest = getRequest;
-exports.wrapRequest = wrapRequest;
-exports.setCryptoStoreFactory = setCryptoStoreFactory;
+Object.defineProperty(exports, "CallEvent", {
+  enumerable: true,
+  get: function () {
+    return _call.CallEvent;
+  }
+});
+Object.defineProperty(exports, "CallFeedEvent", {
+  enumerable: true,
+  get: function () {
+    return _callFeed.CallFeedEvent;
+  }
+});
+exports.Crypto = exports.ContentHelpers = void 0;
+Object.defineProperty(exports, "CryptoEvent", {
+  enumerable: true,
+  get: function () {
+    return _crypto2.CryptoEvent;
+  }
+});
+Object.defineProperty(exports, "DeviceVerificationStatus", {
+  enumerable: true,
+  get: function () {
+    return _Crypto.DeviceVerificationStatus;
+  }
+});
+Object.defineProperty(exports, "GroupCall", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCall;
+  }
+});
+Object.defineProperty(exports, "GroupCallEvent", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCallEvent;
+  }
+});
+Object.defineProperty(exports, "GroupCallIntent", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCallIntent;
+  }
+});
+Object.defineProperty(exports, "GroupCallState", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCallState;
+  }
+});
+Object.defineProperty(exports, "GroupCallStatsReportEvent", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCallStatsReportEvent;
+  }
+});
+Object.defineProperty(exports, "GroupCallType", {
+  enumerable: true,
+  get: function () {
+    return _groupCall.GroupCallType;
+  }
+});
+Object.defineProperty(exports, "IdentityProviderBrand", {
+  enumerable: true,
+  get: function () {
+    return _auth.IdentityProviderBrand;
+  }
+});
+Object.defineProperty(exports, "LocalStorageErrors", {
+  enumerable: true,
+  get: function () {
+    return _localStorageEventsEmitter.LocalStorageErrors;
+  }
+});
+Object.defineProperty(exports, "LocationAssetType", {
+  enumerable: true,
+  get: function () {
+    return _location.LocationAssetType;
+  }
+});
+Object.defineProperty(exports, "MediaHandlerEvent", {
+  enumerable: true,
+  get: function () {
+    return _mediaHandler.MediaHandlerEvent;
+  }
+});
+Object.defineProperty(exports, "Relations", {
+  enumerable: true,
+  get: function () {
+    return _relations.Relations;
+  }
+});
+Object.defineProperty(exports, "RelationsEvent", {
+  enumerable: true,
+  get: function () {
+    return _relations.RelationsEvent;
+  }
+});
+Object.defineProperty(exports, "SSOAction", {
+  enumerable: true,
+  get: function () {
+    return _auth.SSOAction;
+  }
+});
+exports.SecretStorage = void 0;
+Object.defineProperty(exports, "SetPresence", {
+  enumerable: true,
+  get: function () {
+    return _sync.SetPresence;
+  }
+});
+Object.defineProperty(exports, "SlidingSyncEvent", {
+  enumerable: true,
+  get: function () {
+    return _slidingSync.SlidingSyncEvent;
+  }
+});
+Object.defineProperty(exports, "StatsReport", {
+  enumerable: true,
+  get: function () {
+    return _statsReport.StatsReport;
+  }
+});
+Object.defineProperty(exports, "SyncState", {
+  enumerable: true,
+  get: function () {
+    return _sync.SyncState;
+  }
+});
+Object.defineProperty(exports, "TypedEventEmitter", {
+  enumerable: true,
+  get: function () {
+    return _typedEventEmitter.TypedEventEmitter;
+  }
+});
 exports.createClient = createClient;
 Object.defineProperty(exports, "createNewMatrixCall", {
   enumerable: true,
@@ -25,22 +175,9 @@ Object.defineProperty(exports, "createNewMatrixCall", {
     return _call.createNewMatrixCall;
   }
 });
-Object.defineProperty(exports, "setMatrixCallAudioInput", {
-  enumerable: true,
-  get: function () {
-    return _call.setAudioInput;
-  }
-});
-Object.defineProperty(exports, "setMatrixCallVideoInput", {
-  enumerable: true,
-  get: function () {
-    return _call.setVideoInput;
-  }
-});
-exports.ContentHelpers = void 0;
-
+exports.createRoomWidgetClient = createRoomWidgetClient;
+exports.setCryptoStoreFactory = setCryptoStoreFactory;
 var _memoryCryptoStore = require("./crypto/store/memory-crypto-store");
-
 Object.keys(_memoryCryptoStore).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -52,9 +189,7 @@ Object.keys(_memoryCryptoStore).forEach(function (key) {
     }
   });
 });
-
 var _memory = require("./store/memory");
-
 Object.keys(_memory).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -66,9 +201,7 @@ Object.keys(_memory).forEach(function (key) {
     }
   });
 });
-
 var _scheduler = require("./scheduler");
-
 Object.keys(_scheduler).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -80,9 +213,7 @@ Object.keys(_scheduler).forEach(function (key) {
     }
   });
 });
-
 var _client = require("./client");
-
 Object.keys(_client).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -94,9 +225,19 @@ Object.keys(_client).forEach(function (key) {
     }
   });
 });
-
+var _embedded = require("./embedded");
+Object.keys(_embedded).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _embedded[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _embedded[key];
+    }
+  });
+});
 var _httpApi = require("./http-api");
-
 Object.keys(_httpApi).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -108,9 +249,7 @@ Object.keys(_httpApi).forEach(function (key) {
     }
   });
 });
-
 var _autodiscovery = require("./autodiscovery");
-
 Object.keys(_autodiscovery).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -122,9 +261,7 @@ Object.keys(_autodiscovery).forEach(function (key) {
     }
   });
 });
-
 var _syncAccumulator = require("./sync-accumulator");
-
 Object.keys(_syncAccumulator).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -136,9 +273,7 @@ Object.keys(_syncAccumulator).forEach(function (key) {
     }
   });
 });
-
 var _errors = require("./errors");
-
 Object.keys(_errors).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -150,9 +285,31 @@ Object.keys(_errors).forEach(function (key) {
     }
   });
 });
-
+var _base = require("./base64");
+Object.keys(_base).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _base[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _base[key];
+    }
+  });
+});
+var _beacon = require("./models/beacon");
+Object.keys(_beacon).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _beacon[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _beacon[key];
+    }
+  });
+});
 var _event = require("./models/event");
-
 Object.keys(_event).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -164,9 +321,7 @@ Object.keys(_event).forEach(function (key) {
     }
   });
 });
-
 var _room = require("./models/room");
-
 Object.keys(_room).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -178,23 +333,7 @@ Object.keys(_room).forEach(function (key) {
     }
   });
 });
-
-var _group = require("./models/group");
-
-Object.keys(_group).forEach(function (key) {
-  if (key === "default" || key === "__esModule") return;
-  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
-  if (key in exports && exports[key] === _group[key]) return;
-  Object.defineProperty(exports, key, {
-    enumerable: true,
-    get: function () {
-      return _group[key];
-    }
-  });
-});
-
 var _eventTimeline = require("./models/event-timeline");
-
 Object.keys(_eventTimeline).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -206,9 +345,7 @@ Object.keys(_eventTimeline).forEach(function (key) {
     }
   });
 });
-
 var _eventTimelineSet = require("./models/event-timeline-set");
-
 Object.keys(_eventTimelineSet).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -220,9 +357,19 @@ Object.keys(_eventTimelineSet).forEach(function (key) {
     }
   });
 });
-
+var _poll = require("./models/poll");
+Object.keys(_poll).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _poll[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _poll[key];
+    }
+  });
+});
 var _roomMember = require("./models/room-member");
-
 Object.keys(_roomMember).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -234,9 +381,7 @@ Object.keys(_roomMember).forEach(function (key) {
     }
   });
 });
-
 var _roomState = require("./models/room-state");
-
 Object.keys(_roomState).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -248,9 +393,31 @@ Object.keys(_roomState).forEach(function (key) {
     }
   });
 });
-
+var _thread = require("./models/thread");
+Object.keys(_thread).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _thread[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _thread[key];
+    }
+  });
+});
+var _typedEventEmitter = require("./models/typed-event-emitter");
+Object.keys(_typedEventEmitter).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _typedEventEmitter[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _typedEventEmitter[key];
+    }
+  });
+});
 var _user = require("./models/user");
-
 Object.keys(_user).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -262,9 +429,43 @@ Object.keys(_user).forEach(function (key) {
     }
   });
 });
-
+var _device = require("./models/device");
+Object.keys(_device).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _device[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _device[key];
+    }
+  });
+});
+var _searchResult = require("./models/search-result");
+Object.keys(_searchResult).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _searchResult[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _searchResult[key];
+    }
+  });
+});
+var _oidc = require("./oidc");
+Object.keys(_oidc).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _oidc[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _oidc[key];
+    }
+  });
+});
 var _filter = require("./filter");
-
 Object.keys(_filter).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -276,9 +477,7 @@ Object.keys(_filter).forEach(function (key) {
     }
   });
 });
-
 var _timelineWindow = require("./timeline-window");
-
 Object.keys(_timelineWindow).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -290,9 +489,7 @@ Object.keys(_timelineWindow).forEach(function (key) {
     }
   });
 });
-
 var _interactiveAuth = require("./interactive-auth");
-
 Object.keys(_interactiveAuth).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -304,9 +501,7 @@ Object.keys(_interactiveAuth).forEach(function (key) {
     }
   });
 });
-
 var _serviceTypes = require("./service-types");
-
 Object.keys(_serviceTypes).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -318,9 +513,7 @@ Object.keys(_serviceTypes).forEach(function (key) {
     }
   });
 });
-
 var _indexeddb = require("./store/indexeddb");
-
 Object.keys(_indexeddb).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -332,23 +525,19 @@ Object.keys(_indexeddb).forEach(function (key) {
     }
   });
 });
-
-var _webstorage = require("./store/session/webstorage");
-
-Object.keys(_webstorage).forEach(function (key) {
+var _localStorageCryptoStore = require("./crypto/store/localStorage-crypto-store");
+Object.keys(_localStorageCryptoStore).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
-  if (key in exports && exports[key] === _webstorage[key]) return;
+  if (key in exports && exports[key] === _localStorageCryptoStore[key]) return;
   Object.defineProperty(exports, key, {
     enumerable: true,
     get: function () {
-      return _webstorage[key];
+      return _localStorageCryptoStore[key];
     }
   });
 });
-
 var _indexeddbCryptoStore = require("./crypto/store/indexeddb-crypto-store");
-
 Object.keys(_indexeddbCryptoStore).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -360,9 +549,7 @@ Object.keys(_indexeddbCryptoStore).forEach(function (key) {
     }
   });
 });
-
 var _contentRepo = require("./content-repo");
-
 Object.keys(_contentRepo).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
   if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
@@ -374,21 +561,278 @@ Object.keys(_contentRepo).forEach(function (key) {
     }
   });
 });
-
+var _common = require("./@types/common");
+Object.keys(_common).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _common[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _common[key];
+    }
+  });
+});
+var _uia = require("./@types/uia");
+Object.keys(_uia).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _uia[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _uia[key];
+    }
+  });
+});
+var _event2 = require("./@types/event");
+Object.keys(_event2).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _event2[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _event2[key];
+    }
+  });
+});
+var _PushRules = require("./@types/PushRules");
+Object.keys(_PushRules).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _PushRules[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _PushRules[key];
+    }
+  });
+});
+var _partials = require("./@types/partials");
+Object.keys(_partials).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _partials[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _partials[key];
+    }
+  });
+});
+var _requests = require("./@types/requests");
+Object.keys(_requests).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _requests[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _requests[key];
+    }
+  });
+});
+var _search = require("./@types/search");
+Object.keys(_search).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _search[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _search[key];
+    }
+  });
+});
+var _beacon2 = require("./@types/beacon");
+Object.keys(_beacon2).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _beacon2[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _beacon2[key];
+    }
+  });
+});
+var _topic = require("./@types/topic");
+Object.keys(_topic).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _topic[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _topic[key];
+    }
+  });
+});
+var _location = require("./@types/location");
+Object.keys(_location).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _location[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _location[key];
+    }
+  });
+});
+var _threepids = require("./@types/threepids");
+Object.keys(_threepids).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _threepids[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _threepids[key];
+    }
+  });
+});
+var _auth = require("./@types/auth");
+Object.keys(_auth).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _auth[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _auth[key];
+    }
+  });
+});
+var _polls = require("./@types/polls");
+Object.keys(_polls).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _polls[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _polls[key];
+    }
+  });
+});
+var _local_notifications = require("./@types/local_notifications");
+Object.keys(_local_notifications).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _local_notifications[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _local_notifications[key];
+    }
+  });
+});
+var _registration = require("./@types/registration");
+Object.keys(_registration).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _registration[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _registration[key];
+    }
+  });
+});
+var _read_receipts = require("./@types/read_receipts");
+Object.keys(_read_receipts).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _read_receipts[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _read_receipts[key];
+    }
+  });
+});
+var _crypto = require("./@types/crypto");
+Object.keys(_crypto).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _crypto[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _crypto[key];
+    }
+  });
+});
+var _extensible_events = require("./@types/extensible_events");
+Object.keys(_extensible_events).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _extensible_events[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _extensible_events[key];
+    }
+  });
+});
+var _IIdentityServerProvider = require("./@types/IIdentityServerProvider");
+Object.keys(_IIdentityServerProvider).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _IIdentityServerProvider[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _IIdentityServerProvider[key];
+    }
+  });
+});
+var _roomSummary = require("./models/room-summary");
+Object.keys(_roomSummary).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _roomSummary[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _roomSummary[key];
+    }
+  });
+});
+var _eventStatus = require("./models/event-status");
+Object.keys(_eventStatus).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  if (key in exports && exports[key] === _eventStatus[key]) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _eventStatus[key];
+    }
+  });
+});
 var _ContentHelpers = _interopRequireWildcard(require("./content-helpers"));
-
 exports.ContentHelpers = _ContentHelpers;
-
+var _SecretStorage = _interopRequireWildcard(require("./secret-storage"));
+exports.SecretStorage = _SecretStorage;
 var _call = require("./webrtc/call");
-
-function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
+var _groupCall = require("./webrtc/groupCall");
+var _crypto2 = require("./crypto");
+var _sync = require("./sync");
+var _slidingSync = require("./sliding-sync");
+var _mediaHandler = require("./webrtc/mediaHandler");
+var _callFeed = require("./webrtc/callFeed");
+var _statsReport = require("./webrtc/stats/statsReport");
+var _relations = require("./models/relations");
+var _localStorageEventsEmitter = require("./store/local-storage-events-emitter");
+var _Crypto = _interopRequireWildcard(require("./crypto-api"));
+exports.Crypto = _Crypto;
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 /*
-Copyright 2015, 2016 OpenMarket Ltd
-Copyright 2017 Vector Creations Ltd
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2015-2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -402,130 +846,60 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-// expose the underlying request object so different environments can use
-// different request libs (e.g. request or browser-request)
-let requestInstance;
+
+// used to be located here
+
 /**
- * The function used to perform HTTP requests. Only use this if you want to
- * use a different HTTP library, e.g. Angular's <code>$http</code>. This should
- * be set prior to calling {@link createClient}.
- * @param {requestFunction} r The request function to use.
+ * Types supporting cryptography.
+ *
+ * The most important is {@link Crypto.CryptoApi}, an instance of which can be retrieved via
+ * {@link MatrixClient.getCrypto}.
  */
 
-function request(r) {
-  requestInstance = r;
-}
 /**
- * Return the currently-set request function.
- * @return {requestFunction} The current request function.
+ * Backwards compatibility re-export
+ * @internal
+ * @deprecated use {@link Crypto.CryptoApi}
  */
 
-
-function getRequest() {
-  return requestInstance;
-}
 /**
- * Apply wrapping code around the request function. The wrapper function is
- * installed as the new request handler, and when invoked it is passed the
- * previous value, along with the options and callback arguments.
- * @param {requestWrapperFunction} wrapper The wrapping function.
+ * Backwards compatibility re-export
+ * @internal
+ * @deprecated use {@link Crypto.DeviceVerificationStatus}
  */
-
-
-function wrapRequest(wrapper) {
-  const origRequest = requestInstance;
-
-  requestInstance = function (options, callback) {
-    return wrapper(origRequest, options, callback);
-  };
-}
 
 let cryptoStoreFactory = () => new _memoryCryptoStore.MemoryCryptoStore();
+
 /**
  * Configure a different factory to be used for creating crypto stores
  *
- * @param {Function} fac  a function which will return a new
- *    {@link module:crypto.store.base~CryptoStore}.
+ * @param fac - a function which will return a new `CryptoStore`
  */
-
-
 function setCryptoStoreFactory(fac) {
   cryptoStoreFactory = fac;
 }
-
-/**
- * Construct a Matrix Client. Similar to {@link module:client.MatrixClient}
- * except that the 'request', 'store' and 'scheduler' dependencies are satisfied.
- * @param {(Object|string)} opts The configuration options for this client. If
- * this is a string, it is assumed to be the base URL. These configuration
- * options will be passed directly to {@link module:client.MatrixClient}.
- * @param {Object} opts.store If not set, defaults to
- * {@link module:store/memory.MemoryStore}.
- * @param {Object} opts.scheduler If not set, defaults to
- * {@link module:scheduler~MatrixScheduler}.
- * @param {requestFunction} opts.request If not set, defaults to the function
- * supplied to {@link request} which defaults to the request module from NPM.
- *
- * @param {module:crypto.store.base~CryptoStore=} opts.cryptoStore
- *    crypto store implementation. Calls the factory supplied to
- *    {@link setCryptoStoreFactory} if unspecified; or if no factory has been
- *    specified, uses a default implementation (indexeddb in the browser,
- *    in-memory otherwise).
- *
- * @return {MatrixClient} A new matrix client.
- * @see {@link module:client.MatrixClient} for the full list of options for
- * <code>opts</code>.
- */
-function createClient(opts) {
-  if (typeof opts === "string") {
-    opts = {
-      "baseUrl": opts
-    };
-  }
-
-  opts.request = opts.request || requestInstance;
-  opts.store = opts.store || new _memory.MemoryStore({
+function amendClientOpts(opts) {
+  opts.store = opts.store ?? new _memory.MemoryStore({
     localStorage: global.localStorage
   });
-  opts.scheduler = opts.scheduler || new _scheduler.MatrixScheduler();
-  opts.cryptoStore = opts.cryptoStore || cryptoStoreFactory();
-  return new _client.MatrixClient(opts);
+  opts.scheduler = opts.scheduler ?? new _scheduler.MatrixScheduler();
+  opts.cryptoStore = opts.cryptoStore ?? cryptoStoreFactory();
+  return opts;
 }
-/**
- * The request function interface for performing HTTP requests. This matches the
- * API for the {@link https://github.com/request/request#requestoptions-callback|
- * request NPM module}. The SDK will attempt to call this function in order to
- * perform an HTTP request.
- * @callback requestFunction
- * @param {Object} opts The options for this HTTP request.
- * @param {string} opts.uri The complete URI.
- * @param {string} opts.method The HTTP method.
- * @param {Object} opts.qs The query parameters to append to the URI.
- * @param {Object} opts.body The JSON-serializable object.
- * @param {boolean} opts.json True if this is a JSON request.
- * @param {Object} opts._matrix_opts The underlying options set for
- * {@link MatrixHttpApi}.
- * @param {requestCallback} callback The request callback.
- */
 
 /**
- * A wrapper for the request function interface.
- * @callback requestWrapperFunction
- * @param {requestFunction} origRequest The underlying request function being
- * wrapped
- * @param {Object} opts The options for this HTTP request, given in the same
- * form as {@link requestFunction}.
- * @param {requestCallback} callback The request callback.
+ * Construct a Matrix Client. Similar to {@link MatrixClient}
+ * except that the 'request', 'store' and 'scheduler' dependencies are satisfied.
+ * @param opts - The configuration options for this client. These configuration
+ * options will be passed directly to {@link MatrixClient}.
+ *
+ * @returns A new matrix client.
+ * @see {@link MatrixClient} for the full list of options for
+ * `opts`.
  */
-
-/**
-  * The request callback interface for performing HTTP requests. This matches the
-  * API for the {@link https://github.com/request/request#requestoptions-callback|
-  * request NPM module}. The SDK will implement a callback which meets this
-  * interface in order to handle the HTTP response.
-  * @callback requestCallback
-  * @param {Error} err The error if one occurred, else falsey.
-  * @param {Object} response The HTTP response which consists of
-  * <code>{statusCode: {Number}, headers: {Object}}</code>
-  * @param {Object} body The parsed HTTP response body.
-  */
+function createClient(opts) {
+  return new _client.MatrixClient(amendClientOpts(opts));
+}
+function createRoomWidgetClient(widgetApi, capabilities, roomId, opts) {
+  return new _embedded.RoomWidgetClient(widgetApi, capabilities, roomId, amendClientOpts(opts));
+}

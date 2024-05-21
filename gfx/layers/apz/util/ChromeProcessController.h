@@ -26,6 +26,7 @@ namespace layers {
 
 class IAPZCTreeManager;
 class APZEventState;
+struct DoubleTapToZoomMetrics;
 
 /**
  * ChromeProcessController is a GeckoContentController attached to the root of
@@ -54,16 +55,19 @@ class ChromeProcessController : public mozilla::layers::GeckoContentController {
   bool IsRepaintThread() override;
   void DispatchToRepaintThread(already_AddRefed<Runnable> aTask) override;
   MOZ_CAN_RUN_SCRIPT
-  void HandleTap(TapType aType, const mozilla::LayoutDevicePoint& aPoint,
-                 Modifiers aModifiers, const ScrollableLayerGuid& aGuid,
-                 uint64_t aInputBlockId) override;
+  void HandleTap(
+      TapType aType, const mozilla::LayoutDevicePoint& aPoint,
+      Modifiers aModifiers, const ScrollableLayerGuid& aGuid,
+      uint64_t aInputBlockId,
+      const Maybe<DoubleTapToZoomMetrics>& aDoubleTapToZoomMetrics) override;
   void NotifyPinchGesture(PinchGestureInput::PinchGestureType aType,
                           const ScrollableLayerGuid& aGuid,
                           const LayoutDevicePoint& aFocusPoint,
                           LayoutDeviceCoord aSpanChange,
                           Modifiers aModifiers) override;
   void NotifyAPZStateChange(const ScrollableLayerGuid& aGuid,
-                            APZStateChange aChange, int aArg) override;
+                            APZStateChange aChange, int aArg,
+                            Maybe<uint64_t> aInputBlockId) override;
   void NotifyMozMouseScrollEvent(const ScrollableLayerGuid::ViewID& aScrollId,
                                  const nsString& aEvent) override;
   void NotifyFlushComplete() override;
@@ -75,6 +79,10 @@ class ChromeProcessController : public mozilla::layers::GeckoContentController {
   void NotifyAsyncAutoscrollRejected(
       const ScrollableLayerGuid::ViewID& aScrollId) override;
   void CancelAutoscroll(const ScrollableLayerGuid& aGuid) override;
+  void NotifyScaleGestureComplete(const ScrollableLayerGuid& aGuid,
+                                  float aScale) override;
+
+  PresShell* GetTopLevelPresShell() const override { return GetPresShell(); }
 
  private:
   nsCOMPtr<nsIWidget> mWidget;
@@ -88,7 +96,8 @@ class ChromeProcessController : public mozilla::layers::GeckoContentController {
   dom::Document* GetRootContentDocument(
       const ScrollableLayerGuid::ViewID& aScrollId) const;
   void HandleDoubleTap(const mozilla::CSSPoint& aPoint, Modifiers aModifiers,
-                       const ScrollableLayerGuid& aGuid);
+                       const ScrollableLayerGuid& aGuid,
+                       const DoubleTapToZoomMetrics& aDoubleTapToZoomMetrics);
 };
 
 }  // namespace layers

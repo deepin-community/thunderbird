@@ -1,13 +1,12 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogaccept", onOk);
 
 // pull stuff out of window.arguments
@@ -25,7 +24,7 @@ function getControls() {
 }
 
 function getLocalFoldersAccount() {
-  return MailServices.accounts.FindAccountForServer(
+  return MailServices.accounts.findAccountForServer(
     MailServices.accounts.localFoldersServer
   );
 }
@@ -43,10 +42,10 @@ function onLoad() {
     document.getElementById("pop3Panel").hidden = true;
   } else if (gServerSettings.serverType == "pop3") {
     document.getElementById("imapPanel").hidden = true;
-    let radioGroup = document.getElementById("folderStorage");
+    const radioGroup = document.getElementById("folderStorage");
 
     gFirstDeferredAccount = gServerSettings.deferredToAccount;
-    let folderPopup = document.getElementById("deferredServerPopup");
+    const folderPopup = document.getElementById("deferredServerPopup");
 
     // The current account should not be shown in the folder picker
     // of the "other account" option.
@@ -59,7 +58,7 @@ function onLoad() {
 
     if (gFirstDeferredAccount.length) {
       // The current account is deferred.
-      let account = MailServices.accounts.getAccount(gFirstDeferredAccount);
+      const account = MailServices.accounts.getAccount(gFirstDeferredAccount);
       radioGroup.value = "otherAccount";
       folderPopup.selectFolder(account.incomingServer.rootFolder);
     } else {
@@ -75,7 +74,7 @@ function onLoad() {
       }
     }
 
-    let picker = document.getElementById("deferredServerFolderPicker");
+    const picker = document.getElementById("deferredServerFolderPicker");
     picker.disabled = radioGroup.selectedIndex != 1;
   }
 
@@ -98,7 +97,7 @@ function onOk(event) {
   if (gServerSettings.serverType == "pop3") {
     var radioGroup = document.getElementById("folderStorage");
     var gPrefsBundle = document.getElementById("bundle_prefs");
-    let picker = document.getElementById("deferredServerFolderPicker");
+    const picker = document.getElementById("deferredServerFolderPicker");
 
     // This account wasn't previously deferred, but is now deferred.
     if (radioGroup.value != "currentAccount" && !gFirstDeferredAccount.length) {
@@ -122,11 +121,12 @@ function onOk(event) {
       case "currentAccount":
         gServerSettings.deferredToAccount = "";
         break;
-      case "otherAccount":
-        let server = picker.selectedItem._folder.server;
-        let account = MailServices.accounts.FindAccountForServer(server);
+      case "otherAccount": {
+        const server = picker.selectedItem._folder.server;
+        const account = MailServices.accounts.findAccountForServer(server);
         gServerSettings.deferredToAccount = account.key;
         break;
+      }
     }
   }
 
@@ -146,8 +146,7 @@ function onOk(event) {
 
 // Set radio element choices and picker states
 function updateInboxAccount(enablePicker) {
-  document.getElementById(
-    "deferredServerFolderPicker"
-  ).disabled = !enablePicker;
+  document.getElementById("deferredServerFolderPicker").disabled =
+    !enablePicker;
   document.getElementById("deferGetNewMail").disabled = !enablePicker;
 }

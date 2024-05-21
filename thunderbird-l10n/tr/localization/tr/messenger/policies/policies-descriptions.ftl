@@ -12,6 +12,7 @@
 
 policy-3rdparty = WebExtension’ların chrome.storage.managed aracılığıyla ulaşabileceği ilkeleri ayarla.
 policy-AppAutoUpdate = Otomatik uygulama güncellemesini aç veya kapat.
+policy-AppUpdatePin = { -brand-short-name } yazılımının belirtilen sürümün üzerine güncellenmesini engelle.
 policy-AppUpdateURL = Özel uygulama güncelleme URL’sini ayarla.
 policy-Authentication = Destekleyen web siteleri için bütünleşik kimlik doğrulamasını yapılandır.
 policy-BackgroundAppUpdate2 = Arka plan güncelleyicisini aç veya kapat.
@@ -19,9 +20,10 @@ policy-BlockAboutAddons = Eklenti Yöneticisi'ne (about:addons) erişimi engelle
 policy-BlockAboutConfig = about:config sayfasına erişimi engelle.
 policy-BlockAboutProfiles = about:profiles sayfasına erişimi engelle.
 policy-BlockAboutSupport = about:support sayfasına erişimi engelle.
-policy-CaptivePortal = Kısıtlama portali desteğini aç veya kapat.
+policy-CaptivePortal = Kısıtlama portalı desteğini aç veya kapat.
 policy-CertificatesDescription = Sertifika ekle veya yerleşik sertifikaları kullan.
 policy-Cookies = Web sitelerinin çerez yerleştirmesine izin ver veya engelle.
+policy-DisableBuiltinPDFViewer = Dahili { -brand-short-name } PDF göstericisi olan PDF.js’i devre dışı bırak.
 policy-DisabledCiphers = Şifrelemeleri devre dışı bırak.
 policy-DefaultDownloadDirectory = Varsayılan indirme klasörünü ayarla.
 policy-DisableAppUpdate = { -brand-short-name } uygulamasının güncellenmesini engelle.
@@ -38,7 +40,7 @@ policy-DisableSecurityBypass = Kullanıcının bazı güvenlik uyarılarını at
 policy-DisableSystemAddonUpdate = { -brand-short-name } uygulamasının sistem eklentilerini yüklemesini ve güncellemesini önle.
 policy-DisableTelemetry = Telemetri’yi kapat.
 policy-DisplayMenuBar = Varsayılan olarak menü çubuğunu göster.
-policy-DNSOverHTTPS = HTTP üzerinden DNS’i yapılandır.
+policy-DNSOverHTTPS = HTTPS üzerinden DNS’i yapılandır.
 policy-DontCheckDefaultClient = Başlangıçta varsayılan istemci kontrolünü devre dışı bırak.
 policy-DownloadDirectory = İndirme klasörünü ayarla ve kilitle.
 # “lock” means that the user won’t be able to change this setting
@@ -48,9 +50,9 @@ policy-EncryptedMediaExtensions = Encrypted Media Extensions’ı etkinleştir v
 # A “locked” extension can’t be disabled or removed by the user. This policy
 # takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
 # English or translate them as verbs.
-policy-Extensions = Eklentileri yükle, kaldır veya kilitle. Yükleme seçeneğinde parametre olarak URL veya yol kullanılır. Kaldırma ve kilitleme seçeneklerinde ise eklenti kimliği kullanılır.
-policy-ExtensionSettings = Eklenti kurulumunun tüm yönlerini yönet.
-policy-ExtensionUpdate = Otomatik eklenti güncellemelerini aç veya kapat.
+policy-Extensions = Uzantıları yükle, kaldır veya kilitle. Yükleme seçeneğinde parametre olarak URL veya yol kullanılır. Kaldırma ve kilitleme seçeneklerinde ise uzantı kimliği kullanılır.
+policy-ExtensionSettings = Uzantı kurulumunun tüm yönlerini yönet.
+policy-ExtensionUpdate = Otomatik uzantı güncellemelerini aç veya kapat.
 policy-Handlers = Varsayılan uygulama işleyicilerini yapılandır.
 policy-HardwareAcceleration = false ise donanım ivmelenmesini kapat.
 policy-InstallAddonsPermission = Belirli websitelerinin eklenti yüklemesine izin ver.
@@ -66,7 +68,7 @@ policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Belirtilen sitelerdeki
 policy-LocalFileLinks = Belirli web sitelerinin yerel dosyalara bağlantı vermesine izin ver.
 policy-ManualAppUpdateOnly = Yalnızca elle güncellemeye izin ver ve kullanıcıyı güncellemeler hakkında bilgilendirme.
 policy-NetworkPrediction = Ağ tahminini (DNS prefetching) aç veya kapat.
-policy-OfferToSaveLogins = { -brand-short-name } tarayıcısının kullanıcı adı ve parolaları kaydetmeyi önermesini ayarla. true veya false olarak ayarlanabilir.
+policy-OfferToSaveLogins = { -brand-short-name } uygulamasının kullanıcı adı ve parolaları kaydetmeyi önermesini ayarla. true veya false olarak ayarlanabilir.
 policy-OfferToSaveLoginsDefault = { -brand-short-name } yazılımının kullanıcı adı ve parolaları kaydetmeyi önermesi için varsayılan değeri ayarla. true veya false olarak ayarlanabilir.
 policy-OverrideFirstRunPage = İlk açılış sayfasını değiştir. İlk açılış sayfasını devre dışı bırakmak istiyorsanız bu ilkeyi boş olarak ayarlayın.
 policy-OverridePostUpdatePage = Güncelleme sonrası “Yenilikler” sayfasını değiştir. Güncelleme sonrası sayfasını devre dışı bırakmak istiyorsanız bu ilkeyi boş olarak ayarlayabilirsiniz.

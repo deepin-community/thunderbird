@@ -6,7 +6,6 @@
 #include "HostWebGLContext.h"
 
 #include "CompositableHost.h"
-#include "mozilla/layers/LayerTransactionChild.h"
 #include "mozilla/layers/LayersSurfaces.h"
 
 #include "MozFramebuffer.h"
@@ -33,7 +32,7 @@ namespace mozilla {
 
 // -
 
-static StaticMutex sContextSetLock;
+static StaticMutex sContextSetLock MOZ_UNANNOTATED;
 
 static std::unordered_set<HostWebGLContext*>& DeferredStaticContextSet() {
   static std::unordered_set<HostWebGLContext*> sContextSet;
@@ -56,7 +55,7 @@ UniquePtr<HostWebGLContext> HostWebGLContext::Create(
     const OwnerData& ownerData, const webgl::InitContextDesc& desc,
     webgl::InitContextResult* const out) {
   auto host = WrapUnique(new HostWebGLContext(ownerData));
-  auto webgl = WebGLContext::Create(*host, desc, out);
+  auto webgl = WebGLContext::Create(host.get(), desc, out);
   if (!webgl) return nullptr;
   return host;
 }

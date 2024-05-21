@@ -55,7 +55,7 @@ namespace image {
  * NOT_SUPPORTED: The requested operation is not supported, but the image is
  *                otherwise valid.
  */
-enum class MOZ_MUST_USE_TYPE ImgDrawResult : uint8_t {
+enum class [[nodiscard]] ImgDrawResult : uint8_t {
   SUCCESS,
   SUCCESS_NOT_COMPLETE,
   INCOMPLETE,

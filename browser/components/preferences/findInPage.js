@@ -33,6 +33,8 @@ var gSearchResultsPane = {
   // A (node -> boolean) map of subitems to be made visible or hidden.
   subItems: new Map(),
 
+  searchResultsHighlighted: false,
+
   init() {
     if (this.inited) {
       return;
@@ -42,26 +44,38 @@ var gSearchResultsPane = {
     this.searchInput.hidden = !Services.prefs.getBoolPref(
       "browser.preferences.search"
     );
+
+    window.addEventListener("resize", () => {
+      this._recomputeTooltipPositions();
+    });
+
     if (!this.searchInput.hidden) {
       this.searchInput.addEventListener("input", this);
       this.searchInput.addEventListener("command", this);
       window.addEventListener("DOMContentLoaded", () => {
         this.searchInput.focus();
+        // Initialize other panes in an idle callback.
+        window.requestIdleCallback(() => this.initializeCategories());
       });
-      // Initialize other panes in an idle callback.
-      window.requestIdleCallback(() => this.initializeCategories());
     }
-    let helpUrl =
-      Services.urlFormatter.formatURLPref("app.support.baseURL") +
-      "preferences";
-    let helpContainer = document.getElementById("need-help");
-    helpContainer.querySelector("a").href = helpUrl;
+    ensureScrollPadding();
   },
 
   async handleEvent(event) {
     // Ensure categories are initialized if idle callback didn't run sooo enough.
     await this.initializeCategories();
     this.searchFunction(event);
+  },
+
+  /**
+   * This stops the search input from moving, when typing in it
+   * changes which items in the prefs are visible.
+   */
+  fixInputPosition() {
+    let innerContainer = document.querySelector(".sticky-inner-container");
+    let width =
+      window.windowUtils.getBoundsWithoutFlushing(innerContainer).width;
+    innerContainer.style.maxWidth = width + "px";
   },
 
   /**
@@ -91,18 +105,21 @@ var gSearchResultsPane = {
     if (!this.categoriesInitialized) {
       this.categoriesInitialized = true;
       // Each element of gCategoryInits is a name
-      for (let [, /* name */ category] of gCategoryInits) {
-        if (!category.inited) {
-          await category.init();
-        }
+      for (let category of gCategoryInits.values()) {
+        category.init();
+      }
+      if (document.hasPendingL10nMutations) {
+        await new Promise(r =>
+          document.addEventListener("L10nMutationsFinished", r, { once: true })
+        );
       }
     }
   },
 
   /**
-   * Finds and returns text nodes within node and all descendants
-   * Iterates through all the sibilings of the node object and adds the sibilings
-   * to an array if sibiling is a TEXT_NODE else checks the text nodes with in current node
+   * Finds and returns text nodes within node and all descendants.
+   * Iterates through all the siblings of the node object and adds each sibling to an
+   * array if it's a TEXT_NODE, and otherwise recurses to check text nodes within it.
    * Source - http://stackoverflow.com/questions/10730309/find-all-text-nodes-in-html-page
    *
    * @param Node nodeObject
@@ -195,6 +212,8 @@ var gSearchResultsPane = {
       range.setStart(startNode, startValue);
       range.setEnd(endNode, endValue);
       this.getFindSelection(startNode.ownerGlobal).addRange(range);
+
+      this.searchResultsHighlighted = true;
     }
 
     return !!indices.length;
@@ -235,6 +254,8 @@ var gSearchResultsPane = {
       return;
     }
 
+    let firstQuery = !this.query && query;
+    let endQuery = !query && this.query;
     let subQuery = this.query && query.includes(this.query);
     this.query = query;
 
@@ -251,6 +272,10 @@ var gSearchResultsPane = {
     let srHeader = document.getElementById("header-searchResults");
     let noResultsEl = document.getElementById("no-results-message");
     if (this.query) {
+      // If this is the first query, fix the search input in place.
+      if (firstQuery) {
+        this.fixInputPosition();
+      }
       // Showing the Search Results Tag
       await gotoPref("paneSearchResults");
       srHeader.hidden = false;
@@ -353,6 +378,11 @@ var gSearchResultsPane = {
         }
       }
     } else {
+      if (endQuery) {
+        document
+          .querySelector(".sticky-inner-container")
+          .style.removeProperty("max-width");
+      }
       noResultsEl.hidden = true;
       document.getElementById("sorry-message-query").textContent = "";
       // Going back to General when cleared
@@ -384,13 +414,20 @@ var gSearchResultsPane = {
     let matchesFound = false;
     if (
       nodeObject.childElementCount == 0 ||
-      nodeObject.tagName == "button" ||
-      nodeObject.tagName == "label" ||
-      nodeObject.tagName == "description" ||
-      nodeObject.tagName == "menulist" ||
-      nodeObject.tagName == "menuitem"
+      nodeObject.localName == "button" ||
+      nodeObject.localName == "label" ||
+      nodeObject.localName == "description" ||
+      nodeObject.localName == "menulist" ||
+      nodeObject.localName == "menuitem" ||
+      nodeObject.localName == "checkbox" ||
+      nodeObject.localName == "moz-toggle"
     ) {
       let simpleTextNodes = this.textNodeDescendants(nodeObject);
+      if (nodeObject.shadowRoot) {
+        simpleTextNodes.push(
+          ...this.textNodeDescendants(nodeObject.shadowRoot)
+        );
+      }
       for (let node of simpleTextNodes) {
         let result = this.highlightMatches(
           [node],
@@ -409,8 +446,8 @@ var gSearchResultsPane = {
       let accessKeyTextNodes = [];
 
       if (
-        nodeObject.tagName == "label" ||
-        nodeObject.tagName == "description"
+        nodeObject.localName == "label" ||
+        nodeObject.localName == "description"
       ) {
         accessKeyTextNodes.push(...simpleTextNodes);
       }
@@ -438,7 +475,7 @@ var gSearchResultsPane = {
       // Searching some elements, such as xul:label, store their user-visible text in a "value" attribute.
       // Value will be skipped for menuitem since value in menuitem could represent index number to distinct each item.
       let valueResult =
-        nodeObject.tagName !== "menuitem" && nodeObject.tagName !== "radio"
+        nodeObject.localName !== "menuitem" && nodeObject.localName !== "radio"
           ? this.queryMatchesContent(
               nodeObject.getAttribute("value"),
               searchPhrase
@@ -466,12 +503,13 @@ var gSearchResultsPane = {
       // Creating tooltips for buttons
       if (
         keywordsResult &&
-        (nodeObject.tagName === "button" || nodeObject.tagName == "menulist")
+        (nodeObject.localName === "button" ||
+          nodeObject.localName == "menulist")
       ) {
         this.listSearchTooltips.add(nodeObject);
       }
 
-      if (keywordsResult && nodeObject.tagName === "menuitem") {
+      if (keywordsResult && nodeObject.localName === "menuitem") {
         nodeObject.setAttribute("indicator", "true");
         this.listSearchMenuitemIndicators.add(nodeObject);
         let menulist = nodeObject.closest("menulist");
@@ -481,8 +519,8 @@ var gSearchResultsPane = {
       }
 
       if (
-        (nodeObject.tagName == "menulist" ||
-          nodeObject.tagName == "menuitem") &&
+        (nodeObject.localName == "menulist" ||
+          nodeObject.localName == "menuitem") &&
         (labelResult || valueResult || keywordsResult)
       ) {
         nodeObject.setAttribute("highlightable", "true");
@@ -498,7 +536,7 @@ var gSearchResultsPane = {
 
     // Should not search unselected child nodes of a <xul:deck> element
     // except the "historyPane" <xul:deck> element.
-    if (nodeObject.tagName == "deck" && nodeObject.id != "historyPane") {
+    if (nodeObject.localName == "deck" && nodeObject.id != "historyPane") {
       let index = nodeObject.selectedIndex;
       if (index != -1) {
         let result = await this.searchChildNodeIfVisible(
@@ -541,13 +579,18 @@ var gSearchResultsPane = {
     ) {
       result = await this.searchWithinNode(child, searchPhrase);
       // Creating tooltips for menulist element
-      if (result && nodeObject.tagName === "menulist") {
+      if (result && nodeObject.localName === "menulist") {
         this.listSearchTooltips.add(nodeObject);
       }
 
-      // If this is a node for an experimental feature option, add it to the list
-      // of subitems. The items that don't match the search term will be hidden.
-      if (child instanceof Element && child.classList.contains("featureGate")) {
+      // If this is a node for an experimental feature option or a Mozilla product item,
+      // add it to the list of subitems. The items that don't match the search term
+      // will be hidden.
+      if (
+        Element.isInstance(child) &&
+        (child.classList.contains("featureGate") ||
+          child.classList.contains("mozilla-product-item"))
+      ) {
         this.subItems.set(child, result);
       }
     }
@@ -649,19 +692,48 @@ var gSearchResultsPane = {
     anchorNode.parentElement.classList.add("search-tooltip-parent");
     anchorNode.parentElement.appendChild(searchTooltip);
 
-    this.calculateTooltipPosition(anchorNode);
+    this._applyTooltipPosition(
+      searchTooltip,
+      this._computeTooltipPosition(anchorNode, searchTooltip)
+    );
   },
 
-  calculateTooltipPosition(anchorNode) {
-    let searchTooltip = anchorNode.tooltipNode;
+  _recomputeTooltipPositions() {
+    let positions = [];
+    for (let anchorNode of this.listSearchTooltips) {
+      let searchTooltip = anchorNode.tooltipNode;
+      if (!searchTooltip) {
+        continue;
+      }
+      let position = this._computeTooltipPosition(anchorNode, searchTooltip);
+      positions.push({ searchTooltip, position });
+    }
+    for (let { searchTooltip, position } of positions) {
+      this._applyTooltipPosition(searchTooltip, position);
+    }
+  },
+
+  _applyTooltipPosition(searchTooltip, position) {
+    searchTooltip.style.left = position.left + "px";
+    searchTooltip.style.top = position.top + "px";
+  },
+
+  _computeTooltipPosition(anchorNode, searchTooltip) {
     // In order to get the up-to-date position of each of the nodes that we're
-    // putting tooltips on, we have to flush layout intentionally, and that
-    // this is the result of a XUL limitation (bug 1363730).
+    // putting tooltips on, we have to flush layout intentionally. Once
+    // menulists don't use XUL layout we can remove this and use plain CSS to
+    // position them, see bug 1363730.
+    let anchorRect = anchorNode.getBoundingClientRect();
+    let containerRect = anchorNode.parentElement.getBoundingClientRect();
     let tooltipRect = searchTooltip.getBoundingClientRect();
-    searchTooltip.style.setProperty(
-      "left",
-      `calc(50% - ${tooltipRect.width / 2}px)`
-    );
+
+    let left =
+      anchorRect.left -
+      containerRect.left +
+      anchorRect.width / 2 -
+      tooltipRect.width / 2;
+    let top = anchorRect.top - containerRect.top;
+    return { left, top };
   },
 
   /**
@@ -669,7 +741,10 @@ var gSearchResultsPane = {
    * a search to another preference category.
    */
   removeAllSearchIndicators(window, showSubItems) {
-    this.getFindSelection(window).removeAllRanges();
+    if (this.searchResultsHighlighted) {
+      this.getFindSelection(window).removeAllRanges();
+      this.searchResultsHighlighted = false;
+    }
     this.removeAllSearchTooltips();
     this.removeAllSearchMenuitemIndicators();
 
@@ -678,9 +753,8 @@ var gSearchResultsPane = {
       for (let subItem of this.subItems.keys()) {
         subItem.classList.remove("visually-hidden");
       }
+      this.subItems.clear();
     }
-
-    this.subItems.clear();
   },
 
   /**

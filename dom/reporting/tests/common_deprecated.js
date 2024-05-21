@@ -1,5 +1,7 @@
 let testingInterface;
 
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 // eslint-disable-next-line no-unused-vars
 function test_deprecatedInterface() {
   info("Testing DeprecatedTestingInterface report");
@@ -34,8 +36,8 @@ function test_deprecatedInterface() {
           .replace("worker_deprecated.js", "common_deprecated.js"),
         "We have a sourceFile"
       );
-      is(report.body.lineNumber, 48, "We have a lineNumber");
-      is(report.body.columnNumber, 23, "We have a columnNumber");
+      is(report.body.lineNumber, 50, "We have a lineNumber");
+      is(report.body.columnNumber, 24, "We have a columnNumber");
 
       obs.disconnect();
       resolve();
@@ -86,8 +88,8 @@ function test_deprecatedMethod() {
           .replace("worker_deprecated.js", "common_deprecated.js"),
         "We have a sourceFile"
       );
-      is(report.body.lineNumber, 100, "We have a lineNumber");
-      is(report.body.columnNumber, 21, "We have a columnNumber");
+      is(report.body.lineNumber, 102, "We have a lineNumber");
+      is(report.body.columnNumber, 22, "We have a columnNumber");
 
       obs.disconnect();
       resolve();
@@ -99,6 +101,35 @@ function test_deprecatedMethod() {
 
     testingInterface.deprecatedMethod();
     ok(true, "Run a deprecated method.");
+  });
+}
+
+// eslint-disable-next-line no-unused-vars
+function test_deprecatedMethodWithDataURI() {
+  info("Testing deprecatedMethodWithDataURI report");
+
+  const uri = `data:text/html,<script>
+    window.onload = () => {
+      let obs = new ReportingObserver((reports, o) => {
+        obs.disconnect();
+        let report = reports[0];
+        const message = (report.url == "data:...") ? "passed" : "failed";
+        window.opener.postMessage(message, "http://mochi.test:8888");
+        close();
+      });
+
+      obs.observe();
+      let testingInterface = new TestingDeprecatedInterface();
+      testingInterface.deprecatedMethod();
+    };
+  </script>`;
+
+  return new Promise(resolve => {
+    window.open(uri);
+    window.addEventListener("message", e => {
+      is(e.data, "passed", "The data URI is truncated");
+      resolve();
+    });
   });
 }
 
@@ -138,8 +169,8 @@ function test_deprecatedAttribute() {
           .replace("worker_deprecated.js", "common_deprecated.js"),
         "We have a sourceFile"
       );
-      is(report.body.lineNumber, 152, "We have a lineNumber");
-      is(report.body.columnNumber, 4, "We have a columnNumber");
+      is(report.body.lineNumber, 183, "We have a lineNumber");
+      is(report.body.columnNumber, 8, "We have a columnNumber");
 
       obs.disconnect();
       resolve();

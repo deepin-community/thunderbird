@@ -2,37 +2,39 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-// Tests to see if we can trigger a breakpoint action via the context menu
-add_task(async function() {
-  const dbg = await initDebugger("doc-scripts.html", "simple2");
-  await selectSource(dbg, "simple2");
-  await waitForSelectedSource(dbg, "simple2");
+"use strict";
 
-  await addBreakpoint(dbg, "simple2", 3);
+// Tests to see if we can trigger a breakpoint action via the context menu
+add_task(async function () {
+  const dbg = await initDebugger("doc-scripts.html", "simple2.js");
+  await selectSource(dbg, "simple2.js");
+  await waitForSelectedSource(dbg, "simple2.js");
+
+  await addBreakpoint(dbg, "simple2.js", 3);
 
   await openFirstBreakpointContextMenu(dbg);
   // select "Remove breakpoint"
   selectContextMenuItem(dbg, selectors.breakpointContextMenu.remove);
 
-  await waitForState(dbg, state => dbg.selectors.getBreakpointCount() === 0);
+  await waitForState(dbg, () => dbg.selectors.getBreakpointCount() === 0);
   ok(true, "successfully removed the breakpoint");
 });
 
 // Tests "disable others", "enable others" and "remove others" context actions
-add_task(async function() {
+add_task(async function () {
   const dbg = await initDebugger("doc-scripts.html");
-  await selectSource(dbg, "simple1");
-  await waitForSelectedSource(dbg, "simple1");
+  await selectSource(dbg, "simple1.js");
+  await waitForSelectedSource(dbg, "simple1.js");
 
-  await addBreakpoint(dbg, "simple1", 4);
-  await addBreakpoint(dbg, "simple1", 5);
-  await addBreakpoint(dbg, "simple1", 6);
+  await addBreakpoint(dbg, "simple1.js", 4);
+  await addBreakpoint(dbg, "simple1.js", 5);
+  await addBreakpoint(dbg, "simple1.js", 6);
 
   await openFirstBreakpointContextMenu(dbg);
   // select "Disable Others"
   let dispatched = waitForDispatch(dbg.store, "SET_BREAKPOINT", 2);
   selectContextMenuItem(dbg, selectors.breakpointContextMenu.disableOthers);
-  await waitForState(dbg, state =>
+  await waitForState(dbg, () =>
     dbg.selectors
       .getBreakpointsList()
       .every(bp => (bp.location.line !== 4) === bp.disabled)
@@ -44,7 +46,7 @@ add_task(async function() {
   // select "Disable All"
   dispatched = waitForDispatch(dbg.store, "SET_BREAKPOINT");
   selectContextMenuItem(dbg, selectors.breakpointContextMenu.disableAll);
-  await waitForState(dbg, state =>
+  await waitForState(dbg, () =>
     dbg.selectors.getBreakpointsList().every(bp => bp.disabled)
   );
   await dispatched;
@@ -54,7 +56,7 @@ add_task(async function() {
   // select "Enable Others"
   dispatched = waitForDispatch(dbg.store, "SET_BREAKPOINT", 2);
   selectContextMenuItem(dbg, selectors.breakpointContextMenu.enableOthers);
-  await waitForState(dbg, state =>
+  await waitForState(dbg, () =>
     dbg.selectors
       .getBreakpointsList()
       .every(bp => (bp.location.line === 4) === bp.disabled)
@@ -68,7 +70,7 @@ add_task(async function() {
   selectContextMenuItem(dbg, selectors.breakpointContextMenu.removeOthers);
   await waitForState(
     dbg,
-    state =>
+    () =>
       dbg.selectors.getBreakpointsList().length === 1 &&
       dbg.selectors.getBreakpointsList()[0].location.line === 4
   );

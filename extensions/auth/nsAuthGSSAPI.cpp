@@ -18,7 +18,6 @@
 #include "mozilla/IntegerPrintfMacros.h"
 
 #include "nsCOMPtr.h"
-#include "nsMemory.h"
 #include "nsNativeCharsetUtils.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/SharedLibrary.h"
@@ -75,22 +74,23 @@ static struct GSSFunction {
 static bool gssNativeImp = true;
 static PRLibrary* gssLibrary = nullptr;
 
-#define gss_display_status_ptr ((gss_display_status_type)*gssFuncs[0].func)
-#define gss_init_sec_context_ptr ((gss_init_sec_context_type)*gssFuncs[1].func)
-#define gss_indicate_mechs_ptr ((gss_indicate_mechs_type)*gssFuncs[2].func)
-#define gss_release_oid_set_ptr ((gss_release_oid_set_type)*gssFuncs[3].func)
+#define gss_display_status_ptr ((gss_display_status_type) * gssFuncs[0].func)
+#define gss_init_sec_context_ptr \
+  ((gss_init_sec_context_type) * gssFuncs[1].func)
+#define gss_indicate_mechs_ptr ((gss_indicate_mechs_type) * gssFuncs[2].func)
+#define gss_release_oid_set_ptr ((gss_release_oid_set_type) * gssFuncs[3].func)
 #define gss_delete_sec_context_ptr \
-  ((gss_delete_sec_context_type)*gssFuncs[4].func)
-#define gss_import_name_ptr ((gss_import_name_type)*gssFuncs[5].func)
-#define gss_release_buffer_ptr ((gss_release_buffer_type)*gssFuncs[6].func)
-#define gss_release_name_ptr ((gss_release_name_type)*gssFuncs[7].func)
-#define gss_wrap_ptr ((gss_wrap_type)*gssFuncs[8].func)
-#define gss_unwrap_ptr ((gss_unwrap_type)*gssFuncs[9].func)
+  ((gss_delete_sec_context_type) * gssFuncs[4].func)
+#define gss_import_name_ptr ((gss_import_name_type) * gssFuncs[5].func)
+#define gss_release_buffer_ptr ((gss_release_buffer_type) * gssFuncs[6].func)
+#define gss_release_name_ptr ((gss_release_name_type) * gssFuncs[7].func)
+#define gss_wrap_ptr ((gss_wrap_type) * gssFuncs[8].func)
+#define gss_unwrap_ptr ((gss_unwrap_type) * gssFuncs[9].func)
 
 #ifdef XP_MACOSX
 static PRFuncPtr KLCacheHasValidTicketsPtr;
 #  define KLCacheHasValidTickets_ptr \
-    ((KLCacheHasValidTickets_type)*KLCacheHasValidTicketsPtr)
+    ((KLCacheHasValidTickets_type) * KLCacheHasValidTicketsPtr)
 #endif
 
 static nsresult gssInit() {
@@ -192,10 +192,10 @@ static nsresult gssInit() {
 
   LOG(("Attempting to load gss functions\n"));
 
-  for (size_t i = 0; i < ArrayLength(gssFuncs); ++i) {
-    gssFuncs[i].func = PR_FindFunctionSymbol(lib, gssFuncs[i].str);
-    if (!gssFuncs[i].func) {
-      LOG(("Fail to load %s function from gssapi library\n", gssFuncs[i].str));
+  for (auto& gssFunc : gssFuncs) {
+    gssFunc.func = PR_FindFunctionSymbol(lib, gssFunc.str);
+    if (!gssFunc.func) {
+      LOG(("Fail to load %s function from gssapi library\n", gssFunc.str));
       PR_UnloadLibrary(lib);
       return NS_ERROR_FAILURE;
     }
@@ -324,14 +324,15 @@ void nsAuthGSSAPI::Shutdown() {
 NS_IMPL_ISUPPORTS(nsAuthGSSAPI, nsIAuthModule)
 
 NS_IMETHODIMP
-nsAuthGSSAPI::Init(const char* serviceName, uint32_t serviceFlags,
-                   const char16_t* domain, const char16_t* username,
-                   const char16_t* password) {
+nsAuthGSSAPI::Init(const nsACString& serviceName, uint32_t serviceFlags,
+                   const nsAString& domain, const nsAString& username,
+                   const nsAString& password) {
   // we don't expect to be passed any user credentials
-  NS_ASSERTION(!domain && !username && !password, "unexpected credentials");
+  NS_ASSERTION(domain.IsEmpty() && username.IsEmpty() && password.IsEmpty(),
+               "unexpected credentials");
 
   // it's critial that the caller supply a service name to be used
-  NS_ENSURE_TRUE(serviceName && *serviceName, NS_ERROR_INVALID_ARG);
+  NS_ENSURE_TRUE(!serviceName.IsEmpty(), NS_ERROR_INVALID_ARG);
 
   LOG(("entering nsAuthGSSAPI::Init()\n"));
 
@@ -446,17 +447,19 @@ nsAuthGSSAPI::GetNextToken(const void* inToken, uint32_t inTokenLen,
   }
 
   *outTokenLen = output_token.length;
-  if (output_token.length != 0)
+  if (output_token.length != 0) {
     *outToken = moz_xmemdup(output_token.value, output_token.length);
-  else
+  } else {
     *outToken = nullptr;
+  }
 
   gss_release_buffer_ptr(&minor_status, &output_token);
 
-  if (major_status == GSS_S_COMPLETE)
+  if (major_status == GSS_S_COMPLETE) {
     rv = NS_SUCCESS_AUTH_FINISHED;
-  else
+  } else {
     rv = NS_OK;
+  }
 
 end:
   gss_release_name_ptr(&minor_status, &server);
@@ -488,10 +491,11 @@ nsAuthGSSAPI::Unwrap(const void* inToken, uint32_t inTokenLen, void** outToken,
 
   *outTokenLen = output_token.length;
 
-  if (output_token.length)
+  if (output_token.length) {
     *outToken = moz_xmemdup(output_token.value, output_token.length);
-  else
+  } else {
     *outToken = nullptr;
+  }
 
   gss_release_buffer_ptr(&minor_status, &output_token);
 

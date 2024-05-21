@@ -18,20 +18,22 @@
 export MOZ_PACKAGE_JSSHELL=1
 
 # MinGW Stuff
-ac_add_options --target=i686-w64-mingw32
+ac_add_options --target=i686-pc-windows-gnu
 ac_add_options --with-toolchain-prefix=i686-w64-mingw32-
 
 ac_add_options --disable-warnings-as-errors
 mk_add_options "export WIDL_TIME_OVERRIDE=0"
 
-# This replicates Tor's configuration
+# These replicate Tor's configuration
 ac_add_options --enable-proxy-bypass-protection
+ac_add_options --enable-disk-remnant-avoidance
 
 # These aren't supported on mingw at this time
 ac_add_options --disable-webrtc # Bug 1393901
 ac_add_options --disable-geckodriver # Bug 1489320
 ac_add_options --disable-update-agent # Bug 1561797
-ac_add_options --disable-default-browser-agent # WinToast does not build on mingw
+ac_add_options --disable-default-browser-agent # Relies on toast notifications which don't build on mingw.
+ac_add_options --disable-notification-server # Toast notifications don't build on mingw.
 
 # Find our toolchain
 HOST_CC="$MOZ_FETCHES_DIR/clang/bin/clang"
@@ -41,16 +43,12 @@ CXX="$MOZ_FETCHES_DIR/clang/bin/i686-w64-mingw32-clang++"
 CXXFLAGS="-fms-extensions"
 CFLAGS="$CFLAGS -fcrash-diagnostics-dir=${UPLOAD_PATH}"
 CXXFLAGS="$CXXFLAGS -fcrash-diagnostics-dir=${UPLOAD_PATH}"
-
-# For Stylo
-BINDGEN_CFLAGS="-I$MOZ_FETCHES_DIR/clang/i686-w64-mingw32/include/c++/v1 -I$MOZ_FETCHES_DIR/clang/i686-w64-mingw32/include"
+CFLAGS="$CFLAGS -include _mingw.h"
+CXXFLAGS="$CXXFLAGS -include _mingw.h"
 
 # We want to make sure we use binutils and other binaries in the tooltool
 # package.
-mk_add_options "export PATH=$MOZ_FETCHES_DIR/clang/bin:$MOZ_FETCHES_DIR/mingw32/bin:$MOZ_FETCHES_DIR/wine/bin:$MOZ_FETCHES_DIR/upx/bin:$MOZ_FETCHES_DIR/fxc2/bin:$MOZ_FETCHES_DIR/binutils/bin:$PATH"
-
-LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$MOZ_FETCHES_DIR/mingw32/lib64:$MOZ_FETCHES_DIR/clang/lib
-mk_add_options "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+mk_add_options "export PATH=$MOZ_FETCHES_DIR/clang/bin:$MOZ_FETCHES_DIR/upx/bin:$MOZ_FETCHES_DIR/fxc2/bin:$MOZ_FETCHES_DIR/binutils/bin:$PATH"
 
 # Do not include the visual studio related mozconfigs of course
 

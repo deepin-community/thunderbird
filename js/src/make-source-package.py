@@ -8,7 +8,6 @@ import enum
 import logging
 import os
 import shutil
-import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -138,10 +137,15 @@ rsync_filter_list = """
 + /mfbt/**
 + /nsprpub/**
 
++ /intl/bidi/**
+
 - /intl/icu/source/data
 - /intl/icu/source/test
 - /intl/icu/source/tools
 + /intl/icu/**
+
++ /intl/icu_capi/**
++ /intl/icu_segmenter_data/**
 
 - /intl/components/gtest
 + /intl/components/**
@@ -156,6 +160,7 @@ rsync_filter_list = """
 
 + /mozglue/baseprofiler/**
 + /mozglue/build/**
++ /mozglue/interposers/**
 + /mozglue/misc/**
 + /mozglue/moz.build
 + /mozglue/static/**
@@ -176,16 +181,19 @@ rsync_filter_list = """
 
 + /.cargo/config.in
 
++ /third_party/function2/**
 - /third_party/python/gyp
 + /third_party/python/**
 + /third_party/rust/**
-
++ /third_party/gemmology/**
++ /third_party/xsimd/**
 + /layout/tools/reftest/reftest/**
 
 + /testing/mach_commands.py
 + /testing/moz.build
 + /testing/mozbase/**
 + /testing/performance/**
++ /testing/test/**
 + /testing/web-platform/*.ini
 + /testing/web-platform/*.py
 + /testing/web-platform/meta/streams/**
@@ -196,6 +204,11 @@ rsync_filter_list = """
 
 + /toolkit/crashreporter/tools/symbolstore.py
 + /toolkit/mozapps/installer/package-name.mk
+
++ /xpcom/geckoprocesstypes_generator/**
+
+# List of prefs.
++ /modules/libpref/init/StaticPrefList.yaml
 
 # SpiderMonkey itself
 
@@ -224,7 +237,6 @@ be run over the binaries before deploying them.
 
 Building with default options may be performed as follows:
 
-  ./mach create-mach-environment
   ./mach build
 
 This will produce a debug build (much more suitable for developing against the
@@ -281,7 +293,9 @@ def is_mozjs_cargo_member(line):
 def is_mozjs_crates_io_local_patch(line):
     """Checks if the line in patch.crates-io is mozjs-related"""
 
-    return 'path = "js' in line
+    return any(
+        f'path = "{p}' in line for p in ("js", "build", "third_party/rust", "intl")
+    )
 
 
 def clean():
@@ -373,16 +387,8 @@ def copy_cargo_toml():
 def generate_configure():
     """Generate configure files to avoid build dependency on autoconf-2.13"""
 
-    src_configure_in_file = topsrc_dir / "js" / "src" / "configure.in"
     src_old_configure_in_file = topsrc_dir / "js" / "src" / "old-configure.in"
-    dest_configure_file = target_dir / "js" / "src" / "configure"
     dest_old_configure_file = target_dir / "js" / "src" / "old-configure"
-
-    shutil.copy2(
-        str(src_configure_in_file), str(dest_configure_file), follow_symlinks=False
-    )
-    st = dest_configure_file.stat()
-    dest_configure_file.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     js_src_dir = topsrc_dir / "js" / "src"
 

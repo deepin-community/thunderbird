@@ -2,25 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import os
+from unittest import mock
 from unittest.mock import Mock
 
-import pytest
-
-from unittest import mock
 import mozunit
+import pytest
 import requests
-
 from mach.config import ConfigSettings
 from mach.decorators import SettingsProvider
+from mach.settings import MachSettings
 from mach.telemetry import (
     initialize_telemetry_setting,
     record_telemetry_settings,
     resolve_is_employee,
 )
-from mozbuild.settings import TelemetrySettings
 
 
 @SettingsProvider
@@ -35,7 +31,7 @@ def record_enabled_telemetry(mozbuild_path, settings):
 @pytest.fixture
 def settings():
     s = ConfigSettings()
-    s.register_provider(TelemetrySettings)
+    s.register_provider(MachSettings)
     s.register_provider(OtherSettings)
     return s
 

@@ -1,8 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { ctcpFormatToText, ctcpFormatToHTML } = ChromeUtils.import(
-  "resource:///modules/ircUtils.jsm"
+var { ctcpFormatToText, ctcpFormatToHTML } = ChromeUtils.importESModule(
+  "resource:///modules/ircUtils.sys.mjs"
 );
 
 // TODO add a test for special JS characters (|, etc...)
@@ -28,7 +28,7 @@ function run_test() {
 }
 
 function test_ctcpFormatToHTML() {
-  let expectedOutput = [
+  const expectedOutput = [
     "The quick brown fox <b>jumps</b> over the lazy dog.",
     "The quick brown fox <b>jumps</b> over the lazy dog.",
     "The quick brown <i>fox jumps</i> over the lazy dog.",
@@ -49,7 +49,7 @@ function test_ctcpFormatToHTML() {
 }
 
 function test_ctcpFormatToText() {
-  let expectedOutput = "The quick brown fox jumps over the lazy dog.";
+  const expectedOutput = "The quick brown fox jumps over the lazy dog.";
 
   for (let i = 0; i < input.length; ++i) {
     equal(expectedOutput, ctcpFormatToText(input[i]));

@@ -5,6 +5,10 @@
 // applications.js
 /* globals gGeneralPane */
 
+window.addEventListener("load", event => {
+  gAppManagerDialog.init();
+});
+
 var gAppManagerDialog = {
   _removed: [],
 
@@ -23,23 +27,27 @@ var gAppManagerDialog = {
     ]);
     document.getElementById("appDescription").textContent = contentText;
 
-    let list = document.getElementById("appList");
-    let listFragment = document.createDocumentFragment();
-    for (let app of this.handlerInfo.possibleApplicationHandlers.enumerate()) {
+    const list = document.getElementById("appList");
+    const listFragment = document.createDocumentFragment();
+    for (const app of this.handlerInfo.possibleApplicationHandlers.enumerate()) {
       if (!gGeneralPane.isValidHandlerApp(app)) {
         continue;
       }
 
-      let item = document.createXULElement("richlistitem");
+      const item = document.createXULElement("richlistitem");
+      item.classList.add("typeLabel");
       listFragment.append(item);
       item.app = app;
 
-      let image = document.createXULElement("image");
+      const image = document.createElement("img");
+      image.classList.add("typeIcon");
       image.setAttribute("src", gGeneralPane._getIconURLForHandlerApp(app));
+      image.setAttribute("alt", "");
       item.appendChild(image);
 
-      let label = document.createXULElement("label");
-      label.setAttribute("value", app.name);
+      const label = document.createElement("span");
+      label.classList.add("typeDescription");
+      label.textContent = app.name;
       item.appendChild(label);
     }
     list.append(listFragment);

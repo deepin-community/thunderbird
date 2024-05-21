@@ -6,12 +6,11 @@
 
 #include "mozilla/glean/bindings/StringList.h"
 
-#include "mozilla/Components.h"
 #include "mozilla/ResultVariant.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "mozilla/dom/GleanMetricsBinding.h"
 #include "mozilla/glean/bindings/ScalarGIFFTMap.h"
 #include "mozilla/glean/fog_ffi_generated.h"
-#include "nsIClassInfoImpl.h"
 #include "nsString.h"
 #include "nsTArray.h"
 
@@ -25,9 +24,7 @@ void StringListMetric::Add(const nsACString& aValue) const {
     Telemetry::ScalarSet(scalarId.extract(), NS_ConvertUTF8toUTF16(aValue),
                          true);
   }
-#ifndef MOZ_GLEAN_ANDROID
   fog_string_list_add(mId, &aValue);
-#endif
 }
 
 void StringListMetric::Set(const nsTArray<nsCString>& aValue) const {
@@ -35,19 +32,13 @@ void StringListMetric::Set(const nsTArray<nsCString>& aValue) const {
   // We can't remove keys from the mirror scalar and handle this 'properly',
   // so you shouldn't use this operation at all.
   (void)NS_WARN_IF(ScalarIdForMetric(mId).isSome());
-#ifndef MOZ_GLEAN_ANDROID
   fog_string_list_set(mId, &aValue);
-#endif
 }
 
 Result<Maybe<nsTArray<nsCString>>, nsCString> StringListMetric::TestGetValue(
     const nsACString& aPingName) const {
-#ifdef MOZ_GLEAN_ANDROID
-  Unused << mId;
-  return Maybe<nsTArray<nsCString>>();
-#else
   nsCString err;
-  if (fog_string_list_test_get_error(mId, &aPingName, &err)) {
+  if (fog_string_list_test_get_error(mId, &err)) {
     return Err(err);
   }
   if (!fog_string_list_test_has_value(mId, &aPingName)) {
@@ -56,45 +47,34 @@ Result<Maybe<nsTArray<nsCString>>, nsCString> StringListMetric::TestGetValue(
   nsTArray<nsCString> ret;
   fog_string_list_test_get_value(mId, &aPingName, &ret);
   return Some(std::move(ret));
-#endif
 }
 
 }  // namespace impl
 
-NS_IMPL_CLASSINFO(GleanStringList, nullptr, 0, {0})
-NS_IMPL_ISUPPORTS_CI(GleanStringList, nsIGleanStringList)
-
-NS_IMETHODIMP
-GleanStringList::Add(const nsACString& aValue) {
-  mStringList.Add(aValue);
-  return NS_OK;
+/* virtual */
+JSObject* GleanStringList::WrapObject(JSContext* aCx,
+                                      JS::Handle<JSObject*> aGivenProto) {
+  return dom::GleanStringList_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-NS_IMETHODIMP
-GleanStringList::Set(const nsTArray<nsCString>& aValue) {
+void GleanStringList::Add(const nsACString& aValue) { mStringList.Add(aValue); }
+
+void GleanStringList::Set(const dom::Sequence<nsCString>& aValue) {
   mStringList.Set(aValue);
-  return NS_OK;
 }
 
-NS_IMETHODIMP
-GleanStringList::TestGetValue(const nsACString& aStorageName, JSContext* aCx,
-                              JS::MutableHandleValue aResult) {
-  auto result = mStringList.TestGetValue(aStorageName);
+void GleanStringList::TestGetValue(const nsACString& aPingName,
+                                   dom::Nullable<nsTArray<nsCString>>& aResult,
+                                   ErrorResult& aRv) {
+  auto result = mStringList.TestGetValue(aPingName);
   if (result.isErr()) {
-    aResult.set(JS::UndefinedValue());
-    LogToBrowserConsole(nsIScriptError::errorFlag,
-                        NS_ConvertUTF8toUTF16(result.unwrapErr()));
-    return NS_ERROR_LOSS_OF_SIGNIFICANT_DATA;
+    aRv.ThrowDataError(result.unwrapErr());
+    return;
   }
   auto optresult = result.unwrap();
-  if (optresult.isNothing()) {
-    aResult.set(JS::UndefinedValue());
-  } else {
-    if (!dom::ToJSValue(aCx, optresult.ref(), aResult)) {
-      return NS_ERROR_FAILURE;
-    }
+  if (!optresult.isNothing()) {
+    aResult.SetValue(optresult.extract());
   }
-  return NS_OK;
 }
 
 }  // namespace mozilla::glean

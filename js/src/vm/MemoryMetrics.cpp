@@ -18,7 +18,6 @@
 #include "jit/Ion.h"
 #include "js/HeapAPI.h"
 #include "util/Text.h"
-#include "vm/ArrayObject.h"
 #include "vm/BigIntType.h"
 #include "vm/HelperThreadState.h"
 #include "vm/JSObject.h"
@@ -28,11 +27,11 @@
 #include "vm/Runtime.h"
 #include "vm/Shape.h"
 #include "vm/StringType.h"
-#include "vm/SymbolType.h"
-#include "vm/WrapperObject.h"
 #include "wasm/WasmInstance.h"
 #include "wasm/WasmJS.h"
 #include "wasm/WasmModule.h"
+
+#include "wasm/WasmInstance-inl.h"
 
 using mozilla::MallocSizeOf;
 using mozilla::PodCopy;
@@ -212,9 +211,9 @@ static void StatsZoneCallback(JSRuntime* rt, void* data, Zone* zone,
   rtStats->currZoneStats = &zStats;
 
   zone->addSizeOfIncludingThis(
-      rtStats->mallocSizeOf_, &zStats.code, &zStats.regexpZone, &zStats.jitZone,
-      &zStats.baselineStubsOptimized, &zStats.uniqueIdMap,
-      &zStats.initialPropMapTable, &zStats.shapeTables,
+      rtStats->mallocSizeOf_, &zStats.zoneObject, &zStats.code,
+      &zStats.regexpZone, &zStats.jitZone, &zStats.cacheIRStubs,
+      &zStats.uniqueIdMap, &zStats.initialPropMapTable, &zStats.shapeTables,
       &rtStats->runtime.atomsMarkBitmaps, &zStats.compartmentObjects,
       &zStats.crossCompartmentWrappersTables, &zStats.compartmentsPrivateData,
       &zStats.scriptCountsMap);
@@ -237,8 +236,7 @@ static void StatsRealmCallback(JSContext* cx, void* data, Realm* realm,
   realm->addSizeOfIncludingThis(
       rtStats->mallocSizeOf_, &realmStats.realmObject, &realmStats.realmTables,
       &realmStats.innerViewsTable, &realmStats.objectMetadataTable,
-      &realmStats.savedStacksSet, &realmStats.varNamesSet,
-      &realmStats.nonSyntacticLexicalScopesTable, &realmStats.jitRealm);
+      &realmStats.savedStacksSet, &realmStats.nonSyntacticLexicalScopesTable);
 }
 
 static void StatsArenaCallback(JSRuntime* rt, void* data, gc::Arena* arena,
@@ -340,7 +338,8 @@ static void StatsCellCallback(JSRuntime* rt, void* data, JS::GCCellPtr cellptr,
         info.objectsGCHeap += Nursery::nurseryCellHeaderSize();
       }
 
-      obj->addSizeOfExcludingThis(rtStats->mallocSizeOf_, &info);
+      obj->addSizeOfExcludingThis(rtStats->mallocSizeOf_, &info,
+                                  &rtStats->runtime);
 
       // These classes require special handling due to shared resources which
       // we must be careful not to report twice.
@@ -389,7 +388,7 @@ static void StatsCellCallback(JSRuntime* rt, void* data, JS::GCCellPtr cellptr,
         JSScript* script = static_cast<JSScript*>(base);
         script->addSizeOfJitScript(rtStats->mallocSizeOf_,
                                    &realmStats.jitScripts,
-                                   &realmStats.baselineStubsFallback);
+                                   &realmStats.allocSites);
         jit::AddSizeOfBaselineData(script, rtStats->mallocSizeOf_,
                                    &realmStats.baselineData);
         realmStats.ionData +=
@@ -630,11 +629,6 @@ static bool FindNotableScriptSources(JS::RuntimeSizes& runtime) {
 static bool CollectRuntimeStatsHelper(JSContext* cx, RuntimeStats* rtStats,
                                       ObjectPrivateVisitor* opv, bool anonymize,
                                       IterateCellCallback statsCellCallback) {
-  // Wait for any off-thread parsing to finish, as that currently allocates GC
-  // things.
-  JSRuntime* rt = cx->runtime();
-  WaitForOffThreadParses(rt);
-
   // Finish any ongoing incremental GC that may change the data we're gathering
   // and ensure that we don't do anything that could start another one.
   gc::FinishGC(cx);
@@ -643,11 +637,12 @@ static bool CollectRuntimeStatsHelper(JSContext* cx, RuntimeStats* rtStats,
   // Wait for any background tasks to finish.
   WaitForAllHelperThreads();
 
+  JSRuntime* rt = cx->runtime();
   if (!rtStats->realmStatsVector.reserve(rt->numRealms)) {
     return false;
   }
 
-  size_t totalZones = rt->gc.zones().length() + 1;  // + 1 for the atoms zone.
+  size_t totalZones = rt->gc.zones().length();
   if (!rtStats->zoneStatsVector.reserve(totalZones)) {
     return false;
   }
@@ -746,13 +741,9 @@ JS_PUBLIC_API bool JS::CollectGlobalStats(GlobalStats* gStats) {
 
   // HelperThreadState holds data that is not part of a Runtime. This does
   // not include data is is currently being processed by a HelperThread.
-  HelperThreadState().addSizeOfIncludingThis(gStats, lock);
-
-#ifdef JS_TRACE_LOGGING
-  // Global data used by TraceLogger
-  gStats->tracelogger += SizeOfTraceLogState(gStats->mallocSizeOf_);
-  gStats->tracelogger += SizeOfTraceLogGraphState(gStats->mallocSizeOf_);
-#endif
+  if (IsHelperThreadStateInitialized()) {
+    HelperThreadState().addSizeOfIncludingThis(gStats, lock);
+  }
 
   return true;
 }

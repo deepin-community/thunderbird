@@ -9,6 +9,7 @@
 #include "gfxUtils.h"
 #include "mozilla/ComputedStyle.h"
 #include "mozilla/PresShell.h"
+#include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/Helpers.h"
 #include "nsTableFrame.h"
@@ -21,6 +22,7 @@
 #include "nsIContent.h"
 #include "nsIFrame.h"
 #include "nsIFrameInlines.h"
+#include "nsIScrollableFrame.h"
 #include "nsGenericHTMLElement.h"
 #include "nsAttrValueInlines.h"
 #include "nsHTMLParts.h"
@@ -28,7 +30,6 @@
 #include "nsDisplayList.h"
 #include "nsLayoutUtils.h"
 #include "nsTextFrame.h"
-#include "FrameLayerBuilder.h"
 #include <algorithm>
 
 // TABLECELL SELECTION
@@ -42,36 +43,6 @@
 using namespace mozilla;
 using namespace mozilla::gfx;
 using namespace mozilla::image;
-
-class nsDisplayTableCellSelection final : public nsPaintedDisplayItem {
- public:
-  nsDisplayTableCellSelection(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame)
-      : nsPaintedDisplayItem(aBuilder, aFrame) {
-    MOZ_COUNT_CTOR(nsDisplayTableCellSelection);
-  }
-  MOZ_COUNTED_DTOR_OVERRIDE(nsDisplayTableCellSelection)
-
-  void Paint(nsDisplayListBuilder* aBuilder, gfxContext* aCtx) override {
-    static_cast<nsTableCellFrame*>(mFrame)->DecorateForSelection(
-        aCtx->GetDrawTarget(), ToReferenceFrame());
-  }
-  NS_DISPLAY_DECL_NAME("TableCellSelection", TYPE_TABLE_CELL_SELECTION)
-
-  bool CreateWebRenderCommands(
-      mozilla::wr::DisplayListBuilder& aBuilder,
-      mozilla::wr::IpcResourceUpdateQueue& aResources,
-      const StackingContextHelper& aSc,
-      mozilla::layers::RenderRootStateManager* aManager,
-      nsDisplayListBuilder* aDisplayListBuilder) override {
-    RefPtr<nsFrameSelection> frameSelection =
-        mFrame->PresShell()->FrameSelection();
-    if (frameSelection->IsInTableSelectionMode()) {
-      return false;
-    }
-
-    return true;
-  }
-};
 
 nsTableCellFrame::nsTableCellFrame(ComputedStyle* aStyle,
                                    nsTableFrame* aTableFrame, ClassID aID)
@@ -111,13 +82,9 @@ void nsTableCellFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
   }
 }
 
-void nsTableCellFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                                   PostDestroyData& aPostDestroyData) {
-  if (HasAnyStateBits(NS_FRAME_CAN_HAVE_ABSPOS_CHILDREN)) {
-    nsTableFrame::UnregisterPositionedTablePart(this, aDestructRoot);
-  }
-
-  nsContainerFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+void nsTableCellFrame::Destroy(DestroyContext& aContext) {
+  nsTableFrame::MaybeUnregisterPositionedTablePart(this);
+  nsContainerFrame::Destroy(aContext);
 }
 
 // nsIPercentBSizeObserver methods
@@ -199,11 +166,15 @@ nsresult nsTableCellFrame::AttributeChanged(int32_t aNameSpaceID,
   // BasicTableLayoutStrategy
   if (aNameSpaceID == kNameSpaceID_None && aAttribute == nsGkAtoms::nowrap &&
       PresContext()->CompatibilityMode() == eCompatibility_NavQuirks) {
-    PresShell()->FrameNeedsReflow(this, IntrinsicDirty::TreeChange,
+    PresShell()->FrameNeedsReflow(this, IntrinsicDirty::FrameAndAncestors,
                                   NS_FRAME_IS_DIRTY);
   }
 
-  if (aAttribute == nsGkAtoms::rowspan || aAttribute == nsGkAtoms::colspan) {
+  const nsAtom* colSpanAttribute =
+      MOZ_UNLIKELY(mContent->AsElement()->IsMathMLElement())
+          ? nsGkAtoms::columnspan_
+          : nsGkAtoms::colspan;
+  if (aAttribute == nsGkAtoms::rowspan || aAttribute == colSpanAttribute) {
     nsLayoutUtils::PostRestyleEvent(mContent->AsElement(), RestyleHint{0},
                                     nsChangeHint_UpdateTableCellSpans);
   }
@@ -213,9 +184,11 @@ nsresult nsTableCellFrame::AttributeChanged(int32_t aNameSpaceID,
 /* virtual */
 void nsTableCellFrame::DidSetComputedStyle(ComputedStyle* aOldComputedStyle) {
   nsContainerFrame::DidSetComputedStyle(aOldComputedStyle);
+  nsTableFrame::PositionedTablePartMaybeChanged(this, aOldComputedStyle);
 
-  if (!aOldComputedStyle)  // avoid this on init
-    return;
+  if (!aOldComputedStyle) {
+    return;  // avoid the following on init
+  }
 
 #ifdef ACCESSIBILITY
   if (nsAccessibilityService* accService = GetAccService()) {
@@ -246,17 +219,17 @@ void nsTableCellFrame::DidSetComputedStyle(ComputedStyle* aOldComputedStyle) {
 
 #ifdef DEBUG
 void nsTableCellFrame::AppendFrames(ChildListID aListID,
-                                    nsFrameList& aFrameList) {
+                                    nsFrameList&& aFrameList) {
   MOZ_CRASH("unsupported operation");
 }
 
 void nsTableCellFrame::InsertFrames(ChildListID aListID, nsIFrame* aPrevFrame,
                                     const nsLineList::iterator* aPrevFrameLine,
-                                    nsFrameList& aFrameList) {
+                                    nsFrameList&& aFrameList) {
   MOZ_CRASH("unsupported operation");
 }
 
-void nsTableCellFrame::RemoveFrame(ChildListID aListID, nsIFrame* aOldFrame) {
+void nsTableCellFrame::RemoveFrame(DestroyContext&, ChildListID, nsIFrame*) {
   MOZ_CRASH("unsupported operation");
 }
 #endif
@@ -283,19 +256,16 @@ void nsTableCellFrame::DecorateForSelection(DrawTarget* aDrawTarget,
                                             nsPoint aPt) {
   NS_ASSERTION(IsSelected(), "Should only be called for selected cells");
   int16_t displaySelection;
-  nsPresContext* presContext = PresContext();
   displaySelection = DetermineDisplaySelection();
   if (displaySelection) {
-    RefPtr<nsFrameSelection> frameSelection =
-        presContext->PresShell()->FrameSelection();
+    RefPtr<nsFrameSelection> frameSelection = PresShell()->FrameSelection();
 
     if (frameSelection->IsInTableSelectionMode()) {
       nscolor bordercolor;
       if (displaySelection == nsISelectionController::SELECTION_DISABLED) {
         bordercolor = NS_RGB(176, 176, 176);  // disabled color
       } else {
-        bordercolor = LookAndFeel::Color(
-            LookAndFeel::ColorID::TextSelectBackground, this);
+        bordercolor = LookAndFeel::Color(LookAndFeel::ColorID::Highlight, this);
       }
       nscoord threePx = nsPresContext::CSSPixelsToAppUnits(3);
       if ((mRect.width > threePx) && (mRect.height > threePx)) {
@@ -344,73 +314,27 @@ void nsTableCellFrame::DecorateForSelection(DrawTarget* aDrawTarget,
   }
 }
 
-ImgDrawResult nsTableCellFrame::PaintBackground(gfxContext& aRenderingContext,
-                                                const nsRect& aDirtyRect,
-                                                nsPoint aPt, uint32_t aFlags) {
-  nsRect rect(aPt, GetSize());
-  nsCSSRendering::PaintBGParams params =
-      nsCSSRendering::PaintBGParams::ForAllLayers(*PresContext(), aDirtyRect,
-                                                  rect, this, aFlags);
-  return nsCSSRendering::PaintStyleImageLayer(params, aRenderingContext);
-}
-
-nsresult nsTableCellFrame::ProcessBorders(nsTableFrame* aFrame,
-                                          nsDisplayListBuilder* aBuilder,
-                                          const nsDisplayListSet& aLists) {
+void nsTableCellFrame::ProcessBorders(nsTableFrame* aFrame,
+                                      nsDisplayListBuilder* aBuilder,
+                                      const nsDisplayListSet& aLists) {
   const nsStyleBorder* borderStyle = StyleBorder();
-  if (aFrame->IsBorderCollapse() || !borderStyle->HasBorder()) return NS_OK;
+  if (aFrame->IsBorderCollapse() || !borderStyle->HasBorder()) {
+    return;
+  }
 
   if (!GetContentEmpty() ||
       StyleTableBorder()->mEmptyCells == StyleEmptyCells::Show) {
     aLists.BorderBackground()->AppendNewToTop<nsDisplayBorder>(aBuilder, this);
   }
-
-  return NS_OK;
-}
-
-class nsDisplayTableCellBackground : public nsDisplayTableItem {
- public:
-  nsDisplayTableCellBackground(nsDisplayListBuilder* aBuilder,
-                               nsTableCellFrame* aFrame)
-      : nsDisplayTableItem(aBuilder, aFrame) {
-    MOZ_COUNT_CTOR(nsDisplayTableCellBackground);
-  }
-  MOZ_COUNTED_DTOR_OVERRIDE(nsDisplayTableCellBackground)
-
-  virtual void HitTest(nsDisplayListBuilder* aBuilder, const nsRect& aRect,
-                       HitTestState* aState,
-                       nsTArray<nsIFrame*>* aOutFrames) override {
-    aOutFrames->AppendElement(mFrame);
-  }
-  virtual void Paint(nsDisplayListBuilder* aBuilder, gfxContext* aCtx) override;
-  virtual nsRect GetBounds(nsDisplayListBuilder* aBuilder,
-                           bool* aSnap) const override;
-  NS_DISPLAY_DECL_NAME("TableCellBackground", TYPE_TABLE_CELL_BACKGROUND)
-};
-
-void nsDisplayTableCellBackground::Paint(nsDisplayListBuilder* aBuilder,
-                                         gfxContext* aCtx) {
-  ImgDrawResult result =
-      static_cast<nsTableCellFrame*>(mFrame)->PaintBackground(
-          *aCtx, GetPaintRect(), ToReferenceFrame(),
-          aBuilder->GetBackgroundPaintFlags());
-
-  nsDisplayTableItemGeometry::UpdateDrawResult(this, result);
-}
-
-nsRect nsDisplayTableCellBackground::GetBounds(nsDisplayListBuilder* aBuilder,
-                                               bool* aSnap) const {
-  // revert from nsDisplayTableItem's implementation ... cell backgrounds
-  // don't overflow the cell
-  return nsDisplayItem::GetBounds(aBuilder, aSnap);
 }
 
 void nsTableCellFrame::InvalidateFrame(uint32_t aDisplayItemKey,
                                        bool aRebuildDisplayItems) {
   nsIFrame::InvalidateFrame(aDisplayItemKey, aRebuildDisplayItems);
   if (GetTableFrame()->IsBorderCollapse()) {
+    const bool rebuild = StaticPrefs::layout_display_list_retain_sc();
     GetParent()->InvalidateFrameWithRect(InkOverflowRect() + GetPosition(),
-                                         aDisplayItemKey, false);
+                                         aDisplayItemKey, rebuild);
   }
 }
 
@@ -423,7 +347,7 @@ void nsTableCellFrame::InvalidateFrameWithRect(const nsRect& aRect,
   // we get an inactive layer created and this is computed
   // within FrameLayerBuilder
   GetParent()->InvalidateFrameWithRect(aRect + GetPosition(), aDisplayItemKey,
-                                       false);
+                                       aRebuildDisplayItems);
 }
 
 bool nsTableCellFrame::ShouldPaintBordersAndBackgrounds() const {
@@ -449,102 +373,6 @@ bool nsTableCellFrame::ShouldPaintBackground(nsDisplayListBuilder* aBuilder) {
   return ShouldPaintBordersAndBackgrounds();
 }
 
-void nsTableCellFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
-                                        const nsDisplayListSet& aLists) {
-  DO_GLOBAL_REFLOW_COUNT_DSP("nsTableCellFrame");
-  if (ShouldPaintBordersAndBackgrounds()) {
-    // display outset box-shadows if we need to.
-    bool hasBoxShadow = !StyleEffects()->mBoxShadow.IsEmpty();
-    if (hasBoxShadow) {
-      aLists.BorderBackground()->AppendNewToTop<nsDisplayBoxShadowOuter>(
-          aBuilder, this);
-    }
-
-    nsRect bgRect = GetRectRelativeToSelf() + aBuilder->ToReferenceFrame(this);
-
-    // display background if we need to.
-    AppendedBackgroundType result = AppendedBackgroundType::None;
-    if (aBuilder->IsForEventDelivery() ||
-        !StyleBackground()->IsTransparent(this) ||
-        StyleDisplay()->HasAppearance()) {
-      result = nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
-          aBuilder, this, bgRect, aLists.BorderBackground());
-    }
-
-    if (result == AppendedBackgroundType::None) {
-      aBuilder->BuildCompositorHitTestInfoIfNeeded(this,
-                                                   aLists.BorderBackground());
-    }
-
-    // display inset box-shadows if we need to.
-    if (hasBoxShadow) {
-      aLists.BorderBackground()->AppendNewToTop<nsDisplayBoxShadowInner>(
-          aBuilder, this);
-    }
-
-    // display borders if we need to
-    ProcessBorders(GetTableFrame(), aBuilder, aLists);
-
-    // and display the selection border if we need to
-    if (IsSelected()) {
-      aLists.BorderBackground()->AppendNewToTop<nsDisplayTableCellSelection>(
-          aBuilder, this);
-    }
-
-    // This can be null if display list building initiated in the middle
-    // of the table, which can happen with background-clip:text and
-    // -moz-element.
-    nsDisplayTableBackgroundSet* backgrounds =
-        aBuilder->GetTableBackgroundSet();
-    if (backgrounds) {
-      // Compute bgRect relative to reference frame, but using the
-      // normal (without position:relative offsets) positions for the
-      // cell, row and row group.
-      bgRect = GetRectRelativeToSelf() + GetNormalPosition();
-
-      nsTableRowFrame* row = GetTableRowFrame();
-      bgRect += row->GetNormalPosition();
-
-      nsTableRowGroupFrame* rowGroup = row->GetTableRowGroupFrame();
-      bgRect += rowGroup->GetNormalPosition();
-
-      bgRect += backgrounds->TableToReferenceFrame();
-
-      // Create backgrounds items as needed for the column and column
-      // group that this cell occupies.
-      nsTableColFrame* col = backgrounds->GetColForIndex(ColIndex());
-      nsTableColGroupFrame* colGroup = col->GetTableColGroupFrame();
-
-      Maybe<nsDisplayListBuilder::AutoBuildingDisplayList> buildingForColGroup;
-      nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
-          aBuilder, colGroup, bgRect, backgrounds->ColGroupBackgrounds(), false,
-          nullptr, colGroup->GetRect() + backgrounds->TableToReferenceFrame(),
-          this, &buildingForColGroup);
-
-      Maybe<nsDisplayListBuilder::AutoBuildingDisplayList> buildingForCol;
-      nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
-          aBuilder, col, bgRect, backgrounds->ColBackgrounds(), false, nullptr,
-          col->GetRect() + colGroup->GetPosition() +
-              backgrounds->TableToReferenceFrame(),
-          this, &buildingForCol);
-    }
-  }
-
-  // the 'empty-cells' property has no effect on 'outline'
-  DisplayOutline(aBuilder, aLists);
-
-  nsIFrame* kid = mFrames.FirstChild();
-  NS_ASSERTION(kid && !kid->GetNextSibling(),
-               "Table cells should have just one child");
-  // The child's background will go in our BorderBackground() list.
-  // This isn't a problem since it won't have a real background except for
-  // event handling. We do not call BuildDisplayListForNonBlockChildren
-  // because that/ would put the child's background in the Content() list
-  // which isn't right (e.g., would end up on top of our child floats for
-  // event handling).
-  BuildDisplayListForChild(aBuilder, kid, aLists);
-}
-
 LogicalSides nsTableCellFrame::GetLogicalSkipSides() const {
   LogicalSides skip(mWritingMode);
   if (MOZ_UNLIKELY(StyleBorder()->mBoxDecorationBreak ==
@@ -568,13 +396,12 @@ nsMargin nsTableCellFrame::GetBorderOverflow() { return nsMargin(0, 0, 0, 0); }
 
 void nsTableCellFrame::BlockDirAlignChild(WritingMode aWM, nscoord aMaxAscent) {
   /* It's the 'border-collapse' on the table that matters */
-  const LogicalMargin borderPadding =
-      GetLogicalUsedBorderAndPadding(GetWritingMode())
-          .ApplySkipSides(GetLogicalSkipSides())
-          .ConvertTo(aWM, GetWritingMode());
+  const LogicalMargin border = GetLogicalUsedBorder(GetWritingMode())
+                                   .ApplySkipSides(GetLogicalSkipSides())
+                                   .ConvertTo(aWM, GetWritingMode());
 
-  nscoord bStartInset = borderPadding.BStart(aWM);
-  nscoord bEndInset = borderPadding.BEnd(aWM);
+  nscoord bStartInset = border.BStart(aWM);
+  nscoord bEndInset = border.BEnd(aWM);
 
   nscoord bSize = BSize(aWM);
   nsIFrame* firstKid = mFrames.FirstChild();
@@ -629,7 +456,7 @@ void nsTableCellFrame::BlockDirAlignChild(WritingMode aWM, nscoord aMaxAscent) {
   ReflowOutput desiredSize(aWM);
   desiredSize.SetSize(aWM, GetLogicalSize(aWM));
 
-  nsRect overflow(nsPoint(0, 0), GetSize());
+  nsRect overflow(nsPoint(), GetSize());
   overflow.Inflate(GetBorderOverflow());
   desiredSize.mOverflowAreas.SetAllTo(overflow);
   ConsiderChildOverflow(desiredSize.mOverflowAreas, firstKid);
@@ -672,38 +499,53 @@ StyleVerticalAlignKeyword nsTableCellFrame::GetVerticalAlign() const {
   return StyleVerticalAlignKeyword::Baseline;
 }
 
-bool nsTableCellFrame::CellHasVisibleContent(nscoord height,
-                                             nsTableFrame* tableFrame,
-                                             nsIFrame* kidFrame) {
+static bool CellHasVisibleContent(nsTableFrame* aTableFrame,
+                                  nsTableCellFrame* aCell) {
   // see  http://www.w3.org/TR/CSS21/tables.html#empty-cells
-  if (height > 0) return true;
-  if (tableFrame->IsBorderCollapse()) return true;
-  for (nsIFrame* innerFrame : kidFrame->PrincipalChildList()) {
+  nsIFrame* content = aCell->CellContentFrame();
+  if (content->GetContentRect().Height() > 0) {
+    return true;
+  }
+  if (aTableFrame->IsBorderCollapse()) {
+    return true;
+  }
+  for (nsIFrame* innerFrame : content->PrincipalChildList()) {
     LayoutFrameType frameType = innerFrame->Type();
     if (LayoutFrameType::Text == frameType) {
       nsTextFrame* textFrame = static_cast<nsTextFrame*>(innerFrame);
-      if (textFrame->HasNoncollapsedCharacters()) return true;
+      if (textFrame->HasNoncollapsedCharacters()) {
+        return true;
+      }
     } else if (LayoutFrameType::Placeholder != frameType) {
       return true;
-    } else {
-      nsIFrame* floatFrame = nsLayoutUtils::GetFloatFromPlaceholder(innerFrame);
-      if (floatFrame) return true;
+    } else if (nsLayoutUtils::GetFloatFromPlaceholder(innerFrame)) {
+      return true;
     }
   }
   return false;
+}
+
+nsIFrame* nsTableCellFrame::CellContentFrame() const {
+  nsIFrame* inner = mFrames.FirstChild();
+  if (nsIScrollableFrame* sf = do_QueryFrame(inner)) {
+    return sf->GetScrolledFrame();
+  }
+  return inner;
 }
 
 nscoord nsTableCellFrame::GetCellBaseline() const {
   // Ignore the position of the inner frame relative to the cell frame
   // since we want the position as though the inner were top-aligned.
   nsIFrame* inner = mFrames.FirstChild();
-  nscoord borderPadding = GetUsedBorderAndPadding().top;
+  const auto wm = GetWritingMode();
   nscoord result;
   if (!StyleDisplay()->IsContainLayout() &&
-      nsLayoutUtils::GetFirstLineBaseline(GetWritingMode(), inner, &result)) {
-    return result + borderPadding;
+      nsLayoutUtils::GetFirstLineBaseline(wm, inner, &result)) {
+    // `result` already includes the padding-start from the inner frame.
+    return result + GetLogicalUsedBorder(wm).BStart(wm);
   }
-  return inner->GetContentRectRelativeToSelf().YMost() + borderPadding;
+  return CellContentFrame()->ContentBSize(wm) +
+         GetLogicalUsedBorderAndPadding(wm).BStart(wm);
 }
 
 int32_t nsTableCellFrame::GetRowSpan() {
@@ -742,6 +584,10 @@ int32_t nsTableCellFrame::GetColSpan() {
   return colSpan;
 }
 
+nsIScrollableFrame* nsTableCellFrame::GetScrollTargetFrame() const {
+  return do_QueryFrame(mFrames.FirstChild());
+}
+
 /* virtual */
 nscoord nsTableCellFrame::GetMinISize(gfxContext* aRenderingContext) {
   nscoord result = 0;
@@ -749,7 +595,8 @@ nscoord nsTableCellFrame::GetMinISize(gfxContext* aRenderingContext) {
 
   nsIFrame* inner = mFrames.FirstChild();
   result = nsLayoutUtils::IntrinsicForContainer(aRenderingContext, inner,
-                                                IntrinsicISizeType::MinISize);
+                                                IntrinsicISizeType::MinISize,
+                                                nsLayoutUtils::IGNORE_PADDING);
   return result;
 }
 
@@ -760,7 +607,8 @@ nscoord nsTableCellFrame::GetPrefISize(gfxContext* aRenderingContext) {
 
   nsIFrame* inner = mFrames.FirstChild();
   result = nsLayoutUtils::IntrinsicForContainer(aRenderingContext, inner,
-                                                IntrinsicISizeType::PrefISize);
+                                                IntrinsicISizeType::PrefISize,
+                                                nsLayoutUtils::IGNORE_PADDING);
   return result;
 }
 
@@ -840,11 +688,11 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
   WritingMode wm = aReflowInput.GetWritingMode();
   LogicalSize availSize = aReflowInput.AvailableSize();
 
-  LogicalMargin borderPadding =
-      aReflowInput.ComputedLogicalPadding(wm) + GetBorderWidth(wm);
+  // @note |this| frame applies borders but not any padding.  Our anonymous
+  // inner frame applies the padding (but not borders).
+  LogicalMargin border = GetBorderWidth(wm);
 
   ReflowOutput kidSize(wm);
-  kidSize.ClearSize();
   SetPriorAvailISize(aReflowInput.AvailableISize());
   nsIFrame* firstKid = mFrames.FirstChild();
   NS_ASSERTION(
@@ -852,41 +700,47 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
       "Frame construction error, a table cell always has an inner cell frame");
   nsTableFrame* tableFrame = GetTableFrame();
 
-  if (aReflowInput.mFlags.mSpecialBSizeReflow) {
-    const_cast<ReflowInput&>(aReflowInput)
-        .SetComputedBSize(BSize(wm) - borderPadding.BStartEnd(wm));
-    DISPLAY_REFLOW_CHANGE();
-  } else if (aPresContext->IsPaginated()) {
-    nscoord computedUnpaginatedBSize = CalcUnpaginatedBSize(
-        (nsTableCellFrame&)*this, *tableFrame, borderPadding.BStartEnd(wm));
-    if (computedUnpaginatedBSize > 0) {
+  if (aReflowInput.mFlags.mSpecialBSizeReflow || aPresContext->IsPaginated()) {
+    // Here, we're changing our own reflow input, so we need to account for our
+    // padding, even though we don't apply it anywhere else, to get the correct
+    // percentage resolution on children.
+    const LogicalMargin bp = border + aReflowInput.ComputedLogicalPadding(wm);
+    if (aReflowInput.mFlags.mSpecialBSizeReflow) {
       const_cast<ReflowInput&>(aReflowInput)
-          .SetComputedBSize(computedUnpaginatedBSize);
+          .SetComputedBSize(BSize(wm) - bp.BStartEnd(wm));
       DISPLAY_REFLOW_CHANGE();
+    } else {
+      const nscoord computedUnpaginatedBSize =
+          CalcUnpaginatedBSize(*this, *tableFrame, bp.BStartEnd(wm));
+      if (computedUnpaginatedBSize > 0) {
+        const_cast<ReflowInput&>(aReflowInput)
+            .SetComputedBSize(computedUnpaginatedBSize);
+        DISPLAY_REFLOW_CHANGE();
+      }
     }
   }
 
-  // We need to apply the skip sides for current fragmentainer's border and
-  // padding after we finish calculating the special block-size or unpaginated
-  // block-size to prevent the skip sides from affecting the results.
+  // We need to apply the skip sides for current fragmentainer's border after
+  // we finish calculating the special block-size or unpaginated block-size to
+  // prevent the skip sides from affecting the results.
   //
   // We assume we are the last fragment by using
   // PreReflowBlockLevelLogicalSkipSides(), i.e. the block-end border and
   // padding is not skipped.
-  borderPadding.ApplySkipSides(PreReflowBlockLevelLogicalSkipSides());
+  border.ApplySkipSides(PreReflowBlockLevelLogicalSkipSides());
 
-  availSize.ISize(wm) -= borderPadding.IStartEnd(wm);
+  availSize.ISize(wm) -= border.IStartEnd(wm);
 
   // If we have a constrained available block-size, shrink it by subtracting our
   // block-direction border and padding for our children.
   if (NS_UNCONSTRAINEDSIZE != availSize.BSize(wm)) {
-    availSize.BSize(wm) -= borderPadding.BStart(wm);
+    availSize.BSize(wm) -= border.BStart(wm);
 
     if (aReflowInput.mStyleBorder->mBoxDecorationBreak ==
         StyleBoxDecorationBreak::Clone) {
-      // We have box-decoration-break:clone. Subtract block-end border and
-      // padding from the available block-size as well.
-      availSize.BSize(wm) -= borderPadding.BEnd(wm);
+      // We have box-decoration-break:clone. Subtract block-end border from the
+      // available block-size as well.
+      availSize.BSize(wm) -= border.BEnd(wm);
     }
   }
 
@@ -899,7 +753,32 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
 
   WritingMode kidWM = firstKid->GetWritingMode();
   ReflowInput kidReflowInput(aPresContext, aReflowInput, firstKid,
-                             availSize.ConvertTo(kidWM, wm));
+                             availSize.ConvertTo(kidWM, wm), Nothing(),
+                             ReflowInput::InitFlag::CallerWillInit);
+  // Override computed padding, in case it's percentage padding
+  {
+    const auto padding = aReflowInput.ComputedLogicalPadding(kidWM);
+    kidReflowInput.Init(aPresContext, Nothing(), Nothing(), Some(padding));
+    if (firstKid->IsScrollFrame()) {
+      // Propagate explicit block sizes to our inner frame, if it's a scroll
+      // frame. Note that in table layout, explicit heights act as a minimum
+      // height, see nsTableRowFrame::CalcCellActualBSize.
+      //
+      // Table cells don't respect box-sizing, so we need to remove the
+      // padding, so that the scroll-frame sizes properly (since the
+      // scrollbars also add to the padding area).
+      auto ToScrolledBSize = [&](const nscoord aBSize) {
+        return std::max(0, aBSize - padding.BStartEnd(kidWM));
+      };
+      nscoord minBSize = aReflowInput.ComputedMinBSize();
+      if (aReflowInput.ComputedBSize() != NS_UNCONSTRAINEDSIZE) {
+        minBSize = std::max(minBSize, aReflowInput.ComputedBSize());
+      }
+      if (minBSize > 0) {
+        kidReflowInput.SetComputedMinBSize(ToScrolledBSize(minBSize));
+      }
+    }
+  }
 
   // Don't be a percent height observer if we're in the middle of
   // special-bsize reflow, in case we get an accidental NotifyPercentBSize()
@@ -923,11 +802,10 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
 
   nsSize containerSize = aReflowInput.ComputedSizeAsContainerIfConstrained();
 
-  LogicalPoint kidOrigin(wm, borderPadding.IStart(wm),
-                         borderPadding.BStart(wm));
-  nsRect origRect = firstKid->GetRect();
-  nsRect origInkOverflow = firstKid->InkOverflowRect();
-  bool firstReflow = firstKid->HasAnyStateBits(NS_FRAME_FIRST_REFLOW);
+  const LogicalPoint kidOrigin = border.StartOffset(wm);
+  const nsRect origRect = firstKid->GetRect();
+  const nsRect origInkOverflow = firstKid->InkOverflowRect();
+  const bool firstReflow = firstKid->HasAnyStateBits(NS_FRAME_FIRST_REFLOW);
 
   ReflowChild(firstKid, aPresContext, kidSize, kidReflowInput, wm, kidOrigin,
               containerSize, ReflowChildFlags::Default, aStatus);
@@ -937,7 +815,7 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
     // XXX should paginate overflow as overflow, but not in this patch (bug
     // 379349)
     aStatus.SetIncomplete();
-    printf("Set table cell incomplete %p\n", static_cast<void*>(this));
+    NS_WARNING(nsPrintfCString("Set table cell incomplete %p", this).get());
   }
 
   // XXXbz is this invalidate actually needed, really?
@@ -949,20 +827,18 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
   DebugCheckChildSize(firstKid, kidSize);
 #endif
 
-  // 0 dimensioned cells need to be treated specially in Standard/NavQuirks mode
-  // see testcase "emptyCells.html"
-  nsIFrame* prevInFlow = GetPrevInFlow();
-  bool isEmpty;
-  if (prevInFlow) {
-    isEmpty = static_cast<nsTableCellFrame*>(prevInFlow)->GetContentEmpty();
-  } else {
-    isEmpty = !CellHasVisibleContent(kidSize.Height(), tableFrame, firstKid);
-  }
-  SetContentEmpty(isEmpty);
-
   // Place the child
   FinishReflowChild(firstKid, aPresContext, kidSize, &kidReflowInput, wm,
                     kidOrigin, containerSize, ReflowChildFlags::Default);
+
+  {
+    nsIFrame* prevInFlow = GetPrevInFlow();
+    const bool isEmpty =
+        prevInFlow
+            ? static_cast<nsTableCellFrame*>(prevInFlow)->GetContentEmpty()
+            : !CellHasVisibleContent(tableFrame, this);
+    SetContentEmpty(isEmpty);
+  }
 
   if (tableFrame->IsBorderCollapse()) {
     nsTableFrame::InvalidateTableFrame(firstKid, origRect, origInkOverflow,
@@ -974,22 +850,22 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
   cellSize.BSize(wm) = kidSize.BSize(wm);
 
   if (NS_UNCONSTRAINEDSIZE != cellSize.BSize(wm)) {
-    cellSize.BSize(wm) += borderPadding.BStart(wm);
+    cellSize.BSize(wm) += border.BStart(wm);
 
     if (aStatus.IsComplete() ||
         aReflowInput.mStyleBorder->mBoxDecorationBreak ==
             StyleBoxDecorationBreak::Clone) {
-      cellSize.BSize(wm) += borderPadding.BEnd(wm);
+      cellSize.BSize(wm) += border.BEnd(wm);
     }
   }
 
-  // next determine the cell's isize
-  cellSize.ISize(wm) = kidSize.ISize(
-      wm);  // at this point, we've factored in the cell's style attributes
+  // next determine the cell's isize. At this point, we've factored in the
+  // cell's style attributes.
+  cellSize.ISize(wm) = kidSize.ISize(wm);
 
-  // factor in border and padding
+  // factor in border (and disregard padding, which is handled by our child).
   if (NS_UNCONSTRAINEDSIZE != cellSize.ISize(wm)) {
-    cellSize.ISize(wm) += borderPadding.IStartEnd(wm);
+    cellSize.ISize(wm) += border.IStartEnd(wm);
   }
 
   // set the cell's desired size and max element size
@@ -1016,8 +892,6 @@ void nsTableCellFrame::Reflow(nsPresContext* aPresContext,
   // nsIFrame::FixupPositionedTableParts in another pass, so propagate our
   // dirtiness to them before our parent clears our dirty bits.
   PushDirtyBitToAbsoluteFrames();
-
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }
 
 /* ----- global methods ----- */
@@ -1141,27 +1015,158 @@ nsMargin nsBCTableCellFrame::GetBorderOverflow() {
   return halfBorder.GetPhysicalMargin(wm);
 }
 
-ImgDrawResult nsBCTableCellFrame::PaintBackground(gfxContext& aRenderingContext,
-                                                  const nsRect& aDirtyRect,
-                                                  nsPoint aPt,
-                                                  uint32_t aFlags) {
-  // make border-width reflect the half of the border-collapse
-  // assigned border that's inside the cell
-  WritingMode wm = GetWritingMode();
-  nsMargin borderWidth = GetBorderWidth(wm).GetPhysicalMargin(wm);
+namespace mozilla {
 
-  nsStyleBorder myBorder(*StyleBorder());
+class nsDisplayTableCellSelection final : public nsPaintedDisplayItem {
+ public:
+  nsDisplayTableCellSelection(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame)
+      : nsPaintedDisplayItem(aBuilder, aFrame) {
+    MOZ_COUNT_CTOR(nsDisplayTableCellSelection);
+  }
+  MOZ_COUNTED_DTOR_OVERRIDE(nsDisplayTableCellSelection)
 
-  for (const auto side : mozilla::AllPhysicalSides()) {
-    myBorder.SetBorderWidth(side, borderWidth.Side(side));
+  void Paint(nsDisplayListBuilder* aBuilder, gfxContext* aCtx) override {
+    static_cast<nsTableCellFrame*>(mFrame)->DecorateForSelection(
+        aCtx->GetDrawTarget(), ToReferenceFrame());
+  }
+  NS_DISPLAY_DECL_NAME("TableCellSelection", TYPE_TABLE_CELL_SELECTION)
+
+  bool CreateWebRenderCommands(
+      mozilla::wr::DisplayListBuilder& aBuilder,
+      mozilla::wr::IpcResourceUpdateQueue& aResources,
+      const StackingContextHelper& aSc,
+      mozilla::layers::RenderRootStateManager* aManager,
+      nsDisplayListBuilder* aDisplayListBuilder) override {
+    RefPtr<nsFrameSelection> frameSelection =
+        mFrame->PresShell()->FrameSelection();
+    return !frameSelection->IsInTableSelectionMode();
+  }
+};
+
+}  // namespace mozilla
+
+void nsTableCellFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
+                                        const nsDisplayListSet& aLists) {
+  DO_GLOBAL_REFLOW_COUNT_DSP("nsTableCellFrame");
+  if (ShouldPaintBordersAndBackgrounds()) {
+    // display outset box-shadows if we need to.
+    bool hasBoxShadow = !StyleEffects()->mBoxShadow.IsEmpty();
+    if (hasBoxShadow) {
+      aLists.BorderBackground()->AppendNewToTop<nsDisplayBoxShadowOuter>(
+          aBuilder, this);
+    }
+
+    nsRect bgRect = GetRectRelativeToSelf() + aBuilder->ToReferenceFrame(this);
+    nsRect bgRectInsideBorder = bgRect;
+
+    // If we're doing collapsed borders, and this element forms a new stacking
+    // context or has position:relative (which paints as though it did), inset
+    // the background rect so that we don't overpaint the inset part of our
+    // borders.
+    nsTableFrame* tableFrame = GetTableFrame();
+    if (tableFrame->IsBorderCollapse() &&
+        (IsStackingContext() ||
+         StyleDisplay()->mPosition == StylePositionProperty::Relative)) {
+      bgRectInsideBorder.Deflate(GetUsedBorder());
+    }
+
+    // display background if we need to.
+    const AppendedBackgroundType result =
+        nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
+            aBuilder, this, bgRectInsideBorder, aLists.BorderBackground(), true,
+            bgRect);
+    if (result == AppendedBackgroundType::None) {
+      aBuilder->BuildCompositorHitTestInfoIfNeeded(this,
+                                                   aLists.BorderBackground());
+    }
+
+    // display inset box-shadows if we need to.
+    if (hasBoxShadow) {
+      aLists.BorderBackground()->AppendNewToTop<nsDisplayBoxShadowInner>(
+          aBuilder, this);
+    }
+
+    // display borders if we need to
+    ProcessBorders(tableFrame, aBuilder, aLists);
+
+    // and display the selection border if we need to
+    if (IsSelected()) {
+      aLists.BorderBackground()->AppendNewToTop<nsDisplayTableCellSelection>(
+          aBuilder, this);
+    }
+
+    // This can be null if display list building initiated in the middle
+    // of the table, which can happen with background-clip:text and
+    // -moz-element.
+    nsDisplayTableBackgroundSet* backgrounds =
+        aBuilder->GetTableBackgroundSet();
+    if (backgrounds) {
+      // Compute bgRect relative to reference frame, but using the
+      // normal (without position:relative offsets) positions for the
+      // cell, row and row group.
+      bgRect = GetRectRelativeToSelf() + GetNormalPosition();
+
+      nsTableRowFrame* row = GetTableRowFrame();
+      bgRect += row->GetNormalPosition();
+
+      nsTableRowGroupFrame* rowGroup = row->GetTableRowGroupFrame();
+      bgRect += rowGroup->GetNormalPosition();
+
+      bgRect += backgrounds->TableToReferenceFrame();
+
+      DisplayListClipState::AutoSaveRestore clipState(aBuilder);
+      nsDisplayListBuilder::AutoCurrentActiveScrolledRootSetter asrSetter(
+          aBuilder);
+      if (IsStackingContext() || row->IsStackingContext() ||
+          rowGroup->IsStackingContext() || tableFrame->IsStackingContext()) {
+        // The col/colgroup items we create below will be inserted directly into
+        // the BorderBackgrounds list of the table frame. That means that
+        // they'll be moved *outside* of any wrapper items created for any
+        // frames between this table cell frame and the table wrapper frame, and
+        // will not participate in those frames's opacity / transform / filter /
+        // mask effects. If one of those frames is a stacking context, then we
+        // may have one or more of those wrapper items, and one of them may have
+        // captured a clip. In order to ensure correct clipping and scrolling of
+        // the col/colgroup items, restore the clip and ASR that we observed
+        // when we entered the table frame. If that frame is a stacking context
+        // but doesn't have any clip capturing wrapper items, then we'll
+        // double-apply the clip. That's ok.
+        clipState.SetClipChainForContainingBlockDescendants(
+            backgrounds->GetTableClipChain());
+        asrSetter.SetCurrentActiveScrolledRoot(backgrounds->GetTableASR());
+      }
+
+      // Create backgrounds items as needed for the column and column
+      // group that this cell occupies.
+      nsTableColFrame* col = backgrounds->GetColForIndex(ColIndex());
+      nsTableColGroupFrame* colGroup = col->GetTableColGroupFrame();
+
+      Maybe<nsDisplayListBuilder::AutoBuildingDisplayList> buildingForColGroup;
+      nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
+          aBuilder, colGroup, bgRect, backgrounds->ColGroupBackgrounds(), false,
+          colGroup->GetRect() + backgrounds->TableToReferenceFrame(), this,
+          &buildingForColGroup);
+
+      Maybe<nsDisplayListBuilder::AutoBuildingDisplayList> buildingForCol;
+      nsDisplayBackgroundImage::AppendBackgroundItemsToTop(
+          aBuilder, col, bgRect, backgrounds->ColBackgrounds(), false,
+          col->GetRect() + colGroup->GetPosition() +
+              backgrounds->TableToReferenceFrame(),
+          this, &buildingForCol);
+    }
   }
 
-  // bypassing nsCSSRendering::PaintBackground is safe because this kind
-  // of frame cannot be used for the root element
-  nsRect rect(aPt, GetSize());
-  nsCSSRendering::PaintBGParams params =
-      nsCSSRendering::PaintBGParams::ForAllLayers(*PresContext(), aDirtyRect,
-                                                  rect, this, aFlags);
-  return nsCSSRendering::PaintStyleImageLayerWithSC(params, aRenderingContext,
-                                                    Style(), myBorder);
+  // the 'empty-cells' property has no effect on 'outline'
+  DisplayOutline(aBuilder, aLists);
+
+  nsIFrame* kid = mFrames.FirstChild();
+  NS_ASSERTION(kid && !kid->GetNextSibling(),
+               "Table cells should have just one child");
+  // The child's background will go in our BorderBackground() list.
+  // This isn't a problem since it won't have a real background except for
+  // event handling. We do not call BuildDisplayListForNonBlockChildren
+  // because that/ would put the child's background in the Content() list
+  // which isn't right (e.g., would end up on top of our child floats for
+  // event handling).
+  BuildDisplayListForChild(aBuilder, kid, aLists);
 }

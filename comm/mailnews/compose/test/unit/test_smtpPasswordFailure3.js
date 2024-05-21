@@ -8,9 +8,8 @@
  *
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/alertTestUtils.js */
@@ -29,18 +28,7 @@ var kUsername = "testsmtp";
 // file.
 var kValidPassword = "smtptest1";
 
-/* exported alert, confirmEx, promptPasswordPS */
-// for alertTestUtils.js
-function alert(aDialogText, aText) {
-  // The first few attempts may prompt about the password problem, the last
-  // attempt shouldn't.
-  Assert.ok(attempt < 4);
-
-  // Log the fact we've got an alert, but we don't need to test anything here.
-  dump("Alert Title: " + aDialogText + "\nAlert Text: " + aText + "\n");
-}
-
-function confirmEx(
+function confirmExPS(
   aDialogTitle,
   aText,
   aButtonFlags,
@@ -81,7 +69,7 @@ function promptPasswordPS(
   return false;
 }
 
-add_task(async function() {
+add_task(async function () {
   function createHandler(d) {
     var handler = new SMTP_RFC2821_handler(d);
     handler.dropOnAuthFailure = true;
@@ -144,7 +132,7 @@ var URLListener = {
     // Check for ok status.
     Assert.equal(rc, 0);
     // Now check the new password has been saved.
-    let logins = Services.logins.findLogins(
+    const logins = Services.logins.findLogins(
       "smtp://localhost",
       null,
       "smtp://localhost"
@@ -156,7 +144,7 @@ var URLListener = {
 
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

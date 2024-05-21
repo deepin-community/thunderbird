@@ -43,19 +43,23 @@ class HttpBackgroundChannelParent final : public PHttpBackgroundChannelParent {
   bool OnStartRequest(const nsHttpResponseHead& aResponseHead,
                       const bool& aUseResponseHead,
                       const nsHttpHeaderArray& aRequestHeaders,
-                      const HttpChannelOnStartRequestArgs& aArgs);
+                      const HttpChannelOnStartRequestArgs& aArgs,
+                      const nsCOMPtr<nsICacheEntry>& aCacheEntry,
+                      TimeStamp aOnStartRequestStart);
 
   // To send OnTransportAndData message over background channel.
   bool OnTransportAndData(const nsresult& aChannelStatus,
                           const nsresult& aTransportStatus,
                           const uint64_t& aOffset, const uint32_t& aCount,
-                          const nsCString& aData);
+                          const nsCString& aData,
+                          TimeStamp aOnDataAvailableStart);
 
   // To send OnStopRequest message over background channel.
   bool OnStopRequest(const nsresult& aChannelStatus,
                      const ResourceTimingStructArgs& aTiming,
                      const nsHttpHeaderArray& aResponseTrailers,
-                     const nsTArray<ConsoleReportCollected>& aConsoleReports);
+                     const nsTArray<ConsoleReportCollected>& aConsoleReports,
+                     TimeStamp aOnStopRequestStart);
 
   // When ODA and OnStopRequest are sending from socket process to child
   // process, this is the last IPC message sent from parent process.
@@ -78,9 +82,6 @@ class HttpBackgroundChannelParent final : public PHttpBackgroundChannelParent {
   bool OnNotifyClassificationFlags(uint32_t aClassificationFlags,
                                    bool aIsThirdParty);
 
-  // To send NotifyFlashPluginStateChanged message over background channel.
-  bool OnNotifyFlashPluginStateChanged(nsIHttpChannel::FlashPluginState aState);
-
   // To send SetClassifierMatchedInfo message over background channel.
   bool OnSetClassifierMatchedInfo(const nsACString& aList,
                                   const nsACString& aProvider,
@@ -98,6 +99,8 @@ class HttpBackgroundChannelParent final : public PHttpBackgroundChannelParent {
       Endpoint<extensions::PStreamFilterParent>&& aParentEndpoint,
       Endpoint<extensions::PStreamFilterChild>&& aChildEndpoint);
 
+  [[nodiscard]] RefPtr<GenericPromise> DetachStreamFilters();
+
  protected:
   void ActorDestroy(ActorDestroyReason aWhy) override;
 
@@ -107,7 +110,7 @@ class HttpBackgroundChannelParent final : public PHttpBackgroundChannelParent {
   Atomic<bool> mIPCOpened;
 
   // Used to ensure atomicity of mBackgroundThread
-  Mutex mBgThreadMutex;
+  Mutex mBgThreadMutex MOZ_UNANNOTATED;
 
   nsCOMPtr<nsISerialEventTarget> mBackgroundThread;
 

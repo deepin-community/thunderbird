@@ -6,6 +6,7 @@
     <string name="password">Password</string>
     <string name="clear_field">Clear</string>
     <string name="request_storage">Allow access to device storage for "%1$s"?</string>
+    <string name="request_storage_access">Allow third parties to access first party storage for "%1$s"?</string>
     <string name="request_geolocation">Share location with "%1$s"?</string>
     <string name="request_notification">Allow notifications for "%1$s"?</string>
     <string name="request_video">Share video with "%1$s"</string>
@@ -25,6 +26,7 @@
     <string name="tracking_protection">Tracking Protection</string>
     <string name="tracking_protection_ex">TP exception</string>
     <string name="private_browsing">Private Browsing</string>
+    <string name="global_privacy_control">Global Privacy Control</string>
     <string name="remote_debugging">Remote Debugging</string>
     <string name="forward">Forward</string>
     <string name="reload">Reload</string>
@@ -32,6 +34,7 @@
     <string name="crashed_title">GeckoView Example Crashed</string>
     <string name="crashed_text">Tap to report to Mozilla.</string>
     <string name="crashed_ignore">Ignore</string>
+    <string name="crashed_report">Report</string>
     <string name="device_sharing_microphone">Microphone is on</string>
     <string name="device_sharing_camera">Camera is on</string>
     <string name="device_sharing_camera_and_mic">Camera and microphone are on</string>
@@ -48,6 +51,23 @@
     <string name="install">Install</string>
     <string name="cancel">Cancel</string>
     <string name="addon_uri">WebExtension xpi URL</string>
+    <string name="save_pdf">Save as PDF</string>
+    <string name="print_page">Print Page</string>
+    <string name="translate">Translate</string>
+    <string name="translate_restore">Restore to Original</string>
+    <string name="translate_language_from_hint">From Language</string>
+    <string name="translate_language_to_hint">To Language</string>
+    <string name="translate_action">Translate</string>
+    <string name="translate_manage">Manage Translate</string>
+    <string name="translate_manage_languages">Languages</string>
+    <string name="translate_manage_operations">Operations</string>
+    <string name="translate_display_hint">See Logcat for State</string>
+    <string name="translate_manage_action">Update</string>
+    <string name="shopping_actions">Shopping Actions</string>
+    <string name="shopping_manage_actions">Actions</string>
+    <string name="shopping_display_log">See Logcat for "Shopping Action" Results</string>
+    <string name="shopping_query">Query</string>
+
 
     # Preferences
     <string name="key_tracking_protection">tracking_protection</string>
@@ -55,6 +75,9 @@
 
     <string name="key_javascript_enabled">javascript_enabled</string>
     <item type="bool" name="javascript_enabled_default">true</item>
+
+    <string name="key_extensions_process_enabled">extensions_process_enabled</string>
+    <item type="bool" name="extensions_process_enabled_default">false</item>
 
     <string name="key_remote_debugging">remote_debugging</string>
     <item type="bool" name="remote_debugging_default">true</item>
@@ -67,6 +90,12 @@
 
     <string name="key_allow_extensions_in_private_browsing">allow_extensions_in_private_browsing</string>
     <item type="bool" name="allow_extensions_in_private_browsing_default">false</item>
+
+    <string name="key_global_privacy_control_enabled">global_privacy_control_enabled</string>
+    <item type="bool" name="global_privacy_control_enabled_default">false</item>
+
+    <string name="key_etb_private_mode_enabled">etb_private_mode_enabled</string>
+    <item type="bool" name="etb_private_mode_enabled_default">false</item>
 
     <string name="key_user_agent_override">user_agent_override</string>
     <string name="user_agent_override_default"></string>
@@ -81,6 +110,10 @@
         <item>Mozilla/5.0 (iPhone; CPU OS 10_15_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.1 Mobile/14E304 Safari/605.1.15</item>
     </string-array>
 
+    <string name="key_cookie_banner_handling">cookie_banner_handling</string>
+    <string name="key_cookie_banner_handling_pb">cookie_banner_handling_pb</string>
+    <string name="cookie_banner_handling_default">disabled</string>
+    <string name="cookie_banner_handling_pb_default">reject_accept_all</string>
     <string name="key_enhanced_tracking_protection">enhanced_tracking_protection</string>
     <string name="enhanced_tracking_protection_default">standard</string>
     <string-array name="enhanced_tracking_protection_display_names">
@@ -92,6 +125,16 @@
         <item>disabled</item>
         <item>standard</item>
         <item>strict</item>
+    </string-array>
+    <string-array name="cookie_banner_handling_names">
+        <item>Disabled</item>
+        <item>Enabled (reject all)</item>
+        <item>Enabled (reject or accept all)</item>
+    </string-array>
+    <string-array name="cookie_banner_handling_values">
+        <item>disabled</item>
+        <item>reject_all</item>
+        <item>reject_accept_all</item>
     </string-array>
 
     <string name="key_preferred_color_scheme">preferred_color_scheme</string>

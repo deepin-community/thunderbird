@@ -16,9 +16,12 @@ process-type-extension = Estensione
 
 process-type-file = File locale
 
-process-type-weblargeallocation = Allocazione di grandi dimensioni
+# process used to instantiate new child processes
+process-type-forkserver = Fork server
 
 process-type-webisolated = Contenuti web isolati
+
+process-type-webserviceworker = Service worker isolato
 
 # process preallocated; may change to other types
 process-type-prealloc = Preallocato
@@ -36,6 +39,16 @@ process-type-socket = Socket
 
 # process used to decode media
 process-type-rdd = RDD
+
+# process used to run some IPC actor in their own sandbox
+process-type-utility = Attore IPC in sandbox
+process-type-utility-actor-audio-decoder-generic = Utilità decodificatore audio generico
+process-type-utility-actor-audio-decoder-applemedia = Utilità Apple Media
+process-type-utility-actor-audio-decoder-wmf = Utilità Windows Media Foundation
+process-type-utility-actor-mf-media-engine = Utilità Media Foundation Engine
+process-type-utility-actor-js-oracle = Utilità JavaScript Oracle
+process-type-utility-actor-windows-utils = Utilità Windows Utils
+process-type-utility-actor-windows-file-dialog = Utilità finestra di dialogo i file di Windows
 
 ##
 ## Other

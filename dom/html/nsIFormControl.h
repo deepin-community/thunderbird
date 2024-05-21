@@ -14,9 +14,8 @@ namespace mozilla {
 class PresState;
 namespace dom {
 class Element;
+class FormData;
 class HTMLFieldSetElement;
-class HTMLFormSubmission;
-class DialogFormSubmission;
 class HTMLFormElement;
 }  // namespace dom
 }  // namespace mozilla
@@ -33,8 +32,9 @@ enum class FormControlType : uint8_t {
   Select,
   Textarea,
   Object,
+  FormAssociatedCustomElement,
 
-  LastWithoutSubtypes = Object,
+  LastWithoutSubtypes = FormAssociatedCustomElement,
 
   ButtonButton = kFormControlButtonElementMask + 1,
   ButtonReset,
@@ -103,7 +103,7 @@ class nsIFormControl : public nsISupports {
    * Get the form for this form control.
    * @return the form
    */
-  virtual mozilla::dom::HTMLFormElement* GetFormElement() = 0;
+  virtual mozilla::dom::HTMLFormElement* GetForm() const = 0;
 
   /**
    * Set the form for this form control.
@@ -139,33 +139,13 @@ class nsIFormControl : public nsISupports {
   NS_IMETHOD Reset() = 0;
 
   /**
-   * Tells the form control to submit its names and values to the form
-   * submission object
-   * @param aFormSubmission the form submission to notify of names/values/files
-   *                       to submit
+   * Tells the form control to submit its names and values to the form data
+   * object
+   *
+   * @param aFormData the form data to notify of names/values/files to submit
    */
   NS_IMETHOD
-  SubmitNamesValues(mozilla::dom::HTMLFormSubmission* aFormSubmission) = 0;
-
-  /**
-   * Save to presentation state.  The form control will determine whether it
-   * has anything to save and if so, create an entry in the layout history for
-   * its pres context.
-   */
-  NS_IMETHOD SaveState() = 0;
-
-  /**
-   * Restore from presentation state.  You pass in the presentation state for
-   * this form control (generated with GenerateStateKey() + "-C") and the form
-   * control will grab its state from there.
-   *
-   * @param aState the pres state to use to restore the control
-   * @return true if the form control was a checkbox and its
-   *         checked state was restored, false otherwise.
-   */
-  virtual bool RestoreState(mozilla::PresState* aState) = 0;
-
-  virtual bool AllowDrop() = 0;
+  SubmitNamesValues(mozilla::dom::FormData* aFormData) = 0;
 
   /**
    * Returns whether this is a control which submits the form when activated by
@@ -195,14 +175,21 @@ class nsIFormControl : public nsISupports {
   inline bool IsSubmittableControl() const;
 
   /**
+   * https://html.spec.whatwg.org/multipage/forms.html#concept-button
+   */
+  inline bool IsConceptButton() const;
+
+  /**
+   * Returns whether this is an ordinal button or a concept button that has no
+   * form associated.
+   */
+  inline bool IsButtonControl() const;
+
+  /**
    * Returns whether this form control can have draggable children.
    * @return whether this form control can have draggable children.
    */
   inline bool AllowDraggableChildren() const;
-
-  virtual bool IsDisabledForEvents(mozilla::WidgetEvent* aEvent) {
-    return false;
-  }
 
   // Returns a number for this form control that is unique within its
   // owner document.  This is used by nsContentUtils::GenerateStateKey
@@ -231,12 +218,6 @@ class nsIFormControl : public nsISupports {
   inline static bool IsInputElement(FormControlType aType) {
     return uint8_t(aType) & kFormControlInputElementMask;
   }
-
-  /**
-   * Returns whether this is a auto-focusable form control.
-   * @return whether this is a auto-focusable form control.
-   */
-  inline bool IsAutofocusable() const;
 
   FormControlType mType;
 };
@@ -272,8 +253,6 @@ bool nsIFormControl::IsSingleLineTextControl(bool aExcludePassword,
     case FormControlType::InputMonth:
     case FormControlType::InputWeek:
       return true;
-    case FormControlType::InputDatetimeLocal:
-      return !mozilla::StaticPrefs::dom_forms_datetime_local_widget();
     case FormControlType::InputPassword:
       return !aExcludePassword;
     default:
@@ -288,16 +267,20 @@ bool nsIFormControl::IsSubmittableControl() const {
          IsInputElement(type);
 }
 
+bool nsIFormControl::IsConceptButton() const {
+  auto type = ControlType();
+  return IsSubmitControl() || type == FormControlType::InputReset ||
+         type == FormControlType::InputButton || IsButtonElement(type);
+}
+
+bool nsIFormControl::IsButtonControl() const {
+  return IsConceptButton() && (!GetForm() || !IsSubmitControl());
+}
+
 bool nsIFormControl::AllowDraggableChildren() const {
   auto type = ControlType();
   return type == FormControlType::Object || type == FormControlType::Fieldset ||
          type == FormControlType::Output;
-}
-
-bool nsIFormControl::IsAutofocusable() const {
-  auto type = ControlType();
-  return IsInputElement(type) || IsButtonElement(type) ||
-         type == FormControlType::Textarea || type == FormControlType::Select;
 }
 
 NS_DEFINE_STATIC_IID_ACCESSOR(nsIFormControl, NS_IFORMCONTROL_IID)

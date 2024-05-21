@@ -10,7 +10,7 @@ add_task(async function testDuplicateTab() {
       permissions: ["tabs"],
     },
 
-    background: async function() {
+    background: async function () {
       let [source] = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -46,7 +46,7 @@ add_task(async function testDuplicateTab() {
 add_task(async function testDuplicateTabLazily() {
   async function background() {
     let tabLoadComplete = new Promise(resolve => {
-      browser.test.onMessage.addListener((message, tabId, result) => {
+      browser.test.onMessage.addListener((message, tabId) => {
         if (message == "duplicate-tab-done") {
           resolve(tabId);
         }
@@ -55,11 +55,7 @@ add_task(async function testDuplicateTabLazily() {
 
     function awaitLoad(tabId) {
       return new Promise(resolve => {
-        browser.tabs.onUpdated.addListener(function listener(
-          tabId_,
-          changed,
-          tab
-        ) {
+        browser.tabs.onUpdated.addListener(function listener(tabId_, changed) {
           if (tabId == tabId_ && changed.status == "complete") {
             browser.tabs.onUpdated.removeListener(listener);
             resolve();
@@ -114,11 +110,11 @@ add_task(async function testDuplicateTabLazily() {
   });
 
   extension.onMessage("duplicate-tab", tabId => {
-    let {
+    const {
       Management: {
         global: { tabTracker },
       },
-    } = ChromeUtils.import("resource://gre/modules/Extension.jsm", null);
+    } = ChromeUtils.importESModule("resource://gre/modules/Extension.sys.mjs");
 
     let tab = tabTracker.getTab(tabId);
     // This is a bit of a hack to load a tab in the background.
@@ -148,7 +144,7 @@ add_task(async function testDuplicatePinnedTab() {
       permissions: ["tabs"],
     },
 
-    background: async function() {
+    background: async function () {
       let [source] = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -183,7 +179,7 @@ add_task(async function testDuplicateTabInBackground() {
       permissions: ["tabs"],
     },
 
-    background: async function() {
+    background: async function () {
       let tabs = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -210,7 +206,7 @@ add_task(async function testDuplicateTabAtIndex() {
       permissions: ["tabs"],
     },
 
-    background: async function() {
+    background: async function () {
       let tabs = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -240,7 +236,7 @@ add_task(async function testDuplicatePinnedTabAtIncorrectIndex() {
       permissions: ["tabs"],
     },
 
-    background: async function() {
+    background: async function () {
       let tabs = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -274,7 +270,7 @@ add_task(async function testDuplicateResolvePromiseRightAway() {
       permissions: ["tabs", "http://mochi.test/"],
     },
 
-    background: async function() {
+    background: async function () {
       let [source] = await browser.tabs.query({
         lastFocusedWindow: true,
         active: true,
@@ -282,7 +278,7 @@ add_task(async function testDuplicateResolvePromiseRightAway() {
 
       let resolvedRightAway = true;
       browser.tabs.onUpdated.addListener(
-        (tabId, changeInfo, tab) => {
+        () => {
           resolvedRightAway = false;
         },
         { urls: [source.url] }

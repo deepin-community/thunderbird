@@ -3,6 +3,8 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 var gEntry1 = "data_1.txt";
 var gEntry2 = "data_2.txt";
 var gEntry3 = "data_big.txt";
@@ -46,7 +48,7 @@ self.onmessage = function onmessage(event) {
   var xhr = new XMLHttpRequest({ mozAnon: true, mozSystem: true });
 
   function reset_event_hander() {
-    xhr.onerror = function(e) {
+    xhr.onerror = function (e) {
       ok(false, "Error: " + e.error + "\n");
     };
     xhr.onprogress = null;
@@ -71,19 +73,19 @@ self.onmessage = function onmessage(event) {
     ok(true, "Test multiple events");
     xhr.abort();
 
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (xhr.readyState == xhr.DONE) {
         readystatechangeCount++;
-        checkData(xhr, gData2, false, function() {});
+        checkData(xhr, gData2, false, function () {});
       }
     };
-    xhr.onload = function() {
+    xhr.onload = function () {
       loadCount++;
-      checkData(xhr, gData2, false, function() {});
+      checkData(xhr, gData2, false, function () {});
     };
-    xhr.onloadend = function() {
+    xhr.onloadend = function () {
       loadendCount++;
-      checkData(xhr, gData2, false, function() {});
+      checkData(xhr, gData2, false, function () {});
     };
     xhr.open("GET", makeJarURL(gEntry2), false);
     xhr.responseType = "arraybuffer";
@@ -109,7 +111,7 @@ self.onmessage = function onmessage(event) {
 
   function test_async_xhr_data1() {
     ok(true, "Test async XHR with data1");
-    xhr.onload = function() {
+    xhr.onload = function () {
       checkData(xhr, gData1, true, runTests);
     };
     xhr.open("GET", makeJarURL(gEntry1), true);
@@ -119,7 +121,7 @@ self.onmessage = function onmessage(event) {
 
   function test_async_xhr_data2() {
     ok(true, "Test async XHR with data2");
-    xhr.onload = function() {
+    xhr.onload = function () {
       checkData(xhr, gData2, false, runTests);
     };
     xhr.open("GET", makeJarURL(gEntry2), true);

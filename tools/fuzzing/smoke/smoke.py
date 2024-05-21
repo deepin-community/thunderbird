@@ -15,12 +15,11 @@ Everything included in this directory will be added in
 tools if you need. They will be located in `$MOZ_FETCHES_DIR` and follow the
 same directory structure than the source tree.
 """
-from __future__ import absolute_import
-from distutils.spawn import find_executable
 import os
 import os.path
-import subprocess
 import shlex
+import shutil
+import subprocess
 import sys
 
 
@@ -32,7 +31,7 @@ def run_jsshell(command, label=None):
     """
     shell = os.environ.get("JSSHELL")
     if shell is None:
-        shell = find_executable("js")
+        shell = shutil.which("js")
         if shell is None:
             raise FileNotFoundError(shell)
     else:

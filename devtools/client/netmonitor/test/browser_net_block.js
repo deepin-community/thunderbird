@@ -7,14 +7,8 @@
  * Test blocking and unblocking a request.
  */
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+add_task(async function () {
+  const { monitor, tab } = await initNetMonitor(HTTPS_SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -28,7 +22,7 @@ add_task(async function() {
 
   // Reload to have one request in the list
   let waitForEvents = waitForNetworkEvents(monitor, 1);
-  await navigateTo(SIMPLE_URL);
+  await navigateTo(HTTPS_SIMPLE_URL);
   await waitForEvents;
 
   // Capture normal request
@@ -53,8 +47,9 @@ add_task(async function() {
       "#headers-panel .accordion-item"
     );
     normalRequestState = getSelectedRequest(store.getState());
-    normalRequestSize = firstRequest.querySelector(".requests-list-transferred")
-      .textContent;
+    normalRequestSize = firstRequest.querySelector(
+      ".requests-list-transferred"
+    ).textContent;
     normalHeadersSectionSize = headerSections.length;
     normalFirstHeaderSectionTitle = headerSections[0].querySelector(
       ".accordion-header-label"
@@ -64,16 +59,13 @@ add_task(async function() {
 
     // Mark as blocked
     EventUtils.sendMouseEvent({ type: "contextmenu" }, firstRequest);
-    const contextBlock = getContextMenuItem(
-      monitor,
-      "request-list-context-block-url"
-    );
-
     const onRequestBlocked = waitForDispatch(
       store,
       "REQUEST_BLOCKING_UPDATE_COMPLETE"
     );
-    contextBlock.click();
+
+    await selectContextMenuItem(monitor, "request-list-context-block-url");
+
     info("Wait for selected request to be blocked");
     await onRequestBlocked;
     info("Selected request is now blocked");
@@ -120,15 +112,12 @@ add_task(async function() {
 
     // Mark as unblocked
     EventUtils.sendMouseEvent({ type: "contextmenu" }, firstRequest);
-    const contextUnblock = getContextMenuItem(
-      monitor,
-      "request-list-context-unblock-url"
-    );
     const onRequestUnblocked = waitForDispatch(
       store,
       "REQUEST_BLOCKING_UPDATE_COMPLETE"
     );
-    contextUnblock.click();
+
+    await selectContextMenuItem(monitor, "request-list-context-unblock-url");
 
     info("Wait for selected request to be unblocked");
     await onRequestUnblocked;
@@ -138,7 +127,7 @@ add_task(async function() {
   // Reload to have one request in the list
   info("Reloading to check unblock");
   waitForEvents = waitForNetworkEvents(monitor, 1);
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
   await waitForEvents;
 
   // Capture unblocked request
@@ -156,7 +145,7 @@ add_task(async function() {
 
   ok(!normalRequestState.blockedReason, "Normal request is not blocked");
   ok(!normalRequestSize.includes("Blocked"), "Normal request has a size");
-  ok(normalHeadersSectionSize == 2, "Both header sections are showing");
+  Assert.equal(normalHeadersSectionSize, 2, "Both header sections are showing");
   ok(
     normalFirstHeaderSectionTitle.includes("Response"),
     "The response header section is visible for normal requests"
@@ -167,7 +156,11 @@ add_task(async function() {
     blockedRequestSize.includes("Blocked"),
     "Blocked request shows reason as size"
   );
-  ok(blockedHeadersSectionSize == 1, "Only one header section is showing");
+  Assert.equal(
+    blockedHeadersSectionSize,
+    1,
+    "Only one header section is showing"
+  );
   ok(
     blockedFirstHeaderSectionTitle.includes("Request"),
     "The response header section is not visible for blocked requests"

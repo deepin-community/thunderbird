@@ -9,6 +9,7 @@
 #include "mozilla/HoldDropJSObjects.h"
 #include "mozilla/Telemetry.h"
 
+#include "nsQueryObject.h"
 #include "nsSocketTransport2.h"
 #include "nsUDPSocket.h"
 #include "nsProxyRelease.h"
@@ -28,7 +29,16 @@
 #include "nsIDNSRecord.h"
 #include "nsIDNSService.h"
 #include "nsICancelable.h"
+#include "nsIPipe.h"
 #include "nsWrapperCacheInlines.h"
+#include "HttpConnectionUDP.h"
+#include "mozilla/ProfilerBandwidthCounter.h"
+#include "mozilla/StaticPrefs_network.h"
+
+#if defined(FUZZING)
+#  include "FuzzyLayer.h"
+#  include "mozilla/StaticPrefs_fuzzing.h"
+#endif
 
 namespace mozilla {
 namespace net {
@@ -58,8 +68,9 @@ static nsresult ResolveHost(const nsACString& host,
   }
 
   nsCOMPtr<nsICancelable> tmpOutstanding;
-  return dns->AsyncResolveNative(host, nsIDNSService::RESOLVE_TYPE_DEFAULT, 0,
-                                 nullptr, listener, nullptr, aOriginAttributes,
+  return dns->AsyncResolveNative(host, nsIDNSService::RESOLVE_TYPE_DEFAULT,
+                                 nsIDNSService::RESOLVE_DEFAULT_FLAGS, nullptr,
+                                 listener, nullptr, aOriginAttributes,
                                  getter_AddRefs(tmpOutstanding));
 }
 
@@ -70,7 +81,9 @@ static nsresult CheckIOStatus(const NetAddr* aAddr) {
     return NS_ERROR_FAILURE;
   }
 
-  if (gIOService->IsOffline() && !aAddr->IsLoopbackAddr()) {
+  if (gIOService->IsOffline() &&
+      (StaticPrefs::network_disable_localhost_when_offline() ||
+       !aAddr->IsLoopbackAddr())) {
     return NS_ERROR_OFFLINE;
   }
 
@@ -113,6 +126,10 @@ NS_IMETHODIMP nsUDPOutputStream::Close() {
 }
 
 NS_IMETHODIMP nsUDPOutputStream::Flush() { return NS_OK; }
+
+NS_IMETHODIMP nsUDPOutputStream::StreamStatus() {
+  return mIsClosed ? NS_BASE_STREAM_CLOSED : NS_OK;
+}
 
 NS_IMETHODIMP nsUDPOutputStream::Write(const char* aBuf, uint32_t aCount,
                                        uint32_t* _retval) {
@@ -200,15 +217,18 @@ nsUDPMessage::GetData(nsACString& aData) {
 NS_IMETHODIMP
 nsUDPMessage::GetOutputStream(nsIOutputStream** aOutputStream) {
   NS_ENSURE_ARG_POINTER(aOutputStream);
-  NS_IF_ADDREF(*aOutputStream = mOutputStream);
+  *aOutputStream = do_AddRef(mOutputStream).take();
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsUDPMessage::GetRawData(JSContext* cx, JS::MutableHandleValue aRawData) {
+nsUDPMessage::GetRawData(JSContext* cx, JS::MutableHandle<JS::Value> aRawData) {
   if (!mJsobj) {
-    mJsobj =
-        dom::Uint8Array::Create(cx, nullptr, mData.Length(), mData.Elements());
+    ErrorResult error;
+    mJsobj = dom::Uint8Array::Create(cx, nullptr, mData, error);
+    if (error.Failed()) {
+      return error.StealNSResult();
+    }
     HoldJSObjects(this);
   }
   aRawData.setObject(*mJsobj);
@@ -235,7 +255,10 @@ nsUDPSocket::nsUDPSocket() {
 
 nsUDPSocket::~nsUDPSocket() { CloseSocket(); }
 
-void nsUDPSocket::AddOutputBytes(uint64_t aBytes) { mByteWriteCount += aBytes; }
+void nsUDPSocket::AddOutputBytes(int32_t aBytes) {
+  mByteWriteCount += aBytes;
+  profiler_count_bandwidth_written_bytes(aBytes);
+}
 
 void nsUDPSocket::OnMsgClose() {
   UDPSOCKET_LOG(("nsUDPSocket::OnMsgClose [this=%p]\n", this));
@@ -357,14 +380,15 @@ UDPMessageProxy::GetData(nsACString& aData) {
 FallibleTArray<uint8_t>& UDPMessageProxy::GetDataAsTArray() { return mData; }
 
 NS_IMETHODIMP
-UDPMessageProxy::GetRawData(JSContext* cx, JS::MutableHandleValue aRawData) {
+UDPMessageProxy::GetRawData(JSContext* cx,
+                            JS::MutableHandle<JS::Value> aRawData) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP
 UDPMessageProxy::GetOutputStream(nsIOutputStream** aOutputStream) {
   NS_ENSURE_ARG_POINTER(aOutputStream);
-  NS_IF_ADDREF(*aOutputStream = mOutputStream);
+  *aOutputStream = do_AddRef(mOutputStream).take();
   return NS_OK;
 }
 
@@ -405,6 +429,7 @@ void nsUDPSocket::OnSocketReady(PRFileDesc* fd, int16_t outFlags) {
     return;
   }
   mByteReadCount += count;
+  profiler_count_bandwidth_read_bytes(count);
 
   FallibleTArray<uint8_t> data;
   if (!data.AppendElements(buff, count, fallible)) {
@@ -420,16 +445,12 @@ void nsUDPSocket::OnSocketReady(PRFileDesc* fd, int16_t outFlags) {
   uint32_t segsize = UDP_PACKET_CHUNK_SIZE;
   uint32_t segcount = 0;
   net_ResolveSegmentParams(segsize, segcount);
-  nsresult rv = NS_NewPipe2(getter_AddRefs(pipeIn), getter_AddRefs(pipeOut),
-                            true, true, segsize, segcount);
-
-  if (NS_FAILED(rv)) {
-    return;
-  }
+  NS_NewPipe2(getter_AddRefs(pipeIn), getter_AddRefs(pipeOut), true, true,
+              segsize, segcount);
 
   RefPtr<nsUDPOutputStream> os = new nsUDPOutputStream(this, mFD, prClientAddr);
-  rv = NS_AsyncCopy(pipeIn, os, mSts, NS_ASYNCCOPY_VIA_READSEGMENTS,
-                    UDP_PACKET_CHUNK_SIZE);
+  nsresult rv = NS_AsyncCopy(pipeIn, os, mSts, NS_ASYNCCOPY_VIA_READSEGMENTS,
+                             UDP_PACKET_CHUNK_SIZE);
 
   if (NS_FAILED(rv)) {
     return;
@@ -473,6 +494,17 @@ void nsUDPSocket::OnSocketDetached(PRFileDesc* fd) {
 void nsUDPSocket::IsLocal(bool* aIsLocal) {
   // If bound to loopback, this UDP socket only accepts local connections.
   *aIsLocal = mAddr.IsLoopbackAddr();
+}
+
+nsresult nsUDPSocket::GetRemoteAddr(NetAddr* addr) {
+  if (!mSyncListener) {
+    return NS_ERROR_FAILURE;
+  }
+  RefPtr<HttpConnectionUDP> connUDP = do_QueryObject(mSyncListener);
+  if (!connUDP) {
+    return NS_ERROR_FAILURE;
+  }
+  return connUDP->GetPeerAddr(addr);
 }
 
 //-----------------------------------------------------------------------------
@@ -555,6 +587,18 @@ nsUDPSocket::InitWithAddress(const NetAddr* aAddr, nsIPrincipal* aPrincipal,
     NS_WARNING("unable to create UDP socket");
     return NS_ERROR_FAILURE;
   }
+
+#ifdef FUZZING
+  if (StaticPrefs::fuzzing_necko_enabled()) {
+    rv = AttachFuzzyIOLayer(mFD);
+    if (NS_FAILED(rv)) {
+      UDPSOCKET_LOG(("Failed to attach fuzzing IOLayer [rv=%" PRIx32 "].\n",
+                     static_cast<uint32_t>(rv)));
+      return rv;
+    }
+    UDPSOCKET_LOG(("Successfully attached fuzzing IOLayer.\n"));
+  }
+#endif
 
   uint16_t port;
   if (NS_FAILED(aAddr->GetPort(&port))) {
@@ -755,7 +799,7 @@ class SocketListenerProxy final : public nsIUDPSocketListener {
   explicit SocketListenerProxy(nsIUDPSocketListener* aListener)
       : mListener(new nsMainThreadPtrHolder<nsIUDPSocketListener>(
             "SocketListenerProxy::mListener", aListener)),
-        mTarget(GetCurrentEventTarget()) {}
+        mTarget(GetCurrentSerialEventTarget()) {}
 
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIUDPSOCKETLISTENER
@@ -847,7 +891,7 @@ class SocketListenerProxyBackground final : public nsIUDPSocketListener {
 
  public:
   explicit SocketListenerProxyBackground(nsIUDPSocketListener* aListener)
-      : mListener(aListener), mTarget(GetCurrentEventTarget()) {}
+      : mListener(aListener), mTarget(GetCurrentSerialEventTarget()) {}
 
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIUDPSOCKETLISTENER
@@ -968,7 +1012,8 @@ PendingSend::OnLookupComplete(nsICancelable* request, nsIDNSRecord* aRecord,
   NetAddr addr;
   if (NS_SUCCEEDED(rec->GetNextAddr(mPort, &addr))) {
     uint32_t count;
-    nsresult rv = mSocket->SendWithAddress(&addr, mData, &count);
+    nsresult rv = mSocket->SendWithAddress(&addr, mData.Elements(),
+                                           mData.Length(), &count);
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
@@ -1033,7 +1078,7 @@ class SendRequestRunnable : public Runnable {
 NS_IMETHODIMP
 SendRequestRunnable::Run() {
   uint32_t count;
-  mSocket->SendWithAddress(&mAddr, mData, &count);
+  mSocket->SendWithAddress(&mAddr, mData.Elements(), mData.Length(), &count);
   return NS_OK;
 }
 
@@ -1047,7 +1092,7 @@ nsUDPSocket::AsyncListen(nsIUDPSocketListener* aListener) {
   NS_ENSURE_TRUE(mSyncListener == nullptr, NS_ERROR_IN_PROGRESS);
   {
     MutexAutoLock lock(mLock);
-    mListenerTarget = GetCurrentEventTarget();
+    mListenerTarget = GetCurrentSerialEventTarget();
     if (NS_IsMainThread()) {
       // PNecko usage
       mListener = new SocketListenerProxy(aListener);
@@ -1101,15 +1146,19 @@ nsUDPSocket::SendWithAddr(nsINetAddr* aAddr, const nsTArray<uint8_t>& aData,
 
   NetAddr netAddr;
   aAddr->GetNetAddr(&netAddr);
-  return SendWithAddress(&netAddr, aData, _retval);
+  return SendWithAddress(&netAddr, aData.Elements(), aData.Length(), _retval);
 }
 
 NS_IMETHODIMP
-nsUDPSocket::SendWithAddress(const NetAddr* aAddr,
-                             const nsTArray<uint8_t>& aData,
-                             uint32_t* _retval) {
+nsUDPSocket::SendWithAddress(const NetAddr* aAddr, const uint8_t* aData,
+                             uint32_t aLength, uint32_t* _retval) {
   NS_ENSURE_ARG(aAddr);
   NS_ENSURE_ARG_POINTER(_retval);
+
+  if (StaticPrefs::network_http_http3_block_loopback_ipv6_addr() &&
+      aAddr->raw.family == AF_INET6 && aAddr->IsLoopbackAddr()) {
+    return NS_ERROR_CONNECTION_REFUSED;
+  }
 
   *_retval = 0;
 
@@ -1126,8 +1175,7 @@ nsUDPSocket::SendWithAddress(const NetAddr* aAddr,
       return NS_ERROR_FAILURE;
     }
     int32_t count =
-        PR_SendTo(mFD, aData.Elements(), sizeof(uint8_t) * aData.Length(), 0,
-                  &prAddr, PR_INTERVAL_NO_WAIT);
+        PR_SendTo(mFD, aData, aLength, 0, &prAddr, PR_INTERVAL_NO_WAIT);
     if (count < 0) {
       PRErrorCode code = PR_GetError();
       return ErrorAccordingToNSPR(code);
@@ -1136,7 +1184,7 @@ nsUDPSocket::SendWithAddress(const NetAddr* aAddr,
     *_retval = count;
   } else {
     FallibleTArray<uint8_t> fallibleArray;
-    if (!fallibleArray.InsertElementsAt(0, aData, fallible)) {
+    if (!fallibleArray.AppendElements(aData, aLength, fallible)) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1144,7 +1192,7 @@ nsUDPSocket::SendWithAddress(const NetAddr* aAddr,
         new SendRequestRunnable(this, *aAddr, std::move(fallibleArray)),
         NS_DISPATCH_NORMAL);
     NS_ENSURE_SUCCESS(rv, rv);
-    *_retval = aData.Length();
+    *_retval = aLength;
   }
   return NS_OK;
 }
@@ -1188,6 +1236,7 @@ nsUDPSocket::RecvWithAddr(NetAddr* addr, nsTArray<uint8_t>& aData) {
     return NS_OK;
   }
   mByteReadCount += count;
+  profiler_count_bandwidth_read_bytes(count);
   PRNetAddrToNetAddr(&prAddr, addr);
 
   if (!aData.AppendElements(buff, count, fallible)) {

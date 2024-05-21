@@ -8,12 +8,11 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { OpenPGPTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
+const { OpenPGPTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
 );
-const { EnigmailFuncs } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/funcs.jsm"
+const { EnigmailFuncs } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/funcs.sys.mjs"
 );
 
 const tests = [
@@ -116,17 +115,17 @@ const tests = [
 /**
  * Initialize OpenPGP add testing keys.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();
 });
 
 add_task(async function testAlias() {
-  for (let test of tests) {
+  for (const test of tests) {
     console.debug("testing input: " + test.input);
 
-    let email = EnigmailFuncs.getEmailFromUserID(test.input);
+    const email = EnigmailFuncs.getEmailFromUserID(test.input);
 
     Assert.equal(test.email, email);
   }

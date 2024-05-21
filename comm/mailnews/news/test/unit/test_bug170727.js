@@ -1,18 +1,35 @@
 // Bug 170727 - Remove the escaped dot from body lines before saving in the offline store.
 
-var daemon, localserver, server;
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
-function run_test() {
-  daemon = setupNNTPDaemon();
+// Strip the extra X-Mozilla- headers which are slipped in to messages
+// as they are written to local folders. Not exactly robust RFC5322 parsing,
+// but enough to handle this test.
+function strip_x_moz_headers(s) {
+  // List to make sure headers show up when grepping codebase.
+  for (const hdr of [
+    "X-Mozilla-Status",
+    "X-Mozilla-Status2",
+    "X-Mozilla-Keys",
+  ]) {
+    s = s.replace(new RegExp("^" + hdr + ":.*?\r?\n", "gm"), "");
+  }
+  return s;
+}
+
+add_task(async function testloadMessage() {
+  const daemon = setupNNTPDaemon();
   daemon.addGroup("dot.test");
   daemon.addArticle(make_article(do_get_file("postings/post3.eml")));
 
-  server = makeServer(NNTP_RFC2980_handler, daemon);
+  const server = makeServer(NNTP_RFC2980_handler, daemon);
   server.start();
-  localserver = setupLocalServer(server.port);
+  const localserver = setupLocalServer(server.port);
   localserver.subscribeToNewsgroup("dot.test");
 
-  let folder = localserver.rootFolder.getChildNamed("dot.test");
+  const folder = localserver.rootFolder.getChildNamed("dot.test");
   folder.setFlag(Ci.nsMsgFolderFlags.Offline);
   folder.getNewMessages(null, {
     OnStopRunningUrl() {
@@ -21,43 +38,41 @@ function run_test() {
   });
   server.performTest();
 
-  let uri = folder.generateMessageURI(1);
-  var msgService = Cc[
+  const uri = folder.generateMessageURI(1);
+  const msgService = Cc[
     "@mozilla.org/messenger/messageservice;1?type=news"
   ].getService(Ci.nsIMsgMessageService);
 
   // Pretend to display the message: During the first run, the article is downloaded,
   // displayed directly and simultaneously saved in the offline storage.
-  msgService.DisplayMessage(uri, articleTextListener, null, null, null, {});
-  // Get the server to run
-  var thread = gThreadManager.currentThread;
-  while (!articleTextListener.finished) {
-    thread.processNextEvent(true);
+  {
+    const listener = new PromiseTestUtils.PromiseStreamListener();
+    msgService.loadMessage(uri, listener, null, null, false);
+    const msgText = await listener.promise;
+    localserver.closeCachedConnections();
+
+    // Correct text? (original file uses LF only, so strip CR)
+    Assert.equal(
+      msgText.replaceAll("\r", ""),
+      daemon.getArticle("<2@dot.invalid>").fullText
+    );
   }
-  localserver.closeCachedConnections();
-
-  // Correct text?
-  Assert.equal(
-    articleTextListener.data,
-    daemon.getArticle("<2@dot.invalid>").fullText
-  );
-
-  articleTextListener.data = "";
-  articleTextListener.finished = false;
 
   // In the second run, the offline store serves as the source of the article.
-  msgService.DisplayMessage(uri, articleTextListener, null, null, null, {});
-  // Get the server to run
-  while (!articleTextListener.finished) {
-    thread.processNextEvent(true);
-  }
-  localserver.closeCachedConnections();
+  {
+    const listener = new PromiseTestUtils.PromiseStreamListener();
+    msgService.loadMessage(uri, listener, null, null, false);
+    let msgText = await listener.promise;
+    localserver.closeCachedConnections();
 
-  // Correct text?
-  Assert.equal(
-    articleTextListener.data,
-    daemon.getArticle("<2@dot.invalid>").fullText
-  );
+    // To compare, need to massage what we got back from DisplayMessage():
+    // - Remove any X-Mozilla-* headers (added to messages in offline store).
+    // - Source test file uses LF only, so strip CRs.
+    msgText = strip_x_moz_headers(msgText);
+    msgText = msgText.replaceAll("\r", "");
+
+    Assert.equal(msgText, daemon.getArticle("<2@dot.invalid>").fullText);
+  }
 
   server.stop();
-}
+});

@@ -26,6 +26,7 @@
 #include "mozilla/Preferences.h"
 #include "mozilla/ProfilerMarkers.h"
 #include "mozilla/ResultExtensions.h"
+#include "mozilla/Try.h"
 #include "mozilla/Unused.h"
 
 #include "GeckoProfiler.h"
@@ -38,6 +39,7 @@
 #include "mozilla/Services.h"
 #include "jsapi.h"
 #include "js/Date.h"
+#include "js/PropertyAndElement.h"  // JS_DefineProperty
 #include "prenv.h"
 #include "nsAppDirectoryServiceDefs.h"
 
@@ -159,7 +161,24 @@ nsAppStartup::nsAppStartup()
       mAttemptingQuit(false),
       mInterrupted(false),
       mIsSafeModeNecessary(false),
-      mStartupCrashTrackingEnded(false) {}
+      mStartupCrashTrackingEnded(false) {
+  char* mozAppSilentStart = PR_GetEnv("MOZ_APP_SILENT_START");
+
+  /* When calling PR_SetEnv() with an empty value the existing variable may
+   * be unset or set to the empty string depending on the underlying platform
+   * thus we have to check if the variable is present and not empty. */
+  mWasSilentlyStarted =
+      mozAppSilentStart && (strcmp(mozAppSilentStart, "") != 0);
+
+  // Make sure to clear this in case we restart again non-silently.
+  PR_SetEnv("MOZ_APP_SILENT_START=");
+
+#ifdef XP_WIN
+  char* mozAppAllowWindowless = PR_GetEnv("MOZ_APP_ALLOW_WINDOWLESS");
+  mAllowWindowless =
+      mozAppAllowWindowless && (strcmp(mozAppAllowWindowless, "") != 0);
+#endif
+}
 
 nsresult nsAppStartup::Init() {
   nsresult rv;
@@ -266,6 +285,10 @@ nsAppStartup::Run(void) {
   if (!mShuttingDown && mConsiderQuitStopper != 0) {
 #ifdef XP_MACOSX
     EnterLastWindowClosingSurvivalArea();
+#elif defined(XP_WIN)
+    if (mAllowWindowless) {
+      EnterLastWindowClosingSurvivalArea();
+    }
 #endif
 
     mRunning = true;
@@ -290,6 +313,11 @@ nsAppStartup::Run(void) {
 
 NS_IMETHODIMP
 nsAppStartup::Quit(uint32_t aMode, int aExitCode, bool* aUserAllowedQuit) {
+  if ((aMode & eSilently) != 0 && (aMode & eRestart) == 0) {
+    // eSilently is only valid when combined with eRestart.
+    return NS_ERROR_INVALID_ARG;
+  }
+
   uint32_t ferocity = (aMode & 0xF);
 
   // If the shutdown was cancelled due to a hidden window or
@@ -374,7 +402,13 @@ nsAppStartup::Quit(uint32_t aMode, int aExitCode, bool* aUserAllowedQuit) {
     auto shutdownMode = ((aMode & eRestart) != 0)
                             ? mozilla::AppShutdownMode::Restart
                             : mozilla::AppShutdownMode::Normal;
-    mozilla::AppShutdown::Init(shutdownMode, aExitCode);
+    // TODO: Add (or pass in) more reasons here for Mac and Linux, see
+    // bug 1827643 and bug 1827644.
+    // See as example the Windows WM_ENDSESSION handling.
+    auto shutdownReason = ((aMode & eRestart) != 0)
+                              ? mozilla::AppShutdownReason::AppRestart
+                              : mozilla::AppShutdownReason::AppClose;
+    mozilla::AppShutdown::Init(shutdownMode, aExitCode, shutdownReason);
 
     if (mozilla::AppShutdown::IsRestarting()) {
       // Mark the next startup as a restart.
@@ -385,6 +419,12 @@ nsAppStartup::Quit(uint32_t aMode, int aExitCode, bool* aUserAllowedQuit) {
       TimeStamp::RecordProcessRestart();
     }
 
+    if ((aMode & eSilently) != 0) {
+      // Mark the next startup as a silent restart.
+      // See the eSilently definition for details.
+      PR_SetEnv("MOZ_APP_SILENT_START=1");
+    }
+
     obsService = mozilla::services::GetObserverService();
 
     if (!mAttemptingQuit) {
@@ -392,6 +432,10 @@ nsAppStartup::Quit(uint32_t aMode, int aExitCode, bool* aUserAllowedQuit) {
 #ifdef XP_MACOSX
       // now even the Mac wants to quit when the last window is closed
       ExitLastWindowClosingSurvivalArea();
+#elif defined(XP_WIN)
+      if (mAllowWindowless) {
+        ExitLastWindowClosingSurvivalArea();
+      }
 #endif
       if (obsService)
         obsService->NotifyObservers(nullptr, "quit-application-granted",
@@ -572,7 +616,7 @@ nsAppStartup::ExitLastWindowClosingSurvivalArea(void) {
 
 NS_IMETHODIMP
 nsAppStartup::GetShuttingDown(bool* aResult) {
-  *aResult = mShuttingDown;
+  *aResult = AppShutdown::IsInOrBeyond(ShutdownPhase::AppShutdownConfirmed);
   return NS_OK;
 }
 
@@ -606,6 +650,12 @@ nsAppStartup::GetWasRestarted(bool* aResult) {
    * thus we have to check if the variable is present and not empty. */
   *aResult = mozAppRestart && (strcmp(mozAppRestart, "") != 0);
 
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsAppStartup::GetWasSilentlyStarted(bool* aResult) {
+  *aResult = mWasSilentlyStarted;
   return NS_OK;
 }
 
@@ -780,9 +830,7 @@ nsAppStartup::GetStartupInfo(JSContext* aCx,
   TimeStamp procTime = StartupTimeline::Get(StartupTimeline::PROCESS_CREATION);
 
   if (procTime.IsNull()) {
-    bool error = false;
-
-    procTime = TimeStamp::ProcessCreation(&error);
+    procTime = TimeStamp::ProcessCreation();
 
     StartupTimeline::Record(StartupTimeline::PROCESS_CREATION, procTime);
   }

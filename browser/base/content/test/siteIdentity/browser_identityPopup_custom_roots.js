@@ -13,7 +13,7 @@ const TEST_PATH = getRootDirectory(gTestPath).replace(
 // imports root certificates by default, so we just visit example.com
 // and verify that the custom root certificates UI is visible.
 add_task(async function test_https() {
-  await BrowserTestUtils.withNewTab("https://example.com", async function() {
+  await BrowserTestUtils.withNewTab("https://example.com", async function () {
     let promisePanelOpen = BrowserTestUtils.waitForEvent(
       window,
       "popupshown",
@@ -27,7 +27,7 @@ add_task(async function test_https() {
       "identity-popup-security-decription-custom-root"
     );
     ok(
-      BrowserTestUtils.is_visible(customRootWarning),
+      BrowserTestUtils.isVisible(customRootWarning),
       "custom root warning is visible"
     );
 
@@ -40,7 +40,7 @@ add_task(async function test_https() {
       "identity-popup-content-verifier-unknown"
     );
     ok(
-      BrowserTestUtils.is_visible(subPanelInfo),
+      BrowserTestUtils.isVisible(subPanelInfo),
       "custom root warning in sub panel is visible"
     );
   });
@@ -48,7 +48,8 @@ add_task(async function test_https() {
 
 // Also check that there are conditions where this isn't shown.
 add_task(async function test_http() {
-  await BrowserTestUtils.withNewTab("http://example.com", async function() {
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
+  await BrowserTestUtils.withNewTab("http://example.com", async function () {
     let promisePanelOpen = BrowserTestUtils.waitForEvent(
       window,
       "popupshown",
@@ -61,7 +62,7 @@ add_task(async function test_http() {
       "identity-popup-security-decription-custom-root"
     );
     ok(
-      BrowserTestUtils.is_hidden(customRootWarning),
+      BrowserTestUtils.isHidden(customRootWarning),
       "custom root warning is hidden"
     );
 
@@ -74,7 +75,7 @@ add_task(async function test_http() {
       "identity-popup-content-verifier-unknown"
     );
     ok(
-      BrowserTestUtils.is_hidden(subPanelInfo),
+      BrowserTestUtils.isHidden(subPanelInfo),
       "custom root warning in sub panel is hidden"
     );
   });

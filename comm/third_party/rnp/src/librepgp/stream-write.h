@@ -42,13 +42,6 @@ typedef struct pgp_write_handler_t {
     void *param;
 } pgp_write_handler_t;
 
-/** @brief symmetrically encrypt the input data
- *  @param handler handler to respond on stream processor callbacks
- *  @param src input source: file, stdin, memory, whatever else conforming to pgp_source_t
- *  @param dst output destination: file, stdout, memory, whatever else conforming to pgp_dest_t
- **/
-rnp_result_t rnp_encrypt_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t *dst);
-
 /** @brief sign the input data, producing attached, detached or cleartext signature.
  *         Type of the signature is controlled by clearsign and detached fields of the
  *         rnp_ctx_t structure
@@ -82,8 +75,9 @@ rnp_result_t rnp_wrap_src(pgp_source_t &     src,
                           const std::string &filename,
                           uint32_t           modtime);
 
-rnp_result_t rnp_raw_encrypt_src(pgp_source_t &     src,
-                                 pgp_dest_t &       dst,
-                                 const std::string &password);
+rnp_result_t rnp_raw_encrypt_src(pgp_source_t &        src,
+                                 pgp_dest_t &          dst,
+                                 const std::string &   password,
+                                 rnp::SecurityContext &secctx);
 
 #endif

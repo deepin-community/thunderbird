@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 import sys
 
@@ -47,6 +45,9 @@ class TestMemoryUsage(AwsyTestCase):
     def perf_checkpoints(self):
         return CHECKPOINTS
 
+    def perf_extra_opts(self):
+        return self._extra_opts
+
     def setUp(self):
         AwsyTestCase.setUp(self)
         self.logger.info("setting up!")
@@ -63,6 +64,11 @@ class TestMemoryUsage(AwsyTestCase):
         process_count = self.marionette.get_pref("dom.ipc.processCount")
         self._pages_to_load = process_count
         self._urls = ["about:blank"] * process_count
+
+        if self.marionette.get_pref("fission.autostart"):
+            self._extra_opts = ["fission"]
+        else:
+            self._extra_opts = None
 
         self.logger.info(
             "areweslimyet run by %d pages, "

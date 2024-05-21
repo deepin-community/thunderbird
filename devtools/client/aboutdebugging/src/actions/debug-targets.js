@@ -4,29 +4,38 @@
 
 "use strict";
 
-const { AddonManager } = require("resource://gre/modules/AddonManager.jsm");
+const { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs",
+  // AddonManager is a singleton, never create two instances of it.
+  { global: "shared" }
+);
 const {
   remoteClientManager,
-} = require("devtools/client/shared/remote-debugging/remote-client-manager");
-const Services = require("Services");
+} = require("resource://devtools/client/shared/remote-debugging/remote-client-manager.js");
 
-const { l10n } = require("devtools/client/aboutdebugging/src/modules/l10n");
+const {
+  l10n,
+} = require("resource://devtools/client/aboutdebugging/src/modules/l10n.js");
 
 const {
   isSupportedDebugTargetPane,
-} = require("devtools/client/aboutdebugging/src/modules/debug-target-support");
+} = require("resource://devtools/client/aboutdebugging/src/modules/debug-target-support.js");
 
 const {
   openTemporaryExtension,
-  uninstallAddon,
-} = require("devtools/client/aboutdebugging/src/modules/extensions-helper");
+} = require("resource://devtools/client/aboutdebugging/src/modules/extensions-helper.js");
 
 const {
   getCurrentClient,
   getCurrentRuntime,
-} = require("devtools/client/aboutdebugging/src/modules/runtimes-state-helper");
+} = require("resource://devtools/client/aboutdebugging/src/modules/runtimes-state-helper.js");
 
 const {
+  gDevTools,
+} = require("resource://devtools/client/framework/devtools.js");
+
+const {
+  DEBUG_TARGETS,
   DEBUG_TARGET_PANE,
   REQUEST_EXTENSIONS_FAILURE,
   REQUEST_EXTENSIONS_START,
@@ -46,10 +55,13 @@ const {
   TEMPORARY_EXTENSION_RELOAD_FAILURE,
   TEMPORARY_EXTENSION_RELOAD_START,
   TEMPORARY_EXTENSION_RELOAD_SUCCESS,
+  TERMINATE_EXTENSION_BGSCRIPT_FAILURE,
+  TERMINATE_EXTENSION_BGSCRIPT_SUCCESS,
+  TERMINATE_EXTENSION_BGSCRIPT_START,
   RUNTIMES,
-} = require("devtools/client/aboutdebugging/src/constants");
+} = require("resource://devtools/client/aboutdebugging/src/constants.js");
 
-const Actions = require("devtools/client/aboutdebugging/src/actions/index");
+const Actions = require("resource://devtools/client/aboutdebugging/src/actions/index.js");
 
 function getTabForUrl(url) {
   for (const navigator of Services.wm.getEnumerator("navigator:browser")) {
@@ -70,29 +82,42 @@ function inspectDebugTarget(type, id) {
   return async ({ dispatch, getState }) => {
     const runtime = getCurrentRuntime(getState().runtimes);
 
-    const urlParams = {
-      id,
-      type,
-    };
-
-    if (runtime.id !== RUNTIMES.THIS_FIREFOX) {
-      urlParams.remoteId = remoteClientManager.getRemoteId(
-        runtime.id,
-        runtime.type
-      );
-    }
-
-    const url = `about:devtools-toolbox?${new window.URLSearchParams(
-      urlParams
-    )}`;
-
-    const existingTab = getTabForUrl(url);
-    if (existingTab) {
-      const navigator = existingTab.ownerGlobal;
-      navigator.gBrowser.selectedTab = existingTab;
-      navigator.focus();
+    if (
+      type == DEBUG_TARGETS.EXTENSION &&
+      runtime.id === RUNTIMES.THIS_FIREFOX
+    ) {
+      // Bug 1780912: To avoid UX issues when debugging local web extensions,
+      // we are opening the toolbox in an independant window.
+      // Whereas all others are opened in new tabs.
+      gDevTools.showToolboxForWebExtension(id);
     } else {
-      window.open(url);
+      const urlParams = {
+        type,
+      };
+      // Main process may not provide any ID.
+      if (id) {
+        urlParams.id = id;
+      }
+
+      if (runtime.id !== RUNTIMES.THIS_FIREFOX) {
+        urlParams.remoteId = remoteClientManager.getRemoteId(
+          runtime.id,
+          runtime.type
+        );
+      }
+
+      const url = `about:devtools-toolbox?${new window.URLSearchParams(
+        urlParams
+      )}`;
+
+      const existingTab = getTabForUrl(url);
+      if (existingTab) {
+        const navigator = existingTab.ownerGlobal;
+        navigator.gBrowser.selectedTab = existingTab;
+        navigator.focus();
+      } else {
+        window.open(url);
+      }
     }
 
     dispatch(
@@ -108,7 +133,7 @@ function installTemporaryExtension() {
   const message = l10n.getString(
     "about-debugging-tmp-extension-install-message"
   );
-  return async ({ dispatch, getState }) => {
+  return async ({ dispatch }) => {
     dispatch({ type: TEMPORARY_EXTENSION_INSTALL_START });
     const file = await openTemporaryExtension(window, message);
     try {
@@ -121,7 +146,7 @@ function installTemporaryExtension() {
 }
 
 function pushServiceWorker(id, registrationFront) {
-  return async ({ dispatch, getState }) => {
+  return async () => {
     try {
       // The push button is only available if canDebugServiceWorkers is true.
       // With this configuration, `push` should always be called on the
@@ -150,11 +175,29 @@ function reloadTemporaryExtension(id) {
 }
 
 function removeTemporaryExtension(id) {
-  return async () => {
+  return async ({ getState }) => {
+    const clientWrapper = getCurrentClient(getState().runtimes);
+
     try {
-      await uninstallAddon(id);
+      await clientWrapper.uninstallAddon({ id });
     } catch (e) {
       console.error(e);
+    }
+  };
+}
+
+function terminateExtensionBackgroundScript(id) {
+  return async ({ dispatch, getState }) => {
+    dispatch({ type: TERMINATE_EXTENSION_BGSCRIPT_START, id });
+    const clientWrapper = getCurrentClient(getState().runtimes);
+
+    try {
+      const addonTargetFront = await clientWrapper.getAddon({ id });
+      await addonTargetFront.terminateBackgroundScript();
+      dispatch({ type: TERMINATE_EXTENSION_BGSCRIPT_SUCCESS, id });
+    } catch (e) {
+      const error = typeof e === "string" ? new Error(e) : e;
+      dispatch({ type: TERMINATE_EXTENSION_BGSCRIPT_FAILURE, id, error });
     }
   };
 }
@@ -215,8 +258,8 @@ function requestExtensions() {
 
       dispatch({
         type: REQUEST_EXTENSIONS_SUCCESS,
-        installedExtensions,
-        temporaryExtensions,
+        installedExtensions: sortTargetsByName(installedExtensions),
+        temporaryExtensions: sortTargetsByName(temporaryExtensions),
       });
     } catch (e) {
       dispatch({ type: REQUEST_EXTENSIONS_FAILURE, error: e });
@@ -252,11 +295,8 @@ function requestWorkers() {
     const clientWrapper = getCurrentClient(getState().runtimes);
 
     try {
-      const {
-        otherWorkers,
-        serviceWorkers,
-        sharedWorkers,
-      } = await clientWrapper.listWorkers();
+      const { otherWorkers, serviceWorkers, sharedWorkers } =
+        await clientWrapper.listWorkers();
 
       for (const serviceWorker of serviceWorkers) {
         const { registrationFront } = serviceWorker;
@@ -270,9 +310,9 @@ function requestWorkers() {
 
       dispatch({
         type: REQUEST_WORKERS_SUCCESS,
-        otherWorkers,
-        serviceWorkers,
-        sharedWorkers,
+        otherWorkers: sortTargetsByName(otherWorkers),
+        serviceWorkers: sortTargetsByName(serviceWorkers),
+        sharedWorkers: sortTargetsByName(sharedWorkers),
       });
     } catch (e) {
       dispatch({ type: REQUEST_WORKERS_FAILURE, error: e });
@@ -288,6 +328,15 @@ function startServiceWorker(registrationFront) {
       console.error(e);
     }
   };
+}
+
+function sortTargetsByName(targets) {
+  return targets.sort((target1, target2) => {
+    // Fallback to empty string in case some targets don't have a valid name.
+    const name1 = target1.name || "";
+    const name2 = target2.name || "";
+    return name1.localeCompare(name2);
+  });
 }
 
 function unregisterServiceWorker(registrationFront) {
@@ -311,5 +360,6 @@ module.exports = {
   requestProcesses,
   requestWorkers,
   startServiceWorker,
+  terminateExtensionBackgroundScript,
   unregisterServiceWorker,
 };

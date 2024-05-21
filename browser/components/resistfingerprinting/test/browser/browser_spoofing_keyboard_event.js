@@ -3,22 +3,13 @@
  *   when fingerprinting resistance is enable.
  */
 
-const CC = Components.Constructor;
-
-const kStrictKeyPressEvents = SpecialPowers.getBoolPref(
-  "dom.keyboardevent.keypress.dispatch_non_printable_keys_only_system_group_in_content"
-);
-const kSameKeyCodeAndCharCodeValue = SpecialPowers.getBoolPref(
-  "dom.keyboardevent.keypress.set_keycode_and_charcode_to_same_value"
-);
 const SHOULD_DELIVER_KEYDOWN = 0x1;
 const SHOULD_DELIVER_KEYPRESS = 0x2;
 const SHOULD_DELIVER_KEYUP = 0x4;
 const SHOULD_DELIVER_ALL_FOR_PRINTABLE =
   SHOULD_DELIVER_KEYDOWN | SHOULD_DELIVER_KEYPRESS | SHOULD_DELIVER_KEYUP;
-const SHOULD_DELIVER_ALL_FOR_NON_PRINTABLE = kStrictKeyPressEvents
-  ? SHOULD_DELIVER_KEYDOWN | SHOULD_DELIVER_KEYUP
-  : SHOULD_DELIVER_ALL_FOR_PRINTABLE;
+const SHOULD_DELIVER_ALL_FOR_NON_PRINTABLE =
+  SHOULD_DELIVER_KEYDOWN | SHOULD_DELIVER_KEYUP;
 
 // The test cases for english content.
 const TEST_CASES_EN = [
@@ -172,8 +163,9 @@ const TEST_CASES_EN = [
     expectedKeyEvent: SHOULD_DELIVER_KEYDOWN,
     result: {
       key: "Meta",
-      code: "OSLeft",
+      code: "MetaLeft",
       charCode: 0,
+      // Don't let web apps know pressing Command key on macOS
       keyCode: KeyboardEvent.DOM_VK_WIN,
       location: KeyboardEvent.DOM_KEY_LOCATION_LEFT,
       altKey: false,
@@ -191,40 +183,9 @@ const TEST_CASES_EN = [
     expectedKeyEvent: SHOULD_DELIVER_KEYDOWN,
     result: {
       key: "Meta",
-      code: "OSRight",
+      code: "MetaRight",
       charCode: 0,
-      keyCode: KeyboardEvent.DOM_VK_WIN,
-      location: KeyboardEvent.DOM_KEY_LOCATION_RIGHT,
-      altKey: false,
-      shiftKey: false,
-      ctrlKey: false,
-      altGraphKey: false,
-    },
-  },
-  {
-    key: "KEY_OS",
-    modifiers: { location: KeyboardEvent.DOM_KEY_LOCATION_LEFT, osKey: true },
-    expectedKeyEvent: SHOULD_DELIVER_KEYDOWN,
-    result: {
-      key: "OS",
-      code: "OSLeft",
-      charCode: 0,
-      keyCode: KeyboardEvent.DOM_VK_WIN,
-      location: KeyboardEvent.DOM_KEY_LOCATION_LEFT,
-      altKey: false,
-      shiftKey: false,
-      ctrlKey: false,
-      altGraphKey: false,
-    },
-  },
-  {
-    key: "KEY_OS",
-    modifiers: { location: KeyboardEvent.DOM_KEY_LOCATION_RIGHT, osKey: true },
-    expectedKeyEvent: SHOULD_DELIVER_KEYDOWN,
-    result: {
-      key: "OS",
-      code: "OSRight",
-      charCode: 0,
+      // Don't let web apps know pressing Command key on macOS
       keyCode: KeyboardEvent.DOM_VK_WIN,
       location: KeyboardEvent.DOM_KEY_LOCATION_RIGHT,
       altKey: false,
@@ -1984,7 +1945,7 @@ async function testKeyEvent(aTab, aTestCase) {
   for (let testEvent of testEvents) {
     let keyEventPromise = ContentTask.spawn(
       aTab.linkedBrowser,
-      { testEvent, result: aTestCase.result, kSameKeyCodeAndCharCodeValue },
+      { testEvent, result: aTestCase.result },
       async aInput => {
         function verifyKeyboardEvent(
           aEvent,
@@ -2095,11 +2056,7 @@ async function testKeyEvent(aTab, aTestCase) {
           );
         }
 
-        let {
-          testEvent: eventType,
-          result,
-          kSameKeyCodeAndCharCodeValue: sameKeyCodeAndCharCodeValue,
-        } = aInput;
+        let { testEvent: eventType, result } = aInput;
         let inputBox = content.document.getElementById("test");
 
         // We need to put the real access of event object into the content page instead of
@@ -2128,7 +2085,7 @@ async function testKeyEvent(aTab, aTestCase) {
             verifyKeyboardEvent(
               JSON.parse(resElement.value),
               result,
-              eventType == "keypress" && sameKeyCodeAndCharCodeValue
+              eventType == "keypress"
             );
             resElement.removeEventListener(
               "resultAvailable",
@@ -2160,7 +2117,7 @@ function eventConsumer(aEvent) {
   aEvent.preventDefault();
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["privacy.resistFingerprinting", true]],
   });

@@ -28,7 +28,7 @@ const kAboutPagesRegistered = Promise.all([
   ),
 ]);
 
-add_task(async function() {
+add_task(async function () {
   await kAboutPagesRegistered;
 
   let consoleListener = {
@@ -60,8 +60,9 @@ add_task(async function() {
       });
     }
   );
-  ok(
-    errorCount > 0,
+  Assert.greater(
+    errorCount,
+    0,
     "Should have an error when loading test-linkable-page, got " + errorCount
   );
 

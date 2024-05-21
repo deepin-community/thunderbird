@@ -1,29 +1,28 @@
 {
   "langpack_id": "ro",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ro@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Română (România) Language Pack",
-  "description": "Language pack for Thunderbird for ro",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Română (Romanian)",
+  "description": "Thunderbird Beta Language Pack for Română (ro) – Romanian",
+  "version": "125.0.20240401.173510",
   "languages": {
     "ro": {
-      "version": "20211011132243",
+      "version": "20240401183306",
       "chrome_resources": {
         "alerts": "chrome/ro/locale/ro/alerts/",
         "autoconfig": "chrome/ro/locale/ro/autoconfig/",
-        "branding": "chrome/ro/locale/ro/branding/",
+        "branding": "chrome/ro/locale/branding/",
         "calendar": "chrome/ro/locale/ro/calendar/",
         "chat": "chrome/ro/locale/ro/chat/",
         "communicator": "chrome/ro/locale/ro/communicator/",
         "devtools": "chrome/ro/locale/ro/devtools/client/",
         "devtools-shared": "chrome/ro/locale/ro/devtools/shared/",
-        "devtools-startup": "chrome/ro/locale/ro/devtools/startup/",
         "global": "chrome/ro/locale/ro/global/",
         "global-platform": {
           "macosx": "chrome/ro/locale/ro/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/ro/locale/ro/mozldap/",
         "necko": "chrome/ro/locale/ro/necko/",
         "passwordmgr": "chrome/ro/locale/ro/passwordmgr/",
-        "pdf.js": "chrome/ro/locale/pdfviewer/",
         "pipnss": "chrome/ro/locale/ro/pipnss/",
         "pippki": "chrome/ro/locale/ro/pippki/",
         "places": "chrome/ro/locale/ro/places/"

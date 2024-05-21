@@ -29,13 +29,23 @@ class RenderTextureHostWrapper final : public RenderTextureHostSWGL {
   explicit RenderTextureHostWrapper(ExternalImageId aExternalImageId);
 
   // RenderTextureHost
-  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL,
-                           wr::ImageRendering aRendering) override;
+  wr::WrExternalImage Lock(uint8_t aChannelIndex, gl::GLContext* aGL) override;
   void Unlock() override;
   void ClearCachedResources() override;
+  void PrepareForUse() override;
+  void NotifyForUse() override;
+  void NotifyNotUsed() override;
+  bool SyncObjectNeeded() override;
   RenderMacIOSurfaceTextureHost* AsRenderMacIOSurfaceTextureHost() override;
   RenderDXGITextureHost* AsRenderDXGITextureHost() override;
   RenderDXGIYCbCrTextureHost* AsRenderDXGIYCbCrTextureHost() override;
+  RenderDcompSurfaceTextureHost* AsRenderDcompSurfaceTextureHost() override;
+  RenderAndroidHardwareBufferTextureHost*
+  AsRenderAndroidHardwareBufferTextureHost() override;
+  RenderAndroidSurfaceTextureHost* AsRenderAndroidSurfaceTextureHost() override;
+  RenderTextureHostSWGL* AsRenderTextureHostSWGL() override;
+  void SetIsSoftwareDecodedVideo() override;
+  bool IsSoftwareDecodedVideo() override;
 
   // RenderTextureHostSWGL
   size_t GetPlaneCount() const override;
@@ -50,13 +60,18 @@ class RenderTextureHostWrapper final : public RenderTextureHostSWGL {
   // size of the wrapped object (which reports itself).
   size_t Bytes() override { return 0; }
 
+ protected:
+  // RenderTextureHost
+  std::pair<gfx::Point, gfx::Point> GetUvCoords(
+      gfx::IntSize aTextureSize) const override;
+
  private:
   ~RenderTextureHostWrapper() override;
 
   void EnsureTextureHost() const;
   RenderTextureHostSWGL* EnsureRenderTextureHostSWGL() const;
 
-  const ExternalImageId mExternalImageId;
+  ExternalImageId mExternalImageId;
   mutable RefPtr<RenderTextureHost> mTextureHost;
 };
 

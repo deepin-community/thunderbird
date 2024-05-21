@@ -7,6 +7,7 @@ from unittest import mock
 
 import mozunit
 import pytest
+
 from mozperftest.environment import SYSTEM
 from mozperftest.system.proxy import OutputHandler
 from mozperftest.tests.support import get_running_env
@@ -148,6 +149,7 @@ def test_android_proxy(killer):
     mach_cmd, metadata, env = running_env()
     metadata.flavor = "mobile-browser"
     system = env.layers[SYSTEM]
+    env.set_arg("android-app-name", "org.mozilla.geckoview_example")
     env.set_arg("proxy-mode", "playback")
     env.set_arg("proxy-file", example_dump)
 

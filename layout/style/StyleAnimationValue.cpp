@@ -13,7 +13,7 @@
 #include "mozilla/PresShell.h"
 #include "mozilla/PresShellInlines.h"
 #include "mozilla/ServoStyleSet.h"
-#include "mozilla/Tuple.h"
+
 #include "mozilla/UniquePtr.h"
 #include "nsCOMArray.h"
 #include "nsString.h"
@@ -23,7 +23,7 @@
 #include "mozilla/dom/Element.h"
 #include "mozilla/FloatingPoint.h"
 #include "mozilla/Likely.h"
-#include "mozilla/ServoBindings.h"  // RawServoDeclarationBlock
+#include "mozilla/ServoBindings.h"  // StyleLockedDeclarationBlock
 #include "mozilla/ServoCSSParser.h"
 #include "gfxMatrix.h"
 #include "gfxQuaternion.h"
@@ -37,9 +37,6 @@ using namespace mozilla;
 using namespace mozilla::css;
 using namespace mozilla::dom;
 using namespace mozilla::gfx;
-using nsStyleTransformMatrix::Decompose2DMatrix;
-using nsStyleTransformMatrix::Decompose3DMatrix;
-using nsStyleTransformMatrix::ShearType;
 
 bool AnimationValue::operator==(const AnimationValue& aOther) const {
   if (mServo && aOther.mServo) {
@@ -90,9 +87,9 @@ const StyleTransform& AnimationValue::GetTransformProperty() const {
   return *Servo_AnimationValue_GetTransform(mServo);
 }
 
-const mozilla::StyleOffsetPath& AnimationValue::GetOffsetPathProperty() const {
+void AnimationValue::GetOffsetPathProperty(StyleOffsetPath& aOffsetPath) const {
   MOZ_ASSERT(mServo);
-  return *Servo_AnimationValue_GetOffsetPath(mServo);
+  Servo_AnimationValue_GetOffsetPath(mServo, &aOffsetPath);
 }
 
 const mozilla::LengthPercentage& AnimationValue::GetOffsetDistanceProperty()
@@ -113,47 +110,60 @@ const mozilla::StylePositionOrAuto& AnimationValue::GetOffsetAnchorProperty()
   return *Servo_AnimationValue_GetOffsetAnchor(mServo);
 }
 
-Size AnimationValue::GetScaleValue(const nsIFrame* aFrame) const {
+const mozilla::StyleOffsetPosition& AnimationValue::GetOffsetPositionProperty()
+    const {
+  MOZ_ASSERT(mServo);
+  return *Servo_AnimationValue_GetOffsetPosition(mServo);
+}
+
+bool AnimationValue::IsOffsetPathUrl() const {
+  return mServo && Servo_AnimationValue_IsOffsetPathUrl(mServo);
+}
+
+MatrixScales AnimationValue::GetScaleValue(const nsIFrame* aFrame) const {
   using namespace nsStyleTransformMatrix;
 
-  switch (Servo_AnimationValue_GetPropertyId(mServo)) {
+  AnimatedPropertyID property(eCSSProperty_UNKNOWN);
+  Servo_AnimationValue_GetPropertyId(mServo, &property);
+  switch (property.mID) {
     case eCSSProperty_scale: {
       const StyleScale& scale = GetScaleProperty();
-      return scale.IsNone() ? Size(1.0, 1.0)
-                            : Size(scale.AsScale()._0, scale.AsScale()._1);
+      return scale.IsNone()
+                 ? MatrixScales()
+                 : MatrixScales(scale.AsScale()._0, scale.AsScale()._1);
     }
     case eCSSProperty_rotate:
     case eCSSProperty_translate:
-      return Size(1.0, 1.0);
+      return MatrixScales();
     case eCSSProperty_transform:
       break;
     default:
       MOZ_ASSERT_UNREACHABLE(
           "Should only need to check in transform properties");
-      return Size(1.0, 1.0);
+      return MatrixScales();
   }
 
   TransformReferenceBox refBox(aFrame);
   Matrix4x4 t =
       ReadTransforms(StyleTranslate::None(), StyleRotate::None(),
-                     StyleScale::None(), Nothing(), GetTransformProperty(),
+                     StyleScale::None(), nullptr, GetTransformProperty(),
                      refBox, aFrame->PresContext()->AppUnitsPerDevPixel());
   Matrix transform2d;
   bool canDraw2D = t.CanDraw2D(&transform2d);
   if (!canDraw2D) {
-    return Size();
+    return MatrixScales(0, 0);
   }
   return transform2d.ScaleFactors();
 }
 
-void AnimationValue::SerializeSpecifiedValue(nsCSSPropertyID aProperty,
-                                             const RawServoStyleSet* aRawSet,
-                                             nsACString& aString) const {
+void AnimationValue::SerializeSpecifiedValue(
+    const AnimatedPropertyID& aProperty,
+    const StylePerDocumentStyleData* aRawData, nsACString& aString) const {
   MOZ_ASSERT(mServo);
-  Servo_AnimationValue_Serialize(mServo, aProperty, aRawSet, &aString);
+  Servo_AnimationValue_Serialize(mServo, &aProperty, aRawData, &aString);
 }
 
-bool AnimationValue::IsInterpolableWith(nsCSSPropertyID aProperty,
+bool AnimationValue::IsInterpolableWith(const AnimatedPropertyID& aProperty,
                                         const AnimationValue& aToValue) const {
   if (IsNull() || aToValue.IsNull()) {
     return false;
@@ -164,8 +174,7 @@ bool AnimationValue::IsInterpolableWith(nsCSSPropertyID aProperty,
   return Servo_AnimationValues_IsInterpolable(mServo, aToValue.mServo);
 }
 
-double AnimationValue::ComputeDistance(nsCSSPropertyID aProperty,
-                                       const AnimationValue& aOther) const {
+double AnimationValue::ComputeDistance(const AnimationValue& aOther) const {
   if (IsNull() || aOther.IsNull()) {
     return 0.0;
   }
@@ -179,7 +188,7 @@ double AnimationValue::ComputeDistance(nsCSSPropertyID aProperty,
 }
 
 /* static */
-AnimationValue AnimationValue::FromString(nsCSSPropertyID aProperty,
+AnimationValue AnimationValue::FromString(AnimatedPropertyID& aProperty,
                                           const nsACString& aValue,
                                           Element* aElement) {
   MOZ_ASSERT(aElement);
@@ -198,12 +207,14 @@ AnimationValue AnimationValue::FromString(nsCSSPropertyID aProperty,
 
   // GetComputedStyle() flushes style, so we shouldn't assume that any
   // non-owning references we have are still valid.
-  RefPtr<ComputedStyle> computedStyle =
-      nsComputedDOMStyle::GetComputedStyle(aElement, nullptr);
+  RefPtr<const ComputedStyle> computedStyle =
+      nsComputedDOMStyle::GetComputedStyle(aElement);
   MOZ_ASSERT(computedStyle);
 
-  RefPtr<RawServoDeclarationBlock> declarations = ServoCSSParser::ParseProperty(
-      aProperty, aValue, ServoCSSParser::GetParsingEnvironment(doc));
+  RefPtr<StyleLockedDeclarationBlock> declarations =
+      ServoCSSParser::ParseProperty(aProperty, aValue,
+                                    ServoCSSParser::GetParsingEnvironment(doc),
+                                    StyleParsingMode::DEFAULT);
 
   if (!declarations) {
     return result;
@@ -215,7 +226,7 @@ AnimationValue AnimationValue::FromString(nsCSSPropertyID aProperty,
 }
 
 /* static */
-already_AddRefed<RawServoAnimationValue> AnimationValue::FromAnimatable(
+already_AddRefed<StyleAnimationValue> AnimationValue::FromAnimatable(
     nsCSSPropertyID aProperty, const layers::Animatable& aAnimatable) {
   switch (aAnimatable.type()) {
     case layers::Animatable::Tnull_t:
@@ -261,6 +272,10 @@ already_AddRefed<RawServoAnimationValue> AnimationValue::FromAnimatable(
     case layers::Animatable::TStylePositionOrAuto:
       return Servo_AnimationValue_OffsetAnchor(
                  &aAnimatable.get_StylePositionOrAuto())
+          .Consume();
+    case layers::Animatable::TStyleOffsetPosition:
+      return Servo_AnimationValue_OffsetPosition(
+                 &aAnimatable.get_StyleOffsetPosition())
           .Consume();
     default:
       MOZ_ASSERT_UNREACHABLE("Unsupported type");

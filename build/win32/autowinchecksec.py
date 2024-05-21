@@ -7,10 +7,11 @@
 # run the Winchecksec tool (https://github.com/trailofbits/winchecksec)
 # against a given Windows binary.
 
-import buildconfig
 import json
 import subprocess
 import sys
+
+import buildconfig
 
 # usage
 if len(sys.argv) != 2:
@@ -59,7 +60,7 @@ checks = [
     "seh",
 ]
 
-if buildconfig.substs["CPU_ARCH"] == "x86":
+if buildconfig.substs["TARGET_CPU"] == "x86":
     checks += [
         "safeSEH",
     ]

@@ -3,20 +3,25 @@
 
 "use strict";
 
-const { KeyValueService } = ChromeUtils.import(
-  "resource://gre/modules/kvstore.jsm"
+const { KeyValueService } = ChromeUtils.importESModule(
+  "resource://gre/modules/kvstore.sys.mjs"
 );
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function run_test() {
   do_get_profile();
   run_next_test();
 }
 
-async function makeDatabaseDir(name) {
-  const databaseDir = OS.Path.join(OS.Constants.Path.profileDir, name);
-  await OS.File.makeDir(databaseDir, { from: OS.Constants.Path.profileDir });
+async function makeDatabaseDir(name, { mockCorrupted = false } = {}) {
+  const databaseDir = PathUtils.join(PathUtils.profileDir, name);
+  await IOUtils.makeDirectory(databaseDir);
+  if (mockCorrupted) {
+    // Mock a corrupted db.
+    await IOUtils.write(
+      PathUtils.join(databaseDir, "data.safe.bin"),
+      new Uint8Array([0x00, 0x00, 0x00, 0x00])
+    );
+  }
   return databaseDir;
 }
 
@@ -28,16 +33,78 @@ add_task(async function getService() {
   Assert.ok(gKeyValueService);
 });
 
+add_task(async function getOrCreate_defaultRecoveryStrategyError() {
+  const databaseDir = await makeDatabaseDir("getOrCreate_Error", {
+    mockCorrupted: true,
+  });
+
+  await Assert.rejects(
+    KeyValueService.getOrCreate(databaseDir, "db"),
+    /FileInvalid/
+  );
+});
+
+add_task(async function getOrCreateWithOptions_RecoveryStrategyError() {
+  const databaseDir = await makeDatabaseDir("getOrCreateWithOptions_Error", {
+    mockCorrupted: true,
+  });
+
+  await Assert.rejects(
+    KeyValueService.getOrCreateWithOptions(databaseDir, "db", {
+      strategy: KeyValueService.RecoveryStrategy.ERROR,
+    }),
+    /FileInvalid/
+  );
+});
+
+add_task(async function getOrCreateWithOptions_RecoveryStrategyRename() {
+  const databaseDir = await makeDatabaseDir("getOrCreateWithOptions_Rename", {
+    mockCorrupted: true,
+  });
+
+  const database = await KeyValueService.getOrCreateWithOptions(
+    databaseDir,
+    "db",
+    {
+      strategy: KeyValueService.RecoveryStrategy.RENAME,
+    }
+  );
+  Assert.ok(database);
+
+  Assert.ok(
+    await IOUtils.exists(PathUtils.join(databaseDir, "data.safe.bin.corrupt")),
+    "Expect corrupt file to be found"
+  );
+});
+
+add_task(async function getOrCreateWithOptions_RecoveryStrategyDiscard() {
+  const databaseDir = await makeDatabaseDir("getOrCreateWithOptions_Discard", {
+    mockCorrupted: true,
+  });
+
+  const database = await KeyValueService.getOrCreateWithOptions(
+    databaseDir,
+    "db",
+    {
+      strategy: KeyValueService.RecoveryStrategy.DISCARD,
+    }
+  );
+  Assert.ok(database);
+
+  Assert.equal(
+    await IOUtils.exists(PathUtils.join(databaseDir, "data.safe.bin.corrupt")),
+    false,
+    "Expect corrupt file to not exist"
+  );
+});
+
 add_task(async function getOrCreate() {
   const databaseDir = await makeDatabaseDir("getOrCreate");
   const database = await KeyValueService.getOrCreate(databaseDir, "db");
   Assert.ok(database);
 
   // Test creating a database with a nonexistent path.
-  const nonexistentDir = OS.Path.join(
-    OS.Constants.Path.profileDir,
-    "nonexistent"
-  );
+  const nonexistentDir = PathUtils.join(PathUtils.profileDir, "nonexistent");
   await Assert.rejects(
     KeyValueService.getOrCreate(nonexistentDir, "db"),
     /UnsuitableEnvironmentPath/
@@ -45,11 +112,8 @@ add_task(async function getOrCreate() {
 
   // Test creating a database with a non-normalized but fully-qualified path.
   let nonNormalizedDir = await makeDatabaseDir("non-normalized");
-  nonNormalizedDir = OS.Path.join(
-    nonNormalizedDir,
-    "..",
-    ".",
-    "non-normalized"
+  nonNormalizedDir = [nonNormalizedDir, "..", ".", "non-normalized"].join(
+    Services.appinfo.OS === "WINNT" ? "\\" : "/"
   );
   Assert.ok(await KeyValueService.getOrCreate(nonNormalizedDir, "db"));
 });

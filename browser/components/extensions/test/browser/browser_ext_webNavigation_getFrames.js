@@ -4,7 +4,7 @@
 
 add_task(async function testWebNavigationGetNonExistentTab() {
   let extension = ExtensionTestUtils.loadExtension({
-    background: async function() {
+    background: async function () {
       // There is no "tabId = 0" because the id assigned by tabTracker (defined in ext-browser.js)
       // starts from 1.
       await browser.test.assertRejects(
@@ -41,7 +41,7 @@ add_task(async function testWebNavigationGetNonExistentTab() {
 
 add_task(async function testWebNavigationFrames() {
   let extension = ExtensionTestUtils.loadExtension({
-    background: async function() {
+    background: async function () {
       let tabId;
       let collectedDetails = [];
 
@@ -132,11 +132,8 @@ add_task(async function testWebNavigationFrames() {
 
   await extension.startup();
 
-  let {
-    collectedDetails,
-    getAllFramesDetails,
-    getFrameResults,
-  } = await extension.awaitMessage("webNavigationFrames.done");
+  let { collectedDetails, getAllFramesDetails, getFrameResults } =
+    await extension.awaitMessage("webNavigationFrames.done");
 
   is(getAllFramesDetails.length, 3, "expected number of frames found");
   is(
@@ -310,7 +307,11 @@ add_task(async function testWebNavigationCrossOriginFrames() {
   is(frames[0].frameId, 0, "Top frame has correct frameId.");
   is(frames[0].parentFrameId, -1, "Top parentFrameId is correct.");
 
-  ok(frames[1].frameId > 0, "Cross-origin iframe has non-zero frameId.");
+  Assert.greater(
+    frames[1].frameId,
+    0,
+    "Cross-origin iframe has non-zero frameId."
+  );
   is(frames[1].parentFrameId, 0, "Iframe parentFrameId is correct.");
   is(
     frames[1].url,

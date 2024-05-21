@@ -9,9 +9,6 @@ Services.scriptloader.loadSubScript(
   "chrome://mochikit/content/tests/SimpleTest/EventUtils.js",
   EventUtils
 );
-const { ContentTaskUtils } = ChromeUtils.import(
-  "resource://testing-common/ContentTaskUtils.jsm"
-);
 
 function getRecordedKeypressCount() {
   let snapshot = Services.telemetry.getSnapshotForHistograms("main", false);
@@ -29,7 +26,7 @@ function getRecordedKeypressCount() {
   return totalCount;
 }
 
-add_task(async function() {
+add_task(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["toolkit.telemetry.ipcBatchTimeout", 10]],
   });
@@ -53,7 +50,7 @@ add_task(async function() {
     600
   );
   let result = getRecordedKeypressCount();
-  ok(result == 1, "One keypress recorded");
+  Assert.equal(result, 1, "One keypress recorded");
 
   gURLBar.focus();
   await SimpleTest.promiseFocus(window);
@@ -68,5 +65,5 @@ add_task(async function() {
     600
   );
   result = getRecordedKeypressCount();
-  ok(result == 2, "Two keypresses recorded");
+  Assert.equal(result, 2, "Two keypresses recorded");
 });

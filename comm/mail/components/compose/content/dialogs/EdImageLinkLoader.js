@@ -5,13 +5,14 @@
 /* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gMsgCompProcessLink = false;
 var gMsgCompInputElement = null;
 var gMsgCompPrevInputValue = null;
 var gMsgCompPrevMozDoNotSendAttribute;
 var gMsgCompAttachSourceElement = null;
+
+window.addEventListener("load", OnLoadDialog);
+document.addEventListener("dialogaccept", OnAcceptDialog, true);
 
 function OnLoadDialog() {
   gMsgCompAttachSourceElement = document.getElementById("AttachSourceToMail");
@@ -21,9 +22,6 @@ function OnLoadDialog() {
     editor &&
     editor.flags & Ci.nsIEditor.eEditorMailMask
   ) {
-    SetRelativeCheckbox = function() {
-      SetAttachCheckbox();
-    };
     // initialize the AttachSourceToMail checkbox
     gMsgCompAttachSourceElement.hidden = false;
 
@@ -39,13 +37,11 @@ function OnLoadDialog() {
     }
     if (gMsgCompInputElement) {
       SetAttachCheckbox();
-      gMsgCompPrevMozDoNotSendAttribute = globalElement.getAttribute(
-        "moz-do-not-send"
-      );
+      gMsgCompPrevMozDoNotSendAttribute =
+        globalElement.getAttribute("moz-do-not-send");
     }
   }
 }
-addEventListener("load", OnLoadDialog, false);
 
 function OnAcceptDialog() {
   // Auto-convert file URLs to data URLs. If we're in the link properties
@@ -60,7 +56,6 @@ function OnAcceptDialog() {
   }
   DoAttachSourceCheckbox();
 }
-document.addEventListener("dialogaccept", OnAcceptDialog, true);
 
 function SetAttachCheckbox() {
   var resetCheckbox = false;
@@ -109,7 +104,8 @@ function SetAttachCheckbox() {
 }
 
 function DoAttachSourceCheckbox() {
-  gMsgCompPrevMozDoNotSendAttribute = (!gMsgCompAttachSourceElement.checked).toString();
+  gMsgCompPrevMozDoNotSendAttribute =
+    (!gMsgCompAttachSourceElement.checked).toString();
   globalElement.setAttribute(
     "moz-do-not-send",
     gMsgCompPrevMozDoNotSendAttribute
@@ -133,7 +129,7 @@ function GenerateDataURL(url) {
   while (stream.available() > 0) {
     data += stream.readBytes(stream.available());
   }
-  let encoded = btoa(data);
+  const encoded = btoa(data);
   stream.close();
   return (
     "data:" +

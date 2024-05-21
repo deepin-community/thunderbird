@@ -2,14 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* global cal, currentView, calendarNavigationBar, gCurrentMode, MozElements, MozXULElement,
-   Services, toggleOrientation */
+/* global cal, calendarNavigationBar, CalendarFilteredViewMixin, calFilterProperties, currentView,
+     gCurrentMode, MozElements, MozXULElement, Services, toggleOrientation */
+
+/* eslint-enable valid-jsdoc */
 
 "use strict";
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+  const { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
   /**
    * Calendar observer for calendar view elements. Used in CalendarBaseView class.
@@ -22,157 +24,14 @@
     /**
      * Constructor for CalendarViewObserver.
      *
-     * @param {CalendarBaseView} calendarView    A calendar view.
+     * @param {CalendarBaseView} calendarView - A calendar view.
      */
     constructor(calendarView) {
       this.calView = calendarView.calICalendarView;
     }
 
-    QueryInterface = ChromeUtils.generateQI([
-      "calIObserver",
-      "calIAlarmServiceObserver",
-      "calICompositeObserver",
-    ]);
+    QueryInterface = ChromeUtils.generateQI(["calIAlarmServiceObserver"]);
 
-    // calIObserver
-
-    calendarsInBatch = new Set();
-
-    onStartBatch(calendar) {
-      if (calendar.type != "composite") {
-        this.calendarsInBatch.add(calendar);
-      }
-    }
-
-    onEndBatch(calendar) {
-      if (calendar.type != "composite") {
-        this.calendarsInBatch.delete(calendar);
-      }
-    }
-
-    onLoad(calendar) {
-      if (calendar.type != "composite") {
-        this.calView.refresh(calendar);
-      }
-    }
-
-    onAddItem(item) {
-      if (item.calendar.type == "composite" || this.calendarsInBatch.has(item.calendar)) {
-        return;
-      }
-
-      if (item.isTodo()) {
-        if (
-          (!item.entryDate && !item.dueDate) ||
-          !this.calView.mTasksInView ||
-          (item.isCompleted && !this.calView.mShowCompleted)
-        ) {
-          return;
-        }
-      }
-
-      const occs = item.getOccurrencesBetween(this.calView.startDate, this.calView.queryEndDate);
-      for (const occ of occs) {
-        if (occ.isTodo()) {
-          this.calView.doAddItem(occ.QueryInterface(Ci.calITodo));
-        } else {
-          this.calView.doAddItem(occ.QueryInterface(Ci.calIEvent));
-        }
-      }
-    }
-
-    onModifyItem(newItem, oldItem) {
-      if (newItem.calendar.type == "composite" || this.calendarsInBatch.has(newItem.calendar)) {
-        return;
-      }
-
-      if (newItem.isTodo() && oldItem.isTodo() && !this.calView.mTasksInView) {
-        return;
-      }
-      if (!oldItem.isTodo() || oldItem.entryDate || oldItem.dueDate) {
-        let occs = oldItem.getOccurrencesBetween(this.calView.startDate, this.calView.queryEndDate);
-        for (const occ of occs) {
-          if (occ.isTodo()) {
-            this.calView.doRemoveItem(occ.QueryInterface(Ci.calITodo));
-          } else {
-            this.calView.doRemoveItem(occ.QueryInterface(Ci.calIEvent));
-          }
-        }
-      }
-      if (newItem.isTodo()) {
-        if ((!newItem.entryDate && !newItem.dueDate) || !this.calView.mTasksInView) {
-          return;
-        }
-        if (newItem.isCompleted && !this.calView.mShowCompleted) {
-          return;
-        }
-      }
-
-      let occs = newItem.getOccurrencesBetween(this.calView.startDate, this.calView.queryEndDate);
-      for (const occ of occs) {
-        if (occ.isTodo()) {
-          this.calView.doAddItem(occ.QueryInterface(Ci.calITodo));
-        } else {
-          this.calView.doAddItem(occ.QueryInterface(Ci.calIEvent));
-        }
-      }
-    }
-
-    onDeleteItem(item) {
-      if (item.isTodo()) {
-        if (!this.calView.mTasksInView) {
-          return;
-        }
-        if (!item.entryDate && !item.dueDate) {
-          return;
-        }
-        if (item.isCompleted && !this.calView.mShowCompleted) {
-          return;
-        }
-      }
-
-      const occs = item.getOccurrencesBetween(this.calView.startDate, this.calView.queryEndDate);
-      for (const occ of occs) {
-        if (occ.isTodo()) {
-          this.calView.doRemoveItem(occ.QueryInterface(Ci.calITodo));
-        } else {
-          this.calView.doRemoveItem(occ.QueryInterface(Ci.calIEvent));
-        }
-      }
-    }
-
-    onError(calendar, errNo, message) {}
-
-    onPropertyChanged(calendar, name, value, oldValue) {
-      switch (name) {
-        case "suppressAlarms":
-          if (
-            !Services.prefs.getBoolPref("calendar.alarms.indicator.show", true) ||
-            calendar.getProperty("capabilities.alarms.popup.supported") === false
-          ) {
-            break;
-          }
-        // Else fall through.
-        case "readOnly":
-          // XXXvv We can be smarter about how we handle this stuff.
-          this.calView.refresh(calendar);
-          break;
-        case "disabled":
-          if (value) {
-            this.calView.removeItemsFromCalendar(calendar);
-          } else {
-            this.calView.addItemsFromCalendar(calendar);
-          }
-          break;
-      }
-    }
-
-    onPropertyDeleting(calendar, name) {
-      // Values are not important here yet.
-      this.onPropertyChanged(calendar, name, null, null);
-    }
-
-    // End calIObserver
     // calIAlarmServiceObserver
 
     onAlarm(alarmItem) {
@@ -199,133 +58,6 @@
     onAlarmsLoaded(calendar) {}
 
     // End calIAlarmServiceObserver
-    // calICompositeObserver
-    // XXXvv We can be smarter about how we handle this stuff.
-
-    onCalendarAdded(calendar) {
-      if (!calendar.getProperty("disabled")) {
-        this.calView.addItemsFromCalendar(calendar);
-      }
-    }
-
-    onCalendarRemoved(calendar) {
-      if (!calendar.getProperty("disabled")) {
-        this.calView.removeItemsFromCalendar(calendar);
-      }
-    }
-
-    onDefaultCalendarChanged(newDefaultCalendar) {
-      // We don't care, for now.
-    }
-
-    // End calICompositeObserver
-  }
-
-  /**
-   * Class for a refresh job object that is used in CalendarBaseView.addItemsFromCalendar.
-   */
-  class CalendarViewRefreshJob {
-    /**
-     * Constructor for CalendarViewRefreshJob.
-     *
-     * @param {CalendarBaseView} calendarView                   A calendar view.
-     * @param {calICalendar|calICompositeCalendar} calendar     A calendar object.
-     */
-    constructor(calendarView, calendar) {
-      this.QueryInterface = ChromeUtils.generateQI(["calIOperationListener"]);
-      this.calView = calendarView;
-      this.calendar = calendar;
-      this.calId = null;
-      this.operation = null;
-      this.cancelled = false;
-    }
-
-    onOperationComplete(opCalendar, status, operationType, id, dateTime) {
-      this.calView.mLog.info("Refresh complete of calendar " + this.calId);
-      if (this.calView.mPendingRefreshJobs.has(this.calId)) {
-        this.calView.mPendingRefreshJobs.delete(this.calId);
-      }
-
-      if (!this.cancelled) {
-        this.calView.fireEvent("viewloaded", operationType);
-      }
-    }
-
-    onGetResult(opCalendar, status, itemType, detail, items) {
-      if (this.cancelled || !Components.isSuccessCode(status)) {
-        return;
-      }
-
-      for (const item of items) {
-        if (!item.isTodo() || item.entryDate || item.dueDate) {
-          this.calView.doAddItem(item);
-        }
-      }
-    }
-
-    cancel() {
-      this.calView.mLog.info("Refresh cancelled for calendar " + this.calId);
-      this.cancelled = true;
-      let { operation } = this;
-      if (operation && operation.isPending) {
-        operation.cancel();
-        this.operation = null;
-      }
-    }
-
-    execute() {
-      if (!this.calView.startDate || !this.calView.endDate || !this.calendar) {
-        return;
-      }
-
-      if (this.calendar.type == "composite") {
-        // We're refreshing from the composite calendar, so we can cancel
-        // all other pending refresh jobs.
-        this.calView.mLog.info("Refreshing composite calendar, cancelling all pending refreshes");
-        this.calId = "composite";
-        for (const job of this.calView.mPendingRefreshJobs.values()) {
-          job.cancel();
-        }
-        this.calView.mPendingRefreshJobs.clear();
-        this.calView.relayout();
-      } else {
-        this.calView.mLog.info(`Refreshing calendar ${this.calendar.name} (${this.calendar.id})`);
-        this.calId = this.calendar.id;
-        if (this.calView.mPendingRefreshJobs.has(this.calId)) {
-          this.calView.mPendingRefreshJobs.get(this.calId).cancel();
-          this.calView.mPendingRefreshJobs.delete(this.calId);
-        }
-        this.calView.removeItemsFromCalendar(this.calendar);
-      }
-
-      // Start our items query. For a disjoint date range we get all the items,
-      // and just filter out the ones we don't care about in addItem.
-      let filter = this.calendar.ITEM_FILTER_CLASS_OCCURRENCES;
-      if (this.calView.mShowCompleted) {
-        filter |= this.calendar.ITEM_FILTER_COMPLETED_ALL;
-      } else {
-        filter |= this.calendar.ITEM_FILTER_COMPLETED_NO;
-      }
-
-      if (this.calView.mTasksInView) {
-        filter |= this.calendar.ITEM_FILTER_TYPE_ALL;
-      } else {
-        filter |= this.calendar.ITEM_FILTER_TYPE_EVENT;
-      }
-
-      let operation = this.calendar.getItems(
-        filter,
-        0,
-        this.calView.startDate,
-        this.calView.queryEndDate,
-        this
-      );
-
-      if (operation && operation.isPending) {
-        this.operation = operation;
-        this.calView.mPendingRefreshJobs.set(this.calId, this);
-      }
-    }
   }
 
   /**
@@ -334,12 +66,36 @@
    * @implements {calICalendarView}
    * @abstract
    */
-  class CalendarBaseView extends MozXULElement {
+  class CalendarBaseView extends CalendarFilteredViewMixin(MozXULElement) {
+    /**
+     * Whether the view has been initialized.
+     *
+     * @type {boolean}
+     */
+    #isInitialized = false;
+
     connectedCallback() {
       if (this.delayConnectedCallback() || this.hasConnected) {
         return;
       }
       this.hasConnected = true;
+
+      // For some unknown reason, `console.createInstance` isn't available when
+      // `ensureInitialized` runs.
+      this.mLog = console.createInstance({
+        prefix: `calendar.baseview (${this.constructor.name})`,
+        maxLogLevel: "Warn",
+        maxLogLevelPref: "calendar.baseview.loglevel",
+      });
+
+      this.mSelectedItems = [];
+    }
+
+    ensureInitialized() {
+      if (this.#isInitialized) {
+        return;
+      }
+      this.#isInitialized = true;
 
       this.calICalendarView = this.getCustomInterfaceCallback(Ci.calICalendarView);
 
@@ -381,9 +137,8 @@
           if (deltaView != 0) {
             this.moveView(deltaView);
           }
+          event.preventDefault();
         }
-
-        event.preventDefault();
       });
 
       this.addEventListener("MozRotateGesture", event => {
@@ -440,9 +195,7 @@
       this.mRangeEndDate = null;
 
       this.mWorkdaysOnly = false;
-      this.mPendingRefreshJobs = null;
 
-      this.mCalendar = null;
       this.mController = null;
 
       this.mStartDate = null;
@@ -457,9 +210,6 @@
       this.mTimezone = null;
       this.mFlashingEvents = {};
 
-      this.mSelectedItems = [];
-      this.mLongWeekdayTotalPixels = -1;
-
       this.mDropShadowsLength = null;
 
       this.mShadowOffset = null;
@@ -472,7 +222,6 @@
       this.mViewEnd = null;
 
       this.mToggleStatus = 0;
-      this.mLog = null;
 
       this.mToggleStatusFlag = {
         WorkdaysOnly: 1,
@@ -485,9 +234,7 @@
           this.timezone = cal.dtz.defaultTimezone;
           this.refreshView();
 
-          if (this.updateTimeIndicatorPosition) {
-            this.updateTimeIndicatorPosition(true);
-          }
+          this.updateTimeIndicatorPosition();
         },
       };
 
@@ -528,22 +275,12 @@
       Services.obs.addObserver(this.mTimezoneObserver, "defaultTimezoneChanged");
 
       this.updateDaysOffPrefs();
-      this.mPendingRefreshJobs = new Map();
-
-      this.mLog = console.createInstance({
-        prefix: `calendar.baseview (${this.constructor.name})`,
-        maxLogLevel: "Warn",
-        maxLogLevelPref: "calendar.baseview.loglevel",
-      });
+      this.updateTimeIndicatorPosition();
 
       // Remove observers on window unload.
       window.addEventListener(
         "unload",
         () => {
-          if (this.mCalendar) {
-            this.mCalendar.removeObserver(this.mObserver);
-          }
-
           alarmService.removeObserver(this.mObserver);
 
           Services.prefs.removeObserver("calendar.", this.mPrefObserver);
@@ -555,12 +292,20 @@
 
     /**
      * Handle resizing by adjusting the view to the new size.
-     *
-     * @param {calICalendarView} [calViewElem] - A calendar view element.
      */
     onResize() {
       // Child classes should provide the implementation.
       throw new Error(this.constructor.name + ".onResize not implemented");
+    }
+
+    /**
+     * Whether the view has been initialized.
+     *
+     * @returns {boolean} - True if the view has been initialized, otherwise
+     * false.
+     */
+    get isInitialized() {
+      return this.#isInitialized;
     }
 
     get type() {
@@ -607,6 +352,7 @@
 
     set tasksInView(tasksInView) {
       this.mTasksInView = tasksInView;
+      this.updateItemType();
     }
 
     get tasksInView() {
@@ -615,6 +361,7 @@
 
     set showCompleted(showCompleted) {
       this.mShowCompleted = showCompleted;
+      this.updateItemType();
     }
 
     get showCompleted() {
@@ -685,31 +432,6 @@
       return "base-view-observer";
     }
 
-    set displayCalendar(calendar) {
-      if (this.mCalendar) {
-        this.mCalendar.removeObserver(this.mObserver);
-      }
-      this.mCalendar = calendar;
-      this.mCalendar.addObserver(this.mObserver);
-      this.refresh();
-    }
-
-    get displayCalendar() {
-      return this.mCalendar;
-    }
-
-    get initialized() {
-      let retval;
-
-      // Some views throw when accessing an uninitialized startDay.
-      try {
-        retval = this.displayCalendar && this.startDay && this.endDay;
-      } catch (ex) {
-        return false;
-      }
-      return retval;
-    }
-
     // The end date that should be used for getItems and similar queries.
     get queryEndDate() {
       if (!this.endDate) {
@@ -722,58 +444,9 @@
     }
 
     /**
-     * Guarantee that the labels are clipped when an overflow occurs, to
-     * prevent horizontal scrollbars from appearing briefly.
-     *
-     * @param {boolean} forceShortName  Whether to force the use of a short name.
-     */
-    adjustWeekdayLength(forceShortName) {
-      let useShortNames = false;
-
-      if (forceShortName === true) {
-        useShortNames = true;
-      } else {
-        const clientWidth = this.querySelector(".mainbox").clientWidth;
-        const timespacer = this.querySelector(".headertimespacer");
-
-        const width = timespacer ? clientWidth - timespacer.clientWidth : clientWidth;
-
-        if (this.longWeekdayTotalPixels > 0.95 * width) {
-          useShortNames = true;
-        }
-      }
-
-      for (const kid of this.querySelectorAll("calendar-day-label")) {
-        kid.shortWeekNames = useShortNames;
-      }
-    }
-
-    /**
-     * The width in pixels of the widest weekday label.
-     *
-     * @return {number}  A number of pixels.
-     */
-    get longWeekdayTotalPixels() {
-      if (this.mLongWeekdayTotalPixels <= 0) {
-        let maxDayWidth = 0;
-
-        const dayLabels = this.querySelectorAll("calendar-day-label");
-        for (const label of dayLabels) {
-          label.shortWeekNames = false;
-          const curPixelLength = label.getLongWeekdayPixels();
-          maxDayWidth = Math.max(maxDayWidth, curPixelLength);
-        }
-        if (maxDayWidth > 0) {
-          this.mLongWeekdayTotalPixels = maxDayWidth * dayLabels.length + 10;
-        }
-      }
-      return this.mLongWeekdayTotalPixels;
-    }
-
-    /**
      * Return a date object representing the current day.
      *
-     * @return {calIDateTime}    A date object.
+     * @returns {calIDateTime} A date object.
      */
     today() {
       const date = cal.dtz.jsDateToDateTime(new Date()).getInTimezone(this.mTimezone);
@@ -784,58 +457,50 @@
     /**
      * Return whether this view is currently active and visible in the UI.
      *
-     * @return {boolean}
+     * @returns {boolean}
      */
     isVisible() {
-      return this.nodeName == currentView().nodeName;
+      return this == currentView();
     }
 
     /**
-     * Refresh the view if it is active and visible, or if refresh is forced.
-     *
-     * @param {calICalendar} [calendar=this.mCalendar]
-     * @param {boolean} [force=false]    Whether to force a refresh.
+     * Set the view's item type based on the `tasksInView` and `showCompleted` properties.
      */
-    refresh(calendar = this.mCalendar, force = false) {
-      if (this.isVisible() || force) {
-        this.addItemsFromCalendar(calendar);
+    updateItemType() {
+      if (!this.mTasksInView) {
+        this.itemType = Ci.calICalendar.ITEM_FILTER_TYPE_EVENT;
+        return;
+      }
+
+      let type = Ci.calICalendar.ITEM_FILTER_TYPE_ALL;
+      type |= this.mShowCompleted
+        ? Ci.calICalendar.ITEM_FILTER_COMPLETED_ALL
+        : Ci.calICalendar.ITEM_FILTER_COMPLETED_NO;
+      this.itemType = type;
+    }
+
+    // CalendarFilteredViewMixin implementation (clearItems and removeItemsFromCalendar
+    // are implemented in subclasses).
+
+    addItems(items) {
+      for (const item of items) {
+        this.doAddItem(item);
       }
     }
 
-    /**
-     * Force the view to refresh, even if it is not visible.
-     * This method is needed because when only a preference is toggled, the start
-     * and end date of the views are unchanged, therefore the inactive/invisible views
-     * may remain the same when switching to them.
-     */
-    forceRefresh() {
-      this.refresh(undefined, true);
+    removeItems(items) {
+      for (const item of items) {
+        this.doRemoveItem(item);
+      }
     }
 
-    /**
-     * Add items from a calendar to the view. Also used for refreshing the view.
-     *
-     * @param {calICalendar|calICompositeCalendar} calendar    A calendar object.
-     */
-    addItemsFromCalendar(calendar) {
-      const refreshJob = new CalendarViewRefreshJob(this, calendar);
-      refreshJob.execute();
-    }
-
-    /**
-     * Remove items from a calendar. Must be implemented in subclasses.
-     *
-     * @param {calICalendar|calICompositeCalendar} calendar    A calendar object.
-     */
-    removeItemsFromCalendar(calendar) {
-      throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-    }
+    // End of CalendarFilteredViewMixin implementation.
 
     /**
      * Create and fire an event.
      *
-     * @param {string} eventName      Name of the event.
-     * @param {Object} eventDetail    The details to add to the event.
+     * @param {string} eventName - Name of the event.
+     * @param {object} eventDetail - The details to add to the event.
      */
     fireEvent(eventName, eventDetail) {
       this.dispatchEvent(
@@ -847,16 +512,11 @@
      * A preference handler typically called by a preferences observer when a preference
      * changes. Handles common preferences while other preferences are handled in subclasses.
      *
-     * @param {Object} subject       A subject, a prefs object.
-     * @param {string} topic         A topic.
-     * @param {string} preference    A preference that has changed.
+     * @param {object} subject - A subject, a prefs object.
+     * @param {string} topic - A topic.
+     * @param {string} preference - A preference that has changed.
      */
     handleCommonPreference(subject, topic, preference) {
-      // Refresh view if categories seem to have changed.
-      if (preference.startsWith("calendar.category.color")) {
-        this.refreshView();
-        return;
-      }
       switch (preference) {
         case "calendar.week.d0sundaysoff":
         case "calendar.week.d1mondaysoff":
@@ -868,11 +528,9 @@
           this.updateDaysOffPrefs();
           break;
         case "calendar.alarms.indicator.show":
-          // Break here to ensure the view is refreshed.
-          break;
         case "calendar.date.format":
         case "calendar.view.showLocation":
-          this.refreshView();
+          // Break here to ensure the view is refreshed.
           break;
         default:
           return;
@@ -901,6 +559,11 @@
     }
 
     /**
+     * Adjust the position of this view's indicator of the current time, if any.
+     */
+    updateTimeIndicatorPosition() {}
+
+    /**
      * Refresh the view.
      */
     refreshView() {
@@ -909,7 +572,6 @@
         return;
       }
       this.goToDay(this.selectedDay);
-      this.forceRefresh();
     }
 
     handlePreference(subject, topic, pref) {
@@ -922,6 +584,10 @@
 
     // calICalendarView Methods
 
+    /**
+     * NOTE: This is overridden in each of the built-in calendar views.
+     * It's only left here in case some extension is relying on it.
+     */
     goToDay(date) {
       this.showDate(date);
     }

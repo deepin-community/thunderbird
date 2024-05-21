@@ -3,7 +3,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-async function testSteps() {
+add_task(async function testSteps() {
   const principal = getPrincipal("http://example.org");
 
   const data = {};
@@ -30,7 +30,10 @@ async function testSteps() {
 
   info("Setting pref");
 
-  Services.prefs.setBoolPref("dom.storage.next_gen", true);
+  Services.prefs.setBoolPref(
+    "dom.storage.enable_unsupported_legacy_implementation",
+    false
+  );
 
   info("Stage 1 - Checking usage after profile installation");
 
@@ -67,5 +70,5 @@ async function testSteps() {
   info("Stage 4 - Checking length of the copied value");
 
   value = storage.getItem(data.secondKey);
-  ok(value.length === data.value.length, "Correct string length");
-}
+  Assert.strictEqual(value.length, data.value.length, "Correct string length");
+});

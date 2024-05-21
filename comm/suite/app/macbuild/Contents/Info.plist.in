@@ -32,9 +32,15 @@
 	<dict>
 		<key>MallocNanoZone</key>
 		<string>0</string>
+		<key>SYSTEM_VERSION_COMPAT</key>
+		<string>0</string>
 	</dict>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.9.0</string>
+	<string>10.12.0</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 			<dict>
@@ -153,17 +159,17 @@
 			<string>Viewer</string>
 			<key>CFBundleTypeOSTypes</key>
 			<array>
-			        <string>TEXT</string>
+				<string>TEXT</string>
 			</array>
 			<key>CFBundleTypeExtensions</key>
 			<array>
-			        <string>svg</string>
+				<string>svg</string>
 			</array>
 			<key>CFBundleTypeIconFile</key>
 			<string>document.icns</string>
 			<key>CFBundleTypeMIMETypes</key>
 			<array>
-			        <string>image/svg+xml</string>
+				<string>image/svg+xml</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>BrowserDocument</string>
@@ -257,13 +263,13 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSSupportsAutomaticGraphicsSwitching</key>
-	<true/>
 	<key>NSPrincipalClass</key>
 	<string>GeckoNSApplication</string>
-  <key>MozillaDeveloperRepoPath</key>
-  <string>@MOZ_DEVELOPER_REPO_PATH@</string>
-  <key>MozillaDeveloperObjPath</key>
-  <string>@MOZ_DEVELOPER_OBJ_PATH@</string>
+	<key>MozillaDeveloperRepoPath</key>
+	<string>@MOZ_DEVELOPER_REPO_PATH@</string>
+	<key>MozillaDeveloperObjPath</key>
+	<string>@MOZ_DEVELOPER_OBJ_PATH@</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Use your macOS contacts in @MAC_APP_NAME@.</string>
 </dict>
 </plist>

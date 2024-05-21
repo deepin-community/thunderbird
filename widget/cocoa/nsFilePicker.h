@@ -19,6 +19,7 @@ class nsILocalFileMac;
 class nsFilePicker : public nsBaseFilePicker {
  public:
   nsFilePicker();
+  using nsIFilePicker::ResultCode;
 
   NS_DECL_ISUPPORTS
 
@@ -32,7 +33,8 @@ class nsFilePicker : public nsBaseFilePicker {
   NS_IMETHOD GetFile(nsIFile** aFile) override;
   NS_IMETHOD GetFileURL(nsIURI** aFileURL) override;
   NS_IMETHOD GetFiles(nsISimpleEnumerator** aFiles) override;
-  NS_IMETHOD AppendFilter(const nsAString& aTitle, const nsAString& aFilter) override;
+  NS_IMETHOD AppendFilter(const nsAString& aTitle,
+                          const nsAString& aFilter) override;
 
   /**
    * Returns the current filter list in the format used by Cocoa's NSSavePanel
@@ -45,15 +47,15 @@ class nsFilePicker : public nsBaseFilePicker {
   virtual ~nsFilePicker();
 
   virtual void InitNative(nsIWidget* aParent, const nsAString& aTitle) override;
-  nsresult Show(int16_t* _retval) override;
+  nsresult Show(ResultCode* _retval) override;
 
   // actual implementations of get/put dialogs using NSOpenPanel & NSSavePanel
   // aFile is an existing but unspecified file. These functions must specify it.
   //
   // will return |returnCancel| or |returnOK| as result.
-  int16_t GetLocalFiles(bool inAllowMultiple, nsCOMArray<nsIFile>& outFiles);
-  int16_t GetLocalFolder(nsIFile** outFile);
-  int16_t PutLocalFile(nsIFile** outFile);
+  ResultCode GetLocalFiles(bool inAllowMultiple, nsCOMArray<nsIFile>& outFiles);
+  ResultCode GetLocalFolder(nsIFile** outFile);
+  ResultCode PutLocalFile(nsIFile** outFile);
 
   void SetDialogTitle(const nsString& inTitle, id aDialog);
   NSString* PanelDefaultDirectory();

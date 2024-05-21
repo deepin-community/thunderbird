@@ -22,7 +22,6 @@ NS_IMPL_ISUPPORTS(nsNoDataProtocolContentPolicy, nsIContentPolicy)
 NS_IMETHODIMP
 nsNoDataProtocolContentPolicy::ShouldLoad(nsIURI* aContentLocation,
                                           nsILoadInfo* aLoadInfo,
-                                          const nsACString& aMimeGuess,
                                           int16_t* aDecision) {
   ExtContentPolicyType contentType = aLoadInfo->GetExternalContentPolicyType();
 
@@ -41,16 +40,11 @@ nsNoDataProtocolContentPolicy::ShouldLoad(nsIURI* aContentLocation,
     nsAutoCString scheme;
     aContentLocation->GetScheme(scheme);
     if (scheme.EqualsLiteral("http") || scheme.EqualsLiteral("https") ||
-        scheme.EqualsLiteral("ftp") || scheme.EqualsLiteral("file") ||
-        scheme.EqualsLiteral("chrome")) {
+        scheme.EqualsLiteral("file") || scheme.EqualsLiteral("chrome")) {
       return NS_OK;
     }
 
-    bool shouldBlock;
-    nsresult rv = NS_URIChainHasFlags(
-        aContentLocation, nsIProtocolHandler::URI_DOES_NOT_RETURN_DATA,
-        &shouldBlock);
-    if (NS_SUCCEEDED(rv) && shouldBlock) {
+    if (nsContentUtils::IsExternalProtocol(aContentLocation)) {
       NS_SetRequestBlockingReason(
           aLoadInfo,
           nsILoadInfo::BLOCKING_REASON_CONTENT_POLICY_NO_DATA_PROTOCOL);
@@ -64,7 +58,6 @@ nsNoDataProtocolContentPolicy::ShouldLoad(nsIURI* aContentLocation,
 NS_IMETHODIMP
 nsNoDataProtocolContentPolicy::ShouldProcess(nsIURI* aContentLocation,
                                              nsILoadInfo* aLoadInfo,
-                                             const nsACString& aMimeGuess,
                                              int16_t* aDecision) {
-  return ShouldLoad(aContentLocation, aLoadInfo, aMimeGuess, aDecision);
+  return ShouldLoad(aContentLocation, aLoadInfo, aDecision);
 }

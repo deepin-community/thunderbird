@@ -51,14 +51,13 @@ when needed.
 JavaScript API
 ~~~~~~~~~~~~~~
 
-``browser/components/touchbar/MacTouchBar.js`` defines what specific inputs are
+``browser/components/touchbar/MacTouchBar.sys.mjs`` defines what specific inputs are
 available to the user, what icon they will have, what action they will perform,
 and so on. Inputs are defined in the ``gBuiltInInputs`` object `in that file`_.
 When creating a new object in ``gBuiltInInputs``, the available properties are
 documented in the JSDoc for ``TouchBarInput``:
 
-.. highlight:: JavaScript
-.. code::
+.. code:: JavaScript
 
   /**
    * A representation of a Touch Bar input.
@@ -85,11 +84,11 @@ documented in the JSDoc for ``TouchBarInput``:
 Clarification on some of these properties is warranted.
 
 * ``title`` is the key to a Fluent translation defined in ``browser/locales/<LOCALE>/browser/touchbar/touchbar.ftl``.
-* ``type`` must be a value from the ``kInputTypes`` enum in ``MacTouchBar.js``.
+* ``type`` must be a value from the ``kInputTypes`` enum in ``MacTouchBar.sys.mjs``.
   For example, ``kInputTypes.BUTTON``. More information on input types follows
   below.
 * ``callback`` points to a JavaScript function. Any chrome-level JavaScript can
-  be executed. ``execCommand`` is a convenience method in ``MacTouchBar.js``
+  be executed. ``execCommand`` is a convenience method in ``MacTouchBar.sys.mjs``
   that takes a XUL command as a string and executes that command. For instance,
   one input sets ``callback`` to ``execCommand("Browser:Back")``.
 * ``children`` is an array of objects with the same properties as members of
@@ -99,7 +98,7 @@ Clarification on some of these properties is warranted.
   ``kInputTypes.POPOVER``, any input type except another ``kInputTypes.POPOVER``
   can be used.
 
-.. _in that file: https://searchfox.org/mozilla-central/rev/ebe492edacc75bb122a2b380e4cafcca3470864c/browser/components/touchbar/MacTouchBar.js#82
+.. _in that file: https://searchfox.org/mozilla-central/rev/ebe492edacc75bb122a2b380e4cafcca3470864c/browser/components/touchbar/MacTouchBar.jsm#82
 
 Input types
 -----------
@@ -131,8 +130,7 @@ Popover
   be defined in the ``children`` property of the parent. Popovers can also be
   shown and hidden programmatically, by calling
 
-  .. highlight:: JavaScript
-  .. code::
+  .. code:: JavaScript
 
     gTouchBarUpdater.showPopover(
       TouchBarHelper.baseWindow,
@@ -160,8 +158,8 @@ Examples
 Some examples of ``gBuiltInInputs`` objects follow.
 
 A simple button
-  .. highlight:: JavaScript
-  .. code::
+
+  .. code:: JavaScript
 
     Back: {
       title: "back",
@@ -176,8 +174,7 @@ A simple button
 The search popover
   This is the input that occupies the Touch Bar when the address bar is focused.
 
-  .. highlight:: JavaScript
-  .. code::
+  .. code:: JavaScript
 
     SearchPopover: {
       title: "search-popover",

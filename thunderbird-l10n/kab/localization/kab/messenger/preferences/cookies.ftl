@@ -2,31 +2,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-cookies-window-dialog =
+cookies-window-dialog2 =
     .title = Inagan n tuqqna
-    .style = width: 36em;
-
 window-close-key =
     .key = w
-
 window-focus-search-key =
     .key = f
-
 window-focus-search-alt-key =
     .key = k
-
 filter-search-label =
     .value = Nadi:
     .accesskey = d
-
 cookies-on-system-label = Inagan-agi n tuqqna kelsen ɣef uselkim-inek:
-
 treecol-site-header =
     .label = Asmel web
-
 treecol-name-header =
     .label = Isem n unagi n tuqqna
-
 props-name-label =
     .value = Isem:
 props-value-label =
@@ -41,15 +32,12 @@ props-expires-label =
     .value = Ad immet:
 props-container-label =
     .value = Amagbar:
-
 remove-cookie-button =
     .label = Kkes inagan n tuqqna
     .accesskey = K
-
 remove-all-cookies-button =
     .label = Kkes akk inagan n tuqqna
     .accesskey = a
-
 cookie-close-button =
     .label = Mdel
     .accesskey = M

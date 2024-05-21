@@ -1,6 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -11,6 +9,10 @@ var gReplaceDialog; // Quick access to document/form elements.
 var gFindInst; // nsIWebBrowserFind that we're going to use
 var gFindService; // Global service which remembers find params
 var gEditor; // the editor we're using
+
+window.addEventListener("load", event => {
+  onLoad();
+});
 
 document.addEventListener("dialogaccept", event => {
   onFindNext();

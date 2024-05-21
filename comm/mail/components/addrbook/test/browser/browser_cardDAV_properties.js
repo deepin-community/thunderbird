@@ -6,8 +6,8 @@
  * Tests CardDAV properties dialog.
  */
 
-const { CardDAVDirectory } = ChromeUtils.import(
-  "resource:///modules/CardDAVDirectory.jsm"
+const { CardDAVDirectory } = ChromeUtils.importESModule(
+  "resource:///modules/CardDAVDirectory.sys.mjs"
 );
 const { CardDAVServer } = ChromeUtils.import(
   "resource://testing-common/CardDAVServer.jsm"
@@ -20,7 +20,7 @@ add_task(async () => {
   const URL_PREF = "ldap_2.servers.props.carddav.url";
   const URL_VALUE = "https://mochi.test/carddav/test";
 
-  let dirPrefId = MailServices.ab.newAddressBook(
+  const dirPrefId = MailServices.ab.newAddressBook(
     "props",
     undefined,
     Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE
@@ -28,11 +28,9 @@ add_task(async () => {
   Assert.equal(dirPrefId, "ldap_2.servers.props");
   Assert.equal([...MailServices.ab.directories].length, 3);
 
-  let directory = MailServices.ab.getDirectoryFromId(dirPrefId);
-  let davDirectory = CardDAVDirectory.forFile(directory.fileName);
+  const directory = MailServices.ab.getDirectoryFromId(dirPrefId);
+  const davDirectory = CardDAVDirectory.forFile(directory.fileName);
   registerCleanupFunction(async () => {
-    await promiseDirectoryRemoved(directory.URI);
-
     Assert.equal(davDirectory._syncTimer, null, "sync timer cleaned up");
   });
   Assert.equal(directory.dirType, Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE);
@@ -47,113 +45,87 @@ add_task(async () => {
   Assert.equal(davDirectory._syncTimer, null, "no sync scheduled");
   Assert.equal(davDirectory.readOnly, false);
 
-  let abWindow = await openAddressBookWindow();
-  let abDocument = abWindow.document;
-  registerCleanupFunction(async () => {
-    await closeAddressBookWindow();
-    Services.prefs.clearUserPref("mail.addr_book.view.startupURI");
-  });
-
-  // This test becomes unreliable if we don't pause for a moment.
-  await new Promise(resolve => abWindow.setTimeout(resolve, 500));
+  const abWindow = await openAddressBookWindow();
+  const abDocument = abWindow.document;
+  const booksList = abWindow.booksList;
 
   openDirectory(directory);
 
-  Assert.equal(abWindow.gDirectoryTreeView.rowCount, 4);
-  Assert.equal(abWindow.gDirectoryTreeView.getIndexForId(directory.URI), 2);
-  Assert.equal(abWindow.gDirTree.currentIndex, 2);
+  Assert.equal(booksList.rowCount, 4);
+  Assert.equal(booksList.getIndexForUID(directory.UID), 2);
+  Assert.equal(booksList.selectedIndex, 2);
 
-  let menu = abDocument.getElementById("dirTreeContext");
-  let menuItem = abDocument.getElementById("dirTreeContext-properties");
+  const menu = abDocument.getElementById("bookContext");
+  const menuItem = abDocument.getElementById("bookContextProperties");
 
-  let subtest = async function(expectedValues, newValues, buttonAction) {
-    Assert.equal(abWindow.gDirTree.currentIndex, 2);
+  const subtest = async function (expectedValues, newValues, buttonAction) {
+    Assert.equal(booksList.selectedIndex, 2);
 
-    let shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
-    mailTestUtils.treeClick(EventUtils, abWindow, abWindow.gDirTree, 2, 0, {
-      type: "mousedown",
-      button: 2,
-    });
-    mailTestUtils.treeClick(EventUtils, abWindow, abWindow.gDirTree, 2, 0, {
-      type: "contextmenu",
-    });
-    mailTestUtils.treeClick(EventUtils, abWindow, abWindow.gDirTree, 2, 0, {
-      type: "mouseup",
-      button: 2,
-    });
+    const shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
+    EventUtils.synthesizeMouseAtCenter(
+      booksList.getRowAtIndex(2),
+      { type: "contextmenu" },
+      abWindow
+    );
     await shownPromise;
 
-    let dialogPromise = BrowserTestUtils.promiseAlertDialog(
-      undefined,
-      "chrome://messenger/content/addressbook/abCardDAVProperties.xhtml",
-      {
-        async callback(dialogWindow) {
-          let dialogDocument = dialogWindow.document;
+    Assert.ok(BrowserTestUtils.isVisible(menuItem));
 
-          let nameInput = dialogDocument.getElementById("carddav-name");
-          Assert.equal(nameInput.value, expectedValues.name);
-          if ("name" in newValues) {
-            nameInput.value = newValues.name;
-          }
+    const dialogPromise = promiseLoadSubDialog(
+      "chrome://messenger/content/addressbook/abCardDAVProperties.xhtml"
+    ).then(async function (dialogWindow) {
+      const dialogDocument = dialogWindow.document;
 
-          let urlInput = dialogDocument.getElementById("carddav-url");
-          Assert.equal(urlInput.value, expectedValues.url);
-          if ("url" in newValues) {
-            urlInput.value = newValues.url;
-          }
-
-          let refreshActiveInput = dialogDocument.getElementById(
-            "carddav-refreshActive"
-          );
-          let refreshIntervalInput = dialogDocument.getElementById(
-            "carddav-refreshInterval"
-          );
-
-          Assert.equal(
-            refreshActiveInput.checked,
-            expectedValues.refreshActive
-          );
-          Assert.equal(
-            refreshIntervalInput.disabled,
-            !expectedValues.refreshActive
-          );
-          if (
-            "refreshActive" in newValues &&
-            newValues.refreshActive != expectedValues.refreshActive
-          ) {
-            EventUtils.synthesizeMouseAtCenter(
-              refreshActiveInput,
-              {},
-              dialogWindow
-            );
-            Assert.equal(
-              refreshIntervalInput.disabled,
-              !newValues.refreshActive
-            );
-          }
-
-          Assert.equal(
-            refreshIntervalInput.value,
-            expectedValues.refreshInterval
-          );
-          if ("refreshInterval" in newValues) {
-            refreshIntervalInput.value = newValues.refreshInterval;
-          }
-
-          let readOnlyInput = dialogDocument.getElementById("carddav-readOnly");
-
-          Assert.equal(readOnlyInput.checked, expectedValues.readOnly);
-          if ("readOnly" in newValues) {
-            readOnlyInput.checked = newValues.readOnly;
-          }
-
-          dialogDocument
-            .querySelector("dialog")
-            .getButton(buttonAction)
-            .click();
-        },
+      const nameInput = dialogDocument.getElementById("carddav-name");
+      Assert.equal(nameInput.value, expectedValues.name);
+      if ("name" in newValues) {
+        nameInput.value = newValues.name;
       }
-    );
+
+      const urlInput = dialogDocument.getElementById("carddav-url");
+      Assert.equal(urlInput.value, expectedValues.url);
+      if ("url" in newValues) {
+        urlInput.value = newValues.url;
+      }
+
+      const refreshActiveInput = dialogDocument.getElementById(
+        "carddav-refreshActive"
+      );
+      const refreshIntervalInput = dialogDocument.getElementById(
+        "carddav-refreshInterval"
+      );
+
+      Assert.equal(refreshActiveInput.checked, expectedValues.refreshActive);
+      Assert.equal(
+        refreshIntervalInput.disabled,
+        !expectedValues.refreshActive
+      );
+      if (
+        "refreshActive" in newValues &&
+        newValues.refreshActive != expectedValues.refreshActive
+      ) {
+        EventUtils.synthesizeMouseAtCenter(
+          refreshActiveInput,
+          {},
+          dialogWindow
+        );
+        Assert.equal(refreshIntervalInput.disabled, !newValues.refreshActive);
+      }
+
+      Assert.equal(refreshIntervalInput.value, expectedValues.refreshInterval);
+      if ("refreshInterval" in newValues) {
+        refreshIntervalInput.value = newValues.refreshInterval;
+      }
+
+      const readOnlyInput = dialogDocument.getElementById("carddav-readOnly");
+
+      Assert.equal(readOnlyInput.checked, expectedValues.readOnly);
+      if ("readOnly" in newValues) {
+        readOnlyInput.checked = newValues.readOnly;
+      }
+
+      dialogDocument.querySelector("dialog").getButton(buttonAction).click();
+    });
     menu.activateItem(menuItem);
     await dialogPromise;
 
@@ -220,7 +192,7 @@ add_task(async () => {
   Assert.equal(davDirectory._serverURL, URL_VALUE);
   Assert.equal(davDirectory.getIntValue("carddav.syncinterval", -1), 30);
   Assert.notEqual(davDirectory._syncTimer, null, "sync scheduled");
-  let currentSyncTimer = davDirectory._syncTimer;
+  const currentSyncTimer = davDirectory._syncTimer;
   Assert.equal(davDirectory.readOnly, true);
 
   info("Open the dialog and accept it. Nothing should change.");
@@ -268,4 +240,6 @@ add_task(async () => {
     "new sync scheduled"
   );
   Assert.equal(davDirectory.readOnly, true);
+
+  await promiseDirectoryRemoved(directory.URI);
 });

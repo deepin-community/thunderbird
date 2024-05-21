@@ -50,6 +50,12 @@ Connection::Close() {
 // mozIStorageAsyncConnection methods
 
 NS_IMETHODIMP
+Connection::AsyncVacuum(mozIStorageCompletionCallback*, bool, int32_t) {
+  // async methods are not supported
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
 Connection::AsyncClose(mozIStorageCompletionCallback*) {
   // async methods are not supported
   return NS_ERROR_NOT_IMPLEMENTED;
@@ -221,6 +227,11 @@ Connection::GetVariableLimit(int32_t* aResultOut) {
 }
 
 NS_IMETHODIMP
+Connection::SetVariableLimit(int32_t aLimit) {
+  return mBase->SetVariableLimit(aLimit);
+}
+
+NS_IMETHODIMP
 Connection::BeginTransaction() { return mBase->BeginTransaction(); }
 
 NS_IMETHODIMP
@@ -240,6 +251,11 @@ Connection::SetGrowthIncrement(int32_t aIncrement,
   return mBase->SetGrowthIncrement(aIncrement, aDatabase);
 }
 
+NS_IMETHODIMP
+Connection::LoadExtension(const nsACString& aExtensionName,
+                          mozIStorageCompletionCallback* aCallback) {
+  return mBase->LoadExtension(aExtensionName, aCallback);
+}
 NS_IMETHODIMP
 Connection::EnableModule(const nsACString& aModule) {
   return mBase->EnableModule(aModule);
@@ -268,6 +284,13 @@ uint32_t Connection::IncreaseTransactionNestingLevel(
 uint32_t Connection::DecreaseTransactionNestingLevel(
     const mozilla::storage::SQLiteMutexAutoLock& aProofOfLock) {
   return mBase->DecreaseTransactionNestingLevel(aProofOfLock);
+}
+
+NS_IMETHODIMP
+Connection::BackupToFileAsync(nsIFile* aDestinationFile,
+                              mozIStorageCompletionCallback* aCallback) {
+  // async methods are not supported
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 }  // namespace mozilla::dom::cache

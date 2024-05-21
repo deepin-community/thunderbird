@@ -7,18 +7,20 @@
  * @module utils/source
  */
 
-const { getUnicodeUrl } = require("devtools/client/shared/unicode-url");
+const {
+  getUnicodeUrl,
+} = require("resource://devtools/client/shared/unicode-url.js");
+const {
+  micromatch,
+} = require("resource://devtools/client/shared/vendor/micromatch/micromatch.js");
 
-import { isOriginalSource } from "../utils/source-maps";
+import { getRelativePath } from "../utils/sources-tree/utils";
 import { endTruncateStr } from "./utils";
 import { truncateMiddleText } from "../utils/text";
-import { parse as parseURL } from "../utils/url";
 import { memoizeLast } from "../utils/memoizeLast";
 import { renderWasmText } from "./wasm";
-import { toEditorLine } from "./editor";
+import { toEditorLine } from "./editor/index";
 export { isMinified } from "./isMinified";
-import { getURL, getFileExtension } from "./sources-tree";
-import { features } from "./prefs";
 
 import { isFulfilled } from "./async-value";
 
@@ -31,10 +33,10 @@ export const sourceTypes = {
   vue: "vue",
 };
 
-const javascriptLikeExtensions = ["marko", "es6", "vue", "jsm"];
+export const javascriptLikeExtensions = new Set(["marko", "es6", "vue", "jsm"]);
 
 function getPath(source) {
-  const { path } = getURL(source);
+  const { path } = source.displayURL;
   let lastIndex = path.lastIndexOf("/");
   let nextToLastIndex = path.lastIndexOf("/", lastIndex - 1);
 
@@ -59,11 +61,86 @@ export function shouldBlackbox(source) {
     return false;
   }
 
-  if (!features.originalBlackbox && isOriginalSource(source)) {
-    return false;
+  return true;
+}
+
+/**
+ * Checks if the frame is within a line ranges which are blackboxed
+ * in the source.
+ *
+ * @param {Object}  frame
+ *                  The current frame
+ * @param {Object}  blackboxedRanges
+ *                  The currently blackboxedRanges for all the sources.
+ * @param {Boolean} isFrameBlackBoxed
+ *                  If the frame is within the blackboxed range
+ *                  or not.
+ */
+export function isFrameBlackBoxed(frame, blackboxedRanges) {
+  const { source } = frame.location;
+  return (
+    !!blackboxedRanges[source.url] &&
+    (!blackboxedRanges[source.url].length ||
+      !!findBlackBoxRange(source, blackboxedRanges, {
+        start: frame.location.line,
+        end: frame.location.line,
+      }))
+  );
+}
+
+/**
+ * Checks if a blackbox range exist for the line range.
+ * That is if any start and end lines overlap any of the
+ * blackbox ranges
+ *
+ * @param {Object}  source
+ *                  The current selected source
+ * @param {Object}  blackboxedRanges
+ *                  The store of blackboxedRanges
+ * @param {Object}  lineRange
+ *                  The start/end line range `{ start: <Number>, end: <Number> }`
+ * @return {Object} blackboxRange
+ *                  The first matching blackbox range that all or part of the
+ *                  specified lineRange sits within.
+ */
+export function findBlackBoxRange(source, blackboxedRanges, lineRange) {
+  const ranges = blackboxedRanges[source.url];
+  if (!ranges || !ranges.length) {
+    return null;
   }
 
-  return true;
+  return ranges.find(
+    range =>
+      (lineRange.start >= range.start.line &&
+        lineRange.start <= range.end.line) ||
+      (lineRange.end >= range.start.line && lineRange.end <= range.end.line)
+  );
+}
+
+/**
+ * Checks if a source line is blackboxed
+ * @param {Array} ranges - Line ranges that are blackboxed
+ * @param {Number} line
+ * @param {Boolean} isSourceOnIgnoreList - is the line in a source that is on
+ *                                         the sourcemap ignore lists then the line is blackboxed.
+ * @returns boolean
+ */
+export function isLineBlackboxed(ranges, line, isSourceOnIgnoreList) {
+  if (isSourceOnIgnoreList) {
+    return true;
+  }
+
+  if (!ranges) {
+    return false;
+  }
+  // If the whole source is ignored , then the line is
+  // ignored.
+  if (!ranges.length) {
+    return true;
+  }
+  return !!ranges.find(
+    range => line >= range.start.line && line <= range.end.line
+  );
 }
 
 /**
@@ -77,10 +154,10 @@ export function shouldBlackbox(source) {
  * @static
  */
 export function isJavaScript(source, content) {
-  const extension = getFileExtension(source).toLowerCase();
+  const extension = source.displayURL.fileExtension;
   const contentType = content.type === "wasm" ? null : content.contentType;
   return (
-    javascriptLikeExtensions.includes(extension) ||
+    javascriptLikeExtensions.has(extension) ||
     !!(contentType && contentType.includes("javascript"))
   );
 }
@@ -95,15 +172,6 @@ export function isPretty(source) {
 
 export function isPrettyURL(url) {
   return url ? url.endsWith(":formatted") : false;
-}
-
-export function isThirdParty(source) {
-  const { url } = source;
-  if (!source || !url) {
-    return false;
-  }
-
-  return url.includes("node_modules") || url.includes("bower_components");
 }
 
 /**
@@ -141,39 +209,14 @@ function resolveFileURL(
 }
 
 export function getFormattedSourceId(id) {
-  const firstIndex = id.indexOf("/");
-  const secondIndex = id.indexOf("/", firstIndex);
-  return `SOURCE${id.slice(firstIndex, secondIndex)}`;
+  return id.substring(id.lastIndexOf("/") + 1);
 }
 
 /**
- * Gets a readable filename from a source URL for display purposes.
- * If the source does not have a URL, the source ID will be returned instead.
- *
- * @memberof utils/source
- * @static
+ * Provides a middle-truncated filename displayed in Tab titles
  */
-export function getFilename(
-  source,
-  rawSourceURL = getRawSourceURL(source.url)
-) {
-  const { id } = source;
-  if (!rawSourceURL) {
-    return getFormattedSourceId(id);
-  }
-
-  const { filename } = getURL(source);
-  return getRawSourceURL(filename);
-}
-
-/**
- * Provides a middle-trunated filename
- *
- * @memberof utils/source
- * @static
- */
-export function getTruncatedFileName(source, querystring = "", length = 30) {
-  return truncateMiddleText(`${getFilename(source)}${querystring}`, length);
+export function getTruncatedFileName(source) {
+  return truncateMiddleText(source.longName, 30);
 }
 
 /* Gets path for files with same filename for editor tabs, breakpoints, etc.
@@ -185,18 +228,16 @@ export function getTruncatedFileName(source, querystring = "", length = 30) {
 
 export function getDisplayPath(mySource, sources) {
   const rawSourceURL = getRawSourceURL(mySource.url);
-  const filename = getFilename(mySource, rawSourceURL);
+  const filename = mySource.shortName;
 
   // Find sources that have the same filename, but different paths
   // as the original source
   const similarSources = sources.filter(source => {
     const rawSource = getRawSourceURL(source.url);
-    return (
-      rawSourceURL != rawSource && filename == getFilename(source, rawSource)
-    );
+    return rawSourceURL != rawSource && filename == source.shortName;
   });
 
-  if (similarSources.length == 0) {
+  if (!similarSources.length) {
     return undefined;
   }
 
@@ -247,32 +288,6 @@ export function getFileURL(source, truncate = true) {
   return resolveFileURL(url, getUnicodeUrl, truncate);
 }
 
-const contentTypeModeMap = {
-  "text/javascript": { name: "javascript" },
-  "text/typescript": { name: "javascript", typescript: true },
-  "text/coffeescript": { name: "coffeescript" },
-  "text/typescript-jsx": {
-    name: "jsx",
-    base: { name: "javascript", typescript: true },
-  },
-  "text/jsx": { name: "jsx" },
-  "text/x-elm": { name: "elm" },
-  "text/x-clojure": { name: "clojure" },
-  "text/x-clojurescript": { name: "clojure" },
-  "text/wasm": { name: "text" },
-  "text/html": { name: "htmlmixed" },
-};
-
-export function getSourcePath(url) {
-  if (!url) {
-    return "";
-  }
-
-  const { path, href } = parseURL(url);
-  // for URLs like "about:home" the path is null so we pass the full href
-  return path || href;
-}
-
 /**
  * Returns amount of lines in the source. If source is a WebAssembly binary,
  * the function returns amount of bytes.
@@ -292,104 +307,6 @@ export function getSourceLineCount(content) {
   }
 
   return count + 1;
-}
-
-/**
- *
- * Checks if a source is minified based on some heuristics
- * @param key
- * @param text
- * @return boolean
- * @memberof utils/source
- * @static
- */
-
-/**
- *
- * Returns Code Mirror mode for source content type
- * @param contentType
- * @return String
- * @memberof utils/source
- * @static
- */
-// eslint-disable-next-line complexity
-export function getMode(source, content, symbols) {
-  const extension = getFileExtension(source);
-
-  if (content.type !== "text") {
-    return { name: "text" };
-  }
-
-  const { contentType, value: text } = content;
-
-  if (extension === "jsx" || (symbols && symbols.hasJsx)) {
-    if (symbols && symbols.hasTypes) {
-      return { name: "text/typescript-jsx" };
-    }
-    return { name: "jsx" };
-  }
-
-  if (symbols && symbols.hasTypes) {
-    if (symbols.hasJsx) {
-      return { name: "text/typescript-jsx" };
-    }
-
-    return { name: "text/typescript" };
-  }
-
-  const languageMimeMap = [
-    { ext: "c", mode: "text/x-csrc" },
-    { ext: "kt", mode: "text/x-kotlin" },
-    { ext: "cpp", mode: "text/x-c++src" },
-    { ext: "m", mode: "text/x-objectivec" },
-    { ext: "rs", mode: "text/x-rustsrc" },
-    { ext: "hx", mode: "text/x-haxe" },
-  ];
-
-  // check for C and other non JS languages
-  const result = languageMimeMap.find(({ ext }) => extension === ext);
-  if (result !== undefined) {
-    return { name: result.mode };
-  }
-
-  // if the url ends with a known Javascript-like URL, provide JavaScript mode.
-  // uses the first part of the URL to ignore query string
-  if (javascriptLikeExtensions.find(ext => ext === extension)) {
-    return { name: "javascript" };
-  }
-
-  // Use HTML mode for files in which the first non whitespace
-  // character is `<` regardless of extension.
-  const isHTMLLike = text.match(/^\s*</);
-  if (!contentType) {
-    if (isHTMLLike) {
-      return { name: "htmlmixed" };
-    }
-    return { name: "text" };
-  }
-
-  // // @flow or /* @flow */
-  if (text.match(/^\s*(\/\/ @flow|\/\* @flow \*\/)/)) {
-    return contentTypeModeMap["text/typescript"];
-  }
-
-  if (/script|elm|jsx|clojure|wasm|html/.test(contentType)) {
-    if (contentType in contentTypeModeMap) {
-      return contentTypeModeMap[contentType];
-    }
-
-    return contentTypeModeMap["text/javascript"];
-  }
-
-  if (isHTMLLike) {
-    return { name: "htmlmixed" };
-  }
-
-  return { name: "text" };
-}
-
-export function isInlineScript(source) {
-  return source.introductionType === "scriptElement";
 }
 
 function getNthLine(str, lineNum) {
@@ -436,7 +353,27 @@ export function getTextAtPosition(sourceId, asyncContent, location) {
   return lineText.slice(column, column + 100).trim();
 }
 
-export function getSourceClassnames(source, symbols) {
+/**
+ * Compute the CSS classname string to use for the icon of a given source.
+ *
+ * @param {Object} source
+ *        The reducer source object.
+ * @param {Object} symbols
+ *        The reducer symbol object for the given source.
+ * @param {Boolean} isBlackBoxed
+ *        To be set to true, when the given source is blackboxed.
+ * @param {Boolean} hasPrettyTab
+ *        To be set to true, if the given source isn't the pretty printed one,
+ *        but another tab for that source is opened pretty printed.
+ * @return String
+ *        The classname to use.
+ */
+export function getSourceClassnames(
+  source,
+  symbols,
+  isBlackBoxed,
+  hasPrettyTab = false
+) {
   // Conditionals should be ordered by priority of icon!
   const defaultClassName = "file";
 
@@ -444,15 +381,18 @@ export function getSourceClassnames(source, symbols) {
     return defaultClassName;
   }
 
-  if (isPretty(source)) {
+  // In the SourceTree, we don't show the pretty printed sources,
+  // but still want to show the pretty print icon when a pretty printed tab
+  // for the current source is opened.
+  if (isPretty(source) || hasPrettyTab) {
     return "prettyPrint";
   }
 
-  if (source.isBlackBoxed) {
+  if (isBlackBoxed) {
     return "blackBox";
   }
 
-  if (symbols && !symbols.loading && symbols.framework) {
+  if (symbols && symbols.framework) {
     return symbols.framework.toLowerCase();
   }
 
@@ -460,11 +400,11 @@ export function getSourceClassnames(source, symbols) {
     return "extension";
   }
 
-  return sourceTypes[getFileExtension(source)] || defaultClassName;
+  return sourceTypes[source.displayURL.fileExtension] || defaultClassName;
 }
 
 export function getRelativeUrl(source, root) {
-  const { group, path } = getURL(source);
+  const { group, path } = source.displayURL;
   if (!root) {
     return path;
   }
@@ -474,56 +414,36 @@ export function getRelativeUrl(source, root) {
   return url.slice(url.indexOf(root) + root.length + 1);
 }
 
-export function underRoot(source, root, threads) {
-  // source.url doesn't include thread actor ID, so remove the thread actor ID from the root
-  threads.forEach(thread => {
-    if (root.includes(thread.actor)) {
-      root = root.slice(thread.actor.length + 1);
-    }
-  });
-
-  if (source.url && source.url.includes("chrome://")) {
-    const { group, path } = getURL(source);
-    return (group + path).includes(root);
-  }
-
-  return !!source.url && source.url.includes(root);
-}
-
-export function isOriginal(source) {
-  // Pretty-printed sources are given original IDs, so no need
-  // for any additional check
-  return isOriginalSource(source);
-}
-
-export function isGenerated(source) {
-  return !isOriginal(source);
-}
-
-export function getSourceQueryString(source) {
-  if (!source) {
-    return;
-  }
-
-  return parseURL(getRawSourceURL(source.url)).search;
-}
-
 export function isUrlExtension(url) {
   return url.includes("moz-extension:") || url.includes("chrome-extension");
 }
 
-export function isExtensionDirectoryPath(url) {
-  if (isUrlExtension(url)) {
-    const urlArr = url.replace(/\/+/g, "/").split("/");
-    let extensionIndex = urlArr.indexOf("moz-extension:");
-    if (extensionIndex === -1) {
-      extensionIndex = urlArr.indexOf("chrome-extension:");
-    }
-    return !urlArr[extensionIndex + 2];
+/**
+* Checks that source url matches one of the glob patterns
+*
+* @param {Object} source
+* @param {String} excludePatterns
+                  String of comma-seperated glob patterns
+* @return {return} Boolean value specifies if the string matches any
+                 of the patterns.
+*/
+export function matchesGlobPatterns(source, excludePatterns) {
+  if (!excludePatterns) {
+    return false;
   }
-}
+  const patterns = excludePatterns
+    .split(",")
+    .map(pattern => pattern.trim())
+    .filter(pattern => pattern !== "");
 
-export function getPlainUrl(url) {
-  const queryStart = url.indexOf("?");
-  return queryStart !== -1 ? url.slice(0, queryStart) : url;
+  if (!patterns.length) {
+    return false;
+  }
+
+  return micromatch.contains(
+    // Makes sure we format the url or id exactly the way its displayed in the search ui,
+    // as user wil usually create glob patterns based on what is seen in the ui.
+    source.url ? getRelativePath(source.url) : getFormattedSourceId(source.id),
+    patterns
+  );
 }

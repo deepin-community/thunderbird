@@ -34,6 +34,9 @@ class nsStreamConverter : public nsIStreamConverter,
   // nsIRequestObserver methods
   NS_DECL_NSIREQUESTOBSERVER
 
+  // nsIThreadRetargetableStreamListener methods
+  NS_DECL_NSITHREADRETARGETABLESTREAMLISTENER
+
   ////////////////////////////////////////////////////////////////////////////
   // nsStreamConverter specific methods:
   ////////////////////////////////////////////////////////////////////////////
@@ -71,7 +74,6 @@ class nsStreamConverter : public nsIStreamConverter,
 
   nsCString
       mOverrideFormat;  // this is a possible override for emitter creation
-  bool mWrapperOutput;  // Should we output the frame split message display
 
   nsCOMPtr<nsIMimeStreamConverterListener> mMimeStreamConverterListener;
   bool mForwardInline;

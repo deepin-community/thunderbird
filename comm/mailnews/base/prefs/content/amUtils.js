@@ -5,43 +5,43 @@
 
 /* import-globals-from am-smtp.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
 function BrowseForLocalFolders() {
-  const nsIFilePicker = Ci.nsIFilePicker;
-  const nsIFile = Ci.nsIFile;
-
   var currentFolderTextBox = document.getElementById("server.localPath");
-  var fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+  var fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
 
   fp.init(
-    window,
+    window.browsingContext,
     document
       .getElementById("browseForLocalFolder")
       .getAttribute("filepickertitle"),
-    nsIFilePicker.modeGetFolder
+    Ci.nsIFilePicker.modeGetFolder
   );
 
-  var currentFolder = Cc["@mozilla.org/file/local;1"].createInstance(nsIFile);
+  var currentFolder = Cc["@mozilla.org/file/local;1"].createInstance(
+    Ci.nsIFile
+  );
   try {
     currentFolder.initWithPath(currentFolderTextBox.value);
     fp.displayDirectory = currentFolder;
   } catch (e) {
-    Cu.reportError(
+    console.error(
       `Failed to set folder path from value=${currentFolderTextBox.value}\n`
     );
   }
 
   fp.open(rv => {
-    if (rv != nsIFilePicker.returnOK || !fp.file) {
+    if (rv != Ci.nsIFilePicker.returnOK || !fp.file) {
       return;
     }
     // Retrieve the selected folder.
-    let selectedFolder = fp.file;
+    const selectedFolder = fp.file;
 
     // Check if the folder can be used for mail storage.
     if (!top.checkDirectoryIsUsable(selectedFolder)) {
@@ -56,9 +56,10 @@ function BrowseForLocalFolders() {
 /**
  * Return server/folder name formatted with server name if needed.
  *
- * @param aTargetFolder  nsIMsgFolder to format name for
- *                       If target.isServer then only its name is returned.
- *                       Otherwise return the name as "<foldername> on <servername>".
+ * @param {nsIMsgFolder} aTargetFolder - nsIMsgFolder to format name for
+   @returns {string} THe formatted name.
+ *   If target.isServer then only its name is returned.
+ *   Otherwise return the name as "<foldername> on <servername>".
  */
 function prettyFolderName(aTargetFolder) {
   if (aTargetFolder.isServer) {
@@ -76,10 +77,11 @@ function prettyFolderName(aTargetFolder) {
 /**
  * Checks validity of junk target server name and folder.
  *
- * @param aTargetURI  the URI specification to check
- * @param aIsServer   true if the URI specifies only a server (without folder)
+ * @param {string} aTargetURI - The URI specification to check.
+ * @param {boolean} aIsServer - true if the URI specifies only a server
+ *   (without folder)
  *
- * @return  the value of aTargetURI if it is valid (usable), otherwise null
+ * @returns {string} the value of aTargetURI if it is valid (usable), otherwise null
  */
 function checkJunkTargetFolder(aTargetURI, aIsServer) {
   try {
@@ -106,10 +108,10 @@ function checkJunkTargetFolder(aTargetURI, aIsServer) {
  * Finds a usable target for storing Junk mail.
  * If the passed in server URI is not usable, choose Local Folders.
  *
- * @param aTargetURI  the URI of a server or folder to try first
- * @param aIsServer   true if the URI specifies only a server (without folder)
+ * @param {string} aTargetURI - The URI of a server or folder to try first
+ * @param {boolean} aIsServer - true if the URI specifies only a server (without folder)
  *
- * @return  the server/folder URI of a usable target for storing Junk
+ * @returns {string} the server/folder URI of a usable target for storing Junk
  */
 function chooseJunkTargetFolder(aTargetURI, aIsServer) {
   let server = null;
@@ -136,18 +138,21 @@ function chooseJunkTargetFolder(aTargetURI, aIsServer) {
  * folder/account. Only returns the new safe values. It is up to the caller
  * to push them to the proper elements/prefs.
  *
- * @param aSpamActionTargetAccount  The value of the server.*.spamActionTargetAccount pref value (URI).
- * @param aSpamActionTargetFolder   The value of the server.*.spamActionTargetFolder pref value (URI).
- * @param aProposedTarget           The URI of a new target to try.
- * @param aMoveTargetModeValue      The value of the server.*.moveTargetMode pref value (0/1).
- * @param aServerSpamSettings       The nsISpamSettings object of any server
- *                                  (used just for the MOVE_TARGET_MODE_* constants).
- * @param aMoveOnSpam               The server.*.moveOnSpam pref value (bool).
+ * @param {string} aSpamActionTargetAccount - The value of the
+ *   server.*.spamActionTargetAccount pref value (URI).
+ * @param {string} aSpamActionTargetFolder - The value of the
+ *   server.*.spamActionTargetFolder pref value (URI).
+ * @param {string} aProposedTarget - The URI of a new target to try.
+ * @param {integer} aMoveTargetModeValue - The value of the
+ *   server.*.moveTargetMode pref value (0/1).
+ * @param {nsISpamSettings} aServerSpamSettings - The nsISpamSettings object
+ *    of any server (used just for the MOVE_TARGET_MODE_* constants).
+ * @param {boolean} aMoveOnSpam - The server.*.moveOnSpam pref value).
  *
- * @return  an array containing:
- *          newTargetAccount new safe junk target account
- *          newTargetAccount new safe junk target folder
- *          newMoveOnSpam    new moveOnSpam value
+ * @returns {object[]} an array containing:
+ *   newTargetAccount new safe junk target account
+ *   newTargetAccount new safe junk target folder
+ *   newMoveOnSpam    new moveOnSpam value
  */
 function sanitizeJunkTargets(
   aSpamActionTargetAccount,
@@ -195,10 +200,10 @@ function sanitizeJunkTargets(
  * Opens Preferences (Options) dialog on the Advanced pane, General tab
  * so that the user sees where the global receipts settings can be found.
  *
- * @param aTBPaneId       Thunderbird pref paneID to open.
- * @param aTBScrollPaneTo Thunderbird ID of the element to scroll into view.
- * @param aTBOtherArgs    Other arguments to send to the pref tab.
- * @param aSMPaneId       Seamonkey pref pane to open.
+ * @param {string} aTBPaneId - Thunderbird pref paneID to open.
+ * @param {string} aTBScrollPaneTo - Thunderbird ID of the element to scroll into view.
+ * @param {any} aTBOtherArgs - Other arguments to send to the pref tab.
+ * @param {string} aSMPaneId - Seamonkey pref pane to open.
  */
 function openPrefsFromAccountManager(
   aTBPaneId,
@@ -206,7 +211,7 @@ function openPrefsFromAccountManager(
   aTBOtherArgs,
   aSMPaneId
 ) {
-  let win =
+  const win =
     Services.wm.getMostRecentWindow("mail:3pane") ||
     Services.wm.getMostRecentWindow("mail:messageWindow") ||
     Services.wm.getMostRecentWindow("msgcompose");
@@ -227,12 +232,12 @@ function openPrefsFromAccountManager(
 /**
  * Check if the given account name already exists in any account.
  *
- * @param aAccountName  The account name string to look for.
- * @param aAccountKey   Optional. The key of an account that is skipped when
- *                      searching the name. If unset, do not skip any account.
+ * @param {string} aAccountName - The account name string to look for.
+ * @param {string} [aAccountKey] - The key of an account that is skipped when
+ *   searching the name. If unset, do not skip any account.
  */
 function accountNameExists(aAccountName, aAccountKey) {
-  for (let account of MailServices.accounts.accounts) {
+  for (const account of MailServices.accounts.accounts) {
     if (
       account.key != aAccountKey &&
       account.incomingServer &&
@@ -248,14 +253,14 @@ function accountNameExists(aAccountName, aAccountKey) {
 /**
  * Open a dialog to edit properties of an SMTP server.
  *
- * @param aServer {nsISmtpServer}  The server to edit.
- * @return {object}                Object with result member to indicate whether 'OK'
- *                                 was clicked and addSmtpServer with key of newly created server.
+ * @param {nsISmtpServer} aServer - The server to edit.
+ * @returns {object} Object with result member to indicate whether 'OK'
+ *   was clicked and addSmtpServer with key of newly created server.
  */
 function editSMTPServer(aServer) {
-  let args = { server: aServer, result: false, addSmtpServer: "" };
+  const args = { server: aServer, result: false, addSmtpServer: "" };
 
-  let onCloseSMTPDialog = function() {
+  const onCloseSMTPDialog = function () {
     if (args.result) {
       gSmtpServerListWindow.refreshServerList(aServer, true);
     }

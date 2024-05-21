@@ -7,16 +7,23 @@
 
 #include "FetchPreloader.h"
 
+#include "mozilla/Assertions.h"
+#include "mozilla/CORSMode.h"
 #include "mozilla/DebugOnly.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/LoadInfo.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/Unused.h"
+#include "mozilla/dom/ReferrerInfo.h"
 #include "nsContentPolicyUtils.h"
+#include "nsContentSecurityManager.h"
 #include "nsContentUtils.h"
 #include "nsIChannel.h"
+#include "nsIChildChannel.h"
 #include "nsIClassOfService.h"
 #include "nsIHttpChannel.h"
+#include "nsIHttpChannelInternal.h"
+#include "nsISupportsPriority.h"
 #include "nsITimedChannel.h"
 #include "nsNetUtil.h"
 #include "nsStringStream.h"
@@ -35,7 +42,9 @@ FetchPreloader::FetchPreloader(nsContentPolicyType aContentPolicyType)
 nsresult FetchPreloader::OpenChannel(const PreloadHashKey& aKey, nsIURI* aURI,
                                      const CORSMode aCORSMode,
                                      const dom::ReferrerPolicy& aReferrerPolicy,
-                                     dom::Document* aDocument) {
+                                     dom::Document* aDocument,
+                                     uint64_t aEarlyHintPreloaderId,
+                                     int32_t aSupportsPriorityValue) {
   nsresult rv;
   nsCOMPtr<nsIChannel> channel;
 
@@ -60,7 +69,8 @@ nsresult FetchPreloader::OpenChannel(const PreloadHashKey& aKey, nsIURI* aURI,
   }
 
   rv = CreateChannel(getter_AddRefs(channel), aURI, aCORSMode, aReferrerPolicy,
-                     aDocument, loadGroup, prompter);
+                     aDocument, loadGroup, prompter, aEarlyHintPreloaderId,
+                     aSupportsPriorityValue);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Doing this now so that we have the channel and tainting set on it properly
@@ -71,29 +81,33 @@ nsresult FetchPreloader::OpenChannel(const PreloadHashKey& aKey, nsIURI* aURI,
     return rv;
   }
 
-  PrioritizeAsPreload(channel);
+  FetchPreloader::PrioritizeAsPreload(channel);
   AddLoadBackgroundFlag(channel);
 
   NotifyOpen(aKey, channel, aDocument, true);
 
+  if (aEarlyHintPreloaderId) {
+    nsCOMPtr<nsIHttpChannelInternal> channelInternal =
+        do_QueryInterface(channel);
+    NS_ENSURE_TRUE(channelInternal != nullptr, NS_ERROR_FAILURE);
+
+    rv = channelInternal->SetEarlyHintPreloaderId(aEarlyHintPreloaderId);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
   return mAsyncConsumeResult = rv = channel->AsyncOpen(this);
 }
 
 nsresult FetchPreloader::CreateChannel(
     nsIChannel** aChannel, nsIURI* aURI, const CORSMode aCORSMode,
     const dom::ReferrerPolicy& aReferrerPolicy, dom::Document* aDocument,
-    nsILoadGroup* aLoadGroup, nsIInterfaceRequestor* aCallbacks) {
+    nsILoadGroup* aLoadGroup, nsIInterfaceRequestor* aCallbacks,
+    uint64_t aEarlyHintPreloaderId, int32_t aSupportsPriorityValue) {
   nsresult rv;
 
   nsSecurityFlags securityFlags =
-      aCORSMode == CORS_NONE
-          ? nsILoadInfo::SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL
-          : nsILoadInfo::SEC_REQUIRE_CORS_INHERITS_SEC_CONTEXT;
-  if (aCORSMode == CORS_ANONYMOUS) {
-    securityFlags |= nsILoadInfo::SEC_COOKIES_SAME_ORIGIN;
-  } else if (aCORSMode == CORS_USE_CREDENTIALS) {
-    securityFlags |= nsILoadInfo::SEC_COOKIES_INCLUDE;
-  }
+      nsContentSecurityManager::ComputeSecurityFlags(
+          aCORSMode, nsContentSecurityManager::CORSSecurityMapping::
+                         CORS_NONE_MAPS_TO_DISABLED_CORS_CHECKS);
 
   nsCOMPtr<nsIChannel> channel;
   rv = NS_NewChannelWithTriggeringPrincipal(
@@ -104,6 +118,8 @@ nsresult FetchPreloader::CreateChannel(
     return rv;
   }
 
+  AdjustPriority(channel, aSupportsPriorityValue);
+
   if (nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(channel)) {
     nsCOMPtr<nsIReferrerInfo> referrerInfo = new dom::ReferrerInfo(
         aDocument->GetDocumentURIAsReferrer(), aReferrerPolicy);
@@ -112,11 +128,24 @@ nsresult FetchPreloader::CreateChannel(
   }
 
   if (nsCOMPtr<nsITimedChannel> timedChannel = do_QueryInterface(channel)) {
-    timedChannel->SetInitiatorType(u"link"_ns);
+    if (aEarlyHintPreloaderId) {
+      timedChannel->SetInitiatorType(u"early-hints"_ns);
+    } else {
+      timedChannel->SetInitiatorType(u"link"_ns);
+    }
   }
 
   channel.forget(aChannel);
   return NS_OK;
+}
+
+// static
+void FetchPreloader::AdjustPriority(nsIChannel* aChannel,
+                                    int32_t aSupportsPriorityValue) {
+  if (nsCOMPtr<nsISupportsPriority> supportsPriority{
+          do_QueryInterface(aChannel)}) {
+    supportsPriority->SetPriority(aSupportsPriorityValue);
+  }
 }
 
 nsresult FetchPreloader::CheckContentPolicy(nsIURI* aURI,
@@ -130,9 +159,8 @@ nsresult FetchPreloader::CheckContentPolicy(nsIURI* aURI,
       nsILoadInfo::SEC_ONLY_FOR_EXPLICIT_CONTENTSEC_CHECK, mContentPolicyType);
 
   int16_t shouldLoad = nsIContentPolicy::ACCEPT;
-  nsresult rv =
-      NS_CheckContentLoadPolicy(aURI, secCheckLoadInfo, ""_ns, &shouldLoad,
-                                nsContentUtils::GetContentPolicy());
+  nsresult rv = NS_CheckContentLoadPolicy(aURI, secCheckLoadInfo, &shouldLoad,
+                                          nsContentUtils::GetContentPolicy());
   if (NS_SUCCEEDED(rv) && NS_CP_ACCEPTED(shouldLoad)) {
     return NS_OK;
   }
@@ -170,8 +198,6 @@ void FetchPreloader::PrioritizeAsPreload(nsIChannel* aChannel) {
     cos->AddClassFlags(nsIClassOfService::Unblocked);
   }
 }
-
-void FetchPreloader::PrioritizeAsPreload() { PrioritizeAsPreload(Channel()); }
 
 // nsIRequestObserver + nsIStreamListener
 

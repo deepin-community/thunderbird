@@ -1,4 +1,4 @@
-add_task(async function() {
+add_task(async function () {
   const doc = new DOMParser().parseFromString("<p>dadada</p>", "text/html");
 
   let mgr = Cc["@mozilla.org/memory-reporter-manager;1"].getService(
@@ -16,5 +16,5 @@ add_task(async function() {
   await new Promise(r =>
     mgr.getReports(handleReport, null, r, null, /* anonymized = */ false)
   );
-  ok(amount > 0, "Got data documents amount");
+  Assert.greater(amount, 0, "Got data documents amount");
 });

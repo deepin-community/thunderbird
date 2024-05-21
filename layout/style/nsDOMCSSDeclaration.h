@@ -23,6 +23,7 @@ struct JSContext;
 class JSObject;
 
 namespace mozilla {
+enum class StyleCssRuleType : uint8_t;
 class DeclarationBlock;
 struct DeclarationBlockMutationClosure;
 namespace css {
@@ -35,16 +36,13 @@ class Element;
 }  // namespace dom
 
 struct MutationClosureData {
-  MutationClosureData() : mClosure(nullptr), mElement(nullptr), mModType(0) {}
+  MutationClosureData() = default;
 
-  // mClosure is non-null as long as the closure hasn't been called.
-  // This is needed so that it can be guaranteed that
-  // InlineStyleDeclarationWillChange is always called before
-  // SetInlineStyleDeclaration.
-  void (*mClosure)(void*);
-  mozilla::dom::Element* mElement;
+  mozilla::dom::Element* mElement = nullptr;
   Maybe<nsAttrValue> mOldValue;
-  uint8_t mModType;
+  uint8_t mModType = 0;
+  bool mWasCalled = false;
+  bool mShouldBeCalled = false;
 };
 
 }  // namespace mozilla
@@ -65,8 +63,8 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
    * Method analogous to CSSStyleDeclaration::GetPropertyValue,
    * which obeys all the same restrictions.
    */
-  virtual nsresult GetPropertyValue(const nsCSSPropertyID aPropID,
-                                    nsACString& aValue);
+  virtual void GetPropertyValue(const nsCSSPropertyID aPropID,
+                                nsACString& aValue);
 
   /**
    * Method analogous to CSSStyleDeclaration::SetProperty.  This
@@ -83,8 +81,8 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
   void GetCssText(nsACString& aCssText) override;
   void SetCssText(const nsACString& aCssText, nsIPrincipal* aSubjectPrincipal,
                   mozilla::ErrorResult& aRv) override;
-  NS_IMETHOD GetPropertyValue(const nsACString& propertyName,
-                              nsACString& _retval) override;
+  void GetPropertyValue(const nsACString& propertyName,
+                        nsACString& _retval) override;
   void RemoveProperty(const nsACString& propertyName, nsACString& _retval,
                       mozilla::ErrorResult& aRv) override;
   void GetPropertyPriority(const nsACString& propertyName,
@@ -95,32 +93,6 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
   uint32_t Length() override;
 
   // WebIDL interface for CSS2Properties
-#define CSS_PROP_PUBLIC_OR_PRIVATE(publicname_, privatename_) publicname_
-#define CSS_PROP(id_, method_)                                                 \
-  void Get##method_(nsACString& aValue, mozilla::ErrorResult& rv) {            \
-    rv = GetPropertyValue(eCSSProperty_##id_, aValue);                         \
-  }                                                                            \
-                                                                               \
-  void Set##method_(const nsACString& aValue, nsIPrincipal* aSubjectPrincipal, \
-                    mozilla::ErrorResult& aRv) {                               \
-    SetPropertyValue(eCSSProperty_##id_, aValue, aSubjectPrincipal, aRv);      \
-  }
-
-#define CSS_PROP_LIST_EXCLUDE_INTERNAL
-#define CSS_PROP_LIST_EXCLUDE_NOT_IN_STYLE
-#define CSS_PROP_LONGHAND(name_, id_, method_, ...) CSS_PROP(id_, method_)
-#define CSS_PROP_SHORTHAND(name_, id_, method_, ...) CSS_PROP(id_, method_)
-#define CSS_PROP_ALIAS(name_, aliasid_, id_, method_, ...) \
-  CSS_PROP(id_, method_)
-#include "mozilla/ServoCSSPropList.h"
-#undef CSS_PROP_ALIAS
-#undef CSS_PROP_SHORTHAND
-#undef CSS_PROP_LONGHAND
-#undef CSS_PROP_LIST_EXCLUDE_INTERNAL
-#undef CSS_PROP_LIST_EXCLUDE_NOT_IN_STYLE
-#undef CSS_PROP
-#undef CSS_PROP_PUBLIC_OR_PRIVATE
-
   virtual void IndexedGetter(uint32_t aIndex, bool& aFound,
                              nsACString& aPropName) override;
 
@@ -132,7 +104,7 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
     RefPtr<mozilla::URLExtraData> mUrlExtraData;
     nsCompatibility mCompatMode = eCompatibility_FullStandards;
     mozilla::css::Loader* mLoader = nullptr;
-    uint16_t mRuleType{0};
+    mozilla::StyleCssRuleType mRuleType{1 /* Style */};
   };
 
  protected:
@@ -182,7 +154,7 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
   // The RuleType argument is just to avoid a virtual call, since all callers
   // know it statically. Should be equal to aRule->Type().
   static ParsingEnvironment GetParsingEnvironmentForRule(
-      const mozilla::css::Rule* aRule, uint16_t aRuleType);
+      const mozilla::css::Rule* aRule, mozilla::StyleCssRuleType);
 
   nsresult ParsePropertyValue(const nsCSSPropertyID aPropID,
                               const nsACString& aPropValue, bool aIsImportant,

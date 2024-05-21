@@ -10,6 +10,8 @@
 #ifndef nsMsgLocalMailFolder_h__
 #define nsMsgLocalMailFolder_h__
 
+#include "LineReader.h"
+#include "mozilla/Array.h"
 #include "mozilla/Attributes.h"
 #include "nsMsgDBFolder.h" /* include the interface we are going to support */
 #include "nsICopyMessageListener.h"
@@ -61,18 +63,16 @@ struct nsLocalMailCopyState {
   nsCOMPtr<nsIMsgMessageService> m_messageService;
   /// The number of messages in m_messages.
   uint32_t m_totalMsgCount;
-  char* m_dataBuffer;
-  uint32_t m_dataBufferSize;
-  uint32_t m_leftOver;
+  mozilla::Array<char, COPY_BUFFER_SIZE> m_dataBuffer;
+  LineReader m_LineReader;
   bool m_isMove;
-  bool m_isFolder;  // isFolder move/copy
-  bool m_dummyEnvelopeNeeded;
+  bool m_isFolder;            // isFolder move/copy
+  bool m_addXMozillaHeaders;  // Should prepend X-Mozilla-Status et al?
   bool m_copyingMultipleMessages;
   bool m_fromLineSeen;
   bool m_allowUndo;
   bool m_writeFailed;
   bool m_notifyFolderLoaded;
-  bool m_wholeMsgInStream;
   nsCString m_newMsgKeywords;
   nsCOMPtr<nsIMsgDBHdr> m_newHdr;
 };
@@ -82,13 +82,10 @@ struct nsLocalFolderScanState {
   ~nsLocalFolderScanState();
 
   nsCOMPtr<nsIInputStream> m_inputStream;
-  nsCOMPtr<nsISeekableStream> m_seekableStream;
   nsCOMPtr<nsIMsgPluggableStore> m_msgStore;
   nsCString m_header;
   nsCString m_accountKey;
   const char* m_uidl;  // memory is owned by m_header
-  // false if we need a new input stream for each message
-  bool m_streamReusable;
 };
 
 class nsMsgLocalMailFolder : public nsMsgDBFolder,
@@ -117,10 +114,9 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
 
   NS_IMETHOD Compact(nsIUrlListener* aListener,
                      nsIMsgWindow* aMsgWindow) override;
-  NS_IMETHOD CompactAll(nsIUrlListener* aListener, nsIMsgWindow* aMsgWindow,
-                        bool aCompactOfflineAlso) override;
-  NS_IMETHOD EmptyTrash(nsIMsgWindow* msgWindow,
-                        nsIUrlListener* aListener) override;
+  NS_IMETHOD CompactAll(nsIUrlListener* aListener,
+                        nsIMsgWindow* aMsgWindow) override;
+  NS_IMETHOD EmptyTrash(nsIUrlListener* aListener) override;
   NS_IMETHOD DeleteSelf(nsIMsgWindow* msgWindow) override;
   NS_IMETHOD CreateStorageIfMissing(nsIUrlListener* urlListener) override;
   NS_IMETHOD Rename(const nsAString& aNewName,
@@ -182,8 +178,11 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   NS_IMETHOD DownloadMessagesForOffline(
       nsTArray<RefPtr<nsIMsgDBHdr>> const& aMessages,
       nsIMsgWindow* aWindow) override;
+  NS_IMETHOD HasMsgOffline(nsMsgKey msgKey, bool* result) override;
+  NS_IMETHOD GetLocalMsgStream(nsIMsgDBHdr* hdr,
+                               nsIInputStream** stream) override;
   NS_IMETHOD FetchMsgPreviewText(nsTArray<nsMsgKey> const& aKeysToFetch,
-                                 bool aLocalOnly, nsIUrlListener* aUrlListener,
+                                 nsIUrlListener* aUrlListener,
                                  bool* aAsyncResults) override;
   NS_IMETHOD AddKeywordsToMessages(
       const nsTArray<RefPtr<nsIMsgDBHdr>>& aMessages,
@@ -195,11 +194,10 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
 
  protected:
   virtual ~nsMsgLocalMailFolder();
-  nsresult CreateChildFromURI(const nsACString& uri,
-                              nsIMsgFolder** folder) override;
   nsresult CopyFolderAcrossServer(nsIMsgFolder* srcFolder,
                                   nsIMsgWindow* msgWindow,
-                                  nsIMsgCopyServiceListener* listener);
+                                  nsIMsgCopyServiceListener* listener,
+                                  bool moveMsgs);
 
   nsresult CreateSubFolders(nsIFile* path);
   nsresult GetTrashFolder(nsIMsgFolder** trashFolder);
@@ -215,8 +213,6 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   nsresult ConfirmFolderDeletion(nsIMsgWindow* aMsgWindow,
                                  nsIMsgFolder* aFolder, bool* aResult);
 
-  nsresult DeleteMessage(nsISupports* message, nsIMsgWindow* msgWindow,
-                         bool deleteStorage, bool commit);
   nsresult GetDatabase() override;
   // this will set mDatabase, if successful. It will also create a .msf file
   // for an empty local mail folder. It will leave invalid DBs in place, and
@@ -256,12 +252,8 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   bool GetDeleteFromServerOnMove();
   void CopyHdrPropertiesWithSkipList(nsIMsgDBHdr* destHdr, nsIMsgDBHdr* srcHdr,
                                      const nsCString& skipList);
-  nsresult FinishNewLocalMessage(nsIOutputStream* outputStream,
-                                 nsIMsgDBHdr* newHdr,
-                                 nsIMsgPluggableStore* msgStore,
-                                 nsParseMailMessageState* parseMsgState);
+  bool CopyLine(mozilla::Span<const char> line);
 
- protected:
   nsLocalMailCopyState* mCopyState;  // We only allow one of these at a time
   nsCString mType;
   bool mHaveReadNameFromDB;
@@ -272,31 +264,14 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   nsTArray<nsMsgKey> mSpamKeysToMove;
   nsresult setSubfolderFlag(const nsAString& aFolderName, uint32_t flags);
 
+  // Helper fn used by ParseFolder().
+  void FinishUpAfterParseFolder(nsresult status);
+
   // state variables for DownloadMessagesForOffline
 
-  // Do we notify the owning window of Delete's before or after
-  // Adding the new msg?
-#define DOWNLOAD_NOTIFY_FIRST 1
-#define DOWNLOAD_NOTIFY_LAST 2
-
-#ifndef DOWNLOAD_NOTIFY_STYLE
-#  define DOWNLOAD_NOTIFY_STYLE DOWNLOAD_NOTIFY_FIRST
-#endif
-
-  nsCOMArray<nsIMsgDBHdr> mDownloadMessages;
+  nsCOMArray<nsIMsgDBHdr> mDownloadPartialMessages;
   nsCOMPtr<nsIMsgWindow> mDownloadWindow;
-  nsMsgKey mDownloadSelectKey;
-  uint32_t mDownloadState;
-#define DOWNLOAD_STATE_NONE 0
-#define DOWNLOAD_STATE_INITED 1
-#define DOWNLOAD_STATE_GOTMSG 2
-#define DOWNLOAD_STATE_DIDSEL 3
-
-#if DOWNLOAD_NOTIFY_STYLE == DOWNLOAD_NOTIFY_LAST
-  nsMsgKey mDownloadOldKey;
-  nsMsgKey mDownloadOldParent;
-  uint32_t mDownloadOldFlags;
-#endif
+  bool mDownloadInProgress;
 };
 
 #endif  // nsMsgLocalMailFolder_h__

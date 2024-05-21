@@ -6,7 +6,6 @@
 // this file implements the nsMsgFilter interface
 
 #include "msgCore.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgHdr.h"
 #include "nsMsgFilterList.h"  // for kFileVersion
 #include "nsMsgFilter.h"
@@ -23,14 +22,19 @@
 #include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsIMsgFilterService.h"
+#include "nsIMsgNewsFolder.h"
 #include "prmem.h"
 #include "mozilla/ArrayUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
+#include "mozilla/intl/AppDateTimeFormat.h"
 
 static const char* kImapPrefix = "//imap:";
 static const char* kWhitespace = "\b\t\r\n ";
 
-nsMsgRuleAction::nsMsgRuleAction() {}
+nsMsgRuleAction::nsMsgRuleAction()
+    : m_type(nsMsgFilterAction::None),
+      m_priority(nsMsgPriority::notSet),
+      m_junkScore(0) {}
 
 nsMsgRuleAction::~nsMsgRuleAction() {}
 
@@ -51,21 +55,6 @@ nsMsgRuleAction::GetPriority(nsMsgPriorityValue* aResult) {
   NS_ENSURE_TRUE(m_type == nsMsgFilterAction::ChangePriority,
                  NS_ERROR_ILLEGAL_VALUE);
   *aResult = m_priority;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgRuleAction::SetLabel(nsMsgLabelValue aLabel) {
-  NS_ENSURE_TRUE(m_type == nsMsgFilterAction::Label, NS_ERROR_ILLEGAL_VALUE);
-  m_label = aLabel;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgRuleAction::GetLabel(nsMsgLabelValue* aResult) {
-  NS_ENSURE_ARG_POINTER(aResult);
-  NS_ENSURE_TRUE(m_type == nsMsgFilterAction::Label, NS_ERROR_ILLEGAL_VALUE);
-  *aResult = m_label;
   return NS_OK;
 }
 
@@ -136,7 +125,7 @@ NS_IMETHODIMP nsMsgRuleAction::GetCustomAction(
     if (m_customId.IsEmpty()) return NS_ERROR_NOT_INITIALIZED;
     nsresult rv;
     nsCOMPtr<nsIMsgFilterService> filterService =
-        do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     rv = filterService->GetCustomAction(m_customId,
@@ -150,12 +139,12 @@ NS_IMETHODIMP nsMsgRuleAction::GetCustomAction(
 }
 
 nsMsgFilter::nsMsgFilter()
-    : m_temporary(false),
+    : m_type(nsMsgFilterType::InboxRule | nsMsgFilterType::Manual),
+      m_enabled(false),
+      m_temporary(false),
       m_unparseable(false),
       m_filterList(nullptr),
-      m_expressionTree(nullptr) {
-  m_type = nsMsgFilterType::InboxRule | nsMsgFilterType::Manual;
-}
+      m_expressionTree(nullptr) {}
 
 nsMsgFilter::~nsMsgFilter() { delete m_expressionTree; }
 
@@ -445,9 +434,10 @@ nsresult nsMsgFilter::LogRuleHitGeneric(nsIMsgRuleAction* aFilterAction,
   PRExplodedTime exploded;
   PR_ExplodeTime(date, PR_LocalTimeParameters, &exploded);
 
-  mozilla::DateTimeFormat::FormatPRExplodedTime(mozilla::kDateFormatShort,
-                                                mozilla::kTimeFormatLong,
-                                                &exploded, dateValue);
+  mozilla::intl::DateTimeFormat::StyleBag style;
+  style.date = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Short);
+  style.time = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Long);
+  mozilla::intl::AppDateTimeFormat::Format(style, &exploded, dateValue);
 
   (void)aMsgHdr->GetMime2DecodedAuthor(authorValue);
   (void)aMsgHdr->GetMime2DecodedSubject(subjectValue);
@@ -458,7 +448,7 @@ nsresult nsMsgFilter::LogRuleHitGeneric(nsIMsgRuleAction* aFilterAction,
   buffer.SetCapacity(512);
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -575,11 +565,12 @@ nsMsgFilter::MatchHdr(nsIMsgDBHdr* msgHdr, nsIMsgFolder* folder,
                       bool* pResult) {
   NS_ENSURE_ARG_POINTER(folder);
   NS_ENSURE_ARG_POINTER(msgHdr);
-  // use offlineMail because
-  nsresult rv = nsMsgSearchOfflineMail::MatchTermsForFilter(
-      msgHdr, m_termList, "UTF-8", m_scope, db, headers, &m_expressionTree,
-      pResult);
-  return rv;
+  nsCString folderCharset = "UTF-8"_ns;
+  nsCOMPtr<nsIMsgNewsFolder> newsfolder(do_QueryInterface(folder));
+  if (newsfolder) newsfolder->GetCharset(folderCharset);
+  return nsMsgSearchOfflineMail::MatchTermsForFilter(
+      msgHdr, m_termList, folderCharset.get(), m_scope, db, headers,
+      &m_expressionTree, pResult);
 }
 
 NS_IMETHODIMP
@@ -645,7 +636,7 @@ nsresult nsMsgFilter::ConvertMoveOrCopyToFolderValue(
         localMailRoot = rootFolder;
       else {
         nsCOMPtr<nsIMsgAccountManager> accountManager =
-            do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+            do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
         NS_ENSURE_SUCCESS(rv, rv);
         nsCOMPtr<nsIMsgIncomingServer> server;
         rv = accountManager->GetLocalFoldersServer(getter_AddRefs(server));
@@ -758,12 +749,6 @@ nsresult nsMsgFilter::SaveRule(nsIOutputStream* aStream) {
         err = filterList->WriteStrAttr(nsIMsgFilterList::attribActionValue,
                                        priority.get(), aStream);
       } break;
-      case nsMsgFilterAction::Label: {
-        nsMsgLabelValue label;
-        action->GetLabel(&label);
-        err = filterList->WriteIntAttr(nsIMsgFilterList::attribActionValue,
-                                       label, aStream);
-      } break;
       case nsMsgFilterAction::JunkScore: {
         int32_t junkScore;
         action->GetJunkScore(&junkScore);
@@ -795,14 +780,14 @@ nsresult nsMsgFilter::SaveRule(nsIOutputStream* aStream) {
       default:
         break;
     }
+    NS_ENSURE_SUCCESS(err, err);
   }
   // and here the fun begins - file out term list...
   nsAutoCString condition;
   err = MsgTermListToString(m_termList, condition);
-  if (NS_SUCCEEDED(err))
-    err = filterList->WriteStrAttr(nsIMsgFilterList::attribCondition,
-                                   condition.get(), aStream);
-  return err;
+  NS_ENSURE_SUCCESS(err, err);
+  return filterList->WriteStrAttr(nsIMsgFilterList::attribCondition,
+                                  condition.get(), aStream);
 }
 
 // for each action, this table encodes the filterTypes that support the action.
@@ -822,7 +807,6 @@ static struct RuleActionsTableEntry ruleActionsTable[] = {
     {nsMsgFilterAction::KillSubthread, "Ignore subthread"},
     {nsMsgFilterAction::WatchThread, "Watch thread"},
     {nsMsgFilterAction::MarkFlagged, "Mark flagged"},
-    {nsMsgFilterAction::Label, "Label"},
     {nsMsgFilterAction::Reply, "Reply"},
     {nsMsgFilterAction::Forward, "Forward"},
     {nsMsgFilterAction::StopExecution, "Stop execution"},

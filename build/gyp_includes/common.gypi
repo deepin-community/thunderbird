@@ -979,7 +979,7 @@
         # The Mac SDK is set for iOS builds and passed through to Mac
         # sub-builds. This allows the Mac sub-build SDK in an iOS build to be
         # overridden from the command line the same way it is for a Mac build.
-        'mac_sdk%': '<!(<(PYTHON) <(DEPTH)/build/mac/find_sdk.py 10.6)',
+        'mac_sdk%': '',
 
         # iOS SDK and deployment target support.  The iOS 5.0 SDK is actually
         # what is required, but the value is left blank so when it is set in
@@ -2749,8 +2749,6 @@
             ],
             'libraries': [
               '-l<(android_stlport_library)',
-              # Manually link the libgcc.a that the cross compiler uses.
-              '<!(<(android_toolchain)/*-gcc -print-libgcc-file-name)',
               '-lc',
               '-ldl',
               '-lstdc++',

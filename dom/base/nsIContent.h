@@ -17,9 +17,11 @@ class nsIFrame;
 
 namespace mozilla {
 class EventChainPreVisitor;
+class HTMLEditor;
 struct URLExtraData;
 namespace dom {
 struct BindContext;
+struct UnbindContext;
 class ShadowRoot;
 class HTMLSlotElement;
 }  // namespace dom
@@ -28,6 +30,16 @@ enum class IMEEnabled;
 struct IMEState;
 }  // namespace widget
 }  // namespace mozilla
+
+struct Focusable {
+  bool mFocusable = false;
+  // The computed tab index:
+  //         < 0 if not tabbable
+  //         == 0 if in normal tab order
+  //         > 0 can be tabbed to in the order specified by this value
+  int32_t mTabIndex = -1;
+  explicit operator bool() const { return mFocusable; }
+};
 
 // IID for the nsIContent interface
 // Must be kept in sync with xpcom/rust/xpcom/src/interfaces/nonidl.rs
@@ -47,6 +59,7 @@ class nsIContent : public nsINode {
   using IMEEnabled = mozilla::widget::IMEEnabled;
   using IMEState = mozilla::widget::IMEState;
   using BindContext = mozilla::dom::BindContext;
+  using UnbindContext = mozilla::dom::UnbindContext;
 
   void ConstructUbiNode(void* storage) override;
 
@@ -64,7 +77,8 @@ class nsIContent : public nsINode {
 
   NS_DECLARE_STATIC_IID_ACCESSOR(NS_ICONTENT_IID)
 
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL_DELETECYCLECOLLECTABLE
+  NS_DECL_ISUPPORTS_INHERITED
+  NS_IMETHOD_(void) DeleteCycleCollectable(void) final;
 
   NS_DECL_CYCLE_COLLECTION_CLASS(nsIContent)
 
@@ -99,15 +113,10 @@ class nsIContent : public nsINode {
    * from a parent, this will be called after it has been removed from the
    * parent's child list and after the nsIDocumentObserver notifications for
    * the removal have been dispatched.
-   * @param aDeep Whether to recursively unbind the entire subtree rooted at
-   *        this node.  The only time false should be passed is when the
-   *        parent node of the content is being destroyed.
-   * @param aNullParent Whether to null out the parent pointer as well.  This
-   *        is usually desirable.  This argument should only be false while
-   *        recursively calling UnbindFromTree when a subtree is detached.
    * @note This method is safe to call on nodes that are not bound to a tree.
    */
-  virtual void UnbindFromTree(bool aNullParent = true) = 0;
+  virtual void UnbindFromTree(UnbindContext&) = 0;
+  void UnbindFromTree();
 
   enum {
     /**
@@ -116,50 +125,24 @@ class nsIContent : public nsINode {
      *
      * @note the result children order is
      *   1. :before generated node
-     *   2. XBL flattened tree children of this node
+     *   2. Shadow DOM flattened tree children of this node
      *   3. native anonymous nodes
      *   4. :after generated node
      */
     eAllChildren = 0,
 
     /**
-     * All XBL explicit children of the node (see
-     * http://www.w3.org/TR/xbl/#explicit3 ), as well as :before and :after
-     * anonymous content and native anonymous children.
-     *
-     * @note the result children order is
-     *   1. :before generated node
-     *   2. XBL explicit children of the node
-     *   3. native anonymous nodes
-     *   4. :after generated node
+     * Skip native anonymous content created for placeholder of HTML input.
      */
-    eAllButXBL = 1,
-
-    /**
-     * Skip native anonymous content created for placeholder of HTML input,
-     * used in conjunction with eAllChildren or eAllButXBL.
-     */
-    eSkipPlaceholderContent = 2,
+    eSkipPlaceholderContent = 1 << 0,
 
     /**
      * Skip native anonymous content created by ancestor frames of the root
      * element's primary frame, such as scrollbar elements created by the root
      * scroll frame.
      */
-    eSkipDocumentLevelNativeAnonymousContent = 4,
+    eSkipDocumentLevelNativeAnonymousContent = 1 << 1,
   };
-
-  /**
-   * Return either the XBL explicit children of the node or the XBL flattened
-   * tree children of the node, depending on the filter, as well as
-   * native anonymous children.
-   *
-   * @note calling this method with eAllButXBL will return children that are
-   *  also in the eAllButXBL and eAllChildren child lists of other descendants
-   *  of this node in the tree, but those other nodes cannot be reached from the
-   *  eAllButXBL child list.
-   */
-  virtual already_AddRefed<nsINodeList> GetChildren(uint32_t aFilter) = 0;
 
   /**
    * Makes this content anonymous
@@ -241,21 +224,6 @@ class nsIContent : public nsINode {
     return IsMathMLElement() && IsNodeInternal(aFirst, aArgs...);
   }
 
-  bool IsGeneratedContentContainerForBefore() const {
-    return IsRootOfNativeAnonymousSubtree() &&
-           mNodeInfo->NameAtom() == nsGkAtoms::mozgeneratedcontentbefore;
-  }
-
-  bool IsGeneratedContentContainerForAfter() const {
-    return IsRootOfNativeAnonymousSubtree() &&
-           mNodeInfo->NameAtom() == nsGkAtoms::mozgeneratedcontentafter;
-  }
-
-  bool IsGeneratedContentContainerForMarker() const {
-    return IsRootOfNativeAnonymousSubtree() &&
-           mNodeInfo->NameAtom() == nsGkAtoms::mozgeneratedcontentmarker;
-  }
-
   /**
    * Get direct access (but read only) to the text in the text content.
    * NOTE: For elements this is *not* the concatenation of all text children,
@@ -304,17 +272,15 @@ class nsIContent : public nsINode {
    * Also, depending on either the accessibility.tabfocus pref or
    * a system setting (nowadays: Full keyboard access, mac only)
    * some widgets may be focusable but removed from the tab order.
-   * @param  [inout, optional] aTabIndex the computed tab index
-   *         In: default tabindex for element (-1 nonfocusable, == 0 focusable)
-   *         Out: computed tabindex
-   * @param  [optional] aTabIndex the computed tab index
-   *         < 0 if not tabbable
-   *         == 0 if in normal tab order
-   *         > 0 can be tabbed to in the order specified by this value
    * @return whether the content is focusable via mouse, kbd or script.
    */
-  bool IsFocusable(int32_t* aTabIndex = nullptr, bool aWithMouse = false);
-  virtual bool IsFocusableInternal(int32_t* aTabIndex, bool aWithMouse);
+  virtual Focusable IsFocusableWithoutStyle(bool aWithMouse = false);
+
+  // https://html.spec.whatwg.org/multipage/interaction.html#focus-delegate
+  mozilla::dom::Element* GetFocusDelegate(bool aWithMouse) const;
+
+  // https://html.spec.whatwg.org/multipage/interaction.html#autofocus-delegate
+  mozilla::dom::Element* GetAutofocusDelegate(bool aWithMouse) const;
 
   /*
    * Get desired IME state for the content.
@@ -376,6 +342,16 @@ class nsIContent : public nsINode {
    */
   mozilla::dom::HTMLSlotElement* GetAssignedSlotByMode() const;
 
+  mozilla::dom::HTMLSlotElement* GetManualSlotAssignment() const {
+    const nsExtendedContentSlots* slots = GetExistingExtendedContentSlots();
+    return slots ? slots->mManualSlotAssignment : nullptr;
+  }
+
+  void SetManualSlotAssignment(mozilla::dom::HTMLSlotElement* aSlot) {
+    MOZ_ASSERT(aSlot || GetExistingExtendedContentSlots());
+    ExtendedContentSlots()->mManualSlotAssignment = aSlot;
+  }
+
   /**
    * Same as GetFlattenedTreeParentNode, but returns null if the parent is
    * non-nsIContent.
@@ -398,30 +374,6 @@ class nsIContent : public nsINode {
   inline void HandleShadowDOMRelatedRemovalSteps(bool aNullParent);
 
  public:
-  /**
-   * API to check if this is a link that's traversed in response to user input
-   * (e.g. a click event). Specializations for HTML/SVG/generic XML allow for
-   * different types of link in different types of content.
-   *
-   * @param aURI Required out param. If this content is a link, a new nsIURI
-   *             set to this link's URI will be passed out.
-   *
-   * @note The out param, aURI, is guaranteed to be set to a non-null pointer
-   *   when the return value is true.
-   *
-   * XXXjwatt: IMO IsInteractiveLink would be a better name.
-   */
-  virtual bool IsLink(nsIURI** aURI) const = 0;
-
-  /**
-   * Get a pointer to the full href URI (fully resolved and canonicalized,
-   * since it's an nsIURI object) for link elements.
-   *
-   * @return A pointer to the URI or null if the element is not a link or it
-   *         has no HREF attribute.
-   */
-  virtual already_AddRefed<nsIURI> GetHrefURI() const { return nullptr; }
-
   /**
    * This method is called when the parser finishes creating the element.  This
    * particularly means that it has done everything you would expect it to have
@@ -470,19 +422,6 @@ class nsIContent : public nsINode {
   virtual void DoneAddingChildren(bool aHaveNotified) {}
 
   /**
-   * For HTML textarea, select, and object elements, returns true if all
-   * children have been added OR if the element was not created by the parser.
-   * Returns true for all other elements.
-   *
-   * @returns false if the element was created by the parser and
-   *                   it is an HTML textarea, select, or object
-   *                   element and not all children have been added.
-   *
-   * @returns true otherwise.
-   */
-  virtual bool IsDoneAddingChildren() { return true; }
-
-  /**
    * Returns true if an element needs its DoneCreatingElement method to be
    * called after it has been created.
    * @see nsIContent::DoneCreatingElement
@@ -492,15 +431,20 @@ class nsIContent : public nsINode {
    */
   static inline bool RequiresDoneCreatingElement(int32_t aNamespace,
                                                  nsAtom* aName) {
-    if (aNamespace == kNameSpaceID_XHTML &&
-        (aName == nsGkAtoms::input || aName == nsGkAtoms::button ||
-         aName == nsGkAtoms::menuitem || aName == nsGkAtoms::audio ||
-         aName == nsGkAtoms::video)) {
-      MOZ_ASSERT(
-          !RequiresDoneAddingChildren(aNamespace, aName),
-          "Both DoneCreatingElement and DoneAddingChildren on a same element "
-          "isn't supported.");
-      return true;
+    if (aNamespace == kNameSpaceID_XHTML) {
+      if (aName == nsGkAtoms::input || aName == nsGkAtoms::button ||
+          aName == nsGkAtoms::audio || aName == nsGkAtoms::video) {
+        MOZ_ASSERT(!RequiresDoneAddingChildren(aNamespace, aName),
+                   "Both DoneCreatingElement and DoneAddingChildren on a "
+                   "same element isn't supported.");
+        return true;
+      }
+      if (aName->IsDynamic()) {
+        // This could be a form-associated custom element, so check if its
+        // name includes a -.
+        nsDependentString name(aName->GetUTF16String());
+        return name.Contains('-');
+      }
     }
     return false;
   }
@@ -636,14 +580,26 @@ class nsIContent : public nsINode {
 
   void RemovePurple() { mRefCnt.RemovePurple(); }
 
-  bool OwnedOnlyByTheDOMTree() {
+  // Note, currently this doesn't handle the case when frame tree has multiple
+  // references to the nsIContent object.
+  bool OwnedOnlyByTheDOMAndFrameTrees() {
+    return OwnedOnlyByTheDOMTree(GetPrimaryFrame() ? 1 : 0);
+  }
+
+  bool OwnedOnlyByTheDOMTree(uint32_t aExpectedRefs = 0) {
     uint32_t rc = mRefCnt.get();
     if (GetParent()) {
       --rc;
     }
     rc -= GetChildCount();
-    return rc == 0;
+    return rc == aExpectedRefs;
   }
+
+  /**
+   * Use this method with designMode and contentEditable to check if the
+   * node may need spellchecking.
+   */
+  bool InclusiveDescendantMayNeedSpellchecking(mozilla::HTMLEditor* aEditor);
 
  protected:
   /**
@@ -660,7 +616,7 @@ class nsIContent : public nsINode {
     virtual ~nsExtendedContentSlots();
 
     virtual void TraverseExtendedSlots(nsCycleCollectionTraversalCallback&);
-    virtual void UnlinkExtendedSlots();
+    virtual void UnlinkExtendedSlots(nsIContent&);
 
     virtual size_t SizeOfExcludingThis(
         mozilla::MallocSizeOf aMallocSizeOf) const;
@@ -674,11 +630,13 @@ class nsIContent : public nsINode {
      * @see nsIContent::GetAssignedSlot
      */
     RefPtr<mozilla::dom::HTMLSlotElement> mAssignedSlot;
+
+    mozilla::dom::HTMLSlotElement* mManualSlotAssignment = nullptr;
   };
 
   class nsContentSlots : public nsINode::nsSlots {
    public:
-    nsContentSlots() : nsINode::nsSlots(), mExtendedSlots(0) {}
+    nsContentSlots() : mExtendedSlots(0) {}
 
     ~nsContentSlots() {
       if (!(mExtendedSlots & sNonOwningExtendedSlotsFlag)) {
@@ -693,10 +651,10 @@ class nsIContent : public nsINode {
       }
     }
 
-    void Unlink() override {
-      nsINode::nsSlots::Unlink();
+    void Unlink(nsINode& aNode) override {
+      nsINode::nsSlots::Unlink(aNode);
       if (mExtendedSlots) {
-        GetExtendedContentSlots()->UnlinkExtendedSlots();
+        GetExtendedContentSlots()->UnlinkExtendedSlots(*aNode.AsContent());
       }
     }
 
@@ -776,6 +734,13 @@ class nsIContent : public nsINode {
 
 #ifdef MOZ_DOM_LIST
   /**
+   * An alias for List() with default arguments. Since some debuggers can't
+   * figure the default arguments easily, having an out-of-line, non-static
+   * function helps quite a lot.
+   */
+  void Dump();
+
+  /**
    * List the content (and anything it contains) out to the given
    * file stream. Use aIndent as the base indent during formatting.
    */
@@ -804,6 +769,8 @@ class nsIContent : public nsINode {
   // the tabfocus bit field applies to xul elements.
   static bool sTabFocusModelAppliesToXUL;
 };
+
+NON_VIRTUAL_ADDREF_RELEASE(nsIContent)
 
 NS_DEFINE_STATIC_IID_ACCESSOR(nsIContent, NS_ICONTENT_IID)
 

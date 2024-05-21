@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::{ptr::null_mut, slice};
 
 use libc::{fclose, fopen, fread, free, malloc, memset, FILE};
@@ -5,9 +7,11 @@ use libc::{fclose, fopen, fread, free, malloc, memset, FILE};
 use crate::{
     double_to_s15Fixed16Number,
     iccread::*,
+    s15Fixed16Number_to_float,
     transform::get_rgb_colorants,
     transform::DataType,
     transform::{qcms_transform, transform_create},
+    transform_util,
     Intent,
 };
 
@@ -16,6 +20,13 @@ pub extern "C" fn qcms_profile_sRGB() -> *mut Profile {
     let profile = Profile::new_sRGB();
     Box::into_raw(profile)
 }
+
+#[no_mangle]
+pub extern "C" fn qcms_profile_displayP3() -> *mut Profile {
+    let profile = Profile::new_displayP3();
+    Box::into_raw(profile)
+}
+
 
 //XXX: it would be nice if we had a way of ensuring
 // everything in a profile was initialized regardless of how it was created
@@ -31,10 +42,7 @@ pub unsafe extern "C" fn qcms_profile_create_rgb_with_gamma_set(
 ) -> *mut Profile {
     let profile =
         Profile::new_rgb_with_gamma_set(white_point, primaries, redGamma, greenGamma, blueGamma);
-    match profile {
-        Some(profile) => Box::into_raw(profile),
-        None => null_mut(),
-    }
+    profile.map_or_else(null_mut, Box::into_raw)
 }
 
 #[no_mangle]
@@ -61,10 +69,16 @@ pub unsafe extern "C" fn qcms_profile_create_rgb_with_table(
 ) -> *mut Profile {
     let table = slice::from_raw_parts(table, num_entries as usize);
     let profile = Profile::new_rgb_with_table(white_point, primaries, table);
-    match profile {
-        Some(profile) => Box::into_raw(profile),
-        None => null_mut(),
-    }
+    profile.map_or_else(null_mut, Box::into_raw)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn qcms_profile_create_cicp(
+    colour_primaries: u8,
+    transfer_characteristics: u8,
+) -> *mut Profile {
+    Profile::new_cicp(colour_primaries.into(), transfer_characteristics.into())
+        .map_or_else(null_mut, Box::into_raw)
 }
 
 /* qcms_profile_from_memory does not hold a reference to the memory passed in */
@@ -74,12 +88,20 @@ pub unsafe extern "C" fn qcms_profile_from_memory(
     size: usize,
 ) -> *mut Profile {
     let mem = slice::from_raw_parts(mem as *const libc::c_uchar, size);
-    let profile = Profile::new_from_slice(mem);
-    match profile {
-        Some(profile) => Box::into_raw(profile),
-        None => null_mut(),
-    }
+    let profile = Profile::new_from_slice(mem, false);
+    profile.map_or_else(null_mut, Box::into_raw)
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn qcms_profile_from_memory_curves_only(
+    mem: *const libc::c_void,
+    size: usize,
+) -> *mut Profile {
+    let mem = slice::from_raw_parts(mem as *const libc::c_uchar, size);
+    let profile = Profile::new_from_slice(mem, true);
+    profile.map_or_else(null_mut, Box::into_raw)
+}
+
 
 #[no_mangle]
 pub extern "C" fn qcms_profile_get_rendering_intent(profile: &Profile) -> Intent {
@@ -165,14 +187,16 @@ pub unsafe extern "C" fn qcms_profile_from_file(file: *mut FILE) -> *mut Profile
 }
 #[no_mangle]
 pub unsafe extern "C" fn qcms_profile_from_path(path: *const libc::c_char) -> *mut Profile {
-    let mut profile: *mut Profile = std::ptr::null_mut::<Profile>();
-    let file = fopen(path, b"rb\x00" as *const u8 as *const libc::c_char);
-    if !file.is_null() {
-        profile = qcms_profile_from_file(file);
-        fclose(file);
+    if let Ok(Some(boxed_profile)) = std::ffi::CStr::from_ptr(path)
+        .to_str()
+        .map(Profile::new_from_path)
+    {
+        Box::into_raw(boxed_profile)
+    } else {
+        std::ptr::null_mut()
     }
-    profile
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn qcms_data_from_path(
     path: *const libc::c_char,
@@ -275,7 +299,10 @@ pub unsafe extern "C" fn qcms_data_create_rgb_with_gamma(
     // Part1 : write rXYZ, gXYZ and bXYZ
     let colorants = match get_rgb_colorants(white_point, primaries) {
         Some(colorants) => colorants,
-        None => { free(data); return }
+        None => {
+            free(data);
+            return;
+        }
     };
 
     let data = std::slice::from_raw_parts_mut(data as *mut u8, length as usize);
@@ -357,6 +384,124 @@ pub unsafe extern "C" fn qcms_transform_data(
         length,
     );
 }
+/*
+use crate::matrix;
+#[repr(C)]
+#[derive(Clone, Debug, Default)]
+pub struct qcms_mat3r3 {
+    pub rows: [[f32; 3] ; 3],
+}
+impl qcms_mat3r3 {
+    fn from(m: matrix::Matrix) -> qcms_mat3r3 {
+        qcms_mat3r3{
+            rows: [
+                m.row(0),
+                m.row(1),
+                m.row(2),
+            ],
+        }
+    }
+}
+*/
+#[repr(C)]
+#[derive(Clone, Debug, Default)]
+#[allow(clippy::upper_case_acronyms)]
+pub struct qcms_profile_data {
+    pub class_type: u32,
+    pub color_space: u32,
+    pub pcs: u32,
+    pub rendering_intent: Intent,
+    pub red_colorant_xyzd50: [f32; 3],
+    pub blue_colorant_xyzd50: [f32; 3],
+    pub green_colorant_xyzd50: [f32; 3],
+     // Number of samples in the e.g. gamma->linear LUT.
+    pub linear_from_trc_red_samples: i32,
+    pub linear_from_trc_blue_samples: i32,
+    pub linear_from_trc_green_samples: i32,
+}
+
+pub use crate::iccread::Profile as qcms_profile;
+
+#[no_mangle]
+pub extern "C" fn qcms_profile_get_data(
+    profile: &qcms_profile,
+    out_data: &mut qcms_profile_data,
+) {
+    out_data.class_type = profile.class_type;
+    out_data.color_space = profile.color_space;
+    out_data.pcs = profile.pcs;
+    out_data.rendering_intent = profile.rendering_intent;
+
+    fn colorant(c: &XYZNumber) -> [f32;3] {
+        [c.X, c.Y, c.Z].map(s15Fixed16Number_to_float)
+    }
+    out_data.red_colorant_xyzd50 = colorant(&profile.redColorant);
+    out_data.blue_colorant_xyzd50 = colorant(&profile.blueColorant);
+    out_data.green_colorant_xyzd50 = colorant(&profile.greenColorant);
+
+    fn trc_to_samples(trc: &Option<Box<curveType>>) -> i32 {
+        if let Some(ref trc) = *trc {
+            match &**trc {
+                curveType::Curve(v) => {
+                    let len = v.len();
+                    if len <= 1 {
+                        -1
+                    } else {
+                        len as i32
+                    }
+                },
+                curveType::Parametric(_) => -1,
+            }
+        } else {
+            0
+        }
+    }
+    out_data.linear_from_trc_red_samples = trc_to_samples(&profile.redTRC);
+    out_data.linear_from_trc_blue_samples = trc_to_samples(&profile.blueTRC);
+    out_data.linear_from_trc_green_samples = trc_to_samples(&profile.greenTRC);
+}
+
+#[repr(u8)]
+pub enum qcms_color_channel {
+    Red,
+    Green,
+    Blue,
+}
+
+#[no_mangle]
+pub extern "C" fn qcms_profile_get_lut(
+    profile: &qcms_profile,
+    channel: qcms_color_channel, // FYI: UB if you give Rust something out of range!
+    out_begin: *mut f32,
+    out_end: *mut f32,
+) {
+    let out_slice = unsafe {
+        std::slice::from_raw_parts_mut(out_begin, out_end.offset_from(out_begin) as usize)
+    };
+
+    let trc = match channel {
+        qcms_color_channel::Red => &profile.redTRC,
+        qcms_color_channel::Green => &profile.greenTRC,
+        qcms_color_channel::Blue => &profile.blueTRC,
+    };
+
+    let samples_u16 = if let Some(trc) = trc {
+        let trc = &*trc;
+        // Yes, sub-optimal, but easier to implement, and these aren't big or hot:
+        // 1. Ask for a new vec<u16> lut based on the trc.
+        //   * (eat the extra alloc)
+        // 2. Convert the u16s back out to f32s in our slice.
+        //   * (eat the copy and quantization error from f32->u16->f32 roundtrip)
+        transform_util::build_lut_for_linear_from_tf(trc, Some(out_slice.len()))
+    } else {
+        Vec::new()
+    };
+
+    assert_eq!(samples_u16.len(), out_slice.len());
+    for (d, s) in out_slice.iter_mut().zip(samples_u16.into_iter()) {
+        *d = (s as f32) / (u16::MAX as f32);
+    }
+}
 
 pub type icColorSpaceSignature = u32;
 pub const icSigGrayData: icColorSpaceSignature = 0x47524159; // 'GRAY'
@@ -364,7 +509,6 @@ pub const icSigRgbData: icColorSpaceSignature = 0x52474220; // 'RGB '
 pub const icSigCmykData: icColorSpaceSignature = 0x434d594b; // 'CMYK'
 
 pub use crate::iccread::qcms_profile_is_bogus;
-pub use crate::iccread::Profile as qcms_profile;
 pub use crate::transform::{
     qcms_enable_iccv4, qcms_profile_precache_output_transform, qcms_transform_release,
 };

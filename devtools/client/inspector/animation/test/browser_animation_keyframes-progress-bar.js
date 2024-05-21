@@ -54,14 +54,11 @@ const TEST_DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   await addTab(URL_ROOT + "doc_multi_timings.html");
   await removeAnimatedElementsExcept(TEST_DATA.map(t => `.${t.targetClass}`));
-  const {
-    animationInspector,
-    inspector,
-    panel,
-  } = await openAnimationInspector();
+  const { animationInspector, inspector, panel } =
+    await openAnimationInspector();
 
   info("Checking progress bar position in multi effect timings");
 
@@ -94,7 +91,7 @@ add_task(async function() {
   }
 });
 
-function assertPosition(barEl, areaEl, expectedRate, animationInspector) {
+function assertPosition(barEl, areaEl, expectedRate) {
   const controllerBounds = areaEl.getBoundingClientRect();
   const barBounds = barEl.getBoundingClientRect();
   const barX = barBounds.x + barBounds.width / 2 - controllerBounds.x;

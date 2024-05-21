@@ -8,7 +8,7 @@
 
 #include "xpcprivate.h"
 #include "jsfriendapi.h"
-#include "js/Object.h"  // JS::GetClass, JS::GetPrivate, JS::GetReservedSlot
+#include "js/Object.h"  // JS::GetClass, JS::GetReservedSlot
 #include "js/Wrapper.h"
 #include "nsContentUtils.h"
 
@@ -23,9 +23,8 @@ static inline bool IsTearoffClass(const JSClass* clazz) {
 XPCCallContext::XPCCallContext(
     JSContext* cx, HandleObject obj /* = nullptr               */,
     HandleObject funobj /* = nullptr               */,
-    HandleId name /* = JSID_VOID             */,
-    unsigned argc /* = NO_ARGS               */, Value* argv /* = nullptr */,
-    Value* rval /* = nullptr               */)
+    HandleId name /* = JSID_VOID             */, unsigned argc /* = NO_ARGS */,
+    Value* argv /* = nullptr */, Value* rval /* = nullptr               */)
     : mState(INIT_FAILED),
       mXPC(nsXPConnect::XPConnect()),
       mXPCJSContext(nullptr),
@@ -71,19 +70,19 @@ XPCCallContext::XPCCallContext(
     return;
   }
   const JSClass* clasp = JS::GetClass(unwrapped);
-  if (IS_WN_CLASS(clasp)) {
+  if (clasp->isWrappedNative()) {
     mWrapper = XPCWrappedNative::Get(unwrapped);
   } else if (IsTearoffClass(clasp)) {
-    mTearOff = (XPCWrappedNativeTearOff*)JS::GetPrivate(unwrapped);
+    mTearOff = XPCWrappedNativeTearOff::Get(unwrapped);
     mWrapper = XPCWrappedNative::Get(
-        &JS::GetReservedSlot(unwrapped, XPC_WN_TEAROFF_FLAT_OBJECT_SLOT)
+        &JS::GetReservedSlot(unwrapped, XPCWrappedNativeTearOff::FlatObjectSlot)
              .toObject());
   }
   if (mWrapper && !mTearOff) {
     mScriptable = mWrapper->GetScriptable();
   }
 
-  if (!JSID_IS_VOID(name)) {
+  if (!name.isVoid()) {
     SetName(name);
   }
 

@@ -27,9 +27,8 @@ nsMsgThreadedDBView::~nsMsgThreadedDBView() {} /* destructor code */
 NS_IMETHODIMP
 nsMsgThreadedDBView::Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
                           nsMsgViewSortOrderValue sortOrder,
-                          nsMsgViewFlagsTypeValue viewFlags, int32_t* pCount) {
-  nsresult rv =
-      nsMsgDBView::Open(folder, sortType, sortOrder, viewFlags, pCount);
+                          nsMsgViewFlagsTypeValue viewFlags) {
+  nsresult rv = nsMsgDBView::Open(folder, sortType, sortOrder, viewFlags);
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (!m_db) return NS_ERROR_NULL_POINTER;
@@ -61,7 +60,6 @@ nsMsgThreadedDBView::Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
 
   int32_t count;
   rv = InitThreadedView(count);
-  if (pCount) *pCount = count;
 
   // This is a hack, but we're trying to find a way to correct
   // incorrect total and unread msg counts w/o paying a big
@@ -124,8 +122,7 @@ nsresult nsMsgThreadedDBView::InitThreadedView(int32_t& count) {
     if (unreadOnly) {
       rv = threadHdr->GetFirstUnreadChild(getter_AddRefs(msgHdr));
     } else {
-      int32_t unusedRootIndex;
-      rv = threadHdr->GetRootHdr(&unusedRootIndex, getter_AddRefs(msgHdr));
+      rv = threadHdr->GetRootHdr(getter_AddRefs(msgHdr));
     }
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -272,6 +269,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
   if (!rowCountBeforeSort) {
     // Still need to setup our flags even when no articles - bug 98183.
     m_sortType = sortType;
+    m_sortOrder = sortOrder;
     if (sortType == nsMsgViewSortType::byThread &&
         !(m_viewFlags & nsMsgViewFlagsType::kThreadedDisplay)) {
       SetViewFlags(m_viewFlags | nsMsgViewFlagsType::kThreadedDisplay);
@@ -322,6 +320,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
         RestoreSelection(preservedKey, preservedSelection);
         if (mTree) mTree->Invalidate();
+        if (mJSTree) mJSTree->Invalidate();
 
         return NS_OK;
       } else {
@@ -340,6 +339,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
         RestoreSelection(preservedKey, preservedSelection);
         if (mTree) mTree->Invalidate();
+        if (mJSTree) mJSTree->Invalidate();
 
         return NS_OK;
       }
@@ -374,6 +374,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
   if (!sortThreads) {
     // Call the base class in case we're not sorting by thread.
     rv = nsMsgDBView::Sort(sortType, sortOrder);
+    NS_ENSURE_SUCCESS(rv, rv);
     SaveSortInfo(sortType, sortOrder);
   }
 
@@ -385,6 +386,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
   RestoreSelection(preservedKey, preservedSelection);
   if (mTree) mTree->Invalidate();
+  if (mJSTree) mJSTree->Invalidate();
 
   NS_ENSURE_SUCCESS(rv, rv);
   return NS_OK;
@@ -673,7 +675,7 @@ void nsMsgThreadedDBView::MoveThreadAt(nsMsgViewIndex threadIndex) {
   int32_t selectionCount;
   int32_t currentIndex;
   bool hasSelection =
-      mTree && mTreeSelection &&
+      mTreeSelection &&
       ((NS_SUCCEEDED(mTreeSelection->GetCurrentIndex(&currentIndex)) &&
         currentIndex >= 0 && (uint32_t)currentIndex < GetSize()) ||
        (NS_SUCCEEDED(mTreeSelection->GetRangeCount(&selectionCount)) &&
@@ -742,16 +744,14 @@ void nsMsgThreadedDBView::MoveThreadAt(nsMsgViewIndex threadIndex) {
 nsresult nsMsgThreadedDBView::AddMsgToThreadNotInView(nsIMsgThread* threadHdr,
                                                       nsIMsgDBHdr* msgHdr,
                                                       bool ensureListed) {
-  nsresult rv = NS_OK;
-  uint32_t threadFlags;
-  threadHdr->GetFlags(&threadFlags);
-  if (!(threadFlags & nsMsgMessageFlags::Ignored)) {
-    bool msgKilled;
-    msgHdr->GetIsKilled(&msgKilled);
-    if (!msgKilled) rv = nsMsgDBView::AddHdr(msgHdr);
+  if (!(m_viewFlags & nsMsgViewFlagsType::kShowIgnored)) {
+    uint32_t threadFlags;
+    threadHdr->GetFlags(&threadFlags);
+    if (threadFlags & nsMsgMessageFlags::Ignored) {
+      return NS_OK;
+    }
   }
-
-  return rv;
+  return nsMsgDBView::AddHdr(msgHdr);
 }
 
 // This method just removes the specified line from the view. It does

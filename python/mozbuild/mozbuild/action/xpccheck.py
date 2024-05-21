@@ -3,22 +3,21 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 """A generic script to verify all test files are in the
-corresponding .ini file.
+corresponding .toml file.
 
 Usage: xpccheck.py <directory> [<directory> ...]
 """
 
-from __future__ import absolute_import, print_function
-
-import sys
 import os
+import sys
 from glob import glob
+
 import manifestparser
 
 
 def getIniTests(testdir):
     mp = manifestparser.ManifestParser(strict=False)
-    mp.read(os.path.join(testdir, "xpcshell.ini"))
+    mp.read(os.path.join(testdir, "xpcshell.toml"))
     return mp.tests
 
 
@@ -49,7 +48,7 @@ def verifyDirectory(initests, directory):
                 )
                 % (
                     name,
-                    os.path.join(directory, "xpcshell.ini"),
+                    os.path.join(directory, "xpcshell.toml"),
                 ),
                 file=sys.stderr,
             )
@@ -63,7 +62,6 @@ def verifyIniFile(initests, directory):
 
         found = False
         for f in files:
-
             fname = f.split("/")[-1]
             if fname.endswith(".in"):
                 fname = ".in".join(fname.split(".in")[:-1])
@@ -76,7 +74,7 @@ def verifyIniFile(initests, directory):
             print(
                 (
                     "TEST-UNEXPECTED-FAIL | xpccheck | found "
-                    "%s in xpcshell.ini and not in directory '%s'"
+                    "%s in xpcshell.toml and not in directory '%s'"
                 )
                 % (
                     name,
@@ -97,7 +95,7 @@ def main(argv):
 
     for d in argv[1:]:
         # xpcshell-unpack is a copy of xpcshell sibling directory and in the Makefile
-        # we copy all files (including xpcshell.ini from the sibling directory.
+        # we copy all files (including xpcshell.toml from the sibling directory.
         if d.endswith("toolkit/mozapps/extensions/test/xpcshell-unpack"):
             continue
 

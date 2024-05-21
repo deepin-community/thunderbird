@@ -16,7 +16,7 @@ const TEST_URI = `
   <div></div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode("div", inspector);
@@ -41,12 +41,14 @@ async function testImageDimension(ruleView) {
   const imageRect = panel.querySelector("img").getBoundingClientRect();
   const panelRect = panel.getBoundingClientRect();
 
-  ok(
-    panelRect.width >= imageRect.width,
+  Assert.greaterOrEqual(
+    panelRect.width,
+    imageRect.width,
     "The panel is wide enough to show the image"
   );
-  ok(
-    panelRect.height >= imageRect.height,
+  Assert.greaterOrEqual(
+    panelRect.height,
+    imageRect.height,
     "The panel is high enough to show the image"
   );
 
@@ -69,12 +71,14 @@ async function testPickerDimension(ruleView) {
   const spectrumRect = cPicker.spectrum.element.getBoundingClientRect();
   const panelRect = cPicker.tooltip.container.getBoundingClientRect();
 
-  ok(
-    panelRect.width >= spectrumRect.width,
+  Assert.greaterOrEqual(
+    panelRect.width,
+    spectrumRect.width,
     "The panel is wide enough to show the picker"
   );
-  ok(
-    panelRect.height >= spectrumRect.height,
+  Assert.greaterOrEqual(
+    panelRect.height,
+    spectrumRect.height,
     "The panel is high enough to show the picker"
   );
 

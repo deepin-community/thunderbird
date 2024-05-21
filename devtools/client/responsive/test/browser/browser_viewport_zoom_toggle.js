@@ -5,7 +5,7 @@
 
 // Verify full zoom levels inherit RDM full zoom after exiting RDM.
 
-const TEST_URL = "http://example.com/";
+const TEST_URL = "https://example.com/";
 
 function getZoomForBrowser(browser) {
   return ZoomManager.getZoomForBrowser(browser);
@@ -17,7 +17,7 @@ function setZoomForBrowser(browser, zoom) {
 
 addRDMTask(
   null,
-  async function({ message }) {
+  async function () {
     const INITIAL_ZOOM_LEVEL = 1;
     const PRE_RDM_ZOOM_LEVEL = 1.5;
     const MID_RDM_ZOOM_LEVEL = 2;
@@ -25,7 +25,7 @@ addRDMTask(
     const tab = await addTab(TEST_URL);
     const browser = tab.linkedBrowser;
 
-    await load(browser, TEST_URL);
+    await navigateTo(TEST_URL);
 
     // Get the initial zoom level.
     const initialOuterZoom = getZoomForBrowser(browser);

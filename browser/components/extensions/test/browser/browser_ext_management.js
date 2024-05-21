@@ -1,12 +1,7 @@
 "use strict";
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
-);
-
-const { computeHash } = ChromeUtils.import(
-  "resource://gre/modules/addons/ProductAddonChecker.jsm",
-  null
+const { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
@@ -26,6 +21,7 @@ add_task(async function test_management_install() {
     manifest: {
       browser_action: {
         browser_style: false,
+        default_area: "navbar",
       },
       permissions: ["management"],
     },
@@ -57,7 +53,7 @@ add_task(async function test_management_install() {
       manifest_version: 2,
       name: "Tigers Matter",
       version: "1.0",
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "tiger@persona.beard",
         },
@@ -70,14 +66,17 @@ add_task(async function test_management_install() {
     },
   });
 
-  let themeXPIFileHash = await computeHash("sha256", themeXPIFile.path);
+  let themeXPIFileHash = await IOUtils.computeHexDigest(
+    themeXPIFile.path,
+    "sha256"
+  );
 
   const otherXPIFile = AddonTestUtils.createTempWebExtensionFile({
     manifest: {
       manifest_version: 2,
       name: "Tigers Don't Matter",
       version: "1.0",
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "other@web.extension",
         },
@@ -112,23 +111,11 @@ add_task(async function test_management_install() {
   is(id, "tiger@persona.beard", "Static web extension theme installed");
   is(type, "theme", "Extension type is correct");
 
-  if (backgroundColorSetOnRoot()) {
-    let rootCS = window.getComputedStyle(document.documentElement);
-    is(
-      rootCS.backgroundColor,
-      "rgb(255, 165, 0)",
-      "Background is the new black"
-    );
-  } else {
-    let toolboxCS = window.getComputedStyle(
-      document.documentElement.querySelector("#navigator-toolbox")
-    );
-    is(
-      toolboxCS.backgroundColor,
-      "rgb(255, 165, 0)",
-      "Background is the new black"
-    );
-  }
+  is(
+    getToolboxBackgroundColor(),
+    "rgb(255, 165, 0)",
+    "Background is the new black"
+  );
 
   let addon = await AddonManager.getAddonByID("tiger@persona.beard");
 

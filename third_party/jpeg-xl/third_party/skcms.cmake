@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(skcms STATIC skcms/skcms.cc)
-target_include_directories(skcms PUBLIC "${CMAKE_CURRENT_LIST_DIR}/skcms/")
+function(target_link_skcms TARGET_NAME)
+  target_sources(${TARGET_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/third_party/skcms/skcms.cc")
+  target_include_directories(${TARGET_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/third_party/skcms/")
 
-include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-Wno-psabi" CXX_WPSABI_SUPPORTED)
-if(CXX_WPSABI_SUPPORTED)
-  target_compile_options(skcms PRIVATE -Wno-psabi)
-endif()
-
-set_property(TARGET skcms PROPERTY POSITION_INDEPENDENT_CODE ON)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-Wno-psabi" CXX_WPSABI_SUPPORTED)
+  if(CXX_WPSABI_SUPPORTED)
+    set_source_files_properties("${PROJECT_SOURCE_DIR}/third_party/skcms/skcms.cc"
+      PROPERTIES COMPILE_OPTIONS "-Wno-psabi"
+      TARGET_DIRECTORY ${TARGET_NAME})
+  endif()
+endfunction()

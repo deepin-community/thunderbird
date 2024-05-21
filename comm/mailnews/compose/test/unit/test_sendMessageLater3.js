@@ -11,8 +11,8 @@
 /* import-globals-from ../../../test/resources/alertTestUtils.js */
 load("../../../resources/alertTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var originalData;
@@ -26,9 +26,8 @@ var msgSendLater = Cc["@mozilla.org/messengercompose/sendlater;1"].getService(
   Ci.nsIMsgSendLater
 );
 
-/* exported alert */
 // for alertTestUtils.js
-function alert(aDialogTitle, aText) {
+function alertPS(parent, aDialogTitle, aText) {
   dump("Hiding Alert {\n" + aText + "\n} End Alert\n");
 }
 
@@ -85,7 +84,7 @@ function OnStopCopy(aStatus) {
   // Check this is false before we start sending
   Assert.equal(msgSendLater.sendingMessages, false);
 
-  let folder = msgSendLater.getUnsentMessagesFolder(identity);
+  const folder = msgSendLater.getUnsentMessagesFolder(identity);
 
   // Check that the send later service thinks we have messages to send.
   Assert.equal(msgSendLater.hasUnsentMessages(identity), true);
@@ -137,8 +136,8 @@ add_task(async function run_the_test() {
 
   MailServices.accounts.setSpecialFolders();
 
-  let account = MailServices.accounts.createAccount();
-  let incomingServer = MailServices.accounts.createIncomingServer(
+  const account = MailServices.accounts.createAccount();
+  const incomingServer = MailServices.accounts.createIncomingServer(
     "test",
     "localhost",
     "pop3"

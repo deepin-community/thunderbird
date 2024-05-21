@@ -6,16 +6,11 @@
  * Test TB can be set as default calendar app.
  */
 
-var { open_message_from_file } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { close_window } = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
-
 /**
  * Set TB as default calendar app.
  */
-add_task(function setupModule() {
-  let shellSvc = Cc["@mozilla.org/mail/shell-service;1"].getService(Ci.nsIShellService);
+add_setup(function () {
+  const shellSvc = Cc["@mozilla.org/mail/shell-service;1"].getService(Ci.nsIShellService);
   shellSvc.setDefaultClient(false, shellSvc.CALENDAR);
   ok(shellSvc.isDefaultClient(false, shellSvc.CALENDAR), "setDefaultClient works");
 });
@@ -24,27 +19,27 @@ add_task(function setupModule() {
  * Test when opening an ics attachment, TB should be shown as an option.
  */
 add_task(async function test_ics_attachment() {
-  let file = new FileUtils.File(getTestFilePath("data/message-containing-event.eml"));
-  let mc = await open_message_from_file(file);
-  mc.click(mc.e("button-openAllAttachments"));
-  await BrowserTestUtils.promiseAlertDialog(
+  const file = new FileUtils.File(getTestFilePath("data/message-containing-event.eml"));
+  const msgWindow = await openMessageFromFile(file);
+  const aboutMessage = msgWindow.document.getElementById("messageBrowser").contentWindow;
+  const promise = BrowserTestUtils.promiseAlertDialog(
     null,
     "chrome://mozapps/content/downloads/unknownContentType.xhtml",
     {
       async callback(dialogWindow) {
         ok(true, "unknownContentType dialog opened");
-        let dialogElement = dialogWindow.document.querySelector("dialog");
-        let acceptButton = dialogElement.getButton("accept");
+        const dialogElement = dialogWindow.document.querySelector("dialog");
+        const acceptButton = dialogElement.getButton("accept");
         return new Promise(resolve => {
-          let observer = new MutationObserver(mutationList => {
+          const observer = new MutationObserver(mutationList => {
             mutationList.forEach(async mutation => {
               if (mutation.attributeName == "disabled" && !acceptButton.disabled) {
                 is(acceptButton.disabled, false, "Accept button enabled");
                 if (AppConstants.platform != "macosx") {
-                  let bundle = Services.strings.createBundle(
+                  const bundle = Services.strings.createBundle(
                     "chrome://branding/locale/brand.properties"
                   );
-                  let name = bundle.GetStringFromName("brandShortName");
+                  const name = bundle.GetStringFromName("brandShortName");
                   // macOS requires extra step in Finder to set TB as default calendar app.
                   ok(
                     dialogWindow.document.getElementById("openHandler").label.includes(name),
@@ -65,6 +60,12 @@ add_task(async function test_ics_attachment() {
       },
     }
   );
+  EventUtils.synthesizeMouseAtCenter(
+    aboutMessage.document.getElementById("attachmentName"),
+    {},
+    aboutMessage
+  );
+  await promise;
 
-  close_window(mc);
+  await BrowserTestUtils.closeWindow(msgWindow);
 });

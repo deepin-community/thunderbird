@@ -7,12 +7,15 @@
 #define mozilla_net_CookieServiceParent_h
 
 #include "mozilla/net/PCookieServiceParent.h"
+#include "mozilla/net/CookieKey.h"
 
 class nsIArray;
 class nsICookie;
 namespace mozilla {
 class OriginAttributes;
 }
+
+class nsIEffectiveTLDService;
 
 namespace mozilla {
 namespace net {
@@ -33,15 +36,25 @@ class CookieServiceParent : public PCookieServiceParent {
 
   void RemoveAll();
 
-  void RemoveCookie(nsICookie* aCookie);
+  void RemoveCookie(const Cookie& aCookie);
 
-  void AddCookie(nsICookie* aCookie);
+  void AddCookie(const Cookie& aCookie);
 
   // This will return true if the CookieServiceParent is currently processing
   // an update from the content process. This is used in ContentParent to make
   // sure that we are only forwarding those cookie updates to other content
   // processes, not the one they originated from.
   bool ProcessingCookie() { return mProcessingCookie; }
+
+  bool ContentProcessHasCookie(const Cookie& cookie);
+  bool InsecureCookieOrSecureOrigin(const Cookie& cookie);
+  void UpdateCookieInContentList(nsIURI* aHostURI,
+                                 const OriginAttributes& aOriginAttrs);
+
+  mozilla::ipc::IPCResult SetCookies(
+      const nsCString& aBaseDomain, const OriginAttributes& aOriginAttributes,
+      nsIURI* aHost, bool aFromHttp, const nsTArray<CookieStruct>& aCookies,
+      dom::BrowsingContext* aBrowsingContext = nullptr);
 
  protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) override;
@@ -50,19 +63,24 @@ class CookieServiceParent : public PCookieServiceParent {
       const nsCString& aBaseDomain, const OriginAttributes& aOriginAttributes,
       nsIURI* aHost, bool aFromHttp, const nsTArray<CookieStruct>& aCookies);
 
-  mozilla::ipc::IPCResult RecvPrepareCookieList(
+  mozilla::ipc::IPCResult RecvGetCookieList(
       nsIURI* aHost, const bool& aIsForeign,
       const bool& aIsThirdPartyTrackingResource,
       const bool& aIsThirdPartySocialTrackingResource,
       const bool& aStorageAccessPermissionGranted,
       const uint32_t& aRejectedReason, const bool& aIsSafeTopLevelNav,
-      const bool& aIsSameSiteForeign, const OriginAttributes& aAttrs);
+      const bool& aIsSameSiteForeign, const bool& aHadCrossSiteRedirects,
+      nsTArray<OriginAttributes>&& aAttrsList,
+      GetCookieListResolver&& aResolve);
 
-  static void SerialializeCookieList(const nsTArray<Cookie*>& aFoundCookieList,
-                                     nsTArray<CookieStruct>& aCookiesList);
+  static void SerializeCookieListTable(
+      const nsTArray<Cookie*>& aFoundCookieList,
+      nsTArray<CookieStructTable>& aCookiesListTable, nsIURI* aHostURI);
 
+  nsCOMPtr<nsIEffectiveTLDService> mTLDService;
   RefPtr<CookieService> mCookieService;
   bool mProcessingCookie;
+  nsTHashMap<CookieKey, bool> mCookieKeysInContent;
 };
 
 }  // namespace net

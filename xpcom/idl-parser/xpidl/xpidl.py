@@ -7,22 +7,14 @@
 
 """A parser for cross-platform IDL (XPIDL) files."""
 
-# Note that this file is used by the searchfox indexer in ways that are
-# not tested in Firefox's CI. Please try to keep this file py2-compatible
-# if the burden for that is low. If you are making changes you know to be
-# incompatible with py2, please give a searchfox maintainer a heads-up so
-# that any necessary changes can be made on the searchfox side.
-
-from __future__ import absolute_import
-from __future__ import print_function
-
-import sys
 import os.path
 import re
-from ply import lex
-from ply import yacc
-import six
+import sys
+import textwrap
 from collections import namedtuple
+
+import six
+from ply import lex, yacc
 
 """A type conforms to the following pattern:
 
@@ -130,10 +122,13 @@ class Builtin(object):
     kind = "builtin"
     location = BuiltinLocation
 
-    def __init__(self, name, nativename, rustname, signed=False, maybeConst=False):
+    def __init__(
+        self, name, nativename, rustname, tsname, signed=False, maybeConst=False
+    ):
         self.name = name
         self.nativename = nativename
         self.rustname = rustname
+        self.tsname = tsname
         self.signed = signed
         self.maybeConst = maybeConst
 
@@ -179,23 +174,38 @@ class Builtin(object):
 
         return "%s%s" % ("*mut " if "out" in calltype else "", rustname)
 
+    def tsType(self):
+        if self.tsname:
+            return self.tsname
+
+        raise TSNoncompat(f"Builtin type {self.name} unsupported in TypeScript")
+
 
 builtinNames = [
-    Builtin("boolean", "bool", "bool"),
-    Builtin("void", "void", "libc::c_void"),
-    Builtin("octet", "uint8_t", "u8", False, True),
-    Builtin("short", "int16_t", "i16", True, True),
-    Builtin("long", "int32_t", "i32", True, True),
-    Builtin("long long", "int64_t", "i64", True, False),
-    Builtin("unsigned short", "uint16_t", "u16", False, True),
-    Builtin("unsigned long", "uint32_t", "u32", False, True),
-    Builtin("unsigned long long", "uint64_t", "u64", False, False),
-    Builtin("float", "float", "libc::c_float", True, False),
-    Builtin("double", "double", "libc::c_double", True, False),
-    Builtin("char", "char", "libc::c_char", True, False),
-    Builtin("string", "char *", "*const libc::c_char", False, False),
-    Builtin("wchar", "char16_t", "i16", False, False),
-    Builtin("wstring", "char16_t *", "*const i16", False, False),
+    Builtin("boolean", "bool", "bool", "boolean"),
+    Builtin("void", "void", "libc::c_void", "void"),
+    Builtin("octet", "uint8_t", "u8", "u8", False, True),
+    Builtin("short", "int16_t", "i16", "i16", True, True),
+    Builtin("long", "int32_t", "i32", "i32", True, True),
+    Builtin("long long", "int64_t", "i64", "i64", True, True),
+    Builtin("unsigned short", "uint16_t", "u16", "u16", False, True),
+    Builtin("unsigned long", "uint32_t", "u32", "u32", False, True),
+    Builtin("unsigned long long", "uint64_t", "u64", "u64", False, True),
+    Builtin("float", "float", "libc::c_float", "float"),
+    Builtin("double", "double", "libc::c_double", "double"),
+    Builtin("char", "char", "libc::c_char", "string"),
+    Builtin("string", "char *", "*const libc::c_char", "string"),
+    Builtin("wchar", "char16_t", "u16", "string"),
+    Builtin("wstring", "char16_t *", "*const u16", "string"),
+    # As seen in mfbt/RefCountType.h, this type has special handling to
+    # maintain binary compatibility with MSCOM's IUnknown that cannot be
+    # expressed in XPIDL.
+    Builtin(
+        "MozExternalRefCountType",
+        "MozExternalRefCountType",
+        "MozExternalRefCountType",
+        None,
+    ),
 ]
 
 builtinMap = {}
@@ -294,7 +304,7 @@ class NameMap(object):
         try:
             return self[id]
         except KeyError:
-            raise IDLError("Name '%s' not found", location)
+            raise IDLError(f"Name '{id}' not found", location)
 
 
 class RustNoncompat(Exception):
@@ -310,18 +320,32 @@ class RustNoncompat(Exception):
         return self.reason
 
 
+class TSNoncompat(Exception):
+    """Raised when a type cannot be exposed to TypeScript."""
+
+    def __init__(self, reason):
+        self.reason = reason
+
+    def __str__(self):
+        return self.reason
+
+
 class IDLError(Exception):
-    def __init__(self, message, location, warning=False):
+    def __init__(self, message, location, warning=False, notes=None):
         self.message = message
         self.location = location
         self.warning = warning
+        self.notes = notes
 
     def __str__(self):
-        return "%s: %s, %s" % (
+        error = "%s: %s, %s" % (
             self.warning and "warning" or "error",
             self.message,
             self.location,
         )
+        if self.notes is not None:
+            error += "\nnote: %s" % self.notes
+        return error
 
 
 class Include(object):
@@ -431,7 +455,20 @@ class CDATA(object):
         self.location = location
 
     def resolve(self, parent):
-        pass
+        # This can be a false-positive if the word `virtual` is included in a
+        # comment, however this doesn't seem to happen very often.
+        if isinstance(parent, Interface) and re.search(r"\bvirtual\b", self.data):
+            raise IDLError(
+                "cannot declare a C++ `virtual` member in XPIDL interface",
+                self.location,
+                notes=textwrap.fill(
+                    """All virtual members must be declared directly using XPIDL.
+                    Both the Rust bindings and XPConnect rely on the per-platform
+                    vtable layouts generated by the XPIDL compiler to allow
+                    cross-language XPCOM method calls between JS and C++.
+                    Consider using a `[notxpcom, nostdcall]` method instead."""
+                ),
+            )
 
     def __str__(self):
         return "cdata: %s\n\t%r\n" % (self.location.get(), self.data)
@@ -443,11 +480,19 @@ class CDATA(object):
 class Typedef(object):
     kind = "typedef"
 
-    def __init__(self, type, name, location, doccomments):
+    def __init__(self, type, name, attlist, location, doccomments):
         self.type = type
         self.name = name
         self.location = location
         self.doccomments = doccomments
+
+        # C++ stdint types and the bool typedef from nsrootidl.idl are marked
+        # with [substitute], and emit as the underlying builtin type directly.
+        self.substitute = False
+        for name, value, aloc in attlist:
+            if name != "substitute" or value is not None:
+                raise IDLError(f"Unexpected attribute {name}({value})", aloc)
+            self.substitute = True
 
     def __eq__(self, other):
         return self.name == other.name and self.type == other.type
@@ -460,13 +505,25 @@ class Typedef(object):
             raise IDLError("Unsupported typedef target type", self.location)
 
     def nativeType(self, calltype):
+        if self.substitute:
+            return self.realtype.nativeType(calltype)
+
         return "%s %s" % (self.name, "*" if "out" in calltype else "")
 
     def rustType(self, calltype):
+        if self.substitute:
+            return self.realtype.rustType(calltype)
+
         if self.name == "nsresult":
             return "%s::nserror::nsresult" % ("*mut " if "out" in calltype else "")
 
         return "%s%s" % ("*mut " if "out" in calltype else "", self.name)
+
+    def tsType(self):
+        if self.substitute:
+            return self.realtype.tsType()
+
+        return self.name
 
     def __str__(self):
         return "typedef %s %s\n" % (self.type, self.name)
@@ -506,8 +563,11 @@ class Forward(object):
         if rustPreventForward(self.name):
             raise RustNoncompat("forward declaration %s is unsupported" % self.name)
         if calltype == "element":
-            return "RefPtr<%s>" % self.name
+            return "Option<RefPtr<%s>>" % self.name
         return "%s*const %s" % ("*mut" if "out" in calltype else "", self.name)
+
+    def tsType(self):
+        return self.name
 
     def __str__(self):
         return "forward-declared %s\n" % self.name
@@ -527,7 +587,7 @@ class Native(object):
         "utf8string": ("const nsACString&", "nsACString&", "nsCString"),
         "cstring": ("const nsACString&", "nsACString&", "nsCString"),
         "astring": ("const nsAString&", "nsAString&", "nsString"),
-        "jsval": ("JS::HandleValue", "JS::MutableHandleValue", "JS::Value"),
+        "jsval": ("JS::Handle<JS::Value>", "JS::MutableHandle<JS::Value>", "JS::Value"),
         "promise": "::mozilla::dom::Promise",
     }
 
@@ -621,7 +681,7 @@ class Native(object):
     def rustType(self, calltype, const=False, shared=False):
         # For the most part, 'native' types don't make sense in rust, as they
         # are native C++ types. However, we can support a few types here, as
-        # they're important.
+        # they're important and can easily be translated.
         #
         # NOTE: This code doesn't try to perfectly match C++ constness, as
         # constness doesn't affect ABI, and raw pointers are already unsafe.
@@ -629,34 +689,77 @@ class Native(object):
         if self.modifier not in ["ptr", "ref"]:
             raise RustNoncompat("Rust only supports [ref] / [ptr] native types")
 
-        prefix = "*mut " if "out" in calltype else "*const "
-        if "out" in calltype and self.modifier == "ptr":
-            prefix += "*mut "
+        if shared:
+            if calltype != "out":
+                raise IDLError(
+                    "[shared] only applies to out parameters.", self.location
+                )
+            const = True
 
-        if self.specialtype == "nsid":
-            if "element" in calltype:
-                if self.isPtr(calltype):
-                    raise IDLError(
-                        "Array<nsIDPtr> not yet supported. "
-                        "File an XPConnect bug if you need it.",
-                        self.location,
-                    )
-                return self.nativename
-            return prefix + self.nativename
-        if self.specialtype in ["cstring", "utf8string"]:
-            if "element" in calltype:
-                return "::nsstring::nsCString"
-            return prefix + "::nsstring::nsACString"
-        if self.specialtype == "astring":
-            if "element" in calltype:
-                return "::nsstring::nsString"
-            return prefix + "::nsstring::nsAString"
-        if self.nativename == "void":
-            return prefix + "libc::c_void"
+        # 'in' nsid parameters should be made 'const'
+        if self.specialtype == "nsid" and calltype == "in":
+            const = True
+
+        prefix = "*const " if const or shared else "*mut "
+        if "out" in calltype and self.isPtr(calltype):
+            prefix = "*mut " + prefix
 
         if self.specialtype:
-            raise RustNoncompat("specialtype %s unsupported" % self.specialtype)
+            # The string types are very special, and need to be handled seperately.
+            if self.specialtype in ["cstring", "utf8string"]:
+                if calltype == "in":
+                    return "*const ::nsstring::nsACString"
+                elif "out" in calltype:
+                    return "*mut ::nsstring::nsACString"
+                else:
+                    return "::nsstring::nsCString"
+            if self.specialtype == "astring":
+                if calltype == "in":
+                    return "*const ::nsstring::nsAString"
+                elif "out" in calltype:
+                    return "*mut ::nsstring::nsAString"
+                else:
+                    return "::nsstring::nsString"
+            # nsid has some special handling, but generally re-uses the generic
+            # prefix handling above.
+            if self.specialtype == "nsid":
+                if "element" in calltype:
+                    if self.isPtr(calltype):
+                        raise IDLError(
+                            "Array<nsIDPtr> not yet supported. "
+                            "File an XPConnect bug if you need it.",
+                            self.location,
+                        )
+                    return self.nativename
+                return prefix + self.nativename
+            raise RustNoncompat("special type %s unsupported" % self.specialtype)
+
+        # These 3 special types correspond to native pointer types which can
+        # generally be supported behind pointers. Other types are not supported
+        # for now.
+        if self.nativename == "void":
+            return prefix + "libc::c_void"
+        if self.nativename == "char":
+            return prefix + "libc::c_char"
+        if self.nativename == "char16_t":
+            return prefix + "u16"
+
         raise RustNoncompat("native type %s unsupported" % self.nativename)
+
+    ts_special = {
+        "astring": "string",
+        "cstring": "string",
+        "jsval": "any",
+        "nsid": "nsID",
+        "promise": "Promise<any>",
+        "utf8string": "string",
+    }
+
+    def tsType(self):
+        if type := self.ts_special.get(self.specialtype, None):
+            return type
+
+        raise TSNoncompat(f"Native type {self.name} unsupported in TypeScript")
 
     def __str__(self):
         return "native %s(%s)\n" % (self.name, self.nativename)
@@ -706,6 +809,9 @@ class WebIDL(object):
         # Just expose the type as a void* - we can't do any better.
         return "%s*const libc::c_void" % ("*mut " if "out" in calltype else "")
 
+    def tsType(self):
+        return self.name
+
     def __str__(self):
         return "webidl %s\n" % self.name
 
@@ -732,6 +838,13 @@ class Interface(object):
 
     def resolve(self, parent):
         self.idl = parent
+
+        if not self.attributes.scriptable and self.attributes.builtinclass:
+            raise IDLError(
+                "Non-scriptable interface '%s' doesn't need to be marked builtinclass"
+                % self.name,
+                self.location,
+            )
 
         # Hack alert: if an identifier is already present, libIDL assigns
         # doc comments incorrectly. This is quirks-mode extraordinaire!
@@ -783,6 +896,23 @@ class Interface(object):
                     "builtinclass '%s'" % (self.name, self.base),
                     self.location,
                 )
+
+            if realbase.attributes.rust_sync and not self.attributes.rust_sync:
+                raise IDLError(
+                    "interface '%s' is not rust_sync but derives from rust_sync '%s'"
+                    % (self.name, self.base),
+                    self.location,
+                )
+
+            if (
+                self.attributes.rust_sync
+                and self.attributes.scriptable
+                and not self.attributes.builtinclass
+            ):
+                raise IDLError(
+                    "interface '%s' is rust_sync but is not builtinclass" % self.name,
+                    self.location,
+                )
         elif self.name != "nsISupports":
             raise IDLError(
                 "Interface '%s' must inherit from nsISupports" % self.name,
@@ -812,7 +942,7 @@ class Interface(object):
 
     def rustType(self, calltype, const=False):
         if calltype == "element":
-            return "RefPtr<%s>" % self.name
+            return "Option<RefPtr<%s>>" % self.name
         return "%s*const %s" % ("*mut " if "out" in calltype else "", self.name)
 
     def __str__(self):
@@ -849,12 +979,15 @@ class Interface(object):
         return False
 
     def countEntries(self):
-        """ Returns the number of entries in the vtable for this interface. """
+        """Returns the number of entries in the vtable for this interface."""
         total = sum(member.count() for member in self.members)
         if self.base is not None:
             realbase = self.idl.getName(TypeId(self.base), self.location)
             total += realbase.countEntries()
         return total
+
+    def tsType(self):
+        return self.name
 
 
 class InterfaceAttributes(object):
@@ -862,8 +995,8 @@ class InterfaceAttributes(object):
     scriptable = False
     builtinclass = False
     function = False
-    noscript = False
     main_process_scriptable_only = False
+    rust_sync = False
 
     def setuuid(self, value):
         self.uuid = value.lower()
@@ -874,23 +1007,23 @@ class InterfaceAttributes(object):
     def setfunction(self):
         self.function = True
 
-    def setnoscript(self):
-        self.noscript = True
-
     def setbuiltinclass(self):
         self.builtinclass = True
 
     def setmain_process_scriptable_only(self):
         self.main_process_scriptable_only = True
 
+    def setrust_sync(self):
+        self.rust_sync = True
+
     actions = {
         "uuid": (True, setuuid),
         "scriptable": (False, setscriptable),
         "builtinclass": (False, setbuiltinclass),
         "function": (False, setfunction),
-        "noscript": (False, setnoscript),
         "object": (False, lambda self: True),
         "main_process_scriptable_only": (False, setmain_process_scriptable_only),
+        "rust_sync": (False, setrust_sync),
     }
 
     def __init__(self, attlist, location):
@@ -925,6 +1058,8 @@ class InterfaceAttributes(object):
             l.append("\tfunction\n")
         if self.main_process_scriptable_only:
             l.append("\tmain_process_scriptable_only\n")
+        if self.rust_sync:
+            l.append("\trust_sync\n")
         return "".join(l)
 
 
@@ -953,6 +1088,15 @@ class ConstMember(object):
         self.basetype = basetype
         # Value is a lambda. Resolve it.
         self.value = self.valueFn(self.iface)
+
+        min_val = -(2**31) if basetype.signed else 0
+        max_val = 2**31 - 1 if basetype.signed else 2**32 - 1
+        if self.value < min_val or self.value > max_val:
+            raise IDLError(
+                "xpidl constants must fit within %s"
+                % ("int32_t" if basetype.signed else "uint32_t"),
+                self.location,
+            )
 
     def getValue(self):
         return self.value
@@ -1032,6 +1176,9 @@ class CEnum(object):
     def rustType(self, calltype):
         return "%s u%d" % ("*mut" if "out" in calltype else "", self.width)
 
+    def tsType(self):
+        return f"{self.iface.name}.{self.basename}"
+
     def __str__(self):
         body = ", ".join("%s = %s" % v for v in self.variants)
         return "\tcenum %s : %d { %s };\n" % (self.name, self.width, body)
@@ -1056,10 +1203,11 @@ def ensureInfallibleIsSound(methodOrAttribute):
             "(numbers, booleans, cenum, and raw char types)",
             methodOrAttribute.location,
         )
-    if not methodOrAttribute.iface.attributes.builtinclass:
+    ifaceAttributes = methodOrAttribute.iface.attributes
+    if ifaceAttributes.scriptable and not ifaceAttributes.builtinclass:
         raise IDLError(
             "[infallible] attributes and methods are only allowed on "
-            "[builtinclass] interfaces",
+            "non-[scriptable] or [builtinclass] interfaces",
             methodOrAttribute.location,
         )
 
@@ -1283,21 +1431,33 @@ class Method(object):
                     self.location,
                 )
             if p.size_is:
-                found_size_param = False
-                for size_param in self.params:
-                    if p.size_is == size_param.name:
-                        found_size_param = True
-                        if (
-                            getBuiltinOrNativeTypeName(size_param.realtype)
-                            != "unsigned long"
-                        ):
-                            raise IDLError(
-                                "is_size parameter must have type 'unsigned long'",
-                                self.location,
-                            )
-                if not found_size_param:
+                size_param = self.namemap.get(p.size_is, p.location)
+                if (
+                    p.paramtype.count("in") == 1
+                    and size_param.paramtype.count("in") == 0
+                ):
                     raise IDLError(
-                        "could not find is_size parameter '%s'" % p.size_is,
+                        "size_is parameter of an input must also be an input",
+                        p.location,
+                    )
+                if getBuiltinOrNativeTypeName(size_param.realtype) != "unsigned long":
+                    raise IDLError(
+                        "size_is parameter must have type 'unsigned long'",
+                        p.location,
+                    )
+            if p.iid_is:
+                iid_param = self.namemap.get(p.iid_is, p.location)
+                if (
+                    p.paramtype.count("in") == 1
+                    and iid_param.paramtype.count("in") == 0
+                ):
+                    raise IDLError(
+                        "iid_is parameter of an input must also be an input",
+                        p.location,
+                    )
+                if getBuiltinOrNativeTypeName(iid_param.realtype) != "[nsid]":
+                    raise IDLError(
+                        "iid_is parameter must be an nsIID",
                         self.location,
                     )
 
@@ -1432,8 +1592,22 @@ class Param(object):
             self.name,
         )
 
+    def tsType(self):
+        # A generic retval param type needs special handling.
+        if self.retval and self.iid_is:
+            return "nsQIResult"
+
+        type = self.realtype.tsType()
+        if self.paramtype == "inout":
+            return f"InOutParam<{type}>"
+        if self.paramtype == "out":
+            return f"OutParam<{type}>"
+        return type
+
 
 class LegacyArray(object):
+    kind = "legacyarray"
+
     def __init__(self, basetype):
         self.type = basetype
         self.location = self.type.location
@@ -1463,6 +1637,9 @@ class LegacyArray(object):
             "*const " if const else "*mut ",
             self.type.rustType("legacyelement"),
         )
+
+    def tsType(self):
+        return self.type.tsType() + "[]"
 
 
 class Array(object):
@@ -1502,6 +1679,9 @@ class Array(object):
             return "*const %s" % base
         else:
             return base
+
+    def tsType(self):
+        return self.type.tsType() + "[]"
 
 
 TypeId = namedtuple("TypeId", "name params")
@@ -1563,13 +1743,13 @@ class IDLParser(object):
     t_ignore = " \t"
 
     def t_multilinecomment(self, t):
-        r"/\*(?s).*?\*/"
+        r"/\*(\n|.)*?\*/"
         t.lexer.lineno += t.value.count("\n")
         if t.value.startswith("/**"):
             self._doccomments.append(t.value)
 
     def t_singlelinecomment(self, t):
-        r"(?m)//.*?$"
+        r"//[^\n]*"
 
     def t_IID(self, t):
         return t
@@ -1582,7 +1762,7 @@ class IDLParser(object):
         return t
 
     def t_LCDATA(self, t):
-        r"(?s)%\{[ ]*C\+\+[ ]*\n(?P<cdata>.*?\n?)%\}[ ]*(C\+\+)?"
+        r"%\{[ ]*C\+\+[ ]*\n(?P<cdata>(\n|.)*?\n?)%\}[ ]*(C\+\+)?"
         t.type = "CDATA"
         t.value = t.lexer.lexmatch.group("cdata")
         t.lexer.lineno += t.value.count("\n")
@@ -1638,7 +1818,7 @@ class IDLParser(object):
         p[0] = IDL(p[1])
 
     def p_productions_start(self, p):
-        """productions : """
+        """productions :"""
         p[0] = []
 
     def p_productions_cdata(self, p):
@@ -1660,12 +1840,13 @@ class IDLParser(object):
         p[0].insert(0, p[1])
 
     def p_typedef(self, p):
-        """typedef : TYPEDEF type IDENTIFIER ';'"""
+        """typedef : attributes TYPEDEF type IDENTIFIER ';'"""
         p[0] = Typedef(
-            type=p[2],
-            name=p[3],
-            location=self.getLocation(p, 1),
-            doccomments=p.slice[1].doccomments,
+            type=p[3],
+            name=p[4],
+            attlist=p[1]["attlist"],
+            location=self.getLocation(p, 2),
+            doccomments=getattr(p[1], "doccomments", []) + p.slice[2].doccomments,
         )
 
     def p_native(self, p):
@@ -1678,7 +1859,7 @@ class IDLParser(object):
         )
 
     def p_afternativeid(self, p):
-        """afternativeid : """
+        """afternativeid :"""
         # this is a place marker: we switch the lexer into literal identifier
         # mode here, to slurp up everything until the closeparen
         self.lexer.begin("nativeid")
@@ -1765,7 +1946,7 @@ class IDLParser(object):
             p[0] = p[2]
 
     def p_members_start(self, p):
-        """members : """
+        """members :"""
         p[0] = []
 
     def p_members_continue(self, p):
@@ -1778,7 +1959,7 @@ class IDLParser(object):
         p[0] = CDATA(p[1], self.getLocation(p, 1))
 
     def p_member_const(self, p):
-        """member : CONST type IDENTIFIER '=' number ';' """
+        """member : CONST type IDENTIFIER '=' number ';'"""
         p[0] = ConstMember(
             type=p[2],
             name=p[3],
@@ -1854,7 +2035,7 @@ class IDLParser(object):
         )
 
     def p_variants_start(self, p):
-        """variants : """
+        """variants :"""
         p[0] = []
 
     def p_variants_single(self, p):
@@ -1933,7 +2114,7 @@ class IDLParser(object):
             type=p[3],
             name=p[4],
             attlist=p[1]["attlist"],
-            location=self.getLocation(p, 3),
+            location=self.getLocation(p, 4),
         )
 
     def p_paramtype(self, p):

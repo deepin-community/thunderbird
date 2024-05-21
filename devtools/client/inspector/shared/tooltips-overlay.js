@@ -9,56 +9,63 @@
  * editor tooltips that appear when clicking swatch based editors.
  */
 
-const Services = require("Services");
-const flags = require("devtools/shared/flags");
+const flags = require("resource://devtools/shared/flags.js");
 const {
-  VIEW_NODE_VALUE_TYPE,
+  VIEW_NODE_CSS_QUERY_CONTAINER,
+  VIEW_NODE_CSS_SELECTOR_WARNINGS,
   VIEW_NODE_FONT_TYPE,
   VIEW_NODE_IMAGE_URL_TYPE,
   VIEW_NODE_INACTIVE_CSS,
+  VIEW_NODE_VALUE_TYPE,
   VIEW_NODE_VARIABLE_TYPE,
-} = require("devtools/client/inspector/shared/node-types");
+} = require("resource://devtools/client/inspector/shared/node-types.js");
 
 loader.lazyRequireGetter(
   this,
   "getColor",
-  "devtools/client/shared/theme",
+  "resource://devtools/client/shared/theme.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "HTMLTooltip",
-  "devtools/client/shared/widgets/tooltip/HTMLTooltip",
+  "resource://devtools/client/shared/widgets/tooltip/HTMLTooltip.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   ["getImageDimensions", "setImageTooltip", "setBrokenImageTooltip"],
-  "devtools/client/shared/widgets/tooltip/ImageTooltipHelper",
+  "resource://devtools/client/shared/widgets/tooltip/ImageTooltipHelper.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "setVariableTooltip",
-  "devtools/client/shared/widgets/tooltip/VariableTooltipHelper",
+  "resource://devtools/client/shared/widgets/tooltip/VariableTooltipHelper.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "InactiveCssTooltipHelper",
-  "devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper",
+  "resource://devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper.js",
   false
 );
 loader.lazyRequireGetter(
   this,
   "CssCompatibilityTooltipHelper",
-  "devtools/client/shared/widgets/tooltip/css-compatibility-tooltip-helper",
+  "resource://devtools/client/shared/widgets/tooltip/css-compatibility-tooltip-helper.js",
   false
 );
 loader.lazyRequireGetter(
   this,
-  "Telemetry",
-  "devtools/client/shared/telemetry",
+  "CssQueryContainerTooltipHelper",
+  "resource://devtools/client/shared/widgets/tooltip/css-query-container-tooltip-helper.js",
+  false
+);
+loader.lazyRequireGetter(
+  this,
+  "CssSelectorWarningsTooltipHelper",
+  "resource://devtools/client/shared/widgets/tooltip/css-selector-warnings-tooltip-helper.js",
   false
 );
 
@@ -66,8 +73,10 @@ const PREF_IMAGE_TOOLTIP_SIZE = "devtools.inspector.imagePreviewTooltipSize";
 
 // Types of existing tooltips
 const TOOLTIP_CSS_COMPATIBILITY = "css-compatibility";
-const TOOLTIP_IMAGE_TYPE = "image";
+const TOOLTIP_CSS_QUERY_CONTAINER = "css-query-info";
+const TOOLTIP_CSS_SELECTOR_WARNINGS = "css-selector-warnings";
 const TOOLTIP_FONTFAMILY_TYPE = "font-family";
+const TOOLTIP_IMAGE_TYPE = "image";
 const TOOLTIP_INACTIVE_CSS = "inactive-css";
 const TOOLTIP_VARIABLE_TYPE = "variable";
 
@@ -83,7 +92,6 @@ const TOOLTIP_SHOWN_SCALAR = "devtools.tooltip.shown";
 function TooltipsOverlay(view) {
   this.view = view;
   this._instances = new Map();
-  this.telemetry = new Telemetry();
 
   this._onNewSelection = this._onNewSelection.bind(this);
   this.view.inspector.selection.on("new-node-front", this._onNewSelection);
@@ -92,10 +100,6 @@ function TooltipsOverlay(view) {
 }
 
 TooltipsOverlay.prototype = {
-  get _cssProperties() {
-    return this.view.inspector.cssProperties;
-  },
-
   get isEditing() {
     for (const [, tooltip] of this._instances) {
       if (typeof tooltip.isEditing == "function" && tooltip.isEditing()) {
@@ -109,7 +113,7 @@ TooltipsOverlay.prototype = {
    * Add the tooltips overlay to the view. This will start tracking mouse
    * movements and display tooltips when needed
    */
-  addToView: function() {
+  addToView() {
     if (this._isStarted || this._isDestroyed) {
       return;
     }
@@ -118,6 +122,9 @@ TooltipsOverlay.prototype = {
 
     this.inactiveCssTooltipHelper = new InactiveCssTooltipHelper();
     this.compatibilityTooltipHelper = new CssCompatibilityTooltipHelper();
+    this.cssQueryContainerTooltipHelper = new CssQueryContainerTooltipHelper();
+    this.cssSelectorWarningsTooltipHelper =
+      new CssSelectorWarningsTooltipHelper();
 
     // Instantiate the interactiveTooltip and preview tooltip when the
     // rule/computed view is hovered over in order to call
@@ -147,7 +154,7 @@ TooltipsOverlay.prototype = {
    * @param {String} name
    *        Identifier name for the tooltip
    */
-  getTooltip: function(name) {
+  getTooltip(name) {
     let tooltip = this._instances.get(name);
     if (tooltip) {
       return tooltip;
@@ -155,19 +162,19 @@ TooltipsOverlay.prototype = {
     const { doc } = this.view.inspector.toolbox;
     switch (name) {
       case "colorPicker":
-        const SwatchColorPickerTooltip = require("devtools/client/shared/widgets/tooltip/SwatchColorPickerTooltip");
-        tooltip = new SwatchColorPickerTooltip(
-          doc,
-          this.view.inspector,
-          this._cssProperties
-        );
+        const SwatchColorPickerTooltip = require("resource://devtools/client/shared/widgets/tooltip/SwatchColorPickerTooltip.js");
+        tooltip = new SwatchColorPickerTooltip(doc, this.view.inspector);
         break;
       case "cubicBezier":
-        const SwatchCubicBezierTooltip = require("devtools/client/shared/widgets/tooltip/SwatchCubicBezierTooltip");
+        const SwatchCubicBezierTooltip = require("resource://devtools/client/shared/widgets/tooltip/SwatchCubicBezierTooltip.js");
         tooltip = new SwatchCubicBezierTooltip(doc);
         break;
+      case "linearEaseFunction":
+        const SwatchLinearEasingFunctionTooltip = require("devtools/client/shared/widgets/tooltip/SwatchLinearEasingFunctionTooltip");
+        tooltip = new SwatchLinearEasingFunctionTooltip(doc);
+        break;
       case "filterEditor":
-        const SwatchFilterTooltip = require("devtools/client/shared/widgets/tooltip/SwatchFilterTooltip");
+        const SwatchFilterTooltip = require("resource://devtools/client/shared/widgets/tooltip/SwatchFilterTooltip.js");
         tooltip = new SwatchFilterTooltip(doc);
         break;
       case "interactiveTooltip":
@@ -205,7 +212,7 @@ TooltipsOverlay.prototype = {
    * Remove the tooltips overlay from the view. This will stop tracking mouse
    * movements and displaying tooltips
    */
-  removeFromView: function() {
+  removeFromView() {
     if (!this._isStarted || this._isDestroyed) {
       return;
     }
@@ -227,7 +234,7 @@ TooltipsOverlay.prototype = {
    * @param {Object} nodeInfo
    * @return {String} The tooltip type to be shown, or null
    */
-  _getTooltipType: function({ type, value: prop }) {
+  _getTooltipType({ type, value: prop }) {
     let tooltipType = null;
 
     // Image preview tooltip
@@ -256,7 +263,28 @@ TooltipsOverlay.prototype = {
       tooltipType = TOOLTIP_VARIABLE_TYPE;
     }
 
+    // Container info tooltip
+    if (type === VIEW_NODE_CSS_QUERY_CONTAINER) {
+      tooltipType = TOOLTIP_CSS_QUERY_CONTAINER;
+    }
+
+    // Selector warnings info tooltip
+    if (type === VIEW_NODE_CSS_SELECTOR_WARNINGS) {
+      tooltipType = TOOLTIP_CSS_SELECTOR_WARNINGS;
+    }
+
     return tooltipType;
+  },
+
+  _removePreviousInstances() {
+    for (const tooltip of this._instances.values()) {
+      if (tooltip.isVisible()) {
+        if (tooltip.revert) {
+          tooltip.revert();
+        }
+        tooltip.hide();
+      }
+    }
   },
 
   /**
@@ -281,12 +309,7 @@ TooltipsOverlay.prototype = {
       return false;
     }
 
-    for (const [, tooltip] of this._instances) {
-      if (tooltip.isVisible()) {
-        tooltip.revert();
-        tooltip.hide();
-      }
-    }
+    this._removePreviousInstances();
 
     const inspector = this.view.inspector;
 
@@ -373,15 +396,7 @@ TooltipsOverlay.prototype = {
       return false;
     }
 
-    // Remove previous tooltip instances.
-    for (const [, tooltip] of this._instances) {
-      if (tooltip.isVisible()) {
-        if (tooltip.revert) {
-          tooltip.revert();
-        }
-        tooltip.hide();
-      }
-    }
+    this._removePreviousInstances();
 
     if (type === TOOLTIP_INACTIVE_CSS) {
       // Ensure this is the correct node and not a parent.
@@ -390,6 +405,33 @@ TooltipsOverlay.prototype = {
       }
 
       await this.inactiveCssTooltipHelper.setContent(
+        nodeInfo.value,
+        this.getTooltip("interactiveTooltip")
+      );
+
+      this.sendOpenScalarToTelemetry(type);
+
+      return true;
+    }
+
+    if (type === TOOLTIP_CSS_QUERY_CONTAINER) {
+      // Ensure this is the correct node and not a parent.
+      if (!target.closest(".container-query .container-query-declaration")) {
+        return false;
+      }
+
+      await this.cssQueryContainerTooltipHelper.setContent(
+        nodeInfo.value,
+        this.getTooltip("interactiveTooltip")
+      );
+
+      this.sendOpenScalarToTelemetry(type);
+
+      return true;
+    }
+
+    if (type === TOOLTIP_CSS_SELECTOR_WARNINGS) {
+      await this.cssSelectorWarningsTooltipHelper.setContent(
         nodeInfo.value,
         this.getTooltip("interactiveTooltip")
       );
@@ -409,7 +451,7 @@ TooltipsOverlay.prototype = {
    *        The node type from `devtools/client/inspector/shared/node-types` or the Tooltip type.
    */
   sendOpenScalarToTelemetry(type) {
-    this.telemetry.keyedScalarAdd(TOOLTIP_SHOWN_SCALAR, type, 1);
+    this.view.inspector.telemetry.keyedScalarAdd(TOOLTIP_SHOWN_SCALAR, type, 1);
   },
 
   /**
@@ -506,7 +548,7 @@ TooltipsOverlay.prototype = {
     await setVariableTooltip(this.getTooltip("previewTooltip"), doc, text);
   },
 
-  _onNewSelection: function() {
+  _onNewSelection() {
     for (const [, tooltip] of this._instances) {
       tooltip.hide();
     }
@@ -515,12 +557,11 @@ TooltipsOverlay.prototype = {
   /**
    * Destroy this overlay instance, removing it from the view
    */
-  destroy: function() {
+  destroy() {
     this.removeFromView();
 
     this.view.inspector.selection.off("new-node-front", this._onNewSelection);
     this.view = null;
-    this.telemetry = null;
 
     this._isDestroyed = true;
   },

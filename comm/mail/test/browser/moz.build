@@ -4,12 +4,11 @@
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 
 BROWSER_CHROME_MANIFESTS += [
+    "account/browser-clear.ini",
     "account/browser.ini",
-    "addrbook/browser.ini",
     "attachment/browser.ini",
     "cloudfile/browser.ini",
-    "composition/browser-cpp.ini",
-    "composition/browser-jsm.ini",
+    "composition/browser.ini",
     "content-policy/browser.ini",
     "content-tabs/browser.ini",
     "cookies/browser.ini",
@@ -20,6 +19,7 @@ BROWSER_CHROME_MANIFESTS += [
     "folder-widget/browser.ini",
     "global-search-bar/browser.ini",
     "im/browser.ini",
+    "import/browser.ini",
     "junk-commands/browser.ini",
     "keyboard/browser.ini",
     "message-header/browser.ini",
@@ -47,21 +47,17 @@ DIRS += [
 ]
 
 TEST_HARNESS_FILES.testing.mochitest.fakeserver += [
-    "../../../mailnews/test/fakeserver/Auth.jsm",
-    "../../../mailnews/test/fakeserver/Imapd.jsm",
-    "../../../mailnews/test/fakeserver/Maild.jsm",
-    "../../../mailnews/test/fakeserver/Nntpd.jsm",
-    "../../../mailnews/test/fakeserver/Pop3d.jsm",
-    "../../../mailnews/test/fakeserver/Smtpd.jsm",
+    "../../../mailnews/test/fakeserver/Auth.sys.mjs",
+    "../../../mailnews/test/fakeserver/Imapd.sys.mjs",
+    "../../../mailnews/test/fakeserver/Maild.sys.mjs",
+    "../../../mailnews/test/fakeserver/Nntpd.sys.mjs",
+    "../../../mailnews/test/fakeserver/Pop3d.sys.mjs",
+    "../../../mailnews/test/fakeserver/Smtpd.sys.mjs",
 ]
 
 TEST_HARNESS_FILES.testing.mochitest.resources += [
-    "../../../mailnews/test/resources/asyncTestUtils.js",
-    "../../../mailnews/test/resources/folderEventLogHelper.js",
     "../../../mailnews/test/resources/logHelper.js",
-    "../../../mailnews/test/resources/MessageGenerator.jsm",
-    "../../../mailnews/test/resources/messageInjection.js",
-    "../../../mailnews/test/resources/messageModifier.js",
-    "../../../mailnews/test/resources/smimeUtils.jsm",
-    "../../base/test/unit/resources/viewWrapperTestUtils.js",
+    "../../../mailnews/test/resources/MessageGenerator.sys.mjs",
+    "../../../mailnews/test/resources/MessageInjection.sys.mjs",
+    "../../../mailnews/test/resources/SmimeUtils.sys.mjs",
 ]

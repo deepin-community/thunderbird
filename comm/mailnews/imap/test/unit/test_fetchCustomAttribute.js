@@ -6,15 +6,11 @@
  * Test to ensure that imap fetchCustomMsgAttribute function works properly
  */
 
-// async support
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 // IMAP pump
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Globals
 
@@ -28,19 +24,14 @@ var gMsgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
   Ci.nsIMsgWindow
 );
 
-setupIMAPPump("CUSTOM1");
-
-// Definition of tests
-var tests = [
-  loadImapMessage,
-  testFetchCustomValue,
-  testFetchCustomList,
-  endTest,
-];
-
-// load and update a message in the imap fake server
-function* loadImapMessage() {
-  let message = new imapMessage(
+add_setup(async function () {
+  setupIMAPPump("CUSTOM1");
+  Services.prefs.setBoolPref(
+    "mail.server.server1.autosync_offline_stores",
+    false
+  );
+  // Load and update a message in the imap fake server.
+  const message = new ImapMessage(
     specForFileName(gMessage),
     IMAPPump.mailbox.uidnext++,
     []
@@ -48,71 +39,59 @@ function* loadImapMessage() {
   message.xCustomValue = gCustomValue;
   message.xCustomList = gCustomList;
   IMAPPump.mailbox.addMessage(message);
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
 // Used to verify that nsIServerResponseParser.msg_fetch() can handle
 // not in a parenthesis group - Bug 750012
-function* testFetchCustomValue() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
-  let uri = IMAPPump.inbox.fetchCustomMsgAttribute(
+add_task(async function testFetchCustomValue() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+  const uri = IMAPPump.inbox.fetchCustomMsgAttribute(
     "X-CUSTOM-VALUE",
     msgHdr.messageKey,
     gMsgWindow
   );
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
+  // Listens for response from fetchCustomMsgAttribute request for X-CUSTOM-VALUE.
+  const fetchCustomValueListener = new PromiseTestUtils.PromiseUrlListener({
+    OnStopRunningUrl(aUrl, aExitCode) {
+      aUrl.QueryInterface(Ci.nsIImapUrl);
+      Assert.equal(aUrl.customAttributeResult, gCustomValue);
+    },
+  });
   uri.RegisterListener(fetchCustomValueListener);
-  yield false;
-}
-
-// listens for response from fetchCustomMsgAttribute request for X-CUSTOM-VALUE
-var fetchCustomValueListener = {
-  OnStartRunningUrl(aUrl) {},
-
-  OnStopRunningUrl(aUrl, aExitCode) {
-    aUrl.QueryInterface(Ci.nsIImapUrl);
-    Assert.equal(aUrl.customAttributeResult, gCustomValue);
-    async_driver();
-  },
-};
+  await fetchCustomValueListener.promise;
+});
 
 // Used to verify that nsIServerResponseParser.msg_fetch() can handle a parenthesis group - Bug 735542
-function* testFetchCustomList() {
-  let msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
-  let uri = IMAPPump.inbox.fetchCustomMsgAttribute(
+add_task(async function testFetchCustomList() {
+  const msgHdr = mailTestUtils.firstMsgHdr(IMAPPump.inbox);
+  const uri = IMAPPump.inbox.fetchCustomMsgAttribute(
     "X-CUSTOM-LIST",
     msgHdr.messageKey,
     gMsgWindow
   );
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
+  // Listens for response from fetchCustomMsgAttribute request for X-CUSTOM-VALUE.
+  const fetchCustomListListener = new PromiseTestUtils.PromiseUrlListener({
+    OnStopRunningUrl(aUrl, aExitCode) {
+      aUrl.QueryInterface(Ci.nsIImapUrl);
+      Assert.equal(
+        aUrl.customAttributeResult,
+        "(" + gCustomList.join(" ") + ")"
+      );
+    },
+  });
   uri.RegisterListener(fetchCustomListListener);
-  yield false;
-}
-
-// listens for response from fetchCustomMsgAttribute request for X-CUSTOM-LIST
-var fetchCustomListListener = {
-  OnStartRunningUrl(aUrl) {},
-
-  OnStopRunningUrl(aUrl, aExitCode) {
-    aUrl.QueryInterface(Ci.nsIImapUrl);
-    Assert.equal(aUrl.customAttributeResult, "(" + gCustomList.join(" ") + ")");
-    async_driver();
-  },
-};
+  await fetchCustomListListener.promise;
+});
 
 // Cleanup at end
-function endTest() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  Services.prefs.setBoolPref(
-    "mail.server.server1.autosync_offline_stores",
-    false
-  );
-  async_run_tests(tests);
-}
+});
 
 /*
  * helper functions
@@ -120,7 +99,7 @@ function run_test() {
 
 // given a test file, return the file uri spec
 function specForFileName(aFileName) {
-  let file = do_get_file("../../../data/" + aFileName);
-  let msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
+  const file = do_get_file("../../../data/" + aFileName);
+  const msgfileuri = Services.io.newFileURI(file).QueryInterface(Ci.nsIFileURL);
   return msgfileuri.spec;
 }

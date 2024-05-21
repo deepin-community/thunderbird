@@ -3,16 +3,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+var { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
 var AutoHideMenubar = {
   get _node() {
     delete this._node;
     return (this._node =
-      document.getElementById("mail-toolbar-menubar2") ||
+      document.getElementById("toolbar-menubar") ||
       document.getElementById("compose-toolbar-menubar2") ||
       document.getElementById("addrbook-toolbar-menubar2"));
   },
@@ -30,7 +29,7 @@ var AutoHideMenubar = {
         return;
       }
 
-      let contextMenuId = AutoHideMenubar._node.getAttribute("context");
+      const contextMenuId = AutoHideMenubar._node.getAttribute("context");
       this.contextMenu = document.getElementById(contextMenuId);
       this.contextMenu.addEventListener("popupshown", this);
       this.contextMenu.addEventListener("popuphiding", this);
@@ -75,14 +74,14 @@ var AutoHideMenubar = {
   ],
   _enable() {
     this._node.setAttribute("inactive", "true");
-    for (let event of this._events) {
+    for (const event of this._events) {
       this._node.addEventListener(event, this);
     }
   },
 
   _disable() {
     this._setActive();
-    for (let event of this._events) {
+    for (const event of this._events) {
       this._node.removeEventListener(event, this);
     }
   },
@@ -130,22 +129,31 @@ var AutoHideMenubar = {
 
 var ToolbarContextMenu = {
   _getExtensionId(popup) {
-    let node = popup.triggerNode;
-    return node && node.getAttribute("data-extensionid");
+    const node = popup.triggerNode;
+    if (!node) {
+      return null;
+    }
+    if (node.hasAttribute("data-extensionid")) {
+      return node.getAttribute("data-extensionid");
+    }
+    const extensionButton = node.closest('[item-id^="ext-"]');
+    return extensionButton?.getAttribute("item-id").slice(4);
   },
 
   async updateExtension(popup) {
-    let removeExtension = popup.querySelector(
+    const removeExtension = popup.querySelector(
       ".customize-context-removeExtension"
     );
-    let manageExtension = popup.querySelector(
+    const manageExtension = popup.querySelector(
       ".customize-context-manageExtension"
     );
-    let separator = popup.querySelector("#extensionsMailToolbarMenuSeparator");
-    let id = this._getExtensionId(popup);
-    let addon = id && (await AddonManager.getAddonByID(id));
+    const separator = popup.querySelector(
+      "#extensionsMailToolbarMenuSeparator"
+    );
+    const id = this._getExtensionId(popup);
+    const addon = id && (await AddonManager.getAddonByID(id));
 
-    for (let element of [removeExtension, manageExtension, separator]) {
+    for (const element of [removeExtension, manageExtension, separator]) {
       if (!element) {
         continue;
       }
@@ -161,18 +169,18 @@ var ToolbarContextMenu = {
   },
 
   async removeExtensionForContextAction(popup) {
-    let id = this._getExtensionId(popup);
+    const id = this._getExtensionId(popup);
 
     // This can be called from a composeAction button, where
     // popup.ownerGlobal.BrowserAddonUI is undefined.
-    let win = Services.wm.getMostRecentWindow("mail:3pane");
+    const win = Services.wm.getMostRecentWindow("mail:3pane");
     await win.BrowserAddonUI.removeAddon(id);
   },
 
   openAboutAddonsForContextAction(popup) {
-    let id = this._getExtensionId(popup);
+    const id = this._getExtensionId(popup);
     if (id) {
-      let viewID = "addons://detail/" + encodeURIComponent(id);
+      const viewID = "addons://detail/" + encodeURIComponent(id);
       popup.ownerGlobal.openAddonsMgr(viewID);
     }
   },

@@ -18,7 +18,7 @@ const TEST_URI = `
   </div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
 
   const { inspector, gridInspector } = await openLayoutView();
@@ -26,9 +26,6 @@ add_task(async function() {
   const { store } = inspector;
   const HIGHLIGHTER_TYPE = inspector.highlighters.TYPES.GRID;
   const { waitForHighlighterTypeShown } = getHighlighterTestHelpers(inspector);
-
-  // Don't track reflows since this might cause intermittent failures.
-  inspector.off("reflow-in-selected-target", gridInspector.onReflow);
 
   const gridList = doc.getElementById("grid-list");
   const checkbox = gridList.children[0].querySelector("input");

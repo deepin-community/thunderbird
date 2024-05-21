@@ -74,23 +74,6 @@ using namespace mozilla;
 namespace mozilla {
 namespace baseprofiler {
 
-int profiler_current_process_id() { return getpid(); }
-
-int profiler_current_thread_id() {
-#if defined(GP_OS_linux)
-  // glibc doesn't provide a wrapper for gettid() until 2.30
-  return static_cast<int>(static_cast<pid_t>(syscall(SYS_gettid)));
-#elif defined(GP_OS_android)
-  return gettid();
-#elif defined(GP_OS_freebsd)
-  long id;
-  (void)thr_self(&id);
-  return static_cast<int>(id);
-#else
-#  error "bad platform"
-#endif
-}
-
 static int64_t MicrosecondsSince1970() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
@@ -108,32 +91,38 @@ static void PopulateRegsFromContext(Registers& aRegs, ucontext_t* aContext) {
   aRegs.mPC = reinterpret_cast<Address>(mcontext.gregs[REG_EIP]);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.gregs[REG_ESP]);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.gregs[REG_EBP]);
-  aRegs.mLR = 0;
+  aRegs.mEcx = reinterpret_cast<Address>(mcontext.gregs[REG_ECX]);
+  aRegs.mEdx = reinterpret_cast<Address>(mcontext.gregs[REG_EDX]);
 #elif defined(GP_PLAT_amd64_linux) || defined(GP_PLAT_amd64_android)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.gregs[REG_RIP]);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.gregs[REG_RSP]);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.gregs[REG_RBP]);
-  aRegs.mLR = 0;
+  aRegs.mR10 = reinterpret_cast<Address>(mcontext.gregs[REG_R10]);
+  aRegs.mR12 = reinterpret_cast<Address>(mcontext.gregs[REG_R12]);
 #elif defined(GP_PLAT_amd64_freebsd)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.mc_rip);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.mc_rsp);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.mc_rbp);
-  aRegs.mLR = 0;
+  aRegs.mR10 = reinterpret_cast<Address>(mcontext.mc_r10);
+  aRegs.mR12 = reinterpret_cast<Address>(mcontext.mc_r12);
 #elif defined(GP_PLAT_arm_linux) || defined(GP_PLAT_arm_android)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.arm_pc);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.arm_sp);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.arm_fp);
   aRegs.mLR = reinterpret_cast<Address>(mcontext.arm_lr);
+  aRegs.mR7 = reinterpret_cast<Address>(mcontext.arm_r7);
 #elif defined(GP_PLAT_arm64_linux) || defined(GP_PLAT_arm64_android)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.pc);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.sp);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.regs[29]);
   aRegs.mLR = reinterpret_cast<Address>(mcontext.regs[30]);
+  aRegs.mR11 = reinterpret_cast<Address>(mcontext.regs[11]);
 #elif defined(GP_PLAT_arm64_freebsd)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.mc_gpregs.gp_elr);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.mc_gpregs.gp_sp);
   aRegs.mFP = reinterpret_cast<Address>(mcontext.mc_gpregs.gp_x[29]);
   aRegs.mLR = reinterpret_cast<Address>(mcontext.mc_gpregs.gp_lr);
+  aRegs.mR11 = reinterpret_cast<Address>(mcontext.mc_gpregs.gp_x[11]);
 #elif defined(GP_PLAT_mips64_linux) || defined(GP_PLAT_mips64_android)
   aRegs.mPC = reinterpret_cast<Address>(mcontext.pc);
   aRegs.mSP = reinterpret_cast<Address>(mcontext.gregs[29]);
@@ -160,7 +149,7 @@ int tgkill(pid_t tgid, pid_t tid, int signalno) {
 
 class PlatformData {
  public:
-  explicit PlatformData(int aThreadId) {}
+  explicit PlatformData(BaseProfilerThreadId aThreadId) {}
 
   ~PlatformData() {}
 };
@@ -217,6 +206,7 @@ struct SigHandlerCoordinator {
     r |= sem_init(&mMessage3, /* pshared */ 0, 0);
     r |= sem_init(&mMessage4, /* pshared */ 0, 0);
     MOZ_ASSERT(r == 0);
+    (void)r;
   }
 
   ~SigHandlerCoordinator() {
@@ -224,6 +214,7 @@ struct SigHandlerCoordinator {
     r |= sem_destroy(&mMessage3);
     r |= sem_destroy(&mMessage4);
     MOZ_ASSERT(r == 0);
+    (void)r;
   }
 
   sem_t mMessage2;       // To sampler: "context is in sSigHandlerCoordinator"
@@ -277,13 +268,7 @@ static void SigprofHandler(int aSignal, siginfo_t* aInfo, void* aContext) {
   errno = savedErrno;
 }
 
-Sampler::Sampler(PSLockRef aLock)
-    : mMyPid(profiler_current_process_id())
-      // We don't know what the sampler thread's ID will be until it runs, so
-      // set mSamplerTid to a dummy value and fill it in for real in
-      // SuspendAndSampleAndResumeThread().
-      ,
-      mSamplerTid(-1) {
+Sampler::Sampler(PSLockRef aLock) : mMyPid(profiler_current_process_id()) {
 #if defined(USE_EHABI_STACKWALK)
   EHABIStackWalkInit();
 #endif
@@ -317,10 +302,10 @@ void Sampler::SuspendAndSampleAndResumeThread(
   // complete control over |sSigHandlerCoordinator|.
   MOZ_ASSERT(!sSigHandlerCoordinator);
 
-  if (mSamplerTid == -1) {
+  if (!mSamplerTid.IsSpecified()) {
     mSamplerTid = profiler_current_thread_id();
   }
-  int sampleeTid = aRegisteredThread.Info()->ThreadId();
+  BaseProfilerThreadId sampleeTid = aRegisteredThread.Info()->ThreadId();
   MOZ_RELEASE_ASSERT(sampleeTid != mSamplerTid);
 
   //----------------------------------------------------------------//
@@ -332,7 +317,7 @@ void Sampler::SuspendAndSampleAndResumeThread(
   // Send message 1 to the samplee (the thread to be sampled), by
   // signalling at it.
   // This could fail if the thread doesn't exist anymore.
-  int r = tgkill(mMyPid, sampleeTid, SIGPROF);
+  int r = tgkill(mMyPid.ToNumber(), sampleeTid.ToNumber(), SIGPROF);
   if (r == 0) {
     // Wait for message 2 from the samplee, indicating that the context
     // is available and that the thread is suspended.
@@ -411,16 +396,14 @@ static void* ThreadEntry(void* aArg) {
 }
 
 SamplerThread::SamplerThread(PSLockRef aLock, uint32_t aActivityGeneration,
-                             double aIntervalMilliseconds,
-                             bool aStackWalkEnabled,
-                             bool aNoTimerResolutionChange)
+                             double aIntervalMilliseconds, uint32_t aFeatures)
     : mSampler(aLock),
       mActivityGeneration(aActivityGeneration),
       mIntervalMicroseconds(
           std::max(1, int(floor(aIntervalMilliseconds * 1000 + 0.5)))) {
 #if defined(USE_LUL_STACKWALK)
   lul::LUL* lul = CorePS::Lul(aLock);
-  if (!lul && aStackWalkEnabled) {
+  if (!lul && ProfilerFeature::HasStackWalkEnabled(aFeatures)) {
     CorePS::SetLul(aLock, MakeUnique<lul::LUL>(logging_sink_for_LUL));
     // Read all the unwind info currently available.
     lul = CorePS::Lul(aLock);
@@ -493,36 +476,21 @@ void SamplerThread::Stop(PSLockRef aLock) {
 //
 // We provide no paf_child() function to run in the child after forking. This
 // is fine because we always immediately exec() after fork(), and exec()
-// clobbers all process state. (At one point we did have a paf_child()
-// function, but it caused problems related to locking gPSMutex. See bug
-// 1348374.)
+// clobbers all process state. Also, we don't want the sampler to resume in the
+// child process between fork() and exec(), it would be wasteful.
 //
 // Unfortunately all this is only doable on non-Android because Bionic doesn't
 // have pthread_atfork.
 
-// In the parent, before the fork, record IsSamplingPaused, and then pause.
-static void paf_prepare() {
-  MOZ_RELEASE_ASSERT(CorePS::Exists());
+// In the parent, before the fork, increase gSkipSampling to ensure that
+// profiler sampling loops will be skipped. There could be one in progress now,
+// causing a small delay, but further sampling will be skipped, allowing `fork`
+// to complete.
+static void paf_prepare() { ++gSkipSampling; }
 
-  PSAutoLock lock;
-
-  if (ActivePS::Exists(lock)) {
-    ActivePS::SetWasSamplingPaused(lock, ActivePS::IsSamplingPaused(lock));
-    ActivePS::SetIsSamplingPaused(lock, true);
-  }
-}
-
-// In the parent, after the fork, return IsSamplingPaused to the pre-fork state.
-static void paf_parent() {
-  MOZ_RELEASE_ASSERT(CorePS::Exists());
-
-  PSAutoLock lock;
-
-  if (ActivePS::Exists(lock)) {
-    ActivePS::SetIsSamplingPaused(lock, ActivePS::WasSamplingPaused(lock));
-    ActivePS::SetWasSamplingPaused(lock, false);
-  }
-}
+// In the parent, after the fork, decrease gSkipSampling to let the sampler
+// resume sampling (unless other places have made it non-zero as well).
+static void paf_parent() { --gSkipSampling; }
 
 static void PlatformInit(PSLockRef aLock) {
   // Set up the fork handlers.
@@ -536,18 +504,9 @@ static void PlatformInit(PSLockRef aLock) {}
 #endif
 
 #if defined(HAVE_NATIVE_UNWIND)
-// Context used by synchronous samples. It's safe to have a single one because
-// only one synchronous sample can be taken at a time (due to
-// profiler_get_backtrace()'s PSAutoLock).
-// ucontext_t sSyncUContext;
-
-void Registers::SyncPopulate() {
-  // TODO port getcontext from breakpad, if profiler_get_backtrace is needed.
-  MOZ_CRASH("profiler_get_backtrace() unsupported");
-  // if (!getcontext(&sSyncUContext)) {
-  //   PopulateRegsFromContext(*this, &sSyncUContext);
-  // }
-}
+// TODO port getcontext from breakpad, if profiler_get_backtrace is needed.
+#  define REGISTERS_SYNC_POPULATE(regs) \
+    MOZ_CRASH("profiler_get_backtrace() unsupported");
 #endif
 
 }  // namespace baseprofiler

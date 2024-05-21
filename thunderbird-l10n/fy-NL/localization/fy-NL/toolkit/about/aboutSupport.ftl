@@ -4,10 +4,9 @@
 
 page-title = Helpynformaasje
 page-subtitle =
-    Dizze side befettet technyske ynformaasje dy't brûkber wêze kin as jo
+    Dizze side befettet technyske ynformaasje dy’t brûkber wêze kin as jo
     probearje om problemen op te lossen. As jo antwurden sykje op algemiene fragen
     oer { -brand-short-name }, sjoch dan op ús <a data-l10n-name="support-link">stipewebsite</a>.
-
 crashes-title = Ungelokrapporten
 crashes-id = Rapport-ID
 crashes-send-date = Ynstjoerd
@@ -19,6 +18,10 @@ support-addons-type = Type
 support-addons-enabled = Ynskeakele
 support-addons-version = Ferzje
 support-addons-id = ID
+legacy-user-stylesheets-title = Ferâldere brûkersstylblêden
+legacy-user-stylesheets-enabled = Aktyf
+legacy-user-stylesheets-stylesheet-types = Stylblêden
+legacy-user-stylesheets-no-stylesheets-found = Gjin stylblêden fûn
 security-software-title = Befeiligingssoftware
 security-software-type = Type
 security-software-name = Namme
@@ -76,6 +79,13 @@ app-basics-location-service-key-google = Google-lokaasjetsjinstkaai
 app-basics-safebrowsing-key-google = Google Safe Browsing-kaai
 app-basics-key-mozilla = Mozilla-lokaasjetsjinstkaai
 app-basics-safe-mode = Feilige modus
+app-basics-memory-size = Unthâldgrutte (RAM)
+app-basics-disk-available = Beskikbere skiifromte:
+app-basics-pointing-devices = Oanwiisapparaten
+# Variables:
+#   $value (number) - Amount of data being stored
+#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Toane yn Finder
@@ -92,7 +102,7 @@ modified-key-prefs-title = Wichtige oanpaste foarkarren
 modified-prefs-name = Namme
 modified-prefs-value = Wearde
 user-js-title = user.js-foarkarren
-user-js-description = Jo profylmap befettet in <a data-l10n-name="user-js-link">user.js bestân</a>, mei foarkarren dy't net makke binne troch { -brand-short-name }.
+user-js-description = Jo profylmap befettet in <a data-l10n-name="user-js-link">user.js bestân</a>, mei foarkarren dy’t net makke binne troch { -brand-short-name }.
 locked-key-prefs-title = Wichtige blokkearre opsjes
 locked-prefs-name = Namme
 locked-prefs-value = Wearde
@@ -105,11 +115,21 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Beslútloch
 graphics-crash-guards-title = Utskeakele funksjes fan ûngelokbeskerming
 graphics-workarounds-title = Workarounds
+graphics-device-pixel-ratios = Pikselferhâldingen fan finsterapparaat
 # Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Finsterprotokol
 # Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Desktopomjouwing
 place-database-title = Places-database
+place-database-stats = Statistiken
+place-database-stats-show = Statistiken toane
+place-database-stats-hide = Statistiken ferstopje
+place-database-stats-entity = Entiteit
+place-database-stats-count = Oantal
+place-database-stats-size-kib = Grutte (KB)
+place-database-stats-size-perc = Grutte (%)
+place-database-stats-efficiency-perc = Effisjinsje (%)
+place-database-stats-sequentiality-perc = Folchoarder (%)
 place-database-integrity = Yntegriteit
 place-database-verify-integrity = Yntegriteit ferifearje
 a11y-title = Tagonklikheid
@@ -156,8 +176,36 @@ media-device-channels = Kanalen
 media-device-rate = Wurdearrring
 media-device-latency = Latintens
 media-capabilities-title = Mediamooglikheden
+media-codec-support-info = Codec-stipeynformaasje
 # List all the entries of the database.
 media-capabilities-enumerate = Database ynventarisearje
+
+## Codec support table
+
+media-codec-support-sw-decoding = Software-dekodearring
+media-codec-support-hw-decoding = Hardware-dekodearring
+media-codec-support-codec-name = Codecnamme
+media-codec-support-supported = Stipe
+media-codec-support-unsupported = Net stipe
+media-codec-support-error = Codec-stipeynformaasje net beskikber. Probearje it nochris nei it ôfspyljen fan in mediabestân.
+media-codec-support-lack-of-extension = Utwreiding ynstallearje
+
+## Media Content Decryption Modules (CDM)
+## See EME Spec for more explanation for following technical terms
+## https://w3c.github.io/encrypted-media/
+
+media-content-decryption-modules-title = Ynformaasje oer ynhâldsûntsiferingsmodulen
+media-key-system-name = Kaaisysteemnamme
+media-video-robustness = Fideo-robústheid
+media-audio-robustness = Audio-robústheid
+media-cdm-capabilities = Mooglikheden
+# Clear Lead isn't defined in the spec, which means the the first few seconds
+# are not encrypted. It allows playback to start without having to wait for
+# license response, improving video start time and user experience.
+media-cdm-clear-lead = Skjinne start
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = HDCP 2.2-kompatibel
 
 ##
 
@@ -193,7 +241,6 @@ report-crash-for-days =
         [one] Ungelokrapporten foar de lêste { $days } dei
        *[other] Ungelokrapporten foar de lêste { $days } dagen
     }
-
 # Variables
 # $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
@@ -201,7 +248,6 @@ crashes-time-minutes =
         [one] { $minutes } minút lyn
        *[other] { $minutes } minuten lyn
     }
-
 # Variables
 # $hours (integer) - Number of hours since crash
 crashes-time-hours =
@@ -209,7 +255,6 @@ crashes-time-hours =
         [one] { $hours } oer lyn
        *[other] { $hours } oer lyn
     }
-
 # Variables
 # $days (integer) - Number of days since crash
 crashes-time-days =
@@ -217,7 +262,6 @@ crashes-time-days =
         [one] { $days } dei lyn
        *[other] { $days } dagen lyn
     }
-
 # Variables
 # $reports (integer) - Number of pending reports
 pending-reports =
@@ -225,7 +269,6 @@ pending-reports =
         [one] Alle ûngelokrapporten (ynklusyf { $reports } ûngelok op wacht yn it opjûne tiidsrak)
        *[other] Alle ûngelokrapporten (ynklusyf { $reports } ûngelokken op wacht yn it opjûne tiidsrak))
     }
-
 raw-data-copied = Rûge gegevens nei klamboerd kopiearre
 text-copied = Tekst nei klamboerd kopiearre
 
@@ -238,12 +281,11 @@ blocked-mismatched-version = Blokkearre foar jo grafyske stjoerprogramma, ferzje
 # Variables
 # $driverVersion - The graphics driver version string
 try-newer-driver = Blokkearre foar jo grafysk stjoerprogramma. Probearje jo grafyske stjoerprogramma by te wurkjen nei ferzje { $driverVersion } of nijer.
-
 # "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
 # there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType parameters
-
 compositing = Gearstalle
+support-font-determination = Debugynformaasje oer lettertypesichtberheid
 hardware-h264 = Hardwaremjittige H264-dekodearring
 main-thread-no-omtc = haadthread, gjin OMTC
 yes = Ja
@@ -257,7 +299,6 @@ virtual-monitor-disp = Virtual Monitor Display
 
 found = Fûn
 missing = Untbrekt
-
 gpu-process-pid = GPUProcessPid
 gpu-process = GPUProcess
 gpu-description = Beskriuwing
@@ -280,19 +321,17 @@ webgl2-renderer = Renderer fan WebGL 2-stjoerprogramma
 webgl2-version = Ferzje fan WebGL 2-stjoerprogramma
 webgl2-driver-extensions = Utwreidingen fan WebGL 2-stjoerprogramma
 webgl2-extensions = WebGL 2-útwreidingen
-
+webgpu-default-adapter = WebGPU-standertdadapter
+webgpu-fallback-adapter = WebGPU-tebekfaladapter
 # Variables
 #   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Blokkearre fanwegen bekende problemen: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-
 # Variables
 # $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Op blokkearlist; flaterkoade { $failureCode }
-
 d3d11layers-crash-guard = D3D11-compositor
 glcontext-crash-guard = OpenGL
 wmfvpxvideo-crash-guard = WMF VPX-fideodecoder
-
 reset-on-next-restart = Opnij ynstelle nij werstart
 gpu-process-kill-button = GPU-proses beëinigje
 gpu-device-reset = Apparaatwerinisjalisaasje
@@ -302,10 +341,8 @@ content-uses-tiling = Brûkt Tiling (Ynhâld)
 off-main-thread-paint-enabled = Off Main Thread Painting ynskeakele
 off-main-thread-paint-worker-count = Oantal Off Main Thread Painting-workers
 target-frame-rate = Doelframerate
-
 min-lib-versions = Minimale ferzje ferwachte
 loaded-lib-versions = Brûkte ferzje
-
 has-seccomp-bpf = Seccomp-BPF (Systeemoanropfiltering)
 has-seccomp-tsync = Seccomp-threadsynchronisatie
 has-user-namespaces = Namespaces fan brûker
@@ -315,22 +352,20 @@ can-sandbox-media = Mediaynstekker-sandboxing
 content-sandbox-level = Ynhâldsproses-sandboxnivo
 effective-content-sandbox-level = Sandboxnivo fan effektyf ynhâldsproses
 content-win32k-lockdown-state = Win32k-beskoattelingssteat foar ynhâldsproses
+support-sandbox-gpu-level = Sânboksnivo fan GPU-proses
 sandbox-proc-type-content = ynhâld
 sandbox-proc-type-file = bestânsynhâld
 sandbox-proc-type-media-plugin = mediaynstekker
 sandbox-proc-type-data-decoder = gegevensdecoder
-
 startup-cache-title = Opstartbuffer
 startup-cache-disk-cache-path = Paad nei skiifbuffer
 startup-cache-ignore-disk-cache = Skiifbuffer negearje
 startup-cache-found-disk-cache-on-init = Skiifbuffer by Init fûn
 startup-cache-wrote-to-disk-cache = Nei skiifbuffer skreaun
-
 launcher-process-status-0 = Ynskeakele
 launcher-process-status-1 = Utskeakele fanwegen flater
 launcher-process-status-2 = Forsearre útskeakele
 launcher-process-status-unknown = Unbekende steat
-
 # Variables
 # $remoteWindows (integer) - Number of remote windows
 # $totalWindows (integer) - Number of total windows
@@ -343,14 +378,13 @@ fission-status-experiment-control = Utskeakele troch eksperimint
 fission-status-experiment-treatment = Ynskeakele troch eksperimint
 fission-status-disabled-by-e10s-env = Utskeakele troch omjouwing
 fission-status-enabled-by-env = Ynskeakele troch omjouwing
-fission-status-disabled-by-safe-mode = Utskeakele troch feilige modus
+fission-status-disabled-by-env = Utskeakele troch omjouwing
 fission-status-enabled-by-default = Standert ynskeakele
 fission-status-disabled-by-default = Standert útskeakele
 fission-status-enabled-by-user-pref = Ynskeakele troch brûker
 fission-status-disabled-by-user-pref = Utskeakele troch brûker
 fission-status-disabled-by-e10s-other = E10s útskeakele
 fission-status-enabled-by-rollout = Ynskeakele troch fazearre útjefte
-
 async-pan-zoom = Asyngroan panne/zoome
 apz-none = gjin
 wheel-enabled = tsjilynfier ynskeakele
@@ -386,8 +420,19 @@ support-printing-prefs-value = Wearde
 support-remote-experiments-title = Eksterne eksperiminten
 support-remote-experiments-name = Namme
 support-remote-experiments-branch = Eksperiminttak
-support-remote-experiments-see-about-studies = Sjoch <a data-l10n-name="support-about-studies-link">about:studies</a> foar mear ynformaasje, wêrûnder hoe't jo yndividuele eksperiminten útskeakelje kinne of foarkomme kinne dat{ -brand-short-name } dit soarte eksperiminten yn de takomst útfiert.
-
+support-remote-experiments-see-about-studies = Sjoch <a data-l10n-name="support-about-studies-link">about:studies</a> foar mear ynformaasje, wêrûnder hoe’t jo yndividuele eksperiminten útskeakelje kinne of foarkomme kinne dat{ -brand-short-name } dit soarte eksperiminten yn de takomst útfiert.
 support-remote-features-title = Eksterne funksjes
 support-remote-features-name = Namme
 support-remote-features-status = Steat
+
+## Pointing devices
+
+pointing-device-mouse = Mûs
+pointing-device-touchscreen = Oanraakskerm
+pointing-device-pen-digitizer = Pen Digitizer
+pointing-device-none = Gjin oanwiisapparaten
+
+## Content Analysis (DLP)
+
+content-analysis-active = Aktyf
+content-analysis-connected-to-agent = Ferbûn mei agent

@@ -30,6 +30,8 @@ function parseTestManifest(testManifest, params, callback) {
         test: {
           url: name,
           expected: obj.expected,
+          https_first_disabled: obj.https_first_disabled,
+          allow_xul_xbl: obj.allow_xul_xbl,
         },
       };
     } else {
@@ -41,11 +43,13 @@ function parseTestManifest(testManifest, params, callback) {
         test: {
           url: name,
           expected: obj.expected,
+          https_first_disabled: obj.https_first_disabled,
+          allow_xul_xbl: obj.allow_xul_xbl,
         },
       });
     }
   }
-  if (paths.length > 0) {
+  if (paths.length) {
     callback(paths);
   } else {
     callback(links);
@@ -55,7 +59,7 @@ function parseTestManifest(testManifest, params, callback) {
 function getTestManifest(url, params, callback) {
   let req = new XMLHttpRequest();
   req.open("GET", url);
-  req.onload = function() {
+  req.onload = function () {
     if (req.readyState == 4) {
       if (req.status == 200) {
         try {

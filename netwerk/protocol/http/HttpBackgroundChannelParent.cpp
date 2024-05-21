@@ -15,6 +15,7 @@
 #include "mozilla/IntegerPrintfMacros.h"
 #include "mozilla/Unused.h"
 #include "mozilla/net/BackgroundChannelRegistrar.h"
+#include "mozilla/net/ChannelEventQueue.h"
 #include "nsNetCID.h"
 #include "nsQueryObject.h"
 #include "nsThreadUtils.h"
@@ -145,7 +146,9 @@ void HttpBackgroundChannelParent::OnChannelClosed() {
 bool HttpBackgroundChannelParent::OnStartRequest(
     const nsHttpResponseHead& aResponseHead, const bool& aUseResponseHead,
     const nsHttpHeaderArray& aRequestHeaders,
-    const HttpChannelOnStartRequestArgs& aArgs) {
+    const HttpChannelOnStartRequestArgs& aArgs,
+    const nsCOMPtr<nsICacheEntry>& aAltDataSource,
+    TimeStamp aOnStartRequestStart) {
   LOG(("HttpBackgroundChannelParent::OnStartRequest [this=%p]\n", this));
   AssertIsInMainProcess();
 
@@ -158,10 +161,12 @@ bool HttpBackgroundChannelParent::OnStartRequest(
     nsresult rv = mBackgroundThread->Dispatch(
         NewRunnableMethod<const nsHttpResponseHead, const bool,
                           const nsHttpHeaderArray,
-                          const HttpChannelOnStartRequestArgs>(
+                          const HttpChannelOnStartRequestArgs,
+                          const nsCOMPtr<nsICacheEntry>, TimeStamp>(
             "net::HttpBackgroundChannelParent::OnStartRequest", this,
             &HttpBackgroundChannelParent::OnStartRequest, aResponseHead,
-            aUseResponseHead, aRequestHeaders, aArgs),
+            aUseResponseHead, aRequestHeaders, aArgs, aAltDataSource,
+            aOnStartRequestStart),
         NS_DISPATCH_NORMAL);
 
     MOZ_DIAGNOSTIC_ASSERT(NS_SUCCEEDED(rv));
@@ -169,13 +174,31 @@ bool HttpBackgroundChannelParent::OnStartRequest(
     return NS_SUCCEEDED(rv);
   }
 
+  HttpChannelAltDataStream altData;
+  if (aAltDataSource) {
+    nsAutoCString altDataType;
+    Unused << aAltDataSource->GetAltDataType(altDataType);
+
+    if (!altDataType.IsEmpty()) {
+      nsCOMPtr<nsIInputStream> inputStream;
+      nsresult rv = aAltDataSource->OpenAlternativeInputStream(
+          altDataType, getter_AddRefs(inputStream));
+      if (NS_SUCCEEDED(rv)) {
+        Unused << mozilla::ipc::SerializeIPCStream(inputStream.forget(),
+                                                   altData.altDataInputStream(),
+                                                   /* aAllowLazy */ true);
+      }
+    }
+  }
+
   return SendOnStartRequest(aResponseHead, aUseResponseHead, aRequestHeaders,
-                            aArgs);
+                            aArgs, altData, aOnStartRequestStart);
 }
 
 bool HttpBackgroundChannelParent::OnTransportAndData(
     const nsresult& aChannelStatus, const nsresult& aTransportStatus,
-    const uint64_t& aOffset, const uint32_t& aCount, const nsCString& aData) {
+    const uint64_t& aOffset, const uint32_t& aCount, const nsCString& aData,
+    TimeStamp aOnDataAvailableStart) {
   LOG(("HttpBackgroundChannelParent::OnTransportAndData [this=%p]\n", this));
   AssertIsInMainProcess();
 
@@ -187,10 +210,10 @@ bool HttpBackgroundChannelParent::OnTransportAndData(
     MutexAutoLock lock(mBgThreadMutex);
     nsresult rv = mBackgroundThread->Dispatch(
         NewRunnableMethod<const nsresult, const nsresult, const uint64_t,
-                          const uint32_t, const nsCString>(
+                          const uint32_t, const nsCString, TimeStamp>(
             "net::HttpBackgroundChannelParent::OnTransportAndData", this,
             &HttpBackgroundChannelParent::OnTransportAndData, aChannelStatus,
-            aTransportStatus, aOffset, aCount, aData),
+            aTransportStatus, aOffset, aCount, aData, aOnDataAvailableStart),
         NS_DISPATCH_NORMAL);
 
     MOZ_DIAGNOSTIC_ASSERT(NS_SUCCEEDED(rv));
@@ -200,10 +223,12 @@ bool HttpBackgroundChannelParent::OnTransportAndData(
 
   nsHttp::SendFunc<nsDependentCSubstring> sendFunc =
       [self = UnsafePtr<HttpBackgroundChannelParent>(this), aChannelStatus,
-       aTransportStatus](const nsDependentCSubstring& aData, uint64_t aOffset,
-                         uint32_t aCount) {
+       aTransportStatus,
+       aOnDataAvailableStart](const nsDependentCSubstring& aData,
+                              uint64_t aOffset, uint32_t aCount) {
         return self->SendOnTransportAndData(aChannelStatus, aTransportStatus,
-                                            aOffset, aCount, aData, false);
+                                            aOffset, aCount, aData, false,
+                                            aOnDataAvailableStart);
       };
 
   return nsHttp::SendDataInChunks(aData, aOffset, aCount, sendFunc);
@@ -212,7 +237,8 @@ bool HttpBackgroundChannelParent::OnTransportAndData(
 bool HttpBackgroundChannelParent::OnStopRequest(
     const nsresult& aChannelStatus, const ResourceTimingStructArgs& aTiming,
     const nsHttpHeaderArray& aResponseTrailers,
-    const nsTArray<ConsoleReportCollected>& aConsoleReports) {
+    const nsTArray<ConsoleReportCollected>& aConsoleReports,
+    TimeStamp aOnStopRequestStart) {
   LOG(
       ("HttpBackgroundChannelParent::OnStopRequest [this=%p "
        "status=%" PRIx32 "]\n",
@@ -228,10 +254,11 @@ bool HttpBackgroundChannelParent::OnStopRequest(
     nsresult rv = mBackgroundThread->Dispatch(
         NewRunnableMethod<const nsresult, const ResourceTimingStructArgs,
                           const nsHttpHeaderArray,
-                          const CopyableTArray<ConsoleReportCollected>>(
+                          const CopyableTArray<ConsoleReportCollected>,
+                          TimeStamp>(
             "net::HttpBackgroundChannelParent::OnStopRequest", this,
             &HttpBackgroundChannelParent::OnStopRequest, aChannelStatus,
-            aTiming, aResponseTrailers, aConsoleReports),
+            aTiming, aResponseTrailers, aConsoleReports, aOnStopRequestStart),
         NS_DISPATCH_NORMAL);
 
     MOZ_DIAGNOSTIC_ASSERT(NS_SUCCEEDED(rv));
@@ -243,7 +270,8 @@ bool HttpBackgroundChannelParent::OnStopRequest(
   TimeStamp lastActTabOpt = nsHttp::GetLastActiveTabLoadOptimizationHit();
 
   return SendOnStopRequest(aChannelStatus, aTiming, lastActTabOpt,
-                           aResponseTrailers, aConsoleReports, false);
+                           aResponseTrailers, aConsoleReports, false,
+                           aOnStopRequestStart);
 }
 
 bool HttpBackgroundChannelParent::OnConsoleReport(
@@ -373,37 +401,6 @@ bool HttpBackgroundChannelParent::OnNotifyClassificationFlags(
   return SendNotifyClassificationFlags(aClassificationFlags, aIsThirdParty);
 }
 
-bool HttpBackgroundChannelParent::OnNotifyFlashPluginStateChanged(
-    nsIHttpChannel::FlashPluginState aState) {
-  LOG(
-      ("HttpBackgroundChannelParent::OnNotifyFlashPluginStateChanged "
-       "[this=%p]\n",
-       this));
-  AssertIsInMainProcess();
-
-  if (NS_WARN_IF(!mIPCOpened)) {
-    return false;
-  }
-
-  if (!IsOnBackgroundThread()) {
-    MutexAutoLock lock(mBgThreadMutex);
-    RefPtr<HttpBackgroundChannelParent> self = this;
-    nsresult rv = mBackgroundThread->Dispatch(
-        NS_NewRunnableFunction(
-            "net::HttpBackgroundChannelParent::OnNotifyFlashPluginStateChanged",
-            [self, aState]() {
-              self->OnNotifyFlashPluginStateChanged(aState);
-            }),
-        NS_DISPATCH_NORMAL);
-
-    MOZ_DIAGNOSTIC_ASSERT(NS_SUCCEEDED(rv));
-
-    return NS_SUCCEEDED(rv);
-  }
-
-  return SendNotifyFlashPluginStateChanged(aState);
-}
-
 bool HttpBackgroundChannelParent::OnSetClassifierMatchedInfo(
     const nsACString& aList, const nsACString& aProvider,
     const nsACString& aFullHash) {
@@ -491,6 +488,16 @@ auto HttpBackgroundChannelParent::AttachStreamFilter(
 
   return ChildEndpointPromise::CreateAndResolve(std::move(aChildEndpoint),
                                                 __func__);
+}
+
+auto HttpBackgroundChannelParent::DetachStreamFilters()
+    -> RefPtr<GenericPromise> {
+  LOG(("HttpBackgroundChannelParent::DetachStreamFilters [this=%p]\n", this));
+  if (NS_WARN_IF(!mIPCOpened) || !SendDetachStreamFilters()) {
+    return GenericPromise::CreateAndReject(NS_ERROR_FAILURE, __func__);
+  }
+
+  return GenericPromise::CreateAndResolve(true, __func__);
 }
 
 void HttpBackgroundChannelParent::ActorDestroy(ActorDestroyReason aWhy) {

@@ -5,10 +5,13 @@
 
 // This dialog can only be opened if we have a shell service.
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { SearchIntegration } = ChromeUtils.import(
-  "resource:///modules/SearchIntegration.jsm"
+var { SearchIntegration } = ChromeUtils.importESModule(
+  "resource:///modules/SearchIntegration.sys.mjs"
 );
+
+window.addEventListener("load", event => {
+  gSystemIntegrationDialog.onLoad();
+});
 
 var gSystemIntegrationDialog = {
   _shellSvc: Cc["@mozilla.org/mail/shell-service;1"].getService(
@@ -40,7 +43,7 @@ var gSystemIntegrationDialog = {
       this._shellSvc.MAIL
     );
 
-    let calledFromPrefs =
+    const calledFromPrefs =
       "arguments" in window && window.arguments[0] == "calledFromPrefs";
 
     if (!calledFromPrefs) {
@@ -54,9 +57,7 @@ var gSystemIntegrationDialog = {
 
       // If called from preferences, use only a simpler "Cancel" label on the
       // cancel button.
-      document
-        .querySelector("dialog")
-        .getButton("cancel").label = document
+      document.querySelector("dialog").getButton("cancel").label = document
         .querySelector("dialog")
         .getAttribute("buttonlabelcancel2");
     }
@@ -65,26 +66,20 @@ var gSystemIntegrationDialog = {
       this._mailCheckbox.removeAttribute("tooltiptext");
     }
 
-    this._newsCheckbox.checked = this._newsCheckbox.disabled = this._shellSvc.isDefaultClient(
-      false,
-      this._shellSvc.NEWS
-    );
+    this._newsCheckbox.checked = this._newsCheckbox.disabled =
+      this._shellSvc.isDefaultClient(false, this._shellSvc.NEWS);
     if (!this._newsCheckbox.disabled) {
       this._newsCheckbox.removeAttribute("tooltiptext");
     }
 
-    this._rssCheckbox.checked = this._rssCheckbox.disabled = this._shellSvc.isDefaultClient(
-      false,
-      this._shellSvc.RSS
-    );
+    this._rssCheckbox.checked = this._rssCheckbox.disabled =
+      this._shellSvc.isDefaultClient(false, this._shellSvc.RSS);
     if (!this._rssCheckbox.disabled) {
       this._rssCheckbox.removeAttribute("tooltiptext");
     }
 
-    this._calendarCheckbox.checked = this._calendarCheckbox.disabled = this._shellSvc.isDefaultClient(
-      false,
-      this._shellSvc.CALENDAR
-    );
+    this._calendarCheckbox.checked = this._calendarCheckbox.disabled =
+      this._shellSvc.isDefaultClient(false, this._shellSvc.CALENDAR);
 
     // read the raw pref value and not shellSvc.shouldCheckDefaultMail
     this._startupCheckbox.checked = Services.prefs.getBoolPref(
@@ -127,7 +122,7 @@ var gSystemIntegrationDialog = {
 
     // If the search checkbox is exposed, the user had the chance to make his choice.
     // So do not ask next time.
-    let searchIntegPossible = !this._searchCheckbox.hidden;
+    const searchIntegPossible = !this._searchCheckbox.hidden;
     if (searchIntegPossible) {
       SearchIntegration.firstRunDone = true;
     }

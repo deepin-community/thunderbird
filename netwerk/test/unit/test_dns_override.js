@@ -1,16 +1,10 @@
 "use strict";
 
-const dns = Cc["@mozilla.org/network/dns-service;1"].getService(
-  Ci.nsIDNSService
-);
 const override = Cc["@mozilla.org/network/native-dns-override;1"].getService(
   Ci.nsINativeDNSResolverOverride
 );
 const defaultOriginAttributes = {};
-const threadManager = Cc["@mozilla.org/thread-manager;1"].getService(
-  Ci.nsIThreadManager
-);
-const mainThread = threadManager.currentThread;
+const mainThread = Services.tm.currentThread;
 
 class Listener {
   constructor() {
@@ -25,7 +19,7 @@ class Listener {
 
   async firstAddress() {
     let all = await this.addresses();
-    if (all.length > 0) {
+    if (all.length) {
       return all[0];
     }
 
@@ -54,6 +48,14 @@ Listener.prototype.QueryInterface = ChromeUtils.generateQI(["nsIDNSListener"]);
 const DOMAIN = "example.org";
 const OTHER = "example.com";
 
+add_setup(async function setup() {
+  trr_test_setup();
+
+  registerCleanupFunction(async () => {
+    trr_clear_prefs();
+  });
+});
+
 add_task(async function test_bad_IPs() {
   Assert.throws(
     () => override.addIPOverride(DOMAIN, DOMAIN),
@@ -80,7 +82,7 @@ add_task(async function test_bad_IPs() {
 add_task(async function test_ipv4() {
   let listener = new Listener();
   override.addIPOverride(DOMAIN, "1.2.3.4");
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -91,14 +93,14 @@ add_task(async function test_ipv4() {
   );
   Assert.equal(await listener.firstAddress(), "1.2.3.4");
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
 add_task(async function test_ipv6() {
   let listener = new Listener();
   override.addIPOverride(DOMAIN, "fe80::6a99:9b2b:6ccc:6e1b");
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -109,14 +111,14 @@ add_task(async function test_ipv6() {
   );
   Assert.equal(await listener.firstAddress(), "fe80::6a99:9b2b:6ccc:6e1b");
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
 add_task(async function test_clearOverrides() {
   let listener = new Listener();
   override.addIPOverride(DOMAIN, "1.2.3.4");
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -127,11 +129,11 @@ add_task(async function test_clearOverrides() {
   );
   Assert.equal(await listener.firstAddress(), "1.2.3.4");
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 
   listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -143,7 +145,7 @@ add_task(async function test_clearOverrides() {
   Assert.notEqual(await listener.firstAddress(), "1.2.3.4");
 
   await new Promise(resolve => do_timeout(1000, resolve));
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
@@ -152,7 +154,7 @@ add_task(async function test_clearHostOverride() {
   override.addIPOverride(OTHER, "2.2.2.2");
   override.clearHostOverride(DOMAIN);
   let listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -165,7 +167,7 @@ add_task(async function test_clearHostOverride() {
   Assert.notEqual(await listener.firstAddress(), "2.2.2.2");
 
   listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     OTHER,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -184,7 +186,7 @@ add_task(async function test_clearHostOverride() {
   // If the next task ever starts failing, with an IP that is not in this
   // file, then likely the timeout is too small.
   await new Promise(resolve => do_timeout(1000, resolve));
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
@@ -194,7 +196,7 @@ add_task(async function test_multiple_IPs() {
   override.addIPOverride(DOMAIN, "::1");
   override.addIPOverride(DOMAIN, "fe80::6a99:9b2b:6ccc:6e1b");
   let listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -210,7 +212,7 @@ add_task(async function test_multiple_IPs() {
     "fe80::6a99:9b2b:6ccc:6e1b",
   ]);
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
@@ -220,7 +222,7 @@ add_task(async function test_address_family_flags() {
   override.addIPOverride(DOMAIN, "::1");
   override.addIPOverride(DOMAIN, "fe80::6a99:9b2b:6ccc:6e1b");
   let listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     Ci.nsIDNSService.RESOLVE_DISABLE_IPV4,
@@ -235,7 +237,7 @@ add_task(async function test_address_family_flags() {
   ]);
 
   listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     Ci.nsIDNSService.RESOLVE_DISABLE_IPV6,
@@ -246,14 +248,14 @@ add_task(async function test_address_family_flags() {
   );
   Assert.deepEqual(await listener.addresses(), ["2.2.2.2", "1.1.1.1"]);
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
 add_task(async function test_cname_flag() {
   override.addIPOverride(DOMAIN, "2.2.2.2");
   let listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     0,
@@ -272,7 +274,7 @@ add_task(async function test_cname_flag() {
   Assert.equal(inRecord.getNextAddrAsString(), "2.2.2.2");
 
   listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     Ci.nsIDNSService.RESOLVE_CANONICAL_NAME,
@@ -286,13 +288,13 @@ add_task(async function test_cname_flag() {
   Assert.equal(inRecord.canonicalName, DOMAIN, "No canonical name specified");
   Assert.equal(inRecord.getNextAddrAsString(), "2.2.2.2");
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 
   override.addIPOverride(DOMAIN, "2.2.2.2");
   override.setCnameOverride(DOMAIN, OTHER);
   listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     Ci.nsIDNSService.RESOLVE_CANONICAL_NAME,
@@ -306,14 +308,14 @@ add_task(async function test_cname_flag() {
   Assert.equal(inRecord.canonicalName, OTHER, "Must have correct CNAME");
   Assert.equal(inRecord.getNextAddrAsString(), "2.2.2.2");
 
-  dns.clearCache(false);
+  Services.dns.clearCache(false);
   override.clearOverrides();
 });
 
 add_task(async function test_nxdomain() {
   override.addIPOverride(DOMAIN, "N/A");
   let listener = new Listener();
-  dns.asyncResolve(
+  Services.dns.asyncResolve(
     DOMAIN,
     Ci.nsIDNSService.RESOLVE_TYPE_DEFAULT,
     Ci.nsIDNSService.RESOLVE_CANONICAL_NAME,
@@ -326,3 +328,188 @@ add_task(async function test_nxdomain() {
   let [, , inStatus] = await listener;
   equal(inStatus, Cr.NS_ERROR_UNKNOWN_HOST);
 });
+
+function makeChan(url) {
+  let chan = NetUtil.newChannel({
+    uri: url,
+    loadUsingSystemPrincipal: true,
+    contentPolicyType: Ci.nsIContentPolicy.TYPE_DOCUMENT,
+  }).QueryInterface(Ci.nsIHttpChannel);
+  return chan;
+}
+
+function channelOpenPromise(chan, flags) {
+  return new Promise(resolve => {
+    function finish(req, buffer) {
+      resolve([req, buffer]);
+    }
+    chan.asyncOpen(new ChannelListener(finish, null, flags));
+  });
+}
+
+function hexToUint8Array(hex) {
+  return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+}
+
+add_task(
+  {
+    skip_if: () => mozinfo.os == "win" || mozinfo.os == "android",
+  },
+  async function test_https_record_override() {
+    let trrServer = new TRRServer();
+    await trrServer.start();
+    registerCleanupFunction(async () => {
+      await trrServer.stop();
+    });
+
+    await trrServer.registerDoHAnswers("service.com", "HTTPS", {
+      answers: [
+        {
+          name: "service.com",
+          ttl: 55,
+          type: "HTTPS",
+          flush: false,
+          data: {
+            priority: 1,
+            name: ".",
+            values: [
+              { key: "alpn", value: ["h2", "h3"] },
+              { key: "no-default-alpn" },
+              { key: "port", value: 8888 },
+              { key: "ipv4hint", value: "1.2.3.4" },
+              { key: "echconfig", value: "123..." },
+              { key: "ipv6hint", value: "::1" },
+              { key: "odoh", value: "456..." },
+            ],
+          },
+        },
+        {
+          name: "service.com",
+          ttl: 55,
+          type: "HTTPS",
+          flush: false,
+          data: {
+            priority: 2,
+            name: "test.com",
+            values: [
+              { key: "alpn", value: "h2" },
+              { key: "ipv4hint", value: ["1.2.3.4", "5.6.7.8"] },
+              { key: "echconfig", value: "abc..." },
+              { key: "ipv6hint", value: ["::1", "fe80::794f:6d2c:3d5e:7836"] },
+              { key: "odoh", value: "def..." },
+            ],
+          },
+        },
+      ],
+    });
+
+    let chan = makeChan(
+      `https://foo.example.com:${trrServer.port()}/dnsAnswer?host=service.com&type=HTTPS`
+    );
+    let [, buf] = await channelOpenPromise(chan);
+    let rawBuffer = hexToUint8Array(buf);
+
+    override.addHTTPSRecordOverride("service.com", rawBuffer, rawBuffer.length);
+
+    Services.prefs.setBoolPref("network.dns.native_https_query", true);
+    registerCleanupFunction(async () => {
+      Services.prefs.clearUserPref("network.dns.native_https_query");
+    });
+
+    let listener = new Listener();
+    Services.dns.asyncResolve(
+      "service.com",
+      Ci.nsIDNSService.RESOLVE_TYPE_HTTPSSVC,
+      0,
+      null,
+      listener,
+      mainThread,
+      defaultOriginAttributes
+    );
+
+    let [, inRecord, inStatus] = await listener;
+    equal(inStatus, Cr.NS_OK);
+    let answer = inRecord.QueryInterface(Ci.nsIDNSHTTPSSVCRecord).records;
+    equal(answer[0].priority, 1);
+    equal(answer[0].name, "service.com");
+    Assert.deepEqual(
+      answer[0].values[0].QueryInterface(Ci.nsISVCParamAlpn).alpn,
+      ["h2", "h3"],
+      "got correct answer"
+    );
+    Assert.ok(
+      answer[0].values[1].QueryInterface(Ci.nsISVCParamNoDefaultAlpn),
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[0].values[2].QueryInterface(Ci.nsISVCParamPort).port,
+      8888,
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[0].values[3].QueryInterface(Ci.nsISVCParamIPv4Hint).ipv4Hint[0]
+        .address,
+      "1.2.3.4",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[0].values[4].QueryInterface(Ci.nsISVCParamEchConfig).echconfig,
+      "123...",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[0].values[5].QueryInterface(Ci.nsISVCParamIPv6Hint).ipv6Hint[0]
+        .address,
+      "::1",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[0].values[6].QueryInterface(Ci.nsISVCParamODoHConfig).ODoHConfig,
+      "456...",
+      "got correct answer"
+    );
+
+    Assert.equal(answer[1].priority, 2);
+    Assert.equal(answer[1].name, "test.com");
+    Assert.equal(answer[1].values.length, 5);
+    Assert.deepEqual(
+      answer[1].values[0].QueryInterface(Ci.nsISVCParamAlpn).alpn,
+      ["h2"],
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[1].QueryInterface(Ci.nsISVCParamIPv4Hint).ipv4Hint[0]
+        .address,
+      "1.2.3.4",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[1].QueryInterface(Ci.nsISVCParamIPv4Hint).ipv4Hint[1]
+        .address,
+      "5.6.7.8",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[2].QueryInterface(Ci.nsISVCParamEchConfig).echconfig,
+      "abc...",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[3].QueryInterface(Ci.nsISVCParamIPv6Hint).ipv6Hint[0]
+        .address,
+      "::1",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[3].QueryInterface(Ci.nsISVCParamIPv6Hint).ipv6Hint[1]
+        .address,
+      "fe80::794f:6d2c:3d5e:7836",
+      "got correct answer"
+    );
+    Assert.equal(
+      answer[1].values[4].QueryInterface(Ci.nsISVCParamODoHConfig).ODoHConfig,
+      "def...",
+      "got correct answer"
+    );
+  }
+);

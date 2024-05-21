@@ -17,16 +17,15 @@
 #include "mozilla/Preferences.h"  // for Preferences
 #include "mozilla/RefPtr.h"       // for RefPtr
 #include "mozilla/gfx/2D.h"       // for DrawTarget
-#include "mozilla/mozalloc.h"     // for operator delete, etc
-#include "mozilla/WeakPtr.h"      // for WeakPtr
-#include "nsISupportsImpl.h"      // for MOZ_COUNT_CTOR, etc
-
-class nsICanvasRenderingContextInternal;
+#include "mozilla/Maybe.h"
+#include "mozilla/mozalloc.h"  // for operator delete, etc
+#include "mozilla/WeakPtr.h"   // for WeakPtr
+#include "nsISupportsImpl.h"   // for MOZ_COUNT_CTOR, etc
+#include "nsICanvasRenderingContextInternal.h"
 
 namespace mozilla {
 namespace layers {
 
-class ClientCanvasRenderer;
 class KnowsCompositor;
 class PersistentBufferProvider;
 class WebRenderCanvasRendererAsync;
@@ -37,8 +36,7 @@ struct CanvasRendererData final {
   CanvasRendererData();
   ~CanvasRendererData();
 
-  std::weak_ptr<nsICanvasRenderingContextInternal* const>
-      mContext;  // weak_ptr to ptr (bug 1635644)
+  WeakPtr<nsICanvasRenderingContextInternal> mContext;
 
   // The size of the canvas content
   gfx::IntSize mSize = {0, 0};
@@ -49,10 +47,11 @@ struct CanvasRendererData final {
 
   gl::OriginPos mOriginPos = gl::OriginPos::TopLeft;
 
+  // Used in remote texture push callback
+  Maybe<RemoteTextureOwnerId> mRemoteTextureOwnerId = Nothing();
+
   nsICanvasRenderingContextInternal* GetContext() const {
-    const auto ptrToPtr = mContext.lock();
-    if (!ptrToPtr) return nullptr;
-    return *ptrToPtr;
+    return mContext.get();
   }
 };
 
@@ -64,8 +63,6 @@ struct CanvasRendererData final {
 // different in different LayerManager. So that we have following classes
 // inherit ShareableCanvasRenderer.
 //
-// ClientCanvasRenderer inherits ShareableCanvasRenderer and be used in
-// ClientCanvasLayer.
 // WebRenderCanvasRenderer inherits ShareableCanvasRenderer and provides all
 // functionality that WebRender uses.
 // WebRenderCanvasRendererAsync inherits WebRenderCanvasRenderer and be used in
@@ -81,17 +78,16 @@ struct CanvasRendererData final {
 //                   +-----------+-----------+
 //                   |ShareableCanvasRenderer|
 //                   +-----+-----------------+
-//                         ^      ^
-//           +-------------+      +-------+
-//           |                            |
-// +--------------------+       +---------+-------------+
-// |ClientCanvasRenderer|       |WebRenderCanvasRenderer|
-// +--------------------+       +-----------+-----------+
-//                                          ^
-//                                          |
-//                           +-------------+--------------+
-//                           |WebRenderCanvasRendererAsync|
-//                           +----------------------------+
+//                               ^
+//                               |
+//                   +-----------+-----------+
+//                   |WebRenderCanvasRenderer|
+//                   +-----------+-----------+
+//                               ^
+//                               |
+//                 +-------------+--------------+
+//                 |WebRenderCanvasRendererAsync|
+//                 +----------------------------+
 
 class BorrowedSourceSurface final {
  public:
@@ -130,12 +126,14 @@ class CanvasRenderer : public RefCounted<CanvasRenderer> {
   const gfx::IntSize& GetSize() const { return mData.mSize; }
   bool IsOpaque() const { return mData.mIsOpaque; }
   bool YIsDown() const { return mData.mOriginPos == gl::OriginPos::TopLeft; }
+  Maybe<RemoteTextureOwnerId> GetRemoteTextureOwnerId() {
+    return mData.mRemoteTextureOwnerId;
+  }
 
   void SetDirty() { mDirty = true; }
   void ResetDirty() { mDirty = false; }
   bool IsDirty() const { return mDirty; }
 
-  virtual ClientCanvasRenderer* AsClientCanvasRenderer() { return nullptr; }
   virtual WebRenderCanvasRendererAsync* AsWebRenderCanvasRendererAsync() {
     return nullptr;
   }

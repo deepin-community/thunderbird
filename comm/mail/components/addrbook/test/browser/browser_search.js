@@ -2,43 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { mailTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MailTestUtils.jsm"
-);
-
 add_task(async () => {
-  function doSearch(searchString, ...expectedCards) {
-    return new Promise(resolve => {
-      abWindow.addEventListener(
-        "viewchange",
-        function onCountChange() {
-          checkCardsListed(...expectedCards);
-          resolve();
-        },
-        { once: true }
-      );
-      EventUtils.synthesizeMouseAtCenter(searchBox, {}, abWindow);
-      if (searchString) {
-        EventUtils.synthesizeKey("a", { accelKey: true }, abWindow);
-        EventUtils.sendString(searchString, abWindow);
-        EventUtils.synthesizeKey("VK_RETURN", {}, abWindow);
-      } else {
-        EventUtils.synthesizeKey("VK_ESCAPE", {}, abWindow);
-      }
-    });
-  }
-
-  let personalBook = MailServices.ab.getDirectoryFromId("ldap_2.servers.pab");
-  let historyBook = MailServices.ab.getDirectoryFromId(
-    "ldap_2.servers.history"
-  );
-
-  let cards = {};
-  let cardsToRemove = {
+  const cards = {};
+  const cardsToRemove = {
     personal: [],
     history: [],
   };
-  for (let name of ["daniel", "jonathan", "nathan"]) {
+  for (const name of ["daniel", "jonathan", "nathan"]) {
     let card = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
@@ -48,7 +18,7 @@ add_task(async () => {
     cards[name] = card;
     cardsToRemove.personal.push(card);
   }
-  for (let name of ["danielle", "katherine", "natalie", "susanah"]) {
+  for (const name of ["danielle", "katherine", "natalie", "susanah"]) {
     let card = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
@@ -59,7 +29,7 @@ add_task(async () => {
     cardsToRemove.history.push(card);
   }
 
-  let abWindow = await openAddressBookWindow();
+  const abWindow = await openAddressBookWindow();
 
   registerCleanupFunction(() => {
     abWindow.close();
@@ -67,9 +37,14 @@ add_task(async () => {
     historyBook.deleteCards(cardsToRemove.history);
   });
 
-  let abDocument = abWindow.document;
-  let dirTree = abDocument.getElementById("dirTree");
-  let searchBox = abDocument.getElementById("peopleSearchInput");
+  const abDocument = abWindow.document;
+  const searchBox = abDocument.getElementById("searchInput");
+
+  Assert.equal(
+    abDocument.activeElement,
+    searchBox,
+    "search box was focused when the page loaded"
+  );
 
   // All address books.
 
@@ -82,21 +57,25 @@ add_task(async () => {
     cards.nathan,
     cards.susanah
   );
+  checkPlaceholders();
 
   // Personal address book.
 
-  is(dirTree.view.getCellText(1, dirTree.columns[0]), "Personal Address Book");
-  mailTestUtils.treeClick(EventUtils, abWindow, dirTree, 1, 0, {});
+  openDirectory(personalBook);
   checkCardsListed(cards.daniel, cards.jonathan, cards.nathan);
+  checkPlaceholders();
 
   await doSearch("daniel", cards.daniel);
   await doSearch("nathan", cards.jonathan, cards.nathan);
 
   // History address book.
 
-  is(dirTree.view.getCellText(2, dirTree.columns[0]), "Collected Addresses");
-  mailTestUtils.treeClick(EventUtils, abWindow, dirTree, 2, 0, {});
-  checkCardsListed(
+  openDirectory(historyBook);
+  checkCardsListed();
+  checkPlaceholders(["placeholderNoSearchResults"]);
+
+  await doSearch(
+    null,
     cards.danielle,
     cards.katherine,
     cards.natalie,
@@ -108,8 +87,12 @@ add_task(async () => {
 
   // All address books.
 
-  mailTestUtils.treeClick(EventUtils, abWindow, dirTree, 0, 0, {});
-  checkCardsListed(
+  openAllAddressBooks();
+  checkCardsListed(cards.jonathan, cards.nathan);
+  checkPlaceholders();
+
+  await doSearch(
+    null,
     cards.daniel,
     cards.danielle,
     cards.jonathan,

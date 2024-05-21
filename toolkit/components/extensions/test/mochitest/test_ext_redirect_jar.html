@@ -16,7 +16,7 @@
 function getExtension() {
   return ExtensionTestUtils.loadExtension({
     manifest: {
-      "applications": {
+      "browser_specific_settings": {
         "gecko": {
           "id": "redirect-to-jar@mochi.test",
         },
@@ -46,7 +46,7 @@ function getExtension() {
     },
     background: async () => {
       let redirectUrl = browser.runtime.getURL("finished.html");
-      browser.webRequest.onBeforeRequest.addListener(details => {
+      browser.webRequest.onBeforeRequest.addListener(() => {
         return {redirectUrl};
       }, {urls: ["*://*/intercept*"]}, ["blocking"]);
 

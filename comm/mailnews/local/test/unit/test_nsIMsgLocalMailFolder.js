@@ -3,8 +3,9 @@
  * Test suite for local folder functions.
  */
 
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-load("../../../resources/MessageGenerator.jsm");
+var { MessageGenerator } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
 
 /**
  * Bug 66763
@@ -12,12 +13,12 @@ load("../../../resources/MessageGenerator.jsm");
  */
 function subtest_folder_deletion(root) {
   // Now we only have <root> and some default subfolders, like Trash.
-  let trash = root.getChildNamed("Trash");
+  const trash = root.getChildNamed("Trash");
   Assert.ok(!trash.hasSubFolders);
 
   // Create new "folder" in root.
   let folder = root.createLocalSubfolder("folder");
-  let path = folder.filePath;
+  const path = folder.filePath;
   Assert.ok(path.exists());
 
   // Delete "folder" into Trash.
@@ -47,7 +48,7 @@ function subtest_folder_deletion(root) {
   Assert.equal(trash.numSubFolders, 3);
   // The folder should be automatically renamed as the same name already is in Trash
   // but the subfolder should be untouched.
-  let folderDeleted3 = trash.getChildNamed("folder(3)");
+  const folderDeleted3 = trash.getChildNamed("folder(3)");
   Assert.notEqual(folderDeleted3, null);
   Assert.ok(folderDeleted3.containsChildNamed("subfolder"));
   // Now we have <root>
@@ -159,9 +160,9 @@ function subtest_folder_operations(root) {
   var folder1Local = folder.QueryInterface(Ci.nsIMsgLocalMailFolder);
 
   // put a single message in folder1.
-  let messageGenerator = new MessageGenerator();
-  let message = messageGenerator.makeMessage();
-  let hdr = folder1Local.addMessage(message.toMboxString());
+  const messageGenerator = new MessageGenerator();
+  const message = messageGenerator.makeMessage();
+  const hdr = folder1Local.addMessage(message.toMessageString());
   Assert.equal(message.messageId, hdr.messageId);
 
   folder3Local.copyFolderLocal(folder, true, null, null);
@@ -221,13 +222,13 @@ function subtest_folder_operations(root) {
   Assert.ok(path3.exists());
 
   // First try deleting folder3 -- folder1 and folder2 paths should still exist
-  root.propagateDelete(folder3, true, null);
+  root.propagateDelete(folder3, true);
 
   Assert.ok(path1.exists());
   Assert.ok(path2.exists());
   Assert.ok(!path3.exists());
 
-  root.propagateDelete(folder, true, null);
+  root.propagateDelete(folder, true);
 
   Assert.ok(!path1.exists());
   Assert.ok(!path2.exists());
@@ -262,7 +263,7 @@ function test_store_rename(root) {
   Assert.ok(folder2.filePath.exists());
 
   folder3 = root.getChildNamed("newfolder3");
-  root.propagateDelete(folder3, true, null);
+  root.propagateDelete(folder3, true);
   Assert.ok(!root.containsChildNamed("newfolder3"));
   folder3 = root
     .createLocalSubfolder("newfolder3")
@@ -280,15 +281,15 @@ var gPluggableStores = [
 ];
 
 function run_all_tests(aHostName) {
-  let server = MailServices.accounts.createIncomingServer(
+  const server = MailServices.accounts.createIncomingServer(
     "nobody",
     aHostName,
     "none"
   );
-  let account = MailServices.accounts.createAccount();
+  const account = MailServices.accounts.createAccount();
   account.incomingServer = server;
 
-  let root = server.rootMsgFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
+  const root = server.rootMsgFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
   subtest_folder_operations(root);
   subtest_folder_deletion(root);
   test_store_rename(root);

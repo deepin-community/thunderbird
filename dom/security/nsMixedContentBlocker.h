@@ -34,11 +34,9 @@ enum MixedContentTypes {
 using mozilla::OriginAttributes;
 
 class nsILoadInfo;  // forward declaration
-namespace mozilla {
-namespace net {
+namespace mozilla::net {
 class nsProtocolProxyService;  // forward declaration
-}
-}  // namespace mozilla
+}  // namespace mozilla::net
 
 class nsMixedContentBlocker : public nsIContentPolicy,
                               public nsIChannelEventSink {
@@ -60,6 +58,17 @@ class nsMixedContentBlocker : public nsIContentPolicy,
   static bool IsPotentiallyTrustworthyOnion(nsIURI* aURL);
   static bool IsPotentiallyTrustworthyOrigin(nsIURI* aURI);
 
+  /**
+   * Returns true if the provided content policy type is subject to the
+   * mixed content level 2 upgrading mechanism (audio, video, image).
+   *
+   * @param aConsiderPrefs A boolean that indicates whether the result of this
+   * functions takes the `security.mixed_content.upgrade_display_content`
+   * preferences into account.
+   */
+  static bool IsUpgradableContentType(nsContentPolicyType aType,
+                                      bool aConsiderPrefs);
+
   /* Static version of ShouldLoad() that contains all the Mixed Content Blocker
    * logic.  Called from non-static ShouldLoad().
    * Called directly from imageLib when an insecure redirect exists in a cached
@@ -74,8 +83,7 @@ class nsMixedContentBlocker : public nsIContentPolicy,
    */
   static nsresult ShouldLoad(bool aHadInsecureImageRedirect,
                              nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
-                             const nsACString& aMimeGuess, bool aReportError,
-                             int16_t* aDecision);
+                             bool aReportError, int16_t* aDecision);
   static void AccumulateMixedContentHSTS(
       nsIURI* aURI, bool aActive, const OriginAttributes& aOriginAttributes);
 

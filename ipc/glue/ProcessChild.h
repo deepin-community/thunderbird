@@ -7,10 +7,13 @@
 #ifndef mozilla_ipc_ProcessChild_h
 #define mozilla_ipc_ProcessChild_h
 
+#include "Endpoint.h"
 #include "base/message_loop.h"
 #include "base/process.h"
 
 #include "chrome/common/child_process.h"
+
+#include "mozilla/ipc/ProcessUtils.h"
 
 // ProcessChild is the base class for all subprocesses of the main
 // browser process.  Its code runs on the thread that started in
@@ -24,17 +27,32 @@ class ProcessChild : public ChildProcess {
   typedef base::ProcessId ProcessId;
 
  public:
-  explicit ProcessChild(ProcessId aParentPid);
+  explicit ProcessChild(ProcessId aParentPid, const nsID& aMessageChannelId);
+
+  ProcessChild(const ProcessChild&) = delete;
+  ProcessChild& operator=(const ProcessChild&) = delete;
+
   virtual ~ProcessChild();
 
   virtual bool Init(int aArgc, char* aArgv[]) = 0;
+
+  static void AddPlatformBuildID(std::vector<std::string>& aExtraArgs);
+
+  static bool InitPrefs(int aArgc, char* aArgv[]);
+
   virtual void CleanUp() {}
 
   static MessageLoop* message_loop() { return gProcessChild->mUILoop; }
 
-  static void NotifyImpendingShutdown();
+  static void NotifiedImpendingShutdown();
 
   static bool ExpectingShutdown();
+
+  static void AppendToIPCShutdownStateAnnotation(const nsCString& aStr) {
+    StaticMutexAutoLock lock(gIPCShutdownStateLock);
+    gIPCShutdownStateAnnotation.Append(" - "_ns);
+    gIPCShutdownStateAnnotation.Append(aStr);
+  }
 
   /**
    * Exit *now*.  Do not shut down XPCOM, do not pass Go, do not run
@@ -47,13 +65,17 @@ class ProcessChild : public ChildProcess {
 
   ProcessId ParentPid() { return mParentPid; }
 
+  UntypedEndpoint TakeInitialEndpoint();
+
  private:
   static ProcessChild* gProcessChild;
+  static StaticMutex gIPCShutdownStateLock;
+  static nsCString gIPCShutdownStateAnnotation
+      MOZ_GUARDED_BY(gIPCShutdownStateLock);
 
   MessageLoop* mUILoop;
   ProcessId mParentPid;
-
-  DISALLOW_EVIL_CONSTRUCTORS(ProcessChild);
+  nsID mMessageChannelId;
 };
 
 }  // namespace ipc

@@ -30,9 +30,9 @@ class TargetPolicy {
     SUBSYS_PROCESS,          // Creation of child processes.
     SUBSYS_REGISTRY,         // Creation and opening of registry keys.
     SUBSYS_SYNC,             // Creation of named sync objects.
-    SUBSYS_HANDLES,          // Duplication of handles to other processes.
     SUBSYS_WIN32K_LOCKDOWN,  // Win32K Lockdown related policy.
-    SUBSYS_SIGNED_BINARY     // Signed binary policy.
+    SUBSYS_SIGNED_BINARY,    // Signed binary policy.
+    SUBSYS_LINE_BREAK        // Complex line break policy.
   };
 
   // Allowable semantics when a rule is matched.
@@ -43,9 +43,6 @@ class TargetPolicy {
     FILES_ALLOW_QUERY,     // Allows access to query the attributes of a file.
     FILES_ALLOW_DIR_ANY,   // Allows open or create with directory semantics
                            // only.
-    HANDLES_DUP_ANY,       // Allows duplicating handles opened with any
-                           // access permissions.
-    HANDLES_DUP_BROKER,    // Allows duplicating handles to the broker process.
     NAMEDPIPES_ALLOW_ANY,  // Allows creation of a named pipe.
     PROCESS_MIN_EXEC,      // Allows to create a process with minimal rights
                            // over the resulting process and thread handles.
@@ -65,7 +62,8 @@ class TargetPolicy {
     IMPLEMENT_OPM_APIS,     // Implements FAKE_USER_GDI_INIT and also exposes
                             // IPC calls to handle Output Protection Manager
                             // APIs.
-    SIGNED_ALLOW_LOAD       // Allows loading the module when CIG is enabled.
+    SIGNED_ALLOW_LOAD,      // Allows loading the module when CIG is enabled.
+    LINE_BREAK_ALLOW        // Allow complex line break brokering.
   };
 
   // Increments the reference count of this object. The reference count must

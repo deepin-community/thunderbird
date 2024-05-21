@@ -13,8 +13,6 @@ const EXPORTED_SYMBOLS = [
 
 const { classes: Cc, interfaces: Ci, results: Cr } = Components;
 
-const STANDARDURL_CONTRACTID =
-    "@mozilla.org/network/standard-url;1";
 const IOSERVICE_CONTRACTID =
     "@mozilla.org/network/io-service;1";
 
@@ -81,18 +79,11 @@ IRCProtocolHandler.prototype =
     {
         const port = this.isSecure ? 6697 : 6667;
 
-        if (!Cc.hasOwnProperty("@mozilla.org/network/standard-url-mutator;1")) {
-            const cls = Cc[STANDARDURL_CONTRACTID];
-            const url = cls.createInstance(Ci.nsIStandardURL);
-
-            url.init(Ci.nsIStandardURL.URLTYPE_STANDARD, port, spec, charset, baseURI);
-
-            return url.QueryInterface(Ci.nsIURI);
-        }
         return Cc["@mozilla.org/network/standard-url-mutator;1"]
                  .createInstance(Ci.nsIStandardURLMutator)
                  .init(Ci.nsIStandardURL.URLTYPE_STANDARD, port, spec, charset, baseURI)
-                 .finalize();
+                 .finalize()
+                 .QueryInterface(Ci.nsIStandardURL);
     },
 
     newChannel(URI)
@@ -233,18 +224,5 @@ this.ChatZillaProtocols =
                                 "IRC protocol handler",
                                 IRCSPROT_HANDLER_CONTRACTID,
                                 IRCSProtocolHandlerFactory);
-    },
-
-    initObsolete(compMgr, fileSpec, location, type)
-    {
-        compMgr = compMgr.QueryInterface(Ci.nsIComponentRegistrar);
-        compMgr.registerFactoryLocation(IRCPROT_HANDLER_CID,
-                                        "IRC protocol handler",
-                                        IRCPROT_HANDLER_CONTRACTID,
-                                        fileSpec, location, type);
-        compMgr.registerFactoryLocation(IRCSPROT_HANDLER_CID,
-                                        "IRCS protocol handler",
-                                        IRCSPROT_HANDLER_CONTRACTID,
-                                        fileSpec, location, type);
     },
 };

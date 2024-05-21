@@ -8,25 +8,20 @@
 # Altered features:
 # * returns 404 rather than dropping the whole HTTP/2 connection on the floor
 # * remove the replay packages that don't have any content in their response package
-from __future__ import absolute_import, print_function
-
-import os
-import json
 import hashlib
-from collections import defaultdict
-import time
+import json
+import os
 import signal
-
+import time
 import typing
+from collections import defaultdict
 
-from six.moves import urllib
-from mitmproxy import ctx, http
-from mitmproxy import exceptions
-from mitmproxy import io
+from mitmproxy import ctx, exceptions, http, io
 
 # PATCHING AREA  - ALLOWS HTTP/2 WITH NO CERT SNIFFING
 from mitmproxy.proxy.protocol import tls
 from mitmproxy.proxy.protocol.http2 import Http2Layer, SafeH2Connection
+from six.moves import urllib
 
 _PROTO = {}
 
@@ -126,18 +121,26 @@ class AlternateServerPlayback:
                     "Recorded response is a WebSocketFlow. Removing from recording list as"
                     "  WebSockets are disabled"
                 )
-            elif i.response and self.mitm_version in (
-                "4.0.2",
-                "4.0.4",
-                "5.1.1",
-                "6.0.2",
-            ):
-                # see: https://github.com/mitmproxy/mitmproxy/issues/3856
-                f = self.flowmap.setdefault(
-                    self._hash(i), {"flow": None, "reply_count": 0}
-                )
+            elif i.response:
+                hash = self._hash(i)
+                if i.response.content is None and self.flowmap.get(hash, False):
+                    # To avoid 'Cannot assemble flow with missing content' we check
+                    # if the correct request has no content and hashed request already exists
+                    # if the hashed request already has content
+                    # then we do not add the new one end keep the existing one
+
+                    if not self.flowmap.get(hash)["flow"].response.content is None:
+                        ctx.log.info(
+                            "Duplicate recorded request found with content missing. "
+                            "Removing current request as it has no data. %s"
+                            % i.request.url
+                        )
+                        continue
+
+                f = self.flowmap.setdefault(hash, {"flow": None, "reply_count": 0})
                 # overwrite with new flow if already hashed
                 f["flow"] = i
+
             else:
                 ctx.log.info(
                     "Recorded request %s has no response. Removing from recording list"

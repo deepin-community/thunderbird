@@ -2,19 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
-from io import StringIO
-import os
-import unittest
-import shutil
 import json
+import os
+import shutil
+import unittest
+from io import StringIO
 from tempfile import NamedTemporaryFile
 
-from mozbuild.codecoverage import chrome_map
-from mozbuild.codecoverage import lcov_rewriter
 import buildconfig
 import mozunit
+
+from mozbuild.codecoverage import chrome_map, lcov_rewriter
 
 here = os.path.dirname(__file__)
 
@@ -314,7 +312,7 @@ class TestUrlFinder(unittest.TestCase):
                 ],
             },
             {
-                "chrome://global/content/netError.xhtml": "chrome://browser/content/certerror/aboutNetError.xhtml",  # NOQA: E501
+                "chrome://global/content/license.html": "chrome://browser/content/license.html",
             },
             {
                 "dist/bin/components/MainProcessSingleton.js": ["path1", None],
@@ -330,14 +328,14 @@ class TestUrlFinder(unittest.TestCase):
                     "browser/components/newtab/lib/*",
                     None,
                 ],
-                "dist/bin/browser/chrome/browser/content/browser/certerror/aboutNetError.xhtml": [
-                    "browser/base/content/certerror/aboutNetError.xhtml",
+                "dist/bin/browser/chrome/browser/content/browser/license.html": [
+                    "browser/base/content/license.html",
                     None,
                 ],
-                "dist/bin/modules/AppConstants.jsm": [
-                    "toolkit/modules/AppConstants.jsm",
+                "dist/bin/modules/AppConstants.sys.mjs": [
+                    "toolkit/modules/AppConstants.sys.mjs",
                     {
-                        "101,102": ["toolkit/modules/AppConstants.jsm", 135],
+                        "101,102": ["toolkit/modules/AppConstants.sys.mjs", 135],
                     },
                 ],
             },
@@ -397,13 +395,13 @@ class TestUrlFinder(unittest.TestCase):
             ),
             # Path with url prefix that is in chrome map
             (
-                "resource://activity-stream/lib/PrefsFeed.jsm",
-                ("browser/components/newtab/lib/PrefsFeed.jsm", None),
+                "resource://activity-stream/lib/PrefsFeed.sys.mjs",
+                ("browser/components/newtab/lib/PrefsFeed.sys.mjs", None),
             ),
             # Path which is in url overrides
             (
-                "chrome://global/content/netError.xhtml",
-                ("browser/base/content/certerror/aboutNetError.xhtml", None),
+                "chrome://global/content/license.html",
+                ("browser/base/content/license.html", None),
             ),
             # Path which ends with > eval
             (
@@ -417,16 +415,16 @@ class TestUrlFinder(unittest.TestCase):
             ),
             # Path which contains "->"
             (
-                "resource://gre/modules/addons/XPIProvider.jsm -> resource://gre/modules/osfile/osfile_async_worker.js",  # noqa
+                "resource://gre/modules/addons/XPIProvider.sys.mjs -> resource://gre/modules/osfile/osfile_async_worker.js",  # noqa
                 ("toolkit/components/osfile/modules/osfile_async_worker.js", None),
             ),
             # Path with pp_info
             (
-                "resource://gre/modules/AppConstants.jsm",
+                "resource://gre/modules/AppConstants.sys.mjs",
                 (
-                    "toolkit/modules/AppConstants.jsm",
+                    "toolkit/modules/AppConstants.sys.mjs",
                     {
-                        "101,102": ["toolkit/modules/AppConstants.jsm", 135],
+                        "101,102": ["toolkit/modules/AppConstants.sys.mjs", 135],
                     },
                 ),
             ),

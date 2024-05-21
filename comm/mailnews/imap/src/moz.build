@@ -10,7 +10,6 @@ EXPORTS += [
 SOURCES += [
     "nsAutoSyncManager.cpp",
     "nsAutoSyncState.cpp",
-    "nsImapBodyShell.cpp",
     "nsImapFlagAndUidState.cpp",
     "nsImapGenericParser.cpp",
     "nsImapHostSessionList.cpp",
@@ -33,6 +32,25 @@ FINAL_LIBRARY = "mail"
 
 LOCAL_INCLUDES += [
     # for nsImapProtocol.cpp
+    "!/ipc/ipdl/_ipdlheaders",
     "/ipc/chromium/src",
     "/netwerk/base",
+]
+
+EXTRA_JS_MODULES += [
+    "ImapChannel.sys.mjs",
+    "ImapClient.sys.mjs",
+    "ImapFolderContentHandler.sys.mjs",
+    "ImapIncomingServer.sys.mjs",
+    "ImapMessageService.sys.mjs",
+    "ImapModuleLoader.sys.mjs",
+    "ImapProtocolHandler.sys.mjs",
+    "ImapProtocolInfo.sys.mjs",
+    "ImapResponse.sys.mjs",
+    "ImapService.sys.mjs",
+    "ImapUtils.sys.mjs",
+]
+
+XPCOM_MANIFESTS += [
+    "components.conf",
 ]

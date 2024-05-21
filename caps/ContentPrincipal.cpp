@@ -27,6 +27,7 @@
 #include "nsError.h"
 #include "nsIContentSecurityPolicy.h"
 #include "nsNetCID.h"
+#include "js/RealmIterators.h"
 #include "js/Wrapper.h"
 
 #include "mozilla/dom/BlobURLProtocolHandler.h"
@@ -37,24 +38,28 @@
 #include "mozilla/HashFunctions.h"
 
 #include "nsSerializationHelper.h"
-#include "json/json.h"
+
+#include "js/JSON.h"
+#include "ContentPrincipalJSONHandler.h"
 
 using namespace mozilla;
 
-static inline ExtensionPolicyService& EPS() {
-  return ExtensionPolicyService::GetSingleton();
-}
-
-NS_IMPL_CLASSINFO(ContentPrincipal, nullptr, nsIClassInfo::MAIN_THREAD_ONLY,
-                  NS_PRINCIPAL_CID)
+NS_IMPL_CLASSINFO(ContentPrincipal, nullptr, 0, NS_PRINCIPAL_CID)
 NS_IMPL_QUERY_INTERFACE_CI(ContentPrincipal, nsIPrincipal)
 NS_IMPL_CI_INTERFACE_GETTER(ContentPrincipal, nsIPrincipal)
 
 ContentPrincipal::ContentPrincipal(nsIURI* aURI,
                                    const OriginAttributes& aOriginAttributes,
-                                   const nsACString& aOriginNoSuffix)
+                                   const nsACString& aOriginNoSuffix,
+                                   nsIURI* aInitialDomain)
     : BasePrincipal(eContentPrincipal, aOriginNoSuffix, aOriginAttributes),
-      mURI(aURI) {
+      mURI(aURI),
+      mDomain(aInitialDomain) {
+  if (mDomain) {
+    // We're just creating the principal, so no need to re-compute wrappers.
+    SetHasExplicitDomain();
+  }
+
 #ifdef MOZ_DIAGNOSTIC_ASSERT_ENABLED
   // Assert that the URI we get here isn't any of the schemes that we know we
   // should not get here.  These schemes always either inherit their principal
@@ -228,7 +233,6 @@ bool ContentPrincipal::SubsumesInternal(
   // explicitly setting document.domain then the other must also have
   // done so in order to be considered the same origin. This prevents
   // DNS spoofing based on document.domain (154930)
-  nsresult rv;
   if (aConsideration == ConsiderDocumentDomain) {
     // Get .domain on each principal.
     nsCOMPtr<nsIURI> thisDomain, otherDomain;
@@ -254,11 +258,8 @@ bool ContentPrincipal::SubsumesInternal(
     }
   }
 
-  // Compare uris.
-  bool isSameOrigin = false;
-  rv = aOther->IsSameOrigin(mURI, false, &isSameOrigin);
-  NS_ENSURE_SUCCESS(rv, false);
-  return isSameOrigin;
+  // Do a fast check (including origin attributes) or a slow uri comparison.
+  return FastEquals(aOther) || aOther->IsSameOrigin(mURI);
 }
 
 NS_IMETHODIMP
@@ -328,21 +329,26 @@ uint32_t ContentPrincipal::GetHashValue() {
 
 NS_IMETHODIMP
 ContentPrincipal::GetDomain(nsIURI** aDomain) {
-  if (!mDomain) {
+  if (!GetHasExplicitDomain()) {
     *aDomain = nullptr;
     return NS_OK;
   }
 
+  mozilla::MutexAutoLock lock(mMutex);
   NS_ADDREF(*aDomain = mDomain);
   return NS_OK;
 }
 
 NS_IMETHODIMP
 ContentPrincipal::SetDomain(nsIURI* aDomain) {
+  AssertIsOnMainThread();
   MOZ_ASSERT(aDomain);
 
-  mDomain = aDomain;
-  SetHasExplicitDomain();
+  {
+    mozilla::MutexAutoLock lock(mMutex);
+    mDomain = aDomain;
+    SetHasExplicitDomain();
+  }
 
   // Set the changed-document-domain flag on compartments containing realms
   // using this principal.
@@ -476,7 +482,8 @@ ContentPrincipal::GetSiteOriginNoSuffix(nsACString& aSiteOrigin) {
     // If this is an IP address or something like "localhost", we just continue
     // with gotBaseDomain = false.
     if (rv != NS_ERROR_HOST_IS_IP_ADDRESS &&
-        rv != NS_ERROR_INSUFFICIENT_DOMAIN_LEVELS) {
+        rv != NS_ERROR_INSUFFICIENT_DOMAIN_LEVELS &&
+        rv != NS_ERROR_INVALID_ARG) {
       return rv;
     }
   }
@@ -514,25 +521,27 @@ nsresult ContentPrincipal::GetSiteIdentifier(SiteIdentifier& aSite) {
   return NS_OK;
 }
 
-WebExtensionPolicy* ContentPrincipal::AddonPolicy() {
+RefPtr<extensions::WebExtensionPolicyCore> ContentPrincipal::AddonPolicyCore() {
+  mozilla::MutexAutoLock lock(mMutex);
   if (!mAddon.isSome()) {
     NS_ENSURE_TRUE(mURI, nullptr);
 
+    RefPtr<extensions::WebExtensionPolicyCore> core;
     if (mURI->SchemeIs("moz-extension")) {
-      mAddon.emplace(EPS().GetByURL(mURI.get()));
-    } else {
-      mAddon.emplace(nullptr);
+      nsCString host;
+      NS_ENSURE_SUCCESS(mURI->GetHost(host), nullptr);
+      core = ExtensionPolicyService::GetCoreByHost(host);
     }
-  }
 
-  return mAddon.value();
+    mAddon.emplace(core);
+  }
+  return *mAddon;
 }
 
 NS_IMETHODIMP
 ContentPrincipal::GetAddonId(nsAString& aAddonId) {
-  auto* policy = AddonPolicy();
-  if (policy) {
-    policy->GetId(aAddonId);
+  if (RefPtr<extensions::WebExtensionPolicyCore> policy = AddonPolicyCore()) {
+    policy->Id()->ToString(aAddonId);
   } else {
     aAddonId.Truncate();
   }
@@ -593,28 +602,19 @@ ContentPrincipal::Deserializer::Read(nsIObjectInputStream* aStream) {
   rv = GenerateOriginNoSuffixFromURI(principalURI, originNoSuffix);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  RefPtr<ContentPrincipal> principal =
-      new ContentPrincipal(principalURI, attrs, originNoSuffix);
-
-  // Note: we don't call SetDomain here because we don't need the wrapper
-  // recomputation code there (we just created this principal).
-  if (domain) {
-    principal->mDomain = domain;
-    principal->SetHasExplicitDomain();
-  }
-
-  mPrincipal = principal.forget();
+  mPrincipal =
+      new ContentPrincipal(principalURI, attrs, originNoSuffix, domain);
   return NS_OK;
 }
 
-nsresult ContentPrincipal::PopulateJSONObject(Json::Value& aObject) {
+nsresult ContentPrincipal::WriteJSONInnerProperties(JSONWriter& aWriter) {
   nsAutoCString principalURI;
   nsresult rv = mURI->GetSpec(principalURI);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // We turn each int enum field into a JSON string key of the object
-  // aObject is the inner JSON object that has stringified enum keys
-  // An example aObject might be:
+  // We turn each int enum field into a JSON string key of the object, aWriter
+  // is set up to be inside of the inner object that has stringified enum keys
+  // An example inner object might be:
   //
   // eURI                   eSuffix
   //    |                           |
@@ -625,89 +625,168 @@ nsresult ContentPrincipal::PopulateJSONObject(Json::Value& aObject) {
   //        Key          ----------------------
   //                                |
   //                              Value
-  aObject[std::to_string(eURI)] = principalURI.get();
+  WriteJSONProperty<eURI>(aWriter, principalURI);
 
-  if (mDomain) {
+  if (GetHasExplicitDomain()) {
     nsAutoCString domainStr;
-    rv = mDomain->GetSpec(domainStr);
-    NS_ENSURE_SUCCESS(rv, rv);
-    aObject[std::to_string(eDomain)] = domainStr.get();
+    {
+      MutexAutoLock lock(mMutex);
+      rv = mDomain->GetSpec(domainStr);
+      NS_ENSURE_SUCCESS(rv, rv);
+    }
+    WriteJSONProperty<eDomain>(aWriter, domainStr);
   }
 
   nsAutoCString suffix;
   OriginAttributesRef().CreateSuffix(suffix);
   if (suffix.Length() > 0) {
-    aObject[std::to_string(eSuffix)] = suffix.get();
+    WriteJSONProperty<eSuffix>(aWriter, suffix);
   }
 
   return NS_OK;
 }
 
-already_AddRefed<BasePrincipal> ContentPrincipal::FromProperties(
-    nsTArray<ContentPrincipal::KeyVal>& aFields) {
-  MOZ_ASSERT(aFields.Length() == eMax + 1, "Must have all the keys");
-  nsresult rv;
-  nsCOMPtr<nsIURI> principalURI;
-  nsCOMPtr<nsIURI> domain;
-  nsCOMPtr<nsIContentSecurityPolicy> csp;
-  OriginAttributes attrs;
+bool ContentPrincipalJSONHandler::startObject() {
+  switch (mState) {
+    case State::Init:
+      mState = State::StartObject;
+      break;
+    default:
+      NS_WARNING("Unexpected object value");
+      mState = State::Error;
+      return false;
+  }
 
-  // The odd structure here is to make the code to not compile
-  // if all the switch enum cases haven't been codified
-  for (const auto& field : aFields) {
-    switch (field.key) {
-      case ContentPrincipal::eURI:
-        if (!field.valueWasSerialized) {
-          MOZ_ASSERT(
-              false,
-              "Content principals require a principal URI in serialized JSON");
-          return nullptr;
-        }
-        rv = NS_NewURI(getter_AddRefs(principalURI), field.value.get());
-        NS_ENSURE_SUCCESS(rv, nullptr);
+  return true;
+}
 
-        {
-          // Enforce re-parsing about: URIs so that if they change, we
-          // continue to use their new principals correctly.
-          if (principalURI->SchemeIs("about")) {
-            nsAutoCString spec;
-            principalURI->GetSpec(spec);
-            if (NS_FAILED(NS_NewURI(getter_AddRefs(principalURI), spec))) {
-              return nullptr;
-            }
-          }
-        }
-        break;
-      case ContentPrincipal::eDomain:
-        if (field.valueWasSerialized) {
-          rv = NS_NewURI(getter_AddRefs(domain), field.value.get());
-          NS_ENSURE_SUCCESS(rv, nullptr);
-        }
-        break;
-      case ContentPrincipal::eSuffix:
-        if (field.valueWasSerialized) {
-          bool ok = attrs.PopulateFromSuffix(field.value);
-          if (!ok) {
-            return nullptr;
-          }
-        }
-        break;
+bool ContentPrincipalJSONHandler::propertyName(const JS::Latin1Char* name,
+                                               size_t length) {
+  switch (mState) {
+    case State::StartObject:
+    case State::AfterPropertyValue: {
+      if (length != 1) {
+        NS_WARNING(
+            nsPrintfCString("Unexpected property name length: %zu", length)
+                .get());
+        mState = State::Error;
+        return false;
+      }
+
+      char key = char(name[0]);
+      switch (key) {
+        case ContentPrincipal::URIKey:
+          mState = State::URIKey;
+          break;
+        case ContentPrincipal::DomainKey:
+          mState = State::DomainKey;
+          break;
+        case ContentPrincipal::SuffixKey:
+          mState = State::SuffixKey;
+          break;
+        default:
+          NS_WARNING(
+              nsPrintfCString("Unexpected property name: '%c'", key).get());
+          mState = State::Error;
+          return false;
+      }
+      break;
     }
-  }
-  nsAutoCString originNoSuffix;
-  rv = ContentPrincipal::GenerateOriginNoSuffixFromURI(principalURI,
-                                                       originNoSuffix);
-  if (NS_FAILED(rv)) {
-    return nullptr;
+    default:
+      NS_WARNING("Unexpected property name");
+      mState = State::Error;
+      return false;
   }
 
-  RefPtr<ContentPrincipal> principal =
-      new ContentPrincipal(principalURI, attrs, originNoSuffix);
+  return true;
+}
 
-  principal->mDomain = domain;
-  if (principal->mDomain) {
-    principal->SetHasExplicitDomain();
+bool ContentPrincipalJSONHandler::endObject() {
+  switch (mState) {
+    case State::AfterPropertyValue: {
+      MOZ_ASSERT(mPrincipalURI);
+      // NOTE: mDomain is optional.
+
+      nsAutoCString originNoSuffix;
+      nsresult rv = ContentPrincipal::GenerateOriginNoSuffixFromURI(
+          mPrincipalURI, originNoSuffix);
+      if (NS_FAILED(rv)) {
+        mState = State::Error;
+        return false;
+      }
+
+      mPrincipal =
+          new ContentPrincipal(mPrincipalURI, mAttrs, originNoSuffix, mDomain);
+      MOZ_ASSERT(mPrincipal);
+
+      mState = State::EndObject;
+      break;
+    }
+    default:
+      NS_WARNING("Unexpected end of object");
+      mState = State::Error;
+      return false;
   }
 
-  return principal.forget();
+  return true;
+}
+
+bool ContentPrincipalJSONHandler::stringValue(const JS::Latin1Char* str,
+                                              size_t length) {
+  switch (mState) {
+    case State::URIKey: {
+      nsDependentCSubstring spec(reinterpret_cast<const char*>(str), length);
+
+      nsresult rv = NS_NewURI(getter_AddRefs(mPrincipalURI), spec);
+      if (NS_FAILED(rv)) {
+        mState = State::Error;
+        return false;
+      }
+
+      {
+        // Enforce re-parsing about: URIs so that if they change, we
+        // continue to use their new principals correctly.
+        if (mPrincipalURI->SchemeIs("about")) {
+          nsAutoCString spec;
+          mPrincipalURI->GetSpec(spec);
+          rv = NS_NewURI(getter_AddRefs(mPrincipalURI), spec);
+          if (NS_FAILED(rv)) {
+            mState = State::Error;
+            return false;
+          }
+        }
+      }
+
+      mState = State::AfterPropertyValue;
+      break;
+    }
+    case State::DomainKey: {
+      nsDependentCSubstring spec(reinterpret_cast<const char*>(str), length);
+
+      nsresult rv = NS_NewURI(getter_AddRefs(mDomain), spec);
+      if (NS_FAILED(rv)) {
+        mState = State::Error;
+        return false;
+      }
+
+      mState = State::AfterPropertyValue;
+      break;
+    }
+    case State::SuffixKey: {
+      nsDependentCSubstring attrs(reinterpret_cast<const char*>(str), length);
+      if (!mAttrs.PopulateFromSuffix(attrs)) {
+        mState = State::Error;
+        return false;
+      }
+
+      mState = State::AfterPropertyValue;
+      break;
+    }
+    default:
+      NS_WARNING("Unexpected string value");
+      mState = State::Error;
+      return false;
+  }
+
+  return true;
 }

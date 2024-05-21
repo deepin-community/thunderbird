@@ -7,7 +7,7 @@ const PAGE_URL = "data:text/html;charset=utf-8,test select events";
 
 requestLongerTimeout(2);
 
-add_task(async function() {
+add_task(async function () {
   const tab = await addTab(PAGE_URL);
 
   let toolbox = await openToolboxForTab(tab, "webconsole", "bottom");
@@ -72,7 +72,7 @@ add_task(async function() {
   async function testSelectToolRace() {
     const toolbox = await openToolboxForTab(tab, "webconsole");
     let selected = false;
-    const onSelect = (event, id) => {
+    const onSelect = () => {
       if (selected) {
         ok(false, "Got more than one 'select' event");
       } else {

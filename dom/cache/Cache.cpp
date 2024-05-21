@@ -6,19 +6,21 @@
 
 #include "mozilla/dom/cache/Cache.h"
 
-#include "js/Array.h"  // JS::GetArrayLength, JS::IsArrayObject
+#include "js/Array.h"               // JS::GetArrayLength, JS::IsArrayObject
+#include "js/PropertyAndElement.h"  // JS_GetElement
 #include "mozilla/dom/Headers.h"
 #include "mozilla/dom/InternalResponse.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/PromiseNativeHandler.h"
 #include "mozilla/dom/Response.h"
+#include "mozilla/dom/RootedDictionary.h"
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/CacheBinding.h"
 #include "mozilla/dom/cache/AutoUtils.h"
 #include "mozilla/dom/cache/CacheChild.h"
 #include "mozilla/dom/cache/CacheCommon.h"
 #include "mozilla/dom/cache/CacheWorkerRef.h"
-#include "mozilla/dom/cache/ReadStream.h"
+#include "mozilla/dom/quota/ResultExtensions.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/Unused.h"
@@ -79,13 +81,12 @@ static bool IsValidPutResponseStatus(Response& aResponse,
                                      ErrorResult& aRv) {
   if ((aPolicy == PutStatusPolicy::RequireOK && !aResponse.Ok()) ||
       aResponse.Status() == 206) {
-    nsCString type(ResponseTypeValues::GetString(aResponse.Type()));
-
     nsAutoString url;
     aResponse.GetUrl(url);
 
     aRv.ThrowTypeError<MSG_CACHE_ADD_FAILED_RESPONSE>(
-        type, IntToCString(aResponse.Status()), NS_ConvertUTF16toUTF8(url));
+        GetEnumString(aResponse.Type()), IntToCString(aResponse.Status()),
+        NS_ConvertUTF16toUTF8(url));
     return false;
   }
 
@@ -112,8 +113,8 @@ class Cache::FetchHandler final : public PromiseNativeHandler {
     MOZ_DIAGNOSTIC_ASSERT(mPromise);
   }
 
-  virtual void ResolvedCallback(JSContext* aCx,
-                                JS::Handle<JS::Value> aValue) override {
+  virtual void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                                ErrorResult& aRv) override {
     NS_ASSERT_OWNINGTHREAD(FetchHandler);
 
     // Stop holding the worker alive when we leave this method.
@@ -147,8 +148,8 @@ class Cache::FetchHandler final : public PromiseNativeHandler {
       JS::Rooted<JSObject*> responseObj(aCx, &value.toObject());
 
       RefPtr<Response> response;
-      QM_TRY((UNWRAP_OBJECT(Response, responseObj, response)), QM_VOID,
-             failOnErr);
+      QM_TRY(MOZ_TO_RESULT(UNWRAP_OBJECT(Response, responseObj, response)),
+             QM_VOID, failOnErr);
 
       QM_TRY(OkIf(response->Type() != ResponseType::Error), QM_VOID, failOnErr);
 
@@ -188,8 +189,8 @@ class Cache::FetchHandler final : public PromiseNativeHandler {
     mPromise->MaybeResolve(put);
   }
 
-  virtual void RejectedCallback(JSContext* aCx,
-                                JS::Handle<JS::Value> aValue) override {
+  virtual void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                                ErrorResult& aRv) override {
     NS_ASSERT_OWNINGTHREAD(FetchHandler);
     Fail();
   }
@@ -307,8 +308,9 @@ already_AddRefed<Promise> Cache::Add(JSContext* aContext,
   MOZ_DIAGNOSTIC_ASSERT(!global.Failed());
 
   nsTArray<SafeRefPtr<Request>> requestList(1);
+  RootedDictionary<RequestInit> requestInit(aContext);
   SafeRefPtr<Request> request =
-      Request::Constructor(global, aRequest, RequestInit(), aRv);
+      Request::Constructor(global, aRequest, requestInit, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
@@ -351,8 +353,9 @@ already_AddRefed<Promise> Cache::AddAll(
           aRequestList[i].GetAsUSVString());
     }
 
+    RootedDictionary<RequestInit> requestInit(aContext);
     SafeRefPtr<Request> request =
-        Request::Constructor(global, requestOrString, RequestInit(), aRv);
+        Request::Constructor(global, requestOrString, requestInit, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
       return nullptr;
     }
@@ -384,6 +387,17 @@ already_AddRefed<Promise> Cache::Put(JSContext* aCx,
   }
 
   if (!IsValidPutResponseStatus(aResponse, PutStatusPolicy::Default, aRv)) {
+    return nullptr;
+  }
+
+  if (NS_WARN_IF(aResponse.GetPrincipalInfo() &&
+                 aResponse.GetPrincipalInfo()->type() ==
+                     mozilla::ipc::PrincipalInfo::TExpandedPrincipalInfo)) {
+    // WebExtensions Content Scripts can currently run fetch from their global
+    // which will end up to have an expanded principal, but we require that the
+    // contents of Cache storage for the content origin to be same-origin, and
+    // never an expanded principal (See Bug 1753810).
+    aRv.ThrowSecurityError("Disallowed on WebExtension ContentScript Request");
     return nullptr;
   }
 
@@ -540,8 +554,9 @@ already_AddRefed<Promise> Cache::AddAll(
   for (uint32_t i = 0; i < aRequestList.Length(); ++i) {
     RequestOrUSVString requestOrString;
     requestOrString.SetAsRequest() = aRequestList[i].unsafeGetRawPtr();
+    RootedDictionary<RequestInit> requestInit(aGlobal.Context());
     RefPtr<Promise> fetch =
-        FetchRequest(mGlobal, requestOrString, RequestInit(), aCallerType, aRv);
+        FetchRequest(mGlobal, requestOrString, requestInit, aCallerType, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
       return nullptr;
     }

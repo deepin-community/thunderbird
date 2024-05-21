@@ -5,15 +5,21 @@
 // toolkit/content/treeUtils.js
 /* globals gTreeUtils */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
-var nsIPermissionManager = Ci.nsIPermissionManager;
-var nsICookiePermission = Ci.nsICookiePermission;
-
 var NOTIFICATION_FLUSH_PERMISSIONS = "flush-pending-permissions";
+
+window.addEventListener("load", event => {
+  gPermissionManager.onLoad();
+});
+window.addEventListener("unload", event => {
+  gPermissionManager.uninit();
+});
+window.addEventListener("keypress", event => {
+  gPermissionManager.onWindowKeyPress(event);
+});
 
 /**
  * Magic URI base used so the permission manager can store
@@ -85,20 +91,20 @@ var gPermissionManager = {
   async _getCapabilityString(aCapability) {
     var stringKey = null;
     switch (aCapability) {
-      case nsIPermissionManager.ALLOW_ACTION:
+      case Ci.nsIPermissionManager.ALLOW_ACTION:
         stringKey = "permission-can-label";
         break;
-      case nsIPermissionManager.DENY_ACTION:
+      case Ci.nsIPermissionManager.DENY_ACTION:
         stringKey = "permission-cannot-label";
         break;
-      case nsICookiePermission.ACCESS_ALLOW_FIRST_PARTY_ONLY:
+      case Ci.nsICookiePermission.ACCESS_ALLOW_FIRST_PARTY_ONLY:
         stringKey = "permission-can-access-first-party-label";
         break;
-      case nsICookiePermission.ACCESS_SESSION:
+      case Ci.nsICookiePermission.ACCESS_SESSION:
         stringKey = "permission-can-session-label";
         break;
     }
-    let string = await document.l10n.formatValue(stringKey);
+    const string = await document.l10n.formatValue(stringKey);
     return string;
   },
 
@@ -124,7 +130,7 @@ var gPermissionManager = {
         // If we have ended up with an unknown scheme, the following will throw.
         principal.origin;
       } catch (ex) {
-        let scheme =
+        const scheme =
           this._type != "image" || !input_url.includes("@")
             ? "http://"
             : MAILURI_BASE;
@@ -137,7 +143,7 @@ var gPermissionManager = {
         principal.origin;
       }
     } catch (ex) {
-      let [title, message] = await document.l10n.formatValues([
+      const [title, message] = await document.l10n.formatValues([
         { id: "invalid-uri-title" },
         { id: "invalid-uri-message" },
       ]);
@@ -162,7 +168,7 @@ var gPermissionManager = {
       }
     }
 
-    let permissionParams = {
+    const permissionParams = {
       principal,
       type: this._type,
       capability: aCapability,
@@ -192,7 +198,7 @@ var gPermissionManager = {
     // If this permission was added during this session, let's remove
     // it from the pending adds list to prevent calls to the
     // permission manager.
-    let isNewPermission = this._permissionsToAdd.delete(
+    const isNewPermission = this._permissionsToAdd.delete(
       aPermission.principal.origin
     );
 
@@ -287,13 +293,13 @@ var gPermissionManager = {
     var urlLabel = document.getElementById("urlLabel");
     urlLabel.hidden = !urlFieldVisible;
 
-    let treecols = document.getElementsByTagName("treecols")[0];
+    const treecols = document.getElementsByTagName("treecols")[0];
     treecols.addEventListener("click", event => {
       if (event.target.nodeName != "treecol" || event.button != 0) {
         return;
       }
 
-      let sortField = event.target.getAttribute("data-field-name");
+      const sortField = event.target.getAttribute("data-field-name");
       if (!sortField) {
         return;
       }
@@ -369,10 +375,10 @@ var gPermissionManager = {
       var p = removedPermissions[i];
       this._removePermission(p);
     }
-    document.getElementById("removePermission").disabled = !this._permissions
-      .length;
-    document.getElementById("removeAllPermissions").disabled = !this
-      ._permissions.length;
+    document.getElementById("removePermission").disabled =
+      !this._permissions.length;
+    document.getElementById("removeAllPermissions").disabled =
+      !this._permissions.length;
   },
 
   onAllPermissionsDeleted() {
@@ -429,7 +435,7 @@ var gPermissionManager = {
     // to update the UI
     this.uninit();
 
-    for (let permissionParams of this._permissionsToAdd.values()) {
+    for (const permissionParams of this._permissionsToAdd.values()) {
       Services.perms.addFromPrincipal(
         permissionParams.principal,
         permissionParams.type,
@@ -437,7 +443,7 @@ var gPermissionManager = {
       );
     }
 
-    for (let p of this._permissionsToDelete.values()) {
+    for (const p of this._permissionsToDelete.values()) {
       Services.perms.removeFromPrincipal(p.principal, p.type);
     }
 
@@ -448,7 +454,7 @@ var gPermissionManager = {
     this._tree = document.getElementById("permissionsTree");
     this._permissions = [];
 
-    for (let perm of Services.perms.all) {
+    for (const perm of Services.perms.all) {
       await this._addPermissionToList(perm);
     }
 

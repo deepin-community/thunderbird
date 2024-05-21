@@ -9,18 +9,17 @@
 
 "use strict";
 
-var { ensure_card_exists } = ChromeUtils.import(
-  "resource://testing-common/mozmill/AddressBookHelpers.jsm"
+var { ensure_card_exists } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/AddressBookHelpers.sys.mjs"
 );
 var {
   add_message_to_folder,
   be_in_folder,
   create_folder,
   create_message,
-  mc,
-  select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  get_about_3pane,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var folder;
@@ -194,24 +193,33 @@ var contacts = [
   { email: "rjorden@hadleys-hope.invalid", name: "Newt", pdn: false },
 ];
 
-add_task(function setupModule(module) {
-  folder = create_folder("DisplayNameA");
+add_setup(async function () {
+  // Use an ascending order because this test relies on message arrays matching.
+  Services.prefs.setIntPref("mailnews.default_sort_order", 1);
 
-  for (let message of messages) {
-    add_message_to_folder(
-      folder,
+  folder = await create_folder("DisplayNameA");
+
+  for (const message of messages) {
+    await add_message_to_folder(
+      [folder],
       create_message({
         clobberHeaders: message.headers,
       })
     );
   }
 
-  for (let contact of contacts) {
+  for (const contact of contacts) {
     ensure_card_exists(contact.email, contact.name, contact.pdn);
   }
+
+  await be_in_folder(folder);
+
+  registerCleanupFunction(() => {
+    Services.prefs.clearUserPref("mailnews.default_sort_order");
+  });
 });
 
-function check_display_name(index, columnName, expectedName) {
+async function check_display_name(index, columnName, expectedName) {
   let columnId;
   switch (columnName) {
     case "from":
@@ -224,20 +232,18 @@ function check_display_name(index, columnName, expectedName) {
       throw new Error("unknown column name: " + columnName);
   }
 
-  // Select the nth message
-  be_in_folder(folder);
-  select_click_row(index);
-
-  let tree = mc.folderDisplay.tree;
-  let cellText = tree.view.getCellText(index, tree.columns[columnId]);
-
+  const cellText = get_about_3pane().gDBView.cellTextForColumn(index, columnId);
   Assert.equal(cellText, expectedName, columnName);
 }
 
 // Generate a test for each message in |messages|.
-for (let [i, message] of messages.entries()) {
-  this["test_" + message.name] = function(i, message) {
-    check_display_name(i, message.expected.column, message.expected.value);
+for (const [i, message] of messages.entries()) {
+  this["test_" + message.name] = async function (i, message) {
+    await check_display_name(
+      i,
+      message.expected.column,
+      message.expected.value
+    );
   }.bind(this, i, message);
   add_task(this[`test_${message.name}`]);
 }

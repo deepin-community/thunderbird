@@ -2,12 +2,11 @@
 
 const profileDir = do_get_profile();
 
-const { ContextualIdentityService } = ChromeUtils.import(
-  "resource://gre/modules/ContextualIdentityService.jsm"
+const { ContextualIdentityService } = ChromeUtils.importESModule(
+  "resource://gre/modules/ContextualIdentityService.sys.mjs"
 );
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
 
-const TEST_STORE_FILE_PATH = OS.Path.join(
+const TEST_STORE_FILE_PATH = PathUtils.join(
   profileDir.path,
   "test-containers.json"
 );
@@ -15,12 +14,11 @@ const TEST_STORE_FILE_PATH = OS.Path.join(
 let cis;
 
 // Basic tests
-add_task(function() {
+add_task(function () {
   ok(!!ContextualIdentityService, "ContextualIdentityService exists");
 
-  cis = ContextualIdentityService.createNewInstanceForTesting(
-    TEST_STORE_FILE_PATH
-  );
+  cis =
+    ContextualIdentityService.createNewInstanceForTesting(TEST_STORE_FILE_PATH);
   ok(!!cis, "We have our instance of ContextualIdentityService");
 
   equal(cis.getPublicIdentities().length, 4, "By default, 4 containers.");
@@ -30,10 +28,45 @@ add_task(function() {
   ok(!!cis.getPublicIdentityFromId(2), "Identity 2 exists");
   ok(!!cis.getPublicIdentityFromId(3), "Identity 3 exists");
   ok(!!cis.getPublicIdentityFromId(4), "Identity 4 exists");
+
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    cis.getPublicIdentities().map(ident => ident.userContextId),
+    "getPublicUserContextIds has matching user context IDs"
+  );
+});
+
+// Make sure we are not allowed to only use whitespaces as a container name
+add_task(function () {
+  Assert.throws(
+    () =>
+      cis.create(
+        "\u0009\u000B\u000C\u0020\u00A0\uFEFF\u000A\u000D\u2028\u2029",
+        "icon",
+        "color"
+      ),
+    /Contextual identity names cannot contain only whitespace./,
+    "Contextual identity names cannot contain only whitespace."
+  );
+});
+
+add_task(function () {
+  ok(!!cis.getPublicIdentityFromId(2), "Identity 2 exists");
+  Assert.throws(
+    () =>
+      cis.update(
+        2,
+        "\u0009\u000B\u000C\u0020\u00A0\uFEFF\u000A\u000D\u2028\u2029",
+        "icon",
+        "color"
+      ),
+    /Contextual identity names cannot contain only whitespace./,
+    "Contextual identity names cannot contain only whitespace."
+  );
 });
 
 // Create a new identity
-add_task(function() {
+add_task(function () {
   equal(cis.getPublicIdentities().length, 4, "By default, 4 containers.");
 
   let identity = cis.create("New Container", "Icon", "Color");
@@ -66,6 +99,12 @@ add_task(function() {
     "Identity label is OK"
   );
 
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    cis.getPublicIdentities().map(ident => ident.userContextId),
+    "getPublicUserContextIds has matching user context IDs"
+  );
+
   // Remove an identity
   equal(
     cis.remove(-1),
@@ -75,10 +114,99 @@ add_task(function() {
   equal(cis.remove(1), true, "cis.remove() returns true if identity exists.");
 
   equal(cis.getPublicIdentities().length, 4, "Expected 4 containers.");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    cis.getPublicIdentities().map(ident => ident.userContextId),
+    "getPublicUserContextIds has matching user context IDs"
+  );
+});
+
+// Reorder identities
+add_task(function () {
+  equal(cis.getPublicIdentities().length, 4, "By default, 4 containers.");
+  // Get whatever the initial order is
+  const [id0, id1, id2, id3] = cis.getPublicUserContextIds();
+
+  ok(cis.move([id3], 0), "Moving one valid id");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id0, id1, id2],
+    "Moving one valid ID works"
+  );
+
+  ok(cis.move([id1, id2], 1), "Moving several valid ids");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id2, id0],
+    "Moving several valid IDs works"
+  );
+
+  ok(!cis.move([100], 0), "Moving non-existing ids");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id2, id0],
+    "Moving only non-existing IDs leaves list unchanged"
+  );
+
+  ok(cis.move([100, id1], 1), "Moving non-existing and existing ids");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id2, id0],
+    "Moving existing and non-existing IDs ignores non-existing ones"
+  );
+
+  ok(cis.move([id1, 100], 1), "Moving existing and non-existing ids");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id2, id0],
+    "Moving existing and non-existing IDs ignores non-existing ones"
+  );
+
+  ok(cis.move([id2], -1), "Moving to -1");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id0, id2],
+    "Moving to -1 works"
+  );
+
+  ok(!cis.move([id3], -10), "Moving to other negative positions");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id3, id1, id0, id2],
+    "Moving to other negative positions leaves list unchanged"
+  );
+
+  ok(cis.move([id3], 3), "Moving to last public position");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id1, id0, id2, id3],
+    "Moving to last position correctly skips private context ids"
+  );
+
+  ok(cis.move([id1, id2], 1), "Moving past current position");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id0, id1, id2, id3],
+    "Target position is index in resulting list"
+  );
+
+  ok(cis.move([id2, id2], 2), "Moving duplicate ids");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id0, id1, id2, id3],
+    "Resulting list does not contain duplicate ids"
+  );
+
+  ok(!cis.move([], 2), "Moving empty list");
+  Assert.deepEqual(
+    cis.getPublicUserContextIds(),
+    [id0, id1, id2, id3],
+    "Resulting list does not contain duplicate ids"
+  );
 });
 
 // Update an identity
-add_task(function() {
+add_task(function () {
   ok(!!cis.getPublicIdentityFromId(2), "Identity 2 exists");
 
   equal(

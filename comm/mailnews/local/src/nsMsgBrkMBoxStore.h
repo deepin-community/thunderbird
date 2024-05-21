@@ -13,8 +13,10 @@
 #include "nsMsgLocalStoreUtils.h"
 #include "nsIMsgPluggableStore.h"
 #include "nsIFile.h"
-#include "nsInterfaceHashtable.h"
 #include "nsISeekableStream.h"
+#include "nsIOutputStream.h"
+#include "nsTStringHasher.h"  // mozilla::DefaultHasher<nsCString>
+#include "mozilla/HashTable.h"
 
 class nsMsgBrkMBoxStore final : public nsMsgLocalStoreUtils,
                                 nsIMsgPluggableStore {
@@ -28,25 +30,20 @@ class nsMsgBrkMBoxStore final : public nsMsgLocalStoreUtils,
   ~nsMsgBrkMBoxStore();
 
  protected:
+  nsresult InternalGetNewMsgOutputStream(nsIMsgFolder* aFolder,
+                                         nsIMsgDBHdr** aNewMsgHdr,
+                                         nsIOutputStream** aResult);
   nsresult AddSubFolders(nsIMsgFolder* parent, nsCOMPtr<nsIFile>& path,
                          bool deep);
   nsresult CreateDirectoryForFolder(nsIFile* path);
   nsresult GetOutputStream(nsIMsgDBHdr* aHdr,
-                           nsCOMPtr<nsIOutputStream>& outputStream,
-                           nsCOMPtr<nsISeekableStream>& seekableStream,
-                           int64_t& restorePos);
+                           nsCOMPtr<nsIOutputStream>& outputStream);
   void GetMailboxModProperties(nsIMsgFolder* aFolder, int64_t* aSize,
                                uint32_t* aDate);
   void SetDBValid(nsIMsgDBHdr* aHdr);
-  // We don't want to keep re-opening an output stream when downloading
-  // multiple pop3 messages, or adjusting x-mozilla-status headers, so
-  // we cache output streams based on folder uri's. If the caller has closed
-  // the stream, we'll get a new one.
-  nsInterfaceHashtable<nsCStringHashKey, nsIOutputStream> m_outputStreams;
 
-#ifdef _DEBUG
-  nsCOMPtr<nsIMsgFolder> m_streamOutstandingFolder;
-#endif
+  // A set containing the URI of every folder currently being written to.
+  mozilla::HashMap<nsCString, RefPtr<nsIOutputStream>> m_OutstandingStreams;
 };
 
 #endif

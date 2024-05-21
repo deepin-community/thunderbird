@@ -1,8 +1,6 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
@@ -25,9 +23,9 @@ class CryptoAPI {
    * Synchronize a promise: wait synchonously until a promise has completed and return
    * the value that the promise returned.
    *
-   * @param {Promise} promise: the promise to wait for
+   * @param {Promise} promise - the promise to wait for
    *
-   * @return {Variant} whatever the promise returns
+   * @returns {Variant} whatever the promise returns.
    */
   sync(promise) {
     if (!inspector) {
@@ -43,7 +41,7 @@ class CryptoAPI {
         inspector.exitNestedEventLoop();
       })
       .catch(gotResult => {
-        console.log("CryptoAPI.sync() failed result: %o", gotResult);
+        console.warn("CryptoAPI.sync() failed result: %o", gotResult);
         if (gotResult instanceof Error) {
           inspector.exitNestedEventLoop();
           throw gotResult;
@@ -60,12 +58,24 @@ class CryptoAPI {
   /**
    * Obtain signatures for a given set of key IDs.
    *
-   * @param {String}  keyId:            space-separated list of key IDs
-   * @param {Boolean} ignoreUnknownUid: if true, filter out unknown signer's UIDs
+   * @param {string}  keyId - Space separated list of key IDs.
+   * @param {boolean} ignoreUnknownUid - If true, filter out unknown signer's UIDs.
    *
-   * @return {Promise<Array of Object>} - see extractSignatures()
+   * @returns {Promise<object[]>}
    */
   async getKeySignatures(keyId, ignoreUnknownUid = false) {
+    return null;
+  }
+
+  /**
+   * Obtain signatures for a given key.
+   *
+   * @param {KeyObj}  keyObj - The signatures of this key will be returned.
+   * @param {boolean} ignoreUnknownUid - if true, filter out unknown signer's UIDs.
+   *
+   * @returns {Promise<object[]>}
+   */
+  async getKeyObjSignatures(keyObj, ignoreUnknownUid = false) {
     return null;
   }
 
@@ -73,14 +83,15 @@ class CryptoAPI {
    * Export the minimum key for the public key object:
    * public key, user ID, newest encryption subkey
    *
-   * @param {String} fpr  : a single FPR
-   * @param {String} email: [optional] the email address of the desired user ID.
-   *                        If the desired user ID cannot be found or is not valid, use the primary UID instead
+   * @param {string} fpr - A single FPR
+   * @param {string} [email]- The email address of the desired user ID.
+   *   If the desired user ID cannot be found or is not valid, use the primary
+   *   UID instead
    *
-   * @return {Promise<Object>}:
-   *    - exitCode (0 = success)
-   *    - errorMsg (if exitCode != 0)
-   *    - keyData: BASE64-encded string of key data
+   * @returns {Promise<object>} object
+   * @returns {integer} object.exitCode - 0 = success
+   * @returns {string} object.errorMsg - Error message, if exitCode != 0.
+   * @returns {string} object.keyData - BASE64-encded string of key data.
    */
   async getMinimalPubKey(fpr, email) {
     return {
@@ -91,45 +102,14 @@ class CryptoAPI {
   }
 
   /**
-   * Get the list of all konwn keys (including their secret keys)
-   * @param {Array of String} onlyKeys: [optional] only load data for specified key IDs
+   * Get the list of all known keys (including their secret keys)
    *
-   * @return {Promise<Array of Object>}
+   * @param {string[]} [onlyKeys] - Only load data for specified key IDs.
+   *
+   * @returns {Promise<object[]>}
    */
   async getKeys(onlyKeys = null) {
     return [];
-  }
-
-  /**
-   * Extract a photo ID from a key, store it as file and return the file object.
-   *
-   * @param {String} keyId:       Key ID / fingerprint
-   * @param {Number} photoNumber: number of the photo on the key, starting with 0
-   *
-   * @return {nsIFile} object or null in case no data / error.
-   */
-  async getPhotoFile(keyId, photoNumber) {
-    return null;
-  }
-
-  /**
-   * Import key(s) from a file
-   *
-   * @param {nsIFile} inputFile:  the file holding the keys
-   *
-   * @return {Object} or null in case no data / error:
-   *   - {Number}          exitCode:        result code (0: OK)
-   *   - {Array of String) importedKeys:    imported fingerprints
-   *   - {Number}          importSum:       total number of processed keys
-   *   - {Number}          importUnchanged: number of unchanged keys
-   */
-
-  async importKeyFromFileAPI(inputFile) {
-    return null;
-  }
-
-  async importKeyBlockAPI(keyBlock) {
-    return null;
   }
 
   async importPubkeyBlockAutoAccept(keyBlock) {
@@ -144,13 +124,13 @@ class CryptoAPI {
   /**
    * Export secret key(s) to a file
    *
-   * @param {String}  keyId       Specification by fingerprint or keyID
-   * @param {Boolean} minimalKey  if true, reduce key to minimum required
+   * @param {string}  keyId       Specification by fingerprint or keyID
+   * @param {boolean} minimalKey - if true, reduce key to minimum required
    *
-   * @return {Object}:
-   *   - {Number} exitCode:  result code (0: OK)
-   *   - {String} keyData:   ASCII armored key data material
-   *   - {String} errorMsg:  error message in case exitCode !== 0
+   * @returns {object} object
+   * @returns {integer} object.exitCode - 0 = success
+   * @returns {string} object.errorMsg - Error message, if exitCode != 0.
+   * @returns {string} object.keyData - ASCII armored key data material.
    */
 
   async extractSecretKey(keyId, minimalKey) {
@@ -160,11 +140,10 @@ class CryptoAPI {
   /**
    * Determine the file name from OpenPGP data.
    *
-   * @param {byte} byteData    The encrypted data
+   * @param {byte} byteData - The encrypted data.
    *
-   * @return {String} - the name of the attached file
+   * @returns {string} the name of the attached file
    */
-
   async getFileName(byteData) {
     return null;
   }
@@ -173,15 +152,14 @@ class CryptoAPI {
    * Verify the detached signature of an attachment (or in other words,
    * check the signature of a file, given the file and the signature).
    *
-   * @param {Path} filePath    The signed file
-   * @param {Path} sigPath       The signature to verify
+   * @param {Path} filePath - The signed file
+   * @param {Path} sigPath - The signature to verify
    *
-   * @return {Promise<String>} - A message from the verification.
+   * @returns {Promise<string>} - A message from the verification.
    *
    * Use Promise.catch to handle failed verifications.
    * The message will be an error message in this case.
    */
-
   async verifyAttachment(filePath, sigPath) {
     return null;
   }
@@ -191,13 +169,12 @@ class CryptoAPI {
    *
    * @param {Bytes}  encrypted     The encrypted data
    *
-   * @return {Promise<Object>} - Return object with decryptedData and
-   * status information
+   * @returns {Promise<object>} an object with decryptedData and
+   *   status information
    *
    * Use Promise.catch to handle failed decryption.
    * retObj.errorMsg will be an error message in this case.
    */
-
   async decryptAttachment(encrypted) {
     return null;
   }
@@ -205,16 +182,15 @@ class CryptoAPI {
   /**
    * Generic function to decrypt and/or verify an OpenPGP message.
    *
-   * @param {String} encrypted     The encrypted data
-   * @param {Object} options       Decryption options
+   * @param {string} encrypted - The encrypted data
+   * @param {object} options - Decryption options
    *
-   * @return {Promise<Object>} - Return object with decryptedData and
-   * status information
+   * @returns {Promise<object>} an object with decryptedData and
+   *   status information
    *
    * Use Promise.catch to handle failed decryption.
    * retObj.errorMsg will be an error message in this case.
    */
-
   async decrypt(encrypted, options) {
     return null;
   }
@@ -222,16 +198,15 @@ class CryptoAPI {
   /**
    * Decrypt a PGP/MIME-encrypted message
    *
-   * @param {String} encrypted     The encrypted data
-   * @param {Object} options       Decryption options
+   * @param {string} encrypted - The encrypted data
+   * @param {object} options - Decryption options
    *
-   * @return {Promise<Object>} - Return object with decryptedData and
-   * status information
+   * @returns {Promise<object>} am object with decryptedData and
+   *   status information
    *
    * Use Promise.catch to handle failed decryption.
    * retObj.errorMsg will be an error message in this case.
    */
-
   async decryptMime(encrypted, options) {
     return null;
   }
@@ -239,16 +214,15 @@ class CryptoAPI {
   /**
    * Verify a PGP/MIME-signed message
    *
-   * @param {String} signed        The signed data
-   * @param {Object} options       Decryption options
+   * @param {string} signed - The signed data
+   * @param {object} options - Decryption options
    *
-   * @return {Promise<Object>} - Return object with decryptedData and
-   * status information
+   * @returns {Promise<object>} an object with decryptedData and
+   *   status information
    *
    * Use Promise.catch to handle failed decryption.
    * retObj.errorMsg will be an error message in this case.
    */
-
   async verifyMime(signed, options) {
     return null;
   }
@@ -256,14 +230,13 @@ class CryptoAPI {
   /**
    * Get details (key ID, UID) of the data contained in a OpenPGP key block
    *
-   * @param {String} keyBlockStr  String: the contents of one or more public keys
+   * @param {string} keyBlockStr - String: the contents of one or more public keys
    *
-   * @return {Promise<Array>}: array of objects with the following structure:
-   *          - id (key ID)
-   *          - fpr
-   *          - name (the UID of the key)
+   * @returns {Promise<object[]>} objects
+   * @returns {integer} objects.id - Key ID.
+   * @returns {string} objects.fpr - Fingerprint.
+   * @returns {string} objects.name - UID of the key.
    */
-
   async getKeyListFromKeyBlockAPI(keyBlockStr) {
     return null;
   }
@@ -272,19 +245,17 @@ class CryptoAPI {
    * Create a new private key pair, including appropriate sub key pair,
    * and store the new keys in the default keyrings.
    *
-   * @param {String} userId     User ID string, with name and email.
-   * @param {String} keyType    "RSA" or "ECC".
-   *                            ECC uses EDDSA and ECDH/Curve25519.
-   * @param {Number} keySize    RSA key size. Ignored for ECC.
-   * @param {Number} expiryTime The number of days the key will remain valid
-   *                            (after the creation date).
-   *                            Set to zero for no expiration.
-   * @param {String} passphrase The passphrase to protect the new key.
-   *                            Set to null to use an empty passphrase.
+   * @param {string} userId - User ID string, with name and email.
+   * @param {"RSA"|"ECC"} keyType - "RSA" or "ECC".
+   *   ECC uses EDDSA and ECDH/Curve25519.
+   * @param {number} keySize - RSA key size. Ignored for ECC.
+   * @param {number} expiryTime The number of days the key will remain valid
+   *   (after the creation date). Set to zero for no expiration.
+   * @param {string} passphrase The passphrase to protect the new key.
+   *   Set to null to use an empty passphrase.
    *
-   * @return {Promise<String>} - The new KeyID
+   * @returns {Promise<string>} the new KeyID
    */
-
   async genKey(userId, keyType, keySize, expiryTime, passphrase) {
     return null;
   }
@@ -297,15 +268,11 @@ class CryptoAPI {
     return null;
   }
 
-  async getNewRevocation(id) {
+  async unlockAndGetNewRevocation(id, pass) {
     return null;
   }
 
   async getPublicKey(id) {
-    return null;
-  }
-
-  async getMultiplePublicKeys(idArray) {
     return null;
   }
 }

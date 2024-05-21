@@ -10,23 +10,17 @@ function run_test() {
   // bad_certs/mitm.pem
   let cert1 = {
     sha256Fingerprint:
-      "AF:89:F3:E8:0A:AD:58:96:05:C4:AC:D7:A2:A3:07:42:E6:F9:85:FA:9D:D7:D4:43:EC:9F:87:52:94:9C:4D:A6",
-    dbKey:
-      "AAAAAAAAAAAAAAAUAAAAG0uHZ2GoTSZsZNE9WdB/lvAPubXIMBkxFzAVBgNVBAMMDlRlc3QgTUlUTSBSb290",
+      "E3:E3:56:4C:6D:81:DA:29:E4:52:20:A1:7A:31:E2:03:F1:82:A6:D5:B1:5B:6A:86:D6:10:CF:AE:BA:3B:35:2A",
   };
   // bad_certs/selfsigned.pem
   let cert2 = {
     sha256Fingerprint:
-      "5D:13:3E:90:DF:34:C4:E8:27:E8:88:4A:28:12:84:1D:1B:E8:0C:73:20:C4:90:8A:A7:AC:A5:8D:7E:42:7E:6E",
-    dbKey:
-      "AAAAAAAAAAAAAAAUAAAAKEdUzTa/lL+mUeJpdBfMepsMAP5RMCYxJDAiBgNVBAMMG1NlbGYtc2lnbmVkIFRlc3QgRW5kLWVudGl0eQ==",
+      "9A:C8:37:86:6F:1A:20:A2:31:6F:FE:92:68:CE:05:D2:8C:72:F3:A3:E0:23:3B:AD:8A:28:19:93:82:E8:AE:24",
   };
   // bad_certs/noValidNames.pem
   let cert3 = {
     sha256Fingerprint:
-      "40:56:30:2B:C3:AE:DA:22:40:8A:2D:C5:45:00:5E:EC:9B:AA:38:99:D6:4E:29:05:6B:4E:CB:E8:F9:10:30:D6",
-    dbKey:
-      "AAAAAAAAAAAAAAAUAAAAFHPQYJXEeVUul+u7/ZQOjaI3fYD1MBIxEDAOBgNVBAMMB1Rlc3QgQ0E=",
+      "67:7C:84:51:32:B5:0B:63:E4:40:B4:1A:33:FD:20:34:0A:B3:1D:61:24:F1:7A:40:14:39:05:66:42:FD:C2:EA",
   };
 
   let profileDir = do_get_profile();
@@ -41,54 +35,42 @@ function run_test() {
     "# This is a generated file!  Do not edit.",
     "test.example.com:443:^privateBrowsingId=1\tOID.2.16.840.1.101.3.4.2.1\t" +
       cert1.sha256Fingerprint +
-      "\tM\t" +
-      cert1.dbKey,
+      "\t",
     "test.example.com:443:^privateBrowsingId=2\tOID.2.16.840.1.101.3.4.2.1\t" +
       cert1.sha256Fingerprint +
-      "\tM\t" +
-      cert1.dbKey,
-    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" +
-      cert2.sha256Fingerprint +
-      "\tU\t" +
-      cert2.dbKey,
-    "old.example.com:443\tOID.2.16.840.1.101.3.4.2.1\t" + // missing attributes (defaulted)
+      "\t",
+    "test.example.com:443:^privateBrowsingId=3\tOID.2.16.840.1.101.3.4.2.1\t" + // includes bits and dbKey (now obsolete)
       cert1.sha256Fingerprint +
       "\tM\t" +
-      cert1.dbKey,
+      "AAAAAAAAAAAAAAACAAAAFjA5MBQxEjAQBgNVBAMMCWxvY2FsaG9zdA==",
+    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" +
+      cert2.sha256Fingerprint +
+      "\t",
+    "[::1]:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // IPv6
+      cert2.sha256Fingerprint +
+      "\t",
+    "old.example.com:443\tOID.2.16.840.1.101.3.4.2.1\t" + // missing attributes (defaulted)
+      cert1.sha256Fingerprint +
+      "\t",
     ":443:\tOID.2.16.840.1.101.3.4.2.1\t" + // missing host name
       cert3.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
+      "\t",
     "example.com::\tOID.2.16.840.1.101.3.4.2.1\t" + // missing port
       cert3.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
-    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // wrong fingerprint/dbkey
+      "\t",
+    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // wrong fingerprint
       cert2.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
+      "\t",
     "example.com:443:\tOID.0.00.000.0.000.0.0.0.0\t" + // bad OID
       cert3.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
+      "\t",
     "example.com:443:\t.0.0.0.0\t" + // malformed OID
       cert3.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
+      "\t",
     "example.com:443:\t\t" + // missing OID
       cert3.sha256Fingerprint +
-      "\tU\t" +
-      cert3.dbKey,
-    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // missing fingerprint
-      "\tU\t" +
-      cert3.dbKey,
-    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // missing override bits
-      cert3.sha256Fingerprint +
-      "\t\t" +
-      cert3.dbKey,
-    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t" + // missing dbkey
-      cert3.sha256Fingerprint +
-      "\tU\t",
+      "\t",
+    "example.com:443:\tOID.2.16.840.1.101.3.4.2.1\t", // missing fingerprint
   ];
   writeLinesAndClose(lines, outputStream);
   let overrideService = Cc["@mozilla.org/security/certoverride;1"].getService(
@@ -98,43 +80,59 @@ function run_test() {
 
   // Now that the override service is initialized we can actually read the certificates
   cert1 = constructCertFromFile("bad_certs/mitm.pem");
+  info(
+    `if this test fails, try updating cert1.sha256Fingerprint to "${cert1.sha256Fingerprint}"`
+  );
   cert2 = constructCertFromFile("bad_certs/selfsigned.pem");
+  info(
+    `if this test fails, try updating cert2.sha256Fingerprint to "${cert2.sha256Fingerprint}"`
+  );
   cert3 = constructCertFromFile("bad_certs/noValidNames.pem");
+  info(
+    `if this test fails, try updating cert3.sha256Fingerprint to "${cert3.sha256Fingerprint}"`
+  );
 
   const OVERRIDES = [
     {
       host: "test.example.com",
       port: 443,
       cert: cert1,
-      bits: Ci.nsICertOverrideService.ERROR_MISMATCH,
       attributes: { privateBrowsingId: 1 },
     },
     {
       host: "test.example.com",
       port: 443,
       cert: cert1,
-      bits: Ci.nsICertOverrideService.ERROR_MISMATCH,
       attributes: { privateBrowsingId: 2 },
+    },
+    {
+      host: "test.example.com",
+      port: 443,
+      cert: cert1,
+      attributes: { privateBrowsingId: 3 },
     },
     {
       host: "example.com",
       port: 443,
       cert: cert2,
-      bits: Ci.nsICertOverrideService.ERROR_UNTRUSTED,
+      attributes: {},
+    },
+    {
+      host: "::1",
+      port: 443,
+      cert: cert2,
       attributes: {},
     },
     {
       host: "example.com",
       port: 443,
       cert: cert2,
-      bits: Ci.nsICertOverrideService.ERROR_UNTRUSTED,
       attributes: { userContextId: 1 }, // only privateBrowsingId is used
     },
     {
       host: "old.example.com",
       port: 443,
       cert: cert1,
-      bits: Ci.nsICertOverrideService.ERROR_MISMATCH,
       attributes: {},
     },
   ];
@@ -143,36 +141,23 @@ function run_test() {
       host: "test.example.com",
       port: 443,
       cert: cert1,
-      bits: Ci.nsICertOverrideService.ERROR_MISMATCH,
-      attributes: { privateBrowsingId: 3 }, // wrong attributes
+      attributes: { privateBrowsingId: 4 }, // wrong attributes
     },
     {
       host: "test.example.com",
       port: 443,
       cert: cert3, // wrong certificate
-      bits: Ci.nsICertOverrideService.ERROR_UNTRUSTED,
       attributes: { privateBrowsingId: 1 },
     },
     {
       host: "example.com",
       port: 443,
       cert: cert3,
-      bits: Ci.nsICertOverrideService.ERROR_UNTRUSTED,
-      attributes: {},
-    },
-  ];
-  const BAD_BIT_OVERRIDES = [
-    {
-      host: "example.com",
-      port: 443,
-      cert: cert2,
-      bits: Ci.nsICertOverrideService.ERROR_MISMATCH, // wrong bits
       attributes: {},
     },
   ];
 
   for (let override of OVERRIDES) {
-    let actualBits = {};
     let temp = {};
     ok(
       overrideService.hasMatchingOverride(
@@ -180,17 +165,14 @@ function run_test() {
         override.port,
         override.attributes,
         override.cert,
-        actualBits,
         temp
       ),
       `${JSON.stringify(override)} should have an override`
     );
-    equal(actualBits.value, override.bits);
     equal(temp.value, false);
   }
 
   for (let override of BAD_OVERRIDES) {
-    let actualBits = {};
     let temp = {};
     ok(
       !overrideService.hasMatchingOverride(
@@ -198,27 +180,9 @@ function run_test() {
         override.port,
         override.attributes,
         override.cert,
-        actualBits,
         temp
       ),
       `${override} should not have an override`
     );
-  }
-
-  for (let override of BAD_BIT_OVERRIDES) {
-    let actualBits = {};
-    let temp = {};
-    ok(
-      overrideService.hasMatchingOverride(
-        override.host,
-        override.port,
-        override.attributes,
-        override.cert,
-        actualBits,
-        temp
-      ),
-      `${override} should have an override`
-    );
-    notEqual(actualBits.value, override.bits);
   }
 }

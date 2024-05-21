@@ -40,15 +40,16 @@ function checkTelemetryEvents(expectedEvents, expectedSessionId) {
       e => e.method === expectedEvent.method
     );
     ok(
-      sameMethodEvents.length > 0,
+      !!sameMethodEvents.length,
       "Found event for method: " + expectedEvent.method
     );
 
     const sameExtrasEvents = sameMethodEvents.filter(e =>
       _eventHasExpectedExtras(e, expectedEvent)
     );
-    ok(
-      sameExtrasEvents.length === 1,
+    Assert.strictEqual(
+      sameExtrasEvents.length,
+      1,
       "Found exactly one event matching the expected extras"
     );
     if (sameExtrasEvents.length === 0) {

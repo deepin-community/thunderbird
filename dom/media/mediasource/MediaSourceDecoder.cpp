@@ -5,7 +5,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "MediaSourceDecoder.h"
 
+#include "base/process_util.h"
 #include "mozilla/Logging.h"
+#include "ExternalEngineStateMachine.h"
+#include "MediaDecoder.h"
 #include "MediaDecoderStateMachine.h"
 #include "MediaShutdownManager.h"
 #include "MediaSource.h"
@@ -34,16 +37,38 @@ MediaSourceDecoder::MediaSourceDecoder(MediaDecoderInit& aInit)
   mExplicitDuration.emplace(UnspecifiedNaN<double>());
 }
 
-MediaDecoderStateMachine* MediaSourceDecoder::CreateStateMachine() {
+MediaDecoderStateMachineBase* MediaSourceDecoder::CreateStateMachine(
+    bool aDisableExternalEngine) {
   MOZ_ASSERT(NS_IsMainThread());
-  mDemuxer = new MediaSourceDemuxer(AbstractMainThread());
+  // if `mDemuxer` already exists, that means we're in the process of recreating
+  // the state machine. The track buffers are tied to the demuxer so we would
+  // need to reuse it.
+  if (!mDemuxer) {
+    mDemuxer = new MediaSourceDemuxer(AbstractMainThread());
+  }
   MediaFormatReaderInit init;
   init.mVideoFrameContainer = GetVideoFrameContainer();
   init.mKnowsCompositor = GetCompositor();
   init.mCrashHelper = GetOwner()->CreateGMPCrashHelper();
   init.mFrameStats = mFrameStats;
   init.mMediaDecoderOwnerID = mOwner;
+  static Atomic<uint32_t> sTrackingIdCounter(0);
+  init.mTrackingId.emplace(TrackingId::Source::MSEDecoder, sTrackingIdCounter++,
+                           TrackingId::TrackAcrossProcesses::Yes);
   mReader = new MediaFormatReader(init, mDemuxer);
+#ifdef MOZ_WMF_MEDIA_ENGINE
+  // Our main purpose is to only using this state machine for encrypted playback
+  // (unless explicitly set the pref to allow non-encrypted playback), but we
+  // can't determine if playback is encrypted or not at the moment. Therefore,
+  // we will handle that in ExternalEngineStateMachine, and report special
+  // errors, such as NS_ERROR_DOM_MEDIA_EXTERNAL_ENGINE_NOT_SUPPORTED_ERR or
+  // NS_ERROR_DOM_MEDIA_CDM_PROXY_NOT_SUPPORTED_ERR, to switch the state
+  // machine if necessary.
+  if (StaticPrefs::media_wmf_media_engine_enabled() &&
+      !aDisableExternalEngine) {
+    return new ExternalEngineStateMachine(this, mReader);
+  }
+#endif
   return new MediaDecoderStateMachine(this, mReader);
 }
 
@@ -57,58 +82,66 @@ nsresult MediaSourceDecoder::Load(nsIPrincipal* aPrincipal) {
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;
   }
-
-  SetStateMachine(CreateStateMachine());
-  if (!GetStateMachine()) {
-    NS_WARNING("Failed to create state machine!");
-    return NS_ERROR_FAILURE;
-  }
-
-  rv = GetStateMachine()->Init(this);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  GetStateMachine()->DispatchIsLiveStream(!mEnded);
-  SetStateMachineParameters();
-  return NS_OK;
+  return CreateAndInitStateMachine(!mEnded);
 }
 
-media::TimeIntervals MediaSourceDecoder::GetSeekable() {
+template <typename IntervalType>
+IntervalType MediaSourceDecoder::GetSeekableImpl() {
   MOZ_ASSERT(NS_IsMainThread());
   if (!mMediaSource) {
     NS_WARNING("MediaSource element isn't attached");
-    return media::TimeIntervals::Invalid();
+    return IntervalType();
   }
 
-  media::TimeIntervals seekable;
+  TimeIntervals seekable;
   double duration = mMediaSource->Duration();
-  if (IsNaN(duration)) {
+  if (std::isnan(duration)) {
     // Return empty range.
-  } else if (duration > 0 && mozilla::IsInfinite(duration)) {
+  } else if (duration > 0 && std::isinf(duration)) {
     media::TimeIntervals buffered = GetBuffered();
 
     // 1. If live seekable range is not empty:
     if (mMediaSource->HasLiveSeekableRange()) {
       // 1. Let union ranges be the union of live seekable range and the
       // HTMLMediaElement.buffered attribute.
-      media::TimeIntervals unionRanges =
-          buffered + mMediaSource->LiveSeekableRange();
+      TimeRanges unionRanges =
+          media::TimeRanges(buffered) + mMediaSource->LiveSeekableRange();
       // 2. Return a single range with a start time equal to the earliest start
       // time in union ranges and an end time equal to the highest end time in
       // union ranges and abort these steps.
-      seekable +=
-          media::TimeInterval(unionRanges.GetStart(), unionRanges.GetEnd());
-      return seekable;
+      if constexpr (std::is_same<IntervalType, TimeRanges>::value) {
+        TimeRanges seekableRange = media::TimeRanges(
+            TimeRange(unionRanges.GetStart(), unionRanges.GetEnd()));
+        return seekableRange;
+      } else {
+        MOZ_RELEASE_ASSERT(false);
+      }
     }
 
     if (!buffered.IsEmpty()) {
       seekable += media::TimeInterval(TimeUnit::Zero(), buffered.GetEnd());
     }
   } else {
-    seekable +=
-        media::TimeInterval(TimeUnit::Zero(), TimeUnit::FromSeconds(duration));
+    if constexpr (std::is_same<IntervalType, TimeRanges>::value) {
+      // Common case: seekable in entire range of the media.
+      return TimeRanges(TimeRange(0, duration));
+    } else if constexpr (std::is_same<IntervalType, TimeIntervals>::value) {
+      seekable += media::TimeInterval(TimeUnit::Zero(),
+                                      mDuration.match(DurationToTimeUnit()));
+    } else {
+      MOZ_RELEASE_ASSERT(false);
+    }
   }
   MSE_DEBUG("ranges=%s", DumpTimeRanges(seekable).get());
-  return seekable;
+  return IntervalType(seekable);
+}
+
+media::TimeIntervals MediaSourceDecoder::GetSeekable() {
+  return GetSeekableImpl<media::TimeIntervals>();
+}
+
+media::TimeRanges MediaSourceDecoder::GetSeekableTimeRanges() {
+  return GetSeekableImpl<media::TimeRanges>();
 }
 
 media::TimeIntervals MediaSourceDecoder::GetBuffered() {
@@ -196,42 +229,55 @@ void MediaSourceDecoder::AddSizeOfResources(ResourceSizes* aSizes) {
   }
 }
 
-void MediaSourceDecoder::SetInitialDuration(int64_t aDuration) {
+void MediaSourceDecoder::SetInitialDuration(const TimeUnit& aDuration) {
   MOZ_ASSERT(NS_IsMainThread());
   // Only use the decoded duration if one wasn't already
   // set.
-  if (!mMediaSource || !IsNaN(ExplicitDuration())) {
+  if (!mMediaSource || !std::isnan(ExplicitDuration())) {
     return;
   }
-  double duration = aDuration;
-  // A duration of -1 is +Infinity.
-  if (aDuration >= 0) {
-    duration /= USECS_PER_S;
+  SetMediaSourceDuration(aDuration);
+}
+
+void MediaSourceDecoder::SetMediaSourceDuration(const TimeUnit& aDuration) {
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(!IsShutdown());
+  if (aDuration.IsPositiveOrZero()) {
+    SetExplicitDuration(ToMicrosecondResolution(aDuration.ToSeconds()));
+  } else {
+    SetExplicitDuration(PositiveInfinity<double>());
   }
-  SetMediaSourceDuration(duration);
 }
 
 void MediaSourceDecoder::SetMediaSourceDuration(double aDuration) {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!IsShutdown());
   if (aDuration >= 0) {
-    int64_t checkedDuration;
-    if (NS_FAILED(SecondsToUsecs(aDuration, checkedDuration))) {
-      // INT64_MAX is used as infinity by the state machine.
-      // We want a very bigger number, but not infinity.
-      checkedDuration = INT64_MAX - 1;
-    }
     SetExplicitDuration(aDuration);
   } else {
     SetExplicitDuration(PositiveInfinity<double>());
   }
 }
 
-void MediaSourceDecoder::GetDebugInfo(dom::MediaSourceDecoderDebugInfo& aInfo) {
-  if (mReader && mDemuxer) {
-    mReader->GetDebugInfo(aInfo.mReader);
-    mDemuxer->GetDebugInfo(aInfo.mDemuxer);
+RefPtr<GenericPromise> MediaSourceDecoder::RequestDebugInfo(
+    dom::MediaSourceDecoderDebugInfo& aInfo) {
+  // This should be safe to call off main thead, but there's no such usage at
+  // time of writing. Can be carefully relaxed if needed.
+  MOZ_ASSERT(NS_IsMainThread(), "Expects to be called on main thread.");
+  nsTArray<RefPtr<GenericPromise>> promises;
+  if (mReader) {
+    promises.AppendElement(mReader->RequestDebugInfo(aInfo.mReader));
   }
+  if (mDemuxer) {
+    promises.AppendElement(mDemuxer->GetDebugInfo(aInfo.mDemuxer));
+  }
+  return GenericPromise::All(GetCurrentSerialEventTarget(), promises)
+      ->Then(
+          GetCurrentSerialEventTarget(), __func__,
+          []() { return GenericPromise::CreateAndResolve(true, __func__); },
+          [] {
+            return GenericPromise::CreateAndReject(NS_ERROR_FAILURE, __func__);
+          });
 }
 
 double MediaSourceDecoder::GetDuration() {
@@ -267,7 +313,7 @@ bool MediaSourceDecoder::CanPlayThroughImpl() {
     return false;
   }
 
-  if (IsNaN(mMediaSource->Duration())) {
+  if (std::isnan(mMediaSource->Duration())) {
     // Don't have any data yet.
     return false;
   }
@@ -283,7 +329,8 @@ bool MediaSourceDecoder::CanPlayThroughImpl() {
   TimeUnit timeAhead =
       std::min(duration, currentPosition + TimeUnit::FromSeconds(3));
   TimeInterval interval(currentPosition, timeAhead);
-  return buffered.ContainsWithStrictEnd(ClampIntervalToEnd(interval));
+  return buffered.ToMicrosecondResolution().ContainsWithStrictEnd(
+      ClampIntervalToEnd(interval));
 }
 
 TimeInterval MediaSourceDecoder::ClampIntervalToEnd(
@@ -293,7 +340,7 @@ TimeInterval MediaSourceDecoder::ClampIntervalToEnd(
   if (!mEnded) {
     return aInterval;
   }
-  TimeUnit duration = TimeUnit::FromSeconds(GetDuration());
+  TimeUnit duration = mDuration.match(DurationToTimeUnit());
   if (duration < aInterval.mStart) {
     return aInterval;
   }
@@ -303,7 +350,6 @@ TimeInterval MediaSourceDecoder::ClampIntervalToEnd(
 
 void MediaSourceDecoder::NotifyInitDataArrived() {
   MOZ_ASSERT(NS_IsMainThread());
-
   if (mDemuxer) {
     mDemuxer->NotifyInitDataArrived();
   }
@@ -325,6 +371,23 @@ bool MediaSourceDecoder::HadCrossOriginRedirects() {
   MOZ_ASSERT(NS_IsMainThread());
   return false;
 }
+
+#ifdef MOZ_WMF_MEDIA_ENGINE
+void MediaSourceDecoder::MetadataLoaded(
+    UniquePtr<MediaInfo> aInfo, UniquePtr<MetadataTags> aTags,
+    MediaDecoderEventVisibility aEventVisibility) {
+  // If the previous state machine has loaded the metadata, then we don't need
+  // to load it again. This can happen when the media format or key system is
+  // not supported by previous state machine.
+  if (mFiredMetadataLoaded && mStateMachineRecreated) {
+    MSE_DEBUG(
+        "Metadata already loaded and being informed by previous state machine");
+    return;
+  }
+  MediaDecoder::MetadataLoaded(std::move(aInfo), std::move(aTags),
+                               aEventVisibility);
+}
+#endif
 
 #undef MSE_DEBUG
 #undef MSE_DEBUGV

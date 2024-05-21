@@ -4,30 +4,21 @@ const TEST_PAGE =
   "http://mochi.test:8888/browser/browser/base/content/test/general/file_double_close_tab.html";
 var testTab;
 
-const CONTENT_PROMPT_SUBDIALOG = Services.prefs.getBoolPref(
-  "prompts.contentPromptSubDialog",
-  false
-);
-
 function waitForDialog(callback) {
   function onDialogLoaded(nodeOrDialogWindow) {
-    let node = CONTENT_PROMPT_SUBDIALOG
-      ? nodeOrDialogWindow.document.querySelector("dialog")
-      : nodeOrDialogWindow;
-    Services.obs.removeObserver(onDialogLoaded, "tabmodal-dialog-loaded");
+    let node = nodeOrDialogWindow.document.querySelector("dialog");
     Services.obs.removeObserver(onDialogLoaded, "common-dialog-loaded");
     // Allow dialog's onLoad call to run to completion
     Promise.resolve().then(() => callback(node));
   }
 
   // Listen for the dialog being created
-  Services.obs.addObserver(onDialogLoaded, "tabmodal-dialog-loaded");
   Services.obs.addObserver(onDialogLoaded, "common-dialog-loaded");
 }
 
 function waitForDialogDestroyed(node, callback) {
   // Now listen for the dialog going away again...
-  let observer = new MutationObserver(function(muts) {
+  let observer = new MutationObserver(function (muts) {
     if (!node.parentNode) {
       ok(true, "Dialog is gone");
       done();
@@ -35,11 +26,9 @@ function waitForDialogDestroyed(node, callback) {
   });
   observer.observe(node.parentNode, { childList: true });
 
-  if (CONTENT_PROMPT_SUBDIALOG) {
-    node.ownerGlobal.addEventListener("unload", done);
-  }
+  node.ownerGlobal.addEventListener("unload", done);
 
-  let failureTimeout = setTimeout(function() {
+  let failureTimeout = setTimeout(function () {
     ok(false, "Dialog should have been destroyed");
     done();
   }, 10000);
@@ -49,16 +38,12 @@ function waitForDialogDestroyed(node, callback) {
     observer.disconnect();
     observer = null;
 
-    if (CONTENT_PROMPT_SUBDIALOG) {
-      node.ownerGlobal.removeEventListener("unload", done);
-      SimpleTest.executeSoon(callback);
-    } else {
-      callback();
-    }
+    node.ownerGlobal.removeEventListener("unload", done);
+    SimpleTest.executeSoon(callback);
   }
 }
 
-add_task(async function() {
+add_task(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["dom.require_user_interaction_for_beforeunload", false]],
   });
@@ -76,23 +61,12 @@ add_task(async function() {
         let doCompletion = () => setTimeout(resolveOuter, 0);
         info("Now checking if dialog is destroyed");
 
-        if (CONTENT_PROMPT_SUBDIALOG) {
-          ok(
-            !dialogNode.ownerGlobal || dialogNode.ownerGlobal.closed,
-            "onbeforeunload dialog should be gone."
-          );
-          if (dialogNode.ownerGlobal && !dialogNode.ownerGlobal.closed) {
-            dialogNode.acceptDialog();
-          }
-        } else {
-          ok(!dialogNode.parentNode, "onbeforeunload dialog should be gone.");
-          if (dialogNode.parentNode) {
-            // Failed to remove onbeforeunload dialog, so do it ourselves:
-            let leaveBtn = dialogNode.querySelector(".tabmodalprompt-button0");
-            waitForDialogDestroyed(dialogNode, doCompletion);
-            EventUtils.synthesizeMouseAtCenter(leaveBtn, {});
-            return;
-          }
+        ok(
+          !dialogNode.ownerGlobal || dialogNode.ownerGlobal.closed,
+          "onbeforeunload dialog should be gone."
+        );
+        if (dialogNode.ownerGlobal && !dialogNode.ownerGlobal.closed) {
+          dialogNode.acceptDialog();
         }
 
         doCompletion();
@@ -107,11 +81,11 @@ add_task(async function() {
   ok(!testTab.parentNode, "Tab should be closed completely");
 });
 
-registerCleanupFunction(async function() {
+registerCleanupFunction(async function () {
   if (testTab.parentNode) {
     // Remove the handler, or closing this tab will prove tricky:
     try {
-      await SpecialPowers.spawn(testTab.linkedBrowser, [], function() {
+      await SpecialPowers.spawn(testTab.linkedBrowser, [], function () {
         content.window.onbeforeunload = null;
       });
     } catch (ex) {}

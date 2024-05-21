@@ -2,12 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+toolbar-context-menu-menu-bar =
+    .toolbarname = Панель меню
+    .accesskey = м
 
 ## Tools Menu
 
-# Since v89 we dropped the platforms distinction between Options or Preferences
-# and consolidated everything with Preferences.
-menu-tools-preferences =
+menu-tools-settings =
     .label = Настройки
     .accesskey = а
 menu-addons-and-themes =
@@ -16,6 +17,27 @@ menu-addons-and-themes =
 
 ## Help Menu
 
+menu-help-help-title =
+    .label = Справка
+    .accesskey = С
+menu-help-get-help =
+    .label = Получить помощь
+    .accesskey = л
+menu-help-explore-features =
+    .label = Узнать о возможностях
+    .accesskey = ж
+menu-help-shortcuts =
+    .label = Сочетания клавиш
+    .accesskey = к
+menu-help-get-involved =
+    .label = Принять участие
+    .accesskey = ч
+menu-help-donation =
+    .label = Сделать пожертвование
+    .accesskey = е
+menu-help-share-feedback =
+    .label = Поделиться идеями или оставить отзыв
+    .accesskey = д
 menu-help-enter-troubleshoot-mode =
     .label = Безопасный режим…
     .accesskey = п
@@ -25,6 +47,29 @@ menu-help-exit-troubleshoot-mode =
 menu-help-more-troubleshooting-info =
     .label = Информация для решения проблем
     .accesskey = ш
+menu-help-troubleshooting-info =
+    .label = Информация для решения проблем
+    .accesskey = И
+menu-help-about-product =
+    .label = О { -brand-short-name }
+    .accesskey = О
+# These menu-quit strings are only used on Windows and Linux.
+menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Выход
+           *[other] Выход
+        }
+    .accesskey =
+        { PLATFORM() ->
+            [windows] x
+           *[other] Q
+        }
+# This menu-quit-mac string is only used on macOS.
+menu-quit-mac =
+    .label = Завершить { -brand-shorter-name }
+quit-app-shortcut =
+    .key = Q
 
 ## Mail Toolbar
 
@@ -47,8 +92,29 @@ menu-view-repair-text-encoding =
     .label = Исправить кодировку текста
     .accesskey = п
 
+## View / Folders
+
+menu-view-folders-toggle-header =
+    .label = Заголовок панели папок
+    .accesskey = г
+
 ## View / Layout
 
+menu-view-toggle-thread-pane-header =
+    .label = Заголовок списка сообщений
+    .accesskey = л
+menu-font-size-label =
+    .label = Размер шрифта
+    .accesskey = м
+menuitem-font-size-enlarge =
+    .label = Увеличить размер шрифта
+    .accesskey = в
+menuitem-font-size-reduce =
+    .label = Уменьшить размер шрифта
+    .accesskey = ш
+menuitem-font-size-reset =
+    .label = Сбросить размер шрифта
+    .accesskey = и
 mail-uidensity-label =
     .label = Значки
     .accesskey = н
@@ -61,6 +127,15 @@ mail-uidensity-normal =
 mail-uidensity-touch =
     .label = Сенсорные
     .accesskey = о
+mail-uidensity-default =
+    .label = По умолчанию
+    .accesskey = м
+mail-uidensity-relaxed =
+    .label = Комфортные
+    .accesskey = н
+menu-spaces-toolbar-button =
+    .label = Панель мест
+    .accesskey = л
 
 ## File
 

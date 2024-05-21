@@ -12,7 +12,7 @@ const {
   FETCH_MANIFEST_START,
   FETCH_MANIFEST_SUCCESS,
   RESET_MANIFEST,
-} = require("devtools/client/application/src/constants");
+} = require("resource://devtools/client/application/src/constants.js");
 
 function _processRawManifestIcons(rawIcons) {
   // NOTE: about `rawIcons` array we are getting from platform:
@@ -67,7 +67,7 @@ function _processRawManifestMembers(rawManifest) {
 
   // filter out extra metadata members (those with moz_ prefix) and icons
   const rawMembers = Object.entries(rawManifest).filter(
-    ([key, value]) => !key.startsWith("moz_") && !(key === "icons")
+    ([key]) => !key.startsWith("moz_") && !(key === "icons")
   );
 
   for (const [key, value] of rawMembers) {

@@ -1,7 +1,8 @@
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 const ReferrerInfo = Components.Constructor(
   "@mozilla.org/referrer-info;1",
   "nsIReferrerInfo",
@@ -13,10 +14,7 @@ var running_single_process = false;
 var predictor = null;
 
 function is_child_process() {
-  return (
-    Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULRuntime)
-      .processType == Ci.nsIXULRuntime.PROCESS_TYPE_CONTENT
-  );
+  return Services.appinfo.processType == Ci.nsIXULRuntime.PROCESS_TYPE_CONTENT;
 }
 
 function extract_origin(uri) {
@@ -29,7 +27,7 @@ function extract_origin(uri) {
 
 var origin_attributes = {};
 
-var ValidityChecker = function(verifier, httpStatus) {
+var ValidityChecker = function (verifier, httpStatus) {
   this.verifier = verifier;
   this.httpStatus = httpStatus;
 };
@@ -40,11 +38,11 @@ ValidityChecker.prototype = {
 
   QueryInterface: ChromeUtils.generateQI(["nsICacheEntryOpenCallback"]),
 
-  onCacheEntryCheck(entry) {
+  onCacheEntryCheck() {
     return Ci.nsICacheEntryOpenCallback.ENTRY_WANTED;
   },
 
-  onCacheEntryAvailable(entry, isnew, status) {
+  onCacheEntryAvailable(entry) {
     // Check if forced valid
     Assert.equal(entry.isForcedValid, this.httpStatus === 200);
     this.verifier.maybe_run_next_test();
@@ -157,7 +155,7 @@ var prepListener = {
     this.continueCallback = cb;
   },
 
-  onCacheEntryCheck(entry) {
+  onCacheEntryCheck() {
     return Ci.nsICacheEntryOpenCallback.ENTRY_WANTED;
   },
 
@@ -273,7 +271,7 @@ function continue_test_pageload() {
 }
 
 function test_pageload() {
-  open_and_continue([pageload_toplevel], function() {
+  open_and_continue([pageload_toplevel], function () {
     if (running_single_process) {
       continue_test_pageload();
     } else {
@@ -362,8 +360,10 @@ function continue_test_redirect() {
   });
 }
 
+// Test is currently disabled.
+// eslint-disable-next-line no-unused-vars
 function test_redirect() {
-  open_and_continue([redirect_inituri, redirect_targeturi], function() {
+  open_and_continue([redirect_inituri, redirect_targeturi], function () {
     if (running_single_process) {
       continue_test_redirect();
     } else {
@@ -372,6 +372,8 @@ function test_redirect() {
   });
 }
 
+// Test is currently disabled.
+// eslint-disable-next-line no-unused-vars
 function test_startup() {
   if (!running_single_process && !is_child_process()) {
     // This one we can just proxy to the child and be done with, no extra setup
@@ -438,7 +440,7 @@ function continue_test_dns() {
 }
 
 function test_dns() {
-  open_and_continue([dns_toplevel], function() {
+  open_and_continue([dns_toplevel], function () {
     // Ensure that this will do preresolves
     Services.prefs.setIntPref(
       "network.predictor.preconnect-min-confidence",
@@ -490,9 +492,9 @@ function continue_test_origin() {
         origin_attributes
       );
       do_timeout(0, () => {
-        var origin = extract_origin(sruri);
-        if (!preconns.includes(origin)) {
-          preconns.push(origin);
+        var origin1 = extract_origin(sruri);
+        if (!preconns.includes(origin1)) {
+          preconns.push(origin1);
         }
 
         sruri = newURI(subresources[2]);
@@ -503,9 +505,9 @@ function continue_test_origin() {
           origin_attributes
         );
         do_timeout(0, () => {
-          var origin = extract_origin(sruri);
-          if (!preconns.includes(origin)) {
-            preconns.push(origin);
+          var origin2 = extract_origin(sruri);
+          if (!preconns.includes(origin2)) {
+            preconns.push(origin2);
           }
 
           var loaduri = newURI("http://localhost:4444/anotherpage.html");
@@ -524,7 +526,7 @@ function continue_test_origin() {
 }
 
 function test_origin() {
-  open_and_continue([origin_toplevel], function() {
+  open_and_continue([origin_toplevel], function () {
     if (running_single_process) {
       continue_test_origin();
     } else {
@@ -553,7 +555,7 @@ var prefetchListener = {
     read_stream(stream, cnt);
   },
 
-  onStopRequest(request, status) {
+  onStopRequest() {
     run_next_test();
   },
 };
@@ -608,7 +610,7 @@ function test_prefetch_prime() {
     return;
   }
 
-  open_and_continue([prefetch_tluri], function() {
+  open_and_continue([prefetch_tluri], function () {
     if (running_single_process) {
       predictor.learn(
         prefetch_tluri,
@@ -677,6 +679,77 @@ function continue_test_prefetch() {
   );
 }
 
+function test_visitor_doom() {
+  // See bug 1708673
+  Services.prefs.setBoolPref("network.cache.bug1708673", true);
+  registerCleanupFunction(() => {
+    Services.prefs.clearUserPref("network.cache.bug1708673");
+  });
+
+  let p1 = new Promise(resolve => {
+    let doomTasks = [];
+    let visitor = {
+      onCacheStorageInfo() {},
+      async onCacheEntryInfo(
+        aURI,
+        aIdEnhance,
+        aDataSize,
+        aAltDataSize,
+        aFetchCount,
+        aLastModifiedTime,
+        aExpirationTime,
+        aPinned,
+        aInfo
+      ) {
+        let storages = [
+          Services.cache2.memoryCacheStorage(aInfo),
+          Services.cache2.diskCacheStorage(aInfo, false),
+        ];
+        console.debug("asyncDoomURI", aURI.spec);
+        let doomTask = Promise.all(
+          storages.map(storage => {
+            return new Promise(resolve1 => {
+              storage.asyncDoomURI(aURI, aIdEnhance, {
+                onCacheEntryDoomed: resolve1,
+              });
+            });
+          })
+        );
+        doomTasks.push(doomTask);
+      },
+      onCacheEntryVisitCompleted() {
+        Promise.allSettled(doomTasks).then(resolve);
+      },
+      QueryInterface: ChromeUtils.generateQI(["nsICacheStorageVisitor"]),
+    };
+    Services.cache2.asyncVisitAllStorages(visitor, true);
+  });
+
+  let p2 = new Promise(resolve => {
+    reset_predictor();
+    resolve();
+  });
+
+  do_test_pending();
+  Promise.allSettled([p1, p2]).then(() => {
+    return new Promise(resolve => {
+      let entryCount = 0;
+      let visitor = {
+        onCacheStorageInfo() {},
+        async onCacheEntryInfo() {
+          entryCount++;
+        },
+        onCacheEntryVisitCompleted() {
+          Assert.equal(entryCount, 0);
+          resolve();
+        },
+        QueryInterface: ChromeUtils.generateQI(["nsICacheStorageVisitor"]),
+      };
+      Services.cache2.asyncVisitAllStorages(visitor, true);
+    }).then(run_next_test);
+  });
+}
+
 function cleanup() {
   observer.cleaningUp = true;
   if (running_single_process) {
@@ -704,6 +777,7 @@ var tests = [
   test_prefetch_prime,
   test_prefetch_prime,
   test_prefetch,
+  test_visitor_doom,
   // This must ALWAYS come last, to ensure we clean up after ourselves
   cleanup,
 ];
@@ -713,7 +787,7 @@ var observer = {
 
   QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     if (topic != "predictor-reset-complete") {
       return;
     }

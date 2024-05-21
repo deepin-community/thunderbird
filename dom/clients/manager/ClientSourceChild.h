@@ -8,8 +8,7 @@
 
 #include "mozilla/dom/PClientSourceChild.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class ClientSource;
 class ClientSourceConstructorArgs;
@@ -19,6 +18,8 @@ class ClientThing;
 class ClientSourceChild final : public PClientSourceChild {
   ClientSource* mSource;
   bool mTeardownStarted;
+
+  ~ClientSourceChild() = default;
 
   // PClientSourceChild interface
   void ActorDestroy(ActorDestroyReason aReason) override;
@@ -32,7 +33,11 @@ class ClientSourceChild final : public PClientSourceChild {
       PClientSourceOpChild* aActor,
       const ClientOpConstructorArgs& aArgs) override;
 
+  mozilla::ipc::IPCResult RecvEvictFromBFCache() override;
+
  public:
+  NS_INLINE_DECL_REFCOUNTING(ClientSourceChild, override)
+
   explicit ClientSourceChild(const ClientSourceConstructorArgs& aArgs);
 
   void SetOwner(ClientThing<ClientSourceChild>* aThing);
@@ -44,7 +49,6 @@ class ClientSourceChild final : public PClientSourceChild {
   void MaybeStartTeardown();
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // _mozilla_dom_ClientSourceChild_h

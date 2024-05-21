@@ -10,7 +10,6 @@
 #define LayoutConstants_h___
 
 #include "mozilla/EnumSet.h"
-#include "nsSize.h"  // for NS_MAXSIZE
 #include "Units.h"
 
 /**
@@ -20,15 +19,15 @@
  *       values, so user should not depend on the underlying numeric values. If
  *       new specific use cases arise, define a new constant here.
  */
-#define NS_UNCONSTRAINEDSIZE NS_MAXSIZE
+inline constexpr nscoord NS_UNCONSTRAINEDSIZE = nscoord_MAX;
 
 // NS_AUTOOFFSET is assumed to have the same value as NS_UNCONSTRAINEDSIZE.
-#define NS_AUTOOFFSET NS_UNCONSTRAINEDSIZE
+inline constexpr nscoord NS_AUTOOFFSET = NS_UNCONSTRAINEDSIZE;
 
 // +1 is to avoid clamped huge margin values being processed as auto margins
-#define NS_AUTOMARGIN (NS_UNCONSTRAINEDSIZE + 1)
+inline constexpr nscoord NS_AUTOMARGIN = NS_UNCONSTRAINEDSIZE + 1;
 
-#define NS_INTRINSIC_ISIZE_UNKNOWN nscoord_MIN
+inline constexpr nscoord NS_INTRINSIC_ISIZE_UNKNOWN = nscoord_MIN;
 
 namespace mozilla {
 
@@ -45,12 +44,9 @@ enum class ComputeSizeFlag : uint8_t {
   ShrinkWrap,
 
   /**
-   * Set if we'd like to compute our 'auto' bsize, regardless of our actual
-   * corresponding computed value. (e.g. to get an intrinsic bsize for flex
-   * items when resolving automatic minimum size in the main axis during flexbox
-   * layout.)
+   * Set if this is a grid measuring reflow, to prevent stretching.
    */
-  UseAutoBSize,
+  IsGridMeasuringReflow,
 
   /**
    * Indicates that we should clamp the margin-box min-size to the given CB
@@ -67,7 +63,7 @@ enum class ComputeSizeFlag : uint8_t {
    * https://drafts.csswg.org/css-grid/#min-size-auto
    * https://drafts.csswg.org/css-align-3/#valdef-justify-self-stretch
    */
-  IApplyAutoMinSize,  // only has an effect when eShrinkWrap is false
+  IApplyAutoMinSize,  // Only has an effect when the ShrinkWrap bit is unset.
 };
 using ComputeSizeFlags = mozilla::EnumSet<ComputeSizeFlag>;
 
@@ -94,6 +90,18 @@ inline constexpr nsSize kFallbackIntrinsicSize(kFallbackIntrinsicWidth,
  * Declared here so that fewer files need to include nsLayoutUtils.h.
  */
 enum class IntrinsicISizeType { MinISize, PrefISize };
+
+enum class ContentRelevancyReason {
+  // If the content of this Frame is on screen or nearly on screen.
+  Visible,
+
+  // If this Frame's element has focus in its subtree.
+  FocusInSubtree,
+
+  // If this Frame's content is part of a selection.
+  Selected,
+};
+using ContentRelevancy = EnumSet<ContentRelevancyReason, uint8_t>;
 
 }  // namespace mozilla
 

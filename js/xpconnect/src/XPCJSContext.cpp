@@ -15,7 +15,7 @@
 #include "XPCJSMemoryReporter.h"
 #include "XPCSelfHostedShmem.h"
 #include "WrapperFactory.h"
-#include "mozJSComponentLoader.h"
+#include "mozJSModuleLoader.h"
 #include "nsNetUtil.h"
 #include "nsThreadUtils.h"
 
@@ -38,19 +38,22 @@
 #include "nsCCUncollectableMarker.h"
 #include "nsCycleCollectionNoteRootCallback.h"
 #include "nsCycleCollector.h"
+#include "nsJSEnvironment.h"
 #include "jsapi.h"
 #include "js/ArrayBuffer.h"
 #include "js/ContextOptions.h"
 #include "js/HelperThreadAPI.h"
 #include "js/Initialization.h"
 #include "js/MemoryMetrics.h"
-#include "js/OffThreadScriptCompilation.h"
+#include "js/Prefs.h"
 #include "js/WasmFeatures.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/ScriptLoader.h"
 #include "mozilla/dom/WindowBinding.h"
+#include "mozilla/dom/WakeLockBinding.h"
 #include "mozilla/extensions/WebExtensionPolicy.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/Attributes.h"
@@ -62,7 +65,7 @@
 #include "mozilla/UniquePtrExtensions.h"
 #include "mozilla/Unused.h"
 #include "AccessCheck.h"
-#include "nsGlobalWindow.h"
+#include "nsGlobalWindowInner.h"
 #include "nsAboutProtocolUtils.h"
 
 #include "GeckoProfiler.h"
@@ -83,6 +86,7 @@
 #endif
 
 using namespace mozilla;
+using namespace mozilla::dom;
 using namespace xpc;
 using namespace JS;
 
@@ -227,6 +231,7 @@ class Watchdog {
   }
   void Sleep(PRIntervalTime timeout) {
     MOZ_ASSERT(!NS_IsMainThread());
+    AUTO_PROFILER_THREAD_SLEEP;
     MOZ_ALWAYS_TRUE(PR_WaitCondVar(mWakeup, timeout) == PR_SUCCESS);
   }
   void Finished() {
@@ -588,7 +593,7 @@ bool XPCJSContext::InterruptCallback(JSContext* cx) {
   // Now is a good time to turn on profiling if it's pending.
   PROFILER_JS_INTERRUPT_CALLBACK();
 
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsDependentCString filename("unknown file");
     JS::AutoFilename scriptFilename;
     // Computing the line number can be very expensive (see bug 1330231 for
@@ -745,6 +750,9 @@ bool XPCJSContext::InterruptCallback(JSContext* cx) {
     if (Preferences::GetBool("dom.global_stop_script", true)) {
       xpc::Scriptability::Get(global).Block();
     }
+    if (nsCOMPtr<Document> doc = win->GetExtantDoc()) {
+      doc->UnlockAllWakeLocks(WakeLockType::Screen);
+    }
     return false;
   }
 
@@ -770,35 +778,46 @@ bool xpc::ShouldDiscardSystemSource() { return sDiscardSystemSource; }
 static mozilla::Atomic<bool> sSharedMemoryEnabled(false);
 static mozilla::Atomic<bool> sStreamsEnabled(false);
 
-static mozilla::Atomic<bool> sPropertyErrorMessageFixEnabled(false);
-static mozilla::Atomic<bool> sWeakRefsEnabled(false);
-static mozilla::Atomic<bool> sWeakRefsExposeCleanupSome(false);
-static mozilla::Atomic<bool> sIteratorHelpersEnabled(false);
-
-static JS::WeakRefSpecifier GetWeakRefsEnabled() {
-  if (!sWeakRefsEnabled) {
-    return JS::WeakRefSpecifier::Disabled;
-  }
-
-  if (sWeakRefsExposeCleanupSome) {
-    return JS::WeakRefSpecifier::EnabledWithCleanupSome;
-  }
-
-  return JS::WeakRefSpecifier::EnabledWithoutCleanupSome;
-}
-
 void xpc::SetPrefableRealmOptions(JS::RealmOptions& options) {
   options.creationOptions()
       .setSharedMemoryAndAtomicsEnabled(sSharedMemoryEnabled)
       .setCoopAndCoepEnabled(
           StaticPrefs::browser_tabs_remote_useCrossOriginOpenerPolicy() &&
-          StaticPrefs::browser_tabs_remote_useCrossOriginEmbedderPolicy())
-      .setStreamsEnabled(sStreamsEnabled)
-      .setWritableStreamsEnabled(
-          StaticPrefs::javascript_options_writable_streams())
-      .setPropertyErrorMessageFixEnabled(sPropertyErrorMessageFixEnabled)
-      .setWeakRefsEnabled(GetWeakRefsEnabled())
-      .setIteratorHelpersEnabled(sIteratorHelpersEnabled);
+          StaticPrefs::browser_tabs_remote_useCrossOriginEmbedderPolicy());
+}
+
+void xpc::SetPrefableCompileOptions(JS::PrefableCompileOptions& options) {
+  options
+      .setSourcePragmas(StaticPrefs::javascript_options_source_pragmas())
+#ifdef NIGHTLY_BUILD
+      .setImportAttributes(
+          StaticPrefs::javascript_options_experimental_import_attributes())
+      .setImportAttributesAssertSyntax(
+          StaticPrefs::
+              javascript_options_experimental_import_attributes_assert_syntax())
+#endif
+      .setAsmJS(StaticPrefs::javascript_options_asmjs())
+      .setThrowOnAsmJSValidationFailure(
+          StaticPrefs::javascript_options_throw_on_asmjs_validation_failure());
+}
+
+void xpc::SetPrefableContextOptions(JS::ContextOptions& options) {
+  options
+#ifdef FUZZING
+      .setFuzzing(Preferences::GetBool(JS_OPTIONS_DOT_STR "fuzzing.enabled"))
+#endif
+      .setWasm(Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm"))
+      .setWasmForTrustedPrinciples(
+          Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_trustedprincipals"))
+      .setWasmIon(Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_optimizingjit"))
+      .setWasmBaseline(
+          Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_baselinejit"))
+      .setWasmVerbose(Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_verbose"))
+      .setAsyncStack(Preferences::GetBool(JS_OPTIONS_DOT_STR "asyncstack"))
+      .setAsyncStackCaptureDebuggeeOnly(Preferences::GetBool(
+          JS_OPTIONS_DOT_STR "asyncstack_capture_debuggee_only"));
+
+  SetPrefableCompileOptions(options.compileOptions());
 }
 
 // Mirrored value of javascript.options.self_hosted.use_shared_memory.
@@ -810,6 +829,9 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
   // races or get us into an inconsistent state.
   //
   // 'Live' prefs are handled by ReloadPrefsCallback below.
+
+  // Note: JS::Prefs are set earlier in startup, in InitializeJS in
+  // XPCOMInit.cpp.
 
   JSContext* cx = xpccx->Context();
 
@@ -840,6 +862,7 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
         cx, JSJITCOMPILER_JIT_TRUSTEDPRINCIPALS_ENABLE, false);
     JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_NATIVE_REGEXP_ENABLE,
                                   false);
+    JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_JIT_HINTS_ENABLE, false);
     sSelfHostedUseSharedMemory = false;
   } else {
     JS_SetGlobalJitCompilerOption(
@@ -854,6 +877,13 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
     JS_SetGlobalJitCompilerOption(
         cx, JSJITCOMPILER_NATIVE_REGEXP_ENABLE,
         StaticPrefs::javascript_options_native_regexp_DoNotUseDirectly());
+    // Only enable the jit hints cache for the content process to avoid
+    // any possible jank or delays on the parent process.
+    JS_SetGlobalJitCompilerOption(
+        cx, JSJITCOMPILER_JIT_HINTS_ENABLE,
+        XRE_IsContentProcess()
+            ? StaticPrefs::javascript_options_jithints_DoNotUseDirectly()
+            : false);
     sSelfHostedUseSharedMemory = StaticPrefs::
         javascript_options_self_hosted_use_shared_memory_DoNotUseDirectly();
   }
@@ -886,7 +916,8 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
       StaticPrefs::javascript_options_jit_full_debug_checks_DoNotUseDirectly());
 #endif
 
-#if !defined(JS_CODEGEN_MIPS32) && !defined(JS_CODEGEN_MIPS64)
+#if !defined(JS_CODEGEN_MIPS32) && !defined(JS_CODEGEN_MIPS64) && \
+    !defined(JS_CODEGEN_RISCV64) && !defined(JS_CODEGEN_LOONG64)
   JS_SetGlobalJitCompilerOption(
       cx, JSJITCOMPILER_SPECTRE_INDEX_MASKING,
       StaticPrefs::javascript_options_spectre_index_masking_DoNotUseDirectly());
@@ -907,99 +938,34 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
           javascript_options_spectre_jit_to_cxx_calls_DoNotUseDirectly());
 #endif
 
+  bool writeProtectCode = true;
+  if (XRE_IsContentProcess()) {
+    writeProtectCode =
+        StaticPrefs::javascript_options_content_process_write_protect_code();
+  }
+  JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_WRITE_PROTECT_CODE,
+                                writeProtectCode);
+
   if (disableWasmHugeMemory) {
     bool disabledHugeMemory = JS::DisableWasmHugeMemory();
     MOZ_RELEASE_ASSERT(disabledHugeMemory);
   }
-
-  JS::SetLargeArrayBuffersEnabled(
-      StaticPrefs::javascript_options_large_arraybuffers_DoNotUseDirectly());
-
-  JS::SetSiteBasedPretenuringEnabled(
-      StaticPrefs::
-          javascript_options_site_based_pretenuring_DoNotUseDirectly());
 }
 
 static void ReloadPrefsCallback(const char* pref, void* aXpccx) {
   // Note: Prefs that require a restart are handled in LoadStartupJSPrefs above.
 
+  // Update all non-startup JS::Prefs.
+  SET_NON_STARTUP_JS_PREFS_FROM_BROWSER_PREFS;
+
   auto xpccx = static_cast<XPCJSContext*>(aXpccx);
   JSContext* cx = xpccx->Context();
 
-  bool useAsmJS = Preferences::GetBool(JS_OPTIONS_DOT_STR "asmjs");
-  bool useWasm = Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm");
-  bool useWasmTrustedPrincipals =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_trustedprincipals");
-  bool useWasmOptimizing =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_optimizingjit");
-  bool useWasmBaseline =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_baselinejit");
-
-#define WASM_FEATURE(NAME, LOWER_NAME, COMPILE_PRED, COMPILER_PRED, FLAG_PRED, \
-                     SHELL, PREF)                                              \
-  bool useWasm##NAME = Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_" PREF);
-  JS_FOR_WASM_FEATURES(WASM_FEATURE, WASM_FEATURE)
-#undef WASM_FEATURE
-
-#ifdef ENABLE_WASM_SIMD_WORMHOLE
-  bool useWasmSimdWormhole = false;
-#  ifdef EARLY_BETA_OR_EARLIER
-  // In late beta and release, the functionality is available but only to
-  // privileged content.
-  useWasmSimdWormhole =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_simd_wormhole");
-#  endif
-#endif
-  bool useWasmVerbose = Preferences::GetBool(JS_OPTIONS_DOT_STR "wasm_verbose");
-  bool throwOnAsmJSValidationFailure = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "throw_on_asmjs_validation_failure");
-
-  bool parallelParsing =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "parallel_parsing");
-
   sDiscardSystemSource =
       Preferences::GetBool(JS_OPTIONS_DOT_STR "discardSystemSource");
-
-  bool useSourcePragmas =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "source_pragmas");
-  bool useAsyncStack = Preferences::GetBool(JS_OPTIONS_DOT_STR "asyncstack");
-  bool useAsyncStackCaptureDebuggeeOnly = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "asyncstack_capture_debuggee_only");
-
-  bool throwOnDebuggeeWouldRun =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "throw_on_debuggee_would_run");
-
-  bool dumpStackOnDebuggeeWouldRun = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "dump_stack_on_debuggee_would_run");
-
   sSharedMemoryEnabled =
       Preferences::GetBool(JS_OPTIONS_DOT_STR "shared_memory");
   sStreamsEnabled = Preferences::GetBool(JS_OPTIONS_DOT_STR "streams");
-  sPropertyErrorMessageFixEnabled =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "property_error_message_fix");
-  sWeakRefsEnabled = Preferences::GetBool(JS_OPTIONS_DOT_STR "weakrefs");
-  sWeakRefsExposeCleanupSome = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "experimental.weakrefs.expose_cleanupSome");
-
-  bool topLevelAwaitEnabled =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "experimental.top_level_await");
-
-  bool privateFieldsEnabled =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "experimental.private_fields");
-  bool privateMethodsEnabled =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "experimental.private_methods");
-
-  bool ergnomicBrandChecksEnabled = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "experimental.ergonomic_brand_checks");
-
-  bool classStaticBlocksEnabled = false;
-#ifdef NIGHTLY_BUILD
-  sIteratorHelpersEnabled =
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "experimental.iterator_helpers");
-
-  classStaticBlocksEnabled = Preferences::GetBool(
-      JS_OPTIONS_DOT_STR "experimental.class_static_blocks");
-#endif
 
 #ifdef JS_GC_ZEAL
   int32_t zeal = Preferences::GetInt(JS_OPTIONS_DOT_STR "gczeal", -1);
@@ -1010,58 +976,27 @@ static void ReloadPrefsCallback(const char* pref, void* aXpccx) {
   }
 #endif  // JS_GC_ZEAL
 
-#ifdef FUZZING
-  bool fuzzingEnabled = StaticPrefs::fuzzing_enabled();
-#endif
+  auto& contextOptions = JS::ContextOptionsRef(cx);
+  SetPrefableContextOptions(contextOptions);
 
-  JS::ContextOptionsRef(cx)
-      .setAsmJS(useAsmJS)
-#ifdef FUZZING
-      .setFuzzing(fuzzingEnabled)
-#endif
-      .setWasm(useWasm)
-      .setWasmForTrustedPrinciples(useWasmTrustedPrincipals)
-#ifdef ENABLE_WASM_CRANELIFT
-      .setWasmCranelift(useWasmOptimizing)
-      .setWasmIon(false)
-#else
-      .setWasmCranelift(false)
-      .setWasmIon(useWasmOptimizing)
-#endif
-      .setWasmBaseline(useWasmBaseline)
-#define WASM_FEATURE(NAME, ...) .setWasm##NAME(useWasm##NAME)
-          JS_FOR_WASM_FEATURES(WASM_FEATURE, WASM_FEATURE)
-#undef WASM_FEATURE
-#ifdef ENABLE_WASM_SIMD_WORMHOLE
-      .setWasmSimdWormhole(useWasmSimdWormhole)
-#endif
-      .setWasmVerbose(useWasmVerbose)
-      .setThrowOnAsmJSValidationFailure(throwOnAsmJSValidationFailure)
-      .setSourcePragmas(useSourcePragmas)
-      .setAsyncStack(useAsyncStack)
-      .setAsyncStackCaptureDebuggeeOnly(useAsyncStackCaptureDebuggeeOnly)
-      .setThrowOnDebuggeeWouldRun(throwOnDebuggeeWouldRun)
-      .setDumpStackOnDebuggeeWouldRun(dumpStackOnDebuggeeWouldRun)
-      .setPrivateClassFields(privateFieldsEnabled)
-      .setPrivateClassMethods(privateMethodsEnabled)
-      .setClassStaticBlocks(classStaticBlocksEnabled)
-      .setErgnomicBrandChecks(ergnomicBrandChecksEnabled)
-      .setTopLevelAwait(topLevelAwaitEnabled);
-
-  JS::SetUseFdlibmForSinCosTan(
-      Preferences::GetBool(JS_OPTIONS_DOT_STR "use_fdlibm_for_sin_cos_tan") ||
-      Preferences::GetBool("privacy.resistFingerprinting"));
+  // Set options not shared with workers.
+  contextOptions
+      .setThrowOnDebuggeeWouldRun(Preferences::GetBool(
+          JS_OPTIONS_DOT_STR "throw_on_debuggee_would_run"))
+      .setDumpStackOnDebuggeeWouldRun(Preferences::GetBool(
+          JS_OPTIONS_DOT_STR "dump_stack_on_debuggee_would_run"));
 
   nsCOMPtr<nsIXULRuntime> xr = do_GetService("@mozilla.org/xre/runtime;1");
   if (xr) {
     bool safeMode = false;
     xr->GetInSafeMode(&safeMode);
     if (safeMode) {
-      JS::ContextOptionsRef(cx).disableOptionsForSafeMode();
+      contextOptions.disableOptionsForSafeMode();
     }
   }
 
-  JS_SetParallelParsingEnabled(cx, parallelParsing);
+  JS_SetParallelParsingEnabled(
+      cx, StaticPrefs::javascript_options_parallel_parsing());
 }
 
 XPCJSContext::~XPCJSContext() {
@@ -1105,7 +1040,7 @@ XPCJSContext::~XPCJSContext() {
 XPCJSContext::XPCJSContext()
     : mCallContext(nullptr),
       mAutoRoots(nullptr),
-      mResolveName(JSID_VOID),
+      mResolveName(JS::PropertyKey::Void()),
       mResolvingWrapper(nullptr),
       mWatchdogManager(GetWatchdogManager()),
       mSlowScriptSecondHalf(false),
@@ -1174,19 +1109,27 @@ CycleCollectedJSRuntime* XPCJSContext::CreateRuntime(JSContext* aCx) {
 
 class HelperThreadTaskHandler : public Task {
  public:
-  bool Run() override {
+  TaskResult Run() override {
     JS::RunHelperThreadTask();
-    return true;
+    return TaskResult::Complete;
   }
-  explicit HelperThreadTaskHandler() : Task(false, EventQueuePriority::Normal) {
+  explicit HelperThreadTaskHandler()
+      : Task(Kind::OffMainThreadOnly, EventQueuePriority::Normal) {
     // Bug 1703185: Currently all tasks are run at the same priority.
   }
+
+#ifdef MOZ_COLLECTING_RUNNABLE_TELEMETRY
+  bool GetName(nsACString& aName) override {
+    aName.AssignLiteral("HelperThreadTask");
+    return true;
+  }
+#endif
 
  private:
   ~HelperThreadTaskHandler() = default;
 };
 
-static void DispatchOffThreadTask() {
+static void DispatchOffThreadTask(JS::DispatchReason) {
   TaskController::Get()->AddTask(MakeAndAddRef<HelperThreadTaskHandler>());
 }
 
@@ -1422,7 +1365,9 @@ WatchdogManager* XPCJSContext::GetWatchdogManager() {
 XPCJSContext* XPCJSContext::NewXPCJSContext() {
   XPCJSContext* self = new XPCJSContext();
   nsresult rv = self->Initialize();
-  if (NS_FAILED(rv)) {
+  if (rv == NS_ERROR_OUT_OF_MEMORY) {
+    mozalloc_handle_oom(0);
+  } else if (NS_FAILED(rv)) {
     MOZ_CRASH("new XPCJSContext failed to initialize.");
   }
 
@@ -1493,6 +1438,8 @@ void XPCJSContext::AfterProcessTask(uint32_t aNewRecursionDepth) {
   // this value again. Clear it to prevent leaks.
   SetPendingException(nullptr);
 }
+
+void XPCJSContext::MaybePokeGC() { nsJSContext::MaybePokeGC(); }
 
 bool XPCJSContext::IsSystemCaller() const {
   return nsContentUtils::IsSystemCaller(Context());

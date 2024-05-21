@@ -23,7 +23,7 @@
 // UI Thread proxy helper
 #include "nsIImapProtocolSink.h"
 
-#include "nsIImapHostSessionList.h"
+#include "../public/nsIImapHostSessionList.h"
 #include "nsImapServerResponseParser.h"
 #include "nsImapFlagAndUidState.h"
 #include "nsImapNamespace.h"
@@ -50,6 +50,7 @@
 #include "nsIProtocolProxyCallback.h"
 #include "nsIStringBundle.h"
 #include "nsHashPropertyBag.h"
+#include "nsMailChannel.h"
 
 #include "mozilla/Monitor.h"
 
@@ -176,7 +177,6 @@ class nsIMAPMailboxInfo {
  * blocks until the call is completed.
  */
 class nsImapProtocol : public nsIImapProtocol,
-                       public nsIRunnable,
                        public nsIInputStreamCallback,
                        public nsSupportsWeakReference,
                        public nsMsgProtocol,
@@ -200,9 +200,6 @@ class nsImapProtocol : public nsIImapProtocol,
                                         nsIInputStream* inputStream,
                                         uint64_t sourceOffset,
                                         uint32_t length) override;
-
-  // nsIRunnable method
-  NS_IMETHOD Run() override;
 
   //////////////////////////////////////////////////////////////////////////////////
   // we support the nsIImapProtocol interface
@@ -235,8 +232,6 @@ class nsImapProtocol : public nsIImapProtocol,
   void FetchTryChunking(const nsCString& messageIds,
                         nsIMAPeFetchFields whatToFetch, bool idIsUid,
                         char* part, uint32_t downloadSize, bool tryChunking);
-  virtual void PipelinedFetchMessageParts(
-      nsCString& uid, const nsTArray<nsIMAPMessagePartID>& parts);
   void FallbackToFetchWholeMsg(const nsCString& messageId,
                                uint32_t messageSize);
   // used when streaming a message fetch
@@ -260,7 +255,6 @@ class nsImapProtocol : public nsIImapProtocol,
   // Comment from 4.5: We really need to break out the thread synchronizer from
   // the connection class...Not sure what this means
   bool GetPseudoInterrupted();
-  void PseudoInterrupt(bool the_interrupt);
 
   uint32_t GetMessageSize(const nsACString& messageId);
   bool GetSubscribingNow();
@@ -328,7 +322,7 @@ class nsImapProtocol : public nsIImapProtocol,
                          const nsCString& attribute);
   void Expunge();
   void UidExpunge(const nsCString& messageSet);
-  void Close(bool shuttingDown = false, bool waitForResponse = true);
+  void ImapClose(bool shuttingDown = false, bool waitForResponse = true);
   void Check();
   void SelectMailbox(const char* mailboxName);
   // more imap commands
@@ -337,12 +331,9 @@ class nsImapProtocol : public nsIImapProtocol,
   void XServerInfo();
   void Netscape();
   void XMailboxInfo(const char* mailboxName);
-  void XAOL_Option(const char* option);
   void MailboxData();
   void GetMyRightsForFolder(const char* mailboxName);
   void Bodystructure(const nsCString& messageId, bool idIsUid);
-  void PipelinedFetchMessageParts(const char* uid,
-                                  const nsTArray<nsIMAPMessagePartID>& parts);
 
   // this function does not ref count!!! be careful!!!
   nsIImapUrl* GetCurrentUrl() { return m_runningUrl; }
@@ -382,6 +373,9 @@ class nsImapProtocol : public nsIImapProtocol,
   const nsString& GetEmptyMimePartString() { return m_emptyMimePartString; }
   void SetCapabilityResponseOccurred();
 
+  // Start event loop. This is called on IMAP thread
+  bool RunImapThreadMainLoop();
+
  private:
   virtual ~nsImapProtocol();
   // the following flag is used to determine when a url is currently being run.
@@ -398,13 +392,13 @@ class nsImapProtocol : public nsIImapProtocol,
   nsCString m_hostName;
   nsCString m_userName;
   nsCString m_serverKey;
-  nsCString m_realHostName;
   char* m_dataOutputBuf;
   RefPtr<nsMsgLineStreamBuffer> m_inputStreamBuffer;
   nsCString m_trashFolderPath;
 
   /** The socket connection to the IMAP server. */
   nsCOMPtr<nsISocketTransport> m_transport;
+  nsCOMPtr<nsITransportSecurityInfo> m_securityInfo;
 
   /** Stream to handle data coming in from the IMAP server. */
   nsCOMPtr<nsIInputStream> m_inputStream;
@@ -421,7 +415,6 @@ class nsImapProtocol : public nsIImapProtocol,
   // we're done with the conn.
 
   // ******* Thread support *******
-  nsCOMPtr<nsIThread> m_iThread;
   PRThread* m_thread;
   mozilla::ReentrantMonitor
       m_dataAvailableMonitor;  // used to notify the arrival of data from the
@@ -450,9 +443,12 @@ class nsImapProtocol : public nsIImapProtocol,
   nsCString m_connectionType;
 
   bool m_nextUrlReadyToRun;
+  bool m_idleResponseReadyToHandle;
   nsWeakPtr m_server;
+  nsCOMPtr<nsIMsgFolder> m_rootFolder;
 
   RefPtr<ImapMailFolderSinkProxy> m_imapMailFolderSink;
+  RefPtr<ImapMailFolderSinkProxy> m_imapMailFolderSinkSelected;
   RefPtr<ImapMessageSinkProxy> m_imapMessageSink;
   RefPtr<ImapServerSinkProxy> m_imapServerSink;
   RefPtr<ImapServerSinkProxy> m_imapServerSinkLatest;
@@ -469,7 +465,7 @@ class nsImapProtocol : public nsIImapProtocol,
   nsImapServerResponseParser m_parser;
   nsImapServerResponseParser& GetServerStateParser() { return m_parser; }
 
-  void HandleIdleResponses();
+  bool HandleIdleResponses();
   virtual bool ProcessCurrentURL();
   void EstablishServerConnection();
   virtual void ParseIMAPandCheckForNewMail(const char* commandString = nullptr,
@@ -525,8 +521,7 @@ class nsImapProtocol : public nsIImapProtocol,
   // sure we don't log authentication information like the user's password
   // (which was encoded anyway), but still we shouldn't add that information to
   // the log.
-  nsresult SendData(const char* dataBuffer,
-                    bool aSuppressLogging = false) override;
+  nsresult SendData(const char* dataBuffer, bool aSuppressLogging = false);
 
   // state ported over from 4.5
   bool m_pseudoInterrupted;
@@ -538,7 +533,7 @@ class nsImapProtocol : public nsIImapProtocol,
 
   // use to prevent re-entering TellThreadToDie.
   bool m_inThreadShouldDie;
-  // if the UI thread has signalled the IMAP thread to die, and the
+  // If the UI thread has signalled the IMAP thread to die, and the
   // connection has timed out, this will be set to FALSE.
   bool m_safeToCloseConnection;
 
@@ -582,18 +577,18 @@ class nsImapProtocol : public nsIImapProtocol,
   void ProcessSelectedStateURL();
   bool TryToLogon();
 
-  // Process Authenticated State Url used to be one giant if statement. I've
+  // ProcessAuthenticatedStateURL() used to be one giant if statement. I've
   // broken out a set of actions based on the imap action passed into the url.
   // The following functions are imap protocol handlers for each action. They
   // are called by ProcessAuthenticatedStateUrl.
   void OnLSubFolders();
   void OnAppendMsgFromFile();
 
-  char* GetFolderPathString();  // OK to call from UI thread
+  nsCString GetFolderPathString();  // OK to call from UI thread
 
-  char* OnCreateServerSourceFolderPathString();
-  char* OnCreateServerDestinationFolderPathString();
-  nsresult CreateServerSourceFolderPathString(char** result);
+  nsCString OnCreateServerSourceFolderPathString();
+  nsCString OnCreateServerDestinationFolderPathString();
+  nsresult CreateServerSourceFolderPathString(nsCString& result);
   void OnCreateFolder(const char* aSourceMailbox);
   void OnEnsureExistsFolder(const char* aSourceMailbox);
   void OnSubscribe(const char* aSourceMailbox);
@@ -620,7 +615,7 @@ class nsImapProtocol : public nsIImapProtocol,
                                             const char* newName,
                                             bool reallyRename);
   // notify the fe that a folder was deleted
-  void FolderDeleted(const char* mailboxName);
+  void FolderDeleted(const nsACString& mailboxName);
   // notify the fe that a folder creation failed
   void FolderNotCreated(const char* mailboxName);
   // notify the fe that a folder was deleted
@@ -628,7 +623,7 @@ class nsImapProtocol : public nsIImapProtocol,
 
   bool FolderIsSelected(const char* mailboxName);
 
-  bool MailboxIsNoSelectMailbox(const char* mailboxName);
+  bool MailboxIsNoSelectMailbox(const nsACString& mailboxName);
   bool FolderNeedsACLInitialized(const char* folderName);
   void DiscoverMailboxList();
   void DiscoverAllAndSubscribedBoxes();
@@ -637,7 +632,6 @@ class nsImapProtocol : public nsIImapProtocol,
   // LIST SUBSCRIBED command (from RFC 5258) crashes some servers. so we need to
   // identify those servers
   bool GetListSubscribedIsBrokenOnServer();
-  bool IsExtraSelectNeeded();
   void Lsub(const char* mailboxPattern, bool addDirectoryIfNecessary);
   void List(const char* mailboxPattern, bool addDirectoryIfNecessary,
             bool useXLIST = false);
@@ -681,7 +675,6 @@ class nsImapProtocol : public nsIImapProtocol,
   uint64_t mFolderLastModSeq;
   int32_t mFolderTotalMsgCount;
   uint32_t mFolderHighestUID;
-  uint32_t mFolderNumDeleted;
   bool m_allowUTF8Accept;
 
   bool m_isGmailServer;
@@ -742,7 +735,6 @@ class nsImapProtocol : public nsIImapProtocol,
   bool m_closeNeededBeforeSelect;
   bool m_retryUrlOnError;
   bool m_preferPlainText;
-  nsCString m_forceSelectValue;
   bool m_forceSelect;
 
   int32_t m_uidValidity;  // stored uid validity for the selected folder.
@@ -762,7 +754,7 @@ class nsImapProtocol : public nsIImapProtocol,
   EMailboxHierarchyNameState m_hierarchyNameState;
   EMailboxDiscoverStatus m_discoveryStatus;
   nsTArray<nsIMAPMailboxInfo*> m_listedMailboxList;
-  nsTArray<char*>* m_deletableChildren;
+  nsTArray<nsCString>* m_deletableChildren;
   uint32_t m_flagChangeCount;
   PRTime m_lastCheckTime;
 
@@ -772,6 +764,10 @@ class nsImapProtocol : public nsIImapProtocol,
 
   RefPtr<mozilla::mailnews::OAuth2ThreadHelper> mOAuth2Support;
   bool m_capabilityResponseOccurred;
+
+  nsresult IsTransportAlive(bool* alive);
+  nsresult TransportStartTLS();
+  void GetTransportSecurityInfo(nsITransportSecurityInfo** aSecurityInfo);
 };
 
 // This small class is a "mock" channel because it is a mockery of the imap
@@ -788,6 +784,7 @@ class nsImapMockChannel : public nsIImapMockChannel,
                           public nsICacheEntryOpenCallback,
                           public nsITransportEventSink,
                           public nsSupportsWeakReference,
+                          public nsMailChannel,
                           public nsHashPropertyBag {
  public:
   friend class nsImapProtocol;
@@ -816,17 +813,15 @@ class nsImapMockChannel : public nsIImapMockChannel,
   nsCOMPtr<nsIProgressEventSink> mProgressEventSink;
   nsCOMPtr<nsIInterfaceRequestor> mCallbacks;
   nsCOMPtr<nsISupports> mOwner;
-  nsCOMPtr<nsISupports> mSecurityInfo;
-  nsCOMPtr<nsIRequest>
-      mCacheRequest;  // the request associated with a read from the cache
+  nsCOMPtr<nsITransportSecurityInfo> mSecurityInfo;
   nsCString mContentType;
   nsCString mCharset;
   nsWeakPtr mProtocol;
 
   bool mChannelClosed;
   bool mReadingFromCache;
-  bool mTryingToReadPart;
   int64_t mContentLength;
+  bool mWritingToCache;
 
   mozilla::Monitor mSuspendedMonitor;
   bool mSuspended;
@@ -838,10 +833,8 @@ class nsImapMockChannel : public nsIImapMockChannel,
                               // cache entry for a url
   bool ReadFromLocalCache();  // attempts to read the url out of our local
                               // (offline) cache....
-  nsresult
-  ReadFromImapConnection();  // creates a new imap connection to read the url
-  nsresult ReadFromMemCache(nsICacheEntry* entry);  // attempts to read the url
-                                                    // out of our memory cache
+  nsresult ReadFromCache2(nsICacheEntry* entry);  // pipes message from cache2
+                                                  // entry to channel listener
   nsresult NotifyStartEndReadFromCache(bool start);
 
   // we end up daisy chaining multiple nsIStreamListeners into the load process.

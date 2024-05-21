@@ -6,7 +6,7 @@
 // Check that, even though the AnimationPlayerActor only sends the bits of its
 // state that change, the front reconstructs the whole state everytime.
 
-add_task(async function() {
+add_task(async function () {
   const { target, walker, animations } = await initAnimationsFrontForUrl(
     MAIN_DOMAIN + "animation.html"
   );
@@ -30,8 +30,9 @@ async function playerHasCompleteStateAtAllTimes(walker, animations) {
   for (let i = 0; i < 10; i++) {
     await player.refreshState();
     keys.forEach(key => {
-      ok(
-        typeof player.state[key] !== "undefined",
+      Assert.notStrictEqual(
+        typeof player.state[key],
+        "undefined",
         "The state retrieved has key " + key
       );
     });

@@ -14,7 +14,7 @@
    * The MozGlodacompleteRichResultPopup class creates the panel
    * to append all the results for the gloda search autocomplete.
    *
-   * @extends {MozPopupElement}
+   * @augments {MozPopupElement}
    */
   class MozGlodacompleteRichResultPopup extends MozPopupElement {
     constructor() {
@@ -66,6 +66,12 @@
           this.mInput.mIgnoreFocus = false;
         }
       });
+
+      this.attachShadow({ mode: "open" });
+
+      const slot = document.createElement("slot");
+      slot.part = "content";
+      this.shadowRoot.appendChild(slot);
     }
 
     connectedCallback() {
@@ -131,12 +137,12 @@
                   this.onPopupClick(event);
                 }
                 break;
-              case "mousemove":
+              case "mousemove": {
                 if (Date.now() - this.mLastMoveTime <= 30) {
                   return;
                 }
 
-                let item = event.target.closest("richlistbox, richlistitem");
+                const item = event.target.closest("richlistbox, richlistitem");
 
                 // If we hit the richlistbox and not a richlistitem, we ignore
                 // the event.
@@ -144,7 +150,7 @@
                   return;
                 }
 
-                let index = this.richlistbox.getIndexOfItem(item);
+                const index = this.richlistbox.getIndexOfItem(item);
 
                 this.mousedOverIndex = index;
 
@@ -154,6 +160,7 @@
 
                 this.mLastMoveTime = Date.now();
                 break;
+              }
             }
           },
         };
@@ -231,7 +238,7 @@
     closePopup() {
       if (this.mPopupOpen) {
         this.hidePopup();
-        this.removeAttribute("width");
+        this.style.removeProperty("--panel-width");
       }
     }
 
@@ -291,8 +298,11 @@
         // clear any previous selection, see bugs 400671 and 488357
         this.selectedIndex = -1;
 
-        let width = aElement.getBoundingClientRect().width;
-        this.setAttribute("width", width > 100 ? width : 100);
+        const width = aElement.getBoundingClientRect().width;
+        this.style.setProperty(
+          "--panel-width",
+          (width > 100 ? width : 100) + "px"
+        );
         // invalidate() depends on the width attribute
         this._invalidate();
 
@@ -322,9 +332,9 @@
     }
 
     _collapseUnusedItems() {
-      let existingItemsCount = this.richlistbox.children.length;
+      const existingItemsCount = this.richlistbox.children.length;
       for (let i = this.matchCount; i < existingItemsCount; ++i) {
-        let item = this.richlistbox.children[i];
+        const item = this.richlistbox.children[i];
 
         item.collapsed = true;
         if (typeof item._onCollapse == "function") {
@@ -335,17 +345,17 @@
 
     adjustHeight() {
       // Figure out how many rows to show
-      let rows = this.richlistbox.children;
-      let numRows = Math.min(this.matchCount, this.maxRows, rows.length);
+      const rows = this.richlistbox.children;
+      const numRows = Math.min(this.matchCount, this.maxRows, rows.length);
 
       // Default the height to 0 if we have no rows to show
       let height = 0;
       if (numRows) {
-        let firstRowRect = rows[0].getBoundingClientRect();
+        const firstRowRect = rows[0].getBoundingClientRect();
         if (this._rlbPadding == undefined) {
-          let style = window.getComputedStyle(this.richlistbox);
-          let paddingTop = parseInt(style.paddingTop) || 0;
-          let paddingBottom = parseInt(style.paddingBottom) || 0;
+          const style = window.getComputedStyle(this.richlistbox);
+          const paddingTop = parseInt(style.paddingTop) || 0;
+          const paddingBottom = parseInt(style.paddingBottom) || 0;
           this._rlbPadding = paddingTop + paddingBottom;
         }
 
@@ -358,12 +368,12 @@
           }
         }
 
-        let lastRowRect = rows[numRows - 1].getBoundingClientRect();
+        const lastRowRect = rows[numRows - 1].getBoundingClientRect();
         // Calculate the height to have the first row to last row shown
         height = lastRowRect.bottom - firstRowRect.top + this._rlbPadding;
       }
 
-      let currentHeight = this.richlistbox.getBoundingClientRect().height;
+      const currentHeight = this.richlistbox.getBoundingClientRect().height;
       if (height <= currentHeight) {
         this._collapseUnusedItems();
       }
@@ -376,7 +386,10 @@
     }
 
     _appendCurrentResult() {
-      let controller = this.mInput.controller;
+      const controller = this.mInput.controller;
+      const glodaCompleter = Cc[
+        "@mozilla.org/autocomplete/search;1?name=gloda"
+      ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
 
       // Process maxRows per chunk to improve performance and user experience
       for (let i = 0; i < this.maxRows; i++) {
@@ -384,23 +397,17 @@
           return;
         }
 
-        let item;
-
         // trim the leading/trailing whitespace
-        let trimmedSearchString = controller.searchString.trim();
+        const trimmedSearchString = controller.searchString.trim();
+        const result = glodaCompleter.curResult;
 
-        let glodaCompleter = Cc[
-          "@mozilla.org/autocomplete/search;1?name=gloda"
-        ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
-        let result = glodaCompleter.curResult;
-
-        item = document.createXULElement("richlistitem", {
+        const item = document.createXULElement("richlistitem", {
           is: result.getStyleAt(this._currentIndex),
         });
 
         // set these attributes before we set the class
         // so that we can use them from the constructor
-        let row = result.getObjectAt(this._currentIndex);
+        const row = result.getObjectAt(this._currentIndex);
         item.setAttribute("text", trimmedSearchString);
         item.setAttribute("type", result.getStyleAt(this._currentIndex));
 
@@ -419,7 +426,7 @@
 
     selectBy(aReverse, aPage) {
       try {
-        let amount = aPage ? 5 : 1;
+        const amount = aPage ? 5 : 1;
 
         // because we collapsed unused items, we can't use this.richlistbox.getRowCount(), we need to use the matchCount
         this.selectedIndex = this.getNextIndex(

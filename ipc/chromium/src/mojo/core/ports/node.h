@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <queue>
 #include <unordered_map>
 
 #include "mojo/core/ports/event.h"
@@ -42,6 +41,18 @@ struct PortStatus {
   size_t queued_message_count;
   size_t queued_num_bytes;
   size_t unacknowledged_message_count;
+#ifdef FUZZING_SNAPSHOT
+  NodeName peer_node_name;
+#endif
+};
+
+struct PendingUpdatePreviousPeer {
+  NodeName receiver;
+  PortName port;
+  PortName from_port;
+  uint64_t sequence_num;
+  NodeName new_prev_node;
+  PortName new_prev_port;
 };
 
 class MessageFilter;
@@ -101,7 +112,9 @@ class Node {
 
   // Initializes a newly created port.
   int InitializePort(const PortRef& port_ref, const NodeName& peer_node_name,
-                     const PortName& peer_port_name);
+                     const PortName& peer_port_name,
+                     const NodeName& prev_node_name,
+                     const PortName& prev_port_name);
 
   // Generates a new connected pair of ports bound to this node. These ports
   // are initialized and ready to go.
@@ -150,7 +163,7 @@ class Node {
                                     uint64_t sequence_num_acknowledge_interval);
 
   // Corresponding to NodeDelegate::ForwardEvent.
-  int AcceptEvent(ScopedEvent event);
+  int AcceptEvent(const NodeName& from_node, ScopedEvent event);
 
   // Called to merge two ports with each other. If you have two independent
   // port pairs A <=> B and C <=> D, the net result of merging B and C is a
@@ -203,18 +216,36 @@ class Node {
     NodeDelegate* const delegate_;
   };
 
-  int OnUserMessage(mozilla::UniquePtr<UserMessageEvent> message);
-  int OnPortAccepted(mozilla::UniquePtr<PortAcceptedEvent> event);
-  int OnObserveProxy(mozilla::UniquePtr<ObserveProxyEvent> event);
-  int OnObserveProxyAck(mozilla::UniquePtr<ObserveProxyAckEvent> event);
-  int OnObserveClosure(mozilla::UniquePtr<ObserveClosureEvent> event);
-  int OnMergePort(mozilla::UniquePtr<MergePortEvent> event);
+  int OnUserMessage(const PortRef& port_ref, const NodeName& from_node,
+                    mozilla::UniquePtr<UserMessageEvent> message);
+  int OnPortAccepted(const PortRef& port_ref,
+                     mozilla::UniquePtr<PortAcceptedEvent> event);
+  int OnObserveProxy(const PortRef& port_ref,
+                     mozilla::UniquePtr<ObserveProxyEvent> event);
+  int OnObserveProxyAck(const PortRef& port_ref,
+                        mozilla::UniquePtr<ObserveProxyAckEvent> event);
+  int OnObserveClosure(const PortRef& port_ref,
+                       mozilla::UniquePtr<ObserveClosureEvent> event);
+  int OnMergePort(const PortRef& port_ref,
+                  mozilla::UniquePtr<MergePortEvent> event);
   int OnUserMessageReadAckRequest(
+      const PortRef& port_ref,
       mozilla::UniquePtr<UserMessageReadAckRequestEvent> event);
-  int OnUserMessageReadAck(mozilla::UniquePtr<UserMessageReadAckEvent> event);
+  int OnUserMessageReadAck(const PortRef& port_ref,
+                           mozilla::UniquePtr<UserMessageReadAckEvent> event);
+  int OnUpdatePreviousPeer(const PortRef& port_ref,
+                           mozilla::UniquePtr<UpdatePreviousPeerEvent> event);
 
   int AddPortWithName(const PortName& port_name, RefPtr<Port> port);
   void ErasePort(const PortName& port_name);
+
+  // Check if the event is sent by the previous peer of the port to decide if
+  // we can check the sequence number.
+  // This is not the case for example for PortAccepted or broadcasted events.
+  bool IsEventFromPreviousPeer(const Event& event);
+
+  int AcceptEventInternal(const PortRef& port_ref, const NodeName& from_node,
+                          ScopedEvent event);
 
   int SendUserMessageInternal(const PortRef& port_ref,
                               mozilla::UniquePtr<UserMessageEvent>* message);
@@ -222,7 +253,9 @@ class Node {
                          bool allow_close_on_bad_state);
   void ConvertToProxy(Port* port, const NodeName& to_node_name,
                       PortName* port_name,
-                      Event::PortDescriptor* port_descriptor);
+                      Event::PortDescriptor* port_descriptor,
+                      PendingUpdatePreviousPeer* pending_update)
+      MOZ_REQUIRES(ports_lock_);
   int AcceptPort(const PortName& port_name,
                  const Event::PortDescriptor& port_descriptor);
 
@@ -244,17 +277,20 @@ class Node {
   // exist in |ports_|.
   void UpdatePortPeerAddress(const PortName& local_port_name, Port* local_port,
                              const NodeName& new_peer_node,
-                             const PortName& new_peer_port);
+                             const PortName& new_peer_port)
+      MOZ_REQUIRES(ports_lock_);
 
   // Removes an entry from |peer_port_map_| corresponding to |local_port|'s peer
   // address, if valid.
-  void RemoveFromPeerPortMap(const PortName& local_port_name, Port* local_port);
+  void RemoveFromPeerPortMap(const PortName& local_port_name, Port* local_port)
+      MOZ_REQUIRES(ports_lock_);
 
   // Swaps the peer information for two local ports. Used during port merges.
   // Note that |ports_lock_| must be held along with each of the two port's own
   // locks, through the extent of this method.
   void SwapPortPeers(const PortName& port0_name, Port* port0,
-                     const PortName& port1_name, Port* port1);
+                     const PortName& port1_name, Port* port1)
+      MOZ_REQUIRES(ports_lock_);
 
   // Sends an acknowledge request to the peer if the port has a non-zero
   // |sequence_num_acknowledge_interval|. This needs to be done when the port's
@@ -288,7 +324,8 @@ class Node {
   // destruction, it is also important to ensure that such events are never
   // destroyed while this (or any individual Port) lock is held.
   mozilla::Mutex ports_lock_{"Ports Lock"};
-  std::unordered_map<LocalPortName, RefPtr<Port>> ports_;
+  std::unordered_map<LocalPortName, RefPtr<Port>> ports_
+      MOZ_GUARDED_BY(ports_lock_);
 
   // Maps a peer port name to a list of PortRefs for all local ports which have
   // the port name key designated as their peer port. The set of local ports
@@ -307,7 +344,8 @@ class Node {
   // a given peer node or a local port that references a specific given peer
   // port on a peer node. The key to this map is the corresponding peer node
   // name.
-  std::unordered_map<NodeName, PeerPortMap> peer_port_maps_;
+  std::unordered_map<NodeName, PeerPortMap> peer_port_maps_
+      MOZ_GUARDED_BY(ports_lock_);
 };
 
 }  // namespace ports

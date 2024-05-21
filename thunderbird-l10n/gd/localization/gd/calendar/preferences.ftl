@@ -15,6 +15,10 @@ dateformat-long =
 #   $date (String) - the formatted example date
 dateformat-short =
     .label = Goirid: { $date }
+use-system-timezone-radio-button =
+    .label = Cleachd roinn-tìde an t-siostaim
+set-timezone-manually-radio-button =
+    .label = Suidhich an raon-ama de làimh
 timezone-label =
     .value = An roinn-tìde:
 weekstart-label =
@@ -101,12 +105,9 @@ previous-weeks-label =
     .value = Na seachdainean 's a chaidh a chithear:
     .accesskey = N
 todaypane-legend = Leòsan an latha
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Seallaidh earrann nan tachartasan a tha gu bhith ann:
-    .accesskey = U
+agenda-days =
+    .value = Tha an clàr-gnothaich a’ sealltainn:
+    .accesskey = g
 event-task-legend = Tachartasan is saothraichean
 default-length-label =
     .value = Faid bhunaiteach thachartasan is shaothraichean:
@@ -134,6 +135,9 @@ task-due-label =
 edit-intab-label =
     .label = Deasaich tachartasan is saothraichean ann an taba seach uinneag còmhraidh.
     .accesskey = t
+prompt-delete-label =
+    .label = Faighnich dhìom mus tèid tachartasan is saothraichean a sguabadh às.
+    .accesskey = F
 accessibility-legend = So-ruigsinneachd
 accessibility-colors-label =
     .label = Pisich na dathan a chùm so-ruigsinneachd

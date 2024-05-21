@@ -1,9 +1,12 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from sanitize.js */
+
+window.addEventListener("load", event => {
+  gSanitizePromptDialog.init();
+});
 
 var gSanitizePromptDialog = {
   get bundleBrowser() {
@@ -29,15 +32,14 @@ var gSanitizePromptDialog = {
     var s = new Sanitizer();
     s.prefDomain = "privacy.cpd.";
 
-    document.getElementById(
-      "sanitizeDurationChoice"
-    ).value = Services.prefs.getIntPref("privacy.sanitize.timeSpan");
+    document.getElementById("sanitizeDurationChoice").value =
+      Services.prefs.getIntPref("privacy.sanitize.timeSpan");
 
-    let sanitizeItemList = document.querySelectorAll(
+    const sanitizeItemList = document.querySelectorAll(
       "#historyGroup > [preference]"
     );
-    for (let prefItem of sanitizeItemList) {
-      let name = s.getNameFromPreference(prefItem.getAttribute("preference"));
+    for (const prefItem of sanitizeItemList) {
+      const name = s.getNameFromPreference(prefItem.getAttribute("preference"));
       if (!s.canClearItem(name)) {
         prefItem.preference = null;
         prefItem.checked = false;
@@ -51,24 +53,16 @@ var gSanitizePromptDialog = {
 
     this.onReadGeneric();
 
-    document
-      .querySelector("dialog")
-      .getButton("accept").label = this.bundleBrowser.getString(
-      "sanitizeButtonOK"
-    );
+    document.querySelector("dialog").getButton("accept").label =
+      this.bundleBrowser.getString("sanitizeButtonOK");
 
-    let warningIcon = document.getElementById("sanitizeEverythingWarningIcon");
-    if (AppConstants.platform === "linux") {
-      warningIcon.setAttribute(
-        "src",
-        "moz-icon://stock/gtk-dialog-warning?size=dialog"
-      );
-    } else {
-      warningIcon.setAttribute(
-        "src",
-        "chrome://global/skin/icons/warning-large.png"
-      );
-    }
+    const warningIcon = document.getElementById(
+      "sanitizeEverythingWarningIcon"
+    );
+    warningIcon.setAttribute(
+      "src",
+      "chrome://messenger/skin/icons/new/activity/warning.svg"
+    );
 
     if (this.selectedTimespan === Sanitizer.TIMESPAN_EVERYTHING) {
       this.prepareWarning();
@@ -95,8 +89,8 @@ var gSanitizePromptDialog = {
       this.prepareWarning();
       if (warningBox.hidden) {
         warningBox.hidden = false;
-        window.resizeBy(0, warningBox.getBoundingClientRect().height);
       }
+      window.sizeToContent();
       window.document.title = this.bundleBrowser.getString(
         "sanitizeDialog2.everything.title"
       );
@@ -108,9 +102,6 @@ var gSanitizePromptDialog = {
       window.resizeBy(0, -warningBox.getBoundingClientRect().height);
       warningBox.hidden = true;
     }
-    window.document.title = window.document.documentElement.getAttribute(
-      "noneverythingtitle"
-    );
   },
 
   sanitize() {
@@ -125,19 +116,15 @@ var gSanitizePromptDialog = {
     try {
       s.sanitize();
     } catch (er) {
-      Cu.reportError("Exception during sanitize: " + er);
+      console.error("Exception during sanitize: " + er);
     }
   },
 
   /**
    * If the panel that displays a warning when the duration is "Everything" is
    * not set up, sets it up.  Otherwise does nothing.
-   *
-   * @param aDontShowItemList Whether only the warning message should be updated.
-   *                          True means the item list visibility status should not
-   *                          be changed.
    */
-  prepareWarning(aDontShowItemList) {
+  prepareWarning() {
     // If the date and time-aware locale warning string is ever used again,
     // initialize it here.  Currently we use the no-visits warning string,
     // which does not include date and time.  See bug 480169 comment 48.
@@ -145,9 +132,6 @@ var gSanitizePromptDialog = {
     var warningStringID;
     if (this.hasNonSelectedItems()) {
       warningStringID = "sanitizeSelectedWarning";
-      if (!aDontShowItemList) {
-        this.showItemList();
-      }
     } else {
       warningStringID = "sanitizeEverythingWarning2";
     }
@@ -164,10 +148,10 @@ var gSanitizePromptDialog = {
     var found = false;
 
     // Find any other pref that's checked and enabled.
-    let sanitizeItemList = document.querySelectorAll(
+    const sanitizeItemList = document.querySelectorAll(
       "#historyGroup > [preference]"
     );
-    for (let prefItem of sanitizeItemList) {
+    for (const prefItem of sanitizeItemList) {
       found = !prefItem.disabled && prefItem.checked;
       if (found) {
         break;
@@ -179,7 +163,7 @@ var gSanitizePromptDialog = {
     } catch (e) {}
 
     // Update the warning prompt if needed
-    this.prepareWarning(true);
+    this.prepareWarning();
 
     return undefined;
   },
@@ -196,11 +180,11 @@ var gSanitizePromptDialog = {
     Sanitizer.prefs.setIntPref("timeSpan", this.selectedTimespan);
 
     // Now manually set the prefs from their corresponding preference elements.
-    let sanitizeItemList = document.querySelectorAll(
+    const sanitizeItemList = document.querySelectorAll(
       "#historyGroup > [preference]"
     );
-    for (let prefItem of sanitizeItemList) {
-      let prefName = prefItem.getAttribute("preference");
+    for (const prefItem of sanitizeItemList) {
+      const prefName = prefItem.getAttribute("preference");
       Services.prefs.setBoolPref(prefName, prefItem.checked);
     }
   },
@@ -209,10 +193,10 @@ var gSanitizePromptDialog = {
    * Check if all of the history items have been selected like the default status.
    */
   hasNonSelectedItems() {
-    let sanitizeItemList = document.querySelectorAll(
+    const sanitizeItemList = document.querySelectorAll(
       "#historyGroup > [preference]"
     );
-    for (let prefItem of sanitizeItemList) {
+    for (const prefItem of sanitizeItemList) {
       if (!prefItem.checked) {
         return true;
       }

@@ -7,10 +7,7 @@
         "choices": [
           {
             "type": "string",
-            "enum": [
-              "compose",
-              "compose.send"
-            ]
+            "enum": ["compose", "compose.save", "compose.send"]
           }
         ]
       }
@@ -24,22 +21,19 @@
         "choices": [
           {
             "type": "string",
-            "description": "A name and email address in the format \"Name <email@example.com>\", or just an email address."
+            "description": "A name and email address in the format <value>Name <email@example.com></value>, or just an email address."
           },
           {
             "type": "object",
             "properties": {
               "id": {
                 "type": "string",
-                "description": "The ID of a contact or mailing list from the :doc:`contacts` and :doc:`mailingLists` APIs."
+                "description": "The ID of a contact or mailing list from the :doc:`contacts` and :doc:`mailingLists`."
               },
               "type": {
                 "type": "string",
                 "description": "Which sort of object this ID is for.",
-                "enum": [
-                  "contact",
-                  "mailingList"
-                ]
+                "enum": ["contact", "mailingList"]
               }
             }
           }
@@ -79,98 +73,190 @@
         "type": "object",
         "description": "Used by various functions to represent the state of a message being composed. Note that functions using this type may have a partial implementation.",
         "properties": {
-          "identityId": {
-            "type": "string",
-            "description": "The ID of an identity from the :doc:`accounts` API. The settings from the identity will be used in the composed message. If ``replyTo`` is also specified, the ``replyTo`` property of the identity is overridden. The permission <permission>accountsRead</permission> is required to include the ``identityId``.",
+          "additionalFccFolder": {
+            "choices": [
+              {
+                "$ref": "folders.MailFolderId"
+              },
+              {
+                "$ref": "folders.MailFolder"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ],
+            "description": "An additional fcc folder which can be selected while composing the message, an empty string if not used.",
             "optional": true
           },
-          "from": {
-            "$ref": "ComposeRecipient",
-            "description": "*Caution*: Setting a value for `from` does not change the used identity, it overrides the FROM header. Many email servers do not accept emails where the FROM header does not match the sender identity. Must be set to exactly one valid email address.",
-            "optional": true
+          "attachVCard": {
+            "type": "boolean",
+            "optional": true,
+            "description": "Whether or not the vCard of the used identity will be attached to the message during send. **Note:** If the value has not been modified, selecting a different identity will load the default value of the new identity."
           },
-          "to": {
-            "$ref": "ComposeRecipientList",
-            "optional": true
-          },
-          "cc": {
-            "$ref": "ComposeRecipientList",
+          "attachments": {
+            "type": "array",
+            "items": {
+              "choices": [
+                {
+                  "$ref": "FileAttachment"
+                },
+                {
+                  "$ref": "ComposeAttachment"
+                }
+              ]
+            },
+            "description": "Only used in the begin* functions. Attachments to add to the message.",
             "optional": true
           },
           "bcc": {
             "$ref": "ComposeRecipientList",
             "optional": true
           },
-          "replyTo": {
+          "body": {
+            "type": "string",
+            "description": "The HTML content of the message.",
+            "optional": true
+          },
+          "cc": {
             "$ref": "ComposeRecipientList",
             "optional": true
+          },
+          "customHeaders": {
+            "type": "array",
+            "items": {
+              "$ref": "CustomHeader"
+            },
+            "description": "Array of custom headers. Headers will be returned in <em>Http-Header-Case</em> (a.k.a. <em>Train-Case</em>). Set an empty array to clear all custom headers.",
+            "optional": true
+          },
+          "deliveryFormat": {
+            "type": "string",
+            "enum": ["auto", "plaintext", "html", "both"],
+            "description": "Defines the MIME format of the sent message (ignored on plain text messages). Defaults to <value>auto</value>, which will send html messages as plain text, if they do not include any formatting, and as <value>both</value> otherwise (a multipart/mixed message).",
+            "optional": true
+          },
+          "deliveryStatusNotification": {
+            "type": "boolean",
+            "optional": true,
+            "description": "Let the sender know when the recipient's server received the message. Not supported by all servers."
           },
           "followupTo": {
             "$ref": "ComposeRecipientList",
             "optional": true
           },
+          "from": {
+            "$ref": "ComposeRecipient",
+            "description": "*Caution*: Setting a value for ``from`` does not change the used identity, it overrides the <value>From</value> header. Many email servers do not accept emails where the <value>From</value> header does not match the sender identity. Must be set to exactly one valid email address.",
+            "optional": true
+          },
+          "identityId": {
+            "type": "string",
+            "description": "The ID of an identity from the :doc:`accounts`. The settings from the identity will be used in the composed message. If ``replyTo`` is also specified, the ``replyTo`` property of the identity is overridden. The permission <permission>accountsRead</permission> is required to include the ``identityId``.",
+            "optional": true
+          },
+          "isModified": {
+            "type": "boolean",
+            "description": "Whether the composer is considered modified by the user. A modified composer asks for confirmation, when it is closed.",
+            "optional": true
+          },
+          "isPlainText": {
+            "type": "boolean",
+            "description": "Whether the message is an HTML message or a plain text message.",
+            "optional": true
+          },
           "newsgroups": {
+            "description": "A single newsgroup name or an array of newsgroup names.",
             "choices": [
               {
-                "type": "string",
-                "description": "A newsgroup name."
+                "type": "string"
               },
               {
                 "type": "array",
                 "items": {
                   "type": "string"
-                },
-                "description": "An array of newsgroup names."
+                }
               }
             ],
             "optional": true
+          },
+          "overrideDefaultFcc": {
+            "type": "boolean",
+            "optional": true,
+            "description": "Indicates whether the default fcc setting (defined by the used identity) is being overridden for this message. Setting <value>false</value> will clear the override. Setting <value>true</value> will throw an <em>ExtensionError</em>, if ``overrideDefaultFccFolder`` is not set as well."
+          },
+          "overrideDefaultFccFolder": {
+            "choices": [
+              {
+                "$ref": "folders.MailFolderId"
+              },
+              {
+                "$ref": "folders.MailFolder"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ],
+            "optional": true,
+            "description": " This value overrides the default fcc setting (defined by the used identity) for this message only. Either a :ref:`folders.MailFolder` specifying the folder for the copy of the sent message, or an empty string to not save a copy at all."
+          },
+          "plainTextBody": {
+            "type": "string",
+            "description": "The plain text content of the message.",
+            "optional": true
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "description": "The priority of the message.",
+            "optional": true
+          },
+          "relatedMessageId": {
+            "description": "The id of the original message (in case of draft, template, forward or reply). Read-only. Is <value>null</value> in all other cases or if the original message was opened from file.",
+            "$ref": "messages.MessageId",
+            "optional": true
+          },
+          "replyTo": {
+            "$ref": "ComposeRecipientList",
+            "optional": true
+          },
+          "returnReceipt": {
+            "type": "boolean",
+            "optional": true,
+            "description": "Add the <em>Disposition-Notification-To</em> header to the message to requests the recipients email client to send a reply once the message has been received. Recipient server may strip the header and the recipient might ignore the request."
           },
           "subject": {
             "type": "string",
             "optional": true
           },
+          "to": {
+            "$ref": "ComposeRecipientList",
+            "optional": true
+          },
           "type": {
             "type": "string",
             "description": "Read-only. The type of the message being composed, depending on how the compose window was opened by the user.",
-            "enum": [
-              "draft",
-              "new",
-              "redirect",
-              "reply",
-              "forward"
-            ],
+            "enum": ["draft", "new", "redirect", "reply", "forward"],
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "FileAttachment",
+        "type": "object",
+        "description": "Object used to add, update or rename an attachment in a message being composed.",
+        "properties": {
+          "file": {
+            "type": "object",
+            "isInstanceOf": "File",
+            "additionalProperties": true,
+            "description": "The new content for the attachment.",
             "optional": true
           },
-          "body": {
+          "name": {
             "type": "string",
-            "optional": true
-          },
-          "plainTextBody": {
-            "type": "string",
-            "optional": true
-          },
-          "isPlainText": {
-            "type": "boolean",
-            "optional": true
-          },
-          "attachments": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "The name, as displayed to the user, of this attachment. If not specified, the name of the ``file`` object is used.",
-                  "optional": true
-                },
-                "file": {
-                  "type": "object",
-                  "isInstanceOf": "File",
-                  "additionalProperties": true
-                }
-              }
-            },
-            "description": "Attachments to add to the message. Only used in the begin* functions.",
+            "description": "The new name for the attachment, as displayed to the user. If not specified, the name of the provided ``file`` object is used.",
             "optional": true
           }
         }
@@ -186,32 +272,45 @@
           },
           "name": {
             "type": "string",
-            "description": "The name, as displayed to the user, of this attachment. This is usually but not always the filename of the attached file."
+            "optional": true,
+            "description": "The name of this attachment, as displayed to the user."
           },
           "size": {
             "type": "integer",
-            "description": "The size in bytes of this attachment."
+            "optional": true,
+            "description": "The size in bytes of this attachment. Read-only."
           }
+        }
+      },
+      {
+        "id": "CustomHeader",
+        "type": "object",
+        "description": "A custom header definition.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of a custom header, must be prefixed by <value>X-</value> (but not by <value>X-Mozilla-</value>) or be one of the explicitly allowed headers (<value>MSIP_Labels</value>)"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "ComposeDictionaries",
+        "type": "object",
+        "additionalProperties": {
+          "type": "boolean"
         },
-        "functions": [
-          {
-            "name": "getFile",
-            "type": "function",
-            "description": "Retrieves the contents of the attachment as a DOM ``File`` object.",
-            "async": true,
-            "parameters": []
-          }
-        ]
+        "description": "A <em>dictionary object</em> with entries for all installed dictionaries, having a language identifier as <em>key</em> (for example <value>en-US</value>) and a boolean expression as <em>value</em>, indicating whether that dictionary is enabled for spellchecking or not."
       }
     ],
     "events": [
       {
         "name": "onBeforeSend",
         "type": "function",
-        "description": "Fired when a message is about to be sent from the compose window. This is a user input event handler. For asynchronous listeners some `restrictions <https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/User_actions>`__ apply.",
-        "permissions": [
-          "compose"
-        ],
+        "description": "Fired when a message is about to be sent from the compose window. This is a user input event handler. For asynchronous listeners some `restrictions <|link-user-input-restrictions|>`__ apply.",
+        "permissions": ["compose"],
         "parameters": [
           {
             "name": "tab",
@@ -220,7 +319,7 @@
           {
             "name": "details",
             "$ref": "ComposeDetails",
-            "description": "The current state of the compose window. This is functionally the same as the :ref:`compose.getComposeDetails` function."
+            "description": "The current state of the compose window. This is functionally the same as calling the :ref:`compose.getComposeDetails` function."
           }
         ],
         "returns": {
@@ -234,18 +333,91 @@
             "details": {
               "$ref": "ComposeDetails",
               "optional": true,
-              "description": "Updates the compose window. See the :ref:`compose.setComposeDetails` function for more information."
+              "description": "Updates the compose window. This is functionally the same as calling the :ref:`compose.setComposeDetails` function."
             }
           }
         }
       },
       {
+        "name": "onAfterSend",
+        "type": "function",
+        "description": "Fired when sending a message succeeded or failed.",
+        "permissions": ["compose"],
+        "parameters": [
+          {
+            "name": "tab",
+            "$ref": "tabs.Tab"
+          },
+          {
+            "name": "sendInfo",
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "description": "The used send mode.",
+                "enum": ["sendNow", "sendLater"]
+              },
+              "error": {
+                "type": "string",
+                "description": "An error description, if sending the message failed.",
+                "optional": true
+              },
+              "headerMessageId": {
+                "type": "string",
+                "description": "The header messageId of the outgoing message. Only included for actually sent messages.",
+                "optional": true
+              },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "$ref": "messages.MessageHeader"
+                },
+                "description": "Copies of the sent message. The number of created copies depends on the applied file carbon copy configuration (fcc)."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "onAfterSave",
+        "type": "function",
+        "description": "Fired when saving a message as draft or template succeeded or failed.",
+        "permissions": ["compose"],
+        "parameters": [
+          {
+            "name": "tab",
+            "$ref": "tabs.Tab"
+          },
+          {
+            "name": "saveInfo",
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "description": "The used save mode.",
+                "enum": ["autoSave", "draft", "template"]
+              },
+              "error": {
+                "type": "string",
+                "description": "An error description, if saving the message failed.",
+                "optional": true
+              },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "$ref": "messages.MessageHeader"
+                },
+                "description": "The saved message(s). The number of saved messages depends on the applied file carbon copy configuration (fcc)."
+              }
+            }
+          }
+        ]
+      },
+      {
         "name": "onAttachmentAdded",
         "type": "function",
         "description": "Fired when an attachment is added to a message being composed.",
-        "permissions": [
-          "compose"
-        ],
+        "permissions": ["compose"],
         "parameters": [
           {
             "name": "tab",
@@ -261,9 +433,7 @@
         "name": "onAttachmentRemoved",
         "type": "function",
         "description": "Fired when an attachment is removed from a message being composed.",
-        "permissions": [
-          "compose"
-        ],
+        "permissions": ["compose"],
         "parameters": [
           {
             "name": "tab",
@@ -279,9 +449,7 @@
         "name": "onIdentityChanged",
         "type": "function",
         "description": "Fired when the user changes the identity that will be used to send a message being composed.",
-        "permissions": [
-          "accountsRead"
-        ],
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "tab",
@@ -307,21 +475,35 @@
             "$ref": "ComposeState"
           }
         ]
+      },
+      {
+        "name": "onActiveDictionariesChanged",
+        "type": "function",
+        "description": "Fired when one or more dictionaries have been activated or deactivated.",
+        "parameters": [
+          {
+            "name": "tab",
+            "$ref": "tabs.Tab"
+          },
+          {
+            "name": "dictionaries",
+            "$ref": "ComposeDictionaries"
+          }
+        ]
       }
     ],
     "functions": [
       {
         "name": "beginNew",
         "type": "function",
-        "description": "Open a new message compose window. If the provided ComposeDetails object does not provide ``body``, ``plainTextBody`` or ``isPlainText``, the default compose format of the used/default identity is used. The :ref:`accounts_api` API can be used to get the used/default identity and its default compose format.",
+        "description": "Open a new message compose window.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "description": "If specified, the message or template to edit as a new message.",
-            "type": "integer",
-            "optional": true,
-            "minimum": 1
+            "$ref": "messages.MessageId",
+            "optional": true
           },
           {
             "name": "details",
@@ -344,23 +526,18 @@
       {
         "name": "beginReply",
         "type": "function",
-        "description": "Open a new message compose window replying to a given message. If the provided ComposeDetails object does not provide ``body``, ``plainTextBody`` or ``isPlainText``, the default compose format of the used/default identity is used. The :ref:`accounts_api` API can be used to get the used/default identity and its default compose format.",
+        "description": "Open a new message compose window replying to a given message.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "description": "The message to reply to, as retrieved using other APIs.",
-            "type": "integer",
-            "minimum": 1
+            "$ref": "messages.MessageId"
           },
           {
             "name": "replyType",
             "type": "string",
-            "enum": [
-              "replyToSender",
-              "replyToList",
-              "replyToAll"
-            ],
+            "enum": ["replyToSender", "replyToList", "replyToAll"],
             "optional": true
           },
           {
@@ -384,22 +561,18 @@
       {
         "name": "beginForward",
         "type": "function",
-        "description": "Open a new message compose window forwarding a given message. If the provided ComposeDetails object does not provide ``body``, ``plainTextBody`` or ``isPlainText``, the default compose format of the used/default identity is used. The :ref:`accounts_api` API can be used to get the used/default identity and its default compose format.",
+        "description": "Open a new message compose window forwarding a given message.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "description": "The message to forward, as retrieved using other APIs.",
-            "type": "integer",
-            "minimum": 1
+            "$ref": "messages.MessageId"
           },
           {
             "name": "forwardType",
             "type": "string",
-            "enum": [
-              "forwardInline",
-              "forwardAsAttachment"
-            ],
+            "enum": ["forwardInline", "forwardAsAttachment"],
             "optional": true
           },
           {
@@ -425,9 +598,7 @@
         "type": "function",
         "async": "callback",
         "description": "Fetches the current state of a compose window. Currently only a limited amount of information is available, more will be added in later versions.",
-        "permissions": [
-          "compose"
-        ],
+        "permissions": ["compose"],
         "parameters": [
           {
             "type": "integer",
@@ -450,10 +621,8 @@
         "name": "setComposeDetails",
         "type": "function",
         "async": true,
-        "description": "Updates the compose window. Specify only fields that you want to change. Currently only the to/cc/bcc/replyTo/followupTo/newsgroups fields and the subject are implemented. It is not possible to change the compose format.",
-        "permissions": [
-          "compose"
-        ],
+        "description": "Updates the compose window. The properties of the given :ref:`compose.ComposeDetails` object will be used to overwrite the current values of the specified compose window, so only properties that are to be changed should be included.\n\nWhen updating any of the array properties (``customHeaders`` and most address fields), make sure to first get the current values to not accidentally remove all existing entries when setting the new value.\n\n**Note:** The compose format of an existing compose window cannot be changed. Since Thunderbird 98, setting conflicting values for ``details.body``, ``details.plainTextBody`` or ``details.isPlaintext`` no longer throws an exception, instead the compose window chooses the matching ``details.body`` or ``details.plainTextBody`` value and ignores the other.",
+        "permissions": ["compose"],
         "parameters": [
           {
             "type": "integer",
@@ -462,8 +631,52 @@
           },
           {
             "name": "details",
-            "$ref": "ComposeDetails",
-            "description": "The compose format of an already opened compose window cannot be changed. Setting ``details.body``, ``details.plainTextBody`` or ``details.isPlaintext`` will fail if the compose format of the compose window does not match. Use :ref:`compose.getComposeDetails` to get the current compose format."
+            "$ref": "ComposeDetails"
+          }
+        ]
+      },
+      {
+        "name": "getActiveDictionaries",
+        "type": "function",
+        "async": "callback",
+        "description": "Returns a :ref:`compose.ComposeDictionaries` object, listing all installed dictionaries, including the information whether they are currently enabled or not.",
+        "permissions": ["compose"],
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "ComposeDictionaries"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "setActiveDictionaries",
+        "type": "function",
+        "async": true,
+        "description": "Updates the active dictionaries. Throws if the ``activeDictionaries`` array contains unknown or invalid language identifiers.",
+        "permissions": ["compose"],
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "name": "activeDictionaries"
           }
         ]
       },
@@ -471,14 +684,50 @@
         "name": "listAttachments",
         "type": "function",
         "description": "Lists all of the attachments of the message being composed in the specified tab.",
-        "permissions": [
-          "compose"
-        ],
-        "async": true,
+        "permissions": ["compose"],
+        "async": "callback",
         "parameters": [
           {
             "name": "tabId",
             "type": "integer"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "ComposeAttachment"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "getAttachmentFile",
+        "type": "function",
+        "description": "Gets the content of a :ref:`compose.ComposeAttachment` as a |File| object.",
+        "async": "callback",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "integer",
+            "description": "The unique identifier for the attachment."
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "object",
+                "isInstanceOf": "File",
+                "additionalProperties": true
+              }
+            ]
           }
         ]
       },
@@ -486,41 +735,42 @@
         "name": "addAttachment",
         "type": "function",
         "description": "Adds an attachment to the message being composed in the specified tab.",
-        "permissions": [
-          "compose"
-        ],
-        "async": true,
+        "permissions": ["compose"],
+        "async": "callback",
         "parameters": [
           {
             "name": "tabId",
             "type": "integer"
           },
           {
-            "name": "data",
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "The name, as displayed to the user, of this attachment. If not specified, the name of the ``file`` object is used.",
-                "optional": true
+            "name": "attachment",
+            "choices": [
+              {
+                "$ref": "FileAttachment"
               },
-              "file": {
-                "type": "object",
-                "isInstanceOf": "File",
-                "additionalProperties": true
+              {
+                "$ref": "ComposeAttachment"
               }
-            }
+            ]
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "ComposeAttachment"
+              }
+            ]
           }
         ]
       },
       {
         "name": "updateAttachment",
         "type": "function",
-        "description": "Renames and/or replaces the contents of an attachment to the message being composed in the specified tab.",
-        "permissions": [
-          "compose"
-        ],
-        "async": true,
+        "description": "Updates the name and/or the content of an attachment in the message being composed in the specified tab. If the specified attachment is a cloud file attachment and the associated provider failed to update the attachment, the function will throw an <em>ExtensionError</em>.",
+        "permissions": ["compose"],
+        "async": "callback",
         "parameters": [
           {
             "name": "tabId",
@@ -531,21 +781,18 @@
             "type": "integer"
           },
           {
-            "name": "data",
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "The name, as displayed to the user, of this attachment. If not specified, the name of the ``file`` object is used.",
-                "optional": true
-              },
-              "file": {
-                "type": "object",
-                "isInstanceOf": "File",
-                "additionalProperties": true,
-                "optional": true
+            "name": "attachment",
+            "$ref": "FileAttachment"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "ComposeAttachment"
               }
-            }
+            ]
           }
         ]
       },
@@ -553,9 +800,7 @@
         "name": "removeAttachment",
         "type": "function",
         "description": "Removes an attachment from the message being composed in the specified tab.",
-        "permissions": [
-          "compose"
-        ],
+        "permissions": ["compose"],
         "async": true,
         "parameters": [
           {
@@ -570,11 +815,9 @@
       },
       {
         "name": "sendMessage",
-        "permissions": [
-          "compose.send"
-        ],
+        "permissions": ["compose.send"],
         "type": "function",
-        "description": "Sends the message currently being composed.",
+        "description": "Sends the message currently being composed. If the send mode is not specified or set to <value>default</value>, the message will be send directly if the user is online and placed in the users outbox otherwise. The returned Promise fulfills once the message has been successfully sent or placed in the user's outbox. Throws when the send process has been aborted by the user, by an :ref:`compose.onBeforeSend` event or if there has been an error while sending the message to the outgoing mail server.",
         "async": "callback",
         "parameters": [
           {
@@ -588,23 +831,86 @@
             "properties": {
               "mode": {
                 "type": "string",
-                "enum": [
-                  "default",
-                  "sendNow",
-                  "sendLater"
-                ]
+                "enum": ["default", "sendNow", "sendLater"]
               }
             }
           },
           {
             "type": "function",
             "name": "callback",
-            "description": "Returns false if the current state of the message composer prevented sending the message.",
             "optional": true,
             "parameters": [
               {
                 "name": "return",
-                "type": "boolean"
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "description": "The used send mode.",
+                    "enum": ["sendNow", "sendLater"]
+                  },
+                  "headerMessageId": {
+                    "type": "string",
+                    "description": "The header messageId of the outgoing message. Only included for actually sent messages.",
+                    "optional": true
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "messages.MessageHeader"
+                    },
+                    "description": "Copies of the sent message. The number of created copies depends on the applied file carbon copy configuration (fcc)."
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "saveMessage",
+        "permissions": ["compose.save"],
+        "type": "function",
+        "description": "Saves the message currently being composed as a draft or as a template. If the save mode is not specified, the message will be saved as a draft. The returned Promise fulfills once the message has been successfully saved.",
+        "async": "callback",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer"
+          },
+          {
+            "name": "options",
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["draft", "template"]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "return",
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "description": "The used save mode.",
+                    "enum": ["draft", "template"]
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "messages.MessageHeader"
+                    },
+                    "description": "The saved message(s). The number of saved messages depends on the applied file carbon copy configuration (fcc)."
+                  }
+                }
               }
             ]
           }

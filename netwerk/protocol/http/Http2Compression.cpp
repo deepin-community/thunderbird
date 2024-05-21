@@ -61,6 +61,7 @@ class HpackDynamicTableReporter final : public nsIMemoryReporter {
   NS_IMETHOD
   CollectReports(nsIHandleReportCallback* aHandleReport, nsISupports* aData,
                  bool aAnonymize) override {
+    MutexAutoLock lock(mMutex);
     if (mCompressor) {
       MOZ_COLLECT_REPORT("explicit/network/hpack/dynamic-tables", KIND_HEAP,
                          UNITS_BYTES,
@@ -75,7 +76,8 @@ class HpackDynamicTableReporter final : public nsIMemoryReporter {
 
   ~HpackDynamicTableReporter() = default;
 
-  Http2BaseCompressor* mCompressor;
+  Mutex mMutex{"HpackDynamicTableReporter"};
+  Http2BaseCompressor* mCompressor MOZ_GUARDED_BY(mMutex);
 
   friend class Http2BaseCompressor;
 };
@@ -187,13 +189,18 @@ nvFIFO::~nvFIFO() { Clear(); }
 void nvFIFO::AddElement(const nsCString& name, const nsCString& value) {
   nvPair* pair = new nvPair(name, value);
   mByteCount += pair->Size();
+  MutexAutoLock lock(mMutex);
   mTable.PushFront(pair);
 }
 
 void nvFIFO::AddElement(const nsCString& name) { AddElement(name, ""_ns); }
 
 void nvFIFO::RemoveElement() {
-  nvPair* pair = mTable.Pop();
+  nvPair* pair = nullptr;
+  {
+    MutexAutoLock lock(mMutex);
+    pair = mTable.Pop();
+  }
   if (pair) {
     mByteCount -= pair->Size();
     delete pair;
@@ -212,6 +219,7 @@ size_t nvFIFO::StaticLength() const { return gStaticHeaders->GetSize(); }
 
 void nvFIFO::Clear() {
   mByteCount = 0;
+  MutexAutoLock lock(mMutex);
   while (mTable.GetSize()) {
     delete mTable.Pop();
   }
@@ -244,20 +252,27 @@ Http2BaseCompressor::~Http2BaseCompressor() {
     Telemetry::Accumulate(mPeakCountID, mPeakCount);
   }
   UnregisterStrongMemoryReporter(mDynamicReporter);
-  mDynamicReporter->mCompressor = nullptr;
+  {
+    MutexAutoLock lock(mDynamicReporter->mMutex);
+    mDynamicReporter->mCompressor = nullptr;
+  }
   mDynamicReporter = nullptr;
+}
+
+size_t nvFIFO::SizeOfDynamicTable(mozilla::MallocSizeOf aMallocSizeOf) const {
+  size_t size = 0;
+  MutexAutoLock lock(mMutex);
+  for (const auto elem : mTable) {
+    size += elem->SizeOfIncludingThis(aMallocSizeOf);
+  }
+  return size;
 }
 
 void Http2BaseCompressor::ClearHeaderTable() { mHeaderTable.Clear(); }
 
 size_t Http2BaseCompressor::SizeOfExcludingThis(
     mozilla::MallocSizeOf aMallocSizeOf) const {
-  size_t size = 0;
-  for (uint32_t i = mHeaderTable.StaticLength(); i < mHeaderTable.Length();
-       ++i) {
-    size += mHeaderTable[i]->SizeOfIncludingThis(aMallocSizeOf);
-  }
-  return size;
+  return mHeaderTable.SizeOfDynamicTable(aMallocSizeOf);
 }
 
 void Http2BaseCompressor::MakeRoom(uint32_t amount, const char* direction) {
@@ -323,15 +338,12 @@ void Http2BaseCompressor::DumpState(const char* preamble) {
 void Http2BaseCompressor::SetMaxBufferSizeInternal(uint32_t maxBufferSize) {
   MOZ_ASSERT(maxBufferSize <= mMaxBufferSetting);
 
-  uint32_t removedCount = 0;
-
   LOG(("Http2BaseCompressor::SetMaxBufferSizeInternal %u called",
        maxBufferSize));
 
   while (mHeaderTable.VariableLength() &&
          (mHeaderTable.ByteCount() > maxBufferSize)) {
     mHeaderTable.RemoveElement();
-    ++removedCount;
   }
 
   mMaxBuffer = maxBufferSize;
@@ -533,14 +545,10 @@ nsresult Http2Decompressor::OutputHeader(const nsACString& name,
     }
   }
 
-  // Look for CR OR LF in value - could be smuggling Sec 10.3
-  // can map to space safely
-  for (const char* cPtr = value.BeginReading();
-       cPtr && cPtr < value.EndReading(); ++cPtr) {
-    if (*cPtr == '\r' || *cPtr == '\n') {
-      char* wPtr = const_cast<char*>(cPtr);
-      *wPtr = ' ';
-    }
+  // Look for CR, LF or NUL in value - could be smuggling (RFC7540 Sec 10.3)
+  // treat as malformed
+  if (!nsHttp::IsReasonableHeaderValue(value)) {
+    return NS_ERROR_ILLEGAL_VALUE;
   }
 
   // Status comes first
@@ -1087,13 +1095,12 @@ nsresult Http2Compressor::EncodeHeaderBlock(
   while (true) {
     int32_t startIndex = crlfIndex + 2;
 
-    crlfIndex = nvInput.Find("\r\n", false, startIndex);
+    crlfIndex = nvInput.Find("\r\n", startIndex);
     if (crlfIndex == -1) {
       break;
     }
 
-    int32_t colonIndex =
-        nvInput.Find(":", false, startIndex, crlfIndex - startIndex);
+    int32_t colonIndex = Substring(nvInput, 0, crlfIndex).Find(":", startIndex);
     if (colonIndex == -1) {
       break;
     }
@@ -1154,7 +1161,7 @@ nsresult Http2Compressor::EncodeHeaderBlock(
       int32_t nextCookie = valueIndex;
       while (haveMoreCookies) {
         int32_t semiSpaceIndex =
-            nvInput.Find("; ", false, nextCookie, crlfIndex - nextCookie);
+            Substring(nvInput, 0, crlfIndex).Find("; ", nextCookie);
         if (semiSpaceIndex == -1) {
           haveMoreCookies = false;
           semiSpaceIndex = crlfIndex;

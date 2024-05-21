@@ -6,8 +6,8 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  XPCOMUtils.defineLazyModuleGetters(this, {
-    SearchOneOffs: "resource:///modules/SearchOneOffs.jsm",
+  ChromeUtils.defineESModuleGetters(this, {
+    SearchOneOffs: "resource:///modules/SearchOneOffs.sys.mjs",
   });
 
   /**
@@ -18,7 +18,7 @@
     constructor() {
       super();
 
-      this.addEventListener("popupshowing", event => {
+      this.addEventListener("popupshowing", () => {
         // First handle deciding if we are showing the reduced version of the
         // popup containing only the preferences button. We do this if the
         // glass icon has been clicked if the text field is empty.
@@ -39,7 +39,7 @@
         }
 
         // Show the current default engine in the top header of the panel.
-        this.updateHeader().catch(Cu.reportError);
+        this.updateHeader().catch(console.error);
 
         this._oneOffButtons.addEventListener(
           "SelectedOneOffButtonChanged",
@@ -47,7 +47,7 @@
         );
       });
 
-      this.addEventListener("popuphiding", event => {
+      this.addEventListener("popuphiding", () => {
         this._oneOffButtons.removeEventListener(
           "SelectedOneOffButtonChanged",
           this
@@ -108,11 +108,11 @@
     static get markup() {
       return `
       <hbox class="search-panel-header search-panel-current-engine">
-        <image class="searchbar-engine-image"></image>
-        <label class="searchbar-engine-name" flex="1" crop="end" role="presentation"></label>
+        <image class="searchbar-engine-image"/>
+        <label class="searchbar-engine-name" flex="1" crop="end" role="presentation"/>
       </hbox>
       <menuseparator class="searchbar-separator"/>
-      <richlistbox class="autocomplete-richlistbox search-panel-tree" flex="1"></richlistbox>
+      <richlistbox class="autocomplete-richlistbox search-panel-tree"/>
       <menuseparator class="searchbar-separator"/>
       <hbox class="search-one-offs" is_searchbar="true"/>
     `;
@@ -202,7 +202,7 @@
         AppConstants.platform == "macosx" ? aEvent.metaKey : aEvent.ctrlKey;
       if (
         where == "tab" &&
-        aEvent instanceof MouseEvent &&
+        MouseEvent.isInstance(aEvent) &&
         (aEvent.button == 1 || modifier)
       ) {
         params.inBackground = true;
@@ -232,9 +232,9 @@
         }
       }
 
-      let uri = engine.iconURI;
+      let uri = await engine.getIconURL();
       if (uri) {
-        this.setAttribute("src", uri.spec);
+        this.setAttribute("src", uri);
       } else {
         // If the default has just been changed to a provider without icon,
         // avoid showing the icon of the previous default provider.
@@ -259,6 +259,7 @@
 
     /**
      * Passes DOM events for the popup to the _on_<event type> methods.
+     *
      * @param {Event} event
      *   DOM event from the <popup>.
      */
@@ -274,7 +275,7 @@
       let engine =
         this.oneOffButtons.selectedButton &&
         this.oneOffButtons.selectedButton.engine;
-      this.updateHeader(engine).catch(Cu.reportError);
+      this.updateHeader(engine).catch(console.error);
     }
   }
 

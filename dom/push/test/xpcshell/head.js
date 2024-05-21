@@ -3,10 +3,23 @@
 
 "use strict";
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+ChromeUtils.defineESModuleGetters(this, {
+  ObjectUtils: "resource://gre/modules/ObjectUtils.sys.mjs",
+  PermissionTestUtils: "resource://testing-common/PermissionTestUtils.sys.mjs",
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+  PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
+  Preferences: "resource://gre/modules/Preferences.sys.mjs",
+  PushCrypto: "resource://gre/modules/PushCrypto.sys.mjs",
+  PushService: "resource://gre/modules/PushService.sys.mjs",
+  PushServiceHttp2: "resource://gre/modules/PushService.sys.mjs",
+  PushServiceWebSocket: "resource://gre/modules/PushService.sys.mjs",
+  pushBroadcastService: "resource://gre/modules/PushBroadcastService.sys.mjs",
+});
+
 var {
   clearInterval,
   clearTimeout,
@@ -14,31 +27,8 @@ var {
   setIntervalWithTarget,
   setTimeout,
   setTimeoutWithTarget,
-} = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-var { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
-);
-var { PlacesUtils } = ChromeUtils.import(
-  "resource://gre/modules/PlacesUtils.jsm"
-);
-var { ObjectUtils } = ChromeUtils.import(
-  "resource://gre/modules/ObjectUtils.jsm"
-);
-var { PermissionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PermissionTestUtils.jsm"
-);
+} = ChromeUtils.importESModule("resource://gre/modules/Timer.sys.mjs");
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "pushBroadcastService",
-  "resource://gre/modules/PushBroadcastService.jsm",
-  {}
-);
 XPCOMUtils.defineLazyServiceGetter(
   this,
   "PushServiceComponent",
@@ -46,10 +36,6 @@ XPCOMUtils.defineLazyServiceGetter(
   "nsIPushService"
 );
 
-const serviceExports = ChromeUtils.import(
-  "resource://gre/modules/PushService.jsm",
-  null
-);
 const servicePrefs = new Preferences("dom.push.");
 
 const WEBSOCKET_CLOSE_GOING_AWAY = 1001;
@@ -60,9 +46,9 @@ var isParent =
   Services.appinfo.processType == Ci.nsIXULRuntime.PROCESS_TYPE_DEFAULT;
 
 // Stop and clean up after the PushService.
-Services.obs.addObserver(function observe(subject, topic, data) {
+Services.obs.addObserver(function observe(subject, topic) {
   Services.obs.removeObserver(observe, topic);
-  serviceExports.PushService.uninit();
+  PushService.uninit();
   // Occasionally, `profile-change-teardown` and `xpcom-shutdown` will fire
   // before the PushService and AlarmService finish writing to IndexedDB. This
   // causes spurious errors and crashes, so we spin the event loop to let the
@@ -74,7 +60,7 @@ Services.obs.addObserver(function observe(subject, topic, data) {
     try {
       thread.processNextEvent(true);
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   }
 }, "profile-change-net-teardown");
@@ -111,7 +97,7 @@ function waterfall(...callbacks) {
         }),
       Promise.resolve()
     )
-    .catch(Cu.reportError);
+    .catch(console.error);
 }
 
 /**
@@ -121,7 +107,7 @@ function waterfall(...callbacks) {
  * @returns {Promise} A promise that fulfills when the notification is fired.
  */
 function promiseObserverNotification(topic, matchFunc) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     Services.obs.addObserver(function observe(subject, aTopic, data) {
       let matches = typeof matchFunc != "function" || matchFunc(subject, data);
       if (!matches) {
@@ -250,7 +236,7 @@ MockWebSocket.prototype = {
     return this._originalURI;
   },
 
-  asyncOpen(uri, origin, windowId, listener, context) {
+  asyncOpen(uri, origin, originAttributes, windowId, listener, context) {
     this._listener = listener;
     this._context = context;
     waterfall(() => this._listener.onStart(this._context));
@@ -319,7 +305,7 @@ MockWebSocket.prototype = {
     this._handleMessage(msg);
   },
 
-  close(code, reason) {
+  close() {
     waterfall(() => this._listener.onStop(this._context, Cr.NS_OK));
   },
 
@@ -362,7 +348,7 @@ MockWebSocket.prototype = {
   },
 };
 
-var setUpServiceInParent = async function(service, db) {
+var setUpServiceInParent = async function (service, db) {
   if (!isParent) {
     return;
   }
@@ -427,7 +413,7 @@ var setUpServiceInParent = async function(service, db) {
     }),
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",
@@ -470,7 +456,7 @@ var setUpServiceInParent = async function(service, db) {
   });
 };
 
-var tearDownServiceInParent = async function(db) {
+var tearDownServiceInParent = async function (db) {
   if (!isParent) {
     return;
   }

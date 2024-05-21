@@ -24,10 +24,10 @@ StaticAutoPtr<std::unordered_map<uint64_t, APZUpdater*>>
     APZUpdater::sWindowIdMap;
 
 APZUpdater::APZUpdater(const RefPtr<APZCTreeManager>& aApz,
-                       bool aIsUsingWebRender)
+                       bool aConnectedToWebRender)
     : mApz(aApz),
       mDestroyed(false),
-      mIsUsingWebRender(aIsUsingWebRender),
+      mConnectedToWebRender(aConnectedToWebRender),
       mThreadIdLock("APZUpdater::ThreadIdLock"),
       mQueueLock("APZUpdater::QueueLock") {
   MOZ_ASSERT(aApz);
@@ -70,13 +70,16 @@ void APZUpdater::SetUpdaterThread(const wr::WrWindowId& aWindowId) {
   }
 }
 
+// Takes a conditional lock!
 /*static*/
-void APZUpdater::PrepareForSceneSwap(const wr::WrWindowId& aWindowId) {
+void APZUpdater::PrepareForSceneSwap(const wr::WrWindowId& aWindowId)
+    MOZ_NO_THREAD_SAFETY_ANALYSIS {
   if (RefPtr<APZUpdater> updater = GetUpdater(aWindowId)) {
     updater->mApz->LockTree();
   }
 }
 
+// Assumes we took a conditional lock!
 /*static*/
 void APZUpdater::CompleteSceneSwap(const wr::WrWindowId& aWindowId,
                                    const wr::WrPipelineInfo& aInfo) {
@@ -88,6 +91,7 @@ void APZUpdater::CompleteSceneSwap(const wr::WrWindowId& aWindowId,
     // to have gotten removed from sWindowIdMap in between the two calls.
     return;
   }
+  updater->mApz->mTreeLock.AssertCurrentThreadIn();
 
   for (const auto& removedPipeline : aInfo.removed_pipelines) {
     LayersId layersId = wr::AsLayersId(removedPipeline.pipeline_id);
@@ -161,15 +165,6 @@ void APZUpdater::UpdateFocusState(LayersId aRootLayerTreeId,
                          aOriginatingLayersId, aFocusTarget));
 }
 
-void APZUpdater::UpdateHitTestingTree(Layer* aRoot, bool aIsFirstPaint,
-                                      LayersId aOriginatingLayersId,
-                                      uint32_t aPaintSequenceNumber) {
-  MOZ_ASSERT(CompositorThreadHolder::IsInCompositorThread());
-  AssertOnUpdaterThread();
-  mApz->UpdateHitTestingTree(aRoot, aIsFirstPaint, aOriginatingLayersId,
-                             aPaintSequenceNumber);
-}
-
 void APZUpdater::UpdateScrollDataAndTreeState(
     LayersId aRootLayerTreeId, LayersId aOriginatingLayersId,
     const wr::Epoch& aEpoch, WebRenderScrollData&& aScrollData) {
@@ -196,14 +191,38 @@ void APZUpdater::UpdateScrollDataAndTreeState(
             auto isFirstPaint = aScrollData.IsFirstPaint();
             auto paintSequenceNumber = aScrollData.GetPaintSequenceNumber();
 
+            auto previous = self->mScrollData.find(aOriginatingLayersId);
+            // If there's the previous scroll data which hasn't yet been
+            // processed, we need to merge the previous scroll position updates
+            // into the latest one.
+            if (previous != self->mScrollData.end()) {
+              WebRenderScrollData& previousData = previous->second;
+              if (previousData.GetWasUpdateSkipped()) {
+                MOZ_ASSERT(previousData.IsFirstPaint());
+                aScrollData.PrependUpdates(previousData);
+              }
+            }
+
             self->mScrollData[aOriginatingLayersId] = std::move(aScrollData);
             auto root = self->mScrollData.find(aRootLayerTreeId);
             if (root == self->mScrollData.end()) {
               return;
             }
-            self->mApz->UpdateHitTestingTree(
-                WebRenderScrollDataWrapper(*self, &(root->second)),
-                isFirstPaint, aOriginatingLayersId, paintSequenceNumber);
+            if ((self->mApz->UpdateHitTestingTree(
+                     WebRenderScrollDataWrapper(*self, &(root->second)),
+                     isFirstPaint, aOriginatingLayersId, paintSequenceNumber) ==
+                 APZCTreeManager::OriginatingLayersIdUpdated::No) &&
+                isFirstPaint) {
+              // If the given |aOriginatingLayersId| data wasn't used for
+              // updating, it's likly that the parent process hasn't yet
+              // received the LayersId as "ReferentId", thus we need to process
+              // it in a subsequent update where we got the "ReferentId".
+              //
+              // NOTE: We restrict the above previous scroll data prepending to
+              // the first paint case, otherwise the cumulative scroll data may
+              // be exploded if we have never received the "ReferenceId".
+              self->mScrollData[aOriginatingLayersId].SetWasUpdateSkipped();
+            }
           }));
 }
 
@@ -322,7 +341,7 @@ void APZUpdater::RunOnUpdaterThread(LayersId aLayersId,
                                     already_AddRefed<Runnable> aTask) {
   RefPtr<Runnable> task = aTask;
 
-  // In the scenario where UsingWebRenderUpdaterThread() is true, this function
+  // In the scenario where IsConnectedToWebRender() is true, this function
   // might get called early (before mUpdaterThreadId is set). In that case
   // IsUpdaterThread() will return false and we'll queue the task onto
   // mUpdaterQueue. This is fine; the task is still guaranteed to run (barring
@@ -330,11 +349,17 @@ void APZUpdater::RunOnUpdaterThread(LayersId aLayersId,
   // the callback to run tasks.
 
   if (IsUpdaterThread()) {
+    // This function should only be called from the updater thread in test
+    // scenarios where we are not connected to WebRender. If it were called from
+    // the updater thread when we are connected to WebRender, running the task
+    // right away would be incorrect (we'd need to check that |aLayersId|
+    // isn't blocked, and if it is then enqueue the task instead).
+    MOZ_ASSERT(!IsConnectedToWebRender());
     task->Run();
     return;
   }
 
-  if (UsingWebRenderUpdaterThread()) {
+  if (IsConnectedToWebRender()) {
     // If the updater thread is a WebRender thread, and we're not on it
     // right now, save the task in the queue. We will run tasks from the queue
     // during the callback from the updater thread, which we trigger by the
@@ -382,7 +407,7 @@ void APZUpdater::RunOnUpdaterThread(LayersId aLayersId,
 }
 
 bool APZUpdater::IsUpdaterThread() const {
-  if (UsingWebRenderUpdaterThread()) {
+  if (IsConnectedToWebRender()) {
     // If the updater thread id isn't set yet then we cannot be running on the
     // updater thread (because we will have the thread id before we run any
     // C++ code on it, and this function is only ever invoked from C++ code),
@@ -399,14 +424,15 @@ void APZUpdater::RunOnControllerThread(LayersId aLayersId,
 
   RefPtr<Runnable> task = aTask;
 
-  RunOnUpdaterThread(aLayersId,
-                     NewRunnableFunction("APZUpdater::RunOnControllerThread",
-                                         &APZThreadUtils::RunOnControllerThread,
-                                         std::move(task)));
+  RunOnUpdaterThread(
+      aLayersId,
+      NewRunnableFunction("APZUpdater::RunOnControllerThread",
+                          &APZThreadUtils::RunOnControllerThread,
+                          std::move(task), nsIThread::DISPATCH_NORMAL));
 }
 
-bool APZUpdater::UsingWebRenderUpdaterThread() const {
-  return mIsUsingWebRender;
+bool APZUpdater::IsConnectedToWebRender() const {
+  return mConnectedToWebRender;
 }
 
 /*static*/

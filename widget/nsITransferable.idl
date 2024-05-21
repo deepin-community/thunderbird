@@ -11,15 +11,20 @@
 
 interface nsICookieJarSettings;
 interface nsIPrincipal;
+interface nsIReferrerInfo;
 
 %{ C++
+
+// Internal formats must have their second part starting with 'x-moz-',
+// for example text/x-moz-internaltype. These cannot be assigned by
+// unprivileged content but all other types can.
+#define kInternal_Mimetype_Prefix   u"/x-moz-"_ns
 
 // these probably shouldn't live here, but in some central repository shared
 // by the entire app.
 #define kTextMime                   "text/plain"
 #define kRTFMime                    "text/rtf"
-#define kUnicodeMime                "text/unicode"
-#define kMozTextInternal          "text/x-moz-text-internal"  // text data which isn't suppoed to be parsed by other apps.
+#define kMozTextInternal            "text/x-moz-text-internal"  // text data which isn't suppoed to be parsed by other apps.
 #define kHTMLMime                   "text/html"
 #define kAOLMailMime                "AOLMAIL"
 #define kPNGImageMime               "image/png"
@@ -46,7 +51,7 @@ interface nsIPrincipal;
 // local application handler for the request's MIME type accepts images with
 // the given filename extension (from kFilePromiseDestFilename). When the
 // image is dragged out, we replace the extension with a compatible extension.
-#define kImageRequestMime           "text/_moz_requestmime"
+#define kImageRequestMime           "text/x-moz-requestmime"
 
 // the source URL for a file promise
 #define kFilePromiseURLMime         "application/x-moz-file-promise-url"
@@ -58,6 +63,8 @@ interface nsIPrincipal;
 #define kFilePromiseDirectoryMime   "application/x-moz-file-promise-dir"
 
 #define kCustomTypesMime "application/x-moz-custom-clipdata"
+
+#define kPDFJSMime "application/pdfjs"
 
 %}
 
@@ -162,6 +169,11 @@ interface nsITransferable : nsISupports
   void setTransferData(in string aFlavor, in nsISupports aData);
 
   /**
+   * Removes the data from all flavors.
+   */
+  void clearAllData();
+
+  /**
     * Add the data flavor, indicating that this transferable
     * can receive this type of flavor
     *
@@ -187,12 +199,17 @@ interface nsITransferable : nsISupports
   [notxpcom, nostdcall] attribute boolean isPrivateData;
 
   /**
-   * The principal of the source dom node this transferable was
-   * created from and the contentPolicyType for the transferable.
-   * Note, currently only used on Windows for network principal and
-   * contentPolicyType information in clipboard and drag operations.
+   * The principal associated with this transferable. This could be either the
+   * node principal of the source DOM node from which this transferable was
+   * created, or the principal of the global from which this transferable was
+   * created.
+   * XXXedgar: Rename it to something more generic, bug 1867636.
    */
   [notxpcom, nostdcall] attribute nsIPrincipal requestingPrincipal;
+
+  /**
+   * the contentPolicyType for this transferable.
+   */
   [notxpcom, nostdcall] attribute nsContentPolicyType contentPolicyType;
 
   /**
@@ -200,4 +217,9 @@ interface nsITransferable : nsISupports
    * from.
    */
   [notxpcom, nostdcall] attribute nsICookieJarSettings cookieJarSettings;
+
+  /**
+   * Used for initializing the referrer when downloading a file promise.
+   */
+  [notxpcom, nostdcall] attribute nsIReferrerInfo referrerInfo;
 };

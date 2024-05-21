@@ -12,12 +12,14 @@ apt_packages+=('curl')
 apt_packages+=('iproute2')
 apt_packages+=('locales')
 apt_packages+=('graphviz')
-apt_packages+=('python')
-apt_packages+=('python-pip')
 apt_packages+=('python3-pip')
+apt_packages+=('python-is-python3')
 apt_packages+=('shellcheck')
 apt_packages+=('sudo')
 apt_packages+=('wget')
+apt_packages+=('unzip')
+apt_packages+=('tar')
+apt_packages+=('zstd')
 
 apt-get update
 apt-get install "${apt_packages[@]}"
@@ -46,7 +48,7 @@ cd /build
 # shellcheck disable=SC1091
 . install-node.sh
 
-npm install -g yarn@1.9.4
+npm install -g yarn@1.22.18
 
 /build/tooltool.py fetch -m /tmp/eslint.tt
 mv /build/node_modules /build/node_modules_eslint
@@ -76,7 +78,7 @@ mv fzf /usr/local/bin
 
 cd /setup
 
-pip3 install --require-hashes -r /tmp/codespell_requirements.txt
+pip3 install --break-system-packages --require-hashes -r /tmp/codespell_requirements.txt
 
 ###
 # tox Setup
@@ -84,7 +86,7 @@ pip3 install --require-hashes -r /tmp/codespell_requirements.txt
 
 cd /setup
 
-pip3 install --require-hashes -r /tmp/tox_requirements.txt
+pip3 install --break-system-packages --require-hashes -r /tmp/tox_requirements.txt
 
 cd /
 rm -rf /setup

@@ -12,8 +12,6 @@
 #include "nsString.h"
 #include "nsLocalUtils.h"
 #include "nsIMsgDatabase.h"
-#include "nsMsgDBCID.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgHdr.h"
 
 #include "nsIMsgFolder.h"
@@ -28,17 +26,16 @@
 // the real fix is to attach the URI to the URL as it runs through netlib
 // then grab it and use it on the other side
 #include "nsCOMPtr.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgAccountManager.h"
 #include "nsMsgUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 
 // helper function for parsing the search field of a url
 char* extractAttributeValue(const char* searchString,
                             const char* attributeName);
 
 nsMailboxUrl::nsMailboxUrl() {
-  m_mailboxAction = nsIMailboxUrl::ActionParseMailbox;
+  m_mailboxAction = nsIMailboxUrl::ActionInvalid;
   m_filePath = nullptr;
   m_messageID = nullptr;
   m_messageKey = nsMsgKey_None;
@@ -47,6 +44,7 @@ nsMailboxUrl::nsMailboxUrl() {
   m_addDummyEnvelope = false;
   m_canonicalLineEnding = false;
   m_curMsgIndex = 0;
+  mAutodetectCharset = false;
 }
 
 nsMailboxUrl::~nsMailboxUrl() { PR_Free(m_messageID); }
@@ -64,17 +62,6 @@ NS_INTERFACE_MAP_END_INHERITING(nsMsgMailNewsUrl)
 ////////////////////////////////////////////////////////////////////////////////////
 // Begin nsIMailboxUrl specific support
 ////////////////////////////////////////////////////////////////////////////////////
-nsresult nsMailboxUrl::SetMailboxParser(nsIStreamListener* aMailboxParser) {
-  if (aMailboxParser) m_mailboxParser = aMailboxParser;
-  return NS_OK;
-}
-
-nsresult nsMailboxUrl::GetMailboxParser(nsIStreamListener** aConsumer) {
-  NS_ENSURE_ARG_POINTER(aConsumer);
-
-  NS_IF_ADDREF(*aConsumer = m_mailboxParser);
-  return NS_OK;
-}
 
 nsresult nsMailboxUrl::SetMailboxCopyHandler(
     nsIStreamListener* aMailboxCopyHandler) {
@@ -166,10 +153,9 @@ nsresult nsMailboxUrl::CreateURL(const nsACString& aSpec, nsIURL** aURL) {
   } else {
     // The URL is more like a file URL without a hostname.
     rv = NS_MutateURI(NS_STANDARDURLMUTATOR_CONTRACTID)
-             .Apply(NS_MutatorMethod(&nsIStandardURLMutator::Init,
-                                     nsIStandardURL::URLTYPE_NO_AUTHORITY, -1,
-                                     PromiseFlatCString(aSpec), nullptr,
-                                     nullptr, nullptr))
+             .Apply(&nsIStandardURLMutator::Init,
+                    nsIStandardURL::URLTYPE_NO_AUTHORITY, -1,
+                    PromiseFlatCString(aSpec), nullptr, nullptr, nullptr)
              .Finalize(url);
     NS_ENSURE_SUCCESS(rv, rv);
   }
@@ -196,28 +182,22 @@ NS_IMETHODIMP nsMailboxUrl::GetUri(nsACString& aURI) {
   // if we have been given a uri to associate with this url, then use it
   // otherwise try to reconstruct a URI on the fly....
 
-  if (!mURI.IsEmpty())
+  if (!mURI.IsEmpty()) {
     aURI = mURI;
-  else {
-    if (m_filePath) {
-      nsAutoCString baseUri;
-      nsresult rv;
-      nsCOMPtr<nsIMsgAccountManager> accountManager =
-          do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
-      NS_ENSURE_SUCCESS(rv, rv);
+  } else if (m_filePath) {
+    // This code path should only ever run for .eml messages
+    // opened from file.
+    nsAutoCString baseUri;
+    nsresult rv = m_baseURL->GetSpec(baseUri);
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsCString baseMessageURI;
+    nsCreateLocalBaseMessageURI(baseUri, baseMessageURI);
+    nsBuildLocalMessageURI(baseMessageURI, m_messageKey, aURI);
 
-      // we blow off errors here so that we can open attachments
-      // in .eml files.
-      (void)accountManager->FolderUriForPath(m_filePath, baseUri);
-      if (baseUri.IsEmpty()) {
-        rv = m_baseURL->GetSpec(baseUri);
-        NS_ENSURE_SUCCESS(rv, rv);
-      }
-      nsCString baseMessageURI;
-      nsCreateLocalBaseMessageURI(baseUri, baseMessageURI);
-      nsBuildLocalMessageURI(baseMessageURI.get(), m_messageKey, aURI);
-    } else
-      aURI = "";
+    // Remember this for the next call.
+    mURI = aURI;
+  } else {
+    aURI = "";
   }
 
   return NS_OK;
@@ -229,68 +209,41 @@ nsresult nsMailboxUrl::GetMsgHdrForKey(nsMsgKey msgKey, nsIMsgDBHdr** aMsgHdr) {
     nsCOMPtr<nsIMsgDatabase> mailDBFactory;
     nsCOMPtr<nsIMsgDatabase> mailDB;
     nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
 
-    if (msgDBService)
+    if (msgDBService) {
       rv = msgDBService->OpenMailDBFromFile(m_filePath, nullptr, false, false,
                                             getter_AddRefs(mailDB));
-    if (NS_SUCCEEDED(rv) && mailDB)  // did we get a db back?
-      rv = mailDB->GetMsgHdrForKey(msgKey, aMsgHdr);
-    else {
-      nsCOMPtr<nsIMsgWindow> msgWindow(do_QueryReferent(m_msgWindowWeak));
-      if (!msgWindow) {
-        nsCOMPtr<nsIMsgMailSession> mailSession =
-            do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
-        NS_ENSURE_SUCCESS(rv, rv);
-        mailSession->GetTopmostMsgWindow(getter_AddRefs(msgWindow));
-      }
-
-      // maybe this is .eml file we're trying to read. See if we can get a
-      // header from the header sink.
-      if (msgWindow) {
-        nsCOMPtr<nsIMsgHeaderSink> headerSink;
-        msgWindow->GetMsgHeaderSink(getter_AddRefs(headerSink));
-        if (headerSink) {
-          rv = headerSink->GetDummyMsgHeader(aMsgHdr);
-          if (NS_SUCCEEDED(rv)) {
-            int64_t fileSize = 0;
-            m_filePath->GetFileSize(&fileSize);
-            (*aMsgHdr)->SetMessageSize(fileSize);
-          }
-        }
-      }
     }
-  } else
+    if (NS_SUCCEEDED(rv) && mailDB) {
+      // Did we get a db back?
+      rv = mailDB->GetMsgHdrForKey(msgKey, aMsgHdr);
+    } else {
+      rv = NS_OK;
+    }
+  } else {
     rv = NS_ERROR_NULL_POINTER;
+  }
 
   return rv;
 }
 
 NS_IMETHODIMP nsMailboxUrl::GetMessageHeader(nsIMsgDBHdr** aMsgHdr) {
-  if (m_dummyHdr) {
-    NS_IF_ADDREF(*aMsgHdr = m_dummyHdr);
-    return NS_OK;
-  }
   return GetMsgHdrForKey(m_messageKey, aMsgHdr);
-}
-
-NS_IMETHODIMP nsMailboxUrl::SetMessageHeader(nsIMsgDBHdr* aMsgHdr) {
-  m_dummyHdr = aMsgHdr;
-  return NS_OK;
 }
 
 NS_IMPL_GETSET(nsMailboxUrl, AddDummyEnvelope, bool, m_addDummyEnvelope)
 NS_IMPL_GETSET(nsMailboxUrl, CanonicalLineEnding, bool, m_canonicalLineEnding)
 
 NS_IMETHODIMP
-nsMailboxUrl::GetOriginalSpec(char** aSpec) {
-  if (!aSpec || m_originalSpec.IsEmpty()) return NS_ERROR_NULL_POINTER;
-  *aSpec = ToNewCString(m_originalSpec);
+nsMailboxUrl::GetOriginalSpec(nsACString& aSpec) {
+  if (m_originalSpec.IsEmpty()) return NS_ERROR_NULL_POINTER;
+  aSpec = m_originalSpec;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMailboxUrl::SetOriginalSpec(const char* aSpec) {
+nsMailboxUrl::SetOriginalSpec(const nsACString& aSpec) {
   m_originalSpec = aSpec;
   return NS_OK;
 }
@@ -355,8 +308,10 @@ nsresult nsMailboxUrl::ParseSearchPart() {
 
     PR_Free(msgPart);
     PR_Free(messageKey);
-  } else
-    m_mailboxAction = nsIMailboxUrl::ActionParseMailbox;
+  } else {
+    m_mailboxAction = nsIMailboxUrl::ActionInvalid;
+    return NS_ERROR_UNEXPECTED;
+  }
 
   return rv;
 }
@@ -376,7 +331,7 @@ nsresult nsMailboxUrl::ParseUrl() {
     nsCString fileUri("file://");
     fileUri.Append(m_file);
     nsresult rv;
-    nsCOMPtr<nsIIOService> ioService = mozilla::services::GetIOService();
+    nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
     NS_ENSURE_TRUE(ioService, NS_ERROR_UNEXPECTED);
     nsCOMPtr<nsIURI> uri;
     rv = ioService->NewURI(fileUri, nullptr, nullptr, getter_AddRefs(uri));
@@ -434,8 +389,7 @@ char* extractAttributeValue(const char* searchString,
       startOfAttribute += attributeNameSize;  // skip over the attributeName
       if (startOfAttribute)  // is there something after the attribute name
       {
-        char* endOfAttribute =
-            startOfAttribute ? PL_strchr(startOfAttribute, '&') : nullptr;
+        char* endOfAttribute = PL_strchr(startOfAttribute, '&');
         nsDependentCString attributeValueStr;
         if (startOfAttribute &&
             endOfAttribute)  // is there text after attribute value
@@ -465,21 +419,18 @@ nsresult nsMailboxUrl::GetFolder(nsIMsgFolder** msgFolder) {
   GetUri(uri);
   NS_ENSURE_TRUE(!uri.IsEmpty(), NS_ERROR_FAILURE);
   nsCOMPtr<nsIMsgDBHdr> msg;
-  GetMsgDBHdrFromURI(uri.get(), getter_AddRefs(msg));
+  GetMsgDBHdrFromURI(uri, getter_AddRefs(msg));
   if (!msg) return NS_ERROR_FAILURE;
   return msg->GetFolder(msgFolder);
 }
 
-NS_IMETHODIMP nsMailboxUrl::GetCharsetOverRide(char** aCharacterSet) {
-  if (!mCharsetOverride.IsEmpty())
-    *aCharacterSet = ToNewCString(mCharsetOverride);
-  else
-    *aCharacterSet = nullptr;
+NS_IMETHODIMP nsMailboxUrl::GetAutodetectCharset(bool* aAutodetectCharset) {
+  *aAutodetectCharset = mAutodetectCharset;
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMailboxUrl::SetCharsetOverRide(const char* aCharacterSet) {
-  mCharsetOverride = aCharacterSet;
+NS_IMETHODIMP nsMailboxUrl::SetAutodetectCharset(bool aAutodetectCharset) {
+  mAutodetectCharset = aAutodetectCharset;
   return NS_OK;
 }
 

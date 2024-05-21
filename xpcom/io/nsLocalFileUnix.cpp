@@ -8,14 +8,16 @@
  * Implementation of nsIFile for "unixy" systems.
  */
 
+#include "nsLocalFile.h"
+
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/CheckedInt.h"
 #include "mozilla/DebugOnly.h"
 #include "mozilla/Sprintf.h"
 #include "mozilla/FilePreferences.h"
 #include "prtime.h"
 
-#include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -23,17 +25,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <utime.h>
 #include <dirent.h>
-#include <ctype.h>
-#include <locale.h>
 
 #if defined(XP_MACOSX)
 #  include <sys/xattr.h>
 #endif
 
-#if defined(HAVE_SYS_QUOTA_H) && defined(HAVE_LINUX_QUOTA_H)
-#  define USE_LINUX_QUOTACTL
+#if defined(USE_LINUX_QUOTACTL)
 #  include <sys/mount.h>
 #  include <sys/quota.h>
 #  include <sys/sysmacros.h>
@@ -43,14 +41,9 @@
 #endif
 
 #include "nsDirectoryServiceDefs.h"
-#include "nsCRT.h"
 #include "nsCOMPtr.h"
-#include "nsMemory.h"
 #include "nsIFile.h"
 #include "nsString.h"
-#include "nsReadableUtils.h"
-#include "nsLocalFile.h"
-#include "prproces.h"
 #include "nsIDirectoryEnumerator.h"
 #include "nsSimpleEnumerator.h"
 #include "private/pprio.h"
@@ -77,7 +70,6 @@ static nsresult MacErrorMapper(OSErr inErr);
 
 #include "nsNativeCharsetUtils.h"
 #include "nsTraceRefcnt.h"
-#include "nsHashKeys.h"
 
 /**
  *  we need these for statfs()
@@ -95,11 +87,6 @@ extern "C" int statvfs(const char*, struct statvfs*);
 
 #ifdef HAVE_SYS_VFS_H
 #  include <sys/vfs.h>
-#endif
-
-#ifdef HAVE_SYS_MOUNT_H
-#  include <sys/param.h>
-#  include <sys/mount.h>
 #endif
 
 #if defined(HAVE_STATVFS64) && (!defined(LINUX) && !defined(__osf__))
@@ -283,14 +270,10 @@ NS_IMPL_ISUPPORTS(nsLocalFile, nsILocalFileMac, nsIFile)
 NS_IMPL_ISUPPORTS(nsLocalFile, nsIFile)
 #endif
 
-nsresult nsLocalFile::nsLocalFileConstructor(nsISupports* aOuter,
-                                             const nsIID& aIID,
+nsresult nsLocalFile::nsLocalFileConstructor(const nsIID& aIID,
                                              void** aInstancePtr) {
   if (NS_WARN_IF(!aInstancePtr)) {
     return NS_ERROR_INVALID_ARG;
-  }
-  if (NS_WARN_IF(aOuter)) {
-    return NS_ERROR_NO_AGGREGATION;
   }
 
   *aInstancePtr = nullptr;
@@ -324,19 +307,35 @@ nsLocalFile::Clone(nsIFile** aFile) {
 
 NS_IMETHODIMP
 nsLocalFile::InitWithNativePath(const nsACString& aFilePath) {
-  if (aFilePath.EqualsLiteral("~") ||
-      Substring(aFilePath, 0, 2).EqualsLiteral("~/")) {
-    nsCOMPtr<nsIFile> homeDir;
-    nsAutoCString homePath;
-    if (NS_FAILED(
-            NS_GetSpecialDirectory(NS_OS_HOME_DIR, getter_AddRefs(homeDir))) ||
-        NS_FAILED(homeDir->GetNativePath(homePath))) {
-      return NS_ERROR_FAILURE;
-    }
+  if (!aFilePath.IsEmpty() && aFilePath.First() == '~') {
+    if (aFilePath.Length() == 1 || aFilePath.CharAt(1) == '/') {
+      // Home dir for the current user
 
-    mPath = homePath;
-    if (aFilePath.Length() > 2) {
-      mPath.Append(Substring(aFilePath, 1, aFilePath.Length() - 1));
+      nsCOMPtr<nsIFile> homeDir;
+      nsAutoCString homePath;
+      if (NS_FAILED(NS_GetSpecialDirectory(NS_OS_HOME_DIR,
+                                           getter_AddRefs(homeDir))) ||
+          NS_FAILED(homeDir->GetNativePath(homePath))) {
+        return NS_ERROR_FAILURE;
+      }
+
+      mPath = homePath;
+      if (aFilePath.Length() > 2) {
+        mPath.Append(Substring(aFilePath, 1));
+      }
+    } else {
+      // Home dir for an arbitrary user e.g. `~foo/bar` -> `/home/foo/bar`
+      // (`/Users/foo/bar` on Mac). The accurate way to get this directory
+      // is with `getpwnam`, but we would like to avoid doing blocking
+      // filesystem I/O while creating an `nsIFile`.
+
+      mPath =
+#ifdef XP_MACOSX
+          "/Users/"_ns
+#else
+          "/home/"_ns
+#endif
+          + Substring(aFilePath, 1);
     }
   } else {
     if (aFilePath.IsEmpty() || aFilePath.First() != '/') {
@@ -559,9 +558,10 @@ nsLocalFile::AppendNative(const nsACString& aFragment) {
     return NS_OK;
   }
 
-  // only one component of path can be appended
+  // only one component of path can be appended and cannot append ".."
   nsACString::const_iterator begin, end;
-  if (FindCharInReadable('/', aFragment.BeginReading(begin),
+  if (aFragment.EqualsASCII("..") ||
+      FindCharInReadable('/', aFragment.BeginReading(begin),
                          aFragment.EndReading(end))) {
     return NS_ERROR_FILE_UNRECOGNIZED_PATH;
   }
@@ -575,9 +575,33 @@ nsLocalFile::AppendRelativeNativePath(const nsACString& aFragment) {
     return NS_OK;
   }
 
-  // No leading '/'
-  if (aFragment.First() == '/') {
+  // No leading '/' and cannot be ".."
+  if (aFragment.First() == '/' || aFragment.EqualsASCII("..")) {
     return NS_ERROR_FILE_UNRECOGNIZED_PATH;
+  }
+
+  if (aFragment.Contains('/')) {
+    // can't contain .. as a path component. Ensure that the valid components
+    // "foo..foo", "..foo", and "foo.." are not falsely detected,
+    // but the invalid paths "../", "foo/..", "foo/../foo",
+    // "../foo", etc are.
+    constexpr auto doubleDot = "/.."_ns;
+    nsACString::const_iterator start, end, offset;
+    aFragment.BeginReading(start);
+    aFragment.EndReading(end);
+    offset = end;
+    while (FindInReadable(doubleDot, start, offset)) {
+      if (offset == end || *offset == '/') {
+        return NS_ERROR_FILE_UNRECOGNIZED_PATH;
+      }
+      start = offset;
+      offset = end;
+    }
+
+    // catches the remaining cases of prefixes
+    if (StringBeginsWith(aFragment, "../"_ns)) {
+      return NS_ERROR_FILE_UNRECOGNIZED_PATH;
+    }
   }
 
   if (!mPath.EqualsLiteral("/")) {
@@ -642,6 +666,11 @@ nsLocalFile::SetNativeLeafName(const nsACString& aLeafName) {
   LocateNativeLeafName(begin, end);
   mPath.Replace(begin.get() - mPath.get(), Distance(begin, end), aLeafName);
   return NS_OK;
+}
+
+NS_IMETHODIMP
+nsLocalFile::GetDisplayName(nsAString& aLeafName) {
+  return GetLeafName(aLeafName);
 }
 
 nsCString nsLocalFile::NativePath() { return mPath; }
@@ -916,11 +945,7 @@ nsLocalFile::CopyToNative(nsIFile* aNewParent, const nsACString& aNewName) {
 
 #if defined(XP_MACOSX)
     bool quarantined = true;
-    if (getxattr(mPath.get(), "com.apple.quarantine", nullptr, 0, 0, 0) == -1) {
-      if (errno == ENOATTR) {
-        quarantined = false;
-      }
-    }
+    (void)HasXAttr("com.apple.quarantine"_ns, &quarantined);
 #endif
 
     PRFileDesc* oldFD;
@@ -1006,7 +1031,7 @@ nsLocalFile::CopyToNative(nsIFile* aNewParent, const nsACString& aNewName) {
     else if (!quarantined) {
       // If the original file was not in quarantine, lift the quarantine that
       // file creation added because of LSFileQuarantineEnabled.
-      removexattr(newPathName.get(), "com.apple.quarantine", 0);
+      (void)newFile->DelXAttr("com.apple.quarantine"_ns);
     }
 #endif  // defined(XP_MACOSX)
 
@@ -1092,7 +1117,7 @@ nsLocalFile::MoveToFollowingLinksNative(nsIFile* aNewParent,
 }
 
 NS_IMETHODIMP
-nsLocalFile::Remove(bool aRecursive) {
+nsLocalFile::Remove(bool aRecursive, uint32_t* aRemoveCount) {
   CHECK_mPath();
   ENSURE_STAT_CACHE();
 
@@ -1104,7 +1129,11 @@ nsLocalFile::Remove(bool aRecursive) {
   }
 
   if (isSymLink || !S_ISDIR(mCachedStat.st_mode)) {
-    return NSRESULT_FOR_RETURN(unlink(mPath.get()));
+    rv = NSRESULT_FOR_RETURN(unlink(mPath.get()));
+    if (NS_SUCCEEDED(rv) && aRemoveCount) {
+      *aRemoveCount += 1;
+    }
+    return rv;
   }
 
   if (aRecursive) {
@@ -1129,11 +1158,13 @@ nsLocalFile::Remove(bool aRecursive) {
       if (NS_FAILED(rv)) {
         return NS_ERROR_FAILURE;
       }
-      rv = file->Remove(aRecursive);
+      // XXX: We care the result of the removal here while
+      // nsLocalFileWin does not. We should align the behavior. (bug 1779696)
+      rv = file->Remove(aRecursive, aRemoveCount);
 
 #ifdef ANDROID
       // See bug 580434 - Bionic gives us just deleted files
-      if (rv == NS_ERROR_FILE_TARGET_DOES_NOT_EXIST) {
+      if (rv == NS_ERROR_FILE_NOT_FOUND) {
         continue;
       }
 #endif
@@ -1143,13 +1174,18 @@ nsLocalFile::Remove(bool aRecursive) {
     }
   }
 
-  return NSRESULT_FOR_RETURN(rmdir(mPath.get()));
+  rv = NSRESULT_FOR_RETURN(rmdir(mPath.get()));
+  if (NS_SUCCEEDED(rv) && aRemoveCount) {
+    *aRemoveCount += 1;
+  }
+  return rv;
 }
 
-nsresult nsLocalFile::GetLastModifiedTimeImpl(PRTime* aLastModTime,
-                                              bool aFollowLinks) {
+nsresult nsLocalFile::GetTimeImpl(PRTime* aTime,
+                                  nsLocalFile::TimeField aTimeField,
+                                  bool aFollowLinks) {
   CHECK_mPath();
-  if (NS_WARN_IF(!aLastModTime)) {
+  if (NS_WARN_IF(!aTime)) {
     return NS_ERROR_INVALID_ARG;
   }
 
@@ -1161,17 +1197,36 @@ nsresult nsLocalFile::GetLastModifiedTimeImpl(PRTime* aLastModTime,
     return NSRESULT_FOR_ERRNO();
   }
 
+  struct timespec* timespec;
+  switch (aTimeField) {
+    case TimeField::AccessedTime:
 #if (defined(__APPLE__) && defined(__MACH__))
-  *aLastModTime = TimespecToMillis(fileStats.st_mtimespec);
+      timespec = &fileStats.st_atimespec;
 #else
-  *aLastModTime = TimespecToMillis(fileStats.st_mtim);
+      timespec = &fileStats.st_atim;
 #endif
+      break;
+
+    case TimeField::ModifiedTime:
+#if (defined(__APPLE__) && defined(__MACH__))
+      timespec = &fileStats.st_mtimespec;
+#else
+      timespec = &fileStats.st_mtim;
+#endif
+      break;
+
+    default:
+      MOZ_CRASH("Unknown TimeField");
+  }
+
+  *aTime = TimespecToMillis(*timespec);
 
   return NS_OK;
 }
 
-nsresult nsLocalFile::SetLastModifiedTimeImpl(PRTime aLastModTime,
-                                              bool aFollowLinks) {
+nsresult nsLocalFile::SetTimeImpl(PRTime aTime,
+                                  nsLocalFile::TimeField aTimeField,
+                                  bool aFollowLinks) {
   CHECK_mPath();
 
   using UtimesFn = int (*)(const char*, const timeval*);
@@ -1183,49 +1238,92 @@ nsresult nsLocalFile::SetLastModifiedTimeImpl(PRTime aLastModTime,
   }
 #endif
 
-  int result;
-  if (aLastModTime != 0) {
-    ENSURE_STAT_CACHE();
-    timeval access{};
-#if (defined(__APPLE__) && defined(__MACH__))
-    access.tv_sec = mCachedStat.st_atimespec.tv_sec;
-    access.tv_usec = mCachedStat.st_atimespec.tv_nsec / 1000;
-#else
-    access.tv_sec = mCachedStat.st_atim.tv_sec;
-    access.tv_usec = mCachedStat.st_atim.tv_nsec / 1000;
-#endif
-    timeval modification{};
-    modification.tv_sec = aLastModTime / PR_MSEC_PER_SEC;
-    modification.tv_usec = (aLastModTime % PR_MSEC_PER_SEC) * PR_USEC_PER_MSEC;
+  ENSURE_STAT_CACHE();
 
-    timeval times[2];
-    times[0] = access;
-    times[1] = modification;
-    result = utimesFn(mPath.get(), times);
-  } else {
-    result = utimesFn(mPath.get(), nullptr);
+  if (aTime == 0) {
+    aTime = PR_Now();
   }
+
+  // We only want to write to a single field (accessed time or modified time),
+  // but utimes() doesn't let you omit one. If you do, it will set that field to
+  // the current time, which is not what we want.
+  //
+  // So what we do is write to both fields, but copy one of the fields from our
+  // cached stat structure.
+  //
+  // If we are writing to the accessed time field, then we want to copy the
+  // modified time and vice versa.
+
+  timeval times[2];
+
+  const size_t writeIndex = aTimeField == TimeField::AccessedTime ? 0 : 1;
+  const size_t copyIndex = aTimeField == TimeField::AccessedTime ? 1 : 0;
+
+#if (defined(__APPLE__) && defined(__MACH__))
+  auto* copyFrom = aTimeField == TimeField::AccessedTime
+                       ? &mCachedStat.st_mtimespec
+                       : &mCachedStat.st_atimespec;
+#else
+  auto* copyFrom = aTimeField == TimeField::AccessedTime ? &mCachedStat.st_mtim
+                                                         : &mCachedStat.st_atim;
+#endif
+
+  times[copyIndex].tv_sec = copyFrom->tv_sec;
+  times[copyIndex].tv_usec = copyFrom->tv_nsec / 1000;
+
+  times[writeIndex].tv_sec = aTime / PR_MSEC_PER_SEC;
+  times[writeIndex].tv_usec = (aTime % PR_MSEC_PER_SEC) * PR_USEC_PER_MSEC;
+
+  int result = utimesFn(mPath.get(), times);
   return NSRESULT_FOR_RETURN(result);
 }
 
 NS_IMETHODIMP
+nsLocalFile::GetLastAccessedTime(PRTime* aLastAccessedTime) {
+  return GetTimeImpl(aLastAccessedTime, TimeField::AccessedTime,
+                     /* follow links? */ true);
+}
+
+NS_IMETHODIMP
+nsLocalFile::SetLastAccessedTime(PRTime aLastAccessedTime) {
+  return SetTimeImpl(aLastAccessedTime, TimeField::AccessedTime,
+                     /* follow links? */ true);
+}
+
+NS_IMETHODIMP
+nsLocalFile::GetLastAccessedTimeOfLink(PRTime* aLastAccessedTime) {
+  return GetTimeImpl(aLastAccessedTime, TimeField::AccessedTime,
+                     /* follow links? */ false);
+}
+
+NS_IMETHODIMP
+nsLocalFile::SetLastAccessedTimeOfLink(PRTime aLastAccessedTime) {
+  return SetTimeImpl(aLastAccessedTime, TimeField::AccessedTime,
+                     /* follow links? */ false);
+}
+
+NS_IMETHODIMP
 nsLocalFile::GetLastModifiedTime(PRTime* aLastModTime) {
-  return GetLastModifiedTimeImpl(aLastModTime, /* follow links? */ true);
+  return GetTimeImpl(aLastModTime, TimeField::ModifiedTime,
+                     /* follow links? */ true);
 }
 
 NS_IMETHODIMP
 nsLocalFile::SetLastModifiedTime(PRTime aLastModTime) {
-  return SetLastModifiedTimeImpl(aLastModTime, /* follow links ? */ true);
+  return SetTimeImpl(aLastModTime, TimeField::ModifiedTime,
+                     /* follow links ? */ true);
 }
 
 NS_IMETHODIMP
 nsLocalFile::GetLastModifiedTimeOfLink(PRTime* aLastModTimeOfLink) {
-  return GetLastModifiedTimeImpl(aLastModTimeOfLink, /* follow link? */ false);
+  return GetTimeImpl(aLastModTimeOfLink, TimeField::ModifiedTime,
+                     /* follow link? */ false);
 }
 
 NS_IMETHODIMP
 nsLocalFile::SetLastModifiedTimeOfLink(PRTime aLastModTimeOfLink) {
-  return SetLastModifiedTimeImpl(aLastModTimeOfLink, /* follow links? */ false);
+  return SetTimeImpl(aLastModTimeOfLink, TimeField::ModifiedTime,
+                     /* follow links? */ false);
 }
 
 NS_IMETHODIMP
@@ -1439,9 +1537,18 @@ static bool GetDeviceName(unsigned int aDeviceMajor, unsigned int aDeviceMinor,
 }
 #endif
 
-NS_IMETHODIMP
-nsLocalFile::GetDiskSpaceAvailable(int64_t* aDiskSpaceAvailable) {
-  if (NS_WARN_IF(!aDiskSpaceAvailable)) {
+#if defined(USE_LINUX_QUOTACTL)
+template <typename StatInfoFunc, typename QuotaInfoFunc>
+nsresult nsLocalFile::GetDiskInfo(StatInfoFunc&& aStatInfoFunc,
+                                  QuotaInfoFunc&& aQuotaInfoFunc,
+                                  int64_t* aResult)
+#else
+template <typename StatInfoFunc>
+nsresult nsLocalFile::GetDiskInfo(StatInfoFunc&& aStatInfoFunc,
+                                  int64_t* aResult)
+#endif
+{
+  if (NS_WARN_IF(!aResult)) {
     return NS_ERROR_INVALID_ARG;
   }
 
@@ -1459,32 +1566,36 @@ nsLocalFile::GetDiskSpaceAvailable(int64_t* aDiskSpaceAvailable) {
    * F_BSIZE = block size on disk.
    * f_bavail = number of free blocks available to a non-superuser.
    * f_bfree = number of total free blocks in file system.
+   * f_blocks = number of total used or free blocks in file system.
    */
 
   if (STATFS(mPath.get(), &fs_buf) < 0) {
     // The call to STATFS failed.
 #  ifdef DEBUG
-    printf("ERROR: GetDiskSpaceAvailable: STATFS call FAILED. \n");
+    printf("ERROR: GetDiskInfo: STATFS call FAILED. \n");
 #  endif
     return NS_ERROR_FAILURE;
   }
 
-  *aDiskSpaceAvailable = (int64_t)fs_buf.F_BSIZE * fs_buf.f_bavail;
+  CheckedInt64 statfsResult = std::forward<StatInfoFunc>(aStatInfoFunc)(fs_buf);
+  if (!statfsResult.isValid()) {
+    return NS_ERROR_CANNOT_CONVERT_DATA;
+  }
 
-#  ifdef DEBUG_DISK_SPACE
-  printf("DiskSpaceAvailable: %lu bytes\n", *aDiskSpaceAvailable);
-#  endif
+  // Assign statfsResult to *aResult in case one of the quota calls fails.
+  *aResult = statfsResult.value();
 
 #  if defined(USE_LINUX_QUOTACTL)
 
   if (!FillStatCache()) {
-    // Return available size from statfs
+    // Returns info from statfs
     return NS_OK;
   }
 
-  nsCString deviceName;
+  nsAutoCString deviceName;
   if (!GetDeviceName(major(mCachedStat.st_dev), minor(mCachedStat.st_dev),
                      deviceName)) {
+    // Returns info from statfs
     return NS_OK;
   }
 
@@ -1495,36 +1606,73 @@ nsLocalFile::GetDiskSpaceAvailable(int64_t* aDiskSpaceAvailable) {
       && dq.dqb_valid & QIF_BLIMITS
 #    endif
       && dq.dqb_bhardlimit) {
-    int64_t QuotaSpaceAvailable = 0;
-    // dqb_bhardlimit is count of BLOCK_SIZE blocks, dqb_curspace is bytes
-    if ((BLOCK_SIZE * dq.dqb_bhardlimit) > dq.dqb_curspace)
-      QuotaSpaceAvailable =
-          int64_t(BLOCK_SIZE * dq.dqb_bhardlimit - dq.dqb_curspace);
-    if (QuotaSpaceAvailable < *aDiskSpaceAvailable) {
-      *aDiskSpaceAvailable = QuotaSpaceAvailable;
+    CheckedInt64 quotaResult = std::forward<QuotaInfoFunc>(aQuotaInfoFunc)(dq);
+    if (!quotaResult.isValid()) {
+      // Returns info from statfs
+      return NS_OK;
+    }
+
+    if (quotaResult.value() < *aResult) {
+      *aResult = quotaResult.value();
     }
   }
+#  endif  // defined(USE_LINUX_QUOTACTL)
+
+#  ifdef DEBUG_DISK_SPACE
+  printf("DiskInfo: %lu bytes\n", *aResult);
 #  endif
 
   return NS_OK;
 
-#else
+#else  // STATFS
   /*
    * This platform doesn't have statfs or statvfs.  I'm sure that there's
-   * a way to check for free disk space on platforms that don't have statfs
-   * (I'm SURE they have df, for example).
+   * a way to check for free disk space and disk capacity on platforms that
+   * don't have statfs (I'm SURE they have df, for example).
    *
    * Until we figure out how to do that, lets be honest and say that this
    * command isn't implemented properly for these platforms yet.
    */
 #  ifdef DEBUG
-  printf(
-      "ERROR: GetDiskSpaceAvailable: Not implemented for plaforms without "
-      "statfs.\n");
+  printf("ERROR: GetDiskInfo: Not implemented for plaforms without statfs.\n");
 #  endif
   return NS_ERROR_NOT_IMPLEMENTED;
 
-#endif /* STATFS */
+#endif  // STATFS
+}
+
+NS_IMETHODIMP
+nsLocalFile::GetDiskSpaceAvailable(int64_t* aDiskSpaceAvailable) {
+  return GetDiskInfo(
+      [](const struct STATFS& aStatInfo) {
+        return aStatInfo.f_bavail * static_cast<uint64_t>(aStatInfo.F_BSIZE);
+      },
+#if defined(USE_LINUX_QUOTACTL)
+      [](const struct dqblk& aQuotaInfo) -> uint64_t {
+        // dqb_bhardlimit is count of BLOCK_SIZE blocks, dqb_curspace is bytes
+        const uint64_t hardlimit = aQuotaInfo.dqb_bhardlimit * BLOCK_SIZE;
+        if (hardlimit > aQuotaInfo.dqb_curspace) {
+          return hardlimit - aQuotaInfo.dqb_curspace;
+        }
+        return 0;
+      },
+#endif
+      aDiskSpaceAvailable);
+}
+
+NS_IMETHODIMP
+nsLocalFile::GetDiskCapacity(int64_t* aDiskCapacity) {
+  return GetDiskInfo(
+      [](const struct STATFS& aStatInfo) {
+        return aStatInfo.f_blocks * static_cast<uint64_t>(aStatInfo.F_BSIZE);
+      },
+#if defined(USE_LINUX_QUOTACTL)
+      [](const struct dqblk& aQuotaInfo) {
+        // dqb_bhardlimit is count of BLOCK_SIZE blocks
+        return aQuotaInfo.dqb_bhardlimit * BLOCK_SIZE;
+      },
+#endif
+      aDiskCapacity);
 }
 
 NS_IMETHODIMP
@@ -1652,11 +1800,16 @@ nsLocalFile::IsExecutable(bool* aResult) {
 
     // Search for any of the set of executable extensions.
     static const char* const executableExts[] = {
+#ifdef MOZ_WIDGET_COCOA
+        "afploc",  // Can point to other files.
+#endif
         "air",  // Adobe AIR installer
 #ifdef MOZ_WIDGET_COCOA
+        "atloc",    // Can point to other files.
         "fileloc",  // File location files can be used to point to other
                     // files.
-        "inetloc", // Shouldn't be able to do the same, but can, due to
+        "ftploc",   // Can point to other files.
+        "inetloc",  // Shouldn't be able to do the same, but can, due to
                     // macOS vulnerabilities.
 #endif
         "jar"  // java application bundle
@@ -1833,6 +1986,46 @@ nsLocalFile::Contains(nsIFile* aInFile, bool* aResult) {
   return NS_OK;
 }
 
+static nsresult ReadLinkSafe(const nsCString& aTarget, int32_t aExpectedSize,
+                             nsACString& aOutBuffer) {
+  // If we call readlink with a buffer size S it returns S, then we cannot tell
+  // if the buffer was big enough to hold the entire path. We allocate an
+  // additional byte so we can check if the buffer was large enough.
+  const auto allocSize = CheckedInt<size_t>(aExpectedSize) + 1;
+  if (!allocSize.isValid()) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
+
+  auto result = aOutBuffer.BulkWrite(allocSize.value(), 0, false);
+  if (result.isErr()) {
+    return result.unwrapErr();
+  }
+
+  auto handle = result.unwrap();
+
+  while (true) {
+    ssize_t bytesWritten =
+        readlink(aTarget.get(), handle.Elements(), handle.Length());
+    if (bytesWritten < 0) {
+      return NSRESULT_FOR_ERRNO();
+    }
+
+    // written >= 0 so it is safe to cast to size_t.
+    if ((size_t)bytesWritten < handle.Length()) {
+      // Target might have changed since the lstat call, or lstat might lie, see
+      // bug 1791029.
+      handle.Finish(bytesWritten, false);
+      return NS_OK;
+    }
+
+    // The buffer was not large enough, so double it and try again.
+    auto restartResult = handle.RestartBulkWrite(handle.Length() * 2, 0, false);
+    if (restartResult.isErr()) {
+      return restartResult.unwrapErr();
+    }
+  }
+}
+
 NS_IMETHODIMP
 nsLocalFile::GetNativeTarget(nsACString& aResult) {
   CHECK_mPath();
@@ -1847,17 +2040,12 @@ nsLocalFile::GetNativeTarget(nsACString& aResult) {
     return NS_ERROR_FILE_INVALID_PATH;
   }
 
-  int32_t size = (int32_t)symStat.st_size;
   nsAutoCString target;
-  if (!target.SetLength(size, mozilla::fallible)) {
-    return NS_ERROR_OUT_OF_MEMORY;
+  nsresult rv = ReadLinkSafe(mPath, symStat.st_size, target);
+  if (NS_FAILED(rv)) {
+    return rv;
   }
 
-  if (readlink(mPath.get(), target.BeginWriting(), (size_t)size) < 0) {
-    return NSRESULT_FOR_ERRNO();
-  }
-
-  nsresult rv = NS_OK;
   nsCOMPtr<nsIFile> self(this);
   int32_t maxLinks = 40;
   while (true) {
@@ -1895,20 +2083,12 @@ nsLocalFile::GetNativeTarget(nsACString& aResult) {
       break;
     }
 
-    int32_t newSize = (int32_t)symStat.st_size;
-    size = newSize;
     nsAutoCString newTarget;
-    if (!newTarget.SetLength(size, mozilla::fallible)) {
-      rv = NS_ERROR_OUT_OF_MEMORY;
+    rv = ReadLinkSafe(flatRetval, symStat.st_size, newTarget);
+    if (NS_FAILED(rv)) {
       break;
     }
 
-    int32_t linkLen =
-        readlink(flatRetval.get(), newTarget.BeginWriting(), size);
-    if (linkLen == -1) {
-      rv = NSRESULT_FOR_ERRNO();
-      break;
-    }
     target = newTarget;
   }
 
@@ -2034,28 +2214,7 @@ nsLocalFile::Reveal() {
   if (!giovfs) {
     return NS_ERROR_FAILURE;
   }
-
-  bool isDirectory;
-  if (NS_FAILED(IsDirectory(&isDirectory))) {
-    return NS_ERROR_FAILURE;
-  }
-
-  if (isDirectory) {
-    return giovfs->ShowURIForInput(mPath);
-  }
-  if (NS_SUCCEEDED(giovfs->OrgFreedesktopFileManager1ShowItems(mPath))) {
-    return NS_OK;
-  }
-  nsCOMPtr<nsIFile> parentDir;
-  nsAutoCString dirPath;
-  if (NS_FAILED(GetParent(getter_AddRefs(parentDir)))) {
-    return NS_ERROR_FAILURE;
-  }
-  if (NS_FAILED(parentDir->GetNativePath(dirPath))) {
-    return NS_ERROR_FAILURE;
-  }
-
-  return giovfs->ShowURIForInput(dirPath);
+  return giovfs->RevealFile(this);
 #elif defined(MOZ_WIDGET_COCOA)
   CFURLRef url;
   if (NS_SUCCEEDED(GetCFURL(&url))) {
@@ -2081,7 +2240,7 @@ nsLocalFile::Launch() {
     return NS_ERROR_FAILURE;
   }
 
-  return giovfs->ShowURIForInput(mPath);
+  return giovfs->LaunchFile(mPath);
 #elif defined(MOZ_WIDGET_ANDROID)
   // Not supported on GeckoView
   return NS_ERROR_NOT_IMPLEMENTED;
@@ -2230,6 +2389,86 @@ nsresult NS_NewLocalFile(const nsAString& aPath, bool aFollowLinks,
 // nsILocalFileMac
 
 #ifdef MOZ_WIDGET_COCOA
+
+NS_IMETHODIMP
+nsLocalFile::HasXAttr(const nsACString& aAttrName, bool* aHasAttr) {
+  NS_ENSURE_ARG_POINTER(aHasAttr);
+
+  nsAutoCString attrName{aAttrName};
+
+  ssize_t size = getxattr(mPath.get(), attrName.get(), nullptr, 0, 0, 0);
+  if (size == -1) {
+    if (errno == ENOATTR) {
+      *aHasAttr = false;
+    } else {
+      return NSRESULT_FOR_ERRNO();
+    }
+  } else {
+    *aHasAttr = true;
+  }
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsLocalFile::GetXAttr(const nsACString& aAttrName,
+                      nsTArray<uint8_t>& aAttrValue) {
+  aAttrValue.Clear();
+
+  nsAutoCString attrName{aAttrName};
+
+  ssize_t size = getxattr(mPath.get(), attrName.get(), nullptr, 0, 0, 0);
+
+  if (size == -1) {
+    return NSRESULT_FOR_ERRNO();
+  }
+
+  for (;;) {
+    aAttrValue.SetCapacity(size);
+
+    // The attribute can change between our first call and this call, so we need
+    // to re-check the size and possibly call with a larger buffer.
+    ssize_t newSize = getxattr(mPath.get(), attrName.get(),
+                               aAttrValue.Elements(), size, 0, 0);
+    if (newSize == -1) {
+      return NSRESULT_FOR_ERRNO();
+    }
+
+    if (newSize <= size) {
+      aAttrValue.SetLength(newSize);
+      break;
+    } else {
+      size = newSize;
+    }
+  }
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsLocalFile::SetXAttr(const nsACString& aAttrName,
+                      const nsTArray<uint8_t>& aAttrValue) {
+  nsAutoCString attrName{aAttrName};
+
+  if (setxattr(mPath.get(), attrName.get(), aAttrValue.Elements(),
+               aAttrValue.Length(), 0, 0) == -1) {
+    return NSRESULT_FOR_ERRNO();
+  }
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsLocalFile::DelXAttr(const nsACString& aAttrName) {
+  nsAutoCString attrName{aAttrName};
+
+  // Ignore removing an attribute that does not exist.
+  if (removexattr(mPath.get(), attrName.get(), 0) == -1) {
+    return NSRESULT_FOR_ERRNO();
+  }
+
+  return NS_OK;
+}
 
 static nsresult MacErrorMapper(OSErr inErr) {
   nsresult outErr;

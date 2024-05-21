@@ -1,9 +1,9 @@
-UNIFIED_SOURCES += [
-    "test_reduceprecision.cpp",
-]
-
 MOCHITEST_CHROME_MANIFESTS += [
-    "chrome.ini",
+    "chrome/chrome.toml",
 ]
 
-FINAL_LIBRARY = "xul-gtest"
+BROWSER_CHROME_MANIFESTS += [
+    "browser/browser.toml",
+]
+
+TEST_DIRS += ["gtest"]

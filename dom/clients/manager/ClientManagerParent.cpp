@@ -24,17 +24,14 @@ IPCResult ClientManagerParent::RecvTeardown() {
   return IPC_OK();
 }
 
-void ClientManagerParent::ActorDestroy(ActorDestroyReason aReason) {}
-
-PClientHandleParent* ClientManagerParent::AllocPClientHandleParent(
-    const IPCClientInfo& aClientInfo) {
-  return new ClientHandleParent();
+void ClientManagerParent::ActorDestroy(ActorDestroyReason aReason) {
+  mService->RemoveManager(this);
 }
 
-bool ClientManagerParent::DeallocPClientHandleParent(
-    PClientHandleParent* aActor) {
-  delete aActor;
-  return true;
+already_AddRefed<PClientHandleParent>
+ClientManagerParent::AllocPClientHandleParent(
+    const IPCClientInfo& aClientInfo) {
+  return MakeAndAddRef<ClientHandleParent>();
 }
 
 IPCResult ClientManagerParent::RecvPClientHandleConstructor(
@@ -75,7 +72,8 @@ bool ClientManagerParent::DeallocPClientNavigateOpParent(
   return true;
 }
 
-PClientSourceParent* ClientManagerParent::AllocPClientSourceParent(
+already_AddRefed<PClientSourceParent>
+ClientManagerParent::AllocPClientSourceParent(
     const ClientSourceConstructorArgs& aArgs) {
   Maybe<ContentParentId> contentParentId;
 
@@ -84,35 +82,30 @@ PClientSourceParent* ClientManagerParent::AllocPClientSourceParent(
     contentParentId = Some(ContentParentId(childID));
   }
 
-  return new ClientSourceParent(aArgs, contentParentId);
-}
-
-bool ClientManagerParent::DeallocPClientSourceParent(
-    PClientSourceParent* aActor) {
-  delete aActor;
-  return true;
+  return MakeAndAddRef<ClientSourceParent>(aArgs, contentParentId);
 }
 
 IPCResult ClientManagerParent::RecvPClientSourceConstructor(
     PClientSourceParent* aActor, const ClientSourceConstructorArgs& aArgs) {
   ClientSourceParent* actor = static_cast<ClientSourceParent*>(aActor);
-  actor->Init();
+
+  IPCResult result = actor->Init();
+  if (!result) {
+    return result;
+  }
+
   return IPC_OK();
 }
 
 ClientManagerParent::ClientManagerParent()
     : mService(ClientManagerService::GetOrCreateInstance()) {}
 
-ClientManagerParent::~ClientManagerParent() { mService->RemoveManager(this); }
+ClientManagerParent::~ClientManagerParent() = default;
 
 void ClientManagerParent::Init() { mService->AddManager(this); }
 
 IPCResult ClientManagerParent::RecvExpectFutureClientSource(
     const IPCClientInfo& aClientInfo) {
-  if (NS_WARN_IF(!ClientIsValidPrincipalInfo(aClientInfo.principalInfo()))) {
-    return IPC_FAIL(this, "Invalid PrincipalInfo.");
-  }
-
   RefPtr<ClientManagerService> cms =
       ClientManagerService::GetOrCreateInstance();
   Unused << NS_WARN_IF(!cms->ExpectFutureSource(aClientInfo));
@@ -121,10 +114,6 @@ IPCResult ClientManagerParent::RecvExpectFutureClientSource(
 
 IPCResult ClientManagerParent::RecvForgetFutureClientSource(
     const IPCClientInfo& aClientInfo) {
-  if (NS_WARN_IF(!ClientIsValidPrincipalInfo(aClientInfo.principalInfo()))) {
-    return IPC_FAIL(this, "Invalid PrincipalInfo.");
-  }
-
   RefPtr<ClientManagerService> cms = ClientManagerService::GetInstance();
   cms->ForgetFutureSource(aClientInfo);
   return IPC_OK();

@@ -11,7 +11,7 @@
 const goodURL = "http://mochi.test:8888/";
 const badURL = "http://mochi.test:8888/whatever.html";
 
-add_task(async function() {
+add_task(async function () {
   gBrowser.selectedTab = BrowserTestUtils.addTab(gBrowser, goodURL);
   await BrowserTestUtils.browserLoaded(gBrowser.selectedBrowser);
   is(
@@ -57,7 +57,7 @@ async function typeAndSubmitAndStop(url) {
   // urlbar value has been updated, add our own progress listener here.
   let progressPromise = new Promise(resolve => {
     let listener = {
-      onStateChange(browser, webProgress, request, stateFlags, status) {
+      onStateChange(browser, webProgress, request, stateFlags) {
         if (
           webProgress.isTopLevel &&
           stateFlags & Ci.nsIWebProgressListener.STATE_STOP

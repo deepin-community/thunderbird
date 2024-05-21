@@ -23,11 +23,9 @@
 namespace mozilla {
 namespace layers {
 
-class ClientLayer;
 class CompositableForwarder;
 class Image;
 class ImageContainer;
-class ShadowableLayer;
 class ImageClientSingle;
 
 /**
@@ -53,11 +51,7 @@ class ImageClient : public CompositableClient {
    * returns false if this is the wrong kind of ImageClient for aContainer.
    * Note that returning true does not necessarily imply success
    */
-  virtual bool UpdateImage(ImageContainer* aContainer,
-                           uint32_t aContentFlags) = 0;
-
-  void SetLayer(ClientLayer* aLayer) { mLayer = aLayer; }
-  ClientLayer* GetLayer() const { return mLayer; }
+  virtual bool UpdateImage(ImageContainer* aContainer) = 0;
 
   /**
    * asynchronously remove all the textures used by the image client.
@@ -82,7 +76,6 @@ class ImageClient : public CompositableClient {
   ImageClient(CompositableForwarder* aFwd, TextureFlags aFlags,
               CompositableType aType);
 
-  ClientLayer* mLayer;
   CompositableType mType;
   uint32_t mLastUpdateGenerationCounter;
 };
@@ -95,7 +88,7 @@ class ImageClientSingle : public ImageClient {
   ImageClientSingle(CompositableForwarder* aFwd, TextureFlags aFlags,
                     CompositableType aType);
 
-  bool UpdateImage(ImageContainer* aContainer, uint32_t aContentFlag) override;
+  bool UpdateImage(ImageContainer* aContainer) override;
 
   void OnDetach() override;
 
@@ -117,24 +110,6 @@ class ImageClientSingle : public ImageClient {
     int32_t mImageSerial;
   };
   nsTArray<Buffer> mBuffers;
-};
-
-/**
- * Image class to be used for async image uploads using the image bridge
- * protocol.
- * We store the ImageBridge id in the TextureClientIdentifier.
- */
-class ImageClientBridge : public ImageClient {
- public:
-  ImageClientBridge(CompositableForwarder* aFwd, TextureFlags aFlags);
-
-  bool UpdateImage(ImageContainer* aContainer, uint32_t aContentFlags) override;
-  bool Connect(ImageContainer* aImageContainer) override { return false; }
-
-  TextureInfo GetTextureInfo() const override { return TextureInfo(mType); }
-
- protected:
-  CompositableHandle mAsyncContainerHandle;
 };
 
 }  // namespace layers

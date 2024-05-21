@@ -9,7 +9,6 @@ import re
 import subprocess
 import sys
 
-
 here = os.path.abspath(os.path.dirname(__file__))
 
 local_requirements = {
@@ -50,9 +49,9 @@ class ReplaceRequirements(object):
         parser = configparser.ConfigParser()
         path = os.path.join(self.tox_path, "tox.ini")
         with open(path) as f:
-            parser.readfp(f)
+            parser.read_file(f)
         deps = parser.get("testenv", "deps")
-        dep_re = re.compile("(?:.*:\s*)?-r(.*)")
+        dep_re = re.compile(r"(?:.*:\s*)?-r(.*)")
 
         # This can break if we start using more features of tox
         for dep in deps.splitlines():

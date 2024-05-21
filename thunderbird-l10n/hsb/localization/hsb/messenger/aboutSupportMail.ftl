@@ -14,7 +14,18 @@ accounts-conn-security = Zwiskowa wěstota
 accounts-auth-method = Awtentifikaciska metoda
 accounts-default = Standard?
 identity-name = Identita
-
 send-via-email = Přez e-mejl pósłać
-
 app-basics-telemetry = Telemetrijne daty
+app-basics-cache-use = Wužiće pufrowaka
+mail-libs-title = Biblioteki
+libs-table-heading-library = Biblioteka
+libs-table-heading-expected-version = Wočakowana minimalna wersija
+libs-table-heading-loaded-version = Wužita wersija
+libs-table-heading-path = Šćežka
+libs-table-heading-status = Status
+libs-rnp-status-ok = W porjadku
+libs-rnp-status-load-failed = Začitanje njeje so poradźiło. OpenPGP njebudźe fungować.
+libs-rnp-status-incompatible = Inkompatibelna wersija. OpenPGP so njefunguje.
+libs-rnp-status-unofficial = Njeoficielna wersija. OpenPGP snano kaž wočakowany njefunguje.
+libs-otr-status-ok = W porjadku
+libs-otr-status-error = Začitanje njeje so poradźiło. Chatowe zaklučowanje OTR njebudźe fungować.

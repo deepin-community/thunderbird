@@ -14,29 +14,6 @@
   padding-inline-end: 3px;
 }
 
-#mail-notification-top > .notificationbox-stack {
-  background-color: transparent;
-}
-
-/* ::::: msg header captions ::::: */
-
-.dateLabel {
-  margin-inline-end: 3px;
-}
-
-.headerName {
-  margin-top: 0;
-}
-
-.headerName,
-#attachmentSize {
-  color: #a1a1a1; /* lower contrast */
-}
-
-mail-messageids-headerfield button.icon-button.email-action-button {
-  margin-inline: 1px 3px;
-}
-
 /* ::::: collapsed view styles ::::: */
 
 .message-security-label {
@@ -44,11 +21,8 @@ mail-messageids-headerfield button.icon-button.email-action-button {
   min-height: 16px;
 }
 
-.button-focusable:focus-visible:not(:hover) {
-  outline-offset: -2px;
-}
+/* Customization options */
 
-button.button-focusable:focus-visible:not(:hover) {
-  outline: none;
-  box-shadow: 0 0 0 3px -moz-mac-focusring;
+.message-header-buttons-only-icons .toolbarbutton-menu-dropmarker {
+  padding-inline-start: 0;
 }

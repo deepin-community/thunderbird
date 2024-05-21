@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 from six.moves.urllib.parse import quote
 
 from marionette_driver.by import By
@@ -61,26 +59,6 @@ class TestCloseWindow(WindowManagerMixin, MarionetteTestCase):
         self.assertNotIn(new_tab, window_handles)
         self.assertListEqual(self.start_tabs, window_handles)
 
-    def test_close_window_with_dismissed_beforeunload_prompt(self):
-        new_tab = self.open_tab()
-        self.marionette.switch_to_window(new_tab)
-
-        self.marionette.navigate(
-            inline(
-                """
-          <input type="text">
-          <script>
-            window.addEventListener("beforeunload", function (event) {
-              event.preventDefault();
-            });
-          </script>
-        """
-            )
-        )
-
-        self.marionette.find_element(By.TAG_NAME, "input").send_keys("foo")
-        self.marionette.close()
-
     def test_close_window_for_browser_window_with_single_tab(self):
         new_tab = self.open_window()
         self.marionette.switch_to_window(new_tab)
@@ -111,7 +89,9 @@ class TestCloseWindow(WindowManagerMixin, MarionetteTestCase):
         with self.marionette.using_context("chrome"):
             self.marionette.execute_async_script(
                 """
-              Components.utils.import("resource:///modules/BrowserWindowTracker.jsm");
+              const { BrowserWindowTracker } = ChromeUtils.importESModule(
+                "resource:///modules/BrowserWindowTracker.sys.mjs"
+              );
 
               let win = BrowserWindowTracker.getTopWindow();
               win.addEventListener("TabBrowserDiscarded", ev => {

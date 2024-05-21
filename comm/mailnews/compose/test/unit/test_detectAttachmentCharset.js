@@ -3,20 +3,18 @@
  * Test suite for auto-detecting attachment file charset.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 function checkAttachmentCharset(expectedCharset) {
-  let msgData = mailTestUtils.loadMessageToString(
+  const msgData = mailTestUtils.loadMessageToString(
     gDraftFolder,
     mailTestUtils.firstMsgHdr(gDraftFolder)
   );
-  let attachmentData = getAttachmentFromContent(msgData);
+  const attachmentData = getAttachmentFromContent(msgData);
 
   Assert.equal(expectedCharset, getContentCharset(attachmentData));
 }
 
 function getContentCharset(aContent) {
-  let found = aContent.match(/^Content-Type: text\/plain; charset=(.*?);/);
+  const found = aContent.match(/^Content-Type: text\/plain; charset=(.*?);/);
   if (found) {
     Assert.equal(found.length, 2);
     return found[1];

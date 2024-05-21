@@ -9,9 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "PLDHashTable.h"
+#include "nsDebug.h"
 #include "mozilla/HashFunctions.h"
 #include "mozilla/MathAlgorithms.h"
 #include "mozilla/OperatorNewExtensions.h"
+#include "mozilla/ScopeExit.h"
 #include "nsAlgorithm.h"
 #include "nsPointerHashKeys.h"
 #include "mozilla/Likely.h"
@@ -181,7 +183,6 @@ PLDHashTable::HashShift(uint32_t aEntrySize, uint32_t aLength) {
 PLDHashTable::PLDHashTable(const PLDHashTableOps* aOps, uint32_t aEntrySize,
                            uint32_t aLength)
     : mOps(aOps),
-      mEntryStore(),
       mGeneration(0),
       mHashShift(HashShift(aEntrySize, aLength)),
       mEntrySize(aEntrySize),

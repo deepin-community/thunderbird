@@ -8,27 +8,24 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-  const { XPCOMUtils } = ChromeUtils.import(
-    "resource://gre/modules/XPCOMUtils.jsm"
-  );
-
   const LazyModules = {};
-  XPCOMUtils.defineLazyModuleGetters(LazyModules, {
-    cleanupImMarkup: "resource:///modules/imContentSink.jsm",
-    getCurrentTheme: "resource:///modules/imThemes.jsm",
-    getDocumentFragmentFromHTML: "resource:///modules/imThemes.jsm",
-    getHTMLForMessage: "resource:///modules/imThemes.jsm",
-    initHTMLDocument: "resource:///modules/imThemes.jsm",
-    insertHTMLForMessage: "resource:///modules/imThemes.jsm",
-    isNextMessage: "resource:///modules/imThemes.jsm",
-    serializeSelection: "resource:///modules/imThemes.jsm",
-    smileTextNode: "resource:///modules/imSmileys.jsm",
+  ChromeUtils.defineESModuleGetters(LazyModules, {
+    cleanupImMarkup: "resource:///modules/imContentSink.sys.mjs",
+    getCurrentTheme: "resource:///modules/imThemes.sys.mjs",
+    getDocumentFragmentFromHTML: "resource:///modules/imThemes.sys.mjs",
+    getHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    IMServices: "resource:///modules/IMServices.sys.mjs",
+    initHTMLDocument: "resource:///modules/imThemes.sys.mjs",
+    insertHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    isNextMessage: "resource:///modules/imThemes.sys.mjs",
+    wasNextMessage: "resource:///modules/imThemes.sys.mjs",
+    replaceHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    removeMessage: "resource:///modules/imThemes.sys.mjs",
+    serializeSelection: "resource:///modules/imThemes.sys.mjs",
+    smileTextNode: "resource:///modules/imSmileys.sys.mjs",
   });
 
-  (function() {
+  (function () {
     // <browser> is lazily set up through setElementCreationCallback,
     // i.e. put into customElements the first time it's really seen.
     // Create a fake to ensure browser exists in customElements, since otherwise
@@ -40,11 +37,13 @@
 
   /**
    * The chat conversation browser, i.e. the main content on the chat tab.
+   *
    * @augments {MozBrowser}
    */
   class MozConversationBrowser extends customElements.get("browser") {
     constructor() {
       super();
+      LazyModules.IMServices.core.init();
 
       this._conv = null;
 
@@ -61,7 +60,7 @@
         // The event target may be a descendant of the actual link.
         let url;
         for (let elem = event.target; elem; elem = elem.parentNode) {
-          if (elem instanceof HTMLAnchorElement) {
+          if (HTMLAnchorElement.isInstance(elem)) {
             url = elem.href;
             if (url) {
               break;
@@ -72,7 +71,7 @@
           return;
         }
 
-        let uri = Services.io.newURI(url);
+        const uri = Services.io.newURI(url);
 
         // http and https are the only schemes that are both
         // allowed by our IM filters and exposed.
@@ -185,7 +184,7 @@
           );
         },
         doCommand: command => {
-          let selection = this.contentWindow.getSelection();
+          const selection = this.contentWindow.getSelection();
           if (selection.isCollapsed) {
             return;
           }
@@ -282,8 +281,9 @@
           capture: true,
         }
       );
-      this.loadURI("chrome://chat/content/conv.html", {
-        triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+      this.loadURI(Services.io.newURI("chrome://chat/content/conv.html"), {
+        triggeringPrincipal:
+          Services.scriptSecurityManager.getSystemPrincipal(),
       });
     }
 
@@ -306,10 +306,11 @@
     enableMagicCopy() {
       this.contentWindow.controllers.insertControllerAt(0, this.copyController);
       this.autoCopyEnabled =
-        Services.clipboard.supportsSelectionClipboard() &&
-        Services.prefs.getBoolPref("clipboard.autocopy");
+        Services.clipboard.isClipboardTypeSupported(
+          Services.clipboard.kSelectionClipboard
+        ) && Services.prefs.getBoolPref("clipboard.autocopy");
       if (this.autoCopyEnabled) {
-        let selection = this.contentWindow.getSelection();
+        const selection = this.contentWindow.getSelection();
         if (selection) {
           selection.addSelectionListener(this.chatSelectionListener);
         }
@@ -319,7 +320,7 @@
     disableMagicCopy() {
       this.contentWindow.controllers.removeController(this.copyController);
       if (this.autoCopyEnabled) {
-        let selection = this.contentWindow.getSelection();
+        const selection = this.contentWindow.getSelection();
         if (selection) {
           selection.removeSelectionListener(this.chatSelectionListener);
         }
@@ -370,7 +371,7 @@
 
     _updateConvScrollEnabled() {
       // Enable auto-scroll if the scrollbar is at the bottom.
-      let body = this.contentDocument.querySelector("body");
+      const body = this.contentDocument.querySelector("body");
       this._convScrollEnabled =
         body.scrollHeight <= body.scrollTop + body.clientHeight + 10;
       return this._convScrollEnabled;
@@ -418,6 +419,68 @@
       }
     }
 
+    /**
+     * Replace an existing message in the conversation based on the remote ID.
+     *
+     * @param {imIMessage} msg - Message to use as replacement.
+     */
+    replaceMessage(msg) {
+      if (!msg.remoteId) {
+        // No remote id, nothing existing to replace.
+        return;
+      }
+      if (this._messageDisplayPending || this._pendingMessages.length) {
+        const pendingIndex = this._pendingMessages.findIndex(
+          ({ msg: pendingMsg }) => pendingMsg.remoteId === msg.remoteId
+        );
+        if (
+          pendingIndex > -1 &&
+          pendingIndex >= this._nextPendingMessageIndex
+        ) {
+          this._pendingMessages[pendingIndex].msg = msg;
+        }
+      }
+      if (this.browsingContext.isActive) {
+        msg.message = this.prepareMessageContent(msg);
+        const isNext = LazyModules.wasNextMessage(msg, this.contentDocument);
+        const htmlMessage = LazyModules.getHTMLForMessage(
+          msg,
+          this.theme,
+          isNext,
+          false
+        );
+        const ruler = this.contentDocument.getElementById("unread-ruler");
+        if (ruler?._originalMsg?.remoteId === msg.remoteId) {
+          ruler._originalMsg = msg;
+          ruler.nextMsgHtml = htmlMessage;
+        }
+        LazyModules.replaceHTMLForMessage(
+          msg,
+          htmlMessage,
+          this.contentDocument,
+          isNext
+        );
+      }
+      if (this._lastMessage?.remoteId === msg.remoteId) {
+        this._lastMessage = msg;
+      }
+    }
+
+    /**
+     * Remove an existing message in the conversation based on the remote ID.
+     *
+     * @param {string} remoteId - Remote ID of the message to remove.
+     */
+    removeMessage(remoteId) {
+      if (this.browsingContext.isActive) {
+        LazyModules.removeMessage(remoteId, this.contentDocument);
+      }
+      if (this._lastMessage?.remoteId === remoteId) {
+        // Reset last message info if we removed the last message.
+        this._lastMessage = null;
+      }
+    }
+
     startDisplayingPendingMessages(delayed) {
       if (this._messageDisplayPending) {
         return;
@@ -431,7 +494,7 @@
         // should take no more than 100ms to feel 'immediate', but the perceived
         // performance if we flicker is likely even worse than having a barely
         // perceptible delay.
-        let deadline = Cu.now() + 200;
+        const deadline = Cu.now() + 200;
         this.displayPendingMessages({
           timeRemaining() {
             return deadline - Cu.now();
@@ -448,12 +511,12 @@
     // enumerator that creates message objects lazily to avoid
     // jank when displaying lots of messages.
     getNextPendingMessage() {
-      let length = this._pendingMessages.length;
+      const length = this._pendingMessages.length;
       if (this._nextPendingMessageIndex == length) {
         return null;
       }
 
-      let result = this._pendingMessages[this._nextPendingMessageIndex++];
+      const result = this._pendingMessages[this._nextPendingMessageIndex++];
 
       if (this._nextPendingMessageIndex == length) {
         this._pendingMessages = [];
@@ -472,10 +535,10 @@
         return;
       }
 
-      let max = this.getPendingMessagesCount();
+      const max = this.getPendingMessagesCount();
       do {
         // One message takes less than 2ms on average.
-        let msg = this.getNextPendingMessage();
+        const msg = this.getNextPendingMessage();
         if (!msg) {
           break;
         }
@@ -487,7 +550,7 @@
         );
       } while (timing.timeRemaining() > 2);
 
-      let event = document.createEvent("UIEvents");
+      const event = document.createEvent("UIEvents");
       event.initUIEvent("MessagesDisplayed", false, false, window, 0);
       if (this._pendingMessagesDisplayed < max) {
         if (this.progressBar) {
@@ -517,12 +580,12 @@
     }
 
     displayMessage(aMsg, aContext, aNoAutoScroll, aFirstUnread) {
-      let doc = this.contentDocument;
+      const doc = this.contentDocument;
 
       if (aMsg.noLog && aMsg.notification && aMsg.who == "sessionstart") {
         // New session log.
         if (this._lastMessage) {
-          let ruler = doc.createElement("hr");
+          const ruler = doc.createElement("hr");
           ruler.className = "sessionstart-ruler";
           this.contentChatNode.appendChild(ruler);
           this._sessions.push(ruler);
@@ -535,50 +598,11 @@
         }
       }
 
-      let cs = Cc["@mozilla.org/txttohtmlconv;1"].getService(
-        Ci.mozITXTToHTMLConv
-      );
-
-      // kStructPhrase creates tags for plaintext-markup like *bold*,
-      // /italics/, etc. We always use this; the content filter will
-      // filter it out if the user does not want styling.
-      let csFlags = cs.kStructPhrase;
-      // Automatically find and link freetext URLs
-      if (!aMsg.noLinkification) {
-        csFlags |= cs.kURLs;
-      }
-
       if (aFirstUnread) {
         this.setUnreadRuler();
       }
 
-      // Right trim before displaying. This removes any OTR related
-      // whitespace when the extension isn't enabled.
-      let msg = aMsg.displayMessage.trimRight();
-
-      // The slash of a leading '/me' should not be used to
-      // format as italic, so we remove the '/me' text before
-      // scanning the HTML, and we add it back later.
-      let meRegExp = /^((<[^>]+>)*)\/me /;
-      let me = false;
-      if (meRegExp.test(msg)) {
-        me = true;
-        msg = msg.replace(meRegExp, "$1");
-      }
-
-      msg = cs
-        .scanHTML(msg.replace(/&/g, "FROM-DTD-amp"), csFlags)
-        .replace(/FROM-DTD-amp/g, "&");
-
-      if (me) {
-        msg = msg.replace(/^((<[^>]+>)*)/, "$1/me ");
-      }
-
-      aMsg.message = LazyModules.cleanupImMarkup(
-        msg.replace(/\r?\n/g, "<br/>"),
-        null,
-        this._textModifiers
-      );
+      aMsg.message = this.prepareMessageContent(aMsg);
 
       let next =
         (aContext == this._lastMessageIsContext || aMsg.system) &&
@@ -593,7 +617,7 @@
           next,
           aContext
         );
-        let ruler = doc.getElementById("unread-ruler");
+        const ruler = doc.getElementById("unread-ruler");
         ruler.nextMsgHtml = html;
         ruler._originalMsg = aMsg;
 
@@ -624,7 +648,7 @@
           insert.parentNode.insertBefore(marker, insert.nextElementSibling);
         }
       } else {
-        let html = LazyModules.getHTMLForMessage(
+        const html = LazyModules.getHTMLForMessage(
           aMsg,
           this.theme,
           next,
@@ -647,11 +671,46 @@
       this._lastMessageIsContext = aContext;
     }
 
+    /**
+     * Prepare the message text for display. Transforms plain text formatting
+     * and removes any unwanted formatting.
+     *
+     * @param {imIMessage} message - Raw message.
+     * @returns {string} Message content ready for insertion.
+     */
+    prepareMessageContent(message) {
+      const cs = Cc["@mozilla.org/txttohtmlconv;1"].getService(
+        Ci.mozITXTToHTMLConv
+      );
+
+      // kStructPhrase creates tags for plaintext-markup like *bold*,
+      // /italics/, etc. We always use this; the content filter will
+      // filter it out if the user does not want styling.
+      let csFlags = cs.kStructPhrase;
+      // Automatically find and link freetext URLs
+      if (!message.noLinkification) {
+        csFlags |= cs.kURLs;
+      }
+
+      // Right trim before displaying. This removes any OTR related
+      // whitespace when the extension isn't enabled.
+      let msg = message.displayMessage?.trimRight() ?? "";
+      msg = cs
+        .scanHTML(msg.replace(/&/g, "FROM-DTD-amp"), csFlags)
+        .replace(/FROM-DTD-amp/g, "&");
+
+      return LazyModules.cleanupImMarkup(
+        msg.replace(/\r?\n/g, "<br/>"),
+        null,
+        this._textModifiers
+      );
+    }
+
     setUnreadRuler() {
       // Remove any existing ruler (occurs when the window has lost focus).
       this.removeUnreadRuler();
 
-      let ruler = this.contentDocument.createElement("hr");
+      const ruler = this.contentDocument.createElement("hr");
       ruler.id = "unread-ruler";
       this.contentChatNode.appendChild(ruler);
     }
@@ -661,8 +720,8 @@
         this._lastMessage.whenRead();
       }
 
-      let doc = this.contentDocument;
-      let ruler = doc.getElementById("unread-ruler");
+      const doc = this.contentDocument;
+      const ruler = doc.getElementById("unread-ruler");
       if (!ruler) {
         return;
       }
@@ -671,7 +730,7 @@
       let moveTo = doc.getElementById("insert-before");
       if (moveTo) {
         // Protect an existing insert node.
-        let actualInsert = doc.getElementById("insert");
+        const actualInsert = doc.getElementById("insert");
         if (actualInsert) {
           actualInsert.id = "actual-insert";
         }
@@ -682,7 +741,7 @@
         let moveToParent = moveTo.parentNode;
         range.selectNode(moveToParent);
         // eslint-disable-next-line no-unsanitized/method
-        let documentFragment = LazyModules.getDocumentFragmentFromHTML(
+        const documentFragment = LazyModules.getDocumentFragmentFromHTML(
           doc,
           ruler.nextMsgHtml
         );
@@ -692,11 +751,12 @@
           root = root.nextElementSibling
         ) {
           root._originalMsg = ruler._originalMsg;
+          root.dataset.remoteId = ruler._originalMsg.remoteId;
         }
         moveToParent.insertBefore(documentFragment, moveTo);
 
         // If this added an insert node, insert the next messages there.
-        let insert = doc.getElementById("insert");
+        const insert = doc.getElementById("insert");
         if (insert) {
           moveTo.remove();
           moveTo = insert;
@@ -704,7 +764,7 @@
         }
 
         // Move remaining messages from the message block following the ruler.
-        let nextMessagesStart = doc.getElementById("next-messages-start");
+        const nextMessagesStart = doc.getElementById("next-messages-start");
         if (nextMessagesStart) {
           range = doc.createRange();
           range.setStartAfter(nextMessagesStart);
@@ -738,7 +798,7 @@
       if (this._firstNonContextElt) {
         sectionElements.push(this._firstNonContextElt);
       }
-      let ruler = this.contentDocument.getElementById("unread-ruler");
+      const ruler = this.contentDocument.getElementById("unread-ruler");
       if (ruler) {
         sectionElements.push(ruler);
       }
@@ -746,10 +806,10 @@
 
       // Return ordered array of sections with entries
       // [Y, scrollY such that Y is centered]
-      let sections = [];
-      let maxY = this.contentWindow.scrollMaxY;
+      const sections = [];
+      const maxY = this.contentWindow.scrollMaxY;
       for (let i = 0; i < sectionElements.length; ++i) {
-        let y = sectionElements[i].offsetTop;
+        const y = sectionElements[i].offsetTop;
         // The section is unnecessary if close to top/bottom of conversation.
         if (y < this._maximalSectionOffset || maxY < y) {
           continue;
@@ -761,11 +821,11 @@
     }
 
     scrollToPreviousSection() {
-      let sections = this._getSections();
-      let y = this.contentWindow.scrollY;
+      const sections = this._getSections();
+      const y = this.contentWindow.scrollY;
       let newY = 0;
       for (let i = sections.length - 1; i >= 0; --i) {
-        let section = sections[i];
+        const section = sections[i];
         if (y > section[0]) {
           newY = section[1];
           break;
@@ -775,11 +835,11 @@
     }
 
     scrollToNextSection() {
-      let sections = this._getSections();
-      let y = this.contentWindow.scrollY;
+      const sections = this._getSections();
+      const y = this.contentWindow.scrollY;
       let newY = this.contentWindow.scrollMaxY;
       for (let i = 0; i < sections.length; ++i) {
-        let section = sections[i];
+        const section = sections[i];
         if (y + this._maximalSectionOffset < section[0]) {
           newY = section[1];
           break;

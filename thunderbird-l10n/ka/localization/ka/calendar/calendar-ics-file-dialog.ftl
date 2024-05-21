@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = გადმოტანა კალენდრის ღონისძიებებისა და დავალებების
+calendar-ics-file-window-title = გადმოტანა კალენდრის ღონისძიებებისა და დავალებების
 calendar-ics-file-dialog-import-event-button-label = ღონისძიების გადმოტანა
 calendar-ics-file-dialog-import-task-button-label = დავალების გადმოტანა
 calendar-ics-file-dialog-2 =
@@ -39,7 +40,7 @@ calendar-ics-file-import-duplicates =
     }
 calendar-ics-file-import-errors =
     { $errorsCount ->
-        [one] ერთი ჩანაწერის გადმოტანა ვერ მოხერხდა. ვრცლად, იხილეთ შეცდომების აღმრიცხავში.
-       *[other] { $errorsCount } ჩანაწერის გადმოტანა ვერ მოხერხდა. ვრცლად, იხილეთ შეცდომების აღმრიცხავში.
+        [one] ერთი ჩანაწერის გადმოტანა ვერ მოხერხდა. ვრცლად იხილეთ შეცდომების აღმრიცხავში.
+       *[other] { $errorsCount } ჩანაწერის გადმოტანა ვერ მოხერხდა. ვრცლად იხილეთ შეცდომების აღმრიცხავში.
     }
 calendar-ics-file-dialog-no-calendars = არაა კალენდრები, საიდანაც შესაძლებელი იქნებოდა ღონისძიებების ან დავალებების გადმოტანა.

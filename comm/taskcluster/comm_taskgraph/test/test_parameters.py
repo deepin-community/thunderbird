@@ -2,33 +2,39 @@
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import unittest
 
-import comm_taskgraph.parameters  # noqa: F401
-from taskgraph.parameters import Parameters
+import conftest  # noqa: F401
 from mozunit import main
+from taskgraph.parameters import Parameters
+
+from comm_taskgraph.parameters import register_parameters
 
 
 class TestCommParameters(unittest.TestCase):
-
     vals = {
         "app_version": "app_version",
         "backstop": False,
         "base_repository": "base_repository",
+        "base_ref": "base_ref",
+        "base_rev": "base_rev",
         "build_date": 0,
         "build_number": 0,
         "comm_base_repository": "comm_base_repository",
+        "comm_base_ref": "comm_base_ref",
+        "comm_base_rev": "comm_base_rev",
         "comm_head_ref": "comm_head_ref",
         "comm_head_repository": "comm_head_repository",
         "comm_head_rev": "comm_head_rev",
+        "comm_src_path": "comm/",
         "do_not_optimize": [],
+        "enable_always_target": False,
         "existing_tasks": {},
         "filters": [],
         "head_ref": "head_ref",
         "head_repository": "head_repository",
         "head_rev": "head_rev",
+        "head_tag": "",
         "hg_branch": "hg_branch",
         "level": "level",
         "message": "message",
@@ -51,6 +57,7 @@ class TestCommParameters(unittest.TestCase):
         "release_partner_build_number": 1,
         "release_type": "release_type",
         "release_product": None,
+        "repository_type": "hg",
         "required_signoffs": [],
         "signoff_urls": {},
         "target_tasks_method": "target_tasks_method",
@@ -61,6 +68,9 @@ class TestCommParameters(unittest.TestCase):
         "try_task_config": {},
         "version": "version",
     }
+
+    def setUp(self):
+        register_parameters()
 
     def test_Parameters_check(self):
         """

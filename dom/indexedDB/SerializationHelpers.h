@@ -10,6 +10,7 @@
 #include "ipc/EnumSerializer.h"
 #include "ipc/IPCMessageUtilsSpecializations.h"
 
+#include "mozilla/dom/BindingIPCUtils.h"
 #include "mozilla/dom/indexedDB/Key.h"
 #include "mozilla/dom/indexedDB/KeyPath.h"
 #include "mozilla/dom/IDBCursor.h"
@@ -28,17 +29,12 @@ template <>
 struct ParamTraits<mozilla::dom::indexedDB::Key> {
   typedef mozilla::dom::indexedDB::Key paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam) {
-    WriteParam(aMsg, aParam.mBuffer);
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
+    WriteParam(aWriter, aParam.mBuffer);
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
-    return ReadParam(aMsg, aIter, &aResult->mBuffer);
-  }
-
-  static void Log(const paramType& aParam, std::wstring* aLog) {
-    LogParam(aParam.mBuffer, aLog);
+  static bool Read(MessageReader* aReader, paramType* aResult) {
+    return ReadParam(aReader, &aResult->mBuffer);
   }
 };
 
@@ -53,28 +49,21 @@ template <>
 struct ParamTraits<mozilla::dom::indexedDB::KeyPath> {
   typedef mozilla::dom::indexedDB::KeyPath paramType;
 
-  static void Write(Message* aMsg, const paramType& aParam) {
-    WriteParam(aMsg, aParam.mType);
-    WriteParam(aMsg, aParam.mStrings);
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
+    WriteParam(aWriter, aParam.mType);
+    WriteParam(aWriter, aParam.mStrings);
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
-    return ReadParam(aMsg, aIter, &aResult->mType) &&
-           ReadParam(aMsg, aIter, &aResult->mStrings);
-  }
-
-  static void Log(const paramType& aParam, std::wstring* aLog) {
-    LogParam(aParam.mStrings, aLog);
+  static bool Read(MessageReader* aReader, paramType* aResult) {
+    return ReadParam(aReader, &aResult->mType) &&
+           ReadParam(aReader, &aResult->mStrings);
   }
 };
 
 template <>
 struct ParamTraits<mozilla::dom::IDBCursor::Direction>
-    : public ContiguousEnumSerializer<
-          mozilla::dom::IDBCursor::Direction,
-          mozilla::dom::IDBCursor::Direction::Next,
-          mozilla::dom::IDBCursor::Direction::EndGuard_> {};
+    : public mozilla::dom::WebIDLEnumSerializer<
+          mozilla::dom::IDBCursor::Direction> {};
 
 template <>
 struct ParamTraits<mozilla::dom::IDBTransaction::Mode>

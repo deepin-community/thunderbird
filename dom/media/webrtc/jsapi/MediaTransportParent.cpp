@@ -49,14 +49,16 @@ class MediaTransportParent::Impl : public sigslot::has_slots<> {
     NS_ENSURE_TRUE_VOID(mParent->SendOnAlpnNegotiated(aAlpn));
   }
 
-  void OnGatheringStateChange(dom::RTCIceGatheringState aState) {
-    NS_ENSURE_TRUE_VOID(
-        mParent->SendOnGatheringStateChange(static_cast<int>(aState)));
+  void OnGatheringStateChange(const std::string& aTransportId,
+                              dom::RTCIceGathererState aState) {
+    NS_ENSURE_TRUE_VOID(mParent->SendOnGatheringStateChange(
+        aTransportId, static_cast<int>(aState)));
   }
 
-  void OnConnectionStateChange(dom::RTCIceConnectionState aState) {
-    NS_ENSURE_TRUE_VOID(
-        mParent->SendOnConnectionStateChange(static_cast<int>(aState)));
+  void OnConnectionStateChange(const std::string& aTransportId,
+                               dom::RTCIceTransportState aState) {
+    NS_ENSURE_TRUE_VOID(mParent->SendOnConnectionStateChange(
+        aTransportId, static_cast<int>(aState)));
   }
 
   void OnPacketReceived(const std::string& aTransportId,
@@ -124,12 +126,18 @@ mozilla::ipc::IPCResult MediaTransportParent::RecvExitPrivateMode() {
 }
 
 mozilla::ipc::IPCResult MediaTransportParent::RecvCreateIceCtx(
-    const string& name, nsTArray<RTCIceServer>&& iceServers,
+    const string& name) {
+  mImpl->mHandler->CreateIceCtx(name);
+  return ipc::IPCResult::Ok();
+}
+
+mozilla::ipc::IPCResult MediaTransportParent::RecvSetIceConfig(
+    nsTArray<RTCIceServer>&& iceServers,
     const RTCIceTransportPolicy& icePolicy) {
-  nsresult rv = mImpl->mHandler->CreateIceCtx(name, iceServers, icePolicy);
+  nsresult rv = mImpl->mHandler->SetIceConfig(iceServers, icePolicy);
   if (NS_FAILED(rv)) {
     return ipc::IPCResult::Fail(WrapNotNull(this), __func__,
-                                "MediaTransportHandler::Init failed");
+                                "MediaTransportHandler::SetIceConfig failed");
   }
   return ipc::IPCResult::Ok();
 }
@@ -190,9 +198,8 @@ mozilla::ipc::IPCResult MediaTransportParent::RecvStartIceChecks(
 }
 
 mozilla::ipc::IPCResult MediaTransportParent::RecvSendPacket(
-    const string& transportId, const MediaPacket& packet) {
-  MediaPacket copy(packet);  // Laaaaaaame.
-  mImpl->mHandler->SendPacket(transportId, std::move(copy));
+    const string& transportId, MediaPacket&& packet) {
+  mImpl->mHandler->SendPacket(transportId, std::move(packet));
   return ipc::IPCResult::Ok();
 }
 
@@ -221,18 +228,13 @@ mozilla::ipc::IPCResult MediaTransportParent::RecvGetIceStats(
           [aResolve = std::move(aResolve)](
               dom::RTCStatsPromise::ResolveOrRejectValue&& aResult) {
             if (aResult.IsResolve()) {
-              aResolve(
-                  dom::NotReallyMovableButLetsPretendItIsRTCStatsCollection(
-                      *aResult.ResolveValue()));
+              aResolve(aResult.ResolveValue());
             } else {
-              dom::NotReallyMovableButLetsPretendItIsRTCStatsCollection empty;
-              aResolve(empty);
+              aResolve(MakeUnique<dom::RTCStatsCollection>());
             }
           });
 
   return ipc::IPCResult::Ok();
 }
-
-void MediaTransportParent::ActorDestroy(ActorDestroyReason aWhy) {}
 
 }  // namespace mozilla

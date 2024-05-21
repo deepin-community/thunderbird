@@ -1,22 +1,17 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { TelemetryUtils } = ChromeUtils.import(
-  "resource://gre/modules/TelemetryUtils.jsm"
+const { TelemetryUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/TelemetryUtils.sys.mjs"
 );
 
 function ensureProfilerInitialized() {
   // Starting and stopping the profiler with the "stackwalk" flag will cause the
   // profiler's stackwalking features to be synchronously initialized. This
   // should prevent us from not initializing BHR quickly enough.
-  if (!Services.profiler.CanProfile()) {
-    return false;
-  }
   let features = ["stackwalk"];
   Services.profiler.StartProfiler(1000, 10, features);
   Services.profiler.StopProfiler();
-  return true;
 }
 
 add_task(async function test_BHRObserver() {
@@ -25,12 +20,10 @@ add_task(async function test_BHRObserver() {
     return;
   }
 
-  if (!ensureProfilerInitialized()) {
-    return;
-  }
+  ensureProfilerInitialized();
 
-  let telSvc = Cc["@mozilla.org/bhr-telemetry-service;1"].getService()
-    .wrappedJSObject;
+  let telSvc =
+    Cc["@mozilla.org/bhr-telemetry-service;1"].getService().wrappedJSObject;
   ok(telSvc, "Should have BHRTelemetryService");
   let beforeLen = telSvc.payload.hangs.length;
 
@@ -88,7 +81,7 @@ add_task(async function test_BHRObserver() {
   let hangs = await hangsPromise;
   equal(hangs.length, 3);
   hangs.forEach(hang => {
-    ok(hang.duration > 0);
+    Assert.greater(hang.duration, 0);
     ok(hang.thread == "Gecko" || hang.thread == "Gecko_Child");
     equal(typeof hang.runnableName, "string");
 
@@ -128,7 +121,7 @@ add_task(async function test_BHRObserver() {
   });
 
   // Check that the telemetry service collected pings which make sense
-  ok(telSvc.payload.hangs.length - beforeLen >= 3);
+  Assert.greaterOrEqual(telSvc.payload.hangs.length - beforeLen, 3);
   ok(Array.isArray(telSvc.payload.modules));
   telSvc.payload.modules.forEach(module => {
     ok(Array.isArray(module));
@@ -138,7 +131,7 @@ add_task(async function test_BHRObserver() {
   });
 
   telSvc.payload.hangs.forEach(hang => {
-    ok(hang.duration > 0);
+    Assert.greater(hang.duration, 0);
     ok(hang.thread == "Gecko" || hang.thread == "Gecko_Child");
     equal(typeof hang.runnableName, "string");
 
@@ -152,7 +145,7 @@ add_task(async function test_BHRObserver() {
       if (Array.isArray(entry)) {
         equal(entry.length, 2);
         equal(typeof entry[0], "number");
-        ok(entry[0] < telSvc.payload.modules.length);
+        Assert.less(entry[0], telSvc.payload.modules.length);
         equal(typeof entry[1], "string");
       } else {
         equal(typeof entry, "string");

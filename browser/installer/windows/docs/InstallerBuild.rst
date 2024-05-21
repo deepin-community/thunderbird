@@ -34,9 +34,7 @@ Build process
 .. note::
 
    If you intend to distribute your build to others, you'll want to add
-   ``export WIN32_REDIST_DIR=<CRT_LOCATION>`` in your ``mozconfig``. The CRT location
-   will vary depending on your Visual Studio version. At the time of writing, this would look like:
-   ``export WIN32_REDIST_DIR="/c/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Redist/MSVC/14.28.29325/x86/Microsoft.VC142.CRT"``.
+   ``ac_add_options --with-redist`` in your ``mozconfig``.
 
 Both the full and stub installers are built through a similar process, which is summarized here along with references to the relevant bits of code.
 
@@ -53,4 +51,3 @@ Most of this procedure is done in `makensis.mk <https://searchfox.org/mozilla-ce
 
 
 If this is an official build running on Mozilla automation infrastructure, then after this the installers will be signed, like other build products. Release engineering owns that process, it's not within the scope of this documentation.
-

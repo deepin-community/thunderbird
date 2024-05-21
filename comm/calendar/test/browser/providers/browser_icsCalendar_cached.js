@@ -2,18 +2,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ICSServer } = ChromeUtils.import("resource://testing-common/calendar/ICSServer.jsm");
+var { ICSServer } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/ICSServer.sys.mjs"
+);
 
 ICSServer.open("bob", "bob");
-if (!Services.logins.findLogins(ICSServer.origin, null, "test").length) {
-  // Save a username and password to the login manager.
-  let loginInfo = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(Ci.nsILoginInfo);
-  loginInfo.init(ICSServer.origin, null, "test", "bob", "bob", "", "");
-  Services.logins.addLogin(loginInfo);
-}
 
 let calendar;
-add_task(async function setUp() {
+add_setup(async function () {
+  if (!Services.logins.findLogins(ICSServer.origin, null, "test").length) {
+    // Save a username and password to the login manager.
+    const loginInfo = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(Ci.nsILoginInfo);
+    loginInfo.init(ICSServer.origin, null, "test", "bob", "bob", "", "");
+    await Services.logins.addLoginAsync(loginInfo);
+  }
   // TODO: item notifications from a cached ICS calendar occur outside of batches.
   // This isn't fatal but it shouldn't happen. Side-effects include alarms firing
   // twice - once from onAddItem then again at onLoad.
@@ -21,7 +23,7 @@ add_task(async function setUp() {
   // Remove the next line when this is fixed.
   calendarObserver._batchRequired = false;
 
-  calendarObserver._onLoadPromise = PromiseUtils.defer();
+  calendarObserver._onLoadPromise = Promise.withResolvers();
   calendar = createCalendar("ics", ICSServer.url, true);
   await calendarObserver._onLoadPromise.promise;
   info("calendar set-up complete");
@@ -36,8 +38,8 @@ add_task(async function setUp() {
 async function promiseIdle() {
   await TestUtils.waitForCondition(
     () =>
-      calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject.queue.length == 0 &&
-      !calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject.locked
+      calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject._queue.length == 0 &&
+      calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject._isLocked === false
   );
   await fetch(`${ICSServer.origin}/ping`);
 }
@@ -54,13 +56,13 @@ add_task(async function testAlarms() {
 add_task(async function testSyncChanges() {
   await syncChangesTest.setUp();
 
-  ICSServer.putICSInternal(syncChangesTest.part1Item);
+  await ICSServer.putICSInternal(syncChangesTest.part1Item);
   await syncChangesTest.runPart1();
 
-  ICSServer.putICSInternal(syncChangesTest.part2Item);
+  await ICSServer.putICSInternal(syncChangesTest.part2Item);
   await syncChangesTest.runPart2();
 
-  ICSServer.putICSInternal(
+  await ICSServer.putICSInternal(
     CalendarTestUtils.dedent`
       BEGIN:VCALENDAR
       END:VCALENDAR

@@ -26,6 +26,7 @@
 #include "nsNetUtil.h"
 #include "mozITXTToHTMLConv.h"
 #include "nsIMsgMailNewsUrl.h"
+#include "nsINntpUrl.h"
 #include "nsIMsgWindow.h"
 #include "nsICategoryManager.h"
 #include "nsMsgUtils.h"
@@ -102,45 +103,29 @@ nsresult bridge_new_new_uri(void* bridgeStream, nsIURI* aURI,
         }
       }
 
-      if ((default_charset) && (override_charset) && (url_name)) {
-        //
-        // set the default charset to be the folder charset if we have one
-        // associated with this url...
+      if (default_charset && override_charset && url_name) {
+        // Check whether we need to auto-detect the charset.
         nsCOMPtr<nsIMsgI18NUrl> i18nUrl(do_QueryInterface(aURI));
         if (i18nUrl) {
-          nsCString charset;
-
-          // check to see if we have a charset override...and if we do, set that
-          // field appropriately too...
-          nsresult rv = i18nUrl->GetCharsetOverRide(getter_Copies(charset));
-          if (NS_SUCCEEDED(rv) && !charset.IsEmpty()) {
+          bool autodetectCharset = false;
+          nsresult rv = i18nUrl->GetAutodetectCharset(&autodetectCharset);
+          if (NS_SUCCEEDED(rv) && autodetectCharset) {
             *override_charset = true;
-            *default_charset = ToNewCString(charset);
+            *default_charset = nullptr;
           } else {
             *override_charset = false;
-            *default_charset = strdup("UTF-8");
-          }
-
-          // if there is no manual override and a folder charset exists
-          // then check if we have a folder level override
-          if (!(*override_charset) && *default_charset && **default_charset) {
-            // notify the default to msgWindow (for the menu check mark)
-            // do not set the default in case of nsMimeMessageDraftOrTemplate
-            // or nsMimeMessageEditorTemplate because it is already set
-            // when the message is displayed and doing it again may overwrite
-            // the correct MIME charset parsed from the message header
-            if (aOutputType != nsMimeOutput::nsMimeMessageDraftOrTemplate &&
-                aOutputType != nsMimeOutput::nsMimeMessageEditorTemplate) {
-              nsCOMPtr<nsIMsgMailNewsUrl> msgurl(do_QueryInterface(aURI));
-              if (msgurl) {
-                nsCOMPtr<nsIMsgWindow> msgWindow;
-                msgurl->GetMsgWindow(getter_AddRefs(msgWindow));
-                if (msgWindow) {
-                  msgWindow->SetMailCharacterSet(
-                      nsDependentCString(*default_charset));
-                  msgWindow->SetCharsetOverride(*override_charset);
-                }
+            // Special treatment for news: URLs. Get the server default charset.
+            nsCOMPtr<nsINntpUrl> nntpURL(do_QueryInterface(aURI));
+            if (nntpURL) {
+              nsCString charset;
+              rv = nntpURL->GetCharset(charset);
+              if (NS_SUCCEEDED(rv)) {
+                *default_charset = ToNewCString(charset);
+              } else {
+                *default_charset = strdup("UTF-8");
               }
+            } else {
+              *default_charset = strdup("UTF-8");
             }
           }
         }
@@ -382,7 +367,6 @@ nsresult nsStreamConverter::InternalCleanup(void) {
  */
 nsStreamConverter::nsStreamConverter() {
   // Init member variables...
-  mWrapperOutput = false;
   mBridgeStream = nullptr;
   mOutputFormat = "text/html";
   mAlreadyKnowOutputType = false;
@@ -409,25 +393,20 @@ NS_IMETHODIMP nsStreamConverter::Init(nsIURI* aURI,
 
   nsresult rv = NS_OK;
   mOutListener = aOutListener;
+  mOutgoingChannel = aChannel;
 
   // mscott --> we need to look at the url and figure out what the correct
   // output type is...
   nsMimeOutputType newType = mOutputType;
   if (!mAlreadyKnowOutputType) {
     nsAutoCString urlSpec;
-    rv = aURI->GetSpec(urlSpec);
+    rv = aURI->GetSpecIgnoringRef(urlSpec);
     DetermineOutputFormat(urlSpec.get(), &newType);
     mAlreadyKnowOutputType = true;
     mOutputType = newType;
   }
 
   switch (newType) {
-    case nsMimeOutput::nsMimeMessageSplitDisplay:  // the wrapper HTML output to
-                                                   // produce the split
-                                                   // header/body display
-      mWrapperOutput = true;
-      mOutputFormat = "text/html";
-      break;
     case nsMimeOutput::nsMimeMessageHeaderDisplay:  // the split header/body
                                                     // display
       mOutputFormat = "text/xml";
@@ -700,15 +679,14 @@ nsStreamConverter::SetIdentity(nsIMsgIdentity* aIdentity) {
 }
 
 NS_IMETHODIMP
-nsStreamConverter::SetOriginalMsgURI(const char* originalMsgURI) {
+nsStreamConverter::SetOriginalMsgURI(const nsACString& originalMsgURI) {
   mOriginalMsgURI = originalMsgURI;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStreamConverter::GetOriginalMsgURI(char** result) {
-  if (!result) return NS_ERROR_NULL_POINTER;
-  *result = ToNewCString(mOriginalMsgURI);
+nsStreamConverter::GetOriginalMsgURI(nsACString& result) {
+  result = mOriginalMsgURI;
   return NS_OK;
 }
 
@@ -739,30 +717,6 @@ nsresult nsStreamConverter::OnDataAvailable(nsIRequest* request,
                                             uint32_t aLength) {
   nsresult rc = NS_OK;  // should this be an error instead?
   uint32_t written;
-
-  // If this is the first time through and we are supposed to be
-  // outputting the wrapper two pane URL, then do it now.
-  if (mWrapperOutput) {
-    char outBuf[1024];
-    const char output[] =
-        "\
-<HTML>\
-<FRAMESET ROWS=\"30%%,70%%\">\
-<FRAME NAME=messageHeader SRC=\"%s?header=only\">\
-<FRAME NAME=messageBody SRC=\"%s?header=none\">\
-</FRAMESET>\
-</HTML>";
-
-    nsAutoCString url;
-    if (NS_FAILED(mURI->GetSpec(url))) return NS_ERROR_FAILURE;
-
-    PR_snprintf(outBuf, sizeof(outBuf), output, url.get(), url.get());
-
-    if (mEmitter) mEmitter->Write(nsDependentCString(outBuf), &written);
-
-    // rhp: will this stop the stream???? Not sure.
-    return NS_ERROR_FAILURE;
-  }
 
   nsCOMPtr<nsIInputStream> stream = aIStream;
   NS_ENSURE_TRUE(stream, NS_ERROR_NULL_POINTER);
@@ -859,9 +813,6 @@ nsresult nsStreamConverter::OnStopRequest(nsIRequest* request,
                                           nsresult status) {
   // Make sure we fire any pending OnStartRequest before we do OnStop.
   FirePendingStartRequest();
-#ifdef DEBUG_rhp
-  printf("nsStreamConverter::OnStopRequest()\n");
-#endif
 
   //
   // Now complete the stream!
@@ -911,14 +862,14 @@ nsresult nsStreamConverter::OnStopRequest(nsIRequest* request,
   // First close the output stream...
   if (mOutputStream) mOutputStream->Close();
 
+  if (mOutgoingChannel) {
+    nsCOMPtr<nsILoadGroup> loadGroup;
+    mOutgoingChannel->GetLoadGroup(getter_AddRefs(loadGroup));
+    if (loadGroup) loadGroup->RemoveRequest(mOutgoingChannel, nullptr, status);
+  }
+
   // Make sure to do necessary cleanup!
   InternalCleanup();
-
-#if 0
-  // print out the mime timing information BEFORE we flush to layout
-  // otherwise we'll be including layout information.
-  printf("Time Spent in mime:    %d ms\n", PR_IntervalToMilliseconds(PR_IntervalNow() - mConvertContentTime));
-#endif
 
   // forward on top request to any listeners
   if (mOutListener) mOutListener->OnStopRequest(request, status);
@@ -995,5 +946,15 @@ NS_IMETHODIMP nsStreamConverter::FirePendingStartRequest() {
 NS_IMETHODIMP nsStreamConverter::GetConvertedType(const nsACString& aFromType,
                                                   nsIChannel* aChannel,
                                                   nsACString& aToType) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+// Methods for nsIThreadRetargetableStreamListener
+
+nsresult nsStreamConverter::OnDataFinished(nsresult aStatusCode) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+nsresult nsStreamConverter::CheckListenerChain() {
   return NS_ERROR_NOT_IMPLEMENTED;
 }

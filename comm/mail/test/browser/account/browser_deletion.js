@@ -8,8 +8,8 @@
 
 "use strict";
 
-var { open_advanced_settings, remove_account } = ChromeUtils.import(
-  "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
+var { open_advanced_settings, remove_account } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
 );
 
 var { MailServices } = ChromeUtils.import(
@@ -18,12 +18,12 @@ var { MailServices } = ChromeUtils.import(
 
 var gPopAccount, gImapAccount, gOriginalAccountCount;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   // There may be pre-existing accounts from other tests.
   gOriginalAccountCount = MailServices.accounts.allServers.length;
 
   // Create a POP server
-  let popServer = MailServices.accounts
+  const popServer = MailServices.accounts
     .createIncomingServer("nobody", "pop.foo.invalid", "pop3")
     .QueryInterface(Ci.nsIPop3IncomingServer);
 
@@ -35,7 +35,7 @@ add_task(function setupModule(module) {
   gPopAccount.addIdentity(identity);
 
   // Create an IMAP server
-  let imapServer = MailServices.accounts
+  const imapServer = MailServices.accounts
     .createIncomingServer("nobody", "imap.foo.invalid", "imap")
     .QueryInterface(Ci.nsIImapIncomingServer);
 
@@ -52,37 +52,32 @@ add_task(function setupModule(module) {
   );
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   // There should be only the original accounts left.
   Assert.equal(MailServices.accounts.allServers.length, gOriginalAccountCount);
 });
 
 add_task(async function test_account_data_deletion() {
-  await open_advanced_settings(function(tab) {
-    subtest_account_data_deletion1(tab);
-  });
-
-  await open_advanced_settings(function(tab) {
-    subtest_account_data_deletion2(tab);
-  });
+  await open_advanced_settings(subtest_account_data_deletion1);
+  await open_advanced_settings(subtest_account_data_deletion2);
 });
 
 /**
  * Bug 274452
  * Check if files of an account are preserved.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
-function subtest_account_data_deletion1(tab) {
-  let accountDir = gPopAccount.incomingServer.localPath;
+async function subtest_account_data_deletion1(tab) {
+  const accountDir = gPopAccount.incomingServer.localPath;
   Assert.ok(accountDir.isDirectory());
 
   // Get some existing file in the POP3 account data dir.
-  let inboxFile = accountDir.clone();
+  const inboxFile = accountDir.clone();
   inboxFile.append("Inbox.msf");
   Assert.ok(inboxFile.isFile());
 
-  remove_account(gPopAccount, tab, true, false);
+  await remove_account(gPopAccount, tab, true, false);
   gPopAccount = null;
   Assert.ok(accountDir.exists());
 }
@@ -91,18 +86,18 @@ function subtest_account_data_deletion1(tab) {
  * Bug 274452
  * Check if files of an account can be deleted.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
-function subtest_account_data_deletion2(tab) {
-  let accountDir = gImapAccount.incomingServer.localPath;
+async function subtest_account_data_deletion2(tab) {
+  const accountDir = gImapAccount.incomingServer.localPath;
   Assert.ok(accountDir.isDirectory());
 
   // Get some file in the IMAP account data dir.
-  let inboxFile = accountDir.clone();
+  const inboxFile = accountDir.clone();
   inboxFile.append("INBOX.msf");
   Assert.ok(inboxFile.isFile());
 
-  remove_account(gImapAccount, tab, true, true);
+  await remove_account(gImapAccount, tab, true, true);
   gImapAccount = null;
   Assert.ok(!accountDir.exists());
 }

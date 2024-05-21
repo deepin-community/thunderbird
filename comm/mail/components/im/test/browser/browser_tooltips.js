@@ -3,20 +3,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 add_task(async function testMUCMessageSenderTooltip() {
-  const account = Services.accounts.createAccount("testuser", "prpl-mochitest");
+  const account = IMServices.accounts.createAccount(
+    "testuser",
+    "prpl-mochitest"
+  );
+  const passwordPromise = TestUtils.topicObserved("account-updated");
   account.password = "this is a test";
+  await passwordPromise;
   account.connect();
 
   await openChatTab();
   const conversation = account.prplAccount.wrappedJSObject.makeMUC("tooltips");
   const convNode = getConversationItem(conversation);
-  ok(convNode);
+  ok(convNode, "Conversation should be in list");
 
   await EventUtils.synthesizeMouseAtCenter(convNode, {});
 
   const chatConv = getChatConversationElement(conversation);
-  ok(chatConv);
-  ok(BrowserTestUtils.is_visible(chatConv));
+  ok(chatConv, "Conversation should exist");
+  ok(BrowserTestUtils.isVisible(chatConv), "Conversation should be shown");
   const messageParent = await getChatMessageParent(chatConv);
 
   conversation.addParticipant("foo", "1");
@@ -84,17 +89,29 @@ add_task(async function testMUCMessageSenderTooltip() {
     for (const testInfo of tooltipTests) {
       const usernameSelector = `.message:nth-child(${testInfo.messageIndex}) .ib-sender`;
       const username = messageParent.querySelector(usernameSelector);
-      is(username.textContent, testInfo.displayed);
+      is(
+        username.textContent,
+        testInfo.displayed,
+        `Message username ${testInfo.messageIndex}`
+      );
 
-      let buddyInfo = TestUtils.topicObserved(
+      const buddyInfo = TestUtils.topicObserved(
         "user-info-received",
         (subject, data) => data === testInfo.who
       );
       await showTooltip(usernameSelector, tooltip, chatConv.convBrowser);
 
-      is(tooltip.getAttribute("displayname"), testInfo.who);
+      is(
+        tooltip.getAttribute("displayname"),
+        testInfo.who,
+        `Tooltip display name ${testInfo.messageIndex}`
+      );
       await buddyInfo;
-      is(tooltip.table.querySelector("td").textContent, testInfo.alias);
+      is(
+        tooltip.table.querySelector("td").textContent,
+        testInfo.alias,
+        `Tooltip alias ${testInfo.messageIndex}`
+      );
       await hideTooltip(tooltip, chatConv.convBrowser);
     }
   } finally {
@@ -103,25 +120,89 @@ add_task(async function testMUCMessageSenderTooltip() {
 
   conversation.close();
   account.disconnect();
-  Services.accounts.deleteAccount(account.id);
+  IMServices.accounts.deleteAccount(account.id);
+});
+
+add_task(async function testTimestampTooltip() {
+  const account = IMServices.accounts.createAccount(
+    "testuser",
+    "prpl-mochitest"
+  );
+  const passwordPromise = TestUtils.topicObserved("account-updated");
+  account.password = "this is a test";
+  await passwordPromise;
+  account.connect();
+
+  await openChatTab();
+  const conversation = account.prplAccount.wrappedJSObject.makeMUC("tooltips");
+  const convNode = getConversationItem(conversation);
+  ok(convNode, "Conversation should be in list");
+
+  await EventUtils.synthesizeMouseAtCenter(convNode, {});
+
+  const chatConv = getChatConversationElement(conversation);
+  ok(chatConv, "Conversation should exist");
+  ok(BrowserTestUtils.isVisible(chatConv), "Conversation should be shown");
+
+  const messageTime = Math.floor(Date.now() / 1000);
+
+  conversation.addParticipant("foo", "1");
+  conversation.addMessages([
+    {
+      who: "foo",
+      content: "hi",
+      options: {
+        incoming: true,
+      },
+      time: messageTime,
+    },
+  ]);
+  // Wait for at least one event.
+  do {
+    await BrowserTestUtils.waitForEvent(
+      chatConv.convBrowser,
+      "MessagesDisplayed"
+    );
+  } while (chatConv.convBrowser.getPendingMessagesCount() > 0);
+
+  const tooltip = document.getElementById("imTooltip");
+  window.windowUtils.disableNonTestMouseEvents(true);
+  try {
+    const messageSelector = ".message:nth-child(1)";
+    const dateTimeFormatter = new Services.intl.DateTimeFormat(undefined, {
+      timeStyle: "medium",
+    });
+    const expectedText = dateTimeFormatter.format(new Date(messageTime * 1000));
+
+    await showTooltip(messageSelector, tooltip, chatConv.convBrowser);
+
+    const htmlTooltip = tooltip.querySelector(".htmlTooltip");
+    ok(BrowserTestUtils.isVisible(htmlTooltip), "HTML tooltip should be shown");
+    is(htmlTooltip.textContent, expectedText, "HTML tooltip text");
+    await hideTooltip(tooltip, chatConv.convBrowser);
+  } finally {
+    window.windowUtils.disableNonTestMouseEvents(false);
+  }
+
+  conversation.close();
+  account.disconnect();
+  IMServices.accounts.deleteAccount(account.id);
 });
 
 async function showTooltip(elementSelector, tooltip, browser) {
-  const popupShown = BrowserTestUtils.waitForEvent(tooltip, "popupshown");
   await BrowserTestUtils.synthesizeMouseAtCenter(
     elementSelector,
     { type: "mousemove" },
     browser
   );
-  return popupShown;
+  return BrowserTestUtils.waitForPopupEvent(tooltip, "shown");
 }
 
 async function hideTooltip(tooltip, browser) {
-  const popupHidden = BrowserTestUtils.waitForEvent(tooltip, "popuphidden");
   await BrowserTestUtils.synthesizeMouseAtCenter(
     ".message .body",
     { type: "mousemove" },
     browser
   );
-  return popupHidden;
+  return BrowserTestUtils.waitForPopupEvent(tooltip, "hidden");
 }

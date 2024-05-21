@@ -23,7 +23,7 @@ profile-selection-conflict-message = Başka bir { -brand-product-name } kopyası
 
 profile-manager-description = { -brand-short-name }; ayarlarınız, tercihleriniz ve diğer kullanıcı öğelerinizle ilgili bilgileri kullanıcı profilinizde depolar.
 profile-manager-work-offline =
-    .label = Çevrim dışı çalış
+    .label = Çevrimdışı çalış
     .accesskey = e
 profile-manager-use-selected =
     .label = Başlangıçta sormadan seçili profili kullan

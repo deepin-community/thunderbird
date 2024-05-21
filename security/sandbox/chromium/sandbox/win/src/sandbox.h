@@ -102,14 +102,6 @@ class BrokerServices {
   //   more information.
   virtual ResultCode WaitForAllTargets() = 0;
 
-  // Adds an unsandboxed process as a peer for policy decisions (e.g.
-  // HANDLES_DUP_ANY policy).
-  // Returns:
-  //   ALL_OK if successful. All other return values imply failure.
-  //   If the return is ERROR_GENERIC, you can call ::GetLastError() to get
-  //   more information.
-  virtual ResultCode AddTargetPeer(HANDLE peer_process) = 0;
-
   // This call creates a snapshot of policies managed by the sandbox and
   // returns them via a helper class.
   // Parameters:
@@ -121,6 +113,11 @@ class BrokerServices {
   //   callback.
   virtual ResultCode GetPolicyDiagnostics(
       std::unique_ptr<PolicyDiagnosticsReceiver> receiver) = 0;
+
+  // Derive a capability PSID from the given string.
+  virtual bool DeriveCapabilitySidFromName(const wchar_t* name,
+                                           PSID derived_sid,
+                                           DWORD sid_buffer_length) = 0;
 
  protected:
   ~BrokerServices() {}
@@ -167,19 +164,8 @@ class TargetServices {
   // LowerToken has been called or not.
   virtual ProcessState* GetState() = 0;
 
-  // Requests the broker to duplicate the supplied handle into the target
-  // process. The target process must be an active sandbox child process
-  // and the source process must have a corresponding policy allowing
-  // handle duplication for this object type.
-  // Returns:
-  //   ALL_OK if successful. All other return values imply failure.
-  //   If the return is ERROR_GENERIC, you can call ::GetLastError() to get
-  //   more information.
-  virtual ResultCode DuplicateHandle(HANDLE source_handle,
-                                     DWORD target_process_id,
-                                     HANDLE* target_handle,
-                                     DWORD desired_access,
-                                     DWORD options) = 0;
+  virtual ResultCode GetComplexLineBreaks(const WCHAR* text, uint32_t length,
+                                          uint8_t* break_before) = 0;
 
  protected:
   ~TargetServices() {}

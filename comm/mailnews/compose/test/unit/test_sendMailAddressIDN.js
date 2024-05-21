@@ -17,26 +17,30 @@ var kToValid = "to@v\u00E4lid.foo.invalid";
 var kToValidACE = "to@xn--vlid-loa.foo.invalid";
 var kToInvalid = "b\u00F8rken.to@invalid.foo.invalid";
 var kToInvalidWithoutDomain = "b\u00F8rken.to";
-var NS_ERROR_BUT_DONT_SHOW_ALERT = 0x805530ef;
+var NS_ERROR_ILLEGAL_LOCALPART = 0x80553139;
+var NS_MSG_NO_RECIPIENTS = 0x805530df;
 
-/* exported alert */
 // for alertTestUtils.js
-function alert(aDialogText, aText) {
-  // ignore without domain situation (this is crash test)
-  if (test == kToInvalidWithoutDomain) {
-    return;
-  }
-
+let resolveAlert;
+function alertPS(parent, aDialogText, aText) {
   var composeProps = Services.strings.createBundle(
     "chrome://messenger/locale/messengercompose/composeMsgs.properties"
   );
-  var expectedAlertMessage = composeProps
-    .GetStringFromName("errorIllegalLocalPart2")
-    .replace("%s", kToInvalid);
+  var expectedAlertMessage =
+    composeProps.GetStringFromName("sendFailed") +
+    "\n" +
+    composeProps.GetStringFromName(
+      test == kToInvalidWithoutDomain
+        ? "noRecipients"
+        : "errorIllegalLocalPart2"
+    );
+  if (test != kToInvalidWithoutDomain) {
+    expectedAlertMessage = expectedAlertMessage.replace("%s", test);
+  }
 
   // we should only get here for the kToInvalid test case
-  Assert.equal(test, kToInvalid);
   Assert.equal(aText, expectedAlertMessage);
+  resolveAlert();
 }
 
 // message listener implementations
@@ -70,7 +74,12 @@ MsgSendListener.prototype = {
         // Compare data file to what the server received
         Assert.equal(this.originalData, server._daemon.post);
       } else {
-        Assert.equal(aStatus, NS_ERROR_BUT_DONT_SHOW_ALERT);
+        Assert.equal(
+          aStatus,
+          test == kToInvalidWithoutDomain
+            ? NS_MSG_NO_RECIPIENTS
+            : NS_ERROR_ILLEGAL_LOCALPART
+        );
         do_check_transaction(server.playTransaction(), ["EHLO test"]);
         // Local address (before the @) has non-ascii char(s) or the @ is
         // missing from the address. An alert is triggered after the EHLO is
@@ -82,14 +91,14 @@ MsgSendListener.prototype = {
       do_throw(e);
     } finally {
       server.stop();
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(false);
       }
       do_test_finished();
     }
   },
-  onGetDraftFolderURI(aFolderURI) {},
+  onGetDraftFolderURI(aMsgID, aFolderURI) {},
   onSendNotPerformed(aMsgID, aStatus) {},
   onTransportSecurityError(msgID, status, secInfo, location) {},
 
@@ -125,8 +134,11 @@ MsgSendListener.prototype = {
   ]),
 };
 
-async function doSendTest(aRecipient, aRecipientExpected) {
+async function doSendTest(aRecipient, aRecipientExpected, waitForPrompt) {
   info(`Testing send to ${aRecipient} will get sent to ${aRecipientExpected}`);
+  const promiseAlertReceived = new Promise(resolve => {
+    resolveAlert = resolve;
+  });
   test = aRecipient;
   server = setupServerDaemon();
   server.start();
@@ -141,6 +153,7 @@ async function doSendTest(aRecipient, aRecipientExpected) {
   // Handle the server in a try/catch/finally loop so that we always will stop
   // the server if something fails.
   try {
+    do_test_pending();
     var compFields = Cc[
       "@mozilla.org/messengercompose/composefields;1"
     ].createInstance(Ci.nsIMsgCompFields);
@@ -165,24 +178,26 @@ async function doSendTest(aRecipient, aRecipientExpected) {
     );
 
     server.performTest();
-    do_test_pending();
-    do_timeout(10000, function() {
+    do_timeout(10000, function () {
       if (!finished) {
         do_throw("Notifications of message send/copy not received");
       }
     });
+    if (waitForPrompt) {
+      await promiseAlertReceived;
+    }
   } catch (e) {
     Assert.ok(false, "Send fail: " + e);
   } finally {
     server.stop();
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
   }
 }
 
-add_task(function setup() {
+add_setup(function () {
   registerAlertTestUtils();
 
   // Ensure we have at least one mail account
@@ -194,7 +209,7 @@ add_task(function setup() {
 add_task(async function plainASCIIRecipient() {
   // Test 1:
   // Plain ASCII recipient address.
-  await doSendTest(kToASCII, kToASCII);
+  await doSendTest(kToASCII, kToASCII, false);
 });
 
 add_task(async function domainContainsNonAscii() {
@@ -205,7 +220,7 @@ add_task(async function domainContainsNonAscii() {
   // the message to the remaining - wrong! - address.
   // The new code will translate the domain part to ACE for the SMTP
   // transaction (only), i.e. the To: header will stay as stated by the sender.
-  await doSendTest(kToValid, kToValidACE);
+  await doSendTest(kToValid, kToValidACE, false);
 });
 
 add_task(async function localContainsNonAscii() {
@@ -215,11 +230,11 @@ add_task(async function localContainsNonAscii() {
   // The old code would just strip the invalid character and try to send the
   // message to the remaining - wrong! - address.
   // The new code will present an informational message box and deny sending.
-  await doSendTest(kToInvalid, kToInvalid);
+  await doSendTest(kToInvalid, kToInvalid, true);
 });
 
 add_task(async function invalidCharNoAt() {
   // Test 4:
   // Bug 856506. invalid char without '@' causes crash.
-  await doSendTest(kToInvalidWithoutDomain, kToInvalidWithoutDomain);
+  await doSendTest(kToInvalidWithoutDomain, kToInvalidWithoutDomain, true);
 });

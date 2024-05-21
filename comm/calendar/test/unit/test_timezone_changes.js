@@ -16,7 +16,7 @@ function run_test() {
 // This test requires timezone data going back to 2016. It's been kept here as an example.
 /* add_test(function testCaracas() {
     let time = cal.createDateTime();
-    let zone = cal.getTimezoneService().getTimezone("America/Caracas");
+    let zone = cal.timezoneService.getTimezone("America/Caracas");
 
     for (let month = JANUARY; month <= DECEMBER; month++) {
         time.resetTo(2015, month, 1, 0, 0, 0, zone);
@@ -50,8 +50,8 @@ function run_test() {
 // Brazil's rules are complicated. This tests every change in the time range we have data for.
 // Updated for 2019b: Brazil no longer has DST.
 add_test(function testSaoPaulo() {
-  let time = cal.createDateTime();
-  let zone = cal.getTimezoneService().getTimezone("America/Sao_Paulo");
+  const time = cal.createDateTime();
+  const zone = cal.timezoneService.getTimezone("America/Sao_Paulo");
 
   time.resetTo(2018, FEBRUARY, 17, 0, 0, 0, zone);
   equal(time.timezoneOffset, UTC_MINUS_2, time.toString());

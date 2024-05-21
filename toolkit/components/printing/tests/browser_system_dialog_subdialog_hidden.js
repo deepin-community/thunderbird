@@ -15,12 +15,12 @@ add_task(async function testSystemDialogLinkState() {
     let systemLink = helper.get("open-dialog-link");
     if (AppConstants.platform == "win") {
       ok(
-        BrowserTestUtils.is_hidden(systemLink),
+        BrowserTestUtils.isHidden(systemLink),
         "Link is hidden on Windows with no extra printers"
       );
     } else {
       ok(
-        BrowserTestUtils.is_visible(systemLink),
+        BrowserTestUtils.isVisible(systemLink),
         "Link is visible on Linux/macOS"
       );
     }
@@ -73,7 +73,7 @@ add_task(async function testModalPrintDialogCancelled() {
     helper.assertDialogHidden();
 
     await helper.withClosingFn(() => {
-      helper.rejectShowSystemDialog();
+      helper.resolveShowSystemDialog(false);
     });
 
     helper.assertDialogClosed();
@@ -92,6 +92,13 @@ add_task(async function testPrintDoesNotWaitForPreview() {
 
     helper.mockFilePicker("print_does_not_wait_for_preview.pdf");
     await helper.setupMockPrint();
+
+    let systemPrint = helper.get("system-print");
+    await BrowserTestUtils.waitForCondition(
+      () => BrowserTestUtils.isVisible(systemPrint),
+      "Wait for the system-print to be visible"
+    );
+
     helper.click(helper.get("open-dialog-link"));
 
     helper.assertDialogHidden();

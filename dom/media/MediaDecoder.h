@@ -36,10 +36,6 @@ class nsIPrincipal;
 
 namespace mozilla {
 
-namespace dom {
-class MediaMemoryInfo;
-}
-
 class AbstractThread;
 class DOMMediaStream;
 class DecoderBenchmark;
@@ -47,9 +43,46 @@ class ProcessedMediaTrack;
 class FrameStatistics;
 class VideoFrameContainer;
 class MediaFormatReader;
-class MediaDecoderStateMachine;
+class MediaDecoderStateMachineBase;
 struct MediaPlaybackEvent;
 struct SharedDummyTrack;
+
+template <typename T>
+struct DurationToType {
+  double operator()(double aDouble);
+  double operator()(const media::TimeUnit& aTimeUnit);
+};
+
+template <>
+struct DurationToType<double> {
+  double operator()(double aDouble) { return aDouble; }
+  double operator()(const media::TimeUnit& aTimeUnit) {
+    if (aTimeUnit.IsValid()) {
+      if (aTimeUnit.IsPosInf()) {
+        return std::numeric_limits<double>::infinity();
+      }
+      if (aTimeUnit.IsNegInf()) {
+        return -std::numeric_limits<double>::infinity();
+      }
+      return aTimeUnit.ToSeconds();
+    }
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+};
+
+using DurationToDouble = DurationToType<double>;
+
+template <>
+struct DurationToType<media::TimeUnit> {
+  media::TimeUnit operator()(double aDouble) {
+    return media::TimeUnit::FromSeconds(aDouble);
+  }
+  media::TimeUnit operator()(const media::TimeUnit& aTimeUnit) {
+    return aTimeUnit;
+  }
+};
+
+using DurationToTimeUnit = DurationToType<media::TimeUnit>;
 
 struct MOZ_STACK_CLASS MediaDecoderInit {
   MediaDecoderOwner* const mOwner;
@@ -135,9 +168,6 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // the seek target.
   void Seek(double aTime, SeekTarget::Type aSeekType);
 
-  // Initialize state machine and schedule it.
-  nsresult InitializeStateMachine();
-
   // Start playback of a video. 'Load' must have previously been
   // called.
   virtual void Play();
@@ -177,6 +207,20 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // not connected to streams created by captureStreamUntilEnded.
 
   enum class OutputCaptureState { Capture, Halt, None };
+  const char* OutputCaptureStateToStr(OutputCaptureState aState) const {
+    switch (aState) {
+      case OutputCaptureState::Capture:
+        return "Capture";
+      case OutputCaptureState::Halt:
+        return "Halt";
+      case OutputCaptureState::None:
+        return "None";
+      default:
+        MOZ_ASSERT_UNREACHABLE("Not defined state!");
+        return "Not-defined";
+    }
+  }
+
   // Set the output capture state of this decoder.
   // @param aState Capture: Output is captured into output tracks, and
   //                        aDummyTrack must be provided.
@@ -226,8 +270,14 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // supports range requests, we are playing a file, etc.).
   virtual bool IsTransportSeekable() = 0;
 
-  // Return the time ranges that can be seeked into.
+  // Return the time ranges that can be seeked into, in TimeUnits.
   virtual media::TimeIntervals GetSeekable();
+  // Return the time ranges that can be seeked into, in seconds, double
+  // precision.
+  virtual media::TimeRanges GetSeekableTimeRanges();
+
+  template <typename T>
+  T GetSeekableImpl();
 
   // Set the end time of the media resource. When playback reaches
   // this point the media pauses. aTime is in seconds.
@@ -258,8 +308,8 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // SetLoadInBackground() on mResource.
   virtual void SetLoadInBackground(bool aLoadInBackground) {}
 
-  MediaDecoderStateMachine* GetStateMachine() const;
-  void SetStateMachine(MediaDecoderStateMachine* aStateMachine);
+  MediaDecoderStateMachineBase* GetStateMachine() const;
+  void SetStateMachine(MediaDecoderStateMachineBase* aStateMachine);
 
   // Constructs the time ranges representing what segments of the media
   // are buffered and playable.
@@ -318,11 +368,16 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   void UpdateVideoDecodeMode();
 
   void SetSecondaryVideoContainer(
-      RefPtr<VideoFrameContainer> aSecondaryVideoContainer);
+      const RefPtr<VideoFrameContainer>& aSecondaryVideoContainer);
 
   void SetIsBackgroundVideoDecodingAllowed(bool aAllowed);
 
   bool IsVideoDecodingSuspended() const;
+
+  // The MediaDecoderOwner of this decoder wants to resist fingerprinting.
+  bool ShouldResistFingerprinting() const {
+    return mShouldResistFingerprinting;
+  }
 
   /******
    * The following methods must only be called on the main
@@ -378,10 +433,6 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   static bool IsWaveEnabled();
   static bool IsWebMEnabled();
 
-#  ifdef MOZ_WMF
-  static bool IsWMFEnabled();
-#  endif
-
   // Return the frame decode/paint related statistics.
   FrameStatistics& GetFrameStatistics() { return *mFrameStats; }
 
@@ -409,7 +460,20 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   virtual void FirstFrameLoaded(UniquePtr<MediaInfo> aInfo,
                                 MediaDecoderEventVisibility aEventVisibility);
 
+  // Return error if fail to init the state machine.
+  nsresult CreateAndInitStateMachine(bool aIsLiveStream,
+                                     bool aDisableExternalEngine = false);
+
+  // Always return a state machine. If the decoder supports using external
+  // engine, `aDisableExternalEngine` can disable the external engine if needed.
+  virtual MediaDecoderStateMachineBase* CreateStateMachine(
+      bool aDisableExternalEngine) MOZ_NONNULL_RETURN = 0;
+
   void SetStateMachineParameters();
+
+  // Disconnect any events before shutting down the state machine.
+  void DisconnectEvents();
+  RefPtr<ShutdownPromise> ShutdownStateMachine();
 
   // Called when MediaDecoder shutdown is finished. Subclasses use this to clean
   // up internal structures, and unregister potential shutdown blockers when
@@ -444,7 +508,7 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
                               UniquePtr<MetadataTags> aTags,
                               MediaDecoderEventVisibility aEventVisibility);
 
-  void SetLogicalPosition(double aNewPosition);
+  void SetLogicalPosition(const media::TimeUnit& aNewPosition);
 
   /******
    * The following members should be accessed with the decoder lock held.
@@ -466,7 +530,10 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   already_AddRefed<layers::KnowsCompositor> GetCompositor();
 
   // Official duration of the media resource as observed by script.
-  double mDuration;
+  // This can be a TimeUnit representing the exact duration found by demuxing,
+  // as a TimeUnit. This can also be a duration set explicitly by script, as a
+  // double.
+  Variant<media::TimeUnit, double> mDuration;
 
   /******
    * The following member variables can be accessed from any thread.
@@ -492,14 +559,17 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
 
   void OnNextFrameStatus(MediaDecoderOwner::NextFrameStatus);
 
+  void OnTrackInfoUpdated(const VideoInfo& aVideoInfo,
+                          const AudioInfo& aAudioInfo);
+
   void OnSecondaryVideoContainerInstalled(
-      const RefPtr<VideoFrameContainer>& aSecondaryContainer);
+      const RefPtr<VideoFrameContainer>& aSecondaryVideoContainer);
 
   void OnStoreDecoderBenchmark(const VideoInfo& aInfo);
 
   void FinishShutdown();
 
-  void ConnectMirrors(MediaDecoderStateMachine* aObject);
+  void ConnectMirrors(MediaDecoderStateMachineBase* aObject);
   void DisconnectMirrors();
 
   virtual bool CanPlayThroughImpl() = 0;
@@ -511,7 +581,7 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // is safe to access it during this period.
   //
   // Explicitly prievate to force access via accessors.
-  RefPtr<MediaDecoderStateMachine> mDecoderStateMachine;
+  RefPtr<MediaDecoderStateMachineBase> mDecoderStateMachine;
 
  protected:
   void NotifyReaderDataArrived();
@@ -578,6 +648,9 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   // disabled.
   bool mHasSuspendTaint;
 
+  // If true, the decoder should resist fingerprinting.
+  const bool mShouldResistFingerprinting;
+
   MediaDecoderOwner::NextFrameStatus mNextFrameStatus =
       MediaDecoderOwner::NEXT_FRAME_UNAVAILABLE;
 
@@ -595,6 +668,7 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   MediaEventListener mOnWaitingForKey;
   MediaEventListener mOnDecodeWarning;
   MediaEventListener mOnNextFrameStatus;
+  MediaEventListener mOnTrackInfoUpdated;
   MediaEventListener mOnSecondaryVideoContainerInstalled;
   MediaEventListener mOnStoreDecoderBenchmark;
 
@@ -682,46 +756,53 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
   bool mShouldDelaySeek = false;
   Maybe<SeekTarget> mDelayedSeekTarget;
 
+#  ifdef MOZ_WMF_MEDIA_ENGINE
+  // True if we've ever recreated a new state machine due to the previous state
+  // didn't support the media format or key system.
+  bool mStateMachineRecreated = false;
+#  endif
+
  public:
-  AbstractCanonical<double>* CanonicalVolume() { return &mVolume; }
-  AbstractCanonical<bool>* CanonicalPreservesPitch() {
-    return &mPreservesPitch;
+  Canonical<double>& CanonicalVolume() { return mVolume; }
+  Canonical<bool>& CanonicalPreservesPitch() { return mPreservesPitch; }
+  Canonical<bool>& CanonicalLooping() { return mLooping; }
+  Canonical<nsAutoString>& CanonicalStreamName() { return mStreamName; }
+  Canonical<RefPtr<AudioDeviceInfo>>& CanonicalSinkDevice() {
+    return mSinkDevice;
   }
-  AbstractCanonical<bool>* CanonicalLooping() { return &mLooping; }
-  AbstractCanonical<nsAutoString>* CanonicalStreamName() {
-    return &mStreamName;
+  Canonical<RefPtr<VideoFrameContainer>>& CanonicalSecondaryVideoContainer() {
+    return mSecondaryVideoContainer;
   }
-  AbstractCanonical<RefPtr<AudioDeviceInfo>>* CanonicalSinkDevice() {
-    return &mSinkDevice;
+  Canonical<OutputCaptureState>& CanonicalOutputCaptureState() {
+    return mOutputCaptureState;
   }
-  AbstractCanonical<RefPtr<VideoFrameContainer>>*
-  CanonicalSecondaryVideoContainer() {
-    return &mSecondaryVideoContainer;
-  }
-  AbstractCanonical<OutputCaptureState>* CanonicalOutputCaptureState() {
-    return &mOutputCaptureState;
-  }
-  AbstractCanonical<nsMainThreadPtrHandle<SharedDummyTrack>>*
+  Canonical<nsMainThreadPtrHandle<SharedDummyTrack>>&
   CanonicalOutputDummyTrack() {
-    return &mOutputDummyTrack;
+    return mOutputDummyTrack;
   }
-  AbstractCanonical<CopyableTArray<RefPtr<ProcessedMediaTrack>>>*
+  Canonical<CopyableTArray<RefPtr<ProcessedMediaTrack>>>&
   CanonicalOutputTracks() {
-    return &mOutputTracks;
+    return mOutputTracks;
   }
-  AbstractCanonical<PrincipalHandle>* CanonicalOutputPrincipal() {
-    return &mOutputPrincipal;
+  Canonical<PrincipalHandle>& CanonicalOutputPrincipal() {
+    return mOutputPrincipal;
   }
-  AbstractCanonical<PlayState>* CanonicalPlayState() { return &mPlayState; }
+  Canonical<PlayState>& CanonicalPlayState() { return mPlayState; }
 
   void UpdateTelemetryHelperBasedOnPlayState(PlayState aState) const;
 
   TelemetryProbesReporter::Visibility OwnerVisibility() const;
 
-  // They are used for reporting telemetry related results.
-  double GetTotalPlayTimeInSeconds() const;
+  // Those methods exist to report telemetry related metrics.
+  double GetTotalVideoPlayTimeInSeconds() const;
+  double GetTotalVideoHDRPlayTimeInSeconds() const;
+  double GetVisibleVideoPlayTimeInSeconds() const;
   double GetInvisibleVideoPlayTimeInSeconds() const;
   double GetVideoDecodeSuspendedTimeInSeconds() const;
+  double GetTotalAudioPlayTimeInSeconds() const;
+  double GetAudiblePlayTimeInSeconds() const;
+  double GetInaudiblePlayTimeInSeconds() const;
+  double GetMutedPlayTimeInSeconds() const;
 
  private:
   /**
@@ -735,22 +816,31 @@ class MediaDecoder : public DecoderDoctorLifeLogger<MediaDecoder> {
     eSeamlessLoopingSeeking,
     eOther,
   };
-  PositionUpdate GetPositionUpdateReason(double aPrevPos, double aCurPos) const;
+  PositionUpdate GetPositionUpdateReason(double aPrevPos,
+                                         const media::TimeUnit& aCurPos) const;
 
   // Notify owner when the audible state changed
   void NotifyAudibleStateChanged();
+
+  void NotifyVolumeChanged();
 
   bool mTelemetryReported;
   const MediaContainerType mContainerType;
   bool mCanPlayThrough = false;
 
   UniquePtr<TelemetryProbesReporter> mTelemetryProbesReporter;
+
+#  ifdef MOZ_WMF_MEDIA_ENGINE
+  // True when we need to update the newly created MDSM's status to make it
+  // consistent with the previous destroyed one.
+  bool mPendingStatusUpdateForNewlyCreatedStateMachine = false;
+#  endif
+
+  // The time of creating the media decoder state machine, it's used to record
+  // the probe for measuring the first video frame loaded time. Reset after
+  // reporting the measurement to avoid a dulpicated report.
+  Maybe<TimeStamp> mMDSMCreationTime;
 };
-
-typedef MozPromise<mozilla::dom::MediaMemoryInfo, nsresult, true>
-    MediaMemoryPromise;
-
-RefPtr<MediaMemoryPromise> GetMediaMemorySizes();
 
 }  // namespace mozilla
 

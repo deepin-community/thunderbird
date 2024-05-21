@@ -35,8 +35,7 @@
 #include "nsStringStream.h"
 #include "nsURLHelper.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(URLSearchParams, mParent, mObserver)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(URLSearchParams)
@@ -103,6 +102,8 @@ void URLSearchParams::ParseInput(const nsACString& aInput) {
   mParams->ParseInput(aInput);
 }
 
+uint32_t URLSearchParams::Size() const { return mParams->Length(); }
+
 void URLSearchParams::Get(const nsAString& aName, nsString& aRetval) {
   return mParams->Get(aName, aRetval);
 }
@@ -122,19 +123,29 @@ void URLSearchParams::Append(const nsAString& aName, const nsAString& aValue) {
   NotifyObserver();
 }
 
-bool URLSearchParams::Has(const nsAString& aName) {
-  return mParams->Has(aName);
+bool URLSearchParams::Has(const nsAString& aName,
+                          const Optional<nsAString>& aValue) {
+  if (!aValue.WasPassed()) {
+    return mParams->Has(aName);
+  }
+  return mParams->Has(aName, aValue.Value());
 }
 
-void URLSearchParams::Delete(const nsAString& aName) {
-  mParams->Delete(aName);
+void URLSearchParams::Delete(const nsAString& aName,
+                             const Optional<nsAString>& aValue) {
+  if (!aValue.WasPassed()) {
+    mParams->Delete(aName);
+    NotifyObserver();
+    return;
+  }
+  mParams->Delete(aName, aValue.Value());
   NotifyObserver();
 }
 
 void URLSearchParams::DeleteAll() { mParams->DeleteAll(); }
 
 void URLSearchParams::Serialize(nsAString& aValue) const {
-  mParams->Serialize(aValue);
+  mParams->Serialize(aValue, true);
 }
 
 void URLSearchParams::NotifyObserver() {
@@ -160,60 +171,6 @@ void URLSearchParams::Sort(ErrorResult& aRv) {
   NotifyObserver();
 }
 
-bool URLSearchParams::WriteStructuredClone(
-    JSStructuredCloneWriter* aWriter) const {
-  const uint32_t& nParams = mParams->Length();
-  if (!JS_WriteUint32Pair(aWriter, nParams, 0)) {
-    return false;
-  }
-  for (uint32_t i = 0; i < nParams; ++i) {
-    if (!StructuredCloneHolder::WriteString(aWriter,
-                                            mParams->GetKeyAtIndex(i)) ||
-        !StructuredCloneHolder::WriteString(aWriter,
-                                            mParams->GetValueAtIndex(i))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool URLSearchParams::ReadStructuredClone(JSStructuredCloneReader* aReader) {
-  MOZ_ASSERT(aReader);
-
-  DeleteAll();
-
-  uint32_t nParams, zero;
-  nsAutoString key, value;
-  if (!JS_ReadUint32Pair(aReader, &nParams, &zero)) {
-    return false;
-  }
-  MOZ_ASSERT(zero == 0);
-  for (uint32_t i = 0; i < nParams; ++i) {
-    if (!StructuredCloneHolder::ReadString(aReader, key) ||
-        !StructuredCloneHolder::ReadString(aReader, value)) {
-      return false;
-    }
-    Append(key, value);
-  }
-  return true;
-}
-
-bool URLSearchParams::WriteStructuredClone(
-    JSContext* aCx, JSStructuredCloneWriter* aWriter) const {
-  return WriteStructuredClone(aWriter);
-}
-
-// static
-already_AddRefed<URLSearchParams> URLSearchParams::ReadStructuredClone(
-    JSContext* aCx, nsIGlobalObject* aGlobal,
-    JSStructuredCloneReader* aReader) {
-  RefPtr<URLSearchParams> params = new URLSearchParams(aGlobal);
-  if (!params->ReadStructuredClone(aReader)) {
-    return nullptr;
-  }
-  return params.forget();
-}
-
 // contentTypeWithCharset can be set to the contentType or
 // contentType+charset based on what the spec says.
 // See: https://fetch.spec.whatwg.org/#concept-bodyinit-extract
@@ -232,5 +189,4 @@ nsresult URLSearchParams::GetSendInfo(nsIInputStream** aBody,
   return NS_NewCStringInputStream(aBody, std::move(converted));
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

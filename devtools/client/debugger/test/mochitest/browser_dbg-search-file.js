@@ -4,19 +4,12 @@
 
 // Tests the search bar correctly responds to queries, enter, shift enter
 
-const IS_MAC_OSX = AppConstants.platform === "macosx";
+"use strict";
 
-add_task(async function() {
+add_task(async function () {
   const dbg = await initDebugger("doc-scripts.html", "simple1.js");
-  const {
-    selectors: { getBreakpoints, getBreakpoint, getActiveSearch },
-    getState,
-  } = dbg;
-  const source = findSource(dbg, "simple1.js");
+  await selectSource(dbg, "simple1.js");
 
-  await selectSource(dbg, source.url);
-
-  const cm = getCM(dbg);
   pressKey(dbg, "fileSearch");
   is(dbg.selectors.getActiveSearch(), "file", "The search UI was opened");
 
@@ -34,9 +27,7 @@ add_task(async function() {
   info("Search for `con` in the script");
   type(dbg, "con");
   await waitForSearchState(dbg);
-  await waitForDispatch(dbg.store, "UPDATE_SEARCH_RESULTS");
 
-  const state = cm.state.search;
   // All the lines in the script that include `con`
   const linesWithResults = [
     // const func
@@ -47,17 +38,16 @@ add_task(async function() {
     42,
     // constructor (in Klass)
     55,
+    // console.log
+    62,
   ];
 
-  await waitFor(
-    () => getCursorPositionLine(dbg) === linesWithResults[0],
-    `typing in the search input did not set the search state in expected state`
-  );
-
-  is(
-    getCursorPositionLine(dbg),
+  await waitForCursorPosition(dbg, linesWithResults[0]);
+  assertCursorPosition(
+    dbg,
     linesWithResults[0],
-    "typing in the search input initialize the search"
+    6,
+    "typing in the search input moves the cursor in the source content"
   );
 
   info("Check that pressing Enter navigates forward through the results");
@@ -112,36 +102,20 @@ add_task(async function() {
     "Enter cycles forward through the results"
   );
 
-  if (IS_MAC_OSX) {
-    info(
-      "cmd+G and cmdShift+G shortcut for traversing results only work for macOS"
-    );
-    await navigateWithKey(
-      dbg,
-      "fileSearchNext",
-      linesWithResults[1],
-      "Cmd+G moves forward in the search results"
-    );
-
-    await navigateWithKey(
-      dbg,
-      "fileSearchPrev",
-      linesWithResults[0],
-      "Cmd+Shift+G moves backward in the search results"
-    );
-  }
-
   info("Check that changing the search term works");
   pressKey(dbg, "fileSearch");
   type(dbg, "doEval");
 
-  await waitFor(
-    () => getCursorPositionLine(dbg) === 9,
+  await waitForCursorPosition(dbg, 9);
+  assertCursorPosition(
+    dbg,
+    9,
+    16,
     "The UI navigates to the new search results"
   );
 
   // selecting another source keeps search open
-  await selectSource(dbg, "simple2");
+  await selectSource(dbg, "simple2.js");
   ok(findElement(dbg, "searchField"), "Search field is still visible");
 
   // search is always focused regardless of when or how it was opened
@@ -151,31 +125,7 @@ add_task(async function() {
   is(dbg.win.document.activeElement.tagName, "INPUT", "Search field focused");
 });
 
-async function navigateWithKey(dbg, key, expectedLine, assertionMessage) {
-  const currentLine = getCursorPositionLine(dbg);
+async function navigateWithKey(dbg, key, expectedLine) {
   pressKey(dbg, key);
-  await waitFor(
-    () => currentLine !== getCursorPositionLine(dbg),
-    `Pressing "${key}" did not change the position`
-  );
-
-  is(getCursorPositionLine(dbg), expectedLine, assertionMessage);
-}
-
-function getCursorPositionLine(dbg) {
-  const cursorPosition = findElementWithSelector(dbg, ".cursor-position");
-  const { innerText } = cursorPosition;
-  // Cursor position text has the following shape: (L, C)
-  // where N is the line number, and C the column number
-  const line = innerText.substring(1, innerText.indexOf(","));
-  return parseInt(line);
-}
-
-function waitForSearchState(dbg) {
-  return waitForState(dbg, () => getCM(dbg).state.search);
-}
-
-function getFocusedEl(dbg) {
-  const doc = dbg.win.document;
-  return doc.activeElement;
+  await waitForCursorPosition(dbg, expectedLine);
 }

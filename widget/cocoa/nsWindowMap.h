@@ -22,7 +22,8 @@
 
 @interface WindowDataMap : NSObject {
  @private
-  NSMutableDictionary* mWindowMap;  // dict of TopLevelWindowData keyed by address of NSWindow
+  NSMutableDictionary*
+      mWindowMap;  // dict of TopLevelWindowData keyed by address of NSWindow
 }
 
 + (WindowDataMap*)sharedWindowDataMap;
@@ -49,12 +50,12 @@
  @private
 }
 
-- (id)initWithWindow:(NSWindow*)inWindow;
-+ (void)activateInWindow:(NSWindow*)aWindow;
-+ (void)deactivateInWindow:(NSWindow*)aWindow;
-+ (void)activateInWindowViews:(NSWindow*)aWindow;
-+ (void)deactivateInWindowViews:(NSWindow*)aWindow;
+  - (id)initWithWindow:(NSWindow*)inWindow;
+  + (void)activateInWindow:(NSWindow*)aWindow;
+  + (void)deactivateInWindow:(NSWindow*)aWindow;
+  + (void)activateInWindowViews:(NSWindow*)aWindow;
+  + (void)deactivateInWindowViews:(NSWindow*)aWindow;
 
-@end
+  @end
 
 #endif  // nsWindowMap_h_

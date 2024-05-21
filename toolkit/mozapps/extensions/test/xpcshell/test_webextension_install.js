@@ -58,7 +58,7 @@ add_task(async function test_implicit_id_temp() {
 add_task(async function test_invalid_extension_install_errors() {
   const manifest = {
     name: "invalid",
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: "invalid@tests.mozilla.org",
       },
@@ -117,12 +117,14 @@ add_task(async function test_unsigned_no_id_temp_install() {
   const addon = await AddonManager.installTemporaryAddon(addonDir);
 
   ok(addon.id, "ID should have been auto-generated");
-  ok(
-    Math.abs(addon.installDate - testDate) < 10000,
+  Assert.less(
+    Math.abs(addon.installDate - testDate),
+    10000,
     "addon has an expected installDate"
   );
-  ok(
-    Math.abs(addon.updateDate - testDate) < 10000,
+  Assert.less(
+    Math.abs(addon.updateDate - testDate),
+    10000,
     "addon has an expected updateDate"
   );
 
@@ -271,7 +273,7 @@ add_task(async function test_strict_min_max() {
 
   // bad max good min
   let apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_min_version: "1",
@@ -301,7 +303,7 @@ add_task(async function test_strict_min_max() {
 
   // bad min good max
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_min_version: "2",
@@ -331,7 +333,7 @@ add_task(async function test_strict_min_max() {
 
   // bad both
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_min_version: "2",
@@ -361,7 +363,7 @@ add_task(async function test_strict_min_max() {
 
   // bad only min
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_min_version: "2",
@@ -390,7 +392,7 @@ add_task(async function test_strict_min_max() {
 
   // bad only max
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_max_version: "1",
@@ -419,7 +421,7 @@ add_task(async function test_strict_min_max() {
 
   // good both
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: addonId,
         strict_min_version: "1",
@@ -444,7 +446,7 @@ add_task(async function test_strict_min_max() {
   // good only min
   let newId = "strict_min_only@tests.mozilla.org";
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: newId,
         strict_min_version: "1",
@@ -469,7 +471,7 @@ add_task(async function test_strict_min_max() {
   // good only max
   newId = "strict_max_only@tests.mozilla.org";
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: newId,
         strict_max_version: "2",
@@ -495,7 +497,7 @@ add_task(async function test_strict_min_max() {
   for (let version of ["0.*", "0.*.0"]) {
     newId = "strict_min_star@tests.mozilla.org";
     let minStarApps = {
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: newId,
           strict_min_version: version,
@@ -523,7 +525,7 @@ add_task(async function test_strict_min_max() {
   // incompatible extension but with compatibility checking off
   newId = "checkCompatibility@tests.mozilla.org";
   apps = {
-    applications: {
+    browser_specific_settings: {
       gecko: {
         id: newId,
         strict_max_version: "1",
@@ -595,7 +597,7 @@ add_task(async function test_permissions_prompt() {
   notEqual(addon, null, "Extension was installed");
 
   await addon.uninstall();
-  await OS.File.remove(xpi.path);
+  await IOUtils.remove(xpi.path);
 });
 
 // Check permissions prompt cancellation
@@ -626,7 +628,7 @@ add_task(async function test_permissions_prompt_cancel() {
   let addon = await promiseAddonByID(perminfo.addon.id);
   equal(addon, null, "Extension was not installed");
 
-  await OS.File.remove(xpi.path);
+  await IOUtils.remove(xpi.path);
 });
 
 // Test that presence of 'edge' property in 'browser_specific_settings' doesn't prevent installation from completing successfully
@@ -647,6 +649,35 @@ add_task(async function test_non_gecko_bss_install() {
       unknown_browser: {
         unknown_setting: true,
       },
+    },
+  };
+
+  const extension = ExtensionTestUtils.loadExtension({
+    manifest,
+    useAddonManager: "temporary",
+  });
+  ExtensionTestUtils.failOnSchemaWarnings(false);
+  await extension.startup();
+  ExtensionTestUtils.failOnSchemaWarnings(true);
+
+  const addon = await promiseAddonByID(ID);
+  notEqual(addon, null, "Add-on is installed");
+
+  await extension.unload();
+});
+
+// Test that bss overrides applications if both are present.
+add_task(async function test_duplicate_bss() {
+  const ID = "expected@tests.mozilla.org";
+
+  const manifest = {
+    manifest_version: 2,
+    version: "1.0",
+    applications: {
+      gecko: { id: "unexpected@tests.mozilla.org" },
+    },
+    browser_specific_settings: {
+      gecko: { id: ID },
     },
   };
 

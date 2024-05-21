@@ -15,14 +15,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "ErrorList.h"
+#include "js/experimental/JSStencil.h"
 #include "js/RootingAPI.h"
 #include "js/SourceText.h"
 #include "js/TracingAPI.h"
+#include "js/TypeDecls.h"
+#include "js/Utility.h"  // JS::FreePolicy
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/BasicEvents.h"
 #include "mozilla/RefPtr.h"
+#include "mozilla/UniquePtr.h"
 #include "mozilla/dom/DOMString.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/FragmentOrElement.h"
@@ -48,8 +52,6 @@
 #include "nscore.h"
 
 class JSObject;
-class JSScript;
-class nsAttrValueOrString;
 class nsIControllers;
 class nsIObjectInputStream;
 class nsIObjectOutputStream;
@@ -60,7 +62,7 @@ class nsXULPrototypeDocument;
 class nsXULPrototypeNode;
 struct JSContext;
 
-typedef nsTArray<RefPtr<nsXULPrototypeNode>> nsPrototypeArray;
+using nsPrototypeArray = nsTArray<RefPtr<nsXULPrototypeNode>>;
 
 namespace JS {
 class CompileOptions;
@@ -195,9 +197,6 @@ class nsXULPrototypeElement : public nsXULPrototypeNode {
 
   void Unlink();
 
-  // Trace all scripts held by this element and its children.
-  void TraceAllScripts(JSTracer* aTrc);
-
   nsPrototypeArray mChildren;
 
   RefPtr<mozilla::dom::NodeInfo> mNodeInfo;
@@ -214,9 +213,10 @@ class nsXULPrototypeScript : public nsXULPrototypeNode {
   explicit nsXULPrototypeScript(uint32_t aLineNo);
 
  private:
-  virtual ~nsXULPrototypeScript();
+  virtual ~nsXULPrototypeScript() = default;
 
-  void FillCompileOptions(JS::CompileOptions& options);
+  void FillCompileOptions(JS::CompileOptions& aOptions, const char* aFilename,
+                          uint32_t aLineNo);
 
  public:
   virtual nsresult Serialize(
@@ -231,31 +231,40 @@ class nsXULPrototypeScript : public nsXULPrototypeNode {
   nsresult DeserializeOutOfLine(nsIObjectInputStream* aInput,
                                 nsXULPrototypeDocument* aProtoDoc);
 
-  nsresult Compile(const char16_t* aText, size_t aTextLength,
-                   JS::SourceOwnership aOwnership, nsIURI* aURI,
-                   uint32_t aLineNo, mozilla::dom::Document* aDocument,
-                   nsIOffThreadScriptReceiver* aOffThreadReceiver = nullptr);
+  // Compile given JS source text synchronously.
+  //
+  // This method doesn't take the ownership of aText, but borrows during the
+  // compilation.
+  //
+  // If successfully compiled, `HasStencil()` returns true.
+  nsresult Compile(const char16_t* aText, size_t aTextLength, nsIURI* aURI,
+                   uint32_t aLineNo, mozilla::dom::Document* aDocument);
 
-  void UnlinkJSObjects();
+  // Compile given JS source text possibly in off-thread.
+  //
+  // This method takes the ownership of aText.
+  //
+  // If this doesn't use off-thread compilation and successfully compiled,
+  // `HasStencil()` returns true.
+  //
+  // If this uses off-thread compilation, `HasStencil()` returns false, and
+  // once the compilation finishes, aOffThreadReceiver gets notified with the
+  // compiled stencil.  The callback is responsible for calling `Set()` with
+  // the stencil.
+  nsresult CompileMaybeOffThread(
+      mozilla::UniquePtr<mozilla::Utf8Unit[], JS::FreePolicy>&& aText,
+      size_t aTextLength, nsIURI* aURI, uint32_t aLineNo,
+      mozilla::dom::Document* aDocument,
+      nsIOffThreadScriptReceiver* aOffThreadReceiver);
 
-  void Set(JSScript* aObject);
+  void Set(JS::Stencil* aStencil);
 
-  bool HasScriptObject() {
-    // Conversion to bool doesn't trigger mScriptObject's read barrier.
-    return mScriptObject;
-  }
+  bool HasStencil() { return mStencil; }
 
-  JSScript* GetScriptObject() { return mScriptObject; }
+  JS::Stencil* GetStencil() { return mStencil.get(); }
 
-  void TraceScriptObject(JSTracer* aTrc) {
-    JS::TraceEdge(aTrc, &mScriptObject, "active window XUL prototype script");
-  }
-
-  void Trace(const TraceCallbacks& aCallbacks, void* aClosure) {
-    if (mScriptObject) {
-      aCallbacks.Trace(&mScriptObject, "mScriptObject", aClosure);
-    }
-  }
+  nsresult InstantiateScript(JSContext* aCx,
+                             JS::MutableHandle<JSScript*> aScript);
 
   nsCOMPtr<nsIURI> mSrcURI;
   uint32_t mLineNo;
@@ -264,7 +273,7 @@ class nsXULPrototypeScript : public nsXULPrototypeNode {
   mozilla::dom::PrototypeDocumentContentSink*
       mSrcLoadWaiters;  // [OWNER] but not COMPtr
  private:
-  JS::Heap<JSScript*> mScriptObject;
+  RefPtr<JS::Stencil> mStencil;
 };
 
 class nsXULPrototypeText : public nsXULPrototypeNode {
@@ -329,7 +338,7 @@ ASSERT_NODE_FLAGS_SPACE(ELEMENT_TYPE_SPECIFIC_BITS_OFFSET + 2);
 
 class nsXULElement : public nsStyledElement {
  protected:
-  typedef mozilla::dom::Document Document;
+  using Document = mozilla::dom::Document;
 
   // Use Construct to construct elements instead of this constructor.
   explicit nsXULElement(already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo);
@@ -353,6 +362,11 @@ class nsXULElement : public nsStyledElement {
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(nsXULElement, nsStyledElement)
 
+  // This doesn't work on XUL elements! You probably want
+  // GetXULBoolAttr(nsGkAtoms::disabled) or so.
+  // TODO(emilio): Maybe we should unify HTML and XUL here.
+  bool IsDisabled() const = delete;
+
   // nsINode
   void GetEventTargetParent(mozilla::EventChainPreVisitor& aVisitor) override;
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
@@ -360,7 +374,7 @@ class nsXULElement : public nsStyledElement {
       mozilla::EventChainVisitor& aVisitor) override;
   // nsIContent
   virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  virtual void UnbindFromTree(bool aNullParent) override;
+  virtual void UnbindFromTree(UnbindContext&) override;
   virtual void DestroyContent() override;
   virtual void DoneAddingChildren(bool aHaveNotified) override;
 
@@ -370,34 +384,36 @@ class nsXULElement : public nsStyledElement {
                            bool aDumpAll) const override {}
 #endif
 
-  MOZ_CAN_RUN_SCRIPT int32_t ScreenX();
-  MOZ_CAN_RUN_SCRIPT int32_t ScreenY();
-
   MOZ_CAN_RUN_SCRIPT bool HasMenu();
   MOZ_CAN_RUN_SCRIPT void OpenMenu(bool aOpenFlag);
 
-  MOZ_CAN_RUN_SCRIPT virtual bool PerformAccesskey(
+  MOZ_CAN_RUN_SCRIPT
+  virtual mozilla::Result<bool, nsresult> PerformAccesskey(
       bool aKeyCausesActivation, bool aIsTrustedEvent) override;
-  void ClickWithInputSource(uint16_t aInputSource, bool aIsTrustedEvent);
+  MOZ_CAN_RUN_SCRIPT void ClickWithInputSource(uint16_t aInputSource,
+                                               bool aIsTrustedEvent);
+  struct XULFocusability {
+    bool mDefaultFocusable = false;
+    mozilla::Maybe<bool> mForcedFocusable;
+    mozilla::Maybe<int32_t> mForcedTabIndexIfFocusable;
 
-  virtual bool IsNodeOfType(uint32_t aFlags) const override;
-  virtual bool IsFocusableInternal(int32_t* aTabIndex,
-                                   bool aWithMouse) override;
+    static XULFocusability NeverFocusable() {
+      return {false, mozilla::Some(false), mozilla::Some(-1)};
+    }
+  };
+  XULFocusability GetXULFocusability(bool aWithMouse);
+  Focusable IsFocusableWithoutStyle(bool aWithMouse) override;
 
-  virtual nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
-                                              int32_t aModType) const override;
   NS_IMETHOD_(bool) IsAttributeMapped(const nsAtom* aAttribute) const override;
 
   virtual nsresult Clone(mozilla::dom::NodeInfo*,
                          nsINode** aResult) const override;
 
-  virtual void RecompileScriptEventListeners() override;
-
   virtual bool IsEventAttributeNameInternal(nsAtom* aName) override;
 
-  typedef mozilla::dom::DOMString DOMString;
+  using DOMString = mozilla::dom::DOMString;
   void GetXULAttr(nsAtom* aName, DOMString& aResult) const {
-    GetAttr(kNameSpaceID_None, aName, aResult);
+    GetAttr(aName, aResult);
   }
   void SetXULAttr(nsAtom* aName, const nsAString& aValue,
                   mozilla::ErrorResult& aError) {
@@ -406,24 +422,27 @@ class nsXULElement : public nsStyledElement {
   bool GetXULBoolAttr(nsAtom* aName) const {
     return AttrValueIs(kNameSpaceID_None, aName, u"true"_ns, eCaseMatters);
   }
-  void SetXULBoolAttr(nsAtom* aName, bool aValue) {
+  void SetXULBoolAttr(nsAtom* aName, bool aValue,
+                      mozilla::ErrorResult& aError) {
     if (aValue) {
-      SetAttr(kNameSpaceID_None, aName, u"true"_ns, true);
+      SetAttr(aName, u"true"_ns, aError);
     } else {
-      UnsetAttr(kNameSpaceID_None, aName, true);
+      UnsetAttr(aName, aError);
     }
   }
 
   // WebIDL API
-  void GetFlex(DOMString& aValue) const { GetXULAttr(nsGkAtoms::flex, aValue); }
-  void SetFlex(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::flex, aValue, rv);
+  bool Autofocus() const { return BoolAttrIsTrue(nsGkAtoms::autofocus); }
+  void SetAutofocus(bool aAutofocus, ErrorResult& aRv) {
+    SetXULBoolAttr(nsGkAtoms::autofocus, aAutofocus, aRv);
   }
   bool Hidden() const { return BoolAttrIsTrue(nsGkAtoms::hidden); }
-  void SetHidden(bool aHidden) { SetXULBoolAttr(nsGkAtoms::hidden, aHidden); }
+  void SetHidden(bool aHidden) {
+    SetXULBoolAttr(nsGkAtoms::hidden, aHidden, mozilla::IgnoreErrors());
+  }
   bool Collapsed() const { return BoolAttrIsTrue(nsGkAtoms::collapsed); }
   void SetCollapsed(bool aCollapsed) {
-    SetXULBoolAttr(nsGkAtoms::collapsed, aCollapsed);
+    SetXULBoolAttr(nsGkAtoms::collapsed, aCollapsed, mozilla::IgnoreErrors());
   }
   void GetObserves(DOMString& aValue) const {
     GetXULAttr(nsGkAtoms::observes, aValue);
@@ -447,40 +466,6 @@ class nsXULElement : public nsStyledElement {
   void SetTooltip(const nsAString& aValue, mozilla::ErrorResult& rv) {
     SetXULAttr(nsGkAtoms::tooltip, aValue, rv);
   }
-  void GetWidth(DOMString& aValue) const {
-    GetXULAttr(nsGkAtoms::width, aValue);
-  }
-  void SetWidth(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::width, aValue, rv);
-  }
-  void GetHeight(DOMString& aValue) { GetXULAttr(nsGkAtoms::height, aValue); }
-  void SetHeight(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::height, aValue, rv);
-  }
-  void GetMinWidth(DOMString& aValue) const {
-    GetXULAttr(nsGkAtoms::minwidth, aValue);
-  }
-  void SetMinWidth(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::minwidth, aValue, rv);
-  }
-  void GetMinHeight(DOMString& aValue) const {
-    GetXULAttr(nsGkAtoms::minheight, aValue);
-  }
-  void SetMinHeight(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::minheight, aValue, rv);
-  }
-  void GetMaxWidth(DOMString& aValue) const {
-    GetXULAttr(nsGkAtoms::maxwidth, aValue);
-  }
-  void SetMaxWidth(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::maxwidth, aValue, rv);
-  }
-  void GetMaxHeight(DOMString& aValue) const {
-    GetXULAttr(nsGkAtoms::maxheight, aValue);
-  }
-  void SetMaxHeight(const nsAString& aValue, mozilla::ErrorResult& rv) {
-    SetXULAttr(nsGkAtoms::maxheight, aValue, rv);
-  }
   void GetTooltipText(DOMString& aValue) const {
     GetXULAttr(nsGkAtoms::tooltiptext, aValue);
   }
@@ -492,7 +477,9 @@ class nsXULElement : public nsStyledElement {
     SetXULAttr(nsGkAtoms::src, aValue, rv);
   }
   nsIControllers* GetControllers(mozilla::ErrorResult& rv);
-  void Click(mozilla::dom::CallerType aCallerType);
+  // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY void Click(mozilla::dom::CallerType aCallerType);
+  // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
   MOZ_CAN_RUN_SCRIPT_BOUNDARY void DoCommand();
   // Style() inherited from nsStyledElement
 
@@ -520,23 +507,18 @@ class nsXULElement : public nsStyledElement {
    */
   nsresult MakeHeavyweight(nsXULPrototypeElement* aPrototype);
 
-  virtual nsresult BeforeSetAttr(int32_t aNamespaceID, nsAtom* aName,
-                                 const nsAttrValueOrString* aValue,
-                                 bool aNotify) override;
-  virtual nsresult AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aSubjectPrincipal,
-                                bool aNotify) override;
+  void BeforeSetAttr(int32_t aNamespaceID, nsAtom* aName,
+                     const nsAttrValue* aValue, bool aNotify) override;
+  void AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
+                    const nsAttrValue* aValue, const nsAttrValue* aOldValue,
+                    nsIPrincipal* aSubjectPrincipal, bool aNotify) override;
 
-  virtual void UpdateEditableState(bool aNotify) override;
+  bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
+                      const nsAString& aValue,
+                      nsIPrincipal* aMaybeScriptedPrincipal,
+                      nsAttrValue& aResult) override;
 
-  virtual bool ParseAttribute(int32_t aNamespaceID, nsAtom* aAttribute,
-                              const nsAString& aValue,
-                              nsIPrincipal* aMaybeScriptedPrincipal,
-                              nsAttrValue& aResult) override;
-
-  virtual mozilla::EventListenerManager* GetEventListenerManagerForAttr(
+  mozilla::EventListenerManager* GetEventListenerManagerForAttr(
       nsAtom* aAttrName, bool* aDefer) override;
 
   /**
@@ -574,8 +556,7 @@ class nsXULElement : public nsStyledElement {
       nsXULPrototypeElement* aPrototype, mozilla::dom::NodeInfo* aNodeInfo,
       bool aIsScriptable, bool aIsRoot);
 
-  virtual JSObject* WrapNode(JSContext* aCx,
-                             JS::Handle<JSObject*> aGivenProto) override;
+  JSObject* WrapNode(JSContext*, JS::Handle<JSObject*> aGivenProto) override;
 
   bool IsEventStoppedFromAnonymousScrollbar(mozilla::EventMessage aMessage);
 

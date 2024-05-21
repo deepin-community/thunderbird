@@ -14,19 +14,21 @@ policy-3rdparty = Prawidła nastajić, na kotrež WebExtensions přez chrome.sto
 
 policy-AppAutoUpdate = Awtomatiske aktualizacije nałoženjow zmóžnić abo znjemóžnić.
 
+policy-AppUpdatePin = Zadźěwać tomu, zo so { -brand-short-name } wyše podateje wersije aktualizuje.
+
 policy-AppUpdateURL = Nastajće swójski URL za aktualizowanje nałoženjow.
 
 policy-Authentication = Konfigurujće integrowanu awtentifikaciju za websydła, kotrež ju podpěruja.
 
 policy-BackgroundAppUpdate2 = Pozadkowe aktualizowanje zmóžnić abo znjemóžnić.
 
-policy-BlockAboutAddons = Přistup na zrjadowak přidatkow (about:addons) blokować.
+policy-BlockAboutAddons = Přistup k zrjadowakej přidatkow (about:addons) blokować.
 
-policy-BlockAboutConfig = Přistup na stronu about:config blokować.
+policy-BlockAboutConfig = Přistup k stronje about:config blokować.
 
-policy-BlockAboutProfiles = Přistup na stronu about:profiles blokować.
+policy-BlockAboutProfiles = Přistup k stronje about:profiles blokować.
 
-policy-BlockAboutSupport = Přistup na stronu about:support blokować.
+policy-BlockAboutSupport = Přistup k stronje about:support blokować.
 
 policy-CaptivePortal = Podpěru za předstrony zmóžnić abo znjemóžnić.
 
@@ -44,7 +46,7 @@ policy-DisableAppUpdate = { -brand-short-name } při aktualizowanju haćić.
 
 policy-DisableDefaultClientAgent = Haćće standardny klientowy agent při wuwjedźenju akcijow. To je jenoz za Windows k dispoziciji; druhe platformy agent nimaja.
 
-policy-DisableDeveloperTools = Přistup na wuwiwarske nastroje blokować.
+policy-DisableDeveloperTools = Přistup k wuwiwarskim nastrojam blokować.
 
 policy-DisableFeedbackCommands = Přikazy znjemóžnić, kotrež komentary z menija Pomoc sćelu (Posudk pósłać a Wobšudne sydło zdźělić)
 

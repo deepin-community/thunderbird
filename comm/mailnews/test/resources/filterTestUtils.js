@@ -42,10 +42,10 @@ var ACTION_MAP = {
 /**
  * Creates a filter and appends it to the nsIMsgFilterList.
  *
- * @param list    An nsIMsgFilter to which the new filter will be appended.
- * @param trigger A key of ATTRIB_MAP that represents the filter trigger.
- * @param value   The value of the filter trigger.
- * @param action  A key of ACTION_MAP that represents the action to be taken.
+ * @param {nsIMsgFilter} list - An nsIMsgFilter to which the new filter will be appended.
+ * @param {string} trigger - A key of ATTRIB_MAP that represents the filter trigger.
+ * @param {string} value - The value of the filter trigger.
+ * @param {nsMsgFilterAction} action - A key of ACTION_MAP that represents the action to be taken.
  */
 function createFilter(list, trigger, value, action) {
   var filter = list.createFilter(trigger + action + "Test");
@@ -54,7 +54,7 @@ function createFilter(list, trigger, value, action) {
   var searchTerm = filter.createTerm();
   searchTerm.matchAll = false;
   if (trigger in ATTRIB_MAP) {
-    let information = ATTRIB_MAP[trigger];
+    const information = ATTRIB_MAP[trigger];
     searchTerm.attrib = information[0];
     if (information[3] != null) {
       searchTerm.arbitraryHeader = information[3];
@@ -72,7 +72,7 @@ function createFilter(list, trigger, value, action) {
 
   var filterAction = filter.createAction();
   if (action in ACTION_MAP) {
-    let information = ACTION_MAP[action];
+    const information = ACTION_MAP[action];
     filterAction.type = information[0];
     if (1 in information) {
       filterAction[information[1]] = information[2];

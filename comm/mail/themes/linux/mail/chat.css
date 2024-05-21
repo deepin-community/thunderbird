@@ -27,15 +27,18 @@
   padding-inline: 8px;
 }
 
-/* Adaptation from #folderTree */
-:root:not([lwt-tree]) #listPaneBox {
-  background-color: -moz-OddTreeRow;
-}
+#listPaneBox {
 
-#listPaneBox > * {
-  background: transparent !important;
-  appearance: none !important;
-  border: none;
+  & > * {
+    background: transparent !important;
+    appearance: none !important;
+    border: none;
+  }
+
+  /* Adaptation from #folderTree */
+  :root:not([lwt-tree]) & {
+    background-color: -moz-OddTreeRow;
+  }
 }
 
 .conv-textbox > .textbox-input-box {
@@ -81,15 +84,14 @@ richlistitem[is="chat-group-richlistitem"] .twisty {
 }
 
 .conv-hbox {
-  -moz-box-align: center;
+  align-items: center;
 }
 
 #setStatusTypeMenupopup .menu-iconic-icon,
-#imAccountsStatus .menu-iconic-icon,
-#appmenu_imAccountsStatus .menu-iconic-icon {
+#imAccountsStatus .menu-iconic-icon {
   visibility: visible;
 }
 
-.otr-button:hover {
+.encryption-button:hover {
   color: inherit;
 }

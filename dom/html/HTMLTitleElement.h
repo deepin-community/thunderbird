@@ -28,7 +28,7 @@ class HTMLTitleElement final : public nsGenericHTMLElement,
   NS_DECL_ISUPPORTS_INHERITED
 
   // HTMLTitleElement
-  void GetText(DOMString& aText, ErrorResult& aError);
+  void GetText(DOMString& aText, ErrorResult& aError) const;
   void SetText(const nsAString& aText, ErrorResult& aError);
 
   // nsIMutationObserver
@@ -41,7 +41,7 @@ class HTMLTitleElement final : public nsGenericHTMLElement,
 
   virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
 
-  virtual void UnbindFromTree(bool aNullParent = true) override;
+  virtual void UnbindFromTree(UnbindContext&) override;
 
   virtual void DoneAddingChildren(bool aHaveNotified) override;
 

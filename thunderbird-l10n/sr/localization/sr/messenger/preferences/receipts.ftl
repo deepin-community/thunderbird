@@ -4,48 +4,36 @@
 
 receipts-dialog-window =
     .title = Повратнице
-
-return-receipt-checkbox =
-    .label = Приликом слања порука, увек затражи повратницу
-    .acceskey = л
-
+receipts-dialog-title = Повратнице
+return-receipt-checkbox-control =
+    .label = Приликом слања поруке, увек затражи повратницу
+    .accesskey = ц
 receipt-arrive-label = Када повратница стигне:
-
-receipt-leave-radio =
+receipt-leave-radio-control =
     .label = Остави је у мом долазном сандучету
-    .acceskey = м
-
-receipt-move-radio =
-    .label = Помери је у моју фасциклу "Послато"
-    .acceskey = ф
-
+    .accesskey = о
+receipt-move-radio-control =
+    .label = Помери је у моју фасциклу „Послато“
+    .accesskey = м
 receipt-request-label = Када примим захтев за повратницом:
-
-receipt-return-never-radio =
+receipt-return-never-radio-control =
     .label = Никада не шаљи повратницу
-    .acceskey = д
-
-receipt-return-some-radio =
-    .label = Дозволи повратнице за неке поруке
-    .acceskey = з
-
-receipt-not-to-cc =
-    .value = Ако нисам у пољима „За“ или „Коп“ те поруке:
-    .acceskey = у
-
+    .accesskey = к
+receipt-return-some-radio-control =
+    .label = Дозволи повратницу за неке поруке
+    .accesskey = т
+receipt-not-to-cc-label =
+    .value = Ако нисам у За или Коп поруке:
+    .accesskey = л
 receipt-send-never-label =
     .label = Никада не шаљи
-
 receipt-send-always-label =
     .label = Увек пошаљи
-
 receipt-send-ask-label =
     .label = Питај ме
-
-sender-outside-domain =
+sender-outside-domain-label =
     .value = Ако је пошиљалац ван мог домена:
-    .acceskey = ј
-
-other-cases-label =
+    .accesskey = д
+other-cases-text-label =
     .value = У свим другим случајевима:
-    .acceskey = г
+    .accesskey = у

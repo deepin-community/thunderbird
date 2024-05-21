@@ -10,11 +10,14 @@ const TESTS = [
 ];
 
 function promiseTestOpenCloseWindow(aIsPrivate, aTest) {
-  return (async function() {
+  return (async function () {
     let win = await BrowserTestUtils.openNewBrowserWindow({
       private: aIsPrivate,
     });
-    BrowserTestUtils.loadURI(win.gBrowser.selectedBrowser, aTest.url);
+    BrowserTestUtils.startLoadingURIString(
+      win.gBrowser.selectedBrowser,
+      aTest.url
+    );
     await promiseBrowserLoaded(win.gBrowser.selectedBrowser, true, aTest.url);
     // Mark the window with some unique data to be restored later on.
     ss.setCustomWindowValue(win, aTest.key, aTest.value);
@@ -25,30 +28,29 @@ function promiseTestOpenCloseWindow(aIsPrivate, aTest) {
 }
 
 function promiseTestOnWindow(aIsPrivate, aValue) {
-  return (async function() {
+  return (async function () {
     let win = await BrowserTestUtils.openNewBrowserWindow({
       private: aIsPrivate,
     });
     await TabStateFlusher.flushWindow(win);
-    let data = JSON.parse(ss.getClosedWindowData())[0];
+    let data = ss.getClosedWindowData()[0];
     is(
       ss.getClosedWindowCount(),
       1,
       "Check that the closed window count hasn't changed"
     );
-    ok(
-      JSON.stringify(data).indexOf(aValue) > -1,
+    Assert.greater(
+      JSON.stringify(data).indexOf(aValue),
+      -1,
       "Check the closed window data was stored correctly"
     );
     registerCleanupFunction(() => BrowserTestUtils.closeWindow(win));
   })();
 }
 
-add_task(async function init() {
+add_setup(async function () {
   forgetClosedWindows();
-  while (ss.getClosedTabCount(window) > 0) {
-    ss.forgetClosedTab(window, 0);
-  }
+  forgetClosedTabs(window);
 });
 
 add_task(async function main() {

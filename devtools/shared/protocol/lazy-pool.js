@@ -4,11 +4,10 @@
 
 "use strict";
 
-const { extend } = require("devtools/shared/extend");
 const { Pool } = require("devtools/shared/protocol");
 
 /**
- * A Special Pool for RootActor and BrowsingContextTargetActor, which allows lazy loaded
+ * A Special Pool for RootActor and WindowGlobalTargetActor, which allows lazy loaded
  * actors to be added to the pool.
  *
  * Like the Pool, this is a protocol object that can manage the lifetime of other protocol
@@ -19,13 +18,13 @@ const { Pool } = require("devtools/shared/protocol");
  *   addActorPool, removeActorPool, and poolFor.
  * @constructor
  */
-function LazyPool(conn) {
-  this.conn = conn;
-}
+class LazyPool extends Pool {
+  constructor(conn) {
+    super(conn);
+  }
 
-LazyPool.prototype = extend(Pool.prototype, {
   // The actor for a given actor id stored in this pool
-  getActorByID: function(actorID) {
+  getActorByID(actorID) {
     if (this.__poolMap) {
       const entry = this._poolMap.get(actorID);
       if (entry instanceof LazyActor) {
@@ -34,8 +33,8 @@ LazyPool.prototype = extend(Pool.prototype, {
       return entry;
     }
     return null;
-  },
-});
+  }
+}
 
 exports.LazyPool = LazyPool;
 
@@ -186,7 +185,7 @@ LazyActor.prototype = {
   /**
    * Return the parent pool for this lazy actor.
    */
-  getParent: function() {
+  getParent() {
     return this.conn && this.conn.poolFor(this.actorID);
   },
 

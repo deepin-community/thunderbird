@@ -8,27 +8,26 @@ processing jar.mn files.
 See the documentation for jar.mn on MDC for further details on the format.
 """
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import errno
 import io
 import logging
 import os
 import re
-import six
-from six import BytesIO
 import sys
 from time import localtime
 
-from MozZipFile import ZipFile
-from mozbuild.preprocessor import Preprocessor
-from mozbuild.action.buildlist import addEntriesToListFile
-from mozbuild.util import ensure_bytes
-from mozpack.files import FileFinder
 import mozpack.path as mozpath
+import six
+from mozpack.files import FileFinder
+from MozZipFile import ZipFile
+from six import BytesIO
+
+from mozbuild.action.buildlist import addEntriesToListFile
+from mozbuild.preprocessor import Preprocessor
+from mozbuild.util import ensure_bytes
 
 if sys.platform == "win32":
-    from ctypes import windll, WinError
+    from ctypes import WinError, windll
 
     CreateHardLink = windll.kernel32.CreateHardLinkA
 
@@ -99,27 +98,26 @@ class DeprecatedJarManifest(Exception):
 
 
 class JarManifestParser(object):
-
-    ignore = re.compile("\s*(\#.*)?$")
+    ignore = re.compile(r"\s*(#.*)?$")
     jarline = re.compile(
-        """
+        r"""
         (?:
-            (?:\[(?P<base>[\w\d.\-\_\\\/{}@]+)\]\s*)? # optional [base/path]
-            (?P<jarfile>[\w\d.\-\_\\\/{}]+).jar\:    # filename.jar:
+            (?:\[(?P<base>[\w\d.\-_\/{}@]+)\]\s*)? # optional [base/path]
+            (?P<jarfile>[\w\d.\-_\/{}]+)\.jar:     # filename.jar:
         |
-            (?:\s*(\#.*)?)                           # comment
-        )\s*$                                        # whitespaces
+            (?:\s*(\#.*)?)                         # comment
+        )\s*$                                      # whitespaces
         """,
         re.VERBOSE,
     )
-    relsrcline = re.compile("relativesrcdir\s+(?P<relativesrcdir>.+?):")
-    regline = re.compile("\%\s+(.*)$")
-    entryre = "(?P<optPreprocess>\*)?(?P<optOverwrite>\+?)\s+"
+    relsrcline = re.compile(r"relativesrcdir\s+(?P<relativesrcdir>.+?):")
+    regline = re.compile(r"%\s+(.*)$")
+    entryre = r"(?P<optPreprocess>\*)?(?P<optOverwrite>\+?)\s+"
     entryline = re.compile(
         entryre
         + (
-            "(?P<output>[\w\d.\-\_\\\/\+\@]+)\s*"
-            "(\((?P<locale>\%?)(?P<source>[\w\d.\-\_\\\/\@\*]+)\))?\s*$"
+            r"(?P<output>[\w\d.\-\_\/+@]+)\s*"
+            r"(\((?P<locale>%?)(?P<source>[\w\d.\-\_\/@*]+)\))?\s*$"
         )
     )
 
@@ -211,7 +209,6 @@ class JarMaker(object):
     def __init__(
         self, outputFormat="flat", useJarfileManifest=True, useChromeManifest=False
     ):
-
         self.outputFormat = outputFormat
         self.useJarfileManifest = useJarfileManifest
         self.useChromeManifest = useChromeManifest

@@ -4,8 +4,10 @@
 
 "use strict";
 
-const AutocompletePopup = require("devtools/client/shared/autocomplete-popup");
-const { InplaceEditor } = require("devtools/client/shared/inplace-editor");
+const AutocompletePopup = require("resource://devtools/client/shared/autocomplete-popup.js");
+const {
+  InplaceEditor,
+} = require("resource://devtools/client/shared/inplace-editor.js");
 loadHelperScript("helper_inplace_editor.js");
 
 // Test the inplace-editor autocomplete popup for CSS properties suggestions.
@@ -30,18 +32,16 @@ const testData = [
   ["VK_LEFT", "background", -1, 0],
 ];
 
-const mockGetCSSPropertyList = function() {
-  return [
-    "background",
-    "border",
-    "box-sizing",
-    "color",
-    "display",
-    "visibility",
-  ];
+const mockValues = {
+  background: [],
+  border: [],
+  "box-sizing": [],
+  color: [],
+  display: [],
+  visibility: [],
 };
 
-add_task(async function() {
+add_task(async function () {
   await addTab(
     "data:text/html;charset=utf-8," + "inplace editor CSS property autocomplete"
   );
@@ -54,7 +54,11 @@ add_task(async function() {
         start: runPropertyAutocompletionTest,
         contentType: InplaceEditor.CONTENT_TYPES.CSS_PROPERTY,
         done: resolve,
-        popup: popup,
+        popup,
+        cssProperties: {
+          getNames: () => Object.keys(mockValues),
+          getValues: propertyName => mockValues[propertyName] || [],
+        },
       },
       doc
     );
@@ -65,10 +69,8 @@ add_task(async function() {
   gBrowser.removeCurrentTab();
 });
 
-const runPropertyAutocompletionTest = async function(editor) {
+const runPropertyAutocompletionTest = async function (editor) {
   info("Starting to test for css property completion");
-  editor._getCSSPropertyList = mockGetCSSPropertyList;
-
   for (const data of testData) {
     await testCompletion(data, editor);
   }

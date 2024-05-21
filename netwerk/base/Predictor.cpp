@@ -73,8 +73,6 @@ static const uint32_t ONE_WEEK = 7U * ONE_DAY;
 static const uint32_t ONE_MONTH = 30U * ONE_DAY;
 static const uint32_t ONE_YEAR = 365U * ONE_DAY;
 
-static const uint32_t STARTUP_WINDOW = 5U * 60U;  // 5min
-
 // Version of metadata entries we expect
 static const uint32_t METADATA_VERSION = 1;
 
@@ -97,7 +95,7 @@ static const uint32_t kFlagsMask = ((1 << kRollingLoadOffset) - 1);
 // of nsIURI instead?)
 static nsresult ExtractOrigin(nsIURI* uri, nsIURI** originUri) {
   nsAutoCString s;
-  nsresult rv = nsContentUtils::GetASCIIOrigin(uri, s);
+  nsresult rv = nsContentUtils::GetWebExposedOriginSerialization(uri, s);
   NS_ENSURE_SUCCESS(rv, rv);
 
   return NS_NewURI(originUri, s);
@@ -436,15 +434,10 @@ void Predictor::Shutdown() {
   mInitialized = false;
 }
 
-nsresult Predictor::Create(nsISupports* aOuter, const nsIID& aIID,
-                           void** aResult) {
+nsresult Predictor::Create(const nsIID& aIID, void** aResult) {
   MOZ_ASSERT(NS_IsMainThread());
 
   nsresult rv;
-
-  if (aOuter != nullptr) {
-    return NS_ERROR_NO_AGGREGATION;
-  }
 
   RefPtr<Predictor> svc = new Predictor();
   if (IsNeckoChild()) {
@@ -471,7 +464,7 @@ nsresult Predictor::Create(nsISupports* aOuter, const nsIID& aIID,
 NS_IMETHODIMP
 Predictor::Predict(nsIURI* targetURI, nsIURI* sourceURI,
                    PredictorPredictReason reason,
-                   JS::HandleValue originAttributes,
+                   JS::Handle<JS::Value> originAttributes,
                    nsINetworkPredictorVerifier* verifier, JSContext* aCx) {
   OriginAttributes attrs;
 
@@ -494,7 +487,9 @@ Predictor::PredictNative(nsIURI* targetURI, nsIURI* sourceURI,
   PREDICTOR_LOG(("Predictor::Predict"));
 
   if (IsNeckoChild()) {
-    MOZ_DIAGNOSTIC_ASSERT(gNeckoChild);
+    if (!gNeckoChild) {
+      return NS_ERROR_FAILURE;
+    }
 
     PREDICTOR_LOG(("    called on child process"));
     // If two different threads are predicting concurently, this will be
@@ -684,7 +679,7 @@ void Predictor::PredictForLink(nsIURI* targetURI, nsIURI* sourceURI,
   nsCOMPtr<nsIPrincipal> principal =
       BasePrincipal::CreateContentPrincipal(targetURI, originAttributes);
 
-  mSpeculativeService->SpeculativeConnect(targetURI, principal, nullptr);
+  mSpeculativeService->SpeculativeConnect(targetURI, principal, nullptr, false);
   if (verifier) {
     PREDICTOR_LOG(("    sending verification"));
     verifier->OnPredictPreconnect(targetURI);
@@ -712,7 +707,7 @@ bool Predictor::PredictForPageload(nsICacheEntry* entry, nsIURI* targetURI,
   int32_t globalDegradation = CalculateGlobalDegradation(lastLoad);
   PREDICTOR_LOG(("    globalDegradation = %d", globalDegradation));
 
-  int32_t loadCount;
+  uint32_t loadCount;
   rv = entry->GetFetchCount(&loadCount);
   NS_ENSURE_SUCCESS(rv, false);
 
@@ -1165,7 +1160,7 @@ bool Predictor::RunPredictions(nsIURI* referrer,
     ++totalPreconnects;
     nsCOMPtr<nsIPrincipal> principal =
         BasePrincipal::CreateContentPrincipal(uri, originAttributes);
-    mSpeculativeService->SpeculativeConnect(uri, principal, this);
+    mSpeculativeService->SpeculativeConnect(uri, principal, this, false);
     predicted = true;
     if (verifier) {
       PREDICTOR_LOG(("    sending preconnect verification"));
@@ -1222,8 +1217,8 @@ bool Predictor::WouldRedirect(nsICacheEntry* entry, uint32_t loadCount,
 
 NS_IMETHODIMP
 Predictor::Learn(nsIURI* targetURI, nsIURI* sourceURI,
-                 PredictorLearnReason reason, JS::HandleValue originAttributes,
-                 JSContext* aCx) {
+                 PredictorLearnReason reason,
+                 JS::Handle<JS::Value> originAttributes, JSContext* aCx) {
   OriginAttributes attrs;
 
   if (!originAttributes.isObject() || !attrs.Init(aCx, originAttributes)) {
@@ -1244,14 +1239,15 @@ Predictor::LearnNative(nsIURI* targetURI, nsIURI* sourceURI,
   PREDICTOR_LOG(("Predictor::Learn"));
 
   if (IsNeckoChild()) {
-    MOZ_DIAGNOSTIC_ASSERT(gNeckoChild);
+    if (!gNeckoChild) {
+      return NS_ERROR_FAILURE;
+    }
 
     PREDICTOR_LOG(("    called on child process"));
 
     RefPtr<PredictorLearnRunnable> runnable = new PredictorLearnRunnable(
         targetURI, sourceURI, reason, originAttributes);
-    SchedulerGroup::Dispatch(TaskCategory::Other, runnable.forget());
-
+    SchedulerGroup::Dispatch(runnable.forget());
     return NS_OK;
   }
 
@@ -1547,7 +1543,7 @@ void Predictor::LearnForSubresource(nsICacheEntry* entry, nsIURI* targetURI) {
   nsresult rv = entry->GetLastFetched(&lastLoad);
   NS_ENSURE_SUCCESS_VOID(rv);
 
-  int32_t loadCount;
+  uint32_t loadCount;
   rv = entry->GetFetchCount(&loadCount);
   NS_ENSURE_SUCCESS_VOID(rv);
 
@@ -1601,7 +1597,7 @@ void Predictor::LearnForSubresource(nsICacheEntry* entry, nsIURI* targetURI) {
     flags = 0;
   } else {
     PREDICTOR_LOG(("    existing resource"));
-    hitCount = std::min(hitCount + 1, static_cast<uint32_t>(loadCount));
+    hitCount = std::min(hitCount + 1, loadCount);
   }
 
   // Update the rolling load count to mark this sub-resource as seen on the
@@ -1723,7 +1719,9 @@ Predictor::Reset() {
   PREDICTOR_LOG(("Predictor::Reset"));
 
   if (IsNeckoChild()) {
-    MOZ_DIAGNOSTIC_ASSERT(gNeckoChild);
+    if (!gNeckoChild) {
+      return NS_ERROR_FAILURE;
+    }
 
     PREDICTOR_LOG(("    forwarding to parent process"));
     gNeckoChild->SendPredReset();
@@ -1823,7 +1821,8 @@ Predictor::Resetter::OnCacheStorageInfo(uint32_t entryCount,
 
 NS_IMETHODIMP
 Predictor::Resetter::OnCacheEntryInfo(nsIURI* uri, const nsACString& idEnhance,
-                                      int64_t dataSize, int32_t fetchCount,
+                                      int64_t dataSize, int64_t altDataSize,
+                                      uint32_t fetchCount,
                                       uint32_t lastModifiedTime,
                                       uint32_t expirationTime, bool aPinned,
                                       nsILoadContextInfo* aInfo) {
@@ -1886,11 +1885,18 @@ Predictor::Resetter::OnCacheEntryVisitCompleted() {
     NS_ENSURE_SUCCESS(rv, rv);
 
     urisToVisit[i]->GetAsciiSpec(u);
-    cacheDiskStorage->AsyncOpenURI(urisToVisit[i], ""_ns,
-                                   nsICacheStorage::OPEN_READONLY |
-                                       nsICacheStorage::OPEN_SECRETLY |
-                                       nsICacheStorage::CHECK_MULTITHREADED,
-                                   this);
+    rv = cacheDiskStorage->AsyncOpenURI(
+        urisToVisit[i], ""_ns,
+        nsICacheStorage::OPEN_READONLY | nsICacheStorage::OPEN_SECRETLY |
+            nsICacheStorage::CHECK_MULTITHREADED,
+        this);
+    if (NS_FAILED(rv)) {
+      mEntriesToVisit--;
+      if (!mEntriesToVisit) {
+        Complete();
+        return NS_OK;
+      }
+    }
   }
 
   return NS_OK;
@@ -2179,6 +2185,8 @@ Predictor::PrefetchListener::OnStopRequest(nsIRequest* aRequest,
                    static_cast<uint32_t>(rv)));
   } else {
     rv = cachingChannel->ForceCacheEntryValidFor(0);
+    Telemetry::AccumulateCategorical(
+        Telemetry::LABELS_PREDICTOR_PREFETCH_USE_STATUS::Not200);
     PREDICTOR_LOG(("    removing any forced validity rv=%" PRIX32,
                    static_cast<uint32_t>(rv)));
   }

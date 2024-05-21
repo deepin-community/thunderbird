@@ -3,10 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.randomString = randomString;
 exports.randomLowercaseString = randomLowercaseString;
+exports.randomString = randomString;
 exports.randomUppercaseString = randomUppercaseString;
-
+exports.secureRandomBase64Url = secureRandomBase64Url;
+var _base = require("./base64");
+var _crypto = require("./crypto/crypto");
 /*
 Copyright 2018 New Vector Ltd
 Copyright 2019 The Matrix.org Foundation C.I.C.
@@ -23,28 +25,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
 const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DIGITS = "0123456789";
-
+function secureRandomBase64Url(len) {
+  const key = new Uint8Array(len);
+  _crypto.crypto.getRandomValues(key);
+  return (0, _base.encodeUnpaddedBase64Url)(key);
+}
 function randomString(len) {
   return randomStringFrom(len, UPPERCASE + LOWERCASE + DIGITS);
 }
-
 function randomLowercaseString(len) {
   return randomStringFrom(len, LOWERCASE);
 }
-
 function randomUppercaseString(len) {
   return randomStringFrom(len, UPPERCASE);
 }
-
 function randomStringFrom(len, chars) {
   let ret = "";
-
   for (let i = 0; i < len; ++i) {
     ret += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-
   return ret;
 }

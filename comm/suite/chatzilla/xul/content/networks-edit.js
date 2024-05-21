@@ -15,6 +15,7 @@ function CIRCDCCUser() {}
 function CIRCDCCChat() {}
 function CIRCDCCFile() {}
 function CIRCDCCFileTransfer() {}
+function CIRCSTS() {}
 
 // Actual network window itself.
 var gNetworkWindow = {
@@ -50,7 +51,7 @@ var gNetworkWindow = {
       return null;
     }
 
-    return rv.value.trim();
+    return rv.value.toLowerCase().trim();
   },
 
   refreshNetworks: function(aNetwork) {
@@ -154,6 +155,22 @@ var gNetworkWindow = {
     // Repopulate the network list.
     this.networkList = networksGetDefaults();
     this.refreshNetworks();
+  },
+
+  // Connect to Network button.
+  onConnect: function() {
+    let selection = this.mNetworkList.selectedItem;
+    if (!selection)
+      return;
+
+    let network = this.networkList[selection.id];
+    if (this.onOK()) {
+      if (networkHasSecure(network.servers)) {
+          client.dispatch("sslserver " + network.name);
+      } else {
+          client.dispatch("server " + network.name);
+      }
+    }
   },
 
   // Select a network listitem.

@@ -3,7 +3,7 @@
 var overflowPanel = document.getElementById("widget-overflow");
 
 var originalWindowWidth;
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   overflowPanel.removeAttribute("animate");
   window.resizeTo(originalWindowWidth, window.outerHeight);
   let navbar = document.getElementById(CustomizableUI.AREA_NAVBAR);
@@ -12,17 +12,17 @@ registerCleanupFunction(function() {
 
 // Right-click on an item within the overflow panel should
 // show a context menu with options to move it.
-add_task(async function() {
+add_task(async function () {
   overflowPanel.setAttribute("animate", "false");
   let fxaButton = document.getElementById("fxa-toolbar-menu-button");
-  if (BrowserTestUtils.is_hidden(fxaButton)) {
+  if (BrowserTestUtils.isHidden(fxaButton)) {
     // FxA button is likely hidden since the user is logged out.
     let initialFxaStatus = document.documentElement.getAttribute("fxastatus");
     document.documentElement.setAttribute("fxastatus", "signed_in");
     registerCleanupFunction(() =>
       document.documentElement.setAttribute("fxastatus", initialFxaStatus)
     );
-    ok(BrowserTestUtils.is_visible(fxaButton), "FxA button is now visible");
+    ok(BrowserTestUtils.isVisible(fxaButton), "FxA button is now visible");
   }
 
   originalWindowWidth = window.outerWidth;
@@ -75,9 +75,10 @@ add_task(async function() {
   let hiddenPromise = promisePanelElementHidden(window, overflowPanel);
   let moveToPanel = contextMenu.querySelector(".customize-context-moveToPanel");
   if (moveToPanel) {
-    moveToPanel.click();
+    contextMenu.activateItem(moveToPanel);
+  } else {
+    contextMenu.hidePopup();
   }
-  contextMenu.hidePopup();
   await hiddenContextPromise;
   await hiddenPromise;
 

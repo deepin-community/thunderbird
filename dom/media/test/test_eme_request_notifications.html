@@ -17,7 +17,7 @@ function SetPrefs(prefs) {
 }
 
 function observe() {
-  return new Promise(function(resolve, reject) {
+  return new Promise(function(resolve) {
     var observer = function(subject, topic, data) {
       SpecialPowers.Services.obs.removeObserver(observer, "mediakeys-request");
       resolve(JSON.parse(data).status);
@@ -68,15 +68,14 @@ var tests = [
   }
 ];
 
-SetupEMEPref(function() {
-  tests.reduce(function(p,c,i,array) {
-    return p.then(function() { return Test(c); });
-  }, Promise.resolve()).then(SimpleTest.finish);
-});
-
-
 SimpleTest.waitForExplicitFinish();
-
+tests
+  .reduce(function(p, c) {
+    return p.then(function() {
+      return Test(c);
+    });
+  }, Promise.resolve())
+  .then(SimpleTest.finish);
 </script>
 </pre>
 </body>

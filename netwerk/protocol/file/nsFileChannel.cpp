@@ -20,6 +20,8 @@
 #include "nsProxyRelease.h"
 #include "nsIContentPolicy.h"
 #include "nsContentUtils.h"
+#include "mozilla/dom/ContentParent.h"
+#include "../protocol/http/nsHttpHandler.h"
 
 #include "nsIFileURL.h"
 #include "nsIURIMutator.h"
@@ -239,6 +241,9 @@ nsFileChannel::nsFileChannel(nsIURI* uri) : mUploadLength(0), mFileURI(uri) {}
 nsresult nsFileChannel::Init() {
   NS_ENSURE_STATE(mLoadInfo);
 
+  RefPtr<nsHttpHandler> handler = nsHttpHandler::GetInstance();
+  MOZ_ALWAYS_SUCCEEDS(handler->NewChannelId(mChannelId));
+
   // If we have a link file, we should resolve its target right away.
   // This is to protect against a same origin attack where the same link file
   // can point to different resources right after the first resource is loaded.
@@ -292,8 +297,9 @@ nsresult nsFileChannel::MakeFileInputStream(nsIFile* file,
   bool isDir;
   nsresult rv = file->IsDirectory(&isDir);
   if (NS_FAILED(rv)) {
-    // canonicalize error message
-    if (rv == NS_ERROR_FILE_TARGET_DOES_NOT_EXIST) rv = NS_ERROR_FILE_NOT_FOUND;
+    if (rv == NS_ERROR_FILE_NOT_FOUND) {
+      CheckForBrokenChromeURL(mLoadInfo, OriginalURI());
+    }
 
     if (async && (NS_ERROR_FILE_NOT_FOUND == rv)) {
       // We don't return "Not Found" errors here. Since we could not find
@@ -405,6 +411,9 @@ nsresult nsFileChannel::OpenContentStream(bool async, nsIInputStream** result,
     }
   }
 
+  // notify "file-channel-opened" observers
+  MaybeSendFileOpenNotification();
+
   *result = nullptr;
   stream.swap(*result);
   return NS_OK;
@@ -424,7 +433,7 @@ nsresult nsFileChannel::ListenerBlockingPromise(BlockingPromise** aPromise) {
     return FixupContentLength(true);
   }
 
-  RefPtr<TaskQueue> taskQueue = new TaskQueue(sts.forget());
+  RefPtr<TaskQueue> taskQueue = TaskQueue::Create(sts.forget(), "FileChannel");
   RefPtr<nsFileChannel> self = this;
   RefPtr<BlockingPromise> promise =
       mozilla::InvokeAsync(taskQueue, __func__, [self{std::move(self)}]() {
@@ -451,8 +460,7 @@ nsresult nsFileChannel::FixupContentLength(bool async) {
   int64_t size;
   rv = file->GetFileSize(&size);
   if (NS_FAILED(rv)) {
-    if (async && (NS_ERROR_FILE_NOT_FOUND == rv ||
-                  NS_ERROR_FILE_TARGET_DOES_NOT_EXIST == rv)) {
+    if (async && NS_ERROR_FILE_NOT_FOUND == rv) {
       size = 0;
     } else {
       return rv;
@@ -467,7 +475,7 @@ nsresult nsFileChannel::FixupContentLength(bool async) {
 // nsFileChannel::nsISupports
 
 NS_IMPL_ISUPPORTS_INHERITED(nsFileChannel, nsBaseChannel, nsIUploadChannel,
-                            nsIFileChannel)
+                            nsIFileChannel, nsIIdentChannel)
 
 //-----------------------------------------------------------------------------
 // nsFileChannel::nsIFileChannel
@@ -479,6 +487,38 @@ nsFileChannel::GetFile(nsIFile** file) {
 
   // This returns a cloned nsIFile
   return fileURL->GetFile(file);
+}
+
+nsresult nsFileChannel::MaybeSendFileOpenNotification() {
+  nsCOMPtr<nsIObserverService> obsService = services::GetObserverService();
+  if (!obsService) {
+    return NS_OK;
+  }
+
+  nsCOMPtr<nsILoadInfo> loadInfo;
+  nsresult rv = GetLoadInfo(getter_AddRefs(loadInfo));
+  if (NS_FAILED(rv)) {
+    return rv;
+  }
+
+  bool isTopLevel;
+  rv = loadInfo->GetIsTopLevelLoad(&isTopLevel);
+  if (NS_FAILED(rv)) {
+    return rv;
+  }
+
+  uint64_t browsingContextID;
+  rv = loadInfo->GetBrowsingContextID(&browsingContextID);
+  if (NS_FAILED(rv)) {
+    return rv;
+  }
+
+  if ((browsingContextID != 0 && isTopLevel) ||
+      !loadInfo->TriggeringPrincipal()->IsSystemPrincipal()) {
+    obsService->NotifyObservers(static_cast<nsIIdentChannel*>(this),
+                                "file-channel-opened", nullptr);
+  }
+  return NS_OK;
 }
 
 //-----------------------------------------------------------------------------
@@ -509,6 +549,21 @@ nsFileChannel::SetUploadStream(nsIInputStream* stream,
 
 NS_IMETHODIMP
 nsFileChannel::GetUploadStream(nsIInputStream** result) {
-  NS_IF_ADDREF(*result = mUploadStream);
+  *result = do_AddRef(mUploadStream).take();
+  return NS_OK;
+}
+
+//-----------------------------------------------------------------------------
+// nsFileChannel::nsIIdentChannel
+
+NS_IMETHODIMP
+nsFileChannel::GetChannelId(uint64_t* aChannelId) {
+  *aChannelId = mChannelId;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsFileChannel::SetChannelId(uint64_t aChannelId) {
+  mChannelId = aChannelId;
   return NS_OK;
 }

@@ -9,6 +9,7 @@
 #include "ipc/IPCMessageUtils.h"
 #include "ipc/IPCMessageUtilsSpecializations.h"
 #include "mozilla/dom/BindingDeclarations.h"
+#include "mozilla/dom/BindingIPCUtils.h"
 #include "mozilla/dom/RTCConfigurationBinding.h"
 #include "mozilla/media/webrtc/WebrtcGlobal.h"
 #include "mozilla/dom/CandidateInfo.h"
@@ -30,22 +31,21 @@ struct ParamTraits<mozilla::dom::OwningStringOrStringSequence> {
   // private generated code. So we have to re-create it.
   enum Type { kUninitialized, kString, kStringSequence };
 
-  static void Write(Message* aMsg, const paramType& aParam) {
+  static void Write(MessageWriter* aWriter, const paramType& aParam) {
     if (aParam.IsString()) {
-      aMsg->WriteInt16(kString);
-      WriteParam(aMsg, aParam.GetAsString());
+      aWriter->WriteInt16(kString);
+      WriteParam(aWriter, aParam.GetAsString());
     } else if (aParam.IsStringSequence()) {
-      aMsg->WriteInt16(kStringSequence);
-      WriteParam(aMsg, aParam.GetAsStringSequence());
+      aWriter->WriteInt16(kStringSequence);
+      WriteParam(aWriter, aParam.GetAsStringSequence());
     } else {
-      aMsg->WriteInt16(kUninitialized);
+      aWriter->WriteInt16(kUninitialized);
     }
   }
 
-  static bool Read(const Message* aMsg, PickleIterator* aIter,
-                   paramType* aResult) {
+  static bool Read(MessageReader* aReader, paramType* aResult) {
     int16_t type;
-    if (!aMsg->ReadInt16(aIter, &type)) {
+    if (!aReader->ReadInt16(&type)) {
       return false;
     }
 
@@ -54,26 +54,24 @@ struct ParamTraits<mozilla::dom::OwningStringOrStringSequence> {
         aResult->Uninit();
         return true;
       case kString:
-        return ReadParam(aMsg, aIter, &aResult->SetAsString());
+        return ReadParam(aReader, &aResult->SetAsString());
       case kStringSequence:
-        return ReadParam(aMsg, aIter, &aResult->SetAsStringSequence());
+        return ReadParam(aReader, &aResult->SetAsStringSequence());
     }
 
     return false;
   }
 };
 
-template <typename T>
-struct WebidlEnumSerializer
-    : public ContiguousEnumSerializer<T, T(0), T::EndGuard_> {};
-
 template <>
 struct ParamTraits<mozilla::dom::RTCIceCredentialType>
-    : public WebidlEnumSerializer<mozilla::dom::RTCIceCredentialType> {};
+    : public mozilla::dom::WebIDLEnumSerializer<
+          mozilla::dom::RTCIceCredentialType> {};
 
 template <>
 struct ParamTraits<mozilla::dom::RTCIceTransportPolicy>
-    : public WebidlEnumSerializer<mozilla::dom::RTCIceTransportPolicy> {};
+    : public mozilla::dom::WebIDLEnumSerializer<
+          mozilla::dom::RTCIceTransportPolicy> {};
 
 DEFINE_IPC_SERIALIZER_WITH_FIELDS(mozilla::dom::RTCIceServer, mCredential,
                                   mCredentialType, mUrl, mUrls, mUsername)

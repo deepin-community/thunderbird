@@ -1,9 +1,9 @@
 Existing Infrastructure and Analysis
 ====================================
 
-This document is about how Static Analysis occurs at Mozilla: the Firefox-specific and general llvm clang-tidy checks that are run on submissions in Phabricator and how to run them locally.  For information about how to develop your own static analysis checks, please see `Writing New Firefox-Specific Checks </code-quality/static-analysis/writing-new/>`_.
+This document is about how Static Analysis occurs at Mozilla: the Firefox-specific and general llvm clang-tidy checks that are run on submissions in Phabricator and how to run them locally.  For information about how to develop your own static analysis checks, please see `Writing New Firefox-Specific Checks <../static-analysis/writing-new/index.html>`_.
 
-For linting, please see the `linting documentation </code-quality/lint/>`_.
+For linting, please see the `linting documentation <../lint/index.html>`_.
 
 For reviews, use the `#static-analysis-reviewers review group <https://phabricator.services.mozilla.com/project/view/120/>`__.
 Ask questions on `#static-analysis:mozilla.org <https://chat.mozilla.org/#/room/#static-analysis:mozilla.org>`__.
@@ -16,7 +16,7 @@ As explained earlier, our current static-analysis infrastructure is based on
 `clang-tidy <http://clang.llvm.org/extra/clang-tidy/>`__. The checkers that
 we use are split into 3 categories:
 
-#. `Firefox specific checkers <https://searchfox.org/mozilla-central/source/build/clang-plugin>`_. They detect incorrect Gecko programming
+#. :searchfox:`Firefox specific checkers <build/clang-plugin>`. They detect incorrect Gecko programming
    patterns which could lead to bugs or security issues.
 #. `Clang-tidy checkers <https://clang.llvm.org/extra/clang-tidy/checks/list.html>`_. They aim to suggest better programming practices
    and to improve memory efficiency and performance.
@@ -29,10 +29,7 @@ we use are split into 3 categories:
 In order to simplify the process of static-analysis we have focused on
 integrating this process with Phabricator and mach. A list of some
 checkers that are used during automated scan can be found
-`here <https://searchfox.org/mozilla-central/source/tools/clang-tidy/config.yaml>`__.
-
-We are also running Coverity at review phase and a few times per day
-(when autoland is merged into mozilla-central).
+:searchfox:`here <tools/clang-tidy/config.yaml>`.
 
 Static analysis at review phase
 -------------------------------
@@ -66,16 +63,16 @@ following parameters:
    ~/.mozbuild.
 -  ``--checks, -c`` - Checks to enabled during the scan. The checks
    enabled
-   `in the yaml file <https://searchfox.org/mozilla-central/source/tools/clang-tidy/config.yaml>`__
+   :searchfox:`in the yaml file <tools/clang-tidy/config.yaml>`
    are used by default.
 -  ``--fix, -f`` - Try to autofix errors detected by the checkers.
    Depending on the checker, this option might not do anything.
    The list of checkers with autofix can be found on the `clang-tidy website <https://clang.llvm.org/extra/clang-tidy/checks/list.html>`__.
 -  ``--header-filter, -h-f`` - Regular expression matching the names of
-   the headers to output diagnostic from.Diagnostic from the main file
+   the headers to output diagnostic from. Diagnostic from the main file
    of each translation unit are always displayed.
 
-As an example we  run static-analysis through mach on
+As an example we run static-analysis through mach on
 ``dom/presentation/Presentation.cpp`` with
 ``google-readability-braces-around-statements`` check and autofix we
 would have:
@@ -99,7 +96,7 @@ Regression Testing
 
 In order to prevent regressions in our clang-tidy based static analysis,
 we have created a
-`task <https://searchfox.org/mozilla-central/source/taskcluster/ci/static-analysis-autotest/kind.yml>`__
+:searchfox:`task <taskcluster/ci/static-analysis-autotest/kind.yml>`
 on automation. This task runs on each commit and launches a test suite
 that is integrated into mach.
 
@@ -107,13 +104,13 @@ The test suite implements the following:
 
 -  Downloads the necessary clang-tidy artifacts.
 -  Reads the
-   `configuration <https://searchfox.org/mozilla-central/source/tools/clang-tidy/config.yaml>`__
+   :searchfox:`configuration <tools/clang-tidy/config.yaml>`
    file.
 -  For each checker reads the test file plus the expected result. A
    sample of test and expected result can be found
-   `in the test file <https://searchfox.org/mozilla-central/source/tools/clang-tidy/test/clang-analyzer-deadcode.DeadStores.cpp>`__
+   :searchfox:`in the test file <tools/clang-tidy/test/clang-analyzer-deadcode.DeadStores.cpp>`
    and
-   `the json file <https://searchfox.org/mozilla-central/source/tools/clang-tidy/test/clang-analyzer-deadcode.DeadStores.json>`__.
+   :searchfox:`the json file <tools/clang-tidy/test/clang-analyzer-deadcode.DeadStores.json>`.
 
 This testing suit can be run locally by doing the following:
 
@@ -128,7 +125,7 @@ modernize-raw-string-literal, we can run:
 
    ./mach static-analysis autotest modernize-raw-string-literal
 
-If we want to add a new checker we need to generated the expected result
+If we want to add a new checker we need to generate the expected result
 file, by doing:
 
 .. code-block:: shell
@@ -216,7 +213,7 @@ If you see a message like:
 
    scan-build: Removing directory '/var/folders/s2/zc78dpsx2rz6cpc_21r9g5hr0000gn/T/scan-build-2011-12-15-1' because it contains no reports.
 
-either no static analysis results were available yet or your environment
+Either no static analysis results were available yet or your environment
 is not configured properly.
 
 By default, ``scan-build`` writes results to a folder in a

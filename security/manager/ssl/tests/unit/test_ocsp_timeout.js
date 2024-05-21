@@ -21,7 +21,7 @@ var gSocketListener = {
     socketTransport.setTimeout(Ci.nsISocketTransport.TIMEOUT_READ_WRITE, 30);
   },
 
-  onStopListening(serverSocket, status) {},
+  onStopListening() {},
 };
 
 function run_test() {
@@ -44,7 +44,7 @@ function run_test() {
   add_one_test(true, "security.OCSP.timeoutMilliseconds.hard", 10000);
   add_one_test(true, "security.OCSP.timeoutMilliseconds.hard", 15000);
 
-  add_test(function() {
+  add_test(function () {
     socket.close();
     run_next_test();
   });
@@ -53,7 +53,7 @@ function run_test() {
 
 function add_one_test(useHardFail, timeoutPrefName, timeoutMilliseconds) {
   let startTime;
-  add_test(function() {
+  add_test(function () {
     Services.prefs.setBoolPref("security.OCSP.require", useHardFail);
     Services.prefs.setIntPref(timeoutPrefName, timeoutMilliseconds);
     startTime = new Date();
@@ -66,7 +66,7 @@ function add_one_test(useHardFail, timeoutPrefName, timeoutMilliseconds) {
     clearSessionCache
   );
 
-  add_test(function() {
+  add_test(function () {
     let endTime = new Date();
     let timeDifference = endTime - startTime;
     info(`useHardFail = ${useHardFail}`);
@@ -77,8 +77,9 @@ function add_one_test(useHardFail, timeoutPrefName, timeoutMilliseconds) {
     // prevent intermittent failures (this only appeared to be a problem on
     // Windows XP). See Bug 1121117.
     const FUZZ_MS = 300;
-    ok(
-      timeDifference + FUZZ_MS > timeoutMilliseconds,
+    Assert.greater(
+      timeDifference + FUZZ_MS,
+      timeoutMilliseconds,
       `OCSP timeout should be ~${timeoutMilliseconds}s for ` +
         `${useHardFail ? "hard" : "soft"}-fail`
     );
@@ -86,8 +87,9 @@ function add_one_test(useHardFail, timeoutPrefName, timeoutMilliseconds) {
     // (Unfortunately, we probably can't have a tight upper bound on
     // how long is too long for this test, because we might be running
     // on slow hardware.)
-    ok(
-      timeDifference < 60000,
+    Assert.less(
+      timeDifference,
+      60000,
       "Automatic OCSP timeout shouldn't be more than 60s"
     );
 

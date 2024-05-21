@@ -20,7 +20,7 @@ interface calISchedulingSupport;
 interface calIDateTime;
 interface calIOperation;
 interface calIStatusObserver;
-interface nsIDOMChromeWindow;
+interface nsIDOMWindow;
 
 
 [scriptable, uuid(b18782c0-6557-4e8e-931d-4bf052f0a31e)]
@@ -283,7 +283,7 @@ interface calICalendar : nsISupports
   void removeObserver( in calIObserver observer );
 
   /**
-   * supportsScheduling indicates whether the calendar implements the 
+   * supportsScheduling indicates whether the calendar implements the
    * calISchedulingSupport interface.
    */
   readonly attribute boolean supportsScheduling;
@@ -295,16 +295,9 @@ interface calICalendar : nsISupports
   calISchedulingSupport getSchedulingSupport();
 
   /**
-   * The following five "Item" functions are all asynchronous, and return
-   * their results to a calIOperationListener object.
-   *
-   */
-
-  /**
    * addItem adds the given calIItemBase to the calendar.
    *
    * @param aItem       item to add
-   * @param aListener   where to call back the results
    * @return            optional operation handle to track the operation
    *
    * - If aItem already has an ID, that ID is used when adding.
@@ -312,22 +305,15 @@ interface calICalendar : nsISupports
    *   to generate an ID for the item.
    * - If aItem is immutable and has no ID, an error is thrown.
    *
-   * The results of the operation are reported through an
-   * onOperationComplete call on the listener, with the following
-   * parameters:
+   * The result of the operation is the calIItemBase corresponding to the
+   * immutable version of the newly added item.
    *
-   * - aOperationType: calIOperationListener::ADD
-   * - aId: the ID of the newly added item
-   * - aDetail: the calIItemBase corresponding to the immutable
-   *            version of the newly added item
+   * If an item with a given ID already exists in the calendar, the Promise is
+   * rejected with a NS_ERROR_XXXXX error.
    *
-   * If an item with a given ID already exists in the calendar,
-   * onOperationComplete is called with an aStatus of NS_ERROR_XXXXX,
-   * and aDetail set with the calIItemBase of the internal already
-   * existing item.
+   * @return {Promise<calIItemBase>}
    */
-  calIOperation addItem(in calIItemBase aItem,
-                        in calIOperationListener aListener);
+  Promise addItem(in calIItemBase aItem);
 
   /**
    * adoptItem adds the given calIItemBase to the calendar, but doesn't
@@ -336,85 +322,49 @@ interface calICalendar : nsISupports
    * using the item after making the call.
    *
    * @see addItem
+   *
+   * @return {Promise<calIItemBase>}
    */
-  calIOperation adoptItem(in calIItemBase aItem,
-                          in calIOperationListener aListener);
+  Promise adoptItem(in calIItemBase aItem);
 
   /**
    * modifyItem takes a modified item and modifies the
-   * calendar's internal version of the item to match.  The item is
-   * expected to have an ID that already exists in the calendar; if it
-   * doesn't, or there is no id, onOperationComplete is called with a
-   * status of NS_ERROR_XXXXX.  If the item is immutable,
-   * onOperationComplete is called with a status of NS_ERROR_XXXXX.
+   * calendar's internal version of the item to match. The item is expected to
+   * be mutable and have an ID that already exists in the calendar. If it does
+   * not, the Promise is rejected with NS_ERROR_XXXXX.
    *
    * If the generation of the given aNewItem does not match the generation
    * of the internal item (indicating that someone else modified the
-   * item), onOperationComplete is called with a status of NS_ERROR_XXXXX
-   * and aDetail is set to the latest-version internal immutable item.
+   * item), the Promise is rejected with NS_ERROR_XXXXX.
    *
    * If you would like to disable revision checks, pass null as aOldItem. This
    * will overwrite the item on the server.
    *
    * @param aNewItem    new version to replace the old one
    * @param aOldItem    caller's view of the item to be changed, as it is now
-   * @param aListener   where to call back the results
-   * @return            optional operation handle to track the operation
+   * @return {Promise<calIItemBase>} the newly-updated immutable version of
+   *                                 the modified item.
    *
-   * The results of the operation are reported through an
-   * onOperationComplete call on the listener, with the following
-   * parameters:
-   *
-   * - aOperationType: calIOperationListener::MODIFY
-   * - aId: the ID of the modified item
-   * - aDetail: the calIItemBase corresponding to the newly-updated
-   *            immutable version of the modified item
    */
-  calIOperation modifyItem(in calIItemBase aNewItem,
-                           in calIItemBase aOldItem,
-                           in calIOperationListener aListener);
+  Promise modifyItem(in calIItemBase aNewItem, in calIItemBase aOldItem);
 
   /**
-   * deleteItem takes an item that is to be deleted.  The item is
-   * expected to have an ID that already exists in the calendar; if it
-   * doesn't, or there is no id, onOperationComplete is called with
-   * a status of NS_ERROR_XXXXX.
+   * Deletes an item. The item is expected to have an ID that already exists in
+   * the calendar.
    *
-   * @param aItem       item to delete
-   * @param aListener   where to call back the results
-   * @return            optional operation handle to track the operation
-   *
-   * The results of the operation are reported through an
-   * onOperationComplete call on the listener, with the following
-   * parameters:
-   *
-   * - aOperationType: calIOperationListener::DELETE
-   * - aId: the ID of the deleted item
-   * - aDetail: the calIItemBase corresponding to the immutable version
-   *            of the deleted item
+   * @param aItem            item to delete
+   * @return {Promise<void>} optional operation handle to track the operation
    */
-  calIOperation deleteItem(in calIItemBase aItem,
-                           in calIOperationListener aListener);
+  Promise deleteItem(in calIItemBase aItem);
 
   /**
    * Get a single event.  The event will be typed as one of the subclasses
    * of calIItemBase (whichever concrete type is most appropriate).
    *
-   * @param aId        UID of the event
-   * @param aListener  listener to which this event will be called back.
-   * @return           optional operation handle to track the operation
-   *
-   * The results of the operation are reported through the listener,
-   * via zero or one onGetResult calls (with aCount set to 1)
-   * followed by an onOperationComplete.
-   *
-   * The parameters to onOperationComplete will be:
-   *
-   * - aOperationType: calIOperationListener::GET
-   * - aId: the ID of the requested item
-   * - aDetail: null (? we can also pass the item back here as well,..)
+   * @param aId                           UID of the event
+   * @return {Promise<calIItemBase|null>} A Promise that is resolved with the item if found.
    */
-  calIOperation getItem(in string aId, in calIOperationListener aListener);
+  Promise getItem(in string aId);
 
   /**
    * XXX As mentioned above, this method isn't suitably general.  It's just
@@ -451,24 +401,29 @@ interface calICalendar : nsISupports
    *                    of time".
    * @param aRangeEndEx Items starting before (not including) aRangeEndEx should be
    *                    returned.  If null, assume "until the end of time".
-   * @param aListener   The results will be called back through this interface.
-   * @return            optional operation handle to track the operation
-   *
-   *
-   * The results of the operation are reported through the listener,
-   * via zero or more onGetResult calls followed by an onOperationComplete.
-   *
-   * The parameters to onOperationComplete will be:
-   *
-   * - aOperationType: calIOperationListener::GET
-   * - aId: null
-   * - aDetail: null
+   * @return {ReadableStream<calIItemBase>}
    */
-  calIOperation getItems(in unsigned long aItemFilter,
-                         in unsigned long aCount,
-                         in calIDateTime aRangeStart,
-                         in calIDateTime aRangeEndEx,
-                         in calIOperationListener aListener);
+   jsval getItems(in unsigned long aItemFilter,
+                  in unsigned long aCount,
+                  in calIDateTime aRangeStart,
+                  in calIDateTime aRangeEndEx);
+
+  /**
+   * Similar to getItems() but returns all results in a single array.
+   * @param aItemFilter ITEM_FILTER flags, or-ed together
+   * @param aCount      Maximum number of items to return, or 0 for
+   *                    an unbounded query.
+   * @param aRangeStart Items starting at this time or after should be
+   *                    returned.  If invalid, assume "since the beginning
+   *                    of time".
+   * @param aRangeEndEx Items starting before (not including) aRangeEndEx should be
+   *                    returned.  If null, assume "until the end of time".
+   * @return {Promise<calIItemBase[]>}
+   */
+  Promise getItemsAsArray(in unsigned long aItemFilter,
+                          in unsigned long aCount,
+                          in calIDateTime aRangeStart,
+                          in calIDateTime aRangeEndEx);
 
   /**
    * Refresh the datasource, and call the observers for any changes found.
@@ -553,7 +508,7 @@ interface calICompositeCalendar : calICalendar
   /**
    * Sets a statusobserver for status notifications like startMeteors() and StopMeteors().
    */
-  void setStatusObserver(in calIStatusObserver aStatusObserver, in nsIDOMChromeWindow aWindow);
+  void setStatusObserver(in calIStatusObserver aStatusObserver, in nsIDOMWindow aWindow);
 };
 
 /**

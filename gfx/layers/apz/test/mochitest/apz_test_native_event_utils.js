@@ -3,11 +3,13 @@
 
 // Utilities for synthesizing of native events.
 
-function getResolution() {
+async function getResolution() {
   let resolution = -1; // bogus value in case DWU fails us
   // Use window.top to get the root content window which is what has
   // the resolution.
-  resolution = SpecialPowers.getDOMWindowUtils(window.top).getResolution();
+  resolution = await SpecialPowers.spawn(window.top, [], () => {
+    return SpecialPowers.getDOMWindowUtils(content.window).getResolution();
+  });
   return resolution;
 }
 
@@ -63,9 +65,44 @@ function nativeHorizontalWheelEventMsg() {
   );
 }
 
+function nativeArrowDownKey() {
+  switch (getPlatform()) {
+    case "windows":
+      return WIN_VK_DOWN;
+    case "mac":
+      return MAC_VK_DownArrow;
+  }
+  throw new Error(
+    "Native key events not supported on platform " + getPlatform()
+  );
+}
+
+function nativeArrowUpKey() {
+  switch (getPlatform()) {
+    case "windows":
+      return WIN_VK_UP;
+    case "mac":
+      return MAC_VK_UpArrow;
+  }
+  throw new Error(
+    "Native key events not supported on platform " + getPlatform()
+  );
+}
+
+function targetIsWindow(aTarget) {
+  return aTarget.Window && aTarget instanceof aTarget.Window;
+}
+
+function targetIsTopWindow(aTarget) {
+  if (!targetIsWindow(aTarget)) {
+    return false;
+  }
+  return aTarget == aTarget.top;
+}
+
 // Given an event target which may be a window or an element, get the associated window.
 function windowForTarget(aTarget) {
-  if (aTarget.Window && aTarget instanceof aTarget.Window) {
+  if (targetIsWindow(aTarget)) {
     return aTarget;
   }
   return aTarget.ownerDocument.defaultView;
@@ -73,7 +110,7 @@ function windowForTarget(aTarget) {
 
 // Given an event target which may be a window or an element, get the associated element.
 function elementForTarget(aTarget) {
-  if (aTarget.Window && aTarget instanceof aTarget.Window) {
+  if (targetIsWindow(aTarget)) {
     return aTarget.document.documentElement;
   }
   return aTarget;
@@ -91,9 +128,8 @@ function nativeScrollUnits(aTarget, aDimen) {
       // GTK deltas are treated as line height divided by 3 by gecko.
       var targetWindow = windowForTarget(aTarget);
       var targetElement = elementForTarget(aTarget);
-      var lineHeight = targetWindow.getComputedStyle(targetElement)[
-        "font-size"
-      ];
+      var lineHeight =
+        targetWindow.getComputedStyle(targetElement)["font-size"];
       return aDimen / (parseInt(lineHeight) * 3);
     }
   }
@@ -165,20 +201,6 @@ function parseNativeModifiers(aModifiers, aWindow = window) {
   return modifiers;
 }
 
-function getBoundingClientRectRelativeToVisualViewport(aElement) {
-  let utils = SpecialPowers.getDOMWindowUtils(window);
-  var rect = aElement.getBoundingClientRect();
-  var offsetX = {},
-    offsetY = {};
-  // TODO: Audit whether these offset values are correct or not for
-  // position:fixed elements especially in the case where the visual viewport
-  // offset is not 0.
-  utils.getVisualViewportOffsetRelativeToLayoutViewport(offsetX, offsetY);
-  rect.x -= offsetX.value;
-  rect.y -= offsetY.value;
-  return rect;
-}
-
 // Several event sythesization functions below (and their helpers) take a "target"
 // parameter which may be either an element or a window. For such functions,
 // the target's "bounding rect" refers to the bounding client rect for an element,
@@ -191,12 +213,7 @@ function getBoundingClientRectRelativeToVisualViewport(aElement) {
 // |aTarget| may be an element (contained in the root content document or
 // a subdocument) or, as a special case, the root content window.
 // FIXME: Support iframe windows as targets.
-function getTargetOrigin(aTarget) {
-  const rect = getTargetRect(aTarget);
-  return { left: rect.left, top: rect.top };
-}
-
-function getTargetRect(aTarget) {
+function _getTargetRect(aTarget) {
   let rect = { left: 0, top: 0, width: 0, height: 0 };
 
   // If the target is the root content window, its origin relative
@@ -261,24 +278,23 @@ function getTargetRect(aTarget) {
     aTarget = iframe;
   }
 
-  // Now we have coordinates relative to the root content document's
-  // layout viewport. Subtract the offset of the visual viewport
-  // relative to the layout viewport, to get coordinates relative to
-  // the visual viewport.
-  var offsetX = {},
-    offsetY = {};
-  let rootUtils = SpecialPowers.getDOMWindowUtils(window.top);
-  rootUtils.getVisualViewportOffsetRelativeToLayoutViewport(offsetX, offsetY);
-  rect.left -= offsetX.value;
-  rect.top -= offsetY.value;
   return rect;
+}
+
+// Returns the in-process root window for the given |aWindow|.
+function getInProcessRootWindow(aWindow) {
+  let window = aWindow;
+  while (window.frameElement) {
+    window = window.frameElement.ownerDocument.defaultView;
+  }
+  return window;
 }
 
 // Convert (offsetX, offsetY) of target or center of it, in CSS pixels to device
 // pixels relative to the screen.
 // TODO: this function currently does not incorporate some CSS transforms on
 // elements enclosing target, e.g. scale transforms.
-function coordinatesRelativeToScreen(aParams) {
+async function coordinatesRelativeToScreen(aParams) {
   const {
     target, // The target element or window
     offsetX, // X offset relative to `target`
@@ -293,39 +309,53 @@ function coordinatesRelativeToScreen(aParams) {
   //     harness.
   //  2. The mochitest itself creates an iframe and calls this function from
   //     script running in the context of the iframe.
-  // Since the resolution applies to the root content document, below we use
-  // the mozInnerScreen{X,Y} of the root content window (window.top) only,
-  // and factor any offsets between iframe windows and the root content window
-  // into |origin|.
-  const utils = SpecialPowers.getDOMWindowUtils(window);
-  const deviceScale = utils.screenPixelsPerCSSPixel;
-  const deviceScaleNoOverride = utils.screenPixelsPerCSSPixelNoOverride;
-  const resolution = getResolution();
-  const rect = getTargetRect(target);
-  // moxInnerScreen{X,Y} are in CSS coordinates of the browser chrome.
-  // The device scale applies to them, but the resolution only zooms the content.
-  // In addition, if we're inside RDM, RDM overrides the device scale;
-  // the overridden scale only applies to the content inside the RDM
-  // document, not to mozInnerScreen{X,Y}.
+  // Since the resolution applies to the top level content document, below we
+  // use the mozInnerScreen{X,Y} of the top level content window (window.top)
+  // only for the case where this function gets called in the top level content
+  // document. In other cases we use nsIDOMWindowUtils.toScreenRect().
+
+  // We do often specify `window` as the target, if it's the top level window,
+  // `nsIDOMWindowUtils.toScreenRect` isn't suitable because the function is
+  // supposed to be called with values in the document coords, so for example
+  // if desktop zoom is being applied, (0, 0) in the document coords might be
+  // outside of the visual viewport, i.e. it's going to be negative with the
+  // `toScreenRect` conversion, whereas the call sites with `window` of this
+  // function expect (0, 0) position should be the visual viport's offset. So
+  // in such cases we simply use mozInnerScreen{X,Y} to convert the given value
+  // to the screen coords.
+  if (target instanceof Window && window.parent == window) {
+    const resolution = await getResolution();
+    const deviceScale = window.devicePixelRatio;
+    return {
+      x:
+        window.mozInnerScreenX * deviceScale +
+        (atCenter ? 0 : offsetX) * resolution * deviceScale,
+      y:
+        window.mozInnerScreenY * deviceScale +
+        (atCenter ? 0 : offsetY) * resolution * deviceScale,
+    };
+  }
+
+  const rect = _getTargetRect(target);
+
+  const utils = SpecialPowers.getDOMWindowUtils(getInProcessRootWindow(window));
+  const positionInScreenCoords = utils.toScreenRect(
+    rect.left + (atCenter ? rect.width / 2 : offsetX),
+    rect.top + (atCenter ? rect.height / 2 : offsetY),
+    0,
+    0
+  );
+
   return {
-    x:
-      window.top.mozInnerScreenX * deviceScaleNoOverride +
-      (rect.left + (atCenter ? rect.width / 2 : offsetX)) *
-        resolution *
-        deviceScale,
-    y:
-      window.top.mozInnerScreenY * deviceScaleNoOverride +
-      (rect.top + (atCenter ? rect.height / 2 : offsetY)) *
-        resolution *
-        deviceScale,
+    x: positionInScreenCoords.x,
+    y: positionInScreenCoords.y,
   };
 }
 
 // Get the bounding box of aElement, and return it in device pixels
 // relative to the screen.
-// TODO: This function should probably take into account the resolution
-//       and use getBoundingClientRectRelativeToVisualViewport()
-//       like coordinatesRelativeToScreen() does.
+// TODO: This function should probably take into account the resolution and
+//       the relative viewport rect like coordinatesRelativeToScreen() does.
 function rectRelativeToScreen(aElement) {
   var targetWindow = aElement.ownerDocument.defaultView;
   var scale = targetWindow.devicePixelRatio;
@@ -333,8 +363,8 @@ function rectRelativeToScreen(aElement) {
   return {
     x: (targetWindow.mozInnerScreenX + rect.left) * scale,
     y: (targetWindow.mozInnerScreenY + rect.top) * scale,
-    w: rect.width * scale,
-    h: rect.height * scale,
+    width: rect.width * scale,
+    height: rect.height * scale,
   };
 }
 
@@ -344,8 +374,15 @@ function rectRelativeToScreen(aElement) {
 // aX and aY are relative to the top-left of |aTarget|'s bounding rect.
 // aDeltaX and aDeltaY are pixel deltas, and aObserver can be left undefined
 // if not needed.
-function synthesizeNativeWheel(aTarget, aX, aY, aDeltaX, aDeltaY, aObserver) {
-  var pt = coordinatesRelativeToScreen({
+async function synthesizeNativeWheel(
+  aTarget,
+  aX,
+  aY,
+  aDeltaX,
+  aDeltaY,
+  aObserver
+) {
+  var pt = await coordinatesRelativeToScreen({
     offsetX: aX,
     offsetY: aY,
     target: aTarget,
@@ -370,7 +407,11 @@ function synthesizeNativeWheel(aTarget, aX, aY, aDeltaX, aDeltaY, aObserver) {
     aDeltaY,
     0,
     0,
-    0,
+    // Specify MOUSESCROLL_SCROLL_LINES if the test wants to run through wheel
+    // input code path on Mac since it's normal mouse wheel inputs.
+    SpecialPowers.getBoolPref("apz.test.mac.synth_wheel_input", false)
+      ? SpecialPowers.DOMWindowUtils.MOUSESCROLL_SCROLL_LINES
+      : 0,
     element,
     aObserver
   );
@@ -381,7 +422,7 @@ function synthesizeNativeWheel(aTarget, aX, aY, aDeltaX, aDeltaY, aObserver) {
 // NOTE: This works only on Mac.
 // You can specify kCGScrollPhaseBegan = 1, kCGScrollPhaseChanged = 2 and
 // kCGScrollPhaseEnded = 4 for |aPhase|.
-function synthesizeNativePanGestureEvent(
+async function synthesizeNativePanGestureEvent(
   aTarget,
   aX,
   aY,
@@ -396,7 +437,7 @@ function synthesizeNativePanGestureEvent(
     );
   }
 
-  var pt = coordinatesRelativeToScreen({
+  var pt = await coordinatesRelativeToScreen({
     offsetX: aX,
     offsetY: aY,
     target: aTarget,
@@ -428,6 +469,82 @@ function synthesizeNativePanGestureEvent(
   return true;
 }
 
+// Sends a native touchpad pan event and resolve the returned promise once the
+// request has been successfully made to the OS.
+// NOTE: This works only on Windows and Linux.
+// You can specify nsIDOMWindowUtils.PHASE_BEGIN, PHASE_UPDATE and PHASE_END
+// for |aPhase|.
+async function promiseNativeTouchpadPanEventAndWaitForObserver(
+  aTarget,
+  aX,
+  aY,
+  aDeltaX,
+  aDeltaY,
+  aPhase
+) {
+  if (getPlatform() != "windows" && getPlatform() != "linux") {
+    throw new Error(
+      `promiseNativeTouchpadPanEventAndWaitForObserver doesn't work on ${getPlatform()}`
+    );
+  }
+
+  let pt = await coordinatesRelativeToScreen({
+    offsetX: aX,
+    offsetY: aY,
+    target: aTarget,
+  });
+
+  const utils = utilsForTarget(aTarget);
+
+  return new Promise(resolve => {
+    var observer = {
+      observe(aSubject, aTopic) {
+        if (aTopic == "touchpadpanevent") {
+          resolve();
+        }
+      },
+    };
+
+    utils.sendNativeTouchpadPan(
+      aPhase,
+      pt.x,
+      pt.y,
+      aDeltaX,
+      aDeltaY,
+      0,
+      observer
+    );
+  });
+}
+
+async function synthesizeSimpleGestureEvent(
+  aElement,
+  aType,
+  aX,
+  aY,
+  aDirection,
+  aDelta,
+  aModifiers,
+  aClickCount
+) {
+  let pt = await coordinatesRelativeToScreen({
+    offsetX: aX,
+    offsetY: aY,
+    target: aElement,
+  });
+
+  let utils = utilsForTarget(aElement);
+  utils.sendSimpleGestureEvent(
+    aType,
+    pt.x,
+    pt.y,
+    aDirection,
+    aDelta,
+    aModifiers,
+    aClickCount
+  );
+}
+
 // Synthesizes a native pan gesture event and resolve the returned promise once the
 // request has been successfully made to the OS.
 function promiseNativePanGestureEventAndWaitForObserver(
@@ -440,7 +557,7 @@ function promiseNativePanGestureEventAndWaitForObserver(
 ) {
   return new Promise(resolve => {
     var observer = {
-      observe(aSubject, aTopic, aData) {
+      observe(aSubject, aTopic) {
         if (aTopic == "mousescrollevent") {
           resolve();
         }
@@ -471,7 +588,7 @@ function promiseNativeWheelAndWaitForObserver(
 ) {
   return new Promise(resolve => {
     var observer = {
-      observe(aSubject, aTopic, aData) {
+      observe(aSubject, aTopic) {
         if (aTopic == "mousescrollevent") {
           resolve();
         }
@@ -497,7 +614,7 @@ function promiseNativeWheelAndWaitForWheelEvent(
     var targetWindow = windowForTarget(aTarget);
     targetWindow.addEventListener(
       "wheel",
-      function(e) {
+      function () {
         setTimeout(resolve, 0);
       },
       { once: true }
@@ -526,7 +643,7 @@ function promiseNativeWheelAndWaitForScrollEvent(
     var targetWindow = windowForTarget(aTarget);
     targetWindow.addEventListener(
       "scroll",
-      function() {
+      function () {
         setTimeout(resolve, 0);
       },
       { capture: true, once: true }
@@ -540,6 +657,17 @@ function promiseNativeWheelAndWaitForScrollEvent(
 }
 
 async function synthesizeTouchpadPinch(scales, focusX, focusY, options) {
+  var scalesAndFoci = [];
+
+  for (let i = 0; i < scales.length; i++) {
+    scalesAndFoci.push([scales[i], focusX, focusY]);
+  }
+
+  await synthesizeTouchpadGesture(scalesAndFoci, options);
+}
+
+// scalesAndFoci is an array of [scale, focusX, focuxY] tuples.
+async function synthesizeTouchpadGesture(scalesAndFoci, options) {
   // Check for options, fill in defaults if appropriate.
   let waitForTransformEnd =
     options.waitForTransformEnd !== undefined
@@ -552,22 +680,28 @@ async function synthesizeTouchpadPinch(scales, focusX, focusY, options) {
   let transformEndPromise = promiseTransformEnd();
 
   var modifierFlags = 0;
-  var pt = coordinatesRelativeToScreen({
-    offsetX: focusX,
-    offsetY: focusY,
-    target: document.body,
-  });
   var utils = utilsForTarget(document.body);
-  for (let i = 0; i < scales.length; i++) {
+  for (let i = 0; i < scalesAndFoci.length; i++) {
+    var pt = await coordinatesRelativeToScreen({
+      offsetX: scalesAndFoci[i][1],
+      offsetY: scalesAndFoci[i][2],
+      target: document.body,
+    });
     var phase;
     if (i === 0) {
       phase = SpecialPowers.DOMWindowUtils.PHASE_BEGIN;
-    } else if (i === scales.length - 1) {
+    } else if (i === scalesAndFoci.length - 1) {
       phase = SpecialPowers.DOMWindowUtils.PHASE_END;
     } else {
       phase = SpecialPowers.DOMWindowUtils.PHASE_UPDATE;
     }
-    utils.sendNativeTouchpadPinch(phase, scales[i], pt.x, pt.y, modifierFlags);
+    utils.sendNativeTouchpadPinch(
+      phase,
+      scalesAndFoci[i][0],
+      pt.x,
+      pt.y,
+      modifierFlags
+    );
     if (waitForFrames) {
       await promiseFrame();
     }
@@ -578,9 +712,63 @@ async function synthesizeTouchpadPinch(scales, focusX, focusY, options) {
     await transformEndPromise;
   }
 }
+
+async function synthesizeTouchpadPan(
+  focusX,
+  focusY,
+  deltaXs,
+  deltaYs,
+  options
+) {
+  // Check for options, fill in defaults if appropriate.
+  let waitForTransformEnd =
+    options.waitForTransformEnd !== undefined
+      ? options.waitForTransformEnd
+      : true;
+  let waitForFrames =
+    options.waitForFrames !== undefined ? options.waitForFrames : false;
+
+  // Register the listener for the TransformEnd observer topic
+  let transformEndPromise = promiseTransformEnd();
+
+  var modifierFlags = 0;
+  var pt = await coordinatesRelativeToScreen({
+    offsetX: focusX,
+    offsetY: focusY,
+    target: document.body,
+  });
+  var utils = utilsForTarget(document.body);
+  for (let i = 0; i < deltaXs.length; i++) {
+    var phase;
+    if (i === 0) {
+      phase = SpecialPowers.DOMWindowUtils.PHASE_BEGIN;
+    } else if (i === deltaXs.length - 1) {
+      phase = SpecialPowers.DOMWindowUtils.PHASE_END;
+    } else {
+      phase = SpecialPowers.DOMWindowUtils.PHASE_UPDATE;
+    }
+    utils.sendNativeTouchpadPan(
+      phase,
+      pt.x,
+      pt.y,
+      deltaXs[i],
+      deltaYs[i],
+      modifierFlags
+    );
+    if (waitForFrames) {
+      await promiseFrame();
+    }
+  }
+
+  // Wait for TransformEnd to fire.
+  if (waitForTransformEnd) {
+    await transformEndPromise;
+  }
+}
+
 // Synthesizes a native touch event and dispatches it. aX and aY in CSS pixels
 // relative to the top-left of |aTarget|'s bounding rect.
-function synthesizeNativeTouch(
+async function synthesizeNativeTouch(
   aTarget,
   aX,
   aY,
@@ -588,7 +776,7 @@ function synthesizeNativeTouch(
   aObserver = null,
   aTouchId = 0
 ) {
-  var pt = coordinatesRelativeToScreen({
+  var pt = await coordinatesRelativeToScreen({
     offsetX: aX,
     offsetY: aY,
     target: aTarget,
@@ -606,7 +794,7 @@ function sendBasicNativePointerInput(
   aX,
   aY,
   aObserver,
-  { pressure = 1, twist = 0, tiltX = 0, tiltY = 0 } = {}
+  { pressure = 1, twist = 0, tiltX = 0, tiltY = 0, button = 0 } = {}
 ) {
   switch (aPointerType) {
     case "touch":
@@ -622,12 +810,41 @@ function sendBasicNativePointerInput(
         twist,
         tiltX,
         tiltY,
+        button,
         aObserver
       );
       break;
     default:
       throw new Error(`Not supported: ${aPointerType}`);
   }
+}
+
+async function promiseNativePointerInput(
+  aTarget,
+  aPointerType,
+  aState,
+  aX,
+  aY,
+  options
+) {
+  const pt = await coordinatesRelativeToScreen({
+    offsetX: aX,
+    offsetY: aY,
+    target: aTarget,
+  });
+  const utils = utilsForTarget(aTarget);
+  return new Promise(resolve => {
+    sendBasicNativePointerInput(
+      utils,
+      options?.pointerId ?? 0,
+      aPointerType,
+      aState,
+      pt.x,
+      pt.y,
+      resolve,
+      options
+    );
+  });
 }
 
 /**
@@ -650,7 +867,7 @@ function sendBasicNativePointerInput(
  *   native pointer synthesis call this function makes.
  * @param aPointerIds is an array holding the pointer ID values.
  */
-function synthesizeNativePointerSequences(
+async function synthesizeNativePointerSequences(
   aTarget,
   aPointerType,
   aPositions,
@@ -677,7 +894,7 @@ function synthesizeNativePointerSequences(
         // Do the conversion to screen space before actually synthesizing
         // the events, otherwise the screen space may change as a result of
         // the touch inputs and the conversion may not work as intended.
-        aPositions[i][j] = coordinatesRelativeToScreen({
+        aPositions[i][j] = await coordinatesRelativeToScreen({
           offsetX: aPositions[i][j].x,
           offsetY: aPositions[i][j].y,
           target: aTarget,
@@ -747,13 +964,13 @@ function synthesizeNativePointerSequences(
   return true;
 }
 
-function synthesizeNativeTouchSequences(
+async function synthesizeNativeTouchSequences(
   aTarget,
   aPositions,
   aObserver = null,
   aTouchIds = [0]
 ) {
-  synthesizeNativePointerSequences(
+  await synthesizeNativePointerSequences(
     aTarget,
     "touch",
     aPositions,
@@ -762,7 +979,7 @@ function synthesizeNativeTouchSequences(
   );
 }
 
-function synthesizeNativePointerDrag(
+async function synthesizeNativePointerDrag(
   aTarget,
   aPointerType,
   aX,
@@ -795,7 +1012,7 @@ function synthesizeNativePointerDrag(
 // Note that when calling this function you'll want to make sure that the pref
 // "apz.touch_start_tolerance" is set to 0, or some of the touchmove will get
 // consumed to overcome the panning threshold.
-function synthesizeNativeTouchDrag(
+async function synthesizeNativeTouchDrag(
   aTarget,
   aX,
   aY,
@@ -826,22 +1043,18 @@ function promiseNativePointerDrag(
   aPointerId = 0,
   options
 ) {
-  return new Promise((resolve, reject) => {
-    try {
-      synthesizeNativePointerDrag(
-        aTarget,
-        aPointerType,
-        aX,
-        aY,
-        aDeltaX,
-        aDeltaY,
-        resolve,
-        aPointerId,
-        options
-      );
-    } catch (err) {
-      reject(err);
-    }
+  return new Promise(resolve => {
+    synthesizeNativePointerDrag(
+      aTarget,
+      aPointerType,
+      aX,
+      aY,
+      aDeltaX,
+      aDeltaY,
+      resolve,
+      aPointerId,
+      options
+    );
   });
 }
 
@@ -854,25 +1067,35 @@ function promiseNativeTouchDrag(
   aDeltaY,
   aTouchId = 0
 ) {
-  return new Promise((resolve, reject) => {
-    try {
-      synthesizeNativeTouchDrag(
-        aTarget,
-        aX,
-        aY,
-        aDeltaX,
-        aDeltaY,
-        resolve,
-        aTouchId
-      );
-    } catch (err) {
-      reject(err);
-    }
+  return new Promise(resolve => {
+    synthesizeNativeTouchDrag(
+      aTarget,
+      aX,
+      aY,
+      aDeltaX,
+      aDeltaY,
+      resolve,
+      aTouchId
+    );
   });
 }
 
-function synthesizeNativeTap(aTarget, aX, aY, aObserver = null) {
-  var pt = coordinatesRelativeToScreen({
+// Tapping is essentially a dragging with no move
+function promiseNativePointerTap(aTarget, aPointerType, aX, aY, options) {
+  return promiseNativePointerDrag(
+    aTarget,
+    aPointerType,
+    aX,
+    aY,
+    0,
+    0,
+    options?.pointerId ?? 0,
+    options
+  );
+}
+
+async function synthesizeNativeTap(aTarget, aX, aY, aObserver = null) {
+  var pt = await coordinatesRelativeToScreen({
     offsetX: aX,
     offsetY: aY,
     target: aTarget,
@@ -883,13 +1106,13 @@ function synthesizeNativeTap(aTarget, aX, aY, aObserver = null) {
 }
 
 // only currently implemented on macOS
-function synthesizeNativeTouchpadDoubleTap(aTarget, aX, aY) {
+async function synthesizeNativeTouchpadDoubleTap(aTarget, aX, aY) {
   ok(
     getPlatform() == "mac",
     "only implemented on mac. implement sendNativeTouchpadDoubleTap for this platform," +
       " see bug 1696802 for how it was done on macOS"
   );
-  let pt = coordinatesRelativeToScreen({
+  let pt = await coordinatesRelativeToScreen({
     offsetX: aX,
     offsetY: aY,
     target: aTarget,
@@ -901,7 +1124,7 @@ function synthesizeNativeTouchpadDoubleTap(aTarget, aX, aY) {
 
 // If the event targets content in a subdocument, |aTarget| should be inside the
 // subdocument (or the subdocument window).
-function synthesizeNativeMouseEventWithAPZ(aParams, aObserver = null) {
+async function synthesizeNativeMouseEventWithAPZ(aParams, aObserver = null) {
   if (aParams.win !== undefined) {
     throw Error(
       "Are you trying to use EventUtils' API? `win` won't be used with synthesizeNativeMouseClickWithAPZ."
@@ -952,7 +1175,7 @@ function synthesizeNativeMouseEventWithAPZ(aParams, aObserver = null) {
       );
     }
   }
-  const pt = (() => {
+  const pt = await (async () => {
     if (screenX != undefined) {
       return { x: screenX, y: screenY };
     }
@@ -974,7 +1197,7 @@ function synthesizeNativeMouseEventWithAPZ(aParams, aObserver = null) {
       button,
       modifierFlags,
       element,
-      function() {
+      function () {
         utils.sendNativeMouseEvent(
           pt.x,
           pt.y,
@@ -1054,15 +1277,56 @@ function promiseMoveMouseAndScrollWheelOver(
     offsetY: dy,
   });
   if (waitForScroll) {
-    p = p.then(() =>
-      promiseNativeWheelAndWaitForScrollEvent(target, dx, dy, 0, -scrollDelta)
-    );
+    p = p.then(() => {
+      return promiseNativeWheelAndWaitForScrollEvent(
+        target,
+        dx,
+        dy,
+        0,
+        -scrollDelta
+      );
+    });
   } else {
-    p = p.then(() =>
-      promiseNativeWheelAndWaitForWheelEvent(target, dx, dy, 0, -scrollDelta)
-    );
+    p = p.then(() => {
+      return promiseNativeWheelAndWaitForWheelEvent(
+        target,
+        dx,
+        dy,
+        0,
+        -scrollDelta
+      );
+    });
   }
   return p;
+}
+
+async function scrollbarDragStart(aTarget, aScaleFactor) {
+  var targetElement = elementForTarget(aTarget);
+  var w = {},
+    h = {};
+  utilsForTarget(aTarget).getScrollbarSizes(targetElement, w, h);
+  var verticalScrollbarWidth = w.value;
+  if (verticalScrollbarWidth == 0) {
+    return null;
+  }
+
+  var upArrowHeight = verticalScrollbarWidth; // assume square scrollbar buttons
+  var startX = targetElement.clientWidth + verticalScrollbarWidth / 2;
+  var startY = upArrowHeight + 5; // start dragging somewhere in the thumb
+  startX *= aScaleFactor;
+  startY *= aScaleFactor;
+
+  // targetElement.clientWidth is unaffected by the zoom, but if the target
+  // is the root content window, the distance from the window origin to the
+  // scrollbar in CSS pixels does decrease proportionally to the zoom,
+  // so the CSS coordinates we return need to be scaled accordingly.
+  if (targetIsTopWindow(aTarget)) {
+    var resolution = await getResolution();
+    startX /= resolution;
+    startY /= resolution;
+  }
+
+  return { x: startX, y: startY };
 }
 
 // Synthesizes events to drag |target|'s vertical scrollbar by the distance
@@ -1073,7 +1337,7 @@ function promiseMoveMouseAndScrollWheelOver(
 // processed by the widget code can be detected by listening for the mousemove
 // events in the caller, or for some other event that is triggered by the
 // mousemove, such as the scroll event resulting from the scrollbar drag.
-// The scaleFactor argument should be provided if the scrollframe has been
+// The aScaleFactor argument should be provided if the scrollframe has been
 // scaled by an enclosing CSS transform. (TODO: this is a workaround for the
 // fact that coordinatesRelativeToScreen is supposed to do this automatically
 // but it currently does not).
@@ -1081,31 +1345,22 @@ function promiseMoveMouseAndScrollWheelOver(
 // with modifications. Fixes here should be copied there if appropriate.
 // |target| can be an element (for subframes) or a window (for root frames).
 async function promiseVerticalScrollbarDrag(
-  target,
-  distance = 20,
-  increment = 5,
-  scaleFactor = 1
+  aTarget,
+  aDistance = 20,
+  aIncrement = 5,
+  aScaleFactor = 1
 ) {
-  var targetElement = elementForTarget(target);
-  var w = {},
-    h = {};
-  utilsForTarget(target).getScrollbarSizes(targetElement, w, h);
-  var verticalScrollbarWidth = w.value;
-  if (verticalScrollbarWidth == 0) {
+  var startPoint = await scrollbarDragStart(aTarget, aScaleFactor);
+  var targetElement = elementForTarget(aTarget);
+  if (startPoint == null) {
     return null;
   }
 
-  var upArrowHeight = verticalScrollbarWidth; // assume square scrollbar buttons
-  var mouseX = targetElement.clientWidth + verticalScrollbarWidth / 2;
-  var mouseY = upArrowHeight + 5; // start dragging somewhere in the thumb
-  mouseX *= scaleFactor;
-  mouseY *= scaleFactor;
-
   dump(
     "Starting drag at " +
-      mouseX +
+      startPoint.x +
       ", " +
-      mouseY +
+      startPoint.y +
       " from top-left of #" +
       targetElement.id +
       "\n"
@@ -1113,44 +1368,80 @@ async function promiseVerticalScrollbarDrag(
 
   // Move the mouse to the scrollbar thumb and drag it down
   await promiseNativeMouseEventWithAPZ({
-    target,
-    offsetX: mouseX,
-    offsetY: mouseY,
+    target: aTarget,
+    offsetX: startPoint.x,
+    offsetY: startPoint.y,
     type: "mousemove",
   });
   // mouse down
   await promiseNativeMouseEventWithAPZ({
-    target,
-    offsetX: mouseX,
-    offsetY: mouseY,
+    target: aTarget,
+    offsetX: startPoint.x,
+    offsetY: startPoint.y,
     type: "mousedown",
   });
-  // drag vertically by |increment| until we reach the specified distance
-  for (var y = increment; y < distance; y += increment) {
+  // drag vertically by |aIncrement| until we reach the specified distance
+  for (var y = aIncrement; y < aDistance; y += aIncrement) {
     await promiseNativeMouseEventWithAPZ({
-      target,
-      offsetX: mouseX,
-      offsetY: mouseY + y,
+      target: aTarget,
+      offsetX: startPoint.x,
+      offsetY: startPoint.y + y,
       type: "mousemove",
     });
   }
   await promiseNativeMouseEventWithAPZ({
-    target,
-    offsetX: mouseX,
-    offsetY: mouseY + distance,
+    target: aTarget,
+    offsetX: startPoint.x,
+    offsetY: startPoint.y + aDistance,
     type: "mousemove",
   });
 
   // and return an async function to call afterwards to finish up the drag
-  return async function() {
+  return async function () {
     dump("Finishing drag of #" + targetElement.id + "\n");
     await promiseNativeMouseEventWithAPZ({
-      target,
-      offsetX: mouseX,
-      offsetY: mouseY + distance,
+      target: aTarget,
+      offsetX: startPoint.x,
+      offsetY: startPoint.y + aDistance,
       type: "mouseup",
     });
   };
+}
+
+// This is similar to promiseVerticalScrollbarDrag except this triggers
+// the vertical scrollbar drag with a touch drag input. This function
+// returns true if a scrollbar was present and false if no scrollbar
+// was found for the given element.
+async function promiseVerticalScrollbarTouchDrag(
+  aTarget,
+  aDistance = 20,
+  aScaleFactor = 1
+) {
+  var startPoint = await scrollbarDragStart(aTarget, aScaleFactor);
+  var targetElement = elementForTarget(aTarget);
+  if (startPoint == null) {
+    return false;
+  }
+
+  dump(
+    "Starting touch drag at " +
+      startPoint.x +
+      ", " +
+      startPoint.y +
+      " from top-left of #" +
+      targetElement.id +
+      "\n"
+  );
+
+  await promiseNativeTouchDrag(
+    aTarget,
+    startPoint.x,
+    startPoint.y,
+    0,
+    aDistance
+  );
+
+  return true;
 }
 
 // Synthesizes a native mouse drag, starting at offset (mouseX, mouseY) from
@@ -1212,7 +1503,7 @@ async function promiseNativeMouseDrag(
   }
 
   // and return a function-wrapped promise to call afterwards to finish the drag
-  return function() {
+  return function () {
     return promiseNativeMouseEventWithAPZ({
       target,
       offsetX: mouseX + distanceX,
@@ -1225,7 +1516,7 @@ async function promiseNativeMouseDrag(
 // Synthesizes a native touch sequence of events corresponding to a pinch-zoom-in
 // at the given focus point. The focus point must be specified in CSS coordinates
 // relative to the document body.
-function pinchZoomInTouchSequence(focusX, focusY) {
+async function pinchZoomInTouchSequence(focusX, focusY) {
   // prettier-ignore
   var zoom_in = [
       [ { x: focusX - 25, y: focusY - 50 }, { x: focusX + 25, y: focusY + 50 } ],
@@ -1266,12 +1557,16 @@ function promiseTransformEnd() {
   return promiseTopic("APZ:TransformEnd");
 }
 
+function promiseScrollend(aTarget = window) {
+  return promiseOneEvent(aTarget, "scrollend");
+}
+
 // Returns a promise that resolves after the indicated number
 // of touchend events have fired on the given target element.
 function promiseTouchEnd(element, count = 1) {
   return new Promise(resolve => {
     var eventCount = 0;
-    var counterFunction = function(e) {
+    var counterFunction = function () {
       eventCount++;
       if (eventCount == count) {
         element.removeEventListener("touchend", counterFunction, {
@@ -1293,7 +1588,7 @@ async function pinchZoomInWithTouch(focusX, focusY) {
   let transformEndPromise = promiseTopic("APZ:TransformEnd");
 
   // Dispatch all the touch events
-  pinchZoomInTouchSequence(focusX, focusY);
+  await pinchZoomInTouchSequence(focusX, focusY);
 
   // Wait for TransformEnd to fire.
   await transformEndPromise;
@@ -1304,70 +1599,41 @@ async function pinchZoomInWithTouch(focusX, focusY) {
 // relative to the document body.
 async function pinchZoomInWithTouchpad(focusX, focusY, options = {}) {
   var zoomIn = [
-    1.0,
-    1.019531,
-    1.035156,
-    1.037156,
-    1.039156,
-    1.054688,
-    1.056688,
-    1.070312,
-    1.072312,
-    1.089844,
-    1.091844,
-    1.109375,
-    1.128906,
-    1.144531,
-    1.160156,
-    1.175781,
-    1.191406,
-    1.207031,
-    1.222656,
-    1.234375,
-    1.246094,
-    1.261719,
-    1.273438,
-    1.285156,
-    1.296875,
-    1.3125,
-    1.328125,
-    1.347656,
-    1.363281,
-    1.382812,
-    1.402344,
-    1.421875,
-    1.0,
+    1.0, 1.019531, 1.035156, 1.037156, 1.039156, 1.054688, 1.056688, 1.070312,
+    1.072312, 1.089844, 1.091844, 1.109375, 1.128906, 1.144531, 1.160156,
+    1.175781, 1.191406, 1.207031, 1.222656, 1.234375, 1.246094, 1.261719,
+    1.273438, 1.285156, 1.296875, 1.3125, 1.328125, 1.347656, 1.363281,
+    1.382812, 1.402344, 1.421875, 1.0,
   ];
   await synthesizeTouchpadPinch(zoomIn, focusX, focusY, options);
+}
+
+async function pinchZoomInAndPanWithTouchpad(options = {}) {
+  var x = 584;
+  var y = 347;
+  var scalesAndFoci = [];
+  // Zoom
+  for (var scale = 1.0; scale <= 2.0; scale += 0.2) {
+    scalesAndFoci.push([scale, x, y]);
+  }
+  // Pan (due to a limitation of the current implementation, events
+  // for which the scale doesn't change are dropped, so vary the
+  // scale slightly as well).
+  for (var i = 1; i <= 20; i++) {
+    x -= 4;
+    y -= 5;
+    scalesAndFoci.push([scale + 0.01 * i, x, y]);
+  }
+  await synthesizeTouchpadGesture(scalesAndFoci, options);
 }
 
 async function pinchZoomOutWithTouchpad(focusX, focusY, options = {}) {
   // The last item equal one to indicate scale end
   var zoomOut = [
-    1.0,
-    1.375,
-    1.359375,
-    1.339844,
-    1.316406,
-    1.296875,
-    1.277344,
-    1.257812,
-    1.238281,
-    1.21875,
-    1.199219,
-    1.175781,
-    1.15625,
-    1.132812,
-    1.101562,
-    1.078125,
-    1.054688,
-    1.03125,
-    1.011719,
-    0.992188,
-    0.972656,
-    0.953125,
-    0.933594,
-    1.0,
+    1.0, 1.375, 1.359375, 1.339844, 1.316406, 1.296875, 1.277344, 1.257812,
+    1.238281, 1.21875, 1.199219, 1.175781, 1.15625, 1.132812, 1.101562,
+    1.078125, 1.054688, 1.03125, 1.011719, 0.992188, 0.972656, 0.953125,
+    0.933594, 1.0,
   ];
   await synthesizeTouchpadPinch(zoomOut, focusX, focusY, options);
 }
@@ -1375,23 +1641,8 @@ async function pinchZoomOutWithTouchpad(focusX, focusY, options = {}) {
 async function pinchZoomInOutWithTouchpad(focusX, focusY, options = {}) {
   // Use the same scale for two events in a row to make sure the code handles this properly.
   var zoomInOut = [
-    1.0,
-    1.082031,
-    1.089844,
-    1.097656,
-    1.101562,
-    1.109375,
-    1.121094,
-    1.128906,
-    1.128906,
-    1.125,
-    1.097656,
-    1.074219,
-    1.054688,
-    1.035156,
-    1.015625,
-    1.0,
-    1.0,
+    1.0, 1.082031, 1.089844, 1.097656, 1.101562, 1.109375, 1.121094, 1.128906,
+    1.128906, 1.125, 1.097656, 1.074219, 1.054688, 1.035156, 1.015625, 1.0, 1.0,
   ];
   await synthesizeTouchpadPinch(zoomInOut, focusX, focusY, options);
 }
@@ -1408,7 +1659,12 @@ async function synthesizeNativeTouchAndWaitForTransformEnd(
   let transformEndPromise = promiseTopic("APZ:TransformEnd");
 
   // Dispatch all the touch events
-  synthesizeNativeTouchSequences(document.body, touchSequence, null, touchIds);
+  await synthesizeNativeTouchSequences(
+    document.body,
+    touchSequence,
+    null,
+    touchIds
+  );
 
   // Wait for TransformEnd to fire.
   await transformEndPromise;
@@ -1455,23 +1711,277 @@ async function pinchZoomOutWithTouchAtCenter() {
 }
 
 // useTouchpad is only currently implemented on macOS
-function synthesizeDoubleTap(element, x, y, useTouchpad) {
+async function synthesizeDoubleTap(element, x, y, useTouchpad) {
   if (useTouchpad) {
-    synthesizeNativeTouchpadDoubleTap(element, x, y);
+    await synthesizeNativeTouchpadDoubleTap(element, x, y);
   } else {
-    synthesizeNativeTap(element, x, y);
-    synthesizeNativeTap(element, x, y);
+    await synthesizeNativeTap(element, x, y);
+    await synthesizeNativeTap(element, x, y);
   }
 }
 // useTouchpad is only currently implemented on macOS
 async function doubleTapOn(element, x, y, useTouchpad) {
   let transformEndPromise = promiseTransformEnd();
 
-  synthesizeDoubleTap(element, x, y, useTouchpad);
+  await synthesizeDoubleTap(element, x, y, useTouchpad);
 
   // Wait for the APZ:TransformEnd to fire
   await transformEndPromise;
 
   // Flush state so we can query an accurate resolution
   await promiseApzFlushedRepaints();
+}
+
+const NativePanHandlerForLinux = {
+  beginPhase: SpecialPowers.DOMWindowUtils.PHASE_BEGIN,
+  updatePhase: SpecialPowers.DOMWindowUtils.PHASE_UPDATE,
+  endPhase: SpecialPowers.DOMWindowUtils.PHASE_END,
+  promiseNativePanEvent: promiseNativeTouchpadPanEventAndWaitForObserver,
+  delta: -50,
+};
+
+const NativePanHandlerForWindows = {
+  beginPhase: SpecialPowers.DOMWindowUtils.PHASE_BEGIN,
+  updatePhase: SpecialPowers.DOMWindowUtils.PHASE_UPDATE,
+  endPhase: SpecialPowers.DOMWindowUtils.PHASE_END,
+  promiseNativePanEvent: promiseNativeTouchpadPanEventAndWaitForObserver,
+  delta: 50,
+};
+
+const NativePanHandlerForMac = {
+  // From https://developer.apple.com/documentation/coregraphics/cgscrollphase/kcgscrollphasebegan?language=occ , etc.
+  beginPhase: 1, // kCGScrollPhaseBegan
+  updatePhase: 2, // kCGScrollPhaseChanged
+  endPhase: 4, // kCGScrollPhaseEnded
+  promiseNativePanEvent: promiseNativePanGestureEventAndWaitForObserver,
+  delta: -50,
+};
+
+const NativePanHandlerForHeadless = {
+  beginPhase: SpecialPowers.DOMWindowUtils.PHASE_BEGIN,
+  updatePhase: SpecialPowers.DOMWindowUtils.PHASE_UPDATE,
+  endPhase: SpecialPowers.DOMWindowUtils.PHASE_END,
+  promiseNativePanEvent: promiseNativeTouchpadPanEventAndWaitForObserver,
+  delta: 50,
+};
+
+function getPanHandler() {
+  if (SpecialPowers.isHeadless) {
+    return NativePanHandlerForHeadless;
+  }
+
+  switch (getPlatform()) {
+    case "linux":
+      return NativePanHandlerForLinux;
+    case "windows":
+      return NativePanHandlerForWindows;
+    case "mac":
+      return NativePanHandlerForMac;
+    default:
+      throw new Error(
+        "There's no native pan handler on platform " + getPlatform()
+      );
+  }
+}
+
+// Lazily get `NativePanHandler` to avoid an exception where we don't support
+// native pan events (e.g. Android).
+if (!window.hasOwnProperty("NativePanHandler")) {
+  Object.defineProperty(window, "NativePanHandler", {
+    get() {
+      return getPanHandler();
+    },
+  });
+}
+
+async function panRightToLeftBegin(aElement, aX, aY, aMultiplier) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    NativePanHandler.delta * aMultiplier,
+    0,
+    NativePanHandler.beginPhase
+  );
+}
+
+async function panRightToLeftUpdate(aElement, aX, aY, aMultiplier) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    NativePanHandler.delta * aMultiplier,
+    0,
+    NativePanHandler.updatePhase
+  );
+}
+
+async function panRightToLeftEnd(aElement, aX, aY) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    0,
+    0,
+    NativePanHandler.endPhase
+  );
+}
+
+async function panRightToLeft(aElement, aX, aY, aMultiplier) {
+  await panRightToLeftBegin(aElement, aX, aY, aMultiplier);
+  await panRightToLeftUpdate(aElement, aX, aY, aMultiplier);
+  await panRightToLeftEnd(aElement, aX, aY, aMultiplier);
+}
+
+async function panLeftToRight(aElement, aX, aY, aMultiplier) {
+  await panLeftToRightBegin(aElement, aX, aY, aMultiplier);
+  await panLeftToRightUpdate(aElement, aX, aY, aMultiplier);
+  await panLeftToRightEnd(aElement, aX, aY, aMultiplier);
+}
+
+async function panLeftToRightBegin(aElement, aX, aY, aMultiplier) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    -NativePanHandler.delta * aMultiplier,
+    0,
+    NativePanHandler.beginPhase
+  );
+}
+
+async function panLeftToRightUpdate(aElement, aX, aY, aMultiplier) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    -NativePanHandler.delta * aMultiplier,
+    0,
+    NativePanHandler.updatePhase
+  );
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    -NativePanHandler.delta * aMultiplier,
+    0,
+    NativePanHandler.updatePhase
+  );
+}
+
+async function panLeftToRightEnd(aElement, aX, aY) {
+  await NativePanHandler.promiseNativePanEvent(
+    aElement,
+    aX,
+    aY,
+    0,
+    0,
+    NativePanHandler.endPhase
+  );
+}
+
+// Close the context menu on desktop platforms.
+// NOTE: This function doesn't work if the context menu isn't open.
+async function closeContextMenu() {
+  if (getPlatform() == "android") {
+    return;
+  }
+
+  const contextmenuClosedPromise = SpecialPowers.spawnChrome([], async () => {
+    const menu = this.browsingContext.topChromeWindow.document.getElementById(
+      "contentAreaContextMenu"
+    );
+    ok(
+      menu.state == "open" || menu.state == "showing",
+      "This function is supposed to work only if the context menu is open or showing"
+    );
+
+    return new Promise(resolve => {
+      menu.addEventListener(
+        "popuphidden",
+        () => {
+          resolve();
+        },
+        { once: true }
+      );
+      menu.hidePopup();
+    });
+  });
+
+  await contextmenuClosedPromise;
+}
+
+// Get a list of prefs which should be used for a subtest which wants to
+// generate a smooth scroll animation using an input event. The smooth
+// scroll animation is slowed down so the test can perform other actions
+// while it's still in progress.
+function getSmoothScrollPrefs(aInputType, aMsdPhysics) {
+  let result = [["apz.test.logging_enabled", true]];
+  // Some callers just want the default and don't pass in aMsdPhysics.
+  if (aMsdPhysics !== undefined) {
+    result.push(["general.smoothScroll.msdPhysics.enabled", aMsdPhysics]);
+  } else {
+    aMsdPhysics = SpecialPowers.getBoolPref(
+      "general.smoothScroll.msdPhysics.enabled"
+    );
+  }
+  if (aInputType == "wheel") {
+    // We want to test real wheel events rather than pan events.
+    result.push(["apz.test.mac.synth_wheel_input", true]);
+  } /* keyboard input */ else {
+    // The default verticalScrollDistance (which is 3) is too small for native
+    // keyboard scrolling, it sometimes produces same scroll offsets in the early
+    // stages of the smooth animation.
+    result.push(["toolkit.scrollbox.verticalScrollDistance", 5]);
+  }
+  // Use a longer animation duration to avoid the situation that the
+  // animation stops accidentally in between each arrow input event.
+  // If the situation happens, scroll offsets will not change at the moment.
+  if (aMsdPhysics) {
+    // Prefs for MSD physics (applicable to any input type).
+    result.push(
+      ...[
+        ["general.smoothScroll.msdPhysics.motionBeginSpringConstant", 20],
+        ["general.smoothScroll.msdPhysics.regularSpringConstant", 20],
+        ["general.smoothScroll.msdPhysics.slowdownMinDeltaRatio", 0.1],
+        ["general.smoothScroll.msdPhysics.slowdownSpringConstant", 20],
+      ]
+    );
+  } else if (aInputType == "wheel") {
+    // Prefs for Bezier physics with wheel input.
+    result.push(
+      ...[
+        ["general.smoothScroll.mouseWheel.durationMaxMS", 1500],
+        ["general.smoothScroll.mouseWheel.durationMinMS", 1500],
+      ]
+    );
+  } else {
+    // Prefs for Bezier physics with keyboard input.
+    result.push(
+      ...[
+        ["general.smoothScroll.lines.durationMaxMS", 1500],
+        ["general.smoothScroll.lines.durationMinMS", 1500],
+      ]
+    );
+  }
+  return result;
+}
+
+function buildRelativeScrollSmoothnessVariants(aInputType, aScrollMethods) {
+  let subtests = [];
+  for (let scrollMethod of aScrollMethods) {
+    subtests.push({
+      file: `helper_relative_scroll_smoothness.html?input-type=${aInputType}&scroll-method=${scrollMethod}&strict=true`,
+      prefs: getSmoothScrollPrefs(aInputType, /* Bezier physics */ false),
+    });
+    // For MSD physics, run the test with strict=false. The shape of the
+    // animation curve is highly timing dependent, and we can't guarantee
+    // that an animation will run long enough until the next input event
+    // arrives.
+    subtests.push({
+      file: `helper_relative_scroll_smoothness.html?input-type=${aInputType}&scroll-method=${scrollMethod}&strict=false`,
+      prefs: getSmoothScrollPrefs(aInputType, /* MSD physics */ true),
+    });
+  }
+  return subtests;
 }

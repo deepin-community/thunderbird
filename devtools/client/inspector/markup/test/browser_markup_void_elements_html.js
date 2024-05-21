@@ -6,7 +6,7 @@
 // Test void element display in the markupview.
 const TEST_URL = URL_ROOT + "doc_markup_void_elements.html";
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URL);
   const { win } = inspector.markup;
 
@@ -16,8 +16,9 @@ add_task(async function() {
     !editor.elt.classList.contains("void-element"),
     "h1 element does not have void-element class"
   );
-  ok(
-    !editor.elt.querySelector(".close").style.display !== "none",
+  Assert.notStrictEqual(
+    !editor.elt.querySelector(".close").style.display,
+    "none",
     "h1 element tag is not hidden"
   );
 
@@ -29,7 +30,11 @@ add_task(async function() {
   );
   let closeElement = container.editor.elt.querySelector(".close");
   let computedStyle = win.getComputedStyle(closeElement);
-  ok(computedStyle.display === "none", "img closing tag is hidden");
+  Assert.strictEqual(
+    computedStyle.display,
+    "none",
+    "img closing tag is hidden"
+  );
 
   info("check void element with pseudo element");
   const hrNodeFront = await getNodeFront("hr.before", inspector);
@@ -40,12 +45,16 @@ add_task(async function() {
   );
   closeElement = container.editor.elt.querySelector(".close");
   computedStyle = win.getComputedStyle(closeElement);
-  ok(computedStyle.display === "none", "hr closing tag is hidden");
+  Assert.strictEqual(computedStyle.display, "none", "hr closing tag is hidden");
 
   info("check expanded void element closing tag is not hidden");
   await inspector.markup.expandNode(hrNodeFront);
   await waitForMultipleChildrenUpdates(inspector);
   ok(container.expanded, "hr container is expanded");
   computedStyle = win.getComputedStyle(closeElement);
-  ok(computedStyle.display === "none", "hr closing tag is not hidden anymore");
+  Assert.strictEqual(
+    computedStyle.display,
+    "none",
+    "hr closing tag is not hidden anymore"
+  );
 });

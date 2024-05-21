@@ -1,4 +1,4 @@
-add_task(async function() {
+add_task(async function () {
   const url =
     "data:text/html," +
     "<html onmousemove='event.stopPropagation()'" +
@@ -10,9 +10,7 @@ add_task(async function() {
   let tab = await BrowserTestUtils.openNewForegroundTab(gBrowser, url);
   let browser = gBrowser.selectedBrowser;
 
-  await new Promise(resolve => {
-    SpecialPowers.pushPrefEnv({ set: [["ui.tooltipDelay", 0]] }, resolve);
-  });
+  await SpecialPowers.pushPrefEnv({ set: [["ui.tooltip.delay_ms", 0]] });
 
   let popupShownPromise = BrowserTestUtils.waitForEvent(
     document,

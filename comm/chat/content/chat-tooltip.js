@@ -10,21 +10,24 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  let { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-  let { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+  var { IMServices } = ChromeUtils.importESModule(
+    "resource:///modules/IMServices.sys.mjs"
+  );
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
+  );
   const LazyModules = {};
 
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "Status",
-    "resource:///modules/imStatusUtils.jsm"
-  );
+  ChromeUtils.defineESModuleGetters(LazyModules, {
+    Status: "resource:///modules/imStatusUtils.sys.mjs",
+  });
 
   /**
    * The MozChatTooltip widget implements a custom tooltip for chat. This tooltip
    * is used to display a rich tooltip when you mouse over contacts, channels
    * etc. in the chat view.
-   * @extends {XULPopupElement}
+   *
+   * @augments {XULPopupElement}
    */
   class MozChatTooltip extends MozElements.MozElementMixin(XULPopupElement) {
     static get inheritedAttributes() {
@@ -82,17 +85,29 @@
         return false;
       }
 
+      let showHTMLTooltip = false;
+
       // Reset tooltip.
-      let largeTooltip = this.querySelector(".largeTooltip");
+      const largeTooltip = this.querySelector(".largeTooltip");
       largeTooltip.hidden = false;
       this.removeAttribute("label");
+      const htmlTooltip = this.querySelector(".htmlTooltip");
+      htmlTooltip.hidden = true;
+
+      this.hasBestAvatar = false;
 
       // We have a few cases that have special behavior. These are richlistitems
       // and have tooltip="<myid>".
-      let item = this.triggerNode.closest(
+      const item = this.triggerNode.closest(
         `[tooltip="${this.id}"] richlistitem`
       );
 
+      // No tooltip on search results
+      if (item?.hasAttribute("is-search-result")) {
+        return false;
+      }
+
+      // No tooltip on the group headers
       if (item && item.matches(`:scope[is="chat-group-richlistitem"]`)) {
         return false;
       }
@@ -108,8 +123,8 @@
       }
 
       if (item) {
-        let contactlistbox = document.getElementById("contactlistbox");
-        let conv = contactlistbox.selectedItem.conv;
+        const contactlistbox = document.getElementById("contactlistbox");
+        const conv = contactlistbox.selectedItem.conv;
         return this.updateTooltipFromParticipant(
           item.chatBuddy.name,
           conv,
@@ -119,22 +134,21 @@
 
       // Tooltips are also used for the chat content, where we need to do
       // some more general checks.
-      let elt = this.triggerNode;
-      let classList = elt.classList;
-      if (
-        classList.contains("ib-nick") ||
-        classList.contains("ib-sender") ||
-        classList.contains("ib-person")
-      ) {
-        let conv = getBrowser()._conv;
-        // ib-sender nicks are handled with _originalMsg
-        if (conv.isChat && !classList.contains("ib-sender")) {
+      const elt = this.triggerNode;
+      const classList = elt.classList;
+      // ib-sender nicks are handled with _originalMsg if possible
+      if (classList.contains("ib-nick") || classList.contains("ib-person")) {
+        const conv = getBrowser()._conv;
+        if (conv.isChat) {
           return this.updateTooltipFromParticipant(elt.textContent, conv);
         }
         if (!conv.isChat && elt.textContent == conv.name) {
           return this.updateTooltipFromConversation(conv);
         }
       }
+
+      let sender = elt.textContent;
+      let overrideAvatar = undefined;
 
       // Are we over a message?
       for (let node = elt; node; node = node.parentNode) {
@@ -143,16 +157,12 @@
         }
         // Nick, build tooltip with original who information from message
         if (classList.contains("ib-sender")) {
-          let conv = getBrowser()._conv;
-          if (conv.isChat) {
-            return this.updateTooltipFromParticipant(
-              node._originalMsg.who,
-              conv
-            );
-          }
+          sender = node._originalMsg.who;
+          overrideAvatar = node._originalMsg.iconURL;
+          break;
         }
         // It's a message, so add a date/time tooltip.
-        let date = new Date(node._originalMsg.time * 1000);
+        const date = new Date(node._originalMsg.time * 1000);
         let text;
         if (new Date().toDateString() == date.toDateString()) {
           const dateTimeFormatter = new Services.intl.DateTimeFormat(
@@ -176,11 +186,42 @@
         // we are pointing at carries a title set by the prpl,
         // that title won't be overridden.
         node.setAttribute("title", text);
+        showHTMLTooltip = true;
         break;
       }
 
-      // Use the default content tooltip.
+      if (classList.contains("ib-sender")) {
+        const conv = getBrowser()._conv;
+        if (conv.isChat) {
+          return this.updateTooltipFromParticipant(
+            sender,
+            conv,
+            undefined,
+            overrideAvatar
+          );
+        }
+        if (!conv.isChat && elt.textContent == conv.name) {
+          return this.updateTooltipFromConversation(conv, overrideAvatar);
+        }
+      }
+
       largeTooltip.hidden = true;
+      // Show the title in the tooltip
+      if (showHTMLTooltip) {
+        let content = this.triggerNode.getAttribute("title");
+        if (!content) {
+          const closestTitle = this.triggerNode.closest("[title]");
+          if (closestTitle) {
+            content = closestTitle.getAttribute("title");
+          }
+        }
+        if (!content) {
+          return false;
+        }
+        htmlTooltip.textContent = content;
+        htmlTooltip.hidden = false;
+        return true;
+      }
       return false;
     }
 
@@ -207,6 +248,7 @@
             <html:table class="tooltipTable">
             </html:table>
           </vbox>
+          <html:div class="htmlTooltip" hidden="hidden"></html:div>
         `)
       );
       this.initializeAttributeInheritance();
@@ -247,7 +289,7 @@
     }
 
     setMessage(aMessage, noTopic = false) {
-      let msg = this.querySelector(".statusMessage");
+      const msg = this.querySelector(".statusMessage");
       msg.value = aMessage;
       msg.toggleAttribute("noTopic", noTopic);
     }
@@ -258,16 +300,35 @@
       }
     }
 
-    addRow(aLabel, aValue) {
+    /**
+     * Add a row to the tooltip's table
+     *
+     * @param {string} aLabel - Label for the table row.
+     * @param {string} aValue - Value for the table row.
+     * @param {{label: boolean, value: boolean}} [l10nIds] - Treat the label
+     *   and value as l10n IDs
+     */
+    addRow(aLabel, aValue, l10nIds = { label: false, value: false }) {
       let description;
       let row = [...this.table.querySelectorAll("tr")].find(row => {
-        return row.querySelector("th").textContent == aLabel;
+        const th = row.querySelector("th");
+        if (l10nIds?.label) {
+          return th.dataset.l10nId == aLabel;
+        }
+        return th.textContent == aLabel;
       });
       if (!row) {
         // Create a new row for this label.
         row = document.createElementNS("http://www.w3.org/1999/xhtml", "tr");
-        let th = document.createElementNS("http://www.w3.org/1999/xhtml", "th");
-        th.textContent = aLabel;
+        const th = document.createElementNS(
+          "http://www.w3.org/1999/xhtml",
+          "th"
+        );
+        if (l10nIds?.label) {
+          document.l10n.setAttributes(th, aLabel);
+        } else {
+          th.textContent = aLabel;
+        }
         th.setAttribute("valign", "top");
         row.appendChild(th);
         description = document.createElementNS(
@@ -280,12 +341,16 @@
         // Row with this label already exists - just update.
         description = row.querySelector("td");
       }
-      description.textContent = aValue;
+      if (l10nIds?.value) {
+        document.l10n.setAttributes(description, aValue);
+      } else {
+        description.textContent = aValue;
+      }
     }
 
     addSeparator() {
       if (this.table.hasChildNodes()) {
-        let lastElement = this.table.lastElementChild;
+        const lastElement = this.table.lastElementChild;
         lastElement.querySelector("th").classList.add("chatTooltipSeparator");
         lastElement.querySelector("td").classList.add("chatTooltipSeparator");
       }
@@ -344,26 +409,32 @@
      * Regenerate the tooltip based on a buddy.
      *
      * @param {prplIAccountBuddy} aBuddy - The buddy to generate the conversation.
-     * @param {imIConversation} [aConv] - A conversation associated with this buddy.
+     * @param {IMConversation} [aConv] - A conversation associated with this buddy.
+     * @param {string} [overrideAvatar] - URL for the user avatar to use
+     *  instead.
      */
-    updateTooltipFromBuddy(aBuddy, aConv) {
+    updateTooltipFromBuddy(aBuddy, aConv, overrideAvatar) {
       this.buddy = aBuddy;
 
       this.reset();
-      let name = aBuddy.userName;
-      let displayName = aBuddy.displayName;
+      const name = aBuddy.userName;
+      const displayName = aBuddy.displayName;
       this.setAttribute("displayname", displayName);
-      let account = aBuddy.account;
+      const account = aBuddy.account;
       this.setProtocolIcon(account.protocol);
       // If a conversation is provided, use the icon from it. Otherwise, use the
       // buddy icon filename.
-      if (aConv) {
+      if (overrideAvatar) {
+        this.setUserIcon(overrideAvatar, true);
+        this.hasBestAvatar = true;
+      } else if (aConv && !aConv.isChat) {
         this.setUserIcon(aConv.convIconFilename, true);
+        this.hasBestAvatar = true;
       } else {
         this.setUserIcon(aBuddy.buddyIconFilename, true);
       }
 
-      let statusType = aBuddy.statusType;
+      const statusType = aBuddy.statusType;
       this.setStatusIcon(LazyModules.Status.toAttribute(statusType));
       this.setMessage(
         LazyModules.Status.toLabel(statusType, aBuddy.statusText)
@@ -375,17 +446,27 @@
 
       this.addRow(this.bundle.GetStringFromName("buddy.account"), account.name);
 
+      if (aBuddy.canVerifyIdentity) {
+        const identityStatus = aBuddy.identityVerified
+          ? "chat-buddy-identity-status-verified"
+          : "chat-buddy-identity-status-unverified";
+        this.addRow("chat-buddy-identity-status", identityStatus, {
+          label: true,
+          value: true,
+        });
+      }
+
       // Add encryption status.
       if (this.triggerNode.classList.contains("message-encrypted")) {
         this.addRow(
-          this.bundle.GetStringFromName("otr.tag"),
+          this.bundle.GetStringFromName("encryption.tag"),
           this.bundle.GetStringFromName("message.status")
         );
       }
 
       this.requestBuddyInfo(account, aBuddy.normalizedName);
 
-      let tooltipInfo = aBuddy.getTooltipInfo();
+      const tooltipInfo = aBuddy.getTooltipInfo();
       if (tooltipInfo) {
         this.updateTooltipInfo(tooltipInfo);
       }
@@ -393,7 +474,7 @@
     }
 
     updateTooltipInfo(aTooltipInfo) {
-      for (let elt of aTooltipInfo) {
+      for (const elt of aTooltipInfo) {
         switch (elt.type) {
           case Ci.prplITooltipInfo.pair:
           case Ci.prplITooltipInfo.sectionHeader:
@@ -402,13 +483,16 @@
           case Ci.prplITooltipInfo.sectionBreak:
             this.addSeparator();
             break;
-          case Ci.prplITooltipInfo.status:
-            let statusType = parseInt(elt.label);
+          case Ci.prplITooltipInfo.status: {
+            const statusType = parseInt(elt.label);
             this.setStatusIcon(LazyModules.Status.toAttribute(statusType));
             this.setMessage(LazyModules.Status.toLabel(statusType, elt.value));
             break;
+          }
           case Ci.prplITooltipInfo.icon:
-            this.setUserIcon(elt.value);
+            if (!this.hasBestAvatar) {
+              this.setUserIcon(elt.value);
+            }
             break;
         }
       }
@@ -417,27 +501,34 @@
     /**
      * Regenerate the tooltip based on a conversation.
      *
-     * @param {imIConversation} aConv - The conversation to generate the tooltip from.
+     * @param {IMConversation} aConv - The conversation to generate the tooltip from.
+     * @param {string} [overrideAvatar] - URL for the user avatar to use
+     *  instead if the conversation is a direct conversation.
      */
-    updateTooltipFromConversation(aConv) {
+    updateTooltipFromConversation(aConv, overrideAvatar) {
       if (!aConv.isChat && aConv.buddy) {
-        return this.updateTooltipFromBuddy(aConv.buddy, aConv);
+        return this.updateTooltipFromBuddy(aConv.buddy, aConv, overrideAvatar);
       }
 
       this.reset();
       this.setAttribute("displayname", aConv.name);
-      let account = aConv.account;
+      const account = aConv.account;
       this.setProtocolIcon(account.protocol);
-      // Set the icon, potentially showing a fallback icon if this is an IM.
-      this.setUserIcon(aConv.convIconFilename, !aConv.isChat);
+      if (overrideAvatar && !aConv.isChat) {
+        this.setUserIcon(overrideAvatar, true);
+        this.hasBestAvatar = true;
+      } else {
+        // Set the icon, potentially showing a fallback icon if this is an IM.
+        this.setUserIcon(aConv.convIconFilename, !aConv.isChat);
+      }
       if (aConv.isChat) {
         if (!account.connected || aConv.left) {
           this.setStatusIcon("chat-left");
         } else {
           this.setStatusIcon("chat");
         }
-        let topic = aConv.topic;
-        let noTopic = !topic;
+        const topic = aConv.topic;
+        const noTopic = !topic;
         this.setMessage(topic || aConv.noTopicString, noTopic);
       } else {
         this.setStatusIcon("unknown");
@@ -451,7 +542,18 @@
       return true;
     }
 
-    updateTooltipFromParticipant(aNick, aConv, aParticipant) {
+    /**
+     * Set the tooltip details based on a conversation participant.
+     *
+     * @param {string} aNick - Nick of the user this tooltip is for.
+     * @param {prplIConversation} aConv - Conversation this tooltip is shown
+     *  in.
+     * @param {prplIConvChatBuddy} [aParticipant] - Participant to use instead
+     *  of looking it up in the conversation by the passed nick.
+     * @param {string} [overrideAvatar] - URL for the user avatar to use
+     *  instead.
+     */
+    updateTooltipFromParticipant(aNick, aConv, aParticipant, overrideAvatar) {
       if (!aConv.target) {
         return false; // We're viewing a log.
       }
@@ -459,18 +561,23 @@
         aParticipant = aConv.target.getParticipant(aNick);
       }
 
-      let account = aConv.account;
-      let normalizedNick = aConv.target.getNormalizedChatBuddyName(aNick);
+      const account = aConv.account;
+      const normalizedNick = aConv.target.getNormalizedChatBuddyName(aNick);
       // To try to ensure that we aren't misidentifying a nick with a
       // contact, we require at least that the normalizedChatBuddyName of
       // the nick is normalized like a normalizedName for contacts.
       if (normalizedNick == account.normalize(normalizedNick)) {
-        let accountBuddy = Services.contacts.getAccountBuddyByNameAndAccount(
-          normalizedNick,
-          account
-        );
+        const accountBuddy =
+          IMServices.contacts.getAccountBuddyByNameAndAccount(
+            normalizedNick,
+            account
+          );
         if (accountBuddy) {
-          return this.updateTooltipFromBuddy(accountBuddy);
+          return this.updateTooltipFromBuddy(
+            accountBuddy,
+            aConv,
+            overrideAvatar
+          );
         }
       }
 
@@ -479,7 +586,20 @@
       this.setProtocolIcon(account.protocol);
       this.setStatusIcon("unknown");
       this.setMessage(LazyModules.Status.toLabel("unknown"));
-      this.setUserIcon(aParticipant?.buddyIconFilename, true);
+      this.setUserIcon(overrideAvatar ?? aParticipant?.buddyIconFilename, true);
+      if (overrideAvatar) {
+        this.hasBestAvatar = true;
+      }
+
+      if (aParticipant.canVerifyIdentity) {
+        const identityStatus = aParticipant.identityVerified
+          ? "chat-buddy-identity-status-verified"
+          : "chat-buddy-identity-status-unverified";
+        this.addRow("chat-buddy-identity-status", identityStatus, {
+          label: true,
+          value: true,
+        });
+      }
 
       this.requestBuddyInfo(account, normalizedNick);
       return true;

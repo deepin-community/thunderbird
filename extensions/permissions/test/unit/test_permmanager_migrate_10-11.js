@@ -1,11 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+});
 
 var PERMISSIONS_FILE_NAME = "permissions.sqlite";
 
@@ -108,10 +106,10 @@ add_task(async function test() {
     ["https://foo.com", "storageAccessAPI^https://foo.com", 2, 0, 0, 0],
     ["http://foo.com", "storageAccessAPI^https://bar.com", 2, 0, 0, 0],
     ["http://foo.com", "storageAccessAPI^https://bar.com", 2, 0, 0, 0],
-    ["http://foo.com^inBrowser=1", "A", 2, 0, 0, 0],
+    ["http://foo.com", "A", 2, 0, 0, 0],
   ];
 
-  let found = expected.map(it => 0);
+  let found = expected.map(() => 0);
 
   // Add some places to the places database
   await PlacesTestUtils.addVisits(

@@ -2,16 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.transform:loader
+loader: gecko_taskgraph.loader.transform:loader
 
 kind-dependencies:
     - toolchain
 
 transforms:
-    - taskgraph.transforms.build_attrs:transforms
-    - taskgraph.transforms.build_lints:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.build_attrs:transforms
+    - gecko_taskgraph.transforms.build_lints:transforms
+    - gecko_taskgraph.transforms.job:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 job-defaults:
     attributes:
@@ -23,6 +23,7 @@ job-defaults:
         max-run-time: 3600
         env:
             PERFHERDER_EXTRA_OPTIONS: static-analysis-autotest
+    use-system-python: false
     run-on-projects: ['mozilla-central']
     run:
         using: mozharness
@@ -59,15 +60,14 @@ jobs:
             toolchain:
                 - linux64-clang
                 - linux64-clang-tidy
-                - linux64-infer
                 - linux64-rust
                 - linux64-sccache
                 - linux64-cbindgen
                 - linux64-nasm
                 - linux64-node
-                - linux64-lucetc
-                - linux64-sysroot
-                - wasi-sysroot
+                - linux64-pkgconf
+                - sysroot-x86_64-linux-gnu
+                - sysroot-wasm32-wasi
 
     win64-st-autotest/debug:
         description: "Win64 Debug Static Analysis Autotest"
@@ -76,28 +76,26 @@ jobs:
         treeherder:
             platform: windows2012-64/debug
             tier: 2
-        worker-type: b-win2012
-        worker:
-            env:
-                TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
+        worker-type: b-win2022
         run:
             config:
                 - builds/releng_base_firefox.py
                 - builds/taskcluster_base_windows.py
                 - builds/taskcluster_base_win64.py
                 - builds/taskcluster_sub_win64/debug.py
-            tooltool-downloads: internal
             extra-config:
                 mozconfig_variant: debug
-        use-sccache: true
+        use-sccache: false
         fetches:
             toolchain:
                 - win64-clang
                 - win64-rust
-                - win64-sccache
                 - win64-cbindgen
                 - win64-clang-tidy
                 - win64-nasm
                 - win64-node
-                - win64-dump-syms
+                - win64-dump_syms
                 - win64-winchecksec
+                - vs
+                - windows-rs
+                - sysroot-wasm32-wasi

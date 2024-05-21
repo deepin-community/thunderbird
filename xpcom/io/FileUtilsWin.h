@@ -9,7 +9,6 @@
 
 #include <windows.h>
 
-#include "mozilla/Scoped.h"
 #include "nsString.h"
 
 namespace mozilla {
@@ -139,6 +138,8 @@ inline bool NtPathToDosPath(const nsAString& aNtPath, nsAString& aDosPath) {
 
 bool HandleToFilename(HANDLE aHandle, const LARGE_INTEGER& aOffset,
                       nsAString& aFilename);
+
+uint32_t GetExecutableArchitecture(const wchar_t* aPath);
 
 }  // namespace mozilla
 

@@ -10,19 +10,18 @@ const TEST_PREFS = [["reader.parse-on-load.enabled", true]];
 
 const TEST_PATH = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 
 var readerButton = document.getElementById("reader-mode-button");
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+  UrlbarTestUtils: "resource://testing-common/UrlbarTestUtils.sys.mjs",
+});
 
 add_task(async function test_reader_button() {
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     // Reset test prefs.
     TEST_PREFS.forEach(([name, value]) => {
       Services.prefs.clearUserPref(name);
@@ -91,7 +90,7 @@ add_task(async function test_reader_button() {
   is(gURLBar.untrimmedValue, url, "gURLBar value is about:reader URL");
   is(
     gURLBar.value,
-    url.substring("http://".length),
+    UrlbarTestUtils.trimURL(url),
     "gURLBar is displaying original article URL"
   );
 
@@ -99,7 +98,7 @@ add_task(async function test_reader_button() {
   await new Promise((resolve, reject) => {
     waitForClipboard(
       url,
-      function() {
+      function () {
         gURLBar.focus();
         gURLBar.select();
         goDoCommand("cmd_copy");
@@ -185,10 +184,10 @@ add_task(async function test_reader_button() {
 });
 
 add_task(async function test_getOriginalUrl() {
-  let { ReaderMode } = ChromeUtils.import(
-    "resource://gre/modules/ReaderMode.jsm"
+  let { ReaderMode } = ChromeUtils.importESModule(
+    "resource://gre/modules/ReaderMode.sys.mjs"
   );
-  let url = "http://foo.com/article.html";
+  let url = "https://foo.com/article.html";
 
   is(
     ReaderMode.getOriginalUrl("about:reader?url=" + encodeURIComponent(url)),
@@ -206,7 +205,7 @@ add_task(async function test_getOriginalUrl() {
     "Did not find original URL from non-reader URL"
   );
 
-  let badUrl = "http://foo.com/?;$%^^";
+  let badUrl = "https://foo.com/?;$%^^";
   is(
     ReaderMode.getOriginalUrl("about:reader?url=" + encodeURIComponent(badUrl)),
     badUrl,
@@ -220,7 +219,7 @@ add_task(async function test_getOriginalUrl() {
 });
 
 add_task(async function test_reader_view_element_attribute_transform() {
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     while (gBrowser.tabs.length > 1) {
       gBrowser.removeCurrentTab();
     }
@@ -273,7 +272,7 @@ add_task(async function test_reader_view_element_attribute_transform() {
     "hidden",
     () => {
       let url = TEST_PATH + "readerModeArticle.html";
-      BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+      BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
     },
     () => !menuitem.hidden
   );
@@ -291,7 +290,7 @@ add_task(async function test_reader_view_element_attribute_transform() {
     "hidden",
     () => {
       let url = TEST_PATH + "readerModeArticleHiddenNodes.html";
-      BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+      BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
     },
     () => menuitem.hidden
   );
@@ -309,7 +308,7 @@ add_task(async function test_reader_view_element_attribute_transform() {
     "hidden",
     () => {
       let url = TEST_PATH + "readerModeArticle.html";
-      BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+      BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
     },
     () => !menuitem.hidden
   );
@@ -368,7 +367,7 @@ add_task(async function test_reader_view_element_attribute_transform() {
     "hidden",
     () => {
       let url = TEST_PATH + "readerModeArticleHiddenNodes.html";
-      BrowserTestUtils.loadURI(tab.linkedBrowser, url);
+      BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
     },
     () => menuitem.hidden
   );
@@ -378,4 +377,23 @@ add_task(async function test_reader_view_element_attribute_transform() {
     "menuitem's hidden attribute should be true on a non-reader-able page"
   );
   await waitForPageshow;
+});
+
+add_task(async function test_reader_mode_lang() {
+  let url = TEST_PATH + "readerModeArticle.html";
+  let tab = await BrowserTestUtils.openNewForegroundTab(gBrowser);
+  BrowserTestUtils.startLoadingURIString(tab.linkedBrowser, url);
+
+  await promiseTabLoadEvent(tab, url);
+  await TestUtils.waitForCondition(() => !readerButton.hidden);
+
+  // Switch page into reader mode.
+  let promiseTabLoad = promiseTabLoadEvent(tab);
+  readerButton.click();
+  await promiseTabLoad;
+
+  await SpecialPowers.spawn(gBrowser.selectedBrowser, [], () => {
+    let container = content.document.querySelector(".container");
+    is(container.lang, "en");
+  });
 });

@@ -15,13 +15,7 @@ const EMPTY_URL = (URL_ROOT + "resources/service-workers/empty.html").replace(
   "test2.example.com"
 );
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
+add_task(async function () {
   await enableApplicationPanel();
 
   const { panel, commands, tab } = await openNewTabAndApplicationPanel(

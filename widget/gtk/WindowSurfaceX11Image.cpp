@@ -35,17 +35,25 @@ WindowSurfaceX11Image::WindowSurfaceX11Image(Display* aDisplay, Window aWindow,
       mTransparencyBitmap(nullptr),
       mTransparencyBitmapWidth(0),
       mTransparencyBitmapHeight(0),
-      mIsShaped(aIsShaped) {}
+      mIsShaped(aIsShaped),
+      mWindowParent(0) {
+  if (!mIsShaped) {
+    return;
+  }
+
+  Window root, *children = nullptr;
+  unsigned int childrenNum;
+  if (XQueryTree(mDisplay, mWindow, &root, &mWindowParent, &children,
+                 &childrenNum)) {
+    if (children) {
+      XFree((char*)children);
+    }
+  }
+}
 
 WindowSurfaceX11Image::~WindowSurfaceX11Image() {
   if (mTransparencyBitmap) {
     delete[] mTransparencyBitmap;
-
-    Display* xDisplay = mWindowSurface->XDisplay();
-    Window xDrawable = mWindowSurface->XDrawable();
-
-    XShapeCombineMask(xDisplay, xDrawable, ShapeBounding, 0, 0, X11None,
-                      ShapeSet);
   }
 }
 
@@ -92,11 +100,7 @@ already_AddRefed<gfx::DrawTarget> WindowSurfaceX11Image::Lock(
   if (format == gfx::SurfaceFormat::X8R8G8B8_UINT32) {
     gfx::BackendType backend = gfxVars::ContentBackend();
     if (!gfx::Factory::DoesBackendSupportDataDrawtarget(backend)) {
-#ifdef USE_SKIA
       backend = gfx::BackendType::SKIA;
-#else
-      backend = gfx::BackendType::CAIRO;
-#endif
     }
     if (backend != gfx::BackendType::CAIRO) {
       format = gfx::SurfaceFormat::A8R8G8B8_UINT32;
@@ -216,6 +220,10 @@ void WindowSurfaceX11Image::ApplyTransparencyBitmap() {
         mTransparencyBitmapHeight);
     XShapeCombineMask(xDisplay, xDrawable, ShapeBounding, 0, 0, maskPixmap,
                       ShapeSet);
+    if (mWindowParent) {
+      XShapeCombineMask(mDisplay, mWindowParent, ShapeBounding, 0, 0,
+                        maskPixmap, ShapeSet);
+    }
     XFreePixmap(xDisplay, maskPixmap);
   }
 }
@@ -233,28 +241,29 @@ void WindowSurfaceX11Image::Commit(
   }
 
   gfx::IntRect bounds = aInvalidRegion.GetBounds().ToUnknownRect();
-  gfx::Rect rect(bounds);
-  if (rect.IsEmpty()) {
+  if (bounds.IsEmpty()) {
     return;
-  }
-
-  uint32_t numRects = aInvalidRegion.GetNumRects();
-  if (numRects != 1) {
-    AutoTArray<IntRect, 32> rects;
-    rects.SetCapacity(numRects);
-    for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
-      rects.AppendElement(iter.Get().ToUnknownRect());
-    }
-    dt->PushDeviceSpaceClipRects(rects.Elements(), rects.Length());
   }
 
   if (mIsShaped) {
     ApplyTransparencyBitmap();
   }
 
-  dt->DrawSurface(surf, rect, rect);
+  uint32_t numRects = aInvalidRegion.GetNumRects();
+  if (numRects == 1) {
+    dt->CopySurface(surf, bounds, bounds.TopLeft());
+  } else {
+    AutoTArray<IntRect, 32> rects;
+    rects.SetCapacity(numRects);
+    for (auto iter = aInvalidRegion.RectIter(); !iter.Done(); iter.Next()) {
+      rects.AppendElement(iter.Get().ToUnknownRect());
+    }
+    dt->PushDeviceSpaceClipRects(rects.Elements(), rects.Length());
 
-  if (numRects != 1) {
+    dt->DrawSurface(surf, gfx::Rect(bounds), gfx::Rect(bounds),
+                    DrawSurfaceOptions(),
+                    DrawOptions(1.0f, CompositionOp::OP_SOURCE));
+
     dt->PopClip();
   }
 }

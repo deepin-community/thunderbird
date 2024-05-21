@@ -8,8 +8,8 @@
 loadScripts({ name: "role.js", dir: MOCHITESTS_DIR });
 
 // Test web area role and AXLoadComplete event
-addAccessibleTask(``, async (browser, accDoc) => {
-  let evt = waitForMacEvent("AXLoadComplete", (iface, data) => {
+addAccessibleTask(``, async browser => {
+  let evt = waitForMacEvent("AXLoadComplete", iface => {
     return iface.getAttributeValue("AXDescription") == "webarea test";
   });
   await SpecialPowers.spawn(browser, [], () => {
@@ -29,24 +29,22 @@ addAccessibleTask(``, async (browser, accDoc) => {
 });
 
 // Test iframe web area role and AXLayoutComplete event
-addAccessibleTask(`<title>webarea test</title>`, async (browser, accDoc) => {
+addAccessibleTask(`<title>webarea test</title>`, async browser => {
   // If the iframe loads before the top level document finishes loading, we'll
   // get both an AXLayoutComplete event for the iframe and an AXLoadComplete
   // event for the document. Otherwise, if the iframe loads after the
   // document, we'll get one AXLoadComplete event.
   let eventPromise = Promise.race([
-    waitForMacEvent("AXLayoutComplete", (iface, data) => {
-      return (
-        iface.getAttributeValue("AXDescription") == "data:text/html,hello world"
-      );
+    waitForMacEvent("AXLayoutComplete", iface => {
+      return iface.getAttributeValue("AXDescription") == "iframe document";
     }),
-    waitForMacEvent("AXLoadComplete", (iface, data) => {
+    waitForMacEvent("AXLoadComplete", iface => {
       return iface.getAttributeValue("AXDescription") == "webarea test";
     }),
   ]);
   await SpecialPowers.spawn(browser, [], () => {
     const iframe = content.document.createElement("iframe");
-    iframe.src = "data:text/html,hello world";
+    iframe.src = "data:text/html,<title>iframe document</title>hello world";
     content.document.body.appendChild(iframe);
   });
   let doc = await eventPromise;
@@ -67,7 +65,7 @@ addAccessibleTask(`<title>webarea test</title>`, async (browser, accDoc) => {
   is(doc.getAttributeValue("AXTitle"), null, "iframe document has no AXTitle");
   is(
     doc.getAttributeValue("AXDescription"),
-    "data:text/html,hello world",
+    "iframe document",
     "test has correct label"
   );
 

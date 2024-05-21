@@ -10,28 +10,28 @@ const ADDONS = {
     manifest: {
       name: "Test 1",
       version: "1.0",
-      applications: { gecko: { id: "addon1@tests.mozilla.org" } },
+      browser_specific_settings: { gecko: { id: "addon1@tests.mozilla.org" } },
     },
   },
   test_install2_1: {
     manifest: {
       name: "Test 2",
       version: "2.0",
-      applications: { gecko: { id: "addon2@tests.mozilla.org" } },
+      browser_specific_settings: { gecko: { id: "addon2@tests.mozilla.org" } },
     },
   },
   test_install2_2: {
     manifest: {
       name: "Test 2",
       version: "3.0",
-      applications: { gecko: { id: "addon2@tests.mozilla.org" } },
+      browser_specific_settings: { gecko: { id: "addon2@tests.mozilla.org" } },
     },
   },
   test_install3: {
     manifest: {
       name: "Test 3",
       version: "1.0",
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "addon3@tests.mozilla.org",
           strict_min_version: "0",
@@ -98,6 +98,7 @@ const GETADDONS_JSON = {
       ],
       summary: "Repository summary",
       description: "Repository description",
+      url: "https://addons.mozilla.org/en-US/firefox/addon/addon2@tests.mozilla.org/",
     },
   ],
 };
@@ -129,7 +130,7 @@ add_task(async function setup() {
   // Create and configure the HTTP server.
   AddonTestUtils.registerJSON(testserver, "/update.json", UPDATE_JSON);
   testserver.registerDirectory("/data/", do_get_file("data"));
-  testserver.registerPathHandler("/redirect", function(aRequest, aResponse) {
+  testserver.registerPathHandler("/redirect", function (aRequest, aResponse) {
     aResponse.setStatusLine(null, 301, "Moved Permanently");
     let url = aRequest.host + ":" + aRequest.port + aRequest.queryString;
     aResponse.setHeader("Location", "http://" + url);
@@ -212,7 +213,7 @@ add_task(async function test_install_file() {
   });
 
   notEqual(a1.syncGUID, null);
-  ok(a1.syncGUID.length >= 9);
+  Assert.greaterOrEqual(a1.syncGUID.length, 9);
 
   ok(isExtensionInBootstrappedList(profileDir, a1.id));
   ok(XPIS.test_install1.exists());
@@ -235,7 +236,7 @@ add_task(async function test_install_file() {
   let testFile = getAddonFile(a1);
   ok(testFile.exists());
   difference = testFile.lastModifiedTime - Date.now();
-  ok(Math.abs(difference) < MAX_TIME_DIFFERENCE);
+  Assert.less(Math.abs(difference), MAX_TIME_DIFFERENCE);
 
   await a1.uninstall();
   let { id, version } = a1;
@@ -414,7 +415,7 @@ add_task(async function test_install_new_version() {
   do_check_in_crash_annotation(a2.id, a2.version);
 
   // Update date should be later (or the same if this test is too fast)
-  ok(a2.installDate <= a2.updateDate);
+  Assert.lessOrEqual(a2.installDate, a2.updateDate);
 
   await a2.uninstall();
 });
@@ -792,11 +793,19 @@ add_task(async function test_metadata() {
   await install.install();
 
   equal(install.addon.fullDescription, "Repository description");
+  equal(
+    install.addon.amoListingURL,
+    "https://addons.mozilla.org/en-US/firefox/addon/addon2@tests.mozilla.org/"
+  );
 
   await promiseRestartManager();
 
   let addon = await AddonManager.getAddonByID("addon2@tests.mozilla.org");
   equal(addon.fullDescription, "Repository description");
+  equal(
+    addon.amoListingURL,
+    "https://addons.mozilla.org/en-US/firefox/addon/addon2@tests.mozilla.org/"
+  );
 
   await addon.uninstall();
 });
@@ -813,6 +822,10 @@ add_task(async function test_metadata_again() {
 
   let addon = await AddonManager.getAddonByID("addon2@tests.mozilla.org");
   equal(addon.fullDescription, "Repository description");
+  equal(
+    addon.amoListingURL,
+    "https://addons.mozilla.org/en-US/firefox/addon/addon2@tests.mozilla.org/"
+  );
 
   await addon.uninstall();
 });

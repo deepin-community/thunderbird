@@ -19,13 +19,7 @@ namespace mozilla::dom {
 TabContext::TabContext()
     : mInitialized(false),
       mChromeOuterWindowID(0),
-      mJSPluginID(-1),
-      mShowFocusRings(UIStateChangeType_NoChange),
       mMaxTouchPoints(0) {}
-
-bool TabContext::IsJSPlugin() const { return mJSPluginID >= 0; }
-
-int32_t TabContext::JSPluginId() const { return mJSPluginID; }
 
 uint64_t TabContext::ChromeOuterWindowID() const {
   return mChromeOuterWindowID;
@@ -51,42 +45,24 @@ bool TabContext::UpdateTabContextAfterSwap(const TabContext& aContext) {
   return true;
 }
 
-UIStateChangeType TabContext::ShowFocusRings() const { return mShowFocusRings; }
-
 bool TabContext::SetTabContext(uint64_t aChromeOuterWindowID,
-                               UIStateChangeType aShowFocusRings,
                                uint32_t aMaxTouchPoints) {
   NS_ENSURE_FALSE(mInitialized, false);
 
   mInitialized = true;
   mChromeOuterWindowID = aChromeOuterWindowID;
-  mShowFocusRings = aShowFocusRings;
   mMaxTouchPoints = aMaxTouchPoints;
   return true;
 }
 
-bool TabContext::SetTabContextForJSPluginFrame(int32_t aJSPluginID) {
-  NS_ENSURE_FALSE(mInitialized, false);
-
-  mInitialized = true;
-  mJSPluginID = aJSPluginID;
-  return true;
-}
-
 IPCTabContext TabContext::AsIPCTabContext() const {
-  if (IsJSPlugin()) {
-    return IPCTabContext(JSPluginFrameIPCTabContext(mJSPluginID));
-  }
-
-  return IPCTabContext(FrameIPCTabContext(mChromeOuterWindowID, mShowFocusRings,
-                                          mMaxTouchPoints));
+  return IPCTabContext(
+      FrameIPCTabContext(mChromeOuterWindowID, mMaxTouchPoints));
 }
 
 MaybeInvalidTabContext::MaybeInvalidTabContext(const IPCTabContext& aParams)
     : mInvalidReason(nullptr) {
   uint64_t chromeOuterWindowID = 0;
-  int32_t jsPluginId = -1;
-  UIStateChangeType showFocusRings = UIStateChangeType_NoChange;
   uint32_t maxTouchPoints = 0;
 
   switch (aParams.type()) {
@@ -96,18 +72,10 @@ MaybeInvalidTabContext::MaybeInvalidTabContext(const IPCTabContext& aParams)
       chromeOuterWindowID = ipcContext.chromeOuterWindowID();
       break;
     }
-    case IPCTabContext::TJSPluginFrameIPCTabContext: {
-      const JSPluginFrameIPCTabContext& ipcContext =
-          aParams.get_JSPluginFrameIPCTabContext();
-
-      jsPluginId = ipcContext.jsPluginId();
-      break;
-    }
     case IPCTabContext::TFrameIPCTabContext: {
       const FrameIPCTabContext& ipcContext = aParams.get_FrameIPCTabContext();
 
       chromeOuterWindowID = ipcContext.chromeOuterWindowID();
-      showFocusRings = ipcContext.showFocusRings();
       maxTouchPoints = ipcContext.maxTouchPoints();
       break;
     }
@@ -116,14 +84,7 @@ MaybeInvalidTabContext::MaybeInvalidTabContext(const IPCTabContext& aParams)
     }
   }
 
-  bool rv;
-  if (jsPluginId >= 0) {
-    rv = mTabContext.SetTabContextForJSPluginFrame(jsPluginId);
-  } else {
-    rv = mTabContext.SetTabContext(chromeOuterWindowID, showFocusRings,
-                                   maxTouchPoints);
-  }
-  if (!rv) {
+  if (!mTabContext.SetTabContext(chromeOuterWindowID, maxTouchPoints)) {
     mInvalidReason = "Couldn't initialize TabContext.";
   }
 }

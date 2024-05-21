@@ -1,5 +1,15 @@
 Tests: help.sh
-Depends: thunderbird, xvfb, xauth
+Depends:
+ thunderbird,
+ xauth,
+ xvfb,
+
+Tests: check-global-config-path.py
+Depends:
+ thunderbird,
+ strace,
+Restrictions: allow-stderr
+Architecture: amd64 i386
 
 #Tests: xpcshellTest.sh
 #Depends: thunderbird-dev

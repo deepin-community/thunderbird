@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "1ca1cf66-eeb4-4df7-87c1-d5c92906ab90";
 
 function run_test() {
@@ -58,7 +56,7 @@ add_task(async function test_notification_incomplete() {
     await db.put(record);
   }
 
-  function observeMessage(subject, topic, data) {
+  function observeMessage() {
     ok(false, "Should not deliver malformed updates");
   }
   registerCleanupFunction(() =>
@@ -71,16 +69,17 @@ add_task(async function test_notification_incomplete() {
     resolve => (notificationDone = after(2, resolve))
   );
   let prevHandler = PushServiceWebSocket._handleNotificationReply;
-  PushServiceWebSocket._handleNotificationReply = function _handleNotificationReply() {
-    notificationDone();
-    return prevHandler.apply(this, arguments);
-  };
+  PushServiceWebSocket._handleNotificationReply =
+    function _handleNotificationReply() {
+      notificationDone();
+      return prevHandler.apply(this, arguments);
+    };
   PushService.init({
     serverURI: "wss://push.example.org/",
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",

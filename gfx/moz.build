@@ -10,10 +10,8 @@ with Files("**"):
 with Files("wr/**"):
     BUG_COMPONENT = ("Core", "Graphics: WebRender")
 
-if CONFIG["MOZ_TREE_CAIRO"]:
-    DIRS += ["cairo"]
-
 DIRS += [
+    "cairo",
     "2d",
     "ycbcr",
     "angle",
@@ -30,13 +28,14 @@ DIRS += [
     "config",
     "webrender_bindings",
     "wgpu_bindings",
+    "skia",
 ]
-
-if CONFIG["MOZ_ENABLE_SKIA"]:
-    DIRS += ["skia"]
 
 if CONFIG["ENABLE_TESTS"]:
     DIRS += ["tests/gtest"]
+
+if CONFIG["FUZZING_INTERFACES"]:
+    DIRS += ["tests/fuzz"]
 
 TEST_DIRS += ["tests"]
 
@@ -44,9 +43,3 @@ SPHINX_TREES["/gfx"] = "docs"
 
 with Files("docs/**"):
     SCHEDULES.exclusive = ["docs"]
-
-with Files("wr/**"):
-    SCHEDULES.exclusive = ["webrender"]
-
-with Files("webrender_bindings/**"):
-    SCHEDULES.exclusive = ["webrender"]

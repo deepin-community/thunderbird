@@ -17,7 +17,7 @@ class WebGLMethodDispatcher
     : public EmptyMethodDispatcher<WebGLMethodDispatcher> {};
 
 template <typename MethodT, MethodT Method>
-size_t IdByMethod() = delete;
+size_t IdByMethod();
 
 #define DEFINE_METHOD_DISPATCHER(_ID, _METHOD)                  \
   template <>                                                   \
@@ -60,8 +60,7 @@ DEFINE_ASYNC(HostWebGLContext::DeleteTexture)
 DEFINE_ASYNC(HostWebGLContext::DeleteTransformFeedback)
 DEFINE_ASYNC(HostWebGLContext::DeleteVertexArray)
 
-DEFINE_ASYNC(HostWebGLContext::Disable)
-DEFINE_ASYNC(HostWebGLContext::Enable)
+DEFINE_ASYNC(HostWebGLContext::SetEnabled)
 DEFINE_ASYNC(HostWebGLContext::GenerateError)
 DEFINE_ASYNC(HostWebGLContext::Resize)
 DEFINE_ASYNC(HostWebGLContext::RequestExtension)
@@ -90,6 +89,7 @@ DEFINE_ASYNC(HostWebGLContext::Hint)
 DEFINE_ASYNC(HostWebGLContext::LineWidth)
 DEFINE_ASYNC(HostWebGLContext::LinkProgram)
 DEFINE_ASYNC(HostWebGLContext::PolygonOffset)
+DEFINE_ASYNC(HostWebGLContext::ProvokingVertex)
 DEFINE_ASYNC(HostWebGLContext::Present)
 DEFINE_ASYNC(HostWebGLContext::SampleCoverage)
 DEFINE_ASYNC(HostWebGLContext::Scissor)
@@ -102,6 +102,7 @@ DEFINE_ASYNC(HostWebGLContext::BindBuffer)
 DEFINE_ASYNC(HostWebGLContext::BindBufferRange)
 DEFINE_ASYNC(HostWebGLContext::CopyBufferSubData)
 DEFINE_ASYNC(HostWebGLContext::BufferData)
+DEFINE_ASYNC(HostWebGLContext::BufferData_SizeOnly)
 DEFINE_ASYNC(HostWebGLContext::BufferSubData)
 DEFINE_ASYNC(HostWebGLContext::BlitFramebuffer)
 DEFINE_ASYNC(HostWebGLContext::InvalidateFramebuffer)
@@ -145,6 +146,8 @@ DEFINE_ASYNC(HostWebGLContext::EndQuery)
 DEFINE_ASYNC(HostWebGLContext::QueryCounter)
 DEFINE_ASYNC(HostWebGLContext::SetFramebufferIsInOpaqueRAF)
 DEFINE_ASYNC(HostWebGLContext::ClearVRSwapChain)
+DEFINE_ASYNC(HostWebGLContext::CopyToSwapChain)
+DEFINE_ASYNC(HostWebGLContext::EndOfFrame)
 
 #undef DEFINE_ASYNC
 #undef DEFINE_METHOD_DISPATCHER

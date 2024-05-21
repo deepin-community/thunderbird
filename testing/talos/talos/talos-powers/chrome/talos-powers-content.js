@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// This file is loaded as a framescript
-/* global docShell */
-// eslint-env mozilla/frame-script
+/* eslint-env mozilla/frame-script */
 
 addEventListener(
   "TalosContentProfilerCommand",
@@ -37,7 +35,7 @@ addMessageListener("TalosContentProfiler:Response", msg => {
 
 addEventListener(
   "TalosPowersContentForceCCAndGC",
-  e => {
+  () => {
     Cu.forceGC();
     Cu.forceCC();
     Cu.forceShrinkingGC();
@@ -48,7 +46,7 @@ addEventListener(
 
 addEventListener(
   "TalosPowersContentFocus",
-  e => {
+  () => {
     if (
       content.location.protocol != "file:" &&
       content.location.hostname != "localhost" &&
@@ -74,7 +72,7 @@ addEventListener(
 
 addEventListener(
   "TalosPowersContentGetStartupInfo",
-  e => {
+  () => {
     sendAsyncMessage("TalosPowersContent:GetStartupInfo");
     addMessageListener(
       "TalosPowersContent:GetStartupInfo:Result",
@@ -105,7 +103,7 @@ addEventListener(
 
 addEventListener(
   "TalosPowersContentDumpConsole",
-  e => {
+  () => {
     var messages;
     try {
       messages = Services.console.getMessageArray();
@@ -149,7 +147,7 @@ addEventListener(
  */
 addEventListener(
   "TalosPowersWebRenderCapture",
-  e => {
+  () => {
     if (content && content.windowUtils) {
       content.windowUtils.wrCapture();
     } else {
@@ -169,7 +167,7 @@ addEventListener(
  */
 addEventListener(
   "TalosPowers:ParentExec:QueryEvent",
-  function(e) {
+  function (e) {
     if (
       content.location.protocol != "file:" &&
       content.location.hostname != "localhost" &&

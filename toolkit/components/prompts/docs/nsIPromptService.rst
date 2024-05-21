@@ -104,10 +104,10 @@ The same prompt as above, but called async:
 C++ Sync
 ~~~~~~~~
 
-.. code-block:: c++
+.. code-block:: cpp
 
       nsCOMPtr<nsIPromptService> promptSvc =
-        do_GetService("@mozilla.org/embedcomp/prompt-service;1");
+        do_GetService("@mozilla.org/prompter;1");
 
       if(!promptSvc) {
         // Error handling
@@ -135,10 +135,10 @@ C++ Sync
 C++ Async
 ~~~~~~~~~
 
-.. code-block:: c++
+.. code-block:: cpp
 
       nsCOMPtr<nsIPromptService> promptSvc =
-        do_GetService("@mozilla.org/embedcomp/prompt-service;1");
+        do_GetService("@mozilla.org/prompter;1");
 
       if(!promptSvc) {
         // Error handling
@@ -165,7 +165,7 @@ C++ Async
 
 Then, in your promise handler callback function:
 
-.. code-block:: c++
+.. code-block:: cpp
 
       void PromptHandler::ResolvedCallback(JSContext* aCx,
                                        JS::Handle<JS::Value> aValue) {

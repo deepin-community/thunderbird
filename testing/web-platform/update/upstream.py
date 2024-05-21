@@ -7,14 +7,14 @@ import re
 import subprocess
 import sys
 import tempfile
+
 from six.moves import input
 from six.moves.urllib import parse as urlparse
-
-from wptrunner.update.tree import get_unique_name
 from wptrunner.update.base import Step, StepRunner, exit_clean, exit_unclean
+from wptrunner.update.tree import get_unique_name
 
-from .tree import Commit, GitTree, Patch
 from .github import GitHub
+from .tree import Commit, GitTree, Patch
 
 
 def rewrite_patch(patch, strip_dir):
@@ -174,7 +174,7 @@ class LoadCommits(Step):
         )
 
         update_regexp = re.compile(
-            "Bug \d+ - Update web-platform-tests to revision [0-9a-f]{40}"
+            r"Bug \d+ - Update web-platform-tests to revision [0-9a-f]{40}"
         )
 
         state.has_backouts = False

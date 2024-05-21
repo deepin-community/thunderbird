@@ -19,7 +19,7 @@ var kValidPassword = "testpop3";
 function verifyPop3Logon(validPassword) {
   incomingServer.password = validPassword ? kValidPassword : kInvalidPassword;
   urlListener.expectSuccess = validPassword;
-  let uri = incomingServer.verifyLogon(urlListener, gDummyMsgWindow);
+  const uri = incomingServer.verifyLogon(urlListener, gDummyMsgWindow);
   // clear msgWindow so url won't prompt for passwords.
   uri.QueryInterface(Ci.nsIMsgMailNewsUrl).msgWindow = null;
 
@@ -62,7 +62,7 @@ function run_test() {
   Services.prefs.setBoolPref("mail.biff.show_tray_icon", false);
   Services.prefs.setBoolPref("mail.biff.animate_dock_icon", false);
   // Set up the Server
-  daemon = new pop3Daemon();
+  daemon = new Pop3Daemon();
   function createHandler(d) {
     var handler = new POP3_RFC1939_handler(d);
     // Login information needs to match the one stored in the signons json file.

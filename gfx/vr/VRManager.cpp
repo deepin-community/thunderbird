@@ -615,7 +615,7 @@ void VRManager::ProcessManagerState() {
 void VRManager::ProcessManagerState_Disabled() {
   MOZ_ASSERT(mState == VRManagerState::Disabled);
 
-  if (!StaticPrefs::dom_vr_enabled()) {
+  if (!StaticPrefs::dom_vr_enabled() && !StaticPrefs::dom_vr_webxr_enabled()) {
     return;
   }
 
@@ -858,6 +858,9 @@ void VRManager::DispatchRuntimeCapabilitiesUpdate() {
 }
 
 void VRManager::StopAllHaptics() {
+  if (mState != VRManagerState::Active) {
+    return;
+  }
   for (size_t i = 0; i < mozilla::ArrayLength(mBrowserState.hapticState); i++) {
     ClearHapticSlot(i);
   }
@@ -1015,6 +1018,10 @@ bool VRManager::RunPuppet(const nsTArray<uint64_t>& aBuffer,
 }
 
 void VRManager::ResetPuppet(VRManagerParent* aManagerParent) {
+  if (!StaticPrefs::dom_vr_puppet_enabled()) {
+    return;
+  }
+
   mManagerParentsWaitingForPuppetReset.Insert(aManagerParent);
   if (mManagerParentRunningPuppet != nullptr) {
     Unused << mManagerParentRunningPuppet
@@ -1382,9 +1389,10 @@ bool VRManager::SubmitFrame(const layers::SurfaceDescriptor& aTexture,
     case SurfaceDescriptor::TSurfaceDescriptorD3D10: {
       const SurfaceDescriptorD3D10& surf =
           aTexture.get_SurfaceDescriptorD3D10();
+      auto handle = surf.handle()->ClonePlatformHandle();
       layer.textureType =
           VRLayerTextureType::LayerTextureType_D3D10SurfaceDescriptor;
-      layer.textureHandle = (void*)surf.handle();
+      layer.textureHandle = (void*)handle.release();
       layer.textureSize.width = surf.size().width;
       layer.textureSize.height = surf.size().height;
     } break;
@@ -1516,6 +1524,10 @@ void VRManager::CancelCurrentSubmitTask() {
 NS_IMETHODIMP
 VRManager::Observe(nsISupports* subject, const char* topic,
                    const char16_t* data) {
+  if (!StaticPrefs::dom_vr_enabled() && !StaticPrefs::dom_vr_webxr_enabled()) {
+    return NS_OK;
+  }
+
   if (!strcmp(topic, "application-background")) {
     // StopTasks() is called later in the timer thread based on this flag to
     // avoid threading issues.

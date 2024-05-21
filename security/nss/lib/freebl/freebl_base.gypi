@@ -34,14 +34,22 @@
     'ecl/ecp_jac.c',
     'ecl/ecp_jm.c',
     'ecl/ecp_mont.c',
+    'ecl/ecp_secp256r1.c',
     'ecl/ecp_secp384r1.c',
+    'ecl/ecp_secp384r1_wrap.c',
     'ecl/ecp_secp521r1.c',
+    'ecl/ecp_secp521r1_wrap.c',
+    'verified/Hacl_P256.c',
+    'verified/Hacl_P384.c',
+    'verified/Hacl_P521.c',
     'fipsfreebl.c',
     'blinit.c',
     'freeblver.c',
     'gcm.c',
     'hmacct.c',
     'jpake.c',
+    'kyber.c',
+    'kyber-pqcrystals-ref.c',
     'ldvector.c',
     'md2.c',
     'md5.c',
@@ -55,11 +63,24 @@
     'rawhash.c',
     'rijndael.c',
     'rsa.c',
+    'rsa_blind.c',
     'rsapkcs.c',
     'sha_fast.c',
     'shvfy.c',
     'sysrand.c',
     'tlsprfalg.c',
+    'secmpi.c',
+    'verified/Hacl_Hash_SHA3.c',
+    'sha3.c',
+    'shake.c',
+    'verified/Hacl_Curve25519_51.c',
+    'verified/Hacl_Ed25519.c',
+  ],
+  'defines': [
+    # For kyber-pqcrystals-ref.c. If we ever decide to support Kyber512 or
+    # Kyber1024, we'll need to build separate static libraries with different
+    # values of KYBER_K.
+    'KYBER_K=3',
   ],
   'conditions': [
     [ 'OS=="linux" or OS=="android"', {
@@ -72,7 +93,7 @@
             'mpi/mp_comba.c',
           ],
           'conditions': [
-            [ 'cc_is_clang==1 and fuzz!=1 and coverage!=1', {
+            [ 'cc_is_clang==1 and fuzz!=1 and coverage!=1 and force_integrated_as!=1', {
               'cflags': [
                 '-no-integrated-as',
               ],

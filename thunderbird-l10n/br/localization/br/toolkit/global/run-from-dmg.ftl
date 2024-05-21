@@ -17,3 +17,10 @@ prompt-to-install-no-button = Chom hep staliañ
 
 install-failed-title = { -brand-short-name } staliadur c'hwitet.
 install-failed-message = { -brand-short-name } en deus c'hwitet e staliadur met kendalc'h a raio da vont en-dro.
+
+## Strings for a dialog that recommends to the user to start an existing
+## installation of the app in the Applications directory if one is detected,
+## rather than the app that was double-clicked in a .dmg.
+
+prompt-to-launch-existing-app-message = Staliet ho peus { -brand-short-name } c’hoazh. Grit gant an arload bet staliet evit chom kelaouet ha chom hep koll roadennoù.
+prompt-to-launch-existing-app-no-button = Ket, trugarez

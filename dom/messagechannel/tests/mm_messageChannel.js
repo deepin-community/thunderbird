@@ -1,3 +1,5 @@
+/* eslint-env mozilla/frame-script */
+
 function debug(msg) {
   dump("[mmMessageChannelChild]" + msg + "\n");
 }
@@ -18,7 +20,7 @@ function ok(condition, message) {
   debug("condition: " + condition + ", " + message + "\n");
   if (!condition) {
     sendAsyncMessage("mmMessagePort:fail", { message });
-    throw "failed check: " + message;
+    throw new Error("failed check: " + message);
   }
 }
 
@@ -69,6 +71,6 @@ function emptyTest(msg) {
   sendAsyncMessage("EmptyTest:FinishPrepare", { message: "OK" });
 }
 
-function notTransferableTest(msg) {
+function notTransferableTest() {
   sendAsyncMessage("NotTransferableTest:FinishPrepare", { message: "OK" });
 }

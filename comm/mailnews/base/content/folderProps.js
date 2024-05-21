@@ -5,21 +5,28 @@
 /* import-globals-from retention.js */
 /* global BigInt */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
+var { FolderTreeProperties } = ChromeUtils.importESModule(
+  "resource:///modules/FolderTreeProperties.sys.mjs"
+);
+var { Gloda } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/Gloda.sys.mjs"
+);
 
-var gFolderTreeView;
 var gMsgFolder;
 var gLockedPref = null;
-var kCurrentColor = "";
-var kDefaultColor = "#363959";
-var gNeedToRestoreFolderSelection = false;
 
+var gDefaultColor = "";
+
+window.addEventListener("load", folderPropsOnLoad);
 document.addEventListener("dialogaccept", folderPropsOKButton);
 document.addEventListener("dialogcancel", folderCancelButton);
 
-// The folderPropsSink is the class that gets notified of an imap folder's properties
-
+/**
+ * The folderPropsSink is the class that gets notified of an imap folder's
+ * properties.
+ *
+ * @implements {nsIMsgImapFolderProps}
+ */
 var gFolderPropsSink = {
   setFolderType(folderTypeString) {
     var typeLabel = document.getElementById("folderType.text");
@@ -71,37 +78,36 @@ var gFolderPropsSink = {
   },
 
   setQuotaData(folderQuota) {
-    let quotaDetails = document.getElementById("quotaDetails");
-    let bundle = document.getElementById("bundle_messenger");
-    let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
+    const quotaDetails = document.getElementById("quotaDetails");
+    const messenger = Cc["@mozilla.org/messenger;1"].createInstance(
       Ci.nsIMessenger
     );
 
-    for (let quota of folderQuota) {
-      let li = document.createElement("li");
-      let name = document.createElement("span");
+    for (const quota of folderQuota) {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
       name.textContent = quota.name;
       li.appendChild(name);
 
-      let progress = document.createElement("progress");
+      const progress = document.createElement("progress");
       progress.classList.add("quota-percentage");
       progress.setAttribute("value", quota.usage);
       progress.setAttribute("max", quota.limit);
 
       li.appendChild(progress);
 
-      let percentage = document.createElement("span");
-      percentage.textContent = bundle.getFormattedString("quotaPercentUsed", [
-        Number((100n * BigInt(quota.usage)) / BigInt(quota.limit)),
-      ]);
+      const percentage = document.createElement("span");
+      document.l10n.setAttributes(percentage, "quota-percent-used", {
+        percent: Number((100n * BigInt(quota.usage)) / BigInt(quota.limit)),
+      });
       li.appendChild(percentage);
 
       li.appendChild(document.createTextNode(" — "));
 
-      let details = document.createElement("span");
+      const details = document.createElement("span");
       if (/STORAGE/i.test(quota.name)) {
-        let usage = messenger.formatFileSize(quota.usage * 1024);
-        let limit = messenger.formatFileSize(quota.limit * 1024);
+        const usage = messenger.formatFileSize(quota.usage * 1024);
+        const limit = messenger.formatFileSize(quota.limit * 1024);
         details.textContent = `${usage} / ${limit}`;
       } else {
         details.textContent = `${quota.usage} / ${quota.limit}`;
@@ -115,27 +121,8 @@ var gFolderPropsSink = {
 
 function doEnabling() {
   var nameTextbox = document.getElementById("name");
-  document
-    .querySelector("dialog")
-    .getButton("accept").disabled = !nameTextbox.value;
-}
-
-/**
- * Clear the tree selection if the user opens the color picker in order to
- * guarantee a proper color preview of the highlighted tree item.
- */
-function inputColorClicked() {
-  window.arguments[0].clearFolderSelectionCallback();
-  gNeedToRestoreFolderSelection = true;
-}
-
-/**
- * Reset the folder color to the default value.
- */
-function resetColor() {
-  inputColorClicked();
-  document.getElementById("color").value = kDefaultColor;
-  window.arguments[0].previewSelectedColorCallback(gMsgFolder, null);
+  document.querySelector("dialog").getButton("accept").disabled =
+    !nameTextbox.value;
 }
 
 function folderPropsOKButton(event) {
@@ -155,7 +142,9 @@ function folderPropsOKButton(event) {
       gMsgFolder.clearFlag(Ci.nsMsgFolderFlags.CheckNew);
     }
 
-    let glodaCheckbox = document.getElementById("folderIncludeInGlobalSearch");
+    const glodaCheckbox = document.getElementById(
+      "folderIncludeInGlobalSearch"
+    );
     if (!glodaCheckbox.hidden) {
       if (glodaCheckbox.checked) {
         // We pass true here so that folders such as trash and junk can still
@@ -177,23 +166,20 @@ function folderPropsOKButton(event) {
     ).checked;
     gMsgFolder.retentionSettings = retentionSettings;
 
-    // Check if the icon color was updated.
-    if (
-      kCurrentColor !=
-      gFolderTreeView.getFolderCacheProperty(gMsgFolder, "folderIconColor")
-    ) {
-      window.arguments[0].updateColorCallback(gMsgFolder);
+    let color = document.getElementById("color").value;
+    if (color == gDefaultColor) {
+      color = undefined;
     }
-
-    restoreFolderSelection();
+    FolderTreeProperties.setColor(gMsgFolder.URI, color);
+    // Tell 3-pane tabs to update the folder's color.
+    Services.obs.notifyObservers(gMsgFolder, "folder-color-changed", color);
   }
 
   try {
     // This throws an exception when an illegal folder name was entered.
     top.okCallback(
       document.getElementById("name").value,
-      window.arguments[0].name,
-      gMsgFolder.URI
+      window.arguments[0].name
     );
   } catch (e) {
     event.preventDefault();
@@ -201,29 +187,27 @@ function folderPropsOKButton(event) {
 }
 
 function folderCancelButton(event) {
-  // Restore the icon to the previous color and discard edits.
-  if (gMsgFolder && window.arguments[0].previewSelectedColorCallback) {
-    window.arguments[0].previewSelectedColorCallback(gMsgFolder, kCurrentColor);
-  }
-
-  restoreFolderSelection();
-}
-
-/**
- * If the user interacted with the color picker, it means the folder was
- * deselected to ensure a proper preview of the color, so we need to re-select
- * the folder when done.
- */
-function restoreFolderSelection() {
-  if (
-    gNeedToRestoreFolderSelection &&
-    window.arguments[0].selectFolderCallback
-  ) {
-    window.arguments[0].selectFolderCallback(gMsgFolder);
-  }
+  // Clear any previewed color.
+  Services.obs.notifyObservers(gMsgFolder, "folder-color-preview");
 }
 
 function folderPropsOnLoad() {
+  const styles = getComputedStyle(document.body);
+  const folderColors = {
+    Inbox: styles.getPropertyValue("--folder-color-inbox"),
+    Sent: styles.getPropertyValue("--folder-color-sent"),
+    Outbox: styles.getPropertyValue("--folder-color-outbox"),
+    Drafts: styles.getPropertyValue("--folder-color-draft"),
+    Trash: styles.getPropertyValue("--folder-color-trash"),
+    Archive: styles.getPropertyValue("--folder-color-archive"),
+    Templates: styles.getPropertyValue("--folder-color-template"),
+    Spam: styles.getPropertyValue("--folder-color-spam"),
+    Virtual: styles.getPropertyValue("--folder-color-folder-filter"),
+    RSS: styles.getPropertyValue("--folder-color-rss"),
+    Newsgroup: styles.getPropertyValue("--folder-color-newsletter"),
+  };
+  gDefaultColor = styles.getPropertyValue("--folder-color-folder");
+
   // look in arguments[0] for parameters
   if (window.arguments && window.arguments[0]) {
     if (window.arguments[0].title) {
@@ -237,14 +221,6 @@ function folderPropsOnLoad() {
   if (window.arguments[0].folder) {
     // Fill in folder name, based on what they selected in the folder pane.
     gMsgFolder = window.arguments[0].folder;
-    gFolderTreeView = window.arguments[0].treeView;
-    // Store the current icon color to allow discarding edits.
-    kCurrentColor = gFolderTreeView.getFolderCacheProperty(
-      gMsgFolder,
-      "folderIconColor"
-    );
-  } else {
-    dump("passed null for folder, do nothing\n");
   }
 
   if (window.arguments[0].name) {
@@ -253,9 +229,6 @@ function folderPropsOnLoad() {
     // when the dialog is accepted.
     var nameTextbox = document.getElementById("name");
     nameTextbox.value = window.arguments[0].name;
-
-    // name.setSelectionRange(0,-1);
-    // name.focusTextField();
   }
 
   const serverType = window.arguments[0].serverType;
@@ -273,12 +246,45 @@ function folderPropsOnLoad() {
       gMsgFolder.updateFolder(window.arguments[0].msgWindow);
     }
 
-    let colorInput = document.getElementById("color");
-    colorInput.value = kCurrentColor ? kCurrentColor : kDefaultColor;
+    // Check the current folder name against known folder names to set the
+    // correct default color, if needed.
+    let selectedFolderName = "";
+
+    switch (window.arguments[0].serverType) {
+      case "rss":
+        selectedFolderName = "RSS";
+        break;
+      case "nntp":
+        selectedFolderName = "Newsgroup";
+        break;
+      default:
+        selectedFolderName = window.arguments[0].name;
+        break;
+    }
+
+    if (Object.keys(folderColors).includes(selectedFolderName)) {
+      gDefaultColor = folderColors[selectedFolderName];
+    }
+
+    const colorInput = document.getElementById("color");
+    colorInput.value =
+      FolderTreeProperties.getColor(gMsgFolder.URI) || gDefaultColor;
     colorInput.addEventListener("input", event => {
-      window.arguments[0].previewSelectedColorCallback(
+      // Preview the chosen color.
+      Services.obs.notifyObservers(
         gMsgFolder,
-        event.target.value
+        "folder-color-preview",
+        colorInput.value
+      );
+    });
+    const resetColorButton = document.getElementById("resetColor");
+    resetColorButton.addEventListener("click", function () {
+      colorInput.value = gDefaultColor;
+      // Preview the default color.
+      Services.obs.notifyObservers(
+        gMsgFolder,
+        "folder-color-preview",
+        gDefaultColor
       );
     });
 
@@ -322,9 +328,8 @@ function folderPropsOnLoad() {
     }
 
     // set check for new mail checkbox
-    document.getElementById(
-      "folderCheckForNewMessages"
-    ).checked = gMsgFolder.getFlag(Ci.nsMsgFolderFlags.CheckNew);
+    document.getElementById("folderCheckForNewMessages").checked =
+      gMsgFolder.getFlag(Ci.nsMsgFolderFlags.CheckNew);
 
     // if gloda indexing is off, hide the related checkbox
     var glodaCheckbox = document.getElementById("folderIncludeInGlobalSearch");
@@ -339,25 +344,27 @@ function folderPropsOnLoad() {
       glodaCheckbox.hidden = true;
     } else {
       // otherwise, the user can choose whether this file gets indexed
-      let glodaFolder = Gloda.getFolderForFolder(gMsgFolder);
+      const glodaFolder = Gloda.getFolderForFolder(gMsgFolder);
       glodaCheckbox.checked =
         glodaFolder.indexingPriority != glodaFolder.kIndexingNeverPriority;
     }
   }
 
   if (serverType == "imap") {
-    var imapFolder = gMsgFolder.QueryInterface(Ci.nsIMsgImapMailFolder);
-    if (imapFolder) {
-      imapFolder.fillInFolderProps(gFolderPropsSink);
-    }
+    const imapFolder = gMsgFolder.QueryInterface(Ci.nsIMsgImapMailFolder);
+    imapFolder.fillInFolderProps(gFolderPropsSink);
 
-    let users = [...imapFolder.getOtherUsersWithAccess()];
+    const users = [...imapFolder.getOtherUsersWithAccess()];
     if (users.length) {
       document.getElementById("folderOtherUsers").hidden = false;
-      document.getElementById("folderOtherUsersText").textContent = users.join(
-        ", "
-      );
+      document.getElementById("folderOtherUsersText").textContent =
+        users.join(", ");
     }
+
+    // Disable "Repair Folder" when offline as that would cause the offline store
+    // to get deleted and redownloaded.
+    document.getElementById("folderRebuildSummaryButton").disabled =
+      gMsgFolder.supportsOffline && Services.io.offline;
   }
 
   var retentionSettings = gMsgFolder.retentionSettings;
@@ -366,32 +373,30 @@ function folderPropsOnLoad() {
     retentionSettings.useServerDefaults;
 
   // set folder sizes
-  let numberOfMsgs = gMsgFolder.getTotalMessages(false);
+  const numberOfMsgs = gMsgFolder.getTotalMessages(false);
   if (numberOfMsgs >= 0) {
     document.getElementById("numberOfMessages").value = numberOfMsgs;
   }
 
   try {
-    let sizeOnDisk = Cc["@mozilla.org/messenger;1"]
+    const sizeOnDisk = Cc["@mozilla.org/messenger;1"]
       .createInstance(Ci.nsIMessenger)
       .formatFileSize(gMsgFolder.sizeOnDisk, true);
     document.getElementById("sizeOnDisk").value = sizeOnDisk;
   } catch (e) {}
 
-  // select the initial tab
-  if (window.arguments[0].tabID) {
-    try {
-      document.getElementById(
-        "folderPropTabBox"
-      ).selectedTab = document.getElementById(window.arguments[0].tabID);
-    } catch (ex) {}
-  }
   onCheckKeepMsg();
   onUseDefaultRetentionSettings();
+
+  // select the initial tab
+  if (window.arguments[0].tabID) {
+    document.getElementById("folderPropTabBox").selectedTab =
+      document.getElementById(window.arguments[0].tabID);
+  }
 }
 
 function hideShowControls(serverType) {
-  let controls = document.querySelectorAll("[hidefor]");
+  const controls = document.querySelectorAll("[hidefor]");
   var len = controls.length;
   for (var i = 0; i < len; i++) {
     var control = controls[i];
@@ -467,13 +472,12 @@ function onUseDefaultRetentionSettings() {
   document.getElementById("retention.keepOldMsgMinLabel").disabled = useDefault;
 
   var keepMsg = document.getElementById("retention.keepMsg").value;
-  const nsIMsgRetentionSettings = Ci.nsIMsgRetentionSettings;
   document.getElementById("retention.keepOldMsgMin").disabled =
-    useDefault || keepMsg != nsIMsgRetentionSettings.nsMsgRetainByAge;
+    useDefault || keepMsg != Ci.nsIMsgRetentionSettings.nsMsgRetainByAge;
   document.getElementById("retention.keepNewMsgMin").disabled =
-    useDefault || keepMsg != nsIMsgRetentionSettings.nsMsgRetainByNumHeaders;
+    useDefault || keepMsg != Ci.nsIMsgRetentionSettings.nsMsgRetainByNumHeaders;
 }
 
 function RebuildSummaryInformation() {
-  window.arguments[0].rebuildSummaryCallback(gMsgFolder);
+  window.arguments[0].rebuildSummaryCallback();
 }

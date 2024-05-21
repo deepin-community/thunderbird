@@ -11,14 +11,10 @@ XPIDL_SOURCES += [
     "nsIConsoleService.idl",
     "nsICycleCollectorListener.idl",
     "nsIDebug2.idl",
-    "nsIErrorService.idl",
     "nsIException.idl",
-    "nsIGZFileWriter.idl",
     "nsIInterfaceRequestor.idl",
-    "nsIMemory.idl",
     "nsIMemoryInfoDumper.idl",
     "nsIMemoryReporter.idl",
-    "nsIMessageLoop.idl",
     "nsISecurityConsoleMessage.idl",
     "nsISupports.idl",
     "nsIUUIDGenerator.idl",
@@ -30,20 +26,25 @@ XPIDL_SOURCES += [
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
     XPIDL_SOURCES += [
         "nsIMacPreferencesReader.idl",
-        "nsIMacUtils.idl",
-    ]
-    EXPORTS += [
-        "nsObjCExceptions.h",
     ]
     EXPORTS.mozilla += [
         "MacHelpers.h",
-        "MacStringHelpers.h",
         "nsMacPreferencesReader.h",
     ]
     UNIFIED_SOURCES += [
         "MacHelpers.mm",
-        "MacStringHelpers.mm",
         "nsMacPreferencesReader.mm",
+    ]
+if CONFIG["OS_ARCH"] == "Darwin":
+    EXPORTS += [
+        "CFTypeRefPtr.h",
+        "nsObjCExceptions.h",
+    ]
+    EXPORTS.mozilla += [
+        "MacStringHelpers.h",
+    ]
+    UNIFIED_SOURCES += [
+        "MacStringHelpers.mm",
         "nsObjCExceptions.mm",
     ]
 
@@ -72,15 +73,14 @@ EXPORTS += [
     "nsDebugImpl.h",
     "nsDumpUtils.h",
     "nsError.h",
-    "nsErrorService.h",
     "nsGZFileWriter.h",
     "nsIClassInfoImpl.h",
     "nsID.h",
+    "nsIDUtils.h",
     "nsIInterfaceRequestorUtils.h",
     "nsINIParser.h",
     "nsInterfaceRequestorAgg.h",
     "nsISizeOf.h",
-    "nsISupportsBase.h",
     "nsISupportsImpl.h",
     "nsISupportsUtils.h",
     "nsIWeakReferenceUtils.h",
@@ -107,6 +107,7 @@ EXPORTS.mozilla += [
     "AppShutdown.h",
     "AutoRestore.h",
     "AvailableMemoryTracker.h",
+    "AvailableMemoryWatcher.h",
     "ClearOnShutdown.h",
     "CountingAllocatorBase.h",
     "CycleCollectedJSContext.h",
@@ -120,6 +121,7 @@ EXPORTS.mozilla += [
     "HoldDropJSObjects.h",
     "IntentionalCrash.h",
     "JSObjectHolder.h",
+    "JSONStringWriteFuncs.h",
     "Logging.h",
     "MemoryInfo.h",
     "MemoryMapping.h",
@@ -128,13 +130,14 @@ EXPORTS.mozilla += [
     "nsMemoryInfoDumper.h",
     "NSPRLogModulesParser.h",
     "OwningNonNull.h",
+    "RLBoxSandboxPool.h",
+    "RLBoxUtils.h",
     "ShutdownPhase.h",
     "SizeOfState.h",
     "StaticLocalPtr.h",
     "StaticMonitor.h",
     "StaticMutex.h",
     "StaticPtr.h",
-    "TupleCycleCollection.h",
 ]
 
 SOURCES += [
@@ -174,18 +177,15 @@ UNIFIED_SOURCES += [
     "nsCycleCollectionParticipant.cpp",
     "nsCycleCollector.cpp",
     "nsCycleCollectorTraceJSHelpers.cpp",
-    "nsErrorService.cpp",
     "nsGZFileWriter.cpp",
     "nsID.cpp",
     "nsIInterfaceRequestorUtils.cpp",
     "nsINIParser.cpp",
     "nsInterfaceRequestorAgg.cpp",
     "nsISupportsImpl.cpp",
-    "nsMemory.cpp",
     "nsMemoryImpl.cpp",
     "nsMemoryInfoDumper.cpp",
     "nsMemoryReporterManager.cpp",
-    "nsMessageLoop.cpp",
     "NSPRLogModulesParser.cpp",
     "nsSecurityConsoleMessage.cpp",
     "nsSystemInfo.cpp",
@@ -194,6 +194,7 @@ UNIFIED_SOURCES += [
     "nsVersionComparator.cpp",
     "nsVersionComparatorImpl.cpp",
     "nsWeakReference.cpp",
+    "RLBoxSandboxPool.cpp",
 ]
 
 if CONFIG["OS_TARGET"] in ("Linux", "Android"):
@@ -206,6 +207,25 @@ if CONFIG["OS_TARGET"] == "WINNT":
         "AvailableMemoryWatcherWin.cpp",
         "MemoryInfo.cpp",
     ]
+
+if CONFIG["OS_TARGET"] == "Darwin":
+    UNIFIED_SOURCES += [
+        "AvailableMemoryWatcherMac.cpp",
+    ]
+    EXPORTS.mozilla += [
+        "MemoryPressureLevelMac.h",
+    ]
+
+if CONFIG["OS_TARGET"] == "Linux":
+    UNIFIED_SOURCES += [
+        "AvailableMemoryWatcherLinux.cpp",
+    ]
+    EXPORTS.mozilla += [
+        "AvailableMemoryWatcherUtils.h",
+    ]
+
+if CONFIG["MOZ_PHC"]:
+    DEFINES["MOZ_PHC"] = True
 
 GeneratedFile("ErrorList.h", script="ErrorList.py", entry_point="error_list_h")
 GeneratedFile(
@@ -242,7 +262,16 @@ LOCAL_INCLUDES += [
 ]
 
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
-    CXXFLAGS += CONFIG["TK_CFLAGS"]
+    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 
-if CONFIG["MOZ_BACKGROUNDTASKS"]:
-    DEFINES["MOZ_BACKGROUNDTASKS"] = True
+if CONFIG["MOZ_PHC"]:
+    EXPORTS.mozilla += [
+        "PHCManager.h",
+    ]
+
+    DEFINES["MOZ_PHC"] = 1
+
+    UNIFIED_SOURCES += ["PHCManager.cpp"]
+
+with Files("PHCManager.*"):
+    BUG_COMPONENT = ("Core", "Memory Allocator")

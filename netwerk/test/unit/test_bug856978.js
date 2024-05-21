@@ -11,7 +11,9 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
 var notification = "http-on-modify-request";
 
@@ -45,9 +47,7 @@ function RequestObserver() {
 RequestObserver.prototype = {
   register() {
     info("Registering " + notification);
-    Cc["@mozilla.org/observer-service;1"]
-      .getService(Ci.nsIObserverService)
-      .addObserver(this, notification, true);
+    Services.obs.addObserver(this, notification, true);
   },
 
   QueryInterface: ChromeUtils.generateQI([
@@ -55,7 +55,7 @@ RequestObserver.prototype = {
     "nsISupportsWeakReference",
   ]),
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     if (topic == notification) {
       if (!(subject instanceof Ci.nsIHttpChannel)) {
         do_throw(notification + " observed a non-HTTP channel.");
@@ -76,13 +76,13 @@ RequestObserver.prototype = {
 };
 
 var listener = {
-  onStartRequest: function test_onStartR(request) {},
+  onStartRequest: function test_onStartR() {},
 
   onDataAvailable: function test_ODA() {
     do_throw("Should not get any data!");
   },
 
-  onStopRequest: function test_onStopR(request, status) {
+  onStopRequest: function test_onStopR() {
     if (current_test < tests.length - 1) {
       current_test++;
       tests[current_test]();
@@ -105,6 +105,9 @@ var tests = [startAuthHeaderTest, removeAuthHeaderTest];
 
 var current_test = 0;
 
+// Must create a RequestObserver for the test to pass, we keep it in memory
+// to avoid garbage collection.
+// eslint-disable-next-line no-unused-vars
 var requestObserver = null;
 
 function run_test() {

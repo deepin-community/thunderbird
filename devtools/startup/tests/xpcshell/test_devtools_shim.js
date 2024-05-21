@@ -3,10 +3,9 @@
 
 "use strict";
 
-const { DevToolsShim } = ChromeUtils.import(
-  "chrome://devtools-startup/content/DevToolsShim.jsm"
+const { DevToolsShim } = ChromeUtils.importESModule(
+  "chrome://devtools-startup/content/DevToolsShim.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Test the DevToolsShim
 
@@ -29,7 +28,7 @@ function createMockDevTools() {
 
   for (const method of methods) {
     // Create a stub for method, that only pushes its arguments in the inner callLog
-    mock[method] = function(...args) {
+    mock[method] = function (...args) {
       mock.callLog[method].push(args);
     };
     mock.callLog[method] = [];
@@ -43,8 +42,9 @@ function createMockDevTools() {
  * arguments provided to the last call, if appropriate.
  */
 function checkCalls(mock, method, length, lastArgs) {
-  ok(
-    mock.callLog[method].length === length,
+  Assert.strictEqual(
+    mock.callLog[method].length,
+    length,
     "Devtools.on was called the expected number of times"
   );
 
@@ -55,8 +55,9 @@ function checkCalls(mock, method, length, lastArgs) {
 
   for (let i = 0; i < lastArgs.length; i++) {
     const expectedArg = lastArgs[i];
-    ok(
-      mock.callLog[method][length - 1][i] === expectedArg,
+    Assert.strictEqual(
+      mock.callLog[method][length - 1][i],
+      expectedArg,
       `Devtools.${method} was called with the expected argument (index ${i})`
     );
   }
@@ -134,9 +135,8 @@ function test_events() {
 }
 
 function test_restore_session_apis() {
-  // Backup method and preferences that will be updated for the test.
+  // Backup method that will be updated for the test.
   const initDevToolsBackup = DevToolsShim.initDevTools;
-  const devtoolsEnabledValue = Services.prefs.getBoolPref("devtools.enabled");
 
   // Create fake session objects to restore.
   const sessionWithoutDevTools = {};
@@ -144,27 +144,16 @@ function test_restore_session_apis() {
     browserConsole: true,
   };
 
-  function checkRestoreSessionNotApplied(policyDisabled, enabled) {
-    Services.prefs.setBoolPref("devtools.enabled", enabled);
-    Services.prefs.setBoolPref("devtools.policy.disabled", policyDisabled);
-    ok(!DevToolsShim.isInitialized(), "DevTools are not initialized");
-    ok(!DevToolsShim.isEnabled(), "DevTools are not enabled");
+  Services.prefs.setBoolPref("devtools.policy.disabled", true);
+  ok(!DevToolsShim.isInitialized(), "DevTools are not initialized");
+  ok(!DevToolsShim.isEnabled(), "DevTools are not enabled");
 
-    // Check that save & restore DevToolsSession don't initialize the tools and don't
-    // crash.
-    DevToolsShim.saveDevToolsSession({});
-    DevToolsShim.restoreDevToolsSession(sessionWithDevTools);
-    ok(!DevToolsShim.isInitialized(), "DevTools are still not initialized");
-  }
+  // Check that save & restore DevToolsSession don't initialize the tools and don't
+  // crash.
+  DevToolsShim.saveDevToolsSession({});
+  DevToolsShim.restoreDevToolsSession(sessionWithDevTools);
+  ok(!DevToolsShim.isInitialized(), "DevTools are still not initialized");
 
-  // Tools are disabled by policy and not enabled
-  checkRestoreSessionNotApplied(true, false);
-  // Tools are not disabled by policy, but not enabled
-  checkRestoreSessionNotApplied(false, false);
-  // Tools are disabled by policy and "considered" as enabled (see Bug 1440675)
-  checkRestoreSessionNotApplied(true, true);
-
-  Services.prefs.setBoolPref("devtools.enabled", true);
   Services.prefs.setBoolPref("devtools.policy.disabled", false);
   ok(DevToolsShim.isEnabled(), "DevTools are enabled");
   ok(!DevToolsShim.isInitialized(), "DevTools are not initialized");
@@ -189,9 +178,8 @@ function test_restore_session_apis() {
   DevToolsShim.saveDevToolsSession({});
   checkCalls(mock, "saveDevToolsSession", 1, []);
 
-  // Restore initial backups.
+  // Restore initDevTools backup.
   DevToolsShim.initDevTools = initDevToolsBackup;
-  Services.prefs.setBoolPref("devtools.enabled", devtoolsEnabledValue);
 }
 
 function run_test() {

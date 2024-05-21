@@ -2,12 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalAttachment: "resource:///modules/CalAttachment.jsm",
-  CalAttendee: "resource:///modules/CalAttendee.jsm",
-  CalRelation: "resource:///modules/CalRelation.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalAttachment: "resource:///modules/CalAttachment.sys.mjs",
+  CalAttendee: "resource:///modules/CalAttendee.sys.mjs",
+  CalRelation: "resource:///modules/CalRelation.sys.mjs",
 });
 
 function run_test() {
@@ -20,26 +20,22 @@ function really_run_test() {
   test_icsservice();
   test_icalstring();
   test_param();
-
-  // Only supported with ical.js
-  if (Services.prefs.getBoolPref("calendar.icaljs", false)) {
-    test_icalproperty();
-  }
+  test_icalproperty();
 }
 
 function test_icalstring() {
   function checkComp(createFunc, icalString, members, properties) {
-    let thing = createFunc(icalString);
+    const thing = createFunc(icalString);
     equal(ics_unfoldline(thing.icalString), icalString + "\r\n");
 
     if (members) {
-      for (let k in members) {
+      for (const k in members) {
         equal(thing[k], members[k]);
       }
     }
 
     if (properties) {
-      for (let k in properties) {
+      for (const k in properties) {
         if ("getParameter" in thing) {
           equal(thing.getParameter(k), properties[k]);
         } else if ("getProperty" in thing) {
@@ -50,7 +46,7 @@ function test_icalstring() {
     return thing;
   }
 
-  let attach = checkComp(
+  const attach = checkComp(
     icalString => new CalAttachment(icalString),
     "ATTACH;ENCODING=BASE64;FMTTYPE=text/calendar;FILENAME=test.ics:http://example.com/test.ics",
     { formatType: "text/calendar", encoding: "BASE64" },
@@ -80,26 +76,17 @@ function test_icalstring() {
     { FOO: "BAR" }
   );
 
-  let rrule = checkComp(
+  const rrule = checkComp(
     cal.createRecurrenceRule.bind(cal),
     "RRULE:FREQ=WEEKLY;COUNT=5;INTERVAL=2;BYDAY=MO",
     { count: 5, isByCount: true, type: "WEEKLY", interval: 2 }
   );
   equal(rrule.getComponent("BYDAY").toString(), [2].toString());
 
-  if (Services.prefs.getBoolPref("calendar.icaljs", false)) {
-    let rdate = checkComp(cal.createRecurrenceDate.bind(cal), "RDATE:20120101T000000", {
-      isNegative: false,
-    });
-    equal(rdate.date.compare(cal.createDateTime("20120101T000000")), 0);
-  } else {
-    let rdate = checkComp(
-      cal.createRecurrenceDate.bind(cal),
-      "RDATE;VALUE=DATE-TIME:20120101T000000",
-      { isNegative: false }
-    );
-    equal(rdate.date.compare(cal.createDateTime("20120101T000000")), 0);
-  }
+  const rdate = checkComp(cal.createRecurrenceDate.bind(cal), "RDATE:20120101T000000", {
+    isNegative: false,
+  });
+  equal(rdate.date.compare(cal.createDateTime("20120101T000000")), 0);
 
   /* TODO consider removing period support, ics throws badarg
     let rdateperiod = checkComp(cal.createRecurrenceDate.bind(cal),
@@ -107,24 +94,22 @@ function test_icalstring() {
     equal(rdate.date.compare(cal.createDateTime("20120101T000000Z")), 0);
     */
 
-  let exdate = checkComp(cal.createRecurrenceDate.bind(cal), "EXDATE:20120101T000000", {
+  const exdate = checkComp(cal.createRecurrenceDate.bind(cal), "EXDATE:20120101T000000", {
     isNegative: true,
   });
   equal(exdate.date.compare(cal.createDateTime("20120101T000000")), 0);
 }
 
 function test_icsservice() {
-  let svc = cal.getIcsService();
-
   function checkProp(createFunc, icalString, members, parameters) {
-    let thing = createFunc(icalString);
+    const thing = createFunc(icalString);
     equal(ics_unfoldline(thing.icalString), icalString + "\r\n");
 
-    for (let k in members) {
+    for (const k in members) {
       equal(thing[k], members[k]);
     }
 
-    for (let k in parameters) {
+    for (const k in parameters) {
       equal(thing.getParameter(k), parameters[k]);
     }
     return thing;
@@ -132,14 +117,14 @@ function test_icsservice() {
 
   // Test ::createIcalPropertyFromString
   checkProp(
-    svc.createIcalPropertyFromString.bind(svc),
+    cal.icsService.createIcalPropertyFromString.bind(cal.icsService),
     "ATTACH;ENCODING=BASE64;FMTTYPE=text/calendar;FILENAME=test.ics:http://example.com/test.ics",
     { value: "http://example.com/test.ics", propertyName: "ATTACH" },
     { ENCODING: "BASE64", FMTTYPE: "text/calendar", FILENAME: "test.ics" }
   );
 
   checkProp(
-    svc.createIcalPropertyFromString.bind(svc),
+    cal.icsService.createIcalPropertyFromString.bind(cal.icsService),
     "DESCRIPTION:new\\nlines\\nare\\ngreat\\,eh?",
     {
       value: "new\nlines\nare\ngreat,eh?",
@@ -149,68 +134,66 @@ function test_icsservice() {
   );
 
   // Test ::createIcalProperty
-  let attach2 = svc.createIcalProperty("ATTACH");
+  const attach2 = cal.icsService.createIcalProperty("ATTACH");
   equal(attach2.propertyName, "ATTACH");
   attach2.value = "http://example.com/";
   equal(attach2.icalString, "ATTACH:http://example.com/\r\n");
 }
 
 function test_icalproperty() {
-  let svc = cal.getIcsService();
-  let comp = svc.createIcalComponent("VEVENT");
-  let prop = svc.createIcalProperty("PROP");
+  const comp = cal.icsService.createIcalComponent("VEVENT");
+  let prop = cal.icsService.createIcalProperty("PROP");
   prop.value = "VAL";
 
   comp.addProperty(prop);
   equal(prop.parent.toString(), comp.toString());
   equal(prop.valueAsDatetime, null);
 
-  prop = svc.createIcalProperty("DESCRIPTION");
+  prop = cal.icsService.createIcalProperty("DESCRIPTION");
   prop.value = "A\nB";
   equal(prop.value, "A\nB");
   equal(prop.valueAsIcalString, "A\\nB");
   equal(prop.valueAsDatetime, null);
 
-  prop = svc.createIcalProperty("DESCRIPTION");
+  prop = cal.icsService.createIcalProperty("DESCRIPTION");
   prop.valueAsIcalString = "A\\nB";
   equal(prop.value, "A\nB");
   equal(prop.valueAsIcalString, "A\\nB");
   equal(prop.valueAsDatetime, null);
 
-  prop = svc.createIcalProperty("DESCRIPTION");
+  prop = cal.icsService.createIcalProperty("DESCRIPTION");
   prop.value = "A\\nB";
   equal(prop.value, "A\\nB");
   equal(prop.valueAsIcalString, "A\\\\nB");
   equal(prop.valueAsDatetime, null);
 
-  prop = svc.createIcalProperty("GEO");
+  prop = cal.icsService.createIcalProperty("GEO");
   prop.value = "43.4913662534171;12.085559129715";
   equal(prop.value, "43.4913662534171;12.085559129715");
   equal(prop.valueAsIcalString, "43.4913662534171;12.085559129715");
 }
 
 function test_icalcomponent() {
-  let svc = cal.getIcsService();
-  let event = svc.createIcalComponent("VEVENT");
-  let alarm = svc.createIcalComponent("VALARM");
+  const event = cal.icsService.createIcalComponent("VEVENT");
+  const alarm = cal.icsService.createIcalComponent("VALARM");
   event.addSubcomponent(alarm);
 
   // Check that the parent works and does not appear on cloned instances
-  let alarm2 = alarm.clone();
+  const alarm2 = alarm.clone();
   equal(alarm.parent.toString(), event.toString());
   equal(alarm2.parent, null);
 
   function check_getset(key, value) {
     dump("Checking " + key + " = " + value + "\n");
     event[key] = value;
-    let valuestring = value.icalString || value;
+    const valuestring = value.icalString || value;
     equal(event[key].icalString || event[key], valuestring);
     equal(event.serializeToICS().match(new RegExp(valuestring, "g")).length, 1);
     event[key] = value;
     equal(event.serializeToICS().match(new RegExp(valuestring, "g")).length, 1);
   }
 
-  let props = [
+  const props = [
     ["uid", "123"],
     ["prodid", "//abc/123"],
     ["version", "2.0"],
@@ -233,14 +216,13 @@ function test_icalcomponent() {
     ["recurrenceId", cal.createDateTime("20120101T010108")],
   ];
 
-  for (let prop of props) {
+  for (const prop of props) {
     check_getset(...prop);
   }
 }
 
 function test_param() {
-  let svc = cal.getIcsService();
-  let prop = svc.createIcalProperty("DTSTART");
+  const prop = cal.icsService.createIcalProperty("DTSTART");
   prop.value = "20120101T010101";
   equal(prop.icalString, "DTSTART:20120101T010101\r\n");
   prop.setParameter("VALUE", "TEXT");
@@ -255,13 +237,11 @@ function test_param() {
 }
 
 function test_iterator() {
-  let svc = cal.getIcsService();
-
   // Property iterator
-  let comp = svc.createIcalComponent("VEVENT");
+  let comp = cal.icsService.createIcalComponent("VEVENT");
   let propNames = ["X-ONE", "X-TWO"];
   for (let i = 0; i < propNames.length; i++) {
-    let prop = svc.createIcalProperty(propNames[i]);
+    const prop = cal.icsService.createIcalProperty(propNames[i]);
     prop.value = "" + (i + 1);
     comp.addProperty(prop);
   }
@@ -278,8 +258,8 @@ function test_iterator() {
 
   // Property iterator with multiple values
   // eslint-disable-next-line no-useless-concat
-  comp = svc.parseICS("BEGIN:VEVENT\r\n" + "CATEGORIES:a,b,c\r\n" + "END:VEVENT", null);
-  let propValues = ["a", "b", "c"];
+  comp = cal.icsService.parseICS("BEGIN:VEVENT\r\n" + "CATEGORIES:a,b,c\r\n" + "END:VEVENT");
+  const propValues = ["a", "b", "c"];
   for (
     let prop = comp.getFirstProperty("CATEGORIES");
     prop;
@@ -291,7 +271,7 @@ function test_iterator() {
   }
 
   // Param iterator
-  let dtstart = svc.createIcalProperty("DTSTART");
+  const dtstart = cal.icsService.createIcalProperty("DTSTART");
   let params = ["X-ONE", "X-TWO"];
   for (let i = 0; i < params.length; i++) {
     dtstart.setParameter(params[i], "" + (i + 1));

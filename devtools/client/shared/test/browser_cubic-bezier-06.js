@@ -7,14 +7,14 @@
 
 const {
   CubicBezierWidget,
-} = require("devtools/client/shared/widgets/CubicBezierWidget");
+} = require("resource://devtools/client/shared/widgets/CubicBezierWidget.js");
 const {
   PRESETS,
-} = require("devtools/client/shared/widgets/CubicBezierPresets");
+} = require("resource://devtools/client/shared/widgets/CubicBezierPresets.js");
 
 const TEST_URI = CHROME_URL_ROOT + "doc_cubic-bezier-01.html";
 
-add_task(async function() {
+add_task(async function () {
   const { host, win, doc } = await createHost("bottom", TEST_URI);
 
   const container = doc.querySelector("#cubic-bezier-container");
@@ -63,7 +63,7 @@ function adjustingBezierUpdatesPreset(widget, win, doc, rect) {
   is(widget.presets._activePreset, null, "There is no active preset");
 }
 
-async function selectingPresetUpdatesBezier(widget, win, doc, rect) {
+async function selectingPresetUpdatesBezier(widget, win, doc) {
   info("Checking that selecting a preset updates bezier curve");
 
   info("Listening for the new coordinates event");

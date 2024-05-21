@@ -16,8 +16,10 @@
 #include "nsBaseAppShell.h"
 #include "nsTArray.h"
 
+class ProfilingStack;
+
 namespace mozilla {
-class ProfilingStackOwner;
+class nsAvailableMemoryWatcherBase;
 }
 
 // GeckoNSApplication
@@ -25,6 +27,7 @@ class ProfilingStackOwner;
 // Subclass of NSApplication for filtering out certain events.
 @interface GeckoNSApplication : NSApplication {
 }
+@property(readonly) BOOL didLaunch;
 @end
 
 @class AppShellDelegate;
@@ -39,19 +42,26 @@ class nsAppShell : public nsBaseAppShell {
 
   NS_IMETHOD Run(void) override;
   NS_IMETHOD Exit(void) override;
-  NS_IMETHOD OnProcessNextEvent(nsIThreadInternal* aThread, bool aMayWait) override;
-  NS_IMETHOD AfterProcessNextEvent(nsIThreadInternal* aThread, bool aEventWasProcessed) override;
+  NS_IMETHOD OnProcessNextEvent(nsIThreadInternal* aThread,
+                                bool aMayWait) override;
+  NS_IMETHOD AfterProcessNextEvent(nsIThreadInternal* aThread,
+                                   bool aEventWasProcessed) override;
 
   void OnRunLoopActivityChanged(CFRunLoopActivity aActivity);
 
   // public only to be visible to Objective-C code that must call it
   void WillTerminate();
 
+  static void OnMemoryPressureChanged(
+      dispatch_source_memorypressure_flags_t aPressureLevel);
+
  protected:
   virtual ~nsAppShell();
 
   virtual void ScheduleNativeEventCallback() override;
   virtual bool ProcessNextNativeEvent(bool aMayWait) override;
+
+  void InitMemoryPressureObserver();
 
   static void ProcessGeckoEvents(void* aInfo);
 
@@ -66,10 +76,11 @@ class nsAppShell : public nsBaseAppShell {
   // and exits the waiting state.
   CFRunLoopObserverRef mCFRunLoopObserver;
 
-#ifdef MOZ_GECKO_PROFILER
   // Non-null while the native event loop is in the waiting state.
-  mozilla::ProfilingStackOwner* mProfilingStackOwnerWhileWaiting = nullptr;
-#endif
+  ProfilingStack* mProfilingStackWhileWaiting = nullptr;
+
+  // For getting notifications from the OS about memory pressure state changes.
+  dispatch_source_t mMemoryPressureSource = nullptr;
 
   bool mRunningEventLoop;
   bool mStarted;

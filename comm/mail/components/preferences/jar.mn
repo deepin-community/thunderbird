@@ -12,6 +12,9 @@ messenger.jar:
 *   content/messenger/preferences/dockoptions.xhtml
 #endif
     content/messenger/preferences/chat.js
+#ifdef NIGHTLY_BUILD
+    content/messenger/preferences/sync.js
+#endif
     content/messenger/preferences/messagestyle.js
     content/messenger/preferences/messengerLanguages.js
     content/messenger/preferences/messengerLanguages.xhtml
@@ -20,8 +23,6 @@ messenger.jar:
     content/messenger/preferences/compose.js
     content/messenger/preferences/extensionControlled.js
     content/messenger/preferences/privacy.js
-    content/messenger/preferences/sendoptions.xhtml
-    content/messenger/preferences/sendoptions.js
     content/messenger/preferences/receipts.js
     content/messenger/preferences/receipts.xhtml
     content/messenger/preferences/connection.js
@@ -31,7 +32,6 @@ messenger.jar:
     content/messenger/preferences/attachmentReminder.xhtml
     content/messenger/preferences/applicationManager.xhtml
     content/messenger/preferences/applicationManager.js
-    content/messenger/preferences/handlers.css
     content/messenger/preferences/actionsshared.js
     content/messenger/preferences/findInPage.js
     content/messenger/preferences/fonts.js
@@ -43,9 +43,12 @@ messenger.jar:
     content/messenger/preferences/offline.js
     content/messenger/preferences/offline.xhtml
     content/messenger/preferences/cookies.js
-*   content/messenger/preferences/cookies.xhtml
+    content/messenger/preferences/cookies.xhtml
     content/messenger/preferences/passwordManager.js
     content/messenger/preferences/passwordManager.xhtml
     content/messenger/preferences/permissions.js
     content/messenger/preferences/permissions.xhtml
-*   content/messenger/preferences/tagDialog.xhtml
+#ifdef NIGHTLY_BUILD
+    content/messenger/preferences/syncDialog.js
+    content/messenger/preferences/syncDialog.xhtml
+#endif

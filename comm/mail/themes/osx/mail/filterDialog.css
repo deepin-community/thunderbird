@@ -34,14 +34,14 @@
   padding-block: 0 1px;
   padding-inline: 0 1px;
   margin: 4px 0;
-}
 
-.small-button:first-child {
-  margin-inline-start: 2px;
+  &:first-child {
+    margin-inline-start: 2px;
+  }
 }
 
 listcell > hbox {
-  -moz-box-pack: end;
+  justify-content: flex-end;
 }
 
 /* No '.filler' here, so add margin to make more room. */
@@ -51,4 +51,8 @@ hbox > .small-button + .small-button {
 
 #searchTermList > listitem[selected="true"] {
   background-color: inherit;
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"] > toolbarbutton {
+  min-height: 0;
 }

@@ -8,8 +8,10 @@
 const TEST_URI = URL_ROOT + "doc_pseudoelement.html";
 const PSEUDO_PREF = "devtools.inspector.show_pseudo_elements";
 
-add_task(async function() {
+add_task(async function () {
   await pushPref(PSEUDO_PREF, true);
+  await pushPref("dom.customHighlightAPI.enabled", true);
+  await pushPref("layout.css.modern-range-pseudos.enabled", true);
 
   await addTab(TEST_URI);
   const { inspector, view } = await openRuleView();
@@ -21,6 +23,9 @@ add_task(async function() {
   await testParagraph(inspector, view);
   await testBody(inspector, view);
   await testList(inspector, view);
+  await testDialogBackdrop(inspector, view);
+  await testCustomHighlight(inspector, view);
+  await testSlider(inspector, view);
 });
 
 async function testTopLeft(inspector, view) {
@@ -283,8 +288,103 @@ async function testList(inspector, view) {
   assertGutters(view);
 }
 
+async function testDialogBackdrop(inspector, view) {
+  await assertPseudoElementRulesNumbers("dialog", inspector, view, {
+    elementRulesNb: 3,
+    backdropRules: 1,
+  });
+
+  assertGutters(view);
+}
+
+async function testCustomHighlight(inspector, view) {
+  const { highlightRules } = await assertPseudoElementRulesNumbers(
+    ".highlights-container",
+    inspector,
+    view,
+    {
+      elementRulesNb: 4,
+      highlightRulesNb: 3,
+    }
+  );
+
+  is(
+    highlightRules[0].pseudoElement,
+    "::highlight(filter)",
+    "First highlight rule is for the filter highlight"
+  );
+
+  is(
+    highlightRules[1].pseudoElement,
+    "::highlight(search)",
+    "Second highlight rule is for the search highlight"
+  );
+  is(
+    highlightRules[2].pseudoElement,
+    "::highlight(search)",
+    "Third highlight rule is also for the search highlight"
+  );
+  is(highlightRules.length, 3, "Got all 3 active rules, but not unused one");
+
+  // Check that properties are marked as overridden only when they're on the same Highlight
+  is(
+    convertTextPropsToString(highlightRules[0].textProps),
+    `background-color: purple`,
+    "Got expected properties for filter highlight"
+  );
+  is(
+    convertTextPropsToString(highlightRules[1].textProps),
+    `color: white`,
+    "Got expected properties for first search highlight"
+  );
+  is(
+    convertTextPropsToString(highlightRules[2].textProps),
+    `background-color: tomato; ~~color: gold~~`,
+    "Got expected properties for second search highlight, `color` is marked as overridden"
+  );
+
+  assertGutters(view);
+}
+
+async function testSlider(inspector, view) {
+  await assertPseudoElementRulesNumbers(
+    "input[type=range].slider",
+    inspector,
+    view,
+    {
+      elementRulesNb: 3,
+      sliderFillRulesNb: 1,
+      sliderThumbRulesNb: 1,
+      sliderTrackRulesNb: 1,
+    }
+  );
+  assertGutters(view);
+
+  info(
+    "Check that ::slider-* pseudo elements are not displayed for non-range inputs"
+  );
+  await assertPseudoElementRulesNumbers(
+    "input[type=text].slider",
+    inspector,
+    view,
+    {
+      elementRulesNb: 3,
+      sliderFillRulesNb: 0,
+      sliderThumbRulesNb: 0,
+      sliderTrackRulesNb: 0,
+    }
+  );
+}
+
 function convertTextPropsToString(textProps) {
-  return textProps.map(t => t.name + ": " + t.value).join("; ");
+  return textProps
+    .map(
+      t =>
+        `${t.overridden ? "~~" : ""}${t.name}: ${t.value}${
+          t.overridden ? "~~" : ""
+        }`
+    )
+    .join("; ");
 }
 
 async function testNode(selector, inspector, view) {
@@ -304,60 +404,118 @@ async function assertPseudoElementRulesNumbers(
   const rules = {
     elementRules: elementStyle.rules.filter(rule => !rule.pseudoElement),
     firstLineRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":first-line"
+      rule => rule.pseudoElement === "::first-line"
     ),
     firstLetterRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":first-letter"
+      rule => rule.pseudoElement === "::first-letter"
     ),
     selectionRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":selection"
+      rule => rule.pseudoElement === "::selection"
     ),
     markerRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":marker"
+      rule => rule.pseudoElement === "::marker"
     ),
     beforeRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":before"
+      rule => rule.pseudoElement === "::before"
     ),
     afterRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":after"
+      rule => rule.pseudoElement === "::after"
+    ),
+    backdropRules: elementStyle.rules.filter(
+      rule => rule.pseudoElement === "::backdrop"
+    ),
+    highlightRules: elementStyle.rules.filter(rule =>
+      rule.pseudoElement?.startsWith("::highlight(")
+    ),
+    sliderFillRules: elementStyle.rules.filter(
+      rule => rule.pseudoElement === "::slider-fill"
+    ),
+    sliderThumbRules: elementStyle.rules.filter(
+      rule => rule.pseudoElement === "::slider-thumb"
+    ),
+    sliderTrackRules: elementStyle.rules.filter(
+      rule => rule.pseudoElement === "::slider-track"
     ),
   };
 
   is(
     rules.elementRules.length,
-    ruleNbs.elementRulesNb,
+    ruleNbs.elementRulesNb || 0,
     selector + " has the correct number of non pseudo element rules"
   );
   is(
     rules.firstLineRules.length,
-    ruleNbs.firstLineRulesNb,
-    selector + " has the correct number of :first-line rules"
+    ruleNbs.firstLineRulesNb || 0,
+    selector + " has the correct number of ::first-line rules"
   );
   is(
     rules.firstLetterRules.length,
-    ruleNbs.firstLetterRulesNb,
-    selector + " has the correct number of :first-letter rules"
+    ruleNbs.firstLetterRulesNb || 0,
+    selector + " has the correct number of ::first-letter rules"
   );
   is(
     rules.selectionRules.length,
-    ruleNbs.selectionRulesNb,
-    selector + " has the correct number of :selection rules"
+    ruleNbs.selectionRulesNb || 0,
+    selector + " has the correct number of ::selection rules"
   );
   is(
     rules.markerRules.length,
-    ruleNbs.markerRulesNb,
-    selector + " has the correct number of :marker rules"
+    ruleNbs.markerRulesNb || 0,
+    selector + " has the correct number of ::marker rules"
   );
   is(
     rules.beforeRules.length,
-    ruleNbs.beforeRulesNb,
-    selector + " has the correct number of :before rules"
+    ruleNbs.beforeRulesNb || 0,
+    selector + " has the correct number of ::before rules"
   );
   is(
     rules.afterRules.length,
-    ruleNbs.afterRulesNb,
-    selector + " has the correct number of :after rules"
+    ruleNbs.afterRulesNb || 0,
+    selector + " has the correct number of ::after rules"
   );
+  is(
+    rules.highlightRules.length,
+    ruleNbs.highlightRulesNb || 0,
+    selector + " has the correct number of ::highlight rules"
+  );
+  is(
+    rules.sliderFillRules.length,
+    ruleNbs.sliderFillRulesNb || 0,
+    selector + " has the correct number of ::slider-fill rules"
+  );
+  is(
+    rules.sliderThumbRules.length,
+    ruleNbs.sliderThumbRulesNb || 0,
+    selector + " has the correct number of ::slider-thumb rules"
+  );
+  is(
+    rules.sliderTrackRules.length,
+    ruleNbs.sliderTrackRulesNb || 0,
+    selector + " has the correct number of ::slider-track rules"
+  );
+
+  // If we do have pseudo element rules displayed, ensure we don't mark their selectors
+  // as matched or unmatched
+  if (
+    rules.elementRules.length &&
+    elementStyle.rules.length !== rules.elementRules.length
+  ) {
+    const pseudoElementContainer = view.styleWindow.document.getElementById(
+      "pseudo-elements-container"
+    );
+    const selectors = Array.from(
+      pseudoElementContainer.querySelectorAll(".ruleview-selector")
+    );
+    ok(selectors.length, "We do have selectors for pseudo element rules");
+    ok(
+      selectors.every(
+        selectorEl =>
+          !selectorEl.classList.contains("matched") &&
+          !selectorEl.classList.contains("unmatched")
+      ),
+      "Pseudo element selectors are not marked as matched nor unmatched"
+    );
+  }
 
   return rules;
 }

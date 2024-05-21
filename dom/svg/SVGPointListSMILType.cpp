@@ -23,9 +23,7 @@ SVGPointListSMILType SVGPointListSMILType::sSingleton;
 void SVGPointListSMILType::Init(SMILValue& aValue) const {
   MOZ_ASSERT(aValue.IsNull(), "Unexpected value type");
 
-  SVGPointListAndInfo* pointList = new SVGPointListAndInfo();
-
-  aValue.mU.mPtr = pointList;
+  aValue.mU.mPtr = new SVGPointListAndInfo();
   aValue.mType = this;
 }
 
@@ -125,7 +123,7 @@ nsresult SVGPointListSMILType::ComputeDistance(const SMILValue& aFrom,
     total += dx * dx + dy * dy;
   }
   double distance = sqrt(total);
-  if (!IsFinite(distance)) {
+  if (!std::isfinite(distance)) {
     return NS_ERROR_FAILURE;
   }
   aDistance = distance;

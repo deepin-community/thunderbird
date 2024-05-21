@@ -25,8 +25,11 @@ pref("calendar.task.defaultdueoffsetunits", "minutes");
 pref("calendar.events.defaultTransparency.allday.transparent", true);
 pref("calendar.events.defaultTransparency.standard.transparent", false);
 
-// number of days in "Soon" section
-pref("calendar.agendaListbox.soondays", 5);
+// Make "Edit" the default action for events.
+pref("calendar.events.defaultActionEdit", false);
+
+// Number of days in Today Pane agenda
+pref("calendar.agenda.days", 14);
 
 // alarm settings
 pref("calendar.alarms.show", true);
@@ -87,6 +90,12 @@ pref("calendar.itip.separateInvitationButtons", true);
 // Whether to show the imip bar.
 pref("calendar.itip.showImipBar", true);
 
+// Whether to always expand the iMIP details, instead of collapsing them.
+pref("calendar.itip.imipDetailsOpen", true);
+
+// Temporary pref for using the new invitation display instead of the old one.
+pref("calendar.itip.newInvitationDisplay", false);
+
 // whether CalDAV (experimental) scheduling is enabled or not.
 pref("calendar.caldav.sched.enabled", false);
 
@@ -115,9 +124,6 @@ pref("calendar.view.dayendhour", 17);
 // number of visible hours for day and week views
 pref("calendar.view.visiblehours", 9);
 
-// time indicator update interval in minutes (0 = no indicator)
-pref("calendar.view.timeIndicatorInterval", 15);
-
 // If true, mouse scrolling via shift+wheel will be enabled
 pref("calendar.view.mousescroll", true);
 
@@ -142,9 +148,6 @@ pref("calendar.threading.latency ", 250);
 // will get multiple password dialogs (one for each calendar)
 pref("calendar.network.multirealm", false);
 
-// Disable use of system colors in minimonth and calendar views
-pref("calendar.view.useSystemColors", false);
-
 // Disable hiding the label on todayPane button
 pref("calendar.view.showTodayPaneStatusLabel", true);
 
@@ -160,9 +163,13 @@ pref("calendar.paste.intoSelectedCalendar", false);
 
 pref("calendar.baseview.loglevel", "Warn");
 
-// Backend to use. false: libical, true: ical.js
-#ifdef NIGHTLY_BUILD
-pref("calendar.icaljs", true);
-#else
-pref("calendar.icaljs", false);
-#endif
+// Enables the prompt when deleting from the item views or trees.
+pref("calendar.item.promptDelete", true);
+
+// Enables the new extract service.
+pref("calendar.extract.service.enabled", false);
+
+// Number of days to display in the invite attendees interface.
+pref("calendar.view.attendees.visibleDays", 16);
+// Only full days are displayed the invite attendees interface.
+pref("calendar.view.attendees.showOnlyWholeDays", false);

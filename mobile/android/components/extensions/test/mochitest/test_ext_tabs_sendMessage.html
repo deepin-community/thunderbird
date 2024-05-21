@@ -14,14 +14,12 @@
 "use strict";
 
 add_task(async function tabsSendMessageReply() {
+  await SpecialPowers.pushPrefEnv({
+    set: [["dom.security.https_first", false]],
+  });
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
       "permissions": ["tabs"],
-      "applications": {
-        "gecko": {
-          "id": "test_send_message_reply@tests.mozilla.org",
-        },
-      },
       "content_scripts": [{
         "matches": ["http://example.com/"],
         "js": ["content-script.js"],
@@ -29,13 +27,11 @@ add_task(async function tabsSendMessageReply() {
       }],
     },
 
-    useAddonManager: "permanent",
-
     background: async function() {
       // eslint-disable-next-line prefer-const
       let firstTab;
       const promiseResponse = new Promise(resolve => {
-        browser.runtime.onMessage.addListener((msg, sender, respond) => {
+        browser.runtime.onMessage.addListener((msg, sender) => {
           if (msg == "content-script-ready") {
             const tabId = sender.tab.id;
 
@@ -159,14 +155,12 @@ add_task(async function tabsSendMessageReply() {
 
 
 add_task(async function tabsSendHidden() {
+  await SpecialPowers.pushPrefEnv({
+    set: [["dom.security.https_first", false]],
+  });
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
       "permissions": ["tabs"],
-      "applications": {
-        "gecko": {
-          "id": "test_send_hidden@tests.mozilla.org",
-        },
-      },
       "content_scripts": [{
         "matches": ["http://example.com/content*"],
         "js": ["content-script.js"],
@@ -174,11 +168,9 @@ add_task(async function tabsSendHidden() {
       }],
     },
 
-    useAddonManager: "permanent",
-
     background: async function() {
       let resolveContent;
-      browser.runtime.onMessage.addListener((msg, sender) => {
+      browser.runtime.onMessage.addListener((msg) => {
         if (msg[0] == "content-ready") {
           resolveContent(msg[1]);
         }
@@ -228,7 +220,7 @@ add_task(async function tabsSendHidden() {
         // properties of the possibly-hidden content window.
         const href = window.location.href;
 
-        browser.runtime.onMessage.addListener((msg, sender) => {
+        browser.runtime.onMessage.addListener((msg) => {
           browser.test.assertEq(href, msg, "Should be in the expected content window");
 
           return Promise.resolve(href);
@@ -248,17 +240,13 @@ add_task(async function tabsSendHidden() {
 
 
 add_task(async function tabsSendMessageNoExceptionOnNonExistentTab() {
+  await SpecialPowers.pushPrefEnv({
+    set: [["dom.security.https_first", false]],
+  });
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
       "permissions": ["tabs"],
-      "applications": {
-        "gecko": {
-          "id": "test_send_hidden@tests.mozilla.org",
-        },
-      },
     },
-
-    useAddonManager: "permanent",
 
     async background() {
       const url = "http://example.com/mochitest/tests/mobile/android/components/extensions/test/mochitest/file_dummy.html";
@@ -277,10 +265,8 @@ add_task(async function tabsSendMessageNoExceptionOnNonExistentTab() {
     },
   });
 
-  await Promise.all([
-    extension.startup(),
-    extension.awaitFinish("tabs.sendMessage"),
-  ]);
+  await extension.startup();
+  await extension.awaitFinish("tabs.sendMessage");
 
   await extension.unload();
 });

@@ -1,5 +1,4 @@
 // Import this in order to use `triggerPictureInPicture()`.
-/* import-globals-from ../../../../../toolkit/components/pictureinpicture/tests/head.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/components/pictureinpicture/tests/head.js",
   this
@@ -185,7 +184,7 @@ function enableMediaFullScreenInIframe(tab) {
 }
 
 function waitUntilIframeMediaStartedPlaying(tab) {
-  return SpecialPowers.spawn(tab.linkedBrowser, [IFRAME_URL], async url => {
+  return SpecialPowers.spawn(tab.linkedBrowser, [IFRAME_URL], async () => {
     info(`check if media in iframe starts playing`);
     const iframe = content.document.getElementById("iframe");
     iframe.contentWindow.postMessage("check-playing", "*");

@@ -13,29 +13,33 @@
 #include <hwy/highway.h>
 
 #include "lib/jxl/base/compiler_specific.h"
-#include "lib/jxl/base/profiler.h"
+#include "lib/jxl/base/matrix_ops.h"
 #include "lib/jxl/base/status.h"
+#include "lib/jxl/cms/jxl_cms_internal.h"
+#include "lib/jxl/cms/opsin_params.h"
+#include "lib/jxl/color_encoding_internal.h"
 #include "lib/jxl/dec_group_border.h"
 #include "lib/jxl/dec_xyb-inl.h"
 #include "lib/jxl/fields.h"
 #include "lib/jxl/image.h"
 #include "lib/jxl/opsin_params.h"
 #include "lib/jxl/quantizer.h"
+#include "lib/jxl/sanitizers.h"
 HWY_BEFORE_NAMESPACE();
 namespace jxl {
 namespace HWY_NAMESPACE {
 
 // These templates are not found via ADL.
-using hwy::HWY_NAMESPACE::Broadcast;
+using hwy::HWY_NAMESPACE::MulAdd;
 
 void OpsinToLinearInplace(Image3F* JXL_RESTRICT inout, ThreadPool* pool,
                           const OpsinParams& opsin_params) {
-  PROFILER_FUNC;
+  JXL_CHECK_IMAGE_INITIALIZED(*inout, Rect(*inout));
 
   const size_t xsize = inout->xsize();  // not padded
-  RunOnPool(
-      pool, 0, inout->ysize(), ThreadPool::SkipInit(),
-      [&](const int task, const int thread) {
+  JXL_CHECK(RunOnPool(
+      pool, 0, inout->ysize(), ThreadPool::NoInit,
+      [&](const uint32_t task, size_t /* thread */) {
         const size_t y = task;
 
         // Faster than adding via ByteOffset at end of loop.
@@ -49,7 +53,6 @@ void OpsinToLinearInplace(Image3F* JXL_RESTRICT inout, ThreadPool* pool,
           const auto in_opsin_x = Load(d, row0 + x);
           const auto in_opsin_y = Load(d, row1 + x);
           const auto in_opsin_b = Load(d, row2 + x);
-          JXL_COMPILER_FENCE;
           auto linear_r = Undefined(d);
           auto linear_g = Undefined(d);
           auto linear_b = Undefined(d);
@@ -61,20 +64,19 @@ void OpsinToLinearInplace(Image3F* JXL_RESTRICT inout, ThreadPool* pool,
           Store(linear_b, d, row2 + x);
         }
       },
-      "OpsinToLinear");
+      "OpsinToLinear"));
 }
 
 // Same, but not in-place.
 void OpsinToLinear(const Image3F& opsin, const Rect& rect, ThreadPool* pool,
                    Image3F* JXL_RESTRICT linear,
                    const OpsinParams& opsin_params) {
-  PROFILER_FUNC;
-
   JXL_ASSERT(SameSize(rect, *linear));
+  JXL_CHECK_IMAGE_INITIALIZED(opsin, rect);
 
-  RunOnPool(
-      pool, 0, static_cast<int>(rect.ysize()), ThreadPool::SkipInit(),
-      [&](const int task, int /*thread*/) {
+  JXL_CHECK(RunOnPool(
+      pool, 0, static_cast<int>(rect.ysize()), ThreadPool::NoInit,
+      [&](const uint32_t task, size_t /*thread*/) {
         const size_t y = static_cast<size_t>(task);
 
         // Faster than adding via ByteOffset at end of loop.
@@ -91,7 +93,6 @@ void OpsinToLinear(const Image3F& opsin, const Rect& rect, ThreadPool* pool,
           const auto in_opsin_x = Load(d, row_opsin_0 + x);
           const auto in_opsin_y = Load(d, row_opsin_1 + x);
           const auto in_opsin_b = Load(d, row_opsin_2 + x);
-          JXL_COMPILER_FENCE;
           auto linear_r = Undefined(d);
           auto linear_g = Undefined(d);
           auto linear_b = Undefined(d);
@@ -103,13 +104,15 @@ void OpsinToLinear(const Image3F& opsin, const Rect& rect, ThreadPool* pool,
           Store(linear_b, d, row_linear_2 + x);
         }
       },
-      "OpsinToLinear(Rect)");
+      "OpsinToLinear(Rect)"));
+  JXL_CHECK_IMAGE_INITIALIZED(*linear, rect);
 }
 
 // Transform YCbCr to RGB.
 // Could be performed in-place (i.e. Y, Cb and Cr could alias R, B and B).
 void YcbcrToRgb(const Image3F& ycbcr, Image3F* rgb, const Rect& rect) {
-  const HWY_CAPPED(float, GroupBorderAssigner::kPaddingXRound) df;
+  JXL_CHECK_IMAGE_INITIALIZED(ycbcr, rect);
+  const HWY_CAPPED(float, kBlockDim) df;
   const size_t S = Lanes(df);  // Step.
 
   const size_t xsize = rect.xsize();
@@ -132,141 +135,18 @@ void YcbcrToRgb(const Image3F& ycbcr, Image3F* rgb, const Rect& rect) {
     float* g_row = rect.PlaneRow(rgb, 1, y);
     float* b_row = rect.PlaneRow(rgb, 2, y);
     for (size_t x = 0; x < xsize; x += S) {
-      const auto y_vec = Load(df, y_row + x) + c128;
+      const auto y_vec = Add(Load(df, y_row + x), c128);
       const auto cb_vec = Load(df, cb_row + x);
       const auto cr_vec = Load(df, cr_row + x);
-      const auto r_vec = crcr * cr_vec + y_vec;
-      const auto g_vec = cgcr * cr_vec + cgcb * cb_vec + y_vec;
-      const auto b_vec = cbcb * cb_vec + y_vec;
+      const auto r_vec = MulAdd(crcr, cr_vec, y_vec);
+      const auto g_vec = MulAdd(cgcr, cr_vec, MulAdd(cgcb, cb_vec, y_vec));
+      const auto b_vec = MulAdd(cbcb, cb_vec, y_vec);
       Store(r_vec, df, r_row + x);
       Store(g_vec, df, g_row + x);
       Store(b_vec, df, b_row + x);
     }
   }
-}
-
-/* Vertical upsampling:
- *  input:
- *   (a, b, c) := |a1 a2 a3 a4|
- *                |b1 b2 b3 b4| <- current line
- *                |c1 c2 c3 c4|
- *  intermediate:
- *   u := a + 3 * b
- *   d := c + 3 * b
- *  output:
- *  |u1 u2 u3 u4| =: (u, d)
- *  |d1 d2 d3 d4|
- */
-ImageF UpsampleV2(const ImageF& src, ThreadPool* pool) {
-  const HWY_FULL(float) df;
-  const size_t S = Lanes(df);
-  const auto c14 = Set(df, 0.25f);
-  const auto c34 = Set(df, 0.75f);
-
-  const size_t xsize = src.xsize();
-  const size_t ysize = src.ysize();
-  JXL_ASSERT(xsize != 0);
-  JXL_ASSERT(ysize != 0);
-  ImageF dst(xsize, ysize * 2);
-  if (ysize == 1) {
-    memcpy(dst.Row(0), src.Row(0), xsize * sizeof(*src.Row(0)));
-    memcpy(dst.Row(1), src.Row(0), xsize * sizeof(*src.Row(0)));
-  } else {
-    constexpr size_t kGroupArea = kGroupDim * kGroupDim;
-    const size_t lines_per_group = DivCeil(kGroupArea, xsize);
-    const size_t num_stripes = DivCeil(ysize, lines_per_group);
-    const auto upsample = [&](int idx, int /* thread*/) {
-      const size_t y0 = idx * lines_per_group;
-      const size_t y1 = std::min<size_t>(y0 + lines_per_group, ysize);
-      for (size_t y = y0; y < y1; ++y) {
-        const float* JXL_RESTRICT prev_row = src.ConstRow(y == 0 ? 1 : y - 1);
-        const float* JXL_RESTRICT current_row = src.ConstRow(y);
-        const float* JXL_RESTRICT next_row =
-            src.ConstRow(y == ysize - 1 ? ysize - 2 : y + 1);
-        float* JXL_RESTRICT dst1_row = dst.Row(2 * y);
-        float* JXL_RESTRICT dst2_row = dst.Row(2 * y + 1);
-        for (size_t x = 0; x < xsize; x += S) {
-          const auto current34 = Load(df, current_row + x) * c34;
-          const auto prev = Load(df, prev_row + x);
-          const auto next = Load(df, next_row + x);
-          Store(MulAdd(prev, c14, current34), df, dst1_row + x);
-          Store(MulAdd(next, c14, current34), df, dst2_row + x);
-        }
-      }
-    };
-    RunOnPool(pool, 0, static_cast<int>(num_stripes), ThreadPool::SkipInit(),
-              upsample, "UpsampleV2");
-  }
-  return dst;
-}
-
-/* Horizontal upsampling:
- *  input:
- *   (a, b, c) := |a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4|
- *                             ^^^^^^^^^^^
- *                            current block
- *  intermediate:
- *   l := (a << 3) {0001} (b >> 1) = [a4 b1 b2 b3]
- *   r := (c >> 3) {1000} (b << 1) = [b2 b3 b4 c1]
- *   o := 3 * b + l
- *   e := 3 * b + r
- *  output:
- *   |o1 e1 o2 e2 o3 e3 o4 e4| =: (o, e)
- */
-ImageF UpsampleH2(const ImageF& src, size_t output_xsize, ThreadPool* pool) {
-  const size_t xsize = src.xsize();
-  const size_t ysize = src.ysize();
-  JXL_ASSERT(xsize != 0);
-  JXL_ASSERT(ysize != 0);
-  JXL_ASSERT(DivCeil(output_xsize, 2) == xsize);
-  // Extra pixel in output might cause the whole extra vector overhead; thus
-  // we request specific output size. Should be safe, because the last 2 values
-  // are processed in non-vectorized form, and the "Plane" row padding concerns
-  // only about the case when unaligned vector store is applied at last pixel.
-  ImageF dst(output_xsize, ysize);
-
-  constexpr size_t kGroupArea = kGroupDim * kGroupDim;
-  const size_t lines_per_group = DivCeil(kGroupArea, xsize);
-  const size_t num_stripes = DivCeil(ysize, lines_per_group);
-
-  HWY_CAPPED(float, 4) d;  // necessary for interleaving.
-
-  const auto upsample = [&](int idx, int /* thread*/) {
-    const size_t y0 = idx * lines_per_group;
-    const size_t y1 = std::min<size_t>(y0 + lines_per_group, ysize);
-    for (size_t y = y0; y < y1; ++y) {
-      const float* JXL_RESTRICT current_row = src.ConstRow(y);
-      float* JXL_RESTRICT dst_row = dst.Row(y);
-      const auto c34 = Set(d, 0.75f);
-      const auto c14 = Set(d, 0.25f);
-      for (size_t x = 1; x < xsize - 1; x += Lanes(d)) {
-        auto current = LoadU(d, current_row + x) * c34;
-        auto prev = LoadU(d, current_row + x - 1);
-        auto next = LoadU(d, current_row + x + 1);
-        auto left = MulAdd(c14, prev, current);
-        auto right = MulAdd(c14, next, current);
-#if HWY_TARGET == HWY_SCALAR
-        StoreU(left, d, dst_row + x * 2);
-        StoreU(right, d, dst_row + x * 2 + 1);
-#else
-        StoreU(InterleaveLower(left, right), d, dst_row + x * 2);
-        StoreU(InterleaveUpper(left, right), d, dst_row + x * 2 + Lanes(d));
-#endif
-      }
-      if (xsize == 1) {
-        dst_row[0] = dst_row[1] = current_row[0];
-      } else {
-        const float leftmost = current_row[0] * 0.75f + current_row[1] * 0.25f;
-        dst_row[0] = dst_row[1] = leftmost;
-        const float rightmost =
-            current_row[xsize - 1] * 0.75f + current_row[xsize - 2] * 0.25f;
-        dst_row[xsize * 2 - 2] = dst_row[xsize * 2 - 1] = rightmost;
-      }
-    }
-  };
-  RunOnPool(pool, 0, static_cast<int>(num_stripes), ThreadPool::SkipInit(),
-            upsample, "UpsampleH2");
-  return dst;
+  JXL_CHECK_IMAGE_INITIALIZED(*rgb, rect);
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -280,128 +160,66 @@ namespace jxl {
 HWY_EXPORT(OpsinToLinearInplace);
 void OpsinToLinearInplace(Image3F* JXL_RESTRICT inout, ThreadPool* pool,
                           const OpsinParams& opsin_params) {
-  return HWY_DYNAMIC_DISPATCH(OpsinToLinearInplace)(inout, pool, opsin_params);
+  HWY_DYNAMIC_DISPATCH(OpsinToLinearInplace)(inout, pool, opsin_params);
 }
 
 HWY_EXPORT(OpsinToLinear);
 void OpsinToLinear(const Image3F& opsin, const Rect& rect, ThreadPool* pool,
                    Image3F* JXL_RESTRICT linear,
                    const OpsinParams& opsin_params) {
-  return HWY_DYNAMIC_DISPATCH(OpsinToLinear)(opsin, rect, pool, linear,
-                                             opsin_params);
+  HWY_DYNAMIC_DISPATCH(OpsinToLinear)(opsin, rect, pool, linear, opsin_params);
 }
 
 HWY_EXPORT(YcbcrToRgb);
 void YcbcrToRgb(const Image3F& ycbcr, Image3F* rgb, const Rect& rect) {
-  return HWY_DYNAMIC_DISPATCH(YcbcrToRgb)(ycbcr, rgb, rect);
-}
-
-HWY_EXPORT(UpsampleV2);
-ImageF UpsampleV2(const ImageF& src, ThreadPool* pool) {
-  return HWY_DYNAMIC_DISPATCH(UpsampleV2)(src, pool);
-}
-
-HWY_EXPORT(UpsampleH2);
-ImageF UpsampleH2(const ImageF& src, size_t output_xsize, ThreadPool* pool) {
-  return HWY_DYNAMIC_DISPATCH(UpsampleH2)(src, output_xsize, pool);
+  HWY_DYNAMIC_DISPATCH(YcbcrToRgb)(ycbcr, rgb, rect);
 }
 
 HWY_EXPORT(HasFastXYBTosRGB8);
 bool HasFastXYBTosRGB8() { return HWY_DYNAMIC_DISPATCH(HasFastXYBTosRGB8)(); }
 
 HWY_EXPORT(FastXYBTosRGB8);
-void FastXYBTosRGB8(const Image3F& input, const Rect& input_rect,
-                    const Rect& output_buf_rect, const ImageF* alpha,
-                    const Rect& alpha_rect, bool is_rgba,
-                    uint8_t* JXL_RESTRICT output_buf, size_t xsize,
-                    size_t output_stride) {
-  return HWY_DYNAMIC_DISPATCH(FastXYBTosRGB8)(
-      input, input_rect, output_buf_rect, alpha, alpha_rect, is_rgba,
-      output_buf, xsize, output_stride);
+void FastXYBTosRGB8(const float* input[4], uint8_t* output, bool is_rgba,
+                    size_t xsize) {
+  HWY_DYNAMIC_DISPATCH(FastXYBTosRGB8)(input, output, is_rgba, xsize);
 }
 
 void OpsinParams::Init(float intensity_target) {
   InitSIMDInverseMatrix(GetOpsinAbsorbanceInverseMatrix(), inverse_opsin_matrix,
                         intensity_target);
-  memcpy(opsin_biases, kNegOpsinAbsorbanceBiasRGB,
-         sizeof(kNegOpsinAbsorbanceBiasRGB));
+  memcpy(opsin_biases, jxl::cms::kNegOpsinAbsorbanceBiasRGB.data(),
+         sizeof(jxl::cms::kNegOpsinAbsorbanceBiasRGB));
   memcpy(quant_biases, kDefaultQuantBias, sizeof(kDefaultQuantBias));
   for (size_t c = 0; c < 4; c++) {
     opsin_biases_cbrt[c] = cbrtf(opsin_biases[c]);
   }
 }
 
-Status OutputEncodingInfo::Set(const ImageMetadata& metadata) {
-  const auto& im = metadata.transform_data.opsin_inverse_matrix;
-  float inverse_matrix[9];
-  memcpy(inverse_matrix, im.inverse_matrix, sizeof(inverse_matrix));
-  float intensity_target = metadata.IntensityTarget();
-  if (metadata.xyb_encoded) {
-    const auto& orig_color_encoding = metadata.color_encoding;
-    color_encoding = ColorEncoding::LinearSRGB(orig_color_encoding.IsGray());
-    // Figure out if we can output to this color encoding.
-    do {
-      if (!orig_color_encoding.HaveFields()) break;
-      // TODO(veluca): keep in sync with dec_reconstruct.cc
-      if (!orig_color_encoding.tf.IsPQ() && !orig_color_encoding.tf.IsSRGB() &&
-          !orig_color_encoding.tf.IsGamma() &&
-          !orig_color_encoding.tf.IsLinear() &&
-          !orig_color_encoding.tf.IsHLG() && !orig_color_encoding.tf.IsDCI() &&
-          !orig_color_encoding.tf.Is709()) {
-        break;
-      }
-      if (orig_color_encoding.tf.IsGamma()) {
-        inverse_gamma = orig_color_encoding.tf.GetGamma();
-      }
-      if (orig_color_encoding.tf.IsDCI()) {
-        inverse_gamma = 1.0f / 2.6f;
-      }
-      if (orig_color_encoding.IsGray() &&
-          orig_color_encoding.white_point != WhitePoint::kD65) {
-        // TODO(veluca): figure out what should happen here.
-        break;
-      }
+bool CanOutputToColorEncoding(const ColorEncoding& c_desired) {
+  if (!c_desired.HaveFields()) {
+    return false;
+  }
+  // TODO(veluca): keep in sync with dec_reconstruct.cc
+  const auto& tf = c_desired.Tf();
+  if (!tf.IsPQ() && !tf.IsSRGB() && !tf.have_gamma && !tf.IsLinear() &&
+      !tf.IsHLG() && !tf.IsDCI() && !tf.Is709()) {
+    return false;
+  }
+  if (c_desired.IsGray() && c_desired.GetWhitePointType() != WhitePoint::kD65) {
+    // TODO(veluca): figure out what should happen here.
+    return false;
+  }
+  return true;
+}
 
-      if ((orig_color_encoding.primaries != Primaries::kSRGB ||
-           orig_color_encoding.white_point != WhitePoint::kD65) &&
-          !orig_color_encoding.IsGray()) {
-        all_default_opsin = false;
-        float srgb_to_xyzd50[9];
-        const auto& srgb = ColorEncoding::SRGB(/*is_gray=*/false);
-        JXL_CHECK(PrimariesToXYZD50(
-            srgb.GetPrimaries().r.x, srgb.GetPrimaries().r.y,
-            srgb.GetPrimaries().g.x, srgb.GetPrimaries().g.y,
-            srgb.GetPrimaries().b.x, srgb.GetPrimaries().b.y,
-            srgb.GetWhitePoint().x, srgb.GetWhitePoint().y, srgb_to_xyzd50));
-        float xyzd50_to_original[9];
-        JXL_RETURN_IF_ERROR(PrimariesToXYZD50(
-            orig_color_encoding.GetPrimaries().r.x,
-            orig_color_encoding.GetPrimaries().r.y,
-            orig_color_encoding.GetPrimaries().g.x,
-            orig_color_encoding.GetPrimaries().g.y,
-            orig_color_encoding.GetPrimaries().b.x,
-            orig_color_encoding.GetPrimaries().b.y,
-            orig_color_encoding.GetWhitePoint().x,
-            orig_color_encoding.GetWhitePoint().y, xyzd50_to_original));
-        JXL_RETURN_IF_ERROR(Inv3x3Matrix(xyzd50_to_original));
-        float srgb_to_original[9];
-        MatMul(xyzd50_to_original, srgb_to_xyzd50, 3, 3, 3, srgb_to_original);
-        MatMul(srgb_to_original, im.inverse_matrix, 3, 3, 3, inverse_matrix);
-      }
-      color_encoding = orig_color_encoding;
-      color_encoding_is_original = true;
-      if (color_encoding.tf.IsPQ()) {
-        intensity_target = 10000;
-      }
-    } while (false);
-  } else {
-    color_encoding = metadata.color_encoding;
-  }
-  if (std::abs(intensity_target - 255.0) > 0.1f || !im.all_default) {
-    all_default_opsin = false;
-  }
-  InitSIMDInverseMatrix(inverse_matrix, opsin_params.inverse_opsin_matrix,
-                        intensity_target);
+Status OutputEncodingInfo::SetFromMetadata(const CodecMetadata& metadata) {
+  orig_color_encoding = metadata.m.color_encoding;
+  orig_intensity_target = metadata.m.IntensityTarget();
+  desired_intensity_target = orig_intensity_target;
+  const auto& im = metadata.transform_data.opsin_inverse_matrix;
+  orig_inverse_matrix = im.inverse_matrix;
+  default_transform = im.all_default;
+  xyb_encoded = metadata.m.xyb_encoded;
   std::copy(std::begin(im.opsin_biases), std::end(im.opsin_biases),
             opsin_params.opsin_biases);
   for (int i = 0; i < 3; ++i) {
@@ -410,6 +228,94 @@ Status OutputEncodingInfo::Set(const ImageMetadata& metadata) {
   opsin_params.opsin_biases_cbrt[3] = opsin_params.opsin_biases[3] = 1;
   std::copy(std::begin(im.quant_biases), std::end(im.quant_biases),
             opsin_params.quant_biases);
+  bool orig_ok = CanOutputToColorEncoding(orig_color_encoding);
+  bool orig_grey = orig_color_encoding.IsGray();
+  return SetColorEncoding(!xyb_encoded || orig_ok
+                              ? orig_color_encoding
+                              : ColorEncoding::LinearSRGB(orig_grey));
+}
+
+Status OutputEncodingInfo::MaybeSetColorEncoding(
+    const ColorEncoding& c_desired) {
+  if (c_desired.GetColorSpace() == ColorSpace::kXYB &&
+      ((color_encoding.GetColorSpace() == ColorSpace::kRGB &&
+        color_encoding.GetPrimariesType() != Primaries::kSRGB) ||
+       color_encoding.Tf().IsPQ())) {
+    return false;
+  }
+  if (!xyb_encoded && !CanOutputToColorEncoding(c_desired)) {
+    return false;
+  }
+  return SetColorEncoding(c_desired);
+}
+
+Status OutputEncodingInfo::SetColorEncoding(const ColorEncoding& c_desired) {
+  color_encoding = c_desired;
+  linear_color_encoding = color_encoding;
+  linear_color_encoding.Tf().SetTransferFunction(TransferFunction::kLinear);
+  color_encoding_is_original = orig_color_encoding.SameColorEncoding(c_desired);
+
+  // Compute the opsin inverse matrix and luminances based on primaries and
+  // white point.
+  Matrix3x3 inverse_matrix;
+  bool inverse_matrix_is_default = default_transform;
+  inverse_matrix = orig_inverse_matrix;
+  constexpr Vector3 kSRGBLuminances{0.2126, 0.7152, 0.0722};
+  luminances = kSRGBLuminances;
+  if ((c_desired.GetPrimariesType() != Primaries::kSRGB ||
+       c_desired.GetWhitePointType() != WhitePoint::kD65) &&
+      !c_desired.IsGray()) {
+    Matrix3x3 srgb_to_xyzd50;
+    const auto& srgb = ColorEncoding::SRGB(/*is_gray=*/false);
+    PrimariesCIExy p = srgb.GetPrimaries();
+    CIExy w = srgb.GetWhitePoint();
+    JXL_CHECK(PrimariesToXYZD50(p.r.x, p.r.y, p.g.x, p.g.y, p.b.x, p.b.y, w.x,
+                                w.y, srgb_to_xyzd50));
+    Matrix3x3 original_to_xyz;
+    p = c_desired.GetPrimaries();
+    w = c_desired.GetWhitePoint();
+    if (!PrimariesToXYZ(p.r.x, p.r.y, p.g.x, p.g.y, p.b.x, p.b.y, w.x, w.y,
+                        original_to_xyz)) {
+      return JXL_FAILURE("PrimariesToXYZ failed");
+    }
+    luminances = original_to_xyz[1];
+    if (xyb_encoded) {
+      Matrix3x3 adapt_to_d50;
+      if (!AdaptToXYZD50(c_desired.GetWhitePoint().x,
+                         c_desired.GetWhitePoint().y, adapt_to_d50)) {
+        return JXL_FAILURE("AdaptToXYZD50 failed");
+      }
+      Matrix3x3 xyzd50_to_original;
+      Mul3x3Matrix(adapt_to_d50, original_to_xyz, xyzd50_to_original);
+      JXL_RETURN_IF_ERROR(Inv3x3Matrix(xyzd50_to_original));
+      Matrix3x3 srgb_to_original;
+      Mul3x3Matrix(xyzd50_to_original, srgb_to_xyzd50, srgb_to_original);
+      Mul3x3Matrix(srgb_to_original, orig_inverse_matrix, inverse_matrix);
+      inverse_matrix_is_default = false;
+    }
+  }
+
+  if (c_desired.IsGray()) {
+    Matrix3x3 tmp_inv_matrix = inverse_matrix;
+    Matrix3x3 srgb_to_luma{luminances, luminances, luminances};
+    Mul3x3Matrix(srgb_to_luma, tmp_inv_matrix, inverse_matrix);
+  }
+
+  // The internal XYB color space uses absolute luminance, so we scale back the
+  // opsin inverse matrix to relative luminance where 1.0 corresponds to the
+  // original intensity target.
+  if (xyb_encoded) {
+    InitSIMDInverseMatrix(inverse_matrix, opsin_params.inverse_opsin_matrix,
+                          orig_intensity_target);
+    all_default_opsin = (std::abs(orig_intensity_target - 255.0) <= 0.1f &&
+                         inverse_matrix_is_default);
+  }
+
+  // Set the inverse gamma based on color space transfer function.
+  const auto& tf = c_desired.Tf();
+  inverse_gamma = (tf.have_gamma ? tf.GetGamma()
+                   : tf.IsDCI()  ? 1.0f / 2.6f
+                                 : 1.0);
   return true;
 }
 

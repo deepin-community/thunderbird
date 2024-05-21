@@ -9,7 +9,6 @@
 
 #include "builtin/Boolean.h"
 
-#include "vm/BooleanObject.h"
 #include "vm/JSContext.h"
 #include "vm/WrapperObject.h"
 
@@ -23,6 +22,21 @@ inline bool EmulatesUndefined(JSObject* obj) {
                          ? obj
                          : UncheckedUnwrapWithoutExpose(obj);
   return actual->getClass()->emulatesUndefined();
+}
+
+inline bool EmulatesUndefinedCheckFuse(JSObject* obj,
+                                       size_t fuseValue) {
+  // This may be called off the main thread. It's OK not to expose the object
+  // here as it doesn't escape.
+  AutoUnsafeCallWithABI unsafe(UnsafeABIStrictness::AllowPendingExceptions);
+  JSObject* actual = MOZ_LIKELY(!obj->is<WrapperObject>())
+                         ? obj
+                         : UncheckedUnwrapWithoutExpose(obj);
+  bool emulatesUndefined = actual->getClass()->emulatesUndefined();
+  if (emulatesUndefined) {
+    MOZ_RELEASE_ASSERT(fuseValue != 0);
+  }
+  return emulatesUndefined;
 }
 
 } /* namespace js */

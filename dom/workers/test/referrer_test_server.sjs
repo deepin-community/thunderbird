@@ -1,4 +1,3 @@
-Components.utils.importGlobalProperties(["URLSearchParams"]);
 const SJS = "referrer_test_server.sjs?";
 const SHARED_KEY = SJS;
 
@@ -22,7 +21,7 @@ function createUrl(aRequestType, aPolicy) {
 
   return url + searchParams.toString();
 }
-function createWorker (aRequestType, aPolicy) {
+function createWorker(aRequestType, aPolicy) {
   return `
     onmessage = function() {
       fetch("${createUrl(aRequestType, aPolicy)}").then(function () {
@@ -94,8 +93,5 @@ function handleRequest(request, response) {
     setSharedState(SHARED_KEY, JSON.stringify(result));
 
     response.write("'hello world'");
-    return;
   }
 }
-
-

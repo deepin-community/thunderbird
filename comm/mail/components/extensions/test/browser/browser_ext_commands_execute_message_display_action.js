@@ -11,7 +11,7 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
     )}`
   );
 
-  let extensionOptions = {};
+  const extensionOptions = {};
   extensionOptions.manifest = {
     commands: {
       _execute_message_display_action: {
@@ -30,19 +30,17 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
       "popup.html";
 
     extensionOptions.files = {
-      "popup.html": `
-        <!DOCTYPE html>
+      "popup.html": `<!DOCTYPE html>
         <html>
           <head>
             <meta charset="utf-8">
-            <script src="popup.js"></script>
+            <script defer="defer" src="popup.js"></script>
           </head>
           <body>
             Popup
           </body>
-        </html>
-      `,
-      "popup.js": function() {
+        </html>`,
+      "popup.js": function () {
         browser.test.log("sending from-message-display-action-popup");
         browser.runtime.sendMessage("from-message-display-action-popup");
       },
@@ -52,11 +50,9 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
   extensionOptions.background = () => {
     browser.test.onMessage.addListener((message, withPopup) => {
       browser.commands.onCommand.addListener(commandName => {
-        if (commandName == "_execute_message_display_action") {
-          browser.test.fail(
-            "The onCommand listener should never fire for _execute_message_display_action."
-          );
-        }
+        browser.test.fail(
+          "The onCommand listener should never fire for a valid _execute_* command."
+        );
       });
 
       browser.messageDisplayAction.onClicked.addListener(() => {
@@ -85,9 +81,10 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
       browser.test.log("Sending send-keys");
       browser.test.sendMessage("send-keys");
     });
+    browser.test.sendMessage("ready");
   };
 
-  let extension = ExtensionTestUtils.loadExtension(extensionOptions);
+  const extension = ExtensionTestUtils.loadExtension(extensionOptions);
 
   extension.onMessage("send-keys", () => {
     info("Simulating ALT+SHIFT+J");
@@ -100,27 +97,32 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
 
   await extension.startup();
 
+  const tabmail = document.getElementById("tabmail");
   let messageWindow = window;
+  let aboutMessage = tabmail.currentAboutMessage;
   switch (options.displayType) {
     case "tab":
       await openMessageInTab(msg);
+      aboutMessage = tabmail.currentAboutMessage;
       break;
     case "window":
       messageWindow = await openMessageInWindow(msg);
+      aboutMessage = messageWindow.messageBrowser.contentWindow;
       break;
   }
-  await SimpleTest.promiseFocus(messageWindow);
+  await SimpleTest.promiseFocus(aboutMessage);
 
+  await extension.awaitMessage("ready");
   // trigger setup of listeners in background and the send-keys msg
   extension.sendMessage("withPopup", options.withPopup);
 
   if (options.withPopup) {
     await extension.awaitFinish("execute-message-display-action-popup-opened");
 
-    if (!getBrowserActionPopup(extension, messageWindow)) {
-      await awaitExtensionPanel(extension, messageWindow);
+    if (!getBrowserActionPopup(extension, aboutMessage)) {
+      await awaitExtensionPanel(extension, aboutMessage);
     }
-    await closeBrowserAction(extension, messageWindow);
+    await closeBrowserAction(extension, aboutMessage);
   } else {
     await extension.awaitFinish(
       "execute-message-display-action-on-clicked-fired"
@@ -129,7 +131,7 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
 
   switch (options.displayType) {
     case "tab":
-      document.getElementById("tabmail").closeTab();
+      tabmail.closeTab();
       break;
     case "window":
       messageWindow.close();
@@ -139,23 +141,23 @@ async function testExecuteMessageDisplayActionWithOptions(msg, options = {}) {
   await extension.unload();
 }
 
-add_task(async function prepare_test() {
-  let account = createAccount();
-  let rootFolder = account.incomingServer.rootFolder;
-  let subFolders = rootFolder.subFolders;
+add_setup(async () => {
+  const account = createAccount();
+  const rootFolder = account.incomingServer.rootFolder;
+  const subFolders = rootFolder.subFolders;
   createMessages(subFolders[0], 10);
   gMessages = [...subFolders[0].messages];
 
-  window.gFolderTreeView.selectFolder(subFolders[0]);
-  window.gFolderDisplay.selectViewIndex(0);
-  await BrowserTestUtils.browserLoaded(window.getMessagePaneBrowser());
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.displayFolder(subFolders[0].URI);
+  about3Pane.threadTree.selectedIndex = 0;
 });
 
-let popupJobs = [true, false];
-let displayJobs = ["3pane", "tab", "window"];
+const popupJobs = [true, false];
+const displayJobs = ["3pane", "tab", "window"];
 
-for (let popupJob of popupJobs) {
-  for (let displayJob of displayJobs) {
+for (const popupJob of popupJobs) {
+  for (const displayJob of displayJobs) {
     add_task(async () => {
       await testExecuteMessageDisplayActionWithOptions(gMessages[1], {
         withPopup: popupJob,

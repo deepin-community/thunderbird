@@ -2,14 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
-  CalTodo: "resource:///modules/CalTodo.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  CalTodo: "resource:///modules/CalTodo.sys.mjs",
 });
 
 function run_test() {
+  do_calendar_startup(really_run_test);
+}
+
+function really_run_test() {
   test_not_a_date();
   test_compare_event_and_todo();
   test_compare_startdate();
@@ -20,7 +24,7 @@ function run_test() {
 }
 
 function test_not_a_date() {
-  let item = new CalEvent();
+  const item = new CalEvent();
 
   let result = cal.view.compareItems(null, item);
   equal(result, -1);
@@ -30,8 +34,8 @@ function test_not_a_date() {
 }
 
 function test_compare_event_and_todo() {
-  let a = new CalEvent();
-  let b = new CalTodo();
+  const a = new CalEvent();
+  const b = new CalTodo();
 
   let result = cal.view.compareItems(a, b);
   equal(result, 1);
@@ -41,9 +45,9 @@ function test_compare_event_and_todo() {
 }
 
 function test_compare_startdate() {
-  let a = new CalEvent();
+  const a = new CalEvent();
   a.startDate = createDate(1990, 0, 1, 1);
-  let b = new CalEvent();
+  const b = new CalEvent();
   b.startDate = createDate(2000, 0, 1, 1);
 
   let result = cal.view.compareItems(a, b);
@@ -57,10 +61,10 @@ function test_compare_startdate() {
 }
 
 function test_compare_enddate() {
-  let a = new CalEvent();
+  const a = new CalEvent();
   a.startDate = createDate(1990, 0, 1, 1);
   a.endDate = createDate(1990, 0, 2, 1);
-  let b = new CalEvent();
+  const b = new CalEvent();
   b.startDate = createDate(1990, 0, 1, 1);
   b.endDate = createDate(1990, 0, 5, 1);
 
@@ -75,9 +79,9 @@ function test_compare_enddate() {
 }
 
 function test_compare_alldayevent() {
-  let a = new CalEvent();
+  const a = new CalEvent();
   a.startDate = createDate(1990, 0, 1);
-  let b = new CalEvent();
+  const b = new CalEvent();
   b.startDate = createDate(1990, 0, 1, 1);
 
   let result = cal.view.compareItems(a, b);
@@ -91,10 +95,10 @@ function test_compare_alldayevent() {
 }
 
 function test_compare_title() {
-  let a = new CalEvent();
+  const a = new CalEvent();
   a.startDate = createDate(1990, 0, 1);
   a.title = "Abc";
-  let b = new CalEvent();
+  const b = new CalEvent();
   b.startDate = createDate(1990, 0, 1);
   b.title = "Xyz";
 
@@ -109,8 +113,8 @@ function test_compare_title() {
 }
 
 function test_compare_todo() {
-  let a = new CalTodo();
-  let b = new CalTodo();
+  const a = new CalTodo();
+  const b = new CalTodo();
 
   let cmp = cal.view.compareItems(a, b);
   equal(cmp, 0);

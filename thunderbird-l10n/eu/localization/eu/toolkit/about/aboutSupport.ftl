@@ -15,6 +15,10 @@ support-addons-type = Mota
 support-addons-enabled = Gaituta
 support-addons-version = Bertsioa
 support-addons-id = ID
+legacy-user-stylesheets-title = Erabiltzaileen legatu estilo-orriak
+legacy-user-stylesheets-enabled = Aktibo
+legacy-user-stylesheets-stylesheet-types = Estilo-orriak
+legacy-user-stylesheets-no-stylesheets-found = Ez da estilo-orririk aurkitu
 security-software-title = Segurtasun softwarea
 security-software-type = Mota
 security-software-name = Izena
@@ -72,6 +76,13 @@ app-basics-location-service-key-google = Google Location Service gakoa
 app-basics-safebrowsing-key-google = Google Safebrowsing gakoa
 app-basics-key-mozilla = Mozilla Location Service gakoa
 app-basics-safe-mode = Modu segurua
+app-basics-memory-size = Memoriaren tamaina (RAM)
+app-basics-disk-available = Diskoko leku erabilgarria
+app-basics-pointing-devices = Erakusledun gailuak
+# Variables:
+#   $value (number) - Amount of data being stored
+#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Erakutsi Finder-en
@@ -101,11 +112,21 @@ graphics-gpu2-title = 2. GPUa
 graphics-decision-log-title = Erabakien erregistroa
 graphics-crash-guards-title = Babestu desgaitutako eginbideen hutsegiteak
 graphics-workarounds-title = Behin-behineko konponbideak
+graphics-device-pixel-ratios = Leiho-gailuaren pixelen aspektu-erlazioak
 # Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Leiho-sistemaren protokoloa
 # Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Mahaigain ingurunea
 place-database-title = Lekuen datu-basea
+place-database-stats = Estatistikak
+place-database-stats-show = Erakutsi estatistikak
+place-database-stats-hide = Ezkutatu estatistikak
+place-database-stats-entity = Entitatea
+place-database-stats-count = Kopurua
+place-database-stats-size-kib = Tamaina (KiB)
+place-database-stats-size-perc = Tamaina (%)
+place-database-stats-efficiency-perc = Eraginkortasuna (%)
+place-database-stats-sequentiality-perc = Sekuentzialitatea (%)
 place-database-integrity = Osotasuna
 place-database-verify-integrity = Egiaztatu osotasuna
 a11y-title = Erabilgarritasuna
@@ -152,8 +173,36 @@ media-device-channels = Kanalak
 media-device-rate = Emaria
 media-device-latency = Atzerapena
 media-capabilities-title = Multimedia-gaitasunak
+media-codec-support-info = Kodekaren laguntzarako informazioa
 # List all the entries of the database.
 media-capabilities-enumerate = Zerrendatu datu-basea
+
+## Codec support table
+
+media-codec-support-sw-decoding = Software deskodeketa
+media-codec-support-hw-decoding = Hardware deskodeketa
+media-codec-support-codec-name = Codec-aren izena
+media-codec-support-supported = Euskarria du
+media-codec-support-unsupported = Ez du euskarririk
+media-codec-support-error = Kodekaren euskarriari buruzko informazioa ez dago erabilgarri. Saiatu berriro multimedia-fitxategi bat erreproduzitu ondoren.
+media-codec-support-lack-of-extension = Instalatu hedapena
+
+## Media Content Decryption Modules (CDM)
+## See EME Spec for more explanation for following technical terms
+## https://w3c.github.io/encrypted-media/
+
+media-content-decryption-modules-title = Content Decryption Modules informazioa
+media-key-system-name = Gako-sistemaren izena
+media-video-robustness = Bideoaren sendotasuna
+media-audio-robustness = Audioaren sendotasuna
+media-cdm-capabilities = Gaitasunak
+# Clear Lead isn't defined in the spec, which means the the first few seconds
+# are not encrypted. It allows playback to start without having to wait for
+# license response, improving video start time and user experience.
+media-cdm-clear-lead = Hasiera garbia
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = HDCP 2.2rekin bateragarria
 
 ##
 
@@ -233,6 +282,7 @@ try-newer-driver = Txartel grafikoaren kontrolatzailearen bertsioak blokeatuta. 
 # there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType parametroak
 compositing = Konposatzea
+support-font-determination = Letra-tipoen ikusgaitasuaren arazketa-informazioa
 hardware-h264 = Hardware bidezko H264 deskodetzea
 main-thread-no-omtc = hari nagusia, OMTCrik ez
 yes = Bai
@@ -268,6 +318,8 @@ webgl2-renderer = WebGL 2 kontrolatzailearen errendatzailea
 webgl2-version = WebGL 2 kontrolatzailearen bertsioa
 webgl2-driver-extensions = WebGL 2 kontrolatzailearen hedapenak
 webgl2-extensions = WebGL 2 hedapenak
+webgpu-default-adapter = WebGPU moldagailu lehenetsia
+webgpu-fallback-adapter = WebGPU moldagailu alternatiboa
 # Variables
 #   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Zerrenda beltzean arazo ezagunak direla-eta: <a data-l10n-name="bug-link">{ $bugNumber } buga</a>
@@ -297,6 +349,7 @@ can-sandbox-media = Multimedia-pluginen isolamendua
 content-sandbox-level = Eduki-prozesuen isolamendu maila
 effective-content-sandbox-level = Eduki-prozesuen isolamendu maila eraginkorra
 content-win32k-lockdown-state = Win32k Lockdown egoera eduki-prozesuentzat
+support-sandbox-gpu-level = GPU prozesuaren isolamendu maila
 sandbox-proc-type-content = edukia
 sandbox-proc-type-file = fitxategiaren edukia
 sandbox-proc-type-media-plugin = multimedia plugina
@@ -322,7 +375,7 @@ fission-status-experiment-control = Esperimentuak desgaituta
 fission-status-experiment-treatment = Esperimentuak gaituta
 fission-status-disabled-by-e10s-env = Inguruneak desgaituta
 fission-status-enabled-by-env = Inguruneak gaituta
-fission-status-disabled-by-safe-mode = Modu seguruak desgaituta
+fission-status-disabled-by-env = Inguruneak desgaituta
 fission-status-enabled-by-default = Lehenespenez gaituta
 fission-status-disabled-by-default = Lehenespenez desgaituta
 fission-status-enabled-by-user-pref = Erabiltzaileak gaituta
@@ -368,3 +421,22 @@ support-remote-experiments-see-about-studies = Argibide gehiagorako, ikusi <a da
 support-remote-features-title = Urruneko eginbideak
 support-remote-features-name = Izena
 support-remote-features-status = Egoera
+
+## Pointing devices
+
+pointing-device-mouse = Sagua
+pointing-device-touchscreen = Ukipen-pantaila
+pointing-device-pen-digitizer = Boligrafo digitalizatzailea
+pointing-device-none = Erakusledun gailurik ez
+
+## Content Analysis (DLP)
+
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = Edukiaren analisia (DLP)
+content-analysis-active = Aktibo
+content-analysis-connected-to-agent = Agenteari konektatuta
+content-analysis-agent-path = Agentearen bidea
+content-analysis-agent-failed-signature-verification = Agenteak sinaduraren egiaztapena huts egin du
+content-analysis-request-count = Eskaera kopurua

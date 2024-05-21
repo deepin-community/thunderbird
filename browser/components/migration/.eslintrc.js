@@ -5,18 +5,12 @@
 "use strict";
 
 module.exports = {
+  extends: ["plugin:mozilla/require-jsdoc"],
   rules: {
     "block-scoped-var": "error",
     complexity: ["error", { max: 22 }],
     "max-nested-callbacks": ["error", 3],
     "no-extend-native": "error",
-    "no-fallthrough": [
-      "error",
-      {
-        commentPattern:
-          ".*[Ii]ntentional(?:ly)?\\s+fall(?:ing)?[\\s-]*through.*",
-      },
-    ],
     "no-multi-str": "error",
     "no-return-assign": "error",
     "no-shadow": "error",
@@ -27,7 +21,7 @@ module.exports = {
 
   overrides: [
     {
-      files: "tests/unit/head*.js",
+      files: ["head*.js"],
       rules: {
         "no-unused-vars": [
           "error",

@@ -9,17 +9,15 @@ function run_test() {
 function really_run_test() {
   test_roundtrip();
   test_async();
-  if (Services.prefs.getBoolPref("calendar.icaljs", false)) {
-    test_failures();
-  }
+  test_failures();
   test_fake_parent();
   test_props_comps();
   test_timezone();
 }
 
 function test_props_comps() {
-  let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let str = [
+  const parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
+  const str = [
     "BEGIN:VCALENDAR",
     "X-WR-CALNAME:CALNAME",
     "BEGIN:VJOURNAL",
@@ -32,12 +30,12 @@ function test_props_comps() {
   ].join("\r\n");
   parser.parseString(str);
 
-  let props = parser.getProperties();
+  const props = parser.getProperties();
   equal(props.length, 1);
   equal(props[0].propertyName, "X-WR-CALNAME");
   equal(props[0].value, "CALNAME");
 
-  let comps = parser.getComponents();
+  const comps = parser.getComponents();
   equal(comps.length, 1);
   equal(comps[0].componentType, "VJOURNAL");
   equal(comps[0].location, "BEFORE TIME");
@@ -47,7 +45,7 @@ function test_failures() {
   let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
 
   do_test_pending();
-  parser.parseString("BOGUS", null, {
+  parser.parseString("BOGUS", {
     onParsingComplete(rc, opparser) {
       dump("Note: The previous error message is expected ^^\n");
       equal(rc, Cr.NS_ERROR_FAILURE);
@@ -57,7 +55,7 @@ function test_failures() {
 
   // No real error here, but there is a message...
   parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let str = ["BEGIN:VWORLD", "BEGIN:VEVENT", "UID:123", "END:VEVENT", "END:VWORLD"].join("\r\n");
+  const str = ["BEGIN:VWORLD", "BEGIN:VEVENT", "UID:123", "END:VEVENT", "END:VWORLD"].join("\r\n");
   dump("Note: The following error message is expected:\n");
   parser.parseString(str);
   equal(parser.getComponents().length, 0);
@@ -65,9 +63,9 @@ function test_failures() {
 }
 
 function test_fake_parent() {
-  let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
+  const parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
 
-  let str = [
+  const str = [
     "BEGIN:VCALENDAR",
     "BEGIN:VEVENT",
     "UID:123",
@@ -80,29 +78,29 @@ function test_fake_parent() {
 
   parser.parseString(str);
 
-  let items = parser.getItems();
+  const items = parser.getItems();
   equal(items.length, 1);
-  let item = items[0].QueryInterface(Ci.calIEvent);
+  const item = items[0].QueryInterface(Ci.calIEvent);
 
   equal(item.id, "123");
   ok(!!item.recurrenceInfo);
   equal(item.startDate.icalString, "20120101T010101");
   equal(item.getProperty("X-MOZ-FAKED-MASTER"), "1");
 
-  let rinfo = item.recurrenceInfo;
+  const rinfo = item.recurrenceInfo;
 
   equal(rinfo.countRecurrenceItems(), 1);
-  let excs = rinfo.getOccurrences(cal.createDateTime("20120101T010101"), null, 0);
+  const excs = rinfo.getOccurrences(cal.createDateTime("20120101T010101"), null, 0);
   equal(excs.length, 1);
-  let exc = excs[0].QueryInterface(Ci.calIEvent);
+  const exc = excs[0].QueryInterface(Ci.calIEvent);
   equal(exc.startDate.icalString, "20120101T010102");
 
   equal(parser.getParentlessItems()[0], exc);
 }
 
 function test_async() {
-  let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let str = [
+  const parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
+  const str = [
     "BEGIN:VCALENDAR",
     "BEGIN:VTODO",
     "UID:1",
@@ -118,9 +116,9 @@ function test_async() {
   ].join("\r\n");
 
   do_test_pending();
-  parser.parseString(str, null, {
+  parser.parseString(str, {
     onParsingComplete(rc, opparser) {
-      let items = parser.getItems();
+      const items = parser.getItems();
       equal(items.length, 2);
       let item = items[0];
       ok(item.isTodo());
@@ -145,10 +143,10 @@ function test_timezone() {
 
 function test_roundtrip() {
   let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(
+  const serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(
     Ci.calIIcsSerializer
   );
-  let str = [
+  const str = [
     "BEGIN:VCALENDAR",
     "PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN",
     "VERSION:2.0",
@@ -174,20 +172,13 @@ function test_roundtrip() {
   parser.getComponents().forEach(serializer.addComponent, serializer);
 
   equal(
-    serializer
-      .serializeToString()
-      .split("\r\n")
-      .sort()
-      .join("\r\n"),
-    str
-      .split("\r\n")
-      .sort()
-      .join("\r\n")
+    serializer.serializeToString().split("\r\n").sort().join("\r\n"),
+    str.split("\r\n").sort().join("\r\n")
   );
 
   // Test parseFromStream
   parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let stream = serializer.serializeToInputStream();
+  const stream = serializer.serializeToInputStream();
 
   parser.parseFromStream(stream);
 
@@ -204,18 +195,11 @@ function test_roundtrip() {
   everything.push(props[0].icalString.split("\r\n")[0]);
   everything.sort();
 
-  equal(
-    everything.join("\r\n"),
-    str
-      .split("\r\n")
-      .concat([""])
-      .sort()
-      .join("\r\n")
-  );
+  equal(everything.join("\r\n"), str.split("\r\n").concat([""]).sort().join("\r\n"));
 
   // Test serializeToStream/parseFromStream
   parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
-  let pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe);
+  const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe);
   pipe.init(true, true, 0, 0, null);
 
   serializer.serializeToStream(pipe.outputStream);
@@ -232,12 +216,5 @@ function test_roundtrip() {
   everything.push(props[0].icalString.split("\r\n")[0]);
   everything.sort();
 
-  equal(
-    everything.join("\r\n"),
-    str
-      .split("\r\n")
-      .concat([""])
-      .sort()
-      .join("\r\n")
-  );
+  equal(everything.join("\r\n"), str.split("\r\n").concat([""]).sort().join("\r\n"));
 }

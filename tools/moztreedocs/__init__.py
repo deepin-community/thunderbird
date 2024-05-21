@@ -2,23 +2,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, unicode_literals, print_function
-
 import os
-import tempfile
-import yaml
+from pathlib import PurePath
 
+import sphinx
+import sphinx.ext.apidoc
+import yaml
 from mozbuild.base import MozbuildObject
 from mozbuild.frontend.reader import BuildReader
 from mozbuild.util import memoize
 from mozpack.copier import FileCopier
 from mozpack.files import FileFinder
 from mozpack.manifests import InstallManifest
-from pathlib import PurePath
-
-import frontmatter
-import sphinx
-import sphinx.ext.apidoc
 
 here = os.path.abspath(os.path.dirname(__file__))
 build = MozbuildObject.from_environment(cwd=here)
@@ -53,9 +48,14 @@ def read_build_config(docdir):
 
         if name == "SPHINX_TREES":
             # If we're building a subtree, only process that specific subtree.
-            absdir = os.path.join(build.topsrcdir, reldir, value)
+            # topsrcdir always uses POSIX-style path, normalize it for proper comparison.
+            absdir = os.path.normpath(os.path.join(build.topsrcdir, reldir, value))
             if not is_main and absdir not in (docdir, MAIN_DOC_PATH):
-                continue
+                # allow subpaths of absdir (i.e. docdir = <absdir>/sub/path/)
+                if docdir.startswith(absdir):
+                    key = os.path.join(key, docdir.split(f"{key}/")[-1])
+                else:
+                    continue
 
             assert key
             if key.startswith("/"):
@@ -78,6 +78,8 @@ def read_build_config(docdir):
 class _SphinxManager(object):
     """Manages the generation of Sphinx documentation for the tree."""
 
+    NO_AUTODOC = False
+
     def __init__(self, topsrcdir, main_path):
         self.topsrcdir = topsrcdir
         self.conf_py_path = os.path.join(main_path, "conf.py")
@@ -90,6 +92,10 @@ class _SphinxManager(object):
 
     def generate_docs(self, app):
         """Generate/stage documentation."""
+        if self.NO_AUTODOC:
+            logger.info("Python/JS API documentation generation will be skipped")
+            app.config["extensions"].remove("sphinx.ext.autodoc")
+            app.config["extensions"].remove("sphinx_js")
         self.staging_dir = os.path.join(app.outdir, "_staging")
 
         logger.info("Reading Sphinx metadata from build configuration")
@@ -98,8 +104,8 @@ class _SphinxManager(object):
         logger.info("Staging static documentation")
         self._synchronize_docs(app)
 
-        logger.info("Generating Python API documentation")
-        self._generate_python_api_docs()
+        if not self.NO_AUTODOC:
+            self._generate_python_api_docs()
 
     def _generate_python_api_docs(self):
         """Generate Python API doc files."""
@@ -121,35 +127,6 @@ class _SphinxManager(object):
 
             sphinx.ext.apidoc.main(argv=args)
 
-    def _process_markdown(self, m, markdown_file, dest):
-        """
-        When dealing with a markdown file, we check if we have a front matter.
-        If this is the case, we read the information, create a temporary file,
-        reuse the front matter info into the md file
-        """
-        with open(markdown_file, "r", encoding="utf_8") as f:
-            # Load the front matter header
-            post = frontmatter.load(f)
-            if len(post.keys()) > 0:
-                # Has a front matter, use it
-                with tempfile.NamedTemporaryFile("w", delete=False) as fh:
-                    # Use the frontmatter title
-                    fh.write(post["title"] + "\n")
-                    # Add the md syntax for the title
-                    fh.write("=" * len(post["title"]) + "\n")
-                    # If there is a summary, add it
-                    if "summary" in post:
-                        fh.write(post["summary"] + "\n")
-                    # Write the content
-                    fh.write(post.__str__())
-                    fh.close()
-                    # Instead of a symlink, we copy the file
-                    m.add_copy(fh.name, dest)
-            else:
-                # No front matter, create the symlink like for rst
-                # as it will be the the same file
-                m.add_link(markdown_file, dest)
-
     def _synchronize_docs(self, app):
         m = InstallManifest()
 
@@ -165,16 +142,15 @@ class _SphinxManager(object):
                     source_path = os.path.normpath(os.path.join(root, f))
                     rel_source = source_path[len(source_dir) + 1 :]
                     target = os.path.normpath(os.path.join(dest, rel_source))
-                    if source_path.endswith(".md"):
-                        self._process_markdown(
-                            m, source_path, os.path.join(".", target)
-                        )
-                    else:
-                        m.add_link(source_path, target)
+                    m.add_link(source_path, target)
 
         copier = FileCopier()
         m.populate_registry(copier)
-        copier.copy(self.staging_dir, remove_empty_directories=False)
+
+        # In the case of livereload, we don't want to delete unmodified (unaccounted) files.
+        copier.copy(
+            self.staging_dir, remove_empty_directories=False, remove_unaccounted=False
+        )
 
         with open(self.index_path, "r") as fh:
             data = fh.read()

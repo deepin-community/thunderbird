@@ -5,7 +5,7 @@
 <!-- Window title -->
 <!ENTITY windowTitle.label "Yfirfara stafsetningu">
 
-<!ENTITY misspelledWord.label "Vitlaust stafað orð:">
+<!ENTITY misspelledWord.label "Rangt stafað orð:">
 <!ENTITY wordEditField.label "Setja í staðinn:">
 <!ENTITY wordEditField.accessKey "j">
 <!ENTITY checkwordButton.label "Athuga orð">
@@ -22,8 +22,8 @@
 <!ENTITY replaceAllButton.accessKey "a">
 <!ENTITY stopButton.label "Stöðva">
 <!ENTITY stopButton.accessKey "t">
-<!ENTITY userDictionary.label "Persónuleg orðabók:">
-<!ENTITY moreDictionaries.label "Hlaða niður fleiri orðabókum…">
+<!ENTITY userDictionary.label "Persónulegt orðasafn:">
+<!ENTITY moreDictionaries.label "Sækja fleiri orðasöfn…">
 <!ENTITY addToUserDictionaryButton.label "Bæta við orði">
 <!ENTITY addToUserDictionaryButton.accessKey "B">
 <!ENTITY editUserDictionaryButton.label "Breyta…">

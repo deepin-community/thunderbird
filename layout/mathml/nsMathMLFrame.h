@@ -16,7 +16,11 @@
 
 class nsMathMLChar;
 class nsCSSValue;
+
+namespace mozilla {
+class nsDisplayListBuilder;
 class nsDisplayListSet;
+}  // namespace mozilla
 
 // Concrete base class with default methods that derived MathML frames can
 // override
@@ -128,9 +132,10 @@ class nsMathMLFrame : public nsIMathMLFrame {
                             float aFontSizeInflation);
 
   static eMathMLFrameType GetMathMLFrameTypeFor(nsIFrame* aFrame) {
-    if (aFrame->IsFrameOfType(nsIFrame::eMathML)) {
-      nsIMathMLFrame* mathMLFrame = do_QueryFrame(aFrame);
-      if (mathMLFrame) return mathMLFrame->GetMathMLFrameType();
+    if (aFrame->IsMathMLFrame()) {
+      if (nsIMathMLFrame* mathMLFrame = do_QueryFrame(aFrame)) {
+        return mathMLFrame->GetMathMLFrameType();
+      }
     }
     return eMathMLFrameType_UNKNOWN;
   }
@@ -264,8 +269,8 @@ class nsMathMLFrame : public nsIMathMLFrame {
 
  protected:
 #if defined(DEBUG) && defined(SHOW_BOUNDING_BOX)
-  void DisplayBoundingMetrics(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame,
-                              const nsPoint& aPt,
+  void DisplayBoundingMetrics(mozilla::nsDisplayListBuilder* aBuilder,
+                              nsIFrame* aFrame, const nsPoint& aPt,
                               const nsBoundingMetrics& aMetrics,
                               const nsDisplayListSet& aLists);
 #endif
@@ -274,8 +279,8 @@ class nsMathMLFrame : public nsIMathMLFrame {
    * Display a solid rectangle in the frame's text color. Used for drawing
    * fraction separators and root/sqrt overbars.
    */
-  void DisplayBar(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame,
-                  const nsRect& aRect, const nsDisplayListSet& aLists,
+  void DisplayBar(mozilla::nsDisplayListBuilder* aBuilder, nsIFrame* aFrame,
+                  const nsRect& aRect, const mozilla::nsDisplayListSet& aLists,
                   uint32_t aIndex = 0);
 
   // information about the presentation policy of the frame

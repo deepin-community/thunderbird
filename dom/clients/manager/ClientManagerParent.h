@@ -8,23 +8,22 @@
 
 #include "mozilla/dom/PClientManagerParent.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class ClientManagerService;
 
 class ClientManagerParent final : public PClientManagerParent {
   RefPtr<ClientManagerService> mService;
 
+  ~ClientManagerParent();
+
   // PClientManagerParent interface
   mozilla::ipc::IPCResult RecvTeardown() override;
 
   void ActorDestroy(ActorDestroyReason aReason) override;
 
-  PClientHandleParent* AllocPClientHandleParent(
+  already_AddRefed<PClientHandleParent> AllocPClientHandleParent(
       const IPCClientInfo& aClientInfo) override;
-
-  bool DeallocPClientHandleParent(PClientHandleParent* aActor) override;
 
   mozilla::ipc::IPCResult RecvPClientHandleConstructor(
       PClientHandleParent* aActor, const IPCClientInfo& aClientInfo) override;
@@ -43,10 +42,8 @@ class ClientManagerParent final : public PClientManagerParent {
 
   bool DeallocPClientNavigateOpParent(PClientNavigateOpParent* aActor) override;
 
-  PClientSourceParent* AllocPClientSourceParent(
+  already_AddRefed<PClientSourceParent> AllocPClientSourceParent(
       const ClientSourceConstructorArgs& aArgs) override;
-
-  bool DeallocPClientSourceParent(PClientSourceParent* aActor) override;
 
   mozilla::ipc::IPCResult RecvPClientSourceConstructor(
       PClientSourceParent* aActor,
@@ -59,13 +56,13 @@ class ClientManagerParent final : public PClientManagerParent {
       const IPCClientInfo& aClientInfo) override;
 
  public:
+  NS_INLINE_DECL_REFCOUNTING(ClientManagerParent, override)
+
   ClientManagerParent();
-  ~ClientManagerParent();
 
   void Init();
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // _mozilla_dom_ClientManagerParent_h

@@ -25,7 +25,7 @@ carddav-refreshinterval-hours-value =
     .label =
         { $hours ->
             [one] kvar time
-           *[other] kvarr { $hours }. time
+           *[other] kvar { $hours }. time
         }
 
 carddav-readonly-label =

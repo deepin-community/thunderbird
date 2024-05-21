@@ -91,12 +91,7 @@ containing the customizations needed. Here's `EME-free's repack.cfg <https://git
     win64=true
     output_dir="%(platform)s-EME-free/%(locale)s"
 
-    # Upload params
-    upload_to_candidates=true
-
-Note the list of locales and boolean toggles for enabling platforms. The ``output_dir`` and
-``upload_to_candidates`` parameters are only present for repacks which are uploaded into the
-`candidates directory <https://archive.mozilla.org/pub/firefox/candidates/>`_.
+Note the list of locales and boolean toggles for enabling platforms.
 
 All customizations will be placed in the ``distribution`` directory at the root of the Firefox
 install directory, or in the case of OS X in ``Firefox.app/Contents/Resources/distribution/``. A
@@ -126,7 +121,7 @@ Repacking process
 The stack of tasks to create partner repacks is broadly similar to localised nightlies and
 regular releases. The basic form is
 
-* partner repack - insert the customisations into the the regular builds
+* partner repack - insert the customisations into the regular builds
 * signing - sign the internals which will become the installer (Mac only)
 * repackage - create the "installer" (Mac and Windows)
 * chunking dummy - a linux only bridge to ...
@@ -139,7 +134,6 @@ Some key divergences are:
 * all intermediate artifacts are uploaded with a ``releng/partner`` prefix
 * we don't insert any binaries on Windows so no need for internal signing
 * there's no need to create any complete mar files at the repackage step
-* we support both public and private destinations in beetmover
 * we only need beetmover checksums for EME-free builds
 
 
@@ -164,7 +158,7 @@ archives, simplifying the repack process by avoiding dmg and exe. Windows produc
 Signing
 ^^^^^^^
 
-* kinds: ``release-partner-repack-notarization-part-1`` ``release-partner-repack-notarization-poller`` ``release-partner-repack-signing``
+* kinds: ``release-partner-repack-mac-signing`` ``release-partner-repack-mac-notarization``
 * platforms: Mac
 * upstreams: ``release-partner-repack`` ``release-eme-free-repack``
 
@@ -172,9 +166,8 @@ We chunk the single partner repack task out to a signing task with 5 artifacts e
 example, EME-free will become 19 tasks. We collect the target.tar.gz from the
 upstream, and return a signed target.tar.gz. We use a ``target.dmg`` artifact for
 nightlies/regular releases, but this is converted to ``target.tar.gz`` by the signing
-scriptworker before sending it to the signing server, so partners are equivalent. The ``part-1`` task
-uploads the binaries to apple, while the ``poller`` task waits for their approval, then
-``release-partner-repack-signing`` staples on the notarization ticket.
+scriptworker before sending it to the signing server, so partners are equivalent. The ``mac-signing`` task
+signs the binary, and then ``mac-notarization`` submits it to Apple and staples the ticket to it.
 
 Repackage
 ^^^^^^^^^
@@ -222,11 +215,11 @@ Beetmover
 * upstreams: ``release-partner-repack-repackage-signing`` ``release-eme-free-repack-repackage-signing``
 
 Moves and renames the artifacts to their public location in the `candidates directory
-<https://archive.mozilla.org/pub/firefox/candidates/>`_, or a private S3 bucket. Each task will
-have the ``project:releng:beetmover:action:push-to-partner`` scope, with public uploads having
-``project:releng:beetmover:bucket:release`` and private uploads using
-``project:releng:beetmover:bucket:partner``. The ``upload_to_candidates`` key in the partner config
-controls the second scope. There's a separate partner code path in `beetmoverscript <https://github.com/mozilla-releng/scriptworker-scripts/tree/master/beetmoverscript>`_.
+<https://archive.mozilla.org/pub/firefox/candidates/>`_. Each task will
+have the ``project:releng:beetmover:action:push-to-partner`` and
+``project:releng:beetmover:bucket:release`` scopes. There's a separate partner
+code path in `beetmoverscript
+<https://github.com/mozilla-releng/scriptworker-scripts/tree/master/beetmoverscript>`_.
 
 Beetmover checksums
 ^^^^^^^^^^^^^^^^^^^

@@ -1,8 +1,7 @@
 "use strict";
 
-const { ExtensionManager } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionChild.jsm",
-  null
+const { ExtensionProcessScript } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionProcessScript.sys.mjs"
 );
 
 let experimentAPIs = {
@@ -47,7 +46,7 @@ let experimentFiles = {
   /* globals ExtensionAPI */
   "parent.js": () => {
     this.userinputtest = class extends ExtensionAPI {
-      getAPI(context) {
+      getAPI() {
         return {
           userinputtest: {
             test() {},
@@ -59,7 +58,7 @@ let experimentFiles = {
 
   "child.js": () => {
     this.userinputtest = class extends ExtensionAPI {
-      getAPI(context) {
+      getAPI() {
         return {
           userinputtest: {
             child() {},
@@ -73,7 +72,7 @@ let experimentFiles = {
 // Set the "handlingUserInput" flag for the given extension's background page.
 // Returns an RAIIHelper that should be destruct()ed eventually.
 function setHandlingUserInput(extension) {
-  let extensionChild = ExtensionManager.extensions.get(extension.extension.id);
+  let extensionChild = ExtensionProcessScript.getExtensionChild(extension.id);
   let bgwin = null;
   for (let view of extensionChild.views) {
     if (view.viewType == "background") {

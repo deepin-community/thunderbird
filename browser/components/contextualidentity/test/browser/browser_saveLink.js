@@ -6,9 +6,9 @@ const URI =
   "/browser/browser/components/contextualidentity/test/browser/saveLink.sjs";
 
 let MockFilePicker = SpecialPowers.MockFilePicker;
-MockFilePicker.init(window);
+MockFilePicker.init(window.browsingContext);
 
-add_task(async function setup() {
+add_setup(async function () {
   info("Setting the prefs.");
 
   // make sure userContext is enabled.
@@ -86,7 +86,7 @@ add_task(async function test() {
     mockTransferRegisterer.register();
   });
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     mockTransferRegisterer.unregister();
     MockFilePicker.cleanup();
     tempDir.remove(true);
@@ -117,7 +117,6 @@ add_task(async function test() {
   await BrowserTestUtils.closeWindow(win);
 });
 
-/* import-globals-from ../../../../../toolkit/content/tests/browser/common/mockTransfer.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/content/tests/browser/common/mockTransfer.js",
   this

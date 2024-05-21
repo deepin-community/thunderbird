@@ -43,8 +43,10 @@
 #include "mozilla/Span.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
+#include "mozilla/ipc/UtilityProcessSandboxing.h"
 #include "prenv.h"
 #include "base/posix/eintr_wrapper.h"
+#include "sandbox/linux/bpf_dsl/bpf_dsl.h"
 #include "sandbox/linux/bpf_dsl/codegen.h"
 #include "sandbox/linux/bpf_dsl/dump_bpf.h"
 #include "sandbox/linux/bpf_dsl/policy.h"
@@ -56,6 +58,10 @@
 #include "sandbox/linux/system_headers/linux_syscalls.h"
 #if defined(ANDROID)
 #  include "sandbox/linux/system_headers/linux_ucontext.h"
+#endif
+
+#ifndef SECCOMP_FILTER_FLAG_SPEC_ALLOW
+#  define SECCOMP_FILTER_FLAG_SPEC_ALLOW (1UL << 2)
 #endif
 
 #ifdef MOZ_ASAN
@@ -141,7 +147,7 @@ MOZ_NEVER_INLINE static void SigSysHandler(int nr, siginfo_t* info,
 
   // TODO, someday when this is enabled on MIPS: include the two extra
   // args in the error message.
-  SANDBOX_LOG_ERROR(
+  SANDBOX_LOG(
       "seccomp sandbox violation: pid %d, tid %d, syscall %d,"
       " args %d %d %d %d %d %d.%s",
       report.mPid, report.mTid, report.mSyscall, report.mArgs[0],
@@ -221,22 +227,57 @@ static void InstallSigSysHandler(void) {
     if (!aUseTSync && errno == ETXTBSY) {
       return false;
     }
-    SANDBOX_LOG_ERROR("prctl(PR_SET_NO_NEW_PRIVS) failed: %s", strerror(errno));
+    SANDBOX_LOG_ERRNO("prctl(PR_SET_NO_NEW_PRIVS) failed");
     MOZ_CRASH("prctl(PR_SET_NO_NEW_PRIVS)");
   }
 
   if (aUseTSync) {
-    if (syscall(__NR_seccomp, SECCOMP_SET_MODE_FILTER,
-                SECCOMP_FILTER_FLAG_TSYNC, aProg) != 0) {
-      SANDBOX_LOG_ERROR("thread-synchronized seccomp failed: %s",
-                        strerror(errno));
+    // Try with SECCOMP_FILTER_FLAGS_SPEC_ALLOW, and then without if
+    // that fails with EINVAL (or if an env var is set, for testing
+    // purposes).
+    //
+    // Context: Linux 4.17 applied some Spectre mitigations (SSBD and
+    // STIBP) by default when seccomp-bpf is used, but also added that
+    // flag to opt out (and also sysadmin-level overrides).  Later,
+    // Linux 5.16 turned them off by default; the rationale seems to
+    // be, roughly: the attacks are impractical or were already
+    // mitigated in other ways, there are worse attacks that these
+    // measures don't stop, and the performance impact is severe
+    // enough that container software was already opting out.
+    //
+    // For the full rationale, see
+    // https://github.com/torvalds/linux/commit/2f46993d83ff4abb310e
+    //
+    // In our case, STIBP causes a noticeable performance hit: WASM
+    // microbenchmarks of indirect calls regress by up to 2x or 3x
+    // depending on CPU.  Given that upstream Linux has changed the
+    // default years ago, we opt out.
+
+    static const bool kSpecAllow = !PR_GetEnv("MOZ_SANDBOX_NO_SPEC_ALLOW");
+
+    const auto setSeccomp = [aProg](int aFlags) -> long {
+      return syscall(__NR_seccomp, SECCOMP_SET_MODE_FILTER,
+                     SECCOMP_FILTER_FLAG_TSYNC | aFlags, aProg);
+    };
+
+    long rv;
+    if (kSpecAllow) {
+      rv = setSeccomp(SECCOMP_FILTER_FLAG_SPEC_ALLOW);
+    } else {
+      rv = -1;
+      errno = EINVAL;
+    }
+    if (rv != 0 && errno == EINVAL) {
+      rv = setSeccomp(0);
+    }
+    if (rv != 0) {
+      SANDBOX_LOG_ERRNO("thread-synchronized seccomp failed");
       MOZ_CRASH("seccomp+tsync failed, but kernel supports tsync");
     }
   } else {
     if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, (unsigned long)aProg, 0,
               0)) {
-      SANDBOX_LOG_ERROR("prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER) failed: %s",
-                        strerror(errno));
+      SANDBOX_LOG_ERRNO("prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER) failed");
       MOZ_CRASH("prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER)");
     }
   }
@@ -316,7 +357,7 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
   myTid = syscall(__NR_gettid);
   taskdp = opendir("/proc/self/task");
   if (taskdp == nullptr) {
-    SANDBOX_LOG_ERROR("opendir /proc/self/task: %s\n", strerror(errno));
+    SANDBOX_LOG_ERRNO("opendir /proc/self/task");
     MOZ_CRASH("failed while trying to open directory /proc/self/task");
   }
 
@@ -347,12 +388,12 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
       gSetSandboxDone = 0;
       if (syscall(__NR_tgkill, pid, tid, tsyncSignum) != 0) {
         if (errno == ESRCH) {
-          SANDBOX_LOG_ERROR("Thread %d unexpectedly exited.", tid);
+          SANDBOX_LOG("Thread %d unexpectedly exited.", tid);
           // Rescan threads, in case it forked before exiting.
           sandboxProgress = true;
           continue;
         }
-        SANDBOX_LOG_ERROR("tgkill(%d,%d): %s\n", pid, tid, strerror(errno));
+        SANDBOX_LOG_ERRNO("tgkill(%d,%d)", pid, tid);
         MOZ_CRASH("failed while trying to send a signal to a thread");
       }
       // It's unlikely, but if the thread somehow manages to exit
@@ -380,7 +421,7 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
         if (syscall(__NR_futex, reinterpret_cast<int*>(&gSetSandboxDone),
                     FUTEX_WAIT, 0, &futexTimeout) != 0) {
           if (errno != EWOULDBLOCK && errno != ETIMEDOUT && errno != EINTR) {
-            SANDBOX_LOG_ERROR("FUTEX_WAIT: %s\n", strerror(errno));
+            SANDBOX_LOG_ERRNO("FUTEX_WAIT");
             MOZ_CRASH("failed during FUTEX_WAIT");
           }
         }
@@ -394,7 +435,7 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
         // Has the thread ceased to exist?
         if (syscall(__NR_tgkill, pid, tid, 0) != 0) {
           if (errno == ESRCH) {
-            SANDBOX_LOG_ERROR("Thread %d unexpectedly exited.", tid);
+            SANDBOX_LOG("Thread %d unexpectedly exited.", tid);
           }
           // Rescan threads, in case it forked before exiting.
           // Also, if it somehow failed in a way that wasn't ESRCH,
@@ -407,7 +448,7 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
         if (now.tv_sec > timeLimit.tv_sec ||
             (now.tv_sec == timeLimit.tv_sec &&
              now.tv_nsec > timeLimit.tv_nsec)) {
-          SANDBOX_LOG_ERROR(
+          SANDBOX_LOG(
               "Thread %d unresponsive for %d seconds."
               "  Killing process.",
               tid, crashDelay);
@@ -423,8 +464,8 @@ static void BroadcastSetThreadSandbox(const sock_fprog* aFilter) {
   oldHandler = signal(tsyncSignum, SIG_DFL);
   if (oldHandler != SetThreadSandboxHandler) {
     // See the comment on FindFreeSignalNumber about race conditions.
-    SANDBOX_LOG_ERROR("handler for signal %d was changed to %p!", tsyncSignum,
-                      oldHandler);
+    SANDBOX_LOG("handler for signal %d was changed to %p!", tsyncSignum,
+                oldHandler);
     MOZ_CRASH("handler for the signal was changed to another");
   }
   gSeccompTsyncBroadcastSignum = 0;
@@ -481,7 +522,7 @@ void SandboxEarlyInit() {
     // masked.
     const int tsyncSignum = FindFreeSignalNumber();
     if (tsyncSignum == 0) {
-      SANDBOX_LOG_ERROR("No available signal numbers!");
+      SANDBOX_LOG("No available signal numbers!");
       MOZ_CRASH("failed while trying to find a free signal number");
     }
     gSeccompTsyncBroadcastSignum = tsyncSignum;
@@ -498,8 +539,7 @@ void SandboxEarlyInit() {
       } else {
         MOZ_CRASH("failed because the signal is in use by another handler");
       }
-      SANDBOX_LOG_ERROR("signal %d in use by handler %p!\n", tsyncSignum,
-                        oldHandler);
+      SANDBOX_LOG("signal %d in use by handler %p!\n", tsyncSignum, oldHandler);
     }
   }
 }
@@ -549,6 +589,24 @@ static void SetCurrentProcessSandbox(
   // lifetime, but does not take ownership of them.
   sandbox::bpf_dsl::PolicyCompiler compiler(aPolicy.get(),
                                             sandbox::Trap::Registry());
+
+  // In case of errors detected by the compiler (like ABI violations),
+  // log and crash normally; the default is SECCOMP_RET_KILL_THREAD,
+  // which results in hard-to-debug hangs.
+  compiler.SetPanicFunc([](const char* error) -> sandbox::bpf_dsl::ResultExpr {
+    // Note: this assumes that `error` is a string literal, which is
+    // currently the case for all callers.  (An intentionally leaked
+    // heap allocation would also work.)
+    return sandbox::bpf_dsl::Trap(
+        [](const sandbox::arch_seccomp_data&, void* aux) -> intptr_t {
+          auto error = reinterpret_cast<const char*>(aux);
+          SANDBOX_LOG("Panic: %s", error);
+          MOZ_CRASH("Sandbox Panic");
+          // unreachable
+        },
+        (void*)error);
+  });
+
   sandbox::CodeGen::Program program = compiler.Compile();
   if (SandboxInfo::Get().Test(SandboxInfo::kVerbose)) {
     sandbox::bpf_dsl::DumpBPF::PrintProgram(program);
@@ -579,12 +637,12 @@ static void SetCurrentProcessSandbox(
   const SandboxInfo info = SandboxInfo::Get();
   if (info.Test(SandboxInfo::kHasSeccompTSync)) {
     if (info.Test(SandboxInfo::kVerbose)) {
-      SANDBOX_LOG_ERROR("using seccomp tsync");
+      SANDBOX_LOG("using seccomp tsync");
     }
     ApplySandboxWithTSync(&fprog);
   } else {
     if (info.Test(SandboxInfo::kVerbose)) {
-      SANDBOX_LOG_ERROR("no tsync support; using signal broadcast");
+      SANDBOX_LOG("no tsync support; using signal broadcast");
     }
     BroadcastSetThreadSandbox(&fprog);
   }
@@ -647,14 +705,14 @@ void SetMediaPluginSandbox(const char* aFilePath) {
 
   SandboxOpenedFile plugin(aFilePath);
   if (!plugin.IsOpen()) {
-    SANDBOX_LOG_ERROR("failed to open plugin file %s: %s", aFilePath,
-                      strerror(errno));
+    SANDBOX_LOG_ERRNO("failed to open plugin file %s", aFilePath);
     MOZ_CRASH("failed while trying to open the plugin file ");
   }
 
   auto files = new SandboxOpenedFiles();
   files->Add(std::move(plugin));
   files->Add("/dev/urandom", SandboxOpenedFile::Dup::YES);
+  files->Add("/dev/random", SandboxOpenedFile::Dup::YES);
   files->Add("/etc/ld.so.cache");  // Needed for NSS in clearkey.
   files->Add("/sys/devices/system/cpu/cpu0/tsc_freq_khz");
   files->Add("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
@@ -713,6 +771,37 @@ void SetSocketProcessSandbox(int aBroker) {
   }
 
   SetCurrentProcessSandbox(GetSocketProcessSandboxPolicy(sBroker));
+}
+
+void SetUtilitySandbox(int aBroker, ipc::SandboxingKind aKind) {
+  if (!SandboxInfo::Get().Test(SandboxInfo::kHasSeccompBPF) ||
+      !IsUtilitySandboxEnabled(aKind)) {
+    if (aBroker >= 0) {
+      close(aBroker);
+    }
+    return;
+  }
+
+  gSandboxReporterClient =
+      new SandboxReporterClient(SandboxReport::ProcType::UTILITY);
+
+  static SandboxBrokerClient* sBroker;
+  if (aBroker >= 0) {
+    sBroker = new SandboxBrokerClient(aBroker);
+  }
+
+  UniquePtr<sandbox::bpf_dsl::Policy> policy;
+  switch (aKind) {
+    case ipc::SandboxingKind::GENERIC_UTILITY:
+      policy = GetUtilitySandboxPolicy(sBroker);
+      break;
+
+    default:
+      MOZ_ASSERT(false, "Invalid SandboxingKind");
+      break;
+  }
+
+  SetCurrentProcessSandbox(std::move(policy));
 }
 
 bool SetSandboxCrashOnError(bool aValue) {

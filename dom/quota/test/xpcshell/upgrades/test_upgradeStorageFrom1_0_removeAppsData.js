@@ -20,8 +20,7 @@ function* testSteps() {
     },
 
     {
-      path:
-        "storage/default/https+++developer.cdn.mozilla.net^appId=1007&inBrowser=1",
+      path: "storage/default/https+++developer.cdn.mozilla.net^appId=1007&inBrowser=1",
       obsolete: true,
     },
   ];
@@ -63,7 +62,7 @@ function* testSteps() {
   let request = init(continueToNextStepSync);
   yield undefined;
 
-  ok(request.resultCode == NS_OK, "Initialization succeeded");
+  Assert.equal(request.resultCode, NS_OK, "Initialization succeeded");
 
   info("Verifying storage");
 

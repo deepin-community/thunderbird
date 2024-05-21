@@ -119,11 +119,11 @@ function checkAttachment(expectedCD, expectedCT) {
     pos++;
   } while (contentType.startsWith(" ", pos));
   contentType = contentType.substr(0, pos);
-  Assert.equal(contentType, expectedCT);
+  Assert.equal(contentType.toLowerCase(), expectedCT.toLowerCase());
 }
 
 async function testInput0() {
-  for (let folding in ParamFoldingPref) {
+  for (const folding in ParamFoldingPref) {
     Services.prefs.setIntPref(
       "mail.strictly_mime.parm_folding",
       ParamFoldingPref[folding]
@@ -134,7 +134,7 @@ async function testInput0() {
 }
 
 async function testInput1() {
-  for (let folding in ParamFoldingPref) {
+  for (const folding in ParamFoldingPref) {
     Services.prefs.setIntPref(
       "mail.strictly_mime.parm_folding",
       ParamFoldingPref[folding]
@@ -156,12 +156,16 @@ function run_test() {
  * Test that the full attachment content is used to pick the CTE.
  */
 add_task(async function testBinaryAfterPlainTextAttachment() {
-  let testFile = do_get_file("data/binary-after-plain.txt");
+  const testFile = do_get_file("data/binary-after-plain.txt");
   await createMessage(testFile);
-  let msgData = mailTestUtils.loadMessageToString(
+  const msgData = mailTestUtils.loadMessageToString(
     gDraftFolder,
     mailTestUtils.firstMsgHdr(gDraftFolder)
   );
   // If only the first few chars are used, encoding will be incorrectly 7bit.
-  Assert.ok(msgData.includes("Content-Transfer-Encoding: base64\r\n"));
+  Assert.ok(
+    msgData.includes(
+      'Content-Disposition: attachment; filename="binary-after-plain.txt"\r\nContent-Transfer-Encoding: base64\r\n'
+    )
+  );
 });

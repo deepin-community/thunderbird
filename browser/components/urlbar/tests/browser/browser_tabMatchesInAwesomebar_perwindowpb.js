@@ -10,7 +10,7 @@
 
 const TEST_URL = `${TEST_BASE_URL}dummy_page.html`;
 
-add_task(async function() {
+add_task(async function () {
   let normalWindow = await BrowserTestUtils.openNewBrowserWindow();
   let privateWindow = await BrowserTestUtils.openNewBrowserWindow({
     private: true,
@@ -38,7 +38,10 @@ add_task(async function() {
   await BrowserTestUtils.closeWindow(normalWindow);
 });
 
-async function runTest(aSourceWindow, aDestWindow, aExpectSwitch, aCallback) {
+async function runTest(aSourceWindow, aDestWindow, aExpectSwitch) {
+  BrowserTestUtils.addTab(aSourceWindow.gBrowser, TEST_URL, {
+    userContextId: 1,
+  });
   await BrowserTestUtils.openNewForegroundTab(aSourceWindow.gBrowser, TEST_URL);
   let testTab = await BrowserTestUtils.openNewForegroundTab(
     aDestWindow.gBrowser
@@ -53,15 +56,17 @@ async function runTest(aSourceWindow, aDestWindow, aExpectSwitch, aCallback) {
 
   // Ensure that this tab has no history entries
   let sessionHistoryCount = await new Promise(resolve => {
-    SessionStore.getSessionHistory(gBrowser.selectedTab, function(
-      sessionHistory
-    ) {
-      resolve(sessionHistory.entries.length);
-    });
+    SessionStore.getSessionHistory(
+      gBrowser.selectedTab,
+      function (sessionHistory) {
+        resolve(sessionHistory.entries.length);
+      }
+    );
   });
 
-  ok(
-    sessionHistoryCount < 2,
+  Assert.less(
+    sessionHistoryCount,
+    2,
     `The test tab has 1 or fewer history entries. sessionHistoryCount=${sessionHistoryCount}`
   );
   // Ensure that this tab is on about:blank
@@ -71,7 +76,7 @@ async function runTest(aSourceWindow, aDestWindow, aExpectSwitch, aCallback) {
     "The test tab is on about:blank"
   );
   // Ensure that this tab's document has no child nodes
-  await SpecialPowers.spawn(testTab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(testTab.linkedBrowser, [], async function () {
     ok(
       !content.document.body.hasChildNodes(),
       "The test tab has no child nodes"
@@ -117,3 +122,53 @@ async function runTest(aSourceWindow, aDestWindow, aExpectSwitch, aCallback) {
     await BrowserTestUtils.browserLoaded(testTab.linkedBrowser);
   }
 }
+
+// Ensure that if the same page is opened in a non-private and a private window,
+// the address bar in the non-private window doesn't show the private tab.
+add_task(async function same_url_both_windows() {
+  let win = await BrowserTestUtils.openNewBrowserWindow();
+  let tab = await BrowserTestUtils.openNewForegroundTab(win.gBrowser, TEST_URL);
+
+  let privateWin = await BrowserTestUtils.openNewBrowserWindow({
+    private: true,
+  });
+  await BrowserTestUtils.openNewForegroundTab(privateWin.gBrowser, TEST_URL);
+
+  // The current tab is not suggested, so open and focus another tab.
+  await BrowserTestUtils.openNewForegroundTab(win.gBrowser);
+
+  // Check the switch-tab is not shown twice (one per window).
+  await UrlbarTestUtils.promiseAutocompleteResultPopup({
+    window: win,
+    value: "dummy_page",
+  });
+  Assert.equal(2, UrlbarTestUtils.getResultCount(win), "Check results count");
+  let result = await UrlbarTestUtils.getDetailsOfResultAt(win, 0);
+  Assert.ok(result.heuristic, "First result is heuristic");
+  result = await UrlbarTestUtils.getDetailsOfResultAt(win, 1);
+  Assert.equal(
+    UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
+    result.type,
+    "Second result is tab switch"
+  );
+
+  // Now close the non-private tab, and check there's no switch-tab entry in
+  // the non-private window.
+  BrowserTestUtils.removeTab(tab);
+  await UrlbarTestUtils.promiseAutocompleteResultPopup({
+    window: win,
+    value: "dummy_page",
+  });
+  Assert.equal(2, UrlbarTestUtils.getResultCount(win), "Check results count");
+  result = await UrlbarTestUtils.getDetailsOfResultAt(win, 0);
+  Assert.ok(result.heuristic, "First result is heuristic");
+  result = await UrlbarTestUtils.getDetailsOfResultAt(win, 1);
+  Assert.notEqual(
+    UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
+    result.type,
+    "Second result is not tab switch"
+  );
+
+  await BrowserTestUtils.closeWindow(privateWin);
+  await BrowserTestUtils.closeWindow(win);
+});

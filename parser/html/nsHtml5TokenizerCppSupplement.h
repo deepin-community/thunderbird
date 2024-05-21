@@ -61,21 +61,52 @@ bool nsHtml5Tokenizer::EnsureBufferSpace(int32_t aLength) {
   return true;
 }
 
+bool nsHtml5Tokenizer::TemplatePushedOrHeadPopped() {
+  if (encodingDeclarationHandler) {
+    return encodingDeclarationHandler->TemplatePushedOrHeadPopped();
+  }
+  return false;
+}
+
+void nsHtml5Tokenizer::RememberGt(int32_t aPos) {
+  if (encodingDeclarationHandler) {
+    return encodingDeclarationHandler->RememberGt(aPos);
+  }
+}
+
 void nsHtml5Tokenizer::StartPlainText() {
   stateSave = nsHtml5Tokenizer::PLAINTEXT;
 }
 
 void nsHtml5Tokenizer::EnableViewSource(nsHtml5Highlighter* aHighlighter) {
-  mViewSource = WrapUnique(aHighlighter);
+  mViewSource = mozilla::WrapUnique(aHighlighter);
 }
 
-bool nsHtml5Tokenizer::FlushViewSource() { return mViewSource->FlushOps(); }
+bool nsHtml5Tokenizer::ShouldFlushViewSource() {
+  return mViewSource->ShouldFlushOps();
+}
+
+mozilla::Result<bool, nsresult> nsHtml5Tokenizer::FlushViewSource() {
+  return mViewSource->FlushOps();
+}
 
 void nsHtml5Tokenizer::StartViewSource(const nsAutoString& aTitle) {
   mViewSource->Start(aTitle);
 }
 
-void nsHtml5Tokenizer::EndViewSource() { mViewSource->End(); }
+void nsHtml5Tokenizer::StartViewSourceCharacters() {
+  mViewSource->StartCharacters();
+}
+
+[[nodiscard]] bool nsHtml5Tokenizer::EndViewSource() {
+  return mViewSource->End();
+}
+
+void nsHtml5Tokenizer::SetViewSourceOpSink(nsAHtml5TreeOpSink* aOpSink) {
+  mViewSource->SetOpSink(aOpSink);
+}
+
+void nsHtml5Tokenizer::RewindViewSource() { mViewSource->Rewind(); }
 
 void nsHtml5Tokenizer::errWarnLtSlashInRcdata() {}
 
@@ -401,6 +432,12 @@ void nsHtml5Tokenizer::errNcrUnassigned() {
 }
 
 void nsHtml5Tokenizer::errDuplicateAttribute() {
+  if (attributes) {
+    // There is an open issue for properly specifying this:
+    // https://github.com/whatwg/html/issues/3257
+    attributes->setDuplicateAttributeError();
+  }
+
   if (MOZ_UNLIKELY(mViewSource)) {
     mViewSource->AddErrorToCurrentNode("errDuplicateAttribute");
   }
@@ -424,9 +461,9 @@ void nsHtml5Tokenizer::errMissingSpaceBeforeDoctypeName() {
   }
 }
 
-void nsHtml5Tokenizer::errHyphenHyphenBang() {
+void nsHtml5Tokenizer::errNestedComment() {
   if (MOZ_LIKELY(mViewSource)) {
-    mViewSource->AddErrorToCurrentNode("errHyphenHyphenBang");
+    mViewSource->AddErrorToCurrentNode("errNestedComment");
   }
 }
 

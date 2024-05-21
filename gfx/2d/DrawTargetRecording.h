@@ -11,6 +11,11 @@
 #include "DrawEventRecorder.h"
 
 namespace mozilla {
+namespace layers {
+class CanvasDrawEventRecorder;
+struct RemoteTextureOwnerId;
+}  // namespace layers
+
 namespace gfx {
 
 class DrawTargetRecording : public DrawTarget {
@@ -18,6 +23,10 @@ class DrawTargetRecording : public DrawTarget {
   MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(DrawTargetRecording, override)
   DrawTargetRecording(DrawEventRecorder* aRecorder, DrawTarget* aDT,
                       IntRect aRect, bool aHasData = false);
+  DrawTargetRecording(layers::CanvasDrawEventRecorder* aRecorder,
+                      int64_t aTextureId,
+                      const layers::RemoteTextureOwnerId& aTextureOwnerId,
+                      DrawTarget* aDT, const IntSize& aSize);
 
   ~DrawTargetRecording();
 
@@ -30,6 +39,8 @@ class DrawTargetRecording : public DrawTarget {
   virtual bool IsRecording() const override { return true; }
 
   virtual void Link(const char* aDestination, const Rect& aRect) override;
+  virtual void Destination(const char* aDestination,
+                           const Point& aPoint) override;
 
   virtual already_AddRefed<SourceSurface> Snapshot() override;
   virtual already_AddRefed<SourceSurface> IntoLuminanceSource(
@@ -60,34 +71,21 @@ class DrawTargetRecording : public DrawTarget {
       const DrawSurfaceOptions& aSurfOptions = DrawSurfaceOptions(),
       const DrawOptions& aOptions = DrawOptions()) override;
 
-  virtual void DrawDependentSurface(
-      uint64_t aId, const Rect& aDest,
-      const DrawSurfaceOptions& aSurfOptions = DrawSurfaceOptions(),
-      const DrawOptions& aOptions = DrawOptions()) override;
+  virtual void DrawDependentSurface(uint64_t aId, const Rect& aDest) override;
 
   virtual void DrawFilter(FilterNode* aNode, const Rect& aSourceRect,
                           const Point& aDestPoint,
                           const DrawOptions& aOptions = DrawOptions()) override;
 
-  /*
-   * Blend a surface to the draw target with a shadow. The shadow is drawn as a
-   * gaussian blur using a specified sigma. The shadow is clipped to the size
-   * of the input surface, so the input surface should contain a transparent
-   * border the size of the approximate coverage of the blur (3 * aSigma).
-   * NOTE: This function works in device space!
-   *
-   * aSurface Source surface to draw.
-   * aDest Destination point that this drawing operation should draw to.
-   * aColor Color of the drawn shadow
-   * aOffset Offset of the shadow
-   * aSigma Sigma used for the guassian filter kernel
-   * aOperator Composition operator used
-   */
   virtual void DrawSurfaceWithShadow(SourceSurface* aSurface,
                                      const Point& aDest,
-                                     const DeviceColor& aColor,
-                                     const Point& aOffset, Float aSigma,
+                                     const ShadowOptions& aShadow,
                                      CompositionOp aOperator) override;
+
+  virtual void DrawShadow(const Path* aPath, const Pattern& aPattern,
+                          const ShadowOptions& aShadow,
+                          const DrawOptions& aOptions,
+                          const StrokeOptions* aStrokeOptions) override;
 
   /*
    * Clear a rectangle on the draw target to transparent black. This will
@@ -166,11 +164,19 @@ class DrawTargetRecording : public DrawTarget {
                     const DrawOptions& aOptions = DrawOptions()) override;
 
   /*
-   * Fill a series of clyphs on the draw target with a certain source pattern.
+   * Fill a series of glyphs on the draw target with a certain source pattern.
    */
   virtual void FillGlyphs(ScaledFont* aFont, const GlyphBuffer& aBuffer,
                           const Pattern& aPattern,
                           const DrawOptions& aOptions = DrawOptions()) override;
+
+  /**
+   * Stroke a series of glyphs on the draw target with a certain source pattern.
+   */
+  virtual void StrokeGlyphs(
+      ScaledFont* aFont, const GlyphBuffer& aBuffer, const Pattern& aPattern,
+      const StrokeOptions& aStrokeOptions = StrokeOptions(),
+      const DrawOptions& aOptions = DrawOptions()) override;
 
   /*
    * This takes a source pattern and a mask, and composites the source pattern
@@ -346,6 +352,8 @@ class DrawTargetRecording : public DrawTarget {
    */
   virtual void SetTransform(const Matrix& aTransform) override;
 
+  virtual void SetPermitSubpixelAA(bool aPermitSubpixelAA) override;
+
   /* Tries to get a native surface for a DrawTarget, this may fail if the
    * draw target cannot convert to this surface type.
    */
@@ -356,6 +364,10 @@ class DrawTargetRecording : public DrawTarget {
   virtual bool IsCurrentGroupOpaque() override {
     return mFinalDT->IsCurrentGroupOpaque();
   }
+
+  bool IsDirty() const { return mIsDirty; }
+
+  void MarkClean() { mIsDirty = false; }
 
  private:
   /**
@@ -372,9 +384,25 @@ class DrawTargetRecording : public DrawTarget {
   already_AddRefed<PathRecording> EnsurePathStored(const Path* aPath);
   void EnsurePatternDependenciesStored(const Pattern& aPattern);
 
+  void DrawGlyphs(ScaledFont* aFont, const GlyphBuffer& aBuffer,
+                  const Pattern& aPattern,
+                  const DrawOptions& aOptions = DrawOptions(),
+                  const StrokeOptions* aStrokeOptions = nullptr);
+
+  void MarkChanged();
+
   RefPtr<DrawEventRecorderPrivate> mRecorder;
   RefPtr<DrawTarget> mFinalDT;
   IntRect mRect;
+
+  struct PushedLayer {
+    explicit PushedLayer(bool aOldPermitSubpixelAA)
+        : mOldPermitSubpixelAA(aOldPermitSubpixelAA) {}
+    bool mOldPermitSubpixelAA;
+  };
+  std::vector<PushedLayer> mPushedLayers;
+
+  bool mIsDirty = false;
 };
 
 }  // namespace gfx

@@ -127,7 +127,6 @@ extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/messenger/icons/t
 chrome/classic/skin/classic/messenger/icons/thread-closed-kill.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/messenger/icons/insecure.png
 chrome/classic/skin/classic/messenger/icons/insecure.png
-extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginDisabled-16.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginGeneric-16.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/messenger/icons/thread-new-closed-offl-kill.png
 chrome/classic/skin/classic/messenger/icons/thread-new-closed-offl-kill.png
@@ -161,7 +160,6 @@ extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/messenger-newsblo
 chrome/classic/skin/classic/messenger-newsblog/icons/rss-feed.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginBlocked-16.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginBlocked.png
-extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginDisabled.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/pluginGeneric.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/messenger/icons/info.png
 chrome/classic/skin/classic/messenger/icons/info.png
@@ -220,8 +218,6 @@ extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extension
 chrome/toolkit/skin/classic/mozapps/extensions/rating-won.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/plugins/contentPluginCrashed.png
 chrome/toolkit/skin/classic/mozapps/plugins/contentPluginCrashed.png
-extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/navigator/click-to-play-warning-stripes.png
-chrome/classic/skin/classic/navigator/click-to-play-warning-stripes.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extensions/category-dictionaries.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extensions/dictionaryGeneric.png
 chrome/toolkit/skin/classic/mozapps/extensions/dictionaryGeneric.png
@@ -239,8 +235,8 @@ chrome/classic/skin/classic/communicator/icons/feedIcon.png
 chrome/classic/skin/classic/communicator/icons/videoFeedIcon.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/communicator/brand/throbber-single.png
 chrome/classic/skin/classic/communicator/brand/throbber-single.png
-extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/communicator/icons/notification-icons.svg
-chrome/classic/skin/classic/communicator/icons/notification-icons.svg
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/communicator/icons/persistent-storage.svg
+chrome/classic/skin/classic/communicator/icons/persistent-storage.svg
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extensions/category-languages.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extensions/localeGeneric.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/mozapps/extensions/heart.png
@@ -277,6 +273,18 @@ extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/media/thro
 chrome/toolkit/skin/classic/global/media/throbber.png
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/communicator/brand/throbber-anim.png
 chrome/classic/skin/classic/communicator/brand/throbber-anim.png
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/icons/spinner-arrow-down.svg
+chrome/toolkit/skin/classic/global/icons/spinner-arrow-down.svg
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/icons/spinner-arrow-up.svg
+chrome/toolkit/skin/classic/global/icons/spinner-arrow-up.svg
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/datetimepopup.css
+chrome/toolkit/skin/classic/global/datetimepopup.css
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/icons/calendar-arrow-left.svg
+chrome/toolkit/skin/classic/global/icons/calendar-arrow-left.svg
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/icons/calendar-arrow-right.svg
+chrome/toolkit/skin/classic/global/icons/calendar-arrow-right.svg
+extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/icons/input-clear.svg
+chrome/toolkit/skin/classic/global/icons/input-clear.svg
 
 # Compatibility gif files for modern theme.
 extensions/modern@themes.mozilla.org/chrome/modern/skin/modern/global/gtk/tree/sort-dsc.gif
@@ -305,8 +313,6 @@ extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/chrome/skin/linux/calendar/cal
 extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/chrome/skin/windows/calendar/calendar-alarm-dialog.css
 extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/chrome/skin/linux/calendar/calendar-management.css
 extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/chrome/skin/windows/calendar/calendar-management.css
-extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/calendar-js/calFilter.js
-extensions/{e2fda1a4-762b-4020-b5ad-a41df1933103}/chrome/calendar/content/calendar/calFilter.js
 
 # Linux
 chrome/comm/content/branding/icon16.png

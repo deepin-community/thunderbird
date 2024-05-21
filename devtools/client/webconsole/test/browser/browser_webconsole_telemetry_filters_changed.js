@@ -5,13 +5,13 @@
 
 "use strict";
 
-const TEST_URI = `data:text/html,<meta charset=utf8><script>
+const TEST_URI = `data:text/html,<!DOCTYPE html><meta charset=utf8><script>
   console.log("test message");
 </script>`;
 
 const ALL_CHANNELS = Ci.nsITelemetry.DATASET_ALL_CHANNELS;
 
-add_task(async function() {
+add_task(async function () {
   // Let's reset the counts.
   Services.telemetry.clearEvents();
 
@@ -57,7 +57,11 @@ function checkTelemetryEvent(expectedEvent) {
   const events = getFiltersChangedEventsExtra();
   is(events.length, 1, "There was only 1 event logged");
   const [event] = events;
-  ok(event.session_id > 0, "There is a valid session_id in the logged event");
+  Assert.greater(
+    Number(event.session_id),
+    0,
+    "There is a valid session_id in the logged event"
+  );
   const f = e => JSON.stringify(e, null, 2);
   is(
     f(event),

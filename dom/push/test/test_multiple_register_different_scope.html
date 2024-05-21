@@ -26,7 +26,7 @@ http://creativecommons.org/licenses/publicdomain/
   var scopeA = "./a/";
   var scopeB = "./b/";
 
-  function debug(str) {
+  function debug() {
   //  console.log(str + "\n");
   }
 
@@ -114,8 +114,9 @@ http://creativecommons.org/licenses/publicdomain/
     }).then(SimpleTest.finish);
   }
 
-  setupPrefsAndMockSocket(new MockWebSocket()).then(_ => runTest());
-  SpecialPowers.addPermission("desktop-notification", true, document);
+  setupPrefsAndMockSocket(new MockWebSocket())
+    .then(_ => setPushPermission(true))
+    .then(_ => runTest());
   SimpleTest.waitForExplicitFinish();
 </script>
 </body>

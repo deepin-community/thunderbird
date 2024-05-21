@@ -29,57 +29,37 @@ async function checkHeader(engine) {
   // The header can be updated after getting the engine, so we may have to
   // wait for it.
   let header = searchPopup.searchbarEngineName;
-  if (!header.getAttribute("value").includes(engine.name)) {
-    await new Promise(resolve => {
-      let observer = new MutationObserver(() => {
-        observer.disconnect();
-        resolve();
-      });
-      observer.observe(searchPopup.searchbarEngineName, {
-        attributes: true,
-        attributeFilter: ["value"],
-      });
-    });
-  }
+  await TestUtils.waitForCondition(
+    () => header.getAttribute("value").includes(engine.name),
+    "Should have the correct engine name displayed in the header"
+  );
   Assert.ok(
     header.getAttribute("value").includes(engine.name),
     "Should have the correct engine name displayed in the header"
   );
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   searchbar = await gCUITestUtils.addSearchBar();
   textbox = searchbar.textbox;
 
-  let defaultEngine = await Services.search.getDefault();
-  let engine = await SearchTestUtils.promiseNewSearchEngine(
-    getRootDirectory(gTestPath) + "testEngine.xml"
-  );
-  await Services.search.setDefault(engine);
+  await SearchTestUtils.promiseNewSearchEngine({
+    url: getRootDirectory(gTestPath) + "testEngine.xml",
+    setAsDefault: true,
+  });
   // First cleanup the form history in case other tests left things there.
-  await new Promise((resolve, reject) => {
-    info("cleanup the search history");
-    searchbar.FormHistory.update(
-      { op: "remove", fieldname: "searchbar-history" },
-      { handleCompletion: resolve, handleError: reject }
-    );
-  });
+  info("cleanup the search history");
+  await FormHistory.update({ op: "remove", fieldname: "searchbar-history" });
 
-  await new Promise((resolve, reject) => {
-    info("adding search history values: " + kValues);
-    let addOps = kValues.map(value => {
-      return { op: "add", fieldname: "searchbar-history", value };
-    });
-    searchbar.FormHistory.update(addOps, {
-      handleCompletion: resolve,
-      handleError: reject,
-    });
+  info("adding search history values: " + kValues);
+  let addOps = kValues.map(value => {
+    return { op: "add", fieldname: "searchbar-history", value };
   });
+  await FormHistory.update(addOps);
 
   textbox.value = kUserValue;
 
   registerCleanupFunction(async () => {
-    await Services.search.setDefault(defaultEngine);
     gCUITestUtils.removeSearchBar();
   });
 });
@@ -103,7 +83,11 @@ add_task(async function test_arrows() {
   // before-last one-off buttons aren't different. We should always have more
   // than 4 default engines, but it's safer to check this assumption.
   let oneOffs = getOneOffs();
-  ok(oneOffs.length >= 4, "we have at least 4 one-off buttons displayed");
+  Assert.greaterOrEqual(
+    oneOffs.length,
+    4,
+    "we have at least 4 one-off buttons displayed"
+  );
 
   ok(!textbox.selectedButton, "no one-off button should be selected");
 
@@ -263,10 +247,9 @@ add_task(async function test_tab() {
   await promise;
 
   // ... and move the focus out of the searchbox.
-  isnot(
-    Services.focus.focusedElement,
-    textbox.inputField,
-    "the search bar no longer be focused"
+  ok(
+    !Services.focus.focusedElement.classList.contains("searchbar-textbox"),
+    "the search input in the search bar should no longer be focused"
   );
 });
 
@@ -310,11 +293,27 @@ add_task(async function test_shift_tab() {
   await promise;
 
   // ... and move the focus out of the searchbox.
-  isnot(
-    Services.focus.focusedElement,
-    textbox.inputField,
-    "the search bar no longer be focused"
+  ok(
+    !Services.focus.focusedElement.classList.contains("searchbar-textbox"),
+    "the search input in the search bar should no longer be focused"
   );
+
+  // Return the focus to the search bar
+  EventUtils.synthesizeKey("KEY_Tab");
+  ok(
+    Services.focus.focusedElement.classList.contains("searchbar-textbox"),
+    "the search bar should be focused"
+  );
+
+  // ... and confirm the input value was autoselected and is replaced.
+  EventUtils.synthesizeKey("fo");
+  is(
+    Services.focus.focusedElement.value,
+    "fo",
+    "when the search bar was focused, the value should be autoselected"
+  );
+  // Return to the expected value
+  EventUtils.synthesizeKey("o");
 });
 
 add_task(async function test_alt_down() {
@@ -650,7 +649,7 @@ add_task(async function cleanup() {
   let removeOps = kValues.map(value => {
     return { op: "remove", fieldname: "searchbar-history", value };
   });
-  searchbar.FormHistory.update(removeOps);
+  await FormHistory.update(removeOps);
 
   textbox.value = "";
 });

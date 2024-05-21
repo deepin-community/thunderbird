@@ -7,14 +7,6 @@ VOLUME /builds/worker/tooltool-cache
 
 ENV XZ_OPT=-T0
 
-# %include taskcluster/docker/recipes/prepare_openjdk.sh
-COPY topsrcdir/taskcluster/docker/recipes/prepare_openjdk.sh /tmp/prepare_openjdk.sh
-RUN /tmp/prepare_openjdk.sh && rm /tmp/prepare_openjdk.sh
-
-ARG TASKCLUSTER_ROOT_URL
-ARG DOCKER_IMAGE_PACKAGES
-RUN /usr/local/sbin/setup_packages.sh $TASKCLUSTER_ROOT_URL $DOCKER_IMAGE_PACKAGES
-
 RUN apt-get update && \
     apt-get install \
       autoconf2.13 \
@@ -31,11 +23,10 @@ RUN apt-get update && \
       gnupg \
       jq \
       libc6-dev \
-      libstdc++-8-dev \
+      libstdc++-*-dev \
       libmpfr-dev \
       nasm \
-      openjdk-8-jdk-headless \
-      pkg-config \
+      opam \
       patch \
       p7zip-full \
       procps \
@@ -52,7 +43,6 @@ RUN apt-get update && \
       x11-utils \
       xvfb \
       linux-libc-dev \
-      libdbus-glib-1-dev \
       libfontconfig1-dev \
       libfreetype6-dev \
       libgconf2-dev \
@@ -64,7 +54,3 @@ RUN apt-get update && \
       libxt-dev \
       lib32z1 \
       patchelf
-
-# Install opam 2
-RUN curl -sL https://github.com/ocaml/opam/releases/download/2.0.3/opam-2.0.3-x86_64-linux > /usr/bin/opam && \
-    chmod +x /usr/bin/opam

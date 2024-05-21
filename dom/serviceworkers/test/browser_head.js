@@ -10,9 +10,8 @@
  * https://searchfox.org/mozilla-central/source/dom/localstorage/test/unit/head.js
  **/
 
-// To use this file, explicitly import it via (including the eslint comment):
+// To use this file, explicitly import it via:
 //
-// /* import-globals-from browser_head.js */
 // Services.scriptloader.loadSubScript("chrome://mochitests/content/browser/dom/serviceworkers/test/browser_head.js", this);
 
 // Find the current parent directory of the test context we're being loaded into
@@ -25,6 +24,11 @@ const SWM = Cc["@mozilla.org/serviceworkers/manager;1"].getService(
   Ci.nsIServiceWorkerManager
 );
 
+// The expected minimum usage for an origin that has any Cache API storage in
+// use. Currently, the DB uses a page size of 4k and a minimum growth size of
+// 32k and has enough tables/indices for this to round up to 64k.
+const kMinimumOriginUsageBytes = 65536;
+
 function getPrincipal(url, attrs) {
   const uri = Services.io.newURI(url);
   if (!attrs) {
@@ -34,8 +38,8 @@ function getPrincipal(url, attrs) {
 }
 
 async function _qm_requestFinished(request) {
-  await new Promise(function(resolve) {
-    request.callback = function() {
+  await new Promise(function (resolve) {
+    request.callback = function () {
       resolve();
     };
   });
@@ -47,11 +51,17 @@ async function _qm_requestFinished(request) {
   return request.result;
 }
 
+async function qm_reset_storage() {
+  return new Promise(resolve => {
+    let request = Services.qms.reset();
+    request.callback = resolve;
+  });
+}
+
 async function get_qm_origin_usage(origin) {
   return new Promise(resolve => {
-    const principal = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-      origin
-    );
+    const principal =
+      Services.scriptSecurityManager.createContentPrincipalFromOrigin(origin);
     Services.qms.getUsageForPrincipal(principal, request =>
       resolve(request.result.usage)
     );
@@ -70,7 +80,7 @@ async function clear_qm_origin_group_via_clearData(origin) {
 
   // Initiate group clearing and wait for it.
   await new Promise((resolve, reject) => {
-    Services.clearData.deleteDataFromHost(
+    Services.clearData.deleteDataFromBaseDomain(
       baseDomain,
       false,
       Services.clearData.CLEAR_DOM_QUOTA,
@@ -123,7 +133,7 @@ async function install_sw(swDesc) {
       await SpecialPowers.spawn(
         browser,
         [{ swScript: swDesc.script, swScope: swDesc.scope }],
-        async function({ swScript, swScope }) {
+        async function ({ swScript, swScope }) {
           await content.wrappedJSObject.registerAndWaitForActive(
             swScript,
             swScope
@@ -155,14 +165,21 @@ async function consume_storage(origin, storageDesc) {
       url: pageUrlStr,
     },
     async browser => {
-      await SpecialPowers.spawn(browser, [storageDesc], async function({
-        cacheBytes,
-        idbBytes,
-      }) {
-        await content.wrappedJSObject.fillStorage(cacheBytes, idbBytes);
-      });
+      await SpecialPowers.spawn(
+        browser,
+        [storageDesc],
+        async function ({ cacheBytes, idbBytes }) {
+          await content.wrappedJSObject.fillStorage(cacheBytes, idbBytes);
+        }
+      );
     }
   );
+}
+
+// Check if the origin is effectively empty, but allowing for the minimum size
+// Cache API database to be present.
+function is_minimum_origin_usage(originUsageBytes) {
+  return originUsageBytes <= kMinimumOriginUsageBytes;
 }
 
 /**
@@ -191,7 +208,7 @@ async function navigate_and_get_body(swDesc, debugTag) {
     },
     async browser => {
       info(` Tab opened, querying body content.`);
-      const spawnResult = await SpecialPowers.spawn(browser, [], function() {
+      const spawnResult = await SpecialPowers.spawn(browser, [], function () {
         const controlled = !!content.navigator.serviceWorker.controller;
         // Special-case about: URL's.
         let loc = content.document.documentURI;
@@ -218,13 +235,13 @@ async function navigate_and_get_body(swDesc, debugTag) {
 }
 
 function waitForIframeLoad(iframe) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     iframe.onload = resolve;
   });
 }
 
 function waitForRegister(scope, callback) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     let listener = {
       onRegister(registration) {
         if (registration.scope !== scope) {
@@ -239,7 +256,7 @@ function waitForRegister(scope, callback) {
 }
 
 function waitForUnregister(scope) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     let listener = {
       onUnregister(registration) {
         if (registration.scope !== scope) {
@@ -253,8 +270,25 @@ function waitForUnregister(scope) {
   });
 }
 
+// Be careful using this helper function, please make sure QuotaUsageCheck must
+// happen, otherwise test would be stucked in this function.
+function waitForQuotaUsageCheckFinish(scope) {
+  return new Promise(function (resolve) {
+    let listener = {
+      onQuotaUsageCheckFinish(registration) {
+        if (registration.scope !== scope) {
+          return;
+        }
+        SWM.removeListener(listener);
+        resolve(registration);
+      },
+    };
+    SWM.addListener(listener);
+  });
+}
+
 function waitForServiceWorkerRegistrationChange(registration, callback) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     let listener = {
       onChange() {
         registration.removeListener(listener);
@@ -269,7 +303,7 @@ function waitForServiceWorkerRegistrationChange(registration, callback) {
 }
 
 function waitForServiceWorkerShutdown() {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     let observer = {
       observe(subject, topic, data) {
         if (topic !== "service-worker-shutdown") {

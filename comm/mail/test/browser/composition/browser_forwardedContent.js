@@ -8,27 +8,27 @@
 
 "use strict";
 
-var { close_compose_window, open_compose_with_forward } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ComposeHelpers.jsm"
-);
+var { close_compose_window, open_compose_with_forward } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  );
 var {
   add_message_to_folder,
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
   create_message,
-  mc,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var folder = null;
 
-add_task(function setupModule(module) {
-  folder = create_folder("Forward Content Testing");
-  add_message_to_folder(
-    folder,
+add_setup(async function () {
+  folder = await create_folder("Forward Content Testing");
+  await add_message_to_folder(
+    [folder],
     create_message({
       subject: "something like <foo@example>",
       body: { body: "Testing bug 397021!" },
@@ -40,16 +40,16 @@ add_task(function setupModule(module) {
  * Test that the subject is set properly in the forwarded message content
  * when you hit forward.
  */
-add_task(function test_forwarded_subj() {
-  be_in_folder(folder);
+add_task(async function test_forwarded_subj() {
+  await be_in_folder(folder);
 
-  let msg = select_click_row(0);
-  assert_selected_and_displayed(mc, msg);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
 
-  let fwdWin = open_compose_with_forward();
+  const fwdWin = await open_compose_with_forward();
 
-  let headerTableText = fwdWin
-    .e("content-frame")
+  const headerTableText = fwdWin.document
+    .getElementById("messageEditor")
     .contentDocument.querySelector("table").textContent;
   if (!headerTableText.includes(msg.mime2DecodedSubject)) {
     throw new Error(
@@ -59,7 +59,7 @@ add_task(function test_forwarded_subj() {
         headerTableText
     );
   }
-  close_compose_window(fwdWin);
+  await close_compose_window(fwdWin);
 
   Assert.report(
     false,

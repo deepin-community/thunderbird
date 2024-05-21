@@ -9,6 +9,7 @@ UNIFIED_SOURCES += [
     "TestArenaAllocator.cpp",
     "TestArrayAlgorithm.cpp",
     "TestAtoms.cpp",
+    "TestAutoOwningEventTarget.cpp",
     "TestAutoRefCnt.cpp",
     "TestBase64.cpp",
     "TestCallTemplates.cpp",
@@ -24,7 +25,9 @@ UNIFIED_SOURCES += [
     "TestFile.cpp",
     "TestGCPostBarriers.cpp",
     "TestID.cpp",
+    "TestIDUtils.cpp",
     "TestInputStreamLengthHelper.cpp",
+    "TestJSHolderMap.cpp",
     "TestLogCommandLineHandler.cpp",
     "TestLogging.cpp",
     "TestMemoryPressure.cpp",
@@ -37,17 +40,19 @@ UNIFIED_SOURCES += [
     "TestNSPRLogModulesParser.cpp",
     "TestObserverArray.cpp",
     "TestObserverService.cpp",
+    "TestOwningNonNull.cpp",
     "TestPLDHash.cpp",
     "TestPriorityQueue.cpp",
     "TestQueue.cpp",
     "TestRacingServiceManager.cpp",
     "TestRecursiveMutex.cpp",
+    "TestRustRegex.cpp",
     "TestRWLock.cpp",
-    "TestSeekableStreamWrapper.cpp",
     "TestSegmentedBuffer.cpp",
     "TestSlicedInputStream.cpp",
     "TestSmallArrayLRUCache.cpp",
     "TestSnappyStreams.cpp",
+    "TestStateMirroring.cpp",
     "TestStateWatching.cpp",
     "TestStorageStream.cpp",
     "TestStrings.cpp",
@@ -59,13 +64,13 @@ UNIFIED_SOURCES += [
     "TestTaskQueue.cpp",
     "TestTextFormatter.cpp",
     "TestThreadManager.cpp",
-    "TestThreadMetrics.cpp",
     "TestThreadPool.cpp",
     "TestThreadPoolListener.cpp",
     "TestThrottledEventQueue.cpp",
     "TestTimeStamp.cpp",
     "TestTokenizer.cpp",
     "TestUTF.cpp",
+    "TestVariant.cpp",
 ]
 
 if CONFIG["OS_TARGET"] != "Android":
@@ -75,7 +80,7 @@ if CONFIG["OS_TARGET"] != "Android":
     ]
 
 # skip the test on windows10-aarch64 due to perma-fail, bug 1422219
-if not (CONFIG["OS_TARGET"] == "WINNT" and CONFIG["CPU_ARCH"] == "aarch64"):
+if not (CONFIG["OS_TARGET"] == "WINNT" and CONFIG["TARGET_CPU"] == "aarch64"):
     UNIFIED_SOURCES += ["TestThreadUtils.cpp"]
 
 # skip the test on OSX due to frequent failures (bug 1571186)
@@ -84,7 +89,7 @@ if CONFIG["OS_TARGET"] != "Darwin":
 
 # skip the test on windows10-aarch64 and Android, aarch64 due to bug 1545670
 if CONFIG["OS_TARGET"] != "Android" and not (
-    CONFIG["OS_TARGET"] == "WINNT" and CONFIG["CPU_ARCH"] == "aarch64"
+    CONFIG["OS_TARGET"] == "WINNT" and CONFIG["TARGET_CPU"] == "aarch64"
 ):
     UNIFIED_SOURCES += ["TestTimers.cpp"]
 
@@ -106,10 +111,27 @@ if CONFIG["OS_TARGET"] == "WINNT":
         "TestAvailableMemoryWatcherWin.cpp",
         "TestFileNTFSSpecialPaths.cpp",
         "TestFilePreferencesWin.cpp",
+        "TestHandleWatcher.cpp",
     ]
 else:
     UNIFIED_SOURCES += [
         "TestFilePreferencesUnix.cpp",
+    ]
+
+if CONFIG["OS_TARGET"] == "Darwin":
+    UNIFIED_SOURCES += [
+        "TestAvailableMemoryWatcherMac.cpp",
+        "TestThreads_mac.mm",
+    ]
+
+if CONFIG["TARGET_OS"] == "OSX":
+    UNIFIED_SOURCES += [
+        "TestMacNSURLEscaping.mm",
+    ]
+
+if CONFIG["OS_TARGET"] == "Linux":
+    UNIFIED_SOURCES += [
+        "TestAvailableMemoryWatcherLinux.cpp",
     ]
 
 if (
@@ -123,8 +145,12 @@ if (
 
 # Compile TestAllocReplacement separately so Windows headers don't pollute
 # the global namespace for other files.
+if CONFIG["MOZ_MEMORY"]:
+    SOURCES += [
+        "TestAllocReplacement.cpp",
+    ]
+
 SOURCES += [
-    "TestAllocReplacement.cpp",
     "TestCOMArray.cpp",
     "TestCOMPtr.cpp",  # Redefines IFoo and IBar
     "TestHashtables.cpp",  # Redefines IFoo
@@ -133,6 +159,8 @@ SOURCES += [
 
 LOCAL_INCLUDES += [
     "../../base",
+    "/toolkit/components/telemetry/tests/gtest",
+    "/xpcom/components",
 ]
 
 GeneratedFile(

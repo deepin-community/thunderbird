@@ -5,6 +5,7 @@
 #include "json/json.h"
 #include "json/reader.h"
 #include "mozilla/TextUtils.h"
+#include "nsString.h"
 #include "mozilla/net/MozURL.h"
 #include "nsCOMPtr.h"
 #include "nsDirectoryServiceDefs.h"
@@ -12,6 +13,7 @@
 #include "nsIFile.h"
 #include "nsIURI.h"
 #include "nsStreamUtils.h"
+#include "mozilla/BasePrincipal.h"
 
 using namespace mozilla;
 using namespace mozilla::net;
@@ -369,11 +371,14 @@ TEST(TestMozURL, UrlTestData)
     const char* originEnd;
     origin.getString(&originBegin, &originEnd);
 
+    auto baseCString = nsDependentCString("about:blank");
     const Json::Value& base = item["base"];
-    ASSERT_TRUE(base.isString());
-    const char* baseBegin;
-    const char* baseEnd;
-    base.getString(&baseBegin, &baseEnd);
+    if (!base.isNull()) {
+      const char* baseBegin;
+      const char* baseEnd;
+      base.getString(&baseBegin, &baseEnd);
+      baseCString.Assign(nsDependentCSubstring(baseBegin, baseEnd));
+    }
 
     const Json::Value& input = item["input"];
     ASSERT_TRUE(input.isString());
@@ -381,8 +386,7 @@ TEST(TestMozURL, UrlTestData)
     const char* inputEnd;
     input.getString(&inputBegin, &inputEnd);
 
-    CheckOrigin(nsDependentCString(inputBegin, inputEnd),
-                nsDependentCString(baseBegin, baseEnd),
+    CheckOrigin(nsDependentCString(inputBegin, inputEnd), baseCString,
                 nsDependentCString(originBegin, originEnd));
   }
 }

@@ -18,11 +18,13 @@ class ErrorResult;
 namespace dom {
 
 class Promise;
+class PermissionStatus;
+struct PermissionSetParameters;
 
 class Permissions final : public nsISupports, public nsWrapperCache {
  public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(Permissions)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(Permissions)
 
   explicit Permissions(nsPIDOMWindowInner* aWindow);
 
@@ -35,12 +37,11 @@ class Permissions final : public nsISupports, public nsWrapperCache {
                                   JS::Handle<JSObject*> aPermission,
                                   ErrorResult& aRv);
 
-  static nsresult RemovePermission(nsIPrincipal* aPrincipal,
-                                   const nsACString& aPermissionType);
-
-  already_AddRefed<Promise> Revoke(JSContext* aCx,
-                                   JS::Handle<JSObject*> aPermission,
-                                   ErrorResult& aRv);
+  // The IDL conversion steps of
+  // https://w3c.github.io/permissions/#webdriver-command-set-permission
+  already_AddRefed<PermissionStatus> ParseSetParameters(
+      JSContext* aCx, const PermissionSetParameters& aParameters,
+      ErrorResult& aRv);
 
  private:
   ~Permissions();

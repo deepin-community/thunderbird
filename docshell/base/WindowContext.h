@@ -13,6 +13,7 @@
 #include "mozilla/dom/MaybeDiscarded.h"
 #include "mozilla/dom/SyncedContext.h"
 #include "mozilla/dom/UserActivation.h"
+#include "nsDOMNavigationTiming.h"
 #include "nsILoadInfo.h"
 #include "nsWrapperCache.h"
 
@@ -50,6 +51,11 @@ class BrowsingContextGroup;
   /* Whether this window's channel has been marked as a third-party      \
    * tracking resource */                                                \
   FIELD(IsThirdPartyTrackingResourceWindow, bool)                        \
+  /* Whether this window is using its unpartitioned cookies due to       \
+   * the Storage Access API */                                           \
+  FIELD(UsingStorageAccess, bool)                                        \
+  FIELD(ShouldResistFingerprinting, bool)                                \
+  FIELD(OverriddenFingerprintingSettings, Maybe<RFPTarget>)              \
   FIELD(IsSecureContext, bool)                                           \
   FIELD(IsOriginalFrameSource, bool)                                     \
   /* Mixed-Content: If the corresponding documentURI is https,           \
@@ -63,7 +69,8 @@ class BrowsingContextGroup;
   FIELD(HasBeforeUnload, bool)                                           \
   /* Controls whether the WindowContext is currently considered to be    \
    * activated by a gesture */                                           \
-  FIELD(UserActivationState, UserActivation::State)                      \
+  FIELD(UserActivationStateAndModifiers,                                 \
+        UserActivation::StateAndModifiers::DataT)                        \
   FIELD(EmbedderPolicy, nsILoadInfo::CrossOriginEmbedderPolicy)          \
   /* True if this document tree contained at least a HTMLMediaElement.   \
    * This should only be set on top level context. */                    \
@@ -84,9 +91,9 @@ class BrowsingContextGroup;
   /* Whether the principal of this window is for a local                 \
    * IP address */                                                       \
   FIELD(IsLocalIP, bool)                                                 \
-  /* Whether the corresponding document has `loading='lazy'`             \
-   * images; It won't become false if the image becomes non-lazy */      \
-  FIELD(HadLazyLoadImage, bool)                                          \
+  /* Whether any of the windows in the subtree rooted at this window has \
+   * active peer connections or not (only set on the top window). */     \
+  FIELD(HasActivePeerConnections, bool)                                  \
   /* Whether we can execute scripts in this WindowContext. Has no effect \
    * unless scripts are also allowed in the BrowsingContext. */          \
   FIELD(AllowJavascript, bool)                                           \
@@ -99,7 +106,7 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   MOZ_DECL_SYNCED_CONTEXT(WindowContext, MOZ_EACH_WC_FIELD)
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(WindowContext)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(WindowContext)
 
  public:
   static already_AddRefed<WindowContext> GetById(uint64_t aInnerWindowId);
@@ -113,7 +120,9 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   uint64_t OuterWindowId() const { return mOuterWindowId; }
   bool IsDiscarded() const { return mIsDiscarded; }
 
-  bool IsCached() const;
+  // Returns `true` if this WindowContext is the current WindowContext in its
+  // BrowsingContext.
+  bool IsCurrent() const;
 
   // Returns `true` if this WindowContext is currently in the BFCache.
   bool IsInBFCache();
@@ -123,6 +132,20 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool HasBeforeUnload() const { return GetHasBeforeUnload(); }
 
   bool IsLocalIP() const { return GetIsLocalIP(); }
+
+  bool ShouldResistFingerprinting() const {
+    return GetShouldResistFingerprinting();
+  }
+
+  Nullable<uint64_t> GetOverriddenFingerprintingSettingsWebIDL() const {
+    Maybe<RFPTarget> overriddenFingerprintingSettings =
+        GetOverriddenFingerprintingSettings();
+
+    return overriddenFingerprintingSettings.isSome()
+               ? Nullable<uint64_t>(
+                     uint64_t(overriddenFingerprintingSettings.ref()))
+               : Nullable<uint64_t>();
+  }
 
   nsGlobalWindowInner* GetInnerWindow() const;
   Document* GetDocument() const;
@@ -140,6 +163,12 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool IsTop() const;
 
   Span<RefPtr<BrowsingContext>> Children() { return mChildren; }
+
+  // The filtered version of `Children()`, which contains no browsing contexts
+  // for synthetic documents as created by object loading content.
+  Span<RefPtr<BrowsingContext>> NonSyntheticChildren() {
+    return mNonSyntheticChildren;
+  }
 
   // Cast this object to it's parent-process canonical form.
   WindowGlobalParent* Canonical();
@@ -166,9 +195,16 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   // 'MIXED' state flags, and should only be called on the top window context.
   void AddSecurityState(uint32_t aStateFlags);
 
+  UserActivation::State GetUserActivationState() const {
+    return UserActivation::StateAndModifiers(
+               GetUserActivationStateAndModifiers())
+        .GetState();
+  }
+
   // This function would be called when its corresponding window is activated
   // by user gesture.
-  void NotifyUserGestureActivation();
+  void NotifyUserGestureActivation(
+      UserActivation::Modifiers aModifiers = UserActivation::Modifiers::None());
 
   // This function would be called when we want to reset the user gesture
   // activation flag.
@@ -183,17 +219,23 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   // out.
   bool HasValidTransientUserGestureActivation();
 
+  // See `mUserGestureStart`.
+  const TimeStamp& GetUserGestureStart() const;
+
   // Return true if the corresponding window has valid transient user gesture
   // activation and the transient user gesture activation had been consumed
   // successfully.
   bool ConsumeTransientUserGestureActivation();
 
-  bool CanShowPopup();
+  bool GetTransientUserGestureActivationModifiers(
+      UserActivation::Modifiers* aModifiers);
 
-  bool HadLazyLoadImage() const { return GetHadLazyLoadImage(); }
+  bool CanShowPopup();
 
   bool AllowJavascript() const { return GetAllowJavascript(); }
   bool CanExecuteScripts() const { return mCanExecuteScripts; }
+
+  void TransientSetHasActivePeerConnections();
 
  protected:
   WindowContext(BrowsingContext* aBrowsingContext, uint64_t aInnerWindowId,
@@ -209,6 +251,12 @@ class WindowContext : public nsISupports, public nsWrapperCache {
 
   void AppendChildBrowsingContext(BrowsingContext* aBrowsingContext);
   void RemoveChildBrowsingContext(BrowsingContext* aBrowsingContext);
+
+  // Update non-synthetic children based on whether `aBrowsingContext`
+  // is synthetic or not. Regardless the synthetic of `aBrowsingContext`, it is
+  // kept in this WindowContext's all children list.
+  void UpdateChildSynthetic(BrowsingContext* aBrowsingContext,
+                            bool aIsSynthetic);
 
   // Send a given `BaseTransaction` object to the correct remote.
   void SendCommitTransaction(ContentParent* aParent,
@@ -243,6 +291,12 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool CanSet(FieldIndex<IDX_IsThirdPartyTrackingResourceWindow>,
               const bool& aIsThirdPartyTrackingResourceWindow,
               ContentParent* aSource);
+  bool CanSet(FieldIndex<IDX_UsingStorageAccess>,
+              const bool& aUsingStorageAccess, ContentParent* aSource);
+  bool CanSet(FieldIndex<IDX_ShouldResistFingerprinting>,
+              const bool& aShouldResistFingerprinting, ContentParent* aSource);
+  bool CanSet(FieldIndex<IDX_OverriddenFingerprintingSettings>,
+              const Maybe<RFPTarget>& aValue, ContentParent* aSource);
   bool CanSet(FieldIndex<IDX_IsSecureContext>, const bool& aIsSecureContext,
               ContentParent* aSource);
   bool CanSet(FieldIndex<IDX_IsOriginalFrameSource>,
@@ -267,8 +321,9 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool CanSet(FieldIndex<IDX_DelegatedExactHostMatchPermissions>,
               const PermissionDelegateHandler::DelegatedPermissionList& aValue,
               ContentParent* aSource);
-  bool CanSet(FieldIndex<IDX_UserActivationState>,
-              const UserActivation::State& aUserActivationState,
+  bool CanSet(FieldIndex<IDX_UserActivationStateAndModifiers>,
+              const UserActivation::StateAndModifiers::DataT&
+                  aUserActivationStateAndModifiers,
               ContentParent* aSource) {
     return true;
   }
@@ -281,12 +336,11 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool CanSet(FieldIndex<IDX_IsLocalIP>, const bool& aValue,
               ContentParent* aSource);
 
-  bool CanSet(FieldIndex<IDX_HadLazyLoadImage>, const bool& aValue,
-              ContentParent* aSource);
-
   bool CanSet(FieldIndex<IDX_AllowJavascript>, bool aValue,
               ContentParent* aSource);
   void DidSet(FieldIndex<IDX_AllowJavascript>, bool aOldValue);
+
+  bool CanSet(FieldIndex<IDX_HasActivePeerConnections>, bool, ContentParent*);
 
   void DidSet(FieldIndex<IDX_HasReportedShadowDOMUsage>, bool aOldValue);
 
@@ -302,7 +356,7 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   void DidSet(FieldIndex<I>) {}
   template <size_t I, typename T>
   void DidSet(FieldIndex<I>, T&& aOldValue) {}
-  void DidSet(FieldIndex<IDX_UserActivationState>);
+  void DidSet(FieldIndex<IDX_UserActivationStateAndModifiers>);
 
   // Recomputes whether we can execute scripts in this WindowContext based on
   // the value of AllowJavascript() and whether scripts are allowed in the
@@ -319,6 +373,15 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   // `mBrowsingContext`, and should only be performed through the
   // `AppendChildBrowsingContext` and `RemoveChildBrowsingContext` methods.
   nsTArray<RefPtr<BrowsingContext>> mChildren;
+
+  // --- NEVER CHANGE `mNonSyntheticChildren` DIRECTLY! ---
+  // Same reason as for mChildren.
+  // mNonSyntheticChildren contains the same browsing contexts except browsing
+  // contexts created by the synthetic document for object loading contents
+  // loading images. This is used to discern browsing contexts created when
+  // loading images in <object> or <embed> elements, so that they can be hidden
+  // from named targeting, `Window.frames` etc.
+  nsTArray<RefPtr<BrowsingContext>> mNonSyntheticChildren;
 
   bool mIsDiscarded = false;
   bool mIsInProcess = false;
@@ -346,20 +409,18 @@ extern template class syncedcontext::Transaction<WindowContext>;
 namespace ipc {
 template <>
 struct IPDLParamTraits<dom::MaybeDiscarded<dom::WindowContext>> {
-  static void Write(IPC::Message* aMsg, IProtocol* aActor,
+  static void Write(IPC::MessageWriter* aWriter, IProtocol* aActor,
                     const dom::MaybeDiscarded<dom::WindowContext>& aParam);
-  static bool Read(const IPC::Message* aMsg, PickleIterator* aIter,
-                   IProtocol* aActor,
+  static bool Read(IPC::MessageReader* aReader, IProtocol* aActor,
                    dom::MaybeDiscarded<dom::WindowContext>* aResult);
 };
 
 template <>
 struct IPDLParamTraits<dom::WindowContext::IPCInitializer> {
-  static void Write(IPC::Message* aMessage, IProtocol* aActor,
+  static void Write(IPC::MessageWriter* aWriter, IProtocol* aActor,
                     const dom::WindowContext::IPCInitializer& aInitializer);
 
-  static bool Read(const IPC::Message* aMessage, PickleIterator* aIterator,
-                   IProtocol* aActor,
+  static bool Read(IPC::MessageReader* aReader, IProtocol* aActor,
                    dom::WindowContext::IPCInitializer* aInitializer);
 };
 }  // namespace ipc

@@ -12,21 +12,43 @@
  *
  * https://nodejs.org/docs/latest/api/buffer.html#buffer_buffers_and_typedarray
  */
-var Buffer = {
-  isBuffer(obj) {
-    return obj.constructor == Uint8Array;
-  },
+class Buffer extends Uint8Array {
+  static isBuffer(obj) {
+    return obj instanceof Uint8Array;
+  }
 
   // Note that this doesn't fully implement allocate, only enough is implemented
   // for the base-x package to function properly.
-  alloc(size, fill, encoding) {
-    return new Uint8Array(size);
-  },
+  static alloc(size, fill, encoding) {
+    return new Buffer(size);
+  }
 
-  allocUnsafe(size) {
-    return new Uint8Array(size);
-  },
-};
+  static allocUnsafe(size) {
+    return new Buffer(size);
+  }
+
+  // These methods are required for the base64 encoding used by the SDK. If we
+  // didn't have to provide a global Buffer implementation, these two methods
+  // would not be used.
+  static from(value, type) {
+    if (type === "base64") {
+      return super.from(
+        atob(value.replaceAll("-", "+").replaceAll("_", "/")),
+        c => c.charCodeAt(0)
+      );
+    }
+    return super.from(value);
+  }
+
+  toString(type) {
+    if (type === "base64") {
+      return btoa(
+        this.reduce((acc, current) => acc + String.fromCharCode(current), "")
+      );
+    }
+    return super.toString();
+  }
+}
 
 module.exports = {
   Buffer,

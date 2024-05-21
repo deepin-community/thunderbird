@@ -12,18 +12,26 @@ const CMD_NEED_USER  = 0x10;
 
 function initCommands()
 {
+    // Keep this in sync with the command.js section in chatzilla.properties.
     var cmdary =
         [/* "real" commands */
          ["about",             cmdAbout,                           CMD_CONSOLE],
-         ["alias",             cmdAlias,                           CMD_CONSOLE],
-         ["attach",            cmdAttach,                          CMD_CONSOLE],
-         ["away",              cmdAway,                            CMD_CONSOLE],
+         ["alias",             cmdAlias,                           CMD_CONSOLE,
+          "[<alias-name> [<command-list>]]"],
+         ["attach",            cmdAttach,                          CMD_CONSOLE,
+          "<irc-url>"],
+         ["away",              cmdAway,                            CMD_CONSOLE,
+          "[<reason>]"],
          ["back",              cmdAway,                            CMD_CONSOLE],
-         ["ban",               cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE],
+         ["ban",               cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<nickname>]"],
          ["cancel",            cmdCancel,                          CMD_CONSOLE],
-         ["charset",           cmdCharset,                         CMD_CONSOLE],
-         ["channel-motif",     cmdMotif,           CMD_NEED_CHAN | CMD_CONSOLE],
-         ["channel-pref",      cmdPref,            CMD_NEED_CHAN | CMD_CONSOLE],
+         ["charset",           cmdCharset,                         CMD_CONSOLE,
+          "[<new-charset>]"],
+         ["channel-motif",     cmdMotif,           CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<motif> [<channel>]]"],
+         ["channel-pref",      cmdPref,            CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<pref-name> [<pref-value>]]"],
          ["cmd-undo",          "cmd-docommand cmd_undo",                     0],
          ["cmd-redo",          "cmd-docommand cmd_redo",                     0],
          ["cmd-cut",           "cmd-docommand cmd_cut",                      0],
@@ -31,124 +39,220 @@ function initCommands()
          ["cmd-paste",         "cmd-docommand cmd_paste",                    0],
          ["cmd-delete",        "cmd-docommand cmd_delete",                   0],
          ["cmd-selectall",     "cmd-docommand cmd_selectAll",                0],
-         ["cmd-copy-link-url", "cmd-docommand cmd_copyLink",                 0],
+         ["cmd-copy-link-url", "cmd-docommand cmd_copyLink",                 0,
+          "<url>"],
          ["cmd-mozilla-prefs",   "cmd-docommand cmd_mozillaPrefs",           0],
          ["cmd-prefs",           "cmd-docommand cmd_chatzillaPrefs",         0],
          ["cmd-chatzilla-prefs", "cmd-docommand cmd_chatzillaPrefs",         0],
          ["cmd-chatzilla-opts",  "cmd-docommand cmd_chatzillaPrefs",         0],
-         ["cmd-docommand",     cmdDoCommand,                                 0],
-         ["create-tab-for-view", cmdCreateTabForView,                        0],
+         ["cmd-docommand",     cmdDoCommand,                                 0,
+          "<cmd-name>"],
+         ["create-tab-for-view", cmdCreateTabForView,                        0,
+          "<view>"],
          ["custom-away",       cmdAway,                                      0],
-         ["op",                cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["dcc-accept",        cmdDCCAccept,                       CMD_CONSOLE],
+         ["op",                cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["dcc-accept",        cmdDCCAccept,                       CMD_CONSOLE,
+          "[<nickname> [<type> [<file>]]]"],
          ["dcc-accept-list",  cmdDCCAutoAcceptList, CMD_NEED_NET | CMD_CONSOLE],
          ["dcc-accept-list-add", cmdDCCAutoAcceptAdd,
-                                                    CMD_NEED_NET | CMD_CONSOLE],
+                                                    CMD_NEED_NET | CMD_CONSOLE,
+          "<nickname>"],
          ["dcc-accept-list-remove", cmdDCCAutoAcceptDel,
-                                                    CMD_NEED_NET | CMD_CONSOLE],
-         ["dcc-chat",          cmdDCCChat,          CMD_NEED_SRV | CMD_CONSOLE],
-         ["dcc-close",         cmdDCCClose,                        CMD_CONSOLE],
-         ["dcc-decline",       cmdDCCDecline,                      CMD_CONSOLE],
-         ["dcc-list",          cmdDCCList,                         CMD_CONSOLE],
-         ["dcc-send",          cmdDCCSend,          CMD_NEED_SRV | CMD_CONSOLE],
-         ["dcc-show-file",     cmdDCCShowFile,                     CMD_CONSOLE],
-         ["delayed",           cmdDelayed,                         CMD_CONSOLE],
-         ["deop",              cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["describe",          cmdDescribe,         CMD_NEED_SRV | CMD_CONSOLE],
-         ["hop",               cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["dehop",             cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["voice",             cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["devoice",           cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE],
-         ["clear-view",        cmdClearView,                       CMD_CONSOLE],
+                                                    CMD_NEED_NET | CMD_CONSOLE,
+          "<nickname>"],
+         ["dcc-chat",          cmdDCCChat,          CMD_NEED_SRV | CMD_CONSOLE,
+          "[<nickname>]"],
+         ["dcc-close",         cmdDCCClose,                        CMD_CONSOLE,
+          "[<nickname> [<type> [<file>]]]"],
+         ["dcc-decline",       cmdDCCDecline,                      CMD_CONSOLE,
+          "[<nickname>]"],
+         ["dcc-list",          cmdDCCList,                         CMD_CONSOLE,
+          "[<type>]"],
+         ["dcc-send",          cmdDCCSend,          CMD_NEED_SRV | CMD_CONSOLE,
+          "[<nickname> [<file>]]"],
+         ["dcc-show-file",     cmdDCCShowFile,                     CMD_CONSOLE,
+          "<file>"],
+         ["delayed",           cmdDelayed,                         CMD_CONSOLE,
+          "<delay> <rest>"],
+         ["deop",              cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["describe",          cmdDescribe,         CMD_NEED_SRV | CMD_CONSOLE,
+          "<target> <action>"],
+         ["hop",               cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["dehop",             cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["voice",             cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["devoice",           cmdChanUserMode,    CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["clear-view",        cmdClearView,                       CMD_CONSOLE,
+          "[<view>]"],
          ["client",            cmdClient,                          CMD_CONSOLE],
-         ["commands",          cmdCommands,                        CMD_CONSOLE],
-         ["ctcp",              cmdCTCP,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["default-charset",   cmdCharset,                         CMD_CONSOLE],
-         ["delete-view",       cmdDeleteView,                      CMD_CONSOLE],
-         ["desc",              cmdDesc,                            CMD_CONSOLE],
+         ["commands",          cmdCommands,                        CMD_CONSOLE,
+          "[<pattern>]"],
+         ["ctcp",              cmdCTCP,             CMD_NEED_SRV | CMD_CONSOLE,
+          "<target> <code> [<params>]"],
+         ["default-charset",   cmdCharset,                         CMD_CONSOLE,
+          "[<new-charset>]"],
+         ["delete-view",       cmdDeleteView,                      CMD_CONSOLE,
+          "[<view>]"],
+         ["desc",              cmdDesc,                            CMD_CONSOLE,
+          "[<description>]"],
          ["disable-plugin",    cmdDisablePlugin,                   CMD_CONSOLE],
-         ["disconnect",        cmdDisconnect,       CMD_NEED_SRV | CMD_CONSOLE],
-         ["disconnect-all",    cmdDisconnectAll,                   CMD_CONSOLE],
-         ["echo",              cmdEcho,                            CMD_CONSOLE],
+         ["disconnect",        cmdDisconnect,       CMD_NEED_SRV | CMD_CONSOLE,
+          "[<reason>]"],
+         ["disconnect-all",    cmdDisconnectAll,                   CMD_CONSOLE,
+          "[<reason>]"],
+         ["echo",              cmdEcho,                            CMD_CONSOLE,
+          "<message>"],
          ["edit-networks",     cmdEditNetworks,                    CMD_CONSOLE],
-         ["enable-plugin",     cmdEnablePlugin,                    CMD_CONSOLE],
-         ["eval",              cmdEval,                            CMD_CONSOLE],
-         ["evalsilent",        cmdEval,                            CMD_CONSOLE],
-         ["except",            cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE],
-         ["find",              cmdFind,                                      0],
+         ["enable-plugin",     cmdEnablePlugin,                    CMD_CONSOLE,
+          "<plugin>"],
+         ["eval",              cmdEval,                            CMD_CONSOLE,
+          "<expression>"],
+         ["evalsilent",        cmdEval,                            CMD_CONSOLE,
+          "<expression>"],
+         ["except",            cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<nickname>]"],
+         ["find",              cmdFind,                                      0,
+          "[<rest>]"],
          ["find-again",        cmdFindAgain,                                 0],
          ["focus-input",       cmdFocusInput,                                0],
-         ["font-family",       cmdFont,                            CMD_CONSOLE],
+         ["font-family",       cmdFont,                            CMD_CONSOLE,
+          "[<font>]"],
          ["font-family-other", cmdFont,                                      0],
-         ["font-size",         cmdFont,                            CMD_CONSOLE],
+         ["font-size",         cmdFont,                            CMD_CONSOLE,
+          "[<font-size>]"],
          ["font-size-other",   cmdFont,                                      0],
          ["goto-startup",      cmdGotoStartup,                     CMD_CONSOLE],
-         ["goto-url",          cmdGotoURL,                                   0],
-         ["goto-url-newwin",   cmdGotoURL,                                   0],
-         ["goto-url-newtab",   cmdGotoURL,                                   0],
-         ["goto-url-external", cmdGotoURL,                                   0],
-         ["help",              cmdHelp,                            CMD_CONSOLE],
-         ["hide-view",         cmdHideView,                        CMD_CONSOLE],
+         ["goto-url",          cmdGotoURL,                                   0,
+          "<url> [<anchor>]"],
+         ["goto-url-newwin",   cmdGotoURL,                                   0,
+          "<url> [<anchor>]"],
+         ["goto-url-newtab",   cmdGotoURL,                                   0,
+          "<url> [<anchor>]"],
+         ["help",              cmdHelp,                            CMD_CONSOLE,
+          "[<pattern>]"],
+         ["hide-view",         cmdHideView,                        CMD_CONSOLE,
+          "[<view>]"],
+         ["identify",          cmdIdentify,         CMD_NEED_SRV | CMD_CONSOLE,
+          "[<password>]"],
          ["idle-away",         cmdAway,                                      0],
          ["idle-back",         cmdAway,                                      0],
-         ["ignore",            cmdIgnore,           CMD_NEED_NET | CMD_CONSOLE],
-         ["input-text-direction", cmdInputTextDirection,                     0],
-         ["install-plugin",    cmdInstallPlugin,                   CMD_CONSOLE],
-         ["invite",            cmdInvite,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["join",              cmdJoin,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["join-charset",      cmdJoin,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["jump-to-anchor",    cmdJumpToAnchor,                   CMD_NEED_NET],
-         ["kick",              cmdKick,            CMD_NEED_CHAN | CMD_CONSOLE],
-         ["kick-ban",          cmdKick,            CMD_NEED_CHAN | CMD_CONSOLE],
-         ["knock",             cmdKnock,            CMD_NEED_SRV | CMD_CONSOLE],
-         ["leave",             cmdLeave,            CMD_NEED_NET | CMD_CONSOLE],
+         ["ignore",            cmdIgnore,           CMD_NEED_NET | CMD_CONSOLE,
+          "[<mask>]"],
+         ["input-text-direction", cmdInputTextDirection,                     0,
+          "<dir>"],
+         ["install-plugin",    cmdInstallPlugin,                   CMD_CONSOLE,
+          "[<url> [<name>]]"],
+         ["invite",            cmdInvite,           CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<channel-name>]"],
+         ["join",              cmdJoin,             CMD_NEED_SRV | CMD_CONSOLE,
+          "[<channel-name> [<key>]]"],
+         ["join-charset",      cmdJoin,             CMD_NEED_SRV | CMD_CONSOLE,
+          "[<channel-name> <charset> [<key>]]"],
+         ["jump-to-anchor",    cmdJumpToAnchor,                   CMD_NEED_NET,
+          "<anchor> [<channel-name>]"],
+         ["kick",              cmdKick,            CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<reason>]"],
+         ["kick-ban",          cmdKick,            CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname> [<reason>]"],
+         ["knock",             cmdKnock,            CMD_NEED_SRV | CMD_CONSOLE,
+          "<channel-name> [<reason>]"],
+         ["leave",             cmdLeave,            CMD_NEED_NET | CMD_CONSOLE,
+          "[<channel-name>] [<reason>]"],
          ["links",             cmdSimpleCommand,    CMD_NEED_SRV | CMD_CONSOLE],
-         ["list",              cmdList,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["list-plugins",      cmdListPlugins,                     CMD_CONSOLE],
-         ["load",              cmdLoad,                            CMD_CONSOLE],
-         ["log",               cmdLog,                             CMD_CONSOLE],
+         ["list",              cmdList,             CMD_NEED_SRV | CMD_CONSOLE,
+          "[<channel-name>]"],
+         ["list-plugins",      cmdListPlugins,                     CMD_CONSOLE,
+          "[<plugin>]"],
+         ["load",              cmdLoad,                            CMD_CONSOLE,
+          "<url>"],
+         ["log",               cmdLog,                             CMD_CONSOLE,
+          "[<state>]"],
          ["map",               cmdSimpleCommand,    CMD_NEED_SRV | CMD_CONSOLE],
-         ["match-users",       cmdMatchUsers,      CMD_NEED_CHAN | CMD_CONSOLE],
-         ["me",                cmdMe,                              CMD_CONSOLE],
+         ["marker",            cmdMarker,                          CMD_CONSOLE],
+         ["marker-clear",      cmdMarker,                          CMD_CONSOLE],
+         ["marker-set",        cmdMarker,                          CMD_CONSOLE],
+         ["match-users",       cmdMatchUsers,      CMD_NEED_CHAN | CMD_CONSOLE,
+          "<mask>"],
+         ["me",                cmdMe,                              CMD_CONSOLE,
+          "<action>"],
          ["motd",              cmdSimpleCommand,    CMD_NEED_SRV | CMD_CONSOLE],
-         ["mode",              cmdMode,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["motif",             cmdMotif,                           CMD_CONSOLE],
-         ["msg",               cmdMsg,              CMD_NEED_SRV | CMD_CONSOLE],
-         ["name",              cmdName,                            CMD_CONSOLE],
-         ["names",             cmdNames,            CMD_NEED_SRV | CMD_CONSOLE],
-         ["network",           cmdNetwork,                         CMD_CONSOLE],
-         ["network-motif",     cmdMotif,            CMD_NEED_NET | CMD_CONSOLE],
-         ["network-pref",      cmdPref,             CMD_NEED_NET | CMD_CONSOLE],
+         ["mode",              cmdMode,             CMD_NEED_SRV | CMD_CONSOLE,
+          "[<target>] [<modestr> [<param> [<...>]]]"],
+         ["motif",             cmdMotif,                           CMD_CONSOLE,
+          "[<motif>]"],
+         ["msg",               cmdMsg,              CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> <message>"],
+         ["name",              cmdName,                            CMD_CONSOLE,
+          "[<username>]"],
+         ["names",             cmdNames,            CMD_NEED_SRV | CMD_CONSOLE,
+          "[<channel-name>]"],
+         ["network",           cmdNetwork,                         CMD_CONSOLE,
+          "<network-name>"],
+         ["network-motif",     cmdMotif,            CMD_NEED_NET | CMD_CONSOLE,
+          "[<motif> [<network>]]"],
+         ["network-pref",      cmdPref,             CMD_NEED_NET | CMD_CONSOLE,
+          "[<pref-name> [<pref-value>]]"],
          ["networks",          cmdNetworks,                        CMD_CONSOLE],
-         ["nick",              cmdNick,                            CMD_CONSOLE],
-         ["notice",            cmdNotice,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["notify",            cmdNotify,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["open-at-startup",   cmdOpenAtStartup,                   CMD_CONSOLE],
-         ["oper",              cmdOper,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["ping",              cmdPing,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["plugin-pref",       cmdPref,                            CMD_CONSOLE],
-         ["pref",              cmdPref,                            CMD_CONSOLE],
+         ["nick",              cmdNick,                            CMD_CONSOLE,
+          "[<nickname>]"],
+         ["notice",            cmdNotice,           CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> <message>"],
+         ["notify",            cmdNotify,           CMD_NEED_SRV | CMD_CONSOLE,
+          "[<nickname> [<...>]]"],
+         ["open-at-startup",   cmdOpenAtStartup,                   CMD_CONSOLE,
+          "[<toggle>]"],
+         ["oper",              cmdOper,             CMD_NEED_SRV | CMD_CONSOLE,
+          "<opername> [<password>]"],
+         ["ping",              cmdPing,             CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname>"],
+         ["plugin-pref",       cmdPref,                            CMD_CONSOLE,
+          "<plugin> [<pref-name> [<pref-value>]]"],
+         ["pref",              cmdPref,                            CMD_CONSOLE,
+          "[<pref-name> [<pref-value>]]"],
          ["print",             cmdPrint,                           CMD_CONSOLE],
-         ["query",             cmdQuery,            CMD_NEED_SRV | CMD_CONSOLE],
-         ["quit",              cmdQuit,                            CMD_CONSOLE],
-         ["quote",             cmdQuote,            CMD_NEED_NET | CMD_CONSOLE],
-         ["rename",            cmdRename,                          CMD_CONSOLE],
-         ["reload-plugin",     cmdReload,                          CMD_CONSOLE],
-         ["rlist",             cmdRlist,            CMD_NEED_SRV | CMD_CONSOLE],
-         ["reconnect",         cmdReconnect,        CMD_NEED_NET | CMD_CONSOLE],
-         ["reconnect-all",     cmdReconnectAll,                    CMD_CONSOLE],
+         ["query",             cmdQuery,            CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<message>]"],
+         ["quit",              cmdQuit,                            CMD_CONSOLE,
+          "[<reason>]"],
+         ["quote",             cmdQuote,            CMD_NEED_NET | CMD_CONSOLE,
+          "<irc-command>"],
+         ["rename",            cmdRename,                          CMD_CONSOLE,
+          "[<label>]"],
+         ["reload-plugin",     cmdReload,                          CMD_CONSOLE,
+          "<plugin>"],
+         ["rlist",             cmdRlist,            CMD_NEED_SRV | CMD_CONSOLE,
+          "<regexp>"],
+         ["reconnect",         cmdReconnect,        CMD_NEED_NET | CMD_CONSOLE,
+          "[<reason>]"],
+         ["reconnect-all",     cmdReconnectAll,                    CMD_CONSOLE,
+          "[<reason>]"],
          ["rejoin",            cmdRejoin,
-                                   CMD_NEED_SRV |  CMD_NEED_CHAN | CMD_CONSOLE],
+                                   CMD_NEED_SRV |  CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<reason>]"],
          ["reload-ui",         cmdReloadUI,                                  0],
-         ["save",              cmdSave,                            CMD_CONSOLE],
-         ["say",               cmdSay,                             CMD_CONSOLE],
-         ["server",            cmdServer,                          CMD_CONSOLE],
-         ["set-current-view",  cmdSetCurrentView,                            0],
-         ["stats",             cmdSimpleCommand,    CMD_NEED_SRV | CMD_CONSOLE],
-         ["squery",            cmdSquery,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["sslserver",         cmdServer,                          CMD_CONSOLE],
-         ["ssl-exception",     cmdSSLException,                              0],
-         ["stalk",             cmdStalk,                           CMD_CONSOLE],
+         ["save",              cmdSave,                            CMD_CONSOLE,
+          "[<filename> [<savetype>]]"],
+         ["say",               cmdSay,                             CMD_CONSOLE,
+          "<message>"],
+         ["server",            cmdServer,                          CMD_CONSOLE,
+          "<hostname> [<port> [<password>]]"],
+         ["set-current-view",  cmdSetCurrentView,                            0,
+          "<view>"],
+         ["stats",             cmdSimpleCommand,    CMD_NEED_SRV | CMD_CONSOLE,
+          "[<params>]"],
+         ["squery",            cmdSquery,           CMD_NEED_SRV | CMD_CONSOLE,
+          "<service> [<commands>]"],
+         ["sslserver",         cmdServer,                          CMD_CONSOLE,
+          "<hostname> [<port> [<password>]]"],
+         ["ssl-exception",     cmdSSLException,                              0,
+          "[<hostname> <port> [<connect>]]"],
+         ["stalk",             cmdStalk,                           CMD_CONSOLE,
+          "[<text>]"],
          ["supports",          cmdSupports,         CMD_NEED_SRV | CMD_CONSOLE],
          ["sync-font",         cmdSync,                                      0],
          ["sync-header",       cmdSync,                                      0],
@@ -157,43 +261,75 @@ function initCommands()
          ["sync-timestamp",    cmdSync,                                      0],
          ["sync-window",       cmdSync,                                      0],
          ["testdisplay",       cmdTestDisplay,                     CMD_CONSOLE],
-         ["text-direction",    cmdTextDirection,                             0],
-         ["time",              cmdTime,             CMD_NEED_SRV | CMD_CONSOLE],
-         ["timestamps",        cmdTimestamps,                      CMD_CONSOLE],
-         ["toggle-ui",         cmdToggleUI,                        CMD_CONSOLE],
-         ["toggle-pref",       cmdTogglePref,                                0],
-         ["topic",             cmdTopic,           CMD_NEED_CHAN | CMD_CONSOLE],
-         ["unalias",           cmdAlias,                           CMD_CONSOLE],
-         ["unignore",          cmdIgnore,           CMD_NEED_NET | CMD_CONSOLE],
-         ["unban",             cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE],
+         ["text-direction",    cmdTextDirection,                             0,
+          "<dir>"],
+         ["time",              cmdTime,             CMD_NEED_SRV | CMD_CONSOLE,
+          "[<nickname>]"],
+         ["timestamps",        cmdTimestamps,                      CMD_CONSOLE,
+          "[<toggle>]"],
+         ["toggle-ui",         cmdToggleUI,                        CMD_CONSOLE,
+          "<thing>"],
+         ["toggle-pref",       cmdTogglePref,                                0,
+          "<pref-name>"],
+         ["toggle-group",      cmdToggleGroup,                               0,
+          "<group-id>"],
+         ["topic",             cmdTopic,           CMD_NEED_CHAN | CMD_CONSOLE,
+          "[<new-topic>]"],
+         ["unalias",           cmdAlias,                           CMD_CONSOLE,
+          "<alias-name>"],
+         ["unignore",          cmdIgnore,           CMD_NEED_NET | CMD_CONSOLE,
+          "<mask>"],
+         ["unban",             cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE,
+          "<nickname>"],
          ["unexcept",          cmdBanOrExcept,     CMD_NEED_CHAN | CMD_CONSOLE],
-         ["unstalk",           cmdUnstalk,                         CMD_CONSOLE],
-         ["urls",              cmdURLs,                            CMD_CONSOLE],
-         ["user",              cmdUser,                            CMD_CONSOLE],
-         ["userhost",          cmdUserhost,         CMD_NEED_SRV | CMD_CONSOLE],
-         ["userip",            cmdUserip,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["usermode",          cmdUsermode,                        CMD_CONSOLE],
-         ["user-motif",        cmdMotif,           CMD_NEED_USER | CMD_CONSOLE],
-         ["user-pref",         cmdPref,            CMD_NEED_USER | CMD_CONSOLE],
-         ["version",           cmdVersion,          CMD_NEED_SRV | CMD_CONSOLE],
-         ["websearch",         cmdWebSearch,                       CMD_CONSOLE],
-         ["who",               cmdWho,              CMD_NEED_SRV | CMD_CONSOLE],
-         ["whois",             cmdWhoIs,            CMD_NEED_SRV | CMD_CONSOLE],
-         ["whowas",            cmdWhoWas,           CMD_NEED_SRV | CMD_CONSOLE],
-         ["wii",               cmdWhoIsIdle,        CMD_NEED_SRV | CMD_CONSOLE],
+         ["uninstall-plugin",  cmdUninstallPlugin,                 CMD_CONSOLE,
+          "<plugin>"],
+         ["unstalk",           cmdUnstalk,                         CMD_CONSOLE,
+          "<text>"],
+         ["urls",              cmdURLs,                            CMD_CONSOLE,
+          "[<number>]"],
+         ["user",              cmdUser,                            CMD_CONSOLE,
+          "[<username> <description>]"],
+         ["userhost",          cmdUserhost,         CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["userip",            cmdUserip,           CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["usermode",          cmdUsermode,                        CMD_CONSOLE,
+          "[<new-mode>]"],
+         ["user-motif",        cmdMotif,           CMD_NEED_USER | CMD_CONSOLE,
+          "[<motif> [<user>]]"],
+         ["user-pref",         cmdPref,            CMD_NEED_USER | CMD_CONSOLE,
+          "[<pref-name> [<pref-value>]]"],
+         ["version",           cmdVersion,          CMD_NEED_SRV | CMD_CONSOLE,
+          "[<nickname>]"],
+         ["websearch",         cmdWebSearch,                       CMD_CONSOLE,
+          "<selected-text>"],
+         ["who",               cmdWho,              CMD_NEED_SRV | CMD_CONSOLE,
+          "<rest>"],
+         ["whois",             cmdWhoIs,            CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<...>]"],
+         ["whowas",            cmdWhoWas,           CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<limit>]"],
+         ["wii",               cmdWhoIsIdle,        CMD_NEED_SRV | CMD_CONSOLE,
+          "<nickname> [<...>]"],
 
          /* aliases */
-         ["exit",             "quit",                              CMD_CONSOLE],
-         ["j",                "join",                              CMD_CONSOLE],
-         ["pass",             "quote PASS",                        CMD_CONSOLE],
+         ["exit",             "quit",                              CMD_CONSOLE,
+          "[<reason>]"],
+         ["j",                "join",                              CMD_CONSOLE,
+          "[<channel-name> [<key>]]"],
+         ["pass",             "quote PASS",                        CMD_CONSOLE,
+          "<password>"],
          ["part",             "leave",                             CMD_CONSOLE],
          ["raw",              "quote",                             CMD_CONSOLE],
          // Shortcuts to useful URLs:
          ["faq",              "goto-url-newtab faq",                         0],
          ["homepage",         "goto-url-newtab homepage",                    0],
          // Used to display a nickname in the menu only.
-         ["label-user",       "echo",                                        0],
-         ["label-user-multi", "echo",                                        0],
+         ["label-user",       "echo",                                        0,
+          "<unspecified>"],
+         ["label-user-multi", "echo",                                        0,
+          "<unspecified>"],
          // These are all the font family/size menu commands...
          ["font-family-default",    "font-family default",                   0],
          ["font-family-serif",      "font-family serif",                     0],
@@ -347,7 +483,7 @@ function dispatch(text, e, isInteractive, flags)
         e.inputData = stringTrim(ary[2]);
 
     /* list matching commands */
-    ary = client.commandManager.list(e.commandText, flags);
+    ary = client.commandManager.list(e.commandText, flags, true);
     var rv = null;
     var i;
 
@@ -418,7 +554,7 @@ function dispatch(text, e, isInteractive, flags)
             /* more than one match, show the list */
             var str = "";
             for (i in ary)
-                str += (str) ? MSG_COMMASP + ary[i].name : ary[i].name;
+                str += (str) ? ", " + ary[i].name : ary[i].name;
             display(getMsg(MSG_ERR_AMBIGCOMMAND,
                            [e.commandText, ary.length, str]), MT_ERROR);
     }
@@ -795,33 +931,7 @@ function getToggle (toggle, currentState)
 
 function cmdDisablePlugin(e)
 {
-    if (!e.plugin.enabled)
-    {
-        display(getMsg(MSG_IS_DISABLED, e.plugin.id));
-        return;
-    }
-
-    if (e.plugin.API > 0)
-    {
-        if (!e.plugin.disable())
-        {
-            display(getMsg(MSG_CANT_DISABLE, e.plugin.id));
-            return;
-        }
-        e.plugin.prefs["enabled"] = false;
-    }
-    else if (!("disablePlugin" in e.plugin.scope))
-    {
-        display(getMsg(MSG_CANT_DISABLE, e.plugin.id));
-        return;
-    }
-    else
-    {
-        e.plugin.scope.disablePlugin();
-    }
-
-    display(getMsg(MSG_PLUGIN_DISABLED, e.plugin.id));
-    e.plugin.enabled = false;
+    disablePlugin(e.plugin, false);
 }
 
 function cmdEnablePlugin(e)
@@ -1226,7 +1336,7 @@ function cmdHelp(e)
         return;
     }
 
-    var ary = client.commandManager.list(e.pattern, CMD_CONSOLE);
+    var ary = client.commandManager.list(e.pattern, CMD_CONSOLE, true);
 
     if (ary.length == 0)
     {
@@ -1236,7 +1346,8 @@ function cmdHelp(e)
 
     for (var i in ary)
     {
-        display(getMsg(MSG_FMT_USAGE, [ary[i].name, ary[i].usage]), MT_USAGE);
+        display(getMsg(MSG_FMT_USAGE, [ary[i].name, ary[i].helpUsage]),
+                       MT_USAGE);
         display(ary[i].help, MT_HELP);
     }
 
@@ -1245,6 +1356,7 @@ function cmdHelp(e)
 
 function cmdTestDisplay(e)
 {
+    startMsgGroup("testdisplay", MSG_COLLAPSE_TEST);
     display(MSG_TEST_HELLO, MT_HELLO);
     display(MSG_TEST_INFO, MT_INFO);
     display(MSG_TEST_ERROR, MT_ERROR);
@@ -1256,12 +1368,13 @@ function cmdTestDisplay(e)
     {
         var me = e.server.me;
         var sampleUser = {TYPE: "IRCUser",
-                          encodedName: "ircmonkey", canonicalName: "ircmonkey",
+                          encodedName: "ircmonkey", collectionKey: ":ircmonkey",
                           unicodeName: "IRCMonkey", viewName: "IRCMonkey",
-                          host: "", name: "chatzilla"};
+                          host: "", name: "IRCMonkey"};
         var sampleChannel = {TYPE: "IRCChannel",
-                             encodedName: "#mojo", canonicalName: "#mojo",
-                             unicodeName: "#Mojo", viewName: "#Mojo"};
+                             encodedName: "#mojo", collectionKey: ":#mojo",
+                             unicodeName: "#Mojo", viewName: "#Mojo",
+                             name: "#Mojo"};
 
         function test (from, to)
         {
@@ -1303,17 +1416,18 @@ function cmdTestDisplay(e)
             display(MSG_TEST_STYLES, "PRIVMSG", me, sampleChannel);
         }
     }
+    endMsgGroup();
 }
 
 function cmdNetwork(e)
 {
-    if (!(e.networkName in client.networks))
+    let network = client.getNetwork(e.networkName);
+
+    if (!network)
     {
         display (getMsg(MSG_ERR_UNKNOWN_NETWORK, e.networkName), MT_ERROR);
         return;
     }
-
-    var network = client.networks[e.networkName];
 
     dispatch("create-tab-for-view", { view: network });
     dispatch("set-current-view", { view: network });
@@ -1324,30 +1438,20 @@ function cmdNetworks(e)
     var wrapper = newInlineText(MSG_NETWORKS_HEADA);
 
     var netnames = keys(client.networks).sort();
-    var lastname = netnames[netnames.length - 1];
 
-    for (var n in netnames)
+    for (let i = 0; i < netnames.length; i++)
     {
-        var net = client.networks[netnames[n]];
-        /* Test for an all-SSL network */
-        var isSecure = true;
-        for (var s in client.networks[netnames[n]].serverList)
-        {
-            if (!client.networks[netnames[n]].serverList[s].isSecure)
-            {
-                isSecure = false;
-                break;
-            }
-        }
+        let net = client.networks[netnames[i]];
+        let hasSecure = networkHasSecure(net.serverList);
 
         var linkData = {
             "data": net.unicodeName,
-            "href": (isSecure ? "ircs://" : "irc://") + net.canonicalName
+            "href": (hasSecure ? "ircs://" : "irc://") + net.canonicalName
         };
         wrapper.appendChild(newInlineText(linkData, "chatzilla-link", "a"));
 
-        if (netnames[n] != lastname)
-            wrapper.appendChild(document.createTextNode(MSG_COMMASP));
+        if (i < netnames.length - 1)
+            wrapper.appendChild(document.createTextNode(", "));
     }
 
     // Display an "Edit" link.
@@ -1700,6 +1804,36 @@ function cmdTogglePref (e)
                         [e.prefName, state ? MSG_VAL_ON : MSG_VAL_OFF]));
 }
 
+function cmdToggleGroup(e)
+{
+    var document = getContentDocument(e.sourceObject.frame);
+    var msgs = document.querySelectorAll("[msg-groups*=\"" + e.groupId + "\"]");
+    if (!msgs.length)
+        return;
+
+    var isHidden = (msgs[0].style.display == "none");
+    for (i = 0; i < msgs.length; i++)
+    {
+        if (isHidden)
+            msgs[i].style.display = "";
+        else
+            msgs[i].style.display = "none";
+    }
+
+    var els = msgs[0].previousSibling.querySelectorAll(".chatzilla-link");
+    var button = els[els.length - 1];
+    if (button.text == MSG_COLLAPSE_HIDE)
+    {
+        button.text = MSG_COLLAPSE_SHOW;
+        button.title = MSG_COLLAPSE_SHOWTITLE;
+    }
+    else
+    {
+        button.text = MSG_COLLAPSE_HIDE;
+        button.title = MSG_COLLAPSE_HIDETITLE;
+    }
+}
+
 function cmdToggleUI(e)
 {
     var ids = new Array();
@@ -1749,7 +1883,7 @@ function cmdCommands(e)
     display(MSG_COMMANDS_HEADER);
 
     var matchResult = client.commandManager.listNames(e.pattern, CMD_CONSOLE);
-    matchResult = matchResult.join(MSG_COMMASP);
+    matchResult = matchResult.join(", ");
 
     if (e.pattern)
         display(getMsg(MSG_MATCHING_COMMANDS, [e.pattern, matchResult]));
@@ -2042,6 +2176,7 @@ function _sendMsgTo(message, msgType, target, displayObj)
     if (!displayObj)
         displayObj = target;
 
+
     var msg = filterOutput(message, msgType, target);
 
     var o = getObjectDetails(target);
@@ -2050,9 +2185,12 @@ function _sendMsgTo(message, msgType, target, displayObj)
     for (var i = 0; i < lines.length; i++)
     {
         msg = lines[i];
-        client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-        displayObj.display(msg, msgType, "ME!", target);
-        client.munger.getRule(".mailto").enabled = false;
+        if (!(o.server && o.server.caps["echo-message"]))
+        {
+            client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
+            displayObj.display(msg, msgType, "ME!", target);
+            client.munger.getRule(".mailto").enabled = false;
+        }
         if (msgType == "PRIVMSG")
             target.say(msg);
         else if (msgType == "NOTICE")
@@ -2167,8 +2305,6 @@ function cmdGotoStartup(e)
 
 function cmdGotoURL(e)
 {
-    const EXT_PROTO_SVC = "@mozilla.org/uriloader/external-protocol-service;1";
-
     if (/^ircs?:/.test(e.url))
     {
         gotoIRCURL(e.url);
@@ -2209,70 +2345,29 @@ function cmdGotoURL(e)
         return;
     }
 
-    if ((e.command.name == "goto-url-external"))
-    {
-        const extProtoSvc = getService(EXT_PROTO_SVC,
-                                       "nsIExternalProtocolService");
-        extProtoSvc.loadUrl(uri);
-        dispatch("focus-input");
-        return;
-    }
-
     var browserWin = getWindowByType("navigator:browser");
     var location = browserWin ? browserWin.gBrowser.currentURI.spec : null;
     var action = e.command.name;
+    let where = "current";
 
     // We don't want to replace ChatZilla running in a tab.
     if ((action == "goto-url-newwin") ||
-        ((action == "goto-url-newtab") && !browserWin) ||
-        ((action == "goto-url") && !browserWin) ||
-        ((action == "goto-url") && browserWin &&
-         (location.indexOf("chrome://chatzilla/content/") == 0)))
+        ((action == "goto-url") && location &&
+         location.startsWith("chrome://chatzilla/content/")))
     {
-        try
-        {
-            if (typeof openUILinkIn == "function")
-                openUILinkIn(e.url, "window");
-            else
-                openTopWin(e.url);
-        }
-        catch (ex)
-        {
-            dd(formatException(ex));
-        }
-        dispatch("focus-input");
-        return;
-    }
-
-    if (client.prefs["link.focus"])
-    {
-        try
-        {
-            browserWin.focus();
-        }
-        catch (ex)
-        {
-            dd(formatException(ex));
-        }
+        where = "window";
     }
 
     if (action == "goto-url-newtab")
     {
-        try
-        {
-            browserWin.openUILinkIn(e.url, "tab");
-        }
-        catch (ex)
-        {
-            dd(formatException(ex));
-        }
-        dispatch("focus-input");
-        return;
+        where = e.shiftKey ? "tabshifted" : "tab";
     }
 
     try
     {
-        location.href = e.url;
+        let loadInBackground =
+            Services.prefs.getBoolPref("browser.tabs.loadDivertedInBackground");
+        openLinkIn(e.url, where, { inBackground: loadInBackground });
     }
     catch (ex)
     {
@@ -2357,6 +2452,7 @@ function cmdJoin(e)
         chan = e.channelToJoin;
     }
 
+    e.key = client.tryToGetLogin(chan.getURL(), "chan", "*", e.key, false, "");
     chan.join(e.key);
 
     /* !-channels are "safe" channels, and get a server-generated prefix. For
@@ -2502,6 +2598,40 @@ function cmdLeave(e)
     }
 }
 
+function cmdMarker(e)
+{
+    if (!client.initialized)
+        return;
+
+    var view = e.sourceObject;
+    if (!("setActivityMarker" in e.sourceObject))
+        return;
+
+    var marker = e.sourceObject.getActivityMarker();
+    if ((e.command.name == "marker") && (marker == null))
+    {
+        // Marker is not currently set but user wants to scroll to it,
+        // so we just call set like normal.
+        e.command.name = "marker-set";
+    }
+
+    switch(e.command.name)
+    {
+        case "marker":    /* Scroll to the marker. */
+            e.sourceObject.scrollToElement("marker", "center");
+            break;
+        case "marker-set":   /* Set (or reset) the marker. */
+            e.sourceObject.setActivityMarker(true);
+            e.sourceObject.scrollToElement("marker", "center");
+            break;
+        case "marker-clear": /* Clear the marker. */
+            e.sourceObject.setActivityMarker(false);
+            break;
+        default:
+            view.display(MSG_ERR_UNKNOWN_COMMAND, e.command.name);
+    }
+}
+
 function cmdReload(e)
 {
     dispatch("load " + e.plugin.url);
@@ -2509,44 +2639,6 @@ function cmdReload(e)
 
 function cmdLoad(e)
 {
-    var ex;
-    var plugin;
-
-    function removeOldPlugin(url)
-    {
-        var oldPlugin;
-
-        var oldPlugin = getPluginByURL(url);
-        if (!oldPlugin)
-            return;
-
-        if (oldPlugin.enabled)
-        {
-            if (oldPlugin.API > 0)
-            {
-                if (!oldPlugin.disable())
-                {
-                    display(getMsg(MSG_CANT_DISABLE, oldPlugin.id));
-                    display(getMsg(MSG_ERR_SCRIPTLOAD, e.url));
-                    return null;
-                }
-                client.prefManager.removeObserver(oldPlugin.prefManager);
-                oldPlugin.prefManager.destroy();
-            }
-            else if ("disablePlugin" in oldPlugin.scope)
-            {
-                oldPlugin.scope.disablePlugin();
-            }
-            else
-            {
-                display(getMsg(MSG_CANT_DISABLE, oldPlugin.id));
-                display(getMsg(MSG_ERR_SCRIPTLOAD, e.url));
-                return null;
-            }
-            display(getMsg(MSG_PLUGIN_DISABLED, oldPlugin.id));
-        }
-    }
-
     if (!e.scope)
         e.scope = new Object();
 
@@ -2558,14 +2650,19 @@ function cmdLoad(e)
 
     }
 
-    plugin = e.scope.plugin;
+    var plugin = e.scope.plugin;
     plugin.scope = e.scope;
 
     try
     {
         var rvStr;
         var rv = rvStr = client.load(e.url, e.scope);
-        removeOldPlugin(e.url);
+        let oldPlugin = getPluginByURL(e.url);
+        if (oldPlugin && !disablePlugin(oldPlugin, true))
+        {
+            display(getMsg(MSG_ERR_SCRIPTLOAD, e.url));
+            return null;
+        }
 
         if ("init" in plugin)
         {
@@ -2970,9 +3067,8 @@ function cmdOpenAtStartup(e)
 
 function cmdOper(e)
 {
-    // Password is optional, if it is not given, we use a safe prompt.
-    if (!e.password)
-        e.password = promptPassword(MSG_NEED_OPER_PASSWORD, "");
+    e.password = client.tryToGetLogin(e.server.getURL(), "oper", e.opername,
+                                      e.password, true, MSG_NEED_OPER_PASSWORD);
 
     if (!e.password)
         return;
@@ -3233,17 +3329,26 @@ function cmdClient(e)
 function cmdNotify(e)
 {
     var net = e.network;
+    var supports_monitor = net.primServ.supports["monitor"];
 
     if (!e.nickname)
     {
         if (net.prefs["notifyList"].length > 0)
         {
-            /* delete the lists and force a ISON check, this will
-             * print the current online/offline status when the server
-             * responds */
-            delete net.onList;
-            delete net.offList;
-            onNotifyTimeout();
+            if (supports_monitor)
+            {
+                // Just get the status of the monitor list from the server.
+                net.primServ.sendData("MONITOR S\n");
+            }
+            else
+            {
+                /* delete the lists and force a ISON check, this will
+                 * print the current online/offline status when the server
+                 * responds */
+                delete net.onList;
+                delete net.offList;
+                onNotifyTimeout();
+            }
         }
         else
         {
@@ -3278,6 +3383,9 @@ function cmdNotify(e)
 
         if (adds.length > 0)
         {
+            if (supports_monitor)
+                net.primServ.sendMonitorList(adds, true);
+
             msgname = (adds.length == 1) ? MSG_NOTIFY_ADDONE :
                                            MSG_NOTIFY_ADDSOME;
             display(getMsg(msgname, arraySpeak(adds)));
@@ -3285,6 +3393,9 @@ function cmdNotify(e)
 
         if (subs.length > 0)
         {
+            if (supports_monitor)
+                net.primServ.sendMonitorList(subs, false);
+
             msgname = (subs.length == 1) ? MSG_NOTIFY_DELONE :
                                            MSG_NOTIFY_DELSOME;
             display(getMsg(msgname, arraySpeak(subs)));
@@ -3292,7 +3403,8 @@ function cmdNotify(e)
 
         delete net.onList;
         delete net.offList;
-        onNotifyTimeout();
+        if (!supports_monitor)
+            onNotifyTimeout();
     }
 }
 
@@ -3316,7 +3428,7 @@ function cmdStalk(e)
             }
 
             list.sort(alphabetize);
-            display(getMsg(MSG_STALK_LIST, list.join(MSG_COMMASP)));
+            display(getMsg(MSG_STALK_LIST, list.join(", ")));
         }
         return;
     }
@@ -3681,17 +3793,17 @@ function cmdSupports(e)
 
     if ("channelTypes" in server)
         display(getMsg(MSG_SUPPORTS_CHANTYPES,
-                       server.channelTypes.join(MSG_COMMASP)));
+                       server.channelTypes.join(", ")));
     if ("channelModes" in server)
     {
         display(getMsg(MSG_SUPPORTS_CHANMODESA,
-                       server.channelModes.a.join(MSG_COMMASP)));
+                       server.channelModes.a.join(", ")));
         display(getMsg(MSG_SUPPORTS_CHANMODESB,
-                       server.channelModes.b.join(MSG_COMMASP)));
+                       server.channelModes.b.join(", ")));
         display(getMsg(MSG_SUPPORTS_CHANMODESC,
-                       server.channelModes.c.join(MSG_COMMASP)));
+                       server.channelModes.c.join(", ")));
         display(getMsg(MSG_SUPPORTS_CHANMODESD,
-                       server.channelModes.d.join(MSG_COMMASP)));
+                       server.channelModes.d.join(", ")));
     }
 
     if ("userModes" in server)
@@ -3704,7 +3816,7 @@ function cmdSupports(e)
                                                       server.userModes[m].symbol
                                                     ]));
         }
-        display(getMsg(MSG_SUPPORTS_USERMODES, list.join(MSG_COMMASP)));
+        display(getMsg(MSG_SUPPORTS_USERMODES, list.join(", ")));
     }
 
     var listB1 = new Array();
@@ -3727,9 +3839,9 @@ function cmdSupports(e)
     listB1.sort();
     listB2.sort();
     listN.sort();
-    display(getMsg(MSG_SUPPORTS_FLAGSON, listB1.join(MSG_COMMASP)));
-    display(getMsg(MSG_SUPPORTS_FLAGSOFF, listB2.join(MSG_COMMASP)));
-    display(getMsg(MSG_SUPPORTS_MISCOPTIONS, listN.join(MSG_COMMASP)));
+    display(getMsg(MSG_SUPPORTS_FLAGSON, listB1.join(", ")));
+    display(getMsg(MSG_SUPPORTS_FLAGSOFF, listB2.join(", ")));
+    display(getMsg(MSG_SUPPORTS_MISCOPTIONS, listN.join(", ")));
 
     var listCaps = new Array();
     var listCapsEnabled = new Array();
@@ -3743,8 +3855,8 @@ function cmdSupports(e)
     {
         listCaps.sort();
         listCapsEnabled.sort();
-        display(getMsg(MSG_SUPPORTS_CAPS, listCaps.join(MSG_COMMASP)));
-        display(getMsg(MSG_SUPPORTS_CAPSON, listCapsEnabled.join(MSG_COMMASP)));
+        display(getMsg(MSG_SUPPORTS_CAPS, listCaps.join(", ")));
+        display(getMsg(MSG_SUPPORTS_CAPSON, listCapsEnabled.join(", ")));
     }
 }
 
@@ -3844,6 +3956,18 @@ function cmdJumpToAnchor(e)
 
     dispatch("set-current-view", {view: e.channel});
     e.channel.scrollToElement(row, "center");
+}
+
+function cmdIdentify(e)
+{
+    e.password = client.tryToGetLogin(e.server.parent.getURL(), "nick",
+                                      e.server.me.name, e.password, true,
+                                      MSG_NEED_IDENTIFY_PASSWORD);
+    if (!e.password)
+        return;
+
+    e.server.sendData("NS IDENTIFY " + fromUnicode(e.password, e.server) +
+                      "\n");
 }
 
 function cmdIgnore(e)
@@ -4562,6 +4686,14 @@ function cmdInstallPlugin(e)
     }
 }
 
+function cmdUninstallPlugin(e)
+{
+    if (e.plugin)
+    {
+        client.uninstallPlugin(e.plugin);
+    }
+}
+
 function cmdFind(e)
 {
     if (!e.rest)
@@ -4623,5 +4755,6 @@ function cmdWebSearch(e)
                                     .getSubmission(e.selectedText);
     let newTabPref = Services.prefs.getBoolPref("browser.search.opentabforcontextsearch");
     dispatch(newTabPref ? "goto-url-newtab" : "goto-url-newwin",
-             {url: submission.uri.asciiSpec});
+             {url: submission.uri.asciiSpec,
+              shiftKey: e.shiftKey});
 }

@@ -7,17 +7,21 @@
 with Files("**"):
     BUG_COMPONENT = ("Core", "DOM: Workers")
 
-DIRS += ["remoteworkers", "sharedworkers"]
+DIRS += ["remoteworkers", "sharedworkers", "loader"]
 
 # Public stuff.
 EXPORTS.mozilla.dom += [
     "ChromeWorker.h",
+    "EventWithOptionsRunnable.h",
     "JSExecutionManager.h",
     "Worker.h",
+    "WorkerChannelInfo.h",
     "WorkerCommon.h",
     "WorkerDebugger.h",
     "WorkerDebuggerManager.h",
+    "WorkerDocumentListener.h",
     "WorkerError.h",
+    "WorkerIPCUtils.h",
     "WorkerLoadInfo.h",
     "WorkerLocation.h",
     "WorkerNavigator.h",
@@ -40,6 +44,7 @@ EXPORTS.mozilla.dom.workerinternals += [
 XPIDL_MODULE = "dom_workers"
 
 XPIDL_SOURCES += [
+    "nsIWorkerChannelInfo.idl",
     "nsIWorkerDebugger.idl",
     "nsIWorkerDebuggerManager.idl",
 ]
@@ -47,16 +52,18 @@ XPIDL_SOURCES += [
 UNIFIED_SOURCES += [
     "ChromeWorker.cpp",
     "ChromeWorkerScope.cpp",
+    "EventWithOptionsRunnable.cpp",
     "JSExecutionManager.cpp",
     "MessageEventRunnable.cpp",
-    "Principal.cpp",
     "RegisterBindings.cpp",
     "RuntimeService.cpp",
     "ScriptLoader.cpp",
     "Worker.cpp",
+    "WorkerChannelInfo.cpp",
     "WorkerCSPEventListener.cpp",
     "WorkerDebugger.cpp",
     "WorkerDebuggerManager.cpp",
+    "WorkerDocumentListener.cpp",
     "WorkerError.cpp",
     "WorkerEventTarget.cpp",
     "WorkerLoadInfo.cpp",
@@ -93,16 +100,15 @@ include("/ipc/chromium/chromium-config.mozbuild")
 FINAL_LIBRARY = "xul"
 
 MOCHITEST_MANIFESTS += [
-    "test/mochitest.ini",
+    "test/mochitest.toml",
 ]
 
 MOCHITEST_CHROME_MANIFESTS += [
-    "test/chrome.ini",
+    "test/chrome.toml",
 ]
 
-XPCSHELL_TESTS_MANIFESTS += ["test/xpcshell/xpcshell.ini"]
+MARIONETTE_MANIFESTS += ["test/marionette/manifest.toml"]
 
-BROWSER_CHROME_MANIFESTS += ["test/browser.ini"]
+XPCSHELL_TESTS_MANIFESTS += ["test/xpcshell/xpcshell.toml"]
 
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
+BROWSER_CHROME_MANIFESTS += ["test/browser.toml"]

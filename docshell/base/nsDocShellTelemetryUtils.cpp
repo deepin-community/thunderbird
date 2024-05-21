@@ -59,10 +59,6 @@ static const LoadErrorTelemetryResult sResult[] = {
         ErrorLabel::CSP_FORM_ACTION,
     },
     {
-        NS_ERROR_CSP_NAVIGATE_TO_VIOLATION,
-        ErrorLabel::CSP_NAVIGATE_TO,
-    },
-    {
         NS_ERROR_XFO_VIOLATION,
         ErrorLabel::XFO_VIOLATION,
     },
@@ -153,10 +149,6 @@ static const LoadErrorTelemetryResult sResult[] = {
     {
         NS_ERROR_INVALID_CONTENT_ENCODING,
         ErrorLabel::CONTENT_ENCODING,
-    },
-    {
-        NS_ERROR_REMOTE_XUL,
-        ErrorLabel::REMOTE_XUL,
     },
     {
         NS_ERROR_UNSAFE_CONTENT_TYPE,

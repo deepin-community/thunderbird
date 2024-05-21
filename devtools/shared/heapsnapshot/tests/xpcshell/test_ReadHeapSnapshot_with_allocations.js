@@ -6,13 +6,25 @@
 // into a HeapSnapshot.
 
 if (typeof Debugger != "function") {
-  const { addDebuggerToGlobal } = ChromeUtils.import(
-    "resource://gre/modules/jsdebugger.jsm"
+  const { addDebuggerToGlobal } = ChromeUtils.importESModule(
+    "resource://gre/modules/jsdebugger.sys.mjs"
   );
-  addDebuggerToGlobal(this);
+  addDebuggerToGlobal(globalThis);
 }
 
 function run_test() {
+  Services.prefs.setBoolPref(
+    "security.allow_parent_unrestricted_js_loads",
+    true
+  );
+  Services.prefs.setBoolPref("security.allow_eval_with_system_principal", true);
+  Services.prefs.setBoolPref("security.allow_eval_in_parent_process", true);
+  registerCleanupFunction(() => {
+    Services.prefs.clearUserPref("security.allow_parent_unrestricted_js_loads");
+    Services.prefs.clearUserPref("security.allow_eval_with_system_principal");
+    Services.prefs.clearUserPref("security.allow_eval_in_parent_process");
+  });
+
   // Create a Debugger observing a debuggee's allocations.
   const debuggee = new Cu.Sandbox(null);
   const dbg = new Debugger(debuggee);
@@ -33,7 +45,7 @@ function run_test() {
 
   const snapshot = ChromeUtils.readHeapSnapshot(filePath);
   ok(snapshot, "Should be able to read a heap snapshot");
-  ok(snapshot instanceof HeapSnapshot, "Should be an instanceof HeapSnapshot");
+  ok(HeapSnapshot.isInstance(snapshot), "Should be an instanceof HeapSnapshot");
 
   do_test_finished();
 }

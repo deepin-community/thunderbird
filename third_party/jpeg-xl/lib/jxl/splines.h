@@ -6,25 +6,26 @@
 #ifndef LIB_JXL_SPLINES_H_
 #define LIB_JXL_SPLINES_H_
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
-#include "lib/jxl/ans_params.h"
-#include "lib/jxl/aux_out.h"
-#include "lib/jxl/aux_out_fwd.h"
+#include "lib/jxl/base/compiler_specific.h"
 #include "lib/jxl/base/status.h"
 #include "lib/jxl/chroma_from_luma.h"
-#include "lib/jxl/dec_ans.h"
-#include "lib/jxl/dec_bit_reader.h"
-#include "lib/jxl/entropy_coder.h"
 #include "lib/jxl/image.h"
 
 namespace jxl {
 
+class ANSSymbolReader;
+class BitReader;
+
 static constexpr float kDesiredRenderingDistance = 1.f;
+
+typedef std::array<float, 32> Dct32;
 
 enum SplineEntropyContexts : size_t {
   kQuantizationAdjustmentContext = 0,
@@ -47,10 +48,10 @@ struct Spline {
   };
   std::vector<Point> control_points;
   // X, Y, B.
-  float color_dct[3][32];
+  std::array<Dct32, 3> color_dct;
   // Splines are draws by normalized Gaussian splatting. This controls the
   // Gaussian's parameter along the spline.
-  float sigma_dct[32];
+  Dct32 sigma_dct;
 };
 
 class QuantizedSplineEncoder;
@@ -59,12 +60,13 @@ class QuantizedSpline {
  public:
   QuantizedSpline() = default;
   explicit QuantizedSpline(const Spline& original,
-                           int32_t quantization_adjustment, float ytox,
-                           float ytob);
+                           int32_t quantization_adjustment, float y_to_x,
+                           float y_to_b);
 
-  Spline Dequantize(const Spline::Point& starting_point,
-                    int32_t quantization_adjustment, float ytox,
-                    float ytob) const;
+  Status Dequantize(const Spline::Point& starting_point,
+                    int32_t quantization_adjustment, float y_to_x, float y_to_b,
+                    uint64_t image_size, uint64_t* total_estimated_area_reached,
+                    Spline& result) const;
 
   Status Decode(const std::vector<uint8_t>& context_map,
                 ANSSymbolReader* decoder, BitReader* br,
@@ -79,6 +81,18 @@ class QuantizedSpline {
   int sigma_dct_[32] = {};
 };
 
+// A single "drawable unit" of a spline, i.e. a line of the region in which we
+// render each Gaussian. The structure doesn't actually depend on the exact
+// row, which allows reuse for different y values (which are tracked
+// separately).
+struct SplineSegment {
+  float center_x, center_y;
+  float maximum_distance;
+  float inv_sigma;
+  float sigma_over_4_times_intensity;
+  float color[3];
+};
+
 class Splines {
  public:
   Splines() = default;
@@ -91,11 +105,15 @@ class Splines {
 
   bool HasAny() const { return !splines_.empty(); }
 
+  void Clear();
+
   Status Decode(BitReader* br, size_t num_pixels);
 
-  Status AddTo(Image3F* opsin, const Rect& opsin_rect, const Rect& image_rect,
-               const ColorCorrelationMap& cmap) const;
-  Status SubtractFrom(Image3F* opsin, const ColorCorrelationMap& cmap) const;
+  void AddTo(Image3F* opsin, const Rect& opsin_rect,
+             const Rect& image_rect) const;
+  void AddToRow(float* JXL_RESTRICT row_x, float* JXL_RESTRICT row_y,
+                float* JXL_RESTRICT row_b, const Rect& image_row) const;
+  void SubtractFrom(Image3F* opsin) const;
 
   const std::vector<QuantizedSpline>& QuantizedSplines() const {
     return splines_;
@@ -106,10 +124,16 @@ class Splines {
 
   int32_t GetQuantizationAdjustment() const { return quantization_adjustment_; }
 
+  Status InitializeDrawCache(size_t image_xsize, size_t image_ysize,
+                             const ColorCorrelationMap& cmap);
+
  private:
   template <bool>
-  Status Apply(Image3F* opsin, const Rect& opsin_rect, const Rect& image_rect,
-               const ColorCorrelationMap& cmap) const;
+  void ApplyToRow(float* JXL_RESTRICT row_x, float* JXL_RESTRICT row_y,
+                  float* JXL_RESTRICT row_b, const Rect& image_row) const;
+  template <bool>
+  void Apply(Image3F* opsin, const Rect& opsin_rect,
+             const Rect& image_rect) const;
 
   // If positive, quantization weights are multiplied by 1 + this/8, which
   // increases precision. If negative, they are divided by 1 - this/8. If 0,
@@ -117,6 +141,9 @@ class Splines {
   int32_t quantization_adjustment_ = 0;
   std::vector<QuantizedSpline> splines_;
   std::vector<Spline::Point> starting_points_;
+  std::vector<SplineSegment> segments_;
+  std::vector<size_t> segment_indices_;
+  std::vector<size_t> segment_y_start_;
 };
 
 }  // namespace jxl

@@ -30,9 +30,9 @@ interface nsIFaviconService : nsISupports
    * nothing but returning the input URI.
    *
    * No validity checking is done. If you pass an icon URI that we've never
-   * seen, you'll get back a URI that references an invalid icon. The moz-anno
-   * protocol handler's special case for "favicon" annotations will resolve
-   * invalid icons to the default icon, although without caching.
+   * seen, you'll get back a URI that references an invalid icon. The
+   * cached-favicon protocol handler's special case for cached favicon will
+   * resolve invalid icons to the default icon, although without caching.
    * For invalid chrome URIs, you'll get a broken image.
    *
    * @param aFaviconURI
@@ -221,7 +221,8 @@ interface nsIFaviconService : nsISupports
    *        aMimeType will be an empty string, regardless of whether a favicon
    *        was found.
    * @param [optional] aPreferredWidth
-   *        The preferred icon width, 0 for the biggest available.
+   *        The preferred icon width, skip or pass 0 for the default value,
+   *        set through setDefaultIconURIPreferredSize.
    *
    * @note If a favicon specific to this page cannot be found, this will try to
    *       fallback to the /favicon.ico for the root domain.
@@ -248,7 +249,8 @@ interface nsIFaviconService : nsISupports
    *        URI, aDataLen will be 0, aData will be an empty array, and aMimeType
    *        will be an empty string.
    * @param [optional] aPreferredWidth
-   *        The preferred icon width, 0 for the biggest available.
+   *        The preferred icon width, skip or pass 0 for the default value,
+   *        set through setDefaultIconURIPreferredSize.
    * @note If a favicon specific to this page cannot be found, this will try to
    *       fallback to the /favicon.ico for the root domain.
    *
@@ -332,5 +334,6 @@ interface nsIFaviconDataCallback : nsISupports
 #define FAVICON_DEFAULT_MIMETYPE "image/svg+xml"
 
 #define FAVICON_ERRORPAGE_URL "chrome://global/skin/icons/info.svg"
+#define FAVICON_CERTERRORPAGE_URL "chrome://global/skin/icons/warning.svg"
 
 %}

@@ -5,22 +5,24 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "IdleTaskRunner.h"
+#include "mozilla/TaskController.h"
 #include "nsRefreshDriver.h"
-#include "nsComponentManagerUtils.h"
 
 namespace mozilla {
 
 already_AddRefed<IdleTaskRunner> IdleTaskRunner::Create(
     const CallbackType& aCallback, const char* aRunnableName,
-    uint32_t aStartDelay, uint32_t aMaxDelay, int64_t aMinimumUsefulBudget,
-    bool aRepeating, const MayStopProcessingCallbackType& aMayStopProcessing) {
+    TimeDuration aStartDelay, TimeDuration aMaxDelay,
+    TimeDuration aMinimumUsefulBudget, bool aRepeating,
+    const MayStopProcessingCallbackType& aMayStopProcessing,
+    const RequestInterruptCallbackType& aRequestInterrupt) {
   if (aMayStopProcessing && aMayStopProcessing()) {
     return nullptr;
   }
 
-  RefPtr<IdleTaskRunner> runner =
-      new IdleTaskRunner(aCallback, aRunnableName, aStartDelay, aMaxDelay,
-                         aMinimumUsefulBudget, aRepeating, aMayStopProcessing);
+  RefPtr<IdleTaskRunner> runner = new IdleTaskRunner(
+      aCallback, aRunnableName, aStartDelay, aMaxDelay, aMinimumUsefulBudget,
+      aRepeating, aMayStopProcessing, aRequestInterrupt);
   runner->Schedule(false);  // Initial scheduling shouldn't use idle dispatch.
   return runner.forget();
 }
@@ -28,11 +30,13 @@ already_AddRefed<IdleTaskRunner> IdleTaskRunner::Create(
 class IdleTaskRunnerTask : public Task {
  public:
   explicit IdleTaskRunnerTask(IdleTaskRunner* aRunner)
-      : Task(true, EventQueuePriority::Idle), mRunner(aRunner) {
+      : Task(Kind::MainThreadOnly, EventQueuePriority::Idle),
+        mRunner(aRunner),
+        mRequestInterrupt(aRunner->mRequestInterrupt) {
     SetManager(TaskController::Get()->GetIdleTaskManager());
   }
 
-  bool Run() override {
+  TaskResult Run() override {
     if (mRunner) {
       // IdleTaskRunner::Run can actually trigger the destruction of the
       // IdleTaskRunner. Make sure it doesn't get destroyed before the method
@@ -40,7 +44,7 @@ class IdleTaskRunnerTask : public Task {
       RefPtr<IdleTaskRunner> runner(mRunner);
       runner->Run();
     }
-    return true;
+    return TaskResult::Complete;
   }
 
   void SetIdleDeadline(TimeStamp aDeadline) override {
@@ -60,23 +64,34 @@ class IdleTaskRunnerTask : public Task {
     return true;
   }
 
+  void RequestInterrupt(uint32_t aInterruptPriority) override {
+    if (mRequestInterrupt) {
+      mRequestInterrupt(aInterruptPriority);
+    }
+  }
+
  private:
   IdleTaskRunner* mRunner;
+
+  // Copied here and invoked even if there is no mRunner currently, to avoid
+  // race conditions checking mRunner when an interrupt is requested.
+  IdleTaskRunner::RequestInterruptCallbackType mRequestInterrupt;
 };
 
 IdleTaskRunner::IdleTaskRunner(
     const CallbackType& aCallback, const char* aRunnableName,
-    uint32_t aStartDelay, uint32_t aMaxDelay, int64_t aMinimumUsefulBudget,
-    bool aRepeating, const MayStopProcessingCallbackType& aMayStopProcessing)
+    TimeDuration aStartDelay, TimeDuration aMaxDelay,
+    TimeDuration aMinimumUsefulBudget, bool aRepeating,
+    const MayStopProcessingCallbackType& aMayStopProcessing,
+    const RequestInterruptCallbackType& aRequestInterrupt)
     : mCallback(aCallback),
-      mStartTime(TimeStamp::Now() +
-                 TimeDuration::FromMilliseconds(aStartDelay)),
+      mStartTime(TimeStamp::Now() + aStartDelay),
       mMaxDelay(aMaxDelay),
-      mMinimumUsefulBudget(
-          TimeDuration::FromMilliseconds(aMinimumUsefulBudget)),
+      mMinimumUsefulBudget(aMinimumUsefulBudget),
       mRepeating(aRepeating),
       mTimerActive(false),
       mMayStopProcessing(aMayStopProcessing),
+      mRequestInterrupt(aRequestInterrupt),
       mName(aRunnableName) {}
 
 void IdleTaskRunner::Run() {
@@ -135,7 +150,7 @@ void IdleTaskRunner::SetMinimumUsefulBudget(int64_t aMinimumUsefulBudget) {
   mMinimumUsefulBudget = TimeDuration::FromMilliseconds(aMinimumUsefulBudget);
 }
 
-void IdleTaskRunner::SetTimer(uint32_t aDelay, nsIEventTarget* aTarget) {
+void IdleTaskRunner::SetTimer(TimeDuration aDelay, nsIEventTarget* aTarget) {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aTarget->IsOnCurrentThread());
   // aTarget is always the main thread event target provided from
@@ -169,14 +184,25 @@ void IdleTaskRunner::Schedule(bool aAllowIdleDispatch) {
   mDeadline = TimeStamp();
 
   TimeStamp now = TimeStamp::Now();
+
+  if (aAllowIdleDispatch) {
+    SetTimerInternal(mMaxDelay);
+    if (!mTask) {
+      mTask = new IdleTaskRunnerTask(this);
+      RefPtr<Task> task(mTask);
+      TaskController::Get()->AddTask(task.forget());
+    }
+    return;
+  }
+
   bool useRefreshDriver = false;
   if (now >= mStartTime) {
     // Detect whether the refresh driver is ticking by checking if
     // GetIdleDeadlineHint returns its input parameter.
-    useRefreshDriver = (nsRefreshDriver::GetIdleDeadlineHint(now) != now);
-  } else {
-    NS_WARNING_ASSERTION(!aAllowIdleDispatch,
-                         "early callback, or time went backwards");
+    useRefreshDriver =
+        (nsRefreshDriver::GetIdleDeadlineHint(
+             now, nsRefreshDriver::IdleCheck::OnlyThisProcessRefreshDriver) !=
+         now);
   }
 
   if (useRefreshDriver) {
@@ -190,36 +216,25 @@ void IdleTaskRunner::Schedule(bool aAllowIdleDispatch) {
     SetTimerInternal(mMaxDelay);
   } else {
     // RefreshDriver doesn't seem to be running.
-    if (aAllowIdleDispatch) {
-      SetTimerInternal(mMaxDelay);
-      if (!mTask) {
-        // If we have mTask we've already scheduled one, and the refresh driver
-        // shouldn't be running if we hit this code path.
-        mTask = new IdleTaskRunnerTask(this);
-        RefPtr<Task> task(mTask);
-        TaskController::Get()->AddTask(task.forget());
+    if (!mScheduleTimer) {
+      mScheduleTimer = NS_NewTimer();
+      if (!mScheduleTimer) {
+        return;
       }
     } else {
-      if (!mScheduleTimer) {
-        mScheduleTimer = NS_NewTimer();
-        if (!mScheduleTimer) {
-          return;
-        }
-      } else {
-        mScheduleTimer->Cancel();
-      }
-      // We weren't allowed to do idle dispatch immediately, do it after a
-      // short timeout. (Or wait for our start time if we haven't started yet.)
-      uint32_t waitToSchedule = 16; /* ms */
-      if (now < mStartTime) {
-        // + 1 to round milliseconds up to be sure to wait until after
-        // mStartTime.
-        waitToSchedule = (mStartTime - now).ToMilliseconds() + 1;
-      }
-      mScheduleTimer->InitWithNamedFuncCallback(
-          ScheduleTimedOut, this, waitToSchedule,
-          nsITimer::TYPE_ONE_SHOT_LOW_PRIORITY, mName);
+      mScheduleTimer->Cancel();
     }
+    // We weren't allowed to do idle dispatch immediately, do it after a
+    // short timeout. (Or wait for our start time if we haven't started yet.)
+    uint32_t waitToSchedule = 16; /* ms */
+    if (now < mStartTime) {
+      // + 1 to round milliseconds up to be sure to wait until after
+      // mStartTime.
+      waitToSchedule = (mStartTime - now).ToMilliseconds() + 1;
+    }
+    mScheduleTimer->InitWithNamedFuncCallback(
+        ScheduleTimedOut, this, waitToSchedule,
+        nsITimer::TYPE_ONE_SHOT_LOW_PRIORITY, mName);
   }
 }
 
@@ -240,10 +255,15 @@ void IdleTaskRunner::CancelTimer() {
   mTimerActive = false;
 }
 
-void IdleTaskRunner::SetTimerInternal(uint32_t aDelay) {
+void IdleTaskRunner::SetTimerInternal(TimeDuration aDelay) {
   if (mTimerActive) {
     return;
   }
+  ResetTimer(aDelay);
+}
+
+void IdleTaskRunner::ResetTimer(TimeDuration aDelay) {
+  mTimerActive = false;
 
   if (!mTimer) {
     mTimer = NS_NewTimer();
@@ -252,7 +272,7 @@ void IdleTaskRunner::SetTimerInternal(uint32_t aDelay) {
   }
 
   if (mTimer) {
-    mTimer->InitWithNamedFuncCallback(TimedOut, this, aDelay,
+    mTimer->InitWithNamedFuncCallback(TimedOut, this, aDelay.ToMilliseconds(),
                                       nsITimer::TYPE_ONE_SHOT, mName);
     mTimerActive = true;
   }

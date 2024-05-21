@@ -42,17 +42,13 @@ uint32_t nsXULPrototypeDocument::gRefCnt;
 //
 
 nsXULPrototypeDocument::nsXULPrototypeDocument()
-    : mRoot(nullptr),
-      mLoaded(false),
-      mCCGeneration(0),
-      mGCNumber(0),
-      mWasL10nCached(false) {
+    : mRoot(nullptr), mLoaded(false), mCCGeneration(0), mWasL10nCached(false) {
   ++gRefCnt;
 }
 
 nsresult nsXULPrototypeDocument::Init() {
-  mNodeInfoManager = new nsNodeInfoManager();
-  return mNodeInfoManager->Init(nullptr);
+  mNodeInfoManager = new nsNodeInfoManager(nullptr, nullptr);
+  return NS_OK;
 }
 
 nsXULPrototypeDocument::~nsXULPrototypeDocument() {
@@ -427,21 +423,6 @@ nsresult nsXULPrototypeDocument::NotifyLoadDone() {
   return NS_OK;
 }
 
-void nsXULPrototypeDocument::TraceProtos(JSTracer* aTrc) {
-  // Only trace the protos once per GC if we are marking.
-  if (aTrc->isMarkingTracer()) {
-    uint32_t currentGCNumber = aTrc->gcNumberForMarking();
-    if (mGCNumber == currentGCNumber) {
-      return;
-    }
-    mGCNumber = currentGCNumber;
-  }
-
-  if (mRoot) {
-    mRoot->TraceAllScripts(aTrc);
-  }
-}
-
 void nsXULPrototypeDocument::SetIsL10nCached(bool aIsCached) {
   mWasL10nCached = aIsCached;
 }
@@ -520,16 +501,11 @@ void nsXULPrototypeDocument::RebuildL10nPrototype(Element* aElement,
     return;
   }
 
+  MOZ_ASSERT(aElement->HasAttr(nsGkAtoms::datal10nid));
+
   Document* doc = aElement->OwnerDoc();
-
-  nsAutoString id;
-  MOZ_RELEASE_ASSERT(aElement->GetAttr(nsGkAtoms::datal10nid, id));
-
-  if (!doc) {
-    return;
+  if (RefPtr<nsXULPrototypeElement> proto =
+          doc->mL10nProtoElements.Get(aElement)) {
+    RebuildPrototypeFromElement(proto, aElement, aDeep);
   }
-
-  RefPtr<nsXULPrototypeElement> proto = doc->mL10nProtoElements.Get(aElement);
-  MOZ_RELEASE_ASSERT(proto);
-  RebuildPrototypeFromElement(proto, aElement, aDeep);
 }

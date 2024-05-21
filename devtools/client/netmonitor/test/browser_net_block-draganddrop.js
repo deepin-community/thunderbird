@@ -7,17 +7,11 @@
  * Test blocking and unblocking a request.
  */
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
+add_task(async function () {
   class DataTransfer {
     constructor() {
       this.BLOCKING_URL =
-        "http://example.com/browser/devtools/client/netmonitor/test/html_simple-test-page.html";
+        "https://example.com/browser/devtools/client/netmonitor/test/html_simple-test-page.html";
       this.getDataTrigger = false;
       this.setDataTrigger = false;
       this.data = "";
@@ -25,14 +19,26 @@ add_task(async function() {
 
     setData(format, data) {
       this.setDataTrigger = true;
-      ok(format === "text/plain", 'setData passed valid "text/plain" format');
-      ok(data === this.BLOCKING_URL, "Data matches the expected URL");
+      Assert.strictEqual(
+        format,
+        "text/plain",
+        'setData passed valid "text/plain" format'
+      );
+      Assert.strictEqual(
+        data,
+        this.BLOCKING_URL,
+        "Data matches the expected URL"
+      );
       this.data = data;
     }
 
     getData(format) {
       this.getDataTrigger = true;
-      ok(format === "text/plain", 'getData passed valid "text/plain" format');
+      Assert.strictEqual(
+        format,
+        "text/plain",
+        'getData passed valid "text/plain" format'
+      );
       return this.data;
     }
 
@@ -47,7 +53,7 @@ add_task(async function() {
 
   const dataTransfer = new DataTransfer();
 
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+  const { tab, monitor } = await initNetMonitor(HTTPS_SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -64,7 +70,7 @@ add_task(async function() {
 
   // Reload to have one request in the list
   let waitForEvents = waitForNetworkEvents(monitor, 1);
-  await navigateTo(SIMPLE_URL);
+  await navigateTo(HTTPS_SIMPLE_URL);
   await waitForEvents;
 
   // Capture normal request
@@ -81,8 +87,9 @@ add_task(async function() {
     EventUtils.sendMouseEvent({ type: "mousedown" }, firstRequest);
     await waitForHeaders;
     normalRequestState = getSelectedRequest(store.getState());
-    normalRequestSize = firstRequest.querySelector(".requests-list-transferred")
-      .textContent;
+    normalRequestSize = firstRequest.querySelector(
+      ".requests-list-transferred"
+    ).textContent;
     info("Captured normal request");
 
     // Drag and drop the list item
@@ -101,8 +108,9 @@ add_task(async function() {
       })
     );
 
-    ok(
-      dataTransfer.wasSetDataTriggered() === true,
+    Assert.strictEqual(
+      dataTransfer.wasSetDataTriggered(),
+      true,
       'setData() was called during the "dragstart" event'
     );
 
@@ -115,8 +123,9 @@ add_task(async function() {
       })
     );
 
-    ok(
-      dataTransfer.wasGetDataTriggered() === true,
+    Assert.strictEqual(
+      dataTransfer.wasGetDataTriggered(),
+      true,
       'getData() was called during the "drop" event'
     );
 

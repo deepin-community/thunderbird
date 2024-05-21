@@ -13,13 +13,13 @@
 #include "ServiceWorkerRegistrationParent.h"
 #include "ServiceWorkerUnregisterCallback.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 using mozilla::ipc::AssertIsOnBackgroundThread;
 
 class ServiceWorkerRegistrationProxy::DelayedUpdate final
-    : public nsITimerCallback {
+    : public nsITimerCallback,
+      public nsINamed {
   RefPtr<ServiceWorkerRegistrationProxy> mProxy;
   RefPtr<ServiceWorkerRegistrationPromise::Private> mPromise;
   nsCOMPtr<nsITimer> mTimer;
@@ -30,6 +30,7 @@ class ServiceWorkerRegistrationProxy::DelayedUpdate final
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSITIMERCALLBACK
+  NS_DECL_NSINAMED
 
   DelayedUpdate(RefPtr<ServiceWorkerRegistrationProxy>&& aProxy,
                 RefPtr<ServiceWorkerRegistrationPromise::Private>&& aPromise,
@@ -185,8 +186,7 @@ void ServiceWorkerRegistrationProxy::Init(
   nsCOMPtr<nsIRunnable> r =
       NewRunnableMethod("ServiceWorkerRegistrationProxy::Init", this,
                         &ServiceWorkerRegistrationProxy::InitOnMainThread);
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 }
 
 void ServiceWorkerRegistrationProxy::RevokeActor(
@@ -199,8 +199,7 @@ void ServiceWorkerRegistrationProxy::RevokeActor(
   nsCOMPtr<nsIRunnable> r = NewRunnableMethod(
       __func__, this,
       &ServiceWorkerRegistrationProxy::StopListeningOnMainThread);
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 }
 
 RefPtr<GenericPromise> ServiceWorkerRegistrationProxy::Unregister() {
@@ -229,8 +228,7 @@ RefPtr<GenericPromise> ServiceWorkerRegistrationProxy::Unregister() {
         scopeExit.release();
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return promise;
 }
@@ -261,7 +259,7 @@ class UpdateCallback final : public ServiceWorkerUpdateFinishCallback {
 }  // anonymous namespace
 
 NS_IMPL_ISUPPORTS(ServiceWorkerRegistrationProxy::DelayedUpdate,
-                  nsITimerCallback)
+                  nsITimerCallback, nsINamed)
 
 ServiceWorkerRegistrationProxy::DelayedUpdate::DelayedUpdate(
     RefPtr<ServiceWorkerRegistrationProxy>&& aProxy,
@@ -330,8 +328,14 @@ ServiceWorkerRegistrationProxy::DelayedUpdate::Notify(nsITimer* aTimer) {
   return NS_OK;
 }
 
+NS_IMETHODIMP
+ServiceWorkerRegistrationProxy::DelayedUpdate::GetName(nsACString& aName) {
+  aName.AssignLiteral("ServiceWorkerRegistrationProxy::DelayedUpdate");
+  return NS_OK;
+}
+
 RefPtr<ServiceWorkerRegistrationPromise> ServiceWorkerRegistrationProxy::Update(
-    const nsCString& aNewestWorkerScriptUrl) {
+    const nsACString& aNewestWorkerScriptUrl) {
   AssertIsOnBackgroundThread();
 
   RefPtr<ServiceWorkerRegistrationProxy> self = this;
@@ -339,8 +343,9 @@ RefPtr<ServiceWorkerRegistrationPromise> ServiceWorkerRegistrationProxy::Update(
       new ServiceWorkerRegistrationPromise::Private(__func__);
 
   nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction(
-      __func__, [self, promise,
-                 newestWorkerScriptUrl = aNewestWorkerScriptUrl]() mutable {
+      __func__,
+      [self, promise,
+       newestWorkerScriptUrl = nsCString(aNewestWorkerScriptUrl)]() mutable {
         auto scopeExit = MakeScopeExit(
             [&] { promise->Reject(NS_ERROR_DOM_INVALID_STATE_ERR, __func__); });
 
@@ -378,8 +383,7 @@ RefPtr<ServiceWorkerRegistrationPromise> ServiceWorkerRegistrationProxy::Update(
         scopeExit.release();
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return promise;
 }
@@ -413,23 +417,22 @@ ServiceWorkerRegistrationProxy::SetNavigationPreloadEnabled(
         promise->Resolve(true, __func__);
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return promise;
 }
 
 RefPtr<GenericPromise>
 ServiceWorkerRegistrationProxy::SetNavigationPreloadHeader(
-    const nsCString& aHeader) {
+    const nsACString& aHeader) {
   AssertIsOnBackgroundThread();
 
   RefPtr<ServiceWorkerRegistrationProxy> self = this;
   RefPtr<GenericPromise::Private> promise =
       new GenericPromise::Private(__func__);
 
-  nsCOMPtr<nsIRunnable> r =
-      NS_NewRunnableFunction(__func__, [aHeader, self, promise]() mutable {
+  nsCOMPtr<nsIRunnable> r = NS_NewRunnableFunction(
+      __func__, [aHeader = nsCString(aHeader), self, promise]() mutable {
         nsresult rv = NS_ERROR_DOM_INVALID_STATE_ERR;
         auto scopeExit = MakeScopeExit([&] { promise->Reject(rv, __func__); });
 
@@ -448,8 +451,7 @@ ServiceWorkerRegistrationProxy::SetNavigationPreloadHeader(
         promise->Resolve(true, __func__);
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return promise;
 }
@@ -473,11 +475,9 @@ ServiceWorkerRegistrationProxy::GetNavigationPreloadState() {
         promise->Resolve(self->mReg->GetNavigationPreloadState(), __func__);
       });
 
-  MOZ_ALWAYS_SUCCEEDS(
-      SchedulerGroup::Dispatch(TaskCategory::Other, r.forget()));
+  MOZ_ALWAYS_SUCCEEDS(SchedulerGroup::Dispatch(r.forget()));
 
   return promise;
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

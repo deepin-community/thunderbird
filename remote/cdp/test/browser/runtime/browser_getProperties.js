@@ -5,7 +5,7 @@
 
 // Test the Runtime remote object
 
-add_task(async function({ client }) {
+add_task(async function ({ client }) {
   const firstContext = await testRuntimeEnable(client);
   const contextId = firstContext.id;
 
@@ -102,7 +102,11 @@ async function testGetPrototypeProperties({ Runtime }, contextId) {
     objectId: result.objectId,
     ownProperties: false,
   });
-  ok(result2.length > 1, "We have more properties than just the object one");
+  Assert.greater(
+    result2.length,
+    1,
+    "We have more properties than just the object one"
+  );
   const foo = result2.find(p => p.name == "foo");
   ok(foo, "The object property is described");
   ok(foo.isOwn, "and is reported as 'own' property");

@@ -6,7 +6,7 @@
 /**
  * Enabling searching functionality. Will display search bar from this testcase forward.
  */
-add_task(async function() {
+add_task(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["browser.preferences.search", true]],
   });
@@ -17,15 +17,14 @@ add_task(async function() {
  * When we search "Remove Account",
  * it should not show the "Remove Account" button if the Firefox account is not logged in yet.
  */
-add_task(async function() {
+add_task(async function () {
   await openPreferencesViaOpenPreferencesAPI("paneSync", { leaveOpen: true });
 
-  let weavePrefsDeck = gBrowser.contentDocument.getElementById(
-    "weavePrefsDeck"
-  );
+  let weavePrefsDeck =
+    gBrowser.contentDocument.getElementById("weavePrefsDeck");
   is(
     weavePrefsDeck.selectedIndex,
-    "0",
+    0,
     "Should select the #noFxaAccount child node"
   );
 
@@ -93,7 +92,7 @@ add_task(async function() {
  * l10n id `language-and-appearance-header` and expects the element
  * to be matched on the first word from the l10n id value ("Language" in en-US).
  */
-add_task(async function() {
+add_task(async function () {
   let l10nId = "language-and-appearance-header";
 
   await openPreferencesViaOpenPreferencesAPI("paneGeneral", {
@@ -161,11 +160,105 @@ add_task(async function() {
     EventUtils.sendString(query);
     await searchCompletedPromise;
 
-    is_element_visible(
-      suhElem,
-      "showUpdateHistory should be in search results"
-    );
+    if (
+      AppConstants.platform === "win" &&
+      Services.sysinfo.getProperty("hasWinPackageId")
+    ) {
+      is_element_hidden(
+        suhElem,
+        "showUpdateHistory should not be in search results"
+      );
+    } else {
+      is_element_visible(
+        suhElem,
+        "showUpdateHistory should be in search results"
+      );
+    }
   }
 
   await BrowserTestUtils.removeTab(gBrowser.selectedTab);
 });
+
+/**
+ * Test that search works as expected for custom elements that utilize both
+ * slots and shadow DOM. We should be able to find text the shadow DOM.
+ */
+add_task(async function testSearchShadowDOM() {
+  await openPreferencesViaOpenPreferencesAPI("paneGeneral", {
+    leaveOpen: true,
+  });
+
+  // Create the toggle.
+  let { toggle, SHADOW_DOM_TEXT } = createToggle(gBrowser);
+
+  ok(
+    !BrowserTestUtils.isVisible(toggle),
+    "Toggle is not visible prior to search."
+  );
+
+  // Perform search with text found in moz-toggle's shadow DOM.
+  let query = SHADOW_DOM_TEXT;
+  let searchCompletedPromise = BrowserTestUtils.waitForEvent(
+    gBrowser.contentWindow,
+    "PreferencesSearchCompleted",
+    evt => evt.detail == query
+  );
+  EventUtils.sendString(query);
+  await searchCompletedPromise;
+  ok(
+    BrowserTestUtils.isVisible(toggle),
+    "Toggle is visible after searching for string in the shadow DOM."
+  );
+
+  BrowserTestUtils.removeTab(gBrowser.selectedTab);
+});
+
+/**
+ * Test that search works as expected for custom elements that utilize both
+ * slots and shadow DOM. We should be able to find text the light DOM.
+ */
+add_task(async function testSearchLightDOM() {
+  await openPreferencesViaOpenPreferencesAPI("paneGeneral", {
+    leaveOpen: true,
+  });
+
+  // Create the toggle.
+  let { toggle, LIGHT_DOM_TEXT } = createToggle(gBrowser);
+
+  // Perform search with text found in moz-toggle's slotted content.
+  let query = LIGHT_DOM_TEXT;
+  let searchCompletedPromise = BrowserTestUtils.waitForEvent(
+    gBrowser.contentWindow,
+    "PreferencesSearchCompleted",
+    evt => evt.detail == query
+  );
+  EventUtils.sendString(query);
+  await searchCompletedPromise;
+  ok(
+    BrowserTestUtils.isVisible(toggle),
+    "Toggle is visible again after searching for text found in slotted content."
+  );
+
+  BrowserTestUtils.removeTab(gBrowser.selectedTab);
+});
+
+// Create a toggle with a slotted link element.
+function createToggle(gBrowser) {
+  const SHADOW_DOM_TEXT = "This text lives in the shadow DOM";
+  const LIGHT_DOM_TEXT = "This text lives in the light DOM";
+
+  let doc = gBrowser.contentDocument;
+  let toggle = doc.createElement("moz-toggle");
+  toggle.label = SHADOW_DOM_TEXT;
+
+  let link = doc.createElement("a");
+  link.href = "https://mozilla.org/";
+  link.textContent = LIGHT_DOM_TEXT;
+  toggle.append(link);
+  link.slot = "support-link";
+
+  let protectionsGroup = doc.getElementById("trackingGroup");
+  protectionsGroup.append(toggle);
+
+  return { SHADOW_DOM_TEXT, LIGHT_DOM_TEXT, toggle };
+}

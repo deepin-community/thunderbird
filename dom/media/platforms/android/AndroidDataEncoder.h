@@ -7,29 +7,36 @@
 
 #include "MediaData.h"
 #include "PlatformEncoderModule.h"
-#include "TimeUnits.h"
 
 #include "JavaCallbacksSupport.h"
 
 #include "mozilla/Maybe.h"
-#include "mozilla/Monitor.h"
+#include "mozilla/Mutex.h"
 
 namespace mozilla {
 
 class AndroidDataEncoder final : public MediaDataEncoder {
  public:
-  using Config = H264Config;
-
-  AndroidDataEncoder(const Config& aConfig, RefPtr<TaskQueue> aTaskQueue)
+  AndroidDataEncoder(const EncoderConfig& aConfig,
+                     const RefPtr<TaskQueue>& aTaskQueue)
       : mConfig(aConfig), mTaskQueue(aTaskQueue) {
     MOZ_ASSERT(mConfig.mSize.width > 0 && mConfig.mSize.height > 0);
     MOZ_ASSERT(mTaskQueue);
   }
+  ~AndroidDataEncoder() { MOZ_ASSERT(!mJavaEncoder); }
+
   RefPtr<InitPromise> Init() override;
   RefPtr<EncodePromise> Encode(const MediaData* aSample) override;
   RefPtr<EncodePromise> Drain() override;
   RefPtr<ShutdownPromise> Shutdown() override;
-  RefPtr<GenericPromise> SetBitrate(const Rate aBitsPerSec) override;
+  RefPtr<GenericPromise> SetBitrate(uint32_t aBitsPerSec) override;
+  RefPtr<ReconfigurationPromise> Reconfigure(
+      const RefPtr<const EncoderConfigurationChangeList>& aConfigurationChanges)
+      override {
+    // General reconfiguration interface not implemented right now
+    return MediaDataEncoder::ReconfigurationPromise::CreateAndReject(
+        NS_ERROR_DOM_MEDIA_FATAL_ERR, __func__);
+  };
 
   nsCString GetDescriptionName() const override { return "Android Encoder"_ns; }
 
@@ -37,7 +44,15 @@ class AndroidDataEncoder final : public MediaDataEncoder {
   class CallbacksSupport final : public JavaCallbacksSupport {
    public:
     explicit CallbacksSupport(AndroidDataEncoder* aEncoder)
-        : mEncoder(aEncoder) {}
+        : mMutex("AndroidDataEncoder::CallbacksSupport") {
+      MutexAutoLock lock(mMutex);
+      mEncoder = aEncoder;
+    }
+
+    ~CallbacksSupport() {
+      MutexAutoLock lock(mMutex);
+      mEncoder = nullptr;
+    }
 
     void HandleInput(int64_t aTimestamp, bool aProcessed) override;
     void HandleOutput(java::Sample::Param aSample,
@@ -47,13 +62,14 @@ class AndroidDataEncoder final : public MediaDataEncoder {
     void HandleError(const MediaResult& aError) override;
 
    private:
-    AndroidDataEncoder* mEncoder;
+    Mutex mMutex;
+    AndroidDataEncoder* mEncoder MOZ_GUARDED_BY(mMutex);
   };
   friend class CallbacksSupport;
 
   // Methods only called on mTaskQueue.
   RefPtr<InitPromise> ProcessInit();
-  RefPtr<EncodePromise> ProcessEncode(RefPtr<const MediaData> aSample);
+  RefPtr<EncodePromise> ProcessEncode(const RefPtr<const MediaData>& aSample);
   RefPtr<EncodePromise> ProcessDrain();
   RefPtr<ShutdownPromise> ProcessShutdown();
   void ProcessInput();
@@ -62,13 +78,17 @@ class AndroidDataEncoder final : public MediaDataEncoder {
   RefPtr<MediaRawData> GetOutputData(java::SampleBuffer::Param aBuffer,
                                      const int32_t aOffset, const int32_t aSize,
                                      const bool aIsKeyFrame);
+  RefPtr<MediaRawData> GetOutputDataH264(java::SampleBuffer::Param aBuffer,
+                                         const int32_t aOffset,
+                                         const int32_t aSize,
+                                         const bool aIsKeyFrame);
   void Error(const MediaResult& aError);
 
   void AssertOnTaskQueue() const {
     MOZ_ASSERT(mTaskQueue->IsCurrentThreadIn());
   }
 
-  Config mConfig;
+  EncoderConfig mConfig;
 
   RefPtr<TaskQueue> mTaskQueue;
 
@@ -80,7 +100,7 @@ class AndroidDataEncoder final : public MediaDataEncoder {
   java::sdk::MediaFormat::GlobalRef mFormat;
   // Preallocated Java object used as a reusable storage for input buffer
   // information. Contents must be changed only on mTaskQueue.
-  java::sdk::BufferInfo::GlobalRef mInputBufferInfo;
+  java::sdk::MediaCodec::BufferInfo::GlobalRef mInputBufferInfo;
 
   MozPromiseHolder<EncodePromise> mDrainPromise;
 
@@ -90,8 +110,8 @@ class AndroidDataEncoder final : public MediaDataEncoder {
   // SPS/PPS NALUs for realtime usage, avcC otherwise.
   RefPtr<MediaByteBuffer> mConfigData;
 
-  enum class DrainState { DRAINED, DRAINABLE, DRAINING };
-  DrainState mDrainState;
+  enum class DrainState { DRAINABLE, DRAINING, DRAINED };
+  DrainState mDrainState = DrainState::DRAINABLE;
 
   Maybe<MediaResult> mError;
 };

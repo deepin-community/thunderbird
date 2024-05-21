@@ -1,29 +1,28 @@
 {
   "langpack_id": "gl",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-gl@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Galego (España) Language Pack",
-  "description": "Language pack for Thunderbird for gl",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Galego (Galician)",
+  "description": "Thunderbird Beta Language Pack for Galego (gl) – Galician",
+  "version": "125.0.20240401.173510",
   "languages": {
     "gl": {
-      "version": "20211015200025",
+      "version": "20240401183326",
       "chrome_resources": {
         "alerts": "chrome/gl/locale/gl/alerts/",
         "autoconfig": "chrome/gl/locale/gl/autoconfig/",
-        "branding": "chrome/gl/locale/gl/branding/",
+        "branding": "chrome/gl/locale/branding/",
         "calendar": "chrome/gl/locale/gl/calendar/",
         "chat": "chrome/gl/locale/gl/chat/",
         "communicator": "chrome/gl/locale/gl/communicator/",
         "devtools": "chrome/gl/locale/gl/devtools/client/",
         "devtools-shared": "chrome/gl/locale/gl/devtools/shared/",
-        "devtools-startup": "chrome/gl/locale/gl/devtools/startup/",
         "global": "chrome/gl/locale/gl/global/",
         "global-platform": {
           "macosx": "chrome/gl/locale/gl/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/gl/locale/gl/mozldap/",
         "necko": "chrome/gl/locale/gl/necko/",
         "passwordmgr": "chrome/gl/locale/gl/passwordmgr/",
-        "pdf.js": "chrome/gl/locale/pdfviewer/",
         "pipnss": "chrome/gl/locale/gl/pipnss/",
         "pippki": "chrome/gl/locale/gl/pippki/",
         "places": "chrome/gl/locale/gl/places/"

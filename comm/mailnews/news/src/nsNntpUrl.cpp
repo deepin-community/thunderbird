@@ -14,8 +14,6 @@
 #include "nntpCore.h"
 
 #include "nsCOMPtr.h"
-#include "nsMsgDBCID.h"
-#include "nsMsgNewsCID.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgNewsFolder.h"
 #include "nsINntpService.h"
@@ -31,6 +29,7 @@ nsNntpUrl::nsNntpUrl() {
   m_filePath = nullptr;
   m_getOldMessages = false;
   m_key = nsMsgKey_None;
+  mAutodetectCharset = false;
 }
 
 nsNntpUrl::~nsNntpUrl() {}
@@ -100,7 +99,7 @@ nsresult nsNntpUrl::SetSpecInternal(const nsACString& aSpec) {
     nsAutoCString spec;
     rv = GetSpec(spec);
     NS_ENSURE_SUCCESS(rv, rv);
-    rv = nsParseNewsMessageURI(spec.get(), m_group, &m_key);
+    rv = nsParseNewsMessageURI(spec, m_group, &m_key);
     NS_ENSURE_SUCCESS(rv, NS_ERROR_MALFORMED_URI);
   } else
     return NS_ERROR_MALFORMED_URI;
@@ -261,6 +260,15 @@ NS_IMETHODIMP nsNntpUrl::GetKey(nsMsgKey* key) {
   return NS_OK;
 }
 
+NS_IMETHODIMP nsNntpUrl::GetCharset(nsACString& charset) {
+  nsCOMPtr<nsIMsgIncomingServer> server;
+  nsresult rv = GetServer(getter_AddRefs(server));
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsINntpIncomingServer> nserver(do_QueryInterface(server));
+  NS_ENSURE_TRUE(nserver, NS_ERROR_NULL_POINTER);
+  return nserver->GetCharset(charset);
+}
+
 NS_IMETHODIMP nsNntpUrl::GetNormalizedSpec(nsACString& aPrincipalSpec) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
@@ -316,19 +324,11 @@ nsresult nsNntpUrl::GetMessageToPost(nsINNTPNewsgroupPost** aPost) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsNntpUrl::SetMessageHeader(nsIMsgDBHdr* aMsgHdr) {
-  return NS_ERROR_NOT_IMPLEMENTED;
-}
-
 NS_IMETHODIMP nsNntpUrl::GetMessageHeader(nsIMsgDBHdr** aMsgHdr) {
   nsresult rv;
 
-  nsCOMPtr<nsINntpService> nntpService =
-      do_GetService(NS_NNTPSERVICE_CONTRACTID, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-
   nsCOMPtr<nsIMsgMessageService> msgService =
-      do_QueryInterface(nntpService, &rv);
+      do_GetService("@mozilla.org/messenger/messageservice;1?type=news", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsAutoCString spec(mOriginalSpec);
@@ -358,15 +358,13 @@ NS_IMETHODIMP nsNntpUrl::IsUrlType(uint32_t type, bool* isType) {
 }
 
 NS_IMETHODIMP
-nsNntpUrl::GetOriginalSpec(char** aSpec) {
-  NS_ENSURE_ARG_POINTER(aSpec);
-  *aSpec = ToNewCString(mOriginalSpec);
-  if (!*aSpec) return NS_ERROR_OUT_OF_MEMORY;
+nsNntpUrl::GetOriginalSpec(nsACString& aSpec) {
+  aSpec = mOriginalSpec;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsNntpUrl::SetOriginalSpec(const char* aSpec) {
+nsNntpUrl::SetOriginalSpec(const nsACString& aSpec) {
   mOriginalSpec = aSpec;
   return NS_OK;
 }
@@ -388,35 +386,12 @@ nsNntpUrl::GetServer(nsIMsgIncomingServer** aServer) {
     return NS_OK;
   }
 
-  // Looking up the server...
-  // news-message is used purely internally, so it can never refer to the real
-  // attribute. nntp is never used internally, so it probably refers to the real
-  // one. news is used both internally and externally, so it could refer to
-  // either one. We'll assume it's an internal one first, though.
-  bool isNews = scheme.EqualsLiteral("news") || scheme.EqualsLiteral("snews");
-  bool isNntp = scheme.EqualsLiteral("nntp") || scheme.EqualsLiteral("nntps");
-
-  bool tryReal = isNntp;
-
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // Ignoring return results: it is perfectly acceptable for the server to not
-  // exist, but FindServer (and not FindRealServer) throws NS_ERROR_UNEXPECTED
-  // in this case.
   *aServer = nullptr;
-  if (tryReal)
-    accountManager->FindRealServer(user, host, "nntp"_ns, 0, aServer);
-  else
-    accountManager->FindServer(user, host, "nntp"_ns, aServer);
-  if (!*aServer && (isNews || isNntp)) {
-    // Didn't find it, try the other option
-    if (tryReal)
-      accountManager->FindServer(user, host, "nntp"_ns, aServer);
-    else
-      accountManager->FindRealServer(user, host, "nntp"_ns, 0, aServer);
-  }
+  accountManager->FindServer(user, host, "nntp"_ns, 0, aServer);
   return NS_OK;
 }
 
@@ -456,16 +431,13 @@ NS_IMETHODIMP nsNntpUrl::GetFolder(nsIMsgFolder** msgFolder) {
                                     (void**)msgFolder);
 }
 
-NS_IMETHODIMP nsNntpUrl::GetCharsetOverRide(char** aCharacterSet) {
-  if (!mCharsetOverride.IsEmpty())
-    *aCharacterSet = ToNewCString(mCharsetOverride);
-  else
-    *aCharacterSet = nullptr;
+NS_IMETHODIMP nsNntpUrl::GetAutodetectCharset(bool* aAutodetectCharset) {
+  *aAutodetectCharset = mAutodetectCharset;
   return NS_OK;
 }
 
-NS_IMETHODIMP nsNntpUrl::SetCharsetOverRide(const char* aCharacterSet) {
-  mCharsetOverride = aCharacterSet;
+NS_IMETHODIMP nsNntpUrl::SetAutodetectCharset(bool aAutodetectCharset) {
+  mAutodetectCharset = aAutodetectCharset;
   return NS_OK;
 }
 
@@ -478,4 +450,27 @@ nsresult nsNntpUrl::Clone(nsIURI** _retval) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   return newsurl->SetUri(mURI);
+}
+
+nsresult nsNntpUrl::NewURI(const nsACString& aSpec, nsIURI* aBaseURI,
+                           nsIURI** _retval) {
+  nsresult rv;
+
+  nsCOMPtr<nsIMsgMailNewsUrl> nntpUri =
+      do_CreateInstance("@mozilla.org/messenger/nntpurl;1", &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  if (aBaseURI) {
+    nsAutoCString newSpec;
+    aBaseURI->Resolve(aSpec, newSpec);
+    rv = nntpUri->SetSpecInternal(newSpec);
+    // XXX Consider: rv = NS_MutateURI(new
+    // nsNntpUrl::Mutator()).SetSpec(newSpec).Finalize(nntpUri);
+  } else {
+    rv = nntpUri->SetSpecInternal(aSpec);
+  }
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nntpUri.forget(_retval);
+  return NS_OK;
 }

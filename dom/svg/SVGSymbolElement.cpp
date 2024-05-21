@@ -9,8 +9,7 @@
 
 NS_IMPL_NS_NEW_SVG_ELEMENT(Symbol)
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 JSObject* SVGSymbolElement::WrapNode(JSContext* aCx,
                                      JS::Handle<JSObject*> aGivenProto) {
@@ -30,10 +29,23 @@ SVGSymbolElement::SVGSymbolElement(
     already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo)
     : SVGSymbolElementBase(std::move(aNodeInfo)) {}
 
+Focusable SVGSymbolElement::IsFocusableWithoutStyle(bool aWithMouse) {
+  if (!CouldBeRendered()) {
+    return {};
+  }
+  return SVGSymbolElementBase::IsFocusableWithoutStyle(aWithMouse);
+}
+
+bool SVGSymbolElement::CouldBeRendered() const {
+  // Only <symbol> elements in the root of a <svg:use> shadow tree are
+  // displayed.
+  auto* shadowRoot = ShadowRoot::FromNodeOrNull(GetParentNode());
+  return shadowRoot && shadowRoot->Host()->IsSVGElement(nsGkAtoms::use);
+}
+
 //----------------------------------------------------------------------
 // nsINode methods
 
 NS_IMPL_ELEMENT_CLONE_WITH_INIT(SVGSymbolElement)
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

@@ -4,11 +4,12 @@
 "use strict";
 
 const TRACKING_PAGE =
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.org/browser/browser/base/content/test/protectionsUI/trackingPage.html";
 const CM_PROTECTION_PREF = "privacy.trackingprotection.cryptomining.enabled";
 let cmHistogram;
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       [
@@ -59,13 +60,13 @@ async function testIdentityState(hasException) {
   );
 
   ok(
-    BrowserTestUtils.is_visible(gProtectionsHandler.iconBox),
+    BrowserTestUtils.isVisible(gProtectionsHandler.iconBox),
     "icon box is visible regardless the exception"
   );
 
   promise = waitForContentBlockingEvent();
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("cryptomining", "*");
   });
 
@@ -76,7 +77,7 @@ async function testIdentityState(hasException) {
     "trackers are detected"
   );
   ok(
-    BrowserTestUtils.is_visible(gProtectionsHandler.iconBox),
+    BrowserTestUtils.isVisible(gProtectionsHandler.iconBox),
     "icon box is visible"
   );
   is(
@@ -120,7 +121,7 @@ async function testSubview(hasException) {
   }
 
   promise = waitForContentBlockingEvent();
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("cryptomining", "*");
   });
   await promise;
@@ -133,10 +134,10 @@ async function testSubview(hasException) {
 
   // Explicitly waiting for the category item becoming visible.
   await TestUtils.waitForCondition(() => {
-    return BrowserTestUtils.is_visible(categoryItem);
+    return BrowserTestUtils.isVisible(categoryItem);
   });
 
-  ok(BrowserTestUtils.is_visible(categoryItem), "TP category item is visible");
+  ok(BrowserTestUtils.isVisible(categoryItem), "TP category item is visible");
 
   /* eslint-disable mozilla/no-arbitrary-setTimeout */
   // We have to wait until the ContentBlockingLog gets updated in the content.
@@ -161,9 +162,10 @@ async function testSubview(hasException) {
   let listItems = subview.querySelectorAll(".protections-popup-list-item");
   is(listItems.length, 1, "We have 1 item in the list");
   let listItem = listItems[0];
-  ok(BrowserTestUtils.is_visible(listItem), "List item is visible");
+  ok(BrowserTestUtils.isVisible(listItem), "List item is visible");
   is(
     listItem.querySelector("label").value,
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
     "http://cryptomining.example.com",
     "Has the correct host"
   );
@@ -238,7 +240,7 @@ async function testCategoryItem() {
 
   promise = waitForContentBlockingEvent();
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     content.postMessage("cryptomining", "*");
   });
 
@@ -300,4 +302,5 @@ add_task(async function test() {
   await testCategoryItem();
 
   Services.prefs.clearUserPref(CM_PROTECTION_PREF);
+  Services.prefs.setStringPref("browser.contentblocking.category", "standard");
 });

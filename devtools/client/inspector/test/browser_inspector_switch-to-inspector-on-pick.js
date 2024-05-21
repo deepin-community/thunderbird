@@ -6,7 +6,7 @@
 // panel.
 
 const TEST_URI =
-  "data:text/html;charset=UTF-8,<script>console.log(`hello`)</script><p>Switch to inspector on pick</p>";
+  "data:text/html;charset=UTF-8,<!DOCTYPE html><script>console.log(`hello`)</script><p>Switch to inspector on pick</p>";
 const ALL_CHANNELS = Ci.nsITelemetry.DATASET_ALL_CHANNELS;
 
 const DATA = [
@@ -52,7 +52,7 @@ const DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   // Let's reset the counts.
   Services.telemetry.clearEvents();
 
@@ -66,7 +66,7 @@ add_task(async function() {
   await startPickerAndAssertSwitchToInspector(toolbox);
 
   info("Stopping element picker.");
-  await toolbox.nodePicker.stop();
+  await toolbox.nodePicker.stop({ canceled: true });
 
   checkResults();
 });
@@ -99,12 +99,12 @@ function checkResults() {
     const expected = DATA[i];
 
     // ignore timestamp
-    ok(timestamp > 0, "timestamp is greater than 0");
+    Assert.greater(timestamp, 0, "timestamp is greater than 0");
     is(category, expected.category, "category is correct");
     is(method, expected.method, "method is correct");
     is(object, expected.object, "object is correct");
     is(value, null, "value is correct");
-    ok(extra.width > 0, "width is greater than 0");
+    Assert.greater(Number(extra.width), 0, "width is greater than 0");
 
     checkExtra("host", extra, expected);
     checkExtra("start_state", extra, expected);

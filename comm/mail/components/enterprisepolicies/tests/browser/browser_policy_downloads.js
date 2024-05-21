@@ -3,12 +3,6 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "FileUtils",
-  "resource://gre/modules/FileUtils.jsm"
-);
-
 add_task(async function test_defaultdownload() {
   await setupPolicyEngineWithJson({
     policies: {
@@ -18,24 +12,40 @@ add_task(async function test_defaultdownload() {
   });
 
   window.openPreferencesTab("paneGeneral");
-  await BrowserTestUtils.browserLoaded(window.gPrefTab.browser);
+  await BrowserTestUtils.browserLoaded(
+    window.preferencesTabType.tab.browser,
+    undefined,
+    url => url.startsWith("about:preferences")
+  );
+  const { contentDocument } = window.preferencesTabType.tab.browser;
+  await TestUtils.waitForCondition(() =>
+    contentDocument.getElementById("alwaysAsk")
+  );
+  await new Promise(resolve =>
+    window.preferencesTabType.tab.browser.contentWindow.setTimeout(resolve)
+  );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("alwaysAsk")
-      .disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "alwaysAsk"
+    ).disabled,
     true,
     "alwaysAsk should be disabled."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("saveTo").selected,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "saveTo"
+    ).selected,
     true,
     "saveTo should be selected."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("saveTo").disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "saveTo"
+    ).disabled,
     true,
     "saveTo should be disabled."
   );
-  let home = FileUtils.getFile("Home", []).path;
+  const home = Services.dirsvc.get("Home", Ci.nsIFile).path;
   is(
     Services.prefs.getStringPref("browser.download.dir"),
     home + "/Downloads",
@@ -52,8 +62,8 @@ add_task(async function test_defaultdownload() {
     "browser.download.useDownloadDir should be locked."
   );
 
-  let tabmail = document.getElementById("tabmail");
-  tabmail.closeTab(window.gPrefTab);
+  const tabmail = document.getElementById("tabmail");
+  tabmail.closeTab(window.preferencesTabType.tab);
 });
 
 add_task(async function test_download() {
@@ -64,39 +74,54 @@ add_task(async function test_download() {
   });
 
   window.openPreferencesTab("paneGeneral");
-  await BrowserTestUtils.browserLoaded(window.gPrefTab.browser);
+  await BrowserTestUtils.browserLoaded(
+    window.preferencesTabType.tab.browser,
+    undefined,
+    url => url.startsWith("about:preferences")
+  );
+  const { contentDocument } = window.preferencesTabType.tab.browser;
+  await TestUtils.waitForCondition(() =>
+    contentDocument.getElementById("alwaysAsk")
+  );
   await new Promise(resolve =>
-    window.gPrefTab.browser.contentWindow.setTimeout(resolve)
+    window.preferencesTabType.tab.browser.contentWindow.setTimeout(resolve)
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("alwaysAsk")
-      .disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "alwaysAsk"
+    ).disabled,
     true,
     "alwaysAsk should be disabled."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("saveTo").selected,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "saveTo"
+    ).selected,
     true,
     "saveTo should be selected."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("saveTo").disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "saveTo"
+    ).disabled,
     true,
     "saveTo should be disabled."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("downloadFolder")
-      .disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "downloadFolder"
+    ).disabled,
     true,
     "downloadFolder should be disabled."
   );
   is(
-    window.gPrefTab.browser.contentDocument.getElementById("chooseFolder")
-      .disabled,
+    window.preferencesTabType.tab.browser.contentDocument.getElementById(
+      "chooseFolder"
+    ).disabled,
     true,
     "chooseFolder should be disabled."
   );
-  let home = FileUtils.getFile("Home", []).path;
+  const home = Services.dirsvc.get("Home", Ci.nsIFile).path;
   is(
     Services.prefs.getStringPref("browser.download.dir"),
     home + "/Documents",
@@ -113,6 +138,6 @@ add_task(async function test_download() {
     "browser.download.useDownloadDir should be locked."
   );
 
-  let tabmail = document.getElementById("tabmail");
-  tabmail.closeTab(window.gPrefTab);
+  const tabmail = document.getElementById("tabmail");
+  tabmail.closeTab(window.preferencesTabType.tab);
 });

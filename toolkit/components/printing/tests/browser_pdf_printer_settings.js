@@ -21,9 +21,10 @@ add_task(async function testPDFPrinterSettings() {
     // Verify we end up with sane settings
     let { settings } = helper;
 
-    ok(
-      settings.printToFile,
-      "Check the current settings have a truthy printToFile for the PDF printer"
+    Assert.equal(
+      settings.outputDestination,
+      Ci.nsIPrintSettings.kOutputDestinationFile,
+      "Check the current settings have file destination"
     );
     ok(
       settings.printInColor,

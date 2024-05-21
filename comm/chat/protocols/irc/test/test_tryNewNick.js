@@ -1,9 +1,12 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var irc = {};
-Services.scriptloader.loadSubScript("resource:///modules/irc.jsm", irc);
+var { ircProtocol } = ChromeUtils.importESModule(
+  "resource:///modules/irc.sys.mjs"
+);
+var { ircAccount } = ChromeUtils.importESModule(
+  "resource:///modules/ircAccount.sys.mjs"
+);
 
 var fakeProto = {
   id: "fake-proto",
@@ -11,8 +14,8 @@ var fakeProto = {
   _getOptionDefault(aOption) {
     return this.options[aOption];
   },
-  usernameSplits: irc.ircProtocol.prototype.usernameSplits,
-  splitUsername: irc.ircProtocol.prototype.splitUsername,
+  usernameSplits: ircProtocol.prototype.usernameSplits,
+  splitUsername: ircProtocol.prototype.splitUsername,
 };
 
 function test_tryNewNick() {
@@ -33,13 +36,13 @@ function test_tryNewNick() {
     clo1kep09: "clo1kep10",
   };
 
-  let account = new irc.ircAccount(fakeProto, {
+  const account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account.normalize = aStr => aStr;
 
-  for (let currentNick in testData) {
+  for (const currentNick in testData) {
     account._sentNickname = currentNick;
     account.sendMessage = (aCommand, aNewNick) =>
       equal(aNewNick, testData[currentNick]);
@@ -53,7 +56,7 @@ function test_tryNewNick() {
 // This tests a bunch of cases near the max length by maintaining the state
 // through a series of test nicks.
 function test_maxLength() {
-  let testData = [
+  const testData = [
     // First try adding a digit, as normal.
     ["abcdefghi", "abcdefghi1"],
     // The "received" nick back will now be the same though, so it was too long.
@@ -76,14 +79,14 @@ function test_maxLength() {
     ["a10000000", "a00000000"],
   ];
 
-  let account = new irc.ircAccount(fakeProto, {
+  const account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account._sentNickname = "abcdefghi";
   account.normalize = aStr => aStr;
 
-  for (let currentNick of testData) {
+  for (const currentNick of testData) {
     account.sendMessage = (aCommand, aNewNick) =>
       equal(aNewNick, currentNick[1]);
 
@@ -109,17 +112,17 @@ function test_altNicks() {
     "clokep[": [" clokep ,\n clokep111,,,\tclokep[, clokep_", "clokep_"],
   };
 
-  let account = new irc.ircAccount(fakeProto, {
+  const account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account.normalize = aStr => aStr;
 
-  for (let currentNick in testData) {
+  for (const currentNick in testData) {
     // Only one pref is touched in here, override the default to return
     // what this test needs.
-    account.getString = function(aStr) {
-      let data = testData[currentNick][0];
+    account.getString = function (aStr) {
+      const data = testData[currentNick][0];
       if (Array.isArray(data)) {
         return data.join(",");
       }

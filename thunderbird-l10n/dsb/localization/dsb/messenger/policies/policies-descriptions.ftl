@@ -14,6 +14,8 @@ policy-3rdparty = Pšawidła nastajiś, ku kótarymž WebExtensions maju pśistu
 
 policy-AppAutoUpdate = Awtomatiske aktualizacije nałoženjow zmóžniś abo znjemóžniś.
 
+policy-AppUpdatePin = Zajźowaś tomu, až se { -brand-short-name } wušej pódaneje wersije aktualizěrujo.
+
 policy-AppUpdateURL = Nastajśo swójski URL za aktualizěrowanje nałoženjow.
 
 policy-Authentication = Konfigurěrujśo integrěrowanu awtentifikaciju za websedła, kótarež ju pódpěraju.

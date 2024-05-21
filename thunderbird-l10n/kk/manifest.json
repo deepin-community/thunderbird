@@ -1,29 +1,28 @@
 {
   "langpack_id": "kk",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-kk@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Kazakh (KZ) Language Pack",
-  "description": "Language pack for Thunderbird for kk",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: қазақ тілі (Kazakh)",
+  "description": "Thunderbird Beta Language Pack for қазақ тілі (kk) – Kazakh",
+  "version": "125.0.20240401.173510",
   "languages": {
     "kk": {
-      "version": "20211011131410",
+      "version": "20240401183443",
       "chrome_resources": {
         "alerts": "chrome/kk/locale/kk/alerts/",
         "autoconfig": "chrome/kk/locale/kk/autoconfig/",
-        "branding": "chrome/kk/locale/kk/branding/",
+        "branding": "chrome/kk/locale/branding/",
         "calendar": "chrome/kk/locale/kk/calendar/",
         "chat": "chrome/kk/locale/kk/chat/",
         "communicator": "chrome/kk/locale/kk/communicator/",
         "devtools": "chrome/kk/locale/kk/devtools/client/",
         "devtools-shared": "chrome/kk/locale/kk/devtools/shared/",
-        "devtools-startup": "chrome/kk/locale/kk/devtools/startup/",
         "global": "chrome/kk/locale/kk/global/",
         "global-platform": {
           "macosx": "chrome/kk/locale/kk/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/kk/locale/kk/mozldap/",
         "necko": "chrome/kk/locale/kk/necko/",
         "passwordmgr": "chrome/kk/locale/kk/passwordmgr/",
-        "pdf.js": "chrome/kk/locale/pdfviewer/",
         "pipnss": "chrome/kk/locale/kk/pipnss/",
         "pippki": "chrome/kk/locale/kk/pippki/",
         "places": "chrome/kk/locale/kk/places/"

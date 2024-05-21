@@ -13,22 +13,22 @@
 var {
   assert_folder_visible,
   be_in_folder,
-  delete_message_set,
+  delete_messages,
+  get_about_3pane,
   inboxFolder,
-  make_new_sets_in_folder,
-  mc,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  make_message_sets_in_folders,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
-var rootFolder;
+var about3Pane;
 var inboxSubfolder;
 var trashFolder;
 var trashSubfolder;
 var inboxSet;
 
-add_task(function setupModule(module) {
-  rootFolder = inboxFolder.server.rootFolder;
+add_setup(async function () {
+  about3Pane = get_about_3pane();
 
   // Create a folder as a subfolder of the inbox
   inboxFolder.createSubfolder("UnreadFoldersA", null);
@@ -42,25 +42,27 @@ add_task(function setupModule(module) {
 
   // The message itself doesn't really matter, as long as there's at least one
   // in the folder.
-  [inboxSet] = make_new_sets_in_folder(inboxFolder, [{ count: 1 }]);
-  make_new_sets_in_folder(inboxSubfolder, [{ count: 1 }]);
-});
+  [inboxSet] = await make_message_sets_in_folders(
+    [inboxFolder],
+    [{ count: 1 }]
+  );
+  await make_message_sets_in_folders([inboxSubfolder], [{ count: 1 }]);
 
-/**
- * Switch to the unread folder mode.
- */
-add_task(function test_switch_to_unread_folders() {
-  be_in_folder(inboxFolder);
-  mc.folderTreeView.activeModes = "unread";
-  // Hide the all folder views.
-  mc.folderTreeView.activeModes = "all";
+  // Switch to the unread folder mode.
+  await be_in_folder(inboxFolder);
+  about3Pane.folderPane.activeModes = ["unread"];
 });
 
 /**
  * Test that inbox and inboxSubfolder are in view
  */
-add_task(function test_folder_population() {
+add_task(async function test_folder_population() {
+  about3Pane.folderTree.expandRowAtIndex(0);
+  await new Promise(resolve => setTimeout(resolve));
   assert_folder_visible(inboxFolder);
+
+  about3Pane.folderTree.expandRowAtIndex(1);
+  await new Promise(resolve => setTimeout(resolve));
   assert_folder_visible(inboxSubfolder);
 });
 
@@ -68,28 +70,19 @@ add_task(function test_folder_population() {
  * Test that a folder newly getting unread messages doesn't
  * change the selected folder in unread folders mode.
  */
-add_task(function test_newly_added_folder() {
-  let [newSet] = make_new_sets_in_folder(trashFolder, [{ count: 1 }]);
+add_task(async function test_newly_added_folder() {
+  const [newSet] = await make_message_sets_in_folders(
+    [trashFolder],
+    [{ count: 1 }]
+  );
   assert_folder_visible(trashFolder);
-  if (mc.folderTreeView.getSelectedFolders()[0] != inboxFolder) {
-    throw new Error(
-      "Inbox folder should be selected after new unread folder" +
-        " added to unread view"
-    );
-  }
-  delete_message_set(newSet);
+  Assert.equal(about3Pane.folderTree.selectedIndex, 0);
+  await delete_messages(newSet);
 });
 
-registerCleanupFunction(function teardownModule() {
-  inboxFolder.propagateDelete(inboxSubfolder, true, null);
-  delete_message_set(inboxSet);
-  trashFolder.propagateDelete(trashSubfolder, true, null);
-  mc.folderTreeView.activeModes = "unread";
-
-  Assert.report(
-    false,
-    undefined,
-    undefined,
-    "Test ran to completion successfully"
-  );
+registerCleanupFunction(async function () {
+  inboxFolder.propagateDelete(inboxSubfolder, true);
+  await delete_messages(inboxSet);
+  trashFolder.propagateDelete(trashSubfolder, true);
+  about3Pane.folderPane.activeModes = ["all"];
 });

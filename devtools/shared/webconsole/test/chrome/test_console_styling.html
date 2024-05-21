@@ -18,7 +18,7 @@ SimpleTest.waitForExplicitFinish();
 
 let expectedConsoleCalls = [];
 
-function doConsoleCalls(aState)
+function doConsoleCalls()
 {
   top.console.log("%cOne formatter with no styles");
   top.console.log("%cOne formatter", "color: red");
@@ -38,7 +38,7 @@ function doConsoleCalls(aState)
   expectedConsoleCalls = [
     {
       level: "log",
-      styles: /^$/,
+      styles: undefined,
       arguments: ["%cOne formatter with no styles"],
     },
     {
@@ -89,7 +89,7 @@ async function startTest()
   onAttach(state, response);
 }
 
-function onAttach(aState, aResponse)
+function onAttach(aState)
 {
   onConsoleAPICall = onConsoleAPICall.bind(null, aState);
   aState.webConsoleFront.on("consoleAPICall", onConsoleAPICall);
@@ -111,7 +111,13 @@ function onConsoleAPICall(aState, aPacket)
 
   expectedConsoleCalls.forEach(function(aMessage, aIndex) {
     info("checking received console call #" + aIndex);
-    checkConsoleAPICall(consoleCalls[aIndex], expectedConsoleCalls[aIndex]);
+    const expected = expectedConsoleCalls[aIndex];
+    const consoleCall = consoleCalls[aIndex];
+    if (expected.styles == undefined) {
+      delete expected.styles;
+      is(consoleCall.styles, undefined, "No 'styles' property")
+    }
+    checkConsoleAPICall(consoleCall, expected);
   });
 
 

@@ -3,7 +3,6 @@
 
 "use strict";
 
-/* import-globals-from inspector-helpers.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/devtools/server/tests/browser/inspector-helpers.js",
   this
@@ -19,8 +18,9 @@ add_task(async function loadNewChild() {
   // Make sure that refetching the root document of the walker returns the same
   // actor as the getWalker returned.
   const root = await walker.document();
-  ok(
-    root === walker.rootNode,
+  Assert.strictEqual(
+    root,
+    walker.rootNode,
     "Re-fetching the document node should match the root document node."
   );
   checkActorIDs.push(root.actorID);
@@ -38,11 +38,11 @@ add_task(async function testInnerHTML() {
   const actualInnerHTML = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
+    function () {
       return content.document.documentElement.innerHTML;
     }
   );
-  ok(innerHTML === actualInnerHTML, "innerHTML should match");
+  Assert.strictEqual(innerHTML, actualInnerHTML, "innerHTML should match");
 });
 
 add_task(async function testOuterHTML() {
@@ -56,11 +56,11 @@ add_task(async function testOuterHTML() {
   const actualOuterHTML = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
+    function () {
       return content.document.documentElement.outerHTML;
     }
   );
-  ok(outerHTML === actualOuterHTML, "outerHTML should match");
+  Assert.strictEqual(outerHTML, actualOuterHTML, "outerHTML should match");
 });
 
 add_task(async function testSetOuterHTMLNode() {
@@ -192,7 +192,7 @@ add_task(async function testLongListTraversal() {
   // maxNodes with a center in the middle of the list should put that item in the middle
   const center = allChildren[13];
   is(center.id, "n", "Make sure I know how to count letters.");
-  children = await walker.children(longList, { maxNodes: 5, center: center });
+  children = await walker.children(longList, { maxNodes: 5, center });
   await checkArray(walker, children, false, false, "lmnop");
   // maxNodes with the second-to-last item centered should give us the last 5 nodes.
   children = await walker.children(longList, {
@@ -203,7 +203,7 @@ add_task(async function testLongListTraversal() {
   // maxNodes with a start in the middle should start at that node and fetch 5
   const start = allChildren[13];
   is(start.id, "n", "Make sure I know how to count letters.");
-  children = await walker.children(longList, { maxNodes: 5, start: start });
+  children = await walker.children(longList, { maxNodes: 5, start });
   await checkArray(walker, children, false, false, "nopqr");
   // maxNodes near the end should only return what's left
   children = await walker.children(longList, {
@@ -267,12 +267,12 @@ add_task(async function testLongValue() {
     MAIN_DOMAIN + "inspector-traversal-data.html"
   );
 
-  SimpleTest.registerCleanupFunction(async function() {
-    await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function() {
-      const { require } = ChromeUtils.import(
-        "resource://devtools/shared/Loader.jsm"
+  SimpleTest.registerCleanupFunction(async function () {
+    await SpecialPowers.spawn(gBrowser.selectedBrowser, [], function () {
+      const { require } = ChromeUtils.importESModule(
+        "resource://devtools/shared/loader/Loader.sys.mjs"
       );
-      const WalkerActor = require("devtools/server/actors/inspector/walker");
+      const WalkerActor = require("resource://devtools/server/actors/inspector/walker.js");
       WalkerActor.setValueSummaryLength(
         WalkerActor.DEFAULT_VALUE_SUMMARY_LENGTH
       );
@@ -282,12 +282,12 @@ add_task(async function testLongValue() {
   const longstringText = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
-      const { require } = ChromeUtils.import(
-        "resource://devtools/shared/Loader.jsm"
+    function () {
+      const { require } = ChromeUtils.importESModule(
+        "resource://devtools/shared/loader/Loader.sys.mjs"
       );
       const testSummaryLength = 10;
-      const WalkerActor = require("devtools/server/actors/inspector/walker");
+      const WalkerActor = require("resource://devtools/server/actors/inspector/walker.js");
 
       WalkerActor.setValueSummaryLength(testSummaryLength);
       return content.document.getElementById("longstring").firstChild.nodeValue;
@@ -316,7 +316,7 @@ add_task(async function testShortValue() {
   const shortstringText = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
+    function () {
       return content.document.getElementById("shortstring").firstChild
         .nodeValue;
     }

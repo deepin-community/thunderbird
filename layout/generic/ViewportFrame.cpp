@@ -21,7 +21,6 @@
 #include "nsCanvasFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsSubDocumentFrame.h"
-#include "nsIMozBrowserFrame.h"
 #include "nsPlaceholderFrame.h"
 #include "MobileViewportManager.h"
 
@@ -44,7 +43,7 @@ void ViewportFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
   // No need to call CreateView() here - the frame ctor will call SetView()
   // with the ViewManager's root view, so we'll assign it in SetViewInternal().
 
-  nsIFrame* parent = nsLayoutUtils::GetCrossDocParentFrame(this);
+  nsIFrame* parent = nsLayoutUtils::GetCrossDocParentFrameInProcess(this);
   if (parent) {
     nsFrameState state = parent->GetStateBits();
 
@@ -86,14 +85,7 @@ void ViewportFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
  * fullscreen. This function should matches the CSS rule in ua.css.
  */
 static bool ShouldInTopLayerForFullscreen(dom::Element* aElement) {
-  if (!aElement->GetParent()) {
-    return false;
-  }
-  nsCOMPtr<nsIMozBrowserFrame> browserFrame = do_QueryInterface(aElement);
-  if (browserFrame && browserFrame->GetReallyIsBrowser()) {
-    return false;
-  }
-  return true;
+  return !!aElement->GetParent();
 }
 #endif  // DEBUG
 
@@ -120,11 +112,12 @@ static void BuildDisplayListForTopLayerFrame(nsDisplayListBuilder* aBuilder,
         savedOutOfFlowData->mCombinedClipChain);
     asrSetter.SetCurrentActiveScrolledRoot(
         savedOutOfFlowData->mContainingBlockActiveScrolledRoot);
+    asrSetter.SetCurrentScrollParentId(savedOutOfFlowData->mScrollParentId);
   }
   nsDisplayListBuilder::AutoBuildingDisplayList buildingForChild(
       aBuilder, aFrame, visible, dirty);
 
-  nsDisplayList list;
+  nsDisplayList list(aBuilder);
   aFrame->BuildDisplayListForStackingContext(aBuilder, &list);
   aList->AppendToTop(&list);
 }
@@ -135,7 +128,7 @@ static bool BackdropListIsOpaque(ViewportFrame* aFrame,
   // The common case for ::backdrop elements on the top layer is a single
   // fixed position container, holding an opaque background color covering
   // the whole viewport.
-  if (aList->Count() != 1 ||
+  if (aList->Length() != 1 ||
       aList->GetTop()->GetType() != DisplayItemType::TYPE_FIXED_POSITION) {
     return false;
   }
@@ -168,7 +161,7 @@ static bool BackdropListIsOpaque(ViewportFrame* aFrame,
 
 nsDisplayWrapList* ViewportFrame::BuildDisplayListForTopLayer(
     nsDisplayListBuilder* aBuilder, bool* aIsOpaque) {
-  nsDisplayList topLayerList;
+  nsDisplayList topLayerList(aBuilder);
 
   nsTArray<dom::Element*> topLayer = PresContext()->Document()->GetTopLayer();
   for (dom::Element* elem : topLayer) {
@@ -176,6 +169,12 @@ nsDisplayWrapList* ViewportFrame::BuildDisplayListForTopLayer(
     if (!frame) {
       continue;
     }
+
+    if (frame->IsHiddenByContentVisibilityOnAnyAncestor(
+            nsIFrame::IncludeContentVisibility::Hidden)) {
+      continue;
+    }
+
     // There are two cases where an element in fullscreen is not in
     // the top layer:
     // 1. When building display list for purpose other than painting,
@@ -201,7 +200,7 @@ nsDisplayWrapList* ViewportFrame::BuildDisplayListForTopLayer(
       continue;
     }
     if (nsIFrame* backdropPh =
-            frame->GetChildList(kBackdropList).FirstChild()) {
+            frame->GetChildList(FrameChildListID::Backdrop).FirstChild()) {
       MOZ_ASSERT(!backdropPh->GetNextSibling(), "more than one ::backdrop?");
       MOZ_ASSERT(backdropPh->HasAnyStateBits(NS_FRAME_FIRST_REFLOW),
                  "did you intend to reflow ::backdrop placeholders?");
@@ -247,24 +246,26 @@ nsDisplayWrapList* ViewportFrame::BuildDisplayListForTopLayer(
 }
 
 #ifdef DEBUG
-void ViewportFrame::AppendFrames(ChildListID aListID, nsFrameList& aFrameList) {
-  NS_ASSERTION(aListID == kPrincipalList, "unexpected child list");
+void ViewportFrame::AppendFrames(ChildListID aListID,
+                                 nsFrameList&& aFrameList) {
+  NS_ASSERTION(aListID == FrameChildListID::Principal, "unexpected child list");
   NS_ASSERTION(GetChildList(aListID).IsEmpty(), "Shouldn't have any kids!");
-  nsContainerFrame::AppendFrames(aListID, aFrameList);
+  nsContainerFrame::AppendFrames(aListID, std::move(aFrameList));
 }
 
 void ViewportFrame::InsertFrames(ChildListID aListID, nsIFrame* aPrevFrame,
                                  const nsLineList::iterator* aPrevFrameLine,
-                                 nsFrameList& aFrameList) {
-  NS_ASSERTION(aListID == kPrincipalList, "unexpected child list");
+                                 nsFrameList&& aFrameList) {
+  NS_ASSERTION(aListID == FrameChildListID::Principal, "unexpected child list");
   NS_ASSERTION(GetChildList(aListID).IsEmpty(), "Shouldn't have any kids!");
   nsContainerFrame::InsertFrames(aListID, aPrevFrame, aPrevFrameLine,
-                                 aFrameList);
+                                 std::move(aFrameList));
 }
 
-void ViewportFrame::RemoveFrame(ChildListID aListID, nsIFrame* aOldFrame) {
-  NS_ASSERTION(aListID == kPrincipalList, "unexpected child list");
-  nsContainerFrame::RemoveFrame(aListID, aOldFrame);
+void ViewportFrame::RemoveFrame(DestroyContext& aContext, ChildListID aListID,
+                                nsIFrame* aOldFrame) {
+  NS_ASSERTION(aListID == FrameChildListID::Principal, "unexpected child list");
+  nsContainerFrame::RemoveFrame(aContext, aListID, aOldFrame);
 }
 #endif
 
@@ -301,11 +302,14 @@ nsPoint ViewportFrame::AdjustReflowInputForScrollbars(
   if (scrollingFrame) {
     WritingMode wm = aReflowInput->GetWritingMode();
     LogicalMargin scrollbars(wm, scrollingFrame->GetActualScrollbarSizes());
-    aReflowInput->SetComputedISize(aReflowInput->ComputedISize() -
-                                   scrollbars.IStartEnd(wm));
-    aReflowInput->AvailableISize() -= scrollbars.IStartEnd(wm);
-    aReflowInput->SetComputedBSizeWithoutResettingResizeFlags(
-        aReflowInput->ComputedBSize() - scrollbars.BStartEnd(wm));
+    aReflowInput->SetComputedISize(
+        aReflowInput->ComputedISize() - scrollbars.IStartEnd(wm),
+        ReflowInput::ResetResizeFlags::No);
+    aReflowInput->SetAvailableISize(aReflowInput->AvailableISize() -
+                                    scrollbars.IStartEnd(wm));
+    aReflowInput->SetComputedBSize(
+        aReflowInput->ComputedBSize() - scrollbars.BStartEnd(wm),
+        ReflowInput::ResetResizeFlags::No);
     return nsPoint(scrollbars.Left(wm), scrollbars.Top(wm));
   }
   return nsPoint(0, 0);
@@ -313,19 +317,8 @@ nsPoint ViewportFrame::AdjustReflowInputForScrollbars(
 
 nsRect ViewportFrame::AdjustReflowInputAsContainingBlock(
     ReflowInput* aReflowInput) const {
-#ifdef DEBUG
-  nsPoint offset =
-#endif
-      AdjustReflowInputForScrollbars(aReflowInput);
-
-  NS_ASSERTION(GetAbsoluteContainingBlock()->GetChildList().IsEmpty() ||
-                   (offset.x == 0 && offset.y == 0),
-               "We don't handle correct positioning of fixed frames with "
-               "scrollbars in odd positions");
-
-  nsRect rect(0, 0, aReflowInput->ComputedWidth(),
-              aReflowInput->ComputedHeight());
-
+  const nsPoint origin = AdjustReflowInputForScrollbars(aReflowInput);
+  nsRect rect(origin, aReflowInput->ComputedPhysicalSize());
   rect.SizeTo(AdjustViewportSizeForFixedPosition(rect));
 
   return rect;
@@ -348,7 +341,7 @@ void ViewportFrame::Reflow(nsPresContext* aPresContext,
   // Set our size up front, since some parts of reflow depend on it
   // being already set.  Note that the computed height may be
   // unconstrained; that's ok.  Consumers should watch out for that.
-  SetSize(nsSize(aReflowInput.ComputedWidth(), aReflowInput.ComputedHeight()));
+  SetSize(aReflowInput.ComputedPhysicalSize());
 
   // Reflow the main content first so that the placeholders of the
   // fixed-position frames will be in the right places on an initial
@@ -401,13 +394,13 @@ void ViewportFrame::Reflow(nsPresContext* aPresContext,
     ReflowInput reflowInput(aReflowInput);
 
     if (reflowInput.AvailableBSize() == NS_UNCONSTRAINEDSIZE) {
-      // We have an intrinsic-height document with abs-pos/fixed-pos children.
-      // Set the available height and mComputedHeight to our chosen height.
-      reflowInput.AvailableBSize() = maxSize.BSize(wm);
+      // We have an intrinsic-block-size document with abs-pos/fixed-pos
+      // children. Set the available block-size and computed block-size to our
+      // chosen block-size.
+      reflowInput.SetAvailableBSize(maxSize.BSize(wm));
       // Not having border/padding simplifies things
-      NS_ASSERTION(
-          reflowInput.ComputedPhysicalBorderPadding() == nsMargin(0, 0, 0, 0),
-          "Viewports can't have border/padding");
+      NS_ASSERTION(reflowInput.ComputedPhysicalBorderPadding() == nsMargin(),
+                   "Viewports can't have border/padding");
       reflowInput.SetComputedBSize(maxSize.BSize(wm));
     }
 
@@ -433,7 +426,6 @@ void ViewportFrame::Reflow(nsPresContext* aPresContext,
   FinishAndStoreOverflow(&aDesiredSize);
 
   NS_FRAME_TRACE_REFLOW_OUT("ViewportFrame::Reflow", aStatus);
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }
 
 void ViewportFrame::UpdateStyle(ServoRestyleState& aRestyleState) {

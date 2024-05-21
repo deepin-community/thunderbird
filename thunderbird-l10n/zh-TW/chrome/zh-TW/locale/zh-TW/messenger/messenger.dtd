@@ -20,12 +20,10 @@
      Menu option to cause the current tab to be migrated to a new Thunderbird
      window.
      -->
-<!ENTITY moveToNewWindow.label "移動到新視窗">
+<!ENTITY moveToNewWindow.label "移動至新視窗">
 <!ENTITY moveToNewWindow.accesskey "w">
 <!ENTITY newVirtualFolderCmd.label "即時搜尋…">
 <!ENTITY newVirtualFolderCmd.accesskey "S">
-<!ENTITY newOtherAccountsCmd.label "其他帳號…">
-<!ENTITY newOtherAccountsCmd.accesskey "O">
 <!ENTITY newCreateEmailAccountCmd.label "取得全新的電子郵件帳號…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "G">
 <!ENTITY newExistingEmailAccountCmd.label "現有的電子郵件帳號…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "另存新檔">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "檔案">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "範本">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -91,18 +87,6 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "刪除郵件">
-<!ENTITY deleteMsgCmd.accesskey "D">
-<!ENTITY undeleteMsgCmd.label "救回郵件">
-<!ENTITY undeleteMsgCmd.accesskey "d">
-<!ENTITY deleteMsgsCmd.label "刪除選擇的郵件">
-<!ENTITY deleteMsgsCmd.accesskey "D">
-<!ENTITY undeleteMsgsCmd.label "救回選擇的郵件">
-<!ENTITY undeleteMsgsCmd.accesskey "d">
-<!ENTITY deleteFolderCmd.label "刪除資料夾">
-<!ENTITY deleteFolderCmd.accesskey "D">
-<!ENTITY unsubscribeNewsgroupCmd.label "取消訂閱">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "b">
 <!ENTITY selectMenu.label "選取">
 <!ENTITY selectMenu.accesskey "S">
 <!ENTITY all.label "全部">
@@ -114,10 +98,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "S">
 <!ENTITY menuFavoriteFolder.label "最愛資料夾">
 <!ENTITY menuFavoriteFolder.accesskey "v">
-<!ENTITY folderPropsCmd2.label "屬性">
-<!ENTITY folderPropsFolderCmd2.label "資料夾屬性">
-<!ENTITY folderPropsNewsgroupCmd2.label "新聞群組屬性">
-<!ENTITY folderPropsCmd.accesskey "o">
 <!ENTITY undoDeleteMsgCmd.label "取消刪除郵件">
 <!ENTITY redoDeleteMsgCmd.label "重作刪除郵件">
 <!ENTITY undoMoveMsgCmd.label "取消移動郵件">
@@ -149,8 +129,6 @@
 <!ENTITY messagePaneVertical.accesskey "V">
 <!ENTITY showFolderPaneCmd.label "資料夾窗格">
 <!ENTITY showFolderPaneCmd.accesskey "F">
-<!ENTITY showFolderPaneColsCmd.label "資料夾窗格欄位">
-<!ENTITY showFolderPaneColsCmd.accesskey "P">
 <!ENTITY showMessageCmd.label "訊息窗格">
 <!ENTITY showMessageCmd.accesskey "M">
 
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "聊天">
 <!ENTITY goChatCmd.accesskey "C">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "已加星號郵件">
 <!ENTITY prevStarredMsgCmd.accesskey "S">
 <!ENTITY folderMenu.label "資料夾">
@@ -352,13 +329,13 @@
 <!ENTITY replyToAllMsgCmd.label "回覆給所有人">
 <!ENTITY replyToAllMsgCmd.accesskey "p">
 <!ENTITY replyToAllMsgCmd.key "r">
-<!ENTITY replyToListMsgCmd.label "回覆至清單">
+<!ENTITY replyToListMsgCmd.label "回覆給清單">
 <!ENTITY replyToListMsgCmd.accesskey "l">
 <!ENTITY replyToListMsgCmd.key "l">
 <!ENTITY forwardMsgCmd.label "轉寄">
 <!ENTITY forwardMsgCmd.accesskey "F">
 <!ENTITY forwardMsgCmd.key "l">
-<!ENTITY forwardAsMenu.label "轉寄為">
+<!ENTITY forwardAsMenu.label "用不同格式轉寄">
 <!ENTITY forwardAsMenu.accesskey "w">
 <!ENTITY forwardAsInline.label "引入內文">
 <!ENTITY forwardAsInline.accesskey "I">
@@ -476,7 +453,7 @@
 <!ENTITY savedFiles.label "已存檔案">
 <!ENTITY savedFiles.accesskey "l">
 <!ENTITY savedFiles.key "j">
-<!ENTITY filtersCmd2.label "郵件篩選條件">
+<!ENTITY filtersCmd2.label "郵件篩選器">
 <!ENTITY filtersCmd2.accesskey "F">
 <!ENTITY filtersApply.label "篩選此資料夾">
 <!ENTITY filtersApply.accesskey "R">
@@ -519,7 +496,7 @@
 <!ENTITY newMsgButton.label "寫信">
 <!ENTITY replyButton.label "回覆">
 <!ENTITY replyAllButton.label "回覆全部">
-<!ENTITY replyListButton.label "回覆至清單">
+<!ENTITY replyListButton.label "回覆給清單">
 <!ENTITY forwardButton.label "轉寄">
 <!ENTITY fileButton.label "檔案">
 <!ENTITY archiveButton.label "備存">
@@ -601,10 +578,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "寫新訊息">
 <!ENTITY appmenuNewContactCmd.label "通訊錄連絡人…">
-<!ENTITY appmenuEditMenu.label "編輯">
 <!ENTITY appmenuToolbarLayout.label "工具列配置…">
-<!ENTITY appmenuSelectThread.label "選擇討論串">
-<!ENTITY appmenuSelectFlagged.label "選擇加上星號的郵件">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "新標籤…">
@@ -752,11 +726,11 @@
 <!ENTITY contextReplyNewsgroup2.accesskey "u">
 <!ENTITY contextReplyAll.label "回覆給所有人">
 <!ENTITY contextReplyAll.accesskey "A">
-<!ENTITY contextReplyList.label "回覆至清單">
+<!ENTITY contextReplyList.label "回覆給清單">
 <!ENTITY contextReplyList.accesskey "l">
 <!ENTITY contextForward.label "轉寄">
 <!ENTITY contextForward.accesskey "F">
-<!ENTITY contextForwardAsMenu.label "轉寄為">
+<!ENTITY contextForwardAsMenu.label "用不同格式轉寄">
 <!ENTITY contextForwardAsMenu.accesskey "o">
 <!ENTITY contextForwardAsInline.label "引入內文">
 <!ENTITY contextForwardAsInline.accesskey "I">
@@ -909,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "I">
 <!ENTITY copyEmailCmd.label "複製電子郵件地址">
 <!ENTITY copyEmailCmd.accesskey "E">
-<!ENTITY stopCmd.label "停止">
-<!ENTITY stopCmd.accesskey "S">
-<!ENTITY reloadCmd.label "重新載入">
-<!ENTITY reloadCmd.accesskey "R">
 <!ENTITY openInBrowser.label "在瀏覽器開啟">
 <!ENTITY openInBrowser.accesskey "O">
 <!ENTITY openLinkInBrowser.label "在瀏覽器開啟鏈結">

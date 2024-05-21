@@ -97,7 +97,7 @@ void nsMathMLFrame::GetEmbellishDataFrom(nsIFrame* aFrame,
   aEmbellishData.leadingSpace = 0;
   aEmbellishData.trailingSpace = 0;
 
-  if (aFrame && aFrame->IsFrameOfType(nsIFrame::eMathML)) {
+  if (aFrame && aFrame->IsMathMLFrame()) {
     nsIMathMLFrame* mathMLFrame = do_QueryFrame(aFrame);
     if (mathMLFrame) {
       mathMLFrame->GetEmbellishData(aEmbellishData);
@@ -116,7 +116,7 @@ void nsMathMLFrame::GetPresentationDataFrom(
 
   nsIFrame* frame = aFrame;
   while (frame) {
-    if (frame->IsFrameOfType(nsIFrame::eMathML)) {
+    if (frame->IsMathMLFrame()) {
       nsIMathMLFrame* mathMLFrame = do_QueryFrame(frame);
       if (mathMLFrame) {
         mathMLFrame->GetPresentationData(aPresentationData);
@@ -162,7 +162,8 @@ void nsMathMLFrame::GetRuleThickness(DrawTarget* aDrawTarget,
 void nsMathMLFrame::GetAxisHeight(DrawTarget* aDrawTarget,
                                   nsFontMetrics* aFontMetrics,
                                   nscoord& aAxisHeight) {
-  gfxFont* mathFont = aFontMetrics->GetThebesFontGroup()->GetFirstMathFont();
+  RefPtr<gfxFont> mathFont =
+      aFontMetrics->GetThebesFontGroup()->GetFirstMathFont();
   if (mathFont) {
     aAxisHeight = mathFont->MathTable()->Constant(
         gfxMathTable::AxisHeight, aFontMetrics->AppUnitsPerDevPixel());
@@ -199,7 +200,6 @@ nscoord nsMathMLFrame::CalcLength(nsPresContext* aPresContext,
   }
 
   if (eCSSUnit_XHeight == unit) {
-    aPresContext->SetUsesExChUnits(true);
     RefPtr<nsFontMetrics> fm = nsLayoutUtils::GetFontMetricsForComputedStyle(
         aComputedStyle, aPresContext, aFontSizeInflation);
     nscoord xHeight = fm->XHeight();
@@ -257,6 +257,7 @@ void nsMathMLFrame::ParseNumericValue(const nsString& aString,
       CalcLength(aPresContext, aComputedStyle, cssValue, aFontSizeInflation);
 }
 
+namespace mozilla {
 #if defined(DEBUG) && defined(SHOW_BOUNDING_BOX)
 class nsDisplayMathMLBoundingMetrics final : public nsDisplayItem {
  public:
@@ -326,6 +327,8 @@ void nsDisplayMathMLBar::Paint(nsDisplayListBuilder* aBuilder,
   drawTarget->FillRect(rect, color);
 }
 
+}  // namespace mozilla
+
 void nsMathMLFrame::DisplayBar(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame,
                                const nsRect& aRect,
                                const nsDisplayListSet& aLists,
@@ -342,7 +345,8 @@ void nsMathMLFrame::GetRadicalParameters(nsFontMetrics* aFontMetrics,
                                          nscoord& aRadicalExtraAscender,
                                          nscoord& aRadicalVerticalGap) {
   nscoord oneDevPixel = aFontMetrics->AppUnitsPerDevPixel();
-  gfxFont* mathFont = aFontMetrics->GetThebesFontGroup()->GetFirstMathFont();
+  RefPtr<gfxFont> mathFont =
+      aFontMetrics->GetThebesFontGroup()->GetFirstMathFont();
 
   // get the radical rulethickness
   if (mathFont) {

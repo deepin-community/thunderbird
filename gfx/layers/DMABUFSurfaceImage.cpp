@@ -10,17 +10,54 @@
 #include "mozilla/layers/CompositableForwarder.h"
 #include "mozilla/layers/DMABUFTextureClientOGL.h"
 #include "mozilla/layers/TextureForwarder.h"
+#include "mozilla/ScopeExit.h"
+#include "mozilla/StaticMutex.h"
+#include "GLContext.h"
+#include "GLContextProvider.h"
+#include "GLBlitHelper.h"
+#include "GLReadTexImageHelper.h"
+#include "GLContextTypes.h"  // for GLContext, etc
+#include "GLContextEGL.h"
+#include "GLContextProvider.h"
+#include "ScopedGLHelpers.h"
 
 using namespace mozilla;
 using namespace mozilla::layers;
 using namespace mozilla::gfx;
+using namespace mozilla::gl;
+
+#ifdef MOZ_LOGGING
+#  undef DMABUF_LOG
+extern mozilla::LazyLogModule gDmabufLog;
+#  define DMABUF_LOG(str, ...) \
+    MOZ_LOG(gDmabufLog, mozilla::LogLevel::Debug, (str, ##__VA_ARGS__))
+#else
+#  define DMABUF_LOG(args)
+#endif /* MOZ_LOGGING */
 
 DMABUFSurfaceImage::DMABUFSurfaceImage(DMABufSurface* aSurface)
     : Image(nullptr, ImageFormat::DMABUF), mSurface(aSurface) {
+  DMABUF_LOG("DMABUFSurfaceImage::DMABUFSurfaceImage (%p) aSurface %p UID %d\n",
+             this, aSurface, aSurface->GetUID());
   mSurface->GlobalRefAdd();
 }
 
-DMABUFSurfaceImage::~DMABUFSurfaceImage() { mSurface->GlobalRefRelease(); }
+DMABUFSurfaceImage::~DMABUFSurfaceImage() {
+  DMABUF_LOG(
+      "DMABUFSurfaceImage::~DMABUFSurfaceImage (%p) mSurface %p UID %d\n", this,
+      (void*)mSurface.get(), mSurface->GetUID());
+  mSurface->GlobalRefRelease();
+}
+
+already_AddRefed<gfx::SourceSurface> DMABUFSurfaceImage::GetAsSourceSurface() {
+  return mSurface->GetAsSourceSurface();
+}
+
+nsresult DMABUFSurfaceImage::BuildSurfaceDescriptorBuffer(
+    SurfaceDescriptorBuffer& aSdBuffer, BuildSdbFlags aFlags,
+    const std::function<MemoryOrShmem(uint32_t)>& aAllocate) {
+  return mSurface->BuildSurfaceDescriptorBuffer(aSdBuffer, aFlags, aAllocate);
+}
 
 TextureClient* DMABUFSurfaceImage::GetTextureClient(
     KnowsCompositor* aKnowsCompositor) {

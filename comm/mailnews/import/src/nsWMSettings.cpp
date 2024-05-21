@@ -16,8 +16,6 @@
 #include "nsIMsgAccount.h"
 #include "nsIImportSettings.h"
 #include "nsWMSettings.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgCompCID.h"
 #include "nsMsgI18N.h"
 #include "nsISmtpService.h"
 #include "nsISmtpServer.h"
@@ -128,11 +126,11 @@ bool WMSettings::DoImport(nsIMsgAccount** ppAccount) {
   if (NS_SUCCEEDED(key->OpenChild(u"mail"_ns,
                                   nsIWindowsRegKey::ACCESS_QUERY_VALUE,
                                   getter_AddRefs(subKey)))) {
-    uint32_t dwordResult = -1;
+    uint32_t dwordResult = 0xffffffff;
     rv = subKey->ReadIntValue(u"Poll For Mail"_ns,
                               &dwordResult);  // reg_dword
     subKey->Close();
-    if (NS_SUCCEEDED(rv) && dwordResult != -1) {
+    if (NS_SUCCEEDED(rv) && dwordResult != 0xffffffff) {
       checkNewMail = true;
       checkNewMailTime = dwordResult / 60000;
     }
@@ -147,7 +145,7 @@ bool WMSettings::DoImport(nsIMsgAccount** ppAccount) {
                        defNewsAcct);  // ref_sz
 
   nsCOMPtr<nsIMsgAccountManager> accMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (NS_FAILED(rv)) {
     IMPORT_LOG0("*** Failed to create an account manager!\n");
     return false;
@@ -212,7 +210,7 @@ bool WMSettings::DoIMAPServer(nsIMsgAccountManager* pMgr,
   nsCOMPtr<nsIMsgIncomingServer> in;
   nsresult rv = pMgr->FindServer(NS_ConvertUTF16toUTF8(userName),
                                  NS_ConvertUTF16toUTF8(serverName), "imap"_ns,
-                                 getter_AddRefs(in));
+                                 0, getter_AddRefs(in));
   if (NS_FAILED(rv) || (in == nullptr)) {
     // Create the incoming server and an account for it?
     rv = pMgr->CreateIncomingServer(NS_ConvertUTF16toUTF8(userName),
@@ -222,7 +220,7 @@ bool WMSettings::DoIMAPServer(nsIMsgAccountManager* pMgr,
       nsCOMPtr<nsIImapIncomingServer> imapServer = do_QueryInterface(in);
       if (!imapServer) {
         IMPORT_LOG1("*** Failed to create nsIImapIncomingServer for %S!\n",
-                    serverName.get());
+                    static_cast<const wchar_t*>(serverName.get()));
         return false;
       }
       if (NS_SUCCEEDED(
@@ -253,7 +251,8 @@ bool WMSettings::DoIMAPServer(nsIMsgAccountManager* pMgr,
       in->SetBiffMinutes(checkNewMailTime);
 
       IMPORT_LOG2("Created IMAP server named: %S, userName: %S\n",
-                  serverName.get(), userName.get());
+                  static_cast<const wchar_t*>(serverName.get()),
+                  static_cast<const wchar_t*>(userName.get()));
 
       // We have a server, create an account.
       nsCOMPtr<nsIMsgAccount> account;
@@ -307,7 +306,7 @@ bool WMSettings::DoPOP3Server(nsIMsgAccountManager* pMgr,
   nsCOMPtr<nsIMsgIncomingServer> in;
   nsresult rv = pMgr->FindServer(NS_ConvertUTF16toUTF8(userName),
                                  NS_ConvertUTF16toUTF8(serverName), "pop3"_ns,
-                                 getter_AddRefs(in));
+                                 0, getter_AddRefs(in));
   if (NS_FAILED(rv) || (in == nullptr)) {
     // Create the incoming server and an account for it?
     rv = pMgr->CreateIncomingServer(NS_ConvertUTF16toUTF8(userName),
@@ -317,7 +316,7 @@ bool WMSettings::DoPOP3Server(nsIMsgAccountManager* pMgr,
       nsCOMPtr<nsIPop3IncomingServer> pop3Server = do_QueryInterface(in);
       if (!pop3Server) {
         IMPORT_LOG1("*** Failed to create nsIPop3IncomingServer for %S!\n",
-                    serverName.get());
+                    static_cast<const wchar_t*>(serverName.get()));
         return false;
       }
 
@@ -381,7 +380,7 @@ bool WMSettings::DoPOP3Server(nsIMsgAccountManager* pMgr,
         // code to the generic nsImportSettings code
         // if the other import modules end up needing to do this too.
         // if Local Folders does not exist already, create it
-        rv = pMgr->CreateLocalMailAccount();
+        rv = pMgr->CreateLocalMailAccount(nullptr);
         if (NS_FAILED(rv)) {
           IMPORT_LOG0("*** Failed to create Local Folders!\n");
           return false;
@@ -400,7 +399,8 @@ bool WMSettings::DoPOP3Server(nsIMsgAccountManager* pMgr,
       }
 
       IMPORT_LOG2("Created POP3 server named: %S, userName: %S\n",
-                  serverName.get(), userName.get());
+                  static_cast<const wchar_t*>(serverName.get()),
+                  static_cast<const wchar_t*>(userName.get()));
 
       // We have a server, create an account.
       nsCOMPtr<nsIMsgAccount> account;
@@ -419,7 +419,8 @@ bool WMSettings::DoPOP3Server(nsIMsgAccountManager* pMgr,
     }
   } else if (NS_SUCCEEDED(rv) && in) {
     IMPORT_LOG2("Existing POP3 server named: %S, userName: %S\n",
-                serverName.get(), userName.get());
+                static_cast<const wchar_t*>(serverName.get()),
+                static_cast<const wchar_t*>(userName.get()));
     // for an existing server we create another identity,
     // TB listed under 'manage identities'
     nsCOMPtr<nsIMsgAccount> account;
@@ -456,17 +457,17 @@ bool WMSettings::DoNNTPServer(nsIMsgAccountManager* pMgr,
   nsCOMPtr<nsIMsgIncomingServer> in;
   nsresult rv =
       pMgr->FindServer(EmptyCString(), NS_ConvertUTF16toUTF8(serverName),
-                       "nntp"_ns, getter_AddRefs(in));
+                       "nntp"_ns, 0, getter_AddRefs(in));
   if (NS_FAILED(rv) || (in == nullptr)) {
     // Create the incoming server and an account for it?
-    rv = pMgr->CreateIncomingServer(nsDependentCString(""),
+    rv = pMgr->CreateIncomingServer(EmptyCString(),
                                     NS_ConvertUTF16toUTF8(serverName),
                                     "nntp"_ns, getter_AddRefs(in));
     if (NS_SUCCEEDED(rv) && in) {
       nsCOMPtr<nsINntpIncomingServer> nntpServer = do_QueryInterface(in);
       if (!nntpServer) {
         IMPORT_LOG1("*** Failed to create nsINnntpIncomingServer for %S!\n",
-                    serverName.get());
+                    static_cast<const wchar_t*>(serverName.get()));
         return false;
       }
       if (!userName.IsEmpty()) {  // if username req'd then auth req'd
@@ -493,7 +494,8 @@ bool WMSettings::DoNNTPServer(nsIMsgAccountManager* pMgr,
       }
 
       IMPORT_LOG2("Created NNTP server named: %S, userName: %S\n",
-                  serverName.get(), userName.get());
+                  static_cast<const wchar_t*>(serverName.get()),
+                  static_cast<const wchar_t*>(userName.get()));
 
       // We have a server, create an account.
       nsCOMPtr<nsIMsgAccount> account;
@@ -535,18 +537,17 @@ void WMSettings::SetIdentities(nsIMsgAccountManager* pMgr, nsIMsgAccount* pAcc,
                                nsAutoString& inUserName,
                                int32_t authMethodIncoming, bool isNNTP) {
   // Get the relevant information for an identity
-  nsresult rv;
   nsAutoString value;
 
   nsCOMPtr<nsIMsgIdentity> id;
-  rv = pMgr->CreateIdentity(getter_AddRefs(id));
+  pMgr->CreateIdentity(getter_AddRefs(id));
   if (id) {
     IMPORT_LOG0("Created identity and added to the account\n");
     if (NS_SUCCEEDED(nsWMUtils::GetValueForTag(
             xmlDoc, isNNTP ? "NNTP_Display_Name" : "SMTP_Display_Name",
             value))) {
       id->SetFullName(value);
-      IMPORT_LOG1("\tname: %S\n", value.get());
+      IMPORT_LOG1("\tname: %S\n", static_cast<const wchar_t*>(value.get()));
     }
 
     if (NS_SUCCEEDED(nsWMUtils::GetValueForTag(
@@ -560,7 +561,7 @@ void WMSettings::SetIdentities(nsIMsgAccountManager* pMgr, nsIMsgAccount* pAcc,
             xmlDoc, isNNTP ? "NNTP_Email_Address" : "SMTP_Email_Address",
             value))) {
       id->SetEmail(NS_ConvertUTF16toUTF8(value));
-      IMPORT_LOG1("\temail: %S\n", value.get());
+      IMPORT_LOG1("\temail: %S\n", static_cast<const wchar_t*>(value.get()));
     }
 
     if (NS_SUCCEEDED(
@@ -618,13 +619,12 @@ void WMSettings::SetSmtpServer(mozilla::dom::Document* xmlDoc,
 
   nsresult rv;
   nsCOMPtr<nsISmtpService> smtpService(
-      do_GetService(NS_SMTPSERVICE_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv));
   if (NS_SUCCEEDED(rv) && smtpService) {
     nsCOMPtr<nsISmtpServer> extgServer;
     // don't try to make another server
     // regardless if username doesn't match
-    rv = smtpService->FindServer(userName.get(),
-                                 NS_ConvertUTF16toUTF8(smtpName).get(),
+    rv = smtpService->FindServer(userName, NS_ConvertUTF16toUTF8(smtpName),
                                  getter_AddRefs(extgServer));
     if (NS_SUCCEEDED(rv) && extgServer) {
       // set our account keyed to this smptserver key

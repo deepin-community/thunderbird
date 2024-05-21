@@ -4,11 +4,11 @@
 
 "use strict";
 
-const dom = require("devtools/client/shared/vendor/react-dom-factories");
+const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
 
 DefaultRenderer.displayName = "DefaultRenderer";
 
-function DefaultRenderer(props) {
+function DefaultRenderer() {
   return dom.div({}, "This message type is not supported yet.");
 }
 

@@ -13,8 +13,10 @@
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/ResultExtensions.h"
 #include "mozilla/TextUtils.h"
+#include "mozilla/Try.h"
 
 #include "MainThreadUtils.h"
+#include "nsContentUtils.h"
 #include "nsCRT.h"
 #include "nsEffectiveTLDService.h"
 #include "nsIFile.h"
@@ -43,11 +45,12 @@ NS_IMPL_ISUPPORTS(nsEffectiveTLDService, nsIEffectiveTLDService,
 static nsEffectiveTLDService* gService = nullptr;
 
 nsEffectiveTLDService::nsEffectiveTLDService()
-    : mIDNService(), mGraphLock("nsEffectiveTLDService::mGraph") {
+    : mGraphLock("nsEffectiveTLDService::mGraph") {
   mGraph.emplace(etld_dafsa::kDafsa);
 }
 
 nsresult nsEffectiveTLDService::Init() {
+  MOZ_ASSERT(NS_IsMainThread());
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   obs->AddObserver(this, "public-suffix-list-updated", false);
 
@@ -71,7 +74,7 @@ NS_IMETHODIMP nsEffectiveTLDService::Observe(nsISupports* aSubject,
                                              const char* aTopic,
                                              const char16_t* aData) {
   /**
-   * Signal sent from netwerk/dns/PublicSuffixList.jsm
+   * Signal sent from netwerk/dns/PublicSuffixList.sys.mjs
    * aSubject is the nsIFile object for dafsa.bin
    * aData is the absolute path to the dafsa.bin file (not used)
    */
@@ -199,6 +202,54 @@ nsEffectiveTLDService::GetBaseDomain(nsIURI* aURI, uint32_t aAdditionalParts,
   }
 
   return GetBaseDomainInternal(host, aAdditionalParts + 1, false, aBaseDomain);
+}
+
+// External function for dealing with URIs to get a schemeless site.
+// Calls through to GetBaseDomain(), handling IP addresses and aliases by
+// just returning their serialized host.
+NS_IMETHODIMP
+nsEffectiveTLDService::GetSchemelessSite(nsIURI* aURI, nsACString& aSite) {
+  NS_ENSURE_ARG_POINTER(aURI);
+
+  nsresult rv = GetBaseDomain(aURI, 0, aSite);
+  if (rv == NS_ERROR_HOST_IS_IP_ADDRESS ||
+      rv == NS_ERROR_INSUFFICIENT_DOMAIN_LEVELS) {
+    rv = nsContentUtils::GetHostOrIPv6WithBrackets(aURI, aSite);
+  }
+  return rv;
+}
+
+// External function for dealing with URIs to get site correctly.
+// Calls through to GetSchemelessSite(), and serializes with the scheme and
+// "://" prepended.
+NS_IMETHODIMP
+nsEffectiveTLDService::GetSite(nsIURI* aURI, nsACString& aSite) {
+  NS_ENSURE_ARG_POINTER(aURI);
+
+  nsAutoCString scheme;
+  nsresult rv = aURI->GetScheme(scheme);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nsAutoCString schemeless;
+  rv = GetSchemelessSite(aURI, schemeless);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // aURI (and thus BaseDomain) may be the string '.'. If so, fail.
+  if (schemeless.Length() == 1 && schemeless.Last() == '.') {
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  // Reject any URIs without a host that aren't file:// URIs.
+  if (schemeless.IsEmpty() && !aURI->SchemeIs("file")) {
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  aSite.SetCapacity(scheme.Length() + 3 + schemeless.Length());
+  aSite.Append(scheme);
+  aSite.Append("://"_ns);
+  aSite.Append(schemeless);
+
+  return NS_OK;
 }
 
 // External function for dealing with a host string directly: finds the public
@@ -463,5 +514,5 @@ nsresult nsEffectiveTLDService::NormalizeHostname(nsCString& aHostname) {
 NS_IMETHODIMP
 nsEffectiveTLDService::HasRootDomain(const nsACString& aInput,
                                      const nsACString& aHost, bool* aResult) {
-  return NS_HasRootDomain(aInput, aHost, aResult);
+  return net::HasRootDomain(aInput, aHost, aResult);
 }

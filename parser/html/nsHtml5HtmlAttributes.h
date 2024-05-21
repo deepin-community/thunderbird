@@ -43,7 +43,6 @@ class nsHtml5StreamParser;
 
 class nsHtml5Tokenizer;
 class nsHtml5TreeBuilder;
-class nsHtml5MetaScanner;
 class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5UTF16Buffer;
@@ -57,11 +56,15 @@ class nsHtml5HtmlAttributes {
  private:
   AutoTArray<nsHtml5AttributeEntry, 5> mStorage;
   int32_t mMode;
+  bool mDuplicateAttributeError = false;
   void AddEntry(nsHtml5AttributeEntry&& aEntry);
 
  public:
   explicit nsHtml5HtmlAttributes(int32_t aMode);
   ~nsHtml5HtmlAttributes();
+
+  void setDuplicateAttributeError() { mDuplicateAttributeError = true; }
+  bool getDuplicateAttributeError() { return mDuplicateAttributeError; }
 
   // Remove getIndex when removing isindex support
   int32_t getIndex(nsHtml5AttributeName* aName);

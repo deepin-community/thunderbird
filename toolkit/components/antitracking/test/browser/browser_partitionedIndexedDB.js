@@ -1,8 +1,6 @@
-/* import-globals-from partitionedstorage_head.js */
-
 PartitionedStorageHelper.runTest(
   "IndexedDB",
-  async (win3rdParty, win1stParty, allowed) => {
+  async (win3rdParty, win1stParty) => {
     await new Promise(resolve => {
       let a = win1stParty.indexedDB.open("test", 1);
       ok(!!a, "IDB should not be blocked in 1st party contexts");
@@ -28,12 +26,7 @@ PartitionedStorageHelper.runTest(
       a.onsuccess = e => {
         let db = e.target.result;
 
-        if (allowed) {
-          is(db.objectStoreNames.length, 1, "We have 1 objectStore");
-          is(db.objectStoreNames[0], "foobar", "We have 'foobar' objectStore");
-        } else {
-          is(db.objectStoreNames.length, 0, "We have 0 objectStore");
-        }
+        is(db.objectStoreNames.length, 0, "We have 0 objectStore");
         resolve();
       };
     });
@@ -41,7 +34,7 @@ PartitionedStorageHelper.runTest(
 
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -64,12 +57,12 @@ PartitionedStorageHelper.runPartitioningTest(
 
       a.onsuccess = e => {
         let db = e.target.result;
-        db
-          .transaction("foobar")
-          .objectStore("foobar")
-          .get(1).onsuccess = ee => {
-          resolve(ee.target.result === undefined ? "" : ee.target.result.value);
-        };
+        db.transaction("foobar").objectStore("foobar").get(1).onsuccess =
+          ee => {
+            resolve(
+              ee.target.result === undefined ? "" : ee.target.result.value
+            );
+          };
       };
     });
   },
@@ -94,7 +87,7 @@ PartitionedStorageHelper.runPartitioningTest(
   // cleanup
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });

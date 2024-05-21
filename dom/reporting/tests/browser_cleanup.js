@@ -25,7 +25,7 @@ async function storeReportingHeader(browser, extraParams = "") {
   );
 }
 
-add_task(async function() {
+add_task(async function () {
   await SpecialPowers.flushPrefEnv();
   await SpecialPowers.pushPrefEnv({
     set: [
@@ -39,7 +39,7 @@ add_task(async function() {
   });
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Testing a total cleanup");
 
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -57,7 +57,7 @@ add_task(async function() {
   ok(ChromeUtils.hasReportingHeaderForOrigin(TEST_DOMAIN), "We have data");
 
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });
@@ -71,7 +71,7 @@ add_task(async function() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Testing a total QuotaManager cleanup");
 
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -89,7 +89,7 @@ add_task(async function() {
   ok(ChromeUtils.hasReportingHeaderForOrigin(TEST_DOMAIN), "We have data");
 
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_REPORTS, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_REPORTS, () =>
       resolve()
     );
   });
@@ -103,7 +103,7 @@ add_task(async function() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Testing a QuotaManager host cleanup");
 
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -125,7 +125,7 @@ add_task(async function() {
       TEST_HOST,
       true,
       Ci.nsIClearDataService.CLEAR_REPORTS,
-      value => resolve()
+      () => resolve()
     );
   });
 
@@ -138,7 +138,7 @@ add_task(async function() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Testing a 410 endpoint status");
 
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -182,7 +182,7 @@ add_task(async function() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Creating a new container");
 
   let identity = ContextualIdentityService.create(
@@ -235,7 +235,7 @@ add_task(async function() {
   );
 });
 
-add_task(async function() {
+add_task(async function () {
   info("TTL cleanup");
 
   let tab = BrowserTestUtils.addTab(gBrowser, TEST_TOP_PAGE);
@@ -266,10 +266,10 @@ add_task(async function() {
   BrowserTestUtils.removeTab(tab);
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });

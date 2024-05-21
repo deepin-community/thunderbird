@@ -1,10 +1,12 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /**
  * Authentication tests for SMTP.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/passwordStorage.js */
@@ -20,7 +22,7 @@ var kUsername = "testsmtp";
 // file.
 var kPassword = "smtptest";
 
-add_task(async function() {
+add_task(async function () {
   function createHandler(d) {
     var handler = new SMTP_RFC2821_handler(d);
     // Username needs to match the login information stored in the signons json
@@ -56,13 +58,14 @@ add_task(async function() {
     smtpServer.socketType = Ci.nsMsgSocketType.plain;
     smtpServer.username = kUsername;
 
+    const urlListener = new PromiseTestUtils.PromiseUrlListener();
     MailServices.smtp.sendMailMessage(
       testFile,
       kTo,
       identity,
       kSender,
       null,
-      null,
+      urlListener,
       null,
       null,
       false,
@@ -71,7 +74,7 @@ add_task(async function() {
       {}
     );
 
-    server.performTest();
+    await urlListener.promise;
 
     var transaction = server.playTransaction();
     do_check_transaction(transaction, [
@@ -86,7 +89,7 @@ add_task(async function() {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

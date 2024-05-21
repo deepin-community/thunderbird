@@ -17,7 +17,7 @@
 #include "nsIMsgPluggableStore.h"
 #include "nsNetUtil.h"
 #include "nsMsgUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 
 #include "nsEmlxHelperUtils.h"
 #include "nsAppleMailImport.h"
@@ -39,7 +39,7 @@ nsAppleMailImportModule::nsAppleMailImportModule() {
   IMPORT_LOG0("nsAppleMailImportModule Created");
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   if (bundleService)
     bundleService->CreateBundle(APPLEMAIL_MSGS_URL, getter_AddRefs(mBundle));
 }
@@ -130,7 +130,7 @@ nsAppleMailImportMail::nsAppleMailImportMail() : mProgress(0), mCurDepth(0) {
 
 nsresult nsAppleMailImportMail::Initialize() {
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   return bundleService->CreateBundle(APPLEMAIL_MSGS_URL,
@@ -259,8 +259,8 @@ void nsAppleMailImportMail::FindAccountMailDirs(
         // create a mailbox for this account, so we get a parent for "Inbox",
         // "Sent Messages", etc.
         nsCOMPtr<nsIImportMailboxDescriptor> desc;
-        nsresult rv =
-            aImportService->CreateNewMailboxDescriptor(getter_AddRefs(desc));
+        rv = aImportService->CreateNewMailboxDescriptor(getter_AddRefs(desc));
+        if (NS_FAILED(rv)) continue;
         desc->SetSize(1);
         desc->SetDepth(mCurDepth);
         desc->SetDisplayName(folderName.get());
@@ -268,7 +268,7 @@ void nsAppleMailImportMail::FindAccountMailDirs(
 
         nsCOMPtr<nsIFile> mailboxDescFile;
         rv = desc->GetFile(getter_AddRefs(mailboxDescFile));
-        if (!mailboxDescFile) continue;
+        if (NS_FAILED(rv) || !mailboxDescFile) continue;
 
         mailboxDescFile->InitWithFile(currentEntry);
 
@@ -544,24 +544,22 @@ nsAppleMailImportMail::ImportMailbox(nsIImportMailboxDescriptor* aMailbox,
       if (!StringEndsWith(leafName, u".emlx"_ns)) continue;
 
       nsCOMPtr<nsIMsgDBHdr> msgHdr;
-      bool reusable;
-      rv =
-          msgStore->GetNewMsgOutputStream(aDstFolder, getter_AddRefs(msgHdr),
-                                          &reusable, getter_AddRefs(outStream));
+      rv = msgStore->GetNewMsgOutputStream(aDstFolder, getter_AddRefs(msgHdr),
+                                           getter_AddRefs(outStream));
       if (NS_FAILED(rv)) break;
 
-      // add the data to the mbox stream
+      // Add the data to the mbox stream.
       if (NS_SUCCEEDED(nsEmlxHelperUtils::AddEmlxMessageToStream(currentEntry,
                                                                  outStream))) {
         mProgress++;
         msgStore->FinishNewMessage(outStream, msgHdr);
+        outStream = nullptr;
       } else {
         msgStore->DiscardNewMessage(outStream, msgHdr);
+        outStream = nullptr;
         break;
       }
-      if (!reusable) outStream->Close();
     }
-    if (outStream) outStream->Close();
   }
   // just indicate that we're done, using the same number that we used to
   // estimate number of messages earlier.

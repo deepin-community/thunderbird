@@ -1,29 +1,28 @@
 {
   "langpack_id": "eu",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-eu@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Basque Language Pack",
-  "description": "Language pack for Thunderbird for eu",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Euskara (Basque)",
+  "description": "Thunderbird Beta Language Pack for Euskara (eu) – Basque",
+  "version": "125.0.20240401.173510",
   "languages": {
     "eu": {
-      "version": "20211017172911",
+      "version": "20240401182822",
       "chrome_resources": {
         "alerts": "chrome/eu/locale/eu/alerts/",
         "autoconfig": "chrome/eu/locale/eu/autoconfig/",
-        "branding": "chrome/eu/locale/eu/branding/",
+        "branding": "chrome/eu/locale/branding/",
         "calendar": "chrome/eu/locale/eu/calendar/",
         "chat": "chrome/eu/locale/eu/chat/",
         "communicator": "chrome/eu/locale/eu/communicator/",
         "devtools": "chrome/eu/locale/eu/devtools/client/",
         "devtools-shared": "chrome/eu/locale/eu/devtools/shared/",
-        "devtools-startup": "chrome/eu/locale/eu/devtools/startup/",
         "global": "chrome/eu/locale/eu/global/",
         "global-platform": {
           "macosx": "chrome/eu/locale/eu/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/eu/locale/eu/mozldap/",
         "necko": "chrome/eu/locale/eu/necko/",
         "passwordmgr": "chrome/eu/locale/eu/passwordmgr/",
-        "pdf.js": "chrome/eu/locale/pdfviewer/",
         "pipnss": "chrome/eu/locale/eu/pipnss/",
         "pippki": "chrome/eu/locale/eu/pippki/",
         "places": "chrome/eu/locale/eu/places/"

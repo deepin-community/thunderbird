@@ -20,6 +20,7 @@
 #define wasm_compile_args_h
 
 #include "mozilla/RefPtr.h"
+#include "mozilla/TypedEnumBits.h"
 
 #include "js/Utility.h"
 #include "js/WasmFeatures.h"
@@ -69,14 +70,20 @@ class Tiers {
 };
 
 // Describes per-compilation settings that are controlled by an options bag
-// passed to compilation and validation functions.  (Nonstandard extension
+// passed to compilation and validation functions. (Nonstandard extension
 // available under prefs.)
 
 struct FeatureOptions {
-  FeatureOptions() : simdWormhole(false) {}
+  FeatureOptions() : isBuiltinModule(false), jsStringBuiltins(false) {}
 
-  // May be set if javascript.options.wasm_simd_wormhole==true.
-  bool simdWormhole;
+  // Enables builtin module opcodes, only set in WasmBuiltinModule.cpp.
+  bool isBuiltinModule;
+  // Enable JS String builtins for this module, only available if the feature
+  // is also enabled.
+  bool jsStringBuiltins;
+
+  // Parse the compile options bag.
+  [[nodiscard]] bool init(JSContext* cx, HandleValue val);
 };
 
 // Describes the features that control wasm compilation.
@@ -85,35 +92,67 @@ struct FeatureArgs {
   FeatureArgs()
       :
 #define WASM_FEATURE(NAME, LOWER_NAME, ...) LOWER_NAME(false),
-        JS_FOR_WASM_FEATURES(WASM_FEATURE, WASM_FEATURE)
+        JS_FOR_WASM_FEATURES(WASM_FEATURE)
 #undef WASM_FEATURE
             sharedMemory(Shareable::False),
-        hugeMemory(false),
-        simdWormhole(false) {
+        simd(false),
+        isBuiltinModule(false) {
   }
   FeatureArgs(const FeatureArgs&) = default;
   FeatureArgs& operator=(const FeatureArgs&) = default;
   FeatureArgs(FeatureArgs&&) = default;
 
   static FeatureArgs build(JSContext* cx, const FeatureOptions& options);
+  static FeatureArgs allEnabled() {
+    FeatureArgs args;
+#define WASM_FEATURE(NAME, LOWER_NAME, ...) args.LOWER_NAME = true;
+    JS_FOR_WASM_FEATURES(WASM_FEATURE)
+#undef WASM_FEATURE
+    args.sharedMemory = Shareable::True;
+    args.simd = true;
+    return args;
+  }
 
 #define WASM_FEATURE(NAME, LOWER_NAME, ...) bool LOWER_NAME;
-  JS_FOR_WASM_FEATURES(WASM_FEATURE, WASM_FEATURE)
+  JS_FOR_WASM_FEATURES(WASM_FEATURE)
 #undef WASM_FEATURE
 
   Shareable sharedMemory;
-  bool hugeMemory;
-  bool simdWormhole;
+  bool simd;
+  // Whether this module is a wasm builtin module (see WasmBuiltinModule.h) and
+  // can contain special opcodes in function bodies.
+  bool isBuiltinModule;
+  // The set of builtin modules that are imported by this module.
+  BuiltinModuleIds builtinModules;
 };
+
+// Observed feature usage for a compiled module. Intended to be used for use
+// counters.
+enum class FeatureUsage : uint8_t {
+  None = 0x0,
+  LegacyExceptions = 0x1,
+};
+
+void SetUseCountersForFeatureUsage(JSContext* cx, JSObject* object,
+                                   FeatureUsage usage);
+
+MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(FeatureUsage);
 
 // Describes the JS scripted caller of a request to compile a wasm module.
 
 struct ScriptedCaller {
-  UniqueChars filename;
+  UniqueChars filename;  // UTF-8 encoded
   bool filenameIsURL;
-  unsigned line;
+  uint32_t line;
 
   ScriptedCaller() : filenameIsURL(false), line(0) {}
+};
+
+// Describes the reasons we cannot compute compile args
+
+enum class CompileArgsError {
+  OutOfMemory,
+  NoCompiler,
 };
 
 // Describes all the parameters that control wasm compilation.
@@ -128,29 +167,37 @@ struct CompileArgs : ShareableBase<CompileArgs> {
 
   bool baselineEnabled;
   bool ionEnabled;
-  bool craneliftEnabled;
   bool debugEnabled;
   bool forceTiering;
 
   FeatureArgs features;
 
-  // CompileArgs has two constructors:
+  // CompileArgs has several constructors:
   //
-  // - one through a factory function `build`, which checks that flags are
-  // consistent with each other.
+  // - two through factory functions `build`/`buildAndReport`, which checks
+  //   that flags are consistent with each other, and optionally reports any
+  //   errors.
+  // - the 'buildForAsmJS' one, which uses the appropriate configuration for
+  //   legacy asm.js code.
   // - one that gives complete access to underlying fields.
   //
-  // You should use the first one in general, unless you have a very good
-  // reason (i.e. no JSContext around and you know which flags have been used).
+  // You should use the factory functions in general, unless you have a very
+  // good reason (i.e. no JSContext around and you know which flags have been
+  // used).
 
   static SharedCompileArgs build(JSContext* cx, ScriptedCaller&& scriptedCaller,
-                                 const FeatureOptions& options);
+                                 const FeatureOptions& options,
+                                 CompileArgsError* error);
+  static SharedCompileArgs buildForAsmJS(ScriptedCaller&& scriptedCaller);
+  static SharedCompileArgs buildAndReport(JSContext* cx,
+                                          ScriptedCaller&& scriptedCaller,
+                                          const FeatureOptions& options,
+                                          bool reportOOM = false);
 
   explicit CompileArgs(ScriptedCaller&& scriptedCaller)
       : scriptedCaller(std::move(scriptedCaller)),
         baselineEnabled(false),
         ionEnabled(false),
-        craneliftEnabled(false),
         debugEnabled(false),
         forceTiering(false) {}
 };
@@ -179,7 +226,6 @@ struct CompilerEnvironment {
     struct {
       CompileMode mode_;
       Tier tier_;
-      OptimizedBackend optimizedBackend_;
       DebugEnabled debug_;
     };
   };
@@ -192,9 +238,7 @@ struct CompilerEnvironment {
   // Save the provided values for mode, tier, and debug, and the initial value
   // for gc/refTypes. A subsequent computeParameters() will compute the
   // final value of gc/refTypes.
-  CompilerEnvironment(CompileMode mode, Tier tier,
-                      OptimizedBackend optimizedBackend,
-                      DebugEnabled debugEnabled);
+  CompilerEnvironment(CompileMode mode, Tier tier, DebugEnabled debugEnabled);
 
   // Compute any remaining compilation parameters.
   void computeParameters(Decoder& d);
@@ -212,10 +256,6 @@ struct CompilerEnvironment {
   Tier tier() const {
     MOZ_ASSERT(isComputed());
     return tier_;
-  }
-  OptimizedBackend optimizedBackend() const {
-    MOZ_ASSERT(isComputed());
-    return optimizedBackend_;
   }
   DebugEnabled debug() const {
     MOZ_ASSERT(isComputed());

@@ -2,24 +2,37 @@
 file-perm:
     description: File permission check
     include:
-        - .
+        - comm/
     extensions:
+        - .build
         - .c
         - .cc
         - .cpp
+        - .flac
         - .h
         - .html
         - .idl
+        - .js
         - .jsm
         - .jsx
         - .m
+        - .md
+        - .m4s
+        - .mjs
         - .mm
+        - .mozbuild
+        - .mp4
         - .png
         - .rs
+        - .rst
         - .svg
+        - .toml
+        - .ttf
+        - .wasm
+        - .webidl
         - .xhtml
         - .xml
-        - .xul
+        - .yaml
         - .yml
     support-files:
         - 'tools/lint/file-perm/**'

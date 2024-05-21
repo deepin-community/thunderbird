@@ -114,18 +114,15 @@ void MediaControlService::Init() {
   mControllerManager = MakeUnique<ControllerManager>(this);
 
   // Initialize the fallback title
-  nsCOMPtr<nsIGlobalObject> global =
-      xpc::NativeGlobal(xpc::PrivilegedJunkScope());
-  RefPtr<Localization> l10n = Localization::Create(global, true, {});
-  l10n->AddResourceId(u"branding/brand.ftl"_ns);
-  l10n->AddResourceId(u"dom/media.ftl"_ns);
+  nsTArray<nsCString> resIds{
+      "branding/brand.ftl"_ns,
+      "dom/media.ftl"_ns,
+  };
+  RefPtr<Localization> l10n = Localization::Create(resIds, true);
   {
-    AutoSafeJSContext cx;
-
     nsAutoCString translation;
-    ErrorResult rv;
-    l10n->FormatValueSync(cx, "mediastatus-fallback-title"_ns, {}, translation,
-                          rv);
+    IgnoredErrorResult rv;
+    l10n->FormatValueSync("mediastatus-fallback-title"_ns, {}, translation, rv);
     if (!rv.Failed()) {
       mFallbackTitle = NS_ConvertUTF8toUTF16(translation);
     }
@@ -160,6 +157,10 @@ void MediaControlService::NotifyMediaControlHasEverBeenUsed() {
   Telemetry::ScalarSet(Telemetry::ScalarID::MEDIA_CONTROL_PLATFORM_USAGE,
                        u"Android"_ns, usedOnMediaControl);
 #endif
+#ifdef MOZ_WIDGET_UIKIT
+  Telemetry::ScalarSet(Telemetry::ScalarID::MEDIA_CONTROL_PLATFORM_USAGE,
+                       u"iOS"_ns, usedOnMediaControl);
+#endif
 }
 
 void MediaControlService::NotifyMediaControlHasEverBeenEnabled() {
@@ -184,6 +185,10 @@ void MediaControlService::NotifyMediaControlHasEverBeenEnabled() {
 #ifdef MOZ_WIDGET_ANDROID
   Telemetry::ScalarSet(Telemetry::ScalarID::MEDIA_CONTROL_PLATFORM_USAGE,
                        u"Android"_ns, enableOnMediaControl);
+#endif
+#ifdef MOZ_WIDGET_UIKIT
+  Telemetry::ScalarSet(Telemetry::ScalarID::MEDIA_CONTROL_PLATFORM_USAGE,
+                       u"iOS"_ns, enableOnMediaControl);
 #endif
 }
 
@@ -513,7 +518,7 @@ void MediaControlService::ControllerManager::ConnectMainControllerEvents() {
             mSource->SetEnablePictureInPictureMode(aIsEnabled);
           });
   mPositionChangedListener = mMainController->PositionChangedEvent().Connect(
-      AbstractThread::MainThread(), [this](const PositionState& aState) {
+      AbstractThread::MainThread(), [this](const Maybe<PositionState>& aState) {
         mSource->SetPositionState(aState);
       });
 }

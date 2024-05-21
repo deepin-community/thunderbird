@@ -7,10 +7,8 @@ account-setup-tab-title = Налаштування облікового запи
 ## Header
 
 account-setup-title = Налаштуйте свою наявну електронну адресу
-account-setup-description =
-    Щоб використовувати поточну адресу електронної пошти, заповніть свої дані. <br/>
-    { -brand-product-name } автоматично шукатиме робочу та рекомендовану конфігурацію сервера.
-account-setup-secondary-description = { -brand-product-name } автоматично шукатиме робочу та рекомендовану конфігурації сервера.
+account-setup-description = Щоб використовувати чинну адресу електронної пошти, заповніть свої облікові дані.
+account-setup-secondary-description = { -brand-product-name } автоматично виконає пошук рекомендованої конфігурації сервера.
 account-setup-success-title = Обліковий запис створено!
 account-setup-success-description = Тепер ви можете користуватися цим обліковим записом у { -brand-short-name }.
 account-setup-success-secondary-description = Ви можете додати функціональність, під'єднавши пов'язані служби та сконфігурувавши розширені налаштування облікового запису.
@@ -25,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Ваше ім’я, яким його бачитимуть інші
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Введіть своє ім’я
 account-setup-email-label = Адреса електронної пошти
     .accesskey = е
 account-setup-email-input =
@@ -33,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Ваша наявна адреса електронної пошти
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Неправильна адреса електронної пошти
 account-setup-password-label = Пароль
     .accesskey = П
     .title = Необов’язково, потрібен лише для перевірки імені користувача
 account-provisioner-button = Отримати нову електронну адресу
     .accesskey = О
-account-setup-password-toggle =
-    .title = Показати/сховати пароль
 account-setup-password-toggle-show =
     .title = Показати пароль відкритим текстом
 account-setup-password-toggle-hide =
@@ -127,21 +123,14 @@ account-setup-results-area-title =
         [few] Доступні конфігурації
        *[many] Доступні конфігурації
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Синхронізуйте свої теки та електронні листи на сервері
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Зберігайте теки та електронні листи на комп’ютері
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Користуйтеся сервером Microsoft Exchange або хмарними службами Office365
 account-setup-incoming-title = Вхідні
 account-setup-outgoing-title = Вихідні
 account-setup-username-title = Ім'я користувача
 account-setup-exchange-title = Сервер
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Без шифрування
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -165,9 +154,6 @@ account-setup-provisioner-error = Під час налаштування нов�
 account-setup-manual-config-title = Налаштування сервера
 account-setup-incoming-server-legend = Сервер вхідної пошти
 account-setup-protocol-label = Протокол:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Ім'я хоста:
 account-setup-port-label = Порт:
     .title = Встановіть для порту номер 0 для автоматичного виявлення
@@ -201,7 +187,7 @@ account-setup-warning-cleartext = <b>{ $server }</b> не застосовує �
 account-setup-warning-cleartext-details = Небезпечні поштові сервери не використовують шифрований зв’язок для захисту ваших паролів та інших особистих даних. З’єднуючись з цим сервером ви можете видати ваш пароль та особисті дані.
 account-setup-insecure-server-checkbox = Я розумію ризики
     .accesskey = о
-account-setup-insecure-description = { -brand-short-name } може дозволити вам отримати вашу пошту з використанням зазначеної конфігурації. Однак, вам варто звернутись до вашого адміністратора чи поштового постачальника щодо цих неправильних з’єднань. Перегляньте <a data-l10n-name="thunderbird-faq-link">ЧаП Thunderbird</a> для отримання додаткових відомостей.
+account-setup-insecure-description = { -brand-short-name } може дозволити вам отримати вашу пошту з використанням зазначеної конфігурації. Однак вам варто звернутися до вашого адміністратора чи постачальника електронної пошти щодо цих неправильних з'єднань. Перегляньте <a data-l10n-name="thunderbird-faq-link">Поширені запитання щодо Thunderbird</a> для отримання додаткової інформації.
 insecure-dialog-cancel-button = Змінити налаштування.
     .accesskey = н
 insecure-dialog-confirm-button = Підтвердити
@@ -294,6 +280,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Колір
 account-setup-calendar-refresh-label = Оновлювати
 account-setup-calendar-refresh-manual = Вручну
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Щохвилини

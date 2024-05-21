@@ -67,7 +67,8 @@ CrossProcessSemaphore* CrossProcessSemaphore::Create(
     return nullptr;
   }
 
-  if (!sharedBuffer->SetHandle(aHandle, ipc::SharedMemory::RightsReadWrite)) {
+  if (!sharedBuffer->SetHandle(std::move(aHandle),
+                               ipc::SharedMemory::RightsReadWrite)) {
     return nullptr;
   }
 
@@ -126,9 +127,9 @@ bool CrossProcessSemaphore::Wait(const Maybe<TimeDuration>& aWaitTime) {
       return false;
     }
 
-    ts.tv_nsec += (kNsPerMs * aWaitTime->ToMilliseconds());
-    ts.tv_sec += ts.tv_nsec / kNsPerSec;
-    ts.tv_nsec %= kNsPerSec;
+    uint64_t ns = uint64_t(kNsPerMs * aWaitTime->ToMilliseconds()) + ts.tv_nsec;
+    ts.tv_sec += ns / kNsPerSec;
+    ts.tv_nsec = ns % kNsPerSec;
 
     while ((ret = sem_timedwait(mSemaphore, &ts)) == -1 && errno == EINTR) {
     }
@@ -145,12 +146,14 @@ void CrossProcessSemaphore::Signal() {
   sem_post(mSemaphore);
 }
 
-CrossProcessSemaphoreHandle CrossProcessSemaphore::ShareToProcess(
-    base::ProcessId aTargetPid) {
+CrossProcessSemaphoreHandle CrossProcessSemaphore::CloneHandle() {
   CrossProcessSemaphoreHandle result = ipc::SharedMemoryBasic::NULLHandle();
 
-  if (mSharedBuffer && !mSharedBuffer->ShareToProcess(aTargetPid, &result)) {
-    MOZ_CRASH();
+  if (mSharedBuffer) {
+    result = mSharedBuffer->CloneHandle();
+    if (!result) {
+      MOZ_CRASH();
+    }
   }
 
   return result;

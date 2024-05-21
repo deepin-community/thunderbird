@@ -12,7 +12,7 @@ var registeredPorts = [];
 var errorCount = 0;
 var storedData;
 
-self.onconnect = function(event) {
+self.onconnect = function (event) {
   var port = event.ports[0];
 
   if (registeredPorts.length) {
@@ -20,12 +20,12 @@ self.onconnect = function(event) {
       type: "connect",
     };
 
-    registeredPorts.forEach(function(registeredPort) {
+    registeredPorts.forEach(function (registeredPort) {
       registeredPort.postMessage(data);
     });
   }
 
-  port.onmessage = function(msg) {
+  port.onmessage = function (msg) {
     switch (msg.data.command) {
       case "start":
         break;
@@ -53,7 +53,7 @@ self.onconnect = function(event) {
   registeredPorts.push(port);
 };
 
-self.onerror = function(message, filename, lineno) {
+self.onerror = function (message, filename, lineno) {
   if (!errorCount++) {
     var data = {
       type: "worker-error",
@@ -62,11 +62,12 @@ self.onerror = function(message, filename, lineno) {
       lineno,
     };
 
-    registeredPorts.forEach(function(registeredPort) {
+    registeredPorts.forEach(function (registeredPort) {
       registeredPort.postMessage(data);
     });
 
     // Prevent the error from propagating the first time only.
     return true;
   }
+  return undefined;
 };

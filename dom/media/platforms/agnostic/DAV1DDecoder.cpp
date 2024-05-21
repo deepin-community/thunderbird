@@ -6,10 +6,12 @@
 
 #include "DAV1DDecoder.h"
 
+#include "gfxUtils.h"
 #include "ImageContainer.h"
+#include "mozilla/StaticPrefs_media.h"
 #include "mozilla/TaskQueue.h"
-#include "mozilla/gfx/gfxVars.h"
 #include "nsThreadUtils.h"
+#include "PerformanceRecorder.h"
 #include "VideoUtils.h"
 
 #undef LOG
@@ -19,30 +21,78 @@
 
 namespace mozilla {
 
+static int GetDecodingThreadCount(uint32_t aCodedHeight) {
+  /**
+   * Based on the result we print out from the dav1decoder [1], the
+   * following information shows the number of tiles for AV1 videos served on
+   * Youtube. Each Tile can be decoded in parallel, so we would like to make
+   * sure we at least use enough threads to match the number of tiles.
+   *
+   * ----------------------------
+   * | resolution row col total |
+   * |    480p      2  1     2  |
+   * |    720p      2  2     4  |
+   * |   1080p      4  2     8  |
+   * |   1440p      4  2     8  |
+   * |   2160p      8  4    32  |
+   * ----------------------------
+   *
+   * Besides the tile thread count, the frame thread count also needs to be
+   * considered. As we didn't find anything about what the best number is for
+   * the count of frame thread, just simply use 2 for parallel jobs, which
+   * is similar with Chromium's implementation. They uses 3 frame threads for
+   * 720p+ but less tile threads, so we will still use more total threads. In
+   * addition, their data is measured on 2019, our data should be closer to the
+   * current real world situation.
+   * [1]
+   * https://searchfox.org/mozilla-central/rev/2f5ed7b7244172d46f538051250b14fb4d8f1a5f/third_party/dav1d/src/decode.c#2940
+   */
+  int tileThreads = 2, frameThreads = 2;
+  if (aCodedHeight >= 2160) {
+    tileThreads = 32;
+  } else if (aCodedHeight >= 1080) {
+    tileThreads = 8;
+  } else if (aCodedHeight >= 720) {
+    tileThreads = 4;
+  }
+  return tileThreads * frameThreads;
+}
+
 DAV1DDecoder::DAV1DDecoder(const CreateDecoderParams& aParams)
     : mInfo(aParams.VideoConfig()),
-      mTaskQueue(
-          new TaskQueue(GetMediaThreadPool(MediaThreadType::PLATFORM_DECODER),
-                        "Dav1dDecoder")),
+      mTaskQueue(TaskQueue::Create(
+          GetMediaThreadPool(MediaThreadType::PLATFORM_DECODER),
+          "Dav1dDecoder")),
       mImageContainer(aParams.mImageContainer),
-      mImageAllocator(aParams.mKnowsCompositor) {}
+      mImageAllocator(aParams.mKnowsCompositor),
+      mTrackingId(aParams.mTrackingId),
+      mLowLatency(
+          aParams.mOptions.contains(CreateDecoderParams::Option::LowLatency)) {}
+
+DAV1DDecoder::~DAV1DDecoder() = default;
 
 RefPtr<MediaDataDecoder::InitPromise> DAV1DDecoder::Init() {
   Dav1dSettings settings;
   dav1d_default_settings(&settings);
+  if (mLowLatency) {
+    settings.max_frame_delay = 1;
+  }
   size_t decoder_threads = 2;
   if (mInfo.mDisplay.width >= 2048) {
     decoder_threads = 8;
   } else if (mInfo.mDisplay.width >= 1024) {
     decoder_threads = 4;
   }
-  settings.n_frame_threads =
+  if (StaticPrefs::media_av1_new_thread_count_strategy()) {
+    decoder_threads = GetDecodingThreadCount(mInfo.mImage.Height());
+  }
+  // Still need to consider the amount of physical cores in order to achieve
+  // best performance.
+  settings.n_threads =
       static_cast<int>(std::min(decoder_threads, GetNumberOfProcessors()));
-  // There is not much improvement with more than 2 tile threads at least with
-  // the content being currently served. The ideal number of tile thread would
-  // much the tile count of the content. Maybe dav1d can help to do that in the
-  // future.
-  settings.n_tile_threads = 2;
+  if (int32_t count = StaticPrefs::media_av1_force_thread_count(); count > 0) {
+    settings.n_threads = count;
+  }
 
   int res = dav1d_open(&mContext, &settings);
   if (res < 0) {
@@ -94,6 +144,16 @@ RefPtr<MediaDataDecoder::DecodePromise> DAV1DDecoder::InvokeDecode(
   MOZ_ASSERT(mTaskQueue->IsCurrentThreadIn());
   MOZ_ASSERT(aSample);
 
+  MediaInfoFlag flag = MediaInfoFlag::None;
+  flag |= (aSample->mKeyframe ? MediaInfoFlag::KeyFrame
+                              : MediaInfoFlag::NonKeyFrame);
+  flag |= MediaInfoFlag::SoftwareDecoding;
+  flag |= MediaInfoFlag::VIDEO_AV1;
+  mTrackingId.apply([&](const auto& aId) {
+    mPerformanceRecorder.Start(aSample->mTimecode.ToMicroseconds(),
+                               "DAV1DDecoder"_ns, aId, flag);
+  });
+
   // Add the buffer to the hashtable in order to increase
   // the ref counter and keep it alive. When dav1d does not
   // need it any more will call it's release callback. Remove
@@ -118,34 +178,38 @@ RefPtr<MediaDataDecoder::DecodePromise> DAV1DDecoder::InvokeDecode(
   DecodedData results;
   do {
     res = dav1d_send_data(mContext, &data);
-    if (res < 0 && res != -EAGAIN) {
+    if (res < 0 && res != DAV1D_ERR(EAGAIN)) {
       LOG("Decode error: %d", res);
       return DecodePromise::CreateAndReject(
           MediaResult(NS_ERROR_DOM_MEDIA_DECODE_ERR, __func__), __func__);
     }
     // Alway consume the whole buffer on success.
-    // At this point only -EAGAIN error is expected.
+    // At this point only DAV1D_ERR(EAGAIN) is expected.
     MOZ_ASSERT((res == 0 && !data.sz) ||
-               (res == -EAGAIN && data.sz == aSample->Size()));
+               (res == DAV1D_ERR(EAGAIN) && data.sz == aSample->Size()));
 
-    MediaResult rs(NS_OK);
-    res = GetPicture(results, rs);
-    if (res < 0) {
-      if (res == -EAGAIN) {
-        // No frames ready to return. This is not an
-        // error, in some circumstances, we need to
-        // feed it with a certain amount of frames
+    Result<already_AddRefed<VideoData>, MediaResult> r = GetPicture();
+    if (r.isOk()) {
+      results.AppendElement(r.unwrap());
+    } else {
+      MediaResult rs = r.unwrapErr();
+      if (rs.Code() == NS_ERROR_DOM_MEDIA_WAITING_FOR_DATA) {
+        // No frames ready to return. This is not an error, in some
+        // circumstances, we need to feed it with a certain amount of frames
         // before we get a picture.
         continue;
       }
-      return DecodePromise::CreateAndReject(rs, __func__);
+      // Skip if rs is NS_OK, which can happen if picture layout is I400.
+      if (NS_FAILED(rs.Code())) {
+        return DecodePromise::CreateAndReject(rs, __func__);
+      }
     }
   } while (data.sz > 0);
 
   return DecodePromise::CreateAndResolve(std::move(results), __func__);
 }
 
-int DAV1DDecoder::GetPicture(DecodedData& aData, MediaResult& aResult) {
+Result<already_AddRefed<VideoData>, MediaResult> DAV1DDecoder::GetPicture() {
   class Dav1dPictureWrapper {
    public:
     Dav1dPicture* operator&() { return &p; }
@@ -159,76 +223,59 @@ int DAV1DDecoder::GetPicture(DecodedData& aData, MediaResult& aResult) {
 
   int res = dav1d_get_picture(mContext, &picture);
   if (res < 0) {
-    LOG("Decode error: %d", res);
-    aResult = MediaResult(NS_ERROR_DOM_MEDIA_DECODE_ERR, __func__);
-    return res;
+    auto r = MediaResult(res == DAV1D_ERR(EAGAIN)
+                             ? NS_ERROR_DOM_MEDIA_WAITING_FOR_DATA
+                             : NS_ERROR_DOM_MEDIA_DECODE_ERR,
+                         RESULT_DETAIL("dav1d_get_picture: %d", res));
+    LOG("%s", r.Message().get());
+    return Err(r);
   }
 
   if ((*picture).p.layout == DAV1D_PIXEL_LAYOUT_I400) {
-    return 0;
+    // Use NS_OK to indicate that this picture should be skipped.
+    auto r = MediaResult(
+        NS_OK,
+        RESULT_DETAIL("I400 picture: No chroma data to construct an image"));
+    LOG("%s", r.Message().get());
+    return Err(r);
   }
 
-#ifdef ANDROID
-  if (!gfxVars::UseWebRender() && (*picture).p.bpc != 8) {
-    aResult = MediaResult(NS_ERROR_DOM_MEDIA_NOT_SUPPORTED_ERR, __func__);
-    return -1;
-  }
-#endif
-
-  RefPtr<VideoData> v = ConstructImage(*picture);
-  if (!v) {
-    LOG("Image allocation error: %ux%u"
-        " display %ux%u picture %ux%u",
+  Result<already_AddRefed<VideoData>, MediaResult> r = ConstructImage(*picture);
+  return r.mapErr([&](const MediaResult& aResult) {
+    LOG("ConstructImage (%ux%u display %ux%u picture %ux%u ) error - %s: %s",
         (*picture).p.w, (*picture).p.h, mInfo.mDisplay.width,
-        mInfo.mDisplay.height, mInfo.mImage.width, mInfo.mImage.height);
-    aResult = MediaResult(NS_ERROR_OUT_OF_MEMORY, __func__);
-    return -1;
-  }
-  aData.AppendElement(std::move(v));
-  return 0;
+        mInfo.mDisplay.height, mInfo.mImage.width, mInfo.mImage.height,
+        aResult.ErrorName().get(), aResult.Message().get());
+    return aResult;
+  });
 }
 
-Maybe<gfx::YUVColorSpace> GetColorSpace(const Dav1dPicture& aPicture,
-                                        LazyLogModule& aLogger) {
-  // On every other case use the default (BT601).
-  if (!aPicture.seq_hdr->color_description_present) {
-    return {};
+/* static */
+Maybe<gfx::YUVColorSpace> DAV1DDecoder::GetColorSpace(
+    const Dav1dPicture& aPicture, LazyLogModule& aLogger) {
+  // When returning Nothing(), the caller chooses the appropriate default.
+  if (!aPicture.seq_hdr || !aPicture.seq_hdr->color_description_present) {
+    return Nothing();
   }
 
-  switch (aPicture.seq_hdr->mtrx) {
-    case DAV1D_MC_BT2020_NCL:
-    case DAV1D_MC_BT2020_CL:
-      return Some(gfx::YUVColorSpace::BT2020);
-    case DAV1D_MC_BT601:
-      return Some(gfx::YUVColorSpace::BT601);
-    case DAV1D_MC_BT709:
-      return Some(gfx::YUVColorSpace::BT709);
-    case DAV1D_MC_IDENTITY:
-      return Some(gfx::YUVColorSpace::Identity);
-    case DAV1D_MC_CHROMAT_NCL:
-    case DAV1D_MC_CHROMAT_CL:
-    case DAV1D_MC_UNKNOWN:  // MIAF specific
-      switch (aPicture.seq_hdr->pri) {
-        case DAV1D_COLOR_PRI_BT601:
-          return Some(gfx::YUVColorSpace::BT601);
-        case DAV1D_COLOR_PRI_BT709:
-          return Some(gfx::YUVColorSpace::BT709);
-        case DAV1D_COLOR_PRI_BT2020:
-          return Some(gfx::YUVColorSpace::BT2020);
-        default:
-          MOZ_LOG(aLogger, LogLevel::Debug,
-                  ("Couldn't infer color matrix from primaries: %u",
-                   aPicture.seq_hdr->pri));
-          return {};
-      }
-    default:
-      MOZ_LOG(aLogger, LogLevel::Debug,
-              ("Unsupported color matrix value: %u", aPicture.seq_hdr->mtrx));
-      return {};
-  }
+  return gfxUtils::CicpToColorSpace(
+      static_cast<gfx::CICP::MatrixCoefficients>(aPicture.seq_hdr->mtrx),
+      static_cast<gfx::CICP::ColourPrimaries>(aPicture.seq_hdr->pri), aLogger);
 }
 
-already_AddRefed<VideoData> DAV1DDecoder::ConstructImage(
+/* static */
+Maybe<gfx::ColorSpace2> DAV1DDecoder::GetColorPrimaries(
+    const Dav1dPicture& aPicture, LazyLogModule& aLogger) {
+  // When returning Nothing(), the caller chooses the appropriate default.
+  if (!aPicture.seq_hdr || !aPicture.seq_hdr->color_description_present) {
+    return Nothing();
+  }
+
+  return gfxUtils::CicpToColorPrimaries(
+      static_cast<gfx::CICP::ColourPrimaries>(aPicture.seq_hdr->pri), aLogger);
+}
+
+Result<already_AddRefed<VideoData>, MediaResult> DAV1DDecoder::ConstructImage(
     const Dav1dPicture& aPicture) {
   VideoData::YCbCrBuffer b;
   if (aPicture.p.bpc == 10) {
@@ -239,11 +286,11 @@ already_AddRefed<VideoData> DAV1DDecoder::ConstructImage(
     b.mColorDepth = gfx::ColorDepth::COLOR_8;
   }
 
-  auto colorSpace = GetColorSpace(aPicture, sPDMLog);
-  if (!colorSpace) {
-    colorSpace = Some(DefaultColorSpace({aPicture.p.w, aPicture.p.h}));
-  }
-  b.mYUVColorSpace = *colorSpace;
+  b.mYUVColorSpace =
+      DAV1DDecoder::GetColorSpace(aPicture, sPDMLog)
+          .valueOr(DefaultColorSpace({aPicture.p.w, aPicture.p.h}));
+  b.mColorPrimaries = DAV1DDecoder::GetColorPrimaries(aPicture, sPDMLog)
+                          .valueOr(gfx::ColorSpace2::BT709);
   b.mColorRange = aPicture.seq_hdr->color_range ? gfx::ColorRange::FULL
                                                 : gfx::ColorRange::LIMITED;
 
@@ -271,6 +318,12 @@ already_AddRefed<VideoData> DAV1DDecoder::ConstructImage(
   b.mPlanes[2].mHeight = (aPicture.p.h + ss_ver) >> ss_ver;
   b.mPlanes[2].mWidth = (aPicture.p.w + ss_hor) >> ss_hor;
 
+  if (ss_ver) {
+    b.mChromaSubsampling = gfx::ChromaSubsampling::HALF_WIDTH_AND_HEIGHT;
+  } else if (ss_hor) {
+    b.mChromaSubsampling = gfx::ChromaSubsampling::HALF_WIDTH;
+  }
+
   // Timestamp, duration and offset used here are wrong.
   // We need to take those values from the decoder. Latest
   // dav1d version allows for that.
@@ -281,6 +334,26 @@ already_AddRefed<VideoData> DAV1DDecoder::ConstructImage(
   int64_t offset = aPicture.m.offset;
   bool keyframe = aPicture.frame_hdr->frame_type == DAV1D_FRAME_TYPE_KEY;
 
+  mPerformanceRecorder.Record(aPicture.m.timestamp, [&](DecodeStage& aStage) {
+    aStage.SetResolution(aPicture.p.w, aPicture.p.h);
+    auto format = [&]() -> Maybe<DecodeStage::ImageFormat> {
+      switch (aPicture.p.layout) {
+        case DAV1D_PIXEL_LAYOUT_I420:
+          return Some(DecodeStage::YUV420P);
+        case DAV1D_PIXEL_LAYOUT_I422:
+          return Some(DecodeStage::YUV422P);
+        case DAV1D_PIXEL_LAYOUT_I444:
+          return Some(DecodeStage::YUV444P);
+        default:
+          return Nothing();
+      }
+    }();
+    format.apply([&](auto& aFmt) { aStage.SetImageFormat(aFmt); });
+    aStage.SetYUVColorSpace(b.mYUVColorSpace);
+    aStage.SetColorRange(b.mColorRange);
+    aStage.SetColorDepth(b.mColorDepth);
+  });
+
   return VideoData::CreateAndCopyData(
       mInfo, mImageContainer, offset, timecode, duration, b, keyframe, timecode,
       mInfo.ScaledImageRect(aPicture.p.w, aPicture.p.h), mImageAllocator);
@@ -289,23 +362,31 @@ already_AddRefed<VideoData> DAV1DDecoder::ConstructImage(
 RefPtr<MediaDataDecoder::DecodePromise> DAV1DDecoder::Drain() {
   RefPtr<DAV1DDecoder> self = this;
   return InvokeAsync(mTaskQueue, __func__, [self, this] {
-    int res = 0;
     DecodedData results;
-    do {
-      MediaResult rs(NS_OK);
-      res = GetPicture(results, rs);
-      if (res < 0 && res != -EAGAIN) {
-        return DecodePromise::CreateAndReject(rs, __func__);
+    while (true) {
+      Result<already_AddRefed<VideoData>, MediaResult> r = GetPicture();
+      if (r.isOk()) {
+        results.AppendElement(r.unwrap());
+      } else {
+        MediaResult rs = r.unwrapErr();
+        if (rs.Code() == NS_ERROR_DOM_MEDIA_WAITING_FOR_DATA) {
+          break;
+        }
+        // Skip if rs is NS_OK, which can happen if picture layout is I400.
+        if (NS_FAILED(rs.Code())) {
+          return DecodePromise::CreateAndReject(rs, __func__);
+        }
       }
-    } while (res != -EAGAIN);
+    }
     return DecodePromise::CreateAndResolve(std::move(results), __func__);
   });
 }
 
 RefPtr<MediaDataDecoder::FlushPromise> DAV1DDecoder::Flush() {
   RefPtr<DAV1DDecoder> self = this;
-  return InvokeAsync(mTaskQueue, __func__, [self]() {
+  return InvokeAsync(mTaskQueue, __func__, [this, self]() {
     dav1d_flush(self->mContext);
+    mPerformanceRecorder.Record(std::numeric_limits<int64_t>::max());
     return FlushPromise::CreateAndResolve(true, __func__);
   });
 }

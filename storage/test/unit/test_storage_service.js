@@ -6,8 +6,6 @@
 // openSpecialDatabase, which is tested by test_storage_service_special.js and
 // openUnsharedDatabase, which is tested by test_storage_service_unshared.js.
 
-const BACKUP_FILE_NAME = "test_storage.sqlite.backup";
-
 function test_openDatabase_null_file() {
   try {
     Services.storage.openDatabase(null);
@@ -95,45 +93,6 @@ function test_fake_db_throws_with_openDatabase() {
   );
 }
 
-function test_backup_not_new_filename() {
-  const fname = getTestDB().leafName;
-
-  var backup = Services.storage.backupDatabaseFile(getTestDB(), fname);
-  Assert.notEqual(fname, backup.leafName);
-
-  backup.remove(false);
-}
-
-function test_backup_new_filename() {
-  var backup = Services.storage.backupDatabaseFile(
-    getTestDB(),
-    BACKUP_FILE_NAME
-  );
-  Assert.equal(BACKUP_FILE_NAME, backup.leafName);
-
-  backup.remove(false);
-}
-
-function test_backup_new_folder() {
-  var parentDir = getTestDB().parent;
-  parentDir.append("test_storage_temp");
-  if (parentDir.exists()) {
-    parentDir.remove(true);
-  }
-  parentDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
-  Assert.ok(parentDir.exists());
-
-  var backup = Services.storage.backupDatabaseFile(
-    getTestDB(),
-    BACKUP_FILE_NAME,
-    parentDir
-  );
-  Assert.equal(BACKUP_FILE_NAME, backup.leafName);
-  Assert.ok(parentDir.equals(backup.parent));
-
-  parentDir.remove(true);
-}
-
 function test_openDatabase_directory() {
   let dir = getTestDB().parent;
   dir.append("test_storage_temp");
@@ -196,6 +155,20 @@ function test_read_gooddb() {
     TELEMETRY_VALUES.success,
     1
   );
+
+  histogram.clear();
+
+  Assert.throws(
+    () => db.executeSimpleSQL("INSERT INTO Foo (rowid) VALUES ('test');"),
+    /NS_ERROR_FAILURE/,
+    "Executing sql should fail."
+  );
+  TelemetryTestUtils.assertKeyedHistogramValue(
+    histogram,
+    file.leafName,
+    TELEMETRY_VALUES.misuse,
+    1
+  );
 }
 
 function test_read_baddb() {
@@ -234,18 +207,48 @@ function test_read_baddb() {
   );
 }
 
+function test_busy_telemetry() {
+  // Thunderbird doesn't have one or more of the probes used in this test.
+  // Ensure the data is collected anyway.
+  Services.prefs.setBoolPref(
+    "toolkit.telemetry.testing.overrideProductsCheck",
+    true
+  );
+
+  let file = do_get_file("goodDB.sqlite");
+  let conn1 = Services.storage.openUnsharedDatabase(file);
+  let conn2 = Services.storage.openUnsharedDatabase(file);
+
+  conn1.beginTransaction();
+  conn1.executeSimpleSQL("CREATE TABLE test (id INTEGER PRIMARY KEY)");
+
+  let histogram = TelemetryTestUtils.getAndClearKeyedHistogram(QUERY_HISTOGRAM);
+  Assert.throws(
+    () =>
+      conn2.executeSimpleSQL("CREATE TABLE test_busy (id INTEGER PRIMARY KEY)"),
+    /NS_ERROR_STORAGE_BUSY/,
+    "Nested transaction on second connection should fail"
+  );
+  TelemetryTestUtils.assertKeyedHistogramValue(
+    histogram,
+    file.leafName,
+    TELEMETRY_VALUES.busy,
+    1
+  );
+
+  conn1.rollbackTransaction();
+}
+
 var tests = [
   test_openDatabase_null_file,
   test_openDatabase_file_DNE,
   test_openDatabase_file_exists,
   test_corrupt_db_throws_with_openDatabase,
   test_fake_db_throws_with_openDatabase,
-  test_backup_not_new_filename,
-  test_backup_new_filename,
-  test_backup_new_folder,
   test_openDatabase_directory,
   test_read_gooddb,
   test_read_baddb,
+  test_busy_telemetry,
 ];
 
 function run_test() {

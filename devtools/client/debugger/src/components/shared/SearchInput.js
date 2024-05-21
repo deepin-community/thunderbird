@@ -2,13 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import React, { Component } from "react";
-
-import { CloseButton } from "./Button";
+import React, { Component } from "devtools/client/shared/vendor/react";
+import {
+  button,
+  div,
+  label,
+  input,
+  span,
+} from "devtools/client/shared/vendor/react-dom-factories";
+import PropTypes from "devtools/client/shared/vendor/react-prop-types";
+import { connect } from "devtools/client/shared/vendor/react-redux";
+import { CloseButton } from "./Button/index";
 
 import AccessibleImage from "./AccessibleImage";
-import classnames from "classnames";
-import "./SearchInput.css";
+import actions from "../../actions/index";
+import { getSearchOptions } from "../../selectors/index";
+
+const classnames = require("resource://devtools/client/shared/classnames.js");
+const SearchModifiers = require("resource://devtools/client/shared/components/SearchModifiers.js");
 
 const arrowBtn = (onClick, type, className, tooltip) => {
   const props = {
@@ -18,15 +29,15 @@ const arrowBtn = (onClick, type, className, tooltip) => {
     title: tooltip,
     type,
   };
-
-  return (
-    <button {...props}>
-      <AccessibleImage className={type} />
-    </button>
+  return button(
+    props,
+    React.createElement(AccessibleImage, {
+      className: type,
+    })
   );
 };
 
-class SearchInput extends Component {
+export class SearchInput extends Component {
   static defaultProps = {
     expanded: false,
     hasPrefix: false,
@@ -37,9 +48,43 @@ class SearchInput extends Component {
 
   constructor(props) {
     super(props);
-
     this.state = {
       history: [],
+      excludePatterns: props.searchOptions.excludePatterns,
+    };
+  }
+
+  static get propTypes() {
+    return {
+      count: PropTypes.number.isRequired,
+      expanded: PropTypes.bool.isRequired,
+      handleClose: PropTypes.func,
+      handleNext: PropTypes.func,
+      handlePrev: PropTypes.func,
+      hasPrefix: PropTypes.bool.isRequired,
+      isLoading: PropTypes.bool.isRequired,
+      onBlur: PropTypes.func,
+      onChange: PropTypes.func,
+      onFocus: PropTypes.func,
+      onHistoryScroll: PropTypes.func,
+      onKeyDown: PropTypes.func,
+      onKeyUp: PropTypes.func,
+      placeholder: PropTypes.string,
+      query: PropTypes.string,
+      selectedItemId: PropTypes.string,
+      shouldFocus: PropTypes.bool,
+      showClose: PropTypes.bool.isRequired,
+      showExcludePatterns: PropTypes.bool.isRequired,
+      excludePatternsLabel: PropTypes.string,
+      excludePatternsPlaceholder: PropTypes.string,
+      showErrorEmoji: PropTypes.bool.isRequired,
+      size: PropTypes.string,
+      summaryMsg: PropTypes.string,
+      searchKey: PropTypes.string.isRequired,
+      searchOptions: PropTypes.object,
+      setSearchOptions: PropTypes.func,
+      showSearchModifiers: PropTypes.bool.isRequired,
+      onToggleSearchModifier: PropTypes.func,
     };
   }
 
@@ -55,21 +100,17 @@ class SearchInput extends Component {
 
   setFocus() {
     if (this.$input) {
-      const input = this.$input;
-      input.focus();
+      const _input = this.$input;
+      _input.focus();
 
-      if (!input.value) {
+      if (!_input.value) {
         return;
       }
 
       // omit prefix @:# from being selected
       const selectStartPos = this.props.hasPrefix ? 1 : 0;
-      input.setSelectionRange(selectStartPos, input.value.length + 1);
+      _input.setSelectionRange(selectStartPos, _input.value.length + 1);
     }
-  }
-
-  renderSvg() {
-    return <AccessibleImage className="search" />;
   }
 
   renderArrowButtons() {
@@ -110,7 +151,8 @@ class SearchInput extends Component {
   onKeyDown = e => {
     const { onHistoryScroll, onKeyDown } = this.props;
     if (!onHistoryScroll) {
-      return onKeyDown(e);
+      onKeyDown(e);
+      return;
     }
 
     const inputValue = e.target.value;
@@ -119,7 +161,8 @@ class SearchInput extends Component {
 
     if (e.key === "Enter") {
       this.saveEnteredTerm(inputValue);
-      return onKeyDown(e);
+      onKeyDown(e);
+      return;
     }
 
     if (e.key === "ArrowUp") {
@@ -142,6 +185,15 @@ class SearchInput extends Component {
     }
   };
 
+  onExcludeKeyDown = e => {
+    if (e.key === "Enter") {
+      this.props.setSearchOptions(this.props.searchKey, {
+        excludePatterns: this.state.excludePatterns,
+      });
+      this.props.onKeyDown(e);
+    }
+  };
+
   saveEnteredTerm(query) {
     const { history } = this.state;
     const previousIndex = history.indexOf(query);
@@ -158,32 +210,91 @@ class SearchInput extends Component {
     if (!summaryMsg) {
       return null;
     }
-
-    return <div className="search-field-summary">{summaryMsg}</div>;
+    return div(
+      {
+        className: "search-field-summary",
+      },
+      summaryMsg
+    );
   }
 
   renderSpinner() {
     const { isLoading } = this.props;
-    if (isLoading) {
-      return <AccessibleImage className="loader spin" />;
+    if (!isLoading) {
+      return null;
     }
+    return React.createElement(AccessibleImage, {
+      className: "loader spin",
+    });
   }
 
   renderNav() {
     const { count, handleNext, handlePrev } = this.props;
     if ((!handleNext && !handlePrev) || !count || count == 1) {
-      return;
+      return null;
     }
+    return div(
+      {
+        className: "search-nav-buttons",
+      },
+      this.renderArrowButtons()
+    );
+  }
 
-    return (
-      <div className="search-nav-buttons">{this.renderArrowButtons()}</div>
+  renderSearchModifiers() {
+    if (!this.props.showSearchModifiers) {
+      return null;
+    }
+    return React.createElement(SearchModifiers, {
+      modifiers: this.props.searchOptions,
+      onToggleSearchModifier: updatedOptions => {
+        this.props.setSearchOptions(this.props.searchKey, updatedOptions);
+        this.props.onToggleSearchModifier();
+      },
+    });
+  }
+
+  renderExcludePatterns() {
+    if (!this.props.showExcludePatterns) {
+      return null;
+    }
+    return div(
+      {
+        className: classnames("exclude-patterns-field", this.props.size),
+      },
+      label(null, this.props.excludePatternsLabel),
+      input({
+        placeholder: this.props.excludePatternsPlaceholder,
+        value: this.state.excludePatterns,
+        onKeyDown: this.onExcludeKeyDown,
+        onChange: e =>
+          this.setState({
+            excludePatterns: e.target.value,
+          }),
+      })
+    );
+  }
+
+  renderClose() {
+    if (!this.props.showClose) {
+      return null;
+    }
+    return React.createElement(
+      React.Fragment,
+      null,
+      span({
+        className: "pipe-divider",
+      }),
+      React.createElement(CloseButton, {
+        handleClick: this.props.handleClose,
+        buttonClass: this.props.size,
+      })
     );
   }
 
   render() {
     const {
       expanded,
-      handleClose,
       onChange,
       onKeyUp,
       placeholder,
@@ -191,7 +302,6 @@ class SearchInput extends Component {
       selectedItemId,
       showErrorEmoji,
       size,
-      showClose,
     } = this.props;
 
     const inputProps = {
@@ -212,28 +322,41 @@ class SearchInput extends Component {
       spellCheck: false,
       ref: c => (this.$input = c),
     };
-
-    return (
-      <div className="search-outline">
-        <div
-          className={classnames("search-field", size)}
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-owns="result-list"
-          aria-expanded={expanded}
-        >
-          {this.renderSvg()}
-          <input {...inputProps} />
-          {this.renderSpinner()}
-          {this.renderSummaryMsg()}
-          {this.renderNav()}
-          {showClose && (
-            <CloseButton handleClick={handleClose} buttonClass={size} />
-          )}
-        </div>
-      </div>
+    return div(
+      {
+        className: "search-outline",
+      },
+      div(
+        {
+          className: classnames("search-field", size),
+          role: "combobox",
+          "aria-haspopup": "listbox",
+          "aria-owns": "result-list",
+          "aria-expanded": expanded,
+        },
+        React.createElement(AccessibleImage, {
+          className: "search",
+        }),
+        input(inputProps),
+        this.renderSpinner(),
+        this.renderSummaryMsg(),
+        this.renderNav(),
+        div(
+          {
+            className: "search-buttons-bar",
+          },
+          this.renderSearchModifiers(),
+          this.renderClose()
+        )
+      ),
+      this.renderExcludePatterns()
     );
   }
 }
+const mapStateToProps = (state, props) => ({
+  searchOptions: getSearchOptions(state, props.searchKey),
+});
 
-export default SearchInput;
+export default connect(mapStateToProps, {
+  setSearchOptions: actions.setSearchOptions,
+})(SearchInput);

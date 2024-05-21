@@ -6,14 +6,10 @@
 XPCSHELL_TESTS_MANIFESTS += ["test/xpcshell.ini"]
 
 EXTRA_JS_MODULES += [
-    "imAccounts.jsm",
-    "imCommands.jsm",
-    "imContacts.jsm",
-    "imConversations.jsm",
-    "imCore.jsm",
-    "logger.jsm",
-]
-
-XPCOM_MANIFESTS += [
-    "components.conf",
+    "imAccounts.sys.mjs",
+    "imCommands.sys.mjs",
+    "imContacts.sys.mjs",
+    "imConversations.sys.mjs",
+    "imCore.sys.mjs",
+    "logger.sys.mjs",
 ]

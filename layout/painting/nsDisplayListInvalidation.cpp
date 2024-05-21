@@ -9,6 +9,8 @@
 #include "nsIFrame.h"
 #include "nsTableFrame.h"
 
+namespace mozilla {
+
 nsDisplayItemGeometry::nsDisplayItemGeometry(nsDisplayItem* aItem,
                                              nsDisplayListBuilder* aBuilder) {
   MOZ_COUNT_CTOR(nsDisplayItemGeometry);
@@ -29,6 +31,15 @@ bool ShouldSyncDecodeImages(nsDisplayListBuilder* aBuilder) {
   return aBuilder->ShouldSyncDecodeImages();
 }
 
+nsDisplayItemGeometry* GetPreviousGeometry(nsDisplayItem* aItem) {
+  if (RefPtr<layers::WebRenderFallbackData> data =
+          layers::GetWebRenderUserData<layers::WebRenderFallbackData>(
+              aItem->Frame(), aItem->GetPerFrameKey())) {
+    return data->GetGeometry();
+  }
+  return nullptr;
+}
+
 void nsDisplayItemGenericGeometry::MoveBy(const nsPoint& aOffset) {
   nsDisplayItemGeometry::MoveBy(aOffset);
   mBorderRect.MoveBy(aOffset);
@@ -43,13 +54,11 @@ nsDisplayItemBoundsGeometry::nsDisplayItemBoundsGeometry(
 
 nsDisplayBorderGeometry::nsDisplayBorderGeometry(nsDisplayItem* aItem,
                                                  nsDisplayListBuilder* aBuilder)
-    : nsDisplayItemGeometry(aItem, aBuilder),
-      nsImageGeometryMixin(aItem, aBuilder) {}
+    : nsDisplayItemGeometry(aItem, aBuilder) {}
 
 nsDisplayBackgroundGeometry::nsDisplayBackgroundGeometry(
     nsDisplayBackgroundImage* aItem, nsDisplayListBuilder* aBuilder)
     : nsDisplayItemGeometry(aItem, aBuilder),
-      nsImageGeometryMixin(aItem, aBuilder),
       mPositioningArea(aItem->GetPositioningArea()),
       mDestRect(aItem->GetDestRect()) {}
 
@@ -80,10 +89,6 @@ void nsDisplayBoxShadowInnerGeometry::MoveBy(const nsPoint& aOffset) {
   mPaddingRect.MoveBy(aOffset);
 }
 
-nsDisplayBoxShadowOuterGeometry::nsDisplayBoxShadowOuterGeometry(
-    nsDisplayItem* aItem, nsDisplayListBuilder* aBuilder, float aOpacity)
-    : nsDisplayItemGenericGeometry(aItem, aBuilder), mOpacity(aOpacity) {}
-
 void nsDisplaySolidColorRegionGeometry::MoveBy(const nsPoint& aOffset) {
   nsDisplayItemGeometry::MoveBy(aOffset);
   mRegion.MoveBy(aOffset);
@@ -94,9 +99,7 @@ nsDisplaySVGEffectGeometry::nsDisplaySVGEffectGeometry(
     : nsDisplayItemGeometry(aItem, aBuilder),
       mBBox(aItem->BBoxInUserSpace()),
       mUserSpaceOffset(aItem->UserSpaceOffset()),
-      mFrameOffsetToReferenceFrame(aItem->ToReferenceFrame()),
-      mOpacity(aItem->Frame()->StyleEffects()->mOpacity),
-      mHandleOpacity(aItem->ShouldHandleOpacity()) {}
+      mFrameOffsetToReferenceFrame(aItem->ToReferenceFrame()) {}
 
 void nsDisplaySVGEffectGeometry::MoveBy(const nsPoint& aOffset) {
   mBounds.MoveBy(aOffset);
@@ -106,17 +109,16 @@ void nsDisplaySVGEffectGeometry::MoveBy(const nsPoint& aOffset) {
 nsDisplayMasksAndClipPathsGeometry::nsDisplayMasksAndClipPathsGeometry(
     nsDisplayMasksAndClipPaths* aItem, nsDisplayListBuilder* aBuilder)
     : nsDisplaySVGEffectGeometry(aItem, aBuilder),
-      nsImageGeometryMixin(aItem, aBuilder),
       mDestRects(aItem->GetDestRects().Clone()) {}
 
 nsDisplayFiltersGeometry::nsDisplayFiltersGeometry(
     nsDisplayFilters* aItem, nsDisplayListBuilder* aBuilder)
-    : nsDisplaySVGEffectGeometry(aItem, aBuilder),
-      nsImageGeometryMixin(aItem, aBuilder) {}
+    : nsDisplaySVGEffectGeometry(aItem, aBuilder) {}
 
 nsDisplayTableItemGeometry::nsDisplayTableItemGeometry(
     nsDisplayTableItem* aItem, nsDisplayListBuilder* aBuilder,
     const nsPoint& aFrameOffsetToViewport)
     : nsDisplayItemGenericGeometry(aItem, aBuilder),
-      nsImageGeometryMixin(aItem, aBuilder),
       mFrameOffsetToViewport(aFrameOffsetToViewport) {}
+
+}  // namespace mozilla

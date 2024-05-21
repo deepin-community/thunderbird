@@ -4,6 +4,11 @@
 
 @import url("chrome://messenger/skin/shared/panelUI.css");
 
+#appMenu-popup {
+  margin-top: 4px;
+  margin-inline: 0 -8px;
+}
+
 .panel-subview-body {
   scrollbar-color: color-mix(in srgb, currentColor 26%, transparent) transparent;
 }
@@ -17,10 +22,29 @@ panelmultiview .toolbaritem-combined-buttons > spacer.before-label {
   width: 46px;
 }
 
+.subviewbutton[shortcut]::after {
+  opacity: 0.5;
+}
+
+.subviewbutton[shortcut]:not([disabled="true"]):hover::after,
+.subviewbutton[shortcut]:not([disabled="true"]):focus::after {
+  opacity: 1;
+}
+
+menupopup[type="arrow"] {
+  appearance: none;
+  background-color: transparent;
+
+  &::part(content) {
+    margin: 1px;
+  }
+}
+
 menuitem.subviewbutton-iconic > .menu-iconic-left > .menu-iconic-icon {
   width: 16px;
 }
 
+menu.subviewbutton > .menu-text,
 menuitem.subviewbutton > .menu-text {
   margin-inline-start: 16px !important;
 }

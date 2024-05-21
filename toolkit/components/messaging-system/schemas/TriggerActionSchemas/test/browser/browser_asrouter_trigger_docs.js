@@ -1,15 +1,17 @@
 const TEST_URL =
   "https://example.com/browser/toolkit/components/messaging-system/schemas/TriggerActionSchemas/test/browser/index.md";
 
-const { ASRouterTriggerListeners } = ChromeUtils.import(
-  "resource://activity-stream/lib/ASRouterTriggerListeners.jsm"
+const { ASRouterTriggerListeners } = ChromeUtils.importESModule(
+  "resource:///modules/asrouter/ASRouterTriggerListeners.sys.mjs"
 );
-const { CFRMessageProvider } = ChromeUtils.import(
-  "resource://activity-stream/lib/CFRMessageProvider.jsm"
+const { CFRMessageProvider } = ChromeUtils.importESModule(
+  "resource:///modules/asrouter/CFRMessageProvider.sys.mjs"
 );
-const { Ajv } = ChromeUtils.import("resource://testing-common/ajv-4.1.1.js");
+const { JsonSchema } = ChromeUtils.importESModule(
+  "resource://gre/modules/JsonSchema.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "fetchTriggerActionSchema", async () => {
+ChromeUtils.defineLazyGetter(this, "fetchTriggerActionSchema", async () => {
   const response = await fetch(
     "resource://testing-common/TriggerActionSchemas.json"
   );
@@ -22,13 +24,19 @@ XPCOMUtils.defineLazyGetter(this, "fetchTriggerActionSchema", async () => {
 
 async function validateTrigger(trigger) {
   const schema = await fetchTriggerActionSchema;
-  const ajv = new Ajv({ async: "co*" });
-  const validator = ajv.compile(schema);
-  if (!validator(trigger)) {
-    throw new Error(`Trigger with id ${trigger.id} was not valid.`);
+  const result = JsonSchema.validate(trigger, schema);
+  if (result.errors.length) {
+    throw new Error(
+      `Trigger with id ${trigger.id} was not valid. Errors: ${JSON.stringify(
+        result.errors,
+        undefined,
+        2
+      )}`
+    );
   }
-  Assert.ok(
-    !validator.errors,
+  Assert.equal(
+    result.errors.length,
+    0,
     `should be a valid trigger of type ${trigger.id}`
   );
 }

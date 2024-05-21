@@ -22,11 +22,6 @@
          oncommand="gGeneralPane.focusFilterBox();"/>
   </keyset>
 
-  <linkset>
-    <html:link rel="localization" href="branding/brand.ftl"/>
-    <html:link rel="localization" href="messenger/preferences/preferences.ftl"/>
-  </linkset>
-
   <stringbundle id="bundlePreferences" src="chrome://messenger/locale/preferences/preferences.properties"/>
 #ifdef HAVE_SHELL_SERVICE
   <stringbundle id="bundleBrand" src="chrome://branding/locale/brand.properties"/>
@@ -50,7 +45,7 @@
         <hbox align="center" class="input-container">
           <label data-l10n-id="location-label" control="mailnewsStartPageUrl"/>
           <html:input id="mailnewsStartPageUrl"
-                      type="text"
+                      type="url"
                       preference="mailnews.start_page.url"/>
           <button is="highlightable-button" id="browseForStartPageUrl"
                   data-l10n-id="restore-default-label"
@@ -71,7 +66,7 @@
           </menulist>
         </hbox>
         <button is="highlightable-button" id="addSearchEngine"
-                data-l10n-id="add-search-engine"
+                data-l10n-id="add-web-search-engine"
                 oncommand="gGeneralPane.addSearchEngine();"/>
         <button is="highlightable-button" id="removeSearchEngine"
                 data-l10n-id="remove-search-engine"
@@ -96,7 +91,7 @@
                   oncommand="gGeneralPane.checkDefaultNow();"
                   preference="pref.general.disable_button.default_mail"
                   search-l10n-ids="
-                    system-integration-title.title,
+                    system-integration-dialog-title,
                     system-integration-dialog.buttonlabelaccept,
                     system-integration-dialog.buttonlabelcancel,
                     system-integration-dialog.buttonlabelcancel2,
@@ -130,6 +125,29 @@
           data-category="paneGeneral">
       <html:h1 data-l10n-id="general-language-and-appearance-header"/>
     </hbox>
+
+    <!-- Window layout -->
+    <html:div data-category="paneGeneral">
+    <html:fieldset id="layoutGroup" data-category="paneGeneral">
+      <html:legend data-l10n-id="window-layout-legend"></html:legend>
+      <hbox>
+        <checkbox id="drawInTitlebar"
+                  data-l10n-id="draw-in-titlebar-label"
+                  preference="mail.tabs.drawInTitlebar"/>
+        <spacer flex="1"/>
+      </hbox>
+      <hbox>
+        <vbox>
+          <checkbox id="autoHideTabbar"
+                    data-l10n-id="auto-hide-tabbar-label"
+                    preference="mail.tabs.autoHide"/>
+          <description data-l10n-id="auto-hide-tabbar-description"
+                       class="tip-caption indent"/>
+        </vbox>
+        <spacer flex="1"/>
+      </hbox>
+    </html:fieldset>
+    </html:div>
 
     <!-- Fonts and Colors -->
     <html:div data-category="paneGeneral">
@@ -187,7 +205,7 @@
                     flex="1"
                     search-l10n-ids="
                       fonts-label-default-unnamed.label,
-                      fonts-encoding-dialog-title.title,
+                      fonts-dialog-title,
                       fonts-language-legend.value,
                       fonts-proportional-label.value,
                       font-language-group-latin.label,
@@ -243,7 +261,7 @@
                     oncommand="gGeneralPane.configureColors();"
                     flex="1"
                     search-l10n-ids="
-                      colors-dialog-window.title,
+                      colors-dialog-title,
                       colors-dialog-legend,
                       text-color-label.value,
                       background-color-label.value,
@@ -251,7 +269,7 @@
                       colors-link-legend,
                       link-color-label.value,
                       visited-link-color-label.value,
-                      underline-link-checkbox.label,
+                      always-underline-links.label,
                       override-color-label.value,
                       override-color-always.label,
                       override-color-auto.label,
@@ -326,8 +344,8 @@
                      data-l10n-id="choose-messenger-language-description"/>
         <hbox>
           <hbox>
-            <menulist id="defaultMessengerLanguage"
-                      oncommand="gGeneralPane.onMessengerLanguageChange(event)">
+            <menulist id="primaryMessengerLocale"
+                      oncommand="gGeneralPane.onPrimaryMessengerLanguageMenuChange(event)">
               <menupopup/>
             </menulist>
           </hbox>
@@ -335,14 +353,14 @@
             <button is="highlightable-button" id="manageMessengerLanguagesButton"
                     class="accessory-button"
                     data-l10n-id="manage-messenger-languages-button"
-                    oncommand="gGeneralPane.showMessengerLanguages({search: false})"
+                    oncommand="gGeneralPane.showMessengerLanguagesSubDialog({search: false})"
                     search-l10n-ids="
                       languages-customize-moveup.label,
                       languages-customize-movedown.label,
                       languages-customize-remove.label,
                       languages-customize-select-language.placeholder,
                       languages-customize-add.label,
-                      messenger-languages-window.title,
+                      messenger-languages-dialog-title,
                       messenger-languages-description,
                       messenger-languages-search,
                       messenger-languages-searching.label,
@@ -358,7 +376,8 @@
             class="message-bar"
             align="center"
             hidden="true">
-        <image class="message-bar-icon"/>
+        <html:img class="message-bar-icon"
+                  src="chrome://global/skin/icons/info.svg" alt="" />
         <vbox class="message-bar-content-container" align="stretch" flex="1"/>
       </hbox>
     </html:fieldset>
@@ -380,6 +399,14 @@
                   preference="general.smoothScroll"/>
         <spacer flex="1"/>
       </hbox>
+#ifdef MOZ_WIDGET_GTK
+      <hbox>
+        <checkbox id="useOverlayScrollbars"
+                  data-l10n-id="browsing-gtk-use-non-overlay-scrollbars"
+                  preference="widget.gtk.overlay-scrollbars.enabled"/>
+        <spacer flex="1"/>
+      </hbox>
+#endif
     </html:fieldset>
     </html:div>
 
@@ -400,18 +427,18 @@
                   oncommand="gGeneralPane.configureDockOptions();"
                   data-l10n-id="app-icon-options"
                   search-l10n-ids="
-                    dock-options-window-dialog.title,
+                    dock-options-dialog-title,
                     bounce-system-dock-icon.label,
                     dock-icon-legend,
                     dock-icon-show-label.value,
                     count-unread-messages-radio.label,
                     count-new-messages-radio.label,
-                    notification-settings-info"/>
+                    notification-settings-info2"/>
         </hbox>
       </hbox>
 #endif
 #ifdef XP_MACOSX
-      <description class="bold" data-l10n-id="notification-settings"/>
+      <description class="bold" data-l10n-id="notification-settings2"/>
 #else
       <hbox align="center">
         <checkbox id="newMailNotificationAlert"
@@ -423,7 +450,7 @@
                   oncommand="gGeneralPane.customizeMailAlert();"
                   data-l10n-id="customize-alert-label"
                   search-l10n-ids="
-                    notifications-dialog-window.title,
+                    notifications-dialog-title,
                     customize-alert-description,
                     preview-text-checkbox.label,
                     subject-checkbox.label,
@@ -511,16 +538,17 @@
                       oncommand="gGeneralPane._rebuildView();"/>
       <separator class="thin"/>
       <html:div id="handlersView"
-                preference="pref.downloads.disable_button.edit_actions">
+                preference="pref.downloads.disable_button.edit_actions"
+                search-l10n-ids="app-manager-dialog-title">
         <html:table id="handlersTable">
           <html:thead>
             <html:tr>
               <html:th scope="col"
                        sort-type="type">
                 <html:button class="handlerHeaderButton">
-                  <html:div class="handlerHeader"
-                            data-l10n-id="type-column-label">
-                  </html:div>
+                  <html:span class="handlerHeader"
+                             data-l10n-id="type-column-header">
+                  </html:span>
                   <html:img class="handlerSortHeaderIcon"
                             alt=""/>
                 </html:button>
@@ -528,9 +556,9 @@
               <html:th scope="col"
                        sort-type="action">
                 <html:button class="handlerHeaderButton">
-                  <html:div class="handlerHeader"
-                            data-l10n-id="action-column-label">
-                  </html:div>
+                  <html:span class="handlerHeader"
+                             data-l10n-id="action-column-header">
+                  </html:span>
                   <html:img class="handlerSortHeaderIcon"
                             alt=""/>
                 </html:button>
@@ -582,16 +610,15 @@
       <hbox>
         <richlistbox id="tagList"
                      flex="1"
-                     height="180px"
                      ondblclick="gGeneralPane.editTag();"
                      onselect="gGeneralPane.onSelectTag();"/>
         <vbox id="tagButtons">
           <hbox>
-            <button is="highlightable-button"
+            <button is="highlightable-button" id="newTagButton"
                     data-l10n-id="new-tag-button"
                     oncommand="gGeneralPane.addTag();"
                     search-l10n-ids="
-                      tag-dialog-window.title,
+                      tag-dialog-title,
                       tag-name-label.value"/>
           </hbox>
           <hbox>
@@ -600,7 +627,7 @@
                     data-l10n-id="edit-tag-button"
                     oncommand="gGeneralPane.editTag();"
                     search-l10n-ids="
-                      tag-dialog-window.title,
+                      tag-dialog-title,
                       tag-name-label.value"/>
           </hbox>
           <button is="highlightable-button" id="removeTagButton"
@@ -621,6 +648,12 @@
     <html:div data-category="paneGeneral">
     <html:fieldset data-category="paneGeneral">
       <vbox>
+        <hbox>
+          <checkbox id="viewAttachmentsInline"
+                    data-l10n-id="view-attachments-inline"
+                    preference="mail.inline_attachments"/>
+        </hbox>
+
         <hbox>
           <checkbox id="automaticallyMarkAsRead"
                     preference="mailnews.mark_message_read.auto"
@@ -690,7 +723,7 @@
                   data-l10n-id="return-receipts-button"
                   oncommand="gGeneralPane.showReturnReceipts();"
                   search-l10n-ids="
-                    receipts-dialog-window.title,
+                    receipts-dialog-title,
                     return-receipt-checkbox-control.label,
                     receipt-arrive-label,
                     receipt-leave-radio-control.label,
@@ -724,7 +757,7 @@
         <vbox>
           <description>
             <label id="version"/>
-            <label is="text-link" id="releasenotes" hidden="true">&releaseNotes.link;</label>
+            <label is="text-link" id="releasenotes" hidden="true" data-l10n-id="release-notes-link"></label>
           </description>
           <description id="distribution" class="text-blurb" hidden="true"/>
           <description id="distributionId" class="text-blurb" hidden="true"/>
@@ -749,89 +782,98 @@
           </hbox>
         </vbox>
       </hbox>
-      <vbox id="updateBox">
-        <stack id="updateDeck" orient="vertical">
-          <hbox id="checkForUpdates" align="center">
-            <spacer flex="1"/>
-            <button is="highlightable-button" id="checkForUpdatesButton"
-                    align="start"
-                    label="&update.checkForUpdatesButton.label;"
-                    accesskey="&update.checkForUpdatesButton.accesskey;"
-                    oncommand="gAppUpdater.checkForUpdates();"/>
-          </hbox>
-          <hbox id="downloadAndInstall" align="center">
-            <spacer flex="1"/>
-            <button is="highlightable-button" id="downloadAndInstallButton"
-                    oncommand="gAppUpdater.startDownload();"/>
-                    <!-- label and accesskey will be filled by JS -->
-          </hbox>
-          <hbox id="apply" align="center">
-            <spacer flex="1"/>
-            <button is="highlightable-button" id="updateButton"
-                    label="&update.updateButton.label3;"
-                    accesskey="&update.updateButton.accesskey;"
-                    oncommand="gAppUpdater.buttonRestartAfterDownload();"/>
-          </hbox>
-          <hbox id="checkingForUpdates" align="center">
-            <image class="update-throbber"/><label>&update.checkingForUpdates;</label>
-            <spacer flex="1"/>
-            <button is="highlightable-button"
-                    label="&update.checkForUpdatesButton.label;"
-                    accesskey="&update.checkForUpdatesButton.accesskey;"
-                    disabled="true"/>
-          </hbox>
-          <hbox id="downloading" align="center">
-            <image class="update-throbber"/><label>&update.downloading.start;</label>
-            <label id="downloadStatus"/><label>&update.downloading.end;</label>
-          </hbox>
-          <hbox id="applying" align="center">
-            <image class="update-throbber"/><label>&update.applying;</label>
-          </hbox>
-         <hbox id="downloadFailed" align="center">
-            <label>&update.failed.start;</label>
-            <label is="text-link" id="failedLink">&update.failed.linkText;</label>
-            <label>&update.failed.end;</label>
-            <spacer flex="1"/>
-            <button is="highlightable-button"
-                    label="&update.checkForUpdatesButton.label;"
-                    accesskey="&update.checkForUpdatesButton.accesskey;"
-                    oncommand="gAppUpdater.checkForUpdates();"/>
-          </hbox>
-          <hbox id="policyDisabled" align="center">
-            <label>&update.adminDisabled;</label>
-          </hbox>
-          <hbox id="noUpdatesFound" align="center">
-            <label>&update.noUpdatesFound;</label>
-            <spacer flex="1"/>
-            <button is="highlightable-button"
-                    label="&update.checkForUpdatesButton.label;"
-                    accesskey="&update.checkForUpdatesButton.accesskey;"
-                    oncommand="gAppUpdater.checkForUpdates();"/>
-          </hbox>
-          <hbox id="otherInstanceHandlingUpdates" align="center">
-            <label>&update.otherInstanceHandlingUpdates;</label>
-          </hbox>
-          <hbox id="manualUpdate" align="center">
-            <label>&update.manual.start;</label><label is="text-link" id="manualLink">
-              &update.manual.linkText;
-            </label>
-            <label>&update.manual.end;</label>
-            <spacer flex="1"/>
-            <button is="highlightable-button"
-                    label="&update.checkForUpdatesButton.label;"
-                    accesskey="&update.checkForUpdatesButton.accesskey;"
-                    disabled="true"/>
-          </hbox>
-          <hbox id="unsupportedSystem" align="center">
-            <label>&update.unsupported.start;</label>
-            <label is="text-link" id="unsupportedLink">&update.unsupported.linkText;</label>
-            <label>&update.unsupported.end;</label>
-          </hbox>
-          <hbox id="restarting" align="center">
-            <image class="update-throbber"/><label>&update.restarting;</label>
-          </hbox>
-        </stack>
-      </vbox>
+      <hbox id="updateBox">
+        <deck id="updateDeck" orient="vertical" flex="1">
+          <html:div id="checkForUpdates" class="update-deck-container">
+            <html:button id="checkForUpdatesButton"
+                         data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+          <html:div id="downloadAndInstall" class="update-deck-container">
+            <html:button id="downloadAndInstallButton"
+                         onclick="gAppUpdater.startDownload();">
+            </html:button>
+          </html:div>
+          <html:div id="apply" class="update-deck-container">
+            <html:button id="updateButton"
+                         data-l10n-id="update-update-button"
+                         onclick="gAppUpdater.buttonRestartAfterDownload();">
+            </html:button>
+          </html:div>
+          <html:div id="checkingForUpdates" class="update-deck-container">
+            <html:img class="update-throbber" alt="" />
+            <html:span data-l10n-id="update-checking-for-updates"></html:span>
+            <!-- Button is only used for presentation in reference to the actual
+               - button that triggered this action, which would now be
+               - invisible -->
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         disabled="true">
+            </html:button>
+          </html:div>
+          <html:div id="downloading" class="update-deck-container"
+                    data-l10n-id="update-downloading">
+            <html:img class="update-throbber" data-l10n-name="icon"></html:img>
+            <!-- Group within a single span to center align with icon. -->
+            <html:span id="downloadStatus" data-l10n-name="download-status"></html:span>
+          </html:div>
+          <html:div id="applying" class="update-deck-container">
+            <html:img class="update-throbber"/>
+            <html:span data-l10n-id="update-applying"></html:span>
+          </html:div>
+          <html:div id="downloadFailed" class="update-deck-container"
+                    data-l10n-id="update-failed">
+            <html:a id="failedLink" class="text-link download-link"
+                    data-l10n-name="failed-link"></html:a>
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+          <html:div id="policyDisabled" class="update-deck-container">
+            <html:span data-l10n-id="update-admin-disabled"></html:span>
+          </html:div>
+          <html:div id="noUpdatesFound" class="update-deck-container">
+            <html:span data-l10n-id="update-no-updates-found"></html:span>
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+          <html:div id="checkingFailed" class="update-deck-container">
+            <html:span data-l10n-id="aboutdialog-update-checking-failed"></html:span>
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+          <html:div id="otherInstanceHandlingUpdates"
+                    class="update-deck-container">
+            <html:span data-l10n-id="update-other-instance-handling-updates"></html:span>
+          </html:div>
+          <html:div id="manualUpdate" class="update-deck-container"
+                    data-l10n-id="update-manual">
+            <html:a id="manualLink" class="manualLink text-link download-link"
+                    data-l10n-name="manual-link"></html:a>
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+          <html:div id="unsupportedSystem" class="update-deck-container" data-l10n-id="update-unsupported">
+            <html:a id="unsupportedLink" class="text-link download-link"
+                    data-l10n-name="unsupported-link"></html:a>
+          </html:div>
+          <html:div id="restarting" class="update-deck-container">
+            <html:span class="update-throbber"></html:span>
+            <html:span data-l10n-id="update-restarting"></html:span>
+          </html:div>
+          <html:div id="internalError" class="update-deck-container"
+                    data-l10n-id="update-internal-error">
+            <html:a id="internalErrorLink" class="manualLink text-link download-link"
+                    data-l10n-name="manual-link"></html:a>
+            <html:button data-l10n-id="update-check-for-updates-button"
+                         onclick="gAppUpdater.checkForUpdates();">
+            </html:button>
+          </html:div>
+        </deck>
+      </hbox>
       <separator/>
       <description id="updateAllowDescription" data-l10n-id="allow-description"/>
       <vbox id="updateSettingsContainer">
@@ -878,6 +920,7 @@
                   data-l10n-id="network-settings-button"
                   oncommand="gGeneralPane.showConnections();"
                   search-l10n-ids="
+                    connection-dialog-title,
                     connection-dns-over-https-url-resolver,
                     connection-dns-over-https-url-custom.label,
                     connection-dns-over-https-custom-label,
@@ -920,7 +963,7 @@
                   data-l10n-id="offline-settings-button"
                   oncommand="gGeneralPane.showOffline();"
                   search-l10n-ids="
-                    offline-dialog-window.title,
+                    offline-dialog-title,
                     autodetect-online-label.label,
                     startup-label,
                     status-radio-remember.label,
@@ -950,8 +993,13 @@
                 oncommand="gGeneralPane.clearCache();"/>
       </hbox>
       <hbox>
-        <checkbox preference="browser.cache.disk.smart_size.enabled"
-                  id="allowSmartSize"
+        <checkbox id="clearCacheOnShutdown"
+                  preference="privacy.clearOnShutdown.cache"
+                  data-l10n-id="clear-cache-shutdown-label"/>
+      </hbox>
+      <hbox>
+        <checkbox id="allowSmartSize"
+                  preference="browser.cache.disk.smart_size.enabled"
                   data-l10n-id="smart-cache-label"/>
       </hbox>
       <hbox align="center" class="indent">
@@ -1027,6 +1075,7 @@
           <button is="highlightable-button" id="configEditor"
                   data-l10n-id="config-editor-button"
                   oncommand="gGeneralPane.showConfigEdit();"
+                  searchkeywords="about:config"
                   search-l10n-ids="
                     about-config-page-title,
                     about-config-search-input1.placeholder,

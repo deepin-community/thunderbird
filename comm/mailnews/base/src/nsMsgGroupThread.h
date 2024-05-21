@@ -19,8 +19,10 @@ class nsMsgGroupThread : public nsIMsgThread {
  public:
   friend class nsMsgGroupView;
 
-  nsMsgGroupThread();
-  explicit nsMsgGroupThread(nsIMsgDatabase* db);
+  explicit nsMsgGroupThread(nsIMsgDatabase* db,
+                            nsMsgViewSortOrderValue sortOrder);
+
+  already_AddRefed<nsMsgGroupThread> Clone();
 
   NS_DECL_NSIMSGTHREAD
   NS_DECL_ISUPPORTS
@@ -28,7 +30,6 @@ class nsMsgGroupThread : public nsIMsgThread {
  protected:
   virtual ~nsMsgGroupThread();
 
-  void Init();
   nsMsgViewIndex AddChildFromGroupView(nsIMsgDBHdr* child, nsMsgDBView* view);
   nsresult RemoveChild(nsMsgKey msgKey);
   nsresult RerootThread(nsIMsgDBHdr* newParentOfOldRoot, nsIMsgDBHdr* oldRoot,
@@ -45,6 +46,7 @@ class nsMsgGroupThread : public nsIMsgThread {
 
   nsresult ReparentChildrenOf(nsMsgKey oldParent, nsMsgKey newParent,
                               nsIDBChangeAnnouncer* announcer);
+  nsresult ChangeNewChildCount(int32_t delta);
   nsresult ChangeUnreadChildCount(int32_t delta);
   nsresult GetChildHdrForKey(nsMsgKey desiredKey, nsIMsgDBHdr** result,
                              int32_t* resultIndex);
@@ -54,6 +56,7 @@ class nsMsgGroupThread : public nsIMsgThread {
   virtual nsMsgViewIndex FindMsgHdr(nsIMsgDBHdr* hdr);
 
   nsMsgKey m_threadKey;
+  uint32_t m_numNewChildren;
   uint32_t m_numUnreadChildren;
   uint32_t m_flags;
   nsMsgKey m_threadRootKey;
@@ -61,11 +64,14 @@ class nsMsgGroupThread : public nsIMsgThread {
   nsTArray<nsMsgKey> m_keys;
   bool m_dummy;  // top level msg is a dummy, e.g., grouped by age.
   nsCOMPtr<nsIMsgDatabase> m_db;  // should we make a weak ref or just a ptr?
+  nsMsgViewSortOrderValue m_sortOrder;
 };
 
 class nsMsgXFGroupThread : public nsMsgGroupThread {
  public:
-  nsMsgXFGroupThread();
+  explicit nsMsgXFGroupThread(nsMsgViewSortOrderValue sortOrder);
+
+  already_AddRefed<nsMsgXFGroupThread> Clone();
 
   NS_IMETHOD GetNumChildren(uint32_t* aNumChildren) override;
   NS_IMETHOD GetChildKeyAt(uint32_t aIndex, nsMsgKey* aResult) override;

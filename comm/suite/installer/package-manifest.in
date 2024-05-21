@@ -13,17 +13,17 @@
 ; ; file comment
 ;
 
-; Due to Apple Mac OS X packaging requirements, files that are in the same
+; Due to Apple macOS packaging requirements, files that are in the same
 ; directory on other platforms must be located in different directories on
-; Mac OS X. The following defines allow specifying the Mac OS X bundle
+; macOS. The following defines allow specifying the macOS bundle
 ; location which also work on other platforms.
 ;
 ; @BINPATH@
-; Equals Contents/MacOS/ on Mac OS X and is the path to the main binary on other
+; Equals Contents/MacOS/ on macOS and is the path to the main binary on other
 ; platforms.
 ;
 ; @RESPATH@
-; Equals Contents/Resources/ on Mac OS X and is equivalent to @BINPATH@ on other
+; Equals Contents/Resources/ on macOS and is equivalent to @BINPATH@ on other
 ; platforms.
 
 #filter substitution
@@ -100,10 +100,6 @@
 #endif
 #endif # MOZ_ANGLE_RENDERER
 
-#if defined(XP_WIN) && defined(MOZ_ENABLE_SKIA_PDF)
-@BINPATH@/pdfium.dll
-#endif
-
 #ifdef XP_WIN
 #if MOZ_PACKAGE_MSVC_DLLS
 @BINPATH@/@MSVC_C_RUNTIME_DLL@
@@ -135,7 +131,10 @@
 @BINPATH@/@DLL_PREFIX@mozavcodec@DLL_SUFFIX@
 #endif
 #ifdef MOZ_GTK
+@BINPATH@/glxtest
+@BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
 #ifdef MOZ_WAYLAND
+@BINPATH@/vaapitest
 @BINPATH@/@DLL_PREFIX@mozwayland@DLL_SUFFIX@
 #endif
 #endif
@@ -152,10 +151,7 @@
 ; [Components]
 #ifdef ACCESSIBILITY
 #ifdef XP_WIN
-@BINPATH@/Accessible.tlb
-@BINPATH@/AccessibleHandler.dll
 @BINPATH@/AccessibleMarshal.dll
-@BINPATH@/IA2Marshal.dll
 #endif
 #endif
 @RESPATH@/components/extensions.manifest
@@ -163,7 +159,6 @@
 @RESPATH@/components/SuiteComponents.manifest
 @RESPATH@/components/SuiteFeeds.manifest
 @RESPATH@/components/SuiteSidebar.manifest
-@RESPATH@/components/toolkitsearch.manifest
 ; JavaScript components
 @RESPATH@/components/cryptoComponents.manifest
 @RESPATH@/components/FeedConverter.js
@@ -174,8 +169,6 @@
 @RESPATH@/components/nsBrowserContentHandler.js
 @RESPATH@/components/nsComposerCmdLineHandler.js
 @RESPATH@/components/nsComposerCmdLineHandler.manifest
-@RESPATH@/components/HandlerService.js
-@RESPATH@/components/HandlerService.manifest
 @RESPATH@/components/nsGopherProtocolStubHandler.js
 @RESPATH@/components/nsPlacesAutoComplete.js
 @RESPATH@/components/nsPlacesAutoComplete.manifest
@@ -215,8 +208,6 @@
 @RESPATH@/chrome/browser.manifest
 @RESPATH@/chrome/comm@JAREXT@
 @RESPATH@/chrome/comm.manifest
-@RESPATH@/chrome/recording.manifest
-@RESPATH@/chrome/recording/*
 @RESPATH@/chrome/toolkit@JAREXT@
 @RESPATH@/chrome/toolkit.manifest
 
@@ -305,7 +296,6 @@
 @RESPATH@/defaults/autoconfig/prefcalls.js
 @RESPATH@/defaults/permissions
 @RESPATH@/defaults/settings/blocklists
-@RESPATH@/defaults/settings/pinning
 @RESPATH@/defaults/settings/main
 ; Warning: changing the path to channel-prefs.js can cause bugs. (Bug 756325)
 @RESPATH@/defaults/pref/channel-prefs.js
@@ -392,11 +382,6 @@ bin/libfreebl_32int_3.so
 bin/libfreebl_32int64_3.so
 #endif
 
-; LDAP components need to be in the browser for AutoConfig
-@BINPATH@/@DLL_PREFIX@ldap60@DLL_SUFFIX@
-@BINPATH@/@DLL_PREFIX@ldif60@DLL_SUFFIX@
-@BINPATH@/@DLL_PREFIX@prldap60@DLL_SUFFIX@
-
 ; [MAN pages]
 #ifdef UNIX_BUT_NOT_MAC
 man/*
@@ -419,7 +404,6 @@ man/*
 @BINPATH@/crashreporter.app/
 #else
 @BINPATH@/crashreporter@BIN_SUFFIX@
-@BINPATH@/minidump-analyzer@BIN_SUFFIX@
 @RESPATH@/crashreporter.ini
 #ifdef XP_UNIX
 @RESPATH@/Throbber-small.gif
@@ -429,6 +413,12 @@ man/*
 #ifdef MOZ_CRASHREPORTER_INJECTOR
 @BINPATH@/breakpadinjector.dll
 #endif
+#endif
+
+; [ minidump-analyzer ]
+;
+#ifdef MOZ_CRASHREPORTER
+@BINPATH@/minidump-analyzer@BIN_SUFFIX@
 #endif
 
 ; [ Ping Sender ]
@@ -517,22 +507,9 @@ man/*
 @RESPATH@/chrome/calendar@JAREXT@
 @RESPATH@/chrome/calendar.manifest
 
-@RESPATH@/res/zones.json
 @RESPATH@/@PREF_DIR@/calendar.js
-
-# Files added to components directory via `EXTRA_COMPONENTS`.
-@RESPATH@/components/calBackendLoader.js
-@RESPATH@/components/calBackendLoader.manifest
-@RESPATH@/components/calICALJSComponents.js
 
 # Files added to components directory via `FINAL_TARGET_FILES.components`.
 @RESPATH@/components/calCachedCalendar.js
-@RESPATH@/components/calDateTime.js
-@RESPATH@/components/calDuration.js
-@RESPATH@/components/calFilter.js
-@RESPATH@/components/calICSService.js
 @RESPATH@/components/calICSService-worker.js
 @RESPATH@/components/calItemBase.js
-@RESPATH@/components/calPeriod.js
-@RESPATH@/components/calRecurrenceRule.js
-@RESPATH@/components/calTimezone.js

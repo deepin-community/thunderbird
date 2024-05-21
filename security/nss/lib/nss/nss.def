@@ -236,6 +236,9 @@ VFY_CreateContext;
 VFY_DestroyContext;
 VFY_End;
 VFY_Update;
+PK11_Encapsulate;
+PK11_Decapsulate;
+PK11_ConcatSymKeys;
 ;+#
 ;+# The following symbols are exported only to make libsmime3.so work. 
 ;+# These are still private!!!
@@ -1235,6 +1238,21 @@ PK11_ExportEncryptedPrivateKeyInfoV2;
 PK11_ContextGetFIPSStatus;
 PK11_ObjectGetFIPSStatus;
 PK11_SlotGetLastFIPSStatus;
+;+    local:
+;+       *;
+;+};
+;+NSS_3.77 { 	# NSS 3.77 release
+;+    global:
+CERT_FilterCertListByCertList;
+CERT_FilterCertListByNickname;
+CERT_IsInList;
+PK11_FindObjectForCert;
+;+    local:
+;+       *;
+;+};
+;+NSS_3.79 { 	# NSS 3.79 release
+;+    global:
+SECMOD_LockedModuleHasRemovableSlots;
 ;+    local:
 ;+       *;
 ;+};

@@ -12,33 +12,43 @@
 
 [Pref="fuzzing.enabled",
  Exposed=Window]
-interface FuzzingFunctions {
+namespace FuzzingFunctions {
   /**
    * Synchronously perform a garbage collection.
    */
-  static void garbageCollect();
- 
+  undefined garbageCollect();
+
   /**
    * Synchronously perform a compacting garbage collection.
    */
-  static void garbageCollectCompacting();
+  undefined garbageCollectCompacting();
+
+  /**
+   * Trigger a forced crash.
+   */
+  undefined crash(optional DOMString reason = "");
 
   /**
    * Synchronously perform a cycle collection.
    */
-  static void cycleCollect();
+  undefined cycleCollect();
 
   /**
    * Send a memory pressure event, causes shrinking GC, cycle collection and
    * other actions.
    */
-  static void memoryPressure();
+  undefined memoryPressure();
 
   /**
    * Enable accessibility.
    */
   [Throws]
-  static void enableAccessibility();
+  undefined enableAccessibility();
+
+  /**
+   * Send IPC fuzzing ready event to parent.
+   */
+  undefined signalIPCReady();
 
   /**
    * synthesizeKeyboardEvents() synthesizes a set of "keydown",
@@ -93,7 +103,7 @@ interface FuzzingFunctions {
    *                           want to emulate key press with another keyboard
    *                           layout, you should specify both values.
    *
-   * For example: 
+   * For example:
    *   // Synthesize "Tab" key events.
    *   synthesizeKeyboardEvents("Tab");
    *   // Synthesize Shift + Tab key events.
@@ -120,6 +130,6 @@ interface FuzzingFunctions {
    *                                   keyCode: KeyboardEvent.DOM_VK_COLON });
    */
   [Throws]
-  static void synthesizeKeyboardEvents(DOMString aKeyValue,
-                                       optional KeyboardEventInit aDictionary = {});
+  undefined synthesizeKeyboardEvents(DOMString aKeyValue,
+                                     optional KeyboardEventInit aDictionary = {});
 };

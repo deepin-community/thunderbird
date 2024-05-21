@@ -14,6 +14,7 @@
 #include <functional>
 #include <iostream>
 
+#include "nss_policy.h"
 #include "test_io.h"
 
 #define GTEST_HAS_RTTI 0
@@ -38,6 +39,13 @@ enum SessionResumptionMode {
   RESUME_BOTH = RESUME_SESSIONID | RESUME_TICKET
 };
 
+enum class ClientAuthCallbackType {
+  kAsyncImmediate,
+  kAsyncDelay,
+  kSync,
+  kNone,
+};
+
 class PacketFilter;
 class TlsAgent;
 class TlsCipherSpec;
@@ -47,6 +55,7 @@ const extern std::vector<SSLNamedGroup> kAllDHEGroups;
 const extern std::vector<SSLNamedGroup> kECDHEGroups;
 const extern std::vector<SSLNamedGroup> kFFDHEGroups;
 const extern std::vector<SSLNamedGroup> kFasterDHEGroups;
+const extern std::vector<SSLNamedGroup> kEcdhHybridGroups;
 
 // These functions are called from callbacks.  They use bare pointers because
 // TlsAgent sets up the callback and it doesn't know who owns it.
@@ -143,9 +152,13 @@ class TlsAgent : public PollTarget {
   bool ConfigServerCertWithChain(const std::string& name);
   bool EnsureTlsSetup(PRFileDesc* modelSocket = nullptr);
 
-  void SetupClientAuth();
+  void SetupClientAuth(
+      ClientAuthCallbackType callbackType = ClientAuthCallbackType::kSync,
+      bool callbackSuccess = true);
   void RequestClientAuth(bool requireAuth);
-
+  void ClientAuthCallbackComplete();
+  bool CheckClientAuthCallbacksCompleted(uint8_t expected);
+  void CheckClientAuthCompleted(uint8_t handshakes = 1);
   void SetOption(int32_t option, int value);
   void ConfigureSessionCache(SessionResumptionMode mode);
   void Set0RttEnabled(bool en);
@@ -192,7 +205,7 @@ class TlsAgent : public PollTarget {
   void SetDowngradeCheckVersion(uint16_t version);
   void CheckSecretsDestroyed();
   void ConfigNamedGroups(const std::vector<SSLNamedGroup>& groups);
-  void DisableECDHEServerKeyReuse();
+  void EnableECDHEServerKeyReuse();
   bool GetPeerChainLength(size_t* count);
   void CheckCipherSuite(uint16_t cipher_suite);
   void SetResumptionTokenCallback();
@@ -231,7 +244,9 @@ class TlsAgent : public PollTarget {
 
   static const char* state_str(State state) { return states[state]; }
 
-  PRFileDesc* ssl_fd() const { return ssl_fd_.get(); }
+  NssManagedFileDesc ssl_fd() const {
+    return NssManagedFileDesc(ssl_fd_.get(), policy_, option_);
+  }
   std::shared_ptr<DummyPrSocket>& adapter() { return adapter_; }
 
   const SSLChannelInfo& info() const {
@@ -307,6 +322,13 @@ class TlsAgent : public PollTarget {
   void ExpectSendAlert(uint8_t alert, uint8_t level = 0);
 
   std::string alpn_value_to_use_ = "";
+  // set the given policy before this agent runs
+  void SetPolicy(SECOidTag oid, PRUint32 set, PRUint32 clear) {
+    policy_ = NssPolicy(oid, set, clear);
+  }
+  void SetNssOption(PRInt32 id, PRInt32 value) {
+    option_ = NssOption(id, value);
+  }
 
  private:
   const static char* states[];
@@ -453,6 +475,13 @@ class TlsAgent : public PollTarget {
   SniCallbackFunction sni_callback_;
   bool skip_version_checks_;
   std::vector<uint8_t> resumption_token_;
+  NssPolicy policy_;
+  NssOption option_;
+  ClientAuthCallbackType client_auth_callback_type_ =
+      ClientAuthCallbackType::kNone;
+  bool client_auth_callback_success_ = false;
+  uint8_t client_auth_callback_fired_ = 0;
+  bool client_auth_callback_awaiting_ = false;
 };
 
 inline std::ostream& operator<<(std::ostream& stream,
@@ -532,6 +561,11 @@ class TlsAgentTestClient : public TlsAgentTestBase,
 };
 
 class TlsAgentTestClient13 : public TlsAgentTestClient {};
+
+class TlsAgentStreamTestClient13 : public TlsAgentTestClient {
+ public:
+  TlsAgentStreamTestClient13() { variant_ = ssl_variant_stream; }
+};
 
 class TlsAgentStreamTestClient : public TlsAgentTestBase {
  public:

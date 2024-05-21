@@ -83,7 +83,7 @@ class ThreadStackHelper : public ProfilerStackCollector {
   /**
    * Retrieve the thread's profiler thread ID.
    */
-  int GetThreadId() const { return mThreadId; }
+  ProfilerThreadId GetThreadId() const { return mThreadId; }
 
  protected:
   /**
@@ -92,7 +92,8 @@ class ThreadStackHelper : public ProfilerStackCollector {
   virtual void SetIsMainThread() override;
   virtual void CollectNativeLeafAddr(void* aAddr) override;
   virtual void CollectJitReturnAddr(void* aAddr) override;
-  virtual void CollectWasmFrame(const char* aLabel) override;
+  virtual void CollectWasmFrame(JS::ProfilingCategoryPair aCategory,
+                                const char* aLabel) override;
   virtual void CollectProfilingStackFrame(
       const js::ProfilingStackFrame& aEntry) override;
 
@@ -101,7 +102,7 @@ class ThreadStackHelper : public ProfilerStackCollector {
   void TryAppendFrame(mozilla::HangEntry aFrame);
 
   // The profiler's unique thread identifier for the target thread.
-  int mThreadId;
+  ProfilerThreadId mThreadId;
 };
 
 }  // namespace mozilla

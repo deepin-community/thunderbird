@@ -10,8 +10,10 @@ account-setup-title = Mevcut E-posta Adresinizi Ayarlayın
 account-setup-description =
     Mevcut e-posta adresinizi kullanmak için hesap bilgilerinizi girin.<br/>
     { -brand-product-name } önerilen sunucu yapılandırmasını otomatik olarak arayacaktır.
+account-setup-secondary-description = { -brand-product-name }, çalışan ve önerilen sunucu yapılandırmasını otomatik olarak arayacaktır.
 account-setup-success-title = Hesap başarıyla oluşturuldu
 account-setup-success-description = Artık bu hesabı { -brand-short-name } ile kullanabilirsiniz.
+account-setup-success-secondary-description = İlgili hizmetleri bağlayarak ve gelişmiş hesap ayarlarını yapılandırarak deneyiminizi iyileştirebilirsiniz.
 
 ## Form fields
 
@@ -23,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Başkalarına gösterilecek adınız
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Lütfen adınızı yazın
 account-setup-email-label = E-posta adresi
     .accesskey = E
 account-setup-email-input =
@@ -31,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Mevcut e-posta adresiniz
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Geçersiz e-posta adresi
 account-setup-password-label = Parola
     .accesskey = P
     .title = İsteğe bağlı, yalnızca kullanıcı adını doğrulamak için kullanılır
 account-provisioner-button = Yeni bir e-posta adresi al
     .accesskey = a
-account-setup-password-toggle =
-    .title = Parolayı göster/gizle
 account-setup-password-toggle-show =
     .title = Parolayı açık metin olarak göster
 account-setup-password-toggle-hide =
@@ -72,7 +72,7 @@ account-setup-button-done = Tamam
 ## Notifications
 
 account-setup-looking-up-settings = Yapılandırma aranıyor…
-account-setup-looking-up-settings-guess = Yapılandırma aranıyor: Sık kullanılan sunucu isimleri deneniyor…
+account-setup-looking-up-settings-guess = Yapılandırma aranıyor: Sık kullanılan sunucu adları deneniyor…
 account-setup-looking-up-settings-half-manual = Yapılandırma aranıyor: Sunucu inceleniyor…
 account-setup-looking-up-disk = Yapılandırma aranıyor: { -brand-short-name } kurulumu…
 account-setup-looking-up-isp = Yapılandırma aranıyor: E-posta sağlayıcısı…
@@ -109,6 +109,7 @@ account-setup-step5-image =
 account-setup-privacy-footnote2 = Hesap bilgileriniz yalnızca yerel olarak bilgisayarınızda depolanır.
 account-setup-selection-help = Neyi seçeceğinizden emin değil misiniz?
 account-setup-selection-error = Yardım mı lazım?
+account-setup-success-help = Şimdi ne yapmanız gerektiğinden emin değil misiniz?
 account-setup-documentation-help = Kurulum belgeleri
 account-setup-forum-help = Destek forumu
 account-setup-privacy-help = Gizlilik ilkeleri
@@ -123,21 +124,14 @@ account-setup-results-area-title =
         [one] Mevcut yapılandırma
        *[other] Mevcut yapılandırmalar
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Klasörlerinizi ve e-postalarınızı sunucunuzla eşitlenmiş halde tutun
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Klasörlerinizi ve e-postalarınızı bilgisayarınızda tutun
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Microsoft Exchange sunucusunu veya Office365 bulut hizmetlerini kullanın
 account-setup-incoming-title = Gelen
 account-setup-outgoing-title = Giden
 account-setup-username-title = Kullanıcı adı
 account-setup-exchange-title = Sunucu
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Şifreleme yok
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -154,15 +148,13 @@ account-setup-credentials-incomplete = Kimlik doğrulama başarısız oldu. Giri
 account-setup-credentials-wrong = Kimlik doğrulama başarısız oldu. Lütfen kullanıcı adını ve parolayı kontrol edin
 account-setup-find-settings-failed = { -brand-short-name }, e-posta hesabınızın ayarlarını bulamadı
 account-setup-exchange-config-unverifiable = Yapılandırma doğrulanamadı. Kullanıcı adınız ve parolanız doğruysa sunucu yöneticisi hesabınız için seçili yapılandırmayı devre dışı bırakmış olabilir. Başka bir protokol seçmeyi deneyin.
+account-setup-provisioner-error = Yeni { -brand-short-name } hesabınız oluşturulurken bir hata meydana geldi. Lütfen hesabınızı manuel olarak ayarlamayı deneyin.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Sunucu ayarları
 account-setup-incoming-server-legend = Gelen sunucusu
 account-setup-protocol-label = Protokol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Sunucu:
 account-setup-port-label = Port:
     .title = Otomatik algılama için port numarasını 0 olarak ayarlayın
@@ -212,6 +204,8 @@ exchange-dialog-cancel-button = Vazgeç
 
 ## Dismiss account creation dialog
 
+exit-dialog-title = Yapılandırılmış E-posta Hesabı Yok
+exit-dialog-description = Kurulumu iptal etmek istediğinizden emin misiniz? { -brand-short-name } bir e-posta hesabı olmadan da çalışır ama birçok özelliği kullanamazsınız.
 account-setup-no-account-checkbox = { -brand-short-name }’ü e-posta hesabı olmadan kullan
     .accesskey = k
 exit-dialog-cancel-button = Kuruluma devam et
@@ -241,6 +235,16 @@ account-setup-dictionaries-button = Sözlük indir
 account-setup-address-book-carddav-button = Bir CardDAV adres defterine bağlanın
 account-setup-address-book-ldap-button = Bir LDAP adres defterine bağlanın
 account-setup-calendar-button = Uzak bir takvime bağlanın
+account-setup-linked-services-title = Hizmetlerinizi bağlayın
+account-setup-linked-services-description = { -brand-short-name }, e-posta hesabınızla bağlantılı başka hizmetler buldu.
+account-setup-no-linked-description = { -brand-short-name } uygulamasından en iyi şekilde yararlanmak için diğer hizmetleri kurun.
+# Variables:
+# $count (Number) - The number of address books found during autoconfig.
+account-setup-found-address-books-description =
+    { $count ->
+        [one] { -brand-short-name }, e-posta hesabınıza bağlı bir adres defteri buldu.
+       *[other] { -brand-short-name }, e-posta hesabınıza bağlı { $count } adres defteri buldu.
+    }
 # Variables:
 # $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
@@ -275,6 +279,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Renk
 account-setup-calendar-refresh-label = Tazele
 account-setup-calendar-refresh-manual = Elle
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Her dakika

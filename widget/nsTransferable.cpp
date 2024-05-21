@@ -24,7 +24,6 @@ Notes to self:
 #include "nsCOMPtr.h"
 #include "nsXPCOM.h"
 #include "nsISupportsPrimitives.h"
-#include "nsMemory.h"
 #include "nsPrimitiveHelpers.h"
 #include "nsDirectoryServiceDefs.h"
 #include "nsDirectoryService.h"
@@ -32,6 +31,7 @@ Notes to self:
 #include "nsNetUtil.h"
 #include "nsILoadContext.h"
 #include "nsXULAppAPI.h"
+#include "mozilla/StaticPrefs_browser.h"
 #include "mozilla/UniquePtr.h"
 
 using namespace mozilla;
@@ -108,6 +108,14 @@ void DataStruct::GetData(nsISupports** aData) {
 
   nsCOMPtr<nsISupports> data = mData;
   data.forget(aData);
+}
+
+//-------------------------------------------------------------------------
+void DataStruct::ClearData() {
+  if (mCacheFD) {
+    PR_Close(mCacheFD);
+  }
+  mData = nullptr;
 }
 
 //-------------------------------------------------------------------------
@@ -195,6 +203,10 @@ nsTransferable::Init(nsILoadContext* aContext) {
 
   if (aContext) {
     mPrivateData = aContext->UsePrivateBrowsing();
+  } else {
+    // without aContext here to provide PrivateBrowsing information, we defer to
+    // the active configured setting
+    mPrivateData = StaticPrefs::browser_privatebrowsing_autostart();
   }
 #ifdef DEBUG
   mInitialized = true;
@@ -360,6 +372,14 @@ nsTransferable::SetTransferData(const char* aFlavor, nsISupports* aData) {
   }
 
   return NS_ERROR_FAILURE;
+}
+
+NS_IMETHODIMP
+nsTransferable::ClearAllData() {
+  for (auto& entry : mDataArray) {
+    entry.ClearData();
+  }
+  return NS_OK;
 }
 
 //
@@ -528,4 +548,14 @@ void nsTransferable::SetCookieJarSettings(
   MOZ_ASSERT(mInitialized);
 
   mCookieJarSettings = aCookieJarSettings;
+}
+
+nsIReferrerInfo* nsTransferable::GetReferrerInfo() {
+  MOZ_ASSERT(mInitialized);
+  return mReferrerInfo;
+}
+
+void nsTransferable::SetReferrerInfo(nsIReferrerInfo* aReferrerInfo) {
+  MOZ_ASSERT(mInitialized);
+  mReferrerInfo = aReferrerInfo;
 }

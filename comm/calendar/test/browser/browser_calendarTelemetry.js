@@ -1,35 +1,40 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-/* global reportCalendars */
+"use strict";
 
 /**
  * Test telemetry related to calendar.
  */
 
-let { TelemetryTestUtils } = ChromeUtils.import("resource://testing-common/TelemetryTestUtils.jsm");
+const { MailTelemetryForTests } = ChromeUtils.importESModule(
+  "resource:///modules/MailGlue.sys.mjs"
+);
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
+);
 
 /**
  * Check that we're counting calendars and read only calendars.
  */
-add_task(async function test_calendar_count() {
+add_task(async function testCalendarCount() {
   Services.telemetry.clearScalars();
 
-  let manager = cal.getCalendarManager();
-  let uri = Services.io.newURI("moz-memory-calendar://");
-  let calendars = manager.getCalendars();
+  const calendars = cal.manager.getCalendars();
+  const homeCal = calendars.find(cal => cal.name == "Home");
+  const readOnly = homeCal.readOnly;
+  homeCal.readOnly = true;
+
   for (let i = 1; i <= 3; i++) {
-    calendars[i] = manager.createCalendar("memory", uri);
-    calendars[i].name = `Mochitest ${i}`;
+    calendars[i] = CalendarTestUtils.createCalendar(`Mochitest ${i}`, "memory");
     if (i === 1 || i === 3) {
       calendars[i].readOnly = true;
     }
-    manager.registerCalendar(calendars[i]);
   }
 
-  reportCalendars();
+  await MailTelemetryForTests.reportCalendars();
 
-  let scalars = TelemetryTestUtils.getProcessScalars("parent", true);
+  const scalars = TelemetryTestUtils.getProcessScalars("parent", true);
   Assert.equal(
     scalars["tb.calendar.calendar_count"].memory,
     3,
@@ -41,8 +46,76 @@ add_task(async function test_calendar_count() {
     "Count of readonly calendars must be correct."
   );
 
-  // Clean up.
+  Assert.ok(
+    !scalars["tb.calendar.calendar_count"].storage,
+    "'Home' calendar not included in count while disabled"
+  );
+
+  Assert.ok(
+    !scalars["tb.calendar.read_only_calendar_count"].storage,
+    "'Home' calendar not included in read-only count while disabled"
+  );
+
   for (let i = 1; i <= 3; i++) {
-    manager.removeCalendar(calendars[i]);
+    CalendarTestUtils.removeCalendar(calendars[i]);
   }
+  homeCal.readOnly = readOnly;
+});
+
+/**
+ * Ensure the "Home" calendar is not ignored if it has been used.
+ */
+add_task(async function testHomeCalendar() {
+  const calendar = cal.manager.getCalendars().find(cal => cal.name == "Home");
+  const readOnly = calendar.readOnly;
+  const disabled = calendar.getProperty("disabled");
+
+  // Test when enabled with no events.
+  calendar.setProperty("disabled", false);
+  calendar.readOnly = true;
+  Services.telemetry.clearScalars();
+  await MailTelemetryForTests.reportCalendars();
+
+  let scalars = TelemetryTestUtils.getProcessScalars("parent", true);
+  Assert.ok(!scalars["tb.calendar.calendar_count"], "'Home' calendar not counted when unused");
+  Assert.ok(
+    !scalars["tb.calendar.read_only_calendar_count"],
+    "'Home' calendar not included in readonly count when unused"
+  );
+
+  // Now test with an event added to the calendar.
+  calendar.readOnly = false;
+
+  let event = new CalEvent();
+  event.id = "bacd";
+  event.title = "Test";
+  event.startDate = cal.dtz.now();
+  event = await calendar.addItem(event);
+
+  calendar.readOnly = true;
+
+  await TestUtils.waitForCondition(async () => {
+    const result = await calendar.getItem("bacd");
+    return result;
+  }, "item added to calendar");
+
+  Services.telemetry.clearScalars();
+  await MailTelemetryForTests.reportCalendars();
+
+  scalars = TelemetryTestUtils.getProcessScalars("parent", true);
+  Assert.equal(
+    scalars["tb.calendar.calendar_count"].storage,
+    1,
+    "'Home' calendar counted when there are items"
+  );
+  Assert.equal(
+    scalars["tb.calendar.read_only_calendar_count"].storage,
+    1,
+    "'Home' calendar included in read-only count when used"
+  );
+
+  calendar.readOnly = false;
+  await calendar.deleteItem(event);
+  calendar.readOnly = readOnly;
+  calendar.setProperty("disabled", disabled);
 });

@@ -2,20 +2,18 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 
 "use strict";
-const { sinon } = ChromeUtils.import("resource://testing-common/Sinon.jsm");
-
-ChromeUtils.defineModuleGetter(
-  this,
-  "ExtensionSettingsStore",
-  "resource://gre/modules/ExtensionSettingsStore.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "ExtensionControlledPopup",
-  "resource:///modules/ExtensionControlledPopup.jsm"
+const { sinon } = ChromeUtils.importESModule(
+  "resource://testing-common/Sinon.sys.mjs"
 );
 
-function createMarkup(doc, popup) {
+ChromeUtils.defineESModuleGetters(this, {
+  ExtensionControlledPopup:
+    "resource:///modules/ExtensionControlledPopup.sys.mjs",
+  ExtensionSettingsStore:
+    "resource://gre/modules/ExtensionSettingsStore.sys.mjs",
+});
+
+function createMarkup(doc) {
   let panel = ExtensionControlledPopup._getAndMaybeCreatePanel(doc);
   let popupnotification = doc.createXULElement("popupnotification");
   let attributes = {
@@ -59,7 +57,7 @@ add_task(async function testExtensionControlledPopup() {
   let id = "ext-controlled@mochi.test";
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
-      applications: { gecko: { id } },
+      browser_specific_settings: { gecko: { id } },
       name: "Ext Controlled",
     },
     // We need to be able to find the extension using AddonManager.
@@ -85,7 +83,6 @@ add_task(async function testExtensionControlledPopup() {
     settingKey,
     descriptionId: "extension-controlled-description",
     descriptionMessageId: "newTabControlled.message2",
-    learnMoreMessageId: "newTabControlled.learnMore",
     learnMoreLink: "extension-controlled",
     onObserverAdded,
     onObserverRemoved,
@@ -101,7 +98,7 @@ add_task(async function testExtensionControlledPopup() {
     return popupShown;
   }
 
-  function closePopupWithAction(action, extensionId) {
+  function closePopupWithAction(action) {
     let done;
     if (action == "ignore") {
       panel.hidePopup();
@@ -137,7 +134,11 @@ add_task(async function testExtensionControlledPopup() {
   onObserverAdded.resetHistory();
   ok(!onObserverRemoved.called, "Observing the event");
   ok(!beforeDisableAddon.called, "Settings have not been restored");
-  ok(panel.getAttribute("panelopen") != "true", "The panel is closed");
+  Assert.notEqual(
+    panel.getAttribute("panelopen"),
+    "true",
+    "The panel is closed"
+  );
   is(popupnotification.hidden, true, "The popup is hidden");
   is(addon.userDisabled, false, "The extension is enabled");
   is(
@@ -164,7 +165,7 @@ add_task(async function testExtensionControlledPopup() {
     "An extension,  Ext Controlled, changed the page you see when you open a new tab.Learn more",
     "The extension name is in the description"
   );
-  let link = description.querySelector("label");
+  let link = description.querySelector("a.learnMore");
   is(
     link.href,
     "http://127.0.0.1:8888/support-dummy/extension-controlled",

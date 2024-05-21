@@ -1,8 +1,6 @@
-/* import-globals-from partitionedstorage_head.js */
-
 PartitionedStorageHelper.runTestInNormalAndPrivateMode(
   "SharedWorkers",
-  async (win3rdParty, win1stParty, allowed) => {
+  async (win3rdParty, win1stParty) => {
     // This test fails if run with an HTTPS 3rd-party URL because the shared worker
     // which would start from the window opened from 3rdPartyStorage.html will become
     // secure context and per step 11.4.3 of
@@ -26,11 +24,7 @@ PartitionedStorageHelper.runTestInNormalAndPrivateMode(
     let sh3 = new win3rdParty.SharedWorker("sharedWorker.js");
     await new Promise(resolve => {
       sh3.port.onmessage = e => {
-        is(
-          e.data,
-          allowed ? 2 : 1,
-          `We expected ${allowed ? 2 : 1} connection for 3rd party SharedWorker`
-        );
+        is(e.data, 1, `We expected 1 connection for 3rd party SharedWorker`);
         resolve();
       };
       sh3.onerror = _ => {
@@ -46,11 +40,13 @@ PartitionedStorageHelper.runTestInNormalAndPrivateMode(
 
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
-  }
+  },
+  [],
+  false
 );
 
 PartitionedStorageHelper.runPartitioningTestInNormalAndPrivateMode(

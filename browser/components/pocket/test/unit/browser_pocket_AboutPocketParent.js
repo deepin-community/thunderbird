@@ -2,10 +2,12 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
-const { AboutPocketParent } = ChromeUtils.import(
-  "resource:///actors/AboutPocketParent.jsm"
+const { AboutPocketParent } = ChromeUtils.importESModule(
+  "resource:///actors/AboutPocketParent.sys.mjs"
 );
-const { pktApi } = ChromeUtils.import("chrome://pocket/content/pktApi.jsm");
+const { pktApi } = ChromeUtils.importESModule(
+  "chrome://pocket/content/pktApi.sys.mjs"
+);
 let aboutPocketParent;
 
 function test_runner(test) {
@@ -30,10 +32,8 @@ function test_runner(test) {
         },
       },
       embedderElement: {
-        contentDocument: {
-          nodePrincipal: "nodePrincipal",
-          csp: "csp",
-        },
+        csp: "csp",
+        contentPrincipal: "contentPrincipal",
       },
     };
 
@@ -60,7 +60,7 @@ test_runner(async function test_AboutPocketParent_sendResponseMessageToPanel({
 }) {
   const sendAsyncMessage = sandbox.stub(aboutPocketParent, "sendAsyncMessage");
 
-  aboutPocketParent.sendResponseMessageToPanel("PKT_testMessage", "1", {
+  aboutPocketParent.sendResponseMessageToPanel("PKT_testMessage", {
     foo: 1,
   });
 
@@ -72,7 +72,7 @@ test_runner(async function test_AboutPocketParent_sendResponseMessageToPanel({
   );
   Assert.deepEqual(
     args,
-    ["PKT_testMessage_response_1", { foo: 1 }],
+    ["PKT_testMessage_response", { foo: 1 }],
     "Should fire sendAsyncMessage with proper args from sendResponseMessageToPanel"
   );
 });
@@ -85,9 +85,8 @@ test_runner(
       name: "PKT_show_signup",
     });
 
-    const {
-      onShowSignup,
-    } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+    const { onShowSignup } =
+      aboutPocketParent.browsingContext.topChromeWindow.pktUI;
 
     Assert.ok(
       onShowSignup.calledOnce,
@@ -104,9 +103,8 @@ test_runner(
       name: "PKT_show_saved",
     });
 
-    const {
-      onShowSaved,
-    } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+    const { onShowSaved } =
+      aboutPocketParent.browsingContext.topChromeWindow.pktUI;
 
     Assert.ok(
       onShowSaved.calledOnce,
@@ -122,9 +120,8 @@ test_runner(async function test_AboutPocketParent_receiveMessage_PKT_close({
     name: "PKT_close",
   });
 
-  const {
-    closePanel,
-  } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+  const { closePanel } =
+    aboutPocketParent.browsingContext.topChromeWindow.pktUI;
 
   Assert.ok(
     closePanel.calledOnce,
@@ -138,15 +135,11 @@ test_runner(
   }) {
     await aboutPocketParent.receiveMessage({
       name: "PKT_openTabWithUrl",
-      data: {
-        payload: { foo: 1 },
-        panelId: 1,
-      },
+      data: { foo: 1 },
     });
 
-    const {
-      onOpenTabWithUrl,
-    } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+    const { onOpenTabWithUrl } =
+      aboutPocketParent.browsingContext.topChromeWindow.pktUI;
     const { args } = onOpenTabWithUrl.firstCall;
 
     Assert.ok(
@@ -155,7 +148,7 @@ test_runner(
     );
     Assert.deepEqual(
       args,
-      [1, { foo: 1 }, "nodePrincipal", "csp"],
+      [{ foo: 1 }, "contentPrincipal", "csp"],
       "Should fire onOpenTabWithUrl with proper args from PKT_openTabWithUrl"
     );
   }
@@ -167,15 +160,11 @@ test_runner(
   }) {
     await aboutPocketParent.receiveMessage({
       name: "PKT_openTabWithPocketUrl",
-      data: {
-        payload: { foo: 1 },
-        panelId: 1,
-      },
+      data: { foo: 1 },
     });
 
-    const {
-      onOpenTabWithPocketUrl,
-    } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+    const { onOpenTabWithPocketUrl } =
+      aboutPocketParent.browsingContext.topChromeWindow.pktUI;
     const { args } = onOpenTabWithPocketUrl.firstCall;
 
     Assert.ok(
@@ -184,7 +173,7 @@ test_runner(
     );
     Assert.deepEqual(
       args,
-      [1, { foo: 1 }, "nodePrincipal", "csp"],
+      [{ foo: 1 }, "contentPrincipal", "csp"],
       "Should fire onOpenTabWithPocketUrl with proper args from PKT_openTabWithPocketUrl"
     );
   }
@@ -200,15 +189,11 @@ test_runner(
     );
     await aboutPocketParent.receiveMessage({
       name: "PKT_resizePanel",
-      data: {
-        payload: { foo: 1 },
-        panelId: 1,
-      },
+      data: { foo: 1 },
     });
 
-    const {
-      resizePanel,
-    } = aboutPocketParent.browsingContext.topChromeWindow.pktUI;
+    const { resizePanel } =
+      aboutPocketParent.browsingContext.topChromeWindow.pktUI;
     const { args } = resizePanel.firstCall;
 
     Assert.ok(
@@ -226,7 +211,7 @@ test_runner(
     );
     Assert.deepEqual(
       sendResponseMessageToPanel.firstCall.args,
-      ["PKT_resizePanel", 1],
+      ["PKT_resizePanel"],
       "Should fire sendResponseMessageToPanel with proper args from PKT_resizePanel"
     );
   }
@@ -241,9 +226,6 @@ test_runner(async function test_AboutPocketParent_receiveMessage_PKT_getTags({
   );
   await aboutPocketParent.receiveMessage({
     name: "PKT_getTags",
-    data: {
-      panelId: 1,
-    },
   });
   Assert.ok(
     sendResponseMessageToPanel.calledOnce,
@@ -251,7 +233,7 @@ test_runner(async function test_AboutPocketParent_receiveMessage_PKT_getTags({
   );
   Assert.deepEqual(
     sendResponseMessageToPanel.firstCall.args,
-    ["PKT_getTags", 1, { tags: [], usedTags: [] }],
+    ["PKT_getTags", { tags: [] }],
     "Should fire sendResponseMessageToPanel with proper args from PKT_getTags"
   );
 });
@@ -270,10 +252,7 @@ test_runner(
 
     await aboutPocketParent.receiveMessage({
       name: "PKT_getSuggestedTags",
-      data: {
-        panelId: 1,
-        payload: { url: "https://foo.com" },
-      },
+      data: { url: "https://foo.com" },
     });
 
     Assert.ok(
@@ -293,7 +272,6 @@ test_runner(
       sendResponseMessageToPanel.firstCall.args,
       [
         "PKT_getSuggestedTags",
-        1,
         {
           status: "success",
           value: { suggestedTags: "foo" },
@@ -317,10 +295,7 @@ test_runner(async function test_AboutPocketParent_receiveMessage_PKT_addTags({
 
   await aboutPocketParent.receiveMessage({
     name: "PKT_addTags",
-    data: {
-      panelId: 1,
-      payload: { url: "https://foo.com", tags: "tags" },
-    },
+    data: { url: "https://foo.com", tags: "tags" },
   });
 
   Assert.ok(
@@ -345,7 +320,6 @@ test_runner(async function test_AboutPocketParent_receiveMessage_PKT_addTags({
     sendResponseMessageToPanel.firstCall.args,
     [
       "PKT_addTags",
-      1,
       {
         status: "success",
       },
@@ -368,10 +342,7 @@ test_runner(
 
     await aboutPocketParent.receiveMessage({
       name: "PKT_deleteItem",
-      data: {
-        panelId: 1,
-        payload: { itemId: "itemId" },
-      },
+      data: { itemId: "itemId" },
     });
 
     Assert.ok(
@@ -391,7 +362,6 @@ test_runner(
       sendResponseMessageToPanel.firstCall.args,
       [
         "PKT_deleteItem",
-        1,
         {
           status: "success",
         },

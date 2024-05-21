@@ -7,19 +7,6 @@
   ======================================================================= */
 
 @import url("chrome://messenger/skin/messenger.css");
-@import url("chrome://messenger/skin/addressbook/addressbook.css");
-
-#abContactsPanel:not([lwt-tree]) {
-  --button-background: rgba(128, 128, 128, .15);
-  --button-background-hover: rgba(128, 128, 128, .25);
-  --button-background-active: rgba(128, 128, 128, .35);
-  --box-text-color: MenuText;
-  --box-background-color: Menu;
-  --box-border-color: ThreeDShadow;
-  --field-border-color: rgba(128, 128, 128, .6);
-  --popup-item-hover: rgba(128, 128, 128, .2);
-  --popup-item-hover-text: MenuText;
-}
 
 #abContactsPanel {
   appearance: none;
@@ -27,11 +14,21 @@
   background-image: none !important;
   color: -moz-dialogText;
   text-shadow: none;
-}
 
-#abContactsPanel[lwt-tree] {
-  background-color: var(--toolbar-bgcolor);
-  color: var(--lwt-text-color);
+  &:not([lwt-tree]) {
+    --button-background: rgba(128, 128, 128, .15);
+    --button-background-hover: rgba(128, 128, 128, .25);
+    --button-background-active: rgba(128, 128, 128, .35);
+    --box-text-color: MenuText;
+    --box-background-color: Menu;
+    --box-border-color: ThreeDShadow;
+    --field-border-color: rgba(128, 128, 128, .6);
+  }
+
+  &[lwt-tree] {
+    background-color: var(--toolbar-bgcolor);
+    color: var(--lwt-text-color);
+  }
 }
 
 #abContextMenuButton {
@@ -39,25 +36,29 @@
   list-style-image: url("chrome://messenger/skin/addressbook/icons/menu.svg");
   -moz-context-properties: fill;
   fill: currentColor;
-  --focus-outline-offset: -1px;
+
+  &:not(:hover) {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  &:hover:focus-visible {
+    outline-style: none;
+  }
+
+  & > .toolbarbutton-icon {
+    width: 11px;
+    height: 11px;
+  }
+
+  & > .toolbarbutton-text {
+    display: none;
+  }
 }
 
-#abContextMenuButton:not(:hover) {
-  background: transparent;
-  border-color: transparent;
-}
-
-#abContextMenuButton:hover:focus-visible {
-  outline-style: none;
-}
-
-#abContextMenuButton > .toolbarbutton-icon {
-  width: 11px;
-  height: 11px;
-}
-
-#abContextMenuButton > .toolbarbutton-text {
-  display: none;
+#sidebarAbContextMenu {
+  /* Compensate the arrow-scrollbox padding. */
+  margin: -4px;
 }
 
 #addressbookList:not(:-moz-focusring) {
@@ -70,4 +71,23 @@
 
 #abResultsTree {
   border-inline-end: none !important;
+}
+
+/* Hide the twisty gap. */
+treechildren::-moz-tree-twisty {
+  width: 0;
+  padding-inline: 2px;
+}
+
+treechildren::-moz-tree-image(GeneratedName) {
+  margin-inline-end: 2px;
+  list-style-image: var(--icon-contact);
+  -moz-context-properties: fill, stroke;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
+  opacity: 0.85;
+}
+
+treechildren::-moz-tree-image(GeneratedName, MailList) {
+  list-style-image: var(--icon-user-list);
 }

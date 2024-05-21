@@ -5,8 +5,8 @@
 #
 # Unit tests for xpidl.py
 
-from __future__ import absolute_import
-
+import json
+import os
 import sys
 
 # Hack: the first entry in sys.path is the directory containing the script.
@@ -14,10 +14,11 @@ import sys
 # which conflicts with the xpidl submodule in the imports further below.
 sys.path.pop(0)
 
-import mozunit
 import unittest
-from xpidl import xpidl
-from xpidl import header
+
+import mozunit
+
+from xpidl import header, typescript, xpidl
 
 
 class TestParser(unittest.TestCase):
@@ -54,12 +55,12 @@ class TestParser(unittest.TestCase):
         self.assertTrue(iface.attributes.builtinclass)
         self.assertTrue(iface.attributes.function)
 
-        i = self.p.parse("[noscript, uuid(abc)] interface foo {};", filename="f")
+        i = self.p.parse("[uuid(abc)] interface foo {};", filename="f")
         self.assertTrue(isinstance(i, xpidl.IDL))
         self.assertTrue(isinstance(i.productions[0], xpidl.Interface))
         iface = i.productions[0]
         self.assertEqual("foo", iface.name)
-        self.assertTrue(iface.attributes.noscript)
+        self.assertFalse(iface.attributes.scriptable)
 
     def testMethod(self):
         i = self.p.parse(
@@ -252,6 +253,43 @@ attribute long bar;
             self.assertTrue(False, "Must detect undefined symbols")
         except xpidl.IDLError as e:
             self.assertEqual(e.args[0], ("cannot find symbol 'Y'"))
+
+
+class TestTypescript(unittest.TestCase):
+    """A few basic smoke tests for typescript generation."""
+
+    dir = os.path.dirname(__file__)
+    src = os.path.join(dir, "..", "..", "..")
+
+    # We use the xpctest.xpt *.idl files from:
+    tests_dir = os.path.join(src, "js/xpconnect/tests/idl")
+    files = [
+        "xpctest_attributes.idl",
+        "xpctest_bug809674.idl",
+        "xpctest_cenums.idl",
+        "xpctest_interfaces.idl",
+        "xpctest_params.idl",
+        "xpctest_returncode.idl",
+        "xpctest_utils.idl",
+    ]
+
+    fixtures = os.path.join(dir, "fixtures")
+    inc_dirs = [os.path.join(src, "xpcom/base")]
+
+    def setUp(self):
+        self.parser = xpidl.IDLParser()
+
+    def test_d_json(self):
+        mods = []
+        for file in self.files:
+            path = os.path.join(self.tests_dir, file)
+            idl = self.parser.parse(open(path).read(), path)
+            idl.resolve(self.inc_dirs, self.parser, {})
+            mods.append(typescript.ts_source(idl))
+
+        result = json.dumps(mods, indent=2, sort_keys=True)
+        expected = open(os.path.join(self.fixtures, "xpctest.d.json")).read()
+        self.assertEqual(result, expected, "types data json does not match")
 
 
 if __name__ == "__main__":

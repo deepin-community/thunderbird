@@ -22,8 +22,5 @@ DEFINES["MOZ_NO_MOZALLOC"] = True
 DisableStlWrapping()
 
 XPCSHELL_TESTS_MANIFESTS += [
-    "xpcshell.ini",
+    "xpcshell.toml",
 ]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

@@ -6,9 +6,11 @@
  * Test createRFC822Message creates a mail file.
  */
 
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { MailUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailUtils.sys.mjs"
+);
 
-let customSendListener = {
+const customSendListener = {
   ...copyListener,
   OnStopCopy() {},
 
@@ -37,18 +39,19 @@ let customSendListener = {
  * Call createRFC822Message, expect onStopSending to be called.
  */
 add_task(async function testCreateRFC822Message() {
-  let identity = getSmtpIdentity(
+  const identity = getSmtpIdentity(
     "from@tinderbox.invalid",
     getBasicSmtpServer()
   );
 
-  let fields = Cc[
+  const fields = Cc[
     "@mozilla.org/messengercompose/composefields;1"
   ].createInstance(Ci.nsIMsgCompFields);
+  fields.from = "Somebody <somebody@tinderbox.invalid>";
   fields.to = "Nobody <nobody@tinderbox.invalid>";
   fields.subject = "Test createRFC822Message";
 
-  let msgSend = Cc["@mozilla.org/messengercompose/send;1"].createInstance(
+  const msgSend = Cc["@mozilla.org/messengercompose/send;1"].createInstance(
     Ci.nsIMsgSend
   );
   msgSend.createRFC822Message(

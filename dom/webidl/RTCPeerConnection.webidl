@@ -7,9 +7,9 @@
  * http://w3c.github.io/webrtc-pc/#interface-definition
  */
 
-callback RTCSessionDescriptionCallback = void (RTCSessionDescriptionInit description);
-callback RTCPeerConnectionErrorCallback = void (DOMException error);
-callback RTCStatsCallback = void (RTCStatsReport report);
+callback RTCSessionDescriptionCallback = undefined (RTCSessionDescriptionInit description);
+callback RTCPeerConnectionErrorCallback = undefined (DOMException error);
+callback RTCStatsCallback = undefined (RTCStatsReport report);
 
 enum RTCSignalingState {
     "stable",
@@ -27,13 +27,22 @@ enum RTCIceGatheringState {
 };
 
 enum RTCIceConnectionState {
-    "new",
-    "checking",
-    "connected",
-    "completed",
-    "failed",
-    "disconnected",
-    "closed"
+  "closed",
+  "failed",
+  "disconnected",
+  "new",
+  "checking",
+  "completed",
+  "connected"
+};
+
+enum RTCPeerConnectionState {
+  "closed",
+  "failed",
+  "disconnected",
+  "new",
+  "connecting",
+  "connected"
 };
 
 enum mozPacketDumpType {
@@ -43,10 +52,10 @@ enum mozPacketDumpType {
   "srtcp" // dump encrypted rtcp as the MediaPipeline sees it
 };
 
-callback mozPacketCallback = void (unsigned long level,
-                                   mozPacketDumpType type,
-                                   boolean sending,
-                                   ArrayBuffer packet);
+callback mozPacketCallback = undefined (unsigned long level,
+                                        mozPacketDumpType type,
+                                        boolean sending,
+                                        ArrayBuffer packet);
 
 dictionary RTCDataChannelInit {
   boolean        ordered = true;
@@ -81,47 +90,44 @@ dictionary RTCOfferOptions : RTCOfferAnswerOptions {
  Exposed=Window]
 interface RTCPeerConnection : EventTarget  {
   [Throws]
-  constructor(optional RTCConfiguration configuration = {},
-              optional object? constraints);
+  constructor(optional RTCConfiguration configuration = {});
 
   [Throws, StaticClassOverride="mozilla::dom::RTCCertificate"]
   static Promise<RTCCertificate> generateCertificate (AlgorithmIdentifier keygenAlgorithm);
 
-  [Pref="media.peerconnection.identity.enabled"]
-  void setIdentityProvider (DOMString provider,
-                            optional RTCIdentityProviderOptions options = {});
-  [Pref="media.peerconnection.identity.enabled"]
+  undefined setIdentityProvider (DOMString provider,
+                                 optional RTCIdentityProviderOptions options = {});
   Promise<DOMString> getIdentityAssertion();
-  Promise<RTCSessionDescriptionInit> createOffer (optional RTCOfferOptions options = {});
-  Promise<RTCSessionDescriptionInit> createAnswer (optional RTCAnswerOptions options = {});
-  Promise<void> setLocalDescription (optional RTCSessionDescriptionInit description = {});
-  Promise<void> setRemoteDescription (optional RTCSessionDescriptionInit description = {});
+  Promise<RTCSessionDescriptionInit> createOffer(optional RTCOfferOptions options = {});
+  Promise<RTCSessionDescriptionInit> createAnswer(optional RTCAnswerOptions options = {});
+  Promise<undefined> setLocalDescription(optional RTCLocalSessionDescriptionInit description = {});
   readonly attribute RTCSessionDescription? localDescription;
   readonly attribute RTCSessionDescription? currentLocalDescription;
   readonly attribute RTCSessionDescription? pendingLocalDescription;
+  Promise<undefined> setRemoteDescription(RTCSessionDescriptionInit description);
   readonly attribute RTCSessionDescription? remoteDescription;
   readonly attribute RTCSessionDescription? currentRemoteDescription;
   readonly attribute RTCSessionDescription? pendingRemoteDescription;
   readonly attribute RTCSignalingState signalingState;
-  Promise<void> addIceCandidate (optional (RTCIceCandidateInit or RTCIceCandidate) candidate = {});
+  Promise<undefined> addIceCandidate (optional (RTCIceCandidateInit or RTCIceCandidate) candidate = {});
   readonly attribute boolean? canTrickleIceCandidates;
   readonly attribute RTCIceGatheringState iceGatheringState;
   readonly attribute RTCIceConnectionState iceConnectionState;
-  void restartIce ();
-  [Pref="media.peerconnection.identity.enabled"]
+  readonly attribute RTCPeerConnectionState connectionState;
+  undefined restartIce ();
   readonly attribute Promise<RTCIdentityAssertion> peerIdentity;
-  [Pref="media.peerconnection.identity.enabled"]
   readonly attribute DOMString? idpLoginUrl;
 
   [ChromeOnly]
   attribute DOMString id;
 
   RTCConfiguration      getConfiguration ();
+  undefined setConfiguration(optional RTCConfiguration configuration = {});
   [Deprecated="RTCPeerConnectionGetStreams"]
   sequence<MediaStream> getLocalStreams ();
   [Deprecated="RTCPeerConnectionGetStreams"]
   sequence<MediaStream> getRemoteStreams ();
-  void addStream (MediaStream stream);
+  undefined addStream (MediaStream stream);
 
   // replaces addStream; fails if already added
   // because a track can be part of multiple streams, stream parameters
@@ -129,8 +135,9 @@ interface RTCPeerConnection : EventTarget  {
 
   RTCRtpSender addTrack(MediaStreamTrack track,
                         MediaStream... streams);
-  void removeTrack(RTCRtpSender sender);
+  undefined removeTrack(RTCRtpSender sender);
 
+  [Throws]
   RTCRtpTransceiver addTransceiver((MediaStreamTrack or DOMString) trackOrKind,
                                    optional RTCRtpTransceiverInit init = {});
 
@@ -139,17 +146,17 @@ interface RTCPeerConnection : EventTarget  {
   sequence<RTCRtpTransceiver> getTransceivers();
 
   [ChromeOnly]
-  void mozSetPacketCallback(mozPacketCallback callback);
+  undefined mozSetPacketCallback(mozPacketCallback callback);
   [ChromeOnly]
-  void mozEnablePacketDump(unsigned long level,
-                           mozPacketDumpType type,
-                           boolean sending);
+  undefined mozEnablePacketDump(unsigned long level,
+                                mozPacketDumpType type,
+                                boolean sending);
   [ChromeOnly]
-  void mozDisablePacketDump(unsigned long level,
-                            mozPacketDumpType type,
-                            boolean sending);
+  undefined mozDisablePacketDump(unsigned long level,
+                                 mozPacketDumpType type,
+                                 boolean sending);
 
-  void close ();
+  undefined close ();
   attribute EventHandler onnegotiationneeded;
   attribute EventHandler onicecandidate;
   attribute EventHandler onsignalingstatechange;
@@ -158,9 +165,11 @@ interface RTCPeerConnection : EventTarget  {
   attribute EventHandler ontrack;     // replaces onaddtrack and onaddstream.
   attribute EventHandler oniceconnectionstatechange;
   attribute EventHandler onicegatheringstatechange;
+  attribute EventHandler onconnectionstatechange;
 
   Promise<RTCStatsReport> getStats (optional MediaStreamTrack? selector = null);
 
+  readonly attribute RTCSctpTransport? sctp;
   // Data channel.
   RTCDataChannel createDataChannel (DOMString label,
                                     optional RTCDataChannelInit dataChannelDict = {});
@@ -171,21 +180,23 @@ interface RTCPeerConnection : EventTarget  {
 
 partial interface RTCPeerConnection {
 
-  // Dummy Promise<void> return values avoid "WebIDL.WebIDLError: error:
-  // We have overloads with both Promise and non-Promise return types"
-
-  Promise<void> createOffer (RTCSessionDescriptionCallback successCallback,
-                             RTCPeerConnectionErrorCallback failureCallback,
-                             optional RTCOfferOptions options = {});
-  Promise<void> createAnswer (RTCSessionDescriptionCallback successCallback,
-                              RTCPeerConnectionErrorCallback failureCallback);
-  Promise<void> setLocalDescription (RTCSessionDescriptionInit description,
+  // Legacy Interface Extensions
+  // Supporting the methods in this section is optional.
+  // If these methods are supported
+  // they must be implemented as defined
+  // in section "Legacy Interface Extensions"
+  Promise<undefined> createOffer(RTCSessionDescriptionCallback successCallback,
+                                 RTCPeerConnectionErrorCallback failureCallback,
+                                 optional RTCOfferOptions options = {});
+  Promise<undefined> setLocalDescription(RTCLocalSessionDescriptionInit description,
+                                         VoidFunction successCallback,
+                                         RTCPeerConnectionErrorCallback failureCallback);
+  Promise<undefined> createAnswer(RTCSessionDescriptionCallback successCallback,
+                                  RTCPeerConnectionErrorCallback failureCallback);
+  Promise<undefined> setRemoteDescription(RTCSessionDescriptionInit description,
+                                          VoidFunction successCallback,
+                                          RTCPeerConnectionErrorCallback failureCallback);
+  Promise<undefined> addIceCandidate(RTCIceCandidateInit candidate,
                                      VoidFunction successCallback,
                                      RTCPeerConnectionErrorCallback failureCallback);
-  Promise<void> setRemoteDescription (RTCSessionDescriptionInit description,
-                                      VoidFunction successCallback,
-                                      RTCPeerConnectionErrorCallback failureCallback);
-  Promise<void> addIceCandidate (RTCIceCandidate candidate,
-                                 VoidFunction successCallback,
-                                 RTCPeerConnectionErrorCallback failureCallback);
 };

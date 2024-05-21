@@ -5,15 +5,14 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
 
-from __future__ import absolute_import
 import itertools
 import json
 import math
 import os
 import posixpath
 import sys
+
 import mozinfo
-from manifestparser import TestManifest
 
 
 class SingleTestMixin(object):
@@ -44,32 +43,35 @@ class SingleTestMixin(object):
     def _find_misc_tests(self, dirs, changed_files, gpu=False):
         manifests = [
             (
-                os.path.join(dirs["abs_mochitest_dir"], "tests", "mochitest.ini"),
+                os.path.join(dirs["abs_mochitest_dir"], "tests", "mochitest.toml"),
                 "mochitest-plain",
             ),
             (
-                os.path.join(dirs["abs_mochitest_dir"], "chrome", "chrome.ini"),
+                os.path.join(dirs["abs_mochitest_dir"], "chrome", "chrome.toml"),
                 "mochitest-chrome",
             ),
             (
                 os.path.join(
-                    dirs["abs_mochitest_dir"], "browser", "browser-chrome.ini"
+                    dirs["abs_mochitest_dir"], "browser", "browser-chrome.toml"
                 ),
                 "mochitest-browser-chrome",
             ),
             (
-                os.path.join(dirs["abs_mochitest_dir"], "a11y", "a11y.ini"),
+                os.path.join(dirs["abs_mochitest_dir"], "a11y", "a11y.toml"),
                 "mochitest-a11y",
             ),
             (
-                os.path.join(dirs["abs_xpcshell_dir"], "tests", "xpcshell.ini"),
+                os.path.join(dirs["abs_xpcshell_dir"], "tests", "xpcshell.toml"),
                 "xpcshell",
             ),
         ]
         is_fission = "fission.autostart=true" in self.config.get("extra_prefs", [])
         tests_by_path = {}
         all_disabled = []
-        for (path, suite) in manifests:
+        #  HACK: import here so we don't need import for rest of class
+        from manifestparser import TestManifest
+
+        for path, suite in manifests:
             if os.path.exists(path):
                 man = TestManifest([path], strict=False)
                 active = man.active_tests(
@@ -120,7 +122,7 @@ class SingleTestMixin(object):
         import manifest
 
         self.reftest_test_dir = os.path.join(dirs["abs_reftest_dir"], "tests")
-        for (path, suite, subsuite) in ref_manifests:
+        for path, suite, subsuite in ref_manifests:
             if os.path.exists(path):
                 man = manifest.ReftestManifest()
                 man.load(path)
@@ -198,7 +200,7 @@ class SingleTestMixin(object):
                 )
                 continue
 
-            if entry[2] is not None:
+            if entry[2] is not None and "about:" not in entry[2]:
                 # Test name substitution, for reftest reference file handling:
                 #  - if both test and reference modified, run the test file
                 #  - if only reference modified, run the test file
@@ -216,6 +218,16 @@ class SingleTestMixin(object):
                 #   <full-suite> is a unique id for the suite, matching desktop mozharness configs
                 (
                     "mochitest-browser-chrome",
+                    "a11y",
+                    None,
+                ): "mochitest-browser-a11y",
+                (
+                    "mochitest-browser-chrome",
+                    "media-bc",
+                    None,
+                ): "mochitest-browser-media",
+                (
+                    "mochitest-browser-chrome",
                     "devtools",
                     None,
                 ): "mochitest-devtools-chrome",
@@ -224,7 +236,7 @@ class SingleTestMixin(object):
                     "mochitest-browser-chrome",
                     "screenshots",
                     None,
-                ): "mochitest-browser-chrome-screenshots",  # noqa
+                ): "mochitest-browser-screenshots",  # noqa
                 ("mochitest-plain", "media", None): "mochitest-media",
                 # below should be on test-verify-gpu job
                 ("mochitest-chrome", "gpu", None): "mochitest-chrome-gpu",
@@ -270,7 +282,7 @@ class SingleTestMixin(object):
 
             repo_tests_path = os.path.join("testing", "web-platform", extra, "tests")
             tests_path = os.path.join("tests", "web-platform", extra, "tests")
-            for (type, path, test) in man:
+            for type, path, test in man:
                 if type not in ["testharness", "reftest", "wdspec"]:
                     continue
                 repo_path = os.path.join(repo_tests_path, path)
@@ -323,6 +335,8 @@ class SingleTestMixin(object):
         mozinfo.find_and_update_from_json(dirs["abs_test_install_dir"])
         e10s = self.config.get("e10s", False)
         mozinfo.update({"e10s": e10s})
+        is_fission = "fission.autostart=true" in self.config.get("extra_prefs", [])
+        mozinfo.update({"fission": is_fission})
         headless = self.config.get("headless", False)
         mozinfo.update({"headless": headless})
         if mozinfo.info["buildapp"] == "mobile/android":
@@ -331,7 +345,6 @@ class SingleTestMixin(object):
             mozinfo.update(
                 {"android_version": str(self.config.get("android_version", 24))}
             )
-            mozinfo.update({"is_fennec": self.config.get("is_fennec", False)})
             mozinfo.update({"is_emulator": self.config.get("is_emulator", True)})
         mozinfo.update({"verify": True})
         self.info("Per-test run using mozinfo: %s" % str(mozinfo.info))

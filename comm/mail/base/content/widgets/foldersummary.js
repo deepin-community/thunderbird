@@ -6,23 +6,18 @@
 /* global MozElements */
 /* global MozXULElement */
 /* import-globals-from ../../../../mailnews/base/content/newmailalert.js */
-/* import-globals-from ../folderDisplay.js */
-/* import-globals-from ../folderPane.js */
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
-  const { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
   /**
    * MozFolderSummary displays a listing of NEW mails for the folder in question.
    * For each mail the subject, sender and a message preview can be included.
-   * @extends {MozXULElement}
+   *
+   * @augments {MozXULElement}
    */
   class MozFolderSummary extends MozXULElement {
     constructor() {
@@ -41,6 +36,10 @@
       this.messengerBundle = Services.strings.createBundle(
         "chrome://messenger/locale/messenger.properties"
       );
+
+      ChromeUtils.defineESModuleGetters(this, {
+        MailUtils: "resource:///modules/MailUtils.sys.mjs",
+      });
     }
 
     hasMessages() {
@@ -48,28 +47,28 @@
     }
 
     static createFolderSummaryMessage() {
-      let vbox = document.createXULElement("vbox");
+      const vbox = document.createXULElement("vbox");
       vbox.setAttribute("class", "folderSummaryMessage");
 
-      let hbox = document.createXULElement("hbox");
+      const hbox = document.createXULElement("hbox");
       hbox.setAttribute("class", "folderSummary-message-row");
 
-      let subject = document.createXULElement("label");
+      const subject = document.createXULElement("label");
       subject.setAttribute("class", "folderSummary-subject");
 
-      let sender = document.createXULElement("label");
+      const sender = document.createXULElement("label");
       sender.setAttribute("class", "folderSummary-sender");
-      sender.setAttribute("crop", "right");
+      sender.setAttribute("crop", "end");
 
       hbox.appendChild(subject);
       hbox.appendChild(sender);
 
-      let preview = document.createXULElement("description");
+      const preview = document.createXULElement("description");
       preview.setAttribute(
         "class",
         "folderSummary-message-row folderSummary-previewText"
       );
-      preview.setAttribute("crop", "right");
+      preview.setAttribute("crop", "end");
 
       vbox.appendChild(hbox);
       vbox.appendChild(preview);
@@ -78,6 +77,7 @@
 
     /**
      * Check the given folder for NEW messages.
+     *
      * @param {nsIMsgFolder} folder - The folder to examine.
      * @param {nsIUrlListener} urlListener - Listener to notify if we run urls
      *   to fetch msgs.
@@ -98,7 +98,7 @@
         return false;
       }
 
-      let folderArray = [];
+      const folderArray = [];
       let msgDatabase;
       try {
         msgDatabase = folder.msgDatabase;
@@ -109,12 +109,11 @@
       }
 
       if (folder.flags & Ci.nsMsgFolderFlags.Virtual) {
-        let srchFolderUri = msgDatabase.dBFolderInfo.getCharProperty(
-          "searchFolderUri"
-        );
-        let folderUris = srchFolderUri.split("|");
-        for (let uri of folderUris) {
-          let realFolder = MailUtils.getOrCreateFolder(uri);
+        const srchFolderUri =
+          msgDatabase.dBFolderInfo.getCharProperty("searchFolderUri");
+        const folderUris = srchFolderUri.split("|");
+        for (const uri of folderUris) {
+          const realFolder = this.MailUtils.getOrCreateFolder(uri);
           if (!realFolder.isServer) {
             folderArray.push(realFolder);
           }
@@ -124,7 +123,7 @@
       }
 
       let haveMsgsToShow = false;
-      for (let folder of folderArray) {
+      for (const folder of folderArray) {
         // now get the database
         try {
           msgDatabase = folder.msgDatabase;
@@ -137,7 +136,7 @@
         folder.msgDatabase = null;
         let msgKeys = msgDatabase.getNewList();
 
-        let numNewMessages = folder.getNumNewMessages(false);
+        const numNewMessages = folder.getNumNewMessages(false);
         if (!numNewMessages) {
           continue;
         }
@@ -154,11 +153,7 @@
           // fetchMsgPreviewText forces the previewText property to get generated
           // for each of the message keys.
           try {
-            outAsync.value = folder.fetchMsgPreviewText(
-              msgKeys,
-              false,
-              urlListener
-            );
+            outAsync.value = folder.fetchMsgPreviewText(msgKeys, urlListener);
             folder.msgDatabase = null;
           } catch (ex) {
             // fetchMsgPreviewText throws an error when we call it on a news
@@ -180,7 +175,7 @@
 
         // In the case of async fetching for more than one folder, we may
         //  already have got enough to show (added by another urllistener).
-        let curHdrsInPopup = this.children.length;
+        const curHdrsInPopup = this.children.length;
         if (curHdrsInPopup >= this.maxMsgHdrsInPopup) {
           return false;
         }
@@ -190,13 +185,13 @@
           i + curHdrsInPopup < this.maxMsgHdrsInPopup && i < msgKeys.length;
           i++
         ) {
-          let msgBox = MozFolderSummary.createFolderSummaryMessage();
-          let msgHdr = msgDatabase.GetMsgHdrForKey(msgKeys[i]);
+          const msgBox = MozFolderSummary.createFolderSummaryMessage();
+          const msgHdr = msgDatabase.getMsgHdrForKey(msgKeys[i]);
           msgBox.addEventListener("click", event => {
             if (event.button !== 0) {
               return;
             }
-            MailUtils.displayMessageInFolderTab(msgHdr);
+            this.MailUtils.displayMessageInFolderTab(msgHdr, true);
           });
 
           if (this.showSubject) {
@@ -205,38 +200,32 @@
             if (msgHdr.flags & kMsgFlagHasRe) {
               msgSubject = msgSubject ? "Re: " + msgSubject : "Re: ";
             }
-            msgBox.querySelector(
-              ".folderSummary-subject"
-            ).textContent = msgSubject;
+            msgBox.querySelector(".folderSummary-subject").textContent =
+              msgSubject;
           }
 
           if (this.showSender) {
-            let addrs = MailServices.headerParser.parseEncodedHeader(
+            const addrs = MailServices.headerParser.parseEncodedHeader(
               msgHdr.author,
               msgHdr.effectiveCharset,
               false
             );
-            let folderSummarySender = msgBox.querySelector(
+            const folderSummarySender = msgBox.querySelector(
               ".folderSummary-sender"
             );
             // Set the label value instead of textContent to avoid wrapping.
             folderSummarySender.value =
               addrs.length > 0 ? addrs[0].name || addrs[0].email : "";
             if (addrs.length > 1) {
-              let andOthersStr = this.messengerBundle.GetStringFromName(
-                "andOthers"
-              );
+              const andOthersStr =
+                this.messengerBundle.GetStringFromName("andOthers");
               folderSummarySender.value += " " + andOthersStr;
             }
           }
 
           if (this.showPreview) {
-            // Get the preview text as a UTF-8 encoded string.
-            msgBox.querySelector(
-              ".folderSummary-previewText"
-            ).textContent = decodeURIComponent(
-              escape(msgHdr.getStringProperty("preview") || "")
-            );
+            msgBox.querySelector(".folderSummary-previewText").textContent =
+              msgHdr.getStringProperty("preview") || "";
           }
           this.appendChild(msgBox);
           haveMsgsToShow = true;
@@ -247,19 +236,20 @@
 
     /**
      * Render NEW messages in a folder.
+     *
      * @param {nsIMsgFolder} folder - A real folder containing new messages.
      * @param {number[]} msgKeys - The keys of new messages.
      */
     render(folder, msgKeys) {
-      let msgDatabase = folder.msgDatabase;
-      for (let msgKey of msgKeys.slice(0, this.maxMsgHdrsInPopup)) {
-        let msgBox = MozFolderSummary.createFolderSummaryMessage();
-        let msgHdr = msgDatabase.GetMsgHdrForKey(msgKey);
+      const msgDatabase = folder.msgDatabase;
+      for (const msgKey of msgKeys.slice(0, this.maxMsgHdrsInPopup)) {
+        const msgBox = MozFolderSummary.createFolderSummaryMessage();
+        const msgHdr = msgDatabase.getMsgHdrForKey(msgKey);
         msgBox.addEventListener("click", event => {
           if (event.button !== 0) {
             return;
           }
-          MailUtils.displayMessageInFolderTab(msgHdr);
+          this.MailUtils.displayMessageInFolderTab(msgHdr, true);
         });
 
         if (this.showSubject) {
@@ -268,199 +258,36 @@
           if (msgHdr.flags & kMsgFlagHasRe) {
             msgSubject = msgSubject ? "Re: " + msgSubject : "Re: ";
           }
-          msgBox.querySelector(
-            ".folderSummary-subject"
-          ).textContent = msgSubject;
+          msgBox.querySelector(".folderSummary-subject").textContent =
+            msgSubject;
         }
 
         if (this.showSender) {
-          let addrs = MailServices.headerParser.parseEncodedHeader(
+          const addrs = MailServices.headerParser.parseEncodedHeader(
             msgHdr.author,
             msgHdr.effectiveCharset,
             false
           );
-          let folderSummarySender = msgBox.querySelector(
+          const folderSummarySender = msgBox.querySelector(
             ".folderSummary-sender"
           );
           // Set the label value instead of textContent to avoid wrapping.
           folderSummarySender.value =
             addrs.length > 0 ? addrs[0].name || addrs[0].email : "";
           if (addrs.length > 1) {
-            let andOthersStr = this.messengerBundle.GetStringFromName(
-              "andOthers"
-            );
+            const andOthersStr =
+              this.messengerBundle.GetStringFromName("andOthers");
             folderSummarySender.value += " " + andOthersStr;
           }
         }
 
         if (this.showPreview) {
-          // Get the preview text as a UTF-8 encoded string.
-          msgBox.querySelector(
-            ".folderSummary-previewText"
-          ).textContent = decodeURIComponent(
-            escape(msgHdr.getStringProperty("preview") || "")
-          );
+          msgBox.querySelector(".folderSummary-previewText").textContent =
+            msgHdr.getStringProperty("preview") || "";
         }
         this.appendChild(msgBox);
       }
     }
   }
   customElements.define("folder-summary", MozFolderSummary);
-
-  /**
-   * MozFolderTooltip displays a tooltip summarizing the folder status:
-   *  - if there are NEW messages, display a summary of them
-   *  - if the folder name is cropped, include the name and more details
-   *  - a summary of the unread count in this folder and its subfolders
-   * @extends {XULPopupElement}
-   * @borrows MozFolderSummary.prototype.parseFolder as parseFolder
-   */
-  class MozFolderTooltip extends MozElements.MozElementMixin(XULPopupElement) {
-    constructor() {
-      super();
-
-      this.maxMsgHdrsInPopup = 8;
-      this.showSubject = true;
-      this.showSender = true;
-      this.showPreview = true;
-
-      // Borrow the parseFolder function from MozFolderSummary.
-      this.parseFolder = MozFolderSummary.prototype.parseFolder;
-
-      this.addEventListener("popupshowing", event => {
-        if (!this._folderpopupShowing(event)) {
-          event.preventDefault();
-        }
-      });
-
-      this.addEventListener("popuphiding", event => {
-        while (this.lastChild) {
-          this.lastChild.remove();
-        }
-      });
-    }
-
-    /** Handle the popupshowing event. */
-    _folderpopupShowing(event) {
-      let msgFolder = gFolderTreeView.getFolderAtCoords(
-        event.clientX,
-        event.clientY
-      );
-
-      // Interrupt if the selected row is not a folder.
-      if (!msgFolder) {
-        return false;
-      }
-
-      let treeCellInfo = gFolderTreeView._tree.getCellAt(
-        event.clientX,
-        event.clientY
-      );
-      if (!treeCellInfo.col) {
-        return false;
-      }
-
-      let asyncResults = {};
-      if (this.parseFolder(msgFolder, null, asyncResults)) {
-        return true;
-      }
-
-      if (treeCellInfo.col.id == "folderNameCol") {
-        let cropped = gFolderTreeView._tree.isCellCropped(
-          treeCellInfo.row,
-          treeCellInfo.col
-        );
-        if (this._addLocationInfo(msgFolder, cropped)) {
-          return true;
-        }
-      }
-
-      let counts = gFolderTreeView.getSummarizedCounts(
-        treeCellInfo.row,
-        treeCellInfo.col.id
-      );
-      if (this._addSummarizeExplain(counts)) {
-        return true;
-      }
-
-      if (
-        gFolderTreeView._tree.isCellCropped(treeCellInfo.row, treeCellInfo.col)
-      ) {
-        let croppedText = gFolderTreeView.getCellText(
-          treeCellInfo.row,
-          treeCellInfo.col
-        );
-        return this._addCroppedText(croppedText);
-      }
-
-      return false;
-    }
-
-    /** Add location information to the folder name if needed. */
-    _addLocationInfo(folder, cropped) {
-      // Display also server name for items that are on level 0 and are not
-      // server names by themselves and do not have server name already appended
-      // in their label.
-      let folderIndex = gFolderTreeView.getIndexOfFolder(folder);
-      if (
-        !folder.isServer &&
-        gFolderTreeView.getLevel(folderIndex) == 0 &&
-        !gFolderTreeView.getServerNameAdded(folderIndex)
-      ) {
-        let loc = document.createXULElement("label");
-        let midPath = "";
-        let midFolder = folder.parent;
-        while (folder.server.rootFolder != midFolder) {
-          midPath = midFolder.name + " - " + midPath;
-          midFolder = midFolder.parent;
-        }
-        loc.setAttribute(
-          "value",
-          folder.server.prettyName + " - " + midPath + folder.name
-        );
-        this.appendChild(loc);
-        return true;
-      }
-
-      // If folder name is cropped or is a newsgroup and abbreviated per
-      // pref, use the full name as a tooltip.
-      if (
-        cropped ||
-        (folder.server instanceof Ci.nsINntpIncomingServer &&
-          !(folder.flags & Ci.nsMsgFolderFlags.Virtual) &&
-          folder.server.abbreviate &&
-          !folder.isServer)
-      ) {
-        let loc = document.createXULElement("label");
-        loc.setAttribute("value", folder.name);
-        this.appendChild(loc);
-        return true;
-      }
-      return false;
-    }
-
-    /** Add information about unread messages in this folder and subfolders. */
-    _addSummarizeExplain(counts) {
-      if (!counts || !counts[1]) {
-        return false;
-      }
-      let expl = document.createXULElement("label");
-      let sumString = document
-        .getElementById("bundle_messenger")
-        .getFormattedString("subfoldersExplanation", [counts[0], counts[1]], 2);
-      expl.setAttribute("value", sumString);
-      this.appendChild(expl);
-      return true;
-    }
-
-    _addCroppedText(text) {
-      let expl = document.createXULElement("label");
-      expl.setAttribute("value", text);
-      this.appendChild(expl);
-      return true;
-    }
-  }
-  customElements.define("folder-tooltip", MozFolderTooltip, {
-    extends: "tooltip",
-  });
 }

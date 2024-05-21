@@ -7,8 +7,13 @@
 
 #include "charstr.h"
 #include "cmemory.h"
+#ifdef JS_HAS_INTL_API
+#include "double-conversion/string-to-double.h"
+#else
 #include "double-conversion-string-to-double.h"
+#endif
 #include "measunit_impl.h"
+#include "putilimp.h"
 #include "uassert.h"
 #include "unicode/errorcode.h"
 #include "unicode/localpointer.h"
@@ -105,7 +110,11 @@ namespace {
 
 /* Helpers */
 
+#ifdef JS_HAS_INTL_API
+using double_conversion::StringToDoubleConverter;
+#else
 using icu::double_conversion::StringToDoubleConverter;
+#endif
 
 // TODO: Make this a shared-utility function.
 // Returns `double` from a scientific number(i.e. "1", "2.01" or "3.09E+4")
@@ -388,8 +397,14 @@ void U_I18N_API addSingleFactorConstant(StringPiece baseStr, int32_t power, Sign
         factor.constantExponents[CONSTANT_GLUCOSE_MOLAR_MASS] += power * signum;
     } else if (baseStr == "item_per_mole") {
         factor.constantExponents[CONSTANT_ITEM_PER_MOLE] += power * signum;
+    } else if (baseStr == "meters_per_AU") {
+        factor.constantExponents[CONSTANT_METERS_PER_AU] += power * signum;
     } else if (baseStr == "PI") {
         factor.constantExponents[CONSTANT_PI] += power * signum;
+    } else if (baseStr == "sec_per_julian_year") {
+        factor.constantExponents[CONSTANT_SEC_PER_JULIAN_YEAR] += power * signum;
+    } else if (baseStr == "speed_of_light_meters_per_second") {
+        factor.constantExponents[CONSTANT_SPEED_OF_LIGHT_METERS_PER_SECOND] += power * signum;
     } else {
         if (signum == Signum::NEGATIVE) {
             factor.factorDen *= std::pow(strToDouble(baseStr, status), power);
@@ -461,7 +476,7 @@ Convertibility U_I18N_API extractConvertibility(const MeasureUnitImpl &source,
 
     if (source.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED ||
         target.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED) {
-        status = U_INTERNAL_PROGRAM_ERROR;
+        status = U_ARGUMENT_TYPE_MISMATCH;
         return UNCONVERTIBLE;
     }
 
@@ -514,7 +529,7 @@ void UnitsConverter::init(const ConversionRates &ratesInfo, UErrorCode &status) 
 
     if (this->conversionRate_.source.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED ||
         this->conversionRate_.target.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED) {
-        status = U_INTERNAL_PROGRAM_ERROR;
+        status = U_ARGUMENT_TYPE_MISMATCH;
         return;
     }
 
@@ -522,7 +537,7 @@ void UnitsConverter::init(const ConversionRates &ratesInfo, UErrorCode &status) 
                                                       this->conversionRate_.target, ratesInfo, status);
     if (U_FAILURE(status)) return;
     if (unitsState == Convertibility::UNCONVERTIBLE) {
-        status = U_INTERNAL_PROGRAM_ERROR;
+        status = U_ARGUMENT_TYPE_MISMATCH;
         return;
     }
 
@@ -540,7 +555,7 @@ int32_t UnitsConverter::compareTwoUnits(const MeasureUnitImpl &firstUnit,
 
     if (firstUnit.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED ||
         secondUnit.complexity == UMeasureUnitComplexity::UMEASURE_UNIT_MIXED) {
-        status = U_INTERNAL_PROGRAM_ERROR;
+        status = U_ARGUMENT_TYPE_MISMATCH;
         return 0;
     }
 
@@ -550,7 +565,7 @@ int32_t UnitsConverter::compareTwoUnits(const MeasureUnitImpl &firstUnit,
     }
 
     if (unitsState == Convertibility::UNCONVERTIBLE || unitsState == Convertibility::RECIPROCAL) {
-        status = U_INTERNAL_PROGRAM_ERROR;
+        status = U_ARGUMENT_TYPE_MISMATCH;
         return 0;
     }
 
@@ -588,10 +603,7 @@ double UnitsConverter::convert(double inputValue) const {
 
     if (conversionRate_.reciprocal) {
         if (result == 0) {
-            // TODO: demonstrate the resulting behaviour in tests... and figure
-            // out desired behaviour. (Theoretical result should be infinity,
-            // not 0.)
-            return 0.0;
+            return uprv_getInfinity();
         }
         result = 1.0 / result;
     }
@@ -603,10 +615,7 @@ double UnitsConverter::convertInverse(double inputValue) const {
     double result = inputValue;
     if (conversionRate_.reciprocal) {
         if (result == 0) {
-            // TODO: demonstrate the resulting behaviour in tests... and figure
-            // out desired behaviour. (Theoretical result should be infinity,
-            // not 0.)
-            return 0.0;
+            return uprv_getInfinity();
         }
         result = 1.0 / result;
     }

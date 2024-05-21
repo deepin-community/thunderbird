@@ -3,7 +3,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-async function testSteps() {
+add_task(async function testSteps() {
   const storageDirName = "storage";
   const persistenceTypeDefaultDirName = "default";
   const persistenceTypePersistentDirName = "permanent";
@@ -125,7 +125,7 @@ async function testSteps() {
     }
 
     let usage = await readUsageFromUsageFile(usageFile);
-    ok(usage == data.usage, "Correct usage");
+    Assert.equal(usage, data.usage, "Correct usage");
   }
 
   async function clearTestOrigin() {
@@ -140,7 +140,10 @@ async function testSteps() {
 
   info("Setting prefs");
 
-  Services.prefs.setBoolPref("dom.storage.next_gen", true);
+  Services.prefs.setBoolPref(
+    "dom.storage.enable_unsupported_legacy_implementation",
+    false
+  );
 
   info(
     "Stage 1 - " +
@@ -366,4 +369,4 @@ async function testSteps() {
   ok(exists, "ls directory in permanent origin directory does exist");
 
   await clearPersistentTestOrigin();
-}
+});

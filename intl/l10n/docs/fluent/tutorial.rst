@@ -2,7 +2,7 @@
    :language: html
 
 .. role:: js(code)
-   :language: javascript
+   :language: JavaScript
 
 =============================
 Fluent for Firefox Developers
@@ -10,9 +10,15 @@ Fluent for Firefox Developers
 
 
 This tutorial is intended for Firefox engineers already familiar with the previous
-localization systems offered by Gecko - `DTD`_ and  `StringBundle`_ - and assumes
+localization systems offered by Gecko - DTD and StringBundle - and assumes
 prior experience with those systems.
 
+For a more hands-on tutorial of understanding Fluent from the ground up, try
+following the `Fluent DOMLocalization Tutorial`__, which provides some background on
+how Fluent works and walks you through creating a basic web project from scratch that
+uses Fluent for localization.
+
+__ https://projectfluent.org/dom-l10n-documentation/
 
 Using Fluent in Gecko
 =====================
@@ -34,6 +40,15 @@ __ https://phabricator.services.mozilla.com/tag/fluent-reviewers/
 Guidelines for the review process are available `here`__.
 
 __ ./fluent_review.html
+
+To lighten the burden on reviewers, please take a moment to review some
+best practices before submitting your patch for review.
+
+-  `ProjectFluent Good Practices for Developers`_
+-  `Mozilla Localization Best Practices For Developers`_
+
+.. _ProjectFluent Good Practices for Developers: https://github.com/projectfluent/fluent/wiki/Good-Practices-for-Developers
+.. _Mozilla Localization Best Practices For Developers: https://mozilla-l10n.github.io/documentation/localization/dev_best_practices.html
 
 Major Benefits
 ==============
@@ -108,7 +123,7 @@ a more complex example like:
 
   -brand-short-name = Firefox
       .gender = masculine
-  
+
   pref-pane =
       .title =
           { PLATFORM() ->
@@ -116,7 +131,7 @@ a more complex example like:
              *[other] Preferences
           }
       .accesskey = C
-  
+
   # Variables:
   #   $tabCount (Number) - number of container tabs to be closed
   containers-disable-alert-ok-button =
@@ -124,7 +139,7 @@ a more complex example like:
           [one] Close { $tabCount } Container Tab
          *[other] Close { $tabCount } Container Tabs
       }
-  
+
   update-application-info =
       You are using { -brand-short-name } Version: { $version }.
       Please read the <a>privacy policy</a>.
@@ -247,8 +262,6 @@ a JSON object storing variables exposed by the developer to the localizer.
 This is the main channel for the developer to provide additional variables
 to be used in the localization.
 
-Arguments are rarely needed for situations where it’s currently possible to use
-DTD, since such variables would need to be computed from the code at runtime.
 It's worth noting that, when the :code:`l10n-args` are set in
 the runtime code, they are in fact encoded as JSON and stored together with
 :code:`l10n-id` as an attribute of the element.
@@ -271,21 +284,33 @@ localization context for this document and exposes it to runtime code as well.
 With a focus on `declarative localization`__, the primary method of localization is
 to alter the localization attributes in the DOM. Fluent provides a method to facilitate this:
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   document.l10n.setAttributes(element, "new-panel-header");
 
 This will set the :code:`data-l10n-id` on the element and translate it before the next
 animation frame.
 
-The reason to use this API over manually setting the attribute is that it also
-facilitates encoding l10n arguments as JSON:
+This API can be used to set both the ID and the arguments at the same time.
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   document.l10n.setAttributes(element, "containers-disable-alert-ok-button", {
     tabCount: 5
   });
+
+If only the arguments need to be updated, then it's possible to use the :code:`setArgs`
+method.
+
+.. code-block:: JavaScript
+
+  document.l10n.setArgs(element, {
+    tabCount: 5
+  });
+
+On debug builds if the Fluent arguments are not provided, then Firefox will crash. This
+is done so that these errors are caught in CI. On rare occasions it may be necessary
+to work around this crash by providing a blank string as an argument value.
 
 __ https://github.com/projectfluent/fluent/wiki/Good-Practices-for-Developers
 
@@ -296,7 +321,7 @@ Non-Markup Localization
 In rare cases, when the runtime code needs to retrieve the translation and not
 apply it onto the DOM, Fluent provides an API to retrieve it:
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   let [ msg ] = await document.l10n.formatValues([
     {id: "remove-containers-description"}
@@ -326,7 +351,7 @@ developer or localizer.
 
 __ https://github.com/projectfluent/fluent/wiki/BiDi-in-Fluent
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   document.l10n.setAttributes(element, "welcome-message", {
     userName: "اليسع",
@@ -351,7 +376,7 @@ standard called `Plural Rules`_.
 In order to allow localizers to use it, all the developer has to do is to pass
 an external argument number:
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   document.l10n.setAttributes(element, "unread-warning", { unreadCount: 5 });
 
@@ -417,7 +442,7 @@ but its default formatting will be pretty expressive. In most cases, the develop
 may want to use some of the :js:`Intl.DateTimeFormat` options to select the default
 representation of the date in string:
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   document.l10n.formatValue("welcome-message", {
   startDate: FluentDateTime(new Date(), {
@@ -493,11 +518,7 @@ In rare edge cases where the developer needs to fetch additional resources, or
 the same resources in another language, it is possible to create additional
 Localization object manually using the `Localization` class:
 
-.. code-block:: javascript
-
-  const { Localization } =
-    ChromeUtils.import("resource://gre/modules/Localization.jsm", {});
-
+.. code-block:: JavaScript
 
   const myL10n = new Localization([
     "branding/brand.ftl",
@@ -526,11 +547,7 @@ one by passing an `sync = false` argument to the constructor, or calling the `Se
 on the class.
 
 
-.. code-block:: javascript
-
-  const { Localization } =
-    ChromeUtils.import("resource://gre/modules/Localization.jsm", {});
-
+.. code-block:: JavaScript
 
   const myL10n = new Localization([
     "branding/brand.ftl",
@@ -567,12 +584,12 @@ In case of raw i18n the :js:`resolvedOptions` method on all :js:`Intl.*` formatt
 makes it relatively easy. In case of localization, the recommended way is to test that
 the code sets the right :code:`l10n-id`/:code:`l10n-args` attributes like this:
 
-.. code-block:: javascript
-  
+.. code-block:: JavaScript
+
   testedFunction();
-  
+
   const l10nAttrs = document.l10n.getAttributes(element);
-  
+
   deepEquals(l10nAttrs, {
     id: "my-expected-id",
     args: {
@@ -583,10 +600,10 @@ the code sets the right :code:`l10n-id`/:code:`l10n-args` attributes like this:
 If the code really has to test for particular values in the localized UI, it is
 always better to scan for a variable:
 
-.. code-block:: javascript
+.. code-block:: JavaScript
 
   testedFunction();
-  
+
   equals(element.textContent.contains("John"));
 
 .. important::
@@ -595,8 +612,8 @@ always better to scan for a variable:
   bidirectionality marks into the result string or adapt the output in other ways.
 
 
-Pseudolocalization
-==================
+Manually Testing UI with Pseudolocalization
+===========================================
 
 When working with a Fluent-backed UI, the developer gets a new tool to test their UI
 against several classes of problems.
@@ -616,7 +633,8 @@ The three classes of potential problems that this can help with are:
 
    Many languages use longer strings than English. For example, German strings
    may be 30% longer (or more). Turning on pseudolocalization is a quick way to
-   test how the layout handles such locales.
+   test how the layout handles such locales. Strings that don't fit the space
+   available are truncated and pseudolocalization can also help with detecting them.
 
 
  - Bidi adaptation.
@@ -624,22 +642,87 @@ The three classes of potential problems that this can help with are:
    For many developers, testing the UI in right-to-left mode is hard.
    Pseudolocalization shows how a right-to-left locale will look like.
 
-To turn on pseudolocalization, add a new string pref :js:`intl.l10n.pseudo` and
-select the strategy to be used:
+To turn on pseudolocalization, open the :doc:`Browser Toolbox <../../devtools-user/browser_toolbox/index>`,
+click the three dot menu in the top right corner, and choose one of the following:
 
- - :js:`accented` - Ȧȧƈƈḗḗƞŧḗḗḓ Ḗḗƞɠŀīīşħ
+ - **Enable “accented” locale** - [Ȧȧƈƈḗḗƞŧḗḗḓ Ḗḗƞɠŀīīşħ]
 
    This strategy replaces all Latin characters with their accented equivalents,
-   and duplicates some vowels to create roughly 30% longer strings.
+   and duplicates some vowels to create roughly 30% longer strings. Strings are
+   wrapped in markers (square brackets), which help with detecting truncation.
+
+   This option sets the ``intl.l10n.pseudo`` pref to ``accented``.
 
 
- - :js:`bidi` - ɥsıʅƃuƎ ıpıԐ
+ - **Enable bidi locale** - ɥsıʅƃuƎ ıpıԐ
 
    This strategy replaces all Latin characters with their 180 degree rotated versions
    and enforces right to left text flow using Unicode UAX#9 `Explicit Directional Embeddings`__.
    In this mode, the UI directionality will also be set to right-to-left.
 
+   This option sets the ``intl.l10n.pseudo`` pref to ``bidi``.
+
 __ https://www.unicode.org/reports/tr9/#Explicit_Directional_Embeddings
+
+Testing other locales
+=====================
+
+.. important::
+
+  For Firefox engineering work, you should prefer using pseudolocales.
+  Especially on Nightly, localizations can be incomplete (as we add/remove
+  localized content all the time) and cause confusing behaviour due to how
+  fallback works.
+
+Installing Nightly in a different locale
+----------------------------------------
+
+Localized Nightly builds are `listed on the mozilla.org website`_.
+
+Installing language packs on local builds
+-----------------------------------------
+
+To fix bugs that only reproduce with a specific locale, you may need to run a
+development or nightly build with that locale. The UI language switcher in
+Settings is disabled by default on Nightly, because language packs can become
+incomplete and cause errors in the UI — there is no fallback to English for
+strings using legacy formats, like .properties.
+
+However, if you really need to use this, you can:
+
+1. Open ``about:config`` and flip the ``intl.multilingual.enabled`` and
+   ``intl.multilingual.liveReload`` preferences to ``true``
+2. Open `the FTP listing for langpacks`_ and click the XPI file corresponding
+   to your language and nightly version (note that, especially around merge days,
+   multiple versions may be present).
+
+   .. note::
+      This is a Linux listing because that's the platform on which we run the
+      l10n jobs, but the XPIs should work on macOS and Windows as well.
+      The only exception is the "special" Japanese-for-mac locale,
+      which is in the ``mac/xpi`` subdirectory under
+      ``latest-mozilla-central-l10n`` instead. (``ja-JP-mac`` and ``ja`` will
+      both "work" cross-platform, but use different terminology in some places.)
+
+3. Click through the prompts to install the language pack.
+4. Open the Firefox Settings UI.
+5. Switch to your chosen language.
+
+Finding a regression in a localized build
+-----------------------------------------
+
+You can run `mozregression`_ with localized builds!
+
+At the commandline, if you wanted to find a regression in a Dutch (``nl``)
+build, you could run something like:::
+
+    mozregression --app firefox-l10n --lang nl --good 2024-01-01
+
+and that should run localized nightlies.
+
+.. _listed on the mozilla.org website: https://www.mozilla.org/firefox/all/#product-desktop-nightly
+.. _the FTP listing for langpacks: https://ftp.mozilla.org/pub/firefox/nightly/latest-mozilla-central-l10n/linux-x86_64/xpi/
+.. _mozregression: https://mozilla.github.io/mozregression/
 
 Inner Structure of Fluent
 =========================
@@ -648,6 +731,13 @@ The inner structure of Fluent in Gecko is out of scope of this tutorial, but
 since the class and file names may show up during debugging or profiling,
 below is a list of major components, each with a corresponding file in `/intl/l10n`
 modules in Gecko.
+
+For more hands-on experience with some of the concepts below, try
+following the `Fluent DOMLocalization Tutorial`__, which provides some
+background on how Fluent works and walks you through creating a basic
+web project from scratch that uses Fluent for localization.
+
+__ https://projectfluent.org/dom-l10n-documentation/overview.html
 
 FluentBundle
 --------------
@@ -684,6 +774,17 @@ DocumentL10n
 DocumentL10n implements the DocumentL10n WebIDL API and allows Document to
 communicate with DOMLocalization.
 
+Events
+^^^^^^
+
+DOM translation is asynchronous (e.g., setting a `data-l10n-id` attribute won't
+immediately reflect the localized content in the DOM).
+
+We expose a :js:`Document.hasPendingL10nMutations` member that reflects whether
+there are any async operations pending. When they are finished, the
+`L10nMutationsFinished` event is fired on the document, so that chrome code can
+be certain all the async operations are done.
+
 L10nRegistry
 ------------
 
@@ -694,8 +795,6 @@ and resources that the :js:`Localization` class uses.
 
 
 .. _Fluent: https://projectfluent.org/
-.. _DTD: https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Tutorial/Localization
-.. _StringBundle: https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Tutorial/Property_Files
 .. _Firefox Preferences: https://bugzilla.mozilla.org/show_bug.cgi?id=1415730
 .. _Unprivileged Contexts: https://bugzilla.mozilla.org/show_bug.cgi?id=1407418
 .. _System Add-ons: https://bugzilla.mozilla.org/show_bug.cgi?id=1425104

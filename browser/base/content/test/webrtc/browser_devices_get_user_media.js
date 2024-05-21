@@ -520,17 +520,15 @@ var gTests = [
         } else {
           let expectedMessage = aExpectStream ? "ok" : permissionError;
 
-          let observerPromises = [];
+          let observerPromises = [expectObserverCalled("getUserMedia:request")];
           if (expectedMessage == "ok") {
-            observerPromises.push(expectObserverCalled("getUserMedia:request"));
             observerPromises.push(
-              expectObserverCalled("getUserMedia:response:allow")
-            );
-            observerPromises.push(
+              expectObserverCalled("getUserMedia:response:allow"),
               expectObserverCalled("recording-device-events")
             );
           } else {
             observerPromises.push(
+              expectObserverCalled("getUserMedia:response:deny"),
               expectObserverCalled("recording-window-ended")
             );
           }
@@ -825,66 +823,6 @@ var gTests = [
   },
 
   {
-    desc: "test showPermissionPanel",
-    run: async function checkShowPermissionPanel() {
-      if (!USING_LEGACY_INDICATOR) {
-        // The indicator only links to the permission panel for the
-        // legacy indicator.
-        return;
-      }
-
-      let observerPromise = expectObserverCalled("getUserMedia:request");
-      let promise = promisePopupNotificationShown("webRTC-shareDevices");
-      await promiseRequestDevice(false, true);
-      await promise;
-      await observerPromise;
-      checkDeviceSelectors(["camera"]);
-
-      let indicator = promiseIndicatorWindow();
-      let observerPromise1 = expectObserverCalled(
-        "getUserMedia:response:allow"
-      );
-      let observerPromise2 = expectObserverCalled("recording-device-events");
-      await promiseMessage("ok", () => {
-        PopupNotifications.panel.firstElementChild.button.click();
-      });
-      await observerPromise1;
-      await observerPromise2;
-      Assert.deepEqual(
-        await getMediaCaptureState(),
-        { video: true },
-        "expected camera to be shared"
-      );
-
-      await indicator;
-      await checkSharingUI({ video: true });
-
-      ok(permissionPopupHidden(), "permission panel should be hidden");
-      if (IS_MAC) {
-        let activeStreams = webrtcUI.getActiveStreams(true, false, false);
-        webrtcUI.showSharingDoorhanger(activeStreams[0]);
-      } else {
-        let win = Services.wm.getMostRecentWindow(
-          "Browser:WebRTCGlobalIndicator"
-        );
-
-        let elt = win.document.getElementById("audioVideoButton");
-        EventUtils.synthesizeMouseAtCenter(elt, {}, win);
-      }
-
-      await TestUtils.waitForCondition(
-        () => !permissionPopupHidden(),
-        "wait for permission panel to open"
-      );
-      ok(!permissionPopupHidden(), "permission panel should be open");
-
-      gPermissionPanel._permissionPopup.hidePopup();
-
-      await closeStream();
-    },
-  },
-
-  {
     desc: "'Always Allow' disabled on http pages",
     run: async function checkNoAlwaysOnHttp() {
       // Load an http page instead of the https version.
@@ -892,6 +830,9 @@ var gTests = [
         set: [
           ["media.devices.insecure.enabled", true],
           ["media.getusermedia.insecure.enabled", true],
+          // explicitly testing an http page, setting
+          // https-first to false.
+          ["dom.security.https_first", false],
         ],
       });
 
@@ -899,8 +840,9 @@ var gTests = [
       await disableObserverVerification();
 
       let browser = gBrowser.selectedBrowser;
-      BrowserTestUtils.loadURI(
+      BrowserTestUtils.startLoadingURIString(
         browser,
+        // eslint-disable-next-line @microsoft/sdl/no-insecure-url
         browser.documentURI.spec.replace("https://", "http://")
       );
       await BrowserTestUtils.browserLoaded(browser);

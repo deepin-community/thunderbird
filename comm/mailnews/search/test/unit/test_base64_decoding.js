@@ -8,8 +8,8 @@
 /* import-globals-from ../../../test/resources/searchTestUtils.js */
 load("../../../resources/searchTestUtils.js");
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var Contains = Ci.nsMsgSearchOp.Contains;
@@ -54,9 +54,9 @@ var copyListener = {
   SetMessageKey(aKey) {},
   SetMessageId(aMessageId) {},
   OnStopCopy(aStatus) {
-    let fileName = Files.shift();
+    const fileName = Files.shift();
     if (fileName) {
-      let file = do_get_file(fileName);
+      const file = do_get_file(fileName);
       MailServices.copy.copyFileMessage(
         file,
         localAccountUtils.inboxFolder,

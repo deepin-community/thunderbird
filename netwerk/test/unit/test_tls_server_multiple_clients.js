@@ -8,32 +8,12 @@ do_get_profile();
 // Ensure PSM is initialized
 Cc["@mozilla.org/psm;1"].getService(Ci.nsISupports);
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
-);
-const certService = Cc["@mozilla.org/security/local-cert-service;1"].getService(
-  Ci.nsILocalCertService
-);
 const certOverrideService = Cc[
   "@mozilla.org/security/certoverride;1"
 ].getService(Ci.nsICertOverrideService);
 const socketTransportService = Cc[
   "@mozilla.org/network/socket-transport-service;1"
 ].getService(Ci.nsISocketTransportService);
-
-function getCert() {
-  return new Promise((resolve, reject) => {
-    certService.getOrCreateCert("tls-test", {
-      handleCert(c, rv) {
-        if (rv) {
-          reject(rv);
-          return;
-        }
-        resolve(c);
-      },
-    });
-  });
-}
 
 function startServer(cert) {
   let tlsServer = Cc["@mozilla.org/network/tls-server-socket;1"].createInstance(
@@ -47,20 +27,20 @@ function startServer(cert) {
   let listener = {
     onSocketAccepted(socket, transport) {
       info("Accept TLS client connection");
-      let connectionInfo = transport.securityInfo.QueryInterface(
+      let connectionInfo = transport.securityCallbacks.getInterface(
         Ci.nsITLSServerConnectionInfo
       );
       connectionInfo.setSecurityObserver(listener);
       input = transport.openInputStream(0, 0, 0);
       output = transport.openOutputStream(0, 0, 0);
     },
-    onHandshakeDone(socket, status) {
+    onHandshakeDone() {
       info("TLS handshake done");
 
       input.asyncWait(
         {
-          onInputStreamReady(input) {
-            NetUtil.asyncCopy(input, output);
+          onInputStreamReady(input1) {
+            NetUtil.asyncCopy(input1, output);
           },
         },
         0,
@@ -79,15 +59,11 @@ function startServer(cert) {
 }
 
 function storeCertOverride(port, cert) {
-  let overrideBits =
-    Ci.nsICertOverrideService.ERROR_UNTRUSTED |
-    Ci.nsICertOverrideService.ERROR_MISMATCH;
   certOverrideService.rememberValidityOverride(
     "127.0.0.1",
     port,
     {},
     cert,
-    overrideBits,
     true
   );
 }
@@ -103,21 +79,21 @@ function startClient(port) {
   let input;
   let output;
 
-  let inputDeferred = PromiseUtils.defer();
-  let outputDeferred = PromiseUtils.defer();
+  let inputDeferred = Promise.withResolvers();
+  let outputDeferred = Promise.withResolvers();
 
   let handler = {
-    onTransportStatus(transport, status) {
+    onTransportStatus(transport1, status) {
       if (status === Ci.nsISocketTransport.STATUS_CONNECTED_TO) {
         output.asyncWait(handler, 0, 0, Services.tm.currentThread);
       }
     },
 
-    onInputStreamReady(input) {
+    onInputStreamReady(input1) {
       try {
-        let data = NetUtil.readInputStreamToString(input, input.available());
+        let data = NetUtil.readInputStreamToString(input1, input1.available());
         equal(data, "HELLO", "Echoed data received");
-        input.close();
+        input1.close();
         output.close();
         inputDeferred.resolve();
       } catch (e) {
@@ -125,9 +101,9 @@ function startClient(port) {
       }
     },
 
-    onOutputStreamReady(output) {
+    onOutputStreamReady(output1) {
       try {
-        output.write("HELLO", 5);
+        output1.write("HELLO", 5);
         info("Output to server written");
         outputDeferred.resolve();
         input = transport.openInputStream(0, 0, 0);
@@ -144,8 +120,8 @@ function startClient(port) {
   return Promise.all([inputDeferred.promise, outputDeferred.promise]);
 }
 
-add_task(async function() {
-  let cert = await getCert();
+add_task(async function () {
+  let cert = getTestServerCertificate();
   ok(!!cert, "Got self-signed cert");
   let port = startServer(cert);
   storeCertOverride(port, cert);

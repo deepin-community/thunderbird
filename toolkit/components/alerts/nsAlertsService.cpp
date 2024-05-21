@@ -15,6 +15,7 @@
 #include "nsXPCOM.h"
 #include "nsPromiseFlatString.h"
 #include "nsToolkitCompsCID.h"
+#include "nsComponentManagerUtils.h"
 
 #ifdef MOZ_PLACES
 #  include "nsIFaviconService.h"
@@ -200,6 +201,18 @@ NS_IMETHODIMP nsAlertsService::ShowAlert(nsIAlertNotification* aAlert,
   return ShowPersistentNotification(u""_ns, aAlert, aAlertListener);
 }
 
+static bool ShouldFallBackToXUL() {
+#if defined(XP_WIN) || defined(XP_MACOSX)
+  // We know we always have system backend on Windows and macOS. Let's not
+  // permanently fall back to XUL just because of temporary failure.
+  return false;
+#else
+  // The system may not have the notification library, we should fall back to
+  // XUL.
+  return true;
+#endif
+}
+
 NS_IMETHODIMP nsAlertsService::ShowPersistentNotification(
     const nsAString& aPersistentData, nsIAlertNotification* aAlert,
     nsIObserver* aAlertListener) {
@@ -222,7 +235,7 @@ NS_IMETHODIMP nsAlertsService::ShowPersistentNotification(
   // notifications
   if (ShouldUseSystemBackend()) {
     rv = ShowWithBackend(mBackend, aAlert, aAlertListener, aPersistentData);
-    if (NS_SUCCEEDED(rv)) {
+    if (NS_SUCCEEDED(rv) || !ShouldFallBackToXUL()) {
       return rv;
     }
     // If the system backend failed to show the alert, clear the backend and
@@ -243,18 +256,19 @@ NS_IMETHODIMP nsAlertsService::ShowPersistentNotification(
   return ShowWithBackend(xulBackend, aAlert, aAlertListener, aPersistentData);
 }
 
-NS_IMETHODIMP nsAlertsService::CloseAlert(const nsAString& aAlertName) {
+NS_IMETHODIMP nsAlertsService::CloseAlert(const nsAString& aAlertName,
+                                          bool aContextClosed) {
   if (XRE_IsContentProcess()) {
     ContentChild* cpc = ContentChild::GetSingleton();
-    cpc->SendCloseAlert(nsAutoString(aAlertName));
+    cpc->SendCloseAlert(nsAutoString(aAlertName), aContextClosed);
     return NS_OK;
   }
 
   nsresult rv;
   // Try the system notification service.
   if (ShouldUseSystemBackend()) {
-    rv = mBackend->CloseAlert(aAlertName);
-    if (NS_WARN_IF(NS_FAILED(rv))) {
+    rv = mBackend->CloseAlert(aAlertName, aContextClosed);
+    if (NS_WARN_IF(NS_FAILED(rv)) && ShouldFallBackToXUL()) {
       // If the system backend failed to close the alert, fall back to XUL for
       // future alerts.
       mBackend = nullptr;
@@ -262,7 +276,7 @@ NS_IMETHODIMP nsAlertsService::CloseAlert(const nsAString& aAlertName) {
   } else {
     nsCOMPtr<nsIAlertsService> xulBackend(nsXULAlerts::GetInstance());
     NS_ENSURE_TRUE(xulBackend, NS_ERROR_FAILURE);
-    rv = xulBackend->CloseAlert(aAlertName);
+    rv = xulBackend->CloseAlert(aAlertName, aContextClosed);
   }
   return rv;
 }

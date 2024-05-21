@@ -2,3 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+state-label = Estat del xifratge:
+start-text = Inicia una conversa xifrada
+start-label =
+    .label = { start-text }
+start-tooltip =
+    .tooltiptext = { start-text }
+end-label =
+    .label = Finalitza la conversa xifrada
+auth-label =
+    .label = Verifica la identitat del contacte

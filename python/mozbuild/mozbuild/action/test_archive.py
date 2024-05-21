@@ -8,26 +8,23 @@
 # It is defined inline because this was easiest to make test archive
 # generation faster.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import argparse
 import itertools
 import os
 import sys
 import time
 
+import buildconfig
+import mozpack.path as mozpath
 from manifestparser import TestManifest
-from reftest import ReftestManifest
-
-from mozbuild.util import ensureParentDir
 from mozpack.archive import create_tar_gz_from_files
 from mozpack.copier import FileRegistry
 from mozpack.files import ExistingFile, FileFinder
 from mozpack.manifests import InstallManifest
 from mozpack.mozjar import JarWriter
-import mozpack.path as mozpath
+from reftest import ReftestManifest
 
-import buildconfig
+from mozbuild.util import ensureParentDir
 
 STAGE = mozpath.join(buildconfig.topobjdir, "dist", "test-stage")
 
@@ -35,6 +32,7 @@ TEST_HARNESS_BINS = [
     "BadCertAndPinningServer",
     "DelegatedCredentialsServer",
     "EncryptedClientHelloServer",
+    "FaultyServer",
     "GenerateOCSPResponse",
     "OCSPStaplingServer",
     "SanctionsTestServer",
@@ -43,12 +41,14 @@ TEST_HARNESS_BINS = [
     "crashinject",
     "geckodriver",
     "http3server",
+    "content_analysis_sdk_agent",
     "minidumpwriter",
     "pk12util",
     "screenshot",
     "screentopng",
     "ssltunnel",
     "xpcshell",
+    "plugin-container",
 ]
 
 TEST_HARNESS_DLLS = ["crashinjectdll", "mozglue"]
@@ -109,7 +109,7 @@ ARCHIVE_FILES = {
             "source": buildconfig.topsrcdir,
             "base": "",
             "manifests": [
-                "testing/marionette/harness/marionette_harness/tests/unit-tests.ini"
+                "testing/marionette/harness/marionette_harness/tests/unit-tests.toml"
             ],
             # We also need the manifests and harness_unit tests
             "pattern": "testing/marionette/harness/marionette_harness/tests/**",
@@ -166,6 +166,12 @@ ARCHIVE_FILES = {
         },
         {
             "source": buildconfig.topsrcdir,
+            "base": "xpcom/geckoprocesstypes_generator",
+            "pattern": "**",
+            "dest": "tools/geckoprocesstypes_generator",
+        },
+        {
+            "source": buildconfig.topsrcdir,
             "base": "third_party/python/six",
             "pattern": "**",
             "dest": "tools/six",
@@ -210,7 +216,7 @@ ARCHIVE_FILES = {
         {
             "source": buildconfig.topobjdir,
             "base": "dist/bin/components",
-            "patterns": ["httpd.js"],
+            "patterns": ["httpd.sys.mjs"],
             "dest": "bin/components",
         },
         {
@@ -245,7 +251,7 @@ ARCHIVE_FILES = {
         {
             "source": buildconfig.topsrcdir,
             "base": "testing",
-            "pattern": "cppunittest.ini",
+            "pattern": "cppunittest.toml",
             "dest": "cppunittest",
         },
         {
@@ -282,6 +288,13 @@ ARCHIVE_FILES = {
             "pattern": "specialpowers/**",
             "dest": "mochitest/extensions",
         },
+        # Needed by Windows a11y browser tests.
+        {
+            "source": buildconfig.topobjdir,
+            "base": "accessible/interfaces/ia2",
+            "pattern": "IA2Typelib.tlb",
+            "dest": "mochitest",
+        },
     ],
     "mozharness": [
         {
@@ -292,7 +305,7 @@ ARCHIVE_FILES = {
         {
             "source": buildconfig.topsrcdir,
             "base": "",
-            "pattern": "third_party/python/virtualenv/**",
+            "pattern": "third_party/python/_venv/**",
         },
         {
             "source": buildconfig.topsrcdir,
@@ -311,8 +324,23 @@ ARCHIVE_FILES = {
         },
         {
             "source": buildconfig.topsrcdir,
+            "base": "testing/mozbase/mozlog",
+            "pattern": "mozlog/**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
+            "base": "python/mozterm",
+            "pattern": "mozterm/**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
             "base": "testing/mozbase/mozprocess",
             "pattern": "mozprocess/**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
+            "base": "testing/mozbase/mozsystemmonitor",
+            "pattern": "mozsystemmonitor/**",
         },
         {
             "source": buildconfig.topsrcdir,
@@ -321,8 +349,29 @@ ARCHIVE_FILES = {
         },
         {
             "source": buildconfig.topsrcdir,
+            "base": "third_party/python/toml",
+            "pattern": "**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
+            "base": "third_party/python/tomlkit",
+            "pattern": "**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
             "base": "third_party/python/distro",
-            "pattern": "distro.py",
+            "pattern": "distro/**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
+            "base": "third_party/python/packaging",
+            "pattern": "**",
+        },
+        {
+            "source": buildconfig.topsrcdir,
+            "base": "python/mozbuild/mozbuild/action",
+            "pattern": "tooltool.py",
+            "dest": "external_tools",
         },
     ],
     "reftest": [
@@ -382,18 +431,18 @@ ARCHIVE_FILES = {
         {"source": buildconfig.topsrcdir, "pattern": "build/autoconf/**"},
         {"source": buildconfig.topsrcdir, "pattern": "build/moz.configure/**"},
         {"source": buildconfig.topsrcdir, "pattern": "python/**"},
-        {"source": buildconfig.topsrcdir, "pattern": "build/mach_bootstrap.py"},
+        {"source": buildconfig.topsrcdir, "pattern": "build/mach_initialize.py"},
         {
             "source": buildconfig.topsrcdir,
-            "pattern": "build/build_virtualenv_packages.txt",
+            "pattern": "python/sites/build.txt",
         },
         {
             "source": buildconfig.topsrcdir,
-            "pattern": "build/common_virtualenv_packages.txt",
+            "pattern": "python/sites/common.txt",
         },
         {
             "source": buildconfig.topsrcdir,
-            "pattern": "build/mach_virtualenv_packages.txt",
+            "pattern": "python/sites/mach.txt",
         },
         {"source": buildconfig.topsrcdir, "pattern": "mach/**"},
         {
@@ -416,8 +465,10 @@ ARCHIVE_FILES = {
                 "chrome/**",
                 "chrome.manifest",
                 "components/**",
+                "content_analysis_sdk_agent",
                 "http3server",
                 "*.ini",
+                "*.toml",
                 "localization/**",
                 "modules/**",
                 "update.locale",
@@ -526,9 +577,9 @@ ARCHIVE_FILES = {
                 "mach_test_package_commands.py",
                 "moz-http2/**",
                 "node-http2/**",
-                "node-ip/**",
+                "node_ip/**",
+                "node-ws/**",
                 "dns-packet/**",
-                "odoh-wasm/**",
                 "remotexpcshelltests.py",
                 "runxpcshelltests.py",
                 "selftest.py",
@@ -658,7 +709,7 @@ if buildconfig.substs.get("commtopsrcdir"):
     marionette_comm = {
         "source": commtopsrcdir,
         "base": "",
-        "manifest": "testing/marionette/unit-tests.ini",
+        "manifest": "testing/marionette/unit-tests.toml",
         "dest": "marionette/tests/comm",
     }
     ARCHIVE_FILES["common"].append(marionette_comm)
@@ -777,7 +828,7 @@ def find_manifest_dirs(topsrcdir, manifests):
     for p in manifests:
         p = os.path.join(topsrcdir, p)
 
-        if p.endswith(".ini"):
+        if p.endswith(".ini") or p.endswith(".toml"):
             test_manifest = TestManifest()
             test_manifest.read(p)
             dirs |= set([os.path.dirname(m) for m in test_manifest.manifests()])
@@ -825,7 +876,7 @@ def main(argv):
         raise Exception("expected tar.gz or zip output file")
 
     file_count = 0
-    t_start = time.time()
+    t_start = time.monotonic()
     ensureParentDir(out_file)
     res = find_files(args.archive)
     with open(out_file, "wb") as fh:
@@ -847,7 +898,7 @@ def main(argv):
         else:
             raise Exception("unhandled file extension: %s" % out_file)
 
-    duration = time.time() - t_start
+    duration = time.monotonic() - t_start
     zip_size = os.path.getsize(args.outputfile)
     basename = os.path.basename(args.outputfile)
     print(

@@ -13,8 +13,7 @@
 #include "mozilla/dom/ProcessingInstruction.h"
 #include "nsIURI.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class XMLStylesheetProcessingInstruction final : public ProcessingInstruction,
                                                  public LinkStyle {
@@ -44,7 +43,7 @@ class XMLStylesheetProcessingInstruction final : public ProcessingInstruction,
 
   // nsIContent
   virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  virtual void UnbindFromTree(bool aNullParent = true) override;
+  virtual void UnbindFromTree(UnbindContext&) override;
 
   /**
    * Tells this processing instruction to use a different base URI. This is used
@@ -80,7 +79,6 @@ class XMLStylesheetProcessingInstruction final : public ProcessingInstruction,
       mozilla::dom::NodeInfo* aNodeInfo, bool aCloneText) const final;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_XMLStylesheetProcessingInstruction_h

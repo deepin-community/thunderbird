@@ -10,13 +10,11 @@
 #include <functional>
 #include "js/TypeDecls.h"
 #include "js/Value.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/Maybe.h"
 #include "nsISupports.h"
 
-namespace mozilla {
-namespace dom {
-
-class Promise;
+namespace mozilla::dom {
 
 /*
  * PromiseNativeHandler allows C++ to react to a Promise being
@@ -29,39 +27,52 @@ class PromiseNativeHandler : public nsISupports {
 
  public:
   MOZ_CAN_RUN_SCRIPT
-  virtual void ResolvedCallback(JSContext* aCx,
-                                JS::Handle<JS::Value> aValue) = 0;
+  virtual void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                                ErrorResult& aRv) = 0;
 
   MOZ_CAN_RUN_SCRIPT
-  virtual void RejectedCallback(JSContext* aCx,
-                                JS::Handle<JS::Value> aValue) = 0;
+  virtual void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                                ErrorResult& aRv) = 0;
 };
 
-// This class is used to set C++ callbacks once a dom Promise a resolved or
-// rejected.
-class DomPromiseListener final : public PromiseNativeHandler {
+// This base class exists solely to use NS_IMPL_ISUPPORTS because it doesn't
+// support template classes.
+class MozPromiseRejectOnDestructionBase : public PromiseNativeHandler {
   NS_DECL_ISUPPORTS
 
- public:
-  using CallbackTypeResolved =
-      std::function<void(JSContext*, JS::Handle<JS::Value>)>;
-  using CallbackTypeRejected = std::function<void(nsresult)>;
+  void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                        ErrorResult& aRv) override {}
+  void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
+                        ErrorResult& aRv) override {}
 
-  explicit DomPromiseListener(Promise* aDOMPromise);
-  DomPromiseListener(Promise* aDOMPromise, CallbackTypeResolved&& aResolve,
-                     CallbackTypeRejected&& aReject);
-  void SetResolvers(CallbackTypeResolved&& aResolve,
-                    CallbackTypeRejected&& aReject);
-  void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue) override;
-  void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue) override;
-
- private:
-  ~DomPromiseListener();
-  Maybe<CallbackTypeResolved> mResolve;
-  Maybe<CallbackTypeRejected> mReject;
+ protected:
+  ~MozPromiseRejectOnDestructionBase() override = default;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+// Use this when you subscribe to a JS promise to settle a MozPromise that is
+// not guaranteed to be settled by anyone else.
+template <typename T>
+class MozPromiseRejectOnDestruction final
+    : public MozPromiseRejectOnDestructionBase {
+ public:
+  // (Accepting RefPtr<T> instead of T* because compiler fails to implicitly
+  // convert it at call sites)
+  MozPromiseRejectOnDestruction(const RefPtr<T>& aMozPromise,
+                                const char* aCallSite)
+      : mMozPromise(aMozPromise), mCallSite(aCallSite) {
+    MOZ_ASSERT(aMozPromise);
+  }
+
+ protected:
+  ~MozPromiseRejectOnDestruction() override {
+    // Rejecting will be no-op if the promise is already settled
+    mMozPromise->Reject(NS_BINDING_ABORTED, mCallSite);
+  }
+
+  RefPtr<T> mMozPromise;
+  const char* mCallSite;
+};
+
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_PromiseNativeHandler_h

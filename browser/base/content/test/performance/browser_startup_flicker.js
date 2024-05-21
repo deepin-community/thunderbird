@@ -8,22 +8,9 @@
  * on the first window opened during startup.
  */
 
-add_task(async function() {
-  const isWebRenderEnabled = Services.prefs.getBoolPref("gfx.webrender.all");
-  const isFissionEnabled = SpecialPowers.useRemoteSubframes;
-  if (isFissionEnabled && !isWebRenderEnabled) {
-    // This configuration is not supported.
-    // Also, in this specific configuration, we're displaying a warning, which looks like a flicker.
-    // Deactivating test.
-    ok(
-      true,
-      "Detected Fission without WebRender. Flicker expected, deactivating flicker test"
-    );
-    return;
-  }
-
-  let startupRecorder = Cc["@mozilla.org/test/startuprecorder;1"].getService()
-    .wrappedJSObject;
+add_task(async function () {
+  let startupRecorder =
+    Cc["@mozilla.org/test/startuprecorder;1"].getService().wrappedJSObject;
   await startupRecorder.done;
 
   // Ensure all the frame data is in the test compartment to avoid traversing
@@ -37,15 +24,7 @@ add_task(async function() {
     let frame = frames[i],
       previousFrame = frames[i - 1];
     let rects = compareFrames(frame, previousFrame);
-
-    // The first screenshot we get in OSX / Windows shows an unfocused browser
-    // window for some reason. See bug 1445161.
-    //
-    // We'll assume the changes we are seeing are due to this focus change if
-    // there are at least 5 areas that changed near the top of the screen, but
-    // will only ignore this once (hence the alreadyFocused variable).
-    if (!alreadyFocused && rects.length > 5 && rects.every(r => r.y2 < 100)) {
-      alreadyFocused = true;
+    if (!alreadyFocused && isLikelyFocusChange(rects, frame)) {
       todo(
         false,
         "bug 1445161 - the window should be focused at first paint, " +
@@ -53,13 +32,14 @@ add_task(async function() {
       );
       continue;
     }
+    alreadyFocused = true;
 
     rects = rects.filter(rect => {
       let width = frame.width;
 
       let exceptions = [
         /**
-         * Nothing here! Please don't add anything new!
+         * Please don't add anything new unless justified!
          */
       ];
 

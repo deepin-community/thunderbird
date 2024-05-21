@@ -37,8 +37,6 @@ account-setup-password-label = Κωδικός πρόσβασης
     .title = Προαιρετικό, θα χρησιμοποιηθεί μόνο για την επαλήθευση του ονόματος χρήστη
 account-provisioner-button = Απόκτηση νέας διεύθυνσης email
     .accesskey = Α
-account-setup-password-toggle =
-    .title = Εμφάνιση/απόκρυψη του κωδικού πρόσβασης
 account-setup-password-toggle-show =
     .title = Εμφάνιση κωδικού πρόσβασης σε κείμενο
 account-setup-password-toggle-hide =
@@ -109,7 +107,7 @@ account-setup-step5-image =
 account-setup-privacy-footnote2 = Τα διαπιστευτήριά σας θα αποθηκευτούν μόνο τοπικά, στον υπολογιστή σας.
 account-setup-selection-help = Δεν ξέρετε τι να επιλέξετε;
 account-setup-selection-error = Χρειάζεστε βοήθεια;
-account-setup-success-help = Δεν γνωρίζετε σίγουρα τα επόμενα βήματα;
+account-setup-success-help = Δεν γνωρίζετε τα επόμενα βήματα;
 account-setup-documentation-help = Τεκμηρίωση ρύθμισης
 account-setup-forum-help = Φόρουμ υποστήριξης
 account-setup-privacy-help = Πολιτική απορρήτου
@@ -124,21 +122,14 @@ account-setup-results-area-title =
         [one] Διαθέσιμη ρύθμιση
        *[other] Διαθέσιμες ρυθμίσεις
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Διατηρήστε συγχρονισμένους τους φακέλους και τα email σας με τον διακομιστή σας
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Διατηρήστε τους φακέλους και τα email σας στον υπολογιστή σας
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Χρησιμοποιήστε τον διακομιστή Microsoft Exchange ή τις υπηρεσίες cloud του Office365
 account-setup-incoming-title = Εισερχόμενα
 account-setup-outgoing-title = Εξερχόμενα
 account-setup-username-title = Όνομα χρήστη
 account-setup-exchange-title = Διακομιστής
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Χωρίς κρυπτογράφηση
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -151,19 +142,17 @@ account-setup-result-username-different = Εισερχόμενα: { $incoming },
 ## Error messages
 
 # Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
-account-setup-credentials-incomplete = Η αυθεντικοποίηση απέτυχε. Είτε τα διαπιστευτήρια που εισαγάγατε είναι λάθος είτε απαιτείται ξεχωριστό όνομα χρήστη για είσοδο. Το όνομα χρήστη συνήθως είναι το όνομα χρήστη για τον τομέα στα Windows, με ή χωρίς το όνομα τομέα (για παράδειγμα janedoe ή AD\\janedoe).
-account-setup-credentials-wrong = Η αυθεντικοποίηση απέτυχε. Παρακαλούμε ελέγξτε το όνομα χρήστη και τον κωδικό πρόσβασης
+account-setup-credentials-incomplete = Η ταυτοποίηση απέτυχε. Είτε τα διαπιστευτήρια που εισαγάγατε είναι εσφαλμένα είτε απαιτείται ξεχωριστό όνομα χρήστη για σύνδεση. Αυτό το όνομα χρήστη είναι συνήθως το όνομα χρήστη του τομέα σας στα Windows, με ή χωρίς το όνομα τομέα (για παράδειγμα, janedoe ή AD\\janedoe).
+account-setup-credentials-wrong = Η ταυτοποίηση απέτυχε. Παρακαλώ ελέγξτε το όνομα χρήστη και τον κωδικό πρόσβασης
 account-setup-find-settings-failed = Το { -brand-short-name } απέτυχε να εντοπίσει τις ρυθμίσεις του λογαριασμού ηλεκτρονικής αλληλογραφίας σας
 account-setup-exchange-config-unverifiable = Δεν ήταν δυνατή η επαλήθευση των ρυθμίσεων παραμέτρων. Αν το όνομα χρήστη και ο κωδικός πρόσβασής σας είναι σωστά, ο διαχειριστής του διακομιστή ενδέχεται να έχει απενεργοποιήσει τις επιλεγμένες ρυθμίσεις παραμέτρων για τον λογαριασμό σας. Δοκιμάστε να επιλέξετε άλλο πρωτόκολλο.
+account-setup-provisioner-error = Προέκυψε σφάλμα κατά τη ρύθμιση του νέου σας λογαριασμού στο { -brand-short-name }. Παρακαλώ δοκιμάστε να τον ρυθμίσετε χειροκίνητα με τα διαπιστευτήριά σας.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Ρυθμίσεις διακομιστή
 account-setup-incoming-server-legend = Διακομιστής εισερχομένων
 account-setup-protocol-label = Πρωτόκολλο:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Όνομα υπολογιστή:
 account-setup-port-label = Θύρα:
     .title = Ορίστε τον αριθμό θύρας σε 0 για αυτόματη ανίχνευση
@@ -194,7 +183,7 @@ account-setup-insecure-outgoing-title = Ρυθμίσεις εξερχομένω�
 # Variables:
 #  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = Το <b>{ $server }</b> δεν χρησιμοποιεί κρυπτογράφηση.
-account-setup-warning-cleartext-details = Οι επισφαλείς διακομιστές αλληλογραφίας δεν χρησιμοποιούν κρυπτογραφημένες συνδέσεις για την προστασία των κωδικών πρόσβασης και των προσωπικών σας πληροφοριών. Αν συνδεθείτε σε αυτό τον διακομιστή, οι κωδικοί πρόσβασης και οι προσωπικές σας πληροφορίες ενδέχεται να εκτεθούν.
+account-setup-warning-cleartext-details = Οι επισφαλείς διακομιστές αλληλογραφίας δεν χρησιμοποιούν κρυπτογραφημένες συνδέσεις για την προστασία των κωδικών πρόσβασης και των προσωπικών σας πληροφοριών. Αν συνδεθείτε σε αυτόν τον διακομιστή, οι κωδικοί πρόσβασης και οι προσωπικές σας πληροφορίες ενδέχεται να εκτεθούν.
 account-setup-insecure-server-checkbox = Κατανοώ τους κινδύνους
     .accesskey = τ
 account-setup-insecure-description = Το { -brand-short-name } σάς επιτρέπει να κάνετε λήψη των email σας με τις παρεχόμενες ρυθμίσεις. Ωστόσο, θα πρέπει να επικοινωνήσετε με τον διαχειριστή του συστήματος ή τον πάροχο ηλεκτρονικού ταχυδρομείου σας σχετικά με αυτές τις ασυνήθιστες συνδέσεις. Δείτε τις <a data-l10n-name="thunderbird-faq-link">συχνές ερωτήσεις του Thunderbird</a> για περισσότερες πληροφορίες.
@@ -232,7 +221,7 @@ account-setup-confirm-advanced-description = Αυτό το παράθυρο δι
 ## Addon installation section
 
 account-setup-addon-install-title = Εγκατάσταση
-account-setup-addon-install-intro = Ένα πρόσθετο τρίτου μπορεί να σας επιτρέψει την πρόσβαση στον λογαριασμό email σας σε αυτό τον διακομιστή:
+account-setup-addon-install-intro = Ένα τρίτο πρόσθετο μπορεί να σας επιτρέψει την πρόσβαση στον λογαριασμό email σας σε αυτόν τον διακομιστή:
 account-setup-addon-no-protocol = Αυτός ο διακομιστής email δυστυχώς δεν υποστηρίζει ανοικτά πρωτόκολλα. { account-setup-addon-install-intro }
 
 ## Success view
@@ -288,6 +277,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Χρώμα
 account-setup-calendar-refresh-label = Ανανέωση
 account-setup-calendar-refresh-manual = Χειροκίνητα
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Κάθε λεπτό

@@ -18,32 +18,26 @@ AddonTestUtils.createAppInfo(
   "42"
 );
 
-const { getTrimmedString } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionTelemetry.jsm"
+const { getTrimmedString } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionTelemetry.sys.mjs"
 );
-const { ExtensionStorage } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionStorage.jsm"
+const { ExtensionStorage } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionStorage.sys.mjs"
 );
-const { ExtensionStorageIDB } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionStorageIDB.jsm"
+const { ExtensionStorageIDB } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionStorageIDB.sys.mjs"
 );
-const { TelemetryController } = ChromeUtils.import(
-  "resource://gre/modules/TelemetryController.jsm"
+const { TelemetryController } = ChromeUtils.importESModule(
+  "resource://gre/modules/TelemetryController.sys.mjs"
 );
-const { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  OS: "resource://gre/modules/osfile.jsm",
-});
 
 const { promiseShutdownManager, promiseStartupManager } = AddonTestUtils;
 
-const {
-  IDB_MIGRATED_PREF_BRANCH,
-  IDB_MIGRATE_RESULT_HISTOGRAM,
-} = ExtensionStorageIDB;
+const { IDB_MIGRATED_PREF_BRANCH, IDB_MIGRATE_RESULT_HISTOGRAM } =
+  ExtensionStorageIDB;
 const CATEGORIES = ["success", "failure"];
 const EVENT_CATEGORY = "extensions.data";
 const EVENT_OBJECT = "storageLocal";
@@ -56,13 +50,18 @@ const TELEMETRY_EVENTS_FILTER = {
   object: "storageLocal",
 };
 
+add_setup(async function setup() {
+  do_get_profile();
+  Services.fog.initializeFOG();
+});
+
 async function createExtensionJSONFileWithData(extensionId, data) {
   await ExtensionStorage.set(extensionId, data);
   const jsonFile = await ExtensionStorage.getFile(extensionId);
   await jsonFile._save();
   const oldStorageFilename = ExtensionStorage.getStorageFile(extensionId);
   equal(
-    await OS.File.exists(oldStorageFilename),
+    await IOUtils.exists(oldStorageFilename),
     true,
     "The old json file has been created"
   );
@@ -94,15 +93,32 @@ function assertMigrationHistogramCount(category, expectedCount) {
   );
 }
 
+// Note: for consistency with telemetry event format, this function also
+// expects the addon_id to be passed in the event.value property.
+function assertMigrateResultGleanEvents(expectedEvents) {
+  let glean = Glean.extensionsData.migrateResult.testGetValue() ?? [];
+  equal(glean.length, expectedEvents.length, "Correct number of events.");
+
+  expectedEvents.forEach((expected, i) =>
+    Assert.deepEqual(
+      glean[i].extra,
+      { addon_id: expected.value, ...expected.extra },
+      "Correct addon_id and event extra properties."
+    )
+  );
+  Services.fog.testResetFOG();
+}
+
 function assertTelemetryEvents(expectedEvents) {
   TelemetryTestUtils.assertEvents(expectedEvents, {
     category: EVENT_CATEGORY,
     method: EVENT_METHOD,
     object: EVENT_OBJECT,
   });
+  assertMigrateResultGleanEvents(expectedEvents);
 }
 
-add_task(async function setup() {
+add_setup(async function setup() {
   Services.prefs.setBoolPref(ExtensionStorageIDB.BACKEND_ENABLED_PREF, true);
 
   await promiseStartupManager();
@@ -137,7 +153,7 @@ add_task(async function test_no_migration_for_newly_installed_extensions() {
     useAddonManager: "temporary",
     manifest: {
       permissions: ["storage"],
-      applications: { gecko: { id: EXTENSION_ID } },
+      browser_specific_settings: { gecko: { id: EXTENSION_ID } },
     },
     async background() {
       const data = await browser.storage.local.get();
@@ -162,6 +178,7 @@ add_task(async function test_no_migration_for_newly_installed_extensions() {
   // Verify that no data migration have been needed on the newly installed
   // extension, by asserting that no telemetry events has been collected.
   await TelemetryTestUtils.assertEvents([], TELEMETRY_EVENTS_FILTER);
+  assertMigrateResultGleanEvents([]);
 });
 
 // Test that the data migration is still running for a newly installed extension
@@ -179,7 +196,7 @@ add_task(async function test_data_migration_on_keep_storage_on_uninstall() {
     useAddonManager: "temporary",
     manifest: {
       permissions: ["storage"],
-      applications: { gecko: { id: EXTENSION_ID } },
+      browser_specific_settings: { gecko: { id: EXTENSION_ID } },
     },
     async background() {
       const storedData = await browser.storage.local.get();
@@ -202,21 +219,19 @@ add_task(async function test_data_migration_on_keep_storage_on_uninstall() {
   await extension.unload();
 
   // Verify that the expected telemetry has been recorded.
-  await TelemetryTestUtils.assertEvents(
-    [
-      {
-        method: "migrateResult",
-        value: EXTENSION_ID,
-        extra: {
-          backend: "IndexedDB",
-          data_migrated: "y",
-          has_jsonfile: "y",
-          has_olddata: "y",
-        },
-      },
-    ],
-    TELEMETRY_EVENTS_FILTER
-  );
+  let expected = {
+    method: "migrateResult",
+    value: EXTENSION_ID,
+    extra: {
+      backend: "IndexedDB",
+      data_migrated: "y",
+      has_jsonfile: "y",
+      has_olddata: "y",
+    },
+  };
+
+  await TelemetryTestUtils.assertEvents([expected], TELEMETRY_EVENTS_FILTER);
+  assertMigrateResultGleanEvents([expected]);
 
   Services.prefs.clearUserPref(LEAVE_STORAGE_PREF);
 });
@@ -273,7 +288,7 @@ add_task(async function test_storage_local_data_migration() {
     useAddonManager: "temporary",
     manifest: {
       permissions: ["storage"],
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: EXTENSION_ID,
         },
@@ -319,13 +334,13 @@ add_task(async function test_storage_local_data_migration() {
   );
 
   equal(
-    await OS.File.exists(oldStorageFilename),
+    await IOUtils.exists(oldStorageFilename),
     false,
     "The old json storage file name should not exist anymore"
   );
 
   equal(
-    await OS.File.exists(`${oldStorageFilename}.migrated`),
+    await IOUtils.exists(`${oldStorageFilename}.migrated`),
     true,
     "The old json storage file name should have been renamed as .migrated"
   );
@@ -382,8 +397,7 @@ add_task(async function test_storage_local_data_migration() {
     Ci.nsITelemetry.DATASET_PRERELEASE_CHANNELS,
     true
   );
-  const filterByCategory = ([timestamp, category]) =>
-    category === EVENT_CATEGORY;
+  const filterByCategory = ([, category]) => category === EVENT_CATEGORY;
 
   ok(
     !snapshot.parent || snapshot.parent.filter(filterByCategory).length === 0,
@@ -406,9 +420,7 @@ add_task(async function test_storage_local_data_migration() {
 // as expected.
 add_task(async function test_extensionId_trimmed_in_telemetry_event() {
   // Generated extensionId in email-like format, longer than 80 chars.
-  const EXTENSION_ID = `long.extension.id@${Array(80)
-    .fill("a")
-    .join("")}`;
+  const EXTENSION_ID = `long.extension.id@${Array(80).fill("a").join("")}`;
 
   const data = { test_key_string: "test_value" };
 
@@ -430,13 +442,16 @@ add_task(async function test_extensionId_trimmed_in_telemetry_event() {
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
       permissions: ["storage"],
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: EXTENSION_ID,
         },
       },
     },
     background,
+    // We don't want the (default) startupReason ADDON_INSTALL because
+    // that automatically sets the migrated pref and skips migration.
+    startupReason: "APP_STARTUP",
   });
 
   await extension.startup();
@@ -471,7 +486,7 @@ add_task(async function test_extensionId_trimmed_in_telemetry_event() {
 // can't be successfully migrated to the new storage backend, then:
 // - the new storage backend for that extension is still initialized and enabled
 // - any new data is being stored in the new backend
-// - the old file is being renamed (with the `.corrupted` suffix that JSONFile.jsm
+// - the old file is being renamed (with the `.corrupted` suffix that JSONFile.sys.mjs
 //   adds when it fails to load the data file) and still available on disk.
 add_task(async function test_storage_local_corrupted_data_migration() {
   const EXTENSION_ID = "extension-corrupted-data-migration@mozilla.org";
@@ -479,16 +494,14 @@ add_task(async function test_storage_local_corrupted_data_migration() {
   const invalidData = `{"test_key_string": "test_value1"`;
   const oldStorageFilename = ExtensionStorage.getStorageFile(EXTENSION_ID);
 
-  const profileDir = OS.Constants.Path.profileDir;
-  await OS.File.makeDir(
-    OS.Path.join(profileDir, "browser-extension-data", EXTENSION_ID),
-    { from: profileDir, ignoreExisting: true }
+  await IOUtils.makeDirectory(
+    PathUtils.join(PathUtils.profileDir, "browser-extension-data", EXTENSION_ID)
   );
 
   // Write the json file with some invalid data.
-  await OS.File.writeAtomic(oldStorageFilename, invalidData, { flush: true });
+  await IOUtils.writeUTF8(oldStorageFilename, invalidData, { flush: true });
   equal(
-    await OS.File.read(oldStorageFilename, { encoding: "utf-8" }),
+    await IOUtils.readUTF8(oldStorageFilename),
     invalidData,
     "The old json file has been overwritten with invalid data"
   );
@@ -514,13 +527,16 @@ add_task(async function test_storage_local_corrupted_data_migration() {
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
       permissions: ["storage"],
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: EXTENSION_ID,
         },
       },
     },
     background,
+    // We don't want the (default) startupReason ADDON_INSTALL because
+    // that automatically sets the migrated pref and skips migration.
+    startupReason: "APP_STARTUP",
   });
 
   await extension.startup();
@@ -540,7 +556,7 @@ add_task(async function test_storage_local_corrupted_data_migration() {
   );
 
   equal(
-    await OS.File.exists(`${oldStorageFilename}.corrupt`),
+    await IOUtils.exists(`${oldStorageFilename}.corrupt`),
     true,
     "The old json storage should still be available if failed to be read"
   );
@@ -582,16 +598,14 @@ add_task(async function test_storage_local_data_migration_failure() {
   const EXTENSION_ID = "extension-data-migration-failure@mozilla.org";
 
   // Create the file under the expected directory tree.
-  const {
-    jsonFile,
-    oldStorageFilename,
-  } = await createExtensionJSONFileWithData(EXTENSION_ID, {});
+  const { jsonFile, oldStorageFilename } =
+    await createExtensionJSONFileWithData(EXTENSION_ID, {});
 
   // Store a fake invalid value which is going to fail to be saved into IndexedDB
   // (because it can't be cloned and it is going to raise a DataCloneError), which
   // will trigger a data migration failure that we expect to increment the related
   // telemetry histogram.
-  jsonFile.data.set("fake_invalid_key", new Error());
+  jsonFile.data.set("fake_invalid_key", function () {});
 
   async function background() {
     await browser.storage.local.set({
@@ -605,13 +619,16 @@ add_task(async function test_storage_local_data_migration_failure() {
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
       permissions: ["storage"],
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: EXTENSION_ID,
         },
       },
     },
     background,
+    // We don't want the (default) startupReason ADDON_INSTALL because
+    // that automatically sets the migrated pref and skips migration.
+    startupReason: "APP_STARTUP",
   });
 
   await extension.startup();
@@ -629,7 +646,7 @@ add_task(async function test_storage_local_data_migration_failure() {
     "No data stored in the ExtensionStorageIDB backend as expected"
   );
   equal(
-    await OS.File.exists(oldStorageFilename),
+    await IOUtils.exists(oldStorageFilename),
     true,
     "The old json storage should still be available if failed to be read"
   );
@@ -659,12 +676,15 @@ add_task(async function test_migration_aborted_on_shutdown() {
   let extension = ExtensionTestUtils.loadExtension({
     manifest: {
       permissions: ["storage"],
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: EXTENSION_ID,
         },
       },
     },
+    // We don't want the (default) startupReason ADDON_INSTALL because
+    // that automatically sets the migrated pref and skips migration.
+    startupReason: "APP_STARTUP",
   });
 
   await extension.startup();
@@ -687,18 +707,16 @@ add_task(async function test_migration_aborted_on_shutdown() {
     { backendEnabled: false },
     "Expect migration to have been aborted"
   );
-  TelemetryTestUtils.assertEvents(
-    [
-      {
-        value: EXTENSION_ID,
-        extra: {
-          backend: "JSONFile",
-          error_name: "DataMigrationAbortedError",
-        },
-      },
-    ],
-    TELEMETRY_EVENTS_FILTER
-  );
+  let expected = {
+    value: EXTENSION_ID,
+    extra: {
+      backend: "JSONFile",
+      error_name: "DataMigrationAbortedError",
+    },
+  };
+
+  TelemetryTestUtils.assertEvents([expected], TELEMETRY_EVENTS_FILTER);
+  assertMigrateResultGleanEvents([expected]);
 });
 
 add_task(async function test_storage_local_data_migration_clear_pref() {
@@ -736,7 +754,7 @@ async function test_quota_exceeded_while_migrating_data() {
   const extension = ExtensionTestUtils.loadExtension({
     manifest: {
       permissions: ["storage"],
-      applications: { gecko: { id: EXT_ID } },
+      browser_specific_settings: { gecko: { id: EXT_ID } },
     },
     background() {
       browser.test.onMessage.addListener(async (msg, dataSize) => {
@@ -754,6 +772,9 @@ async function test_quota_exceeded_while_migrating_data() {
 
       browser.test.sendMessage("bg-page:ready");
     },
+    // We don't want the (default) startupReason ADDON_INSTALL because
+    // that automatically sets the migrated pref and skips migration.
+    startupReason: "APP_STARTUP",
   });
 
   await extension.startup();
@@ -768,18 +789,15 @@ async function test_quota_exceeded_while_migrating_data() {
   );
   await extension.unload();
 
-  TelemetryTestUtils.assertEvents(
-    [
-      {
-        value: EXT_ID,
-        extra: {
-          backend: "JSONFile",
-          error_name: "QuotaExceededError",
-        },
-      },
-    ],
-    TELEMETRY_EVENTS_FILTER
-  );
+  let expected = {
+    value: EXT_ID,
+    extra: {
+      backend: "JSONFile",
+      error_name: "QuotaExceededError",
+    },
+  };
+  TelemetryTestUtils.assertEvents([expected], TELEMETRY_EVENTS_FILTER);
+  assertMigrateResultGleanEvents([expected]);
 
   Services.prefs.clearUserPref("dom.quotaManager.temporaryStorage.fixedLimit");
   await promiseQuotaManagerServiceClear();

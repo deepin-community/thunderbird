@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsIMemoryReporter.h"
-#include "nsMemory.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Base64.h"
 #include "mozilla/CheckedInt.h"
@@ -183,12 +182,10 @@ void gfxASurface::Init(cairo_surface_t* surface, bool existingSurface) {
     mFloatingRefs = 0;
   } else {
     mFloatingRefs = 1;
-#ifdef MOZ_TREE_CAIRO
     if (cairo_surface_get_content(surface) != CAIRO_CONTENT_COLOR) {
       cairo_surface_set_subpixel_antialiasing(
           surface, CAIRO_SUBPIXEL_ANTIALIASING_DISABLED);
     }
-#endif
   }
 }
 
@@ -212,7 +209,7 @@ void gfxASurface::SetDeviceOffset(const gfxPoint& offset) {
 gfxPoint gfxASurface::GetDeviceOffset() const {
   if (!mSurfaceValid) return gfxPoint(0.0, 0.0);
   gfxPoint pt;
-  cairo_surface_get_device_offset(mSurface, &pt.x, &pt.y);
+  cairo_surface_get_device_offset(mSurface, &pt.x.value, &pt.y.value);
   return pt;
 }
 
@@ -249,24 +246,6 @@ void* gfxASurface::GetData(const cairo_user_data_key_t* key) {
 void gfxASurface::Finish() {
   // null surfaces are allowed here
   cairo_surface_finish(mSurface);
-}
-
-already_AddRefed<gfxASurface> gfxASurface::CreateSimilarSurface(
-    gfxContentType aContent, const IntSize& aSize) {
-  if (!mSurface || !mSurfaceValid) {
-    return nullptr;
-  }
-
-  cairo_surface_t* surface = cairo_surface_create_similar(
-      mSurface, cairo_content_t(int(aContent)), aSize.width, aSize.height);
-  if (cairo_surface_status(surface)) {
-    cairo_surface_destroy(surface);
-    return nullptr;
-  }
-
-  RefPtr<gfxASurface> result = Wrap(surface, aSize);
-  cairo_surface_destroy(surface);
-  return result.forget();
 }
 
 already_AddRefed<gfxImageSurface> gfxASurface::CopyToARGB32ImageSurface() {

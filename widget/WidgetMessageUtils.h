@@ -7,6 +7,8 @@
 
 #include "ipc/EnumSerializer.h"
 #include "ipc/IPCMessageUtils.h"
+#include "mozilla/DimensionRequest.h"
+#include "mozilla/GfxMessageUtils.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/widget/ThemeChangeKind.h"
 #include "nsIWidget.h"
@@ -23,44 +25,51 @@ struct ParamTraits<mozilla::widget::ThemeChangeKind>
 template <>
 struct ParamTraits<mozilla::LookAndFeel::IntID>
     : ContiguousEnumSerializer<mozilla::LookAndFeel::IntID,
-                               mozilla::LookAndFeel::IntID::CaretBlinkTime,
+                               mozilla::LookAndFeel::IntID(0),
                                mozilla::LookAndFeel::IntID::End> {
   using IdType = std::underlying_type_t<mozilla::LookAndFeel::IntID>;
-  static_assert(static_cast<IdType>(
-                    mozilla::LookAndFeel::IntID::CaretBlinkTime) == IdType(0));
 };
 
 template <>
 struct ParamTraits<mozilla::LookAndFeel::ColorID>
     : ContiguousEnumSerializer<mozilla::LookAndFeel::ColorID,
-                               mozilla::LookAndFeel::ColorID::WindowBackground,
+                               mozilla::LookAndFeel::ColorID(0),
                                mozilla::LookAndFeel::ColorID::End> {
   using IdType = std::underlying_type_t<mozilla::LookAndFeel::ColorID>;
-  static_assert(
-      static_cast<IdType>(mozilla::LookAndFeel::ColorID::WindowBackground) ==
-      IdType(0));
 };
 
 template <>
-struct ParamTraits<nsTransparencyMode>
-    : ContiguousEnumSerializerInclusive<nsTransparencyMode, eTransparencyOpaque,
-                                        eTransparencyBorderlessGlass> {};
+struct ParamTraits<mozilla::widget::TransparencyMode>
+    : ContiguousEnumSerializerInclusive<
+          mozilla::widget::TransparencyMode,
+          mozilla::widget::TransparencyMode::Opaque,
+          mozilla::widget::TransparencyMode::Transparent> {};
 
 template <>
 struct ParamTraits<nsCursor>
     : ContiguousEnumSerializer<nsCursor, eCursor_standard, eCursorCount> {};
 
 template <>
-struct ParamTraits<nsIWidget::TouchpadPinchPhase>
+struct ParamTraits<nsIWidget::TouchpadGesturePhase>
     : ContiguousEnumSerializerInclusive<
-          nsIWidget::TouchpadPinchPhase,
-          nsIWidget::TouchpadPinchPhase::PHASE_BEGIN,
-          nsIWidget::TouchpadPinchPhase::PHASE_END> {};
+          nsIWidget::TouchpadGesturePhase,
+          nsIWidget::TouchpadGesturePhase::PHASE_BEGIN,
+          nsIWidget::TouchpadGesturePhase::PHASE_END> {};
 
 template <>
 struct ParamTraits<nsIWidget::TouchPointerState>
     : public BitFlagsEnumSerializer<nsIWidget::TouchPointerState,
                                     nsIWidget::TouchPointerState::ALL_BITS> {};
+
+template <>
+struct ParamTraits<mozilla::DimensionKind>
+    : public ContiguousEnumSerializerInclusive<mozilla::DimensionKind,
+                                               mozilla::DimensionKind::Inner,
+                                               mozilla::DimensionKind::Outer> {
+};
+
+DEFINE_IPC_SERIALIZER_WITH_FIELDS(mozilla::DimensionRequest, mDimensionKind, mX,
+                                  mY, mWidth, mHeight);
 
 }  // namespace IPC
 

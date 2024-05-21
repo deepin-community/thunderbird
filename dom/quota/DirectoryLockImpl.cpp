@@ -16,20 +16,25 @@ DirectoryLockImpl::DirectoryLockImpl(
     MovingNotNull<RefPtr<QuotaManager>> aQuotaManager,
     const Nullable<PersistenceType>& aPersistenceType,
     const nsACString& aSuffix, const nsACString& aGroup,
-    const OriginScope& aOriginScope, const Nullable<Client::Type>& aClientType,
+    const OriginScope& aOriginScope, const nsACString& aStorageOrigin,
+    bool aIsPrivate, const Nullable<Client::Type>& aClientType,
     const bool aExclusive, const bool aInternal,
-    const ShouldUpdateLockIdTableFlag aShouldUpdateLockIdTableFlag)
+    const ShouldUpdateLockIdTableFlag aShouldUpdateLockIdTableFlag,
+    const DirectoryLockCategory aCategory)
     : mQuotaManager(std::move(aQuotaManager)),
       mPersistenceType(aPersistenceType),
       mSuffix(aSuffix),
       mGroup(aGroup),
       mOriginScope(aOriginScope),
+      mStorageOrigin(aStorageOrigin),
       mClientType(aClientType),
       mId(mQuotaManager->GenerateDirectoryLockId()),
+      mIsPrivate(aIsPrivate),
       mExclusive(aExclusive),
       mInternal(aInternal),
       mShouldUpdateLockIdTable(aShouldUpdateLockIdTableFlag ==
                                ShouldUpdateLockIdTableFlag::Yes),
+      mCategory(aCategory),
       mRegistered(false) {
   AssertIsOnOwningThread();
   MOZ_ASSERT_IF(aOriginScope.IsOrigin(), !aOriginScope.GetOrigin().IsEmpty());
@@ -38,6 +43,11 @@ DirectoryLockImpl::DirectoryLockImpl(
                 aPersistenceType.Value() != PERSISTENCE_TYPE_INVALID);
   MOZ_ASSERT_IF(!aInternal, !aGroup.IsEmpty());
   MOZ_ASSERT_IF(!aInternal, aOriginScope.IsOrigin());
+  MOZ_ASSERT_IF(!aInternal, !aStorageOrigin.IsEmpty());
+  MOZ_ASSERT_IF(!aInternal && !aIsPrivate,
+                aOriginScope.GetOrigin() == aStorageOrigin);
+  MOZ_ASSERT_IF(!aInternal && aIsPrivate,
+                aOriginScope.GetOrigin() != aStorageOrigin);
   MOZ_ASSERT_IF(!aInternal, !aClientType.IsNull());
   MOZ_ASSERT_IF(!aInternal, aClientType.Value() < Client::TypeMax());
 }
@@ -45,25 +55,9 @@ DirectoryLockImpl::DirectoryLockImpl(
 DirectoryLockImpl::~DirectoryLockImpl() {
   AssertIsOnOwningThread();
 
-  // We must call UnregisterDirectoryLock before unblocking other locks because
-  // UnregisterDirectoryLock also updates the origin last access time and the
-  // access flag (if the last lock for given origin is unregistered). One of the
-  // blocked locks could be requested by the clear/reset operation which stores
-  // cached information about origins in storage.sqlite. So if the access flag
-  // is not updated before unblocking the lock for reset/clear, we might store
-  // invalid information which can lead to omitting origin initialization during
-  // next temporary storage initialization.
-  if (mRegistered) {
-    mQuotaManager->UnregisterDirectoryLock(*this);
+  if (!mDropped) {
+    Drop();
   }
-
-  MOZ_ASSERT(!mRegistered);
-
-  for (NotNull<RefPtr<DirectoryLockImpl>> blockingLock : mBlocking) {
-    blockingLock->MaybeUnblock(*this);
-  }
-
-  mBlocking.Clear();
 }
 
 #ifdef DEBUG
@@ -116,24 +110,105 @@ void DirectoryLockImpl::NotifyOpenListener() {
   AssertIsOnOwningThread();
 
   if (mInvalidated) {
-    (*mOpenListener)->DirectoryLockFailed();
+    mAcquirePromiseHolder.Reject(NS_ERROR_FAILURE, __func__);
   } else {
-    (*mOpenListener)
-        ->DirectoryLockAcquired(static_cast<UniversalDirectoryLock*>(this));
+    mAcquired.Flip();
+
+    mAcquirePromiseHolder.Resolve(true, __func__);
   }
 
-  mOpenListener.destroy();
+  MOZ_ASSERT(mAcquirePromiseHolder.IsEmpty());
 
   mQuotaManager->RemovePendingDirectoryLock(*this);
 
   mPending.Flip();
+
+  if (mInvalidated) {
+    mDropped.Flip();
+
+    Unregister();
+  }
 }
 
-void DirectoryLockImpl::Acquire(RefPtr<OpenDirectoryListener> aOpenListener) {
+void DirectoryLockImpl::Invalidate() {
   AssertIsOnOwningThread();
-  MOZ_ASSERT(aOpenListener);
 
-  mOpenListener.init(WrapNotNullUnchecked(std::move(aOpenListener)));
+  mInvalidated.EnsureFlipped();
+
+  if (mInvalidateCallback) {
+    MOZ_ALWAYS_SUCCEEDS(GetCurrentSerialEventTarget()->Dispatch(
+        NS_NewRunnableFunction("DirectoryLockImpl::Invalidate",
+                               [invalidateCallback = mInvalidateCallback]() {
+                                 invalidateCallback();
+                               }),
+        NS_DISPATCH_NORMAL));
+  }
+}
+
+void DirectoryLockImpl::Unregister() {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT(mRegistered);
+
+  // We must call UnregisterDirectoryLock before unblocking other locks because
+  // UnregisterDirectoryLock also updates the origin last access time and the
+  // access flag (if the last lock for given origin is unregistered). One of the
+  // blocked locks could be requested by the clear/reset operation which stores
+  // cached information about origins in storage.sqlite. So if the access flag
+  // is not updated before unblocking the lock for reset/clear, we might store
+  // invalid information which can lead to omitting origin initialization during
+  // next temporary storage initialization.
+  mQuotaManager->UnregisterDirectoryLock(*this);
+
+  MOZ_ASSERT(!mRegistered);
+
+  for (NotNull<RefPtr<DirectoryLockImpl>> blockingLock : mBlocking) {
+    blockingLock->MaybeUnblock(*this);
+  }
+
+  mBlocking.Clear();
+}
+
+bool DirectoryLockImpl::MustWait() const {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT(!mRegistered);
+
+  for (const DirectoryLockImpl* const existingLock :
+       mQuotaManager->mDirectoryLocks) {
+    if (MustWaitFor(*existingLock)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+nsTArray<RefPtr<DirectoryLock>> DirectoryLockImpl::LocksMustWaitFor() const {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT(!mRegistered);
+
+  nsTArray<RefPtr<DirectoryLock>> locks;
+
+  for (DirectoryLockImpl* const existingLock : mQuotaManager->mDirectoryLocks) {
+    if (MustWaitFor(*existingLock)) {
+      locks.AppendElement(static_cast<UniversalDirectoryLock*>(existingLock));
+    }
+  }
+
+  return locks;
+}
+
+RefPtr<BoolPromise> DirectoryLockImpl::Acquire() {
+  AssertIsOnOwningThread();
+
+  RefPtr<BoolPromise> result = mAcquirePromiseHolder.Ensure(__func__);
+
+  AcquireInternal();
+
+  return result;
+}
+
+void DirectoryLockImpl::AcquireInternal() {
+  AssertIsOnOwningThread();
 
   mQuotaManager->AddPendingDirectoryLock(*this);
 
@@ -190,15 +265,52 @@ void DirectoryLockImpl::Acquire(RefPtr<OpenDirectoryListener> aOpenListener) {
 
 void DirectoryLockImpl::AcquireImmediately() {
   AssertIsOnOwningThread();
-
-#ifdef DEBUG
-  for (const DirectoryLockImpl* const existingLock :
-       mQuotaManager->mDirectoryLocks) {
-    MOZ_ASSERT(!MustWaitFor(*existingLock));
-  }
-#endif
+  MOZ_ASSERT(!MustWait());
 
   mQuotaManager->RegisterDirectoryLock(*this);
+
+  mAcquired.Flip();
+}
+
+#ifdef DEBUG
+void DirectoryLockImpl::AssertIsAcquiredExclusively() {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT(mBlockedOn.IsEmpty());
+  MOZ_ASSERT(mExclusive);
+  MOZ_ASSERT(mInternal);
+  MOZ_ASSERT(mRegistered);
+  MOZ_ASSERT(!mInvalidated);
+  MOZ_ASSERT(mAcquired);
+
+  bool found = false;
+
+  for (const DirectoryLockImpl* const existingLock :
+       mQuotaManager->mDirectoryLocks) {
+    if (existingLock == this) {
+      MOZ_ASSERT(!found);
+      found = true;
+    } else if (existingLock->mAcquired) {
+      MOZ_ASSERT(false);
+    }
+  }
+
+  MOZ_ASSERT(found);
+}
+#endif
+
+void DirectoryLockImpl::Drop() {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT_IF(!mRegistered, mBlocking.IsEmpty());
+
+  mDropped.Flip();
+
+  if (mRegistered) {
+    Unregister();
+  }
+}
+
+void DirectoryLockImpl::OnInvalidate(std::function<void()>&& aCallback) {
+  mInvalidateCallback = std::move(aCallback);
 }
 
 RefPtr<ClientDirectoryLock> DirectoryLockImpl::SpecializeForClient(
@@ -210,19 +322,21 @@ RefPtr<ClientDirectoryLock> DirectoryLockImpl::SpecializeForClient(
   MOZ_ASSERT(!aOriginMetadata.mGroup.IsEmpty());
   MOZ_ASSERT(!aOriginMetadata.mOrigin.IsEmpty());
   MOZ_ASSERT(aClientType < Client::TypeMax());
-  MOZ_ASSERT(!mOpenListener);
+  MOZ_ASSERT(mAcquirePromiseHolder.IsEmpty());
   MOZ_ASSERT(mBlockedOn.IsEmpty());
 
   if (NS_WARN_IF(mExclusive)) {
     return nullptr;
   }
 
-  RefPtr<DirectoryLockImpl> lock = Create(
-      mQuotaManager, Nullable<PersistenceType>(aPersistenceType),
-      aOriginMetadata.mSuffix, aOriginMetadata.mGroup,
-      OriginScope::FromOrigin(aOriginMetadata.mOrigin),
-      Nullable<Client::Type>(aClientType),
-      /* aExclusive */ false, mInternal, ShouldUpdateLockIdTableFlag::Yes);
+  RefPtr<DirectoryLockImpl> lock =
+      Create(mQuotaManager, Nullable<PersistenceType>(aPersistenceType),
+             aOriginMetadata.mSuffix, aOriginMetadata.mGroup,
+             OriginScope::FromOrigin(aOriginMetadata.mOrigin),
+             aOriginMetadata.mStorageOrigin, aOriginMetadata.mIsPrivate,
+             Nullable<Client::Type>(aClientType),
+             /* aExclusive */ false, mInternal,
+             ShouldUpdateLockIdTableFlag::Yes, mCategory);
   if (NS_WARN_IF(!Overlaps(*lock))) {
     return nullptr;
   }

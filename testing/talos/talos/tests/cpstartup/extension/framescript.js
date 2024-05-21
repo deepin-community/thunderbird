@@ -1,14 +1,13 @@
-(function() {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
+/* eslint-env mozilla/frame-script */
+
+(function () {
   sendAsyncMessage("CPStartup:BrowserChildReady", {
     time: Services.telemetry.msSystemNow(),
   });
 
   addEventListener(
     "CPStartup:Ping",
-    e => {
+    () => {
       let evt = new content.CustomEvent("CPStartup:Pong", { bubbles: true });
       content.dispatchEvent(evt);
     },

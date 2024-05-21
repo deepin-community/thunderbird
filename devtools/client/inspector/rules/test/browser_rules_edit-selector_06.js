@@ -17,7 +17,7 @@ const TEST_URI = `
   <div class="testclass">Styled Node</div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode(".testclass", inspector);
@@ -31,7 +31,7 @@ async function testEditClassSelector(view) {
 
   editor.input.value = "body";
   const onRuleViewChanged = once(view, "ruleview-changed");
-  EventUtils.synthesizeKey("KEY_Enter");
+  EventUtils.synthesizeKey("KEY_Tab");
   await onRuleViewChanged;
 
   // Get the new rule editor that replaced the original
@@ -60,7 +60,7 @@ async function testEditDivSelector(view) {
 
   editor.input.value = "asdf";
   const onRuleViewChanged = once(view, "ruleview-changed");
-  EventUtils.synthesizeKey("KEY_Enter");
+  EventUtils.synthesizeKey("KEY_Tab");
   await onRuleViewChanged;
 
   // Get the new rule editor that replaced the original

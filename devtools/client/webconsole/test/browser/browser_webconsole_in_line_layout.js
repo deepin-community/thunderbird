@@ -6,11 +6,11 @@
 // Test that the in-line layout works as expected
 
 const TEST_URI =
-  "data:text/html,<meta charset=utf8>Test in-line console layout";
+  "data:text/html,<!DOCTYPE html><meta charset=utf8>Test in-line console layout";
 
 const MINIMUM_MESSAGE_HEIGHT = 20;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const { ui } = hud;
   const { document } = ui;
@@ -38,7 +38,11 @@ add_task(async function() {
   );
 
   info("Logging a message in the content window");
-  const onLogMessage = waitForMessage(hud, "simple text message");
+  const onLogMessage = waitForMessageByType(
+    hud,
+    "simple text message",
+    ".console-api"
+  );
   SpecialPowers.spawn(gBrowser.selectedBrowser, [], () => {
     content.wrappedJSObject.console.log("simple text message");
   });
@@ -51,15 +55,20 @@ add_task(async function() {
   );
 
   info("Logging multiple messages to make the output overflow");
-  const onLastMessage = waitForMessage(hud, "message-100");
+  const onLastMessage = waitForMessageByType(
+    hud,
+    "message-100",
+    ".console-api"
+  );
   SpecialPowers.spawn(gBrowser.selectedBrowser, [], () => {
     for (let i = 1; i <= 100; i++) {
       content.wrappedJSObject.console.log("message-" + i);
     }
   });
   await onLastMessage;
-  ok(
-    outputNode.scrollHeight > outputNode.clientHeight,
+  Assert.greater(
+    outputNode.scrollHeight,
+    outputNode.clientHeight,
     "Output node overflows"
   );
   testLayout(appNode);
@@ -83,7 +92,11 @@ add_task(async function() {
     document.querySelector(".webconsole-filteringbar-wrapper.narrow")
   );
 
-  ok(filterBarNode.clientHeight > filterBarHeight, "The filter bar is taller");
+  Assert.greater(
+    filterBarNode.clientHeight,
+    filterBarHeight,
+    "The filter bar is taller"
+  );
   testLayout(appNode);
 
   info("Expand the window so filter buttons aren't on their own line anymore");
@@ -112,16 +125,18 @@ function testLayout(node) {
     node.scrollHeight,
     "there's no scrollbar on the wrapper"
   );
-  ok(
-    node.offsetHeight <= node.ownerDocument.body.offsetHeight,
+  Assert.lessOrEqual(
+    node.offsetHeight,
+    node.ownerDocument.body.offsetHeight,
     "console is not taller than document body"
   );
   const childSumHeight = [...node.childNodes].reduce(
     (height, n) => height + n.offsetHeight,
     0
   );
-  ok(
-    node.offsetHeight >= childSumHeight,
+  Assert.greaterOrEqual(
+    node.offsetHeight,
+    childSumHeight,
     "the sum of the height of wrapper child nodes is not taller than wrapper's one"
   );
 }

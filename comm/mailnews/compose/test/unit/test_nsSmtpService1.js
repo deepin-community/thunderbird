@@ -3,11 +3,10 @@
  * Test suite for nsSmtpService
  */
 
-var SmtpServiceContractID = "@mozilla.org/messengercompose/smtp;1";
-var nsISmtpService = Ci.nsISmtpService;
-
 function run_test() {
-  var smtpService = Cc[SmtpServiceContractID].getService(nsISmtpService);
+  var smtpService = Cc["@mozilla.org/messengercompose/smtp;1"].getService(
+    Ci.nsISmtpService
+  );
 
   // Test - no servers
 
@@ -50,9 +49,8 @@ function run_test() {
   // Test - add multiple servers
 
   var smtpServerArray = new Array(3);
-  var i;
 
-  for (i = 0; i < 3; ++i) {
+  for (let i = 0; i < 3; ++i) {
     smtpServerArray[i] = smtpService.createServer();
   }
 
@@ -74,8 +72,8 @@ function run_test() {
   var found = [false, false, false];
 
   for (smtpServer of smtpServers) {
-    for (i = 0; i < 3; ++i) {
-      if (smtpServer == smtpServerArray[i]) {
+    for (let i = 0; i < 3; ++i) {
+      if (smtpServer.key == smtpServerArray[i].key) {
         found[i] = true;
       }
     }
@@ -85,35 +83,41 @@ function run_test() {
 
   // Test - Find the servers.
 
-  Assert.equal(smtpServerArray[0], smtpService.findServer("user", "localhost"));
   Assert.equal(
-    smtpServerArray[1],
-    smtpService.findServer("user1", "localhost")
+    smtpServerArray[0].key,
+    smtpService.findServer("user", "localhost").key
   );
-  Assert.equal(smtpServerArray[2], smtpService.findServer("", "localhost1"));
+  Assert.equal(
+    smtpServerArray[1].key,
+    smtpService.findServer("user1", "localhost").key
+  );
+  Assert.equal(
+    smtpServerArray[2].key,
+    smtpService.findServer("", "localhost1").key
+  );
 
   Assert.equal(null, smtpService.findServer("user2", "localhost"));
 
   // XXX: FIXME
   // do_check_eq(null, smtpService.findServer("", "localhost"));
 
-  for (i = 0; i < 3; ++i) {
+  for (let i = 0; i < 3; ++i) {
     Assert.equal(
-      smtpServerArray[i],
-      smtpService.getServerByKey(smtpServerArray[i].key)
+      smtpServerArray[i].key,
+      smtpService.getServerByKey(smtpServerArray[i].key).key
     );
   }
 
   smtpService.defaultServer = smtpServerArray[2];
   Assert.equal(
-    smtpService.defaultServer,
-    smtpServerArray[2],
+    smtpService.defaultServer.key,
+    smtpServerArray[2].key,
     "Default server should be correctly set"
   );
 
   // Test - Delete the servers
 
-  for (i = 0; i < 3; ++i) {
+  for (let i = 0; i < 3; ++i) {
     smtpService.deleteServer(smtpServerArray[i]);
   }
 

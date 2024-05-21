@@ -21,15 +21,13 @@
     const LOADING_URI = BASE_URI + "bug1277803.html";
     let testWindow; //will be used to trigger favicon load
 
-    const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
     let expectedPrincipal = Services.scriptSecurityManager
         .createContentPrincipal(Services.io.newURI(LOADING_URI), {});
     let systemPrincipal = Services.scriptSecurityManager.getSystemPrincipal();
 
     function runTest() {
       // Register our observer to intercept favicon requests.
-      function observer(aSubject, aTopic, aData) {
+      function observer(aSubject, aTopic) {
         // Make sure this is a favicon request.
         let httpChannel = aSubject.QueryInterface(Ci.nsIHttpChannel);
         if (FAVICON_URI != httpChannel.URI.spec) {

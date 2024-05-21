@@ -1,5 +1,3 @@
-/* import-globals-from antitracking_head.js */
-
 AntiTracking.runTest(
   "ServiceWorkers",
   async _ => {
@@ -18,7 +16,7 @@ AntiTracking.runTest(
   null,
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });

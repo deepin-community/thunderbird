@@ -6,10 +6,9 @@
 import sys
 
 import requests
-
+from gecko_taskgraph.util.taskgraph import find_existing_tasks
 from taskgraph.parameters import Parameters
 from taskgraph.util.taskcluster import find_task_id, get_artifact, get_session
-from taskgraph.util.taskgraph import find_existing_tasks
 
 from ..cli import BaseTryParser
 from ..push import push_to_try
@@ -109,10 +108,12 @@ def get_hg_file(parameters, path):
 def run(
     task_type,
     release_type,
-    try_config=None,
-    push=True,
+    try_config_params=None,
+    stage_changes=False,
+    dry_run=False,
     message="{msg}",
     closed_tree=False,
+    push_to_lando=False,
 ):
     if task_type == "list":
         print_available_task_types()
@@ -140,15 +141,9 @@ def run(
         ]
     }
 
-    try_config = try_config or {}
-    task_config = {
-        "version": 2,
-        "parameters": {
-            "existing_tasks": existing_tasks,
-            "try_task_config": try_config,
-            "try_mode": "try_task_config",
-        },
-    }
+    task_config = {"version": 2, "parameters": try_config_params or {}}
+    task_config["parameters"]["optimize_target_tasks"] = True
+    task_config["parameters"]["existing_tasks"] = existing_tasks
     for param in (
         "app_version",
         "build_number",
@@ -160,6 +155,7 @@ def run(
     ):
         task_config["parameters"][param] = previous_parameters[param]
 
+    try_config = task_config["parameters"].setdefault("try_task_config", {})
     try_config["tasks"] = TASK_TYPES[task_type]
     for label in try_config["tasks"]:
         if label in existing_tasks:
@@ -169,8 +165,10 @@ def run(
     return push_to_try(
         "scriptworker",
         message.format(msg=msg),
-        push=push,
+        stage_changes=stage_changes,
+        dry_run=dry_run,
         closed_tree=closed_tree,
         try_task_config=task_config,
         files_to_change=files_to_change,
+        push_to_lando=push_to_lando,
     )

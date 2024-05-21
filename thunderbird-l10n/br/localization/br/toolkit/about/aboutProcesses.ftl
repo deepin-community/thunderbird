@@ -4,7 +4,6 @@
 
 # Page title
 about-processes-title = Merer argerzhoù
-
 # The Actions column
 about-processes-column-action =
     .title = Oberezhioù
@@ -25,12 +24,6 @@ about-processes-column-cpu-total = Kewerier
 ## Process names
 ## Variables:
 ##    $pid (String) The process id of this process, assigned by the OS.
-##    $origin (String) The domain name for this process.
-##    $type (String) The raw type for this process. Used for unknown processes.
-
-## Process names
-## Variables:
-##    $pid (String) The process id of this process, assigned by the OS.
 
 about-processes-browser-process = { -brand-short-name } ({ $pid })
 about-processes-web-process = Argerzh Web rannet ({ $pid })
@@ -47,7 +40,6 @@ about-processes-socket-process = Rouedad ({ $pid })
 about-processes-remote-sandbox-broker-process = Remote Sandbox Broker ({ $pid })
 about-processes-fork-server-process = Servijer Fork ({ $pid })
 about-processes-preallocated-process = Rakderannet ({ $pid })
-
 # Unknown process names
 # Variables:
 #    $pid (String) The process id of this process, assigned by the OS.
@@ -60,13 +52,28 @@ about-processes-unknown-process = All : { $type } ({ $pid })
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin } ({ $pid })
-about-processes-web-large-allocation-process = { $origin } ({ $pid }, bras)
+about-processes-web-serviceworker = { $origin } ({ $pid }, serviceworker)
 about-processes-with-coop-coep-process = { $origin } ({ $pid }, liesorin distaget)
 about-processes-web-isolated-process-private = { $origin } — Prevez ({ $pid })
-about-processes-web-large-allocation-process-private = { $origin } — Prevez ({ $pid }, bras)
 about-processes-with-coop-coep-process-private = { $origin } — Prevez ({ $pid }, liesorin distaget)
 
 ## Details within processes
+
+# Thread details
+# Variables:
+#   $name (String) The name assigned to the thread.
+#   $tid (String) The thread id of this thread, assigned by the OS.
+about-processes-thread-name-and-id = { $name }
+    .title = Id an neudennad: { $tid }
+# Tab
+# Variables:
+#   $name (String) The name of the tab (typically the title of the page, might be the url while the page is loading).
+about-processes-tab-name = Ivinell: { $name }
+
+## Utility process actor names
+
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
 
 ## Displaying CPU (percentage and total)
 ## Variables:
@@ -76,6 +83,7 @@ about-processes-with-coop-coep-process-private = { $origin } — Prevez ({ $pid 
 ##                    its start.
 ##    $unit (String) The unit in which to display $total. See the definitions
 ##                   of `duration-unit-*`.
+
 
 ## Displaying Memory (total and delta)
 ## Variables:
@@ -88,6 +96,9 @@ about-processes-with-coop-coep-process-private = { $origin } — Prevez ({ $pid 
 ##    $deltaUnit (String) The unit in which to display $delta. See the definitions
 ##                        of `memory-unit-*`.
 
+# Common case.
+about-processes-total-memory-size-changed = { NUMBER($total, maximumFractionDigits: 0) }{ $totalUnit }
+    .title = Daskemm: { $deltaSign }{ NUMBER($delta, maximumFractionDigits: 0) }{ $deltaUnit }
 # Special case: no change.
 about-processes-total-memory-size-no-change = { NUMBER($total, maximumFractionDigits: 0) }{ $totalUnit }
 

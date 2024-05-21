@@ -25,12 +25,11 @@ class nsMsgQuickSearchDBView : public nsMsgThreadedDBView,
   virtual const char* GetViewName(void) override { return "QuickSearchView"; }
   NS_IMETHOD Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
                   nsMsgViewSortOrderValue sortOrder,
-                  nsMsgViewFlagsTypeValue viewFlags, int32_t* pCount) override;
+                  nsMsgViewFlagsTypeValue viewFlags) override;
   NS_IMETHOD OpenWithHdrs(nsIMsgEnumerator* aHeaders,
                           nsMsgViewSortTypeValue aSortType,
                           nsMsgViewSortOrderValue aSortOrder,
-                          nsMsgViewFlagsTypeValue aViewFlags,
-                          int32_t* aCount) override;
+                          nsMsgViewFlagsTypeValue aViewFlags) override;
   NS_IMETHOD CloneDBView(nsIMessenger* aMessengerInstance,
                          nsIMsgWindow* aMsgWindow,
                          nsIMsgDBViewCommandUpdater* aCommandUpdater,
@@ -47,7 +46,8 @@ class nsMsgQuickSearchDBView : public nsMsgThreadedDBView,
   NS_IMETHOD OnHdrFlagsChanged(nsIMsgDBHdr* aHdrChanged, uint32_t aOldFlags,
                                uint32_t aNewFlags,
                                nsIDBChangeListener* aInstigator) override;
-  NS_IMETHOD OnHdrPropertyChanged(nsIMsgDBHdr* aHdrToChange, bool aPreChange,
+  NS_IMETHOD OnHdrPropertyChanged(nsIMsgDBHdr* aHdrToChange,
+                                  const nsACString& property, bool aPreChange,
                                   uint32_t* aStatus,
                                   nsIDBChangeListener* aInstigator) override;
   NS_IMETHOD OnHdrDeleted(nsIMsgDBHdr* aHdrDeleted, nsMsgKey aParentKey,

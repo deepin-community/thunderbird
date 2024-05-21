@@ -3,33 +3,25 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.OLM_ALGORITHM = exports.MEGOLM_BACKUP_ALGORITHM = exports.MEGOLM_ALGORITHM = void 0;
 exports.encryptMessageForDevice = encryptMessageForDevice;
-exports.getExistingOlmSessions = getExistingOlmSessions;
 exports.ensureOlmSessionsForDevices = ensureOlmSessionsForDevices;
-exports.verifySignature = verifySignature;
+exports.getExistingOlmSessions = getExistingOlmSessions;
+exports.isOlmEncrypted = isOlmEncrypted;
 exports.pkSign = pkSign;
 exports.pkVerify = pkVerify;
-exports.encodeBase64 = encodeBase64;
-exports.encodeUnpaddedBase64 = encodeUnpaddedBase64;
-exports.decodeBase64 = decodeBase64;
-exports.MEGOLM_BACKUP_ALGORITHM = exports.MEGOLM_ALGORITHM = exports.OLM_ALGORITHM = void 0;
-
-var _logger = require("../logger");
-
-var utils = _interopRequireWildcard(require("../utils"));
-
+exports.verifySignature = verifySignature;
 var _anotherJson = _interopRequireDefault(require("another-json"));
-
+var _logger = require("../logger");
+var _event = require("../@types/event");
+var _utils = require("../utils");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
-/*
-Copyright 2016 OpenMarket Ltd
-Copyright 2019 New Vector Ltd
-Copyright 2019 The Matrix.org Foundation C.I.C.
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } /*
+Copyright 2016 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,63 +34,54 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
-
-/**
- * @module olmlib
- *
+*/ /**
  * Utilities common to olm encryption algorithms
  */
-
+var Algorithm = /*#__PURE__*/function (Algorithm) {
+  Algorithm["Olm"] = "m.olm.v1.curve25519-aes-sha2";
+  Algorithm["Megolm"] = "m.megolm.v1.aes-sha2";
+  Algorithm["MegolmBackup"] = "m.megolm_backup.v1.curve25519-aes-sha2";
+  return Algorithm;
+}(Algorithm || {});
 /**
  * matrix algorithm tag for olm
  */
-const OLM_ALGORITHM = "m.olm.v1.curve25519-aes-sha2";
+const OLM_ALGORITHM = exports.OLM_ALGORITHM = Algorithm.Olm;
+
 /**
  * matrix algorithm tag for megolm
  */
+const MEGOLM_ALGORITHM = exports.MEGOLM_ALGORITHM = Algorithm.Megolm;
 
-exports.OLM_ALGORITHM = OLM_ALGORITHM;
-const MEGOLM_ALGORITHM = "m.megolm.v1.aes-sha2";
 /**
  * matrix algorithm tag for megolm backups
  */
-
-exports.MEGOLM_ALGORITHM = MEGOLM_ALGORITHM;
-const MEGOLM_BACKUP_ALGORITHM = "m.megolm_backup.v1.curve25519-aes-sha2";
+const MEGOLM_BACKUP_ALGORITHM = exports.MEGOLM_BACKUP_ALGORITHM = Algorithm.MegolmBackup;
 /**
  * Encrypt an event payload for an Olm device
  *
- * @param {Object<string, string>} resultsObject  The `ciphertext` property
+ * @param resultsObject -  The `ciphertext` property
  *   of the m.room.encrypted event to which to add our result
  *
- * @param {string} ourUserId
- * @param {string} ourDeviceId
- * @param {module:crypto/OlmDevice} olmDevice olm.js wrapper
- * @param {string} recipientUserId
- * @param {module:crypto/deviceinfo} recipientDevice
- * @param {object} payloadFields fields to include in the encrypted payload
+ * @param olmDevice - olm.js wrapper
+ * @param payloadFields - fields to include in the encrypted payload
  *
  * Returns a promise which resolves (to undefined) when the payload
  *    has been encrypted into `resultsObject`
  */
-
-exports.MEGOLM_BACKUP_ALGORITHM = MEGOLM_BACKUP_ALGORITHM;
-
 async function encryptMessageForDevice(resultsObject, ourUserId, ourDeviceId, olmDevice, recipientUserId, recipientDevice, payloadFields) {
   const deviceKey = recipientDevice.getIdentityKey();
   const sessionId = await olmDevice.getSessionIdForDevice(deviceKey);
-
   if (sessionId === null) {
     // If we don't have a session for a device then
     // we can't encrypt a message for it.
+    _logger.logger.log(`[olmlib.encryptMessageForDevice] Unable to find Olm session for device ` + `${recipientUserId}:${recipientDevice.deviceId}`);
     return;
   }
-
-  _logger.logger.log("Using sessionid " + sessionId + " for device " + recipientUserId + ":" + recipientDevice.deviceId);
-
-  const payload = {
+  _logger.logger.log(`[olmlib.encryptMessageForDevice] Using Olm session ${sessionId} for device ` + `${recipientUserId}:${recipientDevice.deviceId}`);
+  const payload = _objectSpread({
     sender: ourUserId,
+    // TODO this appears to no longer be used whatsoever
     sender_device: ourDeviceId,
     // Include the Ed25519 key so that the recipient knows what
     // device this message came from.
@@ -109,149 +92,125 @@ async function encryptMessageForDevice(resultsObject, ourUserId, ourDeviceId, ol
     // the curve25519 key and the ed25519 key are owned by
     // the same device.
     keys: {
-      "ed25519": olmDevice.deviceEd25519Key
+      ed25519: olmDevice.deviceEd25519Key
     },
     // include the recipient device details in the payload,
     // to avoid unknown key attacks, per
     // https://github.com/vector-im/vector-web/issues/2483
     recipient: recipientUserId,
     recipient_keys: {
-      "ed25519": recipientDevice.getFingerprint()
+      ed25519: recipientDevice.getFingerprint()
     }
-  }; // TODO: technically, a bunch of that stuff only needs to be included for
+  }, payloadFields);
+
+  // TODO: technically, a bunch of that stuff only needs to be included for
   // pre-key messages: after that, both sides know exactly which devices are
   // involved in the session. If we're looking to reduce data transfer in the
   // future, we could elide them for subsequent messages.
 
-  utils.extend(payload, payloadFields);
   resultsObject[deviceKey] = await olmDevice.encryptMessage(deviceKey, sessionId, JSON.stringify(payload));
 }
 /**
  * Get the existing olm sessions for the given devices, and the devices that
  * don't have olm sessions.
  *
- * @param {module:crypto/OlmDevice} olmDevice
  *
- * @param {module:base-apis~MatrixBaseApis} baseApis
  *
- * @param {object<string, module:crypto/deviceinfo[]>} devicesByUser
- *    map from userid to list of devices to ensure sessions for
+ * @param devicesByUser - map from userid to list of devices to ensure sessions for
  *
- * @return {Promise} resolves to an array.  The first element of the array is a
+ * @returns resolves to an array.  The first element of the array is a
  *    a map of user IDs to arrays of deviceInfo, representing the devices that
  *    don't have established olm sessions.  The second element of the array is
- *    a map from userId to deviceId to {@link module:crypto~OlmSessionResult}
+ *    a map from userId to deviceId to {@link OlmSessionResult}
  */
-
-
 async function getExistingOlmSessions(olmDevice, baseApis, devicesByUser) {
-  const devicesWithoutSession = {};
-  const sessions = {};
+  // map user Id → DeviceInfo[]
+  const devicesWithoutSession = new _utils.MapWithDefault(() => []);
+  // map user Id → device Id → IExistingOlmSession
+  const sessions = new _utils.MapWithDefault(() => new Map());
   const promises = [];
-
   for (const [userId, devices] of Object.entries(devicesByUser)) {
     for (const deviceInfo of devices) {
       const deviceId = deviceInfo.deviceId;
       const key = deviceInfo.getIdentityKey();
       promises.push((async () => {
         const sessionId = await olmDevice.getSessionIdForDevice(key, true);
-
         if (sessionId === null) {
-          devicesWithoutSession[userId] = devicesWithoutSession[userId] || [];
-          devicesWithoutSession[userId].push(deviceInfo);
+          devicesWithoutSession.getOrCreate(userId).push(deviceInfo);
         } else {
-          sessions[userId] = sessions[userId] || {};
-          sessions[userId][deviceId] = {
+          sessions.getOrCreate(userId).set(deviceId, {
             device: deviceInfo,
             sessionId: sessionId
-          };
+          });
         }
       })());
     }
   }
-
   await Promise.all(promises);
   return [devicesWithoutSession, sessions];
 }
+
 /**
  * Try to make sure we have established olm sessions for the given devices.
  *
- * @param {module:crypto/OlmDevice} olmDevice
+ * @param devicesByUser - map from userid to list of devices to ensure sessions for
  *
- * @param {module:base-apis~MatrixBaseApis} baseApis
- *
- * @param {object<string, module:crypto/deviceinfo[]>} devicesByUser
- *    map from userid to list of devices to ensure sessions for
- *
- * @param {boolean} [force=false] If true, establish a new session even if one
+ * @param force - If true, establish a new session even if one
  *     already exists.
  *
- * @param {Number} [otkTimeout] The timeout in milliseconds when requesting
+ * @param otkTimeout - The timeout in milliseconds when requesting
  *     one-time keys for establishing new olm sessions.
  *
- * @param {Array} [failedServers] An array to fill with remote servers that
+ * @param failedServers - An array to fill with remote servers that
  *     failed to respond to one-time-key requests.
  *
- * @param {Logger} [log] A possibly customised log
+ * @param log - A possibly customised log
  *
- * @return {Promise} resolves once the sessions are complete, to
+ * @returns resolves once the sessions are complete, to
  *    an Object mapping from userId to deviceId to
- *    {@link module:crypto~OlmSessionResult}
+ *    {@link OlmSessionResult}
  */
-
-
-async function ensureOlmSessionsForDevices(olmDevice, baseApis, devicesByUser, force, otkTimeout, failedServers, log) {
-  if (typeof force === "number") {
-    log = failedServers;
-    failedServers = otkTimeout;
-    otkTimeout = force;
-    force = false;
-  }
-
-  if (!log) {
-    log = _logger.logger;
-  }
-
-  const devicesWithoutSession = [// [userId, deviceId], ...
+async function ensureOlmSessionsForDevices(olmDevice, baseApis, devicesByUser, force = false, otkTimeout, failedServers, log = _logger.logger) {
+  const devicesWithoutSession = [
+    // [userId, deviceId], ...
   ];
-  const result = {};
-  const resolveSession = {}; // Mark all sessions this task intends to update as in progress. It is
+  // map user Id → device Id → IExistingOlmSession
+  const result = new Map();
+  // map device key → resolve session fn
+  const resolveSession = new Map();
+
+  // Mark all sessions this task intends to update as in progress. It is
   // important to do this for all devices this task cares about in a single
   // synchronous operation, as otherwise it is possible to have deadlocks
   // where multiple tasks wait indefinitely on another task to update some set
   // of common devices.
-
-  for (const [, devices] of Object.entries(devicesByUser)) {
+  for (const devices of devicesByUser.values()) {
     for (const deviceInfo of devices) {
       const key = deviceInfo.getIdentityKey();
-
       if (key === olmDevice.deviceCurve25519Key) {
         // We don't start sessions with ourself, so there's no need to
         // mark it in progress.
         continue;
       }
-
-      if (!olmDevice._sessionsInProgress[key]) {
+      if (!olmDevice.sessionsInProgress[key]) {
         // pre-emptively mark the session as in-progress to avoid race
         // conditions.  If we find that we already have a session, then
         // we'll resolve
-        olmDevice._sessionsInProgress[key] = new Promise(resolve => {
-          resolveSession[key] = (...args) => {
-            delete olmDevice._sessionsInProgress[key];
-            resolve(...args);
-          };
+        olmDevice.sessionsInProgress[key] = new Promise(resolve => {
+          resolveSession.set(key, v => {
+            delete olmDevice.sessionsInProgress[key];
+            resolve(v);
+          });
         });
       }
     }
   }
-
-  for (const [userId, devices] of Object.entries(devicesByUser)) {
-    result[userId] = {};
-
+  for (const [userId, devices] of devicesByUser) {
+    const resultDevices = new Map();
+    result.set(userId, resultDevices);
     for (const deviceInfo of devices) {
       const deviceId = deviceInfo.deviceId;
       const key = deviceInfo.getIdentityKey();
-
       if (key === olmDevice.deviceCurve25519Key) {
         // We should never be trying to start a session with ourself.
         // Apart from talking to yourself being the first sign of madness,
@@ -260,294 +219,229 @@ async function ensureOlmSessionsForDevices(olmDevice, baseApis, devicesByUser, f
         // new chain when this side has an active sender chain.
         // If you see this message being logged in the wild, we should find
         // the thing that is trying to send Olm messages to itself and fix it.
-        log.info("Attempted to start session with ourself! Ignoring"); // We must fill in the section in the return value though, as callers
+        log.info("Attempted to start session with ourself! Ignoring");
+        // We must fill in the section in the return value though, as callers
         // expect it to be there.
-
-        result[userId][deviceId] = {
+        resultDevices.set(deviceId, {
           device: deviceInfo,
           sessionId: null
-        };
+        });
         continue;
       }
-
       const forWhom = `for ${key} (${userId}:${deviceId})`;
-      const sessionId = await olmDevice.getSessionIdForDevice(key, resolveSession[key], log);
-
-      if (sessionId !== null && resolveSession[key]) {
+      const sessionId = await olmDevice.getSessionIdForDevice(key, !!resolveSession.get(key), log);
+      const resolveSessionFn = resolveSession.get(key);
+      if (sessionId !== null && resolveSessionFn) {
         // we found a session, but we had marked the session as
         // in-progress, so resolve it now, which will unmark it and
         // unblock anything that was waiting
-        resolveSession[key]();
+        resolveSessionFn();
       }
-
       if (sessionId === null || force) {
         if (force) {
           log.info(`Forcing new Olm session ${forWhom}`);
         } else {
           log.info(`Making new Olm session ${forWhom}`);
         }
-
         devicesWithoutSession.push([userId, deviceId]);
       }
-
-      result[userId][deviceId] = {
+      resultDevices.set(deviceId, {
         device: deviceInfo,
         sessionId: sessionId
-      };
+      });
     }
   }
-
   if (devicesWithoutSession.length === 0) {
     return result;
   }
-
   const oneTimeKeyAlgorithm = "signed_curve25519";
   let res;
   let taskDetail = `one-time keys for ${devicesWithoutSession.length} devices`;
-
   try {
     log.debug(`Claiming ${taskDetail}`);
     res = await baseApis.claimOneTimeKeys(devicesWithoutSession, oneTimeKeyAlgorithm, otkTimeout);
     log.debug(`Claimed ${taskDetail}`);
   } catch (e) {
-    for (const resolver of Object.values(resolveSession)) {
+    for (const resolver of resolveSession.values()) {
       resolver();
     }
-
-    log.log(`Failed to claim ${taskDetail}`, e, devicesWithoutSession);
+    log.debug(`Failed to claim ${taskDetail}`, e, devicesWithoutSession);
     throw e;
   }
-
   if (failedServers && "failures" in res) {
     failedServers.push(...Object.keys(res.failures));
   }
-
   const otkResult = res.one_time_keys || {};
   const promises = [];
-
-  for (const [userId, devices] of Object.entries(devicesByUser)) {
+  for (const [userId, devices] of devicesByUser) {
     const userRes = otkResult[userId] || {};
-
-    for (let j = 0; j < devices.length; j++) {
-      const deviceInfo = devices[j];
+    for (const deviceInfo of devices) {
       const deviceId = deviceInfo.deviceId;
       const key = deviceInfo.getIdentityKey();
-
       if (key === olmDevice.deviceCurve25519Key) {
         // We've already logged about this above. Skip here too
         // otherwise we'll log saying there are no one-time keys
         // which will be confusing.
         continue;
       }
-
-      if (result[userId][deviceId].sessionId && !force) {
+      if (result.get(userId)?.get(deviceId)?.sessionId && !force) {
         // we already have a result for this device
         continue;
       }
-
       const deviceRes = userRes[deviceId] || {};
       let oneTimeKey = null;
-
       for (const keyId in deviceRes) {
         if (keyId.indexOf(oneTimeKeyAlgorithm + ":") === 0) {
           oneTimeKey = deviceRes[keyId];
         }
       }
-
       if (!oneTimeKey) {
         log.warn(`No one-time keys (alg=${oneTimeKeyAlgorithm}) ` + `for device ${userId}:${deviceId}`);
-
-        if (resolveSession[key]) {
-          resolveSession[key]();
-        }
-
+        resolveSession.get(key)?.();
         continue;
       }
-
       promises.push(_verifyKeyAndStartSession(olmDevice, oneTimeKey, userId, deviceInfo).then(sid => {
-        if (resolveSession[key]) {
-          resolveSession[key](sid);
-        }
-
-        result[userId][deviceId].sessionId = sid;
+        resolveSession.get(key)?.(sid ?? undefined);
+        const deviceInfo = result.get(userId)?.get(deviceId);
+        if (deviceInfo) deviceInfo.sessionId = sid;
       }, e => {
-        if (resolveSession[key]) {
-          resolveSession[key]();
-        }
-
+        resolveSession.get(key)?.();
         throw e;
       }));
     }
   }
-
   taskDetail = `Olm sessions for ${promises.length} devices`;
   log.debug(`Starting ${taskDetail}`);
   await Promise.all(promises);
   log.debug(`Started ${taskDetail}`);
   return result;
 }
-
 async function _verifyKeyAndStartSession(olmDevice, oneTimeKey, userId, deviceInfo) {
   const deviceId = deviceInfo.deviceId;
-
   try {
     await verifySignature(olmDevice, oneTimeKey, userId, deviceId, deviceInfo.getFingerprint());
   } catch (e) {
     _logger.logger.error("Unable to verify signature on one-time key for device " + userId + ":" + deviceId + ":", e);
-
     return null;
   }
-
   let sid;
-
   try {
     sid = await olmDevice.createOutboundSession(deviceInfo.getIdentityKey(), oneTimeKey.key);
   } catch (e) {
     // possibly a bad key
     _logger.logger.error("Error starting olm session with device " + userId + ":" + deviceId + ": " + e);
-
     return null;
   }
-
   _logger.logger.log("Started new olm sessionid " + sid + " for device " + userId + ":" + deviceId);
-
   return sid;
 }
 /**
  * Verify the signature on an object
  *
- * @param {module:crypto/OlmDevice} olmDevice olm wrapper to use for verify op
+ * @param olmDevice - olm wrapper to use for verify op
  *
- * @param {Object} obj object to check signature on.
+ * @param obj - object to check signature on.
  *
- * @param {string} signingUserId  ID of the user whose signature should be checked
+ * @param signingUserId -  ID of the user whose signature should be checked
  *
- * @param {string} signingDeviceId  ID of the device whose signature should be checked
+ * @param signingDeviceId -  ID of the device whose signature should be checked
  *
- * @param {string} signingKey   base64-ed ed25519 public key
+ * @param signingKey -   base64-ed ed25519 public key
  *
  * Returns a promise which resolves (to undefined) if the the signature is good,
  * or rejects with an Error if it is bad.
  */
-
-
 async function verifySignature(olmDevice, obj, signingUserId, signingDeviceId, signingKey) {
   const signKeyId = "ed25519:" + signingDeviceId;
   const signatures = obj.signatures || {};
   const userSigs = signatures[signingUserId] || {};
   const signature = userSigs[signKeyId];
-
   if (!signature) {
     throw Error("No signature");
-  } // prepare the canonical json: remove unsigned and signatures, and stringify with
-  // anotherjson
+  }
 
-
+  // prepare the canonical json: remove unsigned and signatures, and stringify with anotherjson
   const mangledObj = Object.assign({}, obj);
-  delete mangledObj.unsigned;
+  if ("unsigned" in mangledObj) {
+    delete mangledObj.unsigned;
+  }
   delete mangledObj.signatures;
-
   const json = _anotherJson.default.stringify(mangledObj);
-
   olmDevice.verifySignature(signingKey, json, signature);
 }
+
 /**
  * Sign a JSON object using public key cryptography
- * @param {Object} obj Object to sign.  The object will be modified to include
+ * @param obj - Object to sign.  The object will be modified to include
  *     the new signature
- * @param {Olm.PkSigning|Uint8Array} key the signing object or the private key
+ * @param key - the signing object or the private key
  * seed
- * @param {string} userId The user ID who owns the signing key
- * @param {string} pubkey The public key (ignored if key is a seed)
- * @returns {string} the signature for the object
+ * @param userId - The user ID who owns the signing key
+ * @param pubKey - The public key (ignored if key is a seed)
+ * @returns the signature for the object
  */
-
-
-function pkSign(obj, key, userId, pubkey) {
+function pkSign(obj, key, userId, pubKey) {
   let createdKey = false;
-
   if (key instanceof Uint8Array) {
     const keyObj = new global.Olm.PkSigning();
-    pubkey = keyObj.init_with_seed(key);
+    pubKey = keyObj.init_with_seed(key);
     key = keyObj;
     createdKey = true;
   }
-
   const sigs = obj.signatures || {};
   delete obj.signatures;
   const unsigned = obj.unsigned;
   if (obj.unsigned) delete obj.unsigned;
-
   try {
     const mysigs = sigs[userId] || {};
     sigs[userId] = mysigs;
-    return mysigs['ed25519:' + pubkey] = key.sign(_anotherJson.default.stringify(obj));
+    return mysigs["ed25519:" + pubKey] = key.sign(_anotherJson.default.stringify(obj));
   } finally {
     obj.signatures = sigs;
     if (unsigned) obj.unsigned = unsigned;
-
     if (createdKey) {
       key.free();
     }
   }
 }
+
 /**
  * Verify a signed JSON object
- * @param {Object} obj Object to verify
- * @param {string} pubkey The public key to use to verify
- * @param {string} userId The user ID who signed the object
+ * @param obj - Object to verify
+ * @param pubKey - The public key to use to verify
+ * @param userId - The user ID who signed the object
  */
-
-
-function pkVerify(obj, pubkey, userId) {
-  const keyId = "ed25519:" + pubkey;
-
+function pkVerify(obj, pubKey, userId) {
+  const keyId = "ed25519:" + pubKey;
   if (!(obj.signatures && obj.signatures[userId] && obj.signatures[userId][keyId])) {
     throw new Error("No signature");
   }
-
   const signature = obj.signatures[userId][keyId];
   const util = new global.Olm.Utility();
   const sigs = obj.signatures;
   delete obj.signatures;
   const unsigned = obj.unsigned;
   if (obj.unsigned) delete obj.unsigned;
-
   try {
-    util.ed25519_verify(pubkey, _anotherJson.default.stringify(obj), signature);
+    util.ed25519_verify(pubKey, _anotherJson.default.stringify(obj), signature);
   } finally {
     obj.signatures = sigs;
     if (unsigned) obj.unsigned = unsigned;
     util.free();
   }
 }
+
 /**
- * Encode a typed array of uint8 as base64.
- * @param {Uint8Array} uint8Array The data to encode.
- * @return {string} The base64.
+ * Check that an event was encrypted using olm.
  */
-
-
-function encodeBase64(uint8Array) {
-  return Buffer.from(uint8Array).toString("base64");
-}
-/**
- * Encode a typed array of uint8 as unpadded base64.
- * @param {Uint8Array} uint8Array The data to encode.
- * @return {string} The unpadded base64.
- */
-
-
-function encodeUnpaddedBase64(uint8Array) {
-  return encodeBase64(uint8Array).replace(/=+$/g, '');
-}
-/**
- * Decode a base64 string to a typed array of uint8.
- * @param {string} base64 The base64 to decode.
- * @return {Uint8Array} The decoded data.
- */
-
-
-function decodeBase64(base64) {
-  return Buffer.from(base64, "base64");
+function isOlmEncrypted(event) {
+  if (!event.getSenderKey()) {
+    _logger.logger.error("Event has no sender key (not encrypted?)");
+    return false;
+  }
+  if (event.getWireType() !== _event.EventType.RoomMessageEncrypted || !["m.olm.v1.curve25519-aes-sha2"].includes(event.getWireContent().algorithm)) {
+    _logger.logger.error("Event was not encrypted using an appropriate algorithm");
+    return false;
+  }
+  return true;
 }

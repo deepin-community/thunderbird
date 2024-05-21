@@ -16,7 +16,7 @@
 #include "mozilla/SVGContextPaint.h"
 #include "nsRefreshObservers.h"
 
-class nsIContentViewer;
+class nsIDocumentViewer;
 class gfxSVGGlyphs;
 
 namespace mozilla {
@@ -63,12 +63,10 @@ class gfxSVGGlyphsDocument final : public nsAPostRefreshObserver {
   // Weak so as not to create a cycle. mOwner owns us so this can't dangle.
   gfxSVGGlyphs* mOwner;
   RefPtr<mozilla::dom::Document> mDocument;
-  nsCOMPtr<nsIContentViewer> mViewer;
+  nsCOMPtr<nsIDocumentViewer> mViewer;
   RefPtr<mozilla::PresShell> mPresShell;
 
   nsBaseHashtable<nsUint32HashKey, Element*, Element*> mGlyphIdMap;
-
-  nsCString mSVGGlyphsDocumentURI;
 };
 
 /**
@@ -132,6 +130,8 @@ class gfxSVGGlyphs {
 
   size_t SizeOfIncludingThis(mozilla::MallocSizeOf aMallocSizeOf) const;
 
+  gfxFontEntry* FontEntry() const { return mFontEntry; }
+
  private:
   Element* GetGlyphElement(uint32_t aGlyphId);
 
@@ -147,7 +147,7 @@ class gfxSVGGlyphs {
     mozilla::AutoSwap_PRUint16 mVersion;
     mozilla::AutoSwap_PRUint32 mDocIndexOffset;
     mozilla::AutoSwap_PRUint32 mColorPalettesOffset;
-  } * mHeader;
+  }* mHeader;
 
   struct IndexEntry {
     mozilla::AutoSwap_PRUint16 mStartGlyph;
@@ -159,7 +159,7 @@ class gfxSVGGlyphs {
   const struct DocIndex {
     mozilla::AutoSwap_PRUint16 mNumEntries;
     IndexEntry mEntries[1]; /* actual length = mNumEntries */
-  } * mDocIndex;
+  }* mDocIndex;
 
   static int CompareIndexEntries(const void* _a, const void* _b);
 };

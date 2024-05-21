@@ -27,7 +27,7 @@ function SearchState() {
  * @memberof utils/source-search
  * @static
  */
-function getSearchState(cm, query) {
+function getSearchState(cm) {
   const state = cm.state.search || (cm.state.search = new SearchState());
   return state;
 }
@@ -37,15 +37,12 @@ function isWhitespace(query) {
 }
 
 /**
- * This returns a mode object used by CoeMirror's addOverlay function
+ * This returns a mode object used by CodeMirror's addOverlay function
  * to parse and style tokens in the file.
  * The mode object contains a tokenizer function (token) which takes
  * a character stream as input, advances it a character at a time,
  * and returns style(s) for that token. For more details see
- * https://codemirror.net/doc/manual.html#modeapi
- *
- * Also the token function code is mainly based of work done
- * by the chrome devtools team. Thanks guys! :)
+ * https://codemirror.net/5/doc/manual.html#modeapi
  *
  * @memberof utils/source-search
  * @static
@@ -58,7 +55,7 @@ function searchOverlay(query, modifiers) {
   });
 
   return {
-    token: function(stream, state) {
+    token(stream) {
       // set the last index to be the current stream position
       // this acts as an offset
       regexQuery.lastIndex = stream.pos;
@@ -68,7 +65,9 @@ function searchOverlay(query, modifiers) {
         // set the class for a match
         stream.pos += match[0].length || 1;
         return "highlight highlight-full";
-      } else if (match) {
+      }
+
+      if (match) {
         // if we have a match somewhere in the line, go to that point in the
         // stream
         stream.pos = match.index;
@@ -76,6 +75,8 @@ function searchOverlay(query, modifiers) {
         // if we have no matches in this line, skip to the end of the line
         stream.skipToEnd();
       }
+
+      return null;
     },
   };
 }
@@ -134,17 +135,17 @@ function doSearch(
 ) {
   const { cm, ed } = ctx;
   if (!cm) {
-    return;
+    return null;
   }
   const defaultIndex = { line: -1, ch: -1 };
 
-  return cm.operation(function() {
+  return cm.operation(function () {
     if (!query || isWhitespace(query)) {
-      clearSearch(cm, query);
-      return;
+      clearSearch(cm);
+      return null;
     }
 
-    const state = getSearchState(cm, query);
+    const state = getSearchState(cm);
     const isNewQuery = state.query !== query;
     state.query = query;
 
@@ -177,8 +178,8 @@ export function searchSourceForHighlight(
     return;
   }
 
-  return cm.operation(function() {
-    const state = getSearchState(cm, query);
+  cm.operation(function () {
+    const state = getSearchState(cm);
     const isNewQuery = state.query !== query;
     state.query = query;
 
@@ -205,8 +206,8 @@ function getCursorPos(newQuery, rev, state) {
 function searchNext(ctx, rev, query, newQuery, modifiers) {
   const { cm } = ctx;
   let nextMatch;
-  cm.operation(function() {
-    const state = getSearchState(cm, query);
+  cm.operation(function () {
+    const state = getSearchState(cm);
     const pos = getCursorPos(newQuery, rev, state);
 
     if (!state.query) {
@@ -234,7 +235,7 @@ function searchNext(ctx, rev, query, newQuery, modifiers) {
 
 function findNextOnLine(ctx, rev, query, newQuery, modifiers, line, ch) {
   const { cm, ed } = ctx;
-  cm.operation(function() {
+  cm.operation(function () {
     const pos = { line: line - 1, ch };
     let cursor = getSearchCursor(cm, query, pos, modifiers);
 
@@ -260,8 +261,8 @@ function findNextOnLine(ctx, rev, query, newQuery, modifiers, line, ch) {
  * @memberof utils/source-search
  * @static
  */
-export function removeOverlay(ctx, query) {
-  const state = getSearchState(ctx.cm, query);
+export function removeOverlay(ctx) {
+  const state = getSearchState(ctx.cm);
   ctx.cm.removeOverlay(state.overlay);
   const { line, ch } = ctx.cm.getCursor();
   ctx.cm.doc.setSelection({ line, ch }, { line, ch }, { scroll: false });
@@ -273,8 +274,8 @@ export function removeOverlay(ctx, query) {
  * @memberof utils/source-search
  * @static
  */
-export function clearSearch(cm, query) {
-  const state = getSearchState(cm, query);
+export function clearSearch(cm) {
+  const state = getSearchState(cm);
 
   state.results = [];
 
@@ -292,7 +293,7 @@ export function clearSearch(cm, query) {
  * @static
  */
 export function find(ctx, query, keepSelection, modifiers, focusFirstResult) {
-  clearSearch(ctx.cm, query);
+  clearSearch(ctx.cm);
   return doSearch(
     ctx,
     false,

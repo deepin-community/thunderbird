@@ -8,10 +8,12 @@
  * cancelled. See bug 1653436.
  */
 
-const { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
+const { setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
+);
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  UrlbarProviderAutofill: "resource:///modules/UrlbarProviderAutofill.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  UrlbarProviderAutofill: "resource:///modules/UrlbarProviderAutofill.sys.mjs",
 });
 
 /**
@@ -27,7 +29,7 @@ class SlowHeuristicProvider extends TestProvider {
     this._context = context;
     // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
     await new Promise(resolve => setTimeout(resolve, 300));
-    for (let result of this._results) {
+    for (let result of this.results) {
       add(this, result);
     }
   }
@@ -43,14 +45,14 @@ class FastHeuristicProvider extends TestProvider {
 
   async startQuery(context, add) {
     this._context = context;
-    for (let result of this._results) {
+    for (let result of this.results) {
       add(this, result);
     }
     Services.obs.notifyObservers(null, "results-added");
   }
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   registerCleanupFunction(async () => {
     Services.prefs.clearUserPref("browser.urlbar.suggest.searches");
   });
@@ -124,7 +126,7 @@ add_task(async function timerIsCancelled() {
   // Then they will be queued up in a _heuristicProvidersTimer, waiting for
   // the results from SlowProvider.
   let resultsAddedPromise = new Promise(resolve => {
-    let observe = async (subject, topic, data) => {
+    let observe = async () => {
       Services.obs.removeObserver(observe, "results-added");
       // Fire the second query to cancel the first.
       await controller.startQuery(secondContext);

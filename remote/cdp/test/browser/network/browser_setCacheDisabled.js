@@ -6,40 +6,41 @@
 const { INHIBIT_CACHING, LOAD_BYPASS_CACHE, LOAD_NORMAL } = Ci.nsIRequest;
 
 const TEST_PAGE =
-  "http://example.com/browser/remote/cdp/test/browser/network/doc_empty.html";
+  "https://example.com/browser/remote/cdp/test/browser/network/doc_empty.html";
 
 add_task(async function cacheEnabledAfterDisabled({ client }) {
   const { Network } = client;
   await Network.setCacheDisabled({ cacheDisabled: true });
   await Network.setCacheDisabled({ cacheDisabled: false });
 
-  const checkPromise = checkLoadFlags(LOAD_NORMAL, TEST_PAGE);
+  await watchLoadFlags(LOAD_NORMAL, TEST_PAGE);
   await loadURL(TEST_PAGE);
-  await checkPromise;
+  await waitForLoadFlags();
 });
 
-add_task(async function cacheEnabledByDefault({ Network }) {
-  const checkPromise = checkLoadFlags(LOAD_NORMAL, TEST_PAGE);
+add_task(async function cacheEnabledByDefault() {
+  await watchLoadFlags(LOAD_NORMAL, TEST_PAGE);
   await loadURL(TEST_PAGE);
-  await checkPromise;
+  await waitForLoadFlags();
 });
 
 add_task(async function cacheDisabled({ client }) {
   const { Network } = client;
   await Network.setCacheDisabled({ cacheDisabled: true });
 
-  const checkPromise = checkLoadFlags(
-    LOAD_BYPASS_CACHE | INHIBIT_CACHING,
-    TEST_PAGE
-  );
+  await watchLoadFlags(LOAD_BYPASS_CACHE | INHIBIT_CACHING, TEST_PAGE);
   await loadURL(TEST_PAGE);
-  await checkPromise;
+  await waitForLoadFlags();
 });
 
-function checkLoadFlags(flags, url) {
-  return ContentTask.spawn(
+// This helper will resolve when the content-process progressListener is started
+// and ready to monitor requests.
+// The promise itself will resolve when the progressListener will detect the
+// expected flags for the provided url.
+function watchLoadFlags(flags, url) {
+  return SpecialPowers.spawn(
     gBrowser.selectedBrowser,
-    { flags, url },
+    [{ flags, url }],
     async (options = {}) => {
       const { flags, url } = options;
 
@@ -54,10 +55,8 @@ function checkLoadFlags(flags, url) {
 
           this.requestCount = 0;
 
-          const {
-            NOTIFY_STATE_DOCUMENT,
-            NOTIFY_STATE_REQUEST,
-          } = Ci.nsIWebProgress;
+          const { NOTIFY_STATE_DOCUMENT, NOTIFY_STATE_REQUEST } =
+            Ci.nsIWebProgress;
 
           this.docShell
             .QueryInterface(Ci.nsIInterfaceRequestor)
@@ -68,7 +67,7 @@ function checkLoadFlags(flags, url) {
             );
         },
 
-        onStateChange(webProgress, request, flags, status) {
+        onStateChange(webProgress, request, flags) {
           // We are checking requests - if there isn't one, ignore it.
           if (!request) {
             return;
@@ -100,8 +99,9 @@ function checkLoadFlags(flags, url) {
 
           if (request.name == this.url && (flags & stopFlags) == stopFlags) {
             this.docShell.removeProgressListener(this);
-            ok(
-              this.requestCount > 1,
+            Assert.greater(
+              this.requestCount,
+              1,
               this.url + " saw " + this.requestCount + " requests"
             );
             this.callback();
@@ -114,9 +114,18 @@ function checkLoadFlags(flags, url) {
         ]),
       };
 
-      await new Promise(resolve => {
+      // Store the promise that should be awaited for on the current window.
+      content.resolveCheckLoadFlags = new Promise(resolve => {
         RequestWatcher.init(docShell, flags, url, resolve);
       });
     }
   );
+}
+
+// Wait for the latest promise created in-content by watchLoadFlags to resolve.
+function waitForLoadFlags() {
+  return SpecialPowers.spawn(gBrowser.selectedBrowser, [], async () => {
+    await content.resolveCheckLoadFlags;
+    delete content.resolveCheckLoadFlags;
+  });
 }

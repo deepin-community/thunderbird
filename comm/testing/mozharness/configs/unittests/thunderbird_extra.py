@@ -5,6 +5,7 @@
 #####
 config = {
     "application": "thunderbird",
+    "appdir": "dist/bin/",
     "minimum_tests_zip_dirs": [
         "bin/*",
         "certs/*",
@@ -22,7 +23,7 @@ config = {
         "mochitest-browser-chrome-thunderbird": [
             "--flavor=browser",
             "--subsuite=thunderbird",
-            "--leak-threshold=104857600",  # 100MB
+            "--leak-threshold=51200",  # 50kB
         ],
     },
 }

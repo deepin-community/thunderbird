@@ -4,26 +4,25 @@
 
 
 import collections
-import json
+import datetime
 import hashlib
+import json
 import os
 import shutil
-import six
 import sqlite3
 import subprocess
+
 import requests
-import datetime
-
-
-from mozboot.util import get_state_dir
+import six
+from mach.util import get_state_dir
 from mozbuild.base import MozbuildObject
 from mozpack.files import FileFinder
 from moztest.resolve import TestResolver
 from mozversioncontrol import get_repository_object
 
 from ..cli import BaseTryParser
-from ..tasks import generate_tasks, filter_tasks_by_paths, resolve_tests_by_suite
-from ..push import push_to_try, generate_try_task_config
+from ..push import generate_try_task_config, push_to_try
+from ..tasks import filter_tasks_by_paths, generate_tasks, resolve_tests_by_suite
 
 here = os.path.abspath(os.path.dirname(__file__))
 build = None
@@ -86,6 +85,7 @@ def read_test_manifests():
     support_files_map - a dict that maps from each support file to a list with
                         test files that require them it
     """
+    setup_globals()
     test_resolver = TestResolver.from_environment(cwd=here)
     file_finder = FileFinder(build.topsrcdir)
     support_files_map = collections.defaultdict(list)
@@ -355,7 +355,7 @@ def filter_tasks_by_chunks(tasks, chunks):
         platform = PLATFORM_MAP[platform]
 
         selected_task = None
-        for task in tasks:
+        for task in tasks.keys():
             if not task.startswith(platform):
                 continue
 
@@ -387,12 +387,14 @@ def is_opt_task(task):
 
 
 def run(
-    try_config={},
+    try_config_params={},
     full=False,
     parameters=None,
-    push=True,
+    stage_changes=False,
+    dry_run=False,
     message="{msg}",
     closed_tree=False,
+    push_to_lando=False,
 ):
     setup_globals()
     download_coverage_mapping(vcs.base_ref)
@@ -404,7 +406,7 @@ def run(
         return 1
 
     tg = generate_tasks(parameters, full)
-    all_tasks = tg.tasks.keys()
+    all_tasks = tg.tasks
 
     tasks_by_chunks = filter_tasks_by_chunks(all_tasks, test_chunks)
     tasks_by_path = filter_tasks_by_paths(all_tasks, test_files)
@@ -433,14 +435,18 @@ def run(
             json.dumps(resolve_tests_by_suite(test_files))
         )
     }
-    try_config.setdefault("env", {}).update(path_env)
+    try_config_params.setdefault("try_task_config", {}).setdefault("env", {}).update(
+        path_env
+    )
 
     # Build commit message.
     msg = "try coverage - " + test_count_message
     return push_to_try(
         "coverage",
         message.format(msg=msg),
-        try_task_config=generate_try_task_config("coverage", tasks, try_config),
-        push=push,
+        try_task_config=generate_try_task_config("coverage", tasks, try_config_params),
+        stage_changes=stage_changes,
+        dry_run=dry_run,
         closed_tree=closed_tree,
+        push_to_lando=push_to_lando,
     )

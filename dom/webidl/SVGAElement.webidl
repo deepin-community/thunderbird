@@ -29,9 +29,8 @@ interface SVGAElement : SVGGraphicsElement {
   [SetterThrows]
   attribute DOMString type;
 
-  [Throws]
+  [Throws, Pref="svg.SVGAElement.text.enabled"]
   attribute DOMString text;
 };
 
 SVGAElement includes SVGURIReference;
-

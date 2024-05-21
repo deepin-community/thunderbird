@@ -9,6 +9,7 @@
 #include "gfxFontUtils.h"
 #include "gfxTextRun.h"
 #include "mozilla/gfx/2D.h"
+#include "mozilla/gfx/ScaledFontMac.h"
 #include "mozilla/UniquePtrExtensions.h"
 
 #include <algorithm>
@@ -16,6 +17,7 @@
 #include <dlfcn.h>
 
 using namespace mozilla;
+using namespace mozilla::gfx;
 
 // standard font descriptors that we construct the first time they're needed
 CTFontDescriptorRef gfxCoreTextShaper::sFeaturesDescriptor[kMaxFontInstances];
@@ -69,10 +71,9 @@ gfxCoreTextShaper::~gfxCoreTextShaper() {
   }
 }
 
-static bool IsBuggyIndicScript(unicode::Script aScript) {
-  return aScript == unicode::Script::BENGALI ||
-         aScript == unicode::Script::KANNADA ||
-         aScript == unicode::Script::ORIYA || aScript == unicode::Script::KHMER;
+static bool IsBuggyIndicScript(intl::Script aScript) {
+  return aScript == intl::Script::BENGALI || aScript == intl::Script::KANNADA ||
+         aScript == intl::Script::ORIYA || aScript == intl::Script::KHMER;
 }
 
 bool gfxCoreTextShaper::ShapeText(DrawTarget* aDrawTarget,
@@ -94,7 +95,7 @@ bool gfxCoreTextShaper::ShapeText(DrawTarget* aDrawTarget,
   // among them.
   const gfxFontStyle* style = mFont->GetStyle();
   gfxFontEntry* entry = mFont->GetFontEntry();
-  auto handleFeatureTag = [](const uint32_t& aTag, uint32_t& aValue,
+  auto handleFeatureTag = [](uint32_t aTag, uint32_t aValue,
                              void* aUserArg) -> void {
     if (aTag == HB_TAG('s', 'm', 'c', 'p') && aValue) {
       *static_cast<bool*>(aUserArg) = true;
@@ -635,8 +636,8 @@ CTFontRef gfxCoreTextShaper::CreateCTFontWithFeatures(
   const gfxFontEntry* fe = mFont->GetFontEntry();
   bool isInstalledFont = !fe->IsUserFont() || fe->IsLocalUserFont();
   CGFontRef cgFont = static_cast<gfxMacFont*>(mFont)->GetCGFontRef();
-  return gfxMacFont::CreateCTFontFromCGFontWithVariations(
-      cgFont, aSize, isInstalledFont, aDescriptor);
+  return CreateCTFontFromCGFontWithVariations(cgFont, aSize, isInstalledFont,
+                                              aDescriptor);
 }
 
 void gfxCoreTextShaper::Shutdown()  // [static]

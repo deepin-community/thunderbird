@@ -8,7 +8,10 @@
  * redirected without hitting the network (HSTS is one of such cases)
  */
 
-add_task(async function() {
+add_task(async function () {
+  // This test explicitly checks http->https redirects and should not force https.
+  await pushPref("dom.security.https_first", false);
+
   const EXPECTED_REQUESTS = [
     // Request to HTTP URL, redirects to HTTPS
     { status: 302 },
@@ -55,7 +58,11 @@ add_task(async function() {
     const stackLen = stacktrace ? stacktrace.length : 0;
 
     ok(stacktrace, `Request #${i} has a stacktrace`);
-    ok(stackLen > 0, `Request #${i} has a stacktrace with ${stackLen} items`);
+    Assert.greater(
+      stackLen,
+      0,
+      `Request #${i} has a stacktrace with ${stackLen} items`
+    );
   });
 
   // Send a request to reset the HSTS policy to state before the test
@@ -69,7 +76,7 @@ add_task(async function() {
     return SpecialPowers.spawn(
       tab.linkedBrowser,
       [{ count, url }],
-      async function(args) {
+      async function (args) {
         content.wrappedJSObject.performRequests(args.count, args.url);
       }
     );

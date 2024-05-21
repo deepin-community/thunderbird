@@ -26,25 +26,33 @@ class TextEditor;
  * This abstract class is used for the text control frame to get the editor and
  * selection controller objects, and some helper properties.
  */
-class TextControlElement : public nsGenericHTMLFormElementWithState {
+class TextControlElement : public nsGenericHTMLFormControlElementWithState {
  public:
   TextControlElement(already_AddRefed<dom::NodeInfo>&& aNodeInfo,
                      dom::FromParser aFromParser, FormControlType aType)
-      : nsGenericHTMLFormElementWithState(std::move(aNodeInfo), aFromParser,
-                                          aType){};
+      : nsGenericHTMLFormControlElementWithState(std::move(aNodeInfo),
+                                                 aFromParser, aType){};
 
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(TextControlElement,
-                                           nsGenericHTMLFormElementWithState)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(
+      TextControlElement, nsGenericHTMLFormControlElementWithState)
 
+  /**
+   * Return true always, i.e., even if this is an <input> but the type is not
+   * for a single line text control, this returns true.  Use
+   * IsSingleLineTextControlOrTextArea() if you want to know whether this may
+   * work with a TextEditor.
+   */
   bool IsTextControlElement() const final { return true; }
+
+  virtual bool IsSingleLineTextControlOrTextArea() const = 0;
 
   NS_IMPL_FROMNODE_HELPER(TextControlElement, IsTextControlElement())
 
   /**
    * Tell the control that value has been deliberately changed (or not).
    */
-  virtual nsresult SetValueChanged(bool changed) = 0;
+  virtual void SetValueChanged(bool) = 0;
 
   /**
    * Find out whether this is a single line text control.  (text or password)
@@ -84,7 +92,8 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
   /**
    * Get the default value of the text control
    */
-  virtual void GetDefaultValueFromContent(nsAString& aValue) = 0;
+  virtual void GetDefaultValueFromContent(nsAString& aValue,
+                                          bool aForDisplay) = 0;
 
   /**
    * Return true if the value of the control has been changed.
@@ -100,11 +109,8 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
    * Get the current value of the text editor.
    *
    * @param aValue the buffer to retrieve the value in
-   * @param aIgnoreWrap whether to ignore the text wrapping behavior specified
-   * for the element.
    */
-  virtual void GetTextEditorValue(nsAString& aValue,
-                                  bool aIgnoreWrap) const = 0;
+  virtual void GetTextEditorValue(nsAString& aValue) const = 0;
 
   /**
    * Get the editor object associated with the text editor.
@@ -115,7 +121,7 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
    * GetTextEditorWithoutCreation().
    */
   MOZ_CAN_RUN_SCRIPT virtual TextEditor* GetTextEditor() = 0;
-  virtual TextEditor* GetTextEditorWithoutCreation() = 0;
+  virtual TextEditor* GetTextEditorWithoutCreation() const = 0;
 
   /**
    * Get the selection controller object associated with the text editor.
@@ -182,8 +188,16 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
 
   /**
    * Callback called whenever the value is changed.
+   *
+   * aKnownNewValue can be used to avoid value lookups if present (might be
+   * null, if the caller doesn't know the specific value that got set).
    */
-  virtual void OnValueChanged(ValueChangeKind) = 0;
+  virtual void OnValueChanged(ValueChangeKind, bool aNewValueEmpty,
+                              const nsAString* aKnownNewValue) = 0;
+
+  void OnValueChanged(ValueChangeKind aKind, const nsAString& aNewValue) {
+    return OnValueChanged(aKind, aNewValue.IsEmpty(), &aNewValue);
+  }
 
   /**
    * Helpers for value manipulation from SetRangeText.
@@ -220,6 +234,14 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
 
  protected:
   virtual ~TextControlElement() = default;
+
+  // The focusability state of this form control.  eUnfocusable means that it
+  // shouldn't be focused at all, eInactiveWindow means it's in an inactive
+  // window, eActiveWindow means it's in an active window.
+  enum class FocusTristate { eUnfocusable, eInactiveWindow, eActiveWindow };
+
+  // Get our focus state.
+  FocusTristate FocusState();
 };
 
 }  // namespace mozilla

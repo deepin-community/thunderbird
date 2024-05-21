@@ -63,11 +63,7 @@
 /* Decoder tree                                                                                   */
 /* ---------------------------------------------------------------------------------------------- */
 
-const ZydisDecoderTreeNode* ZydisDecoderTreeGetRootNode(void)
-{
-    static const ZydisDecoderTreeNode root = { ZYDIS_NODETYPE_FILTER_OPCODE, 0x0000 };
-    return &root;
-}
+const ZydisDecoderTreeNode zydis_decoder_tree_root = { ZYDIS_NODETYPE_FILTER_OPCODE, 0x0000 };
 
 const ZydisDecoderTreeNode* ZydisDecoderTreeGetChildNode(const ZydisDecoderTreeNode* parent,
     ZyanU16 index)
@@ -81,7 +77,7 @@ const ZydisDecoderTreeNode* ZydisDecoderTreeGetChildNode(const ZydisDecoderTreeN
         ZYAN_ASSERT(index <  17);
         return &FILTERS_VEX[parent->value][index];
     case ZYDIS_NODETYPE_FILTER_EMVEX:
-        ZYAN_ASSERT(index <  33);
+        ZYAN_ASSERT(index <  49);
         return &FILTERS_EMVEX[parent->value][index];
     case ZYDIS_NODETYPE_FILTER_OPCODE:
         ZYAN_ASSERT(index < 256);
@@ -159,6 +155,12 @@ const ZydisDecoderTreeNode* ZydisDecoderTreeGetChildNode(const ZydisDecoderTreeN
     case ZYDIS_NODETYPE_FILTER_MODE_CLDEMOTE:
         ZYAN_ASSERT(index <   2);
         return &FILTERS_MODE_CLDEMOTE[parent->value][index];
+    case ZYDIS_NODETYPE_FILTER_MODE_IPREFETCH:
+        ZYAN_ASSERT(index <   2);
+        return &FILTERS_MODE_IPREFETCH[parent->value][index];
+    case ZYDIS_NODETYPE_FILTER_MODE_UD0_COMPAT:
+        ZYAN_ASSERT(index <   2);
+        return &FILTERS_MODE_UD0_COMPAT[parent->value][index];
     default:
         ZYAN_UNREACHABLE;
     }

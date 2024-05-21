@@ -14,18 +14,21 @@ namespace mozilla {
 
 /* static */
 WebrtcVideoEncoder* MediaDataCodec::CreateEncoder(
-    webrtc::VideoCodecType aCodecType) {
-#if defined(MOZ_APPLEMEDIA) || defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WMF)
-  if (aCodecType == webrtc::VideoCodecType::kVideoCodecH264) {
-    return new WebrtcVideoEncoderProxy(new WebrtcMediaDataEncoder());
+    const webrtc::SdpVideoFormat& aFormat) {
+  if (!StaticPrefs::media_webrtc_platformencoder()) {
+    return nullptr;
   }
-#endif
-  return nullptr;
+  if (!WebrtcMediaDataEncoder::CanCreate(
+          webrtc::PayloadStringToCodecType(aFormat.name))) {
+    return nullptr;
+  }
+
+  return new WebrtcVideoEncoderProxy(new WebrtcMediaDataEncoder(aFormat));
 }
 
 /* static */
 WebrtcVideoDecoder* MediaDataCodec::CreateDecoder(
-    webrtc::VideoCodecType aCodecType) {
+    webrtc::VideoCodecType aCodecType, TrackingId aTrackingId) {
   switch (aCodecType) {
     case webrtc::VideoCodecType::kVideoCodecVP8:
     case webrtc::VideoCodecType::kVideoCodecVP9:
@@ -57,11 +60,11 @@ WebrtcVideoDecoder* MediaDataCodec::CreateDecoder(
       return nullptr;
   }
   RefPtr<PDMFactory> pdm = new PDMFactory();
-  if (!pdm->SupportsMimeType(codec)) {
+  if (pdm->SupportsMimeType(codec).isEmpty()) {
     return nullptr;
   }
 
-  return new WebrtcMediaDataDecoder(codec);
+  return new WebrtcMediaDataDecoder(codec, aTrackingId);
 }
 
 }  // namespace mozilla

@@ -8,7 +8,6 @@ const VIDEO_URL =
  * mockTransfer.js provides a utility that lets us mock out
  * the "Save File" dialog.
  */
-/* import-globals-from ../../../../../toolkit/content/tests/browser/common/mockTransfer.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/content/tests/browser/common/mockTransfer.js",
   this
@@ -48,16 +47,16 @@ function waitForTransferComplete() {
  * to save a frame screenshot to the disk. Completes once we've
  * verified that the frame has been saved to disk.
  */
-add_task(async function() {
+add_task(async function () {
   let MockFilePicker = SpecialPowers.MockFilePicker;
-  MockFilePicker.init(window);
+  MockFilePicker.init(window.browsingContext);
 
   // Create the folder the video will be saved into.
   let destDir = createTemporarySaveDirectory();
   let destFile = destDir.clone();
 
   MockFilePicker.displayDirectory = destDir;
-  MockFilePicker.showCallback = function(fp) {
+  MockFilePicker.showCallback = function (fp) {
     destFile.append(fp.defaultString);
     MockFilePicker.setFiles([destFile]);
     MockFilePicker.filterIndex = 1; // kSaveAsType_URL
@@ -66,7 +65,7 @@ add_task(async function() {
   mockTransferRegisterer.register();
 
   // Make sure that we clean these things up when we're done.
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     mockTransferRegisterer.unregister();
     MockFilePicker.cleanup();
     destDir.remove(true);

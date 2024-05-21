@@ -11,9 +11,7 @@
 #include "mozilla/StaticPrefs_gfx.h"
 #include "mozilla/webrender/WebRenderTypes.h"
 
-#ifdef USE_SKIA
-#  include "skia/include/ports/SkTypeface_cairo.h"
-#endif
+#include "skia/include/ports/SkTypeface_cairo.h"
 
 #include FT_MULTIPLE_MASTERS_H
 
@@ -34,7 +32,6 @@ bool ScaledFontFreeType::UseSubpixelPosition() const {
          FT_IS_SCALABLE(mFace->GetFace());
 }
 
-#ifdef USE_SKIA
 SkTypeface* ScaledFontFreeType::CreateSkTypeface() {
   return SkCreateTypefaceFromCairoFTFont(mFace->GetFace(), mFace.get());
 }
@@ -48,9 +45,11 @@ void ScaledFontFreeType::SetupSkFontDrawOptions(SkFont& aFont) {
 
   aFont.setEmbeddedBitmaps(true);
 }
-#endif
 
-#ifdef USE_CAIRO_SCALED_FONT
+bool ScaledFontFreeType::MayUseBitmaps() {
+  return !FT_IS_SCALABLE(mFace->GetFace());
+}
+
 cairo_font_face_t* ScaledFontFreeType::CreateCairoFontFace(
     cairo_font_options_t* aFontOptions) {
   cairo_font_options_set_hint_metrics(aFontOptions, CAIRO_HINT_METRICS_OFF);
@@ -68,7 +67,6 @@ cairo_font_face_t* ScaledFontFreeType::CreateCairoFontFace(
   return cairo_ft_font_face_create_for_ft_face(mFace->GetFace(), loadFlags,
                                                synthFlags, mFace.get());
 }
-#endif
 
 bool ScaledFontFreeType::GetFontInstanceData(FontInstanceDataOutput aCb,
                                              void* aBaton) {
@@ -95,7 +93,6 @@ bool ScaledFontFreeType::GetWRFontInstanceOptions(
     options.flags |= wr::FontInstanceFlags::SUBPIXEL_POSITION;
   }
   options.flags |= wr::FontInstanceFlags::EMBEDDED_BITMAPS;
-  options.bg_color = wr::ToColorU(DeviceColor());
   options.synthetic_italics =
       wr::DegreesToSyntheticItalics(GetSyntheticObliqueAngle());
 
@@ -129,68 +126,12 @@ ScaledFontFreeType::InstanceData::InstanceData(
   }
 }
 
-already_AddRefed<ScaledFont> UnscaledFontFreeType::CreateScaledFont(
-    Float aGlyphSize, const uint8_t* aInstanceData,
-    uint32_t aInstanceDataLength, const FontVariation* aVariations,
-    uint32_t aNumVariations) {
-  if (aInstanceDataLength < sizeof(ScaledFontFreeType::InstanceData)) {
-    gfxWarning() << "FreeType scaled font instance data is truncated.";
-    return nullptr;
-  }
-  const ScaledFontFreeType::InstanceData& instanceData =
-      *reinterpret_cast<const ScaledFontFreeType::InstanceData*>(aInstanceData);
-
-  RefPtr<SharedFTFace> face(InitFace());
-  if (!face) {
-    gfxWarning() << "Attempted to deserialize FreeType scaled font without "
-                    "FreeType face";
-    return nullptr;
-  }
-
-  if (aNumVariations > 0 && face->GetData()) {
-    if (RefPtr<SharedFTFace> varFace = face->GetData()->CloneFace()) {
-      face = varFace;
-    }
-  }
-
-  // Only apply variations if we have an explicitly cloned face.
-  if (aNumVariations > 0 && face != GetFace()) {
-    ApplyVariationsToFace(aVariations, aNumVariations, face->GetFace());
-  }
-
-  RefPtr<ScaledFontFreeType> scaledFont = new ScaledFontFreeType(
-      std::move(face), this, aGlyphSize, instanceData.mApplySyntheticBold);
-
-  return scaledFont.forget();
-}
-
-already_AddRefed<ScaledFont> UnscaledFontFreeType::CreateScaledFontFromWRFont(
-    Float aGlyphSize, const wr::FontInstanceOptions* aOptions,
-    const wr::FontInstancePlatformOptions* aPlatformOptions,
-    const FontVariation* aVariations, uint32_t aNumVariations) {
-  ScaledFontFreeType::InstanceData instanceData(aOptions, aPlatformOptions);
-  return CreateScaledFont(aGlyphSize, reinterpret_cast<uint8_t*>(&instanceData),
-                          sizeof(instanceData), aVariations, aNumVariations);
-}
-
 bool ScaledFontFreeType::HasVariationSettings() {
   // Check if the FT face has been cloned.
   return mFace &&
          mFace->GetFace()->face_flags & FT_FACE_FLAG_MULTIPLE_MASTERS &&
          mFace !=
              static_cast<UnscaledFontFreeType*>(mUnscaledFont.get())->GetFace();
-}
-
-already_AddRefed<UnscaledFont> UnscaledFontFreeType::CreateFromFontDescriptor(
-    const uint8_t* aData, uint32_t aDataLength, uint32_t aIndex) {
-  if (aDataLength == 0) {
-    gfxWarning() << "FreeType font descriptor is truncated.";
-    return nullptr;
-  }
-  const char* path = reinterpret_cast<const char*>(aData);
-  RefPtr<UnscaledFont> unscaledFont =
-      new UnscaledFontFreeType(std::string(path, aDataLength), aIndex);
-  return unscaledFont.forget();
 }
 
 }  // namespace gfx

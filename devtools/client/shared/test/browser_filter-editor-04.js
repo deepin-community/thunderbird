@@ -7,12 +7,12 @@
 
 const {
   CSSFilterEditorWidget,
-} = require("devtools/client/shared/widgets/FilterWidget");
+} = require("resource://devtools/client/shared/widgets/FilterWidget.js");
 const LIST_ITEM_HEIGHT = 32;
 
 const TEST_URI = CHROME_URL_ROOT + "doc_filter-editor-01.html";
 
-add_task(async function() {
+add_task(async function () {
   const { doc } = await createHost("bottom", TEST_URI);
 
   const container = doc.querySelector("#filter-container");
@@ -81,8 +81,9 @@ add_task(async function() {
     pageY: 0,
   });
   widget._mouseMove({ pageY: -LIST_ITEM_HEIGHT * 5 });
-  ok(
-    first().getBoundingClientRect().top >= boundaries.top,
+  Assert.greaterOrEqual(
+    first().getBoundingClientRect().top,
+    boundaries.top,
     "First filter should not move outside filter list"
   );
 
@@ -94,10 +95,12 @@ add_task(async function() {
     pageY: 0,
   });
   widget._mouseMove({ pageY: -LIST_ITEM_HEIGHT * 5 });
-  ok(
-    last().getBoundingClientRect().bottom <= boundaries.bottom,
+  Assert.lessOrEqual(
+    last().getBoundingClientRect().bottom,
+    boundaries.bottom,
     "Last filter should not move outside filter list"
   );
 
   widget._mouseUp();
+  widget.destroy();
 });

@@ -7,6 +7,7 @@ provisioner-searching-icon =
     .alt = Etsitään…
 account-provisioner-title = Luo uusi sähköpostiosoite
 account-provisioner-description = Käytä luotettavia kumppaneitamme saadaksesi uuden yksityisen ja turvallisen sähköpostiosoitteen.
+account-provisioner-start-help = Käytettävät hakuehdot lähetetään { -vendor-short-name }lle (<a data-l10n-name="mozilla-privacy-link">tietosuojakäytäntö</a>) ja kolmannen osapuolen sähköpostipalveluntarjoajille <strong>mailfence.com</strong> (<a data-l10n-name="mailfence-privacy-link">tietosuojakäytäntö</a>, <a data-l10n-name="mailfence-tou-link">käyttöehdot</a >) ja <strong>gandi.net</strong> (<a data-l10n-name="gandi-privacy-link">tietosuojakäytäntö</a>, <a data-l10n-name="gandi-tou- link">käyttöehdot</a>), jotta saatavissa olevia sähköpostiosoitteita on mahdollista etsiä.
 account-provisioner-mail-account-title = Osta uusi sähköpostiosoite
 account-provisioner-mail-account-description = Thunderbird ja <a data-l10n-name="mailfence-home-link">Mailfence</a> tarjoavat yhteistyön tuloksena sinulle yksityisen ja turvallisen sähköpostitilin. Uskomme, että jokaisella on oikeus turvalliseen sähköpostiin.
 account-provisioner-domain-title = Osta oma sähköposti ja verkkotunnus
@@ -25,6 +26,7 @@ account-provisioner-button-back = Takaisin
 
 ## Notifications
 
+account-provisioner-fetching-provisioners = Haetaan palveluntarjoajia…
 account-provisioner-connection-issues = Kommunikointi rekisteröitymispalvelumme kanssa ei toimi. Tarkista verkkoyhteyden toimivuus.
 account-provisioner-searching-email = Etsitään käytettävissä olevia sähköpostitilejä…
 account-provisioner-searching-domain = Etsitään käytettävissä olevia verkkotunnuksia…
@@ -47,5 +49,9 @@ account-provisioner-results-title =
 account-provisioner-mail-results-caption = Voit etsiä muita sähköpostiosoitteita nimimerkeillä tai muilla hakuehdoilla.
 account-provisioner-domain-results-caption = Voit etsiä muita verkkotunnuksia nimimerkeillä tai muilla hakuehdoilla.
 account-provisioner-free-account = Ilmainen
+# Variables:
+# $price (String) - Yearly fee for the mail account. For example "US $9.99".
 account-provision-price-per-year = { $price } vuodessa
 account-provisioner-all-results-button = Näytä kaikki tulokset
+account-provisioner-open-in-tab-img =
+    .title = Avautuu uuteen välilehteen

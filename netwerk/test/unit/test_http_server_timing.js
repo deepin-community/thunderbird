@@ -5,37 +5,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* eslint-env node */
-/* global serverPort */
 
 "use strict";
-
-class ServerCode {
-  static async startServer(port) {
-    global.http = require("http");
-    global.server = global.http.createServer((req, res) => {
-      res.setHeader("Content-Type", "text/plain");
-      res.setHeader("Content-Length", "12");
-      res.setHeader("Transfer-Encoding", "chunked");
-      res.setHeader("Trailer", "Server-Timing");
-      res.setHeader(
-        "Server-Timing",
-        "metric; dur=123.4; desc=description, metric2; dur=456.78; desc=description1"
-      );
-      res.write("data reached");
-      res.addTrailers({
-        "Server-Timing":
-          "metric3; dur=789.11; desc=description2, metric4; dur=1112.13; desc=description3",
-      });
-      res.end();
-    });
-
-    return new Promise(resolve => {
-      global.server.listen(0, "0.0.0.0", 2000, () => {
-        resolve(global.server.address().port);
-      });
-    });
-  }
-}
 
 const responseServerTiming = [
   { metric: "metric", duration: "123.4", description: "description" },
@@ -48,14 +19,30 @@ const trailerServerTiming = [
 
 let port;
 
+let server;
 add_task(async function setup() {
-  let processId = await NodeServer.fork();
+  server = new NodeHTTPServer();
+  await server.start();
   registerCleanupFunction(async () => {
-    await NodeServer.kill(processId);
+    await server.stop();
   });
-  await NodeServer.execute(processId, ServerCode);
-  port = await NodeServer.execute(processId, `ServerCode.startServer(0)`);
-  ok(port);
+  server.registerPathHandler("/", (req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Content-Length", "12");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Trailer", "Server-Timing");
+    res.setHeader(
+      "Server-Timing",
+      "metric; dur=123.4; desc=description, metric2; dur=456.78; desc=description1"
+    );
+    res.write("data reached");
+    res.addTrailers({
+      "Server-Timing":
+        "metric3; dur=789.11; desc=description2, metric4; dur=1112.13; desc=description3",
+    });
+    res.end();
+  });
+  port = server.port();
 });
 
 // Test that secure origins can use server-timing, even with plain http
@@ -66,7 +53,7 @@ add_task(async function test_localhost_origin() {
   });
   await new Promise(resolve => {
     chan.asyncOpen(
-      new ChannelListener((request, buffer) => {
+      new ChannelListener(request => {
         let channel = request.QueryInterface(Ci.nsITimedChannel);
         let headers = channel.serverTiming.QueryInterface(Ci.nsIArray);
         ok(headers.length);
@@ -99,7 +86,7 @@ add_task(async function test_http_non_localhost() {
   });
   await new Promise(resolve => {
     chan.asyncOpen(
-      new ChannelListener((request, buffer) => {
+      new ChannelListener(request => {
         let channel = request.QueryInterface(Ci.nsITimedChannel);
         let headers = channel.serverTiming.QueryInterface(Ci.nsIArray);
         Assert.equal(headers.length, 0);

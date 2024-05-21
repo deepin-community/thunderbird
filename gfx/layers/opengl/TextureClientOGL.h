@@ -41,7 +41,8 @@ class AndroidSurfaceTextureData : public TextureData {
  public:
   static already_AddRefed<TextureClient> CreateTextureClient(
       AndroidSurfaceTextureHandle aHandle, gfx::IntSize aSize, bool aContinuous,
-      gl::OriginPos aOriginPos, bool aHasAlpha, LayersIPCChannel* aAllocator,
+      gl::OriginPos aOriginPos, bool aHasAlpha, bool aForceBT709ColorSpace,
+      Maybe<gfx::Matrix4x4> aTransformOverride, LayersIPCChannel* aAllocator,
       TextureFlags aFlags);
 
   virtual ~AndroidSurfaceTextureData();
@@ -61,18 +62,25 @@ class AndroidSurfaceTextureData : public TextureData {
  protected:
   AndroidSurfaceTextureData(AndroidSurfaceTextureHandle aHandle,
                             gfx::IntSize aSize, bool aContinuous,
-                            bool aHasAlpha);
+                            bool aHasAlpha, bool aForceBT709ColorSpace,
+                            Maybe<gfx::Matrix4x4> aTransformOverride);
 
   const AndroidSurfaceTextureHandle mHandle;
   const gfx::IntSize mSize;
   const bool mContinuous;
   const bool mHasAlpha;
+  const bool mForceBT709ColorSpace;
+  const Maybe<gfx::Matrix4x4> mTransformOverride;
 };
 
 class AndroidNativeWindowTextureData : public TextureData {
  public:
   static AndroidNativeWindowTextureData* Create(gfx::IntSize aSize,
                                                 gfx::SurfaceFormat aFormat);
+
+  TextureType GetTextureType() const override {
+    return TextureType::AndroidNativeWindow;
+  }
 
   void FillInfo(TextureData::Info& aInfo) const override;
 

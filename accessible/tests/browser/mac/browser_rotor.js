@@ -7,11 +7,9 @@
 /* import-globals-from ../../mochitest/states.js */
 loadScripts({ name: "states.js", dir: MOCHITESTS_DIR });
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+});
 
 /**
  * Test rotor with heading
@@ -55,6 +53,54 @@ addAccessibleTask(
     is(
       world.getAttributeValue("AXTitle"),
       headings[1].getAttributeValue("AXTitle"),
+      "Found correct second heading"
+    );
+  }
+);
+
+/**
+ * Test rotor with heading and empty search text
+ */
+addAccessibleTask(
+  `<h1 id="hello">hello</h1><br><h2 id="world">world</h2><br>goodbye`,
+  async (browser, accDoc) => {
+    const searchPred = {
+      AXSearchKey: "AXHeadingSearchKey",
+      AXImmediateDescendantsOnly: 1,
+      AXResultsLimit: -1,
+      AXDirection: "AXDirectionNext",
+      AXSearchText: "",
+    };
+
+    const webArea = accDoc.nativeInterface.QueryInterface(
+      Ci.nsIAccessibleMacInterface
+    );
+    is(
+      webArea.getAttributeValue("AXRole"),
+      "AXWebArea",
+      "Got web area accessible"
+    );
+
+    const headingCount = webArea.getParameterizedAttributeValue(
+      "AXUIElementCountForSearchPredicate",
+      NSDictionary(searchPred)
+    );
+    is(headingCount, 2, "Found two headings");
+
+    const headings = webArea.getParameterizedAttributeValue(
+      "AXUIElementsForSearchPredicate",
+      NSDictionary(searchPred)
+    );
+    const hello = getNativeInterface(accDoc, "hello");
+    const world = getNativeInterface(accDoc, "world");
+    is(
+      headings[0].getAttributeValue("AXTitle"),
+      hello.getAttributeValue("AXTitle"),
+      "Found correct first heading"
+    );
+    is(
+      headings[1].getAttributeValue("AXTitle"),
+      world.getAttributeValue("AXTitle"),
       "Found correct second heading"
     );
   }
@@ -223,7 +269,7 @@ addAccessibleTask(
       "AXUIElementCountForSearchPredicate",
       NSDictionary(searchPred)
     );
-    is(4, tableCount, "Found four tables");
+    is(tableCount, 3, "Found three tables");
 
     const tables = webArea.getParameterizedAttributeValue(
       "AXUIElementsForSearchPredicate",
@@ -232,7 +278,6 @@ addAccessibleTask(
     const shapes = getNativeInterface(accDoc, "shapes");
     const food = getNativeInterface(accDoc, "food");
     const ariaTable = getNativeInterface(accDoc, "ariaTable");
-    const grid = getNativeInterface(accDoc, "grid");
 
     is(
       shapes.getAttributeValue("AXColumnCount"),
@@ -248,11 +293,6 @@ addAccessibleTask(
       ariaTable.getAttributeValue("AXColumnCount"),
       tables[2].getAttributeValue("AXColumnCount"),
       "Found correct third table"
-    );
-    is(
-      grid.getAttributeValue("AXColumnCount"),
-      tables[3].getAttributeValue("AXColumnCount"),
-      "Found correct fourth table"
     );
   }
 );
@@ -970,6 +1010,7 @@ addAccessibleTask(
 
     let stateChanged = waitForEvent(EVENT_STATE_CHANGE, "href");
 
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
     await PlacesTestUtils.addVisits(["http://www.example.com/"]);
 
     await stateChanged;

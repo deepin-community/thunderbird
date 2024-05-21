@@ -12,13 +12,16 @@
 #ifndef TouchManager_h_
 #define TouchManager_h_
 
+#include "Units.h"
 #include "mozilla/BasicEvents.h"
 #include "mozilla/dom/Touch.h"
+#include "mozilla/StaticPtr.h"
 #include "mozilla/TouchEvents.h"
 #include "nsRefPtrHashtable.h"
 
 namespace mozilla {
 class PresShell;
+class TimeStamp;
 
 class TouchManager {
  public:
@@ -51,12 +54,20 @@ class TouchManager {
   bool PreHandleEvent(mozilla::WidgetEvent* aEvent, nsEventStatus* aStatus,
                       bool& aTouchIsNew,
                       nsCOMPtr<nsIContent>& aCurrentEventContent);
+  void PostHandleEvent(const mozilla::WidgetEvent* aEvent,
+                       const nsEventStatus* aStatus);
 
   static already_AddRefed<nsIContent> GetAnyCapturedTouchTarget();
   static bool HasCapturedTouch(int32_t aId);
   static already_AddRefed<dom::Touch> GetCapturedTouch(int32_t aId);
   static bool ShouldConvertTouchToPointer(const dom::Touch* aTouch,
                                           const WidgetTouchEvent* aEvent);
+
+  // This should be called after PostHandleEvent() is called.  Note that this
+  // cannot check touches outside this process.  So, this should not be used for
+  // actual user input handling.  This is designed for a fallback path to
+  // dispatch mouse events for touch events synthesized without APZ.
+  static bool IsSingleTapEndToDoDefault(const WidgetTouchEvent* aTouchEndEvent);
 
  private:
   void EvictTouches(dom::Document* aLimitToDocument = nullptr);
@@ -73,8 +84,15 @@ class TouchManager {
     bool mConvertToPointer;
   };
 
-  static nsTHashMap<nsUint32HashKey, TouchInfo>* sCaptureTouchList;
+  static StaticAutoPtr<nsTHashMap<nsUint32HashKey, TouchInfo>>
+      sCaptureTouchList;
   static layers::LayersId sCaptureTouchLayersId;
+  // The last start of a single tap.  This will be set to "Null" if the tap is
+  // consumed or becomes not a single tap.
+  static TimeStamp sSingleTouchStartTimeStamp;
+  // The last start point of the single tap tracked with
+  // sSingleTouchStartTimeStamp.
+  static LayoutDeviceIntPoint sSingleTouchStartPoint;
 };
 
 }  // namespace mozilla

@@ -12,16 +12,18 @@
 #include "mozilla/HTMLEditor.h"               // for HTMLEditor
 #include "mozilla/mozalloc.h"                 // for operator new
 #include "mozilla/PresShell.h"                // for PresShell
+#include "mozilla/Try.h"                      // for MOZ_TRY
 #include "nsAString.h"
 #include "nsBaseCommandController.h"  // for nsBaseCommandController
 #include "nsCommandManager.h"         // for nsCommandManager
 #include "nsComponentManagerUtils.h"  // for do_CreateInstance
 #include "nsContentUtils.h"
-#include "nsDebug.h"  // for NS_ENSURE_SUCCESS, etc
+#include "nsDebug.h"     // for NS_ENSURE_SUCCESS, etc
+#include "nsDocShell.h"  // for nsDocShell
 #include "nsEditingSession.h"
 #include "nsError.h"                      // for NS_ERROR_FAILURE, NS_OK, etc
 #include "nsIChannel.h"                   // for nsIChannel
-#include "nsIContentViewer.h"             // for nsIContentViewer
+#include "nsIDocumentViewer.h"            // for nsIDocumentViewer
 #include "nsIControllers.h"               // for nsIControllers
 #include "nsID.h"                         // for NS_GET_IID, etc
 #include "nsHTMLDocument.h"               // for nsHTMLDocument
@@ -63,9 +65,8 @@ nsEditingSession::nsEditingSession()
       mCanCreateEditor(false),
       mInteractive(false),
       mMakeWholeDocumentEditable(true),
-      mDisabledJSAndPlugins(false),
+      mDisabledJS(false),
       mScriptsEnabled(true),
-      mPluginsEnabled(true),
       mProgressListenerRegistered(false),
       mImageAnimationMode(0),
       mEditorFlags(0),
@@ -121,7 +122,7 @@ nsEditingSession::MakeWindowEditable(mozIDOMWindowProxy* aWindow,
 
   nsresult rv;
   if (!mInteractive) {
-    rv = DisableJSAndPlugins(window->GetCurrentInnerWindow());
+    rv = DisableJS(window->GetCurrentInnerWindow());
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
@@ -173,30 +174,21 @@ nsEditingSession::MakeWindowEditable(mozIDOMWindowProxy* aWindow,
   return rv;
 }
 
-nsresult nsEditingSession::DisableJSAndPlugins(nsPIDOMWindowInner* aWindow) {
+nsresult nsEditingSession::DisableJS(nsPIDOMWindowInner* aWindow) {
   WindowContext* wc = aWindow->GetWindowContext();
-  BrowsingContext* bc = wc->GetBrowsingContext();
 
   mScriptsEnabled = wc->GetAllowJavascript();
-
   MOZ_TRY(wc->SetAllowJavascript(false));
-
-  // Disable plugins in this document:
-  mPluginsEnabled = bc->GetAllowPlugins();
-
-  MOZ_TRY(bc->SetAllowPlugins(false));
-
-  mDisabledJSAndPlugins = true;
-
+  mDisabledJS = true;
   return NS_OK;
 }
 
-nsresult nsEditingSession::RestoreJSAndPlugins(nsPIDOMWindowInner* aWindow) {
-  if (!mDisabledJSAndPlugins) {
+nsresult nsEditingSession::RestoreJS(nsPIDOMWindowInner* aWindow) {
+  if (!mDisabledJS) {
     return NS_OK;
   }
 
-  mDisabledJSAndPlugins = false;
+  mDisabledJS = false;
 
   if (NS_WARN_IF(!aWindow)) {
     // DetachFromWindow may call this method with nullptr.
@@ -204,13 +196,7 @@ nsresult nsEditingSession::RestoreJSAndPlugins(nsPIDOMWindowInner* aWindow) {
   }
 
   WindowContext* wc = aWindow->GetWindowContext();
-  BrowsingContext* bc = wc->GetBrowsingContext();
-
-  MOZ_TRY(wc->SetAllowJavascript(mScriptsEnabled));
-
-  // Disable plugins in this document:
-
-  return bc->SetAllowPlugins(mPluginsEnabled);
+  return wc->SetAllowJavascript(mScriptsEnabled);
 }
 
 /*---------------------------------------------------------------------------
@@ -320,16 +306,17 @@ nsresult nsEditingSession::SetupEditorOnWindow(nsPIDOMWindowOuter& aWindow) {
   }
 
   // make the UI state maintainer
-  mComposerCommandsUpdater = new ComposerCommandsUpdater();
+  RefPtr<ComposerCommandsUpdater> commandsUpdater =
+      new ComposerCommandsUpdater();
+  mComposerCommandsUpdater = commandsUpdater;
 
   // now init the state maintainer
   // This allows notification of error state
   //  even if we don't create an editor
-  mComposerCommandsUpdater->Init(aWindow);
+  commandsUpdater->Init(aWindow);
 
   if (mEditorStatus != eEditorCreationInProgress) {
-    RefPtr<ComposerCommandsUpdater> updater = mComposerCommandsUpdater;
-    updater->OnHTMLEditorCreated();
+    commandsUpdater->OnHTMLEditorCreated();
 
     // At this point we have made a final decision that we don't support
     // editing the current document.  This is an internal failure state, but
@@ -342,9 +329,11 @@ nsresult nsEditingSession::SetupEditorOnWindow(nsPIDOMWindowOuter& aWindow) {
 
   // Create editor and do other things
   //  only if we haven't found some error above,
-  nsCOMPtr<nsIDocShell> docShell = aWindow.GetDocShell();
-  NS_ENSURE_TRUE(docShell, NS_ERROR_FAILURE);
-  RefPtr<PresShell> presShell = docShell->GetPresShell();
+  const RefPtr<nsDocShell> docShell = nsDocShell::Cast(aWindow.GetDocShell());
+  if (NS_WARN_IF(!docShell)) {
+    return NS_ERROR_FAILURE;
+  }
+  const RefPtr<PresShell> presShell = docShell->GetPresShell();
   if (NS_WARN_IF(!presShell)) {
     return NS_ERROR_FAILURE;
   }
@@ -364,6 +353,18 @@ nsresult nsEditingSession::SetupEditorOnWindow(nsPIDOMWindowOuter& aWindow) {
   NS_ENSURE_TRUE(fs, NS_ERROR_FAILURE);
   AutoHideSelectionChanges hideSelectionChanges(fs);
 
+  nsCOMPtr<nsIDocumentViewer> viewer;
+  nsresult rv = docShell->GetDocViewer(getter_AddRefs(viewer));
+  if (NS_FAILED(rv) || NS_WARN_IF(!viewer)) {
+    NS_WARNING("nsDocShell::GetDocViewer() failed");
+    return rv;
+  }
+
+  const RefPtr<Document> doc = viewer->GetDocument();
+  if (NS_WARN_IF(!doc)) {
+    return NS_ERROR_FAILURE;
+  }
+
   // create and set editor
   // Try to reuse an existing editor
   nsCOMPtr<nsIEditor> editor = do_QueryReferent(mExistingEditor);
@@ -372,12 +373,12 @@ nsresult nsEditingSession::SetupEditorOnWindow(nsPIDOMWindowOuter& aWindow) {
   if (htmlEditor) {
     htmlEditor->PreDestroy();
   } else {
-    htmlEditor = new HTMLEditor();
+    htmlEditor = new HTMLEditor(*doc);
     mExistingEditor =
         do_GetWeakReference(static_cast<nsIEditor*>(htmlEditor.get()));
   }
   // set the editor on the docShell. The docShell now owns it.
-  nsresult rv = docShell->SetHTMLEditor(htmlEditor);
+  rv = docShell->SetHTMLEditor(htmlEditor);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // setup the HTML editor command controller
@@ -393,34 +394,20 @@ nsresult nsEditingSession::SetupEditorOnWindow(nsPIDOMWindowOuter& aWindow) {
   rv = htmlEditor->SetContentsMIMEType(mimeType);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  nsCOMPtr<nsIContentViewer> contentViewer;
-  rv = docShell->GetContentViewer(getter_AddRefs(contentViewer));
-  NS_ENSURE_SUCCESS(rv, rv);
-  NS_ENSURE_TRUE(contentViewer, NS_ERROR_FAILURE);
+  MOZ_ASSERT(docShell->HasDocumentViewer());
+  MOZ_ASSERT(viewer->GetDocument());
 
-  RefPtr<Document> doc = contentViewer->GetDocument();
-  if (NS_WARN_IF(!doc)) {
-    return NS_ERROR_FAILURE;
+  MOZ_DIAGNOSTIC_ASSERT(commandsUpdater == mComposerCommandsUpdater);
+  if (MOZ_UNLIKELY(commandsUpdater != mComposerCommandsUpdater)) {
+    commandsUpdater = mComposerCommandsUpdater;
   }
-
-  // Set up as a doc state listener
-  // Important! We must have this to broadcast the "obs_documentCreated" message
-  htmlEditor->SetComposerCommandsUpdater(mComposerCommandsUpdater);
-
-  rv = htmlEditor->Init(*doc, mEditorFlags);
+  rv = htmlEditor->Init(*doc, *commandsUpdater, mEditorFlags);
   NS_ENSURE_SUCCESS(rv, rv);
 
   RefPtr<Selection> selection = htmlEditor->GetSelection();
   if (NS_WARN_IF(!selection)) {
     return NS_ERROR_FAILURE;
   }
-
-  // and as a transaction listener
-  MOZ_ASSERT(mComposerCommandsUpdater);
-  DebugOnly<bool> addedTransactionListener =
-      htmlEditor->AddTransactionListener(*mComposerCommandsUpdater);
-  NS_WARNING_ASSERTION(addedTransactionListener,
-                       "Failed to add transaction listener to the editor");
 
   // Set context on all controllers to be the editor
   rv = SetEditorOnControllers(aWindow, htmlEditor);
@@ -441,11 +428,10 @@ void nsEditingSession::RemoveListenersAndControllers(
   }
 
   // Remove all the listeners
-  aHTMLEditor->SetComposerCommandsUpdater(nullptr);
-  DebugOnly<bool> removedTransactionListener =
-      aHTMLEditor->RemoveTransactionListener(*mComposerCommandsUpdater);
-  NS_WARNING_ASSERTION(removedTransactionListener,
-                       "Failed to remove transaction listener from the editor");
+  RefPtr<ComposerCommandsUpdater> composertCommandsUpdater =
+      std::move(mComposerCommandsUpdater);
+  MOZ_ASSERT(!mComposerCommandsUpdater);
+  aHTMLEditor->Detach(*composertCommandsUpdater);
 
   // Remove editor controllers from the window now that we're not
   // editing in that window any more.
@@ -505,7 +491,7 @@ nsEditingSession::TearDownEditorOnWindow(mozIDOMWindowProxy* aWindow) {
 
   if (stopEditing) {
     // Make things the way they were before we started editing.
-    RestoreJSAndPlugins(window->GetCurrentInnerWindow());
+    RestoreJS(window->GetCurrentInnerWindow());
     RestoreAnimationMode(window);
 
     if (mMakeWholeDocumentEditable) {
@@ -916,7 +902,9 @@ void nsEditingSession::TimerCallback(nsITimer* aTimer, void* aClosure) {
       LoadURIOptions loadURIOptions;
       loadURIOptions.mTriggeringPrincipal =
           nsContentUtils::GetSystemPrincipal();
-      webNav->LoadURI(u"about:blank"_ns, loadURIOptions);
+      nsCOMPtr<nsIURI> uri;
+      MOZ_ALWAYS_SUCCEEDS(NS_NewURI(getter_AddRefs(uri), "about:blank"_ns));
+      webNav->LoadURI(uri, loadURIOptions);
     }
   }
 }
@@ -1187,7 +1175,7 @@ nsresult nsEditingSession::DetachFromWindow(nsPIDOMWindowOuter* aWindow) {
   // make things the way they were before we started editing.
   RemoveEditorControllers(aWindow);
   RemoveWebProgressListener(aWindow);
-  RestoreJSAndPlugins(aWindow->GetCurrentInnerWindow());
+  RestoreJS(aWindow->GetCurrentInnerWindow());
   RestoreAnimationMode(aWindow);
 
   // Kill our weak reference to our original window, in case
@@ -1212,9 +1200,9 @@ nsresult nsEditingSession::ReattachToWindow(nsPIDOMWindowOuter* aWindow) {
   NS_ENSURE_TRUE(docShell, NS_ERROR_FAILURE);
   mDocShell = do_GetWeakReference(docShell);
 
-  // Disable plugins.
+  // Disable JS.
   if (!mInteractive) {
-    rv = DisableJSAndPlugins(aWindow->GetCurrentInnerWindow());
+    rv = DisableJS(aWindow->GetCurrentInnerWindow());
     NS_ENSURE_SUCCESS(rv, rv);
   }
 

@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
 job-defaults:
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
         max-run-time: 1800
     fetches:
@@ -13,7 +13,7 @@ job-defaults:
     run:
         script: build-resourcemonitor.sh
         sparse-profile: null
-        toolchain-artifact: public/build/resource-monitor.tar.xz
+        toolchain-artifact: public/build/resource-monitor.tar.zst
 
 linux64-resource-monitor:
     description: "linux64 resourcemonitor toolchain build"

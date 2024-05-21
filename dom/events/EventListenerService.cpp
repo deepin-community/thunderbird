@@ -18,7 +18,6 @@
 #include "nsCOMArray.h"
 #include "nsINode.h"
 #include "nsJSUtils.h"
-#include "nsMemory.h"
 #include "nsServiceManagerUtils.h"
 #include "nsArray.h"
 #include "nsThreadUtils.h"
@@ -75,15 +74,18 @@ EventListenerChange::GetCountOfEventListenerChangesAffectingAccessibility(
  ******************************************************************************/
 
 EventListenerInfo::EventListenerInfo(
-    const nsAString& aType, JS::Handle<JSObject*> aScriptedListener,
+    EventListenerManager* aListenerManager, const nsAString& aType,
+    JS::Handle<JSObject*> aScriptedListener,
     JS::Handle<JSObject*> aScriptedListenerGlobal, bool aCapturing,
-    bool aAllowsUntrusted, bool aInSystemEventGroup)
-    : mType(aType),
+    bool aAllowsUntrusted, bool aInSystemEventGroup, bool aIsHandler)
+    : mListenerManager(aListenerManager),
+      mType(aType),
       mScriptedListener(aScriptedListener),
       mScriptedListenerGlobal(aScriptedListenerGlobal),
       mCapturing(aCapturing),
       mAllowsUntrusted(aAllowsUntrusted),
-      mInSystemEventGroup(aInSystemEventGroup) {
+      mInSystemEventGroup(aInSystemEventGroup),
+      mIsHandler(aIsHandler) {
   if (aScriptedListener) {
     MOZ_ASSERT(JS_IsGlobalObject(aScriptedListenerGlobal));
     js::AssertSameCompartment(aScriptedListener, aScriptedListenerGlobal);
@@ -94,20 +96,9 @@ EventListenerInfo::EventListenerInfo(
 
 EventListenerInfo::~EventListenerInfo() { DropJSObjects(this); }
 
-NS_IMPL_CYCLE_COLLECTION_CLASS(EventListenerInfo)
-
-NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(EventListenerInfo)
-NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
-
-NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(EventListenerInfo)
-  tmp->mScriptedListener = nullptr;
-  tmp->mScriptedListenerGlobal = nullptr;
-NS_IMPL_CYCLE_COLLECTION_UNLINK_END
-
-NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(EventListenerInfo)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mScriptedListener)
-  NS_IMPL_CYCLE_COLLECTION_TRACE_JS_MEMBER_CALLBACK(mScriptedListenerGlobal)
-NS_IMPL_CYCLE_COLLECTION_TRACE_END
+NS_IMPL_CYCLE_COLLECTION_WITH_JS_MEMBERS(EventListenerInfo, (mListenerManager),
+                                         (mScriptedListener,
+                                          mScriptedListenerGlobal))
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(EventListenerInfo)
   NS_INTERFACE_MAP_ENTRY(nsIEventListenerInfo)
@@ -139,6 +130,22 @@ NS_IMETHODIMP
 EventListenerInfo::GetInSystemEventGroup(bool* aInSystemEventGroup) {
   *aInSystemEventGroup = mInSystemEventGroup;
   return NS_OK;
+}
+
+NS_IMETHODIMP
+EventListenerInfo::GetEnabled(bool* aEnabled) {
+  NS_ENSURE_STATE(mListenerManager);
+  return mListenerManager->IsListenerEnabled(
+      mType, mScriptedListener, mCapturing, mAllowsUntrusted,
+      mInSystemEventGroup, mIsHandler, aEnabled);
+}
+
+NS_IMETHODIMP
+EventListenerInfo::SetEnabled(bool aEnabled) {
+  NS_ENSURE_STATE(mListenerManager);
+  return mListenerManager->SetListenerEnabled(
+      mType, mScriptedListener, mCapturing, mAllowsUntrusted,
+      mInSystemEventGroup, mIsHandler, aEnabled);
 }
 
 NS_IMETHODIMP
@@ -213,21 +220,6 @@ EventListenerService::GetListenerInfoFor(
 }
 
 NS_IMETHODIMP
-EventListenerService::GetEventTargetChainFor(
-    EventTarget* aEventTarget, bool aComposed,
-    nsTArray<RefPtr<EventTarget>>& aOutArray) {
-  NS_ENSURE_ARG(aEventTarget);
-  WidgetEvent event(true, eVoidEvent);
-  event.SetComposed(aComposed);
-  nsTArray<EventTarget*> targets;
-  nsresult rv = EventDispatcher::Dispatch(aEventTarget, nullptr, &event,
-                                          nullptr, nullptr, nullptr, &targets);
-  NS_ENSURE_SUCCESS(rv, rv);
-  aOutArray.AppendElements(targets);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 EventListenerService::HasListenersFor(EventTarget* aEventTarget,
                                       const nsAString& aType, bool* aRetVal) {
   NS_ENSURE_TRUE(aEventTarget, NS_ERROR_UNEXPECTED);
@@ -248,54 +240,6 @@ static already_AddRefed<EventListener> ToEventListener(
   RefPtr<EventListener> listener =
       new EventListener(aCx, obj, global, GetIncumbentGlobal());
   return listener.forget();
-}
-
-NS_IMETHODIMP
-EventListenerService::AddSystemEventListener(EventTarget* aTarget,
-                                             const nsAString& aType,
-                                             JS::Handle<JS::Value> aListener,
-                                             bool aUseCapture, JSContext* aCx) {
-  MOZ_ASSERT(aTarget, "Missing target");
-
-  NS_ENSURE_TRUE(aTarget, NS_ERROR_UNEXPECTED);
-
-  RefPtr<EventListener> listener = ToEventListener(aCx, aListener);
-  if (!listener) {
-    return NS_ERROR_UNEXPECTED;
-  }
-
-  EventListenerManager* manager = aTarget->GetOrCreateListenerManager();
-  NS_ENSURE_STATE(manager);
-
-  EventListenerFlags flags = aUseCapture ? TrustedEventsAtSystemGroupCapture()
-                                         : TrustedEventsAtSystemGroupBubble();
-  manager->AddEventListenerByType(listener, aType, flags);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-EventListenerService::RemoveSystemEventListener(EventTarget* aTarget,
-                                                const nsAString& aType,
-                                                JS::Handle<JS::Value> aListener,
-                                                bool aUseCapture,
-                                                JSContext* aCx) {
-  MOZ_ASSERT(aTarget, "Missing target");
-
-  NS_ENSURE_TRUE(aTarget, NS_ERROR_UNEXPECTED);
-
-  RefPtr<EventListener> listener = ToEventListener(aCx, aListener);
-  if (!listener) {
-    return NS_ERROR_UNEXPECTED;
-  }
-
-  EventListenerManager* manager = aTarget->GetExistingListenerManager();
-  if (manager) {
-    EventListenerFlags flags = aUseCapture ? TrustedEventsAtSystemGroupCapture()
-                                           : TrustedEventsAtSystemGroupBubble();
-    manager->RemoveEventListenerByType(listener, aType, flags);
-  }
-
-  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -364,13 +308,7 @@ void EventListenerService::NotifyAboutMainThreadListenerChangeInternal(
     nsCOMPtr<nsIRunnable> runnable =
         NewRunnableMethod("EventListenerService::NotifyPendingChanges", this,
                           &EventListenerService::NotifyPendingChanges);
-    if (nsCOMPtr<nsIGlobalObject> global = aTarget->GetOwnerGlobal()) {
-      global->Dispatch(TaskCategory::Other, runnable.forget());
-    } else if (nsCOMPtr<nsINode> node = do_QueryInterface(aTarget)) {
-      node->OwnerDoc()->Dispatch(TaskCategory::Other, runnable.forget());
-    } else {
-      NS_DispatchToCurrentThread(runnable);
-    }
+    NS_DispatchToCurrentThread(runnable.forget());
   }
 
   RefPtr<EventListenerChange> changes =

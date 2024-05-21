@@ -9,14 +9,16 @@ import sys
 import traceback
 
 import six
-from mozboot.util import get_state_dir
+from mach.util import get_state_dir
 from mozbuild.base import MozbuildObject
-from mozversioncontrol import get_repository_object, MissingVCSExtension
+from mozversioncontrol import MissingVCSExtension, get_repository_object
+
+from .lando import push_to_lando_try
+from .util.estimates import duration_summary
 from .util.manage_estimates import (
     download_task_history_data,
     make_trimmed_taskgraph_cache,
 )
-from .util.estimates import duration_summary
 
 GIT_CINNABAR_NOT_FOUND = """
 Could not detect `git-cinnabar`.
@@ -51,7 +53,7 @@ build = MozbuildObject.from_environment(cwd=here)
 vcs = get_repository_object(build.topsrcdir)
 
 history_path = os.path.join(
-    get_state_dir(srcdir=True), "history", "try_task_configs.json"
+    get_state_dir(specific_to_topsrcdir=True), "history", "try_task_configs.json"
 )
 
 
@@ -87,25 +89,38 @@ def check_working_directory(push=True):
         sys.exit(1)
 
 
-def generate_try_task_config(method, labels, try_config=None, routes=None):
-    try_task_config = try_config or {}
-    try_task_config.setdefault("env", {})["TRY_SELECTOR"] = method
-    try_task_config.update(
-        {
-            "version": 1,
-            "tasks": sorted(labels),
-        }
-    )
-    if routes:
-        try_task_config["routes"] = routes
+def generate_try_task_config(method, labels, params=None, routes=None):
+    params = params or {}
 
+    # The user has explicitly requested a set of jobs, so run them all
+    # regardless of optimization (unless the selector explicitly sets this to
+    # True). Their dependencies can be optimized though.
+    params.setdefault("optimize_target_tasks", False)
+
+    # Remove selected labels from 'existing_tasks' parameter if present
+    if "existing_tasks" in params:
+        params["existing_tasks"] = {
+            label: tid
+            for label, tid in params["existing_tasks"].items()
+            if label not in labels
+        }
+
+    try_config = params.setdefault("try_task_config", {})
+    try_config.setdefault("env", {})["TRY_SELECTOR"] = method
+
+    try_config["tasks"] = sorted(labels)
+
+    if routes:
+        try_config["routes"] = routes
+
+    try_task_config = {"version": 2, "parameters": params}
     return try_task_config
 
 
 def task_labels_from_try_config(try_task_config):
     if try_task_config["version"] == 2:
         parameters = try_task_config.get("parameters", {})
-        if parameters.get("try_mode") == "try_task_config":
+        if "try_task_config" in parameters:
             return parameters["try_task_config"]["tasks"]
         else:
             return None
@@ -120,7 +135,9 @@ def display_push_estimates(try_task_config):
     if task_labels is None:
         return
 
-    cache_dir = os.path.join(get_state_dir(srcdir=True), "cache", "taskgraph")
+    cache_dir = os.path.join(
+        get_state_dir(specific_to_topsrcdir=True), "cache", "taskgraph"
+    )
 
     graph_cache = None
     dep_cache = None
@@ -152,7 +169,12 @@ def display_push_estimates(try_task_config):
             durations["dependency_duration"] + durations["selected_duration"]
         )
     )
-    print("estimates: In the {}% percentile".format(durations["quantile"]))
+    if "percentile" in durations:
+        percentile = durations["percentile"]
+        if percentile > 50:
+            print("estimates: In the longest {}% of durations".format(100 - percentile))
+        else:
+            print("estimates: In the shortest {}% of durations".format(percentile))
     print(
         "estimates: Should take about {} (Finished around {})".format(
             durations["wall_duration_seconds"],
@@ -165,10 +187,14 @@ def push_to_try(
     method,
     msg,
     try_task_config=None,
-    push=True,
+    stage_changes=False,
+    dry_run=False,
     closed_tree=False,
     files_to_change=None,
+    allow_log_capture=False,
+    push_to_lando=False,
 ):
+    push = not stage_changes and not dry_run
     check_working_directory(push)
 
     if try_task_config and method not in ("auto", "empty"):
@@ -194,7 +220,7 @@ def push_to_try(
         config_path = write_task_config(try_task_config)
         changed_files.append(config_path)
 
-    if files_to_change:
+    if (push or stage_changes) and files_to_change:
         for path, content in files_to_change.items():
             path = os.path.join(vcs.path, path)
             with open(path, "wb") as fh:
@@ -214,7 +240,10 @@ def push_to_try(
         vcs.add_remove_files(*changed_files)
 
         try:
-            vcs.push_to_try(commit_message)
+            if push_to_lando:
+                push_to_lando_try(vcs, commit_message)
+            else:
+                vcs.push_to_try(commit_message, allow_log_capture=allow_log_capture)
         except MissingVCSExtension as e:
             if e.ext == "push-to-try":
                 print(HG_PUSH_TO_TRY_NOT_FOUND)

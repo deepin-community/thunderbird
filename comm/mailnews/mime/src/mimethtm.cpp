@@ -20,8 +20,7 @@ static int MimeInlineTextHTML_parse_line(const char*, int32_t, MimeObject*);
 static int MimeInlineTextHTML_parse_eof(MimeObject*, bool);
 static int MimeInlineTextHTML_parse_begin(MimeObject* obj);
 
-static int MimeInlineTextHTMLClassInitialize(MimeInlineTextHTMLClass* clazz) {
-  MimeObjectClass* oclass = (MimeObjectClass*)clazz;
+static int MimeInlineTextHTMLClassInitialize(MimeObjectClass* oclass) {
   PR_ASSERT(!oclass->class_initialized);
   oclass->parse_begin = MimeInlineTextHTML_parse_begin;
   oclass->parse_line = MimeInlineTextHTML_parse_line;
@@ -168,14 +167,14 @@ void MimeInlineTextHTML_insert_lang_div(MimeObject* obj, nsCString& message) {
     return;
 
   // Make sure we have a <body> before we start.
-  int32_t index = message.Find("<body", /* ignoreCase = */ true);
+  int32_t index = message.LowerCaseFindASCII("<body");
   if (index == kNotFound) return;
   index = message.FindChar('>', index) + 1;
 
   // Insert <div class="moz-text-html" lang="..."> for the following two
   // purposes:
   // 1) Users can configure their HTML display via CSS for .moz-text-html.
-  // 2) The language group in the 'lang' attribure is used by Gecko to determine
+  // 2) The language group in the 'lang' attribute is used by Gecko to determine
   //    which font to use.
   int32_t fontSize;            // default font size
   int32_t fontSizePercentage;  // size percentage
@@ -188,8 +187,14 @@ void MimeInlineTextHTML_insert_lang_div(MimeObject* obj, nsCString& message) {
     message.Insert("<div class=\"moz-text-html\">"_ns, index);
   }
 
-  index = message.RFind("</body>", /* ignoreCase = */ true);
-  if (index != kNotFound) message.Insert("</div>"_ns, index);
+  nsACString::const_iterator begin, end;
+  message.BeginReading(begin);
+  message.EndReading(end);
+  nsACString::const_iterator messageBegin = begin;
+  if (RFindInReadable("</body>"_ns, begin, end,
+                      nsCaseInsensitiveCStringComparator)) {
+    message.InsertLiteral("</div>", begin - messageBegin);
+  }
 }
 
 /*
@@ -206,7 +211,7 @@ void MimeInlineTextHTML_remove_plaintext_tag(MimeObject* obj,
   // Replace all <plaintext> and </plaintext> tags.
   int32_t index = 0;
   bool replaced = false;
-  while ((index = message.Find("<plaintext", /* ignoreCase = */ true, index)) !=
+  while ((index = message.LowerCaseFindASCII("<plaintext", index)) !=
          kNotFound) {
     message.Insert("x-", index + 1);
     index += 12;
@@ -214,8 +219,8 @@ void MimeInlineTextHTML_remove_plaintext_tag(MimeObject* obj,
   }
   if (replaced) {
     index = 0;
-    while ((index = message.Find("</plaintext", /* ignoreCase = */ true,
-                                 index)) != kNotFound) {
+    while ((index = message.LowerCaseFindASCII("</plaintext", index)) !=
+           kNotFound) {
       message.Insert("x-", index + 2);
       index += 13;
     }

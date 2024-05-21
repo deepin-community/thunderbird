@@ -46,7 +46,7 @@ var urlListener = {
       // If we have an error, clean up nicely before we throw it.
       server.stop();
 
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(true);
       }
@@ -66,7 +66,7 @@ function checkBusy() {
     // No more tests, let everything finish
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
@@ -76,11 +76,7 @@ function checkBusy() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -114,14 +110,14 @@ function testNext() {
 
     do_throw(e);
   } finally {
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }
   }
 }
 
-add_task(async function() {
+add_task(async function () {
   // Disable new mail notifications
   Services.prefs.setBoolPref("mail.biff.play_sound", false);
   Services.prefs.setBoolPref("mail.biff.show_alert", false);

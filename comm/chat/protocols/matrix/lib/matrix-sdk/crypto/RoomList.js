@@ -4,11 +4,11 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.RoomList = void 0;
-
 var _indexeddbCryptoStore = require("./store/indexeddb-crypto-store");
-
-/*
-Copyright 2018, 2019 New Vector Ltd
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } /*
+Copyright 2018 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,50 +21,47 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
-
-/**
- * @module crypto/RoomList
- *
+*/ /**
  * Manages the list of encrypted rooms
  */
+/* eslint-disable camelcase */
+
+/* eslint-enable camelcase */
 
 /**
- * @alias module:crypto/RoomList
+ * Information about the encryption settings of rooms. Loads this information
+ * from the supplied crypto store when `init()` is called, and saves it to the
+ * crypto store whenever it is updated via `setRoomEncryption()`. Can supply
+ * full information about a room's encryption via `getRoomEncryption()`, or just
+ * answer whether or not a room has encryption via `isRoomEncrypted`.
  */
 class RoomList {
   constructor(cryptoStore) {
-    this._cryptoStore = cryptoStore; // Object of roomId -> room e2e info object (body of the m.room.encryption event)
-
-    this._roomEncryption = {};
+    this.cryptoStore = cryptoStore;
+    // Object of roomId -> room e2e info object (body of the m.room.encryption event)
+    _defineProperty(this, "roomEncryption", {});
   }
-
   async init() {
-    await this._cryptoStore.doTxn('readwrite', [_indexeddbCryptoStore.IndexedDBCryptoStore.STORE_ROOMS], txn => {
-      this._cryptoStore.getEndToEndRooms(txn, result => {
-        this._roomEncryption = result;
+    await this.cryptoStore.doTxn("readwrite", [_indexeddbCryptoStore.IndexedDBCryptoStore.STORE_ROOMS], txn => {
+      this.cryptoStore.getEndToEndRooms(txn, result => {
+        this.roomEncryption = result;
       });
     });
   }
-
   getRoomEncryption(roomId) {
-    return this._roomEncryption[roomId] || null;
+    return this.roomEncryption[roomId] || null;
   }
-
   isRoomEncrypted(roomId) {
     return Boolean(this.getRoomEncryption(roomId));
   }
-
   async setRoomEncryption(roomId, roomInfo) {
     // important that this happens before calling into the store
     // as it prevents the Crypto::setRoomEncryption from calling
     // this twice for consecutive m.room.encryption events
-    this._roomEncryption[roomId] = roomInfo;
-    await this._cryptoStore.doTxn('readwrite', [_indexeddbCryptoStore.IndexedDBCryptoStore.STORE_ROOMS], txn => {
-      this._cryptoStore.storeEndToEndRoom(roomId, roomInfo, txn);
+    this.roomEncryption[roomId] = roomInfo;
+    await this.cryptoStore.doTxn("readwrite", [_indexeddbCryptoStore.IndexedDBCryptoStore.STORE_ROOMS], txn => {
+      this.cryptoStore.storeEndToEndRoom(roomId, roomInfo, txn);
     });
   }
-
 }
-
 exports.RoomList = RoomList;

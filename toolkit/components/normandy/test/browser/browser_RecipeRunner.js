@@ -1,32 +1,36 @@
 "use strict";
 
-const { NormandyTestUtils } = ChromeUtils.import(
-  "resource://testing-common/NormandyTestUtils.jsm"
+const { NormandyTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/NormandyTestUtils.sys.mjs"
 );
-const { FilterExpressions } = ChromeUtils.import(
-  "resource://gre/modules/components-utils/FilterExpressions.jsm"
+const { FilterExpressions } = ChromeUtils.importESModule(
+  "resource://gre/modules/components-utils/FilterExpressions.sys.mjs"
 );
 
-const { Normandy } = ChromeUtils.import("resource://normandy/Normandy.jsm");
-const { BaseAction } = ChromeUtils.import(
-  "resource://normandy/actions/BaseAction.jsm"
+const { Normandy } = ChromeUtils.importESModule(
+  "resource://normandy/Normandy.sys.mjs"
 );
-const { RecipeRunner } = ChromeUtils.import(
-  "resource://normandy/lib/RecipeRunner.jsm"
+const { BaseAction } = ChromeUtils.importESModule(
+  "resource://normandy/actions/BaseAction.sys.mjs"
 );
-const { ClientEnvironment } = ChromeUtils.import(
-  "resource://normandy/lib/ClientEnvironment.jsm"
+const { RecipeRunner } = ChromeUtils.importESModule(
+  "resource://normandy/lib/RecipeRunner.sys.mjs"
 );
-const { CleanupManager } = ChromeUtils.import(
-  "resource://normandy/lib/CleanupManager.jsm"
+const { ClientEnvironment } = ChromeUtils.importESModule(
+  "resource://normandy/lib/ClientEnvironment.sys.mjs"
 );
-const { ActionsManager } = ChromeUtils.import(
-  "resource://normandy/lib/ActionsManager.jsm"
+const { CleanupManager } = ChromeUtils.importESModule(
+  "resource://normandy/lib/CleanupManager.sys.mjs"
 );
-const { Uptake } = ChromeUtils.import("resource://normandy/lib/Uptake.jsm");
+const { ActionsManager } = ChromeUtils.importESModule(
+  "resource://normandy/lib/ActionsManager.sys.mjs"
+);
+const { Uptake } = ChromeUtils.importESModule(
+  "resource://normandy/lib/Uptake.sys.mjs"
+);
 
-const { RemoteSettings } = ChromeUtils.import(
-  "resource://services-settings/remote-settings.js"
+const { RemoteSettings } = ChromeUtils.importESModule(
+  "resource://services-settings/remote-settings.sys.mjs"
 );
 
 add_task(async function getFilterContext() {
@@ -212,7 +216,6 @@ decorate_task(
   withMockNormandyApi(),
   withStub(ClientEnvironment, "getClientClassification"),
   async function testClientClassificationCache({
-    mockNormandyApi,
     getClientClassificationStub,
   }) {
     getClientClassificationStub.returns(Promise.resolve(false));
@@ -290,7 +293,6 @@ decorate_task(
   async function testReadFromRemoteSettings({
     verifyObjectSignatureStub,
     processRecipeStub,
-    finalizeStub,
     reportRecipeStub,
   }) {
     const matchRecipe = {
@@ -314,7 +316,7 @@ decorate_task(
 
     const db = await RecipeRunner._remoteSettingsClientForTesting.db;
     const fakeSig = { signature: "abc" };
-    await db.importChanges({}, 42, [
+    await db.importChanges({}, Date.now(), [
       { id: "match", recipe: matchRecipe, signature: fakeSig },
       {
         id: "noMatch",
@@ -330,7 +332,7 @@ decorate_task(
 
     let recipesFromRS = (
       await RecipeRunner._remoteSettingsClientForTesting.get()
-    ).map(({ recipe, signature }) => recipe);
+    ).map(({ recipe }) => recipe);
     // Sort the records by id so that they match the order in the assertion
     recipesFromRS.sort((a, b) => a.id - b.id);
     Assert.deepEqual(
@@ -391,7 +393,7 @@ decorate_task(
     const fakeSig = { signature: "abc" };
     await db.importChanges(
       {},
-      42,
+      Date.now(),
       [
         {
           id: "match",
@@ -514,11 +516,7 @@ decorate_task(
   withStub(RecipeRunner, "run"),
   withStub(RecipeRunner, "registerTimer"),
   withStub(RecipeRunner, "watchPrefs"),
-  async function testInitFirstRun({
-    runStub,
-    registerTimerStub,
-    watchPrefsStub,
-  }) {
+  async function testInitFirstRun({ runStub, registerTimerStub }) {
     await RecipeRunner.init();
     Assert.deepEqual(
       runStub.args,
@@ -727,11 +725,24 @@ decorate_task(
       Services.prefs.setIntPref(timerLastUpdatePref, lastUpdateTime);
     }
 
-    // Set a timer interval as small as possible so that the UpdateTimerManager
-    // will pick the recipe runner as the most imminent timer to run on `notify()`.
-    Services.prefs.setIntPref("app.normandy.run_interval_seconds", 1);
+    // Give our timer a short duration so that it executes quickly.
+    // This needs to be more than 1 second as we will call UpdateTimerManager's
+    // notify method twice in a row and verify that our timer is only called
+    // once, but because the timestamps are rounded to seconds, just a few
+    // additional ms could result in a higher value that would cause the timer
+    // to be called again almost immediately if our timer duration was only 1s.
+    const kTimerDuration = 2;
+    Services.prefs.setIntPref(
+      "app.normandy.run_interval_seconds",
+      kTimerDuration
+    );
     // This will refresh the timer interval.
     RecipeRunner.unregisterTimer();
+    // Ensure our timer is ready to run now.
+    Services.prefs.setIntPref(
+      "app.update.lastUpdateTime.recipe-client-addon-run",
+      Math.round(Date.now() / 1000) - kTimerDuration
+    );
     RecipeRunner.registerTimer();
 
     is(runSpy.callCount, 0, "run() shouldn't have run yet");
@@ -801,12 +812,12 @@ decorate_task(
   withStub(Uptake, "reportRunner"),
   withStub(ActionsManager.prototype, "finalize"),
   NormandyTestUtils.withMockRecipeCollection([]),
-  async function testRunEvents({ reportRunnerStub, finalizeStub }) {
+  async function testRunEvents() {
     const observer = sinon.spy();
     Services.obs.addObserver(observer, "recipe-runner:start");
 
     const originalPrefsApplied = Normandy.defaultPrefsHaveBeenApplied;
-    Normandy.defaultPrefsHaveBeenApplied = PromiseUtils.defer();
+    Normandy.defaultPrefsHaveBeenApplied = Promise.withResolvers();
 
     const recipeRunnerPromise = RecipeRunner.run();
     await Promise.resolve();

@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-const { updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
 );
 
 function run_test() {
@@ -14,19 +13,22 @@ function run_test() {
   const kAccountName = "Unknown";
   const kPrplId = "prpl-unknown";
 
-  let prefs = Services.prefs;
-  prefs.setCharPref("messenger.account.account1.name", kAccountName);
-  prefs.setCharPref("messenger.account.account1.prpl", kPrplId);
-  prefs.setCharPref("messenger.accounts", "account1");
-
+  Services.prefs.setCharPref("messenger.account.account1.name", kAccountName);
+  Services.prefs.setCharPref("messenger.account.account1.prpl", kPrplId);
+  Services.prefs.setCharPref("mail.accountmanager.accounts", "account1");
+  Services.prefs.setCharPref("mail.account.account1.server", "server1");
+  Services.prefs.setCharPref("mail.server.server1.imAccount", "account1");
+  Services.prefs.setCharPref("mail.server.server1.type", "im");
+  Services.prefs.setCharPref("mail.server.server1.userName", kAccountName);
+  Services.prefs.setCharPref("mail.server.server1.hostname", kPrplId);
   try {
-    // Having an implementation of nsIXULAppInfo is required for
-    // Services.core.init to work.
-    updateAppInfo();
-    Services.core.init();
+    IMServices.core.init();
 
-    let account = Services.accounts.getAccountByNumericId(1);
-    Assert.ok(account instanceof Ci.imIAccount);
+    const account = IMServices.accounts.getAccountByNumericId(1);
+    Assert.ok(
+      account.QueryInterface(Ci.imIAccount),
+      "Can query interface the account to imIAccount"
+    );
     Assert.equal(account.name, kAccountName);
     Assert.equal(account.normalizedName, kAccountName);
     Assert.equal(account.protocol.id, kPrplId);
@@ -35,8 +37,8 @@ function run_test() {
       Ci.imIAccount.ERROR_UNKNOWN_PRPL
     );
   } finally {
-    Services.core.quit();
+    IMServices.core.quit();
 
-    prefs.deleteBranch("messenger");
+    Services.prefs.deleteBranch("messenger");
   }
 }

@@ -23,6 +23,7 @@
 #include <limits>
 #include <type_traits>
 
+#include "mozilla/Assertions.h"
 #include "mozilla/ReverseIterator.h"
 
 namespace mozilla {
@@ -194,6 +195,11 @@ constexpr detail::EnumeratedRange<EnumType> MakeInclusiveEnumeratedRange(
   MOZ_ASSERT(end != std::numeric_limits<EnumUnderlyingType>::max(),
              "aEnd shouldn't overflow!");
   return MakeEnumeratedRange(aBegin, static_cast<EnumType>(end + 1));
+}
+
+template <typename EnumType>
+constexpr auto MakeInclusiveEnumeratedRange(EnumType aEnd) {
+  return MakeInclusiveEnumeratedRange(EnumType{0}, aEnd);
 }
 
 #ifdef __GNUC__

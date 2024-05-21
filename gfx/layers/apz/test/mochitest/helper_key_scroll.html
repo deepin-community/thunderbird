@@ -32,11 +32,11 @@ https://bugzilla.mozilla.org/show_bug.cgi?id=1383365
       // page. This scroll is done synchronously because APZ doesn't have
       // current focus state at page load.
       let scrollBottomPromise = new Promise(resolve => {
-        let checkBottom = function(e) {
+        let checkBottom = function() {
           if (window.scrollY < window.scrollMaxY) {
             return;
           }
-          SimpleTest.info("Reached final scroll position of sync KEY_End scroll");
+          info("Reached final scroll position of sync KEY_End scroll");
           window.removeEventListener("scroll", checkBottom);
           resolve();
         };
@@ -63,11 +63,11 @@ https://bugzilla.mozilla.org/show_bug.cgi?id=1383365
 
       // This scroll should be asynchronous now that the focus state is up to date.
       let scrollTopPromise = new Promise(resolve => {
-        let checkTop = function(e) {
+        let checkTop = function() {
           if (window.scrollY > 0) {
             return;
           }
-          SimpleTest.info("Reached final scroll position of async KEY_Home scroll");
+          info("Reached final scroll position of async KEY_Home scroll");
           window.removeEventListener("scroll", checkTop);
           resolve();
         };
@@ -91,7 +91,7 @@ https://bugzilla.mozilla.org/show_bug.cgi?id=1383365
         return rcd.hasAsyncKeyScrolled === "1";
       }
 
-      SimpleTest.info("Last paint rcd is null");
+      info("Last paint rcd is null");
       return false;
     }
 

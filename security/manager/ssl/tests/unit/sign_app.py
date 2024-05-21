@@ -16,13 +16,16 @@ from hashlib import sha1, sha256
 import argparse
 from io import StringIO
 import os
+import re
+import six
+import sys
+import zipfile
+
+# These libraries moved to security/manager/tools/ in bug 1699294.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "tools"))
 import pycert
 import pycms
 import pykey
-import re
-import six
-import zipfile
-
 
 ES256 = -7
 ES384 = -35
@@ -68,7 +71,7 @@ def coseSignature(payload, algorithm, signingKey, signingCertificate, bodyProtec
     #     external_aad : nil
     #     payload : bstr
     # ]
-    sigStructure = [u"Signature", bodyProtected, protectedEncoded, None, payload]
+    sigStructure = ["Signature", bodyProtected, protectedEncoded, None, payload]
     sigStructureEncoded = dumps(sigStructure)
     pykeyHash = coseAlgorithmToPykeyHash(algorithm)
     signature = signingKey.signRaw(sigStructureEncoded, pykeyHash)
@@ -94,7 +97,7 @@ def coseSig(payload, intermediates, signatures):
     protected = {KID: intermediates}
     protectedEncoded = dumps(protected)
     coseSignatures = []
-    for (algorithm, signingKey, signingCertificate) in signatures:
+    for algorithm, signingKey, signingCertificate in signatures:
         coseSignatures.append(
             coseSignature(
                 payload, algorithm, signingKey, signingCertificate, protectedEncoded
@@ -125,13 +128,13 @@ def addManifestEntry(filename, hashes, contents, entries):
     pairs to use, the contents of the file, and the current list
     of manifest entries."""
     entry = "Name: %s\n" % filename
-    for (hashFunc, name) in hashes:
+    for hashFunc, name in hashes:
         base64hash = b64encode(hashFunc(contents).digest()).decode("ascii")
         entry += "%s-Digest: %s\n" % (name, base64hash)
     entries.append(entry)
 
 
-def getCert(subject, keyName, issuerName, ee, issuerKey=""):
+def getCert(subject, keyName, issuerName, ee, issuerKey="", validity=""):
     """Helper function to create an X509 cert from a specification.
     Takes the subject, the subject key name to use, the issuer name,
     a bool whether this is an EE cert or not, and optionally an issuer key
@@ -152,13 +155,15 @@ def getCert(subject, keyName, issuerName, ee, issuerKey=""):
         )
     if issuerKey:
         certSpecification += "\nissuerKey:%s" % issuerKey
+    if validity:
+        certSpecification += "\nvalidity:%s" % validity
     certSpecificationStream = StringIO()
     print(certSpecification, file=certSpecificationStream)
     certSpecificationStream.seek(0)
     return pycert.Certificate(certSpecificationStream)
 
 
-def coseAlgorithmToSignatureParams(coseAlgorithm, issuerName):
+def coseAlgorithmToSignatureParams(coseAlgorithm, issuerName, certValidity):
     """Given a COSE algorithm ('ES256', 'ES384', 'ES512') and an issuer
     name, returns a (algorithm id, pykey.ECCKey, encoded certificate)
     triplet for use with coseSig.
@@ -182,6 +187,7 @@ def coseAlgorithmToSignatureParams(coseAlgorithm, issuerName):
         issuerName,
         True,
         "default",
+        certValidity,
     )
     return (algId, key, ee.toDER())
 
@@ -191,6 +197,7 @@ def signZip(
     outputFile,
     issuerName,
     rootName,
+    certValidity,
     manifestHashes,
     signatureHashes,
     pkcs7Hashes,
@@ -223,7 +230,7 @@ def signZip(
     mfEntries.append("")
 
     with zipfile.ZipFile(outputFile, "w", zipfile.ZIP_DEFLATED) as outZip:
-        for (fullPath, internalPath) in walkDirectory(appDirectory):
+        for fullPath, internalPath in walkDirectory(appDirectory):
             with open(fullPath, "rb") as inputFile:
                 contents = inputFile.read()
             outZip.writestr(internalPath, contents)
@@ -242,11 +249,22 @@ def signZip(
             coseIssuerName = issuerName
             if rootName:
                 coseIssuerName = "xpcshell signed app test issuer"
-                intermediate = getCert(coseIssuerName, "default", rootName, False)
+                intermediate = getCert(
+                    coseIssuerName,
+                    "default",
+                    rootName,
+                    False,
+                    "",
+                    certValidity,
+                )
                 intermediate = intermediate.toDER()
                 intermediates.append(intermediate)
             signatures = [
-                coseAlgorithmToSignatureParams(coseAlgorithm, coseIssuerName)
+                coseAlgorithmToSignatureParams(
+                    coseAlgorithm,
+                    coseIssuerName,
+                    certValidity,
+                )
                 for coseAlgorithm in coseAlgorithms
             ]
             coseSignatureBytes = coseSig(coseManifest, intermediates, signatures)
@@ -258,7 +276,7 @@ def signZip(
         if len(pkcs7Hashes) != 0 or emptySignerInfos:
             mfContents = "\n".join(mfEntries)
             sfContents = "Signature-Version: 1.0\n"
-            for (hashFunc, name) in signatureHashes:
+            for hashFunc, name in signatureHashes:
                 hashed = hashFunc(six.ensure_binary(mfContents)).digest()
                 base64hash = b64encode(hashed).decode("ascii")
                 sfContents += "%s-Digest-Manifest: %s\n" % (name, base64hash)
@@ -276,6 +294,8 @@ def signZip(
                 + "subject:xpcshell signed app test signer\n"
                 + "extension:keyUsage:digitalSignature"
             )
+            if certValidity:
+                cmsSpecification += "\nvalidity:%s" % certValidity
             cmsSpecificationStream = StringIO()
             print(cmsSpecification, file=cmsSpecificationStream)
             cmsSpecificationStream.seek(0)
@@ -337,6 +357,12 @@ def main(outputFile, appPath, *args):
     )
     parser.add_argument("-r", "--root", action="store", help="Root name", default="")
     parser.add_argument(
+        "--cert-validity",
+        action="store",
+        help="Certificate validity; YYYYMMDD-YYYYMMDD or duration in days",
+        default="",
+    )
+    parser.add_argument(
         "-m",
         "--manifest-hash",
         action="append",
@@ -390,6 +416,7 @@ def main(outputFile, appPath, *args):
         outputFile,
         parsed.issuer,
         parsed.root,
+        parsed.cert_validity,
         [hashNameToFunctionAndIdentifier(h) for h in parsed.manifest_hash],
         [hashNameToFunctionAndIdentifier(h) for h in parsed.signature_hash],
         parsed.pkcs7_hash,

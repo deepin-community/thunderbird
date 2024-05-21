@@ -102,9 +102,9 @@ GIOChannelChild::AsyncOpen(nsIStreamListener* aListener) {
     mLoadGroup->AddRequest(this, nullptr);
   }
 
-  mozilla::ipc::AutoIPCStream autoStream;
-  autoStream.Serialize(mUploadStream,
-                       static_cast<ContentChild*>(gNeckoChild->Manager()));
+  Maybe<mozilla::ipc::IPCStream> ipcStream;
+  mozilla::ipc::SerializeIPCStream(do_AddRef(mUploadStream), ipcStream,
+                                   /* aAllowLazy */ false);
 
   uint32_t loadFlags = 0;
   GetLoadFlags(&loadFlags);
@@ -113,7 +113,7 @@ GIOChannelChild::AsyncOpen(nsIStreamListener* aListener) {
   SerializeURI(nsBaseChannel::URI(), openArgs.uri());
   openArgs.startPos() = mStartPos;
   openArgs.entityID() = mEntityID;
-  openArgs.uploadStream() = autoStream.TakeOptionalValue();
+  openArgs.uploadStream() = ipcStream;
   openArgs.loadFlags() = loadFlags;
 
   nsCOMPtr<nsILoadInfo> loadInfo = LoadInfo();
@@ -123,12 +123,14 @@ GIOChannelChild::AsyncOpen(nsIStreamListener* aListener) {
   // This must happen before the constructor message is sent.
   SetupNeckoTarget();
 
-  gNeckoChild->SendPGIOChannelConstructor(
-      this, browserChild, IPC::SerializedLoadContext(this), openArgs);
-
   // The socket transport layer in the chrome process now has a logical ref to
   // us until OnStopRequest is called.
   AddIPDLReference();
+
+  if (!gNeckoChild->SendPGIOChannelConstructor(
+          this, browserChild, IPC::SerializedLoadContext(this), openArgs)) {
+    return NS_ERROR_FAILURE;
+  }
 
   mIsPending = true;
   mWasOpened = true;
@@ -151,12 +153,13 @@ nsresult GIOChannelChild::OpenContentStream(bool aAsync,
 
 mozilla::ipc::IPCResult GIOChannelChild::RecvOnStartRequest(
     const nsresult& aChannelStatus, const int64_t& aContentLength,
-    const nsCString& aContentType, const nsCString& aEntityID,
+    const nsACString& aContentType, const nsACString& aEntityID,
     const URIParams& aURI) {
   LOG(("GIOChannelChild::RecvOnStartRequest [this=%p]\n", this));
   mEventQ->RunOrEnqueue(new NeckoTargetChannelFunctionEvent(
       this, [self = UnsafePtr<GIOChannelChild>(this), aChannelStatus,
-             aContentLength, aContentType, aEntityID, aURI]() {
+             aContentLength, aContentType = nsCString(aContentType),
+             aEntityID = nsCString(aEntityID), aURI]() {
         self->DoOnStartRequest(aChannelStatus, aContentLength, aContentType,
                                aEntityID, aURI);
       }));
@@ -165,8 +168,8 @@ mozilla::ipc::IPCResult GIOChannelChild::RecvOnStartRequest(
 
 void GIOChannelChild::DoOnStartRequest(const nsresult& aChannelStatus,
                                        const int64_t& aContentLength,
-                                       const nsCString& aContentType,
-                                       const nsCString& aEntityID,
+                                       const nsACString& aContentType,
+                                       const nsACString& aEntityID,
                                        const URIParams& aURI) {
   LOG(("GIOChannelChild::DoOnStartRequest [this=%p]\n", this));
   if (!mCanceled && NS_SUCCEEDED(mStatus)) {
@@ -197,12 +200,12 @@ void GIOChannelChild::DoOnStartRequest(const nsresult& aChannelStatus,
 }
 
 mozilla::ipc::IPCResult GIOChannelChild::RecvOnDataAvailable(
-    const nsresult& aChannelStatus, const nsCString& aData,
+    const nsresult& aChannelStatus, const nsACString& aData,
     const uint64_t& aOffset, const uint32_t& aCount) {
   LOG(("GIOChannelChild::RecvOnDataAvailable [this=%p]\n", this));
   mEventQ->RunOrEnqueue(new NeckoTargetChannelFunctionEvent(
-      this, [self = UnsafePtr<GIOChannelChild>(this), aChannelStatus, aData,
-             aOffset, aCount]() {
+      this, [self = UnsafePtr<GIOChannelChild>(this), aChannelStatus,
+             aData = nsCString(aData), aOffset, aCount]() {
         self->DoOnDataAvailable(aChannelStatus, aData, aOffset, aCount);
       }));
 
@@ -210,7 +213,7 @@ mozilla::ipc::IPCResult GIOChannelChild::RecvOnDataAvailable(
 }
 
 void GIOChannelChild::DoOnDataAvailable(const nsresult& aChannelStatus,
-                                        const nsCString& aData,
+                                        const nsACString& aData,
                                         const uint64_t& aOffset,
                                         const uint32_t& aCount) {
   LOG(("GIOChannelChild::DoOnDataAvailable [this=%p]\n", this));
@@ -448,14 +451,7 @@ void GIOChannelChild::SetupNeckoTarget() {
   if (mNeckoTarget) {
     return;
   }
-  nsCOMPtr<nsILoadInfo> loadInfo = LoadInfo();
-  mNeckoTarget =
-      nsContentUtils::GetEventTargetByLoadInfo(loadInfo, TaskCategory::Network);
-  if (!mNeckoTarget) {
-    return;
-  }
-
-  gNeckoChild->SetEventTargetForActor(this, mNeckoTarget);
+  mNeckoTarget = GetMainThreadSerialEventTarget();
 }
 
 }  // namespace net

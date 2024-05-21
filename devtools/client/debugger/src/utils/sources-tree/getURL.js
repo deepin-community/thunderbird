@@ -7,7 +7,7 @@ import { parse } from "../url";
 const {
   getUnicodeHostname,
   getUnicodeUrlPath,
-} = require("devtools/client/shared/unicode-url");
+} = require("resource://devtools/client/shared/unicode-url.js");
 
 export function getFilenameFromPath(pathname) {
   let filename = "";
@@ -16,33 +16,67 @@ export function getFilenameFromPath(pathname) {
     // This file does not have a name. Default should be (index).
     if (filename == "") {
       filename = "(index)";
+    } else if (filename == ":formatted") {
+      filename = "(index:formatted)";
     }
   }
   return filename;
 }
 
-const NoDomain = "(no domain)";
-const def = { path: "", search: "", group: "", filename: "" };
+function getFileExtension(path) {
+  if (!path) {
+    return "";
+  }
 
-export function getURL(source, defaultDomain = "") {
-  const { url } = source;
+  const lastIndex = path.lastIndexOf(".");
+  return lastIndex !== -1 ? path.slice(lastIndex + 1).toLowerCase() : "";
+}
+
+const NoDomain = "(no domain)";
+const def = {
+  path: "",
+  search: "",
+  group: "",
+  filename: "",
+  fileExtension: "",
+};
+
+/**
+ * Compute the URL which may be displayed in the Source Tree.
+ *
+ * @param {String} url
+ *        The source absolute URL as a string
+ * @param {String} extensionName
+ *        Optional, but mandatory when passing a moz-extension URL.
+ *        Name of the extension serving this moz-extension source.
+ * @return URL Object
+ *        A URL object to represent this source.
+ *
+ *        Note that this isn't the standard URL object.
+ *        This is augmented with custom properties like:
+ *        - `group`, which is mostly the host of the source's URL.
+ *          This is used to sort sources in the Source tree.
+ *        - `filename` which may not be quite matching the URL.
+ *           When files are loaded from "/", they won't have a real name,
+ *           but instead this will report "(index)".
+ *        - `fileExtension`, lowercased file extension of the source
+ *          (if any extension is available)
+ *        - `path` and `pathname` have some special behavior.
+ *          See `parse` implementation.
+ */
+export function getDisplayURL(url, extensionName = null) {
   if (!url) {
     return def;
   }
-  return getURLInternal(url, defaultDomain);
-}
 
-export function getDisplayURL(source, defaultDomain = "") {
-  const { displayURL } = source;
-  if (!displayURL) {
-    return def;
-  }
-  return getURLInternal(displayURL, defaultDomain);
-}
+  let { pathname, search, protocol, host } = parse(url);
 
-function getURLInternal(url, defaultDomain) {
-  const { pathname, search, protocol, host } = parse(url);
-  const filename = getUnicodeUrlPath(getFilenameFromPath(pathname));
+  // Decode encoded characters early so that all other code rely on decoded strings
+  pathname = getUnicodeUrlPath(pathname);
+  search = getUnicodeUrlPath(search);
+  host = getUnicodeHostname(host);
+
+  const filename = getFilenameFromPath(pathname);
 
   switch (protocol) {
     case "javascript:":
@@ -50,25 +84,44 @@ function getURLInternal(url, defaultDomain) {
       return def;
 
     case "moz-extension:":
+      return {
+        ...def,
+        path: pathname,
+        search,
+        filename,
+        fileExtension: getFileExtension(pathname),
+        // For moz-extension, we replace the uuid by the extension name
+        // that we receive from the SourceActor.extensionName attribute.
+        // `extensionName` might be null for content script of disabled add-ons.
+        group: extensionName || `${protocol}//${host}`,
+      };
     case "resource:":
       return {
         ...def,
         path: pathname,
         search,
         filename,
+        fileExtension: getFileExtension(pathname),
         group: `${protocol}//${host || ""}`,
       };
-
     case "webpack:":
+      return {
+        ...def,
+        path: pathname,
+        search,
+        filename,
+        fileExtension: getFileExtension(pathname),
+        group: `Webpack`,
+      };
     case "ng:":
       return {
         ...def,
         path: pathname,
         search,
         filename,
-        group: `${protocol}//`,
+        fileExtension: getFileExtension(pathname),
+        group: `Angular`,
       };
-
     case "about:":
       // An about page is a special case
       return {
@@ -76,7 +129,8 @@ function getURLInternal(url, defaultDomain) {
         path: "/",
         search,
         filename,
-        group: url,
+        fileExtension: getFileExtension("/"),
+        group: getUnicodeUrlPath(url),
       };
 
     case "data:":
@@ -84,8 +138,9 @@ function getURLInternal(url, defaultDomain) {
         ...def,
         path: "/",
         search,
-        group: NoDomain,
         filename: url,
+        fileExtension: getFileExtension("/"),
+        group: NoDomain,
       };
 
     case "":
@@ -96,6 +151,7 @@ function getURLInternal(url, defaultDomain) {
           path: pathname,
           search,
           filename,
+          fileExtension: getFileExtension(pathname),
           group: "file://",
         };
       } else if (!host) {
@@ -103,8 +159,9 @@ function getURLInternal(url, defaultDomain) {
           ...def,
           path: pathname,
           search,
-          group: defaultDomain || "",
           filename,
+          fileExtension: getFileExtension(pathname),
+          group: "",
         };
       }
       break;
@@ -116,7 +173,8 @@ function getURLInternal(url, defaultDomain) {
         path: pathname,
         search,
         filename,
-        group: getUnicodeHostname(host),
+        fileExtension: getFileExtension(pathname),
+        group: host,
       };
   }
 
@@ -124,7 +182,8 @@ function getURLInternal(url, defaultDomain) {
     ...def,
     path: pathname,
     search,
-    group: protocol ? `${protocol}//` : "",
+    fileExtension: getFileExtension(pathname),
     filename,
+    group: protocol ? `${protocol}//` : "",
   };
 }

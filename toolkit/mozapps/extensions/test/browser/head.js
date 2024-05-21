@@ -5,17 +5,13 @@
 
 /* eslint no-unused-vars: ["error", {vars: "local", args: "none"}] */
 
-var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-const { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
 
-var tmp = {};
-ChromeUtils.import("resource://gre/modules/AddonManager.jsm", tmp);
-ChromeUtils.import("resource://gre/modules/Log.jsm", tmp);
-var AddonManager = tmp.AddonManager;
-var AddonManagerPrivate = tmp.AddonManagerPrivate;
-var Log = tmp.Log;
+let { AddonManagerPrivate } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
+);
 
 var pathParts = gTestPath.split("/");
 // Drop the test filename
@@ -39,7 +35,7 @@ const PREF_LOGGING_ENABLED = "extensions.logging.enabled";
 const PREF_STRICT_COMPAT = "extensions.strictCompatibility";
 
 var PREF_CHECK_COMPATIBILITY;
-(function() {
+(function () {
   var channel = Services.prefs.getCharPref("app.update.channel", "default");
   if (
     channel != "aurora" &&
@@ -127,7 +123,7 @@ function enableBackgroundUpdateTimer() {
   );
 }
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   // Restore prefs
   for (let pref of gRestorePrefs) {
     if (pref.type == "clear") {
@@ -208,7 +204,7 @@ function run_next_test() {
   executeSoon(() => log_exceptions(test));
 }
 
-var get_tooltip_info = async function(addonEl, managerWindow) {
+var get_tooltip_info = async function (addonEl, managerWindow) {
   // Extract from title attribute.
   const { addon } = addonEl;
   const name = addon.name;
@@ -303,7 +299,7 @@ async function wait_for_view_load(
 
     aManagerWindow.document.addEventListener(
       "view-loaded",
-      function() {
+      function () {
         resolve(aManagerWindow);
       },
       { once: true }
@@ -338,7 +334,11 @@ function open_manager(
         aManagerWindow.loadView(aView);
       }
 
-      ok(aManagerWindow != null, "Should have an add-ons manager window");
+      Assert.notEqual(
+        aManagerWindow,
+        null,
+        "Should have an add-ons manager window"
+      );
       is(
         aManagerWindow.location.href,
         MANAGER_URI,
@@ -377,8 +377,9 @@ function close_manager(aManagerWindow, aCallback, aLongerTimeout) {
   let p = new Promise((resolve, reject) => {
     requestLongerTimeout(aLongerTimeout ? aLongerTimeout : 2);
 
-    ok(
-      aManagerWindow != null,
+    Assert.notEqual(
+      aManagerWindow,
+      null,
       "Should have an add-ons manager window to close"
     );
     is(
@@ -424,8 +425,8 @@ function wait_for_window_open(aCallback) {
         let domwindow = aXulWin.docShell.domWindow;
         domwindow.addEventListener(
           "load",
-          function() {
-            executeSoon(function() {
+          function () {
+            executeSoon(function () {
               resolve(domwindow);
             });
           },
@@ -438,16 +439,6 @@ function wait_for_window_open(aCallback) {
   });
 
   return log_callback(p, aCallback);
-}
-
-function get_string(aName, ...aArgs) {
-  var bundle = Services.strings.createBundle(
-    "chrome://mozapps/locale/extensions/extensions.properties"
-  );
-  if (!aArgs.length) {
-    return bundle.GetStringFromName(aName);
-  }
-  return bundle.formatStringFromName(aName, aArgs);
 }
 
 function formatDate(aDate) {
@@ -601,16 +592,14 @@ CategoryUtilities.prototype = {
 
 // Returns a promise that will resolve when the certificate error override has been added, or reject
 // if there is some failure.
-function addCertOverride(host, bits) {
+function addCertOverride(host) {
   return new Promise((resolve, reject) => {
     let req = new XMLHttpRequest();
     req.open("GET", "https://" + host + "/");
     req.onload = reject;
     req.onerror = () => {
       if (req.channel && req.channel.securityInfo) {
-        let securityInfo = req.channel.securityInfo.QueryInterface(
-          Ci.nsITransportSecurityInfo
-        );
+        let securityInfo = req.channel.securityInfo;
         if (securityInfo.serverCert) {
           let cos = Cc["@mozilla.org/security/certoverride;1"].getService(
             Ci.nsICertOverrideService
@@ -620,7 +609,6 @@ function addCertOverride(host, bits) {
             -1,
             {},
             securityInfo.serverCert,
-            bits,
             false
           );
           resolve();
@@ -636,40 +624,22 @@ function addCertOverride(host, bits) {
 // Returns a promise that will resolve when the necessary certificate overrides have been added.
 function addCertOverrides() {
   return Promise.all([
-    addCertOverride(
-      "nocert.example.com",
-      Ci.nsICertOverrideService.ERROR_MISMATCH
-    ),
-    addCertOverride(
-      "self-signed.example.com",
-      Ci.nsICertOverrideService.ERROR_UNTRUSTED
-    ),
-    addCertOverride(
-      "untrusted.example.com",
-      Ci.nsICertOverrideService.ERROR_UNTRUSTED
-    ),
-    addCertOverride(
-      "expired.example.com",
-      Ci.nsICertOverrideService.ERROR_TIME
-    ),
+    addCertOverride("nocert.example.com"),
+    addCertOverride("self-signed.example.com"),
+    addCertOverride("untrusted.example.com"),
+    addCertOverride("expired.example.com"),
   ]);
 }
 
 /** *** Mock Provider *****/
 
-function MockProvider() {
+function MockProvider(addonTypes) {
   this.addons = [];
   this.installs = [];
-  this.types = [
-    {
-      id: "extension",
-      name: "Extensions",
-      uiPriority: 4000,
-    },
-  ];
+  this.addonTypes = addonTypes ?? ["extension"];
 
   var self = this;
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     if (self.started) {
       self.unregister();
     }
@@ -681,8 +651,8 @@ function MockProvider() {
 MockProvider.prototype = {
   addons: null,
   installs: null,
+  addonTypes: null,
   started: null,
-  types: null,
   queryDelayPromise: Promise.resolve(),
 
   blockQueryResponses() {
@@ -707,7 +677,12 @@ MockProvider.prototype = {
    */
   register: function MP_register() {
     info("Registering mock add-on provider");
-    AddonManagerPrivate.registerProvider(this, this.types);
+    // addonTypes is supposedly the full set of types supported by the provider.
+    // The current list is not complete (there are tests that mock add-on types
+    // other than "extension"), but it doesn't affect tests since addonTypes is
+    // mainly used to determine whether any of the AddonManager's providers
+    // support a type, and XPIProvider already defines the types of interest.
+    AddonManagerPrivate.registerProvider(this, this.addonTypes);
   },
 
   /**
@@ -926,7 +901,7 @@ MockProvider.prototype = {
   async getAddonsByTypes(aTypes) {
     await this.queryDelayPromise;
 
-    var addons = this.addons.filter(function(aAddon) {
+    var addons = this.addons.filter(function (aAddon) {
       if (aTypes && !!aTypes.length && !aTypes.includes(aAddon.type)) {
         return false;
       }
@@ -944,7 +919,7 @@ MockProvider.prototype = {
   async getInstallsByTypes(aTypes) {
     await this.queryDelayPromise;
 
-    var installs = this.installs.filter(function(aInstall) {
+    var installs = this.installs.filter(function (aInstall) {
       // Appear to have actually removed cancelled installs from the provider
       if (aInstall.state == AddonManager.STATE_CANCELLED) {
         return false;
@@ -1419,7 +1394,7 @@ MockInstall.prototype = {
 
 function waitForCondition(condition, nextTest, errorMsg) {
   let tries = 0;
-  let interval = setInterval(function() {
+  let interval = setInterval(function () {
     if (tries >= 30) {
       ok(false, errorMsg);
       moveOn();
@@ -1436,7 +1411,7 @@ function waitForCondition(condition, nextTest, errorMsg) {
     }
     tries++;
   }, 100);
-  let moveOn = function() {
+  let moveOn = function () {
     clearInterval(interval);
     nextTest();
   };
@@ -1445,12 +1420,6 @@ function waitForCondition(condition, nextTest, errorMsg) {
 // Wait for and then acknowledge (by pressing the primary button) the
 // given notification.
 function promiseNotification(id = "addon-webext-permissions") {
-  if (
-    !Services.prefs.getBoolPref("extensions.webextPermissionPrompts", false)
-  ) {
-    return Promise.resolve();
-  }
-
   return new Promise(resolve => {
     function popupshown() {
       let notification = PopupNotifications.getNotification(id);
@@ -1497,8 +1466,8 @@ function waitAppMenuNotificationShown(
   accept = false,
   win = window
 ) {
-  const { AppMenuNotifications } = ChromeUtils.import(
-    "resource://gre/modules/AppMenuNotifications.jsm"
+  const { AppMenuNotifications } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppMenuNotifications.sys.mjs"
   );
   return new Promise(resolve => {
     let { document, PanelUI } = win;
@@ -1548,21 +1517,6 @@ function acceptAppMenuNotificationWhenShown(id, addonId) {
   return waitAppMenuNotificationShown(id, addonId, true);
 }
 
-const ABOUT_ADDONS_METHODS = new Set(["action", "view", "link"]);
-function assertAboutAddonsTelemetryEvents(events, filters = {}) {
-  TelemetryTestUtils.assertEvents(events, {
-    category: "addonsManager",
-    method: actual =>
-      filters.methods
-        ? filters.methods.includes(actual)
-        : ABOUT_ADDONS_METHODS.has(actual),
-    object: actual =>
-      filters.objects
-        ? filters.objects.includes(actual)
-        : actual === "aboutAddons",
-  });
-}
-
 /* HTML view helpers */
 async function loadInitialView(type, opts) {
   if (type) {
@@ -1598,6 +1552,10 @@ async function loadInitialView(type, opts) {
   await loadCallbackDone;
 
   return win;
+}
+
+function getSection(doc, className) {
+  return doc.querySelector(`section.${className}`);
 }
 
 function waitForViewLoad(win) {
@@ -1687,8 +1645,8 @@ function loadTestSubscript(filePath) {
 }
 
 function cleanupPendingNotifications() {
-  const { ExtensionsUI } = ChromeUtils.import(
-    "resource:///modules/ExtensionsUI.jsm"
+  const { ExtensionsUI } = ChromeUtils.importESModule(
+    "resource:///modules/ExtensionsUI.sys.mjs"
   );
   info("Cleanup any pending notification before exiting the test");
   const keys = ChromeUtils.nondeterministicGetWeakSetKeys(
@@ -1725,7 +1683,11 @@ async function handlePermissionPrompt({
   );
 
   if (assertIcon) {
-    ok(info.icon != null, "Got an addon icon in the permission prompt info");
+    Assert.notEqual(
+      info.icon,
+      null,
+      "Got an addon icon in the permission prompt info"
+    );
   }
 
   if (reject) {
@@ -1740,7 +1702,11 @@ async function switchToDetailView({ id, win }) {
   ok(card, `Addon card found for ${id}`);
   ok(!card.querySelector("addon-details"), "The card doesn't have details");
   let loaded = waitForViewLoad(win);
-  EventUtils.synthesizeMouseAtCenter(card, { clickCount: 1 }, win);
+  EventUtils.synthesizeMouseAtCenter(
+    card.querySelector(".addon-name-link"),
+    { clickCount: 1 },
+    win
+  );
   await loaded;
   card = getAddonCard(win, id);
   ok(card.querySelector("addon-details"), "The card does have details");

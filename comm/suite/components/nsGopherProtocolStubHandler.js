@@ -3,7 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 /* This is a simple module which can be used as a template for any newly
@@ -35,11 +34,12 @@ GopherProtocol.prototype = {
   },
 
   newURI: function GP_newURI(spec, charset, baseURI) {
-    var uri = Cc["@mozilla.org/network/standard-url;1"]
-                .createInstance(Ci.nsIStandardURL);
-    uri.init(Ci.nsIStandardURL.URLTYPE_STANDARD,
-      this.defaultPort, spec, charset, baseURI)
-    return uri;
+    return Cc["@mozilla.org/network/standard-url-mutator;1"]
+             .createInstance(Ci.nsIStandardURLMutator)
+             .init(Ci.nsIStandardURL.URLTYPE_STANDARD,
+                   this.defaultPort, spec, charset, baseURI)
+             .finalize()
+             .QueryInterface(Ci.nsIStandardURL);
   },
 
   newChannel: function GP_newChannel(inputURI) {

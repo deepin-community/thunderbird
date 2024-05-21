@@ -4,19 +4,18 @@
 
 "use strict";
 
-const { sinon } = ChromeUtils.import("resource://testing-common/Sinon.jsm");
-const { LoginManagerParent } = ChromeUtils.import(
-  "resource://gre/modules/LoginManagerParent.jsm"
+const { sinon } = ChromeUtils.importESModule(
+  "resource://testing-common/Sinon.sys.mjs"
 );
-const { LoginManagerPrompter } = ChromeUtils.import(
-  "resource://gre/modules/LoginManagerPrompter.jsm"
+const { LoginManagerParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/LoginManagerParent.sys.mjs"
 );
-const { PopupNotifications } = ChromeUtils.import(
-  "resource://gre/modules/PopupNotifications.jsm"
+const { LoginManagerPrompter } = ChromeUtils.importESModule(
+  "resource://gre/modules/LoginManagerPrompter.sys.mjs"
 );
 
-const { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
 const loginTemplate = Object.freeze({
   origin: "https://www.example.com",
@@ -36,12 +35,12 @@ function stubPrompter() {
   });
   LMP._getPrompter().promptToSavePassword();
   LMP._getPrompter().promptToChangePassword();
-  ok(LMP._getPrompter.calledTwice, "Checking _getPrompter stub");
-  ok(
+  Assert.ok(LMP._getPrompter.calledTwice, "Checking _getPrompter stub");
+  Assert.ok(
     fakePromptToSavePassword.calledOnce,
     "Checking fakePromptToSavePassword stub"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking fakePromptToChangePassword stub"
   );
@@ -63,11 +62,11 @@ function stubPrompter() {
 }
 
 async function stubGeneratedPasswordForBrowsingContextId(id) {
-  ok(
+  Assert.ok(
     LoginManagerParent._browsingContextGlobal,
     "Check _browsingContextGlobal exists"
   );
-  ok(
+  Assert.ok(
     !LoginManagerParent._browsingContextGlobal.get(id),
     `BrowsingContext ${id} shouldn't exist yet`
   );
@@ -78,9 +77,10 @@ async function stubGeneratedPasswordForBrowsingContextId(id) {
     .callsFake(() => {
       return {
         currentWindowGlobal: {
-          documentPrincipal: Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-            "https://www.example.com^userContextId=6"
-          ),
+          documentPrincipal:
+            Services.scriptSecurityManager.createContentPrincipalFromOrigin(
+              "https://www.example.com^userContextId=6"
+            ),
           documentURI: Services.io.newURI("https://www.example.com"),
         },
         get embedderElement() {
@@ -101,12 +101,12 @@ async function stubGeneratedPasswordForBrowsingContextId(id) {
         },
       };
     });
-  ok(
+  Assert.ok(
     LoginManagerParent._browsingContextGlobal.get(id),
     `Checking BrowsingContext.get(${id}) stub`
   );
 
-  let generatedPassword = await LMP.getGeneratedPassword(id);
+  const generatedPassword = await LMP.getGeneratedPassword();
   notEqual(generatedPassword, null, "Check password was returned");
   equal(
     generatedPassword.length,
@@ -147,13 +147,10 @@ function checkEditTelemetryRecorded(expectedCount, msg) {
       object: "generatedpassword",
     });
     const results = snapshot.parent.filter(
-      ([time, category, method, object]) => {
-        return (
-          category === telemetryProps.category &&
-          method === telemetryProps.method &&
-          object === telemetryProps.object
-        );
-      }
+      ([_time, category, method, object]) =>
+        category === telemetryProps.category &&
+        method === telemetryProps.method &&
+        object === telemetryProps.object
     );
     resultsCount = results.length;
   }
@@ -167,7 +164,7 @@ function checkEditTelemetryRecorded(expectedCount, msg) {
 async function startTestConditions(contextId) {
   LMP.useBrowsingContext(contextId);
 
-  ok(
+  Assert.ok(
     LMP._onPasswordEditedOrGenerated,
     "LMP._onPasswordEditedOrGenerated exists"
   );
@@ -178,7 +175,7 @@ async function startTestConditions(contextId) {
     "Empty cache to start"
   );
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     0,
     "Should have no saved logins at the start of the test"
   );
@@ -199,7 +196,7 @@ function assertLoginProperties(actualLogin, expected) {
   equal(actualLogin.password, expected.password, "Compare password");
 }
 
-add_task(async function setup() {
+add_setup(async () => {
   // Get a profile for storage.
   do_get_profile();
 
@@ -223,7 +220,7 @@ add_task(async function test_onPasswordEditedOrGenerated_generatedPassword() {
   );
 
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     0,
     "Should have no saved logins at the start of the test"
   );
@@ -249,17 +246,17 @@ add_task(async function test_onPasswordEditedOrGenerated_generatedPassword() {
     generatedPassword
   );
 
-  ok(login.equals(expected), "Check added login");
-  ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-  ok(
+  Assert.ok(login.equals(expected), "Check added login");
+  Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking promptToChangePassword was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[3],
     "promptToChangePassword had a truthy 'dismissed' argument"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[4],
     "promptToChangePassword had a truthy 'notifySaved' argument"
   );
@@ -281,18 +278,19 @@ add_task(async function test_onPasswordEditedOrGenerated_generatedPassword() {
       triggeredByFillingGenerated: true,
     }
   );
-  let generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
-    "https://www.example.com^userContextId=6"
-  );
-  ok(generatedPW.edited, "Cached edited boolean should be true");
+  let generatedPW =
+    LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
+      "https://www.example.com^userContextId=6"
+    );
+  Assert.ok(generatedPW.edited, "Cached edited boolean should be true");
   equal(generatedPW.value, newPassword, "Cached password should be updated");
   // login metadata should be updated
   let [dataArray] = await storageChangedPromised;
   login = dataArray.queryElementAt(1, Ci.nsILoginInfo);
   expected.password = newPassword;
-  ok(login.equals(expected), "Check updated login");
+  Assert.ok(login.equals(expected), "Check updated login");
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     1,
     "Should have 1 saved login still"
   );
@@ -319,14 +317,14 @@ add_task(async function test_onPasswordEditedOrGenerated_generatedPassword() {
   generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
     "https://www.example.com^userContextId=6"
   );
-  ok(generatedPW.edited, "Cached edited state should remain true");
+  Assert.ok(generatedPW.edited, "Cached edited state should remain true");
   equal(generatedPW.value, newerPassword, "Cached password should be updated");
   [dataArray] = await storageChangedPromised;
   login = dataArray.queryElementAt(1, Ci.nsILoginInfo);
   expected.password = newerPassword;
-  ok(login.equals(expected), "Check updated login");
+  Assert.ok(login.equals(expected), "Check updated login");
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     1,
     "Should have 1 saved login still"
   );
@@ -355,7 +353,7 @@ add_task(
     );
 
     equal(
-      Services.logins.getAllLogins().length,
+      (await Services.logins.getAllLogins()).length,
       0,
       "Should have no saved logins at the start of the test"
     );
@@ -381,17 +379,17 @@ add_task(
       generatedPassword
     );
 
-    ok(login.equals(expected), "Check added login");
-    ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-    ok(
+    Assert.ok(login.equals(expected), "Check added login");
+    Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+    Assert.ok(
       fakePromptToChangePassword.calledOnce,
       "Checking promptToChangePassword was called"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[3],
       "promptToChangePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[4],
       "promptToChangePassword had a truthy 'notifySaved' argument"
     );
@@ -409,10 +407,11 @@ add_task(
         triggeredByFillingGenerated: true,
       }
     );
-    let generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
-      "https://www.example.com^userContextId=6"
-    );
-    ok(!generatedPW.edited, "Cached edited boolean should be false");
+    let generatedPW =
+      LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
+        "https://www.example.com^userContextId=6"
+      );
+    Assert.ok(!generatedPW.edited, "Cached edited boolean should be false");
     equal(
       generatedPW.value,
       generatedPassword,
@@ -434,11 +433,8 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
   let { generatedPassword } = await stubGeneratedPasswordForBrowsingContextId(
     99
   );
-  let {
-    fakePromptToChangePassword,
-    restorePrompter,
-    resetPrompterHistory,
-  } = stubPrompter();
+  let { fakePromptToChangePassword, restorePrompter, resetPrompterHistory } =
+    stubPrompter();
   let rootBrowser = LMP.getRootBrowser();
   let fakePopupNotifications = {
     getNotification: sinon.stub().returns({ dismissed: true }),
@@ -457,7 +453,7 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
   );
 
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     0,
     "Should have no saved logins at the start of the test"
   );
@@ -483,23 +479,23 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
     generatedPassword
   );
 
-  ok(login.equals(expected), "Check added login");
-  ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-  ok(
+  Assert.ok(login.equals(expected), "Check added login");
+  Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking promptToChangePassword was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[3],
     "promptToChangePassword had a truthy 'dismissed' argument"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[4],
     "promptToChangePassword had a truthy 'notifySaved' argument"
   );
 
   info("Checking the getNotification stub");
-  ok(
+  Assert.ok(
     !fakePopupNotifications.getNotification.called,
     "getNotification didn't get called yet"
   );
@@ -528,38 +524,39 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
       triggeredByFillingGenerated: true,
     }
   );
-  let generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
-    "https://www.example.com^userContextId=6"
-  );
-  ok(generatedPW.edited, "Cached edited boolean should be true");
+  let generatedPW =
+    LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
+      "https://www.example.com^userContextId=6"
+    );
+  Assert.ok(generatedPW.edited, "Cached edited boolean should be true");
   equal(generatedPW.value, newPassword, "Cached password should be updated");
   let [dataArray] = await storageChangedPromised;
   login = dataArray.queryElementAt(1, Ci.nsILoginInfo);
   loginWithUsername.password = newPassword;
   // the password should be updated in storage, but not the username (until the user confirms the doorhanger)
   assertLoginProperties(login, loginWithUsername);
-  ok(login.matches(loginWithUsername, false), "Check updated login");
+  Assert.ok(login.matches(loginWithUsername, false), "Check updated login");
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     1,
     "Should have 1 saved login still"
   );
 
-  ok(
+  Assert.ok(
     fakePopupNotifications.getNotification.calledOnce,
     "getNotification was called"
   );
-  ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-  ok(
+  Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking promptToChangePassword was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[3],
     "promptToChangePassword had a truthy 'dismissed' argument"
   );
   // The generated password changed, so we expect notifySaved to be true
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[4],
     "promptToChangePassword should have a falsey 'notifySaved' argument"
   );
@@ -588,22 +585,22 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
   generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
     "https://www.example.com^userContextId=6"
   );
-  ok(generatedPW.edited, "Cached edited state should remain true");
+  Assert.ok(generatedPW.edited, "Cached edited state should remain true");
   equal(generatedPW.value, newerPassword, "Cached password should be updated");
   [dataArray] = await storageChangedPromised;
   login = dataArray.queryElementAt(1, Ci.nsILoginInfo);
   loginWithUsername.password = newerPassword;
   assertLoginProperties(login, loginWithUsername);
-  ok(login.matches(loginWithUsername, false), "Check updated login");
+  Assert.ok(login.matches(loginWithUsername, false), "Check updated login");
   equal(
-    Services.logins.getAllLogins().length,
+    (await Services.logins.getAllLogins()).length,
     1,
     "Should have 1 saved login still"
   );
 
   checkEditTelemetryRecorded(1, "with auto-save");
 
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking promptToChangePassword was called"
   );
@@ -612,7 +609,7 @@ add_task(async function test_addUsernameBeforeAutoSaveEdit() {
     newerPassword,
     "promptToChangePassword had the updated password"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[3],
     "promptToChangePassword had a truthy 'dismissed' argument"
   );
@@ -653,15 +650,10 @@ add_task(async function test_editUsernameOfFilledSavedLogin() {
   info("Adding initial login: " + JSON.stringify(login0Props));
   let savedLogin = await LoginTestUtils.addLogin(login0Props);
 
-  info(
-    "Saved initial login: " + JSON.stringify(Services.logins.getAllLogins()[0])
-  );
+  let logins = await Services.logins.getAllLogins();
+  info("Saved initial login: " + JSON.stringify(logins[0]));
 
-  equal(
-    Services.logins.getAllLogins().length,
-    1,
-    "Should have 1 saved login at the start of the test"
-  );
+  equal(logins.length, 1, "Should have 1 saved login at the start of the test");
 
   // first prompt to save a new login
   let newUsername = "differentuser";
@@ -687,21 +679,21 @@ add_task(async function test_editUsernameOfFilledSavedLogin() {
     newPassword
   );
 
-  ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+  Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
   info("Checking the getNotification stub");
-  ok(
+  Assert.ok(
     !fakePopupNotifications.getNotification.called,
     "getNotification was not called"
   );
-  ok(
+  Assert.ok(
     fakePromptToSavePassword.calledOnce,
     "Checking promptToSavePassword was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToSavePassword.getCall(0).args[2],
     "promptToSavePassword had a truthy 'dismissed' argument"
   );
-  ok(
+  Assert.ok(
     !fakePromptToSavePassword.getCall(0).args[3],
     "promptToSavePassword had a falsey 'notifySaved' argument"
   );
@@ -730,21 +722,21 @@ add_task(async function test_editUsernameOfFilledSavedLogin() {
     login0Props.password
   );
 
-  ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+  Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
   info("Checking the getNotification stub");
-  ok(
+  Assert.ok(
     fakePopupNotifications.getNotification.called,
     "getNotification was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.calledOnce,
     "Checking promptToChangePassword was called"
   );
-  ok(
+  Assert.ok(
     fakePromptToChangePassword.getCall(0).args[3],
     "promptToChangePassword had a truthy 'dismissed' argument"
   );
-  ok(
+  Assert.ok(
     !fakePromptToChangePassword.getCall(0).args[4],
     "promptToChangePassword had a falsey 'notifySaved' argument"
   );
@@ -784,11 +776,14 @@ add_task(
       }
     );
     equal(
-      Services.logins.getAllLogins().length,
+      (await Services.logins.getAllLogins()).length,
       0,
       "Should have no saved logins since saving is disabled"
     );
-    ok(LMP._getPrompter.notCalled, "Checking _getPrompter wasn't called");
+    Assert.ok(
+      LMP._getPrompter.notCalled,
+      "Checking _getPrompter wasn't called"
+    );
 
     // Clean up
     LoginManagerParent._browsingContextGlobal.get.restore();
@@ -814,9 +809,8 @@ add_task(
         JSON.stringify(Services.logins.getAllLogins()[0])
     );
 
-    let {
-      generatedPassword: password1,
-    } = await stubGeneratedPasswordForBrowsingContextId(99);
+    let { generatedPassword: password1 } =
+      await stubGeneratedPasswordForBrowsingContextId(99);
     let { restorePrompter, fakePromptToChangePassword } = stubPrompter();
     let rootBrowser = LMP.getRootBrowser();
 
@@ -830,23 +824,24 @@ add_task(
         triggeredByFillingGenerated: true,
       }
     );
+    let logins = await Services.logins.getAllLogins();
     equal(
-      Services.logins.getAllLogins().length,
+      logins.length,
       1,
       "Should just have the previously-saved login with empty username"
     );
-    assertLoginProperties(Services.logins.getAllLogins()[0], login0Props);
+    assertLoginProperties(logins[0], login0Props);
 
-    ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-    ok(
+    Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+    Assert.ok(
       fakePromptToChangePassword.calledOnce,
       "Checking promptToChangePassword was called"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[3],
       "promptToChangePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       !fakePromptToChangePassword.getCall(0).args[4],
       "promptToChangePassword had a falsey 'notifySaved' argument"
     );
@@ -864,19 +859,17 @@ add_task(
         triggeredByFillingGenerated: true,
       }
     );
-    let generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
-      "https://www.example.com^userContextId=6"
-    );
-    ok(generatedPW.edited, "Cached edited boolean should be true");
+    let generatedPW =
+      LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
+        "https://www.example.com^userContextId=6"
+      );
+    Assert.ok(generatedPW.edited, "Cached edited boolean should be true");
     equal(generatedPW.storageGUID, null, "Should have no storageGUID");
     equal(generatedPW.value, newPassword, "Cached password should be updated");
-    assertLoginProperties(Services.logins.getAllLogins()[0], login0Props);
-    ok(Services.logins.getAllLogins()[0].equals(expected), "Ensure no changes");
-    equal(
-      Services.logins.getAllLogins().length,
-      1,
-      "Should have 1 saved login still"
-    );
+    logins = await Services.logins.getAllLogins();
+    assertLoginProperties(logins[0], login0Props);
+    Assert.ok(logins[0].equals(expected), "Ensure no changes");
+    equal(logins.length, 1, "Should have 1 saved login still");
 
     checkEditTelemetryRecorded(1, "Updating cache, not storage (no auto-save)");
 
@@ -901,12 +894,11 @@ add_task(
 
     info(
       "Saved initial login: " +
-        JSON.stringify(Services.logins.getAllLogins()[0])
+        JSON.stringify(await Services.logins.getAllLogins()[0])
     );
 
-    let {
-      generatedPassword: password1,
-    } = await stubGeneratedPasswordForBrowsingContextId(99);
+    let { generatedPassword: password1 } =
+      await stubGeneratedPasswordForBrowsingContextId(99);
     let {
       restorePrompter,
       fakePromptToChangePassword,
@@ -925,27 +917,28 @@ add_task(
         triggeredByFillingGenerated: true,
       }
     );
+    let logins = await Services.logins.getAllLogins();
     equal(
-      Services.logins.getAllLogins().length,
+      logins.length,
       1,
       "Should just have the previously-saved login with empty username"
     );
-    assertLoginProperties(Services.logins.getAllLogins()[0], login0Props);
+    assertLoginProperties(logins[0], login0Props);
 
-    ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-    ok(
+    Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+    Assert.ok(
       fakePromptToChangePassword.notCalled,
       "Checking promptToChangePassword wasn't called"
     );
-    ok(
+    Assert.ok(
       fakePromptToSavePassword.calledOnce,
       "Checking promptToSavePassword was called"
     );
-    ok(
+    Assert.ok(
       fakePromptToSavePassword.getCall(0).args[2],
       "promptToSavePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       !fakePromptToSavePassword.getCall(0).args[3],
       "promptToSavePassword had a falsey 'notifySaved' argument"
     );
@@ -963,36 +956,34 @@ add_task(
         triggeredByFillingGenerated: true,
       }
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.notCalled,
       "Checking promptToChangePassword wasn't called"
     );
-    ok(
+    Assert.ok(
       fakePromptToSavePassword.calledTwice,
       "Checking promptToSavePassword was called again"
     );
-    ok(
+    Assert.ok(
       fakePromptToSavePassword.getCall(1).args[2],
       "promptToSavePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       !fakePromptToSavePassword.getCall(1).args[3],
       "promptToSavePassword had a falsey 'notifySaved' argument"
     );
 
-    let generatedPW = LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
-      "https://www.example.com^userContextId=6"
-    );
-    ok(generatedPW.edited, "Cached edited boolean should be true");
+    let generatedPW =
+      LoginManagerParent.getGeneratedPasswordsByPrincipalOrigin().get(
+        "https://www.example.com^userContextId=6"
+      );
+    Assert.ok(generatedPW.edited, "Cached edited boolean should be true");
     equal(generatedPW.storageGUID, null, "Should have no storageGUID");
     equal(generatedPW.value, newPassword, "Cached password should be updated");
-    assertLoginProperties(Services.logins.getAllLogins()[0], login0Props);
-    ok(Services.logins.getAllLogins()[0].equals(expected), "Ensure no changes");
-    equal(
-      Services.logins.getAllLogins().length,
-      1,
-      "Should have 1 saved login still"
-    );
+    logins = await Services.logins.getAllLogins();
+    assertLoginProperties(logins[0], login0Props);
+    Assert.ok(logins[0].equals(expected), "Ensure no changes");
+    equal(logins.length, 1, "Should have 1 saved login still");
 
     checkEditTelemetryRecorded(
       1,
@@ -1016,9 +1007,8 @@ add_task(
     });
     await LoginTestUtils.addLogin(login0Props);
 
-    let {
-      generatedPassword: password1,
-    } = await stubGeneratedPasswordForBrowsingContextId(99);
+    let { generatedPassword: password1 } =
+      await stubGeneratedPasswordForBrowsingContextId(99);
     let { restorePrompter, fakePromptToChangePassword } = stubPrompter();
     let rootBrowser = LMP.getRootBrowser();
 
@@ -1033,7 +1023,7 @@ add_task(
       }
     );
 
-    let savedLogins = Services.logins.getAllLogins();
+    let savedLogins = await Services.logins.getAllLogins();
     equal(
       savedLogins.length,
       2,
@@ -1050,16 +1040,16 @@ add_task(
       })
     );
 
-    ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-    ok(
+    Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+    Assert.ok(
       fakePromptToChangePassword.calledOnce,
       "Checking promptToChangePassword was called"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[2],
       "promptToChangePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[3],
       "promptToChangePassword had a truthy 'notifySaved' argument"
     );
@@ -1080,9 +1070,8 @@ add_task(
     });
     await LoginTestUtils.addLogin(login0Props);
 
-    let {
-      generatedPassword: password1,
-    } = await stubGeneratedPasswordForBrowsingContextId(99);
+    let { generatedPassword: password1 } =
+      await stubGeneratedPasswordForBrowsingContextId(99);
     let { restorePrompter, fakePromptToChangePassword } = stubPrompter();
     let rootBrowser = LMP.getRootBrowser();
 
@@ -1097,13 +1086,13 @@ add_task(
       }
     );
 
-    let savedLogins = Services.logins.getAllLogins();
+    let savedLogins = await Services.logins.getAllLogins();
     equal(
       savedLogins.length,
       2,
       "Should have saved the generated-password login"
     );
-    assertLoginProperties(Services.logins.getAllLogins()[0], login0Props);
+    assertLoginProperties(savedLogins[0], login0Props);
     assertLoginProperties(
       savedLogins[1],
       Object.assign({}, loginTemplate, {
@@ -1112,16 +1101,16 @@ add_task(
       })
     );
 
-    ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
-    ok(
+    Assert.ok(LMP._getPrompter.calledOnce, "Checking _getPrompter was called");
+    Assert.ok(
       fakePromptToChangePassword.calledOnce,
       "Checking promptToChangePassword was called"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[2],
       "promptToChangePassword had a truthy 'dismissed' argument"
     );
-    ok(
+    Assert.ok(
       fakePromptToChangePassword.getCall(0).args[3],
       "promptToChangePassword had a truthy 'notifySaved' argument"
     );

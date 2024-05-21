@@ -5,7 +5,6 @@
 
 "use strict";
 
-/* import-globals-from ../../../../../toolkit/content/tests/browser/common/mockTransfer.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/content/tests/browser/common/mockTransfer.js",
   this
@@ -28,21 +27,25 @@ const TEST_PATH_PAGE = `${TEST_BASE_PATH}file_favicon.png`;
 const TEST_PATH_FRAME = `${TEST_BASE_PATH}file_favicon.png`;
 
 let MockFilePicker = SpecialPowers.MockFilePicker;
-MockFilePicker.init(window);
+MockFilePicker.init(window.browsingContext);
 const tempDir = createTemporarySaveDirectory();
 MockFilePicker.displayDirectory = tempDir;
 
-add_task(async function setup() {
+add_setup(async function () {
   info("Setting the prefs.");
 
   await SpecialPowers.pushPrefEnv({
-    set: [["privacy.firstparty.isolate", true]],
+    set: [
+      ["privacy.firstparty.isolate", true],
+      ["dom.security.https_first", false],
+      ["dom.block_download_insecure", false],
+    ],
   });
 
   info("Setting MockFilePicker.");
   mockTransferRegisterer.register();
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     mockTransferRegisterer.unregister();
     MockFilePicker.cleanup();
     tempDir.remove(true);
@@ -97,7 +100,7 @@ function createPromiseForTransferComplete() {
       MockFilePicker.filterIndex = 0; // kSaveAsType_Complete
 
       MockFilePicker.showCallback = null;
-      mockTransferCallback = function(downloadSuccess) {
+      mockTransferCallback = function (downloadSuccess) {
         ok(downloadSuccess, "File should have been downloaded successfully");
         mockTransferCallback = () => {};
         resolve();

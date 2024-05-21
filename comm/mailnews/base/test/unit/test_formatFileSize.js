@@ -6,11 +6,6 @@
  * Tests for the formatFileSize method.
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-
 var gStringBundle = Services.strings.createBundle(
   "chrome://messenger/locale/messenger.properties"
 );
@@ -32,14 +27,14 @@ function test_formatFileSize(aArgs) {
   };
 
   let actual = gMessenger.formatFileSize(aArgs.bytes, aArgs.useKB);
-  let expected = gStringBundle
+  const expected = gStringBundle
     .GetStringFromName(strings[aArgs.units])
     .replace("%.*f", aArgs.mantissa);
 
   // If the actual string contains a non-numeric character at the position
   // where we'd expect a decimal separator, assume it is a localized separator
   // and just convert it to a dot for easy comparing.
-  let separatorPos = aArgs.mantissa.indexOf(".");
+  const separatorPos = aArgs.mantissa.indexOf(".");
   if (!isDigit(actual.charAt(separatorPos))) {
     actual =
       actual.substring(0, separatorPos) + "." + actual.substr(separatorPos + 1);
@@ -47,8 +42,6 @@ function test_formatFileSize(aArgs) {
 
   Assert.equal(actual, expected);
 }
-
-/* ===== Driver ===== */
 
 var test_data = [
   { bytes: 0, useKB: false, mantissa: "0", units: "b" },
@@ -144,8 +137,8 @@ var test_data = [
   { bytes: 999, useKB: true, mantissa: "1.0", units: "kb" },
 ];
 
-var tests = [parameterizeTest(test_formatFileSize, test_data)];
-
-function run_test() {
-  async_run_tests(tests);
-}
+add_task(function test_format_file_size() {
+  test_data.map(entry => {
+    test_formatFileSize(entry);
+  });
+});

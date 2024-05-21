@@ -4,7 +4,7 @@
 
 // Test that we can compute dominator trees from a snapshot in a worker.
 
-add_task(async function() {
+add_task(async function () {
   const worker = new ChromeWorker("resource://test/dominator-tree-worker.js");
   worker.postMessage({});
 
@@ -20,7 +20,7 @@ add_task(async function() {
 
   await waitForDone(worker);
 
-  ok(assertionCount > 0);
+  Assert.greater(assertionCount, 0);
   worker.terminate();
 });
 

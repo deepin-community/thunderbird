@@ -24,6 +24,8 @@
 #define MACOS_VERSION_10_15_HEX 0x000A0F00
 #define MACOS_VERSION_10_16_HEX 0x000A1000
 #define MACOS_VERSION_11_0_HEX 0x000B0000
+#define MACOS_VERSION_12_0_HEX 0x000C0000
+#define MACOS_VERSION_13_0_HEX 0x000D0000
 
 #include "nsCocoaFeatures.h"
 #include "nsCocoaUtils.h"
@@ -36,7 +38,8 @@
 /*static*/ int32_t nsCocoaFeatures::mOSVersion = 0;
 
 // This should not be called with unchecked aMajor, which should be >= 10.
-inline int32_t AssembleVersion(int32_t aMajor, int32_t aMinor, int32_t aBugFix) {
+inline int32_t AssembleVersion(int32_t aMajor, int32_t aMinor,
+                               int32_t aBugFix) {
   MOZ_ASSERT(aMajor >= 10);
   return (aMajor << 16) + (aMinor << 8) + aBugFix;
 }
@@ -63,11 +66,13 @@ static int intAtStringIndex(NSArray* array, int index) {
 void nsCocoaFeatures::GetSystemVersion(int& major, int& minor, int& bugfix) {
   major = minor = bugfix = 0;
 
-  NSString* versionString = [[NSDictionary
-      dictionaryWithContentsOfFile:@"/System/Library/CoreServices/SystemVersion.plist"]
-      objectForKey:@"ProductVersion"];
+  NSString* versionString =
+      [[NSDictionary dictionaryWithContentsOfFile:
+                         @"/System/Library/CoreServices/SystemVersion.plist"]
+          objectForKey:@"ProductVersion"];
   if (!versionString) {
-    NS_ERROR("Couldn't read /System/Library/CoreServices/SystemVersion.plist to determine macOS "
+    NS_ERROR("Couldn't read /System/Library/CoreServices/SystemVersion.plist "
+             "to determine macOS "
              "version.");
     return;
   }
@@ -84,7 +89,8 @@ void nsCocoaFeatures::GetSystemVersion(int& major, int& minor, int& bugfix) {
   }
 }
 
-int32_t nsCocoaFeatures::GetVersion(int32_t aMajor, int32_t aMinor, int32_t aBugFix) {
+int32_t nsCocoaFeatures::GetVersion(int32_t aMajor, int32_t aMinor,
+                                    int32_t aBugFix) {
   int32_t macOSVersion;
   if (aMajor < 10) {
     aMajor = 10;
@@ -145,33 +151,37 @@ int32_t nsCocoaFeatures::GetVersion(int32_t aMajor, int32_t aMinor, int32_t aBug
   return ExtractBugFixVersion(macOSVersion());
 }
 
-/* static */ bool nsCocoaFeatures::OnSierraExactly() {
-  return (macOSVersion() >= MACOS_VERSION_10_12_HEX) && (macOSVersion() < MACOS_VERSION_10_13_HEX);
-}
-
-/* Version of OnSierraExactly as global function callable from cairo & skia */
-bool Gecko_OnSierraExactly() { return nsCocoaFeatures::OnSierraExactly(); }
-
-/* static */ bool nsCocoaFeatures::OnHighSierraOrLater() {
-  return (macOSVersion() >= MACOS_VERSION_10_13_HEX);
-}
-
-/* static */ bool nsCocoaFeatures::OnMojaveOrLater() {
-  return (macOSVersion() >= MACOS_VERSION_10_14_HEX);
-}
-
-/* static */ bool nsCocoaFeatures::OnCatalinaOrLater() {
-  return (macOSVersion() >= MACOS_VERSION_10_15_HEX);
-}
-
 /* static */ bool nsCocoaFeatures::OnBigSurOrLater() {
-  // Account for the version being 10.16 (which occurs when the
-  // application is linked with an older SDK) or 11.0 on Big Sur.
+  // Account for the version being 10.16 or 11.0 on Big Sur.
+  // The version is reported as 10.16 if SYSTEM_VERSION_COMPAT is set to 1,
+  // or if SYSTEM_VERSION_COMPAT is not set and the application is linked
+  // with a pre-Big Sur SDK.
+  // Firefox sets SYSTEM_VERSION_COMPAT to 0 in its Info.plist, so it'll
+  // usually see the correct 11.* version, despite being linked against an
+  // old SDK. However, it still sees the 10.16 compatibility version when
+  // launched from the command line, see bug 1727624. (This only applies to
+  // the Intel build - the arm64 build is linked against a Big Sur SDK and
+  // always sees the correct version.)
   return ((macOSVersion() >= MACOS_VERSION_10_16_HEX) ||
           (macOSVersion() >= MACOS_VERSION_11_0_HEX));
 }
 
-/* static */ bool nsCocoaFeatures::IsAtLeastVersion(int32_t aMajor, int32_t aMinor,
+/* static */ bool nsCocoaFeatures::OnMontereyOrLater() {
+  // This check only works if SYSTEM_VERSION_COMPAT is off, otherwise
+  // Monterey pretends to be 10.16 and is indistinguishable from Big Sur.
+  // In practice, this means that an Intel Firefox build can return false
+  // from this function if it's launched from the command line, see bug 1727624.
+  // This will not be an issue anymore once we link against the Big Sur SDK.
+  return (macOSVersion() >= MACOS_VERSION_12_0_HEX);
+}
+
+/* static */ bool nsCocoaFeatures::OnVenturaOrLater() {
+  // See comments above regarding SYSTEM_VERSION_COMPAT.
+  return (macOSVersion() >= MACOS_VERSION_13_0_HEX);
+}
+
+/* static */ bool nsCocoaFeatures::IsAtLeastVersion(int32_t aMajor,
+                                                    int32_t aMinor,
                                                     int32_t aBugFix) {
   return macOSVersion() >= GetVersion(aMajor, aMinor, aBugFix);
 }

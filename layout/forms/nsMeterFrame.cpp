@@ -11,14 +11,12 @@
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLMeterElement.h"
 #include "nsIContent.h"
+#include "nsLayoutUtils.h"
 #include "nsPresContext.h"
 #include "nsGkAtoms.h"
-#include "nsNameSpaceManager.h"
 #include "nsNodeInfoManager.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsFontMetrics.h"
-#include "nsCSSPseudoElements.h"
-#include "nsStyleConsts.h"
 #include <algorithm>
 
 using namespace mozilla;
@@ -37,13 +35,12 @@ nsMeterFrame::nsMeterFrame(ComputedStyle* aStyle, nsPresContext* aPresContext)
 
 nsMeterFrame::~nsMeterFrame() = default;
 
-void nsMeterFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                               PostDestroyData& aPostDestroyData) {
+void nsMeterFrame::Destroy(DestroyContext& aContext) {
   NS_ASSERTION(!GetPrevContinuation(),
                "nsMeterFrame should not have continuations; if it does we "
                "need to call RegUnregAccessKey only for the first.");
-  aPostDestroyData.AddAnonymousContent(mBarDiv.forget());
-  nsContainerFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+  aContext.AddAnonymousContent(mBarDiv.forget());
+  nsContainerFrame::Destroy(aContext);
 }
 
 nsresult nsMeterFrame::CreateAnonymousContent(
@@ -54,8 +51,13 @@ nsresult nsMeterFrame::CreateAnonymousContent(
   // Create the div.
   mBarDiv = doc->CreateHTMLElement(nsGkAtoms::div);
 
-  // Associate ::-moz-meter-bar pseudo-element to the anonymous child.
-  mBarDiv->SetPseudoElementType(PseudoStyleType::mozMeterBar);
+  // Associate the right pseudo-element to the anonymous child.
+  if (StaticPrefs::layout_css_modern_range_pseudos_enabled()) {
+    // TODO(emilio): Create also a slider-track pseudo-element.
+    mBarDiv->SetPseudoElementType(PseudoStyleType::sliderFill);
+  } else {
+    mBarDiv->SetPseudoElementType(PseudoStyleType::mozMeterBar);
+  }
 
   aElements.AppendElement(mBarDiv);
 
@@ -101,8 +103,6 @@ void nsMeterFrame::Reflow(nsPresContext* aPresContext,
   FinishAndStoreOverflow(&aDesiredSize);
 
   aStatus.Reset();  // This type of frame can't be split.
-
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }
 
 void nsMeterFrame::ReflowBarFrame(nsIFrame* aBarFrame,
@@ -119,17 +119,8 @@ void nsMeterFrame::ReflowBarFrame(nsIFrame* aBarFrame,
   nscoord xoffset = aReflowInput.ComputedPhysicalBorderPadding().left;
   nscoord yoffset = aReflowInput.ComputedPhysicalBorderPadding().top;
 
-  // NOTE: Introduce a new function getPosition in the content part ?
-  HTMLMeterElement* meterElement = static_cast<HTMLMeterElement*>(GetContent());
-
-  double max = meterElement->Max();
-  double min = meterElement->Min();
-  double value = meterElement->Value();
-
-  double position = max - min;
-  position = position != 0 ? (value - min) / position : 1;
-
-  size = NSToCoordRound(size * position);
+  auto* meterElement = static_cast<HTMLMeterElement*>(GetContent());
+  size = NSToCoordRound(size * meterElement->Position());
 
   if (!vertical && wm.IsPhysicalRTL()) {
     xoffset += aReflowInput.ComputedWidth() - size;
@@ -170,7 +161,7 @@ nsresult nsMeterFrame::AttributeChanged(int32_t aNameSpaceID,
        aAttribute == nsGkAtoms::min)) {
     nsIFrame* barFrame = mBarDiv->GetPrimaryFrame();
     NS_ASSERTION(barFrame, "The meter frame should have a child with a frame!");
-    PresShell()->FrameNeedsReflow(barFrame, IntrinsicDirty::Resize,
+    PresShell()->FrameNeedsReflow(barFrame, IntrinsicDirty::None,
                                   NS_FRAME_IS_DIRTY);
     InvalidateFrame();
   }
@@ -226,11 +217,8 @@ bool nsMeterFrame::ShouldUseNativeStyle() const {
   // - neither frame has author specified rules setting the border or the
   //   background.
   return StyleDisplay()->EffectiveAppearance() == StyleAppearance::Meter &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             this, NS_AUTHOR_SPECIFIED_BORDER_OR_BACKGROUND) &&
-         barFrame &&
+         !Style()->HasAuthorSpecifiedBorderOrBackground() && barFrame &&
          barFrame->StyleDisplay()->EffectiveAppearance() ==
              StyleAppearance::Meterchunk &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             barFrame, NS_AUTHOR_SPECIFIED_BORDER_OR_BACKGROUND);
+         !barFrame->Style()->HasAuthorSpecifiedBorderOrBackground();
 }

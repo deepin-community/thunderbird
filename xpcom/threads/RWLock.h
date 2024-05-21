@@ -11,11 +11,10 @@
 
 #include "mozilla/Assertions.h"
 #include "mozilla/Atomics.h"
+#include "mozilla/Attributes.h"
 #include "mozilla/BlockingResourceBase.h"
-
-#ifndef XP_WIN
-#  include <pthread.h>
-#endif
+#include "mozilla/PlatformRWLock.h"
+#include "mozilla/ThreadSafety.h"
 
 namespace mozilla {
 
@@ -41,48 +40,38 @@ namespace mozilla {
 //
 // It is unspecified whether RWLock gives priority to waiting readers or
 // a waiting writer when unlocking.
-class RWLock : public BlockingResourceBase {
+class MOZ_CAPABILITY("rwlock") RWLock : public detail::RWLockImpl,
+                                        public BlockingResourceBase {
  public:
   explicit RWLock(const char* aName);
 
-  // Windows rwlocks don't need any special handling to be destroyed, but
-  // POSIX ones do.
-#ifdef XP_WIN
-  ~RWLock() = default;
-#else
-  ~RWLock();
-#endif
-
 #ifdef DEBUG
   bool LockedForWritingByCurrentThread();
-  void ReadLock();
-  void ReadUnlock();
-  void WriteLock();
-  void WriteUnlock();
+  [[nodiscard]] bool TryReadLock() MOZ_SHARED_TRYLOCK_FUNCTION(true);
+  void ReadLock() MOZ_ACQUIRE_SHARED();
+  void ReadUnlock() MOZ_RELEASE_SHARED();
+  [[nodiscard]] bool TryWriteLock() MOZ_TRY_ACQUIRE(true);
+  void WriteLock() MOZ_CAPABILITY_ACQUIRE();
+  void WriteUnlock() MOZ_EXCLUSIVE_RELEASE();
 #else
-  void ReadLock() { ReadLockInternal(); }
-  void ReadUnlock() { ReadUnlockInternal(); }
-  void WriteLock() { WriteLockInternal(); }
-  void WriteUnlock() { WriteUnlockInternal(); }
+  [[nodiscard]] bool TryReadLock() MOZ_SHARED_TRYLOCK_FUNCTION(true) {
+    return detail::RWLockImpl::tryReadLock();
+  }
+  void ReadLock() MOZ_ACQUIRE_SHARED() { detail::RWLockImpl::readLock(); }
+  void ReadUnlock() MOZ_RELEASE_SHARED() { detail::RWLockImpl::readUnlock(); }
+  [[nodiscard]] bool TryWriteLock() MOZ_TRY_ACQUIRE(true) {
+    return detail::RWLockImpl::tryWriteLock();
+  }
+  void WriteLock() MOZ_CAPABILITY_ACQUIRE() { detail::RWLockImpl::writeLock(); }
+  void WriteUnlock() MOZ_EXCLUSIVE_RELEASE() {
+    detail::RWLockImpl::writeUnlock();
+  }
 #endif
 
  private:
-  void ReadLockInternal();
-  void ReadUnlockInternal();
-  void WriteLockInternal();
-  void WriteUnlockInternal();
-
   RWLock() = delete;
   RWLock(const RWLock&) = delete;
   RWLock& operator=(const RWLock&) = delete;
-
-#ifndef XP_WIN
-  pthread_rwlock_t mRWLock;
-#else
-  // SRWLock is pointer-sized.  We declare it in such a fashion here to
-  // avoid pulling in windows.h wherever this header is used.
-  void* mRWLock;
-#endif
 
 #ifdef DEBUG
   // We record the owning thread for write locks only.
@@ -90,15 +79,42 @@ class RWLock : public BlockingResourceBase {
 #endif
 };
 
+// We only use this once; not sure we can add thread safety attributions here
 template <typename T>
-class MOZ_RAII BaseAutoReadLock {
+class MOZ_RAII BaseAutoTryReadLock {
  public:
-  explicit BaseAutoReadLock(T& aLock) : mLock(&aLock) {
+  explicit BaseAutoTryReadLock(T& aLock)
+      : mLock(aLock.TryReadLock() ? &aLock : nullptr) {}
+
+  ~BaseAutoTryReadLock() {
+    if (mLock) {
+      mLock->ReadUnlock();
+    }
+  }
+
+  explicit operator bool() const { return mLock; }
+
+ private:
+  BaseAutoTryReadLock() = delete;
+  BaseAutoTryReadLock(const BaseAutoTryReadLock&) = delete;
+  BaseAutoTryReadLock& operator=(const BaseAutoTryReadLock&) = delete;
+
+  T* mLock;
+};
+
+template <typename T>
+class MOZ_SCOPED_CAPABILITY MOZ_RAII BaseAutoReadLock {
+ public:
+  explicit BaseAutoReadLock(T& aLock) MOZ_ACQUIRE_SHARED(aLock)
+      : mLock(&aLock) {
     MOZ_ASSERT(mLock, "null lock");
     mLock->ReadLock();
   }
 
-  ~BaseAutoReadLock() { mLock->ReadUnlock(); }
+  // Not MOZ_RELEASE_SHARED(), which would make sense - apparently this trips
+  // over a bug in clang's static analyzer and it says it expected an
+  // exclusive unlock.
+  ~BaseAutoReadLock() MOZ_RELEASE_GENERIC() { mLock->ReadUnlock(); }
 
  private:
   BaseAutoReadLock() = delete;
@@ -108,15 +124,39 @@ class MOZ_RAII BaseAutoReadLock {
   T* mLock;
 };
 
+// XXX Mutex attributions?
 template <typename T>
-class MOZ_RAII BaseAutoWriteLock final {
+class MOZ_RAII BaseAutoTryWriteLock {
  public:
-  explicit BaseAutoWriteLock(T& aLock) : mLock(&aLock) {
+  explicit BaseAutoTryWriteLock(T& aLock)
+      : mLock(aLock.TryWriteLock() ? &aLock : nullptr) {}
+
+  ~BaseAutoTryWriteLock() {
+    if (mLock) {
+      mLock->WriteUnlock();
+    }
+  }
+
+  explicit operator bool() const { return mLock; }
+
+ private:
+  BaseAutoTryWriteLock() = delete;
+  BaseAutoTryWriteLock(const BaseAutoTryWriteLock&) = delete;
+  BaseAutoTryWriteLock& operator=(const BaseAutoTryWriteLock&) = delete;
+
+  T* mLock;
+};
+
+template <typename T>
+class MOZ_SCOPED_CAPABILITY MOZ_RAII BaseAutoWriteLock final {
+ public:
+  explicit BaseAutoWriteLock(T& aLock) MOZ_CAPABILITY_ACQUIRE(aLock)
+      : mLock(&aLock) {
     MOZ_ASSERT(mLock, "null lock");
     mLock->WriteLock();
   }
 
-  ~BaseAutoWriteLock() { mLock->WriteUnlock(); }
+  ~BaseAutoWriteLock() MOZ_CAPABILITY_RELEASE() { mLock->WriteUnlock(); }
 
  private:
   BaseAutoWriteLock() = delete;
@@ -126,24 +166,24 @@ class MOZ_RAII BaseAutoWriteLock final {
   T* mLock;
 };
 
+// Read try-lock and unlock a RWLock with RAII semantics.  Much preferred to
+// bare calls to TryReadLock() and ReadUnlock().
+typedef BaseAutoTryReadLock<RWLock> AutoTryReadLock;
+
 // Read lock and unlock a RWLock with RAII semantics.  Much preferred to bare
 // calls to ReadLock() and ReadUnlock().
 typedef BaseAutoReadLock<RWLock> AutoReadLock;
+
+// Write try-lock and unlock a RWLock with RAII semantics.  Much preferred to
+// bare calls to TryWriteLock() and WriteUnlock().
+typedef BaseAutoTryWriteLock<RWLock> AutoTryWriteLock;
 
 // Write lock and unlock a RWLock with RAII semantics.  Much preferred to bare
 // calls to WriteLock() and WriteUnlock().
 typedef BaseAutoWriteLock<RWLock> AutoWriteLock;
 
-// XXX: normally we would define StaticRWLock as
-// MOZ_ONLY_USED_TO_AVOID_STATIC_CONSTRUCTORS, but the contexts in which it
-// is used (e.g. member variables in a third-party library) are non-trivial
-// to modify to properly declare everything at static scope.  As those
-// third-party libraries are the only clients, put it behind the detail
-// namespace to discourage other (possibly erroneous) uses from popping up.
-
-namespace detail {
-
-class StaticRWLock {
+class MOZ_ONLY_USED_TO_AVOID_STATIC_CONSTRUCTORS MOZ_CAPABILITY("rwlock")
+    StaticRWLock {
  public:
   // In debug builds, check that mLock is initialized for us as we expect by
   // the compiler.  In non-debug builds, don't declare a constructor so that
@@ -152,13 +192,19 @@ class StaticRWLock {
   StaticRWLock() { MOZ_ASSERT(!mLock); }
 #endif
 
-  void ReadLock() { Lock()->ReadLock(); }
-  void ReadUnlock() { Lock()->ReadUnlock(); }
-  void WriteLock() { Lock()->WriteLock(); }
-  void WriteUnlock() { Lock()->WriteUnlock(); }
+  [[nodiscard]] bool TryReadLock() MOZ_SHARED_TRYLOCK_FUNCTION(true) {
+    return Lock()->TryReadLock();
+  }
+  void ReadLock() MOZ_ACQUIRE_SHARED() { Lock()->ReadLock(); }
+  void ReadUnlock() MOZ_RELEASE_SHARED() { Lock()->ReadUnlock(); }
+  [[nodiscard]] bool TryWriteLock() MOZ_TRY_ACQUIRE(true) {
+    return Lock()->TryWriteLock();
+  }
+  void WriteLock() MOZ_CAPABILITY_ACQUIRE() { Lock()->WriteLock(); }
+  void WriteUnlock() MOZ_EXCLUSIVE_RELEASE() { Lock()->WriteUnlock(); }
 
  private:
-  RWLock* Lock() {
+  [[nodiscard]] RWLock* Lock() MOZ_RETURN_CAPABILITY(*mLock) {
     if (mLock) {
       return mLock;
     }
@@ -182,15 +228,15 @@ class StaticRWLock {
 #endif
 
   // Disallow these operators.
-  StaticRWLock& operator=(StaticRWLock* aRhs);
-  static void* operator new(size_t) noexcept(true);
-  static void operator delete(void*);
+  StaticRWLock& operator=(StaticRWLock* aRhs) = delete;
+  static void* operator new(size_t) noexcept(true) = delete;
+  static void operator delete(void*) = delete;
 };
 
+typedef BaseAutoTryReadLock<StaticRWLock> StaticAutoTryReadLock;
 typedef BaseAutoReadLock<StaticRWLock> StaticAutoReadLock;
+typedef BaseAutoTryWriteLock<StaticRWLock> StaticAutoTryWriteLock;
 typedef BaseAutoWriteLock<StaticRWLock> StaticAutoWriteLock;
-
-}  // namespace detail
 
 }  // namespace mozilla
 

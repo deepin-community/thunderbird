@@ -2,12 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-colors-dialog-window =
-    .title = Colors
-    .style = { PLATFORM() ->
-        [macos] width: 41em !important
-        *[other] width: 38em !important
-    }
+colors-dialog-title = Colors
 
 colors-dialog-legend = Text and Background
 
@@ -33,8 +28,8 @@ visited-link-color-label =
     .value = Visited Links:
     .accesskey = V
 
-underline-link-checkbox =
-    .label = Underline links
+always-underline-links =
+    .label = Always underline links
     .accesskey = U
 
 override-color-label =

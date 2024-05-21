@@ -5,20 +5,22 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "HangDetails.h"
+
 #include "nsIHangDetails.h"
 #include "nsPrintfCString.h"
-#include "js/Array.h"  // JS::NewArrayObject
+#include "js/Array.h"               // JS::NewArrayObject
+#include "js/PropertyAndElement.h"  // JS_DefineElement
+#include "mozilla/FileUtils.h"
 #include "mozilla/gfx/GPUParent.h"
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/dom/ContentParent.h"  // For RemoteTypePrefix
+#include "mozilla/FileUtils.h"
 #include "mozilla/SchedulerGroup.h"
 #include "mozilla/Unused.h"
 #include "mozilla/GfxMessageUtils.h"  // For ParamTraits<GeckoProcessType>
 #include "mozilla/ResultExtensions.h"
-
-#ifdef MOZ_GECKO_PROFILER
-#  include "shared-libraries.h"
-#endif
+#include "mozilla/Try.h"
+#include "shared-libraries.h"
 
 static const char MAGIC[] = "permahangsavev1";
 
@@ -61,32 +63,34 @@ nsHangDetails::GetRemoteType(nsACString& aName) {
 }
 
 NS_IMETHODIMP
-nsHangDetails::GetAnnotations(JSContext* aCx, JS::MutableHandleValue aVal) {
+nsHangDetails::GetAnnotations(JSContext* aCx,
+                              JS::MutableHandle<JS::Value> aVal) {
   // We create an Array with ["key", "value"] string pair entries for each item
   // in our annotations object.
   auto& annotations = mDetails.annotations();
   size_t length = annotations.Length();
-  JS::RootedObject retObj(aCx, JS::NewArrayObject(aCx, length));
+  JS::Rooted<JSObject*> retObj(aCx, JS::NewArrayObject(aCx, length));
   if (!retObj) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
 
   for (size_t i = 0; i < length; ++i) {
     const auto& annotation = annotations[i];
-    JS::RootedObject annotationPair(aCx, JS::NewArrayObject(aCx, 2));
+    JS::Rooted<JSObject*> annotationPair(aCx, JS::NewArrayObject(aCx, 2));
     if (!annotationPair) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
 
-    JS::RootedString key(aCx, JS_NewUCStringCopyN(aCx, annotation.name().get(),
+    JS::Rooted<JSString*> key(aCx,
+                              JS_NewUCStringCopyN(aCx, annotation.name().get(),
                                                   annotation.name().Length()));
     if (!key) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
 
-    JS::RootedString value(aCx,
-                           JS_NewUCStringCopyN(aCx, annotation.value().get(),
-                                               annotation.value().Length()));
+    JS::Rooted<JSString*> value(
+        aCx, JS_NewUCStringCopyN(aCx, annotation.value().get(),
+                                 annotation.value().Length()));
     if (!value) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -116,7 +120,7 @@ nsresult StringFrame(JSContext* aCx, JS::RootedObject& aTarget, size_t aIndex,
   if (!jsString) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
-  JS::RootedString string(aCx, jsString);
+  JS::Rooted<JSString*> string(aCx, jsString);
   if (!string) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
@@ -129,10 +133,10 @@ nsresult StringFrame(JSContext* aCx, JS::RootedObject& aTarget, size_t aIndex,
 }  // anonymous namespace
 
 NS_IMETHODIMP
-nsHangDetails::GetStack(JSContext* aCx, JS::MutableHandleValue aStack) {
+nsHangDetails::GetStack(JSContext* aCx, JS::MutableHandle<JS::Value> aStack) {
   auto& stack = mDetails.stack();
   uint32_t length = stack.stack().Length();
-  JS::RootedObject ret(aCx, JS::NewArrayObject(aCx, length));
+  JS::Rooted<JSObject*> ret(aCx, JS::NewArrayObject(aCx, length));
   if (!ret) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
@@ -175,7 +179,7 @@ nsHangDetails::GetStack(JSContext* aCx, JS::MutableHandleValue aStack) {
       case HangEntry::THangEntryModOffset: {
         const HangEntryModOffset& mo = entry.get_HangEntryModOffset();
 
-        JS::RootedObject jsFrame(aCx, JS::NewArrayObject(aCx, 2));
+        JS::Rooted<JSObject*> jsFrame(aCx, JS::NewArrayObject(aCx, 2));
         if (!jsFrame) {
           return NS_ERROR_OUT_OF_MEMORY;
         }
@@ -185,7 +189,7 @@ nsHangDetails::GetStack(JSContext* aCx, JS::MutableHandleValue aStack) {
         }
 
         nsPrintfCString hexString("%" PRIxPTR, (uintptr_t)mo.offset());
-        JS::RootedString hex(aCx, JS_NewStringCopyZ(aCx, hexString.get()));
+        JS::Rooted<JSString*> hex(aCx, JS_NewStringCopyZ(aCx, hexString.get()));
         if (!hex || !JS_DefineElement(aCx, jsFrame, 1, hex, JSPROP_ENUMERATE)) {
           return NS_ERROR_OUT_OF_MEMORY;
         }
@@ -236,29 +240,29 @@ nsHangDetails::GetStack(JSContext* aCx, JS::MutableHandleValue aStack) {
 }
 
 NS_IMETHODIMP
-nsHangDetails::GetModules(JSContext* aCx, JS::MutableHandleValue aVal) {
+nsHangDetails::GetModules(JSContext* aCx, JS::MutableHandle<JS::Value> aVal) {
   auto& modules = mDetails.stack().modules();
   size_t length = modules.Length();
-  JS::RootedObject retObj(aCx, JS::NewArrayObject(aCx, length));
+  JS::Rooted<JSObject*> retObj(aCx, JS::NewArrayObject(aCx, length));
   if (!retObj) {
     return NS_ERROR_OUT_OF_MEMORY;
   }
 
   for (size_t i = 0; i < length; ++i) {
     const HangModule& module = modules[i];
-    JS::RootedObject jsModule(aCx, JS::NewArrayObject(aCx, 2));
+    JS::Rooted<JSObject*> jsModule(aCx, JS::NewArrayObject(aCx, 2));
     if (!jsModule) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
 
-    JS::RootedString name(aCx,
-                          JS_NewUCStringCopyN(aCx, module.name().BeginReading(),
-                                              module.name().Length()));
+    JS::Rooted<JSString*> name(
+        aCx, JS_NewUCStringCopyN(aCx, module.name().BeginReading(),
+                                 module.name().Length()));
     if (!JS_DefineElement(aCx, jsModule, 0, name, JSPROP_ENUMERATE)) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
 
-    JS::RootedString breakpadId(
+    JS::Rooted<JSString*> breakpadId(
         aCx, JS_NewStringCopyN(aCx, module.breakpadId().BeginReading(),
                                module.breakpadId().Length()));
     if (!JS_DefineElement(aCx, jsModule, 1, breakpadId, JSPROP_ENUMERATE)) {
@@ -320,8 +324,7 @@ void nsHangDetails::Submit() {
         }
       });
 
-  nsresult rv =
-      SchedulerGroup::Dispatch(TaskCategory::Other, notifyObservers.forget());
+  nsresult rv = SchedulerGroup::Dispatch(notifyObservers.forget());
   MOZ_RELEASE_ASSERT(NS_SUCCEEDED(rv));
 }
 
@@ -574,8 +577,10 @@ Result<Ok, nsresult> ReadEntry(PRFileDesc* aFile, HangStack& aStack) {
 }
 
 Result<HangDetails, nsresult> ReadHangDetailsFromFile(nsIFile* aFile) {
-  AutoFDClose fd;
-  nsresult rv = aFile->OpenNSPRFileDesc(PR_RDONLY, 0644, &fd.rwget());
+  AutoFDClose raiiFd;
+  nsresult rv =
+      aFile->OpenNSPRFileDesc(PR_RDONLY, 0644, getter_Transfers(raiiFd));
+  const auto fd = raiiFd.get();
   if (NS_FAILED(rv)) {
     return Err(rv);
   }
@@ -648,9 +653,11 @@ Result<Ok, nsresult> WriteHangDetailsToFile(HangDetails& aDetails,
     return Err(NS_ERROR_INVALID_POINTER);
   }
 
-  AutoFDClose fd;
+  AutoFDClose raiiFd;
   nsresult rv = aFile->OpenNSPRFileDesc(
-      PR_WRONLY | PR_CREATE_FILE | PR_TRUNCATE, 0644, &fd.rwget());
+      PR_WRONLY | PR_CREATE_FILE | PR_TRUNCATE, 0644, getter_Transfers(raiiFd));
+  const auto fd = raiiFd.get();
+
   if (NS_FAILED(rv)) {
     return Err(rv);
   }

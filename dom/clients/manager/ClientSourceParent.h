@@ -13,8 +13,7 @@
 #include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/MozPromise.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class ClientHandleParent;
 class ClientManagerService;
@@ -29,7 +28,7 @@ class ClientSourceParent final : public PClientSourceParent {
   bool mExecutionReady;
   bool mFrozen;
 
-  void KillInvalidChild();
+  ~ClientSourceParent();
 
   // PClientSourceParent
   mozilla::ipc::IPCResult RecvWorkerSyncPing() override;
@@ -56,11 +55,12 @@ class ClientSourceParent final : public PClientSourceParent {
   bool DeallocPClientSourceOpParent(PClientSourceOpParent* aActor) override;
 
  public:
+  NS_INLINE_DECL_REFCOUNTING(ClientSourceParent, override)
+
   explicit ClientSourceParent(const ClientSourceConstructorArgs& aArgs,
                               const Maybe<ContentParentId>& aContentParentId);
-  ~ClientSourceParent();
 
-  void Init();
+  mozilla::ipc::IPCResult Init();
 
   const ClientInfo& Info() const;
 
@@ -85,7 +85,6 @@ class ClientSourceParent final : public PClientSourceParent {
   RefPtr<ClientOpPromise> StartOp(ClientOpConstructorArgs&& aArgs);
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // _mozilla_dom_ClientSourceParent_h

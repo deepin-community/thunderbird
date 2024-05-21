@@ -11,8 +11,10 @@ enum PermissionName {
   "geolocation",
   "notifications",
   "push",
-  "persistent-storage"
-  // Unsupported: "midi"
+  "persistent-storage",
+  "midi",
+  "storage-access", // Defined in https://privacycg.github.io/storage-access/#permissions-integration
+  "screen-wake-lock" // Defined in https://w3c.github.io/screen-wake-lock/
 };
 
 [GenerateInit]
@@ -20,13 +22,21 @@ dictionary PermissionDescriptor {
   required PermissionName name;
 };
 
+// https://webaudio.github.io/web-midi-api/#permissions-integration
+[GenerateInit]
+dictionary MidiPermissionDescriptor : PermissionDescriptor {
+  boolean sysex = false;
+};
+
 // We don't implement `PushPermissionDescriptor` because we use a background
 // message quota instead of `userVisibleOnly`.
 
 [Exposed=Window]
 interface Permissions {
-  [Throws]
+  [NewObject]
   Promise<PermissionStatus> query(object permission);
-  [Throws, Pref="dom.permissions.revoke.enable"]
-  Promise<PermissionStatus> revoke(object permission);
+
+  // http://w3c.github.io/permissions/#webdriver-command-set-permission
+  [ChromeOnly, Throws]
+  PermissionStatus parseSetParameters(PermissionSetParameters parameters);
 };

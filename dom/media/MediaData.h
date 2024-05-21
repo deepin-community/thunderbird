@@ -9,12 +9,14 @@
 #  include "AudioConfig.h"
 #  include "AudioSampleFormat.h"
 #  include "ImageTypes.h"
+#  include "MediaResult.h"
 #  include "SharedBuffer.h"
 #  include "TimeUnits.h"
 #  include "mozilla/CheckedInt.h"
 #  include "mozilla/Maybe.h"
 #  include "mozilla/PodOperations.h"
 #  include "mozilla/RefPtr.h"
+#  include "mozilla/Result.h"
 #  include "mozilla/Span.h"
 #  include "mozilla/UniquePtr.h"
 #  include "mozilla/UniquePtrExtensions.h"
@@ -59,10 +61,11 @@ class TrackInfoSharedPtr;
 // becomes:
 // AlignedFloatBuffer buffer(samples);
 // if (!buffer) { return NS_ERROR_OUT_OF_MEMORY; }
-
+class InflatableShortBuffer;
 template <typename Type, int Alignment = 32>
 class AlignedBuffer {
  public:
+  friend InflatableShortBuffer;
   AlignedBuffer()
       : mData(nullptr), mLength(0), mBuffer(nullptr), mCapacity(0) {}
 
@@ -83,7 +86,7 @@ class AlignedBuffer {
   AlignedBuffer(const AlignedBuffer& aOther)
       : AlignedBuffer(aOther.Data(), aOther.Length()) {}
 
-  AlignedBuffer(AlignedBuffer&& aOther)
+  AlignedBuffer(AlignedBuffer&& aOther) noexcept
       : mData(aOther.mData),
         mLength(aOther.mLength),
         mBuffer(std::move(aOther.mBuffer)),
@@ -93,9 +96,17 @@ class AlignedBuffer {
     aOther.mCapacity = 0;
   }
 
-  AlignedBuffer& operator=(AlignedBuffer&& aOther) {
-    this->~AlignedBuffer();
-    new (this) AlignedBuffer(std::move(aOther));
+  AlignedBuffer& operator=(AlignedBuffer&& aOther) noexcept {
+    if (&aOther == this) {
+      return *this;
+    }
+    mData = aOther.mData;
+    mLength = aOther.mLength;
+    mBuffer = std::move(aOther.mBuffer);
+    mCapacity = aOther.mCapacity;
+    aOther.mData = nullptr;
+    aOther.mLength = 0;
+    aOther.mCapacity = 0;
     return *this;
   }
 
@@ -111,7 +122,7 @@ class AlignedBuffer {
     return mData[aIndex];
   }
   // Set length of buffer, allocating memory as required.
-  // If length is increased, new buffer area is filled with 0.
+  // If memory is allocated, additional buffer area is filled with 0.
   bool SetLength(size_t aLength) {
     if (aLength > mLength && !EnsureCapacity(aLength)) {
       return false;
@@ -241,22 +252,53 @@ class AlignedBuffer {
     return true;
   }
   Type* mData;
-  size_t mLength;  // number of elements
+  size_t mLength{};  // number of elements
   UniquePtr<uint8_t[]> mBuffer;
-  size_t mCapacity;  // in bytes
+  size_t mCapacity{};  // in bytes
 };
 
-typedef AlignedBuffer<uint8_t> AlignedByteBuffer;
-typedef AlignedBuffer<float> AlignedFloatBuffer;
-typedef AlignedBuffer<int16_t> AlignedShortBuffer;
-typedef AlignedBuffer<AudioDataValue> AlignedAudioBuffer;
+using AlignedByteBuffer = AlignedBuffer<uint8_t>;
+using AlignedFloatBuffer = AlignedBuffer<float>;
+using AlignedShortBuffer = AlignedBuffer<int16_t>;
+using AlignedAudioBuffer = AlignedBuffer<AudioDataValue>;
+
+// A buffer in which int16_t audio can be written to, and then converted to
+// float32 audio without reallocating.
+// This class is useful when an API hands out int16_t audio but the samples
+// need to be immediately converted to f32.
+class InflatableShortBuffer {
+ public:
+  explicit InflatableShortBuffer(size_t aElementCount)
+      : mBuffer(aElementCount * 2) {}
+  AlignedFloatBuffer Inflate() {
+    // Convert the data from int16_t to f32 in place, in the same buffer.
+    // The reason this works is because the buffer has in fact twice the
+    // capacity, and the loop goes backward.
+    float* output = reinterpret_cast<float*>(mBuffer.mData);
+    for (size_t i = Length(); i--;) {
+      output[i] = ConvertAudioSample<float>(mBuffer.mData[i]);
+    }
+    AlignedFloatBuffer rv;
+    rv.mBuffer = std::move(mBuffer.mBuffer);
+    rv.mCapacity = mBuffer.mCapacity;
+    rv.mLength = Length();
+    rv.mData = output;
+    return rv;
+  }
+  size_t Length() const { return mBuffer.mLength / 2; }
+  int16_t* get() const { return mBuffer.get(); }
+  explicit operator bool() const { return mBuffer.mData != nullptr; }
+
+ protected:
+  AlignedShortBuffer mBuffer;
+};
 
 // Container that holds media samples.
 class MediaData {
  public:
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(MediaData)
 
-  enum class Type { AUDIO_DATA = 0, VIDEO_DATA, RAW_DATA, NULL_DATA };
+  enum class Type : uint8_t { AUDIO_DATA = 0, VIDEO_DATA, RAW_DATA, NULL_DATA };
   static const char* TypeToStr(Type aType) {
     switch (aType) {
       case Type::AUDIO_DATA:
@@ -416,14 +458,16 @@ class VideoInfo;
 // Holds a decoded video frame, in YCbCr format. These are queued in the reader.
 class VideoData : public MediaData {
  public:
-  typedef gfx::IntRect IntRect;
-  typedef gfx::IntSize IntSize;
-  typedef gfx::ColorDepth ColorDepth;
-  typedef gfx::ColorRange ColorRange;
-  typedef gfx::YUVColorSpace YUVColorSpace;
-  typedef layers::ImageContainer ImageContainer;
-  typedef layers::Image Image;
-  typedef layers::PlanarYCbCrImage PlanarYCbCrImage;
+  using IntRect = gfx::IntRect;
+  using IntSize = gfx::IntSize;
+  using ColorDepth = gfx::ColorDepth;
+  using ColorRange = gfx::ColorRange;
+  using YUVColorSpace = gfx::YUVColorSpace;
+  using ColorSpace2 = gfx::ColorSpace2;
+  using ChromaSubsampling = gfx::ChromaSubsampling;
+  using ImageContainer = layers::ImageContainer;
+  using Image = layers::Image;
+  using PlanarYCbCrImage = layers::PlanarYCbCrImage;
 
   static const Type sType = Type::VIDEO_DATA;
   static const char* sTypeName;
@@ -441,10 +485,12 @@ class VideoData : public MediaData {
       uint32_t mSkip;
     };
 
-    Plane mPlanes[3];
+    Plane mPlanes[3]{};
     YUVColorSpace mYUVColorSpace = YUVColorSpace::Identity;
+    ColorSpace2 mColorPrimaries = ColorSpace2::UNKNOWN;
     ColorDepth mColorDepth = ColorDepth::COLOR_8;
     ColorRange mColorRange = ColorRange::LIMITED;
+    ChromaSubsampling mChromaSubsampling = ChromaSubsampling::FULL;
   };
 
   // Constructs a VideoData object. If aImage is nullptr, creates a new Image
@@ -456,14 +502,17 @@ class VideoData : public MediaData {
   // be allocated to create the VideoData object, or it may indicate some
   // problem with the input data (e.g. negative stride).
 
+  static bool UseUseNV12ForSoftwareDecodedVideoIfPossible(
+      layers::KnowsCompositor* aAllocator);
+
   // Creates a new VideoData containing a deep copy of aBuffer. May use
   // aContainer to allocate an Image to hold the copied data.
-  static already_AddRefed<VideoData> CreateAndCopyData(
+  static Result<already_AddRefed<VideoData>, MediaResult> CreateAndCopyData(
       const VideoInfo& aInfo, ImageContainer* aContainer, int64_t aOffset,
       const media::TimeUnit& aTime, const media::TimeUnit& aDuration,
       const YCbCrBuffer& aBuffer, bool aKeyframe,
       const media::TimeUnit& aTimecode, const IntRect& aPicture,
-      layers::KnowsCompositor* aAllocator = nullptr);
+      layers::KnowsCompositor* aAllocator);
 
   static already_AddRefed<VideoData> CreateAndCopyData(
       const VideoInfo& aInfo, ImageContainer* aContainer, int64_t aOffset,
@@ -479,10 +528,11 @@ class VideoData : public MediaData {
 
   // Initialize PlanarYCbCrImage. Only When aCopyData is true,
   // video data is copied to PlanarYCbCrImage.
-  static bool SetVideoDataToImage(PlanarYCbCrImage* aVideoImage,
-                                  const VideoInfo& aInfo,
-                                  const YCbCrBuffer& aBuffer,
-                                  const IntRect& aPicture, bool aCopyData);
+  static MediaResult SetVideoDataToImage(PlanarYCbCrImage* aVideoImage,
+                                         const VideoInfo& aInfo,
+                                         const YCbCrBuffer& aBuffer,
+                                         const IntRect& aPicture,
+                                         bool aCopyData);
 
   size_t SizeOfIncludingThis(MallocSizeOf aMallocSizeOf) const;
 
@@ -494,12 +544,16 @@ class VideoData : public MediaData {
   // This frame's image.
   RefPtr<Image> mImage;
 
-  int32_t mFrameID;
+  ColorDepth GetColorDepth() const;
+
+  uint32_t mFrameID;
 
   VideoData(int64_t aOffset, const media::TimeUnit& aTime,
             const media::TimeUnit& aDuration, bool aKeyframe,
             const media::TimeUnit& aTimecode, IntSize aDisplay,
             uint32_t aFrameID);
+
+  nsCString ToString() const;
 
   void MarkSentToCompositor() { mSentToCompositor = true; }
   bool IsSentToCompositor() { return mSentToCompositor; }
@@ -529,6 +583,8 @@ enum class CryptoScheme : uint8_t {
   Cenc,
   Cbcs,
 };
+
+const char* CryptoSchemeToString(const CryptoScheme& aScheme);
 
 class CryptoTrack {
  public:
@@ -599,7 +655,7 @@ class MediaRawDataWriter {
   // Data manipulation methods. mData and mSize may be updated accordingly.
 
   // Set size of buffer, allocating memory as required.
-  // If size is increased, new buffer area is filled with 0.
+  // If memory is allocated, additional buffer area is filled with 0.
   [[nodiscard]] bool SetSize(size_t aSize);
   // Add aData at the beginning of buffer.
   [[nodiscard]] bool Prepend(const uint8_t* aData, size_t aSize);
@@ -648,11 +704,10 @@ class MediaRawData final : public MediaData {
   // Indicates that this is the last packet of the stream.
   bool mEOS = false;
 
-  // Indicate to the audio decoder that mDiscardPadding frames should be
-  // trimmed.
-  uint32_t mDiscardPadding = 0;
-
   RefPtr<TrackInfoSharedPtr> mTrackInfo;
+
+  // Used to indicate the id of the temporal scalability layer.
+  Maybe<uint8_t> mTemporalLayerId;
 
   // May contain the original start time and duration of the frames.
   // mOriginalPresentationWindow.mStart would always be less or equal to mTime
@@ -661,6 +716,13 @@ class MediaRawData final : public MediaData {
   // actually start on mTime and go for mDuration. If this interval is set, then
   // the decoder should crop the content accordingly.
   Maybe<media::TimeInterval> mOriginalPresentationWindow;
+
+  // If it's true, the `mCrypto` should be copied into the remote data as well.
+  // Currently this is only used for the media engine DRM playback.
+  bool mShouldCopyCryptoToRemoteRawData = false;
+
+  // It's only used when the remote decoder reconstructs the media raw data.
+  CryptoSample& GetWritableCrypto() { return mCryptoInternal; }
 
   // Return a deep copy or nullptr if out of memory.
   already_AddRefed<MediaRawData> Clone() const;
@@ -689,6 +751,18 @@ class MediaByteBuffer : public nsTArray<uint8_t> {
 
  private:
   ~MediaByteBuffer() = default;
+};
+
+// MediaAlignedByteBuffer is a ref counted AlignedByteBuffer whose memory
+// allocations are fallible.
+class MediaAlignedByteBuffer final : public AlignedByteBuffer {
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(MediaAlignedByteBuffer);
+  MediaAlignedByteBuffer() = default;
+  MediaAlignedByteBuffer(const uint8_t* aData, size_t aLength)
+      : AlignedByteBuffer(aData, aLength) {}
+
+ private:
+  ~MediaAlignedByteBuffer() = default;
 };
 
 }  // namespace mozilla

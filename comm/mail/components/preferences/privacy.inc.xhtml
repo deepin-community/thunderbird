@@ -8,7 +8,7 @@
     <hbox id="privacyCategory"
           class="subcategory"
           data-category="panePrivacy">
-      <html:h1 data-l10n-id="privacy-main-header"/>
+      <html:h1 data-l10n-id="privacy-main-header"></html:h1>
     </hbox>
 
     <!-- Mail Content -->
@@ -25,7 +25,7 @@
                   oncommand="gPrivacyPane.showRemoteContentExceptions();"
                   data-l10n-id="exceptions-button"
                   search-l10n-ids="
-                    permissions-reminder-window.title,
+                    permissions-dialog-title,
                     website-address-label.value,
                     block-button.label,
                     allow-session-button.label,
@@ -70,7 +70,7 @@
                   data-l10n-id="exceptions-button"
                   preference="pref.privacy.disable_button.cookie_exceptions"
                   search-l10n-ids="
-                    permissions-reminder-window.title,
+                    permissions-dialog-title,
                     website-address-label.value,
                     block-button.label,
                     allow-session-button.label,
@@ -103,23 +103,6 @@
             </menulist>
           </hbox>
         </hbox>
-      </hbox>
-      <hbox id="keepRow" class="indent">
-        <hbox id="keepBox" align="center">
-          <label id="keepUntil"
-                 control="keepCookiesUntil"
-                 data-l10n-id="keep-label"/>
-          <hbox>
-            <menulist id="keepCookiesUntil"
-                      preference="network.cookie.lifetimePolicy">
-              <menupopup>
-                <menuitem data-l10n-id="keep-expire" value="0"/>
-                <menuitem data-l10n-id="keep-close" value="2"/>
-                <menuitem data-l10n-id="keep-ask" value="1"/>
-              </menupopup>
-            </menulist>
-          </hbox>
-        </hbox>
         <hbox flex="1"/>
         <hbox>
           <button is="highlightable-button" id="showCookiesButton"
@@ -127,7 +110,7 @@
                   oncommand="gPrivacyPane.showCookies();"
                   preference="pref.privacy.disable_button.view_cookies"
                   search-l10n-ids="
-                    cookies-window-dialog.title,
+                    cookies-dialog-title,
                     filter-search-label.value,
                     cookies-on-system-label,
                     treecol-site-header.label,
@@ -154,7 +137,7 @@
                   preference="privacy.donottrackheader.enabled"/>
         <label is="text-link" id="doNotTrackInfo"
                href="https://www.mozilla.org/dnt"
-               data-l10n-id="learn-button"/>
+               data-l10n-id="dnt-learn-more-button"/>
       </hbox>
     </html:fieldset>
     </html:div>
@@ -162,7 +145,7 @@
     <hbox id="privacyPasswordsCategory"
           class="subcategory"
           data-category="panePrivacy">
-      <html:h1 data-l10n-id="privacy-passwords-header"/>
+      <html:h1 data-l10n-id="privacy-passwords-header"></html:h1>
     </hbox>
 
     <separator data-category="panePrivacy"/>
@@ -178,7 +161,7 @@
                   oncommand="gPrivacyPane.showPasswords();"
                   preference="pref.privacy.disable_button.view_passwords"
                   search-l10n-ids="
-                    saved-logins.title,
+                    saved-logins-title,
                     copy-provider-url-cmd.label,
                     copy-username-cmd.label,
                     edit-username-cmd.label,
@@ -234,7 +217,7 @@
     <hbox id="privacyJunkCategory"
           class="subcategory"
           data-category="panePrivacy">
-      <html:h1 data-l10n-id="privacy-junk-header"/>
+      <html:h1 data-l10n-id="privacy-junk-header"></html:h1>
     </hbox>
 
     <separator data-category="panePrivacy"/>
@@ -245,7 +228,7 @@
       <separator class="thin"/>
       <hbox>
         <checkbox id="manualMark"
-                  data-l10n-id="junk-label"
+                  data-l10n-id="junk-marked-label"
                   preference="mail.spam.manualMark"
                   oncommand="gPrivacyPane.updateManualMarkMode(this.checked);"/>
         <spacer flex="1"/>
@@ -267,12 +250,16 @@
           <spacer flex="1"/>
         </hbox>
       </radiogroup>
-      <hbox>
-        <checkbox id="markAsReadOnSpam"
-                  data-l10n-id="junk-read-label"
-                  preference="mail.spam.markAsReadOnSpam"/>
-        <spacer flex="1"/>
-      </hbox>
+      <separator class="thin"/>
+      <description data-l10n-id="junk-read-description"></description>
+      <checkbox class="indent"
+                id="manualMarkAsJunkMarksRead"
+                data-l10n-id="junk-read-manual-label"
+                preference="mailnews.ui.junk.manualMarkAsJunkMarksRead" />
+      <checkbox class="indent"
+                id="markAsReadOnSpam"
+                data-l10n-id="junk-read-auto-label"
+                preference="mail.spam.markAsReadOnSpam" />
       <hbox align="start">
         <checkbox id="enableJunkLogging" data-l10n-id="junk-log-label"
                   oncommand="gPrivacyPane.updateJunkLogButton(this.checked);"
@@ -295,7 +282,7 @@
     <hbox id="privacyDataCollectionCategory"
           class="subcategory"
           data-category="panePrivacy">
-      <html:h1 data-l10n-id="collection-header"/>
+      <html:h1 data-l10n-id="collection-header"></html:h1>
     </hbox>
 
     <html:div data-category="panePrivacy">
@@ -307,19 +294,17 @@
                data-l10n-id="collection-privacy-notice"/>
       </description>
       <description>
-        <hbox id="telemetry-container" align="stretch" flex="1" hidden="true">
-          <hbox align="top">
-            <image class="info-icon-telemetry" flex="1"></image>
-          </hbox>
-          <hbox align="center" id="dataDescriptionBox" flex="1">
-            <html:span id="telemetryDisabledDescription" class="tail-with-learn-more" data-l10n-id="collection-health-report-telemetry-disabled"/>
-          </hbox>
-          <hbox>
-              <button id="telemetryDataDeletionLearnMore"
-                      class="learnMore" is="text-link"
-                      data-l10n-id="collection-health-report-telemetry-disabled-link"/>
-          </hbox>
-        </hbox>
+        <html:div id="telemetry-container" hidden="hidden">
+          <html:img id="telemetryInfoIcon" alt=""
+                    src="chrome://global/skin/icons/info.svg" />
+          <html:span id="telemetryDisabledDescription"
+                     class="tail-with-learn-more"
+                     data-l10n-id="collection-health-report-telemetry-disabled">
+          </html:span>
+          <button id="telemetryDataDeletionLearnMore"
+                  class="learnMore" is="text-link"
+                  data-l10n-id="collection-health-report-telemetry-disabled-link"/>
+        </html:div>
       </description>
       <vbox data-subcategory="reports">
         <hbox align="center">
@@ -354,7 +339,7 @@
     <hbox id="privacySecurityCategory"
           class="subcategory"
           data-category="panePrivacy">
-      <html:h1 data-l10n-id="privacy-security-header"/>
+      <html:h1 data-l10n-id="privacy-security-header"></html:h1>
     </hbox>
 
     <html:div data-category="panePrivacy">
@@ -436,20 +421,20 @@
                       certmgr-people,
                       certmgr-ca,
                       certmgr-server,
-                      certmgr-edit-ca-cert.title,
+                      certmgr-edit-ca-cert2.title,
                       certmgr-edit-cert-edit-trust,
                       certmgr-edit-cert-trust-ssl.label,
                       certmgr-edit-cert-trust-email.label,
-                      certmgr-delete-cert.title,
+                      certmgr-delete-cert2.title,
                       certmgr-cert-host.label,
                       certmgr-cert-name.label,
                       certmgr-cert-server.label,
-                      certmgr-override-lifetime.label,
                       certmgr-token-name.label,
                       certmgr-begins-label.label,
                       certmgr-expires-label.label,
                       certmgr-email.label,
                       certmgr-serial.label,
+                      certmgr-fingerprint-sha-256.label,
                       certmgr-view.label,
                       certmgr-edit.label,
                       certmgr-export.label,
@@ -524,7 +509,7 @@
                     oncommand="gPrivacyPane.showSecurityDevices();"
                     preference="security.disable_button.openDeviceManager"
                     search-l10n-ids="
-                      devmgr.title,
+                      devmgr-window.title,
                       devmgr-devlist.label,
                       devmgr-header-details.label,
                       devmgr-header-value.label,
@@ -571,4 +556,46 @@
     </html:fieldset>
     </html:div>
 
+    <!-- Email End-To-End Encryption -->
+    <hbox id="privacyCategory"
+          class="subcategory"
+          data-category="panePrivacy">
+      <html:h1 data-l10n-id="email-e2ee-header"></html:h1>
+    </hbox>
+
+    <html:div data-category="panePrivacy">
+    <html:fieldset id="emailE2eeGroupPreparation" data-category="panePrivacy">
+      <description data-l10n-id="email-e2ee-enable-info"/>
+      <html:button id="settingsButton"
+              type="button"
+              data-l10n-id="account-button"
+              class="button button-flat"
+              onclick="window.browsingContext.topChromeWindow.MsgAccountManager(null);">
+      </html:button>
+    </html:fieldset>
+    </html:div>
+
+    <html:div data-category="panePrivacy">
+    <html:fieldset id="emailE2eeGroupAutomatism" data-category="panePrivacy">
+      <html:legend data-l10n-id="email-e2ee-automatism"></html:legend>
+      <description data-l10n-id="email-e2ee-automatism-pre"/>
+      <separator class="thin"/>
+
+      <checkbox id="emailE2eeAutoEnable"
+                preference="mail.e2ee.auto_enable"
+                data-l10n-id="email-e2ee-auto-on"
+                oncommand="gPrivacyPane.updateE2eeCheckboxes();"/>
+      <checkbox id="emailE2eeAutoDisable"
+                preference="mail.e2ee.auto_disable"
+                data-l10n-id="email-e2ee-auto-off"
+                oncommand="gPrivacyPane.updateE2eeCheckboxes();"/>
+      <checkbox id="emailE2eeAutoDisableNotify"
+                preference="mail.e2ee.notify_on_auto_disable"
+                data-l10n-id="email-e2ee-auto-off-notify"
+                oncommand="gPrivacyPane.updateE2eeCheckboxes();"/>
+
+      <separator class="thin"/>
+      <description data-l10n-id="email-e2ee-automatism-post"/>
+    </html:fieldset>
+    </html:div>
   </html:template>

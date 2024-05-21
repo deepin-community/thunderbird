@@ -2,15 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
-add_task(async function() {
-  let extension = ExtensionTestUtils.loadExtension({
+add_task(async function () {
+  const extension = ExtensionTestUtils.loadExtension({
     background: async () => {
       let id = "9b9074ff-8fa4-4c58-9c3b-bc9ea2e17db1";
-      let dummy = async (node, searchString, query) => {
+      const dummy = async (node, searchString, query) => {
         await browser.test.assertTrue(
           false,
           "Should have removed this address book"
@@ -67,17 +67,17 @@ add_task(async function() {
 
   const dummyUID = "9b9074ff-8fa4-4c58-9c3b-bc9ea2e17db1";
   let searchBook = MailServices.ab.getDirectoryFromUID(dummyUID);
-  ok(searchBook == null, "Dummy directory was removed by extension");
+  Assert.equal(searchBook, null, "Dummy directory was removed by extension");
 
   const UID = "00e1d9af-a846-4ef5-a6ac-15e8926bf6d3";
   searchBook = MailServices.ab.getDirectoryFromUID(UID);
-  ok(searchBook != null, "Extension registered an async directory");
+  Assert.notEqual(searchBook, null, "Extension registered an async directory");
 
   let foundCards = 0;
   await new Promise(resolve => {
     searchBook.search(null, "test", {
       onSearchFoundCard(card) {
-        ok(card != null, "A card was found.");
+        Assert.notEqual(card, null, "A card was found.");
         equal(card.directoryUID, UID, "The card comes from the directory.");
         equal(
           card.primaryEmail,
@@ -94,13 +94,13 @@ add_task(async function() {
       onSearchFinished(status, isCompleteResult) {
         ok(Components.isSuccessCode(status), "Search finished successfully.");
         equal(foundCards, 1, "One card was found.");
-        ok(isCompleteResult, "A full result set was receieved.");
+        ok(isCompleteResult, "A full result set was received.");
         resolve();
       },
     });
   });
 
-  let autoCompleteSearch = Cc[
+  const autoCompleteSearch = Cc[
     "@mozilla.org/autocomplete/search;1?name=addrbook"
   ].createInstance(Ci.nsIAutoCompleteSearch);
   await new Promise(resolve => {
@@ -128,10 +128,12 @@ add_task(async function() {
 
   await extension.unload();
   searchBook = MailServices.ab.getDirectoryFromUID(UID);
-  ok(searchBook == null, "Extension directory removed after unload");
+  Assert.equal(searchBook, null, "Extension directory removed after unload");
 });
 
 registerCleanupFunction(() => {
   // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+  );
 });

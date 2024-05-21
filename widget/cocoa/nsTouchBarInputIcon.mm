@@ -22,13 +22,19 @@
 using namespace mozilla;
 using mozilla::widget::IconLoader;
 
-static const uint32_t kIconSize = 16;
+static const uint32_t kIconHeight = 16;
 static const CGFloat kHiDPIScalingFactor = 2.0f;
 
-nsTouchBarInputIcon::nsTouchBarInputIcon(RefPtr<Document> aDocument, TouchBarInput* aInput,
+nsTouchBarInputIcon::nsTouchBarInputIcon(RefPtr<Document> aDocument,
+                                         TouchBarInput* aInput,
                                          NSTouchBarItem* aItem)
-    : mDocument(aDocument), mSetIcon(false), mButton(nil), mShareScrubber(nil), mPopoverItem(nil) {
-  if ([[aInput nativeIdentifier] isEqualToString:[TouchBarInput shareScrubberIdentifier]]) {
+    : mDocument(aDocument),
+      mSetIcon(false),
+      mButton(nil),
+      mShareScrubber(nil),
+      mPopoverItem(nil) {
+  if ([[aInput nativeIdentifier]
+          isEqualToString:[TouchBarInput shareScrubberIdentifier]]) {
     mShareScrubber = (NSSharingServicePickerTouchBarItem*)aItem;
   } else if ([aInput baseType] == TouchBarInputBaseType::kPopover) {
     mPopoverItem = (NSPopoverTouchBarItem*)aItem;
@@ -82,17 +88,18 @@ nsresult nsTouchBarInputIcon::SetupIcon(nsCOMPtr<nsIURI> aIconURI) {
 
   if (!mSetIcon) {
     // Load placeholder icon.
-    NSSize iconSize = NSMakeSize(kIconSize, kIconSize);
+    NSSize iconSize = NSMakeSize(kIconHeight, kIconHeight);
     NSImage* placeholder = [MOZIconHelper placeholderIconWithSize:iconSize];
     [mButton setImage:placeholder];
     [mShareScrubber setButtonImage:placeholder];
     [mPopoverItem setCollapsedRepresentationImage:placeholder];
   }
 
-  nsresult rv = mIconLoader->LoadIcon(aIconURI, mDocument, true /* aIsInternalIcon */);
+  nsresult rv =
+      mIconLoader->LoadIcon(aIconURI, mDocument, true /* aIsInternalIcon */);
   if (NS_FAILED(rv)) {
-    // There is no icon for this menu item, as an error occurred while loading it.
-    // An icon might have been set earlier or the place holder icon may have
+    // There is no icon for this menu item, as an error occurred while loading
+    // it. An icon might have been set earlier or the place holder icon may have
     // been set.  Clear it.
     [mButton setImage:nil];
     [mShareScrubber setButtonImage:nil];
@@ -117,11 +124,12 @@ nsresult nsTouchBarInputIcon::OnComplete(imgIContainer* aImage) {
 
   // We ask only for the HiDPI images since all Touch Bars are Retina
   // displays and we have no need for icons @1x.
-  NSImage* image = [MOZIconHelper iconImageFromImageContainer:aImage
-                                                     withSize:NSMakeSize(kIconSize, kIconSize)
-                                                computedStyle:nullptr
-                                                      subrect:mImageRegionRect
-                                                  scaleFactor:kHiDPIScalingFactor];
+  NSImage* image = [MOZIconHelper
+      iconImageFromImageContainer:aImage
+                         withSize:NSMakeSize(kIconHeight, kIconHeight)
+                      presContext:nullptr
+                    computedStyle:nullptr
+                      scaleFactor:kHiDPIScalingFactor];
   [mButton setImage:image];
   [mShareScrubber setButtonImage:image];
   [mPopoverItem setCollapsedRepresentationImage:image];

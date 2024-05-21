@@ -6,26 +6,29 @@
 
 "use strict";
 
-const Services = require("Services");
 const {
   createFactory,
   PureComponent,
-} = require("devtools/client/shared/vendor/react");
-const dom = require("devtools/client/shared/vendor/react-dom-factories");
-const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
-const { connect } = require("devtools/client/shared/vendor/react-redux");
+} = require("resource://devtools/client/shared/vendor/react.js");
+const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
+const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.js");
+const {
+  connect,
+} = require("resource://devtools/client/shared/vendor/react-redux.js");
 
 const Toolbar = createFactory(
-  require("devtools/client/responsive/components/Toolbar")
+  require("resource://devtools/client/responsive/components/Toolbar.js")
 );
 
 loader.lazyGetter(this, "DeviceModal", () =>
-  createFactory(require("devtools/client/responsive/components/DeviceModal"))
+  createFactory(
+    require("resource://devtools/client/responsive/components/DeviceModal.js")
+  )
 );
 
 const {
   changeNetworkThrottling,
-} = require("devtools/client/shared/components/throttling/actions");
+} = require("resource://devtools/client/shared/components/throttling/actions.js");
 const {
   addCustomDevice,
   editCustomDevice,
@@ -33,10 +36,10 @@ const {
   updateDeviceDisplayed,
   updateDeviceModal,
   updatePreferredDevices,
-} = require("devtools/client/responsive/actions/devices");
+} = require("resource://devtools/client/responsive/actions/devices.js");
 const {
   takeScreenshot,
-} = require("devtools/client/responsive/actions/screenshot");
+} = require("resource://devtools/client/responsive/actions/screenshot.js");
 const {
   changeUserAgent,
   toggleLeftAlignment,
@@ -44,7 +47,7 @@ const {
   toggleReloadOnUserAgent,
   toggleTouchSimulation,
   toggleUserAgentInput,
-} = require("devtools/client/responsive/actions/ui");
+} = require("resource://devtools/client/responsive/actions/ui.js");
 const {
   changeDevice,
   changePixelRatio,
@@ -52,12 +55,12 @@ const {
   removeDeviceAssociation,
   resizeViewport,
   rotateViewport,
-} = require("devtools/client/responsive/actions/viewports");
+} = require("resource://devtools/client/responsive/actions/viewports.js");
 const {
   getOrientation,
-} = require("devtools/client/responsive/utils/orientation");
+} = require("resource://devtools/client/responsive/utils/orientation.js");
 
-const Types = require("devtools/client/responsive/types");
+const Types = require("resource://devtools/client/responsive/types.js");
 
 class App extends PureComponent {
   static get propTypes() {
@@ -75,15 +78,13 @@ class App extends PureComponent {
     super(props);
 
     this.onAddCustomDevice = this.onAddCustomDevice.bind(this);
-    this.onBrowserContextMenu = this.onBrowserContextMenu.bind(this);
     this.onChangeDevice = this.onChangeDevice.bind(this);
     this.onChangeNetworkThrottling = this.onChangeNetworkThrottling.bind(this);
     this.onChangePixelRatio = this.onChangePixelRatio.bind(this);
     this.onChangeTouchSimulation = this.onChangeTouchSimulation.bind(this);
     this.onChangeUserAgent = this.onChangeUserAgent.bind(this);
-    this.onChangeViewportOrientation = this.onChangeViewportOrientation.bind(
-      this
-    );
+    this.onChangeViewportOrientation =
+      this.onChangeViewportOrientation.bind(this);
     this.onDeviceListUpdate = this.onDeviceListUpdate.bind(this);
     this.onEditCustomDevice = this.onEditCustomDevice.bind(this);
     this.onExit = this.onExit.bind(this);
@@ -93,28 +94,16 @@ class App extends PureComponent {
     this.onRotateViewport = this.onRotateViewport.bind(this);
     this.onScreenshot = this.onScreenshot.bind(this);
     this.onToggleLeftAlignment = this.onToggleLeftAlignment.bind(this);
-    this.onToggleReloadOnTouchSimulation = this.onToggleReloadOnTouchSimulation.bind(
-      this
-    );
+    this.onToggleReloadOnTouchSimulation =
+      this.onToggleReloadOnTouchSimulation.bind(this);
     this.onToggleReloadOnUserAgent = this.onToggleReloadOnUserAgent.bind(this);
     this.onToggleUserAgentInput = this.onToggleUserAgentInput.bind(this);
     this.onUpdateDeviceDisplayed = this.onUpdateDeviceDisplayed.bind(this);
     this.onUpdateDeviceModal = this.onUpdateDeviceModal.bind(this);
   }
 
-  componentWillUnmount() {
-    this.browser.removeEventListener("contextmenu", this.onContextMenu);
-    this.browser = null;
-  }
-
   onAddCustomDevice(device) {
     this.props.dispatch(addCustomDevice(device));
-  }
-
-  onBrowserContextMenu() {
-    // Update the position of remote browser so that makes the context menu to show at
-    // proper position before showing.
-    this.browser.frameLoader.requestUpdatePosition();
   }
 
   onChangeDevice(id, device, deviceType) {

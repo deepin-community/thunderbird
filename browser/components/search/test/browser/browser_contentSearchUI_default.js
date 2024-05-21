@@ -9,7 +9,14 @@ let extension;
 let defaultEngine;
 let addedEngine;
 
-add_task(async function setup() {
+add_setup(async function () {
+  // Disable window occlusion. Bug 1733955
+  if (navigator.platform.indexOf("Win") == 0) {
+    await SpecialPowers.pushPrefEnv({
+      set: [["widget.windows.window_occlusion_tracking.enabled", false]],
+    });
+  }
+
   defaultEngine = await Services.search.getDefault();
 
   extension = await SearchTestUtils.installSearchExtension({
@@ -22,36 +29,60 @@ add_task(async function setup() {
 
   addedEngine = await Services.search.getEngineByName(TEST_ENGINE_NAME);
 
+  // Enable suggestions in this test. Otherwise, the string in the content
+  // search box changes.
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.urlbar.suggest.searches", true]],
+  });
+
   registerCleanupFunction(async () => {
-    await Services.search.setDefault(defaultEngine);
+    await Services.search.setDefault(
+      defaultEngine,
+      Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+    );
   });
 });
 
 async function ensureIcon(tab, expectedIcon) {
-  await SpecialPowers.spawn(tab.linkedBrowser, [expectedIcon], async function(
-    icon
-  ) {
-    await ContentTaskUtils.waitForCondition(() => !content.document.hidden);
+  await SpecialPowers.spawn(
+    tab.linkedBrowser,
+    [expectedIcon],
+    async function (icon) {
+      await ContentTaskUtils.waitForCondition(() => !content.document.hidden);
 
-    let computedStyle = content.window.getComputedStyle(content.document.body);
-    await ContentTaskUtils.waitForCondition(
-      () => computedStyle.getPropertyValue("--newtab-search-icon") != "null",
-      "Search Icon not set."
-    );
+      let computedStyle = content.window.getComputedStyle(
+        content.document.body
+      );
+      await ContentTaskUtils.waitForCondition(
+        () => computedStyle.getPropertyValue("--newtab-search-icon") != "null",
+        "Search Icon not set."
+      );
 
-    Assert.equal(
-      computedStyle.getPropertyValue("--newtab-search-icon"),
-      `url(${icon})`,
-      "Should have the expected icon"
-    );
-  });
+      if (icon.startsWith("blob:")) {
+        // We don't check the data here as `browser_contentSearch.js` performs
+        // those checks.
+        Assert.ok(
+          computedStyle
+            .getPropertyValue("--newtab-search-icon")
+            .startsWith("url(blob:"),
+          "Should have a blob URL"
+        );
+      } else {
+        Assert.equal(
+          computedStyle.getPropertyValue("--newtab-search-icon"),
+          `url(${icon})`,
+          "Should have the expected icon"
+        );
+      }
+    }
+  );
 }
 
 async function ensurePlaceholder(tab, expectedId, expectedEngine) {
   await SpecialPowers.spawn(
     tab.linkedBrowser,
     [expectedId, expectedEngine],
-    async function(id, engine) {
+    async function (id, engine) {
       await ContentTaskUtils.waitForCondition(() => !content.document.hidden);
 
       await ContentTaskUtils.waitForCondition(
@@ -76,7 +107,7 @@ async function runNewTabTest(isHandoff) {
     waitForLoad: false,
   });
 
-  let engineIcon = defaultEngine.getIconURLBySize(16, 16);
+  let engineIcon = await defaultEngine.getIconURL(16);
 
   await ensureIcon(tab, engineIcon);
   if (isHandoff) {
@@ -87,7 +118,10 @@ async function runNewTabTest(isHandoff) {
     );
   }
 
-  await Services.search.setDefault(addedEngine);
+  await Services.search.setDefault(
+    addedEngine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
   // We only show the engine's own icon for app provided engines, otherwise show
   // a default. xref https://bugzilla.mozilla.org/show_bug.cgi?id=1449338#c19
@@ -96,25 +130,40 @@ async function runNewTabTest(isHandoff) {
     await ensurePlaceholder(tab, "newtab-search-box-handoff-input-no-engine");
   }
 
-  await Services.search.setDefault(defaultEngine);
+  // Disable suggestions in the Urlbar. This should update the placeholder
+  // string since handoff will now enter search mode.
+  if (isHandoff) {
+    await SpecialPowers.pushPrefEnv({
+      set: [["browser.urlbar.suggest.searches", false]],
+    });
+    await ensurePlaceholder(tab, "newtab-search-box-input");
+    await SpecialPowers.popPrefEnv();
+  }
+
+  await Services.search.setDefault(
+    defaultEngine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
   BrowserTestUtils.removeTab(tab);
 }
 
 add_task(async function test_content_search_attributes() {
-  SpecialPowers.pushPrefEnv({
+  await SpecialPowers.pushPrefEnv({
     set: [[HANDOFF_PREF, true]],
   });
 
   await runNewTabTest(true);
+  await SpecialPowers.popPrefEnv();
 });
 
 add_task(async function test_content_search_attributes_no_handoff() {
-  SpecialPowers.pushPrefEnv({
+  await SpecialPowers.pushPrefEnv({
     set: [[HANDOFF_PREF, false]],
   });
 
   await runNewTabTest(false);
+  await SpecialPowers.popPrefEnv();
 });
 
 add_task(async function test_content_search_attributes_in_private_window() {
@@ -124,7 +173,7 @@ add_task(async function test_content_search_attributes_in_private_window() {
   });
   let tab = win.gBrowser.selectedTab;
 
-  let engineIcon = defaultEngine.getIconURLBySize(16, 16);
+  let engineIcon = await defaultEngine.getIconURL(16);
 
   await ensureIcon(tab, engineIcon);
   await ensurePlaceholder(
@@ -133,14 +182,26 @@ add_task(async function test_content_search_attributes_in_private_window() {
     Services.search.defaultEngine.name
   );
 
-  await Services.search.setDefault(addedEngine);
+  await Services.search.setDefault(
+    addedEngine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
   // We only show the engine's own icon for app provided engines, otherwise show
   // a default. xref https://bugzilla.mozilla.org/show_bug.cgi?id=1449338#c19
   await ensureIcon(tab, "chrome://global/skin/icons/search-glass.svg");
   await ensurePlaceholder(tab, "about-private-browsing-handoff-no-engine");
 
-  await Services.search.setDefault(defaultEngine);
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.urlbar.suggest.searches", false]],
+  });
+  await ensurePlaceholder(tab, "about-private-browsing-search-btn");
+  await SpecialPowers.popPrefEnv();
+
+  await Services.search.setDefault(
+    defaultEngine,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
   await BrowserTestUtils.closeWindow(win);
 });

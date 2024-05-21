@@ -6,10 +6,16 @@
 #ifndef SHARED_SURFACE_D3D11_INTEROP_H_
 #define SHARED_SURFACE_D3D11_INTEROP_H_
 
+#include <d3d11.h>
 #include <windows.h>
 #include "SharedSurface.h"
 
 namespace mozilla {
+
+namespace gfx {
+class FileHandleWrapper;
+}  // namespace gfx
+
 namespace gl {
 
 class DXInterop2Device;
@@ -22,7 +28,7 @@ class SharedSurface_D3D11Interop final : public SharedSurface {
     const RefPtr<DXInterop2Device> interop;
     HANDLE lockHandle;
     RefPtr<ID3D11Texture2D> texD3D;
-    HANDLE dxgiHandle;
+    RefPtr<gfx::FileHandleWrapper> dxgiHandle;
     UniquePtr<Renderbuffer> interopRb;
     UniquePtr<MozFramebuffer> interopFbIfNeedsIndirect;
   };

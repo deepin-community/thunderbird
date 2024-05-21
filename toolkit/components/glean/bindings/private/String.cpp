@@ -6,12 +6,14 @@
 
 #include "mozilla/glean/bindings/String.h"
 
+#include "jsapi.h"
+#include "js/String.h"
 #include "nsString.h"
-#include "mozilla/Components.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/ResultVariant.h"
+#include "mozilla/dom/GleanMetricsBinding.h"
 #include "mozilla/glean/bindings/ScalarGIFFTMap.h"
 #include "mozilla/glean/fog_ffi_generated.h"
-#include "nsIClassInfoImpl.h"
 
 namespace mozilla::glean {
 
@@ -22,19 +24,13 @@ void StringMetric::Set(const nsACString& aValue) const {
   if (scalarId) {
     Telemetry::ScalarSet(scalarId.extract(), NS_ConvertUTF8toUTF16(aValue));
   }
-#ifndef MOZ_GLEAN_ANDROID
   fog_string_set(mId, &aValue);
-#endif
 }
 
 Result<Maybe<nsCString>, nsCString> StringMetric::TestGetValue(
     const nsACString& aPingName) const {
-#ifdef MOZ_GLEAN_ANDROID
-  Unused << mId;
-  return Maybe<nsCString>();
-#else
   nsCString err;
-  if (fog_string_test_get_error(mId, &aPingName, &err)) {
+  if (fog_string_test_get_error(mId, &err)) {
     return Err(err);
   }
   if (!fog_string_test_has_value(mId, &aPingName)) {
@@ -43,39 +39,37 @@ Result<Maybe<nsCString>, nsCString> StringMetric::TestGetValue(
   nsCString ret;
   fog_string_test_get_value(mId, &aPingName, &ret);
   return Some(ret);
-#endif
 }
 
 }  // namespace impl
 
-NS_IMPL_CLASSINFO(GleanString, nullptr, 0, {0})
-NS_IMPL_ISUPPORTS_CI(GleanString, nsIGleanString)
-
-NS_IMETHODIMP
-GleanString::Set(const nsACString& aValue) {
-  mString.Set(aValue);
-  return NS_OK;
+/* virtual */
+JSObject* GleanString::WrapObject(JSContext* aCx,
+                                  JS::Handle<JSObject*> aGivenProto) {
+  return dom::GleanString_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-NS_IMETHODIMP
-GleanString::TestGetValue(const nsACString& aStorageName, JSContext* aCx,
-                          JS::MutableHandleValue aResult) {
-  auto result = mString.TestGetValue(aStorageName);
+void GleanString::Set(const nsACString& aValue) {
+  if (aValue.IsVoid()) {
+    // TODO: Instrument this error (bug 1691073)
+    return;
+  }
+  mString.Set(aValue);
+}
+
+void GleanString::TestGetValue(const nsACString& aPingName, nsCString& aResult,
+                               ErrorResult& aRv) {
+  auto result = mString.TestGetValue(aPingName);
   if (result.isErr()) {
-    aResult.set(JS::UndefinedValue());
-    LogToBrowserConsole(nsIScriptError::errorFlag,
-                        NS_ConvertUTF8toUTF16(result.unwrapErr()));
-    return NS_ERROR_LOSS_OF_SIGNIFICANT_DATA;
+    aRv.ThrowDataError(result.unwrapErr());
+    return;
   }
   auto optresult = result.unwrap();
-  if (optresult.isNothing()) {
-    aResult.set(JS::UndefinedValue());
+  if (!optresult.isNothing()) {
+    aResult.Assign(optresult.extract());
   } else {
-    const NS_ConvertUTF8toUTF16 str(optresult.ref());
-    aResult.set(
-        JS::StringValue(JS_NewUCStringCopyN(aCx, str.Data(), str.Length())));
+    aResult.SetIsVoid(true);
   }
-  return NS_OK;
 }
 
 }  // namespace mozilla::glean

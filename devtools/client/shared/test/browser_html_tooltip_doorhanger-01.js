@@ -15,12 +15,12 @@ const TEST_URI = CHROME_URL_ROOT + "doc_html_tooltip_doorhanger-01.xhtml";
 
 const {
   HTMLTooltip,
-} = require("devtools/client/shared/widgets/tooltip/HTMLTooltip");
+} = require("resource://devtools/client/shared/widgets/tooltip/HTMLTooltip.js");
 loadHelperScript("helper_html_tooltip.js");
 
 let useXulWrapper;
 
-add_task(async function() {
+add_task(async function () {
   // Force the toolbox to be 200px high;
   await pushPref("devtools.toolbox.footer.height", 200);
 
@@ -59,13 +59,15 @@ async function runTests(doc) {
     const arrowCentre = (arrowBounds.left + arrowBounds.right) / 2;
 
     if (hangDirection === "left") {
-      ok(
-        arrowCentre > panelBoundsCentre,
+      Assert.greater(
+        arrowCentre,
+        panelBoundsCentre,
         `tooltip hangs to the left for ${anchor.id}`
       );
     } else {
-      ok(
-        arrowCentre < panelBoundsCentre,
+      Assert.less(
+        arrowCentre,
+        panelBoundsCentre,
         `tooltip hangs to the right for ${anchor.id}`
       );
     }

@@ -8,12 +8,12 @@
 
 const TEST_URI = TEST_URI_ROOT + "doc_layoutHelpers_getBoxQuads1.html";
 
-add_task(async function() {
+add_task(async function () {
   const tab = await addTab(TEST_URI);
 
   info("Running tests");
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     // This function allows the Content Task to easily call `FullZoom` API in
     // the parent process.
     function sendCommand(cmd) {
@@ -35,12 +35,18 @@ add_task(async function() {
 
     const doc = content.document;
 
-    const { require } = ChromeUtils.import(
-      "resource://devtools/shared/Loader.jsm"
+    const { require } = ChromeUtils.importESModule(
+      "resource://devtools/shared/loader/Loader.sys.mjs"
     );
-    const { getAdjustedQuads } = require("devtools/shared/layout/utils");
+    const {
+      getAdjustedQuads,
+    } = require("resource://devtools/shared/layout/utils.js");
 
-    ok(typeof getAdjustedQuads === "function", "getAdjustedQuads is defined");
+    Assert.strictEqual(
+      typeof getAdjustedQuads,
+      "function",
+      "getAdjustedQuads is defined"
+    );
 
     returnsTheRightDataStructure();
     isEmptyForMissingNode();
@@ -293,12 +299,14 @@ add_task(async function() {
       await sendCommand("zoom-enlarge");
       const [zoomedInQuad] = getAdjustedQuads(doc.defaultView, node);
 
-      ok(
-        zoomedInQuad.bounds.width > defaultQuad.bounds.width,
+      Assert.greater(
+        zoomedInQuad.bounds.width,
+        defaultQuad.bounds.width,
         "The zoomed in quad is bigger than the default one"
       );
-      ok(
-        zoomedInQuad.bounds.height > defaultQuad.bounds.height,
+      Assert.greater(
+        zoomedInQuad.bounds.height,
+        defaultQuad.bounds.height,
         "The zoomed in quad is bigger than the default one"
       );
 
@@ -308,12 +316,14 @@ add_task(async function() {
 
       const [zoomedOutQuad] = getAdjustedQuads(doc.defaultView, node);
 
-      ok(
-        zoomedOutQuad.bounds.width < defaultQuad.bounds.width,
+      Assert.less(
+        zoomedOutQuad.bounds.width,
+        defaultQuad.bounds.width,
         "The zoomed out quad is smaller than the default one"
       );
-      ok(
-        zoomedOutQuad.bounds.height < defaultQuad.bounds.height,
+      Assert.less(
+        zoomedOutQuad.bounds.height,
+        defaultQuad.bounds.height,
         "The zoomed out quad is smaller than the default one"
       );
 
@@ -329,7 +339,7 @@ add_task(async function() {
       const node = doc.querySelector("#inline");
       const quads = getAdjustedQuads(doc.defaultView, node, "content");
       // At least 3 because of the 2 <br />, maybe more depending on the window size.
-      ok(quads.length >= 3, "Multiple quads were returned");
+      Assert.greaterOrEqual(quads.length, 3, "Multiple quads were returned");
 
       is(
         quads.length,

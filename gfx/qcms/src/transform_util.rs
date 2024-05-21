@@ -1,4 +1,3 @@
-/* vim: set ts=8 sw=8 noexpandtab: */
 //  qcms
 //  Copyright (C) 2009 Mozilla Foundation
 //  Copyright (C) 1998-2007 Marti Maria
@@ -171,9 +170,7 @@ pub(crate) fn build_input_gamma_table(TRC: Option<&curveType>) -> Option<Box<[f3
     })
 }
 pub fn build_colorant_matrix(p: &Profile) -> Matrix {
-    let mut result: Matrix = Matrix {
-        m: [[0.; 3]; 3],
-    };
+    let mut result: Matrix = Matrix { m: [[0.; 3]; 3] };
     result.m[0][0] = s15Fixed16Number_to_float(p.redColorant.X);
     result.m[0][1] = s15Fixed16Number_to_float(p.greenColorant.X);
     result.m[0][2] = s15Fixed16Number_to_float(p.blueColorant.X);
@@ -199,9 +196,10 @@ struct Param {
 }
 
 impl Param {
+    #[allow(clippy::many_single_char_names)]
     fn new(params: &[f32]) -> Param {
-	// convert from the variable number of parameters
-	// contained in profiles to a unified representation.
+        // convert from the variable number of parameters
+        // contained in profiles to a unified representation.
         let g: f32 = params[0];
         match params[1..] {
             [] => Param {
@@ -260,7 +258,7 @@ impl Param {
             (self.a * x + self.b).powf(self.g) + self.e
         }
     }
-
+    #[allow(clippy::many_single_char_names)]
     fn invert(&self) -> Option<Param> {
         // First check if the function is continuous at the cross-over point d.
         let d1 = (self.a * self.d + self.b).powf(self.g) + self.e;
@@ -339,6 +337,7 @@ fn param_invert() {
  * icmTable_lookup_bwd and icmTable_setup_bwd. However, for now this is a quick way
  * to a working solution and allows for easy comparing with lcms. */
 #[no_mangle]
+#[allow(clippy::many_single_char_names)]
 pub fn lut_inverse_interp16(Value: u16, LutTable: &[u16]) -> uint16_fract_t {
     let mut l: i32 = 1; // 'int' Give spacing for negative values
     let mut r: i32 = 0x10000;
@@ -441,10 +440,10 @@ invert_lut will produce an inverse of:
 which has an maximum error of about 9855 (pixel difference of ~38.346)
 
 For now, we punt the decision of output size to the caller. */
-fn invert_lut(table: &[u16], out_length: i32) -> Vec<u16> {
+fn invert_lut(table: &[u16], out_length: usize) -> Vec<u16> {
     /* for now we invert the lut by creating a lut of size out_length
      * and attempting to lookup a value for each entry using lut_inverse_interp16 */
-    let mut output = Vec::with_capacity(out_length as usize);
+    let mut output = Vec::with_capacity(out_length);
     for i in 0..out_length {
         let x: f64 = i as f64 * 65535.0f64 / (out_length - 1) as f64;
         let input: uint16_fract_t = (x + 0.5f64).floor() as uint16_fract_t;
@@ -452,29 +451,32 @@ fn invert_lut(table: &[u16], out_length: i32) -> Vec<u16> {
     }
     output
 }
+#[allow(clippy::needless_range_loop)]
 fn compute_precache_pow(output: &mut [u8; PRECACHE_OUTPUT_SIZE], gamma: f32) {
     for v in 0..PRECACHE_OUTPUT_SIZE {
         //XXX: don't do integer/float conversion... and round?
         output[v] = (255. * (v as f32 / PRECACHE_OUTPUT_MAX as f32).powf(gamma)) as u8;
     }
 }
+#[allow(clippy::needless_range_loop)]
 pub fn compute_precache_lut(output: &mut [u8; PRECACHE_OUTPUT_SIZE], table: &[u16]) {
     for v in 0..PRECACHE_OUTPUT_SIZE {
         output[v] = lut_interp_linear_precache_output(v as u32, table);
     }
 }
+#[allow(clippy::needless_range_loop)]
 pub fn compute_precache_linear(output: &mut [u8; PRECACHE_OUTPUT_SIZE]) {
     for v in 0..PRECACHE_OUTPUT_SIZE {
         //XXX: round?
         output[v] = (v / (PRECACHE_OUTPUT_SIZE / 256)) as u8;
     }
 }
-pub(crate) fn compute_precache(trc: &curveType, output: &mut [u8; PRECACHE_OUTPUT_SIZE]) -> bool {
+pub(crate) fn compute_precache(trc: &curveType, output: &mut [u8; PRECACHE_OUTPUT_SIZE]) {
     match trc {
         curveType::Parametric(params) => {
             let mut gamma_table_uint: [u16; 256] = [0; 256];
 
-            let mut inverted_size: i32 = 256;
+            let mut inverted_size: usize = 256;
             let gamma_table = compute_curve_gamma_table_type_parametric(params);
             let mut i: u16 = 0u16;
             while (i as i32) < 256 {
@@ -482,7 +484,7 @@ pub(crate) fn compute_precache(trc: &curveType, output: &mut [u8; PRECACHE_OUTPU
                 i += 1
             }
             //XXX: the choice of a minimum of 256 here is not backed by any theory,
-            //     measurement or data, howeve r it is what lcms uses.
+            //     measurement or data, however it is what lcms uses.
             //     the maximum number we would need is 65535 because that's the
             //     accuracy used for computing the pre cache table
             if inverted_size < 256 {
@@ -496,9 +498,9 @@ pub(crate) fn compute_precache(trc: &curveType, output: &mut [u8; PRECACHE_OUTPU
                 0 => compute_precache_linear(output),
                 1 => compute_precache_pow(output, 1. / u8Fixed8Number_to_float(data[0])),
                 _ => {
-                    let mut inverted_size = data.len() as i32;
+                    let mut inverted_size = data.len();
                     //XXX: the choice of a minimum of 256 here is not backed by any theory,
-                    //     measurement or data, howeve r it is what lcms uses.
+                    //     measurement or data, however it is what lcms uses.
                     //     the maximum number we would need is 65535 because that's the
                     //     accuracy used for computing the pre cache table
                     if inverted_size < 256 {
@@ -510,10 +512,9 @@ pub(crate) fn compute_precache(trc: &curveType, output: &mut [u8; PRECACHE_OUTPU
             }
         }
     }
-    true
 }
-fn build_linear_table(length: i32) -> Vec<u16> {
-    let mut output = Vec::with_capacity(length as usize);
+fn build_linear_table(length: usize) -> Vec<u16> {
+    let mut output = Vec::with_capacity(length);
     for i in 0..length {
         let x: f64 = i as f64 * 65535.0f64 / (length - 1) as f64;
         let input: uint16_fract_t = (x + 0.5f64).floor() as uint16_fract_t;
@@ -521,8 +522,8 @@ fn build_linear_table(length: i32) -> Vec<u16> {
     }
     output
 }
-fn build_pow_table(gamma: f32, length: i32) -> Vec<u16> {
-    let mut output = Vec::with_capacity(length as usize);
+fn build_pow_table(gamma: f32, length: usize) -> Vec<u16> {
+    let mut output = Vec::with_capacity(length);
     for i in 0..length {
         let mut x: f64 = i as f64 / (length - 1) as f64;
         x = x.powf(gamma as f64);
@@ -532,36 +533,75 @@ fn build_pow_table(gamma: f32, length: i32) -> Vec<u16> {
     output
 }
 
-pub(crate) fn build_output_lut(trc: &curveType) -> Option<Vec<u16>> {
+fn to_lut(params: &Param, len: usize) -> Vec<u16> {
+    let mut output = Vec::with_capacity(len);
+    for i in 0..len {
+        let X = i as f32 / (len-1) as f32;
+        output.push((params.eval(X) * 65535.) as u16);
+    }
+    output
+}
+
+pub(crate) fn build_lut_for_linear_from_tf(trc: &curveType,
+        lut_len: Option<usize>) -> Vec<u16> {
     match trc {
         curveType::Parametric(params) => {
+            let lut_len = lut_len.unwrap_or(256);
             let params = Param::new(params);
-            let inv_params = params.invert()?;
-
-            let mut output = Vec::with_capacity(256);
-            for i in 0..256 {
-                let X = i as f32 / 255.;
-                output.push((inv_params.eval(X) * 65535.) as u16);
-            }
-            Some(output)
-        }
+            to_lut(&params, lut_len)
+        },
         curveType::Curve(data) => {
+            let autogen_lut_len = lut_len.unwrap_or(4096);
             match data.len() {
-                0 => Some(build_linear_table(4096)),
+                0 => build_linear_table(autogen_lut_len),
                 1 => {
-                    let gamma = 1. / u8Fixed8Number_to_float(data[0]);
-                    Some(build_pow_table(gamma, 4096))
+                    let gamma = u8Fixed8Number_to_float(data[0]);
+                    build_pow_table(gamma, autogen_lut_len)
                 }
                 _ => {
-                    //XXX: the choice of a minimum of 256 here is not backed by any theory,
-                    //     measurement or data, however it is what lcms uses.
-                    let mut output_gamma_lut_length = data.len();
-                    if output_gamma_lut_length < 256 {
-                        output_gamma_lut_length = 256
-                    }
-                    Some(invert_lut(data, output_gamma_lut_length as i32))
+                    let lut_len = lut_len.unwrap_or(data.len());
+                    assert_eq!(lut_len, data.len());
+                    data.clone() // I feel bad about this.
                 }
             }
-        }
+        },
     }
+}
+
+pub(crate) fn build_lut_for_tf_from_linear(trc: &curveType) -> Option<Vec<u16>> {
+    match trc {
+        curveType::Parametric(params) => {
+            let lut_len = 256;
+            let params = Param::new(params);
+            if let Some(inv_params) = params.invert() {
+                return Some(to_lut(&inv_params, lut_len));
+            }
+            // else return None instead of fallthrough to generic lut inversion.
+            return None;
+        },
+        curveType::Curve(data) => {
+            let autogen_lut_len = 4096;
+            match data.len() {
+                0 => {
+                    return Some(build_linear_table(autogen_lut_len));
+                },
+                1 => {
+                    let gamma = 1. / u8Fixed8Number_to_float(data[0]);
+                    return Some(build_pow_table(gamma, autogen_lut_len));
+                },
+                _ => {},
+            }
+        },
+    }
+
+    let linear_from_tf = build_lut_for_linear_from_tf(trc, None);
+
+    //XXX: the choice of a minimum of 256 here is not backed by any theory,
+    //     measurement or data, however it is what lcms uses.
+    let inverted_lut_len = std::cmp::max(linear_from_tf.len(), 256);
+    Some(invert_lut(&linear_from_tf, inverted_lut_len))
+}
+
+pub(crate) fn build_output_lut(trc: &curveType) -> Option<Vec<u16>> {
+    build_lut_for_tf_from_linear(trc)
 }

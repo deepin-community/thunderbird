@@ -2,33 +2,30 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* We expect the following arguments:
-   - pref name of LDAP directory to fetch from
-   - array with email addresses
+const USER_CERT_ATTRIBUTE = "usercertificate;binary";
 
-  Display modal dialog with message and stop button.
-  In onload, kick off binding to LDAP.
-  When bound, kick off the searches.
-  On finding certificates, import into permanent cert database.
-  When all searches are finished, close the dialog.
-*/
+let gEmailAddresses;
+let gDirectoryPref;
+let gLdapServerURL;
+let gLdapConnection;
+let gCertDB;
+let gLdapOperation;
+let gLogin;
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var nsIX509CertDB = Ci.nsIX509CertDB;
-var nsX509CertDB = "@mozilla.org/security/x509certdb;1";
-var CertAttribute = "usercertificate;binary";
-
-var gEmailAddresses;
-var gDirectoryPref;
-var gLdapServerURL;
-var gLdapConnection;
-var gCertDB;
-var gLdapOperation;
-var gLogin;
-
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogcancel", stopFetching);
 
+/**
+ * Expects the following arguments:
+ * - pref name of LDAP directory to fetch from
+ * - array with email addresses
+ *
+ * Display modal dialog with message and stop button.
+ * In onload, kick off binding to LDAP.
+ * When bound, kick off the searches.
+ * On finding certificates, import into permanent cert database.
+ * When all searches are finished, close the dialog.
+ */
 function onLoad() {
   gDirectoryPref = window.arguments[0];
   gEmailAddresses = window.arguments[1];
@@ -38,19 +35,16 @@ function onLoad() {
     return;
   }
 
-  setTimeout(search, 1);
+  setTimeout(search);
 }
 
 function search() {
-  // get the login to authenticate as, if there is one
-  try {
-    gLogin = Services.prefs.getStringPref(gDirectoryPref + ".auth.dn");
-  } catch (ex) {
-    // if we don't have this pref, no big deal
-  }
+  // Get the login to authenticate as, if there is one. No big deal if we don't
+  // have one.
+  gLogin = Services.prefs.getStringPref(gDirectoryPref + ".auth.dn", undefined);
 
   try {
-    let url = Services.prefs.getCharPref(gDirectoryPref + ".uri");
+    const url = Services.prefs.getCharPref(gDirectoryPref + ".uri");
 
     gLdapServerURL = Services.io.newURI(url).QueryInterface(Ci.nsILDAPURL);
 
@@ -61,13 +55,12 @@ function search() {
     gLdapConnection.init(
       gLdapServerURL,
       gLogin,
-      new boundListener(),
+      new BindListener(),
       null,
       Ci.nsILDAPConnection.VERSION3
     );
   } catch (ex) {
-    dump(ex);
-    dump(" exception creating ldap connection\n");
+    console.error(ex);
     window.close();
   }
 }
@@ -82,11 +75,13 @@ function stopFetching() {
 
 function importCert(ber_value) {
   if (!gCertDB) {
-    gCertDB = Cc[nsX509CertDB].getService(nsIX509CertDB);
+    gCertDB = Cc["@mozilla.org/security/x509certdb;1"].getService(
+      Ci.nsIX509CertDB
+    );
   }
 
   // ber_value has type nsILDAPBERValue
-  var cert_bytes = ber_value.get();
+  const cert_bytes = ber_value.get();
   if (cert_bytes) {
     gCertDB.importEmailCertificate(cert_bytes, cert_bytes.length, null);
   }
@@ -97,152 +92,164 @@ function getLDAPOperation() {
     Ci.nsILDAPOperation
   );
 
-  gLdapOperation.init(gLdapConnection, new ldapMessageListener(), null);
+  gLdapOperation.init(gLdapConnection, new LDAPMessageListener(), null);
 }
 
-function getPassword() {
+async function getPassword() {
   // we only need a password if we are using credentials
-  if (gLogin) {
-    let authPrompter = Services.ww.getNewAuthPrompter(window);
-    let strBundle = document.getElementById("bundle_ldap");
-    let password = { value: "" };
-
-    // nsLDAPAutocompleteSession uses asciiHost instead of host for the prompt text, I think we should be
-    // consistent.
-    if (
-      authPrompter.promptPassword(
-        strBundle.getString("authPromptTitle"),
-        strBundle.getFormattedString("authPromptText", [
-          gLdapServerURL.asciiHost,
-        ]),
-        gLdapServerURL.spec,
-        authPrompter.SAVE_PASSWORD_PERMANENTLY,
-        password
-      )
-    ) {
-      return password.value;
-    }
+  if (!gLogin) {
+    return null;
   }
+  const authPrompter = Services.ww.getNewAuthPrompter(window);
+  const strBundle = document.getElementById("bundle_ldap");
+  const password = { value: "" };
 
+  // nsLDAPAutocompleteSession uses asciiHost instead of host for the prompt
+  // text, I think we should be consistent.
+  if (
+    await authPrompter.asyncPromptPassword(
+      strBundle.getString("authPromptTitle"),
+      strBundle.getFormattedString("authPromptText", [
+        gLdapServerURL.asciiHost,
+      ]),
+      gLdapServerURL.spec,
+      authPrompter.SAVE_PASSWORD_PERMANENTLY,
+      password
+    )
+  ) {
+    return password.value;
+  }
   return null;
 }
 
-function kickOffBind() {
-  try {
+/**
+ * Checks if the LDAP connection can be bound.
+ * @implements {nsILDAPMessageListener}
+ */
+class BindListener {
+  QueryInterface = ChromeUtils.generateQI(["nsILDAPMessageListener"]);
+
+  async onLDAPInit(conn, status) {
+    // Kick off bind.
     getLDAPOperation();
-    gLdapOperation.simpleBind(getPassword());
-  } catch (e) {
-    window.close();
-  }
-}
-
-function kickOffSearch() {
-  try {
-    var prefix1 = "";
-    var suffix1 = "";
-
-    var urlFilter = gLdapServerURL.filter;
-
-    if (
-      urlFilter != null &&
-      urlFilter.length > 0 &&
-      urlFilter != "(objectclass=*)"
-    ) {
-      if (urlFilter.startsWith("(")) {
-        prefix1 = "(&" + urlFilter;
-      } else {
-        prefix1 = "(&(" + urlFilter + ")";
-      }
-      suffix1 = ")";
-    }
-
-    var prefix2 = "";
-    var suffix2 = "";
-
-    if (gEmailAddresses.length > 1) {
-      prefix2 = "(|";
-      suffix2 = ")";
-    }
-
-    var mailFilter = "";
-
-    for (var i = 0; i < gEmailAddresses.length; ++i) {
-      mailFilter += "(mail=" + gEmailAddresses[i] + ")";
-    }
-
-    var filter = prefix1 + prefix2 + mailFilter + suffix2 + suffix1;
-
-    var wanted_attributes = CertAttribute;
-
-    // Max search results =>
-    // Double number of email addresses, because each person might have
-    // multiple certificates listed. We expect at most two certificates,
-    // one for signing, one for encrypting.
-    // Maybe that number should be larger, to allow for deployments,
-    // where even more certs can be stored per user???
-
-    var maxEntriesWanted = gEmailAddresses.length * 2;
-
-    getLDAPOperation();
-    gLdapOperation.searchExt(
-      gLdapServerURL.dn,
-      gLdapServerURL.scope,
-      filter,
-      wanted_attributes,
-      0,
-      maxEntriesWanted
-    );
-  } catch (e) {
-    window.close();
-  }
-}
-
-function boundListener() {}
-
-boundListener.prototype.QueryInterface = ChromeUtils.generateQI([
-  "nsILDAPMessageListener",
-]);
-
-boundListener.prototype.onLDAPMessage = function(aMessage) {};
-
-boundListener.prototype.onLDAPInit = function(aConn, aStatus) {
-  kickOffBind();
-};
-
-boundListener.prototype.onLDAPError = function(aStatus, aSecInfo, location) {
-  window.close();
-};
-
-function ldapMessageListener() {}
-
-ldapMessageListener.prototype.QueryInterface = ChromeUtils.generateQI([
-  "nsILDAPMessageListener",
-]);
-
-ldapMessageListener.prototype.onLDAPMessage = function(aMessage) {
-  if (Ci.nsILDAPMessage.RES_SEARCH_RESULT == aMessage.type) {
-    window.close();
-    return;
+    gLdapOperation.simpleBind(await getPassword());
   }
 
-  if (Ci.nsILDAPMessage.RES_BIND == aMessage.type) {
-    if (Ci.nsILDAPErrors.SUCCESS != aMessage.errorCode) {
-      window.close();
+  onLDAPMessage(message) {}
+
+  onLDAPError(status, secInfo, location) {
+    if (secInfo) {
+      console.warn(`LDAP bind connection security error for ${location}`);
     } else {
-      kickOffSearch();
+      console.warn(`LDAP bind error: ${status}`);
     }
-    return;
+    window.close();
   }
+}
 
-  if (Ci.nsILDAPMessage.RES_SEARCH_ENTRY == aMessage.type) {
-    try {
-      var outBinValues = aMessage.getBinaryValues(CertAttribute);
+/**
+ * LDAPMessageListener.
+ * @implements {nsILDAPMessageListener}
+ */
+class LDAPMessageListener {
+  QueryInterface = ChromeUtils.generateQI(["nsILDAPMessageListener"]);
 
-      for (let i = 0; i < outBinValues.length; ++i) {
-        importCert(outBinValues[i]);
+  onLDAPInit(conn, status) {}
+
+  onLDAPMessage(message) {
+    if (Ci.nsILDAPMessage.RES_SEARCH_RESULT == message.type) {
+      window.close();
+      return;
+    }
+
+    if (Ci.nsILDAPMessage.RES_BIND == message.type) {
+      if (Ci.nsILDAPErrors.SUCCESS != message.errorCode) {
+        window.close();
+        return;
       }
-    } catch (e) {}
-  }
-};
+      // Kick off search.
+      let prefix1 = "";
+      let suffix1 = "";
 
-ldapMessageListener.prototype.onLDAPInit = function(aConn, aStatus) {};
+      const urlFilter = gLdapServerURL.filter;
+      if (
+        urlFilter != null &&
+        urlFilter.length > 0 &&
+        urlFilter != "(objectclass=*)"
+      ) {
+        if (urlFilter.startsWith("(")) {
+          prefix1 = "(&" + urlFilter;
+        } else {
+          prefix1 = "(&(" + urlFilter + ")";
+        }
+        suffix1 = ")";
+      }
+
+      let prefix2 = "";
+      let suffix2 = "";
+
+      if (gEmailAddresses.length > 1) {
+        prefix2 = "(|";
+        suffix2 = ")";
+      }
+
+      let mailFilter = "";
+
+      for (const email of gEmailAddresses) {
+        mailFilter += "(mail=" + email + ")";
+      }
+
+      const filter = prefix1 + prefix2 + mailFilter + suffix2 + suffix1;
+
+      // Max search results =>
+      // Double number of email addresses, because each person might have
+      // multiple certificates listed. We expect at most two certificates,
+      // one for signing, one for encrypting.
+      // Maybe that number should be larger, to allow for deployments,
+      // where even more certs can be stored per user???
+
+      const maxEntriesWanted = gEmailAddresses.length * 2;
+
+      getLDAPOperation();
+      gLdapOperation.searchExt(
+        gLdapServerURL.dn,
+        gLdapServerURL.scope,
+        filter,
+        USER_CERT_ATTRIBUTE,
+        0,
+        maxEntriesWanted
+      );
+      return;
+    }
+
+    if (Ci.nsILDAPMessage.RES_SEARCH_ENTRY == message.type) {
+      let outBinValues = null;
+      try {
+        // This call may throw if the result message is empty or doesn't
+        // contain this attribute.
+        // It's an allowed condition that the attribute is missing on
+        // the server, so we silently ignore a failure to obtain it.
+        outBinValues = message.getBinaryValues(USER_CERT_ATTRIBUTE);
+      } catch (ex) {}
+      if (outBinValues) {
+        for (let i = 0; i < outBinValues.length; ++i) {
+          importCert(outBinValues[i]);
+        }
+      }
+    }
+  }
+
+  /**
+   * @param {nsresult} status
+   * @param {?nsITransportSecurityInfo} secInfo
+   * @param {?string} location
+   */
+  onLDAPError(status, secInfo, location) {
+    if (secInfo) {
+      console.warn(`LDAP connection security error for ${location}`);
+    } else {
+      console.warn(`LDAP error: ${status}`);
+    }
+    window.close();
+  }
+}

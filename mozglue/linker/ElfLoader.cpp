@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <dlfcn.h>
+#include <optional>
 #include <unistd.h>
 #include <errno.h>
 #include <algorithm>
@@ -18,6 +19,7 @@
 #include "Logging.h"
 #include "Utils.h"
 #include <inttypes.h>
+#include "mozilla/ScopeExit.h"
 
 // From Utils.h
 mozilla::Atomic<size_t, mozilla::ReleaseAcquire> gPageSize;
@@ -46,18 +48,7 @@ static int GetAndroidSDKVersion() {
   return version;
 }
 
-#  if __ANDROID_API__ < 8
-/* Android API < 8 doesn't provide sigaltstack */
-
-extern "C" {
-
-inline int sigaltstack(const stack_t* ss, stack_t* oss) {
-  return syscall(__NR_sigaltstack, ss, oss);
-}
-
-} /* extern "C" */
-#  endif /* __ANDROID_API__ */
-#endif   /* ANDROID */
+#endif /* ANDROID */
 
 #ifdef __ARM_EABI__
 extern "C" MOZ_EXPORT const void* __gnu_Unwind_Find_exidx(void* pc, int* pcount)
@@ -163,8 +154,8 @@ class DlIteratePhdrHelper {
   DlIteratePhdrHelper() {
     int pipefd[2];
     valid_pipe = (pipe(pipefd) == 0);
-    read_fd.reset(pipefd[0]);
-    write_fd.reset(pipefd[1]);
+    read_fd.emplace(pipefd[0]);
+    write_fd.emplace(pipefd[1]);
   }
 
   int fill_and_call(dl_phdr_cb callback, const void* l_addr, const char* l_name,
@@ -172,8 +163,8 @@ class DlIteratePhdrHelper {
 
  private:
   bool valid_pipe;
-  AutoCloseFD read_fd;
-  AutoCloseFD write_fd;
+  std::optional<AutoCloseFD> read_fd;
+  std::optional<AutoCloseFD> write_fd;
 };
 
 // This function is called for each shared library iterated over by
@@ -210,7 +201,7 @@ int DlIteratePhdrHelper::fill_and_call(dl_phdr_cb callback, const void* l_addr,
     static_assert(sizeof(raw_ehdr) < PIPE_BUF, "PIPE_BUF is too small");
     do {
       // writes are atomic when smaller than PIPE_BUF, per POSIX.1-2008.
-      ret = write(write_fd, l_addr, sizeof(raw_ehdr));
+      ret = write(*write_fd, l_addr, sizeof(raw_ehdr));
     } while (ret == -1 && errno == EINTR);
     if (ret != sizeof(raw_ehdr)) {
       if (ret == -1 && errno == EFAULT) {
@@ -223,7 +214,7 @@ int DlIteratePhdrHelper::fill_and_call(dl_phdr_cb callback, const void* l_addr,
       do {
         // Per POSIX.1-2008, interrupted reads can return a length smaller
         // than the given one instead of failing with errno EINTR.
-        ret = read(read_fd, raw_ehdr + nbytes, sizeof(raw_ehdr) - nbytes);
+        ret = read(*read_fd, raw_ehdr + nbytes, sizeof(raw_ehdr) - nbytes);
         if (ret > 0) nbytes += ret;
       } while ((nbytes != sizeof(raw_ehdr) && ret > 0) ||
                (ret == -1 && errno == EINTR));
@@ -294,31 +285,6 @@ const void* __wrap___gnu_Unwind_Find_exidx(void* pc, int* pcount) {
 }
 #endif
 
-/**
- * faulty.lib public API
- */
-
-MFBT_API size_t __dl_get_mappable_length(void* handle) {
-  if (!handle) return 0;
-  return reinterpret_cast<LibHandle*>(handle)->GetMappableLength();
-}
-
-MFBT_API void* __dl_mmap(void* handle, void* addr, size_t length,
-                         off_t offset) {
-  if (!handle) return nullptr;
-  return reinterpret_cast<LibHandle*>(handle)->MappableMMap(addr, length,
-                                                            offset);
-}
-
-MFBT_API void __dl_munmap(void* handle, void* addr, size_t length) {
-  if (!handle) return;
-  return reinterpret_cast<LibHandle*>(handle)->MappableMUnmap(addr, length);
-}
-
-MFBT_API bool IsSignalHandlingBroken() {
-  return ElfLoader::Singleton.isSignalHandlingBroken();
-}
-
 namespace {
 
 /**
@@ -372,23 +338,6 @@ const char* LibHandle::GetName() const {
   return path ? LeafName(path) : nullptr;
 }
 
-size_t LibHandle::GetMappableLength() const {
-  if (!mappable) mappable = GetMappable();
-  if (!mappable) return 0;
-  return mappable->GetLength();
-}
-
-void* LibHandle::MappableMMap(void* addr, size_t length, off_t offset) const {
-  if (!mappable) mappable = GetMappable();
-  if (!mappable) return MAP_FAILED;
-  void* mapped = mappable->mmap(addr, length, PROT_READ, MAP_PRIVATE, offset);
-  return mapped;
-}
-
-void LibHandle::MappableMUnmap(void* addr, size_t length) const {
-  if (mappable) mappable->munmap(addr, length);
-}
-
 /**
  * SystemElf
  */
@@ -427,23 +376,6 @@ void* SystemElf::GetSymbolPtr(const char* symbol) const {
   DEBUG_LOG("dlsym(%p [\"%s\"], \"%s\") = %p", dlhandle, GetPath(), symbol,
             sym);
   return sym;
-}
-
-Mappable* SystemElf::GetMappable() const {
-  const char* path = GetPath();
-  if (!path) return nullptr;
-#ifdef ANDROID
-  /* On Android, if we don't have the full path, try in /system/lib */
-  const char* name = LeafName(path);
-  std::string systemPath;
-  if (name == path) {
-    systemPath = "/system/lib/";
-    systemPath += path;
-    path = systemPath.c_str();
-  }
-#endif
-
-  return MappableFile::Create(path);
 }
 
 #ifdef __ARM_EABI__
@@ -547,36 +479,7 @@ already_AddRefed<LibHandle> ElfLoader::GetHandleByPtr(void* addr) {
 }
 
 Mappable* ElfLoader::GetMappableFromPath(const char* path) {
-  const char* name = LeafName(path);
-  Mappable* mappable = nullptr;
-  RefPtr<Zip> zip;
-  const char* subpath;
-  if ((subpath = strchr(path, '!'))) {
-    char* zip_path = strndup(path, subpath - path);
-    while (*(++subpath) == '/') {
-    }
-    zip = ZipCollection::GetZip(zip_path);
-    free(zip_path);
-    Zip::Stream s;
-    if (zip && zip->GetStream(subpath, &s)) {
-      /* When the MOZ_LINKER_EXTRACT environment variable is set to "1",
-       * compressed libraries are going to be (temporarily) extracted as
-       * files, in the directory pointed by the MOZ_LINKER_CACHE
-       * environment variable. */
-      const char* extract = getenv("MOZ_LINKER_EXTRACT");
-      if (extract && !strncmp(extract, "1", 2 /* Including '\0' */))
-        mappable = MappableExtractFile::Create(name, zip, &s);
-      if (!mappable) {
-        if (s.GetType() == Zip::Stream::DEFLATE) {
-          mappable = MappableDeflate::Create(name, zip, &s);
-        }
-      }
-    }
-  }
-  /* If we couldn't load above, try with a MappableFile */
-  if (!mappable && !zip) mappable = MappableFile::Create(path);
-
-  return mappable;
+  return Mappable::Create(path);
 }
 
 void ElfLoader::Register(LibHandle* handle) {
@@ -933,7 +836,10 @@ class EnsureWritable {
     /* The interesting part of the /proc/self/maps format looks like:
      * startAddr-endAddr rwxp */
     int result = 0;
-    AutoCloseFILE f(fopen("/proc/self/maps", "r"));
+    FILE* const f = fopen("/proc/self/maps", "r");
+    const auto cleanup = mozilla::MakeScopeExit([&]() {
+      if (f) fclose(f);
+    });
     while (f) {
       unsigned long long startAddr, endAddr;
       char perms[5];
@@ -1164,10 +1070,7 @@ struct TmpData {
 };
 
 SEGVHandler::SEGVHandler()
-    : initialized(false),
-      registeredHandler(false),
-      signalHandlingBroken(true),
-      signalHandlingSlow(true) {
+    : initialized(false), registeredHandler(false), signalHandlingSlow(true) {
   /* Ensure logging is initialized before the DEBUG_LOG in the test_handler.
    * As this constructor runs before the ElfLoader constructor (by effect
    * of ElfLoader inheriting from this class), this also initializes on behalf
@@ -1184,14 +1087,9 @@ SEGVHandler::SEGVHandler()
   struct sigaction old_action;
   sys_sigaction(SIGSEGV, nullptr, &old_action);
 
-  /* Some devices don't provide useful information to their SIGSEGV handlers,
-   * making it impossible for on-demand decompression to work. To check if
-   * we're on such a device, setup a temporary handler and deliberately
-   * trigger a segfault. The handler will set signalHandlingBroken if the
-   * provided information is bogus.
-   * Some other devices have a kernel option enabled that makes SIGSEGV handler
+  /* Some devices have a kernel option enabled that makes SIGSEGV handler
    * have an overhead so high that it affects how on-demand decompression
-   * performs. The handler will also set signalHandlingSlow if the triggered
+   * performs. The handler will set signalHandlingSlow if the triggered
    * SIGSEGV took too much time. */
   struct sigaction action;
   action.sa_sigaction = &SEGVHandler::test_handler;
@@ -1217,7 +1115,9 @@ void SEGVHandler::FinishInitialization() {
    * going to race with another thread. */
   initialized = true;
 
-  if (signalHandlingBroken || signalHandlingSlow) return;
+  if (signalHandlingSlow) {
+    return;
+  }
 
   typedef int (*sigaction_func)(int, const struct sigaction*,
                                 struct sigaction*);
@@ -1304,13 +1204,9 @@ SEGVHandler::~SEGVHandler() {
 }
 
 /* Test handler for a deliberately triggered SIGSEGV that determines whether
- * useful information is provided to signal handlers, particularly whether
- * si_addr is filled in properly, and whether the segfault handler is called
- * quickly enough. */
+ * the segfault handler is called quickly enough. */
 void SEGVHandler::test_handler(int signum, siginfo_t* info, void* context) {
   SEGVHandler& that = ElfLoader::Singleton;
-  if (signum == SIGSEGV && info && info->si_addr == that.stackPtr.get())
-    that.signalHandlingBroken = false;
   mprotect(that.stackPtr, that.stackPtr.GetLength(), PROT_READ | PROT_WRITE);
   TmpData* data = reinterpret_cast<TmpData*>(that.stackPtr.get());
   uint64_t latency = ProcessTimeStamp_Now() - data->crash_timestamp;

@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "ย">
 <!ENTITY newVirtualFolderCmd.label "การค้นหาที่บันทึกไว้…">
 <!ENTITY newVirtualFolderCmd.accesskey "ก">
-<!ENTITY newOtherAccountsCmd.label "บัญชีอื่น ๆ…">
-<!ENTITY newOtherAccountsCmd.accesskey "บ">
 <!ENTITY newCreateEmailAccountCmd.label "รับบัญชีจดหมายใหม่…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "ร">
 <!ENTITY newExistingEmailAccountCmd.label "บัญชีจดหมายที่มีอยู่…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "ป">
 <!ENTITY saveAsMenu.label "บันทึกเป็น">
 <!ENTITY saveAsMenu.accesskey "บ">
-<!ENTITY saveAsFileCmd.label "ไฟล์">
-<!ENTITY saveAsFileCmd.accesskey "ฟ">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "แม่แบบ">
 <!ENTITY saveAsTemplateCmd.accesskey "ม">
@@ -91,18 +87,6 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "ลบข้อความ">
-<!ENTITY deleteMsgCmd.accesskey "ล">
-<!ENTITY undeleteMsgCmd.label "เลิกลบข้อความ">
-<!ENTITY undeleteMsgCmd.accesskey "เ">
-<!ENTITY deleteMsgsCmd.label "ลบข้อความที่เลือก">
-<!ENTITY deleteMsgsCmd.accesskey "ล">
-<!ENTITY undeleteMsgsCmd.label "เลิกลบข้อความที่เลือก">
-<!ENTITY undeleteMsgsCmd.accesskey "เ">
-<!ENTITY deleteFolderCmd.label "ลบโฟลเดอร์">
-<!ENTITY deleteFolderCmd.accesskey "ล">
-<!ENTITY unsubscribeNewsgroupCmd.label "เลิกบอกรับ">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "เ">
 <!ENTITY selectMenu.label "เลือก">
 <!ENTITY selectMenu.accesskey "อ">
 <!ENTITY all.label "ทั้งหมด">
@@ -114,10 +98,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "ต">
 <!ENTITY menuFavoriteFolder.label "โฟลเดอร์โปรด">
 <!ENTITY menuFavoriteFolder.accesskey "ฟ">
-<!ENTITY folderPropsCmd2.label "คุณสมบัติ">
-<!ENTITY folderPropsFolderCmd2.label "คุณสมบัติโฟลเดอร์">
-<!ENTITY folderPropsNewsgroupCmd2.label "คุณสมบัติกลุ่มข่าว">
-<!ENTITY folderPropsCmd.accesskey "ค">
 <!ENTITY undoDeleteMsgCmd.label "เลิกทำการลบข้อความ">
 <!ENTITY redoDeleteMsgCmd.label "ทำซ้ำการลบข้อความ">
 <!ENTITY undoMoveMsgCmd.label "เลิกทำการย้ายข้อความ">
@@ -149,8 +129,6 @@
 <!ENTITY messagePaneVertical.accesskey "แ">
 <!ENTITY showFolderPaneCmd.label "บานหน้าต่างโฟลเดอร์">
 <!ENTITY showFolderPaneCmd.accesskey "บ">
-<!ENTITY showFolderPaneColsCmd.label "คอลัมน์บานหน้าต่างโฟลเดอร์">
-<!ENTITY showFolderPaneColsCmd.accesskey "ค">
 <!ENTITY showMessageCmd.label "บานหน้าต่างข้อความ">
 <!ENTITY showMessageCmd.accesskey "ข">
 
@@ -206,9 +184,9 @@
 <!ENTITY sortAscending.accesskey "น">
 <!ENTITY sortDescending.label "จากมากไปน้อย">
 <!ENTITY sortDescending.accesskey "ม">
-<!ENTITY sortThreaded.label "มีเธรด">
+<!ENTITY sortThreaded.label "มีหัวข้อ">
 <!ENTITY sortThreaded.accesskey "ธ">
-<!ENTITY sortUnthreaded.label "ไม่มีเธรด">
+<!ENTITY sortUnthreaded.label "ไม่มีหัวข้อ">
 <!ENTITY sortUnthreaded.accesskey "ไ">
 <!ENTITY groupBySort.label "จัดกลุ่มตามการเรียง">
 <!ENTITY groupBySort.accesskey "จ">
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "แชท">
 <!ENTITY goChatCmd.accesskey "ช">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "ข้อความที่ติดดาว">
 <!ENTITY prevStarredMsgCmd.accesskey "ต">
 <!ENTITY folderMenu.label "โฟลเดอร์">
@@ -490,6 +467,8 @@
 <!ENTITY deleteJunk.accesskey "ล">
 <!ENTITY importCmd.label "นำเข้า…">
 <!ENTITY importCmd.accesskey "น">
+<!ENTITY exportCmd.label "ส่งออก…">
+<!ENTITY exportCmd.accesskey "ส">
 <!ENTITY clearRecentHistory.label "ล้างประวัติล่าสุด…">
 <!ENTITY clearRecentHistory.accesskey "ป">
 <!ENTITY accountManagerCmd2.label "การตั้งค่าบัญชี">
@@ -585,7 +564,7 @@
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "ส">
 <!ENTITY editRemoteContentSettings.label "แก้ไขตัวเลือกเนื้อหาระยะไกล…">
 <!ENTITY editRemoteContentSettings.accesskey "ก">
-<!ENTITY editRemoteContentSettingsUnix.label "แก้ไขค่ากำหนดเนื้อหาระยะไกล…">
+<!ENTITY editRemoteContentSettingsUnix.label "แก้ไขการกำหนดลักษณะเนื้อหาระยะไกล…">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "ก">
 
 <!-- Phishing Button Popup -->
@@ -593,16 +572,13 @@
 <!ENTITY phishingOptionIgnore.accesskey "พ">
 <!ENTITY phishingOptionSettings.label "แก้ไขตัวเลือกการตรวจหาการหลอกลวง…">
 <!ENTITY phishingOptionSettings.accesskey "แ">
-<!ENTITY phishingOptionSettingsUnix.label "แก้ไขค่ากำหนดการตรวจหาการหลอกลวง…">
+<!ENTITY phishingOptionSettingsUnix.label "แก้ไขการกำหนดลักษณะการตรวจหาการหลอกลวง…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "แ">
 
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "ข้อความใหม่">
 <!ENTITY appmenuNewContactCmd.label "ผู้ติดต่อของสมุดรายชื่อ…">
-<!ENTITY appmenuEditMenu.label "แก้ไข">
 <!ENTITY appmenuToolbarLayout.label "เค้าโครงแถบเครื่องมือ…">
-<!ENTITY appmenuSelectThread.label "เลือกเธรด">
-<!ENTITY appmenuSelectFlagged.label "เลือกข้อความที่ติดดาว">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "ป้ายกำกับใหม่…">
@@ -696,7 +672,6 @@
 <!ENTITY locationColumn.label "ตำแหน่งที่ตั้ง">
 <!ENTITY idColumn.label "ลำดับที่ได้รับ">
 <!ENTITY attachmentColumn.label "ไฟล์แนบ">
-
 <!ENTITY deleteColumn.label "ลบ">
 
 <!-- Thread Pane Tooltips -->
@@ -722,7 +697,6 @@
 <!ENTITY locationColumn2.tooltip "เรียงตามตำแหน่งที่ตั้ง">
 <!ENTITY idColumn2.tooltip "เรียงตามลำดับที่ได้รับ">
 <!ENTITY attachmentColumn2.tooltip "เรียงตามไฟล์แนบ">
-
 <!ENTITY deleteColumn.tooltip "ลบข้อความ">
 
 <!-- Thread Pane Context Menu -->
@@ -909,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "ภ">
 <!ENTITY copyEmailCmd.label "คัดลอกที่อยู่อีเมล">
 <!ENTITY copyEmailCmd.accesskey "อ">
-<!ENTITY stopCmd.label "หยุด">
-<!ENTITY stopCmd.accesskey "ห">
-<!ENTITY reloadCmd.label "โหลดใหม่">
-<!ENTITY reloadCmd.accesskey "ใ">
 <!ENTITY openInBrowser.label "เปิดในเบราว์เซอร์">
 <!ENTITY openInBrowser.accesskey "ป">
 <!ENTITY openLinkInBrowser.label "เปิดลิงก์ในเบราว์เซอร์">
@@ -928,7 +898,7 @@
 <!ENTITY zoomWindow.label "ซูม">
 
 <!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "ค่ากำหนด">
+<!ENTITY preferencesCmdMac2.label       "การกำหนดลักษณะ">
 <!ENTITY preferencesCmdMac.commandkey   ",">
 <!ENTITY preferencesCmdMac.modifiers    "accel">
 <!ENTITY servicesMenuMac.label          "บริการ">

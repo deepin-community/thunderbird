@@ -22,6 +22,7 @@
 #include "nsHashKeys.h"
 #include "mozilla/LinkedList.h"
 #include "nsHtml5DocumentBuilder.h"
+#include "nsCharsetSource.h"
 
 class nsHtml5Parser;
 class nsHtml5StreamParser;
@@ -47,7 +48,7 @@ class nsHtml5TreeOpExecutor final
   NS_DECL_ISUPPORTS_INHERITED
 
  private:
-#ifdef DEBUG_NS_HTML5_TREE_OP_EXECUTOR_FLUSH
+#ifdef DEBUG
   static uint32_t sAppendBatchMaxSize;
   static uint32_t sAppendBatchSlotsExamined;
   static uint32_t sAppendBatchExaminations;
@@ -110,10 +111,10 @@ class nsHtml5TreeOpExecutor final
    */
   NS_IMETHOD WillParse() override;
 
-  /**
-   *
-   */
-  NS_IMETHOD WillBuildModel(nsDTDMode aDTDMode) override;
+  NS_IMETHOD WillBuildModel(nsDTDMode /* unused */) override {
+    return WillBuildModel();
+  }
+  nsresult WillBuildModel();
 
   /**
    * Emits EOF.
@@ -128,7 +129,9 @@ class nsHtml5TreeOpExecutor final
   /**
    * Unimplemented. For interface compat only.
    */
-  NS_IMETHOD WillResume() override;
+  void WillResume() override;
+
+  virtual nsIContentSink* AsExecutor() override { return this; }
 
   virtual void InitialTranslationCompleted() override;
 
@@ -181,9 +184,18 @@ class nsHtml5TreeOpExecutor final
 
   nsresult FlushDocumentWrite();
 
+  void CommitToInternalEncoding();
+
+  [[nodiscard]] bool TakeOpsFromStage();
+
   void MaybeSuspend();
 
   void Start();
+
+  void SetDocumentCharsetAndSource(NotNull<const Encoding*> aEncoding,
+                                   nsCharsetSource aCharsetSource);
+
+  void UpdateCharsetSource(nsCharsetSource aCharsetSource);
 
   void NeedsCharsetSwitchTo(NotNull<const Encoding*> aEncoding, int32_t aSource,
                             uint32_t aLineNumber);
@@ -191,7 +203,8 @@ class nsHtml5TreeOpExecutor final
   void MaybeComplainAboutCharset(const char* aMsgId, bool aError,
                                  uint32_t aLineNumber);
 
-  void ComplainAboutBogusProtocolCharset(mozilla::dom::Document*);
+  void ComplainAboutBogusProtocolCharset(mozilla::dom::Document* aDoc,
+                                         bool aUnrecognized);
 
   void MaybeComplainAboutDeepTree(uint32_t aLineNumber);
 
@@ -203,13 +216,14 @@ class nsHtml5TreeOpExecutor final
   bool IsInFlushLoop() { return mRunFlushLoopOnStack; }
 #endif
 
-  void RunScript(nsIContent* aScriptElement);
+  void RunScript(nsIContent* aScriptElement, bool aMayDocumentWriteOrBlock);
 
   /**
    * Flush the operations from the tree operations from the argument
    * queue unconditionally. (This is for the main thread case.)
    */
-  virtual void MoveOpsFrom(nsTArray<nsHtml5TreeOperation>& aOpQueue) override;
+  [[nodiscard]] virtual bool MoveOpsFrom(
+      nsTArray<nsHtml5TreeOperation>& aOpQueue) override;
 
   void ClearOpQueue();
 
@@ -231,21 +245,23 @@ class nsHtml5TreeOpExecutor final
 
   void PreloadScript(const nsAString& aURL, const nsAString& aCharset,
                      const nsAString& aType, const nsAString& aCrossOrigin,
-                     const nsAString& aMedia, const nsAString& aIntegrity,
+                     const nsAString& aMedia, const nsAString& aNonce,
+                     const nsAString& aFetchPriority,
+                     const nsAString& aIntegrity,
                      ReferrerPolicy aReferrerPolicy, bool aScriptFromHead,
-                     bool aAsync, bool aDefer, bool aNoModule,
-                     bool aLinkPreload);
+                     bool aAsync, bool aDefer, bool aLinkPreload);
 
   void PreloadStyle(const nsAString& aURL, const nsAString& aCharset,
                     const nsAString& aCrossOrigin, const nsAString& aMedia,
-                    const nsAString& aReferrerPolicy,
-                    const nsAString& aIntegrity, bool aLinkPreload);
+                    const nsAString& aReferrerPolicy, const nsAString& aNonce,
+                    const nsAString& aIntegrity, bool aLinkPreload,
+                    const nsAString& aFetchPriority);
 
   void PreloadImage(const nsAString& aURL, const nsAString& aCrossOrigin,
                     const nsAString& aMedia, const nsAString& aSrcset,
                     const nsAString& aSizes,
                     const nsAString& aImageReferrerPolicy, bool aLinkPreload,
-                    const mozilla::TimeStamp& aInitTimestamp);
+                    const nsAString& aFetchPriority);
 
   void PreloadOpenPicture();
 
@@ -255,10 +271,12 @@ class nsHtml5TreeOpExecutor final
                             const nsAString& aType, const nsAString& aMedia);
 
   void PreloadFont(const nsAString& aURL, const nsAString& aCrossOrigin,
-                   const nsAString& aMedia, const nsAString& aReferrerPolicy);
+                   const nsAString& aMedia, const nsAString& aReferrerPolicy,
+                   const nsAString& aFetchPriority);
 
   void PreloadFetch(const nsAString& aURL, const nsAString& aCrossOrigin,
-                    const nsAString& aMedia, const nsAString& aReferrerPolicy);
+                    const nsAString& aMedia, const nsAString& aReferrerPolicy,
+                    const nsAString& aFetchPriority);
 
   void SetSpeculationBase(const nsAString& aURL);
 

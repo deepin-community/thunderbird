@@ -2,7 +2,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from __future__ import absolute_import
 import os
 
 from mozharness.base.script import platform_name
@@ -57,7 +56,7 @@ def _autoconfig_path(fx_install_dir):
 
 
 def _cfg_file_path(fx_install_dir):
-    """
+    r"""
     Windows:        defaults\pref
     Mac:            Firefox.app/Contents/Resources/defaults/pref
     Linux:          defaults/pref

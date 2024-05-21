@@ -43,6 +43,7 @@
 #ifdef MOZ_UPDATER
 @APPNAME@/Contents/Library/LaunchServices
 #endif
+@APPNAME@/Contents/Frameworks
 @APPNAME@/Contents/PkgInfo
 @APPNAME@/Contents/Library/Spotlight/thunderbird.mdimporter/
 @RESPATH@/thunderbird.icns
@@ -67,10 +68,6 @@
 
 #ifdef LLVM_SYMBOLIZER
 @BINPATH@/@LLVM_SYMBOLIZER@
-; On Windows, llvm-symbolizer depends on the MS DIA library.
-#ifdef WIN_DIA_SDK_BIN_DIR
-@BINPATH@/msdia140.dll
-#endif
 #endif
 
 #ifdef MOZ_CLANG_RT_ASAN_LIB
@@ -109,23 +106,24 @@
 #endif
 #ifdef XP_MACOSX
 @BINPATH@/@MOZ_CHILD_PROCESS_NAME@.app/
-#else
-@BINPATH@/@MOZ_CHILD_PROCESS_NAME@
+@BINPATH@/@MOZ_EME_PROCESS_NAME@.app/
 #endif
 #ifdef XP_WIN
+@BINPATH@/@MOZ_CHILD_PROCESS_NAME@
 #if MOZ_PACKAGE_MSVC_DLLS
 @BINPATH@/@MSVC_C_RUNTIME_DLL@
-@BINPATH@/@MSVC_CXX_RUNTIME_DLL@
+#ifdef MSVC_C_RUNTIME_1_DLL
+@BINPATH@/@MSVC_C_RUNTIME_1_DLL@
 #endif
-#if MOZ_PACKAGE_WIN_UCRT_DLLS
-@BINPATH@/api-ms-win-*.dll
-@BINPATH@/ucrtbase.dll
+@BINPATH@/@MSVC_CXX_RUNTIME_DLL@
 #endif
 #endif
 #ifdef MOZ_GTK
+@BINPATH@/glxtest
 @BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
 #ifdef MOZ_WAYLAND
 @BINPATH@/@DLL_PREFIX@mozwayland@DLL_SUFFIX@
+@BINPATH@/vaapitest
 #endif
 #endif
 
@@ -133,8 +131,6 @@
 ; build because we haven't run the relevant parts of configure, so we guess
 ; here and trust what came from our source build.
 #if defined(MOZ_ARTIFACT_BUILDS) && defined(XP_WIN)
-@BINPATH@/api-ms-win-*.dll
-@BINPATH@/ucrtbase.dll
 @BINPATH@/vcruntime*.dll
 @BINPATH@/msvcp*.dll
 @BINPATH@/libEGL.dll
@@ -153,14 +149,22 @@
 @BINPATH@/VisualElements/VisualElements_150.png
 @BINPATH@/VisualElements/VisualElements_70.png
 #else
+#ifndef XP_MACOSX
 @BINPATH@/@MOZ_APP_NAME@-bin
+#endif
 @BINPATH@/@MOZ_APP_NAME@
 #endif
 @RESPATH@/application.ini
 #ifdef MOZ_UPDATER
+# update-settings.ini has been removed on macOS.
+#ifndef XP_MACOSX
 @RESPATH@/update-settings.ini
 #endif
+#endif
 @BINPATH@/@DLL_PREFIX@lgpllibs@DLL_SUFFIX@
+@BINPATH@/@DLL_PREFIX@gkcodecs@DLL_SUFFIX@
+@BINPATH@/@DLL_PREFIX@mozavutil@DLL_SUFFIX@
+@BINPATH@/@DLL_PREFIX@mozavcodec@DLL_SUFFIX@
 @RESPATH@/platform.ini
 #ifndef MOZ_FOLD_LIBS
 @RESPATH@/@DLL_PREFIX@mozsqlite3@DLL_SUFFIX@
@@ -168,13 +172,6 @@
 #ifdef UNIX_BUT_NOT_MAC
 #ifdef MOZ_UPDATER
 @RESPATH@/icons/*.png
-#endif
-#endif
-#ifdef XP_WIN
-#ifdef _AMD64_
-@BINPATH@/@DLL_PREFIX@qipcap64@DLL_SUFFIX@
-#else
-@BINPATH@/@DLL_PREFIX@qipcap@DLL_SUFFIX@
 #endif
 #endif
 
@@ -188,7 +185,6 @@
 ; interfaces.manifest doesn't get packaged because it is dynamically
 ; re-created at packaging time when linking the xpts that will actually
 ; go into the package, so the test related interfaces aren't included.
-@RESPATH@/components/msgMime.manifest
 @RESPATH@/components/MailComponents.manifest
 @RESPATH@/chrome/toolkit@JAREXT@
 @RESPATH@/chrome/toolkit.manifest
@@ -202,11 +198,10 @@
 @RESPATH@/chrome/pdfjs.manifest
 @RESPATH@/chrome/pdfjs/*
 #ifndef XP_UNIX
-@RESPATH@/chrome/icons/default/abcardWindow.ico
-@RESPATH@/chrome/icons/default/addressbookWindow.ico
 @RESPATH@/chrome/icons/default/messengerWindow.ico
 @RESPATH@/chrome/icons/default/msgcomposeWindow.ico
 @RESPATH@/chrome/icons/default/calendar-alarm-dialog.ico
+@RESPATH@/chrome/icons/default/calendar-general-dialog.ico
 #elifdef UNIX_BUT_NOT_MAC
 @RESPATH@/chrome/icons/default/*.png
 #endif
@@ -244,8 +239,10 @@
 #endif
 
 ; OpenPGP (librnp)
-#ifdef MOZ_OPENPGP
+#ifdef MZLA_LIBRNP
 @BINPATH@/@DLL_PREFIX@rnp@DLL_SUFFIX@
+@BINPATH@/rnp-cli@BIN_SUFFIX@
+@BINPATH@/rnpkeys@BIN_SUFFIX@
 #endif
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -270,7 +267,10 @@
 
 ; default pref files
 @RESPATH@/defaults/pref/all-thunderbird.js
+# channel-prefs.js has been removed on macOS.
+#ifndef XP_MACOSX
 @RESPATH@/defaults/pref/channel-prefs.js
+#endif
 @RESPATH@/defaults/pref/composer.js
 @RESPATH@/defaults/pref/mailnews.js
 @RESPATH@/defaults/pref/mdn.js
@@ -280,6 +280,7 @@
 @RESPATH@/greprefs.js
 
 ; Remote Settings JSON dumps
+@RESPATH@/defaults/settings/last_modified.json
 @RESPATH@/defaults/settings/blocklists
 @RESPATH@/defaults/settings/main
 @RESPATH@/defaults/settings/security-state
@@ -289,15 +290,8 @@
 ; App extensions to Mail
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#ifdef MOZ_OPENPGP
 @RESPATH@/chrome/openpgp@JAREXT@
 @RESPATH@/chrome/openpgp.manifest
-#endif
-
-; LDAP components
-@BINPATH@/@DLL_PREFIX@ldap60@DLL_SUFFIX@
-@BINPATH@/@DLL_PREFIX@ldif60@DLL_SUFFIX@
-@BINPATH@/@DLL_PREFIX@prldap60@DLL_SUFFIX@
 
 ; misson control, autoconfig
 #ifdef MOZ_PREF_EXTENSIONS
@@ -317,47 +311,27 @@
 ; accessibility (out of process API support)
 #ifdef ACCESSIBILITY
 #ifdef XP_WIN
-@BINPATH@/Accessible.tlb
-@BINPATH@/AccessibleHandler.dll
 @BINPATH@/AccessibleMarshal.dll
-@BINPATH@/IA2Marshal.dll
 #endif
 #endif
 
 ; toolkit
-@RESPATH@/components/toolkitsearch.manifest
 @RESPATH@/components/extensions.manifest
 #ifdef MOZ_UPDATER
 @RESPATH@/components/nsUpdateService.manifest
 #endif
 @RESPATH@/components/ProcessSingleton.manifest
-@RESPATH@/components/HandlerService.manifest
-@RESPATH@/components/HandlerService.js
 
 [calendar]
 @RESPATH@/chrome/calendar@JAREXT@
 @RESPATH@/chrome/calendar.manifest
 
-@RESPATH@/res/zones.json
 @RESPATH@/@PREF_DIR@/calendar.js
 
-# Files added to components directory via `EXTRA_COMPONENTS`.
-@RESPATH@/components/calBackendLoader.js
-@RESPATH@/components/calBackendLoader.manifest
-@RESPATH@/components/calICALJSComponents.js
-
 # Files added to components directory via `FINAL_TARGET_FILES.components`.
-@RESPATH@/components/calCachedCalendar.js
-@RESPATH@/components/calDateTime.js
-@RESPATH@/components/calDuration.js
-@RESPATH@/components/calFilter.js
-@RESPATH@/components/calICSService.js
 @RESPATH@/components/calICSService-worker.js
-@RESPATH@/components/calItemBase.js
-@RESPATH@/components/calPeriod.js
-@RESPATH@/components/calRecurrenceRule.js
-@RESPATH@/components/calTimezone.js
 
+@RESPATH@/components/SyncComponents.manifest
 @RESPATH@/components/servicesComponents.manifest
 @RESPATH@/components/servicesSettings.manifest
 @RESPATH@/components/cryptoComponents.manifest
@@ -368,15 +342,8 @@
 
 ; WebDriver (Marionette, Remote Agent) remote protocols
 #ifdef ENABLE_WEBDRIVER
-@RESPATH@/components/marionette.manifest
-@RESPATH@/components/marionette.js
 @RESPATH@/chrome/remote@JAREXT@
 @RESPATH@/chrome/remote.manifest
-#endif
-
-#if defined(MOZ_DEBUG) || defined(NIGHTLY_BUILD)
-@RESPATH@/components/testComponents.manifest
-@RESPATH@/components/startupRecorder.js
 #endif
 
 ; Phishing Protection
@@ -389,15 +356,7 @@
 #ifdef MOZ_ANGLE_RENDERER
 @BINPATH@/libEGL.dll
 @BINPATH@/libGLESv2.dll
-
-#ifdef MOZ_D3DCOMPILER_VISTA_DLL
-@BINPATH@/@MOZ_D3DCOMPILER_VISTA_DLL@
-#endif
 #endif # MOZ_ANGLE_RENDERER
-
-#if defined(XP_WIN) && defined(MOZ_ENABLE_SKIA_PDF)
-@BINPATH@/pdfium.dll
-#endif
 
 ; Background tasks-specific preferences.  These are in the GRE
 ; location since they apply to all tasks at this time.
@@ -526,6 +485,7 @@
 #endif
 #endif
 #ifdef MOZ_CRASHREPORTER_INJECTOR
+@RESPATH@/crashreporter-override.ini
 @BINPATH@/breakpadinjector.dll
 #endif
 #endif
@@ -539,6 +499,12 @@
 ; [ Ping Sender ]
 ;
 @BINPATH@/pingsender@BIN_SUFFIX@
+
+; [ Notification COM Server ]
+;
+#if defined(MOZ_NOTIFICATION_SERVER)
+@BINPATH@/@DLL_PREFIX@notificationserver@DLL_SUFFIX@
+#endif
 
 ; Shutdown Terminator
 @RESPATH@/components/terminator.manifest

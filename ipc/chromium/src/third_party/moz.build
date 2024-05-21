@@ -7,7 +7,7 @@
 libevent_path_prefix = '.'
 include(libevent_path_prefix + '/libeventcommon.mozbuild')
 
-if os_win:
+if CONFIG["TARGET_KERNEL"] == "WINNT":
     error('should not reach here on Windows')
 
 if CONFIG['MOZ_SYSTEM_LIBEVENT']:
@@ -16,15 +16,15 @@ if CONFIG['MOZ_SYSTEM_LIBEVENT']:
 UNIFIED_SOURCES += [
     'libevent/buffer.c',
     'libevent/bufferevent.c',
+    'libevent/bufferevent_filter.c',
     'libevent/bufferevent_ratelim.c',
     'libevent/bufferevent_sock.c',
     'libevent/evdns.c',
     'libevent/event.c',
     'libevent/event_tagging.c',
     'libevent/evmap.c',
-    'libevent/evrpc.c',
     'libevent/evthread.c',
-    'libevent/evthread_pthread.c',
+    # 'libevent/evthread_pthread.c', # Unused file.
     'libevent/evutil.c',
     'libevent/evutil_rand.c',
     'libevent/evutil_time.c',
@@ -37,12 +37,17 @@ UNIFIED_SOURCES += [
     'libevent/strlcpy.c',
 ]
 
-if os_macosx or os_bsd:
+SOURCES += [
+    'libevent/bufferevent_pair.c',       # conflicting types errors
+    # 'libevent/evrpc.c', # Unused file. # conflicting TAILQ_ENTRY definition
+]
+
+if CONFIG["TARGET_KERNEL"] in ("Darwin", "DragonFly", "FreeBSD", "NetBSD", "OpenBSD"):
     UNIFIED_SOURCES += [
         'libevent/kqueue.c',
     ]
 
-if os_linux:
+if CONFIG["TARGET_KERNEL"] == "Linux":
     UNIFIED_SOURCES += [
         'libevent/epoll.c',
     ]
@@ -51,7 +56,7 @@ if os_linux:
             'libevent/epoll_sub.c',
         ]
 
-if os_solaris:
+if CONFIG["TARGET_KERNEL"] == "SunOS":
     SOURCES += [
         'libevent/devpoll.c',
         'libevent/evport.c',

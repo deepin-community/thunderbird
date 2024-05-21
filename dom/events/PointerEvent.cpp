@@ -11,8 +11,10 @@
 #include "mozilla/dom/PointerEventBinding.h"
 #include "mozilla/dom/PointerEventHandler.h"
 #include "mozilla/MouseEvents.h"
+#include "mozilla/StaticPrefs_dom.h"
 #include "nsContentUtils.h"
 #include "prtime.h"
+#include "jsfriendapi.h"
 
 namespace mozilla::dom {
 
@@ -29,7 +31,6 @@ PointerEvent::PointerEvent(EventTarget* aOwner, nsPresContext* aPresContext,
     mEventIsInternal = false;
   } else {
     mEventIsInternal = true;
-    mEvent->mTime = PR_Now();
     mEvent->mRefPoint = LayoutDeviceIntPoint(0, 0);
     mouseEvent->mInputSource = MouseEvent_Binding::MOZ_SOURCE_UNKNOWN;
   }
@@ -87,6 +88,7 @@ already_AddRefed<PointerEvent> PointerEvent::Constructor(
                     aParam.mClientX, aParam.mClientY, false, false, false,
                     false, aParam.mButton, aParam.mRelatedTarget);
   e->InitializeExtraMouseEventDictionaryMembers(aParam);
+  e->mPointerType = Some(aParam.mPointerType);
 
   WidgetPointerEvent* widgetEvent = e->mEvent->AsPointerEvent();
   widgetEvent->pointerId = aParam.mPointerId;
@@ -138,9 +140,13 @@ NS_INTERFACE_MAP_END_INHERITING(MouseEvent)
 NS_IMPL_ADDREF_INHERITED(PointerEvent, MouseEvent)
 NS_IMPL_RELEASE_INHERITED(PointerEvent, MouseEvent)
 
-void PointerEvent::GetPointerType(nsAString& aPointerType,
-                                  CallerType aCallerType) {
-  if (ShouldResistFingerprinting(aCallerType)) {
+void PointerEvent::GetPointerType(nsAString& aPointerType) {
+  if (mPointerType.isSome()) {
+    aPointerType = mPointerType.value();
+    return;
+  }
+
+  if (ShouldResistFingerprinting()) {
     aPointerType.AssignLiteral("mouse");
     return;
   }
@@ -149,27 +155,22 @@ void PointerEvent::GetPointerType(nsAString& aPointerType,
                              aPointerType);
 }
 
-int32_t PointerEvent::PointerId(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
+int32_t PointerEvent::PointerId() {
+  return ShouldResistFingerprinting()
              ? PointerEventHandler::GetSpoofedPointerIdForRFP()
              : mEvent->AsPointerEvent()->pointerId;
 }
 
-int32_t PointerEvent::Width(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
-             ? 1
-             : mEvent->AsPointerEvent()->mWidth;
+int32_t PointerEvent::Width() {
+  return ShouldResistFingerprinting() ? 1 : mEvent->AsPointerEvent()->mWidth;
 }
 
-int32_t PointerEvent::Height(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
-             ? 1
-             : mEvent->AsPointerEvent()->mHeight;
+int32_t PointerEvent::Height() {
+  return ShouldResistFingerprinting() ? 1 : mEvent->AsPointerEvent()->mHeight;
 }
 
-float PointerEvent::Pressure(CallerType aCallerType) {
-  if (mEvent->mMessage == ePointerUp ||
-      !ShouldResistFingerprinting(aCallerType)) {
+float PointerEvent::Pressure() {
+  if (mEvent->mMessage == ePointerUp || !ShouldResistFingerprinting()) {
     return mEvent->AsPointerEvent()->mPressure;
   }
 
@@ -186,31 +187,31 @@ float PointerEvent::Pressure(CallerType aCallerType) {
   return spoofedPressure;
 }
 
-float PointerEvent::TangentialPressure(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
+float PointerEvent::TangentialPressure() {
+  return ShouldResistFingerprinting()
              ? 0
              : mEvent->AsPointerEvent()->tangentialPressure;
 }
 
-int32_t PointerEvent::TiltX(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
-             ? 0
-             : mEvent->AsPointerEvent()->tiltX;
+int32_t PointerEvent::TiltX() {
+  return ShouldResistFingerprinting() ? 0 : mEvent->AsPointerEvent()->tiltX;
 }
 
-int32_t PointerEvent::TiltY(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
-             ? 0
-             : mEvent->AsPointerEvent()->tiltY;
+int32_t PointerEvent::TiltY() {
+  return ShouldResistFingerprinting() ? 0 : mEvent->AsPointerEvent()->tiltY;
 }
 
-int32_t PointerEvent::Twist(CallerType aCallerType) {
-  return ShouldResistFingerprinting(aCallerType)
-             ? 0
-             : mEvent->AsPointerEvent()->twist;
+int32_t PointerEvent::Twist() {
+  return ShouldResistFingerprinting() ? 0 : mEvent->AsPointerEvent()->twist;
 }
 
 bool PointerEvent::IsPrimary() { return mEvent->AsPointerEvent()->mIsPrimary; }
+
+bool PointerEvent::EnableGetCoalescedEvents(JSContext* aCx, JSObject* aGlobal) {
+  return !StaticPrefs::
+             dom_w3c_pointer_events_getcoalescedevents_only_in_securecontext() ||
+         nsContentUtils::IsSecureContextOrWebExtension(aCx, aGlobal);
+}
 
 void PointerEvent::GetCoalescedEvents(
     nsTArray<RefPtr<PointerEvent>>& aPointerEvents) {
@@ -245,7 +246,7 @@ void PointerEvent::GetCoalescedEvents(
       mCoalescedEvents.AppendElement(domEvent);
     }
   }
-  if (mEvent->mTarget) {
+  if (mEvent->IsTrusted() && mEvent->mTarget) {
     for (RefPtr<PointerEvent>& pointerEvent : mCoalescedEvents) {
       // Only set event target when it's null.
       if (!pointerEvent->mEvent->mTarget) {
@@ -259,7 +260,7 @@ void PointerEvent::GetCoalescedEvents(
 void PointerEvent::GetPredictedEvents(
     nsTArray<RefPtr<PointerEvent>>& aPointerEvents) {
   // XXX Add support for native predicted events, bug 1550461
-  if (mEvent->mTarget) {
+  if (mEvent->IsTrusted() && mEvent->mTarget) {
     for (RefPtr<PointerEvent>& pointerEvent : mPredictedEvents) {
       // Only set event target when it's null.
       if (!pointerEvent->mEvent->mTarget) {
@@ -270,25 +271,26 @@ void PointerEvent::GetPredictedEvents(
   aPointerEvents.AppendElements(mPredictedEvents);
 }
 
-bool PointerEvent::ShouldResistFingerprinting(CallerType aCallerType) {
-  // There are four situations we don't need to spoof this pointer event.
-  //   1. This event is generated by scripts.
-  //   2. This event is a mouse pointer event.
-  //   3. The caller type is system.
-  //   4. The pref privcy.resistFingerprinting' is false, we fast return here
+bool PointerEvent::ShouldResistFingerprinting() {
+  // There are three simple situations we don't need to spoof this pointer
+  // event.
+  //   1. The pref privcy.resistFingerprinting' is false, we fast return here
   //      since we don't need to do any QI of following codes.
+  //   2. This event is generated by scripts.
+  //   3. This event is a mouse pointer event.
   //  We don't need to check for the system group since pointer events won't be
   //  dispatched to the system group.
-  if (!mEvent->IsTrusted() || aCallerType == CallerType::System ||
-      !nsContentUtils::ShouldResistFingerprinting() ||
+  if (!nsContentUtils::ShouldResistFingerprinting("Efficiency Check",
+                                                  RFPTarget::PointerEvents) ||
+      !mEvent->IsTrusted() ||
       mEvent->AsPointerEvent()->mInputSource ==
           MouseEvent_Binding::MOZ_SOURCE_MOUSE) {
     return false;
   }
 
+  // Pref is checked above, so use true as fallback.
   nsCOMPtr<Document> doc = GetDocument();
-
-  return doc && !nsContentUtils::IsChromeDoc(doc);
+  return doc ? doc->ShouldResistFingerprinting(RFPTarget::PointerEvents) : true;
 }
 
 }  // namespace mozilla::dom

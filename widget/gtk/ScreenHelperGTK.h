@@ -10,36 +10,21 @@
 #include "mozilla/widget/ScreenManager.h"
 
 #include "gdk/gdk.h"
-#ifdef MOZ_X11
-#  include <X11/Xlib.h>
-#  include "X11UndefineNone.h"
-#endif
 
-namespace mozilla {
-namespace widget {
+class nsWindow;
+
+namespace mozilla::widget {
 
 class ScreenHelperGTK final : public ScreenManager::Helper {
  public:
   ScreenHelperGTK();
-  ~ScreenHelperGTK() override;
+  ~ScreenHelperGTK();
 
+  static int GetMonitorCount();
   static gint GetGTKMonitorScaleFactor(gint aMonitorNum = 0);
-
-#ifdef MOZ_X11
-  Atom NetWorkareaAtom() { return mNetWorkareaAtom; }
-#endif
-
-  // For internal use from signal callback functions
-  void RefreshScreens();
-
- private:
-  GdkWindow* mRootWindow;
-#ifdef MOZ_X11
-  Atom mNetWorkareaAtom;
-#endif
+  static RefPtr<widget::Screen> GetScreenForWindow(nsWindow* aWindow);
 };
 
-}  // namespace widget
-}  // namespace mozilla
+}  // namespace mozilla::widget
 
 #endif  // mozilla_widget_gtk_ScreenHelperGTK_h

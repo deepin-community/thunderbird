@@ -19,7 +19,7 @@ function startTest(test, token)
   var case3token = token + "_case3";
   let v3 = document.createElement("video");
 
-  v3.addEventListener("loadeddata", function(ev) {
+  v3.addEventListener("loadeddata", function() {
     ok(true, TimeStamp(case3token) + " should reach loadeddata");
     var threw = false;
     try {
@@ -42,13 +42,8 @@ function startTest(test, token)
   });
 }
 
-function beginTest() {
-  manager.runTests(gEMETests, startTest);
-}
-
 SimpleTest.waitForExplicitFinish();
-SetupEMEPref(beginTest);
-
+manager.runTests(gEMETests, startTest);
 </script>
 </pre>
 </body>

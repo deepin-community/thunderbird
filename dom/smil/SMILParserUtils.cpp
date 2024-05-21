@@ -9,7 +9,6 @@
 #include "mozilla/SMILAttr.h"
 #include "mozilla/SMILKeySpline.h"
 #include "mozilla/SMILRepeatCount.h"
-#include "mozilla/SMILTimeValue.h"
 #include "mozilla/SMILTimeValueSpecParams.h"
 #include "mozilla/SMILTypes.h"
 #include "mozilla/SMILValue.h"
@@ -128,6 +127,7 @@ inline bool ParseClockMetric(RangedPtr<const char16_t>& aIter,
  */
 bool ParseClockValue(RangedPtr<const char16_t>& aIter,
                      const RangedPtr<const char16_t>& aEnd,
+                     SMILTimeValue::Rounding aRounding,
                      SMILTimeValue* aResult) {
   if (aIter == aEnd) {
     return false;
@@ -165,7 +165,7 @@ bool ParseClockValue(RangedPtr<const char16_t>& aIter,
 
   iter = aIter;
 
-  int32_t hours = 0, timecount;
+  int32_t hours = 0, timecount = 0;
   double fraction = 0.0;
   uint32_t minutes, seconds, multiplier;
 
@@ -187,12 +187,14 @@ bool ParseClockValue(RangedPtr<const char16_t>& aIter,
         return false;
       }
       aResult->SetMillis(SMILTime(hours) * MSEC_PER_HOUR +
-                         minutes * MSEC_PER_MIN + seconds * MSEC_PER_SEC +
-                         NS_round(fraction * MSEC_PER_SEC));
+                             minutes * MSEC_PER_MIN +
+                             (seconds + fraction) * MSEC_PER_SEC,
+                         aRounding);
       aIter = iter;
       return true;
     case TIMECOUNT_VALUE:
-      if (!SVGContentUtils::ParseInteger(iter, aEnd, timecount)) {
+      if (*iter != '.' &&
+          !SVGContentUtils::ParseInteger(iter, aEnd, timecount)) {
         return false;
       }
       if (iter != aEnd && *iter == '.' &&
@@ -202,8 +204,7 @@ bool ParseClockValue(RangedPtr<const char16_t>& aIter,
       if (!ParseClockMetric(iter, aEnd, multiplier)) {
         return false;
       }
-      aResult->SetMillis(SMILTime(timecount) * multiplier +
-                         NS_round(fraction * multiplier));
+      aResult->SetMillis((timecount + fraction) * multiplier, aRounding);
       aIter = iter;
       return true;
   }
@@ -218,7 +219,8 @@ bool ParseOffsetValue(RangedPtr<const char16_t>& aIter,
 
   int32_t sign;
   if (!SVGContentUtils::ParseOptionalSign(iter, aEnd, sign) ||
-      !SkipWhitespace(iter, aEnd) || !ParseClockValue(iter, aEnd, aResult)) {
+      !SkipWhitespace(iter, aEnd) ||
+      !ParseClockValue(iter, aEnd, SMILTimeValue::Rounding::Nearest, aResult)) {
     return false;
   }
   if (sign == -1) {
@@ -239,7 +241,7 @@ bool ParseOptionalOffset(RangedPtr<const char16_t>& aIter,
                          const RangedPtr<const char16_t>& aEnd,
                          SMILTimeValue* aResult) {
   if (aIter == aEnd) {
-    aResult->SetMillis(0L);
+    *aResult = SMILTimeValue::Zero();
     return true;
   }
 
@@ -500,18 +502,14 @@ class MOZ_STACK_CLASS SMILValueParser
         mValuesArray(aValuesArray),
         mPreventCachingOfSandwich(aPreventCachingOfSandwich) {}
 
-  virtual bool Parse(const nsAString& aValueStr) override {
+  bool Parse(const nsAString& aValueStr) override {
     SMILValue newValue;
-    bool tmpPreventCachingOfSandwich = false;
     if (NS_FAILED(mSMILAttr->ValueFromString(aValueStr, mSrcElement, newValue,
-                                             tmpPreventCachingOfSandwich)))
+                                             *mPreventCachingOfSandwich)))
       return false;
 
     if (!mValuesArray->AppendElement(newValue, fallible)) {
       return false;
-    }
-    if (tmpPreventCachingOfSandwich) {
-      *mPreventCachingOfSandwich = true;
     }
     return true;
   }
@@ -600,11 +598,12 @@ bool SMILParserUtils::ParseTimeValueSpecParams(
 }
 
 bool SMILParserUtils::ParseClockValue(const nsAString& aSpec,
+                                      SMILTimeValue::Rounding aRounding,
                                       SMILTimeValue* aResult) {
   RangedPtr<const char16_t> iter(SVGContentUtils::GetStartRangedPtr(aSpec));
   RangedPtr<const char16_t> end(SVGContentUtils::GetEndRangedPtr(aSpec));
 
-  return ::ParseClockValue(iter, end, aResult) && iter == end;
+  return ::ParseClockValue(iter, end, aRounding, aResult) && iter == end;
 }
 
 int32_t SMILParserUtils::CheckForNegativeNumber(const nsAString& aStr) {

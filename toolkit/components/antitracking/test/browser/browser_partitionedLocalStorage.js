@@ -1,6 +1,3 @@
-/* import-globals-from antitracking_head.js */
-/* import-globals-from partitionedstorage_head.js */
-
 AntiTracking.runTestInNormalAndPrivateMode(
   "localStorage and Storage Access API",
   async _ => {
@@ -77,7 +74,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -110,7 +107,7 @@ PartitionedStorageHelper.runPartitioningTestInNormalAndPrivateMode(
   // cleanup
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });

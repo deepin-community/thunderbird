@@ -5,8 +5,8 @@ var gTestRoot = getRootDirectory(gTestPath).replace(
 var gTestBrowser = null;
 var gConsoleErrors = 0;
 
-add_task(async function() {
-  registerCleanupFunction(function() {
+add_task(async function () {
+  registerCleanupFunction(function () {
     Services.console.unregisterListener(errorListener);
     gBrowser.removeCurrentTab();
     window.focus();
@@ -33,11 +33,11 @@ add_task(async function() {
   let pluginInfo = await promiseForPluginInfo("plugin");
   is(
     pluginInfo.displayedType,
-    Ci.nsIObjectLoadingContent.TYPE_NULL,
+    Ci.nsIObjectLoadingContent.TYPE_FALLBACK,
     "plugin should not have been found."
   );
 
-  await SpecialPowers.spawn(gTestBrowser, [], function() {
+  await SpecialPowers.spawn(gTestBrowser, [], function () {
     let plugin = content.document.getElementById("plugin");
     ok(plugin, "plugin should be in the page");
   });

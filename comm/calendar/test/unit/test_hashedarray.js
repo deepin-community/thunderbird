@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calHashedArray.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  HashedArray: "resource:///modules/calendar/calHashedArray.sys.mjs",
+  SortedHashedArray: "resource:///modules/calendar/calHashedArray.sys.mjs",
 });
 
 function run_test() {
@@ -20,10 +20,10 @@ function run_test() {
  * title identification.
  *
  * @param ident     The title to identify the item.
- * @return          The created item.
+ * @returns The created item.
  */
 function hashedCreateItem(ident) {
-  let item = new CalEvent();
+  const item = new CalEvent();
   item.calendar = { id: "test" };
   item.id = cal.getUUID();
   item.title = ident;
@@ -35,7 +35,7 @@ function hashedCreateItem(ident) {
  *
  * @param a         Object to compare.
  * @param b         Object to compare with.
- * @return          0, -1, or 1 (usual comptor meanings)
+ * @returns 0, -1, or 1 (usual comptor meanings)
  */
 function titleComptor(a, b) {
   if (a.title > b.title) {
@@ -58,11 +58,11 @@ function titleComptor(a, b) {
 function checkConsistancy(har, testItems, itemAccessor) {
   itemAccessor =
     itemAccessor ||
-    function(item) {
+    function (item) {
       return item;
     };
-  for (let idx in testItems) {
-    let testItem = itemAccessor(testItems[idx]);
+  for (const idx in testItems) {
+    const testItem = itemAccessor(testItems[idx]);
     equal(itemAccessor(har.itemByIndex(idx)).title, testItem.title);
     equal(itemAccessor(har.itemById(testItem.hashId)).title, testItem.title);
     equal(har.indexOf(testItems[idx]), idx);
@@ -86,13 +86,13 @@ function checkConsistancy(har, testItems, itemAccessor) {
 function testRemoveModify(har, testItems, postprocessFunc, itemAccessor, itemCreator) {
   postprocessFunc =
     postprocessFunc ||
-    function(a, b) {
+    function (a, b) {
       return [a, b];
     };
   itemCreator = itemCreator || (title => hashedCreateItem(title));
   itemAccessor =
     itemAccessor ||
-    function(item) {
+    function (item) {
       return item;
     };
 
@@ -110,7 +110,7 @@ function testRemoveModify(har, testItems, postprocessFunc, itemAccessor, itemCre
   checkConsistancy(har, testItems, itemAccessor);
 
   // Try modifying an item
-  let newInstance = itemCreator("z-changed");
+  const newInstance = itemCreator("z-changed");
   itemAccessor(newInstance).id = itemAccessor(testItems[0]).id;
   testItems[0] = newInstance;
   har.modifyItem(newInstance);
@@ -119,13 +119,13 @@ function testRemoveModify(har, testItems, postprocessFunc, itemAccessor, itemCre
 }
 
 /**
- * Tests the basic cal.HashedArray
+ * Tests the basic HashedArray
  */
 function test_array_base() {
   let har, testItems;
 
   // Test normal additions
-  har = new cal.HashedArray();
+  har = new HashedArray();
   testItems = ["a", "b", "c", "d"].map(hashedCreateItem);
 
   testItems.forEach(har.addItem, har);
@@ -133,7 +133,7 @@ function test_array_base() {
   testRemoveModify(har, testItems);
 
   // Test adding in batch mode
-  har = new cal.HashedArray();
+  har = new HashedArray();
   testItems = ["e", "f", "g", "h"].map(hashedCreateItem);
   har.startBatch();
   testItems.forEach(har.addItem, har);
@@ -143,7 +143,7 @@ function test_array_base() {
 }
 
 /**
- * Tests the sorted cal.SortedHashedArray
+ * Tests the sorted SortedHashedArray
  */
 function test_array_sorted() {
   let har, testItems, testItemsSorted;
@@ -154,7 +154,7 @@ function test_array_sorted() {
   }
 
   // Test normal additions
-  har = new cal.SortedHashedArray(titleComptor);
+  har = new SortedHashedArray(titleComptor);
   testItems = ["d", "c", "a", "b"].map(hashedCreateItem);
   testItemsSorted = testItems.sort(titleComptor);
 
@@ -163,7 +163,7 @@ function test_array_sorted() {
   testRemoveModify(har, testItemsSorted, sortedPostProcess);
 
   // Test adding in batch mode
-  har = new cal.SortedHashedArray(titleComptor);
+  har = new SortedHashedArray(titleComptor);
   testItems = ["e", "f", "g", "h"].map(hashedCreateItem);
   testItemsSorted = testItems.sort(titleComptor);
   har.startBatch();
@@ -174,14 +174,13 @@ function test_array_sorted() {
 }
 
 /**
- * Tests cal.SortedHashedArray with a custom hashAccessor.
+ * Tests SortedHashedArray with a custom hashAccessor.
  */
 function test_hashAccessor() {
-  let har, testItems, testItemsSorted;
-  let comptor = (a, b) => titleComptor(a.item, b.item);
+  const comptor = (a, b) => titleComptor(a.item, b.item);
 
-  har = new cal.SortedHashedArray(comptor);
-  har.hashAccessor = function(obj) {
+  const har = new SortedHashedArray(comptor);
+  har.hashAccessor = function (obj) {
     return obj.item.hashId;
   };
 
@@ -201,9 +200,9 @@ function test_hashAccessor() {
     return [harParam, tiParam];
   }
 
-  testItems = ["d", "c", "a", "b"].map(itemCreator);
+  const testItems = ["d", "c", "a", "b"].map(itemCreator);
 
-  testItemsSorted = testItems.sort(comptor);
+  const testItemsSorted = testItems.sort(comptor);
   testItems.forEach(har.addItem, har);
   checkConsistancy(har, testItemsSorted, itemAccessor);
   testRemoveModify(har, testItemsSorted, sortedPostProcess, itemAccessor, itemCreator);

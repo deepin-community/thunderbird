@@ -1,29 +1,28 @@
 {
   "langpack_id": "kab",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-kab@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Taqbaylit Language Pack",
-  "description": "Language pack for Thunderbird for kab",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Taqbaylit (Kabyle)",
+  "description": "Thunderbird Beta Language Pack for Taqbaylit (kab) – Kabyle",
+  "version": "125.0.20240401.173510",
   "languages": {
     "kab": {
-      "version": "20211011131358",
+      "version": "20240401183400",
       "chrome_resources": {
         "alerts": "chrome/kab/locale/kab/alerts/",
         "autoconfig": "chrome/kab/locale/kab/autoconfig/",
-        "branding": "chrome/kab/locale/kab/branding/",
+        "branding": "chrome/kab/locale/branding/",
         "calendar": "chrome/kab/locale/kab/calendar/",
         "chat": "chrome/kab/locale/kab/chat/",
         "communicator": "chrome/kab/locale/kab/communicator/",
         "devtools": "chrome/kab/locale/kab/devtools/client/",
         "devtools-shared": "chrome/kab/locale/kab/devtools/shared/",
-        "devtools-startup": "chrome/kab/locale/kab/devtools/startup/",
         "global": "chrome/kab/locale/kab/global/",
         "global-platform": {
           "macosx": "chrome/kab/locale/kab/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/kab/locale/kab/mozldap/",
         "necko": "chrome/kab/locale/kab/necko/",
         "passwordmgr": "chrome/kab/locale/kab/passwordmgr/",
-        "pdf.js": "chrome/kab/locale/pdfviewer/",
         "pipnss": "chrome/kab/locale/kab/pipnss/",
         "pippki": "chrome/kab/locale/kab/pippki/",
         "places": "chrome/kab/locale/kab/places/"

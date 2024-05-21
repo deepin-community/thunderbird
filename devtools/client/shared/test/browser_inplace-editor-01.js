@@ -8,7 +8,7 @@ loadHelperScript("helper_inplace_editor.js");
 
 // Test the inplace-editor behavior.
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8,inline editor tests");
   const { host, doc } = await createHost();
 
@@ -18,6 +18,7 @@ add_task(async function() {
   await testAdvanceCharCommit(doc);
   await testAdvanceCharsFunction(doc);
   await testEscapeCancel(doc);
+  await testInputAriaLabel(doc);
 
   host.destroy();
   gBrowser.removeCurrentTab();
@@ -55,7 +56,7 @@ function testReturnCommit(doc) {
     createInplaceEditorAndClick(
       {
         initial: "explicit initial",
-        start: function(editor) {
+        start(editor) {
           is(
             editor.input.value,
             "explicit initial",
@@ -76,7 +77,7 @@ function testBlurCommit(doc) {
   return new Promise(resolve => {
     createInplaceEditorAndClick(
       {
-        start: function(editor) {
+        start(editor) {
           is(editor.input.value, "Edit Me!", "textContent of the span used.");
           editor.input.value = "Test Value";
           editor.input.blur();
@@ -95,7 +96,7 @@ function testAdvanceCharCommit(doc) {
     createInplaceEditorAndClick(
       {
         advanceChars: ":",
-        start: function(editor) {
+        start() {
           EventUtils.sendString("Test:");
         },
         done: onDone("Test", true, resolve),
@@ -113,7 +114,7 @@ function testAdvanceCharsFunction(doc) {
     createInplaceEditorAndClick(
       {
         initial: "",
-        advanceChars: function(charCode, text, insertionPoint) {
+        advanceChars(charCode, text) {
           if (charCode !== KeyboardEvent.DOM_VK_COLON) {
             return false;
           }
@@ -123,9 +124,9 @@ function testAdvanceCharsFunction(doc) {
           }
 
           // Just to make sure we check it somehow.
-          return text.length > 0;
+          return !!text.length;
         },
-        start: function(editor) {
+        start() {
           for (const ch of ":Test:") {
             EventUtils.sendChar(ch);
           }
@@ -143,7 +144,7 @@ function testEscapeCancel(doc) {
     createInplaceEditorAndClick(
       {
         initial: "initial text",
-        start: function(editor) {
+        start(editor) {
           editor.input.value = "Test Value";
           EventUtils.sendKey("escape");
         },
@@ -154,8 +155,45 @@ function testEscapeCancel(doc) {
   });
 }
 
+function testInputAriaLabel(doc) {
+  info("Testing that inputAriaLabel works as expected");
+  doc.body.innerHTML = "";
+
+  let element = createSpan(doc);
+  editableField({
+    element,
+    inputAriaLabel: "TEST_ARIA_LABEL",
+  });
+
+  info("Clicking on the inplace-editor field to turn to edit mode");
+  element.click();
+  let input = doc.querySelector("input");
+  is(
+    input.getAttribute("aria-label"),
+    "TEST_ARIA_LABEL",
+    "Input has expected aria-label"
+  );
+
+  info("Testing that inputAriaLabelledBy works as expected");
+  doc.body.innerHTML = "";
+  element = createSpan(doc);
+  editableField({
+    element,
+    inputAriaLabelledBy: "TEST_ARIA_LABELLED_BY",
+  });
+
+  info("Clicking on the inplace-editor field to turn to edit mode");
+  element.click();
+  input = doc.querySelector("input");
+  is(
+    input.getAttribute("aria-labelledby"),
+    "TEST_ARIA_LABELLED_BY",
+    "Input has expected aria-labelledby"
+  );
+}
+
 function onDone(value, isCommit, resolve) {
-  return function(actualValue, actualCommit) {
+  return function (actualValue, actualCommit) {
     info("Inplace-editor's done callback executed, checking its state");
     is(actualValue, value, "The value is correct");
     is(actualCommit, isCommit, "The commit boolean is correct");

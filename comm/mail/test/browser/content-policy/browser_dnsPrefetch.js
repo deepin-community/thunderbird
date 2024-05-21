@@ -11,24 +11,29 @@
 
 "use strict";
 
-var composeHelper = ChromeUtils.import(
-  "resource://testing-common/mozmill/ComposeHelpers.jsm"
+var {
+  close_compose_window,
+  open_compose_new_mail,
+  open_compose_with_forward,
+  open_compose_with_reply,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
 );
-var { open_content_tab_with_url } = ChromeUtils.import(
-  "resource://testing-common/mozmill/ContentTabHelpers.jsm"
+var { open_content_tab_with_url } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
 );
 var {
   assert_nothing_selected,
   assert_selected_and_displayed,
   be_in_folder,
-  close_message_window,
   create_folder,
-  mc,
+  get_about_3pane,
+  get_about_message,
   open_selected_message_in_new_window,
   select_click_row,
   select_shift_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 var folder = null;
@@ -47,17 +52,14 @@ var msgBody =
   "dns prefetch test message\n" +
   "</body>\n</html>\n";
 
-add_task(function setupModule(module) {
-  folder = create_folder("dnsPrefetch");
+add_setup(async function () {
+  folder = await create_folder("dnsPrefetch");
 });
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  const msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
-  let source =
+  const source =
     "From - Sat Nov  1 12:39:54 2008\n" +
     "X-Mozilla-Status: 0001\n" +
     "X-Mozilla-Status2: 00000000\n" +
@@ -87,11 +89,15 @@ function addToFolder(aSubject, aBody, aFolder) {
   return aFolder.msgDatabase.getMsgHdrForMessageID(msgId);
 }
 
-function addMsgToFolder(folder) {
-  let msgDbHdr = addToFolder("exposed test message " + gMsgNo, msgBody, folder);
+async function addMsgToFolder(folder) {
+  const msgDbHdr = addToFolder(
+    "exposed test message " + gMsgNo,
+    msgBody,
+    folder
+  );
 
   // select the newly created message
-  gMsgHdr = select_click_row(gMsgNo);
+  gMsgHdr = await select_click_row(gMsgNo);
 
   Assert.equal(
     msgDbHdr,
@@ -99,7 +105,7 @@ function addMsgToFolder(folder) {
     "Should have selected the same message header as the generated header"
   );
 
-  assert_selected_and_displayed(gMsgNo);
+  await assert_selected_and_displayed(gMsgNo);
 
   return gMsgNo++;
 }
@@ -112,108 +118,116 @@ function addMsgToFolder(folder) {
  *                    1 = reply, 2 = forward.
  * @param loadAllowed Whether or not the load is expected to be allowed.
  */
-function checkComposeWindow(replyType) {
+async function checkComposeWindow(replyType) {
   let errMsg = "";
   let replyWindow = null;
   switch (replyType) {
     case 0:
-      replyWindow = composeHelper.open_compose_new_mail();
+      replyWindow = await open_compose_new_mail();
       errMsg = "new mail";
       break;
     case 1:
-      replyWindow = composeHelper.open_compose_with_reply();
+      replyWindow = await open_compose_with_reply();
       errMsg = "reply";
       break;
     case 2:
-      replyWindow = composeHelper.open_compose_with_forward();
+      replyWindow = await open_compose_with_forward();
       errMsg = "forward";
       break;
   }
 
   // Check the prefetch in the compose window.
   Assert.ok(
-    !replyWindow.e("content-frame").docShell.allowDNSPrefetch,
+    !replyWindow.document.getElementById("messageEditor").docShell
+      .allowDNSPrefetch,
     `Should have disabled DNS prefetch in the compose window (${errMsg})`
   );
 
-  composeHelper.close_compose_window(replyWindow);
+  await close_compose_window(replyWindow);
 }
 
-add_task(function test_dnsPrefetch_message() {
+add_task(async function test_dnsPrefetch_message() {
   // Now we have started up, simply check that DNS prefetch is disabled
+  const aboutMessage = get_about_message();
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
-    "Should disable DNS Prefetch on messagepane at startup"
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
+    "messagepane should have disabled DNS prefetch at startup"
   );
+  const about3Pane = get_about_3pane();
   Assert.ok(
-    !mc.e("multimessage").docShell.allowDNSPrefetch,
-    "Should disable DNS Prefetch on multimessage at startup"
+    !about3Pane.document.getElementById("multiMessageBrowser").docShell
+      .allowDNSPrefetch.allowDNSPrefetch,
+    "multimessagepane should have disabled DNS prefetch at startup"
   );
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
-  assert_nothing_selected();
+  await assert_nothing_selected();
 
-  let firstMsg = addMsgToFolder(folder);
+  const firstMsg = await addMsgToFolder(folder);
 
   // Now we've got a message selected, check again.
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
     "Should keep DNS Prefetch disabled on messagepane after selecting message"
   );
 
-  let secondMsg = addMsgToFolder(folder);
-  select_shift_click_row(firstMsg);
-
-  console.log(firstMsg, secondMsg);
-  assert_selected_and_displayed(firstMsg, secondMsg);
+  const secondMsg = await addMsgToFolder(folder);
+  await select_shift_click_row(firstMsg);
+  await assert_selected_and_displayed(firstMsg, secondMsg);
 
   Assert.ok(
-    !mc.e("multimessage").docShell.allowDNSPrefetch,
+    !about3Pane.document.getElementById("multiMessageBrowser").docShell
+      .allowDNSPrefetch,
     "Should keep DNS Prefetch disabled on multimessage after selecting message"
   );
 
-  select_shift_click_row(secondMsg);
+  await select_shift_click_row(secondMsg);
 });
 
 add_task(async function test_dnsPrefetch_standaloneMessage() {
-  let msgc = await open_selected_message_in_new_window();
-  assert_selected_and_displayed(msgc, gMsgHdr);
+  const msgc = await open_selected_message_in_new_window();
+  await assert_selected_and_displayed(msgc, gMsgHdr);
 
   // Check the docshell.
+  const aboutMessage = get_about_message(msgc);
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
     "Should disable DNS Prefetch on messagepane in standalone message window."
   );
 
-  close_message_window(msgc);
+  await BrowserTestUtils.closeWindow(msgc);
 });
 
-add_task(function test_dnsPrefetch_compose() {
-  checkComposeWindow(0);
-  checkComposeWindow(1);
-  checkComposeWindow(2);
+add_task(async function test_dnsPrefetch_compose() {
+  await checkComposeWindow(0);
+  await checkComposeWindow(1);
+  await checkComposeWindow(2);
 });
 
 add_task(async function test_dnsPrefetch_contentTab() {
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  const tabmail = document.getElementById("tabmail");
+  const preCount = tabmail.tabContainer.allTabs.length;
 
-  let dataurl =
+  const dataurl =
     "data:text/html,<html><head><title>test dns prefetch</title>" +
     "</head><body>test dns prefetch</body></html>";
 
-  let newTab = open_content_tab_with_url(dataurl);
+  const newTab = await open_content_tab_with_url(dataurl);
 
-  await SpecialPowers.spawn(mc.tabmail.getBrowserForSelectedTab(), [], () => {
+  await SpecialPowers.spawn(tabmail.getBrowserForSelectedTab(), [], () => {
     Assert.ok(docShell, "docShell should be available");
     Assert.ok(docShell.allowDNSPrefetch, "allowDNSPrefetch should be enabled");
   });
 
-  mc.tabmail.closeTab(newTab);
+  tabmail.closeTab(newTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount) {
+  if (tabmail.tabContainer.allTabs.length != preCount) {
     throw new Error("The content tab didn't close");
   }
 

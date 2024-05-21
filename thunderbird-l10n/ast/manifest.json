@@ -1,29 +1,28 @@
 {
   "langpack_id": "ast",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ast@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Asturianu Language Pack",
-  "description": "Language pack for Thunderbird for ast",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Asturianu (Asturian)",
+  "description": "Thunderbird Beta Language Pack for Asturianu (ast) – Asturian",
+  "version": "125.0.20240401.173510",
   "languages": {
     "ast": {
-      "version": "20211011130021",
+      "version": "20240401183419",
       "chrome_resources": {
         "alerts": "chrome/ast/locale/ast/alerts/",
         "autoconfig": "chrome/ast/locale/ast/autoconfig/",
-        "branding": "chrome/ast/locale/ast/branding/",
+        "branding": "chrome/ast/locale/branding/",
         "calendar": "chrome/ast/locale/ast/calendar/",
         "chat": "chrome/ast/locale/ast/chat/",
         "communicator": "chrome/ast/locale/ast/communicator/",
         "devtools": "chrome/ast/locale/ast/devtools/client/",
         "devtools-shared": "chrome/ast/locale/ast/devtools/shared/",
-        "devtools-startup": "chrome/ast/locale/ast/devtools/startup/",
         "global": "chrome/ast/locale/ast/global/",
         "global-platform": {
           "macosx": "chrome/ast/locale/ast/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/ast/locale/ast/mozldap/",
         "necko": "chrome/ast/locale/ast/necko/",
         "passwordmgr": "chrome/ast/locale/ast/passwordmgr/",
-        "pdf.js": "chrome/ast/locale/pdfviewer/",
         "pipnss": "chrome/ast/locale/ast/pipnss/",
         "pippki": "chrome/ast/locale/ast/pippki/",
         "places": "chrome/ast/locale/ast/places/"

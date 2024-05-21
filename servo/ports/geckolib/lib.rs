@@ -6,6 +6,9 @@ extern crate bincode;
 extern crate cssparser;
 #[macro_use]
 extern crate cstr;
+extern crate dom;
+#[macro_use]
+extern crate gecko_profiler;
 extern crate libc;
 #[macro_use]
 extern crate log;
@@ -18,7 +21,9 @@ extern crate smallvec;
 #[macro_use]
 extern crate style;
 extern crate style_traits;
+extern crate thin_vec;
 extern crate to_shmem;
+extern crate lazy_static;
 
 mod error_reporter;
 #[allow(non_snake_case)]

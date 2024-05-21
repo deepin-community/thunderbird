@@ -14,27 +14,26 @@
 #include "nsIMsgFolder.h"
 #include "nsCOMArray.h"
 #include "nsIDBChangeListener.h"
+#include "nsIImapOfflineSync.h"
 
 class nsImapOfflineSync : public nsIUrlListener,
                           public nsIMsgCopyServiceListener,
-                          public nsIDBChangeListener {
+                          public nsIDBChangeListener,
+                          public nsIImapOfflineSync {
  public:  // set to one folder to playback one folder only
-  nsImapOfflineSync(nsIMsgWindow* window, nsIUrlListener* listener,
-                    nsIMsgFolder* singleFolderOnly = nullptr,
-                    bool isPseudoOffline = false);
+  nsImapOfflineSync();
 
   NS_DECL_ISUPPORTS
   NS_DECL_NSIURLLISTENER
   NS_DECL_NSIMSGCOPYSERVICELISTENER
   NS_DECL_NSIDBCHANGELISTENER
-  virtual nsresult ProcessNextOperation();  // this kicks off playback
+  NS_DECL_NSIIMAPOFFLINESYNC
 
   int32_t GetCurrentUIDValidity();
   void SetCurrentUIDValidity(int32_t uidvalidity) {
     mCurrentUIDValidity = uidvalidity;
   }
 
-  void SetPseudoOffline(bool pseudoOffline) { m_pseudoOffline = pseudoOffline; }
   bool ProcessingStaleFolderUpdate() {
     return m_singleFolderToUpdate != nullptr;
   }
@@ -75,7 +74,7 @@ class nsImapOfflineSync : public nsIUrlListener,
   nsTArray<nsMsgKey> m_CurrentKeys;
   nsCOMArray<nsIMsgOfflineImapOperation> m_currentOpsToClear;
   uint32_t m_KeyIndex;
-  nsCOMPtr<nsIMsgDatabase> m_currentDB;
+  nsCOMPtr<nsIMsgOfflineOpsDatabase> m_currentDB;
   nsCOMPtr<nsIUrlListener> m_listener;
   int32_t mCurrentUIDValidity;
   int32_t mCurrentPlaybackOpType;  // kFlagsChanged -> kMsgCopy -> kMsgMoved
@@ -89,7 +88,7 @@ class nsImapOfflineDownloader : public nsImapOfflineSync {
  public:
   nsImapOfflineDownloader(nsIMsgWindow* window, nsIUrlListener* listener);
   virtual ~nsImapOfflineDownloader();
-  virtual nsresult ProcessNextOperation() override;  // this kicks off download
+  NS_IMETHOD ProcessNextOperation() override;  // this kicks off download
 };
 
 #endif

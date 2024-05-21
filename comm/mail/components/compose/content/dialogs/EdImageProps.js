@@ -11,17 +11,12 @@ var gLinkElement = null;
 var gOriginalHref = "";
 var gHNodeArray = {};
 
-// dialog initialization code
-
+window.addEventListener("load", Startup);
 document.addEventListener("dialogaccept", onAccept);
 document.addEventListener("dialogcancel", onCancel);
 
 function Startup() {
   var editor = GetCurrentEditor();
-  if (!editor) {
-    window.close();
-    return;
-  }
 
   ImageStartup();
   gDialog.hrefInput = document.getElementById("hrefInput");
@@ -130,7 +125,6 @@ function InitDialog() {
 
 function ChangeLinkLocation() {
   var href = TrimString(gDialog.hrefInput.value);
-  SetRelativeCheckbox(gDialog.makeRelativeLink);
   gDialog.showLinkBorder.disabled = !href;
   gDialog.linkAdvanced.disabled = !href;
   gLinkElement.setAttribute("href", href);
@@ -156,7 +150,7 @@ function ValidateData() {
 function onAccept(event) {
   // Use this now (default = false) so Advanced Edit button dialog doesn't trigger error message
   gDoAltTextError = true;
-
+  window.opener.gMsgCompose.allowRemoteContent = true;
   if (ValidateData()) {
     if ("arguments" in window && window.arguments[0]) {
       SaveWindowLocation();
@@ -243,7 +237,7 @@ function onAccept(event) {
         if (anchorNode) {
           anchorNode.name = href.substr(1);
           // Remember to use editor method so it is undoable!
-          editor.insertNode(anchorNode, gHNodeArray[href], 0, false);
+          editor.insertNode(anchorNode, gHNodeArray[href], 0);
         }
       }
       // All values are valid - copy to actual element in doc or
@@ -258,9 +252,7 @@ function onAccept(event) {
       if (gImageMap && gInsertNewIMap) {
         // Insert the ImageMap element at beginning of document
         var body = editor.rootElement;
-        editor.setShouldTxnSetSelection(false);
-        editor.insertNode(gImageMap, body, 0);
-        editor.setShouldTxnSetSelection(true);
+        editor.insertNode(gImageMap, body, 0, true /* preserve selection */);
       }
     } catch (e) {
       dump(e);

@@ -51,7 +51,6 @@ typedef uint16_t imapMessageFlagsType;
 #define kImapMsgForwardedFlag         0x0040  /* Not always supported, check mailbox folder */
 #define kImapMsgMDNSentFlag           0x0080  /* Not always supported. check mailbox folder */
 #define kImapMsgCustomKeywordFlag     0x0100  /* this msg has a custom keyword */
-#define kImapMsgLabelFlags            0x0E00  /* supports 5 labels only supported if the folder supports keywords */
 #define kImapMsgSupportMDNSentFlag    0x2000
 #define kImapMsgSupportForwardedFlag  0x4000
 /**
@@ -121,7 +120,7 @@ const eIMAPCapabilityFlag kXServerInfoCapability =        0x00000800;  /* XSERVE
 const eIMAPCapabilityFlag kHasAuthPlainCapability =       0x00001000;  /* new form of auth plain base64 login */
 const eIMAPCapabilityFlag kUidplusCapability =            0x00002000;  /* RFC 2359 UIDPLUS extension */
 const eIMAPCapabilityFlag kLiteralPlusCapability =        0x00004000;  /* RFC 2088 LITERAL+ extension */
-const eIMAPCapabilityFlag kAOLImapCapability =            0x00008000;  /* aol imap extensions */
+//                                                        0x00008000;  /* unused */
 const eIMAPCapabilityFlag kHasLanguageCapability =        0x00010000;  /* language extensions */
 const eIMAPCapabilityFlag kHasCRAMCapability =            0x00020000;  /* CRAM auth extension */
 const eIMAPCapabilityFlag kQuotaCapability =              0x00040000;  /* RFC 2087 quota extension */

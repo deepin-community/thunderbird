@@ -1,4 +1,4 @@
-add_task(async function() {
+add_task(async function () {
   await openPreferencesViaOpenPreferencesAPI("general", { leaveOpen: true });
   const contentDocument = gBrowser.contentDocument;
   let dialogOverlay = content.gSubDialog._preloadDialog._overlay;
@@ -9,25 +9,57 @@ add_task(async function() {
     );
     contentDocument.getElementById("chooseLanguage").click();
     const win = await promiseSubDialogLoaded;
-    win.Preferences.forceEnableInstantApply();
     dialogOverlay = content.gSubDialog._topDialog._overlay;
-    ok(!BrowserTestUtils.is_hidden(dialogOverlay), "The dialog is visible.");
+    ok(!BrowserTestUtils.isHidden(dialogOverlay), "The dialog is visible.");
     return win;
   }
 
-  function closeLanguagesSubdialog() {
-    const closeBtn = dialogOverlay.querySelector(".dialogClose");
-    closeBtn.doCommand();
+  function acceptLanguagesSubdialog(win) {
+    const button = win.document.querySelector("dialog").getButton("accept");
+    button.doCommand();
   }
 
-  ok(BrowserTestUtils.is_hidden(dialogOverlay), "The dialog is invisible.");
+  ok(BrowserTestUtils.isHidden(dialogOverlay), "The dialog is invisible.");
   let win = await languagesSubdialogOpened();
   ok(
     win.document.getElementById("spoofEnglish").hidden,
     "The 'Request English' checkbox is hidden."
   );
-  closeLanguagesSubdialog();
-  ok(BrowserTestUtils.is_hidden(dialogOverlay), "The dialog is invisible.");
+  acceptLanguagesSubdialog(win);
+  ok(BrowserTestUtils.isHidden(dialogOverlay), "The dialog is invisible.");
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["intl.accept_languages", "en-US,en-XX,foo"]],
+  });
+  win = await languagesSubdialogOpened();
+  let activeLanguages = win.document.getElementById("activeLanguages").children;
+  Assert.equal(
+    activeLanguages[0].id,
+    "en-us",
+    "The ID for 'en-US' locale code is correctly set."
+  );
+  Assert.equal(
+    activeLanguages[0].firstChild.value,
+    "English (United States) [en-us]",
+    "The name for known 'en-US' locale code is correctly resolved."
+  );
+  Assert.equal(
+    activeLanguages[1].id,
+    "en-xx",
+    "The ID for 'en-XX' locale code is correctly set."
+  );
+  Assert.equal(
+    activeLanguages[1].firstChild.value,
+    "English [en-xx]",
+    "The name for unknown 'en-XX' locale code is resolved using 'en'."
+  );
+  Assert.equal(
+    activeLanguages[2].firstChild.value,
+    " [foo]",
+    "The name for unknown 'foo' locale code is empty."
+  );
+  acceptLanguagesSubdialog(win);
+  await SpecialPowers.popPrefEnv();
 
   await SpecialPowers.pushPrefEnv({
     set: [
@@ -62,7 +94,7 @@ add_task(async function() {
     2,
     "The privacy.spoof_english pref is set to 2."
   );
-  closeLanguagesSubdialog();
+  acceptLanguagesSubdialog(win);
 
   win = await languagesSubdialogOpened();
   ok(
@@ -90,7 +122,7 @@ add_task(async function() {
     1,
     "The privacy.spoof_english pref is set to 1."
   );
-  closeLanguagesSubdialog();
+  acceptLanguagesSubdialog(win);
 
   win = await languagesSubdialogOpened();
   ok(
@@ -106,7 +138,35 @@ add_task(async function() {
     1,
     "The privacy.spoof_english pref is set to 1."
   );
-  closeLanguagesSubdialog();
+  acceptLanguagesSubdialog(win);
+  await SpecialPowers.popPrefEnv();
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["intl.accept_languages", "en-US"]],
+  });
+  win = await languagesSubdialogOpened();
+  is(
+    win.document.getElementById("remove").disabled,
+    false,
+    "The Remove button is enabled when any language is selected on the list"
+  );
+
+  win.document.getElementById("remove").doCommand();
+  is(
+    win.Preferences.get("intl.accept_languages").value,
+    "",
+    "Accepted language has been removed from the preference"
+  );
+  is(
+    win.document.getElementById("activeLanguages").itemCount,
+    0,
+    "Accepted languages list is empty"
+  );
+  ok(
+    win.document.getElementById("remove").disabled,
+    "The Remove button is disabled when there is no language on the list"
+  );
+  acceptLanguagesSubdialog(win);
 
   gBrowser.removeCurrentTab();
 });

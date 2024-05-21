@@ -49,6 +49,20 @@ TEST_P(TlsConnectGeneric, ServerNegotiateTls12) {
   Connect();
 }
 
+TEST_P(TlsConnectGeneric,
+       ClientOfferTls11_Tls13ServerNegotiateEachVersionOneByOne) {
+  // DTLS does not support 1.0
+  if (variant_ == ssl_variant_datagram) {
+    client_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_1,
+                             SSL_LIBRARY_VERSION_TLS_1_3);
+  } else {
+    client_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_0,
+                             SSL_LIBRARY_VERSION_TLS_1_3);
+  }
+  server_->SetVersionRange(version_, version_);
+  Connect();
+}
+
 // Test the ServerRandom version hack from
 // [draft-ietf-tls-tls13-11 Section 6.3.1.1].
 // The first three tests test for active tampering. The next
@@ -60,8 +74,8 @@ TEST_F(TlsConnectTest, TestDowngradeDetectionToTls11) {
   server_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_0,
                            SSL_LIBRARY_VERSION_TLS_1_2);
   client_->SetOption(SSL_ENABLE_HELLO_DOWNGRADE_CHECK, PR_TRUE);
-  MakeTlsFilter<TlsClientHelloVersionSetter>(client_,
-                                             SSL_LIBRARY_VERSION_TLS_1_1);
+  MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                         SSL_LIBRARY_VERSION_TLS_1_1);
   ConnectExpectAlert(client_, kTlsAlertIllegalParameter);
   client_->CheckErrorCode(SSL_ERROR_RX_MALFORMED_SERVER_HELLO);
   server_->CheckErrorCode(SSL_ERROR_ILLEGAL_PARAMETER_ALERT);
@@ -69,11 +83,10 @@ TEST_F(TlsConnectTest, TestDowngradeDetectionToTls11) {
 
 // Attempt to negotiate the bogus DTLS 1.1 version.
 TEST_F(DtlsConnectTest, TestDtlsVersion11) {
-  MakeTlsFilter<TlsClientHelloVersionSetter>(client_, ((~0x0101) & 0xffff));
-  ConnectExpectAlert(server_, kTlsAlertHandshakeFailure);
-  // It's kind of surprising that SSL_ERROR_NO_CYPHER_OVERLAP is
-  // what is returned here, but this is deliberate in ssl3_HandleAlert().
-  client_->CheckErrorCode(SSL_ERROR_NO_CYPHER_OVERLAP);
+  MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                         ((~0x0101) & 0xffff));
+  ConnectExpectAlert(server_, kTlsAlertProtocolVersion);
+  client_->CheckErrorCode(SSL_ERROR_PROTOCOL_VERSION_ALERT);
   server_->CheckErrorCode(SSL_ERROR_UNSUPPORTED_VERSION);
 }
 
@@ -162,8 +175,8 @@ TEST_P(TlsDowngradeTest, TlsDowngradeSentinelTest) {
 TEST_F(TlsConnectTest, TestDowngradeDetectionToTls10) {
   // Setting the option here has no effect.
   client_->SetOption(SSL_ENABLE_HELLO_DOWNGRADE_CHECK, PR_TRUE);
-  MakeTlsFilter<TlsClientHelloVersionSetter>(client_,
-                                             SSL_LIBRARY_VERSION_TLS_1_0);
+  MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                         SSL_LIBRARY_VERSION_TLS_1_0);
   client_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_0,
                            SSL_LIBRARY_VERSION_TLS_1_1);
   server_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_0,
@@ -204,6 +217,7 @@ TEST_F(TlsConnectTest, DisableFalseStartOnFallback) {
             SSL_SetCanFalseStartCallback(client_->ssl_fd(), AllowFalseStart,
                                          &false_start_attempted));
 
+  client_->SetOption(SSL_ENABLE_HELLO_DOWNGRADE_CHECK, PR_FALSE);
   client_->SetDowngradeCheckVersion(SSL_LIBRARY_VERSION_TLS_1_3);
   client_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_2,
                            SSL_LIBRARY_VERSION_TLS_1_2);
@@ -276,8 +290,8 @@ class Tls13NoSupportedVersions : public TlsConnectStreamTls12 {
     client_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_2,
                              SSL_LIBRARY_VERSION_TLS_1_2);
     server_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_2, max_server_version);
-    MakeTlsFilter<TlsClientHelloVersionSetter>(client_,
-                                               overwritten_client_version);
+    MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                           overwritten_client_version);
     auto capture =
         MakeTlsFilter<TlsHandshakeRecorder>(server_, kTlsHandshakeServerHello);
     ConnectExpectAlert(server_, kTlsAlertDecryptError);
@@ -311,8 +325,8 @@ TEST_F(Tls13NoSupportedVersions,
 // Offer 1.3 but with ClientHello.legacy_version == TLS 1.4. This
 // causes a bad MAC error when we read EncryptedExtensions.
 TEST_F(TlsConnectStreamTls13, Tls14ClientHelloWithSupportedVersions) {
-  MakeTlsFilter<TlsClientHelloVersionSetter>(client_,
-                                             SSL_LIBRARY_VERSION_TLS_1_3 + 1);
+  MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                         SSL_LIBRARY_VERSION_TLS_1_3 + 1);
   auto capture = MakeTlsFilter<TlsExtensionCapture>(
       server_, ssl_tls13_supported_versions_xtn);
   client_->ExpectSendAlert(kTlsAlertBadRecordMac);
@@ -328,11 +342,24 @@ TEST_F(TlsConnectStreamTls13, Tls14ClientHelloWithSupportedVersions) {
   ASSERT_LT(static_cast<uint32_t>(SSL_LIBRARY_VERSION_TLS_1_2), version);
 }
 
-// Offer 1.3 but with ClientHello.legacy_version == SSL 3.0. This
+// Offer 1.3 but with Server/ClientHello.legacy_version == SSL 3.0. This
 // causes a protocol version alert.  See RFC 8446 Appendix D.5.
 TEST_F(TlsConnectStreamTls13, Ssl30ClientHelloWithSupportedVersions) {
-  MakeTlsFilter<TlsClientHelloVersionSetter>(client_, SSL_LIBRARY_VERSION_3_0);
+  MakeTlsFilter<TlsMessageVersionSetter>(client_, kTlsHandshakeClientHello,
+                                         SSL_LIBRARY_VERSION_3_0);
   ConnectExpectAlert(server_, kTlsAlertProtocolVersion);
+}
+
+TEST_F(TlsConnectStreamTls13, Ssl30ServerHelloWithSupportedVersions) {
+  MakeTlsFilter<TlsMessageVersionSetter>(server_, kTlsHandshakeServerHello,
+                                         SSL_LIBRARY_VERSION_3_0);
+  StartConnect();
+  client_->ExpectSendAlert(kTlsAlertProtocolVersion);
+  /* Since the handshake is not finished the client will send an unencrypted
+   * alert. The server is expected to close the connection with a unexpected
+   * message alert. */
+  server_->ExpectSendAlert(kTlsAlertUnexpectedMessage);
+  Handshake();
 }
 
 // Verify the client sends only DTLS versions in supported_versions
@@ -348,7 +375,7 @@ TEST_F(DtlsConnectTest, DtlsSupportedVersionsEncoding) {
   ASSERT_EQ(7U, capture->extension().len());
   uint32_t version = 0;
   ASSERT_TRUE(capture->extension().Read(1, 2, &version));
-  EXPECT_EQ(0x7f00 | DTLS_1_3_DRAFT_VERSION, static_cast<int>(version));
+  EXPECT_EQ(SSL_LIBRARY_VERSION_DTLS_1_3_WIRE, static_cast<int>(version));
   ASSERT_TRUE(capture->extension().Read(3, 2, &version));
   EXPECT_EQ(SSL_LIBRARY_VERSION_DTLS_1_2_WIRE, static_cast<int>(version));
   ASSERT_TRUE(capture->extension().Read(5, 2, &version));
@@ -358,7 +385,7 @@ TEST_F(DtlsConnectTest, DtlsSupportedVersionsEncoding) {
 // Verify the DTLS 1.3 supported_versions interop workaround.
 TEST_F(DtlsConnectTest, Dtls13VersionWorkaround) {
   static const uint16_t kExpectVersionsWorkaround[] = {
-      0x7f00 | DTLS_1_3_DRAFT_VERSION, SSL_LIBRARY_VERSION_DTLS_1_2_WIRE,
+      SSL_LIBRARY_VERSION_DTLS_1_3_WIRE, SSL_LIBRARY_VERSION_DTLS_1_2_WIRE,
       SSL_LIBRARY_VERSION_TLS_1_2, SSL_LIBRARY_VERSION_DTLS_1_0_WIRE,
       SSL_LIBRARY_VERSION_TLS_1_1};
   const int min_ver = SSL_LIBRARY_VERSION_TLS_1_1,
@@ -405,6 +432,33 @@ TEST_F(TlsConnectTest, TlsSupportedVersionsEncoding) {
   EXPECT_EQ(SSL_LIBRARY_VERSION_TLS_1_1, static_cast<int>(version));
   ASSERT_TRUE(capture->extension().Read(7, 2, &version));
   EXPECT_EQ(SSL_LIBRARY_VERSION_TLS_1_0, static_cast<int>(version));
+}
+
+/* Test that on reception of unsupported ClientHello.legacy_version the TLS 1.3
+ * server sends the correct alert.
+ *
+ * If the "supported_versions" extension is absent and the server only supports
+ * versions greater than ClientHello.legacy_version, the server MUST abort the
+ * handshake with a "protocol_version" alert [RFC8446, Appendix D.2]. */
+TEST_P(TlsConnectGenericPre13, ClientHelloUnsupportedTlsVersion) {
+  StartConnect();
+
+  if (variant_ == ssl_variant_stream) {
+    server_->SetVersionRange(SSL_LIBRARY_VERSION_TLS_1_3,
+                             SSL_LIBRARY_VERSION_TLS_1_3);
+  } else {
+    server_->SetVersionRange(SSL_LIBRARY_VERSION_DTLS_1_3,
+                             SSL_LIBRARY_VERSION_DTLS_1_3);
+  }
+
+  // Try to handshake
+  client_->Handshake();
+  // Expect protocol version alert
+  server_->ExpectSendAlert(kTlsAlertProtocolVersion);
+  server_->Handshake();
+  // Digest alert at peer
+  client_->ExpectReceiveAlert(kTlsAlertProtocolVersion);
+  client_->ReadBytes();
 }
 
 INSTANTIATE_TEST_SUITE_P(

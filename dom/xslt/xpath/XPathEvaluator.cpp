@@ -16,7 +16,6 @@
 #include "mozilla/dom/XPathNSResolverBinding.h"
 #include "nsAtom.h"
 #include "nsCOMPtr.h"
-#include "nsContentCID.h"
 #include "nsContentUtils.h"
 #include "nsDOMString.h"
 #include "nsError.h"
@@ -26,8 +25,7 @@
 #include "txIXPathContext.h"
 #include "txURIUtils.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 // txIParseContext implementation
 class XPathEvaluatorParseContext : public txIParseContext {
@@ -58,33 +56,30 @@ class XPathEvaluatorParseContext : public txIParseContext {
   bool mIsCaseSensitive;
 };
 
-XPathEvaluator::XPathEvaluator(Document* aDocument)
-    : mDocument(do_GetWeakReference(aDocument)) {}
+XPathEvaluator::XPathEvaluator(Document* aDocument) : mDocument(aDocument) {}
 
 XPathEvaluator::~XPathEvaluator() = default;
 
-XPathExpression* XPathEvaluator::CreateExpression(const nsAString& aExpression,
-                                                  XPathNSResolver* aResolver,
-                                                  ErrorResult& aRv) {
-  nsCOMPtr<Document> doc = do_QueryReferent(mDocument);
+UniquePtr<XPathExpression> XPathEvaluator::CreateExpression(
+    const nsAString& aExpression, XPathNSResolver* aResolver,
+    ErrorResult& aRv) {
+  nsCOMPtr<Document> doc(mDocument);
   XPathEvaluatorParseContext pContext(aResolver,
                                       !(doc && doc->IsHTMLDocument()));
   return CreateExpression(aExpression, &pContext, doc, aRv);
 }
 
-XPathExpression* XPathEvaluator::CreateExpression(const nsAString& aExpression,
-                                                  nsINode* aResolver,
-                                                  ErrorResult& aRv) {
-  nsCOMPtr<Document> doc = do_QueryReferent(mDocument);
+UniquePtr<XPathExpression> XPathEvaluator::CreateExpression(
+    const nsAString& aExpression, nsINode* aResolver, ErrorResult& aRv) {
+  nsCOMPtr<Document> doc(mDocument);
   XPathEvaluatorParseContext pContext(aResolver,
                                       !(doc && doc->IsHTMLDocument()));
   return CreateExpression(aExpression, &pContext, doc, aRv);
 }
 
-XPathExpression* XPathEvaluator::CreateExpression(const nsAString& aExpression,
-                                                  txIParseContext* aContext,
-                                                  Document* aDocument,
-                                                  ErrorResult& aRv) {
+UniquePtr<XPathExpression> XPathEvaluator::CreateExpression(
+    const nsAString& aExpression, txIParseContext* aContext,
+    Document* aDocument, ErrorResult& aRv) {
   if (!mRecycler) {
     mRecycler = new txResultRecycler;
   }
@@ -101,7 +96,8 @@ XPathExpression* XPathEvaluator::CreateExpression(const nsAString& aExpression,
     return nullptr;
   }
 
-  return new XPathExpression(std::move(expression), mRecycler, aDocument);
+  return MakeUnique<XPathExpression>(std::move(expression), mRecycler,
+                                     aDocument);
 }
 
 bool XPathEvaluator::WrapObject(JSContext* aCx,
@@ -111,8 +107,9 @@ bool XPathEvaluator::WrapObject(JSContext* aCx,
 }
 
 /* static */
-XPathEvaluator* XPathEvaluator::Constructor(const GlobalObject& aGlobal) {
-  return new XPathEvaluator(nullptr);
+UniquePtr<XPathEvaluator> XPathEvaluator::Constructor(
+    const GlobalObject& aGlobal) {
+  return MakeUnique<XPathEvaluator>(nullptr);
 }
 
 already_AddRefed<XPathResult> XPathEvaluator::Evaluate(
@@ -171,7 +168,7 @@ nsresult XPathEvaluatorParseContext::resolveNamespacePrefix(nsAtom* aPrefix,
   }
 
   // get the namespaceID for the URI
-  return nsContentUtils::NameSpaceManager()->RegisterNameSpace(ns, aID);
+  return nsNameSpaceManager::GetInstance()->RegisterNameSpace(ns, aID);
 }
 
 nsresult XPathEvaluatorParseContext::resolveFunctionCall(nsAtom* aName,
@@ -186,5 +183,4 @@ bool XPathEvaluatorParseContext::caseInsensitiveNameTests() {
 
 void XPathEvaluatorParseContext::SetErrorOffset(uint32_t aOffset) {}
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

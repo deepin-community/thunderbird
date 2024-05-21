@@ -94,7 +94,7 @@ const openOAuthWindow = (details, redirectURI) => {
     };
 
     httpObserver = {
-      observeActivity(channel, type, subtype, timestamp, sizeData, stringData) {
+      observeActivity(channel) {
         try {
           channel.QueryInterface(Ci.nsIChannel);
         } catch {
@@ -123,10 +123,10 @@ const openOAuthWindow = (details, redirectURI) => {
 };
 
 this.identity = class extends ExtensionAPI {
-  getAPI(context) {
+  getAPI() {
     return {
       identity: {
-        launchWebAuthFlowInParent: function(details, redirectURI) {
+        launchWebAuthFlowInParent: function (details, redirectURI) {
           // If the request is automatically redirected the user has already
           // authorized and we do not want to show the window.
           return checkRedirected(details.url, redirectURI).catch(

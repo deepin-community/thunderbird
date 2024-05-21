@@ -1,6 +1,10 @@
-/* import-globals-from antitracking_head.js */
-
 requestLongerTimeout(4);
+
+// Bug 1617611: Fix all the tests broken by "cookies SameSite=lax by default"
+Services.prefs.setBoolPref("network.cookie.sameSite.laxByDefault", false);
+registerCleanupFunction(() => {
+  Services.prefs.clearUserPref("network.cookie.sameSite.laxByDefault");
+});
 
 AntiTracking.runTestInNormalAndPrivateMode(
   "Set/Get Cookies",
@@ -62,7 +66,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
   // Cleanup callback
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -168,7 +172,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
   // Cleanup callback
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -177,3 +181,73 @@ AntiTracking.runTestInNormalAndPrivateMode(
   false,
   false
 );
+
+AntiTracking._createTask({
+  name: "Block cookies with BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN when preference is enabled",
+  cookieBehavior: BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN,
+  allowList: false,
+  callback: async _ => {
+    document.cookie = "name=value";
+    is(document.cookie, "", "Document cookie is blocked");
+    await fetch("server.sjs")
+      .then(r => r.text())
+      .then(text => {
+        is(text, "cookie-not-present", "We should not have HTTP cookies");
+      });
+    await fetch("server.sjs?checkonly")
+      .then(r => r.text())
+      .then(text => {
+        is(
+          text,
+          "cookie-not-present",
+          "We should still not have HTTP cookies after setting them via HTTP"
+        );
+      });
+    is(
+      document.cookie,
+      "",
+      "Document cookie is still blocked after setting via HTTP"
+    );
+  },
+  extraPrefs: [["network.cookie.cookieBehavior.optInPartitioning", true]],
+  thirdPartyPage: TEST_4TH_PARTY_PAGE,
+  runInPrivateWindow: false,
+  iframeSandbox: null,
+  accessRemoval: null,
+  callbackAfterRemoval: null,
+});
+
+AntiTracking._createTask({
+  name: "Block cookies with BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN when preference is enabled in pbmode",
+  cookieBehavior: BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN,
+  allowList: false,
+  callback: async _ => {
+    document.cookie = "name=value";
+    is(document.cookie, "", "Document cookie is blocked");
+    await fetch("server.sjs")
+      .then(r => r.text())
+      .then(text => {
+        is(text, "cookie-not-present", "We should not have HTTP cookies");
+      });
+    await fetch("server.sjs?checkonly")
+      .then(r => r.text())
+      .then(text => {
+        is(
+          text,
+          "cookie-not-present",
+          "We should still not have HTTP cookies after setting them via HTTP"
+        );
+      });
+    is(
+      document.cookie,
+      "",
+      "Document cookie is still blocked after setting via HTTP"
+    );
+  },
+  extraPrefs: [["network.cookie.cookieBehavior.optInPartitioning", true]],
+  thirdPartyPage: TEST_4TH_PARTY_PAGE,
+  runInPrivateWindow: true,
+  iframeSandbox: null,
+  accessRemoval: null,
+  callbackAfterRemoval: null,
+});

@@ -18,6 +18,7 @@
 #include "nsAboutProtocolUtils.h"
 #include "ThirdPartyUtil.h"
 #include "mozilla/ContentPrincipal.h"
+#include "mozilla/ExtensionPolicyService.h"
 #include "mozilla/NullPrincipal.h"
 #include "mozilla/dom/BlobURLProtocolHandler.h"
 #include "mozilla/dom/ChromeUtils.h"
@@ -27,20 +28,30 @@
 #include "mozilla/Components.h"
 #include "mozilla/dom/StorageUtils.h"
 #include "mozilla/dom/StorageUtils.h"
+#include "mozilla/JSONStringWriteFuncs.h"
+#include "mozilla/JSONWriter.h"
 #include "nsIURL.h"
 #include "nsEffectiveTLDService.h"
 #include "nsIURIMutator.h"
 #include "mozilla/StaticPrefs_permissions.h"
 #include "nsIURIMutator.h"
+#include "nsMixedContentBlocker.h"
 #include "prnetdb.h"
 #include "nsIURIFixup.h"
 #include "mozilla/dom/StorageUtils.h"
-#include "mozilla/ContentBlocking.h"
+#include "mozilla/StorageAccess.h"
 #include "nsPIDOMWindow.h"
 #include "nsIURIMutator.h"
+#include "mozilla/PermissionManager.h"
 
-#include "json/json.h"
 #include "nsSerializationHelper.h"
+
+#include "js/JSON.h"
+#include "ContentPrincipalJSONHandler.h"
+#include "ExpandedPrincipalJSONHandler.h"
+#include "NullPrincipalJSONHandler.h"
+#include "PrincipalJSONHandler.h"
+#include "SubsumedPrincipalJSONHandler.h"
 
 namespace mozilla {
 
@@ -59,7 +70,7 @@ BasePrincipal::BasePrincipal(BasePrincipal* aOther,
       mOriginSuffix(aOriginAttributes.CreateSuffixAtom()),
       mOriginAttributes(aOriginAttributes),
       mKind(aOther->mKind),
-      mHasExplicitDomain(aOther->mHasExplicitDomain) {}
+      mHasExplicitDomain(aOther->mHasExplicitDomain.load()) {}
 
 BasePrincipal::~BasePrincipal() = default;
 
@@ -76,14 +87,14 @@ BasePrincipal::GetOrigin(nsACString& aOrigin) {
 }
 
 NS_IMETHODIMP
-BasePrincipal::GetAsciiOrigin(nsACString& aOrigin) {
+BasePrincipal::GetWebExposedOriginSerialization(nsACString& aOrigin) {
   aOrigin.Truncate();
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
   if (NS_FAILED(rv) || !prinURI) {
     return NS_ERROR_NOT_AVAILABLE;
   }
-  return nsContentUtils::GetASCIIOrigin(prinURI, aOrigin);
+  return nsContentUtils::GetWebExposedOriginSerialization(prinURI, aOrigin);
 }
 
 NS_IMETHODIMP
@@ -131,112 +142,182 @@ BasePrincipal::GetSiteOriginNoSuffix(nsACString& aSiteOrigin) {
   return GetOriginNoSuffix(aSiteOrigin);
 }
 
-// Returns the inner Json::value of the serialized principal
-// Example input and return values:
-// Null principal:
-// {"0":{"0":"moz-nullprincipal:{56cac540-864d-47e7-8e25-1614eab5155e}"}} ->
-// {"0":"moz-nullprincipal:{56cac540-864d-47e7-8e25-1614eab5155e}"}
-//
-// Content principal:
-// {"1":{"0":"https://mozilla.com"}} -> {"0":"https://mozilla.com"}
-//
-// Expanded principal:
-// {"2":{"0":"<base64principal1>,<base64principal2>"}} ->
-// {"0":"<base64principal1>,<base64principal2>"}
-//
-// System principal:
-// {"3":{}} -> {}
-// The aKey passed in also returns the corresponding PrincipalKind enum
-//
-// Warning: The Json::Value* pointer is into the aRoot object
-static const Json::Value* GetPrincipalObject(const Json::Value& aRoot,
-                                             int& aOutPrincipalKind) {
-  const Json::Value::Members members = aRoot.getMemberNames();
-  // We only support one top level key in the object
-  if (members.size() != 1) {
-    return nullptr;
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::ProcessInnerResult(
+    bool aResult) {
+  if (!aResult) {
+    NS_WARNING("Failed to parse inner object");
+    mState = State::Error;
+    return false;
   }
-  // members[0] here is the "0", "1", "2", "3" principalKind
-  // that is the top level of the serialized JSON principal
-  const std::string stringPrincipalKind = members[0];
-
-  // Next we take the string value from the JSON
-  // and convert it into the int for the BasePrincipal::PrincipalKind enum
-
-  // Verify that the key is within the valid range
-  int principalKind = std::stoi(stringPrincipalKind);
-  MOZ_ASSERT(BasePrincipal::eNullPrincipal == 0,
-             "We need to rely on 0 being a bounds check for the first "
-             "principal kind.");
-  if (principalKind < 0 || principalKind > BasePrincipal::eKindMax) {
-    return nullptr;
-  }
-  MOZ_ASSERT(principalKind == BasePrincipal::eNullPrincipal ||
-             principalKind == BasePrincipal::eContentPrincipal ||
-             principalKind == BasePrincipal::eExpandedPrincipal ||
-             principalKind == BasePrincipal::eSystemPrincipal);
-  aOutPrincipalKind = principalKind;
-
-  if (!aRoot[stringPrincipalKind].isObject()) {
-    return nullptr;
-  }
-
-  // Return the inner value of the principal object
-  return &aRoot[stringPrincipalKind];
+  return true;
 }
 
-// Accepts the JSON inner object without the wrapping principalKind
-// (See GetPrincipalObject for the inner object response examples)
-// Creates an array of KeyVal objects that are all defined on the principal
-// Each principal type (null, content, expanded) has a KeyVal that stores the
-// fields of the JSON
-//
-// This simplifies deserializing elsewhere as we do the checking for presence
-// and string values here for the complete set of serializable keys that the
-// corresponding principal supports.
-//
-// The KeyVal object has the following fields:
-// - valueWasSerialized: is true if the deserialized JSON contained a string
-// value
-// - value: The string that was serialized for this key
-// - key: an SerializableKeys enum value specific to the principal.
-//        For example content principal is an enum of: eURI, eDomain,
-//        eSuffix, eCSP
-//
-//
-//  Given an inner content principal:
-//  {"0": "https://mozilla.com", "2": "^privateBrowsingId=1"}
-//    |                |          |         |
-//    -----------------------------         |
-//         |           |                    |
-//        Key          ----------------------
-//                                |
-//                              Value
-//
-// They Key "0" corresponds to ContentPrincipal::eURI
-// They Key "1" corresponds to ContentPrincipal::eSuffix
-template <typename T>
-static nsTArray<typename T::KeyVal> GetJSONKeys(const Json::Value* aInput) {
-  int size = T::eMax + 1;
-  nsTArray<typename T::KeyVal> fields;
-  for (int i = 0; i != size; i++) {
-    typename T::KeyVal* field = fields.AppendElement();
-    // field->valueWasSerialized returns if the field was found in the
-    // deserialized code. This simplifies the consumers from having to check
-    // length.
-    field->valueWasSerialized = false;
-    field->key = static_cast<typename T::SerializableKeys>(i);
-    const std::string key = std::to_string(field->key);
-    if (aInput->isMember(key)) {
-      const Json::Value& val = (*aInput)[key];
-      if (val.isString()) {
-        field->value.Append(nsDependentCString(val.asCString()));
-        field->valueWasSerialized = true;
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::startObject() {
+  if (mInnerHandler.isSome()) {
+    return CallOnInner([&](auto& aInner) { return aInner.startObject(); });
+  }
+
+  switch (mState) {
+    case State::Init:
+      mState = State::StartObject;
+      break;
+    case State::SystemPrincipal_Key:
+      mState = State::SystemPrincipal_StartObject;
+      break;
+    default:
+      NS_WARNING("Unexpected object value");
+      mState = State::Error;
+      return false;
+  }
+
+  return true;
+}
+
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::propertyName(
+    const JS::Latin1Char* name, size_t length) {
+  if (mInnerHandler.isSome()) {
+    return CallOnInner(
+        [&](auto& aInner) { return aInner.propertyName(name, length); });
+  }
+
+  switch (mState) {
+    case State::StartObject: {
+      if (length != 1) {
+        NS_WARNING(
+            nsPrintfCString("Unexpected property name length: %zu", length)
+                .get());
+        mState = State::Error;
+        return false;
       }
+
+      char key = char(name[0]);
+      switch (key) {
+        case BasePrincipal::NullPrincipalKey:
+          mState = State::NullPrincipal_Inner;
+          mInnerHandler.emplace(VariantType<NullPrincipalJSONHandler>());
+          break;
+        case BasePrincipal::ContentPrincipalKey:
+          mState = State::ContentPrincipal_Inner;
+          mInnerHandler.emplace(VariantType<ContentPrincipalJSONHandler>());
+          break;
+        case BasePrincipal::SystemPrincipalKey:
+          mState = State::SystemPrincipal_Key;
+          break;
+        default:
+          if constexpr (CanContainExpandedPrincipal) {
+            if (key == BasePrincipal::ExpandedPrincipalKey) {
+              mState = State::ExpandedPrincipal_Inner;
+              mInnerHandler.emplace(
+                  VariantType<ExpandedPrincipalJSONHandler>());
+              break;
+            }
+          }
+          NS_WARNING(
+              nsPrintfCString("Unexpected property name: '%c'", key).get());
+          mState = State::Error;
+          return false;
+      }
+      break;
+    }
+    default:
+      NS_WARNING("Unexpected property name");
+      mState = State::Error;
+      return false;
+  }
+
+  return true;
+}
+
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::endObject() {
+  if (mInnerHandler.isSome()) {
+    return CallOnInner([&](auto& aInner) {
+      if (!aInner.endObject()) {
+        return false;
+      }
+      if (aInner.HasAccepted()) {
+        this->mPrincipal = aInner.mPrincipal.forget();
+        MOZ_ASSERT(this->mPrincipal);
+        mInnerHandler.reset();
+      }
+      return true;
+    });
+  }
+
+  switch (mState) {
+    case State::SystemPrincipal_StartObject:
+      mState = State::SystemPrincipal_EndObject;
+      break;
+    case State::SystemPrincipal_EndObject:
+      this->mPrincipal =
+          BasePrincipal::Cast(nsContentUtils::GetSystemPrincipal());
+      mState = State::EndObject;
+      break;
+    case State::NullPrincipal_Inner:
+      mState = State::EndObject;
+      break;
+    case State::ContentPrincipal_Inner:
+      mState = State::EndObject;
+      break;
+    default:
+      if constexpr (CanContainExpandedPrincipal) {
+        if (mState == State::ExpandedPrincipal_Inner) {
+          mState = State::EndObject;
+          break;
+        }
+      }
+      NS_WARNING("Unexpected end of object");
+      mState = State::Error;
+      return false;
+  }
+
+  return true;
+}
+
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::startArray() {
+  if constexpr (CanContainExpandedPrincipal) {
+    if (mInnerHandler.isSome()) {
+      return CallOnInner([&](auto& aInner) { return aInner.startArray(); });
     }
   }
-  return fields;
+
+  NS_WARNING("Unexpected array value");
+  mState = State::Error;
+  return false;
 }
+
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::endArray() {
+  if constexpr (CanContainExpandedPrincipal) {
+    if (mInnerHandler.isSome()) {
+      return CallOnInner([&](auto& aInner) { return aInner.endArray(); });
+    }
+  }
+
+  NS_WARNING("Unexpected array value");
+  mState = State::Error;
+  return false;
+}
+
+template <typename HandlerTypesT>
+bool ContainerPrincipalJSONHandler<HandlerTypesT>::stringValue(
+    const JS::Latin1Char* str, size_t length) {
+  if (mInnerHandler.isSome()) {
+    return CallOnInner(
+        [&](auto& aInner) { return aInner.stringValue(str, length); });
+  }
+
+  NS_WARNING("Unexpected string value");
+  mState = State::Error;
+  return false;
+}
+
+template class ContainerPrincipalJSONHandler<PrincipalJSONHandlerTypes>;
+template class ContainerPrincipalJSONHandler<SubsumedPrincipalJSONHandlerTypes>;
 
 // Takes a JSON string and parses it turning it into a principal of the
 // corresponding type
@@ -256,92 +337,66 @@ static nsTArray<typename T::KeyVal> GetJSONKeys(const Json::Value* aInput) {
 //           SerializableKeys           |
 //                                    Value
 //
-// The string is first deserialized with jsoncpp to get the Json::Value of the
-// object. The inner JSON object is parsed with GetPrincipalObject which returns
-// a KeyVal array of the inner object's fields. PrincipalKind is returned by
-// GetPrincipalObject which is then used to decide which principal
-// implementation of FromProperties to call. The corresponding FromProperties
-// call takes the KeyVal fields and turns it into a principal.
 already_AddRefed<BasePrincipal> BasePrincipal::FromJSON(
     const nsACString& aJSON) {
-  Json::Value root;
-  Json::CharReaderBuilder builder;
-  std::unique_ptr<Json::CharReader> const reader(builder.newCharReader());
-  bool parseSuccess =
-      reader->parse(aJSON.BeginReading(), aJSON.EndReading(), &root, nullptr);
-  if (!parseSuccess) {
+  PrincipalJSONHandler handler;
+
+  if (!JS::ParseJSONWithHandler(
+          reinterpret_cast<const JS::Latin1Char*>(aJSON.BeginReading()),
+          aJSON.Length(), &handler)) {
+    NS_WARNING(
+        nsPrintfCString("Unable to parse: %s", aJSON.BeginReading()).get());
     MOZ_ASSERT(false,
                "Unable to parse string as JSON to deserialize as a principal");
     return nullptr;
   }
 
-  int principalKind = -1;
-  const Json::Value* value = GetPrincipalObject(root, principalKind);
-  if (!value) {
-#ifdef DEBUG
-    fprintf(stderr, "Unexpected JSON principal %s\n",
-            root.toStyledString().c_str());
-#endif
-    MOZ_ASSERT(false, "Unexpected JSON to deserialize as a principal");
-
-    return nullptr;
-  }
-  MOZ_ASSERT(principalKind != -1,
-             "PrincipalKind should always be >=0 by this point");
-
-  if (principalKind == eSystemPrincipal) {
-    RefPtr<BasePrincipal> principal =
-        BasePrincipal::Cast(nsContentUtils::GetSystemPrincipal());
-    return principal.forget();
-  }
-
-  if (principalKind == eNullPrincipal) {
-    nsTArray<NullPrincipal::KeyVal> res = GetJSONKeys<NullPrincipal>(value);
-    return NullPrincipal::FromProperties(res);
-  }
-
-  if (principalKind == eContentPrincipal) {
-    nsTArray<ContentPrincipal::KeyVal> res =
-        GetJSONKeys<ContentPrincipal>(value);
-    return ContentPrincipal::FromProperties(res);
-  }
-
-  if (principalKind == eExpandedPrincipal) {
-    nsTArray<ExpandedPrincipal::KeyVal> res =
-        GetJSONKeys<ExpandedPrincipal>(value);
-    return ExpandedPrincipal::FromProperties(res);
-  }
-
-  MOZ_RELEASE_ASSERT(false, "Unexpected enum to deserialize as a principal");
-}
-
-nsresult BasePrincipal::PopulateJSONObject(Json::Value& aObject) {
-  return NS_OK;
+  return handler.Get();
 }
 
 // Returns a JSON representation of the principal.
 // Calling BasePrincipal::FromJSON will deserialize the JSON into
 // the corresponding principal type.
-nsresult BasePrincipal::ToJSON(nsACString& aResult) {
-  MOZ_ASSERT(aResult.IsEmpty(), "ToJSON only supports an empty result input");
-  aResult.Truncate();
+nsresult BasePrincipal::ToJSON(nsACString& aJSON) {
+  MOZ_ASSERT(aJSON.IsEmpty(), "ToJSON only supports an empty result input");
+  aJSON.Truncate();
 
-  Json::StreamWriterBuilder builder;
-  builder["indentation"] = "";
-  Json::Value innerJSONObject = Json::objectValue;
+  // NOTE: JSONWriter emits raw UTF-8 code units for non-ASCII range.
+  JSONStringRefWriteFunc func(aJSON);
+  JSONWriter writer(func, JSONWriter::CollectionStyle::SingleLineStyle);
 
-  nsresult rv = PopulateJSONObject(innerJSONObject);
+  nsresult rv = ToJSON(writer);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  Json::Value root = Json::objectValue;
-  std::string key = std::to_string(Kind());
-  root[key] = innerJSONObject;
-  std::string result = Json::writeString(builder, root);
-  aResult.Append(result);
-  if (aResult.Length() == 0) {
-    MOZ_ASSERT(false, "JSON writer failed to output a principal serialization");
-    return NS_ERROR_UNEXPECTED;
-  }
+  return NS_OK;
+}
+
+nsresult BasePrincipal::ToJSON(JSONWriter& aWriter) {
+  static_assert(eKindMax < ArrayLength(JSONEnumKeyStrings));
+
+  aWriter.Start(JSONWriter::CollectionStyle::SingleLineStyle);
+
+  nsresult rv = WriteJSONProperties(aWriter);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  aWriter.End();
+
+  return NS_OK;
+}
+
+nsresult BasePrincipal::WriteJSONProperties(JSONWriter& aWriter) {
+  aWriter.StartObjectProperty(JSONEnumKeyStrings[Kind()],
+                              JSONWriter::CollectionStyle::SingleLineStyle);
+
+  nsresult rv = WriteJSONInnerProperties(aWriter);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  aWriter.EndObject();
+
+  return NS_OK;
+}
+
+nsresult BasePrincipal::WriteJSONInnerProperties(JSONWriter& aWriter) {
   return NS_OK;
 }
 
@@ -391,8 +446,36 @@ BasePrincipal::EqualsForPermission(nsIPrincipal* aOther, bool aExactHost,
   NS_ENSURE_ARG_POINTER(aOther);
   NS_ENSURE_ARG_POINTER(aResult);
 
-  // If the principals are equal, then they match.
-  if (FastEquals(aOther)) {
+  auto* other = Cast(aOther);
+  if (Kind() != other->Kind()) {
+    // Principals of different kinds can't be equal.
+    return NS_OK;
+  }
+
+  if (Kind() == eSystemPrincipal) {
+    *aResult = this == other;
+    return NS_OK;
+  }
+
+  if (Kind() == eNullPrincipal) {
+    // We don't store permissions for NullPrincipals.
+    return NS_OK;
+  }
+
+  MOZ_ASSERT(Kind() == eExpandedPrincipal || Kind() == eContentPrincipal);
+
+  // Certain origin attributes should not be used to isolate permissions.
+  // Create a stripped copy of both OA sets to compare.
+  mozilla::OriginAttributes ourAttrs = mOriginAttributes;
+  PermissionManager::MaybeStripOriginAttributes(false, ourAttrs);
+  mozilla::OriginAttributes theirAttrs = aOther->OriginAttributesRef();
+  PermissionManager::MaybeStripOriginAttributes(false, theirAttrs);
+
+  if (ourAttrs != theirAttrs) {
+    return NS_OK;
+  }
+
+  if (mOriginNoSuffix == other->mOriginNoSuffix) {
     *aResult = true;
     return NS_OK;
   }
@@ -403,22 +486,18 @@ BasePrincipal::EqualsForPermission(nsIPrincipal* aOther, bool aExactHost,
     return NS_OK;
   }
 
-  // Compare their OriginAttributes
-  const mozilla::OriginAttributes& theirAttrs = aOther->OriginAttributesRef();
-  const mozilla::OriginAttributes& ourAttrs = OriginAttributesRef();
-
-  if (theirAttrs != ourAttrs) {
-    return NS_OK;
-  }
-
   nsCOMPtr<nsIURI> ourURI;
   nsresult rv = GetURI(getter_AddRefs(ourURI));
   NS_ENSURE_SUCCESS(rv, rv);
-  auto* basePrin = BasePrincipal::Cast(aOther);
+  // Some principal types may indicate success, but still return nullptr for
+  // URI.
+  NS_ENSURE_TRUE(ourURI, NS_ERROR_FAILURE);
 
   nsCOMPtr<nsIURI> otherURI;
-  rv = basePrin->GetURI(getter_AddRefs(otherURI));
+  rv = other->GetURI(getter_AddRefs(otherURI));
   NS_ENSURE_SUCCESS(rv, rv);
+  NS_ENSURE_TRUE(otherURI, NS_ERROR_FAILURE);
+
   // Compare schemes
   nsAutoCString otherScheme;
   rv = otherURI->GetScheme(otherScheme);
@@ -531,6 +610,7 @@ BasePrincipal::SubsumesConsideringDomainIgnoringFPD(nsIPrincipal* aOther,
 
 NS_IMETHODIMP
 BasePrincipal::CheckMayLoad(nsIURI* aURI, bool aAllowIfInheritsPrincipal) {
+  AssertIsOnMainThread();
   return CheckMayLoadHelper(aURI, aAllowIfInheritsPrincipal, false, 0);
 }
 
@@ -538,6 +618,7 @@ NS_IMETHODIMP
 BasePrincipal::CheckMayLoadWithReporting(nsIURI* aURI,
                                          bool aAllowIfInheritsPrincipal,
                                          uint64_t aInnerWindowID) {
+  AssertIsOnMainThread();
   return CheckMayLoadHelper(aURI, aAllowIfInheritsPrincipal, true,
                             aInnerWindowID);
 }
@@ -546,6 +627,8 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
                                            bool aAllowIfInheritsPrincipal,
                                            bool aReport,
                                            uint64_t aInnerWindowID) {
+  AssertIsOnMainThread();  // Accesses non-threadsafe URI flags and the
+                           // non-threadsafe ExtensionPolicyService
   NS_ENSURE_ARG_POINTER(aURI);
   MOZ_ASSERT(
       aReport || aInnerWindowID == 0,
@@ -570,6 +653,8 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
     }
   }
 
+  // Web Accessible Resources in MV2 Extensions are marked with
+  // URI_FETCHABLE_BY_ANYONE
   bool fetchableByAnyone;
   rv = NS_URIChainHasFlags(aURI, nsIProtocolHandler::URI_FETCHABLE_BY_ANYONE,
                            &fetchableByAnyone);
@@ -577,14 +662,32 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
     return NS_OK;
   }
 
-  if (aReport) {
-    nsCOMPtr<nsIURI> prinURI;
-    rv = GetURI(getter_AddRefs(prinURI));
-    if (NS_SUCCEEDED(rv) && prinURI) {
-      nsScriptSecurityManager::ReportError(
-          "CheckSameOriginError", prinURI, aURI,
-          mOriginAttributes.mPrivateBrowsingId > 0, aInnerWindowID);
+  // Get the principal uri for the last flag check or error.
+  nsCOMPtr<nsIURI> prinURI;
+  rv = GetURI(getter_AddRefs(prinURI));
+  if (!(NS_SUCCEEDED(rv) && prinURI)) {
+    return NS_ERROR_DOM_BAD_URI;
+  }
+
+  // If MV3 Extension uris are web accessible by this principal it is allowed to
+  // load.
+  bool maybeWebAccessible = false;
+  NS_URIChainHasFlags(aURI, nsIProtocolHandler::WEBEXT_URI_WEB_ACCESSIBLE,
+                      &maybeWebAccessible);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (maybeWebAccessible) {
+    bool isWebAccessible = false;
+    rv = ExtensionPolicyService::GetSingleton().SourceMayLoadExtensionURI(
+        prinURI, aURI, &isWebAccessible);
+    if (NS_SUCCEEDED(rv) && isWebAccessible) {
+      return NS_OK;
     }
+  }
+
+  if (aReport) {
+    nsScriptSecurityManager::ReportError(
+        "CheckSameOriginError", prinURI, aURI,
+        mOriginAttributes.mPrivateBrowsingId > 0, aInnerWindowID);
   }
 
   return NS_ERROR_DOM_BAD_URI;
@@ -592,7 +695,7 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
 
 NS_IMETHODIMP
 BasePrincipal::IsThirdPartyURI(nsIURI* aURI, bool* aRes) {
-  if (IsSystemPrincipal() || (AddonPolicy() && AddonAllowsLoad(aURI))) {
+  if (IsSystemPrincipal() || (AddonPolicyCore() && AddonAllowsLoad(aURI))) {
     *aRes = false;
     return NS_OK;
   }
@@ -618,8 +721,10 @@ BasePrincipal::IsThirdPartyPrincipal(nsIPrincipal* aPrin, bool* aRes) {
   }
   return aPrin->IsThirdPartyURI(prinURI, aRes);
 }
+
 NS_IMETHODIMP
 BasePrincipal::IsThirdPartyChannel(nsIChannel* aChan, bool* aRes) {
+  AssertIsOnMainThread();
   if (IsSystemPrincipal()) {
     // Nothing is 3rd party to the system principal.
     *aRes = false;
@@ -633,24 +738,22 @@ BasePrincipal::IsThirdPartyChannel(nsIChannel* aChan, bool* aRes) {
 }
 
 NS_IMETHODIMP
-BasePrincipal::IsSameOrigin(nsIURI* aURI, bool aIsPrivateWin, bool* aRes) {
+BasePrincipal::IsSameOrigin(nsIURI* aURI, bool* aRes) {
   *aRes = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
   if (NS_FAILED(rv) || !prinURI) {
+    // Note that expanded and system principals return here, because they have
+    // no URI.
     return NS_OK;
   }
-  nsIScriptSecurityManager* ssm = nsContentUtils::GetSecurityManager();
-  if (!ssm) {
-    return NS_ERROR_UNEXPECTED;
-  }
-  *aRes = NS_SUCCEEDED(
-      ssm->CheckSameOriginURI(prinURI, aURI, false, aIsPrivateWin));
+  *aRes = nsScriptSecurityManager::SecurityCompareURIs(prinURI, aURI);
   return NS_OK;
 }
 
 NS_IMETHODIMP
 BasePrincipal::IsL10nAllowed(nsIURI* aURI, bool* aRes) {
+  AssertIsOnMainThread();  // URI_DANGEROUS_TO_LOAD is not threadsafe to query.
   *aRes = false;
 
   if (nsContentUtils::IsErrorPage(aURI)) {
@@ -688,7 +791,7 @@ BasePrincipal::IsL10nAllowed(nsIURI* aURI, bool* aRes) {
     return NS_OK;
   }
 
-  auto policy = AddonPolicy();
+  auto policy = AddonPolicyCore();
   *aRes = (policy && policy->IsPrivileged());
   return NS_OK;
 }
@@ -746,6 +849,7 @@ NS_IMETHODIMP
 BasePrincipal::HasFirstpartyStorageAccess(mozIDOMWindow* aCheckWindow,
                                           uint32_t* aRejectedReason,
                                           bool* aOutAllowed) {
+  AssertIsOnMainThread();
   *aRejectedReason = 0;
   *aOutAllowed = false;
 
@@ -755,8 +859,7 @@ BasePrincipal::HasFirstpartyStorageAccess(mozIDOMWindow* aCheckWindow,
   if (NS_FAILED(rv)) {
     return rv;
   }
-  *aOutAllowed =
-      ContentBlocking::ShouldAllowAccessFor(win, uri, aRejectedReason);
+  *aOutAllowed = ShouldAllowAccessFor(win, uri, aRejectedReason);
   return NS_OK;
 }
 
@@ -872,7 +975,7 @@ BasePrincipal::GetIsSystemPrincipal(bool* aResult) {
 
 NS_IMETHODIMP
 BasePrincipal::GetIsAddonOrExpandedAddonPrincipal(bool* aResult) {
-  *aResult = AddonPolicy() || ContentScriptAddonPolicy();
+  *aResult = AddonPolicyCore() || ContentScriptAddonPolicyCore();
   return NS_OK;
 }
 
@@ -956,7 +1059,7 @@ BasePrincipal::SchemeIs(const char* aScheme, bool* aResult) {
   *aResult = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
-  if (NS_FAILED(rv) || !prinURI) {
+  if (NS_WARN_IF(NS_FAILED(rv)) || !prinURI) {
     return NS_OK;
   }
   *aResult = prinURI->SchemeIs(aScheme);
@@ -965,6 +1068,7 @@ BasePrincipal::SchemeIs(const char* aScheme, bool* aResult) {
 
 NS_IMETHODIMP
 BasePrincipal::IsURIInPrefList(const char* aPref, bool* aResult) {
+  AssertIsOnMainThread();
   *aResult = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -976,8 +1080,40 @@ BasePrincipal::IsURIInPrefList(const char* aPref, bool* aResult) {
 }
 
 NS_IMETHODIMP
+BasePrincipal::IsURIInList(const nsACString& aList, bool* aResult) {
+  *aResult = false;
+  nsCOMPtr<nsIURI> prinURI;
+
+  nsresult rv = GetURI(getter_AddRefs(prinURI));
+  if (NS_FAILED(rv) || !prinURI) {
+    return NS_OK;
+  }
+
+  *aResult = nsContentUtils::IsURIInList(prinURI, nsCString(aList));
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+BasePrincipal::IsContentAccessibleAboutURI(bool* aResult) {
+  *aResult = false;
+
+  nsCOMPtr<nsIURI> prinURI;
+  nsresult rv = GetURI(getter_AddRefs(prinURI));
+  if (NS_FAILED(rv) || !prinURI) {
+    return NS_OK;
+  }
+
+  if (!prinURI->SchemeIs("about")) {
+    return NS_OK;
+  }
+
+  *aResult = NS_IsContentAccessibleAboutURI(prinURI);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 BasePrincipal::GetIsOriginPotentiallyTrustworthy(bool* aResult) {
-  MOZ_ASSERT(NS_IsMainThread());
+  AssertIsOnMainThread();
   *aResult = false;
 
   nsCOMPtr<nsIURI> uri;
@@ -991,7 +1127,23 @@ BasePrincipal::GetIsOriginPotentiallyTrustworthy(bool* aResult) {
 }
 
 NS_IMETHODIMP
+BasePrincipal::GetIsLoopbackHost(bool* aRes) {
+  AssertIsOnMainThread();
+  *aRes = false;
+  nsAutoCString host;
+  nsresult rv = GetHost(host);
+  // Swallow potential failure as this method is infallible.
+  if (NS_FAILED(rv)) {
+    return NS_OK;
+  }
+
+  *aRes = nsMixedContentBlocker::IsPotentiallyTrustworthyLoopbackHost(host);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 BasePrincipal::GetAboutModuleFlags(uint32_t* flags) {
+  AssertIsOnMainThread();
   *flags = 0;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -1038,28 +1190,36 @@ BasePrincipal::GetPrivateBrowsingId(uint32_t* aPrivateBrowsingId) {
   return NS_OK;
 }
 
-NS_IMETHODIMP
-BasePrincipal::GetIsInIsolatedMozBrowserElement(
-    bool* aIsInIsolatedMozBrowserElement) {
-  *aIsInIsolatedMozBrowserElement = IsInIsolatedMozBrowserElement();
-  return NS_OK;
-}
-
-nsresult BasePrincipal::GetAddonPolicy(nsISupports** aResult) {
+nsresult BasePrincipal::GetAddonPolicy(
+    extensions::WebExtensionPolicy** aResult) {
+  AssertIsOnMainThread();
   RefPtr<extensions::WebExtensionPolicy> policy(AddonPolicy());
   policy.forget(aResult);
   return NS_OK;
 }
 
+nsresult BasePrincipal::GetContentScriptAddonPolicy(
+    extensions::WebExtensionPolicy** aResult) {
+  RefPtr<extensions::WebExtensionPolicy> policy(ContentScriptAddonPolicy());
+  policy.forget(aResult);
+  return NS_OK;
+}
+
 extensions::WebExtensionPolicy* BasePrincipal::AddonPolicy() {
+  AssertIsOnMainThread();
+  RefPtr<extensions::WebExtensionPolicyCore> core = AddonPolicyCore();
+  return core ? core->GetMainThreadPolicy() : nullptr;
+}
+
+RefPtr<extensions::WebExtensionPolicyCore> BasePrincipal::AddonPolicyCore() {
   if (Is<ContentPrincipal>()) {
-    return As<ContentPrincipal>()->AddonPolicy();
+    return As<ContentPrincipal>()->AddonPolicyCore();
   }
   return nullptr;
 }
 
 bool BasePrincipal::AddonHasPermission(const nsAtom* aPerm) {
-  if (auto policy = AddonPolicy()) {
+  if (auto policy = AddonPolicyCore()) {
     return policy->HasPermission(aPerm);
   }
   return false;
@@ -1072,8 +1232,23 @@ nsIPrincipal* BasePrincipal::PrincipalToInherit(nsIURI* aRequestedURI) {
   return this;
 }
 
+bool BasePrincipal::OverridesCSP(nsIPrincipal* aDocumentPrincipal) {
+  MOZ_ASSERT(aDocumentPrincipal);
+
+  // Expanded principals override CSP if and only if they subsume the document
+  // principal.
+  if (mKind == eExpandedPrincipal) {
+    return FastSubsumes(aDocumentPrincipal);
+  }
+  // Extension principals always override the CSP of non-extension principals.
+  // This is primarily for the sake of their stylesheets, which are usually
+  // loaded from channels and cannot have expanded principals.
+  return (AddonPolicyCore() &&
+          !BasePrincipal::Cast(aDocumentPrincipal)->AddonPolicyCore());
+}
+
 already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
-    nsIURI* aURI, const OriginAttributes& aAttrs) {
+    nsIURI* aURI, const OriginAttributes& aAttrs, nsIURI* aInitialDomain) {
   MOZ_ASSERT(aURI);
 
   nsAutoCString originNoSuffix;
@@ -1085,12 +1260,12 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     return NullPrincipal::Create(aAttrs);
   }
 
-  return CreateContentPrincipal(aURI, aAttrs, originNoSuffix);
+  return CreateContentPrincipal(aURI, aAttrs, originNoSuffix, aInitialDomain);
 }
 
 already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     nsIURI* aURI, const OriginAttributes& aAttrs,
-    const nsACString& aOriginNoSuffix) {
+    const nsACString& aOriginNoSuffix, nsIURI* aInitialDomain) {
   MOZ_ASSERT(aURI);
   MOZ_ASSERT(!aOriginNoSuffix.IsEmpty());
 
@@ -1116,7 +1291,8 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     }
     MOZ_ASSERT(origin);
     OriginAttributes attrs;
-    RefPtr<BasePrincipal> principal = CreateContentPrincipal(origin, attrs);
+    RefPtr<BasePrincipal> principal =
+        CreateContentPrincipal(origin, attrs, aInitialDomain);
     return principal.forget();
   }
 #endif
@@ -1125,13 +1301,15 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
   if (dom::BlobURLProtocolHandler::GetBlobURLPrincipal(
           aURI, getter_AddRefs(blobPrincipal))) {
     MOZ_ASSERT(blobPrincipal);
+    MOZ_ASSERT(!aInitialDomain,
+               "an initial domain for a blob URI makes no sense");
     RefPtr<BasePrincipal> principal = Cast(blobPrincipal);
     return principal.forget();
   }
 
   // Mint a content principal.
   RefPtr<ContentPrincipal> principal =
-      new ContentPrincipal(aURI, aAttrs, aOriginNoSuffix);
+      new ContentPrincipal(aURI, aAttrs, aOriginNoSuffix, aInitialDomain);
   return principal.forget();
 }
 
@@ -1171,19 +1349,29 @@ already_AddRefed<BasePrincipal> BasePrincipal::CloneForcingOriginAttributes(
   nsCOMPtr<nsIURI> uri;
   MOZ_ALWAYS_SUCCEEDS(GetURI(getter_AddRefs(uri)));
 
+  // XXX: This does not copy over the domain. Should it?
   RefPtr<ContentPrincipal> copy =
-      new ContentPrincipal(uri, aOriginAttributes, originNoSuffix);
+      new ContentPrincipal(uri, aOriginAttributes, originNoSuffix, nullptr);
   return copy.forget();
 }
 
 extensions::WebExtensionPolicy* BasePrincipal::ContentScriptAddonPolicy() {
+  AssertIsOnMainThread();
+  RefPtr<extensions::WebExtensionPolicyCore> core =
+      ContentScriptAddonPolicyCore();
+  return core ? core->GetMainThreadPolicy() : nullptr;
+}
+
+RefPtr<extensions::WebExtensionPolicyCore>
+BasePrincipal::ContentScriptAddonPolicyCore() {
   if (!Is<ExpandedPrincipal>()) {
     return nullptr;
   }
 
-  auto expanded = As<ExpandedPrincipal>();
-  for (auto& prin : expanded->AllowList()) {
-    if (auto policy = BasePrincipal::Cast(prin)->AddonPolicy()) {
+  auto* expanded = As<ExpandedPrincipal>();
+  for (const auto& prin : expanded->AllowList()) {
+    if (RefPtr<extensions::WebExtensionPolicyCore> policy =
+            BasePrincipal::Cast(prin)->AddonPolicyCore()) {
       return policy;
     }
   }
@@ -1196,7 +1384,7 @@ bool BasePrincipal::AddonAllowsLoad(nsIURI* aURI,
   if (Is<ExpandedPrincipal>()) {
     return As<ExpandedPrincipal>()->AddonAllowsLoad(aURI, aExplicit);
   }
-  if (auto policy = AddonPolicy()) {
+  if (auto policy = AddonPolicyCore()) {
     return policy->CanAccessURI(aURI, aExplicit);
   }
   return false;
@@ -1348,6 +1536,7 @@ BasePrincipal::GetStorageOriginKey(nsACString& aOriginKey) {
 
 NS_IMETHODIMP
 BasePrincipal::GetIsScriptAllowedByPolicy(bool* aIsScriptAllowedByPolicy) {
+  AssertIsOnMainThread();
   *aIsScriptAllowedByPolicy = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -1383,6 +1572,12 @@ BasePrincipal::CreateReferrerInfo(mozilla::dom::ReferrerPolicy aReferrerPolicy,
   return NS_OK;
 }
 
+NS_IMETHODIMP
+BasePrincipal::GetPrecursorPrincipal(nsIPrincipal** aPrecursor) {
+  *aPrecursor = nullptr;
+  return NS_OK;
+}
+
 NS_IMPL_ADDREF(BasePrincipal::Deserializer)
 NS_IMPL_RELEASE(BasePrincipal::Deserializer)
 
@@ -1399,6 +1594,13 @@ BasePrincipal::Deserializer::Write(nsIObjectOutputStream* aStream) {
   // Read is used still for legacy principals
   MOZ_RELEASE_ASSERT(false, "Old style serialization is removed");
   return NS_OK;
+}
+
+/* static */
+void BasePrincipal::WriteJSONProperty(JSONWriter& aWriter,
+                                      const Span<const char>& aKey,
+                                      const nsCString& aValue) {
+  aWriter.StringProperty(aKey, aValue);
 }
 
 }  // namespace mozilla

@@ -4,14 +4,21 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
-add_task(async function setup() {
+add_setup(async () => {
   Services.prefs.setIntPref("ldap_2.servers.osx.dirType", -1);
 
-  let historyAB = MailServices.ab.getDirectory("jsaddrbook://history.sqlite");
+  registerCleanupFunction(() => {
+    // Make sure any open database is given a chance to close.
+    Services.startup.advanceShutdownPhase(
+      Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+    );
+  });
+
+  const historyAB = MailServices.ab.getDirectory("jsaddrbook://history.sqlite");
 
   let contact1 = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
     Ci.nsIAbCard
@@ -23,7 +30,7 @@ add_task(async function setup() {
   contact1.primaryEmail = "contact1@invalid";
   contact1 = historyAB.addCard(contact1);
 
-  let mailList = Cc[
+  const mailList = Cc[
     "@mozilla.org/addressbook/directoryproperty;1"
   ].createInstance(Ci.nsIAbDirectory);
   mailList.isMailList = true;
@@ -39,10 +46,10 @@ add_task(async function setup() {
 
 add_task(async function test_addressBooks_readonly() {
   async function background() {
-    let list = await browser.addressBooks.list();
+    const list = await browser.addressBooks.list();
 
     // The read only AB should be in the list.
-    let readOnlyAB = list.find(ab => ab.name == "Collected Addresses");
+    const readOnlyAB = list.find(ab => ab.name == "Collected Addresses");
     browser.test.assertTrue(!!readOnlyAB, "Should have found the address book");
 
     browser.test.assertTrue(
@@ -50,7 +57,7 @@ add_task(async function test_addressBooks_readonly() {
       "Should have marked the address book as read-only"
     );
 
-    let card = await browser.contacts.get(
+    const card = await browser.contacts.get(
       "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     );
     browser.test.assertTrue(!!card, "Should have found the card");
@@ -82,8 +89,8 @@ add_task(async function test_addressBooks_readonly() {
 
     // Mailing List
 
-    let mailingLists = await browser.mailingLists.list(readOnlyAB.id);
-    let readOnlyML = mailingLists[0];
+    const mailingLists = await browser.mailingLists.list(readOnlyAB.id);
+    const readOnlyML = mailingLists[0];
     browser.test.assertTrue(!!readOnlyAB, "Should have found the mailing list");
 
     browser.test.assertTrue(
@@ -124,7 +131,7 @@ add_task(async function test_addressBooks_readonly() {
     browser.test.notifyPass("addressBooks");
   }
 
-  let extension = ExtensionTestUtils.loadExtension({
+  const extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": background,
       "utils.js": await getUtilsJS(),
@@ -138,9 +145,4 @@ add_task(async function test_addressBooks_readonly() {
   await extension.startup();
   await extension.awaitFinish("addressBooks");
   await extension.unload();
-});
-
-registerCleanupFunction(() => {
-  // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
 });

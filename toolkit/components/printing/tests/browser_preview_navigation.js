@@ -26,8 +26,7 @@ async function waitForPageStatusUpdate(elem, expected, message) {
 async function waitUntilVisible(elem, visible = true) {
   await TestUtils.waitForCondition(
     () =>
-      BrowserTestUtils.is_visible(elem) &&
-      getComputedStyle(elem).opacity == "1",
+      BrowserTestUtils.isVisible(elem) && getComputedStyle(elem).opacity == "1",
     "Waiting for element to be visible and have opacity:1"
   );
 }
@@ -131,9 +130,9 @@ add_task(async function testPreviewScroll() {
 
     // scroll down the document
     // and verify the indicator is updated correctly
-    await SpecialPowers.spawn(previewBrowser, [], async function() {
-      const { ContentTaskUtils } = ChromeUtils.import(
-        "resource://testing-common/ContentTaskUtils.jsm"
+    await SpecialPowers.spawn(previewBrowser, [], async function () {
+      const { ContentTaskUtils } = ChromeUtils.importESModule(
+        "resource://testing-common/ContentTaskUtils.sys.mjs"
       );
       const EventUtils = ContentTaskUtils.getEventUtils(content);
       content.focus();
@@ -311,7 +310,7 @@ add_task(async function testMultiplePreviewNavigation() {
 
 add_task(async function testPreviewNavigationSelection() {
   await PrintHelper.withTestPage(async helper => {
-    await SpecialPowers.spawn(helper.sourceBrowser, [], async function() {
+    await SpecialPowers.spawn(helper.sourceBrowser, [], async function () {
       let element = content.document.querySelector("#page-2");
       content.window.getSelection().selectAllChildren(element);
     });
@@ -408,6 +407,71 @@ add_task(async function testPaginatorAfterSettingsUpdate() {
 
     // move focus before closing the dialog
     helper.get("cancel-button").focus();
+    await helper.closeDialog();
+  }, "longerArticle.html");
+});
+
+add_task(async function testTooltips() {
+  await SpecialPowers.pushPrefEnv({ set: [["ui.tooltip.delay_ms", 0]] });
+  const mockPrinterName = "Fake Printer";
+  await PrintHelper.withTestPage(async helper => {
+    helper.addMockPrinter(mockPrinterName);
+    await helper.startPrint();
+
+    let paginationElem = document.querySelector(".printPreviewNavigation");
+    let paginationSheetIndicator =
+      paginationElem.shadowRoot.querySelector("#sheetIndicator");
+
+    // Wait for the first _updatePrintPreview before interacting with the preview
+    await waitForPageStatusUpdate(
+      paginationSheetIndicator,
+      { sheetNum: 1, sheetCount: 3 },
+      "Paginator indicates the correct number of sheets"
+    );
+
+    let awaitTooltipOpen = new Promise(resolve => {
+      window.addEventListener(
+        "popupshown",
+        function (event) {
+          resolve(event.originalTarget);
+        },
+        { once: true }
+      );
+    });
+
+    let navigateEnd = paginationElem.shadowRoot.querySelector("#navigateEnd");
+    info("Initial mouse move to end navigation button");
+    EventUtils.synthesizeMouseAtCenter(navigateEnd, { type: "mousemove" });
+    let tooltip = await awaitTooltipOpen;
+    is(tooltip.label, navigateEnd.title, "Tooltip shows correct text");
+    awaitTooltipOpen = new Promise(resolve => {
+      window.addEventListener(
+        "popupshown",
+        function (event) {
+          resolve(event.originalTarget);
+        },
+        { once: true }
+      );
+    });
+
+    let navigateNext = paginationElem.shadowRoot.querySelector("#navigateNext");
+    let navigateNextRect = navigateNext.getBoundingClientRect();
+    info("Initial mouse move to next navigation button");
+    EventUtils.synthesizeMouseAtCenter(navigateNext, { type: "mousemove" });
+    info("Waiting");
+    EventUtils.synthesizeMouse(
+      navigateNext,
+      navigateNextRect.width / 2 + 5,
+      navigateNextRect.height / 2,
+      { type: "mousemove" },
+      window
+    );
+    tooltip = await awaitTooltipOpen;
+    is(tooltip.label, navigateNext.title, "Tooltip shows correct text");
+
+    // move focus before closing the dialog
+    helper.get("cancel-button").focus();
+    await helper.awaitAnimationFrame();
     await helper.closeDialog();
   }, "longerArticle.html");
 });

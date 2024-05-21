@@ -9,6 +9,12 @@
 
 #include <stdint.h>  // For uint16_t
 
+#ifdef FUZZING_JS_FUZZILLI
+#  define INLINABLE_NATIVE_FUZZILLI_LIST(_) _(FuzzilliHash)
+#else
+#  define INLINABLE_NATIVE_FUZZILLI_LIST(_)
+#endif
+
 #define INLINABLE_NATIVE_LIST(_)                   \
   _(Array)                                         \
   _(ArrayIsArray)                                  \
@@ -55,6 +61,8 @@
   _(DataViewSetBigInt64)                           \
   _(DataViewSetBigUint64)                          \
                                                    \
+  _(FunctionBind)                                  \
+                                                   \
   _(IntlGuardToCollator)                           \
   _(IntlGuardToDateTimeFormat)                     \
   _(IntlGuardToDisplayNames)                       \
@@ -62,6 +70,12 @@
   _(IntlGuardToNumberFormat)                       \
   _(IntlGuardToPluralRules)                        \
   _(IntlGuardToRelativeTimeFormat)                 \
+  _(IntlGuardToSegmenter)                          \
+  _(IntlGuardToSegments)                           \
+  _(IntlGuardToSegmentIterator)                    \
+                                                   \
+  _(MapGet)                                        \
+  _(MapHas)                                        \
                                                    \
   _(MathAbs)                                       \
   _(MathFloor)                                     \
@@ -99,28 +113,44 @@
   _(MathTrunc)                                     \
   _(MathCbrt)                                      \
                                                    \
+  _(Number)                                        \
+  _(NumberParseInt)                                \
   _(NumberToString)                                \
                                                    \
   _(ReflectGetPrototypeOf)                         \
                                                    \
   _(RegExpMatcher)                                 \
   _(RegExpSearcher)                                \
-  _(RegExpTester)                                  \
+  _(RegExpSearcherLastLimit)                       \
+  _(RegExpHasCaptureGroups)                        \
   _(IsRegExpObject)                                \
   _(IsPossiblyWrappedRegExpObject)                 \
   _(RegExpPrototypeOptimizable)                    \
   _(RegExpInstanceOptimizable)                     \
   _(GetFirstDollarIndex)                           \
                                                    \
+  _(SetHas)                                        \
+  _(SetSize)                                       \
+                                                   \
   _(String)                                        \
   _(StringToString)                                \
   _(StringValueOf)                                 \
   _(StringCharCodeAt)                              \
+  _(StringCodePointAt)                             \
   _(StringFromCharCode)                            \
   _(StringFromCodePoint)                           \
   _(StringCharAt)                                  \
+  _(StringAt)                                      \
+  _(StringIncludes)                                \
+  _(StringIndexOf)                                 \
+  _(StringLastIndexOf)                             \
+  _(StringStartsWith)                              \
+  _(StringEndsWith)                                \
   _(StringToLowerCase)                             \
   _(StringToUpperCase)                             \
+  _(StringTrim)                                    \
+  _(StringTrimStart)                               \
+  _(StringTrimEnd)                                 \
                                                    \
   _(IntrinsicStringReplaceString)                  \
   _(IntrinsicStringSplitString)                    \
@@ -129,6 +159,7 @@
   _(ObjectCreate)                                  \
   _(ObjectIs)                                      \
   _(ObjectIsPrototypeOf)                           \
+  _(ObjectKeys)                                    \
   _(ObjectToString)                                \
                                                    \
   _(TestBailout)                                   \
@@ -140,7 +171,6 @@
   _(IntrinsicUnsafeGetObjectFromReservedSlot)      \
   _(IntrinsicUnsafeGetInt32FromReservedSlot)       \
   _(IntrinsicUnsafeGetStringFromReservedSlot)      \
-  _(IntrinsicUnsafeGetBooleanFromReservedSlot)     \
                                                    \
   _(IntrinsicIsCallable)                           \
   _(IntrinsicIsConstructor)                        \
@@ -152,7 +182,6 @@
   _(IntrinsicIsConstructing)                       \
   _(IntrinsicSubstringKernel)                      \
   _(IntrinsicObjectHasPrototype)                   \
-  _(IntrinsicFinishBoundFunctionInit)              \
   _(IntrinsicIsPackedArray)                        \
                                                    \
   _(IntrinsicIsSuspendedGenerator)                 \
@@ -188,9 +217,16 @@
   _(IntrinsicIsTypedArray)                         \
   _(IntrinsicIsPossiblyWrappedTypedArray)          \
   _(IntrinsicTypedArrayLength)                     \
+  _(IntrinsicTypedArrayLengthZeroOnOutOfBounds)    \
   _(IntrinsicPossiblyWrappedTypedArrayLength)      \
+  _(IntrinsicRegExpBuiltinExec)                    \
+  _(IntrinsicRegExpBuiltinExecForTest)             \
+  _(IntrinsicRegExpExec)                           \
+  _(IntrinsicRegExpExecForTest)                    \
   _(IntrinsicTypedArrayByteOffset)                 \
-  _(IntrinsicTypedArrayElementSize)
+  _(IntrinsicTypedArrayElementSize)                \
+                                                   \
+  INLINABLE_NATIVE_FUZZILLI_LIST(_)
 
 struct JSClass;
 class JSJitInfo;

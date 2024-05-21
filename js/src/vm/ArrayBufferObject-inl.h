@@ -12,8 +12,6 @@
 
 #include "vm/ArrayBufferObject.h"
 
-#include "js/Value.h"
-
 #include "vm/SharedArrayObject.h"
 #include "vm/SharedMem.h"
 
@@ -31,6 +29,13 @@ inline bool ArrayBufferObjectMaybeShared::isDetached() const {
     return this->as<ArrayBufferObject>().isDetached();
   }
   return false;
+}
+
+inline bool ArrayBufferObjectMaybeShared::isResizable() const {
+  if (this->is<ArrayBufferObject>()) {
+    return this->as<ArrayBufferObject>().isResizable();
+  }
+  return this->as<SharedArrayBufferObject>().isGrowable();
 }
 
 inline size_t ArrayBufferObjectMaybeShared::byteLength() const {
@@ -52,6 +57,13 @@ inline bool ArrayBufferObjectMaybeShared::isWasm() const {
     return this->as<ArrayBufferObject>().isWasm();
   }
   return this->as<SharedArrayBufferObject>().isWasm();
+}
+
+inline bool ArrayBufferObjectMaybeShared::pinLength(bool pin) {
+  if (is<ArrayBufferObject>()) {
+    return as<ArrayBufferObject>().pinLength(pin);
+  }
+  return false;  // Cannot pin or unpin shared array buffers.
 }
 
 }  // namespace js

@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Page title
-about-processes-title = ตัวจัดการกระบวนการ
+about-processes-title = ตัวจัดการโปรเซส
 # The Actions column
 about-processes-column-action =
     .title = การกระทำ
@@ -11,9 +11,18 @@ about-processes-column-action =
 ## Tooltips
 
 about-processes-shutdown-process =
-    .title = เลิกโหลดแท็บและหยุดการทำงานของกระบวนการ
+    .title = เลิกโหลดแท็บและหยุดการทำงานของโปรเซส
 about-processes-shutdown-tab =
     .title = ปิดแท็บ
+# Profiler icons
+# Variables:
+#    $duration (Number) The time in seconds during which the profiler will be running.
+#                       The value will be an integer, typically less than 10.
+about-processes-profile-process =
+    .title =
+        { $duration ->
+           *[other] สร้างโปรไฟล์เธรดทั้งหมดของโปรเซสนี้เป็นเวลา { $duration } วินาที
+        }
 
 ## Column headers
 
@@ -40,6 +49,7 @@ about-processes-socket-process = เครือข่าย ({ $pid })
 about-processes-remote-sandbox-broker-process = ตัวกลาง Sandbox ระยะไกล ({ $pid })
 about-processes-fork-server-process = ฟอร์คเซิร์ฟเวอร์ ({ $pid })
 about-processes-preallocated-process = จัดสรรล่วงหน้า ({ $pid })
+about-processes-utility-process = โปรแกรมอรรถประโยชน์ ({ $pid })
 # Unknown process names
 # Variables:
 #    $pid (String) The process id of this process, assigned by the OS.
@@ -52,11 +62,10 @@ about-processes-unknown-process = อื่น ๆ : { $type } ({ $pid })
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin } ({ $pid })
-about-processes-web-large-allocation-process = { $origin } ({ $pid }, ขนาดใหญ่)
-about-processes-with-coop-coep-process = { $origin } ({ $pid }, ถูกแยก cross-origin)
+about-processes-web-serviceworker = { $origin } ({ $pid }, serviceworker)
+about-processes-with-coop-coep-process = { $origin } ({ $pid }, ถูกคัดแยกข้ามที่มา)
 about-processes-web-isolated-process-private = { $origin } — ส่วนตัว ({ $pid })
-about-processes-web-large-allocation-process-private = { $origin } — ส่วนตัว ({ $pid }, ขนาดใหญ่)
-about-processes-with-coop-coep-process-private = { $origin } — ส่วนตัว ({ $pid }, ถูกแยก cross-origin)
+about-processes-with-coop-coep-process-private = { $origin } — ส่วนตัว ({ $pid }, ถูกคัดแยกข้ามที่มา)
 
 ## Details within processes
 
@@ -105,6 +114,18 @@ about-processes-frame-name-one = เฟรมย่อย: { $url }
 #   $shortUrl (String) The shared prefix for the subframes in the group.
 about-processes-frame-name-many = เฟรมย่อย ({ $number }): { $shortUrl }
 
+## Utility process actor names
+
+about-processes-utility-actor-unknown = ตัวดำเนินการที่ไม่รู้จัก
+about-processes-utility-actor-audio-decoder-generic = ตัวถอดรหัสเสียงทั่วไป
+about-processes-utility-actor-audio-decoder-applemedia = ตัวถอดรหัสเสียง Apple Media
+about-processes-utility-actor-audio-decoder-wmf = ตัวถอดรหัสเสียง Windows Media Framework
+about-processes-utility-actor-mf-media-engine = Windows Media Foundation Media Engine CDM
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
+about-processes-utility-actor-windows-utils = Windows Utils
+about-processes-utility-actor-windows-file-dialog = กล่องโต้ตอบไฟล์ของ Windows
+
 ## Displaying CPU (percentage and total)
 ## Variables:
 ##    $percent (Number) The percentage of CPU used by the process or thread.
@@ -119,9 +140,13 @@ about-processes-cpu = { NUMBER($percent, maximumSignificantDigits: 2, style: "pe
     .title = เวลาของ CPU ทั้งหมด: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: data is not available yet.
 about-processes-cpu-user-and-kernel-not-ready = (กำลังวัด)
+# Special case: process or thread is almost idle (using less than 0.1% of a CPU core).
+# This case only occurs on Windows where the precision of the CPU times is low.
+about-processes-cpu-almost-idle = < 0.1%
+    .title = เวลาของ CPU ทั้งหมด: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: process or thread is currently idle.
-about-processes-cpu-idle = ไม่ได้ใช้งาน
-    .title = เวลาที่ใช้งาน CPU ทั้งหมด: { NUMBER($total, maximumFractionDigits: 2) } { $unit }
+about-processes-cpu-fully-idle = ว่าง
+    .title = เวลาของ CPU ทั้งหมด: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 
 ## Displaying Memory (total and delta)
 ## Variables:

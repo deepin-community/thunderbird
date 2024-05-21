@@ -7,27 +7,22 @@
 
 "use strict";
 
-ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-
 let prefs;
 let httpserv;
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+ChromeUtils.defineLazyGetter(this, "URL", function () {
   return "http://localhost:" + httpserv.identity.primaryPort;
 });
 
-XPCOMUtils.defineLazyGetter(this, "PORT", function() {
-  return httpserv.identity.primaryPort;
-});
-
 function makeChan(url, loadingUrl) {
-  var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-  var ssm = Cc["@mozilla.org/scriptsecuritymanager;1"].getService(
-    Ci.nsIScriptSecurityManager
+  var principal = Services.scriptSecurityManager.createContentPrincipal(
+    Services.io.newURI(loadingUrl),
+    {}
   );
-  var principal = ssm.createContentPrincipal(ios.newURI(loadingUrl), {});
   return NetUtil.newChannel({
     uri: url,
     loadingPrincipal: principal,
@@ -49,7 +44,7 @@ function authHandler(metadata, response) {
 }
 
 function setup() {
-  prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefBranch);
+  prefs = Services.prefs;
 
   prefs.setIntPref("network.auth.subresource-http-auth-allow", 2);
   prefs.setStringPref("network.negotiate-auth.trusted-uris", "localhost");
@@ -66,20 +61,12 @@ registerCleanupFunction(async () => {
   await httpserv.stop();
 });
 
-function makeChan(url) {
-  let chan = NetUtil.newChannel({
-    uri: url,
-    loadUsingSystemPrincipal: true,
-  }).QueryInterface(Ci.nsIHttpChannel);
-  return chan;
-}
-
 function channelOpenPromise(chan) {
   return new Promise(resolve => {
     let topic = "http-on-transaction-suspended-authentication";
     let observer = {
       QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
-      observe(aSubject, aTopic, aData) {
+      observe(aSubject, aTopic) {
         if (aTopic == topic) {
           Services.obs.removeObserver(observer, topic);
           let channel = aSubject.QueryInterface(Ci.nsIChannel);

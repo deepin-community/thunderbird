@@ -10,14 +10,14 @@ add_task(async function test_fetchTags() {
     parentGuid: PlacesUtils.bookmarks.unfiledGuid,
   });
 
-  PlacesUtils.tagging.tagURI(Services.io.newURI(bm.url.href), ["1", "2"]);
+  PlacesUtils.tagging.tagURI(bm.url.URI, ["1", "2"]);
   tags = await PlacesUtils.bookmarks.fetchTags();
   Assert.deepEqual(tags, [
     { name: "1", count: 1 },
     { name: "2", count: 1 },
   ]);
 
-  PlacesUtils.tagging.untagURI(Services.io.newURI(bm.url.href), ["1"]);
+  PlacesUtils.tagging.untagURI(bm.url.URI, ["1"]);
   tags = await PlacesUtils.bookmarks.fetchTags();
   Assert.deepEqual(tags, [{ name: "2", count: 1 }]);
 
@@ -25,7 +25,7 @@ add_task(async function test_fetchTags() {
     url: "http://page2.com/",
     parentGuid: PlacesUtils.bookmarks.unfiledGuid,
   });
-  PlacesUtils.tagging.tagURI(Services.io.newURI(bm2.url.href), ["2", "3"]);
+  PlacesUtils.tagging.tagURI(bm2.url.URI, ["2", "3"]);
   tags = await PlacesUtils.bookmarks.fetchTags();
   Assert.deepEqual(tags, [
     { name: "2", count: 2 },
@@ -34,24 +34,24 @@ add_task(async function test_fetchTags() {
 });
 
 add_task(async function test_fetch_by_tags() {
-  Assert.throws(
-    () => PlacesUtils.bookmarks.fetch({ tags: "" }),
+  await Assert.rejects(
+    PlacesUtils.bookmarks.fetch({ tags: "" }),
     /Invalid value for property 'tags'/
   );
-  Assert.throws(
-    () => PlacesUtils.bookmarks.fetch({ tags: [] }),
+  await Assert.rejects(
+    PlacesUtils.bookmarks.fetch({ tags: [] }),
     /Invalid value for property 'tags'/
   );
-  Assert.throws(
-    () => PlacesUtils.bookmarks.fetch({ tags: null }),
+  await Assert.rejects(
+    PlacesUtils.bookmarks.fetch({ tags: null }),
     /Invalid value for property 'tags'/
   );
-  Assert.throws(
-    () => PlacesUtils.bookmarks.fetch({ tags: [""] }),
+  await Assert.rejects(
+    PlacesUtils.bookmarks.fetch({ tags: [""] }),
     /Invalid value for property 'tags'/
   );
-  Assert.throws(
-    () => PlacesUtils.bookmarks.fetch({ tags: ["valid", null] }),
+  await Assert.rejects(
+    PlacesUtils.bookmarks.fetch({ tags: ["valid", null] }),
     /Invalid value for property 'tags'/
   );
 
@@ -60,15 +60,12 @@ add_task(async function test_fetch_by_tags() {
     url: "http://bacon.org/",
     parentGuid: PlacesUtils.bookmarks.unfiledGuid,
   });
-  PlacesUtils.tagging.tagURI(Services.io.newURI(bm1.url.href), [
-    "egg",
-    "ratafià",
-  ]);
+  PlacesUtils.tagging.tagURI(bm1.url.URI, ["egg", "ratafià"]);
   let bm2 = await PlacesUtils.bookmarks.insert({
     url: "http://mushroom.org/",
     parentGuid: PlacesUtils.bookmarks.unfiledGuid,
   });
-  PlacesUtils.tagging.tagURI(Services.io.newURI(bm2.url.href), ["egg"]);
+  PlacesUtils.tagging.tagURI(bm2.url.URI, ["egg"]);
 
   info("Fetch a single tag.");
   let bms = [];

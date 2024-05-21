@@ -21,10 +21,6 @@ var tabSubDialogsEnabled = SpecialPowers.Services.prefs.getBoolPref(
   "prompts.tabChromePromptSubDialog",
   false
 );
-var contentSubDialogsEnabled = SpecialPowers.Services.prefs.getBoolPref(
-  "prompts.contentPromptSubDialog",
-  false
-);
 var isSelectDialog = false;
 var isOSX = "nsILocalFileMac" in SpecialPowers.Ci;
 var isE10S = SpecialPowers.Services.appinfo.processType == 2;
@@ -85,9 +81,8 @@ async function runPromptCombinations(window, testFunc) {
 class PromptTestUtil {
   constructor(window) {
     this.window = window;
-    this.browsingContext = SpecialPowers.wrap(
-      window
-    ).windowGlobalChild.browsingContext;
+    this.browsingContext =
+      SpecialPowers.wrap(window).windowGlobalChild.browsingContext;
     this.promptService = SpecialPowers.Services.prompt;
     this.nsPrompt = Cc["@mozilla.org/prompter;1"]
       .getService(Ci.nsIPromptFactory)
@@ -165,7 +160,7 @@ function onloadPromiseFor(id) {
   return new Promise(resolve => {
     iframe.addEventListener(
       "load",
-      function(e) {
+      function (e) {
         resolve(true);
       },
       { once: true }
@@ -201,20 +196,7 @@ function checkPromptState(promptState, expectedState) {
   // XXX check title? OS X has title in content
   is(promptState.msg, expectedState.msg, "Checking expected message");
 
-  let isOldContentPrompt =
-    !promptState.isSubDialogPrompt &&
-    modalType === Ci.nsIPrompt.MODAL_TYPE_CONTENT;
-
-  if (isOldContentPrompt && !promptState.showCallerOrigin) {
-    ok(
-      promptState.titleHidden,
-      "The title should be hidden for content prompts opened with tab modal prompt."
-    );
-  } else if (
-    isOSX ||
-    promptState.isSubDialogPrompt ||
-    promptState.showCallerOrigin
-  ) {
+  if (isOSX || promptState.isSubDialogPrompt || promptState.showCallerOrigin) {
     ok(
       !promptState.titleHidden,
       "Checking title always visible on OS X or when opened with common dialog"
@@ -398,11 +380,13 @@ function PrompterProxy(chromeScript) {
               outParams = [];
               break;
             }
-            case "promptPassword": {
+            case "promptPassword":
+            case "asyncPromptPassword": {
               outParams = [/* pwd */ 4];
               break;
             }
-            case "promptUsernameAndPassword": {
+            case "promptUsernameAndPassword":
+            case "asyncPromptUsernameAndPassword": {
               outParams = [/* user */ 4, /* pwd */ 5];
               break;
             }

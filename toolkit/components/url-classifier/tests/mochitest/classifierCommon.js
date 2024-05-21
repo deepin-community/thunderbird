@@ -1,9 +1,7 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-/* eslint-env mozilla/frame-script */
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+/* eslint-env mozilla/chrome-script */
 
 var dbService = Cc["@mozilla.org/url-classifier/dbservice;1"].getService(
   Ci.nsIUrlClassifierDBService
@@ -25,12 +23,12 @@ function setTimeout(callback, delay) {
 function doUpdate(update) {
   let listener = {
     QueryInterface: ChromeUtils.generateQI(["nsIUrlClassifierUpdateObserver"]),
-    updateUrlRequested(url) {},
-    streamFinished(status) {},
+    updateUrlRequested() {},
+    streamFinished() {},
     updateError(errorCode) {
       sendAsyncMessage("updateError", errorCode);
     },
-    updateSuccess(requestedTimeout) {
+    updateSuccess() {
       sendAsyncMessage("updateSuccess");
     },
   };
@@ -79,6 +77,20 @@ function waitForInit() {
   }
 }
 
+function doGetTables() {
+  const callback = tables => {
+    sendAsyncMessage("GetTableSuccess", tables);
+  };
+
+  try {
+    dbService.getTables(callback);
+  } catch (e) {
+    setTimeout(() => {
+      doGetTables();
+    }, 1000);
+  }
+}
+
 addMessageListener("doUpdate", ({ testUpdate }) => {
   doUpdate(testUpdate);
 });
@@ -89,4 +101,8 @@ addMessageListener("doReload", () => {
 
 addMessageListener("waitForInit", () => {
   waitForInit();
+});
+
+addMessageListener("doGetTables", () => {
+  doGetTables();
 });

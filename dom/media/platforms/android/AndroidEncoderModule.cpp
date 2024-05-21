@@ -5,9 +5,9 @@
 #include "AndroidEncoderModule.h"
 
 #include "AndroidDataEncoder.h"
-#include "MP4Decoder.h"
 
 #include "mozilla/Logging.h"
+#include "mozilla/java/HardwareCodecCapabilityUtilsWrappers.h"
 
 namespace mozilla {
 extern LazyLogModule sPEMLog;
@@ -16,15 +16,30 @@ extern LazyLogModule sPEMLog;
       sPEMLog, mozilla::LogLevel::Debug, \
       ("AndroidEncoderModule(%p)::%s: " arg, this, __func__, ##__VA_ARGS__))
 
-bool AndroidEncoderModule::SupportsMimeType(const nsACString& aMimeType) const {
-  return MP4Decoder::IsH264(aMimeType);
+bool AndroidEncoderModule::SupportsCodec(CodecType aCodec) const {
+  return (aCodec == CodecType::H264 &&
+          java::HardwareCodecCapabilityUtils::HasHWH264(true /* encoder */)) ||
+         (aCodec == CodecType::VP8 &&
+          java::HardwareCodecCapabilityUtils::HasHWVP8(true /* encoder */)) ||
+         (aCodec == CodecType::VP9 &&
+          java::HardwareCodecCapabilityUtils::HasHWVP9(true /* encoder */));
+}
+
+bool AndroidEncoderModule::Supports(const EncoderConfig& aConfig) const {
+  if (!CanLikelyEncode(aConfig)) {
+    return false;
+  }
+  return SupportsCodec(aConfig.mCodec);
 }
 
 already_AddRefed<MediaDataEncoder> AndroidEncoderModule::CreateVideoEncoder(
-    const CreateEncoderParams& aParams) const {
-  RefPtr<MediaDataEncoder> encoder =
-      new AndroidDataEncoder(aParams.ToH264Config(), aParams.mTaskQueue);
-  return encoder.forget();
+    const EncoderConfig& aConfig, const RefPtr<TaskQueue>& aTaskQueue) const {
+  if (!Supports(aConfig)) {
+    AND_PEM_LOG("Unsupported codec type: %s",
+                GetCodecTypeString(aConfig.mCodec));
+    return nullptr;
+  }
+  return MakeRefPtr<AndroidDataEncoder>(aConfig, aTaskQueue).forget();
 }
 
 }  // namespace mozilla

@@ -8,15 +8,13 @@
 #ifdef MOZ_AV1
 #  include "AOMDecoder.h"
 #endif
-#include "OpusDecoder.h"
 #include "RemoteAudioDecoder.h"
 #include "RemoteDecoderManagerChild.h"
 #include "RemoteMediaDataDecoder.h"
 #include "RemoteVideoDecoder.h"
 #include "VideoUtils.h"
-#include "VorbisDecoder.h"
-#include "WAVDecoder.h"
 #include "gfxConfig.h"
+#include "mozilla/RemoteDecodeUtils.h"
 
 namespace mozilla {
 
@@ -38,21 +36,31 @@ already_AddRefed<PlatformDecoderModule> RemoteDecoderModule::Create(
 RemoteDecoderModule::RemoteDecoderModule(RemoteDecodeIn aLocation)
     : mLocation(aLocation) {}
 
-bool RemoteDecoderModule::SupportsMimeType(
+media::DecodeSupportSet RemoteDecoderModule::SupportsMimeType(
     const nsACString& aMimeType, DecoderDoctorDiagnostics* aDiagnostics) const {
   MOZ_CRASH("Deprecated: Use RemoteDecoderModule::Supports");
 }  // namespace mozilla
 
-bool RemoteDecoderModule::Supports(
+media::DecodeSupportSet RemoteDecoderModule::Supports(
     const SupportDecoderParams& aParams,
     DecoderDoctorDiagnostics* aDiagnostics) const {
   bool supports =
       RemoteDecoderManagerChild::Supports(mLocation, aParams, aDiagnostics);
+  // This should only be supported by mf media engine cdm process.
+  if (aParams.mMediaEngineId &&
+      mLocation != RemoteDecodeIn::UtilityProcess_MFMediaEngineCDM) {
+    supports = false;
+  }
   MOZ_LOG(sPDMLog, LogLevel::Debug,
-          ("Sandbox %s decoder %s requested type",
-           mLocation == RemoteDecodeIn::GpuProcess ? "GPU" : "RDD",
-           supports ? "supports" : "rejects"));
-  return supports;
+          ("Sandbox %s decoder %s requested type %s",
+           RemoteDecodeInToStr(mLocation), supports ? "supports" : "rejects",
+           aParams.MimeType().get()));
+  if (supports) {
+    // TODO: Note that we do not yet distinguish between SW/HW decode support.
+    //       Will be done in bug 1754239.
+    return media::DecodeSupport::SoftwareDecode;
+  }
+  return media::DecodeSupportSet{};
 }
 
 RefPtr<RemoteDecoderModule::CreateDecoderPromise>
@@ -62,13 +70,13 @@ RemoteDecoderModule::AsyncCreateDecoder(const CreateDecoderParams& aParams) {
     // that IsDefaultPlaybackDeviceMono provides.  We want to avoid calls
     // to IsDefaultPlaybackDeviceMono on RDD because initializing audio
     // backends on RDD will be blocked by the sandbox.
-    if (OpusDataDecoder::IsOpus(aParams.mConfig.mMimeType) &&
+    if (aParams.mConfig.mMimeType.Equals("audio/opus") &&
         IsDefaultPlaybackDeviceMono()) {
       CreateDecoderParams params = aParams;
       params.mOptions += CreateDecoderParams::Option::DefaultPlaybackDeviceMono;
-      return RemoteDecoderManagerChild::CreateAudioDecoder(params);
+      return RemoteDecoderManagerChild::CreateAudioDecoder(params, mLocation);
     }
-    return RemoteDecoderManagerChild::CreateAudioDecoder(aParams);
+    return RemoteDecoderManagerChild::CreateAudioDecoder(aParams, mLocation);
   }
   return RemoteDecoderManagerChild::CreateVideoDecoder(aParams, mLocation);
 }

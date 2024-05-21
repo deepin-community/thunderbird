@@ -3,8 +3,6 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 const userAgentID = "1500e7d9-8cbe-4ee6-98da-7fa5d6a39852";
 
 function run_test() {
@@ -118,7 +116,7 @@ add_task(async function test_notification_duplicate() {
     db,
     makeWebSocket(uri) {
       return new MockWebSocket(uri, {
-        onHello(request) {
+        onHello() {
           this.serverSendMsg(
             JSON.stringify({
               messageType: "hello",

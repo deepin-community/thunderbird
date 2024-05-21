@@ -4,20 +4,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import glob
 import json
 import os
-import sys
-import glob
 import subprocess
+import sys
 
 import mozcrash
-from mozbuild.base import MozbuildObject, BinaryNotFoundException
+from mozbuild.base import BinaryNotFoundException, MozbuildObject
 from mozfile import TemporaryDirectory
 from mozhttpd import MozHttpd
 from mozprofile import FirefoxProfile, Preferences
 from mozprofile.permissions import ServerLocations
-from mozrunner import FirefoxRunner, CLI
-from six import string_types
+from mozrunner import CLI, FirefoxRunner
 
 PORT = 8888
 
@@ -33,6 +32,8 @@ PATH_MAPPINGS = {
 def get_crashreports(directory, name=None):
     rc = 0
     upload_path = os.environ.get("UPLOAD_PATH")
+    if not upload_path:
+        upload_path = os.environ.get("UPLOAD_DIR")
     if upload_path:
         # For automation, log the minidumps with stackwalk and get them moved to
         # the artifacts directory.
@@ -43,7 +44,7 @@ def get_crashreports(directory, name=None):
                 "$MOZ_FETCHES_DIR is not set in the environment"
             )
         stackwalk_binary = os.path.join(
-            fetches_dir, "minidump_stackwalk", "minidump_stackwalk"
+            fetches_dir, "minidump-stackwalk", "minidump-stackwalk"
         )
         if sys.platform == "win32":
             stackwalk_binary += ".exe"
@@ -84,6 +85,15 @@ if __name__ == "__main__":
     )
     httpd.start(block=False)
 
+    sp3_httpd = MozHttpd(
+        port=8000,
+        docroot=os.path.join(
+            build.topsrcdir, "third_party", "webkit", "PerformanceTests", "Speedometer3"
+        ),
+        path_mappings=path_mappings,
+    )
+    sp3_httpd.start(block=False)
+    print("started SP3 server on port 8000")
     locations = ServerLocations()
     locations.add_host(host="127.0.0.1", port=PORT, options="primary,privileged")
 
@@ -107,16 +117,11 @@ if __name__ == "__main__":
             prefs.update(Preferences.read_prefs(path))
 
         interpolation = {"server": "%s:%d" % httpd.httpd.server_address}
+        sp3_interpolation = {"server": "%s:%d" % sp3_httpd.httpd.server_address}
         for k, v in prefs.items():
-            if isinstance(v, string_types):
+            if isinstance(v, str):
                 v = v.format(**interpolation)
             prefs[k] = Preferences.cast(v)
-
-        # Enforce e10s. This isn't in one of the user.js files because those
-        # are shared with android, which doesn't want this on. We can't
-        # interpolate because the formatting code only works for strings,
-        # and this is a bool pref.
-        prefs["browser.tabs.remote.autostart"] = True
 
         profile = FirefoxProfile(
             profile=profilePath,
@@ -131,6 +136,7 @@ if __name__ == "__main__":
 
         env = os.environ.copy()
         env["MOZ_CRASHREPORTER_NO_REPORT"] = "1"
+        env["MOZ_CRASHREPORTER_SHUTDOWN"] = "1"
         env["XPCOM_DEBUG_BREAK"] = "warn"
         # We disable sandboxing to make writing profiling data actually work
         # Bug 1553850 considers fixing this.
@@ -169,6 +175,7 @@ if __name__ == "__main__":
                 print("Firefox output (%s):" % logfile)
                 with open(logfile) as f:
                     print(f.read())
+            sp3_httpd.stop()
             httpd.stop()
             get_crashreports(profilePath, name="Profile initialization")
             sys.exit(ret)
@@ -194,6 +201,7 @@ if __name__ == "__main__":
         )
         runner.start(debug_args=debug_args, interactive=interactive)
         ret = runner.wait()
+        sp3_httpd.stop()
         httpd.stop()
         if ret:
             print("Firefox exited with code %d during profiling" % ret)
@@ -221,14 +229,25 @@ if __name__ == "__main__":
                     % os.getcwd()
                 )
                 sys.exit(1)
+
+            merged_profdata = "merged.profdata"
             merge_cmd = [
                 llvm_profdata,
                 "merge",
                 "-o",
-                "merged.profdata",
+                merged_profdata,
             ] + profraw_files
             rc = subprocess.call(merge_cmd)
             if rc != 0:
                 print("INFRA-ERROR: Failed to merge profile data. Corrupt profile?")
                 # exit with TBPL_RETRY
                 sys.exit(4)
+
+            # llvm-profdata may fail while still exiting without an error.
+            if not os.path.isfile(merged_profdata):
+                print(merged_profdata, "was not created", file=sys.stderr)
+                sys.exit(1)
+
+            if os.path.getsize(merged_profdata) == 0:
+                print(merged_profdata, "was created but it is empty", file=sys.stderr)
+                sys.exit(1)

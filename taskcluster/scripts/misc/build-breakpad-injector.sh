@@ -3,7 +3,7 @@ set -x -e -v
 
 # This script is for building libbreakpadinjector.so, currently for linux only
 
-COMPRESS_EXT=xz
+COMPRESS_EXT=zst
 
 cd $GECKO_PATH
 
@@ -13,7 +13,7 @@ echo ac_add_options --enable-project=tools/crashreporter/injector > .mozconfig
 
 INJECTOR=libbreakpadinjector.so
 
-TOOLCHAINS="binutils rustc clang"
+TOOLCHAINS="rustc clang"
 
 for t in $TOOLCHAINS; do
     PATH="$MOZ_FETCHES_DIR/$t/bin:$PATH"

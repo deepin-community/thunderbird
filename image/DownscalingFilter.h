@@ -24,9 +24,7 @@
 #include "mozilla/UniquePtr.h"
 #include "mozilla/gfx/2D.h"
 
-#ifdef MOZ_ENABLE_SKIA
-#  include "mozilla/gfx/ConvolutionFilter.h"
-#endif
+#include "mozilla/gfx/ConvolutionFilter.h"
 
 #include "SurfacePipe.h"
 
@@ -52,43 +50,6 @@ struct DownscalingConfig {
   gfx::SurfaceFormat mFormat;  /// The pixel format - BGRA or BGRX. (BGRX has
                                /// slightly better performance.)
 };
-
-#ifndef MOZ_ENABLE_SKIA
-
-/**
- * DownscalingFilter requires Skia. This is a fallback implementation for
- * non-Skia builds that fails when Configure() is called (which will prevent
- * SurfacePipeFactory from returning an instance of it) and crashes if a caller
- * manually constructs an instance and attempts to actually use it. Callers
- * should avoid this by ensuring that they do not request downscaling in
- * non-Skia builds.
- */
-template <typename Next>
-class DownscalingFilter final : public SurfaceFilter {
- public:
-  Maybe<SurfaceInvalidRect> TakeInvalidRect() override { return Nothing(); }
-
-  template <typename... Rest>
-  nsresult Configure(const DownscalingConfig& aConfig, const Rest&... aRest) {
-    return NS_ERROR_FAILURE;
-  }
-
- protected:
-  uint8_t* DoResetToFirstRow() override {
-    MOZ_CRASH();
-    return nullptr;
-  }
-  uint8_t* DoAdvanceRowFromBuffer(const uint8_t* aInputRow) override {
-    MOZ_CRASH();
-    return nullptr;
-  }
-  uint8_t* DoAdvanceRow() override {
-    MOZ_CRASH();
-    return nullptr;
-  }
-};
-
-#else
 
 /**
  * DownscalingFilter performs Lanczos downscaling, taking image input data at
@@ -134,8 +95,9 @@ class DownscalingFilter final : public SurfaceFilter {
 
     mInputSize = aConfig.mInputSize;
     gfx::IntSize outputSize = mNext.InputSize();
-    mScale = gfxSize(double(mInputSize.width) / outputSize.width,
-                     double(mInputSize.height) / outputSize.height);
+    mScale =
+        gfx::MatrixScalesDouble(double(mInputSize.width) / outputSize.width,
+                                double(mInputSize.height) / outputSize.height);
     mHasAlpha = aConfig.mFormat == gfx::SurfaceFormat::OS_RGBA;
 
     ReleaseWindow();
@@ -193,7 +155,7 @@ class DownscalingFilter final : public SurfaceFilter {
 
     if (invalidRect) {
       // Compute the input space invalid rect by scaling.
-      invalidRect->mInputSpaceRect.ScaleRoundOut(mScale.width, mScale.height);
+      invalidRect->mInputSpaceRect.ScaleRoundOut(mScale.xScale, mScale.yScale);
     }
 
     return invalidRect;
@@ -324,10 +286,10 @@ class DownscalingFilter final : public SurfaceFilter {
 
   Next mNext;  /// The next SurfaceFilter in the chain.
 
-  gfx::IntSize mInputSize;  /// The size of the input image.
-  gfxSize mScale;           /// The scale factors in each dimension.
-                            /// Computed from @mInputSize and
-                            /// the next filter's input size.
+  gfx::IntSize mInputSize;         /// The size of the input image.
+  gfx::MatrixScalesDouble mScale;  /// The scale factors in each dimension.
+                                   /// Computed from @mInputSize and
+                                   /// the next filter's input size.
 
   UniquePtr<uint8_t[]> mRowBuffer;  /// The buffer into which input is written.
   UniquePtr<uint8_t*[]> mWindow;    /// The last few rows which were written.
@@ -343,8 +305,6 @@ class DownscalingFilter final : public SurfaceFilter {
 
   bool mHasAlpha;  /// If true, the image has transparency.
 };
-
-#endif
 
 }  // namespace image
 }  // namespace mozilla

@@ -12,7 +12,8 @@ var gCertDB = Cc["@mozilla.org/security/x509certdb;1"].getService(
 
 /**
  * The cert we're editing the trust of.
- * @type nsIX509Cert
+ *
+ * @type {nsIX509Cert}
  */
 var gCert;
 
@@ -30,10 +31,10 @@ function openEditCertTrustDialog() {
     "",
     gCert
   );
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     win.addEventListener(
       "load",
-      function() {
+      function () {
         executeSoon(() => resolve(win));
       },
       { once: true }
@@ -41,7 +42,7 @@ function openEditCertTrustDialog() {
   });
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   // Initially trust ca.pem for SSL but not e-mail.
   gCert = await readCertificate("ca.pem", "CT,,");
   Assert.ok(

@@ -8,6 +8,9 @@ const HTML_DATA = `
   <body>
   <p>Dummy test page</p>
   <div id="testDiv">test</div>
+  <img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAUA
+    AAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO
+        9TXL0Y4OHwAAAABJRU5ErkJggg==" alt="Red dot" />
   </body>
   </html>
   `;
@@ -55,9 +58,7 @@ const WORKER = `
   };
   `;
 
-function handleRequest(request, response)
-{
-  Components.utils.importGlobalProperties(["URLSearchParams"]);
+function handleRequest(request, response) {
   let query = new URLSearchParams(request.queryString);
 
   if (query.get("crossOriginIsolated") === "true") {

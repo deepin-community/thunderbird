@@ -26,7 +26,7 @@ var tests = [];
 
 function bytesToString(bytes) {
   return bytes
-    .map(function(v) {
+    .map(function (v) {
       return String.fromCharCode(v);
     })
     .join("");
@@ -210,7 +210,7 @@ tests.push(test);
 // extension of the file on the server, not by the extension of the requested
 // path.
 
-function setupFileMapping(ch) {
+function setupFileMapping() {
   srv.registerFile("/script.html", sjs);
 }
 

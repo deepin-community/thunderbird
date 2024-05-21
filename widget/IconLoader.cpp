@@ -9,6 +9,7 @@
 #include "imgLoader.h"
 #include "imgRequestProxy.h"
 #include "mozilla/dom/Document.h"
+#include "mozilla/dom/FetchPriority.h"
 #include "nsContentUtils.h"
 #include "nsIContent.h"
 #include "nsIContentPolicy.h"
@@ -35,7 +36,8 @@ nsresult IconLoader::LoadIcon(nsIURI* aIconURI, nsINode* aNode,
                               bool aIsInternalIcon) {
   if (mIconRequest) {
     // Another icon request is already in flight.  Kill it.
-    mIconRequest->Cancel(NS_BINDING_ABORTED);
+    mIconRequest->CancelWithReason(
+        NS_BINDING_ABORTED, "Another icon request is already in flight"_ns);
     mIconRequest = nullptr;
   }
 
@@ -61,8 +63,8 @@ nsresult IconLoader::LoadIcon(nsIURI* aIconURI, nsINode* aNode,
         aIconURI, nullptr, nullptr, nullptr, 0, loadGroup, this, nullptr,
         nullptr, nsIRequest::LOAD_NORMAL, nullptr,
         nsIContentPolicy::TYPE_INTERNAL_IMAGE, u""_ns,
-        /* aUseUrgentStartForChannel */ false, /* aLinkPreload */ false,
-        getter_AddRefs(mIconRequest));
+        /* aUseUrgentStartForChannel */ false, /* aLinkPreload */ false, 0,
+        dom::FetchPriority::Auto, getter_AddRefs(mIconRequest));
   } else {
     // TODO: nsIContentPolicy::TYPE_INTERNAL_IMAGE may not be the correct
     // policy. See bug 1691868 for more details.
@@ -71,7 +73,8 @@ nsresult IconLoader::LoadIcon(nsIURI* aIconURI, nsINode* aNode,
         aNode, document, nsIRequest::LOAD_NORMAL, nullptr,
         nsIContentPolicy::TYPE_INTERNAL_IMAGE, u""_ns,
         /* aUseUrgentStartForChannel */ false,
-        /* aLinkPreload */ false, getter_AddRefs(mIconRequest));
+        /* aLinkPreload */ false, 0, dom::FetchPriority::Auto,
+        getter_AddRefs(mIconRequest));
   }
   if (NS_FAILED(rv)) {
     return rv;
@@ -91,7 +94,8 @@ void IconLoader::Notify(imgIRequest* aRequest, int32_t aType,
     uint32_t status = imgIRequest::STATUS_ERROR;
     if (NS_FAILED(aRequest->GetImageStatus(&status)) ||
         (status & imgIRequest::STATUS_ERROR)) {
-      mIconRequest->Cancel(NS_BINDING_ABORTED);
+      mIconRequest->CancelWithReason(NS_BINDING_ABORTED,
+                                     "GetImageStatus failed"_ns);
       mIconRequest = nullptr;
       return;
     }
@@ -121,7 +125,7 @@ void IconLoader::Notify(imgIRequest* aRequest, int32_t aType,
 
   if (aType == imgINotificationObserver::DECODE_COMPLETE) {
     if (mIconRequest && mIconRequest == aRequest) {
-      mIconRequest->Cancel(NS_BINDING_ABORTED);
+      mIconRequest->CancelWithReason(NS_BINDING_ABORTED, "DECODE_COMPLETE"_ns);
       mIconRequest = nullptr;
     }
   }

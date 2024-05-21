@@ -4,7 +4,6 @@
 
 "use strict";
 
-/* eslint-env mozilla/chrome-worker */
 /* global worker, loadSubScript, global */
 
 /*
@@ -18,7 +17,7 @@
 // worker loader. To make sure the worker loader can access it, it needs to be
 // defined before loading the worker loader script below.
 let nextId = 0;
-this.rpc = function(method, ...params) {
+this.rpc = function (method, ...params) {
   return new Promise((resolve, reject) => {
     const id = nextId++;
     this.addEventListener("message", function onMessageForRpc(event) {
@@ -45,15 +44,16 @@ this.rpc = function(method, ...params) {
   });
 }.bind(this);
 
-loadSubScript("resource://devtools/shared/worker/loader.js");
+loadSubScript("resource://devtools/shared/loader/worker-loader.js");
 
 const { WorkerTargetActor } = worker.require(
-  "devtools/server/actors/targets/worker"
+  "resource://devtools/server/actors/targets/worker.js"
 );
-const { DevToolsServer } = worker.require("devtools/server/devtools-server");
+const { DevToolsServer } = worker.require(
+  "resource://devtools/server/devtools-server.js"
+);
 
-DevToolsServer.init();
-DevToolsServer.createRootActor = function() {
+DevToolsServer.createRootActor = function () {
   throw new Error("Should never get here!");
 };
 
@@ -62,11 +62,16 @@ DevToolsServer.createRootActor = function() {
 // that, we handle a Map of the different connections, keyed by forwarding prefix.
 const connections = new Map();
 
-this.addEventListener("message", async function(event) {
+this.addEventListener("message", async function (event) {
   const packet = JSON.parse(event.data);
   switch (packet.type) {
     case "connect":
       const { forwardingPrefix } = packet;
+
+      // Force initializing the server each time on connect
+      // as it may have been destroyed by a previous, now closed toolbox.
+      // Once the last connection drops, the server auto destroy itself.
+      DevToolsServer.init();
 
       // Step 3: Create a connection to the parent.
       const connection = DevToolsServer.connectToParent(forwardingPrefix, this);
@@ -75,7 +80,8 @@ this.addEventListener("message", async function(event) {
       const workerTargetActor = new WorkerTargetActor(
         connection,
         global,
-        packet.workerDebuggerData
+        packet.workerDebuggerData,
+        packet.options.sessionContext
       );
       // Make the worker manage itself so it is put in a Pool and assigned an actorID.
       workerTargetActor.manage(workerTargetActor);
@@ -86,7 +92,6 @@ this.addEventListener("message", async function(event) {
           postMessage(JSON.stringify({ type: "worker-thread-attached" }));
         }
       );
-      workerTargetActor.attach();
 
       // Step 5: Send a response packet to the parent to notify
       // it that a connection has been established.
@@ -104,32 +109,40 @@ this.addEventListener("message", async function(event) {
       );
 
       // We might receive data to watch.
-      if (packet.options?.watchedData) {
+      if (packet.options.sessionData) {
         const promises = [];
         for (const [type, entries] of Object.entries(
-          packet.options.watchedData
+          packet.options.sessionData
         )) {
-          promises.push(workerTargetActor.addWatcherDataEntry(type, entries));
+          promises.push(
+            workerTargetActor.addOrSetSessionDataEntry(
+              type,
+              entries,
+              false,
+              "set"
+            )
+          );
         }
         await Promise.all(promises);
       }
 
       break;
 
-    case "add-watcher-data-entry":
+    case "add-or-set-session-data-entry":
       await connections
         .get(packet.forwardingPrefix)
-        .workerTargetActor.addWatcherDataEntry(
+        .workerTargetActor.addOrSetSessionDataEntry(
           packet.dataEntryType,
-          packet.entries
+          packet.entries,
+          packet.updateType
         );
-      postMessage(JSON.stringify({ type: "watcher-data-entry-added" }));
+      postMessage(JSON.stringify({ type: "session-data-entry-added-or-set" }));
       break;
 
-    case "remove-watcher-data-entry":
+    case "remove-session-data-entry":
       await connections
         .get(packet.forwardingPrefix)
-        .workerTargetActor.removeWatcherDataEntry(
+        .workerTargetActor.removeSessionDataEntry(
           packet.dataEntryType,
           packet.entries
         );

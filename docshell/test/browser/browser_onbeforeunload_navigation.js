@@ -6,8 +6,8 @@ const TARGETED_PAGE =
   "data:text/html," +
   encodeURIComponent("<body>Shouldn't be seeing this</body>");
 
-const { PromptTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PromptTestUtils.jsm"
+const { PromptTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/PromptTestUtils.sys.mjs"
 );
 
 var loadStarted = false;
@@ -15,7 +15,7 @@ var tabStateListener = {
   resolveLoad: null,
   expectLoad: null,
 
-  onStateChange(webprogress, request, flags, status) {
+  onStateChange(webprogress, request, flags) {
     const WPL = Ci.nsIWebProgressListener;
     if (flags & WPL.STATE_IS_WINDOW) {
       if (flags & WPL.STATE_START) {
@@ -99,7 +99,7 @@ add_task(async function test() {
         // page after each test, since the tests will each navigate away
         // from it.
         await promiseLoaded(TEST_PAGE, () => {
-          browser.loadURI(TEST_PAGE, {
+          browser.loadURI(Services.io.newURI(TEST_PAGE), {
             triggeringPrincipal: document.nodePrincipal,
           });
         });

@@ -12,7 +12,7 @@
 #include "fuzz-tests/tests.h"
 #include "irregexp/RegExpAPI.h"
 #include "vm/Interpreter.h"
-#include "vm/JSAtom.h"
+#include "vm/JSAtomUtils.h"  // AtomizeUTF8Chars
 #include "vm/MatchPairs.h"
 
 #include "vm/JSContext-inl.h"
@@ -58,12 +58,13 @@ static int testRegExpFuzz(const uint8_t* buf, size_t size) {
     inputChars = patternChars + patternLength;
   }
 
-  RootedAtom pattern(gCx, AtomizeUTF8Chars(gCx, patternChars, patternLength));
+  Rooted<JSAtom*> pattern(gCx,
+                          AtomizeUTF8Chars(gCx, patternChars, patternLength));
   if (!pattern) {
     ReportOutOfMemory(gCx);
     return 0;
   }
-  RootedAtom input(gCx, AtomizeUTF8Chars(gCx, inputChars, inputLength));
+  Rooted<JSAtom*> input(gCx, AtomizeUTF8Chars(gCx, inputChars, inputLength));
   if (!input) {
     ReportOutOfMemory(gCx);
     return 0;
@@ -75,7 +76,7 @@ static int testRegExpFuzz(const uint8_t* buf, size_t size) {
   RegExpRunStatus iStatus = irregexp::ExecuteForFuzzing(
       gCx, pattern, input, flags, startIndex, &interpretedMatches,
       RegExpShared::CodeKind::Bytecode);
-  if (iStatus == RegExpRunStatus_Error) {
+  if (iStatus == RegExpRunStatus::Error) {
     if (gCx->isThrowingOverRecursed()) {
       return 0;
     }
@@ -84,7 +85,7 @@ static int testRegExpFuzz(const uint8_t* buf, size_t size) {
   RegExpRunStatus cStatus = irregexp::ExecuteForFuzzing(
       gCx, pattern, input, flags, startIndex, &compiledMatches,
       RegExpShared::CodeKind::Jitcode);
-  if (cStatus == RegExpRunStatus_Error) {
+  if (cStatus == RegExpRunStatus::Error) {
     if (gCx->isThrowingOverRecursed()) {
       return 0;
     }
@@ -93,7 +94,7 @@ static int testRegExpFuzz(const uint8_t* buf, size_t size) {
 
   // Use release asserts to enable fuzzing on non-debug builds.
   MOZ_RELEASE_ASSERT(iStatus == cStatus);
-  if (iStatus == RegExpRunStatus_Success) {
+  if (iStatus == RegExpRunStatus::Success) {
     MOZ_RELEASE_ASSERT(interpretedMatches.pairCount() ==
                        compiledMatches.pairCount());
     for (uint32_t i = 0; i < interpretedMatches.pairCount(); i++) {

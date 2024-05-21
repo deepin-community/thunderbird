@@ -23,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Ditt namn, som det visas för andra
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Ange ditt namn
 account-setup-email-label = E-postadress
     .accesskey = E
 account-setup-email-input =
@@ -31,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Din befintliga e-postadress
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Ogiltig e-postadress
 account-setup-password-label = Lösenord
     .accesskey = L
     .title = Valfritt, kommer endast att användas för att validera användarnamnet
 account-provisioner-button = Skapa en ny e-postadress
     .accesskey = S
-account-setup-password-toggle =
-    .title = Visa/dölj lösenord
 account-setup-password-toggle-show =
     .title = Visa lösenord i klartext
 account-setup-password-toggle-hide =
@@ -124,21 +122,14 @@ account-setup-results-area-title =
         [one] Tillgänglig konfiguration
        *[other] Tillgängliga konfigurationer
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Håll dina mappar och e-postmeddelanden synkroniserade på din server
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Håll dina mappar och e-postmeddelanden på din dator
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Använd Microsoft Exchange-servern eller Office365 molntjänster
 account-setup-incoming-title = Inkommande
 account-setup-outgoing-title = Utgående
 account-setup-username-title = Användarnamn
 account-setup-exchange-title = Server
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Ingen kryptering
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -162,9 +153,6 @@ account-setup-provisioner-error = Ett fel uppstod när ditt nya konto skulle kon
 account-setup-manual-config-title = Serverinställningar
 account-setup-incoming-server-legend = Inkommande server
 account-setup-protocol-label = Protokoll:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Värdnamn:
 account-setup-port-label = Port:
     .title = Ställ in portnumret till 0 för automatisk detektering
@@ -289,6 +277,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Färg
 account-setup-calendar-refresh-label = Uppdatera
 account-setup-calendar-refresh-manual = Manuellt
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Varje minut

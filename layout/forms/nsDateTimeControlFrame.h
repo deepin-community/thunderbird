@@ -47,11 +47,6 @@ class nsDateTimeControlFrame final : public nsContainerFrame {
   }
 #endif
 
-  bool IsFrameOfType(uint32_t aFlags) const override {
-    return nsContainerFrame::IsFrameOfType(
-        aFlags & ~(nsIFrame::eReplaced | nsIFrame::eReplacedContainsBlock));
-  }
-
   // Reflow
   nscoord GetMinISize(gfxContext* aRenderingContext) override;
 
@@ -61,15 +56,9 @@ class nsDateTimeControlFrame final : public nsContainerFrame {
               const ReflowInput& aReflowInput,
               nsReflowStatus& aStatus) override;
 
-  bool GetVerticalAlignBaseline(mozilla::WritingMode aWM,
-                                nscoord* aBaseline) const override {
-    return GetNaturalBaselineBOffset(aWM, BaselineSharingGroup::First,
-                                     aBaseline);
-  }
-
-  bool GetNaturalBaselineBOffset(mozilla::WritingMode aWM,
-                                 BaselineSharingGroup aBaselineGroup,
-                                 nscoord* aBaseline) const override;
+  Maybe<nscoord> GetNaturalBaselineBOffset(
+      mozilla::WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+      BaselineExportContext) const override;
 
   nscoord mFirstBaseline = NS_INTRINSIC_ISIZE_UNKNOWN;
 };

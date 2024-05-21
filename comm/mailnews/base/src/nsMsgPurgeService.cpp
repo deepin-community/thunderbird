@@ -5,7 +5,6 @@
 
 #include "nsMsgPurgeService.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgUtils.h"
 #include "nsMsgSearchCore.h"
 #include "msgCore.h"
@@ -18,6 +17,7 @@
 #include "nsIPrefService.h"
 #include "mozilla/Logging.h"
 #include "nsMsgFolderFlags.h"
+#include "nsITimer.h"
 #include <stdlib.h>
 #include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
@@ -99,10 +99,12 @@ nsresult nsMsgPurgeService::SetupNextPurge() {
   // calling Notify. So, just release the timer here and create a new one.
   if (mPurgeTimer) mPurgeTimer->Cancel();
 
-  mPurgeTimer = do_CreateInstance("@mozilla.org/timer;1");
-  mPurgeTimer->InitWithNamedFuncCallback(
-      OnPurgeTimer, (void*)this, timeInMSUint32, nsITimer::TYPE_ONE_SHOT,
-      "nsMsgPurgeService::OnPurgeTimer");
+  nsresult rv = NS_NewTimerWithFuncCallback(
+      getter_AddRefs(mPurgeTimer), OnPurgeTimer, (void*)this, timeInMSUint32,
+      nsITimer::TYPE_ONE_SHOT, "nsMsgPurgeService::OnPurgeTimer", nullptr);
+  if (NS_FAILED(rv)) {
+    NS_WARNING("Could not start mPurgeTimer timer");
+  }
 
   return NS_OK;
 }
@@ -122,7 +124,7 @@ nsresult nsMsgPurgeService::PerformPurge() {
   nsresult rv;
 
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   bool keepApplyingRetentionSettings = true;
 
@@ -207,10 +209,10 @@ nsresult nsMsgPurgeService::PerformPurge() {
         nsresult rv = server->GetType(type);
         NS_ENSURE_SUCCESS(rv, rv);
 
-        nsCString realHostName;
-        server->GetRealHostName(realHostName);
+        nsCString hostName;
+        server->GetHostName(hostName);
         MOZ_LOG(MsgPurgeLogModule, mozilla::LogLevel::Info,
-                ("[%d] %s (%s)", serverIndex, realHostName.get(), type.get()));
+                ("[%d] %s (%s)", serverIndex, hostName.get(), type.get()));
 
         nsCOMPtr<nsISpamSettings> spamSettings;
         rv = server->GetSpamSettings(getter_AddRefs(spamSettings));
@@ -237,7 +239,7 @@ nsresult nsMsgPurgeService::PerformPurge() {
         // check if the spam folder uri is set for this server
         // if not skip it.
         nsCString junkFolderURI;
-        rv = spamSettings->GetSpamFolderURI(getter_Copies(junkFolderURI));
+        rv = spamSettings->GetSpamFolderURI(junkFolderURI);
         NS_ENSURE_SUCCESS(rv, rv);
 
         MOZ_LOG(MsgPurgeLogModule, mozilla::LogLevel::Info,
@@ -361,7 +363,8 @@ nsresult nsMsgPurgeService::PerformPurge() {
 nsresult nsMsgPurgeService::SearchFolderToPurge(nsIMsgFolder* folder,
                                                 int32_t purgeInterval) {
   nsresult rv;
-  mSearchSession = do_CreateInstance(NS_MSGSEARCHSESSION_CONTRACTID, &rv);
+  mSearchSession =
+      do_CreateInstance("@mozilla.org/messenger/searchSession;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   mSearchSession->RegisterListener(this, nsIMsgSearchSession::allNotifications);
 
@@ -431,7 +434,7 @@ NS_IMETHODIMP nsMsgPurgeService::OnSearchHit(nsIMsgDBHdr* aMsgHdr,
   aMsgHdr->GetMessageId(getter_Copies(messageId));
   MOZ_LOG(MsgPurgeLogModule, mozilla::LogLevel::Info,
           ("messageId=%s", messageId.get()));
-  aMsgHdr->GetSubject(getter_Copies(subject));
+  aMsgHdr->GetSubject(subject);
   MOZ_LOG(MsgPurgeLogModule, mozilla::LogLevel::Info,
           ("subject=%s", subject.get()));
   aMsgHdr->GetAuthor(getter_Copies(author));
@@ -448,8 +451,7 @@ NS_IMETHODIMP nsMsgPurgeService::OnSearchHit(nsIMsgDBHdr* aMsgHdr,
   //
   // see bug #194090
   nsCString junkScoreStr;
-  nsresult rv =
-      aMsgHdr->GetStringProperty("junkscore", getter_Copies(junkScoreStr));
+  nsresult rv = aMsgHdr->GetStringProperty("junkscore", junkScoreStr);
   NS_ENSURE_SUCCESS(rv, rv);
 
   MOZ_LOG(MsgPurgeLogModule, mozilla::LogLevel::Info,

@@ -14,7 +14,6 @@
 #include "nsICategoryManager.h"
 #include "nsXPCOM.h"
 #include "nsISupportsPrimitives.h"
-#include "nsMsgCompCID.h"
 #include "nsThreadUtils.h"
 #include "ImportDebug.h"
 #include "nsImportService.h"
@@ -53,20 +52,20 @@ NS_IMETHODIMP nsImportService::DiscoverModules(void) {
 }
 
 NS_IMETHODIMP nsImportService::CreateNewFieldMap(nsIImportFieldMap** _retval) {
-  return nsImportFieldMap::Create(
-      m_stringBundle, nullptr, NS_GET_IID(nsIImportFieldMap), (void**)_retval);
+  return nsImportFieldMap::Create(m_stringBundle, NS_GET_IID(nsIImportFieldMap),
+                                  (void**)_retval);
 }
 
 NS_IMETHODIMP nsImportService::CreateNewMailboxDescriptor(
     nsIImportMailboxDescriptor** _retval) {
   return nsImportMailboxDescriptor::Create(
-      nullptr, NS_GET_IID(nsIImportMailboxDescriptor), (void**)_retval);
+      NS_GET_IID(nsIImportMailboxDescriptor), (void**)_retval);
 }
 
 NS_IMETHODIMP nsImportService::CreateNewABDescriptor(
     nsIImportABDescriptor** _retval) {
-  return nsImportABDescriptor::Create(
-      nullptr, NS_GET_IID(nsIImportABDescriptor), (void**)_retval);
+  return nsImportABDescriptor::Create(NS_GET_IID(nsIImportABDescriptor),
+                                      (void**)_retval);
 }
 
 extern nsresult NS_NewGenericMail(nsIImportGeneric** aImportGeneric);
@@ -192,7 +191,8 @@ nsProxySendRunnable::nsProxySendRunnable(
 
 NS_IMETHODIMP nsProxySendRunnable::Run() {
   nsresult rv;
-  nsCOMPtr<nsIMsgSend> msgSend = do_CreateInstance(NS_MSGSEND_CONTRACTID, &rv);
+  nsCOMPtr<nsIMsgSend> msgSend =
+      do_CreateInstance("@mozilla.org/messengercompose/send;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   return msgSend->CreateRFC822Message(

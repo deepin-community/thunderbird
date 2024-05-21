@@ -8,11 +8,7 @@ const ServerSocket = CC(
   "init"
 );
 
-var obs = Cc["@mozilla.org/observer-service;1"].getService(
-  Ci.nsIObserverService
-);
-
-var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
+var obs = Services.obs;
 
 // A server that waits for a connect. If a channel is suspended it should not
 // try to connect to the server until it is is resumed or not try at all if it
@@ -24,11 +20,11 @@ function TestServer() {
 }
 
 TestServer.prototype = {
-  onSocketAccepted(socket, trans) {
+  onSocketAccepted() {
     Assert.ok(false, "Socket should not have tried to connect!");
   },
 
-  onStopListening(socket) {},
+  onStopListening() {},
 
   stop() {
     try {
@@ -40,15 +36,13 @@ TestServer.prototype = {
 var requestListenerObserver = {
   QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     if (
       topic === "http-on-modify-request" &&
       subject instanceof Ci.nsIHttpChannel
     ) {
       var chan = subject.QueryInterface(Ci.nsIHttpChannel);
       chan.suspend();
-      var obs = Cc["@mozilla.org/observer-service;1"].getService();
-      obs = obs.QueryInterface(Ci.nsIObserverService);
       obs.removeObserver(this, "http-on-modify-request");
 
       // Timers are bad, but we need to wait to see that we are not trying to
@@ -68,13 +62,13 @@ var requestListenerObserver = {
 };
 
 var listener = {
-  onStartRequest: function test_onStartR(request) {},
+  onStartRequest: function test_onStartR() {},
 
   onDataAvailable: function test_ODA() {
     do_throw("Should not get any data!");
   },
 
-  onStopRequest: function test_onStopR(request, status) {
+  onStopRequest: function test_onStopR() {
     executeSoon(run_next_test);
   },
 };
@@ -93,7 +87,7 @@ add_test(function testNoConnectChannelCanceledEarly() {
   });
   chan.asyncOpen(listener);
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     serv.stop();
   });
 });

@@ -6,27 +6,23 @@
 /* functions for disabling front end elements when the appropriate
    back-end preference is locked. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Prefs in MailNews require dynamic portions to indicate
  * which of multiple servers or identities. This function
  * takes a string and a xul element.
  *
- * @param aStr  The string is a prefstring with a token %tokenname%.
- * @param aElement  The xul element has an attribute of name |tokenname|
- *                  whose value is substituted into the string and returned
- *                  by the function.
- *
- * Any tokens which do not have associated attribute value
- * are not substituted, and left in the string as-is.
+ * @param {string} aStr - The string is a prefstring with a token %tokenname%.
+ * @param {Element} aElement - The element has an attribute of name |tokenname|
+ *   whose value is substituted into the string and returned by the function.
+ *   Any tokens which do not have associated attribute value are not
+ *   substituted, and left in the string as-is.
  */
 function substPrefTokens(aStr, aElement) {
-  let tokenpat = /%(\w+)%/;
+  const tokenpat = /%(\w+)%/;
   let token;
   let newprefstr = "";
 
-  let prefPartsArray = aStr.split(".");
+  const prefPartsArray = aStr.split(".");
   /* here's a little loop that goes through
      each part of the string separated by a dot, and
      if any parts are of the form %string%, it will replace
@@ -60,16 +56,16 @@ function substPrefTokens(aStr, aElement) {
 /**
  * A simple function to check if a pref in an element is locked.
  *
- * @param aElement  a xul element with the pref related attributes
- *                 (pref, preftype, prefstring)
- * @return  whether the prefstring specified in that element is
- *          locked (true/false).
- *          If it does not have a valid prefstring, a false is returned.
+ * @param {Element} aElement - An element with the pref related attributes
+ *   (pref, preftype, prefstring)
+ * @returns {boolean} whether the prefstring specified in that element is
+ *   locked (true/false). If it does not have a valid prefstring, a false is
+ *   returned.
  */
 function getAccountValueIsLocked(aElement) {
-  let prefstring = aElement.getAttribute("prefstring");
+  const prefstring = aElement.getAttribute("prefstring");
   if (prefstring) {
-    let prefstr = substPrefTokens(prefstring, aElement);
+    const prefstr = substPrefTokens(prefstring, aElement);
     // see if the prefstring is locked
     if (prefstr) {
       return Services.prefs.prefIsLocked(prefstr);
@@ -89,18 +85,18 @@ function getAccountValueIsLocked(aElement) {
  * @see bug 728681 for the pattern on how this is used.
  */
 function onCheckItem(aChangeElementId, aCheckElementIds) {
-  let elementToControl = document.getElementById(aChangeElementId);
+  const elementToControl = document.getElementById(aChangeElementId);
   let disabled = false;
 
-  for (let notifyId of aCheckElementIds) {
-    let notifyElement = document.getElementById(notifyId);
+  for (const notifyId of aCheckElementIds) {
+    const notifyElement = document.getElementById(notifyId);
     let notifyElementState = null;
     if ("checked" in notifyElement) {
       notifyElementState = notifyElement.checked;
     } else if ("selected" in notifyElement) {
       notifyElementState = notifyElement.selected;
     } else {
-      Cu.reportError("Unknown type of control element: " + notifyElement.id);
+      console.error("Unknown type of control element: " + notifyElement.id);
     }
 
     if (!notifyElementState) {
@@ -119,17 +115,17 @@ function onCheckItem(aChangeElementId, aCheckElementIds) {
 /**
  * Hides and shows elements relevant for the given server type.
  *
- * @param aServerType  Name of the server type for which to show/hide elements
+ * @param {string} serverType - Name of the server type for which to show/hide elements.
  */
 function hideShowControls(serverType) {
-  let controls = document.querySelectorAll("[hidefor]");
+  const controls = document.querySelectorAll("[hidefor]");
   for (let controlNo = 0; controlNo < controls.length; controlNo++) {
-    let control = controls[controlNo];
-    let hideFor = control.getAttribute("hidefor");
+    const control = controls[controlNo];
+    const hideFor = control.getAttribute("hidefor");
 
     // Hide unsupported server types using hideFor="servertype1,servertype2".
     let hide = false;
-    let hideForTokens = hideFor.split(",");
+    const hideForTokens = hideFor.split(",");
     for (let tokenNo = 0; tokenNo < hideForTokens.length; tokenNo++) {
       if (hideForTokens[tokenNo] == serverType) {
         hide = true;

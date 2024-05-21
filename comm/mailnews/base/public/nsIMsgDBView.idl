@@ -12,6 +12,7 @@ interface nsIMessenger;
 interface nsIMsgDBHdr;
 interface nsIMsgThread;
 interface nsIMsgDBViewCommandUpdater;
+interface nsIMsgJSTree;
 interface nsIMsgDatabase;
 interface nsIMsgSearchSession;
 interface nsIMsgEnumerator;
@@ -195,13 +196,32 @@ interface nsMsgNavigationType : nsISupports
   const nsMsgNavigationTypeValue toggleSubthreadKilled = 23;
 };
 
+/*
+ * The contract ID for this component is @mozilla.org/msgDBView/msgDBViewService;1.
+ */
+[scriptable, uuid(bcf6afbe-7d4f-11ec-9092-eb4fed0a5aaa)]
+interface nsIMsgDBViewService : nsISupports
+{
+  /**
+   * JS-callable service to initialize static variables in nsMsgDBView.cpp
+   * upon initialization or when locale changes.
+   */
+  void initializeDBViewStrings();
+};
+
 [scriptable, uuid(fe8a2326-4dd0-11e5-8b8a-206a8aa7a25c)]
 interface nsIMsgDBView : nsISupports
 {
-  void open(in nsIMsgFolder folder, in nsMsgViewSortTypeValue sortType, in nsMsgViewSortOrderValue sortOrder, in nsMsgViewFlagsTypeValue viewFlags, out long count);
+  /** A shim of XULTreeElement, with only the methods called by nsMsgDBView. */
+  void setJSTree(in nsIMsgJSTree tree);
+
+  void open(in nsIMsgFolder folder,
+            in nsMsgViewSortTypeValue sortType,
+            in nsMsgViewSortOrderValue sortOrder,
+            in nsMsgViewFlagsTypeValue viewFlags);
   void openWithHdrs(in nsIMsgEnumerator aHeaders, in nsMsgViewSortTypeValue aSortType,
                       in nsMsgViewSortOrderValue aSortOrder,
-                      in nsMsgViewFlagsTypeValue aViewFlags, out long aCount);
+                      in nsMsgViewFlagsTypeValue aViewFlags);
   void close();
 
   void init(in nsIMessenger aMessengerInstance, in nsIMsgWindow aMsgWindow, in nsIMsgDBViewCommandUpdater aCommandUpdater);
@@ -212,6 +232,8 @@ interface nsIMsgDBView : nsISupports
   void doCommandWithFolder(in nsMsgViewCommandTypeValue command, in nsIMsgFolder destFolder);
   void getCommandStatus(in nsMsgViewCommandTypeValue command, out boolean selectable_p,
                         out nsMsgViewCommandCheckStateValue selected_p);
+  void applyCommandToIndices(in nsMsgViewCommandTypeValue command,
+                             in Array<nsMsgViewIndex> selection);
 
   readonly attribute nsMsgViewTypeValue viewType;
   attribute nsMsgViewFlagsTypeValue viewFlags;
@@ -243,11 +265,6 @@ interface nsIMsgDBView : nsISupports
    */
   void viewNavigate(in nsMsgNavigationTypeValue motion, out nsMsgKey resultId, out nsMsgViewIndex resultIndex, out nsMsgViewIndex threadIndex, in boolean wrap);
 
-  /**
-   * Indicates if navigation of the passed motion type is valid.
-   */
-  boolean navigateStatus(in nsMsgNavigationTypeValue motion);
-
   readonly attribute nsIMsgFolder msgFolder;
   attribute nsIMsgFolder viewFolder; // in the case of virtual folders, the VF db.
 
@@ -273,7 +290,7 @@ interface nsIMsgDBView : nsISupports
   nsIMsgDBHdr getMsgHdrAt(in nsMsgViewIndex aIndex);
 
   nsIMsgFolder getFolderForViewIndex(in nsMsgViewIndex index); // mainly for search
-  ACString getURIForViewIndex(in nsMsgViewIndex index);
+  AUTF8String getURIForViewIndex(in nsMsgViewIndex index);
   nsIMsgDBView cloneDBView(in nsIMessenger aMessengerInstance, in nsIMsgWindow aMsgWindow, in nsIMsgDBViewCommandUpdater aCommandUpdater);
 
   /**
@@ -300,13 +317,8 @@ interface nsIMsgDBView : nsISupports
   Array<AUTF8String> getURIsForSelection();
   Array<nsMsgViewIndex> getIndicesForSelection();
 
-  readonly attribute ACString URIForFirstSelectedMessage;
+  readonly attribute AUTF8String URIForFirstSelectedMessage;
   readonly attribute nsIMsgDBHdr hdrForFirstSelectedMessage;
-  void loadMessageByMsgKey(in nsMsgKey aMsgKey);
-  void loadMessageByViewIndex(in nsMsgViewIndex aIndex);
-  void loadMessageByUrl(in string aUrl);
-  void reloadMessage();
-  void reloadMessageWithAllParts();
 
   /**
    * The number of selected messages.  If the
@@ -476,6 +488,22 @@ interface nsIMsgDBView : nsISupports
    * @notes This does not work for custom columns yet.
    */
   AString cellTextForColumn(in long aRow, in AString aColumnName);
+
+  /**
+   * Get all of the data needed to display a row. Effectively a combination of
+   * CellTextForColumn, GetRowProperties and GetLevel, for performance reasons.
+   *
+   * @param aRow - Index of the row we want data for.
+   * @param aColumnNames - The column names we want cell text for.
+   * @param aProperties - The properties of the row.
+   * @param aThreadLevel - The thread level of the row.
+   *
+   * @returns The cell text for the columns in `aColumnNames`.
+   */
+  Array<AString> cellDataForColumns(in long aRow,
+                                    in Array<AString> aColumnNames,
+                                    out AString aProperties,
+                                    out long aThreadLevel);
 };
 
 /* this interface is rapidly morphing from a command updater interface into a more generic
@@ -510,4 +538,24 @@ interface nsIMsgDBViewCommandUpdater : nsISupports
   * @return   true if we did summarize, false otherwise.
   */
   boolean summarizeSelection();
+
+  /**
+   * Tell the front end that the selected message was removed and it should update.
+   */
+  void selectedMessageRemoved();
+};
+
+/**
+ * A shim of XULTreeElement, with only the methods called by nsMsgDBView.
+ */
+[scriptable, uuid(c5f6b1a2-f56a-49cb-b863-badf158206d5)]
+interface nsIMsgJSTree : nsISupports
+{
+  void beginUpdateBatch();
+  void endUpdateBatch();
+  void ensureRowIsVisible(in long index);
+  void invalidate();
+  void invalidateRange(in long startIndex, in long endIndex);
+  void rowCountChanged(in long index, in long count);
+  attribute long currentIndex;
 };

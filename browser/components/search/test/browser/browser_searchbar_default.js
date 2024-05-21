@@ -7,14 +7,16 @@
 
 "use strict";
 
-const { SearchSuggestionController } = ChromeUtils.import(
-  "resource://gre/modules/SearchSuggestionController.jsm"
+const { SearchSuggestionController } = ChromeUtils.importESModule(
+  "resource://gre/modules/SearchSuggestionController.sys.mjs"
 );
 
 const templateNormal = "https://example.com/?q=";
 const templatePrivate = "https://example.com/?query=";
 
-add_task(async function setup() {
+const searchPopup = document.getElementById("PopupSearchAutoComplete");
+
+add_setup(async function () {
   await gCUITestUtils.addSearchBar();
 
   await SpecialPowers.pushPrefEnv({
@@ -45,12 +47,21 @@ add_task(async function setup() {
   let originalPrivateEngine = await Services.search.getDefaultPrivate();
 
   let engineDefault = Services.search.getEngineByName("MozSearch1");
-  await Services.search.setDefault(engineDefault);
+  await Services.search.setDefault(
+    engineDefault,
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+  );
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     gCUITestUtils.removeSearchBar();
-    await Services.search.setDefault(originalEngine);
-    await Services.search.setDefaultPrivate(originalPrivateEngine);
+    await Services.search.setDefault(
+      originalEngine,
+      Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+    );
+    await Services.search.setDefaultPrivate(
+      originalPrivateEngine,
+      Ci.nsISearchService.CHANGE_REASON_UNKNOWN
+    );
   });
 });
 
@@ -106,7 +117,8 @@ add_task(async function test_default_search_private_no_separate() {
   });
 
   await Services.search.setDefaultPrivate(
-    Services.search.getEngineByName("MozSearch2")
+    Services.search.getEngineByName("MozSearch2"),
+    Ci.nsISearchService.CHANGE_REASON_UNKNOWN
   );
 
   const win = await BrowserTestUtils.openNewBrowserWindow({ private: true });
@@ -155,5 +167,55 @@ add_task(async function test_form_history() {
   Assert.deepEqual(entries, [], "Should not find form history");
 
   await FormHistoryTestUtils.clear("searchbar-history");
+  BrowserTestUtils.removeTab(tab);
+});
+
+add_task(async function test_searchbar_revert() {
+  const tab = await BrowserTestUtils.openNewForegroundTab(
+    gBrowser,
+    "about:blank"
+  );
+
+  await doSearch(window, tab, "MozSearch1", templateNormal, "testQuery");
+
+  let searchbar = window.BrowserSearch.searchBar;
+  is(
+    searchbar.value,
+    "testQuery",
+    "Search value should be the the last search"
+  );
+
+  // focus search bar
+  let promise = promiseEvent(searchPopup, "popupshown");
+  info("Opening search panel");
+  searchbar.focus();
+  await promise;
+
+  searchbar.value = "aQuery";
+  searchbar.value = "anotherQuery";
+
+  // close the panel using the escape key.
+  promise = promiseEvent(searchPopup, "popuphidden");
+  EventUtils.synthesizeKey("KEY_Escape");
+  await promise;
+
+  is(searchbar.value, "anotherQuery", "The search value should be the same");
+  // revert the search bar value
+  EventUtils.synthesizeKey("KEY_Escape");
+  is(
+    searchbar.value,
+    "testQuery",
+    "The search value should have been reverted"
+  );
+
+  EventUtils.synthesizeKey("KEY_Escape");
+  is(searchbar.value, "testQuery", "The search value should be the same");
+
+  await doSearch(window, tab, "MozSearch1", templateNormal, "query");
+
+  is(searchbar.value, "query", "The search value should be query");
+  EventUtils.synthesizeKey("KEY_Escape");
+  is(searchbar.value, "query", "The search value should be the same");
+
   BrowserTestUtils.removeTab(tab);
 });

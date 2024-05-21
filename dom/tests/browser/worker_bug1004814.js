@@ -1,6 +1,6 @@
-onmessage = function(evt) {
+onmessage = function () {
   console.time("bug1004814");
-  setTimeout(function() {
+  setTimeout(function () {
     console.timeEnd("bug1004814");
   }, 200);
 };

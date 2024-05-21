@@ -28,11 +28,11 @@ const gCertificateDialogs = {
     trust.value = Ci.nsIX509CertDB.TRUSTED_EMAIL;
     return true;
   },
-  setPKCS12FilePassword: (ctx, password) => {
+  setPKCS12FilePassword: () => {
     // This is only relevant to exporting.
     ok(false, "setPKCS12FilePassword() should not have been called");
   },
-  getPKCS12FilePassword: (ctx, password) => {
+  getPKCS12FilePassword: () => {
     // We don't test anything that calls this method yet.
     ok(false, "getPKCS12FilePassword() should not have been called");
   },
@@ -122,23 +122,8 @@ function testImportCACert() {
 function testImportEmptyCertPackage() {
   // Because this is an empty cert package, nothing will be imported. We know it succeeded if no errors are thrown.
   let byteArray = [
-    0x30,
-    0x0f,
-    0x06,
-    0x09,
-    0x60,
-    0x86,
-    0x48,
-    0x01,
-    0x86,
-    0xf8,
-    0x42,
-    0x02,
-    0x05,
-    0xa0,
-    0x02,
-    0x30,
-    0x00,
+    0x30, 0x0f, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x86, 0xf8, 0x42, 0x02,
+    0x05, 0xa0, 0x02, 0x30, 0x00,
   ];
   gCertDB.importCertificates(
     byteArray,
@@ -151,23 +136,8 @@ function testImportEmptyCertPackage() {
 function testImportEmptyUserCert() {
   // Because this is an empty cert package, nothing will be imported. We know it succeeded if no errors are thrown.
   let byteArray = [
-    0x30,
-    0x0f,
-    0x06,
-    0x09,
-    0x60,
-    0x86,
-    0x48,
-    0x01,
-    0x86,
-    0xf8,
-    0x42,
-    0x02,
-    0x05,
-    0xa0,
-    0x02,
-    0x30,
-    0x00,
+    0x30, 0x0f, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x86, 0xf8, 0x42, 0x02,
+    0x05, 0xa0, 0x02, 0x30, 0x00,
   ];
   gCertDB.importUserCertificate(
     byteArray,

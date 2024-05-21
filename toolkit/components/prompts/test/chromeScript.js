@@ -1,22 +1,11 @@
-/* eslint-env mozilla/frame-script */
+/* eslint-env mozilla/chrome-script */
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { clearInterval, setInterval, setTimeout } = ChromeUtils.import(
-  "resource://gre/modules/Timer.jsm"
+const { clearInterval, setInterval, setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
 );
 
-const { BrowserTestUtils } = ChromeUtils.import(
-  "resource://testing-common/BrowserTestUtils.jsm"
-);
-
-var tabSubDialogsEnabled = Services.prefs.getBoolPref(
-  "prompts.tabChromePromptSubDialog",
-  false
-);
-
-var contentPromptSubdialogsEnabled = Services.prefs.getBoolPref(
-  "prompts.contentPromptSubDialog",
-  false
+const { BrowserTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/BrowserTestUtils.sys.mjs"
 );
 
 // Define these to make EventUtils happy.
@@ -92,31 +81,15 @@ async function handlePrompt(action, modalType, isSelect) {
   let ui;
   let browserWin = Services.wm.getMostRecentWindow("navigator:browser");
 
-  if (
-    (!contentPromptSubdialogsEnabled &&
-      modalType === Services.prompt.MODAL_TYPE_CONTENT) ||
-    (!tabSubDialogsEnabled && modalType === Services.prompt.MODAL_TYPE_TAB)
-  ) {
-    let gBrowser = browserWin.gBrowser;
-    let promptManager = gBrowser.getTabModalPromptBox(gBrowser.selectedBrowser);
-    let prompts = promptManager.listPrompts();
-    if (!prompts.length) {
-      return false; // try again in a bit
-    }
+  let doc = getDialogDoc();
+  if (!doc) {
+    return false; // try again in a bit
+  }
 
-    ui = prompts[0].Dialog.ui;
-    checkTabModal(prompts[0], gBrowser.selectedBrowser);
+  if (isSelect) {
+    ui = doc;
   } else {
-    let doc = getDialogDoc();
-    if (!doc) {
-      return false; // try again in a bit
-    }
-
-    if (isSelect) {
-      ui = doc;
-    } else {
-      ui = doc.defaultView.Dialog.ui;
-    }
+    ui = doc.defaultView.Dialog.ui;
   }
 
   let dialogClosed = BrowserTestUtils.waitForEvent(
@@ -228,9 +201,8 @@ function getPromptState(ui) {
 
   // Check the dialog is a common dialog document and has been embedded.
   let isEmbedded = !!ui.prompt?.docShell?.chromeEventHandler;
-  let isCommonDialogDoc = getDialogDoc()?.location.href.includes(
-    "commonDialog.xhtml"
-  );
+  let isCommonDialogDoc =
+    getDialogDoc()?.location.href.includes("commonDialog.xhtml");
   state.isSubDialogPrompt = isCommonDialogDoc && isEmbedded;
   state.showCallerOrigin = ui.prompt.args.showCallerOrigin;
 
@@ -319,7 +291,7 @@ function getDialogDoc() {
       if (childDocShell.busyFlags != Ci.nsIDocShell.BUSY_FLAGS_NONE) {
         continue;
       }
-      var childDoc = childDocShell.contentViewer.DOMDocument;
+      var childDoc = childDocShell.docViewer.DOMDocument;
 
       if (
         childDoc.location.href !=

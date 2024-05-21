@@ -5,19 +5,12 @@
 
 /* import-globals-from MsgComposeCommands.js */
 /* import-globals-from ../../addrbook/content/abCommon.js */
+/* globals goDoCommand */ // From globalOverlay.js
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
-var { DisplayNameUtils } = ChromeUtils.import(
-  "resource:///modules/DisplayNameUtils.jsm"
+var { DisplayNameUtils } = ChromeUtils.importESModule(
+  "resource:///modules/DisplayNameUtils.sys.mjs"
 );
-var gDragService = Cc["@mozilla.org/widget/dragservice;1"].getService(
-  Ci.nsIDragService
-);
-
-// Keep track of the height of the addressing header if the user manually
-// resizes it.
-var kAddressingHeaderHeight;
 
 // Temporarily prevent repeated deletion key events in address rows or subject.
 // Prevent the keyboard shortcut for removing an empty address row (long
@@ -30,7 +23,7 @@ var gPreventRowDeletionKeysRepeat = false;
  * Convert all the written recipients into string and store them into the
  * msgCompFields array to be printed in the message header.
  *
- * @param {Object} msgCompFields - An object to receive the recipients.
+ * @param {nsIMsgCompFields} msgCompFields - An object to receive the recipients.
  */
 function Recipients2CompFields(msgCompFields) {
   if (!msgCompFields) {
@@ -39,182 +32,138 @@ function Recipients2CompFields(msgCompFields) {
     );
   }
 
-  let addrTo = "";
-  let addrCc = "";
-  let addrBcc = "";
-  let addrReply = "";
-  let addrNg = "";
-  let addrFollow = "";
-  let to_Sep = "";
-  let cc_Sep = "";
-  let bcc_Sep = "";
-  let reply_Sep = "";
-  let ng_Sep = "";
-  let follow_Sep = "";
-
-  for (let pill of document.getElementsByTagName("mail-address-pill")) {
-    let fieldValue = pill.fullAddress;
-    let headerParser = MailServices.headerParser;
-    let recipient = headerParser
-      .makeFromDisplayAddress(fieldValue)
-      .map(fullValue =>
-        headerParser.makeMimeAddress(fullValue.name, fullValue.email)
-      )
-      .join(", ");
-
-    // Each pill knows from which recipient they were generated
-    // (addr_to, addrs_bcc, etc.).
-    let recipientType = pill.getAttribute("recipienttype");
-    switch (recipientType) {
-      case "addr_to":
-        addrTo += to_Sep + recipient;
-        to_Sep = ",";
-        break;
-      case "addr_cc":
-        addrCc += cc_Sep + recipient;
-        cc_Sep = ",";
-        break;
-      case "addr_bcc":
-        addrBcc += bcc_Sep + recipient;
-        bcc_Sep = ",";
-        break;
-      case "addr_reply":
-        addrReply += reply_Sep + recipient;
-        reply_Sep = ",";
-        break;
-      case "addr_newsgroups":
-        addrNg += ng_Sep + recipient;
-        ng_Sep = ",";
-        break;
-      case "addr_followup":
-        addrFollow += follow_Sep + recipient;
-        follow_Sep = ",";
-        break;
-    }
-  }
-
-  for (let otherHeaderRow of document.querySelectorAll(
-    ".address-row[data-labeltype=addr_other]"
-  )) {
-    let headerValue = otherHeaderRow.querySelector("input").value.trim();
+  const otherHeaders = Services.prefs
+    .getCharPref("mail.compose.other.header", "")
+    .split(",")
+    .map(h => h.trim())
+    .filter(Boolean);
+  for (const row of document.querySelectorAll(".address-row-raw")) {
+    const recipientType = row.dataset.recipienttype;
+    const headerValue = row.querySelector(".address-row-input").value.trim();
     if (headerValue) {
-      msgCompFields.setRawHeader(otherHeaderRow.dataset.labelid, headerValue);
+      msgCompFields.setRawHeader(recipientType, headerValue);
+    } else if (
+      otherHeaders.includes(recipientType) &&
+      recipientType.toLowerCase() != "references" &&
+      recipientType.toLowerCase() != "in-reply-to"
+    ) {
+      // Normally drop other headers without value. For that, the UI lets you
+      // add them and fill.
+      // But if the ohther header is really a standard header with a value,
+      // that should be kept.
+      msgCompFields.deleteHeader(recipientType);
     }
   }
 
-  msgCompFields.to = addrTo;
-  msgCompFields.cc = addrCc;
-  msgCompFields.bcc = addrBcc;
-  msgCompFields.replyTo = addrReply;
-  msgCompFields.newsgroups = addrNg;
-  msgCompFields.followupTo = addrFollow;
+  const getRecipientList = recipientType =>
+    Array.from(
+      document.querySelectorAll(
+        `.address-row[data-recipienttype="${recipientType}"] mail-address-pill`
+      ),
+      pill => {
+        // Expect each pill to contain exactly one address.
+        const { name, email } =
+          MailServices.headerParser.makeFromDisplayAddress(pill.fullAddress)[0];
+        return MailServices.headerParser.makeMimeAddress(name, email);
+      }
+    ).join(",");
+
+  msgCompFields.to = getRecipientList("addr_to");
+  msgCompFields.cc = getRecipientList("addr_cc");
+  msgCompFields.bcc = getRecipientList("addr_bcc");
+  msgCompFields.replyTo = getRecipientList("addr_reply");
+  msgCompFields.newsgroups = getRecipientList("addr_newsgroups");
+  msgCompFields.followupTo = getRecipientList("addr_followup");
+}
+
+/**
+ * Replace the specified address row's pills with new ones generated by the
+ * given header value. The address row will be automatically shown if the header
+ * value is non-empty.
+ *
+ * @param {string} rowId - The id of the address row to set.
+ * @param {string} headerValue - The headerValue to create pills from.
+ * @param {boolean} multi - If the headerValue contains potentially multiple
+ *   addresses and needs to be parsed to extract them.
+ * @param {boolean} [forceShow=false] - Whether to show the row, even if the
+ *   given value is empty.
+ */
+function setAddressRowFromCompField(
+  rowId,
+  headerValue,
+  multi,
+  forceShow = false
+) {
+  const row = document.getElementById(rowId);
+  addressRowClearPills(row);
+
+  const value = multi
+    ? MailServices.headerParser.parseEncodedHeaderW(headerValue).join(", ")
+    : headerValue;
+
+  if (value || forceShow) {
+    addressRowSetVisibility(row, true);
+  }
+  if (value) {
+    const input = row.querySelector(".address-row-input");
+    input.value = value;
+    recipientAddPills(input, true);
+  }
 }
 
 /**
  * Convert all the recipients coming from a message header into pills.
  *
- * @param {Object} msgCompFields - An object containing all the recipients. If
+ * @param {object} msgCompFields - An object containing all the recipients. If
  *                                 any property is not a string, it is ignored.
  */
 function CompFields2Recipients(msgCompFields) {
   if (msgCompFields) {
     // Populate all the recipients with the proper values.
     if (typeof msgCompFields.replyTo == "string") {
-      let input = document.getElementById("replyAddrInput");
-      recipientClearPills(input);
-
-      let msgReplyTo = MailServices.headerParser.parseEncodedHeaderW(
-        msgCompFields.replyTo
+      setAddressRowFromCompField(
+        "addressRowReply",
+        msgCompFields.replyTo,
+        true
       );
-      if (msgReplyTo.length) {
-        showAddressRow(
-          document.getElementById("addr_reply"),
-          "addressRowReply"
-        );
-        input.value = msgReplyTo.join(", ");
-        recipientAddPills(input, true);
-      }
     }
 
     if (typeof msgCompFields.to == "string") {
-      let input = document.getElementById("toAddrInput");
-      recipientClearPills(input);
-
-      let msgTo = MailServices.headerParser.parseEncodedHeaderW(
-        msgCompFields.to
-      );
-      if (msgTo.length) {
-        if (input.closest(".address-row").classList.contains("hidden")) {
-          showAddressRow(document.getElementById("addr_to"), "addressRowTo");
-        }
-        input.value = msgTo.join(", ");
-        recipientAddPills(input, true);
-      }
+      setAddressRowFromCompField("addressRowTo", msgCompFields.to, true);
     }
 
     if (typeof msgCompFields.cc == "string") {
-      let input = document.getElementById("ccAddrInput");
-      recipientClearPills(input);
-
-      let msgCC = MailServices.headerParser.parseEncodedHeaderW(
-        msgCompFields.cc
+      setAddressRowFromCompField(
+        "addressRowCc",
+        msgCompFields.cc,
+        true,
+        gCurrentIdentity.doCc
       );
-      // Show Cc field if we have Cc recipients or if doCc pref is checked.
-      if (msgCC.length || gCurrentIdentity.doCc) {
-        showAddressRow(document.getElementById("addr_cc"), "addressRowCc");
-      }
-      if (msgCC.length) {
-        input.value = msgCC.join(", ");
-        recipientAddPills(input, true);
-      }
     }
 
     if (typeof msgCompFields.bcc == "string") {
-      let input = document.getElementById("bccAddrInput");
-      recipientClearPills(input);
-
-      let msgBCC = MailServices.headerParser.parseEncodedHeaderW(
-        msgCompFields.bcc
+      setAddressRowFromCompField(
+        "addressRowBcc",
+        msgCompFields.bcc,
+        true,
+        gCurrentIdentity.doBcc
       );
-      // Show Bcc field if we have Bcc recipients or if doBcc pref is checked.
-      if (msgBCC.length || gCurrentIdentity.doBcc) {
-        showAddressRow(document.getElementById("addr_bcc"), "addressRowBcc");
-      }
-      if (msgBCC.length) {
-        input.value = msgBCC.join(", ");
-        recipientAddPills(input, true);
-      }
     }
 
     if (typeof msgCompFields.newsgroups == "string") {
-      let input = document.getElementById("newsgroupsAddrInput");
-      recipientClearPills(input);
-
-      if (msgCompFields.newsgroups) {
-        showAddressRow(
-          document.getElementById("addr_newsgroups"),
-          "addressRowNewsgroups"
-        );
-        input.value = msgCompFields.newsgroups;
-        recipientAddPills(input, true);
-      }
+      setAddressRowFromCompField(
+        "addressRowNewsgroups",
+        msgCompFields.newsgroups,
+        false
+      );
     }
 
     if (typeof msgCompFields.followupTo == "string") {
-      let input = document.getElementById("followupAddrInput");
-      recipientClearPills(input);
-
-      let msgFollowupTo = MailServices.headerParser.parseEncodedHeaderW(
-        msgCompFields.followupTo
+      setAddressRowFromCompField(
+        "addressRowFollowup",
+        msgCompFields.followupTo,
+        true
       );
-      if (msgFollowupTo.length) {
-        showAddressRow(
-          document.getElementById("addr_followup"),
-          "addressRowFollowup"
-        );
-        input.value = msgFollowupTo.join(", ");
-        recipientAddPills(input, true);
-      }
     }
 
     // Add the sender to our spell check ignore list.
@@ -233,7 +182,7 @@ function CompFields2Recipients(msgCompFields) {
  */
 function updateUIforNNTPAccount() {
   // Hide the `mail-primary-input` field row if no pills have been created.
-  let mailContainer = document
+  const mailContainer = document
     .querySelector(".mail-primary-input")
     .closest(".address-container");
   if (mailContainer.querySelectorAll("mail-address-pill").length == 0) {
@@ -249,30 +198,21 @@ function updateUIforNNTPAccount() {
     .querySelector(".remove-field-button").hidden = false;
 
   // Show the `news-primary-input` field row if not already visible.
-  let newsContainer = document
+  const newsContainer = document
     .querySelector(".news-primary-input")
     .closest(".address-row");
-  if (newsContainer.classList.contains("hidden")) {
-    document.querySelector(".news-primary-label").click();
-  } else {
-    document
-      .querySelector(".news-primary-label")
-      .setAttribute("collapsed", "true");
-  }
+  showAndFocusAddressRow(newsContainer.id);
 
   // Hide the closing label.
   newsContainer.querySelector(".remove-field-button").hidden = true;
 
-  // Reorder `mail-label` menu items.
-  let panel = document.getElementById("extraRecipientsPanel");
-  for (let label of document.querySelectorAll(".mail-label")) {
-    panel.appendChild(label);
+  // Prefer showing the buttons for news-show-row-menuitem items.
+  for (const item of document.querySelectorAll(".news-show-row-menuitem")) {
+    showAddressRowMenuItemSetPreferButton(item, true);
   }
 
-  // Reorder `news-label` menu items.
-  let extraRecipients = document.querySelector(".address-extra-recipients");
-  for (let label of document.querySelectorAll(".news-label")) {
-    extraRecipients.prepend(label);
+  for (const item of document.querySelectorAll(".mail-show-row-menuitem")) {
+    showAddressRowMenuItemSetPreferButton(item, false);
   }
 }
 
@@ -283,18 +223,16 @@ function updateUIforNNTPAccount() {
  */
 function updateUIforMailAccount() {
   // Show the `mail-primary-input` field row if not already visible.
-  let mailContainer = document
+  const mailContainer = document
     .querySelector(".mail-primary-input")
     .closest(".address-row");
-  if (mailContainer.classList.contains("hidden")) {
-    document.querySelector(".mail-primary-label").click();
-  }
+  showAndFocusAddressRow(mailContainer.id);
 
   // Hide the closing label.
   mailContainer.querySelector(".remove-field-button").hidden = true;
 
   // Hide the `news-primary-input` field row if no pills have been created.
-  let newsContainer = document
+  const newsContainer = document
     .querySelector(".news-primary-input")
     .closest(".address-row");
   if (newsContainer.querySelectorAll("mail-address-pill").length == 0) {
@@ -304,18 +242,13 @@ function updateUIforMailAccount() {
   // Show the closing label.
   newsContainer.querySelector(".remove-field-button").hidden = false;
 
-  // Reorder `mail-label` menu items.
-  let panel = document.getElementById("extraRecipientsPanel");
-  for (let label of document.querySelectorAll(".news-label")) {
-    panel.appendChild(label);
+  // Prefer showing the buttons for mail-show-row-menuitem items.
+  for (const item of document.querySelectorAll(".mail-show-row-menuitem")) {
+    showAddressRowMenuItemSetPreferButton(item, true);
   }
 
-  // Reorder `news-label` menu items.
-  let extraRecipients = document.getElementById(
-    "addressingWidgetSwappableLabels"
-  );
-  for (let label of document.querySelectorAll(".mail-label")) {
-    extraRecipients.appendChild(label);
+  for (const item of document.querySelectorAll(".news-show-row-menuitem")) {
+    showAddressRowMenuItemSetPreferButton(item, false);
   }
 }
 
@@ -324,7 +257,7 @@ function updateUIforMailAccount() {
  * matching. This is commonly used to clear previous Auto-CC/BCC recipients when
  * loading a new identity.
  *
- * @param {Object} msgCompFields - gMsgCompose.compFields, for helper functions.
+ * @param {object} msgCompFields - gMsgCompose.compFields, for helper functions.
  * @param {string} recipientType - The type of recipients to remove,
  *   e.g. "addr_to" (recipient label id).
  * @param {string} recipientsList - Comma-separated string containing recipients
@@ -353,11 +286,11 @@ function awRemoveRecipients(msgCompFields, recipientType, recipientsList) {
   }
 
   // Convert csv string of recipients to be deleted into full addresses array.
-  let recipientsArray = msgCompFields.splitRecipients(recipientsList, false);
+  const recipientsArray = msgCompFields.splitRecipients(recipientsList, false);
 
   // Remove first instance of specified recipients from specified container.
-  for (let recipientFullAddress of recipientsArray) {
-    let pill = container.querySelector(
+  for (const recipientFullAddress of recipientsArray) {
+    const pill = container.querySelector(
       `mail-address-pill[fullAddress="${recipientFullAddress}"]`
     );
     if (pill) {
@@ -365,7 +298,7 @@ function awRemoveRecipients(msgCompFields, recipientType, recipientsList) {
     }
   }
 
-  let addressRow = container.closest(`.address-row`);
+  const addressRow = container.closest(`.address-row`);
 
   // Remove entire address row if empty, no user input, and not type "addr_to".
   if (
@@ -373,8 +306,7 @@ function awRemoveRecipients(msgCompFields, recipientType, recipientsList) {
     !container.querySelector(`mail-address-pill`) &&
     !container.querySelector(`input[is="autocomplete-input"]`).value
   ) {
-    addressRow.classList.add("hidden");
-    document.getElementById(recipientType).removeAttribute("collapsed");
+    addressRowSetVisibility(addressRow, false);
   }
 
   updateAriaLabelsOfAddressRow(addressRow);
@@ -393,8 +325,10 @@ function awAddRecipients(msgCompFields, recipientType, recipientsList) {
     return;
   }
 
-  awAddRecipientsArray(
-    recipientType,
+  addressRowAddRecipientsArray(
+    document.querySelector(
+      `.address-row[data-recipienttype="${recipientType}"]`
+    ),
     msgCompFields.splitRecipients(recipientsList, false)
   );
 }
@@ -403,81 +337,40 @@ function awAddRecipients(msgCompFields, recipientType, recipientsList) {
  * Adds a batch of new recipient pill matching recipientType and drops in the
  * array of addresses.
  *
- * @param {string} aRecipientType - Type of recipient, e.g. "addr_to".
+ * @param {Element} row - The row to add the addresses to.
  * @param {string[]} addressArray - Recipient addresses (strings) to add.
  * @param {boolean=false} select - If the newly generated pills should be
  *   selected.
  */
-function awAddRecipientsArray(aRecipientType, addressArray, select = false) {
-  let label = document.getElementById(aRecipientType);
-  let addresses = [];
-  for (let addr of addressArray) {
+function addressRowAddRecipientsArray(row, addressArray, select = false) {
+  const addresses = [];
+  for (const addr of addressArray) {
     addresses.push(...MailServices.headerParser.makeFromDisplayAddress(addr));
   }
-  let element = document.getElementById(label.getAttribute("control"));
 
-  if (label && element.closest(".address-row").classList.contains("hidden")) {
-    label.click();
+  if (row.classList.contains("hidden")) {
+    showAndFocusAddressRow(row.id, true);
   }
 
-  let recipientArea = document.getElementById("recipientsContainer");
-  for (let address of addresses) {
-    let pill = recipientArea.createRecipientPill(element, address);
+  const recipientArea = document.getElementById("recipientsContainer");
+  const input = row.querySelector(".address-row-input");
+  for (const address of addresses) {
+    const pill = recipientArea.createRecipientPill(input, address);
     if (select) {
       pill.setAttribute("selected", "selected");
     }
   }
 
-  element
-    .closest(".address-container")
+  row
+    .querySelector(".address-container")
     .classList.add("addressing-field-edited");
 
   // Add the recipients to our spell check ignore list.
   addRecipientsToIgnoreList(addressArray.join(", "));
-  calculateHeaderHeight();
-  updateAriaLabelsOfAddressRow(element.closest(".address-row"));
+  updateAriaLabelsOfAddressRow(row);
 
-  if (element.id != "replyAddrInput") {
+  if (row.id != "addressRowReply") {
     onRecipientsChanged();
-  }
-}
-
-function DragOverAddressingWidget(event) {
-  let dragSession = (dragSession = gDragService.getCurrentSession());
-
-  if (dragSession.isDataFlavorSupported("text/x-moz-address")) {
-    dragSession.canDrop = true;
-  }
-}
-
-function DropOnAddressingWidget(event) {
-  let dragSession = gDragService.getCurrentSession();
-
-  let trans = Cc["@mozilla.org/widget/transferable;1"].createInstance(
-    Ci.nsITransferable
-  );
-  trans.init(getLoadContext());
-  trans.addDataFlavor("text/x-moz-address");
-
-  for (let i = 0; i < dragSession.numDropItems; ++i) {
-    dragSession.getData(trans, i);
-    let dataObj = {};
-    let bestFlavor = {};
-    trans.getAnyTransferData(bestFlavor, dataObj);
-    if (dataObj) {
-      dataObj = dataObj.value.QueryInterface(Ci.nsISupportsString);
-    }
-    if (!dataObj) {
-      continue;
-    }
-
-    // pull the address out of the data object
-    let address = dataObj.data.substring(0, dataObj.length);
-    if (!address) {
-      continue;
-    }
-
-    DropRecipient(event.target, address);
   }
 }
 
@@ -488,60 +381,41 @@ function DropOnAddressingWidget(event) {
  * @param {string} recipient - The email address dragged by the user.
  */
 function DropRecipient(target, recipient) {
-  let input;
-
-  if (target.tagName == "label" && target.hasAttribute("control")) {
-    input = document.getElementById(target.getAttribute("control"));
+  let row;
+  if (target.classList.contains("address-row")) {
+    row = target;
+  } else if (target.dataset.addressRow) {
+    row = document.getElementById(target.dataset.addressRow);
   } else {
-    let container = target.classList.contains("address-row")
-      ? target
-      : target.closest("hbox.address-row");
-
-    if (!container) {
-      return;
-    }
-    input = container.querySelector(
-      `.address-container > input[is="autocomplete-input"]`
-    );
+    row = target.closest(".address-row");
   }
-
-  if (!input || !input.hasAttribute("is")) {
+  if (!row || row.classList.contains("address-row-raw")) {
     return;
   }
 
-  let recipientType =
-    input.getAttribute("recipienttype") != "addr_other"
-      ? input.getAttribute("recipienttype")
-      : input.getAttribute("aria-labelledby");
-
-  awAddRecipientsArray(recipientType, [recipient]);
-}
-
-/**
- * Add the overflow class to the addressing header area when the user interacts
- * with the splitter.
- */
-function awSizerMouseDown() {
-  document.getElementById("recipientsContainer").classList.add("overflow");
-}
-
-/**
- * Locally store the height of the header area decided by the user to avoid UI
- * jumps when interacting with the pills. Unless the user resized the area below
- * 30% of the height of the entire composition window, which is the limit we use
- * to trigger the overflow of the recipient area.
- */
-function awSizerMouseUp() {
-  kAddressingHeaderHeight =
-    document.getElementById("headers-box").clientHeight >
-    window.outerHeight * 0.3
-      ? Number(document.getElementById("recipientsContainer").clientHeight)
-      : null;
+  addressRowAddRecipientsArray(row, [recipient]);
 }
 
 // Returns the load context for the current window
 function getLoadContext() {
   return window.docShell.QueryInterface(Ci.nsILoadContext);
+}
+
+/**
+ * Focus the next available address row's input. Otherwise, focus the "Subject"
+ * input.
+ *
+ * @param {Element} currentInput - The current input to search from.
+ */
+function focusNextAddressRow(currentInput) {
+  let addressRow = currentInput.closest(".address-row").nextElementSibling;
+  while (addressRow) {
+    if (focusAddressRowInput(addressRow)) {
+      return;
+    }
+    addressRow = addressRow.nextElementSibling;
+  }
+  focusSubjectInput();
 }
 
 /**
@@ -552,7 +426,7 @@ function getLoadContext() {
  * @param {Event} event - The DOM keydown event.
  */
 function otherHeaderInputOnKeyDown(event) {
-  let input = event.target;
+  const input = event.target;
 
   switch (event.key) {
     case " ":
@@ -574,7 +448,7 @@ function otherHeaderInputOnKeyDown(event) {
       // Enter was pressed: Focus the next available address row or subject.
       // Prevent Enter from firing again on the element we move the focus to.
       event.preventDefault();
-      SetFocusOnNextAvailableElement(input);
+      focusNextAddressRow(input);
       break;
 
     case "Backspace":
@@ -610,8 +484,11 @@ function otherHeaderInputOnKeyDown(event) {
       gPreventRowDeletionKeysRepeat = true;
 
       // Hide the address row if it is empty except whitespace, repeated
-      // deletion keydown event occured, and it has an [x] button for removal.
-      hideAddressRow(input, event.key == "Backspace" ? "previous" : "next");
+      // deletion keydown event occurred, and it has an [x] button for removal.
+      hideAddressRowFromWithin(
+        input,
+        event.key == "Backspace" ? "previous" : "next"
+      );
       break;
   }
 }
@@ -624,10 +501,10 @@ function otherHeaderInputOnKeyDown(event) {
  * @param {Event} event - The DOM keydown event.
  */
 function addressInputOnBeforeHandleKeyDown(event) {
-  let input = event.target;
+  const input = event.target;
 
   switch (event.key) {
-    case "a":
+    case "a": {
       // Break if there's text in the input, if not Ctrl/Cmd+A, or for other
       // modifiers, to not hijack our own (Ctrl/Cmd+Shift+A) or OS shortcuts.
       if (
@@ -643,10 +520,10 @@ function addressInputOnBeforeHandleKeyDown(event) {
       // Prevent a pill keypress event when the focus moves on it.
       event.preventDefault();
 
-      let lastPill = input
+      const lastPill = input
         .closest(".address-container")
         .querySelector("mail-address-pill:last-of-type");
-      let mailRecipientsArea = input.closest("mail-recipients-area");
+      const mailRecipientsArea = input.closest("mail-recipients-area");
       if (lastPill) {
         // Select all pills of current address row.
         mailRecipientsArea.selectSiblingPills(lastPill);
@@ -654,7 +531,7 @@ function addressInputOnBeforeHandleKeyDown(event) {
         break;
       }
       // No pills in the current address row, select all pills in all rows.
-      let lastPillGlobal = mailRecipientsArea.querySelector(
+      const lastPillGlobal = mailRecipientsArea.querySelector(
         "mail-address-pill:last-of-type"
       );
       if (lastPillGlobal) {
@@ -662,10 +539,10 @@ function addressInputOnBeforeHandleKeyDown(event) {
         lastPillGlobal.focus();
       }
       break;
-
+    }
     case " ":
-    case ",":
-      let selection = input.value.substring(
+    case ",": {
+      const selection = input.value.substring(
         input.selectionStart,
         input.selectionEnd
       );
@@ -684,23 +561,58 @@ function addressInputOnBeforeHandleKeyDown(event) {
         break;
       }
 
-      // Don't trigger autocomplete if a comma is present as a first character
-      // to prevent early pill creation when the autocomplete suggests contacts
-      // with commas in the display name, or if the typed value is not a valid
-      // address, after the comma or semicolon has been stripped.
-      if (
-        selection[0] == "," ||
-        !isValidAddress(input.value.substring(0, input.selectionEnd))
+      let beforeComma;
+      let afterComma;
+      if (input.selectionEnd == input.selectionStart) {
+        // If there is no selected text, we will try to create a pill for the
+        // text prior to the typed comma.
+        // NOTE: This also captures auto complete suggestions that are not
+        // inline. E.g. suggestion popup is shown and the user selects one with
+        // the arrow keys.
+        beforeComma = input.value.substring(0, input.selectionEnd);
+        afterComma = input.value.substring(input.selectionEnd);
+        // Only create a pill for valid addresses.
+        if (!isValidAddress(beforeComma)) {
+          break;
+        }
+      } else if (
+        // There is an auto complete suggestion ...
+        input.controller.searchStatus ==
+          Ci.nsIAutoCompleteController.STATUS_COMPLETE_MATCH &&
+        input.controller.matchCount &&
+        // that is also shown inline (the end of the input is selected).
+        input.selectionEnd == input.value.length
+        // NOTE: This should exclude cases where no suggestion is selected (user
+        // presses "DownArrow" then "UpArrow" when the suggestion pops up), or
+        // if the suggestions were cancelled with "Esc", or the inline
+        // suggestion was cleared with "Backspace".
       ) {
+        if (input.value[input.selectionStart] == ",") {
+          // Don't create the pill in the special case where the auto-complete
+          // suggestion starts with a comma.
+          break;
+        }
+        // Complete the suggestion as a pill.
+        beforeComma = input.value;
+        afterComma = "";
+      } else {
+        // If any other part of the text is selected, we treat it as normal.
         break;
       }
-      event.preventDefault();
-      input.handleEnter(event);
-      break;
 
+      event.preventDefault();
+      input.value = beforeComma;
+      input.handleEnter(event);
+      // Keep any left over text in the input.
+      input.value = afterComma;
+      // Keep the cursor at the same position.
+      input.selectionStart = 0;
+      input.selectionEnd = 0;
+      break;
+    }
     case "Home":
     case "ArrowLeft":
-    case "Backspace":
+    case "Backspace": {
       if (
         event.key == "Backspace" &&
         event.repeat &&
@@ -732,7 +644,7 @@ function addressInputOnBeforeHandleKeyDown(event) {
       // deletion in previous row after removing current row via long keydown.
       event.preventDefault();
 
-      let targetPill = input
+      const targetPill = input
         .closest(".address-container")
         .querySelector(
           "mail-address-pill" + (event.key == "Home" ? "" : ":last-of-type")
@@ -769,11 +681,11 @@ function addressInputOnBeforeHandleKeyDown(event) {
       gPreventRowDeletionKeysRepeat = true;
 
       // Hide the address row if it is empty except whitespace, repeated
-      // Backspace keydown event occured, and it has an [x] button for removal.
-      hideAddressRow(input, "previous");
+      // Backspace keydown event occurred, and it has an [x] button for removal.
+      hideAddressRowFromWithin(input, "previous");
       break;
-
-    case "Delete":
+    }
+    case "Delete": {
       if (event.repeat && gPreventRowDeletionKeysRepeat) {
         // Prevent repeated Delete keydown event if the flag is set.
         event.preventDefault();
@@ -805,12 +717,12 @@ function addressInputOnBeforeHandleKeyDown(event) {
       gPreventRowDeletionKeysRepeat = true;
 
       // Hide the address row if it is empty except whitespace, repeated Delete
-      // keydown event occured, cursor is at position 0, and it has an
+      // keydown event occurred, cursor is at position 0, and it has an
       // [x] button for removal.
-      hideAddressRow(input, "next");
+      hideAddressRowFromWithin(input, "next");
       break;
-
-    case "Enter":
+    }
+    case "Enter": {
       // Break if unrelated modifier keys are used. The toolkit hack for Mac
       // will consume metaKey, and we'll exclude shiftKey after that.
       if (event.ctrlKey || event.altKey) {
@@ -821,7 +733,7 @@ function addressInputOnBeforeHandleKeyDown(event) {
       // since autocomplete input fields prevent that by default (bug 1682147).
       if (event.metaKey) {
         // Cmd+[Shift]+Enter: Send message [later].
-        let sendCmd = event.shiftKey ? "cmd_sendLater" : "cmd_sendWithCheck";
+        const sendCmd = event.shiftKey ? "cmd_sendLater" : "cmd_sendWithCheck";
         goDoCommand(sendCmd);
         break;
       }
@@ -835,14 +747,14 @@ function addressInputOnBeforeHandleKeyDown(event) {
       // Enter on empty input: Focus the next available address row or subject.
       // Prevent Enter from firing again on the element we move the focus to.
       event.preventDefault();
-      SetFocusOnNextAvailableElement(input);
+      focusNextAddressRow(input);
       break;
-
-    case "Tab":
+    }
+    case "Tab": {
       // Return if the Alt or Cmd modifiers were pressed, meaning the user is
       // switching between windows and not tabbing out of the address input.
       if (event.altKey || event.metaKey) {
-        return;
+        break;
       }
       // Trigger the autocomplete controller only if we have a value,
       // to prevent interfering with the natural change of focus on Tab.
@@ -864,13 +776,14 @@ function addressInputOnBeforeHandleKeyDown(event) {
         }
       }
 
-      // Handle Shift+Tab, but not Ctrl+Shift+Tab for fast focus ring backwards.
-      if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
-        // Prevent Shift+Tab from firing again where we move the focus to.
+      // Handle Shift+Tab, but not Ctrl+Shift+Tab, which is handled by
+      // moveFocusToNeighbouringAreas.
+      if (event.shiftKey && !event.ctrlKey) {
         event.preventDefault();
         input.closest("mail-recipients-area").moveFocusToPreviousElement(input);
       }
       break;
+    }
   }
 }
 
@@ -882,7 +795,7 @@ function addressInputOnBeforeHandleKeyDown(event) {
  *   mail.compose.other.header, which do not have autocompletion and pills.
  */
 function addressInputOnInput(event, rawInput) {
-  let input = event.target;
+  const input = event.target;
 
   if (
     !input.value ||
@@ -934,10 +847,12 @@ function recipientAddPills(input, automatic = false) {
     return;
   }
 
-  let addresses = MailServices.headerParser.makeFromDisplayAddress(input.value);
-  let recipientArea = document.getElementById("recipientsContainer");
+  const addresses = MailServices.headerParser.makeFromDisplayAddress(
+    input.value
+  );
+  const recipientArea = document.getElementById("recipientsContainer");
 
-  for (let address of addresses) {
+  for (const address of addresses) {
     recipientArea.createRecipientPill(input, address);
   }
 
@@ -953,8 +868,10 @@ function recipientAddPills(input, automatic = false) {
   // to be filled with the previously selected address when the "blur" event
   // gets triggered.
   input.detachController();
-  // Attach it again to enable autocomplete.
-  input.attachController();
+  // If it was detached, attach it again to enable autocomplete.
+  if (!input.controller.input) {
+    input.attachController();
+  }
 
   // Prevent triggering some methods if the pill creation was done automatically
   // for example during the move of an existing pill between addressing fields.
@@ -965,22 +882,21 @@ function recipientAddPills(input, automatic = false) {
     onRecipientsChanged();
   }
 
-  calculateHeaderHeight();
   updateAriaLabelsOfAddressRow(input.closest(".address-row"));
 }
 
 /**
  * Remove all <mail-address-pill> elements from the containing address row.
  *
- * @param {Element} input - The address input element in the container to clear.
+ * @param {Element} row - The address row to clear.
  */
-function recipientClearPills(input) {
-  for (let pill of input
-    .closest(".address-container")
-    .querySelectorAll("mail-address-pill")) {
+function addressRowClearPills(row) {
+  for (const pill of row.querySelectorAll(
+    ".address-container mail-address-pill"
+  )) {
     pill.remove();
   }
-  updateAriaLabelsOfAddressRow(input.closest(".address-row"));
+  updateAriaLabelsOfAddressRow(row);
 }
 
 /**
@@ -1015,7 +931,7 @@ function addressInputOnBlur(input) {
     return;
   }
 
-  let address = input.value.trim();
+  const address = input.value.trim();
   if (!address) {
     // If input is empty or whitespace only, clear input to remove any leftover
     // whitespace, reset the input size, and return.
@@ -1034,11 +950,11 @@ function addressInputOnBlur(input) {
 
   // Otherwise, try to parse the input text as comma-separated recipients and
   // convert them into recipient pills.
-  let listNames = MimeParser.parseHeaderField(
+  const listNames = MimeParser.parseHeaderField(
     address,
     MimeParser.HEADER_ADDRESS
   );
-  let isMailingList =
+  const isMailingList =
     listNames.length > 0 &&
     MailServices.ab.mailListNameExists(listNames[0].name);
 
@@ -1077,16 +993,16 @@ function editAddressPill(element, event) {
  *   opened.
  */
 function expandList(element) {
-  let pill = element.closest("mail-address-pill");
+  const pill = element.closest("mail-address-pill");
   if (pill.isMailList) {
-    let addresses = [];
-    for (let currentPill of pill.parentNode.querySelectorAll(
+    const addresses = [];
+    for (const currentPill of pill.parentNode.querySelectorAll(
       "mail-address-pill"
     )) {
       if (currentPill == pill) {
-        let dir = MailServices.ab.getDirectory(pill.listURI);
+        const dir = MailServices.ab.getDirectory(pill.listURI);
         if (dir) {
-          for (let card of dir.childCards) {
+          for (const card of dir.childCards) {
             addresses.push(makeMailboxObjectFromCard(card));
           }
         }
@@ -1094,9 +1010,9 @@ function expandList(element) {
         addresses.push(currentPill.fullAddress);
       }
     }
-    let row = pill.closest(".address-row");
-    recipientClearPills(row.querySelector(".address-container > input"));
-    awAddRecipientsArray(row.dataset.labelid, addresses, false);
+    const row = pill.closest(".address-row");
+    addressRowClearPills(row);
+    addressRowAddRecipientsArray(row, addresses, false);
   }
 }
 
@@ -1107,58 +1023,71 @@ function expandList(element) {
  * @param {Event} event - The DOM Event.
  */
 function onPillPopupShowing(event) {
-  let menu = event.target;
+  const menu = event.target;
   // Reset previously hidden menuitems.
-  for (let menuitem of menu.querySelectorAll(
+  for (const menuitem of menu.querySelectorAll(
     ".pill-action-move, .pill-action-edit"
   )) {
     menuitem.hidden = false;
   }
 
-  let recipientsContainer = document.getElementById("recipientsContainer");
+  const recipientsContainer = document.getElementById("recipientsContainer");
 
   // Check if the pill where the context menu was originated is not selected.
-  let pill = event.explicitOriginalTarget.closest("mail-address-pill");
+  const pill = event.explicitOriginalTarget.closest("mail-address-pill");
   if (!pill.hasAttribute("selected")) {
     recipientsContainer.deselectAllPills();
     pill.setAttribute("selected", "selected");
   }
 
-  let allSelectedPills = recipientsContainer.getAllSelectedPills();
-  // If more than one pill is selected, disable the editing item.
+  const allSelectedPills = recipientsContainer.getAllSelectedPills();
+  // If more than one pill is selected, hide the editing item.
   if (recipientsContainer.getAllSelectedPills().length > 1) {
     menu.querySelector("#editAddressPill").hidden = true;
   }
 
-  // Hide the `expand list` item and the separator before it, if not all
-  // selected pills are mailing lists
-  let isNotMailingList = [...allSelectedPills].some(pill => !pill.isMailList);
-  let expandListMenuitem = document.getElementById("expandList");
-  expandListMenuitem.hidden = isNotMailingList;
-  expandListMenuitem.previousElementSibling.hidden = isNotMailingList;
+  // Update the recipient type in the menu label of #menu_selectAllSiblingPills.
+  const type = pill
+    .closest(".address-row")
+    .querySelector(".address-label-container > label").value;
+  document.l10n.setAttributes(
+    menu.querySelector("#menu_selectAllSiblingPills"),
+    "pill-action-select-all-sibling-pills",
+    { type }
+  );
 
-  // If any Newsgroup or Followup pill is selected, disable all move actions.
+  // Hide the `Expand List` menuitem and the preceding menuseparator if not all
+  // selected pills are mailing lists.
+  const isNotMailingList = [...allSelectedPills].some(pill => !pill.isMailList);
+  menu.querySelector("#expandList").hidden = isNotMailingList;
+  menu.querySelector("#pillContextBeforeExpandListSeparator").hidden =
+    isNotMailingList;
+
+  // If any Newsgroup or Followup pill is selected, hide all move actions.
   if (
     recipientsContainer.querySelector(
-      `mail-address-pill[recipienttype="addr_newsgroups"][selected]`
-    ) ||
-    recipientsContainer.querySelector(
-      `mail-address-pill[recipienttype="addr_followup"][selected]`
+      ":is(#addressRowNewsgroups, #addressRowFollowup) " +
+        "mail-address-pill[selected]"
     )
   ) {
-    for (let menuitem of menu.querySelectorAll(".pill-action-move")) {
+    for (const menuitem of menu.querySelectorAll(".pill-action-move")) {
       menuitem.hidden = true;
     }
+    // Hide the menuseparator before the move items, as there's nothing below.
+    menu.querySelector("#pillContextBeforeMoveItemsSeparator").hidden = true;
     return;
   }
+  // Show the menuseparator before the move items as no Newsgroup or Followup
+  // pill is selected.
+  menu.querySelector("#pillContextBeforeMoveItemsSeparator").hidden = false;
 
   let selectedType = "";
   // Check if all selected pills are in the same address row.
-  for (let row of recipientsContainer.querySelectorAll(
+  for (const row of recipientsContainer.querySelectorAll(
     ".address-row:not(.hidden)"
   )) {
     // Check if there's at least one selected pill in the address row.
-    let selectedPill = row.querySelector("mail-address-pill[selected]");
+    const selectedPill = row.querySelector("mail-address-pill[selected]");
     if (!selectedPill) {
       continue;
     }
@@ -1166,10 +1095,10 @@ function onPillPopupShowing(event) {
     if (selectedType) {
       return;
     }
-    selectedType = selectedPill.rowInput.getAttribute("recipienttype");
+    selectedType = row.dataset.recipienttype;
   }
 
-  // All selected pills are of the same type, disable the type's move action.
+  // All selected pills are of the same type, hide the type's move action.
   switch (selectedType) {
     case "addr_to":
       menu.querySelector("#moveAddressPillTo").hidden = true;
@@ -1186,66 +1115,104 @@ function onPillPopupShowing(event) {
 }
 
 /**
- * Handle the keypress event on the recipient labels for keyboard navigation and
- * to show the container row of a hidden recipient field (Cc, Bcc, etc.).
+ * Show the specified address row and focus its input. If showing the address
+ * row is disabled, the focus is not changed.
  *
- * @param {Event} event - The DOM keypress event.
- * @param {string} rowID - The ID of the container to reveal on Enter.
+ * @param {string} rowId - The id of the row to show.
  */
-function showAddressRowKeyPress(event, rowID) {
-  switch (event.key) {
-    case "Enter":
-      showAddressRow(event.target, rowID);
-      break;
-    case "ArrowUp":
-    case "ArrowDown":
-    case "ArrowRight":
-    case "ArrowLeft":
-      let label = event.target;
-      // Convert nodelist into an array to tame the beast and use .indexOf().
-      let focusable = [
-        ...label.parentElement.querySelectorAll(
-          ".recipient-label:not([collapsed='true'])"
-        ),
-      ];
-      let lastIndex = focusable.length - 1;
-      // Bail out if there's only one item left, so nowhere to go with focus.
-      if (lastIndex == 0) {
-        break;
-      }
-      // Move focus inside the panel focus ring.
-      let index = focusable.indexOf(label);
-      let newIndex;
-      if (event.key == "ArrowDown" || event.key == "ArrowRight") {
-        newIndex = index == lastIndex ? 0 : ++index;
-      } else {
-        newIndex = index == 0 ? lastIndex : --index;
-      }
-      focusable[newIndex].focus();
-      // Prevent the keys from being handled again by our listeners on the panel.
-      event.stopPropagation();
-      break;
+function showAndFocusAddressRow(rowId) {
+  const row = document.getElementById(rowId);
+  if (addressRowSetVisibility(row, true)) {
+    row.querySelector(".address-row-input").focus();
   }
 }
 
 /**
- * Show the container row of an hidden recipient (Cc, Bcc, etc.).
+ * Set the visibility of an address row (Cc, Bcc, etc.).
  *
- * @param {XULElement} label - The clicked label to hide.
- * @param {string} rowID - The ID of the container to reveal.
+ * @param {Element} row - The address row.
+ * @param {boolean} [show=true] - Whether to show the row or hide it.
+ *
+ * @returns {boolean} - Whether the visibility was set.
  */
-function showAddressRow(label, rowID) {
-  if (label.hasAttribute("disabled")) {
-    return;
+function addressRowSetVisibility(row, show) {
+  const menuItem = document.getElementById(row.dataset.showSelfMenuitem);
+  if (show && menuItem.hasAttribute("disabled")) {
+    return false;
   }
 
-  let container = document.getElementById(rowID);
-  container.classList.remove("hidden");
-  label.setAttribute("collapsed", "true");
-  // Focus the row input.
-  container.querySelector(".address-input[recipienttype]").focus();
+  // Show/hide the row and hide/show the menuitem or button
+  row.classList.toggle("hidden", !show);
+  showAddressRowMenuItemSetVisibility(menuItem, !show);
+  return true;
+}
 
-  updateRecipientsPanelVisibility();
+/**
+ * Set the visibility of a menu item that shows an address row.
+ *
+ * @param {Element} menuItem - The menu item.
+ * @param {boolean} [show=true] - Whether to show the item or hide it.
+ */
+function showAddressRowMenuItemSetVisibility(menuItem, show) {
+  const buttonId = menuItem.dataset.buttonId;
+  const button = buttonId && document.getElementById(buttonId);
+  if (button && menuItem.dataset.preferButton == "true") {
+    button.hidden = !show;
+    // Make sure the menuItem is never shown.
+    menuItem.hidden = true;
+  } else {
+    menuItem.hidden = !show;
+    if (button) {
+      button.hidden = true;
+    }
+  }
+
+  updateRecipientsVisibility();
+}
+
+/**
+ * Set whether a menu item that shows an address row should prefer being
+ * displayed as the button specified by its "data-button-id" attribute, if it
+ * has one.
+ *
+ * @param {Element} menuItem - The menu item.
+ * @param {boolean} preferButton - Whether to prefer showing the button rather
+ *   than the menu item.
+ */
+function showAddressRowMenuItemSetPreferButton(menuItem, preferButton) {
+  const buttonId = menuItem.dataset.buttonId;
+  if (!buttonId || menuItem.dataset.preferButton == String(preferButton)) {
+    return;
+  }
+  const button = document.getElementById(buttonId);
+
+  menuItem.dataset.preferButton = preferButton;
+  if (preferButton) {
+    button.hidden = menuItem.hidden;
+    menuItem.hidden = true;
+  } else {
+    menuItem.hidden = button.hidden;
+    button.hidden = true;
+  }
+
+  updateRecipientsVisibility();
+}
+
+/**
+ * Hide or show the menu button for the extra recipients based on the current
+ * hidden status of menuitems and buttons.
+ */
+function updateRecipientsVisibility() {
+  document.getElementById("extraAddressRowsMenuButton").hidden =
+    !document.querySelector("#extraAddressRowsMenu > :not([hidden])");
+
+  const buttonbox = document.getElementById("extraAddressRowsArea");
+  // Toggle the class to show/hide the pseudo element separator
+  // of the msgIdentity field.
+  buttonbox.classList.toggle(
+    "addressingWidget-separator",
+    !!buttonbox.querySelector("button:not([hidden])")
+  );
 }
 
 /**
@@ -1259,9 +1226,8 @@ function showAddressRow(label, rowID) {
  *   hiding the address row: try to focus the input of an available next sibling
  *   row (for [x] or DEL) or previous sibling row (for BACKSPACE).
  */
-function hideAddressRow(element, focusType = "next") {
-  let addressRow = element.closest(".address-row");
-  let labelID = addressRow.dataset.labelid;
+function hideAddressRowFromWithin(element, focusType = "next") {
+  const addressRow = element.closest(".address-row");
 
   // Prevent address row removal when sending (disable-on-send).
   if (
@@ -1272,30 +1238,30 @@ function hideAddressRow(element, focusType = "next") {
     return;
   }
 
-  let pills = addressRow.querySelectorAll("mail-address-pill");
-  let isEdited = addressRow
+  const pills = addressRow.querySelectorAll("mail-address-pill");
+  const isEdited = addressRow
     .querySelector(".address-container")
     .classList.contains("addressing-field-edited");
 
   // Ask the user to confirm the removal of all the typed addresses if the field
   // holds addressing pills and has been previously edited.
   if (isEdited && pills.length) {
-    let fieldName = addressRow.querySelector(
+    const fieldName = addressRow.querySelector(
       ".address-label-container > label"
     );
-    let confirmTitle = getComposeBundle().getFormattedString(
+    const confirmTitle = getComposeBundle().getFormattedString(
       "confirmRemoveRecipientRowTitle2",
       [fieldName.value]
     );
-    let confirmBody = getComposeBundle().getFormattedString(
+    const confirmBody = getComposeBundle().getFormattedString(
       "confirmRemoveRecipientRowBody2",
       [fieldName.value]
     );
-    let confirmButton = getComposeBundle().getString(
+    const confirmButton = getComposeBundle().getString(
       "confirmRemoveRecipientRowButton"
     );
 
-    let result = Services.prompt.confirmEx(
+    const result = Services.prompt.confirmEx(
       window,
       confirmTitle,
       confirmBody,
@@ -1312,40 +1278,38 @@ function hideAddressRow(element, focusType = "next") {
     }
   }
 
-  for (let pill of pills) {
+  for (const pill of pills) {
     pill.remove();
   }
 
   // Reset the original input.
-  let input = addressRow.querySelector(`.address-input[recipienttype]`);
+  const input = addressRow.querySelector(".address-row-input");
   input.value = "";
 
-  addressRow.classList.add("hidden");
-  document.getElementById(labelID).removeAttribute("collapsed");
+  addressRowSetVisibility(addressRow, false);
 
   // Update the Send button only if the content was previously changed.
   if (isEdited) {
     onRecipientsChanged(true);
   }
-  updateRecipientsPanelVisibility();
   updateAriaLabelsOfAddressRow(addressRow);
 
   // Move focus to the next focusable address input field.
-  let addressRowSibling =
+  const addressRowSibling =
     focusType == "next"
       ? getNextSibling(addressRow, ".address-row:not(.hidden)")
       : getPreviousSibling(addressRow, ".address-row:not(.hidden)");
 
   if (addressRowSibling) {
-    addressRowSibling.querySelector(`.address-input[recipienttype]`).focus();
+    addressRowSibling.querySelector(".address-row-input").focus();
     return;
   }
   // Otherwise move focus to the subject field or to the first available input.
-  let fallbackFocusElement =
+  const fallbackFocusElement =
     focusType == "next"
       ? document.getElementById("msgSubject")
       : getNextSibling(addressRow, ".address-row:not(.hidden)").querySelector(
-          ".address-input[recipienttype]"
+          ".address-row-input"
         );
   fallbackFocusElement.focus();
 }
@@ -1356,168 +1320,27 @@ function hideAddressRow(element, focusType = "next") {
  * @param {Event} event - The DOM click event.
  */
 function closeLabelOnClick(event) {
-  hideAddressRow(event.target);
+  hideAddressRowFromWithin(event.target);
 }
 
-/**
- * Calculate the height of the composer header area when pills are created or
- * removed in order to automatically add or remove the scrollable overflow.
- */
-function calculateHeaderHeight() {
-  let header = document.getElementById("headers-box");
-  let container = document.getElementById("recipientsContainer");
-
-  // Interrupt if the container scrolling area is taller than its visible
-  // height.
-  if (
-    container.classList.contains("overflow") &&
-    container.scrollHeight > container.clientHeight
-  ) {
-    return;
-  }
-
-  // Remove the overflow if the container scrolling area shrinks below its
-  // visible height but the user didn't manually resize the header.
-  if (
-    container.classList.contains("overflow") &&
-    container.scrollHeight <= container.clientHeight &&
-    !kAddressingHeaderHeight
-  ) {
-    container.classList.remove("overflow");
-    header.removeAttribute("height");
-    return;
-  }
-
-  // Interrupt if the user manually resized the header area and the current
-  // custom height is higher than the entire container height. We run this
-  // condition alone in order to allow resetting the header height when pills
-  // are deleted and a custom height is not necessary.
-  if (
-    kAddressingHeaderHeight &&
-    kAddressingHeaderHeight >= container.clientHeight
-  ) {
-    return;
-  }
-
-  // Add overflow if the header height grows above 30% of the window height.
-  let maxHeaderHeight = window.outerHeight * 0.3;
-  if (header.clientHeight > maxHeaderHeight) {
-    if (!header.hasAttribute("height")) {
-      header.setAttribute("height", maxHeaderHeight);
-    }
-    container.classList.add("overflow");
-  }
-}
-
-/**
- * Set the min-height of the message header area to prevent overlappings in case
- * the user resizes the area upwards.
- */
-function setDefaultHeaderMinHeight() {
-  let header = document.getElementById("headers-box");
-  header.style.minHeight = `${header.clientHeight}px`;
-}
-
-/**
- * Handle keypress event on a label inside #extraRecipientsPanel.
- *
- * @param {event} event - The DOM keypress event on the label.
- */
-function extraRecipientsLabelOnKeyPress(event) {
-  switch (event.key) {
-    case "Enter":
-    case "ArrowRight":
-    case "ArrowDown":
-      // Open the extra recipients panel.
-      showExtraRecipients(event);
-      break;
-    case "ArrowLeft":
-    case "ArrowUp":
-      // Allow navigating away from focused extraRecipientsLabel using cursor
-      // keys.
-      let focusable = event.currentTarget.parentElement.querySelectorAll(
-        '.recipient-label:not([collapsed="true"],.extra-recipients-label)'
-      );
-      let focusEl = focusable[focusable.length - 1];
-      if (focusEl) {
-        focusEl.focus();
-      }
-      break;
-  }
-}
-
-/**
- * Show the #extraRecipientsPanel.
- *
- * @param {Event} event - The DOM event.
- */
-function showExtraRecipients(event) {
-  if (event.currentTarget.hasAttribute("disabled")) {
-    return;
-  }
-
-  let panel = document.getElementById("extraRecipientsPanel");
-  // If panel was opened with keyboard, focus first recipient label;
-  // otherwise focus the panel [tabindex=0] to enable keyboard navigation.
-  panel.addEventListener(
-    "popupshown",
-    () => {
-      (event.type == "keypress"
-        ? panel.querySelector('.recipient-label:not([collapsed="true"])')
-        : panel
-      ).focus();
-    },
-    { once: true }
-  );
-  panel.openPopup(event.target, "after_end", -8, 0, true);
-}
-
-/**
- * Handle keypress event on #extraRecipientsPanel.
- *
- * @param {event} event - The DOM keypress event on the panel.
- */
-function extraRecipientsPanelOnKeyPress(event) {
-  switch (event.key) {
-    case "Enter":
-      event.currentTarget.hidePopup();
-      break;
-
-    // Ensure access to panel focus ring after *click* on extraRecipientsLabel.
-    case "ArrowDown":
-      // Focus first focusable recipient label.
-      event.currentTarget
-        .querySelector('.recipient-label:not([collapsed="true"])')
-        .focus();
-      break;
-    case "ArrowUp":
-      // Focus last focusable recipient label.
-      let focusable = event.currentTarget.querySelectorAll(
-        '.recipient-label:not([collapsed="true"])'
-      );
-      focusable[focusable.length - 1].focus();
-      break;
-  }
-}
-
-/**
- * Hide or show the panel and overflow button for the extra recipients
- * based on the currently available labels.
- */
-function updateRecipientsPanelVisibility() {
-  document.getElementById("extraRecipientsLabel").collapsed =
-    document
-      .getElementById("extraRecipientsPanel")
-      .querySelectorAll('label:not([collapsed="true"])').length == 0;
-
-  // Toggle the class to show/hide the pseudo element separator
-  // of the msgIdentity field.
+function extraAddressRowsMenuOpened() {
   document
-    .getElementById("addressingWidgetLabelBox")
-    .classList.toggle(
-      "addressingWidget-separator",
-      document
-        .getElementById("addressingWidgetLabels")
-        .querySelector('label:not([collapsed="true"])')
-    );
+    .getElementById("extraAddressRowsMenuButton")
+    .setAttribute("aria-expanded", "true");
+}
+
+function extraAddressRowsMenuClosed() {
+  document
+    .getElementById("extraAddressRowsMenuButton")
+    .setAttribute("aria-expanded", "false");
+}
+
+/**
+ * Show the menu for extra address rows (extraAddressRowsMenu).
+ */
+function openExtraAddressRowsMenu() {
+  const button = document.getElementById("extraAddressRowsMenuButton");
+  const menu = document.getElementById("extraAddressRowsMenu");
+  // NOTE: menu handlers handle the aria-expanded state of the button.
+  menu.openPopup(button, "after_end", 8, 0);
 }

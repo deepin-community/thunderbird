@@ -4,6 +4,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// This file contains settings for the shared (with SeaMonkey) mailnews backend.
+// Thunderbird specific settings and overrides are in all-thunderbird.js.
+
 // SpaceHit() function: whether spacebar advances to next unread message.
 pref("mail.advance_on_spacebar", true);
 
@@ -40,6 +43,13 @@ pref("mail.ui.display.dateformat.default", 2);
 pref("mail.ui.display.dateformat.thisweek", 2);
 pref("mail.ui.display.dateformat.today", 0);
 
+// Is a user agent header sent in outgoing email messages?
+pref("mailnews.headers.sendUserAgent", true);
+
+// If sending the user agent header is enabled,
+// should only a minimal header be sent?
+pref("mailnews.headers.useMinimalUserAgent", true);
+
 // hidden pref for controlling if the user agent string
 // is displayed in the message pane or not...
 pref("mailnews.headers.showUserAgent", false);
@@ -56,6 +66,16 @@ pref("mailnews.headers.showReferences", false);
 // is displayed in the message pane or not...
 pref("mailnews.headers.showMessageId", false);
 
+// Show list management headers. RFC 2369.
+pref("mailnews.headers.showListHelp", false);
+pref("mailnews.headers.showListUnsubscribe", false);
+pref("mailnews.headers.showListSubscribe", false);
+pref("mailnews.headers.showListPost", false);
+pref("mailnews.headers.showListOwner", false);
+pref("mailnews.headers.showListArchive", false);
+// Show Archived-At header. RFC 5064.
+pref("mailnews.headers.showArchivedAt", false);
+
 // hidden pref for controlling if the message to a message-id
 // is opened in a new window or in the same window
 pref("mailnews.messageid.openInNewWindow", false);
@@ -63,7 +83,6 @@ pref("mailnews.messageid.openInNewWindow", false);
 // hidden pref for url which will be used to open  message-ids
 // in browser (%mid ist replaced with the message-id)
 pref("mailnews.messageid_browser.url", "chrome://messenger-region/locale/region.properties");
-
 
 // hidden pref for whether or not to warn when deleting filters. Default YES
 pref("mailnews.filters.confirm_delete", true);
@@ -83,10 +102,10 @@ pref("mailnews.headers.extraAddonHeaders", "");
 //   as defined in nsIMsgDBView.idl (byDate = 18, byId = 21 etc.)
 
 // for Mail/RSS/... (nsMsgDatabase)
-pref("mailnews.default_sort_order", 1);
+pref("mailnews.default_sort_order", 2);
 pref("mailnews.default_sort_type", 18);
 // for News (nsNewsDatabase)
-pref("mailnews.default_news_sort_order", 1);
+pref("mailnews.default_news_sort_order", 2);
 pref("mailnews.default_news_sort_type", 21);
 
 // hidden pref for whether "sort by date" and "sort by received date" in
@@ -99,7 +118,7 @@ pref("mailnews.sort_threads_by_root", false);
 // as defined in nsIMsgDBView.idl (kNone = 0, kThreadedDisplay = 1 etc.)
 
 // for Mail/RSS/... (nsMsgDatabase)
-pref("mailnews.default_view_flags", 0);
+pref("mailnews.default_view_flags", 1);
 // for News (nsNewsDatabase)
 pref("mailnews.default_news_view_flags", 1);
 
@@ -143,8 +162,6 @@ pref("mail.imap.chunk_ideal", 4);
 pref("mail.imap.chunk_add", 8192);
 pref("mail.imap.hide_other_users", false);
 pref("mail.imap.hide_unused_namespaces", true);
-pref("mail.imap.mime_parts_on_demand", true);
-pref("mail.imap.mime_parts_on_demand_threshold", 500000);
 pref("mail.imap.use_literal_plus", true);
 pref("mail.imap.expunge_after_delete", false);
 pref("mail.imap.check_deleted_before_expunge", false);
@@ -191,8 +208,8 @@ pref("mail.quoted_size", 0);
 pref("mail.quoted_graphical", true);
 // use HTML-style quoting for quoting plain text
 pref("mail.quoteasblock", true);
+// Use CTE quoted-printable for mail bodies.
 pref("mail.strictly_mime", false);
-pref("mail.strictly_mime_headers", true);
 // The maximum number of entries in the "Recent" menu of the folder picker.
 pref("mail.folder_widget.max_recent", 25);
 // 0/1 (name param is encoded in a legacy way), 2(RFC 2231 only)
@@ -204,6 +221,7 @@ pref("mail.show_headers", 1);
 // some S/MIME parts are not external (but inline decrypted).
 pref("mailnews.p7m_external", false);
 pref("mail.pane_config.dynamic", 0);
+#ifdef MOZ_SUITE
 pref("mail.addr_book.mapit_url.format", "chrome://messenger-region/locale/region.properties");
 pref("mail.addr_book.mapit_url.1.name", "chrome://messenger-region/locale/region.properties");
 pref("mail.addr_book.mapit_url.1.format", "chrome://messenger-region/locale/region.properties");
@@ -215,7 +233,6 @@ pref("mail.addr_book.mapit_url.4.name", "chrome://messenger-region/locale/region
 pref("mail.addr_book.mapit_url.4.format", "chrome://messenger-region/locale/region.properties");
 pref("mail.addr_book.mapit_url.5.name", "chrome://messenger-region/locale/region.properties");
 pref("mail.addr_book.mapit_url.5.format", "chrome://messenger-region/locale/region.properties");
-#ifdef MOZ_SUITE
 pref("mailnews.start_page.url", "chrome://messenger-region/locale/region.properties");
 pref("mail.accountwizard.deferstorage", false);
 // |false|: Show both name and address, even for people in my addressbook.
@@ -259,7 +276,6 @@ pref("mail.addr_book.autocompletequery.format.phonetic", "(or(DisplayName,c,@V)(
 //0=displayname, 1=lastname first, 2=firstname first
 pref("mail.addr_book.lastnamefirst", 0);
 pref("mail.addr_book.displayName.autoGeneration", true);
-pref("mail.addr_book.displayName.lastnamefirst", "chrome://messenger/locale/messenger.properties");
 pref("mail.addr_book.show_phonetic_fields", "chrome://messenger/locale/messenger.properties");
 pref("mail.html_compose",                   true);
 // you can specify multiple, option headers
@@ -271,13 +287,8 @@ pref("mail.compose.autosave", true);
 pref("mail.compose.autosaveinterval", 5);
 pref("mail.compose.default_to_paragraph", false);
 
-// true:  If the message has practically no HTML formatting, bypass recipient-centric
-//        auto-detection of delivery format; auto-downgrade and silently send as plain text.
-// false: Don't auto-downgrade; use recipient-centric auto-detection of best delivery format,
-//        including send options.
-pref("mailnews.sendformat.auto_downgrade", true);
-// 0=ask, 1=plain, 2=html, 3=both
-pref("mail.default_html_action", 0);
+// 0=auto, 1=plain, 2=html, 3=both
+pref("mail.default_send_format", 0);
 // 0: Never 1: Always 2: Ask me
 pref("mail.mdn.report.not_in_to_cc", 2);
 // 0: Never 1: Always 2: Ask me
@@ -306,9 +317,16 @@ pref("mail.dsn.request_never_on", false);
 // DSN request is sent with RET FULL option
 pref("mail.dsn.ret_full_on", true);
 
+// false: Use global true: Use custom
+pref("mail.identity.default.dsn_use_custom_prefs", false);
+pref("mail.identity.default.dsn_always_request_on", false);
+
 pref("news.show_size_in_lines", true);
 pref("news.update_unread_on_expand", true);
 pref("news.get_messages_on_select", true);
+
+// list new groups created in the last number of days
+pref("news.newgroups_for_num_days", 180);
 
 pref("mailnews.wraplength", 72);
 
@@ -326,9 +344,15 @@ pref("mailnews.reply_quoting_selection", true);
 pref("mailnews.reply_quoting_selection.only_if_chars", "");
 pref("mailnews.reply_quoting_selection.multi_word", true);
 
-// If true, SmtpService.jsm will be used. Otherwise, nsSmtpService.cpp will be used.
-pref("mailnews.smtp.jsmodule", false);
 pref("mailnews.smtp.loglevel", "Warn");
+
+pref("mailnews.nntp.loglevel", "Warn");
+
+pref("mailnews.pop3.loglevel", "Warn");
+
+// If true, ImapService.jsm is used. Otherwise, nsImapService.cpp is used.
+pref("mailnews.imap.jsmodule", false);
+pref("mailnews.imap.loglevel", "Warn");
 
 pref("mail.operate_on_msgs_in_collapsed_threads", false);
 pref("mail.warn_on_collapsed_thread_operation", true);
@@ -418,15 +442,12 @@ pref("ldap_2.servers.default.attrmap.Custom2", "mozillaCustom2,custom2");
 pref("ldap_2.servers.default.attrmap.Custom3", "mozillaCustom3,custom3");
 pref("ldap_2.servers.default.attrmap.Custom4", "mozillaCustom4,custom4");
 pref("ldap_2.servers.default.attrmap.Notes", "description,notes");
-pref("ldap_2.servers.default.attrmap.PreferMailFormat", "mozillaUseHtmlMail,xmozillausehtmlmail");
 pref("ldap_2.servers.default.attrmap.LastModifiedDate", "modifytimestamp");
 
 pref("ldap_2.user_id", 0);
 // Update kCurrentListVersion in include/dirprefs.h if you change this
 pref("ldap_2.version", 3);
 
-// If true, LDAPDirectory.jsm is used. Otherwise, nsAbLDAPDirectory.cpp is used.
-pref("mailnews.ldap.jsmodule", false);
 pref("mailnews.ldap.loglevel", "Warn");
 
 pref("mailnews.confirm.moveFoldersToTrash", true);
@@ -447,7 +468,6 @@ pref("mailnews.open_tab_warning", 20);
 
 pref("mailnews.start_page.enabled", true);
 
-pref("mailnews.remember_selected_message", true);
 pref("mailnews.scroll_to_new_message", true);
 
 // if true, any click on a column header other than the thread column will unthread the view
@@ -520,6 +540,18 @@ pref("mail.smtpserver.default.clientid", "");
 pref("mail.server.default.clientidEnabled", false);
 pref("mail.smtpserver.default.clientidEnabled", false);
 
+// This limits the number of simultaneous SMTP connection to a server.
+// Currently if this is set to other than 1, it is changed to 1 internally, so
+// only 1 connection per server can actually occur.
+pref("mail.smtpserver.default.max_cached_connections", 1);
+
+// If set greater than 0, this limits the number of messages that can be sent
+// serially on an SMTP connection before the connection is closed and a new
+// connection is established to handle any additional messages, also subject to
+// this limit. Setting this to zero or less removes any message count per
+// connection limit.
+pref("mail.smtpserver.default.max_messages_per_connection", 10);
+
 pref("mail.smtpservers", "");
 pref("mail.accountmanager.accounts", "");
 
@@ -533,7 +565,6 @@ pref("mail.server.default.download_on_biff", false);
 pref("mail.server.default.check_time", 10);
 pref("mail.server.default.delete_by_age_from_server", false);
 pref("mail.server.default.num_days_to_leave_on_server", 7);
-pref("mail.server.default.dot_fix", true);
 pref("mail.server.default.limit_offline_message_size", false);
 pref("mail.server.default.max_size", 50);
 pref("mail.server.default.delete_mail_left_on_server", false);
@@ -549,7 +580,6 @@ pref("mail.server.default.deferred_to_account", "");
 
 pref("mail.server.default.delete_model", 1);
 pref("mail.server.default.fetch_by_chunks", true);
-pref("mail.server.default.mime_parts_on_demand", false);
 // Send IMAP RFC 2971 ID Info to server
 pref("mail.server.default.send_client_info", true);
 pref("mail.server.default.always_authenticate", false);
@@ -604,24 +634,9 @@ pref("mail.server.default.inhibitWhiteListingIdentityUser", true);
 // should we inhibit whitelisting of the domain for a server's identities?
 pref("mail.server.default.inhibitWhiteListingIdentityDomain", false);
 
-// When force_select is "auto" the ID response for the server will be compared to
-// force_select_detect below and, if they compare, an extra imap select will
-// be sent when checking for new mail. If force_select is "no", the extra
-// select will never occur, and, if "yes" it will always occur when checking for
-// new email (both regardless of the ID response string).
-// The extra select insures that new emails are automatically detected by servers
-// requiring it. Also, if a server does not support IDLE, setting this to "yes"
-// can insure messages are marked as "read" after being read in other email clients.
-pref("mail.server.default.force_select", "auto");
-
-// Specify imap ID response substrings that must occur to cause the extra/forced
-// imap select for server(s).  Substrings are comma separated within a given server
-// (all substrings within a server must be found in the ID response string) and
-// servers are semicolon separated. Currently only 1 server type is known
-// to require the extra select -- Openwave server used by Charter-Spectrum ISP.
-pref("mail.imap.force_select_detect", "\"name\" \"Email Mx\",\"vendor\" \"Openwave Messaging\"");
-// Example if ever another server requires the extra select (ID substrings from Yahoo! added):
-//pref("mail.imap.force_select_detect", "\"name\" \"Email Mx\",\"vendor\" \"Openwave Messaging\";\"vendor\" \"Yahoo! Inc.\",\"name\" \"Y!IMAP\";");
+// For sending imap SELECT when checking for new mail. Has been needed by some
+// servers that don't properly support imap NOOP for new mail detection.
+pref("mail.server.default.force_select_imap", false);
 
 // to activate auto-sync feature (preemptive message download for imap) by default
 pref("mail.server.default.autosync_offline_stores",true);
@@ -656,8 +671,6 @@ pref("mail.serverDefaultStoreContractID", "@mozilla.org/msgstore/berkeleystore;1
 // this number is divided by 100 before it is used. The classifier can be fine tuned
 // by changing this pref. Typical values are .99, .95, .90, .5, etc.
 pref("mail.adaptivefilters.junk_threshold", 90);
-// used to determine when to migrate global spam settings
-pref("mail.spam.version", 0);
 pref("mail.spam.logging.enabled", false);
 pref("mail.spam.manualMark", false);
 pref("mail.spam.markAsReadOnSpam", false);
@@ -804,8 +817,6 @@ pref("mail.spellcheck.inline", true);
 pref("mail.phishing.detection.enabled", true);
 pref("mail.warn_on_send_accel_key", true);
 pref("mail.enable_autocomplete", true);
-pref("mailnews.html_domains", "");
-pref("mailnews.plaintext_domains", "");
 pref("mailnews.global_html_domains.version", 1);
 
 /////////////////////////////////////////////////////////////////
@@ -863,6 +874,7 @@ pref("mail.biff.show_alert", true);
 #ifdef XP_WIN
 pref("mail.biff.show_badge", true);
 pref("mail.biff.show_tray_icon", true);
+pref("mail.biff.show_tray_icon_always", false);
 pref("mail.biff.use_system_alert", false);
 #elifdef XP_MACOSX
 pref("mail.biff.animate_dock_icon", false);
@@ -888,8 +900,11 @@ pref("mail.biff.use_new_count_in_badge", false);
 pref("mail.biff.use_new_count_in_badge", true);
 #endif
 
-// For feed account serverType=rss sound on biff; if true, mail.biff.play_sound.* settings are used.
+// For feed account serverType=rss sound on biff.
+// Allow for a different sound to be played for new feed articles.
 pref("mail.feed.play_sound", false);
+pref("mail.feed.play_sound.type", 0);
+pref("mail.feed.play_sound.url", "");
 
 // Content disposition for attachments (except binary files and vcards).
 //   0= Content-Disposition: inline
@@ -902,12 +917,11 @@ pref("mailnews.sendInBackground", false);
 pref("mailnews.show_send_progress", true);
 pref("mail.server.default.retainBy", 1);
 
-pref("mailnews.ui.junk.firstuse", true);
 pref("mailnews.ui.junk.manualMarkAsJunkMarksRead", true);
 
 // for manual upgrades of certain UI features.
 // 1 -> 2 is for the folder pane tree landing, to hide the
-// unread and total columns, see msgMail3PaneWindow.js
+// unread and total columns, see messenger.js
 pref("mail.ui.folderpane.version", 1);
 
 // for manual upgrades of certain UI features.
@@ -977,7 +991,7 @@ pref("mail.compose.dontWarnMail2Newsgroup", false);
 pref("mail.compose.attach_http_images", false);
 
 // Headers to check to find the right from identity to use when catchAll is active.
-pref("mail.compose.catchAllHeaders", "envelope-to, x-original-to, to, cc");
+pref("mail.compose.catchAllHeaders", "delivered-to, envelope-to, x-original-to, to, cc");
 
 // these prefs (in minutes) are here to help QA test this feature
 // "mail.purge.min_delay", never purge a junk folder more than once every 480 minutes (60 mins/hour * 8 hours)
@@ -1077,6 +1091,9 @@ pref("mailnews.auto_config.guess.enabled", true);
 // Not all mail servers support SSL so enabling this option might lock
 // you out from your ISP. This especially affect internal mail servers.
 pref("mailnews.auto_config.guess.sslOnly", false);
+// When connecting to a server for guessing, either require a good
+// certificate, or allow connecting anyway.
+pref("mailnews.auto_config.guess.requireGoodCert", true);
 // The timeout (in seconds) for each guess
 pref("mailnews.auto_config.guess.timeout", 10);
 // Work around bug 1454325 by disabling mimetype mungling in XmlHttpRequest
@@ -1136,4 +1153,19 @@ pref("mail.jsaccount.loglevel", "Warn");
 
 pref("mailnews.oauth.loglevel", "Warn");
 
+// Using a private browser for OAuth sign-in causes issues when the provider is
+// expecting a device identifier from the browser. However, not all providers
+// have been tested with non-private browsers and there is potential for
+// existing session information to cause interference when signing into multiple
+// accounts.
+pref("mailnews.oauth.usePrivateBrowser", false);
+
 pref("test.loghelper.loglevel", "Warn");
+
+pref("mail.import.loglevel", "Warn");
+
+pref("mail.export.loglevel", "Warn");
+
+// When true, disk cache is used for messages not in offline store. If false,
+// memory cache is used instead. Both use the cache2 implementation.
+pref("mail.imap.use_disk_cache2", true);

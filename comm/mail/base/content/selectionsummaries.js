@@ -2,8 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from commandglue.js */
-/* import-globals-from mailWindow.js */
+/* globals gSummaryFrameManager */ // From messenger.js
 
 /**
  * Summarize a set of selected messages.  This can either be a single thread or
@@ -17,15 +16,15 @@ function summarizeSelection(aMessageDisplay) {
   // the view's version of threading, not the database's version, in order to
   // thread together cross-folder messages. XXX: This falls apart for group by
   // sort; what we really want is a way to specify only the cross-folder view.
-  let folderDisplay = aMessageDisplay.folderDisplay;
-  let selectedIndices = folderDisplay.selectedIndices;
-  let dbView = folderDisplay.view.dbView;
+  const folderDisplay = aMessageDisplay.folderDisplay;
+  const selectedIndices = folderDisplay.selectedIndices;
+  const dbView = folderDisplay.view.dbView;
 
-  let getThreadId = function(index) {
-    return dbView.getThreadContainingIndex(index).getChildHdrAt(0).messageKey;
+  const getThreadId = function (index) {
+    return dbView.getThreadContainingIndex(index).getRootHdr().messageKey;
   };
 
-  let firstThreadId = getThreadId(selectedIndices[0]);
+  const firstThreadId = getThreadId(selectedIndices[0]);
   let oneThread = true;
   for (let i = 1; i < selectedIndices.length; i++) {
     if (getThreadId(selectedIndices[i]) != firstThreadId) {
@@ -34,7 +33,7 @@ function summarizeSelection(aMessageDisplay) {
     }
   }
 
-  let selectedMessages = folderDisplay.selectedMessages;
+  const selectedMessages = folderDisplay.selectedMessages;
   if (oneThread) {
     summarizeThread(selectedMessages, aMessageDisplay);
   } else {
@@ -53,16 +52,20 @@ function summarizeThread(aSelectedMessages, aMessageDisplay) {
   const kSummaryURL = "chrome://messenger/content/multimessageview.xhtml";
 
   aMessageDisplay.singleMessageDisplay = false;
-  gSummaryFrameManager.loadAndCallback(kSummaryURL, function() {
-    let childWindow = gSummaryFrameManager.iframe.contentWindow;
+  gSummaryFrameManager.loadAndCallback(kSummaryURL, function () {
+    const childWindow = gSummaryFrameManager.iframe.contentWindow;
     try {
       childWindow.gMessageSummary.summarize(
         "thread",
         aSelectedMessages,
+        aMessageDisplay.folderDisplay.view.dbView,
+        aMessageDisplay.folderDisplay.selectMessages.bind(
+          aMessageDisplay.folderDisplay
+        ),
         aMessageDisplay
       );
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       throw e;
     }
   });
@@ -80,35 +83,21 @@ function summarizeMultipleSelection(aSelectedMessages, aMessageDisplay) {
   const kSummaryURL = "chrome://messenger/content/multimessageview.xhtml";
 
   aMessageDisplay.singleMessageDisplay = false;
-  gSummaryFrameManager.loadAndCallback(kSummaryURL, function() {
-    let childWindow = gSummaryFrameManager.iframe.contentWindow;
+  gSummaryFrameManager.loadAndCallback(kSummaryURL, function () {
+    const childWindow = gSummaryFrameManager.iframe.contentWindow;
     try {
       childWindow.gMessageSummary.summarize(
         "multipleselection",
         aSelectedMessages,
+        aMessageDisplay.folderDisplay.view.dbView,
+        aMessageDisplay.folderDisplay.selectMessages.bind(
+          aMessageDisplay.folderDisplay
+        ),
         aMessageDisplay
       );
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       throw e;
     }
   });
-}
-
-/**
- * Summarize a message folder; this is mainly a stub function for extensions to
- * override.  It currently only shows the start page.
- *
- * @param aMessageDisplay The MessageDisplayWidget object responsible for
- *                        showing messages.
- */
-function summarizeFolder(aMessageDisplay) {
-  aMessageDisplay.clearDisplay();
-
-  // Once in our lifetime is plenty.
-  if (!aMessageDisplay._haveDisplayedStartPage) {
-    loadStartPage(false);
-    aMessageDisplay._haveDisplayedStartPage = true;
-  }
-  aMessageDisplay.singleMessageDisplay = true;
 }

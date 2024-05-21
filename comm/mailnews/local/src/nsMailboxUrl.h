@@ -26,8 +26,6 @@ class nsMailboxUrl : public nsIMailboxUrl,
   nsresult CreateURL(const nsACString& aSpec, nsIURL** aURL) override;
 
   // from nsIMailboxUrl:
-  NS_IMETHOD SetMailboxParser(nsIStreamListener* aConsumer) override;
-  NS_IMETHOD GetMailboxParser(nsIStreamListener** aConsumer) override;
   NS_IMETHOD SetMailboxCopyHandler(nsIStreamListener* aConsumer) override;
   NS_IMETHOD GetMailboxCopyHandler(nsIStreamListener** aConsumer) override;
 
@@ -86,9 +84,6 @@ class nsMailboxUrl : public nsIMailboxUrl,
   uint32_t m_messageSize;
   nsMsgKey m_messageKey;
   nsCString m_file;
-  // This is currently only set when we're doing something with a .eml file.
-  // If that changes, we should change the name of this var.
-  nsCOMPtr<nsIMsgDBHdr> m_dummyHdr;
 
   // used by save message to disk
   nsCOMPtr<nsIFile> m_messageFile;
@@ -102,8 +97,8 @@ class nsMailboxUrl : public nsIMailboxUrl,
 
   // truncated message support
   nsCString m_originalSpec;
-  nsCString mURI;              // the RDF URI associated with this url.
-  nsCString mCharsetOverride;  // used by nsIMsgI18NUrl...
+  nsCString mURI;           // the RDF URI associated with this url.
+  bool mAutodetectCharset;  // used by nsIMsgI18NUrl...
 };
 
 #endif  // nsMailboxUrl_h__

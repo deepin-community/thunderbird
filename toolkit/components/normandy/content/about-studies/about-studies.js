@@ -29,6 +29,7 @@ function readOptinParams() {
     slug: searchParams.get("optin_slug"),
     branch: searchParams.get("optin_branch"),
     collection: searchParams.get("optin_collection"),
+    applyTargeting: !!searchParams.get("apply_targeting"),
   };
 }
 
@@ -116,7 +117,12 @@ class AboutStudies extends React.Component {
       { className: "about-studies-container main-content" },
       r(WhatsThisBox, { translations, learnMoreHref, studiesEnabled }),
       optInMessage && r(OptInBox, optInMessage),
-      r(StudyList, { translations, addonStudies, prefStudies, experiments })
+      r(StudyList, {
+        translations,
+        addonStudies,
+        prefStudies,
+        experiments,
+      })
     );
   }
 }
@@ -222,7 +228,7 @@ class StudyList extends React.Component {
         type: study.experimentType,
         sortDate: new Date(study.lastSeen),
       });
-      if (!study.active) {
+      if (!study.active && !study.isRollout) {
         inactiveStudies.push(clonedStudy);
       } else {
         activeStudies.push(clonedStudy);
@@ -246,11 +252,7 @@ class StudyList extends React.Component {
               translations,
             });
           }
-          if (
-            study.type === "nimbus" ||
-            // Backwards compatibility with old recipes
-            study.type === "messaging_experiment"
-          ) {
+          if (study.type === "nimbus" || study.type === "rollout") {
             return r(MessagingSystemListItem, {
               key: study.slug,
               study,
@@ -342,6 +344,10 @@ class MessagingSystemListItem extends React.Component {
           { className: "study-header" },
           r("span", { className: "study-name" }, userFacingName),
           r("span", {}, "\u2022"), // &bullet;
+          !study.isRollout && [
+            r("span", { className: "study-branch-slug" }, study.branch.slug),
+            r("span", {}, "\u2022"), // &bullet;
+          ],
           r(
             "span",
             { className: "study-status" },

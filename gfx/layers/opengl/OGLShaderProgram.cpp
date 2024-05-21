@@ -11,7 +11,6 @@
 #include <sstream>  // for std::ostringstream
 
 #include "GLContext.h"
-#include "Layers.h"
 #include "gfxEnv.h"
 #include "gfxRect.h"  // for gfxRect
 #include "gfxUtils.h"
@@ -45,21 +44,9 @@ static void AddUniforms(ProgramProfileOGL& aProfile) {
                                              "uYTexture",
                                              "uCbTexture",
                                              "uCrTexture",
-                                             "uBlackTexture",
-                                             "uWhiteTexture",
-                                             "uMaskTexture",
-                                             "uBackdropTexture",
                                              "uRenderColor",
                                              "uTexCoordMultiplier",
                                              "uCbCrTexCoordMultiplier",
-                                             "uMaskCoordMultiplier",
-                                             "uTexturePass2",
-                                             "uColorMatrix",
-                                             "uColorMatrixVector",
-                                             "uBlurRadius",
-                                             "uBlurOffset",
-                                             "uBlurAlpha",
-                                             "uBlurGaussianKernel",
                                              "uSSEdges",
                                              "uViewportSize",
                                              "uVisibleCenter",
@@ -124,7 +111,7 @@ void ShaderConfigOGL::SetColorMultiplier(uint32_t aMultiplier) {
 void ShaderConfigOGL::SetNV12(bool aEnabled) {
   SetFeature(ENABLE_TEXTURE_NV12, aEnabled);
   MOZ_ASSERT(!(mFeatures & ENABLE_TEXTURE_YCBCR));
-#ifdef MOZ_WAYLAND
+#ifdef MOZ_WIDGET_GTK
   SetFeature(ENABLE_TEXTURE_NV12_GA_SWITCH, aEnabled);
 #endif
 }
@@ -911,7 +898,7 @@ GLint ShaderProgramOGL::CreateShader(GLenum aShaderType,
    */
   if (!success
 #ifdef DEBUG
-      || (len > 10 && gfxEnv::DebugShaders())
+      || (len > 10 && gfxEnv::MOZ_DEBUG_SHADERS())
 #endif
   ) {
     nsAutoCString log;
@@ -966,7 +953,7 @@ bool ShaderProgramOGL::CreateProgram(const char* aVertexShaderString,
    */
   if (!success
 #ifdef DEBUG
-      || (len > 10 && gfxEnv::DebugShaders())
+      || (len > 10 && gfxEnv::MOZ_DEBUG_SHADERS())
 #endif
   ) {
     nsAutoCString log;
@@ -1006,26 +993,6 @@ GLuint ShaderProgramOGL::GetProgram() {
   MOZ_ASSERT(HasInitialized(),
              "Attempting to get a program that's not been initialized!");
   return mProgram;
-}
-
-void ShaderProgramOGL::SetBlurRadius(float aRX, float aRY) {
-  float f[] = {aRX, aRY};
-  SetUniform(KnownUniform::BlurRadius, 2, f);
-
-  float gaussianKernel[GAUSSIAN_KERNEL_HALF_WIDTH];
-  float sum = 0.0f;
-  for (int i = 0; i < GAUSSIAN_KERNEL_HALF_WIDTH; i++) {
-    float x = i * GAUSSIAN_KERNEL_STEP;
-    float sigma = 1.0f;
-    gaussianKernel[i] =
-        exp(-x * x / (2 * sigma * sigma)) / sqrt(2 * M_PI * sigma * sigma);
-    sum += gaussianKernel[i] * (i == 0 ? 1 : 2);
-  }
-  for (int i = 0; i < GAUSSIAN_KERNEL_HALF_WIDTH; i++) {
-    gaussianKernel[i] /= sum;
-  }
-  SetArrayUniform(KnownUniform::BlurGaussianKernel, GAUSSIAN_KERNEL_HALF_WIDTH,
-                  gaussianKernel);
 }
 
 void ShaderProgramOGL::SetYUVColorSpace(gfx::YUVColorSpace aYUVColorSpace) {

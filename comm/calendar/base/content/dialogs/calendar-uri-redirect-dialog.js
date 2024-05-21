@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad */
-
+window.addEventListener("DOMContentLoaded", onLoad, { once: true });
 function onLoad() {
-  let { calendarName, originalURI, targetURI } = window.arguments[0];
+  const { calendarName, originalURI, targetURI } = window.arguments[0];
 
   document.l10n.setAttributes(
     document.getElementById("calendar-uri-redirect-description"),
@@ -13,8 +12,9 @@ function onLoad() {
     { calendarName }
   );
 
-  document.getElementById("originalURI").value = originalURI;
-  document.getElementById("targetURI").value = targetURI;
+  document.getElementById("originalURI").textContent = originalURI;
+  document.getElementById("targetURI").textContent = targetURI;
+  window.sizeToContent();
 }
 
 document.addEventListener("dialogaccept", () => {

@@ -6,13 +6,24 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
+ChromeUtils.defineESModuleGetters(this, {
+  ProxyChannelFilter: "resource://gre/modules/ProxyChannelFilter.sys.mjs",
+});
+
+// Delayed wakeup is tied to ExtensionParent.browserPaintedPromise, which is
+// when the first browser window has been painted. On Android, parts of the
+// browser can trigger requests without browser "window" (geckoview.xhtml).
+// Therefore we allow such proxy events to trigger wakeup.
+// On desktop, we do not wake up early, to minimize the amount of work before
+// a browser window is painted.
+XPCOMUtils.defineLazyPreferenceGetter(
   this,
-  "ProxyChannelFilter",
-  "resource://gre/modules/ProxyChannelFilter.jsm"
+  "isEarlyWakeupOnRequestEnabled",
+  "extensions.webextensions.early_background_wakeup_on_request",
+  false
 );
-var { ExtensionPreferencesManager } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionPreferencesManager.jsm"
+var { ExtensionPreferencesManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionPreferencesManager.sys.mjs"
 );
 
 var { ExtensionError } = ExtensionUtils;
@@ -88,6 +99,10 @@ function registerProxyFilterEvent(
   extraInfoSpec = []
 ) {
   let listener = data => {
+    if (isEarlyWakeupOnRequestEnabled && fire.wakeup) {
+      // Starts the background script if it has not started, no-op otherwise.
+      extension.emit("start-background-script");
+    }
     return fire.sync(data);
   };
 
@@ -124,34 +139,24 @@ function registerProxyFilterEvent(
   };
 }
 
-this.proxy = class extends ExtensionAPI {
-  primeListener(extension, event, fire, params) {
-    if (event === "onRequest") {
-      return registerProxyFilterEvent(undefined, extension, fire, ...params);
-    }
-  }
+this.proxy = class extends ExtensionAPIPersistent {
+  PERSISTENT_EVENTS = {
+    onRequest({ fire, context }, params) {
+      return registerProxyFilterEvent(context, this.extension, fire, ...params);
+    },
+  };
 
   getAPI(context) {
     let { extension } = context;
+    let self = this;
 
     return {
       proxy: {
         onRequest: new EventManager({
           context,
-          name: `proxy.onRequest`,
-          persistent: {
-            module: "proxy",
-            event: "onRequest",
-          },
-          register: (fire, filter, info) => {
-            return registerProxyFilterEvent(
-              context,
-              context.extension,
-              fire,
-              filter,
-              info
-            ).unregister;
-          },
+          module: "proxy",
+          event: "onRequest",
+          extensionApi: self,
         }).api(),
 
         // Leaving as non-persistent.  By itself it's not useful since proxy-error

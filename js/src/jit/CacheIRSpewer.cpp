@@ -13,9 +13,11 @@
 #  include <algorithm>
 #  include <stdarg.h>
 
+#  include "jsapi.h"
 #  include "jsmath.h"
 
-#  include "js/ScalarType.h"  // js::Scalar::Type
+#  include "js/ColumnNumber.h"  // JS::LimitedColumnNumberOneOrigin
+#  include "js/ScalarType.h"    // js::Scalar::Type
 #  include "util/GetPidProvider.h"
 #  include "util/Text.h"
 #  include "vm/JSFunction.h"
@@ -104,11 +106,21 @@ class MOZ_RAII CacheIROpsJitSpewer {
   void spewGuardClassKindImm(const char* name, GuardClassKind kind) {
     out_.printf("%s GuardClassKind(%u)", name, unsigned(kind));
   }
+  void spewArrayBufferViewKindImm(const char* name, ArrayBufferViewKind kind) {
+    out_.printf("%s ArrayBufferViewKind(%u)", name, unsigned(kind));
+  }
   void spewWasmValTypeImm(const char* name, wasm::ValType::Kind kind) {
     out_.printf("%s WasmValTypeKind(%u)", name, unsigned(kind));
   }
   void spewAllocKindImm(const char* name, gc::AllocKind kind) {
     out_.printf("%s AllocKind(%u)", name, unsigned(kind));
+  }
+  void spewCompletionKindImm(const char* name, CompletionKind kind) {
+    out_.printf("%s CompletionKind(%u)", name, unsigned(kind));
+  }
+  void spewRealmFuseIndexImm(const char* name, RealmFuses::FuseIndex index) {
+    out_.printf("%s RealmFuseIndex(%u=%s)", name, unsigned(index),
+                RealmFuses::getFuseName(index));
   }
 
  public:
@@ -242,10 +254,19 @@ class MOZ_RAII CacheIROpsJSONSpewer {
   void spewGuardClassKindImm(const char* name, GuardClassKind kind) {
     spewArgImpl(name, "Imm", unsigned(kind));
   }
+  void spewArrayBufferViewKindImm(const char* name, ArrayBufferViewKind kind) {
+    spewArgImpl(name, "Imm", unsigned(kind));
+  }
+  void spewRealmFuseIndexImm(const char* name, RealmFuses::FuseIndex kind) {
+    spewArgImpl(name, "Imm", unsigned(kind));
+  }
   void spewWasmValTypeImm(const char* name, wasm::ValType::Kind kind) {
     spewArgImpl(name, "Imm", unsigned(kind));
   }
   void spewAllocKindImm(const char* name, gc::AllocKind kind) {
+    spewArgImpl(name, "Imm", unsigned(kind));
+  }
+  void spewCompletionKindImm(const char* name, CompletionKind kind) {
     spewArgImpl(name, "Imm", unsigned(kind));
   }
 
@@ -333,40 +354,10 @@ void CacheIRSpewer::beginCache(const IRGenerator& gen) {
   j.property("file", filename ? filename : "null");
   j.property("mode", int(gen.mode_));
   if (jsbytecode* pc = gen.pc_) {
-    unsigned column;
+    JS::LimitedColumnNumberOneOrigin column;
     j.property("line", PCToLineNumber(gen.script_, pc, &column));
-    j.property("column", column);
+    j.property("column", column.oneOriginValue());
     j.formatProperty("pc", "%p", pc);
-  }
-}
-
-template <typename CharT>
-static void QuoteString(GenericPrinter& out, const CharT* s, size_t length) {
-  const CharT* end = s + length;
-  for (const CharT* t = s; t < end; s = ++t) {
-    // This quote implementation is probably correct,
-    // but uses \u even when not strictly necessary.
-    char16_t c = *t;
-    if (c == '"' || c == '\\') {
-      out.printf("\\");
-      out.printf("%c", char(c));
-    } else if (!IsAsciiPrintable(c)) {
-      out.printf("\\u%04x", c);
-    } else {
-      out.printf("%c", char(c));
-    }
-  }
-}
-
-static void QuoteString(GenericPrinter& out, JSLinearString* str) {
-  JS::AutoCheckCannotGC nogc;
-
-  // Limit the string length to reduce the JSON file size.
-  size_t length = std::min(str->length(), size_t(128));
-  if (str->hasLatin1Chars()) {
-    QuoteString(out, str->latin1Chars(nogc), length);
-  } else {
-    QuoteString(out, str->twoByteChars(nogc), length);
   }
 }
 
@@ -389,19 +380,15 @@ void CacheIRSpewer::valueProperty(const char* name, const Value& v) {
   } else if (v.isString() || v.isSymbol()) {
     JSString* str = v.isString() ? v.toString() : v.toSymbol()->description();
     if (str && str->isLinear()) {
-      j.beginStringProperty("value");
-      QuoteString(output_, &str->asLinear());
-      j.endStringProperty();
+      j.property("value", &str->asLinear());
     }
   } else if (v.isObject()) {
     JSObject& object = v.toObject();
     j.formatProperty("value", "%p (shape: %p)", &object, object.shape());
 
     if (object.is<JSFunction>()) {
-      if (JSAtom* name = object.as<JSFunction>().displayAtom()) {
-        j.beginStringProperty("funName");
-        QuoteString(output_, name);
-        j.endStringProperty();
+      if (JSAtom* name = object.as<JSFunction>().maybePartialDisplayAtom()) {
+        j.property("funName", name);
       }
     }
 

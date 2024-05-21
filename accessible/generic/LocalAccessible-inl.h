@@ -22,11 +22,12 @@ namespace a11y {
 
 inline mozilla::a11y::role LocalAccessible::Role() const {
   const nsRoleMapEntry* roleMapEntry = ARIARoleMap();
-  if (!roleMapEntry || roleMapEntry->roleRule != kUseMapRole) {
-    return ARIATransformRole(NativeRole());
-  }
-
-  return ARIATransformRole(roleMapEntry->role);
+  mozilla::a11y::role r =
+      (!roleMapEntry || roleMapEntry->roleRule != kUseMapRole)
+          ? NativeRole()
+          : roleMapEntry->role;
+  r = ARIATransformRole(r);
+  return GetMinimumRole(r);
 }
 
 inline mozilla::a11y::role LocalAccessible::ARIARole() {
@@ -41,14 +42,6 @@ inline mozilla::a11y::role LocalAccessible::ARIARole() {
 inline void LocalAccessible::SetRoleMapEntry(
     const nsRoleMapEntry* aRoleMapEntry) {
   mRoleMapEntryIndex = aria::GetIndexFromRoleMap(aRoleMapEntry);
-}
-
-inline bool LocalAccessible::IsSearchbox() const {
-  const nsRoleMapEntry* roleMapEntry = ARIARoleMap();
-  return (roleMapEntry && roleMapEntry->Is(nsGkAtoms::searchbox)) ||
-         (mContent->IsHTMLElement(nsGkAtoms::input) &&
-          mContent->AsElement()->AttrValueIs(kNameSpaceID_None, nsGkAtoms::type,
-                                             nsGkAtoms::search, eCaseMatters));
 }
 
 inline bool LocalAccessible::NativeHasNumericValue() const {
@@ -72,7 +65,7 @@ inline bool LocalAccessible::HasNumericValue() const {
 
 inline bool LocalAccessible::IsDefunct() const {
   MOZ_ASSERT(mStateFlags & eIsDefunct || IsApplication() || IsDoc() ||
-                 IsProxy() || mStateFlags & eSharedNode || mContent,
+                 mStateFlags & eSharedNode || mContent,
              "No content");
   return mStateFlags & eIsDefunct;
 }

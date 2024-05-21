@@ -63,8 +63,7 @@ class nsURILoader final : public nsIURILoader {
  * Each instance remains alive until its target URL has been loaded
  * (or aborted).
  */
-class nsDocumentOpenInfo : public nsIStreamListener,
-                           public nsIThreadRetargetableStreamListener {
+class nsDocumentOpenInfo : public nsIThreadRetargetableStreamListener {
  public:
   // Real constructor
   // aFlags is a combination of the flags on nsIURILoader
@@ -83,7 +82,7 @@ class nsDocumentOpenInfo : public nsIStreamListener,
 
   // Call this (from OnStartRequest) to attempt to find an nsIStreamListener to
   // take the data off our hands.
-  nsresult DispatchContent(nsIRequest* request, nsISupports* aCtxt);
+  nsresult DispatchContent(nsIRequest* request);
 
   // Call this if we need to insert a stream converter from aSrcContentType to
   // aOutContentType into the StreamListener chain.  DO NOT call it if the two

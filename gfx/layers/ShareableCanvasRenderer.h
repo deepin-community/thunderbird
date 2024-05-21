@@ -43,6 +43,8 @@ class ShareableCanvasRenderer : public CanvasRenderer {
   virtual CompositableForwarder* GetForwarder() = 0;
 
   virtual bool CreateCompositable() = 0;
+  virtual void EnsurePipeline() = 0;
+  virtual bool HasPipeline() { return false; };
 
   void ClearCachedResources() override;
   void DisconnectClient() override;

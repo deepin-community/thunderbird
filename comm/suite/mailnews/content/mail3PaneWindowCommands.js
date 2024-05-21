@@ -1,4 +1,4 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -129,6 +129,9 @@ var DefaultController =
       case "cmd_forwardInline":
       case "cmd_forwardAttachment":
       case "cmd_editAsNew":
+      case "cmd_editDraftMsg":
+      case "cmd_newMsgFromTemplate":
+      case "cmd_editTemplateMsg":
       case "cmd_createFilterFromMenu":
       case "cmd_delete":
       case "cmd_shiftDelete":
@@ -285,6 +288,9 @@ var DefaultController =
       case "cmd_forwardInline":
       case "cmd_forwardAttachment":
       case "cmd_editAsNew":
+      case "cmd_editDraftMsg":
+      case "cmd_newMsgFromTemplate":
+      case "cmd_editTemplateMsg":
       case "cmd_openMessage":
       case "button_print":
       case "cmd_print":
@@ -524,7 +530,16 @@ var DefaultController =
         MsgForwardAsAttachment(null);
         break;
       case "cmd_editAsNew":
-        MsgEditMessageAsNew();
+        MsgEditMessageAsNew(null);
+        break;
+      case "cmd_editDraftMsg":
+        MsgEditDraftMessage(null);
+        break;
+      case "cmd_newMsgFromTemplate":
+        MsgNewMessageFromTemplate(null);
+        break;
+      case "cmd_editTemplateMsg":
+        MsgEditTemplateMessage(null);
         break;
       case "cmd_createFilterFromMenu":
         MsgCreateFilter();
@@ -1030,7 +1045,7 @@ function CanDeleteFolder(folder) {
   if (folder.isServer)
     return false;
 
-  var specialFolder = getSpecialFolderString(folder);
+  var specialFolder = FolderUtils.getSpecialFolderString(folder);
 
   if (specialFolder == "Inbox" || specialFolder == "Trash" ||
       specialFolder == "Drafts" || specialFolder == "Sent" ||

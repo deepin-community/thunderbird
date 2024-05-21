@@ -15,13 +15,14 @@
 
 #include "jit/CompileWrappers.h"  // CompileRuntime
 #include "jit/JitFrames.h"        // MinJITStackSize
-#include "js/TypeDecls.h"         // jsbytecode
-#include "vm/BindingKind.h"       // BindingLocation
-#include "vm/BytecodeUtil.h"      // JSOp
-#include "vm/JSAtomState.h"       // JSAtomState
-#include "vm/JSFunction.h"        // JSFunction
-#include "vm/JSScript.h"          // JSScript
-#include "vm/Scope.h"             // BindingIter
+#include "jit/shared/Assembler-shared.h"
+#include "js/TypeDecls.h"    // jsbytecode
+#include "vm/BindingKind.h"  // BindingLocation
+#include "vm/JSAtomState.h"  // JSAtomState
+#include "vm/JSFunction.h"   // JSFunction
+#include "vm/JSScript.h"     // JSScript
+#include "vm/Opcodes.h"      // JSOp
+#include "vm/Scope.h"        // BindingIter
 
 namespace js {
 
@@ -55,6 +56,13 @@ inline unsigned CountArgSlots(JSScript* script, JSFunction* fun) {
   return StartArgSlot(script) + (fun ? fun->nargs() + 1 : 0);
 }
 
+inline unsigned CountArgSlots(JSScript* script, bool hasFun,
+                              uint32_t funArgCount) {
+  // Same as the previous function, for use when the JSFunction is not
+  // available.
+  return StartArgSlot(script) + (hasFun ? funArgCount + 1 : 0);
+}
+
 // Contains information about the compilation source for IR being generated.
 class CompileInfo {
  public:
@@ -74,7 +82,9 @@ class CompileInfo {
         mayReadFrameArgsDirectly_(script->mayReadFrameArgsDirectly()),
         anyFormalIsForwarded_(script->anyFormalIsForwarded()),
         isDerivedClassConstructor_(script->isDerivedClassConstructor()),
-        inlineScriptTree_(inlineScriptTree) {
+        inlineScriptTree_(inlineScriptTree),
+        hasSeenObjectEmulateUndefinedFuseIntact_(
+            runtime->hasSeenObjectEmulateUndefinedFuseIntact()) {
     MOZ_ASSERT_IF(osrPc, JSOp(*osrPc) == JSOp::LoopHead);
 
     // The function here can flow in from anywhere so look up the canonical
@@ -106,7 +116,7 @@ class CompileInfo {
     if (script->isDerivedClassConstructor()) {
       MOZ_ASSERT(script->functionHasThisBinding());
       for (BindingIter bi(script); bi; bi++) {
-        if (bi.name() != runtime->names().dotThis) {
+        if (bi.name() != runtime->names().dot_this_) {
           continue;
         }
         BindingLocation loc = bi.location();
@@ -140,7 +150,8 @@ class CompileInfo {
         anyFormalIsForwarded_(false),
         inlineScriptTree_(nullptr),
         needsBodyEnvironmentObject_(false),
-        funNeedsSomeEnvironmentObject_(false) {
+        funNeedsSomeEnvironmentObject_(false),
+        hasSeenObjectEmulateUndefinedFuseIntact_(false) {
     nimplicit_ = 0;
     nargs_ = 0;
     nlocals_ = nlocals;
@@ -150,10 +161,13 @@ class CompileInfo {
 
   JSScript* script() const { return script_; }
   bool compilingWasm() const { return script() == nullptr; }
-  JSFunction* funMaybeLazy() const { return fun_; }
   ModuleObject* module() const { return script_->module(); }
   jsbytecode* osrPc() const { return osrPc_; }
   InlineScriptTree* inlineScriptTree() const { return inlineScriptTree_; }
+
+  // It's not safe to access the JSFunction off main thread.
+  bool hasFunMaybeLazy() const { return fun_; }
+  ImmGCPtr funMaybeLazy() const { return ImmGCPtr(fun_); }
 
   const char* filename() const { return script_->filename(); }
 
@@ -185,7 +199,7 @@ class CompileInfo {
     return 2;
   }
   uint32_t thisSlot() const {
-    MOZ_ASSERT(funMaybeLazy());
+    MOZ_ASSERT(hasFunMaybeLazy());
     MOZ_ASSERT(nimplicit_ > 0);
     return nimplicit_ - 1;
   }
@@ -209,7 +223,7 @@ class CompileInfo {
   uint32_t stackSlot(uint32_t i) const { return firstStackSlot() + i; }
 
   uint32_t totalSlots() const {
-    MOZ_ASSERT(script() && funMaybeLazy());
+    MOZ_ASSERT(script() && hasFunMaybeLazy());
     return nimplicit() + nargs() + nlocals();
   }
 
@@ -253,7 +267,7 @@ class CompileInfo {
 
     // Formal argument slots.
     if (slot >= firstArgSlot()) {
-      MOZ_ASSERT(funMaybeLazy());
+      MOZ_ASSERT(hasFunMaybeLazy());
       MOZ_ASSERT(slot - firstArgSlot() < nargs());
 
       // Preserve formal arguments if they might be read when creating a rest or
@@ -266,7 +280,7 @@ class CompileInfo {
     }
 
     // |this| slot is observable but it can be recovered.
-    if (funMaybeLazy() && slot == thisSlot()) {
+    if (hasFunMaybeLazy() && slot == thisSlot()) {
       return SlotObservableKind::ObservableRecoverable;
     }
 
@@ -289,7 +303,7 @@ class CompileInfo {
     // The arguments object is observable. If it does not escape, it can
     // be recovered.
     if (needsArgsObj() && slot == argsObjSlot()) {
-      MOZ_ASSERT(funMaybeLazy());
+      MOZ_ASSERT(hasFunMaybeLazy());
       return SlotObservableKind::ObservableRecoverable;
     }
 
@@ -330,6 +344,10 @@ class CompileInfo {
 
   bool isDerivedClassConstructor() const { return isDerivedClassConstructor_; }
 
+  bool hasSeenObjectEmulateUndefinedFuseIntact() const {
+    return hasSeenObjectEmulateUndefinedFuseIntact_;
+  }
+
  private:
   unsigned nimplicit_;
   unsigned nargs_;
@@ -363,6 +381,8 @@ class CompileInfo {
   // that the environment chain is not easy to reconstruct.
   bool needsBodyEnvironmentObject_;
   bool funNeedsSomeEnvironmentObject_;
+
+  bool hasSeenObjectEmulateUndefinedFuseIntact_;
 };
 
 }  // namespace jit

@@ -1,23 +1,17 @@
-/* -*- Mode: JavaScript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* ***** BEGIN LICENSE BLOCK *****
- *
- * Any copyright is dedicated to the Public Domain.
- * http://creativecommons.org/licenses/publicdomain/
- *
- * ***** END LICENSE BLOCK ***** */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*
  * Test content length for the IMAP protocol. This focuses on necko URLs
  * that are run externally.
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 var gMsgHdr = null;
@@ -25,49 +19,55 @@ var gMsgHdr = null;
 // Take a multipart message as we're testing attachment URLs as well
 var gFile = do_get_file("../../../data/multipart-complex2");
 
-var tests = [setup, addMessageToServer, verifyContentLength, teardown];
-
-// Adds some messages directly to a mailbox (eg new mail)
-function* addMessageToServer() {
-  let URI = Services.io.newFileURI(gFile).QueryInterface(Ci.nsIFileURL);
-  IMAPPump.mailbox.addMessage(
-    new imapMessage(URI.spec, IMAPPump.mailbox.uidnext++, [])
-  );
-
-  IMAPPump.inbox.updateFolder(null);
-  yield false;
-}
-
-var msgFolderListener = {
-  msgAdded(aMsgHdr) {
-    gMsgHdr = aMsgHdr;
-    executeSoon(async_driver);
-  },
-};
-
-function setup() {
+add_setup(function () {
   setupIMAPPump();
 
   // Set up nsIMsgFolderListener to get the header when it's received
-  MailServices.mfn.addListener(msgFolderListener, MailServices.mfn.msgAdded);
+  MailServices.mfn.addListener(msgAddedListener, MailServices.mfn.msgAdded);
 
   IMAPPump.inbox.clearFlag(Ci.nsMsgFolderFlags.Offline);
-}
+});
 
-function verifyContentLength() {
-  let messageUri = IMAPPump.inbox.getUriForMsg(gMsgHdr);
-  // Convert this to a URI that necko can run
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
+// Adds some messages directly to a mailbox (eg new mail)
+add_task(async function addMessageToServer() {
+  const URI = Services.io.newFileURI(gFile).QueryInterface(Ci.nsIFileURL);
+  IMAPPump.mailbox.addMessage(
+    new ImapMessage(URI.spec, IMAPPump.mailbox.uidnext++, [])
   );
-  let messageService = messenger.messageServiceFromURI(messageUri);
-  let neckoURL = messageService.getUrlForUri(messageUri);
+
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
+
+function MsgAddedListener() {
+  this._promise = new Promise(resolve => {
+    this._resolve = resolve;
+  });
+}
+MsgAddedListener.prototype = {
+  msgAdded(aMsgHdr) {
+    gMsgHdr = aMsgHdr;
+    this._resolve();
+  },
+  get promise() {
+    return this._promise;
+  },
+};
+var msgAddedListener = new MsgAddedListener();
+
+add_task(async function verifyContentLength() {
+  await msgAddedListener.promise;
+  const messageUri = IMAPPump.inbox.getUriForMsg(gMsgHdr);
+  // Convert this to a URI that necko can run
+  const messageService = MailServices.messageServiceFromURI(messageUri);
+  const neckoURL = messageService.getUrlForUri(messageUri);
   // Don't use the necko URL directly. Instead, get the spec and create a new
   // URL using the IO service
-  let urlToRun = Services.io.newURI(neckoURL.spec);
+  const urlToRun = Services.io.newURI(neckoURL.spec);
 
   // Get a channel from this URI, and check its content length
-  let channel = Services.io.newChannelFromURI(
+  const channel = Services.io.newChannelFromURI(
     urlToRun,
     null,
     Services.scriptSecurityManager.getSystemPrincipal(),
@@ -78,8 +78,8 @@ function verifyContentLength() {
   Assert.equal(channel.contentLength, gFile.fileSize);
 
   // Now try an attachment. &part=1.2
-  let attachmentURL = Services.io.newURI(neckoURL.spec + "&part=1.2");
-  let attachmentChannel = Services.io.newChannelFromURI(
+  const attachmentURL = Services.io.newURI(neckoURL.spec + "&part=1.2");
+  const attachmentChannel = Services.io.newChannelFromURI(
     attachmentURL,
     null,
     Services.scriptSecurityManager.getSystemPrincipal(),
@@ -90,13 +90,9 @@ function verifyContentLength() {
   // Currently attachments have their content length set to the length of the
   // entire message
   Assert.equal(attachmentChannel.contentLength, gFile.fileSize);
-}
+});
 
-function teardown() {
-  MailServices.mfn.removeListener(msgFolderListener);
+add_task(function endTest() {
+  MailServices.mfn.removeListener(msgAddedListener);
   teardownIMAPPump();
-}
-
-function run_test() {
-  async_run_tests(tests);
-}
+});

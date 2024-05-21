@@ -11,17 +11,16 @@
 #include "mozilla/ServoBindingTypes.h"
 
 class nsICSSDeclaration;
-class DeclarationBlock;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class CSSKeyframeDeclaration;
 
 class CSSKeyframeRule final : public css::Rule {
  public:
-  CSSKeyframeRule(already_AddRefed<RawServoKeyframe> aRaw, StyleSheet* aSheet,
-                  css::Rule* aParentRule, uint32_t aLine, uint32_t aColumn);
+  CSSKeyframeRule(already_AddRefed<StyleLockedKeyframe> aRaw,
+                  StyleSheet* aSheet, css::Rule* aParentRule, uint32_t aLine,
+                  uint32_t aColumn);
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(CSSKeyframeRule, css::Rule)
@@ -31,10 +30,11 @@ class CSSKeyframeRule final : public css::Rule {
   void List(FILE* out = stdout, int32_t aIndent = 0) const final;
 #endif
 
-  RawServoKeyframe* Raw() const { return mRaw; }
+  StyleLockedKeyframe* Raw() const { return mRaw; }
+  void SetRawAfterClone(RefPtr<StyleLockedKeyframe>);
 
   // WebIDL interface
-  uint16_t Type() const final { return CSSRule_Binding::KEYFRAME_RULE; }
+  StyleCssRuleType Type() const final;
   void GetCssText(nsACString& aCssText) const final;
   void GetKeyText(nsACString& aKey);
   void SetKeyText(const nsACString& aKey);
@@ -52,12 +52,11 @@ class CSSKeyframeRule final : public css::Rule {
   template <typename Func>
   void UpdateRule(Func aCallback);
 
-  RefPtr<RawServoKeyframe> mRaw;
+  RefPtr<StyleLockedKeyframe> mRaw;
   // lazily created when needed
   RefPtr<CSSKeyframeDeclaration> mDeclaration;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_CSSKeyframeRule_h

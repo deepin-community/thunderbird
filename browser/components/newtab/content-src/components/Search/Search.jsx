@@ -3,9 +3,11 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* globals ContentSearchUIController, ContentSearchHandoffUIController */
-"use strict";
 
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
+import {
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
 import { connect } from "react-redux";
 import { IS_NEWTAB } from "content-src/lib/constants";
 import React from "react";
@@ -19,9 +21,8 @@ export class _Search extends React.PureComponent {
     this.onSearchHandoffDrop = this.onSearchHandoffDrop.bind(this);
     this.onInputMount = this.onInputMount.bind(this);
     this.onInputMountHandoff = this.onInputMountHandoff.bind(this);
-    this.onSearchHandoffButtonMount = this.onSearchHandoffButtonMount.bind(
-      this
-    );
+    this.onSearchHandoffButtonMount =
+      this.onSearchHandoffButtonMount.bind(this);
   }
 
   handleEvent(event) {
@@ -75,7 +76,7 @@ export class _Search extends React.PureComponent {
   onInputMount(input) {
     if (input) {
       // The "healthReportKey" and needs to be "newtab" or "abouthome" so that
-      // BrowserUsageTelemetry.jsm knows to handle events with this name, and
+      // BrowserUsageTelemetry.sys.mjs knows to handle events with this name, and
       // can add the appropriate telemetry probes for search. Without the correct
       // name, certain tests like browser_UsageTelemetry_content.js will fail
       // (See github ticket #2348 for more details)
@@ -112,35 +113,6 @@ export class _Search extends React.PureComponent {
     }
   }
 
-  getDefaultEngineName() {
-    // _handoffSearchController will manage engine names once it is initialized.
-    return this.props.Prefs.values["urlbar.placeholderName"];
-  }
-
-  getHandoffInputL10nAttributes() {
-    let defaultEngineName = this.getDefaultEngineName();
-    return defaultEngineName
-      ? {
-          "data-l10n-id": "newtab-search-box-handoff-input",
-          "data-l10n-args": `{"engine": "${defaultEngineName}"}`,
-        }
-      : {
-          "data-l10n-id": "newtab-search-box-handoff-input-no-engine",
-        };
-  }
-
-  getHandoffTextL10nAttributes() {
-    let defaultEngineName = this.getDefaultEngineName();
-    return defaultEngineName
-      ? {
-          "data-l10n-id": "newtab-search-box-handoff-text",
-          "data-l10n-args": `{"engine": "${defaultEngineName}"}`,
-        }
-      : {
-          "data-l10n-id": "newtab-search-box-handoff-text-no-engine",
-        };
-  }
-
   onSearchHandoffButtonMount(button) {
     // Keep a reference to the button for use during "paste" event handling.
     this._searchHandoffButton = button;
@@ -160,9 +132,6 @@ export class _Search extends React.PureComponent {
       .filter(v => v)
       .join(" ");
 
-    const isNewNewtabExperienceEnabled = this.props.Prefs.values.featureConfig
-      .newNewtabExperienceEnabled;
-
     return (
       <div className={wrapperClassName}>
         {this.props.showLogo && (
@@ -175,11 +144,7 @@ export class _Search extends React.PureComponent {
           <div className="search-inner-wrapper">
             <input
               id="newtab-search-text"
-              data-l10n-id={
-                isNewNewtabExperienceEnabled
-                  ? "newtab-search-box-input"
-                  : "newtab-search-box-search-the-web-input"
-              }
+              data-l10n-id="newtab-search-box-input"
               maxLength="256"
               ref={this.onInputMount}
               type="search"
@@ -196,15 +161,11 @@ export class _Search extends React.PureComponent {
           <div className="search-inner-wrapper">
             <button
               className="search-handoff-button"
-              {...this.getHandoffInputL10nAttributes()}
               ref={this.onSearchHandoffButtonMount}
               onClick={this.onSearchHandoffClick}
               tabIndex="-1"
             >
-              <div
-                className="fake-textbox"
-                {...this.getHandoffTextL10nAttributes()}
-              />
+              <div className="fake-textbox" />
               <input
                 type="search"
                 className="fake-editable"

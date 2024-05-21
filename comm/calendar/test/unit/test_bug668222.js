@@ -2,14 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalAttendee: "resource:///modules/CalAttendee.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalAttendee: "resource:///modules/CalAttendee.sys.mjs",
 });
 
 function run_test() {
-  let attendee = new CalAttendee();
+  const attendee = new CalAttendee();
   attendee.id = "mailto:somebody";
 
   // Set the property and make sure its there

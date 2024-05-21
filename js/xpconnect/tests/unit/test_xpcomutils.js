@@ -5,15 +5,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * This file tests the methods on XPCOMUtils.jsm.
+ * This file tests the methods on XPCOMUtils.sys.mjs.
  * Also on ComponentUtils.jsm. Which is deprecated.
  */
 
-const {AppConstants} = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
-const {ComponentUtils} = ChromeUtils.import("resource://gre/modules/ComponentUtils.jsm");
-const {Preferences} = ChromeUtils.import("resource://gre/modules/Preferences.jsm");
-const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+const {AppConstants} = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
+const {ComponentUtils} = ChromeUtils.importESModule("resource://gre/modules/ComponentUtils.sys.mjs");
+const {Preferences} = ChromeUtils.importESModule("resource://gre/modules/Preferences.sys.mjs");
+const {XPCOMUtils} = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Tests
@@ -43,33 +42,6 @@ add_test(function test_generateQI_string_names()
     } catch(e) {}
     run_next_test();
 });
-
-add_test(function test_defineLazyGetter()
-{
-    let accessCount = 0;
-    let obj = {
-      inScope: false
-    };
-    const TEST_VALUE = "test value";
-    XPCOMUtils.defineLazyGetter(obj, "foo", function() {
-        accessCount++;
-        this.inScope = true;
-        return TEST_VALUE;
-    });
-    Assert.equal(accessCount, 0);
-
-    // Get the property, making sure the access count has increased.
-    Assert.equal(obj.foo, TEST_VALUE);
-    Assert.equal(accessCount, 1);
-    Assert.ok(obj.inScope);
-
-    // Get the property once more, making sure the access count has not
-    // increased.
-    Assert.equal(obj.foo, TEST_VALUE);
-    Assert.equal(accessCount, 1);
-    run_next_test();
-});
-
 
 add_test(function test_defineLazyServiceGetter()
 {
@@ -157,18 +129,15 @@ add_test(function test_categoryRegistration()
   const XULAPPINFO_CID = Components.ID("{fc937916-656b-4fb3-a395-8c63569e27a8}");
 
   // Create a fake app entry for our category registration apps filter.
-  let tmp = {};
-  ChromeUtils.import("resource://testing-common/AppInfo.jsm", tmp);
-  let XULAppInfo = tmp.newAppInfo({
+  let { newAppInfo } = ChromeUtils.importESModule("resource://testing-common/AppInfo.sys.mjs");
+  let XULAppInfo = newAppInfo({
     name: "catRegTest",
     ID: "{adb42a9a-0d19-4849-bf4d-627614ca19be}",
     version: "1",
     platformVersion: "",
   });
   let XULAppInfoFactory = {
-    createInstance: function (outer, iid) {
-      if (outer != null)
-        throw Cr.NS_ERROR_NO_AGGREGATION;
+    createInstance: function (iid) {
       return XULAppInfo.QueryInterface(iid);
     }
   };
@@ -248,16 +217,14 @@ add_test(function test_generateSingletonFactory()
   function XPCComponent() {}
   XPCComponent.prototype = {
     classID: XPCCOMPONENT_CID,
-    _xpcom_factory: ComponentUtils.generateSingletonFactory(XPCComponent),
     QueryInterface: ChromeUtils.generateQI([])
   };
-  let NSGetFactory = ComponentUtils.generateNSGetFactory([XPCComponent]);
   let registrar = Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
   registrar.registerFactory(
     XPCCOMPONENT_CID,
     "XPCComponent",
     XPCCOMPONENT_CONTRACTID,
-    NSGetFactory(XPCCOMPONENT_CID)
+    ComponentUtils.generateSingletonFactory(XPCComponent)
   );
 
   // First, try to instance the component.

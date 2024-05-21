@@ -2,17 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this,
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import abc
 import errno
 import os
 import re
 import shutil
 import subprocess
-import sys
+from pathlib import Path
+from typing import (
+    Iterator,
+    List,
+    Optional,
+    Union,
+)
 
-from mozbuild.util import ensure_subprocess_env
+from mach.util import to_optional_path
 from mozfile import which
 from mozpack.files import FileListFinder
 
@@ -51,26 +55,20 @@ class CannotDeleteFromRootOfRepositoryException(Exception):
     the repository, which is not permitted."""
 
 
-def get_tool_path(tool):
+def get_tool_path(tool: Optional[Union[str, Path]] = None):
+    tool = Path(tool)
     """Obtain the path of `tool`."""
-    if os.path.isabs(tool) and os.path.exists(tool):
-        return tool
+    if tool.is_absolute() and tool.exists():
+        return str(tool)
 
-    path = which(tool)
+    path = to_optional_path(which(str(tool)))
     if not path:
         raise MissingVCSTool(
-            "Unable to obtain %s path. Try running "
+            f"Unable to obtain {tool} path. Try running "
             "|mach bootstrap| to ensure your environment is up to "
-            "date." % tool
+            "date."
         )
-    return path
-
-
-def _paths_equal(a, b):
-    """Return True iff the two paths refer to the "same" file on disk."""
-    return os.path.normpath(os.path.realpath(a)) == os.path.normpath(
-        os.path.realpath(b)
-    )
+    return str(path)
 
 
 class Repository(object):
@@ -85,22 +83,12 @@ class Repository(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, path, tool):
-        self.path = os.path.abspath(path)
-        self._tool = get_tool_path(tool)
+    def __init__(self, path: Path, tool: Optional[str] = None):
+        self.path = str(path.resolve())
+        self._tool = Path(get_tool_path(tool)) if tool else None
         self._version = None
         self._valid_diff_filter = ("m", "a", "d")
-
-        if os.name == "nt" and sys.version_info[0] == 2:
-            self._env = {}
-            for k, v in os.environ.iteritems():
-                if isinstance(k, unicode):
-                    k = k.encode("utf8")
-                if isinstance(v, unicode):
-                    v = v.encode("utf8")
-                self._env[k] = v
-        else:
-            self._env = os.environ.copy()
+        self._env = os.environ.copy()
 
     def __enter__(self):
         return self
@@ -108,21 +96,28 @@ class Repository(object):
     def __exit__(self, exc_type, exc_value, exc_tb):
         pass
 
-    def _run(self, *args, **runargs):
+    def _run(self, *args, encoding="utf-8", **runargs):
         return_codes = runargs.get("return_codes", [])
 
-        cmd = (self._tool,) + args
-        try:
-            return subprocess.check_output(
-                cmd,
-                cwd=self.path,
-                env=ensure_subprocess_env(self._env),
-                universal_newlines=True,
-            )
-        except subprocess.CalledProcessError as e:
-            if e.returncode in return_codes:
-                return ""
-            raise
+        cmd = (str(self._tool),) + args
+        # Check if we have a tool, either hg or git. If this is a
+        # source release we return src, then we dont have a tool to use.
+        # This caused jstests to fail before fixing, because it uses a
+        # packaged mozjs release source
+        if not self._tool:
+            return "src"
+        else:
+            try:
+                return subprocess.check_output(
+                    cmd,
+                    cwd=self.path,
+                    env=self._env,
+                    encoding=encoding,
+                )
+            except subprocess.CalledProcessError as e:
+                if e.returncode in return_codes:
+                    return ""
+                raise
 
     @property
     def tool_version(self):
@@ -130,7 +125,7 @@ class Repository(object):
         if self._version:
             return self._version
         info = self._run("--version").strip()
-        match = re.search("version ([^\+\)]+)", info)
+        match = re.search(r"version ([^+)]+)", info)
         if not match:
             raise Exception("Unable to identify tool version.")
 
@@ -187,10 +182,6 @@ class Repository(object):
         """
 
     @abc.abstractmethod
-    def get_upstream(self):
-        """Reference to the upstream remote."""
-
-    @abc.abstractmethod
     def get_changed_files(self, diff_filter, mode="unstaged", rev=None):
         """Return a list of files that are changed in this repository's
         working copy.
@@ -212,7 +203,7 @@ class Repository(object):
         """
 
     @abc.abstractmethod
-    def get_outgoing_files(self, diff_filter, upstream="default"):
+    def get_outgoing_files(self, diff_filter, upstream):
         """Return a list of changed files compared to upstream.
 
         ``diff_filter`` works the same as `get_changed_files`.
@@ -222,21 +213,31 @@ class Repository(object):
         """
 
     @abc.abstractmethod
-    def add_remove_files(self, *paths):
+    def add_remove_files(self, *paths: Union[str, Path]):
         """Add and remove files under `paths` in this repository's working copy."""
 
     @abc.abstractmethod
-    def forget_add_remove_files(self, *paths):
+    def forget_add_remove_files(self, *paths: Union[str, Path]):
         """Undo the effects of a previous add_remove_files call for `paths`."""
 
     @abc.abstractmethod
-    def get_tracked_files_finder(self):
+    def get_tracked_files_finder(self, path=None):
         """Obtain a mozpack.files.BaseFinder of managed files in the working
         directory.
 
         The Finder will have its list of all files in the repo cached for its
         entire lifetime, so operations on the Finder will not track with, for
         example, commits to the repo during the Finder's lifetime.
+        """
+
+    @abc.abstractmethod
+    def get_ignored_files_finder(self):
+        """Obtain a mozpack.files.BaseFinder of ignored files in the working
+        directory.
+
+        The Finder will have its list of all files in the repo cached for its
+        entire lifetime, so operations on the Finder will not track with, for
+        example, changes to the repo during the Finder's lifetime.
         """
 
     @abc.abstractmethod
@@ -252,19 +253,22 @@ class Repository(object):
         """
 
     @abc.abstractmethod
-    def clean_directory(self, path):
+    def clean_directory(self, path: Union[str, Path]):
         """Undo all changes (including removing new untracked files) in the
         given `path`.
         """
 
     @abc.abstractmethod
-    def push_to_try(self, message):
+    def push_to_try(self, message, allow_log_capture=False):
         """Create a temporary commit, push it to try and clean it up
         afterwards.
 
         With mercurial, MissingVCSExtension will be raised if the `push-to-try`
         extension is not installed. On git, MissingVCSExtension will be raised
         if git cinnabar is not present.
+
+        If `allow_log_capture` is set to `True`, then the push-to-try will be run using
+        Popen instead of check_call so that the logs can be captured elsewhere.
         """
 
     @abc.abstractmethod
@@ -293,30 +297,75 @@ class Repository(object):
             args = args + paths
         self._run(*args)
 
+    def _push_to_try_with_log_capture(self, cmd, subprocess_opts):
+        """Push to try but with the ability for the user to capture logs.
+
+        We need to use Popen for this because neither the run method nor
+        check_call will allow us to reasonably catch the logs. With check_call,
+        hg hangs, and with the run method, the logs are output too slowly
+        so you're left wondering if it's working (prime candidate for
+        corrupting local repos).
+        """
+        process = subprocess.Popen(cmd, **subprocess_opts)
+
+        # Print out the lines as they appear so they can be
+        # parsed for information
+        for line in process.stdout or []:
+            print(line)
+        process.stdout.close()
+        process.wait()
+
+        if process.returncode != 0:
+            for line in process.stderr or []:
+                print(line)
+            raise subprocess.CalledProcessError(
+                returncode=process.returncode,
+                cmd=cmd,
+                output="Failed to push-to-try",
+                stderr=process.stderr,
+            )
+
+    @abc.abstractmethod
+    def get_branch_nodes(self) -> List[str]:
+        """Return a list of commit SHAs for nodes on the current branch."""
+
+    @abc.abstractmethod
+    def get_commit_patches(self, nodes: str) -> List[bytes]:
+        """Return the contents of the patch `node` in the VCS's standard format."""
+
+    @abc.abstractmethod
+    def create_try_commit(self, commit_message: str):
+        """Create a temporary try commit.
+
+        Create a new commit using `commit_message` as the commit message. The commit
+        may be empty, for example when only including try syntax.
+        """
+
+    @abc.abstractmethod
+    def remove_current_commit(self):
+        """Remove the currently checked out commit from VCS history."""
+
 
 class HgRepository(Repository):
     """An implementation of `Repository` for Mercurial repositories."""
 
-    def __init__(self, path, hg="hg"):
+    def __init__(self, path: Path, hg="hg"):
         import hglib.client
 
         super(HgRepository, self).__init__(path, tool=hg)
-        self._env[b"HGPLAIN"] = b"1"
+        self._env["HGPLAIN"] = "1"
 
         # Setting this modifies a global variable and makes all future hglib
         # instances use this binary. Since the tool path was validated, this
         # should be OK. But ideally hglib would offer an API that defines
         # per-instance binaries.
-        hglib.HGPATH = self._tool
+        hglib.HGPATH = str(self._tool)
 
         # Without connect=False this spawns a persistent process. We want
         # the process lifetime tied to a context manager.
         self._client = hglib.client.hgclient(
-            self.path, encoding=b"UTF-8", configs=None, connect=False
+            self.path, encoding="UTF-8", configs=None, connect=False
         )
-
-        # Work around py3 compat issues in python-hglib
-        self._client._env = ensure_subprocess_env(self._client._env)
 
     @property
     def name(self):
@@ -335,8 +384,8 @@ class HgRepository(Repository):
 
     @property
     def branch(self):
-        bookmarks_fn = os.path.join(self.path, ".hg", "bookmarks.current")
-        if os.path.exists(bookmarks_fn):
+        bookmarks_fn = Path(self.path) / ".hg" / "bookmarks.current"
+        if bookmarks_fn.exists():
             with open(bookmarks_fn) as f:
                 bookmark = f.read()
                 return bookmark or None
@@ -347,7 +396,7 @@ class HgRepository(Repository):
         if self._client.server is None:
             # The cwd if the spawned process should be the repo root to ensure
             # relative paths are normalized to it.
-            old_cwd = os.getcwd()
+            old_cwd = Path.cwd()
             try:
                 os.chdir(self.path)
                 self._client.open()
@@ -394,10 +443,10 @@ class HgRepository(Repository):
         # .hg/requires. But since the requirement is still experimental
         # as of Mercurial 4.3, it's probably more trouble than its worth
         # to verify it.
-        sparse = os.path.join(self.path, ".hg", "sparse")
+        sparse = Path(self.path) / ".hg" / "sparse"
 
         try:
-            st = os.stat(sparse)
+            st = sparse.stat()
             return st.st_size > 0
         except OSError as e:
             if e.errno != errno.ENOENT:
@@ -416,9 +465,6 @@ class HgRepository(Repository):
             # "ui.username" doesn't follow the "Full Name <email@domain>" convention
             return None
         return match.group(1)
-
-    def get_upstream(self):
-        return "default"
 
     def _format_diff_filter(self, diff_filter, for_status=False):
         df = diff_filter.lower()
@@ -449,8 +495,14 @@ class HgRepository(Repository):
             template = self._files_template(diff_filter)
             return self._run("log", "-r", rev, "-T", template).splitlines()
 
-    def get_outgoing_files(self, diff_filter="ADM", upstream="default"):
+    def get_outgoing_files(self, diff_filter="ADM", upstream=None):
         template = self._files_template(diff_filter)
+
+        if not upstream:
+            return self._run(
+                "log", "-r", "draft() and ancestors(.)", "--template", template
+            ).split()
+
         return self._run(
             "outgoing",
             "-r",
@@ -462,25 +514,40 @@ class HgRepository(Repository):
             return_codes=(1,),
         ).split()
 
-    def add_remove_files(self, *paths):
+    def add_remove_files(self, *paths: Union[str, Path]):
         if not paths:
             return
-        args = ["addremove"] + list(paths)
+
+        paths = [str(path) for path in paths]
+
+        args = ["addremove"] + paths
         m = re.search(r"\d+\.\d+", self.tool_version)
         simplified_version = float(m.group(0)) if m else 0
         if simplified_version >= 3.9:
             args = ["--config", "extensions.automv="] + args
         self._run(*args)
 
-    def forget_add_remove_files(self, *paths):
+    def forget_add_remove_files(self, *paths: Union[str, Path]):
         if not paths:
             return
+
+        paths = [str(path) for path in paths]
+
         self._run("forget", *paths)
 
-    def get_tracked_files_finder(self):
+    def get_tracked_files_finder(self, path=None):
         # Can return backslashes on Windows. Normalize to forward slashes.
         files = list(
             p.replace("\\", "/") for p in self._run("files", "-0").split("\0") if p
+        )
+        return FileListFinder(files)
+
+    def get_ignored_files_finder(self):
+        # Can return backslashes on Windows. Normalize to forward slashes.
+        files = list(
+            p.replace("\\", "/").split(" ")[-1]
+            for p in self._run("status", "-i").split("\n")
+            if p
         )
         return FileListFinder(files)
 
@@ -495,40 +562,122 @@ class HgRepository(Repository):
         # means we are clean.
         return not len(self._run(*args).strip())
 
-    def clean_directory(self, path):
-        if _paths_equal(self.path, path):
+    def clean_directory(self, path: Union[str, Path]):
+        if Path(self.path).samefile(path):
             raise CannotDeleteFromRootOfRepositoryException()
-        self._run("revert", path)
-        for f in self._run("st", "-un", path).split():
-            if os.path.isfile(f):
-                os.remove(f)
+        self._run("revert", str(path))
+        for single_path in self._run("st", "-un", str(path)).splitlines():
+            single_path = Path(single_path)
+            if single_path.is_file():
+                single_path.unlink()
             else:
-                shutil.rmtree(f)
+                shutil.rmtree(str(single_path))
 
     def update(self, ref):
         return self._run("update", "--check", ref)
 
-    def push_to_try(self, message):
+    def raise_for_missing_extension(self, extension: str):
+        """Raise `MissingVCSExtension` if `extension` is not installed and enabled."""
         try:
-            subprocess.check_call(
-                (self._tool, "push-to-try", "-m", message),
-                cwd=self.path,
-                env=ensure_subprocess_env(self._env),
-            )
+            self._run("showconfig", f"extensions.{extension}")
         except subprocess.CalledProcessError:
-            try:
-                self._run("showconfig", "extensions.push-to-try")
-            except subprocess.CalledProcessError:
-                raise MissingVCSExtension("push-to-try")
+            raise MissingVCSExtension(extension)
+
+    def push_to_try(self, message, allow_log_capture=False):
+        try:
+            cmd = (str(self._tool), "push-to-try", "-m", message)
+            if allow_log_capture:
+                self._push_to_try_with_log_capture(
+                    cmd,
+                    {
+                        "stdout": subprocess.PIPE,
+                        "stderr": subprocess.PIPE,
+                        "cwd": self.path,
+                        "env": self._env,
+                        "universal_newlines": True,
+                        "bufsize": 1,
+                    },
+                )
+            else:
+                subprocess.check_call(
+                    cmd,
+                    cwd=self.path,
+                    env=self._env,
+                )
+        except subprocess.CalledProcessError:
+            self.raise_for_missing_extension("push-to-try")
             raise
         finally:
             self._run("revert", "-a")
+
+    def get_branch_nodes(self, base_ref: Optional[str] = None) -> List[str]:
+        """Return a list of commit SHAs for nodes on the current branch."""
+        if not base_ref:
+            base_ref = self.base_ref
+
+        head_ref = self.head_ref
+
+        return self._run(
+            "log",
+            "-r",
+            f"{base_ref}::{head_ref} and not {base_ref}",
+            "-T",
+            "{node}\n",
+        ).splitlines()
+
+    def get_commit_patches(self, nodes: List[str]) -> List[bytes]:
+        """Return the contents of the patch `node` in the VCS' standard format."""
+        # Running `hg export` once for each commit in a large stack is
+        # slow, so instead we run it once and parse the output for each
+        # individual patch.
+        args = ["export"]
+
+        for node in nodes:
+            args.extend(("-r", node))
+
+        output = self._run(*args).encode("utf-8")
+
+        patches = []
+
+        current_patch = []
+        for i, line in enumerate(output.splitlines()):
+            if i != 0 and line == b"# HG changeset patch":
+                # When we see the first line of a new patch, add the patch we have been
+                # building to the patches list and start building a new patch.
+                patches.append(b"\n".join(current_patch))
+                current_patch = [line]
+            else:
+                # Add a new line to the patch being built.
+                current_patch.append(line)
+
+        # Add the last patch to the stack.
+        patches.append(b"\n".join(current_patch))
+
+        return patches
+
+    def create_try_commit(self, commit_message: str):
+        """Create a temporary try commit.
+
+        Create a new commit using `commit_message` as the commit message. The commit
+        may be empty, for example when only including try syntax.
+        """
+        # Allow empty commit messages in case we only use try-syntax.
+        self._run("--config", "ui.allowemptycommit=1", "commit", "-m", commit_message)
+
+    def remove_current_commit(self):
+        """Remove the currently checked out commit from VCS history."""
+        try:
+            self._run("prune", ".")
+        except subprocess.CalledProcessError:
+            # The `evolve` extension is required for `uncommit` and `prune`.
+            self.raise_for_missing_extension("evolve")
+            raise
 
 
 class GitRepository(Repository):
     """An implementation of `Repository` for Git repositories."""
 
-    def __init__(self, path, git="git"):
+    def __init__(self, path: Path, git="git"):
         super(GitRepository, self).__init__(path, tool=git)
 
     @property
@@ -539,10 +688,41 @@ class GitRepository(Repository):
     def head_ref(self):
         return self._run("rev-parse", "HEAD").strip()
 
+    def get_mozilla_upstream_remotes(self) -> Iterator[str]:
+        """Return the Mozilla-official upstream remotes for this repo."""
+        out = self._run("remote", "-v")
+        if not out:
+            return
+
+        remotes = out.splitlines()
+        if not remotes:
+            return
+
+        for line in remotes:
+            name, url, action = line.split()
+
+            # Only consider fetch sources.
+            if action != "(fetch)":
+                continue
+
+            # Return any `hg.mozilla.org` remotes, ignoring `try`.
+            if "hg.mozilla.org" in url and not url.endswith("hg.mozilla.org/try"):
+                yield name
+
+    def get_mozilla_remote_args(self) -> List[str]:
+        """Return a list of `--remotes` arguments to limit commits to official remotes."""
+        official_remotes = [
+            f"--remotes={remote}" for remote in self.get_mozilla_upstream_remotes()
+        ]
+
+        return official_remotes if official_remotes else ["--remotes"]
+
     @property
     def base_ref(self):
+        remote_args = self.get_mozilla_remote_args()
+
         refs = self._run(
-            "rev-list", "HEAD", "--topo-order", "--boundary", "--not", "--remotes"
+            "rev-list", "HEAD", "--topo-order", "--boundary", "--not", *remote_args
         ).splitlines()
         if refs:
             return refs[-1][1:]  # boundary starts with a prefix `-`
@@ -551,7 +731,7 @@ class GitRepository(Repository):
     def base_ref_as_hg(self):
         base_ref = self.base_ref
         try:
-            return self._run("cinnabar", "git2hg", base_ref)
+            return self._run("cinnabar", "git2hg", base_ref).strip()
         except subprocess.CalledProcessError:
             return
 
@@ -580,15 +760,6 @@ class GitRepository(Repository):
             return None
         return email.strip()
 
-    def get_upstream(self):
-        ref = self._run("symbolic-ref", "-q", "HEAD").strip()
-        upstream = self._run("for-each-ref", "--format=%(upstream:short)", ref).strip()
-
-        if not upstream:
-            raise MissingUpstreamRepo("Could not detect an upstream repository.")
-
-        return upstream
-
     def get_changed_files(self, diff_filter="ADM", mode="unstaged", rev=None):
         assert all(f.lower() in self._valid_diff_filter for f in diff_filter)
 
@@ -606,10 +777,10 @@ class GitRepository(Repository):
 
         return self._run(*cmd).splitlines()
 
-    def get_outgoing_files(self, diff_filter="ADM", upstream="default"):
+    def get_outgoing_files(self, diff_filter="ADM", upstream=None):
         assert all(f.lower() in self._valid_diff_filter for f in diff_filter)
 
-        not_condition = "--remotes" if upstream == "default" else upstream
+        not_condition = upstream if upstream else "--remotes"
 
         files = self._run(
             "log",
@@ -623,18 +794,34 @@ class GitRepository(Repository):
         ).splitlines()
         return [f for f in files if f]
 
-    def add_remove_files(self, *paths):
+    def add_remove_files(self, *paths: Union[str, Path]):
         if not paths:
             return
+
+        paths = [str(path) for path in paths]
+
         self._run("add", *paths)
 
-    def forget_add_remove_files(self, *paths):
+    def forget_add_remove_files(self, *paths: Union[str, Path]):
         if not paths:
             return
+
+        paths = [str(path) for path in paths]
+
         self._run("reset", *paths)
 
-    def get_tracked_files_finder(self):
+    def get_tracked_files_finder(self, path=None):
         files = [p for p in self._run("ls-files", "-z").split("\0") if p]
+        return FileListFinder(files)
+
+    def get_ignored_files_finder(self):
+        files = [
+            p
+            for p in self._run(
+                "ls-files", "-i", "-o", "-z", "--exclude-standard"
+            ).split("\0")
+            if p
+        ]
         return FileListFinder(files)
 
     def working_directory_clean(self, untracked=False, ignored=False):
@@ -653,49 +840,222 @@ class GitRepository(Repository):
 
         return not len(self._run(*args).strip())
 
-    def clean_directory(self, path):
-        if _paths_equal(self.path, path):
+    def clean_directory(self, path: Union[str, Path]):
+        if Path(self.path).samefile(path):
             raise CannotDeleteFromRootOfRepositoryException()
-        self._run("checkout", "--", path)
-        self._run("clean", "-df", path)
+        self._run("checkout", "--", str(path))
+        self._run("clean", "-df", str(path))
 
     def update(self, ref):
         self._run("checkout", ref)
 
-    def push_to_try(self, message):
+    def push_to_try(self, message, allow_log_capture=False):
         if not self.has_git_cinnabar:
             raise MissingVCSExtension("cinnabar")
 
-        self._run(
-            "-c", "commit.gpgSign=false", "commit", "--allow-empty", "-m", message
-        )
+        self.create_try_commit(message)
         try:
-            subprocess.check_call(
-                (
-                    self._tool,
-                    "push",
-                    "hg::ssh://hg.mozilla.org/try",
-                    "+HEAD:refs/heads/branches/default/tip",
-                ),
-                cwd=self.path,
+            cmd = (
+                str(self._tool),
+                "push",
+                "hg::ssh://hg.mozilla.org/try",
+                "+HEAD:refs/heads/branches/default/tip",
             )
+            if allow_log_capture:
+                self._push_to_try_with_log_capture(
+                    cmd,
+                    {
+                        "stdout": subprocess.PIPE,
+                        "stderr": subprocess.STDOUT,
+                        "cwd": self.path,
+                        "universal_newlines": True,
+                        "bufsize": 1,
+                    },
+                )
+            else:
+                subprocess.check_call(cmd, cwd=self.path)
         finally:
-            self._run("reset", "HEAD~")
+            self.remove_current_commit()
 
     def set_config(self, name, value):
         self._run("config", name, value)
 
+    def get_branch_nodes(self) -> List[str]:
+        """Return a list of commit SHAs for nodes on the current branch."""
+        remote_args = self.get_mozilla_remote_args()
 
-def get_repository_object(path, hg="hg", git="git"):
+        return self._run(
+            "log",
+            "HEAD",
+            "--reverse",
+            "--not",
+            *remote_args,
+            "--pretty=%H",
+        ).splitlines()
+
+    def get_commit_patches(self, nodes: List[str]) -> List[bytes]:
+        """Return the contents of the patch `node` in the VCS' standard format."""
+        return [
+            self._run("format-patch", node, "-1", "--always", "--stdout").encode(
+                "utf-8"
+            )
+            for node in nodes
+        ]
+
+    def create_try_commit(self, message: str):
+        """Create a temporary try commit.
+
+        Create a new commit using `commit_message` as the commit message. The commit
+        may be empty, for example when only including try syntax.
+        """
+        self._run(
+            "-c", "commit.gpgSign=false", "commit", "--allow-empty", "-m", message
+        )
+
+    def remove_current_commit(self):
+        """Remove the currently checked out commit from VCS history."""
+        self._run("reset", "HEAD~")
+
+
+class SrcRepository(Repository):
+    """An implementation of `Repository` for Git repositories."""
+
+    def __init__(self, path: Path, src="src"):
+        super(SrcRepository, self).__init__(path, tool=None)
+
+    @property
+    def name(self):
+        return "src"
+
+    @property
+    def head_ref(self):
+        pass
+
+    @property
+    def base_ref(self):
+        pass
+
+    def base_ref_as_hg(self):
+        pass
+
+    @property
+    def branch(self):
+        pass
+
+    @property
+    def has_git_cinnabar(self):
+        pass
+
+    def get_commit_time(self):
+        pass
+
+    def sparse_checkout_present(self):
+        pass
+
+    def get_user_email(self):
+        pass
+
+    def get_upstream(self):
+        pass
+
+    def get_changed_files(self, diff_filter="ADM", mode="unstaged", rev=None):
+        pass
+
+    def get_outgoing_files(self, diff_filter="ADM", upstream=None):
+        pass
+
+    def add_remove_files(self, *paths: Union[str, Path]):
+        pass
+
+    def forget_add_remove_files(self, *paths: Union[str, Path]):
+        pass
+
+    def git_ignore(self, path):
+        """This function reads the mozilla-central/.gitignore file and creates a
+        list of the patterns to ignore
+        """
+        ignore = []
+        f = open(path + "/.gitignore", "r")
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            if line.startswith("#"):
+                pass
+            elif line.strip() and line not in ["\r", "\r\n"]:
+                ignore.append(line.strip().lstrip("/"))
+        f.close()
+        return ignore
+
+    def get_files(self, path):
+        """This function gets all files in your source folder e.g mozilla-central
+        and creates a list of that
+        """
+        res = []
+        # move away the .git or .hg folder from path to more easily test in a hg/git repo
+        for root, dirs, files in os.walk("."):
+            for name in files:
+                res.append(os.path.join(root, name))
+        return res
+
+    def get_tracked_files_finder(self, path):
+        """Get files, similar to 'hg files -0' or 'git ls-files -z', thats why
+        we read the .gitignore file for patterns to ignore.
+        Speed could probably be improved.
+        """
+        import fnmatch
+
+        files = list(
+            p.replace("\\", "/").replace("./", "") for p in self.get_files(path) if p
+        )
+        files.sort()
+        ig = self.git_ignore(path)
+        mat = []
+        for i in ig:
+            x = fnmatch.filter(files, i)
+            if x:
+                mat = mat + x
+        match = list(set(files) - set(mat))
+        match.sort()
+        if len(match) == 0:
+            return None
+        else:
+            return FileListFinder(match)
+
+    def working_directory_clean(self, untracked=False, ignored=False):
+        pass
+
+    def clean_directory(self, path: Union[str, Path]):
+        pass
+
+    def update(self, ref):
+        pass
+
+    def push_to_try(self, message, allow_log_capture=False):
+        pass
+
+    def set_config(self, name, value):
+        pass
+
+
+def get_repository_object(
+    path: Optional[Union[str, Path]], hg="hg", git="git", src="src"
+):
     """Get a repository object for the repository at `path`.
     If `path` is not a known VCS repository, raise an exception.
     """
-    if os.path.isdir(os.path.join(path, ".hg")):
+    # If we provide a path to hg that does not match the on-disk casing (e.g.,
+    # because `path` was normcased), then the hg fsmonitor extension will call
+    # watchman with that path and watchman will spew errors.
+    path = Path(path).resolve()
+    if (path / ".hg").is_dir():
         return HgRepository(path, hg=hg)
-    elif os.path.exists(os.path.join(path, ".git")):
+    elif (path / ".git").exists():
         return GitRepository(path, git=git)
+    elif (path / "config" / "milestone.txt").exists():
+        return SrcRepository(path, src=src)
     else:
-        raise InvalidRepoPath("Unknown VCS, or not a source checkout: %s" % path)
+        raise InvalidRepoPath(f"Unknown VCS, or not a source checkout: {path}")
 
 
 def get_repository_from_build_config(config):
@@ -716,9 +1076,11 @@ def get_repository_from_build_config(config):
         )
 
     if flavor == "hg":
-        return HgRepository(config.topsrcdir, hg=config.substs["HG"])
+        return HgRepository(Path(config.topsrcdir), hg=config.substs["HG"])
     elif flavor == "git":
-        return GitRepository(config.topsrcdir, git=config.substs["GIT"])
+        return GitRepository(Path(config.topsrcdir), git=config.substs["GIT"])
+    elif flavor == "src":
+        return SrcRepository(Path(config.topsrcdir), src=config.substs["SRC"])
     else:
         raise MissingVCSInfo("unknown VCS_CHECKOUT_TYPE value: %s" % flavor)
 
@@ -735,22 +1097,15 @@ def get_repository_from_env():
         import buildconfig
 
         return get_repository_from_build_config(buildconfig)
-    except ImportError:
+    except (ImportError, MissingVCSTool):
         pass
 
-    def ancestors(path):
-        while path:
-            yield path
-            path, child = os.path.split(path)
-            if child == "":
-                break
+    paths_to_check = [Path.cwd(), *Path.cwd().parents]
 
-    for path in ancestors(os.getcwd()):
+    for path in paths_to_check:
         try:
             return get_repository_object(path)
         except InvalidRepoPath:
             continue
 
-    raise MissingVCSInfo(
-        "Could not find Mercurial or Git checkout for %s" % os.getcwd()
-    )
+    raise MissingVCSInfo(f"Could not find Mercurial or Git checkout for {Path.cwd()}")

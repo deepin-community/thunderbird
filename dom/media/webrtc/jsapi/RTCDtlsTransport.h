@@ -6,14 +6,14 @@
 #define _RTCDtlsTransport_h_
 
 #include "mozilla/DOMEventTargetHelper.h"
+#include "mozilla/dom/RTCIceTransport.h"
 #include "mozilla/RefPtr.h"
 #include "js/RootingAPI.h"
 #include "transport/transportlayer.h"
 
 class nsPIDOMWindowInner;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 enum class RTCDtlsTransportState : uint8_t;
 
@@ -31,15 +31,17 @@ class RTCDtlsTransport : public DOMEventTargetHelper {
                        JS::Handle<JSObject*> aGivenProto) override;
   IMPL_EVENT_HANDLER(statechange)
   RTCDtlsTransportState State() const { return mState; }
+  RefPtr<RTCIceTransport> IceTransport() { return mIceTransport; }
 
+  void UpdateStateNoEvent(TransportLayer::State aState);
   void UpdateState(TransportLayer::State aState);
 
  private:
   virtual ~RTCDtlsTransport() = default;
 
   RTCDtlsTransportState mState;
+  RefPtr<RTCIceTransport> mIceTransport;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 #endif  // _RTCDtlsTransport_h_

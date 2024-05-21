@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,15 +7,12 @@
 /* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
+window.addEventListener("load", Startup);
 document.addEventListener("dialogaccept", onAccept);
 document.addEventListener("dialogcancel", onCancel);
 
 function Startup() {
   var editor = GetCurrentEditor();
-  if (!editor) {
-    window.close();
-    return;
-  }
 
   // Create dialog object for easy access
   gDialog.accept = document.querySelector("dialog").getButton("accept");
@@ -185,6 +181,11 @@ function createCommandPanel(aCommandPanelList) {
       var td = document.createElementNS("http://www.w3.org/1999/xhtml", "td");
       button.setAttribute("class", "tabbable");
       button.appendChild(TeXZilla.toMathML(command));
+      // FIXME: when opening the EdInsertMath.xhtml, there's a console error
+      // SecurityError: Node.appendChild: Adopting nodes across docgroups in
+      // chrome documents is unsupported.
+      // Apparently there's supposed to be commands in #tabboxInsertLaTeXCommand...
+
       td.append(button);
       row.appendChild(td);
 

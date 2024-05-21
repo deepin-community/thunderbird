@@ -10,14 +10,15 @@ apt-get install \
     arcanist \
     curl \
     jq \
-    libdbus-glib-1-2 \
+    libasound2 \
     libgtk-3-0 \
     libx11-xcb1 \
     libxml2-utils \
     libxt6 \
-    python \
+    libxtst6 \
     shellcheck \
     unzip \
+    bzip2 \
     wget
 
 rm -rf /setup

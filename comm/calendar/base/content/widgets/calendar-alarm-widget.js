@@ -8,11 +8,12 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+  var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
   /**
    * Represents an alarm in the alarms dialog. It appears there when an alarm is fired, and
    * allows the alarm to be snoozed, dismissed, etc.
-   * @extends MozElements.MozRichlistitem
+   *
+   * @augments MozElements.MozRichlistitem
    */
   class MozCalendarAlarmWidgetRichlistitem extends MozElements.MozRichlistitem {
     connectedCallback() {
@@ -28,7 +29,7 @@
                       src="chrome://calendar/skin/shared/icons/icon32.svg"
                       alt="" />
           </vbox>
-          <vbox flex="1">
+          <vbox class="alarm-calendar-event">
             <label class="alarm-title-label" crop="end"/>
             <vbox class="additional-information-box">
               <label class="alarm-date-label"/>
@@ -91,9 +92,9 @@
         return;
       }
       const formatter = cal.dtz.formatter;
-      let titleLabel = this.querySelector(".alarm-title-label");
-      let locationDescription = this.querySelector(".alarm-location-description");
-      let dateLabel = this.querySelector(".alarm-date-label");
+      const titleLabel = this.querySelector(".alarm-title-label");
+      const locationDescription = this.querySelector(".alarm-location-description");
+      const dateLabel = this.querySelector(".alarm-date-label");
 
       // Dates
       if (this.mItem.isEvent()) {
@@ -121,8 +122,8 @@
       titleLabel.value = this.mItem.title || "";
       locationDescription.value = this.mItem.getProperty("LOCATION") || "";
       if (locationDescription.value.length) {
-        let urlMatch = locationDescription.value.match(/(https?:\/\/[^ ]*)/);
-        let url = urlMatch && urlMatch[1];
+        const urlMatch = locationDescription.value.match(/(https?:\/\/[^ ]*)/);
+        const url = urlMatch && urlMatch[1];
         if (url) {
           locationDescription.setAttribute("link", url);
           locationDescription.setAttribute(
@@ -139,12 +140,12 @@
         locationDescription.hidden = true;
       }
       // Hide snooze button if read-only.
-      let snoozeButton = this.querySelector(".alarm-snooze-button");
+      const snoozeButton = this.querySelector(".alarm-snooze-button");
       if (
         !cal.acl.isCalendarWritable(this.mItem.calendar) ||
         !cal.acl.userCanModifyItem(this.mItem)
       ) {
-        let tooltip = "reminderDisabledSnoozeButtonTooltip";
+        const tooltip = "reminderDisabledSnoozeButtonTooltip";
         snoozeButton.disabled = true;
         snoozeButton.setAttribute("tooltiptext", cal.l10n.getString("calendar-alarms", tooltip));
       } else {
@@ -159,13 +160,13 @@
     updateRelativeDateLabel() {
       const formatter = cal.dtz.formatter;
       const item = this.mItem;
-      let relativeDateLabel = this.querySelector(".alarm-relative-date-label");
+      const relativeDateLabel = this.querySelector(".alarm-relative-date-label");
       let relativeDateString;
       let startDate = item[cal.dtz.startDateProp(item)] || item[cal.dtz.endDateProp(item)];
 
       if (startDate) {
         startDate = startDate.getInTimezone(cal.dtz.defaultTimezone);
-        let currentDate = cal.dtz.now();
+        const currentDate = cal.dtz.now();
 
         const sinceDayStart = currentDate.hour * 3600 + currentDate.minute * 60;
 
@@ -206,6 +207,7 @@
 
     /**
      * Click/keypress handler for "Details" link. Dispatches an event to open an item dialog.
+     *
      * @param event {Event} The click or keypress event.
      */
     showDetails(event) {
@@ -231,7 +233,8 @@
   /**
    * A popup panel for selecting how long to snooze alarms/reminders.
    * It appears when a snooze button is clicked.
-   * @extends MozElements.MozMenuPopup
+   *
+   * @augments MozElements.MozMenuPopup
    */
   class MozCalendarSnoozePopup extends MozElements.MozMenuPopup {
     connectedCallback() {
@@ -297,8 +300,8 @@
       );
       const snoozeLength = defaultSnoozeLength <= 0 ? 5 : defaultSnoozeLength;
 
-      let unitList = this.querySelector(".snooze-unit-menulist");
-      let unitValue = this.querySelector(".snooze-value-textbox");
+      const unitList = this.querySelector(".snooze-unit-menulist");
+      const unitValue = this.querySelector(".snooze-value-textbox");
 
       if ((snoozeLength / 60) % 24 == 0) {
         // Days
@@ -319,10 +322,11 @@
 
     /**
      * Dispatch a snooze event when an alarm is snoozed.
+     *
      * @param minutes {number|string} The number of minutes to snooze for.
      */
     snoozeAlarm(minutes) {
-      let snoozeEvent = new Event("snooze", { bubbles: true, cancelable: false });
+      const snoozeEvent = new Event("snooze", { bubbles: true, cancelable: false });
       snoozeEvent.detail = minutes;
 
       // For single alarms the event.target has to be the calendar-alarm-widget element,
@@ -335,6 +339,7 @@
 
     /**
      * Click handler for snooze popup menu items (like "5 Minutes", "1 Hour", etc.).
+     *
      * @param event {Event} The click event.
      */
     snoozeItem(event) {
@@ -366,7 +371,7 @@
       const unitList = this.querySelector(".snooze-unit-menulist");
       const unitPopup = this.querySelector(".snooze-unit-menupopup");
       const unitValue = this.querySelector(".snooze-value-textbox");
-      let okButton = this.querySelector(".snooze-popup-ok-button");
+      const okButton = this.querySelector(".snooze-popup-ok-button");
 
       function unitName(list) {
         return { 1: "unitMinutes", 60: "unitHours", 1440: "unitDays" }[list.value] || "unitMinutes";
@@ -379,18 +384,16 @@
         unitValue.value
       );
 
-      let okButtonAriaLabel = cal.l10n.getString("calendar-alarms", "reminderSnoozeOkA11y", [
+      const okButtonAriaLabel = cal.l10n.getString("calendar-alarms", "reminderSnoozeOkA11y", [
         unitPlural,
       ]);
       okButton.setAttribute("aria-label", okButtonAriaLabel);
 
       const items = unitPopup.getElementsByTagName("menuitem");
-      for (let menuItem of items) {
+      for (const menuItem of items) {
         pluralString = cal.l10n.getCalString(unitName(menuItem));
 
-        menuItem.label = PluralForm.get(unitValue.value, pluralString)
-          .replace("#1", "")
-          .trim();
+        menuItem.label = PluralForm.get(unitValue.value, pluralString).replace("#1", "").trim();
       }
     }
   }

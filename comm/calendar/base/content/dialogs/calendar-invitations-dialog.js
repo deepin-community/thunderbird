@@ -2,16 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad, onUnload */
+/* globals MozXULElement, MozElements */ // From calendar-invitations-dialog.xhtml.
 
-/* globals invitationsText, MozXULElement, MozElements */ // From calendar-invitations-dialog.xhtml.
-
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
   class MozCalendarInvitationsRichlistitem extends MozElements.MozRichlistitem {
     constructor() {
       super();
@@ -96,7 +92,7 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
     set participationStatus(val) {
       this.mParticipationStatus = val;
-      let icon = this.querySelector(".calendar-invitations-richlistitem-icon");
+      const icon = this.querySelector(".calendar-invitations-richlistitem-icon");
       // Status attribute changes the image region in CSS.
       icon.setAttribute("status", val);
       document.l10n.setAttributes(
@@ -114,35 +110,35 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
       this.mInitialParticipationStatus = this.getCalendarItemParticipationStatus(item);
       this.participationStatus = this.mInitialParticipationStatus;
 
-      let titleLabel = this.querySelector(".calendar-invitations-richlistitem-title");
+      const titleLabel = this.querySelector(".calendar-invitations-richlistitem-title");
       titleLabel.setAttribute("value", item.title);
 
-      let dateLabel = this.querySelector(".calendar-invitations-richlistitem-date");
+      const dateLabel = this.querySelector(".calendar-invitations-richlistitem-date");
       let dateString = cal.dtz.formatter.formatItemInterval(item);
       if (item.startDate.isDate) {
         dateString += ", " + this.getString("allday-event");
       }
       dateLabel.setAttribute("value", dateString);
 
-      let recurrenceLabel = this.querySelector(".calendar-invitations-richlistitem-recurrence");
+      const recurrenceLabel = this.querySelector(".calendar-invitations-richlistitem-recurrence");
       if (item.recurrenceInfo) {
         recurrenceLabel.setAttribute("value", this.getString("recurrent-event"));
       } else {
         recurrenceLabel.setAttribute("hidden", "true");
-        let spacer = this.querySelector(".calendar-invitations-richlistitem-spacer");
+        const spacer = this.querySelector(".calendar-invitations-richlistitem-spacer");
         spacer.removeAttribute("hidden");
       }
 
-      let locationLabel = this.querySelector(".calendar-invitations-richlistitem-location");
-      let locationProperty = item.getProperty("LOCATION") || this.getString("none");
-      let locationString = this.calInvitationsProps.formatStringFromName("location", [
+      const locationLabel = this.querySelector(".calendar-invitations-richlistitem-location");
+      const locationProperty = item.getProperty("LOCATION") || this.getString("none");
+      const locationString = this.calInvitationsProps.formatStringFromName("location", [
         locationProperty,
       ]);
 
       locationLabel.setAttribute("value", locationString);
 
-      let organizerLabel = this.querySelector(".calendar-invitations-richlistitem-organizer");
-      let org = item.organizer;
+      const organizerLabel = this.querySelector(".calendar-invitations-richlistitem-organizer");
+      const org = item.organizer;
       let organizerProperty = "";
       if (org) {
         if (org.commonName && org.commonName.length > 0) {
@@ -151,13 +147,13 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
           organizerProperty = org.id.replace(/^mailto:/i, "");
         }
       }
-      let organizerString = this.calInvitationsProps.formatStringFromName("organizer", [
+      const organizerString = this.calInvitationsProps.formatStringFromName("organizer", [
         organizerProperty,
       ]);
       organizerLabel.setAttribute("value", organizerString);
 
-      let attendeeLabel = this.querySelector(".calendar-invitations-richlistitem-attendee");
-      let att = cal.itip.getInvitedAttendee(item);
+      const attendeeLabel = this.querySelector(".calendar-invitations-richlistitem-attendee");
+      const att = cal.itip.getInvitedAttendee(item);
       let attendeeProperty = "";
       if (att) {
         if (att.commonName && att.commonName.length > 0) {
@@ -166,7 +162,7 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
           attendeeProperty = att.id.replace(/^mailto:/i, "");
         }
       }
-      let attendeeString = this.calInvitationsProps.formatStringFromName("attendee", [
+      const attendeeString = this.calInvitationsProps.formatStringFromName("attendee", [
         attendeeProperty,
       ]);
       attendeeLabel.setAttribute("value", attendeeString);
@@ -176,15 +172,15 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
     }
 
     getCalendarItemParticipationStatus(item) {
-      let att = cal.itip.getInvitedAttendee(item);
+      const att = cal.itip.getInvitedAttendee(item);
       return att ? att.participationStatus : null;
     }
 
     setCalendarItemParticipationStatus(item, status) {
       if (item.calendar?.supportsScheduling) {
-        let att = item.calendar.getSchedulingSupport().getInvitedAttendee(item);
+        const att = item.calendar.getSchedulingSupport().getInvitedAttendee(item);
         if (att) {
-          let att_ = att.clone();
+          const att_ = att.clone();
           att_.participationStatus = status;
 
           // Update attendee
@@ -209,76 +205,70 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
   });
 }
 
+window.addEventListener("DOMContentLoaded", onLoad);
+window.addEventListener("unload", onUnload);
+
 /**
  * Sets up the invitations dialog from the window arguments, retrieves the
  * invitations from the invitations manager.
  */
-function onLoad() {
-  let operationListener = {
-    QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-    onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
-      let updatingBox = document.getElementById("updating-box");
-      updatingBox.setAttribute("hidden", "true");
-      let richListBox = document.getElementById("invitations-listbox");
-      if (richListBox.getRowCount() > 0) {
-        richListBox.selectedIndex = 0;
-      } else {
-        let noInvitationsBox = document.getElementById("noinvitations-box");
-        noInvitationsBox.removeAttribute("hidden");
-      }
-    },
-    onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-      if (!Components.isSuccessCode(aStatus)) {
-        return;
-      }
-      document.title = invitationsText + " (" + aItems.length + ")";
-      let updatingBox = document.getElementById("updating-box");
-      updatingBox.setAttribute("hidden", "true");
-      let richListBox = document.getElementById("invitations-listbox");
-      for (let item of aItems) {
-        let newNode = document.createXULElement("richlistitem", {
-          is: "calendar-invitations-richlistitem",
-        });
-        richListBox.appendChild(newNode);
-        newNode.calendarItem = item;
-      }
-    },
-  };
-
-  let updatingBox = document.getElementById("updating-box");
+async function onLoad() {
+  const title = document.title;
+  const updatingBox = document.getElementById("updating-box");
   updatingBox.removeAttribute("hidden");
-
-  let args = window.arguments[0];
-  args.invitationsManager.getInvitations(operationListener, args.onLoadOperationListener);
-
   opener.setCursor("auto");
+
+  const { invitationsManager } = window.arguments[0];
+  const items = await cal.iterate.mapStream(invitationsManager.getInvitations(), chunk => {
+    document.title = title + " (" + chunk.length + ")";
+    const updatingBox = document.getElementById("updating-box");
+    updatingBox.setAttribute("hidden", "true");
+    const richListBox = document.getElementById("invitations-listbox");
+    for (const item of chunk) {
+      const newNode = document.createXULElement("richlistitem", {
+        is: "calendar-invitations-richlistitem",
+      });
+      richListBox.appendChild(newNode);
+      newNode.calendarItem = item;
+    }
+  });
+
+  invitationsManager.toggleInvitationsPanel(items);
+  updatingBox.setAttribute("hidden", "true");
+
+  const richListBox = document.getElementById("invitations-listbox");
+  if (richListBox.getRowCount() > 0) {
+    richListBox.selectedIndex = 0;
+  } else {
+    const noInvitationsBox = document.getElementById("noinvitations-box");
+    noInvitationsBox.removeAttribute("hidden");
+  }
 }
 
 /**
  * Cleans up the invitations dialog, cancels pending requests.
  */
-function onUnload() {
-  let args = window.arguments[0];
-  args.requestManager.cancelPendingRequests();
+async function onUnload() {
+  const args = window.arguments[0];
+  return args.invitationsManager.cancelPendingRequests();
 }
 
 /**
  * Handler function to be called when the accept button is pressed.
  */
-document.addEventListener("dialogaccept", () => {
-  let args = window.arguments[0];
+document.addEventListener("dialogaccept", async () => {
+  const args = window.arguments[0];
   fillJobQueue(args.queue);
-  args.invitationsManager.processJobQueue(args.queue, args.finishedCallBack);
+  await args.invitationsManager.processJobQueue(args.queue);
+  args.finishedCallBack();
 });
 
 /**
  * Handler function to be called when the cancel button is pressed.
  */
 document.addEventListener("dialogcancel", () => {
-  let args = window.arguments[0];
-  if (args.finishedCallBack) {
-    args.finishedCallBack();
-  }
+  const args = window.arguments[0];
+  args.finishedCallBack();
 });
 
 /**
@@ -288,16 +278,16 @@ document.addEventListener("dialogcancel", () => {
  * @param queue     The queue to fill.
  */
 function fillJobQueue(queue) {
-  let richListBox = document.getElementById("invitations-listbox");
-  let rowCount = richListBox.getRowCount();
+  const richListBox = document.getElementById("invitations-listbox");
+  const rowCount = richListBox.getRowCount();
   for (let i = 0; i < rowCount; i++) {
-    let richListItem = richListBox.getItemAtIndex(i);
-    let newStatus = richListItem.participationStatus;
-    let oldStatus = richListItem.initialParticipationStatus;
+    const richListItem = richListBox.getItemAtIndex(i);
+    const newStatus = richListItem.participationStatus;
+    const oldStatus = richListItem.initialParticipationStatus;
     if (newStatus != oldStatus) {
-      let actionString = "modify";
-      let oldCalendarItem = richListItem.calendarItem;
-      let newCalendarItem = oldCalendarItem.clone();
+      const actionString = "modify";
+      const oldCalendarItem = richListItem.calendarItem;
+      const newCalendarItem = oldCalendarItem.clone();
 
       // set default alarm on unresponded items that have not been declined:
       if (
@@ -309,7 +299,7 @@ function fillJobQueue(queue) {
       }
 
       richListItem.setCalendarItemParticipationStatus(newCalendarItem, newStatus);
-      let job = {
+      const job = {
         action: actionString,
         oldItem: oldCalendarItem,
         newItem: newCalendarItem,

@@ -2,15 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-const { mailTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/MailTestUtils.jsm"
+const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+
+const { mailTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MailTestUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
-  CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
+  CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.sys.mjs",
 });
 
 /**
@@ -18,25 +18,23 @@ XPCOMUtils.defineLazyModuleGetters(this, {
  * non-recurring and recurring events.
  */
 add_task(async function testOpenEvent() {
-  let uri = Services.io.newURI("moz-memory-calendar://");
-  let manager = cal.getCalendarManager();
-  let calendar = manager.createCalendar("memory", uri);
-  let calendarProxy = cal.async.promisifyCalendar(calendar);
+  const uri = Services.io.newURI("moz-memory-calendar://");
+  const calendar = cal.manager.createCalendar("memory", uri);
 
   calendar.name = "Unifinder Test";
-  manager.registerCalendar(calendar);
-  registerCleanupFunction(() => manager.removeCalendar(calendar));
+  cal.manager.registerCalendar(calendar);
+  registerCleanupFunction(() => cal.manager.removeCalendar(calendar));
 
-  let now = cal.dtz.now();
+  const now = cal.dtz.now();
 
-  let noRepeatEvent = new CalEvent();
+  const noRepeatEvent = new CalEvent();
   noRepeatEvent.id = "no repeat event";
   noRepeatEvent.title = "No Repeat Event";
   noRepeatEvent.startDate = now;
   noRepeatEvent.endDate = noRepeatEvent.startDate.clone();
   noRepeatEvent.endDate.hour++;
 
-  let repeatEvent = new CalEvent();
+  const repeatEvent = new CalEvent();
   repeatEvent.id = "repeated event";
   repeatEvent.title = "Repeat Event";
   repeatEvent.startDate = now;
@@ -49,30 +47,39 @@ add_task(async function testOpenEvent() {
 
   await CalendarTestUtils.openCalendarTab(window);
 
-  if (window.isUnifinderHidden()) {
-    window.toggleUnifinder();
+  function isUnifinderHidden() {
+    const tabmail = window.document.getElementById("tabmail");
 
-    await BrowserTestUtils.waitForCondition(
-      () => window.isUnifinderHidden(),
-      "calendar unifinder is open"
+    return (
+      tabmail.currentTabInfo?.mode.type != "calendar" ||
+      window.document.getElementById("bottom-events-box").hidden
     );
   }
 
-  for (let event of [noRepeatEvent, repeatEvent]) {
-    await calendarProxy.addItem(event);
+  if (isUnifinderHidden()) {
+    window.toggleUnifinder();
 
-    let dialogWindowPromise = CalendarTestUtils.waitForEventDialog();
-    let tree = document.querySelector("#unifinder-search-results-tree");
+    await BrowserTestUtils.waitForCondition(
+      () => isUnifinderHidden(),
+      "calendar unifinder should have opened"
+    );
+  }
+
+  for (const event of [noRepeatEvent, repeatEvent]) {
+    await calendar.addItem(event);
+
+    const dialogWindowPromise = CalendarTestUtils.waitForEventDialog();
+    const tree = document.querySelector("#unifinder-search-results-tree");
     mailTestUtils.treeClick(EventUtils, window, tree, 0, 1, { clickCount: 2 });
 
-    let dialogWindow = await dialogWindowPromise;
-    let docUri = dialogWindow.document.documentURI;
+    const dialogWindow = await dialogWindowPromise;
+    const docUri = dialogWindow.document.documentURI;
     Assert.ok(
       docUri === "chrome://calendar/content/calendar-summary-dialog.xhtml",
-      "event summary dialog did show"
+      "event summary dialog should have opened"
     );
 
     await BrowserTestUtils.closeWindow(dialogWindow);
-    await calendarProxy.deleteItem(event);
+    await calendar.deleteItem(event);
   }
 });

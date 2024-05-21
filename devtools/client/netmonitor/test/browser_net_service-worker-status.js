@@ -12,7 +12,7 @@ const URL = EXAMPLE_URL.replace("http:", "https:");
 
 const TEST_URL = URL + "service-workers/status-codes.html";
 
-add_task(async function() {
+add_task(async function () {
   const { tab, monitor } = await initNetMonitor(TEST_URL, {
     enableCache: true,
     requestCount: 1,
@@ -30,7 +30,9 @@ add_task(async function() {
   const REQUEST_DATA = [
     {
       method: "GET",
-      uri: URL + "service-workers/test/200",
+      uri:
+        URL +
+        "service-workers/sjs_content-type-test-server.sjs?sts=304&fmt=html",
       details: {
         status: 200,
         statusText: "OK (service worker)",
@@ -38,12 +40,12 @@ add_task(async function() {
         type: "plain",
         fullMimeType: "text/plain; charset=UTF-8",
       },
-      stackFunctions: ["doXHR", "performRequests"],
+      stackFunctions: ["performRequests"],
     },
   ];
 
   info("Registering the service worker...");
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await content.wrappedJSObject.registerServiceWorker();
   });
 
@@ -87,8 +89,9 @@ add_task(async function() {
     const stackLen = stacktrace ? stacktrace.length : 0;
 
     ok(stacktrace, `Request #${index} has a stacktrace`);
-    ok(
-      stackLen >= request.stackFunctions.length,
+    Assert.greaterOrEqual(
+      stackLen,
+      request.stackFunctions.length,
       `Request #${index} has a stacktrace with enough (${stackLen}) items`
     );
 
@@ -104,7 +107,7 @@ add_task(async function() {
   }
 
   info("Unregistering the service worker...");
-  await SpecialPowers.spawn(tab.linkedBrowser, [], async function() {
+  await SpecialPowers.spawn(tab.linkedBrowser, [], async function () {
     await content.wrappedJSObject.unregisterServiceWorker();
   });
 

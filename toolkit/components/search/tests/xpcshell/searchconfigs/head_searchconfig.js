@@ -3,33 +3,29 @@
 
 "use strict";
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AddonManager: "resource://gre/modules/AddonManager.jsm",
-  AddonTestUtils: "resource://testing-common/AddonTestUtils.jsm",
-  AppConstants: "resource://gre/modules/AppConstants.jsm",
-  ObjectUtils: "resource://gre/modules/ObjectUtils.jsm",
-  OS: "resource://gre/modules/osfile.jsm",
-  Region: "resource://gre/modules/Region.jsm",
-  RemoteSettings: "resource://services-settings/remote-settings.js",
-  SearchEngine: "resource://gre/modules/SearchEngine.jsm",
-  SearchEngineSelector: "resource://gre/modules/SearchEngineSelector.jsm",
-  SearchTestUtils: "resource://testing-common/SearchTestUtils.jsm",
-  SearchUtils: "resource://gre/modules/SearchUtils.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  sinon: "resource://testing-common/Sinon.jsm",
-});
 
-XPCOMUtils.defineLazyServiceGetters(this, {
-  gEnvironment: ["@mozilla.org/process/environment;1", "nsIEnvironment"],
+ChromeUtils.defineESModuleGetters(this, {
+  // Only needed when SearchUtils.newSearchConfigEnabled is false.
+  AddonTestUtils: "resource://testing-common/AddonTestUtils.sys.mjs",
+  AppConstants: "resource://gre/modules/AppConstants.sys.mjs",
+  ObjectUtils: "resource://gre/modules/ObjectUtils.sys.mjs",
+  Region: "resource://gre/modules/Region.sys.mjs",
+  RemoteSettings: "resource://services-settings/remote-settings.sys.mjs",
+  SearchEngine: "resource://gre/modules/SearchEngine.sys.mjs",
+  SearchEngineSelector: "resource://gre/modules/SearchEngineSelector.sys.mjs",
+  SearchTestUtils: "resource://testing-common/SearchTestUtils.sys.mjs",
+  SearchUtils: "resource://gre/modules/SearchUtils.sys.mjs",
+  SearchEngineSelectorOld:
+    "resource://gre/modules/SearchEngineSelectorOld.sys.mjs",
+  sinon: "resource://testing-common/Sinon.sys.mjs",
+  updateAppInfo: "resource://testing-common/AppInfo.sys.mjs",
 });
-
-XPCOMUtils.defineLazyGlobalGetters(this, ["fetch"]);
 
 const GLOBAL_SCOPE = this;
-const TEST_DEBUG = gEnvironment.get("TEST_DEBUG");
+const TEST_DEBUG = Services.env.get("TEST_DEBUG");
 
 const URLTYPE_SUGGEST_JSON = "application/x-suggestions+json";
 const URLTYPE_SEARCH_HTML = "text/html";
@@ -49,7 +45,7 @@ let engineSelector;
  * against a remote server.
  */
 async function maybeSetupConfig() {
-  const SEARCH_CONFIG = gEnvironment.get("SEARCH_CONFIG");
+  const SEARCH_CONFIG = Services.env.get("SEARCH_CONFIG");
   if (SEARCH_CONFIG) {
     if (!(SEARCH_CONFIG in SearchUtils.ENGINES_URLS)) {
       throw new Error(`Invalid value for SEARCH_CONFIG`);
@@ -117,13 +113,22 @@ class SearchConfigTest {
    *   The version to simulate for running the tests.
    */
   async setup(version = "42.0") {
-    AddonTestUtils.init(GLOBAL_SCOPE);
-    AddonTestUtils.createAppInfo(
-      "xpcshell@tests.mozilla.org",
-      "XPCShell",
-      version,
-      version
-    );
+    if (SearchUtils.newSearchConfigEnabled) {
+      updateAppInfo({
+        name: "XPCShell",
+        ID: "xpcshell@tests.mozilla.org",
+        version,
+        platformVersion: version,
+      });
+    } else {
+      AddonTestUtils.init(GLOBAL_SCOPE);
+      AddonTestUtils.createAppInfo(
+        "xpcshell@tests.mozilla.org",
+        "XPCShell",
+        version,
+        version
+      );
+    }
 
     await maybeSetupConfig();
 
@@ -141,7 +146,9 @@ class SearchConfigTest {
       true
     );
 
-    await AddonTestUtils.promiseStartupManager();
+    if (!SearchUtils.newSearchConfigEnabled) {
+      await AddonTestUtils.promiseStartupManager();
+    }
     await Services.search.init();
 
     // We must use the engine selector that the search service has created (if
@@ -149,7 +156,9 @@ class SearchConfigTest {
     // configuration once - after that, it tries to access the network.
     engineSelector =
       Services.search.wrappedJSObject._engineSelector ||
-      new SearchEngineSelector();
+      SearchUtils.newSearchConfigEnabled
+        ? new SearchEngineSelector()
+        : new SearchEngineSelectorOld();
 
     // Note: we don't use the helper function here, so that we have at least
     // one message output per process.
@@ -163,7 +172,7 @@ class SearchConfigTest {
    * Runs the test.
    */
   async run() {
-    const locales = await this._getLocales();
+    const locales = await this.getLocales();
     const regions = this._regions;
 
     // We loop on region and then locale, so that we always cause a re-init
@@ -181,21 +190,13 @@ class SearchConfigTest {
   }
 
   async _getEngines(region, locale) {
-    let engines = [];
     let configs = await engineSelector.fetchEngineConfiguration({
       locale,
       region: region || "default",
-      channel: AppConstants.MOZ_APP_VERSION_DISPLAY.endsWith("esr")
-        ? "esr"
-        : AppConstants.MOZ_UPDATE_CHANNEL,
+      channel: SearchUtils.MODIFIED_APP_CHANNEL,
     });
-    for (let config of configs.engines) {
-      let engine = await Services.search.wrappedJSObject.makeEngineFromConfig(
-        config
-      );
-      engines.push(engine);
-    }
-    return engines;
+
+    return SearchTestUtils.searchConfigToEngines(configs.engines);
   }
 
   /**
@@ -213,15 +214,13 @@ class SearchConfigTest {
   }
 
   /**
-   * @returns {array} the list of locales for the tests to run with.
+   * @returns {Array} the list of locales for the tests to run with.
    */
-  async _getLocales() {
+  async getLocales() {
     if (TEST_DEBUG) {
       return ["be", "en-US", "kk", "tr", "ru", "zh-CN", "ach", "unknown"];
     }
-    const data = await OS.File.read(do_get_file("all-locales").path, {
-      encoding: "utf-8",
-    });
+    const data = await IOUtils.readUTF8(do_get_file("all-locales").path);
     // "en-US" is not in all-locales as it is the default locale
     // add it manually to ensure it is tested.
     let locales = [...data.split("\n").filter(e => e != ""), "en-US"];
@@ -234,30 +233,6 @@ class SearchConfigTest {
     // hit it.
     locales.push("unknown");
     return locales;
-  }
-
-  /**
-   * Determines if a locale matches with a locales section in the configuration.
-   *
-   * @param {object} locales
-   * @param {array} [locales.matches]
-   *   Array of locale names to match exactly.
-   * @param {array} [locales.startsWith]
-   *   Array of locale names to match the start.
-   * @param {string} locale
-   *   The two-letter locale code.
-   * @returns {boolean}
-   *   True if the locale matches.
-   */
-  _localeIncludes(locales, locale) {
-    if ("matches" in locales && locales.matches.includes(locale)) {
-      return true;
-    }
-    if ("startsWith" in locales) {
-      return !!locales.startsWith.find(element => locale.startsWith(element));
-    }
-
-    return false;
   }
 
   /**
@@ -277,7 +252,7 @@ class SearchConfigTest {
       // If we only specify a regions or locales section then
       // it is always considered included in the other section.
       const inRegions = !regions || regions.includes(region);
-      const inLocales = !locales || this._localeIncludes(locales, locale);
+      const inLocales = !locales || locales.includes(locale);
       if (inRegions && inLocales) {
         return true;
       }
@@ -376,7 +351,7 @@ class SearchConfigTest {
    */
   _assertDefaultEngines(region, locale) {
     this._assertEngineRules(
-      [Services.search.originalDefaultEngine],
+      [Services.search.appDefaultEngine],
       region,
       locale,
       "default"
@@ -384,7 +359,7 @@ class SearchConfigTest {
     // At the moment, this uses the same section as the normal default, as
     // we don't set this differently for any region/locale.
     this._assertEngineRules(
-      [Services.search.originalPrivateDefaultEngine],
+      [Services.search.appPrivateDefaultEngine],
       region,
       locale,
       "default"
@@ -398,7 +373,7 @@ class SearchConfigTest {
    *   The two-letter region code.
    * @param {string} locale
    *   The two-letter locale code.
-   * @param {array} engines
+   * @param {Array} engines
    *   The current visible engines.
    * @returns {boolean}
    *   Returns true if the engine is expected to be present, false otherwise.
@@ -414,7 +389,7 @@ class SearchConfigTest {
    *   The two-letter region code.
    * @param {string} locale
    *   The two-letter locale code.
-   * @param {array} engines
+   * @param {Array} engines
    *   The current visible engines.
    */
   _assertEngineDetails(region, locale, engines) {
@@ -457,7 +432,7 @@ class SearchConfigTest {
       if (rule.codes) {
         this._assertCorrectCodes(location, engine, rule);
       }
-      if (rule.searchUrlCode || rule.searchFormUrlCode || rule.suggestUrlCode) {
+      if (rule.searchUrlCode || rule.suggestUrlCode) {
         this._assertCorrectUrlCode(location, engine, rule);
       }
       if (rule.aliases) {
@@ -572,19 +547,17 @@ class SearchConfigTest {
         submission.uri.query.split("&").includes(rule.searchUrlCode),
         `Expected "${rule.searchUrlCode}" in search url "${submission.uri.spec}"`
       );
+      let uri = engine.searchForm;
+      this.assertOk(
+        !uri.includes(rule.searchUrlCode),
+        `"${rule.searchUrlCode}" should not be in the search form URL.`
+      );
     }
     if (rule.searchUrlCodeNotInQuery) {
       const submission = engine.getSubmission("test", URLTYPE_SEARCH_HTML);
       this.assertOk(
         submission.uri.includes(rule.searchUrlCodeNotInQuery),
         `Expected "${rule.searchUrlCodeNotInQuery}" in search url "${submission.uri.spec}"`
-      );
-    }
-    if (rule.searchFormUrlCode) {
-      const uri = engine.searchForm;
-      this.assertOk(
-        uri.includes(rule.searchFormUrlCode),
-        `Expected "${rule.searchFormUrlCode}" in "${uri}"`
       );
     }
     if (rule.suggestUrlCode) {
@@ -618,5 +591,14 @@ class SearchConfigTest {
     if (!ObjectUtils.deepEqual(actual, expected)) {
       Assert.deepEqual(actual, expected, message);
     }
+  }
+}
+
+async function checkUISchemaValid(configSchema, uiSchema) {
+  for (let key of Object.keys(configSchema.properties)) {
+    Assert.ok(
+      uiSchema["ui:order"].includes(key),
+      `Should have ${key} listed at the top-level of the ui schema`
+    );
   }
 }

@@ -5,7 +5,7 @@
 const HOSTNAME_DOMAIN = "browser_policy_clear_blocked_cookies.com";
 const ORIGIN_DOMAIN = "browser_policy_clear_blocked_cookies.org";
 
-add_task(async function setup() {
+add_setup(async function () {
   const expiry = Date.now() + 24 * 60 * 60;
   Services.cookies.add(
     HOSTNAME_DOMAIN,
@@ -83,7 +83,7 @@ add_task(async function setup() {
 
 function retrieve_all_cookies(host) {
   const values = [];
-  for (let cookie of Services.cookies.getCookiesFromHost(host, {})) {
+  for (const cookie of Services.cookies.getCookiesFromHost(host, {})) {
     values.push({
       host: cookie.host,
       name: cookie.name,
@@ -112,7 +112,7 @@ add_task(async function test_cookies_for_blocked_sites_cleared() {
 });
 
 add_task(function teardown() {
-  for (let host of [HOSTNAME_DOMAIN, ORIGIN_DOMAIN, "example.net"]) {
+  for (const host of [HOSTNAME_DOMAIN, ORIGIN_DOMAIN, "example.net"]) {
     Services.cookies.removeCookiesWithOriginAttributes("{}", host);
   }
 });

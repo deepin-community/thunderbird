@@ -36,8 +36,8 @@
 <!ENTITY joinChatButton.label          "Чатқа кіру">
 <!ENTITY chatAccountsButton.label      "Тіркелгілерді көрсету">
 
-<!ENTITY status.available          "Қолжетерлік">
-<!ENTITY status.unavailable        "Қолжетерсіз">
+<!ENTITY status.available          "Қолжетімді">
+<!ENTITY status.unavailable        "Қолжетімсіз">
 <!ENTITY status.offline            "Желіде емес">
 
 <!ENTITY openLinkCmd.label            "Сілтемені ашу…">

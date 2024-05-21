@@ -16,7 +16,6 @@ typedef long nsMimeOutputType;
 [scriptable, uuid(fdc2956e-d558-43fb-bfdd-fb9511229aa5)]
 interface nsMimeOutput : nsISupports
 {
-  const long nsMimeMessageSplitDisplay = 0;
   const long nsMimeMessageHeaderDisplay = 1;
   const long nsMimeMessageBodyDisplay = 2;
   const long nsMimeMessageQuoting = 3;
@@ -88,6 +87,6 @@ interface nsIMimeStreamConverter : nsISupports {
    * This is used for OpenDraft, OpenEditorTemplate and Forward inline (which use OpenDraft)
    */
   attribute nsIMsgIdentity identity;
-  attribute string originalMsgURI;
+  attribute AUTF8String originalMsgURI;
   attribute nsIMsgDBHdr origMsgHdr;
 };

@@ -59,7 +59,7 @@ async function checkCacheEnabled(tabX, expected) {
   const oldGuid = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
+    function () {
       const doc = content.document;
       const h1 = doc.querySelector("h1");
       return h1.textContent;
@@ -71,7 +71,7 @@ async function checkCacheEnabled(tabX, expected) {
   const guid = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    function() {
+    function () {
       const doc = content.document;
       const h1 = doc.querySelector("h1");
       return h1.textContent;
@@ -93,7 +93,7 @@ async function setDisableCacheCheckboxChecked(tabX, state) {
 
   if (cbx.checked !== state) {
     info("Setting disable cache checkbox to " + state + " for " + tabX.title);
-    const onReconfigured = tabX.toolbox.once("cache-reconfigured");
+    const onReconfigured = tabX.toolbox.once("new-configuration-applied");
     cbx.click();
 
     // We have to wait for the reconfigure request to be finished before reloading
@@ -106,7 +106,7 @@ function reloadTab(tabX) {
   const browser = gBrowser.selectedBrowser;
 
   const reloadTabPromise = BrowserTestUtils.browserLoaded(browser).then(
-    function() {
+    function () {
       info("Reloaded tab " + tabX.title);
     }
   );
@@ -120,7 +120,7 @@ function reloadTab(tabX) {
 }
 
 async function destroyTab(tabX) {
-  const toolbox = await gDevTools.getToolboxForTab(tabX.tab);
+  const toolbox = gDevTools.getToolboxForTab(tabX.tab);
 
   let onceDestroyed;
   if (toolbox) {

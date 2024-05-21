@@ -4,19 +4,18 @@
 
 # This module provides mixins to perform process execution.
 
-from __future__ import absolute_import, unicode_literals
-
 import logging
 import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
+from typing import Optional
 
-from mozbuild.util import ensure_subprocess_env
+from mozbuild import shellutil
 from mozprocess.processhandler import ProcessHandlerMixin
 
 from .logging import LoggingMixin
-
 
 # Perform detection of operating system environment. This is used by command
 # execution. We only do this once to save redundancy. Yes, this can fail module
@@ -24,7 +23,11 @@ from .logging import LoggingMixin
 if "SHELL" in os.environ:
     _current_shell = os.environ["SHELL"]
 elif "MOZILLABUILD" in os.environ:
-    _current_shell = os.environ["MOZILLABUILD"] + "/msys/bin/sh.exe"
+    mozillabuild = os.environ["MOZILLABUILD"]
+    if (Path(mozillabuild) / "msys2").exists():
+        _current_shell = mozillabuild + "/msys2/usr/bin/sh.exe"
+    else:
+        _current_shell = mozillabuild + "/msys/bin/sh.exe"
 elif "COMSPEC" in os.environ:
     _current_shell = os.environ["COMSPEC"]
 elif sys.platform != "win32":
@@ -35,11 +38,18 @@ else:
 
 _in_msys = False
 
-if os.environ.get("MSYSTEM", None) in ("MINGW32", "MINGW64"):
+if (
+    os.environ.get("MSYSTEM", None) in ("MINGW32", "MINGW64")
+    or "MOZILLABUILD" in os.environ
+):
     _in_msys = True
 
     if not _current_shell.lower().endswith(".exe"):
         _current_shell += ".exe"
+
+
+class LineHandlingEarlyReturn(Exception):
+    pass
 
 
 class ProcessExecutionMixin(LoggingMixin):
@@ -48,7 +58,7 @@ class ProcessExecutionMixin(LoggingMixin):
     def run_process(
         self,
         args=None,
-        cwd=None,
+        cwd: Optional[str] = None,
         append_env=None,
         explicit_env=None,
         log_name=None,
@@ -98,7 +108,12 @@ class ProcessExecutionMixin(LoggingMixin):
         """
         args = self._normalize_command(args, require_unix_environment)
 
-        self.log(logging.INFO, "new_process", {"args": " ".join(args)}, "{args}")
+        self.log(
+            logging.INFO,
+            "new_process",
+            {"args": " ".join(shellutil.quote(arg) for arg in args)},
+            "{args}",
+        )
 
         def handleLine(line):
             # Converts str to unicode on Python 2 and bytes to str on Python 3.
@@ -106,9 +121,12 @@ class ProcessExecutionMixin(LoggingMixin):
                 line = line.decode(sys.stdout.encoding or "utf-8", "replace")
 
             if line_handler:
-                line_handler(line)
+                try:
+                    line_handler(line)
+                except LineHandlingEarlyReturn:
+                    return
 
-            if line.startswith("BUILDTASK") or not log_name:
+            if not log_name:
                 return
 
             self.log(log_level, log_name, {"line": line.rstrip()}, "{line}")
@@ -127,7 +145,6 @@ class ProcessExecutionMixin(LoggingMixin):
 
         self.log(logging.DEBUG, "process", {"env": str(use_env)}, "Environment: {env}")
 
-        use_env = ensure_subprocess_env(use_env)
         if pass_thru:
             proc = subprocess.Popen(args, cwd=cwd, env=use_env, close_fds=False)
             status = None
@@ -153,10 +170,13 @@ class ProcessExecutionMixin(LoggingMixin):
             p.processOutput()
             status = None
             sig = None
-            while status is None:
+            # XXX: p.wait() sometimes fails to detect the process exit and never returns a status code.
+            # Time out and check if the pid still exists.
+            # See bug 1845125 for example.
+            while status is None and p.pid_exists(p.pid):
                 try:
                     if sig is None:
-                        status = p.wait()
+                        status = p.wait(5)
                     else:
                         status = p.kill(sig=sig)
                 except KeyboardInterrupt:
@@ -173,9 +193,7 @@ class ProcessExecutionMixin(LoggingMixin):
             ensure_exit_code = 0
 
         if status != ensure_exit_code:
-            raise Exception(
-                "Process executed with non-0 exit code %d: %s" % (status, args)
-            )
+            raise Exception(f"Process executed with non-0 exit code {status}: {args}")
 
         return status
 

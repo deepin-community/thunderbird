@@ -12,8 +12,7 @@
 #include "nsGenericHTMLElement.h"
 #include "nsGkAtoms.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class HTMLDialogElement final : public nsGenericHTMLElement {
  public:
@@ -26,8 +25,6 @@ class HTMLDialogElement final : public nsGenericHTMLElement {
 
   nsresult Clone(dom::NodeInfo* aNodeInfo, nsINode** aResult) const override;
 
-  static bool IsDialogEnabled(JSContext* aCx, JS::Handle<JSObject*> aObj);
-
   bool Open() const { return GetBoolAttr(nsGkAtoms::open); }
   void SetOpen(bool aOpen, ErrorResult& aError) {
     SetHTMLBoolAttr(nsGkAtoms::open, aOpen, aError);
@@ -38,21 +35,24 @@ class HTMLDialogElement final : public nsGenericHTMLElement {
     mReturnValue = aReturnValue;
   }
 
-  void UnbindFromTree(bool aNullParent = true) override;
+  void UnbindFromTree(UnbindContext&) override;
 
   void Close(const mozilla::dom::Optional<nsAString>& aReturnValue);
-  void Show();
-  void ShowModal(ErrorResult& aError);
+  MOZ_CAN_RUN_SCRIPT void Show(ErrorResult& aError);
+  MOZ_CAN_RUN_SCRIPT void ShowModal(ErrorResult& aError);
 
   bool IsInTopLayer() const;
   void QueueCancelDialog();
   void RunCancelDialogSteps();
 
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY void FocusDialog();
+
+  int32_t TabIndexDefault() override;
+
   nsString mReturnValue;
 
  protected:
   virtual ~HTMLDialogElement();
-  void FocusDialog();
   JSObject* WrapNode(JSContext* aCx,
                      JS::Handle<JSObject*> aGivenProto) override;
 
@@ -64,7 +64,6 @@ class HTMLDialogElement final : public nsGenericHTMLElement {
   nsWeakPtr mPreviouslyFocusedElement;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif

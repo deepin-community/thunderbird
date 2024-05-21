@@ -11,8 +11,8 @@
  * mangling the message.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var server;
@@ -48,13 +48,13 @@ msl.prototype = {
     } finally {
       server.stop();
 
-      var thread = gThreadManager.currentThread;
+      var thread = Services.tm.currentThread;
       while (thread.hasPendingEvents()) {
         thread.processNextEvent(false);
       }
     }
   },
-  onGetDraftFolderURI(aFolderURI) {},
+  onGetDraftFolderURI(aMsgID, aFolderURI) {},
   onSendNotPerformed(aMsgID, aStatus) {},
   onTransportSecurityError(msgID, status, secInfo, location) {},
 
@@ -152,7 +152,7 @@ add_task(async function run_the_test() {
 
     server.performTest();
 
-    do_timeout(10000, function() {
+    do_timeout(10000, function () {
       if (!finished) {
         do_throw("Notifications of message send/copy not received");
       }
@@ -164,7 +164,7 @@ add_task(async function run_the_test() {
   } finally {
     server.stop();
 
-    var thread = gThreadManager.currentThread;
+    var thread = Services.tm.currentThread;
     while (thread.hasPendingEvents()) {
       thread.processNextEvent(true);
     }

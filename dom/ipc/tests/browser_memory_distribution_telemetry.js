@@ -1,8 +1,7 @@
 "use strict";
 
-var session = ChromeUtils.import(
-  "resource://gre/modules/TelemetrySession.jsm",
-  null
+const { TelemetrySession } = ChromeUtils.importESModule(
+  "resource://gre/modules/TelemetrySession.sys.mjs"
 );
 
 const DUMMY_PAGE_DATA_URI = `data:text/html,
@@ -50,14 +49,14 @@ add_task(async function test_memory_distribution() {
   );
 
   let finishedGathering = new Promise(resolve => {
-    let obs = function() {
+    let obs = function () {
       Services.obs.removeObserver(obs, "gather-memory-telemetry-finished");
       resolve();
     };
     Services.obs.addObserver(obs, "gather-memory-telemetry-finished");
   });
 
-  session.TelemetrySession.getPayload();
+  TelemetrySession.getPayload();
 
   await finishedGathering;
 
@@ -66,12 +65,14 @@ add_task(async function test_memory_distribution() {
   for (var key in s) {
     is(key, "0 - 10 tabs");
     let fewTabsSnapshot = s[key];
-    ok(
-      fewTabsSnapshot.sum > 0,
+    Assert.greater(
+      fewTabsSnapshot.sum,
+      0,
       "Zero difference between all the content processes is unlikely, what happened?"
     );
-    ok(
-      fewTabsSnapshot.sum < 80,
+    Assert.less(
+      fewTabsSnapshot.sum,
+      80,
       "20 percentage difference on average is unlikely, what happened?"
     );
     let values = fewTabsSnapshot.values;

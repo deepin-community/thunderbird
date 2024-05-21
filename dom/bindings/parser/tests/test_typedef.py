@@ -1,3 +1,6 @@
+import WebIDL
+
+
 def WebIDLTest(parser, harness):
     parser.parse(
         """
@@ -5,9 +8,9 @@ def WebIDLTest(parser, harness):
       typedef long? mynullablelong;
       interface Foo {
         const mylong X = 5;
-        void foo(optional mynullablelong arg = 7);
-        void bar(optional mynullablelong arg = null);
-        void baz(mylong arg);
+        undefined foo(optional mynullablelong arg = 7);
+        undefined bar(optional mynullablelong arg = null);
+        undefined baz(mylong arg);
       };
     """
     )
@@ -27,12 +30,12 @@ def WebIDLTest(parser, harness):
             """
           typedef long? mynullablelong;
           interface Foo {
-            void foo(mynullablelong? Y);
+            undefined foo(mynullablelong? Y);
           };
         """
         )
         results = parser.finish()
-    except:
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown on nullable inside nullable arg.")
@@ -49,7 +52,7 @@ def WebIDLTest(parser, harness):
         """
         )
         results = parser.finish()
-    except:
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(threw, "Should have thrown on nullable inside nullable const.")
@@ -66,7 +69,7 @@ def WebIDLTest(parser, harness):
         """
         )
         results = parser.finish()
-    except:
+    except WebIDL.WebIDLError:
         threw = True
 
     harness.ok(

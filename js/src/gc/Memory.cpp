@@ -11,33 +11,32 @@
 #include "mozilla/RandomNum.h"
 #include "mozilla/TaggedAnonymousMemory.h"
 
+#include "jit/JitOptions.h"
 #include "js/HeapAPI.h"
+#include "js/Utility.h"
 #include "util/Memory.h"
-#include "vm/Runtime.h"
 
 #ifdef XP_WIN
 
-#  include "util/Windows.h"
+#  include "util/WindowsWrapper.h"
 #  include <psapi.h>
-
-#elif defined(__wasi__)
-
-/* nothing */
 
 #else
 
 #  include <algorithm>
 #  include <errno.h>
-#  include <sys/mman.h>
-#  include <sys/resource.h>
-#  include <sys/stat.h>
-#  include <sys/types.h>
 #  include <unistd.h>
 
-#endif
+#  if !defined(__wasi__)
+#    include <sys/mman.h>
+#    include <sys/resource.h>
+#    include <sys/stat.h>
+#    include <sys/types.h>
+#  endif  // !defined(__wasi__)
 
-namespace js {
-namespace gc {
+#endif  // !XP_WIN
+
+namespace js::gc {
 
 /*
  * System allocation functions generally require the allocation size
@@ -403,10 +402,12 @@ void InitMemorySubsystem() {
     numAddressBits = 32;
 #endif
 #ifdef RLIMIT_AS
-    rlimit as_limit;
-    if (getrlimit(RLIMIT_AS, &as_limit) == 0 &&
-        as_limit.rlim_max != RLIM_INFINITY) {
-      virtualMemoryLimit = as_limit.rlim_max;
+    if (jit::HasJitBackend()) {
+      rlimit as_limit;
+      if (getrlimit(RLIMIT_AS, &as_limit) == 0 &&
+          as_limit.rlim_max != RLIM_INFINITY) {
+        virtualMemoryLimit = as_limit.rlim_max;
+      }
     }
 #endif
   }
@@ -917,7 +918,8 @@ void* AllocateMappedContent(int fd, size_t offset, size_t length,
   HANDLE hFile = reinterpret_cast<HANDLE>(intptr_t(fd));
 
   // This call will fail if the file does not exist.
-  HANDLE hMap = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+  HANDLE hMap =
+      CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
   if (!hMap) {
     return nullptr;
   }
@@ -1043,5 +1045,4 @@ void UnprotectPages(void* region, size_t length) {
   ProtectMemory(region, length, PageAccess::ReadWrite);
 }
 
-}  // namespace gc
-}  // namespace js
+}  // namespace js::gc

@@ -12,19 +12,28 @@ add_task(async function test() {
     "https://example.com/browser/" +
     "browser/components/privatebrowsing/test/browser/browser_privatebrowsing_protocolhandler_page.html";
 
-  let doTest = async function(aIsPrivateMode, aWindow) {
+  let doTest = async function (aIsPrivateMode, aWindow) {
     let tab = (aWindow.gBrowser.selectedTab = BrowserTestUtils.addTab(
       aWindow.gBrowser,
       testURI
     ));
-    await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
-
-    let promiseFinished = PromiseUtils.defer();
-    setTimeout(function() {
-      let notificationBox = aWindow.gBrowser.getNotificationBox();
-      let notification = notificationBox.getNotificationWithValue(
-        notificationValue
+    let notificationBox = aWindow.gBrowser.getNotificationBox();
+    let notificationShownPromise;
+    if (!aIsPrivateMode) {
+      notificationShownPromise = BrowserTestUtils.waitForEvent(
+        notificationBox.stack,
+        "AlertActive",
+        false,
+        event => event.target.getAttribute("value") == notificationValue
       );
+    }
+    await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
+    await notificationShownPromise;
+
+    let promiseFinished = Promise.withResolvers();
+    setTimeout(function () {
+      let notification =
+        notificationBox.getNotificationWithValue(notificationValue);
 
       if (aIsPrivateMode) {
         // Make sure the notification is correctly displayed without a remember control

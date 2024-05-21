@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use inherent::inherent;
+use std::sync::Arc;
 
 use glean::traits::Boolean;
 
@@ -16,7 +17,7 @@ use crate::private::MetricId;
 /// Records a simple true or false value.
 #[derive(Clone)]
 pub enum BooleanMetric {
-    Parent(glean::private::BooleanMetric),
+    Parent(Arc<glean::private::BooleanMetric>),
     Child(BooleanMetricIpc),
 }
 #[derive(Clone, Debug)]
@@ -28,7 +29,7 @@ impl BooleanMetric {
         if need_ipc() {
             BooleanMetric::Child(BooleanMetricIpc)
         } else {
-            BooleanMetric::Parent(glean::private::BooleanMetric::new(meta))
+            BooleanMetric::Parent(Arc::new(glean::private::BooleanMetric::new(meta)))
         }
     }
 
@@ -41,20 +42,23 @@ impl BooleanMetric {
     }
 }
 
-#[inherent(pub)]
+#[inherent]
 impl Boolean for BooleanMetric {
     /// Set to the specified boolean value.
     ///
     /// ## Arguments
     ///
     /// * `value` - the value to set.
-    fn set(&self, value: bool) {
+    pub fn set(&self, value: bool) {
         match self {
             BooleanMetric::Parent(p) => {
-                Boolean::set(&*p, value);
+                p.set(value);
             }
             BooleanMetric::Child(_) => {
-                log::error!("Unable to set boolean metric in non-parent process. Ignoring.");
+                log::error!("Unable to set boolean metric in non-main process. This operation will be ignored.");
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.
+                assert!(!crate::ipc::is_in_automation(), "Attempted to set boolean metric in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error.
             }
         }
@@ -72,12 +76,35 @@ impl Boolean for BooleanMetric {
     /// ## Return value
     ///
     /// Returns the stored value or `None` if nothing stored.
-    fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<bool> {
+    pub fn test_get_value<'a, S: Into<Option<&'a str>>>(&self, ping_name: S) -> Option<bool> {
+        let ping_name = ping_name.into().map(|s| s.to_string());
         match self {
             BooleanMetric::Parent(p) => p.test_get_value(ping_name),
             BooleanMetric::Child(_) => {
-                panic!("Cannot get test value for boolean metric in non-parent process!",)
+                panic!("Cannot get test value for boolean metric in non-main process!",)
             }
+        }
+    }
+
+    /// **Exported for test purposes.**
+    ///
+    /// Gets the number of recorded errors for the given metric and error type.
+    ///
+    /// # Arguments
+    ///
+    /// * `error` - The type of error
+    /// * `ping_name` - represents the optional name of the ping to retrieve the
+    ///   metric for. Defaults to the first value in `send_in_pings`.
+    ///
+    /// # Returns
+    ///
+    /// The number of errors reported.
+    pub fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32 {
+        match self {
+            BooleanMetric::Parent(p) => p.test_get_num_recorded_errors(error),
+            BooleanMetric::Child(_) => panic!(
+                "Cannot get the number of recorded errors for boolean metric in non-main process!"
+            ),
         }
     }
 }

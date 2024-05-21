@@ -95,12 +95,13 @@ class nsHTTPSOnlyUtils {
   /**
    * Determines if the request was previously upgraded with HTTPS-First, creates
    * a downgraded URI and logs to console.
-   * @param  aStatus   Status code
-   * @param  aChannel Failed channel
-   * @return          URI with http-scheme or nullptr
+   * @param  aStatus               Status code
+   * @param  aDocumentLoadListener Failed document load listener
+   * @return                       URI with http-scheme or nullptr
    */
   static already_AddRefed<nsIURI> PotentiallyDowngradeHttpsFirstRequest(
-      nsIChannel* aChannel, nsresult aStatus);
+      mozilla::net::DocumentLoadListener* aDocumentLoadListener,
+      nsresult aStatus);
 
   /**
    * Checks if the error code is on a block-list of codes that are probably
@@ -162,13 +163,6 @@ class nsHTTPSOnlyUtils {
   static bool IsEqualURIExceptSchemeAndRef(nsIURI* aHTTPSSchemeURI,
                                            nsIURI* aOtherURI,
                                            nsILoadInfo* aLoadInfo);
-
-  /**
-   * Checks a top-level load, if it is exempt by HTTPS-First/ Only
-   * clear exemption flag.
-   * @param aLoadInfo nsILoadInfo of the request
-   */
-  static void PotentiallyClearExemptFlag(nsILoadInfo* aLoadInfo);
 
  private:
   /**

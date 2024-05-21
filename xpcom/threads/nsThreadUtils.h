@@ -8,6 +8,7 @@
 #define nsThreadUtils_h__
 
 #include <type_traits>
+#include <tuple>
 #include <utility>
 
 #include "MainThreadUtils.h"
@@ -18,7 +19,7 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/ThreadLocal.h"
 #include "mozilla/TimeStamp.h"
-#include "mozilla/Tuple.h"
+
 #include "nsCOMPtr.h"
 #include "nsICancelableRunnable.h"
 #include "nsIDiscardableRunnable.h"
@@ -48,8 +49,9 @@ class nsIThread;
  *   The resulting nsIThread object.
  * @param aInitialEvent
  *   The initial event to run on this thread.  This parameter may be null.
- * @param aStackSize
- *   The size in bytes to reserve for the thread's stack.
+ * @param aOptions
+ *   Options used to configure thread creation.
+ *   Options are documented in nsIThreadManager.idl.
  *
  * @returns NS_ERROR_INVALID_ARG
  *   Indicates that the given name is not unique.
@@ -58,32 +60,32 @@ class nsIThread;
 extern nsresult NS_NewNamedThread(
     const nsACString& aName, nsIThread** aResult,
     nsIRunnable* aInitialEvent = nullptr,
-    uint32_t aStackSize = nsIThreadManager::DEFAULT_STACK_SIZE);
+    nsIThreadManager::ThreadCreationOptions aOptions = {});
 
 extern nsresult NS_NewNamedThread(
     const nsACString& aName, nsIThread** aResult,
     already_AddRefed<nsIRunnable> aInitialEvent,
-    uint32_t aStackSize = nsIThreadManager::DEFAULT_STACK_SIZE);
+    nsIThreadManager::ThreadCreationOptions aOptions = {});
 
 template <size_t LEN>
 inline nsresult NS_NewNamedThread(
     const char (&aName)[LEN], nsIThread** aResult,
     already_AddRefed<nsIRunnable> aInitialEvent,
-    uint32_t aStackSize = nsIThreadManager::DEFAULT_STACK_SIZE) {
+    nsIThreadManager::ThreadCreationOptions aOptions = {}) {
   static_assert(LEN <= 16, "Thread name must be no more than 16 characters");
   return NS_NewNamedThread(nsDependentCString(aName, LEN - 1), aResult,
-                           std::move(aInitialEvent), aStackSize);
+                           std::move(aInitialEvent), aOptions);
 }
 
 template <size_t LEN>
 inline nsresult NS_NewNamedThread(
     const char (&aName)[LEN], nsIThread** aResult,
     nsIRunnable* aInitialEvent = nullptr,
-    uint32_t aStackSize = nsIThreadManager::DEFAULT_STACK_SIZE) {
+    nsIThreadManager::ThreadCreationOptions aOptions = {}) {
   nsCOMPtr<nsIRunnable> event = aInitialEvent;
   static_assert(LEN <= 16, "Thread name must be no more than 16 characters");
   return NS_NewNamedThread(nsDependentCString(aName, LEN - 1), aResult,
-                           event.forget(), aStackSize);
+                           event.forget(), aOptions);
 }
 
 /**
@@ -458,7 +460,6 @@ class IdleRunnable : public DiscardableRunnable, public nsIIdleRunnable {
  public:
   NS_DECL_ISUPPORTS_INHERITED
 
-  IdleRunnable() : DiscardableRunnable("IdleRunnable") {}
   explicit IdleRunnable(const char* aName) : DiscardableRunnable(aName) {}
 
  protected:
@@ -506,12 +507,27 @@ class PrioritizableRunnable : public Runnable, public nsIRunnablePriority {
 
  protected:
   virtual ~PrioritizableRunnable() = default;
-  ;
+
   nsCOMPtr<nsIRunnable> mRunnable;
   uint32_t mPriority;
 };
 
-extern already_AddRefed<nsIRunnable> CreateMediumHighRunnable(
+class PrioritizableCancelableRunnable : public CancelableRunnable,
+                                        public nsIRunnablePriority {
+ public:
+  PrioritizableCancelableRunnable(uint32_t aPriority, const char* aName)
+      : CancelableRunnable(aName), mPriority(aPriority) {}
+
+  NS_DECL_ISUPPORTS_INHERITED
+  NS_DECL_NSIRUNNABLEPRIORITY
+
+ protected:
+  virtual ~PrioritizableCancelableRunnable() = default;
+
+  const uint32_t mPriority;
+};
+
+extern already_AddRefed<nsIRunnable> CreateRenderBlockingRunnable(
     already_AddRefed<nsIRunnable>&& aRunnable);
 
 namespace detail {
@@ -546,71 +562,40 @@ using RunnableFunctionImpl =
 
 namespace detail {
 
-template <typename CVRemoved>
-struct IsRefcountedSmartPointerHelper : std::false_type {};
-
-template <typename Pointee>
-struct IsRefcountedSmartPointerHelper<RefPtr<Pointee>> : std::true_type {};
-
-template <typename Pointee>
-struct IsRefcountedSmartPointerHelper<nsCOMPtr<Pointee>> : std::true_type {};
-
-}  // namespace detail
-
 template <typename T>
-struct IsRefcountedSmartPointer
-    : detail::IsRefcountedSmartPointerHelper<std::remove_cv_t<T>> {};
-
-namespace detail {
-
-template <typename T, typename CVRemoved>
 struct RemoveSmartPointerHelper {
-  typedef T Type;
+  using Type = T;
 };
-
-template <typename T, typename Pointee>
-struct RemoveSmartPointerHelper<T, RefPtr<Pointee>> {
-  typedef Pointee Type;
-};
-
-template <typename T, typename Pointee>
-struct RemoveSmartPointerHelper<T, nsCOMPtr<Pointee>> {
-  typedef Pointee Type;
-};
-
-}  // namespace detail
 
 template <typename T>
-struct RemoveSmartPointer
-    : detail::RemoveSmartPointerHelper<T, std::remove_cv_t<T>> {};
+struct RemoveSmartPointerHelper<RefPtr<T>> {
+  using Type = T;
+};
 
-namespace detail {
+template <typename T>
+struct RemoveSmartPointerHelper<nsCOMPtr<T>> {
+  using Type = T;
+};
 
-template <typename T, typename CVRemoved>
+template <typename T>
 struct RemoveRawOrSmartPointerHelper {
-  typedef T Type;
+  using Type = typename RemoveSmartPointerHelper<T>::Type;
 };
 
-template <typename T, typename Pointee>
-struct RemoveRawOrSmartPointerHelper<T, Pointee*> {
-  typedef Pointee Type;
-};
-
-template <typename T, typename Pointee>
-struct RemoveRawOrSmartPointerHelper<T, RefPtr<Pointee>> {
-  typedef Pointee Type;
-};
-
-template <typename T, typename Pointee>
-struct RemoveRawOrSmartPointerHelper<T, nsCOMPtr<Pointee>> {
-  typedef Pointee Type;
+template <typename T>
+struct RemoveRawOrSmartPointerHelper<T*> {
+  using Type = T;
 };
 
 }  // namespace detail
 
 template <typename T>
-struct RemoveRawOrSmartPointer
-    : detail::RemoveRawOrSmartPointerHelper<T, std::remove_cv_t<T>> {};
+using RemoveSmartPointer =
+    typename detail::RemoveSmartPointerHelper<std::remove_cv_t<T>>::Type;
+
+template <typename T>
+using RemoveRawOrSmartPointer =
+    typename detail::RemoveRawOrSmartPointerHelper<std::remove_cv_t<T>>::Type;
 
 }  // namespace mozilla
 
@@ -781,23 +766,22 @@ struct nsRunnableMethodTraits;
 template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind, typename... As>
 struct nsRunnableMethodTraits<PtrType, R (C::*)(As...), Owning, Kind> {
-  typedef typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type class_type;
+  using class_type = mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 
 template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind, typename... As>
 struct nsRunnableMethodTraits<PtrType, R (C::*)(As...) const, Owning, Kind> {
-  typedef const typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type
-      class_type;
+  using class_type = const mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 
@@ -806,22 +790,22 @@ template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind, typename... As>
 struct nsRunnableMethodTraits<PtrType, R (__stdcall C::*)(As...), Owning,
                               Kind> {
-  typedef typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type class_type;
+  using class_type = mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 
 template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind>
 struct nsRunnableMethodTraits<PtrType, R (NS_STDCALL C::*)(), Owning, Kind> {
-  typedef typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type class_type;
+  using class_type = mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 
@@ -829,12 +813,11 @@ template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind, typename... As>
 struct nsRunnableMethodTraits<PtrType, R (__stdcall C::*)(As...) const, Owning,
                               Kind> {
-  typedef const typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type
-      class_type;
+  using class_type = const mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 
@@ -842,12 +825,11 @@ template <typename PtrType, class C, typename R, bool Owning,
           mozilla::RunnableKind Kind>
 struct nsRunnableMethodTraits<PtrType, R (NS_STDCALL C::*)() const, Owning,
                               Kind> {
-  typedef const typename mozilla::RemoveRawOrSmartPointer<PtrType>::Type
-      class_type;
+  using class_type = const mozilla::RemoveRawOrSmartPointer<PtrType>;
   static_assert(std::is_base_of<C, class_type>::value,
                 "Stored class must inherit from method's class");
-  typedef R return_type;
-  typedef nsRunnableMethod<C, R, Owning, Kind> base_type;
+  using return_type = R;
+  using base_type = nsRunnableMethod<C, R, Owning, Kind>;
   static const bool can_cancel = Kind == mozilla::RunnableKind::Cancelable;
 };
 #  endif
@@ -865,19 +847,6 @@ struct IsParameterStorageClass : public std::false_type {};
 // store arguments, and how to pass them to the target method.
 
 template <typename T>
-struct StoreCopyPassByValue {
-  using stored_type = std::decay_t<T>;
-  typedef stored_type passed_type;
-  stored_type m;
-  template <typename A>
-  MOZ_IMPLICIT StoreCopyPassByValue(A&& a) : m(std::forward<A>(a)) {}
-  passed_type PassAsParameter() { return m; }
-};
-template <typename S>
-struct IsParameterStorageClass<StoreCopyPassByValue<S>>
-    : public std::true_type {};
-
-template <typename T>
 struct StoreCopyPassByConstLRef {
   using stored_type = std::decay_t<T>;
   typedef const stored_type& passed_type;
@@ -889,19 +858,6 @@ struct StoreCopyPassByConstLRef {
 template <typename S>
 struct IsParameterStorageClass<StoreCopyPassByConstLRef<S>>
     : public std::true_type {};
-
-template <typename T>
-struct StoreCopyPassByLRef {
-  using stored_type = std::decay_t<T>;
-  typedef stored_type& passed_type;
-  stored_type m;
-  template <typename A>
-  MOZ_IMPLICIT StoreCopyPassByLRef(A&& a) : m(std::forward<A>(a)) {}
-  passed_type PassAsParameter() { return m; }
-};
-template <typename S>
-struct IsParameterStorageClass<StoreCopyPassByLRef<S>> : public std::true_type {
-};
 
 template <typename T>
 struct StoreCopyPassByRRef {
@@ -980,32 +936,6 @@ template <typename S>
 struct IsParameterStorageClass<StoreConstPtrPassByConstPtr<S>>
     : public std::true_type {};
 
-template <typename T>
-struct StoreCopyPassByConstPtr {
-  typedef T stored_type;
-  typedef const T* passed_type;
-  stored_type m;
-  template <typename A>
-  MOZ_IMPLICIT StoreCopyPassByConstPtr(A&& a) : m(std::forward<A>(a)) {}
-  passed_type PassAsParameter() { return &m; }
-};
-template <typename S>
-struct IsParameterStorageClass<StoreCopyPassByConstPtr<S>>
-    : public std::true_type {};
-
-template <typename T>
-struct StoreCopyPassByPtr {
-  typedef T stored_type;
-  typedef T* passed_type;
-  stored_type m;
-  template <typename A>
-  MOZ_IMPLICIT StoreCopyPassByPtr(A&& a) : m(std::forward<A>(a)) {}
-  passed_type PassAsParameter() { return &m; }
-};
-template <typename S>
-struct IsParameterStorageClass<StoreCopyPassByPtr<S>> : public std::true_type {
-};
-
 namespace detail {
 
 template <typename>
@@ -1019,69 +949,8 @@ template <class>
 static auto HasRefCountMethodsTest(long) -> std::false_type;
 
 template <class T>
-struct HasRefCountMethods : decltype(HasRefCountMethodsTest<T>(0)) {};
-
-template <typename TWithoutPointer>
-struct NonnsISupportsPointerStorageClass
-    : std::conditional<
-          std::is_const_v<TWithoutPointer>,
-          StoreConstPtrPassByConstPtr<std::remove_const_t<TWithoutPointer>>,
-          StorePtrPassByPtr<TWithoutPointer>> {
-  using Type = typename NonnsISupportsPointerStorageClass::conditional::type;
-};
-
-template <typename TWithoutPointer>
-struct PointerStorageClass
-    : std::conditional<
-          HasRefCountMethods<TWithoutPointer>::value,
-          StoreRefPtrPassByPtr<TWithoutPointer>,
-          typename NonnsISupportsPointerStorageClass<TWithoutPointer>::Type> {
-  using Type = typename PointerStorageClass::conditional::type;
-};
-
-template <typename TWithoutRef>
-struct LValueReferenceStorageClass
-    : std::conditional<
-          std::is_const_v<TWithoutRef>,
-          StoreConstRefPassByConstLRef<std::remove_const_t<TWithoutRef>>,
-          StoreRefPassByLRef<TWithoutRef>> {
-  using Type = typename LValueReferenceStorageClass::conditional::type;
-};
-
-template <typename T>
-struct SmartPointerStorageClass
-    : std::conditional<
-          mozilla::IsRefcountedSmartPointer<T>::value,
-          StoreRefPtrPassByPtr<typename mozilla::RemoveSmartPointer<T>::Type>,
-          StoreCopyPassByConstLRef<T>> {
-  using Type = typename SmartPointerStorageClass::conditional::type;
-};
-
-template <typename T>
-struct NonLValueReferenceStorageClass
-    : std::conditional<std::is_rvalue_reference_v<T>,
-                       StoreCopyPassByRRef<std::remove_reference_t<T>>,
-                       typename SmartPointerStorageClass<T>::Type> {
-  using Type = typename NonLValueReferenceStorageClass::conditional::type;
-};
-
-template <typename T>
-struct NonPointerStorageClass
-    : std::conditional<std::is_lvalue_reference_v<T>,
-                       typename LValueReferenceStorageClass<
-                           std::remove_reference_t<T>>::Type,
-                       typename NonLValueReferenceStorageClass<T>::Type> {
-  using Type = typename NonPointerStorageClass::conditional::type;
-};
-
-template <typename T>
-struct NonParameterStorageClass
-    : std::conditional<
-          std::is_pointer_v<T>,
-          typename PointerStorageClass<std::remove_pointer_t<T>>::Type,
-          typename NonPointerStorageClass<T>::Type> {
-  using Type = typename NonParameterStorageClass::conditional::type;
-};
+constexpr static bool HasRefCountMethods =
+    decltype(HasRefCountMethodsTest<T>(0))::value;
 
 // Choose storage&passing strategy based on preferred storage type:
 // - If IsParameterStorageClass<T>::value is true, use as-is.
@@ -1095,18 +964,86 @@ struct NonParameterStorageClass
 // - RefPtr<T>, nsCOMPtr<T>
 //             -> StoreRefPtrPassByPtr<T>        :Store RefPtr<T>, pass T*
 // - Other T   -> StoreCopyPassByConstLRef<T>    :Store T, pass const T&.
-// Other available explicit options:
-// -              StoreCopyPassByValue<T>        :Store T, pass T.
-// -              StoreCopyPassByLRef<T>         :Store T, pass T& (of copy!)
-// -              StoreCopyPassByConstPtr<T>     :Store T, pass const T*
-// -              StoreCopyPassByPtr<T>          :Store T, pass T* (of copy!)
-// Or create your own class with PassAsParameter() method, optional
-// clean-up in destructor, and with associated IsParameterStorageClass<>.
+//
+// For anything less common, please use a lambda function rather than devising
+// new parameter-storage classes. (In fact, consider doing that anyway.)
+
 template <typename T>
-struct ParameterStorage
-    : std::conditional<IsParameterStorageClass<T>::value, T,
-                       typename NonParameterStorageClass<T>::Type> {
-  using Type = typename ParameterStorage::conditional::type;
+struct OtherParameterStorage;
+
+// The `IsParameterStorageClass` and `RC*` cases must be handled separately (see
+// `ParameterStorageHelper`, below) until we can use C++20 concepts.
+
+template <typename T>
+struct OtherParameterStorage<const T*> {
+  using Type = StoreConstPtrPassByConstPtr<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<T*> {
+  using Type = StorePtrPassByPtr<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<const T&> {
+  using Type = StoreConstRefPassByConstLRef<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<T&> {
+  using Type = StoreRefPassByLRef<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<RefPtr<T>> {
+  using Type = StoreRefPtrPassByPtr<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<nsCOMPtr<T>> {
+  using Type = StoreRefPtrPassByPtr<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<T&&> {
+  using Type = StoreCopyPassByRRef<T>;
+};
+
+template <typename T>
+struct OtherParameterStorage<const T&&> {
+  // This is good advice regardless of the types you're handling.
+  static_assert(!SFINAE1True<T>::value, "please use a lambda function");
+};
+
+// default impl.
+template <typename T>
+struct OtherParameterStorage {
+  using Type = StoreCopyPassByConstLRef<T>;
+};
+
+template <typename T, bool A = IsParameterStorageClass<T>::value,
+          bool B = std::is_pointer_v<T> &&
+                   HasRefCountMethods<std::remove_pointer_t<T>>>
+struct ParameterStorageHelper;
+
+template <typename T, bool B>
+struct ParameterStorageHelper<T, true, B> {
+  using Type = T;
+};
+
+template <typename T>
+struct ParameterStorageHelper<T, false, true> {
+  using Type = StoreRefPtrPassByPtr<std::remove_pointer_t<T>>;
+};
+
+template <typename T>
+struct ParameterStorageHelper<T, false, false> {
+  using Type = typename OtherParameterStorage<std::remove_cv_t<T>>::Type;
+};
+
+template <typename T>
+struct ParameterStorage {
+  using Type = typename ParameterStorageHelper<T>::Type;
 };
 
 template <class T>
@@ -1137,21 +1074,17 @@ namespace detail {
 // struct used to store arguments and later apply them to a method.
 template <typename... Ts>
 struct RunnableMethodArguments final {
-  Tuple<typename ::detail::ParameterStorage<Ts>::Type...> mArguments;
+  std::tuple<typename ::detail::ParameterStorage<Ts>::Type...> mArguments;
   template <typename... As>
   explicit RunnableMethodArguments(As&&... aArguments)
       : mArguments(std::forward<As>(aArguments)...) {}
-  template <typename C, typename M, typename... Args, size_t... Indices>
-  static auto applyImpl(C* o, M m, Tuple<Args...>& args,
-                        std::index_sequence<Indices...>)
-      -> decltype(((*o).*m)(Get<Indices>(args).PassAsParameter()...)) {
-    return ((*o).*m)(Get<Indices>(args).PassAsParameter()...);
-  }
   template <class C, typename M>
-  auto apply(C* o, M m)
-      -> decltype(applyImpl(o, m, mArguments,
-                            std::index_sequence_for<Ts...>{})) {
-    return applyImpl(o, m, mArguments, std::index_sequence_for<Ts...>{});
+  decltype(auto) apply(C* o, M m) {
+    return std::apply(
+        [&o, m](auto&&... args) {
+          return ((*o).*m)(args.PassAsParameter()...);
+        },
+        mArguments);
   }
 };
 
@@ -1743,10 +1676,23 @@ extern "C" nsresult NS_DispatchBackgroundTask(
 extern "C" nsresult NS_CreateBackgroundTaskQueue(
     const char* aName, nsISerialEventTarget** aTarget);
 
+/**
+ * Dispatch the given runnable to the given event target, spinning the current
+ * thread's event loop until the runnable has finished executing.
+ *
+ * This is roughly equivalent to the previously-supported `NS_DISPATCH_SYNC`
+ * flag.
+ */
+extern nsresult NS_DispatchAndSpinEventLoopUntilComplete(
+    const nsACString& aVeryGoodReasonToDoThis, nsIEventTarget* aEventTarget,
+    already_AddRefed<nsIRunnable> aEvent);
+
 // Predeclaration for logging function below
 namespace IPC {
 class Message;
-}
+class MessageReader;
+class MessageWriter;
+}  // namespace IPC
 
 class nsTimerImpl;
 
@@ -1781,73 +1727,27 @@ class SerialEventTargetGuard {
   nsISerialEventTarget* mLastCurrentThread;
 };
 
-// These functions return event targets that can be used to dispatch to the
-// current or main thread. They can also be used to test if you're on those
-// threads (via IsOnCurrentThread). These functions should be used in preference
-// to the nsIThread-based NS_Get{Current,Main}Thread functions since they will
-// return more useful answers in the case of threads sharing an event loop.
-
-nsIEventTarget* GetCurrentEventTarget();
-
-nsIEventTarget* GetMainThreadEventTarget();
-
-// These variants of the above functions assert that the given thread has a
-// serial event target (i.e., that it's not part of a thread pool) and returns
-// that.
+// Get the serial event target corresponding to the currently executing task
+// queue or thread. This method will assert if called on a thread pool without
+// an active task queue.
+//
+// This function should generally be preferred over NS_GetCurrentThread since it
+// will return a more useful answer when called from a task queue running on a
+// thread pool or on a non-xpcom thread which accepts runnable dispatches.
+//
+// NOTE: The returned nsISerialEventTarget may not accept runnable dispatches
+// (e.g. if it corresponds to a non-xpcom thread), however it may still be used
+// to check if you're on the given thread/queue using IsOnCurrentThread().
 
 nsISerialEventTarget* GetCurrentSerialEventTarget();
 
+// Get a weak reference to a serial event target which can be used to dispatch
+// runnables to the main thread.
+//
+// NOTE: While this is currently a weak pointer to the nsIThread* returned from
+// NS_GetMainThread(), this may change in the future.
+
 nsISerialEventTarget* GetMainThreadSerialEventTarget();
-
-// Returns a wrapper around the current thread which routes normal dispatches
-// through the tail dispatcher.
-// This means that they will run at the end of the current task, rather than
-// after all the subsequent tasks queued. This is useful to allow MozPromise
-// callbacks returned by IPDL methods to avoid an extra trip through the event
-// loop, and thus maintain correct ordering relative to other IPC events. The
-// current thread implementation must support tail dispatch.
-class TailDispatchingTarget : public nsISerialEventTarget {
- public:
-  NS_DECL_THREADSAFE_ISUPPORTS
-  TailDispatchingTarget()
-#if DEBUG
-      : mOwnerThread(AbstractThread::GetCurrent())
-#endif
-  {
-    MOZ_ASSERT(mOwnerThread, "Must be used with AbstractThreads");
-  }
-
-  NS_IMETHOD
-  Dispatch(already_AddRefed<nsIRunnable> event, uint32_t flags) override {
-    MOZ_ASSERT(flags == DISPATCH_NORMAL);
-    MOZ_ASSERT(
-        AbstractThread::GetCurrent() == mOwnerThread,
-        "TailDispatchingTarget can only be used on the thread upon which it "
-        "was created - see the comment on the class declaration.");
-    AbstractThread::DispatchDirectTask(std::move(event));
-    return NS_OK;
-  }
-  NS_IMETHOD_(bool) IsOnCurrentThreadInfallible(void) override { return true; }
-  NS_IMETHOD IsOnCurrentThread(bool* _retval) override {
-    *_retval = true;
-    return NS_OK;
-  }
-  NS_IMETHOD DispatchFromScript(nsIRunnable* event, uint32_t flags) override {
-    MOZ_ASSERT_UNREACHABLE("not implemented");
-    return NS_ERROR_NOT_IMPLEMENTED;
-  }
-  NS_IMETHOD DelayedDispatch(already_AddRefed<nsIRunnable> event,
-                             uint32_t delay) override {
-    MOZ_ASSERT_UNREACHABLE("not implemented");
-    return NS_ERROR_NOT_IMPLEMENTED;
-  }
-
- private:
-  virtual ~TailDispatchingTarget() = default;
-#if DEBUG
-  const RefPtr<AbstractThread> mOwnerThread;
-#endif
-};
 
 // Returns the number of CPUs, like PR_GetNumberOfProcessors, except
 // that it can return a cached value on platforms where sandboxing

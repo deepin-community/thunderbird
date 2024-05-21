@@ -570,10 +570,10 @@ SECMOD_GetDefaultModuleListLock
 SECMOD_GetInternalModule
 SECMOD_GetModuleSpecList
 SECMOD_GetReadLock
-SECMOD_HasRemovableSlots
 SECMOD_InternaltoPubMechFlags
 SECMOD_LoadModule
 SECMOD_LoadUserModule
+SECMOD_LockedModuleHasRemovableSlots
 SECMOD_OpenUserDB
 SECMOD_PubCipherFlagstoInternal
 SECMOD_PubMechFlagstoInternal
@@ -667,6 +667,7 @@ SSL_CipherPrefGet
 SSL_CipherPrefSet
 SSL_CipherPrefSetDefault
 SSL_ClearSessionCache
+SSL_ClientCertCallbackComplete
 SSL_ConfigSecureServer
 SSL_ConfigSecureServerWithCertChain
 SSL_ConfigServerCert
@@ -730,6 +731,7 @@ _SGN_VerifyPKCS1DigestInfo
 __PK11_SetCertificateNickname
 # These symbols are not used by Firefox but are used across NSS library boundaries.
 NSS_SecureMemcmpZero
+NSS_SecureSelect
 PORT_ZAllocAlignedOffset_Util
 CERT_FindCertByNicknameOrEmailAddrCX
 SECKEY_GetPrivateKeyType

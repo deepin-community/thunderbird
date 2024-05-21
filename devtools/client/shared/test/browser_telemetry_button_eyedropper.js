@@ -7,7 +7,7 @@ const TEST_URI =
   "data:text/html;charset=utf-8," +
   "<p>browser_telemetry_button_eyedropper.js</p><div>test</div>";
 
-add_task(async function() {
+add_task(async function () {
   await addTab(TEST_URI);
   startTelemetry();
 
@@ -23,7 +23,7 @@ add_task(async function() {
   gBrowser.removeCurrentTab();
 });
 
-async function testButton(toolbox, Telemetry) {
+async function testButton(toolbox) {
   info("Calling the eyedropper button's callback");
   // We call the button callback directly because we don't need to test the UI here, we're
   // only concerned about testing the telemetry probe.

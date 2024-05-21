@@ -9,16 +9,16 @@
 
 "use strict";
 
-const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+const { HttpServer } = ChromeUtils.importESModule(
+  "resource://testing-common/httpd.sys.mjs"
+);
+const reason = "testing";
 
 function inChildProcess() {
-  return (
-    Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULRuntime)
-      .processType != Ci.nsIXULRuntime.PROCESS_TYPE_DEFAULT
-  );
+  return Services.appinfo.processType != Ci.nsIXULRuntime.PROCESS_TYPE_DEFAULT;
 }
 
-var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
+var ios = Services.io;
 var ReferrerInfo = Components.Constructor(
   "@mozilla.org/referrer-info;1",
   "nsIReferrerInfo",
@@ -27,9 +27,9 @@ var ReferrerInfo = Components.Constructor(
 var observer = {
   QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
 
-  observe(subject, topic, data) {
+  observe(subject) {
     subject = subject.QueryInterface(Ci.nsIRequest);
-    subject.cancel(Cr.NS_BINDING_ABORTED);
+    subject.cancelWithReason(Cr.NS_BINDING_ABORTED, reason);
 
     // ENSURE_CALLED_BEFORE_CONNECT: setting values should still work
     try {
@@ -51,6 +51,10 @@ var observer = {
 let cancelDuringOnStartListener = {
   onStartRequest: function test_onStartR(request) {
     Assert.equal(request.status, Cr.NS_BINDING_ABORTED);
+    // We didn't sync the reason to child process.
+    if (!inChildProcess()) {
+      Assert.equal(request.canceledReason, reason);
+    }
 
     // ENSURE_CALLED_BEFORE_CONNECT: setting referrer should now fail
     try {
@@ -60,10 +64,7 @@ let cancelDuringOnStartListener = {
       var uri = ios.newURI("http://site3.com/");
 
       // Need to set NECKO_ERRORS_ARE_FATAL=0 else we'll abort process
-      var env = Cc["@mozilla.org/process/environment;1"].getService(
-        Ci.nsIEnvironment
-      );
-      env.set("NECKO_ERRORS_ARE_FATAL", "0");
+      Services.env.set("NECKO_ERRORS_ARE_FATAL", "0");
       // we expect setting referrer to fail
       try {
         request.referrerInfo = new ReferrerInfo(
@@ -82,7 +83,7 @@ let cancelDuringOnStartListener = {
     do_throw("Should not get any data!");
   },
 
-  onStopRequest: function test_onStopR(request, status) {
+  onStopRequest: function test_onStopR() {
     this.resolved();
   },
 };
@@ -91,7 +92,7 @@ var cancelDuringOnDataListener = {
   data: "",
   channel: null,
   receivedSomeData: null,
-  onStartRequest: function test_onStartR(request, ctx) {
+  onStartRequest: function test_onStartR(request) {
     Assert.equal(request.status, Cr.NS_OK);
   },
 
@@ -105,7 +106,7 @@ var cancelDuringOnDataListener = {
     }
   },
 
-  onStopRequest: function test_onStopR(request, ctx, status) {
+  onStopRequest: function test_onStopR(request) {
     Assert.ok(this.data.includes("a"), `data: ${this.data}`);
     Assert.equal(request.status, Cr.NS_BINDING_ABORTED);
     this.resolved();
@@ -194,7 +195,7 @@ add_task(async function test_cancel_during_onData() {
 var cancelAfterOnStopListener = {
   data: "",
   channel: null,
-  onStartRequest: function test_onStartR(request, ctx) {
+  onStartRequest: function test_onStartR(request) {
     Assert.equal(request.status, Cr.NS_OK);
   },
 
@@ -203,7 +204,7 @@ var cancelAfterOnStopListener = {
     this.data += string;
   },
 
-  onStopRequest: function test_onStopR(request, status) {
+  onStopRequest: function test_onStopR(request) {
     info("onStopRequest");
     Assert.equal(request.status, Cr.NS_OK);
     this.resolved();
@@ -232,7 +233,7 @@ add_task(async function test_cancel_after_onStop() {
 // PATHS
 
 // /failtest
-function failtest(metadata, response) {
+function failtest() {
   do_throw("This should not be reached");
 }
 
@@ -247,8 +248,8 @@ function cancel_middle(metadata, response) {
     cancelDuringOnDataListener.receivedSomeData = resolve;
   });
   p.then(() => {
-    let str1 = "b".repeat(128 * 1024);
-    response.write(str1, str1.length);
+    let str2 = "b".repeat(128 * 1024);
+    response.write(str2, str2.length);
     response.finish();
   });
 }

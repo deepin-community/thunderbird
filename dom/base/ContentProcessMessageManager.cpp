@@ -6,7 +6,6 @@
 
 #include "ContentProcessMessageManager.h"
 
-#include "nsContentCID.h"
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/dom/MessageManagerBinding.h"
 #include "mozilla/dom/ParentProcessMessageManager.h"
@@ -31,7 +30,7 @@ ContentProcessMessageManager::~ContentProcessMessageManager() {
 
 ContentProcessMessageManager* ContentProcessMessageManager::Get() {
   nsCOMPtr<nsIMessageSender> service =
-      do_GetService(NS_CHILDPROCESSMESSAGEMANAGER_CONTRACTID);
+      do_GetService("@mozilla.org/childprocessmessagemanager;1");
   if (!service) {
     return nullptr;
   }
@@ -98,7 +97,7 @@ JSObject* ContentProcessMessageManager::WrapObject(
 }
 
 JSObject* ContentProcessMessageManager::GetOrCreateWrapper() {
-  JS::RootedValue val(RootingCx());
+  JS::Rooted<JS::Value> val(RootingCx());
   {
     // Scope to run ~AutoJSAPI before working with a raw JSObject*.
     AutoJSAPI jsapi;
@@ -120,6 +119,6 @@ void ContentProcessMessageManager::LoadScript(const nsAString& aURL) {
 }
 
 void ContentProcessMessageManager::SetInitialProcessData(
-    JS::HandleValue aInitialData) {
+    JS::Handle<JS::Value> aInitialData) {
   mMessageManager->SetInitialProcessData(aInitialData);
 }

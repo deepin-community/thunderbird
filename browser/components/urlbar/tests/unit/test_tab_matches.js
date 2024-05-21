@@ -38,13 +38,10 @@ add_task(async function test_tab_matches() {
     context,
     matches: [
       makeVisitResult(context, {
-        source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
+        source: UrlbarUtils.RESULT_SOURCE.HISTORY,
         uri: "http://abc.com/",
-        title: "http://abc.com/",
+        title: "ABC rocks",
         heuristic: true,
-      }),
-      makeSearchResult(context, {
-        engineName: SUGGESTIONS_ENGINE_NAME,
       }),
       makeTabSwitchResult(context, {
         uri: "http://abc.com/",
@@ -102,6 +99,10 @@ add_task(async function test_tab_matches() {
     ],
   });
 
+  // This covers the following 3 tests. Container tests are in a dedicated
+  // test file anyway, so these are left to cover the disabled pref case.
+  UrlbarPrefs.set("switchTabs.searchAllContainers", false);
+
   info("a container tab is not visible in 'switch to tab'");
   await addOpenPages(uri5, 1, /* userContextId: */ 3);
   context = createContext("abc", { isPrivate: false });
@@ -149,6 +150,7 @@ add_task(async function test_tab_matches() {
       makeTabSwitchResult(context, {
         uri: "http://foobar.org/",
         title: "foobar.org - much better than ABC, definitely better than XYZ",
+        userContextId: 3,
       }),
     ],
   });
@@ -173,6 +175,13 @@ add_task(async function test_tab_matches() {
       }),
     ],
   });
+
+  UrlbarPrefs.clear("switchTabs.searchAllContainers");
+  if (UrlbarPrefs.get("switchTabs.searchAllContainers")) {
+    // This would confuse the next tests, so remove it, containers are tested
+    // in a separate test file.
+    await removeOpenPages(uri5, 1, /* userContextId: */ 3);
+  }
 
   info(
     "three results, both normal results are tab matches, one has multiple tabs"
@@ -340,13 +349,10 @@ add_task(async function test_tab_matches() {
     context,
     matches: [
       makeVisitResult(context, {
-        source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
+        source: UrlbarUtils.RESULT_SOURCE.HISTORY,
         uri: "http://abc.com/",
-        title: "http://abc.com/",
+        title: "ABC rocks",
         heuristic: true,
-      }),
-      makeSearchResult(context, {
-        engineName: SUGGESTIONS_ENGINE_NAME,
       }),
       makeTabSwitchResult(context, {
         uri: "http://abc.com/",

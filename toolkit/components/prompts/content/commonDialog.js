@@ -2,14 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { CommonDialog } = ChromeUtils.import(
-  "resource://gre/modules/CommonDialog.jsm"
+const { CommonDialog } = ChromeUtils.importESModule(
+  "resource://gre/modules/CommonDialog.sys.mjs"
+);
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+
+const lazy = {};
+
+XPCOMUtils.defineLazyServiceGetter(
+  lazy,
+  "gContentAnalysis",
+  "@mozilla.org/contentanalysis;1",
+  Ci.nsIContentAnalysis
 );
 
 // imported by adjustableTitle.js loaded in the same context:
 /* globals PromptUtils */
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var propBag, args, Dialog;
 
@@ -51,7 +61,7 @@ function commonDialogOnLoad() {
         title.raw = promptPrincipal.URI.displayHostPort;
       } catch (ex) {
         // hostPort getter can throw, e.g. for about URIs.
-        title.raw = promptPrincipal.origin;
+        title.raw = promptPrincipal.originNoSuffix;
       }
       // hostPort can be empty for file URIs.
       if (!title.raw) {
@@ -95,22 +105,22 @@ function commonDialogOnLoad() {
   };
 
   Dialog = new CommonDialog(args, ui);
-  window.addEventListener("dialogclosing", function(aEvent) {
+  window.addEventListener("dialogclosing", function (aEvent) {
     if (aEvent.detail?.abort) {
       Dialog.abortPrompt();
     }
   });
-  document.addEventListener("dialogaccept", function() {
+  document.addEventListener("dialogaccept", function () {
     Dialog.onButton0();
   });
-  document.addEventListener("dialogcancel", function() {
+  document.addEventListener("dialogcancel", function () {
     Dialog.onButton1();
   });
-  document.addEventListener("dialogextra1", function() {
+  document.addEventListener("dialogextra1", function () {
     Dialog.onButton2();
     window.close();
   });
-  document.addEventListener("dialogextra2", function() {
+  document.addEventListener("dialogextra2", function () {
     Dialog.onButton3();
     window.close();
   });
@@ -124,6 +134,58 @@ function commonDialogOnLoad() {
   // If the icon hasn't loaded yet, size the window to the content again when
   // it does, as its layout can change.
   ui.infoIcon.addEventListener("load", () => window.sizeToContent());
+  if (lazy.gContentAnalysis.isActive && args.owningBrowsingContext?.isContent) {
+    ui.loginTextbox?.addEventListener("paste", async event => {
+      let data = event.clipboardData.getData("text/plain");
+      if (data?.length > 0) {
+        // Prevent the paste from happening until content analysis returns a response
+        event.preventDefault();
+        // Selections can be forward or backward, so use min/max
+        const startIndex = Math.min(
+          ui.loginTextbox.selectionStart,
+          ui.loginTextbox.selectionEnd
+        );
+        const endIndex = Math.max(
+          ui.loginTextbox.selectionStart,
+          ui.loginTextbox.selectionEnd
+        );
+        const selectionDirection =
+          endIndex < startIndex ? "backward" : "forward";
+        try {
+          const response = await lazy.gContentAnalysis.analyzeContentRequest(
+            {
+              requestToken: Services.uuid.generateUUID().toString(),
+              resources: [],
+              analysisType: Ci.nsIContentAnalysisRequest.eBulkDataEntry,
+              operationTypeForDisplay: Ci.nsIContentAnalysisRequest.eClipboard,
+              url: args.owningBrowsingContext.currentURI,
+              textContent: data,
+              windowGlobalParent:
+                args.owningBrowsingContext.currentWindowContext,
+            },
+            true
+          );
+          if (response.shouldAllowContent) {
+            ui.loginTextbox.value =
+              ui.loginTextbox.value.slice(0, startIndex) +
+              data +
+              ui.loginTextbox.value.slice(endIndex);
+            ui.loginTextbox.focus();
+            if (startIndex !== endIndex) {
+              // Select the pasted text
+              ui.loginTextbox.setSelectionRange(
+                startIndex,
+                startIndex + data.length,
+                selectionDirection
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Content analysis request returned error: ", error);
+        }
+      }
+    });
+  }
 
   window.getAttention();
 }

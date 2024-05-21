@@ -29,7 +29,7 @@ void ConvertMethodData(JSContext* aCx, const PaymentMethodData& aMethodData,
   // Convert JSObject to a serialized string
   nsAutoString serializedData;
   if (aMethodData.mData.WasPassed()) {
-    JS::RootedObject object(aCx, aMethodData.mData.Value());
+    JS::Rooted<JSObject*> object(aCx, aMethodData.mData.Value());
     if (NS_WARN_IF(
             NS_FAILED(SerializeFromJSObject(aCx, object, serializedData)))) {
       aRv.ThrowTypeError(
@@ -60,7 +60,7 @@ void ConvertModifier(JSContext* aCx, const PaymentDetailsModifier& aModifier,
   // Convert JSObject to a serialized string
   nsAutoString serializedData;
   if (aModifier.mData.WasPassed()) {
-    JS::RootedObject object(aCx, aModifier.mData.Value());
+    JS::Rooted<JSObject*> object(aCx, aModifier.mData.Value());
     if (NS_WARN_IF(
             NS_FAILED(SerializeFromJSObject(aCx, object, serializedData)))) {
       aRv.ThrowTypeError("The Modifier.data must be a serializable object");
@@ -204,7 +204,7 @@ void ConvertDetailsUpdate(JSContext* aCx, const PaymentDetailsUpdate& aDetails,
 
   nsAutoString paymentMethodErrors;
   if (aDetails.mPaymentMethodErrors.WasPassed()) {
-    JS::RootedObject object(aCx, aDetails.mPaymentMethodErrors.Value());
+    JS::Rooted<JSObject*> object(aCx, aDetails.mPaymentMethodErrors.Value());
     if (NS_WARN_IF(NS_FAILED(
             SerializeFromJSObject(aCx, object, paymentMethodErrors)))) {
       aRv.ThrowTypeError("The PaymentMethodErrors can not be serialized");
@@ -220,8 +220,7 @@ void ConvertDetailsUpdate(JSContext* aCx, const PaymentDetailsUpdate& aDetails,
 
 void ConvertOptions(const PaymentOptions& aOptions,
                     IPCPaymentOptions& aIPCOption) {
-  NS_ConvertASCIItoUTF16 shippingType(
-      PaymentShippingTypeValues::GetString(aOptions.mShippingType));
+  NS_ConvertASCIItoUTF16 shippingType(GetEnumString(aOptions.mShippingType));
   aIPCOption =
       IPCPaymentOptions(aOptions.mRequestPayerName, aOptions.mRequestPayerEmail,
                         aOptions.mRequestPayerPhone, aOptions.mRequestShipping,
@@ -360,7 +359,10 @@ PaymentRequestChild* PaymentRequestManager::GetPaymentChild(
   aRequest->GetInternalId(requestId);
 
   PaymentRequestChild* paymentChild = new PaymentRequestChild(aRequest);
-  browserChild->SendPPaymentRequestConstructor(paymentChild);
+  if (!browserChild->SendPPaymentRequestConstructor(paymentChild)) {
+    // deleted by Constructor
+    return nullptr;
+  }
 
   return paymentChild;
 }
@@ -545,8 +547,7 @@ void PaymentRequestManager::CompletePayment(PaymentRequest* aRequest,
   if (aTimedOut) {
     completeStatusString.AssignLiteral("timeout");
   } else {
-    completeStatusString.AssignASCII(
-        PaymentCompleteValues::GetString(aComplete));
+    completeStatusString.AssignASCII(GetEnumString(aComplete));
   }
 
   nsAutoString requestId;
@@ -628,7 +629,7 @@ void PaymentRequestManager::RetryPayment(JSContext* aCx,
 
   nsAutoString paymentMethodErrors;
   if (aErrors.mPaymentMethod.WasPassed()) {
-    JS::RootedObject object(aCx, aErrors.mPaymentMethod.Value());
+    JS::Rooted<JSObject*> object(aCx, aErrors.mPaymentMethod.Value());
     if (NS_WARN_IF(NS_FAILED(
             SerializeFromJSObject(aCx, object, paymentMethodErrors)))) {
       aRv.ThrowTypeError("The PaymentMethodErrors can not be serialized");

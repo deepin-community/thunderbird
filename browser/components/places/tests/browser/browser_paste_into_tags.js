@@ -7,7 +7,7 @@
 const TEST_URL = Services.io.newURI("http://example.com/");
 const MOZURISPEC = Services.io.newURI("http://mozilla.com/");
 
-add_task(async function() {
+add_task(async function () {
   let organizer = await promiseLibrary();
 
   ok(PlacesUtils, "PlacesUtils in scope");
@@ -59,7 +59,7 @@ add_task(async function() {
 
   // check to see if the history node is tagged!
   tags = PlacesUtils.tagging.getTagsForURI(MOZURISPEC);
-  ok(tags.length == 1, "history node is tagged: " + tags.length);
+  Assert.equal(tags.length, 1, "history node is tagged: " + tags.length);
 
   // check if a bookmark was created
   let bookmarks = [];

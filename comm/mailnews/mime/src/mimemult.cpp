@@ -50,9 +50,8 @@ extern "C" MimeSuppressedCryptoClass mimeSuppressedCryptoClass;
 static int MimeMultipart_debug_print(MimeObject*, PRFileDesc*, int32_t);
 #endif
 
-static int MimeMultipartClassInitialize(MimeMultipartClass* clazz) {
-  MimeObjectClass* oclass = (MimeObjectClass*)clazz;
-  MimeMultipartClass* mclass = (MimeMultipartClass*)clazz;
+static int MimeMultipartClassInitialize(MimeObjectClass* oclass) {
+  MimeMultipartClass* mclass = (MimeMultipartClass*)oclass;
 
   PR_ASSERT(!oclass->class_initialized);
   oclass->initialize = MimeMultipart_initialize;
@@ -239,14 +238,13 @@ static int MimeMultipart_parse_line(const char* line, int32_t length,
             } else {
               nsAutoCString header("Content-Type: text/x-moz-deleted; name=\"Deleted: ");
               header.Append(fileName);
-              status = MimeWriteAString(obj, header);
-              if (status < 0) return status;
-              status = MimeWriteAString(obj, "\""_ns MSG_LINEBREAK
-                                                 "Content-Transfer-Encoding: 8bit"_ns MSG_LINEBREAK);
+              MimeWriteAString(obj, header);
+              MimeWriteAString(obj, "\""_ns MSG_LINEBREAK
+                                    "Content-Transfer-Encoding: 8bit"_ns MSG_LINEBREAK);
               MimeWriteAString(obj, "Content-Disposition: inline; filename=\"Deleted: "_ns);
               MimeWriteAString(obj, fileName);
               MimeWriteAString(obj, "\""_ns MSG_LINEBREAK
-                                        "X-Mozilla-Altered: AttachmentDeleted; date=\""_ns);
+                                    "X-Mozilla-Altered: AttachmentDeleted; date=\""_ns);
             }
             nsCString result;
             char timeBuffer[128];

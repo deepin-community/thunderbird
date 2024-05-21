@@ -15,11 +15,11 @@
  * - Compacting imap offline stores.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-const { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 Services.prefs.setCharPref(
@@ -40,7 +40,6 @@ var gMsgHdrs = [];
 var gExpectedInboxSize;
 var gExpectedFolder2Size;
 var gExpectedFolder3Size;
-var gMsgLinebreak = "";
 
 // Transfer message keys between function calls.
 var gMsgKeys = [];
@@ -48,7 +47,7 @@ var gMsgKeys = [];
 // nsIMsgCopyServiceListener implementation
 var copyListenerWrap = {
   SetMessageKey(aKey) {
-    let hdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
+    const hdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
     gMsgHdrs.push({ hdr, ID: hdr.messageId });
   },
   OnStopCopy(aStatus) {
@@ -64,9 +63,9 @@ var urlListenerWrap = {
 
     if (gMsgKeys.length > 0) {
       // Bug 854798: Check if the new message keys are the same as before compaction.
-      let folderMsgs = [...gMsgKeys.folder.messages];
+      const folderMsgs = [...gMsgKeys.folder.messages];
       // First message was deleted so skip it in the old array.
-      let expectedKeys = [...gMsgKeys].slice(1);
+      const expectedKeys = [...gMsgKeys].slice(1);
       Assert.equal(folderMsgs.length, expectedKeys.length);
       for (let i = 1; i < expectedKeys.length; i++) {
         Assert.equal(folderMsgs[i], expectedKeys[i]);
@@ -77,7 +76,7 @@ var urlListenerWrap = {
 };
 
 function copyFileMessage(file, destFolder, isDraftOrTemplate) {
-  let listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
+  const listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
   MailServices.copy.copyFileMessage(
     file,
     destFolder,
@@ -92,7 +91,7 @@ function copyFileMessage(file, destFolder, isDraftOrTemplate) {
 }
 
 function copyMessages(items, isMove, srcFolder, destFolder) {
-  let listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
+  const listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
   MailServices.copy.copyMessages(
     srcFolder,
     items,
@@ -106,41 +105,72 @@ function copyMessages(items, isMove, srcFolder, destFolder) {
 }
 
 function deleteMessages(srcFolder, items) {
-  let listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
+  const listener = new PromiseTestUtils.PromiseCopyListener(copyListenerWrap);
   srcFolder.deleteMessages(items, null, false, true, listener, true);
   return listener.promise;
 }
 
-function calculateFolderSize(folder) {
-  let msgDB = folder.msgDatabase;
-  let enumerator = msgDB.EnumerateMessages();
-  let totalSize = 0;
-  if (enumerator) {
-    if (gMsgLinebreak == "") {
-      // Figure out what the linebreak sequence is on the platform running the tests.
-      gMsgLinebreak =
-        "@mozilla.org/windows-registry-key;1" in Cc ? "\r\n" : "\n";
-    }
-    for (let header of enumerator) {
-      if (header instanceof Ci.nsIMsgDBHdr) {
-        totalSize += header.messageSize + gMsgLinebreak.length;
-      }
-    }
-  }
-  return totalSize;
-}
-
 function verifyMsgOffsets(folder) {
-  let msgDB = folder.msgDatabase;
-  let enumerator = msgDB.EnumerateMessages();
+  const msgDB = folder.msgDatabase;
+  const enumerator = msgDB.enumerateMessages();
   if (enumerator) {
-    for (let header of enumerator) {
+    for (const header of enumerator) {
       if (header instanceof Ci.nsIMsgDBHdr) {
-        let storeToken = header.getStringProperty("storeToken");
+        const storeToken = header.getStringProperty("storeToken");
         Assert.equal(storeToken, header.messageOffset);
       }
     }
   }
+}
+
+/**
+ * Calculate the expected size of a (compacted) mbox, based on
+ * msgDB entries. For use later in verifyMboxSize().
+ * We're assuming bare "From " lines, which _won't_ be right, but
+ * verifyMboxSize() will do the same, so it works out.
+ */
+function calculateExpectedMboxSize(folder) {
+  const msgDB = folder.msgDatabase;
+  let totalSize = 0;
+  for (const header of msgDB.enumerateMessages()) {
+    totalSize += "From \r\n".length; // Pared-down mbox separator.
+    totalSize += header.messageSize; // The actual message data.
+    totalSize += "\r\n".length; // Blank line between messages.
+  }
+  return totalSize;
+}
+
+/**
+ * Make sure the mbox size of folder matches expectedSize.
+ * We can't just use the mbox file size, since we need to normalise the
+ * "From " separator lines, which can be variable length.
+ * So we load in the whole file, strip anything on lines after the "From ",
+ * and check the length after that.
+ */
+async function verifyMboxSize(folder, expectedSize) {
+  showMessages(folder, "verifyMboxSize");
+  let mbox = await IOUtils.readUTF8(folder.filePath.path);
+  // Pared-down mbox separator.
+  mbox = mbox.replace(/^From .*$/gm, "From ");
+
+  Assert.equal(mbox.length, expectedSize);
+}
+
+/**
+ * Debug utility to show the key/offset/ID relationship of messages in a folder.
+ * Disabled but not removed, as it's just so useful for troubleshooting
+ * if anything goes wrong!
+ */
+function showMessages(folder, text) {
+  /*
+  dump(`***** Show messages for folder <${folder.name}> "${text} *****\n`);
+  for (const hdr of folder.messages) {
+    const storeToken = hdr.getStringProperty("storeToken");
+    dump(
+      `  key: ${hdr.messageKey} storeToken: ${storeToken} offset: ${hdr.messageOffset} size: ${hdr.messageSize} ID: ${hdr.messageId}\n`
+    );
+  }
+  */
 }
 
 /*
@@ -163,7 +193,6 @@ var gTestArray = [
       "after initial 3 messages copy to inbox"
     );
   },
-
   // Moving/copying messages
   async function testCopyMessages1() {
     await copyMessages(
@@ -203,7 +232,7 @@ var gTestArray = [
 
     // Store message keys before deletion and compaction.
     gMsgKeys.folder = gLocalFolder3;
-    for (let header of gLocalFolder3.messages) {
+    for (const header of gLocalFolder3.messages) {
       gMsgKeys.push(header.messageKey);
     }
 
@@ -213,23 +242,23 @@ var gTestArray = [
     showMessages(gLocalFolder3, "after deleting 1 message to trash");
   },
   async function compactFolder() {
-    gExpectedFolderSize = calculateFolderSize(gLocalFolder3);
+    gExpectedFolderSize = calculateExpectedMboxSize(gLocalFolder3);
     Assert.notEqual(gLocalFolder3.expungedBytes, 0);
-    let listener = new PromiseTestUtils.PromiseUrlListener(urlListenerWrap);
+    const listener = new PromiseTestUtils.PromiseUrlListener(urlListenerWrap);
     gLocalFolder3.compact(listener, null);
     await listener.promise;
 
     showMessages(gLocalFolder3, "after compact");
   },
   async function testDeleteMessages2() {
-    Assert.equal(gExpectedFolderSize, gLocalFolder3.filePath.fileSize);
+    await verifyMboxSize(gLocalFolder3, gExpectedFolderSize);
     verifyMsgOffsets(gLocalFolder3);
     var folder2DB = gLocalFolder2.msgDatabase;
     gMsgHdrs[0].hdr = folder2DB.getMsgHdrForMessageID(gMsgHdrs[0].ID);
 
     // Store message keys before deletion and compaction.
     gMsgKeys.folder = gLocalFolder2;
-    for (let header of gLocalFolder2.messages) {
+    for (const header of gLocalFolder2.messages) {
       gMsgKeys.push(header.messageKey);
     }
 
@@ -239,14 +268,16 @@ var gTestArray = [
     showMessages(gLocalFolder2, "after deleting 1 message");
   },
   async function compactAllFolders() {
-    gExpectedInboxSize = calculateFolderSize(localAccountUtils.inboxFolder);
-    gExpectedFolder2Size = calculateFolderSize(gLocalFolder2);
-    gExpectedFolder3Size = calculateFolderSize(gLocalFolder3);
+    gExpectedInboxSize = calculateExpectedMboxSize(
+      localAccountUtils.inboxFolder
+    );
+    gExpectedFolder2Size = calculateExpectedMboxSize(gLocalFolder2);
+    gExpectedFolder3Size = calculateExpectedMboxSize(gLocalFolder3);
 
     // Save the first message key, which will change after compact with
     // rebuild.
-    let f2m2Key = gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID)
-      .messageKey;
+    const f2m2Key =
+      gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID).messageKey;
 
     // force expunged bytes count to get cached.
     gLocalFolder2.expungedBytes;
@@ -255,43 +286,45 @@ var gTestArray = [
     gLocalFolder2.msgDatabase.summaryValid = false;
     gLocalFolder2.msgDatabase = null;
     gLocalFolder2.ForceDBClosed();
-    let dbPath = gLocalFolder2.filePath;
+    const dbPath = gLocalFolder2.filePath;
     dbPath.leafName = dbPath.leafName + ".msf";
     dbPath.remove(false);
 
     showMessages(localAccountUtils.inboxFolder, "before compactAll");
     // Save the key for the inbox message, we'll check after compact that it
     // did not change.
-    let preInboxMsg3Key = localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
-      gMsg3ID
-    ).messageKey;
+    const preInboxMsg3Key =
+      localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
+        gMsg3ID
+      ).messageKey;
 
     // We used to check here that the keys did not change during rebuild.
     // But that is no true in general, it was only conicidental since the
     // checked folder had never been compacted, so the key equaled the offset.
     // We do not in guarantee that, indeed after rebuild we expect the keys
     // to change.
-    let checkResult = {
+    const checkResult = {
       OnStopRunningUrl(aUrl, aExitCode) {
         // Check: message successfully compacted.
         Assert.equal(aExitCode, 0);
       },
     };
-    let listener = new PromiseTestUtils.PromiseUrlListener(checkResult);
-    localAccountUtils.inboxFolder.compactAll(listener, null, true);
+    const listener = new PromiseTestUtils.PromiseUrlListener(checkResult);
+    localAccountUtils.inboxFolder.compactAll(listener, null);
     await listener.promise;
 
     showMessages(localAccountUtils.inboxFolder, "after compactAll");
     showMessages(gLocalFolder2, "after compactAll");
 
     // For the inbox, which was compacted but not rebuild, key is unchanged.
-    let postInboxMsg3Key = localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
-      gMsg3ID
-    ).messageKey;
+    const postInboxMsg3Key =
+      localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
+        gMsg3ID
+      ).messageKey;
     Assert.equal(preInboxMsg3Key, postInboxMsg3Key);
 
     // For folder2, which was rebuilt, keys change but all messages should exist.
-    let message2 = gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID);
+    const message2 = gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID);
     Assert.ok(message2);
     Assert.ok(gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg3ID));
 
@@ -299,13 +332,10 @@ var gTestArray = [
     // rebuild, that key has now changed.
     Assert.notEqual(message2.messageKey, f2m2Key);
   },
-  function lastTestCheck() {
-    Assert.equal(
-      gExpectedInboxSize,
-      localAccountUtils.inboxFolder.filePath.fileSize
-    );
-    Assert.equal(gExpectedFolder2Size, gLocalFolder2.filePath.fileSize);
-    Assert.equal(gExpectedFolder3Size, gLocalFolder3.filePath.fileSize);
+  async function lastTestCheck() {
+    await verifyMboxSize(localAccountUtils.inboxFolder, gExpectedInboxSize);
+    await verifyMboxSize(gLocalFolder2, gExpectedFolder2Size);
+    await verifyMboxSize(gLocalFolder3, gExpectedFolder3Size);
     verifyMsgOffsets(gLocalFolder2);
     verifyMsgOffsets(gLocalFolder3);
     verifyMsgOffsets(localAccountUtils.inboxFolder);
@@ -327,20 +357,4 @@ function run_test() {
 
   gTestArray.forEach(x => add_task(x));
   run_next_test();
-}
-
-// debug utility to show the key/offset/ID relationship of messages in a folder
-function showMessages(folder, text) {
-  dump("Show messages for folder <" + folder.name + "> " + text + "\n");
-  for (let header of folder.messages) {
-    dump(
-      "key: " +
-        header.messageKey +
-        " offset: " +
-        header.messageOffset +
-        " ID: " +
-        header.messageId +
-        "\n"
-    );
-  }
 }

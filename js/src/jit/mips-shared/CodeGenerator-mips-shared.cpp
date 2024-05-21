@@ -20,7 +20,6 @@
 #include "vm/JSContext.h"
 #include "vm/Realm.h"
 #include "vm/Shape.h"
-#include "vm/TraceLogging.h"
 
 #include "jit/MacroAssembler-inl.h"
 #include "jit/shared/CodeGenerator-shared-inl.h"
@@ -84,16 +83,6 @@ void CodeGeneratorMIPSShared::branchToBlock(Assembler::FloatFormat fmt,
   }
 }
 
-FrameSizeClass FrameSizeClass::FromDepth(uint32_t frameDepth) {
-  return FrameSizeClass::None();
-}
-
-FrameSizeClass FrameSizeClass::ClassLimit() { return FrameSizeClass(0); }
-
-uint32_t FrameSizeClass::frameSize() const {
-  MOZ_CRASH("MIPS does not use frame size classes");
-}
-
 void OutOfLineBailout::accept(CodeGeneratorMIPSShared* codegen) {
   codegen->visitOutOfLineBailout(this);
 }
@@ -116,7 +105,8 @@ void CodeGenerator::visitCompare(LCompare* comp) {
 #ifdef JS_CODEGEN_MIPS64
   if (mir->compareType() == MCompare::Compare_Object ||
       mir->compareType() == MCompare::Compare_Symbol ||
-      mir->compareType() == MCompare::Compare_UIntPtr) {
+      mir->compareType() == MCompare::Compare_UIntPtr ||
+      mir->compareType() == MCompare::Compare_WasmAnyRef) {
     if (right->isConstant()) {
       MOZ_ASSERT(mir->compareType() == MCompare::Compare_UIntPtr);
       masm.cmpPtrSet(cond, ToRegister(left), Imm32(ToInt32(right)),
@@ -148,7 +138,8 @@ void CodeGenerator::visitCompareAndBranch(LCompareAndBranch* comp) {
 #ifdef JS_CODEGEN_MIPS64
   if (mir->compareType() == MCompare::Compare_Object ||
       mir->compareType() == MCompare::Compare_Symbol ||
-      mir->compareType() == MCompare::Compare_UIntPtr) {
+      mir->compareType() == MCompare::Compare_UIntPtr ||
+      mir->compareType() == MCompare::Compare_WasmAnyRef) {
     if (comp->right()->isConstant()) {
       MOZ_ASSERT(mir->compareType() == MCompare::Compare_UIntPtr);
       emitBranch(ToRegister(comp->left()), Imm32(ToInt32(comp->right())), cond,
@@ -206,13 +197,6 @@ void CodeGeneratorMIPSShared::bailoutFrom(Label* label, LSnapshot* snapshot) {
 
   encode(snapshot);
 
-  // Though the assembler doesn't track all frame pushes, at least make sure
-  // the known value makes sense. We can't use bailout tables if the stack
-  // isn't properly aligned to the static frame size.
-  MOZ_ASSERT_IF(frameClass_ != FrameSizeClass::None(),
-                frameClass_.frameSize() == masm.framePushed());
-
-  // We don't use table bailouts because retargeting is easier this way.
   InlineScriptTree* tree = snapshot->mir()->block()->trackedTree();
   OutOfLineBailout* ool =
       new (alloc()) OutOfLineBailout(snapshot, masm.framePushed());
@@ -471,6 +455,7 @@ void CodeGenerator::visitMulI64(LMulI64* lir) {
   const LInt64Allocation lhs = lir->getInt64Operand(LMulI64::Lhs);
   const LInt64Allocation rhs = lir->getInt64Operand(LMulI64::Rhs);
   const Register64 output = ToOutRegister64(lir);
+  MOZ_ASSERT(ToRegister64(lhs) == output);
 
   if (IsConstant(rhs)) {
     int64_t constant = ToInt64(rhs);
@@ -484,18 +469,25 @@ void CodeGenerator::visitMulI64(LMulI64* lir) {
       case 1:
         // nop
         return;
+      case 2:
+        masm.add64(ToRegister64(lhs), ToRegister64(lhs));
+        return;
       default:
         if (constant > 0) {
-          if (mozilla::IsPowerOfTwo(static_cast<uint32_t>(constant + 1))) {
-            masm.move64(ToRegister64(lhs), output);
+          if (mozilla::IsPowerOfTwo(static_cast<uint64_t>(constant + 1))) {
+            ScratchRegisterScope scratch(masm);
+            Register64 scratch64(scratch);
+            masm.move64(ToRegister64(lhs), scratch64);
             masm.lshift64(Imm32(FloorLog2(constant + 1)), output);
-            masm.sub64(ToRegister64(lhs), output);
+            masm.sub64(scratch64, output);
             return;
           } else if (mozilla::IsPowerOfTwo(
-                         static_cast<uint32_t>(constant - 1))) {
-            masm.move64(ToRegister64(lhs), output);
+                         static_cast<uint64_t>(constant - 1))) {
+            ScratchRegisterScope scratch(masm);
+            Register64 scratch64(scratch);
+            masm.move64(ToRegister64(lhs), scratch64);
             masm.lshift64(Imm32(FloorLog2(constant - 1u)), output);
-            masm.add64(ToRegister64(lhs), output);
+            masm.add64(scratch64, output);
             return;
           }
           // Use shift if constant is power of 2.
@@ -1034,7 +1026,7 @@ void CodeGenerator::visitCtzI(LCtzI* ins) {
 void CodeGenerator::visitPopcntI(LPopcntI* ins) {
   Register input = ToRegister(ins->input());
   Register output = ToRegister(ins->output());
-  Register tmp = ToRegister(ins->temp());
+  Register tmp = ToRegister(ins->temp0());
 
   masm.popcnt32(input, output, tmp);
 }
@@ -1077,8 +1069,8 @@ MoveOperand CodeGeneratorMIPSShared::toMoveOperand(LAllocation a) const {
   if (a.isFloatReg()) {
     return MoveOperand(ToFloatRegister(a));
   }
-  MoveOperand::Kind kind =
-      a.isStackArea() ? MoveOperand::EFFECTIVE_ADDRESS : MoveOperand::MEMORY;
+  MoveOperand::Kind kind = a.isStackArea() ? MoveOperand::Kind::EffectiveAddress
+                                           : MoveOperand::Kind::Memory;
   Address address = ToAddress(a);
   MOZ_ASSERT((address.offset & 3) == 0);
   return MoveOperand(address, kind);
@@ -1260,12 +1252,12 @@ void CodeGenerator::visitValue(LValue* value) {
 void CodeGenerator::visitDouble(LDouble* ins) {
   const LDefinition* out = ins->getDef(0);
 
-  masm.loadConstantDouble(ins->getDouble(), ToFloatRegister(out));
+  masm.loadConstantDouble(ins->value(), ToFloatRegister(out));
 }
 
 void CodeGenerator::visitFloat32(LFloat32* ins) {
   const LDefinition* out = ins->getDef(0);
-  masm.loadConstantFloat32(ins->getFloat(), ToFloatRegister(out));
+  masm.loadConstantFloat32(ins->value(), ToFloatRegister(out));
 }
 
 void CodeGenerator::visitTestDAndBranch(LTestDAndBranch* test) {
@@ -1372,9 +1364,6 @@ void CodeGenerator::visitBitAndAndBranch(LBitAndAndBranch* lir) {
              lir->ifFalse());
 }
 
-// See ../CodeGenerator.cpp for more information.
-void CodeGenerator::visitWasmRegisterResult(LWasmRegisterResult* lir) {}
-
 void CodeGenerator::visitWasmUint32ToDouble(LWasmUint32ToDouble* lir) {
   masm.convertUInt32ToDouble(ToRegister(lir->input()),
                              ToFloatRegister(lir->output()));
@@ -1410,10 +1399,6 @@ void CodeGenerator::visitNotF(LNotF* ins) {
   masm.loadConstantFloat32(0.0f, ScratchFloat32Reg);
   masm.ma_cmp_set_float32(dest, in, ScratchFloat32Reg,
                           Assembler::DoubleEqualOrUnordered);
-}
-
-void CodeGenerator::visitMemoryBarrier(LMemoryBarrier* ins) {
-  masm.memoryBarrier(ins->type());
 }
 
 void CodeGeneratorMIPSShared::generateInvalidateEpilogue() {
@@ -1506,33 +1491,36 @@ void CodeGeneratorMIPSShared::emitTableSwitchDispatch(MTableSwitch* mir,
   masm.branchToComputedAddress(pointer);
 }
 
-void CodeGenerator::visitWasmHeapBase(LWasmHeapBase* ins) {
-  MOZ_ASSERT(ins->tlsPtr()->isBogus());
-  masm.movePtr(HeapReg, ToRegister(ins->output()));
-}
-
 template <typename T>
 void CodeGeneratorMIPSShared::emitWasmLoad(T* lir) {
   const MWasmLoad* mir = lir->mir();
+  SecondScratchRegisterScope scratch2(masm);
 
+  Register memoryBase = ToRegister(lir->memoryBase());
+  Register ptr = ToRegister(lir->ptr());
   Register ptrScratch = InvalidReg;
   if (!lir->ptrCopy()->isBogusTemp()) {
     ptrScratch = ToRegister(lir->ptrCopy());
   }
 
+  if (mir->base()->type() == MIRType::Int32) {
+    masm.move32To64ZeroExtend(ptr, Register64(scratch2));
+    ptr = scratch2;
+    ptrScratch = ptrScratch != InvalidReg ? scratch2 : InvalidReg;
+  }
+
   if (IsUnaligned(mir->access())) {
     if (IsFloatingPointType(mir->type())) {
-      masm.wasmUnalignedLoadFP(mir->access(), HeapReg, ToRegister(lir->ptr()),
-                               ptrScratch, ToFloatRegister(lir->output()),
-                               ToRegister(lir->getTemp(1)), InvalidReg,
-                               InvalidReg);
+      masm.wasmUnalignedLoadFP(mir->access(), memoryBase, ptr, ptrScratch,
+                               ToFloatRegister(lir->output()),
+                               ToRegister(lir->getTemp(1)));
     } else {
-      masm.wasmUnalignedLoad(mir->access(), HeapReg, ToRegister(lir->ptr()),
-                             ptrScratch, ToRegister(lir->output()),
+      masm.wasmUnalignedLoad(mir->access(), memoryBase, ptr, ptrScratch,
+                             ToRegister(lir->output()),
                              ToRegister(lir->getTemp(1)));
     }
   } else {
-    masm.wasmLoad(mir->access(), HeapReg, ToRegister(lir->ptr()), ptrScratch,
+    masm.wasmLoad(mir->access(), memoryBase, ptr, ptrScratch,
                   ToAnyRegister(lir->output()));
   }
 }
@@ -1546,26 +1534,35 @@ void CodeGenerator::visitWasmUnalignedLoad(LWasmUnalignedLoad* lir) {
 template <typename T>
 void CodeGeneratorMIPSShared::emitWasmStore(T* lir) {
   const MWasmStore* mir = lir->mir();
+  SecondScratchRegisterScope scratch2(masm);
 
+  Register memoryBase = ToRegister(lir->memoryBase());
+  Register ptr = ToRegister(lir->ptr());
   Register ptrScratch = InvalidReg;
   if (!lir->ptrCopy()->isBogusTemp()) {
     ptrScratch = ToRegister(lir->ptrCopy());
+  }
+
+  if (mir->base()->type() == MIRType::Int32) {
+    masm.move32To64ZeroExtend(ptr, Register64(scratch2));
+    ptr = scratch2;
+    ptrScratch = ptrScratch != InvalidReg ? scratch2 : InvalidReg;
   }
 
   if (IsUnaligned(mir->access())) {
     if (mir->access().type() == Scalar::Float32 ||
         mir->access().type() == Scalar::Float64) {
       masm.wasmUnalignedStoreFP(mir->access(), ToFloatRegister(lir->value()),
-                                HeapReg, ToRegister(lir->ptr()), ptrScratch,
+                                memoryBase, ptr, ptrScratch,
                                 ToRegister(lir->getTemp(1)));
     } else {
-      masm.wasmUnalignedStore(mir->access(), ToRegister(lir->value()), HeapReg,
-                              ToRegister(lir->ptr()), ptrScratch,
+      masm.wasmUnalignedStore(mir->access(), ToRegister(lir->value()),
+                              memoryBase, ptr, ptrScratch,
                               ToRegister(lir->getTemp(1)));
     }
   } else {
-    masm.wasmStore(mir->access(), ToAnyRegister(lir->value()), HeapReg,
-                   ToRegister(lir->ptr()), ptrScratch);
+    masm.wasmStore(mir->access(), ToAnyRegister(lir->value()), memoryBase, ptr,
+                   ptrScratch);
   }
 }
 
@@ -1801,8 +1798,9 @@ void CodeGenerator::visitAsmJSStoreHeap(LAsmJSStoreHeap* ins) {
 void CodeGenerator::visitWasmCompareExchangeHeap(
     LWasmCompareExchangeHeap* ins) {
   MWasmCompareExchangeHeap* mir = ins->mir();
+  Register memoryBase = ToRegister(ins->memoryBase());
   Register ptrReg = ToRegister(ins->ptr());
-  BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
+  BaseIndex srcAddr(memoryBase, ptrReg, TimesOne, mir->access().offset());
   MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
 
   Register oldval = ToRegister(ins->oldValue());
@@ -1817,9 +1815,10 @@ void CodeGenerator::visitWasmCompareExchangeHeap(
 
 void CodeGenerator::visitWasmAtomicExchangeHeap(LWasmAtomicExchangeHeap* ins) {
   MWasmAtomicExchangeHeap* mir = ins->mir();
+  Register memoryBase = ToRegister(ins->memoryBase());
   Register ptrReg = ToRegister(ins->ptr());
   Register value = ToRegister(ins->value());
-  BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
+  BaseIndex srcAddr(memoryBase, ptrReg, TimesOne, mir->access().offset());
   MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
 
   Register valueTemp = ToTempRegisterOrInvalid(ins->valueTemp());
@@ -1835,12 +1834,13 @@ void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
   MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
 
   MWasmAtomicBinopHeap* mir = ins->mir();
+  Register memoryBase = ToRegister(ins->memoryBase());
   Register ptrReg = ToRegister(ins->ptr());
   Register valueTemp = ToTempRegisterOrInvalid(ins->valueTemp());
   Register offsetTemp = ToTempRegisterOrInvalid(ins->offsetTemp());
   Register maskTemp = ToTempRegisterOrInvalid(ins->maskTemp());
 
-  BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
+  BaseIndex srcAddr(memoryBase, ptrReg, TimesOne, mir->access().offset());
 
   masm.wasmAtomicFetchOp(mir->access(), mir->operation(),
                          ToRegister(ins->value()), srcAddr, valueTemp,
@@ -1853,12 +1853,13 @@ void CodeGenerator::visitWasmAtomicBinopHeapForEffect(
   MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
 
   MWasmAtomicBinopHeap* mir = ins->mir();
+  Register memoryBase = ToRegister(ins->memoryBase());
   Register ptrReg = ToRegister(ins->ptr());
   Register valueTemp = ToTempRegisterOrInvalid(ins->valueTemp());
   Register offsetTemp = ToTempRegisterOrInvalid(ins->offsetTemp());
   Register maskTemp = ToTempRegisterOrInvalid(ins->maskTemp());
 
-  BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
+  BaseIndex srcAddr(memoryBase, ptrReg, TimesOne, mir->access().offset());
   masm.wasmAtomicEffectOp(mir->access(), mir->operation(),
                           ToRegister(ins->value()), srcAddr, valueTemp,
                           offsetTemp, maskTemp);
@@ -1899,7 +1900,7 @@ void CodeGenerator::visitWasmSelect(LWasmSelect* ins) {
   Register cond = ToRegister(ins->condExpr());
   const LAllocation* falseExpr = ins->falseExpr();
 
-  if (mirType == MIRType::Int32 || mirType == MIRType::RefOrNull) {
+  if (mirType == MIRType::Int32 || mirType == MIRType::WasmAnyRef) {
     Register out = ToRegister(ins->output());
     MOZ_ASSERT(ToRegister(ins->trueExpr()) == out,
                "true expr input is reused for output");
@@ -1941,8 +1942,29 @@ void CodeGenerator::visitWasmSelect(LWasmSelect* ins) {
   }
 }
 
+// We expect to handle only the case where compare is {U,}Int32 and select is
+// {U,}Int32, and the "true" input is reused for the output.
 void CodeGenerator::visitWasmCompareAndSelect(LWasmCompareAndSelect* ins) {
-  emitWasmCompareAndSelect(ins);
+  bool cmpIs32bit = ins->compareType() == MCompare::Compare_Int32 ||
+                    ins->compareType() == MCompare::Compare_UInt32;
+  bool selIs32bit = ins->mir()->type() == MIRType::Int32;
+
+  MOZ_RELEASE_ASSERT(
+      cmpIs32bit && selIs32bit,
+      "CodeGenerator::visitWasmCompareAndSelect: unexpected types");
+
+  Register trueExprAndDest = ToRegister(ins->output());
+  MOZ_ASSERT(ToRegister(ins->ifTrueExpr()) == trueExprAndDest,
+             "true expr input is reused for output");
+
+  Assembler::Condition cond = Assembler::InvertCondition(
+      JSOpToCondition(ins->compareType(), ins->jsop()));
+  const LAllocation* rhs = ins->rightExpr();
+  const LAllocation* falseExpr = ins->ifFalseExpr();
+  Register lhs = ToRegister(ins->leftExpr());
+
+  masm.cmp32Move32(cond, lhs, ToRegister(rhs), ToRegister(falseExpr),
+                   trueExprAndDest);
 }
 
 void CodeGenerator::visitWasmReinterpret(LWasmReinterpret* lir) {
@@ -2068,6 +2090,18 @@ void CodeGenerator::visitWasmAddOffset(LWasmAddOffset* lir) {
   Label ok;
   masm.ma_add32TestCarry(Assembler::CarryClear, out, base, Imm32(mir->offset()),
                          &ok);
+  masm.wasmTrap(wasm::Trap::OutOfBounds, mir->bytecodeOffset());
+  masm.bind(&ok);
+}
+
+void CodeGenerator::visitWasmAddOffset64(LWasmAddOffset64* lir) {
+  MWasmAddOffset* mir = lir->mir();
+  Register64 base = ToRegister64(lir->base());
+  Register64 out = ToOutRegister64(lir);
+
+  Label ok;
+  masm.ma_addPtrTestCarry(Assembler::CarryClear, out.reg, base.reg,
+                          ImmWord(mir->offset()), &ok);
   masm.wasmTrap(wasm::Trap::OutOfBounds, mir->bytecodeOffset());
   masm.bind(&ok);
 }
@@ -2288,28 +2322,31 @@ void CodeGenerator::visitAtomicTypedArrayElementBinopForEffect64(
 }
 
 void CodeGenerator::visitWasmCompareExchangeI64(LWasmCompareExchangeI64* lir) {
+  Register memoryBase = ToRegister(lir->memoryBase());
   Register ptr = ToRegister(lir->ptr());
   Register64 oldValue = ToRegister64(lir->oldValue());
   Register64 newValue = ToRegister64(lir->newValue());
   Register64 output = ToOutRegister64(lir);
   uint32_t offset = lir->mir()->access().offset();
 
-  BaseIndex addr(HeapReg, ptr, TimesOne, offset);
+  BaseIndex addr(memoryBase, ptr, TimesOne, offset);
   masm.wasmCompareExchange64(lir->mir()->access(), addr, oldValue, newValue,
                              output);
 }
 
 void CodeGenerator::visitWasmAtomicExchangeI64(LWasmAtomicExchangeI64* lir) {
+  Register memoryBase = ToRegister(lir->memoryBase());
   Register ptr = ToRegister(lir->ptr());
   Register64 value = ToRegister64(lir->value());
   Register64 output = ToOutRegister64(lir);
   uint32_t offset = lir->mir()->access().offset();
 
-  BaseIndex addr(HeapReg, ptr, TimesOne, offset);
+  BaseIndex addr(memoryBase, ptr, TimesOne, offset);
   masm.wasmAtomicExchange64(lir->mir()->access(), addr, value, output);
 }
 
 void CodeGenerator::visitWasmAtomicBinopI64(LWasmAtomicBinopI64* lir) {
+  Register memoryBase = ToRegister(lir->memoryBase());
   Register ptr = ToRegister(lir->ptr());
   Register64 value = ToRegister64(lir->value());
   Register64 output = ToOutRegister64(lir);
@@ -2320,7 +2357,7 @@ void CodeGenerator::visitWasmAtomicBinopI64(LWasmAtomicBinopI64* lir) {
 #endif
   uint32_t offset = lir->mir()->access().offset();
 
-  BaseIndex addr(HeapReg, ptr, TimesOne, offset);
+  BaseIndex addr(memoryBase, ptr, TimesOne, offset);
 
   masm.wasmAtomicFetchOp64(lir->mir()->access(), lir->mir()->operation(), value,
                            addr, temp, output);
@@ -2332,7 +2369,7 @@ void CodeGenerator::visitNearbyIntF(LNearbyIntF*) { MOZ_CRASH("NYI"); }
 
 void CodeGenerator::visitSimd128(LSimd128* ins) { MOZ_CRASH("No SIMD"); }
 
-void CodeGenerator::visitWasmBitselectSimd128(LWasmBitselectSimd128* ins) {
+void CodeGenerator::visitWasmTernarySimd128(LWasmTernarySimd128* ins) {
   MOZ_CRASH("No SIMD");
 }
 

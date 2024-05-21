@@ -2,8 +2,8 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-const { Downloads } = ChromeUtils.import(
-  "resource://gre/modules/Downloads.jsm"
+const { Downloads } = ChromeUtils.importESModule(
+  "resource://gre/modules/Downloads.sys.mjs"
 );
 
 const server = createHttpServer();
@@ -29,7 +29,7 @@ let downloadDir;
 function observeDownloadChannel(uri, partitionKey, isPrivate) {
   return new Promise(resolve => {
     let observer = {
-      observe(subject, topic, data) {
+      observe(subject, topic) {
         if (topic === "http-on-modify-request") {
           let httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
           if (httpChannel.URI.spec != uri) {

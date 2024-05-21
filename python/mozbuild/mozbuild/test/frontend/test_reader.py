@@ -2,25 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import os
 import sys
 import unittest
 
+import mozpack.path as mozpath
 from mozunit import main
 
 from mozbuild import schedules
 from mozbuild.frontend.context import BugzillaComponent
-from mozbuild.frontend.reader import (
-    BuildReaderError,
-    BuildReader,
-)
-
+from mozbuild.frontend.reader import BuildReader, BuildReaderError
 from mozbuild.test.common import MockConfig
-
-import mozpack.path as mozpath
-
 
 if sys.version_info.major == 2:
     text_type = "unicode"
@@ -91,12 +83,20 @@ class TestBuildReader(unittest.TestCase):
         contexts = list(reader.read_topsrcdir())
         self.assertEqual(len(contexts), 3)
 
-    def test_repeated_dirs_ignored(self):
-        # Ensure repeated directories are ignored.
+    def test_repeated_dirs_error(self):
         reader = self.reader("traversal-repeated-dirs")
 
-        contexts = list(reader.read_topsrcdir())
-        self.assertEqual(len(contexts), 3)
+        with self.assertRaises(BuildReaderError) as bre:
+            list(reader.read_topsrcdir())
+
+        e = bre.exception
+        self.assertEqual(
+            e.actual_file, self.file_path("traversal-repeated-dirs", "bar", "moz.build")
+        )
+        self.assertIn(
+            "File already read. A directory should not be added to DIRS twice: foo/moz.build is referred from moz.build as 'foo', and bar/moz.build as '../foo'",
+            str(e),
+        )
 
     def test_outside_topsrcdir(self):
         # References to directories outside the topsrcdir should fail.

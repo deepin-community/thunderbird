@@ -272,7 +272,7 @@ nsresult HTMLEditorEventListener::HandlePrimaryMouseButtonDown(
   if (NS_WARN_IF(!eventTarget)) {
     return NS_ERROR_FAILURE;
   }
-  nsCOMPtr<nsIContent> eventTargetContent = do_QueryInterface(eventTarget);
+  nsIContent* eventTargetContent = nsIContent::FromEventTarget(eventTarget);
   if (!eventTargetContent) {
     return NS_OK;
   }
@@ -330,8 +330,8 @@ nsresult HTMLEditorEventListener::HandleSecondaryMouseButtonDown(
     return NS_ERROR_FAILURE;
   }
 
-  if (EditorUtils::IsPointInSelection(*selection, *parentContent,
-                                      AssertedCast<uint32_t>(offset))) {
+  if (nsContentUtils::IsPointInSelection(*selection, *parentContent,
+                                         AssertedCast<uint32_t>(offset))) {
     return NS_OK;
   }
 
@@ -340,20 +340,16 @@ nsresult HTMLEditorEventListener::HandleSecondaryMouseButtonDown(
     return NS_ERROR_FAILURE;
   }
 
-  nsCOMPtr<Element> eventTargetElement = do_QueryInterface(eventTarget);
+  Element* eventTargetElement = Element::FromEventTarget(eventTarget);
 
   // Select entire element clicked on if NOT within an existing selection
   //   and not the entire body, or table-related elements
   if (HTMLEditUtils::IsImage(eventTargetElement)) {
+    // MOZ_KnownLive(eventTargetElement): Guaranteed by eventTarget.
     DebugOnly<nsresult> rvIgnored =
-        aHTMLEditor.SelectElement(eventTargetElement);
+        aHTMLEditor.SelectElement(MOZ_KnownLive(eventTargetElement));
     NS_WARNING_ASSERTION(NS_SUCCEEDED(rvIgnored),
                          "HTMLEditor::SelectElement() failed, but ignored");
-  } else {
-    DebugOnly<nsresult> rvIgnored = selection->CollapseInLimiter(
-        parentContent, AssertedCast<uint32_t>(offset));
-    NS_WARNING_ASSERTION(NS_SUCCEEDED(rvIgnored),
-                         "Selection::CollapseInLimiter() failed, but ignored");
   }
 
   // HACK !!! Context click places the caret but the context menu consumes
@@ -414,11 +410,8 @@ nsresult HTMLEditorEventListener::MouseClick(
     return NS_OK;
   }
 
-  EventTarget* eventTarget = aMouseClickEvent->GetDOMEventTarget();
-  if (NS_WARN_IF(!eventTarget)) {
-    return NS_ERROR_FAILURE;
-  }
-  nsCOMPtr<Element> element = do_QueryInterface(eventTarget);
+  RefPtr<Element> element = Element::FromEventTargetOrNull(
+      aMouseClickEvent->GetOriginalDOMEventTarget());
   if (NS_WARN_IF(!element)) {
     return NS_ERROR_FAILURE;
   }

@@ -6,10 +6,7 @@
 
 const isOSX = Services.appinfo.OS === "Darwin";
 
-add_task(async function() {
-  await SpecialPowers.pushPrefEnv({
-    set: [["print.tab_modal.enabled", false]],
-  });
+add_task(async function () {
   CustomizableUI.addWidgetToArea(
     "print-button",
     CustomizableUI.AREA_FIXED_OVERFLOW_PANEL
@@ -20,7 +17,7 @@ add_task(async function() {
       gBrowser,
       url: "http://example.com/",
     },
-    async function() {
+    async function () {
       info("Check print button existence and functionality");
 
       await waitForOverflowButtonShown();
@@ -28,31 +25,30 @@ add_task(async function() {
       await document.getElementById("nav-bar").overflowable.show();
       info("Menu panel was opened");
 
-      await waitForCondition(
+      await TestUtils.waitForCondition(
         () => document.getElementById("print-button") != null
       );
 
       let printButton = document.getElementById("print-button");
       ok(printButton, "Print button exists in Panel Menu");
 
-      if (isOSX) {
-        let panelHiddenPromise = promiseOverflowHidden(window);
-        document.getElementById("widget-overflow").hidePopup();
-        await panelHiddenPromise;
-        info("Menu panel was closed");
-      } else {
-        printButton.click();
-        await waitForCondition(() => gInPrintPreviewMode);
+      printButton.click();
 
-        ok(gInPrintPreviewMode, "Entered print preview mode");
+      // Ensure we're showing the preview...
+      await BrowserTestUtils.waitForCondition(() => {
+        let preview = document.querySelector(".printPreviewBrowser");
+        return preview && BrowserTestUtils.isVisible(preview);
+      });
 
-        // close print preview
-        if (gInPrintPreviewMode) {
-          PrintUtils.exitPrintPreview();
-          await waitForCondition(() => !window.gInPrintPreviewMode);
-          info("Exited print preview");
-        }
-      }
+      ok(true, "Entered print preview mode");
+
+      gBrowser.getTabDialogBox(gBrowser.selectedBrowser).abortAllDialogs();
+      // Wait for the preview to go away
+      await BrowserTestUtils.waitForCondition(
+        () => !document.querySelector(".printPreviewBrowser")
+      );
+
+      info("Exited print preview");
     }
   );
 });

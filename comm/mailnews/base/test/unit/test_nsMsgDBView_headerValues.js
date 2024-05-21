@@ -1,21 +1,19 @@
-/* Test that nsMsgDBView properly reports the values of messages in the display.
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/**
+ * Test that nsMsgDBView properly reports the values of messages in the display.
  */
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/abSetup.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/abSetup.js");
 
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/MessageGenerator.jsm");
-load("../../../resources/messageModifier.js");
-load("../../../resources/messageInjection.js");
+var { MessageGenerator, SyntheticMessageSet } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
 
-var SortType = Ci.nsMsgViewSortType;
-var SortOrder = Ci.nsMsgViewSortOrder;
+var messageInjection = new MessageInjection({ mode: "local" });
 
 // This is an array of the actual test data. Each test datum is an array of two
 // elements: the first element is the argument into a simple message generator,
@@ -47,8 +45,7 @@ var tests = [
   ],
   [
     {
-      from:
-        "\xC2\xAB\xCE\xA0\xCE\x9F\xCE\x9B\xCE\x99\xCE\xA4\xCE\x97\xCE\xA3\xC2\xBB",
+      from: "\xC2\xAB\xCE\xA0\xCE\x9F\xCE\x9B\xCE\x99\xCE\xA4\xCE\x97\xCE\xA3\xC2\xBB",
     },
     { senderCol: "«ΠΟΛΙΤΗΣ»" },
   ],
@@ -75,35 +72,37 @@ var tests = [
   ],
 ];
 
-function* real_test() {
+add_task(async function test_nsMsgDBView_headValues() {
   // Add the messages to the folder
-  let msgGenerator = new MessageGenerator();
-  let genMessages = tests.map(data => msgGenerator.makeMessage(data[0]));
-  let folder = make_empty_folder();
-  yield add_sets_to_folder(folder, [new SyntheticMessageSet(genMessages)]);
+  const msgGenerator = new MessageGenerator();
+  const genMessages = tests.map(data => msgGenerator.makeMessage(data[0]));
+  const folder = await messageInjection.makeEmptyFolder();
+  await messageInjection.addSetsToFolders(
+    [folder],
+    [new SyntheticMessageSet(genMessages)]
+  );
 
   // Make the DB view
-  let dbviewContractId = "@mozilla.org/messenger/msgdbview;1?type=threaded";
-  let dbView = Cc[dbviewContractId].createInstance(Ci.nsIMsgDBView);
+  const dbviewContractId = "@mozilla.org/messenger/msgdbview;1?type=threaded";
+  const dbView = Cc[dbviewContractId].createInstance(Ci.nsIMsgDBView);
   dbView.init(null, null, null);
-  var outCount = {};
-  dbView.open(folder, SortType.byDate, SortOrder.ascending, 0, outCount);
+  dbView.open(
+    folder,
+    Ci.nsMsgViewSortType.byDate,
+    Ci.nsMsgViewSortOrder.ascending,
+    0
+  );
 
   // Did we add all the messages properly?
-  let treeView = dbView.QueryInterface(Ci.nsITreeView);
+  const treeView = dbView.QueryInterface(Ci.nsITreeView);
   Assert.equal(treeView.rowCount, tests.length);
 
   // For each test, make sure that the display is correct.
-  tests.forEach(function(data, i) {
+  tests.forEach(function (data, i) {
     info("Checking data for " + uneval(data));
-    let expected = data[1];
-    for (let column in expected) {
+    const expected = data[1];
+    for (const column in expected) {
       Assert.equal(dbView.cellTextForColumn(i, column), expected[column]);
     }
   });
-}
-
-function run_test() {
-  configure_message_injection({ mode: "local" });
-  async_run_tests([real_test]);
-}
+});

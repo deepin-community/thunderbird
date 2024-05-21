@@ -66,7 +66,8 @@ a ``google_breakpad::ExceptionHandler`` instance and it's stored as
 As the application runs, various other systems may write *annotations*
 or *notes* to the crash reporter to indicate state of the application,
 help with possible reasons for a current or future crash, etc. These are
-performed via ``CrashReporter::AnnotateCrashReport()`` and
+performed via ``CrashReporter::RecordAnnotation*()``,
+``CrashReporter::RegisterAnnotation*()`` functions and
 ``CrashReporter::AppendAppNotesToCrashReport()`` from
 ``nsExceptionHandler.h``.
 
@@ -154,7 +155,7 @@ with information about the crash.
 
 Submission of child process crashes is handled by application code. This
 code prompts the user to submit crashes in context-appropriate UI and then
-submits the crashes using ``CrashSubmit.jsm``.
+submits the crashes using ``CrashSubmit.sys.mjs``.
 
 Memory Reports
 ==============
@@ -173,15 +174,6 @@ in ``MinidumpCallback()``. When a child process crashes, it happens in
 ``OnChildProcessDumpRequested()``, with the annotation being added in
 ``WriteExtraData()``.
 
-Flash Process Crashes
-=====================
-
-On Windows Vista+, the Adobe Flash plugin creates two extra processes in its
-Firefox plugin to implement OS-level sandboxing. In order to catch crashes in
-these processes, Firefox injects a crash report handler into the process using the code at ``InjectCrashReporter.cpp``. When these crashes occur, the
-ProcessType=plugin annotation is present, and an additional annotation
-FlashProcessDump has the value "Sandbox" or "Broker".
-
 Plugin Hangs
 ============
 
@@ -189,15 +181,16 @@ Plugin hangs are handled as crash reports. If a plugin doesn't respond to an
 IPC message after 60 seconds, the plugin IPC code will take minidumps of all
 of the processes involved and then kill the plugin.
 
-In this case, there will be only one .ini file with the crash report metadata,
+In this case, there will be only one .extra file with the crash report metadata,
 but there will be multiple dump files: at least one for the browser process and
-one for the plugin process, and perhaps also additional dumps for the Flash
-sandbox and broker processes. All of these files are submitted together as a
+one for the plugin process. All of these files are submitted together as a
 unit. Before submission, the filenames of the files are linked:
 
-- **uuid.ini** - *annotations, includes an additional_minidumps field*
+- **uuid.extra** - *annotations, includes the `additional_minidumps` annotation
+  holding a comma-separated list of the additional minidumps*
 - **uuid.dmp** - *plugin process dump file*
-- **uuid-<other>.dmp** - *other process dump file as listed in additional_minidumps*
+- **uuid-<other>.dmp** - *other process dump file as listed in
+  additional_minidumps*
 
 about:crashes
 =============
@@ -256,8 +249,9 @@ Environment variables used internally
 - ``MOZ_CRASHREPORTER_PING_DIRECTORY`` - Path of the directory holding the
   pending crash ping files.
 - ``MOZ_CRASHREPORTER_RESTART_ARG_<n>`` - Each of these variable specifies one
-  of the arguments that had been passed to the application, the crash reporter
-  client uses them for restarting it.
+  of the arguments that had been passed to the application, starting with the
+  first after the executable, the crash reporter client uses them for restarting
+  it.
 - ``MOZ_CRASHREPORTER_RESTART_XUL_APP_FILE`` - If a XUL app file was specified
   when starting the app it has to be stored in this variable so that the crash
   reporter client can restart the application.

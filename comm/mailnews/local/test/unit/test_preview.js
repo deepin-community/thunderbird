@@ -15,11 +15,11 @@ function copy_next_message(aMessageHeaderKeys, aStatus) {
 }
 
 function test_preview(aMessageHeaderKeys, aStatus) {
-  let headerKeys = aMessageHeaderKeys;
+  const headerKeys = aMessageHeaderKeys;
   Assert.notEqual(headerKeys, null);
   Assert.equal(headerKeys.length, 2);
   try {
-    localAccountUtils.inboxFolder.fetchMsgPreviewText(headerKeys, false, null);
+    localAccountUtils.inboxFolder.fetchMsgPreviewText(headerKeys, null);
     Assert.equal(
       localAccountUtils.inboxFolder
         .GetMessageHeader(headerKeys[0])

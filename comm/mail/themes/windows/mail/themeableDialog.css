@@ -8,39 +8,17 @@
 
 html|input {
   padding: 2px 4px;
-}
 
-html|input[type="number"]::-moz-number-spin-up,
-html|input[type="number"]::-moz-number-spin-down {
-  min-height: 0.55em;
+  &[type="number"]::-moz-number-spin-up,
+  &[type="number"]::-moz-number-spin-down {
+    min-height: 0.55em;
+  }
 }
 
 menulist[is="menulist-editable"][editable="true"]::part(text-input) {
   padding: 2px 4px;
   margin-block: -1px -2px;
   margin-inline: -6px 4px;
-}
-
-@media not (-moz-windows-non-native-menus) {
-  menulist > menupopup {
-    --panel-background: transparent;
-  }
-
-  menulist menupopup menu,
-  menulist menupopup menuitem,
-  button menupopup menu,
-  button menupopup menuitem {
-    padding-block: 2px;
-  }
-
-  menulist > menupopup > menuitem > .menu-iconic-left,
-  menulist > menupopup > menu > .menu-iconic-left {
-    display: -moz-box;
-  }
-
-  menupopup::part(content) {
-    border-width: 0;
-  }
 }
 
 menu > menupopup > menuitem,
@@ -59,4 +37,8 @@ menu > menupopup > menu {
 .radio-label-box {
   margin-inline-start: 0;
   padding-inline-start: 0;
+}
+
+tabpanels {
+  color-scheme: light dark;
 }

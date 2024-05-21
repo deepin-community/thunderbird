@@ -14,8 +14,10 @@
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/NullPrincipal.h"
 #include "mozilla/dom/ConsoleBinding.h"
+#include "mozilla/dom/ConsoleInstanceBinding.h"
 #include "mozilla/dom/RootedDictionary.h"
 #include "mozilla/dom/ScriptSettings.h"
+#include "js/PropertyAndElement.h"  // JS_DefineProperty
 
 namespace mozilla::dom {
 
@@ -107,6 +109,7 @@ void ConsoleUtils::ReportForServiceWorkerScopeInternal(
   event.mLineNumber = aLineNumber;
   event.mColumnNumber = aColumnNumber;
   event.mTimeStamp = JS_Now() / PR_USEC_PER_MSEC;
+  event.mMicroSecondTimeStamp = JS_Now();
 
   JS::Rooted<JS::Value> messageValue(cx);
   if (!dom::ToJSValue(cx, aMessage, &messageValue)) {
@@ -137,7 +140,7 @@ void ConsoleUtils::ReportForServiceWorkerScopeInternal(
     return;
   }
 
-  storage->RecordEvent(u"ServiceWorker"_ns, aScope, eventValue);
+  storage->RecordEvent(u"ServiceWorker"_ns, eventValue);
 }
 
 JSObject* ConsoleUtils::GetOrCreateSandbox(JSContext* aCx) {

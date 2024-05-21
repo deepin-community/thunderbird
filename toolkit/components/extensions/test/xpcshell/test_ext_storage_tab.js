@@ -1,7 +1,7 @@
 "use strict";
 
-const { ExtensionStorageIDB } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionStorageIDB.jsm"
+const { ExtensionStorageIDB } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionStorageIDB.sys.mjs"
 );
 
 async function test_multiple_pages() {
@@ -90,7 +90,7 @@ async function test_multiple_pages() {
     contentPage = await ExtensionTestUtils.loadContentPage(url, { extension });
     extension.sendMessage("page-loaded");
   });
-  extension.onMessage("remove-page", async url => {
+  extension.onMessage("remove-page", async () => {
     await contentPage.close();
     extension.sendMessage("page-removed");
   });

@@ -6,12 +6,13 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(async function setup() {
-  let gAccount = createAccount();
+add_setup(async function () {
+  const gAccount = createAccount();
   addIdentity(gAccount);
-  let rootFolder = gAccount.incomingServer.rootFolder;
+  const rootFolder = gAccount.incomingServer.rootFolder;
 
-  window.gFolderTreeView.selectFolder(rootFolder);
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.displayFolder(rootFolder.URI);
   await new Promise(resolve => executeSoon(resolve));
 });
 
@@ -20,8 +21,7 @@ function createAccount() {
     MailServices.accounts.accounts.forEach(cleanUpAccount);
   });
 
-  MailServices.accounts.createLocalMailAccount();
-  let account = MailServices.accounts.accounts[0];
+  const account = MailServices.accounts.createLocalMailAccount();
   info(`Created account ${account.toString()}`);
 
   return account;
@@ -33,7 +33,7 @@ function cleanUpAccount(account) {
 }
 
 function addIdentity(account) {
-  let identity = MailServices.accounts.createIdentity();
+  const identity = MailServices.accounts.createIdentity();
   identity.email = "mochitest@localhost";
   account.addIdentity(identity);
   account.defaultIdentity = identity;

@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = A
     .tooltiptext = Een URL van uw voorkeur voor het omzetten van DNS over HTTPS invoeren
 connection-dns-over-https-custom-label = Aangepast
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Verbindingsinstellingen
-    .style =
-        { PLATFORM() ->
-            [macos] width: 46em !important
-           *[other] width: 51em !important
-        }
-connection-disable-extension =
-    .label = Extensie uitschakelen
+connection-dialog-title = Verbindingsinstellingen
 disable-extension-button = Extensie uitschakelen
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

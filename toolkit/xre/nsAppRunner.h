@@ -54,9 +54,12 @@ extern nsString gAbsoluteArgv0Path;
 
 extern bool gIsGtest;
 
+extern bool gKioskMode;
+extern int gKioskMonitor;
+extern bool gAllowContentAnalysisArgPresent;
+
 namespace mozilla {
-nsresult AppInfoConstructor(nsISupports* aOuter, const nsID& aIID,
-                            void** aResult);
+nsresult AppInfoConstructor(const nsID& aIID, void** aResult);
 }  // namespace mozilla
 
 // Exported for gtests.
@@ -78,10 +81,6 @@ int32_t CompareCompatVersions(const nsACString& aOldCompatVersion,
  */
 nsresult NS_CreateNativeAppSupport(nsINativeAppSupport** aResult);
 already_AddRefed<nsINativeAppSupport> NS_GetNativeAppSupport();
-
-nsresult NS_NewToolkitProfileService(nsIToolkitProfileService** aResult);
-
-nsresult NS_NewToolkitProfileFactory(nsIFactory** aResult);
 
 /**
  * Try to acquire exclusive access to the specified profile directory.
@@ -106,8 +105,6 @@ nsresult NS_LockProfilePath(nsIFile* aPath, nsIFile* aTempPath,
 
 void WriteConsoleLog();
 
-void OverrideDefaultLocaleIfNeeded();
-
 /**
  * Allow exit() calls to complete. This should be done from a proper Gecko
  * shutdown path. Otherwise we aim to catch improper shutdowns.
@@ -130,6 +127,9 @@ void UnlockProfile();
 BOOL WinLaunchChild(const wchar_t* exePath, int argc, char** argv,
                     HANDLE userToken = nullptr, HANDLE* hProcess = nullptr);
 
+BOOL WinLaunchChild(const wchar_t* exePath, int argc, wchar_t** argv,
+                    HANDLE userToken = nullptr, HANDLE* hProcess = nullptr);
+
 #  define PREF_WIN_REGISTER_APPLICATION_RESTART \
     "toolkit.winRegisterApplicationRestart"
 
@@ -144,7 +144,7 @@ namespace mozilla {
 namespace startup {
 Result<nsCOMPtr<nsIFile>, nsresult> GetIncompleteStartupFile(nsIFile* aProfLD);
 
-extern GeckoProcessType sChildProcessType;
+void IncreaseDescriptorLimits();
 }  // namespace startup
 
 const char* PlatformBuildID();
@@ -166,8 +166,6 @@ void MOZ_EXPORT __sanitizer_set_report_path(const char* path);
 void setASanReporterPath(nsIFile* aDir);
 #endif
 
-#ifdef MOZ_WAYLAND
 bool IsWaylandEnabled();
-#endif
 
 #endif  // nsAppRunner_h__

@@ -13,7 +13,7 @@
 
 const {
   getLabelAndShallowSize,
-} = require("devtools/shared/heapsnapshot/DominatorTreeNode");
+} = require("resource://devtools/shared/heapsnapshot/DominatorTreeNode.js");
 
 const TEST_URL =
   "http://example.com/browser/devtools/client/memory/test/browser/doc_empty.html";
@@ -53,7 +53,7 @@ const DESCRIPTION = {
   },
 };
 
-this.test = makeMemoryTest(TEST_URL, async function({ tab, panel }) {
+this.test = makeMemoryTest(TEST_URL, async function ({ panel }) {
   let front = panel.panelWin.gStore.getState().front;
 
   const startWindows = await getWindowsInSnapshot(front);
@@ -63,7 +63,7 @@ this.test = makeMemoryTest(TEST_URL, async function({ tab, panel }) {
   );
   is(startWindows.length, 1);
 
-  await refreshTab();
+  await reloadBrowser();
 
   // Update the front as we may have switched to a new target and a new memory front
   front = panel.panelWin.gStore.getState().front;

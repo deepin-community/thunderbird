@@ -1,7 +1,7 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- Mode: JavaScript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* Tests that an empty cache entry doesn't return an empty message for news. */
 
-// The basic daemon to use for testing Nntpd.jsm implementations
+// The basic daemon to use for testing Nntpd.sys.mjs implementations
 var daemon = setupNNTPDaemon();
 
 var server;
@@ -32,7 +32,7 @@ var streamListener = {
 
   // nsIStreamListener
   onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-    let scriptStream = Cc[
+    const scriptStream = Cc[
       "@mozilla.org/scriptableinputstream;1"
     ].createInstance(Ci.nsIScriptableInputStream);
 
@@ -47,7 +47,7 @@ function doTestFinished() {
 
   server.stop();
 
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     thread.processNextEvent(true);
   }
@@ -96,9 +96,9 @@ function run_test() {
 
           var messageUri = folder.getUriForMsg(message);
 
-          MailServices.nntp
-            .QueryInterface(Ci.nsIMsgMessageService)
-            .DisplayMessage(messageUri, streamListener, null, null, null, {});
+          Cc["@mozilla.org/messenger/messageservice;1?type=news"]
+            .getService(Ci.nsIMsgMessageService)
+            .loadMessage(messageUri, streamListener, null, null, false);
 
           // Get the server to run
           server.performTest();

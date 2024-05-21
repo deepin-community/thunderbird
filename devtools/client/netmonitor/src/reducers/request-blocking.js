@@ -15,7 +15,7 @@ const {
   DISABLE_ALL_BLOCKED_URLS,
   TOGGLE_BLOCKING_ENABLED,
   SYNCED_BLOCKED_URLS,
-} = require("devtools/client/netmonitor/src/constants");
+} = require("resource://devtools/client/netmonitor/src/constants.js");
 
 function RequestBlocking() {
   return {
@@ -99,14 +99,14 @@ function removeBlockedUrl(state, action) {
   };
 }
 
-function removeAllBlockedUrls(state, action) {
+function removeAllBlockedUrls(state) {
   return {
     ...state,
     blockedUrls: [],
   };
 }
 
-function enableAllBlockedUrls(state, action) {
+function enableAllBlockedUrls(state) {
   const blockedUrls = state.blockedUrls.map(item => ({
     ...item,
     enabled: true,
@@ -117,7 +117,7 @@ function enableAllBlockedUrls(state, action) {
   };
 }
 
-function disableAllBlockedUrls(state, action) {
+function disableAllBlockedUrls(state) {
   const blockedUrls = state.blockedUrls.map(item => ({
     ...item,
     enabled: false,

@@ -7,19 +7,18 @@ const CHECK_DEFAULT_INITIAL = Services.prefs.getBoolPref(
 add_task(async function clicking_make_default_checks_alwaysCheck_checkbox() {
   await BrowserTestUtils.openNewForegroundTab(gBrowser, "about:preferences");
 
-  await test_with_mock_shellservice({ isDefault: false }, async function() {
+  await test_with_mock_shellservice({ isDefault: false }, async function () {
     let checkDefaultBrowserState = isDefault => {
       let isDefaultPane = content.document.getElementById("isDefaultPane");
-      let isNotDefaultPane = content.document.getElementById(
-        "isNotDefaultPane"
-      );
+      let isNotDefaultPane =
+        content.document.getElementById("isNotDefaultPane");
       Assert.equal(
-        ContentTaskUtils.is_hidden(isDefaultPane),
+        ContentTaskUtils.isHidden(isDefaultPane),
         !isDefault,
         "The 'browser is default' pane should be hidden when browser is not default"
       );
       Assert.equal(
-        ContentTaskUtils.is_hidden(isNotDefaultPane),
+        ContentTaskUtils.isHidden(isNotDefaultPane),
         isDefault,
         "The 'make default' pane should be hidden when browser is default"
       );
@@ -70,15 +69,15 @@ add_task(async function clicking_make_default_checks_alwaysCheck_checkbox() {
   Services.prefs.lockPref("browser.shell.checkDefaultBrowser");
   await BrowserTestUtils.openNewForegroundTab(gBrowser, "about:preferences");
 
-  await test_with_mock_shellservice({ isDefault: false }, async function() {
+  await test_with_mock_shellservice({ isDefault: false }, async function () {
     let isDefaultPane = content.document.getElementById("isDefaultPane");
     let isNotDefaultPane = content.document.getElementById("isNotDefaultPane");
     Assert.ok(
-      ContentTaskUtils.is_hidden(isDefaultPane),
+      ContentTaskUtils.isHidden(isDefaultPane),
       "The 'browser is default' pane should be hidden when not default"
     );
     Assert.ok(
-      ContentTaskUtils.is_visible(isNotDefaultPane),
+      ContentTaskUtils.isVisible(isNotDefaultPane),
       "The 'make default' pane should be visible when not default"
     );
 
@@ -98,7 +97,7 @@ add_task(async function clicking_make_default_checks_alwaysCheck_checkbox() {
     content.window.gMainPane.updateSetDefaultBrowser();
 
     await ContentTaskUtils.waitForCondition(
-      () => ContentTaskUtils.is_visible(isDefaultPane),
+      () => ContentTaskUtils.isVisible(isDefaultPane),
       "Browser is now default"
     );
 
@@ -123,7 +122,7 @@ add_task(async function clicking_make_default_checks_alwaysCheck_checkbox() {
 add_task(async function make_default_disabled_until_prefs_are_loaded() {
   // Testcase with Firefox not set as the default browser
   await BrowserTestUtils.openNewForegroundTab(gBrowser, "about:preferences");
-  await test_with_mock_shellservice({ isDefault: false }, async function() {
+  await test_with_mock_shellservice({ isDefault: false }, async function () {
     let alwaysCheck = content.document.getElementById("alwaysCheckDefault");
     Assert.ok(
       !alwaysCheck.disabled,
@@ -134,7 +133,7 @@ add_task(async function make_default_disabled_until_prefs_are_loaded() {
 
   // Testcase with Firefox set as the default browser
   await BrowserTestUtils.openNewForegroundTab(gBrowser, "about:preferences");
-  await test_with_mock_shellservice({ isDefault: true }, async function() {
+  await test_with_mock_shellservice({ isDefault: true }, async function () {
     let alwaysCheck = content.document.getElementById("alwaysCheckDefault");
     Assert.ok(
       alwaysCheck.disabled,
@@ -144,7 +143,7 @@ add_task(async function make_default_disabled_until_prefs_are_loaded() {
   gBrowser.removeCurrentTab();
 });
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   Services.prefs.unlockPref("browser.shell.checkDefaultBrowser");
   Services.prefs.setBoolPref(
     "browser.shell.checkDefaultBrowser",
@@ -153,27 +152,29 @@ registerCleanupFunction(function() {
 });
 
 async function test_with_mock_shellservice(options, testFn) {
-  await SpecialPowers.spawn(gBrowser.selectedBrowser, [options], async function(
-    contentOptions
-  ) {
-    let doc = content.document;
-    let win = doc.defaultView;
-    win.oldShellService = win.getShellService();
-    let mockShellService = {
-      _isDefault: false,
-      isDefaultBrowser() {
-        return this._isDefault;
-      },
-      setDefaultBrowser() {
-        this._isDefault = true;
-      },
-    };
-    win.getShellService = function() {
-      return mockShellService;
-    };
-    mockShellService._isDefault = contentOptions.isDefault;
-    win.gMainPane.updateSetDefaultBrowser();
-  });
+  await SpecialPowers.spawn(
+    gBrowser.selectedBrowser,
+    [options],
+    async function (contentOptions) {
+      let doc = content.document;
+      let win = doc.defaultView;
+      win.oldShellService = win.getShellService();
+      let mockShellService = {
+        _isDefault: false,
+        isDefaultBrowser() {
+          return this._isDefault;
+        },
+        async setDefaultBrowser() {
+          this._isDefault = true;
+        },
+      };
+      win.getShellService = function () {
+        return mockShellService;
+      };
+      mockShellService._isDefault = contentOptions.isDefault;
+      win.gMainPane.updateSetDefaultBrowser();
+    }
+  );
 
   await SpecialPowers.spawn(gBrowser.selectedBrowser, [], testFn);
 

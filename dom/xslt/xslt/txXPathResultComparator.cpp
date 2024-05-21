@@ -4,14 +4,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/FloatingPoint.h"
+#include "mozilla/intl/Collator.h"
+#include "mozilla/intl/LocaleService.h"
 
 #include "txXPathResultComparator.h"
 #include "txExpr.h"
 #include "nsComponentManagerUtils.h"
 #include "txCore.h"
-#include "nsCollationCID.h"
 
 using namespace mozilla;
+using Collator = mozilla::intl::Collator;
 
 #define kAscending (1 << 0)
 #define kUpperFirst (1 << 1)
@@ -27,21 +29,23 @@ txResultStringComparator::txResultStringComparator(bool aAscending,
 }
 
 nsresult txResultStringComparator::init(const nsString& aLanguage) {
-  nsresult rv;
+  auto result =
+      aLanguage.IsEmpty()
+          ? mozilla::intl::LocaleService::TryCreateComponent<Collator>()
+          : mozilla::intl::LocaleService::TryCreateComponentWithLocale<
+                Collator>(NS_ConvertUTF16toUTF8(aLanguage).get());
 
-  nsCOMPtr<nsICollationFactory> colFactory =
-      do_CreateInstance(NS_COLLATIONFACTORY_CONTRACTID, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
+  NS_ENSURE_TRUE(result.isOk(), NS_ERROR_FAILURE);
+  auto collator = result.unwrap();
 
-  if (aLanguage.IsEmpty()) {
-    rv = colFactory->CreateCollation(getter_AddRefs(mCollation));
-  } else {
-    rv = colFactory->CreateCollationForLocale(NS_ConvertUTF16toUTF8(aLanguage),
-                                              getter_AddRefs(mCollation));
-  }
+  // Sort in a case-insensitive way, where "base" letters are considered
+  // equal, e.g: a = á, a = A, a ≠ b.
+  Collator::Options options{};
+  options.sensitivity = Collator::Sensitivity::Base;
+  auto optResult = collator->SetOptions(options);
+  NS_ENSURE_TRUE(optResult.isOk(), NS_ERROR_FAILURE);
 
-  NS_ENSURE_SUCCESS(rv, rv);
-
+  mCollator = UniquePtr<const Collator>(collator.release());
   return NS_OK;
 }
 
@@ -50,21 +54,13 @@ nsresult txResultStringComparator::createSortableValue(Expr* aExpr,
                                                        txObject*& aResult) {
   UniquePtr<StringValue> val(new StringValue);
 
-  if (!mCollation) return NS_ERROR_FAILURE;
-
-  val->mCaseKeyString = MakeUnique<nsString>();
-  nsString& nsCaseKey = *val->mCaseKeyString;
-  nsresult rv = aExpr->evaluateToString(aContext, nsCaseKey);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  if (nsCaseKey.IsEmpty()) {
-    aResult = val.release();
-
-    return NS_OK;
+  if (!mCollator) {
+    return NS_ERROR_FAILURE;
   }
 
-  rv = mCollation->AllocateRawSortKey(nsICollation::kCollationCaseInSensitive,
-                                      nsCaseKey, val->mKey);
+  val->mString = MakeUnique<nsString>();
+  nsString& string = *val->mString;
+  nsresult rv = aExpr->evaluateToString(aContext, string);
   NS_ENSURE_SUCCESS(rv, rv);
 
   aResult = val.release();
@@ -73,69 +69,22 @@ nsresult txResultStringComparator::createSortableValue(Expr* aExpr,
 }
 
 int txResultStringComparator::compareValues(txObject* aVal1, txObject* aVal2) {
-  StringValue* strval1 = (StringValue*)aVal1;
-  StringValue* strval2 = (StringValue*)aVal2;
+  nsString& dval1 = *((StringValue*)aVal1)->mString;
+  nsString& dval2 = *((StringValue*)aVal2)->mString;
 
-  if (!mCollation) return -1;
-
-  if (strval1->mKey.Length() == 0) {
-    if (strval2->mKey.Length() == 0) return 0;
-    return ((mSorting & kAscending) ? -1 : 1);
-  }
-
-  if (strval2->mKey.Length() == 0) return ((mSorting & kAscending) ? 1 : -1);
-
-  nsresult rv;
-  int32_t result = -1;
-  rv = mCollation->CompareRawSortKey(strval1->mKey, strval2->mKey, &result);
-  if (NS_FAILED(rv)) {
-    // XXX ErrorReport
+  if (!mCollator) {
+    MOZ_ASSERT_UNREACHABLE("No mCollator");
     return -1;
   }
 
-  if (result != 0) return ((mSorting & kAscending) ? 1 : -1) * result;
+  int32_t result = mCollator->CompareStrings(dval1, dval2);
 
-  if (strval1->mCaseKeyString && strval1->mKey.Length() != 0) {
-    rv = strval1->initCaseKey(mCollation);
-    if (NS_FAILED(rv)) {
-      // XXX ErrorReport
-      return -1;
-    }
-  }
-  if (strval2->mCaseKeyString && strval2->mKey.Length() != 0) {
-    rv = strval2->initCaseKey(mCollation);
-    if (NS_FAILED(rv)) {
-      // XXX ErrorReport
-      return -1;
-    }
-  }
-  rv = mCollation->CompareRawSortKey(strval1->mCaseKey, strval2->mCaseKey,
-                                     &result);
-  if (NS_FAILED(rv)) {
-    // XXX ErrorReport
-    return -1;
-  }
-
-  return ((mSorting & kAscending) ? 1 : -1) *
-         ((mSorting & kUpperFirst) ? -1 : 1) * result;
+  return (mSorting & kAscending) ? result : -result;
 }
 
 txResultStringComparator::StringValue::StringValue() = default;
 
 txResultStringComparator::StringValue::~StringValue() = default;
-
-nsresult txResultStringComparator::StringValue::initCaseKey(
-    nsICollation* aCollation) {
-  nsresult rv = aCollation->AllocateRawSortKey(
-      nsICollation::kCollationCaseSensitive, *mCaseKeyString, mCaseKey);
-  if (NS_FAILED(rv)) {
-    mCaseKey.SetLength(0);
-    return rv;
-  }
-
-  mCaseKeyString = nullptr;
-  return NS_OK;
-}
 
 txResultNumberComparator::txResultNumberComparator(bool aAscending) {
   mAscending = aAscending ? 1 : -1;
@@ -161,9 +110,9 @@ int txResultNumberComparator::compareValues(txObject* aVal1, txObject* aVal2) {
   double dval1 = ((NumberValue*)aVal1)->mVal;
   double dval2 = ((NumberValue*)aVal2)->mVal;
 
-  if (mozilla::IsNaN(dval1)) return mozilla::IsNaN(dval2) ? 0 : -mAscending;
+  if (std::isnan(dval1)) return std::isnan(dval2) ? 0 : -mAscending;
 
-  if (mozilla::IsNaN(dval2)) return mAscending;
+  if (std::isnan(dval2)) return mAscending;
 
   if (dval1 == dval2) return 0;
 

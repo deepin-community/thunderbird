@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = P
     .tooltiptext = Digite sua URL preferida para resolver DNS sobre HTTPS
 connection-dns-over-https-custom-label = Personalizado
-connection-dialog-window =
-    .title = Configurar conexão
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Desativar extensão
+connection-dialog-window2 =
+    .title = Configuração de conexão
+connection-dialog-title = Configuração de conexão
 disable-extension-button = Desativar extensão
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

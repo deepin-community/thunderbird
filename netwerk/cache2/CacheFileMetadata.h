@@ -11,12 +11,17 @@
 #include "CacheObserver.h"
 #include "mozilla/EndianUtils.h"
 #include "mozilla/BasePrincipal.h"
+#include "mozilla/NotNull.h"
 #include "nsString.h"
 
 class nsICacheEntryMetaDataVisitor;
 
 namespace mozilla {
 namespace net {
+
+namespace CacheFileUtils {
+class CacheFileLock;
+};
 
 // Flags stored in CacheFileMetadataHeader.mFlags
 
@@ -30,7 +35,7 @@ static const uint32_t kCacheEntryIsPinned = 1 << 0;
 // the frecency value to a correct internal representation again.
 // It might not be 100% accurate, but for the purpose it suffice.
 #define FRECENCY2INT(aFrecency) \
-  ((uint32_t)((aFrecency)*CacheObserver::HalfLifeSeconds()))
+  ((uint32_t)((aFrecency) * CacheObserver::HalfLifeSeconds()))
 #define INT2FRECENCY(aInt) \
   ((double)(aInt) / (double)CacheObserver::HalfLifeSeconds())
 
@@ -134,8 +139,10 @@ class CacheFileMetadata final : public CacheFileIOListener,
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
 
-  CacheFileMetadata(CacheFileHandle* aHandle, const nsACString& aKey);
-  CacheFileMetadata(bool aMemoryOnly, bool aPinned, const nsACString& aKey);
+  CacheFileMetadata(CacheFileHandle* aHandle, const nsACString& aKey,
+                    NotNull<CacheFileUtils::CacheFileLock*> aLock);
+  CacheFileMetadata(bool aMemoryOnly, bool aPinned, const nsACString& aKey,
+                    NotNull<CacheFileUtils::CacheFileLock*> aLock);
   CacheFileMetadata();
 
   void SetHandle(CacheFileHandle* aHandle);
@@ -229,6 +236,7 @@ class CacheFileMetadata final : public CacheFileIOListener,
   mozilla::OriginAttributes mOriginAttributes;
   mozilla::TimeStamp mReadStart;
   nsCOMPtr<CacheFileMetadataListener> mListener;
+  RefPtr<CacheFileUtils::CacheFileLock> mLock;
 };
 
 }  // namespace net

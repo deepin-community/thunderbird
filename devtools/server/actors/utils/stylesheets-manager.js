@@ -4,46 +4,34 @@
 
 "use strict";
 
-const EventEmitter = require("devtools/shared/event-emitter");
-const { Ci } = require("chrome");
-const Services = require("Services");
-const { fetch } = require("devtools/shared/DevToolsUtils");
-const InspectorUtils = require("InspectorUtils");
+const EventEmitter = require("resource://devtools/shared/event-emitter.js");
 const {
   getSourcemapBaseURL,
-} = require("devtools/server/actors/utils/source-map-utils");
-const { TYPES } = require("devtools/server/actors/resources/index");
+} = require("resource://devtools/server/actors/utils/source-map-utils.js");
 
 loader.lazyRequireGetter(
   this,
   ["addPseudoClassLock", "removePseudoClassLock"],
-  "devtools/server/actors/highlighters/utils/markup",
+  "resource://devtools/server/actors/highlighters/utils/markup.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "loadSheet",
-  "devtools/shared/layout/utils",
+  "resource://devtools/shared/layout/utils.js",
   true
 );
 loader.lazyRequireGetter(
   this,
-  ["getSheetOwnerNode", "UPDATE_GENERAL", "UPDATE_PRESERVING_RULES"],
-  "devtools/server/actors/style-sheet",
+  ["getStyleSheetOwnerNode", "getStyleSheetText"],
+  "resource://devtools/server/actors/utils/stylesheet-utils.js",
   true
 );
-loader.lazyRequireGetter(
-  this,
-  "TargetActorRegistry",
-  "devtools/server/actors/targets/target-actor-registry.jsm",
-  true
-);
-const SHARED_DATA_KEY_NAME = "DevTools:watchedPerWatcher";
 
 const TRANSITION_PSEUDO_CLASS = ":-moz-styleeditor-transitioning";
 const TRANSITION_DURATION_MS = 500;
 const TRANSITION_BUFFER_MS = 1000;
-const TRANSITION_RULE_SELECTOR = `:root${TRANSITION_PSEUDO_CLASS}, :root${TRANSITION_PSEUDO_CLASS} *`;
+const TRANSITION_RULE_SELECTOR = `:root${TRANSITION_PSEUDO_CLASS}, :root${TRANSITION_PSEUDO_CLASS} *:not(:-moz-native-anonymous)`;
 const TRANSITION_SHEET =
   "data:text/css;charset=utf-8," +
   encodeURIComponent(`
@@ -55,6 +43,13 @@ const TRANSITION_SHEET =
   }
 `);
 
+// The possible kinds of style-applied events.
+// UPDATE_PRESERVING_RULES means that the update is guaranteed to
+// preserve the number and order of rules on the style sheet.
+// UPDATE_GENERAL covers any other kind of change to the style sheet.
+const UPDATE_PRESERVING_RULES = 0;
+const UPDATE_GENERAL = 1;
+
 // If the user edits a stylesheet, we stash a copy of the edited text
 // here, keyed by the stylesheet.  This way, if the tools are closed
 // and then reopened, the edited text will be available. A weak map
@@ -64,27 +59,28 @@ const modifiedStyleSheets = new WeakMap();
 
 /**
  * Manage stylesheets related to a given Target Actor.
- *
- * @emits applicable-stylesheet-added: emitted when an applicable stylesheet is added to the document.
- *        First arg is an object with the following properties:
- *        - resourceId {String}: The id that was assigned to the stylesheet
- *        - styleSheet {StyleSheet}: The actual stylesheet
- *        - creationData {Object}: An object with:
- *            - isCreatedByDevTools {Boolean}: Was the stylesheet created by DevTools (e.g.
- *              by the user clicking the new stylesheet button in the styleeditor)
- *            - fileName {String}
  * @emits stylesheet-updated: emitted when there was changes in a stylesheet
  *        First arg is an object with the following properties:
  *        - resourceId {String}: The id that was assigned to the stylesheet
  *        - updateKind {String}: Which kind of update it is ("style-applied",
- *          "media-rules-changed", "matches-change", "property-change")
+ *          "at-rules-changed", "matches-change", "property-change")
  *        - updates {Object}: The update data
  */
 class StyleSheetsManager extends EventEmitter {
-  _styleSheetCount = 0;
-  _styleSheetMap = new Map();
-  // List of all watched media queries. Change listeners are being registered from _getMediaRules.
-  _mqlList = [];
+  #abortController;
+  // Map<resourceId, AbortController>
+  #mqlChangeAbortControllerMap = new Map();
+  #styleSheetCount = 0;
+  #styleSheetMap = new Map();
+  #styleSheetCreationData;
+  #targetActor;
+  #transitionSheetLoaded;
+  #transitionTimeout;
+  #watchListeners = {
+    onAvailable: [],
+    onUpdated: [],
+    onDestroyed: [],
+  };
 
   /**
    * @param TargetActor targetActor
@@ -93,59 +89,174 @@ class StyleSheetsManager extends EventEmitter {
   constructor(targetActor) {
     super();
 
-    this._targetActor = targetActor;
-    this._onApplicableStateChanged = this._onApplicableStateChanged.bind(this);
-    this._onTargetActorWindowReady = this._onTargetActorWindowReady.bind(this);
+    this.#targetActor = targetActor;
+  }
+
+  #setEventListenersIfNeeded() {
+    if (this.#abortController) {
+      return;
+    }
+
+    this.#abortController = new AbortController();
+    const { signal } = this.#abortController;
+
+    // Listen for new stylesheet being added via StyleSheetApplicableStateChanged
+    this.#targetActor.chromeEventHandler.addEventListener(
+      "StyleSheetApplicableStateChanged",
+      this.#onApplicableStateChanged,
+      { capture: true, signal }
+    );
+    this.#targetActor.chromeEventHandler.addEventListener(
+      "StyleSheetRemoved",
+      this.#onStylesheetRemoved,
+      { capture: true, signal }
+    );
+
+    this.#watchStyleSheetChangeEvents();
+    this.#targetActor.on("window-ready", this.#onTargetActorWindowReady, {
+      signal,
+    });
   }
 
   /**
    * Calling this function will make the StyleSheetsManager start the event listeners needed
    * to watch for stylesheet additions and modifications.
-   * It will also trigger applicable-stylesheet-added events for the existing stylesheets.
-   * This function resolves once it notified about existing stylesheets.
+   * This resolves once it notified about existing stylesheets.
+   * @param {Object} options
+   * @param {Function} onAvailable: Function that will be called when a stylesheet is
+   *                   registered, but also with already registered stylesheets
+   *                   if ignoreExisting is not set to true.
+   *                   This is called with a single object parameter with the following properties:
+   *                   - {String} resourceId: The id that was assigned to the stylesheet
+   *                   - {StyleSheet} styleSheet: The actual stylesheet object
+   *                   - {Object} creationData: An object with:
+   *                              - {Boolean} isCreatedByDevTools: Was the stylesheet created
+   *                                by DevTools (e.g. by the user clicking the new stylesheet
+   *                                button in the styleeditor)
+   *                              - {String} fileName
+   * @param {Function} onUpdated: Function that will be called when a stylesheet is updated
+   *                   This is called with a single object parameter with the following properties:
+   *                   - {String} resourceId: The id that was assigned to the stylesheet
+   *                   - {String} updateKind: Which kind of update it is ("style-applied",
+   *                     "at-rules-changed", "matches-change", "property-change")
+   *                   - {Object} updates : The update data
+   * @param {Function} onDestroyed: Function that will be called when a stylesheet is removed
+   *                   This is called with a single object parameter with the following properties:
+   *                   - {String} resourceId: The id that was assigned to the stylesheet
+   * @param {Boolean} ignoreExisting: Pass to true to avoid onAvailable to be called with
+   *                  already registered stylesheets.
    */
-  async startWatching() {
+  async watch({ onAvailable, onUpdated, onDestroyed, ignoreExisting = false }) {
+    if (!onAvailable && !onUpdated && !onDestroyed) {
+      throw new Error("Expect onAvailable, onUpdated or onDestroyed");
+    }
+
+    if (onAvailable) {
+      if (typeof onAvailable !== "function") {
+        throw new Error("onAvailable should be a function");
+      }
+
+      // Don't register the listener yet if we're ignoring existing stylesheets, we'll do
+      // that at the end of the function, after we processed existing stylesheets.
+    }
+
+    if (onUpdated) {
+      if (typeof onUpdated !== "function") {
+        throw new Error("onUpdated should be a function");
+      }
+      this.#watchListeners.onUpdated.push(onUpdated);
+    }
+
+    if (onDestroyed) {
+      if (typeof onDestroyed !== "function") {
+        throw new Error("onDestroyed should be a function");
+      }
+      this.#watchListeners.onDestroyed.push(onDestroyed);
+    }
+
     // Process existing stylesheets
     const promises = [];
-    for (const window of this._targetActor.windows) {
-      promises.push(this._getStyleSheetsForWindow(window));
+    for (const window of this.#targetActor.windows) {
+      promises.push(this.#getStyleSheetsForWindow(window));
     }
 
-    // Listen for new stylesheet being added via StyleSheetApplicableStateChanged
-    this._targetActor.chromeEventHandler.addEventListener(
-      "StyleSheetApplicableStateChanged",
-      this._onApplicableStateChanged,
-      true
-    );
-    this._watchStyleSheetChangeEvents();
-    this._targetActor.on("window-ready", this._onTargetActorWindowReady);
+    this.#setEventListenersIfNeeded();
 
     // Finally, notify about existing stylesheets
-    let styleSheets = await Promise.all(promises);
-    styleSheets = styleSheets.flat();
-    for (const styleSheet of styleSheets) {
-      this._registerStyleSheet(styleSheet);
+    const styleSheets = await Promise.all(promises);
+    const styleSheetsData = styleSheets.flat().map(styleSheet => ({
+      styleSheet,
+      resourceId: this.#registerStyleSheet(styleSheet),
+    }));
+
+    let registeredStyleSheetsPromises;
+    if (onAvailable && ignoreExisting !== true) {
+      registeredStyleSheetsPromises = styleSheetsData.map(
+        ({ resourceId, styleSheet }) => onAvailable({ resourceId, styleSheet })
+      );
+    }
+
+    // Only register the listener after we went over the list of existing stylesheets
+    // so the listener is not triggered by possible calls to #registerStyleSheet earlier.
+    if (onAvailable) {
+      this.#watchListeners.onAvailable.push(onAvailable);
+    }
+
+    if (registeredStyleSheetsPromises) {
+      await Promise.all(registeredStyleSheetsPromises);
     }
   }
 
-  _watchStyleSheetChangeEvents() {
-    for (const window of this._targetActor.windows) {
-      this._watchStyleSheetChangeEventsForWindow(window);
+  /**
+   * Remove the passed listeners
+   *
+   * @param {Object} options: See this.watch
+   */
+  unwatch({ onAvailable, onUpdated, onDestroyed }) {
+    if (!this.#watchListeners) {
+      return;
+    }
+
+    if (onAvailable) {
+      const index = this.#watchListeners.onAvailable.indexOf(onAvailable);
+      if (index !== -1) {
+        this.#watchListeners.onAvailable.splice(index, 1);
+      }
+    }
+
+    if (onUpdated) {
+      const index = this.#watchListeners.onUpdated.indexOf(onUpdated);
+      if (index !== -1) {
+        this.#watchListeners.onUpdated.splice(index, 1);
+      }
+    }
+
+    if (onDestroyed) {
+      const index = this.#watchListeners.onDestroyed.indexOf(onDestroyed);
+      if (index !== -1) {
+        this.#watchListeners.onDestroyed.splice(index, 1);
+      }
     }
   }
 
-  _onTargetActorWindowReady({ window }) {
-    this._watchStyleSheetChangeEventsForWindow(window);
+  #watchStyleSheetChangeEvents() {
+    for (const window of this.#targetActor.windows) {
+      this.#watchStyleSheetChangeEventsForWindow(window);
+    }
   }
 
-  _watchStyleSheetChangeEventsForWindow(window) {
+  #onTargetActorWindowReady = ({ window }) => {
+    this.#watchStyleSheetChangeEventsForWindow(window);
+  };
+
+  #watchStyleSheetChangeEventsForWindow(window) {
     // We have to set this flag in order to get the
-    // StyleSheetApplicableStateChanged events. See Document.webidl.
+    // StyleSheetApplicableStateChanged and StyleSheetRemoved events. See Document.webidl.
     window.document.styleSheetChangeEventsEnabled = true;
   }
 
-  _unwatchStyleSheetChangeEvents() {
-    for (const window of this._targetActor.windows) {
+  #unwatchStyleSheetChangeEvents() {
+    for (const window of this.#targetActor.windows) {
       window.document.styleSheetChangeEventsEnabled = false;
     }
   }
@@ -167,6 +278,7 @@ class StyleSheetsManager extends EventEmitter {
       "style"
     );
     style.setAttribute("type", "text/css");
+    style.setDevtoolsAsTriggeringPrincipal();
 
     if (text) {
       style.appendChild(document.createTextNode(text));
@@ -181,10 +293,10 @@ class StyleSheetsManager extends EventEmitter {
       resolve = r;
     });
 
-    if (!this._styleSheetCreationData) {
-      this._styleSheetCreationData = new WeakMap();
+    if (!this.#styleSheetCreationData) {
+      this.#styleSheetCreationData = new WeakMap();
     }
-    this._styleSheetCreationData.set(style.sheet, {
+    this.#styleSheetCreationData.set(style.sheet, {
       isCreatedByDevTools: true,
       fileName,
       resolve,
@@ -203,15 +315,15 @@ class StyleSheetsManager extends EventEmitter {
    * @returns {String} resourceId
    */
   getStyleSheetResourceId(styleSheet) {
-    const existingResourceId = this._findStyleSheetResourceId(styleSheet);
+    const existingResourceId = this.#findStyleSheetResourceId(styleSheet);
     if (existingResourceId) {
       return existingResourceId;
     }
 
     // If we couldn't find an associated resourceId, that means the stylesheet isn't
-    // registered yet. Calling _registerStyleSheet will register it and return the
+    // registered yet. Calling #registerStyleSheet will register it and return the
     // associated resourceId it computed for it.
-    return this._registerStyleSheet(styleSheet);
+    return this.#registerStyleSheet(styleSheet);
   }
 
   /**
@@ -221,11 +333,11 @@ class StyleSheetsManager extends EventEmitter {
    * @params {StyleSheet} styleSheet
    * @returns {String} resourceId
    */
-  _findStyleSheetResourceId(styleSheet) {
+  #findStyleSheetResourceId(styleSheet) {
     for (const [
       resourceId,
       existingStyleSheet,
-    ] of this._styleSheetMap.entries()) {
+    ] of this.#styleSheetMap.entries()) {
       if (styleSheet === existingStyleSheet) {
         return resourceId;
       }
@@ -242,7 +354,7 @@ class StyleSheetsManager extends EventEmitter {
    * @returns {Element|null}
    */
   getOwnerNode(resourceId) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
+    const styleSheet = this.#styleSheetMap.get(resourceId);
     return styleSheet.ownerNode;
   }
 
@@ -254,8 +366,23 @@ class StyleSheetsManager extends EventEmitter {
    * @returns {Number}
    */
   getStyleSheetIndex(resourceId) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
-    return this._getStyleSheetIndex(styleSheet);
+    const styleSheet = this.#styleSheetMap.get(resourceId);
+
+    const styleSheets = InspectorUtils.getAllStyleSheets(
+      this.#targetActor.window.document,
+      true
+    );
+    let i = 0;
+    for (const sheet of styleSheets) {
+      if (!this.#shouldListSheet(sheet)) {
+        continue;
+      }
+      if (sheet == styleSheet) {
+        return i;
+      }
+      i++;
+    }
+    return -1;
   }
 
   /**
@@ -266,7 +393,7 @@ class StyleSheetsManager extends EventEmitter {
    * @returns {String}
    */
   async getText(resourceId) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
+    const styleSheet = this.#styleSheetMap.get(resourceId);
 
     const modifiedText = modifiedStyleSheets.get(styleSheet);
 
@@ -276,12 +403,7 @@ class StyleSheetsManager extends EventEmitter {
       return modifiedText;
     }
 
-    if (!styleSheet.href) {
-      // this is an inline <style> sheet
-      return styleSheet.ownerNode.textContent;
-    }
-
-    return this._fetchStyleSheet(styleSheet);
+    return getStyleSheetText(styleSheet);
   }
 
   /**
@@ -292,10 +414,10 @@ class StyleSheetsManager extends EventEmitter {
    * @return {Boolean} the disabled state after toggling.
    */
   toggleDisabled(resourceId) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
+    const styleSheet = this.#styleSheetMap.get(resourceId);
     styleSheet.disabled = !styleSheet.disabled;
 
-    this._notifyPropertyChanged(resourceId, "disabled", styleSheet.disabled);
+    this.#notifyPropertyChanged(resourceId, "disabled", styleSheet.disabled);
 
     return styleSheet.disabled;
   }
@@ -306,37 +428,35 @@ class StyleSheetsManager extends EventEmitter {
    * @param  {String} resourceId
    * @param  {String} text
    *         New text.
-   * @param  {Boolean} transition
-   *         Whether to do CSS transition for change.
-   * @param  {Number} kind
-   *         Either UPDATE_PRESERVING_RULES or UPDATE_GENERAL
-   * @param {String} cause
+   * @param  {Object} options
+   * @param  {Boolean} options.transition
+   *         Whether to do CSS transition for change. Defaults to false.
+   * @param  {Number} options.kind
+   *         Either UPDATE_PRESERVING_RULES or UPDATE_GENERAL. Defaults to UPDATE_GENERAL.
+   * @param {String} options.cause
    *         Indicates the cause of this update (e.g. "styleeditor") if this was called
    *         from the stylesheet to be edited by the user from the StyleEditor.
    */
-  async update(
+  async setStyleSheetText(
     resourceId,
     text,
-    transition,
-    kind = UPDATE_GENERAL,
-    cause = ""
+    { transition = false, kind = UPDATE_GENERAL, cause = "" } = {}
   ) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
+    const styleSheet = this.#styleSheetMap.get(resourceId);
     InspectorUtils.parseStyleSheet(styleSheet, text);
     modifiedStyleSheets.set(styleSheet, text);
 
+    const { atRules, ruleCount } =
+      this.getStyleSheetRuleCountAndAtRules(styleSheet);
+
     if (kind !== UPDATE_PRESERVING_RULES) {
-      this._notifyPropertyChanged(
-        resourceId,
-        "ruleCount",
-        styleSheet.cssRules.length
-      );
+      this.#notifyPropertyChanged(resourceId, "ruleCount", ruleCount);
     }
 
     if (transition) {
-      this._startTransition(resourceId, kind, cause);
+      this.#startTransition(resourceId, kind, cause);
     } else {
-      this.emit("stylesheet-updated", {
+      this.#onStyleSheetUpdated({
         resourceId,
         updateKind: "style-applied",
         updates: {
@@ -345,18 +465,11 @@ class StyleSheetsManager extends EventEmitter {
       });
     }
 
-    // Remove event handler from all media query list we set to. We are going to re-set
-    // those handler properly from _getMediaRules.
-    for (const mql of this._mqlList) {
-      mql.onchange = null;
-    }
-
-    const mediaRules = await this._getMediaRules(styleSheet);
-    this.emit("stylesheet-updated", {
+    this.#onStyleSheetUpdated({
       resourceId,
-      updateKind: "media-rules-changed",
+      updateKind: "at-rules-changed",
       updates: {
-        resourceUpdates: { mediaRules },
+        resourceUpdates: { atRules },
       },
     });
   }
@@ -373,13 +486,13 @@ class StyleSheetsManager extends EventEmitter {
    *         Indicates the cause of this update (e.g. "styleeditor") if this was called
    *         from the stylesheet to be edited by the user from the StyleEditor.
    */
-  _startTransition(resourceId, kind, cause) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
-    const document = styleSheet.ownerNode.ownerDocument;
-    const window = styleSheet.ownerNode.ownerGlobal;
+  #startTransition(resourceId, kind, cause) {
+    const styleSheet = this.#styleSheetMap.get(resourceId);
+    const document = styleSheet.associatedDocument;
+    const window = document.ownerGlobal;
 
-    if (!this._transitionSheetLoaded) {
-      this._transitionSheetLoaded = true;
+    if (!this.#transitionSheetLoaded) {
+      this.#transitionSheetLoaded = true;
       // We don't remove this sheet. It uses an internal selector that
       // we only apply via locks, so there's no need to load and unload
       // it all the time.
@@ -389,10 +502,10 @@ class StyleSheetsManager extends EventEmitter {
     addPseudoClassLock(document.documentElement, TRANSITION_PSEUDO_CLASS);
 
     // Set up clean up and commit after transition duration (+buffer)
-    // @see _onTransitionEnd
-    window.clearTimeout(this._transitionTimeout);
-    this._transitionTimeout = window.setTimeout(
-      this._onTransitionEnd.bind(this, resourceId, kind, cause),
+    // @see #onTransitionEnd
+    window.clearTimeout(this.#transitionTimeout);
+    this.#transitionTimeout = window.setTimeout(
+      this.#onTransitionEnd.bind(this, resourceId, kind, cause),
       TRANSITION_DURATION_MS + TRANSITION_BUFFER_MS
     );
   }
@@ -406,14 +519,14 @@ class StyleSheetsManager extends EventEmitter {
    *         Indicates the cause of this update (e.g. "styleeditor") if this was called
    *         from the stylesheet to be edited by the user from the StyleEditor.
    */
-  _onTransitionEnd(resourceId, kind, cause) {
-    const styleSheet = this._styleSheetMap.get(resourceId);
-    const document = styleSheet.ownerNode.ownerDocument;
+  #onTransitionEnd(resourceId, kind, cause) {
+    const styleSheet = this.#styleSheetMap.get(resourceId);
+    const document = styleSheet.associatedDocument;
 
-    this._transitionTimeout = null;
+    this.#transitionTimeout = null;
     removePseudoClassLock(document.documentElement, TRANSITION_PSEUDO_CLASS);
 
-    this.emit("stylesheet-updated", {
+    this.#onStyleSheetUpdated({
       resourceId,
       updateKind: "style-applied",
       updates: {
@@ -423,88 +536,12 @@ class StyleSheetsManager extends EventEmitter {
   }
 
   /**
-   * Retrieve the content of a given stylesheet
-   *
-   * @param {StyleSheet} styleSheet
-   * @returns {String}
-   */
-  async _fetchStyleSheet(styleSheet) {
-    const href = styleSheet.href;
-
-    const options = {
-      loadFromCache: true,
-      policy: Ci.nsIContentPolicy.TYPE_INTERNAL_STYLESHEET,
-      charset: this._getCSSCharset(styleSheet),
-    };
-
-    // Bug 1282660 - We use the system principal to load the default internal
-    // stylesheets instead of the content principal since such stylesheets
-    // require system principal to load. At meanwhile, we strip the loadGroup
-    // for preventing the assertion of the userContextId mismatching.
-
-    // chrome|file|resource|moz-extension protocols rely on the system principal.
-    const excludedProtocolsRe = /^(chrome|file|resource|moz-extension):\/\//;
-    if (!excludedProtocolsRe.test(href)) {
-      // Stylesheets using other protocols should use the content principal.
-      const ownerNode = getSheetOwnerNode(styleSheet);
-      if (ownerNode) {
-        // eslint-disable-next-line mozilla/use-ownerGlobal
-        options.window = ownerNode.ownerDocument.defaultView;
-        options.principal = ownerNode.ownerDocument.nodePrincipal;
-      }
-    }
-
-    let result;
-
-    try {
-      result = await fetch(href, options);
-    } catch (e) {
-      // The list of excluded protocols can be missing some protocols, try to use the
-      // system principal if the first fetch failed.
-      console.error(
-        `stylesheets: fetch failed for ${href},` +
-          ` using system principal instead.`
-      );
-      options.window = undefined;
-      options.principal = undefined;
-      result = await fetch(href, options);
-    }
-
-    return result.content;
-  }
-
-  /**
-   * Get charset of a given stylesheet
-   *
-   * @param {StyleSheet} styleSheet
-   * @returns {String}
-   */
-  _getCSSCharset(styleSheet) {
-    if (styleSheet) {
-      // charset attribute of <link> or <style> element, if it exists
-      if (styleSheet.ownerNode?.getAttribute) {
-        const linkCharset = styleSheet.ownerNode.getAttribute("charset");
-        if (linkCharset != null) {
-          return linkCharset;
-        }
-      }
-
-      // charset of referring document.
-      if (styleSheet.ownerNode?.ownerDocument.characterSet) {
-        return styleSheet.ownerNode.ownerDocument.characterSet;
-      }
-    }
-
-    return "UTF-8";
-  }
-
-  /**
    * Retrieve the CSSRuleList of a given stylesheet
    *
    * @param {StyleSheet} styleSheet
    * @returns {CSSRuleList}
    */
-  _getCSSRules(styleSheet) {
+  #getCSSRules(styleSheet) {
     try {
       return styleSheet.cssRules;
     } catch (e) {
@@ -531,11 +568,12 @@ class StyleSheetsManager extends EventEmitter {
    * @param {StyleSheet} styleSheet
    * @returns Array<StyleSheet>
    */
-  async _getImportedStyleSheets(document, styleSheet) {
+  async #getImportedStyleSheets(document, styleSheet) {
     const importedStyleSheets = [];
 
-    for (const rule of await this._getCSSRules(styleSheet)) {
-      if (rule.type == CSSRule.IMPORT_RULE) {
+    for (const rule of await this.#getCSSRules(styleSheet)) {
+      const ruleClassName = ChromeUtils.getClassName(rule);
+      if (ruleClassName == "CSSImportRule") {
         // With the Gecko style system, the associated styleSheet may be null
         // if it has already been seen because an import cycle for the same
         // URL.  With Stylo, the styleSheet will exist (which is correct per
@@ -543,8 +581,8 @@ class StyleSheetsManager extends EventEmitter {
         // same URL to avoid cycles.
         if (
           !rule.styleSheet ||
-          this._haveAncestorWithSameURL(rule.styleSheet) ||
-          !this._shouldListSheet(rule.styleSheet)
+          this.#haveAncestorWithSameURL(rule.styleSheet) ||
+          !this.#shouldListSheet(rule.styleSheet)
         ) {
           continue;
         }
@@ -552,12 +590,12 @@ class StyleSheetsManager extends EventEmitter {
         importedStyleSheets.push(rule.styleSheet);
 
         // recurse imports in this stylesheet as well
-        const children = await this._getImportedStyleSheets(
+        const children = await this.#getImportedStyleSheets(
           document,
           rule.styleSheet
         );
         importedStyleSheets.push(...children);
-      } else if (rule.type != CSSRule.CHARSET_RULE) {
+      } else if (ruleClassName != "CSSCharsetRule") {
         // @import rules must precede all others except @charset
         break;
       }
@@ -567,50 +605,112 @@ class StyleSheetsManager extends EventEmitter {
   }
 
   /**
-   * Retrieve the media rules of a given stylesheet
+   * Retrieve the total number of rules (including nested ones) and
+   * all the at-rules of a given stylesheet.
    *
    * @param {StyleSheet} styleSheet
-   * @returns {Array<Object>} An array of object of the following shape:
-   *           - mediaText {String}
-   *           - conditionText {String}
-   *           - matches {Boolean}: true if the media rule matches the current state of the document
-   *           - line {Number}
-   *           - column {Number}
+   * @returns {Object} An object of the following shape:
+   *          - {Integer} ruleCount: The total number of rules in the stylesheet
+   *          - {Array<Object>} atRules: An array of object of the following shape:
+   *            - type {String}
+   *            - conditionText {String}
+   *            - matches {Boolean}: true if the media rule matches the current state of the document
+   *            - layerName {String}
+   *            - line {Number}
+   *            - column {Number}
    */
-  async _getMediaRules(styleSheet) {
-    const resourceId = this._findStyleSheetResourceId(styleSheet);
+  getStyleSheetRuleCountAndAtRules(styleSheet) {
+    const resourceId = this.#findStyleSheetResourceId(styleSheet);
     if (!resourceId) {
       return [];
     }
 
-    this._mqlList = [];
+    if (this.#mqlChangeAbortControllerMap.has(resourceId)) {
+      this.#mqlChangeAbortControllerMap.get(resourceId).abort();
+      this.#mqlChangeAbortControllerMap.delete(resourceId);
+    }
 
-    const styleSheetRules = await this._getCSSRules(styleSheet);
-    const mediaRules = Array.from(styleSheetRules).filter(
-      rule => rule.type === CSSRule.MEDIA_RULE
-    );
-
-    return mediaRules.map((rule, index) => {
-      let matches = false;
-
-      try {
-        const window = styleSheet.ownerNode.ownerGlobal;
-        const mql = window.matchMedia(rule.media.mediaText);
-        matches = mql.matches;
-        mql.onchange = this._onMatchesChange.bind(this, resourceId, index);
-        this._mqlList.push(mql);
-      } catch (e) {
-        // Ignored
+    // Accessing the stylesheet associated window might be slow due to cross compartment
+    // wrappers, so only retrieve it if it's needed.
+    let win;
+    const getStyleSheetAssociatedWindow = () => {
+      if (!win) {
+        win = styleSheet.associatedDocument?.ownerGlobal;
       }
+      return win;
+    };
 
-      return {
-        mediaText: rule.media.mediaText,
-        conditionText: rule.conditionText,
-        matches,
-        line: InspectorUtils.getRuleLine(rule),
-        column: InspectorUtils.getRuleColumn(rule),
-      };
-    });
+    // This returns the following type of at-rules:
+    // - CSSMediaRule
+    // - CSSContainerRule
+    // - CSSSupportsRule
+    // - CSSLayerBlockRule
+    // New types can be added from InpsectorUtils.cpp `CollectAtRules`
+    const { atRules: styleSheetRules, ruleCount } =
+      InspectorUtils.getStyleSheetRuleCountAndAtRules(styleSheet);
+    const atRules = [];
+    for (const rule of styleSheetRules) {
+      const className = ChromeUtils.getClassName(rule);
+      if (className === "CSSMediaRule") {
+        let matches = false;
+
+        try {
+          const associatedWin = getStyleSheetAssociatedWindow();
+          const mql = associatedWin.matchMedia(rule.media.mediaText);
+          matches = mql.matches;
+
+          let ac = this.#mqlChangeAbortControllerMap.get(resourceId);
+          if (!ac) {
+            ac = new associatedWin.AbortController();
+            this.#mqlChangeAbortControllerMap.set(resourceId, ac);
+          }
+
+          const index = atRules.length;
+          mql.addEventListener(
+            "change",
+            () => this.#onMatchesChange(resourceId, index, mql),
+            {
+              signal: ac.signal,
+            }
+          );
+        } catch (e) {
+          // Ignored
+        }
+
+        atRules.push({
+          type: "media",
+          conditionText: rule.conditionText,
+          matches,
+          line: InspectorUtils.getRelativeRuleLine(rule),
+          column: InspectorUtils.getRuleColumn(rule),
+        });
+      } else if (className === "CSSContainerRule") {
+        atRules.push({
+          type: "container",
+          conditionText: rule.conditionText,
+          line: InspectorUtils.getRelativeRuleLine(rule),
+          column: InspectorUtils.getRuleColumn(rule),
+        });
+      } else if (className === "CSSSupportsRule") {
+        atRules.push({
+          type: "support",
+          conditionText: rule.conditionText,
+          line: InspectorUtils.getRelativeRuleLine(rule),
+          column: InspectorUtils.getRuleColumn(rule),
+        });
+      } else if (className === "CSSLayerBlockRule") {
+        atRules.push({
+          type: "layer",
+          layerName: rule.name,
+          line: InspectorUtils.getRelativeRuleLine(rule),
+          column: InspectorUtils.getRuleColumn(rule),
+        });
+      }
+    }
+    return {
+      ruleCount,
+      atRules,
+    };
   }
 
   /**
@@ -620,18 +720,18 @@ class StyleSheetsManager extends EventEmitter {
    * @param {String} resourceId
    *        The id associated with the stylesheet
    * @param {Number} index
-   *        The index of the media rule relatively to all the other media rules of the stylesheet
+   *        The index of the media rule relatively to all the other at-rules of the stylesheet
    * @param {MediaQueryList} mql
    *        The result of matchMedia for the given media rule
    */
-  _onMatchesChange(resourceId, index, mql) {
-    this.emit("stylesheet-updated", {
+  #onMatchesChange(resourceId, index, mql) {
+    this.#onStyleSheetUpdated({
       resourceId,
       updateKind: "matches-change",
       updates: {
         nestedResourceUpdates: [
           {
-            path: ["mediaRules", index, "matches"],
+            path: ["atRules", index, "matches"],
             value: mql.matches,
           },
         ],
@@ -645,7 +745,7 @@ class StyleSheetsManager extends EventEmitter {
    * @param {StyleSheet} styleSheet
    * @returns {String}
    */
-  _getNodeHref(styleSheet) {
+  getNodeHref(styleSheet) {
     const { ownerNode } = styleSheet;
     if (!ownerNode) {
       return null;
@@ -653,7 +753,9 @@ class StyleSheetsManager extends EventEmitter {
 
     if (ownerNode.nodeType == ownerNode.DOCUMENT_NODE) {
       return ownerNode.location.href;
-    } else if (ownerNode.ownerDocument?.location) {
+    }
+
+    if (ownerNode.ownerDocument?.location) {
       return ownerNode.ownerDocument.location.href;
     }
 
@@ -666,36 +768,22 @@ class StyleSheetsManager extends EventEmitter {
    * @param {StyleSheet} styleSheet
    * @returns {String}
    */
-  _getSourcemapBaseURL(styleSheet) {
+  getSourcemapBaseURL(styleSheet) {
     // When the style is injected via nsIDOMWindowUtils.loadSheet, even
     // the parent style sheet has no owner, so default back to target actor
     // document
-    const ownerNode = getSheetOwnerNode(styleSheet);
+    const ownerNode = getStyleSheetOwnerNode(styleSheet);
     const ownerDocument = ownerNode
       ? ownerNode.ownerDocument
-      : this._targetActor.window;
+      : this.#targetActor.window;
 
     return getSourcemapBaseURL(
       // Technically resolveSourceURL should be used here alongside
       // "this.rawSheet.sourceURL", but the style inspector does not support
       // /*# sourceURL=*/ in CSS, so we're omitting it here (bug 880831).
-      styleSheet.href || this._getNodeHref(styleSheet),
+      styleSheet.href || this.getNodeHref(styleSheet),
       ownerDocument
     );
-  }
-
-  /**
-   * Get the index of a given stylesheet in the document it lives in
-   *
-   * @param {StyleSheet} styleSheet
-   * @returns {Number}
-   */
-  _getStyleSheetIndex(styleSheet) {
-    const styleSheets = InspectorUtils.getAllStyleSheets(
-      this._targetActor.window.document,
-      true
-    );
-    return styleSheets.indexOf(styleSheet);
   }
 
   /**
@@ -704,7 +792,7 @@ class StyleSheetsManager extends EventEmitter {
    * @param {Window} window
    * @returns {Array<StyleSheet>}
    */
-  async _getStyleSheetsForWindow(window) {
+  async #getStyleSheetsForWindow(window) {
     const { document } = window;
     const documentOnly = !document.nodePrincipal.isSystemPrincipal;
 
@@ -714,14 +802,14 @@ class StyleSheetsManager extends EventEmitter {
       document,
       documentOnly
     )) {
-      if (!this._shouldListSheet(styleSheet)) {
+      if (!this.#shouldListSheet(styleSheet)) {
         continue;
       }
 
       styleSheets.push(styleSheet);
 
       // Get all sheets, including imported ones
-      const importedStyleSheets = await this._getImportedStyleSheets(
+      const importedStyleSheets = await this.#getImportedStyleSheets(
         document,
         styleSheet
       );
@@ -737,7 +825,7 @@ class StyleSheetsManager extends EventEmitter {
    * @param {StyleSheet} styleSheet
    * @returns {Boolean}
    */
-  _haveAncestorWithSameURL(styleSheet) {
+  #haveAncestorWithSameURL(styleSheet) {
     const href = styleSheet.href;
     while (styleSheet.parentStyleSheet) {
       if (styleSheet.parentStyleSheet.href == href) {
@@ -758,8 +846,8 @@ class StyleSheetsManager extends EventEmitter {
    * @param {String} value
    *        The value of the property
    */
-  _notifyPropertyChanged(resourceId, property, value) {
-    this.emit("stylesheet-updated", {
+  #notifyPropertyChanged(resourceId, property, value) {
+    this.#onStyleSheetUpdated({
       resourceId,
       updateKind: "property-change",
       updates: { resourceUpdates: { [property]: value } },
@@ -774,37 +862,51 @@ class StyleSheetsManager extends EventEmitter {
    * - Append <style> to document
    * - Change disable attribute of stylesheet object
    * - Change disable attribute of <link> to false
-   * When appending <link>, <style> or changing `disable` attribute to false, `applicable`
-   * is passed as true. The other hand, when changing `disable` to true, this will be
-   * false.
-   * NOTE: For now, StyleSheetApplicableStateChanged will not be called when removing the
-   *       link and style element.
+   * - Stylesheet is constructed.
+   * When appending <link>, <style> or changing `disabled` attribute to false,
+   * `applicable` is passed as true. The other hand, when changing `disabled`
+   * to true, this will be false.
    *
-   * @param {StyleSheetApplicableStateChanged}
+   * NOTE: StyleSheetApplicableStateChanged is _not_ called when removing the <link>/<style>,
+   *       but a StyleSheetRemovedEvent is emitted in such case (see #onStyleSheetRemoved)
+   *
+   * @param {StyleSheetApplicableStateChangedEvent}
    *        The triggering event.
    */
-  _onApplicableStateChanged({ applicable, stylesheet: styleSheet }) {
+  #onApplicableStateChanged = ({ applicable, stylesheet: styleSheet }) => {
     if (
       // Have interest in applicable stylesheet only.
       applicable &&
-      // No ownerNode means that this stylesheet is *not* associated to a DOM Element.
-      styleSheet.ownerNode &&
-      this._shouldListSheet(styleSheet) &&
-      !this._haveAncestorWithSameURL(styleSheet)
+      styleSheet.associatedDocument &&
+      (!this.#targetActor.ignoreSubFrames ||
+        styleSheet.associatedDocument.ownerGlobal ===
+          this.#targetActor.window) &&
+      this.#shouldListSheet(styleSheet) &&
+      !this.#haveAncestorWithSameURL(styleSheet)
     ) {
-      this._registerStyleSheet(styleSheet);
+      this.#registerStyleSheet(styleSheet);
     }
-  }
+  };
+
+  /**
+   * Event handler that is called when a style sheet is removed.
+   *
+   * @param {StyleSheetRemovedEvent}
+   *        The triggering event.
+   */
+  #onStylesheetRemoved = event => {
+    this.#unregisterStyleSheet(event.stylesheet);
+  };
 
   /**
    * If the stylesheet isn't registered yet, this function will generate an associated
-   * resourceId and will emit an "applicable-stylesheet-added" event.
+   * resourceId and call registered `onAvailable` listeners.
    *
    * @param {StyleSheet} styleSheet
    * @returns {String} the associated resourceId
    */
-  _registerStyleSheet(styleSheet) {
-    const existingResourceId = this._findStyleSheetResourceId(styleSheet);
+  #registerStyleSheet(styleSheet) {
+    const existingResourceId = this.#findStyleSheetResourceId(styleSheet);
     // If the stylesheet is already registered, there's no need to notify about it again.
     if (existingResourceId) {
       return existingResourceId;
@@ -812,29 +914,65 @@ class StyleSheetsManager extends EventEmitter {
 
     // It's important to prefix the resourceId with the target actorID so we can't have
     // duplicated resource ids when the client connects to multiple targets.
-    const resourceId = `${this._targetActor.actorID}:stylesheet:${this
-      ._styleSheetCount++}`;
-    this._styleSheetMap.set(resourceId, styleSheet);
+    const resourceId = `${this.#targetActor.actorID}:stylesheet:${this
+      .#styleSheetCount++}`;
+    this.#styleSheetMap.set(resourceId, styleSheet);
 
-    const creationData = this._styleSheetCreationData?.get(styleSheet);
-    this._styleSheetCreationData?.delete(styleSheet);
+    const creationData = this.#styleSheetCreationData?.get(styleSheet);
+    this.#styleSheetCreationData?.delete(styleSheet);
 
-    // We need to use emitAsync and await on it so the watcher can sends the resource to
-    // the client before we resolve a potential creationData promise.
-    const onEventHandlerDone = this.emitAsync("applicable-stylesheet-added", {
-      resourceId,
-      styleSheet,
-      creationData,
-    });
+    const onAvailablePromises = [];
+    for (const onAvailable of this.#watchListeners.onAvailable) {
+      onAvailablePromises.push(
+        onAvailable({
+          resourceId,
+          styleSheet,
+          creationData,
+        })
+      );
+    }
 
     // creationData exists if this stylesheet was created via `addStyleSheet`.
     if (creationData) {
-      //  We resolve the promise once the handler of applicable-stylesheet-added are settled,
-      // (e.g. the watcher sent the resources to the client) so `addStyleSheet` calls can
-      // be fullfilled.
-      onEventHandlerDone.then(() => creationData?.resolve());
+      //  We resolve the promise once the watcher sent the resources to the client,
+      // so `addStyleSheet` calls can be fullfilled.
+      Promise.all(onAvailablePromises).then(() => creationData?.resolve());
     }
     return resourceId;
+  }
+
+  /**
+   * If the stylesheet is registered, this function will call registered `onDestroyed`
+   * listeners with the stylesheet resourceId.
+   *
+   * @param {StyleSheet} styleSheet
+   */
+  #unregisterStyleSheet(styleSheet) {
+    const existingResourceId = this.#findStyleSheetResourceId(styleSheet);
+    if (!existingResourceId) {
+      return;
+    }
+
+    this.#styleSheetMap.delete(existingResourceId);
+    this.#styleSheetCreationData?.delete(styleSheet);
+    if (this.#mqlChangeAbortControllerMap.has(existingResourceId)) {
+      this.#mqlChangeAbortControllerMap.get(existingResourceId).abort();
+      this.#mqlChangeAbortControllerMap.delete(existingResourceId);
+    }
+
+    for (const onDestroyed of this.#watchListeners.onDestroyed) {
+      onDestroyed({
+        resourceId: existingResourceId,
+      });
+    }
+  }
+
+  #onStyleSheetUpdated(data) {
+    this.emit("stylesheet-updated", data);
+
+    for (const onUpdated of this.#watchListeners.onUpdated) {
+      onUpdated(data);
+    }
   }
 
   /**
@@ -843,68 +981,58 @@ class StyleSheetsManager extends EventEmitter {
    * @param {StyleSheet} styleSheet
    * @returns {Boolean}
    */
-  _shouldListSheet(styleSheet) {
-    // Special case about:PreferenceStyleSheet, as it is generated on the
-    // fly and the URI is not registered with the about: handler.
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=935803#c37
-    if (styleSheet.href?.toLowerCase() === "about:preferencestylesheet") {
+  #shouldListSheet(styleSheet) {
+    const href = styleSheet.href?.toLowerCase();
+    // FIXME(bug 1826538): Make accessiblecaret.css and similar UA-widget
+    // sheets system sheets, then remove this special-case.
+    if (
+      href === "resource://content-accessible/accessiblecaret.css" ||
+      (href === "resource://devtools-highlighter-styles/highlighters.css" &&
+        this.#targetActor.sessionContext.type !== "all")
+    ) {
       return false;
     }
-
     return true;
   }
 
   /**
-   * The StyleSheetManager instance is managed by the target, so this will be called when
+   * The StyleSheetsManager instance is managed by the target, so this will be called when
    * the target gets destroyed.
    */
   destroy() {
     // Cleanup
-    this._targetActor.off("window-ready", this._watchStyleSheetChangeEvents);
+    if (this.#abortController) {
+      this.#abortController.abort();
+    }
+    if (this.#mqlChangeAbortControllerMap) {
+      for (const ac of this.#mqlChangeAbortControllerMap.values()) {
+        ac.abort();
+      }
+    }
 
     try {
-      this._targetActor.chromeEventHandler.removeEventListener(
-        "StyleSheetApplicableStateChanged",
-        this._onApplicableStateChanged,
-        true
-      );
-      this._unwatchStyleSheetChangeEvents();
+      this.#unwatchStyleSheetChangeEvents();
     } catch (e) {
       console.error(
         "Error when destroying StyleSheet manager for",
-        this._targetActor,
+        this.#targetActor,
         ": ",
         e
       );
     }
+
+    this.#styleSheetMap.clear();
+    this.#abortController = null;
+    this.#mqlChangeAbortControllerMap = null;
+    this.#styleSheetCreationData = null;
+    this.#styleSheetMap = null;
+    this.#targetActor = null;
+    this.#watchListeners = null;
   }
-}
-
-function hasStyleSheetWatcherSupportForTarget(targetActor) {
-  // Check if the watcher actor supports stylesheet resources.
-  // This is a temporary solution until we have a reliable way of propagating watchedData
-  // to all targets (so we'll be able to store this information via addDataEntry).
-  // This will be done in Bug 1700092.
-  const { sharedData } = Services.cpmm;
-  const watchedDataByWatcherActor = sharedData.get(SHARED_DATA_KEY_NAME);
-  if (!watchedDataByWatcherActor) {
-    return false;
-  }
-
-  const watcherData = Array.from(watchedDataByWatcherActor.values()).find(
-    watchedData => {
-      const actors = TargetActorRegistry.getTargetActors(
-        targetActor.browserId,
-        watchedData.connectionPrefix
-      );
-      return actors.includes(targetActor);
-    }
-  );
-
-  return watcherData?.watcherTraits?.resources?.[TYPES.STYLESHEET] || false;
 }
 
 module.exports = {
   StyleSheetsManager,
-  hasStyleSheetWatcherSupportForTarget,
+  UPDATE_GENERAL,
+  UPDATE_PRESERVING_RULES,
 };

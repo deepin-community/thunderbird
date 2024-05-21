@@ -11,17 +11,14 @@
 #include "mozilla/StaticPrefs_intl.h"
 #include "nsCommandManager.h"
 #include "nsCOMPtr.h"
-#include "nsGlobalWindow.h"
 #include "nsString.h"
 #include "nsPrintfCString.h"
 #include "nsReadableUtils.h"
 #include "nsUnicharUtils.h"
-#include "nsGlobalWindowInner.h"
 #include "nsIHTMLContentSink.h"
 #include "nsIProtocolHandler.h"
 #include "nsIXMLContentSink.h"
 #include "nsHTMLParts.h"
-#include "nsHTMLStyleSheet.h"
 #include "nsGkAtoms.h"
 #include "nsPresContext.h"
 #include "nsPIDOMWindow.h"
@@ -29,7 +26,7 @@
 #include "nsIStreamListener.h"
 #include "nsIURI.h"
 #include "nsNetUtil.h"
-#include "nsIContentViewer.h"
+#include "nsIDocumentViewer.h"
 #include "nsDocShell.h"
 #include "nsDocShellLoadTypes.h"
 #include "nsIScriptContext.h"
@@ -40,7 +37,6 @@
 #include "nsAttrName.h"
 
 #include "nsNetCID.h"
-#include "nsParserCIID.h"
 #include "mozilla/parser/PrototypeDocumentParser.h"
 #include "mozilla/dom/PrototypeDocumentContentSink.h"
 #include "nsNameSpaceManager.h"
@@ -52,7 +48,6 @@
 #include "nsJSUtils.h"
 #include "DocumentInlines.h"
 #include "nsICachingChannel.h"
-#include "nsIContentViewer.h"
 #include "nsIScriptElement.h"
 #include "nsArrayUtils.h"
 
@@ -74,6 +69,7 @@
 #include "nsIRequest.h"
 #include "nsHtml5TreeOpExecutor.h"
 #include "nsHtml5Parser.h"
+#include "nsParser.h"
 #include "nsSandboxFlags.h"
 #include "mozilla/dom/HTMLBodyElement.h"
 #include "mozilla/dom/HTMLDocumentBinding.h"
@@ -84,6 +80,7 @@
 #include "nsFocusManager.h"
 #include "nsIFrame.h"
 #include "nsIContent.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/StyleSheet.h"
 #include "mozilla/StyleSheetInlines.h"
 #include "mozilla/Unused.h"
@@ -93,9 +90,7 @@ using namespace mozilla::dom;
 
 #include "prtime.h"
 
-//#define DEBUG_charset
-
-static NS_DEFINE_CID(kCParserCID, NS_PARSER_CID);
+// #define DEBUG_charset
 
 // ==================================================================
 // =
@@ -105,10 +100,13 @@ static bool IsAsciiCompatible(const Encoding* aEncoding) {
   return aEncoding->IsAsciiCompatible() || aEncoding == ISO_2022_JP_ENCODING;
 }
 
-nsresult NS_NewHTMLDocument(Document** aInstancePtrResult, bool aLoadedAsData) {
+nsresult NS_NewHTMLDocument(Document** aInstancePtrResult,
+                            nsIPrincipal* aPrincipal,
+                            nsIPrincipal* aPartitionedPrincipal,
+                            bool aLoadedAsData) {
   RefPtr<nsHTMLDocument> doc = new nsHTMLDocument();
 
-  nsresult rv = doc->Init();
+  nsresult rv = doc->Init(aPrincipal, aPartitionedPrincipal);
 
   if (NS_FAILED(rv)) {
     *aInstancePtrResult = nullptr;
@@ -141,8 +139,9 @@ JSObject* nsHTMLDocument::WrapNode(JSContext* aCx,
   return HTMLDocument_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-nsresult nsHTMLDocument::Init() {
-  nsresult rv = Document::Init();
+nsresult nsHTMLDocument::Init(nsIPrincipal* aPrincipal,
+                              nsIPrincipal* aPartitionedPrincipal) {
+  nsresult rv = Document::Init(aPrincipal, aPartitionedPrincipal);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Now reset the compatibility mode of the CSSLoader
@@ -179,20 +178,23 @@ void nsHTMLDocument::ResetToURI(nsIURI* aURI, nsILoadGroup* aLoadGroup,
   // Make the content type default to "text/html", we are a HTML
   // document, after all. Once we start getting data, this may be
   // changed.
-  SetContentTypeInternal(nsDependentCString("text/html"));
+  SetContentType(nsDependentCString("text/html"));
 }
 
-void nsHTMLDocument::TryReloadCharset(nsIContentViewer* aCv,
+void nsHTMLDocument::TryReloadCharset(nsIDocumentViewer* aViewer,
                                       int32_t& aCharsetSource,
                                       NotNull<const Encoding*>& aEncoding) {
-  if (aCv) {
+  if (aViewer) {
     int32_t reloadEncodingSource;
     const auto reloadEncoding =
-        aCv->GetReloadEncodingAndSource(&reloadEncodingSource);
+        aViewer->GetReloadEncodingAndSource(&reloadEncodingSource);
     if (kCharsetUninitialized != reloadEncodingSource) {
-      aCv->ForgetReloadEncoding();
+      aViewer->ForgetReloadEncoding();
 
-      if (reloadEncodingSource <= aCharsetSource) return;
+      if (reloadEncodingSource <= aCharsetSource ||
+          !IsAsciiCompatible(aEncoding)) {
+        return;
+      }
 
       if (reloadEncoding && IsAsciiCompatible(reloadEncoding)) {
         aCharsetSource = reloadEncodingSource;
@@ -202,11 +204,18 @@ void nsHTMLDocument::TryReloadCharset(nsIContentViewer* aCv,
   }
 }
 
-void nsHTMLDocument::TryUserForcedCharset(nsIContentViewer* aCv,
+void nsHTMLDocument::TryUserForcedCharset(nsIDocumentViewer* aViewer,
                                           nsIDocShell* aDocShell,
                                           int32_t& aCharsetSource,
-                                          NotNull<const Encoding*>& aEncoding) {
-  if (aCharsetSource >= kCharsetFromXmlDeclarationUtf16) {
+                                          NotNull<const Encoding*>& aEncoding,
+                                          bool& aForceAutoDetection) {
+  auto resetForce = MakeScopeExit([&] {
+    if (aDocShell) {
+      nsDocShell::Cast(aDocShell)->ResetForcedAutodetection();
+    }
+  });
+
+  if (aCharsetSource >= kCharsetFromOtherComponent) {
     return;
   }
 
@@ -217,19 +226,18 @@ void nsHTMLDocument::TryUserForcedCharset(nsIContentViewer* aCv,
 
   if (aDocShell && nsDocShell::Cast(aDocShell)->GetForcedAutodetection()) {
     // This is the Character Encoding menu code path in Firefox
-    aEncoding = WINDOWS_1252_ENCODING;
-    aCharsetSource = kCharsetFromPendingUserForcedAutoDetection;
-    nsDocShell::Cast(aDocShell)->ResetForcedAutodetection();
+    aForceAutoDetection = true;
   }
 }
 
 void nsHTMLDocument::TryParentCharset(nsIDocShell* aDocShell,
                                       int32_t& aCharsetSource,
-                                      NotNull<const Encoding*>& aEncoding) {
+                                      NotNull<const Encoding*>& aEncoding,
+                                      bool& aForceAutoDetection) {
   if (!aDocShell) {
     return;
   }
-  if (aCharsetSource >= kCharsetFromXmlDeclarationUtf16) {
+  if (aCharsetSource >= kCharsetFromOtherComponent) {
     return;
   }
 
@@ -241,8 +249,7 @@ void nsHTMLDocument::TryParentCharset(nsIDocShell* aDocShell,
   if (!parentCharset) {
     return;
   }
-  if (kCharsetFromPendingUserForcedAutoDetection == parentSource ||
-      kCharsetFromInitialUserForcedAutoDetection == parentSource ||
+  if (kCharsetFromInitialUserForcedAutoDetection == parentSource ||
       kCharsetFromFinalUserForcedAutoDetection == parentSource) {
     if (WillIgnoreCharsetOverride() ||
         !IsAsciiCompatible(aEncoding) ||  // if channel said UTF-16
@@ -250,7 +257,8 @@ void nsHTMLDocument::TryParentCharset(nsIDocShell* aDocShell,
       return;
     }
     aEncoding = WrapNotNull(parentCharset);
-    aCharsetSource = kCharsetFromPendingUserForcedAutoDetection;
+    aCharsetSource = kCharsetFromParentFrame;
+    aForceAutoDetection = true;
     return;
   }
 
@@ -279,19 +287,12 @@ bool ShouldUsePrototypeDocument(nsIChannel* aChannel, Document* aDoc) {
   return nsContentUtils::IsChromeDoc(aDoc);
 }
 
-nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
-                                           nsIChannel* aChannel,
-                                           nsILoadGroup* aLoadGroup,
-                                           nsISupports* aContainer,
-                                           nsIStreamListener** aDocListener,
-                                           bool aReset, nsIContentSink* aSink) {
+nsresult nsHTMLDocument::StartDocumentLoad(
+    const char* aCommand, nsIChannel* aChannel, nsILoadGroup* aLoadGroup,
+    nsISupports* aContainer, nsIStreamListener** aDocListener, bool aReset) {
   if (!aCommand) {
     MOZ_ASSERT(false, "Command is mandatory");
     return NS_ERROR_INVALID_POINTER;
-  }
-  if (aSink) {
-    MOZ_ASSERT(false, "Got a sink override. Should not happen for HTML doc.");
-    return NS_ERROR_INVALID_ARG;
   }
   if (mType != eHTML) {
     MOZ_ASSERT(mType == eXHTML);
@@ -383,8 +384,7 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
     aChannel->GetOriginalURI(getter_AddRefs(originalURI));
     mParser = new mozilla::parser::PrototypeDocumentParser(originalURI, this);
   } else {
-    mParser = do_CreateInstance(kCParserCID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+    mParser = new nsParser();
   }
 
   // Look for the parent document.  Note that at this point we don't have our
@@ -393,25 +393,25 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
 
   // in this block of code, if we get an error result, we return it
   // but if we get a null pointer, that's perfectly legal for parent
-  // and parentContentViewer
+  // and parentViewer
   nsCOMPtr<nsIDocShellTreeItem> parentAsItem;
   if (docShell) {
     docShell->GetInProcessSameTypeParent(getter_AddRefs(parentAsItem));
   }
 
   nsCOMPtr<nsIDocShell> parent(do_QueryInterface(parentAsItem));
-  nsCOMPtr<nsIContentViewer> parentContentViewer;
+  nsCOMPtr<nsIDocumentViewer> parentViewer;
   if (parent) {
-    rv = parent->GetContentViewer(getter_AddRefs(parentContentViewer));
+    rv = parent->GetDocViewer(getter_AddRefs(parentViewer));
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
-  nsCOMPtr<nsIContentViewer> cv;
+  nsCOMPtr<nsIDocumentViewer> viewer;
   if (docShell) {
-    docShell->GetContentViewer(getter_AddRefs(cv));
+    docShell->GetDocViewer(getter_AddRefs(viewer));
   }
-  if (!cv) {
-    cv = std::move(parentContentViewer);
+  if (!viewer) {
+    viewer = std::move(parentViewer);
   }
 
   nsAutoCString urlSpec;
@@ -421,7 +421,8 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
 #endif
 
   // These are the charset source and charset for our document
-  int32_t charsetSource;
+  bool forceAutoDetection = false;
+  int32_t charsetSource = kCharsetUninitialized;
   auto encoding = UTF_8_ENCODING;
 
   // For error reporting and referrer policy setting
@@ -430,20 +431,14 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
     executor = static_cast<nsHtml5TreeOpExecutor*>(mParser->GetContentSink());
   }
 
-  bool channelHadCharset = false;
   if (forceUtf8) {
     charsetSource = kCharsetFromUtf8OnlyMime;
   } else if (!IsHTMLDocument() || !docShell) {  // no docshell for text/html XHR
     charsetSource =
         IsHTMLDocument() ? kCharsetFromFallback : kCharsetFromDocTypeDefault;
     TryChannelCharset(aChannel, charsetSource, encoding, executor);
-    channelHadCharset = (charsetSource == kCharsetFromChannel);
   } else {
     NS_ASSERTION(docShell, "Unexpected null value");
-
-    charsetSource = kCharsetUninitialized;
-    // Used for .in and .lk TLDs. .jp is handled in the parser.
-    encoding = WINDOWS_1252_ENCODING;
 
     // The following will try to get the character encoding from various
     // sources. Each Try* function will return early if the source is already
@@ -460,12 +455,12 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
     // interpretation as ASCII and the user can be lured to using the
     // charset menu.
     TryChannelCharset(aChannel, charsetSource, encoding, executor);
-    channelHadCharset = (charsetSource == kCharsetFromChannel);
 
-    TryUserForcedCharset(cv, docShell, charsetSource, encoding);
+    TryUserForcedCharset(viewer, docShell, charsetSource, encoding,
+                         forceAutoDetection);
 
-    TryReloadCharset(cv, charsetSource, encoding);  // For encoding reload
-    TryParentCharset(docShell, charsetSource, encoding);
+    TryReloadCharset(viewer, charsetSource, encoding);  // For encoding reload
+    TryParentCharset(docShell, charsetSource, encoding, forceAutoDetection);
   }
 
   SetDocumentCharacterSetSource(charsetSource);
@@ -479,7 +474,7 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
 #ifdef DEBUG_charset
   printf(" charset = %s source %d\n", charset.get(), charsetSource);
 #endif
-  mParser->SetDocumentCharset(encoding, charsetSource, channelHadCharset);
+  mParser->SetDocumentCharset(encoding, charsetSource, forceAutoDetection);
   mParser->SetCommand(aCommand);
 
   if (!IsHTMLDocument()) {
@@ -508,7 +503,7 @@ nsresult nsHTMLDocument::StartDocumentLoad(const char* aCommand,
   }
 
   // parser the content of the URI
-  mParser->Parse(uri, nullptr, (void*)this);
+  mParser->Parse(uri);
 
   return rv;
 }
@@ -556,7 +551,7 @@ void nsHTMLDocument::AddedForm() { ++mNumForms; }
 
 void nsHTMLDocument::RemovedForm() { --mNumForms; }
 
-int32_t nsHTMLDocument::GetNumFormsSynchronous() { return mNumForms; }
+int32_t nsHTMLDocument::GetNumFormsSynchronous() const { return mNumForms; }
 
 bool nsHTMLDocument::ResolveName(JSContext* aCx, const nsAString& aName,
                                  JS::MutableHandle<JS::Value> aRetval,
@@ -617,7 +612,7 @@ void nsHTMLDocument::GetSupportedNames(nsTArray<nsString>& aNames) {
 
 bool nsHTMLDocument::MatchFormControls(Element* aElement, int32_t aNamespaceID,
                                        nsAtom* aAtom, void* aData) {
-  return aElement->IsNodeOfType(nsIContent::eHTML_FORM_CONTROL);
+  return aElement->IsHTMLFormControlElement();
 }
 
 nsresult nsHTMLDocument::Clone(dom::NodeInfo* aNodeInfo,
@@ -681,11 +676,10 @@ bool nsHTMLDocument::WillIgnoreCharsetOverride() {
     case kCharsetFromDocTypeDefault:
     case kCharsetFromInitialAutoDetectionWouldHaveBeenUTF8:
     case kCharsetFromInitialAutoDetectionWouldNotHaveBeenUTF8DependedOnTLD:
-    case kCharsetFromFinalAutoDetectionWouldHaveBeenUTF8:
+    case kCharsetFromFinalAutoDetectionWouldHaveBeenUTF8InitialWasASCII:
     case kCharsetFromFinalAutoDetectionWouldNotHaveBeenUTF8DependedOnTLD:
     case kCharsetFromParentFrame:
     case kCharsetFromXmlDeclaration:
-    case kCharsetFromMetaPrescan:
     case kCharsetFromMetaTag:
     case kCharsetFromChannel:
       return false;
@@ -743,8 +737,7 @@ void nsHTMLDocument::GetFormsAndFormControls(nsContentList** aFormList,
 
     holder = new ContentListHolder(this, htmlForms, htmlFormControls);
     RefPtr<ContentListHolder> runnable = holder;
-    if (NS_SUCCEEDED(
-            Dispatch(TaskCategory::GarbageCollection, runnable.forget()))) {
+    if (NS_SUCCEEDED(Dispatch(runnable.forget()))) {
       mContentListHolder = holder;
     }
   }

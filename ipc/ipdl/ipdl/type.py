@@ -3,18 +3,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import print_function
-
 import os
 import sys
 
 from ipdl.ast import CxxInclude, Decl, Loc, QualifiedId, StructDecl
-from ipdl.ast import TypeSpec, UnionDecl, UsingStmt, Visitor
+from ipdl.ast import UnionDecl, UsingStmt, Visitor, StringLiteral
 from ipdl.ast import ASYNC, SYNC, INTR
 from ipdl.ast import IN, OUT, INOUT
 from ipdl.ast import NOT_NESTED, INSIDE_SYNC_NESTED, INSIDE_CPOW_NESTED
+from ipdl.ast import priorityList
 import ipdl.builtin as builtin
 from ipdl.util import hash_str
+
+# Used to get the list of Gecko process types
+# xpcom/geckoprocesstypes_generator/geckoprocesstypes/__init__.py
+import geckoprocesstypes
 
 _DELETE_MSG = "__delete__"
 
@@ -29,6 +32,9 @@ class TypeVisitor:
         )
 
     def visitVoidType(self, v, *args):
+        pass
+
+    def visitBuiltinCType(self, b, *args):
         pass
 
     def visitImportedCxxType(self, t, *args):
@@ -73,6 +79,9 @@ class TypeVisitor:
         m.basetype.accept(self, *args)
 
     def visitUniquePtrType(self, m, *args):
+        m.basetype.accept(self, *args)
+
+    def visitNotNullType(self, m, *args):
         m.basetype.accept(self, *args)
 
     def visitShmemType(self, s, *args):
@@ -121,7 +130,9 @@ class Type:
     def isRefcounted(self):
         return False
 
-    def isUniquePtr(self):
+    # Should this type be wrapped in `NotNull<T>` unless marked `nullable`?
+
+    def supportsNullable(self):
         return False
 
     def typename(self):
@@ -162,13 +173,37 @@ VOID = VoidType()
 # --------------------
 
 
+class BuiltinCType(Type):
+    def __init__(self, name):
+        self._name = name
+
+    def isCxx(self):
+        return True
+
+    def isAtom(self):
+        return True
+
+    def isSendMoveOnly(self):
+        return False
+
+    def isDataMoveOnly(self):
+        return False
+
+    def name(self):
+        return self._name
+
+    def fullname(self):
+        return self._name
+
+
 class ImportedCxxType(Type):
-    def __init__(self, qname, refcounted, moveonly):
+    def __init__(self, qname, refcounted, sendmoveonly, datamoveonly):
         assert isinstance(qname, QualifiedId)
         self.loc = qname.loc
         self.qname = qname
         self.refcounted = refcounted
-        self.moveonly = moveonly
+        self.sendmoveonly = sendmoveonly
+        self.datamoveonly = datamoveonly
 
     def isCxx(self):
         return True
@@ -179,8 +214,14 @@ class ImportedCxxType(Type):
     def isRefcounted(self):
         return self.refcounted
 
-    def isMoveonly(self):
-        return self.moveonly
+    def supportsNullable(self):
+        return self.refcounted
+
+    def isSendMoveOnly(self):
+        return self.sendmoveonly
+
+    def isDataMoveOnly(self):
+        return self.datamoveonly
 
     def name(self):
         return self.qname.baseid
@@ -217,6 +258,12 @@ class IPDLType(Type):
     def isMaybe(self):
         return False
 
+    def isUniquePtr(self):
+        return False
+
+    def isNotNull(self):
+        return False
+
     def isAtom(self):
         return True
 
@@ -238,6 +285,15 @@ class IPDLType(Type):
     def isManagedEndpoint(self):
         return False
 
+    def hasBaseType(self):
+        return False
+
+
+class SendSemanticsType(IPDLType):
+    def __init__(self, nestedRange, sendSemantics):
+        self.nestedRange = nestedRange
+        self.sendSemantics = sendSemantics
+
     def isAsync(self):
         return self.sendSemantics == ASYNC
 
@@ -247,14 +303,7 @@ class IPDLType(Type):
     def isInterrupt(self):
         return self.sendSemantics is INTR
 
-    def hasReply(self):
-        return self.isSync() or self.isInterrupt()
-
-    def hasBaseType(self):
-        return False
-
-    @classmethod
-    def convertsTo(cls, lesser, greater):
+    def sendSemanticsSatisfiedBy(self, greater):
         def _unwrap(nr):
             if isinstance(nr, dict):
                 return _unwrap(nr["nested"])
@@ -263,6 +312,7 @@ class IPDLType(Type):
             else:
                 raise ValueError("Got unexpected nestedRange value: %s" % nr)
 
+        lesser = self
         lnr0, gnr0, lnr1, gnr1 = (
             _unwrap(lesser.nestedRange[0]),
             _unwrap(greater.nestedRange[0]),
@@ -286,15 +336,13 @@ class IPDLType(Type):
 
         return False
 
-    def needsMoreJuiceThan(self, o):
-        return not IPDLType.convertsTo(self, o)
 
-
-class MessageType(IPDLType):
+class MessageType(SendSemanticsType):
     def __init__(
         self,
         nested,
         prio,
+        replyPrio,
         sendSemantics,
         direction,
         ctor=False,
@@ -302,14 +350,15 @@ class MessageType(IPDLType):
         cdtype=None,
         compress=False,
         tainted=False,
+        lazySend=False,
     ):
         assert not (ctor and dtor)
         assert not (ctor or dtor) or cdtype is not None
 
+        SendSemanticsType.__init__(self, (nested, nested), sendSemantics)
         self.nested = nested
         self.prio = prio
-        self.nestedRange = (nested, nested)
-        self.sendSemantics = sendSemantics
+        self.replyPrio = replyPrio
         self.direction = direction
         self.params = []
         self.returns = []
@@ -318,6 +367,7 @@ class MessageType(IPDLType):
         self.cdtype = cdtype
         self.compress = compress
         self.tainted = tainted
+        self.lazySend = lazySend
 
     def isMessage(self):
         return True
@@ -341,27 +391,30 @@ class MessageType(IPDLType):
         return self.direction is INOUT
 
     def hasReply(self):
-        return len(self.returns) or IPDLType.hasReply(self)
+        return len(self.returns) or self.isSync() or self.isInterrupt()
 
     def hasImplicitActorParam(self):
-        return self.isCtor() or self.isDtor()
+        return self.isCtor()
 
 
-class ProtocolType(IPDLType):
-    def __init__(self, qname, nested, sendSemantics, refcounted):
+class ProtocolType(SendSemanticsType):
+    def __init__(self, qname, nested, sendSemantics, refcounted, needsotherpid):
+        SendSemanticsType.__init__(self, (NOT_NESTED, nested), sendSemantics)
         self.qname = qname
-        self.nestedRange = (NOT_NESTED, nested)
-        self.sendSemantics = sendSemantics
         self.managers = []  # ProtocolType
         self.manages = []
         self.hasDelete = False
         self.refcounted = refcounted
+        self.needsotherpid = needsotherpid
 
     def isProtocol(self):
         return True
 
     def isRefcounted(self):
         return self.refcounted
+
+    def hasOtherPid(self):
+        return all(top.needsotherpid for top in self.toplevels())
 
     def name(self):
         return self.qname.baseid
@@ -417,15 +470,17 @@ class ProtocolType(IPDLType):
 
 
 class ActorType(IPDLType):
-    def __init__(self, protocol, nullable=False):
+    def __init__(self, protocol):
         self.protocol = protocol
-        self.nullable = nullable
 
     def isActor(self):
         return True
 
     def isRefcounted(self):
         return self.protocol.isRefcounted()
+
+    def supportsNullable(self):
+        return True
 
     def name(self):
         return self.protocol.name()
@@ -649,6 +704,26 @@ class UniquePtrType(IPDLType):
         return "mozilla::UniquePtr<" + self.basetype.fullname() + ">"
 
 
+class NotNullType(IPDLType):
+    def __init__(self, basetype):
+        self.basetype = basetype
+
+    def isAtom(self):
+        return False
+
+    def isNotNull(self):
+        return True
+
+    def hasBaseType(self):
+        return True
+
+    def name(self):
+        return "NotNull<" + self.basetype.name() + ">"
+
+    def fullname(self):
+        return "mozilla::NotNull<" + self.basetype.fullname() + ">"
+
+
 def iteractortypes(t, visited=None):
     """Iterate over any actor(s) buried in |type|."""
     if visited is None:
@@ -694,9 +769,7 @@ def makeBuiltinUsing(tname):
     quals = tname.split("::")
     base = quals.pop()
     quals = quals[0:]
-    return UsingStmt(
-        _builtinloc, TypeSpec(_builtinloc, QualifiedId(_builtinloc, base, quals))
-    )
+    return UsingStmt(_builtinloc, QualifiedId(_builtinloc, base, quals))
 
 
 builtinUsing = [makeBuiltinUsing(t) for t in builtin.Types]
@@ -859,12 +932,19 @@ class GatherDecls(TcheckVisitor):
                         attr.name,
                     )
             elif isinstance(aspec, (list, tuple)):
-                if attr.value not in aspec:
+                if not any(
+                    isinstance(attr.value, s)
+                    if isinstance(s, type)
+                    else attr.value == s
+                    for s in aspec
+                ):
                     self.error(
                         attr.loc,
                         "invalid value for attribute `%s', expected one of: %s",
                         attr.name,
-                        ", ".join(str(s) for s in aspec),
+                        ", ".join(
+                            s.__name__ if isinstance(s, type) else str(s) for s in aspec
+                        ),
                     )
             elif callable(aspec):
                 if not aspec(attr.value):
@@ -905,6 +985,26 @@ class GatherDecls(TcheckVisitor):
 
             p = tu.protocol
 
+            proc_options = [
+                "any",
+                "anychild",  # non-Parent process
+                "anydom",  # Parent or Content process
+                "compositor",  # Parent or GPU process
+            ] + [p.proc_typename for p in geckoprocesstypes.process_types]
+
+            self.checkAttributes(
+                p.attributes,
+                {
+                    "ManualDealloc": None,
+                    "NestedUpTo": ("not", "inside_sync", "inside_cpow"),
+                    "NeedsOtherPid": None,
+                    "ChildImpl": ("virtual", StringLiteral),
+                    "ParentImpl": ("virtual", StringLiteral),
+                    "ChildProc": proc_options,
+                    "ParentProc": proc_options,
+                },
+            )
+
             # FIXME/cjones: it's a little weird and counterintuitive
             # to put both the namespace and non-namespaced name in the
             # global scope.  try to figure out something better; maybe
@@ -914,9 +1014,15 @@ class GatherDecls(TcheckVisitor):
             fullname = str(qname)
             p.decl = self.declare(
                 loc=p.loc,
-                type=ProtocolType(qname, p.nested, p.sendSemantics, p.refcounted),
+                type=ProtocolType(
+                    qname,
+                    p.nestedUpTo(),
+                    p.sendSemantics,
+                    "ManualDealloc" not in p.attributes,
+                    "NeedsOtherPid" in p.attributes,
+                ),
                 shortname=p.name,
-                fullname=None if 0 == len(qname.quals) else fullname,
+                fullname=fullname,
             )
 
             p.parentEndpointDecl = self.declare(
@@ -973,7 +1079,13 @@ class GatherDecls(TcheckVisitor):
         for pinc in tu.includes:
             pinc.accept(self)
 
-        # declare imported (and builtin) C++ types
+        # declare imported (and builtin) C and C++ types
+        for ctype in builtin.CTypes:
+            self.declare(
+                loc=_builtinloc,
+                type=BuiltinCType(ctype),
+                shortname=ctype,
+            )
         for using in tu.builtinUsing:
             using.accept(self)
         for using in tu.using:
@@ -1000,10 +1112,7 @@ class GatherDecls(TcheckVisitor):
             return
 
         qname = su.qname()
-        if 0 == len(qname.quals):
-            fullname = None
-        else:
-            fullname = str(qname)
+        fullname = str(qname)
 
         if isinstance(su, StructDecl):
             sutype = StructType(qname, [])
@@ -1096,29 +1205,27 @@ class GatherDecls(TcheckVisitor):
 
     def visitUsingStmt(self, using):
         fullname = str(using.type)
-        if (using.type.basename() == fullname) or using.type.uniqueptr:
-            # Prevent generation of typedefs.  If basename == fullname then
-            # there is nothing to typedef.  With UniquePtrs, basenames
-            # are generic so typedefs would be illegal.
-            fullname = None
 
         self.checkAttributes(
             using.attributes,
             {
-                "MoveOnly": None,
+                "MoveOnly": (None, "data", "send"),
                 "RefCounted": None,
             },
         )
 
-        if fullname == "mozilla::ipc::Shmem":
-            ipdltype = ShmemType(using.type.spec)
-        elif fullname == "mozilla::ipc::ByteBuf":
-            ipdltype = ByteBufType(using.type.spec)
-        elif fullname == "mozilla::ipc::FileDescriptor":
-            ipdltype = FDType(using.type.spec)
+        if fullname == "::mozilla::ipc::Shmem":
+            ipdltype = ShmemType(using.type)
+        elif fullname == "::mozilla::ipc::ByteBuf":
+            ipdltype = ByteBufType(using.type)
+        elif fullname == "::mozilla::ipc::FileDescriptor":
+            ipdltype = FDType(using.type)
         else:
             ipdltype = ImportedCxxType(
-                using.type.spec, using.isRefcounted(), using.isMoveonly()
+                using.type,
+                using.isRefcounted(),
+                using.isSendMoveOnly(),
+                using.isDataMoveOnly(),
             )
             existingType = self.symtab.lookup(ipdltype.fullname())
             if existingType and existingType.fullname == ipdltype.fullname():
@@ -1128,7 +1235,10 @@ class GatherDecls(TcheckVisitor):
                         "inconsistent refcounted status of type `%s`",
                         str(using.type),
                     )
-                if ipdltype.isMoveonly() != existingType.type.isMoveonly():
+                if (
+                    ipdltype.isSendMoveOnly() != existingType.type.isSendMoveOnly()
+                    or ipdltype.isDataMoveOnly() != existingType.type.isDataMoveOnly()
+                ):
                     self.error(
                         using.loc,
                         "inconsistent moveonly status of type `%s`",
@@ -1139,7 +1249,7 @@ class GatherDecls(TcheckVisitor):
         using.decl = self.declare(
             loc=using.loc,
             type=ipdltype,
-            shortname=using.type.basename(),
+            shortname=using.type.baseid,
             fullname=fullname,
         )
 
@@ -1161,9 +1271,6 @@ class GatherDecls(TcheckVisitor):
             managed.manager = p
             managed.accept(self)
 
-        if not (p.managers or p.messageDecls or p.managesStmts):
-            self.error(p.loc, "top-level protocol `%s' cannot be empty", p.name)
-
         setattr(self, "currentProtocolDecl", p.decl)
         for msg in p.messageDecls:
             msg.accept(self)
@@ -1177,6 +1284,19 @@ class GatherDecls(TcheckVisitor):
                 _DELETE_MSG,
                 p.name,
             )
+
+        if not p.decl.type.isToplevel() and p.decl.type.needsotherpid:
+            self.error(p.loc, "[NeedsOtherPid] only applies to toplevel protocols")
+
+        if p.decl.type.isToplevel():
+            if not p.decl.type.isRefcounted():
+                self.error(p.loc, "Toplevel protocols cannot be [ManualDealloc]")
+
+            if "ChildProc" not in p.attributes:
+                self.error(p.loc, "Toplevel protocols must specify [ChildProc]")
+
+        if p.decl.type.isManager() and not p.decl.type.isRefcounted():
+            self.error(p.loc, "[ManualDealloc] protocols cannot be managers")
 
         # FIXME/cjones declare all the little C++ thingies that will
         # be generated.  they're not relevant to IPDL itself, but
@@ -1249,16 +1369,40 @@ class GatherDecls(TcheckVisitor):
             {
                 "Tainted": None,
                 "Compress": (None, "all"),
-                "Priority": ("normal", "input", "vsync", "mediumhigh", "control"),
+                "Priority": priorityList,
+                "ReplyPriority": priorityList,
                 "Nested": ("not", "inside_sync", "inside_cpow"),
+                "LegacyIntr": None,
+                "VirtualSendImpl": None,
+                "LazySend": None,
             },
         )
+
+        if md.sendSemantics is INTR and "LegacyIntr" not in md.attributes:
+            self.error(
+                loc,
+                "intr message `%s' allowed only with [LegacyIntr]; DO NOT USE IN SHIPPING CODE",
+                msgname,
+            )
 
         if md.sendSemantics is INTR and "Priority" in md.attributes:
             self.error(loc, "intr message `%s' cannot specify [Priority]", msgname)
 
         if md.sendSemantics is INTR and "Nested" in md.attributes:
             self.error(loc, "intr message `%s' cannot specify [Nested]", msgname)
+
+        if md.sendSemantics is not ASYNC and "LazySend" in md.attributes:
+            self.error(loc, "non-async message `%s' cannot specify [LazySend]", msgname)
+
+        if md.sendSemantics is not ASYNC and "ReplyPriority" in md.attributes:
+            self.error(
+                loc, "non-async message `%s' cannot specify [ReplyPriority]", msgname
+            )
+
+        if not md.outParams and "ReplyPriority" in md.attributes:
+            self.error(
+                loc, "non-returns message `%s' cannot specify [ReplyPriority]", msgname
+            )
 
         isctor = False
         isdtor = False
@@ -1280,6 +1424,10 @@ class GatherDecls(TcheckVisitor):
             # if we error here, no big deal; move on to find more
 
         if _DELETE_MSG == msgname:
+            if md.sendSemantics is not ASYNC:
+                self.error(loc, "destructor must be async")
+            if md.outParams:
+                self.error(loc, "destructors cannot return values")
             isdtor = True
             cdtype = self.currentProtocolDecl.type
 
@@ -1287,15 +1435,17 @@ class GatherDecls(TcheckVisitor):
         self.symtab.enterScope()
 
         msgtype = MessageType(
-            md.nested(),
-            md.priority(),
-            md.sendSemantics,
-            md.direction,
+            nested=md.nested(),
+            prio=md.priority(),
+            replyPrio=md.replyPriority(),
+            sendSemantics=md.sendSemantics,
+            direction=md.direction,
             ctor=isctor,
             dtor=isdtor,
             cdtype=cdtype,
             compress=md.attributes.get("Compress"),
             tainted="Tainted" in md.attributes,
+            lazySend="LazySend" in md.attributes,
         )
 
         # replace inparam Param nodes with proper Decls
@@ -1354,13 +1504,18 @@ class GatherDecls(TcheckVisitor):
 
     def _canonicalType(self, itype, typespec):
         loc = typespec.loc
-        if itype.isIPDL():
-            if itype.isProtocol():
-                itype = ActorType(itype, nullable=typespec.nullable)
+        if typespec.uniqueptr:
+            itype = UniquePtrType(itype)
 
-        if typespec.nullable and not (itype.isIPDL() and itype.isActor()):
+        if itype.isIPDL() and itype.isProtocol():
+            itype = ActorType(itype)
+
+        if itype.supportsNullable():
+            if not typespec.nullable:
+                itype = NotNullType(itype)
+        elif typespec.nullable:
             self.error(
-                loc, "`nullable' qualifier for type `%s' makes no sense", itype.name()
+                loc, "`nullable' qualifier for type `%s' is unsupported", itype.name()
             )
 
         if typespec.array:
@@ -1368,9 +1523,6 @@ class GatherDecls(TcheckVisitor):
 
         if typespec.maybe:
             itype = MaybeType(itype)
-
-        if typespec.uniqueptr:
-            itype = UniquePtrType(itype)
 
         return itype
 
@@ -1471,13 +1623,18 @@ class CheckTypes(TcheckVisitor):
         ptype, pname = p.decl.type, p.decl.shortname
 
         for mgrtype in ptype.managers:
-            if mgrtype is not None and ptype.needsMoreJuiceThan(mgrtype):
+            if mgrtype is not None and not ptype.sendSemanticsSatisfiedBy(mgrtype):
                 self.error(
                     p.decl.loc,
                     "protocol `%s' requires more powerful send semantics than its manager `%s' provides",  # NOQA: E501
                     pname,
                     mgrtype.name(),
                 )
+
+        if ptype.isInterrupt() and ptype.nestedRange != (NOT_NESTED, NOT_NESTED):
+            self.error(
+                p.decl.loc, "intr protocol `%s' cannot specify [NestedUpTo]", p.name
+            )
 
         if ptype.isToplevel():
             cycles = checkcycles(p.decl.type)
@@ -1574,7 +1731,7 @@ class CheckTypes(TcheckVisitor):
                 pname,
             )
 
-        if mtype.needsMoreJuiceThan(ptype):
+        if not mtype.sendSemanticsSatisfiedBy(ptype):
             self.error(
                 loc,
                 "message `%s' requires more powerful send semantics than its protocol `%s' provides",  # NOQA: E501
@@ -1588,7 +1745,6 @@ class CheckTypes(TcheckVisitor):
             )
 
         if mtype.compress and (not mtype.isAsync() or mtype.isCtor() or mtype.isDtor()):
-
             if mtype.isCtor() or mtype.isDtor():
                 message_type = "constructor" if mtype.isCtor() else "destructor"
                 error_message = (

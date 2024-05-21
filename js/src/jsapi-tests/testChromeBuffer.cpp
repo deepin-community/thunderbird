@@ -6,9 +6,12 @@
 
 #include "mozilla/Utf8.h"  // mozilla::Utf8Unit
 
+#include "js/CallAndConstruct.h"          // JS_CallFunctionValue
 #include "js/CompilationAndEvaluation.h"  // JS::CompileFunction
 #include "js/ContextOptions.h"
-#include "js/SourceText.h"  // JS::Source{Ownership,Text}
+#include "js/GlobalObject.h"        // JS_NewGlobalObject
+#include "js/PropertyAndElement.h"  // JS_DefineProperty
+#include "js/SourceText.h"          // JS::Source{Ownership,Text}
 #include "jsapi-tests/tests.h"
 #include "util/Text.h"
 
@@ -62,6 +65,14 @@ BEGIN_TEST(testChromeBuffer) {
     CHECK(JS_GetGlobalJitCompilerOption(cx, JSJITCOMPILER_BASELINE_ENABLE,
                                         &oldBaselineJitEnabled));
     JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_BASELINE_ENABLE, 0);
+#ifdef ENABLE_PORTABLE_BASELINE_INTERP
+    uint32_t oldPortableBaselineInterpreterEnabled;
+    CHECK(JS_GetGlobalJitCompilerOption(
+        cx, JSJITCOMPILER_PORTABLE_BASELINE_ENABLE,
+        &oldPortableBaselineInterpreterEnabled));
+    JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_PORTABLE_BASELINE_ENABLE,
+                                  0);
+#endif
     {
       JSAutoRealm ar(cx, trusted_glob);
       const char* paramName = "x";
@@ -118,6 +129,10 @@ BEGIN_TEST(testChromeBuffer) {
                                   oldBaselineInterpreterEnabled);
     JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_BASELINE_ENABLE,
                                   oldBaselineJitEnabled);
+#ifdef ENABLE_PORTABLE_BASELINE_INTERP
+    JS_SetGlobalJitCompilerOption(cx, JSJITCOMPILER_PORTABLE_BASELINE_ENABLE,
+                                  oldPortableBaselineInterpreterEnabled);
+#endif
   }
 
   /*

@@ -17,7 +17,7 @@ add_task(async function run_the_test() {
    * Set up an IMAP server. The bug is only triggered when nsMsgSaveAsListener
    * is used (i.e., for IMAP and NNTP).
    */
-  gIMAPDaemon = new imapDaemon();
+  gIMAPDaemon = new ImapDaemon();
   gServer = makeServer(gIMAPDaemon, "");
   gIMAPIncomingServer = createLocalIMAPServer(gServer.port);
 
@@ -48,7 +48,7 @@ add_task(async function run_the_test() {
     .newFileURI(gMsgFile)
     .QueryInterface(Ci.nsIFileURL);
 
-  let message = new imapMessage(msgfileuri.spec, inbox.uidnext++, []);
+  const message = new ImapMessage(msgfileuri.spec, inbox.uidnext++, []);
   // report an artificially low size, like gmail and Exchange do
   message.setSize(gMsgFile.fileSize - 100);
   inbox.addMessage(message);
@@ -61,7 +61,7 @@ add_task(async function run_the_test() {
   gSavedMsgFile.append(gFileName + ".eml");
 
   do_test_pending();
-  do_timeout(10000, function() {
+  do_timeout(10000, function () {
     do_throw(
       "SaveMessageToDisk did not complete within 10 seconds" +
         "(incorrect messageURI?). ABORTING."
@@ -70,7 +70,7 @@ add_task(async function run_the_test() {
 
   // Enforcing canonicalLineEnding (i.e., CRLF) makes sure that the
   // test also runs successfully on platforms not using CRLF by default.
-  let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
+  const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   gIMAPService.SaveMessageToDisk(
     "imap-message://user@localhost/INBOX#" + (inbox.uidnext - 1),
     gSavedMsgFile,
@@ -82,8 +82,8 @@ add_task(async function run_the_test() {
   );
   await promiseUrlListener.promise;
 
-  let msgFileContent = await IOUtils.readUTF8(gMsgFile.path);
-  let savedMsgFileContent = await IOUtils.readUTF8(gSavedMsgFile.path);
+  const msgFileContent = await IOUtils.readUTF8(gMsgFile.path);
+  const savedMsgFileContent = await IOUtils.readUTF8(gSavedMsgFile.path);
   // File contents should not have been modified.
   Assert.equal(msgFileContent, savedMsgFileContent);
 
@@ -96,7 +96,7 @@ add_task(async function run_the_test() {
 function endTest() {
   gIMAPIncomingServer.closeCachedConnections();
   gServer.stop();
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     thread.processNextEvent(true);
   }

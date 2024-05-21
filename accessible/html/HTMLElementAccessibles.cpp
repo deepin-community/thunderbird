@@ -5,11 +5,11 @@
 
 #include "HTMLElementAccessibles.h"
 
-#include "DocAccessible.h"
-#include "nsAccUtils.h"
+#include "CacheConstants.h"
+#include "nsCoreUtils.h"
 #include "nsTextEquivUtils.h"
 #include "Relation.h"
-#include "Role.h"
+#include "mozilla/a11y/Role.h"
 #include "States.h"
 
 #include "mozilla/dom/HTMLLabelElement.h"
@@ -56,21 +56,29 @@ Relation HTMLLabelAccessible::RelationByType(RelationType aType) const {
   return rel;
 }
 
-uint8_t HTMLLabelAccessible::ActionCount() const {
-  return nsCoreUtils::IsLabelWithControl(mContent) ? 1 : 0;
+void HTMLLabelAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
+                                              nsAtom* aAttribute,
+                                              int32_t aModType,
+                                              const nsAttrValue* aOldValue,
+                                              uint64_t aOldState) {
+  HyperTextAccessible::DOMAttributeChanged(aNameSpaceID, aAttribute, aModType,
+                                           aOldValue, aOldState);
+
+  if (aAttribute == nsGkAtoms::_for) {
+    mDoc->QueueCacheUpdate(this, CacheDomain::Relations | CacheDomain::Actions);
+  }
+}
+
+bool HTMLLabelAccessible::HasPrimaryAction() const {
+  return nsCoreUtils::IsLabelWithControl(mContent);
 }
 
 void HTMLLabelAccessible::ActionNameAt(uint8_t aIndex, nsAString& aName) {
   if (aIndex == 0) {
-    if (nsCoreUtils::IsLabelWithControl(mContent)) aName.AssignLiteral("click");
+    if (HasPrimaryAction()) {
+      aName.AssignLiteral("click");
+    }
   }
-}
-
-bool HTMLLabelAccessible::DoAction(uint8_t aIndex) const {
-  if (aIndex != 0) return false;
-
-  DoCommand();
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,17 +94,30 @@ Relation HTMLOutputAccessible::RelationByType(RelationType aType) const {
   return rel;
 }
 
+void HTMLOutputAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
+                                               nsAtom* aAttribute,
+                                               int32_t aModType,
+                                               const nsAttrValue* aOldValue,
+                                               uint64_t aOldState) {
+  HyperTextAccessible::DOMAttributeChanged(aNameSpaceID, aAttribute, aModType,
+                                           aOldValue, aOldState);
+
+  if (aAttribute == nsGkAtoms::_for) {
+    mDoc->QueueCacheUpdate(this, CacheDomain::Relations);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // HTMLSummaryAccessible
 ////////////////////////////////////////////////////////////////////////////////
 
 HTMLSummaryAccessible::HTMLSummaryAccessible(nsIContent* aContent,
                                              DocAccessible* aDoc)
-    : HyperTextAccessibleWrap(aContent, aDoc) {
+    : HyperTextAccessible(aContent, aDoc) {
   mGenericTypes |= eButton;
 }
 
-uint8_t HTMLSummaryAccessible::ActionCount() const { return 1; }
+bool HTMLSummaryAccessible::HasPrimaryAction() const { return true; }
 
 void HTMLSummaryAccessible::ActionNameAt(uint8_t aIndex, nsAString& aName) {
   if (aIndex != eAction_Click) {
@@ -121,15 +142,8 @@ void HTMLSummaryAccessible::ActionNameAt(uint8_t aIndex, nsAString& aName) {
   }
 }
 
-bool HTMLSummaryAccessible::DoAction(uint8_t aIndex) const {
-  if (aIndex != eAction_Click) return false;
-
-  DoCommand();
-  return true;
-}
-
 uint64_t HTMLSummaryAccessible::NativeState() const {
-  uint64_t state = HyperTextAccessibleWrap::NativeState();
+  uint64_t state = HyperTextAccessible::NativeState();
 
   dom::HTMLSummaryElement* summary =
       dom::HTMLSummaryElement::FromNode(mContent);
@@ -206,21 +220,33 @@ role HTMLHeaderOrFooterAccessible::NativeRole() const {
   return roles::SECTION;
 }
 
-nsAtom* HTMLHeaderOrFooterAccessible::LandmarkRole() const {
-  if (!HasOwnContent()) return nullptr;
+////////////////////////////////////////////////////////////////////////////////
+// HTMLAsideAccessible
+////////////////////////////////////////////////////////////////////////////////
 
-  a11y::role r = const_cast<HTMLHeaderOrFooterAccessible*>(this)->Role();
-  if (r == roles::LANDMARK) {
-    if (mContent->IsHTMLElement(nsGkAtoms::header)) {
-      return nsGkAtoms::banner;
+role HTMLAsideAccessible::NativeRole() const {
+  // Per the HTML-AAM spec, there are two cases for aside elements:
+  //   1. scoped to body or main elements -> 'complementary' role
+  //   2. scoped to sectioning content elements
+  //       -> if the element has an accessible name, 'complementary' role
+  //       -> otherwise, 'generic' role
+  // To implement this, walk ancestors until we find a sectioning content
+  // element, or a body/main element, then take actions based on the rules
+  // above.
+  nsIContent* parent = mContent->GetParent();
+  while (parent) {
+    if (parent->IsAnyOfHTMLElements(nsGkAtoms::article, nsGkAtoms::aside,
+                                    nsGkAtoms::nav, nsGkAtoms::section)) {
+      return !NameIsEmpty() ? roles::LANDMARK : roles::SECTION;
     }
-
-    if (mContent->IsHTMLElement(nsGkAtoms::footer)) {
-      return nsGkAtoms::contentinfo;
+    if (parent->IsAnyOfHTMLElements(nsGkAtoms::main, nsGkAtoms::body)) {
+      return roles::LANDMARK;
     }
+    parent = parent->GetParent();
   }
 
-  return HyperTextAccessibleWrap::LandmarkRole();
+  // Fall back to landmark, though we always expect to find a body element.
+  return roles::LANDMARK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,19 +254,5 @@ nsAtom* HTMLHeaderOrFooterAccessible::LandmarkRole() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 role HTMLSectionAccessible::NativeRole() const {
-  nsAutoString name;
-  const_cast<HTMLSectionAccessible*>(this)->Name(name);
-  return name.IsEmpty() ? roles::SECTION : roles::REGION;
-}
-
-nsAtom* HTMLSectionAccessible::LandmarkRole() const {
-  if (!HasOwnContent()) {
-    return nullptr;
-  }
-
-  // Only return xml-roles "region" if the section has an accessible name.
-  nsAutoString name;
-  const_cast<HTMLSectionAccessible*>(this)->Name(name);
-  return name.IsEmpty() ? HyperTextAccessibleWrap::LandmarkRole()
-                        : nsGkAtoms::region;
+  return NameIsEmpty() ? roles::SECTION : roles::REGION;
 }

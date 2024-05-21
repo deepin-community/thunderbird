@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Eich enw, fel mae'n cael ei ddangos i eraill
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Rhowch eich enw
 account-setup-email-label = Cyfeiriad e-bost
     .accesskey = C
 account-setup-email-input =
@@ -33,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Eich cyfeiriad e-bost cyfredol
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Cyfeiriad e-bost annilys
 account-setup-password-label = Cyfrinair
-    .accesskey = C
+    .accesskey = y
     .title = Yn ddewisol, dim ond i'w ddefnyddio i ddilysu'r enw defnyddiwr
 account-provisioner-button = Cael cyfeiriad e-bost newydd
     .accesskey = n
-account-setup-password-toggle =
-    .title = Dangos/cuddio cyfrinair
 account-setup-password-toggle-show =
     .title = Dangos cyfrinair mewn testun clir
 account-setup-password-toggle-hide =
@@ -83,7 +81,7 @@ account-setup-looking-up-db = Yn chwilio drwy'r ffurfweddiad: cronfa ddata ISP M
 account-setup-looking-up-mx = Yn chwilio drwy'r ffurfweddiad: Parthau derbyn e-bost...
 account-setup-looking-up-exchange = Yn chwilio drwy'r ffurfweddiad: Gweinydd Exchange...
 account-setup-checking-password = Yn gwirio'r cyfrinair...
-account-setup-installing-addon = Yn llwytho i lawr a gosod ychwanegyn…
+account-setup-installing-addon = Wrthi'n llwytho i lawr a gosod ychwanegyn…
 account-setup-success-half-manual = Canfuwyd y gosodiadau canlynol trwy archwilio'r gweinydd hwn:
 account-setup-success-guess = Canfuwyd y ffurfweddiad drwy roi cynnig ar enwau gweinydd cyffredin.
 account-setup-success-guess-offline = Rydych all-lein. Rydym wedi dyfalu rhai gosodiadau ond bydd angen i chi osod y gosodiadau cywir.
@@ -130,21 +128,14 @@ account-setup-results-area-title =
         [many] Ffurfwediadau ar gael
        *[other] Ffurfwediadau ar gael
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Cadw eich ffolderi a'ch e-byst wedi'u cydweddu ar eich gweinydd
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Cadw eich ffolderi a'ch e-byst ar eich cyfrifiadur
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Defnyddiwch weinydd Microsoft Exchange neu wasanaethau cwmwl Office365
 account-setup-incoming-title = Derbyn
 account-setup-outgoing-title = Anfon
 account-setup-username-title = Enw Defnyddiwr
 account-setup-exchange-title = Gweinydd
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Dim Amgryptiad
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -166,14 +157,11 @@ account-setup-provisioner-error = Digwyddodd gwall wrth osod eich cyfrif newydd 
 ## Manual configuration area
 
 account-setup-manual-config-title = Gosodiadau gweinydd
-account-setup-incoming-server-legend = Gweinydd Derbyn
+account-setup-incoming-server-legend = Gweinydd derbyn
 account-setup-protocol-label = Protocol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Enw Gwesteiwr:
 account-setup-port-label = Porth:
-    .title = Gosod rhif y porth i 0 ar gyfer awtoganfod
+    .title = Gosodwch rif y porth i 0 ar gyfer awtoganfod
 account-setup-auto-description = Bydd { -brand-short-name } yn ceisio awtoganfod meysydd sy'n cael eu gadael yn wag.
 account-setup-ssl-label = Diogelwch y cysylltiad:
 account-setup-outgoing-server-legend = Gweinydd anfon
@@ -189,7 +177,7 @@ ssl-encrypted-password-option = Cyfrinair wedi'i amgryptio
 
 ssl-noencryption-option = Dim
 account-setup-auth-label = Dull dilysu:
-account-setup-username-label = Enw defnyddiwr:
+account-setup-username-label = Enw Defnyddiwr:
 account-setup-advanced-setup-button = Ffurfweddiad uwch
     .accesskey = F
 
@@ -239,7 +227,7 @@ account-setup-confirm-advanced-description = Bydd y ddeialog hon yn cael ei chau
 ## Addon installation section
 
 account-setup-addon-install-title = Gosod
-account-setup-addon-install-intro = Gall ychwanegyn trydydd parti ganiatáu i chi gael mynediad i'ch cyfrif e-bost ar y gweinydd hwn:
+account-setup-addon-install-intro = Gall ychwanegyn trydydd parti ganiatáu i chi gael mynediad at eich cyfrif e-bost ar y gweinydd hwn:
 account-setup-addon-no-protocol = Yn anffodus nid yw'r gweinydd e-bost hwn yn cefnogi protocolau agored. { account-setup-addon-install-intro }
 
 ## Success view
@@ -303,6 +291,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Lliw
 account-setup-calendar-refresh-label = Adnewyddu
 account-setup-calendar-refresh-manual = Gyda Llaw
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [zero] Byth

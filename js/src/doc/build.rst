@@ -1,5 +1,5 @@
-Building SpiderMonkey
-=====================
+Building and testing SpiderMonkey
+=================================
 
 **The first step is to run our “bootstrap” script to help ensure you have the
 right build tools for your operating system. This will also help you get a copy
@@ -35,10 +35,10 @@ have.
 
 A basic ``MOZCONFIG`` file for doing a debug build, put into ``$HOME/mozconfigs/debug`` looks like this
 
-.. code::
+.. code:: text
 
     # Build only the JS shell
-    ac_add_options --enable-application=js
+    ac_add_options --enable-project=js
 
     # Enable the debugging tools: Assertions, debug only code etc.
     ac_add_options --enable-debug
@@ -53,7 +53,7 @@ A basic ``MOZCONFIG`` file for doing a debug build, put into ``$HOME/mozconfigs/
 
 To activate a particular ``MOZCONFIG``, set the environment variable:
 
-.. code::
+.. code:: text
 
     export MOZCONFIG=$HOME/mozconfigs/debug
 
@@ -64,14 +64,14 @@ Once you have activated a ``MOZCONFIG`` by setting the environment variable
 you can then ask ``mach``, located in the top directory of your checkout,
 to do your build:
 
-.. code::
+.. code:: console
 
     $ cd <path to mozilla-central>
     $ ./mach build
 
 .. note::
 
-   **Note**: If you are on Mac and baldrdash fails to compile with something similar to
+   If you are on Mac and baldrdash fails to compile with something similar to
 
    ::
 
@@ -79,7 +79,7 @@ to do your build:
 
    This is because, starting from Mojave, headers are no longer
    installed in ``/usr/include``. Refer the `release
-   notes <https://developer.apple.com/documentation/xcode_release_notes/xcode_10_release_notes>`__  under
+   notes <https://developer.apple.com/documentation/xcode_release_notes/xcode_10_release_notes>`__ under
    Command Line Tools -> New Features
 
    The release notes also states that this compatibility package will no longer be provided in the near
@@ -94,13 +94,23 @@ to do your build:
 Once you have successfully built the shell, you can run it using ``mach run``.
 
 Testing
---------
+~~~~~~~
 
 Once built, you can then use ``mach`` to run the ``jit-tests``:
 
-.. code::
+.. code:: console
 
     $ ./mach jit-test
+
+Similarly you can use also run ``jstests``. These include a local,
+intermittently updated, copy of all `test262 <https://github.com/tc39/test262/>`_
+tests.
+
+.. code:: console
+
+    $ ./mach jstests
+
+See :doc:`Running Automated JavaScript Tests<test>` for more details.
 
 Optimized Builds
 ~~~~~~~~~~~~~~~~
@@ -109,10 +119,10 @@ To switch to an optimized build, such as for performance testing, one need only
 have an optimized build ``MOZCONFIG``, and then activate it. An example
 ``$HOME/mozconfigs/optimized`` ``MOZCONFIG`` looks like this:
 
-.. code::
+.. code:: text
 
     # Build only the JS shell
-    ac_add_options --enable-application=js
+    ac_add_options --enable-project=js
 
     # Enable optimization for speed
     ac_add_options --enable-optimize
@@ -138,7 +148,7 @@ Building SpiderMonkey on Android
   your `PATH` environment. You can do this by running the following line in a
   shell, or adding it to a shell profile init file:
 
-.. code::
+.. code:: console
 
     $ export PATH="$PATH:~/.mozbuild/android-sdk-linux/platform-tools"
 
@@ -146,11 +156,11 @@ Building SpiderMonkey on Android
   the :ref:`Setting up a MOZCONFIG` documentation, and include the following
   line:
 
-.. code::
+.. code:: console
 
-    ac_add_options --target=aarch64-linux-android
+    $ ac_add_options --target=aarch64-linux-android
 
-- Then compile as usual with `mach compile` with this `MOZCONFIG` file.
+- Then compile as usual with `mach build` with this `MOZCONFIG` file.
 
 Running jit-tests on Android
 ----------------------------
@@ -159,9 +169,9 @@ Running jit-tests on Android
   as described above, or make sure it is on the same subnetwork as the host. It
   should appear in the list of devices seen by `adb`:
 
-.. code::
+.. code:: console
 
-    adb devices
+    $ adb devices
 
 This command should show you a device ID with the name of the device. If it
 doesn't, make sure that you have enabled Developer options on your device, as
@@ -182,10 +192,10 @@ the host machine.
 - Upload the `gdbserver` precompiled binary from the NDK from the host machine
   to the Android device, using this command on the host:
 
-.. code::
+.. code:: console
 
-    adb push \
-        ~/.mozbuild/android-ndk-r20/prebuilt/android-arm64/gdbserver/gdbserver \
+    $ adb push \
+        ~/.mozbuild/android-ndk-r23c/prebuilt/android-arm64/gdbserver/gdbserver \
         /data/local/tmp/test_root/bin
 
 - Make sure that the `ncurses5` library is installed on the host. On
@@ -195,16 +205,16 @@ the host machine.
   so we can connect to a local port from the host, without needing to find what
   the IP address of the Android device is:
 
-.. code::
+.. code:: console
 
-    adb forward tcp:5039 tcp:5039
+    $ adb forward tcp:5039 tcp:5039
 
 - Start `gdbserver` on the phone, passing the JS shell command line arguments
   to gdbserver:
 
-.. code::
+.. code:: console
 
-    adb shell export LD_LIBRARY_PATH=/data/local/tmp/test_root/bin '&&' /data/local/tmp/test_root/bin/gdbserver :5039 /data/local/tmp/test_root/bin/js /path/to/test.js
+    $ adb shell export LD_LIBRARY_PATH=/data/local/tmp/test_root/bin '&&' /data/local/tmp/test_root/bin/gdbserver :5039 /data/local/tmp/test_root/bin/js /path/to/test.js
 
 .. note::
 
@@ -224,14 +234,14 @@ the host machine.
 - On the host, start the precompiled NDK version of GDB that matches your host
   architecture, passing it the path to the shell compiled with `mach` above:
 
-.. code::
+.. code:: console
 
-    ~/.mozbuild/android-ndk-r20/prebuilt/linux-x86_64/bin/gdb /path/to/objdir-aarch64-linux-android/dist/bin/js
+    $ ~/.mozbuild/android-ndk-r23c/prebuilt/linux-x86_64/bin/gdb /path/to/objdir-aarch64-linux-android/dist/bin/js
 
 - Then connect remotely to the GDB server that's listening on the Android
   device:
 
-.. code::
+.. code:: console
 
-    (gdb) target remote :5039
-    (gdb) continue
+    $(gdb) target remote :5039
+    $(gdb) continue

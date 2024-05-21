@@ -29,6 +29,8 @@ impl Ping {
         name: S,
         include_client_id: bool,
         send_if_empty: bool,
+        precise_timestamps: bool,
+        include_info_sections: bool,
         reason_codes: Vec<String>,
     ) -> Self {
         if need_ipc() {
@@ -38,6 +40,8 @@ impl Ping {
                 name,
                 include_client_id,
                 send_if_empty,
+                precise_timestamps,
+                include_info_sections,
                 reason_codes,
             ))
         }
@@ -61,7 +65,7 @@ impl Ping {
     }
 }
 
-#[inherent(pub)]
+#[inherent]
 impl glean::traits::Ping for Ping {
     /// Submits the ping for eventual uploading
     ///
@@ -69,13 +73,18 @@ impl glean::traits::Ping for Ping {
     ///
     /// * `reason` - the reason the ping was triggered. Included in the
     ///   `ping_info.reason` part of the payload.
-    fn submit(&self, reason: Option<&str>) {
+    pub fn submit(&self, reason: Option<&str>) {
         match self {
             Ping::Parent(p) => {
-                glean::traits::Ping::submit(p, reason);
+                p.submit(reason);
             }
             Ping::Child => {
-                log::error!("Unable to submit ping in non-main process. Ignoring.");
+                log::error!(
+                    "Unable to submit ping in non-main process. This operation will be ignored."
+                );
+                // If we're in automation we can panic so the instrumentor knows they've gone wrong.
+                // This is a deliberate violation of Glean's "metric APIs must not throw" design.
+                assert!(!crate::ipc::is_in_automation(), "Attempted to submit a ping in non-main process, which is forbidden. This panics in automation.");
                 // TODO: Record an error.
             }
         };
@@ -95,7 +104,8 @@ mod test {
     };
 
     // Smoke test for what should be the generated code.
-    static PROTOTYPE_PING: Lazy<Ping> = Lazy::new(|| Ping::new("prototype", false, true, vec![]));
+    static PROTOTYPE_PING: Lazy<Ping> =
+        Lazy::new(|| Ping::new("prototype", false, true, true, true, vec![]));
 
     #[test]
     fn smoke_test_custom_ping() {

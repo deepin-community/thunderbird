@@ -17,8 +17,9 @@
 #include "nsViewportInfo.h"
 #include "UnitTransforms.h"
 
-static mozilla::LazyLogModule sApzMvmLog("apz.mobileviewport");
-#define MVM_LOG(...) MOZ_LOG(sApzMvmLog, LogLevel::Debug, (__VA_ARGS__))
+mozilla::LazyLogModule MobileViewportManager::gLog("apz.mobileviewport");
+#define MVM_LOG(...) \
+  MOZ_LOG(MobileViewportManager::gLog, LogLevel::Debug, (__VA_ARGS__))
 
 NS_IMPL_ISUPPORTS(MobileViewportManager, nsIDOMEventListener, nsIObserver)
 
@@ -48,6 +49,10 @@ MobileViewportManager::MobileViewportManager(MVMContext* aContext,
   mContext->AddEventListener(LOAD, this, true);
 
   mContext->AddObserver(this, BEFORE_FIRST_PAINT.Data(), false);
+
+  // We need to initialize the display size and the CSS viewport size before
+  // the initial reflow happens.
+  UpdateSizesBeforeReflow();
 }
 
 MobileViewportManager::~MobileViewportManager() = default;
@@ -199,7 +204,7 @@ void MobileViewportManager::SetInitialViewport() {
 CSSToScreenScale MobileViewportManager::ClampZoom(
     const CSSToScreenScale& aZoom, const nsViewportInfo& aViewportInfo) const {
   CSSToScreenScale zoom = aZoom;
-  if (IsNaN(zoom.scale)) {
+  if (std::isnan(zoom.scale)) {
     NS_ERROR("Don't pass NaN to ClampZoom; check caller for 0/0 division");
     zoom = CSSToScreenScale(1.0);
   }
@@ -428,6 +433,11 @@ void MobileViewportManager::UpdateResolutionForContentSizeChange(
   // We try to scale down the contents only IF the document has no
   // initial-scale AND IF it's not restored documents AND IF the resolution
   // has never been changed by APZ.
+  if (MOZ_LOG_TEST(gLog, LogLevel::Debug)) {
+    MVM_LOG("%p: conditions preventing shrink-to-fit: %d %d %d\n", this,
+            mRestoreResolution.isSome(), mContext->IsResolutionUpdatedByApz(),
+            viewportInfo.IsDefaultZoomValid());
+  }
   if (!mRestoreResolution && !mContext->IsResolutionUpdatedByApz() &&
       !viewportInfo.IsDefaultZoomValid()) {
     if (zoom != intrinsicScale) {
@@ -508,6 +518,8 @@ void MobileViewportManager::UpdateVisualViewportSize(
   CSSSize compSize = compositionSize / aZoom;
   MVM_LOG("%p: Setting VVPS %s\n", this, ToString(compSize).c_str());
   mContext->SetVisualViewportSize(compSize);
+
+  UpdateVisualViewportSizeByDynamicToolbar(mContext->GetDynamicToolbarOffset());
 }
 
 CSSToScreenScale MobileViewportManager::GetZoom() const {
@@ -524,11 +536,14 @@ void MobileViewportManager::UpdateVisualViewportSizeByDynamicToolbar(
   ScreenIntSize displaySize = ViewAs<ScreenPixel>(
       mDisplaySize, PixelCastJustification::LayoutDeviceIsScreenForBounds);
   displaySize.height += aToolbarHeight;
-  CSSSize compSize = ScreenSize(GetCompositionSize(displaySize)) / GetZoom();
+  nsSize compSize = CSSSize::ToAppUnits(
+      ScreenSize(GetCompositionSize(displaySize)) / GetZoom());
 
-  mVisualViewportSizeUpdatedByDynamicToolbar =
-      nsSize(nsPresContext::CSSPixelsToAppUnits(compSize.width),
-             nsPresContext::CSSPixelsToAppUnits(compSize.height));
+  if (mVisualViewportSizeUpdatedByDynamicToolbar == compSize) {
+    return;
+  }
+
+  mVisualViewportSizeUpdatedByDynamicToolbar = compSize;
 
   mContext->PostVisualViewportResizeEventByDynamicToolbar();
 }
@@ -565,11 +580,7 @@ void MobileViewportManager::RefreshVisualViewportSize() {
 
 void MobileViewportManager::UpdateSizesBeforeReflow() {
   if (Maybe<LayoutDeviceIntSize> newDisplaySize =
-          mContext->GetContentViewerSize()) {
-    if (mDisplaySize == *newDisplaySize) {
-      return;
-    }
-
+          mContext->GetDocumentViewerSize()) {
     mDisplaySize = *newDisplaySize;
     MVM_LOG("%p: Reflow starting, display size updated to %s\n", this,
             ToString(mDisplaySize).c_str());
@@ -609,7 +620,7 @@ void MobileViewportManager::RefreshViewportSize(bool aForceAdjustResolution) {
 
   Maybe<float> displayWidthChangeRatio;
   if (Maybe<LayoutDeviceIntSize> newDisplaySize =
-          mContext->GetContentViewerSize()) {
+          mContext->GetDocumentViewerSize()) {
     // See the comment in UpdateResolutionForViewportSizeChange for why we're
     // doing this.
     if (mDisplaySize.width > 0) {

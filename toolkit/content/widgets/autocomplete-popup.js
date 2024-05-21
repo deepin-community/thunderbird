@@ -8,7 +8,9 @@
 // leaking to window scope.
 {
   const MozPopupElement = MozElements.MozElementMixin(XULPopupElement);
-  MozElements.MozAutocompleteRichlistboxPopup = class MozAutocompleteRichlistboxPopup extends MozPopupElement {
+  MozElements.MozAutocompleteRichlistboxPopup = class MozAutocompleteRichlistboxPopup extends (
+    MozPopupElement
+  ) {
     constructor() {
       super();
 
@@ -69,9 +71,8 @@
 
             switch (event.type) {
               case "mousedown":
-                this._disabledItemClicked = !!event.target.closest(
-                  "richlistitem"
-                )?.disabled;
+                this._disabledItemClicked =
+                  !!event.target.closest("richlistitem")?.disabled;
                 break;
               case "mouseup":
                 // Don't call onPopupClick for the scrollbar buttons, thumb,
@@ -127,7 +128,7 @@
 
     static get markup() {
       return `
-      <richlistbox class="autocomplete-richlistbox" flex="1"/>
+      <richlistbox class="autocomplete-richlistbox"/>
     `;
     }
 
@@ -294,7 +295,7 @@
       }
 
       if (this.mPopupOpen) {
-        delete this._adjustHeightOnPopupShown;
+        this._adjustHeightOnPopupShown = false;
         this._adjustHeightRAFToken = requestAnimationFrame(() =>
           this.adjustHeight()
         );
@@ -353,12 +354,9 @@
 
       this._collapseUnusedItems();
 
-      this.richlistbox.style.removeProperty("height");
-      // We need to get the ceiling of the calculated value to ensure that the box fully contains
-      // all of its contents and doesn't cause a scrollbar since nsIBoxObject only expects a
-      // `long`. e.g. if `height` is 99.5 the richlistbox would render at height 99px with a
-      // scrollbar for the extra 0.5px.
-      this.richlistbox.height = Math.ceil(height);
+      // We need to get the ceiling of the calculated value to ensure that the
+      // box fully contains all of its contents and doesn't cause a scrollbar.
+      this.richlistbox.style.height = Math.ceil(height) + "px";
     }
 
     _appendCurrentResult(invalidateReason) {
@@ -388,6 +386,15 @@
           .replace(/^\s+/, "")
           .replace(/\s+$/, "");
 
+        // Generic items can pack their details as JSON inside label
+        try {
+          const details = JSON.parse(label);
+          if (details.title) {
+            value = details.title;
+            label = details.subtitle ?? "";
+          }
+        } catch {}
+
         let reusable = false;
         if (itemExists) {
           item = this.richlistbox.children[this._currentIndex];
@@ -406,6 +413,7 @@
             "autofill-clear-button",
             "autofill-insecureWarning",
             "generatedPassword",
+            "generic",
             "importableLearnMore",
             "importableLogins",
             "insecureWarning",
@@ -437,6 +445,9 @@
               break;
             case "autofill-insecureWarning":
               options = { is: "autocomplete-creditcard-insecure-field" };
+              break;
+            case "generic":
+              options = { is: "autocomplete-two-line-richlistitem" };
               break;
             case "importableLearnMore":
               options = {
@@ -561,7 +572,7 @@
     }
 
     setListeners() {
-      this.addEventListener("popupshowing", event => {
+      this.addEventListener("popupshowing", () => {
         // If normalMaxRows wasn't already set by the input, then set it here
         // so that we restore the correct number when the popup is hidden.
 
@@ -573,14 +584,14 @@
         this.mPopupOpen = true;
       });
 
-      this.addEventListener("popupshown", event => {
+      this.addEventListener("popupshown", () => {
         if (this._adjustHeightOnPopupShown) {
-          delete this._adjustHeightOnPopupShown;
+          this._adjustHeightOnPopupShown = false;
           this.adjustHeight();
         }
       });
 
-      this.addEventListener("popuphiding", event => {
+      this.addEventListener("popuphiding", () => {
         var isListActive = true;
         if (this.selectedIndex == -1) {
           isListActive = false;

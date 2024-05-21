@@ -42,10 +42,11 @@ interface Request {
 
   // Bug 1124638 - Allow chrome callers to set the context.
   [ChromeOnly]
-  void overrideContentPolicyType(nsContentPolicyType context);
+  undefined overrideContentPolicyType(nsContentPolicyType context);
 };
 Request includes Body;
 
+// <https://fetch.spec.whatwg.org/#requestinit>.
 dictionary RequestInit {
   ByteString method;
   HeadersInit headers;
@@ -63,6 +64,9 @@ dictionary RequestInit {
 
   AbortSignal? signal;
 
+  [Pref="network.fetchpriority.enabled"]
+  RequestPriority priority;
+
   [Pref="dom.fetchObserver.enabled"]
   ObserverCallback observe;
 };
@@ -78,3 +82,4 @@ enum RequestMode { "same-origin", "no-cors", "cors", "navigate" };
 enum RequestCredentials { "omit", "same-origin", "include" };
 enum RequestCache { "default", "no-store", "reload", "no-cache", "force-cache", "only-if-cached" };
 enum RequestRedirect { "follow", "error", "manual" };
+enum RequestPriority { "high" , "low" , "auto" };

@@ -6,34 +6,15 @@
 // This file is the component definition for a demo base implementation of a
 // javascript IncomingServer.
 
-var { ComponentUtils } = ChromeUtils.import(
-  "resource://gre/modules/ComponentUtils.jsm"
+const { JSAccountUtils } = ChromeUtils.importESModule(
+  "resource:///modules/jsaccount/JSAccountUtils.sys.mjs"
 );
-const { JSAccountUtils } = ChromeUtils.import(
-  "resource:///modules/jsaccount/JSAccountUtils.jsm"
-);
-var {
+var { JaBaseIncomingServerProperties, JaBaseIncomingServer } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mailnews/testJaBaseIncomingServer.sys.mjs"
+  );
+
+var xpcomFactory = JSAccountUtils.jaFactory(
   JaBaseIncomingServerProperties,
-  JaBaseIncomingServer,
-} = ChromeUtils.import(
-  "resource://testing-common/mailnews/testJaBaseIncomingServer.jsm"
+  JaBaseIncomingServer
 );
-dump("\n\ntestJaBaseIncomingServerComponent.js\n\n");
-
-// Constructor
-function JaBaseIncomingServerConstructor() {
-  dump("JaBaseIncomingServerConstructor\n");
-}
-
-// Constructor prototype (not instance prototype).
-JaBaseIncomingServerConstructor.prototype = {
-  classID: JaBaseIncomingServerProperties.classID,
-  _xpcom_factory: JSAccountUtils.jaFactory(
-    JaBaseIncomingServerProperties,
-    JaBaseIncomingServer
-  ),
-};
-
-this.NSGetFactory = ComponentUtils.generateNSGetFactory([
-  JaBaseIncomingServerConstructor,
-]);

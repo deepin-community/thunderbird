@@ -6,14 +6,12 @@
 #ifndef PLUGINS_GIMP_FILE_JXL_LOAD_H_
 #define PLUGINS_GIMP_FILE_JXL_LOAD_H_
 
-#include <libgimp/gimp.h>
-
-#include "lib/jxl/base/status.h"
+#include "plugins/gimp/common.h"
 
 namespace jxl {
 
-Status LoadJpegXlImage(const gchar* filename, gint32* image_id);
+bool LoadJpegXlImage(const gchar* filename, gint32* image_id);
 
-}
+}  // namespace jxl
 
 #endif  // PLUGINS_GIMP_FILE_JXL_LOAD_H_

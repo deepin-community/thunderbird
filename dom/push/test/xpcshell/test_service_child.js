@@ -3,10 +3,6 @@
 
 "use strict";
 
-Cu.importGlobalProperties(["crypto"]);
-
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-
 var db;
 
 function done() {
@@ -112,7 +108,7 @@ add_test(function test_subscribeWithKey_success() {
         }
       );
     },
-    error => {
+    () => {
       ok(false, "Error generating app server key");
       done();
     }
@@ -143,7 +139,7 @@ add_test(function test_subscribeWithKey_conflict() {
         }
       );
     },
-    error => {
+    () => {
       ok(false, "Error generating different app server key");
       done();
     }
@@ -285,9 +281,8 @@ add_test(function test_unsubscribe_error() {
 
 add_test(function test_subscribe_origin_principal() {
   let scope = "https://example.net/origin-principal";
-  let principal = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-    scope
-  );
+  let principal =
+    Services.scriptSecurityManager.createContentPrincipalFromOrigin(scope);
 
   do_test_pending();
   PushServiceComponent.subscribe(scope, principal, (result, subscription) => {

@@ -1,5 +1,5 @@
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 /* import-globals-from resources/mock_windows_reg_factory.js */
@@ -131,7 +131,7 @@ var expectedImapAccount = {
 };
 
 function teardown() {
-  for (let server of MailServices.smtp.servers) {
+  for (const server of MailServices.smtp.servers) {
     MailServices.smtp.deleteServer(server);
   }
 

@@ -4,75 +4,69 @@ Task Kinds
 This section lists and documents the additional task kinds that are specific
 to Thunderbird and are implemented in it's source tree.
 
-thirdparty
-----------
-Used to build third-party dependency libraries such as libotr.
+beetmover-strings-source
+------------------------
+
+Upload strings source files to FTP.
+
+
+shippable-l10n-pre
+------------------
+Prepares a build artifact containing the translated strings from all locales.
+The artifact is consumed by `shippable-l10n` to produce the localized
+Thunderbird builds.
 
 Using
 .....
 
 - kind-dependencies:
-    Must include `toolchain`
+    Must include `build`
 - transforms:
-    Must include `comm_taskgraph.transforms.thirdparty:transforms`
+    Must include `comm_taskgraph.transforms.l10n_pre:transforms`
+- only-for-attributes:
+    Must include `shippable`
+- only-for-build-platforms:
+    This is set to `linux64-shippable/opt` so that it only runs for that
+    platform. All platforms will consume the build artifact from
+    `linux64-shippable/opt`. (It's just string data; nothing platform-specific
+    in there.)
 
 Parameters
 ..........
 
-- thirdparty:
-    - script: Script to run, in `comm/taskcluster/scripts`
-    - args: Optional list of arguments to pass to script
-    - artifact: Filename of built artifact.
-- toolchain:
-    List of toolchains needed
+There are some task parameters specific to this job kind.
 
-.. important::
-  Thirdparty library builds are cached between runs. They will rebuild based
-  on `files-changed` optimization. To build a new version, make a change.
+- locale-list:
+  Points to either `shipped-locales` or `all-locales`. This file is used to
+  select the locales that are included in the build artifact.
+- comm-locales-file:
+  This file contains the revision of the `comm-l10n` monorepo to checkout.
+- browser-locales-file:
+  This file contains the revisions of the `l10n-central` repositories to checkout.
+  This is for toolkit and other strings used from mozilla-central.
 
-Build Environment
-.................
+Other notes
+...........
 
-The build script will have a limited mozilla- checkout with a complete comm-
-checkout at `$GECKO_PATH`. It should be treated as read-only.
-`$WORKSPACE` can be used during your build as needed. `$MOZ_FETCHES_DIR` will
-typically be at `$WORKSPACE/fetches` and will have your toolchains unpacked
-in separate directories.
-When your build finishes, copy your artifacts to `$UPLOAD_DIR`.
+The mozharness script reads its configuration from `thunderbird_split_l10n.py`.
+In that file, `hg_l10n_base` refers to the `l10n-central` repository root.
+This is used with `browser-locales-file` to get the strings from toolkit and
+devtools that are needed.
 
-When building for macOS, you must set `$TOOLTOOL_MANIFEST` in the environment
-and set `tooltool-downloads` to `internal` in the run configuration. See the
-build task configuration for an example.
+Also in the mozharness config file is `hg_comm_l10n_repo`, set to the URL of
+the `comm-l10n` monorepo.
 
-Using built artifacts
-.....................
-
-TODO: Document how to configure a build task to include build artifacts from
-a thirdparty task.
+The mozharness script will clone the necessary repositories from `l10n-central`,
+and `comm-l10n`, merge them, and create a tar file.
 
 
-Example task configuration
-..........................
+shippable-l10n-pre-signing
+--------------------------
 
-.. code-block:: yaml
+Signing job for shippable-l10n-pre artifacts
 
-  libfoo-linux64:
-    description: 'libfoo library'
-    index:
-      product: thunderbird
-    treeherder:
-      symbol: libfoo
-      platform: linux64/opt
-    worker:
-      docker-image: {in-tree: "deb8-toolchain-build"}
-    when:
-      files-changed:
-        - comm/thirdparty/libfoo
-        - comm/thirdparty/README.libfoo
-    thirdparty:
-      script: 'build-libfoo.sh'
-      args: ['arg1', 'arg2']
-      artifact: 'libfoo.tar.xz'
-    toolchain:
-      - linux64-clang
-      - linux64-binutils
+
+source-docs
+-----------
+
+Build Thunderbird source documentation and upload to RTD.

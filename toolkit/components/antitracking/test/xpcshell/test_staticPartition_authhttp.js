@@ -4,10 +4,8 @@
 
 "use strict";
 
-const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-
-const { CookieXPCShellUtils } = ChromeUtils.import(
-  "resource://testing-common/CookieXPCShellUtils.jsm"
+const { CookieXPCShellUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/CookieXPCShellUtils.sys.mjs"
 );
 
 CookieXPCShellUtils.init(this);
@@ -40,7 +38,7 @@ Requestor.prototype = {
     return true;
   },
 
-  asyncPromptAuth(chan, cb, ctx, lvl, info) {
+  asyncPromptAuth() {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
   },
 };
@@ -54,19 +52,6 @@ let observer = channel => {
   channel.notificationCallbacks = new Requestor();
 };
 Services.obs.addObserver(observer, "http-on-modify-request");
-
-function makeChan(url, loadingUrl) {
-  var principal = Services.scriptSecurityManager.createContentPrincipal(
-    Services.io.newURI(loadingUrl),
-    {}
-  );
-  return NetUtil.newChannel({
-    uri: url,
-    loadingPrincipal: principal,
-    securityFlags: Ci.nsILoadInfo.SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
-    contentPolicyType: Ci.nsIContentPolicy.TYPE_OTHER,
-  });
-}
 
 add_task(async () => {
   do_get_profile();

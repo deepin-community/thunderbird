@@ -5,119 +5,154 @@
 /**
  * Test dragging of events in the various calendar views.
  */
-const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+const { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalEvent: "resource:///modules/CalEvent.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  CalEvent: "resource:///modules/CalEvent.sys.mjs",
 });
 
-const calendar = CalendarTestUtils.createProxyCalendar("Drag Test", "memory");
-Services.prefs.setIntPref("calendar.view.visiblehours", 24);
+const calendar = CalendarTestUtils.createCalendar("Drag Test", "memory");
+// Set a low number of hours to reduce pixel -> minute rounding errors.
+Services.prefs.setIntPref("calendar.view.visiblehours", 3);
 
 registerCleanupFunction(() => {
-  CalendarTestUtils.removeProxyCalendar(calendar);
+  CalendarTestUtils.removeCalendar(calendar);
   Services.prefs.clearUserPref("calendar.view.visiblehours");
+  // Reset the spaces toolbar to its default visible state.
+  window.gSpacesToolbar.toggleToolbar(false);
 });
 
 /**
- * Ensures that we are dragging from a consistent location in the various
- * calendar views (scrolled all the way to the top with the window maximized).
+ * Ensures that the window is maximised after switching dates.
  *
  * @param {calIDateTime} date - A date to navigate the view to.
  */
-async function resetView(date) {
+async function resetView(date, view) {
   window.goToDate(date);
 
   if (window.windowState != window.STATE_MAXIMIZED) {
     // The multi-day views adjust scrolling dynamically when they detect a
     // resize. Hook into the resize event and scroll after the adjustment.
-    let promise = BrowserTestUtils.waitForEvent(window, "resize");
+    const resizePromise = BrowserTestUtils.waitForEvent(window, "resize");
     window.maximize();
-    await promise;
-    await new Promise(resolve => setTimeout(resolve));
+    await resizePromise;
   }
+}
+
+/**
+ * End the dragging of the event at the specified location.
+ *
+ * @param {number} day - The day to drop into.
+ * @param {number} hour - The starting hour to drop to.
+ * @param {number} topOffset - An offset to apply to the mouse position.
+ */
+function endDrag(day, hour, topOffset) {
+  const view = window.currentView();
+  let hourElement;
+  if (view.id == "day-view") {
+    hourElement = CalendarTestUtils.dayView.getHourBoxAt(window, hour);
+  } else {
+    hourElement = CalendarTestUtils.weekView.getHourBoxAt(window, day, hour);
+  }
+  // We scroll to align the *end* of the hour element so we can avoid triggering
+  // the auto-scroll when we synthesize mousemove below.
+  // FIXME: Use and test auto scroll by holding mouseover at the view edges.
+  CalendarTestUtils.scrollViewToTarget(hourElement, false);
+
+  const hourRect = hourElement.getBoundingClientRect();
+
+  // We drop the event with some offset from the starting edge of the desired
+  // hourElement.
+  // NOTE: This may mean that the drop point may not be above the hourElement.
+  // NOTE: We assume that the drop point is however still above the view.
+  // Currently event "move" events get cancelled if the pointer leaves the view.
+  const top = Math.round(hourRect.top + topOffset);
+  const left = Math.round(hourRect.left + hourRect.width / 2);
+
+  EventUtils.synthesizeMouseAtPoint(left, top, { type: "mousemove", shiftKey: true }, window);
+  EventUtils.synthesizeMouseAtPoint(left, top, { type: "mouseup", shiftKey: true }, window);
 }
 
 /**
  * Simulates the dragging of an event box in a multi-day view to another
  * column, horizontally.
  *
- * @param {MozCalendarEventBox} eventBox
- * @param {MozCalendarEventColumn} column
- * @param {number} index
+ * @param {MozCalendarEventBox} eventBox - The event to start moving.
+ * @param {number} day - The day to drop into.
+ * @param {number} hour - The starting hour to drop to.
  */
-function simulateDragToColumn(eventBox, column, index) {
-  // Force 1 pixel = 1 minute in the column
-  let shiftKey = true;
-  column.pixelsPerMinute = 1;
+function simulateDragToColumn(eventBox, day, hour) {
+  // Scroll to align to the top of the view.
+  CalendarTestUtils.scrollViewToTarget(eventBox, true);
 
-  let mousedownProps = {
-    screenX: eventBox.screenX,
-    screenY: eventBox.screenY,
-    shiftKey: true,
-  };
-  eventBox.dispatchEvent(new MouseEvent("mousedown", mousedownProps));
-  eventBox.dispatchEvent(new MouseEvent("mouseout"));
+  const sourceRect = eventBox.getBoundingClientRect();
+  // Start dragging from the center of the event box to avoid the gripbars.
+  // NOTE: We assume that the eventBox's center is in view.
+  const leftOffset = sourceRect.width / 2;
+  // We round the mouse position to try and reduce rounding errors when
+  // scrolling the view.
+  const sourceTop = Math.round(sourceRect.top + sourceRect.height / 2);
+  const sourceLeft = sourceRect.left + leftOffset;
+  // Keep track of the exact offset.
+  const topOffset = sourceTop - sourceRect.top;
 
-  let spacer = column.querySelector(
-    `.multiday-column-box-stack > .multiday-column-bg-box >` +
-      `.calendar-event-column-linebox:nth-child(${index})`
+  EventUtils.synthesizeMouseAtPoint(
+    sourceLeft,
+    sourceTop,
+    // Hold shift to avoid snapping.
+    { type: "mousedown", shiftKey: true },
+    window
   );
-  let screenX = spacer.screenX;
-  let screenY = spacer.screenY;
-  let destRect = column.getBoundingClientRect();
-  let clientX = destRect.x;
-  let clientY = eventBox.getBoundingClientRect().y;
+  EventUtils.synthesizeMouseAtPoint(
+    // We assume the location of the mouseout event does not matter, just as
+    // long as the event box receives it.
+    sourceLeft,
+    sourceTop,
+    { type: "mouseout", shiftKey: true },
+    window
+  );
 
-  let props = { clientX, clientY, screenX, screenY, shiftKey };
-  window.dispatchEvent(new MouseEvent("mousemove", props));
-  window.dispatchEvent(new MouseEvent("mouseup", props));
+  // End drag with the same offset from the starting edge.
+  endDrag(day, hour, topOffset);
 }
 
 /**
  * Simulates the dragging of an event box via one of the gripbars.
  *
- * @param {MozCalendarEventgripbar} gripbar
- * @param {MozCalendarEventBox} eventBox
- * @param {MozCalendarEventColumn} column
- * @param {number} index
+ * @param {MozCalendarEventBox} eventBox - The event to resize.
+ * @param {"start"|"end"} - The side to grab.
+ * @param {number} day - The day to move into.
+ * @param {number} hour - The hour to move to.
  */
-function simulateGripbarDrag(gripbar, eventBox, column, index) {
-  // Force 1 pixel = 1 minute in the column
-  let shiftKey = true;
-  column.pixelsPerMinute = 1;
+function simulateGripbarDrag(eventBox, side, day, hour) {
+  // Scroll the edge of the box into view.
+  CalendarTestUtils.scrollViewToTarget(eventBox, side == "start");
 
-  let gripbarRect = eventBox.getBoundingClientRect();
-  let mousedownProps = {
-    screenX: gripbarRect.x,
-    screenY: gripbarRect.y + gripbarRect.height,
-    shiftKey,
-    bubbles: true,
-  };
-  gripbar.dispatchEvent(new MouseEvent("mousedown", mousedownProps));
+  const gripbar = side == "start" ? eventBox.startGripbar : eventBox.endGripbar;
 
-  let spacer = column.querySelector(
-    `.multiday-column-box-stack > .multiday-column-bg-box >` +
-      `.calendar-event-column-linebox:nth-child(${index})`
+  const sourceRect = gripbar.getBoundingClientRect();
+  const sourceTop = sourceRect.top + sourceRect.height / 2;
+  const sourceLeft = sourceRect.left + sourceRect.width / 2;
+
+  // Hover to make the gripbar visible.
+  EventUtils.synthesizeMouseAtPoint(sourceLeft, sourceTop, { type: "mouseover" }, window);
+  EventUtils.synthesizeMouseAtPoint(
+    sourceLeft,
+    sourceTop,
+    // Hold shift to avoid snapping.
+    { type: "mousedown", shiftKey: true },
+    window
   );
-  let screenX = spacer.screenX;
-  let screenY = spacer.screenY;
-  let destRect = spacer.getBoundingClientRect();
-  let clientX = destRect.x;
-  let clientY = destRect.y;
-  eventBox.dispatchEvent(new MouseEvent("mouseout"));
 
-  let props = { clientX, clientY, screenX, screenY, shiftKey };
-  window.dispatchEvent(new MouseEvent("mousemove", props));
-  window.dispatchEvent(new MouseEvent("mouseup", props));
+  // End the drag at the start of the hour.
+  endDrag(day, hour, 0);
 }
 
 /**
  * Tests dragging an event item updates the event in the month view.
  */
 add_task(async function testMonthViewDragEventItem() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "1";
   event.title = "Month View Event";
   event.startDate = cal.createDateTime("20210316T000000Z");
@@ -127,12 +162,15 @@ add_task(async function testMonthViewDragEventItem() {
   await calendar.addItem(event);
   await resetView(event.startDate);
 
+  // Hide the spaces toolbar since it interferes with the calendar
+  window.gSpacesToolbar.toggleToolbar(true);
+
   let eventItem = await CalendarTestUtils.monthView.waitForItemAt(window, 3, 3, 1);
-  let dayBox = await CalendarTestUtils.monthView.getDayBox(window, 3, 2);
-  let dragSession = Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService);
+  const dayBox = await CalendarTestUtils.monthView.getDayBox(window, 3, 2);
+  const dragSession = Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService);
   dragSession.startDragSessionForTests(Ci.nsIDragService.DRAGDROP_ACTION_MOVE);
 
-  let [result, dataTransfer] = EventUtils.synthesizeDragOver(
+  const [result, dataTransfer] = EventUtils.synthesizeDragOver(
     eventItem,
     dayBox,
     undefined,
@@ -151,7 +189,7 @@ add_task(async function testMonthViewDragEventItem() {
   eventItem = await CalendarTestUtils.monthView.waitForItemAt(window, 3, 2, 1);
   Assert.ok(eventItem, "item moved to new date");
 
-  let { id, title, startDate, endDate } = eventItem.occurrence;
+  const { id, title, startDate, endDate } = eventItem.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210315T000000Z", "startDate is correct");
@@ -163,7 +201,7 @@ add_task(async function testMonthViewDragEventItem() {
  * Tests dragging an event item updates the event in the multiweek view.
  */
 add_task(async function testMultiWeekViewDragEventItem() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "2";
   event.title = "Multiweek View Event";
   event.startDate = cal.createDateTime("20210316T000000Z");
@@ -174,11 +212,11 @@ add_task(async function testMultiWeekViewDragEventItem() {
   await resetView(event.startDate);
 
   let eventItem = await CalendarTestUtils.multiweekView.waitForItemAt(window, 1, 3, 1);
-  let dayBox = await CalendarTestUtils.multiweekView.getDayBox(window, 1, 2);
-  let dragSession = Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService);
+  const dayBox = await CalendarTestUtils.multiweekView.getDayBox(window, 1, 2);
+  const dragSession = Cc["@mozilla.org/widget/dragservice;1"].getService(Ci.nsIDragService);
   dragSession.startDragSessionForTests(Ci.nsIDragService.DRAGDROP_ACTION_MOVE);
 
-  let [result, dataTransfer] = EventUtils.synthesizeDragOver(
+  const [result, dataTransfer] = EventUtils.synthesizeDragOver(
     eventItem,
     dayBox,
     undefined,
@@ -197,7 +235,7 @@ add_task(async function testMultiWeekViewDragEventItem() {
   eventItem = await CalendarTestUtils.multiweekView.waitForItemAt(window, 1, 2, 1);
   Assert.ok(eventItem, "item moved to new date");
 
-  let { id, title, startDate, endDate } = eventItem.occurrence;
+  const { id, title, startDate, endDate } = eventItem.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210315T000000Z", "startDate is correct");
@@ -210,7 +248,7 @@ add_task(async function testMultiWeekViewDragEventItem() {
  * week view.
  */
 add_task(async function testWeekViewDragEventBoxToPreviousDay() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "3";
   event.title = "Week View Previous Day";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -221,18 +259,15 @@ add_task(async function testWeekViewDragEventBoxToPreviousDay() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
-  let column = await CalendarTestUtils.weekView.getEventColumn(window, 2);
-  simulateDragToColumn(eventBox, column, 3);
-
-  Assert.ok(
-    !CalendarTestUtils.weekView.getEventBoxAt(window, 3, 1),
-    "event moved from initial position"
-  );
+  simulateDragToColumn(eventBox, 2, 2);
 
   eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 2, 1);
-  Assert.ok(eventBox, "event is at new position");
+  await TestUtils.waitForCondition(
+    () => !CalendarTestUtils.weekView.getEventBoxAt(window, 3, 1),
+    "Old position is empty"
+  );
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210315T020000Z", "startDate is correct");
@@ -245,7 +280,7 @@ add_task(async function testWeekViewDragEventBoxToPreviousDay() {
  * week view.
  */
 add_task(async function testWeekViewDragEventBoxToFollowingDay() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "4";
   event.title = "Week View Following Day";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -256,18 +291,15 @@ add_task(async function testWeekViewDragEventBoxToFollowingDay() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
-  let column = await CalendarTestUtils.weekView.getEventColumn(window, 4);
-  simulateDragToColumn(eventBox, column, 3);
-
-  Assert.ok(
-    !CalendarTestUtils.weekView.getEventBoxAt(window, 3, 1),
-    "event moved from initial position"
-  );
+  simulateDragToColumn(eventBox, 4, 2);
 
   eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 4, 1);
-  Assert.ok(eventBox, "event is at new position");
+  await TestUtils.waitForCondition(
+    () => !CalendarTestUtils.weekView.getEventBoxAt(window, 3, 1),
+    "Old position is empty"
+  );
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210317T020000Z", "startDate is correct");
@@ -280,7 +312,7 @@ add_task(async function testWeekViewDragEventBoxToFollowingDay() {
  * view.
  */
 add_task(async function testWeekViewDragEventBoxStartTime() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "5";
   event.title = "Week View Start";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -291,12 +323,10 @@ add_task(async function testWeekViewDragEventBoxStartTime() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
-  let gripbar = eventBox.querySelector('[whichside="start"]');
-  let column = await CalendarTestUtils.weekView.getEventColumn(window, 3);
-  simulateGripbarDrag(gripbar, eventBox, column, 2);
+  simulateGripbarDrag(eventBox, "start", 3, 1);
   eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210316T010000Z", "startDate was changed");
@@ -308,7 +338,7 @@ add_task(async function testWeekViewDragEventBoxStartTime() {
  * Tests dragging the end of an event box changes the time in the week view.
  */
 add_task(async function testWeekViewDragEventBoxEndTime() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "6";
   event.title = "Week View End";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -319,12 +349,10 @@ add_task(async function testWeekViewDragEventBoxEndTime() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
-  let gripbar = eventBox.querySelector('[whichside="end"]');
-  let column = await CalendarTestUtils.weekView.getEventColumn(window, 3);
-  simulateGripbarDrag(gripbar, eventBox, column, 7);
+  simulateGripbarDrag(eventBox, "end", 3, 6);
   eventBox = await CalendarTestUtils.weekView.waitForEventBoxAt(window, 3, 1);
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210316T020000Z", "startDate did not change");
@@ -336,7 +364,7 @@ add_task(async function testWeekViewDragEventBoxEndTime() {
  * Tests dragging the top of an event box changes the start time in the day view.
  */
 add_task(async function testDayViewDragEventBoxStartTime() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "7";
   event.title = "Day View Start";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -347,12 +375,10 @@ add_task(async function testDayViewDragEventBoxStartTime() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
-  let gripbar = eventBox.querySelector('[whichside="start"]');
-  let column = await CalendarTestUtils.dayView.getEventColumn(window);
-  simulateGripbarDrag(gripbar, eventBox, column, 2);
+  simulateGripbarDrag(eventBox, "start", 1, 1);
   eventBox = await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210316T010000Z", "startDate was changed");
@@ -365,7 +391,7 @@ add_task(async function testDayViewDragEventBoxStartTime() {
  * view.
  */
 add_task(async function testDayViewDragEventBoxEndTime() {
-  let event = new CalEvent();
+  const event = new CalEvent();
   event.id = "8";
   event.title = "Day View End";
   event.startDate = cal.createDateTime("20210316T020000Z");
@@ -376,12 +402,10 @@ add_task(async function testDayViewDragEventBoxEndTime() {
   await resetView(event.startDate);
 
   let eventBox = await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
-  let gripbar = eventBox.querySelector('[whichside="end"]');
-  let column = await CalendarTestUtils.dayView.getEventColumn(window);
-  simulateGripbarDrag(gripbar, eventBox, column, 5);
+  simulateGripbarDrag(eventBox, "end", 1, 4);
   eventBox = await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
 
-  let { id, title, startDate, endDate } = eventBox.occurrence;
+  const { id, title, startDate, endDate } = eventBox.occurrence;
   Assert.equal(id, event.id, "id is correct");
   Assert.equal(title, event.title, "title is correct");
   Assert.equal(startDate.icalString, "20210316T020000Z", "startDate did not change");

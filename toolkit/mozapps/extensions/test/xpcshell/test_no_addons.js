@@ -6,11 +6,13 @@
 // bug 944006
 
 // Load XPI Provider to get schema version ID
-var XPIScope = ChromeUtils.import(
-  "resource://gre/modules/addons/XPIProvider.jsm",
-  null
+const {
+  XPIExports: {
+    XPIInternal: { DB_SCHEMA },
+  },
+} = ChromeUtils.importESModule(
+  "resource://gre/modules/addons/XPIExports.sys.mjs"
 );
-const { DB_SCHEMA } = XPIScope.XPIInternal;
 
 createAppInfo("xpcshell@tests.mozilla.org", "XPCShell", "1", "1.9.2");
 

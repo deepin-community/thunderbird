@@ -15,8 +15,6 @@ const ZipReader = new Components.Constructor(
   "open"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Returns a promise that is resolved with a list of files that have one of the
  * extensions passed, represented by their nsIURI objects, which exist inside
@@ -29,12 +27,12 @@ function generateURIsFromDirTree(dir, extensions) {
   if (!Array.isArray(extensions)) {
     extensions = [extensions];
   }
-  let dirQueue = [dir.path];
-  return (async function() {
-    let rv = [];
+  const dirQueue = [dir.path];
+  return (async function () {
+    const rv = [];
     while (dirQueue.length) {
-      let nextDir = dirQueue.shift();
-      let { subdirs, files } = await iterateOverPath(nextDir, extensions);
+      const nextDir = dirQueue.shift();
+      const { subdirs, files } = await iterateOverPath(nextDir, extensions);
       dirQueue.push(...subdirs);
       rv.push(...files);
     }
@@ -43,48 +41,60 @@ function generateURIsFromDirTree(dir, extensions) {
 }
 
 /**
- * Iterates over all entries of a directory.
- * It returns a promise that is resolved with an object with two properties:
- *  - files: an array of nsIURIs corresponding to files that match the extensions passed
- *  - subdirs: an array of paths for subdirectories we need to recurse into
- *             (handled by generateURIsFromDirTree above)
+ * Iterate over the children of |path| and find subdirectories and files with
+ * the given extension.
  *
- * @param path the path to check (string)
- * @param extensions the file extensions we're interested in.
+ * This function recurses into ZIP and JAR archives as well.
+ *
+ * @param {string} path The path to check.
+ * @param {string[]} extensions The file extensions we're interested in.
+ *
+ * @returns {Promise<object>}
+ *           A promise that resolves to an object containing the following
+ *           properties:
+ *           - files: an array of nsIURIs corresponding to
+ *             files that match the extensions passed
+ *           - subdirs: an array of paths for subdirectories we need to recurse
+ *             into (handled by generateURIsFromDirTree above)
  */
 async function iterateOverPath(path, extensions) {
-  let parentDir = new LocalFile(path);
-  let subdirs = [];
-  let files = [];
+  const children = await IOUtils.getChildren(path);
 
-  // Iterate through the directory
-  for (let childPath of await IOUtils.getChildren(path)) {
-    let stat = await IOUtils.stat(childPath);
+  const files = [];
+  const subdirs = [];
+
+  for (const entry of children) {
+    let stat;
+    try {
+      stat = await IOUtils.stat(entry);
+    } catch (error) {
+      if (error.name === "NotFoundError") {
+        // Ignore symlinks from prior builds to subsequently removed files
+        continue;
+      }
+      throw error;
+    }
+
     if (stat.type === "directory") {
-      subdirs.push(childPath);
-    } else if (extensions.some(extension => childPath.endsWith(extension))) {
-      let file = parentDir.clone();
-      file.append(PathUtils.filename(childPath));
-      // the build system might leave dead symlinks hanging around, which are
-      // returned as part of the directory iterator, but don't actually exist:
-      if (file.exists()) {
-        let uriSpec = getURLForFile(file);
-        files.push(Services.io.newURI(uriSpec));
+      subdirs.push(entry);
+    } else if (extensions.some(extension => entry.endsWith(extension))) {
+      if (await IOUtils.exists(entry)) {
+        const spec = PathUtils.toFileURI(entry);
+        files.push(Services.io.newURI(spec));
       }
     } else if (
-      childPath.endsWith(".ja") ||
-      childPath.endsWith(".jar") ||
-      childPath.endsWith(".zip") ||
-      childPath.endsWith(".xpi")
+      entry.endsWith(".ja") ||
+      entry.endsWith(".jar") ||
+      entry.endsWith(".zip") ||
+      entry.endsWith(".xpi")
     ) {
-      let file = parentDir.clone();
-      file.append(PathUtils.filename(childPath));
-      for (let extension of extensions) {
-        let jarEntryIterator = generateEntriesFromJarFile(file, extension);
-        files.push(...jarEntryIterator);
+      const file = new LocalFile(entry);
+      for (const extension of extensions) {
+        files.push(...generateEntriesFromJarFile(file, extension));
       }
     }
   }
+
   return { files, subdirs };
 }
 
@@ -104,26 +114,26 @@ function getURLForFile(file) {
  * @param extension the extension we're interested in.
  */
 function* generateEntriesFromJarFile(jarFile, extension) {
-  let zr = new ZipReader(jarFile);
+  const zr = new ZipReader(jarFile);
   const kURIStart = getURLForFile(jarFile);
 
-  for (let entry of zr.findEntries("*" + extension + "$")) {
+  for (const entry of zr.findEntries("*" + extension + "$")) {
     // Ignore the JS cache which is stored in omni.ja
     if (entry.startsWith("jsloader") || entry.startsWith("jssubloader")) {
       continue;
     }
-    let entryURISpec = "jar:" + kURIStart + "!/" + entry;
+    const entryURISpec = "jar:" + kURIStart + "!/" + entry;
     yield Services.io.newURI(entryURISpec);
   }
   zr.close();
 }
 
 function fetchFile(uri) {
-  return new Promise((resolve, reject) => {
-    let xhr = new XMLHttpRequest();
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
     xhr.responseType = "text";
     xhr.open("GET", uri, true);
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (this.readyState != this.DONE) {
         return;
       }
@@ -143,13 +153,13 @@ function fetchFile(uri) {
 }
 
 async function throttledMapPromises(iterable, task, limit = 64) {
-  let promises = new Set();
-  for (let data of iterable) {
+  const promises = new Set();
+  for (const data of iterable) {
     while (promises.size >= limit) {
       await Promise.race(promises);
     }
 
-    let promise = task(data);
+    const promise = task(data);
     if (promise) {
       promise.finally(() => promises.delete(promise));
       promises.add(promise);

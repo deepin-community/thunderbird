@@ -3,21 +3,17 @@
 
 "use strict";
 
-const { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
 
 const { promiseShutdownManager, promiseStartupManager } = AddonTestUtils;
 
 let extension;
+let extensionPostData;
 let oldRemoveEngineFunc;
 
-async function getEngineNames() {
-  let engines = await Services.search.getEngines();
-  return engines.map(engine => engine._name);
-}
-
-add_task(async function setup() {
+add_setup(async function () {
   await SearchTestUtils.useTestEngines("simple-engines");
   await promiseStartupManager();
 
@@ -26,8 +22,19 @@ add_task(async function setup() {
   await Services.search.init();
   await promiseAfterSettings();
 
-  extension = await SearchTestUtils.installSearchExtension({}, true);
+  extension = await SearchTestUtils.installSearchExtension(
+    {},
+    { skipUnload: true }
+  );
+  extensionPostData = await SearchTestUtils.installSearchExtension(
+    {
+      name: "PostData",
+      search_url_post_params: "?q={searchTerms}&post=1",
+    },
+    { skipUnload: true }
+  );
   await extension.awaitStartup();
+  await extensionPostData.awaitStartup();
 
   // For these tests, stub-out the removeEngine function, so that when we
   // remove it from the add-on manager, the engine is left in the search
@@ -48,6 +55,10 @@ add_task(async function test_valid_extensions_do_nothing() {
   Assert.ok(
     Services.search.getEngineByName("Example"),
     "Should have installed the engine"
+  );
+  Assert.ok(
+    !!Services.search.getEngineByName("PostData"),
+    "Should have installed the PostData engine"
   );
 
   await Services.search.runBackgroundChecks();
@@ -97,6 +108,27 @@ add_task(async function test_different_url() {
   );
 });
 
+add_task(async function test_different_url_post_data() {
+  Services.telemetry.clearScalars();
+
+  let engine = Services.search.getEngineByName("PostData");
+
+  engine.wrappedJSObject._urls = [];
+  engine.wrappedJSObject._setUrls({
+    search_url: "https://example.com/123",
+    search_url_post_params: "?q={searchTerms}",
+  });
+
+  await Services.search.runBackgroundChecks();
+
+  TelemetryTestUtils.assertKeyedScalar(
+    TelemetryTestUtils.getProcessScalars("parent", true, true),
+    "browser.searchinit.engine_invalid_webextension",
+    extensionPostData.id,
+    6
+  );
+});
+
 add_task(async function test_extension_no_longer_specifies_engine() {
   Services.telemetry.clearScalars();
 
@@ -104,7 +136,7 @@ add_task(async function test_extension_no_longer_specifies_engine() {
     useAddonManager: "permanent",
     manifest: {
       version: "2.0",
-      applications: {
+      browser_specific_settings: {
         gecko: {
           id: "example@tests.mozilla.org",
         },
@@ -164,42 +196,4 @@ add_task(async function test_missing_extension() {
   );
 
   await oldRemoveEngineFunc(Services.search.getEngineByName("Example"));
-});
-
-add_task(async function test_user_engine() {
-  Services.telemetry.clearScalars();
-
-  await Services.search.addUserEngine("test", "https://example.com/", "fake");
-
-  await Services.search.runBackgroundChecks();
-  let scalars = TelemetryTestUtils.getProcessScalars("parent", true, true);
-
-  Assert.deepEqual(
-    scalars,
-    {},
-    "Should not have recorded any issues for a user-defined engine"
-  );
-});
-
-add_task(async function test_policy_engine() {
-  Services.telemetry.clearScalars();
-
-  await Services.search.addPolicyEngine({
-    description: "test policy engine",
-    chrome_settings_overrides: {
-      search_provider: {
-        name: "test_policy_engine",
-        search_url: "https://www.example.org/?search={searchTerms}",
-      },
-    },
-  });
-
-  await Services.search.runBackgroundChecks();
-  let scalars = TelemetryTestUtils.getProcessScalars("parent", true, true);
-
-  Assert.deepEqual(
-    scalars,
-    {},
-    "Should not have recorded any issues for a policy defined engine"
-  );
 });

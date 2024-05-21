@@ -3,22 +3,12 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-ChromeUtils.defineModuleGetter(
-  this,
-  "jwcrypto",
-  "resource://services-crypto/jwcrypto.jsm"
-);
-
-Cu.importGlobalProperties(["crypto"]);
-
-const SECOND_MS = 1000;
-const MINUTE_MS = SECOND_MS * 60;
-const HOUR_MS = MINUTE_MS * 60;
+ChromeUtils.defineESModuleGetters(this, {
+  jwcrypto: "resource://services-crypto/jwcrypto.sys.mjs",
+});
 
 // Enable logging from jwcrypto.jsm.
-Services.prefs.setCharPref("services.crypto.jwcrypto.log.level", "Debug");
+Services.prefs.setStringPref("services.crypto.jwcrypto.log.level", "Debug");
 
 add_task(async function test_jwe_roundtrip_ecdh_es_encryption() {
   const plaintext = crypto.getRandomValues(new Uint8Array(123));

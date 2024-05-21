@@ -77,7 +77,6 @@ const CAPABILITIES = [
 // These are tab events that we listen to.
 const TAB_EVENTS = ["TabOpen", "TabClose", "TabSelect", "TabShow", "TabHide"];
 
-var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {XPCOMUtils} = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 var {NetUtil} = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 
@@ -124,7 +123,6 @@ function SessionStoreService() {
 SessionStoreService.prototype = {
   classID: Components.ID("{d37ccdf1-496f-4135-9575-037180af010d}"),
   QueryInterface: XPCOMUtils.generateQI([Ci.nsISessionStore,
-                                         Ci.nsIDOMEventListener,
                                          Ci.nsIObserver,
                                          Ci.nsISupportsWeakReference]),
 
@@ -493,7 +491,7 @@ SessionStoreService.prototype = {
 /* ........ Window Event Handlers .............. */
 
   /**
-   * Implement nsIDOMEventListener for handling various window and tab events
+   * Implement EventListener for handling various window and tab events
    */
   handleEvent: function sss_handleEvent(aEvent) {
     var win = aEvent.currentTarget.ownerDocument.defaultView;

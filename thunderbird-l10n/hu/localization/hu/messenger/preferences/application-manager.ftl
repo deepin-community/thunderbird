@@ -2,10 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-app-manager-window-dialog =
+app-manager-window-dialog2 =
     .title = Alkalmazás részletei
-    .style = width: 30em; min-height: 20em;
-
+app-manager-dialog-title = Alkalmazás részletei
 remove-app-button =
     .label = Eltávolítás
     .accesskey = E

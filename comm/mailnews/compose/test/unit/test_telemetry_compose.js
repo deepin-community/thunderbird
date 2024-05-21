@@ -5,11 +5,9 @@
  * Test telemetry related to message composition.
  */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "TelemetryTestUtils",
-  "resource://testing-common/TelemetryTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  TelemetryTestUtils: "resource://testing-common/TelemetryTestUtils.sys.mjs",
+});
 
 const HTML_SCALAR = "tb.compose.format_html";
 const PLAIN_TEXT_SCALAR = "tb.compose.format_plain_text";
@@ -21,12 +19,12 @@ add_task(async function test_compose_format() {
   Services.telemetry.clearScalars();
 
   // Bare-bones code to initiate composing a message in given format.
-  let createCompose = function(fmt) {
-    let msgCompose = Cc[
+  const createCompose = function (fmt) {
+    const msgCompose = Cc[
       "@mozilla.org/messengercompose/compose;1"
     ].createInstance(Ci.nsIMsgCompose);
 
-    let params = Cc[
+    const params = Cc[
       "@mozilla.org/messengercompose/composeparams;1"
     ].createInstance(Ci.nsIMsgComposeParams);
 
@@ -63,12 +61,12 @@ add_task(async function test_compose_format() {
  */
 add_task(async function test_compose_type() {
   // Bare-bones code to initiate composing a message in given type.
-  let createCompose = function(type) {
-    let msgCompose = Cc[
+  const createCompose = function (type) {
+    const msgCompose = Cc[
       "@mozilla.org/messengercompose/compose;1"
     ].createInstance(Ci.nsIMsgCompose);
 
-    let params = Cc[
+    const params = Cc[
       "@mozilla.org/messengercompose/composeparams;1"
     ].createInstance(Ci.nsIMsgComposeParams);
 

@@ -45,25 +45,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "nr_socket_proxy_config.h"
 #include "nsXULAppAPI.h"
-#include "mozilla/UniquePtr.h"
-#include "mozilla/Unused.h"
 
 #include "logging.h"
-#include "nspr.h"
-#include "nss.h"
 #include "pk11pub.h"
 #include "plbase64.h"
 
 #include "nsCOMPtr.h"
-#include "nsComponentManagerUtils.h"
 #include "nsError.h"
 #include "nsNetCID.h"
-#include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "ScopedNSSTypes.h"
 #include "runnable_utils.h"
-#include "nsIPrefService.h"
-#include "nsIPrefBranch.h"
 #include "nsIUUIDGenerator.h"
 
 // nICEr includes
@@ -74,19 +66,15 @@ extern "C" {
 #include "r_crc32.h"
 #include "r_memory.h"
 #include "ice_reg.h"
-#include "ice_util.h"
 #include "transport_addr.h"
 #include "nr_crypto.h"
 #include "nr_socket.h"
 #include "nr_socket_local.h"
-#include "stun_client_ctx.h"
 #include "stun_reg.h"
-#include "stun_server_ctx.h"
 #include "stun_util.h"
 #include "ice_codeword.h"
 #include "ice_ctx.h"
 #include "ice_candidate.h"
-#include "ice_handler.h"
 }
 
 // Local includes
@@ -96,10 +84,6 @@ extern "C" {
 #include "nrinterfaceprioritizer.h"
 #include "rlogconnector.h"
 #include "test_nr_socket.h"
-
-extern "C" {
-#include "mdns_service/mdns_service.h"
-}
 
 namespace mozilla {
 
@@ -272,32 +256,73 @@ nsresult NrIceTurnServer::ToNicerTurnStruct(nr_ice_turn_server* server) const {
   return NS_OK;
 }
 
-NrIceCtx::NrIceCtx(const std::string& name, const Config& aConfig)
-    : connection_state_(ICE_CTX_INIT),
-      gathering_state_(ICE_CTX_GATHER_INIT),
-      name_(name),
+NrIceCtx::NrIceCtx(const std::string& name)
+    : name_(name),
       ice_controlling_set_(false),
-      streams_(),
       ctx_(nullptr),
       peer_(nullptr),
       ice_handler_vtbl_(nullptr),
       ice_handler_(nullptr),
+      ice_gather_handler_vtbl_(nullptr),
+      ice_gather_handler_(nullptr),
       trickle_(true),
-      config_(aConfig),
+      config_(),
       nat_(nullptr),
-      proxy_config_(nullptr),
-      obfuscate_host_addresses_(false) {}
+      proxy_config_(nullptr) {}
 
 /* static */
-RefPtr<NrIceCtx> NrIceCtx::Create(const std::string& aName,
-                                  const Config& aConfig) {
-  RefPtr<NrIceCtx> ctx = new NrIceCtx(aName, aConfig);
+RefPtr<NrIceCtx> NrIceCtx::Create(const std::string& aName) {
+  RefPtr<NrIceCtx> ctx = new NrIceCtx(aName);
 
   if (!ctx->Initialize()) {
     return nullptr;
   }
 
   return ctx;
+}
+
+nsresult NrIceCtx::SetIceConfig(const Config& aConfig) {
+  config_ = aConfig;
+  switch (config_.mPolicy) {
+    case ICE_POLICY_RELAY:
+      MOZ_MTLOG(ML_DEBUG, "SetIceConfig: relay only");
+      nr_ice_ctx_remove_flags(ctx_, NR_ICE_CTX_FLAGS_DISABLE_HOST_CANDIDATES);
+      nr_ice_ctx_add_flags(ctx_, NR_ICE_CTX_FLAGS_RELAY_ONLY);
+      break;
+    case ICE_POLICY_NO_HOST:
+      MOZ_MTLOG(ML_DEBUG, "SetIceConfig: no host");
+      nr_ice_ctx_add_flags(ctx_, NR_ICE_CTX_FLAGS_DISABLE_HOST_CANDIDATES);
+      nr_ice_ctx_remove_flags(ctx_, NR_ICE_CTX_FLAGS_RELAY_ONLY);
+      break;
+    case ICE_POLICY_ALL:
+      MOZ_MTLOG(ML_DEBUG, "SetIceConfig: all");
+      nr_ice_ctx_remove_flags(ctx_, NR_ICE_CTX_FLAGS_DISABLE_HOST_CANDIDATES);
+      nr_ice_ctx_remove_flags(ctx_, NR_ICE_CTX_FLAGS_RELAY_ONLY);
+      break;
+  }
+
+  // TODO: Support re-configuring the test NAT someday?
+  if (!nat_ && config_.mNatSimulatorConfig.isSome()) {
+    TestNat* test_nat = new TestNat;
+    test_nat->filtering_type_ = TestNat::ToNatBehavior(
+        config_.mNatSimulatorConfig->mFilteringType.get());
+    test_nat->mapping_type_ =
+        TestNat::ToNatBehavior(config_.mNatSimulatorConfig->mMappingType.get());
+    test_nat->block_udp_ = config_.mNatSimulatorConfig->mBlockUdp;
+    test_nat->block_tcp_ = config_.mNatSimulatorConfig->mBlockTcp;
+    test_nat->block_tls_ = config_.mNatSimulatorConfig->mBlockTls;
+    test_nat->error_code_for_drop_ =
+        config_.mNatSimulatorConfig->mErrorCodeForDrop;
+    if (config_.mNatSimulatorConfig->mRedirectAddress.Length()) {
+      test_nat
+          ->stun_redirect_map_[config_.mNatSimulatorConfig->mRedirectAddress] =
+          config_.mNatSimulatorConfig->mRedirectTargets;
+    }
+    test_nat->enabled_ = true;
+    SetNat(test_nat);
+  }
+
+  return NS_OK;
 }
 
 RefPtr<NrIceMediaStream> NrIceCtx::CreateStream(const std::string& id,
@@ -318,12 +343,9 @@ void NrIceCtx::DestroyStream(const std::string& id) {
   auto it = streams_.find(id);
   if (it != streams_.end()) {
     auto preexisting_stream = it->second;
+    SignalConnectionStateChange(preexisting_stream, ICE_CTX_CLOSED);
     streams_.erase(it);
     preexisting_stream->Close();
-  }
-
-  if (streams_.empty()) {
-    SetGatheringState(ICE_CTX_GATHER_INIT);
   }
 }
 
@@ -351,7 +373,8 @@ int NrIceCtx::stream_ready(void* obj, nr_ice_media_stream* stream) {
   // Streams which do not exist should never be ready.
   MOZ_ASSERT(s);
 
-  s->Ready();
+  s->Ready(stream);
+  ctx->SignalConnectionStateChange(s, ICE_CTX_CONNECTED);
 
   return 0;
 }
@@ -368,44 +391,101 @@ int NrIceCtx::stream_failed(void* obj, nr_ice_media_stream* stream) {
   // Streams which do not exist should never fail.
   MOZ_ASSERT(s);
 
-  ctx->SetConnectionState(ICE_CTX_FAILED);
+  if (!ctx->dumped_rlog_) {
+    // Do this at most once per ctx
+    ctx->dumped_rlog_ = true;
+    MOZ_MTLOG(ML_INFO,
+              "NrIceCtx(" << ctx->name_ << "): dumping r_log ringbuffer... ");
+    std::deque<std::string> logs;
+    RLogConnector::GetInstance()->GetAny(0, &logs);
+    for (auto& log : logs) {
+      MOZ_MTLOG(ML_INFO, log);
+    }
+  }
+
   s->Failed();
+  ctx->SignalConnectionStateChange(s, ICE_CTX_FAILED);
+  return 0;
+}
+
+int NrIceCtx::stream_checking(void* obj, nr_ice_media_stream* stream) {
+  MOZ_MTLOG(ML_DEBUG, "stream_checking called");
+  MOZ_ASSERT(!stream->local_stream);
+  MOZ_ASSERT(!stream->obsolete);
+
+  // Get the ICE ctx
+  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
+  RefPtr<NrIceMediaStream> s = ctx->FindStream(stream);
+
+  MOZ_ASSERT(s);
+
+  if (!s->AnyGenerationIsConnected()) {
+    // the checking state only applies if we aren't connected
+    ctx->SignalConnectionStateChange(s, ICE_CTX_CHECKING);
+  }
+  return 0;
+}
+
+int NrIceCtx::stream_disconnected(void* obj, nr_ice_media_stream* stream) {
+  MOZ_MTLOG(ML_DEBUG, "stream_disconnected called");
+  MOZ_ASSERT(!stream->local_stream);
+  MOZ_ASSERT(!stream->obsolete);
+
+  // Get the ICE ctx
+  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
+  RefPtr<NrIceMediaStream> s = ctx->FindStream(stream);
+
+  MOZ_ASSERT(s);
+
+  ctx->SignalConnectionStateChange(s, ICE_CTX_DISCONNECTED);
+  return 0;
+}
+
+int NrIceCtx::stream_gathering(void* obj, nr_ice_media_stream* stream) {
+  MOZ_MTLOG(ML_DEBUG, "stream_gathering called");
+  MOZ_ASSERT(!stream->local_stream);
+  MOZ_ASSERT(!stream->obsolete);
+
+  // Get the ICE ctx
+  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
+  RefPtr<NrIceMediaStream> s = ctx->FindStream(stream);
+
+  MOZ_ASSERT(s);
+
+  s->OnGatheringStarted(stream);
+  return 0;
+}
+
+int NrIceCtx::stream_gathered(void* obj, nr_ice_media_stream* stream) {
+  MOZ_MTLOG(ML_DEBUG, "stream_gathered called");
+  MOZ_ASSERT(!stream->local_stream);
+
+  // Get the ICE ctx
+  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
+  RefPtr<NrIceMediaStream> s = ctx->FindStream(stream);
+
+  // We get this callback for destroyed streams in some cases
+  if (s) {
+    s->OnGatheringComplete(stream);
+  }
   return 0;
 }
 
 int NrIceCtx::ice_checking(void* obj, nr_ice_peer_ctx* pctx) {
   MOZ_MTLOG(ML_DEBUG, "ice_checking called");
-
-  // Get the ICE ctx
-  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
-
-  ctx->SetConnectionState(ICE_CTX_CHECKING);
-
+  // We don't use this; we react to the stream-specific callbacks instead
   return 0;
 }
 
 int NrIceCtx::ice_connected(void* obj, nr_ice_peer_ctx* pctx) {
   MOZ_MTLOG(ML_DEBUG, "ice_connected called");
-
-  // Get the ICE ctx
-  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
-
-  // This is called even on failed contexts.
-  if (ctx->connection_state() != ICE_CTX_FAILED) {
-    ctx->SetConnectionState(ICE_CTX_CONNECTED);
-  }
-
+  // We don't use this; we react to the stream-specific callbacks instead
   return 0;
 }
 
 int NrIceCtx::ice_disconnected(void* obj, nr_ice_peer_ctx* pctx) {
   MOZ_MTLOG(ML_DEBUG, "ice_disconnected called");
-
-  // Get the ICE ctx
-  NrIceCtx* ctx = static_cast<NrIceCtx*>(obj);
-
-  ctx->SetConnectionState(ICE_CTX_DISCONNECTED);
-
+  // We don't use this; we react to the stream-specific callbacks instead
   return 0;
 }
 
@@ -441,7 +521,6 @@ void NrIceCtx::trickle_cb(void* arg, nr_ice_ctx* ice_ctx,
   }
 
   if (!candidate) {
-    s->SignalCandidate(s, "", stream->ufrag, "", "");
     return;
   }
 
@@ -451,9 +530,9 @@ void NrIceCtx::trickle_cb(void* arg, nr_ice_ctx* ice_ctx,
 
   // Format the candidate.
   char candidate_str[NR_ICE_MAX_ATTRIBUTE_SIZE];
-  int r = nr_ice_format_candidate_attribute(candidate, candidate_str,
-                                            sizeof(candidate_str),
-                                            ctx->obfuscate_host_addresses_);
+  int r = nr_ice_format_candidate_attribute(
+      candidate, candidate_str, sizeof(candidate_str),
+      (ctx->ctx()->flags & NR_ICE_CTX_FLAGS_OBFUSCATE_HOST_ADDRESSES) ? 1 : 0);
   MOZ_ASSERT(!r);
   if (r) return;
 
@@ -562,22 +641,20 @@ void NrIceCtx::SetStunAddrs(const nsTArray<NrIceStunAddr>& addrs) {
 }
 
 bool NrIceCtx::Initialize() {
+  // Create the gather handler objects
+  ice_gather_handler_vtbl_ = new nr_ice_gather_handler_vtbl();
+  ice_gather_handler_vtbl_->stream_gathering = &NrIceCtx::stream_gathering;
+  ice_gather_handler_vtbl_->stream_gathered = &NrIceCtx::stream_gathered;
+  ice_gather_handler_ = new nr_ice_gather_handler();
+  ice_gather_handler_->vtbl = ice_gather_handler_vtbl_;
+  ice_gather_handler_->obj = this;
+
   // Create the ICE context
   int r;
 
   UINT4 flags = NR_ICE_CTX_FLAGS_AGGRESSIVE_NOMINATION;
-  switch (config_.mPolicy) {
-    case ICE_POLICY_RELAY:
-      flags |= NR_ICE_CTX_FLAGS_RELAY_ONLY;
-      break;
-    case ICE_POLICY_NO_HOST:
-      flags |= NR_ICE_CTX_FLAGS_HIDE_HOST_CANDIDATES;
-      break;
-    case ICE_POLICY_ALL:
-      break;
-  }
-
-  r = nr_ice_ctx_create(const_cast<char*>(name_.c_str()), flags, &ctx_);
+  r = nr_ice_ctx_create(const_cast<char*>(name_.c_str()), flags,
+                        ice_gather_handler_, &ctx_);
 
   if (r) {
     MOZ_MTLOG(ML_ERROR, "Couldn't create ICE ctx for '" << name_ << "'");
@@ -615,30 +692,21 @@ bool NrIceCtx::Initialize() {
     }
   }
 
-  if (config_.mNatSimulatorConfig.isSome()) {
-    TestNat* test_nat = new TestNat;
-    test_nat->filtering_type_ = TestNat::ToNatBehavior(
-        config_.mNatSimulatorConfig->mFilteringType.get());
-    test_nat->mapping_type_ =
-        TestNat::ToNatBehavior(config_.mNatSimulatorConfig->mMappingType.get());
-    test_nat->block_udp_ = config_.mNatSimulatorConfig->mBlockUdp;
-    test_nat->block_tcp_ = config_.mNatSimulatorConfig->mBlockTcp;
-    test_nat->error_code_for_drop_ =
-        config_.mNatSimulatorConfig->mErrorCodeForDrop;
-    if (config_.mNatSimulatorConfig->mRedirectAddress.Length()) {
-      test_nat
-          ->stun_redirect_map_[config_.mNatSimulatorConfig->mRedirectAddress] =
-          config_.mNatSimulatorConfig->mRedirectTargets;
-    }
-    test_nat->enabled_ = true;
-    SetNat(test_nat);
-  }
-
   // Create the handler objects
   ice_handler_vtbl_ = new nr_ice_handler_vtbl();
   ice_handler_vtbl_->select_pair = &NrIceCtx::select_pair;
   ice_handler_vtbl_->stream_ready = &NrIceCtx::stream_ready;
   ice_handler_vtbl_->stream_failed = &NrIceCtx::stream_failed;
+  ice_handler_vtbl_->stream_checking = &NrIceCtx::stream_checking;
+  ice_handler_vtbl_->stream_disconnected = &NrIceCtx::stream_disconnected;
+  // stream_gathering and stream_gathered do not go here, since those are tied
+  // to the _local_ nr_ice_media_stream in nICEr. nICEr allows a local
+  // nr_ice_media_stream (which has a single set of candidates, and therefore a
+  // single gathering state) to be associated with multiple remote
+  // nr_ice_media_streams (which each have their own ICE connection state)
+  // because it allows forking. We never encounter forking, so these will be
+  // one-to-one in practice, but the architecture in nICEr means we have to set
+  // up these callbacks on the nr_ice_ctx, not the nr_ice_peer_ctx.
   ice_handler_vtbl_->ice_connected = &NrIceCtx::ice_connected;
   ice_handler_vtbl_->msg_recvd = &NrIceCtx::msg_recvd;
   ice_handler_vtbl_->ice_checking = &NrIceCtx::ice_checking;
@@ -701,7 +769,8 @@ void NrIceCtx::AccumulateStats(const NrIceStats& stats) {
 NrIceStats NrIceCtx::Destroy() {
   // designed to be called more than once so if stats are desired, this can be
   // called just prior to the destructor
-  MOZ_MTLOG(ML_DEBUG, "Destroying ICE ctx '" << name_ << "'");
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): " << __func__);
+
   for (auto& idAndStream : streams_) {
     idAndStream.second->Close();
   }
@@ -724,8 +793,13 @@ NrIceStats NrIceCtx::Destroy() {
   delete ice_handler_vtbl_;
   delete ice_handler_;
 
+  delete ice_gather_handler_vtbl_;
+  delete ice_gather_handler_;
+
   ice_handler_vtbl_ = nullptr;
   ice_handler_ = nullptr;
+  ice_gather_handler_vtbl_ = nullptr;
+  ice_gather_handler_ = nullptr;
   proxy_config_ = nullptr;
   streams_.clear();
 
@@ -753,8 +827,7 @@ NrIceCtx::Controlling NrIceCtx::GetControlling() {
 
 nsresult NrIceCtx::SetStunServers(
     const std::vector<NrIceStunServer>& stun_servers) {
-  if (stun_servers.empty()) return NS_OK;
-
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): " << __func__);
   // We assume nr_ice_stun_server is memmoveable. That's true right now.
   std::vector<nr_ice_stun_server> servers;
 
@@ -768,7 +841,7 @@ nsresult NrIceCtx::SetStunServers(
     }
   }
 
-  int r = nr_ice_ctx_set_stun_servers(ctx_, &servers[0],
+  int r = nr_ice_ctx_set_stun_servers(ctx_, servers.data(),
                                       static_cast<int>(servers.size()));
   if (r) {
     MOZ_MTLOG(ML_ERROR, "Couldn't set STUN servers for '" << name_ << "'");
@@ -782,8 +855,7 @@ nsresult NrIceCtx::SetStunServers(
 // Could we do a template or something?
 nsresult NrIceCtx::SetTurnServers(
     const std::vector<NrIceTurnServer>& turn_servers) {
-  if (turn_servers.empty()) return NS_OK;
-
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): " << __func__);
   // We assume nr_ice_turn_server is memmoveable. That's true right now.
   std::vector<nr_ice_turn_server> servers;
 
@@ -797,7 +869,7 @@ nsresult NrIceCtx::SetTurnServers(
     }
   }
 
-  int r = nr_ice_ctx_set_turn_servers(ctx_, &servers[0],
+  int r = nr_ice_ctx_set_turn_servers(ctx_, servers.data(),
                                       static_cast<int>(servers.size()));
   if (r) {
     MOZ_MTLOG(ML_ERROR, "Couldn't set TURN servers for '" << name_ << "'");
@@ -821,6 +893,16 @@ nsresult NrIceCtx::SetResolver(nr_resolver* resolver) {
 
 nsresult NrIceCtx::SetProxyConfig(NrSocketProxyConfig&& config) {
   proxy_config_.reset(new NrSocketProxyConfig(std::move(config)));
+  if (nat_) {
+    nat_->set_proxy_config(proxy_config_);
+  }
+
+  if (proxy_config_->GetForceProxy()) {
+    nr_ice_ctx_add_flags(ctx_, NR_ICE_CTX_FLAGS_ONLY_PROXY);
+  } else {
+    nr_ice_ctx_remove_flags(ctx_, NR_ICE_CTX_FLAGS_ONLY_PROXY);
+  }
+
   return NS_OK;
 }
 
@@ -837,8 +919,11 @@ void NrIceCtx::SetCtxFlags(bool default_route_only) {
 nsresult NrIceCtx::StartGathering(bool default_route_only,
                                   bool obfuscate_host_addresses) {
   ASSERT_ON_THREAD(sts_target_);
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): " << __func__);
 
-  obfuscate_host_addresses_ = obfuscate_host_addresses;
+  if (obfuscate_host_addresses) {
+    nr_ice_ctx_add_flags(ctx_, NR_ICE_CTX_FLAGS_OBFUSCATE_HOST_ADDRESSES);
+  }
 
   SetCtxFlags(default_route_only);
 
@@ -847,15 +932,10 @@ nsresult NrIceCtx::StartGathering(bool default_route_only,
   // finished.
   int r = nr_ice_gather(ctx_, &NrIceCtx::gather_cb, this);
 
-  if (!r) {
-    SetGatheringState(ICE_CTX_GATHER_COMPLETE);
-  } else if (r == R_WOULDBLOCK) {
-    SetGatheringState(ICE_CTX_GATHER_STARTED);
-  } else {
-    SetGatheringState(ICE_CTX_GATHER_COMPLETE);
+  if (r && r != R_WOULDBLOCK) {
     MOZ_MTLOG(ML_ERROR, "ICE FAILED: Couldn't gather ICE candidates for '"
                             << name_ << "', error=" << r);
-    SetConnectionState(ICE_CTX_FAILED);
+    SignalAllStreamsFailed();
     return NS_ERROR_FAILURE;
   }
 
@@ -923,15 +1003,17 @@ bool NrIceCtx::HasStreamsToConnect() const {
 
 nsresult NrIceCtx::StartChecks() {
   int r;
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): " << __func__);
+
   if (!HasStreamsToConnect()) {
-    // Nothing to do
+    MOZ_MTLOG(ML_NOTICE, "In StartChecks, nothing to do on " << name_);
     return NS_OK;
   }
 
   r = nr_ice_peer_ctx_pair_candidates(peer_);
   if (r) {
     MOZ_MTLOG(ML_ERROR, "ICE FAILED: Couldn't pair candidates on " << name_);
-    SetConnectionState(ICE_CTX_FAILED);
+    SignalAllStreamsFailed();
     return NS_ERROR_FAILURE;
   }
 
@@ -943,7 +1025,7 @@ nsresult NrIceCtx::StartChecks() {
     } else {
       MOZ_MTLOG(ML_ERROR,
                 "ICE FAILED: Couldn't start peer checks on " << name_);
-      SetConnectionState(ICE_CTX_FAILED);
+      SignalAllStreamsFailed();
       return NS_ERROR_FAILURE;
     }
   }
@@ -952,29 +1034,21 @@ nsresult NrIceCtx::StartChecks() {
 }
 
 void NrIceCtx::gather_cb(NR_SOCKET s, int h, void* arg) {
-  NrIceCtx* ctx = static_cast<NrIceCtx*>(arg);
-
-  ctx->SetGatheringState(ICE_CTX_GATHER_COMPLETE);
+  MOZ_MTLOG(ML_DEBUG, "gather_cb called");
+  // We don't use this; we react to the stream-specific callbacks instead
 }
 
-nsresult NrIceCtx::Finalize() {
-  int r = nr_ice_ctx_finalize(ctx_, peer_);
-
-  if (r) {
-    MOZ_MTLOG(ML_ERROR, "Couldn't finalize " << name_ << "'");
-    return NS_ERROR_FAILURE;
+void NrIceCtx::SignalAllStreamsFailed() {
+  for (auto& [id, stream] : streams_) {
+    Unused << id;
+    stream->Failed();
+    SignalConnectionStateChange(stream, ICE_CTX_FAILED);
   }
-
-  return NS_OK;
 }
 
 void NrIceCtx::UpdateNetworkState(bool online) {
-  MOZ_MTLOG(ML_INFO, "NrIceCtx(" << name_ << "): updating network state to "
-                                 << (online ? "online" : "offline"));
-  if (connection_state_ == ICE_CTX_CLOSED) {
-    return;
-  }
-
+  MOZ_MTLOG(ML_NOTICE, "NrIceCtx(" << name_ << "): updating network state to "
+                                   << (online ? "online" : "offline"));
   if (online) {
     nr_ice_peer_ctx_refresh_consent_all_streams(peer_);
   } else {
@@ -982,40 +1056,11 @@ void NrIceCtx::UpdateNetworkState(bool online) {
   }
 }
 
-void NrIceCtx::SetConnectionState(ConnectionState state) {
-  if (state == connection_state_) return;
-
-  MOZ_MTLOG(ML_INFO, "NrIceCtx(" << name_ << "): state " << connection_state_
-                                 << "->" << state);
-  connection_state_ = state;
-
-  if (connection_state_ == ICE_CTX_FAILED) {
-    MOZ_MTLOG(ML_INFO,
-              "NrIceCtx(" << name_ << "): dumping r_log ringbuffer... ");
-    std::deque<std::string> logs;
-    RLogConnector::GetInstance()->GetAny(0, &logs);
-    for (auto& log : logs) {
-      MOZ_MTLOG(ML_INFO, log);
-    }
-  }
-
-  SignalConnectionStateChange(this, state);
-}
-
-void NrIceCtx::SetGatheringState(GatheringState state) {
-  if (state == gathering_state_) return;
-
-  MOZ_MTLOG(ML_DEBUG, "NrIceCtx(" << name_ << "): gathering state "
-                                  << gathering_state_ << "->" << state);
-  gathering_state_ = state;
-
-  SignalGatheringStateChange(this, state);
-}
-
 void NrIceCtx::GenerateObfuscatedAddress(nr_ice_candidate* candidate,
                                          std::string* mdns_address,
                                          std::string* actual_address) {
-  if (candidate->type == HOST && obfuscate_host_addresses_) {
+  if (candidate->type == HOST &&
+      (ctx_->flags & NR_ICE_CTX_FLAGS_OBFUSCATE_HOST_ADDRESSES)) {
     char addr[64];
     if (nr_transport_addr_get_addrstring(&candidate->addr, addr,
                                          sizeof(addr))) {

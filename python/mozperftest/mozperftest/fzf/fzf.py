@@ -1,17 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
-import sys
-import subprocess
-from pathlib import Path
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from shutil import which
 
+from mach.util import get_state_dir
 from mozterm import Terminal
-from mozboot.util import get_state_dir
-from mozbuild.util import ensure_subprocess_env
-from distutils.spawn import find_executable
-
 
 HERE = Path(__file__).parent.resolve()
 SRC_ROOT = (HERE / ".." / ".." / ".." / "..").resolve()
@@ -45,7 +43,7 @@ def run_fzf(cmd, tasks):
         cmd,
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
-        env=ensure_subprocess_env(env),
+        env=env,
         universal_newlines=True,
     )
     out = proc.communicate("\n".join(tasks))[0].splitlines()
@@ -94,9 +92,9 @@ def select(test_objects):
 
     candidate_tasks = [_display(t) for t in test_objects]
 
-    fzf_bin = find_executable(
-        "fzf", str(Path(get_state_dir(), "fzf", "bin"))
-    ) or find_executable("fzf")
+    fzf_bin = which("fzf", path=str(Path(get_state_dir(), "fzf", "bin"))) or which(
+        "fzf"
+    )
     if not fzf_bin:
         raise AssertionError("Unable to find fzf")
 

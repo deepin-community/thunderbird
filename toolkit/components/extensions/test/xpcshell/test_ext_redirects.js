@@ -1,11 +1,9 @@
 "use strict";
 
 // Tests whether we can redirect to a moz-extension: url.
-ChromeUtils.defineModuleGetter(
-  this,
-  "TestUtils",
-  "resource://testing-common/TestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  TestUtils: "resource://testing-common/TestUtils.sys.mjs",
+});
 
 const server = createHttpServer();
 const gServerUrl = `http://localhost:${server.identity.primaryPort}`;
@@ -18,6 +16,11 @@ server.registerPathHandler("/redirect", (request, response) => {
 });
 
 server.registerPathHandler("/dummy", (request, response) => {
+  response.setStatusLine(request.httpVersion, 200, "OK");
+  response.write("ok");
+});
+
+server.registerPathHandler("/dummy-2", (request, response) => {
   response.setStatusLine(request.httpVersion, 200, "OK");
   response.write("ok");
 });
@@ -49,10 +52,10 @@ function onStopListener(channel) {
 }
 
 async function onModifyListener(originUrl, redirectToUrl) {
-  return TestUtils.topicObserved("http-on-modify-request", (subject, data) => {
+  return TestUtils.topicObserved("http-on-modify-request", subject => {
     let channel = subject.QueryInterface(Ci.nsIHttpChannel);
     return channel.URI && channel.URI.spec == originUrl;
-  }).then(([subject, data]) => {
+  }).then(([subject]) => {
     let channel = subject.QueryInterface(Ci.nsIHttpChannel);
     if (redirectToUrl) {
       channel.redirectTo(Services.io.newURI(redirectToUrl));
@@ -226,7 +229,7 @@ add_task(async function test_extension_302_redirect_web() {
       { urls: [serverUrl] }
     );
     browser.webRequest.onHeadersReceived.addListener(
-      details => {
+      () => {
         browser.test.assertEq(
           expected.shift(),
           "onHeadersReceived",
@@ -236,7 +239,7 @@ add_task(async function test_extension_302_redirect_web() {
       { urls: [serverUrl] }
     );
     browser.webRequest.onResponseStarted.addListener(
-      details => {
+      () => {
         browser.test.assertEq(
           expected.shift(),
           "onResponseStarted",
@@ -524,7 +527,7 @@ add_task(async function test_extension_redirect() {
     let myuri = browser.runtime.getURL("*");
     let exturi = browser.runtime.getURL("finished.html");
     browser.webRequest.onBeforeRequest.addListener(
-      details => {
+      () => {
         return { redirectUrl: exturi };
       },
       { urls: ["<all_urls>", myuri] },
@@ -565,3 +568,93 @@ add_task(async function test_extension_redirect() {
   await contentPage.close();
   await extension.unload();
 }).skip();
+
+add_task(async function test_redirect_with_onHeadersReceived() {
+  let redirectUrl = `${gServerUrl}/dummy-2`;
+
+  function background(initialUrl, redirectUrl) {
+    browser.webRequest.onCompleted.addListener(
+      () => {
+        browser.test.notifyPass("requestCompleted");
+      },
+      { urls: ["<all_urls>"] }
+    );
+
+    browser.webRequest.onHeadersReceived.addListener(
+      () => {
+        // Redirect to a different URL when we receive the headers of the
+        // initial request.
+        return { redirectUrl };
+      },
+      { urls: [initialUrl] },
+      ["blocking"]
+    );
+  }
+  let extension = getExtension(
+    false,
+    `(${background})("*://${server.identity.primaryHost}/dummy", "${redirectUrl}")`
+  );
+  await extension.startup();
+
+  let contentPage = await ExtensionTestUtils.loadContentPage(
+    `${gServerUrl}/dummy`
+  );
+  await extension.awaitFinish("requestCompleted");
+  equal(contentPage.browser.documentURI.spec, redirectUrl, "expected redirect");
+
+  await contentPage.close();
+  await extension.unload();
+});
+
+add_task(async function test_no_redirect_with_location_in_onHeadersReceived() {
+  function background(initialUrl, redirectUrl) {
+    browser.webRequest.onCompleted.addListener(
+      ({ responseHeaders }) => {
+        // Make sure that the `Location` header is set by `onHeadersReceived`.
+        browser.test.assertTrue(
+          responseHeaders.some(({ name, value }) => {
+            return name.toLowerCase() === "location" && value === redirectUrl;
+          }),
+          "Location header is set"
+        );
+
+        browser.test.notifyPass("requestCompleted");
+      },
+      { urls: ["<all_urls>"] },
+      ["responseHeaders"]
+    );
+
+    browser.webRequest.onHeadersReceived.addListener(
+      ({ responseHeaders }) => {
+        return {
+          responseHeaders: [
+            ...responseHeaders,
+            // Although we set a Location header here, the request shouldn't be
+            // redirected to `redirectUrl` because the status code hasn't been
+            // change (and cannot be changed from there).
+            { name: "Location", value: redirectUrl },
+          ],
+        };
+      },
+      { urls: [initialUrl] },
+      ["blocking", "responseHeaders"]
+    );
+  }
+  let extension = getExtension(
+    false,
+    `(${background})("*://${server.identity.primaryHost}/dummy", "${gServerUrl}/dummy-2")`
+  );
+  await extension.startup();
+
+  let initialUrl = `${gServerUrl}/dummy`;
+  let contentPage = await ExtensionTestUtils.loadContentPage(initialUrl);
+  await extension.awaitFinish("requestCompleted");
+  equal(
+    contentPage.browser.documentURI.spec,
+    initialUrl,
+    "expected no redirect"
+  );
+
+  await contentPage.close();
+  await extension.unload();
+});

@@ -1,29 +1,28 @@
 {
   "langpack_id": "dsb",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-dsb@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Dolnoserbšćina Language Pack",
-  "description": "Language pack for Thunderbird for dsb",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Dolnoserbšćina (Lower Sorbian)",
+  "description": "Thunderbird Beta Language Pack for Dolnoserbšćina (dsb) – Lower Sorbian",
+  "version": "125.0.20240401.173510",
   "languages": {
     "dsb": {
-      "version": "20211013105824",
+      "version": "20240401183408",
       "chrome_resources": {
         "alerts": "chrome/dsb/locale/dsb/alerts/",
         "autoconfig": "chrome/dsb/locale/dsb/autoconfig/",
-        "branding": "chrome/dsb/locale/dsb/branding/",
+        "branding": "chrome/dsb/locale/branding/",
         "calendar": "chrome/dsb/locale/dsb/calendar/",
         "chat": "chrome/dsb/locale/dsb/chat/",
         "communicator": "chrome/dsb/locale/dsb/communicator/",
         "devtools": "chrome/dsb/locale/dsb/devtools/client/",
         "devtools-shared": "chrome/dsb/locale/dsb/devtools/shared/",
-        "devtools-startup": "chrome/dsb/locale/dsb/devtools/startup/",
         "global": "chrome/dsb/locale/dsb/global/",
         "global-platform": {
           "macosx": "chrome/dsb/locale/dsb/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/dsb/locale/dsb/mozldap/",
         "necko": "chrome/dsb/locale/dsb/necko/",
         "passwordmgr": "chrome/dsb/locale/dsb/passwordmgr/",
-        "pdf.js": "chrome/dsb/locale/pdfviewer/",
         "pipnss": "chrome/dsb/locale/dsb/pipnss/",
         "pippki": "chrome/dsb/locale/dsb/pippki/",
         "places": "chrome/dsb/locale/dsb/places/"

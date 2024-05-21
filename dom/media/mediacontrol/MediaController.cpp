@@ -28,7 +28,7 @@ namespace mozilla::dom {
 NS_IMPL_CYCLE_COLLECTION_INHERITED(MediaController, DOMEventTargetHelper)
 NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED(MediaController,
                                              DOMEventTargetHelper,
-                                             nsITimerCallback)
+                                             nsITimerCallback, nsINamed)
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN_INHERITED(MediaController,
                                                DOMEventTargetHelper)
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
@@ -186,9 +186,10 @@ bool MediaController::ShouldPropagateActionToAllContexts(
   // These three actions have default action handler for each frame, so we
   // need to propagate to all contexts. We would handle default handlers in
   // `ContentMediaController::HandleMediaKey`.
-  return aAction.mKey == MediaControlKey::Play ||
-         aAction.mKey == MediaControlKey::Pause ||
-         aAction.mKey == MediaControlKey::Stop;
+  return aAction.mKey.isSome() &&
+         (aAction.mKey.value() == MediaControlKey::Play ||
+          aAction.mKey.value() == MediaControlKey::Pause ||
+          aAction.mKey.value() == MediaControlKey::Stop);
 }
 
 void MediaController::UpdateMediaControlActionToContentMediaIfNeeded(
@@ -307,6 +308,11 @@ NS_IMETHODIMP MediaController::Notify(nsITimer* aTimer) {
     return NS_OK;
   }
   Deactivate();
+  return NS_OK;
+}
+
+NS_IMETHODIMP MediaController::GetName(nsACString& aName) {
+  aName.AssignLiteral("MediaController");
   return NS_OK;
 }
 
@@ -488,14 +494,19 @@ void MediaController::HandleSupportedMediaSessionActionsChanged(
   MediaController_Binding::ClearCachedSupportedKeysValue(this);
 }
 
-void MediaController::HandlePositionStateChanged(const PositionState& aState) {
+void MediaController::HandlePositionStateChanged(
+    const Maybe<PositionState>& aState) {
+  if (!aState) {
+    return;
+  }
+
   PositionStateEventInit init;
-  init.mDuration = aState.mDuration;
-  init.mPlaybackRate = aState.mPlaybackRate;
-  init.mPosition = aState.mLastReportedPlaybackPosition;
+  init.mDuration = aState->mDuration;
+  init.mPlaybackRate = aState->mPlaybackRate;
+  init.mPosition = aState->mLastReportedPlaybackPosition;
   RefPtr<PositionStateEvent> event =
       PositionStateEvent::Constructor(this, u"positionstatechange"_ns, init);
-  DispatchAsyncEvent(event);
+  DispatchAsyncEvent(event.forget());
 }
 
 void MediaController::HandleMetadataChanged(
@@ -517,13 +528,14 @@ void MediaController::DispatchAsyncEvent(const nsAString& aName) {
   RefPtr<Event> event = NS_NewDOMEvent(this, nullptr, nullptr);
   event->InitEvent(aName, false, false);
   event->SetTrusted(true);
-  DispatchAsyncEvent(event);
+  DispatchAsyncEvent(event.forget());
 }
 
-void MediaController::DispatchAsyncEvent(Event* aEvent) {
-  MOZ_ASSERT(aEvent);
+void MediaController::DispatchAsyncEvent(already_AddRefed<Event> aEvent) {
+  RefPtr<Event> event = aEvent;
+  MOZ_ASSERT(event);
   nsAutoString eventType;
-  aEvent->GetType(eventType);
+  event->GetType(eventType);
   if (!mIsActive && !eventType.EqualsLiteral("deactivated")) {
     LOG("Only 'deactivated' can be dispatched on a deactivated controller, not "
         "'%s'",
@@ -532,7 +544,7 @@ void MediaController::DispatchAsyncEvent(Event* aEvent) {
   }
   LOG("Dispatch event %s", NS_ConvertUTF16toUTF8(eventType).get());
   RefPtr<AsyncEventDispatcher> asyncDispatcher =
-      new AsyncEventDispatcher(this, aEvent);
+      new AsyncEventDispatcher(this, event.forget());
   asyncDispatcher->PostDOMEvent();
 }
 
@@ -542,13 +554,13 @@ CopyableTArray<MediaControlKey> MediaController::GetSupportedMediaKeys() const {
 
 void MediaController::Select() const {
   if (RefPtr<BrowsingContext> bc = BrowsingContext::Get(Id())) {
-    Unused << bc->SetHasMainMediaController(true);
+    bc->Canonical()->AddPageAwakeRequest();
   }
 }
 
 void MediaController::Unselect() const {
   if (RefPtr<BrowsingContext> bc = BrowsingContext::Get(Id())) {
-    Unused << bc->SetHasMainMediaController(false);
+    bc->Canonical()->RemovePageAwakeRequest();
   }
 }
 

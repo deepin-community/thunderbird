@@ -1,12 +1,10 @@
-Services.prefs.setBoolPref("browser.preferences.instantApply", true);
-
-registerCleanupFunction(function() {
-  Services.prefs.clearUserPref("browser.preferences.instantApply");
-});
-
-add_task(async function() {
+add_task(async function () {
   await openPreferencesViaOpenPreferencesAPI("general", { leaveOpen: true });
   await gBrowser.contentWindow.gMainPane._selectDefaultLanguageGroupPromise;
+  await TestUtils.waitForCondition(
+    () => !gBrowser.contentWindow.Preferences.updateQueued
+  );
+
   let doc = gBrowser.contentDocument;
   let contentWindow = gBrowser.contentWindow;
   var langGroup = Services.prefs.getComplexValue(
@@ -70,7 +68,7 @@ add_task(async function() {
   }
 
   const menuItems = fontFamilyField.querySelectorAll("menuitem");
-  ok(menuItems.length > 1, "There are multiple font menuitems.");
+  Assert.greater(menuItems.length, 1, "There are multiple font menuitems.");
   ok(menuItems[0].selected, "The first (default) font menuitem is selected.");
 
   dispatchMenuItemCommand(menuItems[1]);
@@ -111,7 +109,7 @@ add_task(async function() {
   win.FontBuilder._enumerator = {
     _list: ["MockedFont1", "MockedFont2", "MockedFont3"],
     _defaultFont: null,
-    EnumerateFontsAsync(lang, type) {
+    EnumerateFontsAsync() {
       return Promise.resolve(this._list);
     },
     EnumerateAllFontsAsync() {

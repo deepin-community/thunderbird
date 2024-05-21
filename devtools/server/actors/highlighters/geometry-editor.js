@@ -6,16 +6,19 @@
 
 const {
   AutoRefreshHighlighter,
-} = require("devtools/server/actors/highlighters/auto-refresh");
+} = require("resource://devtools/server/actors/highlighters/auto-refresh.js");
 const {
   CanvasFrameAnonymousContentHelper,
   getComputedStyle,
-} = require("devtools/server/actors/highlighters/utils/markup");
+} = require("resource://devtools/server/actors/highlighters/utils/markup.js");
 const {
   setIgnoreLayoutChanges,
   getAdjustedQuads,
-} = require("devtools/shared/layout/utils");
-const { getCSSStyleRules } = require("devtools/shared/inspector/css-logic");
+  getCurrentZoom,
+} = require("resource://devtools/shared/layout/utils.js");
+const {
+  getCSSStyleRules,
+} = require("resource://devtools/shared/inspector/css-logic.js");
 
 const GEOMETRY_LABEL_SIZE = 6;
 
@@ -33,55 +36,55 @@ var GeoProp = {
   SIDES: ["top", "right", "bottom", "left"],
   SIZES: ["width", "height"],
 
-  allProps: function() {
+  allProps() {
     return [...this.SIDES, ...this.SIZES];
   },
 
-  isSide: function(name) {
+  isSide(name) {
     return this.SIDES.includes(name);
   },
 
-  isSize: function(name) {
+  isSize(name) {
     return this.SIZES.includes(name);
   },
 
-  containsSide: function(names) {
+  containsSide(names) {
     return names.some(name => this.SIDES.includes(name));
   },
 
-  containsSize: function(names) {
+  containsSize(names) {
     return names.some(name => this.SIZES.includes(name));
   },
 
-  isHorizontal: function(name) {
+  isHorizontal(name) {
     return name === "left" || name === "right" || name === "width";
   },
 
-  isInverted: function(name) {
+  isInverted(name) {
     return name === "right" || name === "bottom";
   },
 
-  mainAxisStart: function(name) {
+  mainAxisStart(name) {
     return this.isHorizontal(name) ? "left" : "top";
   },
 
-  crossAxisStart: function(name) {
+  crossAxisStart(name) {
     return this.isHorizontal(name) ? "top" : "left";
   },
 
-  mainAxisSize: function(name) {
+  mainAxisSize(name) {
     return this.isHorizontal(name) ? "width" : "height";
   },
 
-  crossAxisSize: function(name) {
+  crossAxisSize(name) {
     return this.isHorizontal(name) ? "height" : "width";
   },
 
-  axis: function(name) {
+  axis(name) {
     return this.isHorizontal(name) ? "x" : "y";
   },
 
-  crossAxis: function(name) {
+  crossAxis(name) {
     return this.isHorizontal(name) ? "y" : "x";
   },
 };
@@ -525,6 +528,9 @@ class GeometryEditorHighlighter extends AutoRefreshHighlighter {
     // At each update, the position or/and size may have changed, so get the
     // list of defined properties, and re-position the arrows and highlighters.
     this.definedProperties = getDefinedGeometryProperties(this.currentNode);
+    // We need the zoom factor to fix the original position of the node
+    // as well as the arrows.
+    this.zoomFactor = getCurrentZoom(this.currentNode);
 
     if (!this.definedProperties.size) {
       console.warn("The element does not have editable geometry properties");
@@ -597,8 +603,8 @@ class GeometryEditorHighlighter extends AutoRefreshHighlighter {
       el.setAttribute("points", points);
       isHighlighted = true;
     } else if (isRelative) {
-      const xDelta = parseFloat(this.computedStyle.left);
-      const yDelta = parseFloat(this.computedStyle.top);
+      const xDelta = parseFloat(this.computedStyle.left) * this.zoomFactor;
+      const yDelta = parseFloat(this.computedStyle.top) * this.zoomFactor;
       if (xDelta || yDelta) {
         const { p1, p2, p3, p4 } = this.currentQuads.margin[0];
         const points =
@@ -696,17 +702,23 @@ class GeometryEditorHighlighter extends AutoRefreshHighlighter {
     // |                  | bottom         |
     // +------------------+----------------+
     const getSideArrowStartPos = side => {
-      // In case an offsetParent exists and is highlighted.
-      if (this.parentQuads && this.parentQuads.length) {
-        return this.parentQuads[0].bounds[side];
-      }
-
       // In case of relative positioning.
       if (this.computedStyle.position === "relative") {
         if (GeoProp.isInverted(side)) {
-          return marginBox[side] + parseFloat(this.computedStyle[side]);
+          return (
+            marginBox[side] +
+            parseFloat(this.computedStyle[side]) * this.zoomFactor
+          );
         }
-        return marginBox[side] - parseFloat(this.computedStyle[side]);
+        return (
+          marginBox[side] -
+          parseFloat(this.computedStyle[side]) * this.zoomFactor
+        );
+      }
+
+      // In case an offsetParent exists and is highlighted.
+      if (this.parentQuads && this.parentQuads.length) {
+        return this.parentQuads[0].bounds[side];
       }
 
       // In case the element is positioned in the viewport.

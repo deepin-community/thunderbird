@@ -12,7 +12,6 @@
           'target_name': 'nss_libs',
           'type': 'none',
           'dependencies': [
-            'lib/ckfw/builtins/builtins.gyp:nssckbi',
             'lib/softoken/softoken.gyp:softokn3',
           ],
           'conditions': [
@@ -48,6 +47,11 @@
             [ 'disable_dbm==0', {
               'dependencies': [
                 'lib/softoken/legacydb/legacydb.gyp:nssdbm3',
+              ],
+            }],
+            [ 'disable_ckbi==0', {
+              'dependencies': [
+                'lib/ckfw/builtins/builtins.gyp:nssckbi',
               ],
             }],
           ],
@@ -110,9 +114,7 @@
           'type': 'none',
           'dependencies': [
             'cmd/certutil/certutil.gyp:certutil',
-            'cmd/modutil/modutil.gyp:modutil',
             'cmd/pk12util/pk12util.gyp:pk12util',
-            'cmd/shlibsign/shlibsign.gyp:shlibsign',
           ],
           'conditions': [
             [ 'comm_client==1', {
@@ -125,12 +127,16 @@
             [ 'mozilla_client==0', {
               'dependencies': [
                 'cmd/crlutil/crlutil.gyp:crlutil',
+                'cmd/dbtool/dbtool.gyp:dbtool',
+                'cmd/modutil/modutil.gyp:modutil',
                 'cmd/pwdecrypt/pwdecrypt.gyp:pwdecrypt',
+                'cmd/shlibsign/shlibsign.gyp:shlibsign',
                 'cmd/signtool/signtool.gyp:signtool',
                 'cmd/signver/signver.gyp:signver',
                 'cmd/smimetools/smimetools.gyp:cmsutil',
                 'cmd/ssltap/ssltap.gyp:ssltap',
                 'cmd/symkeyutil/symkeyutil.gyp:symkeyutil',
+                'cmd/validation/validation.gyp:validation',
                 'nss-tool/nss_tool.gyp:nss',
                 'nss-tool/nss_tool.gyp:hw-support',
               ],
@@ -189,6 +195,7 @@
             'cmd/pp/pp.gyp:pp',
             'cmd/rsaperf/rsaperf.gyp:rsaperf',
             'cmd/rsapoptst/rsapoptst.gyp:rsapoptst',
+            'cmd/sdbthreadtst/sdbthreadtst.gyp:sdbthreadtst',
             'cmd/sdrtest/sdrtest.gyp:sdrtest',
             'cmd/selfserv/selfserv.gyp:selfserv',
             'cmd/shlibsign/mangle/mangle.gyp:mangle',
@@ -204,12 +211,11 @@
             'cmd/vfychain/vfychain.gyp:vfychain',
             'cmd/vfyserv/vfyserv.gyp:vfyserv',
             'cmd/mpitests/mpitests.gyp:mpi_tests',
+            'gtests/base_gtest/base_gtest.gyp:base_gtest',
             'gtests/certhigh_gtest/certhigh_gtest.gyp:certhigh_gtest',
             'gtests/cryptohi_gtest/cryptohi_gtest.gyp:cryptohi_gtest',
             'gtests/der_gtest/der_gtest.gyp:der_gtest',
             'gtests/certdb_gtest/certdb_gtest.gyp:certdb_gtest',
-            'gtests/freebl_gtest/freebl_gtest.gyp:prng_gtest',
-            'gtests/freebl_gtest/freebl_gtest.gyp:blake2b_gtest',
             'gtests/freebl_gtest/freebl_gtest.gyp:freebl_gtest',
             'gtests/mozpkix_gtest/mozpkix_gtest.gyp:mozpkix_gtest',
             'gtests/nss_bogo_shim/nss_bogo_shim.gyp:nss_bogo_shim',

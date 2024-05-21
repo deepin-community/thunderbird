@@ -12,25 +12,27 @@ var {
   close_compose_window,
   open_compose_with_forward,
   open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+);
 var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
-  mc,
+  get_about_message,
   open_message_from_file,
   select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
-var { close_window } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
+var { click_menus_in_sequence } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
 );
 
 var gImageFolder;
 
-add_task(async function setup() {
-  gImageFolder = create_folder("ImageFolder");
+add_setup(async function () {
+  gImageFolder = await create_folder("ImageFolder");
   registerCleanupFunction(() => {
     gImageFolder.deleteSelf(null);
   });
@@ -39,13 +41,12 @@ add_task(async function setup() {
 /**
  * Check dimensions of the embedded image and whether it could be loaded.
  */
-async function check_image_size(aController, aImage, aSrcStart) {
+async function check_image_size(aImage, aSrcStart) {
   Assert.notEqual(null, aImage, "should have a image");
   await TestUtils.waitForCondition(
     () => aImage.complete,
     "waiting for image.complete"
   );
-  //aController.waitFor(() => aImage.complete);
   // There should not be a cid: URL now.
   Assert.ok(!aImage.src.startsWith("cid:"));
   if (aSrcStart) {
@@ -53,7 +54,7 @@ async function check_image_size(aController, aImage, aSrcStart) {
   }
 
   // Check if there are height and width attributes forcing the image to a size.
-  let id = aImage.id;
+  const id = aImage.id;
   Assert.ok(
     aImage.hasAttribute("height"),
     "Image " + id + " is missing a required attribute"
@@ -85,31 +86,39 @@ async function check_image_size(aController, aImage, aSrcStart) {
  * Test that showing an image with cid: URL in a HTML message from file will work.
  */
 add_task(async function test_cid_image_load() {
-  let file = new FileUtils.File(
+  const file = new FileUtils.File(
     getTestFilePath("data/content-utf8-rel-only.eml")
   );
 
   // Make sure there is a cid: referenced image in the message.
-  let msgSource = await IOUtils.readUTF8(file.path);
+  const msgSource = await IOUtils.readUTF8(file.path);
   Assert.ok(msgSource.includes('<img src="cid:'));
 
   // Our image should be in the loaded eml document.
-  let msgc = await open_message_from_file(file);
-  let messageDoc = msgc.e("messagepane").contentDocument;
+  const msgc = await open_message_from_file(file);
+  const messageDoc = msgc.content.document;
   let image = messageDoc.getElementById("cidImage");
-  await check_image_size(msgc, image, "mailbox://");
+  await check_image_size(image, "mailbox://");
   image = messageDoc.getElementById("cidImageOrigin");
-  check_image_size(msgc, image, "mailbox://");
+  check_image_size(image, "mailbox://");
 
   // Copy the message to a folder.
-  let documentChild = messageDoc.firstElementChild;
-  msgc.rightClick(documentChild);
-  await msgc.click_menus_in_sequence(msgc.e("mailContext"), [
-    { id: "mailContext-copyMenu" },
-    { label: "Local Folders" },
-    { label: gImageFolder.prettyName },
-  ]);
-  close_window(msgc);
+  const documentChild = messageDoc.firstElementChild;
+  EventUtils.synthesizeMouseAtCenter(
+    documentChild,
+    { type: "contextmenu", button: 2 },
+    documentChild.ownerGlobal
+  );
+  const aboutMessage = get_about_message(msgc);
+  await click_menus_in_sequence(
+    aboutMessage.document.getElementById("mailContext"),
+    [
+      { id: "mailContext-copyMenu" },
+      { label: "Local Folders" },
+      { label: gImageFolder.prettyName },
+    ]
+  );
+  await BrowserTestUtils.closeWindow(msgc);
 });
 
 /**
@@ -118,16 +127,17 @@ add_task(async function test_cid_image_load() {
  */
 add_task(async function test_cid_image_view() {
   // Preview the message in the folder.
-  be_in_folder(gImageFolder);
-  let msg = select_click_row(0);
-  assert_selected_and_displayed(mc, msg);
+  await be_in_folder(gImageFolder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(window, msg);
 
   // Check image in the preview.
-  let messageDoc = mc.e("messagepane").contentDocument;
+  const messageDoc =
+    get_about_message().document.getElementById("messagepane").contentDocument;
   let image = messageDoc.getElementById("cidImage");
-  await check_image_size(mc, image, gImageFolder.server.localStoreType + "://");
+  await check_image_size(image, gImageFolder.server.localStoreType + "://");
   image = messageDoc.getElementById("cidImageOrigin");
-  await check_image_size(mc, image, gImageFolder.server.localStoreType + "://");
+  await check_image_size(image, gImageFolder.server.localStoreType + "://");
 });
 
 /**
@@ -137,24 +147,26 @@ add_task(async function test_cid_image_view() {
  */
 async function check_cid_image_compose(cwc) {
   // Our image should also be in composition when the message is forwarded/replied.
-  let image = cwc.e("content-frame").contentDocument.getElementById("cidImage");
-  await check_image_size(cwc, image, "data:");
-  image = cwc
-    .e("content-frame")
+  let image = cwc.document
+    .getElementById("messageEditor")
+    .contentDocument.getElementById("cidImage");
+  await check_image_size(image, "data:");
+  image = cwc.document
+    .getElementById("messageEditor")
     .contentDocument.getElementById("cidImageOrigin");
-  await check_image_size(cwc, image, "data:");
+  await check_image_size(image, "data:");
 }
 
 add_task(async function test_cid_image_compose_fwd() {
   // Our image should also be in composition when the message is forwarded.
-  let cwc = open_compose_with_forward();
+  const cwc = await open_compose_with_forward();
   await check_cid_image_compose(cwc);
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 });
 
 add_task(async function test_cid_image_compose_re() {
   // Our image should also be in composition when the message is replied.
-  let cwc = open_compose_with_reply();
+  const cwc = await open_compose_with_reply();
   await check_cid_image_compose(cwc);
-  close_compose_window(cwc);
+  await close_compose_window(cwc);
 });

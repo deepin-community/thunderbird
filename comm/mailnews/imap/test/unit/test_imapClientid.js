@@ -3,8 +3,8 @@ http://creativecommons.org/publicdomain/zero/1.0/ */
 
 "use strict";
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var incomingServer, server;
@@ -29,15 +29,15 @@ var gTests = [
   },
 ];
 
-add_task(async function() {
-  let daemon = new imapDaemon();
+add_task(async function () {
+  const daemon = new ImapDaemon();
   server = makeServer(daemon, "", {
     // Make username of server match the singons.txt file
     // (pw there is intentionally invalid)
     kUsername: kUserName,
     kPassword: kValidPassword,
   });
-  server.setDebugLevel(fsDebugAll);
+  server.setDebugLevel(nsMailServer.debugAll);
   incomingServer = createLocalIMAPServer(server.port);
 
   // Turn on CLIENTID and populate the clientid with a uuid.
@@ -53,11 +53,11 @@ add_task(async function() {
   server.resetTest();
 });
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   incomingServer.closeCachedConnections();
   server.stop();
 
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     thread.processNextEvent(true);
   }

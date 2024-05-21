@@ -6,7 +6,7 @@
 // Test void element display in the markupview.
 const TEST_URL = URL_ROOT + "doc_markup_void_elements.xhtml";
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URL);
   const { win } = inspector.markup;
 
@@ -16,8 +16,9 @@ add_task(async function() {
     !editor.elt.classList.contains("void-element"),
     "h1 element does not have void-element class"
   );
-  ok(
-    !editor.elt.querySelector(".close").style.display !== "none",
+  Assert.notStrictEqual(
+    !editor.elt.querySelector(".close").style.display,
+    "none",
     "h1 element tag is not hidden"
   );
 
@@ -29,5 +30,9 @@ add_task(async function() {
   );
   const closeElement = container.editor.elt.querySelector(".close");
   const computedStyle = win.getComputedStyle(closeElement);
-  ok(computedStyle.display !== "none", "br closing tag is not hidden");
+  Assert.notStrictEqual(
+    computedStyle.display,
+    "none",
+    "br closing tag is not hidden"
+  );
 });

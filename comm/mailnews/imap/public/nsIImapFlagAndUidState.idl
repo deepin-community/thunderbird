@@ -34,6 +34,13 @@ interface nsIImapFlagAndUidState : nsISupports
   readonly attribute unsigned short supportedUserFlags;
 
   /**
+   * Check if a UID is in the state.
+   * @param uid - The message UID.
+   * @returns True if UID is in the state.
+   */
+  boolean hasMessage(in unsigned long uid);
+
+  /**
    * OR's the  passed in flags with the previous flags because we want to
    * accumulate the FLAGS and PERMANENTFLAGS response.
    *
@@ -41,12 +48,18 @@ interface nsIImapFlagAndUidState : nsISupports
    */
   void orSupportedUserFlags(in unsigned short aFlags);
 
-  void getUidOfMessage(in long zeroBasedIndex, out unsigned long result);
-  void getMessageFlags(in long zeroBasedIndex, out unsigned short result);
+  unsigned long getUidOfMessage(in long zeroBasedIndex);
+  unsigned short getMessageFlags(in long zeroBasedIndex);
   void setMessageFlags(in long zeroBasedIndex, in unsigned short flags);
   void expungeByIndex(in unsigned long zeroBasedIndex);
   void addUidFlagPair(in unsigned long uid, in unsigned short flags, in unsigned long zeroBasedIndex);
   void addUidCustomFlagPair(in unsigned long uid, in string customFlag);
+  /**
+   * Get the message flags by the message UID.
+   * @param uid - The message UID.
+   * @returns The message flags.
+   */
+  unsigned short getMessageFlagsByUid(in unsigned long uid);
   string getCustomFlags(in unsigned long uid); // returns space-separated keywords
   void reset();
   void clearCustomFlags(in unsigned long uid);
@@ -71,4 +84,3 @@ interface nsIImapFlagAndUidState : nsISupports
   ACString getCustomAttribute(in unsigned long aUid,
                               in ACString aCustomAttributeName);
 };
-

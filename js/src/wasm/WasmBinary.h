@@ -19,6 +19,7 @@
 #ifndef wasm_binary_h
 #define wasm_binary_h
 
+#include "mozilla/DebugOnly.h"
 #include "mozilla/Maybe.h"
 
 #include <type_traits>
@@ -35,6 +36,7 @@
 namespace js {
 namespace wasm {
 
+using mozilla::DebugOnly;
 using mozilla::Maybe;
 
 struct ModuleEnvironment;
@@ -70,12 +72,18 @@ class Opcode {
     static_assert(size_t(SimdOp::Limit) <= 0xFFFFFF, "fits");
     MOZ_ASSERT(size_t(op) < size_t(SimdOp::Limit));
   }
+  MOZ_IMPLICIT Opcode(GcOp op)
+      : bits_((uint32_t(op) << 8) | uint32_t(Op::GcPrefix)) {
+    static_assert(size_t(SimdOp::Limit) <= 0xFFFFFF, "fits");
+    MOZ_ASSERT(size_t(op) < size_t(SimdOp::Limit));
+  }
 
   bool isOp() const { return bits_ < uint32_t(Op::FirstPrefix); }
   bool isMisc() const { return (bits_ & 255) == uint32_t(Op::MiscPrefix); }
   bool isThread() const { return (bits_ & 255) == uint32_t(Op::ThreadPrefix); }
   bool isMoz() const { return (bits_ & 255) == uint32_t(Op::MozPrefix); }
   bool isSimd() const { return (bits_ & 255) == uint32_t(Op::SimdPrefix); }
+  bool isGc() const { return (bits_ & 255) == uint32_t(Op::GcPrefix); }
 
   Op asOp() const {
     MOZ_ASSERT(isOp());
@@ -96,6 +104,10 @@ class Opcode {
   SimdOp asSimd() const {
     MOZ_ASSERT(isSimd());
     return SimdOp(bits_ >> 8);
+  }
+  GcOp asGc() const {
+    MOZ_ASSERT(isGc());
+    return GcOp(bits_ >> 8);
   }
 
   uint32_t bits() const { return bits_; }
@@ -125,6 +137,7 @@ using MaybeSectionRange = Maybe<SectionRange>;
 
 class Encoder {
   Bytes& bytes_;
+  const TypeContext* types_;
 
   template <class T>
   [[nodiscard]] bool write(const T& v) {
@@ -174,6 +187,7 @@ class Encoder {
         patchByte |= 0x80;
       }
       MOZ_ASSERT(assertByte == bytes_[offset]);
+      (void)assertByte;
       bytes_[offset] = patchByte;
       offset++;
     } while (assertBits != 0);
@@ -198,7 +212,13 @@ class Encoder {
   }
 
  public:
-  explicit Encoder(Bytes& bytes) : bytes_(bytes) { MOZ_ASSERT(empty()); }
+  explicit Encoder(Bytes& bytes) : bytes_(bytes), types_(nullptr) {
+    MOZ_ASSERT(empty());
+  }
+  explicit Encoder(Bytes& bytes, const TypeContext& types)
+      : bytes_(bytes), types_(&types) {
+    MOZ_ASSERT(empty());
+  }
 
   size_t currentOffset() const { return bytes_.length(); }
   bool empty() const { return currentOffset() == 0; }
@@ -223,9 +243,16 @@ class Encoder {
   [[nodiscard]] bool writeVarS64(int64_t i) { return writeVarS<int64_t>(i); }
   [[nodiscard]] bool writeValType(ValType type) {
     static_assert(size_t(TypeCode::Limit) <= UINT8_MAX, "fits");
-    if (type.isTypeIndex()) {
-      return writeFixedU8(uint8_t(TypeCode::NullableRef)) &&
-             writeVarU32(type.refType().typeIndex());
+    if (type.isTypeRef()) {
+      MOZ_RELEASE_ASSERT(types_,
+                         "writeValType is used, but types were not specified.");
+      if (!writeFixedU8(uint8_t(type.isNullable() ? TypeCode::NullableRef
+                                                  : TypeCode::Ref))) {
+        return false;
+      }
+      uint32_t typeIndex = types_->indexOf(*type.typeDef());
+      // Encode positive LEB S33 as S64.
+      return writeVarS64(typeIndex);
     }
     TypeCode tc = type.packed().typeCode();
     MOZ_ASSERT(size_t(tc) < size_t(TypeCode::Limit));
@@ -443,6 +470,7 @@ class Decoder {
   // pos must be a value previously returned from currentPosition.
   void rollbackPosition(const uint8_t* pos) { cur_ = pos; }
   const uint8_t* currentPosition() const { return cur_; }
+  size_t beginOffset() const { return offsetInModule_; }
   size_t currentOffset() const { return offsetInModule_ + (cur_ - beg_); }
   const uint8_t* begin() const { return beg_; }
   const uint8_t* end() const { return end_; }
@@ -488,39 +516,25 @@ class Decoder {
 
   // Value and reference types
 
-  [[nodiscard]] ValType uncheckedReadValType();
-  template <class T>
-  [[nodiscard]] bool readPackedType(uint32_t numTypes,
-                                    const FeatureArgs& features, T* type);
+  [[nodiscard]] ValType uncheckedReadValType(const TypeContext& types);
+
   template <class T>
   [[nodiscard]] bool readPackedType(const TypeContext& types,
                                     const FeatureArgs& features, T* type);
 
-  [[nodiscard]] bool readValType(uint32_t numTypes, const FeatureArgs& features,
-                                 ValType* type);
   [[nodiscard]] bool readValType(const TypeContext& types,
                                  const FeatureArgs& features, ValType* type);
 
-  [[nodiscard]] bool readFieldType(uint32_t numTypes,
-                                   const FeatureArgs& features,
-                                   FieldType* type);
-  [[nodiscard]] bool readFieldType(const TypeContext& types,
-                                   const FeatureArgs& features,
-                                   FieldType* type);
+  [[nodiscard]] bool readStorageType(const TypeContext& types,
+                                     const FeatureArgs& features,
+                                     StorageType* type);
 
-  [[nodiscard]] bool readHeapType(uint32_t numTypes,
-                                  const FeatureArgs& features, bool nullable,
-                                  RefType* type);
   [[nodiscard]] bool readHeapType(const TypeContext& types,
                                   const FeatureArgs& features, bool nullable,
                                   RefType* type);
-  [[nodiscard]] bool readRefType(uint32_t numTypes, const FeatureArgs& features,
-                                 RefType* type);
+
   [[nodiscard]] bool readRefType(const TypeContext& types,
                                  const FeatureArgs& features, RefType* type);
-  [[nodiscard]] bool validateTypeIndex(const TypeContext& types,
-                                       const FeatureArgs& features,
-                                       RefType type);
 
   // Instruction opcode
 
@@ -529,7 +543,9 @@ class Decoder {
   // Instruction immediates for constant instructions
 
   [[nodiscard]] bool readBinary() { return true; }
-  [[nodiscard]] bool readGetGlobal(uint32_t* id);
+  [[nodiscard]] bool readTypeIndex(uint32_t* typeIndex);
+  [[nodiscard]] bool readGlobalIndex(uint32_t* globalIndex);
+  [[nodiscard]] bool readFuncIndex(uint32_t* funcIndex);
   [[nodiscard]] bool readI32Const(int32_t* i32);
   [[nodiscard]] bool readI64Const(int64_t* i64);
   [[nodiscard]] bool readF32Const(float* f32);
@@ -537,10 +553,8 @@ class Decoder {
 #ifdef ENABLE_WASM_SIMD
   [[nodiscard]] bool readV128Const(V128* value);
 #endif
-  [[nodiscard]] bool readRefFunc(uint32_t* funcIndex);
   [[nodiscard]] bool readRefNull(const TypeContext& types,
                                  const FeatureArgs& features, RefType* type);
-  [[nodiscard]] bool readRefNull(const FeatureArgs& features, RefType* type);
 
   // See writeBytes comment.
 
@@ -642,17 +656,13 @@ class Decoder {
 
 // Value and reference types
 
-inline ValType Decoder::uncheckedReadValType() {
+inline ValType Decoder::uncheckedReadValType(const TypeContext& types) {
   uint8_t code = uncheckedReadFixedU8();
   switch (code) {
     case uint8_t(TypeCode::FuncRef):
     case uint8_t(TypeCode::ExternRef):
+    case uint8_t(TypeCode::ExnRef):
       return RefType::fromTypeCode(TypeCode(code), true);
-    case uint8_t(TypeCode::Rtt): {
-      uint32_t rttDepth = uncheckedReadVarU32();
-      int32_t typeIndex = uncheckedReadVarS32();
-      return ValType::fromRtt(typeIndex, rttDepth);
-    }
     case uint8_t(TypeCode::Ref):
     case uint8_t(TypeCode::NullableRef): {
       bool nullable = code == uint8_t(TypeCode::NullableRef);
@@ -666,7 +676,8 @@ inline ValType Decoder::uncheckedReadValType() {
       }
 
       int32_t x = uncheckedReadVarS32();
-      return RefType::fromTypeIndex(x, nullable);
+      const TypeDef* typeDef = &types.type(x);
+      return RefType::fromTypeDef(typeDef, nullable);
     }
     default:
       return ValType::fromNonRefTypeCode(TypeCode(code));
@@ -674,7 +685,7 @@ inline ValType Decoder::uncheckedReadValType() {
 }
 
 template <class T>
-inline bool Decoder::readPackedType(uint32_t numTypes,
+inline bool Decoder::readPackedType(const TypeContext& types,
                                     const FeatureArgs& features, T* type) {
   static_assert(uint8_t(TypeCode::Limit) <= UINT8_MAX, "fits");
   uint8_t code;
@@ -684,7 +695,7 @@ inline bool Decoder::readPackedType(uint32_t numTypes,
   switch (code) {
     case uint8_t(TypeCode::V128): {
 #ifdef ENABLE_WASM_SIMD
-      if (!features.v128) {
+      if (!features.simd) {
         return fail("v128 not enabled");
       }
       *type = T::fromNonRefTypeCode(TypeCode(code));
@@ -698,15 +709,22 @@ inline bool Decoder::readPackedType(uint32_t numTypes,
       *type = RefType::fromTypeCode(TypeCode(code), true);
       return true;
     }
+    case uint8_t(TypeCode::ExnRef): {
+      if (!features.exnref) {
+        return fail("exnref not enabled");
+      }
+      *type = RefType::fromTypeCode(TypeCode(code), true);
+      return true;
+    }
     case uint8_t(TypeCode::Ref):
     case uint8_t(TypeCode::NullableRef): {
-#ifdef ENABLE_WASM_FUNCTION_REFERENCES
-      if (!features.functionReferences) {
-        return fail("(ref T) types not enabled");
+#ifdef ENABLE_WASM_GC
+      if (!features.gc) {
+        return fail("gc not enabled");
       }
       bool nullable = code == uint8_t(TypeCode::NullableRef);
       RefType refType;
-      if (!readHeapType(numTypes, features, nullable, &refType)) {
+      if (!readHeapType(types, features, nullable, &refType)) {
         return false;
       }
       *type = refType;
@@ -715,36 +733,17 @@ inline bool Decoder::readPackedType(uint32_t numTypes,
       break;
 #endif
     }
-    case uint8_t(TypeCode::Rtt): {
+    case uint8_t(TypeCode::AnyRef):
+    case uint8_t(TypeCode::I31Ref):
+    case uint8_t(TypeCode::EqRef):
+    case uint8_t(TypeCode::StructRef):
+    case uint8_t(TypeCode::ArrayRef):
+    case uint8_t(TypeCode::NullFuncRef):
+    case uint8_t(TypeCode::NullExternRef):
+    case uint8_t(TypeCode::NullAnyRef): {
 #ifdef ENABLE_WASM_GC
       if (!features.gc) {
-        return fail("gc types not enabled");
-      }
-
-      uint32_t rttDepth;
-      if (!readVarU32(&rttDepth) || uint32_t(rttDepth) >= MaxRttDepth) {
-        return fail("invalid rtt depth");
-      }
-
-      RefType heapType;
-      if (!readHeapType(numTypes, features, true, &heapType)) {
-        return false;
-      }
-
-      if (!heapType.isTypeIndex()) {
-        return fail("invalid heap type for rtt");
-      }
-
-      *type = T::fromRtt(heapType.typeIndex(), rttDepth);
-      return true;
-#else
-      break;
-#endif
-    }
-    case uint8_t(TypeCode::EqRef): {
-#ifdef ENABLE_WASM_GC
-      if (!features.gc) {
-        return fail("gc types not enabled");
+        return fail("gc not enabled");
       }
       *type = RefType::fromTypeCode(TypeCode(code), true);
       return true;
@@ -762,40 +761,19 @@ inline bool Decoder::readPackedType(uint32_t numTypes,
   }
   return fail("bad type");
 }
-template <class T>
-inline bool Decoder::readPackedType(const TypeContext& types,
-                                    const FeatureArgs& features, T* type) {
-  if (!readPackedType(types.length(), features, type)) {
-    return false;
-  }
-  if (type->isTypeIndex() &&
-      !validateTypeIndex(types, features, type->refType())) {
-    return false;
-  }
-  return true;
-}
 
-inline bool Decoder::readValType(uint32_t numTypes, const FeatureArgs& features,
-                                 ValType* type) {
-  return readPackedType<ValType>(numTypes, features, type);
-}
 inline bool Decoder::readValType(const TypeContext& types,
                                  const FeatureArgs& features, ValType* type) {
   return readPackedType<ValType>(types, features, type);
 }
 
-inline bool Decoder::readFieldType(uint32_t numTypes,
-                                   const FeatureArgs& features,
-                                   FieldType* type) {
-  return readPackedType<FieldType>(numTypes, features, type);
-}
-inline bool Decoder::readFieldType(const TypeContext& types,
-                                   const FeatureArgs& features,
-                                   FieldType* type) {
-  return readPackedType<FieldType>(types, features, type);
+inline bool Decoder::readStorageType(const TypeContext& types,
+                                     const FeatureArgs& features,
+                                     StorageType* type) {
+  return readPackedType<StorageType>(types, features, type);
 }
 
-inline bool Decoder::readHeapType(uint32_t numTypes,
+inline bool Decoder::readHeapType(const TypeContext& types,
                                   const FeatureArgs& features, bool nullable,
                                   RefType* type) {
   uint8_t nextByte;
@@ -814,10 +792,24 @@ inline bool Decoder::readHeapType(uint32_t numTypes,
       case uint8_t(TypeCode::ExternRef):
         *type = RefType::fromTypeCode(TypeCode(code), nullable);
         return true;
+      case uint8_t(TypeCode::ExnRef): {
+        if (!features.exnref) {
+          return fail("exnref not enabled");
+        }
+        *type = RefType::fromTypeCode(TypeCode(code), nullable);
+        return true;
+      }
 #ifdef ENABLE_WASM_GC
+      case uint8_t(TypeCode::AnyRef):
+      case uint8_t(TypeCode::I31Ref):
       case uint8_t(TypeCode::EqRef):
+      case uint8_t(TypeCode::StructRef):
+      case uint8_t(TypeCode::ArrayRef):
+      case uint8_t(TypeCode::NullFuncRef):
+      case uint8_t(TypeCode::NullExternRef):
+      case uint8_t(TypeCode::NullAnyRef):
         if (!features.gc) {
-          return fail("gc types not enabled");
+          return fail("gc not enabled");
         }
         *type = RefType::fromTypeCode(TypeCode(code), nullable);
         return true;
@@ -827,65 +819,31 @@ inline bool Decoder::readHeapType(uint32_t numTypes,
     }
   }
 
-#ifdef ENABLE_WASM_FUNCTION_REFERENCES
-  if (features.functionReferences) {
+#ifdef ENABLE_WASM_GC
+  if (features.gc) {
     int32_t x;
-    if (!readVarS32(&x) || x < 0 || uint32_t(x) >= numTypes ||
-        uint32_t(x) >= MaxTypeIndex) {
+    if (!readVarS32(&x) || x < 0 || uint32_t(x) >= types.length()) {
       return fail("invalid heap type index");
     }
-    *type = RefType::fromTypeIndex(x, nullable);
+    const TypeDef* typeDef = &types.type(x);
+    *type = RefType::fromTypeDef(typeDef, nullable);
     return true;
   }
 #endif
   return fail("invalid heap type");
 }
-inline bool Decoder::readHeapType(const TypeContext& types,
-                                  const FeatureArgs& features, bool nullable,
-                                  RefType* type) {
-  if (!readHeapType(types.length(), features, nullable, type)) {
-    return false;
-  }
 
-  if (type->isTypeIndex() && !validateTypeIndex(types, features, *type)) {
-    return false;
-  }
-  return true;
-}
-inline bool Decoder::readRefType(uint32_t numTypes, const FeatureArgs& features,
-                                 RefType* type) {
-  ValType valType;
-  if (!readValType(numTypes, features, &valType)) {
-    return false;
-  }
-  if (!valType.isReference()) {
-    return fail("bad type");
-  }
-  *type = valType.refType();
-  return true;
-}
 inline bool Decoder::readRefType(const TypeContext& types,
                                  const FeatureArgs& features, RefType* type) {
   ValType valType;
   if (!readValType(types, features, &valType)) {
     return false;
   }
-  if (!valType.isReference()) {
+  if (!valType.isRefType()) {
     return fail("bad type");
   }
   *type = valType.refType();
   return true;
-}
-inline bool Decoder::validateTypeIndex(const TypeContext& types,
-                                       const FeatureArgs& features,
-                                       RefType type) {
-  MOZ_ASSERT(type.isTypeIndex());
-
-  if (features.gc && (types[type.typeIndex()].isStructType() ||
-                      types[type.typeIndex()].isArrayType())) {
-    return true;
-  }
-  return fail("type index references an invalid type");
 }
 
 // Instruction opcode
@@ -905,9 +863,23 @@ inline bool Decoder::readOp(OpBytes* op) {
 
 // Instruction immediates for constant instructions
 
-inline bool Decoder::readGetGlobal(uint32_t* id) {
-  if (!readVarU32(id)) {
+inline bool Decoder::readTypeIndex(uint32_t* typeIndex) {
+  if (!readVarU32(typeIndex)) {
+    return fail("unable to read type index");
+  }
+  return true;
+}
+
+inline bool Decoder::readGlobalIndex(uint32_t* globalIndex) {
+  if (!readVarU32(globalIndex)) {
     return fail("unable to read global index");
+  }
+  return true;
+}
+
+inline bool Decoder::readFuncIndex(uint32_t* funcIndex) {
+  if (!readVarU32(funcIndex)) {
+    return fail("unable to read function index");
   }
   return true;
 }
@@ -949,20 +921,9 @@ inline bool Decoder::readV128Const(V128* value) {
 }
 #endif
 
-inline bool Decoder::readRefFunc(uint32_t* funcIndex) {
-  if (!readVarU32(funcIndex)) {
-    return fail("unable to read function index");
-  }
-  return true;
-}
-
 inline bool Decoder::readRefNull(const TypeContext& types,
                                  const FeatureArgs& features, RefType* type) {
   return readHeapType(types, features, true, type);
-}
-
-inline bool Decoder::readRefNull(const FeatureArgs& features, RefType* type) {
-  return readHeapType(MaxTypes, features, true, type);
 }
 
 }  // namespace wasm

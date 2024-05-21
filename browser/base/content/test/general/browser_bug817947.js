@@ -6,13 +6,13 @@ const PREF = "browser.sessionstore.restore_on_demand";
 
 add_task(async () => {
   Services.prefs.setBoolPref(PREF, true);
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     Services.prefs.clearUserPref(PREF);
   });
 
   let tab = await preparePendingTab();
 
-  let deferredTab = PromiseUtils.defer();
+  let deferredTab = Promise.withResolvers();
 
   let win = gBrowser.replaceTabWithWindow(tab);
   win.addEventListener(
@@ -40,7 +40,7 @@ async function preparePendingTab(aCallback) {
   BrowserTestUtils.removeTab(tab);
   await sessionUpdatePromise;
 
-  let [{ state }] = JSON.parse(SessionStore.getClosedTabData(window));
+  let [{ state }] = SessionStore.getClosedTabDataForWindow(window);
 
   tab = BrowserTestUtils.addTab(gBrowser, "about:blank");
   await BrowserTestUtils.browserLoaded(tab.linkedBrowser);

@@ -12,6 +12,7 @@
 #include "nsTArray.h"
 #include "nsCOMArray.h"
 
+#include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/PFilePickerChild.h"
 #include "mozilla/dom/UnionTypes.h"
 
@@ -33,12 +34,12 @@ class nsFilePickerProxy : public nsBaseFilePicker,
   NS_DECL_ISUPPORTS
 
   // nsIFilePicker (less what's in nsBaseFilePicker)
-  NS_IMETHOD Init(mozIDOMWindowProxy* aParent, const nsAString& aTitle,
-                  int16_t aMode) override;
+  NS_IMETHOD Init(mozilla::dom::BrowsingContext* aBrowsingContext,
+                  const nsAString& aTitle, nsIFilePicker::Mode aMode) override;
   NS_IMETHOD AppendFilter(const nsAString& aTitle,
                           const nsAString& aFilter) override;
-  NS_IMETHOD GetCapture(int16_t* aCapture) override;
-  NS_IMETHOD SetCapture(int16_t aCapture) override;
+  NS_IMETHOD GetCapture(nsIFilePicker::CaptureTarget* aCapture) override;
+  NS_IMETHOD SetCapture(nsIFilePicker::CaptureTarget aCapture) override;
   NS_IMETHOD GetDefaultString(nsAString& aDefaultString) override;
   NS_IMETHOD SetDefaultString(const nsAString& aDefaultString) override;
   NS_IMETHOD GetDefaultExtension(nsAString& aDefaultExtension) override;
@@ -54,15 +55,18 @@ class nsFilePickerProxy : public nsBaseFilePicker,
       nsISimpleEnumerator** aValue) override;
 
   NS_IMETHOD Open(nsIFilePickerShownCallback* aCallback) override;
+  NS_IMETHOD Close() override;
 
   // PFilePickerChild
   virtual mozilla::ipc::IPCResult Recv__delete__(
-      const MaybeInputData& aData, const int16_t& aResult) override;
+      const MaybeInputData& aData,
+      const nsIFilePicker::ResultCode& aResult) override;
 
  private:
   ~nsFilePickerProxy();
   void InitNative(nsIWidget*, const nsAString&) override;
-  nsresult Show(int16_t* aReturn) override;
+  nsresult Show(nsIFilePicker::ResultCode* aReturn) override;
+  nsresult ResolveSpecialDirectory(const nsAString& aSpecialDirectory) override;
 
   void ActorDestroy(ActorDestroyReason aWhy) override;
 
@@ -73,7 +77,7 @@ class nsFilePickerProxy : public nsBaseFilePicker,
   nsString mFile;
   nsString mDefault;
   nsString mDefaultExtension;
-  int16_t mCapture;
+  nsIFilePicker::CaptureTarget mCapture;
 
   bool mIPCActive;
 

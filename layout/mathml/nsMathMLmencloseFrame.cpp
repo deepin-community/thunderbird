@@ -8,10 +8,13 @@
 
 #include "gfx2DGlue.h"
 #include "gfxUtils.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/Element.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/StaticPrefs_mathml.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/PathHelpers.h"
+#include "nsLayoutUtils.h"
 #include "nsPresContext.h"
 #include "nsWhitespaceTokenizer.h"
 
@@ -105,14 +108,6 @@ nsresult nsMathMLmencloseFrame::AddNotation(const nsAString& aNotation) {
   } else if (aNotation.EqualsLiteral("actuarial")) {
     mNotationsToDraw += NOTATION_RIGHT;
     mNotationsToDraw += NOTATION_TOP;
-  } else if (aNotation.EqualsLiteral("radical")) {
-    if (!StaticPrefs::mathml_deprecated_menclose_notation_radical_disabled()) {
-      mContent->OwnerDoc()->WarnOnceAbout(
-          dom::DeprecatedOperations::eMathML_DeprecatedMencloseNotationRadical);
-      rv = AllocateMathMLChar(NOTATION_RADICAL);
-      NS_ENSURE_SUCCESS(rv, rv);
-      mNotationsToDraw += NOTATION_RADICAL;
-    }
   } else if (aNotation.EqualsLiteral("box")) {
     mNotationsToDraw += NOTATION_LEFT;
     mNotationsToDraw += NOTATION_RIGHT;
@@ -162,8 +157,7 @@ void nsMathMLmencloseFrame::InitNotations() {
 
   nsAutoString value;
 
-  if (mContent->AsElement()->GetAttr(kNameSpaceID_None, nsGkAtoms::notation_,
-                                     value)) {
+  if (mContent->AsElement()->GetAttr(nsGkAtoms::notation_, value)) {
     // parse the notation attribute
     nsWhitespaceTokenizer tokenizer(value);
 
@@ -211,8 +205,6 @@ void nsMathMLmencloseFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
   /////////////
   // paint the menclosed content
   nsMathMLContainerFrame::BuildDisplayList(aBuilder, aLists);
-
-  if (NS_MATHML_HAS_ERROR(mPresentationData.flags)) return;
 
   nsRect mencloseRect = nsIFrame::GetRect();
   mencloseRect.x = mencloseRect.y = 0;
@@ -328,7 +320,7 @@ nsresult nsMathMLmencloseFrame::PlaceInternal(DrawTarget* aDrawTarget,
   ReflowOutput baseSize(aDesiredSize.GetWritingMode());
   nsresult rv = nsMathMLContainerFrame::Place(aDrawTarget, false, baseSize);
 
-  if (NS_MATHML_HAS_ERROR(mPresentationData.flags) || NS_FAILED(rv)) {
+  if (NS_FAILED(rv)) {
     DidReflowChildren(PrincipalChildList().FirstChild());
     return rv;
   }
@@ -367,8 +359,7 @@ nsresult nsMathMLmencloseFrame::PlaceInternal(DrawTarget* aDrawTarget,
   if (delta) padding += onePixel - delta;  // round up
 
   if (IsToDraw(NOTATION_LONGDIV) || IsToDraw(NOTATION_RADICAL)) {
-    GetRadicalParameters(fm,
-                         StyleFont()->mMathStyle == NS_STYLE_MATH_STYLE_NORMAL,
+    GetRadicalParameters(fm, StyleFont()->mMathStyle == StyleMathStyle::Normal,
                          mRadicalRuleThickness, leading, psi);
 
     // make sure that the rule appears on on screen
@@ -701,6 +692,8 @@ void nsMathMLmencloseFrame::DidSetComputedStyle(ComputedStyle* aOldStyle) {
 
 //////////////////
 
+namespace mozilla {
+
 class nsDisplayNotation final : public nsPaintedDisplayItem {
  public:
   nsDisplayNotation(nsDisplayListBuilder* aBuilder, nsIFrame* aFrame,
@@ -813,6 +806,8 @@ void nsDisplayNotation::Paint(nsDisplayListBuilder* aBuilder,
           "nsDisplayNotation");
   }
 }
+
+}  // namespace mozilla
 
 void nsMathMLmencloseFrame::DisplayNotation(nsDisplayListBuilder* aBuilder,
                                             nsIFrame* aFrame,

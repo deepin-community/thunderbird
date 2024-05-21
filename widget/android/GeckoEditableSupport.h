@@ -77,6 +77,21 @@ class GeckoEditableSupport final
   bool mIMETextChangedDuringFlush;
   bool mIMEMonitorCursor;
 
+  // The cached selection data
+  struct Selection {
+    Selection() : mStartOffset(-1), mEndOffset(-1) {}
+
+    void Reset() {
+      mStartOffset = -1;
+      mEndOffset = -1;
+    }
+
+    bool IsValid() const { return mStartOffset >= 0 && mEndOffset >= 0; }
+
+    int32_t mStartOffset;
+    int32_t mEndOffset;
+  } mCachedSelection;
+
   nsIWidget* GetWidget() const;
   nsWindow* GetNsWindow() const;
 
@@ -259,6 +274,10 @@ class GeckoEditableSupport final
 
   // Commit current composition to sync Gecko text state with Java.
   void OnImeRequestCommit();
+
+  // Insert image from software keyboard.
+  void OnImeInsertImage(jni::ByteArray::Param aData,
+                        jni::String::Param aMimeType);
 };
 
 }  // namespace widget

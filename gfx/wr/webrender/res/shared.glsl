@@ -15,6 +15,10 @@
 #extension GL_OES_EGL_image_external : require
 #endif
 
+#ifdef WR_FEATURE_TEXTURE_EXTERNAL_BT709
+#extension GL_EXT_YUV_target : require
+#endif
+
 #ifdef WR_FEATURE_ADVANCED_BLEND
 #extension GL_KHR_blend_equation_advanced : require
 #endif
@@ -31,6 +35,9 @@
 
 #if defined(WR_FEATURE_TEXTURE_EXTERNAL_ESSL1)
 #define TEX_SAMPLE(sampler, tex_coord) texture2D(sampler, tex_coord.xy)
+#elif defined(WR_FEATURE_TEXTURE_EXTERNAL_BT709)
+// Force conversion from yuv to rgb using BT709 colorspace
+#define TEX_SAMPLE(sampler, tex_coord) vec4(yuv_2_rgb(texture(sampler, tex_coord.xy).xyz, itu_709), 1.0)
 #else
 #define TEX_SAMPLE(sampler, tex_coord) texture(sampler, tex_coord.xy)
 #endif
@@ -50,10 +57,6 @@ uniform bool u_mali_workaround_dummy;
 // Vertex shader attributes and uniforms
 //======================================================================================
 #ifdef WR_VERTEX_SHADER
-    // A generic uniform that shaders can optionally use to configure
-    // an operation mode for this batch.
-    uniform int uMode;
-
     // Uniform inputs
     uniform mat4 uTransform;       // Orthographic projection
 
@@ -108,6 +111,10 @@ uniform bool u_mali_workaround_dummy;
 #if __VERSION__ != 100
     /// Find the appropriate half range to apply the AA approximation over.
     /// This range represents a coefficient to go from one CSS pixel to half a device pixel.
+    vec2 compute_aa_range_xy(vec2 position) {
+        return fwidth(position);
+    }
+
     float compute_aa_range(vec2 position) {
         // The constant factor is chosen to compensate for the fact that length(fw) is equal
         // to sqrt(2) times the device pixel ratio in the typical case.
@@ -154,7 +161,23 @@ uniform bool u_mali_workaround_dummy;
     ///
     /// See the comments in `compute_aa_range()` for more information on the
     /// cutoff values of -0.5 and 0.5.
+    float distance_aa_xy(vec2 aa_range, vec2 signed_distance) {
+        // The aa_range is the raw per-axis filter width, so we need to divide
+        // the local signed distance by the filter width to get an approximation
+        // of screen distance.
+        #ifdef SWGL
+            // The SWGL fwidth() approximation returns uniform X and Y ranges.
+            vec2 dist = signed_distance * recip(aa_range.x);
+        #else
+            vec2 dist = signed_distance / aa_range;
+        #endif
+        // Choose whichever axis is further outside the rectangle for AA.
+        return clamp(0.5 - max(dist.x, dist.y), 0.0, 1.0);
+    }
+
     float distance_aa(float aa_range, float signed_distance) {
+        // The aa_range is already stored as a reciprocal with uniform scale,
+        // so just multiply it, then use that for AA.
         float dist = signed_distance * aa_range;
         return clamp(0.5 - dist, 0.0, 1.0);
     }
@@ -191,6 +214,10 @@ uniform sampler2DRect sColor2;
 uniform samplerExternalOES sColor0;
 uniform samplerExternalOES sColor1;
 uniform samplerExternalOES sColor2;
+#elif defined(WR_FEATURE_TEXTURE_EXTERNAL_BT709)
+uniform __samplerExternal2DY2YEXT sColor0;
+uniform __samplerExternal2DY2YEXT sColor1;
+uniform __samplerExternal2DY2YEXT sColor2;
 #endif
 
 #ifdef WR_FEATURE_DITHERING

@@ -8,15 +8,12 @@ import argparse
 import json
 import logging
 import multiprocessing
-import re
 import os
 import platform
-import posixpath
 import shlex
 import shutil
 import subprocess
 import sys
-
 from collections import Counter, namedtuple
 from logging import info
 from os import environ as env
@@ -52,9 +49,6 @@ def quote(s):
 # paths. So for direct subprocess.* invocation, use normal paths from
 # DIR, but when running under the shell, use POSIX style paths.
 DIR = directories(os.path, os.getcwd())
-PDIR = directories(
-    posixpath, os.environ["PWD"], fixup=lambda s: re.sub(r"^(\w):", r"/\1", s)
-)
 
 AUTOMATION = env.get("AUTOMATION", False)
 
@@ -95,8 +89,8 @@ parser.add_argument(
     "--objdir",
     type=str,
     metavar="DIR",
-    # The real default must be set later so that OBJDIR and POBJDIR can be
-    # platform-dependent strings.
+    # The real default must be set later so that OBJDIR can be
+    # relative to the srcdir.
     default=env.get("OBJDIR"),
     help="object directory",
 )
@@ -185,8 +179,6 @@ if AUTOMATION and platform.system() == "Windows":
 OBJDIR = args.objdir or os.path.join(DIR.source, "obj-spider")
 OBJDIR = os.path.abspath(OBJDIR)
 OUTDIR = os.path.join(OBJDIR, "out")
-POBJDIR = args.objdir or posixpath.join(PDIR.source, "obj-spider")
-POBJDIR = posixpath.abspath(POBJDIR)
 MAKE = env.get("MAKE", "make")
 PYTHON = sys.executable
 
@@ -225,23 +217,40 @@ def ensure_dir_exists(
 with open(os.path.join(DIR.scripts, "variants", args.variant)) as fh:
     variant = json.load(fh)
 
-if args.variant == "nonunified":
-    # Rewrite js/src/**/moz.build to replace UNIFIED_SOURCES to SOURCES.
-    # Note that this modifies the current checkout.
-    for dirpath, dirnames, filenames in os.walk(DIR.js_src):
-        if "moz.build" in filenames:
-            in_place = ["-i"]
-            if platform.system() == "Darwin":
-                in_place.append("")
-            subprocess.check_call(
-                ["sed"]
-                + in_place
-                + ["s/UNIFIED_SOURCES/SOURCES/", os.path.join(dirpath, "moz.build")]
-            )
+# Some of the variants request a particular word size (eg ARM simulators).
+word_bits = variant.get("bits")
+
+# On Linux and Windows, we build 32- and 64-bit versions on a 64 bit
+# host, so the caller has to specify what is desired.
+if word_bits is None and args.platform:
+    platform_arch = args.platform.split("-")[0]
+    if platform_arch in ("win32", "linux"):
+        word_bits = 32
+    elif platform_arch in ("win64", "linux64"):
+        word_bits = 64
+
+# Fall back to the word size of the host.
+if word_bits is None:
+    word_bits = 64 if platform.architecture()[0] == "64bit" else 32
+
+# Need a platform name to use as a key in variant files.
+if args.platform:
+    variant_platform = args.platform.split("-")[0]
+elif platform.system() == "Windows":
+    variant_platform = "win64" if word_bits == 64 else "win32"
+elif platform.system() == "Linux":
+    variant_platform = "linux64" if word_bits == 64 else "linux"
+elif platform.system() == "Darwin":
+    variant_platform = "macosx64"
+else:
+    variant_platform = "other"
 
 CONFIGURE_ARGS = variant["configure-args"]
 
-compiler = variant.get("compiler")
+if variant_platform in ("win32", "win64"):
+    compiler = "clang-cl"
+else:
+    compiler = variant.get("compiler")
 if compiler != "gcc" and "clang-plugin" not in CONFIGURE_ARGS:
     CONFIGURE_ARGS += " --enable-clang-plugin"
 
@@ -276,34 +285,6 @@ opt = variant.get("nspr")
 if opt is None or opt:
     CONFIGURE_ARGS += " --enable-nspr-build"
 
-# Some of the variants request a particular word size (eg ARM simulators).
-word_bits = variant.get("bits")
-
-# On Linux and Windows, we build 32- and 64-bit versions on a 64 bit
-# host, so the caller has to specify what is desired.
-if word_bits is None and args.platform:
-    platform_arch = args.platform.split("-")[0]
-    if platform_arch in ("win32", "linux"):
-        word_bits = 32
-    elif platform_arch in ("win64", "linux64"):
-        word_bits = 64
-
-# Fall back to the word size of the host.
-if word_bits is None:
-    word_bits = 64 if platform.architecture()[0] == "64bit" else 32
-
-# Need a platform name to use as a key in variant files.
-if args.platform:
-    variant_platform = args.platform.split("-")[0]
-elif platform.system() == "Windows":
-    variant_platform = "win64" if word_bits == 64 else "win32"
-elif platform.system() == "Linux":
-    variant_platform = "linux64" if word_bits == 64 else "linux"
-elif platform.system() == "Darwin":
-    variant_platform = "macosx64"
-else:
-    variant_platform = "other"
-
 env["LD_LIBRARY_PATH"] = ":".join(
     d
     for d in [
@@ -322,7 +303,7 @@ if platform.system() == "Windows":
 # Configure flags, based on word length and cross-compilation
 if word_bits == 32:
     if platform.system() == "Windows":
-        CONFIGURE_ARGS += " --target=i686-pc-mingw32"
+        CONFIGURE_ARGS += " --target=i686-pc-windows-msvc"
     elif platform.system() == "Linux":
         if not platform.machine().startswith("arm"):
             CONFIGURE_ARGS += " --target=i686-pc-linux"
@@ -337,10 +318,10 @@ if word_bits == 32:
         env["CXXFLAGS"] = "{0} {1}".format(env.get("CXXFLAGS", ""), sse_flags)
 else:
     if platform.system() == "Windows":
-        CONFIGURE_ARGS += " --target=x86_64-pc-mingw32"
+        CONFIGURE_ARGS += " --target=x86_64-pc-windows-msvc"
 
 if platform.system() == "Linux" and AUTOMATION:
-    CONFIGURE_ARGS = "--enable-stdcxx-compat --disable-gold " + CONFIGURE_ARGS
+    CONFIGURE_ARGS = "--enable-stdcxx-compat " + CONFIGURE_ARGS
 
 # Timeouts.
 ACTIVE_PROCESSES = set()
@@ -437,7 +418,7 @@ if use_minidump:
     }.get(platform.system())
 
     injector_lib = resolve_path((DIR.fetches,), "injector", injector_basename)
-    stackwalk = resolve_path((DIR.fetches,), "minidump_stackwalk", "minidump_stackwalk")
+    stackwalk = resolve_path((DIR.fetches,), "minidump-stackwalk", "minidump-stackwalk")
     if stackwalk is not None:
         env.setdefault("MINIDUMP_STACKWALK", stackwalk)
     dump_syms = resolve_path((DIR.fetches,), "dump_syms", "dump_syms")
@@ -459,18 +440,18 @@ CONFIGURE_ARGS += " --prefix={OBJDIR}/dist".format(OBJDIR=quote(OBJDIR))
 # Generate a mozconfig.
 with open(mozconfig, "wt") as fh:
     if AUTOMATION and platform.system() == "Windows":
-        fh.write('. "$topsrcdir/build/%s/mozconfig.vs-latest"\n' % variant_platform)
+        fh.write('. "$topsrcdir/build/mozconfig.clang-cl"\n')
     fh.write("ac_add_options --enable-project=js\n")
     fh.write("ac_add_options " + CONFIGURE_ARGS + "\n")
     fh.write("mk_add_options MOZ_OBJDIR=" + quote(OBJDIR) + "\n")
 
 env["MOZCONFIG"] = mozconfig
 
-mach = posixpath.join(PDIR.source, "mach")
+mach = os.path.join(DIR.source, "mach")
 
 if not args.nobuild:
     # Do the build
-    run_command([mach, "build"], check=True)
+    run_command([sys.executable, mach, "build"], check=True)
 
     if use_minidump:
         # Convert symbols to breakpad format.
@@ -481,6 +462,7 @@ if not args.nobuild:
         cmd_env["MOZ_AUTOMATION_BUILD_SYMBOLS"] = "1"
         run_command(
             [
+                sys.executable,
                 mach,
                 "build",
                 "recurse_syms",
@@ -491,13 +473,32 @@ if not args.nobuild:
 
 COMMAND_PREFIX = []
 # On Linux, disable ASLR to make shell builds a bit more reproducible.
-if subprocess.call("type setarch >/dev/null 2>&1", shell=True) == 0:
+# Bug 1795718 - Disable in automation for now as call to setarch requires extra
+# docker privileges.
+if not AUTOMATION and subprocess.call("type setarch >/dev/null 2>&1", shell=True) == 0:
     COMMAND_PREFIX.extend(["setarch", platform.machine(), "-R"])
 
 
 def run_test_command(command, **kwargs):
     _, _, status = run_command(COMMAND_PREFIX + command, check=False, **kwargs)
     return status
+
+
+def run_jsapitests(args):
+    jsapi_test_binary = os.path.join(OBJDIR, "dist", "bin", "jsapi-tests")
+    test_env = env.copy()
+    test_env["TOPSRCDIR"] = DIR.source
+    if use_minidump and platform.system() == "Linux":
+        test_env["LD_PRELOAD"] = injector_lib
+    st = run_test_command([jsapi_test_binary] + args, env=test_env)
+    if st < 0:
+        print(
+            "PROCESS-CRASH | {} | application crashed".format(
+                " ".join(["jsapi-tests"] + args)
+            )
+        )
+        print("Return code: {}".format(st))
+    return st
 
 
 default_test_suites = frozenset(["jstests", "jittest", "jsapitests", "checks"])
@@ -535,21 +536,30 @@ test_suites -= set(normalize_tests(args.skip_tests.split(",")))
 if "all" in args.skip_tests.split(","):
     test_suites = []
 
-# Bug 1391877 - Windows test runs are getting mysterious timeouts when run
-# through taskcluster, but only when running multiple jit-test jobs in
-# parallel. Work around them for now.
-if platform.system() == "Windows":
-    env["JITTEST_EXTRA_ARGS"] = "-j1 " + env.get("JITTEST_EXTRA_ARGS", "")
-
 # Bug 1557130 - Atomics tests can create many additional threads which can
 # lead to resource exhaustion, resulting in intermittent failures. This was
 # only seen on beefy machines (> 32 cores), so limit the number of parallel
 # workers for now.
+#
+# Bug 1391877 - Windows test runs are getting mysterious timeouts when run
+# through taskcluster, but only when running many jit-test jobs in parallel.
+# Even at 16, some tests can overflow the paging file.
+worker_max = multiprocessing.cpu_count()
+jstest_workers = worker_max
+jittest_workers = worker_max
 if platform.system() == "Windows":
-    worker_count = min(multiprocessing.cpu_count(), 16)
-    env["JSTESTS_EXTRA_ARGS"] = "-j{} ".format(worker_count) + env.get(
+    jstest_workers = min(worker_max, 16)
+    env["JSTESTS_EXTRA_ARGS"] = "-j{} ".format(jstest_workers) + env.get(
         "JSTESTS_EXTRA_ARGS", ""
     )
+    jittest_workers = min(worker_max, 8)
+    env["JITTEST_EXTRA_ARGS"] = "-j{} ".format(jittest_workers) + env.get(
+        "JITTEST_EXTRA_ARGS", ""
+    )
+print(
+    f"using {jstest_workers}/{worker_max} workers for jstests, "
+    f"{jittest_workers}/{worker_max} for jittest"
+)
 
 if use_minidump:
     # Set up later js invocations to run with the breakpad injector loaded.
@@ -570,15 +580,9 @@ if "checks" in test_suites:
 if "jittest" in test_suites:
     results.append(("make check-jit-test", run_test_command([MAKE, "check-jit-test"])))
 if "jsapitests" in test_suites:
-    jsapi_test_binary = os.path.join(OBJDIR, "dist", "bin", "jsapi-tests")
-    test_env = env.copy()
-    test_env["TOPSRCDIR"] = DIR.source
-    if use_minidump and platform.system() == "Linux":
-        test_env["LD_PRELOAD"] = injector_lib
-    st = run_test_command([jsapi_test_binary], env=test_env)
-    if st < 0:
-        print("PROCESS-CRASH | jsapi-tests | application crashed")
-        print("Return code: {}".format(st))
+    st = run_jsapitests([])
+    if st == 0:
+        st = run_jsapitests(["--frontend-only"])
     results.append(("jsapi-tests", st))
 if "jstests" in test_suites:
     results.append(("jstests", run_test_command([MAKE, "check-jstests"])))
@@ -649,12 +653,22 @@ if args.variant == "msan":
     command += files
     subprocess.call(command)
 
+# Upload dist/bin/js as js.wasm for the WASI build.
+if args.variant == "wasi":
+    command = [
+        "cp",
+        os.path.join(OBJDIR, "dist/bin/js"),
+        os.path.join(env["MOZ_UPLOAD_DIR"], "js.wasm"),
+    ]
+    subprocess.call(command)
+
 # Generate stacks from minidumps.
 if use_minidump:
-    venv_python = os.path.join(OBJDIR, "_virtualenvs", "common", "bin", "python3")
     run_command(
         [
-            venv_python,
+            mach,
+            "python",
+            "--virtualenv=build",
             os.path.join(DIR.source, "testing/mozbase/mozcrash/mozcrash/mozcrash.py"),
             os.getenv("TMPDIR", "/tmp"),
             os.path.join(OBJDIR, "dist/crashreporter-symbols"),

@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gOkButton;
 var gNameInput;
@@ -14,6 +13,8 @@ var gDirectory = null;
 var kPersonalAddressbookURI = "jsaddrbook://abook.sqlite";
 var kCollectedAddressbookURI = "jsaddrbook://history.sqlite";
 var kAllDirectoryRoot = "moz-abdirectory://";
+
+window.addEventListener("DOMContentLoaded", abNameOnLoad);
 
 function abNameOnLoad() {
   // Get the document elements.
@@ -35,7 +36,7 @@ function abNameOnLoad() {
   var bundle = document.getElementById("bundle_addressBook");
 
   if (gDirectory) {
-    let oldListName = gDirectory.dirName;
+    const oldListName = gDirectory.dirName;
     document.title = bundle.getFormattedString("addressBookTitleEdit", [
       oldListName,
     ]);
@@ -61,7 +62,7 @@ function abNameOnLoad() {
 }
 
 function abNameOKButton(event) {
-  let newDirName = gNameInput.value.trim();
+  const newDirName = gNameInput.value.trim();
 
   // Do not allow an already existing name.
   if (
@@ -84,12 +85,12 @@ function abNameOKButton(event) {
   if (gDirectory) {
     gDirectory.dirName = newDirName;
   } else {
-    let dirPrefId = MailServices.ab.newAddressBook(
+    const dirPrefId = MailServices.ab.newAddressBook(
       newDirName,
       "",
       Ci.nsIAbManager.JS_DIRECTORY_TYPE
     );
-    let directory = MailServices.ab.getDirectoryFromId(dirPrefId);
+    const directory = MailServices.ab.getDirectoryFromId(dirPrefId);
     window.arguments[0].newDirectoryUID = directory.UID;
     if ("onNewDirectory" in window.arguments[0]) {
       window.arguments[0].onNewDirectory(directory);

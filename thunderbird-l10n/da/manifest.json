@@ -1,29 +1,28 @@
 {
   "langpack_id": "da",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-da@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Dansk (da) Language Pack",
-  "description": "Language pack for Thunderbird for da",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Dansk (Danish)",
+  "description": "Thunderbird Beta Language Pack for Dansk (da) – Danish",
+  "version": "125.0.20240401.173510",
   "languages": {
     "da": {
-      "version": "20211011130423",
+      "version": "20240401183243",
       "chrome_resources": {
         "alerts": "chrome/da/locale/da/alerts/",
         "autoconfig": "chrome/da/locale/da/autoconfig/",
-        "branding": "chrome/da/locale/da/branding/",
+        "branding": "chrome/da/locale/branding/",
         "calendar": "chrome/da/locale/da/calendar/",
         "chat": "chrome/da/locale/da/chat/",
         "communicator": "chrome/da/locale/da/communicator/",
         "devtools": "chrome/da/locale/da/devtools/client/",
         "devtools-shared": "chrome/da/locale/da/devtools/shared/",
-        "devtools-startup": "chrome/da/locale/da/devtools/startup/",
         "global": "chrome/da/locale/da/global/",
         "global-platform": {
           "macosx": "chrome/da/locale/da/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/da/locale/da/mozldap/",
         "necko": "chrome/da/locale/da/necko/",
         "passwordmgr": "chrome/da/locale/da/passwordmgr/",
-        "pdf.js": "chrome/da/locale/pdfviewer/",
         "pipnss": "chrome/da/locale/da/pipnss/",
         "pippki": "chrome/da/locale/da/pippki/",
         "places": "chrome/da/locale/da/places/"

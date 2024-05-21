@@ -23,10 +23,13 @@ LOCAL_INCLUDES += [
     "/netwerk/base",
 ]
 
-MOCHITEST_MANIFESTS += ["tests/mochitest.ini"]
-MOCHITEST_CHROME_MANIFESTS += ["tests/chrome.ini"]
-BROWSER_CHROME_MANIFESTS += ["tests/browser.ini"]
+MOCHITEST_MANIFESTS += ["tests/mochitest.toml"]
+MOCHITEST_CHROME_MANIFESTS += ["tests/chrome.toml"]
+BROWSER_CHROME_MANIFESTS += ["tests/browser.toml"]
 
 include("/ipc/chromium/chromium-config.mozbuild")
 
 FINAL_LIBRARY = "xul"
+
+# Add libFuzzer configuration directives
+include("/tools/fuzzing/libfuzzer-config.mozbuild")

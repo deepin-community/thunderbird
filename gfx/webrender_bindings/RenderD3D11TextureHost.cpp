@@ -6,42 +6,75 @@
 
 #include "RenderD3D11TextureHost.h"
 
-#include <d3d11.h>
-
 #include "GLContextEGL.h"
 #include "GLLibraryEGL.h"
+#include "RenderThread.h"
+#include "RenderCompositor.h"
+#include "RenderCompositorD3D11SWGL.h"
 #include "ScopedGLHelpers.h"
 #include "mozilla/DebugOnly.h"
+#include "mozilla/gfx/CanvasManagerParent.h"
+#include "mozilla/gfx/DeviceManagerDx.h"
 #include "mozilla/gfx/Logging.h"
+#include "mozilla/layers/FenceD3D11.h"
+#include "mozilla/layers/GpuProcessD3D11QueryMap.h"
+#include "mozilla/layers/GpuProcessD3D11TextureMap.h"
+#include "mozilla/layers/TextureD3D11.h"
 
 namespace mozilla {
 namespace wr {
 
-RenderDXGITextureHost::RenderDXGITextureHost(WindowsHandle aHandle,
-                                             gfx::SurfaceFormat aFormat,
-                                             gfx::YUVColorSpace aYUVColorSpace,
-                                             gfx::ColorRange aColorRange,
-                                             gfx::IntSize aSize)
+RenderDXGITextureHost::RenderDXGITextureHost(
+    RefPtr<gfx::FileHandleWrapper> aHandle,
+    Maybe<layers::GpuProcessTextureId>& aGpuProcessTextureId,
+    uint32_t aArrayIndex, gfx::SurfaceFormat aFormat,
+    gfx::ColorSpace2 aColorSpace, gfx::ColorRange aColorRange,
+    gfx::IntSize aSize, bool aHasKeyedMutex, gfx::FenceInfo& aAcquireFenceInfo,
+    Maybe<layers::GpuProcessQueryId>& aGpuProcessQueryId)
     : mHandle(aHandle),
+      mGpuProcessTextureId(aGpuProcessTextureId),
+      mGpuProcessQueryId(aGpuProcessQueryId),
+      mArrayIndex(aArrayIndex),
       mSurface(0),
       mStream(0),
       mTextureHandle{0},
       mFormat(aFormat),
-      mYUVColorSpace(aYUVColorSpace),
+      mColorSpace(aColorSpace),
       mColorRange(aColorRange),
       mSize(aSize),
+      mHasKeyedMutex(aHasKeyedMutex),
+      mAcquireFenceInfo(aAcquireFenceInfo),
       mLocked(false) {
   MOZ_COUNT_CTOR_INHERITED(RenderDXGITextureHost, RenderTextureHost);
   MOZ_ASSERT((mFormat != gfx::SurfaceFormat::NV12 &&
               mFormat != gfx::SurfaceFormat::P010 &&
               mFormat != gfx::SurfaceFormat::P016) ||
              (mSize.width % 2 == 0 && mSize.height % 2 == 0));
-  MOZ_ASSERT(aHandle);
+  MOZ_ASSERT((aHandle && aGpuProcessTextureId.isNothing()) ||
+             (!aHandle && aGpuProcessTextureId.isSome()));
 }
 
 RenderDXGITextureHost::~RenderDXGITextureHost() {
   MOZ_COUNT_DTOR_INHERITED(RenderDXGITextureHost, RenderTextureHost);
   DeleteTextureHandle();
+}
+
+RefPtr<ID3D11Query> RenderDXGITextureHost::GetQuery() {
+  if (mGpuProcessQueryId.isNothing()) {
+    return nullptr;
+  }
+
+  auto* queryMap = layers::GpuProcessD3D11QueryMap::Get();
+  if (!queryMap) {
+    return nullptr;
+  }
+
+  auto query = queryMap->GetQuery(mGpuProcessQueryId.ref());
+  if (!query) {
+    gfxCriticalNoteOnce << "Failed to get ID3D11Query";
+  }
+
+  return query;
 }
 
 ID3D11Texture2D* RenderDXGITextureHost::GetD3D11Texture2DWithGL() {
@@ -188,9 +221,31 @@ bool RenderDXGITextureHost::EnsureD3D11Texture2D(ID3D11Device* aDevice) {
     return true;
   }
 
+  if (mGpuProcessTextureId.isSome()) {
+    auto* textureMap = layers::GpuProcessD3D11TextureMap::Get();
+    if (textureMap) {
+      RefPtr<ID3D11Texture2D> texture;
+      textureMap->WaitTextureReady(mGpuProcessTextureId.ref());
+      mTexture = textureMap->GetTexture(mGpuProcessTextureId.ref());
+      if (mTexture) {
+        return true;
+      } else {
+        gfxCriticalNote << "GpuProcessTextureId is not valid";
+      }
+    }
+    return false;
+  }
+
+  RefPtr<ID3D11Device1> device1;
+  aDevice->QueryInterface((ID3D11Device1**)getter_AddRefs(device1));
+  if (!device1) {
+    gfxCriticalNoteOnce << "Failed to get ID3D11Device1";
+    return 0;
+  }
+
   // Get the D3D11 texture from shared handle.
-  HRESULT hr = aDevice->OpenSharedResource(
-      (HANDLE)mHandle, __uuidof(ID3D11Texture2D),
+  HRESULT hr = device1->OpenSharedResource1(
+      (HANDLE)mHandle->GetHandle(), __uuidof(ID3D11Texture2D),
       (void**)(ID3D11Texture2D**)getter_AddRefs(mTexture));
   if (FAILED(hr)) {
     MOZ_ASSERT(false,
@@ -203,27 +258,16 @@ bool RenderDXGITextureHost::EnsureD3D11Texture2D(ID3D11Device* aDevice) {
   }
   MOZ_ASSERT(mTexture.get());
   mTexture->QueryInterface((IDXGIKeyedMutex**)getter_AddRefs(mKeyedMutex));
+
+  MOZ_ASSERT(mHasKeyedMutex == !!mKeyedMutex);
+  if (mHasKeyedMutex != !!mKeyedMutex) {
+    gfxCriticalNoteOnce << "KeyedMutex mismatch";
+  }
   return true;
 }
 
-bool RenderDXGITextureHost::EnsureLockable(wr::ImageRendering aRendering) {
+bool RenderDXGITextureHost::EnsureLockable() {
   if (mTextureHandle[0]) {
-    // Update filter if filter was changed.
-    if (IsFilterUpdateNecessary(aRendering)) {
-      ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE0,
-                                   LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                   mTextureHandle[0], aRendering);
-      // Cache new rendering filter.
-      mCachedRendering = aRendering;
-      // NV12 and P016 uses two handles.
-      if (mFormat == gfx::SurfaceFormat::NV12 ||
-          mFormat == gfx::SurfaceFormat::P010 ||
-          mFormat == gfx::SurfaceFormat::P016) {
-        ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE1,
-                                     LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                     mTextureHandle[1], aRendering);
-      }
-    }
     return true;
   }
 
@@ -259,9 +303,7 @@ bool RenderDXGITextureHost::EnsureLockable(wr::ImageRendering aRendering) {
     mGL->fGenTextures(1, mTextureHandle);
     ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE0,
                                  LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                 mTextureHandle[0], aRendering);
-    // Cache new rendering filter.
-    mCachedRendering = aRendering;
+                                 mTextureHandle[0]);
     ok &=
         bool(egl->fStreamConsumerGLTextureExternalAttribsNV(mStream, nullptr));
     ok &= bool(egl->fCreateStreamProducerD3DTextureANGLE(mStream, nullptr));
@@ -283,20 +325,24 @@ bool RenderDXGITextureHost::EnsureLockable(wr::ImageRendering aRendering) {
     mGL->fGenTextures(2, mTextureHandle);
     ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE0,
                                  LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                 mTextureHandle[0], aRendering);
+                                 mTextureHandle[0]);
     ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE1,
                                  LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                 mTextureHandle[1], aRendering);
-    // Cache new rendering filter.
-    mCachedRendering = aRendering;
+                                 mTextureHandle[1]);
     ok &= bool(egl->fStreamConsumerGLTextureExternalAttribsNV(
         mStream, consumerAttributes));
     ok &= bool(egl->fCreateStreamProducerD3DTextureANGLE(mStream, nullptr));
   }
 
+  const EGLAttrib frameAttributes[] = {
+      LOCAL_EGL_D3D_TEXTURE_SUBRESOURCE_ID_ANGLE,
+      static_cast<EGLAttrib>(mArrayIndex),
+      LOCAL_EGL_NONE,
+  };
+
   // Insert the d3d texture.
-  ok &= bool(
-      egl->fStreamPostD3DTextureANGLE(mStream, (void*)mTexture.get(), nullptr));
+  ok &= bool(egl->fStreamPostD3DTextureANGLE(mStream, (void*)mTexture.get(),
+                                             frameAttributes));
 
   if (!ok) {
     gfxCriticalNote << "RenderDXGITextureHost init stream failed";
@@ -311,8 +357,7 @@ bool RenderDXGITextureHost::EnsureLockable(wr::ImageRendering aRendering) {
 }
 
 wr::WrExternalImage RenderDXGITextureHost::Lock(uint8_t aChannelIndex,
-                                                gl::GLContext* aGL,
-                                                wr::ImageRendering aRendering) {
+                                                gl::GLContext* aGL) {
   if (mGL.get() != aGL) {
     // Release the texture handle in the previous gl context.
     DeleteTextureHandle();
@@ -327,7 +372,7 @@ wr::WrExternalImage RenderDXGITextureHost::Lock(uint8_t aChannelIndex,
     return InvalidToWrExternalImage();
   }
 
-  if (!EnsureLockable(aRendering)) {
+  if (!EnsureLockable()) {
     return InvalidToWrExternalImage();
   }
 
@@ -335,13 +380,28 @@ wr::WrExternalImage RenderDXGITextureHost::Lock(uint8_t aChannelIndex,
     return InvalidToWrExternalImage();
   }
 
-  gfx::IntSize size = GetSize(aChannelIndex);
-  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), 0, 0,
-                                        size.width, size.height);
+  const auto uvs = GetUvCoords(GetSize(aChannelIndex));
+  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), uvs.first.x,
+                                        uvs.first.y, uvs.second.x,
+                                        uvs.second.y);
 }
 
 bool RenderDXGITextureHost::LockInternal() {
   if (!mLocked) {
+    if (mAcquireFenceInfo.mFenceHandle) {
+      if (!mAcquireFence) {
+        mAcquireFence = layers::FenceD3D11::CreateFromHandle(
+            mAcquireFenceInfo.mFenceHandle);
+      }
+      if (mAcquireFence) {
+        MOZ_ASSERT(mAcquireFenceInfo.mFenceHandle == mAcquireFence->mHandle);
+
+        mAcquireFence->Update(mAcquireFenceInfo.mFenceValue);
+        RefPtr<ID3D11Device> d3d11Device =
+            gfx::DeviceManagerDx::Get()->GetCompositorDevice();
+        mAcquireFence->Wait(d3d11Device);
+      }
+    }
     if (mKeyedMutex) {
       HRESULT hr = mKeyedMutex->AcquireSync(0, 10000);
       if (hr != S_OK) {
@@ -426,10 +486,15 @@ gfx::IntSize RenderDXGITextureHost::GetSize(uint8_t aChannelIndex) const {
   }
 }
 
+bool RenderDXGITextureHost::SyncObjectNeeded() {
+  return mGpuProcessTextureId.isNothing() && !mHasKeyedMutex &&
+         !mAcquireFenceInfo.mFenceHandle;
+}
+
 RenderDXGIYCbCrTextureHost::RenderDXGIYCbCrTextureHost(
-    WindowsHandle (&aHandles)[3], gfx::YUVColorSpace aYUVColorSpace,
-    gfx::ColorDepth aColorDepth, gfx::ColorRange aColorRange,
-    gfx::IntSize aSizeY, gfx::IntSize aSizeCbCr)
+    RefPtr<gfx::FileHandleWrapper> (&aHandles)[3],
+    gfx::YUVColorSpace aYUVColorSpace, gfx::ColorDepth aColorDepth,
+    gfx::ColorRange aColorRange, gfx::IntSize aSizeY, gfx::IntSize aSizeCbCr)
     : mHandles{aHandles[0], aHandles[1], aHandles[2]},
       mSurfaces{0},
       mStreams{0},
@@ -479,18 +544,8 @@ RenderDXGIYCbCrTextureHost::~RenderDXGIYCbCrTextureHost() {
   DeleteTextureHandle();
 }
 
-bool RenderDXGIYCbCrTextureHost::EnsureLockable(wr::ImageRendering aRendering) {
+bool RenderDXGIYCbCrTextureHost::EnsureLockable() {
   if (mTextureHandles[0]) {
-    // Update filter if filter was changed.
-    if (IsFilterUpdateNecessary(aRendering)) {
-      for (int i = 0; i < 3; ++i) {
-        ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE0 + i,
-                                     LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                     mTextureHandles[i], aRendering);
-        // Cache new rendering filter.
-        mCachedRendering = aRendering;
-      }
-    }
     return true;
   }
 
@@ -523,16 +578,16 @@ bool RenderDXGIYCbCrTextureHost::EnsureLockable(wr::ImageRendering aRendering) {
     return false;
   }
 
-  EnsureD3D11Texture2D(device);
+  if (!EnsureD3D11Texture2D(device)) {
+    return false;
+  }
 
   mGL->fGenTextures(3, mTextureHandles);
   bool ok = true;
   for (int i = 0; i < 3; ++i) {
     ActivateBindAndTexParameteri(mGL, LOCAL_GL_TEXTURE0 + i,
                                  LOCAL_GL_TEXTURE_EXTERNAL_OES,
-                                 mTextureHandles[i], aRendering);
-    // Cache new rendering filter.
-    mCachedRendering = aRendering;
+                                 mTextureHandles[i]);
 
     // Create the EGLStream.
     mStreams[i] = egl->fCreateStreamKHR(nullptr);
@@ -560,6 +615,13 @@ bool RenderDXGIYCbCrTextureHost::EnsureLockable(wr::ImageRendering aRendering) {
 }
 
 bool RenderDXGIYCbCrTextureHost::EnsureD3D11Texture2D(ID3D11Device* aDevice) {
+  RefPtr<ID3D11Device1> device1;
+  aDevice->QueryInterface((ID3D11Device1**)getter_AddRefs(device1));
+  if (!device1) {
+    gfxCriticalNoteOnce << "Failed to get ID3D11Device1";
+    return false;
+  }
+
   if (mTextures[0]) {
     RefPtr<ID3D11Device> device;
     mTextures[0]->GetDevice(getter_AddRefs(device));
@@ -575,8 +637,8 @@ bool RenderDXGIYCbCrTextureHost::EnsureD3D11Texture2D(ID3D11Device* aDevice) {
 
   for (int i = 0; i < 3; ++i) {
     // Get the R8 D3D11 texture from shared handle.
-    HRESULT hr = aDevice->OpenSharedResource(
-        (HANDLE)mHandles[i], __uuidof(ID3D11Texture2D),
+    HRESULT hr = device1->OpenSharedResource1(
+        (HANDLE)mHandles[i]->GetHandle(), __uuidof(ID3D11Texture2D),
         (void**)(ID3D11Texture2D**)getter_AddRefs(mTextures[i]));
     if (FAILED(hr)) {
       NS_WARNING(
@@ -615,8 +677,8 @@ bool RenderDXGIYCbCrTextureHost::LockInternal() {
   return true;
 }
 
-wr::WrExternalImage RenderDXGIYCbCrTextureHost::Lock(
-    uint8_t aChannelIndex, gl::GLContext* aGL, wr::ImageRendering aRendering) {
+wr::WrExternalImage RenderDXGIYCbCrTextureHost::Lock(uint8_t aChannelIndex,
+                                                     gl::GLContext* aGL) {
   if (mGL.get() != aGL) {
     // Release the texture handle in the previous gl context.
     DeleteTextureHandle();
@@ -631,7 +693,7 @@ wr::WrExternalImage RenderDXGIYCbCrTextureHost::Lock(
     return InvalidToWrExternalImage();
   }
 
-  if (!EnsureLockable(aRendering)) {
+  if (!EnsureLockable()) {
     return InvalidToWrExternalImage();
   }
 
@@ -639,9 +701,10 @@ wr::WrExternalImage RenderDXGIYCbCrTextureHost::Lock(
     return InvalidToWrExternalImage();
   }
 
-  gfx::IntSize size = GetSize(aChannelIndex);
-  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), 0, 0,
-                                        size.width, size.height);
+  const auto uvs = GetUvCoords(GetSize(aChannelIndex));
+  return NativeTextureToWrExternalImage(GetGLHandle(aChannelIndex), uvs.first.x,
+                                        uvs.first.y, uvs.second.x,
+                                        uvs.second.y);
 }
 
 void RenderDXGIYCbCrTextureHost::Unlock() {

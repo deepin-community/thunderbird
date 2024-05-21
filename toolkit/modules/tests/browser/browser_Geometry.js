@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var tempScope = {};
-ChromeUtils.import("resource://gre/modules/Geometry.jsm", tempScope);
-var Point = tempScope.Point;
-var Rect = tempScope.Rect;
+const { Point, Rect } = ChromeUtils.importESModule(
+  "resource://gre/modules/Geometry.sys.mjs"
+);
 
 function test() {
   ok(Rect, "Rect class exists");
@@ -17,14 +16,14 @@ function test() {
 var tests = {
   testGetDimensions() {
     let r = new Rect(5, 10, 100, 50);
-    ok(r.left == 5, "rect has correct left value");
-    ok(r.top == 10, "rect has correct top value");
-    ok(r.right == 105, "rect has correct right value");
-    ok(r.bottom == 60, "rect has correct bottom value");
-    ok(r.width == 100, "rect has correct width value");
-    ok(r.height == 50, "rect has correct height value");
-    ok(r.x == 5, "rect has correct x value");
-    ok(r.y == 10, "rect has correct y value");
+    Assert.equal(r.left, 5, "rect has correct left value");
+    Assert.equal(r.top, 10, "rect has correct top value");
+    Assert.equal(r.right, 105, "rect has correct right value");
+    Assert.equal(r.bottom, 60, "rect has correct bottom value");
+    Assert.equal(r.width, 100, "rect has correct width value");
+    Assert.equal(r.height, 50, "rect has correct height value");
+    Assert.equal(r.x, 5, "rect has correct x value");
+    Assert.equal(r.y, 10, "rect has correct y value");
   },
 
   testIsEmpty() {
@@ -93,7 +92,7 @@ var tests = {
     function equals(rects1, rects2) {
       return (
         rects1.length == rects2.length &&
-        rects1.every(function(r, i) {
+        rects1.every(function (r, i) {
           return r.equals(rects2[i]);
         })
       );

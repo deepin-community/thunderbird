@@ -42,13 +42,14 @@
 #include "mozilla/RefPtr.h"
 #include "mozilla/SchedulerGroup.h"
 #include "mozilla/Span.h"
-#include "mozilla/TaskCategory.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/indexedDB/IDBResult.h"
 #include "mozilla/dom/indexedDB/Key.h"
+#include "mozilla/dom/quota/Assertions.h"
 #include "mozilla/dom/quota/PersistenceType.h"
 #include "mozilla/dom/quota/QuotaCommon.h"
+#include "mozilla/dom/quota/ResultExtensions.h"
 #include "mozilla/fallible.h"
 #include "mozilla/ipc/BackgroundParent.h"
 #include "mozilla/mozalloc.h"
@@ -109,7 +110,7 @@ nsresult UpgradeSchemaFrom4To5(mozIStorageConnection& aConnection) {
     mozStorageStatementScoper scoper(stmt);
 
     QM_TRY_INSPECT(const bool& hasResults,
-                   MOZ_TO_RESULT_INVOKE(stmt, ExecuteStep));
+                   MOZ_TO_RESULT_INVOKE_MEMBER(stmt, ExecuteStep));
 
     if (NS_WARN_IF(!hasResults)) {
       return NS_ERROR_FAILURE;
@@ -1044,7 +1045,7 @@ class EncodeKeysFunction final : public mozIStorageFunction {
               aArguments->GetInt64(0, &intKey);
 
               Key key;
-              key.SetFromInteger(intKey);
+              QM_TRY(key.SetFromInteger(intKey));
 
               return key;
             }
@@ -2309,7 +2310,7 @@ nsresult UpgradeSchemaFrom19_0To20_0(nsIFile* aFMDirectory,
     mozStorageStatementScoper scoper(stmt);
 
     QM_TRY_INSPECT(const bool& hasResult,
-                   MOZ_TO_RESULT_INVOKE(stmt, ExecuteStep));
+                   MOZ_TO_RESULT_INVOKE_MEMBER(stmt, ExecuteStep));
 
     if (NS_WARN_IF(!hasResult)) {
       MOZ_ASSERT(false, "This should never be possible!");
@@ -2753,8 +2754,7 @@ class DeserializeUpgradeValueHelper final : public Runnable {
     MonitorAutoLock lock(mMonitor);
 
     RefPtr<Runnable> self = this;
-    const nsresult rv =
-        SchedulerGroup::Dispatch(TaskCategory::Other, self.forget());
+    const nsresult rv = SchedulerGroup::Dispatch(self.forget());
     if (NS_WARN_IF(NS_FAILED(rv))) {
       return rv;
     }
@@ -2841,7 +2841,7 @@ class DeserializeUpgradeValueHelper final : public Runnable {
     lock.Notify();
   }
 
-  Monitor mMonitor;
+  Monitor mMonitor MOZ_UNANNOTATED;
   StructuredCloneReadInfoParent& mCloneReadInfo;
   nsresult mStatus;
 };
@@ -2861,7 +2861,10 @@ nsresult UpgradeFileIdsFunction::Init(nsIFile* aFMDirectory,
   // purpose is to store file ids without adding more complexity or code
   // duplication.
   auto fileManager = MakeSafeRefPtr<DatabaseFileManager>(
-      PERSISTENCE_TYPE_INVALID, quota::OriginMetadata{}, u""_ns, false);
+      PERSISTENCE_TYPE_INVALID, quota::OriginMetadata{},
+      /* aDatabaseName */ u""_ns, /* aDatabaseID */ ""_ns,
+      /* aEnforcingQuota */ false,
+      /* aIsInPrivateBrowsingMode */ false);
 
   nsresult rv = fileManager->Init(aFMDirectory, aConnection);
   if (NS_WARN_IF(NS_FAILED(rv))) {
@@ -2894,9 +2897,8 @@ UpgradeFileIdsFunction::OnFunctionCall(mozIStorageValueArray* aArguments,
     return NS_ERROR_UNEXPECTED;
   }
 
-  QM_TRY_UNWRAP(auto cloneInfo,
-                GetStructuredCloneReadInfoFromValueArray(
-                    aArguments, 1, 0, *mFileManager, Nothing{}));
+  QM_TRY_UNWRAP(auto cloneInfo, GetStructuredCloneReadInfoFromValueArray(
+                                    aArguments, 1, 0, *mFileManager));
 
   nsAutoString fileIds;
   // XXX does this really need non-const cloneInfo?
@@ -2927,72 +2929,76 @@ Result<bool, nsresult> MaybeUpgradeSchema(mozIStorageConnection& aConnection,
   while (schemaVersion != kSQLiteSchemaVersion) {
     switch (schemaVersion) {
       case 4:
-        QM_TRY(UpgradeSchemaFrom4To5(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom4To5(aConnection)));
         break;
       case 5:
-        QM_TRY(UpgradeSchemaFrom5To6(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom5To6(aConnection)));
         break;
       case 6:
-        QM_TRY(UpgradeSchemaFrom6To7(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom6To7(aConnection)));
         break;
       case 7:
-        QM_TRY(UpgradeSchemaFrom7To8(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom7To8(aConnection)));
         break;
       case 8:
-        QM_TRY(UpgradeSchemaFrom8To9_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom8To9_0(aConnection)));
         vacuumNeeded = true;
         break;
       case MakeSchemaVersion(9, 0):
-        QM_TRY(UpgradeSchemaFrom9_0To10_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom9_0To10_0(aConnection)));
         break;
       case MakeSchemaVersion(10, 0):
-        QM_TRY(UpgradeSchemaFrom10_0To11_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom10_0To11_0(aConnection)));
         break;
       case MakeSchemaVersion(11, 0):
-        QM_TRY(UpgradeSchemaFrom11_0To12_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom11_0To12_0(aConnection)));
         break;
       case MakeSchemaVersion(12, 0):
-        QM_TRY(UpgradeSchemaFrom12_0To13_0(aConnection, &vacuumNeeded));
+        QM_TRY(MOZ_TO_RESULT(
+            UpgradeSchemaFrom12_0To13_0(aConnection, &vacuumNeeded)));
         break;
       case MakeSchemaVersion(13, 0):
-        QM_TRY(UpgradeSchemaFrom13_0To14_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom13_0To14_0(aConnection)));
         break;
       case MakeSchemaVersion(14, 0):
-        QM_TRY(UpgradeSchemaFrom14_0To15_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom14_0To15_0(aConnection)));
         break;
       case MakeSchemaVersion(15, 0):
-        QM_TRY(UpgradeSchemaFrom15_0To16_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom15_0To16_0(aConnection)));
         break;
       case MakeSchemaVersion(16, 0):
-        QM_TRY(UpgradeSchemaFrom16_0To17_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom16_0To17_0(aConnection)));
         break;
       case MakeSchemaVersion(17, 0):
-        QM_TRY(UpgradeSchemaFrom17_0To18_0(aConnection, aOrigin));
+        QM_TRY(
+            MOZ_TO_RESULT(UpgradeSchemaFrom17_0To18_0(aConnection, aOrigin)));
         vacuumNeeded = true;
         break;
       case MakeSchemaVersion(18, 0):
-        QM_TRY(UpgradeSchemaFrom18_0To19_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom18_0To19_0(aConnection)));
         break;
       case MakeSchemaVersion(19, 0):
-        QM_TRY(UpgradeSchemaFrom19_0To20_0(&aFMDirectory, aConnection));
+        QM_TRY(MOZ_TO_RESULT(
+            UpgradeSchemaFrom19_0To20_0(&aFMDirectory, aConnection)));
         break;
       case MakeSchemaVersion(20, 0):
-        QM_TRY(UpgradeSchemaFrom20_0To21_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom20_0To21_0(aConnection)));
         break;
       case MakeSchemaVersion(21, 0):
-        QM_TRY(UpgradeSchemaFrom21_0To22_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom21_0To22_0(aConnection)));
         break;
       case MakeSchemaVersion(22, 0):
-        QM_TRY(UpgradeSchemaFrom22_0To23_0(aConnection, aOrigin));
+        QM_TRY(
+            MOZ_TO_RESULT(UpgradeSchemaFrom22_0To23_0(aConnection, aOrigin)));
         break;
       case MakeSchemaVersion(23, 0):
-        QM_TRY(UpgradeSchemaFrom23_0To24_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom23_0To24_0(aConnection)));
         break;
       case MakeSchemaVersion(24, 0):
-        QM_TRY(UpgradeSchemaFrom24_0To25_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom24_0To25_0(aConnection)));
         break;
       case MakeSchemaVersion(25, 0):
-        QM_TRY(UpgradeSchemaFrom25_0To26_0(aConnection));
+        QM_TRY(MOZ_TO_RESULT(UpgradeSchemaFrom25_0To26_0(aConnection)));
         break;
       default:
         QM_FAIL(Err(NS_ERROR_DOM_INDEXEDDB_UNKNOWN_ERR), []() {
@@ -3003,7 +3009,7 @@ Result<bool, nsresult> MaybeUpgradeSchema(mozIStorageConnection& aConnection,
     }
 
     QM_TRY_UNWRAP(schemaVersion,
-                  MOZ_TO_RESULT_INVOKE(aConnection, GetSchemaVersion));
+                  MOZ_TO_RESULT_INVOKE_MEMBER(aConnection, GetSchemaVersion));
   }
 
   MOZ_ASSERT(schemaVersion == kSQLiteSchemaVersion);

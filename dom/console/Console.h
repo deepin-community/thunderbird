@@ -9,6 +9,7 @@
 
 #include "domstubs.h"
 #include "mozilla/dom/ConsoleBinding.h"
+#include "mozilla/dom/ConsoleInstanceBinding.h"
 #include "mozilla/TimeStamp.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsTHashMap.h"
@@ -21,8 +22,7 @@ class nsIGlobalObject;
 class nsPIDOMWindowInner;
 class nsIStackFrame;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class AnyCallback;
 class ConsoleCallData;
@@ -355,6 +355,8 @@ class Console final : public nsIObserver, public nsSupportsWeakReference {
                       const Sequence<JS::Value>& aData,
                       DOMHighResTimeStamp* aTimeStamp);
 
+  void StringifyElement(Element* aElement, nsAString& aOut);
+
   MOZ_CAN_RUN_SCRIPT
   void MaybeExecuteDumpFunction(JSContext* aCx, const nsAString& aMethodName,
                                 const Sequence<JS::Value>& aData,
@@ -368,8 +370,6 @@ class Console final : public nsIObserver, public nsSupportsWeakReference {
 
   MOZ_CAN_RUN_SCRIPT
   void ExecuteDumpFunction(const nsAString& aMessage);
-
-  bool IsEnabled(JSContext* aCx) const;
 
   bool ShouldProceed(MethodName aName) const;
 
@@ -426,8 +426,7 @@ class Console final : public nsIObserver, public nsSupportsWeakReference {
   bool mDumpToStdout;
   nsString mPrefix;
   bool mChromeInstance;
-  ConsoleLogLevel mMaxLogLevel;
-  nsString mMaxLogLevelPref;
+  uint32_t mCurrentLogLevel;
 
   enum { eUnknown, eInitialized, eShuttingDown } mStatus;
 
@@ -446,7 +445,6 @@ class Console final : public nsIObserver, public nsSupportsWeakReference {
   friend class MainThreadConsoleData;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif /* mozilla_dom_Console_h */

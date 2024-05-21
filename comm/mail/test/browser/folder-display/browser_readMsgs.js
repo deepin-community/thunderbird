@@ -6,8 +6,8 @@
  * Tests various special messages.
  */
 
-var { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
@@ -17,23 +17,23 @@ var {
   be_in_folder,
   create_folder,
   inboxFolder,
-  press_delete,
   select_click_row,
-  wait_for_message_display_completion,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
 );
 
 /**
  * Tests that a message containing an invalid vcard can be displayed.
  */
 add_task(async function testMarkedAsRead() {
-  let folder = create_folder("SpecialMsgs");
+  const folder = await create_folder("SpecialMsgs");
   Services.prefs.setBoolPref("mailnews.mark_message_read.auto", true);
 
-  let file = new FileUtils.File(getTestFilePath("data/test-invalid-vcard.eml"));
+  const file = new FileUtils.File(
+    getTestFilePath("data/test-invalid-vcard.eml")
+  );
   Assert.ok(file.exists(), "test data file should exist");
-  let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
+  const promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
   // Copy gIncomingMailFile into the Inbox.
   MailServices.copy.copyFileMessage(
     file,
@@ -46,9 +46,9 @@ add_task(async function testMarkedAsRead() {
     null
   );
   await promiseCopyListener.promise;
-  be_in_folder(folder);
-  let msg = select_click_row(0);
-  assert_selected_and_displayed(0);
+  await be_in_folder(folder);
+  const msg = await select_click_row(0);
+  await assert_selected_and_displayed(0);
   // Make sure it's the msg we want.
   Assert.equal(msg.subject, "this contains an invalid vcard");
   // The message should get marked as read.
@@ -56,7 +56,7 @@ add_task(async function testMarkedAsRead() {
     () => msg.isRead,
     "should get marked as read"
   );
-  be_in_folder(inboxFolder);
+  await be_in_folder(inboxFolder);
   folder.deleteSelf(null);
   Services.prefs.clearUserPref("mailnews.mark_message_read.auto");
 });

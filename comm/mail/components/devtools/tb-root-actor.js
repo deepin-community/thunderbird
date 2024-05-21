@@ -58,10 +58,10 @@ loader.lazyRequireGetter(
  * Create the root actor for Thunderbird.
  *
  * @param aConnection       The debugger connection to create the actor for.
- * @return                  The mail actor for the connection.
+ * @returns The mail actor for the connection.
  */
-exports.createRootActor = function(aConnection) {
-  let parameters = {
+exports.createRootActor = function (aConnection) {
+  const parameters = {
     tabList: new TBTabList(aConnection),
     addonList: new BrowserAddonList(aConnection),
     workerList: new WorkerDescriptorActorList(aConnection, {}),
@@ -74,7 +74,7 @@ exports.createRootActor = function(aConnection) {
   };
 
   // Create the root actor and set the application type
-  let rootActor = new RootActor(aConnection, parameters);
+  const rootActor = new RootActor(aConnection, parameters);
   rootActor.applicationType = "mail";
 
   return rootActor;
@@ -87,12 +87,12 @@ exports.createRootActor = function(aConnection) {
  */
 class TBTabList extends BrowserTabList {
   _getSelectedBrowser(window) {
-    let tabmail = window.document.getElementById("tabmail");
+    const tabmail = window.document.getElementById("tabmail");
     return tabmail ? tabmail.selectedBrowser : null;
   }
 
   _getChildren(window) {
-    let tabmail = window.document.getElementById("tabmail");
+    const tabmail = window.document.getElementById("tabmail");
     if (!tabmail) {
       return [];
     }

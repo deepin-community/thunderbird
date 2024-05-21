@@ -2,36 +2,47 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import React from "react";
-import { bindActionCreators, combineReducers } from "redux";
-import ReactDOM from "react-dom";
-const { Provider } = require("react-redux");
+import React from "devtools/client/shared/vendor/react";
+import {
+  bindActionCreators,
+  combineReducers,
+} from "devtools/client/shared/vendor/redux";
+import ReactDOM from "devtools/client/shared/vendor/react-dom";
+const {
+  Provider,
+} = require("resource://devtools/client/shared/vendor/react-redux.js");
 
 import ToolboxProvider from "devtools/client/framework/store-provider";
 import flags from "devtools/shared/flags";
+const {
+  registerStoreObserver,
+} = require("resource://devtools/client/shared/redux/subscriber.js");
 
-const { AppConstants } = require("resource://gre/modules/AppConstants.jsm");
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
 
-import * as search from "../workers/search";
-import * as prettyPrint from "../workers/pretty-print";
-import { ParserDispatcher } from "../workers/parser";
+import { SearchDispatcher } from "../workers/search/index";
+import { PrettyPrintDispatcher } from "../workers/pretty-print/index";
 
 import configureStore from "../actions/utils/create-store";
-import reducers from "../reducers";
-import * as selectors from "../selectors";
+import reducers from "../reducers/index";
+import * as selectors from "../selectors/index";
 import App from "../components/App";
 import { asyncStore, prefs } from "./prefs";
 import { persistTabs } from "../utils/tabs";
-const { sanitizeBreakpoints } = require("devtools/client/shared/thread-utils");
+const {
+  sanitizeBreakpoints,
+} = require("resource://devtools/client/shared/thread-utils.js");
 
-let parser;
+let gWorkers;
 
 export function bootstrapStore(client, workers, panel, initialState) {
   const debugJsModules = AppConstants.DEBUG_JS_MODULES == "1";
   const createStore = configureStore({
     log: prefs.logging || flags.testing,
     timing: debugJsModules,
-    makeThunkArgs: (args, state) => {
+    makeThunkArgs: args => {
       return { ...args, client, ...workers, panel };
     },
   });
@@ -40,7 +51,7 @@ export function bootstrapStore(client, workers, panel, initialState) {
   registerStoreObserver(store, updatePrefs);
 
   const actions = bindActionCreators(
-    require("../actions").default,
+    require("../actions/index").default,
     store.dispatch
   );
 
@@ -48,29 +59,34 @@ export function bootstrapStore(client, workers, panel, initialState) {
 }
 
 export function bootstrapWorkers(panelWorkers) {
-  const workerPath = "resource://devtools/client/debugger/dist";
-
-  prettyPrint.start(`${workerPath}/pretty-print-worker.js`);
-  parser = new ParserDispatcher();
-
-  parser.start(`${workerPath}/parser-worker.js`);
-  search.start(`${workerPath}/search-worker.js`);
-  return { ...panelWorkers, prettyPrint, parser, search };
+  // The panel worker will typically be the source map and parser workers.
+  // Both will be managed by the toolbox.
+  gWorkers = {
+    prettyPrintWorker: new PrettyPrintDispatcher(),
+    searchWorker: new SearchDispatcher(),
+  };
+  return { ...panelWorkers, ...gWorkers };
 }
 
 export function teardownWorkers() {
-  prettyPrint.stop();
-  parser.stop();
-  search.stop();
+  gWorkers.prettyPrintWorker.stop();
+  gWorkers.searchWorker.stop();
 }
 
-export function bootstrapApp(store, panel) {
+/**
+ * Create and mount the root App component.
+ *
+ * @param {ReduxStore} store
+ * @param {ReduxStore} toolboxStore
+ * @param {Object} appComponentAttributes
+ * @param {Array} appComponentAttributes.fluentBundles
+ * @param {Document} appComponentAttributes.toolboxDoc
+ */
+export function bootstrapApp(store, toolboxStore, appComponentAttributes = {}) {
   const mount = getMountElement();
   if (!mount) {
     return;
   }
-
-  const toolboxDoc = panel.panelWin.parent.document;
 
   ReactDOM.render(
     React.createElement(
@@ -78,8 +94,8 @@ export function bootstrapApp(store, panel) {
       { store },
       React.createElement(
         ToolboxProvider,
-        { store: panel.getToolboxStore() },
-        React.createElement(App, { toolboxDoc })
+        { store: toolboxStore },
+        React.createElement(App, appComponentAttributes)
       )
     ),
     mount
@@ -93,15 +109,6 @@ function getMountElement() {
 // This is the opposite of bootstrapApp
 export function unmountRoot() {
   ReactDOM.unmountComponentAtNode(getMountElement());
-}
-
-function registerStoreObserver(store, subscriber) {
-  let oldState = store.getState();
-  store.subscribe(() => {
-    const state = store.getState();
-    subscriber(state, oldState);
-    oldState = state;
-  });
 }
 
 function updatePrefs(state, oldState) {
@@ -129,7 +136,7 @@ function updatePrefs(state, oldState) {
     asyncStore.xhrBreakpoints = selectors.getXHRBreakpoints(state);
   }
 
-  if (hasChanged(selectors.getBlackBoxList)) {
-    asyncStore.tabsBlackBoxed = selectors.getBlackBoxList(state);
+  if (hasChanged(selectors.getBlackBoxRanges)) {
+    asyncStore.blackboxedRanges = selectors.getBlackBoxRanges(state);
   }
 }

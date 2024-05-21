@@ -13,6 +13,12 @@ pane-chat-title = צ׳אט
 category-chat =
     .tooltiptext = צ׳אט
 
+manage-messenger-languages-button =
+    .label = הגדרת חלופות…
+    .accesskey = ח
+confirm-messenger-language-change-description = יש להפעיל את { -brand-short-name } מחדש כדי להחיל את השינויים האלה
+confirm-messenger-language-change-button = החלה והפעלה מחדש
+
 ## OS Authentication dialog
 
 
@@ -60,8 +66,8 @@ app-icon-options =
     .accesskey = ס
 
 animated-alert-label =
-    .label = הראה התרעה
-    .accesskey = א
+    .label = הצגת התרעה
+    .accesskey = ה
 customize-alert-label =
     .label = התאמה אישית…
     .accesskey = ה
@@ -99,6 +105,9 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = שימוש בגלילה חלקה
     .accesskey = ח
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = תמיד להציג פסי גלילה
+    .accesskey = פ
 
 system-integration-legend = השתלבות במערכת
 always-check-default =
@@ -248,10 +257,6 @@ quoted-text-color =
     .label = צבע:
     .accesskey = ב
 
-
-
-
-
 save-to-label =
     .label = שמור קבצים אל
     .accesskey = ש
@@ -394,12 +399,6 @@ default-format-label =
     .label = שימוש בתבנית פסקה במקום גוף ההודעה כבררת מחדל
     .accesskey = פ
 
-format-description = הגדר התנהגות סגנון טקסט
-
-send-options-label =
-    .label = אפשרויות שליחה...
-    .accesskey = ל
-
 autocomplete-description = כאשר ממענים הודעות, חפש רשומות תואמות בתוך:
 
 ab-label =
@@ -445,7 +444,6 @@ add-cloud-account =
     .label = הוספה…
     .accesskey = ס
     .defaultlabel = הוספה…
-
 
 ## Privacy Tab
 
@@ -640,8 +638,6 @@ theme-label =
     .value = ערכת נושא:
     .accesskey = ע
 
-style-thunderbird =
-    .label = Thunderbird
 style-bubbles =
     .label = בועות
 style-dark =
@@ -659,4 +655,7 @@ chat-variant-label =
     .accesskey = ג
 
 ## Preferences UI Search Results
+
+
+## Settings UI Search Results
 

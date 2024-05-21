@@ -5,8 +5,6 @@
 
 #include "TreeWalker.h"
 
-#include "LocalAccessible.h"
-#include "AccIterator.h"
 #include "nsAccessibilityService.h"
 #include "DocAccessible.h"
 
@@ -148,7 +146,7 @@ bool TreeWalker::Seek(nsIContent* aChildNode) {
     }
   } while (true);
 
-  return false;
+  MOZ_ASSERT_UNREACHABLE("because the do-while loop never breaks");
 }
 
 LocalAccessible* TreeWalker::Next() {

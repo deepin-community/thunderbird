@@ -1,23 +1,23 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { NormalizedMap } = ChromeUtils.import(
-  "resource:///modules/NormalizedMap.jsm"
+const { NormalizedMap } = ChromeUtils.importESModule(
+  "resource:///modules/NormalizedMap.sys.mjs"
 );
 
 function test_setter_getter() {
-  let m = new NormalizedMap(aStr => aStr.toLowerCase());
+  const m = new NormalizedMap(aStr => aStr.toLowerCase());
   m.set("foo", "bar");
   m.set("BaZ", "blah");
   Assert.equal(m.has("FOO"), true);
   Assert.equal(m.has("BaZ"), true);
   Assert.equal(m.get("FOO"), "bar");
 
-  let keys = Array.from(m.keys());
+  const keys = Array.from(m.keys());
   Assert.equal(keys[0], "foo");
   Assert.equal(keys[1], "baz");
 
-  let values = Array.from(m.values());
+  const values = Array.from(m.values());
   Assert.equal(values[0], "bar");
   Assert.equal(values[1], "blah");
 
@@ -27,10 +27,13 @@ function test_setter_getter() {
 }
 
 function test_constructor() {
-  let k = new NormalizedMap(aStr => aStr.toLowerCase(), [
-    ["A", 2],
-    ["b", 3],
-  ]);
+  const k = new NormalizedMap(
+    aStr => aStr.toLowerCase(),
+    [
+      ["A", 2],
+      ["b", 3],
+    ]
+  );
   Assert.equal(k.get("b"), 3);
   Assert.equal(k.get("a"), 2);
   Assert.equal(k.get("B"), 3);
@@ -40,10 +43,10 @@ function test_constructor() {
 }
 
 function test_iterator() {
-  let k = new NormalizedMap(aStr => aStr.toLowerCase());
+  const k = new NormalizedMap(aStr => aStr.toLowerCase());
   k.set("FoO", "bar");
 
-  for (let [key, value] of k) {
+  for (const [key, value] of k) {
     Assert.equal(key, "foo");
     Assert.equal(value, "bar");
   }
@@ -52,7 +55,7 @@ function test_iterator() {
 }
 
 function test_delete() {
-  let m = new NormalizedMap(aStr => aStr.toLowerCase());
+  const m = new NormalizedMap(aStr => aStr.toLowerCase());
   m.set("foo", "bar");
   m.set("BaZ", "blah");
 

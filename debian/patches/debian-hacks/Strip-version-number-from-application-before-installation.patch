@@ -9,7 +9,7 @@ we have a fixed location for extensions that build against it.
  1 file changed, 3 insertions(+)
 
 diff --git a/config/baseconfig.mk b/config/baseconfig.mk
-index 8f3e920..47c442a 100644
+index 428beef..fa56d40 100644
 --- a/config/baseconfig.mk
 +++ b/config/baseconfig.mk
 @@ -3,6 +3,9 @@

@@ -63,7 +63,6 @@ class VirtualFolderChangeListener final : public nsIDBChangeListener {
 class nsMsgAccountManager : public nsIMsgAccountManager,
                             public nsIObserver,
                             public nsSupportsWeakReference,
-                            public nsIUrlListener,
                             public nsIFolderListener {
  public:
   nsMsgAccountManager();
@@ -74,7 +73,6 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
 
   NS_DECL_NSIMSGACCOUNTMANAGER
   NS_DECL_NSIOBSERVER
-  NS_DECL_NSIURLLISTENER
   NS_DECL_NSIFOLDERLISTENER
 
   nsresult Init();
@@ -94,6 +92,7 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
   nsCOMArray<nsIIncomingServerListener> m_incomingServerListeners;
   nsTObserverArray<RefPtr<VirtualFolderChangeListener>>
       m_virtualFolderListeners;
+  nsTArray<nsCOMPtr<nsIMsgFolder>> m_virtualFolders;
   nsCOMPtr<nsIMsgFolder> m_folderDoingEmptyTrash;
   nsCOMPtr<nsIMsgFolder> m_folderDoingCleanupInbox;
   bool m_emptyTrashInProgress;
@@ -122,12 +121,13 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
                           const nsACString& username, const int32_t port,
                           const nsACString& type);
 
-  // Cache the results of the last call to FolderUriFromDirInProfile
-  nsCOMPtr<nsIFile> m_lastPathLookedUp;
-  nsCString m_lastFolderURIForPath;
+  // Where to start looking for an empty server key. This should only increase
+  // as servers are created to ensure keys are unique within a session.
+  uint32_t m_lastUniqueServerKey;
 
   /* internal creation routines - updates m_identities and m_incomingServers */
-  nsresult createKeyedAccount(const nsCString& key, bool forcePositionToEnd, nsIMsgAccount** _retval);
+  nsresult createKeyedAccount(const nsCString& key, bool forcePositionToEnd,
+                              nsIMsgAccount** _retval);
   nsresult createKeyedServer(const nsACString& key, const nsACString& username,
                              const nsACString& password, const nsACString& type,
                              nsIMsgIncomingServer** _retval);
@@ -174,7 +174,7 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
   nsresult findServerInternal(const nsACString& username,
                               const nsACString& hostname,
                               const nsACString& type, int32_t port,
-                              bool aRealFlag, nsIMsgIncomingServer** aResult);
+                              nsIMsgIncomingServer** aResult);
 
   // handle virtual folders
   static nsresult GetVirtualFoldersFile(nsCOMPtr<nsIFile>& file);
@@ -182,8 +182,7 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
                                           nsIOutputStream* outputStream);
   void ParseAndVerifyVirtualFolderScope(nsCString& buffer);
   nsresult AddVFListenersForVF(nsIMsgFolder* virtualFolder,
-                               const nsCString& srchFolderUris,
-                               nsIMsgDBService* msgDBService);
+                               const nsCString& srchFolderUris);
 
   nsresult RemoveVFListenerForVF(nsIMsgFolder* virtualFolder,
                                  nsIMsgFolder* folder);
@@ -194,6 +193,7 @@ class nsMsgAccountManager : public nsIMsgAccountManager,
   nsresult SetSendLaterUriPref(nsIMsgIncomingServer* server);
 
   nsCOMPtr<nsIPrefBranch> m_prefs;
+  nsCOMPtr<nsIMsgDBService> m_dbService;
 
   //
   // root folder listener stuff

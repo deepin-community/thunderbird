@@ -13,13 +13,11 @@ if (!customElements.get("menulist")) {
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   /**
    * MozMenulistAddrbooks is a menulist widget that is automatically
    * populated with the complete address book list.
-   * @extends {MozMenuList}
+   *
+   * @augments {MozMenuList}
    */
   class MozMenulistAddrbooks extends customElements.get("menulist") {
     connectedCallback() {
@@ -37,11 +35,36 @@ if (!customElements.get("menulist")) {
       this._rebuild();
 
       // Store as a member of `this` so there's a strong reference.
-      this.addressBookListener = {
+      this._addressBookListener = {
         QueryInterface: ChromeUtils.generateQI([
           "nsIObserver",
           "nsISupportsWeakReference",
         ]),
+
+        _notifications: [
+          "addrbook-directory-created",
+          "addrbook-directory-updated",
+          "addrbook-directory-deleted",
+          "addrbook-reloaded",
+        ],
+
+        init() {
+          for (const topic of this._notifications) {
+            Services.obs.addObserver(this, topic, true);
+          }
+          window.addEventListener("unload", this);
+        },
+
+        cleanUp() {
+          for (const topic of this._notifications) {
+            Services.obs.removeObserver(this, topic);
+          }
+          window.removeEventListener("unload", this);
+        },
+
+        handleEvent(event) {
+          this.cleanUp();
+        },
 
         observe: (subject, topic, data) => {
           // Test-only reload of the address book manager.
@@ -62,7 +85,7 @@ if (!customElements.get("menulist")) {
             case "addrbook-directory-updated": {
               // Find the item in the list to rename.
               // We can't use indexOf here because we need loose equality.
-              let len = this._directories.length;
+              const len = this._directories.length;
               for (var oldIndex = len - 1; oldIndex >= 0; oldIndex--) {
                 if (this._directories[oldIndex] == subject) {
                   break;
@@ -76,7 +99,7 @@ if (!customElements.get("menulist")) {
             case "addrbook-directory-deleted": {
               // Find the item in the list to remove.
               // We can't use indexOf here because we need loose equality.
-              let len = this._directories.length;
+              const len = this._directories.length;
               for (var index = len - 1; index >= 0; index--) {
                 if (this._directories[index] == subject) {
                   break;
@@ -103,14 +126,7 @@ if (!customElements.get("menulist")) {
         },
       };
 
-      for (let topic of [
-        "addrbook-directory-created",
-        "addrbook-directory-updated",
-        "addrbook-directory-deleted",
-        "addrbook-reloaded",
-      ]) {
-        Services.obs.addObserver(this.addressBookListener, topic, true);
-      }
+      this._addressBookListener.init();
     }
 
     /**
@@ -126,6 +142,7 @@ if (!customElements.get("menulist")) {
 
     disconnectedCallback() {
       super.disconnectedCallback();
+      this._addressBookListener.cleanUp();
       this._teardown();
     }
 
@@ -133,13 +150,13 @@ if (!customElements.get("menulist")) {
       // Init the address book cache.
       this._directories.length = 0;
 
-      for (let ab of MailServices.ab.directories) {
+      for (const ab of MailServices.ab.directories) {
         if (this._matches(ab)) {
           this._directories.push(ab);
 
           if (this.getAttribute("mailinglists") == "true") {
             // Also append contained mailinglists.
-            for (let list of ab.childNodes) {
+            for (const list of ab.childNodes) {
               if (this._matches(list)) {
                 this._directories.push(list);
               }
@@ -153,7 +170,7 @@ if (!customElements.get("menulist")) {
       if (this.hasAttribute("none")) {
         // Create a dummy menuitem representing no selection.
         this._directories.unshift(null);
-        let listItem = this.appendItem(this.getAttribute("none"), "");
+        const listItem = this.appendItem(this.getAttribute("none"), "");
         listItem.setAttribute("class", "menuitem-iconic abMenuItem");
       }
 
@@ -161,50 +178,52 @@ if (!customElements.get("menulist")) {
         // Insert a menuitem representing All Addressbooks.
         let allABLabel = this.getAttribute("alladdressbooks");
         if (allABLabel == "true") {
-          let bundle = document.getElementById("bundle_addressBook");
-          allABLabel = bundle.getString("allAddressBooks");
+          const bundle = Services.strings.createBundle(
+            "chrome://messenger/locale/addressbook/addressBook.properties"
+          );
+          allABLabel = bundle.GetStringFromName("allAddressBooks");
         }
 
         this._directories.unshift(null);
-        let listItem = this.appendItem(allABLabel, "moz-abdirectory://?");
+        const listItem = this.appendItem(allABLabel, "moz-abdirectory://?");
         listItem.setAttribute("class", "menuitem-iconic abMenuItem");
         listItem.setAttribute(
           "image",
-          "chrome://messenger/skin/icons/address.svg"
+          "chrome://messenger/skin/icons/new/compact/address-book.svg"
         );
       }
 
       // Now create menuitems for all displayed directories.
-      let type = this._type;
-      for (let ab of this._directories) {
+      const type = this._type;
+      for (const ab of this._directories) {
         if (!ab) {
           // Skip the empty members added above.
           continue;
         }
 
-        let listItem = this.appendItem(ab.dirName, ab[type]);
+        const listItem = this.appendItem(ab.dirName, ab[type]);
         listItem.setAttribute("class", "menuitem-iconic abMenuItem");
 
         // Style the items by type.
         if (ab.isMailList) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/ablist.svg"
+            "chrome://messenger/skin/icons/new/compact/user-list.svg"
           );
         } else if (ab.isRemote && ab.isSecure) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/globe-secure.svg"
+            "chrome://messenger/skin/icons/new/compact/globe-secure.svg"
           );
         } else if (ab.isRemote) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/globe.svg"
+            "chrome://messenger/skin/icons/new/compact/globe.svg"
           );
         } else {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/address.svg"
+            "chrome://messenger/skin/icons/new/compact/address-book.svg"
           );
         }
       }

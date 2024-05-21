@@ -1,9 +1,9 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../mail/components/addrbook/content/abSearchDialog.js */
+// abSearchDialog.js
+/* globals GetScopeForDirectoryURI */
 
 var gTotalSearchTerms = 0;
 var gSearchTermList;
@@ -153,9 +153,11 @@ function initializeSearchWidgets() {
   gSearchTermList = document.getElementById("searchTermList");
 
   // initialize some strings
-  var bundle = document.getElementById("bundle_search");
-  gMoreButtonTooltipText = bundle.getString("moreButtonTooltipText");
-  gLessButtonTooltipText = bundle.getString("lessButtonTooltipText");
+  var bundle = Services.strings.createBundle(
+    "chrome://messenger/locale/search.properties"
+  );
+  gMoreButtonTooltipText = bundle.GetStringFromName("moreButtonTooltipText");
+  gLessButtonTooltipText = bundle.GetStringFromName("lessButtonTooltipText");
 }
 
 function initializeBooleanWidgets() {
@@ -190,7 +192,7 @@ function initializeBooleanWidgets() {
 
 function initializeSearchRows(scope, searchTerms) {
   for (let i = 0; i < searchTerms.length; i++) {
-    let searchTerm = searchTerms[i];
+    const searchTerm = searchTerms[i];
     createSearchRow(i, scope, searchTerm, false);
     gTotalSearchTerms++;
   }
@@ -206,9 +208,8 @@ function initializeSearchRows(scope, searchTerms) {
 function updateSearchTermsListbox(matchAllValue) {
   var searchTerms = document.getElementById("searchTermList");
   searchTerms.setAttribute("disabled", matchAllValue);
-  var searchAttributeList = searchTerms.getElementsByTagName(
-    "search-attribute"
-  );
+  var searchAttributeList =
+    searchTerms.getElementsByTagName("search-attribute");
   var searchOperatorList = searchTerms.getElementsByTagName("search-operator");
   var searchValueList = searchTerms.getElementsByTagName("search-value");
   for (let i = 0; i < searchAttributeList.length; i++) {
@@ -442,21 +443,22 @@ function initializeTermFromIndex(index) {
 /**
  * Creates a <richlistitem> using the array children as the children
  * of each listcell.
+ *
  * @param aChildren  An array of XUL elements to put into the listitem.
  *                   Each array member is put into a separate listcell.
  *                   If the member itself is an array of elements,
  *                   all of them are put into the same listcell.
  */
 function constructRow(aChildren) {
-  let cols = gSearchTermList.firstElementChild.children; // treecol elements
-  let listitem = document.createXULElement("richlistitem");
+  const cols = gSearchTermList.firstElementChild.children; // treecol elements
+  const listitem = document.createXULElement("richlistitem");
   listitem.setAttribute("allowevents", "true");
   for (let i = 0; i < aChildren.length; i++) {
-    let listcell = document.createXULElement("hbox");
-    if (cols[i].hasAttribute("flex")) {
-      listcell.setAttribute("flex", cols[i].getAttribute("flex"));
+    const listcell = document.createXULElement("hbox");
+    if (cols[i].hasAttribute("style")) {
+      listcell.setAttribute("style", cols[i].getAttribute("style"));
     }
-    let child = aChildren[i];
+    const child = aChildren[i];
 
     if (child instanceof Array) {
       for (let j = 0; j < child.length; j++) {
@@ -513,8 +515,9 @@ function removeSearchRow(index) {
 
 /**
  * Save the search terms from the UI back to the actual search terms.
+ *
  * @param {nsIMsgSearchTerm[]} searchTerms - Array of terms
- * @param {Object} termOwner - Object which can contain and create the terms
+ * @param {object} termOwner - Object which can contain and create the terms
  *   e.g. a nsIMsgSearchSession (will be unnecessary if we just make terms
  *   creatable via XPCOM).
  * @returns {nsIMsgSearchTerm[]} The filtered searchTerms.

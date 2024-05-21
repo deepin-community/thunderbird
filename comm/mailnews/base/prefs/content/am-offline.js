@@ -1,12 +1,9 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from am-prefs.js */
 /* import-globals-from ../../content/retention.js */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gIncomingServer;
 var gServerType;
@@ -64,7 +61,7 @@ function initServerSettings() {
 }
 
 function initRetentionSettings() {
-  let retentionSettings = gIncomingServer.retentionSettings;
+  const retentionSettings = gIncomingServer.retentionSettings;
   initCommonRetentionSettings(retentionSettings);
 
   document.getElementById("nntp.removeBody").checked =
@@ -76,7 +73,7 @@ function initRetentionSettings() {
 }
 
 function initDownloadSettings() {
-  let downloadSettings = gIncomingServer.downloadSettings;
+  const downloadSettings = gIncomingServer.downloadSettings;
   document.getElementById("nntp.downloadMsg").checked =
     downloadSettings.downloadByDate;
   document.getElementById("nntp.notDownloadRead").checked =
@@ -88,11 +85,11 @@ function initDownloadSettings() {
 
   // Figure out what the most natural division of the autosync pref into
   // a value and an interval is.
-  let autosyncSelect = document.getElementById("autosyncSelect");
-  let autosyncInterval = document.getElementById("autosyncInterval");
-  let autosyncValue = document.getElementById("autosyncValue");
-  let autosyncPref = document.getElementById("imap.autoSyncMaxAgeDays");
-  let autosyncPrefValue =
+  const autosyncSelect = document.getElementById("autosyncSelect");
+  const autosyncInterval = document.getElementById("autosyncInterval");
+  const autosyncValue = document.getElementById("autosyncValue");
+  const autosyncPref = document.getElementById("imap.autoSyncMaxAgeDays");
+  const autosyncPrefValue =
     autosyncPref.value == "" ? -1 : parseInt(autosyncPref.value, 10);
 
   // Clear the preference until we're done initializing.
@@ -109,13 +106,13 @@ function initDownloadSettings() {
   } else {
     // Otherwise, get the list of possible intervals, in order from
     // largest to smallest.
-    let valuesToTest = [];
+    const valuesToTest = [];
     for (let i = autosyncInterval.itemCount - 1; i >= 0; i--) {
       valuesToTest.push(autosyncInterval.getItemAtIndex(i).value);
     }
 
     // and find the first one that divides the preference evenly.
-    for (let i in valuesToTest) {
+    for (const i in valuesToTest) {
       if (!(autosyncPrefValue % valuesToTest[i])) {
         autosyncSelect.value = 1;
         autosyncInterval.value = valuesToTest[i];
@@ -181,10 +178,10 @@ function onClickSelect() {
  * Handle updates to the Autosync
  */
 function onAutosyncChange() {
-  let autosyncSelect = document.getElementById("autosyncSelect");
-  let autosyncInterval = document.getElementById("autosyncInterval");
-  let autosyncValue = document.getElementById("autosyncValue");
-  let autosyncPref = document.getElementById("imap.autoSyncMaxAgeDays");
+  const autosyncSelect = document.getElementById("autosyncSelect");
+  const autosyncInterval = document.getElementById("autosyncInterval");
+  const autosyncValue = document.getElementById("autosyncValue");
+  const autosyncPref = document.getElementById("imap.autoSyncMaxAgeDays");
 
   // If we're not done initializing, don't do anything.
   // (See initDownloadSettings() for more details.)
@@ -201,7 +198,7 @@ function onAutosyncChange() {
     return;
   }
 
-  let max = 0x7fffffff / (60 * 60 * 24 * autosyncInterval.value);
+  const max = 0x7fffffff / (60 * 60 * 24 * autosyncInterval.value);
   autosyncValue.setAttribute("max", max);
   if (autosyncValue.value > max) {
     autosyncValue.value = Math.floor(max);
@@ -216,9 +213,8 @@ function onAutosyncNotDownload() {
   // This function is called when the autosync version of offline.notDownload
   // is changed it simply copies the new checkbox value over to the element
   // driving the preference.
-  document.getElementById(
-    "offline.notDownload"
-  ).checked = document.getElementById("autosyncNotDownload").checked;
+  document.getElementById("offline.notDownload").checked =
+    document.getElementById("autosyncNotDownload").checked;
   onCheckItem1("offline.notDownloadMin", "offline.notDownload");
 }
 
@@ -234,7 +230,7 @@ function onCancel() {
 function onLeave() {
   let changed = false;
   if (gToggleOccurred) {
-    for (let folder of gIncomingServer.rootFolder.descendants) {
+    for (const folder of gIncomingServer.rootFolder.descendants) {
       if (
         gOfflineMap[folder.folderURL] !=
         folder.getFlag(Ci.nsMsgFolderFlags.Offline)
@@ -251,11 +247,11 @@ function onLeave() {
     // The user changed the "Keep messages in all folders..." checkbox and
     // caused changes in online/offline status for all folders in this
     // account.  Prompt whether to restore the original status.
-    let prefBundle = document.getElementById("bundle_prefs");
-    let title = prefBundle.getString("confirmSyncChangesTitle");
-    let question = prefBundle.getString("confirmSyncChanges");
-    let discard = prefBundle.getString("confirmSyncChangesDiscard");
-    let result = Services.prompt.confirmEx(
+    const prefBundle = document.getElementById("bundle_prefs");
+    const title = prefBundle.getString("confirmSyncChangesTitle");
+    const question = prefBundle.getString("confirmSyncChanges");
+    const discard = prefBundle.getString("confirmSyncChangesDiscard");
+    const result = Services.prompt.confirmEx(
       window,
       title,
       question,
@@ -294,16 +290,13 @@ function onSave() {
     gIncomingServer.retentionSettings
   );
 
-  retentionSettings.daysToKeepBodies = document.getElementById(
-    "nntp.removeBodyMin"
-  ).value;
-  retentionSettings.cleanupBodiesByDays = document.getElementById(
-    "nntp.removeBody"
-  ).checked;
+  retentionSettings.daysToKeepBodies =
+    document.getElementById("nntp.removeBodyMin").value;
+  retentionSettings.cleanupBodiesByDays =
+    document.getElementById("nntp.removeBody").checked;
 
-  downloadSettings.downloadByDate = document.getElementById(
-    "nntp.downloadMsg"
-  ).checked;
+  downloadSettings.downloadByDate =
+    document.getElementById("nntp.downloadMsg").checked;
   downloadSettings.downloadUnreadOnly = document.getElementById(
     "nntp.notDownloadRead"
   ).checked;
@@ -316,9 +309,8 @@ function onSave() {
 
   if (gImapIncomingServer) {
     // Set the pref on the incomingserver, and set the flag on all folders.
-    gImapIncomingServer.offlineDownload = document.getElementById(
-      "offline.folders"
-    ).checked;
+    gImapIncomingServer.offlineDownload =
+      document.getElementById("offline.folders").checked;
   }
 }
 
@@ -385,8 +377,8 @@ function onCheckItem1(changeElementId, checkElementId) {
 }
 
 function toggleOffline() {
-  let offline = document.getElementById("offline.folders").checked;
-  for (let folder of gIncomingServer.rootFolder.descendants) {
+  const offline = document.getElementById("offline.folders").checked;
+  for (const folder of gIncomingServer.rootFolder.descendants) {
     if (offline) {
       folder.setFlag(Ci.nsMsgFolderFlags.Offline);
     } else {
@@ -397,8 +389,8 @@ function toggleOffline() {
 }
 
 function collectOfflineFolders() {
-  let offlineFolderMap = {};
-  for (let folder of gIncomingServer.rootFolder.descendants) {
+  const offlineFolderMap = {};
+  for (const folder of gIncomingServer.rootFolder.descendants) {
     offlineFolderMap[folder.folderURL] = folder.getFlag(
       Ci.nsMsgFolderFlags.Offline
     );
@@ -408,7 +400,7 @@ function collectOfflineFolders() {
 }
 
 function restoreOfflineFolders(offlineFolderMap) {
-  for (let folder of gIncomingServer.rootFolder.descendants) {
+  for (const folder of gIncomingServer.rootFolder.descendants) {
     if (offlineFolderMap[folder.folderURL]) {
       folder.setFlag(Ci.nsMsgFolderFlags.Offline);
     } else {
@@ -421,19 +413,19 @@ function restoreOfflineFolders(offlineFolderMap) {
  * Checks if the user selected a permanent removal of messages from a server
  * listed in the confirmfor attribute and warns about it.
  *
- * @param aRadio  The radiogroup element containing the retention options.
+ * @param {Element} aRadio - The radiogroup element containing the retention options.
  */
 function warnServerRemove(aRadio) {
-  let confirmFor = aRadio.getAttribute("confirmfor");
+  const confirmFor = aRadio.getAttribute("confirmfor");
 
   if (
     confirmFor &&
     confirmFor.split(",").includes(gServerType) &&
     aRadio.value != 1
   ) {
-    let prefBundle = document.getElementById("bundle_prefs");
-    let title = prefBundle.getString("removeFromServerTitle");
-    let question = prefBundle.getString("removeFromServer");
+    const prefBundle = document.getElementById("bundle_prefs");
+    const title = prefBundle.getString("removeFromServerTitle");
+    const question = prefBundle.getString("removeFromServer");
     if (!Services.prompt.confirm(window, title, question)) {
       // If the user doesn't agree, fall back to not deleting anything.
       aRadio.value = 1;

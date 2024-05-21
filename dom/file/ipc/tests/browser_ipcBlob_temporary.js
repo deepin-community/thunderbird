@@ -18,12 +18,12 @@ add_task(async function test() {
   let tab2 = await BrowserTestUtils.openNewForegroundTab(gBrowser, BASE_URI);
   let browser2 = gBrowser.getBrowserForTab(tab2);
 
-  await SpecialPowers.spawn(browser2, [], function() {
+  await SpecialPowers.spawn(browser2, [], function () {
     content.window.testPromise = new content.window.Promise(resolve => {
       let bc = new content.window.BroadcastChannel("foobar");
       bc.onmessage = e => {
         function realTest() {
-          return new content.window.Promise(resolve => {
+          return new content.window.Promise(innerResolve => {
             let count = 10;
             for (let i = 0; i < count; ++i) {
               info("FileReader at the same time: " + i);
@@ -36,7 +36,7 @@ add_task(async function test() {
               fr.onloadend = () => {
                 is(fr.result.length, e.data.size, "FileReader worked fine.");
                 if (!--count) {
-                  resolve(true);
+                  innerResolve(true);
                 }
               };
             }
@@ -55,7 +55,7 @@ add_task(async function test() {
     });
   });
 
-  let status = await SpecialPowers.spawn(browser1, [], function() {
+  let status = await SpecialPowers.spawn(browser1, [], function () {
     let p = new content.window.Promise(resolve => {
       let xhr = new content.window.XMLHttpRequest();
       xhr.open("GET", "temporary.sjs", true);
@@ -104,7 +104,7 @@ add_task(async function test() {
 
   ok(status, "All good for tab1!");
 
-  status = await SpecialPowers.spawn(browser2, [], function() {
+  status = await SpecialPowers.spawn(browser2, [], function () {
     return content.window.testPromise;
   });
 

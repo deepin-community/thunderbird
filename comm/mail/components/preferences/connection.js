@@ -6,7 +6,9 @@
 /* import-globals-from ../../../../toolkit/content/preferencesBindings.js */
 /* import-globals-from ./extensionControlled.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+window.addEventListener("load", event => {
+  gConnectionsDialog.checkForSystemProxy();
+});
 
 Preferences.addAll([
   // Add network.proxy.autoconfig_url before network.proxy.type so they're
@@ -101,7 +103,7 @@ window.addEventListener(
       gConnectionsDialog.initDnsOverHttpsUI();
     });
 
-    let element = document.getElementById("networkDnsOverHttps");
+    const element = document.getElementById("networkDnsOverHttps");
     Preferences.addSyncFromPrefListener(element, () =>
       gConnectionsDialog.readDnsOverHttpsMode()
     );
@@ -113,13 +115,8 @@ window.addEventListener(
     );
 
     document
-      .getElementById("disableProxyExtension")
-      .addEventListener(
-        "command",
-        makeDisableControllingExtension(PREF_SETTING_TYPE, PROXY_KEY).bind(
-          gConnectionsDialog
-        )
-      );
+      .getElementById("proxyExtensionDisable")
+      .addEventListener("click", disableControllingProxyExtension);
     gConnectionsDialog.updateProxySettingsUI();
     initializeProxyUI(gConnectionsDialog);
   },
@@ -128,11 +125,11 @@ window.addEventListener(
 
 var gConnectionsDialog = {
   beforeAccept(event) {
-    let dnsOverHttpsResolverChoice = document.getElementById(
+    const dnsOverHttpsResolverChoice = document.getElementById(
       "networkDnsOverHttpsResolverChoices"
     ).value;
     if (dnsOverHttpsResolverChoice == "custom") {
-      let customValue = document
+      const customValue = document
         .getElementById("networkCustomDnsOverHttpsInput")
         .value.trim();
       if (customValue) {
@@ -164,11 +161,11 @@ var gConnectionsDialog = {
     );
 
     // If the port is 0 and the proxy server is specified, focus on the port and cancel submission.
-    for (let prefName of ["http", "ssl", "socks"]) {
-      let proxyPortPref = Preferences.get(
+    for (const prefName of ["http", "ssl", "socks"]) {
+      const proxyPortPref = Preferences.get(
         "network.proxy." + prefName + "_port"
       );
-      let proxyPref = Preferences.get("network.proxy." + prefName);
+      const proxyPref = Preferences.get("network.proxy." + prefName);
       // Only worry about ports which are currently active. If the share option is on, then ignore
       // all ports except the HTTP and SOCKS port
       if (
@@ -186,26 +183,15 @@ var gConnectionsDialog = {
 
     // In the case of a shared proxy preference, backup the current values and update with the HTTP value
     if (shareProxiesPref.value) {
-      var proxyPrefs = ["ssl"];
-      for (var i = 0; i < proxyPrefs.length; ++i) {
-        var proxyServerURLPref = Preferences.get(
-          "network.proxy." + proxyPrefs[i]
-        );
-        var proxyPortPref = Preferences.get(
-          "network.proxy." + proxyPrefs[i] + "_port"
-        );
-        var backupServerURLPref = Preferences.get(
-          "network.proxy.backup." + proxyPrefs[i]
-        );
-        var backupPortPref = Preferences.get(
-          "network.proxy.backup." + proxyPrefs[i] + "_port"
-        );
-        backupServerURLPref.value =
-          backupServerURLPref.value || proxyServerURLPref.value;
-        backupPortPref.value = backupPortPref.value || proxyPortPref.value;
-        proxyServerURLPref.value = httpProxyURLPref.value;
-        proxyPortPref.value = httpProxyPortPref.value;
-      }
+      var proxyServerURLPref = Preferences.get("network.proxy.ssl");
+      var proxyPortPref = Preferences.get("network.proxy.ssl_port");
+      var backupServerURLPref = Preferences.get("network.proxy.backup.ssl");
+      var backupPortPref = Preferences.get("network.proxy.backup.ssl_port");
+      backupServerURLPref.value =
+        backupServerURLPref.value || proxyServerURLPref.value;
+      backupPortPref.value = backupPortPref.value || proxyPortPref.value;
+      proxyServerURLPref.value = httpProxyURLPref.value;
+      proxyPortPref.value = httpProxyPortPref.value;
     }
 
     this.sanitizeNoProxiesPref();
@@ -243,12 +229,11 @@ var gConnectionsDialog = {
 
     this.updateReloadButton();
 
-    document.getElementById(
-      "networkProxyNoneLocalhost"
-    ).hidden = Services.prefs.getBoolPref(
-      "network.proxy.allow_hijacking_localhost",
-      false
-    );
+    document.getElementById("networkProxyNoneLocalhost").hidden =
+      Services.prefs.getBoolPref(
+        "network.proxy.allow_hijacking_localhost",
+        false
+      );
   },
 
   updateDNSPref() {
@@ -322,7 +307,7 @@ var gConnectionsDialog = {
 
       proxyServerURLPref.updateElements();
       proxyPortPref.updateElements();
-      let prefIsShared = proxyPrefs[i] != "socks" && shareProxiesPref.value;
+      const prefIsShared = proxyPrefs[i] != "socks" && shareProxiesPref.value;
       proxyServerURLPref.updateControlDisabledState(
         proxyTypePref.value != 1 || prefIsShared
       );
@@ -406,7 +391,7 @@ var gConnectionsDialog = {
   },
 
   getProxyControls() {
-    let controlGroup = document.getElementById("networkProxyType");
+    const controlGroup = document.getElementById("networkProxyType");
     return [
       ...controlGroup.querySelectorAll(":scope > radio"),
       ...controlGroup.querySelectorAll("label"),
@@ -420,12 +405,12 @@ var gConnectionsDialog = {
   // Update the UI to show/hide the extension controlled message for
   // proxy settings.
   async updateProxySettingsUI() {
-    let isLocked = API_PROXY_PREFS.some(pref =>
+    const isLocked = API_PROXY_PREFS.some(pref =>
       Services.prefs.prefIsLocked(pref)
     );
 
     function setInputsDisabledState(isControlled) {
-      for (let element of gConnectionsDialog.getProxyControls()) {
+      for (const element of gConnectionsDialog.getProxyControls()) {
         element.disabled = isControlled;
       }
       gConnectionsDialog.proxyTypeChanged();
@@ -433,35 +418,33 @@ var gConnectionsDialog = {
 
     if (isLocked) {
       // An extension can't control this setting if any pref is locked.
-      hideControllingExtension(PROXY_KEY);
+      hideControllingProxyExtension();
     } else {
-      handleControllingExtension(PREF_SETTING_TYPE, PROXY_KEY).then(
-        setInputsDisabledState
-      );
+      handleControllingProxyExtension().then(setInputsDisabledState);
     }
   },
 
   get dnsOverHttpsResolvers() {
-    let rawValue = Preferences.get("network.trr.resolvers", "").value;
+    const rawValue = Preferences.get("network.trr.resolvers", "").value;
     // if there's no default, we'll hold its position with an empty string
-    let defaultURI = Preferences.get("network.trr.uri", "").defaultValue;
+    const defaultURI = Preferences.get("network.trr.uri", "").defaultValue;
     let providers = [];
     if (rawValue) {
       try {
         providers = JSON.parse(rawValue);
       } catch (ex) {
-        Cu.reportError(
+        console.error(
           `Bad JSON data in pref network.trr.resolvers: ${rawValue}`
         );
       }
     }
     if (!Array.isArray(providers)) {
-      Cu.reportError(
+      console.error(
         `Expected a JSON array in network.trr.resolvers: ${rawValue}`
       );
       providers = [];
     }
-    let defaultIndex = providers.findIndex(p => p.url == defaultURI);
+    const defaultIndex = providers.findIndex(p => p.url == defaultURI);
     if (defaultIndex == -1 && defaultURI) {
       // the default value for the pref isn't included in the resolvers list
       // so we'll make a stub for it. Without an id, we'll have to use the url as the label
@@ -476,15 +459,15 @@ var gConnectionsDialog = {
 
   isDnsOverHttpsEnabled() {
     // values outside 1:4 are considered falsey/disabled in this context
-    let trrPref = Preferences.get("network.trr.mode");
-    let enabled = trrPref.value > 0 && trrPref.value < 5;
+    const trrPref = Preferences.get("network.trr.mode");
+    const enabled = trrPref.value > 0 && trrPref.value < 5;
     return enabled;
   },
 
   readDnsOverHttpsMode() {
     // called to update checked element property to reflect current pref value
-    let enabled = this.isDnsOverHttpsEnabled();
-    let uriPref = Preferences.get("network.trr.uri");
+    const enabled = this.isDnsOverHttpsEnabled();
+    const uriPref = Preferences.get("network.trr.uri");
     uriPref.updateControlDisabledState(!enabled || this.isDnsOverHttpsLocked());
     // this is the first signal we get when the prefs are available, so
     // lazy-init if appropriate
@@ -499,7 +482,7 @@ var gConnectionsDialog = {
 
   writeDnsOverHttpsMode() {
     // called to update pref with user change
-    let trrModeCheckbox = document.getElementById("networkDnsOverHttps");
+    const trrModeCheckbox = document.getElementById("networkDnsOverHttps");
     // we treat checked/enabled as mode 2
     return trrModeCheckbox.checked ? 2 : 0;
   },
@@ -509,14 +492,14 @@ var gConnectionsDialog = {
     if (!this._areTrrPrefsReady) {
       return;
     }
-    let [menu, customInput] = this.getDnsOverHttpsControls();
-    let customContainer = document.getElementById(
+    const [menu, customInput] = this.getDnsOverHttpsControls();
+    const customContainer = document.getElementById(
       "customDnsOverHttpsContainer"
     );
-    let customURI = Preferences.get("network.trr.custom_uri").value;
-    let currentURI = Preferences.get("network.trr.uri").value;
-    let resolvers = this.dnsOverHttpsResolvers;
-    let isCustom = menu.value == "custom";
+    const customURI = Preferences.get("network.trr.custom_uri").value;
+    const currentURI = Preferences.get("network.trr.uri").value;
+    const resolvers = this.dnsOverHttpsResolvers;
+    const isCustom = menu.value == "custom";
 
     if (this.isDnsOverHttpsEnabled()) {
       this.toggleDnsOverHttpsUI(false);
@@ -544,8 +527,8 @@ var gConnectionsDialog = {
 
     // The height has likely changed, find our SubDialog and tell it to resize.
     requestAnimationFrame(() => {
-      let dialogs = window.opener.gSubDialog._dialogs;
-      let dialog = dialogs.find(d => d._frame.contentDocument == document);
+      const dialogs = window.opener.gSubDialog._dialogs;
+      const dialog = dialogs.find(d => d._frame.contentDocument == document);
       if (dialog) {
         dialog.resizeVertically();
       }
@@ -562,21 +545,21 @@ var gConnectionsDialog = {
   },
 
   toggleDnsOverHttpsUI(disabled) {
-    for (let element of this.getDnsOverHttpsControls()) {
+    for (const element of this.getDnsOverHttpsControls()) {
       element.disabled = disabled;
     }
   },
 
   initDnsOverHttpsUI() {
-    let resolvers = this.dnsOverHttpsResolvers;
-    let defaultURI = Preferences.get("network.trr.uri").defaultValue;
-    let currentURI = Preferences.get("network.trr.uri").value;
-    let menu = document.getElementById("networkDnsOverHttpsResolverChoices");
+    const resolvers = this.dnsOverHttpsResolvers;
+    const defaultURI = Preferences.get("network.trr.uri").defaultValue;
+    const currentURI = Preferences.get("network.trr.uri").value;
+    const menu = document.getElementById("networkDnsOverHttpsResolverChoices");
 
     // populate the DNS-Over-HTTPs resolver list
     menu.removeAllItems();
-    for (let resolver of resolvers) {
-      let item = menu.appendItem(undefined, resolver.url);
+    for (const resolver of resolvers) {
+      const item = menu.appendItem(undefined, resolver.url);
       if (resolver.url == defaultURI) {
         document.l10n.setAttributes(
           item,
@@ -589,7 +572,7 @@ var gConnectionsDialog = {
         item.label = resolver.name || resolver.url;
       }
     }
-    let lastItem = menu.appendItem(undefined, "custom");
+    const lastItem = menu.appendItem(undefined, "custom");
     document.l10n.setAttributes(
       lastItem,
       "connection-dns-over-https-url-custom"

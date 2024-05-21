@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals openAccountProvisioner */
+/* globals openAccountSetupTabWithAccount, openAccountProvisionerTab */
 
 /**
  * This object takes care of intercepting page loads and creating the
@@ -10,11 +10,12 @@
  * one of our account providers.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
+var { NetUtil } = ChromeUtils.importESModule(
+  "resource://gre/modules/NetUtil.sys.mjs"
+);
 var { JXON } = ChromeUtils.import("resource:///modules/JXON.jsm");
 
 /**
@@ -47,14 +48,14 @@ httpRequestObserver.prototype = {
     }
 
     if (!(aSubject instanceof Ci.nsIHttpChannel)) {
-      Cu.reportError(
+      console.error(
         "Failed to get a nsIHttpChannel when " +
           "observing http-on-examine-response"
       );
       return;
     }
     // Helper function to get header values.
-    let getHttpHeader = (httpChannel, header) => {
+    const getHttpHeader = (httpChannel, header) => {
       // getResponseHeader throws when header is not set.
       try {
         return httpChannel.getResponseHeader(header);
@@ -63,23 +64,23 @@ httpRequestObserver.prototype = {
       }
     };
 
-    let contentType = getHttpHeader(aSubject, "Content-Type");
+    const contentType = getHttpHeader(aSubject, "Content-Type");
     if (!contentType || !contentType.toLowerCase().startsWith("text/xml")) {
       return;
     }
 
     // It's possible the account information changed during the setup at the
     // provider. Check some headers and set them if needed.
-    let name = getHttpHeader(aSubject, "x-thunderbird-account-name");
+    const name = getHttpHeader(aSubject, "x-thunderbird-account-name");
     if (name) {
       this.params.realName = name;
     }
-    let email = getHttpHeader(aSubject, "x-thunderbird-account-email");
+    const email = getHttpHeader(aSubject, "x-thunderbird-account-email");
     if (email) {
       this.params.email = email;
     }
 
-    let requestWindow = this._getWindowForRequest(aSubject);
+    const requestWindow = this._getWindowForRequest(aSubject);
     if (!requestWindow || requestWindow !== this.browser.innerWindowID) {
       return;
     }
@@ -87,7 +88,7 @@ httpRequestObserver.prototype = {
     // Ok, we've got a request that looks like a decent candidate.
     // Let's attach our TracingListener.
     if (aSubject instanceof Ci.nsITraceableChannel) {
-      let newListener = new TracingListener(this.browser, this.params);
+      const newListener = new TracingListener(this.browser, this.params);
       newListener.oldListener = aSubject.setNewListener(newListener);
     }
   },
@@ -116,7 +117,7 @@ httpRequestObserver.prototype = {
         ).currentWindowContext.innerWindowId;
       }
     } catch (e) {
-      Cu.reportError(
+      console.error(
         "Could not find an associated window " +
           "for an HTTP request. Error: " +
           e
@@ -153,33 +154,30 @@ TracingListener.prototype = {
     this.oldListener.onStartRequest(aRequest);
   },
 
-  onStopRequest(/* nsIRequest */ aRequest, /* int */ aStatusCode) {
-    const { CreateInBackend } = ChromeUtils.import(
-      "resource:///modules/accountcreation/CreateInBackend.jsm"
+  async onStopRequest(/* nsIRequest */ aRequest, /* int */ aStatusCode) {
+    const { CreateInBackend } = ChromeUtils.importESModule(
+      "resource:///modules/accountcreation/CreateInBackend.sys.mjs"
     );
-    const { readFromXML } = ChromeUtils.import(
-      "resource:///modules/accountcreation/readFromXML.jsm"
+    const { readFromXML } = ChromeUtils.importESModule(
+      "resource:///modules/accountcreation/readFromXML.sys.mjs"
     );
-    const { AccountConfig } = ChromeUtils.import(
-      "resource:///modules/accountcreation/AccountConfig.jsm"
+    const { AccountConfig } = ChromeUtils.importESModule(
+      "resource:///modules/accountcreation/AccountConfig.sys.mjs"
     );
 
-    let tabmail = document.getElementById("tabmail");
-    let success = false;
-    let account;
-
+    let newAccount;
     try {
       // Construct the downloaded data (we'll assume UTF-8 bytes) into XML.
       let xml = this.chunks.join("");
-      let bytes = new Uint8Array(xml.length);
+      const bytes = new Uint8Array(xml.length);
       for (let i = 0; i < xml.length; i++) {
         bytes[i] = xml.charCodeAt(i);
       }
       xml = new TextDecoder().decode(bytes);
 
-      // Attempt to derive email account information
-      let domParser = new DOMParser();
-      let accountConfig = readFromXML(
+      // Attempt to derive email account information.
+      const domParser = new DOMParser();
+      const accountConfig = readFromXML(
         JXON.build(domParser.parseFromString(xml, "text/xml"))
       );
       AccountConfig.replaceVariables(
@@ -187,31 +185,53 @@ TracingListener.prototype = {
         this.params.realName,
         this.params.email
       );
-      account = CreateInBackend.createAccountInBackend(accountConfig);
-      success = true;
+
+      const host = aRequest.getRequestHeader("Host");
+      const providerHostname = new URL("http://" + host).hostname;
+      // Collect telemetry on which provider the new address was purchased from.
+      Services.telemetry.keyedScalarAdd(
+        "tb.account.new_account_from_provisioner",
+        providerHostname,
+        1
+      );
+
+      // Create the new account in the back end.
+      newAccount = await CreateInBackend.createAccountInBackend(accountConfig);
+
+      const tabmail = document.getElementById("tabmail");
+      // Find the tab associated with this browser, and close it.
+      const myTabInfo = tabmail.tabInfo.filter(
+        function (x) {
+          return "browser" in x && x.browser == this.browser;
+        }.bind(this)
+      )[0];
+      tabmail.closeTab(myTabInfo);
+
+      // Trigger the first login to download the folder structure and messages.
+      newAccount.incomingServer.getNewMessages(
+        newAccount.incomingServer.rootFolder,
+        this._msgWindow,
+        null
+      );
     } catch (e) {
       // Something went wrong with account set up. Dump the error out to the
-      // error console. The tab will be closed, and the Account Provisioner
-      // tab will be reopened.
-      Cu.reportError("Problem interpreting provider XML:" + e);
+      // error console, reopen the account provisioner tab, and show an error
+      // dialog to the user.
+      console.error("Problem interpreting provider XML:" + e);
+      openAccountProvisionerTab();
+      Services.prompt.alert(window, null, e);
+
+      this.oldListener.onStopRequest(aRequest, aStatusCode);
+      return;
     }
 
-    tabmail.switchToTab(0);
-
-    // Find the tab associated with this browser, and close it.
-    let myTabInfo = tabmail.tabInfo.filter(
-      function(x) {
-        return "browser" in x && x.browser == this.browser;
-      }.bind(this)
-    )[0];
-    tabmail.closeTab(myTabInfo);
-
-    // Respawn the account provisioner to announce our success.
-    openAccountProvisioner({
-      success,
-      search_engine: this.params.searchEngine,
-      account,
-    });
+    // Open the account setup tab and show the success view or an error if we
+    // weren't able to create the new account.
+    openAccountSetupTabWithAccount(
+      newAccount,
+      this.params.realName,
+      this.params.email
+    );
 
     this.oldListener.onStopRequest(aRequest, aStatusCode);
   },
@@ -226,13 +246,13 @@ TracingListener.prototype = {
     // to make sure it gets passed to the original listener. We do this
     // by passing the input stream through an nsIStorageStream, writing
     // the data to that stream, and passing it along to the next listener.
-    let binaryInputStream = Cc[
+    const binaryInputStream = Cc[
       "@mozilla.org/binaryinputstream;1"
     ].createInstance(Ci.nsIBinaryInputStream);
-    let storageStream = Cc["@mozilla.org/storagestream;1"].createInstance(
+    const storageStream = Cc["@mozilla.org/storagestream;1"].createInstance(
       Ci.nsIStorageStream
     );
-    let outStream = Cc["@mozilla.org/binaryoutputstream;1"].createInstance(
+    const outStream = Cc["@mozilla.org/binaryoutputstream;1"].createInstance(
       Ci.nsIBinaryOutputStream
     );
 
@@ -244,7 +264,7 @@ TracingListener.prototype = {
     storageStream.init(8192, aCount, null);
     outStream.setOutputStream(storageStream.getOutputStream(0));
 
-    let data = binaryInputStream.readBytes(aCount);
+    const data = binaryInputStream.readBytes(aCount);
     this.chunks.push(data);
 
     outStream.writeBytes(data, aCount);

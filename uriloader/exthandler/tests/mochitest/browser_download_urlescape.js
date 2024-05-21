@@ -9,7 +9,7 @@ const TEST_PATH = getRootDirectory(gTestPath).replace(
 );
 
 var MockFilePicker = SpecialPowers.MockFilePicker;
-MockFilePicker.init(window);
+MockFilePicker.init(window.browsingContext);
 registerCleanupFunction(() => MockFilePicker.cleanup());
 
 /**
@@ -20,7 +20,7 @@ add_task(async function test_check_filename_urlescape() {
   let pendingPromise;
   let pendingTest = "";
   let expectedFileName = "";
-  MockFilePicker.showCallback = function(fp) {
+  MockFilePicker.showCallback = function (fp) {
     info(`${pendingTest} - Filepicker shown, checking filename`);
     is(
       fp.defaultString,
@@ -46,14 +46,14 @@ add_task(async function test_check_filename_urlescape() {
       );
 
       pendingTest = "save browser";
-      pendingPromise = PromiseUtils.defer();
+      pendingPromise = Promise.withResolvers();
       // First try to save the browser
       saveBrowser(browser);
       await pendingPromise.promise;
 
       // Next, try the context menu:
       pendingTest = "save from context menu";
-      pendingPromise = PromiseUtils.defer();
+      pendingPromise = Promise.withResolvers();
       let menu = document.getElementById("contentAreaContextMenu");
       let menuShown = BrowserTestUtils.waitForEvent(menu, "popupshown");
       BrowserTestUtils.synthesizeMouse(

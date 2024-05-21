@@ -5,8 +5,6 @@
 
 /* global MozXULElement */
 
-/* import-globals-from ../mailWindow.js */
-
 "use strict";
 
 // The autocomplete CE is defined lazily. Create one now to get
@@ -16,30 +14,42 @@ if (!customElements.get("autocomplete-input")) {
 }
 
 customElements.whenDefined("autocomplete-input").then(() => {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { AppConstants } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppConstants.sys.mjs"
   );
-  const { AppConstants } = ChromeUtils.import(
-    "resource://gre/modules/AppConstants.jsm"
-  );
-
-  const LazyModules = {};
-
+  const lazy = {};
+  ChromeUtils.defineESModuleGetters(lazy, {
+    GlodaIMSearcher: "resource:///modules/GlodaIMSearcher.sys.mjs",
+  });
   ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "GlodaIMSearcher",
-    "resource:///modules/GlodaIMSearcher.jsm"
+    lazy,
+    "Gloda",
+    "resource:///modules/gloda/GlodaPublic.jsm"
   );
   ChromeUtils.defineModuleGetter(
-    LazyModules,
+    lazy,
     "GlodaMsgSearcher",
     "resource:///modules/gloda/GlodaMsgSearcher.jsm"
+  );
+  ChromeUtils.defineModuleGetter(
+    lazy,
+    "GlodaConstants",
+    "resource:///modules/gloda/GlodaConstants.jsm"
+  );
+
+  ChromeUtils.defineLazyGetter(
+    lazy,
+    "glodaCompleter",
+    () =>
+      Cc["@mozilla.org/autocomplete/search;1?name=gloda"].getService(
+        Ci.nsIAutoCompleteSearch
+      ).wrappedJSObject
   );
 
   /**
    * The MozGlodaAutocompleteInput widget is used to display the autocomplete search bar.
    *
-   * @extends {AutocompleteInput}
+   * @augments {AutocompleteInput}
    */
   class MozGlodaAutocompleteInput extends customElements.get(
     "autocomplete-input"
@@ -84,14 +94,13 @@ customElements.whenDefined("autocomplete-input").then(() => {
       super.connectedCallback();
 
       this.setAttribute("is", "gloda-autocomplete-input");
-      this.glodaCompleter = null;
 
       // @implements {nsIObserver}
       this.searchInputDNDObserver = {
         onDrop: event => {
           if (event.dataTransfer.types.includes("text/x-moz-address")) {
             this.focus();
-            this.value = event.dataTransfer.getData("text/unicode");
+            this.value = event.dataTransfer.getData("text/plain");
             // XXX for some reason the input field is _cleared_ even though
             // the search works.
             this.doSearch();
@@ -113,13 +122,13 @@ customElements.whenDefined("autocomplete-input").then(() => {
             topic == "autocomplete-did-enter-text" &&
             document.activeElement == this
           ) {
-            let selectedIndex = this.popup.selectedIndex;
-            let curResult = this.glodaCompleter.curResult;
+            const selectedIndex = this.popup.selectedIndex;
+            const curResult = lazy.glodaCompleter.curResult;
             if (!curResult) {
               // autocomplete didn't even finish.
               return;
             }
-            let row = curResult.getObjectAt(selectedIndex);
+            const row = curResult.getObjectAt(selectedIndex);
             if (row == null) {
               return;
             }
@@ -136,7 +145,9 @@ customElements.whenDefined("autocomplete-input").then(() => {
               // the event loop by using setTimeout.
               setTimeout(this.doSearch.bind(this), 0);
             } else if (row.nounDef) {
-              let theQuery = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+              let theQuery = lazy.Gloda.newQuery(
+                lazy.GlodaConstants.NOUN_MESSAGE
+              );
               if (row.nounDef.name == "tag") {
                 theQuery = theQuery.tags(row.item);
               } else if (row.nounDef.name == "identity") {
@@ -151,18 +162,15 @@ customElements.whenDefined("autocomplete-input").then(() => {
         },
       };
 
-      let keyLabel =
+      const keyLabel =
         AppConstants.platform == "macosx" ? "keyLabelMac" : "keyLabelNonMac";
-      let placeholder = this.getAttribute("emptytextbase").replace(
+      const placeholder = this.getAttribute("emptytextbase").replace(
         "#1",
         this.getAttribute(keyLabel)
       );
 
       this.setAttribute("placeholder", placeholder);
 
-      this.glodaCompleter = Cc[
-        "@mozilla.org/autocomplete/search;1?name=gloda"
-      ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
       Services.obs.addObserver(
         this.textObserver,
         "autocomplete-did-enter-text"
@@ -184,12 +192,12 @@ customElements.whenDefined("autocomplete-input").then(() => {
 
     doSearch() {
       if (this.value) {
-        let tabmail = document.getElementById("tabmail");
+        const tabmail = document.getElementById("tabmail");
         // If the current tab is a gloda search tab, reset the value
         // to the initial search value. Otherwise, clear it. This
         // is the value that is going to be saved with the current
         // tab when we switch back to it next.
-        let searchString = this.value;
+        const searchString = this.value;
 
         if (tabmail.currentTabInfo.mode.name == "glodaFacet") {
           // We'd rather reuse the existing tab (and somehow do something
@@ -199,11 +207,11 @@ customElements.whenDefined("autocomplete-input").then(() => {
           tabmail.closeTab();
         }
         this.value = ""; // clear our value, to avoid persistence
-        let args = {
-          searcher: new LazyModules.GlodaMsgSearcher(null, searchString),
+        const args = {
+          searcher: new lazy.GlodaMsgSearcher(null, searchString),
         };
         if (Services.prefs.getBoolPref("mail.chat.enabled")) {
-          args.IMSearcher = new LazyModules.GlodaIMSearcher(null, searchString);
+          args.IMSearcher = new lazy.GlodaIMSearcher(null, searchString);
         }
         tabmail.openTab("glodaFacet", args);
       }

@@ -9,13 +9,6 @@ DIRS += [
 ]
 
 EXTRA_JS_MODULES += [
-    "CustomizableUI.jsm",
-    "CustomizableWidgets.jsm",
-    "CustomizeMode.jsm",
-    "DragPositionManager.jsm",
-    "PanelMultiView.jsm",
-    "SearchWidgetTracker.jsm",
+    "CustomizableUI.sys.mjs",
+    "PanelMultiView.sys.mjs",
 ]
-
-with Files("**"):
-    BUG_COMPONENT = ("Firefox", "Toolbars and Customization")

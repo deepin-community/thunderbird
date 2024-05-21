@@ -1,3 +1,5 @@
+/* eslint-disable mozilla/no-comparison-or-assignment-inside-ok */
+
 importScripts("common_blob_reading.js");
 
 function info(message) {
@@ -12,7 +14,7 @@ function is(a, b, message) {
   ok(a === b, message);
 }
 
-onmessage = function(e) {
+onmessage = function (e) {
   self[e.data.func](e.data.blob, e.data.content).then(
     () => {
       postMessage({ type: "done" });

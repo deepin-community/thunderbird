@@ -9,16 +9,34 @@
 
 #include "nsTArray.h"
 
-namespace mozilla {
-namespace dom {
+class nsINode;
+template <typename T>
+class RefPtr;
 
-// A sorted tree-ordered list of raw pointers to nodes.
-template <typename Node>
+namespace mozilla::dom {
+
+// A sorted tree-ordered list of pointers (either raw or RefPtr) to nodes.
+template <typename NodePointer>
 class TreeOrderedArray {
- public:
-  operator const nsTArray<Node*>&() const { return mList; }
+  template <typename T>
+  struct RawTypeExtractor {};
 
-  const nsTArray<Node*>* operator->() const { return &mList; }
+  template <typename T>
+  struct RawTypeExtractor<T*> {
+    using type = T;
+  };
+
+  template <typename T>
+  struct RawTypeExtractor<RefPtr<T>> {
+    using type = T;
+  };
+
+  using Node = typename RawTypeExtractor<NodePointer>::type;
+
+ public:
+  operator const nsTArray<NodePointer>&() const { return mList; }
+  const nsTArray<NodePointer>& AsList() const { return mList; }
+  const nsTArray<NodePointer>* operator->() const { return &mList; }
 
   // Inserts a node into the list, and returns the new index in the array.
   //
@@ -27,17 +45,20 @@ class TreeOrderedArray {
   //
   // It's also forbidden to call Insert() with the same node multiple times, and
   // it will assert as well.
-  inline size_t Insert(Node&);
+  //
+  // You can provide a potential common ancestor to speed up comparisons, see
+  // nsContentUtils::CompareTreePosition. That's only a hint.
+  inline size_t Insert(Node&, nsINode* aCommonAncestor = nullptr);
 
   bool RemoveElement(Node& aNode) { return mList.RemoveElement(&aNode); }
+  void RemoveElementAt(size_t aIndex) { mList.RemoveElementAt(aIndex); }
 
   void Clear() { mList.Clear(); }
 
  private:
-  AutoTArray<Node*, 1> mList;
+  AutoTArray<NodePointer, 1> mList;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif

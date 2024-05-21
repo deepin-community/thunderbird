@@ -7,32 +7,28 @@
  * processed correctly by mime.
  */
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { OpenPGPTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
 );
-const { OpenPGPTestUtils } = ChromeUtils.import(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
+const { EnigmailSingletons } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/singletons.sys.mjs"
 );
-const { EnigmailSingletons } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/singletons.jsm"
+const { EnigmailVerify } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/mimeVerify.sys.mjs"
 );
-const { EnigmailVerify } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/mimeVerify.jsm"
+const { EnigmailConstants } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/constants.sys.mjs"
 );
-const { EnigmailConstants } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/constants.jsm"
-);
-const { EnigmailDecryption } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/decryption.jsm"
+const { EnigmailDecryption } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/decryption.sys.mjs"
 );
 
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/asyncTestUtils.js");
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
 
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/messageInjection.js");
-
-let gInbox;
+var messageInjection = new MessageInjection({ mode: "local" });
+const gInbox = messageInjection.getInboxFolder();
 
 const keyDir = "../../../../mail/test/browser/openpgp/data/keys/";
 const browserEMLDir = "../../../../mail/test/browser/openpgp/data/eml/";
@@ -40,12 +36,13 @@ const browserEMLDir = "../../../../mail/test/browser/openpgp/data/eml/";
 const contents = "Sundays are nothing without callaloo.";
 
 /**
- * This implements some of the methods of Enigmail.hdrView.headerPane so we can
+ * This implements some of the methods of openpgpSink so we can
  * intercept and record the calls to updateSecurityStatus().
+ * @implements {nsIMsgOpenPGPSink}
  */
-const headerSink = {
+const openpgpSink = {
   expectResults(maxLen) {
-    this._deferred = PromiseUtils.defer();
+    this._deferred = Promise.withResolvers();
     this.expectedCount = maxLen;
     this.countReceived = 0;
     this.results = [];
@@ -64,9 +61,7 @@ const headerSink = {
   hasUnauthenticatedParts() {
     return false;
   },
-  processDecryptionResult() {},
   updateSecurityStatus(
-    unusedUriSpec,
     exitCode,
     statusFlags,
     extStatusFlags,
@@ -121,6 +116,7 @@ const headerSink = {
 
 /**
  * All the tests we are going to run.
+ *
  * @type Test[]
  */
 const tests = [
@@ -268,7 +264,7 @@ const tests = [
  * Initialize OpenPGP, import Alice and Bob's keys, then install the messages
  * we are going to test.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   await OpenPGPTestUtils.initOpenPGP();
 
   await OpenPGPTestUtils.importPrivateKey(
@@ -281,11 +277,7 @@ add_task(async function setUp() {
     do_get_file(`${keyDir}bob@openpgp.example-0xfbfcc82a015e7330-pub.asc`)
   );
 
-  gInbox = configure_message_injection({
-    mode: "local",
-  });
-
-  for (let test of tests) {
+  for (const test of tests) {
     let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
 
     MailServices.copy.copyFileMessage(
@@ -311,7 +303,7 @@ add_task(async function setUp() {
  */
 add_task(async function testMimeDecryptOpenPGPMessages() {
   let hdrIndex = 0;
-  for (let test of tests) {
+  for (const test of tests) {
     if (test.skip) {
       info(`Skipped test: ${test.description}`);
       continue;
@@ -319,36 +311,22 @@ add_task(async function testMimeDecryptOpenPGPMessages() {
 
     info(`Running test: ${test.description}`);
 
-    let testPrefix = `${test.filename}:`;
-    let expectedResultCount =
+    const testPrefix = `${test.filename}:`;
+    const expectedResultCount =
       test.resultCount || (test.enc && test.sig) ? 2 : 1;
-    let hdr = mailTestUtils.getMsgHdrN(gInbox, hdrIndex);
-    let uri = hdr.folder.getUriForMsg(hdr);
-    let sinkPromise = headerSink.expectResults(expectedResultCount);
-
-    let msgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
-      Ci.nsIMsgWindow
-    );
-
-    // Set the message window so displayStatus() invokes the hooks we are
-    // interested in.
-    EnigmailVerify.lastMsgWindow = msgWindow;
+    const hdr = mailTestUtils.getMsgHdrN(gInbox, hdrIndex);
+    const uri = hdr.folder.getUriForMsg(hdr);
+    const sinkPromise = openpgpSink.expectResults(expectedResultCount);
 
     // Stub this function so verifyDetached() can get the correct email.
     EnigmailDecryption.getFromAddr = () => test.from;
 
     // Trigger the actual mime work.
-    let conversion = apply_mime_conversion(
-      uri,
-      {
-        securityInfo: headerSink,
-      },
-      msgWindow
-    );
+    const conversion = apply_mime_conversion(uri, null, openpgpSink);
 
     await conversion.promise;
 
-    let msgBody = conversion._data;
+    const msgBody = conversion._data;
 
     if (!test.sig || test.flags.indexOf("GOOD_SIGNATURE")) {
       Assert.ok(
@@ -365,7 +343,7 @@ add_task(async function testMimeDecryptOpenPGPMessages() {
     await sinkPromise;
 
     let idx = 0;
-    let { results } = headerSink;
+    const { results } = openpgpSink;
 
     Assert.equal(
       results.length,
@@ -406,8 +384,8 @@ add_task(async function testMimeDecryptOpenPGPMessages() {
     // test in one place.
     if (test.flags) {
       for (let flag of test.flags) {
-        let flags = results.reduce((prev, curr) => prev | curr.status, 0);
-        let negative = flag[0] === "-";
+        const flags = results.reduce((prev, curr) => prev | curr.status, 0);
+        const negative = flag[0] === "-";
         flag = negative ? flag.slice(1) : flag;
 
         if (negative) {

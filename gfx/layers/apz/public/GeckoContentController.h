@@ -26,6 +26,7 @@ class Runnable;
 
 namespace layers {
 
+struct DoubleTapToZoomMetrics;
 struct RepaintRequest;
 
 class GeckoContentController {
@@ -58,9 +59,10 @@ class GeckoContentController {
    * current scroll offset.
    */
   MOZ_CAN_RUN_SCRIPT
-  virtual void HandleTap(TapType aType, const LayoutDevicePoint& aPoint,
-                         Modifiers aModifiers, const ScrollableLayerGuid& aGuid,
-                         uint64_t aInputBlockId) = 0;
+  virtual void HandleTap(
+      TapType aType, const LayoutDevicePoint& aPoint, Modifiers aModifiers,
+      const ScrollableLayerGuid& aGuid, uint64_t aInputBlockId,
+      const Maybe<DoubleTapToZoomMetrics>& aDoubleTapTooZoomMetrics) = 0;
 
   /**
    * When the apz.allow_zooming pref is set to false, the APZ will not
@@ -113,9 +115,14 @@ class GeckoContentController {
    * |aChange| identifies the type of state change
    * |aArg| is used by some state changes to pass extra information (see
    *        the documentation for each state change above)
+   * |aInputBlockId| is populated for the |eStartTouch| and |eEndTouch|
+   *                 state changes and identifies the input block of the
+   *                 gesture that triggers the state change.
    */
   virtual void NotifyAPZStateChange(const ScrollableLayerGuid& aGuid,
-                                    APZStateChange aChange, int aArg = 0) {}
+                                    APZStateChange aChange, int aArg = 0,
+                                    Maybe<uint64_t> aInputBlockId = Nothing()) {
+  }
 
   /**
    * Notify content of a MozMouseScrollFailed event.
@@ -147,6 +154,9 @@ class GeckoContentController {
 
   virtual void CancelAutoscroll(const ScrollableLayerGuid& aGuid) = 0;
 
+  virtual void NotifyScaleGestureComplete(const ScrollableLayerGuid& aGuid,
+                                          float aScale) = 0;
+
   virtual void UpdateOverscrollVelocity(const ScrollableLayerGuid& aGuid,
                                         float aX, float aY,
                                         bool aIsRootContent) {}
@@ -165,6 +175,8 @@ class GeckoContentController {
    * Whether this is RemoteContentController.
    */
   virtual bool IsRemote() { return false; }
+
+  virtual PresShell* GetTopLevelPresShell() const { return nullptr; };
 
  protected:
   // Protected destructor, to discourage deletion outside of Release():

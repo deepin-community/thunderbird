@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 @import url("chrome://messenger/skin/messenger.css");
+@import url("chrome://messenger/skin/icons.css");
 
 html {
   height: 100%;
@@ -23,10 +24,8 @@ html {
   --btn-bg-hover: #0060df;
   --btn-shadow-hover: rgba(0, 0, 0, 0.3);
   --popup-bg: #EDEDF0;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
+  @media (prefers-color-scheme: dark) {
     --bg-color: #2f2f33;
     --bg-watermark: url("chrome://messenger/skin/images/account-watermark-light.png");
     --header-bg-color: rgba(255, 255, 255, 0.05);
@@ -42,28 +41,59 @@ html {
     --btn-shadow-hover: rgba(0, 0, 0, 0.3);
     --popup-bg: #474749;
   }
+
+  &[lwt-tree-brighttext] {
+    --bg-color: #2f2f33;
+    --bg-watermark: url("chrome://messenger/skin/images/account-watermark-light.png");
+    --header-bg-color: rgba(255, 255, 255, 0.05);
+    --accounts-bg-color: rgba(255, 255, 255, 0.03);
+    --text-color: #f9f9fa;
+    --title-color: #fefefe;
+    --primary-color: #0a84ff;
+    --primary-color-hover: #0a84ff;
+    --btn-color: #FFFFFF;
+    --btn-color-hover: #FFFFFF;
+    --btn-bg: #38383d;
+    --btn-bg-hover: #0060df;
+    --btn-shadow-hover: rgba(0, 0, 0, 0.3);
+    --popup-bg: #474749;
+  }
+
+  @media (prefers-contrast) {
+    &:not(:-moz-lwtheme) {
+      --bg-color: Window;
+      --text-color: WindowText;
+      --title-color: -moz-DialogText;
+      --primary-color: SelectedItem;
+      --primary-color-hover: SelectedItem;
+      --btn-color: -moz-DialogText;
+      --btn-color-hover: SelectedItemText;
+      --btn-bg: Dialog;
+      --btn-bg-hover: SelectedItem;
+      --btn-shadow-hover: transparent;
+      --popup-bg: Window;
+
+      & .btn-hub {
+        border: 1px solid -moz-DialogText;
+      }
+    }
+  }
 }
 
-:root[lwt-tree-brighttext] {
-  --bg-color: #2f2f33;
-  --bg-watermark: url("chrome://messenger/skin/images/account-watermark-light.png");
-  --header-bg-color: rgba(255, 255, 255, 0.05);
-  --accounts-bg-color: rgba(255, 255, 255, 0.03);
-  --text-color: #f9f9fa;
-  --title-color: #fefefe;
-  --primary-color: #0a84ff;
-  --primary-color-hover: #0a84ff;
-  --btn-color: #FFFFFF;
-  --btn-color-hover: #FFFFFF;
-  --btn-bg: #38383d;
-  --btn-bg-hover: #0060df;
-  --btn-shadow-hover: rgba(0, 0, 0, 0.3);
-  --popup-bg: #474749;
+[hidden] {
+  display: none !important; /* Ensure flex items obey hidden="hidden". */
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-outline-color);
 }
 
 body {
+  /* Overwrite rules in messenger.css. */
+  display: block;
+  overflow: auto;
   margin: 0;
-  height: 100%;
+  height: 100vh;
   background-color: var(--body-background-color);
   text-shadow: none;
 }
@@ -76,8 +106,7 @@ body {
   background-position: bottom right;
   background-repeat: no-repeat;
   color: var(--text-color);
-  overflow: auto;
-  height: 100vh;
+  height: 100%;
 }
 
 #brandLogo {
@@ -87,54 +116,60 @@ body {
   flex-shrink: 0;
 }
 
-#accountLogo {
-  -moz-context-properties: fill;
-  fill: currentColor;
-  color: var(--primary-color);
-  width: 18px;
-  height: 18px;
-  margin-inline-end: 10px;
-  flex-shrink: 0;
-  background: url("chrome://messenger/skin/icons/message.svg") center no-repeat;
-  background-size: contain;
-  display: block;
-}
-
-#accountLogo[type="none"] {
-  background-image: url("chrome://messenger/skin/icons/folder.svg");
-}
-
-#accountLogo[type="rss"],
-#setupFeeds::before,
-#rssSubscriptionButton:before,
-#nntpSubscriptionButton:before {
-  background-image: url("chrome://messenger/skin/icons/feeds.svg");
-}
-
-#accountLogo[type="nntp"] {
-  background-image: url("chrome://messenger/skin/icons/reader-mode.svg");
-}
-
 .account-central-header {
   display: flex;
   align-items: center;
   background-color: var(--header-bg-color);
   padding: 20px 30px;
+
+  &.summary-header {
+    padding-block: 16px;
+  }
+
+  & > aside {
+    display: flex;
+    align-items: center;
+    width: 160px;
+    flex: 1 1 auto;
+  }
 }
 
-.account-central-header.summary-header {
-  padding-block: 16px;
+#accountLogo {
+  -moz-context-properties: fill, stroke, stroke-opacity;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
+  color: var(--primary-color);
+  width: 20px;
+  height: 20px;
+  margin-inline-end: 10px;
+  flex-shrink: 0;
+  background: var(--account-central-mail) center no-repeat;
+  background-size: contain;
+  display: block;
+
+  &[type="none"] {
+    background-image: var(--account-central-folder);
+  }
+
+  &[type="rss"] {
+    background-image: var(--account-central-rss);
+  }
+
+  &[type="nntp"] {
+    background-image: var(--account-central-globe);
+    margin-block-start: 3px;
+  }
 }
 
-[hidden] {
-  display: none !important; /* Ensure flex items obey hidden="hidden". */
-}
-
-.account-central-header > aside {
-  display: flex;
-  align-items: center;
-  width: 160px;
-  flex: 1 1 auto;
+#accountName {
+  font-size: 1.2em;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  margin-block: 0;
+  /* Prevents UI jumping when dynamically changing the content. */
+  min-height: 21px;
 }
 
 aside.settings-btn-container {
@@ -150,17 +185,6 @@ aside.settings-btn-container {
   margin-block: 0;
 }
 
-#accountName {
-  font-size: 1.2em;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  margin-block: 0;
-  /* Prevents UI jumping when dynamically changing the content. */
-  min-height: 21px;
-}
-
 .account-central-version {
   display: flex;
   align-items: center;
@@ -168,44 +192,44 @@ aside.settings-btn-container {
   font-size: small;
   margin-top: 10px;
   line-height: 1em;
-}
 
-.account-central-version > label {
-  margin-inline: 0 1px;
+  & > label {
+    margin-inline: 0 1px;
+  }
 }
 
 #releasenotes {
   cursor: pointer;
-}
 
-#releasenotes img {
-  -moz-context-properties: fill, fill-opacity;
-  color: var(--primary-color);
-  fill: currentColor;
-  fill-opacity: 1;
-  width: 16px;
-  height: 16px;
-}
+  & img {
+    color: var(--primary-color);
+    -moz-context-properties: fill, stroke, stroke-opacity;
+    fill: color-mix(in srgb, currentColor 20%, transparent);
+    stroke: currentColor;
+    fill-opacity: 1;
+    width: 16px;
+    height: 16px;
+    margin-inline-start: 3px;
 
-#releasenotes img:hover,
-#releasenotes img:focus {
-  color: var(--primary-color-hover);
+    &:where(:hover, :focus) {
+      color: var(--primary-color-hover);
+    }
+  }
 }
 
 .account-central-section {
   display: flex;
   flex-direction: column;
-  padding-inline: 30px;
-  padding-block: 10px;
+  padding: 10px 30px;
   position: relative;
-}
 
-.account-central-section.setup-section {
-  padding-block-end: 30px;
-}
+  &.setup-section {
+    padding-block-end: 30px;
+  }
 
-.account-central-section.zebra {
-  background-color: var(--accounts-bg-color);
+  &.zebra {
+    background-color: var(--accounts-bg-color);
+  }
 }
 
 #accountFeaturesSection {
@@ -225,20 +249,19 @@ aside.settings-btn-container {
   margin-inline: -10px;
   display: flex;
   flex-wrap: wrap;
-}
 
-.row-container > p {
-  flex: 1;
-  display: block;
-  min-width: 300px;
-  max-width: 550px;
-  margin-inline: 10px;
-  margin-block: 0 20px;
-}
+  & > p {
+    flex: 1;
+    display: block;
+    min-width: 300px;
+    max-width: 550px;
+    margin: 0 10px 20px;
+  }
 
-.row-container.account-options > .btn-link {
-  margin-inline: 5px 15px;
-  padding-inline: 5px;
+  &.account-options > .btn-link {
+    margin-inline: 5px 15px;
+    padding-inline: 5px;
+  }
 }
 
 /* Custom buttons style */
@@ -254,9 +277,9 @@ aside.settings-btn-container {
   font-size: 1.1em;
   color: var(--btn-color);
   background-color: var(--btn-bg);
-  -moz-context-properties: fill, stroke-opacity;
-  fill: currentColor;
-  stroke-opacity: 0;
+  -moz-context-properties: fill, stroke, stroke-opacity;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
   min-width: 110px;
   height: 90px;
   padding: 10px;
@@ -266,80 +289,122 @@ aside.settings-btn-container {
   margin-block-end: 10px;
   cursor: pointer;
   box-shadow: 0 5px 20px -5px var(--btn-shadow-hover);
-}
 
-.btn-hub:not([disabled="true"]):hover {
-  color: var(--btn-color-hover) !important;
-  background-color: var(--btn-bg-hover);
-  box-shadow: 0 14px 16px -12px var(--btn-shadow-hover),
-              inset 20px 20px 50px -30px rgba(255, 255, 255, .35);
-}
+  &:not([disabled="true"]):hover {
+    color: var(--btn-color-hover) !important;
+    background-color: var(--btn-bg-hover);
+    box-shadow: 0 14px 16px -12px var(--btn-shadow-hover),
+                inset 20px 20px 50px -30px rgba(255, 255, 255, .35);
+  }
 
-.btn-hub.btn-inline {
-  flex-direction: row;
-  width: auto;
-  height: auto;
-  padding: 8px 12px;
-  justify-content: flex-start;
-  min-width: 140px;
-}
+  &.btn-inline {
+    flex-direction: row;
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    justify-content: flex-start;
+    min-width: 140px;
+  }
 
-.btn-hub:focus:not(:hover) {
-  color: var(--primary-color) !important;
-}
+  &:focus-visible:not(:hover) {
+    color: var(--primary-color) !important;
+  }
 
-.btn-hub::before {
-  position: relative;
-  display: block;
-  content: '';
-  margin-block-end: 10px;
-  margin-inline-end: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--primary-color);
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-  transition: color 280ms ease;
-}
+  &::before {
+    position: relative;
+    display: block;
+    content: '';
+    margin-block-end: 10px;
+    margin-inline-end: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--primary-color);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    transition: color 280ms ease;
+  }
 
-.btn-hub.btn-inline::before {
-  margin-block-end: 0;
-  margin-inline-end: 10px;
-  width: 16px;
-  height: 16px;
-}
+  &.btn-inline::before {
+    margin-block-end: 0;
+    margin-inline-end: 10px;
+    width: 16px;
+    height: 16px;
+  }
 
-.btn-hub:hover::before {
-  color: var(--btn-color-hover) !important;
+  &:hover::before {
+    color: var(--btn-color-hover) !important;
+  }
 }
 
 #setupEmail::before {
-  background-image: url("chrome://messenger/skin/icons/message.svg");
+  background-image: var(--account-central-mail);
 }
 
 #setupCalendar::before {
-  background-image: url("chrome://messenger/skin/shared/preferences/calendar.svg");
+  background-image: var(--account-central-calendar);
 }
 
 #setupAddressBook::before {
-  background-image: url("chrome://messenger/skin/icons/address.svg");
+  background-image: var(--account-central-address-book);
 }
 
 #setupChat::before {
-  background-image: url("chrome://messenger/skin/icons/chat.svg");
+  background-image: var(--account-central-chat);
 }
 
 #setupFilelink::before {
-  background-image: url("chrome://messenger/skin/icons/link.svg");
+  background-image: var(--account-central-link);
+}
+
+#setupFeeds::before,
+#rssSubscriptionButton::before {
+  background-image: var(--account-central-rss);
+}
+
+#nntpSubscriptionButton::before {
+  background-image: var(--account-central-globe);
 }
 
 #setupNewsgroups::before {
-  background-image: url("chrome://messenger/skin/icons/reader-mode.svg");
+  background-image:  var(--account-central-newsletter);
 }
 
 #importButton::before {
-  background-image: url("chrome://messenger/skin/icons/import.svg");
+  background-image:  var(--icon-import);
+}
+
+#setupEmail.btn-inline::before {
+  background-image: var(--icon-mail);
+}
+
+#setupCalendar.btn-inline::before {
+  background-image: var(--icon-calendar);
+}
+
+#setupAddressBook.btn-inline::before {
+  background-image: var(--icon-address-book);
+}
+
+#setupChat.btn-inline::before {
+  background-image: var(--icon-chat);
+}
+
+#setupFilelink.btn-inline::before {
+  background-image: var(--icon-link);
+}
+
+#setupFeeds.btn-inline::before,
+#rssSubscriptionButton.btn-inline::before {
+  background-image: var(--icon-rss);
+}
+
+#nntpSubscriptionButton.btn-inline::before {
+  background-image: var(--icon-newsletter);
+}
+
+#setupNewsgroups.btn-inline::before {
+  background-image:  var(--icon-newsletter);
 }
 
 .account-description {
@@ -348,22 +413,21 @@ aside.settings-btn-container {
   top: 100%;
   margin-top: -30px;
   width: 90vw;
-  left: 30px;
-  text-align: left;
+  inset-inline-start: 30px;
   transition: opacity 280ms ease;
   z-index: 1;
-}
 
-.account-description > p {
-  display: inline-block;
-  background-color: var(--popup-bg);
-  padding: 4px 8px;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px -4px rgba(0, 0, 0, 0.8);
-}
+  & > p {
+    display: inline-block;
+    background-color: var(--popup-bg);
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px -4px rgba(0, 0, 0, 0.8);
+  }
 
-.btn-hub:hover + .account-description {
-  opacity: 1;
+  .btn-hub:hover + & {
+    opacity: 1;
+  }
 }
 
 /* Custom link style */
@@ -371,48 +435,56 @@ aside.settings-btn-container {
   color: var(--primary-color);
   font-style: italic;
   font-weight: 600;
-  transition: color .2s;
+  transition: color 0.2s;
   cursor: pointer;
-}
 
-.donation-link:hover {
-  color: var(--primary-color-hover);
-}
+  &:hover {
+    color: var(--primary-color-hover);
+  }
 
-.donation-link:focus:not(:hover) {
-  outline: 1px dotted Highlight;
+  &:focus-visible:not(:hover) {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+  }
 }
 
 .btn-link {
   appearance: none;
   display: flex;
   background-color: transparent;
-  -moz-context-properties: fill;
-  fill: currentColor;
+  -moz-context-properties: fill, stroke, stroke-opacity;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
   border: none;
   cursor: pointer;
   padding: 0;
   line-height: 1em;
   align-items: center;
   transition: color .2s;
-}
 
-.btn-link.btn-inline {
-  margin-block-end: 20px;
+  &.btn-inline {
+    margin-block-end: 20px;
+  }
 }
 
 .resource-link {
   color: var(--text-color);
-  -moz-context-properties: fill;
-  fill: currentColor;
+  -moz-context-properties: fill, stroke, stroke-opacity;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
   margin-block-end: 10px;
   margin-inline: 10px 30px;
   transition: color .2s;
   cursor: pointer;
+
+  &:focus-visible:not(:hover) {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+  }
 }
 
-.btn-link:before,
-.resource-link:before {
+.btn-link::before,
+.resource-link::before {
   position: relative;
   display: inline-block;
   content: '';
@@ -429,46 +501,46 @@ aside.settings-btn-container {
   background-color: transparent;
 }
 
-.resource-link:focus:not(:hover) {
-  outline: 1px dotted Highlight;
+#featuresLink::before {
+  background-image: var(--icon-features);
 }
 
-#featuresLink:before {
-  background-image: url("chrome://messenger/skin/icons/highlights.svg");
+#supportLink::before {
+  background-image: var(--icon-question);
 }
 
-#supportLink:before {
-  background-image: url("chrome://messenger/skin/icons/help.svg");
+#involvedLink::before {
+  background-image: var(--icon-handshake);
 }
 
-#involvedLink:before {
-  background-image: url("chrome://messenger/skin/icons/globe.svg");
+#developerLink::before {
+  background-image: var(--icon-tools);
 }
 
-#developerLink:before {
-  background-image: url("chrome://messenger/skin/icons/developer.svg");
+#settingsButton {
+  padding-inline: 3px;
 }
 
-#settingsButton:before {
-  background-image: url("chrome://global/skin/icons/settings.svg");
+#settingsButton::before {
+  background-image: var(--icon-account-settings);
 }
 
-#readButton:before {
-  background-image: url("chrome://messenger/skin/icons/inbox.svg");
+#readButton::before {
+  background-image: var(--icon-inbox);
 }
 
-#composeButton:before {
-  background-image: url("chrome://messenger/skin/icons/newmsg.svg");
+#composeButton::before {
+  background-image: var(--icon-pencil);
 }
 
-#searchButton:before {
-  background-image: url("chrome://global/skin/icons/search-glass.svg");
+#searchButton::before {
+  background-image: var(--icon-search);
 }
 
-#filterButton:before {
-  background-image: url("chrome://messenger/skin/icons/filter.svg");
+#filterButton::before {
+  background-image: var(--icon-filter);
 }
 
-#e2eButton:before {
-  background-image: url("chrome://messenger/skin/icons/encryption-key.svg");
+#e2eButton::before {
+  background-image: var(--icon-key);
 }

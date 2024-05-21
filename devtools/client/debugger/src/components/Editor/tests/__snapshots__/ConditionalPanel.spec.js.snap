@@ -1,21 +1,56 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ConditionalPanel it should render at location of selected breakpoint 1`] = `
+exports[`ConditionalPanel should render at location of selected breakpoint 1`] = `
 <ConditionalPanel
   breakpoint={
     Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 2,
         "line": 2,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "id": "breakpoint",
       "location": Object {
         "column": 2,
         "line": 2,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "options": Object {
         "condition": undefined,
@@ -43,7 +78,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": Object {
                 "focus": [MockFunction] {
                   "calls": Array [
@@ -51,7 +86,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -62,7 +97,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": Object {
                         "addEventListener": [MockFunction] {
                           "calls": Array [
@@ -73,7 +108,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                           ],
                           "results": Array [
                             Object {
-                              "isThrow": false,
+                              "type": "return",
                               "value": undefined,
                             },
                           ],
@@ -88,7 +123,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -106,11 +141,11 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -124,7 +159,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -159,7 +194,7 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": undefined,
             },
           ],
@@ -172,43 +207,104 @@ exports[`ConditionalPanel it should render at location of selected breakpoint 1`
     Object {
       "column": 2,
       "line": 2,
-      "sourceId": "source",
+      "source": Object {
+        "displayURL": Object {
+          "fileExtension": "",
+          "filename": "url",
+          "group": "",
+          "path": "url",
+          "search": "",
+        },
+        "extensionName": null,
+        "id": "source",
+        "isExtension": false,
+        "isOriginal": false,
+        "isPrettyPrinted": false,
+        "isWasm": false,
+        "longName": "url",
+        "shortName": "url",
+        "thread": "FakeThread",
+        "url": "url",
+      },
     }
   }
   log={false}
   openConditionalPanel={[MockFunction]}
   source={
     Object {
+      "displayURL": Object {
+        "fileExtension": "",
+        "filename": "url",
+        "group": "",
+        "path": "url",
+        "search": "",
+      },
       "extensionName": null,
       "id": "source",
-      "isBlackBoxed": false,
       "isExtension": false,
       "isOriginal": false,
       "isPrettyPrinted": false,
       "isWasm": false,
-      "relativeUrl": "url",
+      "longName": "url",
+      "shortName": "url",
+      "thread": "FakeThread",
       "url": "url",
     }
   }
 />
 `;
 
-exports[`ConditionalPanel it should render with condition at selected breakpoint location 1`] = `
+exports[`ConditionalPanel should render with condition at selected breakpoint location 1`] = `
 <ConditionalPanel
   breakpoint={
     Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 3,
         "line": 3,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "id": "breakpoint",
       "location": Object {
         "column": 3,
         "line": 3,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "options": Object {
         "condition": "I'm a condition",
@@ -238,7 +334,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": Object {
                 "focus": [MockFunction] {
                   "calls": Array [
@@ -246,7 +342,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -257,7 +353,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": Object {
                         "addEventListener": [MockFunction] {
                           "calls": Array [
@@ -268,7 +364,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                           ],
                           "results": Array [
                             Object {
-                              "isThrow": false,
+                              "type": "return",
                               "value": undefined,
                             },
                           ],
@@ -283,7 +379,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -301,11 +397,11 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -319,7 +415,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -356,7 +452,7 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": undefined,
             },
           ],
@@ -369,43 +465,104 @@ exports[`ConditionalPanel it should render with condition at selected breakpoint
     Object {
       "column": 3,
       "line": 3,
-      "sourceId": "source",
+      "source": Object {
+        "displayURL": Object {
+          "fileExtension": "",
+          "filename": "url",
+          "group": "",
+          "path": "url",
+          "search": "",
+        },
+        "extensionName": null,
+        "id": "source",
+        "isExtension": false,
+        "isOriginal": false,
+        "isPrettyPrinted": false,
+        "isWasm": false,
+        "longName": "url",
+        "shortName": "url",
+        "thread": "FakeThread",
+        "url": "url",
+      },
     }
   }
   log={false}
   openConditionalPanel={[MockFunction]}
   source={
     Object {
+      "displayURL": Object {
+        "fileExtension": "",
+        "filename": "url",
+        "group": "",
+        "path": "url",
+        "search": "",
+      },
       "extensionName": null,
       "id": "source",
-      "isBlackBoxed": false,
       "isExtension": false,
       "isOriginal": false,
       "isPrettyPrinted": false,
       "isWasm": false,
-      "relativeUrl": "url",
+      "longName": "url",
+      "shortName": "url",
+      "thread": "FakeThread",
       "url": "url",
     }
   }
 />
 `;
 
-exports[`ConditionalPanel it should render with logpoint at selected breakpoint location 1`] = `
+exports[`ConditionalPanel should render with logpoint at selected breakpoint location 1`] = `
 <ConditionalPanel
   breakpoint={
     Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 4,
         "line": 4,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "id": "breakpoint",
       "location": Object {
         "column": 4,
         "line": 4,
-        "sourceId": "source",
+        "source": Object {
+          "displayURL": Object {
+            "fileExtension": "",
+            "filename": "url",
+            "group": "",
+            "path": "url",
+            "search": "",
+          },
+          "extensionName": null,
+          "id": "source",
+          "isExtension": false,
+          "isOriginal": false,
+          "isPrettyPrinted": false,
+          "isWasm": false,
+          "longName": "url",
+          "shortName": "url",
+          "thread": "FakeThread",
+          "url": "url",
+        },
       },
       "options": Object {
         "condition": "not a condition",
@@ -435,7 +592,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": Object {
                 "focus": [MockFunction] {
                   "calls": Array [
@@ -443,7 +600,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -454,7 +611,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": Object {
                         "addEventListener": [MockFunction] {
                           "calls": Array [
@@ -465,7 +622,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                           ],
                           "results": Array [
                             Object {
-                              "isThrow": false,
+                              "type": "return",
                               "value": undefined,
                             },
                           ],
@@ -480,7 +637,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -498,11 +655,11 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -516,7 +673,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
                   ],
                   "results": Array [
                     Object {
-                      "isThrow": false,
+                      "type": "return",
                       "value": undefined,
                     },
                   ],
@@ -553,7 +710,7 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
           ],
           "results": Array [
             Object {
-              "isThrow": false,
+              "type": "return",
               "value": undefined,
             },
           ],
@@ -566,21 +723,47 @@ exports[`ConditionalPanel it should render with logpoint at selected breakpoint 
     Object {
       "column": 4,
       "line": 4,
-      "sourceId": "source",
+      "source": Object {
+        "displayURL": Object {
+          "fileExtension": "",
+          "filename": "url",
+          "group": "",
+          "path": "url",
+          "search": "",
+        },
+        "extensionName": null,
+        "id": "source",
+        "isExtension": false,
+        "isOriginal": false,
+        "isPrettyPrinted": false,
+        "isWasm": false,
+        "longName": "url",
+        "shortName": "url",
+        "thread": "FakeThread",
+        "url": "url",
+      },
     }
   }
   log={true}
   openConditionalPanel={[MockFunction]}
   source={
     Object {
+      "displayURL": Object {
+        "fileExtension": "",
+        "filename": "url",
+        "group": "",
+        "path": "url",
+        "search": "",
+      },
       "extensionName": null,
       "id": "source",
-      "isBlackBoxed": false,
       "isExtension": false,
       "isOriginal": false,
       "isPrettyPrinted": false,
       "isWasm": false,
-      "relativeUrl": "url",
+      "longName": "url",
+      "shortName": "url",
+      "thread": "FakeThread",
       "url": "url",
     }
   }

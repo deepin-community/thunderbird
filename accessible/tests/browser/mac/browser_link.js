@@ -11,11 +11,9 @@ loadScripts(
   { name: "states.js", dir: MOCHITESTS_DIR }
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesTestUtils",
-  "resource://testing-common/PlacesTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
+});
 
 /**
  * Test visited link properties.
@@ -30,6 +28,7 @@ addAccessibleTask(
 
     is(link.getAttributeValue("AXVisited"), 0, "Link has not been visited");
 
+    // eslint-disable-next-line @microsoft/sdl/no-insecure-url
     await PlacesTestUtils.addVisits(["http://www.example.com/"]);
 
     await stateChanged;
@@ -81,35 +80,39 @@ addAccessibleTask(
       "bare <a> gets correct group role"
     );
 
-    let stateChanged = waitForEvent(EVENT_STATE_CHANGE, "link1");
+    let onRecreation = waitForEvent(EVENT_SHOW, "link1");
     await SpecialPowers.spawn(browser, [], () => {
       content.document.getElementById("link1").removeAttribute("href");
     });
-    await stateChanged;
+    await onRecreation;
+    link1 = getNativeInterface(accDoc, "link1");
     is(
       link1.getAttributeValue("AXRole"),
       "AXGroup",
       "<a> stripped from href gets group role"
     );
 
-    stateChanged = waitForEvent(EVENT_STATE_CHANGE, "link2");
+    onRecreation = waitForEvent(EVENT_SHOW, "link2");
     await SpecialPowers.spawn(browser, [], () => {
       content.document.getElementById("link2").removeAttribute("onclick");
     });
-    await stateChanged;
+    await onRecreation;
+    link2 = getNativeInterface(accDoc, "link2");
     is(
       link2.getAttributeValue("AXRole"),
       "AXGroup",
       "<a> stripped from onclick gets group role"
     );
 
-    stateChanged = waitForEvent(EVENT_STATE_CHANGE, "link3");
+    onRecreation = waitForEvent(EVENT_SHOW, "link3");
     await SpecialPowers.spawn(browser, [], () => {
       content.document
         .getElementById("link3")
+        // eslint-disable-next-line @microsoft/sdl/no-insecure-url
         .setAttribute("href", "http://example.com");
     });
-    await stateChanged;
+    await onRecreation;
+    link3 = getNativeInterface(accDoc, "link3");
     is(
       link3.getAttributeValue("AXRole"),
       "AXLink",
@@ -188,7 +191,7 @@ addAccessibleTask(
       link4
         .getAttributeValue("AXLinkedUIElements")[0]
         .getAttributeValue("AXTitle"),
-      "",
+      null,
       "Link 4 is linked to the heading"
     );
     is(
@@ -200,7 +203,7 @@ addAccessibleTask(
       link5
         .getAttributeValue("AXLinkedUIElements")[0]
         .getAttributeValue("AXTitle"),
-      "I have a name",
+      "",
       "Link 5 is linked to a named element"
     );
     is(

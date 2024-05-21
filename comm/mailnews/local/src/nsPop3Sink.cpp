@@ -1,4 +1,3 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -30,24 +29,22 @@
 #include "mozIDOMWindow.h"
 #include "nsEmbedCID.h"
 #include "nsMsgUtils.h"
-#include "nsMsgBaseCID.h"
 #include "nsServiceManagerUtils.h"
+#include "nsISupportsPrimitives.h"
+#include "nsIObserverService.h"
 #include "nsIPop3Service.h"
-#include "nsMsgLocalCID.h"
-#include "mozilla/Services.h"
 #include "mozilla/Logging.h"
+#include "mozilla/Services.h"
 
 /* for logging to Error Console */
 #include "nsIScriptError.h"
 
-extern mozilla::LazyLogModule POP3LOGMODULE;  // defined in nsPop3Protocol.cpp
+mozilla::LazyLogModule POP3LOGMODULE("POP3");
 #define POP3LOG(str) "sink: [this=%p] " str, this
 
 NS_IMPL_ISUPPORTS(nsPop3Sink, nsIPop3Sink)
 
 nsPop3Sink::nsPop3Sink() {
-  m_authed = false;
-  m_downloadingToTempFile = false;
   m_biffState = 0;
   m_numNewMessages = 0;
   m_numNewMessagesInFolder = 0;
@@ -62,31 +59,6 @@ nsPop3Sink::~nsPop3Sink() {
   MOZ_LOG(POP3LOGMODULE, mozilla::LogLevel::Debug,
           (POP3LOG("Calling ReleaseFolderLock from ~nsPop3Sink")));
   ReleaseFolderLock();
-}
-
-nsresult nsPop3Sink::SetUserAuthenticated(bool authed) {
-  m_authed = authed;
-  m_popServer->SetAuthenticated(authed);
-  return NS_OK;
-}
-
-nsresult nsPop3Sink::GetUserAuthenticated(bool* authed) {
-  return m_popServer->GetAuthenticated(authed);
-}
-
-nsresult nsPop3Sink::SetSenderAuthedFlag(void* closure, bool authed) {
-  m_authed = authed;
-  return NS_OK;
-}
-
-nsresult nsPop3Sink::SetMailAccountURL(const nsACString& urlString) {
-  m_accountUrl.Assign(urlString);
-  return NS_OK;
-}
-
-nsresult nsPop3Sink::GetMailAccountURL(nsACString& urlString) {
-  urlString.Assign(m_accountUrl);
-  return NS_OK;
 }
 
 partialRecord::partialRecord() : m_msgDBHdr(nullptr) {}
@@ -180,14 +152,13 @@ void nsPop3Sink::CheckPartialMessages(nsIPop3Protocol* protocol) {
 nsresult nsPop3Sink::BeginMailDelivery(bool uidlDownload,
                                        nsIMsgWindow* aMsgWindow, bool* aBool) {
   nsresult rv;
-
   nsCOMPtr<nsIMsgIncomingServer> server = do_QueryInterface(m_popServer);
   if (!server) return NS_ERROR_UNEXPECTED;
 
   m_window = aMsgWindow;
 
   nsCOMPtr<nsIMsgAccountManager> acctMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   nsCOMPtr<nsIMsgAccount> account;
   NS_ENSURE_SUCCESS(rv, rv);
   acctMgr->FindAccountForServer(server, getter_AddRefs(account));
@@ -196,6 +167,8 @@ nsresult nsPop3Sink::BeginMailDelivery(bool uidlDownload,
   bool isLocked;
   nsCOMPtr<nsISupports> supports =
       do_QueryInterface(static_cast<nsIPop3Sink*>(this));
+
+  NS_ENSURE_STATE(m_folder);
   m_folder->GetLocked(&isLocked);
   if (!isLocked) {
     MOZ_LOG(POP3LOGMODULE, mozilla::LogLevel::Debug,
@@ -215,7 +188,7 @@ nsresult nsPop3Sink::BeginMailDelivery(bool uidlDownload,
   printf("Begin mail message delivery.\n");
 #endif
   nsCOMPtr<nsIPop3Service> pop3Service(
-      do_GetService(NS_POP3SERVICE_CONTRACTID1, &rv));
+      do_GetService("@mozilla.org/messenger/popservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   pop3Service->NotifyDownloadStarted(m_folder);
   if (aBool) *aBool = true;
@@ -234,8 +207,6 @@ nsresult nsPop3Sink::EndMailDelivery(nsIPop3Protocol* protocol) {
     m_outFileStream->Close();
     m_outFileStream = nullptr;
   }
-
-  if (m_downloadingToTempFile) m_tmpDownloadFile->Remove(false);
 
   // tell the parser to mark the db valid *after* closing the mailbox.
   if (m_newMailParser) m_newMailParser->UpdateDBFolderInfo();
@@ -318,7 +289,7 @@ nsresult nsPop3Sink::EndMailDelivery(nsIPop3Protocol* protocol) {
   printf("End mail message delivery.\n");
 #endif
   nsCOMPtr<nsIPop3Service> pop3Service(
-      do_GetService(NS_POP3SERVICE_CONTRACTID1, &rv));
+      do_GetService("@mozilla.org/messenger/popservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   pop3Service->NotifyDownloadCompleted(m_folder, m_numNewMessages);
   return NS_OK;
@@ -350,9 +321,6 @@ nsresult nsPop3Sink::AbortMailDelivery(nsIPop3Protocol* protocol) {
     m_outFileStream = nullptr;
   }
 
-  if (m_downloadingToTempFile && m_tmpDownloadFile)
-    m_tmpDownloadFile->Remove(false);
-
   /* tell the parser to mark the db valid *after* closing the mailbox.
   we have truncated the inbox, so berkeley mailbox and msf file are in sync*/
   if (m_newMailParser) m_newMailParser->UpdateDBFolderInfo();
@@ -366,100 +334,63 @@ nsresult nsPop3Sink::AbortMailDelivery(nsIPop3Protocol* protocol) {
   printf("Abort mail message delivery.\n");
 #endif
   nsCOMPtr<nsIPop3Service> pop3Service(
-      do_GetService(NS_POP3SERVICE_CONTRACTID1, &rv));
+      do_GetService("@mozilla.org/messenger/popservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   pop3Service->NotifyDownloadCompleted(m_folder, 0);
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsPop3Sink::IncorporateBegin(const char* uidlString, nsIURI* aURL,
-                             uint32_t flags, void** closure) {
+nsPop3Sink::IncorporateBegin(const char* uidlString, uint32_t flags) {
 #ifdef DEBUG
   printf("Incorporate message begin:\n");
   if (uidlString) printf("uidl string: %s\n", uidlString);
 #endif
-  nsCOMPtr<nsIFile> path;
-
-  m_folder->GetFilePath(getter_AddRefs(path));
 
   nsresult rv;
-  nsCOMPtr<nsIPrefBranch> pPrefBranch(
-      do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
-  if (pPrefBranch) {
-    nsCOMPtr<nsIMsgIncomingServer> server;
-    m_folder->GetServer(getter_AddRefs(server));
-    nsCString plugStoreContract;
-    server->GetCharValue("storeContractID", plugStoreContract);
-    // Maildir doesn't care about quaranting, but other stores besides berkeley
-    // mailbox might. We should probably make this an attribute on the pluggable
-    // store, though.
-    if (plugStoreContract.Equals("@mozilla.org/msgstore/berkeleystore;1"_ns))
-      pPrefBranch->GetBoolPref("mailnews.downloadToTempFile",
-                               &m_downloadingToTempFile);
-  }
-
   nsCOMPtr<nsIMsgDBHdr> newHdr;
 
   nsCOMPtr<nsIMsgIncomingServer> server = do_QueryInterface(m_popServer);
   if (!server) return NS_ERROR_UNEXPECTED;
 
-  if (m_downloadingToTempFile) {
-    // need to create an nsIOFileStream from a temp file...
-    nsCOMPtr<nsIFile> tmpDownloadFile;
-    rv = GetSpecialDirectoryWithFileName(NS_OS_TEMP_DIR, "newmsg",
-                                         getter_AddRefs(tmpDownloadFile));
-
-    NS_ASSERTION(NS_SUCCEEDED(rv),
-                 "writing tmp pop3 download file: failed to append filename");
-    if (NS_FAILED(rv)) return rv;
-
-    if (!m_tmpDownloadFile) {
-      // need a unique tmp file to prevent dataloss in multiuser environment
-      rv = tmpDownloadFile->CreateUnique(nsIFile::NORMAL_FILE_TYPE, 00600);
-      NS_ENSURE_SUCCESS(rv, rv);
-
-      m_tmpDownloadFile = tmpDownloadFile;
-    }
-    rv = MsgGetFileStream(m_tmpDownloadFile, getter_AddRefs(m_outFileStream));
-    NS_ENSURE_SUCCESS(rv, rv);
-  } else {
-    rv = server->GetMsgStore(getter_AddRefs(m_msgStore));
-    bool reusable;
-    NS_ENSURE_SUCCESS(rv, rv);
-    m_msgStore->GetNewMsgOutputStream(m_folder, getter_AddRefs(newHdr),
-                                      &reusable,
-                                      getter_AddRefs(m_outFileStream));
-  }
-  // The following (!m_outFileStream etc) was added to make sure that we don't
-  // write somewhere where for some reason or another we can't write to and
-  // lose the messages. See bug 62480
-  if (!m_outFileStream) return NS_ERROR_OUT_OF_MEMORY;
-
-  // create a new mail parser
-  if (!m_newMailParser) m_newMailParser = new nsParseNewMailState;
-  NS_ENSURE_TRUE(m_newMailParser, NS_ERROR_OUT_OF_MEMORY);
-  if (m_uidlDownload) m_newMailParser->DisableFilters();
+  rv = server->GetMsgStore(getter_AddRefs(m_msgStore));
+  NS_ENSURE_SUCCESS(rv, rv);
+  rv = m_msgStore->GetNewMsgOutputStream(m_folder, getter_AddRefs(newHdr),
+                                         getter_AddRefs(m_outFileStream));
+  NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgFolder> serverFolder;
   rv = GetServerFolder(getter_AddRefs(serverFolder));
   if (NS_FAILED(rv)) return rv;
 
+  // Annoyingly, there's some state which needs to be carried over multiple
+  // messages, hence this hoop-jumping.
+  int32_t oldNotNewCount = 0;
+  RefPtr<nsImapMoveCoalescer> oldCoalescer;
+  if (m_newMailParser) {
+    oldNotNewCount = m_newMailParser->m_numNotNewMessages;
+    oldCoalescer = m_newMailParser->m_moveCoalescer;
+    m_newMailParser->m_moveCoalescer = nullptr;
+    m_newMailParser = nullptr;
+  }
+  // Create a new mail parser to parse out the headers of the message and
+  // load the details into the message database.
+  m_newMailParser = new nsParseNewMailState;
   rv = m_newMailParser->Init(serverFolder, m_folder, m_window, newHdr,
                              m_outFileStream);
+  m_newMailParser->m_numNotNewMessages = oldNotNewCount;
+  m_newMailParser->m_moveCoalescer = oldCoalescer;
+
+  if (m_uidlDownload) m_newMailParser->DisableFilters();
+
   // If we failed to initialize the parser, then just don't use it!!!
   // We can still continue without one.
-
   if (NS_FAILED(rv)) {
     m_newMailParser = nullptr;
     rv = NS_OK;
   }
 
-  if (closure) *closure = (void*)this;
-
-  nsCString outputString(GetDummyEnvelope());
-  rv = WriteLineToMailbox(outputString);
-  NS_ENSURE_SUCCESS(rv, rv);
+  nsCString outputString;
   // Write out account-key before UIDL so the code that looks for
   // UIDL will find the account first and know it can stop looking
   // once it finds the UIDL line.
@@ -536,31 +467,8 @@ NS_IMETHODIMP nsPop3Sink::SetMsgsToDownload(uint32_t aNumMessages) {
   return NS_OK;
 }
 
-char* nsPop3Sink::GetDummyEnvelope(void) {
-  static char result[75];
-  char* ct;
-  time_t now = time((time_t*)0);
-#if defined(XP_WIN)
-  if (now < 0 || now > 0x7FFFFFFF) now = 0x7FFFFFFF;
-#endif
-  ct = ctime(&now);
-  PR_ASSERT(ct[24] == '\r' || ct[24] == '\n');
-  ct[24] = 0;
-  /* This value must be in ctime() format, with English abbreviations.
-   strftime("... %c ...") is no good, because it is localized. */
-  PL_strcpy(result, "From - ");
-  PL_strcpy(result + 7, ct);
-  PL_strcpy(result + 7 + 24, MSG_LINEBREAK);
-  return result;
-}
-
 nsresult nsPop3Sink::IncorporateWrite(const char* block, int32_t length) {
-  m_outputBuffer.Truncate();
-  if (!strncmp(block, "From ", 5)) m_outputBuffer.Assign('>');
-
-  m_outputBuffer.Append(block);
-
-  return WriteLineToMailbox(m_outputBuffer);
+  return WriteLineToMailbox(nsDependentCString(block, length));
 }
 
 nsresult nsPop3Sink::WriteLineToMailbox(const nsACString& buffer) {
@@ -636,47 +544,12 @@ nsresult nsPop3Sink::WriteLineToMailbox(const nsACString& buffer) {
 #endif
 
     uint32_t bytesWritten;
-    m_outFileStream->Write(buffer.BeginReading(), bufferLen, &bytesWritten);
+    nsresult rv =
+        m_outFileStream->Write(buffer.BeginReading(), bufferLen, &bytesWritten);
+    NS_ENSURE_SUCCESS(rv, rv);
     NS_ENSURE_TRUE(bytesWritten == bufferLen, NS_ERROR_FAILURE);
   }
   return NS_OK;
-}
-
-nsresult nsPop3Sink::HandleTempDownloadFailed(nsIMsgWindow* msgWindow) {
-  nsresult rv;
-  nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
-  NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
-  nsCOMPtr<nsIStringBundle> bundle;
-  rv = bundleService->CreateBundle(
-      "chrome://messenger/locale/localMsgs.properties", getter_AddRefs(bundle));
-  NS_ENSURE_SUCCESS(rv, rv);
-  nsString fromStr, subjectStr, confirmString;
-
-  m_newMailParser->m_newMsgHdr->GetMime2DecodedSubject(subjectStr);
-  m_newMailParser->m_newMsgHdr->GetMime2DecodedAuthor(fromStr);
-  AutoTArray<nsString, 2> params = {fromStr, subjectStr};
-  bundle->FormatStringFromName("pop3TmpDownloadError", params, confirmString);
-  nsCOMPtr<mozIDOMWindowProxy> parentWindow;
-  nsCOMPtr<nsIPromptService> promptService =
-      do_GetService(NS_PROMPTSERVICE_CONTRACTID);
-  nsCOMPtr<nsIDocShell> docShell;
-  if (msgWindow) {
-    (void)msgWindow->GetRootDocShell(getter_AddRefs(docShell));
-    parentWindow = do_QueryInterface(docShell);
-  }
-  if (promptService && !confirmString.IsEmpty()) {
-    int32_t dlgResult = -1;
-    bool dummyValue = false;
-    rv = promptService->ConfirmEx(parentWindow, nullptr, confirmString.get(),
-                                  nsIPromptService::STD_YES_NO_BUTTONS, nullptr,
-                                  nullptr, nullptr, nullptr, &dummyValue,
-                                  &dlgResult);
-    m_newMailParser->m_newMsgHdr = nullptr;
-
-    return (dlgResult == 0) ? NS_OK : NS_MSG_ERROR_COPYING_FROM_TMP_DOWNLOAD;
-  }
-  return rv;
 }
 
 NS_IMETHODIMP
@@ -686,16 +559,14 @@ nsPop3Sink::IncorporateComplete(nsIMsgWindow* aMsgWindow, int32_t aSize) {
     nsMsgKey msgKey;
     m_newMailParser->m_newMsgHdr->GetMessageKey(&msgKey);
     m_messageUri.Truncate();
-    nsBuildLocalMessageURI(m_baseMessageUri.get(), msgKey, m_messageUri);
+    nsBuildLocalMessageURI(m_baseMessageUri, msgKey, m_messageUri);
   }
 
-  nsresult rv = WriteLineToMailbox(nsLiteralCString(MSG_LINEBREAK));
-  NS_ENSURE_SUCCESS(rv, rv);
   bool leaveOnServer = false;
   m_popServer->GetLeaveMessagesOnServer(&leaveOnServer);
   // We need to flush the output stream, in case mail filters move
   // the new message, which relies on all the data being flushed.
-  rv =
+  nsresult rv =
       m_outFileStream->Flush();  // Make sure the message is written to the disk
   NS_ENSURE_SUCCESS(rv, rv);
   NS_ASSERTION(m_newMailParser, "could not get m_newMailParser");
@@ -707,81 +578,65 @@ nsPop3Sink::IncorporateComplete(nsIMsgWindow* aMsgWindow, int32_t aSize) {
     if (!hdr) return NS_ERROR_FAILURE;
 
     nsCOMPtr<nsIMsgLocalMailFolder> localFolder = do_QueryInterface(m_folder);
-    bool doSelect = false;
-
-    // aSize is only set for partial messages. For full messages,
-    // check to see if we're replacing an old partial message.
-    if (!aSize && localFolder)
-      (void)localFolder->DeleteDownloadMsg(hdr, &doSelect);
 
     // If a header already exists for this message (for example, when
     // getting a complete message when a partial exists), then update the new
     // header from the old.
-    if (!m_origMessageUri.IsEmpty() && localFolder) {
-      nsCOMPtr<nsIMsgDBHdr> oldMsgHdr;
-      rv =
-          GetMsgDBHdrFromURI(m_origMessageUri.get(), getter_AddRefs(oldMsgHdr));
-      if (NS_SUCCEEDED(rv) && oldMsgHdr)
+    nsCOMPtr<nsIMsgDBHdr> oldMsgHdr;
+    if (localFolder) {
+      rv = !m_origMessageUri.IsEmpty()
+               ? GetMsgDBHdrFromURI(m_origMessageUri, getter_AddRefs(oldMsgHdr))
+               : localFolder->RetrieveHdrOfPartialMessage(
+                     hdr, getter_AddRefs(oldMsgHdr));
+      if (NS_SUCCEEDED(rv) && oldMsgHdr) {
         localFolder->UpdateNewMsgHdr(oldMsgHdr, hdr);
-    }
-
-    if (m_downloadingToTempFile) {
-      // close file to give virus checkers a chance to do their thing...
-      m_outFileStream->Flush();
-      m_outFileStream->Close();
-      m_newMailParser->FinishHeader();
-      // need to re-open the inbox file stream.
-      bool exists;
-      m_tmpDownloadFile->Exists(&exists);
-      if (!exists) return HandleTempDownloadFailed(aMsgWindow);
-
-      nsCOMPtr<nsIInputStream> inboxInputStream =
-          do_QueryInterface(m_outFileStream);
-      rv = MsgReopenFileStream(m_tmpDownloadFile, inboxInputStream);
-      NS_ENSURE_SUCCESS(rv, HandleTempDownloadFailed(aMsgWindow));
-      if (m_outFileStream) {
-        int64_t tmpDownloadFileSize;
-        uint32_t msgSize;
-        hdr->GetMessageSize(&msgSize);
-        // we need to clone because nsLocalFileUnix caches its stat result,
-        // so it doesn't realize the file has changed size.
-        nsCOMPtr<nsIFile> tmpClone;
-        rv = m_tmpDownloadFile->Clone(getter_AddRefs(tmpClone));
-        NS_ENSURE_SUCCESS(rv, rv);
-        tmpClone->GetFileSize(&tmpDownloadFileSize);
-
-        if (msgSize > tmpDownloadFileSize)
-          rv = NS_MSG_ERROR_WRITING_MAIL_FOLDER;
-        else
-          rv = m_newMailParser->AppendMsgFromStream(inboxInputStream, hdr,
-                                                    msgSize, m_folder);
-        if (NS_FAILED(rv)) return HandleTempDownloadFailed(aMsgWindow);
-
-        m_outFileStream->Close();  // close so we can truncate.
-        m_tmpDownloadFile->SetFileSize(0);
-      } else {
-        return HandleTempDownloadFailed(aMsgWindow);
-        // need to give an error here.
       }
-    } else {
-      m_msgStore->FinishNewMessage(m_outFileStream, hdr);
     }
+    m_msgStore->FinishNewMessage(m_outFileStream, hdr);
     m_newMailParser->PublishMsgHeader(aMsgWindow);
-    // run any reply/forward filter after we've finished with the
-    // temp quarantine file, and/or moved the message to another folder.
     m_newMailParser->ApplyForwardAndReplyFilter(aMsgWindow);
     if (aSize) hdr->SetUint32Property("onlineSize", aSize);
 
-    // if DeleteDownloadMsg requested it, select the new message
-    else if (doSelect)
-      (void)localFolder->SelectDownloadMsg();
+    if (oldMsgHdr) {
+      // We had the partial message, but got the full now.
+      nsCOMPtr<nsIMsgFolder> oldMsgFolder;
+      rv = oldMsgHdr->GetFolder(getter_AddRefs(oldMsgFolder));
+      NS_ENSURE_SUCCESS(rv, rv);
+      nsCString oldURI;
+      rv = oldMsgFolder->GetUriForMsg(oldMsgHdr, oldURI);
+      NS_ENSURE_SUCCESS(rv, rv);
+
+      nsCOMPtr<nsIMsgFolder> newMsgFolder;
+      rv = hdr->GetFolder(getter_AddRefs(newMsgFolder));
+      NS_ENSURE_SUCCESS(rv, rv);
+      nsCString newURI;
+      rv = newMsgFolder->GetUriForMsg(hdr, newURI);
+      NS_ENSURE_SUCCESS(rv, rv);
+
+      // Delete old header before notifying.
+      nsCOMPtr<nsIMsgDatabase> db;
+      rv = m_folder->GetMsgDatabase(getter_AddRefs(db));
+      NS_ENSURE_SUCCESS(rv, rv);
+      rv = db->DeleteHeader(oldMsgHdr, nullptr, false, true);
+      NS_ENSURE_SUCCESS(rv, rv);
+
+      nsCOMPtr<nsIObserverService> obsServ =
+          mozilla::services::GetObserverService();
+      nsCOMPtr<nsISupportsString> origUri =
+          do_CreateInstance(NS_SUPPORTS_STRING_CONTRACTID, &rv);
+      if (NS_SUCCEEDED(rv)) {
+        origUri->SetData(NS_ConvertUTF8toUTF16(oldURI));
+        obsServ->NotifyObservers(origUri, "message-content-updated",
+                                 NS_ConvertUTF8toUTF16(newURI).get());
+      }
+    }
   }
 
 #ifdef DEBUG
   printf("Incorporate message complete.\n");
 #endif
   nsCOMPtr<nsIPop3Service> pop3Service(
-      do_GetService(NS_POP3SERVICE_CONTRACTID1, &rv));
+      do_GetService("@mozilla.org/messenger/popservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   pop3Service->NotifyDownloadProgress(m_folder, ++m_numMsgsDownloaded,
                                       m_numNewMessages);
@@ -789,11 +644,11 @@ nsPop3Sink::IncorporateComplete(nsIMsgWindow* aMsgWindow, int32_t aSize) {
 }
 
 NS_IMETHODIMP
-nsPop3Sink::IncorporateAbort(bool uidlDownload) {
+nsPop3Sink::IncorporateAbort() {
+  NS_ENSURE_STATE(m_outFileStream);
   nsresult rv = m_outFileStream->Close();
   NS_ENSURE_SUCCESS(rv, rv);
-  if (!m_downloadingToTempFile && m_msgStore && m_newMailParser &&
-      m_newMailParser->m_newMsgHdr) {
+  if (m_msgStore && m_newMailParser && m_newMailParser->m_newMsgHdr) {
     m_msgStore->DiscardNewMessage(m_outFileStream,
                                   m_newMailParser->m_newMsgHdr);
   }
@@ -801,13 +656,6 @@ nsPop3Sink::IncorporateAbort(bool uidlDownload) {
   printf("Incorporate message abort.\n");
 #endif
   return rv;
-}
-
-nsresult nsPop3Sink::BiffGetNewMail() {
-#ifdef DEBUG
-  printf("Biff get new mail.\n");
-#endif
-  return NS_OK;
 }
 
 nsresult nsPop3Sink::SetBiffStateAndUpdateFE(uint32_t aBiffState,
@@ -841,31 +689,27 @@ nsPop3Sink::SetBuildMessageUri(bool bVal) {
 }
 
 NS_IMETHODIMP
-nsPop3Sink::GetMessageUri(char** messageUri) {
-  NS_ENSURE_ARG_POINTER(messageUri);
+nsPop3Sink::GetMessageUri(nsACString& messageUri) {
   NS_ENSURE_TRUE(!m_messageUri.IsEmpty(), NS_ERROR_FAILURE);
-  *messageUri = ToNewCString(m_messageUri);
+  messageUri = m_messageUri;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsPop3Sink::SetMessageUri(const char* messageUri) {
-  NS_ENSURE_ARG_POINTER(messageUri);
+nsPop3Sink::SetMessageUri(const nsACString& messageUri) {
   m_messageUri = messageUri;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsPop3Sink::GetBaseMessageUri(char** baseMessageUri) {
-  NS_ENSURE_ARG_POINTER(baseMessageUri);
+nsPop3Sink::GetBaseMessageUri(nsACString& baseMessageUri) {
   NS_ENSURE_TRUE(!m_baseMessageUri.IsEmpty(), NS_ERROR_FAILURE);
-  *baseMessageUri = ToNewCString(m_baseMessageUri);
+  baseMessageUri = m_baseMessageUri;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsPop3Sink::SetBaseMessageUri(const char* baseMessageUri) {
-  NS_ENSURE_ARG_POINTER(baseMessageUri);
+nsPop3Sink::SetBaseMessageUri(const nsACString& baseMessageUri) {
   m_baseMessageUri = baseMessageUri;
   return NS_OK;
 }

@@ -9,7 +9,7 @@ const URL =
 
 let tab1, tab2, modifiedPref;
 
-add_task(async function() {
+add_task(async function () {
   tab1 = await openToolboxOptionsInNewTab();
   tab2 = await openToolboxOptionsInNewTab();
 
@@ -66,7 +66,7 @@ async function testToggleTools() {
   await toggleTool(tab2, toolId);
 }
 
-async function toggleTool({ doc, panelWin, checkbox, tab }, toolId) {
+async function toggleTool({ panelWin, checkbox }, toolId) {
   const prevChecked = checkbox.checked;
 
   (prevChecked ? checkRegistered : checkUnregistered)(toolId);

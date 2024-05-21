@@ -53,20 +53,32 @@ let gTests = [
       Services.prefs.setBoolPref("places.history.enabled", true);
     },
   },
+  {
+    desc: "Visit URL with login info",
+    href: "http://user:pass@example.com/with_login_info",
+    loadType: PlacesUtils.favicons.FAVICON_LOAD_NON_PRIVATE,
+    async setup() {
+      await PlacesTestUtils.addVisits({
+        uri: this.href,
+        transition: TRANSITION_TYPED,
+      });
+    },
+  },
 ];
 
-add_task(async function() {
+add_task(async function () {
   let faviconURI = SMALLPNG_DATA_URI;
   let faviconMimeType = "image/png";
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     await PlacesUtils.bookmarks.eraseEverything();
     await PlacesUtils.history.clear();
   });
 
   for (let test of gTests) {
     info(test.desc);
-    let pageURI = Services.io.newURI(test.href);
+    let pageURI = PlacesUtils.toURI(test.href);
+    let exposableURI = Services.io.createExposableURI(pageURI);
 
     await test.setup();
 
@@ -75,13 +87,12 @@ add_task(async function() {
       "favicon-changed",
       events =>
         events.some(e => {
-          if (e.url == pageURI.spec && e.faviconUrl == faviconURI.spec) {
+          if (e.url == exposableURI.spec && e.faviconUrl == faviconURI.spec) {
             pageGuid = e.pageGuid;
             return true;
           }
           return false;
-        }),
-      "places"
+        })
     );
 
     PlacesUtils.favicons.setAndFetchFaviconForPage(
@@ -97,7 +108,9 @@ add_task(async function() {
 
     Assert.equal(
       pageGuid,
-      await PlacesTestUtils.fieldInDB(pageURI, "guid"),
+      await PlacesTestUtils.getDatabaseValue("moz_places", "guid", {
+        url: exposableURI,
+      }),
       "Page guid is correct"
     );
     let { dataLen, data, mimeType } = await PlacesUtils.promiseFaviconData(

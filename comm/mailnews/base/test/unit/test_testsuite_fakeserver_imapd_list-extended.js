@@ -2,23 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Test that Imapd.jsm fakeserver correctly implements LIST-EXTENDED imap
+// Test that Imapd.sys.mjs fakeserver correctly implements LIST-EXTENDED imap
 // extension (RFC 5258 - http://tools.ietf.org/html/rfc5258)
 
-// async support
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/alertTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/alertTestUtils.js");
-
 // IMAP pump
-var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.import(
-  "resource://testing-common/mailnews/IMAPpump.jsm"
+var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/IMAPpump.sys.mjs"
 );
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
+);
 
 // Globals
 
@@ -27,20 +20,16 @@ setupIMAPPump("Dovecot");
 // create our own handler so that we can call imapd functions directly
 var handler;
 
-// Definition of tests
-var tests = [
-  setupMailboxes,
-  testList,
-  testListSelectSubscribed,
-  testListReturnChilderen,
-  testListReturnSubscribed,
-  testListSelectMultiple,
-  endTest,
-];
+add_setup(function () {
+  Services.prefs.setBoolPref(
+    "mail.server.server1.autosync_offline_stores",
+    false
+  );
+});
 
 // mbox mailboxes cannot contain both child mailboxes and messages, so this will
 // be one test case.
-function* setupMailboxes() {
+add_setup(async function () {
   IMAPPump.mailbox.flags = ["\\Marked", "\\NoInferiors"];
   IMAPPump.mailbox.subscribed = true;
   IMAPPump.daemon.createMailbox("Fruit", {});
@@ -56,16 +45,17 @@ function* setupMailboxes() {
   IMAPPump.daemon.createMailbox("Vegetable/Corn", {});
 
   handler = IMAPPump.server._handlerCreator(IMAPPump.daemon);
-  let response = handler.onError("1", "LOGIN user password");
+  const response = handler.onError("1", "LOGIN user password");
   Assert.ok(response.includes("OK"));
   // wait for imap pump to do it's thing or else we get memory leaks
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
 // test that 'LIST "" "*"' returns the proper responses (standard LIST usage)
-function* testList() {
-  let response = handler.onError("2", 'LIST "" "*"');
+add_task(function testList() {
+  const response = handler.onError("2", 'LIST "" "*"');
 
   Assert.ok(response.includes('* LIST (\\Marked \\NoInferiors) "/" "INBOX"'));
   Assert.ok(response.includes('* LIST () "/" "Fruit"'));
@@ -76,13 +66,11 @@ function* testList() {
   Assert.ok(response.includes('* LIST () "/" "Vegetable/Broccoli"'));
   Assert.ok(response.includes('* LIST () "/" "Vegetable/Corn"'));
   Assert.ok(!response.includes("Peach"));
-
-  yield true;
-}
+});
 
 // test that 'LIST (SUBSCRIBED) "" "*"' returns the proper responses
-function* testListSelectSubscribed() {
-  let response = handler.onError("3", 'LIST (SUBSCRIBED) "" "*"');
+add_task(function testListSelectSubscribed() {
+  const response = handler.onError("3", 'LIST (SUBSCRIBED) "" "*"');
 
   Assert.ok(
     response.includes(
@@ -101,13 +89,11 @@ function* testListSelectSubscribed() {
   Assert.ok(!response.includes("Apple"));
   Assert.ok(!response.includes("Tofu"));
   Assert.ok(!response.includes("Corn"));
-
-  yield true;
-}
+});
 
 // test that 'LIST "" "%" RETURN (CHILDEREN)' returns the proper responses
-function* testListReturnChilderen() {
-  let response = handler.onError("4", 'LIST "" "%" RETURN (CHILDREN)');
+add_task(function testListReturnChilderen() {
+  const response = handler.onError("4", 'LIST "" "%" RETURN (CHILDREN)');
 
   Assert.ok(response.includes('* LIST (\\Marked \\NoInferiors) "/" "INBOX"'));
   Assert.ok(response.includes('* LIST (\\HasChildren) "/" "Fruit"'));
@@ -118,13 +104,11 @@ function* testListReturnChilderen() {
   Assert.ok(!response.includes("Peach"));
   Assert.ok(!response.includes("Broccoli"));
   Assert.ok(!response.includes("Corn"));
-
-  yield true;
-}
+});
 
 // test that 'LIST "" "*" RETURN (SUBSCRIBED)' returns the proper responses
-function* testListReturnSubscribed() {
-  let response = handler.onError("5", 'LIST "" "*" RETURN (SUBSCRIBED)');
+add_task(function testListReturnSubscribed() {
+  const response = handler.onError("5", 'LIST "" "*" RETURN (SUBSCRIBED)');
 
   Assert.ok(
     response.includes(
@@ -141,13 +125,11 @@ function* testListReturnSubscribed() {
   );
   Assert.ok(response.includes('* LIST () "/" "Vegetable/Corn"'));
   Assert.ok(!response.includes("Peach"));
-
-  yield true;
-}
+});
 
 // test that 'LIST "" ("INBOX" "Tofu" "Vegetable/%")' returns the proper responses
-function* testListSelectMultiple() {
-  let response = handler._dispatchCommand("LIST", [
+add_task(function testListSelectMultiple() {
+  const response = handler._dispatchCommand("LIST", [
     "",
     '("INBOX" "Tofu" "Vegetable/%")',
   ]);
@@ -159,20 +141,10 @@ function* testListSelectMultiple() {
   Assert.ok(!response.includes('"Vegetable"'));
   Assert.ok(!response.includes("Fruit"));
   Assert.ok(!response.includes("Peach"));
-
-  yield true;
-}
+});
 
 // Cleanup at end
-function endTest() {
+add_task(function endTest() {
   handler = null;
   teardownIMAPPump();
-}
-
-function run_test() {
-  Services.prefs.setBoolPref(
-    "mail.server.server1.autosync_offline_stores",
-    false
-  );
-  async_run_tests(tests);
-}
+});

@@ -8,9 +8,6 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const gGlodaCompleteStrings = Services.strings.createBundle(
     "chrome://messenger/locale/glodaComplete.properties"
   );
@@ -20,7 +17,7 @@
    * abstract base class for all the gloda autocomplete items.
    *
    * @abstract
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozGlodacompleteBaseRichlistitem extends MozElements.MozRichlistitem {
     connectedCallback() {
@@ -47,13 +44,13 @@
 
       // Find which regions of text match the search terms.
       let regions = [];
-      for (let search of aSearchTokens) {
+      for (const search of aSearchTokens) {
         let matchIndex;
         let startIndex = 0;
-        let searchLen = search.length;
+        const searchLen = search.length;
 
         // Find all matches of the search terms, but stop early for perf.
-        let lowerText = aText.toLowerCase().substr(0, this.boundaryCutoff);
+        const lowerText = aText.toLowerCase().substr(0, this.boundaryCutoff);
         while ((matchIndex = lowerText.indexOf(search, startIndex)) >= 0) {
           // Start the next search from where this one finished.
           startIndex = matchIndex + searchLen;
@@ -62,18 +59,18 @@
       }
 
       // Sort the regions by start position then end position.
-      regions = regions.sort(function(a, b) {
-        let start = a[0] - b[0];
+      regions = regions.sort(function (a, b) {
+        const start = a[0] - b[0];
         return start == 0 ? a[1] - b[1] : start;
       });
 
       // Generate the boundary indices from each region.
       let start = 0;
       let end = 0;
-      let boundaries = [];
+      const boundaries = [];
       for (let i = 0; i < regions.length; i++) {
         // We have a new boundary if the start of the next is past the end.
-        let region = regions[i];
+        const region = regions[i];
         if (region[0] > end) {
           // First index is the beginning of match.
           boundaries.push(start);
@@ -102,13 +99,13 @@
     }
 
     _getSearchTokens(aSearch) {
-      let search = aSearch.toLowerCase();
+      const search = aSearch.toLowerCase();
       return search.split(/\s+/);
     }
 
     _needsAlternateEmphasis(aText) {
       for (let i = aText.length - 1; i >= 0; i--) {
-        let charCode = aText.charCodeAt(i);
+        const charCode = aText.charCodeAt(i);
         // Arabic, Syriac, Indic languages are likely to have ligatures
         // that are broken when using the main emphasis styling.
         if (0x0600 <= charCode && charCode <= 0x109f) {
@@ -126,26 +123,26 @@
       }
 
       // Get the indices that separate match and non-match text.
-      let search = this.getAttribute("text");
-      let tokens = this._getSearchTokens(search);
-      let indices = this._getBoundaryIndices(aText, tokens);
+      const search = this.getAttribute("text");
+      const tokens = this._getSearchTokens(search);
+      const indices = this._getBoundaryIndices(aText, tokens);
 
       // If we're searching for something that needs alternate emphasis,
       // we'll need to check the text that we match.
-      let checkAlt = this._needsAlternateEmphasis(search);
+      const checkAlt = this._needsAlternateEmphasis(search);
 
       let next;
       let start = 0;
-      let len = indices.length;
+      const len = indices.length;
       // Even indexed boundaries are matches, so skip the 0th if it's empty.
       for (let i = indices[0] == 0 ? 1 : 0; i < len; i++) {
         next = indices[i];
-        let text = aText.substr(start, next - start);
+        const text = aText.substr(start, next - start);
         start = next;
 
         if (i % 2 == 0) {
           // Emphasize the text for even indices
-          let span = aDescriptionElement.appendChild(
+          const span = aDescriptionElement.appendChild(
             document.createElementNS("http://www.w3.org/1999/xhtml", "span")
           );
           span.className =
@@ -165,19 +162,19 @@
       aEllipsis.hidden = true;
 
       // Start with the parent's width and subtract off its children.
-      let tooltip = [];
-      let children = aParentBox.children;
+      const tooltip = [];
+      const children = aParentBox.children;
       let widthDiff = aParentBox.getBoundingClientRect().width;
 
       for (let i = 0; i < children.length; i++) {
         // Only consider a child if it actually takes up space.
-        let childWidth = children[i].getBoundingClientRect().width;
+        const childWidth = children[i].getBoundingClientRect().width;
         if (childWidth > 0) {
           // Subtract a little less to account for subpixel rounding.
           widthDiff -= childWidth - 0.5;
 
           // Add to the tooltip if it's not hidden and has text.
-          let childText = children[i].textContent;
+          const childText = children[i].textContent;
           if (childText) {
             tooltip.push(childText);
           }
@@ -210,7 +207,7 @@
    * The MozGlodaContactChunkRichlistitem widget displays an autocomplete item with
    * contact chunk: e.g. image, name and description of the contact.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaContactChunkRichlistitem extends MozGlodacompleteBaseRichlistitem {
     static get inheritedAttributes() {
@@ -230,7 +227,6 @@
       this.setAttribute("is", "gloda-contact-chunk-richlistitem");
       this.appendChild(
         MozXULElement.parseXULToFragment(`
-          <image class="ac-type-picture"></image>
           <vbox>
             <hbox>
               <hbox class="ac-title"
@@ -249,7 +245,6 @@
               </hbox>
               <label class="ac-ellipsis-after ac-url-text"
                      hidden="true"></label>
-              <image class="ac-type-icon"></image>
             </hbox>
           </vbox>
         `)
@@ -271,15 +266,11 @@
       this._identityOverflowEllipsis.value = ellipsis;
       this._nameOverflowEllipsis.value = ellipsis;
 
-      this._typeImage = this.querySelector(".ac-type-icon");
-
       this._identityBox = this.querySelector(".ac-url");
       this._identity = this.querySelector("description.ac-url-text");
 
       this._nameBox = this.querySelector(".ac-title");
       this._name = this.querySelector("description.ac-comment");
-
-      this._picture = this.querySelector(".ac-type-picture");
 
       this._adjustAcItem();
 
@@ -287,21 +278,18 @@
     }
 
     get label() {
-      let identity = this.obj;
+      const identity = this.obj;
       return identity.accessibleLabel;
     }
 
     _adjustAcItem() {
-      let contact = this.obj;
+      const contact = this.obj;
 
       if (contact == null) {
         return;
       }
 
-      let identity = contact.identities[0];
-
-      // I guess we should get the picture size from CSS or something?
-      this._picture.src = identity.pictureURL(32);
+      const identity = contact.identities[0];
 
       // Emphasize the matching search terms for the description.
       this._setUpDescription(this._name, contact.name);
@@ -336,7 +324,7 @@
    * The MozGlodaFulltextAllRichlistitem widget displays an autocomplete full text of
    * all the items: e.g. full text explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaFulltextAllRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -347,7 +335,7 @@
       this.setAttribute("is", "gloda-fulltext-all-richlistitem");
       this._explanation = document.createXULElement("description");
       this._explanation.classList.add("explanation");
-      let label = gGlodaCompleteStrings.GetStringFromName(
+      const label = gGlodaCompleteStrings.GetStringFromName(
         "glodaComplete.messagesMentioningMany.label"
       );
       this._explanation.setAttribute(
@@ -378,7 +366,7 @@
    * The MozGlodaFulltextAllRichlistitem widget displays an autocomplete full text
    * of single item: e.g. full text explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaFulltextSingleRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -394,7 +382,7 @@
       this.appendChild(this._explanation);
       this.appendChild(this._parameters);
 
-      let label = gGlodaCompleteStrings.GetStringFromName(
+      const label = gGlodaCompleteStrings.GetStringFromName(
         "glodaComplete.messagesMentioning.label"
       );
       this._explanation.setAttribute(
@@ -424,7 +412,7 @@
    * The MozGlodaMultiRichlistitem widget displays an autocomplete description of multiple
    * type items: e.g. explanation of the items.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaMultiRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -447,7 +435,7 @@
     }
 
     renderItem(aObj) {
-      let node = document.createXULElement("richlistitem");
+      const node = document.createXULElement("richlistitem");
 
       node.obj = aObj;
       node.setAttribute(
@@ -464,7 +452,7 @@
         this._identityHolder.lastChild.remove();
       }
 
-      let row = this.row;
+      const row = this.row;
       if (row == null) {
         return;
       }
@@ -473,7 +461,7 @@
         row.nounDef.name + "s " + row.criteriaType + "ed " + row.criteria;
 
       // render anyone already in there.
-      for (let item of row.collection.items) {
+      for (const item of row.collection.items) {
         this.renderItem(item);
       }
       // listen up, yo.
@@ -493,7 +481,7 @@
    * The MozGlodaSingleIdentityRichlistitem widget displays an autocomplete item with
    * single identity: e.g. image, name and description of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaSingleIdentityRichlistitem extends MozGlodacompleteBaseRichlistitem {
     static get inheritedAttributes() {
@@ -515,7 +503,6 @@
       this.appendChild(
         MozXULElement.parseXULToFragment(`
           <hbox class="gloda-single-identity">
-            <image class="picture"></image>
             <vbox>
               <hbox>
                 <hbox class="ac-title"
@@ -535,7 +522,6 @@
                 </hbox>
                 <label class="ac-ellipsis-after ac-url-text"
                        hidden="true"></label>
-                <image class="ac-type-icon"></image>
               </hbox>
             </vbox>
           </hbox>
@@ -558,15 +544,11 @@
       this._identityOverflowEllipsis.value = ellipsis;
       this._nameOverflowEllipsis.value = ellipsis;
 
-      this._typeImage = this.querySelector(".ac-type-icon");
-
       this._identityBox = this.querySelector(".ac-url");
       this._identity = this.querySelector("description.ac-url-text");
 
       this._nameBox = this.querySelector(".ac-title");
       this._name = this.querySelector("description.ac-comment");
-
-      this._picture = this.querySelector(".picture");
 
       this._adjustAcItem();
 
@@ -574,19 +556,16 @@
     }
 
     get label() {
-      let identity = this.row.item;
+      const identity = this.row.item;
       return identity.accessibleLabel;
     }
 
     _adjustAcItem() {
-      let identity = this.row.item;
+      const identity = this.row.item;
 
       if (identity == null) {
         return;
       }
-
-      // I guess we should get the picture size from CSS or something?
-      this._picture.src = identity.pictureURL(32);
 
       // Emphasize the matching search terms for the description.
       this._setUpDescription(this._name, identity.contact.name);
@@ -625,7 +604,7 @@
    * The MozGlodaSingleTagRichlistitem widget displays an autocomplete item with
    * single tag: e.g. explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaSingleTagRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -637,7 +616,7 @@
       this._explanation = document.createXULElement("description");
       this._explanation.classList.add("explanation", "gloda-single");
       this.appendChild(this._explanation);
-      let label = gGlodaCompleteStrings.GetStringFromName(
+      const label = gGlodaCompleteStrings.GetStringFromName(
         "glodaComplete.messagesTagged.label"
       );
       this._explanation.setAttribute(

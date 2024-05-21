@@ -29,7 +29,8 @@ class PresShell;
 enum class nsFlowAreaRectFlags : uint32_t {
   NoFlags = 0,
   HasFloats = 1 << 0,
-  MayWiden = 1 << 1
+  MayWiden = 1 << 1,
+  ISizeIsActuallyNegative = 1 << 2,
 };
 MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(nsFlowAreaRectFlags)
 
@@ -59,6 +60,9 @@ struct nsFlowAreaRect {
   bool MayWiden() const {
     return (bool)(mAreaFlags & nsFlowAreaRectFlags::MayWiden);
   }
+  bool ISizeIsActuallyNegative() const {
+    return (bool)(mAreaFlags & nsFlowAreaRectFlags::ISizeIsActuallyNegative);
+  }
 };
 
 #define NS_FLOAT_MANAGER_CACHE_SIZE 64
@@ -66,8 +70,8 @@ struct nsFlowAreaRect {
 /**
  * nsFloatManager is responsible for implementing CSS's rules for
  * positioning floats. An nsFloatManager object is created during reflow for
- * any block with NS_BLOCK_FLOAT_MGR. During reflow, the float manager for
- * the nearest such ancestor block is found in ReflowInput::mFloatManager.
+ * any block with NS_BLOCK_BFC. During reflow, the float manager for the nearest
+ * such ancestor block is found in ReflowInput::mFloatManager.
  *
  * According to the line-relative mappings in CSS Writing Modes spec [1],
  * line-right and line-left are calculated with respect to the writing mode
@@ -78,7 +82,7 @@ struct nsFlowAreaRect {
  * 'direction' property of the containing block doesn't affect the
  * interpretation of line-right and line-left. We actually implement this by
  * passing in the writing mode of the block formatting context (BFC), i.e.
- * the of BlockReflowInput's writing mode.
+ * the of BlockReflowState's writing mode.
  *
  * nsFloatManager uses a special logical coordinate space with inline
  * coordinates on the line-axis and block coordinates on the block-axis
@@ -302,22 +306,22 @@ class nsFloatManager {
    *
    * The result is relative to the current translation.
    */
-  nscoord GetLowestFloatTop() const;
+  nscoord LowestFloatBStart() const;
 
   /**
-   * Return the coordinate of the lowest float matching aBreakType in
+   * Return the coordinate of the lowest float matching aClearType in
    * this float manager. Returns aBCoord if there are no matching
    * floats.
    *
    * Both aBCoord and the result are relative to the current translation.
    */
-  nscoord ClearFloats(nscoord aBCoord, mozilla::StyleClear aBreakType) const;
+  nscoord ClearFloats(nscoord aBCoord, mozilla::StyleClear aClearType) const;
 
   /**
    * Checks if clear would pass into the floats' BFC's next-in-flow,
    * i.e. whether floats affecting this clear have continuations.
    */
-  bool ClearContinues(mozilla::StyleClear aBreakType) const;
+  bool ClearContinues(mozilla::StyleClear aClearType) const;
 
   void AssertStateMatches(SavedState* aState) const {
     NS_ASSERTION(

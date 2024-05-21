@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-const DevToolsUtils = require("devtools/shared/DevToolsUtils");
+const DevToolsUtils = require("resource://devtools/shared/DevToolsUtils.js");
 
 /**
  * Utils for utils, by utils
@@ -49,11 +49,11 @@ export function waitForMs(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function downloadFile(content, fileName) {
+export async function saveAsLocalFile(content, fileName) {
   if (content.type !== "text") {
-    return;
+    return null;
   }
 
   const data = new TextEncoder().encode(content.value);
-  DevToolsUtils.saveAs(window, data, fileName);
+  return DevToolsUtils.saveAs(window, data, fileName);
 }

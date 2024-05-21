@@ -49,9 +49,12 @@ SafeRefPtr<InternalRequest> InternalRequest::GetRequestConstructorCopy(
   copy->mCredentialsMode = mCredentialsMode;
   copy->mCacheMode = mCacheMode;
   copy->mRedirectMode = mRedirectMode;
+  copy->mPriorityMode = mPriorityMode;
   copy->mContentPolicyTypeOverridden = mContentPolicyTypeOverridden;
 
   copy->mPreferredAlternativeDataType = mPreferredAlternativeDataType;
+  copy->mSkipWasmCaching = mSkipWasmCaching;
+  copy->mEmbedderPolicy = mEmbedderPolicy;
   return copy;
 }
 
@@ -89,7 +92,8 @@ InternalRequest::InternalRequest(const nsACString& aURL,
       mMode(RequestMode::No_cors),
       mCredentialsMode(RequestCredentials::Omit),
       mCacheMode(RequestCache::Default),
-      mRedirectMode(RequestRedirect::Follow) {
+      mRedirectMode(RequestRedirect::Follow),
+      mPriorityMode(RequestPriority::Auto) {
   MOZ_ASSERT(!aURL.IsEmpty());
   AddURL(aURL, aFragment);
 }
@@ -99,7 +103,8 @@ InternalRequest::InternalRequest(
     RequestCache aCacheMode, RequestMode aMode,
     RequestRedirect aRequestRedirect, RequestCredentials aRequestCredentials,
     const nsAString& aReferrer, ReferrerPolicy aReferrerPolicy,
-    nsContentPolicyType aContentPolicyType, const nsAString& aIntegrity)
+    RequestPriority aPriority, nsContentPolicyType aContentPolicyType,
+    const nsAString& aIntegrity)
     : mMethod(aMethod),
       mHeaders(aHeaders),
       mBodyLength(InternalResponse::UNKNOWN_BODY_SIZE),
@@ -111,6 +116,7 @@ InternalRequest::InternalRequest(
       mCredentialsMode(aRequestCredentials),
       mCacheMode(aCacheMode),
       mRedirectMode(aRequestRedirect),
+      mPriorityMode(aPriority),
       mIntegrity(aIntegrity) {
   MOZ_ASSERT(!aURL.IsEmpty());
   AddURL(aURL, aFragment);
@@ -130,15 +136,27 @@ InternalRequest::InternalRequest(const InternalRequest& aOther,
       mResponseTainting(aOther.mResponseTainting),
       mCacheMode(aOther.mCacheMode),
       mRedirectMode(aOther.mRedirectMode),
+      mPriorityMode(aOther.mPriorityMode),
       mIntegrity(aOther.mIntegrity),
       mMozErrors(aOther.mMozErrors),
       mFragment(aOther.mFragment),
       mSkipServiceWorker(aOther.mSkipServiceWorker),
+      mSkipWasmCaching(aOther.mSkipWasmCaching),
       mSynchronous(aOther.mSynchronous),
       mUnsafeRequest(aOther.mUnsafeRequest),
       mUseURLCredentials(aOther.mUseURLCredentials),
-      mContentPolicyTypeOverridden(aOther.mContentPolicyTypeOverridden) {
+      mContentPolicyTypeOverridden(aOther.mContentPolicyTypeOverridden),
+      mEmbedderPolicy(aOther.mEmbedderPolicy),
+      mInterceptionContentPolicyType(aOther.mInterceptionContentPolicyType),
+      mInterceptionRedirectChain(aOther.mInterceptionRedirectChain),
+      mInterceptionFromThirdParty(aOther.mInterceptionFromThirdParty) {
   // NOTE: does not copy body stream... use the fallible Clone() for that
+
+  if (aOther.GetInterceptionTriggeringPrincipalInfo()) {
+    mInterceptionTriggeringPrincipalInfo =
+        MakeUnique<mozilla::ipc::PrincipalInfo>(
+            *(aOther.GetInterceptionTriggeringPrincipalInfo().get()));
+  }
 }
 
 InternalRequest::InternalRequest(const IPCInternalRequest& aIPCRequest)
@@ -152,26 +170,74 @@ InternalRequest::InternalRequest(const IPCInternalRequest& aIPCRequest)
           static_cast<nsContentPolicyType>(aIPCRequest.contentPolicyType())),
       mReferrer(aIPCRequest.referrer()),
       mReferrerPolicy(aIPCRequest.referrerPolicy()),
+      mEnvironmentReferrerPolicy(aIPCRequest.environmentReferrerPolicy()),
       mMode(aIPCRequest.requestMode()),
       mCredentialsMode(aIPCRequest.requestCredentials()),
       mCacheMode(aIPCRequest.cacheMode()),
       mRedirectMode(aIPCRequest.requestRedirect()),
       mIntegrity(aIPCRequest.integrity()),
-      mFragment(aIPCRequest.fragment()) {
+      mFragment(aIPCRequest.fragment()),
+      mEmbedderPolicy(aIPCRequest.embedderPolicy()),
+      mInterceptionContentPolicyType(static_cast<nsContentPolicyType>(
+          aIPCRequest.interceptionContentPolicyType())),
+      mInterceptionRedirectChain(aIPCRequest.interceptionRedirectChain()),
+      mInterceptionFromThirdParty(aIPCRequest.interceptionFromThirdParty()) {
   if (aIPCRequest.principalInfo()) {
     mPrincipalInfo = MakeUnique<mozilla::ipc::PrincipalInfo>(
         aIPCRequest.principalInfo().ref());
   }
 
+  if (aIPCRequest.interceptionTriggeringPrincipalInfo()) {
+    mInterceptionTriggeringPrincipalInfo =
+        MakeUnique<mozilla::ipc::PrincipalInfo>(
+            aIPCRequest.interceptionTriggeringPrincipalInfo().ref());
+  }
+
   const Maybe<BodyStreamVariant>& body = aIPCRequest.body();
 
-  // This constructor is (currently) only used for parent -> child communication
-  // (constructed on the child side).
   if (body) {
-    MOZ_ASSERT(body->type() == BodyStreamVariant::TParentToChildStream);
-    mBodyStream = static_cast<RemoteLazyInputStreamChild*>(
-                      body->get_ParentToChildStream().actorChild())
-                      ->CreateStream();
+    if (body->type() == BodyStreamVariant::TParentToChildStream) {
+      mBodyStream = body->get_ParentToChildStream().get_RemoteLazyInputStream();
+    }
+    if (body->type() == BodyStreamVariant::TChildToParentStream) {
+      mBodyStream =
+          DeserializeIPCStream(body->get_ChildToParentStream().stream());
+    }
+  }
+}
+
+void InternalRequest::ToIPCInternalRequest(
+    IPCInternalRequest* aIPCRequest, mozilla::ipc::PBackgroundChild* aManager) {
+  aIPCRequest->method() = mMethod;
+  for (const auto& url : mURLList) {
+    aIPCRequest->urlList().AppendElement(url);
+  }
+  mHeaders->ToIPC(aIPCRequest->headers(), aIPCRequest->headersGuard());
+  aIPCRequest->bodySize() = mBodyLength;
+  aIPCRequest->preferredAlternativeDataType() = mPreferredAlternativeDataType;
+  aIPCRequest->contentPolicyType() = mContentPolicyType;
+  aIPCRequest->referrer() = mReferrer;
+  aIPCRequest->referrerPolicy() = mReferrerPolicy;
+  aIPCRequest->environmentReferrerPolicy() = mEnvironmentReferrerPolicy;
+  aIPCRequest->requestMode() = mMode;
+  aIPCRequest->requestCredentials() = mCredentialsMode;
+  aIPCRequest->cacheMode() = mCacheMode;
+  aIPCRequest->requestRedirect() = mRedirectMode;
+  aIPCRequest->integrity() = mIntegrity;
+  aIPCRequest->fragment() = mFragment;
+  aIPCRequest->embedderPolicy() = mEmbedderPolicy;
+
+  if (mPrincipalInfo) {
+    aIPCRequest->principalInfo() = Some(*mPrincipalInfo);
+  }
+
+  if (mBodyStream) {
+    nsCOMPtr<nsIInputStream> body = mBodyStream;
+    aIPCRequest->body().emplace(ChildToParentStream());
+    DebugOnly<bool> ok = mozilla::ipc::SerializeIPCStream(
+        body.forget(), aIPCRequest->body()->get_ChildToParentStream().stream(),
+        /* aAllowLazy */ false);
+    MOZ_ASSERT(ok);
   }
 }
 
@@ -186,6 +252,11 @@ void InternalRequest::OverrideContentPolicyType(
     nsContentPolicyType aContentPolicyType) {
   SetContentPolicyType(aContentPolicyType);
   mContentPolicyTypeOverridden = true;
+}
+
+void InternalRequest::SetInterceptionContentPolicyType(
+    nsContentPolicyType aContentPolicyType) {
+  mInterceptionContentPolicyType = aContentPolicyType;
 }
 
 /* static */
@@ -205,6 +276,7 @@ RequestDestination InternalRequest::MapContentPolicyTypeToRequestDestination(
     case nsIContentPolicy::TYPE_SCRIPT:
       return RequestDestination::Script;
     case nsIContentPolicy::TYPE_INTERNAL_WORKER:
+    case nsIContentPolicy::TYPE_INTERNAL_WORKER_STATIC_MODULE:
       return RequestDestination::Worker;
     case nsIContentPolicy::TYPE_INTERNAL_SHARED_WORKER:
       return RequestDestination::Sharedworker;
@@ -276,7 +348,14 @@ RequestDestination InternalRequest::MapContentPolicyTypeToRequestDestination(
       return RequestDestination::Audioworklet;
     case nsIContentPolicy::TYPE_INTERNAL_PAINTWORKLET:
       return RequestDestination::Paintworklet;
+    case nsIContentPolicy::TYPE_PROXIED_WEBRTC_MEDIA:
+      return RequestDestination::_empty;
+    case nsIContentPolicy::TYPE_WEB_IDENTITY:
+      return RequestDestination::_empty;
+    case nsIContentPolicy::TYPE_WEB_TRANSPORT:
+      return RequestDestination::_empty;
     case nsIContentPolicy::TYPE_INVALID:
+    case nsIContentPolicy::TYPE_END:
       break;
       // Do not add default: so that compilers can catch the missing case.
   }
@@ -397,4 +476,8 @@ void InternalRequest::SetPrincipalInfo(
   mPrincipalInfo = std::move(aPrincipalInfo);
 }
 
+void InternalRequest::SetInterceptionTriggeringPrincipalInfo(
+    UniquePtr<mozilla::ipc::PrincipalInfo> aPrincipalInfo) {
+  mInterceptionTriggeringPrincipalInfo = std::move(aPrincipalInfo);
+}
 }  // namespace mozilla::dom

@@ -12,8 +12,7 @@
 #include "nsPIDOMWindow.h"
 #include "nsPIWindowRoot.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class IPCTabContext;
 
@@ -39,12 +38,7 @@ class TabContext {
    */
   IPCTabContext AsIPCTabContext() const;
 
-  bool IsJSPlugin() const;
-  int32_t JSPluginId() const;
-
   uint64_t ChromeOuterWindowID() const;
-
-  UIStateChangeType ShowFocusRings() const;
 
   uint32_t MaxTouchPoints() const { return mMaxTouchPoints; }
 
@@ -65,9 +59,7 @@ class TabContext {
    */
   bool SetTabContext(const TabContext& aContext);
 
-  bool SetTabContext(uint64_t aChromeOuterWindowID,
-                     UIStateChangeType aShowFocusRings,
-                     uint32_t aMaxTouchPoints);
+  bool SetTabContext(uint64_t aChromeOuterWindowID, uint32_t aMaxTouchPoints);
 
   /**
    * Modify this TabContext to match the given TabContext.  This is a special
@@ -79,16 +71,6 @@ class TabContext {
    * returns false.
    */
   bool UpdateTabContextAfterSwap(const TabContext& aContext);
-
-  /**
-   * Set this TabContext to be for a JS plugin. aPluginID is the id of the JS
-   * plugin
-   * (@see nsFakePlugin::mId).
-   * As with the other protected mutator methods, this lets you modify a
-   * TabContext once.
-   * (@see TabContext::SetTabContext above for more details).
-   */
-  bool SetTabContextForJSPluginFrame(int32_t aJSPluginID);
 
   void SetMaxTouchPoints(uint32_t aMaxTouchPoints) {
     mMaxTouchPoints = aMaxTouchPoints;
@@ -104,13 +86,6 @@ class TabContext {
    * The outerWindowID of the window hosting the remote frameloader.
    */
   uint64_t mChromeOuterWindowID;
-
-  int32_t mJSPluginID;
-
-  /**
-   * Keyboard indicator state (focus rings).
-   */
-  UIStateChangeType mShowFocusRings;
 
   /**
    * Maximum number of touch points.
@@ -129,15 +104,8 @@ class MutableTabContext : public TabContext {
     return TabContext::SetTabContext(aContext);
   }
 
-  bool SetTabContext(uint64_t aChromeOuterWindowID,
-                     UIStateChangeType aShowFocusRings,
-                     uint32_t aMaxTouchPoints) {
-    return TabContext::SetTabContext(aChromeOuterWindowID, aShowFocusRings,
-                                     aMaxTouchPoints);
-  }
-
-  bool SetTabContextForJSPluginFrame(uint32_t aJSPluginID) {
-    return TabContext::SetTabContextForJSPluginFrame(aJSPluginID);
+  bool SetTabContext(uint64_t aChromeOuterWindowID, uint32_t aMaxTouchPoints) {
+    return TabContext::SetTabContext(aChromeOuterWindowID, aMaxTouchPoints);
   }
 };
 
@@ -198,7 +166,6 @@ class MaybeInvalidTabContext {
   MutableTabContext mTabContext;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif

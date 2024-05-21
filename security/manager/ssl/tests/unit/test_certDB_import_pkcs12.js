@@ -18,10 +18,6 @@ const PKCS12_FILE_NO_PASS = "test_certDB_import/cert_from_windows_nopass.pfx";
 const CERT_COMMON_NAME = "test_cert_from_windows";
 const TEST_CERT_PASSWORD = "黒い";
 
-// Has getPKCS12FilePassword been called since we last reset this?
-let gGetPKCS12FilePasswordCalled = false;
-let gCurrentTestcase = null;
-
 let gTestcases = [
   // Test that importing a PKCS12 file with the wrong password fails.
   {
@@ -91,9 +87,6 @@ let gTestcases = [
 function doesCertExist(commonName) {
   let allCerts = gCertDB.getCerts();
   for (let cert of allCerts) {
-    if (cert.isBuiltInRoot) {
-      continue;
-    }
     if (cert.commonName == commonName) {
       return true;
     }
@@ -114,8 +107,6 @@ function runOneTestcase(testcase) {
   // Import and check for failure.
   let certFile = do_get_file(testcase.filename);
   ok(certFile, `${testcase.filename} should exist`);
-  gGetPKCS12FilePasswordCalled = false;
-  gCurrentTestcase = testcase;
   let errorCode = gCertDB.importPKCS12File(certFile, testcase.passwordToUse);
   equal(errorCode, testcase.errorCode, `verifying error code`);
   equal(

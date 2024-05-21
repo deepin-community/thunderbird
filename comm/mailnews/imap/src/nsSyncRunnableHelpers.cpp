@@ -9,6 +9,7 @@
 #include "nsIMsgWindow.h"
 #include "nsIImapMailFolderSink.h"
 
+#include "mozilla/ClearOnShutdown.h"
 #include "mozilla/Monitor.h"
 
 NS_IMPL_ISUPPORTS(StreamListenerProxy, nsIStreamListener)
@@ -388,8 +389,6 @@ NS_SYNCRUNNABLEMETHOD3(ImapMessageSink, NotifyMessageDeleted, const char*, bool,
                        const char*)
 NS_SYNCRUNNABLEMETHOD2(ImapMessageSink, GetMessageSizeFromDB, const char*,
                        uint32_t*)
-NS_SYNCRUNNABLEMETHOD2(ImapMessageSink, SetContentModified, nsIImapUrl*,
-                       nsImapContentModifiedType)
 NS_SYNCRUNNABLEMETHOD4(ImapMessageSink, GetCurMoveCopyMessageInfo, nsIImapUrl*,
                        PRTime*, nsACString&, uint32_t*)
 
@@ -435,6 +434,7 @@ NS_SYNCRUNNABLEMETHOD2(ImapServerSink, FEAlertFromServer, const nsACString&,
 NS_SYNCRUNNABLEMETHOD0(ImapServerSink, CommitNamespaces)
 NS_SYNCRUNNABLEMETHOD3(ImapServerSink, AsyncGetPassword, nsIImapProtocol*, bool,
                        nsAString&)
+NS_SYNCRUNNABLEMETHOD1(ImapServerSink, SyncGetPassword, nsAString&)
 NS_SYNCRUNNABLEATTRIBUTE(ImapServerSink, UserAuthenticated, bool)
 NS_SYNCRUNNABLEMETHOD3(ImapServerSink, SetMailServerUrls, const nsACString&,
                        const nsACString&, const nsACString&)
@@ -452,7 +452,6 @@ NS_SYNCRUNNABLEMETHOD1(ImapServerSink, RemoveServerConnection, nsIImapProtocol*)
 NS_SYNCRUNNABLEMETHOD1(ImapServerSink, GetServerShuttingDown, bool*)
 NS_SYNCRUNNABLEMETHOD1(ImapServerSink, ResetServerConnection, const nsACString&)
 NS_SYNCRUNNABLEMETHOD1(ImapServerSink, SetServerDoingLsub, bool)
-NS_SYNCRUNNABLEMETHOD1(ImapServerSink, SetServerForceSelect, const nsACString&)
 NS_SYNCRUNNABLEMETHOD1(ImapServerSink, SetServerUtf8AcceptEnabled, bool)
 
 namespace mozilla {
@@ -490,7 +489,10 @@ bool OAuth2ThreadHelper::SupportsOAuth2() {
   } else {
     nsCOMPtr<nsIRunnable> runInit = NewRunnableMethod(
         "OAuth2ThreadHelper::SupportsOAuth2", this, &OAuth2ThreadHelper::Init);
-    NS_DispatchToMainThread(runInit);
+    nsresult rv = NS_DispatchToMainThread(runInit);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      return false;
+    }
     mMonitor.Wait();
   }
 
@@ -512,8 +514,23 @@ void OAuth2ThreadHelper::GetXOAuth2String(nsACString& base64Str) {
   nsCOMPtr<nsIRunnable> runInit =
       NewRunnableMethod("OAuth2ThreadHelper::GetXOAuth2String", this,
                         &OAuth2ThreadHelper::Connect);
-  NS_DispatchToMainThread(runInit);
+  nsresult rv = NS_DispatchToMainThread(runInit);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return;
+  }
   mMonitor.Wait();
+
+  nsCOMPtr<nsIRunnable> shutdownNotify = NS_NewRunnableFunction(
+      "GetXOAuth2StringShutdownNotifier", [self = RefPtr(this)]() {
+        mozilla::RunOnShutdown([self]() {
+          // Notify anyone waiting that we're done.
+          self->mMonitor.Notify();
+        });
+      });
+  rv = NS_DispatchToMainThread(shutdownNotify.forget());
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return;
+  }
 
   // Now we either have the string, or we failed (in which case the string is
   // empty).

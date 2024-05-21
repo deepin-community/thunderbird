@@ -42,6 +42,7 @@
 #include "mozilla/dom/PerformanceStorage.h"
 #include "mozilla/dom/ServiceWorkerDescriptor.h"
 #include "mozilla/dom/URLSearchParams.h"
+#include "mozilla/dom/WorkerRef.h"
 #include "mozilla/dom/XMLHttpRequest.h"
 #include "mozilla/dom/XMLHttpRequestBinding.h"
 #include "mozilla/dom/XMLHttpRequestEventTarget.h"
@@ -62,6 +63,10 @@ class nsILoadGroup;
 
 namespace mozilla {
 class ProfileChunkedBuffer;
+
+namespace net {
+class ContentRange;
+}
 
 namespace dom {
 
@@ -116,7 +121,8 @@ class ArrayBufferBuilder {
   ArrayBufferBuilder& operator=(const ArrayBufferBuilder&) = delete;
   ArrayBufferBuilder& operator=(const ArrayBufferBuilder&&) = delete;
 
-  bool SetCapacityInternal(uint32_t aNewCap, const MutexAutoLock& aProofOfLock);
+  bool SetCapacityInternal(uint32_t aNewCap, const MutexAutoLock& aProofOfLock)
+      MOZ_REQUIRES(mMutex);
 
   static bool AreOverlappingRegions(const uint8_t* aStart1, uint32_t aLength1,
                                     const uint8_t* aStart2, uint32_t aLength2);
@@ -124,10 +130,10 @@ class ArrayBufferBuilder {
   Mutex mMutex;
 
   // All of these are protected by mMutex.
-  uint8_t* mDataPtr;
-  uint32_t mCapacity;
-  uint32_t mLength;
-  void* mMapPtr;
+  uint8_t* mDataPtr MOZ_GUARDED_BY(mMutex);
+  uint32_t mCapacity MOZ_GUARDED_BY(mMutex);
+  uint32_t mLength MOZ_GUARDED_BY(mMutex);
+  void* mMapPtr MOZ_GUARDED_BY(mMutex);
 
   // This is used in assertions only.
   bool mNeutered;
@@ -167,8 +173,8 @@ class RequestHeaders {
   void MergeOrSet(const char* aName, const nsACString& aValue);
   void MergeOrSet(const nsACString& aName, const nsACString& aValue);
   void Clear();
-  void ApplyToChannel(nsIHttpChannel* aChannel,
-                      bool aStripRequestBodyHeader) const;
+  void ApplyToChannel(nsIHttpChannel* aChannel, bool aStripRequestBodyHeader,
+                      bool aStripAuth) const;
   void GetCORSUnsafeHeaders(nsTArray<nsCString>& aArray) const;
 };
 
@@ -191,19 +197,8 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   friend class XMLHttpRequestDoneNotifier;
 
  public:
-  enum class ProgressEventType : uint8_t {
-    loadstart,
-    progress,
-    error,
-    abort,
-    timeout,
-    load,
-    loadend,
-    ENUM_MAX
-  };
-
   // Make sure that any additions done to ErrorType enum are also mirrored in
-  // XHR_ERROR_TYPE enum of TelemetrySend.jsm.
+  // XHR_ERROR_TYPE enum of TelemetrySend.sys.mjs.
   enum class ErrorType : uint16_t {
     eOK,
     eRequest,
@@ -304,11 +299,13 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   bool IsCrossSiteCORSRequest() const;
   bool IsDeniedCrossSiteCORSRequest();
 
-  void UnsuppressEventHandlingAndResume();
+  void ResumeTimeout();
 
   void MaybeLowerChannelPriority();
 
  public:
+  bool CanSend(ErrorResult& aRv);
+
   virtual void Send(
       const Nullable<
           DocumentOrBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString>&
@@ -317,6 +314,9 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
 
   virtual void SendInputStream(nsIInputStream* aInputStream,
                                ErrorResult& aRv) override {
+    if (!CanSend(aRv)) {
+      return;
+    }
     BodyExtractor<nsIInputStream> body(aInputStream);
     SendInternal(&body, false, aRv);
   }
@@ -327,7 +327,7 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   void Abort() {
     IgnoredErrorResult rv;
     AbortInternal(rv);
-    MOZ_ASSERT(!rv.Failed());
+    MOZ_ASSERT(!rv.Failed() || rv.ErrorCodeIs(NS_ERROR_DOM_ABORT_ERR));
   }
 
   virtual void Abort(ErrorResult& aRv) override;
@@ -403,6 +403,8 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
 
   void SetSource(UniquePtr<ProfileChunkedBuffer> aSource);
 
+  nsresult ErrorDetail() const { return mErrorLoadDetail; }
+
   virtual uint16_t ErrorCode() const override {
     return static_cast<uint16_t>(mErrorLoad);
   }
@@ -422,10 +424,8 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   // doesn't bubble.
   nsresult FireReadystatechangeEvent();
   void DispatchProgressEvent(DOMEventTargetHelper* aTarget,
-                             const ProgressEventType aType, int64_t aLoaded,
+                             const ProgressEventType& aType, int64_t aLoaded,
                              int64_t aTotal);
-
-  void SetRequestObserver(nsIRequestObserver* aObserver);
 
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(
       XMLHttpRequestMainThread, XMLHttpRequest)
@@ -447,6 +447,12 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
                           nsresult aResult) override;
 
   void LocalFileToBlobCompleted(BlobImpl* aBlobImpl);
+
+#ifdef DEBUG
+  // For logging when there's trouble
+  RefPtr<ThreadSafeWorkerRef> mTSWorkerRef MOZ_GUARDED_BY(mTSWorkerRefMutex);
+  Mutex mTSWorkerRefMutex;
+#endif
 
  protected:
   nsresult DetectCharset();
@@ -470,6 +476,9 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   // set to "text/xml".
   void EnsureChannelContentType();
 
+  // Gets the value of the final content-type header from the channel.
+  bool GetContentType(nsACString& aValue) const;
+
   already_AddRefed<nsIHttpChannel> GetCurrentHttpChannel();
   already_AddRefed<nsIJARChannel> GetCurrentJARChannel();
 
@@ -487,7 +496,7 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
 
   void MaybeCreateBlobStorage();
 
-  nsresult OnRedirectVerifyCallback(nsresult result);
+  nsresult OnRedirectVerifyCallback(nsresult result, bool stripAuth = false);
 
   nsIEventTarget* GetTimerEventTarget();
 
@@ -501,6 +510,10 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   void ResumeEventDispatching();
 
   void AbortInternal(ErrorResult& aRv);
+
+  bool BadContentRangeRequested();
+  RefPtr<mozilla::net::ContentRange> GetRequestedContentRange() const;
+  void GetContentRangeHeader(nsACString&) const;
 
   struct PendingEvent {
     RefPtr<DOMEventTargetHelper> mTarget;
@@ -637,8 +650,6 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   nsCOMPtr<nsIChannelEventSink> mChannelEventSink;
   nsCOMPtr<nsIProgressEventSink> mProgressEventSink;
 
-  nsIRequestObserver* mRequestObserver;
-
   nsCOMPtr<nsIURI> mBaseURI;
   nsCOMPtr<nsILoadGroup> mLoadGroup;
 
@@ -678,8 +689,8 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   nsCOMPtr<nsITimer> mTimeoutTimer;
   void StartTimeoutTimer();
   void HandleTimeoutCallback();
+  void CancelTimeoutTimer();
 
-  RefPtr<Document> mSuspendedDoc;
   nsCOMPtr<nsIRunnable> mResumeTimeoutRunnable;
 
   nsCOMPtr<nsITimer> mSyncTimeoutTimer;
@@ -691,6 +702,7 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   void CancelSyncTimeoutTimer();
 
   ErrorType mErrorLoad;
+  nsresult mErrorLoadDetail;
   bool mErrorParsingXML;
   bool mWaitingForOnStopRequest;
   bool mProgressTimerIsActive;
@@ -714,9 +726,9 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
   /**
    * Close the XMLHttpRequest's channels.
    */
-  void CloseRequest();
+  void CloseRequest(nsresult detail);
 
-  void TerminateOngoingFetch();
+  void TerminateOngoingFetch(nsresult detail);
 
   /**
    * Close the XMLHttpRequest's channels and dispatch appropriate progress
@@ -724,10 +736,7 @@ class XMLHttpRequestMainThread final : public XMLHttpRequest,
    *
    * @param aType The progress event type.
    */
-  void CloseRequestWithError(const ProgressEventType aType);
-
-  bool mFirstStartRequestSeen;
-  bool mInLoadProgressEvent;
+  void CloseRequestWithError(const ErrorProgressEventType& aType);
 
   nsCOMPtr<nsIAsyncVerifyRedirectCallback> mRedirectCallback;
   nsCOMPtr<nsIChannel> mNewRedirectChannel;

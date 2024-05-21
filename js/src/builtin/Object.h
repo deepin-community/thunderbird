@@ -7,10 +7,11 @@
 #ifndef builtin_Object_h
 #define builtin_Object_h
 
-#include "jsapi.h"
+#include "vm/JSObject.h"
 
-#include "js/Value.h"
-#include "vm/NativeObject.h"
+namespace JS {
+class Value;
+}
 
 namespace js {
 
@@ -32,6 +33,13 @@ PlainObject* ObjectCreateWithTemplate(JSContext* cx,
 [[nodiscard]] bool obj_isPrototypeOf(JSContext* cx, unsigned argc, Value* vp);
 
 [[nodiscard]] bool obj_create(JSContext* cx, unsigned argc, JS::Value* vp);
+
+[[nodiscard]] bool obj_keys(JSContext* cx, unsigned argc, JS::Value* vp);
+
+// Similar to calling obj_keys followed by asking the length property, except
+// that we do not materialize the keys array.
+[[nodiscard]] bool obj_keys_length(JSContext* cx, HandleObject obj,
+                                   int32_t& length);
 
 [[nodiscard]] bool obj_is(JSContext* cx, unsigned argc, JS::Value* vp);
 

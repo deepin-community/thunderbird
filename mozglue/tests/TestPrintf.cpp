@@ -3,12 +3,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/IntegerPrintfMacros.h"
+// Newer versions of the Windows SDK define NAN differently than before,
+// which causes our tests to fail. Force the use of the old definition.
+#define _UCRT_NEGATIVE_NAN 1
+
 #include "mozilla/Printf.h"
 
 #include <cfloat>
 #include <cmath>
+#include <inttypes.h>
 #include <stdarg.h>
+#include <stddef.h>
 
 #if defined(__clang__)
 #  pragma clang diagnostic push
@@ -65,7 +70,12 @@ static void TestPrintfTargetPrint() {
   checker.print("test string");
 }
 
-static bool MOZ_FORMAT_PRINTF(5, 6)
+// As of clang 14, __attribute__((printf)) doesn't allow %n on Android targets,
+// which is used in this test.
+static bool
+#ifndef __ANDROID__
+MOZ_FORMAT_PRINTF(5, 6)
+#endif
     check_print(const char* file, int line,
                 bool (*cmp)(const char* a, const char* b), const char* expect,
                 const char* fmt, ...) {

@@ -5,44 +5,12 @@
 
 #include "nsCopyMessageStreamListener.h"
 #include "nsIMsgMailNewsUrl.h"
-#include "nsIMailboxUrl.h"
-#include "nsIMsgHdr.h"
 #include "nsIMsgImapMailFolder.h"
-#include "nsIMsgMessageService.h"
-#include "nsMsgUtils.h"
 #include "nsIChannel.h"
-#include "netCore.h"
+#include "nsIURI.h"
 
 NS_IMPL_ISUPPORTS(nsCopyMessageStreamListener, nsIStreamListener,
                   nsIRequestObserver, nsICopyMessageStreamListener)
-
-static nsresult GetMessage(nsIURI* aURL, nsIMsgDBHdr** message) {
-  NS_ENSURE_ARG_POINTER(message);
-
-  nsCOMPtr<nsIMsgMessageUrl> uriURL;
-  nsresult rv;
-
-  // Need to get message we are about to copy
-  uriURL = do_QueryInterface(aURL, &rv);
-  if (NS_FAILED(rv)) return rv;
-
-  // get the uri.  first try and use the original message spec
-  // if that fails, use the spec of nsIURI that we're called with
-  nsCString uri;
-  rv = uriURL->GetOriginalSpec(getter_Copies(uri));
-  if (NS_FAILED(rv) || uri.IsEmpty()) {
-    rv = uriURL->GetUri(uri);
-    NS_ENSURE_SUCCESS(rv, rv);
-  }
-
-  nsCOMPtr<nsIMsgMessageService> msgMessageService;
-  rv = GetMessageServiceFromURI(uri, getter_AddRefs(msgMessageService));
-  NS_ENSURE_SUCCESS(rv, rv);
-  if (!msgMessageService) return NS_ERROR_FAILURE;
-
-  rv = msgMessageService->MessageURIToMsgHdr(uri, message);
-  return rv;
-}
 
 nsCopyMessageStreamListener::nsCopyMessageStreamListener() {}
 
@@ -51,36 +19,32 @@ nsCopyMessageStreamListener::~nsCopyMessageStreamListener() {
 }
 
 NS_IMETHODIMP nsCopyMessageStreamListener::Init(
-    nsIMsgFolder* srcFolder, nsICopyMessageListener* destination,
-    nsISupports* listenerData) {
-  mSrcFolder = srcFolder;
+    nsICopyMessageListener* destination) {
   mDestination = destination;
-  mListenerData = listenerData;
   return NS_OK;
 }
 
 NS_IMETHODIMP nsCopyMessageStreamListener::StartMessage() {
-  if (mDestination) mDestination->StartMessage();
-
+  if (mDestination) {
+    return mDestination->StartMessage();
+  }
   return NS_OK;
 }
 
 NS_IMETHODIMP nsCopyMessageStreamListener::EndMessage(nsMsgKey key) {
-  if (mDestination) mDestination->EndMessage(key);
-
+  if (mDestination) {
+    return mDestination->EndMessage(key);
+  }
   return NS_OK;
 }
 
 NS_IMETHODIMP nsCopyMessageStreamListener::OnDataAvailable(
     nsIRequest* /* request */, nsIInputStream* aIStream, uint64_t sourceOffset,
     uint32_t aLength) {
-  nsresult rv;
-  rv = mDestination->CopyData(aIStream, aLength);
-  return rv;
+  return mDestination->CopyData(aIStream, aLength);
 }
 
 NS_IMETHODIMP nsCopyMessageStreamListener::OnStartRequest(nsIRequest* request) {
-  nsCOMPtr<nsIMsgDBHdr> message;
   nsresult rv = NS_OK;
   nsCOMPtr<nsIURI> uri;
 
@@ -90,20 +54,16 @@ NS_IMETHODIMP nsCopyMessageStreamListener::OnStartRequest(nsIRequest* request) {
   NS_WARNING_ASSERTION(NS_SUCCEEDED(rv),
                        "error QI nsIRequest to nsIChannel failed");
   if (NS_SUCCEEDED(rv)) rv = channel->GetURI(getter_AddRefs(uri));
-  if (NS_SUCCEEDED(rv)) rv = GetMessage(uri, getter_AddRefs(message));
-  if (NS_SUCCEEDED(rv)) rv = mDestination->BeginCopy(message);
+  if (NS_SUCCEEDED(rv)) rv = mDestination->BeginCopy();
 
   NS_ENSURE_SUCCESS(rv, rv);
   return rv;
 }
 
-NS_IMETHODIMP nsCopyMessageStreamListener::EndCopy(nsISupports* url,
-                                                   nsresult aStatus) {
+NS_IMETHODIMP nsCopyMessageStreamListener::EndCopy(nsIURI* uri,
+                                                   nsresult status) {
   nsresult rv;
-  nsCOMPtr<nsIURI> uri = do_QueryInterface(url, &rv);
-
-  NS_ENSURE_SUCCESS(rv, rv);
-  bool copySucceeded = (aStatus == NS_BINDING_SUCCEEDED);
+  bool copySucceeded = (status == NS_BINDING_SUCCEEDED);
   rv = mDestination->EndCopy(copySucceeded);
   // If this is a move and we finished the copy, delete the old message.
   bool moveMessage = false;

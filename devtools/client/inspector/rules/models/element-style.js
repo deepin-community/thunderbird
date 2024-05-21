@@ -4,30 +4,28 @@
 
 "use strict";
 
-const Services = require("Services");
-const promise = require("promise");
-const Rule = require("devtools/client/inspector/rules/models/rule");
-const UserProperties = require("devtools/client/inspector/rules/models/user-properties");
+const Rule = require("resource://devtools/client/inspector/rules/models/rule.js");
+const UserProperties = require("resource://devtools/client/inspector/rules/models/user-properties.js");
 const {
   style: { ELEMENT_STYLE },
-} = require("devtools/shared/constants");
+} = require("resource://devtools/shared/constants.js");
 
 loader.lazyRequireGetter(
   this,
   "promiseWarn",
-  "devtools/client/inspector/shared/utils",
+  "resource://devtools/client/inspector/shared/utils.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   ["parseDeclarations", "parseNamedDeclarations", "parseSingleValue"],
-  "devtools/shared/css/parsing-utils",
+  "resource://devtools/shared/css/parsing-utils.js",
   true
 );
 loader.lazyRequireGetter(
   this,
   "isCssVariable",
-  "devtools/client/fronts/css-properties",
+  "resource://devtools/shared/inspector/css-logic.js",
   true
 );
 
@@ -129,7 +127,7 @@ class ElementStyle {
       })
       .then(entries => {
         if (this.destroyed || this.populated !== populated) {
-          return promise.resolve(undefined);
+          return Promise.resolve(undefined);
         }
 
         // Store the current list of rules (if any) during the population
@@ -167,7 +165,7 @@ class ElementStyle {
         // populate is often called after a setTimeout,
         // the connection may already be closed.
         if (this.destroyed) {
-          return promise.resolve(undefined);
+          return Promise.resolve(undefined);
         }
         return promiseWarn(e);
       });
@@ -324,11 +322,18 @@ class ElementStyle {
     //   If the new property is a lower or equal priority, mark it as
     //   overridden.
     //
+    //   Note that this is different if layers are involved: if both
+    //   old and new properties have a high priority, and if the new
+    //   property is in a rule belonging to a layer that is different
+    //   from the the one the old property rule might be in,
+    //   mark the old property overridden and mark the property name as
+    //   taken by the new property.
+    //
     // _overriddenDirty will be set on each prop, indicating whether its
     // dirty status changed during this pass.
-    const taken = {};
+    const taken = new Map();
     for (const computedProp of computedProps) {
-      const earlier = taken[computedProp.name];
+      const earlier = taken.get(computedProp.name);
 
       // Prevent -webkit-gradient from being selected after unchecking
       // linear-gradient in this case:
@@ -344,9 +349,15 @@ class ElementStyle {
       if (
         earlier &&
         computedProp.priority === "important" &&
-        earlier.priority !== "important" &&
-        (earlier.textProp.rule.inherited ||
-          !computedProp.textProp.rule.inherited)
+        (earlier.priority !== "important" ||
+          // Even if the earlier property was important, if the current rule is in a layer
+          // it will take precedence, unless the earlier property rule was in the same layer.
+          (computedProp.textProp.rule?.isInLayer() &&
+            computedProp.textProp.rule.isInDifferentLayer(
+              earlier.textProp.rule
+            ))) &&
+        // For !important only consider rules applying to the same parent node.
+        computedProp.textProp.rule.inherited == earlier.textProp.rule.inherited
       ) {
         // New property is higher priority. Mark the earlier property
         // overridden (which will reverse its dirty state).
@@ -361,9 +372,17 @@ class ElementStyle {
       computedProp.overridden = overridden;
 
       if (!computedProp.overridden && computedProp.textProp.enabled) {
-        taken[computedProp.name] = computedProp;
+        taken.set(computedProp.name, computedProp);
 
-        if (isCssVariable(computedProp.name)) {
+        // At this point, we can get CSS variable from "inherited" rules.
+        // When this is a registered custom property with `inherits` set to false,
+        // the text prop is "invisible" (i.e. not shown in the rule view).
+        // In such case, we don't want to get the value in the Map, and we'll rather
+        // get the initial value from the registered property definition.
+        if (
+          isCssVariable(computedProp.name) &&
+          !computedProp.textProp.invisible
+        ) {
           variables.set(computedProp.name, computedProp.value);
         }
       }
@@ -399,6 +418,23 @@ class ElementStyle {
       // For each editor show or hide the inactive CSS icon as needed.
       if (textProp.editor && this.unusedCssEnabled) {
         textProp.editor.updatePropertyState();
+      }
+    }
+  }
+
+  /**
+   * Update CSS variable tooltip information on textProp editor when registered property
+   * are added/modified/removed.
+   *
+   * @param {Set<String>} registeredPropertyNamesSet: A Set containing the name of the
+   *                      registered properties which were added/modified/removed.
+   */
+  onRegisteredPropertiesChange(registeredPropertyNamesSet) {
+    for (const rule of this.rules) {
+      for (const textProp of rule.textProps) {
+        if (this._hasUpdatedCSSVariable(textProp, registeredPropertyNamesSet)) {
+          textProp.updateEditor();
+        }
       }
     }
   }
@@ -457,7 +493,7 @@ class ElementStyle {
       // longer matches the node. This strict check avoids accidentally causing
       // declarations to be overridden in the remaining matching rules.
       const isStyleRule =
-        rule.pseudoElement === "" && rule.matchedSelectors.length > 0;
+        rule.pseudoElement === "" && !!rule.matchedDesugaredSelectors.length;
 
       // Style rules for pseudo-elements must always be considered, regardless if their
       // selector matches the node. As a convenience, declarations in rules for
@@ -655,9 +691,8 @@ class ElementStyle {
       return;
     }
 
-    const { declarationsToAdd, firstValue } = this._getValueAndExtraProperties(
-      value
-    );
+    const { declarationsToAdd, firstValue } =
+      this._getValueAndExtraProperties(value);
     const parsedValue = parseSingleValue(
       this.cssProperties.isKnown,
       firstValue
@@ -802,19 +837,67 @@ class ElementStyle {
   }
 
   /**
-   * Returns the current value of a CSS variable; or null if the
-   * variable is not defined.
+   * Returns the current value of a CSS variable; or its initial value if the
+   * variable is registered but not defined; or null if it's not registered and not defined.
    *
    * @param  {String} name
    *         The name of the variable.
    * @param  {String} pseudo
    *         The pseudo-element name of the rule.
-   * @return {String} the variable's value or null if the variable is
-   *         not defined.
+   * @return {String|null} the variable's value (or initial value) or null if the variable
+   *         is not defined and not registered.
    */
   getVariable(name, pseudo = "") {
     const variables = this.variablesMap.get(pseudo);
-    return variables ? variables.get(name) : null;
+
+    if (variables && variables.has(name)) {
+      return variables.get(name);
+    }
+
+    // If the variable wasn't defined, we want to check if it is a registered custom
+    // properties so we can get its initial value
+    const registeredPropertiesMap =
+      this.ruleView.getRegisteredPropertiesForSelectedNodeTarget();
+    return registeredPropertiesMap && registeredPropertiesMap.has(name)
+      ? registeredPropertiesMap.get(name).initialValue
+      : null;
+  }
+
+  /**
+   * Get all custom properties.
+   *
+   * @param  {String} pseudo
+   *         The pseudo-element name of the rule.
+   * @returns Map<String, String> A map whose key is the custom property name and value is
+   *                              the custom property value (or registered property initial
+   *                              value if the property is not defined)
+   */
+  getAllCustomProperties(pseudo = "") {
+    let customProperties = this.variablesMap.get(pseudo);
+
+    const registeredPropertiesMap =
+      this.ruleView.getRegisteredPropertiesForSelectedNodeTarget();
+
+    // If there's no registered properties, we can return the Map as is
+    if (!registeredPropertiesMap || registeredPropertiesMap.size === 0) {
+      return customProperties;
+    }
+
+    let newMapCreated = false;
+    for (const [name, propertyDefinition] of registeredPropertiesMap) {
+      // Only set the registered property if it's not defined (i.e. not in this.variablesMap)
+      if (!customProperties.has(name)) {
+        // Since we want to return registered property, we need to create a new Map
+        // to not modify the one in this.variablesMap.
+        if (!newMapCreated) {
+          customProperties = new Map(customProperties);
+          newMapCreated = true;
+        }
+        customProperties.set(name, propertyDefinition.initialValue);
+      }
+    }
+
+    return customProperties;
   }
 }
 

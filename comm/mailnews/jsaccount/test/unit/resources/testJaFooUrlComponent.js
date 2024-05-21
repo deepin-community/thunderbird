@@ -5,16 +5,13 @@
   One of the goals of JsAccount is to be able to incrementally extend a base
   implementation, possibly adding a new interface. This code demonstrates
   a mailnews URL extended for a hypthetical account type "foo".
-**/
+*/
 
-var { ComponentUtils } = ChromeUtils.import(
-  "resource://gre/modules/ComponentUtils.jsm"
+const { JSAccountUtils } = ChromeUtils.importESModule(
+  "resource:///modules/jsaccount/JSAccountUtils.sys.mjs"
 );
-const { JSAccountUtils } = ChromeUtils.import(
-  "resource:///modules/jsaccount/JSAccountUtils.jsm"
-);
-const { JaBaseUrl, JaBaseUrlProperties } = ChromeUtils.import(
-  "resource:///modules/jsaccount/JaBaseUrl.jsm"
+const { JaBaseUrl, JaBaseUrlProperties } = ChromeUtils.importESModule(
+  "resource:///modules/jsaccount/JaBaseUrl.sys.mjs"
 );
 
 const ATTACHMENT_QUERY = "part=1.";
@@ -31,13 +28,7 @@ var FooUrlProperties = {
 };
 
 // Constructor
-function FooUrlConstructor() {}
-
-// Constructor prototype (not instance prototype).
-FooUrlConstructor.prototype = {
-  classID: FooUrlProperties.classID,
-  _xpcom_factory: JSAccountUtils.jaFactory(FooUrlProperties, FooUrl),
-};
+var xpcomFactory = JSAccountUtils.jaFactory(FooUrlProperties, FooUrl);
 
 // Main class.
 function FooUrl(aDelegator, aBaseInterfaces) {
@@ -68,7 +59,7 @@ FooUrl.prototype = {
   // InterfaceRequestor override, needed if extraInterfaces.
 
   getInterface(iid) {
-    for (let iface of FooUrlProperties.extraInterfaces) {
+    for (const iface of FooUrlProperties.extraInterfaces) {
       if (iid.equals(iface)) {
         return this;
       }
@@ -91,9 +82,7 @@ FooUrl.prototype = {
   // readonly attribute boolean isAttachment;
   get isAttachment() {
     // We look to see if the URL has an attachment query
-    let query = this.QueryInterface(Ci.nsIURL).query;
+    const query = this.QueryInterface(Ci.nsIURL).query;
     return query && query.includes(ATTACHMENT_QUERY);
   },
 };
-
-this.NSGetFactory = ComponentUtils.generateNSGetFactory([FooUrlConstructor]);

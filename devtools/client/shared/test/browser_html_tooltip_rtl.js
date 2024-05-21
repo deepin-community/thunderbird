@@ -14,14 +14,14 @@ const TEST_URI = CHROME_URL_ROOT + "doc_html_tooltip_rtl.xhtml";
 
 const {
   HTMLTooltip,
-} = require("devtools/client/shared/widgets/tooltip/HTMLTooltip");
+} = require("resource://devtools/client/shared/widgets/tooltip/HTMLTooltip.js");
 loadHelperScript("helper_html_tooltip.js");
 
 const TOOLBOX_WIDTH = 500;
 const TOOLTIP_WIDTH = 150;
 const TOOLTIP_HEIGHT = 30;
 
-add_task(async function() {
+add_task(async function () {
   await pushPref("devtools.toolbox.sidebar.width", TOOLBOX_WIDTH);
 
   const { doc } = await createHost("right", TEST_URI);
@@ -204,16 +204,18 @@ async function testRtlArrow(doc) {
 
   // The arrow should be offset from the right edge, but still closer to the
   // right edge than the left edge.
-  ok(
-    arrowRect.right < panelRect.right,
+  Assert.less(
+    arrowRect.right,
+    panelRect.right,
     "Right edge of the arrow " +
       `(${arrowRect.right}) is less than the right edge of the panel ` +
       `(${panelRect.right})`
   );
   const rightMargin = panelRect.right - arrowRect.right;
   const leftMargin = arrowRect.left - panelRect.right;
-  ok(
-    rightMargin > leftMargin,
+  Assert.greater(
+    rightMargin,
+    leftMargin,
     "Arrow should be closer to the right side of " +
       ` the panel (margin: ${rightMargin}) than the left side ` +
       ` (margin: ${leftMargin})`

@@ -1,29 +1,28 @@
 {
   "langpack_id": "vi",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-vi@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "125.0",
+      "strict_max_version": "125.*"
     }
   },
-  "name": "Tiếng Việt Language Pack",
-  "description": "Language pack for Thunderbird for vi",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Tiếng Việt (Vietnamese)",
+  "description": "Thunderbird Beta Language Pack for Tiếng Việt (vi) – Vietnamese",
+  "version": "125.0.20240401.173510",
   "languages": {
     "vi": {
-      "version": "20211013054003",
+      "version": "20240401183357",
       "chrome_resources": {
         "alerts": "chrome/vi/locale/vi/alerts/",
         "autoconfig": "chrome/vi/locale/vi/autoconfig/",
-        "branding": "chrome/vi/locale/vi/branding/",
+        "branding": "chrome/vi/locale/branding/",
         "calendar": "chrome/vi/locale/vi/calendar/",
         "chat": "chrome/vi/locale/vi/chat/",
         "communicator": "chrome/vi/locale/vi/communicator/",
         "devtools": "chrome/vi/locale/vi/devtools/client/",
         "devtools-shared": "chrome/vi/locale/vi/devtools/shared/",
-        "devtools-startup": "chrome/vi/locale/vi/devtools/startup/",
         "global": "chrome/vi/locale/vi/global/",
         "global-platform": {
           "macosx": "chrome/vi/locale/vi/global-platform/mac/",
@@ -41,7 +40,6 @@
         "mozldap": "chrome/vi/locale/vi/mozldap/",
         "necko": "chrome/vi/locale/vi/necko/",
         "passwordmgr": "chrome/vi/locale/vi/passwordmgr/",
-        "pdf.js": "chrome/vi/locale/pdfviewer/",
         "pipnss": "chrome/vi/locale/vi/pipnss/",
         "pippki": "chrome/vi/locale/vi/pippki/",
         "places": "chrome/vi/locale/vi/places/"

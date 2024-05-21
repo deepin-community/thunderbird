@@ -14,9 +14,9 @@ const {
   REMOVE_DEVICE,
   UPDATE_DEVICE_DISPLAYED,
   UPDATE_DEVICE_MODAL,
-} = require("devtools/client/responsive/actions/index");
+} = require("resource://devtools/client/responsive/actions/index.js");
 
-const Types = require("devtools/client/responsive/types");
+const Types = require("resource://devtools/client/responsive/types.js");
 
 const INITIAL_DEVICES = {
   isModalOpen: false,
@@ -70,21 +70,21 @@ const reducers = {
     };
   },
 
-  [LOAD_DEVICE_LIST_START](devices, action) {
+  [LOAD_DEVICE_LIST_START](devices) {
     return {
       ...devices,
       listState: Types.loadableState.LOADING,
     };
   },
 
-  [LOAD_DEVICE_LIST_ERROR](devices, action) {
+  [LOAD_DEVICE_LIST_ERROR](devices) {
     return {
       ...devices,
       listState: Types.loadableState.ERROR,
     };
   },
 
-  [LOAD_DEVICE_LIST_END](devices, action) {
+  [LOAD_DEVICE_LIST_END](devices) {
     return {
       ...devices,
       listState: Types.loadableState.LOADED,
@@ -115,7 +115,7 @@ const reducers = {
   },
 };
 
-module.exports = function(devices = INITIAL_DEVICES, action) {
+module.exports = function (devices = INITIAL_DEVICES, action) {
   const reducer = reducers[action.type];
   if (!reducer) {
     return devices;

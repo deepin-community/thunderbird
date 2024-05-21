@@ -12,9 +12,7 @@
 <iframe></iframe>
 
 <script type="application/javascript">
-const { LoginManagerChild } = SpecialPowers.Cu.import("resource://gre/modules/LoginManagerChild.jsm", {});
-
-add_task(async function setup() {
+add_setup(async () => {
   const readyPromise = registerRunTests();
   info("Waiting for setup and page load");
   await readyPromise;
@@ -69,13 +67,7 @@ async function editPasswordFieldInShadowDOM() {
 
 async function testForm(testcase) {
   const iframeLoaded = new Promise(resolve => {
-    IFRAME.addEventListener(
-      "load",
-      function(e) {
-        resolve(true);
-      },
-      { once: true }
-    );
+    IFRAME.addEventListener("load", _e => resolve(true), { once: true });
   });
 
   // This could complete before the page finishes loading.

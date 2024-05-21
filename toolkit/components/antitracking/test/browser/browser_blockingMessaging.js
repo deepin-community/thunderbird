@@ -1,5 +1,3 @@
-/* import-globals-from antitracking_head.js */
-
 if (AppConstants.MOZ_CODE_COVERAGE) {
   requestLongerTimeout(12);
 } else {
@@ -23,7 +21,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -52,7 +50,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -60,7 +58,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
@@ -81,7 +79,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -89,14 +87,14 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -161,7 +159,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });
@@ -200,7 +198,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -208,7 +206,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
@@ -244,7 +242,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -252,7 +250,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
@@ -276,7 +274,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -284,7 +282,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
@@ -298,7 +296,7 @@ AntiTracking.runTestInNormalAndPrivateMode(
     ok(worker, "Worker has been created");
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = function(e) {
+      worker.onmessage = function (e) {
         if (e.data) {
           resolve();
         } else {
@@ -306,14 +304,14 @@ AntiTracking.runTestInNormalAndPrivateMode(
         }
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = function () {
         reject();
       };
     });
   },
   async _ => {
     await new Promise(resolve => {
-      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+      Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
         resolve()
       );
     });

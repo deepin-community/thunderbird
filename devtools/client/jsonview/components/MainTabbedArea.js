@@ -4,7 +4,7 @@
 
 "use strict";
 
-define(function(require, exports, module) {
+define(function (require, exports) {
   const { Component } = require("devtools/client/shared/vendor/react");
   const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
   const { createFactories } = require("devtools/client/shared/react-utils");
@@ -59,6 +59,11 @@ define(function(require, exports, module) {
 
     onTabChanged(index) {
       this.setState({ activeTab: index });
+
+      // Send notification event to the window. This is useful for tests.
+      window.dispatchEvent(
+        new CustomEvent("TabChanged", { detail: { index } })
+      );
     }
 
     render() {
@@ -66,6 +71,7 @@ define(function(require, exports, module) {
         {
           activeTab: this.state.activeTab,
           onAfterChange: this.onTabChanged,
+          tall: true,
         },
         TabPanel(
           {
@@ -92,6 +98,8 @@ define(function(require, exports, module) {
               !(this.state.json instanceof Error) &&
               document.readyState != "loading",
             data: this.state.jsonText,
+            errorMessage:
+              this.state.json instanceof Error ? this.state.json + "" : null,
             actions: this.props.actions,
           })
         ),

@@ -35,14 +35,15 @@ interface nsIURI;
 interface nsIImapProtocol;
 
 [scriptable, uuid(e0178cd5-d37b-4bde-9ab8-752083536225)]
-
 interface nsIImapMockChannel : nsIChannel
 {
   attribute nsIProgressEventSink progressEventSink;
   void GetChannelListener(out nsIStreamListener aChannelListener);
   void Close();
   void setImapProtocol(in nsIImapProtocol aProtocol);
-  [noscript] void setSecurityInfo(in nsISupports securityInfo);
+  [noscript] void setSecurityInfo(in nsITransportSecurityInfo securityInfo);
 
   void setURI(in nsIURI uri);
+  void readFromImapConnection();
+  attribute boolean writingToCache;
 };

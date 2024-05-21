@@ -4,14 +4,14 @@
 "use strict";
 
 const { BrowserLoader } = ChromeUtils.import(
-  "resource://devtools/client/shared/browser-loader.js"
+  "resource://devtools/shared/loader/browser-loader.js"
 );
 
 const {
   getMockedModule,
   setMockedModule,
   removeMockedModule,
-} = require("devtools/client/shared/browser-loader-mocks");
+} = require("resource://devtools/shared/loader/browser-loader-mocks.js");
 const { require: browserRequire } = BrowserLoader({
   baseURI: "resource://devtools/client/shared/",
   window,
@@ -53,8 +53,9 @@ function testWithChromeScheme() {
   );
 
   const { methodToMock: requiredMethod } = browserRequire(CHROME_URI);
-  ok(
-    requiredMethod() === MOCKED_VALUE_1,
+  Assert.strictEqual(
+    requiredMethod(),
+    MOCKED_VALUE_1,
     "Mocked method returns the expected value when imported with destructuring"
   );
 
@@ -88,7 +89,11 @@ function testWithRegularDevtoolsModule() {
   const DEVTOOLS_MODULE_URI = "resource://devtools/shared/path.js";
 
   const m1 = browserRequire(DEVTOOLS_MODULE_PATH);
-  is(m1.joinURI("http://a", "b"), "http://a/b", "Original module was required");
+  is(
+    m1.joinURI("https://a", "b"),
+    "https://a/b",
+    "Original module was required"
+  );
 
   info(
     "Set a mock for a sub-part of the path, which should not match require calls"
@@ -101,8 +106,8 @@ function testWithRegularDevtoolsModule() {
   );
   const m2 = browserRequire(DEVTOOLS_MODULE_PATH);
   is(
-    m2.joinURI("http://a", "b"),
-    "http://a/b",
+    m2.joinURI("https://a", "b"),
+    "https://a/b",
     "Original module is still required"
   );
 
@@ -120,7 +125,7 @@ function testWithRegularDevtoolsModule() {
 
   const m3 = browserRequire(DEVTOOLS_MODULE_PATH);
   is(
-    m3.joinURI("http://a", "b"),
+    m3.joinURI("https://a", "b"),
     "MOCKED VALUE",
     "The mocked module has been returned"
   );
@@ -131,7 +136,7 @@ function testWithRegularDevtoolsModule() {
   const { joinURI } = browserRequire(DEVTOOLS_MODULE_PATH);
   mockedModule.joinURI = () => "UPDATED VALUE";
   is(
-    joinURI("http://a", "b"),
+    joinURI("https://a", "b"),
     "UPDATED VALUE",
     "Mocked method was correctly updated"
   );
@@ -143,8 +148,8 @@ function testWithRegularDevtoolsModule() {
   );
   const m4 = browserRequire(DEVTOOLS_MODULE_PATH);
   is(
-    m4.joinURI("http://a", "b"),
-    "http://a/b",
+    m4.joinURI("https://a", "b"),
+    "https://a/b",
     "Original module can be required again"
   );
 }

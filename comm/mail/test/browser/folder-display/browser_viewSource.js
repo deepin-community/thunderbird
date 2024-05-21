@@ -8,21 +8,16 @@
 
 "use strict";
 
-var { be_in_folder, create_folder, mc, select_click_row } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var {
-  close_window,
-  plan_for_new_window,
-  wait_for_new_window,
-} = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
+var { be_in_folder, create_folder, get_about_message, select_click_row } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  );
+var { click_menus_in_sequence, promise_new_window } =
+  ChromeUtils.importESModule(
+    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var folder = create_folder("viewsource");
-registerCleanupFunction(() => {
-  folder.deleteSelf(null);
-});
+var folder;
 
 // Message content as stored in the message folder. Non-ASCII characters as
 // escape codes for clarity.
@@ -35,12 +30,19 @@ var contentGarbled = "Testar, ett tvÃ¥ tre.";
 // Latin1 content displayed as UTF-8.
 var contentReplaced = "Testar, ett tv� tre.";
 
-addToFolder("ISO-8859-1 header/ISO-8859-1 body", "ISO-8859-1", contentLatin1);
-addToFolder("ISO-8859-1 header/UTF-8 body", "ISO-8859-1", contentUTF8);
-addToFolder("UTF-8 header/ISO-8859-1 body", "UTF-8", contentLatin1);
-addToFolder("UTF-8 header/UTF-8 body", "UTF-8", contentUTF8);
+add_setup(async function () {
+  folder = await create_folder("viewsource");
+  addToFolder("ISO-8859-1 header/ISO-8859-1 body", "ISO-8859-1", contentLatin1);
+  addToFolder("ISO-8859-1 header/UTF-8 body", "ISO-8859-1", contentUTF8);
+  addToFolder("UTF-8 header/ISO-8859-1 body", "UTF-8", contentLatin1);
+  addToFolder("UTF-8 header/UTF-8 body", "UTF-8", contentUTF8);
 
-be_in_folder(folder);
+  await be_in_folder(folder);
+});
+
+registerCleanupFunction(() => {
+  folder.deleteSelf(null);
+});
 
 /** Header matches the body. Should be readable in both places. */
 add_task(async function latin1Header_with_latin1Body() {
@@ -66,13 +68,9 @@ add_task(async function utf8Header_with_utf8Body() {
 });
 
 function addToFolder(subject, charset, body) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@invalid";
+  const msgId = Services.uuid.generateUUID() + "@invalid";
 
-  let source =
-    "From - Sat Nov  1 12:39:54 2008\n" +
+  const source =
     "X-Mozilla-Status: 0001\n" +
     "X-Mozilla-Status2: 00000000\n" +
     "Message-ID: <" +
@@ -97,26 +95,36 @@ function addToFolder(subject, charset, body) {
 }
 
 async function subtest(row, expectedDisplayed, expectedSource) {
-  select_click_row(row);
+  await select_click_row(row);
 
-  let displayContent = mc.e("messagepane").contentDocument.body.textContent;
+  const aboutMessage = get_about_message();
+  const displayContent =
+    aboutMessage.getMessagePaneBrowser().contentDocument.body.textContent;
   Assert.stringContains(
     displayContent,
     expectedDisplayed,
     "Message content must include the readable text"
   );
-  Assert.equal(mc.e("messagepane").docShell.charset, "UTF-8");
+  Assert.equal(
+    aboutMessage.document.getElementById("messagepane").docShell.charset,
+    "UTF-8"
+  );
 
-  plan_for_new_window("navigator:view-source");
+  const viewSourcePromise = promise_new_window("navigator:view-source");
   EventUtils.synthesizeKey("U", { shiftKey: false, accelKey: true });
-  let vsc = wait_for_new_window("navigator:view-source");
+  const viewSourceWin = await viewSourcePromise;
 
-  vsc.waitFor(
-    () => vsc.e("content").contentDocument.querySelector("pre") != null,
+  await TestUtils.waitForCondition(
+    () =>
+      viewSourceWin.document
+        .getElementById("content")
+        .contentDocument.querySelector("pre") != null,
     "Timeout waiting for the latin1 view-source document to load."
   );
 
-  let source = vsc.e("content").contentDocument.body.textContent;
+  let source =
+    viewSourceWin.document.getElementById("content").contentDocument.body
+      .textContent;
   Assert.stringContains(
     source,
     expectedSource,
@@ -127,36 +135,46 @@ async function subtest(row, expectedDisplayed, expectedSource) {
 
   // We can't use the menu on macOS.
   if (AppConstants.platform != "macosx") {
+    const theContent = viewSourceWin.document.getElementById("content");
     // Keep a reference to the originally loaded document.
-    let doc = vsc.e("content").contentDocument;
+    const doc = theContent.contentDocument;
 
     // Click the new window to make it receive further events properly.
-    vsc.click(vsc.e("content"));
+    EventUtils.synthesizeMouseAtCenter(theContent, {}, theContent.ownerGlobal);
     await new Promise(resolve => setTimeout(resolve));
 
     popupshown = BrowserTestUtils.waitForEvent(
-      vsc.e("viewmenu-popup"),
+      viewSourceWin.document.getElementById("viewmenu-popup"),
       "popupshown"
     );
-    vsc.click(vsc.e("menu_view"));
+    const menuView = viewSourceWin.document.getElementById("menu_view");
+    EventUtils.synthesizeMouseAtCenter(menuView, {}, menuView.ownerGlobal);
     await popupshown;
+
     Assert.equal(
-      vsc.e("repair-text-encoding").disabled,
+      viewSourceWin.document.getElementById("repair-text-encoding").disabled,
       expectedSource == contentReadable
     );
-    await vsc.click_menus_in_sequence(vsc.e("viewmenu-popup"), [
-      { id: "repair-text-encoding" },
-    ]);
+
+    await click_menus_in_sequence(
+      viewSourceWin.document.getElementById("viewmenu-popup"),
+      [{ id: "repair-text-encoding" }]
+    );
 
     if (expectedSource != contentReadable) {
-      vsc.waitFor(
+      await TestUtils.waitForCondition(
         () =>
-          vsc.e("content").contentDocument != doc &&
-          vsc.e("content").contentDocument.querySelector("pre") != null,
+          viewSourceWin.document.getElementById("content").contentDocument !=
+            doc &&
+          viewSourceWin.document
+            .getElementById("content")
+            .contentDocument.querySelector("pre") != null,
         "Timeout waiting utf-8 encoded view-source document to load."
       );
 
-      source = vsc.e("content").contentDocument.body.textContent;
+      source =
+        viewSourceWin.document.getElementById("content").contentDocument.body
+          .textContent;
       Assert.stringContains(
         source,
         contentReadable,
@@ -166,18 +184,20 @@ async function subtest(row, expectedDisplayed, expectedSource) {
   }
 
   // Check the context menu while were here.
-  let browser = vsc.e("content");
-  let contextMenu = vsc.window.document.getElementById("viewSourceContextMenu");
+  const browser = viewSourceWin.document.getElementById("content");
+  const contextMenu = viewSourceWin.document.getElementById(
+    "viewSourceContextMenu"
+  );
   popupshown = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
   await BrowserTestUtils.synthesizeMouseAtCenter(
-    browser.contentDocument.body,
+    "body",
     { type: "contextmenu" },
     browser
   );
   await popupshown;
 
-  let actualItems = [];
-  for (let item of contextMenu.children) {
+  const actualItems = [];
+  for (const item of contextMenu.children) {
     if (item.localName == "menuitem" && !item.hidden) {
       actualItems.push(item.id);
     }
@@ -190,5 +210,5 @@ async function subtest(row, expectedDisplayed, expectedSource) {
   ]);
   contextMenu.hidePopup();
 
-  close_window(vsc);
+  await BrowserTestUtils.closeWindow(viewSourceWin);
 }

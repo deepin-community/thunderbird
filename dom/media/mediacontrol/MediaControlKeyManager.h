@@ -9,8 +9,7 @@
 #include "MediaEventSource.h"
 #include "nsIObserver.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 /**
  * MediaControlKeyManager is a wrapper of MediaControlKeySource, which
@@ -42,7 +41,7 @@ class MediaControlKeyManager final : public MediaControlKeySource,
   void SetSupportedMediaKeys(const MediaKeysArray& aSupportedKeys) override;
   void SetEnableFullScreen(bool aIsEnabled) override;
   void SetEnablePictureInPictureMode(bool aIsEnabled) override;
-  void SetPositionState(const PositionState& aState) override;
+  void SetPositionState(const Maybe<PositionState>& aState) override;
 
  private:
   ~MediaControlKeyManager();
@@ -69,7 +68,6 @@ class MediaControlKeyManager final : public MediaControlKeySource,
   nsTArray<MediaControlKey> mSupportedKeys;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif

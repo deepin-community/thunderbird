@@ -2,20 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import division, absolute_import, print_function, unicode_literals
-
 """
 This file contains functions used for telemetry.
 """
 
-import distro
 import os
-import math
 import platform
 import sys
 
+import distro
 import mozpack.path as mozpath
-from .base import BuildEnvironmentNotFoundException
 
 
 def cpu_brand_linux():
@@ -91,12 +87,6 @@ def get_cpu_brand():
     }.get(platform.system(), lambda: None)()
 
 
-def get_os_name():
-    return {"Linux": "linux", "Windows": "windows", "Darwin": "macos"}.get(
-        platform.system(), "other"
-    )
-
-
 def get_psutil_stats():
     """Return whether psutil exists and its associated stats.
 
@@ -114,70 +104,6 @@ def get_psutil_stats():
         )
     except ImportError:
         return False, None, None, None
-
-
-def get_system_info():
-    """
-    Gather info to fill the `system` keys in the schema.
-    """
-    # Normalize OS names a bit, and bucket non-tier-1 platforms into "other".
-    has_psutil, logical_cores, physical_cores, memory_total = get_psutil_stats()
-    info = {"os": get_os_name()}
-    if has_psutil:
-        # `total` on Linux is gathered from /proc/meminfo's `MemTotal`, which is the
-        # total amount of physical memory minus some kernel usage, so round up to the
-        # nearest GB to get a sensible answer.
-        info["memory_gb"] = int(math.ceil(float(memory_total) / (1024 * 1024 * 1024)))
-        info["logical_cores"] = logical_cores
-        if physical_cores is not None:
-            info["physical_cores"] = physical_cores
-    cpu_brand = get_cpu_brand()
-    if cpu_brand is not None:
-        info["cpu_brand"] = cpu_brand
-    # TODO: drive_is_ssd, virtual_machine: https://bugzilla.mozilla.org/show_bug.cgi?id=1481613
-    return info
-
-
-def get_build_opts(substs):
-    """
-    Translate selected items from `substs` into `build_opts` keys in the schema.
-    """
-    try:
-        opts = {
-            k: ty(substs.get(s, None))
-            for (k, s, ty) in (
-                # Selected substitutions.
-                ("artifact", "MOZ_ARTIFACT_BUILDS", bool),
-                ("debug", "MOZ_DEBUG", bool),
-                ("opt", "MOZ_OPTIMIZE", bool),
-                ("ccache", "CCACHE", bool),
-                ("sccache", "MOZ_USING_SCCACHE", bool),
-            )
-        }
-        compiler = substs.get("CC_TYPE", None)
-        if compiler:
-            opts["compiler"] = str(compiler)
-        if substs.get("CXX_IS_ICECREAM", None):
-            opts["icecream"] = True
-        return opts
-    except BuildEnvironmentNotFoundException:
-        return {}
-
-
-def get_build_attrs(attrs):
-    """
-    Extracts clobber and cpu usage info from command attributes.
-    """
-    res = {}
-    clobber = attrs.get("clobber")
-    if clobber:
-        res["clobber"] = clobber
-    usage = attrs.get("usage")
-    if usage:
-        cpu_percent = usage.get("cpu_percent")
-        if cpu_percent:
-            res["cpu_percent"] = int(round(cpu_percent))
-    return res
 
 
 def filter_args(command, argv, topsrcdir, topobjdir, cwd=None):
@@ -236,3 +162,30 @@ def get_shell_info():
         True if "vscode" in os.getenv("TERM_PROGRAM", "") else False,
         bool(os.getenv("SSH_CLIENT", False)),
     )
+
+
+def get_vscode_running():
+    """Return if the vscode is currently running."""
+    try:
+        import psutil
+
+        for proc in psutil.process_iter():
+            try:
+                # On Windows we have "Code.exe"
+                # On MacOS we have "Code Helper (Renderer)"
+                # On Linux we have ""
+                if (
+                    proc.name == "Code.exe"
+                    or proc.name == "Code Helper (Renderer)"
+                    or proc.name == "code"
+                ):
+                    return True
+            except Exception:
+                # may not be able to access process info for all processes
+                continue
+    except Exception:
+        # On some platforms, sometimes, the generator throws an
+        # exception preventing us to enumerate.
+        return False
+
+    return False

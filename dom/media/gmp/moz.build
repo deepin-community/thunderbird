@@ -19,7 +19,6 @@ EXPORTS += [
     "gmp-api/gmp-entrypoints.h",
     "gmp-api/gmp-errors.h",
     "gmp-api/gmp-platform.h",
-    "gmp-api/gmp-sanitized-cdm-exports.h",
     "gmp-api/gmp-storage.h",
     "gmp-api/gmp-video-codec.h",
     "gmp-api/gmp-video-decode.h",
@@ -37,10 +36,12 @@ EXPORTS += [
     "GMPCrashHelperHolder.h",
     "GMPLoader.h",
     "GMPMessageUtils.h",
+    "GMPNativeTypes.h",
     "GMPParent.h",
     "GMPPlatform.h",
     "GMPProcessChild.h",
     "GMPProcessParent.h",
+    "GMPSanitizedExports.h",
     "GMPService.h",
     "GMPServiceChild.h",
     "GMPServiceParent.h",
@@ -113,7 +114,6 @@ DIRS += [
 IPDL_SOURCES += [
     "GMPTypes.ipdlh",
     "PChromiumCDM.ipdl",
-    "PGMP.ipdl",
     "PGMPService.ipdl",
     "PGMPStorage.ipdl",
     "PGMPTimer.ipdl",
@@ -122,14 +122,12 @@ IPDL_SOURCES += [
 ]
 
 PREPROCESSED_IPDL_SOURCES += [
+    "PGMP.ipdl",
     "PGMPContent.ipdl",
 ]
 
-if CONFIG["OS_TARGET"] in ["WINNT", "Darwin"]:
+if CONFIG["TARGET_OS"] in ["WINNT", "OSX"]:
     DEFINES["SUPPORT_STORAGE_ID"] = 1
-
-# comment this out to use Unsafe Shmem for more performance
-DEFINES["GMP_SAFE_SHMEM"] = True
 
 include("/ipc/chromium/chromium-config.mozbuild")
 
@@ -149,6 +147,3 @@ LOCAL_INCLUDES += [
     "/xpcom/build",
     "/xpcom/threads",
 ]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

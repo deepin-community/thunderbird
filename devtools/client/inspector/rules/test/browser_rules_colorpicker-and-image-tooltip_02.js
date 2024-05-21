@@ -12,14 +12,14 @@
 const TEST_URI = `
   <style type="text/css">
     body {
-      background: red url("chrome://global/skin/icons/warning-64.png")
+      background: red url("chrome://branding/content/icon64.png")
         no-repeat center center;
     }
   </style>
   Testing the color picker tooltip!
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { view } = await openRuleView();
   await testColorChangeIsntRevertedWhenOtherTooltipIsShown(view);

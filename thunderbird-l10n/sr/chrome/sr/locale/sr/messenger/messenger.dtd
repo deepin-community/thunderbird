@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "и">
 <!ENTITY newVirtualFolderCmd.label "Сачувана претрага…">
 <!ENTITY newVirtualFolderCmd.accesskey "а">
-<!ENTITY newOtherAccountsCmd.label "Остали налози…">
-<!ENTITY newOtherAccountsCmd.accesskey "О">
 <!ENTITY newCreateEmailAccountCmd.label "Набавите нови е-налог…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "г">
 <!ENTITY newExistingEmailAccountCmd.label "Постојећи е-налог…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "О">
 <!ENTITY saveAsMenu.label "Сачувај као">
 <!ENTITY saveAsMenu.accesskey "С">
-<!ENTITY saveAsFileCmd.label "Датотека">
-<!ENTITY saveAsFileCmd.accesskey "Д">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Шаблон">
 <!ENTITY saveAsTemplateCmd.accesskey "б">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Ћаскање">
 <!ENTITY goChatCmd.accesskey "к">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Порука са звездицом">
 <!ENTITY prevStarredMsgCmd.accesskey "з">
 <!ENTITY folderMenu.label "Фасцикла">
@@ -490,7 +485,9 @@
 <!ENTITY deleteJunk.accesskey "б">
 <!ENTITY importCmd.label "Увези…">
 <!ENTITY importCmd.accesskey "з">
-<!ENTITY clearRecentHistory.label "Очисти скорашњи историјат…">
+<!ENTITY exportCmd.label "Извези…">
+<!ENTITY exportCmd.accesskey "з">
+<!ENTITY clearRecentHistory.label "Очисти недавну историју…">
 <!ENTITY clearRecentHistory.accesskey "и">
 <!ENTITY accountManagerCmd2.label "Подешавања налога">
 <!ENTITY accountManagerCmd2.accesskey "г">
@@ -696,7 +693,6 @@
 <!ENTITY locationColumn.label "Локација">
 <!ENTITY idColumn.label "Редослед пријема">
 <!ENTITY attachmentColumn.label "Прилози">
-
 <!ENTITY deleteColumn.label "Обриши">
 
 <!-- Thread Pane Tooltips -->
@@ -722,7 +718,6 @@
 <!ENTITY locationColumn2.tooltip "Поређај по месту">
 <!ENTITY idColumn2.tooltip "Поређај по редоследу пријема">
 <!ENTITY attachmentColumn2.tooltip "Поређај по прилозима">
-
 <!ENTITY deleteColumn.tooltip "Обриши поруку">
 
 <!-- Thread Pane Context Menu -->

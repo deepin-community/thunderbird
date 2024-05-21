@@ -17,10 +17,10 @@ function really_run_test() {
     aExpectedRfc3339Date = aRfc3339Date
   ) {
     // Test creating a dateTime object from an RFC 3339 string.
-    let dateTime = cal.dtz.fromRFC3339(aRfc3339Date, aTimezone);
+    const dateTime = cal.dtz.fromRFC3339(aRfc3339Date, aTimezone);
 
     // Check that each property is as expected.
-    let expectedDateProps = {
+    const expectedDateProps = {
       year: aExpectedDateTime[0],
       month: aExpectedDateTime[1] - 1, // 0 based month.
       day: aExpectedDateTime[2],
@@ -30,7 +30,7 @@ function really_run_test() {
       timezone: aExpectedDateTime[6],
       isDate: aExpectedDateTime[7],
     };
-    for (let prop in expectedDateProps) {
+    for (const prop in expectedDateProps) {
       info("Checking prop: " + prop);
       // Object comparison fails with ical.js, and we only want to check
       // that we have the right timezone.
@@ -42,7 +42,7 @@ function really_run_test() {
     }
 
     // Test round tripping that dateTime object back to an RFC 3339 string.
-    let rfc3339Date = cal.dtz.toRFC3339(dateTime);
+    const rfc3339Date = cal.dtz.toRFC3339(dateTime);
 
     // In theory this should just match the input RFC 3339 date, but there are
     // multiple ways of generating the same time, e.g. 2006-03-14Z is
@@ -67,12 +67,15 @@ function really_run_test() {
    */
 
   // An arbitrary timezone (that has daylight savings time).
-  let getTz = aTz => cal.getTimezoneService().getTimezone(aTz);
-  let timezone = getTz("America/New_York");
-  let utc = cal.dtz.UTC;
-  // Timezones used in tests.
-  let belize = getTz("America/Belize");
-  let dawson = getTz("America/Dawson");
+  const getTz = aTz => cal.timezoneService.getTimezone(aTz);
+  const timezone = getTz("America/New_York");
+  const utc = cal.dtz.UTC;
+
+  // Timezones used in tests. This isn't a great representation, as we don't
+  // care what the actual timezone is, just that the offset is correct. Offset
+  // isn't presently easily accessible from the timezone object, however.
+  const utcminus6 = getTz("America/Bahia_Banderas");
+  const dawson = getTz("America/Dawson");
 
   /*
    * Basic tests
@@ -100,8 +103,8 @@ function really_run_test() {
   );
 
   // This represents 03:00:23 on October 14, 2004 in Central Standard Time.
-  testRfc3339("2004-10-14T03:00:23-06:00", timezone, [2004, 10, 14, 3, 0, 23, belize, false]);
-  testRfc3339("2004-10-14T03:00:23-06:00", utc, [2004, 10, 14, 3, 0, 23, belize, false]);
+  testRfc3339("2004-10-14T03:00:23-06:00", timezone, [2004, 10, 14, 3, 0, 23, utcminus6, false]);
+  testRfc3339("2004-10-14T03:00:23-06:00", utc, [2004, 10, 14, 3, 0, 23, utcminus6, false]);
 
   /*
    * The following tests are the RFC 3339 examples

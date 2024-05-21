@@ -1,52 +1,54 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /**
  * This test checks that we handle the server dropping the connection
  * on starttls. Since fakeserver doesn't support STARTTLS, I've made
  * it drop the connection when it's attempted.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+/* import-globals-from ../../../test/resources/alertTestUtils.js */
+load("../../../resources/alertTestUtils.js");
+
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+var { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/alertTestUtils.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/alertTestUtils.js");
-load("../../../resources/asyncTestUtils.js");
+var gAlertResolve;
+var gGotAlert = new Promise(resolve => {
+  gAlertResolve = resolve;
+});
 
-var gGotAlert = false;
-
-/* exported alert */
-// to asyncTestUtils.js
-function alert(aDialogTitle, aText) {
-  Assert.ok(aText.startsWith("Server localhost has disconnected"));
-  gGotAlert = true;
+/* exported alert to alertTestUtils.js */
+function alertPS(parent, aDialogTitle, aText) {
+  gAlertResolve(aText);
 }
 
-var tests = [setup, check_alert, teardown];
-
-function* setup() {
-  // set up IMAP fakeserver and incoming server
-  IMAPPump.daemon = new imapDaemon();
+add_setup(async function () {
+  // Set up IMAP fakeserver and incoming server.
+  IMAPPump.daemon = new ImapDaemon();
   IMAPPump.server = makeServer(IMAPPump.daemon, "", { dropOnStartTLS: true });
   IMAPPump.incomingServer = createLocalIMAPServer(IMAPPump.server.port);
   IMAPPump.incomingServer.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
 
-  // we need a local account for the IMAP server to have its sent messages in
+  // We need a local account for the IMAP server to have its sent messages in.
   localAccountUtils.loadLocalMailAccount();
 
-  // We need an identity so that updateFolder doesn't fail
-  let imapAccount = MailServices.accounts.createAccount();
-  let identity = MailServices.accounts.createIdentity();
+  // We need an identity so that updateFolder doesn't fail.
+  const imapAccount = MailServices.accounts.createAccount();
+  const identity = MailServices.accounts.createIdentity();
   imapAccount.addIdentity(identity);
   imapAccount.defaultIdentity = identity;
   imapAccount.incomingServer = IMAPPump.incomingServer;
   MailServices.accounts.defaultAccount = imapAccount;
 
-  // The server doesn't support more than one connection
+  // The server doesn't support more than one connection.
   Services.prefs.setIntPref("mail.server.server1.max_cached_connections", 1);
-  // We aren't interested in downloading messages automatically
+  // We aren't interested in downloading messages automatically.
   Services.prefs.setBoolPref("mail.server.server1.download_on_biff", false);
 
   IMAPPump.inbox = IMAPPump.incomingServer.rootFolder
@@ -55,28 +57,23 @@ function* setup() {
 
   registerAlertTestUtils();
 
-  IMAPPump.inbox.updateFolderWithListener(gDummyMsgWindow, asyncUrlListener);
-  yield false;
-}
+  const listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(gDummyMsgWindow, listener);
+  await listener.promise
+    .then(res => {
+      throw new Error("updateFolderWithListener has to fail");
+    })
+    .catch(exitCode => {
+      Assert.ok(!Components.isSuccessCode(exitCode));
+    });
+});
 
-asyncUrlListener.callback = function(aUrl, aExitCode) {
-  Assert.ok(!Components.isSuccessCode(aExitCode));
-};
+add_task(async function check_alert() {
+  const alertText = await gGotAlert;
+  Assert.ok(alertText.startsWith("Server localhost has disconnected"));
+});
 
-function check_alert() {
-  Assert.ok(gGotAlert);
-}
-
-function teardown() {
+add_task(function teardown() {
   IMAPPump.incomingServer.closeCachedConnections();
   IMAPPump.server.stop();
-
-  var thread = gThreadManager.currentThread;
-  while (thread.hasPendingEvents()) {
-    thread.processNextEvent(true);
-  }
-}
-
-function run_test() {
-  async_run_tests(tests);
-}
+});

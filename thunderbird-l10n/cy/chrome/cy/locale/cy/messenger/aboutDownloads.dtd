@@ -8,7 +8,7 @@
      The show and showMac commands are never shown together, thus they can share
      the same access key (though the two access keys can also be different).
      -->
-<!ENTITY cmd.show.label                            "Agor y Ffolder sy'n eu Cynnwys">
+<!ENTITY cmd.show.label                            "Agor Ffolder Cynhwysol">
 <!ENTITY cmd.show.accesskey                        "F">
 <!ENTITY cmd.showMac.label                         "Dangos yn Finder">
 <!ENTITY cmd.showMac.accesskey                     "F">
@@ -20,4 +20,4 @@
 <!ENTITY cmd.clearList.accesskey                   "l">
 <!ENTITY cmd.clearList.tooltip                     "Tynnu pob cofnod o'r rhestr ffeiliau wedi eu cadw, ar wahân i lwythi i lawr sy'n digwydd ar hyn o bryd.">
 <!ENTITY cmd.searchDownloads.label                 "Chwilio…">
-<!ENTITY cmd.searchDownloads.key                   "w">
+<!ENTITY cmd.searchDownloads.key                   "F">

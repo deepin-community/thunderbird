@@ -20,6 +20,7 @@
 #include "nsPresContext.h"
 #include "nsStyleStructInlines.h"
 #include "nsTextFrame.h"
+#include "gfxContext.h"
 #include "RubyUtils.h"
 
 using namespace mozilla;
@@ -236,16 +237,6 @@ void nsRubyBaseContainerFrame::AddInlinePrefISize(
 }
 
 /* virtual */
-bool nsRubyBaseContainerFrame::IsFrameOfType(uint32_t aFlags) const {
-  if (aFlags & (eSupportsCSSTransforms | eSupportsContainLayoutAndPaint |
-                eSupportsAspectRatio)) {
-    return false;
-  }
-  return nsContainerFrame::IsFrameOfType(aFlags &
-                                         ~(nsIFrame::eLineParticipant));
-}
-
-/* virtual */
 bool nsRubyBaseContainerFrame::CanContinueTextRun() const { return true; }
 
 /* virtual */
@@ -260,10 +251,13 @@ nsIFrame::SizeComputationResult nsRubyBaseContainerFrame::ComputeSize(
           AspectRatioUsage::None};
 }
 
-/* virtual */
-nscoord nsRubyBaseContainerFrame::GetLogicalBaseline(
-    WritingMode aWritingMode) const {
-  return mBaseline;
+Maybe<nscoord> nsRubyBaseContainerFrame::GetNaturalBaselineBOffset(
+    WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+    BaselineExportContext) const {
+  if (aBaselineGroup == BaselineSharingGroup::Last) {
+    return Nothing{};
+  }
+  return Some(mBaseline);
 }
 
 struct nsRubyBaseContainerFrame::RubyReflowInput {
@@ -333,7 +327,7 @@ void nsRubyBaseContainerFrame::Reflow(nsPresContext* aPresContext,
         availSize.ConvertTo(textContainer->GetWritingMode(), lineWM));
     reflowInputs.AppendElement(reflowInput);
     nsLineLayout* lineLayout =
-        new nsLineLayout(aPresContext, reflowInput->mFloatManager, reflowInput,
+        new nsLineLayout(aPresContext, reflowInput->mFloatManager, *reflowInput,
                          nullptr, aReflowInput.mLineLayout);
     lineLayout->SetSuppressLineWrap(true);
     lineLayouts.AppendElement(lineLayout);
@@ -341,7 +335,7 @@ void nsRubyBaseContainerFrame::Reflow(nsPresContext* aPresContext,
     // Line number is useless for ruby text
     // XXX nullptr here may cause problem, see comments for
     //     nsLineLayout::mBlockRI and nsLineLayout::AddFloat
-    lineLayout->Init(nullptr, reflowInput->CalcLineHeight(), -1);
+    lineLayout->Init(nullptr, reflowInput->GetLineHeight(), -1);
     reflowInput->mLineLayout = lineLayout;
 
     // Border and padding are suppressed on ruby text containers.

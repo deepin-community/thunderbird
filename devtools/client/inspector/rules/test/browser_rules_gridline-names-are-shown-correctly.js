@@ -9,7 +9,7 @@
 
 const TEST_URL = URL_ROOT + "doc_grid_area_gridline_names.html";
 
-add_task(async function() {
+add_task(async function () {
   await addTab(TEST_URL);
   const { inspector, view } = await openRuleView();
 
@@ -51,8 +51,9 @@ async function testExplicitNamedAreas(inspector, view) {
     "Check that the expected grid line column names are shown in the editor popup."
   );
   for (const lineName of gridColLines) {
-    ok(
-      editor.gridLineNames.cols.indexOf(lineName) > -1,
+    Assert.greater(
+      editor.gridLineNames.cols.indexOf(lineName),
+      -1,
       `${lineName} is a suggested implicit grid line`
     );
   }
@@ -87,8 +88,9 @@ async function testImplicitNamedAreasWithExplicitGridLineNames(
     "Check that the expected grid line row names are shown in the editor popup."
   );
   for (const lineName of gridRowLines) {
-    ok(
-      editor.gridLineNames.rows.indexOf(lineName) > -1,
+    Assert.greater(
+      editor.gridLineNames.rows.indexOf(lineName),
+      -1,
       `${lineName} is a suggested explicit grid line`
     );
   }

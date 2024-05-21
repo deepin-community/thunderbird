@@ -1,22 +1,23 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var dialog;
 
+window.addEventListener("load", event => {
+  onLoad();
+});
+
 /**
  * Pass in keyToEdit as a window argument to turn this dialog into an edit
  * tag dialog.
  */
 function onLoad() {
-  let windowArgs = window.arguments[0];
+  const windowArgs = window.arguments[0];
 
   dialog = {};
 
@@ -47,9 +48,8 @@ function initializeForEditing(aTagKey) {
   document.title = messengerBundle.getString("editTagTitle");
 
   // extract the color and name for the current tag
-  document.getElementById(
-    "tagColorPicker"
-  ).value = MailServices.tags.getColorForKey(aTagKey);
+  document.getElementById("tagColorPicker").value =
+    MailServices.tags.getColorForKey(aTagKey);
   dialog.nameField.value = MailServices.tags.getTagForKey(aTagKey);
 }
 
@@ -58,7 +58,7 @@ function initializeForEditing(aTagKey) {
  */
 function onOKEditTag(event) {
   // get the tag name of the current key we are editing
-  let existingTagName = MailServices.tags.getTagForKey(dialog.editTagKey);
+  const existingTagName = MailServices.tags.getTagForKey(dialog.editTagKey);
 
   // it's ok if the name didn't change
   if (existingTagName != dialog.nameField.value) {
@@ -76,9 +76,6 @@ function onOKEditTag(event) {
     dialog.editTagKey,
     document.getElementById("tagColorPicker").value
   );
-  if (!dialog.okCallback()) {
-    event.preventDefault();
-  }
 }
 
 /**

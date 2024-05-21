@@ -3,7 +3,7 @@
 
 /* eslint-disable mozilla/no-arbitrary-setTimeout */
 
-add_task(async function() {
+add_task(async function () {
   info("Starting subResources test");
 
   await SpecialPowers.flushPrefEnv();
@@ -40,7 +40,7 @@ add_task(async function() {
     "Before user-interaction we don't have a permission"
   );
 
-  let promise = TestUtils.topicObserved("perm-changed", (aSubject, aData) => {
+  let promise = TestUtils.topicObserved("perm-changed", aSubject => {
     let permission = aSubject.QueryInterface(Ci.nsIPermission);
     return (
       permission.type == "storageAccessAPI" &&
@@ -49,7 +49,7 @@ add_task(async function() {
   });
 
   info("Simulating user-interaction.");
-  await SpecialPowers.spawn(browser, [], async function() {
+  await SpecialPowers.spawn(browser, [], async function () {
     content.document.userInteractionForTesting();
   });
 
@@ -59,7 +59,7 @@ add_task(async function() {
   // Let's see if the document is able to update the permission correctly.
   for (var i = 0; i < 3; ++i) {
     // Another perm-changed event should be triggered by the timer.
-    promise = TestUtils.topicObserved("perm-changed", (aSubject, aData) => {
+    promise = TestUtils.topicObserved("perm-changed", aSubject => {
       let permission = aSubject.QueryInterface(Ci.nsIPermission);
       return (
         permission.type == "storageAccessAPI" &&
@@ -68,7 +68,7 @@ add_task(async function() {
     });
 
     info("Simulating another user-interaction.");
-    await SpecialPowers.spawn(browser, [], async function() {
+    await SpecialPowers.spawn(browser, [], async function () {
       content.document.userInteractionForTesting();
     });
 
@@ -84,7 +84,7 @@ add_task(async function() {
   promise = new Promise(resolve => {
     let id;
 
-    function observer(subject, topic, data) {
+    function observer() {
       ok(false, "Notification received!");
       Services.obs.removeObserver(observer, "perm-changed");
       clearTimeout(id);
@@ -101,7 +101,7 @@ add_task(async function() {
   });
 
   info("Simulating another user-interaction.");
-  await SpecialPowers.spawn(browser, [], async function() {
+  await SpecialPowers.spawn(browser, [], async function () {
     content.document.userInteractionForTesting();
   });
 
@@ -114,10 +114,10 @@ add_task(async function() {
   UrlClassifierTestUtils.cleanupTestTrackers();
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Cleaning up.");
   await new Promise(resolve => {
-    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
+    Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, () =>
       resolve()
     );
   });

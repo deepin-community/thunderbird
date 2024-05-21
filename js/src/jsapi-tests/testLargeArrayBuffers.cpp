@@ -5,8 +5,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "jsfriendapi.h"
-
 #include "js/ArrayBuffer.h"
 #include "js/ArrayBufferMaybeShared.h"
 #include "js/experimental/TypedData.h"
@@ -64,8 +62,10 @@ BEGIN_TEST(testLargeArrayBuffers) {
     CHECK_EQUAL(length, nbytes);
 
     length = 0;
-    CHECK(JS_GetObjectAsUint8Array(tarr, &length, &isShared, &data));
-    CHECK_EQUAL(length, nbytes);
+    JS::AutoCheckCannotGC nogc(cx);
+    mozilla::Span<uint8_t> span =
+        JS::TypedArray<Scalar::Uint8>::unwrap(tarr).getData(&isShared, nogc);
+    CHECK_EQUAL(span.Length(), nbytes);
 
     length = 0;
     CHECK(JS_GetObjectAsArrayBufferView(tarr, &length, &isShared, &data));
@@ -93,8 +93,10 @@ BEGIN_TEST(testLargeArrayBuffers) {
     CHECK_EQUAL(length, nbytes / 2);
 
     length = 0;
-    CHECK(JS_GetObjectAsInt16Array(tarr, &length, &isShared, &int16Data));
-    CHECK_EQUAL(length, nbytes / 2);
+    JS::AutoCheckCannotGC nogc(cx);
+    mozilla::Span<short> span =
+        JS::TypedArray<Scalar::Int16>::unwrap(tarr).getData(&isShared, nogc);
+    CHECK_EQUAL(span.Length(), nbytes / 2);
 
     length = 0;
     CHECK(JS_GetObjectAsArrayBufferView(tarr, &length, &isShared, &data));

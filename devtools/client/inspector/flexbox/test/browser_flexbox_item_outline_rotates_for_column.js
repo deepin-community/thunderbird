@@ -7,7 +7,7 @@
 
 const TEST_URI = URL_ROOT + "doc_flexbox_specific_cases.html";
 
-add_task(async function() {
+add_task(async function () {
   await addTab(TEST_URI);
   const { inspector, flexboxInspector } = await openLayoutView();
   const { document: doc } = flexboxInspector;
@@ -27,7 +27,7 @@ add_task(async function() {
 
   // Check that the outline is wider than it is tall in the configuration.
   let bounds = flexOutline.getBoxQuads()[0].getBounds();
-  ok(bounds.width > bounds.height, "The outline looks like a row");
+  Assert.greater(bounds.width, bounds.height, "The outline looks like a row");
 
   // Select a flex item in the column flexbox layout.
   onFlexItemOutlineRendered = waitForDOM(
@@ -45,5 +45,9 @@ add_task(async function() {
 
   // Check that the outline is taller than it is wide in the configuration.
   bounds = flexOutline.getBoxQuads()[0].getBounds();
-  ok(bounds.height > bounds.width, "The outline looks like a column");
+  Assert.greater(
+    bounds.height,
+    bounds.width,
+    "The outline looks like a column"
+  );
 });

@@ -12,13 +12,15 @@
 #include "mozilla/XREAppData.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Assertions.h"
-#include "mozilla/Vector.h"
 #include "mozilla/TimeStamp.h"
 #include "XREChildData.h"
 #include "XREShellData.h"
 
 #include "application.ini.h"
 #include "mozilla/Bootstrap.h"
+#include "mozilla/ProcessType.h"
+#include "mozilla/RuntimeExceptionModule.h"
+#include "mozilla/ScopeExit.h"
 #if defined(XP_WIN)
 #  include <windows.h>
 #  include <stdlib.h>
@@ -35,6 +37,7 @@
 #include "nsIFile.h"
 
 #ifdef XP_WIN
+#  include "mozilla/mscom/ProcessRuntime.h"
 #  include "mozilla/WindowsDllBlocklist.h"
 #  include "mozilla/WindowsDpiInitialization.h"
 
@@ -206,14 +209,11 @@ static int do_main(int argc, char* argv[], char* envp[]) {
 #if defined(XP_WIN) && defined(MOZ_SANDBOX)
   sandbox::BrokerServices* brokerServices =
       sandboxing::GetInitializedBrokerServices();
-  sandboxing::PermissionsService* permissionsService =
-      sandboxing::GetPermissionsService();
   if (!brokerServices) {
     Output("Couldn't initialize the broker services.\n");
     return 255;
   }
   config.sandboxBrokerServices = brokerServices;
-  config.sandboxPermissionsService = permissionsService;
 #endif
 
 #ifdef LIBFUZZER
@@ -290,27 +290,27 @@ int main(int argc, char* argv[], char* envp[]) {
 
   mozilla::TimeStamp start = mozilla::TimeStamp::Now();
 
+  // Make sure we unregister the runtime exception module before returning.
+  // We do this here to cover both registers for child and main processes.
+  auto unregisterRuntimeExceptionModule =
+      MakeScopeExit([] { CrashReporter::UnregisterRuntimeExceptionModule(); });
+
 #ifdef MOZ_BROWSER_CAN_BE_CONTENTPROC
   // We are launching as a content process, delegate to the appropriate
   // main
   if (argc > 1 && IsArg(argv[1], "contentproc")) {
+    // Set the process type. We don't remove the arg here as that will be done
+    // later in common code.
+    SetGeckoProcessType(argv[argc - 1]);
+
+    // Register an external module to report on otherwise uncatchable
+    // exceptions. Note that in child processes this must be called after Gecko
+    // process type has been set.
+    CrashReporter::RegisterRuntimeExceptionModule();
+
 #  ifdef HAS_DLL_BLOCKLIST
     DllBlocklist_Initialize(gBlocklistInitFlags |
                             eDllBlocklistInitFlagIsChildProcess);
-#  endif
-#  if defined(XP_WIN)
-    // Ideally, we would be able to set our DPI awareness in
-    // thunderbird.exe.manifest Unfortunately, that would cause Win32k calls
-    // when user32.dll gets loaded, which would be incompatible with Win32k
-    // Lockdown
-    //
-    // MSDN says that it's allowed-but-not-recommended to initialize DPI
-    // programatically, as long as it's done before any HWNDs are created.
-    // Thus, we do it almost as soon as we possibly can
-    {
-      auto result = mozilla::WindowsDpiInitialization();
-      (void)result;  // Ignore errors since some tools block DPI calls
-    }
 #  endif
 #  if defined(XP_WIN) && defined(MOZ_SANDBOX)
     // We need to initialize the sandbox TargetServices before InitXPCOMGlue
@@ -318,6 +318,21 @@ int main(int argc, char* argv[], char* envp[]) {
     if (IsSandboxedProcess() && !sandboxing::GetInitializedTargetServices()) {
       Output("Failed to initialize the sandbox target services.");
       return 255;
+    }
+#  endif
+#  if defined(XP_WIN)
+    // Ideally, we would be able to set our DPI awareness in
+    // thunderbird.exe.manifest Unfortunately, that would cause Win32k calls
+    // when user32.dll gets loaded, which would be incompatible with Win32k
+    // Lockdown. We need to call this after GetInitializedTargetServices
+    // because it can affect the detection of the win32k lockdown status.
+    //
+    // MSDN says that it's allowed-but-not-recommended to initialize DPI
+    // programmatically, as long as it's done before any HWNDs are created.
+    // Thus, we do it almost as soon as we possibly can
+    {
+      auto result = mozilla::WindowsDpiInitialization();
+      (void)result;  // Ignore errors since some tools block DPI calls
     }
 #  endif
 
@@ -335,6 +350,9 @@ int main(int argc, char* argv[], char* envp[]) {
   }
 #endif
 
+  // Register an external module to report on otherwise uncatchable exceptions.
+  CrashReporter::RegisterRuntimeExceptionModule();
+
 #ifdef HAS_DLL_BLOCKLIST
   DllBlocklist_Initialize(gBlocklistInitFlags);
 #endif
@@ -346,7 +364,7 @@ int main(int argc, char* argv[], char* envp[]) {
   // user32.dll gets loaded, which would be incompatible with Win32k Lockdown
   //
   // MSDN says that it's allowed-but-not-recommended to initialize DPI
-  // programatically, as long as it's done before any HWNDs are created.
+  // programmatically, as long as it's done before any HWNDs are created.
   // Thus, we do it almost as soon as we possibly can
   {
     auto result = mozilla::WindowsDpiInitialization();

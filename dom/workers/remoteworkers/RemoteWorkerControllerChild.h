@@ -13,8 +13,7 @@
 #include "mozilla/RefPtr.h"
 #include "mozilla/dom/PRemoteWorkerControllerChild.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 /**
  * Parent-process main-thread proxy used by ServiceWorkerManager to control
@@ -24,7 +23,7 @@ class RemoteWorkerControllerChild final : public PRemoteWorkerControllerChild {
   friend class PRemoteWorkerControllerChild;
 
  public:
-  NS_INLINE_DECL_REFCOUNTING(RemoteWorkerControllerChild)
+  NS_INLINE_DECL_REFCOUNTING(RemoteWorkerControllerChild, override)
 
   explicit RemoteWorkerControllerChild(RefPtr<RemoteWorkerObserver> aObserver);
 
@@ -34,11 +33,14 @@ class RemoteWorkerControllerChild final : public PRemoteWorkerControllerChild {
 
   void MaybeSendDelete();
 
+  TimeStamp GetRemoteWorkerLaunchStart();
+  TimeStamp GetRemoteWorkerLaunchEnd();
+
  private:
   ~RemoteWorkerControllerChild() = default;
 
   PFetchEventOpChild* AllocPFetchEventOpChild(
-      const ServiceWorkerFetchEventOpArgs& aArgs);
+      const ParentToParentServiceWorkerFetchEventOpArgs& aArgs);
 
   bool DeallocPFetchEventOpChild(PFetchEventOpChild* aActor);
 
@@ -58,9 +60,11 @@ class RemoteWorkerControllerChild final : public PRemoteWorkerControllerChild {
   RefPtr<RemoteWorkerObserver> mObserver;
 
   bool mIPCActive = true;
+
+  TimeStamp mRemoteWorkerLaunchStart;
+  TimeStamp mRemoteWorkerLaunchEnd;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_remoteworkercontrollerchild_h__

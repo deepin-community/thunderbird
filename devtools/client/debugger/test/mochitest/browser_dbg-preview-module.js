@@ -4,13 +4,10 @@
 
 // Test hovering in a script that is paused on load
 // and doesn't have functions.
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
 
+"use strict";
+
+add_task(async function () {
   const dbg = await initDebugger("doc-scripts.html");
 
   const onNavigated = navigate(dbg, "doc-on-load.html");
@@ -24,11 +21,14 @@ add_task(async function() {
       line: 1,
       column: 6,
       expression: "obj",
-      fields: [["foo", "1"], ["bar", "2"]]
-    }
+      fields: [
+        ["foo", "1"],
+        ["bar", "2"],
+      ],
+    },
   ]);
 
-  await assertPreviewTooltip(dbg, 2, 7, { result: "3", expression: "func" });
+  await assertPreviewTextValue(dbg, 2, 7, { result: "3", expression: "func" });
 
   info("Resume and wait for full navigation of the tab");
   await resume(dbg);

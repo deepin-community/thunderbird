@@ -1,16 +1,14 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from AccountManager.js */
 /* globals openTab */ // From utilityOverlay.js
-/* globals SelectFolder */ // From messageWindow.js or msgMail3PaneWindow.js.
+/* globals SelectFolder */ // From messageWindow.js or messenger.js.
 /* globals MsgGetMessage */ // From mailWindowOverlay.js.
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var gAnyValidIdentity = false; // If there are no valid identities for any account
@@ -19,8 +17,8 @@ var gAnyValidIdentity = false; // If there are no valid identities for any accou
 var gNewAccountToLoad = null; // used to load new messages if we come from the mail3pane
 
 function getInvalidAccounts(accounts) {
-  let invalidAccounts = [];
-  for (let account of accounts) {
+  const invalidAccounts = [];
+  for (const account of accounts) {
     try {
       if (!account.incomingServer.valid) {
         invalidAccounts.push(account);
@@ -32,7 +30,7 @@ function getInvalidAccounts(accounts) {
       continue;
     }
 
-    for (let identity of account.identities) {
+    for (const identity of account.identities) {
       if (identity.valid) {
         gAnyValidIdentity = true;
       } else {
@@ -44,15 +42,13 @@ function getInvalidAccounts(accounts) {
 }
 
 function showMailIntegrationDialog() {
-  const nsIShellService = Ci.nsIShellService;
-
   try {
     var shellService = Cc["@mozilla.org/suite/shell-service;1"].getService(
-      nsIShellService
+      Ci.nsIShellService
     );
     var appTypesCheck =
       shellService.shouldBeDefaultClientFor &
-      (nsIShellService.MAIL | nsIShellService.NEWS);
+      (Ci.nsIShellService.MAIL | Ci.nsIShellService.NEWS);
 
     // show the default client dialog only if we have at least one account,
     // if we should check for the default client, and we want to check if we are
@@ -72,164 +68,26 @@ function showMailIntegrationDialog() {
 }
 
 /**
- * Verify that there is at least one account. If not, open a new account wizard.
+ * Check that an account exists which requires Local Folders.
  *
- * @param wizardCallback if the wizard is run, callback when it is done.
- * @param needsIdentity True only when verifyAccounts is called from the
- *                      compose window. This last condition is so that we open
- *                      the account wizard if the user does not have any
- *                      identities defined and tries to compose mail.
- * @param wizardOpen optional param that allows the caller to specify a
- *                   different method to open a wizard. The wizardOpen method
- *                   takes wizardCallback as an argument. The wizardCallback
- *                   doesn't take any arguments.
+ * @returns {boolean} - true if at least 1 account exists that requires
+ *                      Local Folders, else false.
  */
-function verifyAccounts(wizardCallback, needsIdentity, wizardOpen) {
-  var openWizard = false;
-  var prefillAccount;
-  var ret = true;
-
-  try {
-    // migrate quoting preferences from global to per account. This function returns
-    // true if it had to migrate, which we will use to mean this is a just migrated
-    // or new profile
-    var newProfile = migrateGlobalQuotingPrefs(
-      MailServices.accounts.allIdentities
-    );
-
-    var accounts = MailServices.accounts.accounts;
-
-    // as long as we have some accounts, we're fine.
-    var accountCount = accounts.length;
-    var invalidAccounts = getInvalidAccounts(accounts);
-    if (invalidAccounts.length > 0 && invalidAccounts.length == accountCount) {
-      prefillAccount = invalidAccounts[0];
-    }
-
-    // if there are no accounts, or all accounts are "invalid"
-    // then kick off the account migration. Or if this is a new (to Mozilla) profile.
-    // MCD can set up accounts without the profile being used yet
-    if (newProfile) {
-      // check if MCD is configured. If not, say this is not a new profile
-      // so that we don't accidentally remigrate non MCD profiles.
-      var adminUrl = Services.prefs.getCharPref(
-        "autoadmin.global_config_url",
-        ""
-      );
-      if (!adminUrl) {
-        newProfile = false;
-      }
-    }
-    if (
-      (newProfile && !accountCount) ||
-      accountCount == invalidAccounts.length
-    ) {
-      openWizard = true;
-    }
-
-    // openWizard is true if messenger migration returns some kind of
-    // error (including those cases where there is nothing to migrate).
-    // prefillAccount is non-null if there is at least one invalid account.
-    // gAnyValidIdentity is true when you've got at least one *valid*
-    // identity. Since local and RSS folders are identity-less accounts, if you
-    // only have one of those, it will be false.
-    // needsIdentity is true only when verifyAccounts is called from the
-    // compose window. This last condition is so that we open the account
-    // wizard if the user does not have any identities defined and tries to
-    // compose mail.
-
-    if (openWizard || prefillAccount || (!gAnyValidIdentity && needsIdentity)) {
-      if (wizardOpen != undefined) {
-        wizardOpen(wizardCallback);
-      } else {
-        MsgAccountWizard(wizardCallback);
-      }
-      ret = false;
-    } else {
-      var localFoldersExists;
-      try {
-        localFoldersExists = MailServices.accounts.localFoldersServer;
-      } catch (ex) {
-        localFoldersExists = false;
-      }
-
-      // we didn't create the MsgAccountWizard - we need to verify that local folders exists.
-      if (!localFoldersExists) {
-        MailServices.accounts.createLocalMailAccount();
-      }
-    }
-
-    // This will do nothing on platforms without a shell service
-    if ("@mozilla.org/suite/shell-service;1" in Cc) {
-      // hack, set a time out to do this, so that the window can load first
-      setTimeout(showMailIntegrationDialog, 0);
-    }
-    return ret;
-  } catch (ex) {
-    dump("error verifying accounts " + ex + "\n");
-    return false;
-  }
-}
-
-// we do this from a timer because if this is called from the onload=
-// handler, then the parent window doesn't appear until after the wizard
-// has closed, and this is confusing to the user
-function MsgAccountWizard(wizardCallback) {
-  setTimeout(function() {
-    msgOpenAccountWizard(wizardCallback);
-  }, 0);
+function requireLocalFoldersAccount() {
+  return MailServices.accounts.accounts.some(account =>
+    ["imap", "pop3", "nntp"].includes(account.incomingServer?.type)
+  );
 }
 
 /**
- * Open the Old Mail Account Wizard, or focus it if it's already open.
- *
- * @param wizardCallback if the wizard is run, callback when it is done.
- * @param type - optional account type token, for Tb.
- * @see msgNewMailAccount below for the new implementation.
+ * Open the Nntp Account Wizard, or focus it if it's already open.
  */
-function msgOpenAccountWizard(wizardCallback, type) {
-  gNewAccountToLoad = null;
-
+function openNewsgroupAccountWizard() {
   window.browsingContext.topChromeWindow.openDialog(
     "chrome://messenger/content/AccountWizard.xhtml",
     "AccountWizard",
-    "chrome,modal,titlebar,centerscreen",
-    { okCallback: wizardCallback, acctType: type }
+    "chrome,modal,titlebar,centerscreen"
   );
-
-  loadInboxForNewAccount();
-
-  // If we started with no servers at all and "smtp servers" list selected,
-  // refresh display somehow. Bug 58506.
-  // TODO Better fix: select newly created account (in all cases)
-  if (
-    typeof getCurrentAccount == "function" && // in AccountManager, not menu
-    !getCurrentAccount()
-  ) {
-    selectServer(null, null);
-  }
-}
-
-function initAccountWizardTB(args) {
-  let type = args[0] && args[0].acctType;
-  let selType = null;
-  if (type == "newsgroups") {
-    selType = "newsaccount";
-  }
-  let accountwizard = document.querySelector("wizard");
-  let acctyperadio = document.getElementById("acctyperadio");
-  let feedRadio = acctyperadio.querySelector("radio[value='Feeds']");
-  if (feedRadio) {
-    feedRadio.remove();
-  }
-  if (selType) {
-    acctyperadio.selectedItem = acctyperadio.querySelector(
-      "radio[value='" + selType + "']"
-    );
-    accountwizard.advance("identitypage");
-  } else {
-    acctyperadio.selectedItem = acctyperadio.getItemAtIndex(0);
-  }
 }
 
 function AddIMAccount() {
@@ -248,28 +106,17 @@ function AddFeedAccount() {
   );
 }
 
-function AddAddressBook() {
-  window.browsingContext.topChromeWindow.openDialog(
-    "chrome://messenger/content/addressbook/abAddressBookNameDialog.xhtml",
-    "",
-    "chrome,modal,resizable=no,centerscreen"
-  );
-}
-
-function addCardDAVAddressBook() {
-  window.browsingContext.topChromeWindow.openDialog(
-    "chrome://messenger/content/addressbook/abCardDAVDialog.xhtml",
-    "",
-    "chrome,resizable=no,centerscreen"
-  );
-}
-
-function addLDAPAddressBook() {
-  window.browsingContext.topChromeWindow.openDialog(
-    "chrome://messenger/content/addressbook/pref-directory-add.xhtml",
-    "",
-    "chrome,resizable=no,centerscreen"
-  );
+/**
+ * Opens Address Book tab and triggers the address book creation dialog based on
+ * the passed type.
+ *
+ * @param {string} type - The address book type needing creation. Accepted types
+ *   are "JS", "LDAP", and "CARDDAV".
+ */
+function addNewAddressBook(type) {
+  window.browsingContext.topChromeWindow.toAddressBook([
+    `cmd_createAddressBook${type}`,
+  ]);
 }
 
 function showCalendarWizard() {
@@ -285,37 +132,46 @@ function showCalendarWizard() {
  * Opens the account settings window on the specified account
  * and page of settings. If the window is already open it is only focused.
  *
- * @param selectPage  The xul file name for the viewing page or
- *                    null for the account main page. Other pages are
- *                    'am-server.xhtml', 'am-copies.xhtml', 'am-offline.xhtml',
- *                    'am-addressing.xhtml', 'am-smtp.xhtml'
- * @param  aServer    The server of the account to select. Optional.
+ * @param {?string} selectPage - The file name for the viewing page, or null for
+ *   the account main page. Other pages are 'am-server.xhtml',
+ *   'am-copies.xhtml', 'am-offline.xhtml', 'am-addressing.xhtml',
+ *   'am-smtp.xhtml'
+ * @param {nsIMsgIncomingServer} [server] - The server of the account to select.
  */
-function MsgAccountManager(selectPage, aServer) {
-  if (!aServer) {
-    if (typeof window.GetSelectedMsgFolders === "function") {
-      let folders = window.GetSelectedMsgFolders();
-      if (folders.length > 0) {
-        aServer = folders[0].server;
-      }
-    }
-    if (!aServer && typeof window.GetDefaultAccountRootFolder === "function") {
-      let folder = window.GetDefaultAccountRootFolder();
-      if (folder instanceof Ci.nsIMsgFolder) {
-        aServer = folder.server;
-      }
-    }
+async function MsgAccountManager(selectPage, server) {
+  const win = Services.wm.getMostRecentWindow("mail:3pane");
+  if (!win) {
+    // No window available, so force open a new one.
+    openTab(
+      "contentTab",
+      {
+        url: "about:accountsettings",
+        onLoad(event, browser) {
+          browser.contentDocument.documentElement.server = server;
+          browser.contentDocument.documentElement.selectPage = selectPage;
+          browser.contentDocument.getElementById("accounttree").focus();
+        },
+      },
+      "window"
+    );
+    return;
   }
-  let mailWindow = Services.wm.getMostRecentWindow("mail:3pane");
-  let tabmail = mailWindow.document.getElementById("tabmail");
 
-  mailWindow.focus();
+  const tabmail = win.document.getElementById("tabmail");
+  // If the server wasn't specified, and we have the window open, try
+  // and use the currently selected folder to work out the server to select.
+  if (!server) {
+    server = tabmail.currentAbout3Pane?.gFolder ?? null;
+  }
+  // If the server is still not found, account settings will default to
+  // the first account.
+
   // If Account settings tab is already open, change the server
   // and the selected page, reload the tab and switch to the tab.
-  for (let tabInfo of tabmail.tabInfo) {
-    let tab = tabmail.getTabForBrowser(tabInfo.browser);
-    if (tab && tab.urlbar && tab.urlbar.value == "about:accountsettings") {
-      tab.browser.contentDocument.documentElement.server = aServer;
+  for (const tabInfo of tabmail.tabInfo) {
+    const tab = tabmail.getTabForBrowser(tabInfo.browser);
+    if (tab?.urlbar?.value == "about:accountsettings") {
+      tab.browser.contentDocument.documentElement.server = server;
       tab.browser.contentDocument.documentElement.selectPage = selectPage;
       tab.browser.contentWindow.onLoad();
       tabmail.switchToTab(tabInfo);
@@ -323,23 +179,15 @@ function MsgAccountManager(selectPage, aServer) {
     }
   }
 
-  let onLoad = function(event, browser) {
-    browser.contentDocument.documentElement.server = aServer;
-    browser.contentDocument.documentElement.selectPage = selectPage;
-    browser.contentDocument.getElementById("accounttree").focus();
-  };
+  // Else fallback to opening a new tab in the window.
   tabmail.openTab("contentTab", {
     url: "about:accountsettings",
-    onLoad,
+    onLoad(event, browser) {
+      browser.contentDocument.documentElement.server = server;
+      browser.contentDocument.documentElement.selectPage = selectPage;
+      browser.contentDocument.getElementById("accounttree").focus();
+    },
   });
-
-  for (let tabInfo of tabmail.tabInfo) {
-    let tab = tabmail.getTabForBrowser(tabInfo.browser);
-    if (tab && tab.urlbar && tab.urlbar.value == "about:accountsettings") {
-      tab.tabNode.setAttribute("type", "accountManager");
-      break;
-    }
-  }
 }
 
 function loadInboxForNewAccount() {
@@ -379,7 +227,7 @@ function migrateGlobalQuotingPrefs(allIdentities) {
     } catch (ex) {}
 
     if (!auto_quote || reply_on_top) {
-      for (let identity of allIdentities) {
+      for (const identity of allIdentities) {
         if (identity.valid) {
           identity.autoQuote = auto_quote;
           identity.replyOnTop = reply_on_top;
@@ -392,81 +240,17 @@ function migrateGlobalQuotingPrefs(allIdentities) {
 }
 
 /**
- * Open the account provisioner dialog.
- *
- * @param {?Object} args - List of arguments after a successful account creation.
- */
-function openAccountProvisioner(args) {
-  if (!args) {
-    args = {};
-  }
-
-  let mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
-  // Interrupt if we can't find the mail:3pane.
-  if (!mail3Pane) {
-    Cu.reportError("Could not find a 3pane to connect to.");
-    return;
-  }
-
-  let tabmail = mail3Pane.document.getElementById("tabmail");
-  // Interrupt if we can't find the tabmail.
-  if (!tabmail) {
-    Cu.reportError("Could not find a tabmail in the 3pane!");
-    return;
-  }
-
-  // If there's already an accountProvisionerTab open, just focus it instead
-  // of opening a new dialog.
-  let apTab = tabmail.getTabInfoForCurrentOrFirstModeInstance(
-    tabmail.tabModes.accountProvisionerTab
-  );
-  if (apTab) {
-    tabmail.switchToTab(apTab);
-    return;
-  }
-
-  // Pass the methods that might be used from the provisioner after a successful
-  // account creation.
-  args.openAccountSetupTab = openAccountSetupTab;
-  args.openAddonsMgr = mail3Pane.openAddonsMgr;
-
-  let windowParams = "chrome,titlebar,centerscreen,width=640,height=480";
-
-  // A new email address was successfully created and we need to load the UI
-  // in case the account was created but the UI wasn't properly loaded. This
-  // might happen if the user switches to the account provisioner dialog from
-  // the emailWizard dialog on first launch.
-  if (args.success) {
-    if (document.getElementById("folderPaneBox").collapsed) {
-      mail3Pane.postMessage("account-created-from-provisioner", "*");
-    }
-  } else {
-    args.success = false;
-    // If we're not opening up the success dialog, then our window should be
-    // modal.
-    windowParams = `modal,${windowParams}`;
-  }
-
-  window.browsingContext.topChromeWindow.openDialog(
-    "chrome://messenger/content/newmailaccount/accountProvisioner.xhtml",
-    "AccountCreation",
-    windowParams,
-    args
-  );
-}
-
-/**
  * Open the Account Setup Tab or focus it if it's already open.
  */
 function openAccountSetupTab() {
-  let mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
-  let tabmail = mail3Pane.document.getElementById("tabmail");
+  const mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
+  const tabmail = mail3Pane.document.getElementById("tabmail");
 
   // Switch to the account setup tab if it's already open.
-  for (let tabInfo of tabmail.tabInfo) {
-    let tab = tabmail.getTabForBrowser(tabInfo.browser);
-    if (tab && tab.urlbar && tab.urlbar.value == "about:accountsetup") {
-      let accountSetup = tabInfo.browser.contentWindow.gAccountSetup;
+  for (const tabInfo of tabmail.tabInfo) {
+    const tab = tabmail.getTabForBrowser(tabInfo.browser);
+    if (tab?.urlbar?.value == "about:accountsetup") {
+      const accountSetup = tabInfo.browser.contentWindow.gAccountSetup;
       // Reset the entire UI only if the previously opened setup was completed.
       if (accountSetup._currentModename == "success") {
         accountSetup.resetSetup();
@@ -476,18 +260,80 @@ function openAccountSetupTab() {
     }
   }
 
-  tabmail.openTab("contentTab", {
-    url: "about:accountsetup",
-  });
+  tabmail.openTab("contentTab", { url: "about:accountsetup" });
+}
 
-  // Loop through all the available tabs again to update the type attribute.
-  for (let tabInfo of tabmail.tabInfo) {
-    let tab = tabmail.getTabForBrowser(tabInfo.browser);
-    if (tab && tab.urlbar && tab.urlbar.value == "about:accountsetup") {
-      tab.tabNode.setAttribute("type", "accountSetup");
-      break;
+/**
+ * Open the account setup tab and switch to the success view to show the newly
+ * created account, or show an error if the account wasn't created.
+ *
+ * @param {object} account - A newly created account.
+ * @param {string} name - The account name defined in the provider's website.
+ * @param {string} email - The newly created email address.
+ */
+function openAccountSetupTabWithAccount(account, name, email) {
+  // Define which actions we need to take after the account setup tab has been
+  // loaded and we have access to its objects.
+  const onTabLoaded = function (event, browser, account) {
+    const accountSetup = browser.contentWindow.gAccountSetup;
+
+    if (account) {
+      // Update the account setup variables before kicking off the success view
+      // which will start fetching linked services with these values.
+      accountSetup._realname = name;
+      accountSetup._email = email;
+      accountSetup._password = account.incomingServer.password;
+      accountSetup.showSuccessView(account);
+      return;
+    }
+
+    accountSetup.showErrorNotification("account-setup-provisioner-error");
+  };
+
+  const mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
+  const tabmail = mail3Pane.document.getElementById("tabmail");
+
+  // Switch to the account setup tab if it's already open.
+  for (const tabInfo of tabmail.tabInfo) {
+    const tab = tabmail.getTabForBrowser(tabInfo.browser);
+    if (tab?.urlbar?.value == "about:accountsetup") {
+      const accountSetup = tabInfo.browser.contentWindow.gAccountSetup;
+      // Reset the entire UI only if the previously opened setup was completed.
+      if (accountSetup._currentModename == "success") {
+        accountSetup.resetSetup();
+      }
+      tabmail.switchToTab(tabInfo);
+      onTabLoaded(null, tabInfo.browser, account);
+      return;
     }
   }
+
+  // Open the account setup tab.
+  tabmail.openTab("contentTab", {
+    url: "about:accountsetup",
+    onLoad(event, browser) {
+      onTabLoaded(event, browser, account);
+    },
+  });
+}
+
+/**
+ * Open the Account Provisioner Tab or focus it if it's already open.
+ */
+function openAccountProvisionerTab() {
+  const mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
+  const tabmail = mail3Pane.document.getElementById("tabmail");
+
+  // Switch to the account setup tab if it's already open.
+  for (const tabInfo of tabmail.tabInfo) {
+    const tab = tabmail.getTabForBrowser(tabInfo.browser);
+    if (tab?.urlbar?.value == "about:accountprovisioner") {
+      tabmail.switchToTab(tabInfo);
+      return;
+    }
+  }
+
+  tabmail.openTab("contentTab", { url: "about:accountprovisioner" });
 }
 
 /**
@@ -499,36 +345,24 @@ function updateMailPaneUI() {
     return;
   }
 
-  let mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
-  // Show the folder pane.
-  mail3Pane.document.getElementById("folderPaneBox").collapsed = false;
-  mail3Pane.document.getElementById("folderpane_splitter").collapsed = false;
+  const mail3Pane = Services.wm.getMostRecentWindow("mail:3pane");
   // Set the folderPaneVisible to true in the tabmail to prevent collapsing
   // on tab switch.
-  let tabmail = mail3Pane.document.getElementById("tabmail");
-  tabmail.tabInfo[0].folderDisplay.folderPaneVisible = true;
+  const tabmail = mail3Pane.document.getElementById("tabmail");
+  tabmail.tabInfo[0].folderPaneVisible = true;
 }
 
 /**
  * Open the OpenPGP Key Manager from outside the Account Settings.
  */
 function openKeyManager() {
-  // Bug 1638153: The rootTreeItem object has been removed after 78. We need to
-  // the availability of "browsingContext" to use the right DOM window in 79+.
-  let w =
-    "browsingContext" in window
-      ? window.browsingContext.topChromeWindow
-      : window.docShell.rootTreeItem.domWindow;
-
-  let args = {
-    cancelCallback: null,
-    okCallback: null,
-  };
-
-  w.openDialog(
+  window.browsingContext.topChromeWindow.openDialog(
     "chrome://openpgp/content/ui/enigmailKeyManager.xhtml",
     "enigmail:KeyManager",
     "dialog,centerscreen,resizable",
-    args
+    {
+      cancelCallback: null,
+      okCallback: null,
+    }
   );
 }

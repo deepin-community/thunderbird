@@ -3,19 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.User = User;
-
-var utils = _interopRequireWildcard(require("../utils"));
-
-var _events = require("events");
-
-function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
-/*
-Copyright 2015, 2016 OpenMarket Ltd
-Copyright 2019 The Matrix.org Foundation C.I.C.
+exports.UserEvent = exports.User = void 0;
+var _typedEventEmitter = require("./typed-event-emitter");
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } /*
+Copyright 2015 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,260 +22,203 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-/**
- * @module models/user
- */
-
-/**
- * Construct a new User. A User must have an ID and can optionally have extra
- * information associated with it.
- * @constructor
- * @param {string} userId Required. The ID of this user.
- * @prop {string} userId The ID of the user.
- * @prop {Object} info The info object supplied in the constructor.
- * @prop {string} displayName The 'displayname' of the user if known.
- * @prop {string} avatarUrl The 'avatar_url' of the user if known.
- * @prop {string} presence The presence enum if known.
- * @prop {string} presenceStatusMsg The presence status message if known.
- * @prop {Number} lastActiveAgo The time elapsed in ms since the user interacted
- *                proactively with the server, or we saw a message from the user
- * @prop {Number} lastPresenceTs Timestamp (ms since the epoch) for when we last
- *                received presence data for this user.  We can subtract
- *                lastActiveAgo from this to approximate an absolute value for
- *                when a user was last active.
- * @prop {Boolean} currentlyActive Whether we should consider lastActiveAgo to be
- *               an approximation and that the user should be seen as active 'now'
- * @prop {string} _unstable_statusMessage The status message for the user, if known. This is
- *                different from the presenceStatusMsg in that this is not tied to
- *                the user's presence, and should be represented differently.
- * @prop {Object} events The events describing this user.
- * @prop {MatrixEvent} events.presence The m.presence event for this user.
- */
-function User(userId) {
-  this.userId = userId;
-  this.presence = "offline";
-  this.presenceStatusMsg = null;
-  this._unstable_statusMessage = "";
-  this.displayName = userId;
-  this.rawDisplayName = userId;
-  this.avatarUrl = null;
-  this.lastActiveAgo = 0;
-  this.lastPresenceTs = 0;
-  this.currentlyActive = false;
-  this.events = {
-    presence: null,
-    profile: null
-  };
-
-  this._updateModifiedTime();
-}
-
-utils.inherits(User, _events.EventEmitter);
-/**
- * Update this User with the given presence event. May fire "User.presence",
- * "User.avatarUrl" and/or "User.displayName" if this event updates this user's
- * properties.
- * @param {MatrixEvent} event The <code>m.presence</code> event.
- * @fires module:client~MatrixClient#event:"User.presence"
- * @fires module:client~MatrixClient#event:"User.displayName"
- * @fires module:client~MatrixClient#event:"User.avatarUrl"
- */
-
-User.prototype.setPresenceEvent = function (event) {
-  if (event.getType() !== "m.presence") {
-    return;
+let UserEvent = exports.UserEvent = /*#__PURE__*/function (UserEvent) {
+  UserEvent["DisplayName"] = "User.displayName";
+  UserEvent["AvatarUrl"] = "User.avatarUrl";
+  UserEvent["Presence"] = "User.presence";
+  UserEvent["CurrentlyActive"] = "User.currentlyActive";
+  UserEvent["LastPresenceTs"] = "User.lastPresenceTs";
+  return UserEvent;
+}({});
+class User extends _typedEventEmitter.TypedEventEmitter {
+  /**
+   * Construct a new User. A User must have an ID and can optionally have extra information associated with it.
+   * @param userId - Required. The ID of this user.
+   * @deprecated use `User.createUser`
+   */
+  constructor(userId) {
+    super();
+    this.userId = userId;
+    _defineProperty(this, "modified", -1);
+    /**
+     * The 'displayname' of the user if known.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "displayName", void 0);
+    _defineProperty(this, "rawDisplayName", void 0);
+    /**
+     * The 'avatar_url' of the user if known.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "avatarUrl", void 0);
+    /**
+     * The presence status message if known.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "presenceStatusMsg", void 0);
+    /**
+     * The presence enum if known.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "presence", "offline");
+    /**
+     * Timestamp (ms since the epoch) for when we last received presence data for this user.
+     * We can subtract lastActiveAgo from this to approximate an absolute value for when a user was last active.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "lastActiveAgo", 0);
+    /**
+     * The time elapsed in ms since the user interacted proactively with the server,
+     * or we saw a message from the user
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "lastPresenceTs", 0);
+    /**
+     * Whether we should consider lastActiveAgo to be an approximation
+     * and that the user should be seen as active 'now'
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "currentlyActive", false);
+    /**
+     * The events describing this user.
+     * @privateRemarks
+     * Should be read-only
+     */
+    _defineProperty(this, "events", {});
+    this.displayName = userId;
+    this.rawDisplayName = userId;
+    this.updateModifiedTime();
   }
 
-  const firstFire = this.events.presence === null;
-  this.events.presence = event;
-  const eventsToFire = [];
-
-  if (event.getContent().presence !== this.presence || firstFire) {
-    eventsToFire.push("User.presence");
+  /**
+   * Construct a new User whose events will also emit on MatrixClient.
+   * A User must have an ID and can optionally have extra information associated with it.
+   * @param userId - Required. The ID of this user.
+   * @param client - An instance of MatrixClient object
+   * @returns User object with reEmitter setup on client
+   */
+  static createUser(userId, client) {
+    const user = new User(userId);
+    client.reEmitter.reEmit(user, [UserEvent.AvatarUrl, UserEvent.DisplayName, UserEvent.Presence, UserEvent.CurrentlyActive, UserEvent.LastPresenceTs]);
+    return user;
   }
 
-  if (event.getContent().avatar_url && event.getContent().avatar_url !== this.avatarUrl) {
-    eventsToFire.push("User.avatarUrl");
+  /**
+   * Update this User with the given presence event. May fire "User.presence",
+   * "User.avatarUrl" and/or "User.displayName" if this event updates this user's
+   * properties.
+   * @param event - The `m.presence` event.
+   *
+   * @remarks
+   * Fires {@link UserEvent.Presence}
+   * Fires {@link UserEvent.DisplayName}
+   * Fires {@link UserEvent.AvatarUrl}
+   */
+  setPresenceEvent(event) {
+    if (event.getType() !== "m.presence") {
+      return;
+    }
+    const firstFire = this.events.presence === null;
+    this.events.presence = event;
+    const eventsToFire = [];
+    if (event.getContent().presence !== this.presence || firstFire) {
+      eventsToFire.push(UserEvent.Presence);
+    }
+    if (event.getContent().avatar_url && event.getContent().avatar_url !== this.avatarUrl) {
+      eventsToFire.push(UserEvent.AvatarUrl);
+    }
+    if (event.getContent().displayname && event.getContent().displayname !== this.displayName) {
+      eventsToFire.push(UserEvent.DisplayName);
+    }
+    if (event.getContent().currently_active !== undefined && event.getContent().currently_active !== this.currentlyActive) {
+      eventsToFire.push(UserEvent.CurrentlyActive);
+    }
+    this.presence = event.getContent().presence;
+    eventsToFire.push(UserEvent.LastPresenceTs);
+    if (event.getContent().status_msg) {
+      this.presenceStatusMsg = event.getContent().status_msg;
+    }
+    if (event.getContent().displayname) {
+      this.displayName = event.getContent().displayname;
+    }
+    if (event.getContent().avatar_url) {
+      this.avatarUrl = event.getContent().avatar_url;
+    }
+    this.lastActiveAgo = event.getContent().last_active_ago;
+    this.lastPresenceTs = Date.now();
+    this.currentlyActive = event.getContent().currently_active;
+    this.updateModifiedTime();
+    for (const eventToFire of eventsToFire) {
+      this.emit(eventToFire, event, this);
+    }
   }
 
-  if (event.getContent().displayname && event.getContent().displayname !== this.displayName) {
-    eventsToFire.push("User.displayName");
-  }
-
-  if (event.getContent().currently_active !== undefined && event.getContent().currently_active !== this.currentlyActive) {
-    eventsToFire.push("User.currentlyActive");
-  }
-
-  this.presence = event.getContent().presence;
-  eventsToFire.push("User.lastPresenceTs");
-
-  if (event.getContent().status_msg) {
-    this.presenceStatusMsg = event.getContent().status_msg;
-  }
-
-  if (event.getContent().displayname) {
-    this.displayName = event.getContent().displayname;
-  }
-
-  if (event.getContent().avatar_url) {
-    this.avatarUrl = event.getContent().avatar_url;
-  }
-
-  this.lastActiveAgo = event.getContent().last_active_ago;
-  this.lastPresenceTs = Date.now();
-  this.currentlyActive = event.getContent().currently_active;
-
-  this._updateModifiedTime();
-
-  for (let i = 0; i < eventsToFire.length; i++) {
-    this.emit(eventsToFire[i], event, this);
-  }
-};
-/**
- * Manually set this user's display name. No event is emitted in response to this
- * as there is no underlying MatrixEvent to emit with.
- * @param {string} name The new display name.
- */
-
-
-User.prototype.setDisplayName = function (name) {
-  const oldName = this.displayName;
-
-  if (typeof name === "string") {
+  /**
+   * Manually set this user's display name. No event is emitted in response to this
+   * as there is no underlying MatrixEvent to emit with.
+   * @param name - The new display name.
+   */
+  setDisplayName(name) {
+    const oldName = this.displayName;
     this.displayName = name;
-  } else {
-    this.displayName = undefined;
+    if (name !== oldName) {
+      this.updateModifiedTime();
+    }
   }
 
-  if (name !== oldName) {
-    this._updateModifiedTime();
-  }
-};
-/**
- * Manually set this user's non-disambiguated display name. No event is emitted
- * in response to this as there is no underlying MatrixEvent to emit with.
- * @param {string} name The new display name.
- */
-
-
-User.prototype.setRawDisplayName = function (name) {
-  if (typeof name === "string") {
+  /**
+   * Manually set this user's non-disambiguated display name. No event is emitted
+   * in response to this as there is no underlying MatrixEvent to emit with.
+   * @param name - The new display name.
+   */
+  setRawDisplayName(name) {
     this.rawDisplayName = name;
-  } else {
-    this.rawDisplayName = undefined;
   }
-};
-/**
- * Manually set this user's avatar URL. No event is emitted in response to this
- * as there is no underlying MatrixEvent to emit with.
- * @param {string} url The new avatar URL.
- */
 
-
-User.prototype.setAvatarUrl = function (url) {
-  const oldUrl = this.avatarUrl;
-  this.avatarUrl = url;
-
-  if (url !== oldUrl) {
-    this._updateModifiedTime();
+  /**
+   * Manually set this user's avatar URL. No event is emitted in response to this
+   * as there is no underlying MatrixEvent to emit with.
+   * @param url - The new avatar URL.
+   */
+  setAvatarUrl(url) {
+    const oldUrl = this.avatarUrl;
+    this.avatarUrl = url;
+    if (url !== oldUrl) {
+      this.updateModifiedTime();
+    }
   }
-};
-/**
- * Update the last modified time to the current time.
- */
 
+  /**
+   * Update the last modified time to the current time.
+   */
+  updateModifiedTime() {
+    this.modified = Date.now();
+  }
 
-User.prototype._updateModifiedTime = function () {
-  this._modified = Date.now();
-};
-/**
- * Get the timestamp when this User was last updated. This timestamp is
- * updated when this User receives a new Presence event which has updated a
- * property on this object. It is updated <i>before</i> firing events.
- * @return {number} The timestamp
- */
+  /**
+   * Get the timestamp when this User was last updated. This timestamp is
+   * updated when this User receives a new Presence event which has updated a
+   * property on this object. It is updated <i>before</i> firing events.
+   * @returns The timestamp
+   */
+  getLastModifiedTime() {
+    return this.modified;
+  }
 
-
-User.prototype.getLastModifiedTime = function () {
-  return this._modified;
-};
-/**
- * Get the absolute timestamp when this User was last known active on the server.
- * It is *NOT* accurate if this.currentlyActive is true.
- * @return {number} The timestamp
- */
-
-
-User.prototype.getLastActiveTs = function () {
-  return this.lastPresenceTs - this.lastActiveAgo;
-};
-/**
- * Manually set the user's status message.
- * @param {MatrixEvent} event The <code>im.vector.user_status</code> event.
- * @fires module:client~MatrixClient#event:"User._unstable_statusMessage"
- */
-
-
-User.prototype._unstable_updateStatusMessage = function (event) {
-  if (!event.getContent()) this._unstable_statusMessage = "";else this._unstable_statusMessage = event.getContent()["status"];
-
-  this._updateModifiedTime();
-
-  this.emit("User._unstable_statusMessage", this);
-};
-/**
- * Fires whenever any user's lastPresenceTs changes,
- * ie. whenever any presence event is received for a user.
- * @event module:client~MatrixClient#"User.lastPresenceTs"
- * @param {MatrixEvent} event The matrix event which caused this event to fire.
- * @param {User} user The user whose User.lastPresenceTs changed.
- * @example
- * matrixClient.on("User.lastPresenceTs", function(event, user){
- *   var newlastPresenceTs = user.lastPresenceTs;
- * });
- */
-
-/**
- * Fires whenever any user's presence changes.
- * @event module:client~MatrixClient#"User.presence"
- * @param {MatrixEvent} event The matrix event which caused this event to fire.
- * @param {User} user The user whose User.presence changed.
- * @example
- * matrixClient.on("User.presence", function(event, user){
- *   var newPresence = user.presence;
- * });
- */
-
-/**
- * Fires whenever any user's currentlyActive changes.
- * @event module:client~MatrixClient#"User.currentlyActive"
- * @param {MatrixEvent} event The matrix event which caused this event to fire.
- * @param {User} user The user whose User.currentlyActive changed.
- * @example
- * matrixClient.on("User.currentlyActive", function(event, user){
- *   var newCurrentlyActive = user.currentlyActive;
- * });
- */
-
-/**
- * Fires whenever any user's display name changes.
- * @event module:client~MatrixClient#"User.displayName"
- * @param {MatrixEvent} event The matrix event which caused this event to fire.
- * @param {User} user The user whose User.displayName changed.
- * @example
- * matrixClient.on("User.displayName", function(event, user){
- *   var newName = user.displayName;
- * });
- */
-
-/**
- * Fires whenever any user's avatar URL changes.
- * @event module:client~MatrixClient#"User.avatarUrl"
- * @param {MatrixEvent} event The matrix event which caused this event to fire.
- * @param {User} user The user whose User.avatarUrl changed.
- * @example
- * matrixClient.on("User.avatarUrl", function(event, user){
- *   var newUrl = user.avatarUrl;
- * });
- */
+  /**
+   * Get the absolute timestamp when this User was last known active on the server.
+   * It is *NOT* accurate if this.currentlyActive is true.
+   * @returns The timestamp
+   */
+  getLastActiveTs() {
+    return this.lastPresenceTs - this.lastActiveAgo;
+  }
+}
+exports.User = User;

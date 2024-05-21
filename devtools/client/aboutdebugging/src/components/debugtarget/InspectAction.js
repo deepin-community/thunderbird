@@ -7,15 +7,15 @@
 const {
   createFactory,
   PureComponent,
-} = require("devtools/client/shared/vendor/react");
-const dom = require("devtools/client/shared/vendor/react-dom-factories");
-const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
+} = require("resource://devtools/client/shared/vendor/react.js");
+const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
+const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.js");
 
-const FluentReact = require("devtools/client/shared/vendor/fluent-react");
+const FluentReact = require("resource://devtools/client/shared/vendor/fluent-react.js");
 const Localized = createFactory(FluentReact.Localized);
 
-const Actions = require("devtools/client/aboutdebugging/src/actions/index");
-const Types = require("devtools/client/aboutdebugging/src/types/index");
+const Actions = require("resource://devtools/client/aboutdebugging/src/actions/index.js");
+const Types = require("resource://devtools/client/aboutdebugging/src/types/index.js");
 
 /**
  * This component provides inspect button.
@@ -44,7 +44,7 @@ class InspectAction extends PureComponent {
       },
       dom.button(
         {
-          onClick: e => this.inspect(),
+          onClick: () => this.inspect(),
           className: "default-button  qa-debug-target-inspect-button",
           disabled,
           title,

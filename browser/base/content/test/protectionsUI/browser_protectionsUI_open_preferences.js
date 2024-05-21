@@ -6,8 +6,10 @@
 const TP_PREF = "privacy.trackingprotection.enabled";
 const TPC_PREF = "network.cookie.cookieBehavior";
 const TRACKING_PAGE =
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://tracking.example.org/browser/browser/base/content/test/protectionsUI/trackingPage.html";
 const COOKIE_PAGE =
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://tracking.example.com/browser/browser/base/content/test/protectionsUI/cookiePage.html";
 
 async function waitAndAssertPreferencesShown(_spotlight) {
@@ -40,7 +42,7 @@ async function waitAndAssertPreferencesShown(_spotlight) {
   BrowserTestUtils.removeTab(gBrowser.selectedTab);
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await UrlClassifierTestUtils.addTestTrackers();
   let oldCanRecord = Services.telemetry.canRecordExtended;
   Services.telemetry.canRecordExtended = true;
@@ -72,10 +74,10 @@ add_task(async function testOpenPreferencesFromTrackersSubview() {
 
   // Explicitly waiting for the category item becoming visible.
   await TestUtils.waitForCondition(() => {
-    return BrowserTestUtils.is_visible(categoryItem);
+    return BrowserTestUtils.isVisible(categoryItem);
   });
 
-  ok(BrowserTestUtils.is_visible(categoryItem), "TP category item is visible");
+  ok(BrowserTestUtils.isVisible(categoryItem), "TP category item is visible");
   let trackersView = document.getElementById("protections-popup-trackersView");
   let viewShown = BrowserTestUtils.waitForEvent(trackersView, "ViewShown");
   categoryItem.click();
@@ -88,7 +90,7 @@ add_task(async function testOpenPreferencesFromTrackersSubview() {
   );
 
   ok(
-    BrowserTestUtils.is_visible(preferencesButton),
+    BrowserTestUtils.isVisible(preferencesButton),
     "The preferences button is shown."
   );
 
@@ -124,10 +126,10 @@ add_task(async function testOpenPreferencesFromCookiesSubview() {
 
   // Explicitly waiting for the category item becoming visible.
   await TestUtils.waitForCondition(() => {
-    return BrowserTestUtils.is_visible(categoryItem);
+    return BrowserTestUtils.isVisible(categoryItem);
   });
 
-  ok(BrowserTestUtils.is_visible(categoryItem), "TP category item is visible");
+  ok(BrowserTestUtils.isVisible(categoryItem), "TP category item is visible");
   let cookiesView = document.getElementById("protections-popup-cookiesView");
   let viewShown = BrowserTestUtils.waitForEvent(cookiesView, "ViewShown");
   categoryItem.click();
@@ -140,7 +142,7 @@ add_task(async function testOpenPreferencesFromCookiesSubview() {
   );
 
   ok(
-    BrowserTestUtils.is_visible(preferencesButton),
+    BrowserTestUtils.isVisible(preferencesButton),
     "The preferences button is shown."
   );
 

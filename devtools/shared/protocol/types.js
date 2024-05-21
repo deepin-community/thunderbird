@@ -4,8 +4,11 @@
 
 "use strict";
 
-var { Actor } = require("devtools/shared/protocol/Actor");
-var { lazyLoadSpec, lazyLoadFront } = require("devtools/shared/specs/index");
+var { Actor } = require("resource://devtools/shared/protocol/Actor.js");
+var {
+  lazyLoadSpec,
+  lazyLoadFront,
+} = require("resource://devtools/shared/specs/index.js");
 
 /**
  * Types: named marshallers/demarshallers.
@@ -47,7 +50,7 @@ exports.registeredTypes = registeredTypes;
  *
  * @returns a type object.
  */
-types.getType = function(type) {
+types.getType = function (type) {
   if (!type) {
     return types.Primitive;
   }
@@ -135,12 +138,10 @@ function identityWrite(v) {
  * @param object typeObject
  *    An object whose properties will be stored in the type, including
  *    the `read` and `write` methods.
- * @param object options
- *    Can specify `thawed` to prevent the type from being frozen.
  *
  * @returns a type object that can be used in protocol definitions.
  */
-types.addType = function(name, typeObject = {}, options = {}) {
+types.addType = function (name, typeObject = {}) {
   if (registeredTypes.has(name)) {
     throw Error("Type '" + name + "' already exists.");
   }
@@ -150,7 +151,7 @@ types.addType = function(name, typeObject = {}, options = {}) {
       toString() {
         return "[protocol type:" + name + "]";
       },
-      name: name,
+      name,
       primitive: !(typeObject.read || typeObject.write),
       read: identityWrite,
       write: identityWrite,
@@ -167,7 +168,7 @@ types.addType = function(name, typeObject = {}, options = {}) {
  * Remove a type previously registered with the system.
  * Primarily useful for types registered by addons.
  */
-types.removeType = function(name) {
+types.removeType = function (name) {
   // This type may still be referenced by other types, make sure
   // those references don't work.
   const type = registeredTypes.get(name);
@@ -175,7 +176,7 @@ types.removeType = function(name) {
   type.name = "DEFUNCT:" + name;
   type.category = "defunct";
   type.primitive = false;
-  type.read = type.write = function() {
+  type.read = type.write = function () {
     throw new Error("Using defunct type: " + name);
   };
 
@@ -191,7 +192,7 @@ types.removeType = function(name) {
  * @param type subtype
  *    The subtype to be held by the array.
  */
-types.addArrayType = function(subtype) {
+types.addArrayType = function (subtype) {
   subtype = types.getType(subtype);
 
   const name = "array:" + subtype.name;
@@ -227,7 +228,7 @@ types.addArrayType = function(subtype) {
  * @param object specializations
  *    A dict of property names => type
  */
-types.addDictType = function(name, specializations) {
+types.addDictType = function (name, specializations) {
   const specTypes = {};
   for (const prop in specializations) {
     try {
@@ -287,7 +288,7 @@ types.addDictType = function(name, specializations) {
  * @param string name
  *    The typestring to register.
  */
-types.addActorType = function(name) {
+types.addActorType = function (name) {
   // We call addActorType from:
   //   FrontClassWithSpec when registering front synchronously,
   //   generateActorSpec when defining specs,
@@ -330,7 +331,9 @@ types.addActorType = function(name) {
         }
 
         const parentFront = ctx.marshallPool();
-        const targetFront = parentFront.targetFront;
+        const targetFront = parentFront.isTargetFront
+          ? parentFront
+          : parentFront.targetFront;
 
         // Use intermediate Class variable to please eslint requiring
         // a capital letter for all constructors.
@@ -370,7 +373,7 @@ types.addActorType = function(name) {
   return type;
 };
 
-types.addPolymorphicType = function(name, subtypes) {
+types.addPolymorphicType = function (name, subtypes) {
   // Assert that all subtypes are actors, as the marshalling implementation depends on that.
   for (const subTypeName of subtypes) {
     const subtype = types.getType(subTypeName);
@@ -432,7 +435,7 @@ types.addPolymorphicType = function(name, subtypes) {
     },
   });
 };
-types.addNullableType = function(subtype) {
+types.addNullableType = function (subtype) {
   subtype = types.getType(subtype);
   return types.addType("nullable:" + subtype.name, {
     category: "nullable",
@@ -465,7 +468,7 @@ types.addNullableType = function(subtype) {
  * @param string detail
  *   The detail to pass.
  */
-types.addActorDetail = function(name, actorType, detail) {
+types.addActorDetail = function (name, actorType, detail) {
   actorType = types.getType(actorType);
   if (!actorType._actor) {
     throw Error(
@@ -488,7 +491,7 @@ types.Number = types.addType("number");
 types.Boolean = types.addType("boolean");
 types.JSON = types.addType("json");
 
-exports.registerFront = function(cls) {
+exports.registerFront = function (cls) {
   const { typeName } = cls.prototype;
   if (!registeredTypes.has(typeName)) {
     types.addActorType(typeName);

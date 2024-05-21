@@ -9,6 +9,7 @@
 #include "secasn1.h"
 #include "secerr.h"
 #include "softoken.h"
+#include "ec.h"
 
 SEC_ASN1_MKSUB(SEC_AnyTemplate)
 SEC_ASN1_MKSUB(SEC_BitStringTemplate)
@@ -226,15 +227,18 @@ nsslowkey_DestroyPublicKey(NSSLOWKEYPublicKey *pubk)
 unsigned
 nsslowkey_PublicModulusLen(NSSLOWKEYPublicKey *pubk)
 {
-    unsigned char b0;
-
     /* interpret modulus length as key strength... in
      * fortezza that's the public key length */
 
     switch (pubk->keyType) {
         case NSSLOWKEYRSAKey:
-            b0 = pubk->u.rsa.modulus.data[0];
-            return b0 ? pubk->u.rsa.modulus.len : pubk->u.rsa.modulus.len - 1;
+            if (pubk->u.rsa.modulus.len == 0) {
+                return 0;
+            }
+            if (pubk->u.rsa.modulus.data[0] == 0) {
+                return pubk->u.rsa.modulus.len - 1;
+            }
+            return pubk->u.rsa.modulus.len;
         default:
             break;
     }
@@ -244,13 +248,15 @@ nsslowkey_PublicModulusLen(NSSLOWKEYPublicKey *pubk)
 unsigned
 nsslowkey_PrivateModulusLen(NSSLOWKEYPrivateKey *privk)
 {
-
-    unsigned char b0;
-
     switch (privk->keyType) {
         case NSSLOWKEYRSAKey:
-            b0 = privk->u.rsa.modulus.data[0];
-            return b0 ? privk->u.rsa.modulus.len : privk->u.rsa.modulus.len - 1;
+            if (privk->u.rsa.modulus.len == 0) {
+                return 0;
+            }
+            if (privk->u.rsa.modulus.data[0] == 0) {
+                return privk->u.rsa.modulus.len - 1;
+            }
+            return privk->u.rsa.modulus.len;
         default:
             break;
     }
@@ -376,6 +382,24 @@ nsslowkey_ConvertToPublicKey(NSSLOWKEYPrivateKey *privk)
 
                 pubk->arena = arena;
                 pubk->keyType = privk->keyType;
+
+                /* if the public key value doesn't exist, calculate it */
+                if (privk->u.ec.publicValue.len == 0) {
+                    /* Checking if it's an ed25519 key. */
+                    SECOidTag privKeyOIDTag = SECOID_FindOIDTag(&privk->u.ec.ecParams.curveOID);
+                    if (privKeyOIDTag == SEC_OID_ED25519_PUBLIC_KEY) {
+                        PORT_Memset(&privk->u.ec.publicValue, 0, sizeof(privk->u.ec.publicValue));
+                        if (SECITEM_AllocItem(privk->arena, &privk->u.ec.publicValue, Ed25519_PUBLIC_KEYLEN) == NULL) {
+                            break;
+                        }
+
+                        rv = ED_DerivePublicKey(&privk->u.ec.privateValue, &privk->u.ec.publicValue);
+                        if (rv != CKR_OK) {
+                            break;
+                        }
+                    }
+                }
+
                 rv = SECITEM_CopyItem(arena, &pubk->u.ec.publicValue,
                                       &privk->u.ec.publicValue);
                 if (rv != SECSuccess)

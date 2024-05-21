@@ -3,62 +3,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-const { Arg, RetVal, generateActorSpec } = require("devtools/shared/protocol");
+const {
+  Arg,
+  RetVal,
+  generateActorSpec,
+} = require("resource://devtools/shared/protocol.js");
 
 const responsiveSpec = generateActorSpec({
   typeName: "responsive",
 
   methods: {
-    setNetworkThrottling: {
-      request: {
-        options: Arg(0, "json"),
-      },
-      response: {
-        valueChanged: RetVal("boolean"),
-      },
-    },
-
-    getNetworkThrottling: {
-      request: {},
-      response: {
-        state: RetVal("json"),
-      },
-    },
-
-    clearNetworkThrottling: {
-      request: {},
-      response: {
-        valueChanged: RetVal("boolean"),
-      },
-    },
-
     toggleTouchSimulator: {
       request: {
         options: Arg(0, "json"),
       },
-      response: {
-        valueChanged: RetVal("boolean"),
-      },
-    },
-
-    setMetaViewportOverride: {
-      request: {
-        flag: Arg(0, "number"),
-      },
-      response: {
-        valueChanged: RetVal("boolean"),
-      },
-    },
-
-    getMetaViewportOverride: {
-      request: {},
-      response: {
-        flag: RetVal("number"),
-      },
-    },
-
-    clearMetaViewportOverride: {
-      request: {},
       response: {
         valueChanged: RetVal("boolean"),
       },
@@ -74,13 +32,6 @@ const responsiveSpec = generateActorSpec({
 
     dispatchOrientationChangeEvent: {
       request: {},
-      response: {},
-    },
-
-    setFloatingScrollbars: {
-      request: {
-        state: Arg(0, "boolean"),
-      },
       response: {},
     },
   },

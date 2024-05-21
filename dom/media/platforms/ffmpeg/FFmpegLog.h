@@ -9,7 +9,30 @@
 
 #include "mozilla/Logging.h"
 
-#define FFMPEG_LOG(...) \
-  MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
+static mozilla::LazyLogModule sFFmpegVideoLog("FFmpegVideo");
+static mozilla::LazyLogModule sFFmpegAudioLog("FFmpegAudio");
+
+#ifdef FFVPX_VERSION
+#  define FFMPEG_LOG(str, ...)                               \
+    MOZ_LOG(mVideoCodec ? sFFmpegVideoLog : sFFmpegAudioLog, \
+            mozilla::LogLevel::Debug, ("FFVPX: " str, ##__VA_ARGS__))
+#  define FFMPEGV_LOG(str, ...)                        \
+    MOZ_LOG(sFFmpegVideoLog, mozilla::LogLevel::Debug, \
+            ("FFVPX: " str, ##__VA_ARGS__))
+#  define FFMPEGP_LOG(str, ...) \
+    MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("FFVPX: " str, ##__VA_ARGS__))
+#else
+#  define FFMPEG_LOG(str, ...)                               \
+    MOZ_LOG(mVideoCodec ? sFFmpegVideoLog : sFFmpegAudioLog, \
+            mozilla::LogLevel::Debug, ("FFMPEG: " str, ##__VA_ARGS__))
+#  define FFMPEGV_LOG(str, ...)                        \
+    MOZ_LOG(sFFmpegVideoLog, mozilla::LogLevel::Debug, \
+            ("FFMPEG: " str, ##__VA_ARGS__))
+#  define FFMPEGP_LOG(str, ...) \
+    MOZ_LOG(sPDMLog, mozilla::LogLevel::Debug, ("FFMPEG: " str, ##__VA_ARGS__))
+#endif
+
+#define FFMPEG_LOGV(...) \
+  MOZ_LOG(sFFmpegVideoLog, mozilla::LogLevel::Verbose, (__VA_ARGS__))
 
 #endif  // __FFmpegLog_h__

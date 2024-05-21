@@ -6,11 +6,9 @@
 # to a given compilation unit. This is used as a helper to find a bug in some
 # versions of GNU ld.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
+import re
 import subprocess
 import sys
-import re
 
 
 def get_range_for(compilation_unit, debug_info):
@@ -39,7 +37,7 @@ def get_range_length(range, debug_ranges):
     given offset."""
     length = 0
     for line in debug_ranges.splitlines():
-        m = re.match("\s*([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)", line)
+        m = re.match(r"\s*([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)", line)
         if m and int(m.group(1), 16) == range:
             length += 1
     return length

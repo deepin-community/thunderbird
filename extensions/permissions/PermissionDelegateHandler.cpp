@@ -6,13 +6,13 @@
 
 #include "mozilla/PermissionDelegateHandler.h"
 
-#include "nsGlobalWindowInner.h"
 #include "nsPIDOMWindow.h"
 #include "nsIPrincipal.h"
 #include "nsContentPermissionHelper.h"
 
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/StaticPrefs_permissions.h"
+#include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/FeaturePolicyUtils.h"
 #include "mozilla/dom/WindowContext.h"
@@ -28,7 +28,7 @@ typedef PermissionDelegateHandler::PermissionDelegateInfo DelegateInfo;
 // Particular type of permissions to care about. We decide cases by case and
 // give various types of controls over each of these.
 static const DelegateInfo sPermissionsMap[] = {
-    // Permissions API map
+    // Permissions API map. All permission names have to be in lowercase.
     {"geo", u"geolocation", DelegatePolicy::eDelegateUseFeaturePolicy},
     // The same with geo, but we support both to save some conversions between
     // "geo" and "geolocation"
@@ -38,12 +38,15 @@ static const DelegateInfo sPermissionsMap[] = {
     {"persistent-storage", nullptr, DelegatePolicy::ePersistDeniedCrossOrigin},
     {"vibration", nullptr, DelegatePolicy::ePersistDeniedCrossOrigin},
     {"midi", nullptr, DelegatePolicy::eDelegateUseIframeOrigin},
+    // Like "midi" but with sysex support.
+    {"midi-sysex", nullptr, DelegatePolicy::eDelegateUseIframeOrigin},
     {"storage-access", nullptr, DelegatePolicy::eDelegateUseIframeOrigin},
     {"camera", u"camera", DelegatePolicy::eDelegateUseFeaturePolicy},
     {"microphone", u"microphone", DelegatePolicy::eDelegateUseFeaturePolicy},
     {"screen", u"display-capture", DelegatePolicy::eDelegateUseFeaturePolicy},
     {"xr", u"xr-spatial-tracking", DelegatePolicy::eDelegateUseFeaturePolicy},
-};
+    {"screen-wake-lock", u"screen-wake-lock",
+     DelegatePolicy::eDelegateUseFeaturePolicy}};
 
 static_assert(PermissionDelegateHandler::DELEGATED_PERMISSION_COUNT ==
                   (sizeof(sPermissionsMap) / sizeof(DelegateInfo)),
@@ -84,10 +87,6 @@ NS_IMETHODIMP
 PermissionDelegateHandler::MaybeUnsafePermissionDelegate(
     const nsTArray<nsCString>& aTypes, bool* aMaybeUnsafe) {
   *aMaybeUnsafe = false;
-  if (!StaticPrefs::permissions_delegation_enabled()) {
-    return NS_OK;
-  }
-
   for (auto& type : aTypes) {
     const DelegateInfo* info =
         GetPermissionDelegateInfo(NS_ConvertUTF8toUTF16(type));
@@ -105,22 +104,11 @@ PermissionDelegateHandler::MaybeUnsafePermissionDelegate(
   return NS_OK;
 }
 
-NS_IMETHODIMP
-PermissionDelegateHandler::GetPermissionDelegateFPEnabled(bool* aEnabled) {
-  MOZ_ASSERT(NS_IsMainThread());
-  *aEnabled = StaticPrefs::permissions_delegation_enabled();
-  return NS_OK;
-}
-
 /* static */
 nsresult PermissionDelegateHandler::GetDelegatePrincipal(
     const nsACString& aType, nsIContentPermissionRequest* aRequest,
     nsIPrincipal** aResult) {
   MOZ_ASSERT(aRequest);
-
-  if (!StaticPrefs::permissions_delegation_enabled()) {
-    return aRequest->GetPrincipal(aResult);
-  }
 
   const DelegateInfo* info =
       GetPermissionDelegateInfo(NS_ConvertUTF8toUTF16(aType));
@@ -187,7 +175,7 @@ bool PermissionDelegateHandler::HasFeaturePolicyAllowed(
 }
 
 bool PermissionDelegateHandler::HasPermissionDelegated(
-    const nsACString& aType) {
+    const nsACString& aType) const {
   MOZ_ASSERT(mDocument);
 
   // System principal should have right to make permission request
@@ -199,10 +187,6 @@ bool PermissionDelegateHandler::HasPermissionDelegated(
       GetPermissionDelegateInfo(NS_ConvertUTF8toUTF16(aType));
   if (!info || !HasFeaturePolicyAllowed(info)) {
     return false;
-  }
-
-  if (!StaticPrefs::permissions_delegation_enabled()) {
-    return true;
   }
 
   if (info->mPolicy == DelegatePolicy::ePersistDeniedCrossOrigin &&
@@ -236,11 +220,6 @@ nsresult PermissionDelegateHandler::GetPermission(const nsACString& aType,
       nsIPrincipal*, const nsACString&, uint32_t*) =
       aExactHostMatch ? &nsIPermissionManager::TestExactPermissionFromPrincipal
                       : &nsIPermissionManager::TestPermissionFromPrincipal;
-
-  if (!StaticPrefs::permissions_delegation_enabled()) {
-    return (mPermissionManager->*testPermission)(mPrincipal, aType,
-                                                 aPermission);
-  }
 
   if (info->mPolicy == DelegatePolicy::ePersistDeniedCrossOrigin &&
       !mDocument->IsTopLevelContentDocument() &&
@@ -345,7 +324,9 @@ void PermissionDelegateHandler::UpdateDelegatedPermission(
 
   const DelegateInfo* info =
       GetPermissionDelegateInfo(NS_ConvertUTF8toUTF16(aType));
-  NS_ENSURE_TRUE_VOID(info);
+  if (!info) {
+    return;
+  }
   size_t idx = std::distance(sPermissionsMap, info);
 
   WindowContext::Transaction txn;

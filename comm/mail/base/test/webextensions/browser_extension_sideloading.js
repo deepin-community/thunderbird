@@ -1,21 +1,20 @@
 /* eslint-disable mozilla/no-arbitrary-setTimeout */
-const { AddonManagerPrivate } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManagerPrivate } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+var { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
 
-hookExtensionsTelemetry();
 AddonTestUtils.hookAMTelemetryEvents();
 
 const kSideloaded = true;
 
 async function createWebExtension(details) {
-  let options = {
+  const options = {
     manifest: {
       applications: { gecko: { id: details.id } },
 
@@ -26,10 +25,10 @@ async function createWebExtension(details) {
   };
 
   if (details.iconURL) {
-    options.manifest.icons = { "64": details.iconURL };
+    options.manifest.icons = { 64: details.iconURL };
   }
 
-  let xpi = AddonTestUtils.createTempWebExtensionFile(options);
+  const xpi = AddonTestUtils.createTempWebExtensionFile(options);
 
   await AddonTestUtils.manuallyInstall(xpi);
 }
@@ -48,15 +47,14 @@ function getAddonElement(managerWindow, addonId) {
   );
 }
 
-function assertSideloadedAddonElementState(addonElement, checked) {
+function assertSideloadedAddonElementState(addonElement, pressed) {
   const enableBtn = addonElement.querySelector('[action="toggle-disabled"]');
   is(
-    enableBtn.checked,
-    checked,
-    `The enable button is ${!checked ? " not " : ""} checked`
+    enableBtn.pressed,
+    pressed,
+    `The enable button is ${!pressed ? " not " : ""} pressed`
   );
-  is(enableBtn.localName, "input", "The enable button is an input");
-  is(enableBtn.type, "checkbox", "It's a checkbox");
+  is(enableBtn.localName, "moz-toggle", "The enable button is a toggle");
 }
 
 function clickEnableExtension(addonElement) {
@@ -99,14 +97,14 @@ add_task(async function test_sideloading() {
     permissions: ["<all_urls>"],
   });
 
-  testCleanup = async function() {
+  testCleanup = async function () {
     // clear out ExtensionsUI state about sideloaded extensions so
     // subsequent tests don't get confused.
     ExtensionsUI.sideloaded.clear();
     ExtensionsUI.emit("change");
   };
 
-  let changePromise = new Promise(resolve => {
+  const changePromise = new Promise(resolve => {
     ExtensionsUI.on("change", function listener() {
       ExtensionsUI.off("change", listener);
       resolve();
@@ -116,7 +114,7 @@ add_task(async function test_sideloading() {
   await changePromise;
 
   // Check for the addons badge on the hamburger menu
-  let menuButton = document.getElementById("button-appmenu");
+  const menuButton = document.getElementById("button-appmenu");
   is(
     menuButton.getAttribute("badge-status"),
     "addon-alert",
@@ -142,17 +140,21 @@ add_task(async function test_sideloading() {
   addons.children[0].click();
 
   // The click should hide the main menu. This is currently synchronous.
-  ok(PanelUI.panel.state != "open", "Main menu is closed or closing.");
+  Assert.notEqual(
+    PanelUI.panel.state,
+    "open",
+    "Main menu is closed or closing."
+  );
 
   let panel = await popupPromise;
 
   // Check the contents of the notification, then choose "Cancel"
-  checkNotification(
+  await checkNotification(
     panel,
     /\/foo-icon\.png$/,
     [
-      ["webextPerms.hostDescription.allUrls"],
-      ["webextPerms.description.accountsRead2"],
+      ["webext-perms-host-description-all-urls"],
+      ["webext-perms-description-accountsRead"],
     ],
     kSideloaded
   );
@@ -198,10 +200,10 @@ add_task(async function test_sideloading() {
   popupPromise = promisePopupNotificationShown("addon-webext-permissions");
   clickEnableExtension(addonElement);
   panel = await popupPromise;
-  checkNotification(
+  await checkNotification(
     panel,
     DEFAULT_ICON_URL,
-    [["webextPerms.hostDescription.allUrls"]],
+    [["webext-perms-host-description-all-urls"]],
     kSideloaded
   );
 
@@ -220,7 +222,7 @@ add_task(async function test_sideloading() {
   panel = await popupPromise;
   panel.button.click();
 
-  let tabmail = document.getElementById("tabmail");
+  const tabmail = document.getElementById("tabmail");
   tabmail.closeTab(tabmail.currentTabInfo);
 
   // Should still have 1 entry in the hamburger menu
@@ -228,6 +230,8 @@ add_task(async function test_sideloading() {
 
   addons = PanelUI.addonNotificationContainer;
   is(addons.children.length, 1, "Have 1 menu entry for sideloaded extensions");
+
+  PanelUI.hide();
 
   // Open the Add-Ons Manager
   win = await openAddonsMgr(`addons://detail/${encodeURIComponent(ID3)}`);
@@ -240,10 +244,10 @@ add_task(async function test_sideloading() {
   ExtensionsUI.showSideloaded(tabmail, addon3);
 
   panel = await popupPromise;
-  checkNotification(
+  await checkNotification(
     panel,
     DEFAULT_ICON_URL,
-    [["webextPerms.hostDescription.allUrls"]],
+    [["webext-perms-host-description-all-urls"]],
     kSideloaded
   );
 
@@ -261,9 +265,6 @@ add_task(async function test_sideloading() {
   panel = await popupPromise;
   panel.button.click();
 
-  // We should have recorded 1 cancelled followed by 2 accepted sideloads.
-  expectTelemetry(["sideloadRejected", "sideloadAccepted", "sideloadAccepted"]);
-
   isnot(
     menuButton.getAttribute("badge-status"),
     "addon-alert",
@@ -272,7 +273,7 @@ add_task(async function test_sideloading() {
 
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  for (let addon of [addon1, addon2, addon3]) {
+  for (const addon of [addon1, addon2, addon3]) {
     await addon.uninstall();
   }
 
@@ -309,7 +310,7 @@ add_task(async function test_sideloading() {
   ];
 
   let i = 0;
-  for (let event of collectedEventsAddon1) {
+  for (const event of collectedEventsAddon1) {
     Assert.deepEqual(
       event,
       expectedEventsAddon1[i++],
@@ -339,7 +340,7 @@ add_task(async function test_sideloading() {
   ];
 
   i = 0;
-  for (let event of collectedEventsAddon2) {
+  for (const event of collectedEventsAddon2) {
     Assert.deepEqual(
       event,
       expectedEventsAddon2[i++],

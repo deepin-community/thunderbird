@@ -1,12 +1,17 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /**
  * Authentication tests for SMTP.
  *
  * Test code <copied from="test_pop3AuthMethods.js">
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
+);
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/PromiseTestUtils.sys.mjs"
 );
 
 var server;
@@ -90,13 +95,14 @@ function nextTest() {
   smtpServer.authMethod = curTest.clientAuthMethod;
 
   // Run test
+  const urlListener = new PromiseTestUtils.PromiseUrlListener();
   MailServices.smtp.sendMailMessage(
     testFile,
     kTo,
     identity,
     kSender,
     null,
-    null,
+    urlListener,
     null,
     null,
     false,
@@ -104,10 +110,13 @@ function nextTest() {
     {},
     {}
   );
-  server.performTest();
+  let resolved = false;
+  urlListener.promise.catch(e => {}).finally(() => (resolved = true));
+  Services.tm.spinEventLoopUntil("wait for sending", () => resolved);
 
   do_check_transaction(server.playTransaction(), curTest.transaction);
 
+  smtpServer.closeCachedConnections();
   nextTest();
 }
 
@@ -149,7 +158,7 @@ function endTest() {
   server.stop();
 
   dump("emptying event loop\n");
-  var thread = gThreadManager.currentThread;
+  var thread = Services.tm.currentThread;
   while (thread.hasPendingEvents()) {
     dump("next event\n");
     thread.processNextEvent(true);

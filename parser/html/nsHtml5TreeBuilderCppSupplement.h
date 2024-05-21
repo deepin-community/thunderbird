@@ -4,12 +4,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "ErrorList.h"
 #include "nsError.h"
+#include "nsHtml5AttributeName.h"
+#include "nsHtml5HtmlAttributes.h"
+#include "nsHtml5String.h"
+#include "nsNetUtil.h"
+#include "mozilla/dom/FetchPriority.h"
+#include "mozilla/dom/ShadowRoot.h"
+#include "mozilla/dom/ShadowRootBinding.h"
 #include "mozilla/CheckedInt.h"
 #include "mozilla/Likely.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_network.h"
 #include "mozilla/UniquePtr.h"
+#include "mozilla/UniquePtrExtensions.h"
 
 nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsHtml5OplessBuilder* aBuilder)
     : mode(0),
@@ -31,7 +40,8 @@ nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsHtml5OplessBuilder* aBuilder)
       headPointer(nullptr),
       charBufferLen(0),
       quirks(false),
-      isSrcdocDocument(false),
+      forceNoQuirks(false),
+      allowDeclarativeShadowRoots(false),
       mBuilder(aBuilder),
       mViewSource(nullptr),
       mOpSink(nullptr),
@@ -39,8 +49,10 @@ nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsHtml5OplessBuilder* aBuilder)
       mHandlesUsed(0),
       mSpeculativeLoadStage(nullptr),
       mBroken(NS_OK),
-      mCurrentHtmlScriptIsAsyncOrDefer(false),
-      mPreventScriptExecution(false)
+      mCurrentHtmlScriptCannotDocumentWriteOrBlock(false),
+      mPreventScriptExecution(false),
+      mGenerateSpeculativeLoads(false),
+      mHasSeenImportMap(false)
 #ifdef DEBUG
       ,
       mActive(false)
@@ -50,7 +62,8 @@ nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsHtml5OplessBuilder* aBuilder)
 }
 
 nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsAHtml5TreeOpSink* aOpSink,
-                                       nsHtml5TreeOpStage* aStage)
+                                       nsHtml5TreeOpStage* aStage,
+                                       bool aGenerateSpeculativeLoads)
     : mode(0),
       originalMode(0),
       framesetOk(false),
@@ -70,7 +83,8 @@ nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsAHtml5TreeOpSink* aOpSink,
       headPointer(nullptr),
       charBufferLen(0),
       quirks(false),
-      isSrcdocDocument(false),
+      forceNoQuirks(false),
+      allowDeclarativeShadowRoots(false),
       mBuilder(nullptr),
       mViewSource(nullptr),
       mOpSink(aOpSink),
@@ -78,13 +92,17 @@ nsHtml5TreeBuilder::nsHtml5TreeBuilder(nsAHtml5TreeOpSink* aOpSink,
       mHandlesUsed(0),
       mSpeculativeLoadStage(aStage),
       mBroken(NS_OK),
-      mCurrentHtmlScriptIsAsyncOrDefer(false),
-      mPreventScriptExecution(false)
+      mCurrentHtmlScriptCannotDocumentWriteOrBlock(false),
+      mPreventScriptExecution(false),
+      mGenerateSpeculativeLoads(aGenerateSpeculativeLoads),
+      mHasSeenImportMap(false)
 #ifdef DEBUG
       ,
       mActive(false)
 #endif
 {
+  MOZ_ASSERT(!(!aStage && aGenerateSpeculativeLoads),
+             "Must not generate speculative loads without a stage");
   MOZ_COUNT_CTOR(nsHtml5TreeBuilder);
 }
 
@@ -93,6 +111,19 @@ nsHtml5TreeBuilder::~nsHtml5TreeBuilder() {
   NS_ASSERTION(!mActive,
                "nsHtml5TreeBuilder deleted without ever calling end() on it!");
   mOpQueue.Clear();
+}
+
+static void getTypeString(nsHtml5String& aType, nsAString& aTypeString) {
+  aType.ToString(aTypeString);
+
+  // Since `typeString` after trimming and lowercasing is only checked
+  // for "module" and " importmap", we don't need to remember
+  // pre-trimming emptiness here.
+
+  // ASCII whitespace https://infra.spec.whatwg.org/#ascii-whitespace:
+  // U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE.
+  static const char kASCIIWhitespace[] = "\t\n\f\r ";
+  aTypeString.Trim(kASCIIWhitespace);
 }
 
 nsIContentHandle* nsHtml5TreeBuilder::createElement(
@@ -167,14 +198,13 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
 
   // Start wall of code for speculative loading and line numbers
 
-  if (mSpeculativeLoadStage && mode != IN_TEMPLATE) {
+  if (mGenerateSpeculativeLoads && mode != IN_TEMPLATE) {
     switch (aNamespace) {
       case kNameSpaceID_XHTML:
         if (nsGkAtoms::img == aName) {
           nsHtml5String loading =
               aAttributes->getValue(nsHtml5AttributeName::ATTR_LOADING);
-          if (!StaticPrefs::dom_image_lazy_loading_enabled() ||
-              !loading.LowerCaseEqualsASCII("lazy")) {
+          if (!loading.LowerCaseEqualsASCII("lazy")) {
             nsHtml5String url =
                 aAttributes->getValue(nsHtml5AttributeName::ATTR_SRC);
             nsHtml5String srcset =
@@ -185,9 +215,11 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                 nsHtml5AttributeName::ATTR_REFERRERPOLICY);
             nsHtml5String sizes =
                 aAttributes->getValue(nsHtml5AttributeName::ATTR_SIZES);
+            nsHtml5String fetchPriority =
+                aAttributes->getValue(nsHtml5AttributeName::ATTR_FETCHPRIORITY);
             mSpeculativeLoadQueue.AppendElement()->InitImage(
                 url, crossOrigin, /* aMedia = */ nullptr, referrerPolicy,
-                srcset, sizes, false);
+                srcset, sizes, false, fetchPriority);
           }
         } else if (nsGkAtoms::source == aName) {
           nsHtml5String srcset =
@@ -213,35 +245,114 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                 NS_ERROR_OUT_OF_MEMORY);
             return nullptr;
           }
-          opSetScriptLineNumberAndFreeze operation(content,
-                                                   tokenizer->getLineNumber());
+          opSetScriptLineAndColumnNumberAndFreeze operation(
+              content, tokenizer->getLineNumber(),
+              // NOTE: tokenizer->getColumnNumber() points '>'.
+              tokenizer->getColumnNumber() + 1);
           treeOp->Init(mozilla::AsVariant(operation));
 
+          nsHtml5String type =
+              aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
+          nsAutoString typeString;
+          getTypeString(type, typeString);
+
+          bool isModule = typeString.LowerCaseEqualsASCII("module");
+          bool importmap = typeString.LowerCaseEqualsASCII("importmap");
+          bool async = false;
+          bool defer = false;
+          bool nomodule =
+              aAttributes->contains(nsHtml5AttributeName::ATTR_NOMODULE);
+
+          // For microtask semantics, we need to queue either
+          // `opRunScriptThatMayDocumentWriteOrBlock` or
+          // `opRunScriptThatCannotDocumentWriteOrBlock` for every script
+          // element--even ones that we already know won't run.
+          // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` controls which
+          // kind of operation is used for an HTML script, and this is the
+          // place where `mCurrentHtmlScriptCannotDocumentWriteOrBlock`
+          // needs to be set correctly.
+          //
+          // Non-async, non-defer classic scripts that will run MUST use
+          // `opRunScriptThatMayDocumentWriteOrBlock` in order to run
+          // the more complex code that
+          // 1. is able to resume the HTML parse after a parser-blocking
+          //    scripts no longer blocks the parser
+          // 2. is able to receive more content to parse on the main thread
+          //    via document.write
+          // 3. is able to throw away off-the-main-thread parsing results
+          //    if what's document.written on the main thread invalidates
+          //    the speculation.
+          //
+          // Async and defer classic scripts as well as module scripts and
+          // importmaps MUST use `opRunScriptThatCannotDocumentWriteOrBlock`.
+          // This is necessary particularly because the relevant main-thread
+          // code assumes it doesn't need to deal with resuming the HTML
+          // parse some time afterwards, so using a tree operation with
+          // mismatching expectations regarding that responsibility may
+          // cause the HTML parse to stall.
+          //
+          // Various scripts that won't actually run work with either type
+          // of tree op in the sense that the HTML parse won't stall.
+          // However, in the case where a script cannot block or insert
+          // data to the HTML parser via document.write, unnecessary use
+          // of `opRunScriptThatMayDocumentWriteOrBlock` instead of
+          // `opRunScriptThatCannotDocumentWriteOrBlock` causes the HTML
+          // parser to enter the speculative mode when doing so isn't
+          // actually required.
+          //
+          // Ideally, we would check for `type`/`language` attribute
+          // combinations that are known to cause non-execution as well as
+          // ScriptLoader::IsScriptEventHandler equivalent. That way, we
+          // wouldn't unnecessarily speculate after scripts that won't
+          // execute. https://bugzilla.mozilla.org/show_bug.cgi?id=1848311
+
+          if (importmap) {
+            // If we see an importmap, we don't want to later start speculative
+            // loads for modulepreloads, since such load might finish before
+            // the importmap is created. This also applies to module scripts so
+            // that any modulepreload integrity checks can be performed before
+            // the modules scripts are loaded.
+            // This state is not part of speculation rollback: If an importmap
+            // is seen speculatively and the speculation is rolled back, the
+            // importmap is still considered seen.
+            // TODO: Sync importmap seenness between the main thread and the
+            // parser thread.
+            // https://bugzilla.mozilla.org/show_bug.cgi?id=1848312
+            mHasSeenImportMap = true;
+          }
           nsHtml5String url =
               aAttributes->getValue(nsHtml5AttributeName::ATTR_SRC);
           if (url) {
-            nsHtml5String charset =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_CHARSET);
-            nsHtml5String type =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
-            nsHtml5String crossOrigin =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_CROSSORIGIN);
-            nsHtml5String integrity =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
-            nsHtml5String referrerPolicy = aAttributes->getValue(
-                nsHtml5AttributeName::ATTR_REFERRERPOLICY);
-            bool async =
-                aAttributes->contains(nsHtml5AttributeName::ATTR_ASYNC);
-            bool defer =
-                aAttributes->contains(nsHtml5AttributeName::ATTR_DEFER);
-            bool noModule =
-                aAttributes->contains(nsHtml5AttributeName::ATTR_NOMODULE);
-            mSpeculativeLoadQueue.AppendElement()->InitScript(
-                url, charset, type, crossOrigin, /* aMedia = */ nullptr,
-                integrity, referrerPolicy, mode == nsHtml5TreeBuilder::IN_HEAD,
-                async, defer, noModule, false);
-            mCurrentHtmlScriptIsAsyncOrDefer = async || defer;
+            async = aAttributes->contains(nsHtml5AttributeName::ATTR_ASYNC);
+            defer = aAttributes->contains(nsHtml5AttributeName::ATTR_DEFER);
+            if ((isModule && !mHasSeenImportMap) ||
+                (!isModule && !importmap && !nomodule)) {
+              nsHtml5String charset =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_CHARSET);
+              nsHtml5String crossOrigin =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_CROSSORIGIN);
+              nsHtml5String nonce =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_NONCE);
+              nsHtml5String fetchPriority = aAttributes->getValue(
+                  nsHtml5AttributeName::ATTR_FETCHPRIORITY);
+              nsHtml5String integrity =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
+              nsHtml5String referrerPolicy = aAttributes->getValue(
+                  nsHtml5AttributeName::ATTR_REFERRERPOLICY);
+              mSpeculativeLoadQueue.AppendElement()->InitScript(
+                  url, charset, type, crossOrigin, /* aMedia = */ nullptr,
+                  nonce, fetchPriority, integrity, referrerPolicy,
+                  mode == nsHtml5TreeBuilder::IN_HEAD, async, defer, false);
+            }
           }
+          // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` MUST be computed to
+          // match the ScriptLoader-perceived kind of the script regardless of
+          // enqueuing a speculative load. Scripts with the `nomodule` attribute
+          // never block or document.write: Either the attribute prevents a
+          // classic script execution or is ignored on a module script or
+          // importmap.
+          mCurrentHtmlScriptCannotDocumentWriteOrBlock =
+              isModule || importmap || async || defer || nomodule;
         } else if (nsGkAtoms::link == aName) {
           nsHtml5String rel =
               aAttributes->getValue(nsHtml5AttributeName::ATTR_REL);
@@ -256,15 +367,19 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_CHARSET);
                 nsHtml5String crossOrigin = aAttributes->getValue(
                     nsHtml5AttributeName::ATTR_CROSSORIGIN);
+                nsHtml5String nonce =
+                    aAttributes->getValue(nsHtml5AttributeName::ATTR_NONCE);
                 nsHtml5String integrity =
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
                 nsHtml5String referrerPolicy = aAttributes->getValue(
                     nsHtml5AttributeName::ATTR_REFERRERPOLICY);
                 nsHtml5String media =
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_MEDIA);
+                nsHtml5String fetchPriority = aAttributes->getValue(
+                    nsHtml5AttributeName::ATTR_FETCHPRIORITY);
                 mSpeculativeLoadQueue.AppendElement()->InitStyle(
-                    url, charset, crossOrigin, media, referrerPolicy, integrity,
-                    false);
+                    url, charset, crossOrigin, media, referrerPolicy, nonce,
+                    integrity, false, fetchPriority);
               }
             } else if (rel.LowerCaseEqualsASCII("preconnect")) {
               nsHtml5String url =
@@ -275,8 +390,7 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                 mSpeculativeLoadQueue.AppendElement()->InitPreconnect(
                     url, crossOrigin);
               }
-            } else if (StaticPrefs::network_preload() &&
-                       rel.LowerCaseEqualsASCII("preload")) {
+            } else if (rel.LowerCaseEqualsASCII("preload")) {
               nsHtml5String url =
                   aAttributes->getValue(nsHtml5AttributeName::ATTR_HREF);
               if (url) {
@@ -286,12 +400,16 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_CHARSET);
                 nsHtml5String crossOrigin = aAttributes->getValue(
                     nsHtml5AttributeName::ATTR_CROSSORIGIN);
+                nsHtml5String nonce =
+                    aAttributes->getValue(nsHtml5AttributeName::ATTR_NONCE);
                 nsHtml5String integrity =
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
                 nsHtml5String referrerPolicy = aAttributes->getValue(
                     nsHtml5AttributeName::ATTR_REFERRERPOLICY);
                 nsHtml5String media =
                     aAttributes->getValue(nsHtml5AttributeName::ATTR_MEDIA);
+                nsHtml5String fetchPriority = aAttributes->getValue(
+                    nsHtml5AttributeName::ATTR_FETCHPRIORITY);
 
                 // Note that respective speculative loaders for scripts and
                 // styles check all additional attributes to be equal to use the
@@ -304,13 +422,14 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                   nsHtml5String type =
                       aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
                   mSpeculativeLoadQueue.AppendElement()->InitScript(
-                      url, charset, type, crossOrigin, media, integrity,
+                      url, charset, type, crossOrigin, media, nonce,
+                      /* aFetchPriority */ fetchPriority, integrity,
                       referrerPolicy, mode == nsHtml5TreeBuilder::IN_HEAD,
-                      false, false, false, true);
+                      false, false, true);
                 } else if (as.LowerCaseEqualsASCII("style")) {
                   mSpeculativeLoadQueue.AppendElement()->InitStyle(
-                      url, charset, crossOrigin, media, referrerPolicy,
-                      integrity, true);
+                      url, charset, crossOrigin, media, referrerPolicy, nonce,
+                      integrity, true, fetchPriority);
                 } else if (as.LowerCaseEqualsASCII("image")) {
                   nsHtml5String srcset = aAttributes->getValue(
                       nsHtml5AttributeName::ATTR_IMAGESRCSET);
@@ -318,15 +437,51 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                       nsHtml5AttributeName::ATTR_IMAGESIZES);
                   mSpeculativeLoadQueue.AppendElement()->InitImage(
                       url, crossOrigin, media, referrerPolicy, srcset, sizes,
-                      true);
+                      true, fetchPriority);
                 } else if (as.LowerCaseEqualsASCII("font")) {
                   mSpeculativeLoadQueue.AppendElement()->InitFont(
-                      url, crossOrigin, media, referrerPolicy);
+                      url, crossOrigin, media, referrerPolicy, fetchPriority);
                 } else if (as.LowerCaseEqualsASCII("fetch")) {
                   mSpeculativeLoadQueue.AppendElement()->InitFetch(
-                      url, crossOrigin, media, referrerPolicy);
+                      url, crossOrigin, media, referrerPolicy, fetchPriority);
                 }
                 // Other "as" values will be supported later.
+              }
+            } else if (mozilla::StaticPrefs::network_modulepreload() &&
+                       rel.LowerCaseEqualsASCII("modulepreload") &&
+                       !mHasSeenImportMap) {
+              nsHtml5String url =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_HREF);
+              if (url && url.Length() != 0) {
+                nsHtml5String as =
+                    aAttributes->getValue(nsHtml5AttributeName::ATTR_AS);
+                nsAutoString asString;
+                as.ToString(asString);
+                if (mozilla::net::IsScriptLikeOrInvalid(asString)) {
+                  nsHtml5String charset =
+                      aAttributes->getValue(nsHtml5AttributeName::ATTR_CHARSET);
+                  RefPtr<nsAtom> moduleType = nsGkAtoms::_module;
+                  nsHtml5String type =
+                      nsHtml5String::FromAtom(moduleType.forget());
+                  nsHtml5String crossOrigin = aAttributes->getValue(
+                      nsHtml5AttributeName::ATTR_CROSSORIGIN);
+                  nsHtml5String media =
+                      aAttributes->getValue(nsHtml5AttributeName::ATTR_MEDIA);
+                  nsHtml5String nonce =
+                      aAttributes->getValue(nsHtml5AttributeName::ATTR_NONCE);
+                  nsHtml5String integrity = aAttributes->getValue(
+                      nsHtml5AttributeName::ATTR_INTEGRITY);
+                  nsHtml5String referrerPolicy = aAttributes->getValue(
+                      nsHtml5AttributeName::ATTR_REFERRERPOLICY);
+                  nsHtml5String fetchPriority = aAttributes->getValue(
+                      nsHtml5AttributeName::ATTR_FETCHPRIORITY);
+
+                  mSpeculativeLoadQueue.AppendElement()->InitScript(
+                      url, charset, type, crossOrigin, media, nonce,
+                      /* aFetchPriority */ fetchPriority, integrity,
+                      referrerPolicy, mode == nsHtml5TreeBuilder::IN_HEAD,
+                      false, false, true);
+                }
               }
             }
           }
@@ -334,8 +489,14 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
           nsHtml5String url =
               aAttributes->getValue(nsHtml5AttributeName::ATTR_POSTER);
           if (url) {
+            // Fetch priority is not supported for video. Nullptr will map to
+            // the auto state
+            // (https://html.spec.whatwg.org/#fetch-priority-attribute).
+            auto fetchPriority = nullptr;
+
             mSpeculativeLoadQueue.AppendElement()->InitImage(
-                url, nullptr, nullptr, nullptr, nullptr, nullptr, false);
+                url, nullptr, nullptr, nullptr, nullptr, nullptr, false,
+                fetchPriority);
           }
         } else if (nsGkAtoms::style == aName) {
           mImportScanner.Start();
@@ -390,8 +551,15 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
             url = aAttributes->getValue(nsHtml5AttributeName::ATTR_XLINK_HREF);
           }
           if (url) {
+            // Currently SVG's `<image>` element lacks support for
+            // `fetchpriority`, see bug 1847712. Hence passing nullptr which
+            // maps to the auto state
+            // (https://html.spec.whatwg.org/#fetch-priority-attribute).
+            auto fetchPriority = nullptr;
+
             mSpeculativeLoadQueue.AppendElement()->InitImage(
-                url, nullptr, nullptr, nullptr, nullptr, nullptr, false);
+                url, nullptr, nullptr, nullptr, nullptr, nullptr, false,
+                fetchPriority);
           }
         } else if (nsGkAtoms::script == aName) {
           nsHtml5TreeOperation* treeOp =
@@ -401,29 +569,76 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
                 NS_ERROR_OUT_OF_MEMORY);
             return nullptr;
           }
-          opSetScriptLineNumberAndFreeze operation(content,
-                                                   tokenizer->getLineNumber());
+          opSetScriptLineAndColumnNumberAndFreeze operation(
+              content, tokenizer->getLineNumber(),
+              // NOTE: tokenizer->getColumnNumber() points '>'.
+              tokenizer->getColumnNumber() + 1);
           treeOp->Init(mozilla::AsVariant(operation));
 
+          nsHtml5String type =
+              aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
+          nsAutoString typeString;
+          getTypeString(type, typeString);
+
+          bool isModule = typeString.LowerCaseEqualsASCII("module");
+          bool importmap = typeString.LowerCaseEqualsASCII("importmap");
+          bool async = false;
+          bool defer = false;
+
+          if (importmap) {
+            // If we see an importmap, we don't want to later start speculative
+            // loads for modulepreloads, since such load might finish before
+            // the importmap is created. This also applies to module scripts so
+            // that any modulepreload integrity checks can be performed before
+            // the modules scripts are loaded.
+            // This state is not part of speculation rollback: If an importmap
+            // is seen speculatively and the speculation is rolled back, the
+            // importmap is still considered seen.
+            // TODO: Sync importmap seenness between the main thread and the
+            // parser thread.
+            // https://bugzilla.mozilla.org/show_bug.cgi?id=1848312
+            mHasSeenImportMap = true;
+          }
           nsHtml5String url =
               aAttributes->getValue(nsHtml5AttributeName::ATTR_HREF);
           if (!url) {
             url = aAttributes->getValue(nsHtml5AttributeName::ATTR_XLINK_HREF);
           }
           if (url) {
-            nsHtml5String type =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
-            nsHtml5String crossOrigin =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_CROSSORIGIN);
-            nsHtml5String integrity =
-                aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
-            nsHtml5String referrerPolicy = aAttributes->getValue(
-                nsHtml5AttributeName::ATTR_REFERRERPOLICY);
-            mSpeculativeLoadQueue.AppendElement()->InitScript(
-                url, nullptr, type, crossOrigin, /* aMedia = */ nullptr,
-                integrity, referrerPolicy, mode == nsHtml5TreeBuilder::IN_HEAD,
-                false, false, false, false);
+            async = aAttributes->contains(nsHtml5AttributeName::ATTR_ASYNC);
+            defer = aAttributes->contains(nsHtml5AttributeName::ATTR_DEFER);
+            if ((isModule && !mHasSeenImportMap) || (!isModule && !importmap)) {
+              nsHtml5String type =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
+              nsHtml5String crossOrigin =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_CROSSORIGIN);
+              nsHtml5String nonce =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_NONCE);
+              nsHtml5String integrity =
+                  aAttributes->getValue(nsHtml5AttributeName::ATTR_INTEGRITY);
+              nsHtml5String referrerPolicy = aAttributes->getValue(
+                  nsHtml5AttributeName::ATTR_REFERRERPOLICY);
+
+              // Bug 1847712: SVG's `<script>` element doesn't support
+              // `fetchpriority` yet.
+              // Use the empty string and rely on the
+              // "invalid value default" state being used later.
+              // Compared to using a non-empty string, this doesn't
+              // require calling `Release()` for the string.
+              nsHtml5String fetchPriority = nsHtml5String::EmptyString();
+
+              mSpeculativeLoadQueue.AppendElement()->InitScript(
+                  url, nullptr, type, crossOrigin, /* aMedia = */ nullptr,
+                  nonce, fetchPriority, integrity, referrerPolicy,
+                  mode == nsHtml5TreeBuilder::IN_HEAD, async, defer, false);
+            }
           }
+          // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` MUST be computed to
+          // match the ScriptLoader-perceived kind of the script regardless of
+          // enqueuing a speculative load. Either the attribute prevents a
+          // classic script execution or is ignored on a module script.
+          mCurrentHtmlScriptCannotDocumentWriteOrBlock =
+              isModule || importmap || async || defer;
         } else if (nsGkAtoms::style == aName) {
           mImportScanner.Start();
           nsHtml5TreeOperation* treeOp =
@@ -454,14 +669,41 @@ nsIContentHandle* nsHtml5TreeBuilder::createElement(
         MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
         return nullptr;
       }
-      opSetScriptLineNumberAndFreeze operation(content,
-                                               tokenizer->getLineNumber());
+      opSetScriptLineAndColumnNumberAndFreeze operation(
+          content, tokenizer->getLineNumber(),
+          // NOTE: tokenizer->getColumnNumber() points '>'.
+          tokenizer->getColumnNumber() + 1);
       treeOp->Init(mozilla::AsVariant(operation));
       if (aNamespace == kNameSpaceID_XHTML) {
-        mCurrentHtmlScriptIsAsyncOrDefer =
-            aAttributes->contains(nsHtml5AttributeName::ATTR_SRC) &&
-            (aAttributes->contains(nsHtml5AttributeName::ATTR_ASYNC) ||
-             aAttributes->contains(nsHtml5AttributeName::ATTR_DEFER));
+        // Although we come here in cases where the value of
+        // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` doesn't actually
+        // matter, we also come here when parsing document.written content on
+        // the main thread. In that case, IT MATTERS that
+        // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` is set correctly,
+        // so let's just always set it correctly even if it a bit of wasted work
+        // in the scenarios where no scripts execute and it doesn't matter.
+        //
+        // See the comments around generating speculative loads for HTML scripts
+        // elements for the details of when
+        // `mCurrentHtmlScriptCannotDocumentWriteOrBlock` needs to be set to
+        // `true` and when to `false`.
+
+        nsHtml5String type =
+            aAttributes->getValue(nsHtml5AttributeName::ATTR_TYPE);
+        nsAutoString typeString;
+        getTypeString(type, typeString);
+
+        mCurrentHtmlScriptCannotDocumentWriteOrBlock =
+            typeString.LowerCaseEqualsASCII("module") ||
+            typeString.LowerCaseEqualsASCII("nomodule") ||
+            typeString.LowerCaseEqualsASCII("importmap");
+
+        if (!mCurrentHtmlScriptCannotDocumentWriteOrBlock &&
+            aAttributes->contains(nsHtml5AttributeName::ATTR_SRC)) {
+          mCurrentHtmlScriptCannotDocumentWriteOrBlock =
+              (aAttributes->contains(nsHtml5AttributeName::ATTR_ASYNC) ||
+               aAttributes->contains(nsHtml5AttributeName::ATTR_DEFER));
+        }
       }
     } else if (aNamespace == kNameSpaceID_XHTML) {
       if (nsGkAtoms::html == aName) {
@@ -754,7 +996,8 @@ void nsHtml5TreeBuilder::appendCharacters(nsIContentHandle* aParent,
   memcpy(bufferCopy.get(), aBuffer, aLength * sizeof(char16_t));
 
   if (mImportScanner.ShouldScan()) {
-    nsTArray<nsString> imports = mImportScanner.Scan(Span(aBuffer, aLength));
+    nsTArray<nsString> imports =
+        mImportScanner.Scan(mozilla::Span(aBuffer, aLength));
     for (nsString& url : imports) {
       mSpeculativeLoadQueue.AppendElement()->InitImportStyle(std::move(url));
     }
@@ -892,7 +1135,7 @@ void nsHtml5TreeBuilder::markMalformedIfScript(nsIContentHandle* aElement) {
 }
 
 void nsHtml5TreeBuilder::start(bool fragment) {
-  mCurrentHtmlScriptIsAsyncOrDefer = false;
+  mCurrentHtmlScriptCannotDocumentWriteOrBlock = false;
 #ifdef DEBUG
   mActive = true;
 #endif
@@ -986,12 +1229,15 @@ void nsHtml5TreeBuilder::elementPushed(int32_t aNamespace, nsAtom* aName,
     }
     return;
   }
-  if (mSpeculativeLoadStage && aName == nsGkAtoms::picture) {
-    // mSpeculativeLoadStage is non-null only in the off-the-main-thread
-    // tree builder, which handles the network stream
-    //
+  if (mGenerateSpeculativeLoads && aName == nsGkAtoms::picture) {
     // See comments in nsHtml5SpeculativeLoad.h about <picture> preloading
     mSpeculativeLoadQueue.AppendElement()->InitOpenPicture();
+    return;
+  }
+  if (aName == nsGkAtoms::_template) {
+    if (tokenizer->TemplatePushedOrHeadPopped()) {
+      requestSuspension();
+    }
   }
 }
 
@@ -1021,17 +1267,18 @@ void nsHtml5TreeBuilder::elementPopped(int32_t aNamespace, nsAtom* aName,
     if (mBuilder) {
       return;
     }
-    if (mCurrentHtmlScriptIsAsyncOrDefer) {
-      NS_ASSERTION(aNamespace == kNameSpaceID_XHTML,
-                   "Only HTML scripts may be async/defer.");
+    if (mCurrentHtmlScriptCannotDocumentWriteOrBlock) {
+      NS_ASSERTION(
+          aNamespace == kNameSpaceID_XHTML || aNamespace == kNameSpaceID_SVG,
+          "Only HTML and SVG scripts may be async/defer.");
       nsHtml5TreeOperation* treeOp = mOpQueue.AppendElement(mozilla::fallible);
       if (MOZ_UNLIKELY(!treeOp)) {
         MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
         return;
       }
-      opRunScriptAsyncDefer operation(aElement);
+      opRunScriptThatCannotDocumentWriteOrBlock operation(aElement);
       treeOp->Init(mozilla::AsVariant(operation));
-      mCurrentHtmlScriptIsAsyncOrDefer = false;
+      mCurrentHtmlScriptCannotDocumentWriteOrBlock = false;
       return;
     }
     requestSuspension();
@@ -1040,7 +1287,7 @@ void nsHtml5TreeBuilder::elementPopped(int32_t aNamespace, nsAtom* aName,
       MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
       return;
     }
-    opRunScript operation(aElement, nullptr);
+    opRunScriptThatMayDocumentWriteOrBlock operation(aElement, nullptr);
     treeOp->Init(mozilla::AsVariant(operation));
     return;
   }
@@ -1059,6 +1306,11 @@ void nsHtml5TreeBuilder::elementPopped(int32_t aNamespace, nsAtom* aName,
     }
     opDoneAddingChildren operation(aElement);
     treeOp->Init(mozilla::AsVariant(operation));
+    if (aNamespace == kNameSpaceID_XHTML && aName == nsGkAtoms::head) {
+      if (tokenizer->TemplatePushedOrHeadPopped()) {
+        requestSuspension();
+      }
+    }
     return;
   }
   if (aName == nsGkAtoms::style ||
@@ -1106,12 +1358,10 @@ void nsHtml5TreeBuilder::elementPopped(int32_t aNamespace, nsAtom* aName,
     return;
   }
 
-  if (mSpeculativeLoadStage && aName == nsGkAtoms::picture) {
-    // mSpeculativeLoadStage is non-null only in the off-the-main-thread
-    // tree builder, which handles the network stream
-    //
+  if (mGenerateSpeculativeLoads && aName == nsGkAtoms::picture) {
     // See comments in nsHtml5SpeculativeLoad.h about <picture> preloading
     mSpeculativeLoadQueue.AppendElement()->InitEndPicture();
+    return;
   }
 }
 
@@ -1182,15 +1432,15 @@ nsIContentHandle* nsHtml5TreeBuilder::AllocateContentHandle() {
   return &mHandles[mHandlesUsed++];
 }
 
-bool nsHtml5TreeBuilder::HasScript() {
+bool nsHtml5TreeBuilder::HasScriptThatMayDocumentWriteOrBlock() {
   uint32_t len = mOpQueue.Length();
   if (!len) {
     return false;
   }
-  return mOpQueue.ElementAt(len - 1).IsRunScript();
+  return mOpQueue.ElementAt(len - 1).IsRunScriptThatMayDocumentWriteOrBlock();
 }
 
-bool nsHtml5TreeBuilder::Flush(bool aDiscretionary) {
+mozilla::Result<bool, nsresult> nsHtml5TreeBuilder::Flush(bool aDiscretionary) {
   if (MOZ_UNLIKELY(mBuilder)) {
     MOZ_ASSERT_UNREACHABLE("Must never flush with builder.");
     return false;
@@ -1219,7 +1469,9 @@ bool nsHtml5TreeBuilder::Flush(bool aDiscretionary) {
                    "Tree builder is broken but the op in queue is not marked "
                    "as broken.");
       }
-      mOpSink->MoveOpsFrom(mOpQueue);
+      if (!mOpSink->MoveOpsFrom(mOpQueue)) {
+        return mozilla::Err(NS_ERROR_OUT_OF_MEMORY);
+      }
     }
     return hasOps;
   }
@@ -1239,16 +1491,26 @@ void nsHtml5TreeBuilder::FlushLoads() {
 }
 
 void nsHtml5TreeBuilder::SetDocumentCharset(NotNull<const Encoding*> aEncoding,
-                                            int32_t aCharsetSource) {
-  if (mBuilder) {
-    mBuilder->SetDocumentCharsetAndSource(aEncoding, aCharsetSource);
-  } else if (mSpeculativeLoadStage) {
-    mSpeculativeLoadQueue.AppendElement()->InitSetDocumentCharset(
-        aEncoding, aCharsetSource);
-  } else {
-    opSetDocumentCharset opearation(aEncoding, aCharsetSource);
-    mOpQueue.AppendElement()->Init(mozilla::AsVariant(opearation));
+                                            nsCharsetSource aCharsetSource,
+                                            bool aCommitEncodingSpeculation) {
+  MOZ_ASSERT(!mBuilder, "How did we call this with builder?");
+  MOZ_ASSERT(mSpeculativeLoadStage,
+             "How did we call this without a speculative load stage?");
+  mSpeculativeLoadQueue.AppendElement()->InitSetDocumentCharset(
+      aEncoding, aCharsetSource, aCommitEncodingSpeculation);
+}
+
+void nsHtml5TreeBuilder::UpdateCharsetSource(nsCharsetSource aCharsetSource) {
+  MOZ_ASSERT(!mBuilder, "How did we call this with builder?");
+  MOZ_ASSERT(mSpeculativeLoadStage,
+             "How did we call this without a speculative load stage (even "
+             "though we don't need it right here)?");
+  if (mViewSource) {
+    mViewSource->UpdateCharsetSource(aCharsetSource);
+    return;
   }
+  opUpdateCharsetSource operation(aCharsetSource);
+  mOpQueue.AppendElement()->Init(mozilla::AsVariant(operation));
 }
 
 void nsHtml5TreeBuilder::StreamEnded() {
@@ -1285,9 +1547,15 @@ void nsHtml5TreeBuilder::MaybeComplainAboutCharset(const char* aMsgId,
     MOZ_ASSERT_UNREACHABLE("Must never complain about charset with builder.");
     return;
   }
-  opMaybeComplainAboutCharset opeartion(const_cast<char*>(aMsgId), aError,
-                                        aLineNumber);
-  mOpQueue.AppendElement()->Init(mozilla::AsVariant(opeartion));
+
+  if (mSpeculativeLoadStage) {
+    mSpeculativeLoadQueue.AppendElement()->InitMaybeComplainAboutCharset(
+        aMsgId, aError, aLineNumber);
+  } else {
+    opMaybeComplainAboutCharset opeartion(const_cast<char*>(aMsgId), aError,
+                                          aLineNumber);
+    mOpQueue.AppendElement()->Init(mozilla::AsVariant(opeartion));
+  }
 }
 
 void nsHtml5TreeBuilder::TryToEnableEncodingMenu() {
@@ -1306,7 +1574,8 @@ void nsHtml5TreeBuilder::AddSnapshotToScript(
     MOZ_ASSERT_UNREACHABLE("Must never use snapshots with builder.");
     return;
   }
-  MOZ_ASSERT(HasScript(), "No script to add a snapshot to!");
+  MOZ_ASSERT(HasScriptThatMayDocumentWriteOrBlock(),
+             "No script to add a snapshot to!");
   MOZ_ASSERT(aSnapshot, "Got null snapshot.");
   mOpQueue.ElementAt(mOpQueue.Length() - 1).SetSnapshot(aSnapshot, aLine);
 }
@@ -1365,6 +1634,7 @@ void nsHtml5TreeBuilder::StartPlainTextViewSource(const nsAutoString& aTitle) {
 
 void nsHtml5TreeBuilder::StartPlainText() {
   MOZ_ASSERT(!mBuilder, "Must not view source with builder.");
+  setForceNoQuirks(true);
   startTag(nsHtml5ElementName::ELT_LINK,
            nsHtml5PlainTextUtils::NewLinkAttributes(), false);
 
@@ -1412,6 +1682,63 @@ nsIContentHandle* nsHtml5TreeBuilder::getDocumentFragmentForTemplate(
   }
   nsIContentHandle* fragHandle = AllocateContentHandle();
   opGetDocumentFragmentForTemplate operation(aTemplate, fragHandle);
+  treeOp->Init(mozilla::AsVariant(operation));
+  return fragHandle;
+}
+
+void nsHtml5TreeBuilder::setDocumentFragmentForTemplate(
+    nsIContentHandle* aTemplate, nsIContentHandle* aFragment) {
+  if (mBuilder) {
+    nsHtml5TreeOperation::SetDocumentFragmentForTemplate(
+        static_cast<nsIContent*>(aTemplate),
+        static_cast<nsIContent*>(aFragment));
+    return;
+  }
+
+  nsHtml5TreeOperation* treeOp = mOpQueue.AppendElement(mozilla::fallible);
+  if (MOZ_UNLIKELY(!treeOp)) {
+    MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+  opSetDocumentFragmentForTemplate operation(aTemplate, aFragment);
+  treeOp->Init(mozilla::AsVariant(operation));
+}
+
+nsIContentHandle* nsHtml5TreeBuilder::getShadowRootFromHost(
+    nsIContentHandle* aHost, nsIContentHandle* aTemplateNode,
+    nsHtml5String aShadowRootMode, bool aShadowRootIsClonable,
+    bool aShadowRootDelegatesFocus) {
+  mozilla::dom::ShadowRootMode mode;
+  if (aShadowRootMode.LowerCaseEqualsASCII("open")) {
+    mode = mozilla::dom::ShadowRootMode::Open;
+  } else if (aShadowRootMode.LowerCaseEqualsASCII("closed")) {
+    mode = mozilla::dom::ShadowRootMode::Closed;
+  } else {
+    return nullptr;
+  }
+
+  if (mBuilder) {
+    nsIContent* root = nsContentUtils::AttachDeclarativeShadowRoot(
+        static_cast<nsIContent*>(aHost), mode, aShadowRootIsClonable,
+        aShadowRootDelegatesFocus);
+    if (!root) {
+      nsContentUtils::LogSimpleConsoleError(
+          u"Failed to attach Declarative Shadow DOM."_ns, "DOM"_ns,
+          mBuilder->GetDocument()->IsInPrivateBrowsing(),
+          mBuilder->GetDocument()->IsInChromeDocShell());
+    }
+    return root;
+  }
+
+  nsHtml5TreeOperation* treeOp = mOpQueue.AppendElement(mozilla::fallible);
+  if (MOZ_UNLIKELY(!treeOp)) {
+    MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
+    return nullptr;
+  }
+  nsIContentHandle* fragHandle = AllocateContentHandle();
+  opGetShadowRootFromHost operation(aHost, fragHandle, aTemplateNode, mode,
+                                    aShadowRootIsClonable,
+                                    aShadowRootDelegatesFocus);
   treeOp->Init(mozilla::AsVariant(operation));
   return fragHandle;
 }
@@ -1504,13 +1831,13 @@ void nsHtml5TreeBuilder::errStrayDoctype() {
 }
 
 void nsHtml5TreeBuilder::errAlmostStandardsDoctype() {
-  if (MOZ_UNLIKELY(mViewSource) && !isSrcdocDocument) {
+  if (MOZ_UNLIKELY(mViewSource) && !forceNoQuirks) {
     mViewSource->AddErrorToCurrentRun("errAlmostStandardsDoctype");
   }
 }
 
 void nsHtml5TreeBuilder::errQuirkyDoctype() {
-  if (MOZ_UNLIKELY(mViewSource) && !isSrcdocDocument) {
+  if (MOZ_UNLIKELY(mViewSource) && !forceNoQuirks) {
     mViewSource->AddErrorToCurrentRun("errQuirkyDoctype");
   }
 }
@@ -1558,7 +1885,7 @@ void nsHtml5TreeBuilder::errFooBetweenHeadAndBody(nsAtom* aName) {
 }
 
 void nsHtml5TreeBuilder::errStartTagWithoutDoctype() {
-  if (MOZ_UNLIKELY(mViewSource) && !isSrcdocDocument) {
+  if (MOZ_UNLIKELY(mViewSource) && !forceNoQuirks) {
     mViewSource->AddErrorToCurrentRun("errStartTagWithoutDoctype");
   }
 }
@@ -1648,7 +1975,7 @@ void nsHtml5TreeBuilder::errStartTagInTableBody(nsAtom* aName) {
 }
 
 void nsHtml5TreeBuilder::errEndTagSeenWithoutDoctype() {
-  if (MOZ_UNLIKELY(mViewSource) && !isSrcdocDocument) {
+  if (MOZ_UNLIKELY(mViewSource) && !forceNoQuirks) {
     mViewSource->AddErrorToCurrentRun("errEndTagSeenWithoutDoctype");
   }
 }
@@ -1743,5 +2070,11 @@ void nsHtml5TreeBuilder::errEndTagViolatesNestingRules(nsAtom* aName) {
 void nsHtml5TreeBuilder::errEndWithUnclosedElements(nsAtom* aName) {
   if (MOZ_UNLIKELY(mViewSource)) {
     mViewSource->AddErrorToCurrentRun("errEndWithUnclosedElements", aName);
+  }
+}
+
+void nsHtml5TreeBuilder::errListUnclosedStartTags(int32_t aIgnored) {
+  if (MOZ_UNLIKELY(mViewSource)) {
+    mViewSource->AddErrorToCurrentRun("errListUnclosedStartTags");
   }
 }

@@ -14,13 +14,13 @@ namespace intl {
 
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(FluentResource, mParent)
 
-NS_IMPL_CYCLE_COLLECTION_ROOT_NATIVE(FluentResource, AddRef)
-NS_IMPL_CYCLE_COLLECTION_UNROOT_NATIVE(FluentResource, Release)
+FluentResource::FluentResource(nsISupports* aParent,
+                               const ffi::FluentResource* aRaw)
+    : mParent(aParent), mRaw(std::move(aRaw)), mHasErrors(false) {}
 
 FluentResource::FluentResource(nsISupports* aParent, const nsACString& aSource)
-    : mParent(aParent),
-      mRaw(dont_AddRef(ffi::fluent_resource_new(&aSource, &mHasErrors))) {
-  MOZ_COUNT_CTOR(FluentResource);
+    : mParent(aParent), mHasErrors(false) {
+  mRaw = dont_AddRef(ffi::fluent_resource_new(&aSource, &mHasErrors));
 }
 
 already_AddRefed<FluentResource> FluentResource::Constructor(
@@ -30,18 +30,42 @@ already_AddRefed<FluentResource> FluentResource::Constructor(
 
   if (res->mHasErrors) {
     nsContentUtils::LogSimpleConsoleError(
-        u"Errors encountered while parsing Fluent Resource."_ns, "chrome",
+        u"Errors encountered while parsing Fluent Resource."_ns, "chrome"_ns,
         false, true /* from chrome context*/);
   }
   return res.forget();
+}
+
+void FluentResource::TextElements(
+    nsTArray<dom::FluentTextElementItem>& aElements, ErrorResult& aRv) {
+  if (mHasErrors) {
+    aRv.ThrowInvalidStateError("textElements don't exist due to parse error");
+    return;
+  }
+
+  nsTArray<ffi::TextElementInfo> elements;
+  ffi::fluent_resource_get_text_elements(mRaw, &elements);
+
+  auto maybeAssign = [](dom::Optional<nsCString>& aDest, nsCString&& aSrc) {
+    if (!aSrc.IsEmpty()) {
+      aDest.Construct() = std::move(aSrc);
+    }
+  };
+
+  for (auto& info : elements) {
+    dom::FluentTextElementItem item;
+    maybeAssign(item.mId, std::move(info.id));
+    maybeAssign(item.mAttr, std::move(info.attr));
+    maybeAssign(item.mText, std::move(info.text));
+
+    aElements.AppendElement(item);
+  }
 }
 
 JSObject* FluentResource::WrapObject(JSContext* aCx,
                                      JS::Handle<JSObject*> aGivenProto) {
   return FluentResource_Binding::Wrap(aCx, this, aGivenProto);
 }
-
-FluentResource::~FluentResource() { MOZ_COUNT_DTOR(FluentResource); };
 
 }  // namespace intl
 }  // namespace mozilla

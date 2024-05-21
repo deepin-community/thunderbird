@@ -10,8 +10,6 @@
 #include "nsINoneService.h"
 #include "nsIMsgProtocolInfo.h"
 
-#include "nsMsgLocalCID.h"
-#include "nsMsgBaseCID.h"
 #include "nsIFile.h"
 #include "nsCOMPtr.h"
 #include "nsMsgUtils.h"
@@ -64,8 +62,8 @@ nsNoneService::GetDefaultLocalPath(nsIFile** aResult) {
 }
 
 NS_IMETHODIMP
-nsNoneService::GetServerIID(nsIID** aServerIID) {
-  *aServerIID = new nsIID(NS_GET_IID(nsINoIncomingServer));
+nsNoneService::GetServerIID(nsIID& aServerIID) {
+  aServerIID = nsIID(NS_GET_IID(nsINoIncomingServer));
   return NS_OK;
 }
 

@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 with Files("**"):
-    BUG_COMPONENT = ("Core", "Widget: Android")
+    BUG_COMPONENT = ("GeckoView", "General")
     SCHEDULES.exclusive = ["android"]
 
 with Files("*CompositorWidget*"):
@@ -32,6 +32,8 @@ classes_with_WrapForJNI = [
     "Base64Utils",
     "Clipboard",
     "CodecProxy",
+    "CompositorSurfaceManager",
+    "ContentInputStream",
     "EnterpriseRoots",
     "EventCallback",
     "EventDispatcher",
@@ -39,6 +41,7 @@ classes_with_WrapForJNI = [
     "GeckoAudioInfo",
     "GeckoBatteryManager",
     "GeckoBundle",
+    "GeckoDragAndDrop",
     "GeckoEditableChild",
     "GeckoHLSDemuxerWrapper",
     "GeckoHLSResourceWrapper",
@@ -50,13 +53,14 @@ classes_with_WrapForJNI = [
     "GeckoProcessType",
     "GeckoResult",
     "GeckoRuntime",
-    "GeckoScreenOrientation",
     "GeckoServiceChildProcess",
+    "GeckoServiceGpuProcess",
     "GeckoSession",
     "GeckoSurface",
     "GeckoSurfaceTexture",
     "GeckoSystemStateListener",
     "GeckoThread",
+    "GeckoViewInputStream",
     "GeckoVRManager",
     "GeckoVideoInfo",
     "GeckoWebExecutor",
@@ -75,6 +79,7 @@ classes_with_WrapForJNI = [
     "SessionTextInput",
     "SpeechSynthesisService",
     "SurfaceAllocator",
+    "SurfaceControlManager",
     "SurfaceTextureListener",
     "TelemetryUtils",
     "WebAuthnTokenManager",
@@ -104,8 +109,12 @@ EXPORTS.mozilla.widget += [
     "AndroidUiThread.h",
     "AndroidView.h",
     "AndroidVsync.h",
+    "AndroidWidgetUtils.h",
+    "CompositorWidgetChild.h",
+    "CompositorWidgetParent.h",
     "EventDispatcher.h",
     "GeckoViewSupport.h",
+    "InProcessAndroidCompositorWidget.h",
     "nsWindow.h",
     "WindowEvent.h",
 ]
@@ -127,17 +136,20 @@ UNIFIED_SOURCES += [
     "AndroidContentController.cpp",
     "AndroidUiThread.cpp",
     "AndroidVsync.cpp",
+    "AndroidWidgetUtils.cpp",
+    "CompositorWidgetChild.cpp",
+    "CompositorWidgetParent.cpp",
     "EventDispatcher.cpp",
     "GeckoEditableSupport.cpp",
     "GeckoProcessManager.cpp",
     "GfxInfo.cpp",
     "ImageDecoderSupport.cpp",
+    "InProcessAndroidCompositorWidget.cpp",
     "nsAppShell.cpp",
     "nsClipboard.cpp",
     "nsDeviceContextAndroid.cpp",
+    "nsDragService.cpp",
     "nsLookAndFeel.cpp",
-    "nsNativeBasicThemeAndroid.cpp",
-    "nsNativeThemeAndroid.cpp",
     "nsPrintSettingsServiceAndroid.cpp",
     "nsUserIdleServiceAndroid.cpp",
     "nsWidgetFactory.cpp",
@@ -181,13 +193,11 @@ LOCAL_INCLUDES += [
     "/layout/forms",
     "/layout/painting",
     "/netwerk/base",
-    "/netwerk/cache",
     "/toolkit/components/telemetry",
     "/widget",
+    "/widget/headless",
     "/xpcom/threads",
 ]
-
-CXXFLAGS += ["-Wno-error=shadow"]
 
 OS_LIBS += ["android"]
 

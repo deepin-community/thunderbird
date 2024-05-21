@@ -3,12 +3,9 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.setNow = setNow;
-exports.setTimeout = setTimeout;
 exports.clearTimeout = clearTimeout;
-
+exports.setTimeout = setTimeout;
 var _logger = require("./logger");
-
 /*
 Copyright 2016 OpenMarket Ltd
 Copyright 2019 The Matrix.org Foundation C.I.C.
@@ -34,177 +31,141 @@ limitations under the License.
  * In particular, if a timeout would have fired while the system was suspended,
  * it will instead fire as soon as possible after resume.
  */
+
 // we schedule a callback at least this often, to check if we've missed out on
 // some wall-clock time due to being suspended.
-const TIMER_CHECK_PERIOD_MS = 1000; // counter, for making up ids to return from setTimeout
+const TIMER_CHECK_PERIOD_MS = 1000;
 
-let _count = 0; // the key for our callback with the real global.setTimeout
+// counter, for making up ids to return from setTimeout
+let count = 0;
 
-let _realCallbackKey; // a sorted list of the callbacks to be run.
+// the key for our callback with the real global.setTimeout
+let realCallbackKey;
+// a sorted list of the callbacks to be run.
 // each is an object with keys [runAt, func, params, key].
+const callbackList = [];
 
+// var debuglog = logger.log.bind(logger);
+/* istanbul ignore next */
+const debuglog = function (...params) {};
 
-const _callbackList = []; // var debuglog = logger.log.bind(logger);
-
-const debuglog = function () {};
-/**
- * Replace the function used by this module to get the current time.
- *
- * Intended for use by the unit tests.
- *
- * @param {function} [f] function which should return a millisecond counter
- *
- * @internal
- */
-
-
-function setNow(f) {
-  _now = f || Date.now;
-}
-
-let _now = Date.now;
 /**
  * reimplementation of window.setTimeout, which will call the callback if
  * the wallclock time goes past the deadline.
  *
- * @param {function} func   callback to be called after a delay
- * @param {Number} delayMs  number of milliseconds to delay by
+ * @param func -   callback to be called after a delay
+ * @param delayMs -  number of milliseconds to delay by
  *
- * @return {Number} an identifier for this callback, which may be passed into
+ * @returns an identifier for this callback, which may be passed into
  *                   clearTimeout later.
  */
-
-function setTimeout(func, delayMs) {
+function setTimeout(func, delayMs, ...params) {
   delayMs = delayMs || 0;
-
   if (delayMs < 0) {
     delayMs = 0;
   }
-
-  const params = Array.prototype.slice.call(arguments, 2);
-  const runAt = _now() + delayMs;
-  const key = _count++;
+  const runAt = Date.now() + delayMs;
+  const key = count++;
   debuglog("setTimeout: scheduling cb", key, "at", runAt, "(delay", delayMs, ")");
   const data = {
     runAt: runAt,
     func: func,
     params: params,
     key: key
-  }; // figure out where it goes in the list
+  };
 
-  const idx = binarySearch(_callbackList, function (el) {
+  // figure out where it goes in the list
+  const idx = binarySearch(callbackList, function (el) {
     return el.runAt - runAt;
   });
-
-  _callbackList.splice(idx, 0, data);
-
-  _scheduleRealCallback();
-
+  callbackList.splice(idx, 0, data);
+  scheduleRealCallback();
   return key;
 }
+
 /**
  * reimplementation of window.clearTimeout, which mirrors setTimeout
  *
- * @param {Number} key   result from an earlier setTimeout call
+ * @param key -   result from an earlier setTimeout call
  */
-
-
 function clearTimeout(key) {
-  if (_callbackList.length === 0) {
+  if (callbackList.length === 0) {
     return;
-  } // remove the element from the list
+  }
 
-
+  // remove the element from the list
   let i;
-
-  for (i = 0; i < _callbackList.length; i++) {
-    const cb = _callbackList[i];
-
+  for (i = 0; i < callbackList.length; i++) {
+    const cb = callbackList[i];
     if (cb.key == key) {
-      _callbackList.splice(i, 1);
-
+      callbackList.splice(i, 1);
       break;
     }
-  } // iff it was the first one in the list, reschedule our callback.
+  }
 
-
+  // iff it was the first one in the list, reschedule our callback.
   if (i === 0) {
-    _scheduleRealCallback();
+    scheduleRealCallback();
   }
-} // use the real global.setTimeout to schedule a callback to _runCallbacks.
-
-
-function _scheduleRealCallback() {
-  if (_realCallbackKey) {
-    global.clearTimeout(_realCallbackKey);
-  }
-
-  const first = _callbackList[0];
-
-  if (!first) {
-    debuglog("_scheduleRealCallback: no more callbacks, not rescheduling");
-    return;
-  }
-
-  const now = _now();
-
-  const delayMs = Math.min(first.runAt - now, TIMER_CHECK_PERIOD_MS);
-  debuglog("_scheduleRealCallback: now:", now, "delay:", delayMs);
-  _realCallbackKey = global.setTimeout(_runCallbacks, delayMs);
 }
 
-function _runCallbacks() {
-  let cb;
+// use the real global.setTimeout to schedule a callback to runCallbacks.
+function scheduleRealCallback() {
+  if (realCallbackKey) {
+    global.clearTimeout(realCallbackKey);
+  }
+  const first = callbackList[0];
+  if (!first) {
+    debuglog("scheduleRealCallback: no more callbacks, not rescheduling");
+    return;
+  }
+  const timestamp = Date.now();
+  const delayMs = Math.min(first.runAt - timestamp, TIMER_CHECK_PERIOD_MS);
+  debuglog("scheduleRealCallback: now:", timestamp, "delay:", delayMs);
+  realCallbackKey = global.setTimeout(runCallbacks, delayMs);
+}
+function runCallbacks() {
+  const timestamp = Date.now();
+  debuglog("runCallbacks: now:", timestamp);
 
-  const now = _now();
-
-  debuglog("_runCallbacks: now:", now); // get the list of things to call
-
+  // get the list of things to call
   const callbacksToRun = [];
-
+  // eslint-disable-next-line
   while (true) {
-    const first = _callbackList[0];
-
-    if (!first || first.runAt > now) {
+    const first = callbackList[0];
+    if (!first || first.runAt > timestamp) {
       break;
     }
-
-    cb = _callbackList.shift();
-    debuglog("_runCallbacks: popping", cb.key);
+    const cb = callbackList.shift();
+    debuglog("runCallbacks: popping", cb.key);
     callbacksToRun.push(cb);
-  } // reschedule the real callback before running our functions, to
+  }
+
+  // reschedule the real callback before running our functions, to
   // keep the codepaths the same whether or not our functions
   // register their own setTimeouts.
-
-
-  _scheduleRealCallback();
-
-  for (let i = 0; i < callbacksToRun.length; i++) {
-    cb = callbacksToRun[i];
-
+  scheduleRealCallback();
+  for (const cb of callbacksToRun) {
     try {
       cb.func.apply(global, cb.params);
     } catch (e) {
-      _logger.logger.error("Uncaught exception in callback function", e.stack || e);
+      _logger.logger.error("Uncaught exception in callback function", e);
     }
   }
 }
+
 /* search in a sorted array.
  *
  * returns the index of the last element for which func returns
  * greater than zero, or array.length if no such element exists.
  */
-
-
 function binarySearch(array, func) {
   // min is inclusive, max exclusive.
   let min = 0;
   let max = array.length;
-
   while (min < max) {
     const mid = min + max >> 1;
     const res = func(array[mid]);
-
     if (res > 0) {
       // the element at 'mid' is too big; set it as the new max.
       max = mid;
@@ -212,8 +173,7 @@ function binarySearch(array, func) {
       // the element at 'mid' is too small. 'min' is inclusive, so +1.
       min = mid + 1;
     }
-  } // presumably, min==max now.
-
-
+  }
+  // presumably, min==max now.
   return min;
 }

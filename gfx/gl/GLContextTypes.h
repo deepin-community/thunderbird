@@ -7,6 +7,7 @@
 #define GLCONTEXT_TYPES_H_
 
 #include "GLTypes.h"
+#include "mozilla/DefineEnum.h"
 #include "mozilla/TypedEnumBits.h"
 
 namespace mozilla {
@@ -22,7 +23,7 @@ enum class CreateContextFlags : uint16_t {
   NONE = 0,
   REQUIRE_COMPAT_PROFILE = 1 << 0,
   // Force the use of hardware backed GL, don't allow software implementations.
-  FORCE_ENABLE_HARDWARE = 1 << 1,
+  FORBID_SOFTWARE = 1 << 1,
   /* Don't force discrete GPU to be used (if applicable) */
   ALLOW_OFFLINE_RENDERER = 1 << 2,
   // Ask for ES3 if possible
@@ -34,6 +35,8 @@ enum class CreateContextFlags : uint16_t {
   PROVOKING_VERTEX_DONT_CARE = 1 << 7,
   PREFER_EXACT_VERSION = 1 << 8,
   PREFER_MULTITHREADED = 1 << 9,
+
+  FORBID_HARDWARE = 1 << 10,
 };
 MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(CreateContextFlags)
 
@@ -44,6 +47,12 @@ struct GLContextCreateDesc {
 struct GLContextDesc final : public GLContextCreateDesc {
   bool isOffscreen = false;
 };
+
+// -
+
+MOZ_DEFINE_ENUM_CLASS_WITH_BASE(GLVendor, uint8_t,
+                                (Intel, NVIDIA, ATI, Qualcomm, Imagination,
+                                 Nouveau, Vivante, VMware, ARM, Other));
 
 } /* namespace gl */
 } /* namespace mozilla */

@@ -54,7 +54,7 @@ add_task(async function test_sidebarpanels_click() {
     async selectNode(tree) {
       tree.selectItems([this._bookmark.guid]);
     },
-    cleanup(aCallback) {
+    cleanup() {
       return PlacesUtils.bookmarks.remove(this._bookmark);
     },
     sidebarName: BOOKMARKS_SIDEBAR_ID,
@@ -84,7 +84,7 @@ add_task(async function test_sidebarpanels_click() {
       );
       is(tree.selectedNode.itemId, -1, "The selected node is not bookmarked");
     },
-    cleanup(aCallback) {
+    cleanup() {
       return PlacesUtils.history.clear();
     },
     sidebarName: HISTORY_SIDEBAR_ID,
@@ -115,8 +115,8 @@ async function testPlacesPanel(testInfo) {
   let promise = new Promise(resolve => {
     sidebar.addEventListener(
       "load",
-      function() {
-        executeSoon(async function() {
+      function () {
+        executeSoon(async function () {
           testInfo.prepare();
 
           let tree = sidebar.contentDocument.getElementById(testInfo.treeName);
@@ -136,7 +136,7 @@ async function testPlacesPanel(testInfo) {
 
           await promiseAlert;
 
-          executeSoon(async function() {
+          executeSoon(async function () {
             SidebarUI.hide();
             await testInfo.cleanup();
             resolve();

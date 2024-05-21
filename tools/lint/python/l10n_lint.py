@@ -2,34 +2,45 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
 
-from mozboot import util as mb_util
-from mozlint import result, pathutils
-from mozpack import path as mozpath
-import mozversioncontrol.repoupdate
-
+from compare_locales import parser
 from compare_locales.lint.linter import L10nLinter
 from compare_locales.lint.util import l10n_base_reference_and_tests
-from compare_locales import parser
-from compare_locales.paths import TOMLParser, ProjectFiles
+from compare_locales.paths import ProjectFiles, TOMLParser
+from mach import util as mach_util
+from mozlint import pathutils, result
+from mozpack import path as mozpath
+from mozversioncontrol import MissingVCSTool
+from mozversioncontrol.repoupdate import update_git_repo, update_mercurial_repo
 
+L10N_SOURCE_NAME = "l10n-source"
+L10N_SOURCE_REPO = "https://github.com/mozilla-l10n/firefox-l10n-source.git"
 
-LOCALE = "gecko-strings"
-
+STRINGS_NAME = "gecko-strings"
+STRINGS_REPO = "https://hg.mozilla.org/l10n/gecko-strings"
 
 PULL_AFTER = timedelta(days=2)
 
 
+# Wrapper to call lint_strings with mozilla-central configuration
+# comm-central defines its own wrapper since comm-central strings are
+# in separate repositories
 def lint(paths, lintconfig, **lintargs):
-    l10n_base = mb_util.get_state_dir()
+    extra_args = lintargs.get("extra_args") or []
+    name = L10N_SOURCE_NAME if "--l10n-git" in extra_args else STRINGS_NAME
+    return lint_strings(name, paths, lintconfig, **lintargs)
+
+
+def lint_strings(name, paths, lintconfig, **lintargs):
+    l10n_base = mach_util.get_state_dir()
     root = lintargs["root"]
     exclude = lintconfig.get("exclude")
     extensions = lintconfig.get("extensions")
 
     # Load l10n.toml configs
-    l10nconfigs = load_configs(lintconfig, root, l10n_base)
+    l10nconfigs = load_configs(lintconfig, root, l10n_base, name)
 
     # Check include paths in l10n.yml if it's in our given paths
     # Only the l10n.yml will show up here, but if the l10n.toml files
@@ -71,7 +82,7 @@ def lint(paths, lintconfig, **lintargs):
         for path in skips
     )
     all_files = [p for p in all_files if p not in skips]
-    files = ProjectFiles(LOCALE, l10nconfigs)
+    files = ProjectFiles(name, l10nconfigs)
 
     get_reference_and_tests = l10n_base_reference_and_tests(files)
 
@@ -80,8 +91,38 @@ def lint(paths, lintconfig, **lintargs):
     return results
 
 
+# Similar to the lint/lint_strings wrapper setup, for comm-central support.
 def gecko_strings_setup(**lint_args):
-    gs = mozpath.join(mb_util.get_state_dir(), LOCALE)
+    extra_args = lint_args.get("extra_args") or []
+    if "--l10n-git" in extra_args:
+        return source_repo_setup(L10N_SOURCE_REPO, L10N_SOURCE_NAME)
+    else:
+        return strings_repo_setup(STRINGS_REPO, STRINGS_NAME)
+
+
+def source_repo_setup(repo: str, name: str):
+    gs = mozpath.join(mach_util.get_state_dir(), name)
+    marker = mozpath.join(gs, ".git", "l10n_pull_marker")
+    try:
+        last_pull = datetime.fromtimestamp(os.stat(marker).st_mtime)
+        skip_clone = datetime.now() < last_pull + PULL_AFTER
+    except OSError:
+        skip_clone = False
+    if skip_clone:
+        return
+    try:
+        update_git_repo(repo, gs)
+    except MissingVCSTool:
+        if os.environ.get("MOZ_AUTOMATION"):
+            raise
+        print("warning: l10n linter requires Git but was unable to find 'git'")
+        return 1
+    with open(marker, "w") as fh:
+        fh.flush()
+
+
+def strings_repo_setup(repo: str, name: str):
+    gs = mozpath.join(mach_util.get_state_dir(), name)
     marker = mozpath.join(gs, ".hg", "l10n_pull_marker")
     try:
         last_pull = datetime.fromtimestamp(os.stat(marker).st_mtime)
@@ -90,15 +131,18 @@ def gecko_strings_setup(**lint_args):
         skip_clone = False
     if skip_clone:
         return
-    hg = mozversioncontrol.get_tool_path("hg")
-    mozversioncontrol.repoupdate.update_mercurial_repo(
-        hg, "https://hg.mozilla.org/l10n/gecko-strings", gs
-    )
+    try:
+        update_mercurial_repo(repo, gs)
+    except MissingVCSTool:
+        if os.environ.get("MOZ_AUTOMATION"):
+            raise
+        print("warning: l10n linter requires Mercurial but was unable to find 'hg'")
+        return 1
     with open(marker, "w") as fh:
         fh.flush()
 
 
-def load_configs(lintconfig, root, l10n_base):
+def load_configs(lintconfig, root, l10n_base, locale):
     """Load l10n configuration files specified in the linter configuration."""
     configs = []
     env = {"l10n_base": l10n_base}
@@ -106,7 +150,7 @@ def load_configs(lintconfig, root, l10n_base):
         cfg = TOMLParser().parse(
             mozpath.join(root, toml), env=env, ignore_missing_includes=True
         )
-        cfg.set_locales([LOCALE], deep=True)
+        cfg.set_locales([locale], deep=True)
         configs.append(cfg)
     return configs
 

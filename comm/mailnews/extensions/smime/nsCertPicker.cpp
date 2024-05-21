@@ -25,8 +25,22 @@
 #include "nsComponentManagerUtils.h"  // for do_CreateInstance
 #include "nsString.h"
 #include "mozpkix/pkixtypes.h"
+#include "mozilla/Maybe.h"
+#include "mozilla/Unused.h"
+#include "mozilla/intl/AppDateTimeFormat.h"
 
 using namespace mozilla;
+
+// Copied from security/manager/ssl/nsCertTree.cpp
+static void PRTimeToLocalDateString(PRTime time, nsAString& result) {
+  PRExplodedTime explodedTime;
+  PR_ExplodeTime(time, PR_LocalTimeParameters, &explodedTime);
+  mozilla::intl::DateTimeFormat::StyleBag style;
+  style.date = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Long);
+  style.time = mozilla::Nothing();
+  mozilla::Unused << intl::AppDateTimeFormat::Format(style, &explodedTime,
+                                                     result);
+}
 
 MOZ_TYPE_SPECIFIC_UNIQUE_PTR_TEMPLATE(UniqueCERTCertNicknames,
                                       CERTCertNicknames, CERT_FreeNicknames)
@@ -102,26 +116,29 @@ nsresult FormatUIStrings(nsIX509Cert* cert, const nsAutoString& nickname,
       details.Append(info);
     }
 
-    if (NS_SUCCEEDED(validity->GetNotBeforeLocalTime(temp1)) &&
-        !temp1.IsEmpty()) {
+    PRTime notBefore;
+    rv = validity->GetNotBefore(&notBefore);
+    if (NS_SUCCEEDED(rv)) {
       details.Append(char16_t(' '));
       if (NS_SUCCEEDED(mcs->GetSMIMEBundleString(u"CertInfoFrom", info))) {
         details.Append(info);
         details.Append(char16_t(' '));
       }
+      PRTimeToLocalDateString(notBefore, temp1);
       details.Append(temp1);
     }
 
-    if (NS_SUCCEEDED(validity->GetNotAfterLocalTime(temp1)) &&
-        !temp1.IsEmpty()) {
+    PRTime notAfter;
+    rv = validity->GetNotAfter(&notAfter);
+    if (NS_SUCCEEDED(rv)) {
       details.Append(char16_t(' '));
       if (NS_SUCCEEDED(mcs->GetSMIMEBundleString(u"CertInfoTo", info))) {
         details.Append(info);
         details.Append(char16_t(' '));
       }
+      PRTimeToLocalDateString(notAfter, temp1);
       details.Append(temp1);
     }
-
     details.Append(char16_t('\n'));
   }
 
@@ -294,7 +311,7 @@ NS_IMETHODIMP nsCertPicker::PickByUsage(nsIInterfaceRequestor* ctx,
     while (!CERT_LIST_END(node, certList)) {
       /* if the cert has at least one e-mail address, check if suitable */
       if (CERT_GetFirstEmailAddress(node->cert)) {
-        RefPtr<nsNSSCertificate> tempCert(nsNSSCertificate::Create(node->cert));
+        RefPtr<nsNSSCertificate> tempCert(new nsNSSCertificate(node->cert));
         bool match = false;
         rv = tempCert->ContainsEmailAddress(emailAddress, &match);
         if (NS_FAILED(rv)) {
@@ -326,7 +343,7 @@ NS_IMETHODIMP nsCertPicker::PickByUsage(nsIInterfaceRequestor* ctx,
        !CERT_LIST_END(node, certList.get()) &&
        CertsToUse < nicknames->numnicknames;
        node = CERT_LIST_NEXT(node)) {
-    RefPtr<nsNSSCertificate> tempCert(nsNSSCertificate::Create(node->cert));
+    RefPtr<nsNSSCertificate> tempCert(new nsNSSCertificate(node->cert));
 
     if (tempCert) {
       nsAutoString i_nickname(
@@ -382,12 +399,7 @@ NS_IMETHODIMP nsCertPicker::PickByUsage(nsIInterfaceRequestor* ctx,
     for (i = 0, node = CERT_LIST_HEAD(certList); !CERT_LIST_END(node, certList);
          ++i, node = CERT_LIST_NEXT(node)) {
       if (i == selectedIndex) {
-        RefPtr<nsNSSCertificate> cert = nsNSSCertificate::Create(node->cert);
-        if (!cert) {
-          rv = NS_ERROR_OUT_OF_MEMORY;
-          break;
-        }
-
+        RefPtr<nsNSSCertificate> cert = new nsNSSCertificate(node->cert);
         cert.forget(_retval);
         break;
       }

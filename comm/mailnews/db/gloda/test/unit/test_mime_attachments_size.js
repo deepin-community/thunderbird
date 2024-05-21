@@ -12,27 +12,35 @@
  *  adds a lot of runtime overhead which makes certain debugging strategies like
  *  using chronicle-recorder impractical.
  */
-/* import-globals-from ../../../../test/resources/logHelper.js */
-/* import-globals-from ../../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../../test/resources/messageInjection.js */
-load("../../../../resources/logHelper.js");
-load("../../../../resources/asyncTestUtils.js");
 
-load("../../../../resources/MessageGenerator.jsm");
-load("../../../../resources/messageModifier.js");
-load("../../../../resources/messageInjection.js");
-
-/* exported scenarios */
-// Create a message generator
-var msgGen = (gMessageGenerator = new MessageGenerator());
-// Create a message scenario generator using that message generator
-var scenarios = new MessageScenarioFactory(msgGen);
-
-var { MsgHdrToMimeMessage } = ChromeUtils.import(
-  "resource:///modules/gloda/MimeMessage.jsm"
+var { MsgHdrToMimeMessage } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/MimeMessage.sys.mjs"
 );
+var {
+  MessageGenerator,
+  SyntheticPartLeaf,
+  SyntheticPartMultiMixed,
+  SyntheticPartMultiRelated,
+  SyntheticMessageSet,
+} = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
+);
+var { MessageInjection } = ChromeUtils.importESModule(
+  "resource://testing-common/mailnews/MessageInjection.sys.mjs"
+);
+
+var msgGen = new MessageGenerator();
+var messageInjection;
+
+add_setup(function () {
+  // Sanity check: figure out how many bytes the original text occupies in UTF-8 encoding
+  Assert.equal(
+    new TextEncoder().encode(originalText).length,
+    originalTextByteCount
+  );
+
+  messageInjection = new MessageInjection({ mode: "local" }, msgGen);
+});
 
 var htmlText = "<html><head></head><body>I am HTML! Woo! </body></html>";
 
@@ -88,17 +96,21 @@ var yencText =
   "\x0d\x0a" +
   "=yend size=174 crc32=7efccd8e\n";
 
-// that completely exotic encoding is only detected if there is no content type
+// That completely exotic encoding is only detected if there is no content type
 // on the message, which is usually the case in newsgroups. I hate you yencode!
-new SyntheticPartLeaf("I am text! Woo!\n\n" + yencText, {
-  contentType: "",
-  charset: "",
-  format: "",
-});
+// var partYencText = new SyntheticPartLeaf("I am text! Woo!\n\n" + yencText, {
+//   contentType: "",
+//   charset: "",
+//   format: "",
+// });
 
 var partUUText = new SyntheticPartLeaf(
   "I am text! With uuencode... noes...\n\n" + uuText,
-  { contentType: "", charset: "", format: "" }
+  {
+    contentType: "",
+    charset: "",
+    format: "",
+  }
 );
 
 var tachText = {
@@ -117,9 +129,9 @@ var tachInlineText = {
   disposition: "inline",
 };
 
-// images have a different behavior than other attachments: they are displayed
+// Images have a different behavior than other attachments: they are displayed
 // inline most of the time, so there are two different code paths that need to
-// enable streaming and byte counting to the JS mime emitter
+// enable streaming and byte counting to the JS mime emitter.
 
 var tachImage = {
   filename: "bob.png",
@@ -182,18 +194,18 @@ var messageInfos = [
     epsilon: 1,
     checkTotalSize: false,
   },
-  // encoding type specific to newsgroups, not interested, gloda doesn't even
+  // Encoding type specific to newsgroups, not interested, gloda doesn't even
   // treat this as an attachment (probably because gloda requires an attachment
   // to have a content-type, which these yencoded parts don't have), but size IS
-  // counted properly nonetheless
+  // counted properly nonetheless.
   /* {
     name: 'text/plain with yenc inline',
     bodyPart: partYencText,
     subject: "yEnc-Prefix: \"jane.doe\" 174 yEnc bytes - yEnc test (1)",
   },*/
-  // inline image, not interested either, gloda doesn't keep that as an
-  // attachment (probably a deliberate choice), size is NOT counted properly
-  // (don't want to investigate, I doubt it's a useful information anyway)
+  // Inline image, not interested either, gloda doesn't keep that as an
+  // attachment (probably a deliberate choice), size is NOT counted properly.
+  // (don't want to investigate, I doubt it's a useful information anyway.)
   /* {
     name: 'multipart/related',
     bodyPart: new SyntheticPartMultiRelated([partHtml, partRelImage]),
@@ -210,7 +222,7 @@ var messageInfos = [
     ]),
     epsilon: 1,
   },*/
-  // all of the other common cases work fine
+  // All of the other common cases work fine.
   {
     name: 'all sorts of "real" attachments',
     bodyPart: partHtml,
@@ -226,74 +238,11 @@ var messageInfos = [
   },
 ];
 
-function check_attachments(aMimeMsg, epsilon, checkTotalSize) {
-  if (aMimeMsg == null) {
-    do_throw("We really should have gotten a result!");
+add_task(async function test_message_attachments() {
+  for (const messageInfo of messageInfos) {
+    await message_attachments(messageInfo);
   }
-
-  // dump(aMimeMsg.prettyString()+"\n");
-
-  /* It is hard to get a byte count that's perfectly accurate. When composing
-   * the message, the MIME structure goes like this (for an encoded attachment):
-   *
-   * XXXXXXXXXX
-   * XXXXXXXXXX    <-- encoded block
-   * XXXXXXXXXX
-   *               <-- newline
-   * --chopchop    <-- MIME separator
-   *
-   * libmime counts bytes all the way up to the separator, which means it counts
-   * the bytes for the extra line. Since newlines in emails are \n, most of the
-   * time we get att.size = 174 instead of 173.
-   *
-   * The good news is, it's just a fixed extra cost. There no issues with the
-   * inner contents of the attachment, you can add as many newlines as you want
-   * in it, Unix or Windows, the count won't get past the bounds.
-   */
-
-  Assert.ok(aMimeMsg.allUserAttachments.length > 0);
-
-  let totalSize = htmlText.length;
-
-  for (let att of aMimeMsg.allUserAttachments) {
-    dump("*** Attachment now is " + att.name + " " + att.size + "\n");
-    Assert.ok(Math.abs(att.size - originalTextByteCount) <= epsilon);
-    totalSize += att.size;
-  }
-
-  // undefined means true
-  if (checkTotalSize !== false) {
-    dump(
-      "*** Total size comparison: " + totalSize + " vs " + aMimeMsg.size + "\n"
-    );
-    Assert.ok(Math.abs(aMimeMsg.size - totalSize) <= epsilon);
-  }
-
-  async_driver();
-}
-
-function* test_message_attachments(info) {
-  let synMsg = gMessageGenerator.makeMessage(info);
-  let synSet = new SyntheticMessageSet([synMsg]);
-  yield add_sets_to_folder(gInbox, [synSet]);
-
-  let msgHdr = synSet.getMsgHdr(0);
-  // dump(synMsg.toMboxString()+"\n");
-
-  MsgHdrToMimeMessage(msgHdr, null, function(aMsgHdr, aMimeMsg) {
-    try {
-      check_attachments(
-        aMimeMsg,
-        info.epsilon,
-        "checkTotalSize" in info ? info.checkTotalSize : undefined
-      );
-    } catch (e) {
-      do_throw(e);
-    }
-  });
-
-  yield false;
-}
+});
 
 var bogusMessage = msgGen.makeMessage({ body: { body: originalText } });
 bogusMessage._contentType = "woooooo"; // Breaking abstraction boundaries. Bad.
@@ -328,25 +277,134 @@ var bogusMessageInfos = [
   },
 ];
 
+add_task(async function test_bogus_messages(info) {
+  for (const bogusMessageInfo of bogusMessageInfos) {
+    await bogus_messages(bogusMessageInfo);
+  }
+});
+
+add_task(async function test_have_attachments() {
+  // The goal here is to explicitly check that these messages have attachments.
+  const number = 1;
+  const synMsg = msgGen.makeMessage({
+    name: "multipart/related",
+    bodyPart: new SyntheticPartMultiMixed([partHtml, partTachVCard]),
+    number,
+  });
+  const synSet = new SyntheticMessageSet([synMsg]);
+  await messageInjection.addSetsToFolders(
+    [messageInjection.getInboxFolder()],
+    [synSet]
+  );
+
+  const msgHdr = synSet.getMsgHdr(0);
+
+  let promiseResolve;
+  const promise = new Promise(resolve => {
+    promiseResolve = resolve;
+  });
+  MsgHdrToMimeMessage(msgHdr, null, function (aMsgHdr, aMimeMsg) {
+    try {
+      Assert.equal(aMimeMsg.allUserAttachments.length, number);
+      promiseResolve();
+    } catch (e) {
+      do_throw(e);
+    }
+  });
+
+  await promise;
+});
+
+async function message_attachments(info) {
+  const synMsg = msgGen.makeMessage(info);
+  const synSet = new SyntheticMessageSet([synMsg]);
+  await messageInjection.addSetsToFolders(
+    [messageInjection.getInboxFolder()],
+    [synSet]
+  );
+
+  const msgHdr = synSet.getMsgHdr(0);
+
+  let promiseResolve;
+  const promise = new Promise(resolve => {
+    promiseResolve = resolve;
+  });
+
+  MsgHdrToMimeMessage(msgHdr, null, function (aMsgHdr, aMimeMsg) {
+    try {
+      check_attachments(
+        aMimeMsg,
+        info.epsilon,
+        "checkTotalSize" in info ? info.checkTotalSize : undefined
+      );
+      promiseResolve();
+    } catch (e) {
+      do_throw(e);
+    }
+  });
+
+  await promise;
+}
+
+function check_attachments(aMimeMsg, epsilon, checkTotalSize) {
+  if (aMimeMsg == null) {
+    do_throw("We really should have gotten a result!");
+  }
+
+  /* It is hard to get a byte count that's perfectly accurate. When composing
+   * the message, the MIME structure goes like this (for an encoded attachment):
+   *
+   * XXXXXXXXXX
+   * XXXXXXXXXX    <-- encoded block
+   * XXXXXXXXXX
+   *               <-- newline
+   * --chopchop    <-- MIME separator
+   *
+   * libmime counts bytes all the way up to the separator, which means it counts
+   * the bytes for the extra line. Since newlines in emails are \n, most of the
+   * time we get att.size = 174 instead of 173.
+   *
+   * The good news is, it's just a fixed extra cost. There no issues with the
+   * inner contents of the attachment, you can add as many newlines as you want
+   * in it, Unix or Windows, the count won't get past the bounds.
+   */
+
+  Assert.ok(aMimeMsg.allUserAttachments.length > 0);
+
+  let totalSize = htmlText.length;
+
+  for (const att of aMimeMsg.allUserAttachments) {
+    dump("*** Attachment now is " + att.name + " " + att.size + "\n");
+    Assert.ok(Math.abs(att.size - originalTextByteCount) <= epsilon);
+    totalSize += att.size;
+  }
+
+  // Undefined means true.
+  if (checkTotalSize !== false) {
+    dump(
+      "*** Total size comparison: " + totalSize + " vs " + aMimeMsg.size + "\n"
+    );
+    Assert.ok(Math.abs(aMimeMsg.size - totalSize) <= epsilon);
+  }
+}
+
 function check_bogus_parts(aMimeMsg, { epsilon, checkSize }) {
   if (aMimeMsg == null) {
     do_throw("We really should have gotten a result!");
   }
 
   // First make sure the size is computed properly
-  let x = parseInt(aMimeMsg.size);
+  const x = parseInt(aMimeMsg.size);
   Assert.ok(!isNaN(x));
 
-  let sep = "@mozilla.org/windows-registry-key;1" in Cc ? "\r\n" : "\n";
-
-  // dump(aMimeMsg.prettyString()+"\n");
+  const sep = "@mozilla.org/windows-registry-key;1" in Cc ? "\r\n" : "\n";
 
   if (checkSize) {
     let partSize = 0;
     // The attachment, although a MimeUnknown part, is actually plain/text that
     // contains the whole attached message, including headers. Count them.
-    for (let k in bogusMessage.headers) {
-      let v = bogusMessage.headers[k];
+    for (const k in bogusMessage.headers) {
+      const v = bogusMessage.headers[k];
       partSize += (k + ": " + v + sep).length;
     }
     // That's the newline between the headers and the message body.
@@ -354,84 +412,34 @@ function check_bogus_parts(aMimeMsg, { epsilon, checkSize }) {
     // That's the message body.
     partSize += originalTextByteCount;
     // That's the total length that's to be returned by the MimeMessage abstraction.
-    let totalSize = htmlText.length + partSize;
+    const totalSize = htmlText.length + partSize;
     dump(totalSize + " vs " + aMimeMsg.size + "\n");
     Assert.ok(Math.abs(aMimeMsg.size - totalSize) <= epsilon);
   }
-
-  async_driver();
 }
 
-function* test_bogus_messages(info) {
-  let synMsg = gMessageGenerator.makeMessage(info);
-  let synSet = new SyntheticMessageSet([synMsg]);
-  yield add_sets_to_folder(gInbox, [synSet]);
-
-  let msgHdr = synSet.getMsgHdr(0);
-  // dump(synMsg.toMboxString());
-
-  MsgHdrToMimeMessage(msgHdr, null, function(aMsgHdr, aMimeMsg) {
-    try {
-      check_bogus_parts(aMimeMsg, info);
-    } catch (e) {
-      do_throw(e);
-    }
-  });
-
-  yield false;
-}
-
-// The goal here is to explicitly check that these messages have attachments.
-var messageHaveAttachmentsInfos = [
-  {
-    name: "multipart/related",
-    bodyPart: new SyntheticPartMultiMixed([partHtml, partTachVCard]),
-    number: 1,
-  },
-];
-
-function* test_have_attachments(info) {
-  let synMsg = gMessageGenerator.makeMessage(info);
-  let synSet = new SyntheticMessageSet([synMsg]);
-  yield add_sets_to_folder(gInbox, [synSet]);
-
-  let msgHdr = synSet.getMsgHdr(0);
-  // dump(synMsg.toMboxString());
-
-  MsgHdrToMimeMessage(msgHdr, null, function(aMsgHdr, aMimeMsg) {
-    try {
-      Assert.equal(aMimeMsg.allUserAttachments.length, info.number);
-      async_driver();
-    } catch (e) {
-      do_throw(e);
-    }
-  });
-
-  yield false;
-}
-
-/* ===== Driver ===== */
-
-var tests = [
-  parameterizeTest(test_message_attachments, messageInfos),
-  parameterizeTest(test_bogus_messages, bogusMessageInfos),
-  parameterizeTest(test_have_attachments, messageHaveAttachmentsInfos),
-];
-
-var gInbox;
-
-function run_test() {
-  // Sanity check: figure out how many bytes the original text occupies in UTF-8 encoding
-  let converter = Cc[
-    "@mozilla.org/intl/scriptableunicodeconverter"
-  ].createInstance(Ci.nsIScriptableUnicodeConverter);
-  converter.charset = "UTF-8";
-  Assert.equal(
-    converter.ConvertFromUnicode(originalText).length,
-    originalTextByteCount
+async function bogus_messages(info) {
+  const synMsg = msgGen.makeMessage(info);
+  const synSet = new SyntheticMessageSet([synMsg]);
+  await messageInjection.addSetsToFolders(
+    [messageInjection.getInboxFolder()],
+    [synSet]
   );
 
-  // use mbox injection because the fake server chokes sometimes right now
-  gInbox = configure_message_injection({ mode: "local" });
-  async_run_tests(tests);
+  const msgHdr = synSet.getMsgHdr(0);
+
+  let promiseResolve;
+  const promise = new Promise(resolve => {
+    promiseResolve = resolve;
+  });
+  MsgHdrToMimeMessage(msgHdr, null, function (aMsgHdr, aMimeMsg) {
+    try {
+      check_bogus_parts(aMimeMsg, info);
+      promiseResolve();
+    } catch (e) {
+      do_throw(e);
+    }
+  });
+
+  await promise;
 }

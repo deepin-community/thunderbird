@@ -13,7 +13,7 @@ ADJUST_MOUSE_AND_SCREEN = False
 config = {
     # marionette options
     "marionette_address": "localhost:2828",
-    "test_manifest": "unit-tests.ini",
+    "test_manifest": "unit-tests.toml",
     "vcs_share_base": HG_SHARE_BASE_DIR,
     "default_actions": [
         "clobber",
@@ -22,13 +22,11 @@ config = {
         "install",
         "run-tests",
     ],
-    "download_symbols": "ondemand",
     "tooltool_cache": "/builds/worker/tooltool-cache",
     "suite_definitions": {
         "marionette_desktop": {
             "options": [
                 "-vv",
-                "--log-raw=%(raw_log_file)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-html=%(html_report_file)s",
                 "--binary=%(binary)s",

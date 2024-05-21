@@ -41,6 +41,23 @@ options-collapse-attrs-label = Tronca attributi DOM
 options-collapse-attrs-tooltip =
     .title = Tronca gli attributi troppo lunghi in Analisi pagina
 
+# The label for the checkbox option to enable the "drag to update" feature
+options-inspector-draggable-properties-label = Fai clic e trascina per modificare il valore di una dimensione
+options-inspector-draggable-properties-tooltip =
+    .title = Fai clic e trascina per modificare il valore di una dimensione per le regole in Analisi pagina.
+
+# The label for the checkbox option to enable simplified highlighting on page elements
+# within the inspector for users who enabled prefers-reduced-motion = reduce
+options-inspector-simplified-highlighters-label = Utilizza evidenziatori semplificati con prefers-reduced-motion
+options-inspector-simplified-highlighters-tooltip =
+    .title = Attiva evidenziatori semplificati quando prefers-reduced-motion è attivo. Verranno disegnate linee al posto di rettangoli con sfondo colorato intorno agli elementi selezionati per evitare lampeggiamenti.
+
+# The label for the checkbox option to make the Enter key move the focus to the next input
+# when editing a property name or value in the Inspector rules view
+options-inspector-rules-focus-next-on-enter-label = Passa al campo di input successivo con <kbd>Invio</kbd>
+options-inspector-rules-focus-next-on-enter-tooltip =
+    .title = Attivando questa opzione, quando si preme Invio durante la modifica di un selettore, del nome di una proprietà o di un valore, la selezione passerà al campo di input successivo.
+
 ## "Default Color Unit" options for the Inspector
 
 options-default-color-unit-label = Unità predefinita colori:
@@ -48,7 +65,18 @@ options-default-color-unit-authored = come l’originale
 options-default-color-unit-hex = esadecimale
 options-default-color-unit-hsl = HSL(A)
 options-default-color-unit-rgb = RGB(A)
+options-default-color-unit-hwb = HWB
 options-default-color-unit-name = nomi dei colori
+
+## Web Console section
+
+# The heading
+options-webconsole-label = Console web
+
+# The label for the checkbox that toggle whether the Split console is enabled
+options-webconsole-split-console-label = Attiva console divisa
+options-webconsole-split-console-tooltip =
+    .title = Apri la console divisa alla pressione del tasto Esc
 
 ## Style Editor section
 
@@ -117,21 +145,26 @@ options-enable-remote-label = Attiva debug remoto
 options-enable-remote-tooltip2 =
     .title = Attivando questa opzione è possibile effettuare il debug remoto di questa istanza del browser
 
+# The label for checkbox that enables F12 as a shortcut to open DevTools
+options-enable-f12-label = Utilizza il tasto F12 per aprire o chiudere DevTools
+options-enable-f12-tooltip =
+    .title = Attivando questa opzione il tasto F12 verrà associato all’apertura e chiusura degli strumenti di sviluppo
+
+# The label for checkbox that toggles custom formatters for objects
+options-enable-custom-formatters-label = Attiva formattatori personalizzati
+options-enable-custom-formatters-tooltip =
+    .title = Attivando questa opzione i siti web potranno definire formattatori personalizzati per oggetti DOM
+
 # The label for checkbox that toggles the service workers testing over HTTP on or off.
 options-enable-service-workers-http-label = Attiva service worker via HTTP (quando la cassetta degli attrezzi è aperta)
 options-enable-service-workers-http-tooltip =
     .title = Attivando questa opzione verranno attivati i service worker via HTTP in tutte le schede dove la cassetta degli attrezzi è aperta.
 
 # The label for the checkbox that toggles source maps in all tools.
-options-source-maps-label = Attiva mapping di origine
+options-source-maps-label = Attiva mappatura delle origini
 options-source-maps-tooltip =
-    .title = Attivando questa opzione il mapping di origine verrà utilizzato per i riferimenti al codice sorgente negli strumenti.
+    .title = Attivando questa opzione la mappatura delle origini verrà utilizzata per i riferimenti al codice sorgente negli strumenti.
 
 # The message shown for settings that trigger page reload
 options-context-triggers-page-refresh = * solo sessione corrente, ricarica la pagina
 
-# The label for the checkbox that toggles the display of the platform data in the
-# Profiler i.e. devtools.profiler.ui.show-platform-data a boolean preference in about:config
-options-show-platform-data-label = Visualizza dati piattaforma Gecko
-options-show-platform-data-tooltip =
-    .title = Attivando questa opzione i rapporti del Profiler JavaScript conterranno i simboli della piattaforma Gecko

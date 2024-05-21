@@ -19,7 +19,7 @@ function waitForBookmarkElements(expectedCount) {
   }
   return new Promise(resolve => {
     info("Waiting for bookmarks");
-    let mut = new MutationObserver(mutations => {
+    let mut = new MutationObserver(() => {
       info("Elements appeared");
       if (container.childElementCount == expectedCount) {
         resolve();
@@ -42,9 +42,7 @@ function getToolbarNodeForItemGuid(aItemGuid) {
 }
 
 function waitForLoad(browser, url) {
-  return BrowserTestUtils.browserLoaded(browser, false, url).then(() => {
-    return BrowserTestUtils.loadURI(browser, "about:blank");
-  });
+  return BrowserTestUtils.browserLoaded(browser, false, url);
 }
 
 function waitForNewTab(url, inBackground) {
@@ -67,7 +65,7 @@ function waitForNewTab(url, inBackground) {
   });
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await PlacesUtils.bookmarks.eraseEverything();
   let bookmarks = await Promise.all(
     TEST_PAGES.map((url, index) => {
@@ -96,15 +94,17 @@ add_task(async function setup() {
   registerCleanupFunction(async () => {
     gBookmarkElements = [];
 
-    if (wasCollapsed) {
-      await promiseSetToolbarVisibility(toolbar, false);
-    }
-
     await Promise.all(
       bookmarks.map(bookmark => {
         return PlacesUtils.bookmarks.remove(bookmark);
       })
     );
+
+    // Note: hiding the toolbar before removing the bookmarks triggers
+    // bug 1766284.
+    if (wasCollapsed) {
+      await promiseSetToolbarVisibility(toolbar, false);
+    }
   });
 });
 
@@ -160,7 +160,7 @@ add_task(async function clickWithPrefSet() {
 
   // With loadBookmarksInTabs, reuse current tab if blank
   for (let button of [0, 1]) {
-    await BrowserTestUtils.withNewTab({ gBrowser }, async tab => {
+    await BrowserTestUtils.withNewTab({ gBrowser }, async () => {
       promise = waitForLoad(gBrowser.selectedBrowser, TEST_PAGES[1]);
       EventUtils.synthesizeMouseAtCenter(gBookmarkElements[1], {
         button,
@@ -187,7 +187,7 @@ add_task(async function openInSameTabWithPrefSet() {
   await popupPromise;
 
   let openItem = document.getElementById("placesContext_open");
-  ok(BrowserTestUtils.is_visible(openItem), "Open item should be visible");
+  ok(BrowserTestUtils.isVisible(openItem), "Open item should be visible");
 
   info("Waiting for page to load");
   let promise = waitForLoad(gBrowser.selectedBrowser, TEST_PAGES[0]);

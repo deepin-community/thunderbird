@@ -3,11 +3,12 @@
 
 "use strict";
 
-var { SitePermissions } = ChromeUtils.import(
-  "resource:///modules/SitePermissions.jsm"
+const { PermissionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/PermissionTestUtils.sys.mjs"
 );
-const { PermissionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PermissionTestUtils.jsm"
+
+let useOldClearHistoryDialog = Services.prefs.getBoolPref(
+  "privacy.sanitize.useOldClearHistoryDialog"
 );
 
 async function testClearData(clearSiteData, clearCache) {
@@ -54,7 +55,7 @@ async function testClearData(clearSiteData, clearCache) {
   let initialSizeLabelValue = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [],
-    async function() {
+    async function () {
       let sizeLabel = content.document.getElementById("totalSiteDataSize");
       return sizeLabel.textContent;
     }
@@ -63,9 +64,10 @@ async function testClearData(clearSiteData, clearCache) {
   let doc = gBrowser.selectedBrowser.contentDocument;
   let clearSiteDataButton = doc.getElementById("clearSiteDataButton");
 
-  let dialogOpened = promiseLoadSubDialog(
-    "chrome://browser/content/preferences/dialogs/clearSiteData.xhtml"
-  );
+  let url = useOldClearHistoryDialog
+    ? "chrome://browser/content/preferences/dialogs/clearSiteData.xhtml"
+    : "chrome://browser/content/sanitize_v2.xhtml";
+  let dialogOpened = promiseLoadSubDialog(url);
   clearSiteDataButton.doCommand();
   let dialogWin = await dialogOpened;
 
@@ -76,10 +78,13 @@ async function testClearData(clearSiteData, clearCache) {
   // since we've had cache intermittently changing under our feet.
   let [, convertedCacheUnit] = DownloadUtils.convertByteUnits(cacheUsage);
 
-  let clearSiteDataCheckbox = dialogWin.document.getElementById(
-    "clearSiteData"
-  );
-  let clearCacheCheckbox = dialogWin.document.getElementById("clearCache");
+  let cookiesCheckboxId = useOldClearHistoryDialog
+    ? "clearSiteData"
+    : "cookiesAndStorage";
+  let cacheCheckboxId = useOldClearHistoryDialog ? "clearCache" : "cache";
+  let clearSiteDataCheckbox =
+    dialogWin.document.getElementById(cookiesCheckboxId);
+  let clearCacheCheckbox = dialogWin.document.getElementById(cacheCheckboxId);
   // The usage details are filled asynchronously, so we assert that they're present by
   // waiting for them to be filled in.
   await Promise.all([
@@ -101,13 +106,28 @@ async function testClearData(clearSiteData, clearCache) {
   clearSiteDataCheckbox.checked = clearSiteData;
   clearCacheCheckbox.checked = clearCache;
 
+  if (!useOldClearHistoryDialog) {
+    // The new clear history dialog has a seperate checkbox for site settings
+    let siteSettingsCheckbox =
+      dialogWin.document.getElementById("siteSettings");
+    siteSettingsCheckbox.checked = clearSiteData;
+    // select clear everything to match the old dialog boxes behaviour for this test
+    let timespanSelection = dialogWin.document.getElementById(
+      "sanitizeDurationChoice"
+    );
+    timespanSelection.value = 0;
+  }
   // Some additional promises/assertions to wait for
   // when deleting site data.
   let acceptPromise;
   let updatePromise;
   let cookiesClearedPromise;
   if (clearSiteData) {
-    acceptPromise = BrowserTestUtils.promiseAlertDialogOpen("accept");
+    // the new clear history dialog does not have a extra prompt
+    // to clear site data after clicking clear
+    if (useOldClearHistoryDialog) {
+      acceptPromise = BrowserTestUtils.promiseAlertDialogOpen("accept");
+    }
     updatePromise = promiseSiteDataManagerSitesUpdated();
     cookiesClearedPromise = promiseCookiesCleared();
   }
@@ -117,7 +137,7 @@ async function testClearData(clearSiteData, clearCache) {
   let clearButton = dialogWin.document
     .querySelector("dialog")
     .getButton("accept");
-  if (!clearSiteData && !clearCache) {
+  if (!clearSiteData && !clearCache && useOldClearHistoryDialog) {
     // Simulate user input on one of the checkboxes to trigger the event listener for
     // disabling the clearButton.
     clearCacheCheckbox.doCommand();
@@ -138,14 +158,14 @@ async function testClearData(clearSiteData, clearCache) {
 
   // For site data we display an extra warning dialog, make sure
   // to accept it.
-  if (clearSiteData) {
+  if (clearSiteData && useOldClearHistoryDialog) {
     await acceptPromise;
   }
 
   await dialogClosed;
 
   if (clearCache) {
-    TestUtils.waitForCondition(async function() {
+    TestUtils.waitForCondition(async function () {
       let usage = await SiteDataManager.getCacheSize();
       return usage == 0;
     }, "The cache usage should be removed");
@@ -162,7 +182,7 @@ async function testClearData(clearSiteData, clearCache) {
     await cookiesClearedPromise;
     await promiseServiceWorkersCleared();
 
-    TestUtils.waitForCondition(async function() {
+    TestUtils.waitForCondition(async function () {
       let usage = await SiteDataManager.getTotalUsage();
       return usage == 0;
     }, "The total usage should be removed");
@@ -178,7 +198,7 @@ async function testClearData(clearSiteData, clearCache) {
     await SpecialPowers.spawn(
       gBrowser.selectedBrowser,
       [{ initialSizeLabelValue }],
-      async function(opts) {
+      async function (opts) {
         let sizeLabel = content.document.getElementById("totalSiteDataSize");
         await ContentTaskUtils.waitForCondition(
           () => sizeLabel.textContent != opts.initialSizeLabelValue,
@@ -203,21 +223,21 @@ async function testClearData(clearSiteData, clearCache) {
 }
 
 // Test opening the "Clear All Data" dialog and cancelling.
-add_task(async function() {
+add_task(async function () {
   await testClearData(false, false);
 });
 
 // Test opening the "Clear All Data" dialog and removing all site data.
-add_task(async function() {
+add_task(async function () {
   await testClearData(true, false);
 });
 
 // Test opening the "Clear All Data" dialog and removing all cache.
-add_task(async function() {
+add_task(async function () {
   await testClearData(false, true);
 });
 
 // Test opening the "Clear All Data" dialog and removing everything.
-add_task(async function() {
+add_task(async function () {
   await testClearData(true, true);
 });

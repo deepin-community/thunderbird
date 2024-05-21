@@ -2,18 +2,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#subscriptionsDialog {
-  width: 40em;
-  height: 30em;
-}
-
-#contentPane {
-  margin: 10px;
+#feedSubscriptions {
+  min-width: 60em;
+  min-height: 40em;
 }
 
 #rssSubscriptionsList > treechildren::-moz-tree-image {
   width: 16px;
   height: 16px;
+  -moz-context-properties: fill, fill-opacity, stroke;
+  fill: color-mix(in srgb, var(--default) 20%, transparent);
+  stroke: var(--default);
+}
+
+#folderNameCol {
+  flex: 2 2;
 }
 
 #rssFeedInfoBox {
@@ -21,18 +24,18 @@
   margin: 4px;
   padding-top: 4px;
   background-color: rgba(0, 0, 0, 0.05);
-}
 
-:root[lwt-tree] #rssFeedInfoBox {
-  border-color: var(--sidebar-border-color);
-}
+  :root[lwt-tree] & {
+    border-color: var(--sidebar-border-color);
+  }
 
-:root[lwt-tree-brighttext] #rssFeedInfoBox {
-  background-color: rgba(255, 255, 255, 0.05);
+  :root[lwt-tree-brighttext] & {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
 }
 
 #autotagPrefix {
-  flex: 0;
+  max-width: 15em;
 }
 
 #statusContainerBox {

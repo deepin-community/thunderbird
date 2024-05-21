@@ -8,18 +8,18 @@
 /* import-globals-from downloads.js */
 /* import-globals-from privacy.js */
 /* import-globals-from chat.js */
+/* import-globals-from sync.js */
 /* import-globals-from findInPage.js */
 /* globals gCalendarPane */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { ExtensionSupport } = ChromeUtils.import(
-  "resource:///modules/ExtensionSupport.jsm"
+var { ExtensionSupport } = ChromeUtils.importESModule(
+  "resource:///modules/ExtensionSupport.sys.mjs"
 );
 var { calendarDeactivator } = ChromeUtils.import(
   "resource:///modules/calendar/calCalendarDeactivator.jsm"
@@ -28,15 +28,15 @@ var { calendarDeactivator } = ChromeUtils.import(
 var paneDeck = document.getElementById("paneDeck");
 var defaultPane = "paneGeneral";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AddonManager",
-  "resource://gre/modules/AddonManager.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+  UIDensity: "resource:///modules/UIDensity.sys.mjs",
+  UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
+});
 
-XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
-  const { SubDialogManager } = ChromeUtils.import(
-    "resource://gre/modules/SubDialog.jsm"
+ChromeUtils.defineLazyGetter(this, "gSubDialog", function () {
+  const { SubDialogManager } = ChromeUtils.importESModule(
+    "resource://gre/modules/SubDialog.sys.mjs"
   );
   return new SubDialogManager({
     dialogStack: document.getElementById("dialogStack"),
@@ -47,6 +47,8 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
         "chrome://messenger/skin/preferences/preferences.css",
       ],
       resizeCallback: ({ title, frame }) => {
+        UIFontSize.registerWindow(frame.contentWindow);
+
         // Search within main document and highlight matched keyword.
         gSearchResultsPane.searchWithinNode(title, gSearchResultsPane.query);
 
@@ -57,7 +59,7 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
         );
 
         // Creating tooltips for all the instances found
-        for (let node of gSearchResultsPane.listSearchTooltips) {
+        for (const node of gSearchResultsPane.listSearchTooltips) {
           if (!node.tooltipNode) {
             gSearchResultsPane.createSearchTooltip(
               node,
@@ -65,6 +67,17 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
             );
           }
         }
+
+        // Resize the dialog to fit the content with edited font size.
+        requestAnimationFrame(() => {
+          const dialogs = frame.ownerGlobal.gSubDialog._dialogs;
+          const dialog = dialogs.find(
+            d => d._frame.contentDocument == frame.contentDocument
+          );
+          if (dialog) {
+            UIFontSize.resizeSubDialog(dialog);
+          }
+        });
       },
     },
   });
@@ -76,7 +89,7 @@ var gCategoryInits = new Map();
 var gLastCategory = { category: undefined, subcategory: undefined };
 
 function init_category_if_required(category) {
-  let categoryInfo = gCategoryInits.get(category);
+  const categoryInfo = gCategoryInits.get(category);
   if (!categoryInfo) {
     throw new Error(
       "Unknown in-content prefs category! Can't init " + category
@@ -92,10 +105,10 @@ function register_module(categoryName, categoryObject) {
   gCategoryInits.set(categoryName, {
     inited: false,
     async init() {
-      let template = document.getElementById(categoryName);
+      const template = document.getElementById(categoryName);
       if (template) {
         // Replace the template element with the nodes inside of it.
-        let frag = template.content;
+        const frag = template.content;
         await document.l10n.translateFragment(frag);
 
         // Actually insert them into the DOM.
@@ -104,9 +117,9 @@ function register_module(categoryName, categoryObject) {
         document.l10n.resumeObserving();
 
         // Asks Preferences to update the attribute value of the entire
-        // document again (this can be simplified if we could seperate the
+        // document again (this can be simplified if we could separate the
         // preferences of each pane.)
-        Preferences.updateAllElements();
+        Preferences.queueUpdateOfAllElements();
       }
       categoryObject.init();
       this.inited = true;
@@ -115,12 +128,13 @@ function register_module(categoryName, categoryObject) {
 }
 
 function init() {
-  Preferences.forceEnableInstantApply();
-
   register_module("paneGeneral", gGeneralPane);
   register_module("paneCompose", gComposePane);
   register_module("panePrivacy", gPrivacyPane);
   register_module("paneCalendar", gCalendarPane);
+  if (AppConstants.NIGHTLY_BUILD) {
+    register_module("paneSync", gSyncPane);
+  }
   register_module("paneSearchResults", gSearchResultsPane);
   if (Services.prefs.getBoolPref("mail.chat.enabled")) {
     register_module("paneChat", gChatPane);
@@ -138,7 +152,7 @@ function init() {
   }
   gSearchResultsPane.init();
 
-  let categories = document.getElementById("categories");
+  const categories = document.getElementById("categories");
   categories.addEventListener("select", event => gotoPref(event.target.value));
 
   document.documentElement.addEventListener("keydown", event => {
@@ -150,17 +164,20 @@ function init() {
     }
   });
 
-  categories.addEventListener("mousedown", function() {
+  categories.addEventListener("mousedown", function () {
     this.removeAttribute("keyboard-navigation");
   });
 
   window.addEventListener("hashchange", onHashChange);
-  let lastSelected = Services.xulStore.getValue(
+  const lastSelected = Services.xulStore.getValue(
     "about:preferences",
     "paneDeck",
     "lastSelected"
   );
   gotoPref(lastSelected);
+
+  UIDensity.registerWindow(window);
+  UIFontSize.registerWindow(window);
 }
 
 function onHashChange() {
@@ -168,16 +185,16 @@ function onHashChange() {
 }
 
 async function gotoPref(aCategory) {
-  let categories = document.getElementById("categories");
+  const categories = document.getElementById("categories");
   const kDefaultCategoryInternalName = "paneGeneral";
   const kDefaultCategory = "general";
-  let hash = document.location.hash;
+  const hash = document.location.hash;
 
   let category = aCategory || hash.substr(1) || kDefaultCategoryInternalName;
-  let breakIndex = category.indexOf("-");
+  const breakIndex = category.indexOf("-");
   // Subcategories allow for selecting smaller sections of the preferences
   // until proper search support is enabled (bug 1353954).
-  let subcategory = breakIndex != -1 && category.substring(breakIndex + 1);
+  const subcategory = breakIndex != -1 && category.substring(breakIndex + 1);
   if (subcategory) {
     category = category.substring(0, breakIndex);
   }
@@ -205,7 +222,7 @@ async function gotoPref(aCategory) {
   let item;
   if (category != "paneSearchResults") {
     // Hide second level headers in normal view
-    for (let element of document.querySelectorAll(".search-header")) {
+    for (const element of document.querySelectorAll(".search-header")) {
       element.hidden = true;
     }
 
@@ -221,7 +238,7 @@ async function gotoPref(aCategory) {
     category != kDefaultCategoryInternalName ||
     subcategory
   ) {
-    let friendlyName = internalPrefCategoryNameToFriendlyName(category);
+    const friendlyName = internalPrefCategoryNameToFriendlyName(category);
     document.location.hash = friendlyName;
   }
   // Need to set the gLastCategory before setting categories.selectedItem since
@@ -238,7 +255,7 @@ async function gotoPref(aCategory) {
   try {
     await init_category_if_required(category);
   } catch (ex) {
-    Cu.reportError(
+    console.error(
       new Error(
         "Error initializing preference category " + category + ": " + ex
       )
@@ -257,7 +274,7 @@ async function gotoPref(aCategory) {
 
   search(category, "data-category");
 
-  let mainContent = document.querySelector(".main-content");
+  const mainContent = document.querySelector(".main-content");
   mainContent.scrollTop = 0;
 
   spotlight(subcategory, category);
@@ -282,22 +299,22 @@ function friendlyPrefCategoryNameToInternalName(aName) {
 
 // This function is duplicated inside of utilityOverlay.js's openPreferences.
 function internalPrefCategoryNameToFriendlyName(aName) {
-  return (aName || "").replace(/^pane./, function(toReplace) {
+  return (aName || "").replace(/^pane./, function (toReplace) {
     return toReplace[4].toLowerCase();
   });
 }
 
 function search(aQuery, aAttribute) {
-  let paneDeck = document.getElementById("paneDeck");
-  let elements = paneDeck.children;
-  for (let element of elements) {
+  const paneDeck = document.getElementById("paneDeck");
+  const elements = paneDeck.children;
+  for (const element of elements) {
     // If the "data-hidden-from-search" is "true", the
     // element will not get considered during search.
     if (
       element.getAttribute("data-hidden-from-search") != "true" ||
       element.getAttribute("data-subpanel") == "true"
     ) {
-      let attributeValue = element.getAttribute(aAttribute);
+      const attributeValue = element.getAttribute(aAttribute);
       if (attributeValue == aQuery) {
         element.hidden = false;
       } else {
@@ -312,9 +329,9 @@ function search(aQuery, aAttribute) {
     element.classList.remove("visually-hidden");
   }
 
-  let keysets = paneDeck.getElementsByTagName("keyset");
-  for (let element of keysets) {
-    let attributeValue = element.getAttribute(aAttribute);
+  const keysets = paneDeck.getElementsByTagName("keyset");
+  for (const element of keysets) {
+    const attributeValue = element.getAttribute(aAttribute);
     if (attributeValue == aQuery) {
       element.removeAttribute("disabled");
     } else {
@@ -324,9 +341,9 @@ function search(aQuery, aAttribute) {
 }
 
 async function spotlight(subcategory, category) {
-  let highlightedElements = document.querySelectorAll(".spotlight");
+  const highlightedElements = document.querySelectorAll(".spotlight");
   if (highlightedElements.length) {
-    for (let element of highlightedElements) {
+    for (const element of highlightedElements) {
       element.classList.remove("spotlight");
     }
   }
@@ -336,11 +353,11 @@ async function spotlight(subcategory, category) {
 }
 
 async function scrollAndHighlight(subcategory, category) {
-  let element = document.querySelector(`[data-subcategory="${subcategory}"]`);
+  const element = document.querySelector(`[data-subcategory="${subcategory}"]`);
   if (!element) {
     return;
   }
-  let header = getClosestDisplayedHeader(element);
+  const header = getClosestDisplayedHeader(element);
 
   scrollContentTo(header);
   element.classList.add("spotlight");
@@ -350,11 +367,11 @@ async function scrollAndHighlight(subcategory, category) {
  * If there is no visible second level header it will return first level header,
  * otherwise return second level header.
  *
- * @returns {Element}  The closest displayed header.
+ * @returns {Element} The closest displayed header.
  */
 function getClosestDisplayedHeader(element) {
   let header = element.closest("groupbox");
-  let searchHeader = header.querySelector(".search-header");
+  const searchHeader = header.querySelector(".search-header");
   if (
     searchHeader &&
     searchHeader.hidden &&
@@ -366,10 +383,10 @@ function getClosestDisplayedHeader(element) {
 }
 
 function scrollContentTo(element) {
-  const STICKY_CONTAINER_HEIGHT = document.querySelector(".sticky-container")
-    .clientHeight;
-  let mainContent = document.querySelector(".main-content");
-  let top = element.getBoundingClientRect().top - STICKY_CONTAINER_HEIGHT;
+  const STICKY_CONTAINER_HEIGHT =
+    document.querySelector(".sticky-container").clientHeight;
+  const mainContent = document.querySelector(".main-content");
+  const top = element.getBoundingClientRect().top - STICKY_CONTAINER_HEIGHT;
   mainContent.scroll({
     top,
     behavior: "smooth",
@@ -401,7 +418,7 @@ function selectPrefPane(paneID, scrollPaneTo, otherArgs) {
  * @param subdialogID  ID of button to activate, opening a subdialog
  */
 function showTab(scrollPaneTo, subdialogID) {
-  setTimeout(function() {
+  setTimeout(function () {
     let scrollTarget = document.getElementById(scrollPaneTo);
     if (scrollTarget.closest("groupbox")) {
       scrollTarget = scrollTarget.closest("groupbox");
@@ -422,12 +439,15 @@ function showTab(scrollPaneTo, subdialogID) {
  * to be installed, so if it isn't installed remove it from availableLocales.
  */
 async function getAvailableLocales() {
-  let { availableLocales, defaultLocale, lastFallbackLocale } = Services.locale;
+  const { availableLocales, defaultLocale, lastFallbackLocale } =
+    Services.locale;
   // If defaultLocale isn't lastFallbackLocale, then we still need the langpack
   // for lastFallbackLocale for it to be useful.
   if (defaultLocale != lastFallbackLocale) {
-    let lastFallbackId = `langpack-${lastFallbackLocale}@thunderbird.mozilla.org`;
-    let lastFallbackInstalled = await AddonManager.getAddonByID(lastFallbackId);
+    const lastFallbackId = `langpack-${lastFallbackLocale}@thunderbird.mozilla.org`;
+    const lastFallbackInstalled = await AddonManager.getAddonByID(
+      lastFallbackId
+    );
     if (!lastFallbackInstalled) {
       return availableLocales.filter(locale => locale != lastFallbackLocale);
     }
