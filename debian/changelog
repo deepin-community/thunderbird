@@ -1,3 +1,10 @@
+thunderbird (1:125.0-1) unstable; urgency=medium
+
+  * Bump Rust requirement to 1.74.
+  * Drop upstreamed 0005-comm-botan-add-loongarch64-to-archinfo.patch.
+
+ -- Mingcong Bai <baimingcong@uniontech.com>  Mon, 03 Jun 2024 13:52:02 +0800
+
 thunderbird (1:125.0~b3-1deepin1) unstable; urgency=medium
 
   * Add support for LoongArch.
