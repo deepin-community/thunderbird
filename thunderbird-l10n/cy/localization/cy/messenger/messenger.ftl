@@ -213,8 +213,8 @@ context-menu-archive =
     .aria-label = Archifo
     .tooltiptext = Archifo
 context-menu-mark-junk =
-    .aria-label = Marcio fel Sothach
-    .tooltiptext = Marcio fel Sothach
+    .aria-label = Marcio fel Sbam
+    .tooltiptext = Marcio fel Sbam
 mail-context-menu-open =
     .label = Agor
     .accesskey = A
@@ -224,6 +224,25 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Anfon Ymlaen ac Ailgyfeirio
     .accesskey = Y
+mail-context-menu-forward-forward =
+    .label = Ymlaen
+    .accesskey = Y
+mail-context-menu-forward-inline =
+    .label = Mewnlin
+    .accesskey = M
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [zero] Fel Atodiadau
+            [one] Fel Atodiad
+            [two] Fel Atodiadau
+            [few] Fel Atodiadau
+            [many] Fel Atodiadau
+           *[other] Fel Atodiadau
+        }
+    .accesskey = F
 mail-context-menu-organize =
     .label = Trefnu
     .accesskey = T

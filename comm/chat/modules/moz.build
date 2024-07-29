@@ -3,6 +3,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+with Files("OTR*sys.mjs"):
+    BUG_COMPONENT = ("Chat Core", "Security: OTR")
+
 XPCSHELL_TESTS_MANIFESTS += ["test/xpcshell.ini"]
 
 EXTRA_JS_MODULES += [
@@ -18,6 +21,7 @@ EXTRA_JS_MODULES += [
     "jsProtoHelper.sys.mjs",
     "NormalizedMap.sys.mjs",
     "OTR.sys.mjs",
+    "OTR.worker.mjs",
     "OTRLib.sys.mjs",
     "OTRUI.sys.mjs",
     "socket.sys.mjs",

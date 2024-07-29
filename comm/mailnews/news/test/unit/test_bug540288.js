@@ -16,7 +16,7 @@ var streamListener = {
   ]),
 
   // nsIRequestObserver
-  onStartRequest(aRequest) {},
+  onStartRequest() {},
   onStopRequest(aRequest, aStatusCode) {
     Assert.equal(aStatusCode, 0);
 
@@ -73,8 +73,6 @@ function run_test() {
         onCacheEntryAvailable(cacheEntry, isNew, status) {
           Assert.equal(status, Cr.NS_OK);
 
-          cacheEntry.markValid();
-
           // Get the folder and new mail
           var folder = localserver.rootFolder.getChildNamed(
             "test.subscribe.simple"
@@ -98,7 +96,15 @@ function run_test() {
 
           Cc["@mozilla.org/messenger/messageservice;1?type=news"]
             .getService(Ci.nsIMsgMessageService)
-            .loadMessage(messageUri, streamListener, null, null, false);
+            .streamMessage(
+              messageUri,
+              streamListener,
+              null,
+              null,
+              false,
+              "",
+              false
+            );
 
           // Get the server to run
           server.performTest();

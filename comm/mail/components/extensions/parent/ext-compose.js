@@ -5,22 +5,19 @@
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-
-XPCOMUtils.defineLazyGlobalGetters(this, ["File", "IOUtils", "PathUtils"]);
-
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-
 var { MailUtils } = ChromeUtils.importESModule(
   "resource:///modules/MailUtils.sys.mjs"
 );
-const { MsgUtils } = ChromeUtils.import(
-  "resource:///modules/MimeMessageUtils.jsm"
+var { MsgUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MimeMessageUtils.sys.mjs"
 );
-const parserUtils = Cc["@mozilla.org/parserutils;1"].getService(
+
+XPCOMUtils.defineLazyGlobalGetters(this, ["File", "IOUtils", "PathUtils"]);
+
+var parserUtils = Cc["@mozilla.org/parserutils;1"].getService(
   Ci.nsIParserUtils
 );
 
@@ -75,15 +72,18 @@ async function parseComposeRecipientList(
     if (!("addressBookCache" in this)) {
       await extensions.asyncLoadModule("addressBook");
     }
+
+    // Manifest V2 uses `id`, Manifest V3 uses `nodeId`.
+    const nodeId = recipient.id || recipient.nodeId;
     if (recipient.type == "contact") {
-      const contactNode = this.addressBookCache.findContactById(recipient.id);
+      const contactNode = this.addressBookCache.findContactById(nodeId);
 
       if (
         requireSingleValidEmail &&
         !isValidAddress(contactNode.item.primaryEmail)
       ) {
         throw new ExtensionError(
-          `Contact does not have a valid email address: ${recipient.id}`
+          `Contact does not have a valid email address: ${nodeId}`
         );
       }
       recipients.push(
@@ -97,9 +97,7 @@ async function parseComposeRecipientList(
         throw new ExtensionError("Mailing list not allowed.");
       }
 
-      const mailingListNode = this.addressBookCache.findMailingListById(
-        recipient.id
-      );
+      const mailingListNode = this.addressBookCache.findMailingListById(nodeId);
       recipients.push(
         MailServices.headerParser.makeMimeAddress(
           mailingListNode.item.dirName,
@@ -424,23 +422,27 @@ async function getComposeDetails(composeWindow, extension) {
     overrideDefaultFcc = true;
   }
   let overrideDefaultFccFolder = "";
-  if (overrideDefaultFcc && !composeFields.fcc.startsWith("nocopy://")) {
+  if (
+    extension.hasPermission("accountsRead") &&
+    overrideDefaultFcc &&
+    !composeFields.fcc.startsWith("nocopy://")
+  ) {
     const folder = MailUtils.getExistingFolder(composeFields.fcc);
     if (folder) {
       overrideDefaultFccFolder = extension.folderManager.convert(folder);
     }
   }
   let additionalFccFolder = "";
-  if (composeFields.fcc2 && !composeFields.fcc2.startsWith("nocopy://")) {
+  if (
+    extension.hasPermission("accountsRead") &&
+    composeFields.fcc2 &&
+    !composeFields.fcc2.startsWith("nocopy://")
+  ) {
     const folder = MailUtils.getExistingFolder(composeFields.fcc2);
     if (folder) {
       additionalFccFolder = extension.folderManager.convert(folder);
     }
   }
-
-  const deliveryFormat = composeWindow.IsHTMLEditor()
-    ? deliveryFormats.find(f => f.id == composeFields.deliveryFormat).value
-    : null;
 
   const body = trimContent(
     editor.outputToString("text/html", Ci.nsIDocumentEncoder.OutputRaw)
@@ -459,19 +461,12 @@ async function getComposeDetails(composeWindow, extension) {
       plainTextBody = plainTextBody.slice(0, -1);
     }
   }
-
   const details = {
     from: parseEncodedAddrHeader(composeFields.from, false).shift(),
     to: parseEncodedAddrHeader(composeFields.to, false),
     cc: parseEncodedAddrHeader(composeFields.cc, false),
     bcc: parseEncodedAddrHeader(composeFields.bcc, false),
-    overrideDefaultFcc,
-    overrideDefaultFccFolder: overrideDefaultFcc
-      ? overrideDefaultFccFolder
-      : null,
-    additionalFccFolder,
     type,
-    relatedMessageId,
     replyTo: parseEncodedAddrHeader(composeFields.replyTo, false),
     followupTo: parseEncodedAddrHeader(composeFields.followupTo, false),
     newsgroups: composeFields.newsgroups
@@ -479,13 +474,13 @@ async function getComposeDetails(composeWindow, extension) {
       : [],
     subject: composeFields.subject,
     isPlainText: !composeWindow.IsHTMLEditor(),
-    deliveryFormat,
     body,
     plainTextBody,
     customHeaders,
     priority: composeFields.priority.toLowerCase() || "normal",
     returnReceipt: composeFields.returnReceipt,
     deliveryStatusNotification: composeFields.DSN,
+    attachPublicPGPKey: composeWindow.gAttachMyPublicPGPKey,
     attachVCard: composeFields.attachVCard,
     isModified:
       composeWindow.gContentChanged ||
@@ -493,13 +488,78 @@ async function getComposeDetails(composeWindow, extension) {
       composeWindow.gReceiptOptionChanged ||
       composeWindow.gDSNOptionChanged,
   };
+
+  // Handle encryption. Check the actual state of the composer, which could be
+  // invalid, but required by Thunderbird's security engineer. If the encryption
+  // button has been removed, fallback to gSendEncrypted. Both should be identical,
+  // but the API should always use the actual button state, if available.
+  const encButton = composeWindow.document.getElementById("button-encryption");
+  const encryptionEnabled = encButton
+    ? !!encButton.getAttribute("checked")
+    : composeWindow.gSendEncrypted;
+  const isPgpConfigured = composeWindow.isPgpConfigured();
+  const isSmimeSigningConfigured = composeWindow.isSmimeSigningConfigured();
+  const isSmimeEncryptionConfigured =
+    composeWindow.isSmimeEncryptionConfigured();
+
+  if (
+    encryptionEnabled ||
+    isPgpConfigured ||
+    isSmimeSigningConfigured ||
+    isSmimeEncryptionConfigured
+  ) {
+    const selectedTechnologyIsPGP = composeWindow.gSelectedTechnologyIsPGP;
+    if (selectedTechnologyIsPGP) {
+      details.selectedEncryptionTechnology = {
+        name: "OpenPGP",
+        encryptBody: composeWindow.gSendEncrypted,
+        encryptSubject: composeWindow.gEncryptSubject,
+        signMessage: composeWindow.gSendSigned,
+      };
+    } else {
+      details.selectedEncryptionTechnology = {
+        name: "S/MIME",
+        encryptBody: composeWindow.gSendEncrypted,
+        signMessage: composeWindow.gSendSigned,
+      };
+    }
+  }
+
+  const deliveryFormat = composeWindow.IsHTMLEditor()
+    ? deliveryFormats.find(f => f.id == composeFields.deliveryFormat).value
+    : null;
+  if (deliveryFormat) {
+    details.deliveryFormat = deliveryFormat;
+  }
+
+  if (relatedMessageId) {
+    details.relatedMessageId = relatedMessageId;
+  }
+
   if (extension.hasPermission("accountsRead")) {
+    // overrideDefaultFcc is no longer needed in MV3.
+    if (extension.manifest.manifest_version < 3) {
+      details.additionalFccFolder = additionalFccFolder;
+      details.overrideDefaultFcc = overrideDefaultFcc;
+      if (overrideDefaultFcc) {
+        details.overrideDefaultFccFolder = overrideDefaultFccFolder;
+      }
+    } else {
+      if (additionalFccFolder?.id) {
+        details.additionalFccFolderId = additionalFccFolder.id;
+      }
+      if (overrideDefaultFcc) {
+        // Either a valid folder or disabled.
+        details.overrideDefaultFccFolderId = overrideDefaultFccFolder.id || "";
+      }
+    }
+
     details.identityId = composeWindow.getCurrentIdentityKey();
   }
   return details;
 }
 
-async function setFromField(composeWindow, details, extension) {
+async function setFromField(composeWindow, details) {
   if (!details || details.from == null) {
     return;
   }
@@ -533,7 +593,8 @@ async function setFromField(composeWindow, details, extension) {
 
 /**
  * Updates the compose details of the specified compose window, overwriting any
- * property given in the details object.
+ * property given in the details object. Modified settings will be treated as
+ * user initiated, and turn off further automatic changes on these settings.
  *
  * @param {DOMWindow} composeWindow
  * @param {ComposeDetails} details - compose details to update the composer with
@@ -541,6 +602,7 @@ async function setFromField(composeWindow, details, extension) {
  *
  * @see mail/components/extensions/schemas/compose.json
  */
+/* eslint-disable complexity */
 async function setComposeDetails(composeWindow, details, extension) {
   const activeElement = composeWindow.document.activeElement;
   const composeFields = composeWindow.gMsgCompose.compFields;
@@ -591,7 +653,7 @@ async function setComposeDetails(composeWindow, details, extension) {
       composeWindow.document.getElementById("msgIdentity");
     identityElement.selectedItem = [
       ...identityElement.childNodes[0].childNodes,
-    ].find(e => e.getAttribute("identitykey") == details.identityId);
+    ].find(e => e.getAttribute("identitykey") === details.identityId);
     composeWindow.LoadIdentity(false);
   }
   for (const field of ["to", "cc", "bcc", "replyTo", "followupTo"]) {
@@ -607,28 +669,56 @@ async function setComposeDetails(composeWindow, details, extension) {
   await setFromField(composeWindow, details, extension);
 
   // Set file carbon copy values.
-  if (details.overrideDefaultFcc === false) {
-    composeFields.fcc = "";
-  } else if (details.overrideDefaultFccFolder != null) {
-    // Override identity fcc with enforced value.
-    if (details.overrideDefaultFccFolder) {
-      const { folder } = getFolder(details.overrideDefaultFccFolder);
-      composeFields.fcc = folder.URI;
-    } else {
-      composeFields.fcc = "nocopy://";
-    }
-  } else if (details.overrideDefaultFcc === true && composeFields.fcc == "") {
-    throw new ExtensionError(
-      `Setting overrideDefaultFcc to true requires setting overrideDefaultFccFolder as well`
-    );
-  }
+  if (extension.hasPermission("accountsRead")) {
+    if (extension.manifest.manifest_version < 3) {
+      if (details.overrideDefaultFcc === false) {
+        composeFields.fcc = "";
+      } else if (details.overrideDefaultFccFolder != null) {
+        // Override identity fcc with enforced value.
+        if (details.overrideDefaultFccFolder) {
+          const { folder } = getFolder(details.overrideDefaultFccFolder);
+          composeFields.fcc = folder.URI;
+        } else {
+          composeFields.fcc = "nocopy://";
+        }
+      } else if (
+        details.overrideDefaultFcc === true &&
+        composeFields.fcc == ""
+      ) {
+        throw new ExtensionError(
+          `Setting overrideDefaultFcc to true requires setting overrideDefaultFccFolder as well`
+        );
+      }
 
-  if (details.additionalFccFolder != null) {
-    if (details.additionalFccFolder) {
-      const { folder } = getFolder(details.additionalFccFolder);
-      composeFields.fcc2 = folder.URI;
+      if (details.additionalFccFolder != null) {
+        if (details.additionalFccFolder) {
+          const { folder } = getFolder(details.additionalFccFolder);
+          composeFields.fcc2 = folder.URI;
+        } else {
+          composeFields.fcc2 = "";
+        }
+      }
     } else {
-      composeFields.fcc2 = "";
+      // We need === here to differentiate between null and undefined.
+      if (details.overrideDefaultFccFolderId === null) {
+        composeFields.fcc = "";
+      } else if (details.overrideDefaultFccFolderId == "") {
+        composeFields.fcc = "nocopy://";
+      } else if (details.overrideDefaultFccFolderId) {
+        // Override identity fcc with enforced value.
+        const { folder } = getFolder(details.overrideDefaultFccFolderId);
+        composeFields.fcc = folder.URI;
+      }
+
+      if (
+        details.additionalFccFolderId === null ||
+        details.additionalFccFolderId == ""
+      ) {
+        composeFields.fcc2 = "";
+      } else if (details.additionalFccFolderId) {
+        const { folder } = getFolder(details.additionalFccFolderId);
+        composeFields.fcc2 = folder.URI;
+      }
     }
   }
 
@@ -721,9 +811,24 @@ async function setComposeDetails(composeWindow, details, extension) {
     composeWindow.initSendFormatMenu();
   }
 
-  if (details.attachVCard != null) {
+  if (
+    details.attachVCard != null &&
+    composeFields.attachVCard != details.attachVCard
+  ) {
     composeFields.attachVCard = details.attachVCard;
     composeWindow.gAttachVCardOptionChanged = true;
+  }
+
+  if (
+    details.attachPublicPGPKey != null &&
+    composeWindow.gAttachMyPublicPGPKey != details.attachPublicPGPKey &&
+    composeWindow.isPgpConfigured()
+  ) {
+    // Cannot use toggleAttachMyPublicKey() function, as that acts on the clicked
+    // menu item, but also does not toggle all menuitens (the others are updated
+    // on show). Just set the flags.
+    composeWindow.gAttachMyPublicPGPKey = details.attachPublicPGPKey;
+    composeWindow.gUserTouchedAttachMyPubKey = true;
   }
 
   if (details.isModified != null) {
@@ -744,6 +849,79 @@ async function setComposeDetails(composeWindow, details, extension) {
       composeWindow.gMsgCompose.bodyModified = false;
       composeWindow.gReceiptOptionChanged = false;
       composeWindow.gDSNOptionChanged = false;
+    }
+  }
+
+  // Handle encryption.
+  if (details.selectedEncryptionTechnology?.name) {
+    const isPgpConfigured = composeWindow.isPgpConfigured();
+    const isSmimeSigningConfigured = composeWindow.isSmimeSigningConfigured();
+    const isSmimeEncryptionConfigured =
+      composeWindow.isSmimeEncryptionConfigured();
+
+    const technology = details.selectedEncryptionTechnology;
+    const wantsPGP = technology.name == "OpenPGP";
+    const wantsSMIME = technology.name == "S/MIME";
+
+    // We cannot switch to an unsupported technology.
+    if (
+      (!isPgpConfigured && wantsPGP) ||
+      (!isSmimeEncryptionConfigured && !isSmimeSigningConfigured && wantsSMIME)
+    ) {
+      throw new ExtensionError(
+        `The current identity does not support ${technology.name}`
+      );
+    }
+
+    // Cannot enable subject encryption but not encryption in general.
+    if (wantsPGP && technology.encryptSubject && !technology.encryptBody) {
+      throw new ExtensionError(
+        `Cannot encrypt the subject without also encrypting the body using ${technology.name}`
+      );
+    }
+
+    // Abort if S/MIME encryption is requested, but not possible.
+    if (wantsSMIME && technology.encryptBody && !isSmimeEncryptionConfigured) {
+      throw new ExtensionError(
+        `The current identity does not support encryption using ${technology.name}`
+      );
+    }
+
+    // Abort if S/MIME signing is requested, but not possible.
+    if (wantsSMIME && technology.signMessage && !isSmimeSigningConfigured) {
+      throw new ExtensionError(
+        `The current identity does not support signing using ${technology.name}`
+      );
+    }
+
+    // If an add-on sets encryption settings, we need to make sure they are not
+    // altered (asyncrounously) by defaults. This is solved by setting them as
+    // touched, before using onEncryptionChoice() to toggle the values (if needed).
+    composeWindow.gUserTouchedSendEncrypted = true;
+    composeWindow.gUserTouchedSendSigned = true;
+    if (wantsPGP) {
+      composeWindow.gUserTouchedEncryptSubject = true;
+    }
+
+    // Toggle technology, if needed.
+    if (composeWindow.gSelectedTechnologyIsPGP != wantsPGP) {
+      composeWindow.onEncryptionChoice(wantsPGP ? "OpenPGP" : "SMIME");
+    }
+    // Toggle encryption, if needed.
+    if (composeWindow.gSendEncrypted != technology.encryptBody) {
+      composeWindow.onEncryptionChoice("enc");
+    }
+    // Toggle subject encryption, if needed. We already prevented encryptSubject
+    // being enabled while encryptBody is disabled.
+    if (
+      wantsPGP &&
+      composeWindow.gEncryptSubject != technology.encryptSubject
+    ) {
+      composeWindow.onEncryptionChoice("encsub");
+    }
+    // Toggle signing, if needed.
+    if (composeWindow.gSendSigned != technology.signMessage) {
+      composeWindow.onEncryptionChoice("sig");
     }
   }
 
@@ -883,7 +1061,7 @@ class MsgOperationObserver {
     MailServices.mfn.addListener(this, MailServices.mfn.msgsClassified);
     this.composeWindow.addEventListener(
       "compose-prepare-message-success",
-      event => this.preparedCallbacks.resolve(),
+      () => this.preparedCallbacks.resolve(),
       { once: true }
     );
     this.composeWindow.addEventListener(
@@ -894,7 +1072,7 @@ class MsgOperationObserver {
   }
 
   // Observer for mail:composeSendProgressStop.
-  observe(subject, topic, data) {
+  observe(subject) {
     const { composeWindow } = subject.wrappedJSObject;
     if (composeWindow == this.composeWindow) {
       this.deliveryCallbacks.resolve();
@@ -902,10 +1080,10 @@ class MsgOperationObserver {
   }
 
   // nsIMsgSendListener
-  onStartSending(msgID, msgSize) {}
-  onProgress(msgID, progress, progressMax) {}
-  onStatus(msgID, msg) {}
-  onStopSending(msgID, status, msg, returnFile) {
+  onStartSending() {}
+  onProgress() {}
+  onStatus() {}
+  onStopSending(msgID, status) {
     if (!Components.isSuccessCode(status)) {
       this.deliveryCallbacks.reject(
         new ExtensionError("Message operation failed")
@@ -923,11 +1101,11 @@ class MsgOperationObserver {
     const headerMessageId = msgID.replace(/^<|>$/g, "");
     this.savedMessages.push(JSON.stringify({ headerMessageId, folderURI }));
   }
-  onSendNotPerformed(msgID, status) {}
-  onTransportSecurityError(msgID, status, secInfo, location) {}
+  onSendNotPerformed() {}
+  onTransportSecurityError() {}
 
   // Implementation for nsIMsgFolderListener::msgsClassified
-  msgsClassified(msgs, junkProcessed, traitProcessed) {
+  msgsClassified(msgs) {
     // Collect all msgHdrs added to folders during the current message operation.
     for (const msgHdr of msgs) {
       const cachedMsgHdr = new CachedMsgHeader(msgHdr);
@@ -1261,7 +1439,7 @@ this.compose = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onBeforeSend({ context, fire }) {
+    onBeforeSend({ fire }) {
       const { extension } = this;
       const { tabManager, windowManager } = extension;
       const listener = {
@@ -1283,13 +1461,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           beforeSendEventTracker.removeListener(listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onAfterSend({ context, fire }) {
+    onAfterSend({ fire }) {
       const { extension } = this;
       const { tabManager, windowManager } = extension;
       const listener = {
@@ -1325,17 +1502,16 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           afterSaveSendEventTracker.removeListener(listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onAfterSave({ context, fire }) {
+    onAfterSave({ fire }) {
       const { extension } = this;
       const { tabManager, windowManager } = extension;
       const listener = {
-        async onSuccess(window, mode, messages, headerMessageId) {
+        async onSuccess(window, mode, messages) {
           if (fire.wakeup) {
             await fire.wakeup();
           }
@@ -1365,13 +1541,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           afterSaveSendEventTracker.removeListener(listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onAttachmentAdded({ context, fire }) {
+    onAttachmentAdded({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event) {
@@ -1391,13 +1566,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           windowTracker.removeListener("attachments-added", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onAttachmentRemoved({ context, fire }) {
+    onAttachmentRemoved({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event) {
@@ -1421,13 +1595,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           windowTracker.removeListener("attachments-removed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onIdentityChanged({ context, fire }) {
+    onIdentityChanged({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event) {
@@ -1444,13 +1617,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           windowTracker.removeListener("compose-from-changed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onComposeStateChanged({ context, fire }) {
+    onComposeStateChanged({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event) {
@@ -1467,13 +1639,12 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           windowTracker.removeListener("compose-state-changed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onActiveDictionariesChanged({ context, fire }) {
+    onActiveDictionariesChanged({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event) {
@@ -1497,9 +1668,8 @@ this.compose = class extends ExtensionAPIPersistent {
         unregister: () => {
           windowTracker.removeListener("active-dictionaries-changed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },

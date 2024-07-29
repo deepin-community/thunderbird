@@ -5,17 +5,16 @@
 /**
  * This tests various commands on messages. This is primarily for commands
  * that can't be tested with xpcshell tests because they're handling in the
- * front end - which is why Archive is the only command currently tested.
+ * front end.
  */
 
 "use strict";
 
 var { promise_content_tab_load } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 var {
   add_message_sets_to_folders,
-  archive_selected_messages,
   assert_selected_and_displayed,
   be_in_folder,
   close_popup,
@@ -23,33 +22,30 @@ var {
   create_folder,
   create_thread,
   get_about_3pane,
-  get_about_message,
+  get_special_folder,
   make_display_threaded,
-  make_display_unthreaded,
   make_message_sets_in_folders,
   press_delete,
   right_click_on_row,
   select_click_row,
-  select_control_click_row,
   select_shift_click_row,
   wait_for_popup_to_open,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { MailUtils } = ChromeUtils.importESModule(
   "resource:///modules/MailUtils.sys.mjs"
 );
 
 var unreadFolder, shiftDeleteFolder, threadDeleteFolder;
-var archiveSrcFolder = null;
-
+var trashFolder, newsgroupFolder;
 var tagArray;
 var gAutoRead;
 
@@ -63,7 +59,15 @@ add_setup(async function () {
   unreadFolder = await create_folder("UnreadFolder");
   shiftDeleteFolder = await create_folder("ShiftDeleteFolder");
   threadDeleteFolder = await create_folder("ThreadDeleteFolder");
-  archiveSrcFolder = await create_folder("ArchiveSrc");
+  trashFolder = await get_special_folder(
+    Ci.nsMsgFolderFlags.Trash,
+    true,
+    null,
+    false
+  );
+  newsgroupFolder = await create_folder("NewsgroupFolder", [
+    Ci.nsMsgFolderFlags.Newsgroup,
+  ]);
 
   await make_message_sets_in_folders([unreadFolder], [{ count: 2 }]);
   await make_message_sets_in_folders([shiftDeleteFolder], [{ count: 3 }]);
@@ -71,13 +75,8 @@ add_setup(async function () {
     [threadDeleteFolder],
     [create_thread(3), create_thread(3), create_thread(3)]
   );
-
-  // Create messages from 20 different months, which will mean 2 different
-  // years as well.
-  await make_message_sets_in_folders(
-    [archiveSrcFolder],
-    [{ count: 20, age_incr: { weeks: 5 } }]
-  );
+  await make_message_sets_in_folders([trashFolder], [{ count: 3 }]);
+  await make_message_sets_in_folders([newsgroupFolder], [{ count: 3 }]);
 
   tagArray = MailServices.tags.getAllTags();
 });
@@ -141,10 +140,6 @@ async function check_read_menuitems(index, canMarkRead, canMarkUnread) {
 
   await hiddenPromise;
   await new Promise(resolve => requestAnimationFrame(resolve));
-}
-
-function enable_archiving(enabled) {
-  Services.prefs.setBoolPref("mail.identity.default.archive_enabled", enabled);
 }
 
 /**
@@ -399,7 +394,7 @@ add_task(async function test_mark_thread_as_read() {
   );
 
   Services.prefs.setBoolPref("mailnews.mark_message_read.auto", true);
-}).__skipMe = true; // See bug 654362.
+}).skip(); // See bug 654362.
 
 add_task(async function roving_multi_message_buttons() {
   await be_in_folder(unreadFolder);
@@ -467,7 +462,17 @@ add_task(async function roving_multi_message_buttons() {
   EventUtils.synthesizeKey("KEY_Escape", {});
   EventUtils.synthesizeKey("KEY_Escape", {});
   await assert_selected_and_displayed(curMessages);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
+
+function promise_and_check_alert_dialog(buttonName, warningText) {
+  return BrowserTestUtils.promiseAlertDialog(undefined, undefined, {
+    callback(win) {
+      const message = win.document.getElementById("infoBody");
+      Assert.equal(message.textContent, warningText);
+      win.document.querySelector("dialog").getButton(buttonName).click();
+    },
+  });
+}
 
 add_task(async function test_shift_delete_prompt() {
   await be_in_folder(shiftDeleteFolder);
@@ -476,18 +481,18 @@ add_task(async function test_shift_delete_prompt() {
 
   // First, try shift-deleting and then cancelling at the prompt.
   Services.prefs.setBoolPref("mail.warn_on_shift_delete", true);
-  let dialogPromise = BrowserTestUtils.promiseAlertDialog("cancel");
+  const warning =
+    "This will delete messages immediately, without saving a copy to Trash. Are you sure you want to continue?";
+  let dialogPromise = promise_and_check_alert_dialog("cancel", warning);
   // We don't use press_delete here because we're not actually deleting this
   // time!
-  SimpleTest.ignoreAllUncaughtExceptions(true);
-  EventUtils.synthesizeKey("VK_DELETE", { shiftKey: true });
-  SimpleTest.ignoreAllUncaughtExceptions(false);
+  EventUtils.synthesizeKey("KEY_Delete", { shiftKey: true });
   await dialogPromise;
   // Make sure we didn't actually delete the message.
   Assert.equal(curMessage, await select_click_row(0));
 
   // Second, try shift-deleting and then accepting the deletion.
-  dialogPromise = BrowserTestUtils.promiseAlertDialog("accept");
+  dialogPromise = promise_and_check_alert_dialog("accept", warning);
   await press_delete(window, { shiftKey: true });
   await dialogPromise;
   // Make sure we really did delete the message.
@@ -513,24 +518,24 @@ add_task(async function test_thread_delete_prompt() {
   goUpdateCommand("cmd_delete");
   // First, try deleting and then cancelling at the prompt.
   Services.prefs.setBoolPref("mail.warn_on_collapsed_thread_operation", true);
-  let dialogPromise = BrowserTestUtils.promiseAlertDialog("cancel");
+  const warning =
+    "This will delete messages in collapsed threads. Are you sure you want to continue?";
+  let dialogPromise = promise_and_check_alert_dialog("cancel", warning);
   // We don't use press_delete here because we're not actually deleting this
   // time!
-  SimpleTest.ignoreAllUncaughtExceptions(true);
-  EventUtils.synthesizeKey("VK_DELETE", {});
-  SimpleTest.ignoreAllUncaughtExceptions(false);
+  EventUtils.synthesizeKey("KEY_Delete");
   await dialogPromise;
   // Make sure we didn't actually delete the message.
   Assert.equal(curMessage, await select_click_row(0));
 
   // Second, try deleting and then accepting the deletion.
-  dialogPromise = BrowserTestUtils.promiseAlertDialog("accept");
+  dialogPromise = promise_and_check_alert_dialog("accept", warning);
   await press_delete(window);
   await dialogPromise;
   // Make sure we really did delete the message.
   Assert.notEqual(curMessage, await select_click_row(0));
 
-  // Finally, try shift-deleting when we turned off the prompt.
+  // Finally, try deleting when we turned off the prompt.
   Services.prefs.setBoolPref("mail.warn_on_collapsed_thread_operation", false);
   curMessage = await select_click_row(0);
   await press_delete(window);
@@ -539,221 +544,77 @@ add_task(async function test_thread_delete_prompt() {
   Assert.notEqual(curMessage, await select_click_row(0));
 
   Services.prefs.clearUserPref("mail.warn_on_collapsed_thread_operation");
-}).skip(); // TODO: not working
-
-add_task(async function test_yearly_archive() {
-  await yearly_archive(false);
 });
 
-async function yearly_archive(keep_structure) {
-  await be_in_folder(archiveSrcFolder);
-  await make_display_unthreaded();
+add_task(async function test_delete_from_trash_prompt() {
+  await be_in_folder(trashFolder);
+  let curMessage = await select_click_row(0);
+  goUpdateCommand("cmd_Delete");
 
-  const win = get_about_3pane();
-  win.sortController.sortThreadPane("byDate");
-  win.sortController.sortAscending();
+  // First, try deleting and then cancelling at the prompt.
+  Services.prefs.setBoolPref("mail.warn_on_delete_from_trash", true);
+  const warning =
+    "This will permanently delete messages from Trash. Are you sure you want to continue?";
+  let dialogPromise = promise_and_check_alert_dialog("cancel", warning);
+  // We don't use press_delete here because we're not actually deleting this
+  // time!
+  EventUtils.synthesizeKey("KEY_Delete");
+  await dialogPromise;
+  // Make sure we didn't actually delete the message.
+  Assert.equal(curMessage, await select_click_row(0));
 
-  const identity = MailServices.accounts.getFirstIdentityForServer(
-    win.gDBView.getMsgHdrAt(0).folder.server
-  );
-  identity.archiveGranularity = Ci.nsIMsgIdentity.perYearArchiveFolders;
-  // We need to get all the info about the messages before we do the archive,
-  // because deleting the headers could make extracting values from them fail.
-  const firstMsgHdr = win.gDBView.getMsgHdrAt(0);
-  const lastMsgHdr = win.gDBView.getMsgHdrAt(12);
-  const firstMsgHdrMsgId = firstMsgHdr.messageId;
-  const lastMsgHdrMsgId = lastMsgHdr.messageId;
-  const firstMsgDate = new Date(firstMsgHdr.date / 1000);
-  const firstMsgYear = firstMsgDate.getFullYear().toString();
-  const lastMsgDate = new Date(lastMsgHdr.date / 1000);
-  const lastMsgYear = lastMsgDate.getFullYear().toString();
+  // Second, try deleting and then accepting the deletion.
+  dialogPromise = promise_and_check_alert_dialog("accept", warning);
+  await press_delete(window);
+  await dialogPromise;
+  // Make sure we really did delete the message.
+  Assert.notEqual(curMessage, await select_click_row(0));
 
-  win.threadTree.scrollToIndex(0, true);
-  await TestUtils.waitForCondition(
-    () => win.threadTree.getRowAtIndex(0),
-    "Row 0 scrolled into view"
-  );
-  await select_click_row(0);
-  win.threadTree.scrollToIndex(12, true);
-  await TestUtils.waitForCondition(
-    () => win.threadTree.getRowAtIndex(12),
-    "Row 12 scrolled into view"
-  );
-  await select_control_click_row(12);
+  // Finally, try deleting when we turned off the prompt.
+  Services.prefs.setBoolPref("mail.warn_on_delete_from_trash", false);
+  curMessage = await select_click_row(0);
+  await press_delete(window);
 
-  // Press the archive key. The results should go into two separate years.
-  await archive_selected_messages();
+  // Make sure we really did delete the message.
+  Assert.notEqual(curMessage, await select_click_row(0));
 
-  // Figure out where the messages should have gone.
-  const archiveRoot = "mailbox://nobody@Local%20Folders/Archives";
-  let firstArchiveUri = archiveRoot + "/" + firstMsgYear;
-  let lastArchiveUri = archiveRoot + "/" + lastMsgYear;
-  if (keep_structure) {
-    firstArchiveUri += "/ArchiveSrc";
-    lastArchiveUri += "/ArchiveSrc";
-  }
-  const firstArchiveFolder = MailUtils.getOrCreateFolder(firstArchiveUri);
-  const lastArchiveFolder = MailUtils.getOrCreateFolder(lastArchiveUri);
-  await be_in_folder(firstArchiveFolder);
-  Assert.ok(
-    win.gDBView.getMsgHdrAt(0).messageId == firstMsgHdrMsgId,
-    "Message should have been archived to " +
-      firstArchiveUri +
-      ", but it isn't present there"
-  );
-  await be_in_folder(lastArchiveFolder);
-
-  Assert.ok(
-    win.gDBView.getMsgHdrAt(0).messageId == lastMsgHdrMsgId,
-    "Message should have been archived to " +
-      lastArchiveUri +
-      ", but it isn't present there"
-  );
-}
-
-add_task(async function test_monthly_archive() {
-  enable_archiving(true);
-  await monthly_archive(false);
+  Services.prefs.clearUserPref("mail.warn_on_delete_from_trash");
 });
 
-async function monthly_archive(keep_structure) {
-  await be_in_folder(archiveSrcFolder);
+add_task(async function test_delete_from_newsgroup_prompt() {
+  await be_in_folder(newsgroupFolder);
+  let curMessage = await select_click_row(0);
+  goUpdateCommand("cmd_Delete");
 
-  const win = get_about_3pane();
-  const identity = MailServices.accounts.getFirstIdentityForServer(
-    win.gDBView.getMsgHdrAt(0).folder.server
-  );
-  identity.archiveGranularity = Ci.nsIMsgIdentity.perMonthArchiveFolders;
-  await select_click_row(0);
-  await select_control_click_row(1);
+  // First, try deleting and then cancelling at the prompt.
+  Services.prefs.setBoolPref("news.warn_on_delete", true);
+  const warning =
+    "This will delete messages immediately, without saving a copy to Trash. Are you sure you want to continue?";
+  let dialogPromise = promise_and_check_alert_dialog("cancel", warning);
+  // We don't use press_delete here because we're not actually deleting this
+  // time!
+  EventUtils.synthesizeKey("KEY_Delete");
+  await dialogPromise;
+  // Make sure we didn't actually delete the message.
+  Assert.equal(curMessage, await select_click_row(0));
 
-  const firstMsgHdr = win.gDBView.getMsgHdrAt(0);
-  const lastMsgHdr = win.gDBView.getMsgHdrAt(1);
-  const firstMsgHdrMsgId = firstMsgHdr.messageId;
-  const lastMsgHdrMsgId = lastMsgHdr.messageId;
-  const firstMsgDate = new Date(firstMsgHdr.date / 1000);
-  const firstMsgYear = firstMsgDate.getFullYear().toString();
-  const firstMonthFolderName =
-    firstMsgYear +
-    "-" +
-    (firstMsgDate.getMonth() + 1).toString().padStart(2, "0");
-  const lastMsgDate = new Date(lastMsgHdr.date / 1000);
-  const lastMsgYear = lastMsgDate.getFullYear().toString();
-  const lastMonthFolderName =
-    lastMsgYear +
-    "-" +
-    (lastMsgDate.getMonth() + 1).toString().padStart(2, "0");
+  // Second, try deleting and then accepting the deletion.
+  dialogPromise = promise_and_check_alert_dialog("accept", warning);
+  await press_delete(window);
+  await dialogPromise;
+  // Make sure we really did delete the message.
+  Assert.notEqual(curMessage, await select_click_row(0));
 
-  // Press the archive key. The results should go into two separate months.
-  await archive_selected_messages();
+  // Finally, try deleting when we turned off the prompt.
+  Services.prefs.setBoolPref("news.warn_on_delete", false);
+  curMessage = await select_click_row(0);
+  await press_delete(window);
 
-  // Figure out where the messages should have gone.
-  const archiveRoot = "mailbox://nobody@Local%20Folders/Archives";
-  let firstArchiveUri =
-    archiveRoot + "/" + firstMsgYear + "/" + firstMonthFolderName;
-  let lastArchiveUri =
-    archiveRoot + "/" + lastMsgYear + "/" + lastMonthFolderName;
-  if (keep_structure) {
-    firstArchiveUri += "/ArchiveSrc";
-    lastArchiveUri += "/ArchiveSrc";
-  }
-  const firstArchiveFolder = MailUtils.getOrCreateFolder(firstArchiveUri);
-  const lastArchiveFolder = MailUtils.getOrCreateFolder(lastArchiveUri);
-  await be_in_folder(firstArchiveFolder);
-  Assert.ok(
-    win.gDBView.getMsgHdrAt(0).messageId == firstMsgHdrMsgId,
-    "Message should have been archived to Local Folders/" +
-      firstMsgYear +
-      "/" +
-      firstMonthFolderName +
-      "/Archives, but it isn't present there"
-  );
-  await be_in_folder(lastArchiveFolder);
-  Assert.ok(
-    win.gDBView.getMsgHdrAt(0).messageId == lastMsgHdrMsgId,
-    "Message should have been archived to Local Folders/" +
-      lastMsgYear +
-      "/" +
-      lastMonthFolderName +
-      "/Archives, but it isn't present there"
-  );
-}
+  // Make sure we really did delete the message.
+  Assert.notEqual(curMessage, await select_click_row(0));
 
-add_task(async function test_folder_structure_archiving() {
-  enable_archiving(true);
-  Services.prefs.setBoolPref(
-    "mail.identity.default.archive_keep_folder_structure",
-    true
-  );
-  await monthly_archive(true);
-  await yearly_archive(true);
+  Services.prefs.clearUserPref("news.warn_on_delete");
 });
-
-add_task(async function test_selection_after_archive() {
-  const win = get_about_3pane();
-  enable_archiving(true);
-  await be_in_folder(archiveSrcFolder);
-  const identity = MailServices.accounts.getFirstIdentityForServer(
-    win.gDBView.getMsgHdrAt(0).folder.server
-  );
-  identity.archiveGranularity = Ci.nsIMsgIdentity.perMonthArchiveFolders;
-  // We had a bug where we would always select the 0th message after an
-  // archive, so test that we'll actually select the next remaining message
-  // by archiving rows 1 & 2 and verifying that the 3rd message gets selected.
-  // let hdrToSelect =
-  await select_click_row(3);
-  await select_click_row(1);
-  await select_control_click_row(2);
-  await archive_selected_messages();
-  // await assert_selected_and_displayed(hdrToSelect); TODO
-});
-
-add_task(async function test_disabled_archive() {
-  const win = get_about_message();
-  const win3 = get_about_3pane();
-  enable_archiving(false);
-  await be_in_folder(archiveSrcFolder);
-
-  // test single message
-  let current = await select_click_row(0);
-  EventUtils.synthesizeKey("a", {});
-  await assert_selected_and_displayed(current);
-
-  Assert.ok(
-    win.document.getElementById("hdrArchiveButton").disabled,
-    "Archive button should be disabled when archiving is disabled!"
-  );
-
-  // test message summaries
-  await select_click_row(0);
-  current = await select_shift_click_row(2);
-  EventUtils.synthesizeKey("a", {});
-  await assert_selected_and_displayed(current);
-
-  let htmlframe = win3.multiMessageBrowser;
-  let archiveBtn = htmlframe.contentDocument.getElementById("hdrArchiveButton");
-  Assert.ok(
-    archiveBtn.collapsed,
-    "Multi-message archive button should be disabled when " +
-      "archiving is disabled!"
-  );
-
-  // test message summaries with "large" selection
-  window.gFolderDisplay.MAX_COUNT_FOR_CAN_ARCHIVE_CHECK = 1;
-  await select_click_row(0);
-  current = await select_shift_click_row(2);
-  EventUtils.synthesizeKey("a", {});
-  await assert_selected_and_displayed(current);
-  window.gFolderDisplay.MAX_COUNT_FOR_CAN_ARCHIVE_CHECK = 100;
-
-  htmlframe = document.getElementById("multimessage");
-  archiveBtn = htmlframe.contentDocument.getElementById("hdrArchiveButton");
-  Assert.ok(
-    archiveBtn.collapsed,
-    "Multi-message archive button should be disabled when " +
-      "archiving is disabled!"
-  );
-}).skip();
 
 function check_tag_in_message(message, tag, isSet) {
   const tagSet = message
@@ -802,7 +663,5 @@ add_task(async function test_tag_keys_disabled_in_content_tab() {
 }).skip(); // TODO: not working
 
 registerCleanupFunction(function () {
-  // Make sure archiving is enabled at the end
-  enable_archiving(true);
   Services.prefs.setBoolPref("mailnews.mark_message_read.auto", gAutoRead);
 });

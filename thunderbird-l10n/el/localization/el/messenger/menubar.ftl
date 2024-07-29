@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Εξερεύνηση λειτουργιών
     .accesskey = ν
+menu-help-get-release-help =
+    .label = Λήψη βοήθειας με το { -brand-short-name }
+    .accesskey = Λ
 menu-help-shortcuts =
     .label = Συντομεύσεις πληκτρολογίου
     .accesskey = υ
@@ -133,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Λογαριασμός email…
+    .accesskey = e
 file-new-newsgroup-account =
     .label = Λογαριασμός ομάδας συζητήσεων…
     .accesskey = δ

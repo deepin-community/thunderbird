@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sk@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Slovenčina (Slovak)",
   "description": "Thunderbird Language Pack for Slovenčina (sk) – Slovak",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "sk": {
-      "version": "20240423200151",
+      "version": "20240718003143",
       "chrome_resources": {
         "alerts": "chrome/sk/locale/sk/alerts/",
         "autoconfig": "chrome/sk/locale/sk/autoconfig/",
         "branding": "chrome/sk/locale/branding/",
         "calendar": "chrome/sk/locale/sk/calendar/",
-        "chat": "chrome/sk/locale/sk/chat/",
         "communicator": "chrome/sk/locale/sk/communicator/",
         "devtools": "chrome/sk/locale/sk/devtools/client/",
         "devtools-shared": "chrome/sk/locale/sk/devtools/shared/",

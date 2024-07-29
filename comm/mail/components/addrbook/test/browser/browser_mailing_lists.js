@@ -108,11 +108,11 @@ add_task(async () => {
   });
 
   // Select the address book.
-  openDirectory(global.addressBook);
+  await openDirectory(global.addressBook);
 
   // Open the new mailing list dialog, the callback above interacts with it.
   EventUtils.synthesizeMouseAtCenter(
-    global.abWindow.document.getElementById("toolbarCreateList"),
+    global.abWindow.document.getElementById("booksPaneCreateList"),
     { clickCount: 1 },
     global.abWindow
   );

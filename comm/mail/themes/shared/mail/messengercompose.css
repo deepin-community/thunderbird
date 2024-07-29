@@ -332,8 +332,7 @@
 }
 
 #compose-toolbox {
-  &:-moz-lwtheme {
-    appearance: none;
+  :root[lwtheme] & {
     position: relative;
     color: var(--toolbar-color, inherit);
 
@@ -484,7 +483,6 @@
 }
 
 #FormatToolbox {
-  appearance: none;
   grid-area: format-toolbar;
 }
 
@@ -580,13 +578,6 @@
 
 #button-print {
   list-style-image: var(--icon-print);
-}
-
-.menu-description,
-menulist::part(description) {
-  font-style: italic;
-  opacity: 0.55;
-  margin-inline: 1ex !important;
 }
 
 .aw-firstColBox {
@@ -848,6 +839,14 @@ toolbarbutton.formatting-button {
     outline-style: none;
     margin-inline: 1px;
   }
+
+  & .menu-description,
+  &::part(description) {
+    font-style: italic;
+    opacity: 0.55;
+    margin-inline: 1ex !important;
+    pointer-events: none;
+  }
 }
 
 #extraAddressRowsArea {
@@ -871,9 +870,44 @@ toolbarbutton.formatting-button {
   height: 14px;
 }
 
-#msgIdentityPopup >  menuitem[selected="true"] {
+#msgIdentityPopup > menuitem[selected="true"] {
   background-color: var(--autocomplete-popup-highlight-background);
   color: var(--autocomplete-popup-highlight-color);
+}
+
+#msgIdentity.has-custom-color {
+  --icon-color: var(--primary);
+
+  &[is="menulist-editable"]::part(label-box)::before {
+    display: block;
+    position: relative;
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    margin-inline-end: 1px;
+    background-color: var(--icon-color);
+  }
+
+  & #msgIdentityPopup > menuitem:not(:last-child) {
+    --icon-color: var(--primary);
+
+    &::before {
+      display: block;
+      position: relative;
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 3px;
+      margin-inline: -3px 4px;
+      background-color: var(--icon-color);
+    }
+
+    &[selected="true"]::before {
+      border-radius: 4px;
+      border: 1px solid var(--autocomplete-popup-highlight-color);
+    }
+  }
 }
 
 #msgSubjectContainer {
@@ -960,13 +994,11 @@ toolbarbutton.formatting-button {
 }
 
 .address-container {
-  margin-inline-start: 4px;
-  margin-inline-end: 0;
+  margin-inline: 4px 0;
   border: solid 1px var(--toolbarbutton-hover-bordercolor);
   border-radius: var(--button-border-radius);
   background-color: Field;
   transition: border .2s, box-shadow .2s;
-  cursor: text;
 
   :root[lwt-tree] & {
     background-color: var(--toolbar-field-background-color);
@@ -978,7 +1010,7 @@ toolbarbutton.formatting-button {
   }
 
   & > .address-input {
-    padding-block: 4px;
+    padding: 4px;
 
     &:focus {
       outline: none;
@@ -1023,6 +1055,10 @@ toolbarbutton.formatting-button {
 
   @media (prefers-color-scheme: dark) {
     background-color: rgba(0, 0, 0, 0.3);
+  }
+
+  &:first-child {
+    margin-inline-start: 4px;
   }
 
   &::before {

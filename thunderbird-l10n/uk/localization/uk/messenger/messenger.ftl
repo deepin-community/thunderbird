@@ -193,6 +193,52 @@ appmenu-addons-and-themes =
 
 ## Context menu
 
+context-menu-mark-read =
+    .aria-label = Позначити прочитаним
+    .tooltiptext = Позначити прочитаним
+context-menu-mark-unread =
+    .aria-label = Позначити непрочитаним
+    .tooltiptext = Позначити непрочитаним
+context-menu-mark-reply =
+    .aria-label = Відповісти
+    .tooltiptext = Відповісти
+context-menu-archive =
+    .aria-label = Архівувати
+    .tooltiptext = Архівувати
+context-menu-mark-junk =
+    .aria-label = Позначити спамом
+    .tooltiptext = Позначити спамом
+mail-context-menu-open =
+    .label = Відкрити
+    .accesskey = В
+mail-context-menu-reply =
+    .label = Відповісти
+    .accesskey = і
+mail-context-menu-forward-redirect =
+    .label = Переслати та перенаправити
+    .accesskey = П
+mail-context-menu-forward-forward =
+    .label = Переслати
+    .accesskey = П
+mail-context-menu-forward-inline =
+    .label = Усередині листа
+    .accesskey = У
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Як вкладення
+            [few] Як вкладення
+           *[many] Як вкладення
+        }
+    .accesskey = Я
+mail-context-menu-organize =
+    .label = Впорядкувати
+    .accesskey = о
+mail-context-menu-threads =
+    .label = Розмови
+    .accesskey = Р
 context-menu-redirect-msg =
     .label = Переслати
 # This menu item is for canceling an NNTP message
@@ -217,6 +263,26 @@ mail-context-undelete-messages =
             [many] Відновити $count повідомлень
            *[other] Відновити вибрані повідомлення
         }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-delete =
+    .label =
+        { $count ->
+            [one] Видалити повідомлення
+            [few] Видалити вибрані повідомлення
+           *[many] Видалити вибрані повідомлення
+        }
+    .tooltiptext = { mail-context-messages-delete.label }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-undelete =
+    .label =
+        { $count ->
+            [one] Відновити повідомлення
+            [few] Відновити вибрані повідомлення
+           *[many] Відновити вибрані повідомлення
+        }
+    .tooltiptext = { mail-context-messages-undelete.label }
 context-menu-decrypt-to-folder2 =
     .label = Створити розшифровану копію в
     .accesskey = н
@@ -234,6 +300,9 @@ message-header-recipient-avatar =
     .alt = Зображення профілю { $address }.
 
 ## Message header cutomize panel
+
+
+## Message header customize panel
 
 message-header-customize-panel-title = Налаштування заголовка повідомлення
 message-header-customize-button-style =
@@ -403,7 +472,7 @@ quick-filter-bar-toggle =
     .label = Панель швидкого фільтрування
     .accesskey = ф
 # This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-textbox-shortcut in about3Pane.ftl.
+# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
 

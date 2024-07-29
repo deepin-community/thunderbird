@@ -3,7 +3,7 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Фільтры паведамленняў">
-<!ENTITY nameColumn.label "Імя фільтра">
+<!ENTITY nameColumn.label "Імя фільтру">
 <!ENTITY activeColumn.label "Уключаны">
 <!ENTITY newButton.label "Новы…">
 <!ENTITY newButton.accesskey "Н">
@@ -24,9 +24,9 @@
 <!ENTITY reorderBottomButton.accessKey "н">
 <!ENTITY reorderBottomButton.toolTip "Перамясціць сіта так, каб яно выконвалася апошнім">
 <!ENTITY filterHeader.label "Дазволеныя сіты выконваюцца самастойна ў наступным парадку.">
-<!ENTITY filtersForPrefix.label "Сіты для:">
+<!ENTITY filtersForPrefix.label "Фільтры для:">
 <!ENTITY filtersForPrefix.accesskey "С">
-<!ENTITY viewLogButton.label "Метрыка сіта">
+<!ENTITY viewLogButton.label "Журнал фільтраў">
 <!ENTITY viewLogButton.accesskey "М">
 <!ENTITY runFilters.label "Выканаць зараз">
 <!ENTITY runFilters.accesskey "В">

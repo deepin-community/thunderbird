@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-kk@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: қазақ тілі (Kazakh)",
   "description": "Thunderbird Language Pack for қазақ тілі (kk) – Kazakh",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "kk": {
-      "version": "20240423195739",
+      "version": "20240718003126",
       "chrome_resources": {
         "alerts": "chrome/kk/locale/kk/alerts/",
         "autoconfig": "chrome/kk/locale/kk/autoconfig/",
         "branding": "chrome/kk/locale/branding/",
         "calendar": "chrome/kk/locale/kk/calendar/",
-        "chat": "chrome/kk/locale/kk/chat/",
         "communicator": "chrome/kk/locale/kk/communicator/",
         "devtools": "chrome/kk/locale/kk/devtools/client/",
         "devtools-shared": "chrome/kk/locale/kk/devtools/shared/",

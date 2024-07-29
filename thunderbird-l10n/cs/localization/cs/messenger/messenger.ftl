@@ -191,6 +191,53 @@ appmenu-addons-and-themes =
 
 ## Context menu
 
+context-menu-mark-read =
+    .aria-label = Označit jako přečtené
+    .tooltiptext = Označit jako přečtené
+context-menu-mark-unread =
+    .aria-label = Označit jako nepřečtené
+    .tooltiptext = Označit jako nepřečtené
+context-menu-mark-reply =
+    .aria-label = Odpovědět
+    .tooltiptext = Odpovědět
+context-menu-archive =
+    .aria-label = Archivovat
+    .tooltiptext = Archivovat
+context-menu-mark-junk =
+    .aria-label = Označit jako nevyžádanou
+    .tooltiptext = Označit jako nevyžádanou
+mail-context-menu-open =
+    .label = Otevřít
+    .accesskey = O
+mail-context-menu-reply =
+    .label = Odpovědět
+    .accesskey = O
+mail-context-menu-forward-redirect =
+    .label = Přeposlat a přesměrovat
+    .accesskey = P
+mail-context-menu-forward-forward =
+    .label = Přeposlat
+    .accesskey = l
+mail-context-menu-forward-inline =
+    .label = Jako vložené
+    .accesskey = v
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Jako přílohu
+            [few] Jako přílohy
+            [many] Jako přílohy
+           *[other] Jako přílohy
+        }
+    .accesskey = p
+mail-context-menu-organize =
+    .label = Uspořádat
+    .accesskey = U
+mail-context-menu-threads =
+    .label = Vlákna
+    .accesskey = V
 context-menu-redirect-msg =
     .label = Přesměrovat
 # This menu item is for canceling an NNTP message
@@ -214,6 +261,28 @@ mail-context-undelete-messages =
             [few] Obnovit vybrané smazané zprávy
            *[other] Obnovit vybrané smazané zprávy
         }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-delete =
+    .label =
+        { $count ->
+            [one] Smazat zprávu
+            [few] Smazat označené zprávy
+            [many] Smazat označené zprávy
+           *[other] Smazat označené zprávy
+        }
+    .tooltiptext = { mail-context-messages-delete.label }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-undelete =
+    .label =
+        { $count ->
+            [one] Obnovit zprávu
+            [few] Obnovit označené zprávy
+            [many] Obnovit označené zprávy
+           *[other] Obnovit označené zprávy
+        }
+    .tooltiptext = { mail-context-messages-undelete.label }
 context-menu-decrypt-to-folder2 =
     .label = Vytvořit dešifrovanou kopii
     .accesskey = V
@@ -231,6 +300,9 @@ message-header-recipient-avatar =
     .alt = Profilový obrázek pro { $address }.
 
 ## Message header cutomize panel
+
+
+## Message header customize panel
 
 message-header-customize-panel-title = Nastavení záhlaví zpráv
 message-header-customize-button-style =
@@ -405,7 +477,7 @@ quick-filter-bar-toggle =
     .label = Lišta rychlého filtru
     .accesskey = r
 # This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-textbox-shortcut in about3Pane.ftl.
+# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
 

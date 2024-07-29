@@ -7,8 +7,8 @@
 var { ExtensionTestUtils } = ChromeUtils.importESModule(
   "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
-var { LDAPServer } = ChromeUtils.import(
-  "resource://testing-common/LDAPServer.jsm"
+var { LDAPServer } = ChromeUtils.importESModule(
+  "resource://testing-common/LDAPServer.sys.mjs"
 );
 
 add_setup(async () => {
@@ -56,7 +56,7 @@ add_task(async function test_quickSearch() {
     };
 
     // A search string without a match in either book.
-    let results = await browser.contacts.quickSearch(book1, "snuffleupagus");
+    let results = await browser.contacts.quickSearch("snuffleupagus");
     browser.test.assertEq(0, results.length);
 
     // A search string with a match in the book we're searching.

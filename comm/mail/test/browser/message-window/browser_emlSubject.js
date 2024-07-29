@@ -9,7 +9,7 @@
 "use strict";
 
 var { open_message_from_file } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
 async function check_eml_window_title(subject, eml) {
@@ -29,8 +29,22 @@ async function check_eml_window_title(subject, eml) {
     expectedTitle += productName;
   }
 
-  await TestUtils.waitForCondition(() => msgc.document.title == expectedTitle);
-  Assert.equal(msgc.document.title, expectedTitle);
+  if (AppConstants.platform == "macosx") {
+    await TestUtils.waitForCondition(
+      () =>
+        msgc.document.getElementById("titlebar-title-label").value ==
+        expectedTitle
+    );
+    Assert.equal(
+      msgc.document.getElementById("titlebar-title-label").value,
+      expectedTitle
+    );
+  } else {
+    await TestUtils.waitForCondition(
+      () => msgc.document.title == expectedTitle
+    );
+    Assert.equal(msgc.document.title, expectedTitle);
+  }
   await BrowserTestUtils.closeWindow(msgc);
 }
 

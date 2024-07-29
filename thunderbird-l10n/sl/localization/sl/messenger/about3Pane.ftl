@@ -125,6 +125,8 @@ quick-filter-bar-textbox =
     .placeholder = Filtriraj ta sporočila <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Filtriraj sporočila:
+quick-filter-bar-search2 =
+    .label = Filtriraj sporočila
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -558,3 +560,19 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Meni sporočila
+message-list-placeholder-no-messages = Ni najdenih sporočil
+message-list-placeholder-multiple-folders = Izbranih je več map
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Označi mapo kot prebrano
+            [two] Označi mapi kot prebrani
+            [few] Označi mape kot prebrane
+           *[other] Označi mape kot prebrane
+        }
+    .accesskey = k

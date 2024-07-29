@@ -13,15 +13,21 @@
  * @attribute {number} maxlength - Max length of the input in the search field.
  * @slot placeholder - Content displayed as placeholder. When not provided, the
  *   value of the label attribute is shown as placeholder.
- * @slot button - Content displayed on the search button.
+ * @slot clear-button - Content displayed on the clear button.
+ * @slot search-button - Content displayed on the search button.
  * @fires {CustomEvent} search - Event when a search should be executed. detail
  *   holds the search term.
  * @fires {CustomEvent} autocomplete - Auto complete update. detail holds the
  *   current search term.
+ * @cssproperty --search-bar-color - Text color of the search bar.
+ * @cssproperty --search-bar-border-color - Border color of the search bar.
+ * @cssproperty --search-bar-background - Background color of the search bar.
+ * @cssproperty --search-bar-focus-background - Background color of the search
+ *   bar when focused.
  */
 export class SearchBar extends HTMLElement {
   static get observedAttributes() {
-    return ["label", "disabled"];
+    return ["label", "placeholder", "disabled"];
   }
 
   /**
@@ -32,11 +38,26 @@ export class SearchBar extends HTMLElement {
   #input = null;
 
   /**
+   * Reference to the clear button in the form.
+   *
+   * @type {?HTMLButtonElement}
+   */
+  #clearButton = null;
+
+  /**
    * Reference to the search button in the form.
    *
    * @type {?HTMLButtonElement}
    */
-  #button = null;
+  #searchButton = null;
+
+  /**
+   * Reference to a timer. If this has a value, an "autocomplete" event will
+   * be dispatched when the timer fires.
+   *
+   * @type {integer}
+   */
+  #inputTimeout;
 
   #onSubmit = event => {
     event.preventDefault();
@@ -44,20 +65,34 @@ export class SearchBar extends HTMLElement {
       return;
     }
 
+    clearTimeout(this.#inputTimeout);
+    if (this.#inputTimeout) {
+      // There was a pending "autocomplete" event. Fire it now instead.
+      this.#fireAutocomplete();
+    }
+
     const searchEvent = new CustomEvent("search", {
       detail: this.#input.value,
       cancelable: true,
     });
     if (this.dispatchEvent(searchEvent)) {
+      this.#input.value = "";
       this.reset();
     }
   };
 
   #onInput = () => {
+    this.#clearButton.hidden = !this.#input.value;
+    clearTimeout(this.#inputTimeout);
+    this.#inputTimeout = setTimeout(this.#fireAutocomplete, 250);
+  };
+
+  #fireAutocomplete = () => {
     const autocompleteEvent = new CustomEvent("autocomplete", {
       detail: this.#input.value,
     });
     this.dispatchEvent(autocompleteEvent);
+    this.#inputTimeout = undefined;
   };
 
   connectedCallback() {
@@ -71,16 +106,18 @@ export class SearchBar extends HTMLElement {
       .getElementById("searchBarTemplate")
       .content.cloneNode(true);
     this.#input = template.querySelector("input");
-    this.#button = template.querySelector("button");
+    this.#searchButton = template.querySelector("#search-button");
+    this.#clearButton = template.querySelector("#clear-button");
 
     template.querySelector("form").addEventListener("submit", this, {
       passive: false,
     });
+    template.querySelector("form").addEventListener("reset", this);
 
     this.#input.setAttribute("aria-label", this.getAttribute("label"));
     this.#input.setAttribute("maxlength", this.getAttribute("maxlength"));
     template.querySelector("slot[name=placeholder]").textContent =
-      this.getAttribute("label");
+      this.getAttribute("placeholder");
     this.#input.addEventListener("input", this);
     this.#input.addEventListener("keyup", this);
 
@@ -90,6 +127,8 @@ export class SearchBar extends HTMLElement {
       "href",
       "chrome://messenger/skin/shared/search-bar.css"
     );
+    this.l10n = new DOMLocalization(["messenger/searchbar.ftl"]);
+    this.l10n.connectRoot(shadowRoot);
     shadowRoot.append(styles, template);
   }
 
@@ -100,13 +139,15 @@ export class SearchBar extends HTMLElement {
     switch (attributeName) {
       case "label":
         this.#input.setAttribute("aria-label", newValue);
+        break;
+      case "placeholder":
         this.shadowRoot.querySelector("slot[name=placeholder]").textContent =
           newValue;
         break;
       case "disabled": {
         const isDisabled = this.hasAttribute("disabled");
         this.#input.disabled = isDisabled;
-        this.#button.disabled = isDisabled;
+        this.#searchButton.disabled = isDisabled;
       }
     }
   }
@@ -119,10 +160,13 @@ export class SearchBar extends HTMLElement {
       case "input":
         this.#onInput(event);
         break;
+      case "reset":
+        this.reset();
+        this.focus();
+        break;
       case "keyup":
         if (event.key === "Escape" && this.#input.value) {
           this.reset();
-          this.#onInput();
           event.preventDefault();
           event.stopPropagation();
         }
@@ -141,7 +185,47 @@ export class SearchBar extends HTMLElement {
    * Reset the search bar to its empty state.
    */
   reset() {
+    this.#clearButton.hidden = true;
+    if (this.#input.value == "") {
+      return;
+    }
+
     this.#input.value = "";
+    clearTimeout(this.#inputTimeout);
+    this.#inputTimeout = undefined;
+    this.#fireAutocomplete();
+  }
+
+  /**
+   * The current search term.
+   *
+   * @type {string} term
+   */
+  get value() {
+    return this.#input.value;
+  }
+
+  /**
+   * Force the search term to a specific string, overriding what the user has
+   * input. Will do nothing if the user is currently typing.
+   *
+   * @param {string} term
+   * @returns {boolean} If the search value was updated.
+   */
+  overrideSearchTerm(term) {
+    if (term === this.#input.value) {
+      return true;
+    }
+    if (
+      this === document.activeElement &&
+      this.#input === this.shadowRoot.activeElement &&
+      this.#input.value
+    ) {
+      return false;
+    }
+    this.#input.value = term;
+    this.#onInput();
+    return true;
   }
 }
 customElements.define("search-bar", SearchBar);

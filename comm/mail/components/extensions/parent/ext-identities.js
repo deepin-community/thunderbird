@@ -2,11 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
+
 ChromeUtils.defineESModuleGetters(this, {
   DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
 });
@@ -27,7 +26,7 @@ function findIdentityAndAccount(identityId) {
 }
 
 function checkForProtectedProperties(details) {
-  const protectedProperties = ["id", "accountId"];
+  const protectedProperties = ["id", "accountId", "encryptionCapabilities"];
   for (const [key, value] of Object.entries(details)) {
     // Check only properties explicitly provided.
     if (value != null && protectedProperties.includes(key)) {
@@ -122,7 +121,10 @@ var identitiesTracker = new (class extends EventEmitter {
     for (const propertyName of Object.keys(newValues)) {
       if (
         !oldValues.hasOwnProperty(propertyName) ||
-        oldValues[propertyName] != newValues[propertyName]
+        // The objects being returned by the API are always in the same order,
+        // so stringify can be used as a simple deep assertion.
+        JSON.stringify(oldValues[propertyName]) !=
+          JSON.stringify(newValues[propertyName])
       ) {
         changedValues[propertyName] = newValues[propertyName];
       }
@@ -197,7 +199,7 @@ this.identities = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onCreated({ context, fire }) {
+    onCreated({ fire }) {
       async function listener(event, key, identity) {
         if (fire.wakeup) {
           await fire.wakeup();
@@ -209,13 +211,12 @@ this.identities = class extends ExtensionAPIPersistent {
         unregister: () => {
           identitiesTracker.off("account-identity-added", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onUpdated({ context, fire }) {
+    onUpdated({ fire }) {
       async function listener(event, key, changedValues) {
         if (fire.wakeup) {
           await fire.wakeup();
@@ -227,13 +228,12 @@ this.identities = class extends ExtensionAPIPersistent {
         unregister: () => {
           identitiesTracker.off("account-identity-updated", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onDeleted({ context, fire }) {
+    onDeleted({ fire }) {
       async function listener(event, key) {
         if (fire.wakeup) {
           await fire.wakeup();
@@ -245,9 +245,8 @@ this.identities = class extends ExtensionAPIPersistent {
         unregister: () => {
           identitiesTracker.off("account-identity-removed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },

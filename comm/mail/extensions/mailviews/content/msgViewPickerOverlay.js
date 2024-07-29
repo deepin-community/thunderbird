@@ -5,14 +5,14 @@
 /* globals OpenOrFocusWindow */ // From mailWindowOverlay.js
 /* globals GetSelectedMsgFolders */ // From messenger.js
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { MailViewConstants } = ChromeUtils.importESModule(
   "resource:///modules/MailViewManager.sys.mjs"
 );
 
-// these constants are now authoritatively defined in MailViewManager.jsm (above)
+// these constants are now authoritatively defined in MailViewManager.sys.mjs (above)
 // tag views have kViewTagMarker + their key as value
 var kViewItemAll = MailViewConstants.kViewItemAll;
 var kViewItemUnread = MailViewConstants.kViewItemUnread;

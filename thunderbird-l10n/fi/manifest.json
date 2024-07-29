@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fi@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Suomi (Finnish)",
   "description": "Thunderbird Language Pack for Suomi (fi) – Finnish",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "fi": {
-      "version": "20240423195617",
+      "version": "20240718002918",
       "chrome_resources": {
         "alerts": "chrome/fi/locale/fi/alerts/",
         "autoconfig": "chrome/fi/locale/fi/autoconfig/",
         "branding": "chrome/fi/locale/branding/",
         "calendar": "chrome/fi/locale/fi/calendar/",
-        "chat": "chrome/fi/locale/fi/chat/",
         "communicator": "chrome/fi/locale/fi/communicator/",
         "devtools": "chrome/fi/locale/fi/devtools/client/",
         "devtools-shared": "chrome/fi/locale/fi/devtools/shared/",

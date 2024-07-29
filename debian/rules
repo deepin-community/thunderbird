@@ -22,7 +22,7 @@ THUNDERBIRD_L10N_BUILDDIR=debian/thunderbird-l10n-build
 # in thunderbird-l10n/$LANG/manifest.json
 export MOZ_LANGPACK_ID = $(shell grep MOZ_LANGPACK_EID comm/mail/locales/Makefile.in | cut -f2 -d @)
 
-# Note: Load this first for $DEB_BUILD_ARCH.
+# Note: Load this for DEB_BUILD_ARCH.
 include /usr/share/dpkg/architecture.mk
 
 # Note: _STRIP operations needs to be done before including buildflags.mk.
@@ -38,7 +38,7 @@ include /usr/share/dpkg/buildflags.mk
 # Use dpkg-buildflags to get build flags, but exclude -g, that is dealt with
 # via configure options. Picked partially from FF.
 
-dpkg_buildflags = $(and $(1),$(shell DEB_CFLAGS_MAINT_STRIP+=" -g" DEB_CXXFLAGS_MAINT_STRIP+=" -g" dpkg-buildflags --get $(1)))
+dpkg_buildflags = $(and $(1),$(shell DEB_CFLAGS_MAINT_STRIP="-g" DEB_CXXFLAGS_MAINT_STRIP="-g" dpkg-buildflags --get $(1)))
 lazy = $(eval $(1) = $$(if $$(___$(1)),,$$(eval ___$(1) := $(2)))$$(___$(1)))
 $(call lazy,CFLAGS,$$(call dpkg_buildflags,CFLAGS))
 $(call lazy,CXXFLAGS,$$(call dpkg_buildflags,CXXFLAGS))

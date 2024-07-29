@@ -7,7 +7,7 @@
  */
 
 // NOTE: This module should not be loaded directly, it is available when
-// including calUtils.jsm under the cal.window namespace.
+// including calUtils.sys.mjs under the cal.window namespace.
 
 const lazy = {};
 ChromeUtils.defineLazyGetter(
@@ -92,7 +92,7 @@ export var window = {
 
       // Wait until calendar is set up in the new window.
       const calStartupObserver = {
-        observe(subject, topic, data) {
+        observe() {
           openCal(mainWindow);
           Services.obs.removeObserver(calStartupObserver, "calendar-startup-done");
         },

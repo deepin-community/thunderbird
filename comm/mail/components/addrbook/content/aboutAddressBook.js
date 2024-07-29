@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals ABView */
-
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { AddrBookDataAdapter } = ChromeUtils.importESModule(
+  "chrome://messenger/content/addressbook/AddrBookDataAdapter.mjs",
+  { global: "current" }
 );
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
@@ -13,19 +12,30 @@ var { AppConstants } = ChromeUtils.importESModule(
 var { IMServices } = ChromeUtils.importESModule(
   "resource:///modules/IMServices.sys.mjs"
 );
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 ChromeUtils.defineLazyGetter(this, "ABQueryUtils", function () {
-  return ChromeUtils.import("resource:///modules/ABQueryUtils.jsm");
+  return ChromeUtils.importESModule("resource:///modules/ABQueryUtils.sys.mjs");
+});
+ChromeUtils.defineLazyGetter(this, "ICAL", function () {
+  return ChromeUtils.importESModule(
+    "resource:///modules/calendar/Ical.sys.mjs"
+  ).default;
 });
 
 ChromeUtils.defineESModuleGetters(this, {
   AddrBookCard: "resource:///modules/AddrBookCard.sys.mjs",
+  AddrBookUtils: "resource:///modules/AddrBookUtils.sys.mjs",
   CalAttendee: "resource:///modules/CalAttendee.sys.mjs",
+  CalMetronome: "resource:///modules/CalMetronome.sys.mjs",
   CardDAVDirectory: "resource:///modules/CardDAVDirectory.sys.mjs",
   FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
+  GlodaMsgSearcher: "resource:///modules/gloda/GlodaMsgSearcher.sys.mjs",
   MailE10SUtils: "resource:///modules/MailE10SUtils.sys.mjs",
   PluralForm: "resource:///modules/PluralForm.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
@@ -36,12 +46,6 @@ ChromeUtils.defineESModuleGetters(this, {
   cal: "resource:///modules/calendar/calUtils.sys.mjs",
 });
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AddrBookUtils: "resource:///modules/AddrBookUtils.jsm",
-  CalMetronome: "resource:///modules/CalMetronome.jsm",
-  GlodaMsgSearcher: "resource:///modules/gloda/GlodaMsgSearcher.jsm",
-  ICAL: "resource:///modules/calendar/Ical.jsm",
-});
 ChromeUtils.defineLazyGetter(this, "SubDialog", function () {
   const { SubDialogManager } = ChromeUtils.importESModule(
     "resource://gre/modules/SubDialog.sys.mjs"
@@ -55,7 +59,8 @@ ChromeUtils.defineLazyGetter(this, "SubDialog", function () {
         "chrome://messenger/skin/shared/preferences/subdialog.css",
         "chrome://messenger/skin/abFormFields.css",
       ],
-      resizeCallback: ({ title, frame }) => {
+      consumeOutsideClicks: false,
+      resizeCallback: ({ frame }) => {
         UIFontSize.registerWindow(frame.contentWindow);
         updateAbCommands();
 
@@ -81,20 +86,37 @@ var booksList;
 
 window.addEventListener("load", () => {
   document
-    .getElementById("toolbarCreateBook")
-    .addEventListener("command", event => {
-      const type = event.target.value || "JS_DIRECTORY_TYPE";
-      createBook(Ci.nsIAbManager[type]);
+    .getElementById("booksPaneCreateBook")
+    .addEventListener("click", event => {
+      document
+        .getElementById("booksPaneCreateBookContext")
+        .openPopup(event.target, "after_start", { triggerEvent: event });
     });
   document
-    .getElementById("toolbarCreateContact")
-    .addEventListener("command", () => createContact());
+    .getElementById("booksPaneCreateContact")
+    .addEventListener("click", () => createContact());
   document
-    .getElementById("toolbarCreateList")
-    .addEventListener("command", () => createList());
+    .getElementById("booksPaneCreateList")
+    .addEventListener("click", () => createList());
+
   document
-    .getElementById("toolbarImport")
-    .addEventListener("command", () => importBook());
+    .getElementById("booksPaneCreateBookContext")
+    .addEventListener("command", event => {
+      switch (event.target.id) {
+        case "booksPaneContextCreateBook":
+          createBook(Ci.nsIAbManager.JS_DIRECTORY_TYPE);
+          break;
+        case "booksPaneContextCreateDav":
+          createBook(Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE);
+          break;
+        case "booksPaneContextCreateLdap":
+          createBook(Ci.nsIAbManager.LDAP_DIRECTORY_TYPE);
+          break;
+      }
+    });
+  document
+    .getElementById("booksPaneImport")
+    .addEventListener("click", () => importBook());
 
   document.getElementById("bookContext").addEventListener("command", event => {
     switch (event.target.id) {
@@ -442,7 +464,7 @@ customElements.whenDefined("tree-listbox").then(() => {
 
       // Add event listener to update the total count of the selected address
       // book.
-      this.addEventListener("select", e => {
+      this.addEventListener("select", () => {
         updateAddressBookCount();
       });
 
@@ -593,7 +615,7 @@ customElements.whenDefined("tree-listbox").then(() => {
         );
       }
 
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
 
       if (row.classList.contains("listRow")) {
         const book = MailServices.ab.getDirectoryFromUID(row.dataset.book);
@@ -620,7 +642,7 @@ customElements.whenDefined("tree-listbox").then(() => {
      * Synchronize the selected address book. (CardDAV only.)
      */
     synchronizeSelected() {
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (!row.classList.contains("carddav")) {
         throw new Components.Exception(
           "Attempting to synchronize a non-CardDAV book.",
@@ -630,7 +652,7 @@ customElements.whenDefined("tree-listbox").then(() => {
 
       let directory = MailServices.ab.getDirectoryFromUID(row.dataset.uid);
       directory = CardDAVDirectory.forFile(directory.fileName);
-      directory.syncWithServer().then(res => {
+      directory.syncWithServer().then(() => {
         updateAddressBookCount();
       });
     }
@@ -644,7 +666,7 @@ customElements.whenDefined("tree-listbox").then(() => {
         return;
       }
 
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (row.classList.contains("listRow")) {
         const book = MailServices.ab.getDirectoryFromUID(row.dataset.book);
         const list = book.childNodes.find(l => l.UID == row.dataset.uid);
@@ -679,7 +701,7 @@ customElements.whenDefined("tree-listbox").then(() => {
         );
       }
 
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (row.classList.contains("noDelete")) {
         throw new Components.Exception(
           "Refusing to delete a built-in address book",
@@ -748,7 +770,7 @@ customElements.whenDefined("tree-listbox").then(() => {
         return;
       }
 
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       const directory = row._book || row._list;
       Services.prefs.setStringPref(
         "mail.addr_book.view.startupURI",
@@ -775,7 +797,7 @@ customElements.whenDefined("tree-listbox").then(() => {
       if (this.selectedIndex === 0) {
         return true;
       }
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (!row) {
         return false;
       }
@@ -792,7 +814,7 @@ customElements.whenDefined("tree-listbox").then(() => {
       if (this.selectedIndex === 0) {
         return true;
       }
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (!row) {
         return false;
       }
@@ -802,7 +824,7 @@ customElements.whenDefined("tree-listbox").then(() => {
     }
 
     _onSelect() {
-      const row = this.rows[this.selectedIndex];
+      const row = this.getRowAtIndex(this.selectedIndex);
       if (row.classList.contains("listRow")) {
         cardsPane.displayList(row.dataset.book, row.dataset.uid);
       } else {
@@ -814,19 +836,20 @@ customElements.whenDefined("tree-listbox").then(() => {
 
       // Row 0 is the "All Address Books" item.
       if (this.selectedIndex === 0) {
-        document.getElementById("toolbarCreateContact").disabled = false;
-        document.getElementById("toolbarCreateList").disabled = false;
+        document.getElementById("booksPaneCreateContact").disabled = false;
+        document.getElementById("booksPaneCreateList").disabled = false;
         document.body.classList.add("all-ab-selected");
-      } else {
-        const bookUID = row.dataset.book ?? row.dataset.uid;
-        const book = MailServices.ab.getDirectoryFromUID(bookUID);
-
-        document.getElementById("toolbarCreateContact").disabled =
-          book.readOnly;
-        document.getElementById("toolbarCreateList").disabled =
-          book.readOnly || !book.supportsMailingLists;
-        document.body.classList.remove("all-ab-selected");
+        return;
       }
+
+      const bookUID = row.dataset.book ?? row.dataset.uid;
+      const book = MailServices.ab.getDirectoryFromUID(bookUID);
+
+      document.getElementById("booksPaneCreateContact").disabled =
+        book.readOnly;
+      document.getElementById("booksPaneCreateList").disabled =
+        book.readOnly || !book.supportsMailingLists;
+      document.body.classList.remove("all-ab-selected");
     }
 
     _onCollapsed(event) {
@@ -965,7 +988,7 @@ customElements.whenDefined("tree-listbox").then(() => {
     _showContextMenu(event) {
       const row =
         event.target == this
-          ? this.rows[this.selectedIndex]
+          ? this.getRowAtIndex(this.selectedIndex)
           : event.target.closest("li");
       if (!row) {
         return;
@@ -1096,7 +1119,7 @@ customElements.whenDefined("tree-listbox").then(() => {
             if (cardsPane.cardsList.view.directory?.UID == subject.UID) {
               document.l10n.setAttributes(
                 cardsPane.searchInput,
-                "about-addressbook-search",
+                "about-addressbook-search2",
                 { name: subject.dirName }
               );
             }
@@ -1151,81 +1174,6 @@ customElements.whenDefined("tree-listbox").then(() => {
 
 // Cards
 
-/**
- * Search field for card list. An HTML port of MozSearchTextbox.
- */
-class AbCardSearchInput extends HTMLInputElement {
-  connectedCallback() {
-    if (this.hasConnected) {
-      return;
-    }
-    this.hasConnected = true;
-
-    this._fireCommand = this._fireCommand.bind(this);
-
-    this.addEventListener("input", this);
-    this.addEventListener("keypress", this);
-  }
-
-  handleEvent(event) {
-    switch (event.type) {
-      case "input":
-        this._onInput(event);
-        break;
-      case "keypress":
-        this._onKeyPress(event);
-        break;
-    }
-  }
-
-  _onInput() {
-    if (this._timer) {
-      clearTimeout(this._timer);
-    }
-    this._timer = setTimeout(this._fireCommand, 500, this);
-  }
-
-  _onKeyPress(event) {
-    switch (event.key) {
-      case "Escape":
-        if (this._clearSearch()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        break;
-      case "Return":
-        this._enterSearch();
-        event.preventDefault();
-        event.stopPropagation();
-        break;
-    }
-  }
-
-  _fireCommand() {
-    if (this._timer) {
-      clearTimeout(this._timer);
-    }
-    this._timer = null;
-    this.dispatchEvent(new CustomEvent("command"));
-  }
-
-  _enterSearch() {
-    this._fireCommand();
-  }
-
-  _clearSearch() {
-    if (this.value) {
-      this.value = "";
-      this._fireCommand();
-      return true;
-    }
-    return false;
-  }
-}
-customElements.define("ab-card-search-input", AbCardSearchInput, {
-  extends: "input",
-});
-
 customElements.whenDefined("tree-view-table-row").then(() => {
   /**
    * A row in the list of cards.
@@ -1233,7 +1181,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
    * @augments {TreeViewTableRow}
    */
   class AbCardRow extends customElements.get("tree-view-table-row") {
-    static ROW_HEIGHT = 46;
+    static ROW_HEIGHT = 52;
 
     connectedCallback() {
       if (this.hasConnected) {
@@ -1243,6 +1191,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       super.connectedCallback();
 
       this.setAttribute("draggable", "true");
+      this.classList.add("card-layout");
 
       this.cell = document.createElement("td");
 
@@ -1283,9 +1232,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       super.index = index;
 
       const card = this.view.getCardFromRow(index);
-      this.name.textContent = this.view.getCellText(index, {
-        id: "GeneratedName",
-      });
+      this.name.textContent = this.view.getCellText(index, "GeneratedName");
 
       // Add the address book name for All Address Books if in the sort Context
       // Address Book is checked. This is done for the list view only.
@@ -1302,9 +1249,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
           addressBookName.classList.add("address-book-name");
           this.firstLine.appendChild(addressBookName);
         }
-        addressBookName.textContent = this.view.getCellText(index, {
-          id: "addrbook",
-        });
+        addressBookName.textContent = this.view.getCellText(index, "addrbook");
       } else {
         this.querySelector(".address-book-name")?.remove();
       }
@@ -1358,6 +1303,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       super.connectedCallback();
 
       this.setAttribute("draggable", "true");
+      this.classList.add("table-layout");
 
       for (const column of cardsPane.COLUMNS) {
         this.appendChild(document.createElement("td")).classList.add(
@@ -1385,7 +1331,7 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       for (const column of cardsPane.COLUMNS) {
         const cell = this.querySelector(`.${column.id.toLowerCase()}-column`);
         if (!column.hidden) {
-          cell.textContent = this.view.getCellText(index, { id: column.id });
+          cell.textContent = this.view.getCellText(index, column.id);
           continue;
         }
 
@@ -1485,15 +1431,15 @@ var cardsPane = {
     const tableRowClass = customElements.get("ab-table-card-row");
     switch (UIDensity.prefValue) {
       case UIDensity.MODE_COMPACT:
-        rowClass.ROW_HEIGHT = 36;
+        rowClass.ROW_HEIGHT = 40;
         tableRowClass.ROW_HEIGHT = 18;
         break;
       case UIDensity.MODE_TOUCH:
-        rowClass.ROW_HEIGHT = 60;
+        rowClass.ROW_HEIGHT = 68;
         tableRowClass.ROW_HEIGHT = 32;
         break;
       default:
-        rowClass.ROW_HEIGHT = 46;
+        rowClass.ROW_HEIGHT = 52;
         tableRowClass.ROW_HEIGHT = 22;
         break;
     }
@@ -1516,11 +1462,9 @@ var cardsPane = {
     this.table.setBodyID("cardsBody");
     this.cardsList.setAttribute("rows", "ab-card-row");
 
-    if (
+    this.toggleLayout(
       XULStoreUtils.getValue("addressBook", "cardsPane", "layout") == "table"
-    ) {
-      this.toggleLayout(true);
-    }
+    );
 
     const nameFormat = Services.prefs.getIntPref(
       "mail.addr_book.lastnamefirst",
@@ -1559,11 +1503,12 @@ var cardsPane = {
       menuitem.setAttribute("checked", "true");
     }
 
-    menuitem.addEventListener("command", event =>
+    menuitem.addEventListener("command", () =>
       this._onColumnsChanged({ target: menuitem, value: abColumn.id })
     );
 
-    this.searchInput.addEventListener("command", this);
+    this.searchInput.addEventListener("autocomplete", this);
+    this.searchInput.addEventListener("search", this);
     this.displayButton.addEventListener("click", this);
     this.sortContext.addEventListener("command", this);
     this.table.addEventListener("columns-changed", this);
@@ -1599,6 +1544,12 @@ var cardsPane = {
 
   handleEvent(event) {
     switch (event.type) {
+      case "autocomplete":
+        this._onAutocomplete(event);
+        break;
+      case "search":
+        event.preventDefault();
+        break;
       case "command":
         this._onCommand(event);
         break;
@@ -1694,6 +1645,7 @@ var cardsPane = {
       "rows",
       isTableLayout ? "ab-table-card-row" : "ab-card-row"
     );
+    this.cardsList.headerHidden = !isTableLayout;
     this.cardsList.setSpacersColspan(
       isTableLayout ? cardsPane.COLUMNS.filter(c => !c.hidden).length : 0
     );
@@ -1746,13 +1698,13 @@ var cardsPane = {
     if (book) {
       document.l10n.setAttributes(
         this.searchInput,
-        "about-addressbook-search",
+        "about-addressbook-search2",
         { name: book.dirName }
       );
     } else {
       document.l10n.setAttributes(
         this.searchInput,
-        "about-addressbook-search-all"
+        "about-addressbook-search-all2"
       );
     }
     const sortColumn =
@@ -1761,7 +1713,7 @@ var cardsPane = {
     const sortDirection =
       XULStoreUtils.getValue("addressBook", "cards", "sortDirection") ||
       "ascending";
-    this.cardsList.view = new ABView(
+    this.cardsList.view = new AddrBookDataAdapter(
       book,
       this.getQuery(),
       this.searchInput.value,
@@ -1783,7 +1735,7 @@ var cardsPane = {
   displayList(bookUID, uid) {
     const book = MailServices.ab.getDirectoryFromUID(bookUID);
     const list = book.childNodes.find(l => l.UID == uid);
-    document.l10n.setAttributes(this.searchInput, "about-addressbook-search", {
+    document.l10n.setAttributes(this.searchInput, "about-addressbook-search2", {
       name: list.dirName,
     });
     const sortColumn =
@@ -1792,7 +1744,7 @@ var cardsPane = {
     const sortDirection =
       XULStoreUtils.getValue("addressBook", "cards", "sortDirection") ||
       "ascending";
-    this.cardsList.view = new ABView(
+    this.cardsList.view = new AddrBookDataAdapter(
       list,
       this.getQuery(),
       this.searchInput.value,
@@ -1822,7 +1774,7 @@ var cardsPane = {
 
     let idsToShow;
     switch (searchState) {
-      case ABView.NOT_SEARCHING:
+      case AddrBookDataAdapter.NOT_SEARCHING:
         if (directory?.isRemote && !Services.io.offline) {
           idsToShow = ["placeholderSearchOnly"];
         } else {
@@ -1832,10 +1784,10 @@ var cardsPane = {
           }
         }
         break;
-      case ABView.SEARCHING:
+      case AddrBookDataAdapter.SEARCHING:
         idsToShow = ["placeholderSearching"];
         break;
-      case ABView.SEARCH_COMPLETE:
+      case AddrBookDataAdapter.SEARCH_COMPLETE:
         idsToShow = ["placeholderNoSearchResults"];
         break;
     }
@@ -1849,7 +1801,7 @@ var cardsPane = {
    * @param {integer} format - One of the nsIAbCard.GENERATE_* constants.
    */
   setNameFormat(event) {
-    // ABView will detect this change and update automatically.
+    // AddrBookDataAdapter will detect this change and update automatically.
     Services.prefs.setIntPref(
       "mail.addr_book.lastnamefirst",
       event.target.value
@@ -2207,20 +2159,19 @@ var cardsPane = {
     event.preventDefault();
   },
 
-  _onCommand(event) {
-    if (event.target == this.searchInput) {
-      this.cardsList.view = new ABView(
-        this.cardsList.view.directory,
-        this.getQuery(),
-        this.searchInput.value,
-        this.cardsList.view.sortColumn,
-        this.cardsList.view.sortDirection
-      );
-      this._updatePlaceholder();
-      detailsPane.displayCards();
-      return;
-    }
+  _onAutocomplete() {
+    this.cardsList.view = new AddrBookDataAdapter(
+      this.cardsList.view.directory,
+      this.getQuery(),
+      this.searchInput.value,
+      this.cardsList.view.sortColumn,
+      this.cardsList.view.sortDirection
+    );
+    this._updatePlaceholder();
+    detailsPane.displayCards();
+  },
 
+  _onCommand(event) {
     switch (event.target.id) {
       case "sortContextTableLayout":
         this.toggleLayout(event.target.getAttribute("checked") === "true");
@@ -2261,7 +2212,7 @@ var cardsPane = {
     }
   },
 
-  _onSelect(event) {
+  _onSelect() {
     detailsPane.displayCards(this.selectedCards);
   },
 
@@ -2395,21 +2346,17 @@ var cardsPane = {
       try {
         // A card implementation may throw NS_ERROR_NOT_IMPLEMENTED.
         // Don't break drag-and-drop if that happens.
-        const vCard = card.translateTo("vcard");
+        const vCard = card.toVCard();
 
         // This is a huge hack. text/x-moz-url must be present or Linux won't
         // attempt to drag to the filesystem. It doesn't actually _use_ this
         // value, instead it fetches application/x-moz-file-promise-url.
         event.dataTransfer.mozSetDataAt(
           "text/x-moz-url",
-          URL.createObjectURL(new Blob([decodeURIComponent(vCard)])),
+          URL.createObjectURL(new Blob([vCard])),
           transferIndex
         );
-        event.dataTransfer.mozSetDataAt(
-          "text/vcard",
-          decodeURIComponent(vCard),
-          transferIndex
-        );
+        event.dataTransfer.mozSetDataAt("text/vcard", vCard, transferIndex);
         event.dataTransfer.mozSetDataAt(
           "application/x-moz-file-promise-dest-filename",
           `${card.displayName}.vcf`.replace(/(.{74}).*(.{10})$/u, "$1...$2"),
@@ -2417,7 +2364,7 @@ var cardsPane = {
         );
         event.dataTransfer.mozSetDataAt(
           "application/x-moz-file-promise-url",
-          "data:text/vcard," + vCard,
+          "data:text/vcard," + encodeURIComponent(vCard),
           transferIndex
         );
         event.dataTransfer.mozSetDataAt(
@@ -2573,7 +2520,7 @@ var detailsPane = {
     document.getElementById("detailsFooter").addEventListener("click", this);
 
     const photoImage = document.getElementById("viewContactPhoto");
-    photoImage.addEventListener("error", event => {
+    photoImage.addEventListener("error", () => {
       if (!detailsPane.currentCard) {
         return;
       }
@@ -2860,20 +2807,6 @@ var detailsPane = {
     document.body.classList.toggle("is-editing", editing);
     updateAbCommands();
 
-    // Disable the toolbar buttons when starting to edit. Remember their state
-    // to restore it when editing stops.
-    for (const toolbarButton of document.querySelectorAll(
-      "#toolbox > toolbar > toolbarbutton"
-    )) {
-      if (editing) {
-        toolbarButton._wasDisabled = toolbarButton.disabled;
-        toolbarButton.disabled = true;
-      } else {
-        toolbarButton.disabled = toolbarButton._wasDisabled;
-        delete toolbarButton._wasDisabled;
-      }
-    }
-
     // Remove these elements from (or add them back to) the tab focus cycle.
     for (const id of ["booksPane", "cardsPane"]) {
       document.getElementById(id).inert = editing;
@@ -2991,7 +2924,7 @@ var detailsPane = {
       const address = li.querySelector(".address");
 
       if (!card.isMailList) {
-        name.textContent = card.generateName(ABView.nameFormat);
+        name.textContent = card.generateName(AddrBookDataAdapter.nameFormat);
         address.textContent = card.primaryEmail;
 
         const photoURL = card.photoURL;
@@ -3080,7 +3013,7 @@ var detailsPane = {
     element.querySelector(".contact-photo").src =
       card.photoURL || "chrome://messenger/skin/icons/new/compact/user.svg";
     element.querySelector(".contact-heading-name").textContent =
-      card.generateName(ABView.nameFormat);
+      card.generateName(AddrBookDataAdapter.nameFormat);
     const nickname = element.querySelector(".contact-heading-nickname");
     const nicknameValue = vCardProperties.getFirstValue("nickname");
     nickname.hidden = !nicknameValue;
@@ -3472,12 +3405,7 @@ var detailsPane = {
     this.deleteButton.hidden = !card;
     if (card && card.supportsVCard) {
       this._screenNamesToIMPPs(card);
-
       this.vCardEdit.vCardProperties = card.vCardProperties;
-      // getProperty may return a "1" or "0" string, we want a boolean.
-      this.vCardEdit.preferDisplayName.checked =
-        // eslint-disable-next-line mozilla/no-compare-against-boolean-literals
-        card.getProperty("PreferDisplayName", true) == true;
     } else {
       this.vCardEdit.vCardString = vCard ?? "";
       card = new AddrBookCard();
@@ -3590,10 +3518,6 @@ var detailsPane = {
     // cards will fail.
     this.vCardEdit.saveVCard();
     card.setProperty("_vCard", this.vCardEdit.vCardString);
-    card.setProperty(
-      "PreferDisplayName",
-      this.vCardEdit.preferDisplayName.checked
-    );
 
     // Old screen names should by now be on the vCard. Delete them.
     for (const key of [
@@ -3759,18 +3683,19 @@ var detailsPane = {
 
     const cards = Array.from(listDirectory.childCards, card => {
       return {
-        name: card.generateName(ABView.nameFormat),
+        name: card.generateName(AddrBookDataAdapter.nameFormat),
         email: card.primaryEmail,
         photoURL: card.photoURL,
       };
     });
     const { sortColumn, sortDirection } = cardsPane.cardsList.view;
     const key = sortColumn == "EmailAddresses" ? "email" : "name";
+    const collator = new Intl.Collator(undefined, { numeric: true });
     cards.sort((a, b) => {
       if (sortDirection == "descending") {
         [b, a] = [a, b];
       }
-      return ABView.prototype.collator.compare(a[key], b[key]);
+      return collator.compare(a[key], b[key]);
     });
 
     const list = this.selectedCardsSection.querySelector("ul");
@@ -3953,7 +3878,7 @@ var photoDialog = {
         }
       }
 
-      onMouseUp(event) {
+      onMouseUp() {
         delete this._dragPosition;
         window.removeEventListener("mousemove", this);
         window.removeEventListener("mouseup", this);

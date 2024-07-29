@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-vi@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Tiếng Việt (Vietnamese)",
   "description": "Thunderbird Language Pack for Tiếng Việt (vi) – Vietnamese",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "vi": {
-      "version": "20240423200046",
+      "version": "20240718002636",
       "chrome_resources": {
         "alerts": "chrome/vi/locale/vi/alerts/",
         "autoconfig": "chrome/vi/locale/vi/autoconfig/",
         "branding": "chrome/vi/locale/branding/",
         "calendar": "chrome/vi/locale/vi/calendar/",
-        "chat": "chrome/vi/locale/vi/chat/",
         "communicator": "chrome/vi/locale/vi/communicator/",
         "devtools": "chrome/vi/locale/vi/devtools/client/",
         "devtools-shared": "chrome/vi/locale/vi/devtools/shared/",

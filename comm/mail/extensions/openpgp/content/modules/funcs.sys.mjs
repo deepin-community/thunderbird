@@ -4,22 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*
+/**
  * Common Enigmail crypto-related GUI functionality
  */
 
 /* eslint-enable valid-jsdoc */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
+  EnigmailURIs: "chrome://openpgp/content/modules/uris.sys.mjs",
 });
 
 var gTxtConverter = null;
+var inspector;
 
 export var EnigmailFuncs = {
   /**
@@ -27,74 +26,12 @@ export var EnigmailFuncs = {
    *
    * @param {string} mailAddresses - Address list encdoded as specified
    *   in RFC 2822, 3.4 separated by , or ;
-   *
    * @returns {string} a list of pure email addresses separated by ","
    */
   stripEmail(mailAddresses) {
-    // EnigmailLog.DEBUG("funcs.jsm: stripEmail(): mailAddresses=" + mailAddresses + "\n");
-
-    const SIMPLE = "[^<>,]+"; // RegExp for a simple email address (e.g. a@b.c)
-    const COMPLEX = "[^<>,]*<[^<>, ]+>"; // RegExp for an address containing <...> (e.g. Name <a@b.c>)
-    const MatchAddr = new RegExp(
-      "^(" + SIMPLE + "|" + COMPLEX + ")(," + SIMPLE + "|," + COMPLEX + ")*$"
-    );
-
-    let mailAddrs = mailAddresses;
-
-    let qStart, qEnd;
-    while ((qStart = mailAddrs.indexOf('"')) >= 0) {
-      qEnd = mailAddrs.indexOf('"', qStart + 1);
-      if (qEnd < 0) {
-        lazy.EnigmailLog.ERROR(
-          "funcs.jsm: stripEmail: Unmatched quote in mail address: '" +
-            mailAddresses +
-            "'\n"
-        );
-        throw Components.Exception("", Cr.NS_ERROR_FAILURE);
-      }
-
-      mailAddrs =
-        mailAddrs.substring(0, qStart) + mailAddrs.substring(qEnd + 1);
-    }
-
-    // replace any ";" by ","; remove leading/trailing ","
-    mailAddrs = mailAddrs
-      .replace(/[,;]+/g, ",")
-      .replace(/^,/, "")
-      .replace(/,$/, "");
-
-    if (mailAddrs.length === 0) {
-      return "";
-    }
-
-    // having two <..> <..> in one email, or things like <a@b.c,><d@e.f> is an error
-    if (mailAddrs.search(MatchAddr) < 0) {
-      lazy.EnigmailLog.ERROR(
-        "funcs.jsm: stripEmail: Invalid <..> brackets in mail address: '" +
-          mailAddresses +
-          "'\n"
-      );
-      throw Components.Exception("", Cr.NS_ERROR_FAILURE);
-    }
-
-    // We know that the "," and the < > are at the right places, thus we can split by ","
-    const addrList = mailAddrs.split(/,/);
-
-    for (const i in addrList) {
-      // Extract pure e-mail address list (strip out anything before angle brackets and any whitespace)
-      addrList[i] = addrList[i]
-        .replace(/^([^<>]*<)([^<>]+)(>)$/, "$2")
-        .replace(/\s/g, "");
-    }
-
-    // remove repeated, trailing and leading "," (again, as there may be empty addresses)
-    mailAddrs = addrList
-      .join(",")
-      .replace(/,,/g, ",")
-      .replace(/^,/, "")
-      .replace(/,$/, "");
-
-    return mailAddrs;
+    return this.parseEmails(mailAddresses, false)
+      .map(addr => addr.email)
+      .join(",");
   },
 
   /**
@@ -121,46 +58,9 @@ export var EnigmailFuncs = {
   },
 
   /**
-   * Hide all menu entries and other XUL elements that are considered for
-   * advanced users. The XUL items must contain 'advanced="true"' or
-   * 'advanced="reverse"'.
-   *
-   * @param {Element} obj - XUL tree element.
-   * @param {string} attribute - Attribute to set or remove (i.e. "hidden" or "collapsed")
-   * @param {object} dummy - Anything.
-   */
-  collapseAdvanced(obj, attribute, dummy) {
-    lazy.EnigmailLog.DEBUG("funcs.jsm: collapseAdvanced:\n");
-
-    var advancedUser = Services.prefs.getBoolPref("temp.openpgp.advancedUser");
-
-    obj = obj.firstChild;
-    while (obj) {
-      if ("getAttribute" in obj) {
-        if (obj.getAttribute("advanced") == "true") {
-          if (advancedUser) {
-            obj.removeAttribute(attribute);
-          } else {
-            obj.setAttribute(attribute, "true");
-          }
-        } else if (obj.getAttribute("advanced") == "reverse") {
-          if (advancedUser) {
-            obj.setAttribute(attribute, "true");
-          } else {
-            obj.removeAttribute(attribute);
-          }
-        }
-      }
-
-      obj = obj.nextSibling;
-    }
-  },
-
-  /**
-   * this function tries to mimic the Thunderbird plaintext viewer
+   * This function tries to mimic the Thunderbird plaintext viewer.
    *
    * @param {string} plainTxt - Containing the plain text data.
-   *
    * @returns {string} HTML markup to display mssage.
    */
   formatPlaintextMsg(plainTxt) {
@@ -264,7 +164,6 @@ export var EnigmailFuncs = {
       lines.join("\n") +
       (isSignature ? "</div>" : "") +
       "</pre>";
-    //EnigmailLog.DEBUG("funcs.jsm: r='"+r+"'\n");
     return r;
   },
 
@@ -273,13 +172,9 @@ export var EnigmailFuncs = {
    * e.g. ContentType: xyz; Aa=b; cc=d
    *
    * @param {string} data - Data containing a single header.
-   *
    * @returns {object[][]} and array of arrays containing pairs of aa/b and cc/d
    */
   getHeaderData(data) {
-    lazy.EnigmailLog.DEBUG(
-      "funcs.jsm: getHeaderData: " + data.substr(0, 100) + "\n"
-    );
     var a = data.split(/\n/);
     var res = [];
     for (let i = 0; i < a.length; i++) {
@@ -294,13 +189,6 @@ export var EnigmailFuncs = {
         if (m) {
           // m[2]: identifier / m[6]: data
           res[m[2].toLowerCase()] = m[6].replace(/\s*$/, "");
-          lazy.EnigmailLog.DEBUG(
-            "funcs.jsm: getHeaderData: " +
-              m[2].toLowerCase() +
-              " = " +
-              res[m[2].toLowerCase()] +
-              "\n"
-          );
         }
       }
       if (i === 0 && !a[i].includes(";")) {
@@ -314,7 +202,9 @@ export var EnigmailFuncs = {
   },
 
   /**
-   * Get the text for the encrypted subject (either configured by user or default)
+   * Get the text for the encrypted subject.
+   *
+   * @returns {string}
    */
   getProtectedSubjectText() {
     return "...";
@@ -528,6 +418,31 @@ export var EnigmailFuncs = {
   },
 
   /**
+   * Check if the given spec refers to the currently shown message.
+   *
+   * @param {string} current - URI spec of the currently shown message
+   *   (typically the caller should pass in gMessageURI)
+   * @param {string} spec - URI spec to check.
+   * @returns {boolean} true if the uri is for the current message.
+   */
+  isCurrentMessage(current, spec) {
+    // FIXME: it would be nicer to just be able to compare the URI specs.
+    // That does currently not work for all cases, e.g.
+    // mailbox:///...data/eml/signed-encrypted-autocrypt-gossip.eml?type=application/x-message-display&number=0 vs.
+    // file:///...data/eml/signed-encrypted-autocrypt-gossip.eml?type=application/x-message-display
+
+    const uri = Services.io.newURI(spec).QueryInterface(Ci.nsIMsgMessageUrl);
+    const uri2 = this.getUrlFromUriSpec(current);
+    if (uri.host != uri2.host) {
+      return false;
+    }
+
+    const id = lazy.EnigmailURIs.msgIdentificationFromUrl(uri);
+    const id2 = lazy.EnigmailURIs.msgIdentificationFromUrl(uri2);
+    return id.folder === id2.folder && id.msgNum === id2.msgNum;
+  },
+
+  /**
    * Test if the given string looks roughly like an email address.
    *
    * returns {boolean} true if it looks like an email
@@ -558,5 +473,33 @@ export var EnigmailFuncs = {
       return "";
     }
     return addresses[0].email.trim();
+  },
+
+  sync(promise) {
+    if (!inspector) {
+      inspector = Cc["@mozilla.org/jsinspector;1"].createInstance(
+        Ci.nsIJSInspector
+      );
+    }
+
+    let res = null;
+    promise
+      .then(gotResult => {
+        res = gotResult;
+        inspector.exitNestedEventLoop();
+      })
+      .catch(gotResult => {
+        console.warn("EnigmailFuncs.sync() failed result: %o", gotResult);
+        if (gotResult instanceof Error) {
+          inspector.exitNestedEventLoop();
+          throw gotResult;
+        }
+
+        res = gotResult;
+        inspector.exitNestedEventLoop();
+      });
+
+    inspector.enterNestedEventLoop(0);
+    return res;
   },
 };

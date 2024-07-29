@@ -18,8 +18,8 @@ var { EnigmailKeyRing } = ChromeUtils.importESModule(
 var { EnigmailArmor } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/armor.sys.mjs"
 );
-var { MailStringUtils } = ChromeUtils.import(
-  "resource:///modules/MailStringUtils.jsm"
+var { MailStringUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailStringUtils.sys.mjs"
 );
 
 var l10n = new Localization(["messenger/openpgp/openpgp.ftl"], true);
@@ -170,7 +170,6 @@ async function EnigmailCommon_importObjectFromFile(what) {
           resultKeys,
           false, // minimize
           [], // filter
-          true, // allow prompt for permissive
           autoAcceptance
         );
 

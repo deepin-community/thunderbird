@@ -26,6 +26,13 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Prozkoumejte všechny funkce
     .accesskey = P
+menu-help-get-release-help =
+    .label =
+        { -brand-short-name.case-status ->
+            [with-cases] Získat pomoc s { -brand-short-name(case: "ins") }
+           *[no-cases] Získat pomoc s aplikací { -brand-short-name }
+        }
+    .accesskey = p
 menu-help-shortcuts =
     .label = Klávesové zkratky
     .accesskey = K
@@ -44,9 +51,6 @@ menu-help-enter-troubleshoot-mode =
 menu-help-exit-troubleshoot-mode =
     .label = Ukončit režim řešení potíží
     .accesskey = m
-menu-help-more-troubleshooting-info =
-    .label = Další technické informace
-    .accesskey = t
 menu-help-troubleshooting-info =
     .label = Technické informace
     .accesskey = T
@@ -64,6 +68,9 @@ menu-quit-mac =
             [with-cases] Ukončit { -brand-shorter-name(case: "acc") }
            *[no-cases] Ukončit aplikaci { -brand-shorter-name }
         }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -117,12 +124,6 @@ mail-uidensity-label =
 mail-uidensity-compact =
     .label = Kompaktní
     .accesskey = K
-mail-uidensity-normal =
-    .label = Normální
-    .accesskey = N
-mail-uidensity-touch =
-    .label = Pro dotyk
-    .accesskey = t
 mail-uidensity-default =
     .label = Výchozí
     .accesskey = V
@@ -135,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = E-mailový účet…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Účet pro diskusní skupiny…
     .accesskey = n

@@ -3,7 +3,38 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 e2e-intro-description = Για να στείλετε κρυπτογραφημένα ή ψηφιακά υπογεγραμμένα μηνύματα, πρέπει να ρυθμίσετε μια τεχνολογία κρυπτογράφησης, είτε OpenPGP είτε S/MIME.
-e2e-intro-description-more = Επιλέξτε το προσωπικό σας κλειδί για να ενεργοποιήσετε τη χρήση του OpenPGP ή το προσωπικό σας πιστοποιητικό για να ενεργοποιήσετε τη χρήση του S/MIME. Για ένα προσωπικό κλειδί ή πιστοποιητικό έχετε και το αντίστοιχο μυστικό κλειδί.
+e2e-intro-description-more = Επιλέξτε το προσωπικό σας κλειδί για να ενεργοποιήσετε τη χρήση του OpenPGP ή το προσωπικό σας πιστοποιητικό για να ενεργοποιήσετε τη χρήση του S/MIME. Για κάθε προσωπικό κλειδί ή πιστοποιητικό σας, έχετε και το αντίστοιχο μυστικό κλειδί.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Για να αποκτήσετε ένα νέο προσωπικό πιστοποιητικό S/MIME, δημιουργήστε ένα αίτημα υπογραφής πιστοποιητικού (CSR) και υποβάλετέ το σε μια αρχή πιστοποίησης (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Επιλέξτε έναν τοπικό κατάλογο και όνομα αρχείου για το αρχείο CSR και απαντήστε στις παρακάτω ερωτήσεις για να ρυθμίσετε τον αλγόριθμο και την ισχύ.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = Δημιουργία CSR
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Συνέχεια
+# A label for a button that goes back one step
+e2e-csr-back = Πίσω
+# Do not translate: CSR
+e2e-csr-button =
+    .label = Δημιουργία και αποθήκευση αρχείου CSR ως…
+# Do not translate: CSR
+e2e-csr-select-title = Αλγόριθμος CSR
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Επιλέξτε μεταξύ RSA (προτείνεται) και ECC για τον κρυπτογραφικό αλγόριθμο του καινούριου πιστοποιητικού S/MIME σας.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Επιλέξτε την επιθυμητή κρυπτογραφική ισχύ (πιο γρήγορο με μικρότερους αριθμούς ή πιο ασφαλές με μεγαλύτερους αριθμούς) για το νέο πιστοποιητικό S/MIME ή διατηρήστε την προεπιλεγμένη ρύθμιση.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = Ένα νέο μυστικό κλειδί τύπου { $type }, με ισχύ { $strength }, θα δημιουργηθεί στις ρυθμίσεις του { -brand-short-name }. Παρακαλώ περιμένετε, καθώς αυτή η διαδικασία ενδέχεται να διαρκέσει αρκετή ώρα και να εμποδίσει προσωρινά την κανονική λειτουργία του προγράμματος. Στο μεταξύ, θα δημιουργηθεί το αρχείο αιτήματος υπογραφής πιστοποιητικού (CSR), που θα αποθηκευτεί ως «{ $file }».
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = Συμπερίληψη διεύθυνσης email ({ $email }) στο CSR (προτείνεται)
+# $file A filename
+e2e-csr-success = Το CSR αποθηκεύτηκε επιτυχώς στο «{ $file }»
+# $file A filename
+e2e-csr-failure = Δεν ήταν δυνατή η αποθήκευση του CSR στο αρχείο «{ $file }»
 e2e-signing-description = Μια ψηφιακή υπογραφή επιτρέπει στους παραλήπτες να επαληθεύσουν ότι το μήνυμα εστάλη από εσάς και ότι το περιεχόμενό του δεν έχει αλλάξει. Τα κρυπτογραφημένα μηνύματα υπογράφονται πάντα από προεπιλογή.
 e2e-sign-message =
     .label = Υπογραφή μη κρυπτογραφημένων μηνυμάτων
@@ -35,7 +66,7 @@ openpgp-key-expiry-label =
     .label = Λήξη
 openpgp-key-id-label =
     .label = ID κλειδιού
-openpgp-cannot-change-expiry = Αυτό είναι κλειδί με περίπλοκη δομή, η αλλαγή της ημερομηνίας λήξης δεν υποστηρίζεται.
+openpgp-cannot-change-expiry = Αυτό το κλειδί έχει περίπλοκη δομή και η αλλαγή της ημερομηνίας λήξης του δεν υποστηρίζεται.
 openpgp-key-man-title =
     .title = Διαχείριση κλειδιών OpenPGP
 openpgp-key-man-dialog-title = Διαχείριση κλειδιών OpenPGP
@@ -250,7 +281,7 @@ openpgp-key-details-attr-upgrade-pub = Θα πρέπει να ζητήσετε �
 openpgp-key-details-upgrade-unsafe =
     .label = Αναβάθμιση επισφαλών ιδιοτήτων
     .accesskey = β
-openpgp-key-details-upgrade-ok = Το κλειδί αναβαθμίστηκε επιτυχώς. Πρέπει να μοιραστείτε το ενημερωμένο δημόσιο κλειδί με τους επιστολογράφους σας.
+openpgp-key-details-upgrade-ok = Το κλειδί αναβαθμίστηκε επιτυχώς. Πρέπει να μοιραστείτε το ενημερωμένο δημόσιο κλειδί με τους συνομιλητές σας.
 openpgp-key-details-algorithm-label =
     .label = Αλγόριθμος
 openpgp-key-details-size-label =
@@ -286,14 +317,14 @@ key-accept-personal =
 openpgp-personal-no-label =
     .label = Όχι, να μη χρησιμοποιηθεί ως το προσωπικό μου κλειδί.
 openpgp-personal-yes-label =
-    .label = Ναι, να αντιμετωπιστεί το κλειδί ως προσωπικό κλειδί.
+    .label = Ναι, να θεωρηθεί το κλειδί ως προσωπικό.
 openpgp-passphrase-protection =
-    .label = Προστασία φράσης πρόσβασης
+    .label = Προστασία με φράση πρόσβασης
 openpgp-passphrase-status-unprotected = Χωρίς προστασία
 openpgp-passphrase-status-primary-password = Προστατεύεται από τον κύριο κωδικό πρόσβασης του { -brand-short-name }
 openpgp-passphrase-status-user-passphrase = Προστατεύεται από φράση πρόσβασης
 openpgp-passphrase-instruction-unprotected = Ορισμός φράσης πρόσβασης για την προστασία αυτού του κλειδιού
-openpgp-passphrase-instruction-primary-password = Εναλλακτικά προστατεύστε αυτό το κλειδί με ξεχωριστή φράση πρόσβασης
+openpgp-passphrase-instruction-primary-password = Εναλλακτικά, προστατεύστε αυτό το κλειδί με ξεχωριστή φράση πρόσβασης
 openpgp-passphrase-instruction-user-passphrase = Ξεκλειδώστε αυτό το κλειδί για να αλλάξετε την προστασία του.
 openpgp-passphrase-unlock = Ξεκλείδωμα
 openpgp-passphrase-unlocked = Το κλειδί ξεκλειδώθηκε επιτυχώς.
@@ -391,6 +422,9 @@ window-locked = Το παράθυρο σύνθεσης είναι κλειδωμ
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Ακυρώθηκε
 keyserver-error-unknown = Προέκυψε άγνωστο σφάλμα
 keyserver-error-server-error = Ο διακομιστής κλειδιών ανέφερε σφάλμα.
@@ -402,6 +436,9 @@ keyserver-error-unsupported = Ο διακομιστής κλειδιών δεν 
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Ο πάροχος ηλεκτρονικού ταχυδρομείου σας επεξεργάστηκε το αίτημά σας για τη μεταφόρτωση του δημόσιου κλειδιού σας στον κατάλογο κλειδιών ιστού OpenPGP.
     Παρακαλώ κάντε επιβεβαίωση για να ολοκληρώσετε τη δημοσίευση του δημόσιου κλειδιού σας.
@@ -410,6 +447,9 @@ wkd-message-body-process =
     Δεν χρειάζεται να κάνετε καμία άλλη ενέργεια σε αυτό το σημείο.
 
 ## Strings in persistentCrypto.jsm
+
+
+## Strings in persistentCrypto.sys.mjs
 
 # Variables:
 # $subject (String) - Subject of the message.
@@ -420,11 +460,14 @@ converter-decrypt-body-failed =
 
 ## Strings filters.jsm
 
+
+## Strings filters.sys.mjs
+
 filter-folder-required = Πρέπει να επιλέξετε έναν φάκελο προορισμού.
 filter-decrypt-move-warn-experimental =
     Προειδοποίηση - η ενέργεια φίλτρου "Μόνιμη αποκρυπτογράφηση" μπορεί να προκαλέσει καταστροφή μηνυμάτων.
     Συνιστούμε ανεπιφύλακτα να δοκιμάσετε πρώτα το φίλτρο "Δημιουργία αποκρυπτογραφημένου αντιγράφου", να ελέγξετε προσεκτικά το αποτέλεσμα και να αρχίσετε να χρησιμοποιείτε αυτό το φίλτρο μόνο όταν είστε ικανοποιημένοι με το αποτέλεσμα.
-filter-term-pgpencrypted-label = Κρυπτογραφημένο κατά OpenPGP
+filter-term-pgpencrypted-label = Με κρυπτογράφηση OpenPGP
 filter-key-required = Πρέπει να επιλέξετε ένα κλειδί παραλήπτη.
 # Variables:
 # $desc (String) - Email address to look for a key of.
@@ -436,6 +479,9 @@ filter-warn-key-not-secret =
     Εάν δεν έχετε το μυστικό κλειδί για το «{ $desc }», δεν θα μπορείτε πλέον να διαβάζετε τα email.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Οριστική αποκρυπτογράφηση (OpenPGP)
 filter-decrypt-copy-label = Δημιουργία αποκρυπτογραφημένου αντιγράφου (OpenPGP)
@@ -463,14 +509,14 @@ copy-to-clipbrd-ok = Τα κλειδιά αντιγράφηκαν στο πρό�
 delete-secret-key =
     ΠΡΟΕΙΔΟΠΟΙΗΣΗ: Πρόκειται να διαγράψετε ένα μυστικό κλειδί!
     
-    Εάν διαγράψετε το μυστικό κλειδί σας, δεν θα μπορείτε πλέον να αποκρυπτογραφήσετε μηνύματα κρυπτογραφημένα για αυτό το κλειδί, ούτε θα μπορείτε να το ανακαλέσετε.
+    Εάν διαγράψετε το μυστικό κλειδί σας, δεν θα μπορείτε πλέον να αποκρυπτογραφήσετε μηνύματα που έχουν κρυπτογραφηθεί για το συγκεκριμένο κλειδί, ούτε θα μπορείτε να το ανακαλέσετε.
     
-    Θέλετε πραγματικά να διαγράψετε και ΤΑ ΔΥΟ, μυστικό και δημόσιο κλειδί
-    '{ $userId }';
+    Θέλετε σίγουρα να διαγράψετε ΚΑΙ ΤΑ ΔΥΟ (μυστικό και δημόσιο κλειδί)
+    «{ $userId }»;
 delete-mix =
     ΠΡΟΕΙΔΟΠΟΙΗΣΗ: Πρόκειται να διαγράψετε μυστικά κλειδιά!
-    Εάν διαγράψετε το μυστικό κλειδί σας, δεν θα μπορείτε πλέον να αποκρυπτογραφήσετε τυχόν μηνύματα κρυπτογραφημένα για αυτό το κλειδί.
-    Θέλετε πραγματικά να διαγράψετε και ΤΑ ΔΥΟ, τα επιλεγμένα μυστικά και δημόσια κλειδιά;
+    Εάν διαγράψετε το μυστικό κλειδί σας, δεν θα μπορείτε πλέον να αποκρυπτογραφήσετε τυχόν μηνύματα που έχουν κρυπτογραφηθεί για το συγκεκριμένο κλειδί.
+    Θέλετε σίγουρα να διαγράψετε ΚΑΙ ΤΑ ΔΥΟ (επιλεγμένα μυστικά και δημόσια κλειδιά);
 # Variables:
 # $userId (String) - User id of the key.
 delete-pub-key =
@@ -483,7 +529,8 @@ key-man-button-export-pub-key = Εξαγωγή μόνο &δημόσιων κλε
 key-man-button-refresh-all = &Ανανέωση όλων των κλειδιών
 key-man-loading-keys = Φόρτωση κλειδιών, παρακαλώ περιμένετε…
 ascii-armor-file = Θωρακισμένα αρχεία ASCII (*.asc)
-no-key-selected = Πρέπει να επιλέξετε τουλάχιστον ένα πλήκτρο για να εκτελέσετε την επιλεγμένη λειτουργία
+text-file = Αρχεία κειμένου (*.txt)
+no-key-selected = Πρέπει να επιλέξετε τουλάχιστον ένα κλειδί για να εκτελέσετε την επιλεγμένη λειτουργία
 export-to-file = Εξαγωγή δημόσιου κλειδιού σε αρχείο
 export-keypair-to-file = Εξαγωγή μυστικού και δημόσιου κλειδιού σε αρχείο
 export-secret-key = Θέλετε να συμπεριλάβετε το μυστικό κλειδί στο αποθηκευμένο αρχείο κλειδιού OpenPGP;
@@ -510,6 +557,12 @@ openpgp-export-secret-fail = <b>Δεν είναι δυνατή η εξαγωγή
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = Το κλειδί { $userId } (ID κλειδιού { $keyId }) έχει ανακληθεί.
 key-ring-pub-key-expired = Το κλειδί { $userId } (ID κλειδιού { $keyId }) έχει λήξει.
 key-ring-no-secret-key = Φαίνεται ότι δεν έχετε το μυστικό κλειδί για το { $userId } (ID κλειδιού { $keyId }) στην κλειδοθήκη σας· δεν μπορείτε να χρησιμοποιήσετε το κλειδί για υπογραφή.
@@ -522,10 +575,16 @@ key-ring-enc-sub-keys-expired = Όλα τα υποκλειδιά κρυπτογ�
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Φωτογραφία
 user-att-photo = Χαρακτηριστικό χρήστη (εικόνα JPEG)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Αυτό το κλειδί έχει ήδη ανακληθεί.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -549,6 +608,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Εισαγωγή
 delete-key-title = Διαγραφή κλειδιού OpenPGP
 delete-external-key-title = Αφαίρεση εξωτερικού κλειδιού GnuPG
@@ -558,6 +620,9 @@ delete-key-in-use-description = Δεν είναι δυνατή η συνέχει
 revoke-key-in-use-description = Δεν είναι δυνατή η συνέχεια! Το κλειδί που επιλέξατε για ανάκληση χρησιμοποιείται αυτήν τη στιγμή από αυτήν την ταυτότητα. Επιλέξτε ένα άλλο κλειδί ή μην επιλέξετε κανένα και δοκιμάστε ξανά.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -569,18 +634,33 @@ key-error-not-accepted-as-personal = Δεν έχετε επιβεβαιώσει 
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Η λειτουργία που έχετε επιλέξει δεν είναι διαθέσιμη σε λειτουργία εκτός σύνδεσης. Συνδεθείτε στο διαδίκτυο και δοκιμάστε ξανά.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Δεν ήταν δυνατή η εύρεση χρησιμοποιήσιμων κλειδιών που να ταιριάζουν με τα κριτήρια αναζήτησης.
 no-update-found = Έχετε ήδη τα κλειδιά που ανακαλύφθηκαν στο διαδίκτυο.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Σφάλμα - Η εντολή εξαγωγής κλειδιού απέτυχε
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Σφάλμα - Η λήψη του κλειδιού ακυρώθηκε από τον χρήστη
 not-first-block = Σφάλμα - Το πρώτο τμήμα OpenPGP δεν αποτελεί τμήμα δημόσιου κλειδιού
@@ -593,6 +673,13 @@ no-pgp-block = Σφάλμα - Δεν βρέθηκε έγκυρο μπλοκ δε
 confirm-permissive-import = Η εισαγωγή απέτυχε. Το κλειδί που προσπαθείτε να εισαγάγετε ενδέχεται να είναι κατεστραμμένο ή να χρησιμοποιεί άγνωστες ιδιότητες. Θέλετε να προσπαθήσετε να εισαγάγετε τα τμήματα που είναι σωστά; Αυτό μπορεί να έχει ως αποτέλεσμα την εισαγωγή ημιτελών και μη χρησιμοποιήσιμων κλειδιών.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Μερικά από τα μυστικά κλειδιά που εισήχθησαν διαφημίζουν μια μη υποστηριζόμενη λειτουργία. Αν χρησιμοποιήσετε ένα τέτοιο κλειδί ως το προσωπικό σας, οι συνομιλητές σας ενδέχεται να σας στείλουν email ή δημόσια κλειδιά σε μη συμβατή μορφή. Αυτό επηρεάζει τα μυστικά κλειδιά που εισήχθησαν με τα εξής αποτυπώματα: { $fingerprints }.
+help-button = Βοήθεια
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = άγνωστο
 key-valid-invalid = μη έγκυρο
@@ -714,6 +801,9 @@ cannot-send-enc-because-no-own-key = Δεν είναι δυνατή η αποσ�
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -737,9 +827,15 @@ dlg-button-view = &Προβολή
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Σφάλμα - δεν απαιτείται κρυπτογράφηση
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Καμία διαθέσιμη φωτογραφία
 # Variables:
@@ -758,6 +854,9 @@ repeat-suffix-singular = ακόμη φορά.
 repeat-suffix-plural = ακόμη φορές.
 no-repeat = Αυτή η ειδοποίηση δεν θα εμφανιστεί ξανά.
 dlg-keep-setting = Αποθήκευση απάντησης και να μη γίνει ξανά ερώτηση
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &OK
 dlg-button-close = &Κλείσιμο
 dlg-button-cancel = &Ακύρωση
@@ -768,6 +867,9 @@ enig-alert = Ειδοποίηση OpenPGP
 enig-info = Πληροφορίες OpenPGP
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = &Επανάληψη
 dlg-button-skip = &Παράλειψη

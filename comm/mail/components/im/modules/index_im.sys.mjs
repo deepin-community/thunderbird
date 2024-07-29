@@ -4,23 +4,16 @@
 
 var CC = Components.Constructor;
 
-const { Gloda } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaPublic.jsm"
-);
-const { GlodaAccount } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaDataModel.jsm"
-);
-const { GlodaConstants } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaConstants.jsm"
-);
-const { GlodaIndexer, IndexingJob } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaIndexer.jsm"
-);
+import { Gloda } from "resource:///modules/gloda/GlodaPublic.sys.mjs";
+import { GlodaAccount } from "resource:///modules/gloda/GlodaDataModel.sys.mjs";
+import { GlodaConstants } from "resource:///modules/gloda/GlodaConstants.sys.mjs";
+import {
+  GlodaIndexer,
+  IndexingJob,
+} from "resource:///modules/gloda/GlodaIndexer.sys.mjs";
 import { IMServices } from "resource:///modules/IMServices.sys.mjs";
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 import { FileUtils } from "resource://gre/modules/FileUtils.sys.mjs";
 
 import { clearTimeout, setTimeout } from "resource://gre/modules/Timer.sys.mjs";
@@ -29,12 +22,8 @@ const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   AsyncShutdown: "resource://gre/modules/AsyncShutdown.sys.mjs",
+  GlodaDatastore: "resource:///modules/gloda/GlodaDatastore.sys.mjs",
 });
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "GlodaDatastore",
-  "resource:///modules/gloda/GlodaDatastore.jsm"
-);
 
 var kCacheFileName = "indexedFiles.json";
 
@@ -62,7 +51,7 @@ ChromeUtils.defineLazyGetter(lazy, "MailFolder", () =>
 var gIMAccounts = {};
 
 function GlodaIMConversation(aTitle, aTime, aPath, aContent) {
-  // grokNounItem from Gloda.jsm puts automatically the values of all
+  // grokNounItem from Gloda.sys.mjs puts automatically the values of all
   // JS properties in the jsonAttributes magic attribute, except if
   // they start with _, so we put the values in _-prefixed properties,
   // and have getters in the prototype.
@@ -191,7 +180,7 @@ var IMConversationNoun = {
 Gloda.defineNoun(IMConversationNoun);
 
 // Needs to be set after calling defineNoun, otherwise it's replaced
-// by GlodaDatabind.jsm' implementation.
+// by GlodaDatabind.sys.mjs' implementation.
 IMConversationNoun.objFromRow = function (aRow) {
   // Row columns are:
   // 0 id
@@ -280,7 +269,7 @@ Gloda.defineAttribute({
   subjectNouns: [IMConversationNoun.id],
   objectNoun: GlodaConstants.NOUN_FULLTEXT,
 });
-// For Facet.jsm DateFaceter
+// For Facet.sys.mjs DateFaceter
 Gloda.defineAttribute({
   provider: WidgetProvider,
   extensionName: EXT_NAME,
@@ -550,7 +539,7 @@ var GlodaIMIndexer = {
     this._knownConversations[convId].scheduledIndex = null;
   },
 
-  observe(aSubject, aTopic, aData) {
+  observe(aSubject, aTopic) {
     if (
       aTopic == "new-ui-conversation" ||
       aTopic == "conversation-update-type"
@@ -626,7 +615,7 @@ var GlodaIMIndexer = {
     );
     selectStatement.bindByIndex(0, aPath);
     let id;
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       selectStatement.executeAsync({
         handleResult: aResultSet => {
           const row = aResultSet.getNextRow();
@@ -787,7 +776,7 @@ var GlodaIMIndexer = {
     yield GlodaConstants.kWorkDone;
   },
 
-  *_worker_logsFolderSweep(aJob) {
+  *_worker_logsFolderSweep() {
     const dir = new FileUtils.File(
       PathUtils.join(PathUtils.profileDir, "logs")
     );

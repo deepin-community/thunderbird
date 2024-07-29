@@ -3,15 +3,38 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { ExtensionUtils } from "resource://gre/modules/ExtensionUtils.sys.mjs";
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
+import { SmartMailboxUtils } from "resource:///modules/SmartMailboxUtils.sys.mjs";
+import { VirtualFolderHelper } from "resource:///modules/VirtualFolderWrapper.sys.mjs";
 
 var { ExtensionError } = ExtensionUtils;
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
 
 export class AccountManager {
   constructor(extension) {
     this.extension = extension;
+  }
+
+  /**
+   * Get the WebExtension server type for the given server.
+   *
+   * @param {nsIMsgIncomingServer} server - The server to retrieve the type for.
+   * @returns {string}
+   */
+  getType(server) {
+    // Skip the "smart" account, which holds the unified mailbox folders and the
+    // virtual tag folders.
+    if (server.hostName == "smart mailboxes") {
+      return null;
+    }
+
+    const type = server.type;
+    if (["imap", "pop3", "nntp"].includes(type)) {
+      return type;
+    }
+    if (type != "none") {
+      return null;
+    }
+    return this.extension.manifestVersion < 3 ? "none" : "local";
   }
 
   /**
@@ -28,7 +51,9 @@ export class AccountManager {
     account = account.QueryInterface(Ci.nsIMsgAccount);
 
     const server = account.incomingServer;
-    if (server.type == "im") {
+    const type = this.getType(server);
+    // If the type is not supported by the API (i.e. "im"), bail out.
+    if (!type) {
       return null;
     }
 
@@ -36,7 +61,7 @@ export class AccountManager {
     const mailAccount = {
       id: account.key,
       name: server.prettyName,
-      type: server.type,
+      type,
       rootFolder: this.extension.folderManager.convert(rootFolder, account.key),
       identities: account.identities.map(identity =>
         convertMailIdentity(account, identity)
@@ -49,7 +74,7 @@ export class AccountManager {
         account.key
       );
       mailAccount.rootFolder.subFolders = subFolders;
-    } else {
+    } else if (this.extension.manifestVersion < 3) {
       mailAccount.rootFolder.subFolders = null;
     }
 
@@ -85,6 +110,24 @@ export class CachedIdentity {
     this.composeHtml = identity.composeHtml;
     this.htmlSigText = identity.htmlSigText;
     this.htmlSigFormat = identity.htmlSigFormat;
+
+    this.attributes = new Map();
+    this.attributes.set(
+      "openpgp_key_id",
+      identity.getUnicharAttribute("openpgp_key_id")
+    );
+    this.attributes.set(
+      "signing_cert_name",
+      identity.getUnicharAttribute("signing_cert_name")
+    );
+    this.attributes.set(
+      "encryption_cert_name",
+      identity.getUnicharAttribute("encryption_cert_name")
+    );
+  }
+
+  getUnicharAttribute(attribute) {
+    return this.attributes.get(attribute);
   }
 
   QueryInterface() {
@@ -175,6 +218,16 @@ export function convertMailIdentity(account, identity) {
     composeHtml: identity.composeHtml,
     signature: identity.htmlSigText || "",
     signatureIsPlainText: !identity.htmlSigFormat,
+    encryptionCapabilities: {
+      OpenPGP: {
+        canEncrypt: !!identity.getUnicharAttribute("openpgp_key_id"),
+        canSign: !!identity.getUnicharAttribute("openpgp_key_id"),
+      },
+      "S/MIME": {
+        canEncrypt: !!identity.getUnicharAttribute("encryption_cert_name"),
+        canSign: !!identity.getUnicharAttribute("signing_cert_name"),
+      },
+    },
   };
 }
 
@@ -212,7 +265,11 @@ export function folderURIToPath(accountId, uri) {
  * @returns {string}
  */
 export function folderPathToURI(accountId, path) {
-  const server = MailServices.accounts.getAccount(accountId).incomingServer;
+  const account = MailServices.accounts.getAccount(accountId);
+  if (!account) {
+    return null;
+  }
+  const server = account.incomingServer;
   const rootURI = server.rootFolder.URI;
   if (path == "/") {
     return rootURI;
@@ -248,6 +305,13 @@ export const specialUseMap = new Map([
   [Ci.nsMsgFolderFlags.Queue, "outbox"],
 ]);
 
+/**
+ * Returns an array of human readable names of the enabled nsMsgFolderFlags in
+ * the provided flags value.
+ *
+ * @param {integer} flags
+ * @returns {string[]}
+ */
 export function getSpecialUse(flags) {
   const specialUse = [];
   for (const [flag, specialUseName] of specialUseMap.entries()) {
@@ -258,9 +322,89 @@ export function getSpecialUse(flags) {
   return specialUse;
 }
 
+/**
+ * Returns whether the provided folder is a unified mailbox folder.
+ *
+ * @param {nsIMsgFolder} folder
+ * @returns {boolean}
+ */
+function isUnifiedMailboxFolder(folder) {
+  return (
+    folder &&
+    folder.server.hostName == "smart mailboxes" &&
+    folder.parent?.isServer &&
+    SmartMailboxUtils.getFolderTypes().some(({ flag }) => flag & folder.flags)
+  );
+}
+
+/**
+ * Returns whether the provided folder is a virtual tag folder.
+ *
+ * @param {nsIMsgFolder} folder
+ * @returns {boolean}
+ */
+function isVirtualTagFolder(folder) {
+  return (
+    folder &&
+    folder.server.hostName == "smart mailboxes" &&
+    folder.parent?.name == "tags" &&
+    !!(folder.flags & Ci.nsMsgFolderFlags.Virtual)
+  );
+}
+
+/**
+ * Some virtual folders do not search explicitly specified folders, but all
+ * folders (except Trash, Junk, Outbox and other virtual folders). This function
+ * returns an array with all these folders.
+ *
+ * @param {VirtualFolderWrapper} wrappedVirtualFolder
+ * @returns {nsIMsgFolder[]}
+ */
+export function getWildcardVirtualFolders(wrappedVirtualFolder) {
+  if (wrappedVirtualFolder.searchFolderURIs != "*") {
+    return [];
+  }
+  // This is a special virtual folder that searches all folders in all
+  // accounts (except the unwanted types listed). Get those folders now.
+  const folders = [];
+  const unwantedFlags =
+    Ci.nsMsgFolderFlags.Trash |
+    Ci.nsMsgFolderFlags.Junk |
+    Ci.nsMsgFolderFlags.Queue |
+    Ci.nsMsgFolderFlags.Virtual;
+  for (const server of MailServices.accounts.allServers) {
+    folders.push(
+      ...server.rootFolder.descendants.filter(
+        f => !f.isSpecialFolder(unwantedFlags, true)
+      )
+    );
+  }
+  return folders;
+}
+
 export class FolderManager {
   constructor(extension) {
     this.extension = extension;
+  }
+
+  /**
+   * Supress folder.deleteable of smart folders for the WebExtension APIs.
+   *
+   * @param {nsIMsgFolder} folder
+   * @returns {boolean}
+   */
+  static canBeDeleted(folder) {
+    return folder.deletable && folder.server.hostName != "smart mailboxes";
+  }
+
+  /**
+   * Supress folder.canRename of smart folders for the WebExtension APIs.
+   *
+   * @param {nsIMsgFolder} folder
+   * @returns {boolean}
+   */
+  static canBeRenamed(folder) {
+    return folder.canRename && folder.server.hostName != "smart mailboxes";
   }
 
   /**
@@ -276,24 +420,47 @@ export class FolderManager {
     if (!folder) {
       return null;
     }
+    const server = folder.server;
+
     if (!accountId) {
-      const server = folder.server;
       const account = MailServices.accounts.findAccountForServer(server);
       accountId = account.key;
     }
 
-    const path = folderURIToPath(accountId, folder.URI);
     const isRoot = folder.isServer;
+    const isUnified = isUnifiedMailboxFolder(folder);
+    const isTag = isVirtualTagFolder(folder);
+
+    const nativePath = folderURIToPath(accountId, folder.URI);
+    let id = `${accountId}:/${nativePath}`;
+    let path = nativePath;
+    if (isUnified || isTag) {
+      // Map unified mailbox folders to /unified/*, virtual tag folders to /tag/*
+      id = isUnified ? `unified:/${nativePath}` : `tag:/${path.substring(5)}`;
+      path = isUnified ? `/unified${nativePath}` : `/tag${path.substring(5)}`;
+    }
+
     const folderObject = {
-      id: `${accountId}:/${path}`,
-      accountId,
+      id,
       name: isRoot ? "Root" : folder.prettyName,
       path,
       specialUse: getSpecialUse(folder.flags),
       isFavorite: folder.getFlag(Ci.nsMsgFolderFlags.Favorite),
       isRoot,
+      isTag,
+      isUnified,
       isVirtual: folder.getFlag(Ci.nsMsgFolderFlags.Virtual),
     };
+
+    if (isUnified || isTag) {
+      // MV2 introduced the accountId as a required string property, so we have
+      // to keep returning one.
+      if (this.extension.manifestVersion < 3) {
+        folderObject.accountId = "";
+      }
+    } else {
+      folderObject.accountId = accountId;
+    }
 
     // In MV2 only the first special use was returned as type, assuming a folder
     // can only be of one type. Since that turned out to be wrong, the type
@@ -310,6 +477,47 @@ export class FolderManager {
   }
 
   /**
+   * Returns the direct subfolders of the specifed nsIMsgFolder. Individual search
+   * folders of virtual folders are usually not returned as subfolders, except for
+   * unified folders.
+   *
+   * @param {nsIMsgFolder} folder - The folder to get the direct subfolders for.
+   * @param {boolean} isUnified - Whether the folder is a unified folder.
+   *
+   * @returns {nsIMsgFolder[]}
+   */
+  getDirectSubfolders(folder, isUnified) {
+    if (folder.hasSubFolders) {
+      // Use the same order as used by Thunderbird.
+      return folder.subFolders.sort((a, b) =>
+        a.sortOrder == b.sortOrder
+          ? a.name.localeCompare(b.name)
+          : a.sortOrder - b.sortOrder
+      );
+    }
+    if (isUnified) {
+      const wrappedFolder = VirtualFolderHelper.wrapVirtualFolder(folder);
+      // wrappedFolder.searchFolders returns all nested folders, not just the
+      // direct children. Filter out nested folders based on their URI starting
+      // with a value which is already known.
+      const subFolders = [];
+      for (const folder of wrappedFolder.searchFolders) {
+        const URI = folder.URI;
+        if (subFolders.find(f => URI.startsWith(f.URI))) {
+          continue;
+        }
+        subFolders.push(folder);
+      }
+      return subFolders.sort((a, b) =>
+        a.sortOrder == b.sortOrder
+          ? a.name.localeCompare(b.name)
+          : a.sortOrder - b.sortOrder
+      );
+    }
+    return [];
+  }
+
+  /**
    * Converts an nsIMsgFolder and all its subfolders to a simple object for use in
    * API messages.
    *
@@ -320,28 +528,29 @@ export class FolderManager {
    * @see mail/components/extensions/schemas/folders.json
    */
   traverseSubfolders(folder, accountId) {
-    const f = this.convert(folder, accountId);
-    f.subFolders = [];
-    if (folder.hasSubFolders) {
-      // Use the same order as used by Thunderbird.
-      const subFolders = [...folder.subFolders].sort((a, b) =>
-        a.sortOrder == b.sortOrder
-          ? a.name.localeCompare(b.name)
-          : a.sortOrder - b.sortOrder
+    const convertedFolder = this.convert(folder, accountId);
+    const subFolders = this.getDirectSubfolders(
+      folder,
+      convertedFolder.isUnified
+    );
+
+    // If accountId was not specified, convert() made a lookup and retrieved the
+    // actual accountId. Always use that, except if this folder is a virtual
+    // folder (its subfolders could belong to a different account).
+    accountId = convertedFolder.isVirtual ? null : convertedFolder.accountId;
+
+    convertedFolder.subFolders = [];
+    for (const subFolder of subFolders) {
+      convertedFolder.subFolders.push(
+        this.traverseSubfolders(subFolder, accountId)
       );
-      for (const subFolder of subFolders) {
-        f.subFolders.push(
-          this.traverseSubfolders(subFolder, accountId || f.accountId)
-        );
-      }
     }
-    return f;
+    return convertedFolder;
   }
 
   get(accountId, path) {
-    return MailServices.folderLookup.getFolderForURL(
-      folderPathToURI(accountId, path)
-    );
+    const { folder } = getFolder({ accountId, path });
+    return folder;
   }
 }
 
@@ -388,39 +597,145 @@ export class CachedFolder {
 }
 
 /**
- * Accepts a MailFolder, a MailAccount or a folderId. Returns the actual folder,
- * its accountId and its path. Throws if the requested folder does not exist.
+ * @typedef {object} FolderDetails
+ *
+ * @property {nsIMsgFolder} folder
+ * @property {string} accountKey - key property of the folder's account
+ * @property {boolean} isTag - MailFolder.isTag
+ * @property {boolean} isUnified - MailFolder.isUnified
+ * @property {string} path - MailFolder.path
  */
-export function getFolder(target) {
-  let accountId, path;
-  if (typeof target === "object") {
-    // MailFolders have a mandatory accountId member, which can be used to
-    // differentiate between MailAccounts and MailFolders.
-    if (target.id && !target.accountId) {
-      // The target is a MailAccount, use its id.
-      accountId = target.id;
-      path = "/";
-    } else {
-      // The target is a MailFolder.
-      accountId = target.accountId;
-      path = target.path;
+
+/**
+ * Retrieves the actual folder and additional details for the specified folder
+ * identifier. Throws if the folder cannot be found.
+ *
+ * @param {object} identifier
+ * @param {?string} identifier.accountId - MailFolder.accountId
+ * @param {?string} identifier.folderId - MailFolder.id
+ * @param {?string} identifier.path - MailFolder.path
+ *
+ * @returns {FolderDetails} info - Details about the specified folder.
+ */
+function getFolderDetails({ accountId, folderId, path }) {
+  const checkDetails = ({
+    accountKey,
+    folderId,
+    isTag,
+    isUnified,
+    path,
+    uri,
+  }) => {
+    if (!uri) {
+      throw new ExtensionError(`Folder not found: ${folderId}`);
     }
-  } else {
-    // The target is a folderId.
-    const parts = target.split(":/");
+    const folder = MailServices.folderLookup.getFolderForURL(uri);
+    if (
+      !folder ||
+      (isUnified && !isUnifiedMailboxFolder(folder)) ||
+      (isTag && !isVirtualTagFolder(folder))
+    ) {
+      throw new ExtensionError(`Folder not found: ${folderId}`);
+    }
+    return { accountKey, folder, isTag, isUnified, path };
+  };
+
+  // Handle unified mailbox folders, they can only be specified via folderId.
+  if (folderId?.startsWith("unified://")) {
+    const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+    if (!smartMailbox.account) {
+      throw new ExtensionError(`Folder not found: ${folderId}`);
+    }
+    const accountKey = smartMailbox.account.key;
+    const nativePath = folderId.substring(9);
+    const webExtPath = `/unified/${folderId.substring(10)}`;
+    const uri = folderPathToURI(accountKey, nativePath);
+    return checkDetails({
+      accountKey,
+      folderId,
+      isTag: false,
+      isUnified: true,
+      path: webExtPath,
+      uri,
+    });
+  }
+
+  // Handle virtual tag folders, they can only be specified via folderId.
+  if (folderId?.startsWith("tag://")) {
+    const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+    if (!smartMailbox.account) {
+      throw new ExtensionError(`Folder not found: ${folderId}`);
+    }
+    const accountKey = smartMailbox.account.key;
+    const nativePath = `/tags/${folderId.substring(6)}`;
+    const webExtPath = `/tag/${folderId.substring(6)}`;
+    const uri = folderPathToURI(accountKey, nativePath);
+    return checkDetails({
+      accountKey,
+      folderId,
+      isTag: true,
+      isUnified: false,
+      path: webExtPath,
+      uri,
+    });
+  }
+
+  if (folderId) {
+    const parts = folderId.split(":/");
     accountId = parts.shift();
     // The path may contain ":/" itself, so stitch it all back together.
     path = parts.join(":/");
-  }
-
-  if (!accountId) {
-    throw new ExtensionError(`Folder not found: ${JSON.stringify(target)}`);
+  } else {
+    folderId = `${accountId}:/${path}`;
   }
 
   const uri = folderPathToURI(accountId, path);
-  const folder = MailServices.folderLookup.getFolderForURL(uri);
-  if (!folder) {
-    throw new ExtensionError(`Folder not found: ${path}`);
+  return checkDetails({
+    accountKey: accountId,
+    folderId,
+    isUnified: false,
+    isTag: false,
+    path,
+    uri,
+  });
+}
+
+/**
+ * Retrieves the actual folder and additional details for the specified folder
+ * identifier, which may be a WebExtension MailFolder, a WebExtension MailAccount
+ * or a MailFolder.id. Throws if the folder cannot be found.
+ *
+ * @param {MailAccount|MailFolder|string} identifier
+ * @returns {FolderDetails} info - Details about the specified folder.
+ */
+export function getFolder(identifier) {
+  if (typeof identifier === "object") {
+    // A MailFolder (with path and with accountId).
+    if (identifier.path && identifier.accountId) {
+      return getFolderDetails({
+        accountId: identifier.accountId,
+        path: identifier.path,
+      });
+    }
+    // A virtual tag folder (with path /tag/<key> and without accountId).
+    if (identifier.path && identifier.path.startsWith("/tag/")) {
+      return getFolderDetails({
+        folderId: `tag://${identifier.path.substring(5)}`,
+      });
+    }
+    // A unified mailbox folder (with path /unified/<type> and without accountId).
+    if (identifier.path && identifier.path.startsWith("/unified/")) {
+      return getFolderDetails({
+        folderId: `unified://${identifier.path.substring(9)}`,
+      });
+    }
+    // A MailAccount (without path and with id). Return the accounts root folder.
+    if (identifier.id) {
+      return getFolderDetails({ accountId: identifier.id, path: "/" });
+    }
+
+    throw new ExtensionError(`Folder not found: ${JSON.stringify(identifier)}`);
   }
-  return { folder, accountId, path };
+  // A MailFolder.id.
+  return getFolderDetails({ folderId: identifier });
 }

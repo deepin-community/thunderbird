@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fy-NL@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Frysk (Frisian)",
   "description": "Thunderbird Language Pack for Frysk (fy-NL) – Frisian",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "fy-NL": {
-      "version": "20240423195741",
+      "version": "20240718003044",
       "chrome_resources": {
         "alerts": "chrome/fy-NL/locale/fy-NL/alerts/",
         "autoconfig": "chrome/fy-NL/locale/fy-NL/autoconfig/",
         "branding": "chrome/fy-NL/locale/branding/",
         "calendar": "chrome/fy-NL/locale/fy-NL/calendar/",
-        "chat": "chrome/fy-NL/locale/fy-NL/chat/",
         "communicator": "chrome/fy-NL/locale/fy-NL/communicator/",
         "devtools": "chrome/fy-NL/locale/fy-NL/devtools/client/",
         "devtools-shared": "chrome/fy-NL/locale/fy-NL/devtools/shared/",

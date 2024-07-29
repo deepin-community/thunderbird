@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsMsgComposeService.h"
+#include "nsIMsgMessageService.h"
 #include "nsIMsgSend.h"
 #include "nsIMsgIdentity.h"
 #include "nsISmtpUrl.h"
@@ -41,13 +42,6 @@
 #include "nsSmtpUrl.h"
 #include "mozilla/NullPrincipal.h"
 
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-#  include "mozilla/Logging.h"
-#  include "nsIMsgHdr.h"
-#  include "nsIMsgMessageService.h"
-#  include "nsMsgUtils.h"
-#endif
-
 #include "nsICommandLine.h"
 #include "nsMsgUtils.h"
 #include "nsIPrincipal.h"
@@ -79,33 +73,10 @@ using namespace mozilla::dom;
 #define USER_CURRENT_PLAINTEXTDOMAINLIST_PREF_NAME "plaintext_domains"
 #define DOMAIN_DELIMITER ','
 
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-static mozilla::LazyLogModule MsgComposeLogModule("MsgCompose");
-
-static uint32_t GetMessageSizeFromURI(const nsACString& originalMsgURI) {
-  uint32_t msgSize = 0;
-
-  if (!originalMsgURI.IsEmpty()) {
-    nsCOMPtr<nsIMsgDBHdr> originalMsgHdr;
-    GetMsgDBHdrFromURI(originalMsgURI, getter_AddRefs(originalMsgHdr));
-    if (originalMsgHdr) originalMsgHdr->GetMessageSize(&msgSize);
-  }
-
-  return msgSize;
-}
-#endif
-
-nsMsgComposeService::nsMsgComposeService() {
-  // Defaulting the value of mLogComposePerformance to FALSE to prevent logging.
-  mLogComposePerformance = false;
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-  mStartTime = PR_IntervalNow();
-  mPreviousTime = mStartTime;
-#endif
-}
+nsMsgComposeService::nsMsgComposeService() = default;
 
 NS_IMPL_ISUPPORTS(nsMsgComposeService, nsIMsgComposeService,
-                  ICOMMANDLINEHANDLER, nsISupportsWeakReference)
+                  nsICommandLineHandler, nsISupportsWeakReference)
 
 nsMsgComposeService::~nsMsgComposeService() { mOpenComposeWindows.Clear(); }
 
@@ -125,14 +96,7 @@ nsresult nsMsgComposeService::Init() {
   return rv;
 }
 
-void nsMsgComposeService::Reset() {
-  mOpenComposeWindows.Clear();
-
-  nsCOMPtr<nsIPrefBranch> prefs(do_GetService(NS_PREFSERVICE_CONTRACTID));
-  if (prefs)
-    prefs->GetBoolPref("mailnews.logComposePerformance",
-                       &mLogComposePerformance);
-}
+void nsMsgComposeService::Reset() { mOpenComposeWindows.Clear(); }
 
 // Function to open a message compose window and pass an nsIMsgComposeParams
 // parameter to it.
@@ -140,11 +104,6 @@ NS_IMETHODIMP
 nsMsgComposeService::OpenComposeWindowWithParams(const char* chrome,
                                                  nsIMsgComposeParams* params) {
   NS_ENSURE_ARG_POINTER(params);
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-  if (mLogComposePerformance) {
-    TimeStamp("Start opening the window", true);
-  }
-#endif
 
   nsresult rv;
 
@@ -271,8 +230,7 @@ nsMsgComposeService::GetOrigWindowSelection(MSG_ComposeType type,
         // words
         const char16_t* end;
         for (end = unicodeStr + endWordPos; mozilla::intl::NS_IsSpace(*end);
-             end++)
-          ;
+             end++);
         if (!*end) return NS_ERROR_ABORT;
       }
     }
@@ -287,9 +245,10 @@ nsMsgComposeService::GetOrigWindowSelection(MSG_ComposeType type,
 
   nsAutoString selHTML;
   IgnoredErrorResult rv2;
-  selection->ToStringWithFormat(u"text/html"_ns,
-                                nsIDocumentEncoder::SkipInvisibleContent, 0,
-                                selHTML, rv2);
+  selection->ToStringWithFormat(
+      u"text/html"_ns,
+      nsIDocumentEncoder::OutputRaw | nsIDocumentEncoder::SkipInvisibleContent,
+      0, selHTML, rv2);
   if (rv2.Failed()) {
     return NS_ERROR_FAILURE;
   }
@@ -392,8 +351,9 @@ nsMsgComposeService::OpenComposeWindow(
             // Treat the quote as <pre> for selections in moz-text-plain bodies.
             // If focusNode.localName isn't empty, we had e.g. body selected
             // and should not add <pre>.
-            pMsgComposeParams->SetHtmlToQuote("<pre>"_ns + selHTML +
-                                              "</pre>"_ns);
+            pMsgComposeParams->SetHtmlToQuote(
+                "<pre class=\"moz-quote-pre\" wrap=\"\">"_ns + selHTML +
+                "</pre>"_ns);
           } else {
             pMsgComposeParams->SetHtmlToQuote(selHTML);
           }
@@ -430,18 +390,6 @@ nsMsgComposeService::OpenComposeWindow(
       }
 
       pMsgComposeParams->SetComposeFields(pMsgCompFields);
-
-      if (mLogComposePerformance) {
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-        // ducarroz, properly fix this in the case of new message (not a reply)
-        if (type != nsIMsgCompType::NewsPost) {
-          char buff[256];
-          sprintf(buff, "Start opening the window, message size = %d",
-                  GetMessageSizeFromURI(originalMsgURI));
-          TimeStamp(buff, true);
-        }
-#endif
-      }  // end if(mLogComposePerformance)
 
       rv = OpenComposeWindowWithParams(
           PromiseFlatCString(msgComposeWindowURL).get(), pMsgComposeParams);
@@ -537,8 +485,8 @@ NS_IMETHODIMP nsMsgComposeService::GetParamsForMailto(
           return NS_OK;
         }
       }  // if we created msg compose params....
-    }    // if we had a mailto url
-  }      // if we had a url...
+    }  // if we had a mailto url
+  }  // if we had a url...
 
   // if we got here we must have encountered an error
   *aParams = nullptr;
@@ -587,43 +535,6 @@ nsMsgComposeService::GetDefaultIdentity(nsIMsgIdentity** _retval) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   return defaultAccount ? defaultAccount->GetDefaultIdentity(_retval) : NS_OK;
-}
-
-/* readonly attribute boolean logComposePerformance; */
-NS_IMETHODIMP nsMsgComposeService::GetLogComposePerformance(
-    bool* aLogComposePerformance) {
-  *aLogComposePerformance = mLogComposePerformance;
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgComposeService::TimeStamp(const char* label,
-                                             bool resetTime) {
-  if (!mLogComposePerformance) return NS_OK;
-
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-
-  PRIntervalTime now;
-
-  if (resetTime) {
-    MOZ_LOG(MsgComposeLogModule, mozilla::LogLevel::Info,
-            ("\n[process]: [totalTime][deltaTime]\n--------------------\n"));
-
-    mStartTime = PR_IntervalNow();
-    mPreviousTime = mStartTime;
-    now = mStartTime;
-  } else
-    now = PR_IntervalNow();
-
-  PRIntervalTime totalTime = PR_IntervalToMilliseconds(now - mStartTime);
-  PRIntervalTime deltaTime = PR_IntervalToMilliseconds(now - mPreviousTime);
-
-  MOZ_LOG(MsgComposeLogModule, mozilla::LogLevel::Info,
-          ("[%3.2f][%3.2f] - %s\n", ((double)totalTime / 1000.0) + 0.005,
-           ((double)deltaTime / 1000.0) + 0.005, label));
-
-  mPreviousTime = now;
-#endif
-  return NS_OK;
 }
 
 class nsMsgTemplateReplyHelper final : public nsIStreamListener,
@@ -684,7 +595,7 @@ NS_IMETHODIMP nsMsgTemplateReplyHelper::OnStopRunningUrl(nsIURI* aUrl,
 
   nsCString replyTo;
   mHdrToReplyTo->GetStringProperty("replyTo", replyTo);
-  if (replyTo.IsEmpty()) mHdrToReplyTo->GetAuthor(getter_Copies(replyTo));
+  if (replyTo.IsEmpty()) mHdrToReplyTo->GetAuthor(replyTo);
   compFields->SetTo(NS_ConvertUTF8toUTF16(replyTo));
 
   nsString body;
@@ -825,10 +736,10 @@ NS_IMETHODIMP nsMsgComposeService::ReplyWithTemplate(
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsAutoCString recipients;
-  aMsgHdr->GetRecipients(getter_Copies(recipients));
+  aMsgHdr->GetRecipients(recipients);
 
   nsAutoCString ccList;
-  aMsgHdr->GetCcList(getter_Copies(ccList));
+  aMsgHdr->GetCcList(ccList);
 
   // Go through the identities to see to whom this was addressed.
   // In case we get no match, this is likely a list/bulk/bcc/spam mail and we
@@ -857,7 +768,7 @@ NS_IMETHODIMP nsMsgComposeService::ReplyWithTemplate(
 
   nsAutoCString replyTo;
   aMsgHdr->GetStringProperty("replyTo", replyTo);
-  if (replyTo.IsEmpty()) aMsgHdr->GetAuthor(getter_Copies(replyTo));
+  if (replyTo.IsEmpty()) aMsgHdr->GetAuthor(replyTo);
   if (replyTo.IsEmpty()) return NS_ERROR_FAILURE;  // nowhere to send the reply
 
   nsCOMPtr<nsIMsgFolder> templateFolder;
@@ -897,15 +808,10 @@ NS_IMETHODIMP nsMsgComposeService::ReplyWithTemplate(
   rv = GetMessageServiceFromURI(templateMsgHdrUri, getter_AddRefs(msgService));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  nsCOMPtr<nsISupports> listenerSupports;
-  helper->QueryInterface(NS_GET_IID(nsISupports),
-                         getter_AddRefs(listenerSupports));
-
   nsCOMPtr<nsIURI> dummyNull;
-  rv = msgService->StreamMessage(
-      templateMsgHdrUri, listenerSupports, aMsgWindow, helper,
-      false,  // convert data
-      EmptyCString(), false, getter_AddRefs(dummyNull));
+  rv = msgService->StreamMessage(templateMsgHdrUri, helper, aMsgWindow, helper,
+                                 false,  // convert data
+                                 ""_ns, false, getter_AddRefs(dummyNull));
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgFolder> folder;
@@ -1297,8 +1203,10 @@ nsresult nsMsgComposeService::RunMessageThroughMimeDraft(
 
   // Now, just plug the two together and get the hell out of the way!
   nsCOMPtr<nsIStreamListener> streamListener = do_QueryInterface(mimeConverter);
-  return messageService->LoadMessage(aMsgURI, streamListener, aMsgWindow,
-                                     nullptr, autodetectCharset);
+  nsCOMPtr<nsIURI> dummyNull;
+  return messageService->StreamMessage(aMsgURI, streamListener, aMsgWindow,
+                                       nullptr, false, ""_ns, false,
+                                       getter_AddRefs(dummyNull));
 }
 
 NS_IMETHODIMP

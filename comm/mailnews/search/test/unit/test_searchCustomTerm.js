@@ -45,7 +45,7 @@ var customTerm = {
       scope == Ci.nsMsgSearchScope.offlineMail && op == Ci.nsMsgSearchOp.Is
     );
   },
-  getAvailableOperators(scope) {
+  getAvailableOperators() {
     return [Ci.nsMsgSearchOp.Is];
   },
   match(msgHdr, searchValue, searchOp) {
@@ -63,14 +63,17 @@ function run_test() {
   localAccountUtils.loadLocalMailAccount();
   MailServices.filters.addCustomTerm(customTerm);
 
+  /** @implements {nsIMsgCopyServiceListener} */
   var copyListener = {
-    OnStartCopy() {},
-    OnProgress(aProgress, aProgressMax) {},
-    SetMessageKey(aKey) {
+    onStartCopy() {},
+    onProgress() {},
+    setMessageKey(aKey) {
       gHdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
     },
-    SetMessageId(aMessageId) {},
-    OnStopCopy(aStatus) {
+    getMessageId() {
+      return null;
+    },
+    onStopCopy() {
       doTest();
     },
   };

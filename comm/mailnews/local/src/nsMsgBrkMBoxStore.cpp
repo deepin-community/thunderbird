@@ -7,11 +7,11 @@
    Class for handling Berkeley Mailbox stores.
 */
 
+#include "MailNewsTypes.h"
 #include "prlog.h"
 #include "msgCore.h"
 #include "nsMsgBrkMBoxStore.h"
 #include "nsIMsgFolder.h"
-#include "nsMsgFolderFlags.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgLocalMailFolder.h"
 #include "nsIInputStream.h"
@@ -22,23 +22,23 @@
 #include "nsIMsgHdr.h"
 #include "nsNetUtil.h"
 #include "nsIMsgDatabase.h"
-#include "nsNativeCharsetUtils.h"
 #include "nsMsgUtils.h"
 #include "nsIDBFolderInfo.h"
 #include "nsMsgLocalFolderHdrs.h"
 #include "nsMailHeaders.h"
 #include "nsParseMailbox.h"
-#include "nsIMsgFolderCompactor.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsPrintfCString.h"
 #include "nsQuarantinedOutputStream.h"
+#include "HeaderReader.h"
 #include "MboxMsgInputStream.h"
 #include "MboxMsgOutputStream.h"
+#include "mozilla/Buffer.h"
 #include "mozilla/Logging.h"
 #include "mozilla/Preferences.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/SlicedInputStream.h"
-#include "mozilla/RefCounted.h"
 #include "prprf.h"
 #include <cstdlib>  // for std::abs(int/long)
 #include <cmath>    // for std::abs(float/double)
@@ -46,7 +46,7 @@
 mozilla::LazyLogModule gMboxLog("mbox");
 using mozilla::LogLevel;
 
-/*
+/**
  * MboxScanner is a helper class for implementing
  * nsMsgBrkMBoxStore::AsyncScan().
  *
@@ -169,7 +169,10 @@ NS_IMETHODIMP MboxScanner::OnDataAvailable(nsIRequest* req,
 
 NS_IMETHODIMP MboxScanner::OnStopRequest(nsIRequest* req, nsresult status) {
   if (mMboxStream) {
-    mScanListener->OnStopRequest(req, status);
+    nsresult rv = mScanListener->OnStopRequest(req, status);
+    if (NS_SUCCEEDED(status) && NS_FAILED(rv)) {
+      status = rv;  // Listener requested abort.
+    }
 
     bool more = false;
     if (NS_SUCCEEDED(status)) {
@@ -208,7 +211,387 @@ NS_IMETHODIMP MboxScanner::OnStopRequest(nsIRequest* req, nsresult status) {
   return NS_OK;
 }
 
-/*
+/**
+ * Helper class for mbox compaction, used by nsMsgBrkMBoxStore::AsyncCompact().
+ *
+ * It iterates through each message in the store, and writes the ones we
+ * want to keep into a new mbox file. It'll also patch X-Mozilla-* headers
+ * as it goes, if asked to.
+ * If all goes well, the old mbox file is (atomicallyish) replaced by the
+ * new one. If any error occurs, the mbox is left untouched.
+ * Doesn't fiddle with folder or database or GUI. Just the mbox file.
+ */
+class MboxCompactor : public nsIStoreScanListener {
+ public:
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSISTORESCANLISTENER
+  NS_DECL_NSISTREAMLISTENER
+  NS_DECL_NSIREQUESTOBSERVER
+
+  MboxCompactor() = delete;
+
+  /**
+   * Create the compactor.
+   * @param folder - The folder we're compacting.
+   * @param listener - Callbacks to make decisions about what to keep.
+   * @param patchXMozillaHeaders - Patch X-Mozilla-* headers as we go?
+   */
+  MboxCompactor(nsIMsgFolder* folder, nsIStoreCompactListener* listener,
+                bool patchXMozillaHeaders)
+      : mFolder(folder),
+        mCompactListener(listener),
+        mOriginalMboxFileSize(0),
+        mPatchXMozillaHeaders(patchXMozillaHeaders) {}
+
+  /*
+   * Start the compaction.
+   * NOTE: this returns before any listener callbacks are invoked.
+   * If it fails, no callbacks will be called.
+   */
+  nsresult BeginCompaction();
+
+ private:
+  virtual ~MboxCompactor() {}
+
+  nsresult FlushBuffer();
+
+  // NOTE: We're still lumbered with having to use nsIMsgFolder here,
+  // but eventually we can decouple and just work with the store directly.
+  // (Bug 1714472)
+  nsCOMPtr<nsIMsgFolder> mFolder;
+  nsCOMPtr<nsIStoreCompactListener> mCompactListener;
+
+  // Path for the mbox file we're compacting.
+  nsCOMPtr<nsIFile> mMboxPath;
+
+  // Size of original mbox file before compaction.
+  int64_t mOriginalMboxFileSize;
+
+  // The raw stream to write the new mbox file.
+  nsCOMPtr<nsIOutputStream> mDestStream;
+
+  // Where we're writing the current message.
+  // Formats mbox data and writes it out to mDestStream.
+  // If this is null, the current message is being skipped.
+  RefPtr<MboxMsgOutputStream> mMsgOut;
+
+  // The current message being processed.
+  nsAutoCString mCurToken;  // empty = no message being processed
+
+  // Remember flags and keywords provided by onRetentionQuery(),
+  // used if patching headers.
+  uint32_t mMsgFlags;
+  nsAutoCString mMsgKeywords;
+
+  // Running total of the size in bytes of the current message.
+  int64_t mNewMsgSize;
+
+  // Patch X-Mozilla-* headers as we go, with message flags and keywords.
+  // Local folders do this, others probably shouldn't.
+  bool mPatchXMozillaHeaders;
+
+  // Buffer for copying message data.
+  // This should be at least large enough to contain the start of a message
+  // including the X-Mozilla-* headers, so we can patch them.
+  // (It's OK if we don't have the whole header block - the X-Mozilla-*
+  // headers will likely be right at the beginning).
+  mozilla::Buffer<char> mBuffer{16 * 1024};
+
+  // How many bytes are currently contained in mBuffer.
+  size_t mBufferCount{0};
+};
+
+NS_IMPL_ISUPPORTS(MboxCompactor, nsIStoreScanListener);
+
+nsresult MboxCompactor::BeginCompaction() {
+  MOZ_ASSERT(mFolder);
+
+  nsresult rv = mFolder->GetFilePath(getter_AddRefs(mMboxPath));
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  bool exists;
+  rv = mMboxPath->Exists(&exists);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (!exists) {
+    // Cheesy hack - create empty mbox file if it doesn't exist.
+    // This can happen in a few circumstances - e.g. IMAP folders without
+    // offline storage obviously have no messages in their local mbox file.
+    // It's valid having an empty mbox file, and cleaner to let the normal
+    // flow of code invoke the listener begin/complete callbacks rather than
+    // returning early and invoking them explicitly here.
+    rv = mMboxPath->Create(nsIFile::NORMAL_FILE_TYPE, 0600);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
+
+  rv = mMboxPath->GetFileSize(&mOriginalMboxFileSize);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Create output stream for our dest mbox.
+  rv = NS_NewSafeLocalFileOutputStream(getter_AddRefs(mDestStream), mMboxPath,
+                                       -1, 00600);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nsCOMPtr<nsIMsgPluggableStore> msgStore;
+  rv = mFolder->GetMsgStore(getter_AddRefs(msgStore));
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Start iterating over all the messages!
+  // The scan will hold a reference to us until it's completed, so
+  // no kingfudeathgrippery required here.
+  rv = msgStore->AsyncScan(mFolder, this);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  return NS_OK;
+}
+
+// nsIStoreScanListener callback called when the scan starts.
+NS_IMETHODIMP MboxCompactor::OnStartScan() {
+  return mCompactListener->OnCompactionBegin();
+}
+
+// nsIStoreScanListener callback called at the start of each message.
+NS_IMETHODIMP MboxCompactor::OnStartMessage(nsACString const& storeToken) {
+  MOZ_ASSERT(mCurToken.IsEmpty());  // We should _not_ be processing a msg yet!
+
+  // Ask compactListener if we should keep this message.
+  bool keepMsg;
+  nsresult rv = mCompactListener->OnRetentionQuery(storeToken, &mMsgFlags,
+                                                   mMsgKeywords, &keepMsg);
+  if (NS_FAILED(rv)) {
+    return rv;  // Abort the scan.
+  }
+
+  mCurToken = storeToken;
+  mNewMsgSize = 0;
+  mBufferCount = 0;
+  if (keepMsg) {
+    // Open mMsgOut to write a single message.
+    MOZ_ASSERT(mDestStream);
+    MOZ_ASSERT(!mMsgOut);
+    mMsgOut = new MboxMsgOutputStream(mDestStream, false);
+  }
+
+  return NS_OK;
+}
+
+// nsIStoreScanListener callback, called after OnStartMessage().
+NS_IMETHODIMP MboxCompactor::OnStartRequest(nsIRequest* req) {
+  // We've already set up everything in OnStartMessage().
+  return NS_OK;
+}
+
+// Helper to drain count number of bytes from stream.
+static nsresult readAndDiscard(nsIInputStream* stream, uint32_t count) {
+  char buf[FILE_IO_BUFFER_SIZE];
+  while (count > 0) {
+    uint32_t ask = std::min((uint32_t)FILE_IO_BUFFER_SIZE, count);
+    uint32_t got;
+    nsresult rv = stream->Read(buf, ask, &got);
+    NS_ENSURE_SUCCESS(rv, rv);
+    count -= got;
+  }
+  return NS_OK;
+}
+
+// Helper to write data to an outputstream, until complete or error.
+static nsresult writeSpan(nsIOutputStream* writeable,
+                          mozilla::Span<const char> data) {
+  while (!data.IsEmpty()) {
+    uint32_t n;
+    nsresult rv = writeable->Write(data.Elements(), data.Length(), &n);
+    NS_ENSURE_SUCCESS(rv, rv);
+    data = data.Last(data.Length() - n);
+  }
+  return NS_OK;
+}
+
+// nsIStoreScanListener callback to deliver a chunk of the current message.
+NS_IMETHODIMP MboxCompactor::OnDataAvailable(nsIRequest* req,
+                                             nsIInputStream* stream,
+                                             uint64_t offset, uint32_t count) {
+  if (!mMsgOut) {
+    // We're discarding this message.
+    return readAndDiscard(stream, count);
+  }
+
+  // While there is still data available...
+  while (count > 0) {
+    uint32_t maxReadCount =
+        std::min((uint32_t)(mBuffer.Length() - mBufferCount), count);
+    uint32_t readCount;
+    nsresult rv = stream->Read(mBuffer.Elements() + mBufferCount, maxReadCount,
+                               &readCount);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    count -= readCount;
+    mBufferCount += readCount;
+    if (mBufferCount == mBuffer.Length()) {
+      // Buffer is full.
+      rv = FlushBuffer();
+      NS_ENSURE_SUCCESS(rv, rv);
+      MOZ_ASSERT(mBufferCount == 0);  // Buffer is now empty.
+    }
+  }
+  return NS_OK;
+}
+
+// nsIStoreScanListener callback called at end of each message.
+NS_IMETHODIMP MboxCompactor::OnStopRequest(nsIRequest* req, nsresult status) {
+  auto cleanup = mozilla::MakeScopeExit([&] {
+    if (mMsgOut) {
+      mMsgOut->Close();
+      mMsgOut = nullptr;
+    }
+    mCurToken.Truncate();
+    mMsgFlags = 0;
+    mMsgKeywords.Truncate();
+  });
+
+  if (mMsgOut && NS_SUCCEEDED(status)) {
+    // Write out any leftover data.
+    nsresult rv = FlushBuffer();
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    int64_t msgStart = mMsgOut->StartPos();
+    rv = mMsgOut->Finish();  // Commit.
+    NS_ENSURE_SUCCESS(rv, rv);
+    MOZ_ASSERT(msgStart >= 0);
+    // tell the listener
+    nsCString newToken = nsPrintfCString("%" PRId64, msgStart);
+    rv = mCompactListener->OnMessageRetained(mCurToken, newToken, mNewMsgSize);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
+
+  return NS_OK;
+}
+
+// nsIStoreScanListener callback called when the scan completes.
+NS_IMETHODIMP MboxCompactor::OnStopScan(nsresult status) {
+  nsresult rv = status;
+
+  if (NS_SUCCEEDED(rv)) {
+    nsCOMPtr<nsISafeOutputStream> safe = do_QueryInterface(mDestStream, &rv);
+    if (NS_SUCCEEDED(rv)) {
+      rv = safe->Finish();
+    }
+  }
+
+  int64_t finalSize = 0;
+  if (NS_SUCCEEDED(rv)) {
+    // nsIFile.fileSize is cached on Windows, but this cache is not correctly
+    // invalidated after write (Bug 1022704).
+    // So clone it before reading the size again.
+    // This dirties the cached values, forcing it to actually ask the
+    // filesystem again (see Bug 307815, Bug 456603).
+    nsCOMPtr<nsIFile> path;
+    rv = mMboxPath->Clone(getter_AddRefs(path));
+    if (NS_SUCCEEDED(rv)) {
+      rv = path->GetFileSize(&finalSize);
+    }
+  }
+
+  mCompactListener->OnCompactionComplete(rv, mOriginalMboxFileSize, finalSize);
+  return NS_OK;
+}
+
+// Flush out the message data held in mBuffer/mBufferCount.
+// Also handles on-the-fly patching of X-Mozilla-Headers if that was requested.
+// If this succeeds, the buffer will be empty upon return.
+nsresult MboxCompactor::FlushBuffer() {
+  MOZ_ASSERT(mMsgOut);  // Shouldn't get here if we're skipping msg!
+  nsresult rv;
+  auto buf = mBuffer.AsSpan().First(mBufferCount);
+  // Only do X-Mozilla-* patching for the first chunk, and only if patching
+  // has been requested.
+  if (mNewMsgSize > 0 || !mPatchXMozillaHeaders) {
+    // Just output the buffer verbatim.
+    rv = writeSpan(mMsgOut, buf);
+    NS_ENSURE_SUCCESS(rv, rv);
+    mNewMsgSize += buf.Length();
+    mBufferCount = 0;
+    return NS_OK;
+  }
+
+  // This is the first chunk of a new message and we want to update the
+  // X-Mozilla-(Status|Status2|Keys) headers as we go.
+
+  // Sniff for CRs to decide what kind of EOL is in use.
+  auto cr = std::find(buf.cbegin(), buf.cend(), '\r');
+  nsAutoCString eolSeq;
+  if (cr == buf.cend()) {
+    eolSeq.Assign("\n"_ns);  // No CR found.
+  } else {
+    eolSeq.Assign("\r\n"_ns);
+  }
+
+  // Read as many headers as we can. We might not have the complete header
+  // block our in buffer, but that's OK - the X-Mozilla-* ones should be
+  // right at the start).
+  nsTArray<HeaderReader::Hdr> headers;
+  HeaderReader rdr;
+  auto leftover = rdr.Parse(buf, [&](auto const& hdr) -> bool {
+    auto const& name = hdr.Name(buf);
+    if (!name.EqualsLiteral(HEADER_X_MOZILLA_STATUS) &&
+        !name.EqualsLiteral(HEADER_X_MOZILLA_STATUS2) &&
+        !name.EqualsLiteral(HEADER_X_MOZILLA_KEYWORDS)) {
+      headers.AppendElement(hdr);
+    }
+    return true;
+  });
+
+  // Write out X-Mozilla-* headers first - we'll create these from scratch.
+  auto out =
+      nsPrintfCString(HEADER_X_MOZILLA_STATUS ": %4.4x", mMsgFlags & 0xFFFF);
+  out.Append(eolSeq);
+  rv = writeSpan(mMsgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  mNewMsgSize += out.Length();
+
+  out = nsPrintfCString(HEADER_X_MOZILLA_STATUS2 ": %8.8x",
+                        mMsgFlags & 0xFFFF0000);
+  out.Append(eolSeq);
+  rv = writeSpan(mMsgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  mNewMsgSize += out.Length();
+
+  // The X-Mozilla-Keys header is dynamically modified as users tag/untag
+  // messages, so aim to leave some space for in-place edits.
+  out = nsPrintfCString(HEADER_X_MOZILLA_KEYWORDS ": %-*s",
+                        X_MOZILLA_KEYWORDS_BLANK_LEN, mMsgKeywords.get());
+  out.Append(eolSeq);
+  rv = writeSpan(mMsgOut, out);
+  NS_ENSURE_SUCCESS(rv, rv);
+  mNewMsgSize += out.Length();
+
+  // Write out the rest of the headers.
+  for (auto const& hdr : headers) {
+    auto h = buf.Subspan(hdr.pos, hdr.len);
+    rv = writeSpan(mMsgOut, h);
+    NS_ENSURE_SUCCESS(rv, rv);
+    mNewMsgSize += h.Length();
+  }
+
+  // The header parser consumes the blank line. If we've completed parsing
+  // we need to output it now.
+  // If we haven't parsed all the headers yet, then the blank line will be
+  // safely copied verbatim as part of the remaining data.
+  if (rdr.IsComplete()) {
+    rv = writeSpan(mMsgOut, eolSeq);
+    NS_ENSURE_SUCCESS(rv, rv);
+    mNewMsgSize += eolSeq.Length();
+  }
+
+  // Write out everything else in the buffer verbatim.
+  if (leftover.Length() > 0) {
+    rv = writeSpan(mMsgOut, leftover);
+    NS_ENSURE_SUCCESS(rv, rv);
+    mNewMsgSize += leftover.Length();
+  }
+  mBufferCount = 0;
+  return NS_OK;
+}
+
+/****************************************************************************
  * nsMsgBrkMBoxStore implementation.
  */
 nsMsgBrkMBoxStore::nsMsgBrkMBoxStore() {}
@@ -242,36 +625,51 @@ NS_IMETHODIMP nsMsgBrkMBoxStore::CreateFolder(nsIMsgFolder* aParent,
   NS_ENSURE_ARG_POINTER(aResult);
   if (aFolderName.IsEmpty()) return NS_MSG_ERROR_INVALID_FOLDER_NAME;
 
-  nsCOMPtr<nsIFile> path;
-  nsCOMPtr<nsIMsgFolder> child;
-  nsresult rv = aParent->GetFilePath(getter_AddRefs(path));
-  if (NS_FAILED(rv)) return rv;
-  // Get a directory based on our current path.
-  rv = CreateDirectoryForFolder(path);
-  if (NS_FAILED(rv)) return rv;
-
-  // Now we have a valid directory or we have returned.
   // Make sure the new folder name is valid
   nsAutoString safeFolderName(aFolderName);
   NS_MsgHashIfNecessary(safeFolderName);
 
+  // Register the subfolder in memory before creating any on-disk file or
+  // directory for the folder. This way, we don't run the risk of getting in a
+  // situation where `nsMsgBrkMBoxStore::DiscoverSubFolders` (which
+  // `AddSubfolder` ends up indirectly calling) gets confused because there are
+  // files for a folder it doesn't have on record (see Bug 1889653). `GetFlags`
+  // and `SetFlags` in `AddSubfolder` will fail because we have no db at this
+  // point but mFlags is set.
+  nsCOMPtr<nsIMsgFolder> child;
+  nsresult rv = aParent->AddSubfolder(safeFolderName, getter_AddRefs(child));
+  if (!child || NS_FAILED(rv)) {
+    return rv;
+  }
+
+  nsCOMPtr<nsIFile> path;
+  rv = aParent->GetFilePath(getter_AddRefs(path));
+  if (NS_FAILED(rv)) {
+    aParent->PropagateDelete(child, false);
+    return rv;
+  }
+  // Get a directory based on our current path.
+  rv = CreateDirectoryForFolder(path);
+  if (NS_FAILED(rv)) {
+    aParent->PropagateDelete(child, false);
+    return rv;
+  }
+
   path->Append(safeFolderName);
   bool exists;
   path->Exists(&exists);
-  if (exists)  // check this because localized names are different from disk
-               // names
+  // check this because localized names are different from disk names
+  if (exists) {
+    aParent->PropagateDelete(child, false);
     return NS_MSG_FOLDER_EXISTS;
+  }
 
   rv = path->Create(nsIFile::NORMAL_FILE_TYPE, 0600);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // GetFlags and SetFlags in AddSubfolder will fail because we have no db at
-  // this point but mFlags is set.
-  rv = aParent->AddSubfolder(safeFolderName, getter_AddRefs(child));
-  if (!child || NS_FAILED(rv)) {
-    path->Remove(false);
+  if (NS_FAILED(rv)) {
+    aParent->PropagateDelete(child, false);
     return rv;
   }
+
   // Create an empty database for this mail folder, set its name from the user
   nsCOMPtr<nsIMsgDBService> msgDBService =
       do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
@@ -292,7 +690,7 @@ NS_IMETHODIMP nsMsgBrkMBoxStore::CreateFolder(nsIMsgFolder* aParent,
       unusedDB->Close(true);
       aParent->UpdateSummaryTotals(true);
     } else {
-      path->Remove(false);
+      aParent->PropagateDelete(child, true);
       rv = NS_MSG_CANT_CREATE_FOLDER;
     }
   }
@@ -968,13 +1366,6 @@ nsMsgBrkMBoxStore::CopyMessages(bool isMove,
   return NS_OK;
 }
 
-NS_IMETHODIMP
-nsMsgBrkMBoxStore::GetSupportsCompaction(bool* aSupportsCompaction) {
-  NS_ENSURE_ARG_POINTER(aSupportsCompaction);
-  *aSupportsCompaction = true;
-  return NS_OK;
-}
-
 NS_IMETHODIMP nsMsgBrkMBoxStore::AsyncScan(nsIMsgFolder* folder,
                                            nsIStoreScanListener* scanListener) {
   nsCOMPtr<nsIFile> mboxPath;
@@ -1224,8 +1615,30 @@ NS_IMETHODIMP nsMsgBrkMBoxStore::EstimateFolderSize(nsIMsgFolder* folder,
   nsCOMPtr<nsIFile> file;
   rv = folder->GetFilePath(getter_AddRefs(file));
   NS_ENSURE_SUCCESS(rv, rv);
-  rv = file->GetFileSize(size);
+  // There can be cases where the mbox file won't exist (e.g. non-offline
+  // IMAP folder). Return 0 size for that case.
+  bool exists;
+  rv = file->Exists(&exists);
   NS_ENSURE_SUCCESS(rv, rv);
-
+  if (exists) {
+    rv = file->GetFileSize(size);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
   return NS_OK;
+}
+
+NS_IMETHODIMP
+nsMsgBrkMBoxStore::GetSupportsCompaction(bool* aSupportsCompaction) {
+  NS_ENSURE_ARG_POINTER(aSupportsCompaction);
+  *aSupportsCompaction = true;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgBrkMBoxStore::AsyncCompact(
+    nsIMsgFolder* folder, nsIStoreCompactListener* compactListener,
+    bool patchXMozillaHeaders) {
+  // Fire and forget. MboxScanner will hold itself in existence until finished.
+  RefPtr<MboxCompactor> compactor(
+      new MboxCompactor(folder, compactListener, patchXMozillaHeaders));
+  return compactor->BeginCompaction();
 }

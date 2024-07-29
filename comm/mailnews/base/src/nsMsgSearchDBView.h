@@ -6,7 +6,6 @@
 #ifndef _nsMsgSearchDBViews_H_
 #define _nsMsgSearchDBViews_H_
 
-#include "mozilla/Attributes.h"
 #include "nsMsgGroupView.h"
 #include "nsIMsgCopyServiceListener.h"
 #include "nsIMsgSearchNotify.h"
@@ -87,6 +86,8 @@ class nsMsgSearchDBView : public nsMsgGroupView,
       nsMsgViewCommandTypeValue command,
       nsTArray<nsMsgViewIndex> const& selection) override;
 
+  NS_IMETHOD SetViewFlags(nsMsgViewFlagsTypeValue aViewFlags) override;
+
  protected:
   virtual ~nsMsgSearchDBView();
   virtual void InternalClose() override;
@@ -118,7 +119,7 @@ class nsMsgSearchDBView : public nsMsgGroupView,
                                  nsMsgViewIndex startIndex = 0,
                                  bool allowDummy = false) override;
   nsresult GetFoldersAndHdrsForSelection(
-      nsTArray<nsMsgViewIndex> const& selection);
+      nsTArray<nsMsgViewIndex> const& selection, uint32_t* hdrCount = nullptr);
   nsresult GroupSearchResultsByFolder();
   nsresult PartitionSelectionByFolder(
       nsTArray<nsMsgViewIndex> const& selection,
@@ -164,7 +165,7 @@ class nsMsgSearchDBView : public nsMsgGroupView,
 
   // map message-ids to msg hdrs in the view, used for threading.
   nsInterfaceHashtable<nsCStringHashKey, nsIMsgDBHdr> m_hdrsTable;
-  uint32_t m_totalMessagesInView;
+  int32_t m_totalMessagesInView;
 
   virtual nsMsgGroupThread* CreateGroupThread(nsIMsgDatabase* db) override;
   nsresult GetXFThreadFromMsgHdr(nsIMsgDBHdr* msgHdr, nsIMsgThread** pThread,

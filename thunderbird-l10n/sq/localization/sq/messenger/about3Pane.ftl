@@ -118,6 +118,8 @@ quick-filter-bar-textbox =
     .placeholder = Filtrojini këto mesazhe <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Filtroni mesazhe:
+quick-filter-bar-search2 =
+    .label = Filtroni mesazhe
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -500,5 +502,42 @@ apply-current-view-to-folder-message = Të aplikohet pamja e dosjes së tanishme
 # Variables:
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Të aplikohet pamja e dosjes së tanishme te { $name } dhe pjellat e saj?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> i palexuar nga <span>1</span> mesazh gjithsej
+               *[other] <span>1</span> të palexuar nga <span>1</span> mesazhe gjithsej
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> i palexuar nga <span>1</span> mesazh gjithsej
+               *[other] <span>{ $unread }</span> të palexuar nga <span>1</span> mesazhe gjithsej
+            }
+    }
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+    { $total ->
+        [one] <span>1</span> mesazh
+       *[other] <span>{ $total }</span> mesazhe
+    }
 threadpane-card-menu-button =
     .title = Menu mesazhesh
+message-list-placeholder-no-messages = S’u gjet mesazh
+message-list-placeholder-multiple-folders = Janë përzgjedhur shumë dosje
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Vëri Shenjë Dosjese Si të Lexuar
+           *[other] Vëru Shenjë Dosjeve Si të Lexuara
+        }
+    .accesskey = V

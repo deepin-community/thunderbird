@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var editContactInlineUI = {
@@ -226,7 +226,6 @@ var editContactInlineUI = {
     var newName = document.getElementById("editContactName").value;
     if (newName != this._cardDetails.card.displayName) {
       this._cardDetails.card.displayName = newName;
-      this._cardDetails.card.setProperty("PreferDisplayName", true);
     }
 
     // Save the card

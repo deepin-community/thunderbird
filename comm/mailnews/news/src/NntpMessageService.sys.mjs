@@ -25,13 +25,7 @@ class BaseMessageService {
   _logger = lazy.NntpUtils.logger;
 
   /** @see nsIMsgMessageService */
-  loadMessage(
-    messageURI,
-    displayConsumer,
-    msgWindow,
-    urlListener,
-    autodetectCharset
-  ) {
+  loadMessage(messageURI, displayConsumer, msgWindow, urlListener) {
     this._logger.debug("loadMessage", messageURI);
 
     const uri = this.getUrlForUri(messageURI, msgWindow);
@@ -82,16 +76,15 @@ class BaseMessageService {
     this.loadMessage(messageUri, copyListener, msgWindow, urlListener, false);
   }
 
-  SaveMessageToDisk(
+  saveMessageToDisk(
     messageUri,
     file,
     addDummyEnvelope,
     urlListener,
-    outUrl,
     canonicalLineEnding,
     msgWindow
   ) {
-    this._logger.debug("SaveMessageToDisk", messageUri);
+    this._logger.debug("saveMessageToDisk", messageUri);
     const url = this.getUrlForUri(messageUri, msgWindow);
     if (urlListener) {
       url.RegisterListener(urlListener);
@@ -206,14 +199,13 @@ class BaseMessageService {
       groupName = url.searchParams.get("group");
       key = url.searchParams.get("key");
     }
-    groupName = groupName ? decodeURIComponent(groupName) : null;
-    const server = MailServices.accounts
-      .findServer("", host, "nntp")
-      .QueryInterface(Ci.nsINntpIncomingServer);
-    let folder;
+    let folder = null;
     if (groupName) {
-      folder = server.rootFolder
-        .getChildNamed(groupName)
+      const server = MailServices.accounts
+        .findServer("", host, "nntp")
+        ?.QueryInterface(Ci.nsINntpIncomingServer);
+      folder = server?.rootFolder
+        .getChildNamed(decodeURIComponent(groupName))
         .QueryInterface(Ci.nsIMsgNewsFolder);
     }
     return [folder, key];
@@ -241,10 +233,26 @@ class BaseMessageService {
     return url.toString();
   }
 
-  /** @see nsIMsgMessageFetchPartService */
-  fetchMimePart(uri, messageUri, displayConsumer, msgWindow, urlListener) {
+  /**
+   * @see {nsIMsgMessageFetchPartService}
+   *
+   * @param {nsIURI} uri - URL representing the message.
+   * @param {string} messageUri - URI including the part to fetch.
+   * @param {nsIStreamListener} - Stream listener.
+   * @param {nsIMsgWindow} msgWindow
+   * @param {nsIUrlListener} urlListener - URL listener.
+   * @returns {nsIURI} the URL that gets run, if any.
+   */
+  fetchMimePart(uri, messageUri, streamListener, msgWindow, urlListener) {
     this._logger.debug("fetchMimePart", uri.spec);
-    this.loadMessage(uri.spec, displayConsumer, msgWindow, urlListener, false);
+    this.streamMessage(
+      uri.spec,
+      streamListener,
+      msgWindow,
+      urlListener,
+      false,
+      ""
+    );
   }
 }
 

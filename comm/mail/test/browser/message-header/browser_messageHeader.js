@@ -15,10 +15,10 @@ var {
   get_cards_in_all_address_books_for_email,
   get_mailing_list_from_address_book,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AddressBookHelpers.sys.mjs"
+  "resource://testing-common/mail/AddressBookHelpers.sys.mjs"
 );
 var { promise_content_tab_load } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 var {
   add_message_to_folder,
@@ -35,7 +35,7 @@ var {
   wait_for_message_display_completion,
   wait_for_popup_to_open,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
 const about3Pane = get_about_3pane();
@@ -418,7 +418,7 @@ add_task(async function enter_msg_hdr_toolbar() {
     "fromRecipient0",
     "The sender is now focused"
   );
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 
 // Full keyboard navigation on OSX only works if Full Keyboard Access setting is
 // set to All Control in System Keyboard Preferences. This also works with the
@@ -757,7 +757,7 @@ add_task(async function test_add_contact_from_context_menu() {
       "List-Post": "<https://example.test/lists/gocats/post>",
       "List-Owner":
         "<mailto:gocats+owner@example.test?subject=gocats-list>, <https://example.test/lists/gocats/owner>",
-      "List-Archive": "<https://example.test/lists/gocats/archive>",
+      "List-Archive": "<https://example.test/lists/gocats/archive ",
       "Archived-At": "<https://example.test/mid/123@example.org>",
     },
   });

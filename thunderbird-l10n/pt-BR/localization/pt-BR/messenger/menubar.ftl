@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Conhecer recursos
     .accesskey = r
+menu-help-get-release-help =
+    .label = Obter ajuda para o { -brand-short-name }
+    .accesskey = R
 menu-help-shortcuts =
     .label = Atalhos de teclado
     .accesskey = t
@@ -125,14 +128,17 @@ mail-uidensity-default =
     .label = Padrão
     .accesskey = P
 mail-uidensity-relaxed =
-    .label = Descontraído
-    .accesskey = D
+    .label = Espaçado
+    .accesskey = E
 menu-spaces-toolbar-button =
     .label = Barra de áreas
     .accesskey = s
 
 ## File
 
+file-new-email-account =
+    .label = Conta de email…
+    .accesskey = e
 file-new-newsgroup-account =
     .label = Conta de grupo de notícias…
     .accesskey = n

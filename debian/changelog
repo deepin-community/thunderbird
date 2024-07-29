@@ -1,15 +1,48 @@
-thunderbird (1:125.0-1) unstable; urgency=medium
+thunderbird (1:128.0.1esr-1) unstable;urgency=medium
 
-  * Bump Rust requirement to 1.74.
-  * Drop upstreamed 0005-comm-botan-add-loongarch64-to-archinfo.patch.
+  * Sync LoongArch patches from AOSC-Tracking/thunderbird.
 
- -- Mingcong Bai <baimingcong@uniontech.com>  Mon, 03 Jun 2024 13:52:02 +0800
+ -- Mingcong Bai <baimingcong@uniontech.com>  Tue, 30 Jul 2024 09:32:52 +0800
 
-thunderbird (1:125.0~b3-1deepin1) unstable; urgency=medium
+thunderbird (1:128.0esr-1) experimental; urgency=medium
 
-  * Add support for LoongArch.
+  * [e6bbe24] d/create-upstream-tarballs.py: Need to check for esr now
+  * [f27f6f8] New upstream version 128.0esr
 
- -- Mingcong Bai <baimingcong@uniontech.com>  Tue, 21 May 2024 12:17:25 +0200
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 11 Jul 2024 18:02:42 +0200
+
+thunderbird (1:128.0~b5-1) experimental; urgency=medium
+
+  * [30985b4] d/source.filter: Filter out comm/third_party/rust/winapi*/**/*.a
+  * [d75c09c] New upstream version 128.0~b5
+  * [d1adc7f] Rebuild patch queue from patch-queue branch
+    Removed patches:
+    debian-hacks/Relax-minimum-supported-rust-version-to-1.75.patch
+    fixes/skia-Cast-SkEndian_SwapBE32-n-to-uint32_t-on-big-endian.patch
+    Modified patches:
+    porting-mips64el/skia-Disable-musttail-on-mips64.patch
+    porting-ppc64el/skia-Disable-musttail-on-ppc64el.patch
+  * [7042e2a] d/copyright: Update content due upstream changes
+  * [9046790] d/s/lintian-overrides: Update data due upstream changes
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 29 Jun 2024 12:13:06 +0200
+
+thunderbird (1:127.0~b5-1) experimental; urgency=medium
+
+  * [5b073c7] New upstream version 127.0~b5
+  * [3ab1f6c] Rebuild patch queue from patch-queue branch
+    added patch:
+    debian-hacks/Relax-minimum-supported-rust-version-to-1.75.patch
+    Thanks Mike for working on this!
+    removed patches:
+    debian-hacks/Relax-minimum-supported-rust-version-to-1.70.patch
+    debian-hacks/rnp-Fix-include-for-format-specifiers-for-uint32_t.patch
+  * [5544dee] d/c-u-t.py: Ignore one more version
+  * [ac6e99c] d/logo/thunderbird: Update PNG files from newer SVG
+    (Closes: #1071824)
+  * [cee6fb8] d/thunderbird.install: Install the newer correct SVG graphic
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 13 Jun 2024 20:43:09 +0200
 
 thunderbird (1:125.0~b3-1) experimental; urgency=medium
 

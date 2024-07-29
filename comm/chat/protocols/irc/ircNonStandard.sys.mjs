@@ -12,7 +12,6 @@
  *  https://github.com/atheme/charybdis/blob/master/include/numeric.h
  *  https://github.com/unrealircd/unrealircd/blob/unreal42/include/numeric.h
  */
-import { l10nHelper } from "resource:///modules/imXPCOMUtils.sys.mjs";
 import { ircHandlerPriorities } from "resource:///modules/ircHandlerPriorities.sys.mjs";
 import {
   conversationErrorMessage,
@@ -20,8 +19,10 @@ import {
 } from "resource:///modules/ircUtils.sys.mjs";
 
 const lazy = {};
-ChromeUtils.defineLazyGetter(lazy, "_", () =>
-  l10nHelper("chrome://chat/locale/irc.properties")
+ChromeUtils.defineLazyGetter(
+  lazy,
+  "l10n",
+  () => new Localization(["chat/irc.ftl"], true)
 );
 
 export var ircNonStandard = {
@@ -75,7 +76,7 @@ export var ircNonStandard = {
           // Otherwise, put the account in an error state.
           this.gotDisconnected(
             Ci.prplIAccount.ERROR_AUTHENTICATION_IMPOSSIBLE,
-            lazy._("connection.error.passwordRequired")
+            lazy.l10n.formatValueSync("connection-error-password-required")
           );
         }
 
@@ -106,7 +107,7 @@ export var ircNonStandard = {
       return false;
     },
 
-    "042": function (aMessage) {
+    "042": function () {
       // RPL_YOURID (IRCnet)
       // <nick> <id> :your unique ID
       return true;
@@ -138,13 +139,13 @@ export var ircNonStandard = {
       return false;
     },
 
-    328(aMessage) {
+    328() {
       // RPL_CHANNEL_URL (Bahamut & Austhex)
       // <channel> :<URL>
       return true;
     },
 
-    329(aMessage) {
+    329() {
       // RPL_CREATIONTIME (Bahamut & Unreal)
       // <channel> <creation time>
       return true;
@@ -172,7 +173,7 @@ export var ircNonStandard = {
       return this.setWhois(aMessage.params[1], { bot: true });
     },
 
-    338(aMessage) {
+    338() {
       // RPL_CHANPASSOK
       // RPL_WHOISACTUALLY (ircu, Bahamut, Charybdis)
       // <nick> <user> <ip> :actually using host
@@ -186,7 +187,7 @@ export var ircNonStandard = {
       return this.setWhois(aMessage.params[1], { host, ip });
     },
 
-    379(aMessage) {
+    379() {
       // RPL_WHOISMODES (Unreal, Inspircd)
       // <nick> :is using modes <modes>
       // Sent in response to a WHOIS on the user.
@@ -227,7 +228,7 @@ export var ircNonStandard = {
       return conversationErrorMessage(
         this,
         aMessage,
-        "error.channelForward",
+        "error-channel-forward",
         true,
         false
       );
@@ -236,7 +237,11 @@ export var ircNonStandard = {
     499(aMessage) {
       // ERR_CHANOWNPRIVNEEDED (Unreal)
       // <channel> :You're not the channel owner (status +q is needed)
-      return conversationErrorMessage(this, aMessage, "error.notChannelOwner");
+      return conversationErrorMessage(
+        this,
+        aMessage,
+        "error-not-channel-owner"
+      );
     },
 
     671(aMessage) {

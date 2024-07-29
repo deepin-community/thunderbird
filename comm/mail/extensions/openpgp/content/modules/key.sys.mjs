@@ -6,18 +6,11 @@
 
 /* eslint-enable valid-jsdoc */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
-  EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.sys.mjs",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
+  RNP: "chrome://openpgp/content/modules/RNP.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(lazy, "l10n", () => {
@@ -53,9 +46,6 @@ export var EnigmailKey = {
   extractPubkey(statusMsg) {
     const matchb = statusMsg.match(/(^|\n)NO_PUBKEY (\w{8})(\w{8})/);
     if (matchb && matchb.length > 3) {
-      lazy.EnigmailLog.DEBUG(
-        "Enigmail.extractPubkey: NO_PUBKEY 0x" + matchb[3] + "\n"
-      );
       return matchb[2] + matchb[3];
     }
     return null;
@@ -162,7 +152,6 @@ export var EnigmailKey = {
     seckey,
     withPubKey = false
   ) {
-    lazy.EnigmailLog.DEBUG("key.jsm: getKeyListFromKeyBlock\n");
     errorMsgObj.value = "";
 
     const cacheEntry = this._keyListCache.get(keyBlockStr);
@@ -192,14 +181,13 @@ export var EnigmailKey = {
       this._keyListCache.delete(this._keyListCache.keys().next().value);
     }
 
-    const cApi = lazy.EnigmailCryptoAPI();
     let keyList;
     let key = {};
     let blocks;
     errorMsgObj.value = "";
 
     try {
-      keyList = await cApi.getKeyListFromKeyBlockAPI(
+      keyList = await lazy.RNP.getKeyListFromKeyBlockImpl(
         keyBlockStr,
         pubkey,
         seckey,

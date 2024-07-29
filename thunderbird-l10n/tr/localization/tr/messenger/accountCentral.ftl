@@ -9,13 +9,13 @@ setup-title = Eklenecek hesabı seçin
 about-title = { -brand-full-name } hakkında
 resources-title = Kaynaklar
 release-notes =
-    .title = { -brand-full-name } hakkında
+    .title = { -brand-full-name } Hakkında
 email-label = E-posta
     .aria-label = Mevcut e-posta hesabınıza bağlanın
 email-description = { -brand-short-name }, e-postalarınızı uygulama içinden rahat ve verimli bir şekilde okumak için mevcut e-posta hesabınıza bağlanmanıza olanak tanır.
 calendar-label = Takvim
     .aria-label = Yeni takvim oluştur
-calendar-description = { -brand-short-name }, etkinlikleri yönetmenize ve organize olmanıza olanak tanır. Uzak bir takvime bağlanarak tüm etkinliklerinizi tüm cihazlarınızda senkronize edebilirsiniz.
+calendar-description = { -brand-short-name }, etkinlikleri yönetmenize ve organize olmanıza olanak tanır. Uzak bir takvime bağlanarak tüm etkinliklerinizi tüm cihazlarınızda eşitleyebilirsiniz.
 chat-label = Sohbet
     .aria-label = Sohbet hesabınıza bağlanın
 chat-description = { -brand-short-name }, birçok anlık mesajlaşma hesabına bağlanmanıza olanak tanır.
@@ -36,7 +36,7 @@ import-paragraph2 = { -brand-short-name }, diğer e-posta programlarındaki ve s
 import-label = İçe aktar
     .aria-label = Diğer programlardan verileri içe aktarma
 about-paragraph = Thunderbird, hem iş hem de kişisel amaçlı kullanım için ücretsiz, açık kaynaklı ve her platformda çalışan lider e-posta ve takvim istemcisidir. Thunderbird’ün güvenli kalmasını ve daha da gelişmesini istiyoruz. Bağış; geliştiricileri işe almamızı, altyapı maliyetlerimizi karşılamamızı ve iyileştirmelere devam edebilmemizi sağlayacaktır.
-about-paragraph-consider-donation = <b>Thunderbird, kullanıcılarının desteğiyle finanse ediliyor. Thunderbird'ü seviyorsanız ve imkânınız varsa lütfen bağış yapın.</b> Thunderbird'ün gelişimini sürdürebilmemiz için <a data-l10n-name="donation-link">bağışlarınız</a> oldukça önemli.
+about-paragraph-consider-donation = <b>Thunderbird sizin gibi kullanıcıların desteğiyle finanse ediliyor. Thunderbird’ü seviyorsanız lütfen bağış yapmayı düşünün.</b> Thunderbird’ün hayatta kalmasını sağlamanın en iyi yolu <a data-l10n-name="donation-link">bağış yapmaktır</a>.
 explore-link = Özellikleri keşfedin
 support-link = Destek
 involved-link = Bize katılın

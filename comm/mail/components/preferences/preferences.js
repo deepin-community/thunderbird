@@ -15,14 +15,14 @@
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { ExtensionSupport } = ChromeUtils.importESModule(
   "resource:///modules/ExtensionSupport.sys.mjs"
 );
-var { calendarDeactivator } = ChromeUtils.import(
-  "resource:///modules/calendar/calCalendarDeactivator.jsm"
+var { calendarDeactivator } = ChromeUtils.importESModule(
+  "resource:///modules/calendar/calCalendarDeactivator.sys.mjs"
 );
 
 var paneDeck = document.getElementById("paneDeck");
@@ -46,6 +46,7 @@ ChromeUtils.defineLazyGetter(this, "gSubDialog", function () {
         "chrome://messenger/skin/preferences/dialog.css",
         "chrome://messenger/skin/preferences/preferences.css",
       ],
+      consumeOutsideClicks: false,
       resizeCallback: ({ title, frame }) => {
         UIFontSize.registerWindow(frame.contentWindow);
 
@@ -352,7 +353,7 @@ async function spotlight(subcategory, category) {
   }
 }
 
-async function scrollAndHighlight(subcategory, category) {
+async function scrollAndHighlight(subcategory) {
   const element = document.querySelector(`[data-subcategory="${subcategory}"]`);
   if (!element) {
     return;

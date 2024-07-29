@@ -12,12 +12,9 @@
 #include "nsINntpService.h"
 #include "nsIMsgSearchSession.h"
 #include "nsIMsgSearchTerm.h"
-#include "nsIMsgAccountManager.h"
-#include "nsMsgFolderFlags.h"
 #include "nsIMsgMailSession.h"
 #include "nsMsgMessageFlags.h"
 #include "nsServiceManagerUtils.h"
-#include "nsComponentManagerUtils.h"
 #include "nsMsgUtils.h"
 #include "mozilla/Components.h"
 
@@ -203,9 +200,6 @@ NS_IMETHODIMP DownloadNewsArticlesToOfflineStore::OnStopRunningUrl(
     nsIURI* url, nsresult exitCode) {
   m_status = exitCode;
   if (m_newsHeader != nullptr) {
-#ifdef DEBUG_bienvenu
-    //    XP_Trace("finished retrieving %ld\n", m_newsHeader->GetMessageKey());
-#endif
     if (m_newsDB) {
       nsMsgKey msgKey;
       m_newsHeader->GetMessageKey(&msgKey);

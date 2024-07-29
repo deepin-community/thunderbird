@@ -118,6 +118,8 @@ quick-filter-bar-textbox =
     .placeholder = Бұл хабарламаларды сүзгілеу <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Хабарламаларды сүзгілеу:
+quick-filter-bar-search2 =
+    .label = Хабарламаларды сүзгілеу
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -525,3 +527,17 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Хабарлама мәзірі
+message-list-placeholder-no-messages = Хабарлама табылмады
+message-list-placeholder-multiple-folders = Бірнеше бума таңдалды
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Буманы оқылған ретінде белгілеу
+           *[other] Бумаларды оқылған ретінде белгілеу
+        }
+    .accesskey = г

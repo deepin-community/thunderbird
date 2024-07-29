@@ -41,15 +41,19 @@ function run_test() {
   return true;
 }
 
-// nsIMsgCopyServiceListener implementation
+/**
+ * @implements {nsIMsgCopyServiceListener}
+ */
 var copyListener = {
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey(aKey) {
     hdrs.push(localAccountUtils.inboxFolder.GetMessageHeader(aKey));
   },
-  SetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  getMessageId() {
+    return null;
+  },
+  onStopCopy() {
     if (--messageCount) {
       MailServices.copy.copyFileMessage(
         bugmail1,
@@ -133,14 +137,14 @@ var searchListener = {
     numTotalMessages = 0;
     numUnreadMessages = 0;
   },
-  onSearchHit(dbHdr, folder) {
+  onSearchHit(dbHdr) {
     print("Search hit, isRead is " + dbHdr.isRead);
     numTotalMessages++;
     if (!dbHdr.isRead) {
       numUnreadMessages++;
     }
   },
-  onSearchDone(status) {
+  onSearchDone() {
     print("Finished search hitCount = " + numTotalMessages);
     var db = virtualFolder.msgDatabase;
     var dbFolderInfo = db.dBFolderInfo;

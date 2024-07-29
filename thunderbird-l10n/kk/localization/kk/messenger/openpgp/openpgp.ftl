@@ -4,6 +4,37 @@
 
 e2e-intro-description = Шифрленген немесе цифрлық қолтаңбасы бар хабарламаларды жіберу үшінғ сізге OpenPGP немесе S/MIME сияқты шифрлеу технологиясын баптау керек.
 e2e-intro-description-more = OpenPGP пайдалануды іске қосу үшін жеке кілтті немесе S/MIME пайдалануды іске қосу үшін жеке сертификатты таңдаңыз. Жеке кілт немесе сертификат үшін сізде сәйкес құпия кілт бар.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Жаңа жеке S/MIME сертификатын алу үшін Сертификатқа қол қою сұрауын (CSR) жасап, оны сертификаттау орталығына (CA) жіберіңіз.
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = CSR файлыңыз үшін жергілікті бума пен файл атауын таңдаңыз және алгоритм мен күшті орнату үшін келесі сұрақтарға жауап беріңіз.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = CSR генерациялау
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Жалғастыру
+# A label for a button that goes back one step
+e2e-csr-back = Артқа
+# Do not translate: CSR
+e2e-csr-button =
+    .label = CSR файлын генерациялау және қалайша сақтау…
+# Do not translate: CSR
+e2e-csr-select-title = CSR алгоритмі
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = ﻿﻿Жаңа S/MIME сертификаты үшін криптографиялық алгоритм ретінде RSA (ұсынылады) немесе ECC арасында таңдаңыз.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Жаңа S/MIME сертификаты үшін қажетті криптографиялық күшті таңдаңыз (төмен сандармен жылдамырақ немесе жоғарырақ сандармен жақсырақ қауіпсіздік) немесе бастапқы параметрлерді қалдырыңыз.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = Жаңа { $type }{ $strength } құпия кілті { -brand-short-name } параметрлерінде генерацияланады. Бұл әрекет біраз уақыт алуы және уақытша жауап бермеуді тудыруы мүмкін; осы қадамда сабырлы болыңыз. { $file } ретінде сақталған сертификатқа қол қоюға сұрау (CSR) файлы осы арада жасалады.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = CSR ішіне электрондық пошта адресін ({ $email }) қосу (ұсынылады)
+# $file A filename
+e2e-csr-success = CSR { $file } файлына сәтті сақталды.
+# $file A filename
+e2e-csr-failure = CSR { $file } файлына сақтау мүмкін емес
 e2e-signing-description = Цифрлық қолтаңба алушыларға хабарламаны сіз жібергеніңізді және оның мазмұны өзгермегенін тексеруге мүмкіндік береді. Шифрленген хабарламаларға әрқашан үнсіз келісім бойынша қолтаңба қойылады.
 e2e-sign-message =
     .label = Шифрленбеген хабарламаларға қолтаңба қою
@@ -388,6 +419,9 @@ window-locked = Жазу терезесі құлыпталған; жіберу �
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Үзілген
 keyserver-error-unknown = Белгісіз қате орын алды
 keyserver-error-server-error = Кілттер сервері қате туралы хабарлады.
@@ -399,6 +433,9 @@ keyserver-error-unsupported = Кілnтth серверіне қолдау жоқ
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Эл. пошта провайдері ашық кілтіңізді OpenPGP веб-кілттер каталогына жүктеп салу сұрауыңызды өңдеді.
     Ашық кілтіңізді жариялауды аяқтау үшін растаңыз.
@@ -408,6 +445,9 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -416,6 +456,9 @@ converter-decrypt-body-failed =
     Басқа кілттік фразамен әрекетті қайталау керек пе, немесе хабарламаны өткізіп жіберу керек пе?
 
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Мақсат буманы таңдауыңыз керек.
 filter-decrypt-move-warn-experimental =
@@ -433,6 +476,9 @@ filter-warn-key-not-secret =
     Егер сізде "{ $desc }" үшін құпия кілті болмаса, сіз эл. пошта хабарламаларын оқи алмайтын боласыз.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Тұрақты дешифрлеу (OpenPGP)
 filter-decrypt-copy-label = Дешифрленген көшірмесін жасау (OpenPGP)
@@ -482,6 +528,7 @@ key-man-button-export-pub-key = Тек а&шық кілттерді экспор
 key-man-button-refresh-all = &Барлық кілттерді жаңарту
 key-man-loading-keys = Кілттер жүктелуде, күте тұрыңыз…
 ascii-armor-file = ASCII қорғалған файлдары (*.asc)
+text-file = Мәтіндік файлдар (*.txt)
 no-key-selected = Таңдалған әрекетті орындау үшін кем дегенде бір кілтті таңдау керек
 export-to-file = Ашық кілтті файлға экспорттау
 export-keypair-to-file = Жеке және ашық кілтті файлға экспорттау
@@ -509,6 +556,12 @@ openpgp-export-secret-fail = <b>Таңдалған жеке кілтті экс�
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = { $userId } кілті (кілт идентификаторы { $keyId }) қайта шақырылған.
 key-ring-pub-key-expired = { $userId } кілтінің (кілт идентификаторы { $keyId }) мерзімі аяқталған.
 key-ring-no-secret-key = Сіздің кілттер бауыңызда { $userId } (кілт идентификаторы { $keyId }) жеке кілті жоқ сияқты; қолтаңба қою үшін кілтті пайдалана алмайсыз.
@@ -521,10 +574,16 @@ key-ring-enc-sub-keys-expired = { $userId } кілті (кілт идентиф�
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Фото
 user-att-photo = Пайдаланушы атрибуты (JPEG суреті)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Бұл кілт қайта шақырылған.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -548,6 +607,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Импорттау
 delete-key-title = OpenPGP кілтін өшіру
 delete-external-key-title = Сыртқы GnuPG кілтін өшіру
@@ -557,6 +619,9 @@ delete-key-in-use-description = Жалғастыру мүмкін емес! Өш
 revoke-key-in-use-description = Жалғастыру мүмкін емес! Қайта шақыру үшін таңдалған кілт қазір осы тіркелгімен пайдаланылуда. Басқа кілтті таңдаңыз немесе ешқайсысын таңдамай, әрекетті қайталаңыз.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -568,18 +633,33 @@ key-error-not-accepted-as-personal = Сіз "{ $keySpec }" идентифика�
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Сіз таңдаған функция желіден тыс режимде қолжетімді емес. Желіге кіріп, әрекетті қайталаңыз.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Көрсетілген іздеу шарттарына сәйкес келетін қолдануға болатын ешбір кілт табылмады.
 no-update-found = Онлайн табылған кілттер сізде бар болып тұр.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Қате - кілтті шығару командасы сәтсіз аяқталды
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Қате - пайдаланушы кілтті қабылдаудан бас тартты
 not-first-block = Қате - бірінші OpenPGP блогы ашық кілт блогы емес
@@ -592,6 +672,13 @@ no-pgp-block = Қате - жарамды қорғалған OpenPGP дерект
 confirm-permissive-import = Импорттау сәтсіз аяқталды. Сіз импорттағыңыз келген кілт зақымдалған болуы немесе белгісіз атрибуттарды пайдалануы мүмкін. Дұрыс бөліктерді импорттауға әрекет жасағыңыз келе ме? Бұл толық емес және жарамсыз кілттердің импортына әкелуі мүмкін.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Кейбір импортталған құпия кілттер қолдау көрсетілмейтін мүмкіндікті жарнамалайды. Егер сіз осындай кілтті жеке кілт ретінде пайдалансаңыз, корреспонденттер сізге сәйкес келмейтін пішімдегі электрондық хаттарды немесе ашық кілттерді жіберуі мүмкін. Бұл келесі саусақ іздері бар импортталған құпия кілттерге әсер етеді: { $fingerprints }.
+help-button = Көмек
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = белгісіз
 key-valid-invalid = жарамсыз
@@ -713,6 +800,9 @@ cannot-send-enc-because-no-own-key = Бұл хабарламаны шифрле�
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -736,9 +826,15 @@ dlg-button-view = Қа&рау
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Қате – дешифрлеу керек емес
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Қолжетімді фото жоқ
 # Variables:
@@ -757,6 +853,9 @@ repeat-suffix-singular = қайталанады.
 repeat-suffix-plural = қайталанады.
 no-repeat = Бұл ескерту қайта көрсетілмейді.
 dlg-keep-setting = Жауабымды есте сақтап, менен келесіде сұрамау
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &ОК
 dlg-button-close = &Жабу
 dlg-button-cancel = Ба&с тарту
@@ -767,6 +866,9 @@ enig-alert = OpenPGP ескертуі
 enig-info = OpenPGP ақпараты
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = Қа&йталау
 dlg-button-skip = А&ттап кету

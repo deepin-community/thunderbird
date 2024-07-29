@@ -5,8 +5,10 @@
 
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
+#include "nsISeekableStream.h"
 #include "prlog.h"
 
+#include "FolderCompactor.h"
 #include "HeaderReader.h"
 #include "LineReader.h"
 #include "msgCore.h"  // precompiled header...
@@ -16,6 +18,7 @@
 #include "nsMsgMessageFlags.h"
 #include "prprf.h"
 #include "prmem.h"
+#include "nsIDBFolderInfo.h"
 #include "nsITransactionManager.h"
 #include "nsParseMailbox.h"
 #include "nsIMsgAccountManager.h"
@@ -28,30 +31,23 @@
 #include "nsIMsgIncomingServer.h"
 #include "nsString.h"
 #include "nsIMsgFolderCacheElement.h"
-#include "nsUnicharUtils.h"
 #include "nsICopyMessageStreamListener.h"
 #include "nsIMsgCopyService.h"
-#include "nsMsgTxn.h"
 #include "nsIMessenger.h"
-#include "nsNativeCharsetUtils.h"
 #include "nsIDocShell.h"
 #include "nsIPrompt.h"
 #include "nsIPop3URL.h"
 #include "nsIMsgMailSession.h"
-#include "nsIMsgFolderCompactor.h"
 #include "nsNetCID.h"
 #include "nsISpamSettings.h"
-#include "nsNativeCharsetUtils.h"
 #include "nsMailHeaders.h"
 #include "nsCOMArray.h"
 #include "nsIRssIncomingServer.h"
 #include "nsNetUtil.h"
 #include "nsIMsgFolderNotificationService.h"
 #include "nsReadLine.h"
-#include "nsIStringEnumerator.h"
 #include "nsIURIMutator.h"
 #include "mozilla/Components.h"
-#include "mozilla/Services.h"
 #include "mozilla/UniquePtr.h"
 #include "StoreIndexer.h"
 
@@ -608,40 +604,12 @@ NS_IMETHODIMP nsMsgLocalMailFolder::CompactAll(nsIUrlListener* aListener,
     }
   }
 
-  if (folderArray.IsEmpty()) {
-    // Nothing to do - early out.
-    if (aListener) {
-      aListener->OnStopRunningUrl(nullptr, NS_OK);
-    }
-    return NS_OK;
-  }
-
-  nsCOMPtr<nsIMsgFolderCompactor> folderCompactor =
-      do_CreateInstance("@mozilla.org/messenger/foldercompactor;1", &rv);
-  return folderCompactor->CompactFolders(folderArray, aListener, aMsgWindow);
+  return AsyncCompactFolders(folderArray, aListener, aMsgWindow);
 }
 
 NS_IMETHODIMP nsMsgLocalMailFolder::Compact(nsIUrlListener* aListener,
                                             nsIMsgWindow* aMsgWindow) {
-  nsCOMPtr<nsIMsgPluggableStore> msgStore;
-  nsresult rv = GetMsgStore(getter_AddRefs(msgStore));
-  NS_ENSURE_SUCCESS(rv, rv);
-  int64_t expungedBytes = 0;
-  GetExpungedBytes(&expungedBytes);
-  bool supportsCompaction;
-  msgStore->GetSupportsCompaction(&supportsCompaction);
-  if (!supportsCompaction || expungedBytes == 0) {
-    // Nothing to do. Early out.
-    if (aListener) {
-      aListener->OnStopRunningUrl(nullptr, NS_OK);
-    }
-    return NS_OK;
-  }
-
-  nsCOMPtr<nsIMsgFolderCompactor> folderCompactor =
-      do_CreateInstance("@mozilla.org/messenger/foldercompactor;1", &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-  return folderCompactor->CompactFolders({this}, aListener, aMsgWindow);
+  return AsyncCompactFolders({this}, aListener, aMsgWindow);
 }
 
 NS_IMETHODIMP nsMsgLocalMailFolder::EmptyTrash(nsIUrlListener* aListener) {
@@ -2806,18 +2774,18 @@ NS_IMETHODIMP nsMsgLocalMailFolder::RetrieveHdrOfPartialMessage(
   NS_ENSURE_ARG_POINTER(oldHdr);
   *oldHdr = nullptr;
 
-  char* newMsgId;
-  newHdr->GetMessageId(&newMsgId);
+  nsCString newMsgId;
+  newHdr->GetMessageId(newMsgId);
 
   // Walk through all the selected headers, looking for a matching
   // Message-ID.
   for (uint32_t i = 0; i < mDownloadPartialMessages.Length(); i++) {
     nsCOMPtr<nsIMsgDBHdr> msgDBHdr = mDownloadPartialMessages[i];
-    char* oldMsgId = nullptr;
-    msgDBHdr->GetMessageId(&oldMsgId);
+    nsCString oldMsgId;
+    msgDBHdr->GetMessageId(oldMsgId);
 
     // Return the first match and remove it from the array
-    if (!PL_strcmp(newMsgId, oldMsgId)) {
+    if (newMsgId.Equals(oldMsgId)) {
       msgDBHdr.forget(oldHdr);
       mDownloadPartialMessages.RemoveElementAt(i);
       break;

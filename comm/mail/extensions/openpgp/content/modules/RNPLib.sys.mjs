@@ -10,7 +10,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
 
-const MIN_RNP_VERSION = [0, 17, 0];
+const MIN_RNP_VERSION = [0, 17, 1];
 
 var systemOS = Services.appinfo.OS.toLowerCase();
 var abi = ctypes.default_abi;
@@ -229,9 +229,9 @@ function enableRNPLibJS() {
     /**
      * Load a keyring file into the global ffi context.
      *
-     * @param {string} filename - The file to load
-     * @param keyringFlag - either RNP_LOAD_SAVE_PUBLIC_KEYS
-     *                      or RNP_LOAD_SAVE_SECRET_KEYS
+     * @param {string} filename - The file to load.
+     * @param {integer} keyringFlag - Either RNP_LOAD_SAVE_PUBLIC_KEYS
+     *   or RNP_LOAD_SAVE_SECRET_KEYS.
      */
     async loadFile(filename, keyringFlag) {
       const in_file = await this.createInputFromPath(filename);
@@ -246,9 +246,9 @@ function enableRNPLibJS() {
      * If the file couldn't be opened, fall back to a backup file,
      * by appending ".old" to filename.
      *
-     * @param {string} filename - The file to load
-     * @param keyringFlag - either RNP_LOAD_SAVE_PUBLIC_KEYS
-     *                      or RNP_LOAD_SAVE_SECRET_KEYS
+     * @param {string} filename - The file to load.
+     * @param {integer} keyringFlag - Either RNP_LOAD_SAVE_PUBLIC_KEYS
+     *   or RNP_LOAD_SAVE_SECRET_KEYS.
      */
     async loadWithFallback(filename, keyringFlag) {
       let loadBackup = false;
@@ -272,7 +272,7 @@ function enableRNPLibJS() {
       // To do so, we require that the user has already unlocked
       // by entering the global primary password, if it is set.
       // Ensure that other repairing is done first, if necessary,
-      // as handled by masterpass.jsm (OpenPGP automatic password).
+      // as handled by masterpass.sys.mjs (OpenPGP automatic password).
 
       // Note we have two failure scenarios, either a failure, or
       // retrieveOpenPGPPassword() returning null (that function
@@ -834,7 +834,7 @@ function enableRNPLibJS() {
      * This is a C callback from an external library, so we cannot
      * rely on the usual JS throw mechanism to abort this operation.
      */
-    password_cb(ffi, app_ctx, key, pgp_context, buf, buf_len) {
+    password_cb(ffi, app_ctx, key) {
       const fingerprint = new ctypes.char.ptr();
       let fpStr;
       if (!RNPLib.rnp_key_get_fprint(key, fingerprint.address())) {
@@ -2018,6 +2018,14 @@ function enableRNPLibJS() {
       ctypes.uint32_t
     ),
 
+    rnp_signature_get_features: librnp.declare(
+      "rnp_signature_get_features",
+      abi,
+      rnp_result_t,
+      rnp_signature_handle_t,
+      ctypes.uint32_t.ptr
+    ),
+
     rnp_result_t,
     rnp_ffi_t,
     rnp_password_cb_t,
@@ -2072,6 +2080,10 @@ function enableRNPLibJS() {
     RNP_SECURITY_DEFAULT: 2,
 
     RNP_ENCRYPT_NOWRAP: 1,
+
+    PGP_KEY_FEATURE_MDC: 1,
+    PGP_KEY_FEATURE_AEAD: 2,
+    PGP_KEY_FEATURE_V5: 4,
 
     /* Common error codes */
     RNP_ERROR_GENERIC: 0x10000000, // 268435456

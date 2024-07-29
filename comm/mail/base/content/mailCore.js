@@ -507,7 +507,7 @@ function showChatTab() {
  * @param {"start"|"app"|"addressBook"|"calendar"|"export"} [tabId] - The tab
  *  to open in about:import.
  */
-async function toImport(tabId = "start") {
+async function toImport(tabId = "start", sourceFile) {
   const messengerWindow = toMessengerWindow();
 
   if (messengerWindow.document.readyState != "complete") {
@@ -530,20 +530,15 @@ async function toImport(tabId = "start") {
     return;
   }
 
-  const tab = messengerWindow.openTab("contentTab", {
-    url: "about:import",
+  messengerWindow.openTab("contentTab", {
+    url: `about:import#${tabId}`,
     onLoad(event, browser) {
-      if (tabId) {
-        browser.contentWindow.showTab(`tab-${tabId}`, true);
+      if (tabId == "calendar" && sourceFile) {
+        browser.contentWindow.calendarController.showPane("items");
+        browser.contentWindow.calendarController.useFile(sourceFile);
       }
     },
   });
-  // Somehow DOMContentLoaded is called even when about:import is already
-  // open, which resets the active tab. Use setTimeout here as a workaround.
-  setTimeout(
-    () => tab.browser.contentWindow.showTab(`tab-${tabId}`, true),
-    100
-  );
 }
 
 /**
@@ -578,7 +573,7 @@ function openAddonsMgr(aView) {
     let emWindow;
     let browserWindow;
 
-    const receivePong = function (aSubject, aTopic, aData) {
+    const receivePong = function (aSubject) {
       const browserWin = aSubject.browsingContext.topChromeWindow;
       if (!emWindow || browserWin == window /* favor the current window */) {
         emWindow = aSubject;
@@ -607,7 +602,7 @@ function openAddonsMgr(aView) {
     tab.browser.droppedLinkHandler = event =>
       tab.browser.contentWindow.gDragDrop.onDrop(event);
 
-    Services.obs.addObserver(function observer(aSubject, aTopic, aData) {
+    Services.obs.addObserver(function observer(aSubject, aTopic) {
       Services.obs.removeObserver(observer, aTopic);
       if (aView) {
         aSubject.loadView(aView);

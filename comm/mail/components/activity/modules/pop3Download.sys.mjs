@@ -9,9 +9,7 @@ var nsActEvent = Components.Constructor(
   "init"
 );
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 import { PluralForm } from "resource:///modules/PluralForm.sys.mjs";
 
 // This module provides a link between the pop3 service code and the activity
@@ -88,7 +86,7 @@ export var pop3DownloadModule = {
     this._mostRecentActivityForFolder.set(aFolder.URI, downloadItem);
   },
 
-  onDownloadProgress(aFolder, aNumMsgsDownloaded, aTotalMsgs) {
+  onDownloadProgress() {
     this.log.info("in onDownloadProgress");
   },
 

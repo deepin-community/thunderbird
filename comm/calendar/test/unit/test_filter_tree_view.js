@@ -16,7 +16,7 @@ const { CalRecurrenceRule } = ChromeUtils.importESModule(
 );
 
 const { TreeSelection } = ChromeUtils.importESModule(
-  "chrome://messenger/content/tree-selection.mjs"
+  "chrome://messenger/content/TreeSelection.mjs"
 );
 
 Services.scriptloader.loadSubScript("chrome://messenger/content/jsTreeView.js");
@@ -141,7 +141,7 @@ add_task(async function testInitializeWithExistingCalenderEvents() {
 
     beginUpdateBatch() {},
     endUpdateBatch() {},
-    invalidateRow(index) {},
+    invalidateRow() {},
   };
   view.setTree(tree);
 
@@ -442,7 +442,7 @@ async function initializeCalendarAndView() {
 
     beginUpdateBatch() {},
     endUpdateBatch() {},
-    invalidateRow(index) {},
+    invalidateRow() {},
   };
   view.setTree(tree);
 

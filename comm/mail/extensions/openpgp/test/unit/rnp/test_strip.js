@@ -15,10 +15,10 @@ const { EnigmailKeyRing } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyRing.sys.mjs"
 );
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
-const { MailStringUtils } = ChromeUtils.import(
-  "resource:///modules/MailStringUtils.jsm"
+const { MailStringUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailStringUtils.sys.mjs"
 );
 
 const keyDir = "../../../../../test/browser/openpgp/data/keys";
@@ -71,8 +71,7 @@ add_task(async function testStripSignatures() {
     errorObj,
     fingerPrintObj,
     false,
-    [],
-    false
+    []
   );
   Assert.equal(result, 0);
 
@@ -100,8 +99,7 @@ add_task(async function testKeyWithUnicodeComment() {
     errorObj,
     fingerPrintObj,
     false,
-    [],
-    false
+    []
   );
   Assert.equal(result, 0);
 
@@ -127,8 +125,7 @@ add_task(async function testBinaryKey() {
     errorObj,
     fingerPrintObj,
     false,
-    [],
-    false
+    []
   );
   Assert.equal(result, 0);
 

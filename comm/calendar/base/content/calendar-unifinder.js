@@ -134,7 +134,7 @@ function unifinderDoubleClick(event) {
  *
  * @param event         The DOM selection event.
  */
-async function unifinderSelect(event) {
+async function unifinderSelect() {
   const treeView = getUnifinderView();
   const currentSelection = treeView.selection;
   if (!currentSelection || currentSelection.getRangeCount() == 0) {
@@ -236,7 +236,9 @@ function updateUnifinderFilterText() {
 
   const searchBox = document.getElementById("unifinder-search-field");
   if (searchBox.value) {
-    filteredView.setFilterFunction(item => item.title.toLowerCase().includes(searchBox.value));
+    const normalize = str => str.normalize().toLowerCase();
+    const normalValue = normalize(searchBox.value);
+    filteredView.setFilterFunction(item => normalize(item.title).includes(normalValue));
   } else {
     filteredView.clearFilter();
   }

@@ -7,27 +7,24 @@
    Class for handling Maildir stores.
 */
 
+#include "MailNewsTypes.h"
+#include "nsMsgMessageFlags.h"
 #include "prprf.h"
 #include "msgCore.h"
 #include "nsMsgMaildirStore.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgFolderNotificationService.h"
-#include "nsISimpleEnumerator.h"
 #include "nsIDirectoryEnumerator.h"
 #include "nsIInputStream.h"
 #include "nsIInputStreamPump.h"
-#include "nsMsgFolderFlags.h"
 #include "nsCOMArray.h"
 #include "nsIFile.h"
 #include "nsNetUtil.h"
 #include "nsIMsgDatabase.h"
-#include "nsNativeCharsetUtils.h"
 #include "nsMsgUtils.h"
 #include "nsIDBFolderInfo.h"
-#include "nsMailHeaders.h"
 #include "nsParseMailbox.h"
 #include "nsIMsgLocalMailFolder.h"
-#include "nsITimer.h"
 #include "nsIMailboxUrl.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgFilterPlugin.h"
@@ -36,7 +33,6 @@
 #include "nsThreadUtils.h"
 #include "mozilla/Logging.h"
 #include "mozilla/SlicedInputStream.h"
-#include "mozilla/UniquePtr.h"
 
 static mozilla::LazyLogModule MailDirLog("MailDirStore");
 
@@ -819,7 +815,7 @@ nsMsgMaildirStore::FinishNewMessage(nsIOutputStream* aOutputStream,
   }
 
   nsCString msgID;
-  aNewHdr->GetMessageId(getter_Copies(msgID));
+  aNewHdr->GetMessageId(msgID);
 
   nsCString baseName;
   // For missing or suspiciously-short Message-IDs, use a timestamp
@@ -1213,6 +1209,12 @@ nsMsgMaildirStore::GetSupportsCompaction(bool* aSupportsCompaction) {
   NS_ENSURE_ARG_POINTER(aSupportsCompaction);
   *aSupportsCompaction = false;
   return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgMaildirStore::AsyncCompact(
+    nsIMsgFolder* folder, nsIStoreCompactListener* compactListener,
+    bool patchXMozillaHeaders) {
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP nsMsgMaildirStore::AsyncScan(nsIMsgFolder* folder,

@@ -6,12 +6,12 @@ import {
   content_tab_e,
   open_content_tab_with_url,
   promise_content_tab_load,
-} from "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs";
+} from "resource://testing-common/mail/ContentTabHelpers.sys.mjs";
 
-import * as fdh from "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs";
-import * as wh from "resource://testing-common/mozmill/WindowHelpers.sys.mjs";
+import * as fdh from "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs";
+import * as wh from "resource://testing-common/mail/WindowHelpers.sys.mjs";
 
-import * as EventUtils from "resource://testing-common/mozmill/EventUtils.sys.mjs";
+import * as EventUtils from "resource://testing-common/mail/EventUtils.sys.mjs";
 import { TestUtils } from "resource://testing-common/TestUtils.sys.mjs";
 
 var mc = fdh.mc;
@@ -49,12 +49,6 @@ export async function open_advanced_settings(callback) {
 export async function openAccountSetup() {
   const tab = await open_content_tab_with_url("about:accountsetup");
   await promise_content_tab_load(tab, "about:accountsetup", 10000);
-  return tab;
-}
-
-export async function openAccountProvisioner() {
-  const tab = await open_content_tab_with_url("about:accountprovisioner");
-  await promise_content_tab_load(tab, "about:accountprovisioner", 10000);
   return tab;
 }
 
@@ -110,6 +104,19 @@ export function get_account_tree_row(accountKey, paneId, tab) {
     row = accountTree.querySelector(`#${accountKey}`);
   }
   return accountTree.rows.indexOf(row);
+}
+
+/**
+ * Returns the listitem of the row in account tree corresponding to the wanted
+ * account and its settings pane.
+ *
+ * @param {?string} accountKey - The key of the account to return. If 'null',
+ *   the SMTP pane is returned.
+ * @returns {?HTMLLIElement} The listitem element, if found.
+ */
+export function get_account_tree_listitem(accountKey, tab) {
+  const accountTree = content_tab_e(tab, "accounttree");
+  return accountKey ? accountTree.querySelector(`#${accountKey}`) : null;
 }
 
 /**

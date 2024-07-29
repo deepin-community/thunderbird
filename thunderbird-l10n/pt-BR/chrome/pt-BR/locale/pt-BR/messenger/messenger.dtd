@@ -180,9 +180,9 @@
 <!ENTITY sortByUnreadCmd.accesskey "L">
 <!ENTITY sortByOrderReceivedCmd.label "Ordem de chegada">
 <!ENTITY sortByOrderReceivedCmd.accesskey "c">
-<!ENTITY sortAscending.label "Ordem crescente">
+<!ENTITY sortAscending.label "Crescente">
 <!ENTITY sortAscending.accesskey "O">
-<!ENTITY sortDescending.label "Ordem decrescente">
+<!ENTITY sortDescending.label "Decrescente">
 <!ENTITY sortDescending.accesskey "r">
 <!ENTITY sortThreaded.label "Agrupar tópicos">
 <!ENTITY sortThreaded.accesskey "c">
@@ -515,7 +515,7 @@
 <!ENTITY stopButton.label "Parar">
 <!ENTITY throbberItem.title "Indicador de atividade">
 <!ENTITY junkItem.title "Spam">
-<!ENTITY addressBookButton.label "Catálogo">
+<!ENTITY addressBookButton.label "Catálogo de endereços">
 <!ENTITY chatButton.label "Conversa">
 <!ENTITY glodaSearch.title "Pesquisa global">
 <!ENTITY searchItem.title "Pesquisa rápida">
@@ -570,9 +570,9 @@
 <!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Ignorar aviso desta mensagem">
 <!ENTITY phishingOptionIgnore.accesskey "n">
-<!ENTITY phishingOptionSettings.label "Editar opções da detecção de fraudes…">
+<!ENTITY phishingOptionSettings.label "Editar opções de detecção de fraude…">
 <!ENTITY phishingOptionSettings.accesskey "d">
-<!ENTITY phishingOptionSettingsUnix.label "Editar preferências da detecção de fraudes…">
+<!ENTITY phishingOptionSettingsUnix.label "Editar preferências de detecção de fraude…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "p">
 
 <!-- AppMenu Popup -->

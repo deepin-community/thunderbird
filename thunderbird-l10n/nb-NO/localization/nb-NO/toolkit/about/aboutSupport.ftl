@@ -412,6 +412,20 @@ support-printing-modified-settings = Endrede utskriftsinnstillinger
 support-printing-prefs-name = Navn
 support-printing-prefs-value = Verdi
 
+## Remote Settings sections
+
+support-remote-settings-title = Fjerninnstillinger
+support-remote-settings-status = Status
+support-remote-settings-status-ok = OK
+# Status when synchronization is not working.
+support-remote-settings-status-broken = Fungerer ikke
+support-remote-settings-last-check = Siste sjekk
+support-remote-settings-local-timestamp = Lokalt tidsstempel
+support-remote-settings-sync-history = Historikk
+support-remote-settings-sync-history-status = Status
+support-remote-settings-sync-history-datetime = Dato
+support-remote-settings-sync-history-infos = Info
+
 ## Normandy sections
 
 support-remote-experiments-title = Eksterne eksperimenter
@@ -428,3 +442,15 @@ pointing-device-mouse = Mus
 pointing-device-touchscreen = Trykkskjerm
 pointing-device-pen-digitizer = Digitalpenn
 pointing-device-none = Ingen peke-enheter
+
+## Content Analysis (DLP)
+
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = Innholdsanalyse (DLP)
+content-analysis-active = Aktiv
+content-analysis-connected-to-agent = Tilkoblet agent
+content-analysis-agent-path = Sti til agent
+content-analysis-agent-failed-signature-verification = Agenten kunne ikke verifisere signaturen
+content-analysis-request-count = Antall forespørsler

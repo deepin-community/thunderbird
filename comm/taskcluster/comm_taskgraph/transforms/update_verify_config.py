@@ -29,7 +29,7 @@ INCLUDE_VERSION_REGEXES = {
     # Same as nonbeta, except for the esr suffix
     "esr": r"'^\d+\.\d+(\.\d+)?esr$'",
     # Previous esr versions, for update testing before we update users to a new esr
-    "esr115-next": r"'^(91|102)\.\d+(\.\d+)?$'",
+    "esr128-next": r"'^(91|102|115)\.\d+(\.\d+)?$'",
 }
 
 MAR_CHANNEL_ID_OVERRIDE_REGEXES = {
@@ -89,6 +89,8 @@ def add_command(config, tasks):
             get_branch_rev(config),
             "--output-file",
             "update-verify.cfg",
+            "--local-repo",
+            "comm/.",
         ]
 
         repo_path = urlsplit(get_branch_repo(config)).path.lstrip("/")

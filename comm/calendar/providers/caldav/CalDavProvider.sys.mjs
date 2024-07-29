@@ -10,7 +10,7 @@ import { CalDavPropfindRequest } from "resource:///modules/caldav/CalDavRequest.
 import { CalDavDetectionSession } from "resource:///modules/caldav/CalDavSession.sys.mjs";
 
 // NOTE: This module should not be loaded directly, it is available when
-// including calUtils.jsm under the cal.provider.caldav namespace.
+// including calUtils.sys.mjs under the cal.provider.caldav namespace.
 
 /**
  * @implements {calICalendarProvider}
@@ -30,17 +30,11 @@ export var CalDavProvider = {
     return "CalDAV";
   },
 
-  deleteCalendar(aCalendar, aListener) {
+  deleteCalendar() {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
   },
 
-  async detectCalendars(
-    username,
-    password,
-    location = null,
-    savePassword = false,
-    extraProperties = {}
-  ) {
+  async detectCalendars(username, password, location = null, savePassword = false) {
     const uri = cal.provider.detection.locationToUri(location);
     if (!uri) {
       throw new Error("Could not infer location from username");
@@ -146,33 +140,18 @@ class CalDavDetector {
       return null;
     }
 
-    let dnshost = location.host;
     const secure = location.schemeIs("http") ? "" : "s";
-    let dnsres = await DNS.srv(`_caldav${secure}._tcp.${dnshost}`);
+    const host = `_caldav${secure}._tcp.${location.host}`;
+    const dnsres = await DNS.srv(host);
 
     if (!dnsres.length) {
-      let basedomain;
-      try {
-        basedomain = Services.eTLD.getBaseDomain(location);
-      } catch (e) {
-        // If we can't get a base domain just skip it.
-      }
-
-      if (basedomain && basedomain != location.host) {
-        cal.LOG(`[CalDavProvider] ${location.host} has no SRV entry, trying ${basedomain}`);
-        dnsres = await DNS.srv(`_caldav${secure}._tcp.${basedomain}`);
-        dnshost = basedomain;
-      }
-    }
-
-    if (!dnsres.length) {
+      cal.LOG(`[CalDavProvider] Found no SRV record for for ${host}`);
       return null;
     }
     dnsres.sort((a, b) => a.prio - b.prio || b.weight - a.weight);
 
     // Determine path from TXT, if available.
-    let pathres = await DNS.txt(`_caldav${secure}._tcp.${dnshost}`);
-    pathres.sort((a, b) => a.prio - b.prio || b.weight - a.weight);
+    let pathres = await DNS.txt(host);
     pathres = pathres.filter(result => result.data.startsWith("path="));
     // Get the string after `path=`.
     const path = pathres.length ? pathres[0].data.substr(5) : "";
@@ -290,10 +269,9 @@ class CalDavDetector {
     if (resourceType.has("C:calendar")) {
       cal.LOG(`[CalDavProvider] ${target.spec} is a calendar`);
       return [this.handleCalendar(target, resprops)];
-    } else if (resourceType.has("D:principal")) {
-      cal.LOG(`[CalDavProvider] ${target.spec} is a principal, looking at home set`);
-      const homeSet = resprops["C:calendar-home-set"];
-      const homeSetUrl = Services.io.newURI(homeSet, null, target);
+    } else if (resprops["C:calendar-home-set"]?.length) {
+      cal.LOG(`[CalDavProvider] ${target.spec} has a home set, looking at it`);
+      const homeSetUrl = Services.io.newURI(resprops["C:calendar-home-set"][0], null, target);
       return this.handleHomeSet(homeSetUrl);
     } else if (resprops["D:current-user-principal"]) {
       cal.LOG(
@@ -319,7 +297,7 @@ class CalDavDetector {
    * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async handlePrincipal(location) {
-    const props = ["D:resourcetype", "C:calendar-home-set"];
+    const props = ["C:calendar-home-set"];
     const request = new CalDavPropfindRequest(this.session, null, location, props);
     cal.LOG(`[CalDavProvider] Checking collection type at ${location.spec}`);
 
@@ -330,9 +308,6 @@ class CalDavDetector {
 
     if (response.authError) {
       throw new cal.provider.detection.AuthFailedError();
-    } else if (!response.firstProps["D:resourcetype"].has("D:principal")) {
-      cal.LOG(`[CalDavProvider] ${target.spec} is not a principal collection`);
-      return null;
     } else if (homeSets) {
       const calendars = [];
       for (const homeSet of homeSets) {

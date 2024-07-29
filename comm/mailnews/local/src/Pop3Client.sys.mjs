@@ -51,18 +51,13 @@ const UIDL_DELETE = "d";
 const UIDL_TOO_BIG = "b";
 const UIDL_FETCH_BODY = "f";
 
-// There can be multiple Pop3Client running concurrently, assign each logger a
-// unique prefix.
-let loggerId = 0;
-
-function getLoggerId() {
-  return loggerId++ % 1000;
-}
-
 /**
  * A class to interact with POP3 server.
  */
 export class Pop3Client {
+  // Run sequence number shown in log prefix.
+  static #runSeq = 1;
+
   /**
    * @param {nsIPop3IncomingServer} server - The associated server instance.
    */
@@ -90,7 +85,9 @@ export class Pop3Client {
     // Auth method set by user preference.
     this._preferredAuthMethods =
       {
-        [Ci.nsMsgAuthMethod.passwordCleartext]: ["USERPASS", "PLAIN", "LOGIN"],
+        // Do USERPASS only if obfuscated cleartext methods (PLAIN or LOGIN) are
+        // not supported or fail.
+        [Ci.nsMsgAuthMethod.passwordCleartext]: ["PLAIN", "LOGIN", "USERPASS"],
         [Ci.nsMsgAuthMethod.passwordEncrypted]: ["CRAM-MD5"],
         [Ci.nsMsgAuthMethod.GSSAPI]: ["GSSAPI"],
         [Ci.nsMsgAuthMethod.NTLM]: ["NTLM"],
@@ -106,7 +103,10 @@ export class Pop3Client {
     this._sink.popServer = server;
 
     this._logger = console.createInstance({
-      prefix: `mailnews.pop3.${getLoggerId()}`,
+      // Prefix is "pop3.serverXX.YYY, e.g., where "serverXX" is server key
+      // string and  YYY is run sequence number (modulo 1000) so YYY goes
+      // from 0 to 999.
+      prefix: `pop3.${this._server.key}.${Pop3Client.#runSeq++ % 1000}`,
       maxLogLevel: "Warn",
       maxLogLevelPref: "mailnews.pop3.loglevel",
     });
@@ -170,7 +170,7 @@ export class Pop3Client {
     this._msgWindow = msgWindow;
     this._sink.folder = folder;
     this._actionAfterAuth = this._actionStat;
-    this.urlListener.OnStartRunningUrl(this.runningUri, Cr.NS_OK);
+    this.urlListener?.OnStartRunningUrl(this.runningUri, Cr.NS_OK);
 
     await this._loadUidlState();
     this._actionCapa();
@@ -342,7 +342,7 @@ export class Pop3Client {
   _onData = async event => {
     // Some servers close the socket on invalid username/password, this line
     // guarantees onclose is handled before we try another AUTH method. See the
-    // same handling in SmtpClient.jsm.
+    // same handling in SmtpClient.sys.mjs.
     await new Promise(resolve => setTimeout(resolve));
 
     let stringPayload = CommonUtils.arrayBufferToByteString(
@@ -427,7 +427,7 @@ export class Pop3Client {
         this._logger.error(`SecurityError cert chain: ${chain.join(" <- ")}`);
       }
       this.runningUri.failedSecInfo = secInfo;
-      this.urlListener.OnStopRunningUrl(this.runningUri, event.errorCode);
+      this.urlListener?.OnStopRunningUrl(this.runningUri, event.errorCode);
       this.runningUri.SetUrlState(false, event.errorCode);
     }
     this._actionDone(event.errorCode);
@@ -498,6 +498,7 @@ export class Pop3Client {
    * Write this._uidlMap into popstate.dat.
    *
    * @param {boolean} [resetFlag] - If true, reset _uidlMapChanged to false.
+   * @throws {DOMException} for I/O errors writing to popstate.dat.
    */
   async _writeUidlState(resetFlag) {
     if (!this._uidlMapChanged) {
@@ -1218,7 +1219,7 @@ export class Pop3Client {
         }
         this._sendNoopIfInactive();
       },
-      () => {
+      async () => {
         if (!this._downloadMail) {
           const numberOfMessages = this._messagesToHandle.filter(
             // No receivedAt means we're seeing it for the first time.
@@ -1275,7 +1276,7 @@ export class Pop3Client {
         this._uidlMap = this._newUidlMap;
 
         this._sink.setMsgsToDownload(this._messagesToDownload.length);
-        this._actionHandleMessage();
+        await this._actionHandleMessage();
         this._updateProgress();
       }
     );
@@ -1323,7 +1324,7 @@ export class Pop3Client {
    * Consume a message from this._messagesToHandle, decide to send TOP, RETR or
    * DELE request.
    */
-  _actionHandleMessage = () => {
+  _actionHandleMessage = async () => {
     this._currentMessage = this._messagesToHandle.shift();
     if (
       this._messagesToHandle.length > 0 &&
@@ -1332,7 +1333,13 @@ export class Pop3Client {
     ) {
       // Update popstate.dat every 20 messages, so that even if an error
       // happens, no need to re-download all messages.
-      this._writeUidlState();
+      try {
+        await this._writeUidlState();
+      } catch (e) {
+        this._logger.error("Writing UIDL state FAILED.", e);
+        this._actionDone(Cr.NS_ERROR_FAILURE);
+        return;
+      }
     }
     if (this._currentMessage) {
       switch (this._currentMessage.status) {
@@ -1609,7 +1616,7 @@ export class Pop3Client {
       return;
     }
     this._done = true;
-    this._logger.debug(`Done with status=${status}`);
+    this._logger.debug(`Done with status=0x${status.toString(16)}`);
     this._authenticating = false;
     if (status == Cr.NS_OK) {
       if (this._newMessageTotal) {
@@ -1624,7 +1631,12 @@ export class Pop3Client {
       // Put _currentMessage back to the queue to prevent loss of popstate.
       this._messagesToHandle.unshift(this._currentMessage);
     }
-    this._writeUidlState(true);
+    try {
+      await this._writeUidlState(true);
+    } catch (e) {
+      this._logger.error("Done but writing UIDL state FAILED.", e);
+      status = Cr.NS_ERROR_FAILURE;
+    }
     // Normally we clean up after QUIT response.
     await this.quit(() => this._cleanUp(status));
     // If we didn't receive QUIT response after 3 seconds, clean up anyway.
@@ -1645,7 +1657,7 @@ export class Pop3Client {
     const runningUrl = {};
     this.runningUri.GetUrlState(runningUrl);
     if (runningUrl.value) {
-      this.urlListener.OnStopRunningUrl(this.runningUri, status);
+      this.urlListener?.OnStopRunningUrl(this.runningUri, status);
     }
     this.runningUri.SetUrlState(false, Cr.NS_OK);
     this.onDone?.(status);
@@ -1655,6 +1667,7 @@ export class Pop3Client {
       this._logger.debug("Folder lock released.");
     }
     this._server.wrappedJSObject.runningClient = null;
+    this.onFree?.();
   };
 
   /**

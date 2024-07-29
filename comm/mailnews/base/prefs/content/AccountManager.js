@@ -43,6 +43,7 @@ var { MailServices } = ChromeUtils.importESModule(
 );
 
 ChromeUtils.defineESModuleGetters(this, {
+  FolderTreeProperties: "resource:///modules/FolderTreeProperties.sys.mjs",
   FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
   UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
@@ -67,7 +68,7 @@ ChromeUtils.defineLazyGetter(this, "gSubDialog", function () {
         "chrome://messenger/skin/preferences/dialog.css",
         "chrome://messenger/skin/preferences/preferences.css",
       ],
-      resizeCallback: ({ title, frame }) => {
+      resizeCallback: ({ frame }) => {
         UIFontSize.registerWindow(frame.contentWindow);
 
         // Resize the dialog to fit the content with edited font size.
@@ -153,8 +154,8 @@ function updateElementWithKeys(account, element, type) {
       element.serverkey = account.incomingServer.key;
       break;
     case "smtp":
-      if (MailServices.smtp.defaultServer) {
-        element.serverkey = MailServices.smtp.defaultServer.key;
+      if (MailServices.outgoingServer.defaultServer) {
+        element.serverkey = MailServices.outgoingServer.defaultServer.key;
       }
       break;
     default:
@@ -180,20 +181,20 @@ function onLoad() {
   setTimeout(selectServer, 0, selectedServer, selectPage);
 
   const contentFrame = document.getElementById("contentFrame");
-  contentFrame.addEventListener("load", event => {
+  contentFrame.addEventListener("load", () => {
     const inputElements = contentFrame.contentDocument.querySelectorAll(
       "checkbox, input, menulist, textarea, radiogroup, richlistbox"
     );
-    contentFrame.contentDocument.addEventListener("prefchange", event => {
+    contentFrame.contentDocument.addEventListener("prefchange", () => {
       onAccept(true);
     });
     for (const input of inputElements) {
       if (input.localName == "input" || input.localName == "textarea") {
-        input.addEventListener("change", event => {
+        input.addEventListener("change", () => {
           onAccept(true);
         });
       } else {
-        input.addEventListener("command", event => {
+        input.addEventListener("command", () => {
           onAccept(true);
         });
       }
@@ -980,7 +981,7 @@ function saveAccount(accountValues, account) {
       } else if (type == "nntp") {
         dest = server.QueryInterface(Ci.nsINntpIncomingServer);
       } else if (type == "smtp") {
-        dest = MailServices.smtp.defaultServer;
+        dest = MailServices.outgoingServer.defaultServer;
       }
     } catch (ex) {
       // don't do anything, just means we don't support that
@@ -1340,7 +1341,7 @@ function savePage(account) {
   }
   // Reset accountArray so that only the current page will be saved. This is
   // needed to prevent resetting prefs unintentionally. An example is when
-  // changing username/hostname, MsgIncomingServer.jsm will modify identities,
+  // changing username/hostname, MsgIncomingServer.sys.mjs will modify identities,
   // without this, identities changes may be reverted to old values in
   // accountArray.
   accountArray = {};
@@ -1417,7 +1418,7 @@ function getAccountValue(
       } else if (type == "nntp") {
         source = server.QueryInterface(Ci.nsINntpIncomingServer);
       } else if (type == "smtp") {
-        source = MailServices.smtp.defaultServer;
+        source = MailServices.outgoingServer.defaultServer;
       }
     } catch (ex) {}
 
@@ -1514,8 +1515,8 @@ function restorePage(pageId, account) {
             element.serverkey = account.incomingServer.key;
             break;
           case "smtp":
-            if (MailServices.smtp.defaultServer) {
-              element.serverkey = MailServices.smtp.defaultServer.key;
+            if (MailServices.outgoingServer.defaultServer) {
+              element.serverkey = MailServices.outgoingServer.defaultServer.key;
             }
             break;
         }
@@ -1694,7 +1695,14 @@ function setAccountLabel(aAccountKey, aLabel) {
 }
 
 var gAccountTree = {
-  load() {
+  QueryInterface: ChromeUtils.generateQI([
+    "nsIObserver",
+    "nsISupportsWeakReference",
+  ]),
+
+  async load() {
+    await FolderTreeProperties.ready;
+
     this._build();
 
     const mainTree = document.getElementById("accounttree");
@@ -1708,7 +1716,7 @@ var gAccountTree = {
         event.preventDefault();
       }
     });
-    mainTree.addEventListener("ordered", event => {
+    mainTree.addEventListener("ordered", () => {
       const accountKeyList = Array.from(mainTree.children, row => row.id);
       accountKeyList.pop(); // Remove SMTP.
       MailServices.accounts.reorderAccounts(accountKeyList);
@@ -1732,19 +1740,55 @@ var gAccountTree = {
     });
 
     MailServices.accounts.addIncomingServerListener(this);
+    Services.obs.addObserver(this, "server-color-changed", true);
+    Services.obs.addObserver(this, "server-color-preview", true);
   },
   unload() {
     MailServices.accounts.removeIncomingServerListener(this);
+    Services.obs.removeObserver(this, "server-color-changed");
+    Services.obs.removeObserver(this, "server-color-preview");
   },
   onServerLoaded(server) {
     // We assume the newly appeared server was created by the user so we select
     // it in the tree.
     this._build(server);
   },
-  onServerUnloaded(aServer) {
+  onServerUnloaded() {
     this._build();
   },
-  onServerChanged(aServer) {},
+  onServerChanged() {},
+
+  observe(subject, topic, data) {
+    switch (topic) {
+      case "server-color-changed":
+      case "server-color-preview":
+        this._updateAccountRowColor(subject, data);
+        break;
+    }
+  },
+
+  /**
+   * Update the custom icon color of the account row.
+   *
+   * @param {nsIMsgAccount} account - The account that changed.
+   * @param {?string} iconColor - The new color to apply to the server item.
+   */
+  _updateAccountRowColor(account, iconColor = null) {
+    const server = account.incomingServer;
+    const serverRow = document
+      .getElementById("accounttree")
+      .querySelector(`li[data-server-key="${server.key}"]`);
+    if (!serverRow) {
+      return;
+    }
+
+    if (!iconColor) {
+      iconColor = FolderTreeProperties.getColor(server.rootFolder.URI);
+    }
+    serverRow
+      .querySelector(".icon")
+      .style.setProperty("--icon-color", iconColor ?? "");
+  },
 
   _dataStore: Services.xulStore,
 
@@ -1795,6 +1839,7 @@ var gAccountTree = {
       let amChrome = "about:blank";
       const panelsToKeep = [];
       let server = null;
+      let validAccount = true;
 
       // This "try {} catch {}" block is intentionally very long to catch
       // unknown exceptions and confine them to this single account.
@@ -1877,6 +1922,7 @@ var gAccountTree = {
         console.error("Error accessing account " + accountID + ": " + e);
         accountName = "Invalid account " + accountID;
         panelsToKeep.length = 0;
+        validAccount = false;
       }
 
       // Create the top level tree-item.
@@ -1890,12 +1936,13 @@ var gAccountTree = {
       treeitem.setAttribute("PageTag", amChrome);
       // Add icons based on account type.
       if (server) {
+        treeitem.dataset.serverKey = server.key;
         treeitem.classList.add("serverType-" + server.type);
         if (server.isSecure) {
           treeitem.classList.add("isSecure");
         }
         // For IM accounts, we can try to fetch a protocol specific icon.
-        if (server.type == "im") {
+        if (server.type == "im" && validAccount) {
           treeitem.querySelector(".icon").style.backgroundImage =
             "url(" +
             ChatIcons.getProtocolIconURI(
@@ -1904,6 +1951,7 @@ var gAccountTree = {
             ")";
           treeitem.id = accountKey;
         }
+        this._updateAccountRowColor(account);
       }
 
       if (panelsToKeep.length > 0) {
@@ -1914,6 +1962,7 @@ var gAccountTree = {
           treekids.appendChild(kidtreeitem);
           const kidtreerow = document.createElement("div");
           kidtreeitem.appendChild(kidtreerow);
+          kidtreerow.classList.add("container");
           const kidtreecell = document.createElement("span");
           kidtreecell.classList.add("name");
           kidtreecell.tabIndex = -1;

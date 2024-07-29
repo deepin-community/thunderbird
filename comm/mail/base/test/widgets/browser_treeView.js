@@ -24,7 +24,9 @@ const TEST_VARIANTS = ["header", "no-header"];
 async function runTestInSandbox(test, filenameFragment, sandboxArgs = []) {
   // Create a new tab with our custom content.
   const tab = tabmail.openTab("contentTab", {
-    url: `chrome://mochitests/content/browser/comm/mail/base/test/widgets/files/tree-element-test-${filenameFragment}.xhtml`,
+    url: `${getRootDirectory(
+      gTestPath
+    )}files/tree-element-test-${filenameFragment}.xhtml`,
   });
 
   await BrowserTestUtils.browserLoaded(tab.browser);
@@ -1441,7 +1443,7 @@ async function subtestExpandCollapse() {
 
   function pressKey(id, key, expectedChange) {
     info(`pressing ${key}`);
-    performChange(id, expectedChange, row => {
+    performChange(id, expectedChange, () => {
       EventUtils.synthesizeKey(key, {}, content);
     });
   }
@@ -1863,7 +1865,7 @@ async function subtestScrollWhenExpandCollapse() {
 
   function pressKey(id, key, expectedChange) {
     info(`pressing ${key}`);
-    performChange(id, expectedChange, row => {
+    performChange(id, expectedChange, () => {
       EventUtils.synthesizeKey(key, {}, content);
     });
   }

@@ -563,12 +563,15 @@ var Tests = [
 function run_test() {
   localAccountUtils.loadLocalMailAccount();
 
+  /** @implements {nsIMsgCopyServiceListener} */
   var copyListener = {
-    OnStartCopy() {},
-    OnProgress(aProgress, aProgressMax) {},
-    SetMessageKey(aKey) {},
-    SetMessageId(aMessageId) {},
-    OnStopCopy(aStatus) {
+    onStartCopy() {},
+    onProgress() {},
+    setMessageKey() {},
+    getMessageId() {
+      return null;
+    },
+    onStopCopy() {
       testSearch();
     },
   };

@@ -10,7 +10,7 @@
  */
 
 var { open_compose_new_mail, setup_msg_contents } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 
 var {
@@ -20,14 +20,14 @@ var {
   right_click_on_row,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 let aliceAcct;
@@ -59,7 +59,7 @@ function clearFolder(folder) {
       null,
       true,
       false,
-      { OnStopCopy: resolve },
+      { onStopCopy: resolve },
       false
     );
   });

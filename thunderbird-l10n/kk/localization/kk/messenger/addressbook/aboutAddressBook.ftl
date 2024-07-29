@@ -18,6 +18,14 @@ about-addressbook-toolbar-new-list =
     .label = Жаңа тізім
 about-addressbook-toolbar-import =
     .label = Импорттау
+books-pane-create-contact-button = Жаңа контакт
+    .title = Жаңа контактты жасау
+books-pane-create-book-button =
+    .title = Жаңа адрестік кітапшаны жасау
+books-pane-create-list-button =
+    .title = Жаңа хат тарату тізімін жасау
+books-pane-import-button = Импорттау
+    .title = Адрестік кітапшаларды импорттау
 
 ## Books
 
@@ -66,6 +74,14 @@ about-addressbook-search =
     .placeholder = { $name } іздеу
 about-addressbook-search-all =
     .placeholder = Барлық адрестік кітапшаларынан іздеу
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = { $name } іздеу
+    .placeholder = { $name } іздеу…
+about-addressbook-search-all2 =
+    .label = Барлық адрестік кітапшаларынан іздеу
+    .placeholder = Барлық адрестік кітапшаларынан іздеу…
 about-addressbook-sort-button2 =
     .title = Тізімді көрсету баптаулары
 about-addressbook-name-format-display =
@@ -82,76 +98,93 @@ about-addressbook-sort-email-ascending =
     .label = Эл. поштасы бойынша сұрыптау (А > Я)
 about-addressbook-sort-email-descending =
     .label = Эл. поштасы бойынша сұрыптау (Я > А)
-about-addressbook-horizontal-layout =
-    .label = Горизонталды жаймасына ауысу
-about-addressbook-vertical-layout =
-    .label = Вертикалды жаймасына ауысу
 about-addressbook-table-layout =
     .label = Кестелік жаймасы
 
 ## Card column headers
 ## Each string is listed here twice, and the values should match.
 
-about-addressbook-column-header-generatedname = Аты
-about-addressbook-column-label-generatedname =
-    .label = { about-addressbook-column-header-generatedname }
-about-addressbook-column-header-emailaddresses = Эл. пошта адрестері
-about-addressbook-column-label-emailaddresses =
-    .label = { about-addressbook-column-header-emailaddresses }
-about-addressbook-column-header-phonenumbers = Телефон нөмірлері
-about-addressbook-column-label-phonenumbers =
-    .label = { about-addressbook-column-header-phonenumbers }
-about-addressbook-column-header-addresses = Адрестер
-about-addressbook-column-label-addresses =
-    .label = { about-addressbook-column-header-addresses }
-about-addressbook-column-header-title = Лауазымы
-about-addressbook-column-label-title =
-    .label = { about-addressbook-column-header-title }
-about-addressbook-column-header-department = Бөлім
-about-addressbook-column-label-department =
-    .label = { about-addressbook-column-header-department }
-about-addressbook-column-header-organization = Ұйым
-about-addressbook-column-label-organization =
-    .label = { about-addressbook-column-header-organization }
-about-addressbook-column-header-addrbook = Адрестік кітапша
-about-addressbook-column-label-addrbook =
-    .label = { about-addressbook-column-header-addrbook }
 about-addressbook-column-header-generatedname2 = Аты
     .title = Аты бойынша сұрыптау
 about-addressbook-column-label-generatedname2 =
     .label = Аты
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = Аты
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = Эл. пошта адрестері
     .title = Эл. пошта адрестері бойынша сұрыптау
 about-addressbook-column-label-emailaddresses2 =
     .label = Эл. пошта адрестері
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = Эл. пошта адрестері
+    .title = { $title }
 about-addressbook-column-header-nickname2 = Ник аты
     .title = Ник аты бойынша сұрыптау
 about-addressbook-column-label-nickname2 =
     .label = Ник аты
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = Ник аты
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = Телефон нөмірлері
     .title = Телефон нөмірлері бойынша сұрыптау
 about-addressbook-column-label-phonenumbers2 =
     .label = Телефон нөмірлері
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = Телефон нөмірлері
+    .title = { $title }
 about-addressbook-column-header-addresses2 = Адрестер
     .title = Адрестер бойынша сұрыптау
 about-addressbook-column-label-addresses2 =
     .label = Адрестер
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = Адрестер
+    .title = { $title }
 about-addressbook-column-header-title2 = Лауазымы
     .title = Лауазымы бойынша сұрыптау
 about-addressbook-column-label-title2 =
     .label = Лауазымы
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = Лауазымы
+    .title = { $title }
 about-addressbook-column-header-department2 = Бөлім
     .title = Бөлім бойынша сұрыптау
 about-addressbook-column-label-department2 =
     .label = Бөлім
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = Бөлім
+    .title = { $title }
 about-addressbook-column-header-organization2 = Ұйым
     .title = Ұйым бойынша сұрыптау
 about-addressbook-column-label-organization2 =
     .label = Ұйым
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = Ұйым
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = Адрестік кітапша
     .title = Адрестік кітапша бойынша сұрыптау
 about-addressbook-column-label-addrbook2 =
     .label = Адрестік кітапша
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = Адрестік кітапша
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = Жазу
 about-addressbook-confirm-delete-mixed-title = Контакттар және тізімдерді өшіру
@@ -180,15 +213,6 @@ about-addressbook-confirm-remove-contacts-title =
        *[other] Контакттарды өшіру
     }
 # Variables:
-# $count (Number) - The number of contacts to be removed.
-# $name (String) - The name of the contact to be removed, if $count is 1.
-# $list (String) - The name of the list that contacts will be removed from.
-about-addressbook-confirm-remove-contacts =
-    { $count ->
-        [one] { $list } ішінен { $name } өшіруді шынымен қалайсыз ба?
-       *[other] { $list } ішінен бұл { $count } контакт өшіруді шынымен қалайсыз ба?
-    }
-# Variables:
 # $name (String) - The name of the contact to be removed.
 # $list (String) - The name of the list that contacts will be removed from.
 about-addressbook-confirm-remove-contacts-single = { $list } ішінен { $name } өшіруді шынымен қалайсыз ба?
@@ -205,14 +229,6 @@ about-addressbook-confirm-remove-contacts-multi =
 about-addressbook-confirm-delete-contacts-title =
     { $count ->
        *[other] Контакттарды өшіру
-    }
-# Variables:
-# $count (Number) - The number of contacts to be deleted.
-# $name (String) - The name of the contact to be deleted, if $count is 1.
-about-addressbook-confirm-delete-contacts =
-    { $count ->
-        [one] { $name } контактін өшіруді шынымен қалайсыз ба?
-       *[other] Бұл { $count } контактті өшіруді шынымен қалайсыз ба?
     }
 # Variables:
 # $name (String) - The name of the contact to be deleted.
@@ -236,15 +252,6 @@ about-addressbook-placeholder-no-search-results = Ешбір контакт та
 
 ## Details
 
-# Variables:
-# $count (Number) - The number of selected items (will never be fewer than two)
-about-addressbook-selection-mixed-header = { $count } таңдалған контакт және тізім
-# Variables:
-# $count (Number) - The number of selected contacts
-about-addressbook-selection-contacts-header = { $count } таңдалған контакт
-# Variables:
-# $count (Number) - The number of selected lists
-about-addressbook-selection-lists-header = { $count } таңдалған тізім
 # Variables:
 # $count (Number) - The number of selected items (will never be fewer than 2).
 about-addressbook-selection-mixed-header2 =

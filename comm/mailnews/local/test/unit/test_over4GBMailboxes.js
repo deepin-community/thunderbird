@@ -290,7 +290,7 @@ add_task(async function copyIntoOver4GiB_fail_check() {
 
   const copiedMessageHeaderKeys = []; // Accumulated MsgHdrKeys for listener.
   const copyListener = new PromiseTestUtils.PromiseCopyListener({
-    SetMessageKey(aKey) {
+    setMessageKey(aKey) {
       copiedMessageHeaderKeys.push(aKey);
     },
   });
@@ -341,7 +341,7 @@ add_task(async function copyIntoOver4GiB_success_check1() {
   const file = do_get_file("../../../data/mime-torture");
   const copiedMessageHeaderKeys = []; // Accumulated MsgHdrKeys for listener.
   const copyListener = new PromiseTestUtils.PromiseCopyListener({
-    SetMessageKey(aKey) {
+    setMessageKey(aKey) {
       copiedMessageHeaderKeys.push(aKey);
     },
   });
@@ -368,7 +368,7 @@ add_task(async function copyIntoOver4GiB_success_check2() {
   const file = do_get_file("../../../data/mime-torture");
   const copiedMessageHeaderKeys = []; // Accumulated MsgHdrKeys for listener.
   const copyListener = new PromiseTestUtils.PromiseCopyListener({
-    SetMessageKey(aKey) {
+    setMessageKey(aKey) {
       copiedMessageHeaderKeys.push(aKey);
     },
   });
@@ -524,12 +524,12 @@ var FListener = {
     return this.totalMsgs[this.totalMsgs.length - 1 - aBack];
   },
 
-  onFolderAdded: function act_add(parentFolder, child) {},
-  onMessageAdded: function act_add(parentFolder, msg) {},
-  onFolderRemoved: function act_remove(parentFolder, child) {},
-  onMessageRemoved: function act_remove(parentFolder, msg) {},
+  onFolderAdded: function act_add() {},
+  onMessageAdded: function act_add() {},
+  onFolderRemoved: function act_remove() {},
+  onMessageRemoved: function act_remove() {},
 
-  onFolderPropertyChanged(aItem, aProperty, aOld, aNew) {},
+  onFolderPropertyChanged() {},
   onFolderIntPropertyChanged(aItem, aProperty, aOld, aNew) {
     if (aItem === gInbox) {
       info(
@@ -548,10 +548,10 @@ var FListener = {
       }
     }
   },
-  onFolderBoolPropertyChanged(aItem, aProperty, aOld, aNew) {},
-  onFolderUnicharPropertyChanged(aItem, aProperty, aOld, aNew) {},
-  onFolderPropertyFlagChanged(aItem, aProperty, aOld, aNew) {},
-  onFolderEvent(aFolder, aEvent) {},
+  onFolderBoolPropertyChanged() {},
+  onFolderUnicharPropertyChanged() {},
+  onFolderPropertyFlagChanged() {},
+  onFolderEvent() {},
 };
 
 /**

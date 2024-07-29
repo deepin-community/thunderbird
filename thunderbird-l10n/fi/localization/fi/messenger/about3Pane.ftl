@@ -119,6 +119,8 @@ quick-filter-bar-textbox =
     .placeholder = Suodata nämä viestit <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Suodata viestejä:
+quick-filter-bar-search2 =
+    .label = Suodata viestejä
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -504,17 +506,39 @@ apply-current-view-to-folder-with-children-message = Asetetaanko nykyisen kansio
 # Variables:
 # $unread (Number) - Number of unread messages in thread.
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header-unread =
-    { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> lukematon <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> viestistä
-       *[other] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> lukematonta<span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> viestistä
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span>/<span>1</span> lukematon viesti
+               *[other] <span>1</span>/<span>{ $total }</span> lukematon viesti
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span>/<span>1</span> lukematon viesti
+               *[other] <span>{ $unread }</span>/<span>{ $total }</span> lukematonta viestiä
+            }
     }
 # Variables:
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header =
+threadpane-sort-header-count =
     { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> viesti
-       *[other] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> viestiä
+        [one] <span>1</span> viesti
+       *[other] <span>{ $total }</span> viestiä
     }
 threadpane-card-menu-button =
     .title = Viestivalikko
+message-list-placeholder-no-messages = Viestiä ei löytynyt
+message-list-placeholder-multiple-folders = Useita kansioita valittu
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Merkitse kansio luetuksi
+           *[other] Merkitse kansiot luetuksi
+        }
+    .accesskey = k

@@ -98,35 +98,35 @@ export class AddrBookDirectory {
     return card.QueryInterface(Ci.nsIAbCard);
   }
   /** @abstract */
-  loadCardProperties(uid) {
+  loadCardProperties() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement loadCardProperties.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
   /** @abstract */
-  saveCardProperties(uid, properties) {
+  saveCardProperties() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement saveCardProperties.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
   /** @abstract */
-  deleteCard(uid) {
+  deleteCard() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement deleteCard.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
   /** @abstract */
-  saveList(list) {
+  saveList() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement saveList.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
   /** @abstract */
-  deleteList(uid) {
+  deleteList() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement deleteList.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
@@ -447,7 +447,7 @@ export class AddrBookDirectory {
     }
     listener.onSearchFinished(Cr.NS_OK, true, null, "");
   }
-  generateName(generateFormat, bundle) {
+  generateName() {
     return this.dirName;
   }
   cardForEmailAddress(emailAddress) {
@@ -485,14 +485,14 @@ export class AddrBookDirectory {
     return null;
   }
   /** @abstract */
-  getCardFromProperty(property, value, caseSensitive) {
+  getCardFromProperty() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement getCardFromProperty.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
   /** @abstract */
-  getCardsFromProperty(property, value, caseSensitive) {
+  getCardsFromProperty() {
     throw new Components.Exception(
       `${this.constructor.name} does not implement getCardsFromProperty.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
@@ -583,9 +583,9 @@ export class AddrBookDirectory {
       }
     }
 
-    // Increment this preference if one or both of these properties change.
+    // Increment this preference if the DisplayName property changed.
     // This will cause the UI to throw away cached values.
-    if ("DisplayName" in changeData || "PreferDisplayName" in changeData) {
+    if ("DisplayName" in changeData) {
       Services.prefs.setIntPref(
         "mail.displayname.version",
         Services.prefs.getIntPref("mail.displayname.version", 0) + 1
@@ -686,7 +686,7 @@ export class AddrBookDirectory {
     Services.obs.notifyObservers(newCard, "addrbook-contact-created", this.UID);
     return newCard;
   }
-  useForAutocomplete(identityKey) {
+  useForAutocomplete() {
     return (
       Services.prefs.getBoolPref("mail.enable_autocomplete") &&
       this.getBoolValue("enable_autocomplete", true)
@@ -750,14 +750,14 @@ export class AddrBookDirectory {
     );
     return newListDirectory;
   }
-  editMailListToDatabase(listCard) {
+  editMailListToDatabase() {
     // Deliberately not implemented, this isn't a mailing list.
     throw Components.Exception(
       "editMailListToDatabase not relevant here",
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
   }
-  copyMailList(srcList) {
+  copyMailList() {
     // Deliberately not implemented, this isn't a mailing list.
     throw Components.Exception(
       "copyMailList not relevant here",

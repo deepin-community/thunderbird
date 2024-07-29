@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Scopri le funzionalità
     .accesskey = f
+menu-help-get-release-help =
+    .label = Rttieni assistenza per { -brand-short-name }
+    .accesskey = R
 menu-help-shortcuts =
     .label = Scorciatoie da tastiera
     .accesskey = S
@@ -133,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Account email…
+    .accesskey = A
 file-new-newsgroup-account =
     .label = Account gruppi di discussione…
     .accesskey = o

@@ -124,6 +124,8 @@ quick-filter-bar-textbox =
     .placeholder = Filtrovať tieto správy <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Filtrovať správy:
+quick-filter-bar-search2 =
+    .label = Filtrovať správy
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -243,7 +245,7 @@ threadpane-column-header-select-all =
 threadpane-column-header-deselect-all =
     .title = Zrušiť označenie všetkých správ
 threadpane-column-label-select =
-    .label = Označte správy
+    .label = Výber správy
 threadpane-cell-select =
     .aria-label = Vyberte správu
 threadpane-column-header-thread =
@@ -557,3 +559,19 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Ponuka pre správu
+message-list-placeholder-no-messages = Nenašla sa žiadna správa
+message-list-placeholder-multiple-folders = Označených viacero priečinkov
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Označiť priečinok ako prečítaný
+            [few] Označiť priečinky ako prečítané
+            [many] Označiť priečinky ako prečítané
+           *[other] Označiť priečinky ako prečítané
+        }
+    .accesskey = O

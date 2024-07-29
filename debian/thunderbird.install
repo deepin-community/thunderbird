@@ -1,4 +1,5 @@
 #!/usr/bin/dh-exec
+comm/mail/branding/thunderbird/content/logo-gradient.svg => usr/share/icons/hicolor/scalable/apps/thunderbird.svg
 comm/mail/branding/thunderbird/default16.png => usr/share/icons/hicolor/16x16/apps/thunderbird.png
 comm/mail/branding/thunderbird/default22.png => usr/share/icons/hicolor/22x22/apps/thunderbird.png
 comm/mail/branding/thunderbird/default24.png => usr/share/icons/hicolor/24x24/apps/thunderbird.png
@@ -11,7 +12,6 @@ debian/thunderbird-wrapper.sh => usr/bin/thunderbird
 
 comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml usr/share/metainfo
 debian/account-autoconfig/*                       usr/share/thunderbird/isp
-debian/logo/thunderbird/thunderbird.svg           usr/share/icons/hicolor/scalable/apps
 debian/thunderbird.desktop                        usr/share/applications
 debian/thunderbird.js                             etc/thunderbird/pref
 debian/thunderbird-wrapper-helper.sh              usr/lib/thunderbird

@@ -18,6 +18,14 @@ about-addressbook-toolbar-new-list =
     .label = Yeni liste
 about-addressbook-toolbar-import =
     .label = İçe aktar
+books-pane-create-contact-button = Yeni kişi
+    .title = Yeni kişi oluştur
+books-pane-create-book-button =
+    .title = Yeni adres defteri oluştur
+books-pane-create-list-button =
+    .title = Yeni e-posta listesi oluştur
+books-pane-import-button = İçe aktar
+    .title = Adres defterlerini içe aktar
 
 ## Books
 
@@ -66,6 +74,14 @@ about-addressbook-search =
     .placeholder = { $name } defterinde ara
 about-addressbook-search-all =
     .placeholder = Tüm adres defterlerinde ara
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = { $name } defterinde ara
+    .placeholder = { $name } defterinde ara…
+about-addressbook-search-all2 =
+    .label = Tüm adres defterlerinde ara
+    .placeholder = Tüm adres defterlerinde ara…
 about-addressbook-sort-button2 =
     .title = Görüntüleme seçeneklerini listele
 about-addressbook-name-format-display =
@@ -92,38 +108,83 @@ about-addressbook-column-header-generatedname2 = Ad
     .title = Ada göre sırala
 about-addressbook-column-label-generatedname2 =
     .label = Ad
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = Adı
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = E-posta adresleri
     .title = E-posta adreslerine göre sırala
 about-addressbook-column-label-emailaddresses2 =
     .label = E-posta adresleri
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = E-posta adresleri
+    .title = { $title }
 about-addressbook-column-header-nickname2 = Takma ad
     .title = Takma ada göre sırala
 about-addressbook-column-label-nickname2 =
     .label = Takma ad
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = Takma ad
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = Telefon numaraları
     .title = Telefon numaralarına göre sırala
 about-addressbook-column-label-phonenumbers2 =
     .label = Telefon numaraları
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = Telefon numaraları
+    .title = { $title }
 about-addressbook-column-header-addresses2 = Adresler
     .title = Adrese göre sırala
 about-addressbook-column-label-addresses2 =
     .label = Adresler
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = Adresler
+    .title = { $title }
 about-addressbook-column-header-title2 = Unvan
     .title = Unvana göre sırala
 about-addressbook-column-label-title2 =
     .label = Unvan
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = Unvan
+    .title = { $title }
 about-addressbook-column-header-department2 = Departman
     .title = Departmana göre sırala
 about-addressbook-column-label-department2 =
     .label = Departman
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = Departman
+    .title = { $title }
 about-addressbook-column-header-organization2 = Şirket
     .title = Şirkete göre sırala
 about-addressbook-column-label-organization2 =
     .label = Şirket
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = Şirket
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = Adres defteri
     .title = Adres defterine göre sırala
 about-addressbook-column-label-addrbook2 =
     .label = Adres defteri
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = Adres defteri
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = Yaz
 about-addressbook-confirm-delete-mixed-title = Kişileri ve listeleri sil
@@ -241,7 +302,7 @@ about-addressbook-entry-type-fax = Faks
 about-addressbook-entry-type-cell = Cep
 about-addressbook-entry-type-pager = Çağrı cihazı
 about-addressbook-entry-name-birthday = Doğum günü
-about-addressbook-entry-name-anniversary = yıl dönümü
+about-addressbook-entry-name-anniversary = Yıl dönümü
 about-addressbook-entry-name-title = Unvan
 about-addressbook-entry-name-role = Rol
 about-addressbook-entry-name-organization = Şirket

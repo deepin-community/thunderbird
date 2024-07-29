@@ -4,23 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailConstants: "chrome://openpgp/content/modules/constants.sys.mjs",
-  EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.sys.mjs",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
+  FeedUtils: "resource:///modules/FeedUtils.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
+  RNP: "chrome://openpgp/content/modules/RNP.sys.mjs",
 });
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  FeedUtils: "resource:///modules/FeedUtils.jsm",
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
+ChromeUtils.defineLazyGetter(lazy, "log", () => {
+  return console.createInstance({
+    prefix: "openpgp",
+    maxLogLevel: "Warn",
+    maxLogLevelPref: "openpgp.loglevel",
+  });
 });
-
 ChromeUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
@@ -30,12 +29,17 @@ const ENIG_DEFAULT_HKPS_PORT = "443";
 const ENIG_DEFAULT_LDAP_PORT = "389";
 
 /**
- KeySrvListener API
- Object implementing:
-  - onProgress: function(percentComplete) [only implemented for download()]
-  - onCancel: function() - the body will be set by the callee
-*/
+ * @typedef {object} KeySrvListener
+ * @property {?function(integer):void} onProgress - Only implemented for download().
+ * @property {Function} onCancel - The body will be set by the callee.
+ */
 
+/**
+ * Create a localized UI error string for the errId code.
+ *
+ * @param {string} errId
+ * @returns {string} a localized error string.
+ */
 function createError(errId) {
   let msg = "";
 
@@ -70,17 +74,18 @@ function createError(errId) {
 }
 
 /**
- * parse a keyserver specification and return host, protocol and port
+ * Parse a keyserver specification and return host, protocol and port.
  *
- * @param keyserver: String - name of keyserver with optional protocol and port.
- *                       E.g. keys.gnupg.net, hkps://keys.gnupg.net:443
- *
- * @returns Object: {port, host, protocol} (all Strings)
+ * @param {string} keyserver - Hostname of keyserver with optional protocol
+ *   and port.E.g. keys.gnupg.net, hkps://keys.gnupg.net:443
+ * @returns {object} server
+ * @returns {string} server.protocol - One of "hkp", "https", "hkps", "ldap".
+ * @returns {string} server.host
+ * @returns {string} server.port
  */
 function parseKeyserverUrl(keyserver) {
   if (keyserver.length > 1024) {
-    // insane length of keyserver is forbidden
-    throw Components.Exception("", Cr.NS_ERROR_FAILURE);
+    throw Error(`Too long keyserver spec: ${keyserver}`);
   }
 
   keyserver = keyserver.toLowerCase().trim();
@@ -129,12 +134,11 @@ function parseKeyserverUrl(keyserver) {
 }
 
 /**
- Object to handle HKP/HKPS requests via builtin XMLHttpRequest()
+ * Object to handle HKP/HKPS requests via builtin XMLHttpRequest()
  */
 const accessHkpInternal = {
   /**
    * Create the payload of hkp requests (upload only)
-   *
    */
   async buildHkpPayload(actionFlag, searchTerms) {
     switch (actionFlag) {
@@ -213,19 +217,16 @@ const accessHkpInternal = {
   /**
    * Upload, search or download keys from a keyserver
    *
-   * @param actionFlag:  Number  - Keyserver Action Flags: from EnigmailConstants
-   * @param keyId:      String  - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Number (Status-ID)>
+   * @param {integer} actionFlag - Keyserver Action Flags: from EnigmailConstants.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {string} keyId - Space-separated list of search terms or key IDs.
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<string[]>|Promise<integer>} an array of imported key
+   *   fingerprints, or status code.
    */
-  async accessKeyServer(actionFlag, keyserver, keyId, listener) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessHkpInternal.accessKeyServer(${keyserver})\n`
-    );
+  async accessKeyServer(actionFlag, keyserver, keyId, listener = null) {
     if (!keyserver) {
-      throw new Error("accessKeyServer requires explicit keyserver parameter");
+      throw new Error("keyserver must be set");
     }
 
     const payLoad = await this.buildHkpPayload(actionFlag, keyId);
@@ -234,9 +235,6 @@ const accessHkpInternal = {
       let xmlReq = null;
       if (listener && typeof listener === "object") {
         listener.onCancel = function () {
-          lazy.EnigmailLog.DEBUG(
-            `keyserver.jsm: accessHkpInternal.accessKeyServer - onCancel() called\n`
-          );
           if (xmlReq) {
             xmlReq.abort();
           }
@@ -254,20 +252,9 @@ const accessHkpInternal = {
       }
 
       xmlReq = new XMLHttpRequest();
-
       xmlReq.onload = function () {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessHkpInternal: onload(): status=" +
-            xmlReq.status +
-            "\n"
-        );
         switch (actionFlag) {
           case lazy.EnigmailConstants.UPLOAD_KEY:
-            lazy.EnigmailLog.DEBUG(
-              "keyserver.jsm: accessHkpInternal: onload: " +
-                xmlReq.responseText +
-                "\n"
-            );
             if (xmlReq.status >= 400) {
               reject(
                 createError(lazy.EnigmailConstants.KEYSERVER_ERR_SERVER_ERROR)
@@ -296,17 +283,12 @@ const accessHkpInternal = {
               // key not found
               resolve(1);
             } else if (xmlReq.status >= 500) {
-              lazy.EnigmailLog.DEBUG(
-                "keyserver.jsm: accessHkpInternal: onload: " +
-                  xmlReq.responseText +
-                  "\n"
-              );
               reject(
                 createError(lazy.EnigmailConstants.KEYSERVER_ERR_SERVER_ERROR)
               );
             } else {
-              const errorMsgObj = {},
-                importedKeysObj = {};
+              const errorMsgObj = {};
+              const importedKeysObj = {};
 
               if (actionFlag === lazy.EnigmailConstants.DOWNLOAD_KEY) {
                 const importMinimal = false;
@@ -340,11 +322,6 @@ const accessHkpInternal = {
       };
 
       xmlReq.onerror = function (e) {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessHkpInternal.accessKeyServer: onerror: " +
-            e +
-            "\n"
-        );
         const err = lazy.FeedUtils.createTCPErrorFromFailedXHR(e.target);
         switch (err.type) {
           case "SecurityCertificate":
@@ -372,21 +349,13 @@ const accessHkpInternal = {
         );
       };
 
-      xmlReq.onloadend = function () {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessHkpInternal.accessKeyServer: loadEnd\n"
-        );
-      };
-
       const { url, method } = this.createRequestUrl(
         keyserver,
         actionFlag,
         keyId
       );
 
-      lazy.EnigmailLog.DEBUG(
-        `keyserver.jsm: accessHkpInternal.accessKeyServer: requesting ${url}\n`
-      );
+      lazy.log.debug(`Executing ${method} ${url}`);
       xmlReq.open(method, url);
       xmlReq.setRequestHeader(
         "Content-Type",
@@ -399,16 +368,14 @@ const accessHkpInternal = {
   /**
    * Download keys from a keyserver
    *
-   * @param keyIDs:      String  - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<...>
+   * @param {boolean} autoImport - Whether to autoimport.
+   * @param {string} keyIDs - Space-separated list of search terms or key IDs.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {?KeySrvListener} [listener]
+   * @returns {Promise<object>}
    */
   async download(autoImport, keyIDs, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessHkpInternal.download(${keyIDs})\n`
-    );
+    lazy.log.debug(`Downloading keys: ${keyIDs}...`);
     const keyIdArr = keyIDs.split(/ +/);
     const retObj = {
       result: 0,
@@ -445,7 +412,6 @@ const accessHkpInternal = {
         listener.onProgress(((i + 1) / keyIdArr.length) * 100);
       }
     }
-
     return retObj;
   },
 
@@ -460,18 +426,15 @@ const accessHkpInternal = {
   },
 
   /**
-   * Upload keys to a keyserver
+   * Upload keys to a keyserver.
    *
-   * @param keyIDs: String - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @returns {boolean} - Returns true if the key was sent successfully
+   * @param {string} keyIDs - Space-separated list of search terms or key IDs.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<boolean>} true if the keys were sent successfully.
    */
   async upload(keyIDs, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessHkpInternal.upload(${keyIDs})\n`
-    );
+    lazy.log.debug(`Uploading keys: ${keyIDs}...`);
     const keyIdArr = keyIDs.split(/ +/);
     let rv = false;
 
@@ -490,7 +453,7 @@ const accessHkpInternal = {
           break;
         }
       } catch (ex) {
-        console.error(ex);
+        lazy.log.warn(`Uploading key ${keyIdArr[i]} FAILED.`, ex);
         rv = false;
         break;
       }
@@ -499,32 +462,27 @@ const accessHkpInternal = {
         listener.onProgress(((i + 1) / keyIdArr.length) * 100);
       }
     }
-
     return rv;
   },
 
   /**
-   * Search for keys on a keyserver
+   * Search for keys on a keyserver.
    *
-   * @param searchTerm:  String  - search term
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Object>
-   *    - result: Number
-   *    - pubKeys: Array of Object:
-   *         PubKeys: Object with:
-   *           - keyId: String
-   *           - keyLen: String
-   *           - keyType: String
-   *           - created: String (YYYY-MM-DD)
-   *           - status: String: one of ''=valid, r=revoked, e=expired
-   *           - uid: Array of Strings with UIDs
+   * @param {string} searchTerm - Search term.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<object>} found
+   * @returns {integer} found.result
+   * @returns {object[]} found.pubKeys
+   * @returns {string} found.pubKeys[].keyId
+   * @returns {string} found.pubKeys[].keyLen
+   * @returns {string} found.pubKeys[].keyType
+   * @returns {string} found.pubKeys[].created
+   * @returns {string} found.pubKeys[].status - One of ''=valid, r=revoked, e=expired.
+   * @returns {string[]} found.pubKeys[].uid - Strings with UIDs.
    */
   async searchKeyserver(searchTerm, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessHkpInternal.search(${searchTerm})\n`
-    );
+    lazy.log.debug(`Searching keyserver for ${searchTerm}...`);
     const retObj = {
       result: 0,
       errorDetails: "",
@@ -592,17 +550,18 @@ const accessHkpInternal = {
         retObj.pubKeys.push(key);
       }
     }
-
     return retObj;
   },
 };
 
 /**
- Object to handle KeyBase requests (search & download only)
+ * Object to handle KeyBase requests (search & download only).
  */
 const accessKeyBase = {
   /**
-   * return the URL and the HTTP access method for a given action
+   * @returns {object} details
+   * @returns {string} details.url - URL to use
+   * @returns {string} details.method - HTTP method
    */
   createRequestUrl(actionFlag, searchTerm) {
     let url = "https://keybase.io/_/api/1.0/user/";
@@ -632,24 +591,20 @@ const accessKeyBase = {
   },
 
   /**
-   * Upload, search or download keys from a keyserver
+   * Upload, search or download keys from a keyserver.
    *
-   * @param actionFlag:  Number  - Keyserver Action Flags: from EnigmailConstants
-   * @param keyId:      String  - space-separated list of search terms or key IDs
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Number (Status-ID)>
+   * @param {integer} actionFlag - Keyserver Action Flags: from EnigmailConstants
+   * @param {string} keyId - Space-separated list of search terms or key IDs.
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<string>|Promise<integer>}
    */
-  async accessKeyServer(actionFlag, keyId, listener) {
-    lazy.EnigmailLog.DEBUG(`keyserver.jsm: accessKeyBase: accessKeyServer()\n`);
+  async accessKeyServer(actionFlag, keyId, listener = null) {
+    lazy.log.debug(`Accessing KeyBase for keyId=${keyId}...`);
 
     return new Promise((resolve, reject) => {
       let xmlReq = null;
       if (listener && typeof listener === "object") {
         listener.onCancel = function () {
-          lazy.EnigmailLog.DEBUG(
-            `keyserver.jsm: accessKeyBase: accessKeyServer - onCancel() called\n`
-          );
           if (xmlReq) {
             xmlReq.abort();
           }
@@ -664,9 +619,7 @@ const accessKeyBase = {
       xmlReq = new XMLHttpRequest();
 
       xmlReq.onload = function () {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: onload(): status=" + xmlReq.status + "\n"
-        );
+        lazy.log.debug(`... got status=${xmlReq.status}`);
         switch (actionFlag) {
           case lazy.EnigmailConstants.SEARCH_KEY:
             if (xmlReq.status >= 400) {
@@ -684,9 +637,6 @@ const accessKeyBase = {
               // key not found
               resolve(1);
             } else if (xmlReq.status >= 500) {
-              lazy.EnigmailLog.DEBUG(
-                "keyserver.jsm: onload: " + xmlReq.responseText + "\n"
-              );
               reject(
                 createError(lazy.EnigmailConstants.KEYSERVER_ERR_SERVER_ERROR)
               );
@@ -695,10 +645,6 @@ const accessKeyBase = {
                 const resp = JSON.parse(xmlReq.responseText);
                 if (resp.status.code === 0) {
                   for (const hit in resp.them) {
-                    lazy.EnigmailLog.DEBUG(
-                      JSON.stringify(resp.them[hit].public_keys.primary) + "\n"
-                    );
-
                     if (resp.them[hit] !== null) {
                       const errorMsgObj = {},
                         importedKeysObj = {};
@@ -741,9 +687,6 @@ const accessKeyBase = {
       };
 
       xmlReq.onerror = function (e) {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessKeyBase: onerror: " + e + "\n"
-        );
         const err = lazy.FeedUtils.createTCPErrorFromFailedXHR(e.target);
         switch (err.type) {
           case "SecurityCertificate":
@@ -771,15 +714,9 @@ const accessKeyBase = {
         );
       };
 
-      xmlReq.onloadend = function () {
-        lazy.EnigmailLog.DEBUG("keyserver.jsm: accessKeyBase: loadEnd\n");
-      };
-
       const { url, method } = this.createRequestUrl(actionFlag, keyId);
 
-      lazy.EnigmailLog.DEBUG(
-        `keyserver.jsm: accessKeyBase: requesting ${url}\n`
-      );
+      lazy.log.debug(`Executing ${method} ${url}`);
       xmlReq.open(method, url);
       xmlReq.send("");
     });
@@ -788,14 +725,14 @@ const accessKeyBase = {
   /**
    * Download keys from a KeyBase
    *
-   * @param keyIDs:      String  - space-separated list of search terms or key IDs
-   * @param keyserver:   (not used for keybase)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<...>
+   * @param {boolean} autoImport - Whether to autoimport.
+   * @param {string} keyIDs - Space-separated list of search terms or key IDs
+   * @param {string} [_keyserver] - Not used for keybase.
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<object>}
    */
-  async download(autoImport, keyIDs, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(`keyserver.jsm: accessKeyBase: download()\n`);
+  async download(autoImport, keyIDs, _keyserver = null, listener = null) {
+    lazy.log.debug(`Downloading from KeyBase: ${keyIDs}...`);
     const keyIdArr = keyIDs.split(/ +/);
     const retObj = {
       result: 0,
@@ -825,31 +762,28 @@ const accessKeyBase = {
         listener.onProgress(i / keyIdArr.length);
       }
     }
-
     return retObj;
   },
 
   /**
-   * Search for keys on a keyserver
+   * Search for keys on a keyserver.
    *
-   * @param searchTerm:  String  - search term
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
+   * @param {string} searchTerm - Search term.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
    *
-   * @return:   Promise<Object>
-   *    - result: Number
-   *    - pubKeys: Array of Object:
-   *         PubKeys: Object with:
-   *           - keyId: String
-   *           - keyLen: String
-   *           - keyType: String
-   *           - created: String (YYYY-MM-DD)
-   *           - status: String: one of ''=valid, r=revoked, e=expired
-   *           - uid: Array of Strings with UIDs
-
+   * @returns {Promise<object>} found
+   * @returns {integer} found.result
+   * @returns {object[]} found.pubKeys
+   * @returns {string} found.pubKeys[].keyId
+   * @returns {string} found.pubKeys[].keyLen
+   * @returns {string} found.pubKeys[].keyType
+   * @returns {string} found.pubKeys[].created
+   * @returns {string} found.pubKeys[].status - One of ''=valid, r=revoked, e=expired.
+   * @returns {string[]} found.pubKeys[].uid - Strings with UIDs.
    */
   async searchKeyserver(searchTerm, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(`keyserver.jsm: accessKeyBase: search()\n`);
+    lazy.log.debug(`Searching KeyBase for ${searchTerm}...`);
     const retObj = {
       result: 0,
       errorDetails: "",
@@ -899,11 +833,10 @@ const accessKeyBase = {
   },
 
   upload() {
-    throw Components.Exception("", Cr.NS_ERROR_FAILURE);
+    throw new Error("Upload not implemented.");
   },
 
   refresh(keyServer, listener = null) {
-    lazy.EnigmailLog.DEBUG(`keyserver.jsm: accessKeyBase: refresh()\n`);
     const keyList = lazy.EnigmailKeyRing.getAllKeys()
       .keyList.map(keyObj => {
         return "0x" + keyObj.fpr;
@@ -935,12 +868,11 @@ function getAccessType(keyserver) {
 }
 
 /**
- * Object to handle VKS requests (for example keys.openpgp.org)
+ * Object to handle VKS requests (for example keys.openpgp.org).
  */
 const accessVksServer = {
   /**
-   * Create the payload of VKS requests (currently upload only)
-   *
+   * Create the payload of VKS requests (currently upload only).
    */
   async buildJsonPayload(actionFlag, searchTerms, locale) {
     switch (actionFlag) {
@@ -980,7 +912,12 @@ const accessVksServer = {
   },
 
   /**
-   * return the URL and the HTTP access method for a given action
+   * Return the URL and the HTTP access method for a given action.
+   *
+   * @returns {object} details
+   * @returns {string} details.url
+   * @returns {string} details.method
+   * @returns {string} details.contentType
    */
   createRequestUrl(keyserver, actionFlag, searchTerm) {
     const keySrv = parseKeyserverUrl(keyserver);
@@ -1038,17 +975,13 @@ const accessVksServer = {
   /**
    * Upload, search or download keys from a keyserver
    *
-   * @param actionFlag:  Number  - Keyserver Action Flags: from EnigmailConstants
-   * @param keyId:       String  - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Number (Status-ID)>
+   * @param {integer} actionFlag - Keyserver Action Flags: from EnigmailConstants.
+   * @param {?string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {string} keyId - Space-separated list of search terms or key IDs.
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<integer>} status id.
    */
   async accessKeyServer(actionFlag, keyserver, keyId, listener) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessVksServer.accessKeyServer(${keyserver})\n`
-    );
     if (keyserver === null) {
       keyserver = "keys.openpgp.org";
     }
@@ -1060,9 +993,6 @@ const accessVksServer = {
       let xmlReq = null;
       if (listener && typeof listener === "object") {
         listener.onCancel = function () {
-          lazy.EnigmailLog.DEBUG(
-            `keyserver.jsm: accessVksServer.accessKeyServer - onCancel() called\n`
-          );
           if (xmlReq) {
             xmlReq.abort();
           }
@@ -1082,19 +1012,9 @@ const accessVksServer = {
       xmlReq = new XMLHttpRequest();
 
       xmlReq.onload = function () {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessVksServer.onload(): status=" +
-            xmlReq.status +
-            "\n"
-        );
         switch (actionFlag) {
           case lazy.EnigmailConstants.UPLOAD_KEY:
           case lazy.EnigmailConstants.GET_CONFIRMATION_LINK:
-            lazy.EnigmailLog.DEBUG(
-              "keyserver.jsm: accessVksServer.onload: " +
-                xmlReq.responseText +
-                "\n"
-            );
             if (xmlReq.status >= 400) {
               reject(
                 createError(lazy.EnigmailConstants.KEYSERVER_ERR_SERVER_ERROR)
@@ -1123,11 +1043,6 @@ const accessVksServer = {
               // key not found
               resolve(1);
             } else if (xmlReq.status >= 500) {
-              lazy.EnigmailLog.DEBUG(
-                "keyserver.jsm: accessVksServer.onload: " +
-                  xmlReq.responseText +
-                  "\n"
-              );
               reject(
                 createError(lazy.EnigmailConstants.KEYSERVER_ERR_SERVER_ERROR)
               );
@@ -1164,9 +1079,6 @@ const accessVksServer = {
       };
 
       xmlReq.onerror = function (e) {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessVksServer.accessKeyServer: onerror: " + e + "\n"
-        );
         const err = lazy.FeedUtils.createTCPErrorFromFailedXHR(e.target);
         switch (err.type) {
           case "SecurityCertificate":
@@ -1194,21 +1106,13 @@ const accessVksServer = {
         );
       };
 
-      xmlReq.onloadend = function () {
-        lazy.EnigmailLog.DEBUG(
-          "keyserver.jsm: accessVksServer.accessKeyServer: loadEnd\n"
-        );
-      };
-
       const { url, method, contentType } = this.createRequestUrl(
         keyserver,
         actionFlag,
         keyId
       );
 
-      lazy.EnigmailLog.DEBUG(
-        `keyserver.jsm: accessVksServer.accessKeyServer: requesting ${method} for ${url}\n`
-      );
+      lazy.log.debug(`Executing ${method} ${url}`);
       xmlReq.open(method, url);
       xmlReq.setRequestHeader("Content-Type", contentType);
       xmlReq.send(payLoad);
@@ -1216,18 +1120,16 @@ const accessVksServer = {
   },
 
   /**
-   * Download keys from a keyserver
+   * Download keys from a keyserver.
    *
-   * @param keyIDs:      String  - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<...>
+   * @param {boolean} autoImport - Whether to auto import.
+   * @param {string} keyIDs - Space-separated list of search terms or key IDs.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {?KeySrvListener} [listener]
+   * @returns {Promise<object>}
    */
   async download(autoImport, keyIDs, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessVksServer.download(${keyIDs})\n`
-    );
+    lazy.log.debug(`Downloading from vks: ${keyIDs}...`);
     const keyIdArr = keyIDs.split(/ +/);
     const retObj = {
       result: 0,
@@ -1264,7 +1166,6 @@ const accessVksServer = {
         listener.onProgress(((i + 1) / keyIdArr.length) * 100);
       }
     }
-
     return retObj;
   },
 
@@ -1279,14 +1180,9 @@ const accessVksServer = {
   },
 
   async requestConfirmationLink(keyserver, jsonFragment) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessVksServer.requestConfirmationLink()\n`
-    );
-
     const response = JSON.parse(jsonFragment);
 
     const addr = [];
-
     for (const email in response.status) {
       if (response.status[email] !== "published") {
         addr.push(email);
@@ -1313,18 +1209,15 @@ const accessVksServer = {
   },
 
   /**
-   * Upload keys to a keyserver
+   * Upload keys to a vks.
    *
-   * @param keyIDs: String - space-separated list of search terms or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @returns {boolean} - Returns true if the key was sent successfully
+   * @param {string} keyIDs - Space-separated list of search terms or key IDs.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {boolean} true if the key was sent successfully.
    */
   async upload(keyIDs, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessVksServer.upload(${keyIDs})\n`
-    );
+    lazy.log.debug(`Uploading keys to vks: ${keyIDs}`);
     const keyIdArr = keyIDs.split(/ +/);
     let rv = false;
 
@@ -1332,9 +1225,7 @@ const accessVksServer = {
       const keyObj = lazy.EnigmailKeyRing.getKeyById(keyIdArr[i]);
 
       if (!keyObj.secretAvailable) {
-        throw new Error(
-          "public keyserver uploading supported only for user's own keys"
-        );
+        throw new Error(`Can only upload your own keys.`);
       }
 
       try {
@@ -1368,27 +1259,23 @@ const accessVksServer = {
   },
 
   /**
-   * Search for keys on a keyserver
+   * Search for keys on a keyserver.
    *
-   * @param searchTerm:  String  - search term
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Object>
-   *    - result: Number
-   *    - pubKeys: Array of Object:
-   *         PubKeys: Object with:
-   *           - keyId: String
-   *           - keyLen: String
-   *           - keyType: String
-   *           - created: String (YYYY-MM-DD)
-   *           - status: String: one of ''=valid, r=revoked, e=expired
-   *           - uid: Array of Strings with UIDs
+   * @param {string} searchTerm - Search term.
+   * @param {string} keyserver - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<object>} found
+   * @returns {integer} found.result
+   * @returns {object[]} found.pubKeys
+   * @returns {string} found.pubKeys[].keyId
+   * @returns {string} found.pubKeys[].keyLen
+   * @returns {string} found.pubKeys[].keyType
+   * @returns {string} found.pubKeys[].created
+   * @returns {string} found.pubKeys[].status - One of ''=valid, r=revoked, e=expired.
+   * @returns {string[]} found.pubKeys[].uid - Strings with UIDs.
    */
   async searchKeyserver(searchTerm, keyserver, listener = null) {
-    lazy.EnigmailLog.DEBUG(
-      `keyserver.jsm: accessVksServer.search(${searchTerm})\n`
-    );
+    lazy.log.debug(`Searching vks for ${searchTerm}...`);
     const retObj = {
       result: 0,
       errorDetails: "",
@@ -1407,8 +1294,7 @@ const accessVksServer = {
           listener
         );
 
-        const cApi = lazy.EnigmailCryptoAPI();
-        const keyList = await cApi.getKeyListFromKeyBlockAPI(
+        const keyList = await lazy.RNP.getKeyListFromKeyBlockImpl(
           r,
           true,
           false,
@@ -1450,15 +1336,14 @@ const accessVksServer = {
 
 export var EnigmailKeyServer = {
   /**
-   * Download keys from a keyserver
+   * Download keys from a keyserver.
    *
-   * @param keyIDs:      String  - space-separated list of FPRs or key IDs
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Object>
-   *     Object: - result: Number           - result Code (0 = OK),
-   *             - keyList: Array of String - imported key FPR
+   * @param {string} keyIDs - Space-separated list of FPRs or key IDs.
+   * @param {string} [keyserver] - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<object>} found
+   * @returns {integer} found.result - Result Code (0 = OK)
+   * @returns {string[]} found.keyList - Imported key FPR.
    */
   async download(keyIDs, keyserver = null, listener) {
     const acc = getAccessType(keyserver);
@@ -1483,13 +1368,11 @@ export var EnigmailKeyServer = {
   /**
    * Upload keys to a keyserver
    *
-   * @param keyIDs:      String  - space-separated list of key IDs or FPR
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @returns {boolean} - Returns true if the key was sent successfully
+   * @param {string} keyIDs - Space-separated list of FPRs or key IDs.
+   * @param {string} [keyserver] - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {boolean} true if the key was sent successfully.
    */
-
   async upload(keyIDs, keyserver = null, listener) {
     const acc = getAccessType(keyserver);
     return acc.upload(keyIDs, keyserver, listener);
@@ -1498,22 +1381,21 @@ export var EnigmailKeyServer = {
   /**
    * Search keys on a keyserver
    *
-   * @param searchString: String - search term. Multiple email addresses can be search by spaces
-   * @param keyserver:    String - keyserver URL (optionally incl. protocol)
-   * @param listener:     optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<Object>
-   *    - result: Number
-   *    - pubKeys: Array of Object:
-   *         PubKeys: Object with:
-   *           - keyId: String
-   *           - keyLen: String
-   *           - keyType: String
-   *           - created: String (YYYY-MM-DD)
-   *           - status: String: one of ''=valid, r=revoked, e=expired
-   *           - uid: Array of Strings with UIDs
+   * @param {string} searchString - Search term. Multiple email addresses can
+   *   be search by spaces.
+   * @param {string} [keyserver] - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<object>} found
+   * @returns {integer} found.result
+   * @returns {object[]} found.pubKeys
+   * @returns {string} found.pubKeys[].keyId
+   * @returns {string} found.pubKeys[].keyLen
+   * @returns {string} found.pubKeys[].keyType
+   * @returns {string} found.pubKeys[].created
+   * @returns {string} found.pubKeys[].status - One of ''=valid, r=revoked, e=expired.
+   * @returns {string[]} found.pubKeys[].uid - Strings with UIDs.
    */
-  async searchKeyserver(searchString, keyserver = null, listener) {
+  async searchKeyserver(searchString, keyserver = null, listener = null) {
     const acc = getAccessType(keyserver);
     return acc.search(searchString, keyserver, listener);
   },
@@ -1540,12 +1422,11 @@ export var EnigmailKeyServer = {
   },
 
   /**
-   * Refresh all keys
+   * Refresh all keys.
    *
-   * @param keyserver:   String  - keyserver URL (optionally incl. protocol)
-   * @param listener:    optional Object implementing the KeySrvListener API (above)
-   *
-   * @return:   Promise<resultStatus> (identical to download)
+   * @param {string} [keyserver] - Keyserver URL (optionally incl. protocol).
+   * @param {KeySrvListener} [listener]
+   * @returns {Promise<resultStatus>} status (identical to download)
    */
   refresh(keyserver = null, listener) {
     const acc = getAccessType(keyserver);

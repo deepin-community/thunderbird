@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-da@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Dansk (Danish)",
   "description": "Thunderbird Language Pack for Dansk (da) – Danish",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "da": {
-      "version": "20240423195531",
+      "version": "20240718002916",
       "chrome_resources": {
         "alerts": "chrome/da/locale/da/alerts/",
         "autoconfig": "chrome/da/locale/da/autoconfig/",
         "branding": "chrome/da/locale/branding/",
         "calendar": "chrome/da/locale/da/calendar/",
-        "chat": "chrome/da/locale/da/chat/",
         "communicator": "chrome/da/locale/da/communicator/",
         "devtools": "chrome/da/locale/da/devtools/client/",
         "devtools-shared": "chrome/da/locale/da/devtools/shared/",
